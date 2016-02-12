@@ -1,0 +1,270 @@
+syntax = "proto3";
+
+package api;
+
+// TODO(stevvooe): Baseline API specification from POC. Take this to the
+// production specification over the next few weeks.
+
+message Node {
+	string id = 1;
+	string name = 2;
+	string ip = 4;
+
+	bool drained = 5;
+	NodeStatus status = 3;
+}
+
+enum NodeStatus {
+	READY = 0;
+	DOWN = 1;
+}
+
+// Spec defines the properties of a Job. As tasks are created, they gain the
+// Job specification.
+message Spec {
+	string name = 1;
+
+	// remote specifies a URL to fetch task bundle data. This can either
+	// be a git repository or blobster repository.
+	string remote = 2;
+	string bundle = 3; // bundle is the commitish of the bundle
+	string entrypoint = 4; // some specification for what to run.
+
+	int64 instances = 5;
+
+	// TODO(stevvooe): Break up this type into functionality. The comments
+	// below demonstrate some of the behavior. One example is grouping the
+	// bundle fields away from the image specification fields. We may also
+	// want to make each set somewhat generic. For example, there should be a
+	// "source", that could either be a bundle or image. For the runtime
+	// parameters, we may have different ones for a Batch Job (cron, perhaps)
+	// and a Service Job (number of instances).
+
+	// message Bundle {
+	//	string remote = 1;
+	//	string bundle = 2; // bundle is the commitish of the bundle
+	//	string entrypoint = 3; // some specification for what to run.
+	// }
+
+	// message Service {
+	//	int64 instances = 1;
+	// }
+
+	// message Batch {
+	//	string cron = 1;
+	// }
+
+	// message Scheduling {
+	//	repeated string affinity = 2;
+	//	repeated string constraint = 3;
+	// }
+}
+
+message TaskStatus {
+	enum State {
+		NEW = 0;
+		ASSIGNED = 1;
+		PREPARING = 2;
+		READY = 3;
+		STARTING = 4;
+		RUNNING = 5;
+		SHUTDOWN = 6;
+		COMPLETE = 7; // successful completion of task (not error code, just ran)
+		FAILED = 8; // task execution failed with error
+		REJECTED = 9; // task could not be executed here.
+		FINALIZE = 10; // when task is deallocated from node, waiting on cleanup
+		DEAD = 11; // completely finished, unallocated task.
+	}
+
+	State state = 2;
+	string message = 3;
+}
+
+
+message Task {
+	string id = 1;
+	string job_id = 2;
+
+	// TODO(stevvooe): Consider bringing back assignment, rather than using a
+	// node id field. We like having this concept be first-class. It helps to
+	// reason about storage and consistency.
+
+	string node_id = 3; // if not set, the task is unassigned.
+
+	// NOTE(stevvooe): Spec, status or both may be set, depending on the role
+	// of this message.
+
+	Spec spec = 4;
+	TaskStatus status = 5;
+
+	// Networking state
+	string net_id = 6;
+	string ep_id = 7;
+	string ip = 8;
+	string gateway = 9;
+	repeated string driver_info = 10;
+}
+
+message Job {
+	string id = 1;
+	Spec spec = 2;
+}
+
+message Update {
+  oneof update {
+    Node updateNode = 1;
+    Task updateTask = 2;
+    Job updateJob = 4;
+    string deleteNode = 5;
+    string deleteTask = 6;
+    string deleteJob = 8;
+  }
+}
+
+service Swarm {
+	rpc RegisterNode(RegisterNodeRequest) returns (RegisterNodeResponse) {}
+	rpc UpdateNodeStatus(UpdateNodeStatusRequest) returns (UpdateNodeStatusResponse) {}
+	rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {}
+	rpc DrainNode(DrainNodeRequest) returns (DrainNodeResponse) {}
+
+	rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse) {}
+	rpc GetTasks(GetTasksRequest) returns (GetTasksResponse) {}
+	rpc RemoveTask(RemoveTaskRequest) returns (RemoveTaskResponse) {}
+	rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {}
+
+	rpc CreateJob(CreateJobRequest) returns (CreateJobResponse) {}
+	rpc GetJob(GetJobRequest) returns (GetJobResponse) {}
+	rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse) {}
+	rpc RemoveJob(RemoveJobRequest) returns (RemoveJobResponse) {}
+	rpc ListJobs(ListJobsRequest) returns (ListJobsResponse) {}
+
+	rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse) {};
+	rpc WatchTasks(WatchTasksRequest) returns (stream WatchTasksResponse){};
+
+	// TODO(stevvooe): Split this API up into "Agent" and "Control".
+}
+
+message RegisterNodeRequest {
+	Node node = 1;
+}
+
+message RegisterNodeResponse {
+	uint64 heartbeat_ttl = 1;
+}
+
+message UpdateNodeStatusRequest {
+	string node_id = 1;
+	NodeStatus status = 2;
+}
+
+message UpdateNodeStatusResponse {
+	uint64 heartbeat_ttl = 1;
+}
+
+message ListNodesRequest {
+}
+
+message ListNodesResponse {
+	repeated Node nodes = 1;
+}
+
+message DrainNodeRequest {
+	string node_id = 1;
+	bool drain = 2;
+}
+
+message DrainNodeResponse {
+}
+
+message CreateTaskRequest {
+	Spec spec = 1;
+}
+
+message CreateTaskResponse {
+	string task_id = 1;
+}
+
+message GetTasksRequest {
+	repeated string task_ids = 1;
+}
+
+message GetTasksResponse {
+	repeated Task tasks = 1;
+}
+
+message RemoveTaskRequest {
+	string task_id = 1;
+}
+
+message RemoveTaskResponse {
+}
+
+message ListTasksRequest {
+}
+
+message ListTasksResponse {
+	repeated Task tasks = 1;
+}
+
+message CreateJobRequest {
+	Spec spec = 1;
+}
+
+message CreateJobResponse {
+	string job_id = 1;
+}
+
+message GetJobRequest {
+	string job_id = 1;
+}
+
+message GetJobResponse {
+	Job job = 1;
+}
+
+message UpdateJobRequest {
+	string job_id = 1;
+	Spec spec = 2;
+}
+
+message UpdateJobResponse {
+}
+
+message RemoveJobRequest {
+	string job_id = 1;
+}
+
+message RemoveJobResponse {
+}
+
+message ListJobsRequest {
+}
+
+message ListJobsResponse {
+	repeated Job jobs = 1;
+}
+
+message UpdateTaskStatusRequest {
+	// Tasks should contain all statuses for running tasks. Only the status
+	// field must be set. The spec is not required.
+	repeated Task tasks = 1;
+}
+
+message  UpdateTaskStatusResponse{
+	// void
+}
+
+
+
+message WatchTasksRequest {
+	// TODO(stevvooe): Really, node id assignments should be done through
+	// headers and sessionization.
+
+	string node_id = 1;
+}
+
+message WatchTasksResponse {
+	// Tasks is the set of tasks that should be running on the node.
+	// Tasks outside of this set running on the node should be terminated.
+	repeated Task tasks = 1;
+}
