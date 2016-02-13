@@ -2,50 +2,6 @@
 // source: api.proto
 // DO NOT EDIT!
 
-/*
-Package api is a generated protocol buffer package.
-
-It is generated from these files:
-	api.proto
-
-It has these top-level messages:
-	Node
-	Spec
-	TaskStatus
-	Task
-	Job
-	Update
-	RegisterNodeRequest
-	RegisterNodeResponse
-	UpdateNodeStatusRequest
-	UpdateNodeStatusResponse
-	ListNodesRequest
-	ListNodesResponse
-	DrainNodeRequest
-	DrainNodeResponse
-	CreateTaskRequest
-	CreateTaskResponse
-	GetTasksRequest
-	GetTasksResponse
-	RemoveTaskRequest
-	RemoveTaskResponse
-	ListTasksRequest
-	ListTasksResponse
-	CreateJobRequest
-	CreateJobResponse
-	GetJobRequest
-	GetJobResponse
-	UpdateJobRequest
-	UpdateJobResponse
-	RemoveJobRequest
-	RemoveJobResponse
-	ListJobsRequest
-	ListJobsResponse
-	UpdateTaskStatusRequest
-	UpdateTaskStatusResponse
-	WatchTasksRequest
-	WatchTasksResponse
-*/
 package api
 
 import proto "github.com/golang/protobuf/proto"
@@ -62,405 +18,6 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-const _ = proto.ProtoPackageIsVersion1
-
-type NodeStatus int32
-
-const (
-	NodeStatus_READY NodeStatus = 0
-	NodeStatus_DOWN  NodeStatus = 1
-)
-
-var NodeStatus_name = map[int32]string{
-	0: "READY",
-	1: "DOWN",
-}
-var NodeStatus_value = map[string]int32{
-	"READY": 0,
-	"DOWN":  1,
-}
-
-func (x NodeStatus) String() string {
-	return proto.EnumName(NodeStatus_name, int32(x))
-}
-func (NodeStatus) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
-
-type TaskStatus_State int32
-
-const (
-	TaskStatus_NEW       TaskStatus_State = 0
-	TaskStatus_ASSIGNED  TaskStatus_State = 1
-	TaskStatus_PREPARING TaskStatus_State = 2
-	TaskStatus_READY     TaskStatus_State = 3
-	TaskStatus_STARTING  TaskStatus_State = 4
-	TaskStatus_RUNNING   TaskStatus_State = 5
-	TaskStatus_SHUTDOWN  TaskStatus_State = 6
-	TaskStatus_COMPLETE  TaskStatus_State = 7
-	TaskStatus_FAILED    TaskStatus_State = 8
-	TaskStatus_REJECTED  TaskStatus_State = 9
-	TaskStatus_FINALIZE  TaskStatus_State = 10
-	TaskStatus_DEAD      TaskStatus_State = 11
-)
-
-var TaskStatus_State_name = map[int32]string{
-	0:  "NEW",
-	1:  "ASSIGNED",
-	2:  "PREPARING",
-	3:  "READY",
-	4:  "STARTING",
-	5:  "RUNNING",
-	6:  "SHUTDOWN",
-	7:  "COMPLETE",
-	8:  "FAILED",
-	9:  "REJECTED",
-	10: "FINALIZE",
-	11: "DEAD",
-}
-var TaskStatus_State_value = map[string]int32{
-	"NEW":       0,
-	"ASSIGNED":  1,
-	"PREPARING": 2,
-	"READY":     3,
-	"STARTING":  4,
-	"RUNNING":   5,
-	"SHUTDOWN":  6,
-	"COMPLETE":  7,
-	"FAILED":    8,
-	"REJECTED":  9,
-	"FINALIZE":  10,
-	"DEAD":      11,
-}
-
-func (x TaskStatus_State) String() string {
-	return proto.EnumName(TaskStatus_State_name, int32(x))
-}
-func (TaskStatus_State) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{2, 0} }
-
-type Node struct {
-	Id      string     `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Name    string     `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
-	Ip      string     `protobuf:"bytes,4,opt,name=ip" json:"ip,omitempty"`
-	Drained bool       `protobuf:"varint,5,opt,name=drained" json:"drained,omitempty"`
-	Status  NodeStatus `protobuf:"varint,3,opt,name=status,enum=api.NodeStatus" json:"status,omitempty"`
-}
-
-func (m *Node) Reset()                    { *m = Node{} }
-func (m *Node) String() string            { return proto.CompactTextString(m) }
-func (*Node) ProtoMessage()               {}
-func (*Node) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
-
-// Spec defines the properties of a Job. As tasks are created, they gain the
-// Job specification.
-type Spec struct {
-	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	// remote specifies a URL to fetch task bundle data. This can either
-	// be a git repository or blobster repository.
-	Remote     string `protobuf:"bytes,2,opt,name=remote" json:"remote,omitempty"`
-	Bundle     string `protobuf:"bytes,3,opt,name=bundle" json:"bundle,omitempty"`
-	Entrypoint string `protobuf:"bytes,4,opt,name=entrypoint" json:"entrypoint,omitempty"`
-	Instances  int64  `protobuf:"varint,5,opt,name=instances" json:"instances,omitempty"`
-}
-
-func (m *Spec) Reset()                    { *m = Spec{} }
-func (m *Spec) String() string            { return proto.CompactTextString(m) }
-func (*Spec) ProtoMessage()               {}
-func (*Spec) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
-
-type TaskStatus struct {
-	State   TaskStatus_State `protobuf:"varint,2,opt,name=state,enum=api.TaskStatus_State" json:"state,omitempty"`
-	Message string           `protobuf:"bytes,3,opt,name=message" json:"message,omitempty"`
-}
-
-func (m *TaskStatus) Reset()                    { *m = TaskStatus{} }
-func (m *TaskStatus) String() string            { return proto.CompactTextString(m) }
-func (*TaskStatus) ProtoMessage()               {}
-func (*TaskStatus) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
-
-type Task struct {
-	Id     string      `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	JobId  string      `protobuf:"bytes,2,opt,name=job_id" json:"job_id,omitempty"`
-	NodeId string      `protobuf:"bytes,3,opt,name=node_id" json:"node_id,omitempty"`
-	Spec   *Spec       `protobuf:"bytes,4,opt,name=spec" json:"spec,omitempty"`
-	Status *TaskStatus `protobuf:"bytes,5,opt,name=status" json:"status,omitempty"`
-	// Networking state
-	NetId      string   `protobuf:"bytes,6,opt,name=net_id" json:"net_id,omitempty"`
-	EpId       string   `protobuf:"bytes,7,opt,name=ep_id" json:"ep_id,omitempty"`
-	Ip         string   `protobuf:"bytes,8,opt,name=ip" json:"ip,omitempty"`
-	Gateway    string   `protobuf:"bytes,9,opt,name=gateway" json:"gateway,omitempty"`
-	DriverInfo []string `protobuf:"bytes,10,rep,name=driver_info" json:"driver_info,omitempty"`
-}
-
-func (m *Task) Reset()                    { *m = Task{} }
-func (m *Task) String() string            { return proto.CompactTextString(m) }
-func (*Task) ProtoMessage()               {}
-func (*Task) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
-
-func (m *Task) GetSpec() *Spec {
-	if m != nil {
-		return m.Spec
-	}
-	return nil
-}
-
-func (m *Task) GetStatus() *TaskStatus {
-	if m != nil {
-		return m.Status
-	}
-	return nil
-}
-
-type Job struct {
-	Id   string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Spec *Spec  `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
-}
-
-func (m *Job) Reset()                    { *m = Job{} }
-func (m *Job) String() string            { return proto.CompactTextString(m) }
-func (*Job) ProtoMessage()               {}
-func (*Job) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
-
-func (m *Job) GetSpec() *Spec {
-	if m != nil {
-		return m.Spec
-	}
-	return nil
-}
-
-type Update struct {
-	// Types that are valid to be assigned to Update:
-	//	*Update_UpdateNode
-	//	*Update_UpdateTask
-	//	*Update_UpdateJob
-	//	*Update_DeleteNode
-	//	*Update_DeleteTask
-	//	*Update_DeleteJob
-	Update isUpdate_Update `protobuf_oneof:"update"`
-}
-
-func (m *Update) Reset()                    { *m = Update{} }
-func (m *Update) String() string            { return proto.CompactTextString(m) }
-func (*Update) ProtoMessage()               {}
-func (*Update) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
-
-type isUpdate_Update interface {
-	isUpdate_Update()
-}
-
-type Update_UpdateNode struct {
-	UpdateNode *Node `protobuf:"bytes,1,opt,name=updateNode,oneof"`
-}
-type Update_UpdateTask struct {
-	UpdateTask *Task `protobuf:"bytes,2,opt,name=updateTask,oneof"`
-}
-type Update_UpdateJob struct {
-	UpdateJob *Job `protobuf:"bytes,4,opt,name=updateJob,oneof"`
-}
-type Update_DeleteNode struct {
-	DeleteNode string `protobuf:"bytes,5,opt,name=deleteNode,oneof"`
-}
-type Update_DeleteTask struct {
-	DeleteTask string `protobuf:"bytes,6,opt,name=deleteTask,oneof"`
-}
-type Update_DeleteJob struct {
-	DeleteJob string `protobuf:"bytes,8,opt,name=deleteJob,oneof"`
-}
-
-func (*Update_UpdateNode) isUpdate_Update() {}
-func (*Update_UpdateTask) isUpdate_Update() {}
-func (*Update_UpdateJob) isUpdate_Update()  {}
-func (*Update_DeleteNode) isUpdate_Update() {}
-func (*Update_DeleteTask) isUpdate_Update() {}
-func (*Update_DeleteJob) isUpdate_Update()  {}
-
-func (m *Update) GetUpdate() isUpdate_Update {
-	if m != nil {
-		return m.Update
-	}
-	return nil
-}
-
-func (m *Update) GetUpdateNode() *Node {
-	if x, ok := m.GetUpdate().(*Update_UpdateNode); ok {
-		return x.UpdateNode
-	}
-	return nil
-}
-
-func (m *Update) GetUpdateTask() *Task {
-	if x, ok := m.GetUpdate().(*Update_UpdateTask); ok {
-		return x.UpdateTask
-	}
-	return nil
-}
-
-func (m *Update) GetUpdateJob() *Job {
-	if x, ok := m.GetUpdate().(*Update_UpdateJob); ok {
-		return x.UpdateJob
-	}
-	return nil
-}
-
-func (m *Update) GetDeleteNode() string {
-	if x, ok := m.GetUpdate().(*Update_DeleteNode); ok {
-		return x.DeleteNode
-	}
-	return ""
-}
-
-func (m *Update) GetDeleteTask() string {
-	if x, ok := m.GetUpdate().(*Update_DeleteTask); ok {
-		return x.DeleteTask
-	}
-	return ""
-}
-
-func (m *Update) GetDeleteJob() string {
-	if x, ok := m.GetUpdate().(*Update_DeleteJob); ok {
-		return x.DeleteJob
-	}
-	return ""
-}
-
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*Update) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _Update_OneofMarshaler, _Update_OneofUnmarshaler, _Update_OneofSizer, []interface{}{
-		(*Update_UpdateNode)(nil),
-		(*Update_UpdateTask)(nil),
-		(*Update_UpdateJob)(nil),
-		(*Update_DeleteNode)(nil),
-		(*Update_DeleteTask)(nil),
-		(*Update_DeleteJob)(nil),
-	}
-}
-
-func _Update_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*Update)
-	// update
-	switch x := m.Update.(type) {
-	case *Update_UpdateNode:
-		b.EncodeVarint(1<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.UpdateNode); err != nil {
-			return err
-		}
-	case *Update_UpdateTask:
-		b.EncodeVarint(2<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.UpdateTask); err != nil {
-			return err
-		}
-	case *Update_UpdateJob:
-		b.EncodeVarint(4<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.UpdateJob); err != nil {
-			return err
-		}
-	case *Update_DeleteNode:
-		b.EncodeVarint(5<<3 | proto.WireBytes)
-		b.EncodeStringBytes(x.DeleteNode)
-	case *Update_DeleteTask:
-		b.EncodeVarint(6<<3 | proto.WireBytes)
-		b.EncodeStringBytes(x.DeleteTask)
-	case *Update_DeleteJob:
-		b.EncodeVarint(8<<3 | proto.WireBytes)
-		b.EncodeStringBytes(x.DeleteJob)
-	case nil:
-	default:
-		return fmt.Errorf("Update.Update has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _Update_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*Update)
-	switch tag {
-	case 1: // update.updateNode
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(Node)
-		err := b.DecodeMessage(msg)
-		m.Update = &Update_UpdateNode{msg}
-		return true, err
-	case 2: // update.updateTask
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(Task)
-		err := b.DecodeMessage(msg)
-		m.Update = &Update_UpdateTask{msg}
-		return true, err
-	case 4: // update.updateJob
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(Job)
-		err := b.DecodeMessage(msg)
-		m.Update = &Update_UpdateJob{msg}
-		return true, err
-	case 5: // update.deleteNode
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.Update = &Update_DeleteNode{x}
-		return true, err
-	case 6: // update.deleteTask
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.Update = &Update_DeleteTask{x}
-		return true, err
-	case 8: // update.deleteJob
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.Update = &Update_DeleteJob{x}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _Update_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*Update)
-	// update
-	switch x := m.Update.(type) {
-	case *Update_UpdateNode:
-		s := proto.Size(x.UpdateNode)
-		n += proto.SizeVarint(1<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *Update_UpdateTask:
-		s := proto.Size(x.UpdateTask)
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *Update_UpdateJob:
-		s := proto.Size(x.UpdateJob)
-		n += proto.SizeVarint(4<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *Update_DeleteNode:
-		n += proto.SizeVarint(5<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(len(x.DeleteNode)))
-		n += len(x.DeleteNode)
-	case *Update_DeleteTask:
-		n += proto.SizeVarint(6<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(len(x.DeleteTask)))
-		n += len(x.DeleteTask)
-	case *Update_DeleteJob:
-		n += proto.SizeVarint(8<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(len(x.DeleteJob)))
-		n += len(x.DeleteJob)
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
-}
-
 type RegisterNodeRequest struct {
 	Node *Node `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
 }
@@ -468,7 +25,7 @@ type RegisterNodeRequest struct {
 func (m *RegisterNodeRequest) Reset()                    { *m = RegisterNodeRequest{} }
 func (m *RegisterNodeRequest) String() string            { return proto.CompactTextString(m) }
 func (*RegisterNodeRequest) ProtoMessage()               {}
-func (*RegisterNodeRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+func (*RegisterNodeRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
 
 func (m *RegisterNodeRequest) GetNode() *Node {
 	if m != nil {
@@ -484,7 +41,7 @@ type RegisterNodeResponse struct {
 func (m *RegisterNodeResponse) Reset()                    { *m = RegisterNodeResponse{} }
 func (m *RegisterNodeResponse) String() string            { return proto.CompactTextString(m) }
 func (*RegisterNodeResponse) ProtoMessage()               {}
-func (*RegisterNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+func (*RegisterNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{1} }
 
 type UpdateNodeStatusRequest struct {
 	NodeId string     `protobuf:"bytes,1,opt,name=node_id" json:"node_id,omitempty"`
@@ -494,7 +51,7 @@ type UpdateNodeStatusRequest struct {
 func (m *UpdateNodeStatusRequest) Reset()                    { *m = UpdateNodeStatusRequest{} }
 func (m *UpdateNodeStatusRequest) String() string            { return proto.CompactTextString(m) }
 func (*UpdateNodeStatusRequest) ProtoMessage()               {}
-func (*UpdateNodeStatusRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
+func (*UpdateNodeStatusRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{2} }
 
 type UpdateNodeStatusResponse struct {
 	HeartbeatTtl uint64 `protobuf:"varint,1,opt,name=heartbeat_ttl" json:"heartbeat_ttl,omitempty"`
@@ -503,7 +60,7 @@ type UpdateNodeStatusResponse struct {
 func (m *UpdateNodeStatusResponse) Reset()                    { *m = UpdateNodeStatusResponse{} }
 func (m *UpdateNodeStatusResponse) String() string            { return proto.CompactTextString(m) }
 func (*UpdateNodeStatusResponse) ProtoMessage()               {}
-func (*UpdateNodeStatusResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
+func (*UpdateNodeStatusResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{3} }
 
 type ListNodesRequest struct {
 }
@@ -511,7 +68,7 @@ type ListNodesRequest struct {
 func (m *ListNodesRequest) Reset()                    { *m = ListNodesRequest{} }
 func (m *ListNodesRequest) String() string            { return proto.CompactTextString(m) }
 func (*ListNodesRequest) ProtoMessage()               {}
-func (*ListNodesRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
+func (*ListNodesRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{4} }
 
 type ListNodesResponse struct {
 	Nodes []*Node `protobuf:"bytes,1,rep,name=nodes" json:"nodes,omitempty"`
@@ -520,7 +77,7 @@ type ListNodesResponse struct {
 func (m *ListNodesResponse) Reset()                    { *m = ListNodesResponse{} }
 func (m *ListNodesResponse) String() string            { return proto.CompactTextString(m) }
 func (*ListNodesResponse) ProtoMessage()               {}
-func (*ListNodesResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
+func (*ListNodesResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{5} }
 
 func (m *ListNodesResponse) GetNodes() []*Node {
 	if m != nil {
@@ -537,7 +94,7 @@ type DrainNodeRequest struct {
 func (m *DrainNodeRequest) Reset()                    { *m = DrainNodeRequest{} }
 func (m *DrainNodeRequest) String() string            { return proto.CompactTextString(m) }
 func (*DrainNodeRequest) ProtoMessage()               {}
-func (*DrainNodeRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
+func (*DrainNodeRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{6} }
 
 type DrainNodeResponse struct {
 }
@@ -545,7 +102,7 @@ type DrainNodeResponse struct {
 func (m *DrainNodeResponse) Reset()                    { *m = DrainNodeResponse{} }
 func (m *DrainNodeResponse) String() string            { return proto.CompactTextString(m) }
 func (*DrainNodeResponse) ProtoMessage()               {}
-func (*DrainNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
+func (*DrainNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{7} }
 
 type CreateTaskRequest struct {
 	Spec *Spec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
@@ -554,7 +111,7 @@ type CreateTaskRequest struct {
 func (m *CreateTaskRequest) Reset()                    { *m = CreateTaskRequest{} }
 func (m *CreateTaskRequest) String() string            { return proto.CompactTextString(m) }
 func (*CreateTaskRequest) ProtoMessage()               {}
-func (*CreateTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{14} }
+func (*CreateTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{8} }
 
 func (m *CreateTaskRequest) GetSpec() *Spec {
 	if m != nil {
@@ -570,7 +127,7 @@ type CreateTaskResponse struct {
 func (m *CreateTaskResponse) Reset()                    { *m = CreateTaskResponse{} }
 func (m *CreateTaskResponse) String() string            { return proto.CompactTextString(m) }
 func (*CreateTaskResponse) ProtoMessage()               {}
-func (*CreateTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{15} }
+func (*CreateTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{9} }
 
 type GetTasksRequest struct {
 	TaskIds []string `protobuf:"bytes,1,rep,name=task_ids" json:"task_ids,omitempty"`
@@ -579,7 +136,7 @@ type GetTasksRequest struct {
 func (m *GetTasksRequest) Reset()                    { *m = GetTasksRequest{} }
 func (m *GetTasksRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetTasksRequest) ProtoMessage()               {}
-func (*GetTasksRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{16} }
+func (*GetTasksRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{10} }
 
 type GetTasksResponse struct {
 	Tasks []*Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
@@ -588,7 +145,7 @@ type GetTasksResponse struct {
 func (m *GetTasksResponse) Reset()                    { *m = GetTasksResponse{} }
 func (m *GetTasksResponse) String() string            { return proto.CompactTextString(m) }
 func (*GetTasksResponse) ProtoMessage()               {}
-func (*GetTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{17} }
+func (*GetTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{11} }
 
 func (m *GetTasksResponse) GetTasks() []*Task {
 	if m != nil {
@@ -604,7 +161,7 @@ type RemoveTaskRequest struct {
 func (m *RemoveTaskRequest) Reset()                    { *m = RemoveTaskRequest{} }
 func (m *RemoveTaskRequest) String() string            { return proto.CompactTextString(m) }
 func (*RemoveTaskRequest) ProtoMessage()               {}
-func (*RemoveTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{18} }
+func (*RemoveTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{12} }
 
 type RemoveTaskResponse struct {
 }
@@ -612,7 +169,7 @@ type RemoveTaskResponse struct {
 func (m *RemoveTaskResponse) Reset()                    { *m = RemoveTaskResponse{} }
 func (m *RemoveTaskResponse) String() string            { return proto.CompactTextString(m) }
 func (*RemoveTaskResponse) ProtoMessage()               {}
-func (*RemoveTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{19} }
+func (*RemoveTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{13} }
 
 type ListTasksRequest struct {
 }
@@ -620,7 +177,7 @@ type ListTasksRequest struct {
 func (m *ListTasksRequest) Reset()                    { *m = ListTasksRequest{} }
 func (m *ListTasksRequest) String() string            { return proto.CompactTextString(m) }
 func (*ListTasksRequest) ProtoMessage()               {}
-func (*ListTasksRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{20} }
+func (*ListTasksRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{14} }
 
 type ListTasksResponse struct {
 	Tasks []*Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
@@ -629,7 +186,7 @@ type ListTasksResponse struct {
 func (m *ListTasksResponse) Reset()                    { *m = ListTasksResponse{} }
 func (m *ListTasksResponse) String() string            { return proto.CompactTextString(m) }
 func (*ListTasksResponse) ProtoMessage()               {}
-func (*ListTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{21} }
+func (*ListTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{15} }
 
 func (m *ListTasksResponse) GetTasks() []*Task {
 	if m != nil {
@@ -645,7 +202,7 @@ type CreateJobRequest struct {
 func (m *CreateJobRequest) Reset()                    { *m = CreateJobRequest{} }
 func (m *CreateJobRequest) String() string            { return proto.CompactTextString(m) }
 func (*CreateJobRequest) ProtoMessage()               {}
-func (*CreateJobRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{22} }
+func (*CreateJobRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{16} }
 
 func (m *CreateJobRequest) GetSpec() *Spec {
 	if m != nil {
@@ -661,7 +218,7 @@ type CreateJobResponse struct {
 func (m *CreateJobResponse) Reset()                    { *m = CreateJobResponse{} }
 func (m *CreateJobResponse) String() string            { return proto.CompactTextString(m) }
 func (*CreateJobResponse) ProtoMessage()               {}
-func (*CreateJobResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{23} }
+func (*CreateJobResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{17} }
 
 type GetJobRequest struct {
 	JobId string `protobuf:"bytes,1,opt,name=job_id" json:"job_id,omitempty"`
@@ -670,7 +227,7 @@ type GetJobRequest struct {
 func (m *GetJobRequest) Reset()                    { *m = GetJobRequest{} }
 func (m *GetJobRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetJobRequest) ProtoMessage()               {}
-func (*GetJobRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{24} }
+func (*GetJobRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{18} }
 
 type GetJobResponse struct {
 	Job *Job `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
@@ -679,7 +236,7 @@ type GetJobResponse struct {
 func (m *GetJobResponse) Reset()                    { *m = GetJobResponse{} }
 func (m *GetJobResponse) String() string            { return proto.CompactTextString(m) }
 func (*GetJobResponse) ProtoMessage()               {}
-func (*GetJobResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{25} }
+func (*GetJobResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{19} }
 
 func (m *GetJobResponse) GetJob() *Job {
 	if m != nil {
@@ -696,7 +253,7 @@ type UpdateJobRequest struct {
 func (m *UpdateJobRequest) Reset()                    { *m = UpdateJobRequest{} }
 func (m *UpdateJobRequest) String() string            { return proto.CompactTextString(m) }
 func (*UpdateJobRequest) ProtoMessage()               {}
-func (*UpdateJobRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{26} }
+func (*UpdateJobRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{20} }
 
 func (m *UpdateJobRequest) GetSpec() *Spec {
 	if m != nil {
@@ -711,7 +268,7 @@ type UpdateJobResponse struct {
 func (m *UpdateJobResponse) Reset()                    { *m = UpdateJobResponse{} }
 func (m *UpdateJobResponse) String() string            { return proto.CompactTextString(m) }
 func (*UpdateJobResponse) ProtoMessage()               {}
-func (*UpdateJobResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{27} }
+func (*UpdateJobResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{21} }
 
 type RemoveJobRequest struct {
 	JobId string `protobuf:"bytes,1,opt,name=job_id" json:"job_id,omitempty"`
@@ -720,7 +277,7 @@ type RemoveJobRequest struct {
 func (m *RemoveJobRequest) Reset()                    { *m = RemoveJobRequest{} }
 func (m *RemoveJobRequest) String() string            { return proto.CompactTextString(m) }
 func (*RemoveJobRequest) ProtoMessage()               {}
-func (*RemoveJobRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{28} }
+func (*RemoveJobRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{22} }
 
 type RemoveJobResponse struct {
 }
@@ -728,7 +285,7 @@ type RemoveJobResponse struct {
 func (m *RemoveJobResponse) Reset()                    { *m = RemoveJobResponse{} }
 func (m *RemoveJobResponse) String() string            { return proto.CompactTextString(m) }
 func (*RemoveJobResponse) ProtoMessage()               {}
-func (*RemoveJobResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{29} }
+func (*RemoveJobResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{23} }
 
 type ListJobsRequest struct {
 }
@@ -736,7 +293,7 @@ type ListJobsRequest struct {
 func (m *ListJobsRequest) Reset()                    { *m = ListJobsRequest{} }
 func (m *ListJobsRequest) String() string            { return proto.CompactTextString(m) }
 func (*ListJobsRequest) ProtoMessage()               {}
-func (*ListJobsRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{30} }
+func (*ListJobsRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{24} }
 
 type ListJobsResponse struct {
 	Jobs []*Job `protobuf:"bytes,1,rep,name=jobs" json:"jobs,omitempty"`
@@ -745,7 +302,7 @@ type ListJobsResponse struct {
 func (m *ListJobsResponse) Reset()                    { *m = ListJobsResponse{} }
 func (m *ListJobsResponse) String() string            { return proto.CompactTextString(m) }
 func (*ListJobsResponse) ProtoMessage()               {}
-func (*ListJobsResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{31} }
+func (*ListJobsResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{25} }
 
 func (m *ListJobsResponse) GetJobs() []*Job {
 	if m != nil {
@@ -763,7 +320,7 @@ type UpdateTaskStatusRequest struct {
 func (m *UpdateTaskStatusRequest) Reset()                    { *m = UpdateTaskStatusRequest{} }
 func (m *UpdateTaskStatusRequest) String() string            { return proto.CompactTextString(m) }
 func (*UpdateTaskStatusRequest) ProtoMessage()               {}
-func (*UpdateTaskStatusRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{32} }
+func (*UpdateTaskStatusRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{26} }
 
 func (m *UpdateTaskStatusRequest) GetTasks() []*Task {
 	if m != nil {
@@ -778,7 +335,7 @@ type UpdateTaskStatusResponse struct {
 func (m *UpdateTaskStatusResponse) Reset()                    { *m = UpdateTaskStatusResponse{} }
 func (m *UpdateTaskStatusResponse) String() string            { return proto.CompactTextString(m) }
 func (*UpdateTaskStatusResponse) ProtoMessage()               {}
-func (*UpdateTaskStatusResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{33} }
+func (*UpdateTaskStatusResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{27} }
 
 type WatchTasksRequest struct {
 	NodeId string `protobuf:"bytes,1,opt,name=node_id" json:"node_id,omitempty"`
@@ -787,7 +344,7 @@ type WatchTasksRequest struct {
 func (m *WatchTasksRequest) Reset()                    { *m = WatchTasksRequest{} }
 func (m *WatchTasksRequest) String() string            { return proto.CompactTextString(m) }
 func (*WatchTasksRequest) ProtoMessage()               {}
-func (*WatchTasksRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{34} }
+func (*WatchTasksRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{28} }
 
 type WatchTasksResponse struct {
 	// Tasks is the set of tasks that should be running on the node.
@@ -798,7 +355,7 @@ type WatchTasksResponse struct {
 func (m *WatchTasksResponse) Reset()                    { *m = WatchTasksResponse{} }
 func (m *WatchTasksResponse) String() string            { return proto.CompactTextString(m) }
 func (*WatchTasksResponse) ProtoMessage()               {}
-func (*WatchTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{35} }
+func (*WatchTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{29} }
 
 func (m *WatchTasksResponse) GetTasks() []*Task {
 	if m != nil {
@@ -808,12 +365,6 @@ func (m *WatchTasksResponse) GetTasks() []*Task {
 }
 
 func init() {
-	proto.RegisterType((*Node)(nil), "api.Node")
-	proto.RegisterType((*Spec)(nil), "api.Spec")
-	proto.RegisterType((*TaskStatus)(nil), "api.TaskStatus")
-	proto.RegisterType((*Task)(nil), "api.Task")
-	proto.RegisterType((*Job)(nil), "api.Job")
-	proto.RegisterType((*Update)(nil), "api.Update")
 	proto.RegisterType((*RegisterNodeRequest)(nil), "api.RegisterNodeRequest")
 	proto.RegisterType((*RegisterNodeResponse)(nil), "api.RegisterNodeResponse")
 	proto.RegisterType((*UpdateNodeStatusRequest)(nil), "api.UpdateNodeStatusRequest")
@@ -844,8 +395,6 @@ func init() {
 	proto.RegisterType((*UpdateTaskStatusResponse)(nil), "api.UpdateTaskStatusResponse")
 	proto.RegisterType((*WatchTasksRequest)(nil), "api.WatchTasksRequest")
 	proto.RegisterType((*WatchTasksResponse)(nil), "api.WatchTasksResponse")
-	proto.RegisterEnum("api.NodeStatus", NodeStatus_name, NodeStatus_value)
-	proto.RegisterEnum("api.TaskStatus_State", TaskStatus_State_name, TaskStatus_State_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1321,83 +870,53 @@ var _Swarm_serviceDesc = grpc.ServiceDesc{
 	},
 }
 
-var fileDescriptor0 = []byte{
-	// 1228 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x57, 0x4b, 0x6f, 0xdb, 0x46,
-	0x10, 0x16, 0xf5, 0xa0, 0xc8, 0xf1, 0x8b, 0x5e, 0xbf, 0x14, 0xc1, 0x49, 0x5c, 0x16, 0x68, 0xd3,
-	0x24, 0x35, 0x52, 0xbb, 0x3d, 0xf4, 0x01, 0x04, 0xaa, 0xcd, 0xd8, 0x0a, 0x5c, 0xc5, 0x5d, 0xcb,
-	0x30, 0xda, 0x1e, 0x0c, 0xca, 0xdc, 0x3a, 0x6a, 0x6d, 0x8a, 0x25, 0xe9, 0x04, 0x39, 0xf4, 0x58,
-	0xa0, 0x7f, 0xa3, 0xff, 0xaa, 0xff, 0xa4, 0x40, 0x4f, 0xd9, 0x27, 0xb9, 0x24, 0xa5, 0x38, 0x39,
-	0x59, 0xf3, 0xed, 0xcc, 0x7c, 0xb3, 0x33, 0xc3, 0x8f, 0x34, 0xd8, 0x7e, 0x34, 0xde, 0x8e, 0xe2,
-	0x49, 0x3a, 0x41, 0x0d, 0xfa, 0xd3, 0xfd, 0x13, 0x9a, 0x83, 0x49, 0x40, 0xd0, 0x22, 0xd4, 0xc7,
-	0x41, 0xc7, 0xd8, 0x32, 0x1e, 0xd8, 0x98, 0xfe, 0x42, 0x08, 0x9a, 0xa1, 0x7f, 0x4d, 0x3a, 0x75,
-	0x8e, 0xf0, 0xdf, 0xdc, 0x27, 0xea, 0x34, 0xa5, 0x4f, 0x84, 0x3a, 0xd0, 0x0e, 0x62, 0x7f, 0x1c,
-	0x92, 0xa0, 0xd3, 0xa2, 0xa0, 0x85, 0x95, 0x89, 0x3e, 0x05, 0x33, 0x49, 0xfd, 0xf4, 0x26, 0xe9,
-	0x34, 0xe8, 0xc1, 0xe2, 0xce, 0xd2, 0x36, 0xa3, 0x65, 0x44, 0x27, 0x1c, 0xc6, 0xf2, 0xd8, 0xfd,
-	0xdb, 0x80, 0xe6, 0x49, 0x44, 0x2e, 0x32, 0x3e, 0x43, 0xe3, 0x5b, 0x07, 0x33, 0x26, 0xd7, 0x93,
-	0x54, 0x55, 0x21, 0x2d, 0x86, 0x8f, 0x6e, 0xc2, 0xe0, 0x8a, 0xf0, 0xec, 0x14, 0x17, 0x16, 0xba,
-	0x07, 0x40, 0xc2, 0x34, 0x7e, 0x13, 0x4d, 0xc6, 0x61, 0x2a, 0xeb, 0xd4, 0x10, 0xb4, 0x09, 0xf6,
-	0x38, 0xa4, 0xc4, 0xe1, 0x05, 0x49, 0x78, 0xc5, 0x0d, 0x9c, 0x03, 0xee, 0x7f, 0x06, 0xc0, 0xd0,
-	0x4f, 0x7e, 0x17, 0x15, 0xa2, 0x47, 0xd0, 0x62, 0x35, 0x0a, 0xee, 0xc5, 0x9d, 0x35, 0x7e, 0x83,
-	0xfc, 0x7c, 0x9b, 0xfd, 0x21, 0x58, 0xf8, 0xb0, 0x4e, 0x5c, 0x93, 0x24, 0xf1, 0x2f, 0x55, 0x49,
-	0xca, 0x74, 0xff, 0x31, 0xa0, 0xc5, 0x5d, 0x51, 0x1b, 0x1a, 0x03, 0xef, 0xcc, 0xa9, 0xa1, 0x79,
-	0xb0, 0x7a, 0x27, 0x27, 0xfd, 0x83, 0x81, 0xb7, 0xef, 0x18, 0x68, 0x01, 0xec, 0x63, 0xec, 0x1d,
-	0xf7, 0x70, 0x7f, 0x70, 0xe0, 0xd4, 0x91, 0x0d, 0x2d, 0xec, 0xf5, 0xf6, 0x7f, 0x72, 0x1a, 0xcc,
-	0xef, 0x64, 0xd8, 0xc3, 0x43, 0x76, 0xd0, 0x44, 0x73, 0xd0, 0xc6, 0xa7, 0x83, 0x01, 0x33, 0x5a,
-	0xfc, 0xe8, 0xf0, 0x74, 0xb8, 0xff, 0xe2, 0x6c, 0xe0, 0x98, 0xcc, 0xda, 0x7b, 0xf1, 0xc3, 0xf1,
-	0x91, 0x37, 0xf4, 0x9c, 0x36, 0x02, 0x30, 0x9f, 0xf5, 0xfa, 0x47, 0x34, 0xb9, 0xc5, 0x4e, 0xb0,
-	0xf7, 0xdc, 0xdb, 0x1b, 0x52, 0xcb, 0x66, 0xd6, 0xb3, 0xfe, 0xa0, 0x77, 0xd4, 0xff, 0xd9, 0x73,
-	0x00, 0x59, 0xd0, 0xdc, 0xa7, 0x4c, 0xce, 0x9c, 0xfb, 0x57, 0x1d, 0x9a, 0xec, 0x66, 0x95, 0x25,
-	0x58, 0x03, 0xf3, 0xb7, 0xc9, 0xe8, 0x9c, 0x62, 0x62, 0x00, 0x2d, 0x6a, 0xf5, 0x03, 0xb4, 0x01,
-	0xed, 0x90, 0x8e, 0x92, 0xe1, 0x72, 0x00, 0xcc, 0xa4, 0x07, 0x77, 0xa1, 0x99, 0xd0, 0x61, 0xf2,
-	0xd6, 0xcf, 0xed, 0xd8, 0xbc, 0x65, 0x6c, 0xba, 0x98, 0xc3, 0xda, 0x56, 0xb4, 0xb8, 0xc3, 0x52,
-	0xa9, 0xa7, 0x6a, 0x2b, 0x18, 0x6f, 0x48, 0x52, 0x96, 0xdf, 0x14, 0xbc, 0xd4, 0xa2, 0xe9, 0x57,
-	0xa0, 0x45, 0x22, 0x86, 0xb6, 0xc5, 0x92, 0x90, 0x88, 0x82, 0x62, 0x29, 0x2d, 0x7d, 0x29, 0x2f,
-	0x69, 0xbb, 0x5f, 0xfb, 0x6f, 0x3a, 0xb6, 0x18, 0x85, 0x34, 0xd1, 0x7d, 0x98, 0x0b, 0xe2, 0xf1,
-	0x2b, 0x12, 0x9f, 0x8f, 0xc3, 0x5f, 0x27, 0x1d, 0xd8, 0x6a, 0xb0, 0xfd, 0x10, 0x50, 0x9f, 0x22,
-	0xee, 0x97, 0xd0, 0x78, 0x3e, 0x19, 0x55, 0xba, 0xa0, 0x6e, 0x55, 0x9f, 0x7a, 0x2b, 0xf7, 0x7f,
-	0x03, 0xcc, 0xd3, 0x28, 0x60, 0x23, 0x7e, 0x04, 0x70, 0xc3, 0x7f, 0xb1, 0x4d, 0xe7, 0x19, 0x94,
-	0x3f, 0x03, 0x0e, 0x6b, 0x58, 0x3b, 0xce, 0x9d, 0x59, 0x03, 0x0a, 0xc9, 0x19, 0x90, 0x3b, 0xf3,
-	0xc9, 0x3c, 0x00, 0x5b, 0x58, 0xb4, 0x40, 0xd9, 0x5e, 0x8b, 0xfb, 0x52, 0x9b, 0xba, 0xe6, 0x87,
-	0x68, 0x0b, 0x20, 0x20, 0x57, 0x44, 0xd6, 0xc0, 0x1a, 0x6d, 0xb3, 0x5c, 0x39, 0x96, 0x7b, 0x70,
-	0x62, 0xb3, 0xe8, 0xc1, 0xd9, 0xee, 0x81, 0x2d, 0x2c, 0xc6, 0x66, 0x49, 0x87, 0x1c, 0xfa, 0xde,
-	0x02, 0x53, 0x10, 0xd2, 0x96, 0xad, 0x60, 0x72, 0x39, 0x4e, 0x52, 0x12, 0xb3, 0xdc, 0x98, 0xfc,
-	0x71, 0x43, 0x92, 0x94, 0xb5, 0x2c, 0x9c, 0xd6, 0x02, 0xcc, 0x61, 0xf7, 0x5b, 0x58, 0x2d, 0x46,
-	0x25, 0xd1, 0x24, 0x4c, 0x08, 0xfa, 0x18, 0x16, 0x5e, 0x12, 0x3f, 0x4e, 0x47, 0xc4, 0x4f, 0xcf,
-	0xd3, 0xf4, 0x8a, 0xc7, 0x37, 0xf1, 0x7c, 0x06, 0x0e, 0xd3, 0x2b, 0xf7, 0x17, 0xd8, 0x38, 0xcd,
-	0xba, 0x28, 0x17, 0x47, 0xd2, 0x6a, 0x8b, 0x69, 0x14, 0x16, 0x33, 0xdf, 0xbc, 0xfa, 0xbb, 0xf5,
-	0xe8, 0x29, 0x74, 0xaa, 0xc9, 0x3f, 0xa4, 0x3a, 0x04, 0xce, 0x11, 0xbd, 0x18, 0x0b, 0x57, 0x65,
-	0xd1, 0x26, 0x2d, 0x6b, 0x98, 0xcc, 0x76, 0x1f, 0x5a, 0xac, 0xb8, 0x84, 0x66, 0x69, 0x14, 0x7b,
-	0x24, 0x70, 0xb7, 0x07, 0xce, 0x3e, 0x93, 0x53, 0xbd, 0xaf, 0x33, 0x2f, 0xb8, 0x0a, 0x2d, 0xae,
-	0xbd, 0xfc, 0x7e, 0x16, 0x16, 0x86, 0xbb, 0x02, 0xcb, 0x5a, 0x0a, 0x41, 0xec, 0xee, 0xc0, 0xf2,
-	0x5e, 0x4c, 0xe4, 0x62, 0x69, 0x03, 0xe3, 0x3b, 0x6e, 0x4c, 0xdf, 0xf1, 0xcf, 0x01, 0xe9, 0x31,
-	0xf2, 0x0a, 0xb4, 0x9a, 0x94, 0xda, 0x5a, 0x35, 0xcc, 0xec, 0x07, 0xee, 0x63, 0x58, 0x3a, 0x20,
-	0x29, 0xf3, 0xcd, 0x46, 0x73, 0x07, 0x2c, 0xe9, 0x2b, 0x6e, 0x4c, 0x9f, 0x4b, 0xe1, 0x9c, 0xb8,
-	0xbb, 0xe0, 0xe4, 0xde, 0x79, 0x77, 0xd8, 0x71, 0xb1, 0x3b, 0x9c, 0x5c, 0xe0, 0x94, 0x62, 0x19,
-	0xd3, 0xb7, 0xc1, 0xab, 0xc2, 0x2d, 0x66, 0x16, 0xb4, 0x0a, 0x48, 0xf7, 0x96, 0x9d, 0x90, 0xb3,
-	0xd2, 0xeb, 0x54, 0xb3, 0xfa, 0xc0, 0x6a, 0xbe, 0x00, 0x47, 0xf4, 0x87, 0x3e, 0x1d, 0xef, 0xd9,
-	0xd2, 0x87, 0x6a, 0x0c, 0x3c, 0x44, 0x12, 0xe5, 0x82, 0x6b, 0x68, 0x82, 0xeb, 0x7e, 0x02, 0x0b,
-	0xb4, 0x43, 0x5a, 0xee, 0x19, 0x7e, 0x8f, 0x61, 0x51, 0xf9, 0xc9, 0x84, 0x5d, 0x68, 0xd0, 0x23,
-	0x59, 0x43, 0xa6, 0x18, 0x98, 0x81, 0xee, 0x21, 0x38, 0xa7, 0x4a, 0x36, 0xde, 0x9d, 0xf8, 0x36,
-	0x09, 0xa4, 0x7b, 0xa6, 0x65, 0x92, 0xdd, 0xfd, 0x0c, 0x1c, 0xd1, 0xf3, 0xdb, 0xeb, 0x5e, 0x51,
-	0xc3, 0xd4, 0xe3, 0x97, 0x61, 0x89, 0x4d, 0x82, 0x42, 0xd9, 0x70, 0x9e, 0x88, 0x81, 0x09, 0x48,
-	0xde, 0x70, 0x13, 0x9a, 0x34, 0x89, 0x1a, 0x4d, 0x7e, 0x45, 0x8e, 0xba, 0xdf, 0x28, 0xb1, 0xd0,
-	0xde, 0x32, 0xb2, 0x96, 0x5b, 0x87, 0xda, 0x55, 0x5a, 0xa0, 0xc7, 0xca, 0xe2, 0xe8, 0xfa, 0x9d,
-	0xf9, 0xe9, 0xc5, 0xcb, 0xc2, 0x8e, 0xcf, 0x7a, 0x3a, 0xdd, 0xaf, 0x00, 0xe9, 0xde, 0xef, 0xb9,
-	0x55, 0x0f, 0x3f, 0x02, 0xc8, 0x65, 0x28, 0xff, 0x32, 0xa8, 0xf1, 0x57, 0x37, 0x7b, 0xf5, 0x1b,
-	0x3b, 0xff, 0xb6, 0xe9, 0xe7, 0xc5, 0x6b, 0x3f, 0xbe, 0x46, 0x1e, 0xcc, 0xeb, 0x9a, 0x8a, 0x3a,
-	0x3c, 0xdd, 0x14, 0x71, 0xee, 0xde, 0x99, 0x72, 0x22, 0xaf, 0x55, 0x43, 0x3f, 0xaa, 0xa5, 0xd0,
-	0x98, 0x37, 0x79, 0xc0, 0x0c, 0xd1, 0xed, 0xde, 0x9d, 0x71, 0x9a, 0xa5, 0xfc, 0x0e, 0xec, 0x4c,
-	0xfe, 0x90, 0xf8, 0x8e, 0x2a, 0x4b, 0x64, 0x77, 0xbd, 0x0c, 0xeb, 0xd1, 0x99, 0x86, 0xc9, 0xe8,
-	0xb2, 0x2c, 0xca, 0xe8, 0xaa, 0xd4, 0xd5, 0xd0, 0x53, 0x80, 0x5c, 0xb8, 0x90, 0xf0, 0xab, 0xa8,
-	0x5f, 0x77, 0xa3, 0x82, 0x67, 0x09, 0xbe, 0x06, 0x4b, 0x89, 0x13, 0x5a, 0xe5, 0x6e, 0x25, 0x65,
-	0xeb, 0xae, 0x95, 0x50, 0x9d, 0x3b, 0x17, 0x1d, 0xc9, 0x5d, 0xd1, 0x2c, 0xc9, 0x3d, 0x45, 0x9d,
-	0xb2, 0xc6, 0x09, 0xf2, 0xbc, 0x71, 0x05, 0xf6, 0xf5, 0x32, 0xac, 0x47, 0x67, 0x02, 0x23, 0xa3,
-	0xcb, 0x1a, 0xd5, 0x5d, 0x2f, 0xc3, 0x59, 0xf4, 0x2e, 0x98, 0x42, 0x4a, 0x10, 0x52, 0xf7, 0xd3,
-	0xe2, 0x56, 0x0a, 0x98, 0x4e, 0x99, 0xe9, 0x80, 0xa4, 0x2c, 0x2b, 0x8c, 0xa4, 0xac, 0xca, 0x05,
-	0x8f, 0xce, 0x54, 0x40, 0x46, 0x97, 0x05, 0xa4, 0xbb, 0x5e, 0x86, 0xf5, 0x41, 0x29, 0x6d, 0x90,
-	0x83, 0x2a, 0xa9, 0x47, 0x77, 0xad, 0x84, 0x56, 0x77, 0x5e, 0xfb, 0xfc, 0xd7, 0x77, 0xbe, 0xa2,
-	0x1d, 0x85, 0x9d, 0x9f, 0xa2, 0x0e, 0x35, 0xd4, 0x03, 0xc8, 0x9f, 0x78, 0x39, 0xfb, 0x8a, 0x60,
-	0xc8, 0xd9, 0x57, 0xa5, 0xc1, 0xad, 0x3d, 0x31, 0x46, 0x26, 0xff, 0x2f, 0x6d, 0xf7, 0x6d, 0x00,
-	0x00, 0x00, 0xff, 0xff, 0x49, 0xd2, 0x9a, 0x82, 0xb2, 0x0d, 0x00, 0x00,
+var fileDescriptor1 = []byte{
+	// 744 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x56, 0x59, 0x6f, 0x13, 0x3d,
+	0x14, 0x4d, 0x97, 0xa4, 0xc9, 0xed, 0x96, 0x38, 0x4b, 0xd3, 0x51, 0xab, 0xef, 0x93, 0x91, 0xd8,
+	0x54, 0xaa, 0x92, 0xc2, 0x03, 0x8b, 0x54, 0x55, 0x80, 0xa0, 0x08, 0x21, 0x31, 0x2d, 0xe2, 0x81,
+	0x87, 0x6a, 0xd2, 0x58, 0x34, 0xd0, 0x76, 0xc2, 0x8c, 0x0b, 0xe2, 0x9f, 0xf2, 0x73, 0xf0, 0x72,
+	0xed, 0xf1, 0x78, 0x32, 0x4a, 0xfb, 0x96, 0x39, 0xbe, 0xe7, 0x6e, 0xc7, 0x3e, 0x0a, 0x34, 0xa2,
+	0xc9, 0x78, 0x77, 0x92, 0xc4, 0x3c, 0x26, 0x0b, 0xe2, 0x67, 0xb0, 0xcc, 0xff, 0x4c, 0x58, 0xaa,
+	0x11, 0xfa, 0x04, 0xda, 0x21, 0xfb, 0x36, 0x4e, 0x39, 0x4b, 0x3e, 0xc6, 0x23, 0x16, 0xb2, 0x9f,
+	0xd7, 0x2c, 0xe5, 0x64, 0x1b, 0x16, 0xaf, 0xc4, 0x67, 0x7f, 0xee, 0xff, 0xb9, 0xfb, 0xcb, 0x83,
+	0xc6, 0xae, 0x4c, 0xa1, 0xce, 0x15, 0x4c, 0x5f, 0x40, 0x27, 0xcf, 0x4a, 0x27, 0xf1, 0x55, 0xca,
+	0xc8, 0x1d, 0x58, 0x3d, 0x67, 0x51, 0xc2, 0x87, 0x2c, 0xe2, 0xa7, 0x9c, 0x5f, 0x28, 0xfe, 0x62,
+	0xb8, 0x62, 0xc1, 0x13, 0x7e, 0x41, 0xbf, 0xc2, 0xc6, 0xe7, 0xc9, 0x28, 0xe2, 0x4c, 0x52, 0x8f,
+	0x79, 0xc4, 0xaf, 0x53, 0x53, 0x76, 0x03, 0x96, 0x64, 0xfe, 0xd3, 0xf1, 0x48, 0x31, 0x1b, 0x61,
+	0x4d, 0x7e, 0x1e, 0x8d, 0xc8, 0x3d, 0xa8, 0xa5, 0x2a, 0xb2, 0x3f, 0x2f, 0xf0, 0xb5, 0xc1, 0xba,
+	0xed, 0x08, 0x13, 0xe0, 0x31, 0x3d, 0x80, 0x7e, 0x31, 0xf9, 0x6d, 0xba, 0x23, 0xd0, 0xfc, 0x20,
+	0x06, 0x93, 0x74, 0xd3, 0x96, 0x58, 0x52, 0xcb, 0xc1, 0x30, 0xdb, 0x7f, 0x50, 0x95, 0xcd, 0xa5,
+	0x22, 0xcb, 0x42, 0x7e, 0x47, 0x1a, 0xa7, 0x87, 0xd0, 0x7c, 0x9d, 0x44, 0xe3, 0x2b, 0x77, 0xaf,
+	0xa5, 0x03, 0x76, 0xa0, 0x3a, 0x92, 0xc1, 0x6a, 0xbe, 0x7a, 0xa8, 0x3f, 0x68, 0x1b, 0x5a, 0x4e,
+	0x0a, 0x5d, 0x98, 0x0e, 0xa0, 0xf5, 0x2a, 0x11, 0xdd, 0xb2, 0x93, 0x28, 0xfd, 0xe1, 0x08, 0x96,
+	0x4e, 0xd8, 0x59, 0x4e, 0xb0, 0x63, 0x01, 0x84, 0x0a, 0xa6, 0x8f, 0x80, 0xb8, 0x1c, 0x1c, 0x41,
+	0x74, 0xc3, 0xc5, 0xb7, 0xd3, 0x8d, 0xfc, 0x3c, 0x1a, 0xd1, 0x1d, 0x58, 0x7f, 0xcb, 0xb8, 0x8c,
+	0xb5, 0xd2, 0x6c, 0x42, 0x1d, 0x63, 0xf5, 0xc4, 0x8d, 0x70, 0x49, 0x07, 0xa7, 0x74, 0x1f, 0x9a,
+	0x59, 0x74, 0xb6, 0x1d, 0x79, 0x9c, 0xdf, 0x8e, 0x2a, 0xae, 0x71, 0x51, 0xa2, 0x15, 0xb2, 0xcb,
+	0xf8, 0x57, 0x6e, 0x8a, 0xd2, 0x86, 0x3a, 0x40, 0xdc, 0x68, 0xdc, 0x04, 0x6a, 0xe5, 0xf6, 0x69,
+	0xb4, 0xba, 0x65, 0x37, 0x8f, 0xa1, 0xa9, 0xf7, 0xf3, 0x3e, 0x1e, 0xde, 0x70, 0xa5, 0x0f, 0x8d,
+	0x0c, 0x8a, 0x82, 0x85, 0xba, 0x50, 0xfb, 0x1e, 0x0f, 0xb3, 0xfe, 0xab, 0xe2, 0x4b, 0xb4, 0x7f,
+	0x17, 0x56, 0xc5, 0x86, 0x9c, 0xdc, 0x25, 0x71, 0x3b, 0xb0, 0x66, 0xe2, 0x30, 0x61, 0x00, 0x0b,
+	0xe2, 0x08, 0x7b, 0xa8, 0xab, 0x1e, 0xe4, 0xb1, 0x04, 0xe9, 0x3b, 0x68, 0xea, 0xbb, 0x3e, 0x33,
+	0xb1, 0x9d, 0x65, 0x7e, 0xfa, 0x2c, 0xe2, 0x9e, 0x39, 0x99, 0x70, 0xbb, 0x0f, 0xa0, 0xa9, 0x77,
+	0x3e, 0xbb, 0xef, 0xb6, 0x11, 0xd3, 0xe5, 0xb7, 0x60, 0x5d, 0x2a, 0x21, 0x20, 0x2b, 0xce, 0x9e,
+	0x16, 0x4c, 0x43, 0x38, 0xe1, 0x16, 0x2c, 0x8a, 0x24, 0x46, 0x9a, 0x6c, 0x44, 0x85, 0xd2, 0xe7,
+	0xc6, 0x2c, 0xa4, 0x5a, 0x79, 0xb3, 0x98, 0x29, 0x6a, 0x60, 0xbc, 0xc0, 0xe5, 0x62, 0x73, 0xe2,
+	0xfa, 0x7d, 0x89, 0xf8, 0xd9, 0x79, 0xee, 0x8e, 0x97, 0xbd, 0x4e, 0xfa, 0x14, 0x88, 0x1b, 0x7d,
+	0xc3, 0x5b, 0x35, 0xf8, 0xbb, 0x04, 0xd5, 0xe3, 0xdf, 0x51, 0x72, 0x49, 0xde, 0xc0, 0x8a, 0x6b,
+	0x98, 0xa4, 0xaf, 0x62, 0xa7, 0x38, 0x6f, 0xb0, 0x39, 0xe5, 0x04, 0x7b, 0xae, 0x90, 0x4f, 0x46,
+	0xf1, 0xcc, 0xdd, 0xc8, 0x96, 0x22, 0x94, 0x38, 0x6a, 0xb0, 0x5d, 0x72, 0x6a, 0x53, 0xbe, 0x84,
+	0x86, 0xf5, 0x36, 0xd2, 0x55, 0xd1, 0xbe, 0xff, 0x05, 0x3d, 0x1f, 0x76, 0xd9, 0xd6, 0xa0, 0x90,
+	0xed, 0x7b, 0x1e, 0xb2, 0x8b, 0x3e, 0x56, 0x21, 0x07, 0x00, 0x99, 0x2b, 0x11, 0x1d, 0x57, 0xb0,
+	0xb6, 0x60, 0xa3, 0x80, 0xdb, 0x04, 0xcf, 0xa0, 0x6e, 0x9c, 0x87, 0x74, 0x54, 0x98, 0x67, 0x5b,
+	0x41, 0xd7, 0x43, 0xdd, 0xda, 0x99, 0xa3, 0x60, 0xed, 0x82, 0x21, 0x61, 0xed, 0x29, 0xd6, 0x63,
+	0x17, 0xa7, 0x8b, 0x67, 0x8b, 0xcb, 0x55, 0xef, 0xf9, 0xb0, 0xcb, 0xb6, 0xee, 0x81, 0x6c, 0xdf,
+	0x80, 0x82, 0x9e, 0x0f, 0x5b, 0xf6, 0x3e, 0xd4, 0xb4, 0x4f, 0x10, 0x62, 0xe6, 0x73, 0x78, 0xed,
+	0x1c, 0xe6, 0x96, 0xb4, 0x8f, 0x1c, 0x4b, 0xfa, 0xf6, 0x81, 0x25, 0x8b, 0x5e, 0xa0, 0xd8, 0xf6,
+	0x89, 0x23, 0xdb, 0x77, 0x87, 0xa0, 0xe7, 0xc3, 0xae, 0x50, 0xe6, 0xe1, 0xa3, 0x50, 0x9e, 0x35,
+	0x04, 0x5d, 0x0f, 0x2d, 0xde, 0xf9, 0xec, 0x15, 0xe7, 0xee, 0x7c, 0xc1, 0x18, 0x72, 0x77, 0x7e,
+	0xca, 0xd3, 0xaf, 0x90, 0x43, 0x80, 0xec, 0x39, 0xa3, 0xf6, 0x05, 0x37, 0x40, 0xed, 0x8b, 0xef,
+	0x9e, 0x56, 0xf6, 0xe6, 0x86, 0x35, 0xf5, 0xf7, 0x69, 0xff, 0x5f, 0x00, 0x00, 0x00, 0xff, 0xff,
+	0xe7, 0x5c, 0x8a, 0xd6, 0x5d, 0x09, 0x00, 0x00,
 }
