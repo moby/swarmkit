@@ -4,6 +4,20 @@ package api;
 
 import "types.proto";
 
+// TODO(stevvooe): Move these options to vanity binary (ie gogoswarm).
+
+// NOTE(stevvooe): Make sure your gopath is appropriately set for this to work
+// correctly.
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.gostring_all) = true;
+option (gogoproto.goproto_getters_all) = false;
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) =  true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
 // TODO(stevvooe): Baseline API specification from POC. Take this to the
 // production specification over the next few weeks.
 
