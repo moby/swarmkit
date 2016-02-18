@@ -2,14 +2,14 @@ syntax = "proto3";
 
 package api;
 
+import "service.proto";
 import "types.proto";
-
-// TODO(stevvooe): Move these options to vanity binary (ie gogoswarm).
 
 // NOTE(stevvooe): Make sure your gopath is appropriately set for this to work
 // correctly.
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
+// TODO(stevvooe): Move these options to vanity binary (ie gogoswarm).
 option (gogoproto.gostring_all) = true;
 option (gogoproto.goproto_getters_all) = false;
 option (gogoproto.goproto_stringer_all) = false;
@@ -18,12 +18,13 @@ option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;
 option (gogoproto.unmarshaler_all) = true;
 
-// TODO(stevvooe): Baseline API specification from POC. Take this to the
-// production specification over the next few weeks.
-
+// Swarm provides the user control API.
+//
+// Other options for naming this interface:
+//
+//  - "Control", since this controls a swarm cluster
+//	- "User" because it is user facing.
 service Swarm {
-	rpc RegisterNode(RegisterNodeRequest) returns (RegisterNodeResponse) {}
-	rpc UpdateNodeStatus(UpdateNodeStatusRequest) returns (UpdateNodeStatusResponse) {}
 	rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {}
 	rpc DrainNode(DrainNodeRequest) returns (DrainNodeResponse) {}
 
@@ -37,134 +38,109 @@ service Swarm {
 	rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse) {}
 	rpc RemoveJob(RemoveJobRequest) returns (RemoveJobResponse) {}
 	rpc ListJobs(ListJobsRequest) returns (ListJobsResponse) {}
-
-	rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse) {};
-	rpc WatchTasks(WatchTasksRequest) returns (stream WatchTasksResponse){};
-
-	// TODO(stevvooe): Split this API up into "Agent" and "Control".
-}
-
-message RegisterNodeRequest {
-	Node node = 1;
-}
-
-message RegisterNodeResponse {
-	uint64 heartbeat_ttl = 1;
-}
-
-message UpdateNodeStatusRequest {
-	string node_id = 1;
-	NodeStatus status = 2;
-}
-
-message UpdateNodeStatusResponse {
-	uint64 heartbeat_ttl = 1;
 }
 
 message ListNodesRequest {
+	ResultParameters parameters = 64;
 }
 
 message ListNodesResponse {
 	repeated Node nodes = 1;
+	ResultParameters parameters = 64;
 }
 
 message DrainNodeRequest {
 	string node_id = 1;
-	bool drain = 2;
+	bool drain = 2; // TODO(stevvooe): We need to have better notion of observed/desired.
+	ResultParameters parameters = 64;
 }
 
 message DrainNodeResponse {
+	ResultParameters parameters = 64;
 }
 
 message CreateTaskRequest {
 	Spec spec = 1;
+	ResultParameters parameters = 64;
 }
 
 message CreateTaskResponse {
 	string task_id = 1;
+	ResultParameters parameters = 64;
 }
 
 message GetTasksRequest {
+	ResultParameters parameters = 64;
 	repeated string task_ids = 1;
 }
 
 message GetTasksResponse {
 	repeated Task tasks = 1;
+	ResultParameters parameters = 64;
 }
 
 message RemoveTaskRequest {
 	string task_id = 1;
+	ResultParameters parameters = 64;
 }
 
 message RemoveTaskResponse {
+	ResultParameters parameters = 64;
 }
 
 message ListTasksRequest {
+	ResultParameters parameters = 64;
 }
 
 message ListTasksResponse {
 	repeated Task tasks = 1;
+	ResultParameters parameters = 64;
 }
 
 message CreateJobRequest {
 	Spec spec = 1;
+	ResultParameters parameters = 64;
 }
 
 message CreateJobResponse {
 	string job_id = 1;
+	ResultParameters parameters = 64;
 }
 
 message GetJobRequest {
 	string job_id = 1;
+	ResultParameters parameters = 64;
 }
 
 message GetJobResponse {
 	Job job = 1;
+	ResultParameters parameters = 64;
 }
 
 message UpdateJobRequest {
 	string job_id = 1;
 	Spec spec = 2;
+	ResultParameters parameters = 64;
 }
 
 message UpdateJobResponse {
+	ResultParameters parameters = 64;
 }
 
 message RemoveJobRequest {
 	string job_id = 1;
+	ResultParameters parameters = 64;
 }
 
 message RemoveJobResponse {
+	ResultParameters parameters = 64;
 }
 
 message ListJobsRequest {
+	ResultParameters parameters = 64;
 }
 
 message ListJobsResponse {
 	repeated Job jobs = 1;
-}
-
-message UpdateTaskStatusRequest {
-	// Tasks should contain all statuses for running tasks. Only the status
-	// field must be set. The spec is not required.
-	repeated Task tasks = 1;
-}
-
-message  UpdateTaskStatusResponse{
-	// void
-}
-
-
-
-message WatchTasksRequest {
-	// TODO(stevvooe): Really, node id assignments should be done through
-	// headers and sessionization.
-
-	string node_id = 1;
-}
-
-message WatchTasksResponse {
-	// Tasks is the set of tasks that should be running on the node.
-	// Tasks outside of this set running on the node should be terminated.
-	repeated Task tasks = 1;
+	ResultParameters parameters = 64;
 }

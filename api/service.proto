@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package api;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.gostring_all) = true;
+option (gogoproto.goproto_getters_all) = false;
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) =  true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+
+// TODO(stevvooe): Currently, we aren't using ResultParameters across other
+// services. Consider removing this once we've confirmed it is not shared.
+
+// ResultParameters defines commn fields for controlling response formats.
+// Fields may be used on requests or responses, depending on the role.
+//
+// All service request and response types that query large datasets should have
+// the ResultParameters type available.
+//
+// As a convention, this should always be field id 64 for request/responses.
+message ResultParameters {
+	// Next provides a parameter specification based on the current one to get
+	// the next set of results, pre-calculated by the server. This will be
+	// empty if the result set is complete as of the containing message.
+	ResultParameters next = 1;
+
+	// Total provides the total size of a given result set. Usually only set on
+	// responses.
+	uint64 total = 2;
+		
+	// Offset specifies the position to start from when returning a given
+	// resultset.
+	uint64 offset = 3;
+
+	// Limit bounds the number of records in a response to the provided value.
+	// Use with offset to provide close-open interval semantics over queries.
+	uint64 limit = 4;
+
+	// ID may be set to select a particular result set that cannot be
+	// expressed as an offset, limit tuple. The only source for this parameter
+	// should be the "next" field but we reserve the possibility to define
+	// future semantics.
+	string id = 5;
+}

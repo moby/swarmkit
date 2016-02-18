@@ -2,51 +2,6 @@
 // source: types.proto
 // DO NOT EDIT!
 
-/*
-	Package api is a generated protocol buffer package.
-
-	It is generated from these files:
-		types.proto
-		api.proto
-
-	It has these top-level messages:
-		Node
-		Spec
-		TaskStatus
-		Task
-		Job
-		Update
-		RegisterNodeRequest
-		RegisterNodeResponse
-		UpdateNodeStatusRequest
-		UpdateNodeStatusResponse
-		ListNodesRequest
-		ListNodesResponse
-		DrainNodeRequest
-		DrainNodeResponse
-		CreateTaskRequest
-		CreateTaskResponse
-		GetTasksRequest
-		GetTasksResponse
-		RemoveTaskRequest
-		RemoveTaskResponse
-		ListTasksRequest
-		ListTasksResponse
-		CreateJobRequest
-		CreateJobResponse
-		GetJobRequest
-		GetJobResponse
-		UpdateJobRequest
-		UpdateJobResponse
-		RemoveJobRequest
-		RemoveJobResponse
-		ListJobsRequest
-		ListJobsResponse
-		UpdateTaskStatusRequest
-		UpdateTaskStatusResponse
-		WatchTasksRequest
-		WatchTasksResponse
-*/
 package api
 
 import proto "github.com/gogo/protobuf/proto"
@@ -59,6 +14,7 @@ import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
+import github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 
 import io "io"
 
@@ -70,17 +26,23 @@ var _ = math.Inf
 type NodeStatus int32
 
 const (
-	NodeStatus_READY NodeStatus = 0
-	NodeStatus_DOWN  NodeStatus = 1
+	NodeStatus_UNKNOWN NodeStatus = 0
+	NodeStatus_DOWN    NodeStatus = 1
+	NodeStatus_READY   NodeStatus = 2
+	NodeStatus_DRAINED NodeStatus = 3
 )
 
 var NodeStatus_name = map[int32]string{
-	0: "READY",
+	0: "UNKNOWN",
 	1: "DOWN",
+	2: "READY",
+	3: "DRAINED",
 }
 var NodeStatus_value = map[string]int32{
-	"READY": 0,
-	"DOWN":  1,
+	"UNKNOWN": 0,
+	"DOWN":    1,
+	"READY":   2,
+	"DRAINED": 3,
 }
 
 func (x NodeStatus) String() string {
@@ -138,30 +100,373 @@ func (x TaskStatus_State) String() string {
 }
 
 type Node struct {
-	Id      string     `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name    string     `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Ip      string     `protobuf:"bytes,4,opt,name=ip,proto3" json:"ip,omitempty"`
-	Drained bool       `protobuf:"varint,5,opt,name=drained,proto3" json:"drained,omitempty"`
-	Status  NodeStatus `protobuf:"varint,3,opt,name=status,proto3,enum=api.NodeStatus" json:"status,omitempty"`
+	Id     string     `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name   string     `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Ip     string     `protobuf:"bytes,4,opt,name=ip,proto3" json:"ip,omitempty"`
+	Status NodeStatus `protobuf:"varint,3,opt,name=status,proto3,enum=api.NodeStatus" json:"status,omitempty"`
 }
 
 func (m *Node) Reset()      { *m = Node{} }
 func (*Node) ProtoMessage() {}
 
-// Spec defines the properties of a Job. As tasks are created, they gain the
-// Job specification.
-type Spec struct {
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+// Meta is common to all API objects types.
+type Meta struct {
+	Name   string            `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Labels map[string]string `protobuf:"bytes,2,rep,name=labels" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+}
+
+func (m *Meta) Reset()      { *m = Meta{} }
+func (*Meta) ProtoMessage() {}
+
+type ImageSpec struct {
+	Meta *Meta `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
+	// Resolved is the image resolved by the swarm cluster. This may be
+	// identical, depending on the name provided in meta. For example, the name
+	// field may be "redis", whereas this field would specify the exact hash,
+	// "redis@sha256:...".
+	//
+	// A user may set this field to bypass swarms resolution.
+	Resolved string `protobuf:"bytes,2,opt,name=resolved,proto3" json:"resolved,omitempty"`
+}
+
+func (m *ImageSpec) Reset()      { *m = ImageSpec{} }
+func (*ImageSpec) ProtoMessage() {}
+
+type ContainerSpec struct {
+	Meta  *Meta      `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
+	Image *ImageSpec `protobuf:"bytes,2,opt,name=image" json:"image,omitempty"`
+	// Config specifies the swarm support runtime configuration. This will take
+	// on many aspects of the existing Container config and Host config,
+	// restricted to swarm support fields.
+	Config *ContainerConfig `protobuf:"bytes,3,opt,name=config" json:"config,omitempty"`
+}
+
+func (m *ContainerSpec) Reset()      { *m = ContainerSpec{} }
+func (*ContainerSpec) ProtoMessage() {}
+
+type ContainerConfig struct {
+}
+
+func (m *ContainerConfig) Reset()      { *m = ContainerConfig{} }
+func (*ContainerConfig) ProtoMessage() {}
+
+// Bundle is a reserved history type from the POC. We have this here to test
+// the concept of multi-dispatch tasks, which is a design goal.
+type Bundle struct {
+	Meta *Meta `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
 	// remote specifies a URL to fetch task bundle data. This can either
 	// be a git repository or blobster repository.
 	Remote     string `protobuf:"bytes,2,opt,name=remote,proto3" json:"remote,omitempty"`
 	Bundle     string `protobuf:"bytes,3,opt,name=bundle,proto3" json:"bundle,omitempty"`
 	Entrypoint string `protobuf:"bytes,4,opt,name=entrypoint,proto3" json:"entrypoint,omitempty"`
-	Instances  int64  `protobuf:"varint,5,opt,name=instances,proto3" json:"instances,omitempty"`
+}
+
+func (m *Bundle) Reset()      { *m = Bundle{} }
+func (*Bundle) ProtoMessage() {}
+
+// PODSpec defines a specification for a pod bundle.
+type PODSpec struct {
+	Bundle *Bundle `protobuf:"bytes,1,opt,name=bundle" json:"bundle,omitempty"`
+}
+
+func (m *PODSpec) Reset()      { *m = PODSpec{} }
+func (*PODSpec) ProtoMessage() {}
+
+// Spec defines the properties of a Job. As tasks are created, they gain the
+// Job specification.
+//
+// There are two key components to a spec. The first is a "source". A source
+// defines runnable content. For the swarm use case, this is a container but we
+// may extend it to provide other kinds of runnable targets. The second
+// component is the "orchestration". The orchestration defines the strategy
+// used to the schedule and run the target with a cluster.
+type Spec struct {
+	Meta          *Meta               `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
+	Source        *Spec_Source        `protobuf:"bytes,2,opt,name=source" json:"source,omitempty"`
+	Orchestration *Spec_Orchestration `protobuf:"bytes,3,opt,name=orchestration" json:"orchestration,omitempty"`
 }
 
 func (m *Spec) Reset()      { *m = Spec{} }
 func (*Spec) ProtoMessage() {}
+
+type Spec_Source struct {
+	// Types that are valid to be assigned to Source:
+	//	*Spec_Source_Container
+	//	*Spec_Source_Pod
+	Source isSpec_Source_Source `protobuf_oneof:"source"`
+}
+
+func (m *Spec_Source) Reset()      { *m = Spec_Source{} }
+func (*Spec_Source) ProtoMessage() {}
+
+type isSpec_Source_Source interface {
+	isSpec_Source_Source()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type Spec_Source_Container struct {
+	Container *ContainerSpec `protobuf:"bytes,1,opt,name=container,oneof"`
+}
+type Spec_Source_Pod struct {
+	Pod *PODSpec `protobuf:"bytes,2,opt,name=pod,oneof"`
+}
+
+func (*Spec_Source_Container) isSpec_Source_Source() {}
+func (*Spec_Source_Pod) isSpec_Source_Source()       {}
+
+func (m *Spec_Source) GetSource() isSpec_Source_Source {
+	if m != nil {
+		return m.Source
+	}
+	return nil
+}
+
+func (m *Spec_Source) GetContainer() *ContainerSpec {
+	if x, ok := m.GetSource().(*Spec_Source_Container); ok {
+		return x.Container
+	}
+	return nil
+}
+
+func (m *Spec_Source) GetPod() *PODSpec {
+	if x, ok := m.GetSource().(*Spec_Source_Pod); ok {
+		return x.Pod
+	}
+	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*Spec_Source) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _Spec_Source_OneofMarshaler, _Spec_Source_OneofUnmarshaler, []interface{}{
+		(*Spec_Source_Container)(nil),
+		(*Spec_Source_Pod)(nil),
+	}
+}
+
+func _Spec_Source_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*Spec_Source)
+	// source
+	switch x := m.Source.(type) {
+	case *Spec_Source_Container:
+		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Container); err != nil {
+			return err
+		}
+	case *Spec_Source_Pod:
+		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Pod); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("Spec_Source.Source has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _Spec_Source_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*Spec_Source)
+	switch tag {
+	case 1: // source.container
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(ContainerSpec)
+		err := b.DecodeMessage(msg)
+		m.Source = &Spec_Source_Container{msg}
+		return true, err
+	case 2: // source.pod
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(PODSpec)
+		err := b.DecodeMessage(msg)
+		m.Source = &Spec_Source_Pod{msg}
+		return true, err
+	default:
+		return false, nil
+	}
+}
+
+type Spec_ServiceJob struct {
+	Instances int64 `protobuf:"varint,1,opt,name=instances,proto3" json:"instances,omitempty"`
+}
+
+func (m *Spec_ServiceJob) Reset()      { *m = Spec_ServiceJob{} }
+func (*Spec_ServiceJob) ProtoMessage() {}
+
+type Spec_BatchJob struct {
+	Completions int64 `protobuf:"varint,1,opt,name=completions,proto3" json:"completions,omitempty"`
+	Paralellism int64 `protobuf:"varint,2,opt,name=paralellism,proto3" json:"paralellism,omitempty"`
+}
+
+func (m *Spec_BatchJob) Reset()      { *m = Spec_BatchJob{} }
+func (*Spec_BatchJob) ProtoMessage() {}
+
+type Spec_GlobalJob struct {
+}
+
+func (m *Spec_GlobalJob) Reset()      { *m = Spec_GlobalJob{} }
+func (*Spec_GlobalJob) ProtoMessage() {}
+
+type Spec_CronJob struct {
+}
+
+func (m *Spec_CronJob) Reset()      { *m = Spec_CronJob{} }
+func (*Spec_CronJob) ProtoMessage() {}
+
+type Spec_Orchestration struct {
+	// Types that are valid to be assigned to Job:
+	//	*Spec_Orchestration_Service
+	//	*Spec_Orchestration_Batch
+	//	*Spec_Orchestration_Global
+	//	*Spec_Orchestration_Cron
+	Job isSpec_Orchestration_Job `protobuf_oneof:"job"`
+}
+
+func (m *Spec_Orchestration) Reset()      { *m = Spec_Orchestration{} }
+func (*Spec_Orchestration) ProtoMessage() {}
+
+type isSpec_Orchestration_Job interface {
+	isSpec_Orchestration_Job()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type Spec_Orchestration_Service struct {
+	Service *Spec_ServiceJob `protobuf:"bytes,1,opt,name=service,oneof"`
+}
+type Spec_Orchestration_Batch struct {
+	Batch *Spec_BatchJob `protobuf:"bytes,2,opt,name=batch,oneof"`
+}
+type Spec_Orchestration_Global struct {
+	Global *Spec_GlobalJob `protobuf:"bytes,3,opt,name=global,oneof"`
+}
+type Spec_Orchestration_Cron struct {
+	Cron *Spec_CronJob `protobuf:"bytes,4,opt,name=cron,oneof"`
+}
+
+func (*Spec_Orchestration_Service) isSpec_Orchestration_Job() {}
+func (*Spec_Orchestration_Batch) isSpec_Orchestration_Job()   {}
+func (*Spec_Orchestration_Global) isSpec_Orchestration_Job()  {}
+func (*Spec_Orchestration_Cron) isSpec_Orchestration_Job()    {}
+
+func (m *Spec_Orchestration) GetJob() isSpec_Orchestration_Job {
+	if m != nil {
+		return m.Job
+	}
+	return nil
+}
+
+func (m *Spec_Orchestration) GetService() *Spec_ServiceJob {
+	if x, ok := m.GetJob().(*Spec_Orchestration_Service); ok {
+		return x.Service
+	}
+	return nil
+}
+
+func (m *Spec_Orchestration) GetBatch() *Spec_BatchJob {
+	if x, ok := m.GetJob().(*Spec_Orchestration_Batch); ok {
+		return x.Batch
+	}
+	return nil
+}
+
+func (m *Spec_Orchestration) GetGlobal() *Spec_GlobalJob {
+	if x, ok := m.GetJob().(*Spec_Orchestration_Global); ok {
+		return x.Global
+	}
+	return nil
+}
+
+func (m *Spec_Orchestration) GetCron() *Spec_CronJob {
+	if x, ok := m.GetJob().(*Spec_Orchestration_Cron); ok {
+		return x.Cron
+	}
+	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*Spec_Orchestration) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _Spec_Orchestration_OneofMarshaler, _Spec_Orchestration_OneofUnmarshaler, []interface{}{
+		(*Spec_Orchestration_Service)(nil),
+		(*Spec_Orchestration_Batch)(nil),
+		(*Spec_Orchestration_Global)(nil),
+		(*Spec_Orchestration_Cron)(nil),
+	}
+}
+
+func _Spec_Orchestration_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*Spec_Orchestration)
+	// job
+	switch x := m.Job.(type) {
+	case *Spec_Orchestration_Service:
+		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Service); err != nil {
+			return err
+		}
+	case *Spec_Orchestration_Batch:
+		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Batch); err != nil {
+			return err
+		}
+	case *Spec_Orchestration_Global:
+		_ = b.EncodeVarint(3<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Global); err != nil {
+			return err
+		}
+	case *Spec_Orchestration_Cron:
+		_ = b.EncodeVarint(4<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Cron); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("Spec_Orchestration.Job has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _Spec_Orchestration_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*Spec_Orchestration)
+	switch tag {
+	case 1: // job.service
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Spec_ServiceJob)
+		err := b.DecodeMessage(msg)
+		m.Job = &Spec_Orchestration_Service{msg}
+		return true, err
+	case 2: // job.batch
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Spec_BatchJob)
+		err := b.DecodeMessage(msg)
+		m.Job = &Spec_Orchestration_Batch{msg}
+		return true, err
+	case 3: // job.global
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Spec_GlobalJob)
+		err := b.DecodeMessage(msg)
+		m.Job = &Spec_Orchestration_Global{msg}
+		return true, err
+	case 4: // job.cron
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Spec_CronJob)
+		err := b.DecodeMessage(msg)
+		m.Job = &Spec_Orchestration_Cron{msg}
+		return true, err
+	default:
+		return false, nil
+	}
+}
 
 type TaskStatus struct {
 	State   TaskStatus_State `protobuf:"varint,2,opt,name=state,proto3,enum=api.TaskStatus_State" json:"state,omitempty"`
@@ -177,7 +482,9 @@ type Task struct {
 	NodeId string      `protobuf:"bytes,3,opt,name=node_id,proto3" json:"node_id,omitempty"`
 	Spec   *Spec       `protobuf:"bytes,4,opt,name=spec" json:"spec,omitempty"`
 	Status *TaskStatus `protobuf:"bytes,5,opt,name=status" json:"status,omitempty"`
-	// Networking state
+	// TODO(stevvooe): Move these. Not sure where in the model yet. These are
+	// resources allocated to a task, so they may belong here but as a
+	// submessage.
 	NetId      string   `protobuf:"bytes,6,opt,name=net_id,proto3" json:"net_id,omitempty"`
 	EpId       string   `protobuf:"bytes,7,opt,name=ep_id,proto3" json:"ep_id,omitempty"`
 	Ip         string   `protobuf:"bytes,8,opt,name=ip,proto3" json:"ip,omitempty"`
@@ -196,208 +503,24 @@ type Job struct {
 func (m *Job) Reset()      { *m = Job{} }
 func (*Job) ProtoMessage() {}
 
-type Update struct {
-	// Types that are valid to be assigned to Update:
-	//	*Update_UpdateNode
-	//	*Update_UpdateTask
-	//	*Update_UpdateJob
-	//	*Update_DeleteNode
-	//	*Update_DeleteTask
-	//	*Update_DeleteJob
-	Update isUpdate_Update `protobuf_oneof:"update"`
-}
-
-func (m *Update) Reset()      { *m = Update{} }
-func (*Update) ProtoMessage() {}
-
-type isUpdate_Update interface {
-	isUpdate_Update()
-	MarshalTo([]byte) (int, error)
-	Size() int
-}
-
-type Update_UpdateNode struct {
-	UpdateNode *Node `protobuf:"bytes,1,opt,name=updateNode,oneof"`
-}
-type Update_UpdateTask struct {
-	UpdateTask *Task `protobuf:"bytes,2,opt,name=updateTask,oneof"`
-}
-type Update_UpdateJob struct {
-	UpdateJob *Job `protobuf:"bytes,4,opt,name=updateJob,oneof"`
-}
-type Update_DeleteNode struct {
-	DeleteNode string `protobuf:"bytes,5,opt,name=deleteNode,proto3,oneof"`
-}
-type Update_DeleteTask struct {
-	DeleteTask string `protobuf:"bytes,6,opt,name=deleteTask,proto3,oneof"`
-}
-type Update_DeleteJob struct {
-	DeleteJob string `protobuf:"bytes,8,opt,name=deleteJob,proto3,oneof"`
-}
-
-func (*Update_UpdateNode) isUpdate_Update() {}
-func (*Update_UpdateTask) isUpdate_Update() {}
-func (*Update_UpdateJob) isUpdate_Update()  {}
-func (*Update_DeleteNode) isUpdate_Update() {}
-func (*Update_DeleteTask) isUpdate_Update() {}
-func (*Update_DeleteJob) isUpdate_Update()  {}
-
-func (m *Update) GetUpdate() isUpdate_Update {
-	if m != nil {
-		return m.Update
-	}
-	return nil
-}
-
-func (m *Update) GetUpdateNode() *Node {
-	if x, ok := m.GetUpdate().(*Update_UpdateNode); ok {
-		return x.UpdateNode
-	}
-	return nil
-}
-
-func (m *Update) GetUpdateTask() *Task {
-	if x, ok := m.GetUpdate().(*Update_UpdateTask); ok {
-		return x.UpdateTask
-	}
-	return nil
-}
-
-func (m *Update) GetUpdateJob() *Job {
-	if x, ok := m.GetUpdate().(*Update_UpdateJob); ok {
-		return x.UpdateJob
-	}
-	return nil
-}
-
-func (m *Update) GetDeleteNode() string {
-	if x, ok := m.GetUpdate().(*Update_DeleteNode); ok {
-		return x.DeleteNode
-	}
-	return ""
-}
-
-func (m *Update) GetDeleteTask() string {
-	if x, ok := m.GetUpdate().(*Update_DeleteTask); ok {
-		return x.DeleteTask
-	}
-	return ""
-}
-
-func (m *Update) GetDeleteJob() string {
-	if x, ok := m.GetUpdate().(*Update_DeleteJob); ok {
-		return x.DeleteJob
-	}
-	return ""
-}
-
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*Update) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _Update_OneofMarshaler, _Update_OneofUnmarshaler, []interface{}{
-		(*Update_UpdateNode)(nil),
-		(*Update_UpdateTask)(nil),
-		(*Update_UpdateJob)(nil),
-		(*Update_DeleteNode)(nil),
-		(*Update_DeleteTask)(nil),
-		(*Update_DeleteJob)(nil),
-	}
-}
-
-func _Update_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*Update)
-	// update
-	switch x := m.Update.(type) {
-	case *Update_UpdateNode:
-		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.UpdateNode); err != nil {
-			return err
-		}
-	case *Update_UpdateTask:
-		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.UpdateTask); err != nil {
-			return err
-		}
-	case *Update_UpdateJob:
-		_ = b.EncodeVarint(4<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.UpdateJob); err != nil {
-			return err
-		}
-	case *Update_DeleteNode:
-		_ = b.EncodeVarint(5<<3 | proto.WireBytes)
-		_ = b.EncodeStringBytes(x.DeleteNode)
-	case *Update_DeleteTask:
-		_ = b.EncodeVarint(6<<3 | proto.WireBytes)
-		_ = b.EncodeStringBytes(x.DeleteTask)
-	case *Update_DeleteJob:
-		_ = b.EncodeVarint(8<<3 | proto.WireBytes)
-		_ = b.EncodeStringBytes(x.DeleteJob)
-	case nil:
-	default:
-		return fmt.Errorf("Update.Update has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _Update_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*Update)
-	switch tag {
-	case 1: // update.updateNode
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(Node)
-		err := b.DecodeMessage(msg)
-		m.Update = &Update_UpdateNode{msg}
-		return true, err
-	case 2: // update.updateTask
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(Task)
-		err := b.DecodeMessage(msg)
-		m.Update = &Update_UpdateTask{msg}
-		return true, err
-	case 4: // update.updateJob
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(Job)
-		err := b.DecodeMessage(msg)
-		m.Update = &Update_UpdateJob{msg}
-		return true, err
-	case 5: // update.deleteNode
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.Update = &Update_DeleteNode{x}
-		return true, err
-	case 6: // update.deleteTask
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.Update = &Update_DeleteTask{x}
-		return true, err
-	case 8: // update.deleteJob
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.Update = &Update_DeleteJob{x}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
 func init() {
 	proto.RegisterType((*Node)(nil), "api.Node")
+	proto.RegisterType((*Meta)(nil), "api.Meta")
+	proto.RegisterType((*ImageSpec)(nil), "api.ImageSpec")
+	proto.RegisterType((*ContainerSpec)(nil), "api.ContainerSpec")
+	proto.RegisterType((*ContainerConfig)(nil), "api.ContainerConfig")
+	proto.RegisterType((*Bundle)(nil), "api.Bundle")
+	proto.RegisterType((*PODSpec)(nil), "api.PODSpec")
 	proto.RegisterType((*Spec)(nil), "api.Spec")
+	proto.RegisterType((*Spec_Source)(nil), "api.Spec.Source")
+	proto.RegisterType((*Spec_ServiceJob)(nil), "api.Spec.ServiceJob")
+	proto.RegisterType((*Spec_BatchJob)(nil), "api.Spec.BatchJob")
+	proto.RegisterType((*Spec_GlobalJob)(nil), "api.Spec.GlobalJob")
+	proto.RegisterType((*Spec_CronJob)(nil), "api.Spec.CronJob")
+	proto.RegisterType((*Spec_Orchestration)(nil), "api.Spec.Orchestration")
 	proto.RegisterType((*TaskStatus)(nil), "api.TaskStatus")
 	proto.RegisterType((*Task)(nil), "api.Task")
 	proto.RegisterType((*Job)(nil), "api.Job")
-	proto.RegisterType((*Update)(nil), "api.Update")
 	proto.RegisterEnum("api.NodeStatus", NodeStatus_name, NodeStatus_value)
 	proto.RegisterEnum("api.TaskStatus_State", TaskStatus_State_name, TaskStatus_State_value)
 }
@@ -405,13 +528,102 @@ func (this *Node) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 9)
+	s := make([]string, 0, 8)
 	s = append(s, "&api.Node{")
 	s = append(s, "Id: "+fmt.Sprintf("%#v", this.Id)+",\n")
 	s = append(s, "Name: "+fmt.Sprintf("%#v", this.Name)+",\n")
 	s = append(s, "Ip: "+fmt.Sprintf("%#v", this.Ip)+",\n")
-	s = append(s, "Drained: "+fmt.Sprintf("%#v", this.Drained)+",\n")
 	s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Meta) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.Meta{")
+	s = append(s, "Name: "+fmt.Sprintf("%#v", this.Name)+",\n")
+	keysForLabels := make([]string, 0, len(this.Labels))
+	for k, _ := range this.Labels {
+		keysForLabels = append(keysForLabels, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
+	mapStringForLabels := "map[string]string{"
+	for _, k := range keysForLabels {
+		mapStringForLabels += fmt.Sprintf("%#v: %#v,", k, this.Labels[k])
+	}
+	mapStringForLabels += "}"
+	if this.Labels != nil {
+		s = append(s, "Labels: "+mapStringForLabels+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ImageSpec) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.ImageSpec{")
+	if this.Meta != nil {
+		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
+	}
+	s = append(s, "Resolved: "+fmt.Sprintf("%#v", this.Resolved)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ContainerSpec) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 7)
+	s = append(s, "&api.ContainerSpec{")
+	if this.Meta != nil {
+		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
+	}
+	if this.Image != nil {
+		s = append(s, "Image: "+fmt.Sprintf("%#v", this.Image)+",\n")
+	}
+	if this.Config != nil {
+		s = append(s, "Config: "+fmt.Sprintf("%#v", this.Config)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ContainerConfig) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&api.ContainerConfig{")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Bundle) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 8)
+	s = append(s, "&api.Bundle{")
+	if this.Meta != nil {
+		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
+	}
+	s = append(s, "Remote: "+fmt.Sprintf("%#v", this.Remote)+",\n")
+	s = append(s, "Bundle: "+fmt.Sprintf("%#v", this.Bundle)+",\n")
+	s = append(s, "Entrypoint: "+fmt.Sprintf("%#v", this.Entrypoint)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *PODSpec) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.PODSpec{")
+	if this.Bundle != nil {
+		s = append(s, "Bundle: "+fmt.Sprintf("%#v", this.Bundle)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -419,15 +631,130 @@ func (this *Spec) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 9)
+	s := make([]string, 0, 7)
 	s = append(s, "&api.Spec{")
-	s = append(s, "Name: "+fmt.Sprintf("%#v", this.Name)+",\n")
-	s = append(s, "Remote: "+fmt.Sprintf("%#v", this.Remote)+",\n")
-	s = append(s, "Bundle: "+fmt.Sprintf("%#v", this.Bundle)+",\n")
-	s = append(s, "Entrypoint: "+fmt.Sprintf("%#v", this.Entrypoint)+",\n")
+	if this.Meta != nil {
+		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
+	}
+	if this.Source != nil {
+		s = append(s, "Source: "+fmt.Sprintf("%#v", this.Source)+",\n")
+	}
+	if this.Orchestration != nil {
+		s = append(s, "Orchestration: "+fmt.Sprintf("%#v", this.Orchestration)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Spec_Source) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.Spec_Source{")
+	if this.Source != nil {
+		s = append(s, "Source: "+fmt.Sprintf("%#v", this.Source)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Spec_Source_Container) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.Spec_Source_Container{` +
+		`Container:` + fmt.Sprintf("%#v", this.Container) + `}`}, ", ")
+	return s
+}
+func (this *Spec_Source_Pod) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.Spec_Source_Pod{` +
+		`Pod:` + fmt.Sprintf("%#v", this.Pod) + `}`}, ", ")
+	return s
+}
+func (this *Spec_ServiceJob) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.Spec_ServiceJob{")
 	s = append(s, "Instances: "+fmt.Sprintf("%#v", this.Instances)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
+}
+func (this *Spec_BatchJob) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.Spec_BatchJob{")
+	s = append(s, "Completions: "+fmt.Sprintf("%#v", this.Completions)+",\n")
+	s = append(s, "Paralellism: "+fmt.Sprintf("%#v", this.Paralellism)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Spec_GlobalJob) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&api.Spec_GlobalJob{")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Spec_CronJob) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&api.Spec_CronJob{")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Spec_Orchestration) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 8)
+	s = append(s, "&api.Spec_Orchestration{")
+	if this.Job != nil {
+		s = append(s, "Job: "+fmt.Sprintf("%#v", this.Job)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Spec_Orchestration_Service) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.Spec_Orchestration_Service{` +
+		`Service:` + fmt.Sprintf("%#v", this.Service) + `}`}, ", ")
+	return s
+}
+func (this *Spec_Orchestration_Batch) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.Spec_Orchestration_Batch{` +
+		`Batch:` + fmt.Sprintf("%#v", this.Batch) + `}`}, ", ")
+	return s
+}
+func (this *Spec_Orchestration_Global) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.Spec_Orchestration_Global{` +
+		`Global:` + fmt.Sprintf("%#v", this.Global) + `}`}, ", ")
+	return s
+}
+func (this *Spec_Orchestration_Cron) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.Spec_Orchestration_Cron{` +
+		`Cron:` + fmt.Sprintf("%#v", this.Cron) + `}`}, ", ")
+	return s
 }
 func (this *TaskStatus) GoString() string {
 	if this == nil {
@@ -475,66 +802,6 @@ func (this *Job) GoString() string {
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
-}
-func (this *Update) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 10)
-	s = append(s, "&api.Update{")
-	if this.Update != nil {
-		s = append(s, "Update: "+fmt.Sprintf("%#v", this.Update)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Update_UpdateNode) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&api.Update_UpdateNode{` +
-		`UpdateNode:` + fmt.Sprintf("%#v", this.UpdateNode) + `}`}, ", ")
-	return s
-}
-func (this *Update_UpdateTask) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&api.Update_UpdateTask{` +
-		`UpdateTask:` + fmt.Sprintf("%#v", this.UpdateTask) + `}`}, ", ")
-	return s
-}
-func (this *Update_UpdateJob) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&api.Update_UpdateJob{` +
-		`UpdateJob:` + fmt.Sprintf("%#v", this.UpdateJob) + `}`}, ", ")
-	return s
-}
-func (this *Update_DeleteNode) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&api.Update_DeleteNode{` +
-		`DeleteNode:` + fmt.Sprintf("%#v", this.DeleteNode) + `}`}, ", ")
-	return s
-}
-func (this *Update_DeleteTask) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&api.Update_DeleteTask{` +
-		`DeleteTask:` + fmt.Sprintf("%#v", this.DeleteTask) + `}`}, ", ")
-	return s
-}
-func (this *Update_DeleteJob) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&api.Update_DeleteJob{` +
-		`DeleteJob:` + fmt.Sprintf("%#v", this.DeleteJob) + `}`}, ", ")
-	return s
 }
 func valueToGoStringTypes(v interface{}, typ string) string {
 	rv := reflect.ValueOf(v)
@@ -599,20 +866,10 @@ func (m *Node) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintTypes(data, i, uint64(len(m.Ip)))
 		i += copy(data[i:], m.Ip)
 	}
-	if m.Drained {
-		data[i] = 0x28
-		i++
-		if m.Drained {
-			data[i] = 1
-		} else {
-			data[i] = 0
-		}
-		i++
-	}
 	return i, nil
 }
 
-func (m *Spec) Marshal() (data []byte, err error) {
+func (m *Meta) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -622,7 +879,7 @@ func (m *Spec) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Spec) MarshalTo(data []byte) (int, error) {
+func (m *Meta) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -632,6 +889,151 @@ func (m *Spec) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintTypes(data, i, uint64(len(m.Name)))
 		i += copy(data[i:], m.Name)
+	}
+	if len(m.Labels) > 0 {
+		for k, _ := range m.Labels {
+			data[i] = 0x12
+			i++
+			v := m.Labels[k]
+			mapSize := 1 + len(k) + sovTypes(uint64(len(k))) + 1 + len(v) + sovTypes(uint64(len(v)))
+			i = encodeVarintTypes(data, i, uint64(mapSize))
+			data[i] = 0xa
+			i++
+			i = encodeVarintTypes(data, i, uint64(len(k)))
+			i += copy(data[i:], k)
+			data[i] = 0x12
+			i++
+			i = encodeVarintTypes(data, i, uint64(len(v)))
+			i += copy(data[i:], v)
+		}
+	}
+	return i, nil
+}
+
+func (m *ImageSpec) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ImageSpec) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Meta != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
+		n1, err := m.Meta.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	if len(m.Resolved) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.Resolved)))
+		i += copy(data[i:], m.Resolved)
+	}
+	return i, nil
+}
+
+func (m *ContainerSpec) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ContainerSpec) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Meta != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
+		n2, err := m.Meta.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
+	}
+	if m.Image != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Image.Size()))
+		n3, err := m.Image.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n3
+	}
+	if m.Config != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Config.Size()))
+		n4, err := m.Config.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n4
+	}
+	return i, nil
+}
+
+func (m *ContainerConfig) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ContainerConfig) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *Bundle) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Bundle) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Meta != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
+		n5, err := m.Meta.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n5
 	}
 	if len(m.Remote) > 0 {
 		data[i] = 0x12
@@ -651,14 +1053,306 @@ func (m *Spec) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintTypes(data, i, uint64(len(m.Entrypoint)))
 		i += copy(data[i:], m.Entrypoint)
 	}
+	return i, nil
+}
+
+func (m *PODSpec) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *PODSpec) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Bundle != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Bundle.Size()))
+		n6, err := m.Bundle.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n6
+	}
+	return i, nil
+}
+
+func (m *Spec) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Spec) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Meta != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
+		n7, err := m.Meta.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n7
+	}
+	if m.Source != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Source.Size()))
+		n8, err := m.Source.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n8
+	}
+	if m.Orchestration != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Orchestration.Size()))
+		n9, err := m.Orchestration.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n9
+	}
+	return i, nil
+}
+
+func (m *Spec_Source) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Spec_Source) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Source != nil {
+		nn10, err := m.Source.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += nn10
+	}
+	return i, nil
+}
+
+func (m *Spec_Source_Container) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Container != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Container.Size()))
+		n11, err := m.Container.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n11
+	}
+	return i, nil
+}
+func (m *Spec_Source_Pod) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Pod != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Pod.Size()))
+		n12, err := m.Pod.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n12
+	}
+	return i, nil
+}
+func (m *Spec_ServiceJob) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Spec_ServiceJob) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
 	if m.Instances != 0 {
-		data[i] = 0x28
+		data[i] = 0x8
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Instances))
 	}
 	return i, nil
 }
 
+func (m *Spec_BatchJob) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Spec_BatchJob) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Completions != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Completions))
+	}
+	if m.Paralellism != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Paralellism))
+	}
+	return i, nil
+}
+
+func (m *Spec_GlobalJob) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Spec_GlobalJob) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *Spec_CronJob) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Spec_CronJob) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *Spec_Orchestration) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Spec_Orchestration) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Job != nil {
+		nn13, err := m.Job.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += nn13
+	}
+	return i, nil
+}
+
+func (m *Spec_Orchestration_Service) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Service != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Service.Size()))
+		n14, err := m.Service.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n14
+	}
+	return i, nil
+}
+func (m *Spec_Orchestration_Batch) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Batch != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Batch.Size()))
+		n15, err := m.Batch.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n15
+	}
+	return i, nil
+}
+func (m *Spec_Orchestration_Global) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Global != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Global.Size()))
+		n16, err := m.Global.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n16
+	}
+	return i, nil
+}
+func (m *Spec_Orchestration_Cron) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Cron != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Cron.Size()))
+		n17, err := m.Cron.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n17
+	}
+	return i, nil
+}
 func (m *TaskStatus) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -725,21 +1419,21 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x22
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n1, err := m.Spec.MarshalTo(data[i:])
+		n18, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n1
+		i += n18
 	}
 	if m.Status != nil {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Status.Size()))
-		n2, err := m.Status.MarshalTo(data[i:])
+		n19, err := m.Status.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n2
+		i += n19
 	}
 	if len(m.NetId) > 0 {
 		data[i] = 0x32
@@ -808,106 +1502,15 @@ func (m *Job) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n3, err := m.Spec.MarshalTo(data[i:])
+		n20, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n3
+		i += n20
 	}
 	return i, nil
 }
 
-func (m *Update) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Update) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Update != nil {
-		nn4, err := m.Update.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += nn4
-	}
-	return i, nil
-}
-
-func (m *Update_UpdateNode) MarshalTo(data []byte) (int, error) {
-	i := 0
-	if m.UpdateNode != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.UpdateNode.Size()))
-		n5, err := m.UpdateNode.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n5
-	}
-	return i, nil
-}
-func (m *Update_UpdateTask) MarshalTo(data []byte) (int, error) {
-	i := 0
-	if m.UpdateTask != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.UpdateTask.Size()))
-		n6, err := m.UpdateTask.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n6
-	}
-	return i, nil
-}
-func (m *Update_UpdateJob) MarshalTo(data []byte) (int, error) {
-	i := 0
-	if m.UpdateJob != nil {
-		data[i] = 0x22
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.UpdateJob.Size()))
-		n7, err := m.UpdateJob.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n7
-	}
-	return i, nil
-}
-func (m *Update_DeleteNode) MarshalTo(data []byte) (int, error) {
-	i := 0
-	data[i] = 0x2a
-	i++
-	i = encodeVarintTypes(data, i, uint64(len(m.DeleteNode)))
-	i += copy(data[i:], m.DeleteNode)
-	return i, nil
-}
-func (m *Update_DeleteTask) MarshalTo(data []byte) (int, error) {
-	i := 0
-	data[i] = 0x32
-	i++
-	i = encodeVarintTypes(data, i, uint64(len(m.DeleteTask)))
-	i += copy(data[i:], m.DeleteTask)
-	return i, nil
-}
-func (m *Update_DeleteJob) MarshalTo(data []byte) (int, error) {
-	i := 0
-	data[i] = 0x42
-	i++
-	i = encodeVarintTypes(data, i, uint64(len(m.DeleteJob)))
-	i += copy(data[i:], m.DeleteJob)
-	return i, nil
-}
 func encodeFixed64Types(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	data[offset+1] = uint8(v >> 8)
@@ -953,17 +1556,70 @@ func (m *Node) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
-	if m.Drained {
-		n += 2
-	}
 	return n
 }
 
-func (m *Spec) Size() (n int) {
+func (m *Meta) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.Name)
 	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if len(m.Labels) > 0 {
+		for k, v := range m.Labels {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + len(k) + sovTypes(uint64(len(k))) + 1 + len(v) + sovTypes(uint64(len(v)))
+			n += mapEntrySize + 1 + sovTypes(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *ImageSpec) Size() (n int) {
+	var l int
+	_ = l
+	if m.Meta != nil {
+		l = m.Meta.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	l = len(m.Resolved)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
+func (m *ContainerSpec) Size() (n int) {
+	var l int
+	_ = l
+	if m.Meta != nil {
+		l = m.Meta.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.Image != nil {
+		l = m.Image.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.Config != nil {
+		l = m.Config.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
+func (m *ContainerConfig) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *Bundle) Size() (n int) {
+	var l int
+	_ = l
+	if m.Meta != nil {
+		l = m.Meta.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
 	l = len(m.Remote)
@@ -978,12 +1634,142 @@ func (m *Spec) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
+	return n
+}
+
+func (m *PODSpec) Size() (n int) {
+	var l int
+	_ = l
+	if m.Bundle != nil {
+		l = m.Bundle.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
+func (m *Spec) Size() (n int) {
+	var l int
+	_ = l
+	if m.Meta != nil {
+		l = m.Meta.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.Source != nil {
+		l = m.Source.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.Orchestration != nil {
+		l = m.Orchestration.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
+func (m *Spec_Source) Size() (n int) {
+	var l int
+	_ = l
+	if m.Source != nil {
+		n += m.Source.Size()
+	}
+	return n
+}
+
+func (m *Spec_Source_Container) Size() (n int) {
+	var l int
+	_ = l
+	if m.Container != nil {
+		l = m.Container.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *Spec_Source_Pod) Size() (n int) {
+	var l int
+	_ = l
+	if m.Pod != nil {
+		l = m.Pod.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *Spec_ServiceJob) Size() (n int) {
+	var l int
+	_ = l
 	if m.Instances != 0 {
 		n += 1 + sovTypes(uint64(m.Instances))
 	}
 	return n
 }
 
+func (m *Spec_BatchJob) Size() (n int) {
+	var l int
+	_ = l
+	if m.Completions != 0 {
+		n += 1 + sovTypes(uint64(m.Completions))
+	}
+	if m.Paralellism != 0 {
+		n += 1 + sovTypes(uint64(m.Paralellism))
+	}
+	return n
+}
+
+func (m *Spec_GlobalJob) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *Spec_CronJob) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *Spec_Orchestration) Size() (n int) {
+	var l int
+	_ = l
+	if m.Job != nil {
+		n += m.Job.Size()
+	}
+	return n
+}
+
+func (m *Spec_Orchestration_Service) Size() (n int) {
+	var l int
+	_ = l
+	if m.Service != nil {
+		l = m.Service.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *Spec_Orchestration_Batch) Size() (n int) {
+	var l int
+	_ = l
+	if m.Batch != nil {
+		l = m.Batch.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *Spec_Orchestration_Global) Size() (n int) {
+	var l int
+	_ = l
+	if m.Global != nil {
+		l = m.Global.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *Spec_Orchestration_Cron) Size() (n int) {
+	var l int
+	_ = l
+	if m.Cron != nil {
+		l = m.Cron.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
 func (m *TaskStatus) Size() (n int) {
 	var l int
 	_ = l
@@ -1059,64 +1845,6 @@ func (m *Job) Size() (n int) {
 	return n
 }
 
-func (m *Update) Size() (n int) {
-	var l int
-	_ = l
-	if m.Update != nil {
-		n += m.Update.Size()
-	}
-	return n
-}
-
-func (m *Update_UpdateNode) Size() (n int) {
-	var l int
-	_ = l
-	if m.UpdateNode != nil {
-		l = m.UpdateNode.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-func (m *Update_UpdateTask) Size() (n int) {
-	var l int
-	_ = l
-	if m.UpdateTask != nil {
-		l = m.UpdateTask.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-func (m *Update_UpdateJob) Size() (n int) {
-	var l int
-	_ = l
-	if m.UpdateJob != nil {
-		l = m.UpdateJob.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-func (m *Update_DeleteNode) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.DeleteNode)
-	n += 1 + l + sovTypes(uint64(l))
-	return n
-}
-func (m *Update_DeleteTask) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.DeleteTask)
-	n += 1 + l + sovTypes(uint64(l))
-	return n
-}
-func (m *Update_DeleteJob) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.DeleteJob)
-	n += 1 + l + sovTypes(uint64(l))
-	return n
-}
-
 func sovTypes(x uint64) (n int) {
 	for {
 		n++
@@ -1139,7 +1867,82 @@ func (this *Node) String() string {
 		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
 		`Status:` + fmt.Sprintf("%v", this.Status) + `,`,
 		`Ip:` + fmt.Sprintf("%v", this.Ip) + `,`,
-		`Drained:` + fmt.Sprintf("%v", this.Drained) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Meta) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForLabels := make([]string, 0, len(this.Labels))
+	for k, _ := range this.Labels {
+		keysForLabels = append(keysForLabels, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
+	mapStringForLabels := "map[string]string{"
+	for _, k := range keysForLabels {
+		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
+	}
+	mapStringForLabels += "}"
+	s := strings.Join([]string{`&Meta{`,
+		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
+		`Labels:` + mapStringForLabels + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ImageSpec) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ImageSpec{`,
+		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
+		`Resolved:` + fmt.Sprintf("%v", this.Resolved) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ContainerSpec) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ContainerSpec{`,
+		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
+		`Image:` + strings.Replace(fmt.Sprintf("%v", this.Image), "ImageSpec", "ImageSpec", 1) + `,`,
+		`Config:` + strings.Replace(fmt.Sprintf("%v", this.Config), "ContainerConfig", "ContainerConfig", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ContainerConfig) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ContainerConfig{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Bundle) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Bundle{`,
+		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
+		`Remote:` + fmt.Sprintf("%v", this.Remote) + `,`,
+		`Bundle:` + fmt.Sprintf("%v", this.Bundle) + `,`,
+		`Entrypoint:` + fmt.Sprintf("%v", this.Entrypoint) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *PODSpec) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&PODSpec{`,
+		`Bundle:` + strings.Replace(fmt.Sprintf("%v", this.Bundle), "Bundle", "Bundle", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1149,11 +1952,128 @@ func (this *Spec) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&Spec{`,
-		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
-		`Remote:` + fmt.Sprintf("%v", this.Remote) + `,`,
-		`Bundle:` + fmt.Sprintf("%v", this.Bundle) + `,`,
-		`Entrypoint:` + fmt.Sprintf("%v", this.Entrypoint) + `,`,
+		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
+		`Source:` + strings.Replace(fmt.Sprintf("%v", this.Source), "Spec_Source", "Spec_Source", 1) + `,`,
+		`Orchestration:` + strings.Replace(fmt.Sprintf("%v", this.Orchestration), "Spec_Orchestration", "Spec_Orchestration", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Spec_Source) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Spec_Source{`,
+		`Source:` + fmt.Sprintf("%v", this.Source) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Spec_Source_Container) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Spec_Source_Container{`,
+		`Container:` + strings.Replace(fmt.Sprintf("%v", this.Container), "ContainerSpec", "ContainerSpec", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Spec_Source_Pod) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Spec_Source_Pod{`,
+		`Pod:` + strings.Replace(fmt.Sprintf("%v", this.Pod), "PODSpec", "PODSpec", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Spec_ServiceJob) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Spec_ServiceJob{`,
 		`Instances:` + fmt.Sprintf("%v", this.Instances) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Spec_BatchJob) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Spec_BatchJob{`,
+		`Completions:` + fmt.Sprintf("%v", this.Completions) + `,`,
+		`Paralellism:` + fmt.Sprintf("%v", this.Paralellism) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Spec_GlobalJob) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Spec_GlobalJob{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Spec_CronJob) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Spec_CronJob{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Spec_Orchestration) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Spec_Orchestration{`,
+		`Job:` + fmt.Sprintf("%v", this.Job) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Spec_Orchestration_Service) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Spec_Orchestration_Service{`,
+		`Service:` + strings.Replace(fmt.Sprintf("%v", this.Service), "Spec_ServiceJob", "Spec_ServiceJob", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Spec_Orchestration_Batch) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Spec_Orchestration_Batch{`,
+		`Batch:` + strings.Replace(fmt.Sprintf("%v", this.Batch), "Spec_BatchJob", "Spec_BatchJob", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Spec_Orchestration_Global) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Spec_Orchestration_Global{`,
+		`Global:` + strings.Replace(fmt.Sprintf("%v", this.Global), "Spec_GlobalJob", "Spec_GlobalJob", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Spec_Orchestration_Cron) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Spec_Orchestration_Cron{`,
+		`Cron:` + strings.Replace(fmt.Sprintf("%v", this.Cron), "Spec_CronJob", "Spec_CronJob", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1195,76 +2115,6 @@ func (this *Job) String() string {
 	s := strings.Join([]string{`&Job{`,
 		`Id:` + fmt.Sprintf("%v", this.Id) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "Spec", "Spec", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Update) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Update{`,
-		`Update:` + fmt.Sprintf("%v", this.Update) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Update_UpdateNode) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Update_UpdateNode{`,
-		`UpdateNode:` + strings.Replace(fmt.Sprintf("%v", this.UpdateNode), "Node", "Node", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Update_UpdateTask) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Update_UpdateTask{`,
-		`UpdateTask:` + strings.Replace(fmt.Sprintf("%v", this.UpdateTask), "Task", "Task", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Update_UpdateJob) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Update_UpdateJob{`,
-		`UpdateJob:` + strings.Replace(fmt.Sprintf("%v", this.UpdateJob), "Job", "Job", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Update_DeleteNode) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Update_DeleteNode{`,
-		`DeleteNode:` + fmt.Sprintf("%v", this.DeleteNode) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Update_DeleteTask) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Update_DeleteTask{`,
-		`DeleteTask:` + fmt.Sprintf("%v", this.DeleteTask) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Update_DeleteJob) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Update_DeleteJob{`,
-		`DeleteJob:` + fmt.Sprintf("%v", this.DeleteJob) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1412,26 +2262,6 @@ func (m *Node) Unmarshal(data []byte) error {
 			}
 			m.Ip = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 5:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Drained", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.Drained = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(data[iNdEx:])
@@ -1453,7 +2283,7 @@ func (m *Node) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Spec) Unmarshal(data []byte) error {
+func (m *Meta) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1476,10 +2306,10 @@ func (m *Spec) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Spec: wiretype end group for non-group")
+			return fmt.Errorf("proto: Meta: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Spec: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Meta: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1510,6 +2340,511 @@ func (m *Spec) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Name = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Labels", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var stringLenmapkey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLenmapkey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLenmapkey := int(stringLenmapkey)
+			if intStringLenmapkey < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postStringIndexmapkey := iNdEx + intStringLenmapkey
+			if postStringIndexmapkey > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapkey := string(data[iNdEx:postStringIndexmapkey])
+			iNdEx = postStringIndexmapkey
+			var valuekey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				valuekey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var stringLenmapvalue uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLenmapvalue := int(stringLenmapvalue)
+			if intStringLenmapvalue < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+			if postStringIndexmapvalue > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapvalue := string(data[iNdEx:postStringIndexmapvalue])
+			iNdEx = postStringIndexmapvalue
+			if m.Labels == nil {
+				m.Labels = make(map[string]string)
+			}
+			m.Labels[mapkey] = mapvalue
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ImageSpec) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ImageSpec: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ImageSpec: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Meta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Meta == nil {
+				m.Meta = &Meta{}
+			}
+			if err := m.Meta.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Resolved", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Resolved = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ContainerSpec) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ContainerSpec: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ContainerSpec: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Meta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Meta == nil {
+				m.Meta = &Meta{}
+			}
+			if err := m.Meta.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Image", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Image == nil {
+				m.Image = &ImageSpec{}
+			}
+			if err := m.Image.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Config", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Config == nil {
+				m.Config = &ContainerConfig{}
+			}
+			if err := m.Config.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ContainerConfig) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ContainerConfig: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ContainerConfig: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Bundle) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Bundle: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Bundle: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Meta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Meta == nil {
+				m.Meta = &Meta{}
+			}
+			if err := m.Meta.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -1598,7 +2933,403 @@ func (m *Spec) Unmarshal(data []byte) error {
 			}
 			m.Entrypoint = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 5:
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *PODSpec) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: PODSpec: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: PODSpec: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Bundle", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Bundle == nil {
+				m.Bundle = &Bundle{}
+			}
+			if err := m.Bundle.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Spec) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Spec: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Spec: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Meta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Meta == nil {
+				m.Meta = &Meta{}
+			}
+			if err := m.Meta.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Source", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Source == nil {
+				m.Source = &Spec_Source{}
+			}
+			if err := m.Source.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Orchestration", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Orchestration == nil {
+				m.Orchestration = &Spec_Orchestration{}
+			}
+			if err := m.Orchestration.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Spec_Source) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Source: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Source: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Container", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ContainerSpec{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Source = &Spec_Source_Container{v}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Pod", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &PODSpec{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Source = &Spec_Source_Pod{v}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Spec_ServiceJob) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ServiceJob: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ServiceJob: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Instances", wireType)
 			}
@@ -1617,6 +3348,372 @@ func (m *Spec) Unmarshal(data []byte) error {
 					break
 				}
 			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Spec_BatchJob) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: BatchJob: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: BatchJob: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Completions", wireType)
+			}
+			m.Completions = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Completions |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Paralellism", wireType)
+			}
+			m.Paralellism = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Paralellism |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Spec_GlobalJob) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GlobalJob: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GlobalJob: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Spec_CronJob) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CronJob: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CronJob: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Spec_Orchestration) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Orchestration: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Orchestration: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Service", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Spec_ServiceJob{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Job = &Spec_Orchestration_Service{v}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Batch", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Spec_BatchJob{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Job = &Spec_Orchestration_Batch{v}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Global", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Spec_GlobalJob{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Job = &Spec_Orchestration_Global{v}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Cron", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Spec_CronJob{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Job = &Spec_Orchestration_Cron{v}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(data[iNdEx:])
@@ -2174,239 +4271,6 @@ func (m *Job) Unmarshal(data []byte) error {
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTypes(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *Update) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTypes
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Update: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Update: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field UpdateNode", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &Node{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Update = &Update_UpdateNode{v}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field UpdateTask", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &Task{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Update = &Update_UpdateTask{v}
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field UpdateJob", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &Job{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Update = &Update_UpdateJob{v}
-			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DeleteNode", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Update = &Update_DeleteNode{string(data[iNdEx:postIndex])}
-			iNdEx = postIndex
-		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DeleteTask", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Update = &Update_DeleteTask{string(data[iNdEx:postIndex])}
-			iNdEx = postIndex
-		case 8:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DeleteJob", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Update = &Update_DeleteJob{string(data[iNdEx:postIndex])}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
