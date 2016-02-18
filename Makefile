@@ -21,12 +21,16 @@ ${PREFIX}/bin/swarmctl: version/version.go $(shell find . -type f -name '*.go')
 	@echo "+ $@"
 	@go build  -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/swarmctl
 
+${PREFIX}/bin/protoc-gen-gogoswarm: version/version.go $(shell find . -type f -name '*.go')
+	@echo "+ $@"
+	@go build  -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/protoc-gen-gogoswarm
+
 setup:
 	@echo "+ $@"
 	@go get -u github.com/golang/lint/golint
 
-generate:
-	go generate ./...
+generate: ${PREFIX}/bin/protoc-gen-gogoswarm
+	PATH=${PREFIX}/bin/:${PATH} go generate ./...
 
 # Depends on binaries because vet will silently fail if it can't load compiled
 # imports
@@ -51,10 +55,10 @@ test:
 	@echo "+ $@"
 	@go test -race -tags "${DOCKER_BUILDTAGS}" ./...
 
-binaries: ${PREFIX}/bin/swarmctl
+binaries: ${PREFIX}/bin/swarmctl ${PREFIX}/bin/protoc-gen-gogoswarm
 	@echo "+ $@"
 
 clean:
 	@echo "+ $@"
-	@rm -rf "${PREFIX}/bin/swarmctl"
+	@rm -rf "${PREFIX}/bin/swarmctl" "${PREFIX}/bin/protoc-gen-gogoswarm"
 

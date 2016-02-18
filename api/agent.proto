@@ -8,15 +8,6 @@ import "types.proto";
 // correctly.
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
-// TODO(stevvooe): Move these options to vanity binary (ie gogoswarm).
-option (gogoproto.gostring_all) = true;
-option (gogoproto.goproto_getters_all) = false;
-option (gogoproto.goproto_stringer_all) = false;
-option (gogoproto.stringer_all) =  true;
-option (gogoproto.marshaler_all) = true;
-option (gogoproto.sizer_all) = true;
-option (gogoproto.unmarshaler_all) = true;
-
 // Agent is the API provided by a master group for agents to connect to. Agents
 // connect to this service to receive task assignments and report status.
 //

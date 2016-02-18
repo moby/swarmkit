@@ -8,15 +8,6 @@ import "types.proto";
 // correctly.
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
-// TODO(stevvooe): Move these options to vanity binary (ie gogoswarm).
-option (gogoproto.gostring_all) = true;
-option (gogoproto.goproto_getters_all) = false;
-option (gogoproto.goproto_stringer_all) = false;
-option (gogoproto.stringer_all) =  true;
-option (gogoproto.marshaler_all) = true;
-option (gogoproto.sizer_all) = true;
-option (gogoproto.unmarshaler_all) = true;
-
 // Swarm provides the user control API.
 //
 // Other options for naming this interface:
