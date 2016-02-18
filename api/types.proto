@@ -52,7 +52,6 @@ message ImageSpec {
 	// distribution/reference package.
 	string reference = 1; // TODO(stevvooe): Field type should be reference.Field.
 
-
 	// Resolved is the image resolved by the swarm cluster. This may be
 	// identical, depending on the name provided in meta. For example, the name
 	// field may be "redis", whereas this field would specify the exact hash,
@@ -60,14 +59,6 @@ message ImageSpec {
 	//
 	// A user may set this field to bypass swarms resolution.
 	string resolved = 2; // TODO(stevvooe): Field type should be reference.Field.
-}
-
-message ContainerSpec {
-	Meta meta = 1;	
-	ImageSpec image = 2;
-
-	// TODO(stevvooe): Specify the components that make up the container
-	// configuration. Split them up by function.
 }
 
 // Spec defines the properties of a Job. As tasks are created, they gain the
@@ -83,7 +74,7 @@ message Spec {
 	
 	message Source { // TODO(stevvooe): better name?
 		oneof source {
-			ContainerSpec container = 1;
+			ImageSpec image = 1;
 		}
 	}
 	
@@ -113,6 +104,9 @@ message Spec {
 	
 	Source source = 2;
 	Orchestration orchestration = 3;
+
+	// TODO(stevvooe): Specify the components that make up the container
+	// configuration. This should have fields similar to container.Config.
 }
 
 message TaskStatus {
