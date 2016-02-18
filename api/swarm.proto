@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package api;
 
-import "service.proto";
 import "types.proto";
 
 // NOTE(stevvooe): Make sure your gopath is appropriately set for this to work
@@ -22,8 +21,8 @@ option (gogoproto.unmarshaler_all) = true;
 //
 // Other options for naming this interface:
 //
-//  - "Control", since this controls a swarm cluster
-//	- "User" because it is user facing.
+// 	- "Control", since this controls a swarm cluster
+// 	- "User" because it is user facing.
 service Swarm {
 	rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {}
 	rpc DrainNode(DrainNodeRequest) returns (DrainNodeResponse) {}
@@ -41,106 +40,84 @@ service Swarm {
 }
 
 message ListNodesRequest {
-	ResultParameters parameters = 64;
 }
 
 message ListNodesResponse {
 	repeated Node nodes = 1;
-	ResultParameters parameters = 64;
 }
 
 message DrainNodeRequest {
 	string node_id = 1;
 	bool drain = 2; // TODO(stevvooe): We need to have better notion of observed/desired.
-	ResultParameters parameters = 64;
 }
 
 message DrainNodeResponse {
-	ResultParameters parameters = 64;
 }
 
 message CreateTaskRequest {
 	Spec spec = 1;
-	ResultParameters parameters = 64;
 }
 
 message CreateTaskResponse {
 	string task_id = 1;
-	ResultParameters parameters = 64;
 }
 
 message GetTasksRequest {
-	ResultParameters parameters = 64;
 	repeated string task_ids = 1;
 }
 
 message GetTasksResponse {
 	repeated Task tasks = 1;
-	ResultParameters parameters = 64;
 }
 
 message RemoveTaskRequest {
 	string task_id = 1;
-	ResultParameters parameters = 64;
 }
 
 message RemoveTaskResponse {
-	ResultParameters parameters = 64;
 }
 
 message ListTasksRequest {
-	ResultParameters parameters = 64;
 }
 
 message ListTasksResponse {
 	repeated Task tasks = 1;
-	ResultParameters parameters = 64;
 }
 
 message CreateJobRequest {
 	Spec spec = 1;
-	ResultParameters parameters = 64;
 }
 
 message CreateJobResponse {
 	string job_id = 1;
-	ResultParameters parameters = 64;
 }
 
 message GetJobRequest {
 	string job_id = 1;
-	ResultParameters parameters = 64;
 }
 
 message GetJobResponse {
 	Job job = 1;
-	ResultParameters parameters = 64;
 }
 
 message UpdateJobRequest {
 	string job_id = 1;
 	Spec spec = 2;
-	ResultParameters parameters = 64;
 }
 
 message UpdateJobResponse {
-	ResultParameters parameters = 64;
 }
 
 message RemoveJobRequest {
 	string job_id = 1;
-	ResultParameters parameters = 64;
 }
 
 message RemoveJobResponse {
-	ResultParameters parameters = 64;
 }
 
 message ListJobsRequest {
-	ResultParameters parameters = 64;
 }
 
 message ListJobsResponse {
 	repeated Job jobs = 1;
-	ResultParameters parameters = 64;
 }

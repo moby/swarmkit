@@ -47,7 +47,11 @@ message Meta {
 }
 
 message ImageSpec {
-	Meta meta = 1;
+	// reference is a docker image reference. This can include a rpository, tag
+	// or be fully qualified witha digest. The format is specified in the
+	// distribution/reference package.
+	string reference = 1; // TODO(stevvooe): Field type should be reference.Field.
+
 
 	// Resolved is the image resolved by the swarm cluster. This may be
 	// identical, depending on the name provided in meta. For example, the name
@@ -62,35 +66,9 @@ message ContainerSpec {
 	Meta meta = 1;	
 	ImageSpec image = 2;
 
-	// Config specifies the swarm support runtime configuration. This will take
-	// on many aspects of the existing Container config and Host config,
-	// restricted to swarm support fields.
-	ContainerConfig config = 3;
+	// TODO(stevvooe): Specify the components that make up the container
+	// configuration. Split them up by function.
 }
-
-message ContainerConfig {
-	// TODO(stevvooe): Extract fields from existing host configuration.
-}
-
-// Bundle is a reserved history type from the POC. We have this here to test
-// the concept of multi-dispatch tasks, which is a design goal.
-message Bundle {
-	Meta meta = 1;	
-
-	// remote specifies a URL to fetch task bundle data. This can either
-	// be a git repository or blobster repository.
-	string remote = 2;
-	string bundle = 3; // bundle is the commitish of the bundle
-	string entrypoint = 4; // some specification for what to run.
-}
-
-// PODSpec defines a specification for a pod bundle.
-message PODSpec {
-	Bundle bundle = 1;
-}
-
-// NOTE(stevvooe): Don't panic. We can remove the above pod types.
-
 
 // Spec defines the properties of a Job. As tasks are created, they gain the
 // Job specification.
@@ -106,7 +84,6 @@ message Spec {
 	message Source { // TODO(stevvooe): better name?
 		oneof source {
 			ContainerSpec container = 1;
-			PODSpec pod = 2;	
 		}
 	}
 	

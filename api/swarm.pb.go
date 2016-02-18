@@ -28,171 +28,149 @@ var _ = fmt.Errorf
 var _ = math.Inf
 
 type ListNodesRequest struct {
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
 }
 
 func (m *ListNodesRequest) Reset()      { *m = ListNodesRequest{} }
 func (*ListNodesRequest) ProtoMessage() {}
 
 type ListNodesResponse struct {
-	Nodes      []*Node           `protobuf:"bytes,1,rep,name=nodes" json:"nodes,omitempty"`
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
+	Nodes []*Node `protobuf:"bytes,1,rep,name=nodes" json:"nodes,omitempty"`
 }
 
 func (m *ListNodesResponse) Reset()      { *m = ListNodesResponse{} }
 func (*ListNodesResponse) ProtoMessage() {}
 
 type DrainNodeRequest struct {
-	NodeId     string            `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
-	Drain      bool              `protobuf:"varint,2,opt,name=drain,proto3" json:"drain,omitempty"`
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
+	NodeId string `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	Drain  bool   `protobuf:"varint,2,opt,name=drain,proto3" json:"drain,omitempty"`
 }
 
 func (m *DrainNodeRequest) Reset()      { *m = DrainNodeRequest{} }
 func (*DrainNodeRequest) ProtoMessage() {}
 
 type DrainNodeResponse struct {
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
 }
 
 func (m *DrainNodeResponse) Reset()      { *m = DrainNodeResponse{} }
 func (*DrainNodeResponse) ProtoMessage() {}
 
 type CreateTaskRequest struct {
-	Spec       *Spec             `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
+	Spec *Spec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *CreateTaskRequest) Reset()      { *m = CreateTaskRequest{} }
 func (*CreateTaskRequest) ProtoMessage() {}
 
 type CreateTaskResponse struct {
-	TaskId     string            `protobuf:"bytes,1,opt,name=task_id,proto3" json:"task_id,omitempty"`
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
+	TaskId string `protobuf:"bytes,1,opt,name=task_id,proto3" json:"task_id,omitempty"`
 }
 
 func (m *CreateTaskResponse) Reset()      { *m = CreateTaskResponse{} }
 func (*CreateTaskResponse) ProtoMessage() {}
 
 type GetTasksRequest struct {
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
-	TaskIds    []string          `protobuf:"bytes,1,rep,name=task_ids" json:"task_ids,omitempty"`
+	TaskIds []string `protobuf:"bytes,1,rep,name=task_ids" json:"task_ids,omitempty"`
 }
 
 func (m *GetTasksRequest) Reset()      { *m = GetTasksRequest{} }
 func (*GetTasksRequest) ProtoMessage() {}
 
 type GetTasksResponse struct {
-	Tasks      []*Task           `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
+	Tasks []*Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
 }
 
 func (m *GetTasksResponse) Reset()      { *m = GetTasksResponse{} }
 func (*GetTasksResponse) ProtoMessage() {}
 
 type RemoveTaskRequest struct {
-	TaskId     string            `protobuf:"bytes,1,opt,name=task_id,proto3" json:"task_id,omitempty"`
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
+	TaskId string `protobuf:"bytes,1,opt,name=task_id,proto3" json:"task_id,omitempty"`
 }
 
 func (m *RemoveTaskRequest) Reset()      { *m = RemoveTaskRequest{} }
 func (*RemoveTaskRequest) ProtoMessage() {}
 
 type RemoveTaskResponse struct {
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
 }
 
 func (m *RemoveTaskResponse) Reset()      { *m = RemoveTaskResponse{} }
 func (*RemoveTaskResponse) ProtoMessage() {}
 
 type ListTasksRequest struct {
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
 }
 
 func (m *ListTasksRequest) Reset()      { *m = ListTasksRequest{} }
 func (*ListTasksRequest) ProtoMessage() {}
 
 type ListTasksResponse struct {
-	Tasks      []*Task           `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
+	Tasks []*Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
 }
 
 func (m *ListTasksResponse) Reset()      { *m = ListTasksResponse{} }
 func (*ListTasksResponse) ProtoMessage() {}
 
 type CreateJobRequest struct {
-	Spec       *Spec             `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
+	Spec *Spec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *CreateJobRequest) Reset()      { *m = CreateJobRequest{} }
 func (*CreateJobRequest) ProtoMessage() {}
 
 type CreateJobResponse struct {
-	JobId      string            `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
+	JobId string `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
 }
 
 func (m *CreateJobResponse) Reset()      { *m = CreateJobResponse{} }
 func (*CreateJobResponse) ProtoMessage() {}
 
 type GetJobRequest struct {
-	JobId      string            `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
+	JobId string `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
 }
 
 func (m *GetJobRequest) Reset()      { *m = GetJobRequest{} }
 func (*GetJobRequest) ProtoMessage() {}
 
 type GetJobResponse struct {
-	Job        *Job              `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
+	Job *Job `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
 }
 
 func (m *GetJobResponse) Reset()      { *m = GetJobResponse{} }
 func (*GetJobResponse) ProtoMessage() {}
 
 type UpdateJobRequest struct {
-	JobId      string            `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
-	Spec       *Spec             `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
+	JobId string `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
+	Spec  *Spec  `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *UpdateJobRequest) Reset()      { *m = UpdateJobRequest{} }
 func (*UpdateJobRequest) ProtoMessage() {}
 
 type UpdateJobResponse struct {
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
 }
 
 func (m *UpdateJobResponse) Reset()      { *m = UpdateJobResponse{} }
 func (*UpdateJobResponse) ProtoMessage() {}
 
 type RemoveJobRequest struct {
-	JobId      string            `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
+	JobId string `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
 }
 
 func (m *RemoveJobRequest) Reset()      { *m = RemoveJobRequest{} }
 func (*RemoveJobRequest) ProtoMessage() {}
 
 type RemoveJobResponse struct {
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
 }
 
 func (m *RemoveJobResponse) Reset()      { *m = RemoveJobResponse{} }
 func (*RemoveJobResponse) ProtoMessage() {}
 
 type ListJobsRequest struct {
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
 }
 
 func (m *ListJobsRequest) Reset()      { *m = ListJobsRequest{} }
 func (*ListJobsRequest) ProtoMessage() {}
 
 type ListJobsResponse struct {
-	Jobs       []*Job            `protobuf:"bytes,1,rep,name=jobs" json:"jobs,omitempty"`
-	Parameters *ResultParameters `protobuf:"bytes,64,opt,name=parameters" json:"parameters,omitempty"`
+	Jobs []*Job `protobuf:"bytes,1,rep,name=jobs" json:"jobs,omitempty"`
 }
 
 func (m *ListJobsResponse) Reset()      { *m = ListJobsResponse{} }
@@ -226,11 +204,8 @@ func (this *ListNodesRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 5)
+	s := make([]string, 0, 4)
 	s = append(s, "&api.ListNodesRequest{")
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
-	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -238,13 +213,10 @@ func (this *ListNodesResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.ListNodesResponse{")
 	if this.Nodes != nil {
 		s = append(s, "Nodes: "+fmt.Sprintf("%#v", this.Nodes)+",\n")
-	}
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -253,13 +225,10 @@ func (this *DrainNodeRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 7)
+	s := make([]string, 0, 6)
 	s = append(s, "&api.DrainNodeRequest{")
 	s = append(s, "NodeId: "+fmt.Sprintf("%#v", this.NodeId)+",\n")
 	s = append(s, "Drain: "+fmt.Sprintf("%#v", this.Drain)+",\n")
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
-	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -267,11 +236,8 @@ func (this *DrainNodeResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 5)
+	s := make([]string, 0, 4)
 	s = append(s, "&api.DrainNodeResponse{")
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
-	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -279,13 +245,10 @@ func (this *CreateTaskRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.CreateTaskRequest{")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
-	}
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -294,12 +257,9 @@ func (this *CreateTaskResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.CreateTaskResponse{")
 	s = append(s, "TaskId: "+fmt.Sprintf("%#v", this.TaskId)+",\n")
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
-	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -307,11 +267,8 @@ func (this *GetTasksRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.GetTasksRequest{")
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
-	}
 	s = append(s, "TaskIds: "+fmt.Sprintf("%#v", this.TaskIds)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -320,13 +277,10 @@ func (this *GetTasksResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.GetTasksResponse{")
 	if this.Tasks != nil {
 		s = append(s, "Tasks: "+fmt.Sprintf("%#v", this.Tasks)+",\n")
-	}
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -335,12 +289,9 @@ func (this *RemoveTaskRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.RemoveTaskRequest{")
 	s = append(s, "TaskId: "+fmt.Sprintf("%#v", this.TaskId)+",\n")
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
-	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -348,11 +299,8 @@ func (this *RemoveTaskResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 5)
+	s := make([]string, 0, 4)
 	s = append(s, "&api.RemoveTaskResponse{")
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
-	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -360,11 +308,8 @@ func (this *ListTasksRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 5)
+	s := make([]string, 0, 4)
 	s = append(s, "&api.ListTasksRequest{")
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
-	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -372,13 +317,10 @@ func (this *ListTasksResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.ListTasksResponse{")
 	if this.Tasks != nil {
 		s = append(s, "Tasks: "+fmt.Sprintf("%#v", this.Tasks)+",\n")
-	}
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -387,13 +329,10 @@ func (this *CreateJobRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.CreateJobRequest{")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
-	}
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -402,12 +341,9 @@ func (this *CreateJobResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.CreateJobResponse{")
 	s = append(s, "JobId: "+fmt.Sprintf("%#v", this.JobId)+",\n")
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
-	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -415,12 +351,9 @@ func (this *GetJobRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.GetJobRequest{")
 	s = append(s, "JobId: "+fmt.Sprintf("%#v", this.JobId)+",\n")
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
-	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -428,13 +361,10 @@ func (this *GetJobResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.GetJobResponse{")
 	if this.Job != nil {
 		s = append(s, "Job: "+fmt.Sprintf("%#v", this.Job)+",\n")
-	}
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -443,14 +373,11 @@ func (this *UpdateJobRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 7)
+	s := make([]string, 0, 6)
 	s = append(s, "&api.UpdateJobRequest{")
 	s = append(s, "JobId: "+fmt.Sprintf("%#v", this.JobId)+",\n")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
-	}
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -459,11 +386,8 @@ func (this *UpdateJobResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 5)
+	s := make([]string, 0, 4)
 	s = append(s, "&api.UpdateJobResponse{")
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
-	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -471,12 +395,9 @@ func (this *RemoveJobRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.RemoveJobRequest{")
 	s = append(s, "JobId: "+fmt.Sprintf("%#v", this.JobId)+",\n")
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
-	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -484,11 +405,8 @@ func (this *RemoveJobResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 5)
+	s := make([]string, 0, 4)
 	s = append(s, "&api.RemoveJobResponse{")
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
-	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -496,11 +414,8 @@ func (this *ListJobsRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 5)
+	s := make([]string, 0, 4)
 	s = append(s, "&api.ListJobsRequest{")
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
-	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -508,13 +423,10 @@ func (this *ListJobsResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.ListJobsResponse{")
 	if this.Jobs != nil {
 		s = append(s, "Jobs: "+fmt.Sprintf("%#v", this.Jobs)+",\n")
-	}
-	if this.Parameters != nil {
-		s = append(s, "Parameters: "+fmt.Sprintf("%#v", this.Parameters)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -891,18 +803,6 @@ func (m *ListNodesRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n1, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
 	return i, nil
 }
 
@@ -932,18 +832,6 @@ func (m *ListNodesResponse) MarshalTo(data []byte) (int, error) {
 			}
 			i += n
 		}
-	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n2, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n2
 	}
 	return i, nil
 }
@@ -979,18 +867,6 @@ func (m *DrainNodeRequest) MarshalTo(data []byte) (int, error) {
 		}
 		i++
 	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n3, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n3
-	}
 	return i, nil
 }
 
@@ -1009,18 +885,6 @@ func (m *DrainNodeResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n4, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n4
-	}
 	return i, nil
 }
 
@@ -1043,23 +907,11 @@ func (m *CreateTaskRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Spec.Size()))
-		n5, err := m.Spec.MarshalTo(data[i:])
+		n1, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n5
-	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n6, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n6
+		i += n1
 	}
 	return i, nil
 }
@@ -1084,18 +936,6 @@ func (m *CreateTaskResponse) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintSwarm(data, i, uint64(len(m.TaskId)))
 		i += copy(data[i:], m.TaskId)
-	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n7, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n7
 	}
 	return i, nil
 }
@@ -1130,18 +970,6 @@ func (m *GetTasksRequest) MarshalTo(data []byte) (int, error) {
 			i += copy(data[i:], s)
 		}
 	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n8, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n8
-	}
 	return i, nil
 }
 
@@ -1172,18 +1000,6 @@ func (m *GetTasksResponse) MarshalTo(data []byte) (int, error) {
 			i += n
 		}
 	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n9, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n9
-	}
 	return i, nil
 }
 
@@ -1208,18 +1024,6 @@ func (m *RemoveTaskRequest) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintSwarm(data, i, uint64(len(m.TaskId)))
 		i += copy(data[i:], m.TaskId)
 	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n10, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n10
-	}
 	return i, nil
 }
 
@@ -1238,18 +1042,6 @@ func (m *RemoveTaskResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n11, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n11
-	}
 	return i, nil
 }
 
@@ -1268,18 +1060,6 @@ func (m *ListTasksRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n12, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n12
-	}
 	return i, nil
 }
 
@@ -1310,18 +1090,6 @@ func (m *ListTasksResponse) MarshalTo(data []byte) (int, error) {
 			i += n
 		}
 	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n13, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n13
-	}
 	return i, nil
 }
 
@@ -1344,23 +1112,11 @@ func (m *CreateJobRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Spec.Size()))
-		n14, err := m.Spec.MarshalTo(data[i:])
+		n2, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n14
-	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n15, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n15
+		i += n2
 	}
 	return i, nil
 }
@@ -1386,18 +1142,6 @@ func (m *CreateJobResponse) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintSwarm(data, i, uint64(len(m.JobId)))
 		i += copy(data[i:], m.JobId)
 	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n16, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n16
-	}
 	return i, nil
 }
 
@@ -1422,18 +1166,6 @@ func (m *GetJobRequest) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintSwarm(data, i, uint64(len(m.JobId)))
 		i += copy(data[i:], m.JobId)
 	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n17, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n17
-	}
 	return i, nil
 }
 
@@ -1456,23 +1188,11 @@ func (m *GetJobResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Job.Size()))
-		n18, err := m.Job.MarshalTo(data[i:])
+		n3, err := m.Job.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n18
-	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n19, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n19
+		i += n3
 	}
 	return i, nil
 }
@@ -1502,23 +1222,11 @@ func (m *UpdateJobRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Spec.Size()))
-		n20, err := m.Spec.MarshalTo(data[i:])
+		n4, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n20
-	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n21, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n21
+		i += n4
 	}
 	return i, nil
 }
@@ -1538,18 +1246,6 @@ func (m *UpdateJobResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n22, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n22
-	}
 	return i, nil
 }
 
@@ -1574,18 +1270,6 @@ func (m *RemoveJobRequest) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintSwarm(data, i, uint64(len(m.JobId)))
 		i += copy(data[i:], m.JobId)
 	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n23, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n23
-	}
 	return i, nil
 }
 
@@ -1604,18 +1288,6 @@ func (m *RemoveJobResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n24, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n24
-	}
 	return i, nil
 }
 
@@ -1634,18 +1306,6 @@ func (m *ListJobsRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n25, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n25
-	}
 	return i, nil
 }
 
@@ -1675,18 +1335,6 @@ func (m *ListJobsResponse) MarshalTo(data []byte) (int, error) {
 			}
 			i += n
 		}
-	}
-	if m.Parameters != nil {
-		data[i] = 0x82
-		i++
-		data[i] = 0x4
-		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Parameters.Size()))
-		n26, err := m.Parameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n26
 	}
 	return i, nil
 }
@@ -1721,10 +1369,6 @@ func encodeVarintSwarm(data []byte, offset int, v uint64) int {
 func (m *ListNodesRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
@@ -1736,10 +1380,6 @@ func (m *ListNodesResponse) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovSwarm(uint64(l))
 		}
-	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
 	}
 	return n
 }
@@ -1754,20 +1394,12 @@ func (m *DrainNodeRequest) Size() (n int) {
 	if m.Drain {
 		n += 2
 	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
 func (m *DrainNodeResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
@@ -1778,10 +1410,6 @@ func (m *CreateTaskRequest) Size() (n int) {
 		l = m.Spec.Size()
 		n += 1 + l + sovSwarm(uint64(l))
 	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
@@ -1791,10 +1419,6 @@ func (m *CreateTaskResponse) Size() (n int) {
 	l = len(m.TaskId)
 	if l > 0 {
 		n += 1 + l + sovSwarm(uint64(l))
-	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
 	}
 	return n
 }
@@ -1808,10 +1432,6 @@ func (m *GetTasksRequest) Size() (n int) {
 			n += 1 + l + sovSwarm(uint64(l))
 		}
 	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
@@ -1824,10 +1444,6 @@ func (m *GetTasksResponse) Size() (n int) {
 			n += 1 + l + sovSwarm(uint64(l))
 		}
 	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
@@ -1838,30 +1454,18 @@ func (m *RemoveTaskRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovSwarm(uint64(l))
 	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
 func (m *RemoveTaskResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
 func (m *ListTasksRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
@@ -1874,10 +1478,6 @@ func (m *ListTasksResponse) Size() (n int) {
 			n += 1 + l + sovSwarm(uint64(l))
 		}
 	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
@@ -1887,10 +1487,6 @@ func (m *CreateJobRequest) Size() (n int) {
 	if m.Spec != nil {
 		l = m.Spec.Size()
 		n += 1 + l + sovSwarm(uint64(l))
-	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
 	}
 	return n
 }
@@ -1902,10 +1498,6 @@ func (m *CreateJobResponse) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovSwarm(uint64(l))
 	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
@@ -1916,10 +1508,6 @@ func (m *GetJobRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovSwarm(uint64(l))
 	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
@@ -1929,10 +1517,6 @@ func (m *GetJobResponse) Size() (n int) {
 	if m.Job != nil {
 		l = m.Job.Size()
 		n += 1 + l + sovSwarm(uint64(l))
-	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
 	}
 	return n
 }
@@ -1948,20 +1532,12 @@ func (m *UpdateJobRequest) Size() (n int) {
 		l = m.Spec.Size()
 		n += 1 + l + sovSwarm(uint64(l))
 	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
 func (m *UpdateJobResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
@@ -1972,30 +1548,18 @@ func (m *RemoveJobRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovSwarm(uint64(l))
 	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
 func (m *RemoveJobResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
 func (m *ListJobsRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
-	}
 	return n
 }
 
@@ -2007,10 +1571,6 @@ func (m *ListJobsResponse) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovSwarm(uint64(l))
 		}
-	}
-	if m.Parameters != nil {
-		l = m.Parameters.Size()
-		n += 2 + l + sovSwarm(uint64(l))
 	}
 	return n
 }
@@ -2033,7 +1593,6 @@ func (this *ListNodesRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ListNodesRequest{`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2044,7 +1603,6 @@ func (this *ListNodesResponse) String() string {
 	}
 	s := strings.Join([]string{`&ListNodesResponse{`,
 		`Nodes:` + strings.Replace(fmt.Sprintf("%v", this.Nodes), "Node", "Node", 1) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2056,7 +1614,6 @@ func (this *DrainNodeRequest) String() string {
 	s := strings.Join([]string{`&DrainNodeRequest{`,
 		`NodeId:` + fmt.Sprintf("%v", this.NodeId) + `,`,
 		`Drain:` + fmt.Sprintf("%v", this.Drain) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2066,7 +1623,6 @@ func (this *DrainNodeResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&DrainNodeResponse{`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2077,7 +1633,6 @@ func (this *CreateTaskRequest) String() string {
 	}
 	s := strings.Join([]string{`&CreateTaskRequest{`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "Spec", "Spec", 1) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2088,7 +1643,6 @@ func (this *CreateTaskResponse) String() string {
 	}
 	s := strings.Join([]string{`&CreateTaskResponse{`,
 		`TaskId:` + fmt.Sprintf("%v", this.TaskId) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2099,7 +1653,6 @@ func (this *GetTasksRequest) String() string {
 	}
 	s := strings.Join([]string{`&GetTasksRequest{`,
 		`TaskIds:` + fmt.Sprintf("%v", this.TaskIds) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2110,7 +1663,6 @@ func (this *GetTasksResponse) String() string {
 	}
 	s := strings.Join([]string{`&GetTasksResponse{`,
 		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "Task", 1) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2121,7 +1673,6 @@ func (this *RemoveTaskRequest) String() string {
 	}
 	s := strings.Join([]string{`&RemoveTaskRequest{`,
 		`TaskId:` + fmt.Sprintf("%v", this.TaskId) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2131,7 +1682,6 @@ func (this *RemoveTaskResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RemoveTaskResponse{`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2141,7 +1691,6 @@ func (this *ListTasksRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ListTasksRequest{`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2152,7 +1701,6 @@ func (this *ListTasksResponse) String() string {
 	}
 	s := strings.Join([]string{`&ListTasksResponse{`,
 		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "Task", 1) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2163,7 +1711,6 @@ func (this *CreateJobRequest) String() string {
 	}
 	s := strings.Join([]string{`&CreateJobRequest{`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "Spec", "Spec", 1) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2174,7 +1721,6 @@ func (this *CreateJobResponse) String() string {
 	}
 	s := strings.Join([]string{`&CreateJobResponse{`,
 		`JobId:` + fmt.Sprintf("%v", this.JobId) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2185,7 +1731,6 @@ func (this *GetJobRequest) String() string {
 	}
 	s := strings.Join([]string{`&GetJobRequest{`,
 		`JobId:` + fmt.Sprintf("%v", this.JobId) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2196,7 +1741,6 @@ func (this *GetJobResponse) String() string {
 	}
 	s := strings.Join([]string{`&GetJobResponse{`,
 		`Job:` + strings.Replace(fmt.Sprintf("%v", this.Job), "Job", "Job", 1) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2208,7 +1752,6 @@ func (this *UpdateJobRequest) String() string {
 	s := strings.Join([]string{`&UpdateJobRequest{`,
 		`JobId:` + fmt.Sprintf("%v", this.JobId) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "Spec", "Spec", 1) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2218,7 +1761,6 @@ func (this *UpdateJobResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&UpdateJobResponse{`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2229,7 +1771,6 @@ func (this *RemoveJobRequest) String() string {
 	}
 	s := strings.Join([]string{`&RemoveJobRequest{`,
 		`JobId:` + fmt.Sprintf("%v", this.JobId) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2239,7 +1780,6 @@ func (this *RemoveJobResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RemoveJobResponse{`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2249,7 +1789,6 @@ func (this *ListJobsRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ListJobsRequest{`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2260,7 +1799,6 @@ func (this *ListJobsResponse) String() string {
 	}
 	s := strings.Join([]string{`&ListJobsResponse{`,
 		`Jobs:` + strings.Replace(fmt.Sprintf("%v", this.Jobs), "Job", "Job", 1) + `,`,
-		`Parameters:` + strings.Replace(fmt.Sprintf("%v", this.Parameters), "ResultParameters", "ResultParameters", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2302,39 +1840,6 @@ func (m *ListNodesRequest) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: ListNodesRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -2413,39 +1918,6 @@ func (m *ListNodesResponse) Unmarshal(data []byte) error {
 			}
 			m.Nodes = append(m.Nodes, &Node{})
 			if err := m.Nodes[len(m.Nodes)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2548,39 +2020,6 @@ func (m *DrainNodeRequest) Unmarshal(data []byte) error {
 				}
 			}
 			m.Drain = bool(v != 0)
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -2631,39 +2070,6 @@ func (m *DrainNodeResponse) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: DrainNodeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -2747,39 +2153,6 @@ func (m *CreateTaskRequest) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -2859,39 +2232,6 @@ func (m *CreateTaskResponse) Unmarshal(data []byte) error {
 			}
 			m.TaskId = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -2970,39 +2310,6 @@ func (m *GetTasksRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.TaskIds = append(m.TaskIds, string(data[iNdEx:postIndex]))
-			iNdEx = postIndex
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3085,39 +2392,6 @@ func (m *GetTasksResponse) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -3197,39 +2471,6 @@ func (m *RemoveTaskRequest) Unmarshal(data []byte) error {
 			}
 			m.TaskId = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -3280,39 +2521,6 @@ func (m *RemoveTaskResponse) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: RemoveTaskResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -3363,39 +2571,6 @@ func (m *ListTasksRequest) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: ListTasksRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -3474,39 +2649,6 @@ func (m *ListTasksResponse) Unmarshal(data []byte) error {
 			}
 			m.Tasks = append(m.Tasks, &Task{})
 			if err := m.Tasks[len(m.Tasks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3593,39 +2735,6 @@ func (m *CreateJobRequest) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -3705,39 +2814,6 @@ func (m *CreateJobResponse) Unmarshal(data []byte) error {
 			}
 			m.JobId = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -3816,39 +2892,6 @@ func (m *GetJobRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.JobId = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3930,39 +2973,6 @@ func (m *GetJobResponse) Unmarshal(data []byte) error {
 				m.Job = &Job{}
 			}
 			if err := m.Job.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -4078,39 +3088,6 @@ func (m *UpdateJobRequest) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -4161,39 +3138,6 @@ func (m *UpdateJobResponse) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: UpdateJobResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -4273,39 +3217,6 @@ func (m *RemoveJobRequest) Unmarshal(data []byte) error {
 			}
 			m.JobId = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -4356,39 +3267,6 @@ func (m *RemoveJobResponse) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: RemoveJobResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -4439,39 +3317,6 @@ func (m *ListJobsRequest) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: ListJobsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -4550,39 +3395,6 @@ func (m *ListJobsResponse) Unmarshal(data []byte) error {
 			}
 			m.Jobs = append(m.Jobs, &Job{})
 			if err := m.Jobs[len(m.Jobs)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 64:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Parameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Parameters == nil {
-				m.Parameters = &ResultParameters{}
-			}
-			if err := m.Parameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

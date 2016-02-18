@@ -2,6 +2,56 @@
 // source: types.proto
 // DO NOT EDIT!
 
+/*
+	Package api is a generated protocol buffer package.
+
+	It is generated from these files:
+		types.proto
+		swarm.proto
+		master.proto
+		agent.proto
+
+	It has these top-level messages:
+		Node
+		Meta
+		ImageSpec
+		ContainerSpec
+		Spec
+		TaskStatus
+		Task
+		Job
+		ListNodesRequest
+		ListNodesResponse
+		DrainNodeRequest
+		DrainNodeResponse
+		CreateTaskRequest
+		CreateTaskResponse
+		GetTasksRequest
+		GetTasksResponse
+		RemoveTaskRequest
+		RemoveTaskResponse
+		ListTasksRequest
+		ListTasksResponse
+		CreateJobRequest
+		CreateJobResponse
+		GetJobRequest
+		GetJobResponse
+		UpdateJobRequest
+		UpdateJobResponse
+		RemoveJobRequest
+		RemoveJobResponse
+		ListJobsRequest
+		ListJobsResponse
+		Update
+		RegisterNodeRequest
+		RegisterNodeResponse
+		UpdateNodeStatusRequest
+		UpdateNodeStatusResponse
+		UpdateTaskStatusRequest
+		UpdateTaskStatusResponse
+		WatchTasksRequest
+		WatchTasksResponse
+*/
 package api
 
 import proto "github.com/gogo/protobuf/proto"
@@ -119,7 +169,10 @@ func (m *Meta) Reset()      { *m = Meta{} }
 func (*Meta) ProtoMessage() {}
 
 type ImageSpec struct {
-	Meta *Meta `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
+	// reference is a docker image reference. This can include a rpository, tag
+	// or be fully qualified witha digest. The format is specified in the
+	// distribution/reference package.
+	Reference string `protobuf:"bytes,1,opt,name=reference,proto3" json:"reference,omitempty"`
 	// Resolved is the image resolved by the swarm cluster. This may be
 	// identical, depending on the name provided in meta. For example, the name
 	// field may be "redis", whereas this field would specify the exact hash,
@@ -135,42 +188,10 @@ func (*ImageSpec) ProtoMessage() {}
 type ContainerSpec struct {
 	Meta  *Meta      `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
 	Image *ImageSpec `protobuf:"bytes,2,opt,name=image" json:"image,omitempty"`
-	// Config specifies the swarm support runtime configuration. This will take
-	// on many aspects of the existing Container config and Host config,
-	// restricted to swarm support fields.
-	Config *ContainerConfig `protobuf:"bytes,3,opt,name=config" json:"config,omitempty"`
 }
 
 func (m *ContainerSpec) Reset()      { *m = ContainerSpec{} }
 func (*ContainerSpec) ProtoMessage() {}
-
-type ContainerConfig struct {
-}
-
-func (m *ContainerConfig) Reset()      { *m = ContainerConfig{} }
-func (*ContainerConfig) ProtoMessage() {}
-
-// Bundle is a reserved history type from the POC. We have this here to test
-// the concept of multi-dispatch tasks, which is a design goal.
-type Bundle struct {
-	Meta *Meta `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
-	// remote specifies a URL to fetch task bundle data. This can either
-	// be a git repository or blobster repository.
-	Remote     string `protobuf:"bytes,2,opt,name=remote,proto3" json:"remote,omitempty"`
-	Bundle     string `protobuf:"bytes,3,opt,name=bundle,proto3" json:"bundle,omitempty"`
-	Entrypoint string `protobuf:"bytes,4,opt,name=entrypoint,proto3" json:"entrypoint,omitempty"`
-}
-
-func (m *Bundle) Reset()      { *m = Bundle{} }
-func (*Bundle) ProtoMessage() {}
-
-// PODSpec defines a specification for a pod bundle.
-type PODSpec struct {
-	Bundle *Bundle `protobuf:"bytes,1,opt,name=bundle" json:"bundle,omitempty"`
-}
-
-func (m *PODSpec) Reset()      { *m = PODSpec{} }
-func (*PODSpec) ProtoMessage() {}
 
 // Spec defines the properties of a Job. As tasks are created, they gain the
 // Job specification.
@@ -192,7 +213,6 @@ func (*Spec) ProtoMessage() {}
 type Spec_Source struct {
 	// Types that are valid to be assigned to Source:
 	//	*Spec_Source_Container
-	//	*Spec_Source_Pod
 	Source isSpec_Source_Source `protobuf_oneof:"source"`
 }
 
@@ -208,12 +228,8 @@ type isSpec_Source_Source interface {
 type Spec_Source_Container struct {
 	Container *ContainerSpec `protobuf:"bytes,1,opt,name=container,oneof"`
 }
-type Spec_Source_Pod struct {
-	Pod *PODSpec `protobuf:"bytes,2,opt,name=pod,oneof"`
-}
 
 func (*Spec_Source_Container) isSpec_Source_Source() {}
-func (*Spec_Source_Pod) isSpec_Source_Source()       {}
 
 func (m *Spec_Source) GetSource() isSpec_Source_Source {
 	if m != nil {
@@ -229,18 +245,10 @@ func (m *Spec_Source) GetContainer() *ContainerSpec {
 	return nil
 }
 
-func (m *Spec_Source) GetPod() *PODSpec {
-	if x, ok := m.GetSource().(*Spec_Source_Pod); ok {
-		return x.Pod
-	}
-	return nil
-}
-
 // XXX_OneofFuncs is for the internal use of the proto package.
 func (*Spec_Source) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
 	return _Spec_Source_OneofMarshaler, _Spec_Source_OneofUnmarshaler, []interface{}{
 		(*Spec_Source_Container)(nil),
-		(*Spec_Source_Pod)(nil),
 	}
 }
 
@@ -251,11 +259,6 @@ func _Spec_Source_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 	case *Spec_Source_Container:
 		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Container); err != nil {
-			return err
-		}
-	case *Spec_Source_Pod:
-		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Pod); err != nil {
 			return err
 		}
 	case nil:
@@ -275,14 +278,6 @@ func _Spec_Source_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Bu
 		msg := new(ContainerSpec)
 		err := b.DecodeMessage(msg)
 		m.Source = &Spec_Source_Container{msg}
-		return true, err
-	case 2: // source.pod
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(PODSpec)
-		err := b.DecodeMessage(msg)
-		m.Source = &Spec_Source_Pod{msg}
 		return true, err
 	default:
 		return false, nil
@@ -508,9 +503,6 @@ func init() {
 	proto.RegisterType((*Meta)(nil), "api.Meta")
 	proto.RegisterType((*ImageSpec)(nil), "api.ImageSpec")
 	proto.RegisterType((*ContainerSpec)(nil), "api.ContainerSpec")
-	proto.RegisterType((*ContainerConfig)(nil), "api.ContainerConfig")
-	proto.RegisterType((*Bundle)(nil), "api.Bundle")
-	proto.RegisterType((*PODSpec)(nil), "api.PODSpec")
 	proto.RegisterType((*Spec)(nil), "api.Spec")
 	proto.RegisterType((*Spec_Source)(nil), "api.Spec.Source")
 	proto.RegisterType((*Spec_ServiceJob)(nil), "api.Spec.ServiceJob")
@@ -566,9 +558,7 @@ func (this *ImageSpec) GoString() string {
 	}
 	s := make([]string, 0, 6)
 	s = append(s, "&api.ImageSpec{")
-	if this.Meta != nil {
-		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
-	}
+	s = append(s, "Reference: "+fmt.Sprintf("%#v", this.Reference)+",\n")
 	s = append(s, "Resolved: "+fmt.Sprintf("%#v", this.Resolved)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -577,52 +567,13 @@ func (this *ContainerSpec) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 7)
+	s := make([]string, 0, 6)
 	s = append(s, "&api.ContainerSpec{")
 	if this.Meta != nil {
 		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
 	}
 	if this.Image != nil {
 		s = append(s, "Image: "+fmt.Sprintf("%#v", this.Image)+",\n")
-	}
-	if this.Config != nil {
-		s = append(s, "Config: "+fmt.Sprintf("%#v", this.Config)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ContainerConfig) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&api.ContainerConfig{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Bundle) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 8)
-	s = append(s, "&api.Bundle{")
-	if this.Meta != nil {
-		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
-	}
-	s = append(s, "Remote: "+fmt.Sprintf("%#v", this.Remote)+",\n")
-	s = append(s, "Bundle: "+fmt.Sprintf("%#v", this.Bundle)+",\n")
-	s = append(s, "Entrypoint: "+fmt.Sprintf("%#v", this.Entrypoint)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *PODSpec) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.PODSpec{")
-	if this.Bundle != nil {
-		s = append(s, "Bundle: "+fmt.Sprintf("%#v", this.Bundle)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -649,7 +600,7 @@ func (this *Spec_Source) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.Spec_Source{")
 	if this.Source != nil {
 		s = append(s, "Source: "+fmt.Sprintf("%#v", this.Source)+",\n")
@@ -663,14 +614,6 @@ func (this *Spec_Source_Container) GoString() string {
 	}
 	s := strings.Join([]string{`&api.Spec_Source_Container{` +
 		`Container:` + fmt.Sprintf("%#v", this.Container) + `}`}, ", ")
-	return s
-}
-func (this *Spec_Source_Pod) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&api.Spec_Source_Pod{` +
-		`Pod:` + fmt.Sprintf("%#v", this.Pod) + `}`}, ", ")
 	return s
 }
 func (this *Spec_ServiceJob) GoString() string {
@@ -925,15 +868,11 @@ func (m *ImageSpec) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Meta != nil {
+	if len(m.Reference) > 0 {
 		data[i] = 0xa
 		i++
-		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-		n1, err := m.Meta.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
+		i = encodeVarintTypes(data, i, uint64(len(m.Reference)))
+		i += copy(data[i:], m.Reference)
 	}
 	if len(m.Resolved) > 0 {
 		data[i] = 0x12
@@ -963,123 +902,21 @@ func (m *ContainerSpec) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-		n2, err := m.Meta.MarshalTo(data[i:])
+		n1, err := m.Meta.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n2
+		i += n1
 	}
 	if m.Image != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Image.Size()))
-		n3, err := m.Image.MarshalTo(data[i:])
+		n2, err := m.Image.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n3
-	}
-	if m.Config != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Config.Size()))
-		n4, err := m.Config.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n4
-	}
-	return i, nil
-}
-
-func (m *ContainerConfig) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *ContainerConfig) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func (m *Bundle) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Bundle) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Meta != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-		n5, err := m.Meta.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n5
-	}
-	if len(m.Remote) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintTypes(data, i, uint64(len(m.Remote)))
-		i += copy(data[i:], m.Remote)
-	}
-	if len(m.Bundle) > 0 {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintTypes(data, i, uint64(len(m.Bundle)))
-		i += copy(data[i:], m.Bundle)
-	}
-	if len(m.Entrypoint) > 0 {
-		data[i] = 0x22
-		i++
-		i = encodeVarintTypes(data, i, uint64(len(m.Entrypoint)))
-		i += copy(data[i:], m.Entrypoint)
-	}
-	return i, nil
-}
-
-func (m *PODSpec) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *PODSpec) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Bundle != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Bundle.Size()))
-		n6, err := m.Bundle.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n6
+		i += n2
 	}
 	return i, nil
 }
@@ -1103,31 +940,31 @@ func (m *Spec) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-		n7, err := m.Meta.MarshalTo(data[i:])
+		n3, err := m.Meta.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n7
+		i += n3
 	}
 	if m.Source != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Source.Size()))
-		n8, err := m.Source.MarshalTo(data[i:])
+		n4, err := m.Source.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n8
+		i += n4
 	}
 	if m.Orchestration != nil {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Orchestration.Size()))
-		n9, err := m.Orchestration.MarshalTo(data[i:])
+		n5, err := m.Orchestration.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n9
+		i += n5
 	}
 	return i, nil
 }
@@ -1148,11 +985,11 @@ func (m *Spec_Source) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if m.Source != nil {
-		nn10, err := m.Source.MarshalTo(data[i:])
+		nn6, err := m.Source.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn10
+		i += nn6
 	}
 	return i, nil
 }
@@ -1163,25 +1000,11 @@ func (m *Spec_Source_Container) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Container.Size()))
-		n11, err := m.Container.MarshalTo(data[i:])
+		n7, err := m.Container.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n11
-	}
-	return i, nil
-}
-func (m *Spec_Source_Pod) MarshalTo(data []byte) (int, error) {
-	i := 0
-	if m.Pod != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Pod.Size()))
-		n12, err := m.Pod.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n12
+		i += n7
 	}
 	return i, nil
 }
@@ -1288,11 +1111,11 @@ func (m *Spec_Orchestration) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if m.Job != nil {
-		nn13, err := m.Job.MarshalTo(data[i:])
+		nn8, err := m.Job.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn13
+		i += nn8
 	}
 	return i, nil
 }
@@ -1303,11 +1126,11 @@ func (m *Spec_Orchestration_Service) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Service.Size()))
-		n14, err := m.Service.MarshalTo(data[i:])
+		n9, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n14
+		i += n9
 	}
 	return i, nil
 }
@@ -1317,11 +1140,11 @@ func (m *Spec_Orchestration_Batch) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Batch.Size()))
-		n15, err := m.Batch.MarshalTo(data[i:])
+		n10, err := m.Batch.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n15
+		i += n10
 	}
 	return i, nil
 }
@@ -1331,11 +1154,11 @@ func (m *Spec_Orchestration_Global) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Global.Size()))
-		n16, err := m.Global.MarshalTo(data[i:])
+		n11, err := m.Global.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n16
+		i += n11
 	}
 	return i, nil
 }
@@ -1345,11 +1168,11 @@ func (m *Spec_Orchestration_Cron) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x22
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Cron.Size()))
-		n17, err := m.Cron.MarshalTo(data[i:])
+		n12, err := m.Cron.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n17
+		i += n12
 	}
 	return i, nil
 }
@@ -1419,21 +1242,21 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x22
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n18, err := m.Spec.MarshalTo(data[i:])
+		n13, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n18
+		i += n13
 	}
 	if m.Status != nil {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Status.Size()))
-		n19, err := m.Status.MarshalTo(data[i:])
+		n14, err := m.Status.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n19
+		i += n14
 	}
 	if len(m.NetId) > 0 {
 		data[i] = 0x32
@@ -1502,11 +1325,11 @@ func (m *Job) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n20, err := m.Spec.MarshalTo(data[i:])
+		n15, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n20
+		i += n15
 	}
 	return i, nil
 }
@@ -1580,8 +1403,8 @@ func (m *Meta) Size() (n int) {
 func (m *ImageSpec) Size() (n int) {
 	var l int
 	_ = l
-	if m.Meta != nil {
-		l = m.Meta.Size()
+	l = len(m.Reference)
+	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
 	l = len(m.Resolved)
@@ -1600,48 +1423,6 @@ func (m *ContainerSpec) Size() (n int) {
 	}
 	if m.Image != nil {
 		l = m.Image.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	if m.Config != nil {
-		l = m.Config.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-
-func (m *ContainerConfig) Size() (n int) {
-	var l int
-	_ = l
-	return n
-}
-
-func (m *Bundle) Size() (n int) {
-	var l int
-	_ = l
-	if m.Meta != nil {
-		l = m.Meta.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	l = len(m.Remote)
-	if l > 0 {
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	l = len(m.Bundle)
-	if l > 0 {
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	l = len(m.Entrypoint)
-	if l > 0 {
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-
-func (m *PODSpec) Size() (n int) {
-	var l int
-	_ = l
-	if m.Bundle != nil {
-		l = m.Bundle.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
 	return n
@@ -1679,15 +1460,6 @@ func (m *Spec_Source_Container) Size() (n int) {
 	_ = l
 	if m.Container != nil {
 		l = m.Container.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-func (m *Spec_Source_Pod) Size() (n int) {
-	var l int
-	_ = l
-	if m.Pod != nil {
-		l = m.Pod.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
 	return n
@@ -1897,7 +1669,7 @@ func (this *ImageSpec) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ImageSpec{`,
-		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
+		`Reference:` + fmt.Sprintf("%v", this.Reference) + `,`,
 		`Resolved:` + fmt.Sprintf("%v", this.Resolved) + `,`,
 		`}`,
 	}, "")
@@ -1910,39 +1682,6 @@ func (this *ContainerSpec) String() string {
 	s := strings.Join([]string{`&ContainerSpec{`,
 		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
 		`Image:` + strings.Replace(fmt.Sprintf("%v", this.Image), "ImageSpec", "ImageSpec", 1) + `,`,
-		`Config:` + strings.Replace(fmt.Sprintf("%v", this.Config), "ContainerConfig", "ContainerConfig", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ContainerConfig) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ContainerConfig{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Bundle) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Bundle{`,
-		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
-		`Remote:` + fmt.Sprintf("%v", this.Remote) + `,`,
-		`Bundle:` + fmt.Sprintf("%v", this.Bundle) + `,`,
-		`Entrypoint:` + fmt.Sprintf("%v", this.Entrypoint) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *PODSpec) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&PODSpec{`,
-		`Bundle:` + strings.Replace(fmt.Sprintf("%v", this.Bundle), "Bundle", "Bundle", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1975,16 +1714,6 @@ func (this *Spec_Source_Container) String() string {
 	}
 	s := strings.Join([]string{`&Spec_Source_Container{`,
 		`Container:` + strings.Replace(fmt.Sprintf("%v", this.Container), "ContainerSpec", "ContainerSpec", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Spec_Source_Pod) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Spec_Source_Pod{`,
-		`Pod:` + strings.Replace(fmt.Sprintf("%v", this.Pod), "PODSpec", "PODSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2504,9 +2233,9 @@ func (m *ImageSpec) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Meta", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Reference", wireType)
 			}
-			var msglen int
+			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowTypes
@@ -2516,24 +2245,20 @@ func (m *ImageSpec) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if msglen < 0 {
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
 				return ErrInvalidLengthTypes
 			}
-			postIndex := iNdEx + msglen
+			postIndex := iNdEx + intStringLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Meta == nil {
-				m.Meta = &Meta{}
-			}
-			if err := m.Meta.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
+			m.Reference = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -2677,342 +2402,6 @@ func (m *ContainerSpec) Unmarshal(data []byte) error {
 				m.Image = &ImageSpec{}
 			}
 			if err := m.Image.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Config", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Config == nil {
-				m.Config = &ContainerConfig{}
-			}
-			if err := m.Config.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTypes(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *ContainerConfig) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTypes
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: ContainerConfig: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ContainerConfig: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTypes(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *Bundle) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTypes
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Bundle: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Bundle: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Meta", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Meta == nil {
-				m.Meta = &Meta{}
-			}
-			if err := m.Meta.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Remote", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Remote = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Bundle", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Bundle = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Entrypoint", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Entrypoint = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTypes(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *PODSpec) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTypes
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: PODSpec: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: PODSpec: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Bundle", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Bundle == nil {
-				m.Bundle = &Bundle{}
-			}
-			if err := m.Bundle.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3246,38 +2635,6 @@ func (m *Spec_Source) Unmarshal(data []byte) error {
 				return err
 			}
 			m.Source = &Spec_Source_Container{v}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Pod", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &PODSpec{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Source = &Spec_Source_Pod{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
