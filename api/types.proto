@@ -79,12 +79,12 @@ message Spec {
 	}
 	
 	message ServiceJob {
-       int64 instances = 1;
+		int64 instances = 1;
 	}
 
 	message BatchJob {
-       int64 completions = 1;
-       int64 paralellism = 2;
+		int64 completions = 1;
+		int64 paralellism = 2;
 	}
 
 	message GlobalJob {
@@ -97,8 +97,8 @@ message Spec {
 		oneof job {
 			ServiceJob service = 1;
 			BatchJob batch = 2;
-            GlobalJob global = 3;
-            CronJob cron = 4;
+			GlobalJob global = 3;
+			CronJob cron = 4;
 		}
 	}
 	
