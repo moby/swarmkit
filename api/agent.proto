@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package api;
+
+import "types.proto";
+
+// NOTE(stevvooe): Make sure your gopath is appropriately set for this to work
+// correctly.
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+// TODO(stevvooe): Move these options to vanity binary (ie gogoswarm).
+option (gogoproto.gostring_all) = true;
+option (gogoproto.goproto_getters_all) = false;
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) =  true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+// Agent is the API provided by a master group for agents to connect to. Agents
+// connect to this service to receive task assignments and report status.
+//
+// API methods on this service are used only by agent nodes.
+service Agent { // maybe dispatch, al likes this
+	rpc RegisterNode(RegisterNodeRequest) returns (RegisterNodeResponse) {};
+	rpc UpdateNodeStatus(UpdateNodeStatusRequest) returns (UpdateNodeStatusResponse) {};
+	rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse) {};
+	rpc WatchTasks(WatchTasksRequest) returns (stream WatchTasksResponse){};
+}
+
+message RegisterNodeRequest {
+	Node node = 1;
+}
+
+message RegisterNodeResponse {
+	uint64 heartbeat_ttl = 1;
+}
+
+message UpdateNodeStatusRequest {
+	string node_id = 1;
+	NodeStatus status = 2;
+}
+
+message UpdateNodeStatusResponse {
+	uint64 heartbeat_ttl = 1;
+}
+
+message UpdateTaskStatusRequest {
+	// Tasks should contain all statuses for running tasks. Only the status
+	// field must be set. The spec is not required.
+	repeated Task tasks = 1;
+}
+
+message  UpdateTaskStatusResponse{
+	// void
+}
+
+message WatchTasksRequest {
+	// TODO(stevvooe): Really, node id assignments should be done through
+	// headers and sessionization.
+
+	string node_id = 1;
+}
+
+message WatchTasksResponse {
+	// Tasks is the set of tasks that should be running on the node.
+	// Tasks outside of this set running on the node should be terminated.
+	repeated Task tasks = 1;
+}
