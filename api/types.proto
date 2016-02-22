@@ -16,12 +16,20 @@ option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;
 option (gogoproto.unmarshaler_all) = true;
 
-message Node {
-	string id = 1;
-	string name = 2;
-	string ip = 4;
+// Meta is common to all API objects types.
+message Meta {
+	// TODO(stevvooe): Consider an ID here. Probably not.
 
-	NodeStatus status = 3;
+	string name = 1;
+	map<string, string> labels = 2;
+}
+
+message Node {
+	Meta meta = 1;
+	string id = 2;
+	string ip = 3;
+
+	NodeStatus status = 4;
 
 	// TODO(stevvooe): Define resources for the node (ie cpu, memory, local
 	// volumes, etc.).
@@ -37,14 +45,6 @@ enum NodeStatus {
 // TODO(stevvooe): Add QueryOptions types with pagination parameters. Needs to
 // be common to every request type. Define common service primitives in
 // services.proto. Each service should have single proto file.
-
-// Meta is common to all API objects types.
-message Meta {
-	// TODO(stevvooe): Consider an ID here. Probably not.
-
-	string name = 1;
-	map<string, string> labels = 2;
-}
 
 message ImageSpec {
 	// reference is a docker image reference. This can include a rpository, tag
@@ -132,34 +132,36 @@ message TaskStatus {
 
 message Task {
 	string id = 1;
-	string job_id = 2;
+	Meta meta = 2;
+	string job_id = 3;
 
 	// TODO(stevvooe): Consider bringing back assignment, rather than using a
 	// node id field. We like having this concept be first-class. It helps to
 	// reason about storage and consistency.
 
-	string node_id = 3; // if not set, the task is unassigned.
+	string node_id = 4; // if not set, the task is unassigned.
 
 	// NOTE(stevvooe): Spec, status or both may be set, depending on the role
 	// of this message.
 
-	Spec spec = 4;
-	TaskStatus status = 5;
+	Spec spec = 5;
+	TaskStatus status = 6;
 
 	// Networking state
 
 	// TODO(stevvooe): Move these. Not sure where in the model yet. These are
 	// resources allocated to a task, so they may belong here but as a
 	// submessage.
-	string net_id = 6;
-	string ep_id = 7;
-	string ip = 8;
-	string gateway = 9;
-	repeated string driver_info = 10;
+	string net_id = 7;
+	string ep_id = 8;
+	string ip = 9;
+	string gateway = 10;
+	repeated string driver_info = 11;
 }
 
 message Job {
 	string id = 1;
-	Spec spec = 2;
+	Meta meta = 2;
+	Spec spec = 3;
 }
 
