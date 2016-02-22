@@ -13,7 +13,7 @@ import (
 type publisher struct {
 	mu          sync.Mutex
 	buffer      int
-	subscribers map[chan<- interface{}]*subscriber
+	subscribers map[chan<- Event]*subscriber
 	cond        *sync.Cond
 }
 
@@ -25,13 +25,15 @@ type subscriber struct {
 	closed       chan struct{}
 }
 
-type topicFunc func(v interface{}) bool
+type topicFunc func(v Event) bool
 
 // newPublisher creates a new pub/sub publisher to broadcast messages.
+// The channels that it will create for subscriptions will have the buffer
+// size specified by buffer.
 func newPublisher(buffer int) *publisher {
 	pub := &publisher{
 		buffer:      buffer,
-		subscribers: make(map[chan<- interface{}]*subscriber),
+		subscribers: make(map[chan<- Event]*subscriber),
 	}
 	pub.cond = sync.NewCond(&pub.mu)
 
@@ -47,13 +49,13 @@ func (p *publisher) length() int {
 }
 
 // subscribe adds a new subscriber to the publisher returning the channel.
-func (p *publisher) subscribe() chan interface{} {
+func (p *publisher) subscribe() chan Event {
 	return p.subscribeTopic(nil)
 }
 
 // subscribeTopic adds a new subscriber that filters messages sent by a topic.
-func (p *publisher) subscribeTopic(topic topicFunc) chan interface{} {
-	ch := make(chan interface{}, p.buffer)
+func (p *publisher) subscribeTopic(topic topicFunc) chan Event {
+	ch := make(chan Event, p.buffer)
 	sub := &subscriber{
 		topicFunc: topic,
 		closed:    make(chan struct{}),
@@ -70,7 +72,7 @@ func (p *publisher) subscribeTopic(topic topicFunc) chan interface{} {
 }
 
 // evict removes the specified subscriber from receiving any more messages.
-func (p *publisher) evict(ch chan interface{}) {
+func (p *publisher) evict(ch chan Event) {
 	p.mu.Lock()
 	if sub, ok := p.subscribers[ch]; ok {
 		delete(p.subscribers, ch)
@@ -81,7 +83,7 @@ func (p *publisher) evict(ch chan interface{}) {
 }
 
 // publish sends the data in v to all subscribers currently registered with the publisher.
-func (p *publisher) publish(v interface{}) {
+func (p *publisher) publish(v Event) {
 	p.mu.Lock()
 	if len(p.subscribers) == 0 {
 		p.mu.Unlock()
@@ -109,20 +111,12 @@ func (p *publisher) closePublisher() {
 // sendEvents runs in a goroutine as long as the subscriber is watching for
 // events. It waits for new events to be added to the queue and sends those
 // over the subscriber's channel.
-func (p *publisher) sendEvents(ch chan<- interface{}, sub *subscriber) {
+func (p *publisher) sendEvents(ch chan<- Event, sub *subscriber) {
 	p.mu.Lock()
 	for {
-		select {
-		case <-sub.closed:
-			p.mu.Unlock()
-			close(ch)
-			return
-		default:
-		}
-
 		for sub.queuedEvents.Len() > 0 {
 			nextEventElem := sub.queuedEvents.Front()
-			nextEvent := sub.queuedEvents.Remove(nextEventElem)
+			nextEvent := sub.queuedEvents.Remove(nextEventElem).(Event)
 
 			p.mu.Unlock()
 
@@ -138,6 +132,17 @@ func (p *publisher) sendEvents(ch chan<- interface{}, sub *subscriber) {
 
 			p.mu.Lock()
 		}
+
+		// While the mutex was unlocked above, the channel could have
+		// been closed.
+		select {
+		case <-sub.closed:
+			p.mu.Unlock()
+			close(ch)
+			return
+		default:
+		}
+
 		p.cond.Wait()
 	}
 }

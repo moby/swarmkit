@@ -10,7 +10,7 @@ func TestPubSub(t *testing.T) {
 
 	// Create 5 subscribers. Each one only subscribes to events that are
 	// multiples of the subscriber number.
-	var chans [5]chan interface{}
+	var chans [5]chan Event
 	chans[0] = pub.subscribe()
 	for i := 1; i < 5; i++ {
 		chans[i] = pub.subscribeTopic(createTopicFunc(i + 1))
@@ -23,7 +23,7 @@ func TestPubSub(t *testing.T) {
 	// Send 1000 events. This should not hang even though nothing is
 	// reading from the subscriber channels yet.
 	for i := 0; i < 1000; i++ {
-		pub.publish(i)
+		pub.publish(Event{Payload: i})
 	}
 
 	// Make sure the subscribers get all the appropriate
@@ -32,8 +32,8 @@ func TestPubSub(t *testing.T) {
 		for j := 0; j < 5; j++ {
 			if i%(j+1) == 0 {
 				event := <-chans[j]
-				if i != event.(int) {
-					t.Fatalf("event mismatch: chan %d received %d, expected %d", j, event.(int), i)
+				if i != event.Payload.(int) {
+					t.Fatalf("event mismatch: chan %d received %d, expected %d", j, event.Payload.(int), i)
 				}
 			}
 		}
@@ -60,12 +60,12 @@ func TestPubSub(t *testing.T) {
 	}
 
 	// Make sure that a send at this point doesn't blow up.
-	pub.publish(1234)
+	pub.publish(Event{Payload: 1234})
 }
 
 func createTopicFunc(i int) topicFunc {
-	return func(x interface{}) bool {
-		xi := x.(int)
+	return func(x Event) bool {
+		xi := x.Payload.(int)
 		return (xi%i == 0)
 	}
 }
