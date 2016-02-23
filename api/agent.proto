@@ -13,10 +13,21 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 //
 // API methods on this service are used only by agent nodes.
 service Agent { // maybe dispatch, al likes this
+	// RegisterNode is used for registration of node with particular dispatcher.
 	rpc RegisterNode(RegisterNodeRequest) returns (RegisterNodeResponse) {};
+	// Heartbeat is heartbeat method for nodes. It returns new TTL in response.
+	// Node should send new heartbeat earlier than now + TTL, otherwise it will
+	// be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
+	rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse) {};
+	// UpdateNodeStatus updates status of particular node. Nodes can use it
+	// for notifying about graceful shutdowns for example.
 	rpc UpdateNodeStatus(UpdateNodeStatusRequest) returns (UpdateNodeStatusResponse) {};
+	// UpdateTaskStatus updates status of task. Node should send such updates
+	// on every status change of its tasks.
 	rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse) {};
-	rpc WatchTasks(WatchTasksRequest) returns (stream WatchTasksResponse){};
+	// WatchTasks is a stream of tasks for node. It returns full list of tasks
+	// which should be runned on node each time.
+	rpc WatchTasks(WatchTasksRequest) returns (stream WatchTasksResponse) {};
 }
 
 message RegisterNodeRequest {
@@ -24,7 +35,7 @@ message RegisterNodeRequest {
 }
 
 message RegisterNodeResponse {
-	uint64 heartbeat_ttl = 1;
+	uint64 heartbeat_ttl = 1 [(gogoproto.customname) = "HeartbeatTTL"];
 }
 
 message UpdateNodeStatusRequest {
@@ -33,7 +44,7 @@ message UpdateNodeStatusRequest {
 }
 
 message UpdateNodeStatusResponse {
-	uint64 heartbeat_ttl = 1;
+	uint64 heartbeat_ttl = 1 [(gogoproto.customname) = "HeartbeatTTL"];
 }
 
 message UpdateTaskStatusRequest {
@@ -57,4 +68,12 @@ message WatchTasksResponse {
 	// Tasks is the set of tasks that should be running on the node.
 	// Tasks outside of this set running on the node should be terminated.
 	repeated Task tasks = 1;
+}
+
+message HeartbeatRequest {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+}
+
+message HeartbeatResponse {
+	uint64 heartbeat_ttl = 1 [(gogoproto.customname) = "HeartbeatTTL"];
 }

@@ -50,6 +50,8 @@
 		UpdateTaskStatusResponse
 		WatchTasksRequest
 		WatchTasksResponse
+		HeartbeatRequest
+		HeartbeatResponse
 */
 package api
 
