@@ -1,0 +1,27 @@
+machine:
+    environment:
+        GOPATH: "$HOME/.go_workspace"
+        GO15VENDOREXPERIMENT: "1"
+
+# Disable default dependency management.
+# This prevents go dependencies to be automatically installed in order to
+# ensure we are exclusively relying on vendored deps.
+#
+# https://discuss.circleci.com/t/overriding-go-inference-in-the-dependencies-phase/660
+# https://robots.thoughtbot.com/configure-circleci-for-go
+dependencies:
+    pre:
+        - go version
+
+    override:
+        - mkdir -p "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME"
+        - ln -sf "$HOME/$CIRCLE_PROJECT_REPONAME" "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
+
+    post:
+        - go get -u github.com/golang/lint/golint
+
+test:
+    override:
+        # TODO(aluzzardi): Remove this once we have vendoring.
+        - go get -t -d -v ./...
+        - make all
