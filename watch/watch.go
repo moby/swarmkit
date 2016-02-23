@@ -7,19 +7,8 @@ type Queue struct {
 
 // Event is a struct wrapping objects sent through the queue.
 type Event struct {
-	// Tags lists the filter tags that apply to this object. This is not a
-	// map because items are expected to only have a few tags at most (for
-	// example, the type of RPC request they encapsulate).
-	Tags []string
 	// Payload is the actual object being passed through the queue.
 	Payload interface{}
-}
-
-// Filter allows configuration of the items that will be seen by a watcher.
-type Filter struct {
-	// Tags lists the tag strings that this filter will match. It will
-	// match an item that has any of the strings (OR match).
-	Tags []string
 }
 
 // NewQueue creates a new publish/subscribe queue which supports watchers.
@@ -35,26 +24,6 @@ func NewQueue(buffer int) *Queue {
 // queue from this point, until StopWatch is closed.
 func (q *Queue) Watch() chan Event {
 	return q.pub.subscribe()
-}
-
-// FilteredWatch returns a channel which will receive all events published to
-// the queue from this point that match the provided filter. StopWatch will
-// stop the flow of events and close the channel.
-func (q *Queue) FilteredWatch(filter *Filter) chan Event {
-	if filter == nil {
-		return q.pub.subscribe()
-	}
-	return q.pub.subscribeTopic(func(item Event) bool {
-		for _, filterTag := range filter.Tags {
-			for _, itemTag := range item.Tags {
-				if filterTag == itemTag {
-					return true
-				}
-			}
-		}
-
-		return false
-	})
 }
 
 // CallbackWatch returns a channel which will receive all events published to

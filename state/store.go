@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/watch"
 )
 
 var (
@@ -95,4 +96,9 @@ type Store interface {
 	// Names are neither required nor guaranteed to be unique therefore JobsByName
 	// might return more than one node for a given name or no nodes at all.
 	JobsByName(name string) []*api.Job
+
+	// WatchQueue returns the publish/subscribe queue where watchers can
+	// be registered. This is exposed directly to avoid forcing every store
+	// implementation to provide a full set of conveninence functions.
+	WatchQueue() *watch.Queue
 }
