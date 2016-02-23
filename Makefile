@@ -40,8 +40,8 @@ vet: binaries
 
 fmt:
 	@echo "+ $@"
-	@test -z "$$(gofmt -s -l . | grep -v vendor/ | tee /dev/stderr)" || \
-		echo "+ please format Go code with 'gofmt -s'"
+	@test -z "$$(gofmt -s -l . | grep -v vendor/ | grep -v ".pb.go$$" | tee /dev/stderr)" || \
+		(echo "+ please format Go code with 'gofmt -s'" && false)
 
 lint:
 	@echo "+ $@"
