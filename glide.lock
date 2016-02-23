@@ -1,0 +1,36 @@
+hash: 961ae2bc46e5fbcb27705345f7563cecbfb72bf8ee41bda869add37d867d3d04
+updated: 2016-02-22T14:50:14.150311473-08:00
+imports:
+- name: github.com/gogo/protobuf
+  version: 82d16f734d6d871204a3feb1a73cb220cc92574c
+  subpackages:
+  - /gogoproto
+  - proto
+  - protoc-gen-gogo/descriptor
+  - sortkeys
+  - vanity
+  - vanity/command
+- name: github.com/golang/glog
+  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
+- name: github.com/golang/protobuf
+  version: 3c84672111d91bb5ac31719e112f9f7126a0e26e
+- name: golang.org/x/crypto
+  version: 1f22c0103821b9390939b6776727195525381532
+- name: golang.org/x/net
+  version: b6d7b1396ec874c3b00f6c84cd4301a17c56c8ed
+  subpackages:
+  - /context
+- name: golang.org/x/oauth2
+  version: 2cd4472c321b6cba78e029d99f0e7fe51032fd21
+- name: golang.org/x/text
+  version: 07b9a78963006a15c538ec5175243979025fa7a8
+- name: google.golang.org/api
+  version: e6294e63a06b2be522ff3d328d8cacded0b1bd31
+- name: google.golang.org/appengine
+  version: 6a436539be38c296a8075a871cc536686b458371
+  repo: https://google.golang.org/appengine
+- name: google.golang.org/cloud
+  version: 872c736f496c2ba12786bedbb8325576bbdb33cf
+- name: google.golang.org/grpc
+  version: 74d809116547beaa894bd17d4bcc4e16fca41426
+devImports: []

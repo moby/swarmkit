@@ -1,0 +1,14 @@
+package: github.com/docker/swarm-v2
+import:
+- package: github.com/gogo/protobuf
+  subpackages:
+  - /gogoproto
+  - proto
+  - protoc-gen-gogo/descriptor
+  - sortkeys
+  - vanity
+  - vanity/command
+- package: golang.org/x/net
+  subpackages:
+  - /context
+- package: google.golang.org/grpc
