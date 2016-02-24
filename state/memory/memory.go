@@ -1,14 +1,15 @@
-package state
+package memory
 
 import (
 	"sync"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/state"
 )
 
-// MemoryStore is a concurrency-safe, in-memory implementation of the Store
+// Store is a concurrency-safe, in-memory implementation of the Store
 // interface.
-type MemoryStore struct {
+type Store struct {
 	l sync.RWMutex
 
 	nodes map[string]*api.Node
@@ -17,8 +18,8 @@ type MemoryStore struct {
 }
 
 // NewMemoryStore returns an in-memory store.
-func NewMemoryStore() Store {
-	return &MemoryStore{
+func NewMemoryStore() state.Store {
+	return &Store{
 		nodes: make(map[string]*api.Node),
 		tasks: make(map[string]*api.Task),
 		jobs:  make(map[string]*api.Job),
@@ -27,12 +28,12 @@ func NewMemoryStore() Store {
 
 // CreateNode adds a new node to the store.
 // Returns ErrExist if the ID is already taken.
-func (s *MemoryStore) CreateNode(id string, n *api.Node) error {
+func (s *Store) CreateNode(id string, n *api.Node) error {
 	s.l.Lock()
 	defer s.l.Unlock()
 
 	if _, ok := s.nodes[id]; ok {
-		return ErrExist
+		return state.ErrExist
 	}
 
 	s.nodes[id] = n
@@ -41,12 +42,12 @@ func (s *MemoryStore) CreateNode(id string, n *api.Node) error {
 
 // UpdateNode updates an existing node in the store.
 // Returns ErrNotExist if the node doesn't exist.
-func (s *MemoryStore) UpdateNode(id string, n *api.Node) error {
+func (s *Store) UpdateNode(id string, n *api.Node) error {
 	s.l.Lock()
 	defer s.l.Unlock()
 
 	if _, ok := s.nodes[id]; !ok {
-		return ErrNotExist
+		return state.ErrNotExist
 	}
 
 	s.nodes[id] = n
@@ -55,12 +56,12 @@ func (s *MemoryStore) UpdateNode(id string, n *api.Node) error {
 
 // DeleteNode removes a node from the store.
 // Returns ErrNotExist if the node doesn't exist.
-func (s *MemoryStore) DeleteNode(id string) error {
+func (s *Store) DeleteNode(id string) error {
 	s.l.Lock()
 	defer s.l.Unlock()
 
 	if _, ok := s.nodes[id]; !ok {
-		return ErrNotExist
+		return state.ErrNotExist
 	}
 
 	delete(s.nodes, id)
@@ -68,7 +69,7 @@ func (s *MemoryStore) DeleteNode(id string) error {
 }
 
 // Nodes returns all nodes that are present in the store.
-func (s *MemoryStore) Nodes() []*api.Node {
+func (s *Store) Nodes() []*api.Node {
 	s.l.RLock()
 	defer s.l.RUnlock()
 
@@ -82,7 +83,7 @@ func (s *MemoryStore) Nodes() []*api.Node {
 
 // Node looks up a node by ID.
 // Returns nil if the node doesn't exist.
-func (s *MemoryStore) Node(id string) *api.Node {
+func (s *Store) Node(id string) *api.Node {
 	s.l.RLock()
 	defer s.l.RUnlock()
 
@@ -92,7 +93,7 @@ func (s *MemoryStore) Node(id string) *api.Node {
 // NodesByName returns the list of nodes matching a given name.
 // Names are neither required nor guaranteed to be unique therefore NodesByName
 // might return more than one node for a given name or no nodes at all.
-func (s *MemoryStore) NodesByName(name string) []*api.Node {
+func (s *Store) NodesByName(name string) []*api.Node {
 	s.l.RLock()
 	defer s.l.RUnlock()
 
@@ -108,12 +109,12 @@ func (s *MemoryStore) NodesByName(name string) []*api.Node {
 
 // CreateTask adds a new task to the store.
 // Returns ErrExist if the ID is already taken.
-func (s *MemoryStore) CreateTask(id string, t *api.Task) error {
+func (s *Store) CreateTask(id string, t *api.Task) error {
 	s.l.Lock()
 	defer s.l.Unlock()
 
 	if _, ok := s.tasks[id]; ok {
-		return ErrExist
+		return state.ErrExist
 	}
 
 	s.tasks[id] = t
@@ -122,12 +123,12 @@ func (s *MemoryStore) CreateTask(id string, t *api.Task) error {
 
 // UpdateTask updates an existing task in the store.
 // Returns ErrNotExist if the task doesn't exist.
-func (s *MemoryStore) UpdateTask(id string, t *api.Task) error {
+func (s *Store) UpdateTask(id string, t *api.Task) error {
 	s.l.Lock()
 	defer s.l.Unlock()
 
 	if _, ok := s.tasks[id]; !ok {
-		return ErrNotExist
+		return state.ErrNotExist
 	}
 
 	s.tasks[id] = t
@@ -136,12 +137,12 @@ func (s *MemoryStore) UpdateTask(id string, t *api.Task) error {
 
 // DeleteTask removes a task from the store.
 // Returns ErrNotExist if the task doesn't exist.
-func (s *MemoryStore) DeleteTask(id string) error {
+func (s *Store) DeleteTask(id string) error {
 	s.l.Lock()
 	defer s.l.Unlock()
 
 	if _, ok := s.tasks[id]; !ok {
-		return ErrNotExist
+		return state.ErrNotExist
 	}
 
 	delete(s.tasks, id)
@@ -149,7 +150,7 @@ func (s *MemoryStore) DeleteTask(id string) error {
 }
 
 // Tasks returns all tasks that are present in the store.
-func (s *MemoryStore) Tasks() []*api.Task {
+func (s *Store) Tasks() []*api.Task {
 	s.l.RLock()
 	defer s.l.RUnlock()
 
@@ -162,7 +163,7 @@ func (s *MemoryStore) Tasks() []*api.Task {
 
 // Task looks up a task by ID.
 // Returns nil if the task doesn't exist.
-func (s *MemoryStore) Task(id string) *api.Task {
+func (s *Store) Task(id string) *api.Task {
 	s.l.RLock()
 	defer s.l.RUnlock()
 
@@ -172,7 +173,7 @@ func (s *MemoryStore) Task(id string) *api.Task {
 // TasksByName returns the list of tasks matching a given name.
 // Names are neither required nor guaranteed to be unique therefore TasksByName
 // might return more than one task for a given name or no tasks at all.
-func (s *MemoryStore) TasksByName(name string) []*api.Task {
+func (s *Store) TasksByName(name string) []*api.Task {
 	s.l.RLock()
 	defer s.l.RUnlock()
 
@@ -187,7 +188,7 @@ func (s *MemoryStore) TasksByName(name string) []*api.Task {
 }
 
 // TasksByJob returns the list of tasks belonging to a particular Job.
-func (s *MemoryStore) TasksByJob(jobID string) []*api.Task {
+func (s *Store) TasksByJob(jobID string) []*api.Task {
 	s.l.RLock()
 	defer s.l.RUnlock()
 
@@ -202,7 +203,7 @@ func (s *MemoryStore) TasksByJob(jobID string) []*api.Task {
 }
 
 // TasksByNode returns the list of tasks assigned to a particular Node.
-func (s *MemoryStore) TasksByNode(nodeID string) []*api.Task {
+func (s *Store) TasksByNode(nodeID string) []*api.Task {
 	s.l.RLock()
 	defer s.l.RUnlock()
 
@@ -218,12 +219,12 @@ func (s *MemoryStore) TasksByNode(nodeID string) []*api.Task {
 
 // CreateJob adds a new job to the store.
 // Returns ErrExist if the ID is already taken.
-func (s *MemoryStore) CreateJob(id string, j *api.Job) error {
+func (s *Store) CreateJob(id string, j *api.Job) error {
 	s.l.Lock()
 	defer s.l.Unlock()
 
 	if _, ok := s.jobs[id]; ok {
-		return ErrExist
+		return state.ErrExist
 	}
 
 	s.jobs[id] = j
@@ -232,12 +233,12 @@ func (s *MemoryStore) CreateJob(id string, j *api.Job) error {
 
 // UpdateJob updates an existing job in the store.
 // Returns ErrNotExist if the job doesn't exist.
-func (s *MemoryStore) UpdateJob(id string, j *api.Job) error {
+func (s *Store) UpdateJob(id string, j *api.Job) error {
 	s.l.Lock()
 	defer s.l.Unlock()
 
 	if _, ok := s.jobs[id]; !ok {
-		return ErrNotExist
+		return state.ErrNotExist
 	}
 
 	s.jobs[id] = j
@@ -246,12 +247,12 @@ func (s *MemoryStore) UpdateJob(id string, j *api.Job) error {
 
 // DeleteJob removes a job from the store.
 // Returns ErrNotExist if the node doesn't exist.
-func (s *MemoryStore) DeleteJob(id string) error {
+func (s *Store) DeleteJob(id string) error {
 	s.l.Lock()
 	defer s.l.Unlock()
 
 	if _, ok := s.jobs[id]; !ok {
-		return ErrNotExist
+		return state.ErrNotExist
 	}
 
 	delete(s.jobs, id)
@@ -259,7 +260,7 @@ func (s *MemoryStore) DeleteJob(id string) error {
 }
 
 // Jobs returns all jobs that are present in the store.
-func (s *MemoryStore) Jobs() []*api.Job {
+func (s *Store) Jobs() []*api.Job {
 	s.l.RLock()
 	defer s.l.RUnlock()
 
@@ -272,7 +273,7 @@ func (s *MemoryStore) Jobs() []*api.Job {
 
 // Job looks up a job by ID.
 // Returns nil if the job doesn't exist.
-func (s *MemoryStore) Job(id string) *api.Job {
+func (s *Store) Job(id string) *api.Job {
 	s.l.RLock()
 	defer s.l.RUnlock()
 
@@ -282,7 +283,7 @@ func (s *MemoryStore) Job(id string) *api.Job {
 // JobsByName returns the list of jobs matching a given name.
 // Names are neither required nor guaranteed to be unique therefore JobsByName
 // might return more than one node for a given name or no nodes at all.
-func (s *MemoryStore) JobsByName(name string) []*api.Job {
+func (s *Store) JobsByName(name string) []*api.Job {
 	s.l.RLock()
 	defer s.l.RUnlock()
 
