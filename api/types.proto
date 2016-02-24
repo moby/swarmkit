@@ -100,8 +100,10 @@ message JobSpec {
 	// NetworkAttachment describes a desired attachment to the named network or
 	// a specific network_id.
 	message NetworkAttachment {
-		string name = 1;
-		string network_id = 2;
+		oneof reference {
+			string name = 1;
+			string network_id = 2;
+		}
 	}
 
 	repeated NetworkAttachment networks = 4;
@@ -185,14 +187,18 @@ message IPAMConfiguration {
 }
 
 
+// Driver is a generic driver type to be used throughout the API. For now, a
+// driver is simply a name and set of options. The field contents depend on the
+// target use case and driver application. For example, a network driver may
+// have different rules than a volume driver.
+message Driver {
+	string name = 1;
+	map <string, string> options = 2;
+}
+
 // NetworkSpec specifies user defined network parameters.
 message NetworkSpec {
 	Meta meta = 1;
-
-	message Driver {
-		string name = 1;
-		map <string, string> options = 2;
-	}
 
 	message IPAMOptions {
 		Driver driver = 1;
