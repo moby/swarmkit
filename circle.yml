@@ -1,6 +1,7 @@
 machine:
     environment:
         GOPATH: "$HOME/.go_workspace"
+        WORKDIR:  "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
         GO15VENDOREXPERIMENT: "1"
 
 # Disable default dependency management.
@@ -11,17 +12,21 @@ machine:
 # https://robots.thoughtbot.com/configure-circleci-for-go
 dependencies:
     pre:
+        # Display debugging information in CI logs
         - go version
+        - env
+
+        # Force the wipe out of GOPATH to make sure we're not relying on
+        # external dependencies.
+        - rm -rf "$GOPATH"
 
     override:
-        - mkdir -p "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME"
-        - ln -sf "$HOME/$CIRCLE_PROJECT_REPONAME" "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
+        - mkdir -p "$(dirname $WORKDIR)"
+        - ln -sf "$HOME/$CIRCLE_PROJECT_REPONAME" "$WORKDIR"
 
     post:
         - go get -u github.com/golang/lint/golint
 
 test:
     override:
-        # TODO(aluzzardi): Remove this once we have vendoring.
-        - go get -t -d -v ./...
-        - make all
+        - cd "$WORKDIR" && make all

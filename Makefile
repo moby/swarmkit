@@ -1,8 +1,11 @@
-# Set an output prefix, which is the local directory if not specified
+# Set an output prefix, which is the local directory if not specified.
 PREFIX?=$(shell pwd)
 
 # Used to populate version variable in main package.
 VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
+
+# Project packages.
+PACKAGES=$(shell go list ./... | grep -v /vendor/)
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
@@ -30,13 +33,13 @@ setup:
 	@go get -u github.com/golang/lint/golint
 
 generate: ${PREFIX}/bin/protoc-gen-gogoswarm
-	PATH=${PREFIX}/bin/:${PATH} go generate ./...
+	PATH=${PREFIX}/bin/:${PATH} go generate ${PACKAGES}
 
 # Depends on binaries because vet will silently fail if it can't load compiled
 # imports
 vet: binaries
 	@echo "+ $@"
-	@go vet ./...
+	@go vet ${PACKAGES}
 
 fmt:
 	@echo "+ $@"
@@ -53,7 +56,7 @@ build:
 
 test:
 	@echo "+ $@"
-	@go test -race -tags "${DOCKER_BUILDTAGS}" ./...
+	@go test -race -tags "${DOCKER_BUILDTAGS}" ${PACKAGES}
 
 binaries: ${PREFIX}/bin/swarmctl ${PREFIX}/bin/protoc-gen-gogoswarm
 	@echo "+ $@"
@@ -61,4 +64,3 @@ binaries: ${PREFIX}/bin/swarmctl ${PREFIX}/bin/protoc-gen-gogoswarm
 clean:
 	@echo "+ $@"
 	@rm -rf "${PREFIX}/bin/swarmctl" "${PREFIX}/bin/protoc-gen-gogoswarm"
-
