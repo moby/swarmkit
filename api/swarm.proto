@@ -28,6 +28,11 @@ service Swarm {
 	rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse) {}
 	rpc RemoveJob(RemoveJobRequest) returns (RemoveJobResponse) {}
 	rpc ListJobs(ListJobsRequest) returns (ListJobsResponse) {}
+
+	rpc CreateNetwork(CreateNetworkRequest) returns (CreateNetworkResponse) {};
+	rpc GetNetwork(GetNetworkRequest) returns (GetNetworkResponse) {};
+	rpc RemoveNetwork(RemoveNetworkRequest) returns (RemoveNetworkResponse) {};
+	rpc ListNetworks(ListNetworksRequest) returns (ListNetworksResponse) {};
 }
 
 message ListNodesRequest {
@@ -111,4 +116,31 @@ message ListJobsRequest {
 
 message ListJobsResponse {
 	repeated Job jobs = 1;
+}
+
+message CreateNetworkRequest {
+	Network network = 1;
+}
+
+message CreateNetworkResponse {}
+
+message GetNetworkRequest {
+	string name = 1;
+	string network_id = 2;
+}
+
+message GetNetworkResponse {
+	Network network = 1;
+}
+
+message RemoveNetworkRequest {
+	string name = 1;
+	string network_id = 2;
+}
+
+message RemoveNetworkResponse {}
+
+message ListNetworksRequest {}
+message ListNetworksResponse {
+	repeated Network network = 1;
 }

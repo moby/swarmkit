@@ -42,6 +42,8 @@ message ImageSpec {
 	// distribution/reference package.
 	string reference = 1; // TODO(stevvooe): Field type should be reference.Field.
 
+	// TODO(stevvooe): Resolved must be moved.
+
 	// Resolved is the image resolved by the swarm cluster. This may be
 	// identical, depending on the name provided in meta. For example, the name
 	// field may be "redis", whereas this field would specify the exact hash,
@@ -95,6 +97,12 @@ message Spec {
 	Source source = 2;
 	Orchestration orchestration = 3;
 
+	message NetworkAttachment {
+		string name = 1;
+	}
+
+	repeated NetworkAttachment networks = 4;
+
 	// TODO(stevvooe): Specify the components that make up the container
 	// configuration. This should have fields similar to container.Config.
 }
@@ -119,7 +127,9 @@ message TaskStatus {
 	string message = 3;
 }
 
-
+// Task specifies the parameters for implementing a Spec. A task is effectively
+// immutable and idempotent. Once it is dispatched to a node, it will not be
+// dispatched to another node.
 message Task {
 	string id = 1;
 	Meta meta = 2;
@@ -137,21 +147,67 @@ message Task {
 	Spec spec = 5;
 	TaskStatus status = 6;
 
-	// Networking state
-
-	// TODO(stevvooe): Move these. Not sure where in the model yet. These are
-	// resources allocated to a task, so they may belong here but as a
-	// submessage.
-	string net_id = 7;
-	string ep_id = 8;
-	string ip = 9;
-	string gateway = 10;
-	repeated string driver_info = 11;
+	// TODO(stevvooe/mrjana): Need to add additional fields about result of
+	// network attach.
 }
 
 message Job {
 	string id = 1;
 	Meta meta = 2;
 	Spec spec = 3;
+
+	// TODO(stevvooe): Maybe report the tasks for the job directly on job!
+}
+
+// IPAMConfiguration specifies parameters for IP Address Management.
+message IPAMConfiguration {
+	// TODO(stevvooe): It may make more sense to manage IPAM and network
+	// definitions separately. This will allow multiple networks to share IPAM
+	// instances. For now, we will follow the conventions of libnetwork and
+	// specify this as part of the network specification.
+
+	// Subnet defines a network as a CIDR address (ie network and mask
+	// 192.168.0.1/24).
+	string subnet = 3;
+
+	// Range defines the portion of the subnet to allocate to tasks. This is
+	// defined as a subnet within the primary subnet.
+	string range = 4;
+
+	// Gateway address within the subnet.
+	string gateway = 5;
+	
+	// Reserved is a list of address from the master pool that should *not* be
+	// allocated. These addresses may have already been allocated or may be
+	// reserved for another allocation manager.
+	map<string, string> reserved = 6;
+}
+
+// NetworkSpec specifies user defined network parameters.
+message NetworkSpec {
+	Meta meta = 1;
+	string driver = 2;
+	map <string, string> options = 3;
+
+	message IPAMOptions {
+		string driver = 1;
+		map <string, string> options = 2;
+		repeated IPAMConfiguration ipv4 = 3;
+		repeated IPAMConfiguration ipv6 = 4;
+	}
+
+	// IPv6Enabled enables support for IPv6 on the network.
+	bool ipv6_enabled = 4;
+
+	// internal restricts external access to the network. This may be
+	// accomplished by disabling the default gateway or through other means.
+	bool internal = 5;
+
+	IPAMOptions ipam = 6;
+}
+
+message Network {
+	string id = 1;
+	NetworkSpec spec = 2;
 }
 

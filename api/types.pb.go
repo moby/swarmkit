@@ -19,6 +19,9 @@
 		TaskStatus
 		Task
 		Job
+		IPAMConfiguration
+		NetworkSpec
+		Network
 		ListNodesRequest
 		ListNodesResponse
 		DrainNodeRequest
@@ -41,6 +44,14 @@
 		RemoveJobResponse
 		ListJobsRequest
 		ListJobsResponse
+		CreateNetworkRequest
+		CreateNetworkResponse
+		GetNetworkRequest
+		GetNetworkResponse
+		RemoveNetworkRequest
+		RemoveNetworkResponse
+		ListNetworksRequest
+		ListNetworksResponse
 		Update
 		RegisterNodeRequest
 		RegisterNodeResponse
@@ -178,7 +189,7 @@ type ImageSpec struct {
 	// "redis@sha256:...".
 	//
 	// A user may set this field to bypass swarms resolution.
-	Resolved string `protobuf:"bytes,2,opt,name=resolved,proto3" json:"resolved,omitempty"`
+	Resolved string `protobuf:"bytes,7,opt,name=resolved,proto3" json:"resolved,omitempty"`
 }
 
 func (m *ImageSpec) Reset()      { *m = ImageSpec{} }
@@ -193,9 +204,10 @@ func (*ImageSpec) ProtoMessage() {}
 // component is the "orchestration". The orchestration defines the strategy
 // used to the schedule and run the target with a cluster.
 type Spec struct {
-	Meta          *Meta               `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
-	Source        *Spec_Source        `protobuf:"bytes,2,opt,name=source" json:"source,omitempty"`
-	Orchestration *Spec_Orchestration `protobuf:"bytes,3,opt,name=orchestration" json:"orchestration,omitempty"`
+	Meta          *Meta                     `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
+	Source        *Spec_Source              `protobuf:"bytes,2,opt,name=source" json:"source,omitempty"`
+	Orchestration *Spec_Orchestration       `protobuf:"bytes,3,opt,name=orchestration" json:"orchestration,omitempty"`
+	Networks      []*Spec_NetworkAttachment `protobuf:"bytes,4,rep,name=networks" json:"networks,omitempty"`
 }
 
 func (m *Spec) Reset()      { *m = Spec{} }
@@ -454,6 +466,13 @@ func _Spec_Orchestration_OneofUnmarshaler(msg proto.Message, tag, wire int, b *p
 	}
 }
 
+type Spec_NetworkAttachment struct {
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+}
+
+func (m *Spec_NetworkAttachment) Reset()      { *m = Spec_NetworkAttachment{} }
+func (*Spec_NetworkAttachment) ProtoMessage() {}
+
 type TaskStatus struct {
 	State   TaskStatus_State `protobuf:"varint,2,opt,name=state,proto3,enum=api.TaskStatus_State" json:"state,omitempty"`
 	Message string           `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
@@ -462,6 +481,9 @@ type TaskStatus struct {
 func (m *TaskStatus) Reset()      { *m = TaskStatus{} }
 func (*TaskStatus) ProtoMessage() {}
 
+// Task specifies the parameters for implementing a Spec. A task is effectively
+// immutable and idempotent. Once it is dispatched to a node, it will not be
+// dispatched to another node.
 type Task struct {
 	Id     string      `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Meta   *Meta       `protobuf:"bytes,2,opt,name=meta" json:"meta,omitempty"`
@@ -469,14 +491,6 @@ type Task struct {
 	NodeId string      `protobuf:"bytes,4,opt,name=node_id,proto3" json:"node_id,omitempty"`
 	Spec   *Spec       `protobuf:"bytes,5,opt,name=spec" json:"spec,omitempty"`
 	Status *TaskStatus `protobuf:"bytes,6,opt,name=status" json:"status,omitempty"`
-	// TODO(stevvooe): Move these. Not sure where in the model yet. These are
-	// resources allocated to a task, so they may belong here but as a
-	// submessage.
-	NetId      string   `protobuf:"bytes,7,opt,name=net_id,proto3" json:"net_id,omitempty"`
-	EpId       string   `protobuf:"bytes,8,opt,name=ep_id,proto3" json:"ep_id,omitempty"`
-	Ip         string   `protobuf:"bytes,9,opt,name=ip,proto3" json:"ip,omitempty"`
-	Gateway    string   `protobuf:"bytes,10,opt,name=gateway,proto3" json:"gateway,omitempty"`
-	DriverInfo []string `protobuf:"bytes,11,rep,name=driver_info" json:"driver_info,omitempty"`
 }
 
 func (m *Task) Reset()      { *m = Task{} }
@@ -491,6 +505,59 @@ type Job struct {
 func (m *Job) Reset()      { *m = Job{} }
 func (*Job) ProtoMessage() {}
 
+// IPAMConfiguration specifies parameters for IP Address Management.
+type IPAMConfiguration struct {
+	// Subnet defines a network as a CIDR address (ie network and mask
+	// 192.168.0.1/24).
+	Subnet string `protobuf:"bytes,3,opt,name=subnet,proto3" json:"subnet,omitempty"`
+	// Range defines the portion of the subnet to allocate to tasks. This is
+	// defined as a subnet within the primary subnet.
+	Range string `protobuf:"bytes,4,opt,name=range,proto3" json:"range,omitempty"`
+	// Gateway address within the subnet.
+	Gateway string `protobuf:"bytes,5,opt,name=gateway,proto3" json:"gateway,omitempty"`
+	// Reserved is a list of address from the master pool that should *not* be
+	// allocated. These addresses may have already been allocated or may be
+	// reserved for another allocation manager.
+	Reserved map[string]string `protobuf:"bytes,6,rep,name=reserved" json:"reserved,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+}
+
+func (m *IPAMConfiguration) Reset()      { *m = IPAMConfiguration{} }
+func (*IPAMConfiguration) ProtoMessage() {}
+
+// NetworkSpec specifies user defined network parameters.
+type NetworkSpec struct {
+	Meta    *Meta             `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
+	Driver  string            `protobuf:"bytes,2,opt,name=driver,proto3" json:"driver,omitempty"`
+	Options map[string]string `protobuf:"bytes,3,rep,name=options" json:"options,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// IPv6Enabled enables support for IPv6 on the network.
+	Ipv6Enabled bool `protobuf:"varint,4,opt,name=ipv6_enabled,proto3" json:"ipv6_enabled,omitempty"`
+	// internal restricts external access to the network. This may be
+	// accomplished by disabling the default gateway or through other means.
+	Internal bool                     `protobuf:"varint,5,opt,name=internal,proto3" json:"internal,omitempty"`
+	Ipam     *NetworkSpec_IPAMOptions `protobuf:"bytes,6,opt,name=ipam" json:"ipam,omitempty"`
+}
+
+func (m *NetworkSpec) Reset()      { *m = NetworkSpec{} }
+func (*NetworkSpec) ProtoMessage() {}
+
+type NetworkSpec_IPAMOptions struct {
+	Driver  string               `protobuf:"bytes,1,opt,name=driver,proto3" json:"driver,omitempty"`
+	Options map[string]string    `protobuf:"bytes,2,rep,name=options" json:"options,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Ipv4    []*IPAMConfiguration `protobuf:"bytes,3,rep,name=ipv4" json:"ipv4,omitempty"`
+	Ipv6    []*IPAMConfiguration `protobuf:"bytes,4,rep,name=ipv6" json:"ipv6,omitempty"`
+}
+
+func (m *NetworkSpec_IPAMOptions) Reset()      { *m = NetworkSpec_IPAMOptions{} }
+func (*NetworkSpec_IPAMOptions) ProtoMessage() {}
+
+type Network struct {
+	Id   string       `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Spec *NetworkSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
+}
+
+func (m *Network) Reset()      { *m = Network{} }
+func (*Network) ProtoMessage() {}
+
 func init() {
 	proto.RegisterType((*Meta)(nil), "api.Meta")
 	proto.RegisterType((*Node)(nil), "api.Node")
@@ -502,9 +569,14 @@ func init() {
 	proto.RegisterType((*Spec_GlobalJob)(nil), "api.Spec.GlobalJob")
 	proto.RegisterType((*Spec_CronJob)(nil), "api.Spec.CronJob")
 	proto.RegisterType((*Spec_Orchestration)(nil), "api.Spec.Orchestration")
+	proto.RegisterType((*Spec_NetworkAttachment)(nil), "api.Spec.NetworkAttachment")
 	proto.RegisterType((*TaskStatus)(nil), "api.TaskStatus")
 	proto.RegisterType((*Task)(nil), "api.Task")
 	proto.RegisterType((*Job)(nil), "api.Job")
+	proto.RegisterType((*IPAMConfiguration)(nil), "api.IPAMConfiguration")
+	proto.RegisterType((*NetworkSpec)(nil), "api.NetworkSpec")
+	proto.RegisterType((*NetworkSpec_IPAMOptions)(nil), "api.NetworkSpec.IPAMOptions")
+	proto.RegisterType((*Network)(nil), "api.Network")
 	proto.RegisterEnum("api.NodeStatus", NodeStatus_name, NodeStatus_value)
 	proto.RegisterEnum("api.TaskStatus_State", TaskStatus_State_name, TaskStatus_State_value)
 }
@@ -561,7 +633,7 @@ func (this *Spec) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 7)
+	s := make([]string, 0, 8)
 	s = append(s, "&api.Spec{")
 	if this.Meta != nil {
 		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
@@ -571,6 +643,9 @@ func (this *Spec) GoString() string {
 	}
 	if this.Orchestration != nil {
 		s = append(s, "Orchestration: "+fmt.Sprintf("%#v", this.Orchestration)+",\n")
+	}
+	if this.Networks != nil {
+		s = append(s, "Networks: "+fmt.Sprintf("%#v", this.Networks)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -678,6 +753,16 @@ func (this *Spec_Orchestration_Cron) GoString() string {
 		`Cron:` + fmt.Sprintf("%#v", this.Cron) + `}`}, ", ")
 	return s
 }
+func (this *Spec_NetworkAttachment) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.Spec_NetworkAttachment{")
+	s = append(s, "Name: "+fmt.Sprintf("%#v", this.Name)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func (this *TaskStatus) GoString() string {
 	if this == nil {
 		return "nil"
@@ -693,7 +778,7 @@ func (this *Task) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 15)
+	s := make([]string, 0, 10)
 	s = append(s, "&api.Task{")
 	s = append(s, "Id: "+fmt.Sprintf("%#v", this.Id)+",\n")
 	if this.Meta != nil {
@@ -707,11 +792,6 @@ func (this *Task) GoString() string {
 	if this.Status != nil {
 		s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
 	}
-	s = append(s, "NetId: "+fmt.Sprintf("%#v", this.NetId)+",\n")
-	s = append(s, "EpId: "+fmt.Sprintf("%#v", this.EpId)+",\n")
-	s = append(s, "Ip: "+fmt.Sprintf("%#v", this.Ip)+",\n")
-	s = append(s, "Gateway: "+fmt.Sprintf("%#v", this.Gateway)+",\n")
-	s = append(s, "DriverInfo: "+fmt.Sprintf("%#v", this.DriverInfo)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -725,6 +805,94 @@ func (this *Job) GoString() string {
 	if this.Meta != nil {
 		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
 	}
+	if this.Spec != nil {
+		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *IPAMConfiguration) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 8)
+	s = append(s, "&api.IPAMConfiguration{")
+	s = append(s, "Subnet: "+fmt.Sprintf("%#v", this.Subnet)+",\n")
+	s = append(s, "Range: "+fmt.Sprintf("%#v", this.Range)+",\n")
+	s = append(s, "Gateway: "+fmt.Sprintf("%#v", this.Gateway)+",\n")
+	keysForReserved := make([]string, 0, len(this.Reserved))
+	for k, _ := range this.Reserved {
+		keysForReserved = append(keysForReserved, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForReserved)
+	mapStringForReserved := "map[string]string{"
+	for _, k := range keysForReserved {
+		mapStringForReserved += fmt.Sprintf("%#v: %#v,", k, this.Reserved[k])
+	}
+	mapStringForReserved += "}"
+	if this.Reserved != nil {
+		s = append(s, "Reserved: "+mapStringForReserved+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *NetworkSpec) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 10)
+	s = append(s, "&api.NetworkSpec{")
+	if this.Meta != nil {
+		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
+	}
+	s = append(s, "Driver: "+fmt.Sprintf("%#v", this.Driver)+",\n")
+	keysForOptions := make([]string, 0, len(this.Options))
+	for k, _ := range this.Options {
+		keysForOptions = append(keysForOptions, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForOptions)
+	mapStringForOptions := "map[string]string{"
+	for _, k := range keysForOptions {
+		mapStringForOptions += fmt.Sprintf("%#v: %#v,", k, this.Options[k])
+	}
+	mapStringForOptions += "}"
+	if this.Options != nil {
+		s = append(s, "Options: "+mapStringForOptions+",\n")
+	}
+	s = append(s, "Ipv6Enabled: "+fmt.Sprintf("%#v", this.Ipv6Enabled)+",\n")
+	s = append(s, "Internal: "+fmt.Sprintf("%#v", this.Internal)+",\n")
+	if this.Ipam != nil {
+		s = append(s, "Ipam: "+fmt.Sprintf("%#v", this.Ipam)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *NetworkSpec_IPAMOptions) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 8)
+	s = append(s, "&api.NetworkSpec_IPAMOptions{")
+	s = append(s, "Driver: "+fmt.Sprintf("%#v", this.Driver)+",\n")
+	if this.Options != nil {
+		s = append(s, "Options: "+fmt.Sprintf("%#v", this.Options)+",\n")
+	}
+	if this.Ipv4 != nil {
+		s = append(s, "Ipv4: "+fmt.Sprintf("%#v", this.Ipv4)+",\n")
+	}
+	if this.Ipv6 != nil {
+		s = append(s, "Ipv6: "+fmt.Sprintf("%#v", this.Ipv6)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Network) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.Network{")
+	s = append(s, "Id: "+fmt.Sprintf("%#v", this.Id)+",\n")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
@@ -864,7 +1032,7 @@ func (m *ImageSpec) MarshalTo(data []byte) (int, error) {
 		i += copy(data[i:], m.Reference)
 	}
 	if len(m.Resolved) > 0 {
-		data[i] = 0x12
+		data[i] = 0x3a
 		i++
 		i = encodeVarintTypes(data, i, uint64(len(m.Resolved)))
 		i += copy(data[i:], m.Resolved)
@@ -916,6 +1084,18 @@ func (m *Spec) MarshalTo(data []byte) (int, error) {
 			return 0, err
 		}
 		i += n4
+	}
+	if len(m.Networks) > 0 {
+		for _, msg := range m.Networks {
+			data[i] = 0x22
+			i++
+			i = encodeVarintTypes(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
 	}
 	return i, nil
 }
@@ -1127,6 +1307,30 @@ func (m *Spec_Orchestration_Cron) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
+func (m *Spec_NetworkAttachment) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Spec_NetworkAttachment) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.Name)))
+		i += copy(data[i:], m.Name)
+	}
+	return i, nil
+}
+
 func (m *TaskStatus) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -1219,45 +1423,6 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 		}
 		i += n14
 	}
-	if len(m.NetId) > 0 {
-		data[i] = 0x3a
-		i++
-		i = encodeVarintTypes(data, i, uint64(len(m.NetId)))
-		i += copy(data[i:], m.NetId)
-	}
-	if len(m.EpId) > 0 {
-		data[i] = 0x42
-		i++
-		i = encodeVarintTypes(data, i, uint64(len(m.EpId)))
-		i += copy(data[i:], m.EpId)
-	}
-	if len(m.Ip) > 0 {
-		data[i] = 0x4a
-		i++
-		i = encodeVarintTypes(data, i, uint64(len(m.Ip)))
-		i += copy(data[i:], m.Ip)
-	}
-	if len(m.Gateway) > 0 {
-		data[i] = 0x52
-		i++
-		i = encodeVarintTypes(data, i, uint64(len(m.Gateway)))
-		i += copy(data[i:], m.Gateway)
-	}
-	if len(m.DriverInfo) > 0 {
-		for _, s := range m.DriverInfo {
-			data[i] = 0x5a
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
-	}
 	return i, nil
 }
 
@@ -1301,6 +1466,234 @@ func (m *Job) MarshalTo(data []byte) (int, error) {
 			return 0, err
 		}
 		i += n16
+	}
+	return i, nil
+}
+
+func (m *IPAMConfiguration) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *IPAMConfiguration) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Subnet) > 0 {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.Subnet)))
+		i += copy(data[i:], m.Subnet)
+	}
+	if len(m.Range) > 0 {
+		data[i] = 0x22
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.Range)))
+		i += copy(data[i:], m.Range)
+	}
+	if len(m.Gateway) > 0 {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.Gateway)))
+		i += copy(data[i:], m.Gateway)
+	}
+	if len(m.Reserved) > 0 {
+		for k, _ := range m.Reserved {
+			data[i] = 0x32
+			i++
+			v := m.Reserved[k]
+			mapSize := 1 + len(k) + sovTypes(uint64(len(k))) + 1 + len(v) + sovTypes(uint64(len(v)))
+			i = encodeVarintTypes(data, i, uint64(mapSize))
+			data[i] = 0xa
+			i++
+			i = encodeVarintTypes(data, i, uint64(len(k)))
+			i += copy(data[i:], k)
+			data[i] = 0x12
+			i++
+			i = encodeVarintTypes(data, i, uint64(len(v)))
+			i += copy(data[i:], v)
+		}
+	}
+	return i, nil
+}
+
+func (m *NetworkSpec) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Meta != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
+		n17, err := m.Meta.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n17
+	}
+	if len(m.Driver) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.Driver)))
+		i += copy(data[i:], m.Driver)
+	}
+	if len(m.Options) > 0 {
+		for k, _ := range m.Options {
+			data[i] = 0x1a
+			i++
+			v := m.Options[k]
+			mapSize := 1 + len(k) + sovTypes(uint64(len(k))) + 1 + len(v) + sovTypes(uint64(len(v)))
+			i = encodeVarintTypes(data, i, uint64(mapSize))
+			data[i] = 0xa
+			i++
+			i = encodeVarintTypes(data, i, uint64(len(k)))
+			i += copy(data[i:], k)
+			data[i] = 0x12
+			i++
+			i = encodeVarintTypes(data, i, uint64(len(v)))
+			i += copy(data[i:], v)
+		}
+	}
+	if m.Ipv6Enabled {
+		data[i] = 0x20
+		i++
+		if m.Ipv6Enabled {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
+	if m.Internal {
+		data[i] = 0x28
+		i++
+		if m.Internal {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
+	if m.Ipam != nil {
+		data[i] = 0x32
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Ipam.Size()))
+		n18, err := m.Ipam.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n18
+	}
+	return i, nil
+}
+
+func (m *NetworkSpec_IPAMOptions) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *NetworkSpec_IPAMOptions) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Driver) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.Driver)))
+		i += copy(data[i:], m.Driver)
+	}
+	if len(m.Options) > 0 {
+		for _, msg := range m.Options {
+			data[i] = 0x12
+			i++
+			i = encodeVarintTypes(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if len(m.Ipv4) > 0 {
+		for _, msg := range m.Ipv4 {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintTypes(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if len(m.Ipv6) > 0 {
+		for _, msg := range m.Ipv6 {
+			data[i] = 0x22
+			i++
+			i = encodeVarintTypes(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func (m *Network) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Network) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Id) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.Id)))
+		i += copy(data[i:], m.Id)
+	}
+	if m.Spec != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
+		n19, err := m.Spec.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n19
 	}
 	return i, nil
 }
@@ -1399,6 +1792,12 @@ func (m *Spec) Size() (n int) {
 	if m.Orchestration != nil {
 		l = m.Orchestration.Size()
 		n += 1 + l + sovTypes(uint64(l))
+	}
+	if len(m.Networks) > 0 {
+		for _, e := range m.Networks {
+			l = e.Size()
+			n += 1 + l + sovTypes(uint64(l))
+		}
 	}
 	return n
 }
@@ -1499,6 +1898,16 @@ func (m *Spec_Orchestration_Cron) Size() (n int) {
 	}
 	return n
 }
+func (m *Spec_NetworkAttachment) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
 func (m *TaskStatus) Size() (n int) {
 	var l int
 	_ = l
@@ -1539,28 +1948,6 @@ func (m *Task) Size() (n int) {
 		l = m.Status.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
-	l = len(m.NetId)
-	if l > 0 {
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	l = len(m.EpId)
-	if l > 0 {
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	l = len(m.Ip)
-	if l > 0 {
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	l = len(m.Gateway)
-	if l > 0 {
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	if len(m.DriverInfo) > 0 {
-		for _, s := range m.DriverInfo {
-			l = len(s)
-			n += 1 + l + sovTypes(uint64(l))
-		}
-	}
 	return n
 }
 
@@ -1573,6 +1960,106 @@ func (m *Job) Size() (n int) {
 	}
 	if m.Meta != nil {
 		l = m.Meta.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.Spec != nil {
+		l = m.Spec.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
+func (m *IPAMConfiguration) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Subnet)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	l = len(m.Range)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	l = len(m.Gateway)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if len(m.Reserved) > 0 {
+		for k, v := range m.Reserved {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + len(k) + sovTypes(uint64(len(k))) + 1 + len(v) + sovTypes(uint64(len(v)))
+			n += mapEntrySize + 1 + sovTypes(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *NetworkSpec) Size() (n int) {
+	var l int
+	_ = l
+	if m.Meta != nil {
+		l = m.Meta.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	l = len(m.Driver)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if len(m.Options) > 0 {
+		for k, v := range m.Options {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + len(k) + sovTypes(uint64(len(k))) + 1 + len(v) + sovTypes(uint64(len(v)))
+			n += mapEntrySize + 1 + sovTypes(uint64(mapEntrySize))
+		}
+	}
+	if m.Ipv6Enabled {
+		n += 2
+	}
+	if m.Internal {
+		n += 2
+	}
+	if m.Ipam != nil {
+		l = m.Ipam.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
+func (m *NetworkSpec_IPAMOptions) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Driver)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if len(m.Options) > 0 {
+		for _, e := range m.Options {
+			l = e.Size()
+			n += 1 + l + sovTypes(uint64(l))
+		}
+	}
+	if len(m.Ipv4) > 0 {
+		for _, e := range m.Ipv4 {
+			l = e.Size()
+			n += 1 + l + sovTypes(uint64(l))
+		}
+	}
+	if len(m.Ipv6) > 0 {
+		for _, e := range m.Ipv6 {
+			l = e.Size()
+			n += 1 + l + sovTypes(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *Network) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Id)
+	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
 	if m.Spec != nil {
@@ -1648,6 +2135,7 @@ func (this *Spec) String() string {
 		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
 		`Source:` + strings.Replace(fmt.Sprintf("%v", this.Source), "Spec_Source", "Spec_Source", 1) + `,`,
 		`Orchestration:` + strings.Replace(fmt.Sprintf("%v", this.Orchestration), "Spec_Orchestration", "Spec_Orchestration", 1) + `,`,
+		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Spec_NetworkAttachment", "Spec_NetworkAttachment", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1761,6 +2249,16 @@ func (this *Spec_Orchestration_Cron) String() string {
 	}, "")
 	return s
 }
+func (this *Spec_NetworkAttachment) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Spec_NetworkAttachment{`,
+		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *TaskStatus) String() string {
 	if this == nil {
 		return "nil"
@@ -1783,11 +2281,6 @@ func (this *Task) String() string {
 		`NodeId:` + fmt.Sprintf("%v", this.NodeId) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "Spec", "Spec", 1) + `,`,
 		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "TaskStatus", "TaskStatus", 1) + `,`,
-		`NetId:` + fmt.Sprintf("%v", this.NetId) + `,`,
-		`EpId:` + fmt.Sprintf("%v", this.EpId) + `,`,
-		`Ip:` + fmt.Sprintf("%v", this.Ip) + `,`,
-		`Gateway:` + fmt.Sprintf("%v", this.Gateway) + `,`,
-		`DriverInfo:` + fmt.Sprintf("%v", this.DriverInfo) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1800,6 +2293,78 @@ func (this *Job) String() string {
 		`Id:` + fmt.Sprintf("%v", this.Id) + `,`,
 		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "Spec", "Spec", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *IPAMConfiguration) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForReserved := make([]string, 0, len(this.Reserved))
+	for k, _ := range this.Reserved {
+		keysForReserved = append(keysForReserved, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForReserved)
+	mapStringForReserved := "map[string]string{"
+	for _, k := range keysForReserved {
+		mapStringForReserved += fmt.Sprintf("%v: %v,", k, this.Reserved[k])
+	}
+	mapStringForReserved += "}"
+	s := strings.Join([]string{`&IPAMConfiguration{`,
+		`Subnet:` + fmt.Sprintf("%v", this.Subnet) + `,`,
+		`Range:` + fmt.Sprintf("%v", this.Range) + `,`,
+		`Gateway:` + fmt.Sprintf("%v", this.Gateway) + `,`,
+		`Reserved:` + mapStringForReserved + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *NetworkSpec) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForOptions := make([]string, 0, len(this.Options))
+	for k, _ := range this.Options {
+		keysForOptions = append(keysForOptions, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForOptions)
+	mapStringForOptions := "map[string]string{"
+	for _, k := range keysForOptions {
+		mapStringForOptions += fmt.Sprintf("%v: %v,", k, this.Options[k])
+	}
+	mapStringForOptions += "}"
+	s := strings.Join([]string{`&NetworkSpec{`,
+		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
+		`Driver:` + fmt.Sprintf("%v", this.Driver) + `,`,
+		`Options:` + mapStringForOptions + `,`,
+		`Ipv6Enabled:` + fmt.Sprintf("%v", this.Ipv6Enabled) + `,`,
+		`Internal:` + fmt.Sprintf("%v", this.Internal) + `,`,
+		`Ipam:` + strings.Replace(fmt.Sprintf("%v", this.Ipam), "NetworkSpec_IPAMOptions", "NetworkSpec_IPAMOptions", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *NetworkSpec_IPAMOptions) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&NetworkSpec_IPAMOptions{`,
+		`Driver:` + fmt.Sprintf("%v", this.Driver) + `,`,
+		`Options:` + strings.Replace(fmt.Sprintf("%v", this.Options), "NetworkSpec_IPAMOptions_OptionsEntry", "NetworkSpec_IPAMOptions_OptionsEntry", 1) + `,`,
+		`Ipv4:` + strings.Replace(fmt.Sprintf("%v", this.Ipv4), "IPAMConfiguration", "IPAMConfiguration", 1) + `,`,
+		`Ipv6:` + strings.Replace(fmt.Sprintf("%v", this.Ipv6), "IPAMConfiguration", "IPAMConfiguration", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Network) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Network{`,
+		`Id:` + fmt.Sprintf("%v", this.Id) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NetworkSpec", "NetworkSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2220,7 +2785,7 @@ func (m *ImageSpec) Unmarshal(data []byte) error {
 			}
 			m.Reference = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 2:
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Resolved", wireType)
 			}
@@ -2395,6 +2960,37 @@ func (m *Spec) Unmarshal(data []byte) error {
 				m.Orchestration = &Spec_Orchestration{}
 			}
 			if err := m.Orchestration.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Networks", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Networks = append(m.Networks, &Spec_NetworkAttachment{})
+			if err := m.Networks[len(m.Networks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2936,6 +3532,85 @@ func (m *Spec_Orchestration) Unmarshal(data []byte) error {
 	}
 	return nil
 }
+func (m *Spec_NetworkAttachment) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: NetworkAttachment: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: NetworkAttachment: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *TaskStatus) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
@@ -3249,151 +3924,6 @@ func (m *Task) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NetId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.NetId = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 8:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EpId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.EpId = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 9:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ip", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Ip = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 10:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Gateway", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Gateway = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 11:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DriverInfo", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.DriverInfo = append(m.DriverInfo, string(data[iNdEx:postIndex]))
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(data[iNdEx:])
@@ -3534,6 +4064,834 @@ func (m *Job) Unmarshal(data []byte) error {
 			}
 			if m.Spec == nil {
 				m.Spec = &Spec{}
+			}
+			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *IPAMConfiguration) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: IPAMConfiguration: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: IPAMConfiguration: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Subnet", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Subnet = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Range", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Range = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Gateway", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Gateway = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Reserved", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var stringLenmapkey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLenmapkey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLenmapkey := int(stringLenmapkey)
+			if intStringLenmapkey < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postStringIndexmapkey := iNdEx + intStringLenmapkey
+			if postStringIndexmapkey > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapkey := string(data[iNdEx:postStringIndexmapkey])
+			iNdEx = postStringIndexmapkey
+			var valuekey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				valuekey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var stringLenmapvalue uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLenmapvalue := int(stringLenmapvalue)
+			if intStringLenmapvalue < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+			if postStringIndexmapvalue > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapvalue := string(data[iNdEx:postStringIndexmapvalue])
+			iNdEx = postStringIndexmapvalue
+			if m.Reserved == nil {
+				m.Reserved = make(map[string]string)
+			}
+			m.Reserved[mapkey] = mapvalue
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *NetworkSpec) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: NetworkSpec: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: NetworkSpec: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Meta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Meta == nil {
+				m.Meta = &Meta{}
+			}
+			if err := m.Meta.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Driver", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Driver = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Options", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var stringLenmapkey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLenmapkey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLenmapkey := int(stringLenmapkey)
+			if intStringLenmapkey < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postStringIndexmapkey := iNdEx + intStringLenmapkey
+			if postStringIndexmapkey > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapkey := string(data[iNdEx:postStringIndexmapkey])
+			iNdEx = postStringIndexmapkey
+			var valuekey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				valuekey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var stringLenmapvalue uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLenmapvalue := int(stringLenmapvalue)
+			if intStringLenmapvalue < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+			if postStringIndexmapvalue > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapvalue := string(data[iNdEx:postStringIndexmapvalue])
+			iNdEx = postStringIndexmapvalue
+			if m.Options == nil {
+				m.Options = make(map[string]string)
+			}
+			m.Options[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Ipv6Enabled", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Ipv6Enabled = bool(v != 0)
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Internal", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Internal = bool(v != 0)
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Ipam", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Ipam == nil {
+				m.Ipam = &NetworkSpec_IPAMOptions{}
+			}
+			if err := m.Ipam.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *NetworkSpec_IPAMOptions) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: IPAMOptions: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: IPAMOptions: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Driver", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Driver = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Options", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Options = append(m.Options, &NetworkSpec_IPAMOptions_OptionsEntry{})
+			if err := m.Options[len(m.Options)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Ipv4", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Ipv4 = append(m.Ipv4, &IPAMConfiguration{})
+			if err := m.Ipv4[len(m.Ipv4)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Ipv6", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Ipv6 = append(m.Ipv6, &IPAMConfiguration{})
+			if err := m.Ipv6[len(m.Ipv6)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Network) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Network: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Network: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Spec == nil {
+				m.Spec = &NetworkSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
