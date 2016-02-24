@@ -51,11 +51,11 @@ message DrainNodeResponse {
 }
 
 message CreateTaskRequest {
-	Spec spec = 1;
+	JobSpec spec = 1;
 }
 
 message CreateTaskResponse {
-	string task_id = 1;
+	Task task = 1;
 }
 
 message GetTasksRequest {
@@ -81,11 +81,11 @@ message ListTasksResponse {
 }
 
 message CreateJobRequest {
-	Spec spec = 1;
+	JobSpec spec = 1;
 }
 
 message CreateJobResponse {
-	string job_id = 1;
+	Job job = 1;
 }
 
 message GetJobRequest {
@@ -98,7 +98,7 @@ message GetJobResponse {
 
 message UpdateJobRequest {
 	string job_id = 1;
-	Spec spec = 2;
+	JobSpec spec = 2;
 }
 
 message UpdateJobResponse {
@@ -119,10 +119,12 @@ message ListJobsResponse {
 }
 
 message CreateNetworkRequest {
-	Network network = 1;
+	NetworkSpec spec = 1;
 }
 
-message CreateNetworkResponse {}
+message CreateNetworkResponse {
+	Network network = 1;
+}
 
 message GetNetworkRequest {
 	string name = 1;
@@ -141,6 +143,7 @@ message RemoveNetworkRequest {
 message RemoveNetworkResponse {}
 
 message ListNetworksRequest {}
+
 message ListNetworksResponse {
 	repeated Network network = 1;
 }

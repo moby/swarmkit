@@ -61,7 +61,7 @@ message ImageSpec {
 // may extend it to provide other kinds of runnable targets. The second
 // component is the "orchestration". The orchestration defines the strategy
 // used to the schedule and run the target with a cluster.
-message Spec {
+message JobSpec {
 	Meta meta = 1;
 	
 	message Source { // TODO(stevvooe): better name?
@@ -97,8 +97,11 @@ message Spec {
 	Source source = 2;
 	Orchestration orchestration = 3;
 
+	// NetworkAttachment describes a desired attachment to the named network or
+	// a specific network_id.
 	message NetworkAttachment {
 		string name = 1;
+		string network_id = 2;
 	}
 
 	repeated NetworkAttachment networks = 4;
@@ -144,7 +147,7 @@ message Task {
 	// NOTE(stevvooe): Spec, status or both may be set, depending on the role
 	// of this message.
 
-	Spec spec = 5;
+	JobSpec spec = 5;
 	TaskStatus status = 6;
 
 	// TODO(stevvooe/mrjana): Need to add additional fields about result of
@@ -154,9 +157,7 @@ message Task {
 message Job {
 	string id = 1;
 	Meta meta = 2;
-	Spec spec = 3;
-
-	// TODO(stevvooe): Maybe report the tasks for the job directly on job!
+	JobSpec spec = 3;
 }
 
 // IPAMConfiguration specifies parameters for IP Address Management.
@@ -168,42 +169,47 @@ message IPAMConfiguration {
 
 	// Subnet defines a network as a CIDR address (ie network and mask
 	// 192.168.0.1/24).
-	string subnet = 3;
+	string subnet = 1;
 
 	// Range defines the portion of the subnet to allocate to tasks. This is
 	// defined as a subnet within the primary subnet.
-	string range = 4;
+	string range = 2;
 
 	// Gateway address within the subnet.
-	string gateway = 5;
+	string gateway = 3;
 	
 	// Reserved is a list of address from the master pool that should *not* be
 	// allocated. These addresses may have already been allocated or may be
 	// reserved for another allocation manager.
-	map<string, string> reserved = 6;
+	map<string, string> reserved = 4;
 }
+
 
 // NetworkSpec specifies user defined network parameters.
 message NetworkSpec {
 	Meta meta = 1;
-	string driver = 2;
-	map <string, string> options = 3;
+
+	message Driver {
+		string name = 1;
+		map <string, string> options = 2;
+	}
 
 	message IPAMOptions {
-		string driver = 1;
-		map <string, string> options = 2;
+		Driver driver = 1;
 		repeated IPAMConfiguration ipv4 = 3;
 		repeated IPAMConfiguration ipv6 = 4;
 	}
 
+	Driver driver = 2;
+
 	// IPv6Enabled enables support for IPv6 on the network.
-	bool ipv6_enabled = 4;
+	bool ipv6_enabled = 3;
 
 	// internal restricts external access to the network. This may be
 	// accomplished by disabling the default gateway or through other means.
-	bool internal = 5;
+	bool internal = 4;
 
-	IPAMOptions ipam = 6;
+	IPAMOptions ipam = 5;
 }
 
 message Network {

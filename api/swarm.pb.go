@@ -55,14 +55,14 @@ func (m *DrainNodeResponse) Reset()      { *m = DrainNodeResponse{} }
 func (*DrainNodeResponse) ProtoMessage() {}
 
 type CreateTaskRequest struct {
-	Spec *Spec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	Spec *JobSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *CreateTaskRequest) Reset()      { *m = CreateTaskRequest{} }
 func (*CreateTaskRequest) ProtoMessage() {}
 
 type CreateTaskResponse struct {
-	TaskId string `protobuf:"bytes,1,opt,name=task_id,proto3" json:"task_id,omitempty"`
+	Task *Task `protobuf:"bytes,1,opt,name=task" json:"task,omitempty"`
 }
 
 func (m *CreateTaskResponse) Reset()      { *m = CreateTaskResponse{} }
@@ -109,14 +109,14 @@ func (m *ListTasksResponse) Reset()      { *m = ListTasksResponse{} }
 func (*ListTasksResponse) ProtoMessage() {}
 
 type CreateJobRequest struct {
-	Spec *Spec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	Spec *JobSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *CreateJobRequest) Reset()      { *m = CreateJobRequest{} }
 func (*CreateJobRequest) ProtoMessage() {}
 
 type CreateJobResponse struct {
-	JobId string `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
+	Job *Job `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
 }
 
 func (m *CreateJobResponse) Reset()      { *m = CreateJobResponse{} }
@@ -137,8 +137,8 @@ func (m *GetJobResponse) Reset()      { *m = GetJobResponse{} }
 func (*GetJobResponse) ProtoMessage() {}
 
 type UpdateJobRequest struct {
-	JobId string `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
-	Spec  *Spec  `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
+	JobId string   `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
+	Spec  *JobSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *UpdateJobRequest) Reset()      { *m = UpdateJobRequest{} }
@@ -177,13 +177,14 @@ func (m *ListJobsResponse) Reset()      { *m = ListJobsResponse{} }
 func (*ListJobsResponse) ProtoMessage() {}
 
 type CreateNetworkRequest struct {
-	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
+	Spec *NetworkSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *CreateNetworkRequest) Reset()      { *m = CreateNetworkRequest{} }
 func (*CreateNetworkRequest) ProtoMessage() {}
 
 type CreateNetworkResponse struct {
+	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
 }
 
 func (m *CreateNetworkResponse) Reset()      { *m = CreateNetworkResponse{} }
@@ -322,7 +323,9 @@ func (this *CreateTaskResponse) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.CreateTaskResponse{")
-	s = append(s, "TaskId: "+fmt.Sprintf("%#v", this.TaskId)+",\n")
+	if this.Task != nil {
+		s = append(s, "Task: "+fmt.Sprintf("%#v", this.Task)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -406,7 +409,9 @@ func (this *CreateJobResponse) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.CreateJobResponse{")
-	s = append(s, "JobId: "+fmt.Sprintf("%#v", this.JobId)+",\n")
+	if this.Job != nil {
+		s = append(s, "Job: "+fmt.Sprintf("%#v", this.Job)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -500,8 +505,8 @@ func (this *CreateNetworkRequest) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.CreateNetworkRequest{")
-	if this.Network != nil {
-		s = append(s, "Network: "+fmt.Sprintf("%#v", this.Network)+",\n")
+	if this.Spec != nil {
+		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -510,8 +515,11 @@ func (this *CreateNetworkResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 4)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.CreateNetworkResponse{")
+	if this.Network != nil {
+		s = append(s, "Network: "+fmt.Sprintf("%#v", this.Network)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1187,11 +1195,15 @@ func (m *CreateTaskResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.TaskId) > 0 {
+	if m.Task != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintSwarm(data, i, uint64(len(m.TaskId)))
-		i += copy(data[i:], m.TaskId)
+		i = encodeVarintSwarm(data, i, uint64(m.Task.Size()))
+		n2, err := m.Task.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
 	}
 	return i, nil
 }
@@ -1368,11 +1380,11 @@ func (m *CreateJobRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Spec.Size()))
-		n2, err := m.Spec.MarshalTo(data[i:])
+		n3, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n2
+		i += n3
 	}
 	return i, nil
 }
@@ -1392,11 +1404,15 @@ func (m *CreateJobResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.JobId) > 0 {
+	if m.Job != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintSwarm(data, i, uint64(len(m.JobId)))
-		i += copy(data[i:], m.JobId)
+		i = encodeVarintSwarm(data, i, uint64(m.Job.Size()))
+		n4, err := m.Job.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n4
 	}
 	return i, nil
 }
@@ -1444,11 +1460,11 @@ func (m *GetJobResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Job.Size()))
-		n3, err := m.Job.MarshalTo(data[i:])
+		n5, err := m.Job.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n3
+		i += n5
 	}
 	return i, nil
 }
@@ -1478,11 +1494,11 @@ func (m *UpdateJobRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Spec.Size()))
-		n4, err := m.Spec.MarshalTo(data[i:])
+		n6, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n4
+		i += n6
 	}
 	return i, nil
 }
@@ -1610,15 +1626,15 @@ func (m *CreateNetworkRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Network != nil {
+	if m.Spec != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintSwarm(data, i, uint64(m.Network.Size()))
-		n5, err := m.Network.MarshalTo(data[i:])
+		i = encodeVarintSwarm(data, i, uint64(m.Spec.Size()))
+		n7, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n5
+		i += n7
 	}
 	return i, nil
 }
@@ -1638,6 +1654,16 @@ func (m *CreateNetworkResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.Network != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintSwarm(data, i, uint64(m.Network.Size()))
+		n8, err := m.Network.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n8
+	}
 	return i, nil
 }
 
@@ -1690,11 +1716,11 @@ func (m *GetNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Network.Size()))
-		n6, err := m.Network.MarshalTo(data[i:])
+		n9, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n6
+		i += n9
 	}
 	return i, nil
 }
@@ -1872,8 +1898,8 @@ func (m *CreateTaskRequest) Size() (n int) {
 func (m *CreateTaskResponse) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.TaskId)
-	if l > 0 {
+	if m.Task != nil {
+		l = m.Task.Size()
 		n += 1 + l + sovSwarm(uint64(l))
 	}
 	return n
@@ -1950,8 +1976,8 @@ func (m *CreateJobRequest) Size() (n int) {
 func (m *CreateJobResponse) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.JobId)
-	if l > 0 {
+	if m.Job != nil {
+		l = m.Job.Size()
 		n += 1 + l + sovSwarm(uint64(l))
 	}
 	return n
@@ -2034,8 +2060,8 @@ func (m *ListJobsResponse) Size() (n int) {
 func (m *CreateNetworkRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Network != nil {
-		l = m.Network.Size()
+	if m.Spec != nil {
+		l = m.Spec.Size()
 		n += 1 + l + sovSwarm(uint64(l))
 	}
 	return n
@@ -2044,6 +2070,10 @@ func (m *CreateNetworkRequest) Size() (n int) {
 func (m *CreateNetworkResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.Network != nil {
+		l = m.Network.Size()
+		n += 1 + l + sovSwarm(uint64(l))
+	}
 	return n
 }
 
@@ -2166,7 +2196,7 @@ func (this *CreateTaskRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&CreateTaskRequest{`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "Spec", "Spec", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2176,7 +2206,7 @@ func (this *CreateTaskResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&CreateTaskResponse{`,
-		`TaskId:` + fmt.Sprintf("%v", this.TaskId) + `,`,
+		`Task:` + strings.Replace(fmt.Sprintf("%v", this.Task), "Task", "Task", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2244,7 +2274,7 @@ func (this *CreateJobRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&CreateJobRequest{`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "Spec", "Spec", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2254,7 +2284,7 @@ func (this *CreateJobResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&CreateJobResponse{`,
-		`JobId:` + fmt.Sprintf("%v", this.JobId) + `,`,
+		`Job:` + strings.Replace(fmt.Sprintf("%v", this.Job), "Job", "Job", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2285,7 +2315,7 @@ func (this *UpdateJobRequest) String() string {
 	}
 	s := strings.Join([]string{`&UpdateJobRequest{`,
 		`JobId:` + fmt.Sprintf("%v", this.JobId) + `,`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "Spec", "Spec", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2342,7 +2372,7 @@ func (this *CreateNetworkRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&CreateNetworkRequest{`,
-		`Network:` + strings.Replace(fmt.Sprintf("%v", this.Network), "Network", "Network", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NetworkSpec", "NetworkSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2352,6 +2382,7 @@ func (this *CreateNetworkResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&CreateNetworkResponse{`,
+		`Network:` + strings.Replace(fmt.Sprintf("%v", this.Network), "Network", "Network", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2760,7 +2791,7 @@ func (m *CreateTaskRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &Spec{}
+				m.Spec = &JobSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -2818,9 +2849,9 @@ func (m *CreateTaskResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TaskId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Task", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowSwarm
@@ -2830,20 +2861,24 @@ func (m *CreateTaskResponse) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthSwarm
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.TaskId = string(data[iNdEx:postIndex])
+			if m.Task == nil {
+				m.Task = &Task{}
+			}
+			if err := m.Task.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3342,7 +3377,7 @@ func (m *CreateJobRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &Spec{}
+				m.Spec = &JobSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -3400,9 +3435,9 @@ func (m *CreateJobResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field JobId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Job", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowSwarm
@@ -3412,20 +3447,24 @@ func (m *CreateJobResponse) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthSwarm
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.JobId = string(data[iNdEx:postIndex])
+			if m.Job == nil {
+				m.Job = &Job{}
+			}
+			if err := m.Job.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3695,7 +3734,7 @@ func (m *UpdateJobRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &Spec{}
+				m.Spec = &JobSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -4063,7 +4102,7 @@ func (m *CreateNetworkRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Network", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -4087,10 +4126,10 @@ func (m *CreateNetworkRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Network == nil {
-				m.Network = &Network{}
+			if m.Spec == nil {
+				m.Spec = &NetworkSpec{}
 			}
-			if err := m.Network.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -4144,6 +4183,39 @@ func (m *CreateNetworkResponse) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: CreateNetworkResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Network", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSwarm
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Network == nil {
+				m.Network = &Network{}
+			}
+			if err := m.Network.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])

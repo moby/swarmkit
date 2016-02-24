@@ -15,7 +15,7 @@
 		Meta
 		Node
 		ImageSpec
-		Spec
+		JobSpec
 		TaskStatus
 		Task
 		Job
@@ -189,7 +189,7 @@ type ImageSpec struct {
 	// "redis@sha256:...".
 	//
 	// A user may set this field to bypass swarms resolution.
-	Resolved string `protobuf:"bytes,7,opt,name=resolved,proto3" json:"resolved,omitempty"`
+	Resolved string `protobuf:"bytes,2,opt,name=resolved,proto3" json:"resolved,omitempty"`
 }
 
 func (m *ImageSpec) Reset()      { *m = ImageSpec{} }
@@ -203,76 +203,76 @@ func (*ImageSpec) ProtoMessage() {}
 // may extend it to provide other kinds of runnable targets. The second
 // component is the "orchestration". The orchestration defines the strategy
 // used to the schedule and run the target with a cluster.
-type Spec struct {
-	Meta          *Meta                     `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
-	Source        *Spec_Source              `protobuf:"bytes,2,opt,name=source" json:"source,omitempty"`
-	Orchestration *Spec_Orchestration       `protobuf:"bytes,3,opt,name=orchestration" json:"orchestration,omitempty"`
-	Networks      []*Spec_NetworkAttachment `protobuf:"bytes,4,rep,name=networks" json:"networks,omitempty"`
+type JobSpec struct {
+	Meta          *Meta                        `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
+	Source        *JobSpec_Source              `protobuf:"bytes,2,opt,name=source" json:"source,omitempty"`
+	Orchestration *JobSpec_Orchestration       `protobuf:"bytes,3,opt,name=orchestration" json:"orchestration,omitempty"`
+	Networks      []*JobSpec_NetworkAttachment `protobuf:"bytes,4,rep,name=networks" json:"networks,omitempty"`
 }
 
-func (m *Spec) Reset()      { *m = Spec{} }
-func (*Spec) ProtoMessage() {}
+func (m *JobSpec) Reset()      { *m = JobSpec{} }
+func (*JobSpec) ProtoMessage() {}
 
-type Spec_Source struct {
+type JobSpec_Source struct {
 	// Types that are valid to be assigned to Source:
-	//	*Spec_Source_Image
-	Source isSpec_Source_Source `protobuf_oneof:"source"`
+	//	*JobSpec_Source_Image
+	Source isJobSpec_Source_Source `protobuf_oneof:"source"`
 }
 
-func (m *Spec_Source) Reset()      { *m = Spec_Source{} }
-func (*Spec_Source) ProtoMessage() {}
+func (m *JobSpec_Source) Reset()      { *m = JobSpec_Source{} }
+func (*JobSpec_Source) ProtoMessage() {}
 
-type isSpec_Source_Source interface {
-	isSpec_Source_Source()
+type isJobSpec_Source_Source interface {
+	isJobSpec_Source_Source()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type Spec_Source_Image struct {
+type JobSpec_Source_Image struct {
 	Image *ImageSpec `protobuf:"bytes,1,opt,name=image,oneof"`
 }
 
-func (*Spec_Source_Image) isSpec_Source_Source() {}
+func (*JobSpec_Source_Image) isJobSpec_Source_Source() {}
 
-func (m *Spec_Source) GetSource() isSpec_Source_Source {
+func (m *JobSpec_Source) GetSource() isJobSpec_Source_Source {
 	if m != nil {
 		return m.Source
 	}
 	return nil
 }
 
-func (m *Spec_Source) GetImage() *ImageSpec {
-	if x, ok := m.GetSource().(*Spec_Source_Image); ok {
+func (m *JobSpec_Source) GetImage() *ImageSpec {
+	if x, ok := m.GetSource().(*JobSpec_Source_Image); ok {
 		return x.Image
 	}
 	return nil
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*Spec_Source) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _Spec_Source_OneofMarshaler, _Spec_Source_OneofUnmarshaler, []interface{}{
-		(*Spec_Source_Image)(nil),
+func (*JobSpec_Source) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _JobSpec_Source_OneofMarshaler, _JobSpec_Source_OneofUnmarshaler, []interface{}{
+		(*JobSpec_Source_Image)(nil),
 	}
 }
 
-func _Spec_Source_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*Spec_Source)
+func _JobSpec_Source_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*JobSpec_Source)
 	// source
 	switch x := m.Source.(type) {
-	case *Spec_Source_Image:
+	case *JobSpec_Source_Image:
 		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Image); err != nil {
 			return err
 		}
 	case nil:
 	default:
-		return fmt.Errorf("Spec_Source.Source has unexpected type %T", x)
+		return fmt.Errorf("JobSpec_Source.Source has unexpected type %T", x)
 	}
 	return nil
 }
 
-func _Spec_Source_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*Spec_Source)
+func _JobSpec_Source_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*JobSpec_Source)
 	switch tag {
 	case 1: // source.image
 		if wire != proto.WireBytes {
@@ -280,198 +280,201 @@ func _Spec_Source_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Bu
 		}
 		msg := new(ImageSpec)
 		err := b.DecodeMessage(msg)
-		m.Source = &Spec_Source_Image{msg}
+		m.Source = &JobSpec_Source_Image{msg}
 		return true, err
 	default:
 		return false, nil
 	}
 }
 
-type Spec_ServiceJob struct {
+type JobSpec_ServiceJob struct {
 	Instances int64 `protobuf:"varint,1,opt,name=instances,proto3" json:"instances,omitempty"`
 }
 
-func (m *Spec_ServiceJob) Reset()      { *m = Spec_ServiceJob{} }
-func (*Spec_ServiceJob) ProtoMessage() {}
+func (m *JobSpec_ServiceJob) Reset()      { *m = JobSpec_ServiceJob{} }
+func (*JobSpec_ServiceJob) ProtoMessage() {}
 
-type Spec_BatchJob struct {
+type JobSpec_BatchJob struct {
 	Completions int64 `protobuf:"varint,1,opt,name=completions,proto3" json:"completions,omitempty"`
 	Paralellism int64 `protobuf:"varint,2,opt,name=paralellism,proto3" json:"paralellism,omitempty"`
 }
 
-func (m *Spec_BatchJob) Reset()      { *m = Spec_BatchJob{} }
-func (*Spec_BatchJob) ProtoMessage() {}
+func (m *JobSpec_BatchJob) Reset()      { *m = JobSpec_BatchJob{} }
+func (*JobSpec_BatchJob) ProtoMessage() {}
 
-type Spec_GlobalJob struct {
+type JobSpec_GlobalJob struct {
 }
 
-func (m *Spec_GlobalJob) Reset()      { *m = Spec_GlobalJob{} }
-func (*Spec_GlobalJob) ProtoMessage() {}
+func (m *JobSpec_GlobalJob) Reset()      { *m = JobSpec_GlobalJob{} }
+func (*JobSpec_GlobalJob) ProtoMessage() {}
 
-type Spec_CronJob struct {
+type JobSpec_CronJob struct {
 }
 
-func (m *Spec_CronJob) Reset()      { *m = Spec_CronJob{} }
-func (*Spec_CronJob) ProtoMessage() {}
+func (m *JobSpec_CronJob) Reset()      { *m = JobSpec_CronJob{} }
+func (*JobSpec_CronJob) ProtoMessage() {}
 
-type Spec_Orchestration struct {
+type JobSpec_Orchestration struct {
 	// Types that are valid to be assigned to Job:
-	//	*Spec_Orchestration_Service
-	//	*Spec_Orchestration_Batch
-	//	*Spec_Orchestration_Global
-	//	*Spec_Orchestration_Cron
-	Job isSpec_Orchestration_Job `protobuf_oneof:"job"`
+	//	*JobSpec_Orchestration_Service
+	//	*JobSpec_Orchestration_Batch
+	//	*JobSpec_Orchestration_Global
+	//	*JobSpec_Orchestration_Cron
+	Job isJobSpec_Orchestration_Job `protobuf_oneof:"job"`
 }
 
-func (m *Spec_Orchestration) Reset()      { *m = Spec_Orchestration{} }
-func (*Spec_Orchestration) ProtoMessage() {}
+func (m *JobSpec_Orchestration) Reset()      { *m = JobSpec_Orchestration{} }
+func (*JobSpec_Orchestration) ProtoMessage() {}
 
-type isSpec_Orchestration_Job interface {
-	isSpec_Orchestration_Job()
+type isJobSpec_Orchestration_Job interface {
+	isJobSpec_Orchestration_Job()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type Spec_Orchestration_Service struct {
-	Service *Spec_ServiceJob `protobuf:"bytes,1,opt,name=service,oneof"`
+type JobSpec_Orchestration_Service struct {
+	Service *JobSpec_ServiceJob `protobuf:"bytes,1,opt,name=service,oneof"`
 }
-type Spec_Orchestration_Batch struct {
-	Batch *Spec_BatchJob `protobuf:"bytes,2,opt,name=batch,oneof"`
+type JobSpec_Orchestration_Batch struct {
+	Batch *JobSpec_BatchJob `protobuf:"bytes,2,opt,name=batch,oneof"`
 }
-type Spec_Orchestration_Global struct {
-	Global *Spec_GlobalJob `protobuf:"bytes,3,opt,name=global,oneof"`
+type JobSpec_Orchestration_Global struct {
+	Global *JobSpec_GlobalJob `protobuf:"bytes,3,opt,name=global,oneof"`
 }
-type Spec_Orchestration_Cron struct {
-	Cron *Spec_CronJob `protobuf:"bytes,4,opt,name=cron,oneof"`
+type JobSpec_Orchestration_Cron struct {
+	Cron *JobSpec_CronJob `protobuf:"bytes,4,opt,name=cron,oneof"`
 }
 
-func (*Spec_Orchestration_Service) isSpec_Orchestration_Job() {}
-func (*Spec_Orchestration_Batch) isSpec_Orchestration_Job()   {}
-func (*Spec_Orchestration_Global) isSpec_Orchestration_Job()  {}
-func (*Spec_Orchestration_Cron) isSpec_Orchestration_Job()    {}
+func (*JobSpec_Orchestration_Service) isJobSpec_Orchestration_Job() {}
+func (*JobSpec_Orchestration_Batch) isJobSpec_Orchestration_Job()   {}
+func (*JobSpec_Orchestration_Global) isJobSpec_Orchestration_Job()  {}
+func (*JobSpec_Orchestration_Cron) isJobSpec_Orchestration_Job()    {}
 
-func (m *Spec_Orchestration) GetJob() isSpec_Orchestration_Job {
+func (m *JobSpec_Orchestration) GetJob() isJobSpec_Orchestration_Job {
 	if m != nil {
 		return m.Job
 	}
 	return nil
 }
 
-func (m *Spec_Orchestration) GetService() *Spec_ServiceJob {
-	if x, ok := m.GetJob().(*Spec_Orchestration_Service); ok {
+func (m *JobSpec_Orchestration) GetService() *JobSpec_ServiceJob {
+	if x, ok := m.GetJob().(*JobSpec_Orchestration_Service); ok {
 		return x.Service
 	}
 	return nil
 }
 
-func (m *Spec_Orchestration) GetBatch() *Spec_BatchJob {
-	if x, ok := m.GetJob().(*Spec_Orchestration_Batch); ok {
+func (m *JobSpec_Orchestration) GetBatch() *JobSpec_BatchJob {
+	if x, ok := m.GetJob().(*JobSpec_Orchestration_Batch); ok {
 		return x.Batch
 	}
 	return nil
 }
 
-func (m *Spec_Orchestration) GetGlobal() *Spec_GlobalJob {
-	if x, ok := m.GetJob().(*Spec_Orchestration_Global); ok {
+func (m *JobSpec_Orchestration) GetGlobal() *JobSpec_GlobalJob {
+	if x, ok := m.GetJob().(*JobSpec_Orchestration_Global); ok {
 		return x.Global
 	}
 	return nil
 }
 
-func (m *Spec_Orchestration) GetCron() *Spec_CronJob {
-	if x, ok := m.GetJob().(*Spec_Orchestration_Cron); ok {
+func (m *JobSpec_Orchestration) GetCron() *JobSpec_CronJob {
+	if x, ok := m.GetJob().(*JobSpec_Orchestration_Cron); ok {
 		return x.Cron
 	}
 	return nil
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*Spec_Orchestration) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _Spec_Orchestration_OneofMarshaler, _Spec_Orchestration_OneofUnmarshaler, []interface{}{
-		(*Spec_Orchestration_Service)(nil),
-		(*Spec_Orchestration_Batch)(nil),
-		(*Spec_Orchestration_Global)(nil),
-		(*Spec_Orchestration_Cron)(nil),
+func (*JobSpec_Orchestration) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _JobSpec_Orchestration_OneofMarshaler, _JobSpec_Orchestration_OneofUnmarshaler, []interface{}{
+		(*JobSpec_Orchestration_Service)(nil),
+		(*JobSpec_Orchestration_Batch)(nil),
+		(*JobSpec_Orchestration_Global)(nil),
+		(*JobSpec_Orchestration_Cron)(nil),
 	}
 }
 
-func _Spec_Orchestration_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*Spec_Orchestration)
+func _JobSpec_Orchestration_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*JobSpec_Orchestration)
 	// job
 	switch x := m.Job.(type) {
-	case *Spec_Orchestration_Service:
+	case *JobSpec_Orchestration_Service:
 		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Service); err != nil {
 			return err
 		}
-	case *Spec_Orchestration_Batch:
+	case *JobSpec_Orchestration_Batch:
 		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Batch); err != nil {
 			return err
 		}
-	case *Spec_Orchestration_Global:
+	case *JobSpec_Orchestration_Global:
 		_ = b.EncodeVarint(3<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Global); err != nil {
 			return err
 		}
-	case *Spec_Orchestration_Cron:
+	case *JobSpec_Orchestration_Cron:
 		_ = b.EncodeVarint(4<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Cron); err != nil {
 			return err
 		}
 	case nil:
 	default:
-		return fmt.Errorf("Spec_Orchestration.Job has unexpected type %T", x)
+		return fmt.Errorf("JobSpec_Orchestration.Job has unexpected type %T", x)
 	}
 	return nil
 }
 
-func _Spec_Orchestration_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*Spec_Orchestration)
+func _JobSpec_Orchestration_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*JobSpec_Orchestration)
 	switch tag {
 	case 1: // job.service
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
-		msg := new(Spec_ServiceJob)
+		msg := new(JobSpec_ServiceJob)
 		err := b.DecodeMessage(msg)
-		m.Job = &Spec_Orchestration_Service{msg}
+		m.Job = &JobSpec_Orchestration_Service{msg}
 		return true, err
 	case 2: // job.batch
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
-		msg := new(Spec_BatchJob)
+		msg := new(JobSpec_BatchJob)
 		err := b.DecodeMessage(msg)
-		m.Job = &Spec_Orchestration_Batch{msg}
+		m.Job = &JobSpec_Orchestration_Batch{msg}
 		return true, err
 	case 3: // job.global
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
-		msg := new(Spec_GlobalJob)
+		msg := new(JobSpec_GlobalJob)
 		err := b.DecodeMessage(msg)
-		m.Job = &Spec_Orchestration_Global{msg}
+		m.Job = &JobSpec_Orchestration_Global{msg}
 		return true, err
 	case 4: // job.cron
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
-		msg := new(Spec_CronJob)
+		msg := new(JobSpec_CronJob)
 		err := b.DecodeMessage(msg)
-		m.Job = &Spec_Orchestration_Cron{msg}
+		m.Job = &JobSpec_Orchestration_Cron{msg}
 		return true, err
 	default:
 		return false, nil
 	}
 }
 
-type Spec_NetworkAttachment struct {
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+// NetworkAttachment describes a desired attachment to the named network or
+// a specific network_id.
+type JobSpec_NetworkAttachment struct {
+	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	NetworkId string `protobuf:"bytes,2,opt,name=network_id,proto3" json:"network_id,omitempty"`
 }
 
-func (m *Spec_NetworkAttachment) Reset()      { *m = Spec_NetworkAttachment{} }
-func (*Spec_NetworkAttachment) ProtoMessage() {}
+func (m *JobSpec_NetworkAttachment) Reset()      { *m = JobSpec_NetworkAttachment{} }
+func (*JobSpec_NetworkAttachment) ProtoMessage() {}
 
 type TaskStatus struct {
 	State   TaskStatus_State `protobuf:"varint,2,opt,name=state,proto3,enum=api.TaskStatus_State" json:"state,omitempty"`
@@ -489,7 +492,7 @@ type Task struct {
 	Meta   *Meta       `protobuf:"bytes,2,opt,name=meta" json:"meta,omitempty"`
 	JobId  string      `protobuf:"bytes,3,opt,name=job_id,proto3" json:"job_id,omitempty"`
 	NodeId string      `protobuf:"bytes,4,opt,name=node_id,proto3" json:"node_id,omitempty"`
-	Spec   *Spec       `protobuf:"bytes,5,opt,name=spec" json:"spec,omitempty"`
+	Spec   *JobSpec    `protobuf:"bytes,5,opt,name=spec" json:"spec,omitempty"`
 	Status *TaskStatus `protobuf:"bytes,6,opt,name=status" json:"status,omitempty"`
 }
 
@@ -497,9 +500,9 @@ func (m *Task) Reset()      { *m = Task{} }
 func (*Task) ProtoMessage() {}
 
 type Job struct {
-	Id   string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Meta *Meta  `protobuf:"bytes,2,opt,name=meta" json:"meta,omitempty"`
-	Spec *Spec  `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	Id   string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Meta *Meta    `protobuf:"bytes,2,opt,name=meta" json:"meta,omitempty"`
+	Spec *JobSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *Job) Reset()      { *m = Job{} }
@@ -509,16 +512,16 @@ func (*Job) ProtoMessage() {}
 type IPAMConfiguration struct {
 	// Subnet defines a network as a CIDR address (ie network and mask
 	// 192.168.0.1/24).
-	Subnet string `protobuf:"bytes,3,opt,name=subnet,proto3" json:"subnet,omitempty"`
+	Subnet string `protobuf:"bytes,1,opt,name=subnet,proto3" json:"subnet,omitempty"`
 	// Range defines the portion of the subnet to allocate to tasks. This is
 	// defined as a subnet within the primary subnet.
-	Range string `protobuf:"bytes,4,opt,name=range,proto3" json:"range,omitempty"`
+	Range string `protobuf:"bytes,2,opt,name=range,proto3" json:"range,omitempty"`
 	// Gateway address within the subnet.
-	Gateway string `protobuf:"bytes,5,opt,name=gateway,proto3" json:"gateway,omitempty"`
+	Gateway string `protobuf:"bytes,3,opt,name=gateway,proto3" json:"gateway,omitempty"`
 	// Reserved is a list of address from the master pool that should *not* be
 	// allocated. These addresses may have already been allocated or may be
 	// reserved for another allocation manager.
-	Reserved map[string]string `protobuf:"bytes,6,rep,name=reserved" json:"reserved,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Reserved map[string]string `protobuf:"bytes,4,rep,name=reserved" json:"reserved,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (m *IPAMConfiguration) Reset()      { *m = IPAMConfiguration{} }
@@ -526,25 +529,31 @@ func (*IPAMConfiguration) ProtoMessage() {}
 
 // NetworkSpec specifies user defined network parameters.
 type NetworkSpec struct {
-	Meta    *Meta             `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
-	Driver  string            `protobuf:"bytes,2,opt,name=driver,proto3" json:"driver,omitempty"`
-	Options map[string]string `protobuf:"bytes,3,rep,name=options" json:"options,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Meta   *Meta               `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
+	Driver *NetworkSpec_Driver `protobuf:"bytes,2,opt,name=driver" json:"driver,omitempty"`
 	// IPv6Enabled enables support for IPv6 on the network.
-	Ipv6Enabled bool `protobuf:"varint,4,opt,name=ipv6_enabled,proto3" json:"ipv6_enabled,omitempty"`
+	Ipv6Enabled bool `protobuf:"varint,3,opt,name=ipv6_enabled,proto3" json:"ipv6_enabled,omitempty"`
 	// internal restricts external access to the network. This may be
 	// accomplished by disabling the default gateway or through other means.
-	Internal bool                     `protobuf:"varint,5,opt,name=internal,proto3" json:"internal,omitempty"`
-	Ipam     *NetworkSpec_IPAMOptions `protobuf:"bytes,6,opt,name=ipam" json:"ipam,omitempty"`
+	Internal bool                     `protobuf:"varint,4,opt,name=internal,proto3" json:"internal,omitempty"`
+	Ipam     *NetworkSpec_IPAMOptions `protobuf:"bytes,5,opt,name=ipam" json:"ipam,omitempty"`
 }
 
 func (m *NetworkSpec) Reset()      { *m = NetworkSpec{} }
 func (*NetworkSpec) ProtoMessage() {}
 
+type NetworkSpec_Driver struct {
+	Name    string            `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Options map[string]string `protobuf:"bytes,2,rep,name=options" json:"options,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+}
+
+func (m *NetworkSpec_Driver) Reset()      { *m = NetworkSpec_Driver{} }
+func (*NetworkSpec_Driver) ProtoMessage() {}
+
 type NetworkSpec_IPAMOptions struct {
-	Driver  string               `protobuf:"bytes,1,opt,name=driver,proto3" json:"driver,omitempty"`
-	Options map[string]string    `protobuf:"bytes,2,rep,name=options" json:"options,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	Ipv4    []*IPAMConfiguration `protobuf:"bytes,3,rep,name=ipv4" json:"ipv4,omitempty"`
-	Ipv6    []*IPAMConfiguration `protobuf:"bytes,4,rep,name=ipv6" json:"ipv6,omitempty"`
+	Driver *NetworkSpec_Driver  `protobuf:"bytes,1,opt,name=driver" json:"driver,omitempty"`
+	Ipv4   []*IPAMConfiguration `protobuf:"bytes,3,rep,name=ipv4" json:"ipv4,omitempty"`
+	Ipv6   []*IPAMConfiguration `protobuf:"bytes,4,rep,name=ipv6" json:"ipv6,omitempty"`
 }
 
 func (m *NetworkSpec_IPAMOptions) Reset()      { *m = NetworkSpec_IPAMOptions{} }
@@ -562,19 +571,20 @@ func init() {
 	proto.RegisterType((*Meta)(nil), "api.Meta")
 	proto.RegisterType((*Node)(nil), "api.Node")
 	proto.RegisterType((*ImageSpec)(nil), "api.ImageSpec")
-	proto.RegisterType((*Spec)(nil), "api.Spec")
-	proto.RegisterType((*Spec_Source)(nil), "api.Spec.Source")
-	proto.RegisterType((*Spec_ServiceJob)(nil), "api.Spec.ServiceJob")
-	proto.RegisterType((*Spec_BatchJob)(nil), "api.Spec.BatchJob")
-	proto.RegisterType((*Spec_GlobalJob)(nil), "api.Spec.GlobalJob")
-	proto.RegisterType((*Spec_CronJob)(nil), "api.Spec.CronJob")
-	proto.RegisterType((*Spec_Orchestration)(nil), "api.Spec.Orchestration")
-	proto.RegisterType((*Spec_NetworkAttachment)(nil), "api.Spec.NetworkAttachment")
+	proto.RegisterType((*JobSpec)(nil), "api.JobSpec")
+	proto.RegisterType((*JobSpec_Source)(nil), "api.JobSpec.Source")
+	proto.RegisterType((*JobSpec_ServiceJob)(nil), "api.JobSpec.ServiceJob")
+	proto.RegisterType((*JobSpec_BatchJob)(nil), "api.JobSpec.BatchJob")
+	proto.RegisterType((*JobSpec_GlobalJob)(nil), "api.JobSpec.GlobalJob")
+	proto.RegisterType((*JobSpec_CronJob)(nil), "api.JobSpec.CronJob")
+	proto.RegisterType((*JobSpec_Orchestration)(nil), "api.JobSpec.Orchestration")
+	proto.RegisterType((*JobSpec_NetworkAttachment)(nil), "api.JobSpec.NetworkAttachment")
 	proto.RegisterType((*TaskStatus)(nil), "api.TaskStatus")
 	proto.RegisterType((*Task)(nil), "api.Task")
 	proto.RegisterType((*Job)(nil), "api.Job")
 	proto.RegisterType((*IPAMConfiguration)(nil), "api.IPAMConfiguration")
 	proto.RegisterType((*NetworkSpec)(nil), "api.NetworkSpec")
+	proto.RegisterType((*NetworkSpec_Driver)(nil), "api.NetworkSpec.Driver")
 	proto.RegisterType((*NetworkSpec_IPAMOptions)(nil), "api.NetworkSpec.IPAMOptions")
 	proto.RegisterType((*Network)(nil), "api.Network")
 	proto.RegisterEnum("api.NodeStatus", NodeStatus_name, NodeStatus_value)
@@ -629,12 +639,12 @@ func (this *ImageSpec) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *Spec) GoString() string {
+func (this *JobSpec) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 8)
-	s = append(s, "&api.Spec{")
+	s = append(s, "&api.JobSpec{")
 	if this.Meta != nil {
 		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
 	}
@@ -650,116 +660,117 @@ func (this *Spec) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *Spec_Source) GoString() string {
+func (this *JobSpec_Source) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.Spec_Source{")
+	s = append(s, "&api.JobSpec_Source{")
 	if this.Source != nil {
 		s = append(s, "Source: "+fmt.Sprintf("%#v", this.Source)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *Spec_Source_Image) GoString() string {
+func (this *JobSpec_Source_Image) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&api.Spec_Source_Image{` +
+	s := strings.Join([]string{`&api.JobSpec_Source_Image{` +
 		`Image:` + fmt.Sprintf("%#v", this.Image) + `}`}, ", ")
 	return s
 }
-func (this *Spec_ServiceJob) GoString() string {
+func (this *JobSpec_ServiceJob) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.Spec_ServiceJob{")
+	s = append(s, "&api.JobSpec_ServiceJob{")
 	s = append(s, "Instances: "+fmt.Sprintf("%#v", this.Instances)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *Spec_BatchJob) GoString() string {
+func (this *JobSpec_BatchJob) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.Spec_BatchJob{")
+	s = append(s, "&api.JobSpec_BatchJob{")
 	s = append(s, "Completions: "+fmt.Sprintf("%#v", this.Completions)+",\n")
 	s = append(s, "Paralellism: "+fmt.Sprintf("%#v", this.Paralellism)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *Spec_GlobalJob) GoString() string {
+func (this *JobSpec_GlobalJob) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 4)
-	s = append(s, "&api.Spec_GlobalJob{")
+	s = append(s, "&api.JobSpec_GlobalJob{")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *Spec_CronJob) GoString() string {
+func (this *JobSpec_CronJob) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 4)
-	s = append(s, "&api.Spec_CronJob{")
+	s = append(s, "&api.JobSpec_CronJob{")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *Spec_Orchestration) GoString() string {
+func (this *JobSpec_Orchestration) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 8)
-	s = append(s, "&api.Spec_Orchestration{")
+	s = append(s, "&api.JobSpec_Orchestration{")
 	if this.Job != nil {
 		s = append(s, "Job: "+fmt.Sprintf("%#v", this.Job)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *Spec_Orchestration_Service) GoString() string {
+func (this *JobSpec_Orchestration_Service) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&api.Spec_Orchestration_Service{` +
+	s := strings.Join([]string{`&api.JobSpec_Orchestration_Service{` +
 		`Service:` + fmt.Sprintf("%#v", this.Service) + `}`}, ", ")
 	return s
 }
-func (this *Spec_Orchestration_Batch) GoString() string {
+func (this *JobSpec_Orchestration_Batch) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&api.Spec_Orchestration_Batch{` +
+	s := strings.Join([]string{`&api.JobSpec_Orchestration_Batch{` +
 		`Batch:` + fmt.Sprintf("%#v", this.Batch) + `}`}, ", ")
 	return s
 }
-func (this *Spec_Orchestration_Global) GoString() string {
+func (this *JobSpec_Orchestration_Global) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&api.Spec_Orchestration_Global{` +
+	s := strings.Join([]string{`&api.JobSpec_Orchestration_Global{` +
 		`Global:` + fmt.Sprintf("%#v", this.Global) + `}`}, ", ")
 	return s
 }
-func (this *Spec_Orchestration_Cron) GoString() string {
+func (this *JobSpec_Orchestration_Cron) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&api.Spec_Orchestration_Cron{` +
+	s := strings.Join([]string{`&api.JobSpec_Orchestration_Cron{` +
 		`Cron:` + fmt.Sprintf("%#v", this.Cron) + `}`}, ", ")
 	return s
 }
-func (this *Spec_NetworkAttachment) GoString() string {
+func (this *JobSpec_NetworkAttachment) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.Spec_NetworkAttachment{")
+	s := make([]string, 0, 6)
+	s = append(s, "&api.JobSpec_NetworkAttachment{")
 	s = append(s, "Name: "+fmt.Sprintf("%#v", this.Name)+",\n")
+	s = append(s, "NetworkId: "+fmt.Sprintf("%#v", this.NetworkId)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -840,24 +851,13 @@ func (this *NetworkSpec) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 10)
+	s := make([]string, 0, 9)
 	s = append(s, "&api.NetworkSpec{")
 	if this.Meta != nil {
 		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
 	}
-	s = append(s, "Driver: "+fmt.Sprintf("%#v", this.Driver)+",\n")
-	keysForOptions := make([]string, 0, len(this.Options))
-	for k, _ := range this.Options {
-		keysForOptions = append(keysForOptions, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForOptions)
-	mapStringForOptions := "map[string]string{"
-	for _, k := range keysForOptions {
-		mapStringForOptions += fmt.Sprintf("%#v: %#v,", k, this.Options[k])
-	}
-	mapStringForOptions += "}"
-	if this.Options != nil {
-		s = append(s, "Options: "+mapStringForOptions+",\n")
+	if this.Driver != nil {
+		s = append(s, "Driver: "+fmt.Sprintf("%#v", this.Driver)+",\n")
 	}
 	s = append(s, "Ipv6Enabled: "+fmt.Sprintf("%#v", this.Ipv6Enabled)+",\n")
 	s = append(s, "Internal: "+fmt.Sprintf("%#v", this.Internal)+",\n")
@@ -867,15 +867,27 @@ func (this *NetworkSpec) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
+func (this *NetworkSpec_Driver) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.NetworkSpec_Driver{")
+	s = append(s, "Name: "+fmt.Sprintf("%#v", this.Name)+",\n")
+	if this.Options != nil {
+		s = append(s, "Options: "+fmt.Sprintf("%#v", this.Options)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func (this *NetworkSpec_IPAMOptions) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 8)
+	s := make([]string, 0, 7)
 	s = append(s, "&api.NetworkSpec_IPAMOptions{")
-	s = append(s, "Driver: "+fmt.Sprintf("%#v", this.Driver)+",\n")
-	if this.Options != nil {
-		s = append(s, "Options: "+fmt.Sprintf("%#v", this.Options)+",\n")
+	if this.Driver != nil {
+		s = append(s, "Driver: "+fmt.Sprintf("%#v", this.Driver)+",\n")
 	}
 	if this.Ipv4 != nil {
 		s = append(s, "Ipv4: "+fmt.Sprintf("%#v", this.Ipv4)+",\n")
@@ -1032,7 +1044,7 @@ func (m *ImageSpec) MarshalTo(data []byte) (int, error) {
 		i += copy(data[i:], m.Reference)
 	}
 	if len(m.Resolved) > 0 {
-		data[i] = 0x3a
+		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(len(m.Resolved)))
 		i += copy(data[i:], m.Resolved)
@@ -1040,7 +1052,7 @@ func (m *ImageSpec) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Spec) Marshal() (data []byte, err error) {
+func (m *JobSpec) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1050,7 +1062,7 @@ func (m *Spec) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Spec) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1100,7 +1112,7 @@ func (m *Spec) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Spec_Source) Marshal() (data []byte, err error) {
+func (m *JobSpec_Source) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1110,7 +1122,7 @@ func (m *Spec_Source) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Spec_Source) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_Source) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1125,7 +1137,7 @@ func (m *Spec_Source) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Spec_Source_Image) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_Source_Image) MarshalTo(data []byte) (int, error) {
 	i := 0
 	if m.Image != nil {
 		data[i] = 0xa
@@ -1139,7 +1151,7 @@ func (m *Spec_Source_Image) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *Spec_ServiceJob) Marshal() (data []byte, err error) {
+func (m *JobSpec_ServiceJob) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1149,7 +1161,7 @@ func (m *Spec_ServiceJob) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Spec_ServiceJob) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_ServiceJob) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1162,7 +1174,7 @@ func (m *Spec_ServiceJob) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Spec_BatchJob) Marshal() (data []byte, err error) {
+func (m *JobSpec_BatchJob) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1172,7 +1184,7 @@ func (m *Spec_BatchJob) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Spec_BatchJob) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_BatchJob) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1190,7 +1202,7 @@ func (m *Spec_BatchJob) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Spec_GlobalJob) Marshal() (data []byte, err error) {
+func (m *JobSpec_GlobalJob) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1200,7 +1212,7 @@ func (m *Spec_GlobalJob) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Spec_GlobalJob) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_GlobalJob) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1208,7 +1220,7 @@ func (m *Spec_GlobalJob) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Spec_CronJob) Marshal() (data []byte, err error) {
+func (m *JobSpec_CronJob) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1218,7 +1230,7 @@ func (m *Spec_CronJob) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Spec_CronJob) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_CronJob) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1226,7 +1238,7 @@ func (m *Spec_CronJob) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Spec_Orchestration) Marshal() (data []byte, err error) {
+func (m *JobSpec_Orchestration) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1236,7 +1248,7 @@ func (m *Spec_Orchestration) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Spec_Orchestration) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_Orchestration) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1251,7 +1263,7 @@ func (m *Spec_Orchestration) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Spec_Orchestration_Service) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_Orchestration_Service) MarshalTo(data []byte) (int, error) {
 	i := 0
 	if m.Service != nil {
 		data[i] = 0xa
@@ -1265,7 +1277,7 @@ func (m *Spec_Orchestration_Service) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *Spec_Orchestration_Batch) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_Orchestration_Batch) MarshalTo(data []byte) (int, error) {
 	i := 0
 	if m.Batch != nil {
 		data[i] = 0x12
@@ -1279,7 +1291,7 @@ func (m *Spec_Orchestration_Batch) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *Spec_Orchestration_Global) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_Orchestration_Global) MarshalTo(data []byte) (int, error) {
 	i := 0
 	if m.Global != nil {
 		data[i] = 0x1a
@@ -1293,7 +1305,7 @@ func (m *Spec_Orchestration_Global) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *Spec_Orchestration_Cron) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_Orchestration_Cron) MarshalTo(data []byte) (int, error) {
 	i := 0
 	if m.Cron != nil {
 		data[i] = 0x22
@@ -1307,7 +1319,7 @@ func (m *Spec_Orchestration_Cron) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *Spec_NetworkAttachment) Marshal() (data []byte, err error) {
+func (m *JobSpec_NetworkAttachment) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1317,7 +1329,7 @@ func (m *Spec_NetworkAttachment) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Spec_NetworkAttachment) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_NetworkAttachment) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1327,6 +1339,12 @@ func (m *Spec_NetworkAttachment) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintTypes(data, i, uint64(len(m.Name)))
 		i += copy(data[i:], m.Name)
+	}
+	if len(m.NetworkId) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.NetworkId)))
+		i += copy(data[i:], m.NetworkId)
 	}
 	return i, nil
 }
@@ -1486,26 +1504,26 @@ func (m *IPAMConfiguration) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if len(m.Subnet) > 0 {
-		data[i] = 0x1a
+		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(len(m.Subnet)))
 		i += copy(data[i:], m.Subnet)
 	}
 	if len(m.Range) > 0 {
-		data[i] = 0x22
+		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(len(m.Range)))
 		i += copy(data[i:], m.Range)
 	}
 	if len(m.Gateway) > 0 {
-		data[i] = 0x2a
+		data[i] = 0x1a
 		i++
 		i = encodeVarintTypes(data, i, uint64(len(m.Gateway)))
 		i += copy(data[i:], m.Gateway)
 	}
 	if len(m.Reserved) > 0 {
 		for k, _ := range m.Reserved {
-			data[i] = 0x32
+			data[i] = 0x22
 			i++
 			v := m.Reserved[k]
 			mapSize := 1 + len(k) + sovTypes(uint64(len(k))) + 1 + len(v) + sovTypes(uint64(len(v)))
@@ -1548,31 +1566,18 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 		}
 		i += n17
 	}
-	if len(m.Driver) > 0 {
+	if m.Driver != nil {
 		data[i] = 0x12
 		i++
-		i = encodeVarintTypes(data, i, uint64(len(m.Driver)))
-		i += copy(data[i:], m.Driver)
-	}
-	if len(m.Options) > 0 {
-		for k, _ := range m.Options {
-			data[i] = 0x1a
-			i++
-			v := m.Options[k]
-			mapSize := 1 + len(k) + sovTypes(uint64(len(k))) + 1 + len(v) + sovTypes(uint64(len(v)))
-			i = encodeVarintTypes(data, i, uint64(mapSize))
-			data[i] = 0xa
-			i++
-			i = encodeVarintTypes(data, i, uint64(len(k)))
-			i += copy(data[i:], k)
-			data[i] = 0x12
-			i++
-			i = encodeVarintTypes(data, i, uint64(len(v)))
-			i += copy(data[i:], v)
+		i = encodeVarintTypes(data, i, uint64(m.Driver.Size()))
+		n18, err := m.Driver.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
 		}
+		i += n18
 	}
 	if m.Ipv6Enabled {
-		data[i] = 0x20
+		data[i] = 0x18
 		i++
 		if m.Ipv6Enabled {
 			data[i] = 1
@@ -1582,7 +1587,7 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 		i++
 	}
 	if m.Internal {
-		data[i] = 0x28
+		data[i] = 0x20
 		i++
 		if m.Internal {
 			data[i] = 1
@@ -1592,14 +1597,50 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 		i++
 	}
 	if m.Ipam != nil {
-		data[i] = 0x32
+		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Ipam.Size()))
-		n18, err := m.Ipam.MarshalTo(data[i:])
+		n19, err := m.Ipam.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n18
+		i += n19
+	}
+	return i, nil
+}
+
+func (m *NetworkSpec_Driver) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *NetworkSpec_Driver) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.Name)))
+		i += copy(data[i:], m.Name)
+	}
+	if len(m.Options) > 0 {
+		for _, msg := range m.Options {
+			data[i] = 0x12
+			i++
+			i = encodeVarintTypes(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
 	}
 	return i, nil
 }
@@ -1619,23 +1660,15 @@ func (m *NetworkSpec_IPAMOptions) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.Driver) > 0 {
+	if m.Driver != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintTypes(data, i, uint64(len(m.Driver)))
-		i += copy(data[i:], m.Driver)
-	}
-	if len(m.Options) > 0 {
-		for _, msg := range m.Options {
-			data[i] = 0x12
-			i++
-			i = encodeVarintTypes(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
+		i = encodeVarintTypes(data, i, uint64(m.Driver.Size()))
+		n20, err := m.Driver.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
 		}
+		i += n20
 	}
 	if len(m.Ipv4) > 0 {
 		for _, msg := range m.Ipv4 {
@@ -1689,11 +1722,11 @@ func (m *Network) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n19, err := m.Spec.MarshalTo(data[i:])
+		n21, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n19
+		i += n21
 	}
 	return i, nil
 }
@@ -1778,7 +1811,7 @@ func (m *ImageSpec) Size() (n int) {
 	return n
 }
 
-func (m *Spec) Size() (n int) {
+func (m *JobSpec) Size() (n int) {
 	var l int
 	_ = l
 	if m.Meta != nil {
@@ -1802,7 +1835,7 @@ func (m *Spec) Size() (n int) {
 	return n
 }
 
-func (m *Spec_Source) Size() (n int) {
+func (m *JobSpec_Source) Size() (n int) {
 	var l int
 	_ = l
 	if m.Source != nil {
@@ -1811,7 +1844,7 @@ func (m *Spec_Source) Size() (n int) {
 	return n
 }
 
-func (m *Spec_Source_Image) Size() (n int) {
+func (m *JobSpec_Source_Image) Size() (n int) {
 	var l int
 	_ = l
 	if m.Image != nil {
@@ -1820,7 +1853,7 @@ func (m *Spec_Source_Image) Size() (n int) {
 	}
 	return n
 }
-func (m *Spec_ServiceJob) Size() (n int) {
+func (m *JobSpec_ServiceJob) Size() (n int) {
 	var l int
 	_ = l
 	if m.Instances != 0 {
@@ -1829,7 +1862,7 @@ func (m *Spec_ServiceJob) Size() (n int) {
 	return n
 }
 
-func (m *Spec_BatchJob) Size() (n int) {
+func (m *JobSpec_BatchJob) Size() (n int) {
 	var l int
 	_ = l
 	if m.Completions != 0 {
@@ -1841,19 +1874,19 @@ func (m *Spec_BatchJob) Size() (n int) {
 	return n
 }
 
-func (m *Spec_GlobalJob) Size() (n int) {
+func (m *JobSpec_GlobalJob) Size() (n int) {
 	var l int
 	_ = l
 	return n
 }
 
-func (m *Spec_CronJob) Size() (n int) {
+func (m *JobSpec_CronJob) Size() (n int) {
 	var l int
 	_ = l
 	return n
 }
 
-func (m *Spec_Orchestration) Size() (n int) {
+func (m *JobSpec_Orchestration) Size() (n int) {
 	var l int
 	_ = l
 	if m.Job != nil {
@@ -1862,7 +1895,7 @@ func (m *Spec_Orchestration) Size() (n int) {
 	return n
 }
 
-func (m *Spec_Orchestration_Service) Size() (n int) {
+func (m *JobSpec_Orchestration_Service) Size() (n int) {
 	var l int
 	_ = l
 	if m.Service != nil {
@@ -1871,7 +1904,7 @@ func (m *Spec_Orchestration_Service) Size() (n int) {
 	}
 	return n
 }
-func (m *Spec_Orchestration_Batch) Size() (n int) {
+func (m *JobSpec_Orchestration_Batch) Size() (n int) {
 	var l int
 	_ = l
 	if m.Batch != nil {
@@ -1880,7 +1913,7 @@ func (m *Spec_Orchestration_Batch) Size() (n int) {
 	}
 	return n
 }
-func (m *Spec_Orchestration_Global) Size() (n int) {
+func (m *JobSpec_Orchestration_Global) Size() (n int) {
 	var l int
 	_ = l
 	if m.Global != nil {
@@ -1889,7 +1922,7 @@ func (m *Spec_Orchestration_Global) Size() (n int) {
 	}
 	return n
 }
-func (m *Spec_Orchestration_Cron) Size() (n int) {
+func (m *JobSpec_Orchestration_Cron) Size() (n int) {
 	var l int
 	_ = l
 	if m.Cron != nil {
@@ -1898,10 +1931,14 @@ func (m *Spec_Orchestration_Cron) Size() (n int) {
 	}
 	return n
 }
-func (m *Spec_NetworkAttachment) Size() (n int) {
+func (m *JobSpec_NetworkAttachment) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	l = len(m.NetworkId)
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
@@ -2002,17 +2039,9 @@ func (m *NetworkSpec) Size() (n int) {
 		l = m.Meta.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
-	l = len(m.Driver)
-	if l > 0 {
+	if m.Driver != nil {
+		l = m.Driver.Size()
 		n += 1 + l + sovTypes(uint64(l))
-	}
-	if len(m.Options) > 0 {
-		for k, v := range m.Options {
-			_ = k
-			_ = v
-			mapEntrySize := 1 + len(k) + sovTypes(uint64(len(k))) + 1 + len(v) + sovTypes(uint64(len(v)))
-			n += mapEntrySize + 1 + sovTypes(uint64(mapEntrySize))
-		}
 	}
 	if m.Ipv6Enabled {
 		n += 2
@@ -2027,10 +2056,10 @@ func (m *NetworkSpec) Size() (n int) {
 	return n
 }
 
-func (m *NetworkSpec_IPAMOptions) Size() (n int) {
+func (m *NetworkSpec_Driver) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.Driver)
+	l = len(m.Name)
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
@@ -2039,6 +2068,16 @@ func (m *NetworkSpec_IPAMOptions) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovTypes(uint64(l))
 		}
+	}
+	return n
+}
+
+func (m *NetworkSpec_IPAMOptions) Size() (n int) {
+	var l int
+	_ = l
+	if m.Driver != nil {
+		l = m.Driver.Size()
+		n += 1 + l + sovTypes(uint64(l))
 	}
 	if len(m.Ipv4) > 0 {
 		for _, e := range m.Ipv4 {
@@ -2127,134 +2166,135 @@ func (this *ImageSpec) String() string {
 	}, "")
 	return s
 }
-func (this *Spec) String() string {
+func (this *JobSpec) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Spec{`,
+	s := strings.Join([]string{`&JobSpec{`,
 		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
-		`Source:` + strings.Replace(fmt.Sprintf("%v", this.Source), "Spec_Source", "Spec_Source", 1) + `,`,
-		`Orchestration:` + strings.Replace(fmt.Sprintf("%v", this.Orchestration), "Spec_Orchestration", "Spec_Orchestration", 1) + `,`,
-		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Spec_NetworkAttachment", "Spec_NetworkAttachment", 1) + `,`,
+		`Source:` + strings.Replace(fmt.Sprintf("%v", this.Source), "JobSpec_Source", "JobSpec_Source", 1) + `,`,
+		`Orchestration:` + strings.Replace(fmt.Sprintf("%v", this.Orchestration), "JobSpec_Orchestration", "JobSpec_Orchestration", 1) + `,`,
+		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "JobSpec_NetworkAttachment", "JobSpec_NetworkAttachment", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *Spec_Source) String() string {
+func (this *JobSpec_Source) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Spec_Source{`,
+	s := strings.Join([]string{`&JobSpec_Source{`,
 		`Source:` + fmt.Sprintf("%v", this.Source) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *Spec_Source_Image) String() string {
+func (this *JobSpec_Source_Image) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Spec_Source_Image{`,
+	s := strings.Join([]string{`&JobSpec_Source_Image{`,
 		`Image:` + strings.Replace(fmt.Sprintf("%v", this.Image), "ImageSpec", "ImageSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *Spec_ServiceJob) String() string {
+func (this *JobSpec_ServiceJob) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Spec_ServiceJob{`,
+	s := strings.Join([]string{`&JobSpec_ServiceJob{`,
 		`Instances:` + fmt.Sprintf("%v", this.Instances) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *Spec_BatchJob) String() string {
+func (this *JobSpec_BatchJob) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Spec_BatchJob{`,
+	s := strings.Join([]string{`&JobSpec_BatchJob{`,
 		`Completions:` + fmt.Sprintf("%v", this.Completions) + `,`,
 		`Paralellism:` + fmt.Sprintf("%v", this.Paralellism) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *Spec_GlobalJob) String() string {
+func (this *JobSpec_GlobalJob) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Spec_GlobalJob{`,
+	s := strings.Join([]string{`&JobSpec_GlobalJob{`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *Spec_CronJob) String() string {
+func (this *JobSpec_CronJob) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Spec_CronJob{`,
+	s := strings.Join([]string{`&JobSpec_CronJob{`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *Spec_Orchestration) String() string {
+func (this *JobSpec_Orchestration) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Spec_Orchestration{`,
+	s := strings.Join([]string{`&JobSpec_Orchestration{`,
 		`Job:` + fmt.Sprintf("%v", this.Job) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *Spec_Orchestration_Service) String() string {
+func (this *JobSpec_Orchestration_Service) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Spec_Orchestration_Service{`,
-		`Service:` + strings.Replace(fmt.Sprintf("%v", this.Service), "Spec_ServiceJob", "Spec_ServiceJob", 1) + `,`,
+	s := strings.Join([]string{`&JobSpec_Orchestration_Service{`,
+		`Service:` + strings.Replace(fmt.Sprintf("%v", this.Service), "JobSpec_ServiceJob", "JobSpec_ServiceJob", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *Spec_Orchestration_Batch) String() string {
+func (this *JobSpec_Orchestration_Batch) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Spec_Orchestration_Batch{`,
-		`Batch:` + strings.Replace(fmt.Sprintf("%v", this.Batch), "Spec_BatchJob", "Spec_BatchJob", 1) + `,`,
+	s := strings.Join([]string{`&JobSpec_Orchestration_Batch{`,
+		`Batch:` + strings.Replace(fmt.Sprintf("%v", this.Batch), "JobSpec_BatchJob", "JobSpec_BatchJob", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *Spec_Orchestration_Global) String() string {
+func (this *JobSpec_Orchestration_Global) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Spec_Orchestration_Global{`,
-		`Global:` + strings.Replace(fmt.Sprintf("%v", this.Global), "Spec_GlobalJob", "Spec_GlobalJob", 1) + `,`,
+	s := strings.Join([]string{`&JobSpec_Orchestration_Global{`,
+		`Global:` + strings.Replace(fmt.Sprintf("%v", this.Global), "JobSpec_GlobalJob", "JobSpec_GlobalJob", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *Spec_Orchestration_Cron) String() string {
+func (this *JobSpec_Orchestration_Cron) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Spec_Orchestration_Cron{`,
-		`Cron:` + strings.Replace(fmt.Sprintf("%v", this.Cron), "Spec_CronJob", "Spec_CronJob", 1) + `,`,
+	s := strings.Join([]string{`&JobSpec_Orchestration_Cron{`,
+		`Cron:` + strings.Replace(fmt.Sprintf("%v", this.Cron), "JobSpec_CronJob", "JobSpec_CronJob", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *Spec_NetworkAttachment) String() string {
+func (this *JobSpec_NetworkAttachment) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Spec_NetworkAttachment{`,
+	s := strings.Join([]string{`&JobSpec_NetworkAttachment{`,
 		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
+		`NetworkId:` + fmt.Sprintf("%v", this.NetworkId) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2279,7 +2319,7 @@ func (this *Task) String() string {
 		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
 		`JobId:` + fmt.Sprintf("%v", this.JobId) + `,`,
 		`NodeId:` + fmt.Sprintf("%v", this.NodeId) + `,`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "Spec", "Spec", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
 		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "TaskStatus", "TaskStatus", 1) + `,`,
 		`}`,
 	}, "")
@@ -2292,7 +2332,7 @@ func (this *Job) String() string {
 	s := strings.Join([]string{`&Job{`,
 		`Id:` + fmt.Sprintf("%v", this.Id) + `,`,
 		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "Spec", "Spec", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2324,23 +2364,23 @@ func (this *NetworkSpec) String() string {
 	if this == nil {
 		return "nil"
 	}
-	keysForOptions := make([]string, 0, len(this.Options))
-	for k, _ := range this.Options {
-		keysForOptions = append(keysForOptions, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForOptions)
-	mapStringForOptions := "map[string]string{"
-	for _, k := range keysForOptions {
-		mapStringForOptions += fmt.Sprintf("%v: %v,", k, this.Options[k])
-	}
-	mapStringForOptions += "}"
 	s := strings.Join([]string{`&NetworkSpec{`,
 		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
-		`Driver:` + fmt.Sprintf("%v", this.Driver) + `,`,
-		`Options:` + mapStringForOptions + `,`,
+		`Driver:` + strings.Replace(fmt.Sprintf("%v", this.Driver), "NetworkSpec_Driver", "NetworkSpec_Driver", 1) + `,`,
 		`Ipv6Enabled:` + fmt.Sprintf("%v", this.Ipv6Enabled) + `,`,
 		`Internal:` + fmt.Sprintf("%v", this.Internal) + `,`,
 		`Ipam:` + strings.Replace(fmt.Sprintf("%v", this.Ipam), "NetworkSpec_IPAMOptions", "NetworkSpec_IPAMOptions", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *NetworkSpec_Driver) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&NetworkSpec_Driver{`,
+		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
+		`Options:` + strings.Replace(fmt.Sprintf("%v", this.Options), "NetworkSpec_Driver_OptionsEntry", "NetworkSpec_Driver_OptionsEntry", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2350,8 +2390,7 @@ func (this *NetworkSpec_IPAMOptions) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&NetworkSpec_IPAMOptions{`,
-		`Driver:` + fmt.Sprintf("%v", this.Driver) + `,`,
-		`Options:` + strings.Replace(fmt.Sprintf("%v", this.Options), "NetworkSpec_IPAMOptions_OptionsEntry", "NetworkSpec_IPAMOptions_OptionsEntry", 1) + `,`,
+		`Driver:` + strings.Replace(fmt.Sprintf("%v", this.Driver), "NetworkSpec_Driver", "NetworkSpec_Driver", 1) + `,`,
 		`Ipv4:` + strings.Replace(fmt.Sprintf("%v", this.Ipv4), "IPAMConfiguration", "IPAMConfiguration", 1) + `,`,
 		`Ipv6:` + strings.Replace(fmt.Sprintf("%v", this.Ipv6), "IPAMConfiguration", "IPAMConfiguration", 1) + `,`,
 		`}`,
@@ -2785,7 +2824,7 @@ func (m *ImageSpec) Unmarshal(data []byte) error {
 			}
 			m.Reference = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 7:
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Resolved", wireType)
 			}
@@ -2835,7 +2874,7 @@ func (m *ImageSpec) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Spec) Unmarshal(data []byte) error {
+func (m *JobSpec) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2858,10 +2897,10 @@ func (m *Spec) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Spec: wiretype end group for non-group")
+			return fmt.Errorf("proto: JobSpec: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Spec: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: JobSpec: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2924,7 +2963,7 @@ func (m *Spec) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Source == nil {
-				m.Source = &Spec_Source{}
+				m.Source = &JobSpec_Source{}
 			}
 			if err := m.Source.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -2957,7 +2996,7 @@ func (m *Spec) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Orchestration == nil {
-				m.Orchestration = &Spec_Orchestration{}
+				m.Orchestration = &JobSpec_Orchestration{}
 			}
 			if err := m.Orchestration.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -2989,7 +3028,7 @@ func (m *Spec) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Networks = append(m.Networks, &Spec_NetworkAttachment{})
+			m.Networks = append(m.Networks, &JobSpec_NetworkAttachment{})
 			if err := m.Networks[len(m.Networks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -3015,7 +3054,7 @@ func (m *Spec) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Spec_Source) Unmarshal(data []byte) error {
+func (m *JobSpec_Source) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3074,7 +3113,7 @@ func (m *Spec_Source) Unmarshal(data []byte) error {
 			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Source = &Spec_Source_Image{v}
+			m.Source = &JobSpec_Source_Image{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3097,7 +3136,7 @@ func (m *Spec_Source) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Spec_ServiceJob) Unmarshal(data []byte) error {
+func (m *JobSpec_ServiceJob) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3166,7 +3205,7 @@ func (m *Spec_ServiceJob) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Spec_BatchJob) Unmarshal(data []byte) error {
+func (m *JobSpec_BatchJob) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3254,7 +3293,7 @@ func (m *Spec_BatchJob) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Spec_GlobalJob) Unmarshal(data []byte) error {
+func (m *JobSpec_GlobalJob) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3304,7 +3343,7 @@ func (m *Spec_GlobalJob) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Spec_CronJob) Unmarshal(data []byte) error {
+func (m *JobSpec_CronJob) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3354,7 +3393,7 @@ func (m *Spec_CronJob) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Spec_Orchestration) Unmarshal(data []byte) error {
+func (m *JobSpec_Orchestration) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3409,11 +3448,11 @@ func (m *Spec_Orchestration) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Spec_ServiceJob{}
+			v := &JobSpec_ServiceJob{}
 			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Job = &Spec_Orchestration_Service{v}
+			m.Job = &JobSpec_Orchestration_Service{v}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -3441,11 +3480,11 @@ func (m *Spec_Orchestration) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Spec_BatchJob{}
+			v := &JobSpec_BatchJob{}
 			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Job = &Spec_Orchestration_Batch{v}
+			m.Job = &JobSpec_Orchestration_Batch{v}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -3473,11 +3512,11 @@ func (m *Spec_Orchestration) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Spec_GlobalJob{}
+			v := &JobSpec_GlobalJob{}
 			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Job = &Spec_Orchestration_Global{v}
+			m.Job = &JobSpec_Orchestration_Global{v}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -3505,11 +3544,11 @@ func (m *Spec_Orchestration) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Spec_CronJob{}
+			v := &JobSpec_CronJob{}
 			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Job = &Spec_Orchestration_Cron{v}
+			m.Job = &JobSpec_Orchestration_Cron{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3532,7 +3571,7 @@ func (m *Spec_Orchestration) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Spec_NetworkAttachment) Unmarshal(data []byte) error {
+func (m *JobSpec_NetworkAttachment) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3589,6 +3628,35 @@ func (m *Spec_NetworkAttachment) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Name = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NetworkId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NetworkId = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3885,7 +3953,7 @@ func (m *Task) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &Spec{}
+				m.Spec = &JobSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -4063,7 +4131,7 @@ func (m *Job) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &Spec{}
+				m.Spec = &JobSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -4119,7 +4187,7 @@ func (m *IPAMConfiguration) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: IPAMConfiguration: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 3:
+		case 1:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Subnet", wireType)
 			}
@@ -4148,7 +4216,7 @@ func (m *IPAMConfiguration) Unmarshal(data []byte) error {
 			}
 			m.Subnet = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 4:
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Range", wireType)
 			}
@@ -4177,7 +4245,7 @@ func (m *IPAMConfiguration) Unmarshal(data []byte) error {
 			}
 			m.Range = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 5:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Gateway", wireType)
 			}
@@ -4206,7 +4274,7 @@ func (m *IPAMConfiguration) Unmarshal(data []byte) error {
 			}
 			m.Gateway = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 6:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Reserved", wireType)
 			}
@@ -4404,35 +4472,6 @@ func (m *NetworkSpec) Unmarshal(data []byte) error {
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Driver", wireType)
 			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Driver = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Options", wireType)
-			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
@@ -4455,92 +4494,14 @@ func (m *NetworkSpec) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			var keykey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				keykey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
+			if m.Driver == nil {
+				m.Driver = &NetworkSpec_Driver{}
 			}
-			var stringLenmapkey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLenmapkey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
+			if err := m.Driver.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
 			}
-			intStringLenmapkey := int(stringLenmapkey)
-			if intStringLenmapkey < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postStringIndexmapkey := iNdEx + intStringLenmapkey
-			if postStringIndexmapkey > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapkey := string(data[iNdEx:postStringIndexmapkey])
-			iNdEx = postStringIndexmapkey
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var stringLenmapvalue uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLenmapvalue |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLenmapvalue := int(stringLenmapvalue)
-			if intStringLenmapvalue < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postStringIndexmapvalue := iNdEx + intStringLenmapvalue
-			if postStringIndexmapvalue > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := string(data[iNdEx:postStringIndexmapvalue])
-			iNdEx = postStringIndexmapvalue
-			if m.Options == nil {
-				m.Options = make(map[string]string)
-			}
-			m.Options[mapkey] = mapvalue
 			iNdEx = postIndex
-		case 4:
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Ipv6Enabled", wireType)
 			}
@@ -4560,7 +4521,7 @@ func (m *NetworkSpec) Unmarshal(data []byte) error {
 				}
 			}
 			m.Ipv6Enabled = bool(v != 0)
-		case 5:
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Internal", wireType)
 			}
@@ -4580,7 +4541,7 @@ func (m *NetworkSpec) Unmarshal(data []byte) error {
 				}
 			}
 			m.Internal = bool(v != 0)
-		case 6:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Ipam", wireType)
 			}
@@ -4610,6 +4571,116 @@ func (m *NetworkSpec) Unmarshal(data []byte) error {
 				m.Ipam = &NetworkSpec_IPAMOptions{}
 			}
 			if err := m.Ipam.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *NetworkSpec_Driver) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Driver: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Driver: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Options", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Options = append(m.Options, &NetworkSpec_Driver_OptionsEntry{})
+			if err := m.Options[len(m.Options)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -4667,35 +4738,6 @@ func (m *NetworkSpec_IPAMOptions) Unmarshal(data []byte) error {
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Driver", wireType)
 			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Driver = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Options", wireType)
-			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
@@ -4718,8 +4760,10 @@ func (m *NetworkSpec_IPAMOptions) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Options = append(m.Options, &NetworkSpec_IPAMOptions_OptionsEntry{})
-			if err := m.Options[len(m.Options)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if m.Driver == nil {
+				m.Driver = &NetworkSpec_Driver{}
+			}
+			if err := m.Driver.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
