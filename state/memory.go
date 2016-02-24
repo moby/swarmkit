@@ -316,3 +316,30 @@ func (s *MemoryStore) JobsByName(name string) []*api.Job {
 func (s *MemoryStore) WatchQueue() *watch.Queue {
 	return s.queue
 }
+
+// Fork populates the provided empty store with the current items in
+// this store. It then returns a watcher that is guaranteed to receive
+// all events from the moment the store was forked, so the populated
+// store can be kept in sync.
+func (s *MemoryStore) Fork(targetStore Store) (chan watch.Event, error) {
+	s.l.RLock()
+	defer s.l.RUnlock()
+
+	for id, n := range s.nodes {
+		if err := targetStore.CreateNode(id, n); err != nil {
+			return nil, err
+		}
+	}
+	for id, j := range s.jobs {
+		if err := targetStore.CreateJob(id, j); err != nil {
+			return nil, err
+		}
+	}
+	for id, t := range s.tasks {
+		if err := targetStore.CreateTask(id, t); err != nil {
+			return nil, err
+		}
+	}
+
+	return s.queue.Watch(), nil
+}

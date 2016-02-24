@@ -222,3 +222,228 @@ func TestStoreTask(t *testing.T) {
 	assert.Nil(t, s.Task("id1"))
 	assert.Empty(t, s.TasksByName("name1"))
 }
+
+func TestStoreFork(t *testing.T) {
+	nodeSet := []*api.Node{
+		{
+			ID: "id1",
+			Meta: &api.Meta{
+				Name: "name1",
+			},
+		},
+		{
+			ID: "id2",
+			Meta: &api.Meta{
+				Name: "name2",
+			},
+		},
+		{
+			ID: "id3",
+			Meta: &api.Meta{
+				Name: "name2",
+			},
+		},
+	}
+
+	jobSet := []*api.Job{
+		{
+			ID: "id1",
+			Meta: &api.Meta{
+				Name: "name1",
+			},
+		},
+		{
+			ID: "id2",
+			Meta: &api.Meta{
+				Name: "name2",
+			},
+		},
+		{
+			ID: "id3",
+			Meta: &api.Meta{
+				Name: "name2",
+			},
+		},
+	}
+
+	taskSet := []*api.Task{
+		{
+			ID: "id1",
+			Meta: &api.Meta{
+				Name: "name1",
+			},
+			NodeID: nodeSet[0].ID,
+		},
+		{
+			ID: "id2",
+			Meta: &api.Meta{
+				Name: "name2",
+			},
+			JobID: jobSet[0].ID,
+		},
+		{
+			ID: "id3",
+			Meta: &api.Meta{
+				Name: "name2",
+			},
+		},
+	}
+
+	s1 := NewMemoryStore()
+	assert.NotNil(t, s1)
+
+	// Prepoulate nodes
+	for _, n := range nodeSet {
+		assert.NoError(t, s1.CreateNode(n.ID, n))
+	}
+
+	// Prepopulate jobs
+	for _, j := range jobSet {
+		assert.NoError(t, s1.CreateJob(j.ID, j))
+	}
+
+	// Prepopulate tasks
+	for _, task := range taskSet {
+		assert.NoError(t, s1.CreateTask(task.ID, task))
+	}
+
+	// Fork
+	s2 := NewMemoryStore()
+	assert.NotNil(t, s2)
+	watcher, err := s1.Fork(s2)
+	defer s1.WatchQueue().StopWatch(watcher)
+	assert.NoError(t, err)
+
+	assert.Len(t, s2.Nodes(), len(nodeSet))
+
+	assert.Equal(t, nodeSet[0], s2.Node("id1"))
+	assert.Equal(t, nodeSet[1], s2.Node("id2"))
+	assert.Equal(t, nodeSet[2], s2.Node("id3"))
+
+	assert.Len(t, s2.Jobs(), len(jobSet))
+
+	assert.Equal(t, jobSet[0], s2.Job("id1"))
+	assert.Equal(t, jobSet[1], s2.Job("id2"))
+	assert.Equal(t, jobSet[2], s2.Job("id3"))
+
+	assert.Len(t, s2.JobsByName("name1"), 1)
+	assert.Len(t, s2.JobsByName("name2"), 2)
+	assert.Len(t, s2.JobsByName("invalid"), 0)
+
+	assert.Len(t, s2.Tasks(), len(taskSet))
+
+	assert.Equal(t, taskSet[0], s2.Task("id1"))
+	assert.Equal(t, taskSet[1], s2.Task("id2"))
+	assert.Equal(t, taskSet[2], s2.Task("id3"))
+
+	assert.Len(t, s2.TasksByName("name1"), 1)
+	assert.Len(t, s2.TasksByName("name2"), 2)
+	assert.Len(t, s2.TasksByName("invalid"), 0)
+
+	assert.Len(t, s2.TasksByNode(nodeSet[0].ID), 1)
+	assert.Equal(t, s2.TasksByNode(nodeSet[0].ID)[0], taskSet[0])
+	assert.Len(t, s2.TasksByNode("invalid"), 0)
+
+	assert.Len(t, s2.TasksByJob(jobSet[0].ID), 1)
+	assert.Equal(t, s2.TasksByJob(jobSet[0].ID)[0], taskSet[1])
+	assert.Len(t, s2.TasksByJob("invalid"), 0)
+
+	// Create node
+	createNode := &api.Node{
+		ID: "id4",
+		Meta: &api.Meta{
+			Name: "name4",
+		},
+	}
+	assert.NoError(t, s1.CreateNode("id4", createNode))
+	assert.NoError(t, Apply(s2, <-watcher))
+	assert.Equal(t, createNode, s2.Node("id4"))
+	assert.Len(t, s2.NodesByName("name4"), 1)
+
+	// Update node
+	updateNode := &api.Node{
+		ID: "id3",
+		Meta: &api.Meta{
+			Name: "name3",
+		},
+	}
+	assert.NoError(t, s1.UpdateNode("id3", updateNode))
+	assert.NoError(t, Apply(s2, <-watcher))
+	assert.Equal(t, updateNode, s2.Node("id3"))
+	assert.Len(t, s2.NodesByName("name2"), 1)
+	assert.Len(t, s2.NodesByName("name3"), 1)
+
+	// Delete node
+	assert.NotNil(t, s2.Node("id1"))
+	assert.NoError(t, s1.DeleteNode("id1"))
+
+	assert.NoError(t, Apply(s2, <-watcher))
+	assert.Nil(t, s2.Node("id1"))
+	assert.Empty(t, s2.NodesByName("name1"))
+
+	// Create job
+	createJob := &api.Job{
+		ID: "id4",
+		Meta: &api.Meta{
+			Name: "name4",
+		},
+	}
+	assert.NoError(t, s1.CreateJob("id4", createJob))
+	assert.NoError(t, Apply(s2, <-watcher))
+	assert.Equal(t, createJob, s2.Job("id4"))
+
+	// Update job
+	updateJob := &api.Job{
+		ID: "id3",
+		Meta: &api.Meta{
+			Name: "name3",
+		},
+	}
+	assert.NotEqual(t, updateJob, s1.Job("id3"))
+	assert.NoError(t, s1.UpdateJob("id3", updateJob))
+	assert.NoError(t, Apply(s2, <-watcher))
+	assert.Equal(t, updateJob, s2.Job("id3"))
+
+	assert.Len(t, s2.JobsByName("name2"), 1)
+	assert.Len(t, s2.JobsByName("name3"), 1)
+
+	// Delete job
+	assert.NotNil(t, s1.Job("id1"))
+	assert.NoError(t, s1.DeleteJob("id1"))
+	assert.NoError(t, Apply(s2, <-watcher))
+	assert.Nil(t, s2.Job("id1"))
+	assert.Empty(t, s2.JobsByName("name1"))
+
+	// Create task
+	createTask := &api.Task{
+		ID: "id4",
+		Meta: &api.Meta{
+			Name: "name4",
+		},
+	}
+	assert.NoError(t, s1.CreateTask("id4", createTask))
+	assert.NoError(t, Apply(s2, <-watcher))
+	assert.Equal(t, createTask, s2.Task("id4"))
+
+	// Update task
+	updateTask := &api.Task{
+		ID: "id3",
+		Meta: &api.Meta{
+			Name: "name3",
+		},
+	}
+	assert.NotEqual(t, updateTask, s1.Task("id3"))
+	assert.NoError(t, s1.UpdateTask("id3", updateTask))
+	assert.NoError(t, Apply(s2, <-watcher))
+	assert.Equal(t, updateTask, s2.Task("id3"))
+
+	assert.Len(t, s2.TasksByName("name2"), 1)
+	assert.Len(t, s2.TasksByName("name3"), 1)
+
+	// Delete task
+	assert.NotNil(t, s1.Task("id1"))
+	assert.NoError(t, s1.DeleteTask("id1"))
+	assert.NoError(t, Apply(s2, <-watcher))
+	assert.Nil(t, s2.Task("id1"))
+	assert.Empty(t, s2.TasksByName("name1"))
+}

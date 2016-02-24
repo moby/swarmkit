@@ -101,4 +101,10 @@ type Store interface {
 	// be registered. This is exposed directly to avoid forcing every store
 	// implementation to provide a full set of conveninence functions.
 	WatchQueue() *watch.Queue
+
+	// Fork populates the provided empty store with the current items in
+	// this store. It then returns a watcher that is guaranteed to receive
+	// all events from the moment the store was forked, so the populated
+	// store can be kept in sync.
+	Fork(targetStore Store) (chan watch.Event, error)
 }
