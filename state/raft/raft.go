@@ -23,11 +23,11 @@ var (
 	defaultLogger = &raft.DefaultLogger{Logger: log.New(os.Stderr, "raft", log.LstdFlags)}
 
 	// ErrConnectionRefused is thrown when a connection is refused to a node member in the raft
-	ErrConnectionRefused = errors.New("Connection refused to the node")
+	ErrConnectionRefused = errors.New("connection refused to the node")
 	// ErrConfChangeRefused is thrown when there is an issue with the configuration change
-	ErrConfChangeRefused = errors.New("Propose configuration change refused")
+	ErrConfChangeRefused = errors.New("propose configuration change refused")
 	// ErrApplyNotSpecified is thrown during the creation of a raft node when no apply method was provided
-	ErrApplyNotSpecified = errors.New("Apply method was not specified")
+	ErrApplyNotSpecified = errors.New("apply method was not specified")
 )
 
 // ApplyCommand function can be used and triggered
