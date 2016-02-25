@@ -6,6 +6,11 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "github.com/Sirupsen/logrus",
+			"Comment": "v0.8.7-53-g446d1c1",
+			"Rev": "446d1c146faa8ed3f4218f056fcd165f6bcfda81"
+		},
+		{
 			"ImportPath": "github.com/davecgh/go-spew/spew",
 			"Rev": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
 		},
@@ -161,6 +166,10 @@
 		{
 			"ImportPath": "golang.org/x/net/trace",
 			"Rev": "4599ae7937fce9b670ce32b8ad32bbb7ae726b3e"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "5eaf0df67e70d6997a9fe0ed24383fa1b01638d3"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc",
