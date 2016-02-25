@@ -25,14 +25,12 @@
 		Network
 		ListNodesRequest
 		ListNodesResponse
-		DrainNodeRequest
-		DrainNodeResponse
 		CreateTaskRequest
 		CreateTaskResponse
-		GetTasksRequest
-		GetTasksResponse
-		RemoveTaskRequest
-		RemoveTaskResponse
+		GetTaskRequest
+		GetTaskResponse
+		DeleteTaskRequest
+		DeleteTaskResponse
 		ListTasksRequest
 		ListTasksResponse
 		CreateJobRequest
@@ -41,16 +39,16 @@
 		GetJobResponse
 		UpdateJobRequest
 		UpdateJobResponse
-		RemoveJobRequest
-		RemoveJobResponse
+		DeleteJobRequest
+		DeleteJobResponse
 		ListJobsRequest
 		ListJobsResponse
 		CreateNetworkRequest
 		CreateNetworkResponse
 		GetNetworkRequest
 		GetNetworkResponse
-		RemoveNetworkRequest
-		RemoveNetworkResponse
+		DeleteNetworkRequest
+		DeleteNetworkResponse
 		ListNetworksRequest
 		ListNetworksResponse
 		RegisterNodeRequest

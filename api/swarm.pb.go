@@ -40,20 +40,6 @@ type ListNodesResponse struct {
 func (m *ListNodesResponse) Reset()      { *m = ListNodesResponse{} }
 func (*ListNodesResponse) ProtoMessage() {}
 
-type DrainNodeRequest struct {
-	NodeId string `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
-	Drain  bool   `protobuf:"varint,2,opt,name=drain,proto3" json:"drain,omitempty"`
-}
-
-func (m *DrainNodeRequest) Reset()      { *m = DrainNodeRequest{} }
-func (*DrainNodeRequest) ProtoMessage() {}
-
-type DrainNodeResponse struct {
-}
-
-func (m *DrainNodeResponse) Reset()      { *m = DrainNodeResponse{} }
-func (*DrainNodeResponse) ProtoMessage() {}
-
 type CreateTaskRequest struct {
 	Spec *JobSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
@@ -68,32 +54,32 @@ type CreateTaskResponse struct {
 func (m *CreateTaskResponse) Reset()      { *m = CreateTaskResponse{} }
 func (*CreateTaskResponse) ProtoMessage() {}
 
-type GetTasksRequest struct {
-	TaskIds []string `protobuf:"bytes,1,rep,name=task_ids" json:"task_ids,omitempty"`
-}
-
-func (m *GetTasksRequest) Reset()      { *m = GetTasksRequest{} }
-func (*GetTasksRequest) ProtoMessage() {}
-
-type GetTasksResponse struct {
-	Tasks []*Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
-}
-
-func (m *GetTasksResponse) Reset()      { *m = GetTasksResponse{} }
-func (*GetTasksResponse) ProtoMessage() {}
-
-type RemoveTaskRequest struct {
+type GetTaskRequest struct {
 	TaskId string `protobuf:"bytes,1,opt,name=task_id,proto3" json:"task_id,omitempty"`
 }
 
-func (m *RemoveTaskRequest) Reset()      { *m = RemoveTaskRequest{} }
-func (*RemoveTaskRequest) ProtoMessage() {}
+func (m *GetTaskRequest) Reset()      { *m = GetTaskRequest{} }
+func (*GetTaskRequest) ProtoMessage() {}
 
-type RemoveTaskResponse struct {
+type GetTaskResponse struct {
+	Task *Task `protobuf:"bytes,1,opt,name=task" json:"task,omitempty"`
 }
 
-func (m *RemoveTaskResponse) Reset()      { *m = RemoveTaskResponse{} }
-func (*RemoveTaskResponse) ProtoMessage() {}
+func (m *GetTaskResponse) Reset()      { *m = GetTaskResponse{} }
+func (*GetTaskResponse) ProtoMessage() {}
+
+type DeleteTaskRequest struct {
+	TaskId string `protobuf:"bytes,1,opt,name=task_id,proto3" json:"task_id,omitempty"`
+}
+
+func (m *DeleteTaskRequest) Reset()      { *m = DeleteTaskRequest{} }
+func (*DeleteTaskRequest) ProtoMessage() {}
+
+type DeleteTaskResponse struct {
+}
+
+func (m *DeleteTaskResponse) Reset()      { *m = DeleteTaskResponse{} }
+func (*DeleteTaskResponse) ProtoMessage() {}
 
 type ListTasksRequest struct {
 }
@@ -150,18 +136,18 @@ type UpdateJobResponse struct {
 func (m *UpdateJobResponse) Reset()      { *m = UpdateJobResponse{} }
 func (*UpdateJobResponse) ProtoMessage() {}
 
-type RemoveJobRequest struct {
+type DeleteJobRequest struct {
 	JobId string `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
 }
 
-func (m *RemoveJobRequest) Reset()      { *m = RemoveJobRequest{} }
-func (*RemoveJobRequest) ProtoMessage() {}
+func (m *DeleteJobRequest) Reset()      { *m = DeleteJobRequest{} }
+func (*DeleteJobRequest) ProtoMessage() {}
 
-type RemoveJobResponse struct {
+type DeleteJobResponse struct {
 }
 
-func (m *RemoveJobResponse) Reset()      { *m = RemoveJobResponse{} }
-func (*RemoveJobResponse) ProtoMessage() {}
+func (m *DeleteJobResponse) Reset()      { *m = DeleteJobResponse{} }
+func (*DeleteJobResponse) ProtoMessage() {}
 
 type ListJobsRequest struct {
 }
@@ -205,19 +191,19 @@ type GetNetworkResponse struct {
 func (m *GetNetworkResponse) Reset()      { *m = GetNetworkResponse{} }
 func (*GetNetworkResponse) ProtoMessage() {}
 
-type RemoveNetworkRequest struct {
+type DeleteNetworkRequest struct {
 	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	NetworkId string `protobuf:"bytes,2,opt,name=network_id,proto3" json:"network_id,omitempty"`
 }
 
-func (m *RemoveNetworkRequest) Reset()      { *m = RemoveNetworkRequest{} }
-func (*RemoveNetworkRequest) ProtoMessage() {}
+func (m *DeleteNetworkRequest) Reset()      { *m = DeleteNetworkRequest{} }
+func (*DeleteNetworkRequest) ProtoMessage() {}
 
-type RemoveNetworkResponse struct {
+type DeleteNetworkResponse struct {
 }
 
-func (m *RemoveNetworkResponse) Reset()      { *m = RemoveNetworkResponse{} }
-func (*RemoveNetworkResponse) ProtoMessage() {}
+func (m *DeleteNetworkResponse) Reset()      { *m = DeleteNetworkResponse{} }
+func (*DeleteNetworkResponse) ProtoMessage() {}
 
 type ListNetworksRequest struct {
 }
@@ -235,14 +221,12 @@ func (*ListNetworksResponse) ProtoMessage() {}
 func init() {
 	proto.RegisterType((*ListNodesRequest)(nil), "api.ListNodesRequest")
 	proto.RegisterType((*ListNodesResponse)(nil), "api.ListNodesResponse")
-	proto.RegisterType((*DrainNodeRequest)(nil), "api.DrainNodeRequest")
-	proto.RegisterType((*DrainNodeResponse)(nil), "api.DrainNodeResponse")
 	proto.RegisterType((*CreateTaskRequest)(nil), "api.CreateTaskRequest")
 	proto.RegisterType((*CreateTaskResponse)(nil), "api.CreateTaskResponse")
-	proto.RegisterType((*GetTasksRequest)(nil), "api.GetTasksRequest")
-	proto.RegisterType((*GetTasksResponse)(nil), "api.GetTasksResponse")
-	proto.RegisterType((*RemoveTaskRequest)(nil), "api.RemoveTaskRequest")
-	proto.RegisterType((*RemoveTaskResponse)(nil), "api.RemoveTaskResponse")
+	proto.RegisterType((*GetTaskRequest)(nil), "api.GetTaskRequest")
+	proto.RegisterType((*GetTaskResponse)(nil), "api.GetTaskResponse")
+	proto.RegisterType((*DeleteTaskRequest)(nil), "api.DeleteTaskRequest")
+	proto.RegisterType((*DeleteTaskResponse)(nil), "api.DeleteTaskResponse")
 	proto.RegisterType((*ListTasksRequest)(nil), "api.ListTasksRequest")
 	proto.RegisterType((*ListTasksResponse)(nil), "api.ListTasksResponse")
 	proto.RegisterType((*CreateJobRequest)(nil), "api.CreateJobRequest")
@@ -251,16 +235,16 @@ func init() {
 	proto.RegisterType((*GetJobResponse)(nil), "api.GetJobResponse")
 	proto.RegisterType((*UpdateJobRequest)(nil), "api.UpdateJobRequest")
 	proto.RegisterType((*UpdateJobResponse)(nil), "api.UpdateJobResponse")
-	proto.RegisterType((*RemoveJobRequest)(nil), "api.RemoveJobRequest")
-	proto.RegisterType((*RemoveJobResponse)(nil), "api.RemoveJobResponse")
+	proto.RegisterType((*DeleteJobRequest)(nil), "api.DeleteJobRequest")
+	proto.RegisterType((*DeleteJobResponse)(nil), "api.DeleteJobResponse")
 	proto.RegisterType((*ListJobsRequest)(nil), "api.ListJobsRequest")
 	proto.RegisterType((*ListJobsResponse)(nil), "api.ListJobsResponse")
 	proto.RegisterType((*CreateNetworkRequest)(nil), "api.CreateNetworkRequest")
 	proto.RegisterType((*CreateNetworkResponse)(nil), "api.CreateNetworkResponse")
 	proto.RegisterType((*GetNetworkRequest)(nil), "api.GetNetworkRequest")
 	proto.RegisterType((*GetNetworkResponse)(nil), "api.GetNetworkResponse")
-	proto.RegisterType((*RemoveNetworkRequest)(nil), "api.RemoveNetworkRequest")
-	proto.RegisterType((*RemoveNetworkResponse)(nil), "api.RemoveNetworkResponse")
+	proto.RegisterType((*DeleteNetworkRequest)(nil), "api.DeleteNetworkRequest")
+	proto.RegisterType((*DeleteNetworkResponse)(nil), "api.DeleteNetworkResponse")
 	proto.RegisterType((*ListNetworksRequest)(nil), "api.ListNetworksRequest")
 	proto.RegisterType((*ListNetworksResponse)(nil), "api.ListNetworksResponse")
 }
@@ -282,26 +266,6 @@ func (this *ListNodesResponse) GoString() string {
 	if this.Nodes != nil {
 		s = append(s, "Nodes: "+fmt.Sprintf("%#v", this.Nodes)+",\n")
 	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *DrainNodeRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&api.DrainNodeRequest{")
-	s = append(s, "NodeId: "+fmt.Sprintf("%#v", this.NodeId)+",\n")
-	s = append(s, "Drain: "+fmt.Sprintf("%#v", this.Drain)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *DrainNodeResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&api.DrainNodeResponse{")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -329,44 +293,44 @@ func (this *CreateTaskResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *GetTasksRequest) GoString() string {
+func (this *GetTaskRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.GetTasksRequest{")
-	s = append(s, "TaskIds: "+fmt.Sprintf("%#v", this.TaskIds)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *GetTasksResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.GetTasksResponse{")
-	if this.Tasks != nil {
-		s = append(s, "Tasks: "+fmt.Sprintf("%#v", this.Tasks)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RemoveTaskRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.RemoveTaskRequest{")
+	s = append(s, "&api.GetTaskRequest{")
 	s = append(s, "TaskId: "+fmt.Sprintf("%#v", this.TaskId)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *RemoveTaskResponse) GoString() string {
+func (this *GetTaskResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.GetTaskResponse{")
+	if this.Task != nil {
+		s = append(s, "Task: "+fmt.Sprintf("%#v", this.Task)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *DeleteTaskRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.DeleteTaskRequest{")
+	s = append(s, "TaskId: "+fmt.Sprintf("%#v", this.TaskId)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *DeleteTaskResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 4)
-	s = append(s, "&api.RemoveTaskResponse{")
+	s = append(s, "&api.DeleteTaskResponse{")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -459,22 +423,22 @@ func (this *UpdateJobResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *RemoveJobRequest) GoString() string {
+func (this *DeleteJobRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.RemoveJobRequest{")
+	s = append(s, "&api.DeleteJobRequest{")
 	s = append(s, "JobId: "+fmt.Sprintf("%#v", this.JobId)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *RemoveJobResponse) GoString() string {
+func (this *DeleteJobResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 4)
-	s = append(s, "&api.RemoveJobResponse{")
+	s = append(s, "&api.DeleteJobResponse{")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -546,23 +510,23 @@ func (this *GetNetworkResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *RemoveNetworkRequest) GoString() string {
+func (this *DeleteNetworkRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.RemoveNetworkRequest{")
+	s = append(s, "&api.DeleteNetworkRequest{")
 	s = append(s, "Name: "+fmt.Sprintf("%#v", this.Name)+",\n")
 	s = append(s, "NetworkId: "+fmt.Sprintf("%#v", this.NetworkId)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *RemoveNetworkResponse) GoString() string {
+func (this *DeleteNetworkResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 4)
-	s = append(s, "&api.RemoveNetworkResponse{")
+	s = append(s, "&api.DeleteNetworkResponse{")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -621,19 +585,18 @@ var _ grpc.ClientConn
 
 type SwarmClient interface {
 	ListNodes(ctx context.Context, in *ListNodesRequest, opts ...grpc.CallOption) (*ListNodesResponse, error)
-	DrainNode(ctx context.Context, in *DrainNodeRequest, opts ...grpc.CallOption) (*DrainNodeResponse, error)
 	CreateTask(ctx context.Context, in *CreateTaskRequest, opts ...grpc.CallOption) (*CreateTaskResponse, error)
-	GetTasks(ctx context.Context, in *GetTasksRequest, opts ...grpc.CallOption) (*GetTasksResponse, error)
-	RemoveTask(ctx context.Context, in *RemoveTaskRequest, opts ...grpc.CallOption) (*RemoveTaskResponse, error)
+	GetTask(ctx context.Context, in *GetTaskRequest, opts ...grpc.CallOption) (*GetTaskResponse, error)
+	DeleteTask(ctx context.Context, in *DeleteTaskRequest, opts ...grpc.CallOption) (*DeleteTaskResponse, error)
 	ListTasks(ctx context.Context, in *ListTasksRequest, opts ...grpc.CallOption) (*ListTasksResponse, error)
 	CreateJob(ctx context.Context, in *CreateJobRequest, opts ...grpc.CallOption) (*CreateJobResponse, error)
 	GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
 	UpdateJob(ctx context.Context, in *UpdateJobRequest, opts ...grpc.CallOption) (*UpdateJobResponse, error)
-	RemoveJob(ctx context.Context, in *RemoveJobRequest, opts ...grpc.CallOption) (*RemoveJobResponse, error)
+	DeleteJob(ctx context.Context, in *DeleteJobRequest, opts ...grpc.CallOption) (*DeleteJobResponse, error)
 	ListJobs(ctx context.Context, in *ListJobsRequest, opts ...grpc.CallOption) (*ListJobsResponse, error)
 	CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CreateNetworkResponse, error)
 	GetNetwork(ctx context.Context, in *GetNetworkRequest, opts ...grpc.CallOption) (*GetNetworkResponse, error)
-	RemoveNetwork(ctx context.Context, in *RemoveNetworkRequest, opts ...grpc.CallOption) (*RemoveNetworkResponse, error)
+	DeleteNetwork(ctx context.Context, in *DeleteNetworkRequest, opts ...grpc.CallOption) (*DeleteNetworkResponse, error)
 	ListNetworks(ctx context.Context, in *ListNetworksRequest, opts ...grpc.CallOption) (*ListNetworksResponse, error)
 }
 
@@ -654,15 +617,6 @@ func (c *swarmClient) ListNodes(ctx context.Context, in *ListNodesRequest, opts 
 	return out, nil
 }
 
-func (c *swarmClient) DrainNode(ctx context.Context, in *DrainNodeRequest, opts ...grpc.CallOption) (*DrainNodeResponse, error) {
-	out := new(DrainNodeResponse)
-	err := grpc.Invoke(ctx, "/api.Swarm/DrainNode", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *swarmClient) CreateTask(ctx context.Context, in *CreateTaskRequest, opts ...grpc.CallOption) (*CreateTaskResponse, error) {
 	out := new(CreateTaskResponse)
 	err := grpc.Invoke(ctx, "/api.Swarm/CreateTask", in, out, c.cc, opts...)
@@ -672,18 +626,18 @@ func (c *swarmClient) CreateTask(ctx context.Context, in *CreateTaskRequest, opt
 	return out, nil
 }
 
-func (c *swarmClient) GetTasks(ctx context.Context, in *GetTasksRequest, opts ...grpc.CallOption) (*GetTasksResponse, error) {
-	out := new(GetTasksResponse)
-	err := grpc.Invoke(ctx, "/api.Swarm/GetTasks", in, out, c.cc, opts...)
+func (c *swarmClient) GetTask(ctx context.Context, in *GetTaskRequest, opts ...grpc.CallOption) (*GetTaskResponse, error) {
+	out := new(GetTaskResponse)
+	err := grpc.Invoke(ctx, "/api.Swarm/GetTask", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *swarmClient) RemoveTask(ctx context.Context, in *RemoveTaskRequest, opts ...grpc.CallOption) (*RemoveTaskResponse, error) {
-	out := new(RemoveTaskResponse)
-	err := grpc.Invoke(ctx, "/api.Swarm/RemoveTask", in, out, c.cc, opts...)
+func (c *swarmClient) DeleteTask(ctx context.Context, in *DeleteTaskRequest, opts ...grpc.CallOption) (*DeleteTaskResponse, error) {
+	out := new(DeleteTaskResponse)
+	err := grpc.Invoke(ctx, "/api.Swarm/DeleteTask", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -726,9 +680,9 @@ func (c *swarmClient) UpdateJob(ctx context.Context, in *UpdateJobRequest, opts 
 	return out, nil
 }
 
-func (c *swarmClient) RemoveJob(ctx context.Context, in *RemoveJobRequest, opts ...grpc.CallOption) (*RemoveJobResponse, error) {
-	out := new(RemoveJobResponse)
-	err := grpc.Invoke(ctx, "/api.Swarm/RemoveJob", in, out, c.cc, opts...)
+func (c *swarmClient) DeleteJob(ctx context.Context, in *DeleteJobRequest, opts ...grpc.CallOption) (*DeleteJobResponse, error) {
+	out := new(DeleteJobResponse)
+	err := grpc.Invoke(ctx, "/api.Swarm/DeleteJob", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -762,9 +716,9 @@ func (c *swarmClient) GetNetwork(ctx context.Context, in *GetNetworkRequest, opt
 	return out, nil
 }
 
-func (c *swarmClient) RemoveNetwork(ctx context.Context, in *RemoveNetworkRequest, opts ...grpc.CallOption) (*RemoveNetworkResponse, error) {
-	out := new(RemoveNetworkResponse)
-	err := grpc.Invoke(ctx, "/api.Swarm/RemoveNetwork", in, out, c.cc, opts...)
+func (c *swarmClient) DeleteNetwork(ctx context.Context, in *DeleteNetworkRequest, opts ...grpc.CallOption) (*DeleteNetworkResponse, error) {
+	out := new(DeleteNetworkResponse)
+	err := grpc.Invoke(ctx, "/api.Swarm/DeleteNetwork", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -784,19 +738,18 @@ func (c *swarmClient) ListNetworks(ctx context.Context, in *ListNetworksRequest,
 
 type SwarmServer interface {
 	ListNodes(context.Context, *ListNodesRequest) (*ListNodesResponse, error)
-	DrainNode(context.Context, *DrainNodeRequest) (*DrainNodeResponse, error)
 	CreateTask(context.Context, *CreateTaskRequest) (*CreateTaskResponse, error)
-	GetTasks(context.Context, *GetTasksRequest) (*GetTasksResponse, error)
-	RemoveTask(context.Context, *RemoveTaskRequest) (*RemoveTaskResponse, error)
+	GetTask(context.Context, *GetTaskRequest) (*GetTaskResponse, error)
+	DeleteTask(context.Context, *DeleteTaskRequest) (*DeleteTaskResponse, error)
 	ListTasks(context.Context, *ListTasksRequest) (*ListTasksResponse, error)
 	CreateJob(context.Context, *CreateJobRequest) (*CreateJobResponse, error)
 	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
 	UpdateJob(context.Context, *UpdateJobRequest) (*UpdateJobResponse, error)
-	RemoveJob(context.Context, *RemoveJobRequest) (*RemoveJobResponse, error)
+	DeleteJob(context.Context, *DeleteJobRequest) (*DeleteJobResponse, error)
 	ListJobs(context.Context, *ListJobsRequest) (*ListJobsResponse, error)
 	CreateNetwork(context.Context, *CreateNetworkRequest) (*CreateNetworkResponse, error)
 	GetNetwork(context.Context, *GetNetworkRequest) (*GetNetworkResponse, error)
-	RemoveNetwork(context.Context, *RemoveNetworkRequest) (*RemoveNetworkResponse, error)
+	DeleteNetwork(context.Context, *DeleteNetworkRequest) (*DeleteNetworkResponse, error)
 	ListNetworks(context.Context, *ListNetworksRequest) (*ListNetworksResponse, error)
 }
 
@@ -816,18 +769,6 @@ func _Swarm_ListNodes_Handler(srv interface{}, ctx context.Context, dec func(int
 	return out, nil
 }
 
-func _Swarm_DrainNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(DrainNodeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(SwarmServer).DrainNode(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func _Swarm_CreateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(CreateTaskRequest)
 	if err := dec(in); err != nil {
@@ -840,24 +781,24 @@ func _Swarm_CreateTask_Handler(srv interface{}, ctx context.Context, dec func(in
 	return out, nil
 }
 
-func _Swarm_GetTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(GetTasksRequest)
+func _Swarm_GetTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(GetTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(SwarmServer).GetTasks(ctx, in)
+	out, err := srv.(SwarmServer).GetTask(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Swarm_RemoveTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(RemoveTaskRequest)
+func _Swarm_DeleteTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(DeleteTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(SwarmServer).RemoveTask(ctx, in)
+	out, err := srv.(SwarmServer).DeleteTask(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -912,12 +853,12 @@ func _Swarm_UpdateJob_Handler(srv interface{}, ctx context.Context, dec func(int
 	return out, nil
 }
 
-func _Swarm_RemoveJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(RemoveJobRequest)
+func _Swarm_DeleteJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(DeleteJobRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(SwarmServer).RemoveJob(ctx, in)
+	out, err := srv.(SwarmServer).DeleteJob(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -960,12 +901,12 @@ func _Swarm_GetNetwork_Handler(srv interface{}, ctx context.Context, dec func(in
 	return out, nil
 }
 
-func _Swarm_RemoveNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(RemoveNetworkRequest)
+func _Swarm_DeleteNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(DeleteNetworkRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(SwarmServer).RemoveNetwork(ctx, in)
+	out, err := srv.(SwarmServer).DeleteNetwork(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -993,20 +934,16 @@ var _Swarm_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Swarm_ListNodes_Handler,
 		},
 		{
-			MethodName: "DrainNode",
-			Handler:    _Swarm_DrainNode_Handler,
-		},
-		{
 			MethodName: "CreateTask",
 			Handler:    _Swarm_CreateTask_Handler,
 		},
 		{
-			MethodName: "GetTasks",
-			Handler:    _Swarm_GetTasks_Handler,
+			MethodName: "GetTask",
+			Handler:    _Swarm_GetTask_Handler,
 		},
 		{
-			MethodName: "RemoveTask",
-			Handler:    _Swarm_RemoveTask_Handler,
+			MethodName: "DeleteTask",
+			Handler:    _Swarm_DeleteTask_Handler,
 		},
 		{
 			MethodName: "ListTasks",
@@ -1025,8 +962,8 @@ var _Swarm_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Swarm_UpdateJob_Handler,
 		},
 		{
-			MethodName: "RemoveJob",
-			Handler:    _Swarm_RemoveJob_Handler,
+			MethodName: "DeleteJob",
+			Handler:    _Swarm_DeleteJob_Handler,
 		},
 		{
 			MethodName: "ListJobs",
@@ -1041,8 +978,8 @@ var _Swarm_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Swarm_GetNetwork_Handler,
 		},
 		{
-			MethodName: "RemoveNetwork",
-			Handler:    _Swarm_RemoveNetwork_Handler,
+			MethodName: "DeleteNetwork",
+			Handler:    _Swarm_DeleteNetwork_Handler,
 		},
 		{
 			MethodName: "ListNetworks",
@@ -1097,58 +1034,6 @@ func (m *ListNodesResponse) MarshalTo(data []byte) (int, error) {
 			i += n
 		}
 	}
-	return i, nil
-}
-
-func (m *DrainNodeRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *DrainNodeRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.NodeId) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintSwarm(data, i, uint64(len(m.NodeId)))
-		i += copy(data[i:], m.NodeId)
-	}
-	if m.Drain {
-		data[i] = 0x10
-		i++
-		if m.Drain {
-			data[i] = 1
-		} else {
-			data[i] = 0
-		}
-		i++
-	}
-	return i, nil
-}
-
-func (m *DrainNodeResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *DrainNodeResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
 	return i, nil
 }
 
@@ -1208,7 +1093,7 @@ func (m *CreateTaskResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *GetTasksRequest) Marshal() (data []byte, err error) {
+func (m *GetTaskRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1218,70 +1103,7 @@ func (m *GetTasksRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *GetTasksRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.TaskIds) > 0 {
-		for _, s := range m.TaskIds {
-			data[i] = 0xa
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
-	}
-	return i, nil
-}
-
-func (m *GetTasksResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *GetTasksResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Tasks) > 0 {
-		for _, msg := range m.Tasks {
-			data[i] = 0xa
-			i++
-			i = encodeVarintSwarm(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	return i, nil
-}
-
-func (m *RemoveTaskRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *RemoveTaskRequest) MarshalTo(data []byte) (int, error) {
+func (m *GetTaskRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1295,7 +1117,7 @@ func (m *RemoveTaskRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *RemoveTaskResponse) Marshal() (data []byte, err error) {
+func (m *GetTaskResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1305,7 +1127,59 @@ func (m *RemoveTaskResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *RemoveTaskResponse) MarshalTo(data []byte) (int, error) {
+func (m *GetTaskResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Task != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintSwarm(data, i, uint64(m.Task.Size()))
+		n3, err := m.Task.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n3
+	}
+	return i, nil
+}
+
+func (m *DeleteTaskRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *DeleteTaskRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.TaskId) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintSwarm(data, i, uint64(len(m.TaskId)))
+		i += copy(data[i:], m.TaskId)
+	}
+	return i, nil
+}
+
+func (m *DeleteTaskResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *DeleteTaskResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1380,11 +1254,11 @@ func (m *CreateJobRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Spec.Size()))
-		n3, err := m.Spec.MarshalTo(data[i:])
+		n4, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n3
+		i += n4
 	}
 	return i, nil
 }
@@ -1408,11 +1282,11 @@ func (m *CreateJobResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Job.Size()))
-		n4, err := m.Job.MarshalTo(data[i:])
+		n5, err := m.Job.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n4
+		i += n5
 	}
 	return i, nil
 }
@@ -1460,11 +1334,11 @@ func (m *GetJobResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Job.Size()))
-		n5, err := m.Job.MarshalTo(data[i:])
+		n6, err := m.Job.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n5
+		i += n6
 	}
 	return i, nil
 }
@@ -1494,11 +1368,11 @@ func (m *UpdateJobRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Spec.Size()))
-		n6, err := m.Spec.MarshalTo(data[i:])
+		n7, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n6
+		i += n7
 	}
 	return i, nil
 }
@@ -1521,7 +1395,7 @@ func (m *UpdateJobResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *RemoveJobRequest) Marshal() (data []byte, err error) {
+func (m *DeleteJobRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1531,7 +1405,7 @@ func (m *RemoveJobRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *RemoveJobRequest) MarshalTo(data []byte) (int, error) {
+func (m *DeleteJobRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1545,7 +1419,7 @@ func (m *RemoveJobRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *RemoveJobResponse) Marshal() (data []byte, err error) {
+func (m *DeleteJobResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1555,7 +1429,7 @@ func (m *RemoveJobResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *RemoveJobResponse) MarshalTo(data []byte) (int, error) {
+func (m *DeleteJobResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1630,11 +1504,11 @@ func (m *CreateNetworkRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Spec.Size()))
-		n7, err := m.Spec.MarshalTo(data[i:])
+		n8, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n7
+		i += n8
 	}
 	return i, nil
 }
@@ -1658,11 +1532,11 @@ func (m *CreateNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Network.Size()))
-		n8, err := m.Network.MarshalTo(data[i:])
+		n9, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n8
+		i += n9
 	}
 	return i, nil
 }
@@ -1716,16 +1590,16 @@ func (m *GetNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Network.Size()))
-		n9, err := m.Network.MarshalTo(data[i:])
+		n10, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n9
+		i += n10
 	}
 	return i, nil
 }
 
-func (m *RemoveNetworkRequest) Marshal() (data []byte, err error) {
+func (m *DeleteNetworkRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1735,7 +1609,7 @@ func (m *RemoveNetworkRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *RemoveNetworkRequest) MarshalTo(data []byte) (int, error) {
+func (m *DeleteNetworkRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1755,7 +1629,7 @@ func (m *RemoveNetworkRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *RemoveNetworkResponse) Marshal() (data []byte, err error) {
+func (m *DeleteNetworkResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1765,7 +1639,7 @@ func (m *RemoveNetworkResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *RemoveNetworkResponse) MarshalTo(data []byte) (int, error) {
+func (m *DeleteNetworkResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1866,25 +1740,6 @@ func (m *ListNodesResponse) Size() (n int) {
 	return n
 }
 
-func (m *DrainNodeRequest) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.NodeId)
-	if l > 0 {
-		n += 1 + l + sovSwarm(uint64(l))
-	}
-	if m.Drain {
-		n += 2
-	}
-	return n
-}
-
-func (m *DrainNodeResponse) Size() (n int) {
-	var l int
-	_ = l
-	return n
-}
-
 func (m *CreateTaskRequest) Size() (n int) {
 	var l int
 	_ = l
@@ -1905,31 +1760,7 @@ func (m *CreateTaskResponse) Size() (n int) {
 	return n
 }
 
-func (m *GetTasksRequest) Size() (n int) {
-	var l int
-	_ = l
-	if len(m.TaskIds) > 0 {
-		for _, s := range m.TaskIds {
-			l = len(s)
-			n += 1 + l + sovSwarm(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *GetTasksResponse) Size() (n int) {
-	var l int
-	_ = l
-	if len(m.Tasks) > 0 {
-		for _, e := range m.Tasks {
-			l = e.Size()
-			n += 1 + l + sovSwarm(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *RemoveTaskRequest) Size() (n int) {
+func (m *GetTaskRequest) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.TaskId)
@@ -1939,7 +1770,27 @@ func (m *RemoveTaskRequest) Size() (n int) {
 	return n
 }
 
-func (m *RemoveTaskResponse) Size() (n int) {
+func (m *GetTaskResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.Task != nil {
+		l = m.Task.Size()
+		n += 1 + l + sovSwarm(uint64(l))
+	}
+	return n
+}
+
+func (m *DeleteTaskRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.TaskId)
+	if l > 0 {
+		n += 1 + l + sovSwarm(uint64(l))
+	}
+	return n
+}
+
+func (m *DeleteTaskResponse) Size() (n int) {
 	var l int
 	_ = l
 	return n
@@ -2023,7 +1874,7 @@ func (m *UpdateJobResponse) Size() (n int) {
 	return n
 }
 
-func (m *RemoveJobRequest) Size() (n int) {
+func (m *DeleteJobRequest) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.JobId)
@@ -2033,7 +1884,7 @@ func (m *RemoveJobRequest) Size() (n int) {
 	return n
 }
 
-func (m *RemoveJobResponse) Size() (n int) {
+func (m *DeleteJobResponse) Size() (n int) {
 	var l int
 	_ = l
 	return n
@@ -2101,7 +1952,7 @@ func (m *GetNetworkResponse) Size() (n int) {
 	return n
 }
 
-func (m *RemoveNetworkRequest) Size() (n int) {
+func (m *DeleteNetworkRequest) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.Name)
@@ -2115,7 +1966,7 @@ func (m *RemoveNetworkRequest) Size() (n int) {
 	return n
 }
 
-func (m *RemoveNetworkResponse) Size() (n int) {
+func (m *DeleteNetworkResponse) Size() (n int) {
 	var l int
 	_ = l
 	return n
@@ -2171,26 +2022,6 @@ func (this *ListNodesResponse) String() string {
 	}, "")
 	return s
 }
-func (this *DrainNodeRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&DrainNodeRequest{`,
-		`NodeId:` + fmt.Sprintf("%v", this.NodeId) + `,`,
-		`Drain:` + fmt.Sprintf("%v", this.Drain) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *DrainNodeResponse) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&DrainNodeResponse{`,
-		`}`,
-	}, "")
-	return s
-}
 func (this *CreateTaskRequest) String() string {
 	if this == nil {
 		return "nil"
@@ -2211,41 +2042,41 @@ func (this *CreateTaskResponse) String() string {
 	}, "")
 	return s
 }
-func (this *GetTasksRequest) String() string {
+func (this *GetTaskRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&GetTasksRequest{`,
-		`TaskIds:` + fmt.Sprintf("%v", this.TaskIds) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *GetTasksResponse) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&GetTasksResponse{`,
-		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "Task", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RemoveTaskRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RemoveTaskRequest{`,
+	s := strings.Join([]string{`&GetTaskRequest{`,
 		`TaskId:` + fmt.Sprintf("%v", this.TaskId) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *RemoveTaskResponse) String() string {
+func (this *GetTaskResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&RemoveTaskResponse{`,
+	s := strings.Join([]string{`&GetTaskResponse{`,
+		`Task:` + strings.Replace(fmt.Sprintf("%v", this.Task), "Task", "Task", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *DeleteTaskRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&DeleteTaskRequest{`,
+		`TaskId:` + fmt.Sprintf("%v", this.TaskId) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *DeleteTaskResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&DeleteTaskResponse{`,
 		`}`,
 	}, "")
 	return s
@@ -2329,21 +2160,21 @@ func (this *UpdateJobResponse) String() string {
 	}, "")
 	return s
 }
-func (this *RemoveJobRequest) String() string {
+func (this *DeleteJobRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&RemoveJobRequest{`,
+	s := strings.Join([]string{`&DeleteJobRequest{`,
 		`JobId:` + fmt.Sprintf("%v", this.JobId) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *RemoveJobResponse) String() string {
+func (this *DeleteJobResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&RemoveJobResponse{`,
+	s := strings.Join([]string{`&DeleteJobResponse{`,
 		`}`,
 	}, "")
 	return s
@@ -2408,22 +2239,22 @@ func (this *GetNetworkResponse) String() string {
 	}, "")
 	return s
 }
-func (this *RemoveNetworkRequest) String() string {
+func (this *DeleteNetworkRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&RemoveNetworkRequest{`,
+	s := strings.Join([]string{`&DeleteNetworkRequest{`,
 		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
 		`NetworkId:` + fmt.Sprintf("%v", this.NetworkId) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *RemoveNetworkResponse) String() string {
+func (this *DeleteNetworkResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&RemoveNetworkResponse{`,
+	s := strings.Join([]string{`&DeleteNetworkResponse{`,
 		`}`,
 	}, "")
 	return s
@@ -2565,155 +2396,6 @@ func (m *ListNodesResponse) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipSwarm(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *DrainNodeRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowSwarm
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: DrainNodeRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DrainNodeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NodeId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.NodeId = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Drain", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.Drain = bool(v != 0)
-		default:
-			iNdEx = preIndex
-			skippy, err := skipSwarm(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *DrainNodeResponse) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowSwarm
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: DrainNodeResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DrainNodeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
 		default:
 			iNdEx = preIndex
 			skippy, err := skipSwarm(data[iNdEx:])
@@ -2901,7 +2583,7 @@ func (m *CreateTaskResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *GetTasksRequest) Unmarshal(data []byte) error {
+func (m *GetTaskRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2924,170 +2606,10 @@ func (m *GetTasksRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: GetTasksRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: GetTaskRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: GetTasksRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TaskIds", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.TaskIds = append(m.TaskIds, string(data[iNdEx:postIndex]))
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipSwarm(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *GetTasksResponse) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowSwarm
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: GetTasksResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: GetTasksResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Tasks", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSwarm
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Tasks = append(m.Tasks, &Task{})
-			if err := m.Tasks[len(m.Tasks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipSwarm(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthSwarm
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RemoveTaskRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowSwarm
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: RemoveTaskRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RemoveTaskRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: GetTaskRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -3140,7 +2662,7 @@ func (m *RemoveTaskRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RemoveTaskResponse) Unmarshal(data []byte) error {
+func (m *GetTaskResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3163,10 +2685,172 @@ func (m *RemoveTaskResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RemoveTaskResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: GetTaskResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RemoveTaskResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: GetTaskResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Task", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSwarm
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Task == nil {
+				m.Task = &Task{}
+			}
+			if err := m.Task.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipSwarm(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *DeleteTaskRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowSwarm
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DeleteTaskRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DeleteTaskRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TaskId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSwarm
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TaskId = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipSwarm(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *DeleteTaskResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowSwarm
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DeleteTaskResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DeleteTaskResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -3811,7 +3495,7 @@ func (m *UpdateJobResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RemoveJobRequest) Unmarshal(data []byte) error {
+func (m *DeleteJobRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3834,10 +3518,10 @@ func (m *RemoveJobRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RemoveJobRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: DeleteJobRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RemoveJobRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: DeleteJobRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -3890,7 +3574,7 @@ func (m *RemoveJobRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RemoveJobResponse) Unmarshal(data []byte) error {
+func (m *DeleteJobResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3913,10 +3597,10 @@ func (m *RemoveJobResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RemoveJobResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: DeleteJobResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RemoveJobResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: DeleteJobResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -4428,7 +4112,7 @@ func (m *GetNetworkResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RemoveNetworkRequest) Unmarshal(data []byte) error {
+func (m *DeleteNetworkRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4451,10 +4135,10 @@ func (m *RemoveNetworkRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RemoveNetworkRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: DeleteNetworkRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RemoveNetworkRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: DeleteNetworkRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -4536,7 +4220,7 @@ func (m *RemoveNetworkRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RemoveNetworkResponse) Unmarshal(data []byte) error {
+func (m *DeleteNetworkResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4559,10 +4243,10 @@ func (m *RemoveNetworkResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RemoveNetworkResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: DeleteNetworkResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RemoveNetworkResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: DeleteNetworkResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:

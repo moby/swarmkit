@@ -16,22 +16,21 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 // 	- "User" because it is user facing.
 service Swarm {
 	rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {}
-	rpc DrainNode(DrainNodeRequest) returns (DrainNodeResponse) {}
 
 	rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse) {}
-	rpc GetTasks(GetTasksRequest) returns (GetTasksResponse) {}
-	rpc RemoveTask(RemoveTaskRequest) returns (RemoveTaskResponse) {}
+	rpc GetTask(GetTaskRequest) returns (GetTaskResponse) {}
+	rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse) {}
 	rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {}
 
 	rpc CreateJob(CreateJobRequest) returns (CreateJobResponse) {}
 	rpc GetJob(GetJobRequest) returns (GetJobResponse) {}
 	rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse) {}
-	rpc RemoveJob(RemoveJobRequest) returns (RemoveJobResponse) {}
+	rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse) {}
 	rpc ListJobs(ListJobsRequest) returns (ListJobsResponse) {}
 
 	rpc CreateNetwork(CreateNetworkRequest) returns (CreateNetworkResponse) {};
 	rpc GetNetwork(GetNetworkRequest) returns (GetNetworkResponse) {};
-	rpc RemoveNetwork(RemoveNetworkRequest) returns (RemoveNetworkResponse) {};
+	rpc DeleteNetwork(DeleteNetworkRequest) returns (DeleteNetworkResponse) {};
 	rpc ListNetworks(ListNetworksRequest) returns (ListNetworksResponse) {};
 }
 
@@ -42,14 +41,6 @@ message ListNodesResponse {
 	repeated Node nodes = 1;
 }
 
-message DrainNodeRequest {
-	string node_id = 1;
-	bool drain = 2; // TODO(stevvooe): We need to have better notion of observed/desired.
-}
-
-message DrainNodeResponse {
-}
-
 message CreateTaskRequest {
 	JobSpec spec = 1;
 }
@@ -58,19 +49,19 @@ message CreateTaskResponse {
 	Task task = 1;
 }
 
-message GetTasksRequest {
-	repeated string task_ids = 1;
-}
-
-message GetTasksResponse {
-	repeated Task tasks = 1;
-}
-
-message RemoveTaskRequest {
+message GetTaskRequest {
 	string task_id = 1;
 }
 
-message RemoveTaskResponse {
+message GetTaskResponse {
+	Task task = 1;
+}
+
+message DeleteTaskRequest {
+	string task_id = 1;
+}
+
+message DeleteTaskResponse {
 }
 
 message ListTasksRequest {
@@ -104,11 +95,11 @@ message UpdateJobRequest {
 message UpdateJobResponse {
 }
 
-message RemoveJobRequest {
+message DeleteJobRequest {
 	string job_id = 1;
 }
 
-message RemoveJobResponse {
+message DeleteJobResponse {
 }
 
 message ListJobsRequest {
@@ -135,12 +126,12 @@ message GetNetworkResponse {
 	Network network = 1;
 }
 
-message RemoveNetworkRequest {
+message DeleteNetworkRequest {
 	string name = 1;
 	string network_id = 2;
 }
 
-message RemoveNetworkResponse {}
+message DeleteNetworkResponse {}
 
 message ListNetworksRequest {}
 
