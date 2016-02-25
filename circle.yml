@@ -1,9 +1,14 @@
 machine:
     environment:
-        GOPATH: "$HOME/.go_workspace"
-        WORKDIR:  "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
+        OS: "linux"
+        ARCH: "amd64"
+
         PROTOC: "https://github.com/google/protobuf/releases/download/v3.0.0-beta-2/protoc-3.0.0-beta-2-linux-x86_64.zip"
-        GO15VENDOREXPERIMENT: "1"
+
+        GOVERSION: "1.6"
+        GOPATH: "$HOME/.go_workspace"
+
+        WORKDIR:  "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
 
 # Disable default dependency management.
 # This prevents go dependencies to be automatically installed in order to
@@ -13,25 +18,32 @@ machine:
 # https://robots.thoughtbot.com/configure-circleci-for-go
 dependencies:
     pre:
-        # Display debugging information in CI logs
-        - go version
-        - env
+        # Wipe out the default go install.
+        - sudo rm -rf /usr/local/go
 
         # Force the wipe out of GOPATH to make sure we're not relying on
         # external dependencies.
         - rm -rf "$GOPATH"
 
     override:
-        # protobuf
+        # Install Go
+        - wget "https://storage.googleapis.com/golang/go$GOVERSION.$OS-$ARCH.tar.gz"
+        - sudo tar -C /usr/local -xzf "go$GOVERSION.$OS-$ARCH.tar.gz"
+
+        # Install protoc
         - wget "$PROTOC"
         - unzip -o "$(basename $PROTOC)" -d "$HOME/bin"
 
-        # GOPATH
+        # Setup the GOPATH
         - mkdir -p "$(dirname $WORKDIR)"
         - ln -sf "$HOME/$CIRCLE_PROJECT_REPONAME" "$WORKDIR"
 
-    post:
+        # Install dependencies
         - go get -u github.com/golang/lint/golint
+    post:
+        # Display debugging information in CI logs
+        - go version
+        - env
 
 test:
     override:
