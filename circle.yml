@@ -36,7 +36,7 @@ dependencies:
 
         # Setup the GOPATH
         - mkdir -p "$(dirname $WORKDIR)"
-        - ln -sf "$HOME/$CIRCLE_PROJECT_REPONAME" "$WORKDIR"
+        - cp -R "$HOME/$CIRCLE_PROJECT_REPONAME" "$WORKDIR"
 
         # Install dependencies
         - go get -u github.com/golang/lint/golint
@@ -52,3 +52,9 @@ test:
         # Run generate *only* once all tests pass with checked-in generated
         # code.
         - cd "$WORKDIR" && make checkprotos
+
+        - cd "$WORKDIR" && make coverage
+
+    post:
+        # Report to codecov.io
+        - cd "$WORKDIR" && bash <(curl -s https://codecov.io/bash)
