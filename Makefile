@@ -35,6 +35,11 @@ setup:
 generate: ${PREFIX}/bin/protoc-gen-gogoswarm
 	PATH=${PREFIX}/bin/:${PATH} go generate ${PACKAGES}
 
+checkprotos: generate
+	@echo "+ $@"
+	test -z "$$(git status --short | grep ".pb.go")" || \
+		(echo "+ please run 'make generate' when making changes to proto files" && false)
+
 # Depends on binaries because vet will silently fail if it can't load compiled
 # imports
 vet: binaries
