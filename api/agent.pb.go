@@ -35,7 +35,7 @@ func (m *RegisterNodeRequest) Reset()      { *m = RegisterNodeRequest{} }
 func (*RegisterNodeRequest) ProtoMessage() {}
 
 type RegisterNodeResponse struct {
-	HeartbeatTtl uint64 `protobuf:"varint,1,opt,name=heartbeat_ttl,proto3" json:"heartbeat_ttl,omitempty"`
+	HeartbeatTTL uint64 `protobuf:"varint,1,opt,name=heartbeat_ttl,proto3" json:"heartbeat_ttl,omitempty"`
 }
 
 func (m *RegisterNodeResponse) Reset()      { *m = RegisterNodeResponse{} }
@@ -50,7 +50,7 @@ func (m *UpdateNodeStatusRequest) Reset()      { *m = UpdateNodeStatusRequest{} 
 func (*UpdateNodeStatusRequest) ProtoMessage() {}
 
 type UpdateNodeStatusResponse struct {
-	HeartbeatTtl uint64 `protobuf:"varint,1,opt,name=heartbeat_ttl,proto3" json:"heartbeat_ttl,omitempty"`
+	HeartbeatTTL uint64 `protobuf:"varint,1,opt,name=heartbeat_ttl,proto3" json:"heartbeat_ttl,omitempty"`
 }
 
 func (m *UpdateNodeStatusResponse) Reset()      { *m = UpdateNodeStatusResponse{} }
@@ -87,6 +87,20 @@ type WatchTasksResponse struct {
 func (m *WatchTasksResponse) Reset()      { *m = WatchTasksResponse{} }
 func (*WatchTasksResponse) ProtoMessage() {}
 
+type HeartbeatRequest struct {
+	NodeID string `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+}
+
+func (m *HeartbeatRequest) Reset()      { *m = HeartbeatRequest{} }
+func (*HeartbeatRequest) ProtoMessage() {}
+
+type HeartbeatResponse struct {
+	HeartbeatTTL uint64 `protobuf:"varint,1,opt,name=heartbeat_ttl,proto3" json:"heartbeat_ttl,omitempty"`
+}
+
+func (m *HeartbeatResponse) Reset()      { *m = HeartbeatResponse{} }
+func (*HeartbeatResponse) ProtoMessage() {}
+
 func init() {
 	proto.RegisterType((*RegisterNodeRequest)(nil), "api.RegisterNodeRequest")
 	proto.RegisterType((*RegisterNodeResponse)(nil), "api.RegisterNodeResponse")
@@ -96,6 +110,8 @@ func init() {
 	proto.RegisterType((*UpdateTaskStatusResponse)(nil), "api.UpdateTaskStatusResponse")
 	proto.RegisterType((*WatchTasksRequest)(nil), "api.WatchTasksRequest")
 	proto.RegisterType((*WatchTasksResponse)(nil), "api.WatchTasksResponse")
+	proto.RegisterType((*HeartbeatRequest)(nil), "api.HeartbeatRequest")
+	proto.RegisterType((*HeartbeatResponse)(nil), "api.HeartbeatResponse")
 }
 func (this *RegisterNodeRequest) GoString() string {
 	if this == nil {
@@ -115,7 +131,7 @@ func (this *RegisterNodeResponse) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.RegisterNodeResponse{")
-	s = append(s, "HeartbeatTtl: "+fmt.Sprintf("%#v", this.HeartbeatTtl)+",\n")
+	s = append(s, "HeartbeatTTL: "+fmt.Sprintf("%#v", this.HeartbeatTTL)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -136,7 +152,7 @@ func (this *UpdateNodeStatusResponse) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.UpdateNodeStatusResponse{")
-	s = append(s, "HeartbeatTtl: "+fmt.Sprintf("%#v", this.HeartbeatTtl)+",\n")
+	s = append(s, "HeartbeatTTL: "+fmt.Sprintf("%#v", this.HeartbeatTTL)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -183,6 +199,26 @@ func (this *WatchTasksResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
+func (this *HeartbeatRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.HeartbeatRequest{")
+	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *HeartbeatResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.HeartbeatResponse{")
+	s = append(s, "HeartbeatTTL: "+fmt.Sprintf("%#v", this.HeartbeatTTL)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func valueToGoStringAgent(v interface{}, typ string) string {
 	rv := reflect.ValueOf(v)
 	if rv.IsNil() {
@@ -216,9 +252,20 @@ var _ grpc.ClientConn
 // Client API for Agent service
 
 type AgentClient interface {
+	// RegisterNode is used for registration of node with particular dispatcher.
 	RegisterNode(ctx context.Context, in *RegisterNodeRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error)
+	// Heartbeat is heartbeat method for nodes. It returns new TTL in response.
+	// Node should send new heartbeat earlier than now + TTL, otherwise it will
+	// be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
+	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
+	// UpdateNodeStatus updates status of particular node. Nodes can use it
+	// for notifying about graceful shutdowns for example.
 	UpdateNodeStatus(ctx context.Context, in *UpdateNodeStatusRequest, opts ...grpc.CallOption) (*UpdateNodeStatusResponse, error)
+	// UpdateTaskStatus updates status of task. Node should send such updates
+	// on every status change of its tasks.
 	UpdateTaskStatus(ctx context.Context, in *UpdateTaskStatusRequest, opts ...grpc.CallOption) (*UpdateTaskStatusResponse, error)
+	// WatchTasks is a stream of tasks for node. It returns full list of tasks
+	// which should be runned on node each time.
 	WatchTasks(ctx context.Context, in *WatchTasksRequest, opts ...grpc.CallOption) (Agent_WatchTasksClient, error)
 }
 
@@ -233,6 +280,15 @@ func NewAgentClient(cc *grpc.ClientConn) AgentClient {
 func (c *agentClient) RegisterNode(ctx context.Context, in *RegisterNodeRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error) {
 	out := new(RegisterNodeResponse)
 	err := grpc.Invoke(ctx, "/api.Agent/RegisterNode", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
+	out := new(HeartbeatResponse)
+	err := grpc.Invoke(ctx, "/api.Agent/Heartbeat", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -292,9 +348,20 @@ func (x *agentWatchTasksClient) Recv() (*WatchTasksResponse, error) {
 // Server API for Agent service
 
 type AgentServer interface {
+	// RegisterNode is used for registration of node with particular dispatcher.
 	RegisterNode(context.Context, *RegisterNodeRequest) (*RegisterNodeResponse, error)
+	// Heartbeat is heartbeat method for nodes. It returns new TTL in response.
+	// Node should send new heartbeat earlier than now + TTL, otherwise it will
+	// be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
+	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
+	// UpdateNodeStatus updates status of particular node. Nodes can use it
+	// for notifying about graceful shutdowns for example.
 	UpdateNodeStatus(context.Context, *UpdateNodeStatusRequest) (*UpdateNodeStatusResponse, error)
+	// UpdateTaskStatus updates status of task. Node should send such updates
+	// on every status change of its tasks.
 	UpdateTaskStatus(context.Context, *UpdateTaskStatusRequest) (*UpdateTaskStatusResponse, error)
+	// WatchTasks is a stream of tasks for node. It returns full list of tasks
+	// which should be runned on node each time.
 	WatchTasks(*WatchTasksRequest, Agent_WatchTasksServer) error
 }
 
@@ -308,6 +375,18 @@ func _Agent_RegisterNode_Handler(srv interface{}, ctx context.Context, dec func(
 		return nil, err
 	}
 	out, err := srv.(AgentServer).RegisterNode(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _Agent_Heartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(HeartbeatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(AgentServer).Heartbeat(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -366,6 +445,10 @@ var _Agent_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegisterNode",
 			Handler:    _Agent_RegisterNode_Handler,
+		},
+		{
+			MethodName: "Heartbeat",
+			Handler:    _Agent_Heartbeat_Handler,
 		},
 		{
 			MethodName: "UpdateNodeStatus",
@@ -428,10 +511,10 @@ func (m *RegisterNodeResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.HeartbeatTtl != 0 {
+	if m.HeartbeatTTL != 0 {
 		data[i] = 0x8
 		i++
-		i = encodeVarintAgent(data, i, uint64(m.HeartbeatTtl))
+		i = encodeVarintAgent(data, i, uint64(m.HeartbeatTTL))
 	}
 	return i, nil
 }
@@ -480,10 +563,10 @@ func (m *UpdateNodeStatusResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.HeartbeatTtl != 0 {
+	if m.HeartbeatTTL != 0 {
 		data[i] = 0x8
 		i++
-		i = encodeVarintAgent(data, i, uint64(m.HeartbeatTtl))
+		i = encodeVarintAgent(data, i, uint64(m.HeartbeatTTL))
 	}
 	return i, nil
 }
@@ -590,6 +673,53 @@ func (m *WatchTasksResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *HeartbeatRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *HeartbeatRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.NodeID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintAgent(data, i, uint64(len(m.NodeID)))
+		i += copy(data[i:], m.NodeID)
+	}
+	return i, nil
+}
+
+func (m *HeartbeatResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *HeartbeatResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.HeartbeatTTL != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintAgent(data, i, uint64(m.HeartbeatTTL))
+	}
+	return i, nil
+}
+
 func encodeFixed64Agent(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	data[offset+1] = uint8(v >> 8)
@@ -630,8 +760,8 @@ func (m *RegisterNodeRequest) Size() (n int) {
 func (m *RegisterNodeResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.HeartbeatTtl != 0 {
-		n += 1 + sovAgent(uint64(m.HeartbeatTtl))
+	if m.HeartbeatTTL != 0 {
+		n += 1 + sovAgent(uint64(m.HeartbeatTTL))
 	}
 	return n
 }
@@ -652,8 +782,8 @@ func (m *UpdateNodeStatusRequest) Size() (n int) {
 func (m *UpdateNodeStatusResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.HeartbeatTtl != 0 {
-		n += 1 + sovAgent(uint64(m.HeartbeatTtl))
+	if m.HeartbeatTTL != 0 {
+		n += 1 + sovAgent(uint64(m.HeartbeatTTL))
 	}
 	return n
 }
@@ -698,6 +828,25 @@ func (m *WatchTasksResponse) Size() (n int) {
 	return n
 }
 
+func (m *HeartbeatRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.NodeID)
+	if l > 0 {
+		n += 1 + l + sovAgent(uint64(l))
+	}
+	return n
+}
+
+func (m *HeartbeatResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.HeartbeatTTL != 0 {
+		n += 1 + sovAgent(uint64(m.HeartbeatTTL))
+	}
+	return n
+}
+
 func sovAgent(x uint64) (n int) {
 	for {
 		n++
@@ -726,7 +875,7 @@ func (this *RegisterNodeResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RegisterNodeResponse{`,
-		`HeartbeatTtl:` + fmt.Sprintf("%v", this.HeartbeatTtl) + `,`,
+		`HeartbeatTTL:` + fmt.Sprintf("%v", this.HeartbeatTTL) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -747,7 +896,7 @@ func (this *UpdateNodeStatusResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&UpdateNodeStatusResponse{`,
-		`HeartbeatTtl:` + fmt.Sprintf("%v", this.HeartbeatTtl) + `,`,
+		`HeartbeatTTL:` + fmt.Sprintf("%v", this.HeartbeatTTL) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -787,6 +936,26 @@ func (this *WatchTasksResponse) String() string {
 	}
 	s := strings.Join([]string{`&WatchTasksResponse{`,
 		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "Task", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *HeartbeatRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&HeartbeatRequest{`,
+		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *HeartbeatResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&HeartbeatResponse{`,
+		`HeartbeatTTL:` + fmt.Sprintf("%v", this.HeartbeatTTL) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -913,9 +1082,9 @@ func (m *RegisterNodeResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field HeartbeatTtl", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field HeartbeatTTL", wireType)
 			}
-			m.HeartbeatTtl = 0
+			m.HeartbeatTTL = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowAgent
@@ -925,7 +1094,7 @@ func (m *RegisterNodeResponse) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.HeartbeatTtl |= (uint64(b) & 0x7F) << shift
+				m.HeartbeatTTL |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1080,9 +1249,9 @@ func (m *UpdateNodeStatusResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field HeartbeatTtl", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field HeartbeatTTL", wireType)
 			}
-			m.HeartbeatTtl = 0
+			m.HeartbeatTTL = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowAgent
@@ -1092,7 +1261,7 @@ func (m *UpdateNodeStatusResponse) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.HeartbeatTtl |= (uint64(b) & 0x7F) << shift
+				m.HeartbeatTTL |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1388,6 +1557,154 @@ func (m *WatchTasksResponse) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAgent(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAgent
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *HeartbeatRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAgent
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: HeartbeatRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: HeartbeatRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAgent
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAgent
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NodeID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAgent(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAgent
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *HeartbeatResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAgent
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: HeartbeatResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: HeartbeatResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field HeartbeatTTL", wireType)
+			}
+			m.HeartbeatTTL = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAgent
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.HeartbeatTTL |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipAgent(data[iNdEx:])
