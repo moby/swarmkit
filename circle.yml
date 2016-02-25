@@ -39,4 +39,4 @@ test:
 
         # Run generate *only* once all tests pass with checked-in generated
         # code.
-        - cd "$WORKDIR" && make generate
+        - cd "$WORKDIR" && make checkprotos
