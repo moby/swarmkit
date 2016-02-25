@@ -5,35 +5,35 @@ import "github.com/coreos/etcd/raft/raftpb/raft.proto";
 import weak "gogoproto/gogo.proto";
 
 service Raft {
-  rpc JoinRaft(NodeInfo) returns (JoinRaftResponse) {}
-  rpc LeaveRaft(NodeInfo) returns (LeaveRaftResponse) {}
-  rpc Send(raftpb.Message) returns (SendResponse) {}
+	rpc JoinRaft(NodeInfo) returns (JoinRaftResponse) {}
+	rpc LeaveRaft(NodeInfo) returns (LeaveRaftResponse) {}
+	rpc Send(raftpb.Message) returns (SendResponse) {}
 }
 
 message JoinRaftResponse {
-  bool success = 1;
-  string error = 2;
-  repeated NodeInfo nodes = 3;
+	bool success = 1;
+	string error = 2;
+	repeated NodeInfo nodes = 3;
 }
 
 message LeaveRaftResponse {
-  bool success = 1;
-  string error = 2;
+	bool success = 1;
+	string error = 2;
 }
 
 message SendResponse {
-  bool success = 1;
-  string error = 2;
+	bool success = 1;
+	string error = 2;
 }
 
 message NodeInfo {
-  uint64 ID = 1;
-  string Addr = 2;
-  string Port = 3;
-  string Error = 4;
+	uint64 ID = 1;
+	string Addr = 2;
+	string Port = 3;
+	string Error = 4;
 }
 
 message Pair {
-  string key = 1;
-  bytes value = 2;
+	string key = 1;
+	bytes value = 2;
 }
