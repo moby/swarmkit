@@ -75,3 +75,9 @@ binaries: ${PREFIX}/bin/swarmctl ${PREFIX}/bin/swarmd ${PREFIX}/bin/protoc-gen-g
 clean:
 	@echo "+ $@"
 	@rm -rf "${PREFIX}/bin/swarmctl" "${PREFIX}/bin/swarmd" "${PREFIX}/bin/protoc-gen-gogoswarm"
+
+coverage: 
+	@echo "+ $@"
+	@for pkg in ${PACKAGES}; do \
+		go test -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=count $$pkg; \
+	done
