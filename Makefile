@@ -37,7 +37,7 @@ generate: ${PREFIX}/bin/protoc-gen-gogoswarm
 
 checkprotos: generate
 	@echo "+ $@"
-	test -z "$$(git status --short | grep ".pb.go")" || \
+	test -z "$$(git status --short | grep ".pb.go" | tee /dev/stderr)" || \
 		(echo "+ please run 'make generate' when making changes to proto files" && false)
 
 # Depends on binaries because vet will silently fail if it can't load compiled
@@ -50,6 +50,8 @@ fmt:
 	@echo "+ $@"
 	@test -z "$$(gofmt -s -l . | grep -v vendor/ | grep -v ".pb.go$$" | tee /dev/stderr)" || \
 		(echo "+ please format Go code with 'gofmt -s'" && false)
+	@test -z "$$(find . -path ./vendor -prune -o -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
+		(echo "+ please indent proto files with tabs only")
 
 lint:
 	@echo "+ $@"
