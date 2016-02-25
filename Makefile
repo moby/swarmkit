@@ -24,6 +24,10 @@ ${PREFIX}/bin/swarmctl: version/version.go $(shell find . -type f -name '*.go')
 	@echo "+ $@"
 	@go build  -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/swarmctl
 
+${PREFIX}/bin/swarmd: version/version.go $(shell find . -type f -name '*.go')
+	@echo "+ $@"
+	@go build  -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/swarmd
+
 ${PREFIX}/bin/protoc-gen-gogoswarm: version/version.go $(shell find . -type f -name '*.go')
 	@echo "+ $@"
 	@go build  -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/protoc-gen-gogoswarm
@@ -65,9 +69,9 @@ test:
 	@echo "+ $@"
 	@go test -race -tags "${DOCKER_BUILDTAGS}" ${PACKAGES}
 
-binaries: ${PREFIX}/bin/swarmctl ${PREFIX}/bin/protoc-gen-gogoswarm
+binaries: ${PREFIX}/bin/swarmctl ${PREFIX}/bin/swarmd ${PREFIX}/bin/protoc-gen-gogoswarm
 	@echo "+ $@"
 
 clean:
 	@echo "+ $@"
-	@rm -rf "${PREFIX}/bin/swarmctl" "${PREFIX}/bin/protoc-gen-gogoswarm"
+	@rm -rf "${PREFIX}/bin/swarmctl" "${PREFIX}/bin/swarmd" "${PREFIX}/bin/protoc-gen-gogoswarm"
