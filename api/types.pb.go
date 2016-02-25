@@ -53,7 +53,6 @@
 		RemoveNetworkResponse
 		ListNetworksRequest
 		ListNetworksResponse
-		Update
 		RegisterNodeRequest
 		RegisterNodeResponse
 		UpdateNodeStatusRequest

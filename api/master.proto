@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package api;
 
-import "types.proto";
-
 // NOTE(stevvooe): Make sure your gopath is appropriately set for this to work
 // correctly.
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
@@ -12,15 +10,4 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 service Master { // maybe "Consensus" (sp?)
 	// TOOD(stevvooe): Add definitions for Raft RPCs. (ie Join, Propose, etc.)
 
-}
-
-message Update {
-  oneof update {
-    Node updateNode = 1;
-    Task updateTask = 2;
-    Job updateJob = 4;
-    string deleteNode = 5;
-    string deleteTask = 6;
-    string deleteJob = 8;
-  }
 }
