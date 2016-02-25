@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/state"
+	"github.com/docker/swarm-v2/state/memory"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,7 +34,7 @@ func startDispatcher() (*grpcDispatcher, error) {
 		return nil, err
 	}
 	s := grpc.NewServer()
-	store := state.NewMemoryStore()
+	store := memory.NewMemoryStore()
 	d := New(store)
 	api.RegisterAgentServer(s, d)
 	go s.Serve(l)
