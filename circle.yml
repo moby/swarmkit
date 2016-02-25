@@ -2,6 +2,7 @@ machine:
     environment:
         GOPATH: "$HOME/.go_workspace"
         WORKDIR:  "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
+        PROTOC: "https://github.com/google/protobuf/releases/download/v3.0.0-beta-2/protoc-3.0.0-beta-2-linux-x86_64.zip"
         GO15VENDOREXPERIMENT: "1"
 
 # Disable default dependency management.
@@ -21,6 +22,11 @@ dependencies:
         - rm -rf "$GOPATH"
 
     override:
+        # protobuf
+        - wget "$PROTOC"
+        - unzip -o "$(basename $PROTOC)" -d "$HOME/bin"
+
+        # GOPATH
         - mkdir -p "$(dirname $WORKDIR)"
         - ln -sf "$HOME/$CIRCLE_PROJECT_REPONAME" "$WORKDIR"
 
@@ -30,3 +36,7 @@ dependencies:
 test:
     override:
         - cd "$WORKDIR" && make all
+
+        # Run generate *only* once all tests pass with checked-in generated
+        # code.
+        - cd "$WORKDIR" && make generate
