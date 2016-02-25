@@ -55,14 +55,14 @@ func (m *DrainNodeResponse) Reset()      { *m = DrainNodeResponse{} }
 func (*DrainNodeResponse) ProtoMessage() {}
 
 type CreateTaskRequest struct {
-	Spec *Spec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	Spec *JobSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *CreateTaskRequest) Reset()      { *m = CreateTaskRequest{} }
 func (*CreateTaskRequest) ProtoMessage() {}
 
 type CreateTaskResponse struct {
-	TaskId string `protobuf:"bytes,1,opt,name=task_id,proto3" json:"task_id,omitempty"`
+	Task *Task `protobuf:"bytes,1,opt,name=task" json:"task,omitempty"`
 }
 
 func (m *CreateTaskResponse) Reset()      { *m = CreateTaskResponse{} }
@@ -109,14 +109,14 @@ func (m *ListTasksResponse) Reset()      { *m = ListTasksResponse{} }
 func (*ListTasksResponse) ProtoMessage() {}
 
 type CreateJobRequest struct {
-	Spec *Spec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	Spec *JobSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *CreateJobRequest) Reset()      { *m = CreateJobRequest{} }
 func (*CreateJobRequest) ProtoMessage() {}
 
 type CreateJobResponse struct {
-	JobId string `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
+	Job *Job `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
 }
 
 func (m *CreateJobResponse) Reset()      { *m = CreateJobResponse{} }
@@ -137,8 +137,8 @@ func (m *GetJobResponse) Reset()      { *m = GetJobResponse{} }
 func (*GetJobResponse) ProtoMessage() {}
 
 type UpdateJobRequest struct {
-	JobId string `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
-	Spec  *Spec  `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
+	JobId string   `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
+	Spec  *JobSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *UpdateJobRequest) Reset()      { *m = UpdateJobRequest{} }
@@ -176,6 +176,62 @@ type ListJobsResponse struct {
 func (m *ListJobsResponse) Reset()      { *m = ListJobsResponse{} }
 func (*ListJobsResponse) ProtoMessage() {}
 
+type CreateNetworkRequest struct {
+	Spec *NetworkSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+}
+
+func (m *CreateNetworkRequest) Reset()      { *m = CreateNetworkRequest{} }
+func (*CreateNetworkRequest) ProtoMessage() {}
+
+type CreateNetworkResponse struct {
+	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
+}
+
+func (m *CreateNetworkResponse) Reset()      { *m = CreateNetworkResponse{} }
+func (*CreateNetworkResponse) ProtoMessage() {}
+
+type GetNetworkRequest struct {
+	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	NetworkId string `protobuf:"bytes,2,opt,name=network_id,proto3" json:"network_id,omitempty"`
+}
+
+func (m *GetNetworkRequest) Reset()      { *m = GetNetworkRequest{} }
+func (*GetNetworkRequest) ProtoMessage() {}
+
+type GetNetworkResponse struct {
+	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
+}
+
+func (m *GetNetworkResponse) Reset()      { *m = GetNetworkResponse{} }
+func (*GetNetworkResponse) ProtoMessage() {}
+
+type RemoveNetworkRequest struct {
+	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	NetworkId string `protobuf:"bytes,2,opt,name=network_id,proto3" json:"network_id,omitempty"`
+}
+
+func (m *RemoveNetworkRequest) Reset()      { *m = RemoveNetworkRequest{} }
+func (*RemoveNetworkRequest) ProtoMessage() {}
+
+type RemoveNetworkResponse struct {
+}
+
+func (m *RemoveNetworkResponse) Reset()      { *m = RemoveNetworkResponse{} }
+func (*RemoveNetworkResponse) ProtoMessage() {}
+
+type ListNetworksRequest struct {
+}
+
+func (m *ListNetworksRequest) Reset()      { *m = ListNetworksRequest{} }
+func (*ListNetworksRequest) ProtoMessage() {}
+
+type ListNetworksResponse struct {
+	Network []*Network `protobuf:"bytes,1,rep,name=network" json:"network,omitempty"`
+}
+
+func (m *ListNetworksResponse) Reset()      { *m = ListNetworksResponse{} }
+func (*ListNetworksResponse) ProtoMessage() {}
+
 func init() {
 	proto.RegisterType((*ListNodesRequest)(nil), "api.ListNodesRequest")
 	proto.RegisterType((*ListNodesResponse)(nil), "api.ListNodesResponse")
@@ -199,6 +255,14 @@ func init() {
 	proto.RegisterType((*RemoveJobResponse)(nil), "api.RemoveJobResponse")
 	proto.RegisterType((*ListJobsRequest)(nil), "api.ListJobsRequest")
 	proto.RegisterType((*ListJobsResponse)(nil), "api.ListJobsResponse")
+	proto.RegisterType((*CreateNetworkRequest)(nil), "api.CreateNetworkRequest")
+	proto.RegisterType((*CreateNetworkResponse)(nil), "api.CreateNetworkResponse")
+	proto.RegisterType((*GetNetworkRequest)(nil), "api.GetNetworkRequest")
+	proto.RegisterType((*GetNetworkResponse)(nil), "api.GetNetworkResponse")
+	proto.RegisterType((*RemoveNetworkRequest)(nil), "api.RemoveNetworkRequest")
+	proto.RegisterType((*RemoveNetworkResponse)(nil), "api.RemoveNetworkResponse")
+	proto.RegisterType((*ListNetworksRequest)(nil), "api.ListNetworksRequest")
+	proto.RegisterType((*ListNetworksResponse)(nil), "api.ListNetworksResponse")
 }
 func (this *ListNodesRequest) GoString() string {
 	if this == nil {
@@ -259,7 +323,9 @@ func (this *CreateTaskResponse) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.CreateTaskResponse{")
-	s = append(s, "TaskId: "+fmt.Sprintf("%#v", this.TaskId)+",\n")
+	if this.Task != nil {
+		s = append(s, "Task: "+fmt.Sprintf("%#v", this.Task)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -343,7 +409,9 @@ func (this *CreateJobResponse) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.CreateJobResponse{")
-	s = append(s, "JobId: "+fmt.Sprintf("%#v", this.JobId)+",\n")
+	if this.Job != nil {
+		s = append(s, "Job: "+fmt.Sprintf("%#v", this.Job)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -431,6 +499,94 @@ func (this *ListJobsResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
+func (this *CreateNetworkRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.CreateNetworkRequest{")
+	if this.Spec != nil {
+		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *CreateNetworkResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.CreateNetworkResponse{")
+	if this.Network != nil {
+		s = append(s, "Network: "+fmt.Sprintf("%#v", this.Network)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *GetNetworkRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.GetNetworkRequest{")
+	s = append(s, "Name: "+fmt.Sprintf("%#v", this.Name)+",\n")
+	s = append(s, "NetworkId: "+fmt.Sprintf("%#v", this.NetworkId)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *GetNetworkResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.GetNetworkResponse{")
+	if this.Network != nil {
+		s = append(s, "Network: "+fmt.Sprintf("%#v", this.Network)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *RemoveNetworkRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.RemoveNetworkRequest{")
+	s = append(s, "Name: "+fmt.Sprintf("%#v", this.Name)+",\n")
+	s = append(s, "NetworkId: "+fmt.Sprintf("%#v", this.NetworkId)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *RemoveNetworkResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&api.RemoveNetworkResponse{")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ListNetworksRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&api.ListNetworksRequest{")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ListNetworksResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.ListNetworksResponse{")
+	if this.Network != nil {
+		s = append(s, "Network: "+fmt.Sprintf("%#v", this.Network)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func valueToGoStringSwarm(v interface{}, typ string) string {
 	rv := reflect.ValueOf(v)
 	if rv.IsNil() {
@@ -475,6 +631,10 @@ type SwarmClient interface {
 	UpdateJob(ctx context.Context, in *UpdateJobRequest, opts ...grpc.CallOption) (*UpdateJobResponse, error)
 	RemoveJob(ctx context.Context, in *RemoveJobRequest, opts ...grpc.CallOption) (*RemoveJobResponse, error)
 	ListJobs(ctx context.Context, in *ListJobsRequest, opts ...grpc.CallOption) (*ListJobsResponse, error)
+	CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CreateNetworkResponse, error)
+	GetNetwork(ctx context.Context, in *GetNetworkRequest, opts ...grpc.CallOption) (*GetNetworkResponse, error)
+	RemoveNetwork(ctx context.Context, in *RemoveNetworkRequest, opts ...grpc.CallOption) (*RemoveNetworkResponse, error)
+	ListNetworks(ctx context.Context, in *ListNetworksRequest, opts ...grpc.CallOption) (*ListNetworksResponse, error)
 }
 
 type swarmClient struct {
@@ -584,6 +744,42 @@ func (c *swarmClient) ListJobs(ctx context.Context, in *ListJobsRequest, opts ..
 	return out, nil
 }
 
+func (c *swarmClient) CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CreateNetworkResponse, error) {
+	out := new(CreateNetworkResponse)
+	err := grpc.Invoke(ctx, "/api.Swarm/CreateNetwork", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *swarmClient) GetNetwork(ctx context.Context, in *GetNetworkRequest, opts ...grpc.CallOption) (*GetNetworkResponse, error) {
+	out := new(GetNetworkResponse)
+	err := grpc.Invoke(ctx, "/api.Swarm/GetNetwork", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *swarmClient) RemoveNetwork(ctx context.Context, in *RemoveNetworkRequest, opts ...grpc.CallOption) (*RemoveNetworkResponse, error) {
+	out := new(RemoveNetworkResponse)
+	err := grpc.Invoke(ctx, "/api.Swarm/RemoveNetwork", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *swarmClient) ListNetworks(ctx context.Context, in *ListNetworksRequest, opts ...grpc.CallOption) (*ListNetworksResponse, error) {
+	out := new(ListNetworksResponse)
+	err := grpc.Invoke(ctx, "/api.Swarm/ListNetworks", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for Swarm service
 
 type SwarmServer interface {
@@ -598,6 +794,10 @@ type SwarmServer interface {
 	UpdateJob(context.Context, *UpdateJobRequest) (*UpdateJobResponse, error)
 	RemoveJob(context.Context, *RemoveJobRequest) (*RemoveJobResponse, error)
 	ListJobs(context.Context, *ListJobsRequest) (*ListJobsResponse, error)
+	CreateNetwork(context.Context, *CreateNetworkRequest) (*CreateNetworkResponse, error)
+	GetNetwork(context.Context, *GetNetworkRequest) (*GetNetworkResponse, error)
+	RemoveNetwork(context.Context, *RemoveNetworkRequest) (*RemoveNetworkResponse, error)
+	ListNetworks(context.Context, *ListNetworksRequest) (*ListNetworksResponse, error)
 }
 
 func RegisterSwarmServer(s *grpc.Server, srv SwarmServer) {
@@ -736,6 +936,54 @@ func _Swarm_ListJobs_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return out, nil
 }
 
+func _Swarm_CreateNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(CreateNetworkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(SwarmServer).CreateNetwork(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _Swarm_GetNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(GetNetworkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(SwarmServer).GetNetwork(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _Swarm_RemoveNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(RemoveNetworkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(SwarmServer).RemoveNetwork(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _Swarm_ListNetworks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(ListNetworksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(SwarmServer).ListNetworks(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 var _Swarm_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "api.Swarm",
 	HandlerType: (*SwarmServer)(nil),
@@ -783,6 +1031,22 @@ var _Swarm_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListJobs",
 			Handler:    _Swarm_ListJobs_Handler,
+		},
+		{
+			MethodName: "CreateNetwork",
+			Handler:    _Swarm_CreateNetwork_Handler,
+		},
+		{
+			MethodName: "GetNetwork",
+			Handler:    _Swarm_GetNetwork_Handler,
+		},
+		{
+			MethodName: "RemoveNetwork",
+			Handler:    _Swarm_RemoveNetwork_Handler,
+		},
+		{
+			MethodName: "ListNetworks",
+			Handler:    _Swarm_ListNetworks_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},
@@ -931,11 +1195,15 @@ func (m *CreateTaskResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.TaskId) > 0 {
+	if m.Task != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintSwarm(data, i, uint64(len(m.TaskId)))
-		i += copy(data[i:], m.TaskId)
+		i = encodeVarintSwarm(data, i, uint64(m.Task.Size()))
+		n2, err := m.Task.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
 	}
 	return i, nil
 }
@@ -1112,11 +1380,11 @@ func (m *CreateJobRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Spec.Size()))
-		n2, err := m.Spec.MarshalTo(data[i:])
+		n3, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n2
+		i += n3
 	}
 	return i, nil
 }
@@ -1136,11 +1404,15 @@ func (m *CreateJobResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.JobId) > 0 {
+	if m.Job != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintSwarm(data, i, uint64(len(m.JobId)))
-		i += copy(data[i:], m.JobId)
+		i = encodeVarintSwarm(data, i, uint64(m.Job.Size()))
+		n4, err := m.Job.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n4
 	}
 	return i, nil
 }
@@ -1188,11 +1460,11 @@ func (m *GetJobResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Job.Size()))
-		n3, err := m.Job.MarshalTo(data[i:])
+		n5, err := m.Job.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n3
+		i += n5
 	}
 	return i, nil
 }
@@ -1222,11 +1494,11 @@ func (m *UpdateJobRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintSwarm(data, i, uint64(m.Spec.Size()))
-		n4, err := m.Spec.MarshalTo(data[i:])
+		n6, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n4
+		i += n6
 	}
 	return i, nil
 }
@@ -1339,6 +1611,216 @@ func (m *ListJobsResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *CreateNetworkRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *CreateNetworkRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Spec != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintSwarm(data, i, uint64(m.Spec.Size()))
+		n7, err := m.Spec.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n7
+	}
+	return i, nil
+}
+
+func (m *CreateNetworkResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *CreateNetworkResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Network != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintSwarm(data, i, uint64(m.Network.Size()))
+		n8, err := m.Network.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n8
+	}
+	return i, nil
+}
+
+func (m *GetNetworkRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *GetNetworkRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintSwarm(data, i, uint64(len(m.Name)))
+		i += copy(data[i:], m.Name)
+	}
+	if len(m.NetworkId) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintSwarm(data, i, uint64(len(m.NetworkId)))
+		i += copy(data[i:], m.NetworkId)
+	}
+	return i, nil
+}
+
+func (m *GetNetworkResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *GetNetworkResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Network != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintSwarm(data, i, uint64(m.Network.Size()))
+		n9, err := m.Network.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n9
+	}
+	return i, nil
+}
+
+func (m *RemoveNetworkRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *RemoveNetworkRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintSwarm(data, i, uint64(len(m.Name)))
+		i += copy(data[i:], m.Name)
+	}
+	if len(m.NetworkId) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintSwarm(data, i, uint64(len(m.NetworkId)))
+		i += copy(data[i:], m.NetworkId)
+	}
+	return i, nil
+}
+
+func (m *RemoveNetworkResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *RemoveNetworkResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *ListNetworksRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ListNetworksRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *ListNetworksResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ListNetworksResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Network) > 0 {
+		for _, msg := range m.Network {
+			data[i] = 0xa
+			i++
+			i = encodeVarintSwarm(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
 func encodeFixed64Swarm(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	data[offset+1] = uint8(v >> 8)
@@ -1416,8 +1898,8 @@ func (m *CreateTaskRequest) Size() (n int) {
 func (m *CreateTaskResponse) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.TaskId)
-	if l > 0 {
+	if m.Task != nil {
+		l = m.Task.Size()
 		n += 1 + l + sovSwarm(uint64(l))
 	}
 	return n
@@ -1494,8 +1976,8 @@ func (m *CreateJobRequest) Size() (n int) {
 func (m *CreateJobResponse) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.JobId)
-	if l > 0 {
+	if m.Job != nil {
+		l = m.Job.Size()
 		n += 1 + l + sovSwarm(uint64(l))
 	}
 	return n
@@ -1575,6 +2057,88 @@ func (m *ListJobsResponse) Size() (n int) {
 	return n
 }
 
+func (m *CreateNetworkRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Spec != nil {
+		l = m.Spec.Size()
+		n += 1 + l + sovSwarm(uint64(l))
+	}
+	return n
+}
+
+func (m *CreateNetworkResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.Network != nil {
+		l = m.Network.Size()
+		n += 1 + l + sovSwarm(uint64(l))
+	}
+	return n
+}
+
+func (m *GetNetworkRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovSwarm(uint64(l))
+	}
+	l = len(m.NetworkId)
+	if l > 0 {
+		n += 1 + l + sovSwarm(uint64(l))
+	}
+	return n
+}
+
+func (m *GetNetworkResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.Network != nil {
+		l = m.Network.Size()
+		n += 1 + l + sovSwarm(uint64(l))
+	}
+	return n
+}
+
+func (m *RemoveNetworkRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovSwarm(uint64(l))
+	}
+	l = len(m.NetworkId)
+	if l > 0 {
+		n += 1 + l + sovSwarm(uint64(l))
+	}
+	return n
+}
+
+func (m *RemoveNetworkResponse) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *ListNetworksRequest) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *ListNetworksResponse) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Network) > 0 {
+		for _, e := range m.Network {
+			l = e.Size()
+			n += 1 + l + sovSwarm(uint64(l))
+		}
+	}
+	return n
+}
+
 func sovSwarm(x uint64) (n int) {
 	for {
 		n++
@@ -1632,7 +2196,7 @@ func (this *CreateTaskRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&CreateTaskRequest{`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "Spec", "Spec", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1642,7 +2206,7 @@ func (this *CreateTaskResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&CreateTaskResponse{`,
-		`TaskId:` + fmt.Sprintf("%v", this.TaskId) + `,`,
+		`Task:` + strings.Replace(fmt.Sprintf("%v", this.Task), "Task", "Task", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1710,7 +2274,7 @@ func (this *CreateJobRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&CreateJobRequest{`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "Spec", "Spec", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1720,7 +2284,7 @@ func (this *CreateJobResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&CreateJobResponse{`,
-		`JobId:` + fmt.Sprintf("%v", this.JobId) + `,`,
+		`Job:` + strings.Replace(fmt.Sprintf("%v", this.Job), "Job", "Job", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1751,7 +2315,7 @@ func (this *UpdateJobRequest) String() string {
 	}
 	s := strings.Join([]string{`&UpdateJobRequest{`,
 		`JobId:` + fmt.Sprintf("%v", this.JobId) + `,`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "Spec", "Spec", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1799,6 +2363,86 @@ func (this *ListJobsResponse) String() string {
 	}
 	s := strings.Join([]string{`&ListJobsResponse{`,
 		`Jobs:` + strings.Replace(fmt.Sprintf("%v", this.Jobs), "Job", "Job", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *CreateNetworkRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&CreateNetworkRequest{`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NetworkSpec", "NetworkSpec", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *CreateNetworkResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&CreateNetworkResponse{`,
+		`Network:` + strings.Replace(fmt.Sprintf("%v", this.Network), "Network", "Network", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *GetNetworkRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&GetNetworkRequest{`,
+		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
+		`NetworkId:` + fmt.Sprintf("%v", this.NetworkId) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *GetNetworkResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&GetNetworkResponse{`,
+		`Network:` + strings.Replace(fmt.Sprintf("%v", this.Network), "Network", "Network", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RemoveNetworkRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RemoveNetworkRequest{`,
+		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
+		`NetworkId:` + fmt.Sprintf("%v", this.NetworkId) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RemoveNetworkResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RemoveNetworkResponse{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListNetworksRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListNetworksRequest{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListNetworksResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListNetworksResponse{`,
+		`Network:` + strings.Replace(fmt.Sprintf("%v", this.Network), "Network", "Network", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2147,7 +2791,7 @@ func (m *CreateTaskRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &Spec{}
+				m.Spec = &JobSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -2205,9 +2849,9 @@ func (m *CreateTaskResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TaskId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Task", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowSwarm
@@ -2217,20 +2861,24 @@ func (m *CreateTaskResponse) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthSwarm
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.TaskId = string(data[iNdEx:postIndex])
+			if m.Task == nil {
+				m.Task = &Task{}
+			}
+			if err := m.Task.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -2729,7 +3377,7 @@ func (m *CreateJobRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &Spec{}
+				m.Spec = &JobSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -2787,9 +3435,9 @@ func (m *CreateJobResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field JobId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Job", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowSwarm
@@ -2799,20 +3447,24 @@ func (m *CreateJobResponse) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthSwarm
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.JobId = string(data[iNdEx:postIndex])
+			if m.Job == nil {
+				m.Job = &Job{}
+			}
+			if err := m.Job.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3082,7 +3734,7 @@ func (m *UpdateJobRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &Spec{}
+				m.Spec = &JobSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -3395,6 +4047,652 @@ func (m *ListJobsResponse) Unmarshal(data []byte) error {
 			}
 			m.Jobs = append(m.Jobs, &Job{})
 			if err := m.Jobs[len(m.Jobs)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipSwarm(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CreateNetworkRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowSwarm
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CreateNetworkRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CreateNetworkRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSwarm
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Spec == nil {
+				m.Spec = &NetworkSpec{}
+			}
+			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipSwarm(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CreateNetworkResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowSwarm
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CreateNetworkResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CreateNetworkResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Network", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSwarm
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Network == nil {
+				m.Network = &Network{}
+			}
+			if err := m.Network.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipSwarm(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetNetworkRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowSwarm
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetNetworkRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetNetworkRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSwarm
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NetworkId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSwarm
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NetworkId = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipSwarm(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetNetworkResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowSwarm
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetNetworkResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetNetworkResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Network", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSwarm
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Network == nil {
+				m.Network = &Network{}
+			}
+			if err := m.Network.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipSwarm(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RemoveNetworkRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowSwarm
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemoveNetworkRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemoveNetworkRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSwarm
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NetworkId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSwarm
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NetworkId = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipSwarm(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RemoveNetworkResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowSwarm
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemoveNetworkResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemoveNetworkResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipSwarm(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListNetworksRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowSwarm
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListNetworksRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListNetworksRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipSwarm(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListNetworksResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowSwarm
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListNetworksResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListNetworksResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Network", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSwarm
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthSwarm
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Network = append(m.Network, &Network{})
+			if err := m.Network[len(m.Network)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
