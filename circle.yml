@@ -47,13 +47,13 @@ dependencies:
 
 test:
     override:
-        - cd "$WORKDIR" && make all
-
-        # Run generate *only* once all tests pass with checked-in generated
-        # code.
-        - cd "$WORKDIR" && make checkprotos
-
-        - cd "$WORKDIR" && make coverage
+        # Run all tests in a single pass to ensure we don't move to the next
+        # step in case of failure.
+        # - `all`: Format, build and tests.
+        # - `checkprotos`: Build and check the proto files *only* once all
+        #                  tests pass with checked-in generated code.
+        # - `coverage`: Generate coverage reports.
+        - cd "$WORKDIR" && make all checkprotos coverage
 
     post:
         # Report to codecov.io
