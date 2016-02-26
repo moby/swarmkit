@@ -41,7 +41,7 @@ generate: ${PREFIX}/bin/protoc-gen-gogoswarm
 
 checkprotos: generate
 	@echo "+ $@"
-	test -z "$$(git status --short | grep ".pb.go" | tee /dev/stderr)" || \
+	@test -z "$$(git status --short | grep ".pb.go" | tee /dev/stderr)" || \
 		(echo "+ please run 'make generate' when making changes to proto files" && false)
 
 # Depends on binaries because vet will silently fail if it can't load compiled
