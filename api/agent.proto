@@ -53,7 +53,8 @@ message UpdateNodeStatusResponse {
 message UpdateTaskStatusRequest {
 	// Tasks should contain all statuses for running tasks. Only the status
 	// field must be set. The spec is not required.
-	repeated Task tasks = 1;
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+	repeated Task tasks = 2;
 }
 
 message  UpdateTaskStatusResponse{

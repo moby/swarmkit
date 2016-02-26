@@ -167,3 +167,42 @@ func TestTasks(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, len(resp.Tasks), 1)
 }
+
+func TestTaskUpdate(t *testing.T) {
+	gd, err := startDispatcher()
+	assert.Nil(t, err)
+	defer gd.Close()
+	testNode := &api.Node{
+		Id: "test",
+	}
+
+	{
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Node: testNode})
+		assert.Nil(t, err)
+		assert.NotZero(t, resp.TTL)
+	}
+	testTask1 := &api.Task{
+		Id:     "testTask1",
+		NodeId: testNode.Id,
+	}
+	testTask2 := &api.Task{
+		Id:     "testTask2",
+		NodeId: testNode.Id,
+	}
+	assert.Nil(t, gd.Store.CreateTask(testTask1.Id, testTask1))
+	assert.Nil(t, gd.Store.CreateTask(testTask2.Id, testTask2))
+	testTask1.Status = &api.TaskStatus{State: api.TaskStatus_ASSIGNED}
+	testTask2.Status = &api.TaskStatus{State: api.TaskStatus_ASSIGNED}
+	updReq := &api.UpdateTaskStatusRequest{
+		NodeID: testNode.Id,
+		Tasks:  []*api.Task{testTask1, testTask2},
+	}
+	_, err = gd.Client.UpdateTaskStatus(context.Background(), updReq)
+	assert.Nil(t, err)
+	storeTask1 := gd.Store.Task(testTask1.Id)
+	assert.NotNil(t, storeTask1)
+	storeTask2 := gd.Store.Task(testTask2.Id)
+	assert.NotNil(t, storeTask2)
+	assert.Equal(t, storeTask1.Status.State, api.TaskStatus_ASSIGNED)
+	assert.Equal(t, storeTask2.Status.State, api.TaskStatus_ASSIGNED)
+}

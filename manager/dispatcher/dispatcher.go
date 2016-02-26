@@ -90,7 +90,18 @@ func (d *Dispatcher) UpdateNodeStatus(context.Context, *api.UpdateNodeStatusRequ
 
 // UpdateTaskStatus updates status of task. Node should send such updates
 // on every status change of its tasks.
-func (d *Dispatcher) UpdateTaskStatus(context.Context, *api.UpdateTaskStatusRequest) (*api.UpdateTaskStatusResponse, error) {
+func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStatusRequest) (*api.UpdateTaskStatusResponse, error) {
+	d.mu.Lock()
+	_, ok := d.nodes[r.NodeID]
+	d.mu.Unlock()
+	if !ok {
+		return nil, grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
+	}
+	for _, t := range r.Tasks {
+		if err := d.store.UpdateTask(t.Id, &api.Task{Status: t.Status}); err != nil {
+			return nil, err
+		}
+	}
 	return nil, nil
 }
 
