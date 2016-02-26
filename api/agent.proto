@@ -75,5 +75,7 @@ message HeartbeatRequest {
 }
 
 message HeartbeatResponse {
-	uint64 heartbeat_ttl = 1 [(gogoproto.customname) = "HeartbeatTTL"];
+	// TTL is the duration to wait before sending the next heartbeat.
+	// Well-behaved agents should update this on every heartbeat round trip. 
+	uint64 ttl = 1 [(gogoproto.customname) = "TTL", (gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
 }

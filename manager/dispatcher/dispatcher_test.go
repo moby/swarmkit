@@ -94,7 +94,7 @@ func TestHeartbeat(t *testing.T) {
 
 	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.Id})
 	assert.Nil(t, err)
-	assert.NotZero(t, resp.HeartbeatTTL)
+	assert.NotZero(t, resp.TTL)
 	time.Sleep(300 * time.Millisecond)
 
 	storeNode := gd.Store.Node("test")

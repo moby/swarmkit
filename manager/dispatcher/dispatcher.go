@@ -127,5 +127,5 @@ func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*a
 	ttl := d.electTTL()
 	node.Heartbeat.Update(ttl)
 	node.Heartbeat.Beat()
-	return &api.HeartbeatResponse{HeartbeatTTL: uint64(ttl)}, nil
+	return &api.HeartbeatResponse{TTL: ttl}, nil
 }

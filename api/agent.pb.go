@@ -9,6 +9,8 @@ import fmt "fmt"
 import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 
+import time "time"
+
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
@@ -95,7 +97,9 @@ func (m *HeartbeatRequest) Reset()      { *m = HeartbeatRequest{} }
 func (*HeartbeatRequest) ProtoMessage() {}
 
 type HeartbeatResponse struct {
-	HeartbeatTTL uint64 `protobuf:"varint,1,opt,name=heartbeat_ttl,proto3" json:"heartbeat_ttl,omitempty"`
+	// TTL is the duration to wait before sending the next heartbeat.
+	// Well-behaved agents should update this on every heartbeat round trip.
+	TTL time.Duration `protobuf:"varint,1,opt,name=ttl,proto3,customtype=time.Duration" json:"ttl"`
 }
 
 func (m *HeartbeatResponse) Reset()      { *m = HeartbeatResponse{} }
@@ -215,7 +219,7 @@ func (this *HeartbeatResponse) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.HeartbeatResponse{")
-	s = append(s, "HeartbeatTTL: "+fmt.Sprintf("%#v", this.HeartbeatTTL)+",\n")
+	s = append(s, "TTL: "+fmt.Sprintf("%#v", this.TTL)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -712,10 +716,10 @@ func (m *HeartbeatResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.HeartbeatTTL != 0 {
+	if m.TTL != 0 {
 		data[i] = 0x8
 		i++
-		i = encodeVarintAgent(data, i, uint64(m.HeartbeatTTL))
+		i = encodeVarintAgent(data, i, uint64(m.TTL))
 	}
 	return i, nil
 }
@@ -841,8 +845,8 @@ func (m *HeartbeatRequest) Size() (n int) {
 func (m *HeartbeatResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.HeartbeatTTL != 0 {
-		n += 1 + sovAgent(uint64(m.HeartbeatTTL))
+	if m.TTL != 0 {
+		n += 1 + sovAgent(uint64(m.TTL))
 	}
 	return n
 }
@@ -955,7 +959,7 @@ func (this *HeartbeatResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&HeartbeatResponse{`,
-		`HeartbeatTTL:` + fmt.Sprintf("%v", this.HeartbeatTTL) + `,`,
+		`TTL:` + fmt.Sprintf("%v", this.TTL) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1688,9 +1692,9 @@ func (m *HeartbeatResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field HeartbeatTTL", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TTL", wireType)
 			}
-			m.HeartbeatTTL = 0
+			m.TTL = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowAgent
@@ -1700,7 +1704,7 @@ func (m *HeartbeatResponse) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.HeartbeatTTL |= (uint64(b) & 0x7F) << shift
+				m.TTL |= (time.Duration(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
