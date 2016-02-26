@@ -14,27 +14,48 @@ message Meta {
 	map<string, string> labels = 2;
 }
 
-message Node {
+message NodeSpec {
 	Meta meta = 1;
-	string id = 2 [(gogoproto.customname) = "ID"];
-	string ip = 3 [(gogoproto.customname) = "IP"];
+	string id = 2 [(gogoproto.customname) = "ID"]; // TODO(stevvooe): id may be assigned in Node.
+	string addr = 3;
 
+	// Status is the state of the node as seen by the creator the
+	// specification. When reported by an agent, this will almost always be
+	// READY or empty. When communicating through the Cluster API, this can be
+	// used as a way to single the desired node state.
 	NodeStatus status = 4;
 
 	// TODO(stevvooe): Define resources for the node (ie cpu, memory, local
 	// volumes, etc.).
 }
 
-enum NodeStatus {
-	UNKNOWN = 0;
-	DOWN = 1; 
-	READY = 2;
-	DRAINED = 3; // needs differentation of desired and observed state.
+message Node {
+	NodeSpec spec = 1;
+
+	// Status provides the current status of the node, as seen by the manager.
+	// This may differ from the state in the nodespec.
+	NodeStatus status = 2;
 }
 
-// TODO(stevvooe): Add QueryOptions types with pagination parameters. Needs to
-// be common to every request type. Define common service primitives in
-// services.proto. Each service should have single proto file.
+message NodeStatus {
+	enum State {
+		// Unknown indicates the node state cannot be resolved.
+		UNKNOWN = 0;
+
+		// Down indicates the node is down.
+		DOWN = 1;
+
+		// Ready indicates the node is ready to accept tasks.
+		READY = 2;
+
+		// Drained indicates the node is actively a part of the cluster but is
+		// not accepting new tasks.
+		DRAINED = 3;
+	}
+
+	State state = 1;
+	string message = 2;
+}
 
 message ImageSpec {
 	// reference is a docker image reference. This can include a rpository, tag

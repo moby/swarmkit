@@ -30,7 +30,7 @@ var _ = fmt.Errorf
 var _ = math.Inf
 
 type RegisterRequest struct {
-	Node *Node `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
+	Spec *NodeSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *RegisterRequest) Reset()      { *m = RegisterRequest{} }
@@ -44,15 +44,16 @@ func (m *RegisterResponse) Reset()      { *m = RegisterResponse{} }
 func (*RegisterResponse) ProtoMessage() {}
 
 type UpdateNodeStatusRequest struct {
-	NodeID string     `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
-	Status NodeStatus `protobuf:"varint,2,opt,name=status,proto3,enum=api.NodeStatus" json:"status,omitempty"`
+	NodeID string      `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	Status *NodeStatus `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
 }
 
 func (m *UpdateNodeStatusRequest) Reset()      { *m = UpdateNodeStatusRequest{} }
 func (*UpdateNodeStatusRequest) ProtoMessage() {}
 
 type UpdateNodeStatusResponse struct {
-	HeartbeatTTL uint64 `protobuf:"varint,1,opt,name=heartbeat_ttl,proto3" json:"heartbeat_ttl,omitempty"`
+	Node *Node         `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
+	TTL  time.Duration `protobuf:"varint,2,opt,name=ttl,proto3,customtype=time.Duration" json:"ttl"`
 }
 
 func (m *UpdateNodeStatusResponse) Reset()      { *m = UpdateNodeStatusResponse{} }
@@ -152,8 +153,8 @@ func (this *RegisterRequest) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.RegisterRequest{")
-	if this.Node != nil {
-		s = append(s, "Node: "+fmt.Sprintf("%#v", this.Node)+",\n")
+	if this.Spec != nil {
+		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -175,7 +176,9 @@ func (this *UpdateNodeStatusRequest) GoString() string {
 	s := make([]string, 0, 6)
 	s = append(s, "&api.UpdateNodeStatusRequest{")
 	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
-	s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
+	if this.Status != nil {
+		s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -183,9 +186,12 @@ func (this *UpdateNodeStatusResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 5)
+	s := make([]string, 0, 6)
 	s = append(s, "&api.UpdateNodeStatusResponse{")
-	s = append(s, "HeartbeatTTL: "+fmt.Sprintf("%#v", this.HeartbeatTTL)+",\n")
+	if this.Node != nil {
+		s = append(s, "Node: "+fmt.Sprintf("%#v", this.Node)+",\n")
+	}
+	s = append(s, "TTL: "+fmt.Sprintf("%#v", this.TTL)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -590,11 +596,11 @@ func (m *RegisterRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Node != nil {
+	if m.Spec != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintAgent(data, i, uint64(m.Node.Size()))
-		n1, err := m.Node.MarshalTo(data[i:])
+		i = encodeVarintAgent(data, i, uint64(m.Spec.Size()))
+		n1, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -647,10 +653,15 @@ func (m *UpdateNodeStatusRequest) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintAgent(data, i, uint64(len(m.NodeID)))
 		i += copy(data[i:], m.NodeID)
 	}
-	if m.Status != 0 {
-		data[i] = 0x10
+	if m.Status != nil {
+		data[i] = 0x12
 		i++
-		i = encodeVarintAgent(data, i, uint64(m.Status))
+		i = encodeVarintAgent(data, i, uint64(m.Status.Size()))
+		n2, err := m.Status.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
 	}
 	return i, nil
 }
@@ -670,10 +681,20 @@ func (m *UpdateNodeStatusResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.HeartbeatTTL != 0 {
-		data[i] = 0x8
+	if m.Node != nil {
+		data[i] = 0xa
 		i++
-		i = encodeVarintAgent(data, i, uint64(m.HeartbeatTTL))
+		i = encodeVarintAgent(data, i, uint64(m.Node.Size()))
+		n3, err := m.Node.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n3
+	}
+	if m.TTL != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintAgent(data, i, uint64(m.TTL))
 	}
 	return i, nil
 }
@@ -956,8 +977,8 @@ func encodeVarintAgent(data []byte, offset int, v uint64) int {
 func (m *RegisterRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Node != nil {
-		l = m.Node.Size()
+	if m.Spec != nil {
+		l = m.Spec.Size()
 		n += 1 + l + sovAgent(uint64(l))
 	}
 	return n
@@ -979,8 +1000,9 @@ func (m *UpdateNodeStatusRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovAgent(uint64(l))
 	}
-	if m.Status != 0 {
-		n += 1 + sovAgent(uint64(m.Status))
+	if m.Status != nil {
+		l = m.Status.Size()
+		n += 1 + l + sovAgent(uint64(l))
 	}
 	return n
 }
@@ -988,8 +1010,12 @@ func (m *UpdateNodeStatusRequest) Size() (n int) {
 func (m *UpdateNodeStatusResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.HeartbeatTTL != 0 {
-		n += 1 + sovAgent(uint64(m.HeartbeatTTL))
+	if m.Node != nil {
+		l = m.Node.Size()
+		n += 1 + l + sovAgent(uint64(l))
+	}
+	if m.TTL != 0 {
+		n += 1 + sovAgent(uint64(m.TTL))
 	}
 	return n
 }
@@ -1113,7 +1139,7 @@ func (this *RegisterRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RegisterRequest{`,
-		`Node:` + strings.Replace(fmt.Sprintf("%v", this.Node), "Node", "Node", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NodeSpec", "NodeSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1134,7 +1160,7 @@ func (this *UpdateNodeStatusRequest) String() string {
 	}
 	s := strings.Join([]string{`&UpdateNodeStatusRequest{`,
 		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
-		`Status:` + fmt.Sprintf("%v", this.Status) + `,`,
+		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "NodeStatus", "NodeStatus", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1144,7 +1170,8 @@ func (this *UpdateNodeStatusResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&UpdateNodeStatusResponse{`,
-		`HeartbeatTTL:` + fmt.Sprintf("%v", this.HeartbeatTTL) + `,`,
+		`Node:` + strings.Replace(fmt.Sprintf("%v", this.Node), "Node", "Node", 1) + `,`,
+		`TTL:` + fmt.Sprintf("%v", this.TTL) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1280,7 +1307,7 @@ func (m *RegisterRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Node", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1304,10 +1331,10 @@ func (m *RegisterRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Node == nil {
-				m.Node = &Node{}
+			if m.Spec == nil {
+				m.Spec = &NodeSpec{}
 			}
-			if err := m.Node.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1460,10 +1487,10 @@ func (m *UpdateNodeStatusRequest) Unmarshal(data []byte) error {
 			m.NodeID = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
-			if wireType != 0 {
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
 			}
-			m.Status = 0
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowAgent
@@ -1473,11 +1500,25 @@ func (m *UpdateNodeStatusRequest) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.Status |= (NodeStatus(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			if msglen < 0 {
+				return ErrInvalidLengthAgent
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Status == nil {
+				m.Status = &NodeStatus{}
+			}
+			if err := m.Status.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipAgent(data[iNdEx:])
@@ -1529,10 +1570,10 @@ func (m *UpdateNodeStatusResponse) Unmarshal(data []byte) error {
 		}
 		switch fieldNum {
 		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field HeartbeatTTL", wireType)
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Node", wireType)
 			}
-			m.HeartbeatTTL = 0
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowAgent
@@ -1542,7 +1583,40 @@ func (m *UpdateNodeStatusResponse) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.HeartbeatTTL |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthAgent
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Node == nil {
+				m.Node = &Node{}
+			}
+			if err := m.Node.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TTL", wireType)
+			}
+			m.TTL = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAgent
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.TTL |= (time.Duration(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
