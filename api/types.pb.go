@@ -57,10 +57,13 @@
 		UpdateNodeStatusResponse
 		UpdateTaskStatusRequest
 		UpdateTaskStatusResponse
-		WatchTasksRequest
-		WatchTasksResponse
+		TasksRequest
+		TasksResponse
 		HeartbeatRequest
 		HeartbeatResponse
+		ManagerInfo
+		SessionRequest
+		SessionResponse
 */
 package api
 
