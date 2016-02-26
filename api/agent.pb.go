@@ -71,21 +71,23 @@ type UpdateTaskStatusResponse struct {
 func (m *UpdateTaskStatusResponse) Reset()      { *m = UpdateTaskStatusResponse{} }
 func (*UpdateTaskStatusResponse) ProtoMessage() {}
 
-type WatchTasksRequest struct {
-	NodeId string `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+type TasksRequest struct {
+	// TODO(stevvooe): Really, node id assignments should be done through
+	// headers and sessionization.
+	NodeID string `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
 }
 
-func (m *WatchTasksRequest) Reset()      { *m = WatchTasksRequest{} }
-func (*WatchTasksRequest) ProtoMessage() {}
+func (m *TasksRequest) Reset()      { *m = TasksRequest{} }
+func (*TasksRequest) ProtoMessage() {}
 
-type WatchTasksResponse struct {
+type TasksResponse struct {
 	// Tasks is the set of tasks that should be running on the node.
 	// Tasks outside of this set running on the node should be terminated.
 	Tasks []*Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
 }
 
-func (m *WatchTasksResponse) Reset()      { *m = WatchTasksResponse{} }
-func (*WatchTasksResponse) ProtoMessage() {}
+func (m *TasksResponse) Reset()      { *m = TasksResponse{} }
+func (*TasksResponse) ProtoMessage() {}
 
 type HeartbeatRequest struct {
 	NodeID string `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
@@ -101,6 +103,29 @@ type HeartbeatResponse struct {
 func (m *HeartbeatResponse) Reset()      { *m = HeartbeatResponse{} }
 func (*HeartbeatResponse) ProtoMessage() {}
 
+type ManagerInfo struct {
+	Addr   string  `protobuf:"bytes,1,opt,name=addr,proto3" json:"addr,omitempty"`
+	Weight float32 `protobuf:"fixed32,2,opt,name=weight,proto3" json:"weight,omitempty"`
+}
+
+func (m *ManagerInfo) Reset()      { *m = ManagerInfo{} }
+func (*ManagerInfo) ProtoMessage() {}
+
+type SessionRequest struct {
+	NodeID string `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+}
+
+func (m *SessionRequest) Reset()      { *m = SessionRequest{} }
+func (*SessionRequest) ProtoMessage() {}
+
+type SessionResponse struct {
+	Managers   []*ManagerInfo `protobuf:"bytes,1,rep,name=managers" json:"managers,omitempty"`
+	Disconnect bool           `protobuf:"varint,2,opt,name=disconnect,proto3" json:"disconnect,omitempty"`
+}
+
+func (m *SessionResponse) Reset()      { *m = SessionResponse{} }
+func (*SessionResponse) ProtoMessage() {}
+
 func init() {
 	proto.RegisterType((*RegisterNodeRequest)(nil), "api.RegisterNodeRequest")
 	proto.RegisterType((*RegisterNodeResponse)(nil), "api.RegisterNodeResponse")
@@ -108,10 +133,13 @@ func init() {
 	proto.RegisterType((*UpdateNodeStatusResponse)(nil), "api.UpdateNodeStatusResponse")
 	proto.RegisterType((*UpdateTaskStatusRequest)(nil), "api.UpdateTaskStatusRequest")
 	proto.RegisterType((*UpdateTaskStatusResponse)(nil), "api.UpdateTaskStatusResponse")
-	proto.RegisterType((*WatchTasksRequest)(nil), "api.WatchTasksRequest")
-	proto.RegisterType((*WatchTasksResponse)(nil), "api.WatchTasksResponse")
+	proto.RegisterType((*TasksRequest)(nil), "api.TasksRequest")
+	proto.RegisterType((*TasksResponse)(nil), "api.TasksResponse")
 	proto.RegisterType((*HeartbeatRequest)(nil), "api.HeartbeatRequest")
 	proto.RegisterType((*HeartbeatResponse)(nil), "api.HeartbeatResponse")
+	proto.RegisterType((*ManagerInfo)(nil), "api.ManagerInfo")
+	proto.RegisterType((*SessionRequest)(nil), "api.SessionRequest")
+	proto.RegisterType((*SessionResponse)(nil), "api.SessionResponse")
 }
 func (this *RegisterNodeRequest) GoString() string {
 	if this == nil {
@@ -177,22 +205,22 @@ func (this *UpdateTaskStatusResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *WatchTasksRequest) GoString() string {
+func (this *TasksRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.WatchTasksRequest{")
-	s = append(s, "NodeId: "+fmt.Sprintf("%#v", this.NodeId)+",\n")
+	s = append(s, "&api.TasksRequest{")
+	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *WatchTasksResponse) GoString() string {
+func (this *TasksResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.WatchTasksResponse{")
+	s = append(s, "&api.TasksResponse{")
 	if this.Tasks != nil {
 		s = append(s, "Tasks: "+fmt.Sprintf("%#v", this.Tasks)+",\n")
 	}
@@ -216,6 +244,40 @@ func (this *HeartbeatResponse) GoString() string {
 	s := make([]string, 0, 5)
 	s = append(s, "&api.HeartbeatResponse{")
 	s = append(s, "HeartbeatTTL: "+fmt.Sprintf("%#v", this.HeartbeatTTL)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ManagerInfo) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.ManagerInfo{")
+	s = append(s, "Addr: "+fmt.Sprintf("%#v", this.Addr)+",\n")
+	s = append(s, "Weight: "+fmt.Sprintf("%#v", this.Weight)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *SessionRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.SessionRequest{")
+	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *SessionResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.SessionResponse{")
+	if this.Managers != nil {
+		s = append(s, "Managers: "+fmt.Sprintf("%#v", this.Managers)+",\n")
+	}
+	s = append(s, "Disconnect: "+fmt.Sprintf("%#v", this.Disconnect)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -258,15 +320,18 @@ type AgentClient interface {
 	// Node should send new heartbeat earlier than now + TTL, otherwise it will
 	// be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
 	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
-	// UpdateNodeStatus updates status of particular node. Nodes can use it
-	// for notifying about graceful shutdowns for example.
-	UpdateNodeStatus(ctx context.Context, in *UpdateNodeStatusRequest, opts ...grpc.CallOption) (*UpdateNodeStatusResponse, error)
 	// UpdateTaskStatus updates status of task. Node should send such updates
 	// on every status change of its tasks.
 	UpdateTaskStatus(ctx context.Context, in *UpdateTaskStatusRequest, opts ...grpc.CallOption) (*UpdateTaskStatusResponse, error)
-	// WatchTasks is a stream of tasks for node. It returns full list of tasks
-	// which should be runned on node each time.
-	WatchTasks(ctx context.Context, in *WatchTasksRequest, opts ...grpc.CallOption) (Agent_WatchTasksClient, error)
+	// Tasks is a stream of tasks state for node. Each message contains full list
+	// of tasks which should be run on node, if task is not present in that list,
+	// it should be terminated.
+	Tasks(ctx context.Context, in *TasksRequest, opts ...grpc.CallOption) (Agent_TasksClient, error)
+	// Session is stream which controls agent connection.
+	// Each message contains list of backup Managers with weights. Also there is
+	// special boolean field Disconnect which if true indicates that node should
+	// reconnect to another Manager immediately.
+	Session(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (Agent_SessionClient, error)
 }
 
 type agentClient struct {
@@ -295,15 +360,6 @@ func (c *agentClient) Heartbeat(ctx context.Context, in *HeartbeatRequest, opts 
 	return out, nil
 }
 
-func (c *agentClient) UpdateNodeStatus(ctx context.Context, in *UpdateNodeStatusRequest, opts ...grpc.CallOption) (*UpdateNodeStatusResponse, error) {
-	out := new(UpdateNodeStatusResponse)
-	err := grpc.Invoke(ctx, "/api.Agent/UpdateNodeStatus", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *agentClient) UpdateTaskStatus(ctx context.Context, in *UpdateTaskStatusRequest, opts ...grpc.CallOption) (*UpdateTaskStatusResponse, error) {
 	out := new(UpdateTaskStatusResponse)
 	err := grpc.Invoke(ctx, "/api.Agent/UpdateTaskStatus", in, out, c.cc, opts...)
@@ -313,12 +369,12 @@ func (c *agentClient) UpdateTaskStatus(ctx context.Context, in *UpdateTaskStatus
 	return out, nil
 }
 
-func (c *agentClient) WatchTasks(ctx context.Context, in *WatchTasksRequest, opts ...grpc.CallOption) (Agent_WatchTasksClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Agent_serviceDesc.Streams[0], c.cc, "/api.Agent/WatchTasks", opts...)
+func (c *agentClient) Tasks(ctx context.Context, in *TasksRequest, opts ...grpc.CallOption) (Agent_TasksClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Agent_serviceDesc.Streams[0], c.cc, "/api.Agent/Tasks", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &agentWatchTasksClient{stream}
+	x := &agentTasksClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -328,17 +384,49 @@ func (c *agentClient) WatchTasks(ctx context.Context, in *WatchTasksRequest, opt
 	return x, nil
 }
 
-type Agent_WatchTasksClient interface {
-	Recv() (*WatchTasksResponse, error)
+type Agent_TasksClient interface {
+	Recv() (*TasksResponse, error)
 	grpc.ClientStream
 }
 
-type agentWatchTasksClient struct {
+type agentTasksClient struct {
 	grpc.ClientStream
 }
 
-func (x *agentWatchTasksClient) Recv() (*WatchTasksResponse, error) {
-	m := new(WatchTasksResponse)
+func (x *agentTasksClient) Recv() (*TasksResponse, error) {
+	m := new(TasksResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *agentClient) Session(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (Agent_SessionClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Agent_serviceDesc.Streams[1], c.cc, "/api.Agent/Session", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &agentSessionClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Agent_SessionClient interface {
+	Recv() (*SessionResponse, error)
+	grpc.ClientStream
+}
+
+type agentSessionClient struct {
+	grpc.ClientStream
+}
+
+func (x *agentSessionClient) Recv() (*SessionResponse, error) {
+	m := new(SessionResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -354,15 +442,18 @@ type AgentServer interface {
 	// Node should send new heartbeat earlier than now + TTL, otherwise it will
 	// be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
 	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
-	// UpdateNodeStatus updates status of particular node. Nodes can use it
-	// for notifying about graceful shutdowns for example.
-	UpdateNodeStatus(context.Context, *UpdateNodeStatusRequest) (*UpdateNodeStatusResponse, error)
 	// UpdateTaskStatus updates status of task. Node should send such updates
 	// on every status change of its tasks.
 	UpdateTaskStatus(context.Context, *UpdateTaskStatusRequest) (*UpdateTaskStatusResponse, error)
-	// WatchTasks is a stream of tasks for node. It returns full list of tasks
-	// which should be runned on node each time.
-	WatchTasks(*WatchTasksRequest, Agent_WatchTasksServer) error
+	// Tasks is a stream of tasks state for node. Each message contains full list
+	// of tasks which should be run on node, if task is not present in that list,
+	// it should be terminated.
+	Tasks(*TasksRequest, Agent_TasksServer) error
+	// Session is stream which controls agent connection.
+	// Each message contains list of backup Managers with weights. Also there is
+	// special boolean field Disconnect which if true indicates that node should
+	// reconnect to another Manager immediately.
+	Session(*SessionRequest, Agent_SessionServer) error
 }
 
 func RegisterAgentServer(s *grpc.Server, srv AgentServer) {
@@ -393,18 +484,6 @@ func _Agent_Heartbeat_Handler(srv interface{}, ctx context.Context, dec func(int
 	return out, nil
 }
 
-func _Agent_UpdateNodeStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(UpdateNodeStatusRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(AgentServer).UpdateNodeStatus(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func _Agent_UpdateTaskStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(UpdateTaskStatusRequest)
 	if err := dec(in); err != nil {
@@ -417,24 +496,45 @@ func _Agent_UpdateTaskStatus_Handler(srv interface{}, ctx context.Context, dec f
 	return out, nil
 }
 
-func _Agent_WatchTasks_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(WatchTasksRequest)
+func _Agent_Tasks_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(TasksRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(AgentServer).WatchTasks(m, &agentWatchTasksServer{stream})
+	return srv.(AgentServer).Tasks(m, &agentTasksServer{stream})
 }
 
-type Agent_WatchTasksServer interface {
-	Send(*WatchTasksResponse) error
+type Agent_TasksServer interface {
+	Send(*TasksResponse) error
 	grpc.ServerStream
 }
 
-type agentWatchTasksServer struct {
+type agentTasksServer struct {
 	grpc.ServerStream
 }
 
-func (x *agentWatchTasksServer) Send(m *WatchTasksResponse) error {
+func (x *agentTasksServer) Send(m *TasksResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _Agent_Session_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SessionRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(AgentServer).Session(m, &agentSessionServer{stream})
+}
+
+type Agent_SessionServer interface {
+	Send(*SessionResponse) error
+	grpc.ServerStream
+}
+
+type agentSessionServer struct {
+	grpc.ServerStream
+}
+
+func (x *agentSessionServer) Send(m *SessionResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -451,18 +551,19 @@ var _Agent_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Agent_Heartbeat_Handler,
 		},
 		{
-			MethodName: "UpdateNodeStatus",
-			Handler:    _Agent_UpdateNodeStatus_Handler,
-		},
-		{
 			MethodName: "UpdateTaskStatus",
 			Handler:    _Agent_UpdateTaskStatus_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "WatchTasks",
-			Handler:       _Agent_WatchTasks_Handler,
+			StreamName:    "Tasks",
+			Handler:       _Agent_Tasks_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "Session",
+			Handler:       _Agent_Session_Handler,
 			ServerStreams: true,
 		},
 	},
@@ -619,7 +720,7 @@ func (m *UpdateTaskStatusResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *WatchTasksRequest) Marshal() (data []byte, err error) {
+func (m *TasksRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -629,21 +730,21 @@ func (m *WatchTasksRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *WatchTasksRequest) MarshalTo(data []byte) (int, error) {
+func (m *TasksRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.NodeId) > 0 {
+	if len(m.NodeID) > 0 {
 		data[i] = 0xa
 		i++
-		i = encodeVarintAgent(data, i, uint64(len(m.NodeId)))
-		i += copy(data[i:], m.NodeId)
+		i = encodeVarintAgent(data, i, uint64(len(m.NodeID)))
+		i += copy(data[i:], m.NodeID)
 	}
 	return i, nil
 }
 
-func (m *WatchTasksResponse) Marshal() (data []byte, err error) {
+func (m *TasksResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -653,7 +754,7 @@ func (m *WatchTasksResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *WatchTasksResponse) MarshalTo(data []byte) (int, error) {
+func (m *TasksResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -716,6 +817,99 @@ func (m *HeartbeatResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x8
 		i++
 		i = encodeVarintAgent(data, i, uint64(m.HeartbeatTTL))
+	}
+	return i, nil
+}
+
+func (m *ManagerInfo) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ManagerInfo) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Addr) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintAgent(data, i, uint64(len(m.Addr)))
+		i += copy(data[i:], m.Addr)
+	}
+	if m.Weight != 0 {
+		data[i] = 0x15
+		i++
+		i = encodeFixed32Agent(data, i, uint32(math.Float32bits(float32(m.Weight))))
+	}
+	return i, nil
+}
+
+func (m *SessionRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *SessionRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.NodeID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintAgent(data, i, uint64(len(m.NodeID)))
+		i += copy(data[i:], m.NodeID)
+	}
+	return i, nil
+}
+
+func (m *SessionResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *SessionResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Managers) > 0 {
+		for _, msg := range m.Managers {
+			data[i] = 0xa
+			i++
+			i = encodeVarintAgent(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if m.Disconnect {
+		data[i] = 0x10
+		i++
+		if m.Disconnect {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
 	}
 	return i, nil
 }
@@ -806,17 +1000,17 @@ func (m *UpdateTaskStatusResponse) Size() (n int) {
 	return n
 }
 
-func (m *WatchTasksRequest) Size() (n int) {
+func (m *TasksRequest) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.NodeId)
+	l = len(m.NodeID)
 	if l > 0 {
 		n += 1 + l + sovAgent(uint64(l))
 	}
 	return n
 }
 
-func (m *WatchTasksResponse) Size() (n int) {
+func (m *TasksResponse) Size() (n int) {
 	var l int
 	_ = l
 	if len(m.Tasks) > 0 {
@@ -843,6 +1037,44 @@ func (m *HeartbeatResponse) Size() (n int) {
 	_ = l
 	if m.HeartbeatTTL != 0 {
 		n += 1 + sovAgent(uint64(m.HeartbeatTTL))
+	}
+	return n
+}
+
+func (m *ManagerInfo) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Addr)
+	if l > 0 {
+		n += 1 + l + sovAgent(uint64(l))
+	}
+	if m.Weight != 0 {
+		n += 5
+	}
+	return n
+}
+
+func (m *SessionRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.NodeID)
+	if l > 0 {
+		n += 1 + l + sovAgent(uint64(l))
+	}
+	return n
+}
+
+func (m *SessionResponse) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Managers) > 0 {
+		for _, e := range m.Managers {
+			l = e.Size()
+			n += 1 + l + sovAgent(uint64(l))
+		}
+	}
+	if m.Disconnect {
+		n += 2
 	}
 	return n
 }
@@ -920,21 +1152,21 @@ func (this *UpdateTaskStatusResponse) String() string {
 	}, "")
 	return s
 }
-func (this *WatchTasksRequest) String() string {
+func (this *TasksRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&WatchTasksRequest{`,
-		`NodeId:` + fmt.Sprintf("%v", this.NodeId) + `,`,
+	s := strings.Join([]string{`&TasksRequest{`,
+		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *WatchTasksResponse) String() string {
+func (this *TasksResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&WatchTasksResponse{`,
+	s := strings.Join([]string{`&TasksResponse{`,
 		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "Task", 1) + `,`,
 		`}`,
 	}, "")
@@ -956,6 +1188,38 @@ func (this *HeartbeatResponse) String() string {
 	}
 	s := strings.Join([]string{`&HeartbeatResponse{`,
 		`HeartbeatTTL:` + fmt.Sprintf("%v", this.HeartbeatTTL) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ManagerInfo) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ManagerInfo{`,
+		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
+		`Weight:` + fmt.Sprintf("%v", this.Weight) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *SessionRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&SessionRequest{`,
+		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *SessionResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&SessionResponse{`,
+		`Managers:` + strings.Replace(fmt.Sprintf("%v", this.Managers), "ManagerInfo", "ManagerInfo", 1) + `,`,
+		`Disconnect:` + fmt.Sprintf("%v", this.Disconnect) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1418,7 +1682,7 @@ func (m *UpdateTaskStatusResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *WatchTasksRequest) Unmarshal(data []byte) error {
+func (m *TasksRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1441,15 +1705,15 @@ func (m *WatchTasksRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: WatchTasksRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: TasksRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: WatchTasksRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: TasksRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NodeId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1474,7 +1738,7 @@ func (m *WatchTasksRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.NodeId = string(data[iNdEx:postIndex])
+			m.NodeID = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -1497,7 +1761,7 @@ func (m *WatchTasksRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *WatchTasksResponse) Unmarshal(data []byte) error {
+func (m *TasksResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1520,10 +1784,10 @@ func (m *WatchTasksResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: WatchTasksResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: TasksResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: WatchTasksResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: TasksResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1705,6 +1969,279 @@ func (m *HeartbeatResponse) Unmarshal(data []byte) error {
 					break
 				}
 			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAgent(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAgent
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ManagerInfo) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAgent
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ManagerInfo: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ManagerInfo: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Addr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAgent
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAgent
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Addr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 5 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Weight", wireType)
+			}
+			var v uint32
+			if (iNdEx + 4) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += 4
+			v = uint32(data[iNdEx-4])
+			v |= uint32(data[iNdEx-3]) << 8
+			v |= uint32(data[iNdEx-2]) << 16
+			v |= uint32(data[iNdEx-1]) << 24
+			m.Weight = float32(math.Float32frombits(v))
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAgent(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAgent
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SessionRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAgent
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SessionRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SessionRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAgent
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAgent
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NodeID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAgent(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAgent
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SessionResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAgent
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SessionResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SessionResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Managers", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAgent
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthAgent
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Managers = append(m.Managers, &ManagerInfo{})
+			if err := m.Managers[len(m.Managers)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Disconnect", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAgent
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Disconnect = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skipAgent(data[iNdEx:])

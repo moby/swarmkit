@@ -94,10 +94,22 @@ func (d *Dispatcher) UpdateTaskStatus(context.Context, *api.UpdateTaskStatusRequ
 	return nil, nil
 }
 
-// WatchTasks is a stream of tasks for node. It returns full list of tasks
-// which should be runned on node each time.
-func (d *Dispatcher) WatchTasks(*api.WatchTasksRequest, api.Agent_WatchTasksServer) error {
-	return nil
+// Tasks is a stream of tasks state for node. Each message contains full list
+// of tasks which should be run on node, if task is not present in that list,
+// it should be terminated.
+func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Agent_TasksServer) error {
+	d.mu.Lock()
+	_, ok := d.nodes[r.NodeID]
+	d.mu.Unlock()
+	if !ok {
+		return grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
+	}
+	for {
+		if err := stream.Send(&api.TasksResponse{Tasks: d.store.TasksByNode(r.NodeID)}); err != nil {
+			return err
+		}
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func (d *Dispatcher) nodeDown(id string) error {
@@ -128,4 +140,34 @@ func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*a
 	node.Heartbeat.Update(ttl)
 	node.Heartbeat.Beat()
 	return &api.HeartbeatResponse{HeartbeatTTL: uint64(ttl)}, nil
+}
+
+func (d *Dispatcher) getManagers() []*api.ManagerInfo {
+	return []*api.ManagerInfo{
+		{
+			Addr:   "127.0.0.1", // TODO: change after raft
+			Weight: 1,
+		},
+	}
+}
+
+// Session is stream which controls agent connection.
+// Each message contains list of backup Managers with weights. Also there is
+// special boolean field Disconnect which if true indicates that node should
+// reconnect to another Manager immediately.
+func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Agent_SessionServer) error {
+	d.mu.Lock()
+	_, ok := d.nodes[r.NodeID]
+	d.mu.Unlock()
+	if !ok {
+		return grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
+	}
+	for {
+		if err := stream.Send(&api.SessionResponse{
+			Managers:   d.getManagers(),
+			Disconnect: false,
+		}); err != nil {
+			return err
+		}
+	}
 }
