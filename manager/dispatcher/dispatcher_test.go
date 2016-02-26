@@ -142,3 +142,28 @@ func TestHeartbeatUnregistered(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Equal(t, grpc.ErrorDesc(err), ErrNodeNotRegistered.Error())
 }
+
+func TestTasks(t *testing.T) {
+	gd, err := startDispatcher()
+	assert.Nil(t, err)
+	defer gd.Close()
+	testNode := &api.Node{
+		Id: "test",
+	}
+
+	{
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Node: testNode})
+		assert.Nil(t, err)
+		assert.NotZero(t, resp.TTL)
+	}
+	testTask := &api.Task{
+		Id:     "testTask",
+		NodeId: testNode.Id,
+	}
+	stream, err := gd.Client.Tasks(context.Background(), &api.TasksRequest{NodeID: testNode.Id})
+	assert.Nil(t, err)
+	assert.Nil(t, gd.Store.CreateTask(testTask.Id, testTask))
+	resp, err := stream.Recv()
+	assert.Nil(t, err)
+	assert.Equal(t, len(resp.Tasks), 1)
+}

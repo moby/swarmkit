@@ -108,7 +108,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Agent_TasksServer) er
 		if err := stream.Send(&api.TasksResponse{Tasks: d.store.TasksByNode(r.NodeID)}); err != nil {
 			return err
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
