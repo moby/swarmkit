@@ -27,9 +27,10 @@ func TestManager(t *testing.T) {
 	os.Remove(temp.Name())
 
 	m := New(&Config{
+		Store:       store,
 		ListenProto: "unix",
 		ListenAddr:  temp.Name(),
-	}, store)
+	})
 	assert.NotNil(t, m)
 
 	done := make(chan error)

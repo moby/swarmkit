@@ -11,6 +11,8 @@ import (
 
 // Config is used to tune the Manager.
 type Config struct {
+	Store state.Store
+
 	ListenProto string
 	ListenAddr  string
 }
@@ -26,10 +28,10 @@ type Manager struct {
 }
 
 // New creates a Manager which has not started to accept requests yet.
-func New(config *Config, store state.Store) *Manager {
+func New(config *Config) *Manager {
 	m := &Manager{
 		config:     config,
-		dispatcher: dispatcher.New(store),
+		dispatcher: dispatcher.New(config.Store),
 	}
 
 	m.server = grpc.NewServer()
