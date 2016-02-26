@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/docker/swarm-v2/state/raft/pb"
 	"github.com/gogo/protobuf/proto"
 
 	"google.golang.org/grpc"
@@ -17,7 +18,7 @@ const (
 
 // Raft represents a connection to a raft member
 type Raft struct {
-	RaftClient
+	pb.RaftClient
 	Conn *grpc.ClientConn
 }
 
@@ -30,7 +31,7 @@ func GetRaftClient(addr string, timeout time.Duration) (*Raft, error) {
 	}
 
 	return &Raft{
-		RaftClient: NewRaftClient(conn),
+		RaftClient: pb.NewRaftClient(conn),
 		Conn:       conn,
 	}, nil
 }
@@ -48,7 +49,7 @@ func dial(addr string, protocol string, timeout time.Duration) (*grpc.ClientConn
 // EncodePair returns a protobuf encoded key/value pair to be sent through raft
 func EncodePair(key string, value []byte) ([]byte, error) {
 	k := proto.String(key)
-	pair := &Pair{
+	pair := &pb.Pair{
 		Key:   *k,
 		Value: value,
 	}
@@ -61,5 +62,5 @@ func EncodePair(key string, value []byte) ([]byte, error) {
 
 // Register registers the node raft server
 func Register(server *grpc.Server, node *Node) {
-	RegisterRaftServer(server, node)
+	pb.RegisterRaftServer(server, node)
 }

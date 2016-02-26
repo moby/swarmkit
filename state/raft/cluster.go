@@ -1,6 +1,10 @@
 package raft
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/docker/swarm-v2/state/raft/pb"
+)
 
 // Cluster represents a set of active
 // raft members
@@ -11,7 +15,7 @@ type Cluster struct {
 
 // Peer represents a raft cluster peer
 type Peer struct {
-	*NodeInfo
+	*pb.NodeInfo
 
 	Client *Raft
 }

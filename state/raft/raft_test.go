@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/grpclog"
 
 	"github.com/coreos/etcd/raft"
+	"github.com/docker/swarm-v2/state/raft/pb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -80,10 +81,10 @@ func newJoinNode(t *testing.T, id uint64, join string) *Node {
 	c, err := GetRaftClient(join, 100*time.Millisecond)
 	assert.NoError(t, err, "Can't initiate connection with existing raft")
 
-	resp, err := c.JoinRaft(n.Ctx, &NodeInfo{ID: id, Addr: l.Addr().String()})
+	resp, err := c.JoinRaft(n.Ctx, &pb.NodeInfo{ID: id, Addr: l.Addr().String()})
 	assert.NoError(t, err, "Can't join existing Raft")
 
-	err = n.RegisterNodes(resp.GetNodes())
+	err = n.RegisterNodes(resp.Nodes)
 	assert.NoError(t, err, "Can't add nodes to the local cluster list")
 
 	Register(s, n)
@@ -328,7 +329,7 @@ func testFollowerLeave(t *testing.T) {
 	pair, err := EncodePair(key, value)
 	assert.NoError(t, err, "Can't encode key/value pair for failure test")
 
-	resp, err := nodes[5].LeaveRaft(nodes[5].Ctx, &NodeInfo{ID: nodes[5].ID})
+	resp, err := nodes[5].LeaveRaft(nodes[5].Ctx, &pb.NodeInfo{ID: nodes[5].ID})
 	assert.NoError(t, err, "Error sending message to leave the raft")
 	assert.Equal(t, resp.Error, "")
 
@@ -370,7 +371,7 @@ func testLeaderLeave(t *testing.T) {
 	assert.Equal(t, nodes[1].Leader(), nodes[1].ID)
 
 	// Try to leave the raft
-	resp, err := nodes[1].LeaveRaft(nodes[1].Ctx, &NodeInfo{ID: nodes[1].ID})
+	resp, err := nodes[1].LeaveRaft(nodes[1].Ctx, &pb.NodeInfo{ID: nodes[1].ID})
 	assert.NoError(t, err, "Error sending message to leave the raft")
 	assert.Equal(t, resp.Error, "")
 

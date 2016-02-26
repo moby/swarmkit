@@ -16,6 +16,7 @@ import (
 
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/docker/swarm-v2/state/raft/pb"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -100,7 +101,7 @@ func NewNode(id uint64, addr string, cfg *raft.Config, apply ApplyCommand) (*Nod
 
 	n.Cluster.AddPeer(
 		&Peer{
-			NodeInfo: &NodeInfo{
+			NodeInfo: &pb.NodeInfo{
 				ID:   id,
 				Addr: addr,
 			},
@@ -191,7 +192,7 @@ func (n *Node) Leader() uint64 {
 // a configuration change and add us as a member thus
 // beginning the log replication process. This method
 // is called from an aspiring member to an existing member
-func (n *Node) JoinRaft(ctx context.Context, info *NodeInfo) (*JoinRaftResponse, error) {
+func (n *Node) JoinRaft(ctx context.Context, info *pb.NodeInfo) (*pb.JoinRaftResponse, error) {
 	meta, err := proto.Marshal(info)
 	if err != nil {
 		log.Fatal("raft: Can't marshal node: ", info.ID)
@@ -206,15 +207,15 @@ func (n *Node) JoinRaft(ctx context.Context, info *NodeInfo) (*JoinRaftResponse,
 
 	err = n.ProposeConfChange(n.Ctx, confChange)
 	if err != nil {
-		return &JoinRaftResponse{
+		return &pb.JoinRaftResponse{
 			Success: false,
 			Error:   ErrConfChangeRefused.Error(),
 		}, nil
 	}
 
-	var nodes []*NodeInfo
+	var nodes []*pb.NodeInfo
 	for _, node := range n.Cluster.Peers() {
-		nodes = append(nodes, &NodeInfo{
+		nodes = append(nodes, &pb.NodeInfo{
 			ID:   node.ID,
 			Addr: node.Addr,
 		})
@@ -225,7 +226,7 @@ func (n *Node) JoinRaft(ctx context.Context, info *NodeInfo) (*JoinRaftResponse,
 	// add them itself to its local list: grpc
 	// call add from the node sending the conf
 	// change
-	return &JoinRaftResponse{
+	return &pb.JoinRaftResponse{
 		Success: true,
 		Nodes:   nodes,
 		Error:   "",
@@ -236,7 +237,7 @@ func (n *Node) JoinRaft(ctx context.Context, info *NodeInfo) (*JoinRaftResponse,
 // us from the raft cluster. This method is called
 // from a member who is willing to leave its raft
 // membership to an active member of the raft
-func (n *Node) LeaveRaft(ctx context.Context, info *NodeInfo) (*LeaveRaftResponse, error) {
+func (n *Node) LeaveRaft(ctx context.Context, info *pb.NodeInfo) (*pb.LeaveRaftResponse, error) {
 	confChange := raftpb.ConfChange{
 		ID:      info.ID,
 		Type:    raftpb.ConfChangeRemoveNode,
@@ -246,13 +247,13 @@ func (n *Node) LeaveRaft(ctx context.Context, info *NodeInfo) (*LeaveRaftRespons
 
 	err := n.ProposeConfChange(n.Ctx, confChange)
 	if err != nil {
-		return &LeaveRaftResponse{
+		return &pb.LeaveRaftResponse{
 			Success: false,
 			Error:   ErrConfChangeRefused.Error(),
 		}, nil
 	}
 
-	return &LeaveRaftResponse{
+	return &pb.LeaveRaftResponse{
 		Success: true,
 		Error:   "",
 	}, nil
@@ -260,13 +261,13 @@ func (n *Node) LeaveRaft(ctx context.Context, info *NodeInfo) (*LeaveRaftRespons
 
 // Send calls 'Step' which advances the raft state
 // machine with the received message
-func (n *Node) Send(ctx context.Context, msg *raftpb.Message) (*SendResponse, error) {
+func (n *Node) Send(ctx context.Context, msg *raftpb.Message) (*pb.SendResponse, error) {
 	err := n.Step(n.Ctx, *msg)
 	if err != nil {
-		return &SendResponse{Error: err.Error()}, nil
+		return &pb.SendResponse{Error: err.Error()}, nil
 	}
 
-	return &SendResponse{Error: ""}, nil
+	return &pb.SendResponse{Error: ""}, nil
 }
 
 // RemoveNode removes a node from the raft cluster
@@ -286,7 +287,7 @@ func (n *Node) RemoveNode(node *Peer) error {
 }
 
 // RegisterNode registers a new node on the cluster
-func (n *Node) RegisterNode(node *NodeInfo) error {
+func (n *Node) RegisterNode(node *pb.NodeInfo) error {
 	var (
 		client *Raft
 		err    error
@@ -306,7 +307,7 @@ func (n *Node) RegisterNode(node *NodeInfo) error {
 }
 
 // RegisterNodes registers a set of nodes in the cluster
-func (n *Node) RegisterNodes(nodes []*NodeInfo) (err error) {
+func (n *Node) RegisterNodes(nodes []*pb.NodeInfo) (err error) {
 	for _, node := range nodes {
 		err = n.RegisterNode(node)
 		if err != nil {
@@ -354,7 +355,7 @@ func (n *Node) StoreLength() int {
 // from a member in the raft cluster, this adds a new
 // node to the existing raft cluster
 func (n *Node) applyAddNode(conf raftpb.ConfChange) error {
-	peer := &NodeInfo{}
+	peer := &pb.NodeInfo{}
 	err := proto.Unmarshal(conf.Context, peer)
 	if err != nil {
 		return err
@@ -422,7 +423,7 @@ func (n *Node) process(entry raftpb.Entry) {
 	if entry.Type == raftpb.EntryNormal && entry.Data != nil {
 		// TODO (abronan, al, mrjana): replace KV pair
 		// by internal store interface
-		pair := &Pair{}
+		pair := &pb.Pair{}
 		err := proto.Unmarshal(entry.Data, pair)
 		if err != nil {
 			log.Fatal("raft: Can't decode key and value sent through raft")

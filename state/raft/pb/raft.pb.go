@@ -3,7 +3,7 @@
 // DO NOT EDIT!
 
 /*
-	Package raft is a generated protocol buffer package.
+	Package pb is a generated protocol buffer package.
 
 	It is generated from these files:
 		raft.proto
@@ -15,14 +15,18 @@
 		NodeInfo
 		Pair
 */
-package raft
+package pb
 
-import proto "github.com/golang/protobuf/proto"
+import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
 import raftpb "github.com/coreos/etcd/raft/raftpb"
 
-// skipping weak import gogoproto "gogoproto"
+import strings "strings"
+import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+import sort "sort"
+import strconv "strconv"
+import reflect "reflect"
 
 import (
 	context "golang.org/x/net/context"
@@ -42,34 +46,24 @@ type JoinRaftResponse struct {
 	Nodes   []*NodeInfo `protobuf:"bytes,3,rep,name=nodes" json:"nodes,omitempty"`
 }
 
-func (m *JoinRaftResponse) Reset()         { *m = JoinRaftResponse{} }
-func (m *JoinRaftResponse) String() string { return proto.CompactTextString(m) }
-func (*JoinRaftResponse) ProtoMessage()    {}
-
-func (m *JoinRaftResponse) GetNodes() []*NodeInfo {
-	if m != nil {
-		return m.Nodes
-	}
-	return nil
-}
+func (m *JoinRaftResponse) Reset()      { *m = JoinRaftResponse{} }
+func (*JoinRaftResponse) ProtoMessage() {}
 
 type LeaveRaftResponse struct {
 	Success bool   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	Error   string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *LeaveRaftResponse) Reset()         { *m = LeaveRaftResponse{} }
-func (m *LeaveRaftResponse) String() string { return proto.CompactTextString(m) }
-func (*LeaveRaftResponse) ProtoMessage()    {}
+func (m *LeaveRaftResponse) Reset()      { *m = LeaveRaftResponse{} }
+func (*LeaveRaftResponse) ProtoMessage() {}
 
 type SendResponse struct {
 	Success bool   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	Error   string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *SendResponse) Reset()         { *m = SendResponse{} }
-func (m *SendResponse) String() string { return proto.CompactTextString(m) }
-func (*SendResponse) ProtoMessage()    {}
+func (m *SendResponse) Reset()      { *m = SendResponse{} }
+func (*SendResponse) ProtoMessage() {}
 
 type NodeInfo struct {
 	ID    uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
@@ -78,18 +72,16 @@ type NodeInfo struct {
 	Error string `protobuf:"bytes,4,opt,name=Error,proto3" json:"Error,omitempty"`
 }
 
-func (m *NodeInfo) Reset()         { *m = NodeInfo{} }
-func (m *NodeInfo) String() string { return proto.CompactTextString(m) }
-func (*NodeInfo) ProtoMessage()    {}
+func (m *NodeInfo) Reset()      { *m = NodeInfo{} }
+func (*NodeInfo) ProtoMessage() {}
 
 type Pair struct {
 	Key   string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 }
 
-func (m *Pair) Reset()         { *m = Pair{} }
-func (m *Pair) String() string { return proto.CompactTextString(m) }
-func (*Pair) ProtoMessage()    {}
+func (m *Pair) Reset()      { *m = Pair{} }
+func (*Pair) ProtoMessage() {}
 
 func init() {
 	proto.RegisterType((*JoinRaftResponse)(nil), "raft.JoinRaftResponse")
@@ -97,6 +89,91 @@ func init() {
 	proto.RegisterType((*SendResponse)(nil), "raft.SendResponse")
 	proto.RegisterType((*NodeInfo)(nil), "raft.NodeInfo")
 	proto.RegisterType((*Pair)(nil), "raft.Pair")
+}
+func (this *JoinRaftResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 7)
+	s = append(s, "&pb.JoinRaftResponse{")
+	s = append(s, "Success: "+fmt.Sprintf("%#v", this.Success)+",\n")
+	s = append(s, "Error: "+fmt.Sprintf("%#v", this.Error)+",\n")
+	if this.Nodes != nil {
+		s = append(s, "Nodes: "+fmt.Sprintf("%#v", this.Nodes)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *LeaveRaftResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&pb.LeaveRaftResponse{")
+	s = append(s, "Success: "+fmt.Sprintf("%#v", this.Success)+",\n")
+	s = append(s, "Error: "+fmt.Sprintf("%#v", this.Error)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *SendResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&pb.SendResponse{")
+	s = append(s, "Success: "+fmt.Sprintf("%#v", this.Success)+",\n")
+	s = append(s, "Error: "+fmt.Sprintf("%#v", this.Error)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *NodeInfo) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 8)
+	s = append(s, "&pb.NodeInfo{")
+	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
+	s = append(s, "Addr: "+fmt.Sprintf("%#v", this.Addr)+",\n")
+	s = append(s, "Port: "+fmt.Sprintf("%#v", this.Port)+",\n")
+	s = append(s, "Error: "+fmt.Sprintf("%#v", this.Error)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Pair) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&pb.Pair{")
+	s = append(s, "Key: "+fmt.Sprintf("%#v", this.Key)+",\n")
+	s = append(s, "Value: "+fmt.Sprintf("%#v", this.Value)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func valueToGoStringRaft(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+}
+func extensionToGoStringRaft(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
+	}
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
+	}
+	s += strings.Join(ss, ",") + "}"
+	return s
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -522,6 +599,72 @@ func sovRaft(x uint64) (n int) {
 }
 func sozRaft(x uint64) (n int) {
 	return sovRaft(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *JoinRaftResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&JoinRaftResponse{`,
+		`Success:` + fmt.Sprintf("%v", this.Success) + `,`,
+		`Error:` + fmt.Sprintf("%v", this.Error) + `,`,
+		`Nodes:` + strings.Replace(fmt.Sprintf("%v", this.Nodes), "NodeInfo", "NodeInfo", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *LeaveRaftResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&LeaveRaftResponse{`,
+		`Success:` + fmt.Sprintf("%v", this.Success) + `,`,
+		`Error:` + fmt.Sprintf("%v", this.Error) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *SendResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&SendResponse{`,
+		`Success:` + fmt.Sprintf("%v", this.Success) + `,`,
+		`Error:` + fmt.Sprintf("%v", this.Error) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *NodeInfo) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&NodeInfo{`,
+		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
+		`Port:` + fmt.Sprintf("%v", this.Port) + `,`,
+		`Error:` + fmt.Sprintf("%v", this.Error) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Pair) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Pair{`,
+		`Key:` + fmt.Sprintf("%v", this.Key) + `,`,
+		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringRaft(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
 }
 func (m *JoinRaftResponse) Unmarshal(data []byte) error {
 	l := len(data)
