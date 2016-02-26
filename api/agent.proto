@@ -13,8 +13,8 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 //
 // API methods on this service are used only by agent nodes.
 service Agent { // maybe dispatch, al likes this
-	// RegisterNode is used for registration of node with particular dispatcher.
-	rpc RegisterNode(RegisterNodeRequest) returns (RegisterNodeResponse) {};
+	// Register is used for registration of node with particular dispatcher.
+	rpc Register(RegisterRequest) returns (RegisterResponse) {};
 	// Heartbeat is heartbeat method for nodes. It returns new TTL in response.
 	// Node should send new heartbeat earlier than now + TTL, otherwise it will
 	// be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
@@ -30,12 +30,12 @@ service Agent { // maybe dispatch, al likes this
 	rpc WatchTasks(WatchTasksRequest) returns (stream WatchTasksResponse) {};
 }
 
-message RegisterNodeRequest {
+message RegisterRequest {
 	Node node = 1;
 }
 
-message RegisterNodeResponse {
-	uint64 heartbeat_ttl = 1 [(gogoproto.customname) = "HeartbeatTTL"];
+message RegisterResponse {
+	uint64 ttl = 1 [(gogoproto.customname) = "TTL", (gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
 }
 
 message UpdateNodeStatusRequest {

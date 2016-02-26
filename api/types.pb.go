@@ -51,8 +51,8 @@
 		DeleteNetworkResponse
 		ListNetworksRequest
 		ListNetworksResponse
-		RegisterNodeRequest
-		RegisterNodeResponse
+		RegisterRequest
+		RegisterResponse
 		UpdateNodeStatusRequest
 		UpdateNodeStatusResponse
 		UpdateTaskStatusRequest
