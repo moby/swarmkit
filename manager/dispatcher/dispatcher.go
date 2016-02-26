@@ -48,8 +48,8 @@ func New(store state.Store) *Dispatcher {
 	}
 }
 
-// RegisterNode is used for registration of node with particular dispatcher.
-func (d *Dispatcher) RegisterNode(ctx context.Context, r *api.RegisterNodeRequest) (*api.RegisterNodeResponse, error) {
+// Register is used for registration of node with particular dispatcher.
+func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
 	d.mu.Lock()
 	_, ok := d.nodes[r.Node.Id]
 	d.mu.Unlock()
@@ -79,7 +79,7 @@ func (d *Dispatcher) RegisterNode(ctx context.Context, r *api.RegisterNodeReques
 		Node: n,
 	}
 	d.mu.Unlock()
-	return &api.RegisterNodeResponse{HeartbeatTTL: uint64(ttl)}, nil
+	return &api.RegisterResponse{TTL: ttl}, nil
 }
 
 // UpdateNodeStatus updates status of particular node. Nodes can use it
@@ -139,7 +139,7 @@ func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*a
 	ttl := d.electTTL()
 	node.Heartbeat.Update(ttl)
 	node.Heartbeat.Beat()
-	return &api.HeartbeatResponse{HeartbeatTTL: uint64(ttl)}, nil
+	return &api.HeartbeatResponse{TTL: ttl}, nil
 }
 
 func (d *Dispatcher) getManagers() []*api.ManagerInfo {

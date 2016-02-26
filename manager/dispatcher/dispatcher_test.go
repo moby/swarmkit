@@ -60,12 +60,12 @@ func TestRegisterTwice(t *testing.T) {
 		Id: "test",
 	}
 	{
-		resp, err := gd.Client.RegisterNode(context.Background(), &api.RegisterNodeRequest{Node: testNode})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Node: testNode})
 		assert.Nil(t, err)
-		assert.NotZero(t, resp.HeartbeatTTL)
+		assert.NotZero(t, resp.TTL)
 	}
 	{
-		resp, err := gd.Client.RegisterNode(context.Background(), &api.RegisterNodeRequest{Node: testNode})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Node: testNode})
 		assert.Nil(t, resp)
 		assert.NotNil(t, err)
 		assert.Equal(t, grpc.ErrorDesc(err), ErrNodeAlreadyRegistered.Error())
@@ -86,15 +86,15 @@ func TestHeartbeat(t *testing.T) {
 	}
 
 	{
-		resp, err := gd.Client.RegisterNode(context.Background(), &api.RegisterNodeRequest{Node: testNode})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Node: testNode})
 		assert.Nil(t, err)
-		assert.NotZero(t, resp.HeartbeatTTL)
+		assert.NotZero(t, resp.TTL)
 	}
 	time.Sleep(250 * time.Millisecond)
 
 	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.Id})
 	assert.Nil(t, err)
-	assert.NotZero(t, resp.HeartbeatTTL)
+	assert.NotZero(t, resp.TTL)
 	time.Sleep(300 * time.Millisecond)
 
 	storeNode := gd.Store.Node("test")
@@ -116,9 +116,9 @@ func TestHeartbeatTimeout(t *testing.T) {
 	}
 
 	{
-		resp, err := gd.Client.RegisterNode(context.Background(), &api.RegisterNodeRequest{Node: testNode})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Node: testNode})
 		assert.Nil(t, err)
-		assert.NotZero(t, resp.HeartbeatTTL)
+		assert.NotZero(t, resp.TTL)
 	}
 	time.Sleep(500 * time.Millisecond)
 

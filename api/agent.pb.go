@@ -9,6 +9,8 @@ import fmt "fmt"
 import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 
+import time "time"
+
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
@@ -27,19 +29,19 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-type RegisterNodeRequest struct {
+type RegisterRequest struct {
 	Node *Node `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
 }
 
-func (m *RegisterNodeRequest) Reset()      { *m = RegisterNodeRequest{} }
-func (*RegisterNodeRequest) ProtoMessage() {}
+func (m *RegisterRequest) Reset()      { *m = RegisterRequest{} }
+func (*RegisterRequest) ProtoMessage() {}
 
-type RegisterNodeResponse struct {
-	HeartbeatTTL uint64 `protobuf:"varint,1,opt,name=heartbeat_ttl,proto3" json:"heartbeat_ttl,omitempty"`
+type RegisterResponse struct {
+	TTL time.Duration `protobuf:"varint,1,opt,name=ttl,proto3,customtype=time.Duration" json:"ttl"`
 }
 
-func (m *RegisterNodeResponse) Reset()      { *m = RegisterNodeResponse{} }
-func (*RegisterNodeResponse) ProtoMessage() {}
+func (m *RegisterResponse) Reset()      { *m = RegisterResponse{} }
+func (*RegisterResponse) ProtoMessage() {}
 
 type UpdateNodeStatusRequest struct {
 	NodeId string     `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
@@ -97,7 +99,9 @@ func (m *HeartbeatRequest) Reset()      { *m = HeartbeatRequest{} }
 func (*HeartbeatRequest) ProtoMessage() {}
 
 type HeartbeatResponse struct {
-	HeartbeatTTL uint64 `protobuf:"varint,1,opt,name=heartbeat_ttl,proto3" json:"heartbeat_ttl,omitempty"`
+	// TTL is the duration to wait before sending the next heartbeat.
+	// Well-behaved agents should update this on every heartbeat round trip.
+	TTL time.Duration `protobuf:"varint,1,opt,name=ttl,proto3,customtype=time.Duration" json:"ttl"`
 }
 
 func (m *HeartbeatResponse) Reset()      { *m = HeartbeatResponse{} }
@@ -127,8 +131,8 @@ func (m *SessionResponse) Reset()      { *m = SessionResponse{} }
 func (*SessionResponse) ProtoMessage() {}
 
 func init() {
-	proto.RegisterType((*RegisterNodeRequest)(nil), "api.RegisterNodeRequest")
-	proto.RegisterType((*RegisterNodeResponse)(nil), "api.RegisterNodeResponse")
+	proto.RegisterType((*RegisterRequest)(nil), "api.RegisterRequest")
+	proto.RegisterType((*RegisterResponse)(nil), "api.RegisterResponse")
 	proto.RegisterType((*UpdateNodeStatusRequest)(nil), "api.UpdateNodeStatusRequest")
 	proto.RegisterType((*UpdateNodeStatusResponse)(nil), "api.UpdateNodeStatusResponse")
 	proto.RegisterType((*UpdateTaskStatusRequest)(nil), "api.UpdateTaskStatusRequest")
@@ -141,25 +145,25 @@ func init() {
 	proto.RegisterType((*SessionRequest)(nil), "api.SessionRequest")
 	proto.RegisterType((*SessionResponse)(nil), "api.SessionResponse")
 }
-func (this *RegisterNodeRequest) GoString() string {
+func (this *RegisterRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.RegisterNodeRequest{")
+	s = append(s, "&api.RegisterRequest{")
 	if this.Node != nil {
 		s = append(s, "Node: "+fmt.Sprintf("%#v", this.Node)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *RegisterNodeResponse) GoString() string {
+func (this *RegisterResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.RegisterNodeResponse{")
-	s = append(s, "HeartbeatTTL: "+fmt.Sprintf("%#v", this.HeartbeatTTL)+",\n")
+	s = append(s, "&api.RegisterResponse{")
+	s = append(s, "TTL: "+fmt.Sprintf("%#v", this.TTL)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -243,7 +247,7 @@ func (this *HeartbeatResponse) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.HeartbeatResponse{")
-	s = append(s, "HeartbeatTTL: "+fmt.Sprintf("%#v", this.HeartbeatTTL)+",\n")
+	s = append(s, "TTL: "+fmt.Sprintf("%#v", this.TTL)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -314,8 +318,8 @@ var _ grpc.ClientConn
 // Client API for Agent service
 
 type AgentClient interface {
-	// RegisterNode is used for registration of node with particular dispatcher.
-	RegisterNode(ctx context.Context, in *RegisterNodeRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error)
+	// Register is used for registration of node with particular dispatcher.
+	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	// Heartbeat is heartbeat method for nodes. It returns new TTL in response.
 	// Node should send new heartbeat earlier than now + TTL, otherwise it will
 	// be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
@@ -342,9 +346,9 @@ func NewAgentClient(cc *grpc.ClientConn) AgentClient {
 	return &agentClient{cc}
 }
 
-func (c *agentClient) RegisterNode(ctx context.Context, in *RegisterNodeRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error) {
-	out := new(RegisterNodeResponse)
-	err := grpc.Invoke(ctx, "/api.Agent/RegisterNode", in, out, c.cc, opts...)
+func (c *agentClient) Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error) {
+	out := new(RegisterResponse)
+	err := grpc.Invoke(ctx, "/api.Agent/Register", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -436,8 +440,8 @@ func (x *agentSessionClient) Recv() (*SessionResponse, error) {
 // Server API for Agent service
 
 type AgentServer interface {
-	// RegisterNode is used for registration of node with particular dispatcher.
-	RegisterNode(context.Context, *RegisterNodeRequest) (*RegisterNodeResponse, error)
+	// Register is used for registration of node with particular dispatcher.
+	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	// Heartbeat is heartbeat method for nodes. It returns new TTL in response.
 	// Node should send new heartbeat earlier than now + TTL, otherwise it will
 	// be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
@@ -460,12 +464,12 @@ func RegisterAgentServer(s *grpc.Server, srv AgentServer) {
 	s.RegisterService(&_Agent_serviceDesc, srv)
 }
 
-func _Agent_RegisterNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(RegisterNodeRequest)
+func _Agent_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(RegisterRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AgentServer).RegisterNode(ctx, in)
+	out, err := srv.(AgentServer).Register(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -543,8 +547,8 @@ var _Agent_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*AgentServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "RegisterNode",
-			Handler:    _Agent_RegisterNode_Handler,
+			MethodName: "Register",
+			Handler:    _Agent_Register_Handler,
 		},
 		{
 			MethodName: "Heartbeat",
@@ -569,7 +573,7 @@ var _Agent_serviceDesc = grpc.ServiceDesc{
 	},
 }
 
-func (m *RegisterNodeRequest) Marshal() (data []byte, err error) {
+func (m *RegisterRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -579,7 +583,7 @@ func (m *RegisterNodeRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *RegisterNodeRequest) MarshalTo(data []byte) (int, error) {
+func (m *RegisterRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -597,7 +601,7 @@ func (m *RegisterNodeRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *RegisterNodeResponse) Marshal() (data []byte, err error) {
+func (m *RegisterResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -607,15 +611,15 @@ func (m *RegisterNodeResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *RegisterNodeResponse) MarshalTo(data []byte) (int, error) {
+func (m *RegisterResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.HeartbeatTTL != 0 {
+	if m.TTL != 0 {
 		data[i] = 0x8
 		i++
-		i = encodeVarintAgent(data, i, uint64(m.HeartbeatTTL))
+		i = encodeVarintAgent(data, i, uint64(m.TTL))
 	}
 	return i, nil
 }
@@ -813,10 +817,10 @@ func (m *HeartbeatResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.HeartbeatTTL != 0 {
+	if m.TTL != 0 {
 		data[i] = 0x8
 		i++
-		i = encodeVarintAgent(data, i, uint64(m.HeartbeatTTL))
+		i = encodeVarintAgent(data, i, uint64(m.TTL))
 	}
 	return i, nil
 }
@@ -941,7 +945,7 @@ func encodeVarintAgent(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	return offset + 1
 }
-func (m *RegisterNodeRequest) Size() (n int) {
+func (m *RegisterRequest) Size() (n int) {
 	var l int
 	_ = l
 	if m.Node != nil {
@@ -951,11 +955,11 @@ func (m *RegisterNodeRequest) Size() (n int) {
 	return n
 }
 
-func (m *RegisterNodeResponse) Size() (n int) {
+func (m *RegisterResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.HeartbeatTTL != 0 {
-		n += 1 + sovAgent(uint64(m.HeartbeatTTL))
+	if m.TTL != 0 {
+		n += 1 + sovAgent(uint64(m.TTL))
 	}
 	return n
 }
@@ -1035,8 +1039,8 @@ func (m *HeartbeatRequest) Size() (n int) {
 func (m *HeartbeatResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.HeartbeatTTL != 0 {
-		n += 1 + sovAgent(uint64(m.HeartbeatTTL))
+	if m.TTL != 0 {
+		n += 1 + sovAgent(uint64(m.TTL))
 	}
 	return n
 }
@@ -1092,22 +1096,22 @@ func sovAgent(x uint64) (n int) {
 func sozAgent(x uint64) (n int) {
 	return sovAgent(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (this *RegisterNodeRequest) String() string {
+func (this *RegisterRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&RegisterNodeRequest{`,
+	s := strings.Join([]string{`&RegisterRequest{`,
 		`Node:` + strings.Replace(fmt.Sprintf("%v", this.Node), "Node", "Node", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *RegisterNodeResponse) String() string {
+func (this *RegisterResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&RegisterNodeResponse{`,
-		`HeartbeatTTL:` + fmt.Sprintf("%v", this.HeartbeatTTL) + `,`,
+	s := strings.Join([]string{`&RegisterResponse{`,
+		`TTL:` + fmt.Sprintf("%v", this.TTL) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1187,7 +1191,7 @@ func (this *HeartbeatResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&HeartbeatResponse{`,
-		`HeartbeatTTL:` + fmt.Sprintf("%v", this.HeartbeatTTL) + `,`,
+		`TTL:` + fmt.Sprintf("%v", this.TTL) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1232,7 +1236,7 @@ func valueToStringAgent(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *RegisterNodeRequest) Unmarshal(data []byte) error {
+func (m *RegisterRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1255,10 +1259,10 @@ func (m *RegisterNodeRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RegisterNodeRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: RegisterRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RegisterNodeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RegisterRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1315,7 +1319,7 @@ func (m *RegisterNodeRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RegisterNodeResponse) Unmarshal(data []byte) error {
+func (m *RegisterResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1338,17 +1342,17 @@ func (m *RegisterNodeResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RegisterNodeResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: RegisterResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RegisterNodeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RegisterResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field HeartbeatTTL", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TTL", wireType)
 			}
-			m.HeartbeatTTL = 0
+			m.TTL = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowAgent
@@ -1358,7 +1362,7 @@ func (m *RegisterNodeResponse) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.HeartbeatTTL |= (uint64(b) & 0x7F) << shift
+				m.TTL |= (time.Duration(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1952,9 +1956,9 @@ func (m *HeartbeatResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field HeartbeatTTL", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TTL", wireType)
 			}
-			m.HeartbeatTTL = 0
+			m.TTL = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowAgent
@@ -1964,7 +1968,7 @@ func (m *HeartbeatResponse) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.HeartbeatTTL |= (uint64(b) & 0x7F) << shift
+				m.TTL |= (time.Duration(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
