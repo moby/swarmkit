@@ -7,7 +7,7 @@
 
 	It is generated from these files:
 		types.proto
-		swarm.proto
+		cluster.proto
 		master.proto
 		agent.proto
 

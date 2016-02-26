@@ -8,13 +8,13 @@ import "types.proto";
 // correctly.
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
-// Swarm provides the user control API.
+// Cluster defines the RPC methods for controlling a cluster.
 //
 // Other options for naming this interface:
 //
 // 	- "Control", since this controls a swarm cluster
 // 	- "User" because it is user facing.
-service Swarm {
+service Cluster {
 	rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {}
 
 	rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse) {}
