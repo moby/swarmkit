@@ -11,7 +11,7 @@ GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
 .PHONY: clean all fmt vet lint build test binaries setup
 .DEFAULT: default
-all: fmt vet lint build binaries test
+all: fmt vet lint complexity build binaries test
 
 AUTHORS: .mailmap .git/HEAD
 	git log --format='%aN <%aE>' | sort -fu > $@
@@ -62,6 +62,10 @@ fmt:
 lint:
 	@echo "+ $@"
 	@test -z "$$(golint ./... | grep -v vendor/ | grep -v ".pb.go:" | tee /dev/stderr)"
+
+complexity:
+	@echo "+ $@"
+	@test -z "$$(gocyclo -over 15 . | grep -v vendor/ | grep -v ".pb.go:" | tee /dev/stderr)"
 
 build:
 	@echo "+ $@"

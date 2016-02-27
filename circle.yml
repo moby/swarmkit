@@ -40,6 +40,7 @@ dependencies:
 
         # Install dependencies
         - go get -u github.com/golang/lint/golint
+        - go get -u github.com/fzipp/gocyclo
     post:
         # Display debugging information in CI logs
         - go version
