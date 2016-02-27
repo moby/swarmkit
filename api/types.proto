@@ -16,7 +16,13 @@ message Meta {
 
 message NodeSpec {
 	Meta meta = 1;
-	string id = 2 [(gogoproto.customname) = "ID"]; // TODO(stevvooe): id may be assigned in Node.
+
+	// ID specifies the identity of the node.
+	// TODO(stevvooe): Currently, node identity responsibility is up in the
+	// air. It really depends on the security model. Placed here, we are saying
+	// that a node is responsible for its own identity. If we decide that this
+	// is the masters responsibility, this goes elsewhere.
+	string id = 2 [(gogoproto.customname) = "ID"];
 	string addr = 3;
 
 	// Status is the state of the node as seen by the creator the
@@ -65,13 +71,13 @@ message ImageSpec {
 
 	// TODO(stevvooe): Resolved must be moved.
 
-	// Resolved is the image resolved by the swarm cluster. This may be
-	// identical, depending on the name provided in meta. For example, the name
-	// field may be "redis", whereas this field would specify the exact hash,
-	// "redis@sha256:...".
-	//
-	// A user may set this field to bypass swarms resolution.
-	string resolved = 2; // TODO(stevvooe): Field type should be reference.Field.
+
+}
+
+message Source { // TODO(stevvooe): better name?
+	oneof source {
+		ImageSpec image = 1;
+	}
 }
 
 // Spec defines the properties of a Job. As tasks are created, they gain the
@@ -84,13 +90,7 @@ message ImageSpec {
 // used to the schedule and run the target with a cluster.
 message JobSpec {
 	Meta meta = 1;
-	
-	message Source { // TODO(stevvooe): better name?
-		oneof source {
-			ImageSpec image = 1;
-		}
-	}
-	
+
 	message ServiceJob {
 		int64 instances = 1;
 	}
@@ -115,9 +115,6 @@ message JobSpec {
 		}
 	}
 	
-	Source source = 2;
-	Orchestration orchestration = 3;
-
 	// NetworkAttachment describes a desired attachment to the named network or
 	// a specific network_id.
 	message NetworkAttachment {
@@ -126,6 +123,9 @@ message JobSpec {
 			string network_id = 2 [(gogoproto.customname) = "NetworkID"];
 		}
 	}
+
+	Source source = 2;
+	Orchestration orchestration = 3;
 
 	repeated NetworkAttachment networks = 4;
 
@@ -158,21 +158,31 @@ message TaskStatus {
 // dispatched to another node.
 message Task {
 	string id = 1 [(gogoproto.customname) = "ID"];
-	Meta meta = 2;
-	string job_id = 3 [(gogoproto.customname) = "JobID"];
+
+	// JobID indicates the job under which this task is orchestrated. This
+	// should almost always be set.
+	string job_id = 2 [(gogoproto.customname) = "JobID"];
 
 	// TODO(stevvooe): Consider bringing back assignment, rather than using a
 	// node id field. We like having this concept be first-class. It helps to
 	// reason about storage and consistency.
-
-	// if not set, the task is unassigned.
+	
+	// NodeID indicates the node to which the task is assigned. If this field
+	// is empty or not set, the task is unassigned.
 	string node_id = 4 [(gogoproto.customname) = "NodeID"];
 
 	// NOTE(stevvooe): Spec, status or both may be set, depending on the role
 	// of this message.
 
 	JobSpec spec = 5;
-	TaskStatus status = 6;
+
+	TaskStatus status = 7;
+
+	// Resolved is the source resolved by the swarm cluster. This may be
+	// identical, depending on the name provided in the JobSpec. For example,
+	// the name field may be "redis", whereas this field would specify the
+	// exact hash, "redis@sha256:...".
+	Source resolved = 6;
 
 	// TODO(stevvooe/mrjana): Need to add additional fields about result of
 	// network attach.
@@ -180,7 +190,6 @@ message Task {
 
 message Job {
 	string id = 1 [(gogoproto.customname) = "ID"];
-	Meta meta = 2;
 	JobSpec spec = 3;
 }
 
