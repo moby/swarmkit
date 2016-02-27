@@ -35,6 +35,7 @@ ${PREFIX}/bin/protoc-gen-gogoswarm: version/version.go $(shell find . -type f -n
 setup:
 	@echo "+ $@"
 	@go get -u github.com/golang/lint/golint
+	@go get -u github.com/fzipp/gocyclo
 
 generate: ${PREFIX}/bin/protoc-gen-gogoswarm
 	PATH=${PREFIX}/bin/:${PATH} go generate ${PACKAGES}
