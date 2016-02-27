@@ -42,7 +42,7 @@ message RegisterResponse {
 }
 
 message UpdateNodeStatusRequest {
-	string node_id = 1;
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
 	NodeStatus status = 2;
 }
 

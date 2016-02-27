@@ -57,7 +57,7 @@ func TestRegisterTwice(t *testing.T) {
 	assert.Nil(t, err)
 	defer gd.Close()
 	testNode := &api.Node{
-		Id: "test",
+		ID: "test",
 	}
 	{
 		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Node: testNode})
@@ -82,7 +82,7 @@ func TestHeartbeat(t *testing.T) {
 	assert.Nil(t, err)
 	defer gd.Close()
 	testNode := &api.Node{
-		Id: "test",
+		ID: "test",
 	}
 
 	{
@@ -92,7 +92,7 @@ func TestHeartbeat(t *testing.T) {
 	}
 	time.Sleep(250 * time.Millisecond)
 
-	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.Id})
+	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID})
 	assert.Nil(t, err)
 	assert.NotZero(t, resp.TTL)
 	time.Sleep(300 * time.Millisecond)
@@ -112,7 +112,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 	assert.Nil(t, err)
 	defer gd.Close()
 	testNode := &api.Node{
-		Id: "test",
+		ID: "test",
 	}
 
 	{
@@ -127,7 +127,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 	assert.Equal(t, api.NodeStatus_DOWN, storeNode.Status)
 
 	// check that node is deregistered
-	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.Id})
+	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID})
 	assert.Nil(t, resp)
 	assert.NotNil(t, err)
 	assert.Equal(t, grpc.ErrorDesc(err), ErrNodeNotRegistered.Error())
@@ -148,7 +148,7 @@ func TestTasks(t *testing.T) {
 	assert.Nil(t, err)
 	defer gd.Close()
 	testNode := &api.Node{
-		Id: "test",
+		ID: "test",
 	}
 
 	{
@@ -157,12 +157,12 @@ func TestTasks(t *testing.T) {
 		assert.NotZero(t, resp.TTL)
 	}
 	testTask := &api.Task{
-		Id:     "testTask",
-		NodeId: testNode.Id,
+		ID:     "testTask",
+		NodeID: testNode.ID,
 	}
-	stream, err := gd.Client.Tasks(context.Background(), &api.TasksRequest{NodeID: testNode.Id})
+	stream, err := gd.Client.Tasks(context.Background(), &api.TasksRequest{NodeID: testNode.ID})
 	assert.Nil(t, err)
-	assert.Nil(t, gd.Store.CreateTask(testTask.Id, testTask))
+	assert.Nil(t, gd.Store.CreateTask(testTask.ID, testTask))
 	resp, err := stream.Recv()
 	assert.Nil(t, err)
 	assert.Equal(t, len(resp.Tasks), 1)
@@ -173,7 +173,7 @@ func TestTaskUpdate(t *testing.T) {
 	assert.Nil(t, err)
 	defer gd.Close()
 	testNode := &api.Node{
-		Id: "test",
+		ID: "test",
 	}
 
 	{
@@ -182,26 +182,26 @@ func TestTaskUpdate(t *testing.T) {
 		assert.NotZero(t, resp.TTL)
 	}
 	testTask1 := &api.Task{
-		Id:     "testTask1",
-		NodeId: testNode.Id,
+		ID:     "testTask1",
+		NodeID: testNode.ID,
 	}
 	testTask2 := &api.Task{
-		Id:     "testTask2",
-		NodeId: testNode.Id,
+		ID:     "testTask2",
+		NodeID: testNode.ID,
 	}
-	assert.Nil(t, gd.Store.CreateTask(testTask1.Id, testTask1))
-	assert.Nil(t, gd.Store.CreateTask(testTask2.Id, testTask2))
+	assert.Nil(t, gd.Store.CreateTask(testTask1.ID, testTask1))
+	assert.Nil(t, gd.Store.CreateTask(testTask2.ID, testTask2))
 	testTask1.Status = &api.TaskStatus{State: api.TaskStatus_ASSIGNED}
 	testTask2.Status = &api.TaskStatus{State: api.TaskStatus_ASSIGNED}
 	updReq := &api.UpdateTaskStatusRequest{
-		NodeID: testNode.Id,
+		NodeID: testNode.ID,
 		Tasks:  []*api.Task{testTask1, testTask2},
 	}
 	_, err = gd.Client.UpdateTaskStatus(context.Background(), updReq)
 	assert.Nil(t, err)
-	storeTask1 := gd.Store.Task(testTask1.Id)
+	storeTask1 := gd.Store.Task(testTask1.ID)
 	assert.NotNil(t, storeTask1)
-	storeTask2 := gd.Store.Task(testTask2.Id)
+	storeTask2 := gd.Store.Task(testTask2.ID)
 	assert.NotNil(t, storeTask2)
 	assert.Equal(t, storeTask1.Status.State, api.TaskStatus_ASSIGNED)
 	assert.Equal(t, storeTask2.Status.State, api.TaskStatus_ASSIGNED)
