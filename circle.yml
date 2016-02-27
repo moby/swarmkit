@@ -39,8 +39,7 @@ dependencies:
         - cp -R "$HOME/$CIRCLE_PROJECT_REPONAME" "$WORKDIR"
 
         # Install dependencies
-        - go get -u github.com/golang/lint/golint
-        - go get -u github.com/fzipp/gocyclo
+        - cd "$WORKDIR" && make setup
     post:
         # Display debugging information in CI logs
         - go version
