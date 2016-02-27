@@ -9,3 +9,9 @@ var (
 		Short: "Job management",
 	}
 )
+
+func init() {
+	Cmd.AddCommand(
+		lsCmd,
+	)
+}

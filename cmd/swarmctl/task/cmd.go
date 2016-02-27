@@ -9,3 +9,9 @@ var (
 		Short: "Task management",
 	}
 )
+
+func init() {
+	Cmd.AddCommand(
+		lsCmd,
+	)
+}

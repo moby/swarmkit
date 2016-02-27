@@ -9,3 +9,9 @@ var (
 		Short: "Node management",
 	}
 )
+
+func init() {
+	Cmd.AddCommand(
+		lsCmd,
+	)
+}
