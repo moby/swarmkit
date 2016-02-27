@@ -20,7 +20,7 @@ type MemoryStore struct {
 }
 
 // NewMemoryStore returns an in-memory store.
-func NewMemoryStore() Store {
+func NewMemoryStore() WatchableStore {
 	return &MemoryStore{
 		nodes: make(map[string]*api.Node),
 		tasks: make(map[string]*api.Task),
@@ -29,81 +29,129 @@ func NewMemoryStore() Store {
 	}
 }
 
-// CreateNode adds a new node to the store.
-// Returns ErrExist if the ID is already taken.
-func (s *MemoryStore) CreateNode(id string, n *api.Node) error {
-	s.l.Lock()
-	defer s.l.Unlock()
+type readTx struct {
+	s *MemoryStore
+}
 
-	if _, ok := s.nodes[id]; ok {
+// BeginRead starts a transaction that only supports reads.
+func (s *MemoryStore) BeginRead() (ReadTx, error) {
+	s.l.RLock()
+	return readTx{s: s}, nil
+}
+
+func (t readTx) Nodes() NodeSetReader {
+	return nodes{s: t.s}
+}
+
+func (t readTx) Jobs() JobSetReader {
+	return jobs{s: t.s}
+}
+
+func (t readTx) Tasks() TaskSetReader {
+	return tasks{s: t.s}
+}
+
+func (t readTx) Close() error {
+	t.s.l.RUnlock()
+	return nil
+}
+
+type tx struct {
+	s *MemoryStore
+}
+
+// Begin starts a transaction that supports reads and writes.
+func (s *MemoryStore) Begin() (Tx, error) {
+	s.l.Lock()
+	return tx{s: s}, nil
+}
+
+func (t tx) Nodes() NodeSet {
+	return nodes{s: t.s}
+}
+
+func (t tx) Jobs() JobSet {
+	return jobs{s: t.s}
+}
+
+func (t tx) Tasks() TaskSet {
+	return tasks{s: t.s}
+}
+
+func (t tx) Close() error {
+	t.s.l.Unlock()
+	return nil
+}
+
+type nodes struct {
+	s *MemoryStore
+}
+
+// Create adds a new node to the store.
+// Returns ErrExist if the ID is already taken.
+func (nodes nodes) Create(n *api.Node) error {
+	if _, ok := nodes.s.nodes[n.Spec.ID]; ok {
 		return ErrExist
 	}
 
-	s.nodes[id] = n
-	Publish(s.queue, EventCreateNode{Node: n})
+	nodes.s.nodes[n.Spec.ID] = n
+	Publish(nodes.s.queue, EventCreateNode{Node: n})
 	return nil
 }
 
-// UpdateNode updates an existing node in the store.
+// Update updates an existing node in the store.
 // Returns ErrNotExist if the node doesn't exist.
-func (s *MemoryStore) UpdateNode(id string, n *api.Node) error {
-	s.l.Lock()
-	defer s.l.Unlock()
-
-	if _, ok := s.nodes[id]; !ok {
+func (nodes nodes) Update(n *api.Node) error {
+	if _, ok := nodes.s.nodes[n.Spec.ID]; !ok {
 		return ErrNotExist
 	}
 
-	s.nodes[id] = n
-	Publish(s.queue, EventUpdateNode{Node: n})
+	nodes.s.nodes[n.Spec.ID] = n
+	Publish(nodes.s.queue, EventUpdateNode{Node: n})
 	return nil
 }
 
-// DeleteNode removes a node from the store.
+// Delete removes a node from the store.
 // Returns ErrNotExist if the node doesn't exist.
-func (s *MemoryStore) DeleteNode(id string) error {
-	s.l.Lock()
-	defer s.l.Unlock()
-
-	n, ok := s.nodes[id]
+func (nodes nodes) Delete(id string) error {
+	n, ok := nodes.s.nodes[id]
 	if !ok {
 		return ErrNotExist
 	}
 
-	delete(s.nodes, id)
-	Publish(s.queue, EventDeleteNode{Node: n})
+	delete(nodes.s.nodes, id)
+	Publish(nodes.s.queue, EventDeleteNode{Node: n})
 	return nil
 }
 
-// Nodes returns all nodes that are present in the store.
-func (s *MemoryStore) Nodes() []*api.Node {
-	s.l.RLock()
-	defer s.l.RUnlock()
+// Get looks up a node by ID.
+// Returns nil if the node doesn't exist.
+func (nodes nodes) Get(id string) *api.Node {
+	return nodes.s.nodes[id]
+}
 
+// Find selects a set of nodes and returns them. If by is nil,
+// returns all nodes.
+func (nodes nodes) Find(by By) ([]*api.Node, error) {
+	switch v := by.(type) {
+	case all:
+		return nodes.s.listNodes(), nil
+	case byName:
+		return nodes.s.nodesByName(string(v)), nil
+	default:
+		return nil, ErrInvalidFindBy
+	}
+}
+
+func (s *MemoryStore) listNodes() []*api.Node {
 	nodes := []*api.Node{}
 	for _, n := range s.nodes {
 		nodes = append(nodes, n)
 	}
-
 	return nodes
 }
 
-// Node looks up a node by ID.
-// Returns nil if the node doesn't exist.
-func (s *MemoryStore) Node(id string) *api.Node {
-	s.l.RLock()
-	defer s.l.RUnlock()
-
-	return s.nodes[id]
-}
-
-// NodesByName returns the list of nodes matching a given name.
-// Names are neither required nor guaranteed to be unique therefore NodesByName
-// might return more than one node for a given name or no nodes at all.
-func (s *MemoryStore) NodesByName(name string) []*api.Node {
-	s.l.RLock()
-	defer s.l.RUnlock()
-
+func (s *MemoryStore) nodesByName(name string) []*api.Node {
 	//TODO(aluzzardi): This needs an index.
 	nodes := []*api.Node{}
 	for _, n := range s.nodes {
@@ -114,57 +162,72 @@ func (s *MemoryStore) NodesByName(name string) []*api.Node {
 	return nodes
 }
 
-// CreateTask adds a new task to the store.
-// Returns ErrExist if the ID is already taken.
-func (s *MemoryStore) CreateTask(id string, t *api.Task) error {
-	s.l.Lock()
-	defer s.l.Unlock()
+type tasks struct {
+	s *MemoryStore
+}
 
-	if _, ok := s.tasks[id]; ok {
+// Create adds a new task to the store.
+// Returns ErrExist if the ID is already taken.
+func (tasks tasks) Create(t *api.Task) error {
+	if _, ok := tasks.s.tasks[t.ID]; ok {
 		return ErrExist
 	}
 
-	s.tasks[id] = t
-	Publish(s.queue, EventCreateTask{Task: t})
+	tasks.s.tasks[t.ID] = t
+	Publish(tasks.s.queue, EventCreateTask{Task: t})
 	return nil
 }
 
-// UpdateTask updates an existing task in the store.
+// Update updates an existing task in the store.
 // Returns ErrNotExist if the task doesn't exist.
-func (s *MemoryStore) UpdateTask(id string, t *api.Task) error {
-	s.l.Lock()
-	defer s.l.Unlock()
-
-	if _, ok := s.tasks[id]; !ok {
+func (tasks tasks) Update(t *api.Task) error {
+	if _, ok := tasks.s.tasks[t.ID]; !ok {
 		return ErrNotExist
 	}
 
-	s.tasks[id] = t
-	Publish(s.queue, EventUpdateTask{Task: t})
+	tasks.s.tasks[t.ID] = t
+	Publish(tasks.s.queue, EventUpdateTask{Task: t})
 	return nil
 }
 
-// DeleteTask removes a task from the store.
+// Delete removes a task from the store.
 // Returns ErrNotExist if the task doesn't exist.
-func (s *MemoryStore) DeleteTask(id string) error {
-	s.l.Lock()
-	defer s.l.Unlock()
-
-	t, ok := s.tasks[id]
+func (tasks tasks) Delete(id string) error {
+	t, ok := tasks.s.tasks[id]
 	if !ok {
 		return ErrNotExist
 	}
 
-	delete(s.tasks, id)
-	Publish(s.queue, EventDeleteTask{Task: t})
+	delete(tasks.s.tasks, id)
+	Publish(tasks.s.queue, EventDeleteTask{Task: t})
 	return nil
 }
 
-// Tasks returns all tasks that are present in the store.
-func (s *MemoryStore) Tasks() []*api.Task {
-	s.l.RLock()
-	defer s.l.RUnlock()
+// Get looks up a task by ID.
+// Returns nil if the task doesn't exist.
+func (tasks tasks) Get(id string) *api.Task {
+	return tasks.s.tasks[id]
+}
 
+// Find selects a set of tasks and returns them. If by is nil,
+// returns all tasks.
+func (tasks tasks) Find(by By) ([]*api.Task, error) {
+	switch v := by.(type) {
+	case all:
+		return tasks.s.listTasks(), nil
+	case byName:
+		return tasks.s.tasksByName(string(v)), nil
+	case byNode:
+		return tasks.s.tasksByNode(string(v)), nil
+	case byJob:
+		return tasks.s.tasksByJob(string(v)), nil
+	default:
+		return nil, ErrInvalidFindBy
+	}
+}
+
+// listTasks returns all tasks that are present in the store.
+func (s *MemoryStore) listTasks() []*api.Task {
 	tasks := []*api.Task{}
 	for _, t := range s.tasks {
 		tasks = append(tasks, t)
@@ -172,22 +235,10 @@ func (s *MemoryStore) Tasks() []*api.Task {
 	return tasks
 }
 
-// Task looks up a task by ID.
-// Returns nil if the task doesn't exist.
-func (s *MemoryStore) Task(id string) *api.Task {
-	s.l.RLock()
-	defer s.l.RUnlock()
-
-	return s.tasks[id]
-}
-
-// TasksByName returns the list of tasks matching a given name.
+// tasksByName returns the list of tasks matching a given name.
 // Names are neither required nor guaranteed to be unique therefore TasksByName
 // might return more than one task for a given name or no tasks at all.
-func (s *MemoryStore) TasksByName(name string) []*api.Task {
-	s.l.RLock()
-	defer s.l.RUnlock()
-
+func (s *MemoryStore) tasksByName(name string) []*api.Task {
 	//TODO(aluzzardi): This needs an index.
 	tasks := []*api.Task{}
 	for _, t := range s.tasks {
@@ -198,11 +249,8 @@ func (s *MemoryStore) TasksByName(name string) []*api.Task {
 	return tasks
 }
 
-// TasksByJob returns the list of tasks belonging to a particular Job.
-func (s *MemoryStore) TasksByJob(jobID string) []*api.Task {
-	s.l.RLock()
-	defer s.l.RUnlock()
-
+// tasksByJob returns the list of tasks belonging to a particular Job.
+func (s *MemoryStore) tasksByJob(jobID string) []*api.Task {
 	//TODO(aluzzardi): This needs an index.
 	tasks := []*api.Task{}
 	for _, t := range s.tasks {
@@ -213,11 +261,8 @@ func (s *MemoryStore) TasksByJob(jobID string) []*api.Task {
 	return tasks
 }
 
-// TasksByNode returns the list of tasks assigned to a particular Node.
-func (s *MemoryStore) TasksByNode(nodeID string) []*api.Task {
-	s.l.RLock()
-	defer s.l.RUnlock()
-
+// tasksByNode returns the list of tasks assigned to a particular Node.
+func (s *MemoryStore) tasksByNode(nodeID string) []*api.Task {
 	//TODO(aluzzardi): This needs an index.
 	tasks := []*api.Task{}
 	for _, t := range s.tasks {
@@ -228,57 +273,68 @@ func (s *MemoryStore) TasksByNode(nodeID string) []*api.Task {
 	return tasks
 }
 
-// CreateJob adds a new job to the store.
-// Returns ErrExist if the ID is already taken.
-func (s *MemoryStore) CreateJob(id string, j *api.Job) error {
-	s.l.Lock()
-	defer s.l.Unlock()
+type jobs struct {
+	s *MemoryStore
+}
 
-	if _, ok := s.jobs[id]; ok {
+// Create adds a new job to the store.
+// Returns ErrExist if the ID is already taken.
+func (jobs jobs) Create(j *api.Job) error {
+	if _, ok := jobs.s.jobs[j.ID]; ok {
 		return ErrExist
 	}
 
-	s.jobs[id] = j
-	Publish(s.queue, EventCreateJob{Job: j})
+	jobs.s.jobs[j.ID] = j
+	Publish(jobs.s.queue, EventCreateJob{Job: j})
 	return nil
 }
 
-// UpdateJob updates an existing job in the store.
+// Update updates an existing job in the store.
 // Returns ErrNotExist if the job doesn't exist.
-func (s *MemoryStore) UpdateJob(id string, j *api.Job) error {
-	s.l.Lock()
-	defer s.l.Unlock()
-
-	if _, ok := s.jobs[id]; !ok {
+func (jobs jobs) Update(j *api.Job) error {
+	if _, ok := jobs.s.jobs[j.ID]; !ok {
 		return ErrNotExist
 	}
 
-	s.jobs[id] = j
-	Publish(s.queue, EventUpdateJob{Job: j})
+	jobs.s.jobs[j.ID] = j
+	Publish(jobs.s.queue, EventUpdateJob{Job: j})
 	return nil
 }
 
-// DeleteJob removes a job from the store.
+// Delete removes a job from the store.
 // Returns ErrNotExist if the node doesn't exist.
-func (s *MemoryStore) DeleteJob(id string) error {
-	s.l.Lock()
-	defer s.l.Unlock()
-
-	j, ok := s.jobs[id]
+func (jobs jobs) Delete(id string) error {
+	j, ok := jobs.s.jobs[id]
 	if !ok {
 		return ErrNotExist
 	}
 
-	delete(s.jobs, id)
-	Publish(s.queue, EventDeleteJob{Job: j})
+	delete(jobs.s.jobs, id)
+	Publish(jobs.s.queue, EventDeleteJob{Job: j})
 	return nil
 }
 
-// Jobs returns all jobs that are present in the store.
-func (s *MemoryStore) Jobs() []*api.Job {
-	s.l.RLock()
-	defer s.l.RUnlock()
+// Job looks up a job by ID.
+// Returns nil if the job doesn't exist.
+func (jobs jobs) Get(id string) *api.Job {
+	return jobs.s.jobs[id]
+}
 
+// Find selects a set of jobs and returns them. If by is nil,
+// returns all jobs.
+func (jobs jobs) Find(by By) ([]*api.Job, error) {
+	switch v := by.(type) {
+	case all:
+		return jobs.s.listJobs(), nil
+	case byName:
+		return jobs.s.jobsByName(string(v)), nil
+	default:
+		return nil, ErrInvalidFindBy
+	}
+}
+
+// listJobs returns all jobs that are present in the store.
+func (s *MemoryStore) listJobs() []*api.Job {
 	jobs := []*api.Job{}
 	for _, j := range s.jobs {
 		jobs = append(jobs, j)
@@ -286,22 +342,10 @@ func (s *MemoryStore) Jobs() []*api.Job {
 	return jobs
 }
 
-// Job looks up a job by ID.
-// Returns nil if the job doesn't exist.
-func (s *MemoryStore) Job(id string) *api.Job {
-	s.l.RLock()
-	defer s.l.RUnlock()
-
-	return s.jobs[id]
-}
-
-// JobsByName returns the list of jobs matching a given name.
+// jobsByName returns the list of jobs matching a given name.
 // Names are neither required nor guaranteed to be unique therefore JobsByName
 // might return more than one node for a given name or no nodes at all.
-func (s *MemoryStore) JobsByName(name string) []*api.Job {
-	s.l.RLock()
-	defer s.l.RUnlock()
-
+func (s *MemoryStore) jobsByName(name string) []*api.Job {
 	//TODO(aluzzardi): This needs an index.
 	jobs := []*api.Job{}
 	for _, j := range s.jobs {
@@ -312,33 +356,62 @@ func (s *MemoryStore) JobsByName(name string) []*api.Job {
 	return jobs
 }
 
+// CopyFrom causes this store to hold a copy of the provided data set.
+func (s *MemoryStore) CopyFrom(tx ReadTx) error {
+	s.l.Lock()
+	defer s.l.Unlock()
+
+	// Clear existing data
+	s.nodes = make(map[string]*api.Node)
+	s.tasks = make(map[string]*api.Task)
+	s.jobs = make(map[string]*api.Job)
+
+	// Copy over new data
+	nodes, err := tx.Nodes().Find(All)
+	if err != nil {
+		return err
+	}
+	for _, n := range nodes {
+		s.nodes[n.Spec.ID] = n
+	}
+
+	tasks, err := tx.Tasks().Find(All)
+	if err != nil {
+		return err
+	}
+	for _, t := range tasks {
+		s.tasks[t.ID] = t
+	}
+
+	jobs, err := tx.Jobs().Find(All)
+	if err != nil {
+		return err
+	}
+	for _, j := range jobs {
+		s.jobs[j.ID] = j
+	}
+
+	return nil
+}
+
 // WatchQueue returns the publish/subscribe queue.
 func (s *MemoryStore) WatchQueue() *watch.Queue {
 	return s.queue
 }
 
-// Fork populates the provided empty store with the current items in
+// Snapshot populates the provided empty store with the current items in
 // this store. It then returns a watcher that is guaranteed to receive
 // all events from the moment the store was forked, so the populated
 // store can be kept in sync.
-func (s *MemoryStore) Fork(targetStore Store) (chan watch.Event, error) {
-	s.l.RLock()
-	defer s.l.RUnlock()
+func (s *MemoryStore) Snapshot(storeCopier StoreCopier) (chan watch.Event, error) {
+	readTx, err := s.BeginRead()
+	if err != nil {
+		return nil, err
+	}
+	defer readTx.Close()
 
-	for id, n := range s.nodes {
-		if err := targetStore.CreateNode(id, n); err != nil {
-			return nil, err
-		}
-	}
-	for id, j := range s.jobs {
-		if err := targetStore.CreateJob(id, j); err != nil {
-			return nil, err
-		}
-	}
-	for id, t := range s.tasks {
-		if err := targetStore.CreateTask(id, t); err != nil {
-			return nil, err
-		}
+	if err := storeCopier.CopyFrom(readTx); err != nil {
+		return nil, err
 	}
 
 	return s.queue.Watch(), nil

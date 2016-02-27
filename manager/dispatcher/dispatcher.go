@@ -63,15 +63,27 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 
 	n.Status.State = api.NodeStatus_READY
 	// create or update node in raft
-	err := d.store.CreateNode(n.Spec.ID, n)
+
+	tx, err := d.store.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Nodes().Create(n)
 	if err != nil {
 		if err != state.ErrExist {
+			tx.Close()
 			return nil, err
 		}
-		if err := d.store.UpdateNode(n.Spec.ID, n); err != nil {
+		if err := tx.Nodes().Update(n); err != nil {
+			tx.Close()
 			return nil, err
 		}
 	}
+	if err = tx.Close(); err != nil {
+		return nil, err
+	}
+
 	ttl := d.electTTL()
 	d.mu.Lock()
 
@@ -96,10 +108,20 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 	if !ok {
 		return nil, grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
 	}
+	tx, err := d.store.Begin()
+	if err != nil {
+		return nil, err
+	}
+
 	for _, t := range r.Tasks {
-		if err := d.store.UpdateTask(t.ID, &api.Task{Status: t.Status}); err != nil {
+		if err := tx.Tasks().Update(&api.Task{ID: t.ID, Status: t.Status}); err != nil {
+			tx.Close()
 			return nil, err
 		}
+	}
+
+	if err = tx.Close(); err != nil {
+		return nil, err
 	}
 	return nil, nil
 }
@@ -115,9 +137,19 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Agent_TasksServer) er
 		return grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
 	}
 	for {
-		tasks := d.store.TasksByNode(r.NodeID)
+		tx, err := d.store.BeginRead()
+		if err != nil {
+			return err
+		}
+		tasks, findErr := tx.Tasks().Find(state.ByNodeID(r.NodeID))
+		if err = tx.Close(); err != nil {
+			return err
+		}
+		if findErr != nil {
+			return err
+		}
 		if len(tasks) != 0 {
-			if err := stream.Send(&api.TasksResponse{Tasks: d.store.TasksByNode(r.NodeID)}); err != nil {
+			if err := stream.Send(&api.TasksResponse{Tasks: tasks}); err != nil {
 				return err
 			}
 		}
@@ -130,12 +162,19 @@ func (d *Dispatcher) nodeDown(id string) error {
 	delete(d.nodes, id)
 	d.mu.Unlock()
 
-	update := &api.Node{
-		Spec: &api.NodeSpec{ID: id},
+	tx, err := d.store.Begin()
+	if err != nil {
+		return err
 	}
-	update.Status.State = api.NodeStatus_DOWN
 
-	if err := d.store.UpdateNode(id, update); err != nil {
+	updateErr := tx.Nodes().Update(&api.Node{
+		Spec:   &api.NodeSpec{ID: id},
+		Status: api.NodeStatus{State: api.NodeStatus_DOWN},
+	})
+	if err = tx.Close(); err != nil {
+		return err
+	}
+	if updateErr != nil {
 		return fmt.Errorf("failed to update node %s status to down", id)
 	}
 	return nil

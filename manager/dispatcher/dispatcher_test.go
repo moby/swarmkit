@@ -94,7 +94,11 @@ func TestHeartbeat(t *testing.T) {
 	assert.NotZero(t, resp.TTL)
 	time.Sleep(300 * time.Millisecond)
 
-	storeNode := gd.Store.Node("test")
+	readTx, err := gd.Store.BeginRead()
+	assert.NoError(t, err)
+	storeNode := readTx.Nodes().Get("test")
+	assert.NoError(t, readTx.Close())
+
 	assert.NotNil(t, storeNode)
 	assert.Equal(t, storeNode.Status.State, api.NodeStatus_READY)
 }
@@ -117,7 +121,10 @@ func TestHeartbeatTimeout(t *testing.T) {
 	}
 	time.Sleep(500 * time.Millisecond)
 
-	storeNode := gd.Store.Node("test")
+	readTx, err := gd.Store.BeginRead()
+	assert.NoError(t, err)
+	storeNode := readTx.Nodes().Get("test")
+	assert.NoError(t, readTx.Close())
 	assert.NotNil(t, storeNode)
 	assert.Equal(t, api.NodeStatus_DOWN, storeNode.Status.State)
 
@@ -153,10 +160,15 @@ func TestTasks(t *testing.T) {
 		NodeID: testNode.ID,
 	}
 	stream, err := gd.Client.Tasks(context.Background(), &api.TasksRequest{NodeID: testNode.ID})
-	assert.Nil(t, err)
-	assert.Nil(t, gd.Store.CreateTask(testTask.ID, testTask))
+	assert.NoError(t, err)
+
+	tx, err := gd.Store.Begin()
+	assert.NoError(t, err)
+	assert.NoError(t, tx.Tasks().Create(testTask))
+	assert.NoError(t, tx.Close())
+
 	resp, err := stream.Recv()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, len(resp.Tasks), 1)
 }
 
@@ -179,8 +191,12 @@ func TestTaskUpdate(t *testing.T) {
 		ID:     "testTask2",
 		NodeID: testNode.ID,
 	}
-	assert.Nil(t, gd.Store.CreateTask(testTask1.ID, testTask1))
-	assert.Nil(t, gd.Store.CreateTask(testTask2.ID, testTask2))
+	tx, err := gd.Store.Begin()
+	assert.NoError(t, err)
+	assert.NoError(t, tx.Tasks().Create(testTask1))
+	assert.NoError(t, tx.Tasks().Create(testTask2))
+	assert.NoError(t, tx.Close())
+
 	testTask1.Status = &api.TaskStatus{State: api.TaskStatus_ASSIGNED}
 	testTask2.Status = &api.TaskStatus{State: api.TaskStatus_ASSIGNED}
 	updReq := &api.UpdateTaskStatusRequest{
@@ -188,11 +204,14 @@ func TestTaskUpdate(t *testing.T) {
 		Tasks:  []*api.Task{testTask1, testTask2},
 	}
 	_, err = gd.Client.UpdateTaskStatus(context.Background(), updReq)
-	assert.Nil(t, err)
-	storeTask1 := gd.Store.Task(testTask1.ID)
+	assert.NoError(t, err)
+	readTx, err := gd.Store.BeginRead()
+	assert.NoError(t, err)
+	storeTask1 := readTx.Tasks().Get(testTask1.ID)
 	assert.NotNil(t, storeTask1)
-	storeTask2 := gd.Store.Task(testTask2.ID)
+	storeTask2 := readTx.Tasks().Get(testTask2.ID)
 	assert.NotNil(t, storeTask2)
+	assert.NoError(t, readTx.Close())
 	assert.Equal(t, storeTask1.Status.State, api.TaskStatus_ASSIGNED)
 	assert.Equal(t, storeTask2.Status.State, api.TaskStatus_ASSIGNED)
 }

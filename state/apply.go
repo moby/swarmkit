@@ -8,28 +8,39 @@ import (
 
 // Apply takes an item from the event stream of one Store and applies it to
 // a second Store.
-func Apply(store Store, item watch.Event) error {
+func Apply(store Store, item watch.Event) (err error) {
+	tx, err := store.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		closeErr := tx.Close()
+		if closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+
 	switch v := item.Payload.(type) {
 	case EventCreateTask:
-		return store.CreateTask(v.Task.ID, v.Task)
+		return tx.Tasks().Create(v.Task)
 	case EventUpdateTask:
-		return store.UpdateTask(v.Task.ID, v.Task)
+		return tx.Tasks().Update(v.Task)
 	case EventDeleteTask:
-		return store.DeleteTask(v.Task.ID)
+		return tx.Tasks().Delete(v.Task.ID)
 
 	case EventCreateJob:
-		return store.CreateJob(v.Job.ID, v.Job)
+		return tx.Jobs().Create(v.Job)
 	case EventUpdateJob:
-		return store.UpdateJob(v.Job.ID, v.Job)
+		return tx.Jobs().Update(v.Job)
 	case EventDeleteJob:
-		return store.DeleteJob(v.Job.ID)
+		return tx.Jobs().Delete(v.Job.ID)
 
 	case EventCreateNode:
-		return store.CreateNode(v.Node.Spec.ID, v.Node)
+		return tx.Nodes().Create(v.Node)
 	case EventUpdateNode:
-		return store.UpdateNode(v.Node.Spec.ID, v.Node)
+		return tx.Nodes().Update(v.Node)
 	case EventDeleteNode:
-		return store.DeleteNode(v.Node.Spec.ID)
+		return tx.Nodes().Delete(v.Node.Spec.ID)
 
 	}
 

@@ -38,21 +38,41 @@ func TestStoreNode(t *testing.T) {
 	s := NewMemoryStore()
 	assert.NotNil(t, s)
 
-	assert.Empty(t, s.Nodes())
+	readTx, err := s.BeginRead()
+	assert.NoError(t, err)
+	allNodes, err := readTx.Nodes().Find(All)
+	assert.NoError(t, err)
+	assert.Empty(t, allNodes)
+	assert.NoError(t, readTx.Close())
+
+	tx, err := s.Begin()
+	assert.NoError(t, err)
 	for _, n := range nodeSet {
-		assert.NoError(t, s.CreateNode(n.Spec.ID, n))
+		assert.NoError(t, tx.Nodes().Create(n))
 	}
-	assert.Len(t, s.Nodes(), len(nodeSet))
+	allNodes, err = tx.Nodes().Find(All)
+	assert.NoError(t, err)
+	assert.Len(t, allNodes, len(nodeSet))
 
-	assert.Error(t, s.CreateNode(nodeSet[0].Spec.ID, nodeSet[0]), "duplicate IDs must be rejected")
+	assert.Error(t, tx.Nodes().Create(nodeSet[0]), "duplicate IDs must be rejected")
+	assert.NoError(t, tx.Close())
 
-	assert.Equal(t, nodeSet[0], s.Node("id1"))
-	assert.Equal(t, nodeSet[1], s.Node("id2"))
-	assert.Equal(t, nodeSet[2], s.Node("id3"))
+	readTx, err = s.BeginRead()
+	assert.NoError(t, err)
+	assert.Equal(t, nodeSet[0], readTx.Nodes().Get("id1"))
+	assert.Equal(t, nodeSet[1], readTx.Nodes().Get("id2"))
+	assert.Equal(t, nodeSet[2], readTx.Nodes().Get("id3"))
 
-	assert.Len(t, s.NodesByName("name1"), 1)
-	assert.Len(t, s.NodesByName("name2"), 2)
-	assert.Len(t, s.NodesByName("invalid"), 0)
+	foundNodes, err := readTx.Nodes().Find(ByName("name1"))
+	assert.NoError(t, err)
+	assert.Len(t, foundNodes, 1)
+	foundNodes, err = readTx.Nodes().Find(ByName("name2"))
+	assert.NoError(t, err)
+	assert.Len(t, foundNodes, 2)
+	foundNodes, err = readTx.Nodes().Find(ByName("invalid"))
+	assert.NoError(t, err)
+	assert.Len(t, foundNodes, 0)
+	assert.NoError(t, readTx.Close())
 
 	// Update.
 	update := &api.Node{
@@ -63,20 +83,32 @@ func TestStoreNode(t *testing.T) {
 			},
 		},
 	}
-	assert.NotEqual(t, update, s.Node("id3"))
-	assert.NoError(t, s.UpdateNode("id3", update))
-	assert.Equal(t, update, s.Node("id3"))
+	tx, err = s.Begin()
+	assert.NoError(t, err)
+	assert.NotEqual(t, update, tx.Nodes().Get("id3"))
+	assert.NoError(t, tx.Nodes().Update(update))
+	assert.Equal(t, update, tx.Nodes().Get("id3"))
 
-	assert.Len(t, s.NodesByName("name2"), 1)
-	assert.Len(t, s.NodesByName("name3"), 1)
+	foundNodes, err = tx.Nodes().Find(ByName("name2"))
+	assert.NoError(t, err)
+	assert.Len(t, foundNodes, 1)
+	foundNodes, err = tx.Nodes().Find(ByName("name3"))
+	assert.NoError(t, err)
+	assert.Len(t, foundNodes, 1)
 
-	assert.Error(t, s.UpdateNode("invalid", nodeSet[0]), "invalid IDs should be rejected")
+	invalidUpdate := *nodeSet[0]
+	invalidUpdate.Spec.ID = "invalid"
+	assert.Error(t, tx.Nodes().Update(&invalidUpdate), "invalid IDs should be rejected")
 
 	// Delete
-	assert.NotNil(t, s.Node("id1"))
-	assert.NoError(t, s.DeleteNode("id1"))
-	assert.Nil(t, s.Node("id1"))
-	assert.Empty(t, s.NodesByName("name1"))
+	assert.NotNil(t, tx.Nodes().Get("id1"))
+	assert.NoError(t, tx.Nodes().Delete("id1"))
+	assert.Nil(t, tx.Nodes().Get("id1"))
+	foundNodes, err = tx.Nodes().Find(ByName("name1"))
+	assert.NoError(t, err)
+	assert.Empty(t, foundNodes)
+
+	assert.NoError(t, tx.Close())
 }
 
 func TestStoreJob(t *testing.T) {
@@ -111,21 +143,33 @@ func TestStoreJob(t *testing.T) {
 	s := NewMemoryStore()
 	assert.NotNil(t, s)
 
-	assert.Empty(t, s.Jobs())
+	tx, err := s.Begin()
+	assert.NoError(t, err)
+	allJobs, err := tx.Jobs().Find(All)
+	assert.NoError(t, err)
+	assert.Empty(t, allJobs)
 	for _, j := range jobSet {
-		assert.NoError(t, s.CreateJob(j.ID, j))
+		assert.NoError(t, tx.Jobs().Create(j))
 	}
-	assert.Len(t, s.Jobs(), len(jobSet))
+	allJobs, err = tx.Jobs().Find(All)
+	assert.NoError(t, err)
+	assert.Len(t, allJobs, len(jobSet))
 
-	assert.Error(t, s.CreateJob(jobSet[0].ID, jobSet[0]), "duplicate IDs must be rejected")
+	assert.Error(t, tx.Jobs().Create(jobSet[0]), "duplicate IDs must be rejected")
 
-	assert.Equal(t, jobSet[0], s.Job("id1"))
-	assert.Equal(t, jobSet[1], s.Job("id2"))
-	assert.Equal(t, jobSet[2], s.Job("id3"))
+	assert.Equal(t, jobSet[0], tx.Jobs().Get("id1"))
+	assert.Equal(t, jobSet[1], tx.Jobs().Get("id2"))
+	assert.Equal(t, jobSet[2], tx.Jobs().Get("id3"))
 
-	assert.Len(t, s.JobsByName("name1"), 1)
-	assert.Len(t, s.JobsByName("name2"), 2)
-	assert.Len(t, s.JobsByName("invalid"), 0)
+	foundJobs, err := tx.Jobs().Find(ByName("name1"))
+	assert.NoError(t, err)
+	assert.Len(t, foundJobs, 1)
+	foundJobs, err = tx.Jobs().Find(ByName("name2"))
+	assert.NoError(t, err)
+	assert.Len(t, foundJobs, 2)
+	foundJobs, err = tx.Jobs().Find(ByName("invalid"))
+	assert.NoError(t, err)
+	assert.Len(t, foundJobs, 0)
 
 	// Update.
 	update := &api.Job{
@@ -137,20 +181,30 @@ func TestStoreJob(t *testing.T) {
 			},
 		},
 	}
-	assert.NotEqual(t, update, s.Job("id3"))
-	assert.NoError(t, s.UpdateJob("id3", update))
-	assert.Equal(t, update, s.Job("id3"))
+	assert.NotEqual(t, update, tx.Jobs().Get("id3"))
+	assert.NoError(t, tx.Jobs().Update(update))
+	assert.Equal(t, update, tx.Jobs().Get("id3"))
 
-	assert.Len(t, s.JobsByName("name2"), 1)
-	assert.Len(t, s.JobsByName("name3"), 1)
+	foundJobs, err = tx.Jobs().Find(ByName("name2"))
+	assert.NoError(t, err)
+	assert.Len(t, foundJobs, 1)
+	foundJobs, err = tx.Jobs().Find(ByName("name3"))
+	assert.NoError(t, err)
+	assert.Len(t, foundJobs, 1)
 
-	assert.Error(t, s.UpdateJob("invalid", jobSet[0]), "invalid IDs should be rejected")
+	invalidUpdate := *jobSet[0]
+	invalidUpdate.ID = "invalid"
+	assert.Error(t, tx.Jobs().Update(&invalidUpdate), "invalid IDs should be rejected")
 
 	// Delete
-	assert.NotNil(t, s.Job("id1"))
-	assert.NoError(t, s.DeleteJob("id1"))
-	assert.Nil(t, s.Job("id1"))
-	assert.Empty(t, s.JobsByName("name1"))
+	assert.NotNil(t, tx.Jobs().Get("id1"))
+	assert.NoError(t, tx.Jobs().Delete("id1"))
+	assert.Nil(t, tx.Jobs().Get("id1"))
+	foundJobs, err = tx.Jobs().Find(ByName("name1"))
+	assert.NoError(t, err)
+	assert.Empty(t, foundJobs)
+
+	assert.NoError(t, tx.Close())
 }
 
 func TestStoreTask(t *testing.T) {
@@ -202,31 +256,55 @@ func TestStoreTask(t *testing.T) {
 	s := NewMemoryStore()
 	assert.NotNil(t, s)
 
-	assert.NoError(t, s.CreateNode(node.Spec.ID, node))
-	assert.NoError(t, s.CreateJob(job.ID, job))
-	assert.Empty(t, s.Tasks())
+	tx, err := s.Begin()
+	assert.NoError(t, err)
+
+	assert.NoError(t, tx.Nodes().Create(node))
+	assert.NoError(t, tx.Jobs().Create(job))
+
+	allTasks, err := tx.Tasks().Find(All)
+	assert.NoError(t, err)
+	assert.Empty(t, allTasks)
+
 	for _, task := range taskSet {
-		assert.NoError(t, s.CreateTask(task.ID, task))
+		assert.NoError(t, tx.Tasks().Create(task))
 	}
-	assert.Len(t, s.Tasks(), len(taskSet))
 
-	assert.Error(t, s.CreateTask(taskSet[0].ID, taskSet[0]), "duplicate IDs must be rejected")
+	allTasks, err = tx.Tasks().Find(All)
+	assert.NoError(t, err)
+	assert.Len(t, allTasks, len(taskSet))
 
-	assert.Equal(t, taskSet[0], s.Task("id1"))
-	assert.Equal(t, taskSet[1], s.Task("id2"))
-	assert.Equal(t, taskSet[2], s.Task("id3"))
+	assert.Error(t, tx.Tasks().Create(taskSet[0]), "duplicate IDs must be rejected")
 
-	assert.Len(t, s.TasksByName("name1"), 1)
-	assert.Len(t, s.TasksByName("name2"), 2)
-	assert.Len(t, s.TasksByName("invalid"), 0)
+	assert.Equal(t, taskSet[0], tx.Tasks().Get("id1"))
+	assert.Equal(t, taskSet[1], tx.Tasks().Get("id2"))
+	assert.Equal(t, taskSet[2], tx.Tasks().Get("id3"))
 
-	assert.Len(t, s.TasksByNode(node.Spec.ID), 1)
-	assert.Equal(t, s.TasksByNode(node.Spec.ID)[0], taskSet[0])
-	assert.Len(t, s.TasksByNode("invalid"), 0)
+	foundTasks, err := tx.Tasks().Find(ByName("name1"))
+	assert.NoError(t, err)
+	assert.Len(t, foundTasks, 1)
+	foundTasks, err = tx.Tasks().Find(ByName("name2"))
+	assert.NoError(t, err)
+	assert.Len(t, foundTasks, 2)
+	foundTasks, err = tx.Tasks().Find(ByName("invalid"))
+	assert.NoError(t, err)
+	assert.Len(t, foundTasks, 0)
 
-	assert.Len(t, s.TasksByJob(job.ID), 1)
-	assert.Equal(t, s.TasksByJob(job.ID)[0], taskSet[1])
-	assert.Len(t, s.TasksByJob("invalid"), 0)
+	foundTasks, err = tx.Tasks().Find(ByNodeID(node.Spec.ID))
+	assert.NoError(t, err)
+	assert.Len(t, foundTasks, 1)
+	assert.Equal(t, foundTasks[0], taskSet[0])
+	foundTasks, err = tx.Tasks().Find(ByNodeID("invalid"))
+	assert.NoError(t, err)
+	assert.Len(t, foundTasks, 0)
+
+	foundTasks, err = tx.Tasks().Find(ByJobID(job.ID))
+	assert.NoError(t, err)
+	assert.Len(t, foundTasks, 1)
+	assert.Equal(t, foundTasks[0], taskSet[1])
+	foundTasks, err = tx.Tasks().Find(ByJobID("invalid"))
+	assert.NoError(t, err)
+	assert.Len(t, foundTasks, 0)
 
 	// Update.
 	update := &api.Task{
@@ -241,23 +319,33 @@ func TestStoreTask(t *testing.T) {
 			},
 		},
 	}
-	assert.NotEqual(t, update, s.Task("id3"))
-	assert.NoError(t, s.UpdateTask("id3", update))
-	assert.Equal(t, update, s.Task("id3"))
+	assert.NotEqual(t, update, tx.Tasks().Get("id3"))
+	assert.NoError(t, tx.Tasks().Update(update))
+	assert.Equal(t, update, tx.Tasks().Get("id3"))
 
-	assert.Len(t, s.TasksByName("name2"), 1)
-	assert.Len(t, s.TasksByName("name3"), 1)
+	foundTasks, err = tx.Tasks().Find(ByName("name2"))
+	assert.NoError(t, err)
+	assert.Len(t, foundTasks, 1)
+	foundTasks, err = tx.Tasks().Find(ByName("name3"))
+	assert.NoError(t, err)
+	assert.Len(t, foundTasks, 1)
 
-	assert.Error(t, s.UpdateTask("invalid", taskSet[0]), "invalid IDs should be rejected")
+	invalidUpdate := *taskSet[0]
+	invalidUpdate.ID = "invalid"
+	assert.Error(t, tx.Tasks().Update(&invalidUpdate), "invalid IDs should be rejected")
 
 	// Delete
-	assert.NotNil(t, s.Task("id1"))
-	assert.NoError(t, s.DeleteTask("id1"))
-	assert.Nil(t, s.Task("id1"))
-	assert.Empty(t, s.TasksByName("name1"))
+	assert.NotNil(t, tx.Tasks().Get("id1"))
+	assert.NoError(t, tx.Tasks().Delete("id1"))
+	assert.Nil(t, tx.Tasks().Get("id1"))
+	foundTasks, err = tx.Tasks().Find(ByName("name1"))
+	assert.NoError(t, err)
+	assert.Empty(t, foundTasks)
+
+	assert.NoError(t, tx.Close())
 }
 
-func TestStoreFork(t *testing.T) {
+func TestStoreSnapshot(t *testing.T) {
 	nodeSet := []*api.Node{
 		{
 			Spec: &api.NodeSpec{
@@ -344,61 +432,52 @@ func TestStoreFork(t *testing.T) {
 	s1 := NewMemoryStore()
 	assert.NotNil(t, s1)
 
+	tx1, err := s1.Begin()
+	assert.NoError(t, err)
+
 	// Prepoulate nodes
 	for _, n := range nodeSet {
-		assert.NoError(t, s1.CreateNode(n.Spec.ID, n))
+		assert.NoError(t, tx1.Nodes().Create(n))
 	}
 
 	// Prepopulate jobs
 	for _, j := range jobSet {
-		assert.NoError(t, s1.CreateJob(j.ID, j))
+		assert.NoError(t, tx1.Jobs().Create(j))
 	}
 
 	// Prepopulate tasks
 	for _, task := range taskSet {
-		assert.NoError(t, s1.CreateTask(task.ID, task))
+		assert.NoError(t, tx1.Tasks().Create(task))
 	}
+
+	assert.NoError(t, tx1.Close())
 
 	// Fork
 	s2 := NewMemoryStore()
 	assert.NotNil(t, s2)
-	watcher, err := s1.Fork(s2)
+	watcher, err := s1.Snapshot(s2)
 	defer s1.WatchQueue().StopWatch(watcher)
 	assert.NoError(t, err)
 
-	assert.Len(t, s2.Nodes(), len(nodeSet))
+	tx1, err = s1.Begin()
+	assert.NoError(t, err)
 
-	assert.Equal(t, nodeSet[0], s2.Node("id1"))
-	assert.Equal(t, nodeSet[1], s2.Node("id2"))
-	assert.Equal(t, nodeSet[2], s2.Node("id3"))
+	tx2, err := s2.BeginRead()
+	assert.NoError(t, err)
 
-	assert.Len(t, s2.Jobs(), len(jobSet))
+	assert.Equal(t, nodeSet[0], tx2.Nodes().Get("id1"))
+	assert.Equal(t, nodeSet[1], tx2.Nodes().Get("id2"))
+	assert.Equal(t, nodeSet[2], tx2.Nodes().Get("id3"))
 
-	assert.Equal(t, jobSet[0], s2.Job("id1"))
-	assert.Equal(t, jobSet[1], s2.Job("id2"))
-	assert.Equal(t, jobSet[2], s2.Job("id3"))
+	assert.Equal(t, jobSet[0], tx2.Jobs().Get("id1"))
+	assert.Equal(t, jobSet[1], tx2.Jobs().Get("id2"))
+	assert.Equal(t, jobSet[2], tx2.Jobs().Get("id3"))
 
-	assert.Len(t, s2.JobsByName("name1"), 1)
-	assert.Len(t, s2.JobsByName("name2"), 2)
-	assert.Len(t, s2.JobsByName("invalid"), 0)
+	assert.Equal(t, taskSet[0], tx2.Tasks().Get("id1"))
+	assert.Equal(t, taskSet[1], tx2.Tasks().Get("id2"))
+	assert.Equal(t, taskSet[2], tx2.Tasks().Get("id3"))
 
-	assert.Len(t, s2.Tasks(), len(taskSet))
-
-	assert.Equal(t, taskSet[0], s2.Task("id1"))
-	assert.Equal(t, taskSet[1], s2.Task("id2"))
-	assert.Equal(t, taskSet[2], s2.Task("id3"))
-
-	assert.Len(t, s2.TasksByName("name1"), 1)
-	assert.Len(t, s2.TasksByName("name2"), 2)
-	assert.Len(t, s2.TasksByName("invalid"), 0)
-
-	assert.Len(t, s2.TasksByNode(nodeSet[0].Spec.ID), 1)
-	assert.Equal(t, s2.TasksByNode(nodeSet[0].Spec.ID)[0], taskSet[0])
-	assert.Len(t, s2.TasksByNode("invalid"), 0)
-
-	assert.Len(t, s2.TasksByJob(jobSet[0].ID), 1)
-	assert.Equal(t, s2.TasksByJob(jobSet[0].ID)[0], taskSet[1])
-	assert.Len(t, s2.TasksByJob("invalid"), 0)
+	assert.NoError(t, tx2.Close())
 
 	// Create node
 	createNode := &api.Node{
@@ -409,10 +488,13 @@ func TestStoreFork(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, s1.CreateNode("id4", createNode))
+	assert.NoError(t, tx1.Nodes().Create(createNode))
 	assert.NoError(t, Apply(s2, <-watcher))
-	assert.Equal(t, createNode, s2.Node("id4"))
-	assert.Len(t, s2.NodesByName("name4"), 1)
+
+	tx2, err = s2.BeginRead()
+	assert.NoError(t, err)
+	assert.Equal(t, createNode, tx2.Nodes().Get("id4"))
+	assert.NoError(t, tx2.Close())
 
 	// Update node
 	updateNode := &api.Node{
@@ -423,19 +505,22 @@ func TestStoreFork(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, s1.UpdateNode("id3", updateNode))
+	assert.NoError(t, tx1.Nodes().Update(updateNode))
 	assert.NoError(t, Apply(s2, <-watcher))
-	assert.Equal(t, updateNode, s2.Node("id3"))
-	assert.Len(t, s2.NodesByName("name2"), 1)
-	assert.Len(t, s2.NodesByName("name3"), 1)
+
+	tx2, err = s2.BeginRead()
+	assert.NoError(t, err)
+	assert.Equal(t, updateNode, tx2.Nodes().Get("id3"))
+	assert.NoError(t, tx2.Close())
 
 	// Delete node
-	assert.NotNil(t, s2.Node("id1"))
-	assert.NoError(t, s1.DeleteNode("id1"))
-
+	assert.NoError(t, tx1.Nodes().Delete("id1"))
 	assert.NoError(t, Apply(s2, <-watcher))
-	assert.Nil(t, s2.Node("id1"))
-	assert.Empty(t, s2.NodesByName("name1"))
+
+	tx2, err = s2.BeginRead()
+	assert.NoError(t, err)
+	assert.Nil(t, tx2.Nodes().Get("id1"))
+	assert.NoError(t, tx2.Close())
 
 	// Create job
 	createJob := &api.Job{
@@ -446,9 +531,13 @@ func TestStoreFork(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, s1.CreateJob("id4", createJob))
+	assert.NoError(t, tx1.Jobs().Create(createJob))
 	assert.NoError(t, Apply(s2, <-watcher))
-	assert.Equal(t, createJob, s2.Job("id4"))
+
+	tx2, err = s2.BeginRead()
+	assert.NoError(t, err)
+	assert.Equal(t, createJob, tx2.Jobs().Get("id4"))
+	assert.NoError(t, tx2.Close())
 
 	// Update job
 	updateJob := &api.Job{
@@ -459,20 +548,23 @@ func TestStoreFork(t *testing.T) {
 			},
 		},
 	}
-	assert.NotEqual(t, updateJob, s1.Job("id3"))
-	assert.NoError(t, s1.UpdateJob("id3", updateJob))
+	assert.NotEqual(t, updateJob, tx1.Jobs().Get("id3"))
+	assert.NoError(t, tx1.Jobs().Update(updateJob))
 	assert.NoError(t, Apply(s2, <-watcher))
-	assert.Equal(t, updateJob, s2.Job("id3"))
 
-	assert.Len(t, s2.JobsByName("name2"), 1)
-	assert.Len(t, s2.JobsByName("name3"), 1)
+	tx2, err = s2.BeginRead()
+	assert.NoError(t, err)
+	assert.Equal(t, updateJob, tx2.Jobs().Get("id3"))
+	assert.NoError(t, tx2.Close())
 
 	// Delete job
-	assert.NotNil(t, s1.Job("id1"))
-	assert.NoError(t, s1.DeleteJob("id1"))
+	assert.NoError(t, tx1.Jobs().Delete("id1"))
 	assert.NoError(t, Apply(s2, <-watcher))
-	assert.Nil(t, s2.Job("id1"))
-	assert.Empty(t, s2.JobsByName("name1"))
+
+	tx2, err = s2.BeginRead()
+	assert.NoError(t, err)
+	assert.Nil(t, tx1.Jobs().Get("id1"))
+	assert.NoError(t, tx2.Close())
 
 	// Create task
 	createTask := &api.Task{
@@ -483,9 +575,13 @@ func TestStoreFork(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, s1.CreateTask("id4", createTask))
+	assert.NoError(t, tx1.Tasks().Create(createTask))
 	assert.NoError(t, Apply(s2, <-watcher))
-	assert.Equal(t, createTask, s2.Task("id4"))
+
+	tx2, err = s2.BeginRead()
+	assert.NoError(t, err)
+	assert.Equal(t, createTask, tx2.Tasks().Get("id4"))
+	assert.NoError(t, tx2.Close())
 
 	// Update task
 	updateTask := &api.Task{
@@ -496,18 +592,22 @@ func TestStoreFork(t *testing.T) {
 			},
 		},
 	}
-	assert.NotEqual(t, updateTask, s1.Task("id3"))
-	assert.NoError(t, s1.UpdateTask("id3", updateTask))
+	assert.NoError(t, tx1.Tasks().Update(updateTask))
 	assert.NoError(t, Apply(s2, <-watcher))
-	assert.Equal(t, updateTask, s2.Task("id3"))
 
-	assert.Len(t, s2.TasksByName("name2"), 1)
-	assert.Len(t, s2.TasksByName("name3"), 1)
+	tx2, err = s2.BeginRead()
+	assert.NoError(t, err)
+	assert.Equal(t, updateTask, tx2.Tasks().Get("id3"))
+	assert.NoError(t, tx2.Close())
 
 	// Delete task
-	assert.NotNil(t, s1.Task("id1"))
-	assert.NoError(t, s1.DeleteTask("id1"))
+	assert.NoError(t, tx1.Tasks().Delete("id1"))
 	assert.NoError(t, Apply(s2, <-watcher))
-	assert.Nil(t, s2.Task("id1"))
-	assert.Empty(t, s2.TasksByName("name1"))
+
+	tx2, err = s2.BeginRead()
+	assert.NoError(t, err)
+	assert.Nil(t, tx2.Tasks().Get("id1"))
+	assert.NoError(t, tx2.Close())
+
+	assert.NoError(t, tx1.Close())
 }

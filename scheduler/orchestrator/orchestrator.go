@@ -10,7 +10,7 @@ import (
 // An Orchestrator runs a reconciliation loop to create and destroy
 // tasks as necessary for the running jobs.
 type Orchestrator struct {
-	store state.Store
+	store state.WatchableStore
 
 	// stopChan signals to the state machine to stop running.
 	stopChan chan struct{}
@@ -19,7 +19,7 @@ type Orchestrator struct {
 }
 
 // NewOrchestrator creates a new orchestrator.
-func NewOrchestrator(store state.Store) *Orchestrator {
+func NewOrchestrator(store state.WatchableStore) *Orchestrator {
 	return &Orchestrator{
 		store:    store,
 		stopChan: make(chan struct{}),
@@ -44,8 +44,19 @@ func (o *Orchestrator) Run() {
 			switch v := event.Payload.(type) {
 			case state.EventDeleteJob:
 				log.Debugf("Job %s was deleted", v.Job.ID)
-				for _, t := range o.store.TasksByJob(v.Job.ID) {
-					o.store.DeleteTask(t.ID)
+				tx, err := o.store.Begin()
+				if err != nil {
+					log.Errorf("Error starting transaction: %v", err)
+				} else {
+					tasks, err := tx.Tasks().Find(state.ByJobID(v.Job.ID))
+					if err != nil {
+						log.Errorf("Error finding tasks for job: %v", err)
+					} else {
+						for _, t := range tasks {
+							tx.Tasks().Delete(t.ID)
+						}
+					}
+					tx.Close()
 				}
 			case state.EventCreateJob:
 				o.balance(v.Job)
@@ -53,9 +64,15 @@ func (o *Orchestrator) Run() {
 				o.balance(v.Job)
 			case state.EventDeleteTask:
 				if v.Task.JobID != "" {
-					job := o.store.Job(v.Task.JobID)
-					if job != nil {
-						o.balance(job)
+					tx, err := o.store.BeginRead()
+					if err != nil {
+						log.Errorf("Error starting transaction: %v", err)
+					} else {
+						job := tx.Jobs().Get(v.Task.JobID)
+						tx.Close()
+						if job != nil {
+							o.balance(job)
+						}
 					}
 				}
 			}
@@ -72,7 +89,19 @@ func (o *Orchestrator) Stop() {
 }
 
 func (o *Orchestrator) balance(job *api.Job) {
-	tasks := o.store.TasksByJob(job.ID)
+	tx, err := o.store.Begin()
+	if err != nil {
+		log.Errorf("Error starting transaction: %v", err)
+		return
+	}
+	defer tx.Close()
+
+	tasks, err := tx.Tasks().Find(state.ByJobID(job.ID))
+	if err != nil {
+		log.Errorf("Error finding tasks for job: %v", err)
+		return
+	}
+
 	numTasks := int64(len(tasks))
 
 	serviceJob, ok := job.Spec.Orchestration.Job.(*api.JobSpec_Orchestration_Service)
@@ -101,16 +130,19 @@ func (o *Orchestrator) balance(job *api.Job) {
 			task.ID, err = identity.NewID()
 			if err != nil {
 				log.Error(err)
-			} else if err := o.store.CreateTask(task.ID, task); err != nil {
+			} else if err := tx.Tasks().Create(task); err != nil {
 				log.Error(err)
 			}
 		}
 	case specifiedInstances < numTasks:
 		// Scale down
+		// TODO(aaronl): Scaling down needs to involve the
+		// planner. The orchestrator should not be deleting
+		// tasks directly.
 		log.Debugf("Job %s was scaled down from %d to %d instances", job.ID, numTasks, specifiedInstances)
 		diff := numTasks - specifiedInstances
 		for i := int64(0); i < diff; i++ {
-			o.store.DeleteTask(tasks[i].ID)
+			tx.Tasks().Delete(tasks[i].ID)
 		}
 	}
 }
