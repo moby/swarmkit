@@ -44,7 +44,7 @@ func (m *RegisterResponse) Reset()      { *m = RegisterResponse{} }
 func (*RegisterResponse) ProtoMessage() {}
 
 type UpdateNodeStatusRequest struct {
-	NodeId string     `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	NodeID string     `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
 	Status NodeStatus `protobuf:"varint,2,opt,name=status,proto3,enum=api.NodeStatus" json:"status,omitempty"`
 }
 
@@ -174,7 +174,7 @@ func (this *UpdateNodeStatusRequest) GoString() string {
 	}
 	s := make([]string, 0, 6)
 	s = append(s, "&api.UpdateNodeStatusRequest{")
-	s = append(s, "NodeId: "+fmt.Sprintf("%#v", this.NodeId)+",\n")
+	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
 	s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -641,11 +641,11 @@ func (m *UpdateNodeStatusRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.NodeId) > 0 {
+	if len(m.NodeID) > 0 {
 		data[i] = 0xa
 		i++
-		i = encodeVarintAgent(data, i, uint64(len(m.NodeId)))
-		i += copy(data[i:], m.NodeId)
+		i = encodeVarintAgent(data, i, uint64(len(m.NodeID)))
+		i += copy(data[i:], m.NodeID)
 	}
 	if m.Status != 0 {
 		data[i] = 0x10
@@ -975,7 +975,7 @@ func (m *RegisterResponse) Size() (n int) {
 func (m *UpdateNodeStatusRequest) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.NodeId)
+	l = len(m.NodeID)
 	if l > 0 {
 		n += 1 + l + sovAgent(uint64(l))
 	}
@@ -1133,7 +1133,7 @@ func (this *UpdateNodeStatusRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&UpdateNodeStatusRequest{`,
-		`NodeId:` + fmt.Sprintf("%v", this.NodeId) + `,`,
+		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
 		`Status:` + fmt.Sprintf("%v", this.Status) + `,`,
 		`}`,
 	}, "")
@@ -1432,7 +1432,7 @@ func (m *UpdateNodeStatusRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NodeId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1457,7 +1457,7 @@ func (m *UpdateNodeStatusRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.NodeId = string(data[iNdEx:postIndex])
+			m.NodeID = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 0 {
