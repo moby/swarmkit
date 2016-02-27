@@ -1,0 +1,38 @@
+syntax = "proto3";
+package raft;
+
+import "github.com/coreos/etcd/raft/raftpb/raft.proto";
+
+service Raft {
+	rpc JoinRaft(NodeInfo) returns (JoinRaftResponse) {}
+	rpc LeaveRaft(NodeInfo) returns (LeaveRaftResponse) {}
+	rpc Send(raftpb.Message) returns (SendResponse) {}
+}
+
+message JoinRaftResponse {
+	bool success = 1;
+	string error = 2;
+	repeated NodeInfo nodes = 3;
+}
+
+message LeaveRaftResponse {
+	bool success = 1;
+	string error = 2;
+}
+
+message SendResponse {
+	bool success = 1;
+	string error = 2;
+}
+
+message NodeInfo {
+	uint64 ID = 1;
+	string Addr = 2;
+	string Port = 3;
+	string Error = 4;
+}
+
+message Pair {
+	string key = 1;
+	bytes value = 2;
+}
