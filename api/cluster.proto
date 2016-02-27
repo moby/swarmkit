@@ -46,7 +46,7 @@ message ListNodesResponse {
 // to request a new state for a node, such as DOWN. Invalid updates will be
 // denied and cause an error.
 message UpdateNodeRequest {
-	string node_id = 1;
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
 	NodeSpec spec = 2;
 }
 

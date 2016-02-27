@@ -56,16 +56,15 @@ func TestRegisterTwice(t *testing.T) {
 	gd, err := startDispatcher()
 	assert.Nil(t, err)
 	defer gd.Close()
-	testNode := &api.Node{
-		ID: "test",
-	}
+
+	testNode := &api.NodeSpec{ID: "test"}
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Node: testNode})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
 		assert.Nil(t, err)
 		assert.NotZero(t, resp.TTL)
 	}
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Node: testNode})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
 		assert.Nil(t, resp)
 		assert.NotNil(t, err)
 		assert.Equal(t, grpc.ErrorDesc(err), ErrNodeAlreadyRegistered.Error())
@@ -81,12 +80,10 @@ func TestHeartbeat(t *testing.T) {
 	gd, err := startDispatcher()
 	assert.Nil(t, err)
 	defer gd.Close()
-	testNode := &api.Node{
-		ID: "test",
-	}
 
+	testNode := &api.NodeSpec{ID: "test"}
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Node: testNode})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
 		assert.Nil(t, err)
 		assert.NotZero(t, resp.TTL)
 	}
@@ -99,7 +96,7 @@ func TestHeartbeat(t *testing.T) {
 
 	storeNode := gd.Store.Node("test")
 	assert.NotNil(t, storeNode)
-	assert.Equal(t, storeNode.Status, api.NodeStatus_READY)
+	assert.Equal(t, storeNode.Status.State, api.NodeStatus_READY)
 }
 
 func TestHeartbeatTimeout(t *testing.T) {
@@ -111,12 +108,10 @@ func TestHeartbeatTimeout(t *testing.T) {
 	gd, err := startDispatcher()
 	assert.Nil(t, err)
 	defer gd.Close()
-	testNode := &api.Node{
-		ID: "test",
-	}
 
+	testNode := &api.NodeSpec{ID: "test"}
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Node: testNode})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
 		assert.Nil(t, err)
 		assert.NotZero(t, resp.TTL)
 	}
@@ -124,7 +119,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 
 	storeNode := gd.Store.Node("test")
 	assert.NotNil(t, storeNode)
-	assert.Equal(t, api.NodeStatus_DOWN, storeNode.Status)
+	assert.Equal(t, api.NodeStatus_DOWN, storeNode.Status.State)
 
 	// check that node is deregistered
 	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID})
@@ -147,12 +142,9 @@ func TestTasks(t *testing.T) {
 	gd, err := startDispatcher()
 	assert.Nil(t, err)
 	defer gd.Close()
-	testNode := &api.Node{
-		ID: "test",
-	}
-
+	testNode := &api.NodeSpec{ID: "test"}
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Node: testNode})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
 		assert.Nil(t, err)
 		assert.NotZero(t, resp.TTL)
 	}
@@ -172,12 +164,10 @@ func TestTaskUpdate(t *testing.T) {
 	gd, err := startDispatcher()
 	assert.Nil(t, err)
 	defer gd.Close()
-	testNode := &api.Node{
-		ID: "test",
-	}
 
+	testNode := &api.NodeSpec{ID: "test"}
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Node: testNode})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
 		assert.Nil(t, err)
 		assert.NotZero(t, resp.TTL)
 	}

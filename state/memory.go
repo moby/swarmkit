@@ -99,7 +99,7 @@ func (s *MemoryStore) NodesByName(name string) []*api.Node {
 	//TODO(aluzzardi): This needs an index.
 	nodes := []*api.Node{}
 	for _, n := range s.nodes {
-		if n.Meta.Name == name {
+		if n.Spec.Meta.Name == name {
 			nodes = append(nodes, n)
 		}
 	}
@@ -179,7 +179,7 @@ func (s *MemoryStore) TasksByName(name string) []*api.Task {
 	//TODO(aluzzardi): This needs an index.
 	tasks := []*api.Task{}
 	for _, t := range s.tasks {
-		if t.Meta.Name == name {
+		if t.Spec.Meta.Name == name {
 			tasks = append(tasks, t)
 		}
 	}
@@ -289,7 +289,7 @@ func (s *MemoryStore) JobsByName(name string) []*api.Job {
 	//TODO(aluzzardi): This needs an index.
 	jobs := []*api.Job{}
 	for _, j := range s.jobs {
-		if j.Meta.Name == name {
+		if j.Spec.Meta.Name == name {
 			jobs = append(jobs, j)
 		}
 	}

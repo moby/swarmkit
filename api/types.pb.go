@@ -188,6 +188,9 @@ type NodeSpec struct {
 	// air. It really depends on the security model. Placed here, we are saying
 	// that a node is responsible for its own identity. If we decide that this
 	// is the masters responsibility, this goes elsewhere.
+	//
+	// In all liklihood, this field will be removed, in favor of the Node.ID
+	// field and node identity will be conferred through another channel.
 	ID   string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	Addr string `protobuf:"bytes,3,opt,name=addr,proto3" json:"addr,omitempty"`
 	// Status is the state of the node as seen by the creator the
@@ -201,10 +204,10 @@ func (m *NodeSpec) Reset()      { *m = NodeSpec{} }
 func (*NodeSpec) ProtoMessage() {}
 
 type Node struct {
-	Spec *NodeSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	Spec *NodeSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
 	// Status provides the current status of the node, as seen by the manager.
 	// This may differ from the state in the nodespec.
-	Status *NodeStatus `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
+	Status NodeStatus `protobuf:"bytes,3,opt,name=status" json:"status"`
 }
 
 func (m *Node) Reset()      { *m = Node{} }
@@ -771,9 +774,7 @@ func (this *Node) GoString() string {
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
-	if this.Status != nil {
-		s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
-	}
+	s = append(s, "Status: "+strings.Replace(this.Status.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1226,7 +1227,7 @@ func (m *Node) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if m.Spec != nil {
-		data[i] = 0xa
+		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
 		n3, err := m.Spec.MarshalTo(data[i:])
@@ -1235,16 +1236,14 @@ func (m *Node) MarshalTo(data []byte) (int, error) {
 		}
 		i += n3
 	}
-	if m.Status != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Status.Size()))
-		n4, err := m.Status.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n4
+	data[i] = 0x1a
+	i++
+	i = encodeVarintTypes(data, i, uint64(m.Status.Size()))
+	n4, err := m.Status.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
+	i += n4
 	return i, nil
 }
 
@@ -2060,10 +2059,8 @@ func (m *Node) Size() (n int) {
 		l = m.Spec.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
-	if m.Status != nil {
-		l = m.Status.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
+	l = m.Status.Size()
+	n += 1 + l + sovTypes(uint64(l))
 	return n
 }
 
@@ -2447,7 +2444,7 @@ func (this *Node) String() string {
 	}
 	s := strings.Join([]string{`&Node{`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NodeSpec", "NodeSpec", 1) + `,`,
-		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "NodeStatus", "NodeStatus", 1) + `,`,
+		`Status:` + strings.Replace(strings.Replace(this.Status.String(), "NodeStatus", "NodeStatus", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3144,7 +3141,7 @@ func (m *Node) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: Node: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 1:
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
 			}
@@ -3177,7 +3174,7 @@ func (m *Node) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
 			}
@@ -3202,9 +3199,6 @@ func (m *Node) Unmarshal(data []byte) error {
 			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
-			}
-			if m.Status == nil {
-				m.Status = &NodeStatus{}
 			}
 			if err := m.Status.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err

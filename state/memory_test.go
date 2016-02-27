@@ -10,21 +10,27 @@ import (
 func TestStoreNode(t *testing.T) {
 	nodeSet := []*api.Node{
 		{
-			ID: "id1",
-			Meta: &api.Meta{
-				Name: "name1",
+			Spec: &api.NodeSpec{
+				ID: "id1",
+				Meta: &api.Meta{
+					Name: "name1",
+				},
 			},
 		},
 		{
-			ID: "id2",
-			Meta: &api.Meta{
-				Name: "name2",
+			Spec: &api.NodeSpec{
+				ID: "id2",
+				Meta: &api.Meta{
+					Name: "name2",
+				},
 			},
 		},
 		{
-			ID: "id3",
-			Meta: &api.Meta{
-				Name: "name2",
+			Spec: &api.NodeSpec{
+				ID: "id3",
+				Meta: &api.Meta{
+					Name: "name2",
+				},
 			},
 		},
 	}
@@ -34,11 +40,11 @@ func TestStoreNode(t *testing.T) {
 
 	assert.Empty(t, s.Nodes())
 	for _, n := range nodeSet {
-		assert.NoError(t, s.CreateNode(n.ID, n))
+		assert.NoError(t, s.CreateNode(n.Spec.ID, n))
 	}
 	assert.Len(t, s.Nodes(), len(nodeSet))
 
-	assert.Error(t, s.CreateNode(nodeSet[0].ID, nodeSet[0]), "duplicate IDs must be rejected")
+	assert.Error(t, s.CreateNode(nodeSet[0].Spec.ID, nodeSet[0]), "duplicate IDs must be rejected")
 
 	assert.Equal(t, nodeSet[0], s.Node("id1"))
 	assert.Equal(t, nodeSet[1], s.Node("id2"))
@@ -50,9 +56,11 @@ func TestStoreNode(t *testing.T) {
 
 	// Update.
 	update := &api.Node{
-		ID: "id3",
-		Meta: &api.Meta{
-			Name: "name3",
+		Spec: &api.NodeSpec{
+			ID: "id3",
+			Meta: &api.Meta{
+				Name: "name3",
+			},
 		},
 	}
 	assert.NotEqual(t, update, s.Node("id3"))
@@ -75,20 +83,27 @@ func TestStoreJob(t *testing.T) {
 	jobSet := []*api.Job{
 		{
 			ID: "id1",
-			Meta: &api.Meta{
-				Name: "name1",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					Name: "name1",
+				},
 			},
 		},
 		{
 			ID: "id2",
-			Meta: &api.Meta{
-				Name: "name2",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					Name: "name2",
+				},
 			},
 		},
 		{
 			ID: "id3",
-			Meta: &api.Meta{
-				Name: "name2",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					// intentionally conflicting name
+					Name: "name2",
+				},
 			},
 		},
 	}
@@ -115,8 +130,11 @@ func TestStoreJob(t *testing.T) {
 	// Update.
 	update := &api.Job{
 		ID: "id3",
-		Meta: &api.Meta{
-			Name: "name3",
+		Spec: &api.JobSpec{
+			Meta: &api.Meta{
+				// intentionally conflicting name
+				Name: "name3",
+			},
 		},
 	}
 	assert.NotEqual(t, update, s.Job("id3"))
@@ -137,36 +155,46 @@ func TestStoreJob(t *testing.T) {
 
 func TestStoreTask(t *testing.T) {
 	node := &api.Node{
-		ID: "node1",
-		Meta: &api.Meta{
-			Name: "node-name1",
+		Spec: &api.NodeSpec{
+			ID: "node1",
+			Meta: &api.Meta{
+				Name: "node-name1",
+			},
 		},
 	}
 	job := &api.Job{
 		ID: "job1",
-		Meta: &api.Meta{
-			Name: "job-name1",
+		Spec: &api.JobSpec{
+			Meta: &api.Meta{
+				Name: "job-name1",
+			},
 		},
 	}
 	taskSet := []*api.Task{
 		{
 			ID: "id1",
-			Meta: &api.Meta{
-				Name: "name1",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					Name: "name1",
+				},
 			},
-			NodeID: node.ID,
+			NodeID: node.Spec.ID,
 		},
 		{
 			ID: "id2",
-			Meta: &api.Meta{
-				Name: "name2",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					Name: "name2",
+				},
 			},
 			JobID: job.ID,
 		},
 		{
 			ID: "id3",
-			Meta: &api.Meta{
-				Name: "name2",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					Name: "name2",
+				},
 			},
 		},
 	}
@@ -174,7 +202,7 @@ func TestStoreTask(t *testing.T) {
 	s := NewMemoryStore()
 	assert.NotNil(t, s)
 
-	assert.NoError(t, s.CreateNode(node.ID, node))
+	assert.NoError(t, s.CreateNode(node.Spec.ID, node))
 	assert.NoError(t, s.CreateJob(job.ID, job))
 	assert.Empty(t, s.Tasks())
 	for _, task := range taskSet {
@@ -192,8 +220,8 @@ func TestStoreTask(t *testing.T) {
 	assert.Len(t, s.TasksByName("name2"), 2)
 	assert.Len(t, s.TasksByName("invalid"), 0)
 
-	assert.Len(t, s.TasksByNode(node.ID), 1)
-	assert.Equal(t, s.TasksByNode(node.ID)[0], taskSet[0])
+	assert.Len(t, s.TasksByNode(node.Spec.ID), 1)
+	assert.Equal(t, s.TasksByNode(node.Spec.ID)[0], taskSet[0])
 	assert.Len(t, s.TasksByNode("invalid"), 0)
 
 	assert.Len(t, s.TasksByJob(job.ID), 1)
@@ -203,8 +231,14 @@ func TestStoreTask(t *testing.T) {
 	// Update.
 	update := &api.Task{
 		ID: "id3",
-		Meta: &api.Meta{
-			Name: "name3",
+
+		// NOTE(stevvooe): It doesn't entirely make sense to updating task to
+		// have a different name on the job spec. We are mostly doing this to
+		// test that the store works.
+		Spec: &api.JobSpec{
+			Meta: &api.Meta{
+				Name: "name3",
+			},
 		},
 	}
 	assert.NotEqual(t, update, s.Task("id3"))

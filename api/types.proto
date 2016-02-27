@@ -22,7 +22,11 @@ message NodeSpec {
 	// air. It really depends on the security model. Placed here, we are saying
 	// that a node is responsible for its own identity. If we decide that this
 	// is the masters responsibility, this goes elsewhere.
+	//
+	// In all liklihood, this field will be removed, in favor of the Node.ID
+	// field and node identity will be conferred through another channel.
 	string id = 2 [(gogoproto.customname) = "ID"];
+
 	string addr = 3;
 
 	// Status is the state of the node as seen by the creator the
@@ -36,11 +40,15 @@ message NodeSpec {
 }
 
 message Node {
-	NodeSpec spec = 1;
+	// ID specifies the identity of the node.
+	// TODO(stevvooe): Please see the comment on NodeSpec. Leaving this out for now.
+	// string id = 1 [(gogoproto.customname) = "ID"];
+
+	NodeSpec spec = 2;
 
 	// Status provides the current status of the node, as seen by the manager.
 	// This may differ from the state in the nodespec.
-	NodeStatus status = 2;
+	NodeStatus status = 3 [(gogoproto.nullable) = false];
 }
 
 message NodeStatus {
