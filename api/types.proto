@@ -16,8 +16,8 @@ message Meta {
 
 message Node {
 	Meta meta = 1;
-	string id = 2;
-	string ip = 3;
+	string id = 2 [(gogoproto.customname) = "ID"];
+	string ip = 3 [(gogoproto.customname) = "IP"];
 
 	NodeStatus status = 4;
 
@@ -102,7 +102,7 @@ message JobSpec {
 	message NetworkAttachment {
 		oneof reference {
 			string name = 1;
-			string network_id = 2;
+			string network_id = 2 [(gogoproto.customname) = "NetworkID"];
 		}
 	}
 
@@ -136,15 +136,16 @@ message TaskStatus {
 // immutable and idempotent. Once it is dispatched to a node, it will not be
 // dispatched to another node.
 message Task {
-	string id = 1;
+	string id = 1 [(gogoproto.customname) = "ID"];
 	Meta meta = 2;
-	string job_id = 3;
+	string job_id = 3 [(gogoproto.customname) = "JobID"];
 
 	// TODO(stevvooe): Consider bringing back assignment, rather than using a
 	// node id field. We like having this concept be first-class. It helps to
 	// reason about storage and consistency.
 
-	string node_id = 4; // if not set, the task is unassigned.
+	// if not set, the task is unassigned.
+	string node_id = 4 [(gogoproto.customname) = "NodeID"];
 
 	// NOTE(stevvooe): Spec, status or both may be set, depending on the role
 	// of this message.
@@ -157,7 +158,7 @@ message Task {
 }
 
 message Job {
-	string id = 1;
+	string id = 1 [(gogoproto.customname) = "ID"];
 	Meta meta = 2;
 	JobSpec spec = 3;
 }
@@ -219,7 +220,7 @@ message NetworkSpec {
 }
 
 message Network {
-	string id = 1;
+	string id = 1 [(gogoproto.customname) = "ID"];
 	NetworkSpec spec = 2;
 }
 
