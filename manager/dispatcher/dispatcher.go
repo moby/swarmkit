@@ -51,7 +51,7 @@ func New(store state.Store) *Dispatcher {
 // Register is used for registration of node with particular dispatcher.
 func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
 	d.mu.Lock()
-	_, ok := d.nodes[r.Node.Id]
+	_, ok := d.nodes[r.Node.ID]
 	d.mu.Unlock()
 	if ok {
 		return nil, grpc.Errorf(codes.AlreadyExists, ErrNodeAlreadyRegistered.Error())
@@ -59,21 +59,21 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	n := r.Node
 	n.Status = api.NodeStatus_READY
 	// create or update node in raft
-	err := d.store.CreateNode(n.Id, n)
+	err := d.store.CreateNode(n.ID, n)
 	if err != nil {
 		if err != state.ErrExist {
 			return nil, err
 		}
-		if err := d.store.UpdateNode(n.Id, n); err != nil {
+		if err := d.store.UpdateNode(n.ID, n); err != nil {
 			return nil, err
 		}
 	}
 	ttl := d.electTTL()
 	d.mu.Lock()
-	d.nodes[n.Id] = &registeredNode{
+	d.nodes[n.ID] = &registeredNode{
 		Heartbeat: heartbeat.New(ttl, func() {
-			if err := d.nodeDown(n.Id); err != nil {
-				logrus.Errorf("error deregistering node %s after heartbeat was not received: %v", n.Id, err)
+			if err := d.nodeDown(n.ID); err != nil {
+				logrus.Errorf("error deregistering node %s after heartbeat was not received: %v", n.ID, err)
 			}
 		}),
 		Node: n,
@@ -98,7 +98,7 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 		return nil, grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
 	}
 	for _, t := range r.Tasks {
-		if err := d.store.UpdateTask(t.Id, &api.Task{Status: t.Status}); err != nil {
+		if err := d.store.UpdateTask(t.ID, &api.Task{Status: t.Status}); err != nil {
 			return nil, err
 		}
 	}
@@ -127,7 +127,7 @@ func (d *Dispatcher) nodeDown(id string) error {
 	d.mu.Lock()
 	delete(d.nodes, id)
 	d.mu.Unlock()
-	if err := d.store.UpdateNode(id, &api.Node{Id: id, Status: api.NodeStatus_DOWN}); err != nil {
+	if err := d.store.UpdateNode(id, &api.Node{ID: id, Status: api.NodeStatus_DOWN}); err != nil {
 		return fmt.Errorf("failed to update node %s status to down", id)
 	}
 	return nil

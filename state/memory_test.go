@@ -10,19 +10,19 @@ import (
 func TestStoreNode(t *testing.T) {
 	nodeSet := []*api.Node{
 		{
-			Id: "id1",
+			ID: "id1",
 			Meta: &api.Meta{
 				Name: "name1",
 			},
 		},
 		{
-			Id: "id2",
+			ID: "id2",
 			Meta: &api.Meta{
 				Name: "name2",
 			},
 		},
 		{
-			Id: "id3",
+			ID: "id3",
 			Meta: &api.Meta{
 				Name: "name2",
 			},
@@ -34,11 +34,11 @@ func TestStoreNode(t *testing.T) {
 
 	assert.Empty(t, s.Nodes())
 	for _, n := range nodeSet {
-		assert.NoError(t, s.CreateNode(n.Id, n))
+		assert.NoError(t, s.CreateNode(n.ID, n))
 	}
 	assert.Len(t, s.Nodes(), len(nodeSet))
 
-	assert.Error(t, s.CreateNode(nodeSet[0].Id, nodeSet[0]), "duplicate IDs must be rejected")
+	assert.Error(t, s.CreateNode(nodeSet[0].ID, nodeSet[0]), "duplicate IDs must be rejected")
 
 	assert.Equal(t, nodeSet[0], s.Node("id1"))
 	assert.Equal(t, nodeSet[1], s.Node("id2"))
@@ -50,7 +50,7 @@ func TestStoreNode(t *testing.T) {
 
 	// Update.
 	update := &api.Node{
-		Id: "id3",
+		ID: "id3",
 		Meta: &api.Meta{
 			Name: "name3",
 		},
@@ -74,19 +74,19 @@ func TestStoreNode(t *testing.T) {
 func TestStoreJob(t *testing.T) {
 	jobSet := []*api.Job{
 		{
-			Id: "id1",
+			ID: "id1",
 			Meta: &api.Meta{
 				Name: "name1",
 			},
 		},
 		{
-			Id: "id2",
+			ID: "id2",
 			Meta: &api.Meta{
 				Name: "name2",
 			},
 		},
 		{
-			Id: "id3",
+			ID: "id3",
 			Meta: &api.Meta{
 				Name: "name2",
 			},
@@ -98,11 +98,11 @@ func TestStoreJob(t *testing.T) {
 
 	assert.Empty(t, s.Jobs())
 	for _, j := range jobSet {
-		assert.NoError(t, s.CreateJob(j.Id, j))
+		assert.NoError(t, s.CreateJob(j.ID, j))
 	}
 	assert.Len(t, s.Jobs(), len(jobSet))
 
-	assert.Error(t, s.CreateJob(jobSet[0].Id, jobSet[0]), "duplicate IDs must be rejected")
+	assert.Error(t, s.CreateJob(jobSet[0].ID, jobSet[0]), "duplicate IDs must be rejected")
 
 	assert.Equal(t, jobSet[0], s.Job("id1"))
 	assert.Equal(t, jobSet[1], s.Job("id2"))
@@ -114,7 +114,7 @@ func TestStoreJob(t *testing.T) {
 
 	// Update.
 	update := &api.Job{
-		Id: "id3",
+		ID: "id3",
 		Meta: &api.Meta{
 			Name: "name3",
 		},
@@ -137,34 +137,34 @@ func TestStoreJob(t *testing.T) {
 
 func TestStoreTask(t *testing.T) {
 	node := &api.Node{
-		Id: "node1",
+		ID: "node1",
 		Meta: &api.Meta{
 			Name: "node-name1",
 		},
 	}
 	job := &api.Job{
-		Id: "job1",
+		ID: "job1",
 		Meta: &api.Meta{
 			Name: "job-name1",
 		},
 	}
 	taskSet := []*api.Task{
 		{
-			Id: "id1",
+			ID: "id1",
 			Meta: &api.Meta{
 				Name: "name1",
 			},
-			NodeId: node.Id,
+			NodeID: node.ID,
 		},
 		{
-			Id: "id2",
+			ID: "id2",
 			Meta: &api.Meta{
 				Name: "name2",
 			},
-			JobId: job.Id,
+			JobID: job.ID,
 		},
 		{
-			Id: "id3",
+			ID: "id3",
 			Meta: &api.Meta{
 				Name: "name2",
 			},
@@ -174,15 +174,15 @@ func TestStoreTask(t *testing.T) {
 	s := NewMemoryStore()
 	assert.NotNil(t, s)
 
-	assert.NoError(t, s.CreateNode(node.Id, node))
-	assert.NoError(t, s.CreateJob(job.Id, job))
+	assert.NoError(t, s.CreateNode(node.ID, node))
+	assert.NoError(t, s.CreateJob(job.ID, job))
 	assert.Empty(t, s.Tasks())
 	for _, task := range taskSet {
-		assert.NoError(t, s.CreateTask(task.Id, task))
+		assert.NoError(t, s.CreateTask(task.ID, task))
 	}
 	assert.Len(t, s.Tasks(), len(taskSet))
 
-	assert.Error(t, s.CreateTask(taskSet[0].Id, taskSet[0]), "duplicate IDs must be rejected")
+	assert.Error(t, s.CreateTask(taskSet[0].ID, taskSet[0]), "duplicate IDs must be rejected")
 
 	assert.Equal(t, taskSet[0], s.Task("id1"))
 	assert.Equal(t, taskSet[1], s.Task("id2"))
@@ -192,17 +192,17 @@ func TestStoreTask(t *testing.T) {
 	assert.Len(t, s.TasksByName("name2"), 2)
 	assert.Len(t, s.TasksByName("invalid"), 0)
 
-	assert.Len(t, s.TasksByNode(node.Id), 1)
-	assert.Equal(t, s.TasksByNode(node.Id)[0], taskSet[0])
+	assert.Len(t, s.TasksByNode(node.ID), 1)
+	assert.Equal(t, s.TasksByNode(node.ID)[0], taskSet[0])
 	assert.Len(t, s.TasksByNode("invalid"), 0)
 
-	assert.Len(t, s.TasksByJob(job.Id), 1)
-	assert.Equal(t, s.TasksByJob(job.Id)[0], taskSet[1])
+	assert.Len(t, s.TasksByJob(job.ID), 1)
+	assert.Equal(t, s.TasksByJob(job.ID)[0], taskSet[1])
 	assert.Len(t, s.TasksByJob("invalid"), 0)
 
 	// Update.
 	update := &api.Task{
-		Id: "id3",
+		ID: "id3",
 		Meta: &api.Meta{
 			Name: "name3",
 		},

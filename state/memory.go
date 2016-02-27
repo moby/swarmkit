@@ -194,7 +194,7 @@ func (s *MemoryStore) TasksByJob(jobID string) []*api.Task {
 	//TODO(aluzzardi): This needs an index.
 	tasks := []*api.Task{}
 	for _, t := range s.tasks {
-		if t.JobId == jobID {
+		if t.JobID == jobID {
 			tasks = append(tasks, t)
 		}
 	}
@@ -209,7 +209,7 @@ func (s *MemoryStore) TasksByNode(nodeID string) []*api.Task {
 	//TODO(aluzzardi): This needs an index.
 	tasks := []*api.Task{}
 	for _, t := range s.tasks {
-		if t.NodeId == nodeID {
+		if t.NodeID == nodeID {
 			tasks = append(tasks, t)
 		}
 	}
