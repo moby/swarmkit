@@ -61,7 +61,8 @@ func (*UpdateNodeStatusResponse) ProtoMessage() {}
 type UpdateTaskStatusRequest struct {
 	// Tasks should contain all statuses for running tasks. Only the status
 	// field must be set. The spec is not required.
-	Tasks []*Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
+	NodeID string  `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	Tasks  []*Task `protobuf:"bytes,2,rep,name=tasks" json:"tasks,omitempty"`
 }
 
 func (m *UpdateTaskStatusRequest) Reset()      { *m = UpdateTaskStatusRequest{} }
@@ -192,8 +193,9 @@ func (this *UpdateTaskStatusRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 5)
+	s := make([]string, 0, 6)
 	s = append(s, "&api.UpdateTaskStatusRequest{")
+	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
 	if this.Tasks != nil {
 		s = append(s, "Tasks: "+fmt.Sprintf("%#v", this.Tasks)+",\n")
 	}
@@ -691,9 +693,15 @@ func (m *UpdateTaskStatusRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.NodeID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintAgent(data, i, uint64(len(m.NodeID)))
+		i += copy(data[i:], m.NodeID)
+	}
 	if len(m.Tasks) > 0 {
 		for _, msg := range m.Tasks {
-			data[i] = 0xa
+			data[i] = 0x12
 			i++
 			i = encodeVarintAgent(data, i, uint64(msg.Size()))
 			n, err := msg.MarshalTo(data[i:])
@@ -989,6 +997,10 @@ func (m *UpdateNodeStatusResponse) Size() (n int) {
 func (m *UpdateTaskStatusRequest) Size() (n int) {
 	var l int
 	_ = l
+	l = len(m.NodeID)
+	if l > 0 {
+		n += 1 + l + sovAgent(uint64(l))
+	}
 	if len(m.Tasks) > 0 {
 		for _, e := range m.Tasks {
 			l = e.Size()
@@ -1142,6 +1154,7 @@ func (this *UpdateTaskStatusRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&UpdateTaskStatusRequest{`,
+		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
 		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "Task", 1) + `,`,
 		`}`,
 	}, "")
@@ -1585,6 +1598,35 @@ func (m *UpdateTaskStatusRequest) Unmarshal(data []byte) error {
 		}
 		switch fieldNum {
 		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAgent
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAgent
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NodeID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Tasks", wireType)
 			}
