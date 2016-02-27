@@ -24,4 +24,5 @@ var (
 
 func init() {
 	mainCmd.AddCommand(version.Cmd)
+	mainCmd.AddCommand(managerCmd)
 }
