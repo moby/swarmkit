@@ -116,8 +116,11 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Agent_TasksServer) er
 		return grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
 	}
 	for {
-		if err := stream.Send(&api.TasksResponse{Tasks: d.store.TasksByNode(r.NodeID)}); err != nil {
-			return err
+		tasks := d.store.TasksByNode(r.NodeID)
+		if len(tasks) != 0 {
+			if err := stream.Send(&api.TasksResponse{Tasks: d.store.TasksByNode(r.NodeID)}); err != nil {
+				return err
+			}
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
