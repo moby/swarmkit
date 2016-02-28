@@ -4,6 +4,7 @@ import (
 	"net"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/manager/clusterapi"
 	"github.com/docker/swarm-v2/manager/dispatcher"
 	"github.com/docker/swarm-v2/state"
 	"google.golang.org/grpc"
@@ -23,6 +24,7 @@ type Config struct {
 type Manager struct {
 	config *Config
 
+	apiserver  *clusterapi.Server
 	dispatcher *dispatcher.Dispatcher
 	server     *grpc.Server
 }
@@ -31,10 +33,12 @@ type Manager struct {
 func New(config *Config) *Manager {
 	m := &Manager{
 		config:     config,
+		apiserver:  clusterapi.NewServer(config.Store),
 		dispatcher: dispatcher.New(config.Store, dispatcher.DefaultConfig()),
+		server:     grpc.NewServer(),
 	}
 
-	m.server = grpc.NewServer()
+	api.RegisterClusterServer(m.server, m.apiserver)
 	api.RegisterAgentServer(m.server, m.dispatcher)
 
 	return m
