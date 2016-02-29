@@ -15,6 +15,7 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 // 	- "Control", since this controls a swarm cluster
 // 	- "User" because it is user facing.
 service Cluster {
+	rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse) {}
 	rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {}
 
 	rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse) {}
@@ -39,6 +40,18 @@ message ListNodesRequest {
 
 message ListNodesResponse {
 	repeated Node nodes = 1;
+}
+
+// UpdateNodeRequest requests an update to the specified node. This may be used
+// to request a new state for a node, such as DOWN. Invalid updates will be
+// denied and cause an error.
+message UpdateNodeRequest {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+	NodeSpec spec = 2;
+}
+
+message UpdateNodeResponse {
+	Node node = 1;
 }
 
 message CreateTaskRequest {

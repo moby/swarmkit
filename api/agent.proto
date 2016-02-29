@@ -34,7 +34,7 @@ service Agent { // maybe dispatch, al likes this
 }
 
 message RegisterRequest {
-	Node node = 1;
+	NodeSpec spec = 1;
 }
 
 message RegisterResponse {
@@ -47,7 +47,8 @@ message UpdateNodeStatusRequest {
 }
 
 message UpdateNodeStatusResponse {
-	uint64 heartbeat_ttl = 1 [(gogoproto.customname) = "HeartbeatTTL"];
+	Node node = 1;
+	uint64 ttl = 2 [(gogoproto.customname) = "TTL", (gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
 }
 
 message UpdateTaskStatusRequest {

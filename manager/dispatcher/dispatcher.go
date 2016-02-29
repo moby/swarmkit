@@ -51,41 +51,40 @@ func New(store state.Store) *Dispatcher {
 // Register is used for registration of node with particular dispatcher.
 func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
 	d.mu.Lock()
-	_, ok := d.nodes[r.Node.ID]
+	_, ok := d.nodes[r.Spec.ID]
 	d.mu.Unlock()
 	if ok {
 		return nil, grpc.Errorf(codes.AlreadyExists, ErrNodeAlreadyRegistered.Error())
 	}
-	n := r.Node
-	n.Status = api.NodeStatus_READY
+
+	n := &api.Node{
+		Spec: r.Spec,
+	}
+
+	n.Status.State = api.NodeStatus_READY
 	// create or update node in raft
-	err := d.store.CreateNode(n.ID, n)
+	err := d.store.CreateNode(n.Spec.ID, n)
 	if err != nil {
 		if err != state.ErrExist {
 			return nil, err
 		}
-		if err := d.store.UpdateNode(n.ID, n); err != nil {
+		if err := d.store.UpdateNode(n.Spec.ID, n); err != nil {
 			return nil, err
 		}
 	}
 	ttl := d.electTTL()
 	d.mu.Lock()
-	d.nodes[n.ID] = &registeredNode{
+
+	d.nodes[n.Spec.ID] = &registeredNode{
 		Heartbeat: heartbeat.New(ttl, func() {
-			if err := d.nodeDown(n.ID); err != nil {
-				logrus.Errorf("error deregistering node %s after heartbeat was not received: %v", n.ID, err)
+			if err := d.nodeDown(n.Spec.ID); err != nil {
+				logrus.Errorf("error deregistering node %s after heartbeat was not received: %v", n.Spec.ID, err)
 			}
 		}),
 		Node: n,
 	}
 	d.mu.Unlock()
 	return &api.RegisterResponse{TTL: ttl}, nil
-}
-
-// UpdateNodeStatus updates status of particular node. Nodes can use it
-// for notifying about graceful shutdowns for example.
-func (d *Dispatcher) UpdateNodeStatus(context.Context, *api.UpdateNodeStatusRequest) (*api.UpdateNodeStatusResponse, error) {
-	return nil, nil
 }
 
 // UpdateTaskStatus updates status of task. Node should send such updates
@@ -130,7 +129,13 @@ func (d *Dispatcher) nodeDown(id string) error {
 	d.mu.Lock()
 	delete(d.nodes, id)
 	d.mu.Unlock()
-	if err := d.store.UpdateNode(id, &api.Node{ID: id, Status: api.NodeStatus_DOWN}); err != nil {
+
+	update := &api.Node{
+		Spec: &api.NodeSpec{ID: id},
+	}
+	update.Status.State = api.NodeStatus_DOWN
+
+	if err := d.store.UpdateNode(id, update); err != nil {
 		return fmt.Errorf("failed to update node %s status to down", id)
 	}
 	return nil

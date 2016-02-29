@@ -40,6 +40,24 @@ type ListNodesResponse struct {
 func (m *ListNodesResponse) Reset()      { *m = ListNodesResponse{} }
 func (*ListNodesResponse) ProtoMessage() {}
 
+// UpdateNodeRequest requests an update to the specified node. This may be used
+// to request a new state for a node, such as DOWN. Invalid updates will be
+// denied and cause an error.
+type UpdateNodeRequest struct {
+	NodeID string    `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	Spec   *NodeSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
+}
+
+func (m *UpdateNodeRequest) Reset()      { *m = UpdateNodeRequest{} }
+func (*UpdateNodeRequest) ProtoMessage() {}
+
+type UpdateNodeResponse struct {
+	Node *Node `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
+}
+
+func (m *UpdateNodeResponse) Reset()      { *m = UpdateNodeResponse{} }
+func (*UpdateNodeResponse) ProtoMessage() {}
+
 type CreateTaskRequest struct {
 	Spec *JobSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
@@ -221,6 +239,8 @@ func (*ListNetworksResponse) ProtoMessage() {}
 func init() {
 	proto.RegisterType((*ListNodesRequest)(nil), "api.ListNodesRequest")
 	proto.RegisterType((*ListNodesResponse)(nil), "api.ListNodesResponse")
+	proto.RegisterType((*UpdateNodeRequest)(nil), "api.UpdateNodeRequest")
+	proto.RegisterType((*UpdateNodeResponse)(nil), "api.UpdateNodeResponse")
 	proto.RegisterType((*CreateTaskRequest)(nil), "api.CreateTaskRequest")
 	proto.RegisterType((*CreateTaskResponse)(nil), "api.CreateTaskResponse")
 	proto.RegisterType((*GetTaskRequest)(nil), "api.GetTaskRequest")
@@ -265,6 +285,31 @@ func (this *ListNodesResponse) GoString() string {
 	s = append(s, "&api.ListNodesResponse{")
 	if this.Nodes != nil {
 		s = append(s, "Nodes: "+fmt.Sprintf("%#v", this.Nodes)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *UpdateNodeRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.UpdateNodeRequest{")
+	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
+	if this.Spec != nil {
+		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *UpdateNodeResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.UpdateNodeResponse{")
+	if this.Node != nil {
+		s = append(s, "Node: "+fmt.Sprintf("%#v", this.Node)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -584,6 +629,7 @@ var _ grpc.ClientConn
 // Client API for Cluster service
 
 type ClusterClient interface {
+	UpdateNode(ctx context.Context, in *UpdateNodeRequest, opts ...grpc.CallOption) (*UpdateNodeResponse, error)
 	ListNodes(ctx context.Context, in *ListNodesRequest, opts ...grpc.CallOption) (*ListNodesResponse, error)
 	CreateTask(ctx context.Context, in *CreateTaskRequest, opts ...grpc.CallOption) (*CreateTaskResponse, error)
 	GetTask(ctx context.Context, in *GetTaskRequest, opts ...grpc.CallOption) (*GetTaskResponse, error)
@@ -606,6 +652,15 @@ type clusterClient struct {
 
 func NewClusterClient(cc *grpc.ClientConn) ClusterClient {
 	return &clusterClient{cc}
+}
+
+func (c *clusterClient) UpdateNode(ctx context.Context, in *UpdateNodeRequest, opts ...grpc.CallOption) (*UpdateNodeResponse, error) {
+	out := new(UpdateNodeResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/UpdateNode", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *clusterClient) ListNodes(ctx context.Context, in *ListNodesRequest, opts ...grpc.CallOption) (*ListNodesResponse, error) {
@@ -737,6 +792,7 @@ func (c *clusterClient) ListNetworks(ctx context.Context, in *ListNetworksReques
 // Server API for Cluster service
 
 type ClusterServer interface {
+	UpdateNode(context.Context, *UpdateNodeRequest) (*UpdateNodeResponse, error)
 	ListNodes(context.Context, *ListNodesRequest) (*ListNodesResponse, error)
 	CreateTask(context.Context, *CreateTaskRequest) (*CreateTaskResponse, error)
 	GetTask(context.Context, *GetTaskRequest) (*GetTaskResponse, error)
@@ -755,6 +811,18 @@ type ClusterServer interface {
 
 func RegisterClusterServer(s *grpc.Server, srv ClusterServer) {
 	s.RegisterService(&_Cluster_serviceDesc, srv)
+}
+
+func _Cluster_UpdateNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(UpdateNodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(ClusterServer).UpdateNode(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func _Cluster_ListNodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
@@ -930,6 +998,10 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*ClusterServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "UpdateNode",
+			Handler:    _Cluster_UpdateNode_Handler,
+		},
+		{
 			MethodName: "ListNodes",
 			Handler:    _Cluster_ListNodes_Handler,
 		},
@@ -1037,6 +1109,68 @@ func (m *ListNodesResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *UpdateNodeRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *UpdateNodeRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.NodeID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintCluster(data, i, uint64(len(m.NodeID)))
+		i += copy(data[i:], m.NodeID)
+	}
+	if m.Spec != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintCluster(data, i, uint64(m.Spec.Size()))
+		n1, err := m.Spec.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	return i, nil
+}
+
+func (m *UpdateNodeResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *UpdateNodeResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Node != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintCluster(data, i, uint64(m.Node.Size()))
+		n2, err := m.Node.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
+	}
+	return i, nil
+}
+
 func (m *CreateTaskRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -1056,11 +1190,11 @@ func (m *CreateTaskRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Spec.Size()))
-		n1, err := m.Spec.MarshalTo(data[i:])
+		n3, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n1
+		i += n3
 	}
 	return i, nil
 }
@@ -1084,11 +1218,11 @@ func (m *CreateTaskResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Task.Size()))
-		n2, err := m.Task.MarshalTo(data[i:])
+		n4, err := m.Task.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n2
+		i += n4
 	}
 	return i, nil
 }
@@ -1136,11 +1270,11 @@ func (m *GetTaskResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Task.Size()))
-		n3, err := m.Task.MarshalTo(data[i:])
+		n5, err := m.Task.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n3
+		i += n5
 	}
 	return i, nil
 }
@@ -1254,11 +1388,11 @@ func (m *CreateJobRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Spec.Size()))
-		n4, err := m.Spec.MarshalTo(data[i:])
+		n6, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n4
+		i += n6
 	}
 	return i, nil
 }
@@ -1282,11 +1416,11 @@ func (m *CreateJobResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Job.Size()))
-		n5, err := m.Job.MarshalTo(data[i:])
+		n7, err := m.Job.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n5
+		i += n7
 	}
 	return i, nil
 }
@@ -1334,11 +1468,11 @@ func (m *GetJobResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Job.Size()))
-		n6, err := m.Job.MarshalTo(data[i:])
+		n8, err := m.Job.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n6
+		i += n8
 	}
 	return i, nil
 }
@@ -1368,11 +1502,11 @@ func (m *UpdateJobRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Spec.Size()))
-		n7, err := m.Spec.MarshalTo(data[i:])
+		n9, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n7
+		i += n9
 	}
 	return i, nil
 }
@@ -1504,11 +1638,11 @@ func (m *CreateNetworkRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Spec.Size()))
-		n8, err := m.Spec.MarshalTo(data[i:])
+		n10, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n8
+		i += n10
 	}
 	return i, nil
 }
@@ -1532,11 +1666,11 @@ func (m *CreateNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Network.Size()))
-		n9, err := m.Network.MarshalTo(data[i:])
+		n11, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n9
+		i += n11
 	}
 	return i, nil
 }
@@ -1590,11 +1724,11 @@ func (m *GetNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Network.Size()))
-		n10, err := m.Network.MarshalTo(data[i:])
+		n12, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n10
+		i += n12
 	}
 	return i, nil
 }
@@ -1736,6 +1870,30 @@ func (m *ListNodesResponse) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovCluster(uint64(l))
 		}
+	}
+	return n
+}
+
+func (m *UpdateNodeRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.NodeID)
+	if l > 0 {
+		n += 1 + l + sovCluster(uint64(l))
+	}
+	if m.Spec != nil {
+		l = m.Spec.Size()
+		n += 1 + l + sovCluster(uint64(l))
+	}
+	return n
+}
+
+func (m *UpdateNodeResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.Node != nil {
+		l = m.Node.Size()
+		n += 1 + l + sovCluster(uint64(l))
 	}
 	return n
 }
@@ -2018,6 +2176,27 @@ func (this *ListNodesResponse) String() string {
 	}
 	s := strings.Join([]string{`&ListNodesResponse{`,
 		`Nodes:` + strings.Replace(fmt.Sprintf("%v", this.Nodes), "Node", "Node", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateNodeRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateNodeRequest{`,
+		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NodeSpec", "NodeSpec", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateNodeResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateNodeResponse{`,
+		`Node:` + strings.Replace(fmt.Sprintf("%v", this.Node), "Node", "Node", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2393,6 +2572,201 @@ func (m *ListNodesResponse) Unmarshal(data []byte) error {
 			}
 			m.Nodes = append(m.Nodes, &Node{})
 			if err := m.Nodes[len(m.Nodes)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCluster(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCluster
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UpdateNodeRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCluster
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UpdateNodeRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UpdateNodeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCluster
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCluster
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NodeID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCluster
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCluster
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Spec == nil {
+				m.Spec = &NodeSpec{}
+			}
+			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCluster(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCluster
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UpdateNodeResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCluster
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UpdateNodeResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UpdateNodeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Node", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCluster
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCluster
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Node == nil {
+				m.Node = &Node{}
+			}
+			if err := m.Node.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
