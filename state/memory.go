@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/watch"
 )
 
 // MemoryStore is a concurrency-safe, in-memory implementation of the Store
@@ -14,6 +15,8 @@ type MemoryStore struct {
 	nodes map[string]*api.Node
 	tasks map[string]*api.Task
 	jobs  map[string]*api.Job
+
+	queue *watch.Queue
 }
 
 // NewMemoryStore returns an in-memory store.
@@ -22,6 +25,7 @@ func NewMemoryStore() Store {
 		nodes: make(map[string]*api.Node),
 		tasks: make(map[string]*api.Task),
 		jobs:  make(map[string]*api.Job),
+		queue: watch.NewQueue(0),
 	}
 }
 
@@ -36,6 +40,7 @@ func (s *MemoryStore) CreateNode(id string, n *api.Node) error {
 	}
 
 	s.nodes[id] = n
+	Publish(s.queue, EventCreateNode{Node: n})
 	return nil
 }
 
@@ -50,6 +55,7 @@ func (s *MemoryStore) UpdateNode(id string, n *api.Node) error {
 	}
 
 	s.nodes[id] = n
+	Publish(s.queue, EventUpdateNode{Node: n})
 	return nil
 }
 
@@ -59,11 +65,13 @@ func (s *MemoryStore) DeleteNode(id string) error {
 	s.l.Lock()
 	defer s.l.Unlock()
 
-	if _, ok := s.nodes[id]; !ok {
+	n, ok := s.nodes[id]
+	if !ok {
 		return ErrNotExist
 	}
 
 	delete(s.nodes, id)
+	Publish(s.queue, EventDeleteNode{Node: n})
 	return nil
 }
 
@@ -117,6 +125,7 @@ func (s *MemoryStore) CreateTask(id string, t *api.Task) error {
 	}
 
 	s.tasks[id] = t
+	Publish(s.queue, EventCreateTask{Task: t})
 	return nil
 }
 
@@ -131,6 +140,7 @@ func (s *MemoryStore) UpdateTask(id string, t *api.Task) error {
 	}
 
 	s.tasks[id] = t
+	Publish(s.queue, EventUpdateTask{Task: t})
 	return nil
 }
 
@@ -140,11 +150,13 @@ func (s *MemoryStore) DeleteTask(id string) error {
 	s.l.Lock()
 	defer s.l.Unlock()
 
-	if _, ok := s.tasks[id]; !ok {
+	t, ok := s.tasks[id]
+	if !ok {
 		return ErrNotExist
 	}
 
 	delete(s.tasks, id)
+	Publish(s.queue, EventDeleteTask{Task: t})
 	return nil
 }
 
@@ -227,6 +239,7 @@ func (s *MemoryStore) CreateJob(id string, j *api.Job) error {
 	}
 
 	s.jobs[id] = j
+	Publish(s.queue, EventCreateJob{Job: j})
 	return nil
 }
 
@@ -241,6 +254,7 @@ func (s *MemoryStore) UpdateJob(id string, j *api.Job) error {
 	}
 
 	s.jobs[id] = j
+	Publish(s.queue, EventUpdateJob{Job: j})
 	return nil
 }
 
@@ -250,11 +264,13 @@ func (s *MemoryStore) DeleteJob(id string) error {
 	s.l.Lock()
 	defer s.l.Unlock()
 
-	if _, ok := s.jobs[id]; !ok {
+	j, ok := s.jobs[id]
+	if !ok {
 		return ErrNotExist
 	}
 
 	delete(s.jobs, id)
+	Publish(s.queue, EventDeleteJob{Job: j})
 	return nil
 }
 
@@ -294,4 +310,36 @@ func (s *MemoryStore) JobsByName(name string) []*api.Job {
 		}
 	}
 	return jobs
+}
+
+// WatchQueue returns the publish/subscribe queue.
+func (s *MemoryStore) WatchQueue() *watch.Queue {
+	return s.queue
+}
+
+// Fork populates the provided empty store with the current items in
+// this store. It then returns a watcher that is guaranteed to receive
+// all events from the moment the store was forked, so the populated
+// store can be kept in sync.
+func (s *MemoryStore) Fork(targetStore Store) (chan watch.Event, error) {
+	s.l.RLock()
+	defer s.l.RUnlock()
+
+	for id, n := range s.nodes {
+		if err := targetStore.CreateNode(id, n); err != nil {
+			return nil, err
+		}
+	}
+	for id, j := range s.jobs {
+		if err := targetStore.CreateJob(id, j); err != nil {
+			return nil, err
+		}
+	}
+	for id, t := range s.tasks {
+		if err := targetStore.CreateTask(id, t); err != nil {
+			return nil, err
+		}
+	}
+
+	return s.queue.Watch(), nil
 }
