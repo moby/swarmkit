@@ -260,21 +260,27 @@ func TestStoreTask(t *testing.T) {
 func TestStoreFork(t *testing.T) {
 	nodeSet := []*api.Node{
 		{
-			ID: "id1",
-			Meta: &api.Meta{
-				Name: "name1",
+			Spec: &api.NodeSpec{
+				ID: "id1",
+				Meta: &api.Meta{
+					Name: "name1",
+				},
 			},
 		},
 		{
-			ID: "id2",
-			Meta: &api.Meta{
-				Name: "name2",
+			Spec: &api.NodeSpec{
+				ID: "id2",
+				Meta: &api.Meta{
+					Name: "name2",
+				},
 			},
 		},
 		{
-			ID: "id3",
-			Meta: &api.Meta{
-				Name: "name2",
+			Spec: &api.NodeSpec{
+				ID: "id3",
+				Meta: &api.Meta{
+					Name: "name2",
+				},
 			},
 		},
 	}
@@ -282,20 +288,26 @@ func TestStoreFork(t *testing.T) {
 	jobSet := []*api.Job{
 		{
 			ID: "id1",
-			Meta: &api.Meta{
-				Name: "name1",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					Name: "name1",
+				},
 			},
 		},
 		{
 			ID: "id2",
-			Meta: &api.Meta{
-				Name: "name2",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					Name: "name2",
+				},
 			},
 		},
 		{
 			ID: "id3",
-			Meta: &api.Meta{
-				Name: "name2",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					Name: "name2",
+				},
 			},
 		},
 	}
@@ -303,22 +315,28 @@ func TestStoreFork(t *testing.T) {
 	taskSet := []*api.Task{
 		{
 			ID: "id1",
-			Meta: &api.Meta{
-				Name: "name1",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					Name: "name1",
+				},
 			},
-			NodeID: nodeSet[0].ID,
+			NodeID: nodeSet[0].Spec.ID,
 		},
 		{
 			ID: "id2",
-			Meta: &api.Meta{
-				Name: "name2",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					Name: "name2",
+				},
 			},
 			JobID: jobSet[0].ID,
 		},
 		{
 			ID: "id3",
-			Meta: &api.Meta{
-				Name: "name2",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					Name: "name2",
+				},
 			},
 		},
 	}
@@ -328,7 +346,7 @@ func TestStoreFork(t *testing.T) {
 
 	// Prepoulate nodes
 	for _, n := range nodeSet {
-		assert.NoError(t, s1.CreateNode(n.ID, n))
+		assert.NoError(t, s1.CreateNode(n.Spec.ID, n))
 	}
 
 	// Prepopulate jobs
@@ -374,8 +392,8 @@ func TestStoreFork(t *testing.T) {
 	assert.Len(t, s2.TasksByName("name2"), 2)
 	assert.Len(t, s2.TasksByName("invalid"), 0)
 
-	assert.Len(t, s2.TasksByNode(nodeSet[0].ID), 1)
-	assert.Equal(t, s2.TasksByNode(nodeSet[0].ID)[0], taskSet[0])
+	assert.Len(t, s2.TasksByNode(nodeSet[0].Spec.ID), 1)
+	assert.Equal(t, s2.TasksByNode(nodeSet[0].Spec.ID)[0], taskSet[0])
 	assert.Len(t, s2.TasksByNode("invalid"), 0)
 
 	assert.Len(t, s2.TasksByJob(jobSet[0].ID), 1)
@@ -384,9 +402,11 @@ func TestStoreFork(t *testing.T) {
 
 	// Create node
 	createNode := &api.Node{
-		ID: "id4",
-		Meta: &api.Meta{
-			Name: "name4",
+		Spec: &api.NodeSpec{
+			ID: "id4",
+			Meta: &api.Meta{
+				Name: "name4",
+			},
 		},
 	}
 	assert.NoError(t, s1.CreateNode("id4", createNode))
@@ -396,9 +416,11 @@ func TestStoreFork(t *testing.T) {
 
 	// Update node
 	updateNode := &api.Node{
-		ID: "id3",
-		Meta: &api.Meta{
-			Name: "name3",
+		Spec: &api.NodeSpec{
+			ID: "id3",
+			Meta: &api.Meta{
+				Name: "name3",
+			},
 		},
 	}
 	assert.NoError(t, s1.UpdateNode("id3", updateNode))
@@ -418,8 +440,10 @@ func TestStoreFork(t *testing.T) {
 	// Create job
 	createJob := &api.Job{
 		ID: "id4",
-		Meta: &api.Meta{
-			Name: "name4",
+		Spec: &api.JobSpec{
+			Meta: &api.Meta{
+				Name: "name4",
+			},
 		},
 	}
 	assert.NoError(t, s1.CreateJob("id4", createJob))
@@ -429,8 +453,10 @@ func TestStoreFork(t *testing.T) {
 	// Update job
 	updateJob := &api.Job{
 		ID: "id3",
-		Meta: &api.Meta{
-			Name: "name3",
+		Spec: &api.JobSpec{
+			Meta: &api.Meta{
+				Name: "name3",
+			},
 		},
 	}
 	assert.NotEqual(t, updateJob, s1.Job("id3"))
@@ -451,8 +477,10 @@ func TestStoreFork(t *testing.T) {
 	// Create task
 	createTask := &api.Task{
 		ID: "id4",
-		Meta: &api.Meta{
-			Name: "name4",
+		Spec: &api.JobSpec{
+			Meta: &api.Meta{
+				Name: "name4",
+			},
 		},
 	}
 	assert.NoError(t, s1.CreateTask("id4", createTask))
@@ -462,8 +490,10 @@ func TestStoreFork(t *testing.T) {
 	// Update task
 	updateTask := &api.Task{
 		ID: "id3",
-		Meta: &api.Meta{
-			Name: "name3",
+		Spec: &api.JobSpec{
+			Meta: &api.Meta{
+				Name: "name3",
+			},
 		},
 	}
 	assert.NotEqual(t, updateTask, s1.Task("id3"))

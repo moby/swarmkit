@@ -25,11 +25,11 @@ func Apply(store Store, item watch.Event) error {
 		return store.DeleteJob(v.Job.ID)
 
 	case EventCreateNode:
-		return store.CreateNode(v.Node.ID, v.Node)
+		return store.CreateNode(v.Node.Spec.ID, v.Node)
 	case EventUpdateNode:
-		return store.UpdateNode(v.Node.ID, v.Node)
+		return store.UpdateNode(v.Node.Spec.ID, v.Node)
 	case EventDeleteNode:
-		return store.DeleteNode(v.Node.ID)
+		return store.DeleteNode(v.Node.Spec.ID)
 
 	}
 

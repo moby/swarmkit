@@ -45,9 +45,9 @@ func (p *Planner) Run() {
 
 	// Watch for valid nodes
 	nodeChanges := state.Watch(watchQueue,
-		state.EventCreateNode{Node: &api.Node{Status: api.NodeStatus_READY},
+		state.EventCreateNode{Node: &api.Node{Status: api.NodeStatus{State: api.NodeStatus_READY}},
 			Checks: []state.NodeCheckFunc{state.NodeCheckStatus}},
-		state.EventUpdateNode{Node: &api.Node{Status: api.NodeStatus_READY},
+		state.EventUpdateNode{Node: &api.Node{Status: api.NodeStatus{State: api.NodeStatus_READY}},
 			Checks: []state.NodeCheckFunc{state.NodeCheckStatus}})
 
 	// Queue all unassigned tasks before watching for changes.
@@ -125,8 +125,8 @@ func (p *Planner) scheduleTask(t *api.Task) bool {
 		return false
 	}
 
-	log.Infof("Assigning task %s to node %s", t.ID, node.ID)
-	t.NodeID = node.ID
+	log.Infof("Assigning task %s to node %s", t.ID, node.Spec.ID)
+	t.NodeID = node.Spec.ID
 	t.Status.State = api.TaskStatus_ASSIGNED
 	if err := p.store.UpdateTask(t.ID, t); err != nil {
 		log.Error(err)
@@ -140,8 +140,8 @@ func (p *Planner) selectNodeForTask(t *api.Task) *api.Node {
 	var target *api.Node
 	targetTasks := 0
 	for _, n := range p.store.Nodes() {
-		if n.Status == api.NodeStatus_READY /*&& !n.Drained*/ {
-			nodeTasks := len(p.store.TasksByNode(n.ID))
+		if n.Status.State == api.NodeStatus_READY /*&& !n.Drained*/ {
+			nodeTasks := len(p.store.TasksByNode(n.Spec.ID))
 			if target == nil || nodeTasks < targetTasks {
 				target = n
 				targetTasks = nodeTasks
