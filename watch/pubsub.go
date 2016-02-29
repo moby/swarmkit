@@ -126,6 +126,7 @@ func (p *publisher) sendEvents(ch chan<- Event, sub *subscriber) {
 				select {
 				case ch <- nextEvent:
 				case <-sub.closed:
+					close(ch)
 					return
 				}
 			}
