@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/docker/swarm-v2/cmd/swarmctl/job"
+	"github.com/docker/swarm-v2/cmd/swarmctl/node"
+	"github.com/docker/swarm-v2/cmd/swarmctl/task"
 	"github.com/docker/swarm-v2/version"
+
 	"github.com/spf13/cobra"
 )
 
@@ -23,5 +27,10 @@ var (
 )
 
 func init() {
-	mainCmd.AddCommand(version.Cmd)
+	mainCmd.AddCommand(
+		node.Cmd,
+		job.Cmd,
+		task.Cmd,
+		version.Cmd,
+	)
 }
