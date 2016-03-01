@@ -33,10 +33,12 @@ type readTx struct {
 	s *MemoryStore
 }
 
-// BeginRead starts a transaction that only supports reads.
-func (s *MemoryStore) BeginRead() (ReadTx, error) {
+// View executes a read transaction.
+func (s *MemoryStore) View(cb func(ReadTx) error) error {
 	s.l.RLock()
-	return readTx{s: s}, nil
+	err := cb(readTx{s: s})
+	s.l.RUnlock()
+	return err
 }
 
 func (t readTx) Nodes() NodeSetReader {
@@ -51,19 +53,16 @@ func (t readTx) Tasks() TaskSetReader {
 	return tasks{s: t.s}
 }
 
-func (t readTx) Close() error {
-	t.s.l.RUnlock()
-	return nil
-}
-
 type tx struct {
 	s *MemoryStore
 }
 
-// Begin starts a transaction that supports reads and writes.
-func (s *MemoryStore) Begin() (Tx, error) {
+// Update executes a read/write transaction.
+func (s *MemoryStore) Update(cb func(Tx) error) error {
 	s.l.Lock()
-	return tx{s: s}, nil
+	err := cb(tx{s: s})
+	s.l.Unlock()
+	return err
 }
 
 func (t tx) Nodes() NodeSet {
@@ -76,11 +75,6 @@ func (t tx) Jobs() JobSet {
 
 func (t tx) Tasks() TaskSet {
 	return tasks{s: t.s}
-}
-
-func (t tx) Close() error {
-	t.s.l.Unlock()
-	return nil
 }
 
 type nodes struct {
@@ -403,16 +397,14 @@ func (s *MemoryStore) WatchQueue() *watch.Queue {
 // this store. It then returns a watcher that is guaranteed to receive
 // all events from the moment the store was forked, so the populated
 // store can be kept in sync.
-func (s *MemoryStore) Snapshot(storeCopier StoreCopier) (chan watch.Event, error) {
-	readTx, err := s.BeginRead()
-	if err != nil {
-		return nil, err
-	}
-	defer readTx.Close()
+func (s *MemoryStore) Snapshot(storeCopier StoreCopier) (watcher chan watch.Event, err error) {
+	err = s.View(func(readTx ReadTx) error {
+		if err := storeCopier.CopyFrom(readTx); err != nil {
+			return err
+		}
 
-	if err := storeCopier.CopyFrom(readTx); err != nil {
-		return nil, err
-	}
-
-	return s.queue.Watch(), nil
+		watcher = s.queue.Watch()
+		return nil
+	})
+	return
 }

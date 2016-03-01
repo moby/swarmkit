@@ -2,20 +2,22 @@
 //
 // The primary interface is Store, which abstracts storage of this cluster
 // state. Store exposes a transactional interface for both reads and writes.
-// To begin a read, BeginRead() returns a ReadTx object that exposes the state
-// in a consistent way. Similarly, Begin() returns a Tx object that allows
-// reads and writes to happen without interference from other transactions.
-// Either type of transaction must be finished with the Close method.
+// To perform a read transaction, View accepts a callback function that it
+// will invoke with a ReadTx object that gives it a consistent view of the
+// state. Similarly, Update accepts a callback function that it will invoke with
+// a Tx object that allows reads and writes to happen without interference from
+// other transactions.
 //
 // This is an example of making an update to a Store:
 //
-//	tx, err := store.Begin()
+//	err := store.Update(func(tx state.Tx) {
+//		if err := tx.Nodes().Update(newNode); err != nil {
+//			reutrn err
+//		}
+//		return nil
+//	})
 //	if err != nil {
-//		return err
-//	}
-//	defer tx.Close()
-//	if err := tx.Nodes().Update(newNode); err != nil {
-//		reutrn err
+//		return fmt.Errorf("transaction failed: %v", err)
 //	}
 //
 // WatchableStore is a version of Store that exposes watch functionality.

@@ -97,7 +97,6 @@ type ReadTx interface {
 	Nodes() NodeSetReader
 	Jobs() JobSetReader
 	Tasks() TaskSetReader
-	Close() error
 }
 
 // Tx is a read/write transaction. Note that transaction does not imply
@@ -108,7 +107,6 @@ type Tx interface {
 	Nodes() NodeSet
 	Jobs() JobSet
 	Tasks() TaskSet
-	Close() error
 }
 
 // A StoreCopier is capable of reading the full contents of a store from a
@@ -123,13 +121,16 @@ type StoreCopier interface {
 type Store interface {
 	StoreCopier
 
-	// Begin starts a full transaction that allows reads and writes. The
-	// transaction must be committed with Close.
-	Begin() (Tx, error)
+	// Update performs a full transaction that allows reads and writes.
+	// Within the callback function, changes can safely be made through the
+	// Tx interface. If the callback function returns nil, Update will
+	// attempt to commit the transaction.
+	Update(func(Tx) error) error
 
-	// BeginRead starts a transaction that reads only. The transaction must
-	// be finalized with Close.
-	BeginRead() (ReadTx, error)
+	// View performs a transaction that only includes reads. Within the
+	// callback function, a consistent view of the data is available through
+	// the ReadTx interface.
+	View(func(ReadTx) error) error
 }
 
 // WatchableStore is an extension of Store that publishes modifications to a

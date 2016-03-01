@@ -2,6 +2,7 @@ package planner
 
 import (
 	"container/list"
+	"errors"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
@@ -51,20 +52,20 @@ func (p *Planner) Run() {
 			Checks: []state.NodeCheckFunc{state.NodeCheckStatus}})
 
 	// Queue all unassigned tasks before watching for changes.
-	tx, err := p.store.BeginRead()
-	if err != nil {
-		log.Errorf("Error starting transaction: %v", err)
-	} else {
+	err := p.store.View(func(tx state.ReadTx) error {
 		tasks, err := tx.Tasks().Find(state.ByNodeID(""))
 		if err != nil {
 			log.Errorf("Error finding unassigned tasks: %v", err)
-		} else {
-			for _, t := range tasks {
-				log.Infof("Queueing %#v", t)
-				p.enqueue(t)
-			}
+			return nil
 		}
-		tx.Close()
+		for _, t := range tasks {
+			log.Infof("Queueing %#v", t)
+			p.enqueue(t)
+		}
+		return nil
+	})
+	if err != nil {
+		log.Errorf("Error in transaction: %v", err)
 	}
 	p.tick()
 
@@ -130,24 +131,25 @@ func (p *Planner) tick() {
 
 // scheduleTask schedules a single task.
 func (p *Planner) scheduleTask(t *api.Task) bool {
-	tx, err := p.store.Begin()
+	err := p.store.Update(func(tx state.Tx) error {
+		node := p.selectNodeForTask(t, tx)
+		if node == nil {
+			err := errors.New("No nodes available to assign tasks to")
+			log.Info(err)
+			return err
+		}
+
+		log.Infof("Assigning task %s to node %s", t.ID, node.Spec.ID)
+		t.NodeID = node.Spec.ID
+		t.Status.State = api.TaskStatus_ASSIGNED
+		if err := tx.Tasks().Update(t); err != nil {
+			log.Error(err)
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		log.Errorf("Error starting transaction: %v", err)
 		return false
-	}
-	defer tx.Close()
-
-	node := p.selectNodeForTask(t, tx)
-	if node == nil {
-		log.Info("No nodes available to assign tasks to")
-		return false
-	}
-
-	log.Infof("Assigning task %s to node %s", t.ID, node.Spec.ID)
-	t.NodeID = node.Spec.ID
-	t.Status.State = api.TaskStatus_ASSIGNED
-	if err := tx.Tasks().Update(t); err != nil {
-		log.Error(err)
 	}
 	return true
 }
