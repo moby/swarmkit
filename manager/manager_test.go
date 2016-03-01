@@ -23,8 +23,8 @@ func TestManager(t *testing.T) {
 
 	temp, err := ioutil.TempFile("", "test-socket")
 	assert.NoError(t, err)
-	temp.Close()
-	os.Remove(temp.Name())
+	assert.NoError(t, temp.Close())
+	assert.NoError(t, os.Remove(temp.Name()))
 
 	m := New(&Config{
 		Store:       store,
@@ -44,7 +44,9 @@ func TestManager(t *testing.T) {
 			return net.DialTimeout("unix", addr, timeout)
 		}))
 	assert.NoError(t, err)
-	defer conn.Close()
+	defer func() {
+		assert.NoError(t, conn.Close())
+	}()
 
 	// We have to send a dummy request to verify if the connection is actually up.
 	client := api.NewAgentClient(conn)
