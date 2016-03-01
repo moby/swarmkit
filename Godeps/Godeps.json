@@ -11,6 +11,31 @@
 			"Rev": "446d1c146faa8ed3f4218f056fcd165f6bcfda81"
 		},
 		{
+			"ImportPath": "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto",
+			"Comment": "v2.2.5",
+			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context",
+			"Comment": "v2.2.5",
+			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/raft",
+			"Comment": "v2.2.5",
+			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/raft/raftpb",
+			"Comment": "v2.2.5",
+			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/raft/rafttest",
+			"Comment": "v2.2.5",
+			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
+		},
+		{
 			"ImportPath": "github.com/davecgh/go-spew/spew",
 			"Rev": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
 		},
