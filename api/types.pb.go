@@ -314,10 +314,10 @@ func _Source_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer)
 // component is the "orchestration". The orchestration defines the strategy
 // used to the schedule and run the target with a cluster.
 type JobSpec struct {
-	Meta          *Meta                        `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
-	Source        *Source                      `protobuf:"bytes,2,opt,name=source" json:"source,omitempty"`
-	Orchestration *JobSpec_Orchestration       `protobuf:"bytes,3,opt,name=orchestration" json:"orchestration,omitempty"`
-	Networks      []*JobSpec_NetworkAttachment `protobuf:"bytes,4,rep,name=networks" json:"networks,omitempty"`
+	Meta          *Meta                            `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
+	Source        *Source                          `protobuf:"bytes,2,opt,name=source" json:"source,omitempty"`
+	Orchestration *JobSpec_Orchestration           `protobuf:"bytes,3,opt,name=orchestration" json:"orchestration,omitempty"`
+	Networks      []*JobSpec_NetworkAttachmentSpec `protobuf:"bytes,4,rep,name=networks" json:"networks,omitempty"`
 }
 
 func (m *JobSpec) Reset()      { *m = JobSpec{} }
@@ -502,96 +502,96 @@ func _JobSpec_Orchestration_OneofUnmarshaler(msg proto.Message, tag, wire int, b
 	}
 }
 
-// NetworkAttachment describes a desired attachment to the named network or
+// NetworkAttachmentSpec describes a desired attachment to the named network or
 // a specific network_id.
-type JobSpec_NetworkAttachment struct {
+type JobSpec_NetworkAttachmentSpec struct {
 	// Types that are valid to be assigned to Reference:
-	//	*JobSpec_NetworkAttachment_Name
-	//	*JobSpec_NetworkAttachment_NetworkID
-	Reference isJobSpec_NetworkAttachment_Reference `protobuf_oneof:"reference"`
+	//	*JobSpec_NetworkAttachmentSpec_Name
+	//	*JobSpec_NetworkAttachmentSpec_NetworkID
+	Reference isJobSpec_NetworkAttachmentSpec_Reference `protobuf_oneof:"reference"`
 }
 
-func (m *JobSpec_NetworkAttachment) Reset()      { *m = JobSpec_NetworkAttachment{} }
-func (*JobSpec_NetworkAttachment) ProtoMessage() {}
+func (m *JobSpec_NetworkAttachmentSpec) Reset()      { *m = JobSpec_NetworkAttachmentSpec{} }
+func (*JobSpec_NetworkAttachmentSpec) ProtoMessage() {}
 
-type isJobSpec_NetworkAttachment_Reference interface {
-	isJobSpec_NetworkAttachment_Reference()
+type isJobSpec_NetworkAttachmentSpec_Reference interface {
+	isJobSpec_NetworkAttachmentSpec_Reference()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type JobSpec_NetworkAttachment_Name struct {
+type JobSpec_NetworkAttachmentSpec_Name struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3,oneof"`
 }
-type JobSpec_NetworkAttachment_NetworkID struct {
+type JobSpec_NetworkAttachmentSpec_NetworkID struct {
 	NetworkID string `protobuf:"bytes,2,opt,name=network_id,proto3,oneof"`
 }
 
-func (*JobSpec_NetworkAttachment_Name) isJobSpec_NetworkAttachment_Reference()      {}
-func (*JobSpec_NetworkAttachment_NetworkID) isJobSpec_NetworkAttachment_Reference() {}
+func (*JobSpec_NetworkAttachmentSpec_Name) isJobSpec_NetworkAttachmentSpec_Reference()      {}
+func (*JobSpec_NetworkAttachmentSpec_NetworkID) isJobSpec_NetworkAttachmentSpec_Reference() {}
 
-func (m *JobSpec_NetworkAttachment) GetReference() isJobSpec_NetworkAttachment_Reference {
+func (m *JobSpec_NetworkAttachmentSpec) GetReference() isJobSpec_NetworkAttachmentSpec_Reference {
 	if m != nil {
 		return m.Reference
 	}
 	return nil
 }
 
-func (m *JobSpec_NetworkAttachment) GetName() string {
-	if x, ok := m.GetReference().(*JobSpec_NetworkAttachment_Name); ok {
+func (m *JobSpec_NetworkAttachmentSpec) GetName() string {
+	if x, ok := m.GetReference().(*JobSpec_NetworkAttachmentSpec_Name); ok {
 		return x.Name
 	}
 	return ""
 }
 
-func (m *JobSpec_NetworkAttachment) GetNetworkID() string {
-	if x, ok := m.GetReference().(*JobSpec_NetworkAttachment_NetworkID); ok {
+func (m *JobSpec_NetworkAttachmentSpec) GetNetworkID() string {
+	if x, ok := m.GetReference().(*JobSpec_NetworkAttachmentSpec_NetworkID); ok {
 		return x.NetworkID
 	}
 	return ""
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*JobSpec_NetworkAttachment) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _JobSpec_NetworkAttachment_OneofMarshaler, _JobSpec_NetworkAttachment_OneofUnmarshaler, []interface{}{
-		(*JobSpec_NetworkAttachment_Name)(nil),
-		(*JobSpec_NetworkAttachment_NetworkID)(nil),
+func (*JobSpec_NetworkAttachmentSpec) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _JobSpec_NetworkAttachmentSpec_OneofMarshaler, _JobSpec_NetworkAttachmentSpec_OneofUnmarshaler, []interface{}{
+		(*JobSpec_NetworkAttachmentSpec_Name)(nil),
+		(*JobSpec_NetworkAttachmentSpec_NetworkID)(nil),
 	}
 }
 
-func _JobSpec_NetworkAttachment_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*JobSpec_NetworkAttachment)
+func _JobSpec_NetworkAttachmentSpec_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*JobSpec_NetworkAttachmentSpec)
 	// reference
 	switch x := m.Reference.(type) {
-	case *JobSpec_NetworkAttachment_Name:
+	case *JobSpec_NetworkAttachmentSpec_Name:
 		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
 		_ = b.EncodeStringBytes(x.Name)
-	case *JobSpec_NetworkAttachment_NetworkID:
+	case *JobSpec_NetworkAttachmentSpec_NetworkID:
 		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
 		_ = b.EncodeStringBytes(x.NetworkID)
 	case nil:
 	default:
-		return fmt.Errorf("JobSpec_NetworkAttachment.Reference has unexpected type %T", x)
+		return fmt.Errorf("JobSpec_NetworkAttachmentSpec.Reference has unexpected type %T", x)
 	}
 	return nil
 }
 
-func _JobSpec_NetworkAttachment_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*JobSpec_NetworkAttachment)
+func _JobSpec_NetworkAttachmentSpec_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*JobSpec_NetworkAttachmentSpec)
 	switch tag {
 	case 1: // reference.name
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
 		x, err := b.DecodeStringBytes()
-		m.Reference = &JobSpec_NetworkAttachment_Name{x}
+		m.Reference = &JobSpec_NetworkAttachmentSpec_Name{x}
 		return true, err
 	case 2: // reference.network_id
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
 		x, err := b.DecodeStringBytes()
-		m.Reference = &JobSpec_NetworkAttachment_NetworkID{x}
+		m.Reference = &JobSpec_NetworkAttachmentSpec_NetworkID{x}
 		return true, err
 	default:
 		return false, nil
@@ -623,11 +623,25 @@ type Task struct {
 	// identical, depending on the name provided in the JobSpec. For example,
 	// the name field may be "redis", whereas this field would specify the
 	// exact hash, "redis@sha256:...".
-	Resolved *Source `protobuf:"bytes,6,opt,name=resolved" json:"resolved,omitempty"`
+	Resolved *Source                   `protobuf:"bytes,6,opt,name=resolved" json:"resolved,omitempty"`
+	Networks []*Task_NetworkAttachment `protobuf:"bytes,3,rep,name=networks" json:"networks,omitempty"`
 }
 
 func (m *Task) Reset()      { *m = Task{} }
 func (*Task) ProtoMessage() {}
+
+type Task_NetworkAttachment struct {
+	// Network state as a whole becomes part of Task so
+	// that it always is available for use in agents so
+	// that agents don't have any other dependency during execution.
+	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
+	// List of IPv4/IPv6 addresses that are assigned to the task
+	// as part of getting attached to this network.
+	Addresses []string `protobuf:"bytes,2,rep,name=addresses" json:"addresses,omitempty"`
+}
+
+func (m *Task_NetworkAttachment) Reset()      { *m = Task_NetworkAttachment{} }
+func (*Task_NetworkAttachment) ProtoMessage() {}
 
 type Job struct {
 	ID   string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -670,8 +684,9 @@ func (*Driver) ProtoMessage() {}
 
 // NetworkSpec specifies user defined network parameters.
 type NetworkSpec struct {
-	Meta   *Meta   `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
-	Driver *Driver `protobuf:"bytes,2,opt,name=driver" json:"driver,omitempty"`
+	Meta *Meta `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
+	// Driver specific configuration consumed by the network driver.
+	DriverConfiguration *Driver `protobuf:"bytes,2,opt,name=driver_configuration" json:"driver_configuration,omitempty"`
 	// IPv6Enabled enables support for IPv6 on the network.
 	Ipv6Enabled bool `protobuf:"varint,3,opt,name=ipv6_enabled,proto3" json:"ipv6_enabled,omitempty"`
 	// internal restricts external access to the network. This may be
@@ -695,6 +710,8 @@ func (*NetworkSpec_IPAMOptions) ProtoMessage() {}
 type Network struct {
 	ID   string       `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Spec *NetworkSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
+	// Driver specific operational state provided by the network driver.
+	DriverState *Driver `protobuf:"bytes,3,opt,name=driver_state" json:"driver_state,omitempty"`
 }
 
 func (m *Network) Reset()      { *m = Network{} }
@@ -713,9 +730,10 @@ func init() {
 	proto.RegisterType((*JobSpec_GlobalJob)(nil), "api.JobSpec.GlobalJob")
 	proto.RegisterType((*JobSpec_CronJob)(nil), "api.JobSpec.CronJob")
 	proto.RegisterType((*JobSpec_Orchestration)(nil), "api.JobSpec.Orchestration")
-	proto.RegisterType((*JobSpec_NetworkAttachment)(nil), "api.JobSpec.NetworkAttachment")
+	proto.RegisterType((*JobSpec_NetworkAttachmentSpec)(nil), "api.JobSpec.NetworkAttachmentSpec")
 	proto.RegisterType((*TaskStatus)(nil), "api.TaskStatus")
 	proto.RegisterType((*Task)(nil), "api.Task")
+	proto.RegisterType((*Task_NetworkAttachment)(nil), "api.Task.NetworkAttachment")
 	proto.RegisterType((*Job)(nil), "api.Job")
 	proto.RegisterType((*IPAMConfiguration)(nil), "api.IPAMConfiguration")
 	proto.RegisterType((*Driver)(nil), "api.Driver")
@@ -923,31 +941,31 @@ func (this *JobSpec_Orchestration_Cron) GoString() string {
 		`Cron:` + fmt.Sprintf("%#v", this.Cron) + `}`}, ", ")
 	return s
 }
-func (this *JobSpec_NetworkAttachment) GoString() string {
+func (this *JobSpec_NetworkAttachmentSpec) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.JobSpec_NetworkAttachment{")
+	s = append(s, "&api.JobSpec_NetworkAttachmentSpec{")
 	if this.Reference != nil {
 		s = append(s, "Reference: "+fmt.Sprintf("%#v", this.Reference)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *JobSpec_NetworkAttachment_Name) GoString() string {
+func (this *JobSpec_NetworkAttachmentSpec_Name) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&api.JobSpec_NetworkAttachment_Name{` +
+	s := strings.Join([]string{`&api.JobSpec_NetworkAttachmentSpec_Name{` +
 		`Name:` + fmt.Sprintf("%#v", this.Name) + `}`}, ", ")
 	return s
 }
-func (this *JobSpec_NetworkAttachment_NetworkID) GoString() string {
+func (this *JobSpec_NetworkAttachmentSpec_NetworkID) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&api.JobSpec_NetworkAttachment_NetworkID{` +
+	s := strings.Join([]string{`&api.JobSpec_NetworkAttachmentSpec_NetworkID{` +
 		`NetworkID:` + fmt.Sprintf("%#v", this.NetworkID) + `}`}, ", ")
 	return s
 }
@@ -966,7 +984,7 @@ func (this *Task) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 10)
+	s := make([]string, 0, 11)
 	s = append(s, "&api.Task{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	s = append(s, "JobID: "+fmt.Sprintf("%#v", this.JobID)+",\n")
@@ -980,6 +998,22 @@ func (this *Task) GoString() string {
 	if this.Resolved != nil {
 		s = append(s, "Resolved: "+fmt.Sprintf("%#v", this.Resolved)+",\n")
 	}
+	if this.Networks != nil {
+		s = append(s, "Networks: "+fmt.Sprintf("%#v", this.Networks)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Task_NetworkAttachment) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.Task_NetworkAttachment{")
+	if this.Network != nil {
+		s = append(s, "Network: "+fmt.Sprintf("%#v", this.Network)+",\n")
+	}
+	s = append(s, "Addresses: "+fmt.Sprintf("%#v", this.Addresses)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1053,8 +1087,8 @@ func (this *NetworkSpec) GoString() string {
 	if this.Meta != nil {
 		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
 	}
-	if this.Driver != nil {
-		s = append(s, "Driver: "+fmt.Sprintf("%#v", this.Driver)+",\n")
+	if this.DriverConfiguration != nil {
+		s = append(s, "DriverConfiguration: "+fmt.Sprintf("%#v", this.DriverConfiguration)+",\n")
 	}
 	s = append(s, "Ipv6Enabled: "+fmt.Sprintf("%#v", this.Ipv6Enabled)+",\n")
 	s = append(s, "Internal: "+fmt.Sprintf("%#v", this.Internal)+",\n")
@@ -1086,11 +1120,14 @@ func (this *Network) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 7)
 	s = append(s, "&api.Network{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
+	}
+	if this.DriverState != nil {
+		s = append(s, "DriverState: "+fmt.Sprintf("%#v", this.DriverState)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -1567,7 +1604,7 @@ func (m *JobSpec_Orchestration_Cron) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *JobSpec_NetworkAttachment) Marshal() (data []byte, err error) {
+func (m *JobSpec_NetworkAttachmentSpec) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1577,7 +1614,7 @@ func (m *JobSpec_NetworkAttachment) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *JobSpec_NetworkAttachment) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_NetworkAttachmentSpec) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1592,7 +1629,7 @@ func (m *JobSpec_NetworkAttachment) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *JobSpec_NetworkAttachment_Name) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_NetworkAttachmentSpec_Name) MarshalTo(data []byte) (int, error) {
 	i := 0
 	data[i] = 0xa
 	i++
@@ -1600,7 +1637,7 @@ func (m *JobSpec_NetworkAttachment_Name) MarshalTo(data []byte) (int, error) {
 	i += copy(data[i:], m.Name)
 	return i, nil
 }
-func (m *JobSpec_NetworkAttachment_NetworkID) MarshalTo(data []byte) (int, error) {
+func (m *JobSpec_NetworkAttachmentSpec_NetworkID) MarshalTo(data []byte) (int, error) {
 	i := 0
 	data[i] = 0x12
 	i++
@@ -1664,6 +1701,18 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintTypes(data, i, uint64(len(m.JobID)))
 		i += copy(data[i:], m.JobID)
 	}
+	if len(m.Networks) > 0 {
+		for _, msg := range m.Networks {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintTypes(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
 	if len(m.NodeID) > 0 {
 		data[i] = 0x22
 		i++
@@ -1703,6 +1752,49 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *Task_NetworkAttachment) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Task_NetworkAttachment) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Network != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Network.Size()))
+		n19, err := m.Network.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n19
+	}
+	if len(m.Addresses) > 0 {
+		for _, s := range m.Addresses {
+			data[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
+	return i, nil
+}
+
 func (m *Job) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -1728,11 +1820,11 @@ func (m *Job) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n19, err := m.Spec.MarshalTo(data[i:])
+		n20, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n19
+		i += n20
 	}
 	return i, nil
 }
@@ -1850,21 +1942,21 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-		n20, err := m.Meta.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n20
-	}
-	if m.Driver != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Driver.Size()))
-		n21, err := m.Driver.MarshalTo(data[i:])
+		n21, err := m.Meta.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n21
+	}
+	if m.DriverConfiguration != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.DriverConfiguration.Size()))
+		n22, err := m.DriverConfiguration.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n22
 	}
 	if m.Ipv6Enabled {
 		data[i] = 0x18
@@ -1890,11 +1982,11 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Ipam.Size()))
-		n22, err := m.Ipam.MarshalTo(data[i:])
+		n23, err := m.Ipam.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n22
+		i += n23
 	}
 	return i, nil
 }
@@ -1918,11 +2010,11 @@ func (m *NetworkSpec_IPAMOptions) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Driver.Size()))
-		n23, err := m.Driver.MarshalTo(data[i:])
+		n24, err := m.Driver.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n23
+		i += n24
 	}
 	if len(m.Ipv4) > 0 {
 		for _, msg := range m.Ipv4 {
@@ -1976,11 +2068,21 @@ func (m *Network) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n24, err := m.Spec.MarshalTo(data[i:])
+		n25, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n24
+		i += n25
+	}
+	if m.DriverState != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.DriverState.Size()))
+		n26, err := m.DriverState.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n26
 	}
 	return i, nil
 }
@@ -2207,7 +2309,7 @@ func (m *JobSpec_Orchestration_Cron) Size() (n int) {
 	}
 	return n
 }
-func (m *JobSpec_NetworkAttachment) Size() (n int) {
+func (m *JobSpec_NetworkAttachmentSpec) Size() (n int) {
 	var l int
 	_ = l
 	if m.Reference != nil {
@@ -2216,14 +2318,14 @@ func (m *JobSpec_NetworkAttachment) Size() (n int) {
 	return n
 }
 
-func (m *JobSpec_NetworkAttachment_Name) Size() (n int) {
+func (m *JobSpec_NetworkAttachmentSpec_Name) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.Name)
 	n += 1 + l + sovTypes(uint64(l))
 	return n
 }
-func (m *JobSpec_NetworkAttachment_NetworkID) Size() (n int) {
+func (m *JobSpec_NetworkAttachmentSpec_NetworkID) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.NetworkID)
@@ -2254,6 +2356,12 @@ func (m *Task) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
+	if len(m.Networks) > 0 {
+		for _, e := range m.Networks {
+			l = e.Size()
+			n += 1 + l + sovTypes(uint64(l))
+		}
+	}
 	l = len(m.NodeID)
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
@@ -2269,6 +2377,22 @@ func (m *Task) Size() (n int) {
 	if m.Status != nil {
 		l = m.Status.Size()
 		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
+func (m *Task_NetworkAttachment) Size() (n int) {
+	var l int
+	_ = l
+	if m.Network != nil {
+		l = m.Network.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if len(m.Addresses) > 0 {
+		for _, s := range m.Addresses {
+			l = len(s)
+			n += 1 + l + sovTypes(uint64(l))
+		}
 	}
 	return n
 }
@@ -2338,8 +2462,8 @@ func (m *NetworkSpec) Size() (n int) {
 		l = m.Meta.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
-	if m.Driver != nil {
-		l = m.Driver.Size()
+	if m.DriverConfiguration != nil {
+		l = m.DriverConfiguration.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
 	if m.Ipv6Enabled {
@@ -2386,6 +2510,10 @@ func (m *Network) Size() (n int) {
 	}
 	if m.Spec != nil {
 		l = m.Spec.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.DriverState != nil {
+		l = m.DriverState.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
 	return n
@@ -2498,7 +2626,7 @@ func (this *JobSpec) String() string {
 		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
 		`Source:` + strings.Replace(fmt.Sprintf("%v", this.Source), "Source", "Source", 1) + `,`,
 		`Orchestration:` + strings.Replace(fmt.Sprintf("%v", this.Orchestration), "JobSpec_Orchestration", "JobSpec_Orchestration", 1) + `,`,
-		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "JobSpec_NetworkAttachment", "JobSpec_NetworkAttachment", 1) + `,`,
+		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "JobSpec_NetworkAttachmentSpec", "JobSpec_NetworkAttachmentSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2592,31 +2720,31 @@ func (this *JobSpec_Orchestration_Cron) String() string {
 	}, "")
 	return s
 }
-func (this *JobSpec_NetworkAttachment) String() string {
+func (this *JobSpec_NetworkAttachmentSpec) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&JobSpec_NetworkAttachment{`,
+	s := strings.Join([]string{`&JobSpec_NetworkAttachmentSpec{`,
 		`Reference:` + fmt.Sprintf("%v", this.Reference) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *JobSpec_NetworkAttachment_Name) String() string {
+func (this *JobSpec_NetworkAttachmentSpec_Name) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&JobSpec_NetworkAttachment_Name{`,
+	s := strings.Join([]string{`&JobSpec_NetworkAttachmentSpec_Name{`,
 		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *JobSpec_NetworkAttachment_NetworkID) String() string {
+func (this *JobSpec_NetworkAttachmentSpec_NetworkID) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&JobSpec_NetworkAttachment_NetworkID{`,
+	s := strings.Join([]string{`&JobSpec_NetworkAttachmentSpec_NetworkID{`,
 		`NetworkID:` + fmt.Sprintf("%v", this.NetworkID) + `,`,
 		`}`,
 	}, "")
@@ -2640,10 +2768,22 @@ func (this *Task) String() string {
 	s := strings.Join([]string{`&Task{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`JobID:` + fmt.Sprintf("%v", this.JobID) + `,`,
+		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Task_NetworkAttachment", "Task_NetworkAttachment", 1) + `,`,
 		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
 		`Resolved:` + strings.Replace(fmt.Sprintf("%v", this.Resolved), "Source", "Source", 1) + `,`,
 		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "TaskStatus", "TaskStatus", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Task_NetworkAttachment) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Task_NetworkAttachment{`,
+		`Network:` + strings.Replace(fmt.Sprintf("%v", this.Network), "Network", "Network", 1) + `,`,
+		`Addresses:` + fmt.Sprintf("%v", this.Addresses) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2709,7 +2849,7 @@ func (this *NetworkSpec) String() string {
 	}
 	s := strings.Join([]string{`&NetworkSpec{`,
 		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
-		`Driver:` + strings.Replace(fmt.Sprintf("%v", this.Driver), "Driver", "Driver", 1) + `,`,
+		`DriverConfiguration:` + strings.Replace(fmt.Sprintf("%v", this.DriverConfiguration), "Driver", "Driver", 1) + `,`,
 		`Ipv6Enabled:` + fmt.Sprintf("%v", this.Ipv6Enabled) + `,`,
 		`Internal:` + fmt.Sprintf("%v", this.Internal) + `,`,
 		`Ipam:` + strings.Replace(fmt.Sprintf("%v", this.Ipam), "NetworkSpec_IPAMOptions", "NetworkSpec_IPAMOptions", 1) + `,`,
@@ -2736,6 +2876,7 @@ func (this *Network) String() string {
 	s := strings.Join([]string{`&Network{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NetworkSpec", "NetworkSpec", 1) + `,`,
+		`DriverState:` + strings.Replace(fmt.Sprintf("%v", this.DriverState), "Driver", "Driver", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3638,7 +3779,7 @@ func (m *JobSpec) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Networks = append(m.Networks, &JobSpec_NetworkAttachment{})
+			m.Networks = append(m.Networks, &JobSpec_NetworkAttachmentSpec{})
 			if err := m.Networks[len(m.Networks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -4099,7 +4240,7 @@ func (m *JobSpec_Orchestration) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *JobSpec_NetworkAttachment) Unmarshal(data []byte) error {
+func (m *JobSpec_NetworkAttachmentSpec) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4122,10 +4263,10 @@ func (m *JobSpec_NetworkAttachment) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: NetworkAttachment: wiretype end group for non-group")
+			return fmt.Errorf("proto: NetworkAttachmentSpec: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: NetworkAttachment: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: NetworkAttachmentSpec: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -4155,7 +4296,7 @@ func (m *JobSpec_NetworkAttachment) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Reference = &JobSpec_NetworkAttachment_Name{string(data[iNdEx:postIndex])}
+			m.Reference = &JobSpec_NetworkAttachmentSpec_Name{string(data[iNdEx:postIndex])}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -4184,7 +4325,7 @@ func (m *JobSpec_NetworkAttachment) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Reference = &JobSpec_NetworkAttachment_NetworkID{string(data[iNdEx:postIndex])}
+			m.Reference = &JobSpec_NetworkAttachmentSpec_NetworkID{string(data[iNdEx:postIndex])}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -4392,6 +4533,37 @@ func (m *Task) Unmarshal(data []byte) error {
 			}
 			m.JobID = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Networks", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Networks = append(m.Networks, &Task_NetworkAttachment{})
+			if err := m.Networks[len(m.Networks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
@@ -4519,6 +4691,118 @@ func (m *Task) Unmarshal(data []byte) error {
 			if err := m.Status.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Task_NetworkAttachment) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: NetworkAttachment: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: NetworkAttachment: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Network", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Network == nil {
+				m.Network = &Network{}
+			}
+			if err := m.Network.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Addresses", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Addresses = append(m.Addresses, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -5155,7 +5439,7 @@ func (m *NetworkSpec) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Driver", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field DriverConfiguration", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -5179,10 +5463,10 @@ func (m *NetworkSpec) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Driver == nil {
-				m.Driver = &Driver{}
+			if m.DriverConfiguration == nil {
+				m.DriverConfiguration = &Driver{}
 			}
-			if err := m.Driver.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.DriverConfiguration.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -5513,6 +5797,39 @@ func (m *Network) Unmarshal(data []byte) error {
 				m.Spec = &NetworkSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DriverState", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.DriverState == nil {
+				m.DriverState = &Driver{}
+			}
+			if err := m.DriverState.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
