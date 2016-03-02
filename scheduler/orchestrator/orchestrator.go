@@ -51,7 +51,9 @@ func (o *Orchestrator) Run() {
 						return err
 					}
 					for _, t := range tasks {
-						tx.Tasks().Delete(t.ID)
+						// TODO(aluzzardi): Find a better way to deal with errors.
+						// If `Delete` fails, it probably means the task was already deleted which is fine.
+						_ = tx.Tasks().Delete(t.ID)
 					}
 					return nil
 				})
@@ -135,7 +137,9 @@ func (o *Orchestrator) balance(job *api.Job) {
 			log.Debugf("Job %s was scaled down from %d to %d instances", job.ID, numTasks, specifiedInstances)
 			diff := numTasks - specifiedInstances
 			for i := int64(0); i < diff; i++ {
-				tx.Tasks().Delete(tasks[i].ID)
+				// TODO(aluzzardi): Find a better way to deal with errors.
+				// If `Delete` fails, it probably means the task was already deleted which is fine.
+				_ = tx.Tasks().Delete(tasks[i].ID)
 			}
 		}
 		return nil
