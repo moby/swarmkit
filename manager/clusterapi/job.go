@@ -21,7 +21,15 @@ func (s *Server) GetJob(ctx context.Context, request *api.GetJobRequest) (*api.G
 	if request.JobID == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
-	job := s.store.Job(request.JobID)
+
+	var job *api.Job
+	err := s.store.View(func(tx state.ReadTx) error {
+		job = tx.Jobs().Get(request.JobID)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
 	if job == nil {
 		return nil, grpc.Errorf(codes.NotFound, "job %s not found", request.JobID)
 	}
@@ -44,7 +52,11 @@ func (s *Server) DeleteJob(ctx context.Context, request *api.DeleteJobRequest) (
 	if request.JobID == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
-	if err := s.store.DeleteJob(request.JobID); err != nil {
+
+	err := s.store.Update(func(tx state.Tx) error {
+		return tx.Jobs().Delete(request.JobID)
+	})
+	if err != nil {
 		if err == state.ErrNotExist {
 			return nil, grpc.Errorf(codes.NotFound, "job %s not found", request.JobID)
 		}
@@ -55,7 +67,17 @@ func (s *Server) DeleteJob(ctx context.Context, request *api.DeleteJobRequest) (
 
 // ListJobs returns a list of all jobs.
 func (s *Server) ListJobs(ctx context.Context, request *api.ListJobsRequest) (*api.ListJobsResponse, error) {
+	var jobs []*api.Job
+	err := s.store.View(func(tx state.ReadTx) error {
+		var err error
+
+		jobs, err = tx.Jobs().Find(state.All)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
 	return &api.ListJobsResponse{
-		Jobs: s.store.Jobs(),
+		Jobs: jobs,
 	}, nil
 }

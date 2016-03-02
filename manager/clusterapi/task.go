@@ -21,7 +21,15 @@ func (s *Server) GetTask(ctx context.Context, request *api.GetTaskRequest) (*api
 	if request.TaskID == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
-	task := s.store.Task(request.TaskID)
+
+	var task *api.Task
+	err := s.store.View(func(tx state.ReadTx) error {
+		task = tx.Tasks().Get(request.TaskID)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
 	if task == nil {
 		return nil, grpc.Errorf(codes.NotFound, "task %s not found", request.TaskID)
 	}
@@ -38,7 +46,11 @@ func (s *Server) DeleteTask(ctx context.Context, request *api.DeleteTaskRequest)
 	if request.TaskID == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
-	if err := s.store.DeleteTask(request.TaskID); err != nil {
+
+	err := s.store.Update(func(tx state.Tx) error {
+		return tx.Tasks().Delete(request.TaskID)
+	})
+	if err != nil {
 		if err == state.ErrNotExist {
 			return nil, grpc.Errorf(codes.NotFound, "task %s not found", request.TaskID)
 		}
@@ -49,7 +61,17 @@ func (s *Server) DeleteTask(ctx context.Context, request *api.DeleteTaskRequest)
 
 // ListTasks returns a list of all tasks.
 func (s *Server) ListTasks(ctx context.Context, request *api.ListTasksRequest) (*api.ListTasksResponse, error) {
+	var tasks []*api.Task
+	err := s.store.View(func(tx state.ReadTx) error {
+		var err error
+
+		tasks, err = tx.Tasks().Find(state.All)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
 	return &api.ListTasksResponse{
-		Tasks: s.store.Tasks(),
+		Tasks: tasks,
 	}, nil
 }
