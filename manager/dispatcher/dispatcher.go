@@ -3,6 +3,7 @@ package dispatcher
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -16,7 +17,11 @@ import (
 	"golang.org/x/net/context"
 )
 
-var defaultTTL = 5 * time.Second
+const (
+	defaultHeartBeatPeriod       = 5 * time.Second
+	defaultHeartBeatEpsilon      = 500 * time.Millisecond
+	defaultGracePeriodMultiplier = 4
+)
 
 type registeredNode struct {
 	Heartbeat *heartbeat.Heartbeat
@@ -33,18 +38,61 @@ var (
 	ErrNodeNotRegistered = errors.New("node not registered")
 )
 
+type periodChooser struct {
+	period  time.Duration
+	epsilon time.Duration
+	rand    *rand.Rand
+}
+
+func newPeriodChooser(period, eps time.Duration) *periodChooser {
+	return &periodChooser{
+		period:  period,
+		epsilon: eps,
+		rand:    rand.New(rand.NewSource(time.Now().UnixNano())),
+	}
+}
+
+func (pc *periodChooser) Choose() time.Duration {
+	var adj int64
+	if pc.epsilon > 0 {
+		adj = rand.Int63n(int64(2*pc.epsilon)) - int64(pc.epsilon)
+	}
+	return pc.period + time.Duration(adj)
+}
+
+// Config is configuration for Dispatcher. For default you should use
+// DefautConfig.
+type Config struct {
+	HeartbeatPeriod       time.Duration
+	HeartbeatEpsilon      time.Duration
+	GracePeriodMultiplier int
+}
+
+// DefaultConfig returns default config for Dispatcher.
+func DefaultConfig() *Config {
+	return &Config{
+		HeartbeatPeriod:       defaultHeartBeatPeriod,
+		HeartbeatEpsilon:      defaultHeartBeatEpsilon,
+		GracePeriodMultiplier: defaultGracePeriodMultiplier,
+	}
+}
+
 // Dispatcher is responsible for dispatching tasks and tracking agent health.
 type Dispatcher struct {
-	mu    sync.Mutex
-	nodes map[string]*registeredNode
-	store state.Store
+	mu                    sync.Mutex
+	nodes                 map[string]*registeredNode
+	store                 state.Store
+	gracePeriodMultiplier int
+	periodChooser         *periodChooser
 }
 
 // New returns Dispatcher with store.
-func New(store state.Store) *Dispatcher {
+func New(store state.Store, c *Config) *Dispatcher {
 	return &Dispatcher{
-		nodes: make(map[string]*registeredNode),
-		store: store,
+		nodes:                 make(map[string]*registeredNode),
+		store:                 store,
+		periodChooser:         newPeriodChooser(c.HeartbeatPeriod, c.HeartbeatEpsilon),
+		gracePeriodMultiplier: c.GracePeriodMultiplier,
 	}
 }
 
@@ -80,11 +128,10 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 		return nil, err
 	}
 
-	ttl := d.electTTL()
 	d.mu.Lock()
-
+	ttl := d.periodChooser.Choose()
 	d.nodes[n.Spec.ID] = &registeredNode{
-		Heartbeat: heartbeat.New(ttl, func() {
+		Heartbeat: heartbeat.New(ttl*time.Duration(d.gracePeriodMultiplier), func() {
 			if err := d.nodeDown(n.Spec.ID); err != nil {
 				logrus.Errorf("error deregistering node %s after heartbeat was not received: %v", n.Spec.ID, err)
 			}
@@ -165,21 +212,18 @@ func (d *Dispatcher) nodeDown(id string) error {
 	return nil
 }
 
-func (d *Dispatcher) electTTL() time.Duration {
-	return defaultTTL
-}
-
 // Heartbeat is heartbeat method for nodes. It returns new TTL in response.
 // Node should send new heartbeat earlier than now + TTL, otherwise it will
 // be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
 func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*api.HeartbeatResponse, error) {
 	d.mu.Lock()
 	node, ok := d.nodes[r.NodeID]
-	d.mu.Unlock()
 	if !ok {
+		d.mu.Unlock()
 		return nil, grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
 	}
-	ttl := d.electTTL()
+	ttl := d.periodChooser.Choose()
+	d.mu.Unlock()
 	node.Heartbeat.Update(ttl)
 	node.Heartbeat.Beat()
 	return &api.HeartbeatResponse{TTL: ttl}, nil

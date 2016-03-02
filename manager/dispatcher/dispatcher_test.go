@@ -26,14 +26,14 @@ func (gd *grpcDispatcher) Close() {
 	gd.grpcServer.Stop()
 }
 
-func startDispatcher() (*grpcDispatcher, error) {
+func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, err
 	}
 	s := grpc.NewServer()
 	store := state.NewMemoryStore()
-	d := New(store)
+	d := New(store, c)
 	api.RegisterAgentServer(s, d)
 	go func() {
 		// Serve will always return an error (even when properly stopped).
@@ -56,7 +56,7 @@ func startDispatcher() (*grpcDispatcher, error) {
 }
 
 func TestRegisterTwice(t *testing.T) {
-	gd, err := startDispatcher()
+	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
 
@@ -75,12 +75,10 @@ func TestRegisterTwice(t *testing.T) {
 }
 
 func TestHeartbeat(t *testing.T) {
-	origTTL := defaultTTL
-	defaultTTL = 500 * time.Millisecond
-	defer func() {
-		defaultTTL = origTTL
-	}()
-	gd, err := startDispatcher()
+	cfg := DefaultConfig()
+	cfg.HeartbeatPeriod = 500 * time.Millisecond
+	cfg.HeartbeatEpsilon = 0
+	gd, err := startDispatcher(cfg)
 	assert.NoError(t, err)
 	defer gd.Close()
 
@@ -107,12 +105,10 @@ func TestHeartbeat(t *testing.T) {
 }
 
 func TestHeartbeatTimeout(t *testing.T) {
-	origTTL := defaultTTL
-	defaultTTL = 100 * time.Millisecond
-	defer func() {
-		defaultTTL = origTTL
-	}()
-	gd, err := startDispatcher()
+	cfg := DefaultConfig()
+	cfg.HeartbeatPeriod = 100 * time.Millisecond
+	cfg.HeartbeatEpsilon = 0
+	gd, err := startDispatcher(cfg)
 	assert.NoError(t, err)
 	defer gd.Close()
 
@@ -140,7 +136,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 }
 
 func TestHeartbeatUnregistered(t *testing.T) {
-	gd, err := startDispatcher()
+	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
 	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: "test"})
@@ -150,7 +146,7 @@ func TestHeartbeatUnregistered(t *testing.T) {
 }
 
 func TestTasks(t *testing.T) {
-	gd, err := startDispatcher()
+	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
 	testNode := &api.NodeSpec{ID: "test"}
@@ -178,7 +174,7 @@ func TestTasks(t *testing.T) {
 }
 
 func TestTaskUpdate(t *testing.T) {
-	gd, err := startDispatcher()
+	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
 
@@ -221,4 +217,18 @@ func TestTaskUpdate(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
+}
+
+func TestPeriodChooser(t *testing.T) {
+	period := 100 * time.Millisecond
+	epsilon := 50 * time.Millisecond
+	pc := newPeriodChooser(period, epsilon)
+	for i := 0; i < 1024; i++ {
+		ttl := pc.Choose()
+		if ttl < period-epsilon {
+			t.Fatalf("ttl elected below epsilon range: %v", ttl)
+		} else if ttl > period+epsilon {
+			t.Fatalf("ttl elected above epsilon range: %v", ttl)
+		}
+	}
 }

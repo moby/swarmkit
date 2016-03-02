@@ -31,7 +31,7 @@ type Manager struct {
 func New(config *Config) *Manager {
 	m := &Manager{
 		config:     config,
-		dispatcher: dispatcher.New(config.Store),
+		dispatcher: dispatcher.New(config.Store, dispatcher.DefaultConfig()),
 	}
 
 	m.server = grpc.NewServer()
