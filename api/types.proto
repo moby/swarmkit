@@ -122,10 +122,10 @@ message JobSpec {
 			CronJob cron = 4;
 		}
 	}
-	
-	// NetworkAttachment describes a desired attachment to the named network or
+
+	// NetworkAttachmentSpec describes a desired attachment to the named network or
 	// a specific network_id.
-	message NetworkAttachment {
+	message NetworkAttachmentSpec {
 		oneof reference {
 			string name = 1;
 			string network_id = 2 [(gogoproto.customname) = "NetworkID"];
@@ -135,7 +135,7 @@ message JobSpec {
 	Source source = 2;
 	Orchestration orchestration = 3;
 
-	repeated NetworkAttachment networks = 4;
+	repeated NetworkAttachmentSpec networks = 4;
 
 	// TODO(stevvooe): Specify the components that make up the container
 	// configuration. This should have fields similar to container.Config.
@@ -174,7 +174,7 @@ message Task {
 	// TODO(stevvooe): Consider bringing back assignment, rather than using a
 	// node id field. We like having this concept be first-class. It helps to
 	// reason about storage and consistency.
-	
+
 	// NodeID indicates the node to which the task is assigned. If this field
 	// is empty or not set, the task is unassigned.
 	string node_id = 4 [(gogoproto.customname) = "NodeID"];
@@ -192,8 +192,18 @@ message Task {
 	// exact hash, "redis@sha256:...".
 	Source resolved = 6;
 
-	// TODO(stevvooe/mrjana): Need to add additional fields about result of
-	// network attach.
+	message NetworkAttachment {
+		// Network state as a whole becomes part of Task so
+		// that it always is available for use in agents so
+		// that agents don't have any other dependency during execution.
+		Network network = 1;
+
+		// List of IPv4/IPv6 addresses that are assigned to the task
+		// as part of getting attached to this network.
+		repeated string addresses = 2;
+	}
+
+	repeated NetworkAttachment networks = 3;
 }
 
 message Job {
@@ -218,7 +228,7 @@ message IPAMConfiguration {
 
 	// Gateway address within the subnet.
 	string gateway = 3;
-	
+
 	// Reserved is a list of address from the master pool that should *not* be
 	// allocated. These addresses may have already been allocated or may be
 	// reserved for another allocation manager.
@@ -245,7 +255,8 @@ message NetworkSpec {
 		repeated IPAMConfiguration ipv6 = 4;
 	}
 
-	Driver driver = 2;
+	// Driver specific configuration consumed by the network driver.
+	Driver driver_configuration = 2;
 
 	// IPv6Enabled enables support for IPv6 on the network.
 	bool ipv6_enabled = 3;
@@ -260,5 +271,7 @@ message NetworkSpec {
 message Network {
 	string id = 1 [(gogoproto.customname) = "ID"];
 	NetworkSpec spec = 2;
-}
 
+	// Driver specific operational state provided by the network driver.
+	Driver driver_state = 3;
+}
