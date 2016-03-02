@@ -10,7 +10,7 @@ import (
 // An Orchestrator runs a reconciliation loop to create and destroy
 // tasks as necessary for the running jobs.
 type Orchestrator struct {
-	store state.Store
+	store state.WatchableStore
 
 	// stopChan signals to the state machine to stop running.
 	stopChan chan struct{}
@@ -19,7 +19,7 @@ type Orchestrator struct {
 }
 
 // NewOrchestrator creates a new orchestrator.
-func NewOrchestrator(store state.Store) *Orchestrator {
+func NewOrchestrator(store state.WatchableStore) *Orchestrator {
 	return &Orchestrator{
 		store:    store,
 		stopChan: make(chan struct{}),
@@ -44,16 +44,32 @@ func (o *Orchestrator) Run() {
 			switch v := event.Payload.(type) {
 			case state.EventDeleteJob:
 				log.Debugf("Job %s was deleted", v.Job.ID)
-				for _, t := range o.store.TasksByJob(v.Job.ID) {
-					o.store.DeleteTask(t.ID)
-				}
+				err := o.store.Update(func(tx state.Tx) error {
+					tasks, err := tx.Tasks().Find(state.ByJobID(v.Job.ID))
+					if err != nil {
+						log.Errorf("Error finding tasks for job: %v", err)
+						return err
+					}
+					for _, t := range tasks {
+						tx.Tasks().Delete(t.ID)
+					}
+					return nil
+				})
+				log.Errorf("Error in transaction: %v", err)
 			case state.EventCreateJob:
 				o.balance(v.Job)
 			case state.EventUpdateJob:
 				o.balance(v.Job)
 			case state.EventDeleteTask:
 				if v.Task.JobID != "" {
-					job := o.store.Job(v.Task.JobID)
+					var job *api.Job
+					err := o.store.View(func(tx state.ReadTx) error {
+						job = tx.Jobs().Get(v.Task.JobID)
+						return nil
+					})
+					if err != nil {
+						log.Errorf("Error in transaction: %v", err)
+					}
 					if job != nil {
 						o.balance(job)
 					}
@@ -72,45 +88,60 @@ func (o *Orchestrator) Stop() {
 }
 
 func (o *Orchestrator) balance(job *api.Job) {
-	tasks := o.store.TasksByJob(job.ID)
-	numTasks := int64(len(tasks))
+	err := o.store.Update(func(tx state.Tx) error {
+		tasks, err := tx.Tasks().Find(state.ByJobID(job.ID))
+		if err != nil {
+			log.Errorf("Error finding tasks for job: %v", err)
+			return nil
+		}
 
-	serviceJob, ok := job.Spec.Orchestration.Job.(*api.JobSpec_Orchestration_Service)
-	// TODO(aaronl): support other types of jobs
-	if !ok {
-		panic("job type not supported")
-	}
+		numTasks := int64(len(tasks))
 
-	specifiedInstances := serviceJob.Service.Instances
+		serviceJob, ok := job.Spec.Orchestration.Job.(*api.JobSpec_Orchestration_Service)
+		// TODO(aaronl): support other types of jobs
+		if !ok {
+			panic("job type not supported")
+		}
 
-	switch {
-	case specifiedInstances > numTasks:
-		// Scale up
-		log.Debugf("Job %s was scaled up from %d to %d instances", job.ID, numTasks, specifiedInstances)
-		diff := specifiedInstances - numTasks
-		for i := int64(0); i < diff; i++ {
-			spec := *job.Spec
-			task := &api.Task{
-				Spec:  &spec,
-				JobID: job.ID,
-				Status: &api.TaskStatus{
-					State: api.TaskStatus_NEW,
-				},
+		specifiedInstances := serviceJob.Service.Instances
+
+		switch {
+		case specifiedInstances > numTasks:
+			// Scale up
+			log.Debugf("Job %s was scaled up from %d to %d instances", job.ID, numTasks, specifiedInstances)
+			diff := specifiedInstances - numTasks
+			for i := int64(0); i < diff; i++ {
+				spec := *job.Spec
+				task := &api.Task{
+					Spec:  &spec,
+					JobID: job.ID,
+					Status: &api.TaskStatus{
+						State: api.TaskStatus_NEW,
+					},
+				}
+				var err error
+				task.ID, err = identity.NewID()
+				if err != nil {
+					log.Error(err)
+				} else if err := tx.Tasks().Create(task); err != nil {
+					log.Error(err)
+				}
 			}
-			var err error
-			task.ID, err = identity.NewID()
-			if err != nil {
-				log.Error(err)
-			} else if err := o.store.CreateTask(task.ID, task); err != nil {
-				log.Error(err)
+		case specifiedInstances < numTasks:
+			// Scale down
+			// TODO(aaronl): Scaling down needs to involve the
+			// planner. The orchestrator should not be deleting
+			// tasks directly.
+			log.Debugf("Job %s was scaled down from %d to %d instances", job.ID, numTasks, specifiedInstances)
+			diff := numTasks - specifiedInstances
+			for i := int64(0); i < diff; i++ {
+				tx.Tasks().Delete(tasks[i].ID)
 			}
 		}
-	case specifiedInstances < numTasks:
-		// Scale down
-		log.Debugf("Job %s was scaled down from %d to %d instances", job.ID, numTasks, specifiedInstances)
-		diff := numTasks - specifiedInstances
-		for i := int64(0); i < diff; i++ {
-			o.store.DeleteTask(tasks[i].ID)
-		}
+		return nil
+	})
+	if err != nil {
+		log.Errorf("Error in transaction: %v", err)
+		return
 	}
 }
