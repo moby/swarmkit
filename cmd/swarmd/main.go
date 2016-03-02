@@ -4,10 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	// TODO(abronan): remove these blank imports after
-	// including the raft backend
-	_ "github.com/coreos/etcd/raft"
-	_ "github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/swarm-v2/version"
 	"github.com/spf13/cobra"
 )
