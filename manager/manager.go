@@ -3,6 +3,7 @@ package manager
 import (
 	"net"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/clusterapi"
 	"github.com/docker/swarm-v2/manager/dispatcher"
@@ -51,6 +52,8 @@ func (m *Manager) ListenAndServe() error {
 	if err != nil {
 		return err
 	}
+	logrus.WithFields(logrus.Fields{"proto": m.config.ListenProto, "addr": m.config.ListenAddr}).Info("Listening for connections")
+
 	return m.server.Serve(lis)
 }
 

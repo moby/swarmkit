@@ -1,17 +1,16 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/version"
 	"github.com/spf13/cobra"
 )
 
 func main() {
 	if err := mainCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+		logrus.Fatal(err)
 	}
 }
 
@@ -19,10 +18,27 @@ var (
 	mainCmd = &cobra.Command{
 		Use:   os.Args[0],
 		Short: "Run a swarm control process",
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+			logrus.SetOutput(os.Stderr)
+			flag, err := cmd.Flags().GetString("log-level")
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			level, err := logrus.ParseLevel(flag)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			logrus.SetLevel(level)
+		},
 	}
 )
 
 func init() {
-	mainCmd.AddCommand(version.Cmd)
-	mainCmd.AddCommand(managerCmd)
+	mainCmd.PersistentFlags().StringP("log-level", "l", "info", "Log level (options \"debug\", \"info\", \"warn\", \"error\", \"fatal\", \"panic\")")
+
+	mainCmd.AddCommand(
+		managerCmd,
+		version.Cmd,
+	)
+
 }
