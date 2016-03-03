@@ -23,6 +23,8 @@ type grpcDispatcher struct {
 }
 
 func (gd *grpcDispatcher) Close() {
+	// Close the client connection.
+	_ = gd.conn.Close()
 	gd.grpcServer.Stop()
 }
 
