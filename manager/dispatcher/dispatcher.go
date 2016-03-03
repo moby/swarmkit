@@ -81,13 +81,13 @@ func DefaultConfig() *Config {
 type Dispatcher struct {
 	mu                    sync.Mutex
 	nodes                 map[string]*registeredNode
-	store                 state.Store
+	store                 state.WatchableStore
 	gracePeriodMultiplier int
 	periodChooser         *periodChooser
 }
 
 // New returns Dispatcher with store.
-func New(store state.Store, c *Config) *Dispatcher {
+func New(store state.WatchableStore, c *Config) *Dispatcher {
 	return &Dispatcher{
 		nodes:                 make(map[string]*registeredNode),
 		store:                 store,
@@ -176,22 +176,56 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Agent_TasksServer) er
 	if !ok {
 		return grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
 	}
-	for {
-		var tasks []*api.Task
-		err := d.store.View(func(readTx state.ReadTx) error {
-			var err error
-			tasks, err = readTx.Tasks().Find(state.ByNodeID(r.NodeID))
-			return err
-		})
+
+	watchQueue := d.store.WatchQueue()
+	nodeTasks := state.Watch(watchQueue,
+		state.EventCreateTask{Task: &api.Task{NodeID: r.NodeID},
+			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
+		state.EventUpdateTask{Task: &api.Task{NodeID: r.NodeID},
+			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
+		state.EventDeleteTask{Task: &api.Task{NodeID: r.NodeID},
+			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}})
+	defer watchQueue.StopWatch(nodeTasks)
+
+	tasksMap := make(map[string]*api.Task)
+	err := d.store.View(func(readTx state.ReadTx) error {
+		tasks, err := readTx.Tasks().Find(state.ByNodeID(r.NodeID))
 		if err != nil {
+			return nil
+		}
+		if err := stream.Send(&api.TasksResponse{Tasks: tasks}); err != nil {
 			return err
 		}
-		if len(tasks) != 0 {
-			if err := stream.Send(&api.TasksResponse{Tasks: tasks}); err != nil {
-				return err
-			}
+		for _, t := range tasks {
+			tasksMap[t.ID] = t
 		}
-		time.Sleep(100 * time.Millisecond)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case event := <-nodeTasks:
+			switch v := event.Payload.(type) {
+			case state.EventCreateTask:
+				tasksMap[v.Task.ID] = v.Task
+			case state.EventUpdateTask:
+				tasksMap[v.Task.ID] = v.Task
+			case state.EventDeleteTask:
+				delete(tasksMap, v.Task.ID)
+			}
+		case <-stream.Context().Done():
+			return nil
+		}
+		var tasks []*api.Task
+		for _, t := range tasksMap {
+			tasks = append(tasks, t)
+		}
+		if err := stream.Send(&api.TasksResponse{Tasks: tasks}); err != nil {
+			return err
+		}
 	}
 }
 
