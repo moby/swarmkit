@@ -1,9 +1,13 @@
 package state
 
 import (
+	"errors"
+	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/identity"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -684,4 +688,162 @@ func TestStoreSnapshot(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
+}
+
+const benchmarkNumNodes = 10000
+
+func setupNodes(b *testing.B, n int) (Store, []string) {
+	s := NewMemoryStore()
+
+	nodeIDs := make([]string, n)
+
+	for i := 0; i < n; i++ {
+		nodeIDs[i], _ = identity.NewID()
+	}
+
+	b.ResetTimer()
+
+	_ = s.Update(func(tx1 Tx) error {
+		for i := 0; i < n; i++ {
+			_ = tx1.Nodes().Create(&api.Node{
+				Spec: &api.NodeSpec{
+					ID: nodeIDs[i],
+					Meta: &api.Meta{
+						Name: "name" + strconv.Itoa(i),
+					},
+				},
+			})
+		}
+		return nil
+	})
+
+	return s, nodeIDs
+}
+
+func BenchmarkCreateNode(b *testing.B) {
+	setupNodes(b, b.N)
+}
+
+func BenchmarkUpdateNode(b *testing.B) {
+	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+	_ = s.Update(func(tx1 Tx) error {
+		for i := 0; i < b.N; i++ {
+			_ = tx1.Nodes().Update(&api.Node{
+				Spec: &api.NodeSpec{
+					ID: nodeIDs[i%benchmarkNumNodes],
+					Meta: &api.Meta{
+						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
+					},
+				},
+			})
+		}
+		return nil
+	})
+}
+
+func BenchmarkUpdateNodeTransaction(b *testing.B) {
+	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = s.Update(func(tx1 Tx) error {
+			_ = tx1.Nodes().Update(&api.Node{
+				Spec: &api.NodeSpec{
+					ID: nodeIDs[i%benchmarkNumNodes],
+					Meta: &api.Meta{
+						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
+					},
+				},
+			})
+			return nil
+		})
+	}
+}
+
+func BenchmarkDeleteNodeTransaction(b *testing.B) {
+	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = s.Update(func(tx1 Tx) error {
+			_ = tx1.Nodes().Delete(nodeIDs[0])
+			// Don't actually commit deletions, so we can delete
+			// things repeatedly to satisfy the benchmark structure.
+			return errors.New("don't commit this")
+		})
+	}
+}
+
+func BenchmarkGetNode(b *testing.B) {
+	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+	_ = s.View(func(tx1 ReadTx) error {
+		for i := 0; i < b.N; i++ {
+			_ = tx1.Nodes().Get(nodeIDs[i%benchmarkNumNodes])
+		}
+		return nil
+	})
+}
+
+func BenchmarkFindAllNodes(b *testing.B) {
+	s, _ := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+	_ = s.View(func(tx1 ReadTx) error {
+		for i := 0; i < b.N; i++ {
+			_, _ = tx1.Nodes().Find(All)
+		}
+		return nil
+	})
+}
+
+func BenchmarkFindNodeByName(b *testing.B) {
+	s, _ := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+	_ = s.View(func(tx1 ReadTx) error {
+		for i := 0; i < b.N; i++ {
+			_, _ = tx1.Nodes().Find(ByName("name" + strconv.Itoa(i)))
+		}
+		return nil
+	})
+}
+
+func BenchmarkNodeConcurrency(b *testing.B) {
+	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+
+	// Run 5 writer goroutines and 5 reader goroutines
+	var wg sync.WaitGroup
+	for c := 0; c != 5; c++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < b.N; i++ {
+				_ = s.Update(func(tx1 Tx) error {
+					_ = tx1.Nodes().Update(&api.Node{
+						Spec: &api.NodeSpec{
+							ID: nodeIDs[i%benchmarkNumNodes],
+							Meta: &api.Meta{
+								Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(c) + "_" + strconv.Itoa(i),
+							},
+						},
+					})
+					return nil
+				})
+			}
+		}()
+	}
+
+	for c := 0; c != 5; c++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = s.View(func(tx1 ReadTx) error {
+				for i := 0; i < b.N; i++ {
+					_ = tx1.Nodes().Get(nodeIDs[i%benchmarkNumNodes])
+				}
+				return nil
+			})
+		}()
+	}
+
+	wg.Wait()
 }
