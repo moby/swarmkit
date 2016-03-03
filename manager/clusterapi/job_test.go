@@ -11,10 +11,7 @@ import (
 )
 
 func TestCreateJob(t *testing.T) {
-	ts := newTestServer(t)
-	_, err := ts.Client.CreateJob(context.Background(), &api.CreateJobRequest{})
-	assert.Error(t, err)
-	assert.Equal(t, codes.Unimplemented, grpc.Code(err))
+	// TODO
 }
 
 func TestGetJob(t *testing.T) {
