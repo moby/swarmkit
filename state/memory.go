@@ -12,9 +12,10 @@ import (
 type MemoryStore struct {
 	l sync.RWMutex
 
-	nodes map[string]*api.Node
-	tasks map[string]*api.Task
-	jobs  map[string]*api.Job
+	nodes    map[string]*api.Node
+	tasks    map[string]*api.Task
+	jobs     map[string]*api.Job
+	networks map[string]*api.Network
 
 	queue *watch.Queue
 }
@@ -22,10 +23,11 @@ type MemoryStore struct {
 // NewMemoryStore returns an in-memory store.
 func NewMemoryStore() WatchableStore {
 	return &MemoryStore{
-		nodes: make(map[string]*api.Node),
-		tasks: make(map[string]*api.Task),
-		jobs:  make(map[string]*api.Job),
-		queue: watch.NewQueue(0),
+		nodes:    make(map[string]*api.Node),
+		tasks:    make(map[string]*api.Task),
+		jobs:     make(map[string]*api.Job),
+		networks: make(map[string]*api.Network),
+		queue:    watch.NewQueue(0),
 	}
 }
 
@@ -47,6 +49,10 @@ func (t readTx) Nodes() NodeSetReader {
 
 func (t readTx) Jobs() JobSetReader {
 	return jobs{s: t.s}
+}
+
+func (t readTx) Networks() NetworkSetReader {
+	return networks{s: t.s}
 }
 
 func (t readTx) Tasks() TaskSetReader {
@@ -71,6 +77,10 @@ func (t tx) Nodes() NodeSet {
 
 func (t tx) Jobs() JobSet {
 	return jobs{s: t.s}
+}
+
+func (t tx) Networks() NetworkSet {
+	return networks{s: t.s}
 }
 
 func (t tx) Tasks() TaskSet {
@@ -348,6 +358,77 @@ func (s *MemoryStore) jobsByName(name string) []*api.Job {
 		}
 	}
 	return jobs
+}
+
+type networks struct {
+	s *MemoryStore
+}
+
+// Create adds a new network to the store.
+// Returns ErrExist if the ID is already taken.
+func (networks networks) Create(n *api.Network) error {
+	if _, ok := networks.s.networks[n.ID]; ok {
+		return ErrExist
+	}
+
+	networks.s.networks[n.ID] = n
+	Publish(networks.s.queue, EventCreateNetwork{Network: n})
+	return nil
+}
+
+// Delete removes a network from the store.
+// Returns ErrNotExist if the node doesn't exist.
+func (networks networks) Delete(id string) error {
+	n, ok := networks.s.networks[id]
+	if !ok {
+		return ErrNotExist
+	}
+
+	delete(networks.s.networks, id)
+	Publish(networks.s.queue, EventDeleteNetwork{Network: n})
+	return nil
+}
+
+// Get looks up a network by ID.
+// Returns nil if the network doesn't exist.
+func (networks networks) Get(id string) *api.Network {
+	return networks.s.networks[id]
+}
+
+// Find selects a set of networks and returns them. If by is nil,
+// returns all networks.
+func (networks networks) Find(by By) ([]*api.Network, error) {
+	switch v := by.(type) {
+	case all:
+		return networks.s.listNetworks(), nil
+	case byName:
+		return networks.s.networksByName(string(v)), nil
+	default:
+		return nil, ErrInvalidFindBy
+	}
+}
+
+// listNetworks returns all networks that are present in the store.
+func (s *MemoryStore) listNetworks() []*api.Network {
+	networks := []*api.Network{}
+	for _, n := range s.networks {
+		networks = append(networks, n)
+	}
+	return networks
+}
+
+// networksByName returns the list of networks matching a given name.
+// Names are neither required nor guaranteed to be unique therefore networksByName
+// might return more than one network for a given name or no networks at all.
+func (s *MemoryStore) networksByName(name string) []*api.Network {
+	//TODO(aluzzardi): This needs an index.
+	networks := []*api.Network{}
+	for _, n := range s.networks {
+		if n.Spec.Meta.Name == name {
+			networks = append(networks, n)
+		}
+	}
+	return networks
 }
 
 // CopyFrom causes this store to hold a copy of the provided data set.
