@@ -2,7 +2,10 @@ package job
 
 import (
 	"fmt"
+	"os"
+	"text/tabwriter"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
 	"github.com/spf13/cobra"
@@ -21,8 +24,31 @@ var (
 			if err != nil {
 				return err
 			}
+
+			w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+			defer func() {
+				// Ignore flushing errors - there's nothing we can do.
+				_ = w.Flush()
+			}()
+			fmt.Fprintln(w, "ID\tName\tImage\tInstances")
 			for _, j := range r.Jobs {
-				fmt.Println(j.ID)
+				spec := j.Spec
+				orchestration := spec.Orchestration.GetService()
+				image := spec.Source.GetImage()
+
+				// TODO(aluzzardi): Right now we only implement the happy path
+				// and don't have any proper error handling whatsover.
+				// Instead of aborting, we should display what we can of the job.
+				if orchestration == nil || image == nil {
+					log.Fatalf("Malformed job: %v", j)
+				}
+
+				fmt.Fprintf(w, "%s\t%s\t%s\t%d\n",
+					j.ID,
+					spec.Meta.Name,
+					image.Reference,
+					orchestration.Instances,
+				)
 			}
 			return nil
 		},
