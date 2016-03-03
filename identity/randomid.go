@@ -37,20 +37,14 @@ const (
 // 128 bits of entropy encoded with base36. Leading padding is added if the
 // string is less 25 bytes. We do not intend to maintain this interface, so
 // identifiers should be treated opaquely.
-//
-// The only errors returned by NewID are related to reading the random source.
-// These should be rare, but please make sure to check the error because the
-// result of degraded or absent randomness can be disasterous. In the future,
-// errors may be less rare if another identifier generation scheme is
-// leveraged.
-func NewID() (string, error) {
+func NewID() string {
 	var p [randomIDEntropyBytes]byte
 
 	if _, err := io.ReadFull(idReader, p[:]); err != nil {
-		return "", err
+		panic(fmt.Errorf("failed to read random bytes: %v", err))
 	}
 
 	var nn big.Int
 	nn.SetBytes(p[:])
-	return fmt.Sprintf("%0[1]*s", maxRandomIDLength, nn.Text(randomIDBase)), nil
+	return fmt.Sprintf("%0[1]*s", maxRandomIDLength, nn.Text(randomIDBase))
 }
