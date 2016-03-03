@@ -40,6 +40,111 @@
 			"Rev": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
 		},
 		{
+			"ImportPath": "github.com/docker/docker/pkg/plugins",
+			"Comment": "v1.4.1-9901-g1ae6da7",
+			"Rev": "1ae6da75c8f0c51dc13a632d76f7769a70db36b1"
+		},
+		{
+			"ImportPath": "github.com/docker/go-connections/sockets",
+			"Comment": "v0.1.2-2-g082e382",
+			"Rev": "082e382836465660fe3fd21de06624a205f986eb"
+		},
+		{
+			"ImportPath": "github.com/docker/go-connections/tlsconfig",
+			"Comment": "v0.1.2-2-g082e382",
+			"Rev": "082e382836465660fe3fd21de06624a205f986eb"
+		},
+		{
+			"ImportPath": "github.com/docker/libkv",
+			"Comment": "v0.1.0-19-g4033d3c",
+			"Rev": "4033d3c9b2608f3b16f8b3b4b0a4a9080d6be7a0"
+		},
+		{
+			"ImportPath": "github.com/docker/libkv/store",
+			"Comment": "v0.1.0-19-g4033d3c",
+			"Rev": "4033d3c9b2608f3b16f8b3b4b0a4a9080d6be7a0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/bitseq",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/datastore",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/discoverapi",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/driverapi",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/drivers/overlay/ovmanager",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/drvregistry",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/idm",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/ipam",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/ipamapi",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/ipams/builtin",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/ipams/remote",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/ipams/remote/api",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/ipams/windowsipam",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/ipamutils",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/netlabel",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
+			"ImportPath": "github.com/docker/libnetwork/types",
+			"Comment": "v0.7.0-dev.3-10-gde766dd",
+			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+		},
+		{
 			"ImportPath": "github.com/gogo/protobuf/gogoproto",
 			"Comment": "v0.1-125-g82d16f7",
 			"Rev": "82d16f734d6d871204a3feb1a73cb220cc92574c"
@@ -166,6 +271,16 @@
 		{
 			"ImportPath": "github.com/inconshreveable/mousetrap",
 			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+		},
+		{
+			"ImportPath": "github.com/mrjana/libnetwork/netlabel",
+			"Comment": "v0.1-1053-g1575efc",
+			"Rev": "1575efccd1f71984911d7a785016561fa05e06ca"
+		},
+		{
+			"ImportPath": "github.com/opencontainers/runc/libcontainer/user",
+			"Comment": "v0.0.7-13-g86454a0",
+			"Rev": "86454a044712a702dc85ef1d18d4eef846e31f7a"
 		},
 		{
 			"ImportPath": "github.com/pmezard/go-difflib/difflib",
