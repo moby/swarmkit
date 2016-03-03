@@ -180,6 +180,63 @@ func (e EventDeleteJob) matches(watchEvent watch.Event) bool {
 	return true
 }
 
+// NetworkCheckFunc is the type of function used to perform filtering checks on
+// api.Job structures.
+type NetworkCheckFunc func(n1, n2 *api.Network) bool
+
+// NetworkCheckID is a NetworkCheckFunc for matching network IDs.
+func NetworkCheckID(n1, n2 *api.Network) bool {
+	return n1.ID == n2.ID
+}
+
+// EventCreateNetwork is the type used to put CreateNetwork events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventCreateNetwork struct {
+	Network *api.Network
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []NetworkCheckFunc
+}
+
+func (e EventCreateNetwork) matches(watchEvent watch.Event) bool {
+	typedEvent, ok := watchEvent.Payload.(EventCreateNetwork)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Network, typedEvent.Network) {
+			return false
+		}
+	}
+	return true
+}
+
+// EventDeleteNetwork is the type used to put DeleteNetwork events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventDeleteNetwork struct {
+	Network *api.Network
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []NetworkCheckFunc
+}
+
+func (e EventDeleteNetwork) matches(watchEvent watch.Event) bool {
+	typedEvent, ok := watchEvent.Payload.(EventDeleteNetwork)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Network, typedEvent.Network) {
+			return false
+		}
+	}
+	return true
+}
+
 // NodeCheckFunc is the type of function used to perform filtering checks on
 // api.Job structures.
 type NodeCheckFunc func(n1, n2 *api.Node) bool

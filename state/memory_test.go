@@ -223,6 +223,78 @@ func TestStoreJob(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestStoreNetwork(t *testing.T) {
+	networkSet := []*api.Network{
+		{
+			ID: "id1",
+			Spec: &api.NetworkSpec{
+				Meta: &api.Meta{
+					Name: "name1",
+				},
+			},
+		},
+		{
+			ID: "id2",
+			Spec: &api.NetworkSpec{
+				Meta: &api.Meta{
+					Name: "name2",
+				},
+			},
+		},
+		{
+			ID: "id3",
+			Spec: &api.NetworkSpec{
+				Meta: &api.Meta{
+					// intentionally conflicting name
+					Name: "name2",
+				},
+			},
+		},
+	}
+
+	s := NewMemoryStore()
+	assert.NotNil(t, s)
+
+	err := s.View(func(readTx ReadTx) error {
+		allNetworks, err := readTx.Networks().Find(All)
+		assert.NoError(t, err)
+		assert.Empty(t, allNetworks)
+		return nil
+	})
+	assert.NoError(t, err)
+
+	err = s.Update(func(tx Tx) error {
+		for _, n := range networkSet {
+			assert.NoError(t, tx.Networks().Create(n))
+		}
+		allNetworks, err := tx.Networks().Find(All)
+		assert.NoError(t, err)
+		assert.Len(t, allNetworks, len(networkSet))
+
+		assert.Error(t, tx.Networks().Create(networkSet[0]), "duplicate IDs must be rejected")
+		return nil
+	})
+	assert.NoError(t, err)
+
+	err = s.View(func(readTx ReadTx) error {
+		assert.Equal(t, networkSet[0], readTx.Networks().Get("id1"))
+		assert.Equal(t, networkSet[1], readTx.Networks().Get("id2"))
+		assert.Equal(t, networkSet[2], readTx.Networks().Get("id3"))
+
+		foundNetworks, err := readTx.Networks().Find(ByName("name1"))
+		assert.NoError(t, err)
+		assert.Len(t, foundNetworks, 1)
+		foundNetworks, err = readTx.Networks().Find(ByName("name2"))
+		assert.NoError(t, err)
+		assert.Len(t, foundNetworks, 2)
+		foundNetworks, err = readTx.Networks().Find(ByName("invalid"))
+		assert.NoError(t, err)
+		assert.Len(t, foundNetworks, 0)
+		return nil
+	})
+	assert.NoError(t, err)
+}
+
 func TestStoreTask(t *testing.T) {
 	node := &api.Node{
 		Spec: &api.NodeSpec{

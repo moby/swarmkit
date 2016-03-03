@@ -66,6 +66,28 @@ type JobSet interface {
 	JobSetWriter
 }
 
+// NetworkSetWriter is the write half of a network dataset.
+type NetworkSetWriter interface {
+	Create(j *api.Network) error
+	Delete(id string) error
+}
+
+// NetworkSetReader is the read half of a network dataset.
+type NetworkSetReader interface {
+	// Get returns the network with this ID, or nil if none exists with the
+	// specified ID.
+	Get(id string) *api.Network
+	// Find selects a set of networks and returns them. If by is nil,
+	// returns all jobs.
+	Find(by By) ([]*api.Network, error)
+}
+
+// NetworkSet is a readable and writable consistent view of networks.
+type NetworkSet interface {
+	NetworkSetReader
+	NetworkSetWriter
+}
+
 // TaskSetWriter is the write half of a task dataset.
 type TaskSetWriter interface {
 	Create(t *api.Task) error
@@ -96,6 +118,7 @@ type TaskSet interface {
 type ReadTx interface {
 	Nodes() NodeSetReader
 	Jobs() JobSetReader
+	Networks() NetworkSetReader
 	Tasks() TaskSetReader
 }
 
@@ -106,6 +129,7 @@ type ReadTx interface {
 type Tx interface {
 	Nodes() NodeSet
 	Jobs() JobSet
+	Networks() NetworkSet
 	Tasks() TaskSet
 }
 
