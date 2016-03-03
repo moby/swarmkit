@@ -115,17 +115,14 @@ func (o *Orchestrator) balance(job *api.Job) {
 			for i := int64(0); i < diff; i++ {
 				spec := *job.Spec
 				task := &api.Task{
+					ID:    identity.NewID(),
 					Spec:  &spec,
 					JobID: job.ID,
 					Status: &api.TaskStatus{
 						State: api.TaskStatus_NEW,
 					},
 				}
-				var err error
-				task.ID, err = identity.NewID()
-				if err != nil {
-					log.Error(err)
-				} else if err := tx.Tasks().Create(task); err != nil {
+				if err := tx.Tasks().Create(task); err != nil {
 					log.Error(err)
 				}
 			}

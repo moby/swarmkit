@@ -22,16 +22,12 @@ func (s *Server) CreateJob(ctx context.Context, request *api.CreateJobRequest) (
 
 	// TODO(aluzzardi): Consider using `Name` as a primary key to handle
 	// duplicate creations. See #65
-	id, err := identity.NewID()
-	if err != nil {
-		return nil, err
-	}
 	job := &api.Job{
-		ID:   id,
+		ID:   identity.NewID(),
 		Spec: request.Spec,
 	}
 
-	err = s.store.Update(func(tx state.Tx) error {
+	err := s.store.Update(func(tx state.Tx) error {
 		return tx.Jobs().Create(job)
 	})
 	if err != nil {
