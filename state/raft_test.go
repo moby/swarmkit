@@ -21,25 +21,8 @@ var (
 	raftLogger = &raft.DefaultLogger{Logger: log.New(ioutil.Discard, "", 0)}
 )
 
-// Main Raft test method, we execute the
-// tests sequentially to avoid any issue
-// on bootstrap and raft cluster lifecycle
-func TestRaft(t *testing.T) {
+func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
-
-	testBootstrap(t)
-	testLeader(t)
-	testLeaderDown(t)
-	testFollowerDown(t)
-	testLogReplication(t)
-	testLogReplicationWithoutLeader(t)
-	testQuorumFailure(t)
-	testLeaderLeave(t)
-	testFollowerLeave(t)
-
-	// TODO
-	testSnapshot(t)
-	testRecoverSnapshot(t)
 }
 
 func newInitNode(t *testing.T, id uint64) *Node {
@@ -55,11 +38,20 @@ func newInitNode(t *testing.T, id uint64) *Node {
 	n.Listener = l
 	n.Server = s
 
-	n.Campaign(n.Ctx)
+	err = n.Campaign(n.Ctx)
+	assert.NoError(t, err, "can't campaign to be the leader")
 	n.Start()
 
 	Register(s, n)
-	go s.Serve(l)
+
+	done := make(chan error)
+	go func() {
+		done <- s.Serve(l)
+	}()
+	go func() {
+		// After stopping, we should receive an error from Serve
+		assert.Error(t, <-done)
+	}()
 
 	time.Sleep(1 * time.Second)
 	return n
@@ -92,7 +84,15 @@ func newJoinNode(t *testing.T, id uint64, join string) *Node {
 	assert.NoError(t, err, "can't add nodes to the local cluster list")
 
 	Register(s, n)
-	go s.Serve(l)
+
+	done := make(chan error)
+	go func() {
+		done <- s.Serve(l)
+	}()
+	go func() {
+		// After stopping, we should receive an error from Serve
+		assert.Error(t, <-done)
+	}()
 
 	time.Sleep(1 * time.Second)
 	return n
@@ -132,12 +132,12 @@ func removeNode(nodes map[string]*Node, node string) {
 func shutdownNode(node *Node) {
 	node.Server.Stop()
 	node.Server.TestingCloseConns()
-	node.Listener.Close()
+	_ = node.Listener.Close()
 	node.Listener = nil
 	node.Shutdown()
 }
 
-func testBootstrap(t *testing.T) {
+func TestRaftBootstrap(t *testing.T) {
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
@@ -146,7 +146,7 @@ func testBootstrap(t *testing.T) {
 	assert.Equal(t, len(nodes[3].Cluster.Peers()), 3)
 }
 
-func testLeader(t *testing.T) {
+func TestLeader(t *testing.T) {
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
@@ -158,7 +158,7 @@ func testLeader(t *testing.T) {
 	assert.Equal(t, nodes[3].Leader(), nodes[1].ID)
 }
 
-func testLeaderDown(t *testing.T) {
+func TestRaftLeaderDown(t *testing.T) {
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
@@ -181,7 +181,8 @@ func testLeaderDown(t *testing.T) {
 	assert.Equal(t, nodes[3].Leader(), nodes[2].Leader())
 
 	// Propose a value
-	nodes[2].Propose(nodes[2].Ctx, pair)
+	err = nodes[2].Propose(nodes[2].Ctx, pair)
+	assert.NoError(t, err, "can't propose value to cluster")
 
 	// Wait heartbeat tick
 	time.Sleep(1 * time.Second)
@@ -196,7 +197,7 @@ func testLeaderDown(t *testing.T) {
 	assert.Equal(t, len(nodes[3].Cluster.Peers()), 3)
 }
 
-func testFollowerDown(t *testing.T) {
+func TestRaftFollowerDown(t *testing.T) {
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
@@ -217,7 +218,8 @@ func testFollowerDown(t *testing.T) {
 	assert.Equal(t, nodes[2].Leader(), nodes[1].ID)
 
 	// Propose a value
-	nodes[2].Propose(nodes[2].Ctx, pair)
+	err = nodes[2].Propose(nodes[2].Ctx, pair)
+	assert.NoError(t, err, "can't propose value to cluster")
 
 	// Wait heartbeat tick
 	time.Sleep(1 * time.Second)
@@ -232,7 +234,7 @@ func testFollowerDown(t *testing.T) {
 	assert.Equal(t, len(nodes[2].Cluster.Peers()), 3)
 }
 
-func testLogReplication(t *testing.T) {
+func TestRaftLogReplication(t *testing.T) {
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
@@ -244,7 +246,7 @@ func testLogReplication(t *testing.T) {
 
 	// Propose a value
 	err = nodes[1].Propose(nodes[1].Ctx, pair)
-	assert.NoError(t, err, "can't propose new value")
+	assert.NoError(t, err, "can't propose value to cluster")
 
 	// Wait heartbeat tick
 	time.Sleep(1 * time.Second)
@@ -260,7 +262,7 @@ func testLogReplication(t *testing.T) {
 	assert.Equal(t, nodes[3].Get(key), string(value))
 }
 
-func testLogReplicationWithoutLeader(t *testing.T) {
+func TestRaftLogReplicationWithoutLeader(t *testing.T) {
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
@@ -275,7 +277,7 @@ func testLogReplicationWithoutLeader(t *testing.T) {
 
 	// Propose a value
 	err = nodes[2].Propose(nodes[2].Ctx, pair)
-	assert.NoError(t, err, "can't propose new value")
+	assert.NoError(t, err, "can't propose value to cluster")
 
 	// Wait heartbeat tick
 	time.Sleep(1 * time.Second)
@@ -288,7 +290,7 @@ func testLogReplicationWithoutLeader(t *testing.T) {
 	assert.Equal(t, nodes[3].Get(key), "")
 }
 
-func testQuorumFailure(t *testing.T) {
+func TestRaftQuorumFailure(t *testing.T) {
 	// Bring up a 5 nodes cluster
 	nodes := newRaftCluster(t)
 	addRaftNode(t, nodes)
@@ -307,7 +309,8 @@ func testQuorumFailure(t *testing.T) {
 	nodes[5].Stop()
 
 	// Propose a value
-	nodes[1].Propose(nodes[1].Ctx, pair)
+	err = nodes[1].Propose(nodes[1].Ctx, pair)
+	assert.NoError(t, err, "can't propose value to cluster")
 
 	// Wait heartbeat tick
 	time.Sleep(1 * time.Second)
@@ -320,7 +323,7 @@ func testQuorumFailure(t *testing.T) {
 	assert.Equal(t, nodes[2].Get(key), "")
 }
 
-func testFollowerLeave(t *testing.T) {
+func TestRaftFollowerLeave(t *testing.T) {
 	// Bring up a 5 nodes cluster
 	nodes := newRaftCluster(t)
 	addRaftNode(t, nodes)
@@ -338,7 +341,8 @@ func testFollowerLeave(t *testing.T) {
 	assert.NotNil(t, resp, "leave response message is nil")
 
 	// Propose a value
-	nodes[1].Propose(nodes[1].Ctx, pair)
+	err = nodes[1].Propose(nodes[1].Ctx, pair)
+	assert.NoError(t, err, "can't propose value to cluster")
 
 	// Wait heartbeat tick
 	time.Sleep(1 * time.Second)
@@ -361,7 +365,7 @@ func testFollowerLeave(t *testing.T) {
 	assert.Equal(t, len(nodes[4].Cluster.Peers()), 4)
 }
 
-func testLeaderLeave(t *testing.T) {
+func TestRaftLeaderLeave(t *testing.T) {
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
@@ -387,7 +391,8 @@ func testLeaderLeave(t *testing.T) {
 	assert.Equal(t, nodes[2].Leader(), nodes[3].Leader())
 
 	// Propose a value
-	nodes[2].Propose(nodes[2].Ctx, pair)
+	err = nodes[2].Propose(nodes[2].Ctx, pair)
+	assert.NoError(t, err, "can't propose value to cluster")
 
 	// Wait heartbeat tick
 	time.Sleep(1 * time.Second)
@@ -402,10 +407,10 @@ func testLeaderLeave(t *testing.T) {
 	assert.Equal(t, len(nodes[3].Cluster.Peers()), 2)
 }
 
-func testSnapshot(t *testing.T) {
+func TestRaftSnapshot(t *testing.T) {
 	t.Skip()
 }
 
-func testRecoverSnapshot(t *testing.T) {
+func TestRaftRecoverSnapshot(t *testing.T) {
 	t.Skip()
 }
