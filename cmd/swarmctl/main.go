@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/cmd/swarmctl/job"
 	"github.com/docker/swarm-v2/cmd/swarmctl/node"
 	"github.com/docker/swarm-v2/cmd/swarmctl/task"
@@ -14,8 +14,7 @@ import (
 
 func main() {
 	if err := mainCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+		logrus.Fatal(err)
 	}
 }
 
