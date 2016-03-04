@@ -8,6 +8,7 @@ import (
 	"golang.org/x/net/context"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/state"
@@ -63,16 +64,19 @@ func TestRegisterTwice(t *testing.T) {
 	defer gd.Close()
 
 	testNode := &api.NodeSpec{ID: "test"}
+	var expectedSessionID string
 	{
 		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
 		assert.NoError(t, err)
-		assert.NotZero(t, resp.Period)
+		assert.Equal(t, resp.NodeID, testNode.ID)
+		assert.NotEmpty(t, resp.SessionID)
+		expectedSessionID = resp.SessionID
 	}
 	{
 		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
-		assert.Nil(t, resp)
-		assert.Error(t, err)
-		assert.Equal(t, grpc.ErrorDesc(err), ErrNodeAlreadyRegistered.Error())
+		assert.NoError(t, err)
+		assert.Equal(t, resp.NodeID, testNode.ID)
+		assert.Equal(t, resp.SessionID, expectedSessionID)
 	}
 }
 
@@ -85,14 +89,25 @@ func TestHeartbeat(t *testing.T) {
 	defer gd.Close()
 
 	testNode := &api.NodeSpec{ID: "test"}
+	var expectedSessionID string
 	{
 		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
 		assert.NoError(t, err)
-		assert.NotZero(t, resp.Period)
+		assert.Equal(t, resp.NodeID, testNode.ID)
+		assert.NotEmpty(t, resp.SessionID)
+		expectedSessionID = resp.SessionID
 	}
 	time.Sleep(250 * time.Millisecond)
 
-	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID})
+	{
+		// heartbeat without correct SessionID should fail
+		resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID})
+		assert.Nil(t, resp)
+		assert.Error(t, err)
+		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
+	}
+
+	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID, SessionID: expectedSessionID})
 	assert.NoError(t, err)
 	assert.NotZero(t, resp.Period)
 	time.Sleep(300 * time.Millisecond)
@@ -115,10 +130,14 @@ func TestHeartbeatTimeout(t *testing.T) {
 	defer gd.Close()
 
 	testNode := &api.NodeSpec{ID: "test"}
+	var expectedSessionID string
 	{
 		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
 		assert.NoError(t, err)
-		assert.NotZero(t, resp.Period)
+		assert.Equal(t, resp.NodeID, testNode.ID)
+		assert.NotEmpty(t, resp.SessionID)
+		expectedSessionID = resp.SessionID
+
 	}
 	time.Sleep(500 * time.Millisecond)
 
@@ -131,7 +150,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 	assert.NoError(t, err)
 
 	// check that node is deregistered
-	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID})
+	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID, SessionID: expectedSessionID})
 	assert.Nil(t, resp)
 	assert.Error(t, err)
 	assert.Equal(t, grpc.ErrorDesc(err), ErrNodeNotRegistered.Error())
@@ -152,10 +171,13 @@ func TestTasks(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 	testNode := &api.NodeSpec{ID: "test"}
+	var expectedSessionID string
 	{
 		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
 		assert.NoError(t, err)
-		assert.NotZero(t, resp.TTL)
+		assert.Equal(t, resp.NodeID, testNode.ID)
+		assert.NotEmpty(t, resp.SessionID)
+		expectedSessionID = resp.SessionID
 	}
 	testTask1 := &api.Task{
 		ID:     "testTask1",
@@ -165,7 +187,19 @@ func TestTasks(t *testing.T) {
 		ID:     "testTask2",
 		NodeID: testNode.ID,
 	}
-	stream, err := gd.Client.Tasks(context.Background(), &api.TasksRequest{NodeID: testNode.ID})
+
+	{
+		// without correct SessionID should fail
+		stream, err := gd.Client.Tasks(context.Background(), &api.TasksRequest{NodeID: testNode.ID})
+		assert.NoError(t, err)
+		assert.NotNil(t, stream)
+		resp, err := stream.Recv()
+		assert.Nil(t, resp)
+		assert.Error(t, err)
+		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
+	}
+
+	stream, err := gd.Client.Tasks(context.Background(), &api.TasksRequest{NodeID: testNode.ID, SessionID: expectedSessionID})
 	assert.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond)
@@ -231,10 +265,13 @@ func TestTaskUpdate(t *testing.T) {
 	defer gd.Close()
 
 	testNode := &api.NodeSpec{ID: "test"}
+	var expectedSessionID string
 	{
 		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
 		assert.NoError(t, err)
-		assert.NotZero(t, resp.TTL)
+		assert.Equal(t, resp.NodeID, testNode.ID)
+		assert.NotEmpty(t, resp.SessionID)
+		expectedSessionID = resp.SessionID
 	}
 	testTask1 := &api.Task{
 		ID:     "testTask1",
@@ -257,6 +294,16 @@ func TestTaskUpdate(t *testing.T) {
 		NodeID: testNode.ID,
 		Tasks:  []*api.Task{testTask1, testTask2},
 	}
+
+	{
+		// without correct SessionID should fail
+		resp, err := gd.Client.UpdateTaskStatus(context.Background(), updReq)
+		assert.Nil(t, resp)
+		assert.Error(t, err)
+		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
+	}
+
+	updReq.SessionID = expectedSessionID
 	_, err = gd.Client.UpdateTaskStatus(context.Background(), updReq)
 	assert.NoError(t, err)
 	err = gd.Store.View(func(readTx state.ReadTx) error {

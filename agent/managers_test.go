@@ -1,8 +1,9 @@
 package agent
 
-import "math"
-
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 func TestManagersSimple(t *testing.T) {
 	addrs := []string{"one", "two", "three"}

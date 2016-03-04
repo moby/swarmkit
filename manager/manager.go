@@ -34,11 +34,19 @@ type Manager struct {
 
 // New creates a Manager which has not started to accept requests yet.
 func New(config *Config) *Manager {
+	dispatcherConfig := dispatcher.DefaultConfig()
+
+	// TODO(stevvooe): Reported address of manager is plumbed to listen addr
+	// for now, may want to make this separate. This can be tricky to get right
+	// so we need to make it easy to override. This needs to be the address
+	// through which agent nodes access the manager.
+	dispatcherConfig.Addr = config.ListenAddr
+
 	m := &Manager{
 		config:     config,
 		apiserver:  clusterapi.NewServer(config.Store),
 		scheduler:  scheduler.New(config.Store),
-		dispatcher: dispatcher.New(config.Store, dispatcher.DefaultConfig()),
+		dispatcher: dispatcher.New(config.Store, dispatcherConfig),
 		server:     grpc.NewServer(),
 	}
 
