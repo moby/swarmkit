@@ -3,6 +3,7 @@ package dispatcher
 import (
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"sync"
 	"time"
@@ -169,13 +170,23 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 // Tasks is a stream of tasks state for node. Each message contains full list
 // of tasks which should be run on node, if task is not present in that list,
 // it should be terminated.
-func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Agent_TasksServer) error {
+func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
+	log.Print("Tasks", r)
 	d.mu.Lock()
 	_, ok := d.nodes[r.NodeID]
 	d.mu.Unlock()
 	if !ok {
 		return grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
 	}
+
+	// Before each message send, we need to check the nodes sessionID hasn't
+	// changed. If it has, we will the stream and make the node
+	// re-register.
+	if rn.SessionID != r.SessionID {
+		rn.mu.Unlock()
+		return grpc.Errorf(codes.InvalidArgument, ErrSessionInvalid.Error())
+	}
+	rn.mu.Unlock()
 
 	watchQueue := d.store.WatchQueue()
 	nodeTasks := state.Watch(watchQueue,
@@ -193,7 +204,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Agent_TasksServer) er
 		if err != nil {
 			return nil
 		}
-		if err := stream.Send(&api.TasksResponse{Tasks: tasks}); err != nil {
+		if err := stream.Send(&api.TasksMessage{Tasks: tasks}); err != nil {
 			return err
 		}
 		for _, t := range tasks {
@@ -223,7 +234,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Agent_TasksServer) er
 		for _, t := range tasksMap {
 			tasks = append(tasks, t)
 		}
-		if err := stream.Send(&api.TasksResponse{Tasks: tasks}); err != nil {
+		if err := stream.Send(&api.TasksMessage{Tasks: tasks}); err != nil {
 			return err
 		}
 	}
@@ -260,11 +271,11 @@ func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*a
 	d.mu.Unlock()
 	node.Heartbeat.Update(ttl)
 	node.Heartbeat.Beat()
-	return &api.HeartbeatResponse{TTL: ttl}, nil
+	return &api.HeartbeatResponse{Period: period}, nil
 }
 
-func (d *Dispatcher) getManagers() []*api.ManagerInfo {
-	return []*api.ManagerInfo{
+func (d *Dispatcher) getManagers() []*api.WeightedPeer {
+	return []*api.WeightedPeer{
 		{
 			Addr:   "127.0.0.1", // TODO: change after raft
 			Weight: 1,
@@ -276,7 +287,7 @@ func (d *Dispatcher) getManagers() []*api.ManagerInfo {
 // Each message contains list of backup Managers with weights. Also there is
 // special boolean field Disconnect which if true indicates that node should
 // reconnect to another Manager immediately.
-func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Agent_SessionServer) error {
+func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_SessionServer) error {
 	d.mu.Lock()
 	_, ok := d.nodes[r.NodeID]
 	d.mu.Unlock()
@@ -284,7 +295,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Agent_SessionServ
 		return grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
 	}
 	for {
-		if err := stream.Send(&api.SessionResponse{
+		if err := stream.Send(&api.SessionMessage{
 			Managers:   d.getManagers(),
 			Disconnect: false,
 		}); err != nil {

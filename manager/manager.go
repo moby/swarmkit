@@ -43,7 +43,7 @@ func New(config *Config) *Manager {
 	}
 
 	api.RegisterClusterServer(m.server, m.apiserver)
-	api.RegisterAgentServer(m.server, m.dispatcher)
+	api.RegisterDispatcherServer(m.server, m.dispatcher)
 
 	return m
 }

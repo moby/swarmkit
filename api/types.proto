@@ -76,10 +76,6 @@ message ImageSpec {
 	// or be fully qualified witha digest. The format is specified in the
 	// distribution/reference package.
 	string reference = 1; // TODO(stevvooe): Field type should be reference.Field.
-
-	// TODO(stevvooe): Resolved must be moved.
-
-
 }
 
 message Source { // TODO(stevvooe): better name?
@@ -275,3 +271,13 @@ message Network {
 	// Driver specific operational state provided by the network driver.
 	Driver driver_state = 3;
 }
+
+// WeightedPeer should be used anywhere where we are describing a remote peer
+// with a weight.
+message WeightedPeer {
+	string addr = 1;
+	double weight = 2;
+
+	// TODO(stevvooe): We must consolidate peer representation in the API.
+}
+

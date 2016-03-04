@@ -15,11 +15,11 @@ import (
 )
 
 type grpcDispatcher struct {
-	Client      api.AgentClient
-	Store       state.Store
-	grpcServer  *grpc.Server
-	agentServer api.AgentServer
-	conn        *grpc.ClientConn
+	Client           api.DispatcherClient
+	Store            state.Store
+	grpcServer       *grpc.Server
+	dispatcherServer api.DispatcherServer
+	conn             *grpc.ClientConn
 }
 
 func (gd *grpcDispatcher) Close() {
@@ -36,7 +36,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	s := grpc.NewServer()
 	store := state.NewMemoryStore()
 	d := New(store, c)
-	api.RegisterAgentServer(s, d)
+	api.RegisterDispatcherServer(s, d)
 	go func() {
 		// Serve will always return an error (even when properly stopped).
 		// Explictly ignore it.
@@ -47,13 +47,13 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 		s.Stop()
 		return nil, err
 	}
-	cli := api.NewAgentClient(conn)
+	cli := api.NewDispatcherClient(conn)
 	return &grpcDispatcher{
-		Client:      cli,
-		Store:       store,
-		agentServer: d,
-		conn:        conn,
-		grpcServer:  s,
+		Client:           cli,
+		Store:            store,
+		dispatcherServer: d,
+		conn:             conn,
+		grpcServer:       s,
 	}, nil
 }
 
@@ -66,7 +66,7 @@ func TestRegisterTwice(t *testing.T) {
 	{
 		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
 		assert.NoError(t, err)
-		assert.NotZero(t, resp.TTL)
+		assert.NotZero(t, resp.Period)
 	}
 	{
 		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
@@ -88,13 +88,13 @@ func TestHeartbeat(t *testing.T) {
 	{
 		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
 		assert.NoError(t, err)
-		assert.NotZero(t, resp.TTL)
+		assert.NotZero(t, resp.Period)
 	}
 	time.Sleep(250 * time.Millisecond)
 
 	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID})
 	assert.NoError(t, err)
-	assert.NotZero(t, resp.TTL)
+	assert.NotZero(t, resp.Period)
 	time.Sleep(300 * time.Millisecond)
 
 	err = gd.Store.View(func(readTx state.ReadTx) error {
@@ -118,7 +118,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 	{
 		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{Spec: testNode})
 		assert.NoError(t, err)
-		assert.NotZero(t, resp.TTL)
+		assert.NotZero(t, resp.Period)
 	}
 	time.Sleep(500 * time.Millisecond)
 
