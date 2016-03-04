@@ -14,7 +14,7 @@ func TestOrchestrator(t *testing.T) {
 	store := state.NewMemoryStore()
 	assert.NotNil(t, store)
 
-	orchestrator := NewOrchestrator(store)
+	orchestrator := New(store)
 
 	watch := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventDeleteTask{}*/)
 	defer store.WatchQueue().StopWatch(watch)
