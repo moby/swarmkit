@@ -35,6 +35,21 @@ func (o *Orchestrator) Run() {
 	queue := o.store.WatchQueue()
 	watcher := queue.Watch()
 
+	// Balance existing jobs
+	var existingJobs []*api.Job
+	err := o.store.View(func(readTx state.ReadTx) error {
+		var err error
+		existingJobs, err = readTx.Jobs().Find(state.All)
+		return err
+	})
+	if err != nil {
+		log.Errorf("error querying existing jobs: %v", err)
+	}
+
+	for _, j := range existingJobs {
+		o.balance(j)
+	}
+
 	for {
 		select {
 		case event, ok := <-watcher:
@@ -43,39 +58,13 @@ func (o *Orchestrator) Run() {
 			}
 			switch v := event.Payload.(type) {
 			case state.EventDeleteJob:
-				log.Debugf("Job %s was deleted", v.Job.ID)
-				err := o.store.Update(func(tx state.Tx) error {
-					tasks, err := tx.Tasks().Find(state.ByJobID(v.Job.ID))
-					if err != nil {
-						log.Errorf("Error finding tasks for job: %v", err)
-						return err
-					}
-					for _, t := range tasks {
-						// TODO(aluzzardi): Find a better way to deal with errors.
-						// If `Delete` fails, it probably means the task was already deleted which is fine.
-						_ = tx.Tasks().Delete(t.ID)
-					}
-					return nil
-				})
-				log.Errorf("Error in transaction: %v", err)
+				o.deleteJob(v.Job)
 			case state.EventCreateJob:
 				o.balance(v.Job)
 			case state.EventUpdateJob:
 				o.balance(v.Job)
 			case state.EventDeleteTask:
-				if v.Task.JobID != "" {
-					var job *api.Job
-					err := o.store.View(func(tx state.ReadTx) error {
-						job = tx.Jobs().Get(v.Task.JobID)
-						return nil
-					})
-					if err != nil {
-						log.Errorf("Error in transaction: %v", err)
-					}
-					if job != nil {
-						o.balance(job)
-					}
-				}
+				o.deleteTask(v.Task)
 			}
 		case <-o.stopChan:
 			queue.StopWatch(watcher)
@@ -87,6 +76,42 @@ func (o *Orchestrator) Run() {
 func (o *Orchestrator) Stop() {
 	close(o.stopChan)
 	<-o.doneChan
+}
+
+func (o *Orchestrator) deleteJob(job *api.Job) {
+	log.Debugf("Job %s was deleted", job.ID)
+	err := o.store.Update(func(tx state.Tx) error {
+		tasks, err := tx.Tasks().Find(state.ByJobID(job.ID))
+		if err != nil {
+			log.Errorf("Error finding tasks for job: %v", err)
+			return err
+		}
+		for _, t := range tasks {
+			// TODO(aluzzardi): Find a better way to deal with errors.
+			// If `Delete` fails, it probably means the task was already deleted which is fine.
+			_ = tx.Tasks().Delete(t.ID)
+		}
+		return nil
+	})
+	if err != nil {
+		log.Errorf("Error in transaction: %v", err)
+	}
+}
+
+func (o *Orchestrator) deleteTask(task *api.Task) {
+	if task.JobID != "" {
+		var job *api.Job
+		err := o.store.View(func(tx state.ReadTx) error {
+			job = tx.Jobs().Get(task.JobID)
+			return nil
+		})
+		if err != nil {
+			log.Errorf("Error in transaction: %v", err)
+		}
+		if job != nil {
+			o.balance(job)
+		}
+	}
 }
 
 func (o *Orchestrator) balance(job *api.Job) {
