@@ -18,8 +18,8 @@ type Orchestrator struct {
 	doneChan chan struct{}
 }
 
-// NewOrchestrator creates a new orchestrator.
-func NewOrchestrator(store state.WatchableStore) *Orchestrator {
+// New creates a new orchestrator.
+func New(store state.WatchableStore) *Orchestrator {
 	return &Orchestrator{
 		store:    store,
 		stopChan: make(chan struct{}),

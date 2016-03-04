@@ -20,16 +20,14 @@ type Planner struct {
 	doneChan chan struct{}
 }
 
-// NewPlanner creates a new planner.
-func NewPlanner(sDir string, store state.WatchableStore) (*Planner, error) {
-	p := &Planner{
+// New creates a new planner.
+func New(store state.WatchableStore) *Planner {
+	return &Planner{
 		store:    store,
 		queue:    list.New(),
 		stopChan: make(chan struct{}),
 		doneChan: make(chan struct{}),
 	}
-
-	return p, nil
 }
 
 // Run is the planner event loop.
