@@ -11,6 +11,8 @@ import (
 	"google.golang.org/grpc/transport"
 )
 
+// Managers keeps track of dispatcher addresses by weight, informed by
+// observations.
 type Managers interface {
 	// Weight returns the managers with their current weights.
 	Weights() map[string]float64
@@ -32,6 +34,8 @@ type Managers interface {
 	Remove(addrs ...string)
 }
 
+// NewManagers returns a Managers instance with the provided set of addresses.
+// Entries provided are heavily weighted initially.
 func NewManagers(addrs ...string) Managers {
 	mwr := &managersWeightedRandom{
 		managers: make(map[string]float64),
