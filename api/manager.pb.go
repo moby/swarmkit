@@ -105,7 +105,7 @@ func (*RaftNode) ProtoMessage() {}
 // TODO(abronan): remove when the integration with store is completed
 type Pair struct {
 	Key   string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 }
 
 func (m *Pair) Reset()      { *m = Pair{} }
@@ -560,11 +560,13 @@ func (m *Pair) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintManager(data, i, uint64(len(m.Key)))
 		i += copy(data[i:], m.Key)
 	}
-	if len(m.Value) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintManager(data, i, uint64(len(m.Value)))
-		i += copy(data[i:], m.Value)
+	if m.Value != nil {
+		if len(m.Value) > 0 {
+			data[i] = 0x12
+			i++
+			i = encodeVarintManager(data, i, uint64(len(m.Value)))
+			i += copy(data[i:], m.Value)
+		}
 	}
 	return i, nil
 }
@@ -670,9 +672,11 @@ func (m *Pair) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovManager(uint64(l))
 	}
-	l = len(m.Value)
-	if l > 0 {
-		n += 1 + l + sovManager(uint64(l))
+	if m.Value != nil {
+		l = len(m.Value)
+		if l > 0 {
+			n += 1 + l + sovManager(uint64(l))
+		}
 	}
 	return n
 }
@@ -1368,7 +1372,7 @@ func (m *Pair) Unmarshal(data []byte) error {
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
 			}
-			var stringLen uint64
+			var byteLen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowManager
@@ -1378,20 +1382,22 @@ func (m *Pair) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if byteLen < 0 {
 				return ErrInvalidLengthManager
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Value = string(data[iNdEx:postIndex])
+			m.Value = append(m.Value[:0], data[iNdEx:postIndex]...)
+			if m.Value == nil {
+				m.Value = []byte{}
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
