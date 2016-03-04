@@ -23,14 +23,18 @@ import (
 var (
 	defaultLogger = &raft.DefaultLogger{Logger: log.New(os.Stderr, "raft", log.LstdFlags)}
 
-	// ErrConnectionRefused is thrown when a connection is refused to a node member in the raft
-	ErrConnectionRefused = errors.New("connection refused to the node")
 	// ErrConfChangeRefused is thrown when there is an issue with the configuration change
 	ErrConfChangeRefused = errors.New("propose configuration change refused")
 	// ErrApplyNotSpecified is thrown during the creation of a raft node when no apply method was provided
 	ErrApplyNotSpecified = errors.New("apply method was not specified")
 	// ErrPeerNotFound is thrown when we try an operation on a peer that does not exist in the cluster list
 	ErrPeerNotFound = errors.New("peer not found in cluster list")
+	// ErrAppendEntry is thrown when the node fail to append an entry to the logs
+	ErrAppendEntry = errors.New("failed to append entry to logs")
+	// ErrSetHardState is thrown when the node fails to set the hard state
+	ErrSetHardState = errors.New("failed to set the hard state for log append entry")
+	// ErrApplySnapshot is thrown when the node fails to apply a snapshot
+	ErrApplySnapshot = errors.New("failed to apply snapshot on raft node")
 )
 
 // ApplyCommand function can be used and triggered
@@ -132,6 +136,7 @@ func DefaultNodeConfig() *raft.Config {
 // messages received from other Raft nodes in
 // the cluster
 func (n *Node) Start() (errCh <-chan error) {
+	var err error
 	n.errCh = make(chan error)
 	go func() {
 		for {
@@ -140,31 +145,24 @@ func (n *Node) Start() (errCh <-chan error) {
 				n.Tick()
 
 			case rd := <-n.Ready():
-				n.saveToStorage(rd.HardState, rd.Entries, rd.Snapshot)
-				n.send(rd.Messages)
-				if !raft.IsEmptySnap(rd.Snapshot) {
-					n.processSnapshot(rd.Snapshot)
+				// Save entries to storage
+				if err = n.saveToStorage(rd.HardState, rd.Entries, rd.Snapshot); err != nil {
+					n.errCh <- err
 				}
+
+				// Send raft messages to peers
+				if err = n.send(rd.Messages); err != nil {
+					n.errCh <- err
+				}
+
+				// Process committed entries
 				for _, entry := range rd.CommittedEntries {
-					err := n.process(entry)
-					if err != nil {
+					if err = n.processCommitted(entry); err != nil {
 						n.errCh <- err
 					}
-					if entry.Type == raftpb.EntryConfChange {
-						var cc raftpb.ConfChange
-						err := cc.Unmarshal(entry.Data)
-						if err != nil {
-							n.errCh <- err
-						}
-						switch cc.Type {
-						case raftpb.ConfChangeAddNode:
-							n.applyAddNode(cc)
-						case raftpb.ConfChangeRemoveNode:
-							n.applyRemoveNode(cc)
-						}
-						n.ApplyConfChange(cc)
-					}
 				}
+
+				// Advance the state machine
 				n.Advance()
 
 			case <-n.stopCh:
@@ -295,7 +293,7 @@ func (n *Node) RegisterNode(node *api.RaftNode) error {
 		client, err = GetRaftClient(node.Addr, 2*time.Second)
 		if err != nil {
 			if i == MaxRetries {
-				return ErrConnectionRefused
+				return err
 			}
 		}
 	}
@@ -359,65 +357,37 @@ func (n *Node) StoreLength() int {
 	return len(n.PStore)
 }
 
-// applyAddNode is called when we receive a ConfChange
-// from a member in the raft cluster, this adds a new
-// node to the existing raft cluster
-func (n *Node) applyAddNode(conf raftpb.ConfChange) error {
-	peer := &api.RaftNode{}
-	err := proto.Unmarshal(conf.Context, peer)
-	if err != nil {
-		return err
-	}
-	if n.ID != peer.ID {
-		n.RegisterNode(peer)
-	}
-	return nil
-}
-
-// applyRemoveNode is called when we receive a ConfChange
-// from a member in the raft cluster, this removes a node
-// from the existing raft cluster
-func (n *Node) applyRemoveNode(conf raftpb.ConfChange) {
-	// The leader steps down
-	if n.ID == n.Leader() && n.ID == conf.NodeID {
-		n.Stop()
-		return
-	}
-
-	// If the node from where the remove is issued is
-	// a follower and the leader steps down, Campaign
-	// to be the leader
-	if conf.NodeID == n.Leader() {
-		n.Campaign(n.Ctx)
-	}
-
-	// Unregister the node, if we can't remove
-	// the node for some reasons because it has
-	// already been removed, let it be
-	n.UnregisterNode(conf.NodeID)
-}
-
 // Saves a log entry to our Store
-func (n *Node) saveToStorage(hardState raftpb.HardState, entries []raftpb.Entry, snapshot raftpb.Snapshot) {
-	n.Store.Append(entries)
+func (n *Node) saveToStorage(hardState raftpb.HardState, entries []raftpb.Entry, snapshot raftpb.Snapshot) (err error) {
+	if err = n.Store.Append(entries); err != nil {
+		return ErrAppendEntry
+	}
 
 	if !raft.IsEmptyHardState(hardState) {
-		n.Store.SetHardState(hardState)
+		if err = n.Store.SetHardState(hardState); err != nil {
+			return ErrSetHardState
+		}
 	}
 
 	if !raft.IsEmptySnap(snapshot) {
-		n.Store.ApplySnapshot(snapshot)
+		if err = n.Store.ApplySnapshot(snapshot); err != nil {
+			return ErrApplySnapshot
+		}
 	}
+
+	return nil
 }
 
 // Sends a series of messages to members in the raft
-func (n *Node) send(messages []raftpb.Message) {
+func (n *Node) send(messages []raftpb.Message) error {
 	peers := n.Cluster.Peers()
 
 	for _, m := range messages {
 		// Process locally
 		if m.To == n.ID {
-			n.Step(n.Ctx, m)
+			if err := n.Step(n.Ctx, m); err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -429,33 +399,120 @@ func (n *Node) send(messages []raftpb.Message) {
 			}
 		}
 	}
+
+	return nil
 }
 
-// Process a data entry and optionnally triggers an event
-// or a function handler after the entry is processed
-func (n *Node) process(entry raftpb.Entry) error {
+func (n *Node) processCommitted(entry raftpb.Entry) error {
+	// Process a normal entry
 	if entry.Type == raftpb.EntryNormal && entry.Data != nil {
-		// TODO (abronan, al, mrjana): replace KV pair
-		// by internal store interface
-		pair := &api.Pair{}
-		err := proto.Unmarshal(entry.Data, pair)
-		if err != nil {
+		if err := n.processEntry(entry); err != nil {
 			return err
 		}
+	}
 
-		// Apply the command
-		if n.apply != nil {
-			n.apply(entry.Data)
+	// Process a configuration change (add/remove node)
+	if entry.Type == raftpb.EntryConfChange {
+		if err := n.processConfChange(entry); err != nil {
+			return err
 		}
+	}
 
-		// Put the value into the store
-		n.Put(pair.Key, string(pair.Value))
+	return nil
+}
+
+func (n *Node) processEntry(entry raftpb.Entry) error {
+	// TODO (abronan, al, mrjana): replace KV
+	// pair by internal store interface
+	pair := &api.Pair{}
+	err := proto.Unmarshal(entry.Data, pair)
+	if err != nil {
+		return err
+	}
+
+	if n.apply != nil {
+		n.apply(entry.Data)
+	}
+
+	n.Put(pair.Key, string(pair.Value))
+	return nil
+}
+
+func (n *Node) processConfChange(conf raftpb.Entry) error {
+	var (
+		err error
+		cc  raftpb.ConfChange
+	)
+
+	if err = cc.Unmarshal(conf.Data); err != nil {
+		return err
+	}
+
+	switch cc.Type {
+	case raftpb.ConfChangeAddNode:
+		err = n.applyAddNode(cc)
+	case raftpb.ConfChangeRemoveNode:
+		err = n.applyRemoveNode(cc)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	n.ApplyConfChange(cc)
+	return nil
+}
+
+// applyAddNode is called when we receive a ConfChange
+// from a member in the raft cluster, this adds a new
+// node to the existing raft cluster
+func (n *Node) applyAddNode(conf raftpb.ConfChange) error {
+	peer := &api.RaftNode{}
+	err := proto.Unmarshal(conf.Context, peer)
+	if err != nil {
+		return err
+	}
+
+	// ID must be non zero
+	if peer.ID == 0 {
+		return nil
+	}
+
+	if n.ID != peer.ID {
+		if err = n.RegisterNode(peer); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-// Process snapshot is not yet implemented but applies
-// a snapshot to handle node failures and restart
+// applyRemoveNode is called when we receive a ConfChange
+// from a member in the raft cluster, this removes a node
+// from the existing raft cluster
+func (n *Node) applyRemoveNode(conf raftpb.ConfChange) (err error) {
+	// The leader steps down
+	if n.ID == n.Leader() && n.ID == conf.NodeID {
+		n.Stop()
+		return
+	}
+
+	// If the node from where the remove is issued is
+	// a follower and the leader steps down, Campaign
+	// to be the leader
+	if conf.NodeID == n.Leader() {
+		if err = n.Campaign(n.Ctx); err != nil {
+			return err
+		}
+	}
+
+	// Unregister the node
+	if err = n.UnregisterNode(conf.NodeID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (n *Node) processSnapshot(snapshot raftpb.Snapshot) {
 	// TODO(abronan): implement snapshot
 	panic(fmt.Sprintf("Applying snapshot on node %v is not implemented", n.ID))
