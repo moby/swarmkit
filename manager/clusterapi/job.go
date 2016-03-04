@@ -29,7 +29,7 @@ func validateJobSpecSource(s *api.Source) error {
 		return grpc.Errorf(codes.Unimplemented, "source: invalid source type. only image is supposed")
 	}
 	if image.Reference == "" {
-		return grpc.Errorf(codes.InvalidArgument, "source: reference must be provided")
+		return grpc.Errorf(codes.InvalidArgument, "source: image reference must be provided")
 	}
 	return nil
 }

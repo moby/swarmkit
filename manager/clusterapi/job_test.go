@@ -39,102 +39,159 @@ func createJob(ts *testServer, name, image string, instances int64) *api.Job {
 }
 
 func TestValidateJobSpecMeta(t *testing.T) {
-	var m *api.Meta
-	err := validateJobSpecMeta(m)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	type BadMeta struct {
+		m *api.Meta
+		c codes.Code
+	}
 
-	m = &api.Meta{}
-	err = validateJobSpecMeta(m)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	for _, bad := range []BadMeta{
+		{
+			m: nil,
+			c: codes.InvalidArgument,
+		},
+		{
+			m: &api.Meta{},
+			c: codes.InvalidArgument,
+		},
+	} {
+		err := validateJobSpecMeta(bad.m)
+		assert.Error(t, err)
+		assert.Equal(t, bad.c, grpc.Code(err))
+	}
 
-	m.Name = "name"
-	err = validateJobSpecMeta(m)
-	assert.NoError(t, err)
+	for _, good := range []*api.Meta{
+		{Name: "name"},
+	} {
+		err := validateJobSpecMeta(good)
+		assert.NoError(t, err)
+	}
 }
 
 func TestValidateJobSpecSource(t *testing.T) {
-	var s *api.Source
-	err := validateJobSpecSource(s)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-
-	s = &api.Source{}
-	err = validateJobSpecSource(s)
-	assert.Error(t, err)
-	assert.Equal(t, codes.Unimplemented, grpc.Code(err))
-
-	s.Source = &api.Source_Image{
-		Image: &api.ImageSpec{},
+	type BadSource struct {
+		s *api.Source
+		c codes.Code
 	}
 
-	err = validateJobSpecSource(s)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-
-	s.GetImage().Reference = "image"
-	err = validateJobSpecSource(s)
-	assert.NoError(t, err)
-}
-
-func TestValidateJobSpecOrchestration(t *testing.T) {
-	var o *api.JobSpec_Orchestration
-	err := validateJobSpecOrchestration(o)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-
-	o = &api.JobSpec_Orchestration{}
-	err = validateJobSpecOrchestration(o)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-
-	o.Job = &api.JobSpec_Orchestration_Batch{}
-	err = validateJobSpecOrchestration(o)
-	assert.Error(t, err)
-	assert.Equal(t, codes.Unimplemented, grpc.Code(err))
-
-	o.Job = &api.JobSpec_Orchestration_Service{}
-	err = validateJobSpecOrchestration(o)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-
-	o.Job = &api.JobSpec_Orchestration_Service{
-		Service: &api.JobSpec_ServiceJob{
-			Instances: 1,
+	for _, bad := range []BadSource{
+		{
+			s: nil,
+			c: codes.InvalidArgument,
 		},
+		{
+			s: &api.Source{},
+			c: codes.Unimplemented,
+		},
+		{
+			s: &api.Source{
+				Source: &api.Source_Image{
+					Image: &api.ImageSpec{},
+				},
+			},
+			c: codes.InvalidArgument,
+		},
+	} {
+		err := validateJobSpecSource(bad.s)
+		assert.Error(t, err)
+		assert.Equal(t, bad.c, grpc.Code(err))
 	}
-	err = validateJobSpecOrchestration(o)
-	assert.NoError(t, err)
-}
 
-func TestValidateJobSpec(t *testing.T) {
-	var spec *api.JobSpec
-	err := validateJobSpec(spec)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-
-	spec = &api.JobSpec{
-		Meta: &api.Meta{
-			Name: "name",
-		},
-		Source: &api.Source{
+	for _, good := range []*api.Source{
+		{
 			Source: &api.Source_Image{
 				Image: &api.ImageSpec{
 					Reference: "image",
 				},
 			},
 		},
-		Orchestration: &api.JobSpec_Orchestration{
+	} {
+		err := validateJobSpecSource(good)
+		assert.NoError(t, err)
+	}
+}
+
+func TestValidateJobSpecOrchestration(t *testing.T) {
+	type BadJobSpecOrchestration struct {
+		o *api.JobSpec_Orchestration
+		c codes.Code
+	}
+
+	for _, bad := range []BadJobSpecOrchestration{
+		{
+			o: nil,
+			c: codes.InvalidArgument,
+		},
+		{
+			o: &api.JobSpec_Orchestration{},
+			c: codes.InvalidArgument,
+		},
+		{
+			o: &api.JobSpec_Orchestration{
+				Job: &api.JobSpec_Orchestration_Batch{},
+			},
+			c: codes.Unimplemented,
+		},
+		{
+			o: &api.JobSpec_Orchestration{
+				Job: &api.JobSpec_Orchestration_Service{},
+			},
+			c: codes.InvalidArgument,
+		},
+	} {
+		err := validateJobSpecOrchestration(bad.o)
+		assert.Error(t, err)
+		assert.Equal(t, bad.c, grpc.Code(err))
+	}
+
+	for _, good := range []*api.JobSpec_Orchestration{
+		{
 			Job: &api.JobSpec_Orchestration_Service{
 				Service: &api.JobSpec_ServiceJob{
 					Instances: 1,
 				},
 			},
 		},
+	} {
+		err := validateJobSpecOrchestration(good)
+		assert.NoError(t, err)
 	}
-	err = validateJobSpec(spec)
-	assert.NoError(t, err)
+}
+
+func TestValidateJobSpec(t *testing.T) {
+	type BadJobSpec struct {
+		spec *api.JobSpec
+		c    codes.Code
+	}
+
+	for _, bad := range []BadJobSpec{
+		{
+			spec: nil,
+			c:    codes.InvalidArgument,
+		},
+		{
+			spec: createSpec("", "", 1),
+			c:    codes.InvalidArgument,
+		},
+		{
+			spec: createSpec("name", "", 1),
+			c:    codes.InvalidArgument,
+		},
+		{
+			spec: createSpec("", "image", 1),
+			c:    codes.InvalidArgument,
+		},
+	} {
+		err := validateJobSpec(bad.spec)
+		assert.Error(t, err)
+		assert.Equal(t, bad.c, grpc.Code(err))
+	}
+
+	for _, good := range []*api.JobSpec{
+		createSpec("name", "image", 1),
+	} {
+		err := validateJobSpec(good)
+		assert.NoError(t, err)
+	}
 }
 
 func TestCreateJob(t *testing.T) {
