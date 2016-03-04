@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"errors"
-	"sync"
 
 	"github.com/docker/swarm-v2/scheduler/orchestrator"
 	"github.com/docker/swarm-v2/scheduler/planner"
@@ -23,7 +22,6 @@ var (
 // The Scheduler type is responsible for subsystem coordination.
 type Scheduler struct {
 	started bool
-	l       sync.Mutex
 
 	orchestrator *orchestrator.Orchestrator
 	planner      *planner.Planner
@@ -41,9 +39,6 @@ func New(store state.WatchableStore) *Scheduler {
 // Start starts all subsystems of the scheduler.
 // Returns ErrRunning if called while the Scheduler is already running
 func (s *Scheduler) Start() error {
-	s.l.Lock()
-	defer s.l.Unlock()
-
 	// Avoid double start.
 	if s.started {
 		return ErrRunning
@@ -59,9 +54,6 @@ func (s *Scheduler) Start() error {
 // Stop stops all susbystems of the scheduler.
 // Returns ErrNotRunning if called while the Scheduler is not running.
 func (s *Scheduler) Stop() error {
-	s.l.Lock()
-	defer s.l.Unlock()
-
 	if !s.started {
 		return ErrNotRunning
 	}
