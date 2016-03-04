@@ -17,7 +17,7 @@ type Server struct {
 }
 
 // NewServer creates a Cluster API server.
-func NewServer(store state.Store) *Server {
+func NewServer(store state.WatchableStore) *Server {
 	return &Server{
 		store: store,
 	}

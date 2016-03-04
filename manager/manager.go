@@ -12,7 +12,7 @@ import (
 
 // Config is used to tune the Manager.
 type Config struct {
-	Store state.Store
+	Store state.WatchableStore
 
 	ListenProto string
 	ListenAddr  string

@@ -157,22 +157,72 @@ func TestTasks(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotZero(t, resp.TTL)
 	}
-	testTask := &api.Task{
-		ID:     "testTask",
+	testTask1 := &api.Task{
+		ID:     "testTask1",
+		NodeID: testNode.ID,
+	}
+	testTask2 := &api.Task{
+		ID:     "testTask2",
 		NodeID: testNode.ID,
 	}
 	stream, err := gd.Client.Tasks(context.Background(), &api.TasksRequest{NodeID: testNode.ID})
 	assert.NoError(t, err)
 
+	time.Sleep(100 * time.Millisecond)
+
 	err = gd.Store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Create(testTask))
+		assert.NoError(t, tx.Tasks().Create(testTask1))
+		assert.NoError(t, tx.Tasks().Create(testTask2))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	err = gd.Store.Update(func(tx state.Tx) error {
+		assert.NoError(t, tx.Tasks().Update(&api.Task{
+			ID:     testTask1.ID,
+			NodeID: testNode.ID,
+			Status: &api.TaskStatus{Message: "1234"},
+		}))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	err = gd.Store.Update(func(tx state.Tx) error {
+		assert.NoError(t, tx.Tasks().Delete(testTask1.ID))
+		assert.NoError(t, tx.Tasks().Delete(testTask2.ID))
 		return nil
 	})
 	assert.NoError(t, err)
 
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
+	assert.Equal(t, 0, len(resp.Tasks))
+
+	resp, err = stream.Recv()
 	assert.Equal(t, len(resp.Tasks), 1)
+	assert.Equal(t, resp.Tasks[0].ID, "testTask1")
+
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+	assert.Equal(t, len(resp.Tasks), 2)
+	assert.True(t, resp.Tasks[0].ID == "testTask1" && resp.Tasks[1].ID == "testTask2" || resp.Tasks[0].ID == "testTask2" && resp.Tasks[1].ID == "testTask1")
+
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+	assert.Equal(t, len(resp.Tasks), 2)
+	for _, task := range resp.Tasks {
+		if task.ID == "testTask1" {
+			assert.Equal(t, task.Status.Message, "1234")
+		}
+	}
+
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+	assert.Equal(t, len(resp.Tasks), 1)
+
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+	assert.Equal(t, len(resp.Tasks), 0)
 }
 
 func TestTaskUpdate(t *testing.T) {
