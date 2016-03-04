@@ -13,6 +13,14 @@ type Event interface {
 	matches(watch.Event) bool
 }
 
+// EventCommit delineates a transaction boundary.
+type EventCommit struct{}
+
+func (e EventCommit) matches(watchEvent watch.Event) bool {
+	_, ok := watchEvent.Payload.(EventCommit)
+	return ok
+}
+
 // TaskCheckFunc is the type of function used to perform filtering checks on
 // api.Task structures.
 type TaskCheckFunc func(t1, t2 *api.Task) bool

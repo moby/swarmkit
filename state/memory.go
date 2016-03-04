@@ -67,6 +67,7 @@ type tx struct {
 func (s *MemoryStore) Update(cb func(Tx) error) error {
 	s.l.Lock()
 	err := cb(tx{s: s})
+	Publish(s.queue, EventCommit{})
 	s.l.Unlock()
 	return err
 }
