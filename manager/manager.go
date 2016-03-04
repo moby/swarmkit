@@ -3,10 +3,11 @@ package manager
 import (
 	"net"
 
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/clusterapi"
 	"github.com/docker/swarm-v2/manager/dispatcher"
+	"github.com/docker/swarm-v2/scheduler"
 	"github.com/docker/swarm-v2/state"
 	"google.golang.org/grpc"
 )
@@ -26,6 +27,7 @@ type Manager struct {
 	config *Config
 
 	apiserver  *clusterapi.Server
+	scheduler  *scheduler.Scheduler
 	dispatcher *dispatcher.Dispatcher
 	server     *grpc.Server
 }
@@ -35,6 +37,7 @@ func New(config *Config) *Manager {
 	m := &Manager{
 		config:     config,
 		apiserver:  clusterapi.NewServer(config.Store),
+		scheduler:  scheduler.New(config.Store),
 		dispatcher: dispatcher.New(config.Store, dispatcher.DefaultConfig()),
 		server:     grpc.NewServer(),
 	}
@@ -45,20 +48,27 @@ func New(config *Config) *Manager {
 	return m
 }
 
-// ListenAndServe starts a gRPC server with the configured address.
+// ListenAndServe starts the scheduler and the gRPC server at the configured
+// address.
 // The call never returns unless an error occurs or `Stop()` is called.
 func (m *Manager) ListenAndServe() error {
+	if err := m.scheduler.Start(); err != nil {
+		return err
+	}
+
 	lis, err := net.Listen(m.config.ListenProto, m.config.ListenAddr)
 	if err != nil {
 		return err
 	}
-	logrus.WithFields(logrus.Fields{"proto": m.config.ListenProto, "addr": m.config.ListenAddr}).Info("Listening for connections")
-
+	log.WithFields(log.Fields{"proto": m.config.ListenProto, "addr": m.config.ListenAddr}).Info("Listening for connections")
 	return m.server.Serve(lis)
 }
 
 // Stop stops the manager. It immediately closes all open connections and
-// active RPCs.
+// active RPCs as well as stopping the scheduler.
 func (m *Manager) Stop() {
+	if err := m.scheduler.Stop(); err != nil {
+		log.Errorf("Unable to stop the scheduler: %v", err)
+	}
 	m.server.Stop()
 }

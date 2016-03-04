@@ -17,6 +17,10 @@ var (
 	ErrNotRunning = errors.New("scheduler is not running")
 )
 
+// Scheduler is the component responsible for desired state convergence.
+// It's composed of a series of subsystems such as the orchestrator, planner,
+// and the allocator.
+// The Scheduler type is responsible for subsystem coordination.
 type Scheduler struct {
 	started bool
 	l       sync.Mutex
@@ -25,6 +29,7 @@ type Scheduler struct {
 	planner      *planner.Planner
 }
 
+// New creates a new Scheduler.
 func New(store state.WatchableStore) *Scheduler {
 	return &Scheduler{
 		started:      false,
@@ -33,6 +38,8 @@ func New(store state.WatchableStore) *Scheduler {
 	}
 }
 
+// Start starts all subsystems of the scheduler.
+// Returns ErrRunning if called while the Scheduler is already running
 func (s *Scheduler) Start() error {
 	s.l.Lock()
 	defer s.l.Unlock()
@@ -49,6 +56,8 @@ func (s *Scheduler) Start() error {
 	return nil
 }
 
+// Stop stops all susbystems of the scheduler.
+// Returns ErrNotRunning if called while the Scheduler is not running.
 func (s *Scheduler) Stop() error {
 	s.l.Lock()
 	defer s.l.Unlock()
