@@ -198,7 +198,33 @@ func TestUpdateJob(t *testing.T) {
 	ts := newTestServer(t)
 	_, err := ts.Client.UpdateJob(context.Background(), &api.UpdateJobRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.Unimplemented, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	job := createJob(ts, "name", "image", 1)
+	_, err = ts.Client.UpdateJob(context.Background(), &api.UpdateJobRequest{JobID: job.ID})
+	assert.NoError(t, err)
+
+	r, err := ts.Client.GetJob(context.Background(), &api.GetJobRequest{JobID: job.ID})
+	assert.NoError(t, err)
+	assert.Equal(t, job.Spec.Meta.Name, r.Job.Spec.Meta.Name)
+	assert.EqualValues(t, 1, r.Job.Spec.GetService().Instances)
+
+	_, err = ts.Client.UpdateJob(context.Background(), &api.UpdateJobRequest{
+		JobID: job.ID,
+		Spec: &api.JobSpec{
+			Orchestration: &api.JobSpec_Service{
+				Service: &api.JobSpec_ServiceJob{
+					Instances: 42,
+				},
+			},
+		},
+	})
+	assert.NoError(t, err)
+
+	r, err = ts.Client.GetJob(context.Background(), &api.GetJobRequest{JobID: job.ID})
+	assert.NoError(t, err)
+	assert.Equal(t, job.Spec.Meta.Name, r.Job.Spec.Meta.Name)
+	assert.EqualValues(t, 42, r.Job.Spec.GetService().Instances)
 }
 
 func TestRemoveJob(t *testing.T) {
