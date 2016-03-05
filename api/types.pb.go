@@ -125,46 +125,49 @@ type TaskStatus_State int32
 
 const (
 	TaskStatus_NEW       TaskStatus_State = 0
-	TaskStatus_ASSIGNED  TaskStatus_State = 1
-	TaskStatus_PREPARING TaskStatus_State = 2
-	TaskStatus_READY     TaskStatus_State = 3
-	TaskStatus_STARTING  TaskStatus_State = 4
-	TaskStatus_RUNNING   TaskStatus_State = 5
-	TaskStatus_SHUTDOWN  TaskStatus_State = 6
-	TaskStatus_COMPLETE  TaskStatus_State = 7
-	TaskStatus_FAILED    TaskStatus_State = 8
-	TaskStatus_REJECTED  TaskStatus_State = 9
-	TaskStatus_FINALIZE  TaskStatus_State = 10
-	TaskStatus_DEAD      TaskStatus_State = 11
+	TaskStatus_ALLOCATED TaskStatus_State = 1
+	TaskStatus_ASSIGNED  TaskStatus_State = 2
+	TaskStatus_PREPARING TaskStatus_State = 3
+	TaskStatus_READY     TaskStatus_State = 4
+	TaskStatus_STARTING  TaskStatus_State = 5
+	TaskStatus_RUNNING   TaskStatus_State = 6
+	TaskStatus_SHUTDOWN  TaskStatus_State = 7
+	TaskStatus_COMPLETE  TaskStatus_State = 8
+	TaskStatus_FAILED    TaskStatus_State = 9
+	TaskStatus_REJECTED  TaskStatus_State = 10
+	TaskStatus_FINALIZE  TaskStatus_State = 11
+	TaskStatus_DEAD      TaskStatus_State = 12
 )
 
 var TaskStatus_State_name = map[int32]string{
 	0:  "NEW",
-	1:  "ASSIGNED",
-	2:  "PREPARING",
-	3:  "READY",
-	4:  "STARTING",
-	5:  "RUNNING",
-	6:  "SHUTDOWN",
-	7:  "COMPLETE",
-	8:  "FAILED",
-	9:  "REJECTED",
-	10: "FINALIZE",
-	11: "DEAD",
+	1:  "ALLOCATED",
+	2:  "ASSIGNED",
+	3:  "PREPARING",
+	4:  "READY",
+	5:  "STARTING",
+	6:  "RUNNING",
+	7:  "SHUTDOWN",
+	8:  "COMPLETE",
+	9:  "FAILED",
+	10: "REJECTED",
+	11: "FINALIZE",
+	12: "DEAD",
 }
 var TaskStatus_State_value = map[string]int32{
 	"NEW":       0,
-	"ASSIGNED":  1,
-	"PREPARING": 2,
-	"READY":     3,
-	"STARTING":  4,
-	"RUNNING":   5,
-	"SHUTDOWN":  6,
-	"COMPLETE":  7,
-	"FAILED":    8,
-	"REJECTED":  9,
-	"FINALIZE":  10,
-	"DEAD":      11,
+	"ALLOCATED": 1,
+	"ASSIGNED":  2,
+	"PREPARING": 3,
+	"READY":     4,
+	"STARTING":  5,
+	"RUNNING":   6,
+	"SHUTDOWN":  7,
+	"COMPLETE":  8,
+	"FAILED":    9,
+	"REJECTED":  10,
+	"FINALIZE":  11,
+	"DEAD":      12,
 }
 
 func (x TaskStatus_State) String() string {
