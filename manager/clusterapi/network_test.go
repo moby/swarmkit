@@ -25,9 +25,9 @@ func TestGetNetwork(t *testing.T) {
 	assert.Equal(t, codes.Unimplemented, grpc.Code(err))
 }
 
-func TestDeleteNetwork(t *testing.T) {
+func TestRemoveNetwork(t *testing.T) {
 	ts := newTestServer(t)
-	_, err := ts.Client.DeleteNetwork(context.Background(), &api.DeleteNetworkRequest{})
+	_, err := ts.Client.RemoveNetwork(context.Background(), &api.RemoveNetworkRequest{})
 	assert.Error(t, err)
 	assert.Equal(t, codes.Unimplemented, grpc.Code(err))
 }

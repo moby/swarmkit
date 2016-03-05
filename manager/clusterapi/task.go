@@ -38,11 +38,11 @@ func (s *Server) GetTask(ctx context.Context, request *api.GetTaskRequest) (*api
 	}, nil
 }
 
-// DeleteTask deletes a Task referenced by TaskID.
+// RemoveTask removes a Task referenced by TaskID.
 // - Returns `InvalidArgument` if TaskID is not provided.
 // - Returns `NotFound` if the Task is not found.
 // - Returns an error if the deletion fails.
-func (s *Server) DeleteTask(ctx context.Context, request *api.DeleteTaskRequest) (*api.DeleteTaskResponse, error) {
+func (s *Server) RemoveTask(ctx context.Context, request *api.RemoveTaskRequest) (*api.RemoveTaskResponse, error) {
 	if request.TaskID == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
@@ -56,7 +56,7 @@ func (s *Server) DeleteTask(ctx context.Context, request *api.DeleteTaskRequest)
 		}
 		return nil, err
 	}
-	return &api.DeleteTaskResponse{}, nil
+	return &api.RemoveTaskResponse{}, nil
 }
 
 // ListTasks returns a list of all tasks.

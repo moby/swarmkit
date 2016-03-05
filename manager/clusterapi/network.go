@@ -21,9 +21,9 @@ func (s *Server) GetNetwork(ctx context.Context, request *api.GetNetworkRequest)
 	return nil, grpc.Errorf(codes.Unimplemented, errNotImplemented.Error())
 }
 
-// DeleteNetwork deletes a Network referenced by NetworkID.
+// RemoveNetwork removes a Network referenced by NetworkID.
 // TODO(aluzzardi): Not implemented.
-func (s *Server) DeleteNetwork(ctx context.Context, request *api.DeleteNetworkRequest) (*api.DeleteNetworkResponse, error) {
+func (s *Server) RemoveNetwork(ctx context.Context, request *api.RemoveNetworkRequest) (*api.RemoveNetworkResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, errNotImplemented.Error())
 }
 

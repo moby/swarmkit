@@ -34,8 +34,8 @@
 		CreateTaskResponse
 		GetTaskRequest
 		GetTaskResponse
-		DeleteTaskRequest
-		DeleteTaskResponse
+		RemoveTaskRequest
+		RemoveTaskResponse
 		ListTasksRequest
 		ListTasksResponse
 		CreateJobRequest
@@ -44,16 +44,16 @@
 		GetJobResponse
 		UpdateJobRequest
 		UpdateJobResponse
-		DeleteJobRequest
-		DeleteJobResponse
+		RemoveJobRequest
+		RemoveJobResponse
 		ListJobsRequest
 		ListJobsResponse
 		CreateNetworkRequest
 		CreateNetworkResponse
 		GetNetworkRequest
 		GetNetworkResponse
-		DeleteNetworkRequest
-		DeleteNetworkResponse
+		RemoveNetworkRequest
+		RemoveNetworkResponse
 		ListNetworksRequest
 		ListNetworksResponse
 		RegisterRequest

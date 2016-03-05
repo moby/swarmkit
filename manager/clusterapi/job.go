@@ -132,11 +132,11 @@ func (s *Server) UpdateJob(ctx context.Context, request *api.UpdateJobRequest) (
 	return nil, grpc.Errorf(codes.Unimplemented, errNotImplemented.Error())
 }
 
-// DeleteJob deletes a Job referenced by JobID.
+// RemoveJob removes a Job referenced by JobID.
 // - Returns `InvalidArgument` if JobID is not provided.
 // - Returns `NotFound` if the Job is not found.
 // - Returns an error if the deletion fails.
-func (s *Server) DeleteJob(ctx context.Context, request *api.DeleteJobRequest) (*api.DeleteJobResponse, error) {
+func (s *Server) RemoveJob(ctx context.Context, request *api.RemoveJobRequest) (*api.RemoveJobResponse, error) {
 	if request.JobID == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
@@ -150,7 +150,7 @@ func (s *Server) DeleteJob(ctx context.Context, request *api.DeleteJobRequest) (
 		}
 		return nil, err
 	}
-	return &api.DeleteJobResponse{}, nil
+	return &api.RemoveJobResponse{}, nil
 }
 
 // ListJobs returns a list of all jobs.

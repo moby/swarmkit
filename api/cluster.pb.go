@@ -86,18 +86,18 @@ type GetTaskResponse struct {
 func (m *GetTaskResponse) Reset()      { *m = GetTaskResponse{} }
 func (*GetTaskResponse) ProtoMessage() {}
 
-type DeleteTaskRequest struct {
+type RemoveTaskRequest struct {
 	TaskID string `protobuf:"bytes,1,opt,name=task_id,proto3" json:"task_id,omitempty"`
 }
 
-func (m *DeleteTaskRequest) Reset()      { *m = DeleteTaskRequest{} }
-func (*DeleteTaskRequest) ProtoMessage() {}
+func (m *RemoveTaskRequest) Reset()      { *m = RemoveTaskRequest{} }
+func (*RemoveTaskRequest) ProtoMessage() {}
 
-type DeleteTaskResponse struct {
+type RemoveTaskResponse struct {
 }
 
-func (m *DeleteTaskResponse) Reset()      { *m = DeleteTaskResponse{} }
-func (*DeleteTaskResponse) ProtoMessage() {}
+func (m *RemoveTaskResponse) Reset()      { *m = RemoveTaskResponse{} }
+func (*RemoveTaskResponse) ProtoMessage() {}
 
 type ListTasksRequest struct {
 }
@@ -154,18 +154,18 @@ type UpdateJobResponse struct {
 func (m *UpdateJobResponse) Reset()      { *m = UpdateJobResponse{} }
 func (*UpdateJobResponse) ProtoMessage() {}
 
-type DeleteJobRequest struct {
+type RemoveJobRequest struct {
 	JobID string `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
 }
 
-func (m *DeleteJobRequest) Reset()      { *m = DeleteJobRequest{} }
-func (*DeleteJobRequest) ProtoMessage() {}
+func (m *RemoveJobRequest) Reset()      { *m = RemoveJobRequest{} }
+func (*RemoveJobRequest) ProtoMessage() {}
 
-type DeleteJobResponse struct {
+type RemoveJobResponse struct {
 }
 
-func (m *DeleteJobResponse) Reset()      { *m = DeleteJobResponse{} }
-func (*DeleteJobResponse) ProtoMessage() {}
+func (m *RemoveJobResponse) Reset()      { *m = RemoveJobResponse{} }
+func (*RemoveJobResponse) ProtoMessage() {}
 
 type ListJobsRequest struct {
 }
@@ -209,19 +209,19 @@ type GetNetworkResponse struct {
 func (m *GetNetworkResponse) Reset()      { *m = GetNetworkResponse{} }
 func (*GetNetworkResponse) ProtoMessage() {}
 
-type DeleteNetworkRequest struct {
+type RemoveNetworkRequest struct {
 	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	NetworkID string `protobuf:"bytes,2,opt,name=network_id,proto3" json:"network_id,omitempty"`
 }
 
-func (m *DeleteNetworkRequest) Reset()      { *m = DeleteNetworkRequest{} }
-func (*DeleteNetworkRequest) ProtoMessage() {}
+func (m *RemoveNetworkRequest) Reset()      { *m = RemoveNetworkRequest{} }
+func (*RemoveNetworkRequest) ProtoMessage() {}
 
-type DeleteNetworkResponse struct {
+type RemoveNetworkResponse struct {
 }
 
-func (m *DeleteNetworkResponse) Reset()      { *m = DeleteNetworkResponse{} }
-func (*DeleteNetworkResponse) ProtoMessage() {}
+func (m *RemoveNetworkResponse) Reset()      { *m = RemoveNetworkResponse{} }
+func (*RemoveNetworkResponse) ProtoMessage() {}
 
 type ListNetworksRequest struct {
 }
@@ -245,8 +245,8 @@ func init() {
 	proto.RegisterType((*CreateTaskResponse)(nil), "api.CreateTaskResponse")
 	proto.RegisterType((*GetTaskRequest)(nil), "api.GetTaskRequest")
 	proto.RegisterType((*GetTaskResponse)(nil), "api.GetTaskResponse")
-	proto.RegisterType((*DeleteTaskRequest)(nil), "api.DeleteTaskRequest")
-	proto.RegisterType((*DeleteTaskResponse)(nil), "api.DeleteTaskResponse")
+	proto.RegisterType((*RemoveTaskRequest)(nil), "api.RemoveTaskRequest")
+	proto.RegisterType((*RemoveTaskResponse)(nil), "api.RemoveTaskResponse")
 	proto.RegisterType((*ListTasksRequest)(nil), "api.ListTasksRequest")
 	proto.RegisterType((*ListTasksResponse)(nil), "api.ListTasksResponse")
 	proto.RegisterType((*CreateJobRequest)(nil), "api.CreateJobRequest")
@@ -255,16 +255,16 @@ func init() {
 	proto.RegisterType((*GetJobResponse)(nil), "api.GetJobResponse")
 	proto.RegisterType((*UpdateJobRequest)(nil), "api.UpdateJobRequest")
 	proto.RegisterType((*UpdateJobResponse)(nil), "api.UpdateJobResponse")
-	proto.RegisterType((*DeleteJobRequest)(nil), "api.DeleteJobRequest")
-	proto.RegisterType((*DeleteJobResponse)(nil), "api.DeleteJobResponse")
+	proto.RegisterType((*RemoveJobRequest)(nil), "api.RemoveJobRequest")
+	proto.RegisterType((*RemoveJobResponse)(nil), "api.RemoveJobResponse")
 	proto.RegisterType((*ListJobsRequest)(nil), "api.ListJobsRequest")
 	proto.RegisterType((*ListJobsResponse)(nil), "api.ListJobsResponse")
 	proto.RegisterType((*CreateNetworkRequest)(nil), "api.CreateNetworkRequest")
 	proto.RegisterType((*CreateNetworkResponse)(nil), "api.CreateNetworkResponse")
 	proto.RegisterType((*GetNetworkRequest)(nil), "api.GetNetworkRequest")
 	proto.RegisterType((*GetNetworkResponse)(nil), "api.GetNetworkResponse")
-	proto.RegisterType((*DeleteNetworkRequest)(nil), "api.DeleteNetworkRequest")
-	proto.RegisterType((*DeleteNetworkResponse)(nil), "api.DeleteNetworkResponse")
+	proto.RegisterType((*RemoveNetworkRequest)(nil), "api.RemoveNetworkRequest")
+	proto.RegisterType((*RemoveNetworkResponse)(nil), "api.RemoveNetworkResponse")
 	proto.RegisterType((*ListNetworksRequest)(nil), "api.ListNetworksRequest")
 	proto.RegisterType((*ListNetworksResponse)(nil), "api.ListNetworksResponse")
 }
@@ -360,22 +360,22 @@ func (this *GetTaskResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *DeleteTaskRequest) GoString() string {
+func (this *RemoveTaskRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.DeleteTaskRequest{")
+	s = append(s, "&api.RemoveTaskRequest{")
 	s = append(s, "TaskID: "+fmt.Sprintf("%#v", this.TaskID)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *DeleteTaskResponse) GoString() string {
+func (this *RemoveTaskResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 4)
-	s = append(s, "&api.DeleteTaskResponse{")
+	s = append(s, "&api.RemoveTaskResponse{")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -468,22 +468,22 @@ func (this *UpdateJobResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *DeleteJobRequest) GoString() string {
+func (this *RemoveJobRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.DeleteJobRequest{")
+	s = append(s, "&api.RemoveJobRequest{")
 	s = append(s, "JobID: "+fmt.Sprintf("%#v", this.JobID)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *DeleteJobResponse) GoString() string {
+func (this *RemoveJobResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 4)
-	s = append(s, "&api.DeleteJobResponse{")
+	s = append(s, "&api.RemoveJobResponse{")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -555,23 +555,23 @@ func (this *GetNetworkResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *DeleteNetworkRequest) GoString() string {
+func (this *RemoveNetworkRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.DeleteNetworkRequest{")
+	s = append(s, "&api.RemoveNetworkRequest{")
 	s = append(s, "Name: "+fmt.Sprintf("%#v", this.Name)+",\n")
 	s = append(s, "NetworkID: "+fmt.Sprintf("%#v", this.NetworkID)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *DeleteNetworkResponse) GoString() string {
+func (this *RemoveNetworkResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 4)
-	s = append(s, "&api.DeleteNetworkResponse{")
+	s = append(s, "&api.RemoveNetworkResponse{")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -633,16 +633,16 @@ type ClusterClient interface {
 	ListNodes(ctx context.Context, in *ListNodesRequest, opts ...grpc.CallOption) (*ListNodesResponse, error)
 	CreateTask(ctx context.Context, in *CreateTaskRequest, opts ...grpc.CallOption) (*CreateTaskResponse, error)
 	GetTask(ctx context.Context, in *GetTaskRequest, opts ...grpc.CallOption) (*GetTaskResponse, error)
-	DeleteTask(ctx context.Context, in *DeleteTaskRequest, opts ...grpc.CallOption) (*DeleteTaskResponse, error)
+	RemoveTask(ctx context.Context, in *RemoveTaskRequest, opts ...grpc.CallOption) (*RemoveTaskResponse, error)
 	ListTasks(ctx context.Context, in *ListTasksRequest, opts ...grpc.CallOption) (*ListTasksResponse, error)
 	CreateJob(ctx context.Context, in *CreateJobRequest, opts ...grpc.CallOption) (*CreateJobResponse, error)
 	GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
 	UpdateJob(ctx context.Context, in *UpdateJobRequest, opts ...grpc.CallOption) (*UpdateJobResponse, error)
-	DeleteJob(ctx context.Context, in *DeleteJobRequest, opts ...grpc.CallOption) (*DeleteJobResponse, error)
+	RemoveJob(ctx context.Context, in *RemoveJobRequest, opts ...grpc.CallOption) (*RemoveJobResponse, error)
 	ListJobs(ctx context.Context, in *ListJobsRequest, opts ...grpc.CallOption) (*ListJobsResponse, error)
 	CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CreateNetworkResponse, error)
 	GetNetwork(ctx context.Context, in *GetNetworkRequest, opts ...grpc.CallOption) (*GetNetworkResponse, error)
-	DeleteNetwork(ctx context.Context, in *DeleteNetworkRequest, opts ...grpc.CallOption) (*DeleteNetworkResponse, error)
+	RemoveNetwork(ctx context.Context, in *RemoveNetworkRequest, opts ...grpc.CallOption) (*RemoveNetworkResponse, error)
 	ListNetworks(ctx context.Context, in *ListNetworksRequest, opts ...grpc.CallOption) (*ListNetworksResponse, error)
 }
 
@@ -690,9 +690,9 @@ func (c *clusterClient) GetTask(ctx context.Context, in *GetTaskRequest, opts ..
 	return out, nil
 }
 
-func (c *clusterClient) DeleteTask(ctx context.Context, in *DeleteTaskRequest, opts ...grpc.CallOption) (*DeleteTaskResponse, error) {
-	out := new(DeleteTaskResponse)
-	err := grpc.Invoke(ctx, "/api.Cluster/DeleteTask", in, out, c.cc, opts...)
+func (c *clusterClient) RemoveTask(ctx context.Context, in *RemoveTaskRequest, opts ...grpc.CallOption) (*RemoveTaskResponse, error) {
+	out := new(RemoveTaskResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/RemoveTask", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -735,9 +735,9 @@ func (c *clusterClient) UpdateJob(ctx context.Context, in *UpdateJobRequest, opt
 	return out, nil
 }
 
-func (c *clusterClient) DeleteJob(ctx context.Context, in *DeleteJobRequest, opts ...grpc.CallOption) (*DeleteJobResponse, error) {
-	out := new(DeleteJobResponse)
-	err := grpc.Invoke(ctx, "/api.Cluster/DeleteJob", in, out, c.cc, opts...)
+func (c *clusterClient) RemoveJob(ctx context.Context, in *RemoveJobRequest, opts ...grpc.CallOption) (*RemoveJobResponse, error) {
+	out := new(RemoveJobResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/RemoveJob", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -771,9 +771,9 @@ func (c *clusterClient) GetNetwork(ctx context.Context, in *GetNetworkRequest, o
 	return out, nil
 }
 
-func (c *clusterClient) DeleteNetwork(ctx context.Context, in *DeleteNetworkRequest, opts ...grpc.CallOption) (*DeleteNetworkResponse, error) {
-	out := new(DeleteNetworkResponse)
-	err := grpc.Invoke(ctx, "/api.Cluster/DeleteNetwork", in, out, c.cc, opts...)
+func (c *clusterClient) RemoveNetwork(ctx context.Context, in *RemoveNetworkRequest, opts ...grpc.CallOption) (*RemoveNetworkResponse, error) {
+	out := new(RemoveNetworkResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/RemoveNetwork", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -796,16 +796,16 @@ type ClusterServer interface {
 	ListNodes(context.Context, *ListNodesRequest) (*ListNodesResponse, error)
 	CreateTask(context.Context, *CreateTaskRequest) (*CreateTaskResponse, error)
 	GetTask(context.Context, *GetTaskRequest) (*GetTaskResponse, error)
-	DeleteTask(context.Context, *DeleteTaskRequest) (*DeleteTaskResponse, error)
+	RemoveTask(context.Context, *RemoveTaskRequest) (*RemoveTaskResponse, error)
 	ListTasks(context.Context, *ListTasksRequest) (*ListTasksResponse, error)
 	CreateJob(context.Context, *CreateJobRequest) (*CreateJobResponse, error)
 	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
 	UpdateJob(context.Context, *UpdateJobRequest) (*UpdateJobResponse, error)
-	DeleteJob(context.Context, *DeleteJobRequest) (*DeleteJobResponse, error)
+	RemoveJob(context.Context, *RemoveJobRequest) (*RemoveJobResponse, error)
 	ListJobs(context.Context, *ListJobsRequest) (*ListJobsResponse, error)
 	CreateNetwork(context.Context, *CreateNetworkRequest) (*CreateNetworkResponse, error)
 	GetNetwork(context.Context, *GetNetworkRequest) (*GetNetworkResponse, error)
-	DeleteNetwork(context.Context, *DeleteNetworkRequest) (*DeleteNetworkResponse, error)
+	RemoveNetwork(context.Context, *RemoveNetworkRequest) (*RemoveNetworkResponse, error)
 	ListNetworks(context.Context, *ListNetworksRequest) (*ListNetworksResponse, error)
 }
 
@@ -861,12 +861,12 @@ func _Cluster_GetTask_Handler(srv interface{}, ctx context.Context, dec func(int
 	return out, nil
 }
 
-func _Cluster_DeleteTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(DeleteTaskRequest)
+func _Cluster_RemoveTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(RemoveTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).DeleteTask(ctx, in)
+	out, err := srv.(ClusterServer).RemoveTask(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -921,12 +921,12 @@ func _Cluster_UpdateJob_Handler(srv interface{}, ctx context.Context, dec func(i
 	return out, nil
 }
 
-func _Cluster_DeleteJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(DeleteJobRequest)
+func _Cluster_RemoveJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(RemoveJobRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).DeleteJob(ctx, in)
+	out, err := srv.(ClusterServer).RemoveJob(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -969,12 +969,12 @@ func _Cluster_GetNetwork_Handler(srv interface{}, ctx context.Context, dec func(
 	return out, nil
 }
 
-func _Cluster_DeleteNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(DeleteNetworkRequest)
+func _Cluster_RemoveNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(RemoveNetworkRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).DeleteNetwork(ctx, in)
+	out, err := srv.(ClusterServer).RemoveNetwork(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -1014,8 +1014,8 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Cluster_GetTask_Handler,
 		},
 		{
-			MethodName: "DeleteTask",
-			Handler:    _Cluster_DeleteTask_Handler,
+			MethodName: "RemoveTask",
+			Handler:    _Cluster_RemoveTask_Handler,
 		},
 		{
 			MethodName: "ListTasks",
@@ -1034,8 +1034,8 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Cluster_UpdateJob_Handler,
 		},
 		{
-			MethodName: "DeleteJob",
-			Handler:    _Cluster_DeleteJob_Handler,
+			MethodName: "RemoveJob",
+			Handler:    _Cluster_RemoveJob_Handler,
 		},
 		{
 			MethodName: "ListJobs",
@@ -1050,8 +1050,8 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Cluster_GetNetwork_Handler,
 		},
 		{
-			MethodName: "DeleteNetwork",
-			Handler:    _Cluster_DeleteNetwork_Handler,
+			MethodName: "RemoveNetwork",
+			Handler:    _Cluster_RemoveNetwork_Handler,
 		},
 		{
 			MethodName: "ListNetworks",
@@ -1279,7 +1279,7 @@ func (m *GetTaskResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *DeleteTaskRequest) Marshal() (data []byte, err error) {
+func (m *RemoveTaskRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1289,7 +1289,7 @@ func (m *DeleteTaskRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *DeleteTaskRequest) MarshalTo(data []byte) (int, error) {
+func (m *RemoveTaskRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1303,7 +1303,7 @@ func (m *DeleteTaskRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *DeleteTaskResponse) Marshal() (data []byte, err error) {
+func (m *RemoveTaskResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1313,7 +1313,7 @@ func (m *DeleteTaskResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *DeleteTaskResponse) MarshalTo(data []byte) (int, error) {
+func (m *RemoveTaskResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1529,7 +1529,7 @@ func (m *UpdateJobResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *DeleteJobRequest) Marshal() (data []byte, err error) {
+func (m *RemoveJobRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1539,7 +1539,7 @@ func (m *DeleteJobRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *DeleteJobRequest) MarshalTo(data []byte) (int, error) {
+func (m *RemoveJobRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1553,7 +1553,7 @@ func (m *DeleteJobRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *DeleteJobResponse) Marshal() (data []byte, err error) {
+func (m *RemoveJobResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1563,7 +1563,7 @@ func (m *DeleteJobResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *DeleteJobResponse) MarshalTo(data []byte) (int, error) {
+func (m *RemoveJobResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1733,7 +1733,7 @@ func (m *GetNetworkResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *DeleteNetworkRequest) Marshal() (data []byte, err error) {
+func (m *RemoveNetworkRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1743,7 +1743,7 @@ func (m *DeleteNetworkRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *DeleteNetworkRequest) MarshalTo(data []byte) (int, error) {
+func (m *RemoveNetworkRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1763,7 +1763,7 @@ func (m *DeleteNetworkRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *DeleteNetworkResponse) Marshal() (data []byte, err error) {
+func (m *RemoveNetworkResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1773,7 +1773,7 @@ func (m *DeleteNetworkResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *DeleteNetworkResponse) MarshalTo(data []byte) (int, error) {
+func (m *RemoveNetworkResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1938,7 +1938,7 @@ func (m *GetTaskResponse) Size() (n int) {
 	return n
 }
 
-func (m *DeleteTaskRequest) Size() (n int) {
+func (m *RemoveTaskRequest) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.TaskID)
@@ -1948,7 +1948,7 @@ func (m *DeleteTaskRequest) Size() (n int) {
 	return n
 }
 
-func (m *DeleteTaskResponse) Size() (n int) {
+func (m *RemoveTaskResponse) Size() (n int) {
 	var l int
 	_ = l
 	return n
@@ -2032,7 +2032,7 @@ func (m *UpdateJobResponse) Size() (n int) {
 	return n
 }
 
-func (m *DeleteJobRequest) Size() (n int) {
+func (m *RemoveJobRequest) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.JobID)
@@ -2042,7 +2042,7 @@ func (m *DeleteJobRequest) Size() (n int) {
 	return n
 }
 
-func (m *DeleteJobResponse) Size() (n int) {
+func (m *RemoveJobResponse) Size() (n int) {
 	var l int
 	_ = l
 	return n
@@ -2110,7 +2110,7 @@ func (m *GetNetworkResponse) Size() (n int) {
 	return n
 }
 
-func (m *DeleteNetworkRequest) Size() (n int) {
+func (m *RemoveNetworkRequest) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.Name)
@@ -2124,7 +2124,7 @@ func (m *DeleteNetworkRequest) Size() (n int) {
 	return n
 }
 
-func (m *DeleteNetworkResponse) Size() (n int) {
+func (m *RemoveNetworkResponse) Size() (n int) {
 	var l int
 	_ = l
 	return n
@@ -2241,21 +2241,21 @@ func (this *GetTaskResponse) String() string {
 	}, "")
 	return s
 }
-func (this *DeleteTaskRequest) String() string {
+func (this *RemoveTaskRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&DeleteTaskRequest{`,
+	s := strings.Join([]string{`&RemoveTaskRequest{`,
 		`TaskID:` + fmt.Sprintf("%v", this.TaskID) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *DeleteTaskResponse) String() string {
+func (this *RemoveTaskResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&DeleteTaskResponse{`,
+	s := strings.Join([]string{`&RemoveTaskResponse{`,
 		`}`,
 	}, "")
 	return s
@@ -2339,21 +2339,21 @@ func (this *UpdateJobResponse) String() string {
 	}, "")
 	return s
 }
-func (this *DeleteJobRequest) String() string {
+func (this *RemoveJobRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&DeleteJobRequest{`,
+	s := strings.Join([]string{`&RemoveJobRequest{`,
 		`JobID:` + fmt.Sprintf("%v", this.JobID) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *DeleteJobResponse) String() string {
+func (this *RemoveJobResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&DeleteJobResponse{`,
+	s := strings.Join([]string{`&RemoveJobResponse{`,
 		`}`,
 	}, "")
 	return s
@@ -2418,22 +2418,22 @@ func (this *GetNetworkResponse) String() string {
 	}, "")
 	return s
 }
-func (this *DeleteNetworkRequest) String() string {
+func (this *RemoveNetworkRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&DeleteNetworkRequest{`,
+	s := strings.Join([]string{`&RemoveNetworkRequest{`,
 		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
 		`NetworkID:` + fmt.Sprintf("%v", this.NetworkID) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *DeleteNetworkResponse) String() string {
+func (this *RemoveNetworkResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&DeleteNetworkResponse{`,
+	s := strings.Join([]string{`&RemoveNetworkResponse{`,
 		`}`,
 	}, "")
 	return s
@@ -3119,7 +3119,7 @@ func (m *GetTaskResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *DeleteTaskRequest) Unmarshal(data []byte) error {
+func (m *RemoveTaskRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3142,10 +3142,10 @@ func (m *DeleteTaskRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: DeleteTaskRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: RemoveTaskRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DeleteTaskRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RemoveTaskRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -3198,7 +3198,7 @@ func (m *DeleteTaskRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *DeleteTaskResponse) Unmarshal(data []byte) error {
+func (m *RemoveTaskResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3221,10 +3221,10 @@ func (m *DeleteTaskResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: DeleteTaskResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: RemoveTaskResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DeleteTaskResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RemoveTaskResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -3869,7 +3869,7 @@ func (m *UpdateJobResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *DeleteJobRequest) Unmarshal(data []byte) error {
+func (m *RemoveJobRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3892,10 +3892,10 @@ func (m *DeleteJobRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: DeleteJobRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: RemoveJobRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DeleteJobRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RemoveJobRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -3948,7 +3948,7 @@ func (m *DeleteJobRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *DeleteJobResponse) Unmarshal(data []byte) error {
+func (m *RemoveJobResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3971,10 +3971,10 @@ func (m *DeleteJobResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: DeleteJobResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: RemoveJobResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DeleteJobResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RemoveJobResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -4486,7 +4486,7 @@ func (m *GetNetworkResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *DeleteNetworkRequest) Unmarshal(data []byte) error {
+func (m *RemoveNetworkRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4509,10 +4509,10 @@ func (m *DeleteNetworkRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: DeleteNetworkRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: RemoveNetworkRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DeleteNetworkRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RemoveNetworkRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -4594,7 +4594,7 @@ func (m *DeleteNetworkRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *DeleteNetworkResponse) Unmarshal(data []byte) error {
+func (m *RemoveNetworkResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4617,10 +4617,10 @@ func (m *DeleteNetworkResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: DeleteNetworkResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: RemoveNetworkResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DeleteNetworkResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RemoveNetworkResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:

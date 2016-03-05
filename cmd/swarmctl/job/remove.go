@@ -10,19 +10,20 @@ import (
 )
 
 var (
-	deleteCmd = &cobra.Command{
-		Use:   "delete <jobID>",
-		Short: "Delete a job",
+	removeCmd = &cobra.Command{
+		Use:     "remove <job ID>",
+		Short:   "Remove a job",
+		Aliases: []string{"rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return errors.New("jobID missing")
+				return errors.New("job ID missing")
 			}
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
 			}
 
-			_, err = c.DeleteJob(common.Context(cmd), &api.DeleteJobRequest{JobID: args[0]})
+			_, err = c.RemoveJob(common.Context(cmd), &api.RemoveJobRequest{JobID: args[0]})
 			if err != nil {
 				return err
 			}

@@ -20,18 +20,18 @@ service Cluster {
 
 	rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse) {}
 	rpc GetTask(GetTaskRequest) returns (GetTaskResponse) {}
-	rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse) {}
+	rpc RemoveTask(RemoveTaskRequest) returns (RemoveTaskResponse) {}
 	rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {}
 
 	rpc CreateJob(CreateJobRequest) returns (CreateJobResponse) {}
 	rpc GetJob(GetJobRequest) returns (GetJobResponse) {}
 	rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse) {}
-	rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse) {}
+	rpc RemoveJob(RemoveJobRequest) returns (RemoveJobResponse) {}
 	rpc ListJobs(ListJobsRequest) returns (ListJobsResponse) {}
 
 	rpc CreateNetwork(CreateNetworkRequest) returns (CreateNetworkResponse) {};
 	rpc GetNetwork(GetNetworkRequest) returns (GetNetworkResponse) {};
-	rpc DeleteNetwork(DeleteNetworkRequest) returns (DeleteNetworkResponse) {};
+	rpc RemoveNetwork(RemoveNetworkRequest) returns (RemoveNetworkResponse) {};
 	rpc ListNetworks(ListNetworksRequest) returns (ListNetworksResponse) {};
 }
 
@@ -70,11 +70,11 @@ message GetTaskResponse {
 	Task task = 1;
 }
 
-message DeleteTaskRequest {
+message RemoveTaskRequest {
 	string task_id = 1 [(gogoproto.customname) = "TaskID"];
 }
 
-message DeleteTaskResponse {
+message RemoveTaskResponse {
 }
 
 message ListTasksRequest {
@@ -108,11 +108,11 @@ message UpdateJobRequest {
 message UpdateJobResponse {
 }
 
-message DeleteJobRequest {
+message RemoveJobRequest {
 	string job_id = 1 [(gogoproto.customname) = "JobID"];
 }
 
-message DeleteJobResponse {
+message RemoveJobResponse {
 }
 
 message ListJobsRequest {
@@ -139,12 +139,12 @@ message GetNetworkResponse {
 	Network network = 1;
 }
 
-message DeleteNetworkRequest {
+message RemoveNetworkRequest {
 	string name = 1;
 	string network_id = 2 [(gogoproto.customname) = "NetworkID"];
 }
 
-message DeleteNetworkResponse {}
+message RemoveNetworkResponse {}
 
 message ListNetworksRequest {}
 
