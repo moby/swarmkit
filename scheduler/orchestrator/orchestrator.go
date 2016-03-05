@@ -68,6 +68,7 @@ func (o *Orchestrator) Run() {
 			}
 		case <-o.stopChan:
 			queue.StopWatch(watcher)
+			o.stopChan = nil
 		}
 	}
 }
