@@ -629,21 +629,21 @@ var _ grpc.ClientConn
 // Client API for Cluster service
 
 type ClusterClient interface {
-	UpdateNode(ctx context.Context, in *UpdateNodeRequest, opts ...grpc.CallOption) (*UpdateNodeResponse, error)
 	ListNodes(ctx context.Context, in *ListNodesRequest, opts ...grpc.CallOption) (*ListNodesResponse, error)
-	CreateTask(ctx context.Context, in *CreateTaskRequest, opts ...grpc.CallOption) (*CreateTaskResponse, error)
+	UpdateNode(ctx context.Context, in *UpdateNodeRequest, opts ...grpc.CallOption) (*UpdateNodeResponse, error)
 	GetTask(ctx context.Context, in *GetTaskRequest, opts ...grpc.CallOption) (*GetTaskResponse, error)
-	RemoveTask(ctx context.Context, in *RemoveTaskRequest, opts ...grpc.CallOption) (*RemoveTaskResponse, error)
 	ListTasks(ctx context.Context, in *ListTasksRequest, opts ...grpc.CallOption) (*ListTasksResponse, error)
-	CreateJob(ctx context.Context, in *CreateJobRequest, opts ...grpc.CallOption) (*CreateJobResponse, error)
+	CreateTask(ctx context.Context, in *CreateTaskRequest, opts ...grpc.CallOption) (*CreateTaskResponse, error)
+	RemoveTask(ctx context.Context, in *RemoveTaskRequest, opts ...grpc.CallOption) (*RemoveTaskResponse, error)
 	GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
+	ListJobs(ctx context.Context, in *ListJobsRequest, opts ...grpc.CallOption) (*ListJobsResponse, error)
+	CreateJob(ctx context.Context, in *CreateJobRequest, opts ...grpc.CallOption) (*CreateJobResponse, error)
 	UpdateJob(ctx context.Context, in *UpdateJobRequest, opts ...grpc.CallOption) (*UpdateJobResponse, error)
 	RemoveJob(ctx context.Context, in *RemoveJobRequest, opts ...grpc.CallOption) (*RemoveJobResponse, error)
-	ListJobs(ctx context.Context, in *ListJobsRequest, opts ...grpc.CallOption) (*ListJobsResponse, error)
-	CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CreateNetworkResponse, error)
 	GetNetwork(ctx context.Context, in *GetNetworkRequest, opts ...grpc.CallOption) (*GetNetworkResponse, error)
-	RemoveNetwork(ctx context.Context, in *RemoveNetworkRequest, opts ...grpc.CallOption) (*RemoveNetworkResponse, error)
 	ListNetworks(ctx context.Context, in *ListNetworksRequest, opts ...grpc.CallOption) (*ListNetworksResponse, error)
+	CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CreateNetworkResponse, error)
+	RemoveNetwork(ctx context.Context, in *RemoveNetworkRequest, opts ...grpc.CallOption) (*RemoveNetworkResponse, error)
 }
 
 type clusterClient struct {
@@ -652,15 +652,6 @@ type clusterClient struct {
 
 func NewClusterClient(cc *grpc.ClientConn) ClusterClient {
 	return &clusterClient{cc}
-}
-
-func (c *clusterClient) UpdateNode(ctx context.Context, in *UpdateNodeRequest, opts ...grpc.CallOption) (*UpdateNodeResponse, error) {
-	out := new(UpdateNodeResponse)
-	err := grpc.Invoke(ctx, "/api.Cluster/UpdateNode", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *clusterClient) ListNodes(ctx context.Context, in *ListNodesRequest, opts ...grpc.CallOption) (*ListNodesResponse, error) {
@@ -672,9 +663,9 @@ func (c *clusterClient) ListNodes(ctx context.Context, in *ListNodesRequest, opt
 	return out, nil
 }
 
-func (c *clusterClient) CreateTask(ctx context.Context, in *CreateTaskRequest, opts ...grpc.CallOption) (*CreateTaskResponse, error) {
-	out := new(CreateTaskResponse)
-	err := grpc.Invoke(ctx, "/api.Cluster/CreateTask", in, out, c.cc, opts...)
+func (c *clusterClient) UpdateNode(ctx context.Context, in *UpdateNodeRequest, opts ...grpc.CallOption) (*UpdateNodeResponse, error) {
+	out := new(UpdateNodeResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/UpdateNode", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -690,15 +681,6 @@ func (c *clusterClient) GetTask(ctx context.Context, in *GetTaskRequest, opts ..
 	return out, nil
 }
 
-func (c *clusterClient) RemoveTask(ctx context.Context, in *RemoveTaskRequest, opts ...grpc.CallOption) (*RemoveTaskResponse, error) {
-	out := new(RemoveTaskResponse)
-	err := grpc.Invoke(ctx, "/api.Cluster/RemoveTask", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *clusterClient) ListTasks(ctx context.Context, in *ListTasksRequest, opts ...grpc.CallOption) (*ListTasksResponse, error) {
 	out := new(ListTasksResponse)
 	err := grpc.Invoke(ctx, "/api.Cluster/ListTasks", in, out, c.cc, opts...)
@@ -708,9 +690,18 @@ func (c *clusterClient) ListTasks(ctx context.Context, in *ListTasksRequest, opt
 	return out, nil
 }
 
-func (c *clusterClient) CreateJob(ctx context.Context, in *CreateJobRequest, opts ...grpc.CallOption) (*CreateJobResponse, error) {
-	out := new(CreateJobResponse)
-	err := grpc.Invoke(ctx, "/api.Cluster/CreateJob", in, out, c.cc, opts...)
+func (c *clusterClient) CreateTask(ctx context.Context, in *CreateTaskRequest, opts ...grpc.CallOption) (*CreateTaskResponse, error) {
+	out := new(CreateTaskResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/CreateTask", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) RemoveTask(ctx context.Context, in *RemoveTaskRequest, opts ...grpc.CallOption) (*RemoveTaskResponse, error) {
+	out := new(RemoveTaskResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/RemoveTask", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -720,6 +711,24 @@ func (c *clusterClient) CreateJob(ctx context.Context, in *CreateJobRequest, opt
 func (c *clusterClient) GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error) {
 	out := new(GetJobResponse)
 	err := grpc.Invoke(ctx, "/api.Cluster/GetJob", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) ListJobs(ctx context.Context, in *ListJobsRequest, opts ...grpc.CallOption) (*ListJobsResponse, error) {
+	out := new(ListJobsResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/ListJobs", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) CreateJob(ctx context.Context, in *CreateJobRequest, opts ...grpc.CallOption) (*CreateJobResponse, error) {
+	out := new(CreateJobResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/CreateJob", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -744,36 +753,9 @@ func (c *clusterClient) RemoveJob(ctx context.Context, in *RemoveJobRequest, opt
 	return out, nil
 }
 
-func (c *clusterClient) ListJobs(ctx context.Context, in *ListJobsRequest, opts ...grpc.CallOption) (*ListJobsResponse, error) {
-	out := new(ListJobsResponse)
-	err := grpc.Invoke(ctx, "/api.Cluster/ListJobs", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *clusterClient) CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CreateNetworkResponse, error) {
-	out := new(CreateNetworkResponse)
-	err := grpc.Invoke(ctx, "/api.Cluster/CreateNetwork", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *clusterClient) GetNetwork(ctx context.Context, in *GetNetworkRequest, opts ...grpc.CallOption) (*GetNetworkResponse, error) {
 	out := new(GetNetworkResponse)
 	err := grpc.Invoke(ctx, "/api.Cluster/GetNetwork", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *clusterClient) RemoveNetwork(ctx context.Context, in *RemoveNetworkRequest, opts ...grpc.CallOption) (*RemoveNetworkResponse, error) {
-	out := new(RemoveNetworkResponse)
-	err := grpc.Invoke(ctx, "/api.Cluster/RemoveNetwork", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -789,40 +771,46 @@ func (c *clusterClient) ListNetworks(ctx context.Context, in *ListNetworksReques
 	return out, nil
 }
 
-// Server API for Cluster service
-
-type ClusterServer interface {
-	UpdateNode(context.Context, *UpdateNodeRequest) (*UpdateNodeResponse, error)
-	ListNodes(context.Context, *ListNodesRequest) (*ListNodesResponse, error)
-	CreateTask(context.Context, *CreateTaskRequest) (*CreateTaskResponse, error)
-	GetTask(context.Context, *GetTaskRequest) (*GetTaskResponse, error)
-	RemoveTask(context.Context, *RemoveTaskRequest) (*RemoveTaskResponse, error)
-	ListTasks(context.Context, *ListTasksRequest) (*ListTasksResponse, error)
-	CreateJob(context.Context, *CreateJobRequest) (*CreateJobResponse, error)
-	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
-	UpdateJob(context.Context, *UpdateJobRequest) (*UpdateJobResponse, error)
-	RemoveJob(context.Context, *RemoveJobRequest) (*RemoveJobResponse, error)
-	ListJobs(context.Context, *ListJobsRequest) (*ListJobsResponse, error)
-	CreateNetwork(context.Context, *CreateNetworkRequest) (*CreateNetworkResponse, error)
-	GetNetwork(context.Context, *GetNetworkRequest) (*GetNetworkResponse, error)
-	RemoveNetwork(context.Context, *RemoveNetworkRequest) (*RemoveNetworkResponse, error)
-	ListNetworks(context.Context, *ListNetworksRequest) (*ListNetworksResponse, error)
-}
-
-func RegisterClusterServer(s *grpc.Server, srv ClusterServer) {
-	s.RegisterService(&_Cluster_serviceDesc, srv)
-}
-
-func _Cluster_UpdateNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(UpdateNodeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(ClusterServer).UpdateNode(ctx, in)
+func (c *clusterClient) CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CreateNetworkResponse, error) {
+	out := new(CreateNetworkResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/CreateNetwork", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
+}
+
+func (c *clusterClient) RemoveNetwork(ctx context.Context, in *RemoveNetworkRequest, opts ...grpc.CallOption) (*RemoveNetworkResponse, error) {
+	out := new(RemoveNetworkResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/RemoveNetwork", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for Cluster service
+
+type ClusterServer interface {
+	ListNodes(context.Context, *ListNodesRequest) (*ListNodesResponse, error)
+	UpdateNode(context.Context, *UpdateNodeRequest) (*UpdateNodeResponse, error)
+	GetTask(context.Context, *GetTaskRequest) (*GetTaskResponse, error)
+	ListTasks(context.Context, *ListTasksRequest) (*ListTasksResponse, error)
+	CreateTask(context.Context, *CreateTaskRequest) (*CreateTaskResponse, error)
+	RemoveTask(context.Context, *RemoveTaskRequest) (*RemoveTaskResponse, error)
+	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
+	ListJobs(context.Context, *ListJobsRequest) (*ListJobsResponse, error)
+	CreateJob(context.Context, *CreateJobRequest) (*CreateJobResponse, error)
+	UpdateJob(context.Context, *UpdateJobRequest) (*UpdateJobResponse, error)
+	RemoveJob(context.Context, *RemoveJobRequest) (*RemoveJobResponse, error)
+	GetNetwork(context.Context, *GetNetworkRequest) (*GetNetworkResponse, error)
+	ListNetworks(context.Context, *ListNetworksRequest) (*ListNetworksResponse, error)
+	CreateNetwork(context.Context, *CreateNetworkRequest) (*CreateNetworkResponse, error)
+	RemoveNetwork(context.Context, *RemoveNetworkRequest) (*RemoveNetworkResponse, error)
+}
+
+func RegisterClusterServer(s *grpc.Server, srv ClusterServer) {
+	s.RegisterService(&_Cluster_serviceDesc, srv)
 }
 
 func _Cluster_ListNodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
@@ -837,12 +825,12 @@ func _Cluster_ListNodes_Handler(srv interface{}, ctx context.Context, dec func(i
 	return out, nil
 }
 
-func _Cluster_CreateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(CreateTaskRequest)
+func _Cluster_UpdateNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(UpdateNodeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).CreateTask(ctx, in)
+	out, err := srv.(ClusterServer).UpdateNode(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -861,18 +849,6 @@ func _Cluster_GetTask_Handler(srv interface{}, ctx context.Context, dec func(int
 	return out, nil
 }
 
-func _Cluster_RemoveTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(RemoveTaskRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(ClusterServer).RemoveTask(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func _Cluster_ListTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(ListTasksRequest)
 	if err := dec(in); err != nil {
@@ -885,12 +861,24 @@ func _Cluster_ListTasks_Handler(srv interface{}, ctx context.Context, dec func(i
 	return out, nil
 }
 
-func _Cluster_CreateJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(CreateJobRequest)
+func _Cluster_CreateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(CreateTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).CreateJob(ctx, in)
+	out, err := srv.(ClusterServer).CreateTask(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _Cluster_RemoveTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(RemoveTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(ClusterServer).RemoveTask(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -903,6 +891,30 @@ func _Cluster_GetJob_Handler(srv interface{}, ctx context.Context, dec func(inte
 		return nil, err
 	}
 	out, err := srv.(ClusterServer).GetJob(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _Cluster_ListJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(ListJobsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(ClusterServer).ListJobs(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _Cluster_CreateJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(CreateJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(ClusterServer).CreateJob(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -933,48 +945,12 @@ func _Cluster_RemoveJob_Handler(srv interface{}, ctx context.Context, dec func(i
 	return out, nil
 }
 
-func _Cluster_ListJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(ListJobsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(ClusterServer).ListJobs(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func _Cluster_CreateNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(CreateNetworkRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(ClusterServer).CreateNetwork(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func _Cluster_GetNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(GetNetworkRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	out, err := srv.(ClusterServer).GetNetwork(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func _Cluster_RemoveNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(RemoveNetworkRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(ClusterServer).RemoveNetwork(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -993,41 +969,69 @@ func _Cluster_ListNetworks_Handler(srv interface{}, ctx context.Context, dec fun
 	return out, nil
 }
 
+func _Cluster_CreateNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(CreateNetworkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(ClusterServer).CreateNetwork(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _Cluster_RemoveNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(RemoveNetworkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(ClusterServer).RemoveNetwork(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 var _Cluster_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "api.Cluster",
 	HandlerType: (*ClusterServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "UpdateNode",
-			Handler:    _Cluster_UpdateNode_Handler,
-		},
-		{
 			MethodName: "ListNodes",
 			Handler:    _Cluster_ListNodes_Handler,
 		},
 		{
-			MethodName: "CreateTask",
-			Handler:    _Cluster_CreateTask_Handler,
+			MethodName: "UpdateNode",
+			Handler:    _Cluster_UpdateNode_Handler,
 		},
 		{
 			MethodName: "GetTask",
 			Handler:    _Cluster_GetTask_Handler,
 		},
 		{
-			MethodName: "RemoveTask",
-			Handler:    _Cluster_RemoveTask_Handler,
-		},
-		{
 			MethodName: "ListTasks",
 			Handler:    _Cluster_ListTasks_Handler,
 		},
 		{
-			MethodName: "CreateJob",
-			Handler:    _Cluster_CreateJob_Handler,
+			MethodName: "CreateTask",
+			Handler:    _Cluster_CreateTask_Handler,
+		},
+		{
+			MethodName: "RemoveTask",
+			Handler:    _Cluster_RemoveTask_Handler,
 		},
 		{
 			MethodName: "GetJob",
 			Handler:    _Cluster_GetJob_Handler,
+		},
+		{
+			MethodName: "ListJobs",
+			Handler:    _Cluster_ListJobs_Handler,
+		},
+		{
+			MethodName: "CreateJob",
+			Handler:    _Cluster_CreateJob_Handler,
 		},
 		{
 			MethodName: "UpdateJob",
@@ -1038,24 +1042,20 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Cluster_RemoveJob_Handler,
 		},
 		{
-			MethodName: "ListJobs",
-			Handler:    _Cluster_ListJobs_Handler,
+			MethodName: "GetNetwork",
+			Handler:    _Cluster_GetNetwork_Handler,
+		},
+		{
+			MethodName: "ListNetworks",
+			Handler:    _Cluster_ListNetworks_Handler,
 		},
 		{
 			MethodName: "CreateNetwork",
 			Handler:    _Cluster_CreateNetwork_Handler,
 		},
 		{
-			MethodName: "GetNetwork",
-			Handler:    _Cluster_GetNetwork_Handler,
-		},
-		{
 			MethodName: "RemoveNetwork",
 			Handler:    _Cluster_RemoveNetwork_Handler,
-		},
-		{
-			MethodName: "ListNetworks",
-			Handler:    _Cluster_ListNetworks_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},

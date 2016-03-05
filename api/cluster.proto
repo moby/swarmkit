@@ -15,24 +15,25 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 // 	- "Control", since this controls a swarm cluster
 // 	- "User" because it is user facing.
 service Cluster {
-	rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse) {}
 	rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {}
+	rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse) {}
 
-	rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse) {}
 	rpc GetTask(GetTaskRequest) returns (GetTaskResponse) {}
-	rpc RemoveTask(RemoveTaskRequest) returns (RemoveTaskResponse) {}
 	rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {}
+	rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse) {}
+	rpc RemoveTask(RemoveTaskRequest) returns (RemoveTaskResponse) {}
 
-	rpc CreateJob(CreateJobRequest) returns (CreateJobResponse) {}
+
 	rpc GetJob(GetJobRequest) returns (GetJobResponse) {}
+	rpc ListJobs(ListJobsRequest) returns (ListJobsResponse) {}
+	rpc CreateJob(CreateJobRequest) returns (CreateJobResponse) {}
 	rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse) {}
 	rpc RemoveJob(RemoveJobRequest) returns (RemoveJobResponse) {}
-	rpc ListJobs(ListJobsRequest) returns (ListJobsResponse) {}
 
-	rpc CreateNetwork(CreateNetworkRequest) returns (CreateNetworkResponse) {};
 	rpc GetNetwork(GetNetworkRequest) returns (GetNetworkResponse) {};
-	rpc RemoveNetwork(RemoveNetworkRequest) returns (RemoveNetworkResponse) {};
 	rpc ListNetworks(ListNetworksRequest) returns (ListNetworksResponse) {};
+	rpc CreateNetwork(CreateNetworkRequest) returns (CreateNetworkResponse) {};
+	rpc RemoveNetwork(RemoveNetworkRequest) returns (RemoveNetworkResponse) {};
 }
 
 message ListNodesRequest {
