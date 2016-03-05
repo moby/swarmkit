@@ -144,17 +144,18 @@ message JobSpec {
 message TaskStatus {
 	enum State {
 		NEW = 0;
-		ASSIGNED = 1;
-		PREPARING = 2;
-		READY = 3;
-		STARTING = 4;
-		RUNNING = 5;
-		SHUTDOWN = 6;
-		COMPLETE = 7; // successful completion of task (not error code, just ran)
-		FAILED = 8; // task execution failed with error
-		REJECTED = 9; // task could not be executed here.
-		FINALIZE = 10; // when task is deallocated from node, waiting on cleanup
-		DEAD = 11; // completely finished, unallocated task.
+		ALLOCATED = 1; // successfull allocation of resources that the task needs
+		ASSIGNED = 2;
+		PREPARING = 3;
+		READY = 4;
+		STARTING = 5;
+		RUNNING = 6;
+		SHUTDOWN = 7;
+		COMPLETE = 8; // successful completion of task (not error code, just ran)
+		FAILED = 9; // task execution failed with error
+		REJECTED = 10; // task could not be executed here.
+		FINALIZE = 11; // when task is deallocated from node, waiting on cleanup
+		DEAD = 12; // completely finished, unallocated task.
 	}
 
 	State state = 2;
