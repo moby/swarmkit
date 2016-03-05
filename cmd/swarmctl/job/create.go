@@ -44,11 +44,9 @@ var (
 				Meta: &api.Meta{
 					Name: name,
 				},
-				Source: &api.Source{
-					Source: &api.Source_Image{
-						Image: &api.ImageSpec{
-							Reference: image,
-						},
+				Source: &api.JobSpec_Image{
+					Image: &api.ImageSpec{
+						Reference: image,
 					},
 				},
 				Orchestration: &api.JobSpec_Orchestration{

@@ -34,7 +34,7 @@ var (
 			for _, j := range r.Jobs {
 				spec := j.Spec
 				orchestration := spec.Orchestration.GetService()
-				image := spec.Source.GetImage()
+				image := spec.GetImage()
 
 				// TODO(aluzzardi): Right now we only implement the happy path
 				// and don't have any proper error handling whatsover.

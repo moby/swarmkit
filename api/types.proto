@@ -78,12 +78,6 @@ message ImageSpec {
 	string reference = 1; // TODO(stevvooe): Field type should be reference.Field.
 }
 
-message Source { // TODO(stevvooe): better name?
-	oneof source {
-		ImageSpec image = 1;
-	}
-}
-
 // Spec defines the properties of a Job. As tasks are created, they gain the
 // Job specification.
 //
@@ -128,7 +122,10 @@ message JobSpec {
 		}
 	}
 
-	Source source = 2;
+	oneof source {
+		ImageSpec image = 2;
+	}
+
 	Orchestration orchestration = 3;
 
 	repeated NetworkAttachmentSpec networks = 4;
@@ -181,13 +178,15 @@ message Task {
 
 	JobSpec spec = 5;
 
-	TaskStatus status = 7;
+	TaskStatus status = 6;
 
 	// Resolved is the source resolved by the swarm cluster. This may be
 	// identical, depending on the name provided in the JobSpec. For example,
 	// the name field may be "redis", whereas this field would specify the
 	// exact hash, "redis@sha256:...".
-	Source resolved = 6;
+	oneof resolved {
+		ImageSpec image = 7;
+	}
 
 	message NetworkAttachment {
 		// Network state as a whole becomes part of Task so

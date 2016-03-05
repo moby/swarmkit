@@ -20,11 +20,11 @@ func validateJobSpecMeta(m *api.Meta) error {
 	return nil
 }
 
-func validateJobSpecSource(s *api.Source) error {
-	if s == nil {
+func validateJobSpecImageSpec(spec *api.JobSpec) error {
+	if spec.GetSource() == nil {
 		return grpc.Errorf(codes.InvalidArgument, "source: required in job spec")
 	}
-	image := s.GetImage()
+	image := spec.GetImage()
 	if image == nil {
 		return grpc.Errorf(codes.Unimplemented, "source: invalid source type. only image is supposed")
 	}
@@ -64,7 +64,7 @@ func validateJobSpec(spec *api.JobSpec) error {
 	if err := validateJobSpecMeta(spec.Meta); err != nil {
 		return err
 	}
-	if err := validateJobSpecSource(spec.Source); err != nil {
+	if err := validateJobSpecImageSpec(spec); err != nil {
 		return err
 	}
 	if err := validateJobSpecOrchestration(spec.Orchestration); err != nil {
