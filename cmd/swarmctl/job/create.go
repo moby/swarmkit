@@ -49,11 +49,9 @@ var (
 						Reference: image,
 					},
 				},
-				Orchestration: &api.JobSpec_Orchestration{
-					Job: &api.JobSpec_Orchestration_Service{
-						Service: &api.JobSpec_ServiceJob{
-							Instances: instances,
-						},
+				Orchestration: &api.JobSpec_Service{
+					Service: &api.JobSpec_ServiceJob{
+						Instances: instances,
 					},
 				},
 			}

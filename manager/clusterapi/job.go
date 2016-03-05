@@ -34,23 +34,20 @@ func validateJobSpecImageSpec(spec *api.JobSpec) error {
 	return nil
 }
 
-func validateJobSpecOrchestration(o *api.JobSpec_Orchestration) error {
-	if o == nil {
+func validateJobSpecOrchestration(spec *api.JobSpec) error {
+	if spec.GetOrchestration() == nil {
 		return grpc.Errorf(codes.InvalidArgument, "orchestration: required in job spec")
 	}
-	job := o.GetJob()
-	if job == nil {
-		return grpc.Errorf(codes.InvalidArgument, "orchestration: job must be provided")
-	}
-	switch job.(type) {
-	case *api.JobSpec_Orchestration_Batch:
+
+	switch o := spec.Orchestration.(type) {
+	case *api.JobSpec_Batch:
 		return grpc.Errorf(codes.Unimplemented, "orchestration: batch is not supported")
-	case *api.JobSpec_Orchestration_Cron:
+	case *api.JobSpec_Cron:
 		return grpc.Errorf(codes.Unimplemented, "orchestration: cron is not supported")
-	case *api.JobSpec_Orchestration_Global:
+	case *api.JobSpec_Global:
 		return grpc.Errorf(codes.Unimplemented, "orchestration: global is not supported")
-	case *api.JobSpec_Orchestration_Service:
-		if o.GetService() == nil {
+	case *api.JobSpec_Service:
+		if o.Service == nil {
 			return grpc.Errorf(codes.InvalidArgument, "orchestration: service must be provided")
 		}
 	}
@@ -67,7 +64,7 @@ func validateJobSpec(spec *api.JobSpec) error {
 	if err := validateJobSpecImageSpec(spec); err != nil {
 		return err
 	}
-	if err := validateJobSpecOrchestration(spec.Orchestration); err != nil {
+	if err := validateJobSpecOrchestration(spec); err != nil {
 		return err
 	}
 	return nil

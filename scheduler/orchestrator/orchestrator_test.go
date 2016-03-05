@@ -29,11 +29,9 @@ func TestOrchestrator(t *testing.T) {
 				Meta: &api.Meta{
 					Name: "name1",
 				},
-				Orchestration: &api.JobSpec_Orchestration{
-					Job: &api.JobSpec_Orchestration_Service{
-						Service: &api.JobSpec_ServiceJob{
-							Instances: 2,
-						},
+				Orchestration: &api.JobSpec_Service{
+					Service: &api.JobSpec_ServiceJob{
+						Instances: 2,
 					},
 				},
 			},
@@ -62,11 +60,9 @@ func TestOrchestrator(t *testing.T) {
 				Meta: &api.Meta{
 					Name: "name2",
 				},
-				Orchestration: &api.JobSpec_Orchestration{
-					Job: &api.JobSpec_Orchestration_Service{
-						Service: &api.JobSpec_ServiceJob{
-							Instances: 1,
-						},
+				Orchestration: &api.JobSpec_Service{
+					Service: &api.JobSpec_ServiceJob{
+						Instances: 1,
 					},
 				},
 			},
@@ -88,11 +84,9 @@ func TestOrchestrator(t *testing.T) {
 				Meta: &api.Meta{
 					Name: "name2",
 				},
-				Orchestration: &api.JobSpec_Orchestration{
-					Job: &api.JobSpec_Orchestration_Service{
-						Service: &api.JobSpec_ServiceJob{
-							Instances: 3,
-						},
+				Orchestration: &api.JobSpec_Service{
+					Service: &api.JobSpec_ServiceJob{
+						Instances: 3,
 					},
 				},
 			},
@@ -118,11 +112,9 @@ func TestOrchestrator(t *testing.T) {
 				Meta: &api.Meta{
 					Name: "name2",
 				},
-				Orchestration: &api.JobSpec_Orchestration{
-					Job: &api.JobSpec_Orchestration_Service{
-						Service: &api.JobSpec_ServiceJob{
-							Instances: 1,
-						},
+				Orchestration: &api.JobSpec_Service{
+					Service: &api.JobSpec_ServiceJob{
+						Instances: 1,
 					},
 				},
 			},

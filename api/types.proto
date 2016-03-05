@@ -104,15 +104,6 @@ message JobSpec {
 	message CronJob {
 	}
 
-	message Orchestration { // TODO(stevvooe): Consider calling this strategy.
-		oneof job {
-			ServiceJob service = 1;
-			BatchJob batch = 2;
-			GlobalJob global = 3;
-			CronJob cron = 4;
-		}
-	}
-
 	// NetworkAttachmentSpec describes a desired attachment to the named network or
 	// a specific network_id.
 	message NetworkAttachmentSpec {
@@ -126,9 +117,14 @@ message JobSpec {
 		ImageSpec image = 2;
 	}
 
-	Orchestration orchestration = 3;
+	oneof orchestration { // TODO(stevvooe): Consider calling this strategy.
+		ServiceJob service = 3;
+		BatchJob batch = 4;
+		GlobalJob global = 5;
+		CronJob cron = 6;
+	}
 
-	repeated NetworkAttachmentSpec networks = 4;
+	repeated NetworkAttachmentSpec networks = 7;
 
 	// TODO(stevvooe): Specify the components that make up the container
 	// configuration. This should have fields similar to container.Config.
