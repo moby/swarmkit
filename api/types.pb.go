@@ -8,7 +8,7 @@
 	It is generated from these files:
 		types.proto
 		cluster.proto
-		agent.proto
+		dispatcher.proto
 
 	It has these top-level messages:
 		Meta
@@ -25,6 +25,7 @@
 		Driver
 		NetworkSpec
 		Network
+		WeightedPeer
 		ListNodesRequest
 		ListNodesResponse
 		UpdateNodeRequest
@@ -57,17 +58,14 @@
 		ListNetworksResponse
 		RegisterRequest
 		RegisterResponse
-		UpdateNodeStatusRequest
-		UpdateNodeStatusResponse
+		SessionRequest
+		SessionMessage
+		HeartbeatRequest
+		HeartbeatResponse
 		UpdateTaskStatusRequest
 		UpdateTaskStatusResponse
 		TasksRequest
-		TasksResponse
-		HeartbeatRequest
-		HeartbeatResponse
-		ManagerInfo
-		SessionRequest
-		SessionResponse
+		TasksMessage
 */
 package api
 
@@ -719,6 +717,16 @@ type Network struct {
 func (m *Network) Reset()      { *m = Network{} }
 func (*Network) ProtoMessage() {}
 
+// WeightedPeer should be used anywhere where we are describing a remote peer
+// with a weight.
+type WeightedPeer struct {
+	Addr   string  `protobuf:"bytes,1,opt,name=addr,proto3" json:"addr,omitempty"`
+	Weight float64 `protobuf:"fixed64,2,opt,name=weight,proto3" json:"weight,omitempty"`
+}
+
+func (m *WeightedPeer) Reset()      { *m = WeightedPeer{} }
+func (*WeightedPeer) ProtoMessage() {}
+
 func init() {
 	proto.RegisterType((*Meta)(nil), "api.Meta")
 	proto.RegisterType((*NodeSpec)(nil), "api.NodeSpec")
@@ -742,6 +750,7 @@ func init() {
 	proto.RegisterType((*NetworkSpec)(nil), "api.NetworkSpec")
 	proto.RegisterType((*NetworkSpec_IPAMOptions)(nil), "api.NetworkSpec.IPAMOptions")
 	proto.RegisterType((*Network)(nil), "api.Network")
+	proto.RegisterType((*WeightedPeer)(nil), "api.WeightedPeer")
 	proto.RegisterEnum("api.NodeStatus_State", NodeStatus_State_name, NodeStatus_State_value)
 	proto.RegisterEnum("api.TaskStatus_State", TaskStatus_State_name, TaskStatus_State_value)
 }
@@ -1131,6 +1140,17 @@ func (this *Network) GoString() string {
 	if this.DriverState != nil {
 		s = append(s, "DriverState: "+fmt.Sprintf("%#v", this.DriverState)+",\n")
 	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *WeightedPeer) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.WeightedPeer{")
+	s = append(s, "Addr: "+fmt.Sprintf("%#v", this.Addr)+",\n")
+	s = append(s, "Weight: "+fmt.Sprintf("%#v", this.Weight)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -2089,6 +2109,35 @@ func (m *Network) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *WeightedPeer) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *WeightedPeer) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Addr) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.Addr)))
+		i += copy(data[i:], m.Addr)
+	}
+	if m.Weight != 0 {
+		data[i] = 0x11
+		i++
+		i = encodeFixed64Types(data, i, uint64(math.Float64bits(float64(m.Weight))))
+	}
+	return i, nil
+}
+
 func encodeFixed64Types(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	data[offset+1] = uint8(v >> 8)
@@ -2521,6 +2570,19 @@ func (m *Network) Size() (n int) {
 	return n
 }
 
+func (m *WeightedPeer) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Addr)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.Weight != 0 {
+		n += 9
+	}
+	return n
+}
+
 func sovTypes(x uint64) (n int) {
 	for {
 		n++
@@ -2879,6 +2941,17 @@ func (this *Network) String() string {
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NetworkSpec", "NetworkSpec", 1) + `,`,
 		`DriverState:` + strings.Replace(fmt.Sprintf("%v", this.DriverState), "Driver", "Driver", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *WeightedPeer) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&WeightedPeer{`,
+		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
+		`Weight:` + fmt.Sprintf("%v", this.Weight) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5835,6 +5908,103 @@ func (m *Network) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *WeightedPeer) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: WeightedPeer: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: WeightedPeer: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Addr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Addr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 1 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Weight", wireType)
+			}
+			var v uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += 8
+			v = uint64(data[iNdEx-8])
+			v |= uint64(data[iNdEx-7]) << 8
+			v |= uint64(data[iNdEx-6]) << 16
+			v |= uint64(data[iNdEx-5]) << 24
+			v |= uint64(data[iNdEx-4]) << 32
+			v |= uint64(data[iNdEx-3]) << 40
+			v |= uint64(data[iNdEx-2]) << 48
+			v |= uint64(data[iNdEx-1]) << 56
+			m.Weight = float64(math.Float64frombits(v))
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(data[iNdEx:])

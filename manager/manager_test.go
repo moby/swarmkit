@@ -49,7 +49,7 @@ func TestManager(t *testing.T) {
 	}()
 
 	// We have to send a dummy request to verify if the connection is actually up.
-	client := api.NewAgentClient(conn)
+	client := api.NewDispatcherClient(conn)
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: "foo"})
 	assert.Equal(t, grpc.ErrorDesc(err), dispatcher.ErrNodeNotRegistered.Error())
 

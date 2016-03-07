@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+package api;
+
+import "types.proto";
+
+// NOTE(stevvooe): Make sure your gopath is appropriately set for this to work
+// correctly.
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+// Dispatcher is the API provided by a manager group for agents to connect to. Agents
+// connect to this service to receive task assignments and report status.
+//
+// API methods on this service are used only by agent nodes.
+service Dispatcher { // maybe dispatch, al likes this
+	// Register is used for registration of node with particular dispatcher.
+	rpc Register(RegisterRequest) returns (RegisterResponse) {};
+
+	// Session controls an agent with a stream of SessionMessage. Agents should
+	// immediately issue this call after a successful register and listen on
+	// the stream at all times for instruction.
+	rpc Session(SessionRequest) returns (stream SessionMessage) {}
+
+	// Heartbeat is heartbeat method for nodes. It returns new TTL in response.
+	// Node should send new heartbeat earlier than now + TTL, otherwise it will
+	// be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
+	rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse) {};
+
+	// UpdateTaskStatus updates status of task. Node should send such updates
+	// on every status change of its tasks.
+	rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse) {};
+
+	// Tasks is a stream of tasks state for node. Each message contains full list
+	// of tasks which should be run on node, if task is not present in that list,
+	// it should be terminated.
+	rpc Tasks(TasksRequest) returns (stream TasksMessage) {};
+}
+
+message RegisterRequest {
+	NodeSpec spec = 1;
+}
+
+message RegisterResponse {
+	// NodeID identifies the registering node.
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+
+	// SessionID is allocated after a successful registration. It should be
+	// used on all RPC calls after registration. A dispatcher may choose to
+	// change the SessionID, at which time an agent must re-register and obtain
+	// a new one.
+	//
+	// All Dispatcher calls after register should include the SessionID. If the
+	// Dispatcher so chooses, it may reject the call with an InvalidArgument
+	// error code, at which time the agent should call Register to start a new
+	// session.
+	//
+	// As a rule, once an agent has a SessionID, it should never save it to
+	// disk or try to otherwise reuse. If the agent loses its SessionID, it
+	// must start a new session through a call to Register. A Dispatcher may
+	// choose to reuse the SessionID, if it sees fit, but it is not advised.
+	//
+	// The actual implementation of the SessionID is Dispatcher specific and
+	// should be treated as opaque by agents.
+	//
+	// From a Dispatcher perspective, there are many ways to use the SessionID
+	// to ensure uniqueness of a set of client RPC calls. One method is to keep
+	// the SessionID unique to every call to Register in a single Dispatcher
+	// instance. This ensures that the SessionID represents the unique
+	// session from a single Agent to Manager. If the Agent restarts, we
+	// allocate a new session, since the restarted Agent is not aware of the
+	// new SessionID.
+	//
+	// The most compelling use case is to support duplicate node detection. If
+	// one clones a virtual machine, including certificate material, two nodes
+	// may end up with the same identity. This can also happen if two identical
+	// agent processes are coming from the same node. If the SessionID is
+	// replicated through the cluster, we can immediately detect the condition
+	// and address it.
+	//
+	// Extending from the case above, we can actually detect a compromised
+	// identity. Coupled with provisions to rebuild node identity, we can ban
+	// the compromised node identity and have the nodes re-authenticate and
+	// build a new identity. At this time, an administrator can then
+	// re-authorize the compromised nodes, if it was a mistake or ensure that a
+	// misbehaved node can no longer connect to the cluster.
+	//
+	// We considered placing this field in a GRPC header. Because this is a
+	// critical feature of the protocol, we thought it should be represented
+	// directly in the RPC message set.
+	string session_id = 2 [(gogoproto.customname) = "SessionID"];
+}
+
+// SessionRequest starts a session control stream.
+message SessionRequest {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+	string session_id = 2 [(gogoproto.customname) = "SessionID"];
+}
+
+// SessionMessage instructs an agent on various actions as part of the current
+// session. An agent should act immediately on the contents.
+message SessionMessage {
+	// Managers provides a weight list of alternative dispatchers 
+	repeated WeightedPeer managers = 1;
+
+	// Disconnect instructs the agent to disconnect from the current disptacher
+	// and select a new one.
+	bool disconnect = 2;
+}
+
+// HeartbeatRequest provides identifying properties for a single heartbeat.
+message HeartbeatRequest {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+	string session_id = 2 [(gogoproto.customname) = "SessionID"];
+}
+
+message HeartbeatResponse {
+	// Period is the duration to wait before sending the next heartbeat.
+	// Well-behaved agents should update this on every heartbeat round trip. 
+	uint64 Period = 1 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
+}
+
+message UpdateTaskStatusRequest {
+	// Tasks should contain all statuses for running tasks. Only the status
+	// field must be set. The spec is not required.
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+	string session_id = 2 [(gogoproto.customname) = "SessionID"];
+	repeated Task tasks = 3;
+}
+
+message  UpdateTaskStatusResponse{
+	// void
+}
+
+message TasksRequest {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+	string session_id = 2 [(gogoproto.customname) = "SessionID"];
+}
+
+message TasksMessage {
+	// Tasks is the set of tasks that should be running on the node.
+	// Tasks outside of this set running on the node should be terminated.
+	repeated Task tasks = 1;
+}
+
