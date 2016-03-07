@@ -24,7 +24,7 @@ func TestAllocateInvalidIPAM(t *testing.T) {
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -44,7 +44,7 @@ func TestAllocateInvalidDriver(t *testing.T) {
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{
@@ -62,7 +62,7 @@ func TestNetworkDoubleAllocate(t *testing.T) {
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "test",
 			},
 		},
@@ -80,7 +80,7 @@ func TestAllocateEmptyConfig(t *testing.T) {
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "test",
 			},
 		},
@@ -106,7 +106,7 @@ func TestAllocateWithOneSubnet(t *testing.T) {
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -138,7 +138,7 @@ func TestAllocateWithOneSubnetGateway(t *testing.T) {
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -169,7 +169,7 @@ func TestAllocateWithOneSubnetInvalidGateway(t *testing.T) {
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -194,7 +194,7 @@ func TestAllocateWithInvalidSubnet(t *testing.T) {
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -218,7 +218,7 @@ func TestAllocateWithTwoSubnetsNoGateway(t *testing.T) {
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -258,7 +258,7 @@ func TestFree(t *testing.T) {
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -290,7 +290,7 @@ func TestAllocateTaskFree(t *testing.T) {
 	n1 := &api.Network{
 		ID: "testID1",
 		Spec: &api.NetworkSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "test1",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -309,7 +309,7 @@ func TestAllocateTaskFree(t *testing.T) {
 	n2 := &api.Network{
 		ID: "testID2",
 		Spec: &api.NetworkSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "test2",
 			},
 			DriverConfiguration: &api.Driver{},

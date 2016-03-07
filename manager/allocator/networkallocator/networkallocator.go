@@ -112,6 +112,43 @@ func (na *NetworkAllocator) Deallocate(n *api.Network) error {
 	return na.freePools(n, localNet.pools)
 }
 
+// IsAllocated returns if the passed network has been allocated or not.
+func (na *NetworkAllocator) IsAllocated(n *api.Network) bool {
+	_, ok := na.networks[n.ID]
+	return ok
+}
+
+// IsTaskAllocated returns if the passed task has it's network resources allocated or not.
+func (na *NetworkAllocator) IsTaskAllocated(t *api.Task) bool {
+	// If Networks is empty there is no way this Task is allocated.
+	if len(t.Networks) == 0 {
+		return false
+	}
+
+	// To determine whether the task has it's resources allocated,
+	// we just need to look at one network(in case of
+	// multi-network attachment).  This is because we make sure we
+	// allocate for every network or we allocate for none.
+
+	// If the network is not allocated, the task cannot be allocated.
+	localNet, ok := na.networks[t.Networks[0].Network.ID]
+	if !ok {
+		return false
+	}
+
+	// Addresses empty. Task is not allocated.
+	if len(t.Networks[0].Addresses) == 0 {
+		return false
+	}
+
+	// The allocated IP address not found in local endpoint state. Not allocated.
+	if _, ok := localNet.endpoints[t.Networks[0].Addresses[0]]; !ok {
+		return false
+	}
+
+	return true
+}
+
 // AllocateTask allocates all the endpoint resources for all the
 // networks that a task is attached to.
 func (na *NetworkAllocator) AllocateTask(t *api.Task) error {
