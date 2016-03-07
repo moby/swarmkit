@@ -1,4 +1,4 @@
-package networker
+package networkallocator
 
 import (
 	"net"
@@ -8,23 +8,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func newNetworker(t *testing.T) *Networker {
-	nwkr, err := New()
+func newNetworkAllocator(t *testing.T) *NetworkAllocator {
+	na, err := New()
 	assert.NoError(t, err)
-	assert.NotNil(t, nwkr)
-	return nwkr
+	assert.NotNil(t, na)
+	return na
 }
 
 func TestNew(t *testing.T) {
-	newNetworker(t)
+	newNetworkAllocator(t)
 }
 
-func TestNetworkAllocateInvalidIPAM(t *testing.T) {
-	nwkr := newNetworker(t)
+func TestAllocateInvalidIPAM(t *testing.T) {
+	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -35,16 +35,16 @@ func TestNetworkAllocateInvalidIPAM(t *testing.T) {
 			},
 		},
 	}
-	err := nwkr.NetworkAllocate(n)
+	err := na.Allocate(n)
 	assert.Error(t, err)
 }
 
-func TestNetworkAllocateInvalidDriver(t *testing.T) {
-	nwkr := newNetworker(t)
+func TestAllocateInvalidDriver(t *testing.T) {
+	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{
@@ -53,40 +53,40 @@ func TestNetworkAllocateInvalidDriver(t *testing.T) {
 		},
 	}
 
-	err := nwkr.NetworkAllocate(n)
+	err := na.Allocate(n)
 	assert.Error(t, err)
 }
 
 func TestNetworkDoubleAllocate(t *testing.T) {
-	nwkr := newNetworker(t)
+	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				Name: "test",
 			},
 		},
 	}
 
-	err := nwkr.NetworkAllocate(n)
+	err := na.Allocate(n)
 	assert.NoError(t, err)
 
-	err = nwkr.NetworkAllocate(n)
+	err = na.Allocate(n)
 	assert.Error(t, err)
 }
 
-func TestNetworkAllocateEmptyConfig(t *testing.T) {
-	nwkr := newNetworker(t)
+func TestAllocateEmptyConfig(t *testing.T) {
+	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				Name: "test",
 			},
 		},
 	}
 
-	err := nwkr.NetworkAllocate(n)
+	err := na.Allocate(n)
 	assert.NoError(t, err)
 	assert.NotEqual(t, n.Spec.IPAM.IPv4, nil)
 	assert.Equal(t, len(n.Spec.IPAM.IPv6), 0)
@@ -101,12 +101,12 @@ func TestNetworkAllocateEmptyConfig(t *testing.T) {
 	assert.NotEqual(t, ip, nil)
 }
 
-func TestNetworkAllocateWithOneSubnet(t *testing.T) {
-	nwkr := newNetworker(t)
+func TestAllocateWithOneSubnet(t *testing.T) {
+	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -121,7 +121,7 @@ func TestNetworkAllocateWithOneSubnet(t *testing.T) {
 		},
 	}
 
-	err := nwkr.NetworkAllocate(n)
+	err := na.Allocate(n)
 	assert.NoError(t, err)
 	assert.Equal(t, len(n.Spec.IPAM.IPv6), 0)
 	assert.Equal(t, len(n.Spec.IPAM.IPv4), 1)
@@ -133,12 +133,12 @@ func TestNetworkAllocateWithOneSubnet(t *testing.T) {
 	assert.NotEqual(t, ip, nil)
 }
 
-func TestNetworkAllocateWithOneSubnetGateway(t *testing.T) {
-	nwkr := newNetworker(t)
+func TestAllocateWithOneSubnetGateway(t *testing.T) {
+	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -154,7 +154,7 @@ func TestNetworkAllocateWithOneSubnetGateway(t *testing.T) {
 		},
 	}
 
-	err := nwkr.NetworkAllocate(n)
+	err := na.Allocate(n)
 	assert.NoError(t, err)
 	assert.Equal(t, len(n.Spec.IPAM.IPv6), 0)
 	assert.Equal(t, len(n.Spec.IPAM.IPv4), 1)
@@ -164,12 +164,12 @@ func TestNetworkAllocateWithOneSubnetGateway(t *testing.T) {
 	assert.Equal(t, n.Spec.IPAM.IPv4[0].Gateway, "192.168.1.1")
 }
 
-func TestNetworkAllocateWithOneSubnetInvalidGateway(t *testing.T) {
-	nwkr := newNetworker(t)
+func TestAllocateWithOneSubnetInvalidGateway(t *testing.T) {
+	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -185,16 +185,16 @@ func TestNetworkAllocateWithOneSubnetInvalidGateway(t *testing.T) {
 		},
 	}
 
-	err := nwkr.NetworkAllocate(n)
+	err := na.Allocate(n)
 	assert.Error(t, err)
 }
 
-func TestNetworkAllocateWithInvalidSubnet(t *testing.T) {
-	nwkr := newNetworker(t)
+func TestAllocateWithInvalidSubnet(t *testing.T) {
+	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -209,16 +209,16 @@ func TestNetworkAllocateWithInvalidSubnet(t *testing.T) {
 		},
 	}
 
-	err := nwkr.NetworkAllocate(n)
+	err := na.Allocate(n)
 	assert.Error(t, err)
 }
 
-func TestNetworkAllocateWithTwoSubnetsNoGateway(t *testing.T) {
-	nwkr := newNetworker(t)
+func TestAllocateWithTwoSubnetsNoGateway(t *testing.T) {
+	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -236,7 +236,7 @@ func TestNetworkAllocateWithTwoSubnetsNoGateway(t *testing.T) {
 		},
 	}
 
-	err := nwkr.NetworkAllocate(n)
+	err := na.Allocate(n)
 	assert.NoError(t, err)
 	assert.Equal(t, len(n.Spec.IPAM.IPv6), 0)
 	assert.Equal(t, len(n.Spec.IPAM.IPv4), 2)
@@ -253,12 +253,12 @@ func TestNetworkAllocateWithTwoSubnetsNoGateway(t *testing.T) {
 	assert.NotEqual(t, ip, nil)
 }
 
-func TestNetworkFree(t *testing.T) {
-	nwkr := newNetworker(t)
+func TestFree(t *testing.T) {
+	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
 		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				Name: "test",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -274,23 +274,23 @@ func TestNetworkFree(t *testing.T) {
 		},
 	}
 
-	err := nwkr.NetworkAllocate(n)
+	err := na.Allocate(n)
 	assert.NoError(t, err)
 
-	err = nwkr.NetworkFree(n)
+	err = na.Deallocate(n)
 	assert.NoError(t, err)
 
 	// Reallocate again to make sure it succeeds.
-	err = nwkr.NetworkAllocate(n)
+	err = na.Allocate(n)
 	assert.NoError(t, err)
 }
 
-func TestEndpointsAllocateFree(t *testing.T) {
-	nwkr := newNetworker(t)
+func TestAllocateTaskFree(t *testing.T) {
+	na := newNetworkAllocator(t)
 	n1 := &api.Network{
 		ID: "testID1",
 		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				Name: "test1",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -309,7 +309,7 @@ func TestEndpointsAllocateFree(t *testing.T) {
 	n2 := &api.Network{
 		ID: "testID2",
 		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				Name: "test2",
 			},
 			DriverConfiguration: &api.Driver{},
@@ -336,13 +336,13 @@ func TestEndpointsAllocateFree(t *testing.T) {
 		},
 	}
 
-	err := nwkr.NetworkAllocate(n1)
+	err := na.Allocate(n1)
 	assert.NoError(t, err)
 
-	err = nwkr.NetworkAllocate(n2)
+	err = na.Allocate(n2)
 	assert.NoError(t, err)
 
-	err = nwkr.EndpointsAllocate(task)
+	err = na.AllocateTask(task)
 	assert.NoError(t, err)
 	assert.Equal(t, len(task.Networks[0].Addresses), 1)
 	assert.Equal(t, len(task.Networks[1].Addresses), 1)
@@ -359,13 +359,13 @@ func TestEndpointsAllocateFree(t *testing.T) {
 	assert.Equal(t, subnet1.Contains(ip1), true)
 	assert.Equal(t, subnet2.Contains(ip2), true)
 
-	err = nwkr.EndpointsFree(task)
+	err = na.DeallocateTask(task)
 	assert.NoError(t, err)
 	assert.Equal(t, len(task.Networks[0].Addresses), 0)
 	assert.Equal(t, len(task.Networks[1].Addresses), 0)
 
 	// Try allocation after free
-	err = nwkr.EndpointsAllocate(task)
+	err = na.AllocateTask(task)
 	assert.NoError(t, err)
 	assert.Equal(t, len(task.Networks[0].Addresses), 1)
 	assert.Equal(t, len(task.Networks[1].Addresses), 1)
@@ -379,12 +379,12 @@ func TestEndpointsAllocateFree(t *testing.T) {
 	assert.Equal(t, subnet1.Contains(ip1), true)
 	assert.Equal(t, subnet2.Contains(ip2), true)
 
-	err = nwkr.EndpointsFree(task)
+	err = na.DeallocateTask(task)
 	assert.NoError(t, err)
 	assert.Equal(t, len(task.Networks[0].Addresses), 0)
 	assert.Equal(t, len(task.Networks[1].Addresses), 0)
 
 	// Try to free endpoints on an already freed task
-	err = nwkr.EndpointsFree(task)
+	err = na.DeallocateTask(task)
 	assert.NoError(t, err)
 }

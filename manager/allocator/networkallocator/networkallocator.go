@@ -1,4 +1,4 @@
-package networker
+package networkallocator
 
 import (
 	"fmt"
@@ -20,19 +20,19 @@ var (
 	defaultDriverInitFunc = ovmanager.Init
 )
 
-// Networker acts as the controller for all network related operations
+// NetworkAllocator acts as the controller for all network related operations
 // like managing network and IPAM drivers and also creating and
 // deleting networks and the associated resources.
-type Networker struct {
+type NetworkAllocator struct {
 	// The driver register which manages all internal and external
 	// IPAM and network drivers.
 	drvRegistry *drvregistry.DrvRegistry
 
-	// Local network state used by Networker to do network management.
+	// Local network state used by NetworkAllocator to do network management.
 	networks map[string]*network
 }
 
-// Local in-memory state related to netwok that need to be tracked by Networker
+// Local in-memory state related to netwok that need to be tracked by NetworkAllocator
 type network struct {
 	id string
 
@@ -45,9 +45,9 @@ type network struct {
 	endpoints map[string]string
 }
 
-// New returns a new Networker handle
-func New() (*Networker, error) {
-	nwkr := &Networker{
+// New returns a new NetworkAllocator handle
+func New() (*NetworkAllocator, error) {
+	na := &NetworkAllocator{
 		networks: make(map[string]*network),
 	}
 
@@ -63,27 +63,27 @@ func New() (*Networker, error) {
 		return nil, err
 	}
 
-	nwkr.drvRegistry = reg
-	return nwkr, nil
+	na.drvRegistry = reg
+	return na, nil
 }
 
-// NetworkAllocate allocates all the necessary resources both general
+// Allocate allocates all the necessary resources both general
 // and driver-specific which may be specified in the NetworkSpec
-func (nwkr *Networker) NetworkAllocate(n *api.Network) error {
-	if _, ok := nwkr.networks[n.ID]; ok {
+func (na *NetworkAllocator) Allocate(n *api.Network) error {
+	if _, ok := na.networks[n.ID]; ok {
 		return fmt.Errorf("network %s already allocated", n.ID)
 	}
 
-	pools, err := nwkr.allocatePools(n)
+	pools, err := na.allocatePools(n)
 	if err != nil {
 		return fmt.Errorf("failed allocating pools and gateway IP for network %s: %v", n.ID, err)
 	}
 
-	if err := nwkr.allocateDriverState(n); err != nil {
+	if err := na.allocateDriverState(n); err != nil {
 		return fmt.Errorf("failed while allocating driver state for network %s: %v", n.ID, err)
 	}
 
-	nwkr.networks[n.ID] = &network{
+	na.networks[n.ID] = &network{
 		id:        n.ID,
 		pools:     pools,
 		endpoints: make(map[string]string),
@@ -92,65 +92,65 @@ func (nwkr *Networker) NetworkAllocate(n *api.Network) error {
 	return nil
 }
 
-func (nwkr *Networker) getNetwork(id string) *network {
-	return nwkr.networks[id]
+func (na *NetworkAllocator) getNetwork(id string) *network {
+	return na.networks[id]
 }
 
-// NetworkFree frees all the general and driver specific resources
+// Deallocate frees all the general and driver specific resources
 // whichs were assigned to the passed network.
-func (nwkr *Networker) NetworkFree(n *api.Network) error {
-	localNet := nwkr.getNetwork(n.ID)
+func (na *NetworkAllocator) Deallocate(n *api.Network) error {
+	localNet := na.getNetwork(n.ID)
 	if localNet == nil {
 		return fmt.Errorf("could not get networker state for network %s", n.ID)
 	}
 
-	if err := nwkr.freeDriverState(n); err != nil {
+	if err := na.freeDriverState(n); err != nil {
 		return fmt.Errorf("failed to free driver state for network %s: %v", n.ID, err)
 	}
 
-	delete(nwkr.networks, n.ID)
-	return nwkr.freePools(n, localNet.pools)
+	delete(na.networks, n.ID)
+	return na.freePools(n, localNet.pools)
 }
 
-// EndpointsAllocate allocates all the endpoint resources for all the
+// AllocateTask allocates all the endpoint resources for all the
 // networks that a task is attached to.
-func (nwkr *Networker) EndpointsAllocate(t *api.Task) error {
-	for i, na := range t.Networks {
-		ipam, _, err := nwkr.resolveIPAM(na.Network)
+func (na *NetworkAllocator) AllocateTask(t *api.Task) error {
+	for i, nAttach := range t.Networks {
+		ipam, _, err := na.resolveIPAM(nAttach.Network)
 		if err != nil {
 			return fmt.Errorf("failed to resolve IPAM while allocating : %v", err)
 		}
 
-		localNet := nwkr.getNetwork(na.Network.ID)
+		localNet := na.getNetwork(nAttach.Network.ID)
 		if localNet == nil {
 			return fmt.Errorf("could not find networker state")
 		}
 
-		if err := nwkr.allocateNetworkIPs(na, ipam, localNet); err != nil {
-			if err := nwkr.releaseEndpoints(t.Networks[:i]); err != nil {
-				logrus.Errorf("Failed to release IP addresses while rolling back allocation for task %s network %s: %v", t.ID, na.Network.ID, err)
+		if err := na.allocateNetworkIPs(nAttach, ipam, localNet); err != nil {
+			if err := na.releaseEndpoints(t.Networks[:i]); err != nil {
+				logrus.Errorf("Failed to release IP addresses while rolling back allocation for task %s network %s: %v", t.ID, nAttach.Network.ID, err)
 			}
-			return fmt.Errorf("failed to allocate network IP for task %s network %s: %v", t.ID, na.Network.ID, err)
+			return fmt.Errorf("failed to allocate network IP for task %s network %s: %v", t.ID, nAttach.Network.ID, err)
 		}
 	}
 
 	return nil
 }
 
-// EndpointsFree releases all the endpoint resources for all the
+// DeallocateTask releases all the endpoint resources for all the
 // networks that a task is attached to.
-func (nwkr *Networker) EndpointsFree(t *api.Task) error {
-	return nwkr.releaseEndpoints(t.Networks)
+func (na *NetworkAllocator) DeallocateTask(t *api.Task) error {
+	return na.releaseEndpoints(t.Networks)
 }
 
-func (nwkr *Networker) releaseEndpoints(networks []*api.Task_NetworkAttachment) error {
-	for _, na := range networks {
-		ipam, _, err := nwkr.resolveIPAM(na.Network)
+func (na *NetworkAllocator) releaseEndpoints(networks []*api.Task_NetworkAttachment) error {
+	for _, nAttach := range networks {
+		ipam, _, err := na.resolveIPAM(nAttach.Network)
 		if err != nil {
 			return fmt.Errorf("failed to resolve IPAM while allocating : %v", err)
 		}
 
-		localNet := nwkr.getNetwork(na.Network.ID)
+		localNet := na.getNetwork(nAttach.Network.ID)
 		if localNet == nil {
 			return fmt.Errorf("could not find networker state")
 		}
@@ -158,7 +158,7 @@ func (nwkr *Networker) releaseEndpoints(networks []*api.Task_NetworkAttachment) 
 		// Do not fail and bail out if we fail to release IP
 		// address here. Keep going and try releasing as many
 		// addresses as possible.
-		for _, addr := range na.Addresses {
+		for _, addr := range nAttach.Addresses {
 			// Retrieve the poolID and immediately nuke
 			// out the mapping.
 			poolID := localNet.endpoints[addr]
@@ -177,14 +177,14 @@ func (nwkr *Networker) releaseEndpoints(networks []*api.Task_NetworkAttachment) 
 
 		// Clear out the address list when we are done with
 		// this network.
-		na.Addresses = nil
+		nAttach.Addresses = nil
 	}
 
 	return nil
 }
 
 // allocate the endpoint IP addresses for a single network attachment of the task.
-func (nwkr *Networker) allocateNetworkIPs(na *api.Task_NetworkAttachment, ipam ipamapi.Ipam, localNet *network) error {
+func (na *NetworkAllocator) allocateNetworkIPs(nAttach *api.Task_NetworkAttachment, ipam ipamapi.Ipam, localNet *network) error {
 	var ip *net.IPNet
 	for _, poolID := range localNet.pools {
 		var err error
@@ -198,7 +198,7 @@ func (nwkr *Networker) allocateNetworkIPs(na *api.Task_NetworkAttachment, ipam i
 		if err == nil {
 			ipStr := ip.String()
 			localNet.endpoints[ipStr] = poolID
-			na.Addresses = append(na.Addresses, ipStr)
+			nAttach.Addresses = append(nAttach.Addresses, ipStr)
 			return nil
 		}
 	}
@@ -206,8 +206,8 @@ func (nwkr *Networker) allocateNetworkIPs(na *api.Task_NetworkAttachment, ipam i
 	return fmt.Errorf("could not find an available IP")
 }
 
-func (nwkr *Networker) freeDriverState(n *api.Network) error {
-	d, _, err := nwkr.resolveDriver(n)
+func (na *NetworkAllocator) freeDriverState(n *api.Network) error {
+	d, _, err := na.resolveDriver(n)
 	if err != nil {
 		return err
 	}
@@ -215,8 +215,8 @@ func (nwkr *Networker) freeDriverState(n *api.Network) error {
 	return d.NetworkFree(n.ID)
 }
 
-func (nwkr *Networker) allocateDriverState(n *api.Network) error {
-	d, dName, err := nwkr.resolveDriver(n)
+func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
+	d, dName, err := na.resolveDriver(n)
 	if err != nil {
 		return err
 	}
@@ -258,13 +258,13 @@ func (nwkr *Networker) allocateDriverState(n *api.Network) error {
 }
 
 // Resolve network driver
-func (nwkr *Networker) resolveDriver(n *api.Network) (driverapi.Driver, string, error) {
+func (na *NetworkAllocator) resolveDriver(n *api.Network) (driverapi.Driver, string, error) {
 	dName := defaultDriver
 	if n.Spec.DriverConfiguration != nil && n.Spec.DriverConfiguration.Name != "" {
 		dName = n.Spec.DriverConfiguration.Name
 	}
 
-	d, _ := nwkr.drvRegistry.Driver(dName)
+	d, _ := na.drvRegistry.Driver(dName)
 	if d == nil {
 		return nil, "", fmt.Errorf("could not resolve network driver %s", dName)
 	}
@@ -273,13 +273,13 @@ func (nwkr *Networker) resolveDriver(n *api.Network) (driverapi.Driver, string, 
 }
 
 // Resolve the IPAM driver
-func (nwkr *Networker) resolveIPAM(n *api.Network) (ipamapi.Ipam, string, error) {
+func (na *NetworkAllocator) resolveIPAM(n *api.Network) (ipamapi.Ipam, string, error) {
 	dName := ipamapi.DefaultIPAM
 	if n.Spec.IPAM != nil && n.Spec.IPAM.Driver != nil && n.Spec.IPAM.Driver.Name != "" {
 		dName = n.Spec.IPAM.Driver.Name
 	}
 
-	ipam, _ := nwkr.drvRegistry.IPAM(dName)
+	ipam, _ := na.drvRegistry.IPAM(dName)
 	if ipam == nil {
 		return nil, "", fmt.Errorf("could not resolve IPAM driver %s", dName)
 	}
@@ -287,8 +287,8 @@ func (nwkr *Networker) resolveIPAM(n *api.Network) (ipamapi.Ipam, string, error)
 	return ipam, dName, nil
 }
 
-func (nwkr *Networker) freePools(n *api.Network, pools map[string]string) error {
-	ipam, _, err := nwkr.resolveIPAM(n)
+func (na *NetworkAllocator) freePools(n *api.Network, pools map[string]string) error {
+	ipam, _, err := na.resolveIPAM(n)
 	if err != nil {
 		return fmt.Errorf("failed to resolve IPAM while freeing pools for network %s: %v", n.ID, err)
 	}
@@ -311,15 +311,15 @@ func releasePools(ipam ipamapi.Ipam, icList []*api.IPAMConfiguration, pools map[
 	}
 }
 
-func (nwkr *Networker) allocatePools(n *api.Network) (map[string]string, error) {
-	ipam, dName, err := nwkr.resolveIPAM(n)
+func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, error) {
+	ipam, dName, err := na.resolveIPAM(n)
 	if err != nil {
 		return nil, err
 	}
 
 	// We don't support user defined address spaces yet so just
 	// retrive default address space names for the driver.
-	_, asName, err := nwkr.drvRegistry.IPAMDefaultAddressSpaces(dName)
+	_, asName, err := na.drvRegistry.IPAMDefaultAddressSpaces(dName)
 	if err != nil {
 		return nil, err
 	}
