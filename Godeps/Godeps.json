@@ -66,83 +66,83 @@
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/bitseq",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/datastore",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/discoverapi",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/driverapi",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/drivers/overlay/ovmanager",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/drvregistry",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/idm",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipam",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipamapi",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipams/builtin",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipams/remote",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipams/remote/api",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipams/windowsipam",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipamutils",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/netlabel",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/types",
-			"Comment": "v0.7.0-dev.3-10-gde766dd",
-			"Rev": "de766dd3507be149edd0f5cc20330daa5607a9b0"
+			"Comment": "v0.7.0-dev.3-11-g47065cc",
+			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
 			"ImportPath": "github.com/gogo/protobuf/gogoproto",
