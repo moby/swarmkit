@@ -3,7 +3,6 @@ package dispatcher
 import (
 	"errors"
 	"fmt"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -32,28 +31,6 @@ var (
 	// The node should re-register and start a new session.
 	ErrSessionInvalid = errors.New("session invalid")
 )
-
-type periodChooser struct {
-	period  time.Duration
-	epsilon time.Duration
-	rand    *rand.Rand
-}
-
-func newPeriodChooser(period, eps time.Duration) *periodChooser {
-	return &periodChooser{
-		period:  period,
-		epsilon: eps,
-		rand:    rand.New(rand.NewSource(time.Now().UnixNano())),
-	}
-}
-
-func (pc *periodChooser) Choose() time.Duration {
-	var adj int64
-	if pc.epsilon > 0 {
-		adj = rand.Int63n(int64(2*pc.epsilon)) - int64(pc.epsilon)
-	}
-	return pc.period + time.Duration(adj)
-}
 
 // Config is configuration for Dispatcher. For default you should use
 // DefautConfig.
