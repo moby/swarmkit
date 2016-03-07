@@ -113,6 +113,8 @@ func TestStoreNode(t *testing.T) {
 		foundNodes, err = tx.Nodes().Find(ByName("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundNodes)
+
+		assert.Equal(t, tx.Nodes().Delete("nonexistent"), ErrNotExist)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -222,6 +224,8 @@ func TestStoreJob(t *testing.T) {
 		foundJobs, err = tx.Jobs().Find(ByName("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundJobs)
+
+		assert.Equal(t, tx.Jobs().Delete("nonexistent"), ErrNotExist)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -296,6 +300,21 @@ func TestStoreNetwork(t *testing.T) {
 		assert.Len(t, foundNetworks, 0)
 		return nil
 	})
+	assert.NoError(t, err)
+
+	err = s.Update(func(tx Tx) error {
+		// Delete
+		assert.NotNil(t, tx.Networks().Get("id1"))
+		assert.NoError(t, tx.Networks().Delete("id1"))
+		assert.Nil(t, tx.Networks().Get("id1"))
+		foundNetworks, err := tx.Networks().Find(ByName("name1"))
+		assert.NoError(t, err)
+		assert.Empty(t, foundNetworks)
+
+		assert.Equal(t, tx.Tasks().Delete("nonexistent"), ErrNotExist)
+		return nil
+	})
+
 	assert.NoError(t, err)
 }
 
@@ -439,6 +458,8 @@ func TestStoreTask(t *testing.T) {
 		foundTasks, err = tx.Tasks().Find(ByName("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundTasks)
+
+		assert.Equal(t, tx.Tasks().Delete("nonexistent"), ErrNotExist)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -757,6 +778,57 @@ func TestStoreSnapshot(t *testing.T) {
 
 	err = s2.View(func(tx2 ReadTx) error {
 		assert.Nil(t, tx2.Tasks().Get("id1"))
+		return nil
+	})
+	assert.NoError(t, err)
+}
+
+func TestFailedTransaction(t *testing.T) {
+	s := NewMemoryStore()
+	assert.NotNil(t, s)
+
+	// Create one node
+	err := s.Update(func(tx Tx) error {
+		n := &api.Node{
+			ID: "id1",
+			Spec: &api.NodeSpec{
+				Meta: &api.Meta{
+					Name: "name1",
+				},
+			},
+		}
+
+		assert.NoError(t, tx.Nodes().Create(n))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Create a second node, but then roll back the transaction
+	err = s.Update(func(tx Tx) error {
+		n := &api.Node{
+			ID: "id2",
+			Spec: &api.NodeSpec{
+				Meta: &api.Meta{
+					Name: "name2",
+				},
+			},
+		}
+
+		assert.NoError(t, tx.Nodes().Create(n))
+		return errors.New("rollback")
+	})
+	assert.Error(t, err)
+
+	err = s.View(func(tx ReadTx) error {
+		foundNodes, err := tx.Nodes().Find(All)
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 1)
+		foundNodes, err = tx.Nodes().Find(ByName("name1"))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 1)
+		foundNodes, err = tx.Nodes().Find(ByName("name2"))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 0)
 		return nil
 	})
 	assert.NoError(t, err)
