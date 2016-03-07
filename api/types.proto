@@ -248,8 +248,8 @@ message NetworkSpec {
 
 	message IPAMOptions {
 		Driver driver = 1;
-		repeated IPAMConfiguration ipv4 = 3;
-		repeated IPAMConfiguration ipv6 = 4;
+		repeated IPAMConfiguration ipv4 = 3 [(gogoproto.customname) = "IPv4"];
+		repeated IPAMConfiguration ipv6 = 4 [(gogoproto.customname) = "IPv6"];
 	}
 
 	// Driver specific configuration consumed by the network driver.
@@ -262,7 +262,7 @@ message NetworkSpec {
 	// accomplished by disabling the default gateway or through other means.
 	bool internal = 4;
 
-	IPAMOptions ipam = 5;
+	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
 }
 
 message Network {

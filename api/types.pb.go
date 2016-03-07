@@ -692,7 +692,7 @@ type NetworkSpec struct {
 	// internal restricts external access to the network. This may be
 	// accomplished by disabling the default gateway or through other means.
 	Internal bool                     `protobuf:"varint,4,opt,name=internal,proto3" json:"internal,omitempty"`
-	Ipam     *NetworkSpec_IPAMOptions `protobuf:"bytes,5,opt,name=ipam" json:"ipam,omitempty"`
+	IPAM     *NetworkSpec_IPAMOptions `protobuf:"bytes,5,opt,name=ipam" json:"ipam,omitempty"`
 }
 
 func (m *NetworkSpec) Reset()      { *m = NetworkSpec{} }
@@ -700,8 +700,8 @@ func (*NetworkSpec) ProtoMessage() {}
 
 type NetworkSpec_IPAMOptions struct {
 	Driver *Driver              `protobuf:"bytes,1,opt,name=driver" json:"driver,omitempty"`
-	Ipv4   []*IPAMConfiguration `protobuf:"bytes,3,rep,name=ipv4" json:"ipv4,omitempty"`
-	Ipv6   []*IPAMConfiguration `protobuf:"bytes,4,rep,name=ipv6" json:"ipv6,omitempty"`
+	IPv4   []*IPAMConfiguration `protobuf:"bytes,3,rep,name=ipv4" json:"ipv4,omitempty"`
+	IPv6   []*IPAMConfiguration `protobuf:"bytes,4,rep,name=ipv6" json:"ipv6,omitempty"`
 }
 
 func (m *NetworkSpec_IPAMOptions) Reset()      { *m = NetworkSpec_IPAMOptions{} }
@@ -1103,8 +1103,8 @@ func (this *NetworkSpec) GoString() string {
 	}
 	s = append(s, "Ipv6Enabled: "+fmt.Sprintf("%#v", this.Ipv6Enabled)+",\n")
 	s = append(s, "Internal: "+fmt.Sprintf("%#v", this.Internal)+",\n")
-	if this.Ipam != nil {
-		s = append(s, "Ipam: "+fmt.Sprintf("%#v", this.Ipam)+",\n")
+	if this.IPAM != nil {
+		s = append(s, "IPAM: "+fmt.Sprintf("%#v", this.IPAM)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -1118,11 +1118,11 @@ func (this *NetworkSpec_IPAMOptions) GoString() string {
 	if this.Driver != nil {
 		s = append(s, "Driver: "+fmt.Sprintf("%#v", this.Driver)+",\n")
 	}
-	if this.Ipv4 != nil {
-		s = append(s, "Ipv4: "+fmt.Sprintf("%#v", this.Ipv4)+",\n")
+	if this.IPv4 != nil {
+		s = append(s, "IPv4: "+fmt.Sprintf("%#v", this.IPv4)+",\n")
 	}
-	if this.Ipv6 != nil {
-		s = append(s, "Ipv6: "+fmt.Sprintf("%#v", this.Ipv6)+",\n")
+	if this.IPv6 != nil {
+		s = append(s, "IPv6: "+fmt.Sprintf("%#v", this.IPv6)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -2000,11 +2000,11 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 		}
 		i++
 	}
-	if m.Ipam != nil {
+	if m.IPAM != nil {
 		data[i] = 0x2a
 		i++
-		i = encodeVarintTypes(data, i, uint64(m.Ipam.Size()))
-		n23, err := m.Ipam.MarshalTo(data[i:])
+		i = encodeVarintTypes(data, i, uint64(m.IPAM.Size()))
+		n23, err := m.IPAM.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -2038,8 +2038,8 @@ func (m *NetworkSpec_IPAMOptions) MarshalTo(data []byte) (int, error) {
 		}
 		i += n24
 	}
-	if len(m.Ipv4) > 0 {
-		for _, msg := range m.Ipv4 {
+	if len(m.IPv4) > 0 {
+		for _, msg := range m.IPv4 {
 			data[i] = 0x1a
 			i++
 			i = encodeVarintTypes(data, i, uint64(msg.Size()))
@@ -2050,8 +2050,8 @@ func (m *NetworkSpec_IPAMOptions) MarshalTo(data []byte) (int, error) {
 			i += n
 		}
 	}
-	if len(m.Ipv6) > 0 {
-		for _, msg := range m.Ipv6 {
+	if len(m.IPv6) > 0 {
+		for _, msg := range m.IPv6 {
 			data[i] = 0x22
 			i++
 			i = encodeVarintTypes(data, i, uint64(msg.Size()))
@@ -2523,8 +2523,8 @@ func (m *NetworkSpec) Size() (n int) {
 	if m.Internal {
 		n += 2
 	}
-	if m.Ipam != nil {
-		l = m.Ipam.Size()
+	if m.IPAM != nil {
+		l = m.IPAM.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
 	return n
@@ -2537,14 +2537,14 @@ func (m *NetworkSpec_IPAMOptions) Size() (n int) {
 		l = m.Driver.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
-	if len(m.Ipv4) > 0 {
-		for _, e := range m.Ipv4 {
+	if len(m.IPv4) > 0 {
+		for _, e := range m.IPv4 {
 			l = e.Size()
 			n += 1 + l + sovTypes(uint64(l))
 		}
 	}
-	if len(m.Ipv6) > 0 {
-		for _, e := range m.Ipv6 {
+	if len(m.IPv6) > 0 {
+		for _, e := range m.IPv6 {
 			l = e.Size()
 			n += 1 + l + sovTypes(uint64(l))
 		}
@@ -2916,7 +2916,7 @@ func (this *NetworkSpec) String() string {
 		`DriverConfiguration:` + strings.Replace(fmt.Sprintf("%v", this.DriverConfiguration), "Driver", "Driver", 1) + `,`,
 		`Ipv6Enabled:` + fmt.Sprintf("%v", this.Ipv6Enabled) + `,`,
 		`Internal:` + fmt.Sprintf("%v", this.Internal) + `,`,
-		`Ipam:` + strings.Replace(fmt.Sprintf("%v", this.Ipam), "NetworkSpec_IPAMOptions", "NetworkSpec_IPAMOptions", 1) + `,`,
+		`IPAM:` + strings.Replace(fmt.Sprintf("%v", this.IPAM), "NetworkSpec_IPAMOptions", "NetworkSpec_IPAMOptions", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2927,8 +2927,8 @@ func (this *NetworkSpec_IPAMOptions) String() string {
 	}
 	s := strings.Join([]string{`&NetworkSpec_IPAMOptions{`,
 		`Driver:` + strings.Replace(fmt.Sprintf("%v", this.Driver), "Driver", "Driver", 1) + `,`,
-		`Ipv4:` + strings.Replace(fmt.Sprintf("%v", this.Ipv4), "IPAMConfiguration", "IPAMConfiguration", 1) + `,`,
-		`Ipv6:` + strings.Replace(fmt.Sprintf("%v", this.Ipv6), "IPAMConfiguration", "IPAMConfiguration", 1) + `,`,
+		`IPv4:` + strings.Replace(fmt.Sprintf("%v", this.IPv4), "IPAMConfiguration", "IPAMConfiguration", 1) + `,`,
+		`IPv6:` + strings.Replace(fmt.Sprintf("%v", this.IPv6), "IPAMConfiguration", "IPAMConfiguration", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5587,7 +5587,7 @@ func (m *NetworkSpec) Unmarshal(data []byte) error {
 			m.Internal = bool(v != 0)
 		case 5:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ipam", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field IPAM", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -5611,10 +5611,10 @@ func (m *NetworkSpec) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Ipam == nil {
-				m.Ipam = &NetworkSpec_IPAMOptions{}
+			if m.IPAM == nil {
+				m.IPAM = &NetworkSpec_IPAMOptions{}
 			}
-			if err := m.Ipam.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.IPAM.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -5703,7 +5703,7 @@ func (m *NetworkSpec_IPAMOptions) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ipv4", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field IPv4", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -5727,14 +5727,14 @@ func (m *NetworkSpec_IPAMOptions) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Ipv4 = append(m.Ipv4, &IPAMConfiguration{})
-			if err := m.Ipv4[len(m.Ipv4)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			m.IPv4 = append(m.IPv4, &IPAMConfiguration{})
+			if err := m.IPv4[len(m.IPv4)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ipv6", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field IPv6", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -5758,8 +5758,8 @@ func (m *NetworkSpec_IPAMOptions) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Ipv6 = append(m.Ipv6, &IPAMConfiguration{})
-			if err := m.Ipv6[len(m.Ipv6)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			m.IPv6 = append(m.IPv6, &IPAMConfiguration{})
+			if err := m.IPv6[len(m.IPv6)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
