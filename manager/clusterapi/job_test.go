@@ -15,11 +15,9 @@ func createSpec(name, image string, instances int64) *api.JobSpec {
 		Meta: &api.Meta{
 			Name: name,
 		},
-		Source: &api.Source{
-			Source: &api.Source_Image{
-				Image: &api.ImageSpec{
-					Reference: image,
-				},
+		Source: &api.JobSpec_Image{
+			Image: &api.ImageSpec{
+				Reference: image,
 			},
 		},
 		Orchestration: &api.JobSpec_Orchestration{
@@ -67,45 +65,35 @@ func TestValidateJobSpecMeta(t *testing.T) {
 	}
 }
 
-func TestValidateJobSpecSource(t *testing.T) {
+func TestValidateJobSpecImageSpec(t *testing.T) {
 	type BadSource struct {
-		s *api.Source
+		s *api.JobSpec
 		c codes.Code
 	}
 
 	for _, bad := range []BadSource{
 		{
-			s: nil,
+			s: &api.JobSpec{Source: nil},
 			c: codes.InvalidArgument,
 		},
 		{
-			s: &api.Source{},
+			s: &api.JobSpec{Source: &api.JobSpec_Image{}},
 			c: codes.Unimplemented,
 		},
 		{
-			s: &api.Source{
-				Source: &api.Source_Image{
-					Image: &api.ImageSpec{},
-				},
-			},
+			s: createSpec("", "", 0),
 			c: codes.InvalidArgument,
 		},
 	} {
-		err := validateJobSpecSource(bad.s)
+		err := validateJobSpecImageSpec(bad.s)
 		assert.Error(t, err)
 		assert.Equal(t, bad.c, grpc.Code(err))
 	}
 
-	for _, good := range []*api.Source{
-		{
-			Source: &api.Source_Image{
-				Image: &api.ImageSpec{
-					Reference: "image",
-				},
-			},
-		},
+	for _, good := range []*api.JobSpec{
+		createSpec("", "image", 0),
 	} {
-		err := validateJobSpecSource(good)
+		err := validateJobSpecImageSpec(good)
 		assert.NoError(t, err)
 	}
 }
@@ -166,6 +154,10 @@ func TestValidateJobSpec(t *testing.T) {
 	for _, bad := range []BadJobSpec{
 		{
 			spec: nil,
+			c:    codes.InvalidArgument,
+		},
+		{
+			spec: &api.JobSpec{Meta: &api.Meta{Name: "name"}},
 			c:    codes.InvalidArgument,
 		},
 		{
