@@ -31,6 +31,10 @@ var _ = math.Inf
 
 type RegisterRequest struct {
 	Spec *NodeSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	// NodeID identifies the registering node.
+	//
+	// This contents of this field *must* be authenticated.
+	NodeID string `protobuf:"bytes,2,opt,name=node_id,proto3" json:"node_id,omitempty"`
 }
 
 func (m *RegisterRequest) Reset()      { *m = RegisterRequest{} }
@@ -178,11 +182,12 @@ func (this *RegisterRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 5)
+	s := make([]string, 0, 6)
 	s = append(s, "&api.RegisterRequest{")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
+	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -599,6 +604,12 @@ func (m *RegisterRequest) MarshalTo(data []byte) (int, error) {
 		}
 		i += n1
 	}
+	if len(m.NodeID) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintDispatcher(data, i, uint64(len(m.NodeID)))
+		i += copy(data[i:], m.NodeID)
+	}
 	return i, nil
 }
 
@@ -909,6 +920,10 @@ func (m *RegisterRequest) Size() (n int) {
 		l = m.Spec.Size()
 		n += 1 + l + sovDispatcher(uint64(l))
 	}
+	l = len(m.NodeID)
+	if l > 0 {
+		n += 1 + l + sovDispatcher(uint64(l))
+	}
 	return n
 }
 
@@ -1049,6 +1064,7 @@ func (this *RegisterRequest) String() string {
 	}
 	s := strings.Join([]string{`&RegisterRequest{`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NodeSpec", "NodeSpec", 1) + `,`,
+		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1218,6 +1234,35 @@ func (m *RegisterRequest) Unmarshal(data []byte) error {
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDispatcher
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthDispatcher
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NodeID = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

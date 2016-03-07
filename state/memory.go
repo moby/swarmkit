@@ -94,11 +94,11 @@ type nodes struct {
 // Create adds a new node to the store.
 // Returns ErrExist if the ID is already taken.
 func (nodes nodes) Create(n *api.Node) error {
-	if _, ok := nodes.s.nodes[n.Spec.ID]; ok {
+	if _, ok := nodes.s.nodes[n.ID]; ok {
 		return ErrExist
 	}
 
-	nodes.s.nodes[n.Spec.ID] = n
+	nodes.s.nodes[n.ID] = n
 	Publish(nodes.s.queue, EventCreateNode{Node: n})
 	return nil
 }
@@ -106,11 +106,11 @@ func (nodes nodes) Create(n *api.Node) error {
 // Update updates an existing node in the store.
 // Returns ErrNotExist if the node doesn't exist.
 func (nodes nodes) Update(n *api.Node) error {
-	if _, ok := nodes.s.nodes[n.Spec.ID]; !ok {
+	if _, ok := nodes.s.nodes[n.ID]; !ok {
 		return ErrNotExist
 	}
 
-	nodes.s.nodes[n.Spec.ID] = n
+	nodes.s.nodes[n.ID] = n
 	Publish(nodes.s.queue, EventUpdateNode{Node: n})
 	return nil
 }
@@ -447,7 +447,7 @@ func (s *MemoryStore) CopyFrom(tx ReadTx) error {
 		return err
 	}
 	for _, n := range nodes {
-		s.nodes[n.Spec.ID] = n
+		s.nodes[n.ID] = n
 	}
 
 	tasks, err := tx.Tasks().Find(All)

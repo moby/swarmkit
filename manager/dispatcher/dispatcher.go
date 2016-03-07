@@ -129,11 +129,11 @@ func New(store state.WatchableStore, c *Config) *Dispatcher {
 func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
 	log.WithField("request", r).Debugf("(*Dispatcher).Register")
 	d.mu.Lock()
-	rn, ok := d.nodes[r.Spec.ID]
+	rn, ok := d.nodes[r.NodeID]
 	d.mu.Unlock()
 
 	if !ok {
-		rn = d.registerNode(r.Spec)
+		rn = d.registerNode(r.NodeID, r.Spec)
 	}
 
 	rn.mu.Lock() // take the lock on the node.
@@ -165,32 +165,32 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	// time a node registers, we invalidate the session and issue a new
 	// session, once identity is proven. This will cause misbehaved agents to
 	// be kicked when multiple connections are made.
-	return &api.RegisterResponse{NodeID: rn.Node.Spec.ID, SessionID: rn.SessionID}, nil
+	return &api.RegisterResponse{NodeID: rn.Node.ID, SessionID: rn.SessionID}, nil
 }
 
-func (d *Dispatcher) registerNode(spec *api.NodeSpec) *registeredNode {
+func (d *Dispatcher) registerNode(nodeID string, spec *api.NodeSpec) *registeredNode {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	var (
 		// TODO(stevvooe): Validate node specification.
 		n = &api.Node{
+			ID:   nodeID,
 			Spec: spec,
 		}
 
-		nid = n.Spec.ID // prevent the closure from holding onto the entire Spec.
-		rn  = &registeredNode{
+		rn = &registeredNode{
 			SessionID: identity.NewID(), // session ID is local to the dispatcher.
 			Heartbeat: heartbeat.New(d.periodChooser.Choose()*time.Duration(d.gracePeriodMultiplier), func() {
-				if err := d.nodeDown(nid); err != nil {
-					log.Errorf("error deregistering node %s after heartbeat was not received: %v", nid, err)
+				if err := d.nodeDown(nodeID); err != nil {
+					log.Errorf("error deregistering node %s after heartbeat was not received: %v", nodeID, err)
 				}
 			}),
 			Node: n,
 		}
 	)
 
-	d.nodes[n.Spec.ID] = rn
+	d.nodes[n.ID] = rn
 	return rn
 }
 
@@ -302,7 +302,7 @@ func (d *Dispatcher) nodeDown(id string) error {
 
 	err := d.store.Update(func(tx state.Tx) error {
 		return tx.Nodes().Update(&api.Node{
-			Spec:   &api.NodeSpec{ID: id},
+			ID:     id,
 			Status: api.NodeStatus{State: api.NodeStatus_DOWN},
 		})
 	})

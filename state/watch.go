@@ -243,7 +243,7 @@ type NodeCheckFunc func(n1, n2 *api.Node) bool
 
 // NodeCheckID is a NodeCheckFunc for matching node IDs.
 func NodeCheckID(n1, n2 *api.Node) bool {
-	return n1.Spec.ID == n2.Spec.ID
+	return n1.ID == n2.ID
 }
 
 // NodeCheckStatus is a NodeCheckFunc for matching node status.
