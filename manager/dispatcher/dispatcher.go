@@ -7,9 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
@@ -23,33 +20,6 @@ const (
 	defaultHeartBeatEpsilon      = 500 * time.Millisecond
 	defaultGracePeriodMultiplier = 3
 )
-
-type registeredNode struct {
-	SessionID string
-	Heartbeat *heartbeat.Heartbeat
-	Tasks     []string
-	Node      *api.Node
-
-	mu sync.Mutex
-}
-
-// checkSessionID determines if the SessionID has changed and returns the
-// appropriate GRPC error code.
-//
-// This may not belong here in the future.
-func (rn *registeredNode) checkSessionID(sessionID string) error {
-	rn.mu.Lock()
-	defer rn.mu.Unlock()
-
-	// Before each message send, we need to check the nodes sessionID hasn't
-	// changed. If it has, we will the stream and make the node
-	// re-register.
-	if rn.SessionID != sessionID {
-		return grpc.Errorf(codes.InvalidArgument, ErrSessionInvalid.Error())
-	}
-
-	return nil
-}
 
 var (
 	// ErrNodeAlreadyRegistered returned if node with same ID was already
@@ -108,7 +78,7 @@ func DefaultConfig() *Config {
 type Dispatcher struct {
 	mu                    sync.Mutex
 	addr                  string
-	nodes                 map[string]*registeredNode
+	nodes                 *nodeStore
 	store                 state.WatchableStore
 	gracePeriodMultiplier int
 	periodChooser         *periodChooser
@@ -118,7 +88,7 @@ type Dispatcher struct {
 func New(store state.WatchableStore, c *Config) *Dispatcher {
 	return &Dispatcher{
 		addr:                  c.Addr,
-		nodes:                 make(map[string]*registeredNode),
+		nodes:                 newNodeStore(),
 		store:                 store,
 		periodChooser:         newPeriodChooser(c.HeartbeatPeriod, c.HeartbeatEpsilon),
 		gracePeriodMultiplier: c.GracePeriodMultiplier,
@@ -128,19 +98,32 @@ func New(store state.WatchableStore, c *Config) *Dispatcher {
 // Register is used for registration of node with particular dispatcher.
 func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
 	log.WithField("request", r).Debugf("(*Dispatcher).Register")
-	d.mu.Lock()
-	rn, ok := d.nodes[r.NodeID]
-	d.mu.Unlock()
 
-	if !ok {
-		rn = d.registerNode(r.NodeID, r.Spec)
+	// TODO: here goes auth
+
+	// TODO(stevvooe): Validate node specification.
+	n := &api.Node{
+		Spec: r.Spec,
+		ID:   r.NodeID,
+	}
+	nid := n.ID // prevent the closure from holding onto the entire Node.
+
+	rn := &registeredNode{
+		SessionID: identity.NewID(), // session ID is local to the dispatcher.
+		Heartbeat: heartbeat.New(d.periodChooser.Choose()*time.Duration(d.gracePeriodMultiplier), func() {
+			if err := d.nodeDown(nid); err != nil {
+				log.Errorf("error deregistering node %s after heartbeat was not received: %v", nid, err)
+			}
+		}),
+		Node: n,
 	}
 
-	rn.mu.Lock() // take the lock on the node.
-	defer rn.mu.Unlock()
+	d.nodes.Add(rn)
 
-	rn.Node.Status.State = api.NodeStatus_READY
 	// create or update node in raft
+	rn.mu.Lock()
+	defer rn.mu.Unlock()
+	rn.Node.Status.State = api.NodeStatus_READY
 	if err := d.store.Update(func(tx state.Tx) error {
 		err := tx.Nodes().Create(rn.Node)
 		if err != nil {
@@ -168,44 +151,12 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	return &api.RegisterResponse{NodeID: rn.Node.ID, SessionID: rn.SessionID}, nil
 }
 
-func (d *Dispatcher) registerNode(nodeID string, spec *api.NodeSpec) *registeredNode {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	var (
-		// TODO(stevvooe): Validate node specification.
-		n = &api.Node{
-			ID:   nodeID,
-			Spec: spec,
-		}
-
-		rn = &registeredNode{
-			SessionID: identity.NewID(), // session ID is local to the dispatcher.
-			Heartbeat: heartbeat.New(d.periodChooser.Choose()*time.Duration(d.gracePeriodMultiplier), func() {
-				if err := d.nodeDown(nodeID); err != nil {
-					log.Errorf("error deregistering node %s after heartbeat was not received: %v", nodeID, err)
-				}
-			}),
-			Node: n,
-		}
-	)
-
-	d.nodes[n.ID] = rn
-	return rn
-}
-
 // UpdateTaskStatus updates status of task. Node should send such updates
 // on every status change of its tasks.
 func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStatusRequest) (*api.UpdateTaskStatusResponse, error) {
 	log.WithField("request", r).Debugf("(*Dispatcher).UpdateTaskStatus")
-	d.mu.Lock()
-	rn, ok := d.nodes[r.NodeID]
-	d.mu.Unlock()
-	if !ok {
-		return nil, grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
-	}
 
-	if err := rn.checkSessionID(r.SessionID); err != nil {
+	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 		return nil, err
 	}
 
@@ -217,7 +168,6 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 		}
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -229,14 +179,9 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 // it should be terminated.
 func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
 	log.WithField("request", r).Debugf("(*Dispatcher).Tasks")
-	d.mu.Lock()
-	rn, ok := d.nodes[r.NodeID]
-	d.mu.Unlock()
-	if !ok {
-		return grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
-	}
 
-	if err := rn.checkSessionID(r.SessionID); err != nil {
+	rn, err := d.nodes.GetWithSession(r.NodeID, r.SessionID)
+	if err != nil {
 		return err
 	}
 
@@ -251,7 +196,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	defer watchQueue.StopWatch(nodeTasks)
 
 	tasksMap := make(map[string]*api.Task)
-	err := d.store.View(func(readTx state.ReadTx) error {
+	err = d.store.View(func(readTx state.ReadTx) error {
 		tasks, err := readTx.Tasks().Find(state.ByNodeID(r.NodeID))
 		if err != nil {
 			return nil
@@ -296,9 +241,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 }
 
 func (d *Dispatcher) nodeDown(id string) error {
-	d.mu.Lock()
-	delete(d.nodes, id)
-	d.mu.Unlock()
+	d.nodes.Delete(id)
 
 	err := d.store.Update(func(tx state.Tx) error {
 		return tx.Nodes().Update(&api.Node{
@@ -317,28 +260,16 @@ func (d *Dispatcher) nodeDown(id string) error {
 // be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
 func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*api.HeartbeatResponse, error) {
 	log.WithField("request", r).Debugf("(*Dispatcher).Heartbeat")
-	d.mu.Lock()
-	node, ok := d.nodes[r.NodeID]
-	if !ok {
-		d.mu.Unlock()
-		return nil, grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
+
+	rn, err := d.nodes.GetWithSession(r.NodeID, r.SessionID)
+	if err != nil {
+		return nil, err
 	}
 
 	period := d.periodChooser.Choose() // base period for node
 	grace := period * time.Duration(d.gracePeriodMultiplier)
-
-	node.mu.Lock()
-	defer node.mu.Unlock()
-	d.mu.Unlock()
-
-	if node.SessionID != r.SessionID {
-		// We have a hearbeat from an old session, return an error and force
-		// the agent to re-register.
-		return nil, grpc.Errorf(codes.InvalidArgument, ErrSessionInvalid.Error())
-	}
-
-	node.Heartbeat.Update(grace)
-	node.Heartbeat.Beat()
+	rn.Heartbeat.Update(grace)
+	rn.Heartbeat.Beat()
 	return &api.HeartbeatResponse{Period: period}, nil
 }
 
@@ -357,23 +288,18 @@ func (d *Dispatcher) getManagers() []*api.WeightedPeer {
 // reconnect to another Manager immediately.
 func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_SessionServer) error {
 	log.WithField("request", r).Debugf("(*Dispatcher).Session")
-	d.mu.Lock()
-	rn, ok := d.nodes[r.NodeID]
-	d.mu.Unlock()
-	if !ok {
-		return grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
+	rn, err := d.nodes.GetWithSession(r.NodeID, r.SessionID)
+	if err != nil {
+		return err
 	}
 
 	for {
 		// After each message send, we need to check the nodes sessionID hasn't
 		// changed. If it has, we will the stream and make the node
 		// re-register.
-		rn.mu.Lock()
-		if rn.SessionID != r.SessionID {
-			rn.mu.Unlock()
-			return grpc.Errorf(codes.InvalidArgument, ErrSessionInvalid.Error())
+		if err := rn.checkSessionID(r.SessionID); err != nil {
+			return err
 		}
-		rn.mu.Unlock()
 
 		if err := stream.Send(&api.SessionMessage{
 			Managers:   d.getManagers(),

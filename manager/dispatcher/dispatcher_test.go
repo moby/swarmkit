@@ -76,7 +76,8 @@ func TestRegisterTwice(t *testing.T) {
 		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID, Spec: testNode.Spec})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode.ID)
-		assert.Equal(t, resp.SessionID, expectedSessionID)
+		// session should be different!
+		assert.NotEqual(t, resp.SessionID, expectedSessionID)
 	}
 }
 
