@@ -33,13 +33,13 @@ var (
 			fmt.Fprintln(w, "ID\tName\tImage\tInstances")
 			for _, j := range r.Jobs {
 				spec := j.Spec
-				orchestration := spec.Orchestration.GetService()
+				service := spec.GetService()
 				image := spec.GetImage()
 
 				// TODO(aluzzardi): Right now we only implement the happy path
 				// and don't have any proper error handling whatsover.
 				// Instead of aborting, we should display what we can of the job.
-				if orchestration == nil || image == nil {
+				if service == nil || image == nil {
 					log.Fatalf("Malformed job: %v", j)
 				}
 
@@ -47,7 +47,7 @@ var (
 					j.ID,
 					spec.Meta.Name,
 					image.Reference,
-					orchestration.Instances,
+					service.Instances,
 				)
 			}
 			return nil

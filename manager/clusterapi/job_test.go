@@ -20,11 +20,9 @@ func createSpec(name, image string, instances int64) *api.JobSpec {
 				Reference: image,
 			},
 		},
-		Orchestration: &api.JobSpec_Orchestration{
-			Job: &api.JobSpec_Orchestration_Service{
-				Service: &api.JobSpec_ServiceJob{
-					Instances: instances,
-				},
+		Orchestration: &api.JobSpec_Service{
+			Service: &api.JobSpec_ServiceJob{
+				Instances: instances,
 			},
 		},
 	}
@@ -100,45 +98,31 @@ func TestValidateJobSpecImageSpec(t *testing.T) {
 
 func TestValidateJobSpecOrchestration(t *testing.T) {
 	type BadJobSpecOrchestration struct {
-		o *api.JobSpec_Orchestration
+		s *api.JobSpec
 		c codes.Code
 	}
 
 	for _, bad := range []BadJobSpecOrchestration{
 		{
-			o: nil,
+			s: &api.JobSpec{Orchestration: nil},
 			c: codes.InvalidArgument,
 		},
 		{
-			o: &api.JobSpec_Orchestration{},
+			s: &api.JobSpec{Orchestration: &api.JobSpec_Service{}},
 			c: codes.InvalidArgument,
 		},
 		{
-			o: &api.JobSpec_Orchestration{
-				Job: &api.JobSpec_Orchestration_Batch{},
-			},
+			s: &api.JobSpec{Orchestration: &api.JobSpec_Batch{}},
 			c: codes.Unimplemented,
 		},
-		{
-			o: &api.JobSpec_Orchestration{
-				Job: &api.JobSpec_Orchestration_Service{},
-			},
-			c: codes.InvalidArgument,
-		},
 	} {
-		err := validateJobSpecOrchestration(bad.o)
+		err := validateJobSpecOrchestration(bad.s)
 		assert.Error(t, err)
 		assert.Equal(t, bad.c, grpc.Code(err))
 	}
 
-	for _, good := range []*api.JobSpec_Orchestration{
-		{
-			Job: &api.JobSpec_Orchestration_Service{
-				Service: &api.JobSpec_ServiceJob{
-					Instances: 1,
-				},
-			},
-		},
+	for _, good := range []*api.JobSpec{
+		createSpec("", "", 1),
 	} {
 		err := validateJobSpecOrchestration(good)
 		assert.NoError(t, err)

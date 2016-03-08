@@ -125,13 +125,13 @@ func (o *Orchestrator) balance(job *api.Job) {
 
 		numTasks := int64(len(tasks))
 
-		serviceJob, ok := job.Spec.Orchestration.Job.(*api.JobSpec_Orchestration_Service)
+		service := job.Spec.GetService()
 		// TODO(aaronl): support other types of jobs
-		if !ok {
+		if service == nil {
 			panic("job type not supported")
 		}
 
-		specifiedInstances := serviceJob.Service.Instances
+		specifiedInstances := service.Instances
 
 		switch {
 		case specifiedInstances > numTasks:

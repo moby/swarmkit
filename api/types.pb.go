@@ -242,9 +242,14 @@ type JobSpec struct {
 	Meta *Meta `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
 	// Types that are valid to be assigned to Source:
 	//	*JobSpec_Image
-	Source        isJobSpec_Source                 `protobuf_oneof:"source"`
-	Orchestration *JobSpec_Orchestration           `protobuf:"bytes,3,opt,name=orchestration" json:"orchestration,omitempty"`
-	Networks      []*JobSpec_NetworkAttachmentSpec `protobuf:"bytes,4,rep,name=networks" json:"networks,omitempty"`
+	Source isJobSpec_Source `protobuf_oneof:"source"`
+	// Types that are valid to be assigned to Orchestration:
+	//	*JobSpec_Service
+	//	*JobSpec_Batch
+	//	*JobSpec_Global
+	//	*JobSpec_Cron
+	Orchestration isJobSpec_Orchestration          `protobuf_oneof:"orchestration"`
+	Networks      []*JobSpec_NetworkAttachmentSpec `protobuf:"bytes,7,rep,name=networks" json:"networks,omitempty"`
 }
 
 func (m *JobSpec) Reset()      { *m = JobSpec{} }
@@ -255,16 +260,43 @@ type isJobSpec_Source interface {
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
+type isJobSpec_Orchestration interface {
+	isJobSpec_Orchestration()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
 
 type JobSpec_Image struct {
 	Image *ImageSpec `protobuf:"bytes,2,opt,name=image,oneof"`
 }
+type JobSpec_Service struct {
+	Service *JobSpec_ServiceJob `protobuf:"bytes,3,opt,name=service,oneof"`
+}
+type JobSpec_Batch struct {
+	Batch *JobSpec_BatchJob `protobuf:"bytes,4,opt,name=batch,oneof"`
+}
+type JobSpec_Global struct {
+	Global *JobSpec_GlobalJob `protobuf:"bytes,5,opt,name=global,oneof"`
+}
+type JobSpec_Cron struct {
+	Cron *JobSpec_CronJob `protobuf:"bytes,6,opt,name=cron,oneof"`
+}
 
-func (*JobSpec_Image) isJobSpec_Source() {}
+func (*JobSpec_Image) isJobSpec_Source()          {}
+func (*JobSpec_Service) isJobSpec_Orchestration() {}
+func (*JobSpec_Batch) isJobSpec_Orchestration()   {}
+func (*JobSpec_Global) isJobSpec_Orchestration()  {}
+func (*JobSpec_Cron) isJobSpec_Orchestration()    {}
 
 func (m *JobSpec) GetSource() isJobSpec_Source {
 	if m != nil {
 		return m.Source
+	}
+	return nil
+}
+func (m *JobSpec) GetOrchestration() isJobSpec_Orchestration {
+	if m != nil {
+		return m.Orchestration
 	}
 	return nil
 }
@@ -276,10 +308,42 @@ func (m *JobSpec) GetImage() *ImageSpec {
 	return nil
 }
 
+func (m *JobSpec) GetService() *JobSpec_ServiceJob {
+	if x, ok := m.GetOrchestration().(*JobSpec_Service); ok {
+		return x.Service
+	}
+	return nil
+}
+
+func (m *JobSpec) GetBatch() *JobSpec_BatchJob {
+	if x, ok := m.GetOrchestration().(*JobSpec_Batch); ok {
+		return x.Batch
+	}
+	return nil
+}
+
+func (m *JobSpec) GetGlobal() *JobSpec_GlobalJob {
+	if x, ok := m.GetOrchestration().(*JobSpec_Global); ok {
+		return x.Global
+	}
+	return nil
+}
+
+func (m *JobSpec) GetCron() *JobSpec_CronJob {
+	if x, ok := m.GetOrchestration().(*JobSpec_Cron); ok {
+		return x.Cron
+	}
+	return nil
+}
+
 // XXX_OneofFuncs is for the internal use of the proto package.
 func (*JobSpec) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
 	return _JobSpec_OneofMarshaler, _JobSpec_OneofUnmarshaler, []interface{}{
 		(*JobSpec_Image)(nil),
+		(*JobSpec_Service)(nil),
+		(*JobSpec_Batch)(nil),
+		(*JobSpec_Global)(nil),
+		(*JobSpec_Cron)(nil),
 	}
 }
 
@@ -296,6 +360,32 @@ func _JobSpec_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 	default:
 		return fmt.Errorf("JobSpec.Source has unexpected type %T", x)
 	}
+	// orchestration
+	switch x := m.Orchestration.(type) {
+	case *JobSpec_Service:
+		_ = b.EncodeVarint(3<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Service); err != nil {
+			return err
+		}
+	case *JobSpec_Batch:
+		_ = b.EncodeVarint(4<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Batch); err != nil {
+			return err
+		}
+	case *JobSpec_Global:
+		_ = b.EncodeVarint(5<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Global); err != nil {
+			return err
+		}
+	case *JobSpec_Cron:
+		_ = b.EncodeVarint(6<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Cron); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("JobSpec.Orchestration has unexpected type %T", x)
+	}
 	return nil
 }
 
@@ -309,6 +399,38 @@ func _JobSpec_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer
 		msg := new(ImageSpec)
 		err := b.DecodeMessage(msg)
 		m.Source = &JobSpec_Image{msg}
+		return true, err
+	case 3: // orchestration.service
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(JobSpec_ServiceJob)
+		err := b.DecodeMessage(msg)
+		m.Orchestration = &JobSpec_Service{msg}
+		return true, err
+	case 4: // orchestration.batch
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(JobSpec_BatchJob)
+		err := b.DecodeMessage(msg)
+		m.Orchestration = &JobSpec_Batch{msg}
+		return true, err
+	case 5: // orchestration.global
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(JobSpec_GlobalJob)
+		err := b.DecodeMessage(msg)
+		m.Orchestration = &JobSpec_Global{msg}
+		return true, err
+	case 6: // orchestration.cron
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(JobSpec_CronJob)
+		err := b.DecodeMessage(msg)
+		m.Orchestration = &JobSpec_Cron{msg}
 		return true, err
 	default:
 		return false, nil
@@ -341,158 +463,6 @@ type JobSpec_CronJob struct {
 
 func (m *JobSpec_CronJob) Reset()      { *m = JobSpec_CronJob{} }
 func (*JobSpec_CronJob) ProtoMessage() {}
-
-type JobSpec_Orchestration struct {
-	// Types that are valid to be assigned to Job:
-	//	*JobSpec_Orchestration_Service
-	//	*JobSpec_Orchestration_Batch
-	//	*JobSpec_Orchestration_Global
-	//	*JobSpec_Orchestration_Cron
-	Job isJobSpec_Orchestration_Job `protobuf_oneof:"job"`
-}
-
-func (m *JobSpec_Orchestration) Reset()      { *m = JobSpec_Orchestration{} }
-func (*JobSpec_Orchestration) ProtoMessage() {}
-
-type isJobSpec_Orchestration_Job interface {
-	isJobSpec_Orchestration_Job()
-	MarshalTo([]byte) (int, error)
-	Size() int
-}
-
-type JobSpec_Orchestration_Service struct {
-	Service *JobSpec_ServiceJob `protobuf:"bytes,1,opt,name=service,oneof"`
-}
-type JobSpec_Orchestration_Batch struct {
-	Batch *JobSpec_BatchJob `protobuf:"bytes,2,opt,name=batch,oneof"`
-}
-type JobSpec_Orchestration_Global struct {
-	Global *JobSpec_GlobalJob `protobuf:"bytes,3,opt,name=global,oneof"`
-}
-type JobSpec_Orchestration_Cron struct {
-	Cron *JobSpec_CronJob `protobuf:"bytes,4,opt,name=cron,oneof"`
-}
-
-func (*JobSpec_Orchestration_Service) isJobSpec_Orchestration_Job() {}
-func (*JobSpec_Orchestration_Batch) isJobSpec_Orchestration_Job()   {}
-func (*JobSpec_Orchestration_Global) isJobSpec_Orchestration_Job()  {}
-func (*JobSpec_Orchestration_Cron) isJobSpec_Orchestration_Job()    {}
-
-func (m *JobSpec_Orchestration) GetJob() isJobSpec_Orchestration_Job {
-	if m != nil {
-		return m.Job
-	}
-	return nil
-}
-
-func (m *JobSpec_Orchestration) GetService() *JobSpec_ServiceJob {
-	if x, ok := m.GetJob().(*JobSpec_Orchestration_Service); ok {
-		return x.Service
-	}
-	return nil
-}
-
-func (m *JobSpec_Orchestration) GetBatch() *JobSpec_BatchJob {
-	if x, ok := m.GetJob().(*JobSpec_Orchestration_Batch); ok {
-		return x.Batch
-	}
-	return nil
-}
-
-func (m *JobSpec_Orchestration) GetGlobal() *JobSpec_GlobalJob {
-	if x, ok := m.GetJob().(*JobSpec_Orchestration_Global); ok {
-		return x.Global
-	}
-	return nil
-}
-
-func (m *JobSpec_Orchestration) GetCron() *JobSpec_CronJob {
-	if x, ok := m.GetJob().(*JobSpec_Orchestration_Cron); ok {
-		return x.Cron
-	}
-	return nil
-}
-
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*JobSpec_Orchestration) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _JobSpec_Orchestration_OneofMarshaler, _JobSpec_Orchestration_OneofUnmarshaler, []interface{}{
-		(*JobSpec_Orchestration_Service)(nil),
-		(*JobSpec_Orchestration_Batch)(nil),
-		(*JobSpec_Orchestration_Global)(nil),
-		(*JobSpec_Orchestration_Cron)(nil),
-	}
-}
-
-func _JobSpec_Orchestration_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*JobSpec_Orchestration)
-	// job
-	switch x := m.Job.(type) {
-	case *JobSpec_Orchestration_Service:
-		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Service); err != nil {
-			return err
-		}
-	case *JobSpec_Orchestration_Batch:
-		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Batch); err != nil {
-			return err
-		}
-	case *JobSpec_Orchestration_Global:
-		_ = b.EncodeVarint(3<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Global); err != nil {
-			return err
-		}
-	case *JobSpec_Orchestration_Cron:
-		_ = b.EncodeVarint(4<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Cron); err != nil {
-			return err
-		}
-	case nil:
-	default:
-		return fmt.Errorf("JobSpec_Orchestration.Job has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _JobSpec_Orchestration_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*JobSpec_Orchestration)
-	switch tag {
-	case 1: // job.service
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(JobSpec_ServiceJob)
-		err := b.DecodeMessage(msg)
-		m.Job = &JobSpec_Orchestration_Service{msg}
-		return true, err
-	case 2: // job.batch
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(JobSpec_BatchJob)
-		err := b.DecodeMessage(msg)
-		m.Job = &JobSpec_Orchestration_Batch{msg}
-		return true, err
-	case 3: // job.global
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(JobSpec_GlobalJob)
-		err := b.DecodeMessage(msg)
-		m.Job = &JobSpec_Orchestration_Global{msg}
-		return true, err
-	case 4: // job.cron
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(JobSpec_CronJob)
-		err := b.DecodeMessage(msg)
-		m.Job = &JobSpec_Orchestration_Cron{msg}
-		return true, err
-	default:
-		return false, nil
-	}
-}
 
 // NetworkAttachmentSpec describes a desired attachment to the named network or
 // a specific network_id.
@@ -798,7 +768,6 @@ func init() {
 	proto.RegisterType((*JobSpec_BatchJob)(nil), "api.JobSpec.BatchJob")
 	proto.RegisterType((*JobSpec_GlobalJob)(nil), "api.JobSpec.GlobalJob")
 	proto.RegisterType((*JobSpec_CronJob)(nil), "api.JobSpec.CronJob")
-	proto.RegisterType((*JobSpec_Orchestration)(nil), "api.JobSpec.Orchestration")
 	proto.RegisterType((*JobSpec_NetworkAttachmentSpec)(nil), "api.JobSpec.NetworkAttachmentSpec")
 	proto.RegisterType((*TaskStatus)(nil), "api.TaskStatus")
 	proto.RegisterType((*Task)(nil), "api.Task")
@@ -891,7 +860,7 @@ func (this *JobSpec) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 8)
+	s := make([]string, 0, 11)
 	s = append(s, "&api.JobSpec{")
 	if this.Meta != nil {
 		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
@@ -914,6 +883,38 @@ func (this *JobSpec_Image) GoString() string {
 	}
 	s := strings.Join([]string{`&api.JobSpec_Image{` +
 		`Image:` + fmt.Sprintf("%#v", this.Image) + `}`}, ", ")
+	return s
+}
+func (this *JobSpec_Service) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.JobSpec_Service{` +
+		`Service:` + fmt.Sprintf("%#v", this.Service) + `}`}, ", ")
+	return s
+}
+func (this *JobSpec_Batch) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.JobSpec_Batch{` +
+		`Batch:` + fmt.Sprintf("%#v", this.Batch) + `}`}, ", ")
+	return s
+}
+func (this *JobSpec_Global) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.JobSpec_Global{` +
+		`Global:` + fmt.Sprintf("%#v", this.Global) + `}`}, ", ")
+	return s
+}
+func (this *JobSpec_Cron) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.JobSpec_Cron{` +
+		`Cron:` + fmt.Sprintf("%#v", this.Cron) + `}`}, ", ")
 	return s
 }
 func (this *JobSpec_ServiceJob) GoString() string {
@@ -954,50 +955,6 @@ func (this *JobSpec_CronJob) GoString() string {
 	s = append(s, "&api.JobSpec_CronJob{")
 	s = append(s, "}")
 	return strings.Join(s, "")
-}
-func (this *JobSpec_Orchestration) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 8)
-	s = append(s, "&api.JobSpec_Orchestration{")
-	if this.Job != nil {
-		s = append(s, "Job: "+fmt.Sprintf("%#v", this.Job)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *JobSpec_Orchestration_Service) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&api.JobSpec_Orchestration_Service{` +
-		`Service:` + fmt.Sprintf("%#v", this.Service) + `}`}, ", ")
-	return s
-}
-func (this *JobSpec_Orchestration_Batch) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&api.JobSpec_Orchestration_Batch{` +
-		`Batch:` + fmt.Sprintf("%#v", this.Batch) + `}`}, ", ")
-	return s
-}
-func (this *JobSpec_Orchestration_Global) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&api.JobSpec_Orchestration_Global{` +
-		`Global:` + fmt.Sprintf("%#v", this.Global) + `}`}, ", ")
-	return s
-}
-func (this *JobSpec_Orchestration_Cron) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&api.JobSpec_Orchestration_Cron{` +
-		`Cron:` + fmt.Sprintf("%#v", this.Cron) + `}`}, ", ")
-	return s
 }
 func (this *JobSpec_NetworkAttachmentSpec) GoString() string {
 	if this == nil {
@@ -1447,18 +1404,15 @@ func (m *JobSpec) MarshalTo(data []byte) (int, error) {
 		i += nn6
 	}
 	if m.Orchestration != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Orchestration.Size()))
-		n7, err := m.Orchestration.MarshalTo(data[i:])
+		nn7, err := m.Orchestration.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n7
+		i += nn7
 	}
 	if len(m.Networks) > 0 {
 		for _, msg := range m.Networks {
-			data[i] = 0x22
+			data[i] = 0x3a
 			i++
 			i = encodeVarintTypes(data, i, uint64(msg.Size()))
 			n, err := msg.MarshalTo(data[i:])
@@ -1482,6 +1436,62 @@ func (m *JobSpec_Image) MarshalTo(data []byte) (int, error) {
 			return 0, err
 		}
 		i += n8
+	}
+	return i, nil
+}
+func (m *JobSpec_Service) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Service != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Service.Size()))
+		n9, err := m.Service.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n9
+	}
+	return i, nil
+}
+func (m *JobSpec_Batch) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Batch != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Batch.Size()))
+		n10, err := m.Batch.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n10
+	}
+	return i, nil
+}
+func (m *JobSpec_Global) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Global != nil {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Global.Size()))
+		n11, err := m.Global.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n11
+	}
+	return i, nil
+}
+func (m *JobSpec_Cron) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Cron != nil {
+		data[i] = 0x32
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Cron.Size()))
+		n12, err := m.Cron.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n12
 	}
 	return i, nil
 }
@@ -1572,87 +1582,6 @@ func (m *JobSpec_CronJob) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *JobSpec_Orchestration) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *JobSpec_Orchestration) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Job != nil {
-		nn9, err := m.Job.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += nn9
-	}
-	return i, nil
-}
-
-func (m *JobSpec_Orchestration_Service) MarshalTo(data []byte) (int, error) {
-	i := 0
-	if m.Service != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Service.Size()))
-		n10, err := m.Service.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n10
-	}
-	return i, nil
-}
-func (m *JobSpec_Orchestration_Batch) MarshalTo(data []byte) (int, error) {
-	i := 0
-	if m.Batch != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Batch.Size()))
-		n11, err := m.Batch.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n11
-	}
-	return i, nil
-}
-func (m *JobSpec_Orchestration_Global) MarshalTo(data []byte) (int, error) {
-	i := 0
-	if m.Global != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Global.Size()))
-		n12, err := m.Global.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n12
-	}
-	return i, nil
-}
-func (m *JobSpec_Orchestration_Cron) MarshalTo(data []byte) (int, error) {
-	i := 0
-	if m.Cron != nil {
-		data[i] = 0x22
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Cron.Size()))
-		n13, err := m.Cron.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n13
-	}
-	return i, nil
-}
 func (m *JobSpec_NetworkAttachmentSpec) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -1669,11 +1598,11 @@ func (m *JobSpec_NetworkAttachmentSpec) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if m.Reference != nil {
-		nn14, err := m.Reference.MarshalTo(data[i:])
+		nn13, err := m.Reference.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn14
+		i += nn13
 	}
 	return i, nil
 }
@@ -1772,28 +1701,28 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n15, err := m.Spec.MarshalTo(data[i:])
+		n14, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n15
+		i += n14
 	}
 	if m.Status != nil {
 		data[i] = 0x32
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Status.Size()))
-		n16, err := m.Status.MarshalTo(data[i:])
+		n15, err := m.Status.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n16
+		i += n15
 	}
 	if m.Resolved != nil {
-		nn17, err := m.Resolved.MarshalTo(data[i:])
+		nn16, err := m.Resolved.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn17
+		i += nn16
 	}
 	return i, nil
 }
@@ -1804,11 +1733,11 @@ func (m *Task_Image) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x3a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Image.Size()))
-		n18, err := m.Image.MarshalTo(data[i:])
+		n17, err := m.Image.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n18
+		i += n17
 	}
 	return i, nil
 }
@@ -1831,11 +1760,11 @@ func (m *Task_NetworkAttachment) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Network.Size()))
-		n19, err := m.Network.MarshalTo(data[i:])
+		n18, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n19
+		i += n18
 	}
 	if len(m.Addresses) > 0 {
 		for _, s := range m.Addresses {
@@ -1880,11 +1809,11 @@ func (m *Job) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n20, err := m.Spec.MarshalTo(data[i:])
+		n19, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n20
+		i += n19
 	}
 	return i, nil
 }
@@ -2002,21 +1931,21 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-		n21, err := m.Meta.MarshalTo(data[i:])
+		n20, err := m.Meta.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n21
+		i += n20
 	}
 	if m.DriverConfiguration != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.DriverConfiguration.Size()))
-		n22, err := m.DriverConfiguration.MarshalTo(data[i:])
+		n21, err := m.DriverConfiguration.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n22
+		i += n21
 	}
 	if m.Ipv6Enabled {
 		data[i] = 0x18
@@ -2042,11 +1971,11 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.IPAM.Size()))
-		n23, err := m.IPAM.MarshalTo(data[i:])
+		n22, err := m.IPAM.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n23
+		i += n22
 	}
 	return i, nil
 }
@@ -2070,11 +1999,11 @@ func (m *NetworkSpec_IPAMOptions) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Driver.Size()))
-		n24, err := m.Driver.MarshalTo(data[i:])
+		n23, err := m.Driver.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n24
+		i += n23
 	}
 	if len(m.IPv4) > 0 {
 		for _, msg := range m.IPv4 {
@@ -2128,21 +2057,21 @@ func (m *Network) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n25, err := m.Spec.MarshalTo(data[i:])
+		n24, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n25
+		i += n24
 	}
 	if m.DriverState != nil {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.DriverState.Size()))
-		n26, err := m.DriverState.MarshalTo(data[i:])
+		n25, err := m.DriverState.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n26
+		i += n25
 	}
 	return i, nil
 }
@@ -2289,8 +2218,7 @@ func (m *JobSpec) Size() (n int) {
 		n += m.Source.Size()
 	}
 	if m.Orchestration != nil {
-		l = m.Orchestration.Size()
-		n += 1 + l + sovTypes(uint64(l))
+		n += m.Orchestration.Size()
 	}
 	if len(m.Networks) > 0 {
 		for _, e := range m.Networks {
@@ -2306,6 +2234,42 @@ func (m *JobSpec_Image) Size() (n int) {
 	_ = l
 	if m.Image != nil {
 		l = m.Image.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *JobSpec_Service) Size() (n int) {
+	var l int
+	_ = l
+	if m.Service != nil {
+		l = m.Service.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *JobSpec_Batch) Size() (n int) {
+	var l int
+	_ = l
+	if m.Batch != nil {
+		l = m.Batch.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *JobSpec_Global) Size() (n int) {
+	var l int
+	_ = l
+	if m.Global != nil {
+		l = m.Global.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *JobSpec_Cron) Size() (n int) {
+	var l int
+	_ = l
+	if m.Cron != nil {
+		l = m.Cron.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
 	return n
@@ -2343,51 +2307,6 @@ func (m *JobSpec_CronJob) Size() (n int) {
 	return n
 }
 
-func (m *JobSpec_Orchestration) Size() (n int) {
-	var l int
-	_ = l
-	if m.Job != nil {
-		n += m.Job.Size()
-	}
-	return n
-}
-
-func (m *JobSpec_Orchestration_Service) Size() (n int) {
-	var l int
-	_ = l
-	if m.Service != nil {
-		l = m.Service.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-func (m *JobSpec_Orchestration_Batch) Size() (n int) {
-	var l int
-	_ = l
-	if m.Batch != nil {
-		l = m.Batch.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-func (m *JobSpec_Orchestration_Global) Size() (n int) {
-	var l int
-	_ = l
-	if m.Global != nil {
-		l = m.Global.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
-func (m *JobSpec_Orchestration_Cron) Size() (n int) {
-	var l int
-	_ = l
-	if m.Cron != nil {
-		l = m.Cron.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	return n
-}
 func (m *JobSpec_NetworkAttachmentSpec) Size() (n int) {
 	var l int
 	_ = l
@@ -2705,7 +2624,7 @@ func (this *JobSpec) String() string {
 	s := strings.Join([]string{`&JobSpec{`,
 		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
 		`Source:` + fmt.Sprintf("%v", this.Source) + `,`,
-		`Orchestration:` + strings.Replace(fmt.Sprintf("%v", this.Orchestration), "JobSpec_Orchestration", "JobSpec_Orchestration", 1) + `,`,
+		`Orchestration:` + fmt.Sprintf("%v", this.Orchestration) + `,`,
 		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "JobSpec_NetworkAttachmentSpec", "JobSpec_NetworkAttachmentSpec", 1) + `,`,
 		`}`,
 	}, "")
@@ -2717,6 +2636,46 @@ func (this *JobSpec_Image) String() string {
 	}
 	s := strings.Join([]string{`&JobSpec_Image{`,
 		`Image:` + strings.Replace(fmt.Sprintf("%v", this.Image), "ImageSpec", "ImageSpec", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *JobSpec_Service) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&JobSpec_Service{`,
+		`Service:` + strings.Replace(fmt.Sprintf("%v", this.Service), "JobSpec_ServiceJob", "JobSpec_ServiceJob", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *JobSpec_Batch) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&JobSpec_Batch{`,
+		`Batch:` + strings.Replace(fmt.Sprintf("%v", this.Batch), "JobSpec_BatchJob", "JobSpec_BatchJob", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *JobSpec_Global) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&JobSpec_Global{`,
+		`Global:` + strings.Replace(fmt.Sprintf("%v", this.Global), "JobSpec_GlobalJob", "JobSpec_GlobalJob", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *JobSpec_Cron) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&JobSpec_Cron{`,
+		`Cron:` + strings.Replace(fmt.Sprintf("%v", this.Cron), "JobSpec_CronJob", "JobSpec_CronJob", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2756,56 +2715,6 @@ func (this *JobSpec_CronJob) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&JobSpec_CronJob{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *JobSpec_Orchestration) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&JobSpec_Orchestration{`,
-		`Job:` + fmt.Sprintf("%v", this.Job) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *JobSpec_Orchestration_Service) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&JobSpec_Orchestration_Service{`,
-		`Service:` + strings.Replace(fmt.Sprintf("%v", this.Service), "JobSpec_ServiceJob", "JobSpec_ServiceJob", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *JobSpec_Orchestration_Batch) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&JobSpec_Orchestration_Batch{`,
-		`Batch:` + strings.Replace(fmt.Sprintf("%v", this.Batch), "JobSpec_BatchJob", "JobSpec_BatchJob", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *JobSpec_Orchestration_Global) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&JobSpec_Orchestration_Global{`,
-		`Global:` + strings.Replace(fmt.Sprintf("%v", this.Global), "JobSpec_GlobalJob", "JobSpec_GlobalJob", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *JobSpec_Orchestration_Cron) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&JobSpec_Orchestration_Cron{`,
-		`Cron:` + strings.Replace(fmt.Sprintf("%v", this.Cron), "JobSpec_CronJob", "JobSpec_CronJob", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3750,7 +3659,7 @@ func (m *JobSpec) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Orchestration", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Service", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3774,14 +3683,109 @@ func (m *JobSpec) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Orchestration == nil {
-				m.Orchestration = &JobSpec_Orchestration{}
-			}
-			if err := m.Orchestration.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			v := &JobSpec_ServiceJob{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			m.Orchestration = &JobSpec_Service{v}
 			iNdEx = postIndex
 		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Batch", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &JobSpec_BatchJob{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Orchestration = &JobSpec_Batch{v}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Global", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &JobSpec_GlobalJob{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Orchestration = &JobSpec_Global{v}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Cron", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &JobSpec_CronJob{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Orchestration = &JobSpec_Cron{v}
+			iNdEx = postIndex
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Networks", wireType)
 			}
@@ -4069,184 +4073,6 @@ func (m *JobSpec_CronJob) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: CronJob: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTypes(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *JobSpec_Orchestration) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTypes
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Orchestration: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Orchestration: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Service", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &JobSpec_ServiceJob{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Job = &JobSpec_Orchestration_Service{v}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Batch", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &JobSpec_BatchJob{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Job = &JobSpec_Orchestration_Batch{v}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Global", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &JobSpec_GlobalJob{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Job = &JobSpec_Orchestration_Global{v}
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Cron", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &JobSpec_CronJob{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Job = &JobSpec_Orchestration_Cron{v}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(data[iNdEx:])
