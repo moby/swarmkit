@@ -1,9 +1,13 @@
 package state
 
 import (
+	"errors"
+	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/identity"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -109,6 +113,8 @@ func TestStoreNode(t *testing.T) {
 		foundNodes, err = tx.Nodes().Find(ByName("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundNodes)
+
+		assert.Equal(t, tx.Nodes().Delete("nonexistent"), ErrNotExist)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -218,6 +224,8 @@ func TestStoreJob(t *testing.T) {
 		foundJobs, err = tx.Jobs().Find(ByName("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundJobs)
+
+		assert.Equal(t, tx.Jobs().Delete("nonexistent"), ErrNotExist)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -292,6 +300,21 @@ func TestStoreNetwork(t *testing.T) {
 		assert.Len(t, foundNetworks, 0)
 		return nil
 	})
+	assert.NoError(t, err)
+
+	err = s.Update(func(tx Tx) error {
+		// Delete
+		assert.NotNil(t, tx.Networks().Get("id1"))
+		assert.NoError(t, tx.Networks().Delete("id1"))
+		assert.Nil(t, tx.Networks().Get("id1"))
+		foundNetworks, err := tx.Networks().Find(ByName("name1"))
+		assert.NoError(t, err)
+		assert.Empty(t, foundNetworks)
+
+		assert.Equal(t, tx.Tasks().Delete("nonexistent"), ErrNotExist)
+		return nil
+	})
+
 	assert.NoError(t, err)
 }
 
@@ -435,6 +458,8 @@ func TestStoreTask(t *testing.T) {
 		foundTasks, err = tx.Tasks().Find(ByName("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundTasks)
+
+		assert.Equal(t, tx.Tasks().Delete("nonexistent"), ErrNotExist)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -549,166 +574,420 @@ func TestStoreSnapshot(t *testing.T) {
 	// Fork
 	s2 := NewMemoryStore()
 	assert.NotNil(t, s2)
-	watcher, err := s1.Snapshot(s2)
+	watcher, err := ViewAndWatch(s1, s2.CopyFrom)
 	defer s1.WatchQueue().StopWatch(watcher)
 	assert.NoError(t, err)
 
-	err = s1.Update(func(tx1 Tx) error {
-		err = s2.View(func(tx2 ReadTx) error {
-			assert.Equal(t, nodeSet[0], tx2.Nodes().Get("id1"))
-			assert.Equal(t, nodeSet[1], tx2.Nodes().Get("id2"))
-			assert.Equal(t, nodeSet[2], tx2.Nodes().Get("id3"))
+	err = s2.View(func(tx2 ReadTx) error {
+		assert.Equal(t, nodeSet[0], tx2.Nodes().Get("id1"))
+		assert.Equal(t, nodeSet[1], tx2.Nodes().Get("id2"))
+		assert.Equal(t, nodeSet[2], tx2.Nodes().Get("id3"))
 
-			assert.Equal(t, jobSet[0], tx2.Jobs().Get("id1"))
-			assert.Equal(t, jobSet[1], tx2.Jobs().Get("id2"))
-			assert.Equal(t, jobSet[2], tx2.Jobs().Get("id3"))
+		assert.Equal(t, jobSet[0], tx2.Jobs().Get("id1"))
+		assert.Equal(t, jobSet[1], tx2.Jobs().Get("id2"))
+		assert.Equal(t, jobSet[2], tx2.Jobs().Get("id3"))
 
-			assert.Equal(t, taskSet[0], tx2.Tasks().Get("id1"))
-			assert.Equal(t, taskSet[1], tx2.Tasks().Get("id2"))
-			assert.Equal(t, taskSet[2], tx2.Tasks().Get("id3"))
-			return nil
-		})
-		assert.NoError(t, err)
-
-		// Create node
-		createNode := &api.Node{
-			ID: "id4",
-			Spec: &api.NodeSpec{
-				Meta: &api.Meta{
-					Name: "name4",
-				},
-			},
-		}
-		assert.NoError(t, tx1.Nodes().Create(createNode))
-		assert.NoError(t, Apply(s2, <-watcher))
-
-		err = s2.View(func(tx2 ReadTx) error {
-			assert.Equal(t, createNode, tx2.Nodes().Get("id4"))
-			return nil
-		})
-		assert.NoError(t, err)
-
-		// Update node
-		updateNode := &api.Node{
-			ID: "id3",
-			Spec: &api.NodeSpec{
-				Meta: &api.Meta{
-					Name: "name3",
-				},
-			},
-		}
-		assert.NoError(t, tx1.Nodes().Update(updateNode))
-		assert.NoError(t, Apply(s2, <-watcher))
-
-		err = s2.View(func(tx2 ReadTx) error {
-			assert.Equal(t, updateNode, tx2.Nodes().Get("id3"))
-			return nil
-		})
-		assert.NoError(t, err)
-
-		// Delete node
-		assert.NoError(t, tx1.Nodes().Delete("id1"))
-		assert.NoError(t, Apply(s2, <-watcher))
-
-		err = s2.View(func(tx2 ReadTx) error {
-			assert.Nil(t, tx2.Nodes().Get("id1"))
-			return nil
-		})
-		assert.NoError(t, err)
-
-		// Create job
-		createJob := &api.Job{
-			ID: "id4",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name4",
-				},
-			},
-		}
-		assert.NoError(t, tx1.Jobs().Create(createJob))
-		assert.NoError(t, Apply(s2, <-watcher))
-
-		err = s2.View(func(tx2 ReadTx) error {
-			assert.Equal(t, createJob, tx2.Jobs().Get("id4"))
-			return nil
-		})
-		assert.NoError(t, err)
-
-		// Update job
-		updateJob := &api.Job{
-			ID: "id3",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name3",
-				},
-			},
-		}
-		assert.NotEqual(t, updateJob, tx1.Jobs().Get("id3"))
-		assert.NoError(t, tx1.Jobs().Update(updateJob))
-		assert.NoError(t, Apply(s2, <-watcher))
-
-		err = s2.View(func(tx2 ReadTx) error {
-			assert.Equal(t, updateJob, tx2.Jobs().Get("id3"))
-			return nil
-		})
-		assert.NoError(t, err)
-
-		// Delete job
-		assert.NoError(t, tx1.Jobs().Delete("id1"))
-		assert.NoError(t, Apply(s2, <-watcher))
-
-		err = s2.View(func(tx2 ReadTx) error {
-			assert.Nil(t, tx1.Jobs().Get("id1"))
-			return nil
-		})
-		assert.NoError(t, err)
-
-		// Create task
-		createTask := &api.Task{
-			ID: "id4",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name4",
-				},
-			},
-		}
-		assert.NoError(t, tx1.Tasks().Create(createTask))
-		assert.NoError(t, Apply(s2, <-watcher))
-
-		err = s2.View(func(tx2 ReadTx) error {
-			assert.Equal(t, createTask, tx2.Tasks().Get("id4"))
-			return nil
-		})
-		assert.NoError(t, err)
-
-		// Update task
-		updateTask := &api.Task{
-			ID: "id3",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name3",
-				},
-			},
-		}
-		assert.NoError(t, tx1.Tasks().Update(updateTask))
-		assert.NoError(t, Apply(s2, <-watcher))
-
-		err = s2.View(func(tx2 ReadTx) error {
-			assert.Equal(t, updateTask, tx2.Tasks().Get("id3"))
-			return nil
-		})
-		assert.NoError(t, err)
-
-		// Delete task
-		assert.NoError(t, tx1.Tasks().Delete("id1"))
-		assert.NoError(t, Apply(s2, <-watcher))
-
-		err = s2.View(func(tx2 ReadTx) error {
-			assert.Nil(t, tx2.Tasks().Get("id1"))
-			return nil
-		})
-		assert.NoError(t, err)
+		assert.Equal(t, taskSet[0], tx2.Tasks().Get("id1"))
+		assert.Equal(t, taskSet[1], tx2.Tasks().Get("id2"))
+		assert.Equal(t, taskSet[2], tx2.Tasks().Get("id3"))
 		return nil
 	})
 	assert.NoError(t, err)
+
+	// Create node
+	createNode := &api.Node{
+		ID: "id4",
+		Spec: &api.NodeSpec{
+			Meta: &api.Meta{
+				Name: "name4",
+			},
+		},
+	}
+
+	err = s1.Update(func(tx1 Tx) error {
+		assert.NoError(t, tx1.Nodes().Create(createNode))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	assert.NoError(t, Apply(s2, <-watcher))
+
+	err = s2.View(func(tx2 ReadTx) error {
+		assert.Equal(t, createNode, tx2.Nodes().Get("id4"))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Update node
+	updateNode := &api.Node{
+		ID: "id3",
+		Spec: &api.NodeSpec{
+			Meta: &api.Meta{
+				Name: "name3",
+			},
+		},
+	}
+
+	err = s1.Update(func(tx1 Tx) error {
+		assert.NoError(t, tx1.Nodes().Update(updateNode))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	assert.NoError(t, Apply(s2, <-watcher))
+
+	err = s2.View(func(tx2 ReadTx) error {
+		assert.Equal(t, updateNode, tx2.Nodes().Get("id3"))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	err = s1.Update(func(tx1 Tx) error {
+		// Delete node
+		assert.NoError(t, tx1.Nodes().Delete("id1"))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	assert.NoError(t, Apply(s2, <-watcher))
+
+	err = s2.View(func(tx2 ReadTx) error {
+		assert.Nil(t, tx2.Nodes().Get("id1"))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Create job
+	createJob := &api.Job{
+		ID: "id4",
+		Spec: &api.JobSpec{
+			Meta: &api.Meta{
+				Name: "name4",
+			},
+		},
+	}
+
+	err = s1.Update(func(tx1 Tx) error {
+		assert.NoError(t, tx1.Jobs().Create(createJob))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	assert.NoError(t, Apply(s2, <-watcher))
+
+	err = s2.View(func(tx2 ReadTx) error {
+		assert.Equal(t, createJob, tx2.Jobs().Get("id4"))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Update job
+	updateJob := &api.Job{
+		ID: "id3",
+		Spec: &api.JobSpec{
+			Meta: &api.Meta{
+				Name: "name3",
+			},
+		},
+	}
+
+	err = s1.Update(func(tx1 Tx) error {
+		assert.NotEqual(t, updateJob, tx1.Jobs().Get("id3"))
+		assert.NoError(t, tx1.Jobs().Update(updateJob))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	assert.NoError(t, Apply(s2, <-watcher))
+
+	err = s2.View(func(tx2 ReadTx) error {
+		assert.Equal(t, updateJob, tx2.Jobs().Get("id3"))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	err = s1.Update(func(tx1 Tx) error {
+		// Delete job
+		assert.NoError(t, tx1.Jobs().Delete("id1"))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	assert.NoError(t, Apply(s2, <-watcher))
+
+	err = s2.View(func(tx2 ReadTx) error {
+		assert.Nil(t, tx2.Jobs().Get("id1"))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Create task
+	createTask := &api.Task{
+		ID: "id4",
+		Spec: &api.JobSpec{
+			Meta: &api.Meta{
+				Name: "name4",
+			},
+		},
+	}
+
+	err = s1.Update(func(tx1 Tx) error {
+		assert.NoError(t, tx1.Tasks().Create(createTask))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	assert.NoError(t, Apply(s2, <-watcher))
+
+	err = s2.View(func(tx2 ReadTx) error {
+		assert.Equal(t, createTask, tx2.Tasks().Get("id4"))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Update task
+	updateTask := &api.Task{
+		ID: "id3",
+		Spec: &api.JobSpec{
+			Meta: &api.Meta{
+				Name: "name3",
+			},
+		},
+	}
+
+	err = s1.Update(func(tx1 Tx) error {
+		assert.NoError(t, tx1.Tasks().Update(updateTask))
+		return nil
+	})
+	assert.NoError(t, err)
+	assert.NoError(t, Apply(s2, <-watcher))
+
+	err = s2.View(func(tx2 ReadTx) error {
+		assert.Equal(t, updateTask, tx2.Tasks().Get("id3"))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	err = s1.Update(func(tx1 Tx) error {
+		// Delete task
+		assert.NoError(t, tx1.Tasks().Delete("id1"))
+		return nil
+	})
+	assert.NoError(t, err)
+	assert.NoError(t, Apply(s2, <-watcher))
+
+	err = s2.View(func(tx2 ReadTx) error {
+		assert.Nil(t, tx2.Tasks().Get("id1"))
+		return nil
+	})
+	assert.NoError(t, err)
+}
+
+func TestFailedTransaction(t *testing.T) {
+	s := NewMemoryStore()
+	assert.NotNil(t, s)
+
+	// Create one node
+	err := s.Update(func(tx Tx) error {
+		n := &api.Node{
+			ID: "id1",
+			Spec: &api.NodeSpec{
+				Meta: &api.Meta{
+					Name: "name1",
+				},
+			},
+		}
+
+		assert.NoError(t, tx.Nodes().Create(n))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Create a second node, but then roll back the transaction
+	err = s.Update(func(tx Tx) error {
+		n := &api.Node{
+			ID: "id2",
+			Spec: &api.NodeSpec{
+				Meta: &api.Meta{
+					Name: "name2",
+				},
+			},
+		}
+
+		assert.NoError(t, tx.Nodes().Create(n))
+		return errors.New("rollback")
+	})
+	assert.Error(t, err)
+
+	err = s.View(func(tx ReadTx) error {
+		foundNodes, err := tx.Nodes().Find(All)
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 1)
+		foundNodes, err = tx.Nodes().Find(ByName("name1"))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 1)
+		foundNodes, err = tx.Nodes().Find(ByName("name2"))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 0)
+		return nil
+	})
+	assert.NoError(t, err)
+}
+
+const benchmarkNumNodes = 10000
+
+func setupNodes(b *testing.B, n int) (Store, []string) {
+	s := NewMemoryStore()
+
+	nodeIDs := make([]string, n)
+
+	for i := 0; i < n; i++ {
+		nodeIDs[i] = identity.NewID()
+	}
+
+	b.ResetTimer()
+
+	_ = s.Update(func(tx1 Tx) error {
+		for i := 0; i < n; i++ {
+			_ = tx1.Nodes().Create(&api.Node{
+				ID: nodeIDs[i],
+				Spec: &api.NodeSpec{
+					Meta: &api.Meta{
+						Name: "name" + strconv.Itoa(i),
+					},
+				},
+			})
+		}
+		return nil
+	})
+
+	return s, nodeIDs
+}
+
+func BenchmarkCreateNode(b *testing.B) {
+	setupNodes(b, b.N)
+}
+
+func BenchmarkUpdateNode(b *testing.B) {
+	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+	_ = s.Update(func(tx1 Tx) error {
+		for i := 0; i < b.N; i++ {
+			_ = tx1.Nodes().Update(&api.Node{
+				ID: nodeIDs[i%benchmarkNumNodes],
+				Spec: &api.NodeSpec{
+					Meta: &api.Meta{
+						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
+					},
+				},
+			})
+		}
+		return nil
+	})
+}
+
+func BenchmarkUpdateNodeTransaction(b *testing.B) {
+	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = s.Update(func(tx1 Tx) error {
+			_ = tx1.Nodes().Update(&api.Node{
+				ID: nodeIDs[i%benchmarkNumNodes],
+				Spec: &api.NodeSpec{
+					Meta: &api.Meta{
+						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
+					},
+				},
+			})
+			return nil
+		})
+	}
+}
+
+func BenchmarkDeleteNodeTransaction(b *testing.B) {
+	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = s.Update(func(tx1 Tx) error {
+			_ = tx1.Nodes().Delete(nodeIDs[0])
+			// Don't actually commit deletions, so we can delete
+			// things repeatedly to satisfy the benchmark structure.
+			return errors.New("don't commit this")
+		})
+	}
+}
+
+func BenchmarkGetNode(b *testing.B) {
+	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+	_ = s.View(func(tx1 ReadTx) error {
+		for i := 0; i < b.N; i++ {
+			_ = tx1.Nodes().Get(nodeIDs[i%benchmarkNumNodes])
+		}
+		return nil
+	})
+}
+
+func BenchmarkFindAllNodes(b *testing.B) {
+	s, _ := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+	_ = s.View(func(tx1 ReadTx) error {
+		for i := 0; i < b.N; i++ {
+			_, _ = tx1.Nodes().Find(All)
+		}
+		return nil
+	})
+}
+
+func BenchmarkFindNodeByName(b *testing.B) {
+	s, _ := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+	_ = s.View(func(tx1 ReadTx) error {
+		for i := 0; i < b.N; i++ {
+			_, _ = tx1.Nodes().Find(ByName("name" + strconv.Itoa(i)))
+		}
+		return nil
+	})
+}
+
+func BenchmarkNodeConcurrency(b *testing.B) {
+	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+
+	// Run 5 writer goroutines and 5 reader goroutines
+	var wg sync.WaitGroup
+	for c := 0; c != 5; c++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < b.N; i++ {
+				_ = s.Update(func(tx1 Tx) error {
+					_ = tx1.Nodes().Update(&api.Node{
+						ID: nodeIDs[i%benchmarkNumNodes],
+						Spec: &api.NodeSpec{
+							Meta: &api.Meta{
+								Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(c) + "_" + strconv.Itoa(i),
+							},
+						},
+					})
+					return nil
+				})
+			}
+		}()
+	}
+
+	for c := 0; c != 5; c++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = s.View(func(tx1 ReadTx) error {
+				for i := 0; i < b.N; i++ {
+					_ = tx1.Nodes().Get(nodeIDs[i%benchmarkNumNodes])
+				}
+				return nil
+			})
+		}()
+	}
+
+	wg.Wait()
 }
