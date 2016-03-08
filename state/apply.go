@@ -35,7 +35,7 @@ func Apply(store Store, item watch.Event) (err error) {
 		case EventUpdateNode:
 			return tx.Nodes().Update(v.Node)
 		case EventDeleteNode:
-			return tx.Nodes().Delete(v.Node.Spec.ID)
+			return tx.Nodes().Delete(v.Node.ID)
 		}
 		return errors.New("unrecognized event type")
 	})

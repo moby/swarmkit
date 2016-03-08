@@ -38,6 +38,11 @@ service Dispatcher { // maybe dispatch, al likes this
 
 message RegisterRequest {
 	NodeSpec spec = 1;
+
+	// NodeID identifies the registering node.
+	//
+	// This contents of this field *must* be authenticated.
+	string node_id = 2 [(gogoproto.customname) = "NodeID"];
 }
 
 message RegisterResponse {

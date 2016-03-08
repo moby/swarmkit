@@ -152,8 +152,8 @@ func (a *Agent) register(ctx context.Context) (string, error) {
 	client := api.NewDispatcherClient(a.conn)
 
 	resp, err := client.Register(ctx, &api.RegisterRequest{
+		NodeID: a.config.ID,
 		Spec: &api.NodeSpec{
-			ID:   a.config.ID,
 			Meta: &api.Meta{Name: a.config.Name},
 		},
 	})

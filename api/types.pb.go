@@ -182,16 +182,8 @@ func (*Meta) ProtoMessage() {}
 
 type NodeSpec struct {
 	Meta *Meta `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
-	// ID specifies the identity of the node.
-	// TODO(stevvooe): Currently, node identity responsibility is up in the
-	// air. It really depends on the security model. Placed here, we are saying
-	// that a node is responsible for its own identity. If we decide that this
-	// is the masters responsibility, this goes elsewhere.
-	//
-	// In all liklihood, this field will be removed, in favor of the Node.ID
-	// field and node identity will be conferred through another channel.
-	ID   string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-	Addr string `protobuf:"bytes,3,opt,name=addr,proto3" json:"addr,omitempty"`
+	// Addr provides an address for the node, accessible via the manager set.
+	Addr string `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`
 	// Status is the state of the node as seen by the creator the
 	// specification. When reported by an agent, this will almost always be
 	// READY or empty. When communicating through the Cluster API, this can be
@@ -203,6 +195,8 @@ func (m *NodeSpec) Reset()      { *m = NodeSpec{} }
 func (*NodeSpec) ProtoMessage() {}
 
 type Node struct {
+	// ID specifies the identity of the node.
+	ID   string    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Spec *NodeSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
 	// Status provides the current status of the node, as seen by the manager.
 	// This may differ from the state in the nodespec.
@@ -809,12 +803,11 @@ func (this *NodeSpec) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 8)
+	s := make([]string, 0, 7)
 	s = append(s, "&api.NodeSpec{")
 	if this.Meta != nil {
 		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
 	}
-	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	s = append(s, "Addr: "+fmt.Sprintf("%#v", this.Addr)+",\n")
 	if this.Status != nil {
 		s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
@@ -826,8 +819,9 @@ func (this *Node) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 7)
 	s = append(s, "&api.Node{")
+	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
@@ -1257,14 +1251,8 @@ func (m *NodeSpec) MarshalTo(data []byte) (int, error) {
 		}
 		i += n1
 	}
-	if len(m.ID) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintTypes(data, i, uint64(len(m.ID)))
-		i += copy(data[i:], m.ID)
-	}
 	if len(m.Addr) > 0 {
-		data[i] = 0x1a
+		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(len(m.Addr)))
 		i += copy(data[i:], m.Addr)
@@ -1297,6 +1285,12 @@ func (m *Node) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.ID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.ID)))
+		i += copy(data[i:], m.ID)
+	}
 	if m.Spec != nil {
 		data[i] = 0x12
 		i++
@@ -2157,10 +2151,6 @@ func (m *NodeSpec) Size() (n int) {
 		l = m.Meta.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
-	l = len(m.ID)
-	if l > 0 {
-		n += 1 + l + sovTypes(uint64(l))
-	}
 	l = len(m.Addr)
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
@@ -2175,6 +2165,10 @@ func (m *NodeSpec) Size() (n int) {
 func (m *Node) Size() (n int) {
 	var l int
 	_ = l
+	l = len(m.ID)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
 	if m.Spec != nil {
 		l = m.Spec.Size()
 		n += 1 + l + sovTypes(uint64(l))
@@ -2578,7 +2572,6 @@ func (this *NodeSpec) String() string {
 	}
 	s := strings.Join([]string{`&NodeSpec{`,
 		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
-		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
 		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "NodeStatus", "NodeStatus", 1) + `,`,
 		`}`,
@@ -2590,6 +2583,7 @@ func (this *Node) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&Node{`,
+		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NodeSpec", "NodeSpec", 1) + `,`,
 		`Status:` + strings.Replace(strings.Replace(this.Status.String(), "NodeStatus", "NodeStatus", 1), `&`, ``, 1) + `,`,
 		`}`,
@@ -3163,35 +3157,6 @@ func (m *NodeSpec) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ID = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Addr", wireType)
 			}
 			var stringLen uint64
@@ -3302,6 +3267,35 @@ func (m *Node) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: Node: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)

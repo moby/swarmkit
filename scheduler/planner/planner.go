@@ -137,8 +137,8 @@ func (p *Planner) scheduleTask(t *api.Task) bool {
 			return err
 		}
 
-		log.Infof("Assigning task %s to node %s", t.ID, node.Spec.ID)
-		t.NodeID = node.Spec.ID
+		log.Infof("Assigning task %s to node %s", t.ID, node.ID)
+		t.NodeID = node.ID
 		t.Status.State = api.TaskStatus_ASSIGNED
 		if err := tx.Tasks().Update(t); err != nil {
 			log.Error(err)
@@ -166,7 +166,7 @@ func (p *Planner) selectNodeForTask(t *api.Task, tx state.Tx) *api.Node {
 
 	for _, n := range nodes {
 		if n.Status.State == api.NodeStatus_READY /*&& !n.Drained*/ {
-			tasks, err := tx.Tasks().Find(state.ByNodeID(n.Spec.ID))
+			tasks, err := tx.Tasks().Find(state.ByNodeID(n.ID))
 			if err != nil {
 				log.Errorf("Error selecting tasks by node: %v", err)
 				continue

@@ -10,24 +10,24 @@ import (
 func TestStoreNode(t *testing.T) {
 	nodeSet := []*api.Node{
 		{
+			ID: "id1",
 			Spec: &api.NodeSpec{
-				ID: "id1",
 				Meta: &api.Meta{
 					Name: "name1",
 				},
 			},
 		},
 		{
+			ID: "id2",
 			Spec: &api.NodeSpec{
-				ID: "id2",
 				Meta: &api.Meta{
 					Name: "name2",
 				},
 			},
 		},
 		{
+			ID: "id3",
 			Spec: &api.NodeSpec{
-				ID: "id3",
 				Meta: &api.Meta{
 					Name: "name2",
 				},
@@ -79,8 +79,8 @@ func TestStoreNode(t *testing.T) {
 
 	// Update.
 	update := &api.Node{
+		ID: "id3",
 		Spec: &api.NodeSpec{
-			ID: "id3",
 			Meta: &api.Meta{
 				Name: "name3",
 			},
@@ -99,7 +99,7 @@ func TestStoreNode(t *testing.T) {
 		assert.Len(t, foundNodes, 1)
 
 		invalidUpdate := *nodeSet[0]
-		invalidUpdate.Spec.ID = "invalid"
+		invalidUpdate.ID = "invalid"
 		assert.Error(t, tx.Nodes().Update(&invalidUpdate), "invalid IDs should be rejected")
 
 		// Delete
@@ -297,8 +297,8 @@ func TestStoreNetwork(t *testing.T) {
 
 func TestStoreTask(t *testing.T) {
 	node := &api.Node{
+		ID: "node1",
 		Spec: &api.NodeSpec{
-			ID: "node1",
 			Meta: &api.Meta{
 				Name: "node-name1",
 			},
@@ -320,7 +320,7 @@ func TestStoreTask(t *testing.T) {
 					Name: "name1",
 				},
 			},
-			NodeID: node.Spec.ID,
+			NodeID: node.ID,
 		},
 		{
 			ID: "id2",
@@ -380,7 +380,7 @@ func TestStoreTask(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 0)
 
-		foundTasks, err = readTx.Tasks().Find(ByNodeID(node.Spec.ID))
+		foundTasks, err = readTx.Tasks().Find(ByNodeID(node.ID))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
 		assert.Equal(t, foundTasks[0], taskSet[0])
@@ -443,24 +443,24 @@ func TestStoreTask(t *testing.T) {
 func TestStoreSnapshot(t *testing.T) {
 	nodeSet := []*api.Node{
 		{
+			ID: "id1",
 			Spec: &api.NodeSpec{
-				ID: "id1",
 				Meta: &api.Meta{
 					Name: "name1",
 				},
 			},
 		},
 		{
+			ID: "id2",
 			Spec: &api.NodeSpec{
-				ID: "id2",
 				Meta: &api.Meta{
 					Name: "name2",
 				},
 			},
 		},
 		{
+			ID: "id3",
 			Spec: &api.NodeSpec{
-				ID: "id3",
 				Meta: &api.Meta{
 					Name: "name2",
 				},
@@ -503,7 +503,7 @@ func TestStoreSnapshot(t *testing.T) {
 					Name: "name1",
 				},
 			},
-			NodeID: nodeSet[0].Spec.ID,
+			NodeID: nodeSet[0].ID,
 		},
 		{
 			ID: "id2",
@@ -572,8 +572,8 @@ func TestStoreSnapshot(t *testing.T) {
 
 		// Create node
 		createNode := &api.Node{
+			ID: "id4",
 			Spec: &api.NodeSpec{
-				ID: "id4",
 				Meta: &api.Meta{
 					Name: "name4",
 				},
@@ -590,8 +590,8 @@ func TestStoreSnapshot(t *testing.T) {
 
 		// Update node
 		updateNode := &api.Node{
+			ID: "id3",
 			Spec: &api.NodeSpec{
-				ID: "id3",
 				Meta: &api.Meta{
 					Name: "name3",
 				},
