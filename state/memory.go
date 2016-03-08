@@ -875,21 +875,3 @@ func (s *MemoryStore) CopyFrom(readTx ReadTx) error {
 func (s *MemoryStore) WatchQueue() *watch.Queue {
 	return s.queue
 }
-
-// Snapshot populates the provided empty store with the current items in
-// this store. It then returns a watcher that is guaranteed to receive
-// all events from the moment the store was forked, so the populated
-// store can be kept in sync.
-func (s *MemoryStore) Snapshot(storeCopier StoreCopier) (watcher chan watch.Event, err error) {
-	s.updateLock.Lock()
-	err = s.View(func(readTx ReadTx) error {
-		if err := storeCopier.CopyFrom(readTx); err != nil {
-			return err
-		}
-
-		watcher = s.queue.Watch()
-		return nil
-	})
-	s.updateLock.Unlock()
-	return
-}

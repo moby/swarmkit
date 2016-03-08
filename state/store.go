@@ -166,12 +166,45 @@ type WatchableStore interface {
 	// be registered. This is exposed directly to avoid forcing every store
 	// implementation to provide a full set of conveninence functions.
 	WatchQueue() *watch.Queue
+}
 
-	// Snapshot copies the state of this Store. It also returns a channel
-	// that will return further events from this point so the snapshot can be
-	// kept up to date. The watch channel must be released with
-	// watch.StopWatch when it is no longer needed.
-	Snapshot(storeCopier StoreCopier) (chan watch.Event, error)
+type snapshotReadTx struct {
+	tx Tx
+}
+
+func (tx snapshotReadTx) Nodes() NodeSetReader {
+	return tx.tx.Nodes()
+}
+
+func (tx snapshotReadTx) Jobs() JobSetReader {
+	return tx.tx.Jobs()
+}
+
+func (tx snapshotReadTx) Networks() NetworkSetReader {
+	return tx.tx.Networks()
+}
+
+func (tx snapshotReadTx) Tasks() TaskSetReader {
+	return tx.tx.Tasks()
+}
+
+// ViewAndWatch calls a callback which can observe the state of this Store. It
+// also returns a channel that will return further events from this point so
+// the snapshot can be kept up to date. The watch channel must be released with
+// watch.StopWatch when it is no longer needed. The channel is guaranteed to
+// get all events after the moment of the snapshot, and only those events.
+func ViewAndWatch(store WatchableStore, cb func(ReadTx) error) (watch chan watch.Event, err error) {
+	// Using Update to lock the store and guarantee consistency between
+	// the watcher and the the state seen by the callback. snapshotReadTx
+	// exposes this Tx as a ReadTx so the callback can't modify it.
+	err = store.Update(func(tx Tx) error {
+		if err = cb(snapshotReadTx{tx: tx}); err != nil {
+			return err
+		}
+		watch = store.WatchQueue().Watch()
+		return nil
+	})
+	return
 }
 
 // By is an interface type passed to Find methods. Implementations must be

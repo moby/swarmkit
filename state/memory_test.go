@@ -574,7 +574,7 @@ func TestStoreSnapshot(t *testing.T) {
 	// Fork
 	s2 := NewMemoryStore()
 	assert.NotNil(t, s2)
-	watcher, err := s1.Snapshot(s2)
+	watcher, err := ViewAndWatch(s1, s2.CopyFrom)
 	defer s1.WatchQueue().StopWatch(watcher)
 	assert.NoError(t, err)
 
