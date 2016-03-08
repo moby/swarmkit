@@ -13,7 +13,6 @@ import (
 type registeredNode struct {
 	SessionID string
 	Heartbeat *heartbeat.Heartbeat
-	Tasks     []string
 	Node      *api.Node
 	mu        sync.Mutex
 }
