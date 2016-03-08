@@ -230,7 +230,7 @@ func (m *ListNetworksRequest) Reset()      { *m = ListNetworksRequest{} }
 func (*ListNetworksRequest) ProtoMessage() {}
 
 type ListNetworksResponse struct {
-	Network []*Network `protobuf:"bytes,1,rep,name=network" json:"network,omitempty"`
+	Networks []*Network `protobuf:"bytes,1,rep,name=networks" json:"networks,omitempty"`
 }
 
 func (m *ListNetworksResponse) Reset()      { *m = ListNetworksResponse{} }
@@ -590,8 +590,8 @@ func (this *ListNetworksResponse) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.ListNetworksResponse{")
-	if this.Network != nil {
-		s = append(s, "Network: "+fmt.Sprintf("%#v", this.Network)+",\n")
+	if this.Networks != nil {
+		s = append(s, "Networks: "+fmt.Sprintf("%#v", this.Networks)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -1814,8 +1814,8 @@ func (m *ListNetworksResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.Network) > 0 {
-		for _, msg := range m.Network {
+	if len(m.Networks) > 0 {
+		for _, msg := range m.Networks {
 			data[i] = 0xa
 			i++
 			i = encodeVarintCluster(data, i, uint64(msg.Size()))
@@ -2139,8 +2139,8 @@ func (m *ListNetworksRequest) Size() (n int) {
 func (m *ListNetworksResponse) Size() (n int) {
 	var l int
 	_ = l
-	if len(m.Network) > 0 {
-		for _, e := range m.Network {
+	if len(m.Networks) > 0 {
+		for _, e := range m.Networks {
 			l = e.Size()
 			n += 1 + l + sovCluster(uint64(l))
 		}
@@ -2452,7 +2452,7 @@ func (this *ListNetworksResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ListNetworksResponse{`,
-		`Network:` + strings.Replace(fmt.Sprintf("%v", this.Network), "Network", "Network", 1) + `,`,
+		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Network", "Network", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4725,7 +4725,7 @@ func (m *ListNetworksResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Network", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Networks", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -4749,8 +4749,8 @@ func (m *ListNetworksResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Network = append(m.Network, &Network{})
-			if err := m.Network[len(m.Network)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			m.Networks = append(m.Networks, &Network{})
+			if err := m.Networks[len(m.Networks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

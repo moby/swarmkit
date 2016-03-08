@@ -149,5 +149,5 @@ message DeleteNetworkResponse {}
 message ListNetworksRequest {}
 
 message ListNetworksResponse {
-	repeated Network network = 1;
+	repeated Network networks = 1;
 }
