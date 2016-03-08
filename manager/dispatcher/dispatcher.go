@@ -157,8 +157,7 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
 	log.WithField("request", r).Debugf("(*Dispatcher).Tasks")
 
-	rn, err := d.nodes.GetWithSession(r.NodeID, r.SessionID)
-	if err != nil {
+	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 		return err
 	}
 
@@ -173,7 +172,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	defer watchQueue.StopWatch(nodeTasks)
 
 	tasksMap := make(map[string]*api.Task)
-	err = d.store.View(func(readTx state.ReadTx) error {
+	err := d.store.View(func(readTx state.ReadTx) error {
 		tasks, err := readTx.Tasks().Find(state.ByNodeID(r.NodeID))
 		if err != nil {
 			return nil
@@ -188,7 +187,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	}
 
 	for {
-		if err := rn.checkSessionID(r.SessionID); err != nil {
+		if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 			return err
 		}
 
@@ -265,8 +264,7 @@ func (d *Dispatcher) getManagers() []*api.WeightedPeer {
 // reconnect to another Manager immediately.
 func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_SessionServer) error {
 	log.WithField("request", r).Debugf("(*Dispatcher).Session")
-	rn, err := d.nodes.GetWithSession(r.NodeID, r.SessionID)
-	if err != nil {
+	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 		return err
 	}
 
@@ -274,7 +272,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		// After each message send, we need to check the nodes sessionID hasn't
 		// changed. If it has, we will the stream and make the node
 		// re-register.
-		if err := rn.checkSessionID(r.SessionID); err != nil {
+		if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 			return err
 		}
 
