@@ -21,7 +21,7 @@ func TestGetTask(t *testing.T) {
 	// TODO
 }
 
-func TestDeleteTask(t *testing.T) {
+func TestRemoveTask(t *testing.T) {
 	// TODO
 }
 

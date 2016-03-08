@@ -201,14 +201,14 @@ func TestUpdateJob(t *testing.T) {
 	assert.Equal(t, codes.Unimplemented, grpc.Code(err))
 }
 
-func TestDeleteJob(t *testing.T) {
+func TestRemoveJob(t *testing.T) {
 	ts := newTestServer(t)
-	_, err := ts.Client.DeleteJob(context.Background(), &api.DeleteJobRequest{})
+	_, err := ts.Client.RemoveJob(context.Background(), &api.RemoveJobRequest{})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
 	job := createJob(ts, "name", "image", 1)
-	r, err := ts.Client.DeleteJob(context.Background(), &api.DeleteJobRequest{JobID: job.ID})
+	r, err := ts.Client.RemoveJob(context.Background(), &api.RemoveJobRequest{JobID: job.ID})
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
 }
