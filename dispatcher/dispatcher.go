@@ -8,8 +8,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/dispatcher/heartbeat"
 	"github.com/docker/swarm-v2/identity"
-	"github.com/docker/swarm-v2/pkg/heartbeat"
 	"github.com/docker/swarm-v2/state"
 	"golang.org/x/net/context"
 )
