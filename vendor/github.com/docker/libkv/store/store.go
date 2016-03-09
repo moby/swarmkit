@@ -18,8 +18,6 @@ const (
 	ZK Backend = "zk"
 	// BOLTDB backend
 	BOLTDB Backend = "boltdb"
-	// PATHDB backend
-	PATHDB Backend = "pathdb"
 )
 
 var (
@@ -48,7 +46,6 @@ type Config struct {
 	ConnectionTimeout time.Duration
 	Bucket            string
 	PersistConnection bool
-	Handle            interface{}
 }
 
 // ClientTLSConfig contains data for a Client TLS configuration in the form

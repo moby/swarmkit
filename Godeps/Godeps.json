@@ -56,13 +56,13 @@
 		},
 		{
 			"ImportPath": "github.com/docker/libkv",
-			"Comment": "v0.1.0-19-g4033d3c",
-			"Rev": "4033d3c9b2608f3b16f8b3b4b0a4a9080d6be7a0"
+			"Comment": "v0.1.0-17-g6af172b",
+			"Rev": "6af172b94a679a43e91971f75b7f189946c466b7"
 		},
 		{
 			"ImportPath": "github.com/docker/libkv/store",
-			"Comment": "v0.1.0-19-g4033d3c",
-			"Rev": "4033d3c9b2608f3b16f8b3b4b0a4a9080d6be7a0"
+			"Comment": "v0.1.0-17-g6af172b",
+			"Rev": "6af172b94a679a43e91971f75b7f189946c466b7"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/bitseq",
