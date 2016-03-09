@@ -111,7 +111,7 @@ func TestManagersZeroWeights(t *testing.T) {
 	}
 
 	seen := map[string]struct{}{}
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 25; i++ {
 		addr, err := managers.Select()
 		if err != nil {
 			t.Fatalf("unexpected error from Select: %v", err)
@@ -130,7 +130,7 @@ func TestManagersZeroWeights(t *testing.T) {
 	managers.Observe("three", 10)
 
 	count := map[string]int{}
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 100; i++ {
 		// basically, we expect the same one to return
 		addr, err := managers.Select()
 		if err != nil {
