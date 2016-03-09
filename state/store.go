@@ -155,6 +155,13 @@ type Store interface {
 	// callback function, a consistent view of the data is available through
 	// the ReadTx interface.
 	View(func(ReadTx) error) error
+
+	// Save serializes the data in the store.
+	Save() ([]byte, error)
+
+	// Restore sets the contents of the store to the serialized data in the
+	// argument.
+	Restore([]byte) error
 }
 
 // WatchableStore is an extension of Store that publishes modifications to a
@@ -205,6 +212,51 @@ func ViewAndWatch(store WatchableStore, cb func(ReadTx) error) (watch chan watch
 		return nil
 	})
 	return
+}
+
+// DeleteAll clears the contents of a store.
+func DeleteAll(tx Tx) error {
+	nodes, err := tx.Nodes().Find(All)
+	if err != nil {
+		return err
+	}
+	for _, n := range nodes {
+		if err := tx.Nodes().Delete(n.ID); err != nil {
+			return err
+		}
+	}
+
+	jobs, err := tx.Jobs().Find(All)
+	if err != nil {
+		return err
+	}
+	for _, j := range jobs {
+		if err := tx.Jobs().Delete(j.ID); err != nil {
+			return err
+		}
+	}
+
+	networks, err := tx.Networks().Find(All)
+	if err != nil {
+		return err
+	}
+	for _, n := range networks {
+		if err := tx.Networks().Delete(n.ID); err != nil {
+			return err
+		}
+	}
+
+	tasks, err := tx.Tasks().Find(All)
+	if err != nil {
+		return err
+	}
+	for _, t := range tasks {
+		if err := tx.Tasks().Delete(t.ID); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // By is an interface type passed to Find methods. Implementations must be

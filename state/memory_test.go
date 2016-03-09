@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStoreNode(t *testing.T) {
-	nodeSet := []*api.Node{
+var (
+	nodeSet = []*api.Node{
 		{
 			ID: "id1",
 			Spec: &api.NodeSpec{
@@ -33,12 +33,121 @@ func TestStoreNode(t *testing.T) {
 			ID: "id3",
 			Spec: &api.NodeSpec{
 				Meta: &api.Meta{
+					// intentionally conflicting name
 					Name: "name2",
 				},
 			},
 		},
 	}
 
+	jobSet = []*api.Job{
+		{
+			ID: "id1",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					Name: "name1",
+				},
+			},
+		},
+		{
+			ID: "id2",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					Name: "name2",
+				},
+			},
+		},
+		{
+			ID: "id3",
+			Spec: &api.JobSpec{
+				Meta: &api.Meta{
+					// intentionally conflicting name
+					Name: "name2",
+				},
+			},
+		},
+	}
+
+	taskSet = []*api.Task{
+		{
+			ID: "id1",
+			Meta: &api.Meta{
+				Name: "name1",
+			},
+			Spec:   &api.TaskSpec{},
+			NodeID: nodeSet[0].ID,
+		},
+		{
+			ID: "id2",
+			Meta: &api.Meta{
+				Name: "name2",
+			},
+			Spec:  &api.TaskSpec{},
+			JobID: jobSet[0].ID,
+		},
+		{
+			ID: "id3",
+			Meta: &api.Meta{
+				Name: "name2",
+			},
+			Spec: &api.TaskSpec{},
+		},
+	}
+
+	networkSet = []*api.Network{
+		{
+			ID: "id1",
+			Spec: &api.NetworkSpec{
+				Meta: &api.Meta{
+					Name: "name1",
+				},
+			},
+		},
+		{
+			ID: "id2",
+			Spec: &api.NetworkSpec{
+				Meta: &api.Meta{
+					Name: "name2",
+				},
+			},
+		},
+		{
+			ID: "id3",
+			Spec: &api.NetworkSpec{
+				Meta: &api.Meta{
+					// intentionally conflicting name
+					Name: "name2",
+				},
+			},
+		},
+	}
+)
+
+func setupTestStore(t *testing.T, s Store) {
+	err := s.Update(func(tx Tx) error {
+		// Prepoulate nodes
+		for _, n := range nodeSet {
+			assert.NoError(t, tx.Nodes().Create(n))
+		}
+
+		// Prepopulate jobs
+		for _, j := range jobSet {
+			assert.NoError(t, tx.Jobs().Create(j))
+		}
+		// Prepopulate tasks
+		for _, task := range taskSet {
+			assert.NoError(t, tx.Tasks().Create(task))
+		}
+		// Prepopulate networks
+		for _, n := range networkSet {
+			assert.NoError(t, tx.Networks().Create(n))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+}
+
+func TestStoreNode(t *testing.T) {
 	s := NewMemoryStore()
 	assert.NotNil(t, s)
 
@@ -50,10 +159,9 @@ func TestStoreNode(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
+	setupTestStore(t, s)
+
 	err = s.Update(func(tx Tx) error {
-		for _, n := range nodeSet {
-			assert.NoError(t, tx.Nodes().Create(n))
-		}
 		allNodes, err := tx.Nodes().Find(All)
 		assert.NoError(t, err)
 		assert.Len(t, allNodes, len(nodeSet))
@@ -121,34 +229,6 @@ func TestStoreNode(t *testing.T) {
 }
 
 func TestStoreJob(t *testing.T) {
-	jobSet := []*api.Job{
-		{
-			ID: "id1",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name1",
-				},
-			},
-		},
-		{
-			ID: "id2",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name2",
-				},
-			},
-		},
-		{
-			ID: "id3",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					// intentionally conflicting name
-					Name: "name2",
-				},
-			},
-		},
-	}
-
 	s := NewMemoryStore()
 	assert.NotNil(t, s)
 
@@ -160,10 +240,9 @@ func TestStoreJob(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
+	setupTestStore(t, s)
+
 	err = s.Update(func(tx Tx) error {
-		for _, j := range jobSet {
-			assert.NoError(t, tx.Jobs().Create(j))
-		}
 		allJobs, err := tx.Jobs().Find(All)
 		assert.NoError(t, err)
 		assert.Len(t, allJobs, len(jobSet))
@@ -232,34 +311,6 @@ func TestStoreJob(t *testing.T) {
 }
 
 func TestStoreNetwork(t *testing.T) {
-	networkSet := []*api.Network{
-		{
-			ID: "id1",
-			Spec: &api.NetworkSpec{
-				Meta: &api.Meta{
-					Name: "name1",
-				},
-			},
-		},
-		{
-			ID: "id2",
-			Spec: &api.NetworkSpec{
-				Meta: &api.Meta{
-					Name: "name2",
-				},
-			},
-		},
-		{
-			ID: "id3",
-			Spec: &api.NetworkSpec{
-				Meta: &api.Meta{
-					// intentionally conflicting name
-					Name: "name2",
-				},
-			},
-		},
-	}
-
 	s := NewMemoryStore()
 	assert.NotNil(t, s)
 
@@ -271,10 +322,9 @@ func TestStoreNetwork(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
+	setupTestStore(t, s)
+
 	err = s.Update(func(tx Tx) error {
-		for _, n := range networkSet {
-			assert.NoError(t, tx.Networks().Create(n))
-		}
 		allNetworks, err := tx.Networks().Find(All)
 		assert.NoError(t, err)
 		assert.Len(t, allNetworks, len(networkSet))
@@ -319,64 +369,21 @@ func TestStoreNetwork(t *testing.T) {
 }
 
 func TestStoreTask(t *testing.T) {
-	node := &api.Node{
-		ID: "node1",
-		Spec: &api.NodeSpec{
-			Meta: &api.Meta{
-				Name: "node-name1",
-			},
-		},
-	}
-	job := &api.Job{
-		ID: "job1",
-		Spec: &api.JobSpec{
-			Meta: &api.Meta{
-				Name: "job-name1",
-			},
-		},
-	}
-	taskSet := []*api.Task{
-		{
-			ID: "id1",
-			Meta: &api.Meta{
-				Name: "name1",
-			},
-			Spec:   &api.TaskSpec{},
-			NodeID: node.ID,
-		},
-		{
-			ID: "id2",
-			Meta: &api.Meta{
-				Name: "name2",
-			},
-			Spec:  &api.TaskSpec{},
-			JobID: job.ID,
-		},
-		{
-			ID: "id3",
-			Meta: &api.Meta{
-				Name: "name2",
-			},
-			Spec: &api.TaskSpec{},
-		},
-	}
-
 	s := NewMemoryStore()
 	assert.NotNil(t, s)
 
-	err := s.Update(func(tx Tx) error {
-		assert.NoError(t, tx.Nodes().Create(node))
-		assert.NoError(t, tx.Jobs().Create(job))
-
+	err := s.View(func(tx ReadTx) error {
 		allTasks, err := tx.Tasks().Find(All)
 		assert.NoError(t, err)
 		assert.Empty(t, allTasks)
+		return nil
+	})
+	assert.NoError(t, err)
 
-		for _, task := range taskSet {
-			assert.NoError(t, tx.Tasks().Create(task))
-		}
+	setupTestStore(t, s)
 
-		allTasks, err = tx.Tasks().Find(All)
+	err = s.Update(func(tx Tx) error {
+		allTasks, err := tx.Tasks().Find(All)
 		assert.NoError(t, err)
 		assert.Len(t, allTasks, len(taskSet))
 
@@ -400,7 +407,7 @@ func TestStoreTask(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 0)
 
-		foundTasks, err = readTx.Tasks().Find(ByNodeID(node.ID))
+		foundTasks, err = readTx.Tasks().Find(ByNodeID(nodeSet[0].ID))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
 		assert.Equal(t, foundTasks[0], taskSet[0])
@@ -408,7 +415,7 @@ func TestStoreTask(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 0)
 
-		foundTasks, err = readTx.Tasks().Find(ByJobID(job.ID))
+		foundTasks, err = readTx.Tasks().Find(ByJobID(jobSet[0].ID))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
 		assert.Equal(t, foundTasks[0], taskSet[1])
@@ -458,107 +465,10 @@ func TestStoreTask(t *testing.T) {
 }
 
 func TestStoreSnapshot(t *testing.T) {
-	nodeSet := []*api.Node{
-		{
-			ID: "id1",
-			Spec: &api.NodeSpec{
-				Meta: &api.Meta{
-					Name: "name1",
-				},
-			},
-		},
-		{
-			ID: "id2",
-			Spec: &api.NodeSpec{
-				Meta: &api.Meta{
-					Name: "name2",
-				},
-			},
-		},
-		{
-			ID: "id3",
-			Spec: &api.NodeSpec{
-				Meta: &api.Meta{
-					Name: "name2",
-				},
-			},
-		},
-	}
-
-	jobSet := []*api.Job{
-		{
-			ID: "id1",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name1",
-				},
-			},
-		},
-		{
-			ID: "id2",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name2",
-				},
-			},
-		},
-		{
-			ID: "id3",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name2",
-				},
-			},
-		},
-	}
-
-	taskSet := []*api.Task{
-		{
-			ID: "id1",
-			Meta: &api.Meta{
-				Name: "name1",
-			},
-			Spec:   &api.TaskSpec{},
-			NodeID: nodeSet[0].ID,
-		},
-		{
-			ID: "id2",
-			Meta: &api.Meta{
-				Name: "name2",
-			},
-			Spec:  &api.TaskSpec{},
-			JobID: jobSet[0].ID,
-		},
-		{
-			ID: "id3",
-			Meta: &api.Meta{
-				Name: "name2",
-			},
-			Spec: &api.TaskSpec{},
-		},
-	}
-
 	s1 := NewMemoryStore()
 	assert.NotNil(t, s1)
 
-	err := s1.Update(func(tx1 Tx) error {
-		// Prepoulate nodes
-		for _, n := range nodeSet {
-			assert.NoError(t, tx1.Nodes().Create(n))
-		}
-
-		// Prepopulate jobs
-		for _, j := range jobSet {
-			assert.NoError(t, tx1.Jobs().Create(j))
-		}
-
-		// Prepopulate tasks
-		for _, task := range taskSet {
-			assert.NoError(t, tx1.Tasks().Create(task))
-		}
-		return nil
-	})
-	assert.NoError(t, err)
+	setupTestStore(t, s1)
 
 	// Fork
 	s2 := NewMemoryStore()
@@ -825,6 +735,54 @@ func TestFailedTransaction(t *testing.T) {
 		foundNodes, err = tx.Nodes().Find(ByName("name2"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 0)
+		return nil
+	})
+	assert.NoError(t, err)
+}
+
+func TestStoreSaveRestore(t *testing.T) {
+	s1 := NewMemoryStore()
+	assert.NotNil(t, s1)
+
+	setupTestStore(t, s1)
+	serialized, err := s1.Save()
+	assert.NoError(t, err)
+
+	s2 := NewMemoryStore()
+	assert.NotNil(t, s2)
+
+	err = s2.Restore(serialized)
+	assert.NoError(t, err)
+
+	err = s2.View(func(tx ReadTx) error {
+		allTasks, err := tx.Tasks().Find(All)
+		assert.NoError(t, err)
+		assert.Len(t, allTasks, len(taskSet))
+		for i := range allTasks {
+			assert.Equal(t, allTasks[i], taskSet[i])
+		}
+
+		allNodes, err := tx.Nodes().Find(All)
+		assert.NoError(t, err)
+		assert.Len(t, allNodes, len(nodeSet))
+		for i := range allNodes {
+			assert.Equal(t, allNodes[i], nodeSet[i])
+		}
+
+		allNetworks, err := tx.Networks().Find(All)
+		assert.NoError(t, err)
+		assert.Len(t, allNetworks, len(networkSet))
+		for i := range allNetworks {
+			assert.Equal(t, allNetworks[i], networkSet[i])
+		}
+
+		allJobs, err := tx.Jobs().Find(All)
+		assert.NoError(t, err)
+		assert.Len(t, allJobs, len(jobSet))
+		for i := range allJobs {
+			assert.Equal(t, allJobs[i], jobSet[i])
+		}
+
 		return nil
 	})
 	assert.NoError(t, err)

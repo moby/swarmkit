@@ -50,7 +50,7 @@ var _ = math.Inf
 // over the raft backend with a request ID to track when the
 // action is effectively applied
 type InternalRaftRequest struct {
-	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	ID uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	// TODO(abronan): replace Pair by swarm actions
 	Pair *Pair `protobuf:"bytes,2,opt,name=pair" json:"pair,omitempty"`
 }

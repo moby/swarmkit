@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package pb;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "github.com/docker/swarm-v2/api/types.proto";
+
+// StoreSnapshot is used to store snapshots of the store.
+message StoreSnapshot {
+	enum Version {
+		// V0 is the initial version of the StoreSnapshot message.
+		V0 = 0;
+	}
+
+	Version version = 1;
+
+	// TODO(aaronl): The current method of assembling a StoreSnapshot
+	// structure and marshalling it is not optimal. It may be better to
+	// write out nodes, networks, tasks, etc. one at a time to an io.Writer
+	// using gogo-protobuf's io.DelimitedWriter. A new value of the version
+	// field could support this approach.
+
+	repeated api.Node nodes = 2;
+	repeated api.Job jobs = 3;
+	repeated api.Network networks = 4;
+	repeated api.Task tasks = 5;
+}
