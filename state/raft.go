@@ -14,27 +14,37 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/coreos/etcd/pkg/idutil"
+	"github.com/coreos/etcd/pkg/wait"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/swarm-v2/api"
 	"github.com/gogo/protobuf/proto"
 )
 
+const (
+	maxRequestBytes = 1.5 * 1024 * 1024
+)
+
 var (
 	defaultLogger = &raft.DefaultLogger{Logger: log.New(os.Stderr, "raft", log.LstdFlags)}
 
 	// ErrConfChangeRefused is thrown when there is an issue with the configuration change
-	ErrConfChangeRefused = errors.New("propose configuration change refused")
+	ErrConfChangeRefused = errors.New("raft: propose configuration change refused")
 	// ErrApplyNotSpecified is thrown during the creation of a raft node when no apply method was provided
-	ErrApplyNotSpecified = errors.New("apply method was not specified")
+	ErrApplyNotSpecified = errors.New("raft: apply method was not specified")
 	// ErrPeerNotFound is thrown when we try an operation on a peer that does not exist in the cluster list
-	ErrPeerNotFound = errors.New("peer not found in cluster list")
+	ErrPeerNotFound = errors.New("raft: peer not found in cluster list")
 	// ErrAppendEntry is thrown when the node fail to append an entry to the logs
-	ErrAppendEntry = errors.New("failed to append entry to logs")
+	ErrAppendEntry = errors.New("raft: failed to append entry to logs")
 	// ErrSetHardState is thrown when the node fails to set the hard state
-	ErrSetHardState = errors.New("failed to set the hard state for log append entry")
+	ErrSetHardState = errors.New("raft: failed to set the hard state for log append entry")
 	// ErrApplySnapshot is thrown when the node fails to apply a snapshot
-	ErrApplySnapshot = errors.New("failed to apply snapshot on raft node")
+	ErrApplySnapshot = errors.New("raft: failed to apply snapshot on raft node")
+	// ErrStopped is thrown when an operation was submitted but the node was stopped in the meantime
+	ErrStopped = errors.New("raft: failed to process the request: node is stopped")
+	// ErrRequestTooLarge is thrown when a raft internal message is too large to be sent
+	ErrRequestTooLarge = errors.New("raft: raft message is too large and can't be sent")
 )
 
 // ApplyCommand function can be used and triggered
@@ -61,6 +71,8 @@ type Node struct {
 	PStore    map[string]string
 	Store     *raft.MemoryStorage
 	Cfg       *raft.Config
+	reqIDGen  *idutil.Generator
+	w         wait.Wait
 
 	ticker *time.Ticker
 	stopCh chan struct{}
@@ -100,10 +112,11 @@ func NewNode(ctx context.Context, id uint64, addr string, cfg *raft.Config, appl
 			MaxInflightMsgs: cfg.MaxInflightMsgs,
 			Logger:          cfg.Logger,
 		},
-		PStore: make(map[string]string),
-		ticker: time.NewTicker(time.Second),
-		stopCh: make(chan struct{}),
-		apply:  apply,
+		PStore:   make(map[string]string),
+		ticker:   time.NewTicker(time.Second),
+		stopCh:   make(chan struct{}),
+		reqIDGen: idutil.NewGenerator(uint8(id), time.Now()),
+		apply:    apply,
 	}
 
 	n.Cluster.AddPeer(
@@ -136,6 +149,7 @@ func DefaultNodeConfig() *raft.Config {
 // messages received from other Raft nodes in
 // the cluster
 func (n *Node) Start() (errCh <-chan error) {
+	n.w = wait.New()
 	var err error
 	n.errCh = make(chan error)
 	go func() {
@@ -336,6 +350,16 @@ func (n *Node) UnregisterNode(id uint64) error {
 	return nil
 }
 
+// ProposeValue calls Propose on the raft and waits
+// on the commit log action before returning a result
+func (n *Node) ProposeValue(ctx context.Context, pair *api.Pair) error {
+	_, err := n.processInternalRaftRequest(ctx, &api.InternalRaftRequest{Pair: pair})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Get returns a value from the PStore
 func (n *Node) Get(key string) string {
 	n.storeLock.RLock()
@@ -379,6 +403,7 @@ func (n *Node) saveToStorage(hardState raftpb.HardState, entries []raftpb.Entry,
 }
 
 // Sends a series of messages to members in the raft
+// specify a large value might end up with shooting in the foot.
 func (n *Node) send(messages []raftpb.Message) error {
 	peers := n.Cluster.Peers()
 
@@ -403,6 +428,42 @@ func (n *Node) send(messages []raftpb.Message) error {
 	return nil
 }
 
+type applyResult struct {
+	resp proto.Message
+	err  error
+}
+
+func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRaftRequest) (proto.Message, error) {
+	r.ID = n.reqIDGen.Next()
+
+	ch := n.w.Register(r.ID)
+
+	data, err := r.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(data) > maxRequestBytes {
+		return nil, ErrRequestTooLarge
+	}
+
+	err = n.Propose(ctx, data)
+	if err != nil {
+		return nil, err
+	}
+
+	select {
+	case x := <-ch:
+		res := x.(*applyResult)
+		return res.resp, res.err
+	case <-ctx.Done():
+		n.w.Trigger(r.ID, nil)
+		return nil, ctx.Err()
+	case <-n.stopCh:
+		return nil, ErrStopped
+	}
+}
+
 func (n *Node) processCommitted(entry raftpb.Entry) error {
 	// Process a normal entry
 	if entry.Type == raftpb.EntryNormal && entry.Data != nil {
@@ -422,10 +483,8 @@ func (n *Node) processCommitted(entry raftpb.Entry) error {
 }
 
 func (n *Node) processEntry(entry raftpb.Entry) error {
-	// TODO (abronan, al, mrjana): replace KV
-	// pair by internal store interface
-	pair := &api.Pair{}
-	err := proto.Unmarshal(entry.Data, pair)
+	r := &api.InternalRaftRequest{}
+	err := proto.Unmarshal(entry.Data, r)
 	if err != nil {
 		return err
 	}
@@ -434,7 +493,8 @@ func (n *Node) processEntry(entry raftpb.Entry) error {
 		n.apply(entry.Data)
 	}
 
-	n.Put(pair.Key, string(pair.Value))
+	n.Put(r.Pair.Key, string(r.Pair.Value))
+	n.w.Trigger(r.ID, &applyResult{resp: r, err: nil})
 	return nil
 }
 

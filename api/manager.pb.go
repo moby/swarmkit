@@ -9,6 +9,7 @@
 		manager.proto
 
 	It has these top-level messages:
+		InternalRaftRequest
 		JoinRequest
 		JoinResponse
 		LeaveRequest
@@ -44,6 +45,18 @@ import io "io"
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+
+// Contains one of many protobuf encoded objects to replicate
+// over the raft backend with a request ID to track when the
+// action is effectively applied
+type InternalRaftRequest struct {
+	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	// TODO(abronan): replace Pair by swarm actions
+	Pair *Pair `protobuf:"bytes,2,opt,name=pair" json:"pair,omitempty"`
+}
+
+func (m *InternalRaftRequest) Reset()      { *m = InternalRaftRequest{} }
+func (*InternalRaftRequest) ProtoMessage() {}
 
 type JoinRequest struct {
 	Node *RaftNode `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
@@ -112,6 +125,7 @@ func (m *Pair) Reset()      { *m = Pair{} }
 func (*Pair) ProtoMessage() {}
 
 func init() {
+	proto.RegisterType((*InternalRaftRequest)(nil), "api.InternalRaftRequest")
 	proto.RegisterType((*JoinRequest)(nil), "api.JoinRequest")
 	proto.RegisterType((*JoinResponse)(nil), "api.JoinResponse")
 	proto.RegisterType((*LeaveRequest)(nil), "api.LeaveRequest")
@@ -120,6 +134,19 @@ func init() {
 	proto.RegisterType((*ProcessRaftMessageResponse)(nil), "api.ProcessRaftMessageResponse")
 	proto.RegisterType((*RaftNode)(nil), "api.RaftNode")
 	proto.RegisterType((*Pair)(nil), "api.Pair")
+}
+func (this *InternalRaftRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.InternalRaftRequest{")
+	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
+	if this.Pair != nil {
+		s = append(s, "Pair: "+fmt.Sprintf("%#v", this.Pair)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
 }
 func (this *JoinRequest) GoString() string {
 	if this == nil {
@@ -360,6 +387,39 @@ var _Manager_serviceDesc = grpc.ServiceDesc{
 	Streams: []grpc.StreamDesc{},
 }
 
+func (m *InternalRaftRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *InternalRaftRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.ID != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintManager(data, i, uint64(m.ID))
+	}
+	if m.Pair != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintManager(data, i, uint64(m.Pair.Size()))
+		n1, err := m.Pair.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	return i, nil
+}
+
 func (m *JoinRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -379,11 +439,11 @@ func (m *JoinRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintManager(data, i, uint64(m.Node.Size()))
-		n1, err := m.Node.MarshalTo(data[i:])
+		n2, err := m.Node.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n1
+		i += n2
 	}
 	return i, nil
 }
@@ -437,11 +497,11 @@ func (m *LeaveRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintManager(data, i, uint64(m.Node.Size()))
-		n2, err := m.Node.MarshalTo(data[i:])
+		n3, err := m.Node.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n2
+		i += n3
 	}
 	return i, nil
 }
@@ -483,11 +543,11 @@ func (m *ProcessRaftMessageRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintManager(data, i, uint64(m.Msg.Size()))
-		n3, err := m.Msg.MarshalTo(data[i:])
+		n4, err := m.Msg.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n3
+		i += n4
 	}
 	return i, nil
 }
@@ -598,6 +658,19 @@ func encodeVarintManager(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	return offset + 1
 }
+func (m *InternalRaftRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.ID != 0 {
+		n += 1 + sovManager(uint64(m.ID))
+	}
+	if m.Pair != nil {
+		l = m.Pair.Size()
+		n += 1 + l + sovManager(uint64(l))
+	}
+	return n
+}
+
 func (m *JoinRequest) Size() (n int) {
 	var l int
 	_ = l
@@ -694,6 +767,17 @@ func sovManager(x uint64) (n int) {
 func sozManager(x uint64) (n int) {
 	return sovManager(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
+func (this *InternalRaftRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&InternalRaftRequest{`,
+		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`Pair:` + strings.Replace(fmt.Sprintf("%v", this.Pair), "Pair", "Pair", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *JoinRequest) String() string {
 	if this == nil {
 		return "nil"
@@ -781,6 +865,108 @@ func valueToStringManager(v interface{}) string {
 	}
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
+}
+func (m *InternalRaftRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowManager
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: InternalRaftRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: InternalRaftRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
+			}
+			m.ID = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowManager
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.ID |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Pair", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowManager
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthManager
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Pair == nil {
+				m.Pair = &Pair{}
+			}
+			if err := m.Pair.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipManager(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthManager
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
 }
 func (m *JoinRequest) Unmarshal(data []byte) error {
 	l := len(data)
