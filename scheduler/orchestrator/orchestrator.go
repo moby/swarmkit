@@ -52,10 +52,7 @@ func (o *Orchestrator) Run() {
 
 	for {
 		select {
-		case event, ok := <-watcher:
-			if !ok {
-				return
-			}
+		case event := <-watcher:
 			switch v := event.Payload.(type) {
 			case state.EventDeleteJob:
 				o.deleteJob(v.Job)
@@ -68,7 +65,7 @@ func (o *Orchestrator) Run() {
 			}
 		case <-o.stopChan:
 			queue.StopWatch(watcher)
-			o.stopChan = nil
+			return
 		}
 	}
 }
