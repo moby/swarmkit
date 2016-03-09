@@ -338,29 +338,26 @@ func TestStoreTask(t *testing.T) {
 	taskSet := []*api.Task{
 		{
 			ID: "id1",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name1",
-				},
+			Meta: &api.Meta{
+				Name: "name1",
 			},
+			Spec:   &api.TaskSpec{},
 			NodeID: node.ID,
 		},
 		{
 			ID: "id2",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name2",
-				},
+			Meta: &api.Meta{
+				Name: "name2",
 			},
+			Spec:  &api.TaskSpec{},
 			JobID: job.ID,
 		},
 		{
 			ID: "id3",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name2",
-				},
+			Meta: &api.Meta{
+				Name: "name2",
 			},
+			Spec: &api.TaskSpec{},
 		},
 	}
 
@@ -425,15 +422,10 @@ func TestStoreTask(t *testing.T) {
 	// Update.
 	update := &api.Task{
 		ID: "id3",
-
-		// NOTE(stevvooe): It doesn't entirely make sense to updating task to
-		// have a different name on the job spec. We are mostly doing this to
-		// test that the store works.
-		Spec: &api.JobSpec{
-			Meta: &api.Meta{
-				Name: "name3",
-			},
+		Meta: &api.Meta{
+			Name: "name3",
 		},
+		Spec: &api.TaskSpec{},
 	}
 	err = s.Update(func(tx Tx) error {
 		assert.NotEqual(t, update, tx.Tasks().Get("id3"))
@@ -523,29 +515,26 @@ func TestStoreSnapshot(t *testing.T) {
 	taskSet := []*api.Task{
 		{
 			ID: "id1",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name1",
-				},
+			Meta: &api.Meta{
+				Name: "name1",
 			},
+			Spec:   &api.TaskSpec{},
 			NodeID: nodeSet[0].ID,
 		},
 		{
 			ID: "id2",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name2",
-				},
+			Meta: &api.Meta{
+				Name: "name2",
 			},
+			Spec:  &api.TaskSpec{},
 			JobID: jobSet[0].ID,
 		},
 		{
 			ID: "id3",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name2",
-				},
+			Meta: &api.Meta{
+				Name: "name2",
 			},
+			Spec: &api.TaskSpec{},
 		},
 	}
 
@@ -724,11 +713,10 @@ func TestStoreSnapshot(t *testing.T) {
 	// Create task
 	createTask := &api.Task{
 		ID: "id4",
-		Spec: &api.JobSpec{
-			Meta: &api.Meta{
-				Name: "name4",
-			},
+		Meta: &api.Meta{
+			Name: "name4",
 		},
+		Spec: &api.TaskSpec{},
 	}
 
 	err = s1.Update(func(tx1 Tx) error {
@@ -748,11 +736,10 @@ func TestStoreSnapshot(t *testing.T) {
 	// Update task
 	updateTask := &api.Task{
 		ID: "id3",
-		Spec: &api.JobSpec{
-			Meta: &api.Meta{
-				Name: "name3",
-			},
+		Meta: &api.Meta{
+			Name: "name3",
 		},
+		Spec: &api.TaskSpec{},
 	}
 
 	err = s1.Update(func(tx1 Tx) error {

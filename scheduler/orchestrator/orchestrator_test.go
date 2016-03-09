@@ -29,6 +29,7 @@ func TestOrchestrator(t *testing.T) {
 				Meta: &api.Meta{
 					Name: "name1",
 				},
+				Template: &api.TaskSpec{},
 				Orchestration: &api.JobSpec_Service{
 					Service: &api.JobSpec_ServiceJob{
 						Instances: 2,
@@ -46,11 +47,11 @@ func TestOrchestrator(t *testing.T) {
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStatus_NEW)
-	assert.Equal(t, observedTask1.Spec.Meta.Name, "name1")
+	assert.Equal(t, observedTask1.Meta.Name, "name1")
 
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStatus_NEW)
-	assert.Equal(t, observedTask2.Spec.Meta.Name, "name1")
+	assert.Equal(t, observedTask2.Meta.Name, "name1")
 
 	// Create a second job.
 	err = store.Update(func(tx state.Tx) error {
@@ -60,6 +61,7 @@ func TestOrchestrator(t *testing.T) {
 				Meta: &api.Meta{
 					Name: "name2",
 				},
+				Template: &api.TaskSpec{},
 				Orchestration: &api.JobSpec_Service{
 					Service: &api.JobSpec_ServiceJob{
 						Instances: 1,
@@ -74,7 +76,7 @@ func TestOrchestrator(t *testing.T) {
 
 	observedTask3 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStatus_NEW)
-	assert.Equal(t, observedTask3.Spec.Meta.Name, "name2")
+	assert.Equal(t, observedTask3.Meta.Name, "name2")
 
 	// Update a job to scale it out to 3 instances
 	err = store.Update(func(tx state.Tx) error {
@@ -84,6 +86,7 @@ func TestOrchestrator(t *testing.T) {
 				Meta: &api.Meta{
 					Name: "name2",
 				},
+				Template: &api.TaskSpec{},
 				Orchestration: &api.JobSpec_Service{
 					Service: &api.JobSpec_ServiceJob{
 						Instances: 3,
@@ -98,11 +101,11 @@ func TestOrchestrator(t *testing.T) {
 
 	observedTask4 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask4.Status.State, api.TaskStatus_NEW)
-	assert.Equal(t, observedTask4.Spec.Meta.Name, "name2")
+	assert.Equal(t, observedTask4.Meta.Name, "name2")
 
 	observedTask5 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask5.Status.State, api.TaskStatus_NEW)
-	assert.Equal(t, observedTask5.Spec.Meta.Name, "name2")
+	assert.Equal(t, observedTask5.Meta.Name, "name2")
 
 	// Now scale it back down to 1 instance
 	err = store.Update(func(tx state.Tx) error {
@@ -112,6 +115,7 @@ func TestOrchestrator(t *testing.T) {
 				Meta: &api.Meta{
 					Name: "name2",
 				},
+				Template: &api.TaskSpec{},
 				Orchestration: &api.JobSpec_Service{
 					Service: &api.JobSpec_ServiceJob{
 						Instances: 1,
@@ -126,11 +130,11 @@ func TestOrchestrator(t *testing.T) {
 
 	observedDeletion1 := watchTaskDelete(t, watch)
 	assert.Equal(t, observedDeletion1.Status.State, api.TaskStatus_NEW)
-	assert.Equal(t, observedDeletion1.Spec.Meta.Name, "name2")
+	assert.Equal(t, observedDeletion1.Meta.Name, "name2")
 
 	observedDeletion2 := watchTaskDelete(t, watch)
 	assert.Equal(t, observedDeletion2.Status.State, api.TaskStatus_NEW)
-	assert.Equal(t, observedDeletion2.Spec.Meta.Name, "name2")
+	assert.Equal(t, observedDeletion2.Meta.Name, "name2")
 
 	// There should be one remaining task attached to job id2/name2.
 	var tasks []*api.Task
@@ -155,7 +159,7 @@ func TestOrchestrator(t *testing.T) {
 
 	observedTask6 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask6.Status.State, api.TaskStatus_NEW)
-	assert.Equal(t, observedTask6.Spec.Meta.Name, "name2")
+	assert.Equal(t, observedTask6.Meta.Name, "name2")
 
 	// Delete the job. Its remaining task should go away.
 	err = store.Update(func(tx state.Tx) error {
@@ -166,7 +170,7 @@ func TestOrchestrator(t *testing.T) {
 
 	observedDeletion3 := watchTaskDelete(t, watch)
 	assert.Equal(t, observedDeletion3.Status.State, api.TaskStatus_NEW)
-	assert.Equal(t, observedDeletion3.Spec.Meta.Name, "name2")
+	assert.Equal(t, observedDeletion3.Meta.Name, "name2")
 
 	orchestrator.Stop()
 }

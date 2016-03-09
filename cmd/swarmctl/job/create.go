@@ -44,9 +44,13 @@ var (
 				Meta: &api.Meta{
 					Name: name,
 				},
-				Source: &api.JobSpec_Image{
-					Image: &api.ImageSpec{
-						Reference: image,
+				Template: &api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{
+							Image: &api.ImageSpec{
+								Reference: image,
+							},
+						},
 					},
 				},
 				Orchestration: &api.JobSpec_Service{
