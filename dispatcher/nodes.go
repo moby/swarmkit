@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/pkg/heartbeat"
+	"github.com/docker/swarm-v2/dispatcher/heartbeat"
 )
 
 type registeredNode struct {
