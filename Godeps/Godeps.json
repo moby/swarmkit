@@ -21,6 +21,16 @@
 			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
 		},
 		{
+			"ImportPath": "github.com/coreos/etcd/pkg/idutil",
+			"Comment": "v2.2.5",
+			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/pkg/wait",
+			"Comment": "v2.2.5",
+			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
+		},
+		{
 			"ImportPath": "github.com/coreos/etcd/raft",
 			"Comment": "v2.2.5",
 			"Rev": "bc9ddf260115d2680191c46977ae72b837785472"
@@ -271,11 +281,6 @@
 		{
 			"ImportPath": "github.com/inconshreveable/mousetrap",
 			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
-		},
-		{
-			"ImportPath": "github.com/mrjana/libnetwork/netlabel",
-			"Comment": "v0.1-1053-g1575efc",
-			"Rev": "1575efccd1f71984911d7a785016561fa05e06ca"
 		},
 		{
 			"ImportPath": "github.com/opencontainers/runc/libcontainer/user",
