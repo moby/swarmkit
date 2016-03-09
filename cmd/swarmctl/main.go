@@ -3,25 +3,33 @@ package main
 import (
 	"os"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/cmd/swarmctl/job"
 	"github.com/docker/swarm-v2/cmd/swarmctl/node"
 	"github.com/docker/swarm-v2/cmd/swarmctl/task"
 	"github.com/docker/swarm-v2/version"
-
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 func main() {
-	if err := mainCmd.Execute(); err != nil {
-		logrus.Fatal(err)
+	if c, err := mainCmd.ExecuteC(); err != nil {
+		c.Println("Error:", grpc.ErrorDesc(err))
+		// if it's not a grpc, we assume it's a user error and we display the usage.
+		if grpc.Code(err) == codes.Unknown {
+			c.Println(c.UsageString())
+		}
+
+		os.Exit(-1)
 	}
 }
 
 var (
 	mainCmd = &cobra.Command{
-		Use:   os.Args[0],
-		Short: "Control a swarm cluster",
+		Use:           os.Args[0],
+		Short:         "Control a swarm cluster",
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 )
 
