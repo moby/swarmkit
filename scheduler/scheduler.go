@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/docker/swarm-v2/orchestrator"
-	"github.com/docker/swarm-v2/scheduler/planner"
+	"github.com/docker/swarm-v2/planner"
 	"github.com/docker/swarm-v2/state"
 )
 
