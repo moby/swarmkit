@@ -22,6 +22,16 @@ service Manager {
 	rpc ProcessRaftMessage(ProcessRaftMessageRequest) returns (ProcessRaftMessageResponse) {}
 }
 
+// Contains one of many protobuf encoded objects to replicate
+// over the raft backend with a request ID to track when the
+// action is effectively applied
+message InternalRaftRequest {
+	uint64 ID = 1;
+
+	// TODO(abronan): replace Pair by swarm actions
+	Pair pair = 2;
+}
+
 message JoinRequest {
 	RaftNode node = 1;
 }
