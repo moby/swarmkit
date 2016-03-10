@@ -8,8 +8,6 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 // Meta is common to all API objects types.
 message Meta {
-	// TODO(stevvooe): Consider an ID here. Probably not.
-
 	string name = 1;
 	map<string, string> labels = 2;
 }
@@ -65,11 +63,38 @@ message ImageSpec {
 	// reference is a docker image reference. This can include a rpository, tag
 	// or be fully qualified witha digest. The format is specified in the
 	// distribution/reference package.
-	string reference = 1; // TODO(stevvooe): Field type should be reference.Field.
+	string reference = 1;
 }
 
-// Spec defines the properties of a Job. As tasks are created, they gain the
-// Job specification.
+message ContainerSpec {
+	ImageSpec image = 1;
+
+	// Command to run the the container. The first element is a path to the
+	// executable and the following elements are treated as arguments.
+	//
+	// If command is empty, execution will fall back to the entrypoint.
+	repeated string command = 2;
+
+	// Args specifies arguments provided to the entrypoint of the container.
+	// Ignored if command is specified.
+	repeated string args = 3;
+
+	// Env specifies the environment variables for the container in NAME=VALUE
+	// format. These must be compliant with  [IEEE Std
+	// 1003.1-2001](http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html).
+	repeated string env = 4;
+}
+
+// TaskSpec defines properties required by the agent for execution.
+message TaskSpec {
+	oneof runtime {
+		ContainerSpec container = 1;
+	}
+}
+
+// JobSpec defines the properties of a Job. As tasks are created, they gain the
+// encapsulated template and any emergent properties from the job
+// configuration.
 //
 // There are two key components to a spec. The first is a "source". A source
 // defines runnable content. For the swarm use case, this is a container but we
@@ -80,6 +105,8 @@ message JobSpec {
 	Meta meta = 1;
 
 	message ServiceJob {
+		// Instances specifies the number of instances of the service job that
+		// should be running.
 		int64 instances = 1;
 	}
 
@@ -103,21 +130,19 @@ message JobSpec {
 		}
 	}
 
-	oneof source {
-		ImageSpec image = 2;
+	oneof orchestration {
+		ServiceJob service = 2;
+		BatchJob batch = 3;
+		GlobalJob global = 4;
+		CronJob cron = 5;
 	}
 
-	oneof orchestration { // TODO(stevvooe): Consider calling this strategy.
-		ServiceJob service = 3;
-		BatchJob batch = 4;
-		GlobalJob global = 5;
-		CronJob cron = 6;
-	}
+	// Environment specifies key=value style environment variables that will be
+	// set on all tasks implementing the job.
+	repeated NetworkAttachmentSpec networks = 6;
 
-	repeated NetworkAttachmentSpec networks = 7;
-
-	// TODO(stevvooe): Specify the components that make up the container
-	// configuration. This should have fields similar to container.Config.
+	// Template defines the base configuration for tasks created for this job.
+	TaskSpec template = 7;
 }
 
 message TaskStatus {
@@ -157,22 +182,18 @@ message Task {
 
 	// NodeID indicates the node to which the task is assigned. If this field
 	// is empty or not set, the task is unassigned.
-	string node_id = 4 [(gogoproto.customname) = "NodeID"];
+	string node_id = 3 [(gogoproto.customname) = "NodeID"];
 
-	// NOTE(stevvooe): Spec, status or both may be set, depending on the role
-	// of this message.
+	// Meta inherits labels from the JobSpec.Meta associated with this task. It
+	// may include other labels added by the manager. The name will be a human
+	// readable name, calculated based on the JobSpec.Meta.Name field.
+	Meta meta = 4;
 
-	JobSpec spec = 5;
+	// Spec declares the runtime parameters for the task. This is copied out of
+	// the job's template field.
+	TaskSpec spec = 5;
 
 	TaskStatus status = 6;
-
-	// Resolved is the source resolved by the swarm cluster. This may be
-	// identical, depending on the name provided in the JobSpec. For example,
-	// the name field may be "redis", whereas this field would specify the
-	// exact hash, "redis@sha256:...".
-	oneof resolved {
-		ImageSpec image = 7;
-	}
 
 	message NetworkAttachment {
 		// Network state as a whole becomes part of Task so
@@ -185,7 +206,7 @@ message Task {
 		repeated string addresses = 2;
 	}
 
-	repeated NetworkAttachment networks = 3;
+	repeated NetworkAttachment networks = 7;
 }
 
 message Job {

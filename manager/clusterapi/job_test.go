@@ -15,9 +15,13 @@ func createSpec(name, image string, instances int64) *api.JobSpec {
 		Meta: &api.Meta{
 			Name: name,
 		},
-		Source: &api.JobSpec_Image{
-			Image: &api.ImageSpec{
-				Reference: image,
+		Template: &api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Image: &api.ImageSpec{
+						Reference: image,
+					},
+				},
 			},
 		},
 		Orchestration: &api.JobSpec_Service{
@@ -63,27 +67,41 @@ func TestValidateJobSpecMeta(t *testing.T) {
 	}
 }
 
-func TestValidateJobSpecImageSpec(t *testing.T) {
-	type BadSource struct {
+func TestValidateJobSpecTemplate(t *testing.T) {
+	type badSource struct {
 		s *api.JobSpec
 		c codes.Code
 	}
 
-	for _, bad := range []BadSource{
+	for _, bad := range []badSource{
 		{
-			s: &api.JobSpec{Source: nil},
+			s: &api.JobSpec{Template: nil},
 			c: codes.InvalidArgument,
 		},
 		{
-			s: &api.JobSpec{Source: &api.JobSpec_Image{}},
-			c: codes.Unimplemented,
+			s: &api.JobSpec{
+				Template: &api.TaskSpec{
+					Runtime: nil,
+				},
+			},
+			c: codes.InvalidArgument,
 		},
+		// NOTE(stevvooe): can't actually test this case because we don't have
+		// another runtime defined.
+		// {
+		// 	s: &api.JobSpec{
+		// 		Template: &api.TaskSpec{
+		// 			Runtime:
+		// 		},
+		// 	},
+		// 	c: codes.Unimplemented,
+		// },
 		{
 			s: createSpec("", "", 0),
 			c: codes.InvalidArgument,
 		},
 	} {
-		err := validateJobSpecImageSpec(bad.s)
+		err := validateJobSpecTemplate(bad.s)
 		assert.Error(t, err)
 		assert.Equal(t, bad.c, grpc.Code(err))
 	}
@@ -91,7 +109,7 @@ func TestValidateJobSpecImageSpec(t *testing.T) {
 	for _, good := range []*api.JobSpec{
 		createSpec("", "image", 0),
 	} {
-		err := validateJobSpecImageSpec(good)
+		err := validateJobSpecTemplate(good)
 		assert.NoError(t, err)
 	}
 }

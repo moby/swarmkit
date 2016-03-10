@@ -518,12 +518,11 @@ func (ti taskIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 		panic("unexpected type passed to FromObject")
 	}
 
-	if t.Spec == nil || t.Spec.Meta == nil {
+	if t.Spec == nil || t.Meta == nil {
 		return false, nil, nil
 	}
 	// Add the null character as a terminator
-	return true, []byte(t.Spec.Meta.Name + "\x00"), nil
-
+	return true, []byte(t.Meta.Name + "\x00"), nil
 }
 
 type taskIndexerByJobID struct{}

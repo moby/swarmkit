@@ -20,16 +20,22 @@ func validateJobSpecMeta(m *api.Meta) error {
 	return nil
 }
 
-func validateJobSpecImageSpec(spec *api.JobSpec) error {
-	if spec.GetSource() == nil {
-		return grpc.Errorf(codes.InvalidArgument, "source: required in job spec")
+func validateJobSpecTemplate(spec *api.JobSpec) error {
+	if spec.Template.GetRuntime() == nil {
+		return grpc.Errorf(codes.InvalidArgument, "template: runtime container spec required in job spec task template")
 	}
-	image := spec.GetImage()
+
+	container := spec.Template.GetContainer()
+	if container == nil {
+		return grpc.Errorf(codes.Unimplemented, "template: unimplemented runtime in job spec task template")
+	}
+
+	image := container.Image
 	if image == nil {
-		return grpc.Errorf(codes.Unimplemented, "source: invalid source type. only image is supposed")
+		return grpc.Errorf(codes.Unimplemented, "template: container image not specified")
 	}
 	if image.Reference == "" {
-		return grpc.Errorf(codes.InvalidArgument, "source: image reference must be provided")
+		return grpc.Errorf(codes.InvalidArgument, "template: image reference must be provided")
 	}
 	return nil
 }
@@ -61,7 +67,7 @@ func validateJobSpec(spec *api.JobSpec) error {
 	if err := validateJobSpecMeta(spec.Meta); err != nil {
 		return err
 	}
-	if err := validateJobSpecImageSpec(spec); err != nil {
+	if err := validateJobSpecTemplate(spec); err != nil {
 		return err
 	}
 	if err := validateJobSpecOrchestration(spec); err != nil {
