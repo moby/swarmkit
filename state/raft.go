@@ -23,7 +23,8 @@ import (
 )
 
 const (
-	maxRequestBytes = 1.5 * 1024 * 1024
+	maxRequestBytes       = 1.5 * 1024 * 1024
+	defaultProposeTimeout = 10 * time.Second
 )
 
 var (
@@ -352,7 +353,13 @@ func (n *Node) UnregisterNode(id uint64) error {
 
 // ProposeValue calls Propose on the raft and waits
 // on the commit log action before returning a result
-func (n *Node) ProposeValue(ctx context.Context, pair *api.Pair) error {
+func (n *Node) ProposeValue(ctx context.Context, pair *api.Pair, timeout time.Duration) error {
+	if timeout == 0 {
+		ctx, _ = context.WithTimeout(ctx, defaultProposeTimeout)
+	} else {
+		ctx, _ = context.WithTimeout(ctx, timeout)
+	}
+
 	_, err := n.processInternalRaftRequest(ctx, &api.InternalRaftRequest{Pair: pair})
 	if err != nil {
 		return err
@@ -403,7 +410,6 @@ func (n *Node) saveToStorage(hardState raftpb.HardState, entries []raftpb.Entry,
 }
 
 // Sends a series of messages to members in the raft
-// specify a large value might end up with shooting in the foot.
 func (n *Node) send(messages []raftpb.Message) error {
 	peers := n.Cluster.Peers()
 

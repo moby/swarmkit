@@ -177,12 +177,8 @@ func TestRaftLeaderDown(t *testing.T) {
 	// Ensure that node 2 and node 3 have the same leader
 	assert.Equal(t, nodes[3].Leader(), nodes[2].Leader())
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	assert.NotNil(t, ctx)
-	defer cancel()
-
 	// Propose a value
-	err := nodes[2].ProposeValue(ctx, &api.Pair{Key: key, Value: value})
+	err := nodes[2].ProposeValue(context.Background(), &api.Pair{Key: key, Value: value}, 2*time.Second)
 	assert.NoError(t, err, "can't propose value to cluster")
 
 	// The value should be replicated on all remaining nodes
@@ -214,12 +210,8 @@ func TestRaftFollowerDown(t *testing.T) {
 	assert.True(t, nodes[1].IsLeader(), "node 1 is not a leader anymore")
 	assert.Equal(t, nodes[2].Leader(), nodes[1].ID)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	assert.NotNil(t, ctx)
-	defer cancel()
-
 	// Propose a value
-	err := nodes[2].ProposeValue(ctx, &api.Pair{Key: key, Value: value})
+	err := nodes[2].ProposeValue(context.Background(), &api.Pair{Key: key, Value: value}, 2*time.Second)
 	assert.NoError(t, err, "can't propose value to cluster")
 
 	// The value should be replicated on all remaining nodes
@@ -241,12 +233,8 @@ func TestRaftLogReplication(t *testing.T) {
 	key := "foo"
 	value := []byte("bar")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	assert.NotNil(t, ctx)
-	defer cancel()
-
 	// Propose a value
-	err := nodes[1].ProposeValue(ctx, &api.Pair{Key: key, Value: value})
+	err := nodes[1].ProposeValue(context.Background(), &api.Pair{Key: key, Value: value}, 2*time.Second)
 	assert.NoError(t, err, "can't propose value to cluster")
 
 	// All nodes should have the value in the physical store
@@ -272,12 +260,8 @@ func TestRaftLogReplicationWithoutLeader(t *testing.T) {
 	// Stop the leader
 	nodes[1].Stop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	assert.NotNil(t, ctx)
-	defer cancel()
-
 	// Propose a value
-	err := nodes[2].ProposeValue(ctx, &api.Pair{Key: key, Value: value})
+	err := nodes[2].ProposeValue(context.Background(), &api.Pair{Key: key, Value: value}, 2*time.Second)
 	assert.Error(t, err, "can't propose value to cluster")
 
 	// No value should be replicated in the store in the absence of the leader
@@ -305,12 +289,8 @@ func TestRaftQuorumFailure(t *testing.T) {
 	nodes[4].Stop()
 	nodes[5].Stop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	assert.NotNil(t, ctx)
-	defer cancel()
-
 	// Propose a value
-	err := nodes[1].ProposeValue(ctx, &api.Pair{Key: key, Value: value})
+	err := nodes[1].ProposeValue(context.Background(), &api.Pair{Key: key, Value: value}, 2*time.Second)
 	assert.Error(t, err, "can't propose value to cluster")
 
 	// The value should not be replicated, we have no majority
@@ -341,12 +321,8 @@ func TestRaftFollowerLeave(t *testing.T) {
 	// Wait heartbeat tick
 	time.Sleep(1 * time.Second)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	assert.NotNil(t, ctx)
-	defer cancel()
-
 	// Propose a value
-	err = nodes[1].ProposeValue(ctx, &api.Pair{Key: key, Value: value})
+	err = nodes[1].ProposeValue(context.Background(), &api.Pair{Key: key, Value: value}, 2*time.Second)
 	assert.NoError(t, err, "can't propose value to cluster")
 
 	// Value should be replicated on every node
@@ -391,12 +367,8 @@ func TestRaftLeaderLeave(t *testing.T) {
 	assert.NotEqual(t, nodes[2].Leader(), nodes[1].ID)
 	assert.Equal(t, nodes[2].Leader(), nodes[3].Leader())
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	assert.NotNil(t, ctx)
-	defer cancel()
-
 	// Propose a value
-	err = nodes[2].ProposeValue(ctx, &api.Pair{Key: key, Value: value})
+	err = nodes[2].ProposeValue(context.Background(), &api.Pair{Key: key, Value: value}, 2*time.Second)
 	assert.NoError(t, err, "can't propose value to cluster")
 
 	// The value should be replicated on all remaining nodes
