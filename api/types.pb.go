@@ -769,6 +769,426 @@ func init() {
 	proto.RegisterEnum("api.NodeStatus_State", NodeStatus_State_name, NodeStatus_State_value)
 	proto.RegisterEnum("api.TaskStatus_State", TaskStatus_State_name, TaskStatus_State_value)
 }
+
+func (m *Meta) Copy() *Meta {
+	if m == nil {
+		return nil
+	}
+
+	o := &Meta{
+		Name: m.Name,
+	}
+
+	if m.Labels != nil {
+		o.Labels = make(map[string]string)
+		for k, v := range m.Labels {
+			o.Labels[k] = v
+		}
+	}
+
+	return o
+}
+
+func (m *NodeSpec) Copy() *NodeSpec {
+	if m == nil {
+		return nil
+	}
+
+	o := &NodeSpec{
+		Meta:   *m.Meta.Copy(),
+		Addr:   m.Addr,
+		Status: m.Status.Copy(),
+	}
+
+	return o
+}
+
+func (m *Node) Copy() *Node {
+	if m == nil {
+		return nil
+	}
+
+	o := &Node{
+		ID:     m.ID,
+		Spec:   m.Spec.Copy(),
+		Status: *m.Status.Copy(),
+	}
+
+	return o
+}
+
+func (m *NodeStatus) Copy() *NodeStatus {
+	if m == nil {
+		return nil
+	}
+
+	o := &NodeStatus{
+		State:   m.State,
+		Message: m.Message,
+	}
+
+	return o
+}
+
+func (m *ImageSpec) Copy() *ImageSpec {
+	if m == nil {
+		return nil
+	}
+
+	o := &ImageSpec{
+		Reference: m.Reference,
+	}
+
+	return o
+}
+
+func (m *ContainerSpec) Copy() *ContainerSpec {
+	if m == nil {
+		return nil
+	}
+
+	o := &ContainerSpec{
+		Image: m.Image.Copy(),
+	}
+
+	if m.Command != nil {
+		o.Command = make([]string, 0, len(m.Command))
+		for _, v := range m.Command {
+			o.Command = append(o.Command, v)
+		}
+	}
+
+	if m.Args != nil {
+		o.Args = make([]string, 0, len(m.Args))
+		for _, v := range m.Args {
+			o.Args = append(o.Args, v)
+		}
+	}
+
+	if m.Env != nil {
+		o.Env = make([]string, 0, len(m.Env))
+		for _, v := range m.Env {
+			o.Env = append(o.Env, v)
+		}
+	}
+
+	return o
+}
+
+func (m *TaskSpec) Copy() *TaskSpec {
+	if m == nil {
+		return nil
+	}
+
+	o := &TaskSpec{}
+
+	switch m.Runtime.(type) {
+	case *TaskSpec_Container:
+		i := &TaskSpec_Container{
+			Container: m.GetContainer().Copy(),
+		}
+
+		o.Runtime = i
+	}
+
+	return o
+}
+
+func (m *JobSpec) Copy() *JobSpec {
+	if m == nil {
+		return nil
+	}
+
+	o := &JobSpec{
+		Meta:     *m.Meta.Copy(),
+		Template: m.Template.Copy(),
+	}
+
+	if m.Networks != nil {
+		o.Networks = make([]*JobSpec_NetworkAttachmentSpec, 0, len(m.Networks))
+		for _, v := range m.Networks {
+			o.Networks = append(o.Networks, v.Copy())
+		}
+	}
+
+	switch m.Orchestration.(type) {
+	case *JobSpec_Service:
+		i := &JobSpec_Service{
+			Service: m.GetService().Copy(),
+		}
+
+		o.Orchestration = i
+	case *JobSpec_Batch:
+		i := &JobSpec_Batch{
+			Batch: m.GetBatch().Copy(),
+		}
+
+		o.Orchestration = i
+	case *JobSpec_Global:
+		i := &JobSpec_Global{
+			Global: m.GetGlobal().Copy(),
+		}
+
+		o.Orchestration = i
+	case *JobSpec_Cron:
+		i := &JobSpec_Cron{
+			Cron: m.GetCron().Copy(),
+		}
+
+		o.Orchestration = i
+	}
+
+	return o
+}
+
+func (m *JobSpec_ServiceJob) Copy() *JobSpec_ServiceJob {
+	if m == nil {
+		return nil
+	}
+
+	o := &JobSpec_ServiceJob{
+		Instances: m.Instances,
+	}
+
+	return o
+}
+
+func (m *JobSpec_BatchJob) Copy() *JobSpec_BatchJob {
+	if m == nil {
+		return nil
+	}
+
+	o := &JobSpec_BatchJob{
+		Completions: m.Completions,
+		Paralellism: m.Paralellism,
+	}
+
+	return o
+}
+
+func (m *JobSpec_GlobalJob) Copy() *JobSpec_GlobalJob {
+	if m == nil {
+		return nil
+	}
+
+	o := &JobSpec_GlobalJob{}
+
+	return o
+}
+
+func (m *JobSpec_CronJob) Copy() *JobSpec_CronJob {
+	if m == nil {
+		return nil
+	}
+
+	o := &JobSpec_CronJob{}
+
+	return o
+}
+
+func (m *JobSpec_NetworkAttachmentSpec) Copy() *JobSpec_NetworkAttachmentSpec {
+	if m == nil {
+		return nil
+	}
+
+	o := &JobSpec_NetworkAttachmentSpec{}
+
+	switch m.Reference.(type) {
+	case *JobSpec_NetworkAttachmentSpec_Name:
+		i := &JobSpec_NetworkAttachmentSpec_Name{
+			Name: m.GetName(),
+		}
+
+		o.Reference = i
+	case *JobSpec_NetworkAttachmentSpec_NetworkID:
+		i := &JobSpec_NetworkAttachmentSpec_NetworkID{
+			NetworkID: m.GetNetworkID(),
+		}
+
+		o.Reference = i
+	}
+
+	return o
+}
+
+func (m *TaskStatus) Copy() *TaskStatus {
+	if m == nil {
+		return nil
+	}
+
+	o := &TaskStatus{
+		State:   m.State,
+		Message: m.Message,
+	}
+
+	return o
+}
+
+func (m *Task) Copy() *Task {
+	if m == nil {
+		return nil
+	}
+
+	o := &Task{
+		ID:     m.ID,
+		JobID:  m.JobID,
+		NodeID: m.NodeID,
+		Meta:   *m.Meta.Copy(),
+		Spec:   m.Spec.Copy(),
+		Status: m.Status.Copy(),
+	}
+
+	if m.Networks != nil {
+		o.Networks = make([]*Task_NetworkAttachment, 0, len(m.Networks))
+		for _, v := range m.Networks {
+			o.Networks = append(o.Networks, v.Copy())
+		}
+	}
+
+	return o
+}
+
+func (m *Task_NetworkAttachment) Copy() *Task_NetworkAttachment {
+	if m == nil {
+		return nil
+	}
+
+	o := &Task_NetworkAttachment{
+		Network: m.Network.Copy(),
+	}
+
+	if m.Addresses != nil {
+		o.Addresses = make([]string, 0, len(m.Addresses))
+		for _, v := range m.Addresses {
+			o.Addresses = append(o.Addresses, v)
+		}
+	}
+
+	return o
+}
+
+func (m *Job) Copy() *Job {
+	if m == nil {
+		return nil
+	}
+
+	o := &Job{
+		ID:   m.ID,
+		Spec: m.Spec.Copy(),
+	}
+
+	return o
+}
+
+func (m *IPAMConfiguration) Copy() *IPAMConfiguration {
+	if m == nil {
+		return nil
+	}
+
+	o := &IPAMConfiguration{
+		Subnet:  m.Subnet,
+		Range:   m.Range,
+		Gateway: m.Gateway,
+	}
+
+	if m.Reserved != nil {
+		o.Reserved = make(map[string]string)
+		for k, v := range m.Reserved {
+			o.Reserved[k] = v
+		}
+	}
+
+	return o
+}
+
+func (m *Driver) Copy() *Driver {
+	if m == nil {
+		return nil
+	}
+
+	o := &Driver{
+		Name: m.Name,
+	}
+
+	if m.Options != nil {
+		o.Options = make(map[string]string)
+		for k, v := range m.Options {
+			o.Options[k] = v
+		}
+	}
+
+	return o
+}
+
+func (m *NetworkSpec) Copy() *NetworkSpec {
+	if m == nil {
+		return nil
+	}
+
+	o := &NetworkSpec{
+		Meta:                *m.Meta.Copy(),
+		DriverConfiguration: m.DriverConfiguration.Copy(),
+		Ipv6Enabled:         m.Ipv6Enabled,
+		Internal:            m.Internal,
+		IPAM:                m.IPAM.Copy(),
+	}
+
+	return o
+}
+
+func (m *NetworkSpec_IPAMOptions) Copy() *NetworkSpec_IPAMOptions {
+	if m == nil {
+		return nil
+	}
+
+	o := &NetworkSpec_IPAMOptions{
+		Driver: m.Driver.Copy(),
+	}
+
+	if m.IPv4 != nil {
+		o.IPv4 = make([]*IPAMConfiguration, 0, len(m.IPv4))
+		for _, v := range m.IPv4 {
+			o.IPv4 = append(o.IPv4, v.Copy())
+		}
+	}
+
+	if m.IPv6 != nil {
+		o.IPv6 = make([]*IPAMConfiguration, 0, len(m.IPv6))
+		for _, v := range m.IPv6 {
+			o.IPv6 = append(o.IPv6, v.Copy())
+		}
+	}
+
+	return o
+}
+
+func (m *Network) Copy() *Network {
+	if m == nil {
+		return nil
+	}
+
+	o := &Network{
+		ID:          m.ID,
+		Spec:        m.Spec.Copy(),
+		DriverState: m.DriverState.Copy(),
+	}
+
+	return o
+}
+
+func (m *WeightedPeer) Copy() *WeightedPeer {
+	if m == nil {
+		return nil
+	}
+
+	o := &WeightedPeer{
+		Addr:   m.Addr,
+		Weight: m.Weight,
+	}
+
+	return o
+}
+
 func (this *Meta) GoString() string {
 	if this == nil {
 		return "nil"
