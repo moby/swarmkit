@@ -9,17 +9,6 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-// TODO(vieux): refactor validation once we have more objects to validate.
-func validateJobSpecMeta(m *api.Meta) error {
-	if m == nil {
-		return grpc.Errorf(codes.InvalidArgument, "meta: required in job spec")
-	}
-	if m.Name == "" {
-		return grpc.Errorf(codes.InvalidArgument, "meta: name must be provided")
-	}
-	return nil
-}
-
 func validateJobSpecTemplate(spec *api.JobSpec) error {
 	if spec.Template.GetRuntime() == nil {
 		return grpc.Errorf(codes.InvalidArgument, "template: runtime container spec required in job spec task template")
@@ -64,7 +53,7 @@ func validateJobSpec(spec *api.JobSpec) error {
 	if spec == nil {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
-	if err := validateJobSpecMeta(spec.Meta); err != nil {
+	if err := validateMeta(spec.Meta); err != nil {
 		return err
 	}
 	if err := validateJobSpecTemplate(spec); err != nil {
