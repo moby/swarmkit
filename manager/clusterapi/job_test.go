@@ -38,35 +38,6 @@ func createJob(ts *testServer, name, image string, instances int64) *api.Job {
 	return r.Job
 }
 
-func TestValidateJobSpecMeta(t *testing.T) {
-	type BadMeta struct {
-		m *api.Meta
-		c codes.Code
-	}
-
-	for _, bad := range []BadMeta{
-		{
-			m: nil,
-			c: codes.InvalidArgument,
-		},
-		{
-			m: &api.Meta{},
-			c: codes.InvalidArgument,
-		},
-	} {
-		err := validateJobSpecMeta(bad.m)
-		assert.Error(t, err)
-		assert.Equal(t, bad.c, grpc.Code(err))
-	}
-
-	for _, good := range []*api.Meta{
-		{Name: "name"},
-	} {
-		err := validateJobSpecMeta(good)
-		assert.NoError(t, err)
-	}
-}
-
 func TestValidateJobSpecTemplate(t *testing.T) {
 	type badSource struct {
 		s *api.JobSpec
@@ -89,12 +60,12 @@ func TestValidateJobSpecTemplate(t *testing.T) {
 		// NOTE(stevvooe): can't actually test this case because we don't have
 		// another runtime defined.
 		// {
-		// 	s: &api.JobSpec{
-		// 		Template: &api.TaskSpec{
-		// 			Runtime:
-		// 		},
-		// 	},
-		// 	c: codes.Unimplemented,
+		//	s: &api.JobSpec{
+		//		Template: &api.TaskSpec{
+		//			Runtime:
+		//		},
+		//	},
+		//	c: codes.Unimplemented,
 		// },
 		{
 			s: createSpec("", "", 0),
