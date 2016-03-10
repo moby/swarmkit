@@ -8,8 +8,8 @@ import (
 	"github.com/docker/swarm-v2/state"
 )
 
-// A Planner assigns tasks to nodes.
-type Planner struct {
+// Scheduler assigns tasks to nodes.
+type Scheduler struct {
 	store           state.WatchableStore
 	unassignedTasks *list.List
 
@@ -19,9 +19,9 @@ type Planner struct {
 	doneChan chan struct{}
 }
 
-// New creates a new planner.
-func New(store state.WatchableStore) *Planner {
-	return &Planner{
+// New creates a new scheduler.
+func New(store state.WatchableStore) *Scheduler {
+	return &Scheduler{
 		store:           store,
 		unassignedTasks: list.New(),
 		stopChan:        make(chan struct{}),
@@ -29,7 +29,7 @@ func New(store state.WatchableStore) *Planner {
 	}
 }
 
-func (p *Planner) setupTasksList(tx state.ReadTx) error {
+func (s *Scheduler) setupTasksList(tx state.ReadTx) error {
 	tasks, err := tx.Tasks().Find(state.All)
 	if err != nil {
 		return err
@@ -37,28 +37,28 @@ func (p *Planner) setupTasksList(tx state.ReadTx) error {
 	for _, t := range tasks {
 		if t.NodeID == "" {
 			log.Infof("Queueing %#v", t)
-			p.enqueue(t)
+			s.enqueue(t)
 		}
 	}
 
 	return nil
 }
 
-// Run is the planner event loop.
-func (p *Planner) Run() error {
-	defer close(p.doneChan)
+// Run is the scheduler event loop.
+func (s *Scheduler) Run() error {
+	defer close(s.doneChan)
 
-	updates := p.store.WatchQueue().Watch()
-	defer p.store.WatchQueue().StopWatch(updates)
+	updates := s.store.WatchQueue().Watch()
+	defer s.store.WatchQueue().StopWatch(updates)
 
-	err := p.store.View(p.setupTasksList)
+	err := s.store.View(s.setupTasksList)
 	if err != nil {
 		log.Errorf("could not snapshot store: %v", err)
 		return err
 	}
 
 	// Queue all unassigned tasks before processing changes.
-	p.tick()
+	s.tick()
 
 	pendingChanges := 0
 
@@ -68,9 +68,9 @@ func (p *Planner) Run() error {
 		case event := <-updates:
 			switch v := event.Payload.(type) {
 			case state.EventCreateTask:
-				pendingChanges += p.createTask(v.Task)
+				pendingChanges += s.createTask(v.Task)
 			case state.EventUpdateTask:
-				pendingChanges += p.createTask(v.Task)
+				pendingChanges += s.createTask(v.Task)
 			case state.EventCreateNode:
 				if v.Node.Status.State == api.NodeStatus_READY {
 					pendingChanges++
@@ -81,38 +81,38 @@ func (p *Planner) Run() error {
 				}
 			case state.EventCommit:
 				if pendingChanges > 0 {
-					p.tick()
+					s.tick()
 					pendingChanges = 0
 				}
 			}
-		case <-p.stopChan:
+		case <-s.stopChan:
 			return nil
 		}
 	}
 }
 
-// Stop causes the planner event loop to stop running.
-func (p *Planner) Stop() {
-	close(p.stopChan)
-	<-p.doneChan
+// Stop causes the scheduler event loop to stop running.
+func (s *Scheduler) Stop() {
+	close(s.stopChan)
+	<-s.doneChan
 }
 
 // enqueue queues a task for scheduling.
-func (p *Planner) enqueue(t *api.Task) {
-	p.unassignedTasks.PushBack(t)
+func (s *Scheduler) enqueue(t *api.Task) {
+	s.unassignedTasks.PushBack(t)
 }
 
-func (p *Planner) createTask(t *api.Task) int {
+func (s *Scheduler) createTask(t *api.Task) int {
 	if t.NodeID == "" {
 		// unassigned task
-		p.enqueue(t)
+		s.enqueue(t)
 		return 1
 	}
 	return 0
 }
 
 // tick attempts to schedule the queue.
-func (p *Planner) tick() {
+func (s *Scheduler) tick() {
 	nextBatch := list.New()
 
 	// TODO(aaronl): Ideally, we would make scheduling decisions outside
@@ -123,17 +123,17 @@ func (p *Planner) tick() {
 	// applies them. This will require keeping local state to keep track of
 	// allocations as they are made, since the store itself can't be
 	// changed through View.
-	err := p.store.Update(func(tx state.Tx) error {
+	err := s.store.Update(func(tx state.Tx) error {
 		nodes, err := tx.Nodes().Find(state.All)
 		if err != nil {
 			return err
 		}
 
 		var next *list.Element
-		for e := p.unassignedTasks.Front(); e != nil; e = next {
+		for e := s.unassignedTasks.Front(); e != nil; e = next {
 			next = e.Next()
 			t := e.Value.(*api.Task)
-			if newT := p.scheduleTask(tx, nodes, *t); newT == nil {
+			if newT := s.scheduleTask(tx, nodes, *t); newT == nil {
 				// scheduling failed; keep this task in the list
 				nextBatch.PushBack(t)
 			}
@@ -146,13 +146,13 @@ func (p *Planner) tick() {
 
 		// leave unassignedTasks list in place
 	} else {
-		p.unassignedTasks = nextBatch
+		s.unassignedTasks = nextBatch
 	}
 }
 
 // scheduleTask schedules a single task.
-func (p *Planner) scheduleTask(tx state.Tx, nodes []*api.Node, t api.Task) *api.Task {
-	node := p.selectNodeForTask(tx, nodes, &t)
+func (s *Scheduler) scheduleTask(tx state.Tx, nodes []*api.Node, t api.Task) *api.Task {
+	node := s.selectNodeForTask(tx, nodes, &t)
 	if node == nil {
 		log.Info("No nodes available to assign tasks to")
 		return nil
@@ -170,7 +170,7 @@ func (p *Planner) scheduleTask(tx state.Tx, nodes []*api.Node, t api.Task) *api.
 
 // selectNodeForTask is a naive scheduler. Will select a ready, non-drained
 // node with the fewer number of tasks already running.
-func (p *Planner) selectNodeForTask(tx state.Tx, nodes []*api.Node, t *api.Task) *api.Node {
+func (s *Scheduler) selectNodeForTask(tx state.Tx, nodes []*api.Node, t *api.Task) *api.Node {
 	var target *api.Node
 	targetTasks := 0
 
