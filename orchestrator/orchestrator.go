@@ -28,7 +28,7 @@ func New(store state.WatchableStore) *Orchestrator {
 }
 
 // Run contains the orchestrator event loop. It runs until Stop is called.
-func (o *Orchestrator) Run() {
+func (o *Orchestrator) Run() error {
 	defer close(o.doneChan)
 
 	// Watch changes to jobs and tasks
@@ -43,7 +43,7 @@ func (o *Orchestrator) Run() {
 		return err
 	})
 	if err != nil {
-		log.Errorf("error querying existing jobs: %v", err)
+		return err
 	}
 
 	for _, j := range existingJobs {
@@ -65,7 +65,7 @@ func (o *Orchestrator) Run() {
 			}
 		case <-o.stopChan:
 			queue.StopWatch(watcher)
-			return
+			return nil
 		}
 	}
 }

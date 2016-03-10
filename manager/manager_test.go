@@ -36,7 +36,7 @@ func TestManager(t *testing.T) {
 	done := make(chan error)
 	defer close(done)
 	go func() {
-		done <- m.ListenAndServe()
+		done <- m.Run()
 	}()
 
 	conn, err := grpc.Dial(temp.Name(), grpc.WithInsecure(), grpc.WithTimeout(10*time.Second),

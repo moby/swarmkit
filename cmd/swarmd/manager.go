@@ -22,7 +22,7 @@ var managerCmd = &cobra.Command{
 			ListenProto: "tcp",
 			ListenAddr:  addr,
 		})
-		return m.ListenAndServe()
+		return m.Run()
 	},
 }
 
