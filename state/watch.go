@@ -2,7 +2,7 @@ package state
 
 import (
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/watch"
+	"github.com/docker/swarm-v2/state/watch"
 )
 
 // Event is the type used for events passed over watcher channels, and also

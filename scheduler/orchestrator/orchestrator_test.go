@@ -6,7 +6,7 @@ import (
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/state"
-	"github.com/docker/swarm-v2/watch"
+	"github.com/docker/swarm-v2/state/watch"
 	"github.com/stretchr/testify/assert"
 )
 

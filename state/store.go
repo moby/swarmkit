@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/watch"
+	"github.com/docker/swarm-v2/state/watch"
 )
 
 var (
