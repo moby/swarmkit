@@ -29,9 +29,9 @@ var (
 				// Ignore flushing errors - there's nothing we can do.
 				_ = w.Flush()
 			}()
-			fmt.Fprintln(w, "ID\tJobID\tNodeID")
+			fmt.Fprintln(w, "ID\tJobID\tStatus\tNodeID")
 			for _, t := range r.Tasks {
-				fmt.Fprintf(w, "%s\t%s\t%s\n", t.ID, t.JobID, t.NodeID)
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", t.ID, t.JobID, t.Status.State.String(), t.NodeID)
 			}
 			return nil
 		},

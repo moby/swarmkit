@@ -13,5 +13,7 @@ var (
 func init() {
 	Cmd.AddCommand(
 		lsCmd,
+		inspectCmd,
+		removeCmd,
 	)
 }
