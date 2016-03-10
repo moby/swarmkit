@@ -3,8 +3,9 @@ package agent
 import (
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/log"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -19,7 +20,7 @@ type Agent struct {
 	closed chan struct{}
 	conn   *grpc.ClientConn
 	picker *picker
-	logger *log.Entry
+	logger *logrus.Entry
 }
 
 // New returns a new agent, ready for task dispatch.
@@ -30,7 +31,7 @@ func New(config *Config) (*Agent, error) {
 
 	return &Agent{
 		config: config,
-		logger: log.WithFields(log.Fields{
+		logger: log.L.WithFields(logrus.Fields{
 			"agent.id":   config.ID,
 			"agent.name": config.Name,
 		}),
@@ -40,14 +41,14 @@ func New(config *Config) (*Agent, error) {
 // Run blocks forever, received tasks from a dispatcher.
 func (a *Agent) Run(ctx context.Context) error {
 	a.logger.Debugf("(*Agent).Run")
-	ctx = withLogger(ctx, a.logger)
+	ctx = log.WithLogger(ctx, a.logger)
 	if err := a.connect(ctx); err != nil {
 		return err
 	}
 
 	for {
 		if err := a.session(ctx); err != nil {
-			getLogger(ctx).WithField("err", err).Errorf("session error")
+			log.G(ctx).WithField("err", err).Errorf("session error")
 		}
 	}
 }
@@ -55,7 +56,7 @@ func (a *Agent) Run(ctx context.Context) error {
 // connect creates the client connection. This should only be called once per
 // agent.
 func (a *Agent) connect(ctx context.Context) error {
-	getLogger(ctx).Debugf("(*Agent).connect")
+	log.G(ctx).Debugf("(*Agent).connect")
 	manager, err := a.config.Managers.Select()
 	if err != nil {
 		return err
@@ -80,7 +81,7 @@ func (a *Agent) connect(ctx context.Context) error {
 // flow into the agent, such as task assignment, are called back into the
 // agent.
 func (a *Agent) session(ctx context.Context) error {
-	getLogger(ctx).Debugf("(*Agent).session")
+	log.G(ctx).Debugf("(*Agent).session")
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -89,7 +90,7 @@ func (a *Agent) session(ctx context.Context) error {
 		return err
 	}
 
-	ctx = withLogger(ctx, getLogger(ctx).WithField("session.id", sessionID))
+	ctx = log.WithLogger(ctx, log.G(ctx).WithField("session.id", sessionID))
 
 	var (
 		errs    = make(chan error)
@@ -111,7 +112,7 @@ func (a *Agent) session(ctx context.Context) error {
 			seen := map[string]struct{}{}
 			for _, manager := range msg.Managers {
 				if manager.Addr == "" {
-					getLogger(ctx).WithField("manager.addr", manager.Addr).
+					log.G(ctx).WithField("manager.addr", manager.Addr).
 						Warnf("skipping bad manager address")
 					continue
 				}
@@ -148,7 +149,7 @@ func (a *Agent) session(ctx context.Context) error {
 }
 
 func (a *Agent) register(ctx context.Context) (string, error) {
-	getLogger(ctx).Debugf("(*Agent).register")
+	log.G(ctx).Debugf("(*Agent).register")
 	client := api.NewDispatcherClient(a.conn)
 
 	resp, err := client.Register(ctx, &api.RegisterRequest{
@@ -194,8 +195,8 @@ func (a *Agent) heartbeat(ctx context.Context, sessionID string, errs chan error
 			}
 
 			heartbeat.Reset(resp.Period)
-			getLogger(ctx).WithFields(
-				log.Fields{
+			log.G(ctx).WithFields(
+				logrus.Fields{
 					"period":        resp.Period,
 					"grpc.duration": time.Since(start),
 				}).Debugf("heartbeat")
@@ -206,7 +207,7 @@ func (a *Agent) heartbeat(ctx context.Context, sessionID string, errs chan error
 }
 
 func (a *Agent) listen(ctx context.Context, sessionID string, msgs chan *api.SessionMessage, errs chan error) {
-	getLogger(ctx).Debugf("(*Agent).listen")
+	log.G(ctx).Debugf("(*Agent).listen")
 	client := api.NewDispatcherClient(a.conn)
 	session, err := client.Session(ctx, &api.SessionRequest{
 		NodeID:    a.config.ID,
@@ -239,7 +240,7 @@ func (a *Agent) listen(ctx context.Context, sessionID string, msgs chan *api.Ses
 }
 
 func (a *Agent) watch(ctx context.Context, sessionID string, msgs chan *api.TasksMessage, errs chan error) {
-	getLogger(ctx).Debugf("(*Agent).watch")
+	log.G(ctx).Debugf("(*Agent).watch")
 	client := api.NewDispatcherClient(a.conn)
 	watch, err := client.Tasks(ctx, &api.TasksRequest{NodeID: a.config.ID, SessionID: sessionID})
 	if err != nil {
@@ -274,14 +275,4 @@ func (a *Agent) watch(ctx context.Context, sessionID string, msgs chan *api.Task
 func (a *Agent) Assign(tasks []*api.Task) error {
 	a.logger.WithField("tasks", tasks).Debugf("(*Agent).Assign")
 	return nil
-}
-
-type loggerKey struct{}
-
-func withLogger(ctx context.Context, logger *log.Entry) context.Context {
-	return context.WithValue(ctx, loggerKey{}, logger)
-}
-
-func getLogger(ctx context.Context) *log.Entry {
-	return ctx.Value(loggerKey{}).(*log.Entry)
 }
