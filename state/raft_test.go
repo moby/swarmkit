@@ -138,6 +138,8 @@ func shutdownNode(node *Node) {
 }
 
 func TestRaftBootstrap(t *testing.T) {
+	t.Parallel()
+
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
@@ -147,6 +149,8 @@ func TestRaftBootstrap(t *testing.T) {
 }
 
 func TestLeader(t *testing.T) {
+	t.Parallel()
+
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
@@ -159,6 +163,8 @@ func TestLeader(t *testing.T) {
 }
 
 func TestRaftLeaderDown(t *testing.T) {
+	t.Parallel()
+
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
@@ -198,6 +204,8 @@ func TestRaftLeaderDown(t *testing.T) {
 }
 
 func TestRaftFollowerDown(t *testing.T) {
+	t.Parallel()
+
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
@@ -235,6 +243,8 @@ func TestRaftFollowerDown(t *testing.T) {
 }
 
 func TestRaftLogReplication(t *testing.T) {
+	t.Parallel()
+
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
@@ -263,6 +273,7 @@ func TestRaftLogReplication(t *testing.T) {
 }
 
 func TestRaftLogReplicationWithoutLeader(t *testing.T) {
+	t.Parallel()
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
@@ -291,6 +302,8 @@ func TestRaftLogReplicationWithoutLeader(t *testing.T) {
 }
 
 func TestRaftQuorumFailure(t *testing.T) {
+	t.Parallel()
+
 	// Bring up a 5 nodes cluster
 	nodes := newRaftCluster(t)
 	addRaftNode(t, nodes)
@@ -324,6 +337,8 @@ func TestRaftQuorumFailure(t *testing.T) {
 }
 
 func TestRaftFollowerLeave(t *testing.T) {
+	t.Parallel()
+
 	// Bring up a 5 nodes cluster
 	nodes := newRaftCluster(t)
 	addRaftNode(t, nodes)
@@ -366,6 +381,8 @@ func TestRaftFollowerLeave(t *testing.T) {
 }
 
 func TestRaftLeaderLeave(t *testing.T) {
+	t.Parallel()
+
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
