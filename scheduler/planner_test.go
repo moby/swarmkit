@@ -1,4 +1,4 @@
-package planner
+package scheduler
 
 import (
 	"testing"
