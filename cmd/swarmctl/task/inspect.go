@@ -33,14 +33,14 @@ var (
 				// Ignore flushing errors - there's nothing we can do.
 				_ = w.Flush()
 			}()
-			fmt.Fprintf(w, "ID: %s\n", r.Task.ID)
-			fmt.Fprintf(w, "JobID: %s\n", r.Task.JobID)
+			fmt.Fprintf(w, "ID:\t%s\n", r.Task.ID)
+			fmt.Fprintf(w, "JobID:\t%s\n", r.Task.JobID)
 			if r.Task.Status.Message != "" {
-				fmt.Fprintf(w, "Status: %s (%s)\n", r.Task.Status.State.String(), r.Task.Status.Message)
+				fmt.Fprintf(w, "Status:\t%s (%s)\n", r.Task.Status.State.String(), r.Task.Status.Message)
 			} else {
-				fmt.Fprintf(w, "Status: %s\n", r.Task.Status.State.String())
+				fmt.Fprintf(w, "Status:\t%s\n", r.Task.Status.State.String())
 			}
-			fmt.Fprintf(w, "NodeID: %s\n", r.Task.NodeID)
+			fmt.Fprintf(w, "NodeID:\t%s\n", r.Task.NodeID)
 			return nil
 		},
 	}
