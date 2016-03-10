@@ -37,9 +37,6 @@ var (
 				return err
 			}
 
-			// TODO(aluzzardi): `oneof` in the API are really ugly to use. We
-			// should reconsider having them embedded directly into the `main`
-			// type rather than into a nested type.
 			spec := &api.JobSpec{
 				Meta: &api.Meta{
 					Name: name,

@@ -107,6 +107,7 @@ message UpdateJobRequest {
 }
 
 message UpdateJobResponse {
+	Job job = 1;
 }
 
 message RemoveJobRequest {

@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-// TODO(vieux): refactor validation once we have more objects to validate
+// TODO(vieux): refactor validation once we have more objects to validate.
 func validateJobSpecMeta(m *api.Meta) error {
 	if m == nil {
 		return grpc.Errorf(codes.InvalidArgument, "meta: required in job spec")
@@ -130,9 +130,39 @@ func (s *Server) GetJob(ctx context.Context, request *api.GetJobRequest) (*api.G
 }
 
 // UpdateJob updates a Job referenced by JobID with the given JobSpec.
-// TODO(aluzzardi): Not implemented.
+// TODO(vieux): Implement more than just `instances`.
 func (s *Server) UpdateJob(ctx context.Context, request *api.UpdateJobRequest) (*api.UpdateJobResponse, error) {
-	return nil, grpc.Errorf(codes.Unimplemented, errNotImplemented.Error())
+	if request.JobID == "" {
+		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+	}
+
+	if request.Spec.GetOrchestration() != nil {
+		if err := validateJobSpecOrchestration(request.Spec); err != nil {
+			return nil, err
+		}
+	}
+
+	var job *api.Job
+	err := s.store.Update(func(tx state.Tx) error {
+		jobs := tx.Jobs()
+		job = jobs.Get(request.JobID)
+		if job == nil {
+			return nil
+		}
+		if service := request.Spec.GetService(); service != nil {
+			job.Spec.GetService().Instances = service.Instances
+		}
+		return jobs.Update(job)
+	})
+	if err != nil {
+		return nil, err
+	}
+	if job == nil {
+		return nil, grpc.Errorf(codes.NotFound, "job %s not found", request.JobID)
+	}
+	return &api.UpdateJobResponse{
+		Job: job,
+	}, nil
 }
 
 // RemoveJob removes a Job referenced by JobID.

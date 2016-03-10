@@ -149,6 +149,7 @@ func (m *UpdateJobRequest) Reset()      { *m = UpdateJobRequest{} }
 func (*UpdateJobRequest) ProtoMessage() {}
 
 type UpdateJobResponse struct {
+	Job *Job `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
 }
 
 func (m *UpdateJobResponse) Reset()      { *m = UpdateJobResponse{} }
@@ -463,8 +464,11 @@ func (this *UpdateJobResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 4)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.UpdateJobResponse{")
+	if this.Job != nil {
+		s = append(s, "Job: "+fmt.Sprintf("%#v", this.Job)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1526,6 +1530,16 @@ func (m *UpdateJobResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.Job != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintCluster(data, i, uint64(m.Job.Size()))
+		n10, err := m.Job.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n10
+	}
 	return i, nil
 }
 
@@ -1638,11 +1652,11 @@ func (m *CreateNetworkRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Spec.Size()))
-		n10, err := m.Spec.MarshalTo(data[i:])
+		n11, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n10
+		i += n11
 	}
 	return i, nil
 }
@@ -1666,11 +1680,11 @@ func (m *CreateNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Network.Size()))
-		n11, err := m.Network.MarshalTo(data[i:])
+		n12, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n11
+		i += n12
 	}
 	return i, nil
 }
@@ -1724,11 +1738,11 @@ func (m *GetNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Network.Size()))
-		n12, err := m.Network.MarshalTo(data[i:])
+		n13, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n12
+		i += n13
 	}
 	return i, nil
 }
@@ -2029,6 +2043,10 @@ func (m *UpdateJobRequest) Size() (n int) {
 func (m *UpdateJobResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.Job != nil {
+		l = m.Job.Size()
+		n += 1 + l + sovCluster(uint64(l))
+	}
 	return n
 }
 
@@ -2335,6 +2353,7 @@ func (this *UpdateJobResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&UpdateJobResponse{`,
+		`Job:` + strings.Replace(fmt.Sprintf("%v", this.Job), "Job", "Job", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3848,6 +3867,39 @@ func (m *UpdateJobResponse) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: UpdateJobResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Job", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCluster
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCluster
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Job == nil {
+				m.Job = &Job{}
+			}
+			if err := m.Job.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipCluster(data[iNdEx:])
