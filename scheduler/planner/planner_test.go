@@ -49,28 +49,26 @@ func TestPlanner(t *testing.T) {
 
 	initialTaskSet := []*api.Task{
 		{
-			ID: "id1",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name1",
-				},
+			ID:   "id1",
+			Spec: &api.TaskSpec{},
+			Meta: &api.Meta{
+				Name: "name1",
 			},
+
 			NodeID: initialNodeSet[0].ID,
 		},
 		{
-			ID: "id2",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name2",
-				},
+			ID:   "id2",
+			Spec: &api.TaskSpec{},
+			Meta: &api.Meta{
+				Name: "name2",
 			},
 		},
 		{
-			ID: "id3",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name2",
-				},
+			ID:   "id3",
+			Spec: &api.TaskSpec{},
+			Meta: &api.Meta{
+				Name: "name2",
 			},
 		},
 	}
@@ -120,11 +118,10 @@ func TestPlanner(t *testing.T) {
 
 		// Create a new task. It should get assigned to id1.
 		t4 := &api.Task{
-			ID: "id4",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name4",
-				},
+			ID:   "id4",
+			Spec: &api.TaskSpec{},
+			Meta: &api.Meta{
+				Name: "name4",
 			},
 		}
 		assert.NoError(t, tx.Tasks().Create(t4))
@@ -141,11 +138,10 @@ func TestPlanner(t *testing.T) {
 		// Remove assignment from task id4. It should get assigned
 		// to node id1.
 		t4 := &api.Task{
-			ID: "id4",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name4",
-				},
+			ID:   "id4",
+			Spec: &api.TaskSpec{},
+			Meta: &api.Meta{
+				Name: "name4",
 			},
 		}
 		assert.NoError(t, tx.Tasks().Update(t4))
@@ -177,11 +173,10 @@ func TestPlanner(t *testing.T) {
 
 		// Create an unassigned task.
 		task := &api.Task{
-			ID: "removednode",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "removednode",
-				},
+			ID:   "removednode",
+			Spec: &api.TaskSpec{},
+			Meta: &api.Meta{
+				Name: "removednode",
 			},
 		}
 		assert.NoError(t, tx.Tasks().Create(task))
@@ -210,11 +205,10 @@ func TestPlanner(t *testing.T) {
 
 		// Create an unassigned task.
 		t5 := &api.Task{
-			ID: "id5",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name5",
-				},
+			ID:   "id5",
+			Spec: &api.TaskSpec{},
+			Meta: &api.Meta{
+				Name: "name5",
 			},
 		}
 		assert.NoError(t, tx.Tasks().Create(t5))
@@ -243,11 +237,10 @@ func TestPlanner(t *testing.T) {
 
 		// Create an unassigned task.
 		t6 := &api.Task{
-			ID: "id6",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name6",
-				},
+			ID:   "id6",
+			Spec: &api.TaskSpec{},
+			Meta: &api.Meta{
+				Name: "name6",
 			},
 		}
 		assert.NoError(t, tx.Tasks().Create(t6))
@@ -276,11 +269,10 @@ func TestPlanner(t *testing.T) {
 		// Create an unassigned task. Should be assigned to the
 		// now-ready node.
 		t7 := &api.Task{
-			ID: "id7",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name7",
-				},
+			ID:   "id7",
+			Spec: &api.TaskSpec{},
+			Meta: &api.Meta{
+				Name: "name7",
 			},
 		}
 		assert.NoError(t, tx.Tasks().Create(t7))
@@ -311,11 +303,10 @@ func TestPlanner(t *testing.T) {
 
 		// Create an unassigned task.
 		t8 := &api.Task{
-			ID: "id8",
-			Spec: &api.JobSpec{
-				Meta: &api.Meta{
-					Name: "name8",
-				},
+			ID:   "id8",
+			Spec: &api.TaskSpec{},
+			Meta: &api.Meta{
+				Name: "name8",
 			},
 		}
 		assert.NoError(t, tx.Tasks().Create(t8))
@@ -331,11 +322,10 @@ func TestPlanner(t *testing.T) {
 
 func TestPlannerNoReadyNodes(t *testing.T) {
 	initialTask := &api.Task{
-		ID: "id1",
-		Spec: &api.JobSpec{
-			Meta: &api.Meta{
-				Name: "name1",
-			},
+		ID:   "id1",
+		Spec: &api.TaskSpec{},
+		Meta: &api.Meta{
+			Name: "name1",
 		},
 	}
 
