@@ -44,7 +44,11 @@ func (s *Scheduler) Start() error {
 		return ErrRunning
 	}
 
-	go s.planner.Run()
+	go func() {
+		// TODO(aaronl): The scheduler should have some kind of error
+		// handling.
+		_ = s.planner.Run()
+	}()
 	go s.orchestrator.Run()
 
 	s.started = true

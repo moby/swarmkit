@@ -215,6 +215,9 @@ func (s *MemoryStore) Update(cb func(Tx) error) error {
 		for _, c := range tx.changelist {
 			Publish(s.queue, c)
 		}
+		if len(tx.changelist) != 0 {
+			Publish(s.queue, EventCommit{})
+		}
 	} else {
 		memDBTx.Abort()
 	}

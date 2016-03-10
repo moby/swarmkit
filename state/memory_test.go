@@ -600,6 +600,7 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, Apply(s2, <-watcher))
+	<-watcher // consume commit event
 
 	err = s2.View(func(tx2 ReadTx) error {
 		assert.Equal(t, createNode, tx2.Nodes().Get("id4"))
@@ -624,6 +625,7 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, Apply(s2, <-watcher))
+	<-watcher // consume commit event
 
 	err = s2.View(func(tx2 ReadTx) error {
 		assert.Equal(t, updateNode, tx2.Nodes().Get("id3"))
@@ -639,6 +641,7 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, Apply(s2, <-watcher))
+	<-watcher // consume commit event
 
 	err = s2.View(func(tx2 ReadTx) error {
 		assert.Nil(t, tx2.Nodes().Get("id1"))
@@ -663,6 +666,7 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, Apply(s2, <-watcher))
+	<-watcher // consume commit event
 
 	err = s2.View(func(tx2 ReadTx) error {
 		assert.Equal(t, createJob, tx2.Jobs().Get("id4"))
@@ -688,6 +692,7 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, Apply(s2, <-watcher))
+	<-watcher // consume commit event
 
 	err = s2.View(func(tx2 ReadTx) error {
 		assert.Equal(t, updateJob, tx2.Jobs().Get("id3"))
@@ -703,6 +708,7 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, Apply(s2, <-watcher))
+	<-watcher // consume commit event
 
 	err = s2.View(func(tx2 ReadTx) error {
 		assert.Nil(t, tx2.Jobs().Get("id1"))
@@ -726,6 +732,7 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, Apply(s2, <-watcher))
+	<-watcher // consume commit event
 
 	err = s2.View(func(tx2 ReadTx) error {
 		assert.Equal(t, createTask, tx2.Tasks().Get("id4"))
@@ -748,6 +755,7 @@ func TestStoreSnapshot(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NoError(t, Apply(s2, <-watcher))
+	<-watcher // consume commit event
 
 	err = s2.View(func(tx2 ReadTx) error {
 		assert.Equal(t, updateTask, tx2.Tasks().Get("id3"))
@@ -762,6 +770,7 @@ func TestStoreSnapshot(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NoError(t, Apply(s2, <-watcher))
+	<-watcher // consume commit event
 
 	err = s2.View(func(tx2 ReadTx) error {
 		assert.Nil(t, tx2.Tasks().Get("id1"))
