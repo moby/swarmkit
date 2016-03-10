@@ -114,8 +114,8 @@ type Node interface {
 	ProposeConfChange(ctx context.Context, cc pb.ConfChange) error
 	// Step advances the state machine using the given message. ctx.Err() will be returned, if any.
 	Step(ctx context.Context, msg pb.Message) error
-	// Ready returns a channel that returns the current point-in-time state
-	// Users of the Node must call Advance after applying the state returned by Ready
+	// Ready returns a channel that returns the current point-in-time state.
+	// Users of the Node must call Advance after applying the state returned by Ready.
 	Ready() <-chan Ready
 	// Advance notifies the Node that the application has applied and saved progress up to the last Ready.
 	// It prepares the node to return the next available Ready.
@@ -129,9 +129,9 @@ type Node interface {
 	Status() Status
 	// Report reports the given node is not reachable for the last send.
 	ReportUnreachable(id uint64)
-	// ReportSnapshot reports the stutus of the sent snapshot.
+	// ReportSnapshot reports the status of the sent snapshot.
 	ReportSnapshot(id uint64, status SnapshotStatus)
-	// Stop performs any necessary termination of the Node
+	// Stop performs any necessary termination of the Node.
 	Stop()
 }
 
@@ -145,7 +145,7 @@ type Peer struct {
 func StartNode(c *Config, peers []Peer) Node {
 	r := newRaft(c)
 	// become the follower at term 1 and apply initial configuration
-	// entires of term 1
+	// entries of term 1
 	r.becomeFollower(1, None)
 	for _, peer := range peers {
 		cc := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: peer.ID, Context: peer.Context}
@@ -160,7 +160,6 @@ func StartNode(c *Config, peers []Peer) Node {
 	// TODO(bdarnell): These entries are still unstable; do we need to preserve
 	// the invariant that committed < unstable?
 	r.raftLog.committed = r.raftLog.lastIndex()
-	r.Commit = r.raftLog.committed
 	// Now apply them, mainly so that the application can call Campaign
 	// immediately after StartNode in tests. Note that these nodes will
 	// be added to raft twice: here and when the application's Ready
@@ -260,13 +259,13 @@ func (n *node) run(r *raft) {
 		if lead != r.lead {
 			if r.hasLeader() {
 				if lead == None {
-					raftLogger.Infof("raft.node: %x elected leader %x at term %d", r.id, r.lead, r.Term)
+					r.logger.Infof("raft.node: %x elected leader %x at term %d", r.id, r.lead, r.Term)
 				} else {
-					raftLogger.Infof("raft.node: %x changed leader from %x to %x at term %d", r.id, lead, r.lead, r.Term)
+					r.logger.Infof("raft.node: %x changed leader from %x to %x at term %d", r.id, lead, r.lead, r.Term)
 				}
 				propc = n.propc
 			} else {
-				raftLogger.Infof("raft.node: %x lost leader %x at term %d", r.id, lead, r.Term)
+				r.logger.Infof("raft.node: %x lost leader %x at term %d", r.id, lead, r.Term)
 				propc = nil
 			}
 			lead = r.lead
@@ -453,8 +452,8 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	if softSt := r.softState(); !softSt.equal(prevSoftSt) {
 		rd.SoftState = softSt
 	}
-	if !isHardStateEqual(r.HardState, prevHardSt) {
-		rd.HardState = r.HardState
+	if hardSt := r.hardState(); !isHardStateEqual(hardSt, prevHardSt) {
+		rd.HardState = hardSt
 	}
 	if r.raftLog.unstable.snapshot != nil {
 		rd.Snapshot = *r.raftLog.unstable.snapshot
