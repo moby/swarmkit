@@ -39,9 +39,11 @@ ${PREFIX}/bin/protoc-gen-gogoswarm: version/version.go $(shell find . -type f -n
 
 setup:
 	@echo "🐳 $@"
+	# TODO(stevvooe): Install these from the vendor directory
 	@go get -u github.com/golang/lint/golint
 	@go get -u github.com/fzipp/gocyclo
 	@go get -u github.com/kisielk/errcheck
+	@go get -u github.com/golang/mock/mockgen
 
 generate: ${PREFIX}/bin/protoc-gen-gogoswarm
 	@echo "🐳 $@"
@@ -73,7 +75,7 @@ lint:
 
 errcheck:
 	@echo "🐳 $@"
-	@test -z "$$(errcheck -ignore "Close" ${PACKAGES} | tee /dev/stderr)"
+	@test -z "$$(golint ./... | grep -v vendor/ | grep -v ".pb.go:" | grep -v ".mock.go" | tee /dev/stderr)"
 
 complexity:
 	@echo "🐳 $@"

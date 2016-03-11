@@ -85,7 +85,7 @@ func certPool(caFile string) (*x509.CertPool, error) {
 func Client(options Options) (*tls.Config, error) {
 	tlsConfig := ClientDefault
 	tlsConfig.InsecureSkipVerify = options.InsecureSkipVerify
-	if !options.InsecureSkipVerify {
+	if !options.InsecureSkipVerify && options.CAFile != "" {
 		CAs, err := certPool(options.CAFile)
 		if err != nil {
 			return nil, err
@@ -93,7 +93,7 @@ func Client(options Options) (*tls.Config, error) {
 		tlsConfig.RootCAs = CAs
 	}
 
-	if options.CertFile != "" && options.KeyFile != "" {
+	if options.CertFile != "" || options.KeyFile != "" {
 		tlsCert, err := tls.LoadX509KeyPair(options.CertFile, options.KeyFile)
 		if err != nil {
 			return nil, fmt.Errorf("Could not load X509 key pair: %v. Make sure the key is not encrypted", err)
