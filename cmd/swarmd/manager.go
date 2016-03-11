@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/docker/swarm-v2/manager"
-	"github.com/docker/swarm-v2/state"
+	"github.com/docker/swarm-v2/manager/state"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +22,7 @@ var managerCmd = &cobra.Command{
 			ListenProto: "tcp",
 			ListenAddr:  addr,
 		})
-		return m.ListenAndServe()
+		return m.Run()
 	},
 }
 

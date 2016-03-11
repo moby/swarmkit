@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/state"
-	"github.com/docker/swarm-v2/state/watch"
+	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/watch"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,7 +43,9 @@ func TestOrchestrator(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the orchestrator.
-	go orchestrator.Run()
+	go func() {
+		assert.NoError(t, orchestrator.Run())
+	}()
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStatus_NEW)

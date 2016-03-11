@@ -1,16 +1,16 @@
-package planner
+package scheduler
 
 import (
 	"testing"
 	"time"
 
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/state"
-	"github.com/docker/swarm-v2/state/watch"
+	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/watch"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPlanner(t *testing.T) {
+func TestScheduler(t *testing.T) {
 	initialNodeSet := []*api.Node{
 		{
 			ID: "id1",
@@ -90,13 +90,13 @@ func TestPlanner(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	planner := New(store)
+	scheduler := New(store)
 
 	watch := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
 	defer store.WatchQueue().StopWatch(watch)
 
 	go func() {
-		assert.NoError(t, planner.Run())
+		assert.NoError(t, scheduler.Run())
 	}()
 
 	assignment1 := watchAssignment(t, watch)
@@ -133,7 +133,7 @@ func TestPlanner(t *testing.T) {
 	assert.Equal(t, assignment3.NodeID, "id1")
 
 	// Update a task to make it unassigned. It should get assigned by the
-	// planner.
+	// scheduler.
 	err = store.Update(func(tx state.Tx) error {
 		// Remove assignment from task id4. It should get assigned
 		// to node id1.
@@ -317,10 +317,10 @@ func TestPlanner(t *testing.T) {
 	assignment8 := watchAssignment(t, watch)
 	assert.NotEqual(t, assignment8.NodeID, "id6")
 
-	planner.Stop()
+	scheduler.Stop()
 }
 
-func TestPlannerNoReadyNodes(t *testing.T) {
+func TestSchedulerNoReadyNodes(t *testing.T) {
 	initialTask := &api.Task{
 		ID:   "id1",
 		Spec: &api.TaskSpec{},
@@ -339,13 +339,13 @@ func TestPlannerNoReadyNodes(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	planner := New(store)
+	scheduler := New(store)
 
 	watch := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
 	defer store.WatchQueue().StopWatch(watch)
 
 	go func() {
-		assert.NoError(t, planner.Run())
+		assert.NoError(t, scheduler.Run())
 	}()
 
 	err = store.Update(func(tx state.Tx) error {
@@ -370,7 +370,7 @@ func TestPlannerNoReadyNodes(t *testing.T) {
 	assignment := watchAssignment(t, watch)
 	assert.Equal(t, assignment.NodeID, "newnode")
 
-	planner.Stop()
+	scheduler.Stop()
 }
 
 func watchAssignment(t *testing.T, watch chan watch.Event) *api.Task {

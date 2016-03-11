@@ -12,8 +12,8 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/dispatcher"
-	"github.com/docker/swarm-v2/state"
+	"github.com/docker/swarm-v2/manager/dispatcher"
+	"github.com/docker/swarm-v2/manager/state"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -36,7 +36,7 @@ func TestManager(t *testing.T) {
 	done := make(chan error)
 	defer close(done)
 	go func() {
-		done <- m.ListenAndServe()
+		done <- m.Run()
 	}()
 
 	conn, err := grpc.Dial(temp.Name(), grpc.WithInsecure(), grpc.WithTimeout(10*time.Second),
