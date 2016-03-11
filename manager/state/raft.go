@@ -588,7 +588,7 @@ func (n *Node) send(messages []raftpb.Message) error {
 
 		// If node is an active raft member send the message
 		if peer, ok := peers[m.To]; ok {
-			_, err := peer.Client.ProcessRaftMessage(n.Ctx, &api.ProcessRaftMessageRequest{&m})
+			_, err := peer.Client.ProcessRaftMessage(n.Ctx, &api.ProcessRaftMessageRequest{Msg: &m})
 			if err != nil {
 				n.ReportUnreachable(peer.ID)
 			}

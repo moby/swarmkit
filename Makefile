@@ -27,15 +27,15 @@ version/version.go:
 
 ${PREFIX}/bin/swarmctl: version/version.go $(shell find . -type f -name '*.go')
 	@echo "🐳 $@"
-	@go build  -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/swarmctl
+	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/swarmctl
 
 ${PREFIX}/bin/swarmd: version/version.go $(shell find . -type f -name '*.go')
 	@echo "🐳 $@"
-	@go build  -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/swarmd
+	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/swarmd
 
 ${PREFIX}/bin/protoc-gen-gogoswarm: version/version.go $(shell find . -type f -name '*.go')
 	@echo "🐳 $@"
-	@go build  -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/protoc-gen-gogoswarm
+	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/protoc-gen-gogoswarm
 
 setup:
 	@echo "🐳 $@"
@@ -58,7 +58,7 @@ checkprotos: generate
 # imports
 vet: binaries
 	@echo "🐳 $@"
-	@go vet ${PACKAGES}
+	@test -z "$$(go vet ${PACKAGES} 2>&1 | grep -v 'constant [0-9]* not a string in call to Errorf' | grep -v 'exit status 1' | tee /dev/stderr)"
 
 fmt:
 	@echo "🐳 $@"
@@ -86,7 +86,7 @@ complexity:
 
 build:
 	@echo "🐳 $@"
-	@go build -tags "${DOCKER_BUILDTAGS}" -v ${GO_LDFLAGS} ${PACKAGES}
+	@go build -i -tags "${DOCKER_BUILDTAGS}" -v ${GO_LDFLAGS} ${GO_GCFLAGS} ${PACKAGES}
 
 test:
 	@echo "🐳 $@"
