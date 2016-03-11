@@ -53,7 +53,7 @@ test:
         # - `checkprotos`: Build and check the proto files *only* once all
         #                  tests pass with checked-in generated code.
         # - `coverage`: Generate coverage reports.
-        - cd "$WORKDIR" && make all checkprotos coverage
+        - cd "$WORKDIR" && make ci
 
     post:
         # Report to codecov.io

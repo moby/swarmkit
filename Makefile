@@ -9,9 +9,14 @@ PACKAGES=$(shell go list ./... | grep -v /vendor/)
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
-.PHONY: clean all fmt vet lint errcheck complexity build binaries test setup checkprotos coverage
+.PHONY: clean all fmt vet lint errcheck complexity build binaries test setup checkprotos coverage ci check
 .DEFAULT: default
-all: fmt vet lint errcheck complexity build binaries test
+
+check: fmt vet lint errcheck complexity
+
+all: check build binaries test
+
+ci: check build binaries checkprotos coverage
 
 AUTHORS: .mailmap .git/HEAD
 	git log --format='%aN <%aE>' | sort -fu > $@
