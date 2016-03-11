@@ -1,0 +1,3 @@
+name: web
+image: nginx
+instances: 4

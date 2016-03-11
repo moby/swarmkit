@@ -19,20 +19,29 @@ var (
 			}
 
 			flags := cmd.Flags()
-			spec := &api.JobSpec{}
+			var spec *api.JobSpec
 
-			if flags.Changed("instances") {
-				instances, err := flags.GetInt64("instances")
+			if flags.Changed("file") {
+				service, err := readServiceConfig(flags)
 				if err != nil {
 					return err
 				}
-				spec.Orchestration = &api.JobSpec_Service{
-					Service: &api.JobSpec_ServiceJob{
-						Instances: instances,
-					},
+				spec = service.JobSpec()
+			} else { // TODO(vieux): support or error on both file.
+				spec = &api.JobSpec{}
+
+				if flags.Changed("instances") {
+					instances, err := flags.GetInt64("instances")
+					if err != nil {
+						return err
+					}
+					spec.Orchestration = &api.JobSpec_Service{
+						Service: &api.JobSpec_ServiceJob{
+							Instances: instances,
+						},
+					}
 				}
 			}
-
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
@@ -49,6 +58,7 @@ var (
 )
 
 func init() {
+	updateCmd.Flags().StringP("file", "f", "", "Spec to use")
 	// TODO(aluzzardi): This should be called `service-instances` so that every
 	// orchestrator can have its own flag namespace.
 	updateCmd.Flags().Int64("instances", 0, "Number of instances for the service Job")
