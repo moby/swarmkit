@@ -3,10 +3,12 @@ package state
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"net"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -14,10 +16,14 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/wait"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/snap"
+	"github.com/coreos/etcd/wal"
+	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarm-v2/api"
 	"github.com/gogo/protobuf/proto"
 )
@@ -68,12 +74,16 @@ type Node struct {
 	Port    int
 	Error   error
 
-	storeLock sync.RWMutex
-	PStore    map[string]string
-	Store     *raft.MemoryStorage
-	Cfg       *raft.Config
-	reqIDGen  *idutil.Generator
-	w         wait.Wait
+	storeLock   sync.RWMutex
+	PStore      map[string]string
+	raftStore   *raft.MemoryStorage
+	memoryStore WatchableStore
+	Config      *raft.Config
+	reqIDGen    *idutil.Generator
+	w           wait.Wait
+	wal         *wal.WAL
+	snapshotter *snap.Snapshotter
+	stateDir    string
 
 	ticker *time.Ticker
 	stopCh chan struct{}
@@ -86,26 +96,37 @@ type Node struct {
 	apply ApplyCommand
 }
 
+// NewNodeOptions provides arguments for NewNode
+type NewNodeOptions struct {
+	ID       uint64
+	Addr     string
+	Config   *raft.Config
+	Apply    ApplyCommand
+	StateDir string
+}
+
 // NewNode generates a new Raft node based on an unique
 // ID, an address and optionally: a handler and receive
 // only channel to send event when an entry is committed
 // to the logs
-func NewNode(ctx context.Context, id uint64, addr string, cfg *raft.Config, apply ApplyCommand) (*Node, error) {
+func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
+	cfg := opts.Config
 	if cfg == nil {
 		cfg = DefaultNodeConfig()
 	}
 
 	store := raft.NewMemoryStorage()
-	peers := []raft.Peer{{ID: id}}
+	peers := []raft.Peer{{ID: opts.ID}}
 
 	n := &Node{
-		ID:      id,
-		Ctx:     ctx,
-		Cluster: NewCluster(),
-		Store:   store,
-		Address: addr,
-		Cfg: &raft.Config{
-			ID:              id,
+		ID:          opts.ID,
+		Ctx:         ctx,
+		Cluster:     NewCluster(),
+		memoryStore: NewMemoryStore(),
+		raftStore:   store,
+		Address:     opts.Addr,
+		Config: &raft.Config{
+			ID:              opts.ID,
 			ElectionTick:    cfg.ElectionTick,
 			HeartbeatTick:   cfg.HeartbeatTick,
 			Storage:         store,
@@ -116,20 +137,28 @@ func NewNode(ctx context.Context, id uint64, addr string, cfg *raft.Config, appl
 		PStore:   make(map[string]string),
 		ticker:   time.NewTicker(time.Second),
 		stopCh:   make(chan struct{}),
-		reqIDGen: idutil.NewGenerator(uint8(id), time.Now()),
-		apply:    apply,
+		reqIDGen: idutil.NewGenerator(uint8(opts.ID), time.Now()),
+		apply:    opts.Apply,
+		stateDir: opts.StateDir,
+	}
+
+	if err := n.load(); err != nil {
+		n.ticker.Stop()
+		return nil, err
 	}
 
 	n.Cluster.AddPeer(
 		&Peer{
 			RaftNode: &api.RaftNode{
-				ID:   id,
-				Addr: addr,
+				ID:   opts.ID,
+				Addr: opts.Addr,
 			},
 		},
 	)
 
-	n.Node = raft.StartNode(n.Cfg, peers)
+	// TODO(aaronl): This should be RestartNode in cases where the cluster
+	// info has been restored from storage.
+	n.Node = raft.StartNode(n.Config, peers)
 	return n, nil
 }
 
@@ -143,6 +172,107 @@ func DefaultNodeConfig() *raft.Config {
 		MaxInflightMsgs: 256,
 		Logger:          defaultLogger,
 	}
+}
+
+func (n *Node) walDir() string {
+	return filepath.Join(n.stateDir, "wal")
+}
+
+func (n *Node) snapDir() string {
+	return filepath.Join(n.stateDir, "snap")
+}
+
+func (n *Node) load() error {
+	walDir := n.walDir()
+	snapDir := n.snapDir()
+
+	haveWAL := wal.Exist(walDir)
+
+	if err := os.MkdirAll(snapDir, 0700); err != nil {
+		return fmt.Errorf("create snapshot directory error: %v", err)
+	}
+
+	// Create a snapshotter
+	n.snapshotter = snap.New(snapDir)
+
+	if !haveWAL {
+		// TODO(aaronl): serialize node ID and cluster ID, and pass the
+		// result in to wal.Create
+		var err error
+		n.wal, err = wal.Create(walDir, []byte{})
+		if err != nil {
+			return fmt.Errorf("create wal error: %v", err)
+		}
+		return nil
+	}
+
+	// Load snapshot data
+	snapshot, err := n.snapshotter.Load()
+	if err != nil && err != snap.ErrNoSnapshot {
+		return err
+	}
+
+	if snapshot != nil {
+		// Load the snapshot data into the store
+		err := n.memoryStore.Restore(snapshot.Data)
+		if err != nil {
+			return err
+		}
+	}
+	// Read logs to fully catch up store
+	return n.readWAL(snapshot)
+}
+
+func (n *Node) readWAL(snapshot *raftpb.Snapshot) error {
+	var (
+		walsnap walpb.Snapshot
+		err     error
+		//wmetadata []byte
+		st   raftpb.HardState
+		ents []raftpb.Entry
+	)
+
+	if snapshot != nil {
+		walsnap.Index = snapshot.Metadata.Index
+		walsnap.Term = snapshot.Metadata.Term
+	}
+
+	repaired := false
+	for {
+		if n.wal, err = wal.Open(n.walDir(), walsnap); err != nil {
+			return fmt.Errorf("open wal error: %v", err)
+		}
+		if /*wmetadata*/ _, st, ents, err = n.wal.ReadAll(); err != nil {
+			if err := n.wal.Close(); err != nil {
+				return err
+			}
+			// we can only repair ErrUnexpectedEOF and we never repair twice.
+			if repaired || err != io.ErrUnexpectedEOF {
+				return fmt.Errorf("read wal error (%v) and cannot be repaired", err)
+			}
+			if !wal.Repair(n.walDir()) {
+				return fmt.Errorf("WAL error (%v) cannot be repaired", err)
+			}
+			logrus.Infof("repaired WAL error (%v)", err)
+			repaired = true
+			continue
+		}
+		break
+	}
+	// TODO(aaronl): deserialize metadata, and set node ID and cluster ID
+	// from it.
+	// TODO(aaronl): do we need to change NewNode so it doesn't take an ID?
+	if err := n.raftStore.ApplySnapshot(*snapshot); err != nil {
+		return err
+	}
+	if err := n.raftStore.SetHardState(st); err != nil {
+		return err
+	}
+	if err := n.raftStore.Append(ents); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Start is the main loop for a Raft node, it
@@ -164,6 +294,9 @@ func (n *Node) Start() (errCh <-chan error) {
 				if err = n.saveToStorage(rd.HardState, rd.Entries, rd.Snapshot); err != nil {
 					n.errCh <- err
 				}
+
+				// TODO(aaronl): Update the MemoryStore based
+				// on the incoming message.
 
 				// Send raft messages to peers
 				if err = n.send(rd.Messages); err != nil {
@@ -390,22 +523,53 @@ func (n *Node) StoreLength() int {
 
 // Saves a log entry to our Store
 func (n *Node) saveToStorage(hardState raftpb.HardState, entries []raftpb.Entry, snapshot raftpb.Snapshot) (err error) {
-	if err = n.Store.Append(entries); err != nil {
+	// TODO(aaronl): Should this move to the end of the function?
+	if err = n.raftStore.Append(entries); err != nil {
 		return ErrAppendEntry
 	}
 
 	if !raft.IsEmptyHardState(hardState) {
-		if err = n.Store.SetHardState(hardState); err != nil {
+		if err = n.raftStore.SetHardState(hardState); err != nil {
 			return ErrSetHardState
 		}
 	}
 
 	if !raft.IsEmptySnap(snapshot) {
-		if err = n.Store.ApplySnapshot(snapshot); err != nil {
+		if err := n.saveSnapshot(snapshot); err != nil {
+			return ErrApplySnapshot
+		}
+		if err = n.raftStore.ApplySnapshot(snapshot); err != nil {
 			return ErrApplySnapshot
 		}
 	}
 
+	if err := n.wal.Save(hardState, entries); err != nil {
+		// TODO(aaronl): These error types should really wrap more
+		// detailed errors.
+		return ErrApplySnapshot
+	}
+
+	// TODO(aaronl): trigger a snapshot every once in awhile
+
+	return nil
+}
+
+func (n *Node) saveSnapshot(snapshot raftpb.Snapshot) error {
+	err := n.wal.SaveSnapshot(walpb.Snapshot{
+		Index: snapshot.Metadata.Index,
+		Term:  snapshot.Metadata.Term,
+	})
+	if err != nil {
+		return err
+	}
+	err = n.snapshotter.SaveSnap(snapshot)
+	if err != nil {
+		return err
+	}
+	err = n.wal.ReleaseLockTo(snapshot.Metadata.Index)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

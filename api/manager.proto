@@ -26,7 +26,7 @@ service Manager {
 // over the raft backend with a request ID to track when the
 // action is effectively applied
 message InternalRaftRequest {
-	uint64 ID = 1;
+	uint64 id = 1 [(gogoproto.customname) = "ID"];
 
 	// TODO(abronan): replace Pair by swarm actions
 	Pair pair = 2;

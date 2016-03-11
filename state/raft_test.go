@@ -33,7 +33,17 @@ func newInitNode(t *testing.T, id uint64) *Node {
 	cfg := DefaultNodeConfig()
 	cfg.Logger = raftLogger
 
-	n, err := NewNode(context.Background(), id, l.Addr().String(), cfg, nil)
+	stateDir, err := ioutil.TempDir("", "test-raft")
+	assert.NoError(t, err, "can't create temporary state directory")
+
+	newNodeOpts := NewNodeOptions{
+		ID:       id,
+		Addr:     l.Addr().String(),
+		Config:   cfg,
+		Apply:    nil,
+		StateDir: stateDir,
+	}
+	n, err := NewNode(context.Background(), newNodeOpts)
 	assert.NoError(t, err, "can't create raft node")
 	n.Listener = l
 	n.Server = s
@@ -65,7 +75,18 @@ func newJoinNode(t *testing.T, id uint64, join string) *Node {
 	cfg := DefaultNodeConfig()
 	cfg.Logger = raftLogger
 
-	n, err := NewNode(context.Background(), id, l.Addr().String(), cfg, nil)
+	stateDir, err := ioutil.TempDir("", "test-raft")
+	assert.NoError(t, err, "can't create temporary state directory")
+
+	newNodeOpts := NewNodeOptions{
+		ID:       id,
+		Addr:     l.Addr().String(),
+		Config:   cfg,
+		Apply:    nil,
+		StateDir: stateDir,
+	}
+
+	n, err := NewNode(context.Background(), newNodeOpts)
 	assert.NoError(t, err, "can't create raft node")
 	n.Listener = l
 	n.Server = s

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/state/pb"
 	"github.com/docker/swarm-v2/state/watch"
 	memdb "github.com/hashicorp/go-memdb"
 )
@@ -828,6 +829,10 @@ func (ni networkIndexerByName) FromObject(obj interface{}) (bool, []byte, error)
 // CopyFrom causes this store to hold a copy of the provided data set.
 func (s *MemoryStore) CopyFrom(readTx ReadTx) error {
 	return s.Update(func(tx Tx) error {
+		if err := DeleteAll(tx); err != nil {
+			return err
+		}
+
 		// Copy over new data
 		nodes, err := readTx.Nodes().Find(All)
 		if err != nil {
@@ -865,6 +870,84 @@ func (s *MemoryStore) CopyFrom(readTx ReadTx) error {
 		}
 		for _, n := range networks {
 			if err := tx.Networks().Create(n); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+}
+
+// Save serializes the data in the store.
+func (s *MemoryStore) Save() ([]byte, error) {
+	snapshot := pb.StoreSnapshot{
+		Version: pb.StoreSnapshot_V0,
+	}
+	err := s.View(func(tx ReadTx) error {
+		var err error
+		snapshot.Nodes, err = tx.Nodes().Find(All)
+		if err != nil {
+			return err
+		}
+		snapshot.Tasks, err = tx.Tasks().Find(All)
+		if err != nil {
+			return err
+		}
+		snapshot.Networks, err = tx.Networks().Find(All)
+		if err != nil {
+			return err
+		}
+		snapshot.Jobs, err = tx.Jobs().Find(All)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return snapshot.Marshal()
+}
+
+// Restore sets the contents of the store to the serialized data in the
+// argument.
+func (s *MemoryStore) Restore(data []byte) error {
+	var snapshot pb.StoreSnapshot
+	if err := snapshot.Unmarshal(data); err != nil {
+		return err
+	}
+
+	if snapshot.Version != pb.StoreSnapshot_V0 {
+		return fmt.Errorf("unrecognized snapshot version %d", snapshot.Version)
+	}
+
+	return s.Update(func(tx Tx) error {
+		if err := DeleteAll(tx); err != nil {
+			return err
+		}
+
+		for _, n := range snapshot.Nodes {
+			if err := tx.Nodes().Create(n); err != nil {
+				return err
+			}
+		}
+
+		for _, j := range snapshot.Jobs {
+			if err := tx.Jobs().Create(j); err != nil {
+				return err
+			}
+		}
+
+		for _, n := range snapshot.Networks {
+			if err := tx.Networks().Create(n); err != nil {
+				return err
+			}
+		}
+
+		for _, t := range snapshot.Tasks {
+			if err := tx.Tasks().Create(t); err != nil {
 				return err
 			}
 		}
