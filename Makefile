@@ -12,9 +12,9 @@ GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 .PHONY: clean all fmt vet lint errcheck complexity build binaries test setup checkprotos coverage ci check
 .DEFAULT: default
 
-check: fmt vet lint errcheck complexity
-
 all: check build binaries test
+
+check: fmt vet lint errcheck complexity
 
 ci: check build binaries checkprotos coverage
 
