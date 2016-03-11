@@ -97,7 +97,7 @@ func newJoinNode(t *testing.T, id uint64, join string) *Node {
 	assert.NoError(t, err, "can't initiate connection with existing raft")
 
 	resp, err := c.Join(n.Ctx, &api.JoinRequest{
-		&api.RaftNode{ID: id, Addr: l.Addr().String()},
+		Node: &api.RaftNode{ID: id, Addr: l.Addr().String()},
 	})
 	assert.NoError(t, err, "can't join existing Raft")
 
@@ -350,7 +350,7 @@ func TestRaftFollowerLeave(t *testing.T) {
 	value := []byte("bar")
 
 	// Node 5 leave the cluster
-	resp, err := nodes[5].Leave(nodes[5].Ctx, &api.LeaveRequest{&api.RaftNode{ID: nodes[5].ID}})
+	resp, err := nodes[5].Leave(nodes[5].Ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[5].ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -394,7 +394,7 @@ func TestRaftLeaderLeave(t *testing.T) {
 	assert.Equal(t, nodes[1].Leader(), nodes[1].ID)
 
 	// Try to leave the raft
-	resp, err := nodes[1].Leave(nodes[1].Ctx, &api.LeaveRequest{&api.RaftNode{ID: nodes[1].ID}})
+	resp, err := nodes[1].Leave(nodes[1].Ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[1].ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
