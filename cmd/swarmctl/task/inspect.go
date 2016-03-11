@@ -35,8 +35,8 @@ var (
 			}()
 			fmt.Fprintf(w, "ID:\t%s\n", r.Task.ID)
 			fmt.Fprintf(w, "JobID:\t%s\n", r.Task.JobID)
-			if r.Task.Status.Message != "" {
-				fmt.Fprintf(w, "Status:\t%s (%s)\n", r.Task.Status.State.String(), r.Task.Status.Message)
+			if r.Task.Status.Err != "" {
+				fmt.Fprintf(w, "Status:\t%s (%s)\n", r.Task.Status.State.String(), r.Task.Status.Err)
 			} else {
 				fmt.Fprintf(w, "Status:\t%s\n", r.Task.Status.State.String())
 			}

@@ -48,11 +48,11 @@ func TestOrchestrator(t *testing.T) {
 	}()
 
 	observedTask1 := watchTaskCreate(t, watch)
-	assert.Equal(t, observedTask1.Status.State, api.TaskStatus_NEW)
+	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask1.Meta.Name, "name1")
 
 	observedTask2 := watchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.Status.State, api.TaskStatus_NEW)
+	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask2.Meta.Name, "name1")
 
 	// Create a second job.
@@ -77,7 +77,7 @@ func TestOrchestrator(t *testing.T) {
 	assert.NoError(t, err)
 
 	observedTask3 := watchTaskCreate(t, watch)
-	assert.Equal(t, observedTask3.Status.State, api.TaskStatus_NEW)
+	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask3.Meta.Name, "name2")
 
 	// Update a job to scale it out to 3 instances
@@ -102,11 +102,11 @@ func TestOrchestrator(t *testing.T) {
 	assert.NoError(t, err)
 
 	observedTask4 := watchTaskCreate(t, watch)
-	assert.Equal(t, observedTask4.Status.State, api.TaskStatus_NEW)
+	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask4.Meta.Name, "name2")
 
 	observedTask5 := watchTaskCreate(t, watch)
-	assert.Equal(t, observedTask5.Status.State, api.TaskStatus_NEW)
+	assert.Equal(t, observedTask5.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask5.Meta.Name, "name2")
 
 	// Now scale it back down to 1 instance
@@ -131,11 +131,11 @@ func TestOrchestrator(t *testing.T) {
 	assert.NoError(t, err)
 
 	observedDeletion1 := watchTaskDelete(t, watch)
-	assert.Equal(t, observedDeletion1.Status.State, api.TaskStatus_NEW)
+	assert.Equal(t, observedDeletion1.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedDeletion1.Meta.Name, "name2")
 
 	observedDeletion2 := watchTaskDelete(t, watch)
-	assert.Equal(t, observedDeletion2.Status.State, api.TaskStatus_NEW)
+	assert.Equal(t, observedDeletion2.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedDeletion2.Meta.Name, "name2")
 
 	// There should be one remaining task attached to job id2/name2.
@@ -160,7 +160,7 @@ func TestOrchestrator(t *testing.T) {
 	watchTaskDelete(t, watch)
 
 	observedTask6 := watchTaskCreate(t, watch)
-	assert.Equal(t, observedTask6.Status.State, api.TaskStatus_NEW)
+	assert.Equal(t, observedTask6.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask6.Meta.Name, "name2")
 
 	// Delete the job. Its remaining task should go away.
@@ -171,7 +171,7 @@ func TestOrchestrator(t *testing.T) {
 	assert.NoError(t, err)
 
 	observedDeletion3 := watchTaskDelete(t, watch)
-	assert.Equal(t, observedDeletion3.Status.State, api.TaskStatus_NEW)
+	assert.Equal(t, observedDeletion3.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedDeletion3.Meta.Name, "name2")
 
 	orchestrator.Stop()

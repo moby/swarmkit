@@ -89,6 +89,65 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// TaskState enumerates the states that a task progresses through within an
+// agent. States are designed to be monotonically increasing, such that if two
+// states are seen by a task, the greater of the new represents the true state.
+type TaskState int32
+
+const (
+	TaskStateNew       TaskState = 0
+	TaskStateAllocated TaskState = 1
+	TaskStateAssigned  TaskState = 2
+	TaskStateAccepted  TaskState = 3
+	TaskStatePreparing TaskState = 4
+	TaskStateReady     TaskState = 5
+	TaskStateStarting  TaskState = 6
+	TaskStateRunning   TaskState = 7
+	TaskStateShutdown  TaskState = 8
+	TaskStateCompleted TaskState = 9
+	TaskStateFailed    TaskState = 10
+	TaskStateRejected  TaskState = 11
+	TaskStateFinalize  TaskState = 12
+	TaskStateDead      TaskState = 13
+)
+
+var TaskState_name = map[int32]string{
+	0:  "NEW",
+	1:  "ALLOCATED",
+	2:  "ASSIGNED",
+	3:  "ACCEPTED",
+	4:  "PREPARING",
+	5:  "READY",
+	6:  "STARTING",
+	7:  "RUNNING",
+	8:  "SHUTDOWN",
+	9:  "COMPLETE",
+	10: "FAILED",
+	11: "REJECTED",
+	12: "FINALIZE",
+	13: "DEAD",
+}
+var TaskState_value = map[string]int32{
+	"NEW":       0,
+	"ALLOCATED": 1,
+	"ASSIGNED":  2,
+	"ACCEPTED":  3,
+	"PREPARING": 4,
+	"READY":     5,
+	"STARTING":  6,
+	"RUNNING":   7,
+	"SHUTDOWN":  8,
+	"COMPLETE":  9,
+	"FAILED":    10,
+	"REJECTED":  11,
+	"FINALIZE":  12,
+	"DEAD":      13,
+}
+
+func (x TaskState) String() string {
+	return proto.EnumName(TaskState_name, int32(x))
+}
+
 type NodeStatus_State int32
 
 const (
@@ -118,59 +177,6 @@ var NodeStatus_State_value = map[string]int32{
 
 func (x NodeStatus_State) String() string {
 	return proto.EnumName(NodeStatus_State_name, int32(x))
-}
-
-type TaskStatus_State int32
-
-const (
-	TaskStatus_NEW       TaskStatus_State = 0
-	TaskStatus_ALLOCATED TaskStatus_State = 1
-	TaskStatus_ASSIGNED  TaskStatus_State = 2
-	TaskStatus_PREPARING TaskStatus_State = 3
-	TaskStatus_READY     TaskStatus_State = 4
-	TaskStatus_STARTING  TaskStatus_State = 5
-	TaskStatus_RUNNING   TaskStatus_State = 6
-	TaskStatus_SHUTDOWN  TaskStatus_State = 7
-	TaskStatus_COMPLETE  TaskStatus_State = 8
-	TaskStatus_FAILED    TaskStatus_State = 9
-	TaskStatus_REJECTED  TaskStatus_State = 10
-	TaskStatus_FINALIZE  TaskStatus_State = 11
-	TaskStatus_DEAD      TaskStatus_State = 12
-)
-
-var TaskStatus_State_name = map[int32]string{
-	0:  "NEW",
-	1:  "ALLOCATED",
-	2:  "ASSIGNED",
-	3:  "PREPARING",
-	4:  "READY",
-	5:  "STARTING",
-	6:  "RUNNING",
-	7:  "SHUTDOWN",
-	8:  "COMPLETE",
-	9:  "FAILED",
-	10: "REJECTED",
-	11: "FINALIZE",
-	12: "DEAD",
-}
-var TaskStatus_State_value = map[string]int32{
-	"NEW":       0,
-	"ALLOCATED": 1,
-	"ASSIGNED":  2,
-	"PREPARING": 3,
-	"READY":     4,
-	"STARTING":  5,
-	"RUNNING":   6,
-	"SHUTDOWN":  7,
-	"COMPLETE":  8,
-	"FAILED":    9,
-	"REJECTED":  10,
-	"FINALIZE":  11,
-	"DEAD":      12,
-}
-
-func (x TaskStatus_State) String() string {
-	return proto.EnumName(TaskStatus_State_name, int32(x))
 }
 
 // Meta is common to all API objects types.
@@ -613,8 +619,16 @@ func _JobSpec_NetworkAttachmentSpec_OneofUnmarshaler(msg proto.Message, tag, wir
 }
 
 type TaskStatus struct {
-	State   TaskStatus_State `protobuf:"varint,2,opt,name=state,proto3,enum=api.TaskStatus_State" json:"state,omitempty"`
-	Message string           `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	// State expresses the current state of the task.
+	State TaskState `protobuf:"varint,1,opt,name=state,proto3,enum=api.TaskState" json:"state,omitempty"`
+	// Err is set if the task is in an error state.
+	//
+	// The following states should report a companion error:
+	//
+	// 	FAILED, REJECTED
+	//
+	// TODO(stevvooe) Integrate this field with the error interface.
+	Err string `protobuf:"bytes,2,opt,name=err,proto3" json:"err,omitempty"`
 }
 
 func (m *TaskStatus) Reset()      { *m = TaskStatus{} }
@@ -766,8 +780,8 @@ func init() {
 	proto.RegisterType((*NetworkSpec_IPAMOptions)(nil), "api.NetworkSpec.IPAMOptions")
 	proto.RegisterType((*Network)(nil), "api.Network")
 	proto.RegisterType((*WeightedPeer)(nil), "api.WeightedPeer")
+	proto.RegisterEnum("api.TaskState", TaskState_name, TaskState_value)
 	proto.RegisterEnum("api.NodeStatus_State", NodeStatus_State_name, NodeStatus_State_value)
-	proto.RegisterEnum("api.TaskStatus_State", TaskStatus_State_name, TaskStatus_State_value)
 }
 
 func (m *Meta) Copy() *Meta {
@@ -1017,8 +1031,8 @@ func (m *TaskStatus) Copy() *TaskStatus {
 	}
 
 	o := &TaskStatus{
-		State:   m.State,
-		Message: m.Message,
+		State: m.State,
+		Err:   m.Err,
 	}
 
 	return o
@@ -1421,7 +1435,7 @@ func (this *TaskStatus) GoString() string {
 	s := make([]string, 0, 6)
 	s = append(s, "&api.TaskStatus{")
 	s = append(s, "State: "+fmt.Sprintf("%#v", this.State)+",\n")
-	s = append(s, "Message: "+fmt.Sprintf("%#v", this.Message)+",\n")
+	s = append(s, "Err: "+fmt.Sprintf("%#v", this.Err)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -2154,15 +2168,15 @@ func (m *TaskStatus) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if m.State != 0 {
-		data[i] = 0x10
+		data[i] = 0x8
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.State))
 	}
-	if len(m.Message) > 0 {
-		data[i] = 0x1a
+	if len(m.Err) > 0 {
+		data[i] = 0x12
 		i++
-		i = encodeVarintTypes(data, i, uint64(len(m.Message)))
-		i += copy(data[i:], m.Message)
+		i = encodeVarintTypes(data, i, uint64(len(m.Err)))
+		i += copy(data[i:], m.Err)
 	}
 	return i, nil
 }
@@ -2870,7 +2884,7 @@ func (m *TaskStatus) Size() (n int) {
 	if m.State != 0 {
 		n += 1 + sovTypes(uint64(m.State))
 	}
-	l = len(m.Message)
+	l = len(m.Err)
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
@@ -3300,7 +3314,7 @@ func (this *TaskStatus) String() string {
 	}
 	s := strings.Join([]string{`&TaskStatus{`,
 		`State:` + fmt.Sprintf("%v", this.State) + `,`,
-		`Message:` + fmt.Sprintf("%v", this.Message) + `,`,
+		`Err:` + fmt.Sprintf("%v", this.Err) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5013,7 +5027,7 @@ func (m *TaskStatus) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: TaskStatus: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 2:
+		case 1:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
 			}
@@ -5027,14 +5041,14 @@ func (m *TaskStatus) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.State |= (TaskStatus_State(b) & 0x7F) << shift
+				m.State |= (TaskState(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-		case 3:
+		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Message", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Err", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -5059,7 +5073,7 @@ func (m *TaskStatus) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Message = string(data[iNdEx:postIndex])
+			m.Err = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

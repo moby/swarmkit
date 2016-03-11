@@ -216,7 +216,7 @@ func TestTasks(t *testing.T) {
 		assert.NoError(t, tx.Tasks().Update(&api.Task{
 			ID:     testTask1.ID,
 			NodeID: testNode.ID,
-			Status: &api.TaskStatus{Message: "1234"},
+			Status: &api.TaskStatus{State: api.TaskStateFailed, Err: "1234"},
 		}))
 		return nil
 	})
@@ -247,7 +247,8 @@ func TestTasks(t *testing.T) {
 	assert.Equal(t, len(resp.Tasks), 2)
 	for _, task := range resp.Tasks {
 		if task.ID == "testTask1" {
-			assert.Equal(t, task.Status.Message, "1234")
+			assert.Equal(t, task.Status.State, api.TaskStateFailed)
+			assert.Equal(t, task.Status.Err, "1234")
 		}
 	}
 
@@ -289,8 +290,8 @@ func TestTaskUpdate(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	testTask1.Status = &api.TaskStatus{State: api.TaskStatus_ASSIGNED}
-	testTask2.Status = &api.TaskStatus{State: api.TaskStatus_ASSIGNED}
+	testTask1.Status = &api.TaskStatus{State: api.TaskStateAssigned}
+	testTask2.Status = &api.TaskStatus{State: api.TaskStateAssigned}
 	updReq := &api.UpdateTaskStatusRequest{
 		NodeID: testNode.ID,
 		Tasks:  []*api.Task{testTask1, testTask2},
@@ -312,8 +313,8 @@ func TestTaskUpdate(t *testing.T) {
 		assert.NotNil(t, storeTask1)
 		storeTask2 := readTx.Tasks().Get(testTask2.ID)
 		assert.NotNil(t, storeTask2)
-		assert.Equal(t, storeTask1.Status.State, api.TaskStatus_ASSIGNED)
-		assert.Equal(t, storeTask2.Status.State, api.TaskStatus_ASSIGNED)
+		assert.Equal(t, storeTask1.Status.State, api.TaskStateAssigned)
+		assert.Equal(t, storeTask2.Status.State, api.TaskStateAssigned)
 		return nil
 	})
 	assert.NoError(t, err)
