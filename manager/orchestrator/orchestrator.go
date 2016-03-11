@@ -4,7 +4,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
-	"github.com/docker/swarm-v2/state"
+	"github.com/docker/swarm-v2/manager/state"
 )
 
 // An Orchestrator runs a reconciliation loop to create and destroy

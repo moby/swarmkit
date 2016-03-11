@@ -5,11 +5,11 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/dispatcher"
 	"github.com/docker/swarm-v2/manager/clusterapi"
-	"github.com/docker/swarm-v2/orchestrator"
-	"github.com/docker/swarm-v2/scheduler"
-	"github.com/docker/swarm-v2/state"
+	"github.com/docker/swarm-v2/manager/dispatcher"
+	"github.com/docker/swarm-v2/manager/orchestrator"
+	"github.com/docker/swarm-v2/manager/scheduler"
+	"github.com/docker/swarm-v2/manager/state"
 	"google.golang.org/grpc"
 )
 

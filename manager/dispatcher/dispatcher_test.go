@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/state"
+	"github.com/docker/swarm-v2/manager/state"
 	"github.com/stretchr/testify/assert"
 )
 

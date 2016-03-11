@@ -5,7 +5,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/state"
+	"github.com/docker/swarm-v2/manager/state"
 )
 
 // Scheduler assigns tasks to nodes.

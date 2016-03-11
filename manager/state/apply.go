@@ -3,7 +3,7 @@ package state
 import (
 	"errors"
 
-	"github.com/docker/swarm-v2/state/watch"
+	"github.com/docker/swarm-v2/manager/state/watch"
 )
 
 // Apply takes an item from the event stream of one Store and applies it to

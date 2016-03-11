@@ -3,7 +3,7 @@ package clusterapi
 import (
 	"errors"
 
-	"github.com/docker/swarm-v2/state"
+	"github.com/docker/swarm-v2/manager/state"
 )
 
 var (
