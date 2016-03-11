@@ -16,7 +16,7 @@ var (
 		{
 			ID: "id1",
 			Spec: &api.NodeSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					Name: "name1",
 				},
 			},
@@ -24,7 +24,7 @@ var (
 		{
 			ID: "id2",
 			Spec: &api.NodeSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					Name: "name2",
 				},
 			},
@@ -32,7 +32,7 @@ var (
 		{
 			ID: "id3",
 			Spec: &api.NodeSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					// intentionally conflicting name
 					Name: "name2",
 				},
@@ -44,7 +44,7 @@ var (
 		{
 			ID: "id1",
 			Spec: &api.JobSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					Name: "name1",
 				},
 			},
@@ -52,7 +52,7 @@ var (
 		{
 			ID: "id2",
 			Spec: &api.JobSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					Name: "name2",
 				},
 			},
@@ -60,7 +60,7 @@ var (
 		{
 			ID: "id3",
 			Spec: &api.JobSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					// intentionally conflicting name
 					Name: "name2",
 				},
@@ -71,7 +71,7 @@ var (
 	taskSet = []*api.Task{
 		{
 			ID: "id1",
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "name1",
 			},
 			Spec:   &api.TaskSpec{},
@@ -79,7 +79,7 @@ var (
 		},
 		{
 			ID: "id2",
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "name2",
 			},
 			Spec:  &api.TaskSpec{},
@@ -87,7 +87,7 @@ var (
 		},
 		{
 			ID: "id3",
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "name2",
 			},
 			Spec: &api.TaskSpec{},
@@ -98,7 +98,7 @@ var (
 		{
 			ID: "id1",
 			Spec: &api.NetworkSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					Name: "name1",
 				},
 			},
@@ -106,7 +106,7 @@ var (
 		{
 			ID: "id2",
 			Spec: &api.NetworkSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					Name: "name2",
 				},
 			},
@@ -114,7 +114,7 @@ var (
 		{
 			ID: "id3",
 			Spec: &api.NetworkSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					// intentionally conflicting name
 					Name: "name2",
 				},
@@ -193,7 +193,7 @@ func TestStoreNode(t *testing.T) {
 	update := &api.Node{
 		ID: "id3",
 		Spec: &api.NodeSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "name3",
 			},
 		},
@@ -274,7 +274,7 @@ func TestStoreJob(t *testing.T) {
 	update := &api.Job{
 		ID: "id3",
 		Spec: &api.JobSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				// intentionally conflicting name
 				Name: "name3",
 			},
@@ -429,7 +429,7 @@ func TestStoreTask(t *testing.T) {
 	// Update.
 	update := &api.Task{
 		ID: "id3",
-		Meta: &api.Meta{
+		Meta: api.Meta{
 			Name: "name3",
 		},
 		Spec: &api.TaskSpec{},
@@ -497,7 +497,7 @@ func TestStoreSnapshot(t *testing.T) {
 	createNode := &api.Node{
 		ID: "id4",
 		Spec: &api.NodeSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "name4",
 			},
 		},
@@ -522,7 +522,7 @@ func TestStoreSnapshot(t *testing.T) {
 	updateNode := &api.Node{
 		ID: "id3",
 		Spec: &api.NodeSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "name3",
 			},
 		},
@@ -563,7 +563,7 @@ func TestStoreSnapshot(t *testing.T) {
 	createJob := &api.Job{
 		ID: "id4",
 		Spec: &api.JobSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "name4",
 			},
 		},
@@ -588,7 +588,7 @@ func TestStoreSnapshot(t *testing.T) {
 	updateJob := &api.Job{
 		ID: "id3",
 		Spec: &api.JobSpec{
-			Meta: &api.Meta{
+			Meta: api.Meta{
 				Name: "name3",
 			},
 		},
@@ -629,7 +629,7 @@ func TestStoreSnapshot(t *testing.T) {
 	// Create task
 	createTask := &api.Task{
 		ID: "id4",
-		Meta: &api.Meta{
+		Meta: api.Meta{
 			Name: "name4",
 		},
 		Spec: &api.TaskSpec{},
@@ -653,7 +653,7 @@ func TestStoreSnapshot(t *testing.T) {
 	// Update task
 	updateTask := &api.Task{
 		ID: "id3",
-		Meta: &api.Meta{
+		Meta: api.Meta{
 			Name: "name3",
 		},
 		Spec: &api.TaskSpec{},
@@ -698,7 +698,7 @@ func TestFailedTransaction(t *testing.T) {
 		n := &api.Node{
 			ID: "id1",
 			Spec: &api.NodeSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					Name: "name1",
 				},
 			},
@@ -714,7 +714,7 @@ func TestFailedTransaction(t *testing.T) {
 		n := &api.Node{
 			ID: "id2",
 			Spec: &api.NodeSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					Name: "name2",
 				},
 			},
@@ -806,7 +806,7 @@ func setupNodes(b *testing.B, n int) (Store, []string) {
 			_ = tx1.Nodes().Create(&api.Node{
 				ID: nodeIDs[i],
 				Spec: &api.NodeSpec{
-					Meta: &api.Meta{
+					Meta: api.Meta{
 						Name: "name" + strconv.Itoa(i),
 					},
 				},
@@ -830,7 +830,7 @@ func BenchmarkUpdateNode(b *testing.B) {
 			_ = tx1.Nodes().Update(&api.Node{
 				ID: nodeIDs[i%benchmarkNumNodes],
 				Spec: &api.NodeSpec{
-					Meta: &api.Meta{
+					Meta: api.Meta{
 						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
 					},
 				},
@@ -848,7 +848,7 @@ func BenchmarkUpdateNodeTransaction(b *testing.B) {
 			_ = tx1.Nodes().Update(&api.Node{
 				ID: nodeIDs[i%benchmarkNumNodes],
 				Spec: &api.NodeSpec{
-					Meta: &api.Meta{
+					Meta: api.Meta{
 						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
 					},
 				},
@@ -919,7 +919,7 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 					_ = tx1.Nodes().Update(&api.Node{
 						ID: nodeIDs[i%benchmarkNumNodes],
 						Spec: &api.NodeSpec{
-							Meta: &api.Meta{
+							Meta: api.Meta{
 								Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(c) + "_" + strconv.Itoa(i),
 							},
 						},

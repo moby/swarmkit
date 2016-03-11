@@ -68,6 +68,9 @@ fmt:
 		(echo "👹 please indent proto files with tabs only" && false)
 	@test -z "$$(find . -path ./vendor -prune -o -name '*.proto' -type f -exec grep -Hn "id = " {} \; | grep -v gogoproto.customname | tee /dev/stderr)" || \
 		(echo "👹 id fields in proto files must have a gogoproto.customname set" && false)
+	@test -z "$$(find . -path ./vendor -prune -o -name '*.proto' -type f -exec grep -Hn "Meta meta = " {} \; | grep -v '(gogoproto.nullable) = false' | tee /dev/stderr)" || \
+		(echo "👹 meta fields in proto files must have option (gogoproto.nullable) = false" && false)
+
 
 lint:
 	@echo "🐳 $@"

@@ -155,7 +155,7 @@ func (a *Agent) register(ctx context.Context) (string, error) {
 	resp, err := client.Register(ctx, &api.RegisterRequest{
 		NodeID: a.config.ID,
 		Spec: &api.NodeSpec{
-			Meta: &api.Meta{Name: a.config.Name},
+			Meta: api.Meta{Name: a.config.Name},
 		},
 	})
 	if err != nil {

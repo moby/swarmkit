@@ -38,7 +38,7 @@ var (
 			}
 
 			spec := &api.JobSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					Name: name,
 				},
 				Template: &api.TaskSpec{
