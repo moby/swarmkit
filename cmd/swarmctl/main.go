@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 
 	"github.com/docker/swarm-v2/cmd/swarmctl/job"
 	"github.com/docker/swarm-v2/cmd/swarmctl/node"
@@ -16,7 +17,7 @@ func main() {
 	if c, err := mainCmd.ExecuteC(); err != nil {
 		c.Println("Error:", grpc.ErrorDesc(err))
 		// if it's not a grpc, we assume it's a user error and we display the usage.
-		if grpc.Code(err) == codes.Unknown {
+		if !strings.HasPrefix(grpc.ErrorDesc(err), "grpc:") && grpc.Code(err) == codes.Unknown {
 			c.Println(c.UsageString())
 		}
 

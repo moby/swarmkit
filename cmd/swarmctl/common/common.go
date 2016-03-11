@@ -1,6 +1,8 @@
 package common
 
 import (
+	"time"
+
 	"github.com/docker/swarm-v2/api"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -15,7 +17,7 @@ func Dial(cmd *cobra.Command) (api.ClusterClient, error) {
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	conn, err := grpc.Dial(addr, grpc.WithBlock(), grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
 		return nil, err
 	}
