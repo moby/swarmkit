@@ -1,13 +1,16 @@
 package state
 
 import (
+	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/docker/swarm-v2/manager/state/watch"
 	memdb "github.com/hashicorp/go-memdb"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -30,10 +33,14 @@ type MemoryStore struct {
 
 	memDB *memdb.MemDB
 	queue *watch.Queue
+
+	proposer Proposer
 }
 
-// NewMemoryStore returns an in-memory store.
-func NewMemoryStore() WatchableStore {
+// NewMemoryStore returns an in-memory store. The argument is a optional
+// Proposer which will be used to propagate changes to other members in a
+// cluster.
+func NewMemoryStore(proposer Proposer) *MemoryStore {
 	schema := &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{
 			tableNode: {
@@ -116,8 +123,9 @@ func NewMemoryStore() WatchableStore {
 	}
 
 	return &MemoryStore{
-		memDB: memDB,
-		queue: watch.NewQueue(0),
+		memDB:    memDB,
+		queue:    watch.NewQueue(0),
+		proposer: proposer,
 	}
 }
 
@@ -188,6 +196,76 @@ type tx struct {
 	changelist []Event
 }
 
+// applyStoreActions updates a store based on StoreAction messages.
+func (s *MemoryStore) applyStoreActions(actions []*api.StoreAction) error {
+	s.updateLock.Lock()
+	memDBTx := s.memDB.Txn(true)
+
+	tx := tx{
+		nodes:    nodes{memDBTx: memDBTx},
+		jobs:     jobs{memDBTx: memDBTx},
+		tasks:    tasks{memDBTx: memDBTx},
+		networks: networks{memDBTx: memDBTx},
+	}
+	tx.nodes.tx = &tx
+	tx.jobs.tx = &tx
+	tx.tasks.tx = &tx
+	tx.networks.tx = &tx
+
+	for _, sa := range actions {
+		if err := applyStoreAction(tx, sa); err != nil {
+			memDBTx.Abort()
+			s.updateLock.Unlock()
+			return err
+		}
+	}
+
+	memDBTx.Commit()
+
+	for _, c := range tx.changelist {
+		Publish(s.queue, c)
+	}
+	if len(tx.changelist) != 0 {
+		Publish(s.queue, EventCommit{})
+	}
+	s.updateLock.Unlock()
+	return nil
+}
+
+func applyStoreAction(tx tx, sa *api.StoreAction) error {
+	switch v := sa.Action.(type) {
+	case *api.StoreAction_CreateTask:
+		return tx.Tasks().Create(v.CreateTask)
+	case *api.StoreAction_UpdateTask:
+		return tx.Tasks().Update(v.UpdateTask)
+	case *api.StoreAction_RemoveTask:
+		return tx.Tasks().Delete(v.RemoveTask)
+
+	case *api.StoreAction_CreateJob:
+		return tx.Jobs().Create(v.CreateJob)
+	case *api.StoreAction_UpdateJob:
+		return tx.Jobs().Update(v.UpdateJob)
+	case *api.StoreAction_RemoveJob:
+		return tx.Jobs().Delete(v.RemoveJob)
+
+	case *api.StoreAction_CreateNetwork:
+		return tx.Networks().Create(v.CreateNetwork)
+	// TODO(aaronl): being added
+	//case *api.StoreAction_UpdateNetwork:
+	//	return tx.Networks().Update(v.UpdateNetwork)
+	case *api.StoreAction_RemoveNetwork:
+		return tx.Networks().Delete(v.RemoveNetwork)
+
+	case *api.StoreAction_CreateNode:
+		return tx.Nodes().Create(v.CreateNode)
+	case *api.StoreAction_UpdateNode:
+		return tx.Nodes().Update(v.UpdateNode)
+	case *api.StoreAction_RemoveNode:
+		return tx.Nodes().Delete(v.RemoveNode)
+	}
+	return errors.New("unrecognized action type")
+}
+
 // Update executes a read/write transaction.
 func (s *MemoryStore) Update(cb func(Tx) error) error {
 	s.updateLock.Lock()
@@ -206,13 +284,18 @@ func (s *MemoryStore) Update(cb func(Tx) error) error {
 
 	err := cb(tx)
 
+	if err == nil && s.proposer != nil {
+		var sa []*api.StoreAction
+		sa, err = tx.newStoreAction()
+
+		if err == nil {
+			err = s.proposer.ProposeValue(context.Background(), sa, time.Duration(0))
+		}
+	}
+
 	if err == nil {
 		memDBTx.Commit()
 
-		// TODO(aaronl): The memory store doesn't do anything with the
-		// changelist except publish changes to the watch queue, but
-		// the raft store will need to push these  changes out to the
-		// raft cluster.
 		for _, c := range tx.changelist {
 			Publish(s.queue, c)
 		}
@@ -224,6 +307,74 @@ func (s *MemoryStore) Update(cb func(Tx) error) error {
 	}
 	s.updateLock.Unlock()
 	return err
+}
+
+func (tx tx) newStoreAction() ([]*api.StoreAction, error) {
+	var actions []*api.StoreAction
+
+	for _, c := range tx.changelist {
+		var sa api.StoreAction
+
+		switch v := c.(type) {
+		case EventCreateTask:
+			sa.Action = &api.StoreAction_CreateTask{
+				CreateTask: v.Task,
+			}
+		case EventUpdateTask:
+			sa.Action = &api.StoreAction_UpdateTask{
+				UpdateTask: v.Task,
+			}
+		case EventDeleteTask:
+			sa.Action = &api.StoreAction_RemoveTask{
+				RemoveTask: v.Task.ID,
+			}
+
+		case EventCreateJob:
+			sa.Action = &api.StoreAction_CreateJob{
+				CreateJob: v.Job,
+			}
+		case EventUpdateJob:
+			sa.Action = &api.StoreAction_UpdateJob{
+				UpdateJob: v.Job,
+			}
+		case EventDeleteJob:
+			sa.Action = &api.StoreAction_RemoveJob{
+				RemoveJob: v.Job.ID,
+			}
+
+		case EventCreateNetwork:
+			sa.Action = &api.StoreAction_CreateNetwork{
+				CreateNetwork: v.Network,
+			}
+		// TODO(aaronl): being added
+		/*case EventUpdateNetwork:
+		sa.Action = &api.StoreAction_UpdateNetwork{
+			UpdateNetwork: v.Network,
+		}*/
+		case EventDeleteNetwork:
+			sa.Action = &api.StoreAction_RemoveNetwork{
+				RemoveNetwork: v.Network.ID,
+			}
+
+		case EventCreateNode:
+			sa.Action = &api.StoreAction_CreateNode{
+				CreateNode: v.Node,
+			}
+		case EventUpdateNode:
+			sa.Action = &api.StoreAction_UpdateNode{
+				UpdateNode: v.Node,
+			}
+		case EventDeleteNode:
+			sa.Action = &api.StoreAction_RemoveNode{
+				RemoveNode: v.Node.ID,
+			}
+		default:
+			return nil, errors.New("unrecognized event type")
+		}
+		actions = append(actions, &sa)
+	}
+
+	return actions, nil
 }
 
 func (tx tx) Nodes() NodeSet {

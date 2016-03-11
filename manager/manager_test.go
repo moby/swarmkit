@@ -18,7 +18,7 @@ import (
 )
 
 func TestManager(t *testing.T) {
-	store := state.NewMemoryStore()
+	store := state.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
 	temp, err := ioutil.TempFile("", "test-socket")

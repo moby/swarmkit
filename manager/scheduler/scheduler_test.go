@@ -73,7 +73,7 @@ func TestScheduler(t *testing.T) {
 		},
 	}
 
-	store := state.NewMemoryStore()
+	store := state.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
 	err := store.Update(func(tx state.Tx) error {
@@ -329,7 +329,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 		},
 	}
 
-	store := state.NewMemoryStore()
+	store := state.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
 	err := store.Update(func(tx state.Tx) error {

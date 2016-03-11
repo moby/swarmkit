@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -40,7 +41,6 @@ func newInitNode(t *testing.T, id uint64) *Node {
 		ID:       id,
 		Addr:     l.Addr().String(),
 		Config:   cfg,
-		Apply:    nil,
 		StateDir: stateDir,
 	}
 	n, err := NewNode(context.Background(), newNodeOpts)
@@ -63,7 +63,6 @@ func newInitNode(t *testing.T, id uint64) *Node {
 		assert.Error(t, <-done)
 	}()
 
-	time.Sleep(1 * time.Second)
 	return n
 }
 
@@ -82,7 +81,6 @@ func newJoinNode(t *testing.T, id uint64, join string) *Node {
 		ID:       id,
 		Addr:     l.Addr().String(),
 		Config:   cfg,
-		Apply:    nil,
 		StateDir: stateDir,
 	}
 
@@ -123,6 +121,7 @@ func newRaftCluster(t *testing.T) map[int]*Node {
 	nodes := make(map[int]*Node, 0)
 
 	nodes[1] = newInitNode(t, 1)
+	time.Sleep(1 * time.Second)
 	nodes[2] = newJoinNode(t, 2, nodes[1].Listener.Addr().String())
 	nodes[3] = newJoinNode(t, 3, nodes[1].Listener.Addr().String())
 
@@ -156,6 +155,7 @@ func shutdownNode(node *Node) {
 	_ = node.Listener.Close()
 	node.Listener = nil
 	node.Shutdown()
+	os.RemoveAll(node.stateDir)
 }
 
 func TestRaftBootstrap(t *testing.T) {
@@ -183,14 +183,65 @@ func TestLeader(t *testing.T) {
 	assert.Equal(t, nodes[3].Leader(), nodes[1].ID)
 }
 
+func proposeValue(t *testing.T, raftNode *Node) (*api.Node, error) {
+	node := &api.Node{
+		ID: "id1",
+		Spec: &api.NodeSpec{
+			Meta: api.Meta{
+				Name: "name1",
+			},
+		},
+	}
+
+	storeActions := []*api.StoreAction{
+		{
+			Action: &api.StoreAction_CreateNode{
+				CreateNode: node,
+			},
+		},
+	}
+
+	err := raftNode.ProposeValue(context.Background(), storeActions, 2*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	err = raftNode.memoryStore.applyStoreActions(storeActions)
+	assert.NoError(t, err, "error applying actions")
+
+	return node, nil
+}
+
+func checkValue(t *testing.T, raftNode *Node, createdNode *api.Node) {
+	err := raftNode.memoryStore.View(func(tx ReadTx) error {
+		allNodes, err := tx.Nodes().Find(All)
+		if err != nil {
+			return err
+		}
+		assert.Len(t, allNodes, 1)
+		assert.Equal(t, allNodes[0], createdNode)
+		return nil
+	})
+	assert.NoError(t, err)
+}
+
+func checkNoValue(t *testing.T, raftNode *Node) {
+	err := raftNode.memoryStore.View(func(tx ReadTx) error {
+		allNodes, err := tx.Nodes().Find(All)
+		if err != nil {
+			return err
+		}
+		assert.Len(t, allNodes, 0)
+		return nil
+	})
+	assert.NoError(t, err)
+}
+
 func TestRaftLeaderDown(t *testing.T) {
 	t.Parallel()
 
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
-
-	key := "foo"
-	value := []byte("bar")
 
 	// Stop node 1
 	nodes[1].Stop()
@@ -205,18 +256,16 @@ func TestRaftLeaderDown(t *testing.T) {
 	assert.Equal(t, nodes[3].Leader(), nodes[2].Leader())
 
 	// Propose a value
-	err := nodes[2].ProposeValue(context.Background(), &api.Pair{Key: key, Value: value}, 2*time.Second)
-	assert.NoError(t, err, "can't propose value to cluster")
+	value, err := proposeValue(t, nodes[2])
+	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
-	assert.Equal(t, nodes[2].StoreLength(), 1)
-	assert.Equal(t, nodes[2].Get(key), string(value))
+	checkValue(t, nodes[2], value)
 	assert.Equal(t, len(nodes[2].Cluster.Peers()), 3)
 
 	time.Sleep(500 * time.Millisecond)
 
-	assert.Equal(t, nodes[3].StoreLength(), 1)
-	assert.Equal(t, nodes[3].Get(key), string(value))
+	checkValue(t, nodes[3], value)
 	assert.Equal(t, len(nodes[3].Cluster.Peers()), 3)
 }
 
@@ -225,9 +274,6 @@ func TestRaftFollowerDown(t *testing.T) {
 
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
-
-	key := "foo"
-	value := []byte("bar")
 
 	// Stop node 3
 	nodes[3].Stop()
@@ -240,18 +286,16 @@ func TestRaftFollowerDown(t *testing.T) {
 	assert.Equal(t, nodes[2].Leader(), nodes[1].ID)
 
 	// Propose a value
-	err := nodes[2].ProposeValue(context.Background(), &api.Pair{Key: key, Value: value}, 2*time.Second)
-	assert.NoError(t, err, "can't propose value to cluster")
+	value, err := proposeValue(t, nodes[2])
+	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
-	assert.Equal(t, nodes[2].StoreLength(), 1)
-	assert.Equal(t, nodes[2].Get(key), string(value))
+	checkValue(t, nodes[2], value)
 	assert.Equal(t, len(nodes[2].Cluster.Peers()), 3)
 
 	time.Sleep(500 * time.Millisecond)
 
-	assert.Equal(t, nodes[1].StoreLength(), 1)
-	assert.Equal(t, nodes[1].Get(key), string(value))
+	checkValue(t, nodes[1], value)
 	assert.Equal(t, len(nodes[1].Cluster.Peers()), 3)
 }
 
@@ -261,24 +305,17 @@ func TestRaftLogReplication(t *testing.T) {
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
-	key := "foo"
-	value := []byte("bar")
-
 	// Propose a value
-	err := nodes[1].ProposeValue(context.Background(), &api.Pair{Key: key, Value: value}, 2*time.Second)
-	assert.NoError(t, err, "can't propose value to cluster")
+	value, err := proposeValue(t, nodes[1])
+	assert.NoError(t, err, "failed to propose value")
 
 	// All nodes should have the value in the physical store
-	assert.Equal(t, nodes[1].StoreLength(), 1)
-	assert.Equal(t, nodes[1].Get(key), string(value))
+	checkValue(t, nodes[1], value)
 
 	time.Sleep(500 * time.Millisecond)
 
-	assert.Equal(t, nodes[2].StoreLength(), 1)
-	assert.Equal(t, nodes[2].Get(key), string(value))
-
-	assert.Equal(t, nodes[3].StoreLength(), 1)
-	assert.Equal(t, nodes[3].Get(key), string(value))
+	checkValue(t, nodes[2], value)
+	checkValue(t, nodes[3], value)
 }
 
 func TestRaftLogReplicationWithoutLeader(t *testing.T) {
@@ -286,24 +323,19 @@ func TestRaftLogReplicationWithoutLeader(t *testing.T) {
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
-	key := "foo"
-	value := []byte("bar")
-
 	// Stop the leader
 	nodes[1].Stop()
 
 	// Propose a value
-	err := nodes[2].ProposeValue(context.Background(), &api.Pair{Key: key, Value: value}, 2*time.Second)
-	assert.Error(t, err, "can't propose value to cluster")
+	_, err := proposeValue(t, nodes[2])
+	assert.Error(t, err)
 
 	// No value should be replicated in the store in the absence of the leader
-	assert.Equal(t, nodes[2].StoreLength(), 0)
-	assert.Equal(t, nodes[2].Get(key), "")
+	checkNoValue(t, nodes[2])
 
 	time.Sleep(500 * time.Millisecond)
 
-	assert.Equal(t, nodes[3].StoreLength(), 0)
-	assert.Equal(t, nodes[3].Get(key), "")
+	checkNoValue(t, nodes[3])
 }
 
 func TestRaftQuorumFailure(t *testing.T) {
@@ -315,26 +347,21 @@ func TestRaftQuorumFailure(t *testing.T) {
 	addRaftNode(t, nodes)
 	defer teardownCluster(t, nodes)
 
-	key := "foo"
-	value := []byte("bar")
-
 	// Lose a majority
 	nodes[3].Stop()
 	nodes[4].Stop()
 	nodes[5].Stop()
 
 	// Propose a value
-	err := nodes[1].ProposeValue(context.Background(), &api.Pair{Key: key, Value: value}, 2*time.Second)
-	assert.Error(t, err, "can't propose value to cluster")
+	_, err := proposeValue(t, nodes[1])
+	assert.Error(t, err)
 
 	// The value should not be replicated, we have no majority
-	assert.Equal(t, nodes[1].StoreLength(), 0)
-	assert.Equal(t, nodes[1].Get(key), "")
+	checkNoValue(t, nodes[1])
 
 	time.Sleep(500 * time.Millisecond)
 
-	assert.Equal(t, nodes[2].StoreLength(), 0)
-	assert.Equal(t, nodes[2].Get(key), "")
+	checkNoValue(t, nodes[2])
 }
 
 func TestRaftFollowerLeave(t *testing.T) {
@@ -346,9 +373,6 @@ func TestRaftFollowerLeave(t *testing.T) {
 	addRaftNode(t, nodes)
 	defer teardownCluster(t, nodes)
 
-	key := "foo"
-	value := []byte("bar")
-
 	// Node 5 leave the cluster
 	resp, err := nodes[5].Leave(nodes[5].Ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[5].ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
@@ -358,26 +382,22 @@ func TestRaftFollowerLeave(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Propose a value
-	err = nodes[1].ProposeValue(context.Background(), &api.Pair{Key: key, Value: value}, 2*time.Second)
-	assert.NoError(t, err, "can't propose value to cluster")
+	value, err := proposeValue(t, nodes[1])
+	assert.NoError(t, err, "failed to propose value")
 
 	// Value should be replicated on every node
-	assert.Equal(t, nodes[1].StoreLength(), 1)
-	assert.Equal(t, nodes[1].Get(key), string(value))
+	checkValue(t, nodes[1], value)
 	assert.Equal(t, len(nodes[1].Cluster.Peers()), 4)
 
 	time.Sleep(500 * time.Millisecond)
 
-	assert.Equal(t, nodes[2].StoreLength(), 1)
-	assert.Equal(t, nodes[2].Get(key), string(value))
+	checkValue(t, nodes[2], value)
 	assert.Equal(t, len(nodes[2].Cluster.Peers()), 4)
 
-	assert.Equal(t, nodes[3].StoreLength(), 1)
-	assert.Equal(t, nodes[3].Get(key), string(value))
+	checkValue(t, nodes[3], value)
 	assert.Equal(t, len(nodes[3].Cluster.Peers()), 4)
 
-	assert.Equal(t, nodes[4].StoreLength(), 1)
-	assert.Equal(t, nodes[4].Get(key), string(value))
+	checkValue(t, nodes[4], value)
 	assert.Equal(t, len(nodes[4].Cluster.Peers()), 4)
 }
 
@@ -386,9 +406,6 @@ func TestRaftLeaderLeave(t *testing.T) {
 
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
-
-	key := "foo"
-	value := []byte("bar")
 
 	// node 1 is the leader
 	assert.Equal(t, nodes[1].Leader(), nodes[1].ID)
@@ -406,19 +423,40 @@ func TestRaftLeaderLeave(t *testing.T) {
 	assert.Equal(t, nodes[2].Leader(), nodes[3].Leader())
 
 	// Propose a value
-	err = nodes[2].ProposeValue(context.Background(), &api.Pair{Key: key, Value: value}, 2*time.Second)
-	assert.NoError(t, err, "can't propose value to cluster")
+	value, err := proposeValue(t, nodes[2])
+	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
-	assert.Equal(t, nodes[2].StoreLength(), 1)
-	assert.Equal(t, nodes[2].Get(key), string(value))
+	checkValue(t, nodes[2], value)
 	assert.Equal(t, len(nodes[2].Cluster.Peers()), 2)
 
 	time.Sleep(500 * time.Millisecond)
 
-	assert.Equal(t, nodes[3].StoreLength(), 1)
-	assert.Equal(t, nodes[3].Get(key), string(value))
+	checkValue(t, nodes[3], value)
 	assert.Equal(t, len(nodes[3].Cluster.Peers()), 2)
+}
+
+func TestRaftNewNodeGetsData(t *testing.T) {
+	t.Parallel()
+
+	// Bring up a 3 node cluster
+	nodes := newRaftCluster(t)
+	defer teardownCluster(t, nodes)
+
+	// Propose a value
+	value, err := proposeValue(t, nodes[1])
+	assert.NoError(t, err, "failed to propose value")
+
+	// Add a new node
+	addRaftNode(t, nodes)
+
+	time.Sleep(500 * time.Millisecond)
+
+	// Value should be replicated on every node
+	for _, node := range nodes {
+		checkValue(t, node, value)
+		assert.Equal(t, len(node.Cluster.Peers()), 4)
+	}
 }
 
 func TestRaftSnapshot(t *testing.T) {

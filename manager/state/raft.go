@@ -9,7 +9,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -18,7 +17,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/pkg/idutil"
-	"github.com/coreos/etcd/pkg/wait"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
@@ -54,9 +52,10 @@ var (
 	ErrRequestTooLarge = errors.New("raft: raft message is too large and can't be sent")
 )
 
-// ApplyCommand function can be used and triggered
-// every time there is an append entry event
-type ApplyCommand func(interface{})
+// A Proposer can propose actions to a cluster.
+type Proposer interface {
+	ProposeValue(ctx context.Context, storeAction []*api.StoreAction, timeout time.Duration) error
+}
 
 // Node represents the Raft Node useful
 // configuration.
@@ -74,13 +73,11 @@ type Node struct {
 	Port    int
 	Error   error
 
-	storeLock   sync.RWMutex
-	PStore      map[string]string
 	raftStore   *raft.MemoryStorage
-	memoryStore WatchableStore
+	memoryStore *MemoryStore
 	Config      *raft.Config
 	reqIDGen    *idutil.Generator
-	w           wait.Wait
+	wait        *wait
 	wal         *wal.WAL
 	snapshotter *snap.Snapshotter
 	stateDir    string
@@ -88,12 +85,6 @@ type Node struct {
 	ticker *time.Ticker
 	stopCh chan struct{}
 	errCh  chan error
-
-	// ApplyCommand is called when a log entry
-	// is committed to the logs, behind can
-	// lie any kind of logic processing the
-	// message
-	apply ApplyCommand
 }
 
 // NewNodeOptions provides arguments for NewNode
@@ -101,7 +92,6 @@ type NewNodeOptions struct {
 	ID       uint64
 	Addr     string
 	Config   *raft.Config
-	Apply    ApplyCommand
 	StateDir string
 }
 
@@ -115,32 +105,30 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 		cfg = DefaultNodeConfig()
 	}
 
-	store := raft.NewMemoryStorage()
+	raftStore := raft.NewMemoryStorage()
 	peers := []raft.Peer{{ID: opts.ID}}
 
 	n := &Node{
-		ID:          opts.ID,
-		Ctx:         ctx,
-		Cluster:     NewCluster(),
-		memoryStore: NewMemoryStore(),
-		raftStore:   store,
-		Address:     opts.Addr,
+		ID:        opts.ID,
+		Ctx:       ctx,
+		Cluster:   NewCluster(),
+		raftStore: raftStore,
+		Address:   opts.Addr,
 		Config: &raft.Config{
 			ID:              opts.ID,
 			ElectionTick:    cfg.ElectionTick,
 			HeartbeatTick:   cfg.HeartbeatTick,
-			Storage:         store,
+			Storage:         raftStore,
 			MaxSizePerMsg:   cfg.MaxSizePerMsg,
 			MaxInflightMsgs: cfg.MaxInflightMsgs,
 			Logger:          cfg.Logger,
 		},
-		PStore:   make(map[string]string),
 		ticker:   time.NewTicker(time.Second),
 		stopCh:   make(chan struct{}),
 		reqIDGen: idutil.NewGenerator(uint8(opts.ID), time.Now()),
-		apply:    opts.Apply,
 		stateDir: opts.StateDir,
 	}
+	n.memoryStore = NewMemoryStore(n)
 
 	if err := n.load(); err != nil {
 		n.ticker.Stop()
@@ -280,7 +268,7 @@ func (n *Node) readWAL(snapshot *raftpb.Snapshot) error {
 // messages received from other Raft nodes in
 // the cluster
 func (n *Node) Start() (errCh <-chan error) {
-	n.w = wait.New()
+	n.wait = newWait()
 	var err error
 	n.errCh = make(chan error)
 	go func() {
@@ -486,39 +474,18 @@ func (n *Node) UnregisterNode(id uint64) error {
 
 // ProposeValue calls Propose on the raft and waits
 // on the commit log action before returning a result
-func (n *Node) ProposeValue(ctx context.Context, pair *api.Pair, timeout time.Duration) error {
+func (n *Node) ProposeValue(ctx context.Context, storeAction []*api.StoreAction, timeout time.Duration) error {
 	if timeout == 0 {
 		ctx, _ = context.WithTimeout(ctx, defaultProposeTimeout)
 	} else {
 		ctx, _ = context.WithTimeout(ctx, timeout)
 	}
 
-	_, err := n.processInternalRaftRequest(ctx, &api.InternalRaftRequest{Pair: pair})
+	_, err := n.processInternalRaftRequest(ctx, &api.InternalRaftRequest{Action: storeAction})
 	if err != nil {
 		return err
 	}
 	return nil
-}
-
-// Get returns a value from the PStore
-func (n *Node) Get(key string) string {
-	n.storeLock.RLock()
-	defer n.storeLock.RUnlock()
-	return n.PStore[key]
-}
-
-// Put puts a value in the raft store
-func (n *Node) Put(key string, value string) {
-	n.storeLock.Lock()
-	defer n.storeLock.Unlock()
-	n.PStore[key] = value
-}
-
-// StoreLength returns the length of the store
-func (n *Node) StoreLength() int {
-	n.storeLock.Lock()
-	defer n.storeLock.Unlock()
-	return len(n.PStore)
 }
 
 // Saves a log entry to our Store
@@ -606,7 +573,7 @@ type applyResult struct {
 func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRaftRequest) (proto.Message, error) {
 	r.ID = n.reqIDGen.Next()
 
-	ch := n.w.Register(r.ID)
+	ch := n.wait.register(r.ID)
 
 	data, err := r.Marshal()
 	if err != nil {
@@ -627,9 +594,10 @@ func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRa
 		res := x.(*applyResult)
 		return res.resp, res.err
 	case <-ctx.Done():
-		n.w.Trigger(r.ID, nil)
+		n.wait.trigger(r.ID, nil)
 		return nil, ctx.Err()
 	case <-n.stopCh:
+		n.wait.trigger(r.ID, nil)
 		return nil, ErrStopped
 	}
 }
@@ -659,12 +627,18 @@ func (n *Node) processEntry(entry raftpb.Entry) error {
 		return err
 	}
 
-	if n.apply != nil {
-		n.apply(entry.Data)
-	}
+	if !n.wait.trigger(r.ID, &applyResult{resp: r, err: nil}) {
+		// There was no wait on this ID, meaning we don't have a
+		// transaction in progress that would be committed to the
+		// memory store by the "trigger" call. In other words, a
+		// different node wrote this to raft. Create a new transaction
+		// to commit the data.
 
-	n.Put(r.Pair.Key, string(r.Pair.Value))
-	n.w.Trigger(r.ID, &applyResult{resp: r, err: nil})
+		err := n.memoryStore.applyStoreActions(r.Action)
+		if err != nil {
+			logrus.Errorf("error applying actions from raft: %v", err)
+		}
+	}
 	return nil
 }
 
@@ -741,9 +715,4 @@ func (n *Node) applyRemoveNode(conf raftpb.ConfChange) (err error) {
 	}
 
 	return nil
-}
-
-func (n *Node) processSnapshot(snapshot raftpb.Snapshot) {
-	// TODO(abronan): implement snapshot
-	panic(fmt.Sprintf("Applying snapshot on node %v is not implemented", n.ID))
 }
