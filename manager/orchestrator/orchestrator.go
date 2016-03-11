@@ -145,7 +145,7 @@ func (o *Orchestrator) balance(job *api.Job) {
 					Spec:  &spec,
 					JobID: job.ID,
 					Status: &api.TaskStatus{
-						State: api.TaskStatus_NEW,
+						State: api.TaskStateNew,
 					},
 				}
 				if err := tx.Tasks().Create(task); err != nil {

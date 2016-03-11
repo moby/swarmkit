@@ -160,7 +160,7 @@ func (s *Scheduler) scheduleTask(tx state.Tx, nodes []*api.Node, t api.Task) *ap
 
 	log.Infof("Assigning task %s to node %s", t.ID, node.ID)
 	t.NodeID = node.ID
-	t.Status = &api.TaskStatus{State: api.TaskStatus_ASSIGNED}
+	t.Status = &api.TaskStatus{State: api.TaskStateAssigned}
 	if err := tx.Tasks().Update(&t); err != nil {
 		log.Error(err)
 		return nil
