@@ -136,12 +136,12 @@ func (o *Orchestrator) balance(job *api.Job) {
 			log.Debugf("Job %s was scaled up from %d to %d instances", job.ID, numTasks, specifiedInstances)
 			diff := specifiedInstances - numTasks
 			spec := *job.Spec.Template
-			meta := *job.Spec.Meta // TODO(stevvooe): Copy metadata with nice name.
+			meta := job.Spec.Meta // TODO(stevvooe): Copy metadata with nice name.
 
 			for i := int64(0); i < diff; i++ {
 				task := &api.Task{
 					ID:    identity.NewID(),
-					Meta:  &meta,
+					Meta:  meta,
 					Spec:  &spec,
 					JobID: job.ID,
 					Status: &api.TaskStatus{

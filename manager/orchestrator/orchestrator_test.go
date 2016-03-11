@@ -26,7 +26,7 @@ func TestOrchestrator(t *testing.T) {
 		j1 := &api.Job{
 			ID: "id1",
 			Spec: &api.JobSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					Name: "name1",
 				},
 				Template: &api.TaskSpec{},
@@ -60,7 +60,7 @@ func TestOrchestrator(t *testing.T) {
 		j2 := &api.Job{
 			ID: "id2",
 			Spec: &api.JobSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					Name: "name2",
 				},
 				Template: &api.TaskSpec{},
@@ -85,7 +85,7 @@ func TestOrchestrator(t *testing.T) {
 		j2 := &api.Job{
 			ID: "id2",
 			Spec: &api.JobSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					Name: "name2",
 				},
 				Template: &api.TaskSpec{},
@@ -114,7 +114,7 @@ func TestOrchestrator(t *testing.T) {
 		j2 := &api.Job{
 			ID: "id2",
 			Spec: &api.JobSpec{
-				Meta: &api.Meta{
+				Meta: api.Meta{
 					Name: "name2",
 				},
 				Template: &api.TaskSpec{},

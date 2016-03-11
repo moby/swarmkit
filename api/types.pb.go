@@ -183,7 +183,7 @@ func (m *Meta) Reset()      { *m = Meta{} }
 func (*Meta) ProtoMessage() {}
 
 type NodeSpec struct {
-	Meta *Meta `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
+	Meta Meta `protobuf:"bytes,1,opt,name=meta" json:"meta"`
 	// Addr provides an address for the node, accessible via the manager set.
 	Addr string `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`
 	// Status is the state of the node as seen by the creator the
@@ -330,7 +330,7 @@ func _TaskSpec_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffe
 // component is the "orchestration". The orchestration defines the strategy
 // used to the schedule and run the target with a cluster.
 type JobSpec struct {
-	Meta *Meta `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
+	Meta Meta `protobuf:"bytes,1,opt,name=meta" json:"meta"`
 	// Types that are valid to be assigned to Orchestration:
 	//	*JobSpec_Service
 	//	*JobSpec_Batch
@@ -634,7 +634,7 @@ type Task struct {
 	// Meta inherits labels from the JobSpec.Meta associated with this task. It
 	// may include other labels added by the manager. The name will be a human
 	// readable name, calculated based on the JobSpec.Meta.Name field.
-	Meta *Meta `protobuf:"bytes,4,opt,name=meta" json:"meta,omitempty"`
+	Meta Meta `protobuf:"bytes,4,opt,name=meta" json:"meta"`
 	// Spec declares the runtime parameters for the task. This is copied out of
 	// the job's template field.
 	Spec     *TaskSpec                 `protobuf:"bytes,5,opt,name=spec" json:"spec,omitempty"`
@@ -699,7 +699,7 @@ func (*Driver) ProtoMessage() {}
 
 // NetworkSpec specifies user defined network parameters.
 type NetworkSpec struct {
-	Meta *Meta `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
+	Meta Meta `protobuf:"bytes,1,opt,name=meta" json:"meta"`
 	// Driver specific configuration consumed by the network driver.
 	DriverConfiguration *Driver `protobuf:"bytes,2,opt,name=driver_configuration" json:"driver_configuration,omitempty"`
 	// IPv6Enabled enables support for IPv6 on the network.
@@ -798,9 +798,7 @@ func (this *NodeSpec) GoString() string {
 	}
 	s := make([]string, 0, 7)
 	s = append(s, "&api.NodeSpec{")
-	if this.Meta != nil {
-		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
-	}
+	s = append(s, "Meta: "+strings.Replace(this.Meta.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "Addr: "+fmt.Sprintf("%#v", this.Addr)+",\n")
 	if this.Status != nil {
 		s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
@@ -884,9 +882,7 @@ func (this *JobSpec) GoString() string {
 	}
 	s := make([]string, 0, 11)
 	s = append(s, "&api.JobSpec{")
-	if this.Meta != nil {
-		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
-	}
+	s = append(s, "Meta: "+strings.Replace(this.Meta.GoString(), `&`, ``, 1)+",\n")
 	if this.Orchestration != nil {
 		s = append(s, "Orchestration: "+fmt.Sprintf("%#v", this.Orchestration)+",\n")
 	}
@@ -1018,9 +1014,7 @@ func (this *Task) GoString() string {
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	s = append(s, "JobID: "+fmt.Sprintf("%#v", this.JobID)+",\n")
 	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
-	if this.Meta != nil {
-		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
-	}
+	s = append(s, "Meta: "+strings.Replace(this.Meta.GoString(), `&`, ``, 1)+",\n")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
@@ -1113,9 +1107,7 @@ func (this *NetworkSpec) GoString() string {
 	}
 	s := make([]string, 0, 9)
 	s = append(s, "&api.NetworkSpec{")
-	if this.Meta != nil {
-		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
-	}
+	s = append(s, "Meta: "+strings.Replace(this.Meta.GoString(), `&`, ``, 1)+",\n")
 	if this.DriverConfiguration != nil {
 		s = append(s, "DriverConfiguration: "+fmt.Sprintf("%#v", this.DriverConfiguration)+",\n")
 	}
@@ -1253,16 +1245,14 @@ func (m *NodeSpec) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Meta != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-		n1, err := m.Meta.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
+	data[i] = 0xa
+	i++
+	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
+	n1, err := m.Meta.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
+	i += n1
 	if len(m.Addr) > 0 {
 		data[i] = 0x12
 		i++
@@ -1504,16 +1494,14 @@ func (m *JobSpec) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Meta != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-		n8, err := m.Meta.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n8
+	data[i] = 0xa
+	i++
+	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
+	n8, err := m.Meta.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
+	i += n8
 	if m.Orchestration != nil {
 		nn9, err := m.Orchestration.MarshalTo(data[i:])
 		if err != nil {
@@ -1792,16 +1780,14 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintTypes(data, i, uint64(len(m.NodeID)))
 		i += copy(data[i:], m.NodeID)
 	}
-	if m.Meta != nil {
-		data[i] = 0x22
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-		n16, err := m.Meta.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n16
+	data[i] = 0x22
+	i++
+	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
+	n16, err := m.Meta.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
+	i += n16
 	if m.Spec != nil {
 		data[i] = 0x2a
 		i++
@@ -2023,16 +2009,14 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Meta != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-		n21, err := m.Meta.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n21
+	data[i] = 0xa
+	i++
+	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
+	n21, err := m.Meta.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
+	i += n21
 	if m.DriverConfiguration != nil {
 		data[i] = 0x12
 		i++
@@ -2249,10 +2233,8 @@ func (m *Meta) Size() (n int) {
 func (m *NodeSpec) Size() (n int) {
 	var l int
 	_ = l
-	if m.Meta != nil {
-		l = m.Meta.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
+	l = m.Meta.Size()
+	n += 1 + l + sovTypes(uint64(l))
 	l = len(m.Addr)
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
@@ -2352,10 +2334,8 @@ func (m *TaskSpec_Container) Size() (n int) {
 func (m *JobSpec) Size() (n int) {
 	var l int
 	_ = l
-	if m.Meta != nil {
-		l = m.Meta.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
+	l = m.Meta.Size()
+	n += 1 + l + sovTypes(uint64(l))
 	if m.Orchestration != nil {
 		n += m.Orchestration.Size()
 	}
@@ -2492,10 +2472,8 @@ func (m *Task) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
-	if m.Meta != nil {
-		l = m.Meta.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
+	l = m.Meta.Size()
+	n += 1 + l + sovTypes(uint64(l))
 	if m.Spec != nil {
 		l = m.Spec.Size()
 		n += 1 + l + sovTypes(uint64(l))
@@ -2590,10 +2568,8 @@ func (m *Driver) Size() (n int) {
 func (m *NetworkSpec) Size() (n int) {
 	var l int
 	_ = l
-	if m.Meta != nil {
-		l = m.Meta.Size()
-		n += 1 + l + sovTypes(uint64(l))
-	}
+	l = m.Meta.Size()
+	n += 1 + l + sovTypes(uint64(l))
 	if m.DriverConfiguration != nil {
 		l = m.DriverConfiguration.Size()
 		n += 1 + l + sovTypes(uint64(l))
@@ -2703,7 +2679,7 @@ func (this *NodeSpec) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&NodeSpec{`,
-		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
+		`Meta:` + strings.Replace(strings.Replace(this.Meta.String(), "Meta", "Meta", 1), `&`, ``, 1) + `,`,
 		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
 		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "NodeStatus", "NodeStatus", 1) + `,`,
 		`}`,
@@ -2781,7 +2757,7 @@ func (this *JobSpec) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&JobSpec{`,
-		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
+		`Meta:` + strings.Replace(strings.Replace(this.Meta.String(), "Meta", "Meta", 1), `&`, ``, 1) + `,`,
 		`Orchestration:` + fmt.Sprintf("%v", this.Orchestration) + `,`,
 		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "JobSpec_NetworkAttachmentSpec", "JobSpec_NetworkAttachmentSpec", 1) + `,`,
 		`Template:` + strings.Replace(fmt.Sprintf("%v", this.Template), "TaskSpec", "TaskSpec", 1) + `,`,
@@ -2917,7 +2893,7 @@ func (this *Task) String() string {
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`JobID:` + fmt.Sprintf("%v", this.JobID) + `,`,
 		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
-		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
+		`Meta:` + strings.Replace(strings.Replace(this.Meta.String(), "Meta", "Meta", 1), `&`, ``, 1) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "TaskSpec", "TaskSpec", 1) + `,`,
 		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "TaskStatus", "TaskStatus", 1) + `,`,
 		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Task_NetworkAttachment", "Task_NetworkAttachment", 1) + `,`,
@@ -2996,7 +2972,7 @@ func (this *NetworkSpec) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&NetworkSpec{`,
-		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
+		`Meta:` + strings.Replace(strings.Replace(this.Meta.String(), "Meta", "Meta", 1), `&`, ``, 1) + `,`,
 		`DriverConfiguration:` + strings.Replace(fmt.Sprintf("%v", this.DriverConfiguration), "Driver", "Driver", 1) + `,`,
 		`Ipv6Enabled:` + fmt.Sprintf("%v", this.Ipv6Enabled) + `,`,
 		`Internal:` + fmt.Sprintf("%v", this.Internal) + `,`,
@@ -3292,9 +3268,6 @@ func (m *NodeSpec) Unmarshal(data []byte) error {
 			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
-			}
-			if m.Meta == nil {
-				m.Meta = &Meta{}
 			}
 			if err := m.Meta.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -4008,9 +3981,6 @@ func (m *JobSpec) Unmarshal(data []byte) error {
 			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
-			}
-			if m.Meta == nil {
-				m.Meta = &Meta{}
 			}
 			if err := m.Meta.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -4833,9 +4803,6 @@ func (m *Task) Unmarshal(data []byte) error {
 			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
-			}
-			if m.Meta == nil {
-				m.Meta = &Meta{}
 			}
 			if err := m.Meta.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -5675,9 +5642,6 @@ func (m *NetworkSpec) Unmarshal(data []byte) error {
 			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
-			}
-			if m.Meta == nil {
-				m.Meta = &Meta{}
 			}
 			if err := m.Meta.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err

@@ -372,7 +372,7 @@ func (ni nodeIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 		panic("unexpected type passed to FromObject")
 	}
 
-	if n.Spec == nil || n.Spec.Meta == nil {
+	if n.Spec == nil {
 		return false, nil, nil
 	}
 	// Add the null character as a terminator
@@ -522,7 +522,7 @@ func (ti taskIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 		panic("unexpected type passed to FromObject")
 	}
 
-	if t.Spec == nil || t.Meta == nil {
+	if t.Spec == nil {
 		return false, nil, nil
 	}
 	// Add the null character as a terminator
@@ -694,7 +694,7 @@ func (ji jobIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 	}
 
 	// Add the null character as a terminator
-	if j.Spec == nil || j.Spec.Meta == nil {
+	if j.Spec == nil {
 		return false, nil, nil
 	}
 	// Add the null character as a terminator
@@ -819,7 +819,7 @@ func (ni networkIndexerByName) FromObject(obj interface{}) (bool, []byte, error)
 	}
 
 	// Add the null character as a terminator
-	if n.Spec == nil || n.Spec.Meta == nil {
+	if n.Spec == nil {
 		return false, nil, nil
 	}
 	// Add the null character as a terminator

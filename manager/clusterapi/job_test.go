@@ -12,7 +12,7 @@ import (
 
 func createSpec(name, image string, instances int64) *api.JobSpec {
 	return &api.JobSpec{
-		Meta: &api.Meta{
+		Meta: api.Meta{
 			Name: name,
 		},
 		Template: &api.TaskSpec{
@@ -130,7 +130,7 @@ func TestValidateJobSpec(t *testing.T) {
 			c:    codes.InvalidArgument,
 		},
 		{
-			spec: &api.JobSpec{Meta: &api.Meta{Name: "name"}},
+			spec: &api.JobSpec{Meta: api.Meta{Name: "name"}},
 			c:    codes.InvalidArgument,
 		},
 		{

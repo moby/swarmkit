@@ -13,7 +13,7 @@ message Meta {
 }
 
 message NodeSpec {
-	Meta meta = 1;
+	Meta meta = 1 [(gogoproto.nullable) = false];
 
 	// Addr provides an address for the node, accessible via the manager set.
 	string addr = 2;
@@ -102,7 +102,7 @@ message TaskSpec {
 // component is the "orchestration". The orchestration defines the strategy
 // used to the schedule and run the target with a cluster.
 message JobSpec {
-	Meta meta = 1;
+	Meta meta = 1 [(gogoproto.nullable) = false];
 
 	message ServiceJob {
 		// Instances specifies the number of instances of the service job that
@@ -187,7 +187,7 @@ message Task {
 	// Meta inherits labels from the JobSpec.Meta associated with this task. It
 	// may include other labels added by the manager. The name will be a human
 	// readable name, calculated based on the JobSpec.Meta.Name field.
-	Meta meta = 4;
+	Meta meta = 4 [(gogoproto.nullable) = false];
 
 	// Spec declares the runtime parameters for the task. This is copied out of
 	// the job's template field.
@@ -250,7 +250,7 @@ message Driver {
 
 // NetworkSpec specifies user defined network parameters.
 message NetworkSpec {
-	Meta meta = 1;
+	Meta meta = 1 [(gogoproto.nullable) = false];
 
 	message IPAMOptions {
 		Driver driver = 1;

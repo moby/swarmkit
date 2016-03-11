@@ -14,7 +14,7 @@ import (
 
 func createNetworkSpec(name string) *api.NetworkSpec {
 	return &api.NetworkSpec{
-		Meta: &api.Meta{
+		Meta: api.Meta{
 			Name: name,
 		},
 	}
