@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/docker/swarm-v2/manager/state/watch"
-	"github.com/docker/swarm-v2/state/pb"
 	memdb "github.com/hashicorp/go-memdb"
 )
 
