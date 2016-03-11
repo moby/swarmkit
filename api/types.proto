@@ -83,6 +83,17 @@ message ContainerSpec {
 	// format. These must be compliant with  [IEEE Std
 	// 1003.1-2001](http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html).
 	repeated string env = 4;
+
+	// NetworkAttachmentSpec describes a desired attachment to the named network or
+	// a specific network_id.
+	message NetworkAttachmentSpec {
+		oneof reference {
+			string name = 1;
+			string network_id = 2 [(gogoproto.customname) = "NetworkID"];
+		}
+	}
+
+	repeated NetworkAttachmentSpec networks = 5;
 }
 
 // TaskSpec defines properties required by the agent for execution.
@@ -121,15 +132,6 @@ message JobSpec {
 	message CronJob {
 	}
 
-	// NetworkAttachmentSpec describes a desired attachment to the named network or
-	// a specific network_id.
-	message NetworkAttachmentSpec {
-		oneof reference {
-			string name = 1;
-			string network_id = 2 [(gogoproto.customname) = "NetworkID"];
-		}
-	}
-
 	oneof orchestration {
 		ServiceJob service = 2;
 		BatchJob batch = 3;
@@ -137,12 +139,8 @@ message JobSpec {
 		CronJob cron = 5;
 	}
 
-	// Environment specifies key=value style environment variables that will be
-	// set on all tasks implementing the job.
-	repeated NetworkAttachmentSpec networks = 6;
-
 	// Template defines the base configuration for tasks created for this job.
-	TaskSpec template = 7;
+	TaskSpec template = 6;
 }
 
 message TaskStatus {
@@ -287,4 +285,3 @@ message WeightedPeer {
 
 	// TODO(stevvooe): We must consolidate peer representation in the API.
 }
-
