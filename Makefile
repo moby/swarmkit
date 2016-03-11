@@ -82,7 +82,7 @@ errcheck:
 
 complexity:
 	@echo "🐳 $@"
-	@test -z "$$(gocyclo -over 15 . | grep -v vendor/ | grep -v ".pb.go:" | tee /dev/stderr)"
+	@test -z "$$(gocyclo -over 15 . | grep -v vendor/ | grep -v "pb_test.go:" | grep -v ".pb.go:" | tee /dev/stderr)"
 
 build:
 	@echo "🐳 $@"
@@ -99,7 +99,7 @@ clean:
 	@echo "🐳 $@"
 	@rm -rf "${PREFIX}/bin/swarmctl" "${PREFIX}/bin/swarmd" "${PREFIX}/bin/protoc-gen-gogoswarm"
 
-coverage: 
+coverage:
 	@echo "🐳 $@"
 	@for pkg in ${PACKAGES}; do \
 		go test -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=count $$pkg; \

@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "github.com/docker/swarm-v2/protobuf/plugin/deepcopy"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/protobuf/vanity"
 	"github.com/gogo/protobuf/vanity/command"

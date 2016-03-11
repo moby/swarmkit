@@ -178,6 +178,150 @@ func init() {
 	proto.RegisterType((*TasksRequest)(nil), "api.TasksRequest")
 	proto.RegisterType((*TasksMessage)(nil), "api.TasksMessage")
 }
+
+func (m *RegisterRequest) Copy() *RegisterRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &RegisterRequest{
+		Spec:   m.Spec.Copy(),
+		NodeID: m.NodeID,
+	}
+
+	return o
+}
+
+func (m *RegisterResponse) Copy() *RegisterResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &RegisterResponse{
+		NodeID:    m.NodeID,
+		SessionID: m.SessionID,
+	}
+
+	return o
+}
+
+func (m *SessionRequest) Copy() *SessionRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &SessionRequest{
+		NodeID:    m.NodeID,
+		SessionID: m.SessionID,
+	}
+
+	return o
+}
+
+func (m *SessionMessage) Copy() *SessionMessage {
+	if m == nil {
+		return nil
+	}
+
+	o := &SessionMessage{
+		Disconnect: m.Disconnect,
+	}
+
+	if m.Managers != nil {
+		o.Managers = make([]*WeightedPeer, 0, len(m.Managers))
+		for _, v := range m.Managers {
+			o.Managers = append(o.Managers, v.Copy())
+		}
+	}
+
+	return o
+}
+
+func (m *HeartbeatRequest) Copy() *HeartbeatRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &HeartbeatRequest{
+		NodeID:    m.NodeID,
+		SessionID: m.SessionID,
+	}
+
+	return o
+}
+
+func (m *HeartbeatResponse) Copy() *HeartbeatResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &HeartbeatResponse{
+		Period: m.Period,
+	}
+
+	return o
+}
+
+func (m *UpdateTaskStatusRequest) Copy() *UpdateTaskStatusRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &UpdateTaskStatusRequest{
+		NodeID:    m.NodeID,
+		SessionID: m.SessionID,
+	}
+
+	if m.Tasks != nil {
+		o.Tasks = make([]*Task, 0, len(m.Tasks))
+		for _, v := range m.Tasks {
+			o.Tasks = append(o.Tasks, v.Copy())
+		}
+	}
+
+	return o
+}
+
+func (m *UpdateTaskStatusResponse) Copy() *UpdateTaskStatusResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &UpdateTaskStatusResponse{}
+
+	return o
+}
+
+func (m *TasksRequest) Copy() *TasksRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &TasksRequest{
+		NodeID:    m.NodeID,
+		SessionID: m.SessionID,
+	}
+
+	return o
+}
+
+func (m *TasksMessage) Copy() *TasksMessage {
+	if m == nil {
+		return nil
+	}
+
+	o := &TasksMessage{}
+
+	if m.Tasks != nil {
+		o.Tasks = make([]*Task, 0, len(m.Tasks))
+		for _, v := range m.Tasks {
+			o.Tasks = append(o.Tasks, v.Copy())
+		}
+	}
+
+	return o
+}
+
 func (this *RegisterRequest) GoString() string {
 	if this == nil {
 		return "nil"

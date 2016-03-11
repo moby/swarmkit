@@ -269,6 +269,377 @@ func init() {
 	proto.RegisterType((*ListNetworksRequest)(nil), "api.ListNetworksRequest")
 	proto.RegisterType((*ListNetworksResponse)(nil), "api.ListNetworksResponse")
 }
+
+func (m *ListNodesRequest) Copy() *ListNodesRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListNodesRequest{}
+
+	return o
+}
+
+func (m *ListNodesResponse) Copy() *ListNodesResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListNodesResponse{}
+
+	if m.Nodes != nil {
+		o.Nodes = make([]*Node, 0, len(m.Nodes))
+		for _, v := range m.Nodes {
+			o.Nodes = append(o.Nodes, v.Copy())
+		}
+	}
+
+	return o
+}
+
+func (m *UpdateNodeRequest) Copy() *UpdateNodeRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &UpdateNodeRequest{
+		NodeID: m.NodeID,
+		Spec:   m.Spec.Copy(),
+	}
+
+	return o
+}
+
+func (m *UpdateNodeResponse) Copy() *UpdateNodeResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &UpdateNodeResponse{
+		Node: m.Node.Copy(),
+	}
+
+	return o
+}
+
+func (m *CreateTaskRequest) Copy() *CreateTaskRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &CreateTaskRequest{
+		Spec: m.Spec.Copy(),
+	}
+
+	return o
+}
+
+func (m *CreateTaskResponse) Copy() *CreateTaskResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &CreateTaskResponse{
+		Task: m.Task.Copy(),
+	}
+
+	return o
+}
+
+func (m *GetTaskRequest) Copy() *GetTaskRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &GetTaskRequest{
+		TaskID: m.TaskID,
+	}
+
+	return o
+}
+
+func (m *GetTaskResponse) Copy() *GetTaskResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &GetTaskResponse{
+		Task: m.Task.Copy(),
+	}
+
+	return o
+}
+
+func (m *RemoveTaskRequest) Copy() *RemoveTaskRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &RemoveTaskRequest{
+		TaskID: m.TaskID,
+	}
+
+	return o
+}
+
+func (m *RemoveTaskResponse) Copy() *RemoveTaskResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &RemoveTaskResponse{}
+
+	return o
+}
+
+func (m *ListTasksRequest) Copy() *ListTasksRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListTasksRequest{}
+
+	return o
+}
+
+func (m *ListTasksResponse) Copy() *ListTasksResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListTasksResponse{}
+
+	if m.Tasks != nil {
+		o.Tasks = make([]*Task, 0, len(m.Tasks))
+		for _, v := range m.Tasks {
+			o.Tasks = append(o.Tasks, v.Copy())
+		}
+	}
+
+	return o
+}
+
+func (m *CreateJobRequest) Copy() *CreateJobRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &CreateJobRequest{
+		Spec: m.Spec.Copy(),
+	}
+
+	return o
+}
+
+func (m *CreateJobResponse) Copy() *CreateJobResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &CreateJobResponse{
+		Job: m.Job.Copy(),
+	}
+
+	return o
+}
+
+func (m *GetJobRequest) Copy() *GetJobRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &GetJobRequest{
+		JobID: m.JobID,
+	}
+
+	return o
+}
+
+func (m *GetJobResponse) Copy() *GetJobResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &GetJobResponse{
+		Job: m.Job.Copy(),
+	}
+
+	return o
+}
+
+func (m *UpdateJobRequest) Copy() *UpdateJobRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &UpdateJobRequest{
+		JobID: m.JobID,
+		Spec:  m.Spec.Copy(),
+	}
+
+	return o
+}
+
+func (m *UpdateJobResponse) Copy() *UpdateJobResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &UpdateJobResponse{
+		Job: m.Job.Copy(),
+	}
+
+	return o
+}
+
+func (m *RemoveJobRequest) Copy() *RemoveJobRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &RemoveJobRequest{
+		JobID: m.JobID,
+	}
+
+	return o
+}
+
+func (m *RemoveJobResponse) Copy() *RemoveJobResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &RemoveJobResponse{}
+
+	return o
+}
+
+func (m *ListJobsRequest) Copy() *ListJobsRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListJobsRequest{}
+
+	return o
+}
+
+func (m *ListJobsResponse) Copy() *ListJobsResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListJobsResponse{}
+
+	if m.Jobs != nil {
+		o.Jobs = make([]*Job, 0, len(m.Jobs))
+		for _, v := range m.Jobs {
+			o.Jobs = append(o.Jobs, v.Copy())
+		}
+	}
+
+	return o
+}
+
+func (m *CreateNetworkRequest) Copy() *CreateNetworkRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &CreateNetworkRequest{
+		Spec: m.Spec.Copy(),
+	}
+
+	return o
+}
+
+func (m *CreateNetworkResponse) Copy() *CreateNetworkResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &CreateNetworkResponse{
+		Network: m.Network.Copy(),
+	}
+
+	return o
+}
+
+func (m *GetNetworkRequest) Copy() *GetNetworkRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &GetNetworkRequest{
+		Name:      m.Name,
+		NetworkID: m.NetworkID,
+	}
+
+	return o
+}
+
+func (m *GetNetworkResponse) Copy() *GetNetworkResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &GetNetworkResponse{
+		Network: m.Network.Copy(),
+	}
+
+	return o
+}
+
+func (m *RemoveNetworkRequest) Copy() *RemoveNetworkRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &RemoveNetworkRequest{
+		Name:      m.Name,
+		NetworkID: m.NetworkID,
+	}
+
+	return o
+}
+
+func (m *RemoveNetworkResponse) Copy() *RemoveNetworkResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &RemoveNetworkResponse{}
+
+	return o
+}
+
+func (m *ListNetworksRequest) Copy() *ListNetworksRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListNetworksRequest{}
+
+	return o
+}
+
+func (m *ListNetworksResponse) Copy() *ListNetworksResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListNetworksResponse{}
+
+	if m.Networks != nil {
+		o.Networks = make([]*Network, 0, len(m.Networks))
+		for _, v := range m.Networks {
+			o.Networks = append(o.Networks, v.Copy())
+		}
+	}
+
+	return o
+}
+
 func (this *ListNodesRequest) GoString() string {
 	if this == nil {
 		return "nil"
