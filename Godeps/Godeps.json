@@ -6,6 +6,10 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "github.com/cloudfoundry-incubator/candiedyaml",
+			"Rev": "4e924c79e32959414e8c7aaed6607176d8ee79c3"
+		},
+		{
 			"ImportPath": "github.com/Microsoft/go-winio",
 			"Rev": "f778f05015353be65d242f3fedc18695756153bb"
 		},

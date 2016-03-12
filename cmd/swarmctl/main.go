@@ -37,6 +37,7 @@ func init() {
 	mainCmd.PersistentFlags().StringP("addr", "a", "127.0.0.1:4242", "Address of the Swarm manager")
 
 	mainCmd.AddCommand(
+		deployCmd,
 		node.Cmd,
 		job.Cmd,
 		task.Cmd,
