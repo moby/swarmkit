@@ -885,6 +885,38 @@ func (m *ContainerSpec) Copy() *ContainerSpec {
 		}
 	}
 
+	if m.Networks != nil {
+		o.Networks = make([]*ContainerSpec_NetworkAttachmentSpec, 0, len(m.Networks))
+		for _, v := range m.Networks {
+			o.Networks = append(o.Networks, v.Copy())
+		}
+	}
+
+	return o
+}
+
+func (m *ContainerSpec_NetworkAttachmentSpec) Copy() *ContainerSpec_NetworkAttachmentSpec {
+	if m == nil {
+		return nil
+	}
+
+	o := &ContainerSpec_NetworkAttachmentSpec{}
+
+	switch m.Reference.(type) {
+	case *ContainerSpec_NetworkAttachmentSpec_Name:
+		i := &ContainerSpec_NetworkAttachmentSpec_Name{
+			Name: m.GetName(),
+		}
+
+		o.Reference = i
+	case *ContainerSpec_NetworkAttachmentSpec_NetworkID:
+		i := &ContainerSpec_NetworkAttachmentSpec_NetworkID{
+			NetworkID: m.GetNetworkID(),
+		}
+
+		o.Reference = i
+	}
+
 	return o
 }
 
@@ -915,13 +947,6 @@ func (m *JobSpec) Copy() *JobSpec {
 	o := &JobSpec{
 		Meta:     *m.Meta.Copy(),
 		Template: m.Template.Copy(),
-	}
-
-	if m.Networks != nil {
-		o.Networks = make([]*JobSpec_NetworkAttachmentSpec, 0, len(m.Networks))
-		for _, v := range m.Networks {
-			o.Networks = append(o.Networks, v.Copy())
-		}
 	}
 
 	switch m.Orchestration.(type) {
@@ -995,31 +1020,6 @@ func (m *JobSpec_CronJob) Copy() *JobSpec_CronJob {
 	}
 
 	o := &JobSpec_CronJob{}
-
-	return o
-}
-
-func (m *JobSpec_NetworkAttachmentSpec) Copy() *JobSpec_NetworkAttachmentSpec {
-	if m == nil {
-		return nil
-	}
-
-	o := &JobSpec_NetworkAttachmentSpec{}
-
-	switch m.Reference.(type) {
-	case *JobSpec_NetworkAttachmentSpec_Name:
-		i := &JobSpec_NetworkAttachmentSpec_Name{
-			Name: m.GetName(),
-		}
-
-		o.Reference = i
-	case *JobSpec_NetworkAttachmentSpec_NetworkID:
-		i := &JobSpec_NetworkAttachmentSpec_NetworkID{
-			NetworkID: m.GetNetworkID(),
-		}
-
-		o.Reference = i
-	}
 
 	return o
 }

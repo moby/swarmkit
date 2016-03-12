@@ -48,18 +48,18 @@ var (
 				orchestration = fmt.Sprintf("SERVICE (%d instances)", o.Service.Instances)
 			}
 			common.FprintfIfNotEmpty(w, "Orchestration:\t%s\n", orchestration)
-			if len(r.Job.Spec.Networks) > 0 {
-				fmt.Fprintln(w, "Networks:")
-				for _, n := range r.Job.Spec.Networks {
-					fmt.Fprintf(w, " %s\n", n.GetName())
-				}
-			}
 			fmt.Fprintln(w, "Template:")
 			fmt.Fprintln(w, " Container:")
 			common.FprintfIfNotEmpty(w, "  Image:\t%s\n", r.Job.Spec.Template.GetContainer().Image.Reference)
 			common.FprintfIfNotEmpty(w, "  Command:\t%s\n", strings.Join(r.Job.Spec.Template.GetContainer().Command, ","))
 			common.FprintfIfNotEmpty(w, "  Args:\t%s\n", strings.Join(r.Job.Spec.Template.GetContainer().Args, ","))
 			common.FprintfIfNotEmpty(w, "  Env:\t%s\n", strings.Join(r.Job.Spec.Template.GetContainer().Env, ","))
+			if len(r.Job.Spec.Template.GetContainer().Networks) > 0 {
+				fmt.Fprintln(w, "  Networks:")
+				for _, n := range r.Job.Spec.Template.GetContainer().Networks {
+					fmt.Fprintf(w, " %s\n", n.GetName())
+				}
+			}
 
 			return nil
 		},
