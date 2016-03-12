@@ -8,9 +8,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/identity"
-	"github.com/docker/swarm-v2/manager/dispatcher/heartbeat"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/watch"
 	"golang.org/x/net/context"
 )
 
@@ -53,22 +52,29 @@ func DefaultConfig() *Config {
 
 // Dispatcher is responsible for dispatching tasks and tracking agent health.
 type Dispatcher struct {
-	mu                    sync.Mutex
-	addr                  string
-	nodes                 *nodeStore
-	store                 state.WatchableStore
-	gracePeriodMultiplier int
-	periodChooser         *periodChooser
+	mu               sync.Mutex
+	addr             string
+	nodes            *nodeStore
+	store            state.WatchableStore
+	mgrQueue         *watch.Queue
+	lastSeenManagers []*api.WeightedPeer
+	config           *Config
 }
 
 // New returns Dispatcher with store.
 func New(store state.WatchableStore, c *Config) *Dispatcher {
 	return &Dispatcher{
-		addr:                  c.Addr,
-		nodes:                 newNodeStore(),
-		store:                 store,
-		periodChooser:         newPeriodChooser(c.HeartbeatPeriod, c.HeartbeatEpsilon),
-		gracePeriodMultiplier: c.GracePeriodMultiplier,
+		addr:     c.Addr,
+		nodes:    newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier),
+		store:    store,
+		mgrQueue: watch.NewQueue(16),
+		config:   c,
+		lastSeenManagers: []*api.WeightedPeer{
+			{
+				Addr:   c.Addr, // TODO: change after raft
+				Weight: 1,
+			},
+		},
 	}
 }
 
@@ -85,17 +91,14 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	}
 	nid := n.ID // prevent the closure from holding onto the entire Node.
 
-	rn := &registeredNode{
-		SessionID: identity.NewID(), // session ID is local to the dispatcher.
-		Heartbeat: heartbeat.New(d.periodChooser.Choose()*time.Duration(d.gracePeriodMultiplier), func() {
-			if err := d.nodeDown(nid); err != nil {
-				log.Errorf("error deregistering node %s after heartbeat was not received: %v", nid, err)
-			}
-		}),
-		Node: n,
+	expireFunc := func() {
+		nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "node was marked as down because of heartbeat fail"}
+		if err := d.nodeRemove(nid, nodeStatus); err != nil {
+			log.Errorf("error deregistering node %s after heartbeat was not received: %v", nid, err)
+		}
 	}
 
-	d.nodes.Add(rn)
+	rn := d.nodes.Add(n, expireFunc)
 
 	// create or update node in raft
 	rn.mu.Lock()
@@ -211,19 +214,22 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 				delete(tasksMap, v.Task.ID)
 			}
 		case <-stream.Context().Done():
-			return nil
+			return stream.Context().Err()
 		}
 	}
 }
 
-func (d *Dispatcher) nodeDown(id string) error {
-	d.nodes.Delete(id)
+func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
+	rn := d.nodes.Delete(id)
+	if rn == nil {
+		return fmt.Errorf("node %s is not found in local storage", id)
+	}
 
+	rn.mu.Lock()
+	defer rn.mu.Unlock()
+	rn.Node.Status = status
 	err := d.store.Update(func(tx state.Tx) error {
-		return tx.Nodes().Update(&api.Node{
-			ID:     id,
-			Status: api.NodeStatus{State: api.NodeStatus_DOWN},
-		})
+		return tx.Nodes().Update(rn.Node)
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update node %s status to down", id)
@@ -237,25 +243,34 @@ func (d *Dispatcher) nodeDown(id string) error {
 func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*api.HeartbeatResponse, error) {
 	log.WithField("request", r).Debugf("(*Dispatcher).Heartbeat")
 
-	rn, err := d.nodes.GetWithSession(r.NodeID, r.SessionID)
-	if err != nil {
-		return nil, err
-	}
+	period, err := d.nodes.Heartbeat(r.NodeID, r.SessionID)
+	return &api.HeartbeatResponse{Period: period}, err
+}
 
-	period := d.periodChooser.Choose() // base period for node
-	grace := period * time.Duration(d.gracePeriodMultiplier)
-	rn.Heartbeat.Update(grace)
-	rn.Heartbeat.Beat()
-	return &api.HeartbeatResponse{Period: period}, nil
+func (d *Dispatcher) watchManagers() {
+	publish := func() {
+		mgrs := []*api.WeightedPeer{
+			{
+				Addr:   d.addr, // TODO: change after raft
+				Weight: 1,
+			},
+		}
+		d.mu.Lock()
+		d.lastSeenManagers = mgrs
+		d.mu.Unlock()
+		d.mgrQueue.Publish(watch.Event{Payload: mgrs})
+	}
+	publish()
+	// TODO: here should be code which asks leader about managers with their weights
+	for range time.Tick(1 * time.Second) {
+		publish()
+	}
 }
 
 func (d *Dispatcher) getManagers() []*api.WeightedPeer {
-	return []*api.WeightedPeer{
-		{
-			Addr:   d.addr, // TODO: change after raft
-			Weight: 1,
-		},
-	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.lastSeenManagers
 }
 
 // Session is stream which controls agent connection.
@@ -268,17 +283,48 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		return err
 	}
 
+	if err := stream.Send(&api.SessionMessage{
+		Managers:   d.getManagers(),
+		Disconnect: false,
+	}); err != nil {
+		return err
+	}
+
+	mgrUpdates := d.mgrQueue.Watch()
+
 	for {
 		// After each message send, we need to check the nodes sessionID hasn't
 		// changed. If it has, we will the stream and make the node
 		// re-register.
-		if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
+		node, err := d.nodes.GetWithSession(r.NodeID, r.SessionID)
+		if err != nil {
 			return err
+		}
+		var (
+			disconnect bool
+			mgrs       []*api.WeightedPeer
+		)
+		select {
+		case <-node.Disconnect:
+			disconnect = true
+		case ev := <-mgrUpdates:
+			mgrs = ev.Payload.([]*api.WeightedPeer)
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		}
+		if mgrs == nil {
+			mgrs = d.getManagers()
+		}
+		if disconnect {
+			nodeStatus := api.NodeStatus{State: api.NodeStatus_DISCONNECTED, Message: "node is currently trying to find new manager"}
+			if err := d.nodeRemove(r.NodeID, nodeStatus); err != nil {
+				log.Error(err)
+			}
 		}
 
 		if err := stream.Send(&api.SessionMessage{
-			Managers:   d.getManagers(),
-			Disconnect: false,
+			Managers:   mgrs,
+			Disconnect: disconnect,
 		}); err != nil {
 			return err
 		}

@@ -157,22 +157,21 @@ const (
 	NodeStatus_DOWN NodeStatus_State = 1
 	// Ready indicates the node is ready to accept tasks.
 	NodeStatus_READY NodeStatus_State = 2
-	// Drained indicates the node is actively a part of the cluster but is
-	// not accepting new tasks.
-	NodeStatus_DRAINED NodeStatus_State = 3
+	// Disconnected indicates the node is currently trying to find new manager.
+	NodeStatus_DISCONNECTED NodeStatus_State = 3
 )
 
 var NodeStatus_State_name = map[int32]string{
 	0: "UNKNOWN",
 	1: "DOWN",
 	2: "READY",
-	3: "DRAINED",
+	3: "DISCONNECTED",
 }
 var NodeStatus_State_value = map[string]int32{
-	"UNKNOWN": 0,
-	"DOWN":    1,
-	"READY":   2,
-	"DRAINED": 3,
+	"UNKNOWN":      0,
+	"DOWN":         1,
+	"READY":        2,
+	"DISCONNECTED": 3,
 }
 
 func (x NodeStatus_State) String() string {

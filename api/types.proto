@@ -50,9 +50,8 @@ message NodeStatus {
 		// Ready indicates the node is ready to accept tasks.
 		READY = 2;
 
-		// Drained indicates the node is actively a part of the cluster but is
-		// not accepting new tasks.
-		DRAINED = 3;
+		// Disconnected indicates the node is currently trying to find new manager.
+		DISCONNECTED = 3;
 	}
 
 	State state = 1;

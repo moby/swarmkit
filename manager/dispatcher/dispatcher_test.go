@@ -130,7 +130,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode := &api.Node{ID: "test"}
+	testNode := &api.Node{ID: "test", Spec: &api.NodeSpec{Meta: &api.Meta{Name: "test"}}}
 	var expectedSessionID string
 	{
 		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID, Spec: testNode.Spec})
@@ -146,6 +146,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 		storeNode := readTx.Nodes().Get("test")
 		assert.NotNil(t, storeNode)
 		assert.Equal(t, api.NodeStatus_DOWN, storeNode.Status.State)
+		assert.Equal(t, "test", storeNode.Spec.Meta.Name)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -318,4 +319,23 @@ func TestTaskUpdate(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
+}
+
+func TestSession(t *testing.T) {
+	cfg := DefaultConfig()
+	gd, err := startDispatcher(cfg)
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	testNode := &api.Node{ID: "test"}
+	resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID, Spec: testNode.Spec})
+	assert.NoError(t, err)
+	assert.Equal(t, resp.NodeID, testNode.ID)
+	assert.NotEmpty(t, resp.SessionID)
+	sid := resp.SessionID
+
+	stream, err := gd.Client.Session(context.Background(), &api.SessionRequest{NodeID: testNode.ID, SessionID: sid})
+	msg, err := stream.Recv()
+	assert.Equal(t, 1, len(msg.Managers))
+	assert.False(t, msg.Disconnect)
 }
