@@ -1,6 +1,10 @@
 package agent
 
-import "golang.org/x/net/context"
+import (
+	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/log"
+	"golang.org/x/net/context"
+)
 
 // Runner controls execution of a task.
 //
@@ -27,4 +31,90 @@ type Runner interface {
 
 	// Close closes any ephemeral resources associated with runner instance.
 	Close() error
+}
+
+// Reporter defines an interface for calling back into the task status
+// reporting infrastructure. Typically, an instance is associated to a specific
+// task.
+//
+// The results of the "Report" are combined with a TaskStatus and sent to the
+// dispatcher.
+type Reporter interface {
+	// Report the state of the task run. If an error is returned, execution
+	// will be stopped.
+	Report(ctx context.Context, state api.TaskState) error
+}
+
+// Run runs a runner, reporting state along the way. Under normal execution,
+// this function blocks until the task is completed.
+func Run(ctx context.Context, runner Runner, reporter Reporter) error {
+	if err := report(ctx, reporter, api.TaskStatePreparing); err != nil {
+		return err
+	}
+
+	if err := runner.Prepare(ctx); err != nil {
+		switch err {
+		case ErrTaskPrepared:
+			log.G(ctx).Warnf("already prepared")
+			return runStart(ctx, runner, reporter)
+		case ErrTaskStarted:
+			log.G(ctx).Warnf("already started")
+			return runWait(ctx, runner, reporter)
+		default:
+			return err
+		}
+	}
+
+	if err := report(ctx, reporter, api.TaskStateReady); err != nil {
+		return err
+	}
+
+	return runStart(ctx, runner, reporter)
+}
+
+// runStart reports that the task is starting, calls Start and hands execution
+// off to `runWait`. It will block until task execution is completed or an
+// error is encountered.
+func runStart(ctx context.Context, runner Runner, reporter Reporter) error {
+	if err := report(ctx, reporter, api.TaskStateStarting); err != nil {
+		return err
+	}
+
+	if err := runner.Start(ctx); err != nil {
+		switch err {
+		case ErrTaskStarted:
+			log.G(ctx).Warnf("already started")
+		default:
+			return err
+		}
+	}
+	return runWait(ctx, runner, reporter)
+}
+
+// runWait reports that the task is running and calls Wait. When Wait exits,
+// the task will be reported as completed.
+func runWait(ctx context.Context, runner Runner, reporter Reporter) error {
+	if err := report(ctx, reporter, api.TaskStateRunning); err != nil {
+		return err
+	}
+
+	if err := runner.Wait(ctx); err != nil {
+		// NOTE(stevvooe): We *do not* handle the exit error here,
+		// since we may do something different based on whether we
+		// are in SHUTDOWN or having an unplanned exit,
+		return err
+	}
+
+	return report(ctx, reporter, api.TaskStateCompleted)
+}
+
+func report(ctx context.Context, reporter Reporter, state api.TaskState) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	log.G(ctx).WithField("state", state).Debugf("Report")
+	return reporter.Report(ctx, state)
 }
