@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	engineapi "github.com/docker/engine-api/client"
-	"github.com/docker/swarm-v2/agent"
+	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"golang.org/x/net/context"
@@ -23,7 +23,7 @@ type Runner struct {
 	err        error
 }
 
-var _ agent.Runner = &Runner{}
+var _ exec.Runner = &Runner{}
 
 // NewRunner returns a dockerexec runner for the provided task.
 func NewRunner(client engineapi.APIClient, task *api.Task) (*Runner, error) {
@@ -42,7 +42,7 @@ func NewRunner(client engineapi.APIClient, task *api.Task) (*Runner, error) {
 
 // Prepare creates a container and ensures the image is pulled.
 //
-// If the container has already be created, agent.ErrTaskPrepared is returned.
+// If the container has already be created, exec.ErrTaskPrepared is returned.
 func (r *Runner) Prepare(ctx context.Context) error {
 	for {
 		if err := r.checkClosed(); err != nil {
@@ -56,7 +56,7 @@ func (r *Runner) Prepare(ctx context.Context) error {
 				}
 
 				// container is already created. success!
-				return agent.ErrTaskPrepared
+				return exec.ErrTaskPrepared
 			}
 
 			if !engineapi.IsErrImageNotFound(err) {
@@ -97,7 +97,7 @@ func (r *Runner) Start(ctx context.Context) error {
 	// TODO(stevvooe): This is very racy. While reading inspect, another could
 	// start the process and we could end up starting it twice.
 	if ctnr.State.Status != "created" {
-		return agent.ErrTaskStarted
+		return exec.ErrTaskStarted
 	}
 
 	if err := r.controller.start(ctx, r.client); err != nil {
@@ -138,7 +138,7 @@ func (r *Runner) Wait(pctx context.Context) error {
 						cause = errors.New(ctnr.State.Error)
 					}
 
-					return &agent.ExitError{
+					return &exec.ExitError{
 						Code:  ctnr.State.ExitCode,
 						Cause: cause,
 					}
@@ -197,7 +197,7 @@ func (r *Runner) Close() error {
 	case <-r.closed:
 		return r.err
 	default:
-		r.err = agent.ErrRunnerClosed
+		r.err = exec.ErrRunnerClosed
 		close(r.closed)
 	}
 	return nil

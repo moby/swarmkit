@@ -11,7 +11,7 @@ import (
 
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/events"
-	"github.com/docker/swarm-v2/agent"
+	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
@@ -51,8 +51,8 @@ func TestRunnerPrepareAlreadyPrepared(t *testing.T) {
 	)
 
 	// ensure idempotence
-	if err := runner.Prepare(ctx); err != agent.ErrTaskPrepared {
-		t.Fatalf("expected error %v, got %v", agent.ErrTaskPrepared, err)
+	if err := runner.Prepare(ctx); err != exec.ErrTaskPrepared {
+		t.Fatalf("expected error %v, got %v", exec.ErrTaskPrepared, err)
 	}
 }
 
@@ -94,8 +94,8 @@ func TestRunnerStartAlreadyStarted(t *testing.T) {
 	)
 
 	// ensure idempotence
-	if err := runner.Start(ctx); err != agent.ErrTaskStarted {
-		t.Fatalf("expected error %v, got %v", agent.ErrTaskPrepared, err)
+	if err := runner.Start(ctx); err != exec.ErrTaskStarted {
+		t.Fatalf("expected error %v, got %v", exec.ErrTaskPrepared, err)
 	}
 }
 
@@ -144,7 +144,7 @@ func TestRunnerWaitExitError(t *testing.T) {
 	)
 
 	err := runner.Wait(ctx)
-	assert.Equal(t, &agent.ExitError{
+	assert.Equal(t, &exec.ExitError{
 		Code: 1,
 	}, err)
 }
