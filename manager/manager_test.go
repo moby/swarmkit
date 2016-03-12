@@ -41,11 +41,16 @@ func TestManager(t *testing.T) {
 	assert.NoError(t, temp.Close())
 	assert.NoError(t, os.Remove(temp.Name()))
 
-	m := New(&Config{
-		Store:       store,
+	stateDir, err := ioutil.TempDir("", "test-raft")
+	assert.NoError(t, err)
+	defer os.RemoveAll(stateDir)
+
+	m, err := New(&Config{
 		ListenProto: "unix",
 		ListenAddr:  temp.Name(),
+		StateDir:    stateDir,
 	})
+	assert.NoError(t, err)
 	assert.NotNil(t, m)
 
 	done := make(chan error)
@@ -80,10 +85,15 @@ func TestManagerNodeCount(t *testing.T) {
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 
-	m := New(&Config{
-		Store:    store,
+	stateDir, err := ioutil.TempDir("", "test-raft")
+	assert.NoError(t, err)
+	defer os.RemoveAll(stateDir)
+
+	m, err := New(&Config{
 		Listener: l,
+		StateDir: stateDir,
 	})
+	assert.NoError(t, err)
 	assert.NotNil(t, m)
 	go m.Run()
 	defer m.Stop()
@@ -125,7 +135,7 @@ func TestManagerNodeCount(t *testing.T) {
 		a2.Stop(ctx)
 	}()
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(1500 * time.Millisecond)
 
 	resp, err := mClient.NodeCount(context.Background(), &api.NodeCountRequest{})
 	assert.NoError(t, err)

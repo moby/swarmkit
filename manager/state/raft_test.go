@@ -118,7 +118,7 @@ func newInitNode(t *testing.T, id uint64) *Node {
 		StateDir:     stateDir,
 		TickInterval: testTick,
 	}
-	n, err := NewNode(context.Background(), newNodeOpts)
+	n, err := NewNode(context.Background(), newNodeOpts, nil)
 	require.NoError(t, err, "can't create raft node")
 	n.Listener = l
 	n.Server = s
@@ -160,7 +160,7 @@ func newJoinNode(t *testing.T, id uint64, join string) *Node {
 		TickInterval: testTick,
 	}
 
-	n, err := NewNode(context.Background(), newNodeOpts)
+	n, err := NewNode(context.Background(), newNodeOpts, nil)
 	require.NoError(t, err, "can't create raft node")
 	n.Listener = l
 	n.Server = s

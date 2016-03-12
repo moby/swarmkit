@@ -287,7 +287,7 @@ func (s *MemoryStore) Update(cb func(Tx) error) error {
 		var sa []*api.StoreAction
 		sa, err = tx.newStoreAction()
 
-		if err == nil {
+		if err == nil && sa != nil {
 			err = s.proposer.ProposeValue(context.Background(), sa)
 		}
 	}
