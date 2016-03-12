@@ -154,8 +154,10 @@ func (a *Agent) register(ctx context.Context) (string, error) {
 
 	resp, err := client.Register(ctx, &api.RegisterRequest{
 		NodeID: a.config.ID,
-		Spec: &api.NodeSpec{
-			Meta: api.Meta{Name: a.config.Name},
+		Description: &api.NodeDescription{
+			Hostname: a.config.Name,
+			//TODO(aluzzardi): Report machine resources.
+			Resources: api.Resources{},
 		},
 	})
 	if err != nil {

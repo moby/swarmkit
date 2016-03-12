@@ -12,34 +12,57 @@ message Meta {
 	map<string, string> labels = 2;
 }
 
+message Resources {
+}
+
 message NodeSpec {
 	Meta meta = 1 [(gogoproto.nullable) = false];
 
-	// Addr provides an address for the node, accessible via the manager set.
-	string addr = 2;
+	enum Availability {
+		option (gogoproto.goproto_enum_prefix) = false;
 
-	// Status is the state of the node as seen by the creator the
-	// specification. When reported by an agent, this will almost always be
-	// READY or empty. When communicating through the Cluster API, this can be
-	// used as a way to single the desired node state.
-	NodeStatus status = 4;
+		// Active nodes. 
+		ACTIVE = 0 [(gogoproto.enumvalue_customname) = "NodeAvailabilityActive"];
 
-	// TODO(stevvooe): Define resources for the node (ie cpu, memory, local
-	// volumes, etc.).
+		// Paused nodes won't be considered by the scheduler, preventing any
+		// further task to run on them.
+		PAUSE = 1 [(gogoproto.enumvalue_customname) = "NodeAvailabilityPause"];
+
+		// Drained nodes are paused and any task already running on them will
+		// be evicted.
+		DRAIN = 2 [(gogoproto.enumvalue_customname) = "NodeAvailabilityDrain"];
+	}
+	Availability availability = 2;
+}
+
+message NodeDescription {
+	// Hostname of the node as reported by the agent.
+	// This is different from spec.meta.name which is user-defined.
+	string hostname = 2;
+
+	// Total resources of the node.
+	Resources resources = 5 [(gogoproto.nullable) = false];
 }
 
 message Node {
 	// ID specifies the identity of the node.
 	string id = 1 [(gogoproto.customname) = "ID"];
 
+	// Spec defines the desired state of the node as specified by the user.
+	// The system will honor this and will *never* modify it.
 	NodeSpec spec = 2;
 
+	// Description encapsulated the properties of the Node as reported by the
+	// agent.
+	NodeDescription description = 3;
+
 	// Status provides the current status of the node, as seen by the manager.
-	// This may differ from the state in the nodespec.
-	NodeStatus status = 3 [(gogoproto.nullable) = false];
+	NodeStatus status = 4 [(gogoproto.nullable) = false];
+
 }
 
 message NodeStatus {
+	// TODO(aluzzardi) These should be using `gogoproto.enumvalue_customname`.
 	enum State {
 		// Unknown indicates the node state cannot be resolved.
 		UNKNOWN = 0;
@@ -142,6 +165,9 @@ message JobSpec {
 	TaskSpec template = 6;
 }
 
+// TODO(aluzzardi): Move it back into `TaskStatus` because of the naming
+// collisions of enums.
+//
 // TaskState enumerates the states that a task progresses through within an
 // agent. States are designed to be monotonically increasing, such that if two
 // states are seen by a task, the greater of the new represents the true state.
