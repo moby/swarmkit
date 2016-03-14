@@ -7,8 +7,8 @@ package api;
 import "github.com/coreos/etcd/raft/raftpb/raft.proto";
 import weak "gogoproto/gogo.proto";
 
-// Manager defines the RPC communication conducted between managers.
-service Manager {
+// Raft defines the RPC communication between raft nodes.
+service Raft {
 
 	// Join joins an existing Manager or set of Managers to form
 	// a raft cluster for the log replication backend

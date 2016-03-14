@@ -217,9 +217,9 @@ func extensionToGoStringManager(e map[int32]github_com_gogo_protobuf_proto.Exten
 var _ context.Context
 var _ grpc.ClientConn
 
-// Client API for Manager service
+// Client API for Raft service
 
-type ManagerClient interface {
+type RaftClient interface {
 	// Join joins an existing Manager or set of Managers to form
 	// a raft cluster for the log replication backend
 	Join(ctx context.Context, in *JoinRequest, opts ...grpc.CallOption) (*JoinResponse, error)
@@ -230,44 +230,44 @@ type ManagerClient interface {
 	ProcessRaftMessage(ctx context.Context, in *ProcessRaftMessageRequest, opts ...grpc.CallOption) (*ProcessRaftMessageResponse, error)
 }
 
-type managerClient struct {
+type raftClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewManagerClient(cc *grpc.ClientConn) ManagerClient {
-	return &managerClient{cc}
+func NewRaftClient(cc *grpc.ClientConn) RaftClient {
+	return &raftClient{cc}
 }
 
-func (c *managerClient) Join(ctx context.Context, in *JoinRequest, opts ...grpc.CallOption) (*JoinResponse, error) {
+func (c *raftClient) Join(ctx context.Context, in *JoinRequest, opts ...grpc.CallOption) (*JoinResponse, error) {
 	out := new(JoinResponse)
-	err := grpc.Invoke(ctx, "/api.Manager/Join", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/api.Raft/Join", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *managerClient) Leave(ctx context.Context, in *LeaveRequest, opts ...grpc.CallOption) (*LeaveResponse, error) {
+func (c *raftClient) Leave(ctx context.Context, in *LeaveRequest, opts ...grpc.CallOption) (*LeaveResponse, error) {
 	out := new(LeaveResponse)
-	err := grpc.Invoke(ctx, "/api.Manager/Leave", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/api.Raft/Leave", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *managerClient) ProcessRaftMessage(ctx context.Context, in *ProcessRaftMessageRequest, opts ...grpc.CallOption) (*ProcessRaftMessageResponse, error) {
+func (c *raftClient) ProcessRaftMessage(ctx context.Context, in *ProcessRaftMessageRequest, opts ...grpc.CallOption) (*ProcessRaftMessageResponse, error) {
 	out := new(ProcessRaftMessageResponse)
-	err := grpc.Invoke(ctx, "/api.Manager/ProcessRaftMessage", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/api.Raft/ProcessRaftMessage", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Manager service
+// Server API for Raft service
 
-type ManagerServer interface {
+type RaftServer interface {
 	// Join joins an existing Manager or set of Managers to form
 	// a raft cluster for the log replication backend
 	Join(context.Context, *JoinRequest) (*JoinResponse, error)
@@ -278,61 +278,61 @@ type ManagerServer interface {
 	ProcessRaftMessage(context.Context, *ProcessRaftMessageRequest) (*ProcessRaftMessageResponse, error)
 }
 
-func RegisterManagerServer(s *grpc.Server, srv ManagerServer) {
-	s.RegisterService(&_Manager_serviceDesc, srv)
+func RegisterRaftServer(s *grpc.Server, srv RaftServer) {
+	s.RegisterService(&_Raft_serviceDesc, srv)
 }
 
-func _Manager_Join_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Raft_Join_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(JoinRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ManagerServer).Join(ctx, in)
+	out, err := srv.(RaftServer).Join(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Manager_Leave_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Raft_Leave_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(LeaveRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ManagerServer).Leave(ctx, in)
+	out, err := srv.(RaftServer).Leave(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Manager_ProcessRaftMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Raft_ProcessRaftMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(ProcessRaftMessageRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ManagerServer).ProcessRaftMessage(ctx, in)
+	out, err := srv.(RaftServer).ProcessRaftMessage(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-var _Manager_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "api.Manager",
-	HandlerType: (*ManagerServer)(nil),
+var _Raft_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "api.Raft",
+	HandlerType: (*RaftServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Join",
-			Handler:    _Manager_Join_Handler,
+			Handler:    _Raft_Join_Handler,
 		},
 		{
 			MethodName: "Leave",
-			Handler:    _Manager_Leave_Handler,
+			Handler:    _Raft_Leave_Handler,
 		},
 		{
 			MethodName: "ProcessRaftMessage",
-			Handler:    _Manager_ProcessRaftMessage_Handler,
+			Handler:    _Raft_ProcessRaftMessage_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},

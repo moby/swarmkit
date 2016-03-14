@@ -16,7 +16,7 @@ const (
 
 // Raft represents a connection to a raft member
 type Raft struct {
-	api.ManagerClient
+	api.RaftClient
 	Conn *grpc.ClientConn
 }
 
@@ -29,8 +29,8 @@ func GetRaftClient(addr string, timeout time.Duration) (*Raft, error) {
 	}
 
 	return &Raft{
-		ManagerClient: api.NewManagerClient(conn),
-		Conn:          conn,
+		RaftClient: api.NewRaftClient(conn),
+		Conn:       conn,
 	}, nil
 }
 
@@ -46,5 +46,5 @@ func dial(addr string, protocol string, timeout time.Duration) (*grpc.ClientConn
 
 // Register registers the node raft server
 func Register(server *grpc.Server, node *Node) {
-	api.RegisterManagerServer(server, node)
+	api.RegisterRaftServer(server, node)
 }
