@@ -303,7 +303,7 @@ func (nodes nodes) Get(id string) *api.Node {
 	}
 	if obj != nil {
 		if n, ok := obj.(*api.Node); ok {
-			return n
+			return n.Copy()
 		}
 	}
 	return nil
@@ -320,7 +320,7 @@ func (nodes nodes) Find(by By) ([]*api.Node, error) {
 				break
 			}
 			if n, ok := obj.(*api.Node); ok {
-				nodes = append(nodes, n)
+				nodes = append(nodes, n.Copy())
 			}
 		}
 		return nodes
@@ -440,7 +440,7 @@ func (tasks tasks) Get(id string) *api.Task {
 	}
 	if obj != nil {
 		if t, ok := obj.(*api.Task); ok {
-			return t
+			return t.Copy()
 		}
 	}
 	return nil
@@ -457,7 +457,7 @@ func (tasks tasks) Find(by By) ([]*api.Task, error) {
 				break
 			}
 			if t, ok := obj.(*api.Task); ok {
-				tasks = append(tasks, t)
+				tasks = append(tasks, t.Copy())
 			}
 		}
 		return tasks
@@ -624,7 +624,7 @@ func (jobs jobs) Get(id string) *api.Job {
 	}
 	if obj != nil {
 		if j, ok := obj.(*api.Job); ok {
-			return j
+			return j.Copy()
 		}
 	}
 	return nil
@@ -641,7 +641,7 @@ func (jobs jobs) Find(by By) ([]*api.Job, error) {
 				break
 			}
 			if j, ok := obj.(*api.Job); ok {
-				jobs = append(jobs, j)
+				jobs = append(jobs, j.Copy())
 			}
 		}
 		return jobs
@@ -748,7 +748,7 @@ func (networks networks) Get(id string) *api.Network {
 	}
 	if obj != nil {
 		if n, ok := obj.(*api.Network); ok {
-			return n
+			return n.Copy()
 		}
 	}
 	return nil
@@ -765,7 +765,7 @@ func (networks networks) Find(by By) ([]*api.Network, error) {
 				break
 			}
 			if n, ok := obj.(*api.Network); ok {
-				networks = append(networks, n)
+				networks = append(networks, n.Copy())
 			}
 		}
 		return networks
