@@ -81,15 +81,33 @@ func New(store state.WatchableStore, c *Config) *Dispatcher {
 // Register is used for registration of node with particular dispatcher.
 func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
 	log.WithField("request", r).Debugf("(*Dispatcher).Register")
-
 	// TODO: here goes auth
 
+	// create or update node in store
 	// TODO(stevvooe): Validate node specification.
-	n := &api.Node{
-		Spec: r.Spec,
-		ID:   r.NodeID,
+	var node *api.Node
+	err := d.store.Update(func(tx state.Tx) error {
+		node = tx.Nodes().Get(r.NodeID)
+		if node != nil {
+			node.Spec = r.Spec
+			node.Status.State = api.NodeStatus_READY
+			return tx.Nodes().Update(node)
+		}
+
+		node = &api.Node{
+			ID:   r.NodeID,
+			Spec: r.Spec,
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+		}
+		return tx.Nodes().Create(node)
+	})
+	if err != nil {
+		return nil, err
 	}
-	nid := n.ID // prevent the closure from holding onto the entire Node.
+
+	nid := node.ID // prevent the closure from holding onto the entire Node.
 
 	expireFunc := func() {
 		nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "node was marked as down because of heartbeat fail"}
@@ -98,26 +116,7 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 		}
 	}
 
-	rn := d.nodes.Add(n, expireFunc)
-
-	// create or update node in raft
-	rn.mu.Lock()
-	defer rn.mu.Unlock()
-	rn.Node.Status.State = api.NodeStatus_READY
-	if err := d.store.Update(func(tx state.Tx) error {
-		err := tx.Nodes().Create(rn.Node)
-		if err != nil {
-			if err != state.ErrExist {
-				return err
-			}
-			if err := tx.Nodes().Update(rn.Node); err != nil {
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
+	rn := d.nodes.Add(node, expireFunc)
 
 	// NOTE(stevvooe): We need be a little careful with re-registration. The
 	// current implementation just matches the node id and then gives away the
