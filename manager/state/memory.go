@@ -258,7 +258,7 @@ func (nodes nodes) Create(n *api.Node) error {
 		return ErrExist
 	}
 
-	err := nodes.memDBTx.Insert(nodes.table(), n)
+	err := nodes.memDBTx.Insert(nodes.table(), n.Copy())
 	if err == nil {
 		nodes.tx.changelist = append(nodes.tx.changelist, EventCreateNode{Node: n})
 	}
@@ -272,7 +272,7 @@ func (nodes nodes) Update(n *api.Node) error {
 		return ErrNotExist
 	}
 
-	err := nodes.memDBTx.Insert(nodes.table(), n)
+	err := nodes.memDBTx.Insert(nodes.table(), n.Copy())
 	if err == nil {
 		nodes.tx.changelist = append(nodes.tx.changelist, EventUpdateNode{Node: n})
 	}
@@ -395,7 +395,7 @@ func (tasks tasks) Create(t *api.Task) error {
 		return ErrExist
 	}
 
-	err := tasks.memDBTx.Insert(tasks.table(), t)
+	err := tasks.memDBTx.Insert(tasks.table(), t.Copy())
 	if err == nil {
 		tasks.tx.changelist = append(tasks.tx.changelist, EventCreateTask{Task: t})
 	}
@@ -409,7 +409,7 @@ func (tasks tasks) Update(t *api.Task) error {
 		return ErrNotExist
 	}
 
-	err := tasks.memDBTx.Insert(tasks.table(), t)
+	err := tasks.memDBTx.Insert(tasks.table(), t.Copy())
 	if err == nil {
 		tasks.tx.changelist = append(tasks.tx.changelist, EventUpdateTask{Task: t})
 	}
@@ -579,7 +579,7 @@ func (jobs jobs) Create(j *api.Job) error {
 		return ErrExist
 	}
 
-	err := jobs.memDBTx.Insert(jobs.table(), j)
+	err := jobs.memDBTx.Insert(jobs.table(), j.Copy())
 	if err == nil {
 		jobs.tx.changelist = append(jobs.tx.changelist, EventCreateJob{Job: j})
 	}
@@ -593,7 +593,7 @@ func (jobs jobs) Update(j *api.Job) error {
 		return ErrNotExist
 	}
 
-	err := jobs.memDBTx.Insert(jobs.table(), j)
+	err := jobs.memDBTx.Insert(jobs.table(), j.Copy())
 	if err == nil {
 		jobs.tx.changelist = append(jobs.tx.changelist, EventUpdateJob{Job: j})
 	}
@@ -717,7 +717,7 @@ func (networks networks) Create(n *api.Network) error {
 		return ErrExist
 	}
 
-	err := networks.memDBTx.Insert(networks.table(), n)
+	err := networks.memDBTx.Insert(networks.table(), n.Copy())
 	if err == nil {
 		networks.tx.changelist = append(networks.tx.changelist, EventCreateNetwork{Network: n})
 	}
