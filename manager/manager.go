@@ -7,6 +7,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/clusterapi"
 	"github.com/docker/swarm-v2/manager/dispatcher"
+	"github.com/docker/swarm-v2/manager/drainer"
 	"github.com/docker/swarm-v2/manager/orchestrator"
 	"github.com/docker/swarm-v2/manager/scheduler"
 	"github.com/docker/swarm-v2/manager/state"
@@ -30,6 +31,7 @@ type Manager struct {
 	apiserver    *clusterapi.Server
 	dispatcher   *dispatcher.Dispatcher
 	orchestrator *orchestrator.Orchestrator
+	drainer      *drainer.Drainer
 	scheduler    *scheduler.Scheduler
 	server       *grpc.Server
 }
@@ -50,6 +52,7 @@ func New(config *Config) *Manager {
 		dispatcher:   dispatcher.New(config.Store, dispatcherConfig),
 		orchestrator: orchestrator.New(config.Store),
 		scheduler:    scheduler.New(config.Store),
+		drainer:      drainer.New(config.Store),
 		server:       grpc.NewServer(),
 	}
 
@@ -81,6 +84,11 @@ func (m *Manager) Run() error {
 			log.Error(err)
 		}
 	}()
+	go func() {
+		if err := m.drainer.Run(); err != nil {
+			log.Error(err)
+		}
+	}()
 
 	log.WithFields(log.Fields{"proto": m.config.ListenProto, "addr": m.config.ListenAddr}).Info("Listening for connections")
 
@@ -91,6 +99,7 @@ func (m *Manager) Run() error {
 // active RPCs as well as stopping the scheduler.
 func (m *Manager) Stop() {
 	m.server.Stop()
+	m.drainer.Stop()
 	m.orchestrator.Stop()
 	m.scheduler.Stop()
 }
