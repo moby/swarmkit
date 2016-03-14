@@ -130,7 +130,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode := &api.Node{ID: "test", Spec: &api.NodeSpec{Meta: &api.Meta{Name: "test"}}}
+	testNode := &api.Node{ID: "test", Spec: &api.NodeSpec{Meta: api.Meta{Name: "test"}}}
 	var expectedSessionID string
 	{
 		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID, Spec: testNode.Spec})
