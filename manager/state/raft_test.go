@@ -117,8 +117,8 @@ func newJoinNode(t *testing.T, id uint64, join string) *Node {
 	return n
 }
 
-func newRaftCluster(t *testing.T) map[int]*Node {
-	nodes := make(map[int]*Node, 0)
+func newRaftCluster(t *testing.T) map[uint64]*Node {
+	nodes := make(map[uint64]*Node, 0)
 
 	nodes[1] = newInitNode(t, 1)
 	time.Sleep(1 * time.Second)
@@ -128,12 +128,12 @@ func newRaftCluster(t *testing.T) map[int]*Node {
 	return nodes
 }
 
-func addRaftNode(t *testing.T, nodes map[int]*Node) {
-	n := len(nodes) + 1
+func addRaftNode(t *testing.T, nodes map[uint64]*Node) {
+	n := uint64(len(nodes) + 1)
 	nodes[n] = newJoinNode(t, uint64(n), nodes[1].Listener.Addr().String())
 }
 
-func teardownCluster(t *testing.T, nodes map[int]*Node) {
+func teardownCluster(t *testing.T, nodes map[uint64]*Node) {
 	for _, node := range nodes {
 		shutdownNode(node)
 	}
@@ -416,24 +416,30 @@ func TestRaftLeaderLeave(t *testing.T) {
 	assert.NotNil(t, resp, "leave response message is nil")
 
 	// Wait for election tick
-	time.Sleep(4 * time.Second)
+	time.Sleep(6 * time.Second)
 
 	// Leader should not be 1
 	assert.NotEqual(t, nodes[2].Leader(), nodes[1].ID)
 	assert.Equal(t, nodes[2].Leader(), nodes[3].Leader())
 
+	leader := nodes[2].Leader()
+	follower := uint64(2)
+	if leader == 2 {
+		follower = 3
+	}
+
 	// Propose a value
-	value, err := proposeValue(t, nodes[2])
+	value, err := proposeValue(t, nodes[leader])
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
-	checkValue(t, nodes[2], value)
-	assert.Equal(t, len(nodes[2].Cluster.Peers()), 2)
+	checkValue(t, nodes[leader], value)
+	assert.Equal(t, len(nodes[leader].Cluster.Peers()), 2)
 
 	time.Sleep(500 * time.Millisecond)
 
-	checkValue(t, nodes[3], value)
-	assert.Equal(t, len(nodes[3].Cluster.Peers()), 2)
+	checkValue(t, nodes[follower], value)
+	assert.Equal(t, len(nodes[follower].Cluster.Peers()), 2)
 }
 
 func TestRaftNewNodeGetsData(t *testing.T) {
