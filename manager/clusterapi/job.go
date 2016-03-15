@@ -119,6 +119,10 @@ func (s *Server) GetJob(ctx context.Context, request *api.GetJobRequest) (*api.G
 }
 
 // UpdateJob updates a Job referenced by JobID with the given JobSpec.
+// - Returns `NotFound` if the Job is not found.
+// - Returns `InvalidArgument` if the JobSpec is malformed.
+// - Returns `Unimplemented` if the JobSpec references unimplemented features.
+// - Returns an error if the update fails.
 // TODO(vieux): Implement more than just `instances`.
 func (s *Server) UpdateJob(ctx context.Context, request *api.UpdateJobRequest) (*api.UpdateJobResponse, error) {
 	if request.JobID == "" {
