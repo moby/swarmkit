@@ -874,6 +874,20 @@ func (networks networks) Create(n *api.Network) error {
 	return err
 }
 
+// Update updates an existing network in the store.
+// Returns ErrNotExist if the network doesn't exist.
+func (networks networks) Update(n *api.Network) error {
+	if networks.Get(n.ID) == nil {
+		return ErrNotExist
+	}
+
+	err := networks.memDBTx.Insert(networks.table(), n.Copy())
+	if err == nil {
+		networks.tx.changelist = append(networks.tx.changelist, EventUpdateNetwork{Network: n})
+	}
+	return err
+}
+
 // Delete removes a network from the store.
 // Returns ErrNotExist if the node doesn't exist.
 func (networks networks) Delete(id string) error {

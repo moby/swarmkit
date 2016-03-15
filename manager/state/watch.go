@@ -221,6 +221,30 @@ func (e EventCreateNetwork) matches(watchEvent watch.Event) bool {
 	return true
 }
 
+// EventUpdateNetwork is the type used to put UpdateNetwork events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventUpdateNetwork struct {
+	Network *api.Network
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []NetworkCheckFunc
+}
+
+func (e EventUpdateNetwork) matches(watchEvent watch.Event) bool {
+	typedEvent, ok := watchEvent.Payload.(EventUpdateNetwork)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Network, typedEvent.Network) {
+			return false
+		}
+	}
+	return true
+}
+
 // EventDeleteNetwork is the type used to put DeleteNetwork events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventDeleteNetwork struct {

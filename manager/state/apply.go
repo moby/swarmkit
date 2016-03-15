@@ -27,6 +27,8 @@ func Apply(store Store, item watch.Event) (err error) {
 
 		case EventCreateNetwork:
 			return tx.Networks().Create(v.Network)
+		case EventUpdateNetwork:
+			return tx.Networks().Update(v.Network)
 		case EventDeleteNetwork:
 			return tx.Networks().Delete(v.Network.ID)
 
