@@ -39,3 +39,15 @@ func (w *wait) trigger(id uint64, x interface{}) bool {
 	}
 	return false
 }
+
+func (w *wait) cancelAll() {
+	w.l.Lock()
+	defer w.l.Unlock()
+
+	for id, ch := range w.m {
+		delete(w.m, id)
+		if ch != nil {
+			close(ch)
+		}
+	}
+}

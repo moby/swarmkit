@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state/pb"
@@ -289,7 +288,7 @@ func (s *MemoryStore) Update(cb func(Tx) error) error {
 		sa, err = tx.newStoreAction()
 
 		if err == nil {
-			err = s.proposer.ProposeValue(context.Background(), sa, time.Duration(0))
+			err = s.proposer.ProposeValue(context.Background(), sa)
 		}
 	}
 

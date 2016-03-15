@@ -201,7 +201,7 @@ func proposeValue(t *testing.T, raftNode *Node) (*api.Node, error) {
 		},
 	}
 
-	err := raftNode.ProposeValue(context.Background(), storeActions, 2*time.Second)
+	err := raftNode.ProposeValue(context.Background(), storeActions)
 	if err != nil {
 		return nil, err
 	}
@@ -286,17 +286,17 @@ func TestRaftFollowerDown(t *testing.T) {
 	assert.Equal(t, nodes[2].Leader(), nodes[1].ID)
 
 	// Propose a value
-	value, err := proposeValue(t, nodes[2])
+	value, err := proposeValue(t, nodes[1])
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
-	checkValue(t, nodes[2], value)
-	assert.Equal(t, len(nodes[2].Cluster.Peers()), 3)
+	checkValue(t, nodes[1], value)
+	assert.Equal(t, len(nodes[1].Cluster.Peers()), 3)
 
 	time.Sleep(500 * time.Millisecond)
 
-	checkValue(t, nodes[1], value)
-	assert.Equal(t, len(nodes[1].Cluster.Peers()), 3)
+	checkValue(t, nodes[2], value)
+	assert.Equal(t, len(nodes[2].Cluster.Peers()), 3)
 }
 
 func TestRaftLogReplication(t *testing.T) {
@@ -353,15 +353,15 @@ func TestRaftQuorumFailure(t *testing.T) {
 	nodes[5].Stop()
 
 	// Propose a value
-	_, err := proposeValue(t, nodes[1])
+	_, err := proposeValue(t, nodes[2])
 	assert.Error(t, err)
 
 	// The value should not be replicated, we have no majority
-	checkNoValue(t, nodes[1])
+	checkNoValue(t, nodes[2])
 
 	time.Sleep(500 * time.Millisecond)
 
-	checkNoValue(t, nodes[2])
+	checkNoValue(t, nodes[1])
 }
 
 func TestRaftFollowerLeave(t *testing.T) {
