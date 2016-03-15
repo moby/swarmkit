@@ -22,6 +22,13 @@ service Raft {
 	rpc ProcessRaftMessage(ProcessRaftMessageRequest) returns (ProcessRaftMessageResponse) {}
 }
 
+// Manager defines the RPC communication between managers.
+service Manager {
+	// NodeCount returns number of nodes connected to particular manager.
+	// Supposed to be called only by cluster leader.
+	rpc NodeCount(NodeCountRequest) returns (NodeCountResponse) {}
+}
+
 message JoinRequest {
 	RaftNode node = 1;
 }
@@ -54,4 +61,18 @@ message ProcessRaftMessageResponse {}
 message RaftNode {
 	uint64 id = 1 [(gogoproto.customname) = "ID"];
 	string addr = 2;
+}
+
+// TODO(abronan): remove when the integration with store is completed
+message Pair {
+	string key = 1;
+	bytes value = 2;
+}
+
+message NodeCountRequest {
+}
+
+message NodeCountResponse {
+	// Count is number of nodes connected to specific manager.
+	uint32 count = 1 [(gogoproto.customtype) = "int", (gogoproto.nullable) = false];
 }
