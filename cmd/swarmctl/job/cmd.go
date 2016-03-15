@@ -17,5 +17,7 @@ func init() {
 		createCmd,
 		updateCmd,
 		removeCmd,
+
+		diffCmd,
 	)
 }
