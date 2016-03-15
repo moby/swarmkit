@@ -68,7 +68,8 @@ type JobSet interface {
 
 // NetworkSetWriter is the write half of a network dataset.
 type NetworkSetWriter interface {
-	Create(j *api.Network) error
+	Create(n *api.Network) error
+	Update(n *api.Network) error
 	Delete(id string) error
 }
 
