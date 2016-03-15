@@ -51,9 +51,9 @@ var (
 			fmt.Fprintln(w, "Template:")
 			fmt.Fprintln(w, " Container:")
 			common.FprintfIfNotEmpty(w, "  Image:\t%s\n", r.Job.Spec.Template.GetContainer().Image.Reference)
-			common.FprintfIfNotEmpty(w, "  Command:\t%s\n", strings.Join(r.Job.Spec.Template.GetContainer().Command, ","))
-			common.FprintfIfNotEmpty(w, "  Args:\t%s\n", strings.Join(r.Job.Spec.Template.GetContainer().Args, ","))
-			common.FprintfIfNotEmpty(w, "  Env:\t%s\n", strings.Join(r.Job.Spec.Template.GetContainer().Env, ","))
+			common.FprintfIfNotEmpty(w, "  Command:\t%q\n", strings.Join(r.Job.Spec.Template.GetContainer().Command, " "))
+			common.FprintfIfNotEmpty(w, "  Args:\t[%s]\n", strings.Join(r.Job.Spec.Template.GetContainer().Args, ", "))
+			common.FprintfIfNotEmpty(w, "  Env:\t[%s]\n", strings.Join(r.Job.Spec.Template.GetContainer().Env, ", "))
 			if len(r.Job.Spec.Template.GetContainer().Networks) > 0 {
 				fmt.Fprintln(w, "  Networks:")
 				for _, n := range r.Job.Spec.Template.GetContainer().Networks {

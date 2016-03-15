@@ -1,3 +1,6 @@
-name: web
-image: nginx
+name: ping
+image: alpine
+command: ["ping", "$HOST"]
 instances: 4
+env:
+ - HOST=google.com

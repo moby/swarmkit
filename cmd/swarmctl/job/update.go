@@ -41,6 +41,23 @@ var (
 						},
 					}
 				}
+				if len(args) > 1 {
+					spec.Template.GetContainer().Command = args[1:]
+				}
+				if flags.Changed("args") {
+					containerArgs, err := flags.GetStringSlice("args")
+					if err != nil {
+						return err
+					}
+					spec.Template.GetContainer().Args = containerArgs
+				}
+				if flags.Changed("env") {
+					env, err := flags.GetStringSlice("env")
+					if err != nil {
+						return err
+					}
+					spec.Template.GetContainer().Env = env
+				}
 			}
 			c, err := common.Dial(cmd)
 			if err != nil {
@@ -58,6 +75,9 @@ var (
 )
 
 func init() {
+	updateCmd.Flags().StringP("file", "f", "", "Spec to use")
+	updateCmd.Flags().StringSlice("args", nil, "Args")
+	updateCmd.Flags().StringSlice("env", nil, "Env")
 	updateCmd.Flags().StringP("file", "f", "", "Spec to use")
 	// TODO(aluzzardi): This should be called `service-instances` so that every
 	// orchestrator can have its own flag namespace.

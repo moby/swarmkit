@@ -12,6 +12,21 @@ import (
 // ContainerConfig is a human representation of the ContainerSpec
 type ContainerConfig struct {
 	Image string `yaml:"image,omitempty"`
+
+	// Command to run the the container. The first element is a path to the
+	// executable and the following elements are treated as arguments.
+	//
+	// If command is empty, execution will fall back to the entrypoint.
+	Command []string `yaml:"command,omitempty"`
+
+	// Args specifies arguments provided to the entrypoint of the container.
+	// Ignored if command is specified.
+	Args []string `yaml:"args,omitempty"`
+
+	// Env specifies the environment variables for the container in NAME=VALUE
+	// format. These must be compliant with  [IEEE Std
+	// 1003.1-2001](http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html).
+	Env []string `yaml:"env,omitempty"`
 }
 
 // ServiceConfig is a human representation of the ServiceJob
@@ -57,6 +72,9 @@ func (s *ServiceConfig) JobSpec() *api.JobSpec {
 					Image: &api.ImageSpec{
 						Reference: s.Image,
 					},
+					Env:     s.Env,
+					Command: s.Command,
+					Args:    s.Args,
 				},
 			},
 		},
@@ -73,6 +91,9 @@ func (s *ServiceConfig) FromJobSpec(jobSpec *api.JobSpec) {
 	s.Image = jobSpec.Template.GetContainer().Image.Reference
 	s.Name = jobSpec.Meta.Name
 	s.Instances = jobSpec.GetService().Instances
+	s.Env = jobSpec.Template.GetContainer().Env
+	s.Args = jobSpec.Template.GetContainer().Args
+	s.Command = jobSpec.Template.GetContainer().Command
 }
 
 // Diff returns a diff between two ServiceConfigs.
