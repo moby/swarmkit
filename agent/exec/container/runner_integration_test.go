@@ -36,7 +36,7 @@ func TestRunnerFlowIntegration(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	client, err := engineapi.NewClient(dockerTestAddr, "", nil, map[string]string{"Content-Type": "none"})
+	client, err := engineapi.NewClient(dockerTestAddr, "", nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
 
