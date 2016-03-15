@@ -35,7 +35,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 		return nil, err
 	}
 	s := grpc.NewServer()
-	store := state.NewMemoryStore()
+	store := state.NewMemoryStore(nil)
 	d := New(store, c)
 	api.RegisterDispatcherServer(s, d)
 	go func() {

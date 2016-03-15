@@ -148,7 +148,7 @@ func setupTestStore(t *testing.T, s Store) {
 }
 
 func TestStoreNode(t *testing.T) {
-	s := NewMemoryStore()
+	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
 	err := s.View(func(readTx ReadTx) error {
@@ -229,7 +229,7 @@ func TestStoreNode(t *testing.T) {
 }
 
 func TestStoreJob(t *testing.T) {
-	s := NewMemoryStore()
+	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
 	err := s.View(func(readTx ReadTx) error {
@@ -311,7 +311,7 @@ func TestStoreJob(t *testing.T) {
 }
 
 func TestStoreNetwork(t *testing.T) {
-	s := NewMemoryStore()
+	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
 	err := s.View(func(readTx ReadTx) error {
@@ -369,7 +369,7 @@ func TestStoreNetwork(t *testing.T) {
 }
 
 func TestStoreTask(t *testing.T) {
-	s := NewMemoryStore()
+	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
 	err := s.View(func(tx ReadTx) error {
@@ -465,13 +465,13 @@ func TestStoreTask(t *testing.T) {
 }
 
 func TestStoreSnapshot(t *testing.T) {
-	s1 := NewMemoryStore()
+	s1 := NewMemoryStore(nil)
 	assert.NotNil(t, s1)
 
 	setupTestStore(t, s1)
 
 	// Fork
-	s2 := NewMemoryStore()
+	s2 := NewMemoryStore(nil)
 	assert.NotNil(t, s2)
 	watcher, err := ViewAndWatch(s1, s2.CopyFrom)
 	defer s1.WatchQueue().StopWatch(watcher)
@@ -690,7 +690,7 @@ func TestStoreSnapshot(t *testing.T) {
 }
 
 func TestFailedTransaction(t *testing.T) {
-	s := NewMemoryStore()
+	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
 	// Create one node
@@ -741,14 +741,14 @@ func TestFailedTransaction(t *testing.T) {
 }
 
 func TestStoreSaveRestore(t *testing.T) {
-	s1 := NewMemoryStore()
+	s1 := NewMemoryStore(nil)
 	assert.NotNil(t, s1)
 
 	setupTestStore(t, s1)
 	serialized, err := s1.Save()
 	assert.NoError(t, err)
 
-	s2 := NewMemoryStore()
+	s2 := NewMemoryStore(nil)
 	assert.NotNil(t, s2)
 
 	err = s2.Restore(serialized)
@@ -791,7 +791,7 @@ func TestStoreSaveRestore(t *testing.T) {
 const benchmarkNumNodes = 10000
 
 func setupNodes(b *testing.B, n int) (Store, []string) {
-	s := NewMemoryStore()
+	s := NewMemoryStore(nil)
 
 	nodeIDs := make([]string, n)
 

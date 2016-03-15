@@ -9,7 +9,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -18,7 +17,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/pkg/idutil"
-	"github.com/coreos/etcd/pkg/wait"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
@@ -36,27 +34,30 @@ const (
 var (
 	defaultLogger = &raft.DefaultLogger{Logger: log.New(os.Stderr, "raft", log.LstdFlags)}
 
-	// ErrConfChangeRefused is thrown when there is an issue with the configuration change
+	// ErrConfChangeRefused is returned when there is an issue with the configuration change
 	ErrConfChangeRefused = errors.New("raft: propose configuration change refused")
-	// ErrApplyNotSpecified is thrown during the creation of a raft node when no apply method was provided
+	// ErrApplyNotSpecified is returned during the creation of a raft node when no apply method was provided
 	ErrApplyNotSpecified = errors.New("raft: apply method was not specified")
-	// ErrPeerNotFound is thrown when we try an operation on a peer that does not exist in the cluster list
+	// ErrPeerNotFound is returned when we try an operation on a peer that does not exist in the cluster list
 	ErrPeerNotFound = errors.New("raft: peer not found in cluster list")
-	// ErrAppendEntry is thrown when the node fail to append an entry to the logs
+	// ErrAppendEntry is returned when the node fail to append an entry to the logs
 	ErrAppendEntry = errors.New("raft: failed to append entry to logs")
-	// ErrSetHardState is thrown when the node fails to set the hard state
+	// ErrSetHardState is returned when the node fails to set the hard state
 	ErrSetHardState = errors.New("raft: failed to set the hard state for log append entry")
-	// ErrApplySnapshot is thrown when the node fails to apply a snapshot
+	// ErrApplySnapshot is returned when the node fails to apply a snapshot
 	ErrApplySnapshot = errors.New("raft: failed to apply snapshot on raft node")
-	// ErrStopped is thrown when an operation was submitted but the node was stopped in the meantime
+	// ErrStopped is returned when an operation was submitted but the node was stopped in the meantime
 	ErrStopped = errors.New("raft: failed to process the request: node is stopped")
-	// ErrRequestTooLarge is thrown when a raft internal message is too large to be sent
+	// ErrLostLeadership is returned when an operation was submitted but the node lost leader status before it became committed
+	ErrLostLeadership = errors.New("raft: failed to process the request: node lost leader status")
+	// ErrRequestTooLarge is returned when a raft internal message is too large to be sent
 	ErrRequestTooLarge = errors.New("raft: raft message is too large and can't be sent")
 )
 
-// ApplyCommand function can be used and triggered
-// every time there is an append entry event
-type ApplyCommand func(interface{})
+// A Proposer can propose actions to a cluster.
+type Proposer interface {
+	ProposeValue(ctx context.Context, storeAction []*api.StoreAction) error
+}
 
 // Node represents the Raft Node useful
 // configuration.
@@ -74,26 +75,19 @@ type Node struct {
 	Port    int
 	Error   error
 
-	storeLock   sync.RWMutex
-	PStore      map[string]string
 	raftStore   *raft.MemoryStorage
-	memoryStore WatchableStore
+	memoryStore *MemoryStore
 	Config      *raft.Config
 	reqIDGen    *idutil.Generator
-	w           wait.Wait
+	wait        *wait
 	wal         *wal.WAL
 	snapshotter *snap.Snapshotter
 	stateDir    string
+	isLeader    bool
 
 	ticker *time.Ticker
 	stopCh chan struct{}
 	errCh  chan error
-
-	// ApplyCommand is called when a log entry
-	// is committed to the logs, behind can
-	// lie any kind of logic processing the
-	// message
-	apply ApplyCommand
 }
 
 // NewNodeOptions provides arguments for NewNode
@@ -101,7 +95,6 @@ type NewNodeOptions struct {
 	ID       uint64
 	Addr     string
 	Config   *raft.Config
-	Apply    ApplyCommand
 	StateDir string
 }
 
@@ -115,32 +108,30 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 		cfg = DefaultNodeConfig()
 	}
 
-	store := raft.NewMemoryStorage()
+	raftStore := raft.NewMemoryStorage()
 	peers := []raft.Peer{{ID: opts.ID}}
 
 	n := &Node{
-		ID:          opts.ID,
-		Ctx:         ctx,
-		Cluster:     NewCluster(),
-		memoryStore: NewMemoryStore(),
-		raftStore:   store,
-		Address:     opts.Addr,
+		ID:        opts.ID,
+		Ctx:       ctx,
+		Cluster:   NewCluster(),
+		raftStore: raftStore,
+		Address:   opts.Addr,
 		Config: &raft.Config{
 			ID:              opts.ID,
 			ElectionTick:    cfg.ElectionTick,
 			HeartbeatTick:   cfg.HeartbeatTick,
-			Storage:         store,
+			Storage:         raftStore,
 			MaxSizePerMsg:   cfg.MaxSizePerMsg,
 			MaxInflightMsgs: cfg.MaxInflightMsgs,
 			Logger:          cfg.Logger,
 		},
-		PStore:   make(map[string]string),
 		ticker:   time.NewTicker(time.Second),
 		stopCh:   make(chan struct{}),
 		reqIDGen: idutil.NewGenerator(uint8(opts.ID), time.Now()),
-		apply:    opts.Apply,
 		stateDir: opts.StateDir,
 	}
+	n.memoryStore = NewMemoryStore(n)
 
 	if err := n.load(); err != nil {
 		n.ticker.Stop()
@@ -280,7 +271,7 @@ func (n *Node) readWAL(snapshot *raftpb.Snapshot) error {
 // messages received from other Raft nodes in
 // the cluster
 func (n *Node) Start() (errCh <-chan error) {
-	n.w = wait.New()
+	n.wait = newWait()
 	var err error
 	n.errCh = make(chan error)
 	go func() {
@@ -307,6 +298,21 @@ func (n *Node) Start() (errCh <-chan error) {
 				for _, entry := range rd.CommittedEntries {
 					if err = n.processCommitted(entry); err != nil {
 						n.errCh <- err
+					}
+				}
+
+				// If we cease to be the leader, we must cancel
+				// any proposals that are currently waiting for
+				// a quorum to acknowledge them. It is still
+				// possible for these to become committed, but
+				// if that happens we will apply them as any
+				// follower would.
+				if rd.SoftState != nil {
+					if n.isLeader && rd.SoftState.RaftState != raft.StateLeader {
+						n.isLeader = false
+						n.wait.cancelAll()
+					} else if !n.isLeader && rd.SoftState.RaftState == raft.StateLeader {
+						n.isLeader = true
 					}
 				}
 
@@ -486,39 +492,12 @@ func (n *Node) UnregisterNode(id uint64) error {
 
 // ProposeValue calls Propose on the raft and waits
 // on the commit log action before returning a result
-func (n *Node) ProposeValue(ctx context.Context, pair *api.Pair, timeout time.Duration) error {
-	if timeout == 0 {
-		ctx, _ = context.WithTimeout(ctx, defaultProposeTimeout)
-	} else {
-		ctx, _ = context.WithTimeout(ctx, timeout)
-	}
-
-	_, err := n.processInternalRaftRequest(ctx, &api.InternalRaftRequest{Pair: pair})
+func (n *Node) ProposeValue(ctx context.Context, storeAction []*api.StoreAction) error {
+	_, err := n.processInternalRaftRequest(ctx, &api.InternalRaftRequest{Action: storeAction})
 	if err != nil {
 		return err
 	}
 	return nil
-}
-
-// Get returns a value from the PStore
-func (n *Node) Get(key string) string {
-	n.storeLock.RLock()
-	defer n.storeLock.RUnlock()
-	return n.PStore[key]
-}
-
-// Put puts a value in the raft store
-func (n *Node) Put(key string, value string) {
-	n.storeLock.Lock()
-	defer n.storeLock.Unlock()
-	n.PStore[key] = value
-}
-
-// StoreLength returns the length of the store
-func (n *Node) StoreLength() int {
-	n.storeLock.Lock()
-	defer n.storeLock.Unlock()
-	return len(n.PStore)
 }
 
 // Saves a log entry to our Store
@@ -606,30 +585,40 @@ type applyResult struct {
 func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRaftRequest) (proto.Message, error) {
 	r.ID = n.reqIDGen.Next()
 
-	ch := n.w.Register(r.ID)
+	ch := n.wait.register(r.ID)
+
+	// Do this check after calling register to avoid a race.
+	if !n.isLeader {
+		n.wait.trigger(r.ID, nil)
+		return nil, ErrLostLeadership
+	}
 
 	data, err := r.Marshal()
 	if err != nil {
+		n.wait.trigger(r.ID, nil)
 		return nil, err
 	}
 
 	if len(data) > maxRequestBytes {
+		n.wait.trigger(r.ID, nil)
 		return nil, ErrRequestTooLarge
 	}
 
 	err = n.Propose(ctx, data)
 	if err != nil {
+		n.wait.trigger(r.ID, nil)
 		return nil, err
 	}
 
 	select {
-	case x := <-ch:
-		res := x.(*applyResult)
-		return res.resp, res.err
-	case <-ctx.Done():
-		n.w.Trigger(r.ID, nil)
-		return nil, ctx.Err()
+	case x, ok := <-ch:
+		if ok {
+			res := x.(*applyResult)
+			return res.resp, res.err
+		}
+		return nil, ErrLostLeadership
 	case <-n.stopCh:
+		n.wait.trigger(r.ID, nil)
 		return nil, ErrStopped
 	}
 }
@@ -659,12 +648,19 @@ func (n *Node) processEntry(entry raftpb.Entry) error {
 		return err
 	}
 
-	if n.apply != nil {
-		n.apply(entry.Data)
-	}
+	if !n.wait.trigger(r.ID, &applyResult{resp: r, err: nil}) {
+		// There was no wait on this ID, meaning we don't have a
+		// transaction in progress that would be committed to the
+		// memory store by the "trigger" call. Either a different node
+		// wrote this to raft, or we wrote it before losing the leader
+		// position and cancelling the transaction. Create a new
+		// transaction to commit the data.
 
-	n.Put(r.Pair.Key, string(r.Pair.Value))
-	n.w.Trigger(r.ID, &applyResult{resp: r, err: nil})
+		err := n.memoryStore.applyStoreActions(r.Action)
+		if err != nil {
+			logrus.Errorf("error applying actions from raft: %v", err)
+		}
+	}
 	return nil
 }
 
@@ -741,9 +737,4 @@ func (n *Node) applyRemoveNode(conf raftpb.ConfChange) (err error) {
 	}
 
 	return nil
-}
-
-func (n *Node) processSnapshot(snapshot raftpb.Snapshot) {
-	// TODO(abronan): implement snapshot
-	panic(fmt.Sprintf("Applying snapshot on node %v is not implemented", n.ID))
 }

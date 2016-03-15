@@ -1,11 +1,9 @@
 package state
 
 import (
-	"errors"
 	"time"
 
 	"github.com/docker/swarm-v2/api"
-	"github.com/gogo/protobuf/proto"
 
 	"google.golang.org/grpc"
 )
@@ -44,20 +42,6 @@ func dial(addr string, protocol string, timeout time.Duration) (*grpc.ClientConn
 	}
 
 	return conn, nil
-}
-
-// EncodePair returns a protobuf encoded key/value pair to be sent through raft
-func EncodePair(key string, value []byte) ([]byte, error) {
-	k := proto.String(key)
-	pair := &api.Pair{
-		Key:   *k,
-		Value: value,
-	}
-	data, err := proto.Marshal(pair)
-	if err != nil {
-		return nil, errors.New("Can't encode key/value using protobuf")
-	}
-	return data, nil
 }
 
 // Register registers the node raft server

@@ -31,7 +31,7 @@ func (ts *testServer) Stop() {
 func newTestServer(t *testing.T) *testServer {
 	ts := &testServer{}
 
-	ts.Store = state.NewMemoryStore()
+	ts.Store = state.NewMemoryStore(nil)
 	assert.NotNil(t, ts.Store)
 	ts.Server = NewServer(ts.Store)
 	assert.NotNil(t, ts.Server)

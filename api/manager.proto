@@ -22,16 +22,6 @@ service Manager {
 	rpc ProcessRaftMessage(ProcessRaftMessageRequest) returns (ProcessRaftMessageResponse) {}
 }
 
-// Contains one of many protobuf encoded objects to replicate
-// over the raft backend with a request ID to track when the
-// action is effectively applied
-message InternalRaftRequest {
-	uint64 id = 1 [(gogoproto.customname) = "ID"];
-
-	// TODO(abronan): replace Pair by swarm actions
-	Pair pair = 2;
-}
-
 message JoinRequest {
 	RaftNode node = 1;
 }
@@ -64,10 +54,4 @@ message ProcessRaftMessageResponse {}
 message RaftNode {
 	uint64 id = 1 [(gogoproto.customname) = "ID"];
 	string addr = 2;
-}
-
-// TODO(abronan): remove when the integration with store is completed
-message Pair {
-	string key = 1;
-	bytes value = 2;
 }

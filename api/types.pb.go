@@ -29,6 +29,8 @@
 		NetworkSpec
 		Network
 		WeightedPeer
+		InternalRaftRequest
+		StoreAction
 		GetNodeRequest
 		GetNodeResponse
 		ListNodesRequest
@@ -805,6 +807,365 @@ type WeightedPeer struct {
 func (m *WeightedPeer) Reset()      { *m = WeightedPeer{} }
 func (*WeightedPeer) ProtoMessage() {}
 
+// Contains one of many protobuf encoded objects to replicate
+// over the raft backend with a request ID to track when the
+// action is effectively applied
+type InternalRaftRequest struct {
+	ID     uint64         `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Action []*StoreAction `protobuf:"bytes,2,rep,name=action" json:"action,omitempty"`
+}
+
+func (m *InternalRaftRequest) Reset()      { *m = InternalRaftRequest{} }
+func (*InternalRaftRequest) ProtoMessage() {}
+
+type StoreAction struct {
+	// Types that are valid to be assigned to Action:
+	//	*StoreAction_CreateNode
+	//	*StoreAction_UpdateNode
+	//	*StoreAction_RemoveNode
+	//	*StoreAction_CreateTask
+	//	*StoreAction_UpdateTask
+	//	*StoreAction_RemoveTask
+	//	*StoreAction_CreateJob
+	//	*StoreAction_UpdateJob
+	//	*StoreAction_RemoveJob
+	//	*StoreAction_CreateNetwork
+	//	*StoreAction_UpdateNetwork
+	//	*StoreAction_RemoveNetwork
+	Action isStoreAction_Action `protobuf_oneof:"action"`
+}
+
+func (m *StoreAction) Reset()      { *m = StoreAction{} }
+func (*StoreAction) ProtoMessage() {}
+
+type isStoreAction_Action interface {
+	isStoreAction_Action()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type StoreAction_CreateNode struct {
+	CreateNode *Node `protobuf:"bytes,1,opt,name=create_node,oneof"`
+}
+type StoreAction_UpdateNode struct {
+	UpdateNode *Node `protobuf:"bytes,2,opt,name=update_node,oneof"`
+}
+type StoreAction_RemoveNode struct {
+	RemoveNode string `protobuf:"bytes,3,opt,name=remove_node,proto3,oneof"`
+}
+type StoreAction_CreateTask struct {
+	CreateTask *Task `protobuf:"bytes,4,opt,name=create_task,oneof"`
+}
+type StoreAction_UpdateTask struct {
+	UpdateTask *Task `protobuf:"bytes,5,opt,name=update_task,oneof"`
+}
+type StoreAction_RemoveTask struct {
+	RemoveTask string `protobuf:"bytes,6,opt,name=remove_task,proto3,oneof"`
+}
+type StoreAction_CreateJob struct {
+	CreateJob *Job `protobuf:"bytes,7,opt,name=create_job,oneof"`
+}
+type StoreAction_UpdateJob struct {
+	UpdateJob *Job `protobuf:"bytes,8,opt,name=update_job,oneof"`
+}
+type StoreAction_RemoveJob struct {
+	RemoveJob string `protobuf:"bytes,9,opt,name=remove_job,proto3,oneof"`
+}
+type StoreAction_CreateNetwork struct {
+	CreateNetwork *Network `protobuf:"bytes,10,opt,name=create_network,oneof"`
+}
+type StoreAction_UpdateNetwork struct {
+	UpdateNetwork *Network `protobuf:"bytes,11,opt,name=update_network,oneof"`
+}
+type StoreAction_RemoveNetwork struct {
+	RemoveNetwork string `protobuf:"bytes,12,opt,name=remove_network,proto3,oneof"`
+}
+
+func (*StoreAction_CreateNode) isStoreAction_Action()    {}
+func (*StoreAction_UpdateNode) isStoreAction_Action()    {}
+func (*StoreAction_RemoveNode) isStoreAction_Action()    {}
+func (*StoreAction_CreateTask) isStoreAction_Action()    {}
+func (*StoreAction_UpdateTask) isStoreAction_Action()    {}
+func (*StoreAction_RemoveTask) isStoreAction_Action()    {}
+func (*StoreAction_CreateJob) isStoreAction_Action()     {}
+func (*StoreAction_UpdateJob) isStoreAction_Action()     {}
+func (*StoreAction_RemoveJob) isStoreAction_Action()     {}
+func (*StoreAction_CreateNetwork) isStoreAction_Action() {}
+func (*StoreAction_UpdateNetwork) isStoreAction_Action() {}
+func (*StoreAction_RemoveNetwork) isStoreAction_Action() {}
+
+func (m *StoreAction) GetAction() isStoreAction_Action {
+	if m != nil {
+		return m.Action
+	}
+	return nil
+}
+
+func (m *StoreAction) GetCreateNode() *Node {
+	if x, ok := m.GetAction().(*StoreAction_CreateNode); ok {
+		return x.CreateNode
+	}
+	return nil
+}
+
+func (m *StoreAction) GetUpdateNode() *Node {
+	if x, ok := m.GetAction().(*StoreAction_UpdateNode); ok {
+		return x.UpdateNode
+	}
+	return nil
+}
+
+func (m *StoreAction) GetRemoveNode() string {
+	if x, ok := m.GetAction().(*StoreAction_RemoveNode); ok {
+		return x.RemoveNode
+	}
+	return ""
+}
+
+func (m *StoreAction) GetCreateTask() *Task {
+	if x, ok := m.GetAction().(*StoreAction_CreateTask); ok {
+		return x.CreateTask
+	}
+	return nil
+}
+
+func (m *StoreAction) GetUpdateTask() *Task {
+	if x, ok := m.GetAction().(*StoreAction_UpdateTask); ok {
+		return x.UpdateTask
+	}
+	return nil
+}
+
+func (m *StoreAction) GetRemoveTask() string {
+	if x, ok := m.GetAction().(*StoreAction_RemoveTask); ok {
+		return x.RemoveTask
+	}
+	return ""
+}
+
+func (m *StoreAction) GetCreateJob() *Job {
+	if x, ok := m.GetAction().(*StoreAction_CreateJob); ok {
+		return x.CreateJob
+	}
+	return nil
+}
+
+func (m *StoreAction) GetUpdateJob() *Job {
+	if x, ok := m.GetAction().(*StoreAction_UpdateJob); ok {
+		return x.UpdateJob
+	}
+	return nil
+}
+
+func (m *StoreAction) GetRemoveJob() string {
+	if x, ok := m.GetAction().(*StoreAction_RemoveJob); ok {
+		return x.RemoveJob
+	}
+	return ""
+}
+
+func (m *StoreAction) GetCreateNetwork() *Network {
+	if x, ok := m.GetAction().(*StoreAction_CreateNetwork); ok {
+		return x.CreateNetwork
+	}
+	return nil
+}
+
+func (m *StoreAction) GetUpdateNetwork() *Network {
+	if x, ok := m.GetAction().(*StoreAction_UpdateNetwork); ok {
+		return x.UpdateNetwork
+	}
+	return nil
+}
+
+func (m *StoreAction) GetRemoveNetwork() string {
+	if x, ok := m.GetAction().(*StoreAction_RemoveNetwork); ok {
+		return x.RemoveNetwork
+	}
+	return ""
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*StoreAction) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _StoreAction_OneofMarshaler, _StoreAction_OneofUnmarshaler, []interface{}{
+		(*StoreAction_CreateNode)(nil),
+		(*StoreAction_UpdateNode)(nil),
+		(*StoreAction_RemoveNode)(nil),
+		(*StoreAction_CreateTask)(nil),
+		(*StoreAction_UpdateTask)(nil),
+		(*StoreAction_RemoveTask)(nil),
+		(*StoreAction_CreateJob)(nil),
+		(*StoreAction_UpdateJob)(nil),
+		(*StoreAction_RemoveJob)(nil),
+		(*StoreAction_CreateNetwork)(nil),
+		(*StoreAction_UpdateNetwork)(nil),
+		(*StoreAction_RemoveNetwork)(nil),
+	}
+}
+
+func _StoreAction_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*StoreAction)
+	// action
+	switch x := m.Action.(type) {
+	case *StoreAction_CreateNode:
+		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.CreateNode); err != nil {
+			return err
+		}
+	case *StoreAction_UpdateNode:
+		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.UpdateNode); err != nil {
+			return err
+		}
+	case *StoreAction_RemoveNode:
+		_ = b.EncodeVarint(3<<3 | proto.WireBytes)
+		_ = b.EncodeStringBytes(x.RemoveNode)
+	case *StoreAction_CreateTask:
+		_ = b.EncodeVarint(4<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.CreateTask); err != nil {
+			return err
+		}
+	case *StoreAction_UpdateTask:
+		_ = b.EncodeVarint(5<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.UpdateTask); err != nil {
+			return err
+		}
+	case *StoreAction_RemoveTask:
+		_ = b.EncodeVarint(6<<3 | proto.WireBytes)
+		_ = b.EncodeStringBytes(x.RemoveTask)
+	case *StoreAction_CreateJob:
+		_ = b.EncodeVarint(7<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.CreateJob); err != nil {
+			return err
+		}
+	case *StoreAction_UpdateJob:
+		_ = b.EncodeVarint(8<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.UpdateJob); err != nil {
+			return err
+		}
+	case *StoreAction_RemoveJob:
+		_ = b.EncodeVarint(9<<3 | proto.WireBytes)
+		_ = b.EncodeStringBytes(x.RemoveJob)
+	case *StoreAction_CreateNetwork:
+		_ = b.EncodeVarint(10<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.CreateNetwork); err != nil {
+			return err
+		}
+	case *StoreAction_UpdateNetwork:
+		_ = b.EncodeVarint(11<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.UpdateNetwork); err != nil {
+			return err
+		}
+	case *StoreAction_RemoveNetwork:
+		_ = b.EncodeVarint(12<<3 | proto.WireBytes)
+		_ = b.EncodeStringBytes(x.RemoveNetwork)
+	case nil:
+	default:
+		return fmt.Errorf("StoreAction.Action has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _StoreAction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*StoreAction)
+	switch tag {
+	case 1: // action.create_node
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Node)
+		err := b.DecodeMessage(msg)
+		m.Action = &StoreAction_CreateNode{msg}
+		return true, err
+	case 2: // action.update_node
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Node)
+		err := b.DecodeMessage(msg)
+		m.Action = &StoreAction_UpdateNode{msg}
+		return true, err
+	case 3: // action.remove_node
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeStringBytes()
+		m.Action = &StoreAction_RemoveNode{x}
+		return true, err
+	case 4: // action.create_task
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Task)
+		err := b.DecodeMessage(msg)
+		m.Action = &StoreAction_CreateTask{msg}
+		return true, err
+	case 5: // action.update_task
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Task)
+		err := b.DecodeMessage(msg)
+		m.Action = &StoreAction_UpdateTask{msg}
+		return true, err
+	case 6: // action.remove_task
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeStringBytes()
+		m.Action = &StoreAction_RemoveTask{x}
+		return true, err
+	case 7: // action.create_job
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Job)
+		err := b.DecodeMessage(msg)
+		m.Action = &StoreAction_CreateJob{msg}
+		return true, err
+	case 8: // action.update_job
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Job)
+		err := b.DecodeMessage(msg)
+		m.Action = &StoreAction_UpdateJob{msg}
+		return true, err
+	case 9: // action.remove_job
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeStringBytes()
+		m.Action = &StoreAction_RemoveJob{x}
+		return true, err
+	case 10: // action.create_network
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Network)
+		err := b.DecodeMessage(msg)
+		m.Action = &StoreAction_CreateNetwork{msg}
+		return true, err
+	case 11: // action.update_network
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Network)
+		err := b.DecodeMessage(msg)
+		m.Action = &StoreAction_UpdateNetwork{msg}
+		return true, err
+	case 12: // action.remove_network
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeStringBytes()
+		m.Action = &StoreAction_RemoveNetwork{x}
+		return true, err
+	default:
+		return false, nil
+	}
+}
+
 func init() {
 	proto.RegisterType((*Meta)(nil), "api.Meta")
 	proto.RegisterType((*Resources)(nil), "api.Resources")
@@ -831,6 +1192,8 @@ func init() {
 	proto.RegisterType((*NetworkSpec_IPAMOptions)(nil), "api.NetworkSpec.IPAMOptions")
 	proto.RegisterType((*Network)(nil), "api.Network")
 	proto.RegisterType((*WeightedPeer)(nil), "api.WeightedPeer")
+	proto.RegisterType((*InternalRaftRequest)(nil), "api.InternalRaftRequest")
+	proto.RegisterType((*StoreAction)(nil), "api.StoreAction")
 	proto.RegisterEnum("api.TaskState", TaskState_name, TaskState_value)
 	proto.RegisterEnum("api.NodeSpec_Availability", NodeSpec_Availability_name, NodeSpec_Availability_value)
 	proto.RegisterEnum("api.NodeStatus_State", NodeStatus_State_name, NodeStatus_State_value)
@@ -1278,6 +1641,110 @@ func (m *WeightedPeer) Copy() *WeightedPeer {
 	return o
 }
 
+func (m *InternalRaftRequest) Copy() *InternalRaftRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &InternalRaftRequest{
+		ID: m.ID,
+	}
+
+	if m.Action != nil {
+		o.Action = make([]*StoreAction, 0, len(m.Action))
+		for _, v := range m.Action {
+			o.Action = append(o.Action, v.Copy())
+		}
+	}
+
+	return o
+}
+
+func (m *StoreAction) Copy() *StoreAction {
+	if m == nil {
+		return nil
+	}
+
+	o := &StoreAction{}
+
+	switch m.Action.(type) {
+	case *StoreAction_CreateNode:
+		i := &StoreAction_CreateNode{
+			CreateNode: m.GetCreateNode().Copy(),
+		}
+
+		o.Action = i
+	case *StoreAction_UpdateNode:
+		i := &StoreAction_UpdateNode{
+			UpdateNode: m.GetUpdateNode().Copy(),
+		}
+
+		o.Action = i
+	case *StoreAction_RemoveNode:
+		i := &StoreAction_RemoveNode{
+			RemoveNode: m.GetRemoveNode(),
+		}
+
+		o.Action = i
+	case *StoreAction_CreateTask:
+		i := &StoreAction_CreateTask{
+			CreateTask: m.GetCreateTask().Copy(),
+		}
+
+		o.Action = i
+	case *StoreAction_UpdateTask:
+		i := &StoreAction_UpdateTask{
+			UpdateTask: m.GetUpdateTask().Copy(),
+		}
+
+		o.Action = i
+	case *StoreAction_RemoveTask:
+		i := &StoreAction_RemoveTask{
+			RemoveTask: m.GetRemoveTask(),
+		}
+
+		o.Action = i
+	case *StoreAction_CreateJob:
+		i := &StoreAction_CreateJob{
+			CreateJob: m.GetCreateJob().Copy(),
+		}
+
+		o.Action = i
+	case *StoreAction_UpdateJob:
+		i := &StoreAction_UpdateJob{
+			UpdateJob: m.GetUpdateJob().Copy(),
+		}
+
+		o.Action = i
+	case *StoreAction_RemoveJob:
+		i := &StoreAction_RemoveJob{
+			RemoveJob: m.GetRemoveJob(),
+		}
+
+		o.Action = i
+	case *StoreAction_CreateNetwork:
+		i := &StoreAction_CreateNetwork{
+			CreateNetwork: m.GetCreateNetwork().Copy(),
+		}
+
+		o.Action = i
+	case *StoreAction_UpdateNetwork:
+		i := &StoreAction_UpdateNetwork{
+			UpdateNetwork: m.GetUpdateNetwork().Copy(),
+		}
+
+		o.Action = i
+	case *StoreAction_RemoveNetwork:
+		i := &StoreAction_RemoveNetwork{
+			RemoveNetwork: m.GetRemoveNetwork(),
+		}
+
+		o.Action = i
+	}
+
+	return o
+}
+
 func (this *Meta) GoString() string {
 	if this == nil {
 		return "nil"
@@ -1692,6 +2159,127 @@ func (this *WeightedPeer) GoString() string {
 	s = append(s, "Weight: "+fmt.Sprintf("%#v", this.Weight)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
+}
+func (this *InternalRaftRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.InternalRaftRequest{")
+	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
+	if this.Action != nil {
+		s = append(s, "Action: "+fmt.Sprintf("%#v", this.Action)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *StoreAction) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 16)
+	s = append(s, "&api.StoreAction{")
+	if this.Action != nil {
+		s = append(s, "Action: "+fmt.Sprintf("%#v", this.Action)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *StoreAction_CreateNode) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_CreateNode{` +
+		`CreateNode:` + fmt.Sprintf("%#v", this.CreateNode) + `}`}, ", ")
+	return s
+}
+func (this *StoreAction_UpdateNode) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_UpdateNode{` +
+		`UpdateNode:` + fmt.Sprintf("%#v", this.UpdateNode) + `}`}, ", ")
+	return s
+}
+func (this *StoreAction_RemoveNode) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_RemoveNode{` +
+		`RemoveNode:` + fmt.Sprintf("%#v", this.RemoveNode) + `}`}, ", ")
+	return s
+}
+func (this *StoreAction_CreateTask) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_CreateTask{` +
+		`CreateTask:` + fmt.Sprintf("%#v", this.CreateTask) + `}`}, ", ")
+	return s
+}
+func (this *StoreAction_UpdateTask) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_UpdateTask{` +
+		`UpdateTask:` + fmt.Sprintf("%#v", this.UpdateTask) + `}`}, ", ")
+	return s
+}
+func (this *StoreAction_RemoveTask) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_RemoveTask{` +
+		`RemoveTask:` + fmt.Sprintf("%#v", this.RemoveTask) + `}`}, ", ")
+	return s
+}
+func (this *StoreAction_CreateJob) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_CreateJob{` +
+		`CreateJob:` + fmt.Sprintf("%#v", this.CreateJob) + `}`}, ", ")
+	return s
+}
+func (this *StoreAction_UpdateJob) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_UpdateJob{` +
+		`UpdateJob:` + fmt.Sprintf("%#v", this.UpdateJob) + `}`}, ", ")
+	return s
+}
+func (this *StoreAction_RemoveJob) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_RemoveJob{` +
+		`RemoveJob:` + fmt.Sprintf("%#v", this.RemoveJob) + `}`}, ", ")
+	return s
+}
+func (this *StoreAction_CreateNetwork) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_CreateNetwork{` +
+		`CreateNetwork:` + fmt.Sprintf("%#v", this.CreateNetwork) + `}`}, ", ")
+	return s
+}
+func (this *StoreAction_UpdateNetwork) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_UpdateNetwork{` +
+		`UpdateNetwork:` + fmt.Sprintf("%#v", this.UpdateNetwork) + `}`}, ", ")
+	return s
+}
+func (this *StoreAction_RemoveNetwork) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_RemoveNetwork{` +
+		`RemoveNetwork:` + fmt.Sprintf("%#v", this.RemoveNetwork) + `}`}, ", ")
+	return s
 }
 func valueToGoStringTypes(v interface{}, typ string) string {
 	rv := reflect.ValueOf(v)
@@ -2763,6 +3351,210 @@ func (m *WeightedPeer) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *InternalRaftRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *InternalRaftRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.ID != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.ID))
+	}
+	if len(m.Action) > 0 {
+		for _, msg := range m.Action {
+			data[i] = 0x12
+			i++
+			i = encodeVarintTypes(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func (m *StoreAction) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *StoreAction) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Action != nil {
+		nn28, err := m.Action.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += nn28
+	}
+	return i, nil
+}
+
+func (m *StoreAction_CreateNode) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.CreateNode != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.CreateNode.Size()))
+		n29, err := m.CreateNode.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n29
+	}
+	return i, nil
+}
+func (m *StoreAction_UpdateNode) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.UpdateNode != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.UpdateNode.Size()))
+		n30, err := m.UpdateNode.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n30
+	}
+	return i, nil
+}
+func (m *StoreAction_RemoveNode) MarshalTo(data []byte) (int, error) {
+	i := 0
+	data[i] = 0x1a
+	i++
+	i = encodeVarintTypes(data, i, uint64(len(m.RemoveNode)))
+	i += copy(data[i:], m.RemoveNode)
+	return i, nil
+}
+func (m *StoreAction_CreateTask) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.CreateTask != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.CreateTask.Size()))
+		n31, err := m.CreateTask.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n31
+	}
+	return i, nil
+}
+func (m *StoreAction_UpdateTask) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.UpdateTask != nil {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.UpdateTask.Size()))
+		n32, err := m.UpdateTask.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n32
+	}
+	return i, nil
+}
+func (m *StoreAction_RemoveTask) MarshalTo(data []byte) (int, error) {
+	i := 0
+	data[i] = 0x32
+	i++
+	i = encodeVarintTypes(data, i, uint64(len(m.RemoveTask)))
+	i += copy(data[i:], m.RemoveTask)
+	return i, nil
+}
+func (m *StoreAction_CreateJob) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.CreateJob != nil {
+		data[i] = 0x3a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.CreateJob.Size()))
+		n33, err := m.CreateJob.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n33
+	}
+	return i, nil
+}
+func (m *StoreAction_UpdateJob) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.UpdateJob != nil {
+		data[i] = 0x42
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.UpdateJob.Size()))
+		n34, err := m.UpdateJob.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n34
+	}
+	return i, nil
+}
+func (m *StoreAction_RemoveJob) MarshalTo(data []byte) (int, error) {
+	i := 0
+	data[i] = 0x4a
+	i++
+	i = encodeVarintTypes(data, i, uint64(len(m.RemoveJob)))
+	i += copy(data[i:], m.RemoveJob)
+	return i, nil
+}
+func (m *StoreAction_CreateNetwork) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.CreateNetwork != nil {
+		data[i] = 0x52
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.CreateNetwork.Size()))
+		n35, err := m.CreateNetwork.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n35
+	}
+	return i, nil
+}
+func (m *StoreAction_UpdateNetwork) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.UpdateNetwork != nil {
+		data[i] = 0x5a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.UpdateNetwork.Size()))
+		n36, err := m.UpdateNetwork.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n36
+	}
+	return i, nil
+}
+func (m *StoreAction_RemoveNetwork) MarshalTo(data []byte) (int, error) {
+	i := 0
+	data[i] = 0x62
+	i++
+	i = encodeVarintTypes(data, i, uint64(len(m.RemoveNetwork)))
+	i += copy(data[i:], m.RemoveNetwork)
+	return i, nil
+}
 func encodeFixed64Types(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	data[offset+1] = uint8(v >> 8)
@@ -3235,6 +4027,131 @@ func (m *WeightedPeer) Size() (n int) {
 	return n
 }
 
+func (m *InternalRaftRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.ID != 0 {
+		n += 1 + sovTypes(uint64(m.ID))
+	}
+	if len(m.Action) > 0 {
+		for _, e := range m.Action {
+			l = e.Size()
+			n += 1 + l + sovTypes(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *StoreAction) Size() (n int) {
+	var l int
+	_ = l
+	if m.Action != nil {
+		n += m.Action.Size()
+	}
+	return n
+}
+
+func (m *StoreAction_CreateNode) Size() (n int) {
+	var l int
+	_ = l
+	if m.CreateNode != nil {
+		l = m.CreateNode.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *StoreAction_UpdateNode) Size() (n int) {
+	var l int
+	_ = l
+	if m.UpdateNode != nil {
+		l = m.UpdateNode.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *StoreAction_RemoveNode) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.RemoveNode)
+	n += 1 + l + sovTypes(uint64(l))
+	return n
+}
+func (m *StoreAction_CreateTask) Size() (n int) {
+	var l int
+	_ = l
+	if m.CreateTask != nil {
+		l = m.CreateTask.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *StoreAction_UpdateTask) Size() (n int) {
+	var l int
+	_ = l
+	if m.UpdateTask != nil {
+		l = m.UpdateTask.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *StoreAction_RemoveTask) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.RemoveTask)
+	n += 1 + l + sovTypes(uint64(l))
+	return n
+}
+func (m *StoreAction_CreateJob) Size() (n int) {
+	var l int
+	_ = l
+	if m.CreateJob != nil {
+		l = m.CreateJob.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *StoreAction_UpdateJob) Size() (n int) {
+	var l int
+	_ = l
+	if m.UpdateJob != nil {
+		l = m.UpdateJob.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *StoreAction_RemoveJob) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.RemoveJob)
+	n += 1 + l + sovTypes(uint64(l))
+	return n
+}
+func (m *StoreAction_CreateNetwork) Size() (n int) {
+	var l int
+	_ = l
+	if m.CreateNetwork != nil {
+		l = m.CreateNetwork.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *StoreAction_UpdateNetwork) Size() (n int) {
+	var l int
+	_ = l
+	if m.UpdateNetwork != nil {
+		l = m.UpdateNetwork.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *StoreAction_RemoveNetwork) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.RemoveNetwork)
+	n += 1 + l + sovTypes(uint64(l))
+	return n
+}
+
 func sovTypes(x uint64) (n int) {
 	for {
 		n++
@@ -3627,6 +4544,147 @@ func (this *WeightedPeer) String() string {
 	s := strings.Join([]string{`&WeightedPeer{`,
 		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
 		`Weight:` + fmt.Sprintf("%v", this.Weight) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *InternalRaftRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&InternalRaftRequest{`,
+		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`Action:` + strings.Replace(fmt.Sprintf("%v", this.Action), "StoreAction", "StoreAction", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction{`,
+		`Action:` + fmt.Sprintf("%v", this.Action) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_CreateNode) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_CreateNode{`,
+		`CreateNode:` + strings.Replace(fmt.Sprintf("%v", this.CreateNode), "Node", "Node", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_UpdateNode) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_UpdateNode{`,
+		`UpdateNode:` + strings.Replace(fmt.Sprintf("%v", this.UpdateNode), "Node", "Node", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_RemoveNode) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_RemoveNode{`,
+		`RemoveNode:` + fmt.Sprintf("%v", this.RemoveNode) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_CreateTask) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_CreateTask{`,
+		`CreateTask:` + strings.Replace(fmt.Sprintf("%v", this.CreateTask), "Task", "Task", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_UpdateTask) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_UpdateTask{`,
+		`UpdateTask:` + strings.Replace(fmt.Sprintf("%v", this.UpdateTask), "Task", "Task", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_RemoveTask) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_RemoveTask{`,
+		`RemoveTask:` + fmt.Sprintf("%v", this.RemoveTask) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_CreateJob) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_CreateJob{`,
+		`CreateJob:` + strings.Replace(fmt.Sprintf("%v", this.CreateJob), "Job", "Job", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_UpdateJob) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_UpdateJob{`,
+		`UpdateJob:` + strings.Replace(fmt.Sprintf("%v", this.UpdateJob), "Job", "Job", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_RemoveJob) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_RemoveJob{`,
+		`RemoveJob:` + fmt.Sprintf("%v", this.RemoveJob) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_CreateNetwork) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_CreateNetwork{`,
+		`CreateNetwork:` + strings.Replace(fmt.Sprintf("%v", this.CreateNetwork), "Network", "Network", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_UpdateNetwork) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_UpdateNetwork{`,
+		`UpdateNetwork:` + strings.Replace(fmt.Sprintf("%v", this.UpdateNetwork), "Network", "Network", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_RemoveNetwork) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_RemoveNetwork{`,
+		`RemoveNetwork:` + fmt.Sprintf("%v", this.RemoveNetwork) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -6904,6 +7962,528 @@ func (m *WeightedPeer) Unmarshal(data []byte) error {
 			v |= uint64(data[iNdEx-2]) << 48
 			v |= uint64(data[iNdEx-1]) << 56
 			m.Weight = float64(math.Float64frombits(v))
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *InternalRaftRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: InternalRaftRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: InternalRaftRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
+			}
+			m.ID = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.ID |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Action", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Action = append(m.Action, &StoreAction{})
+			if err := m.Action[len(m.Action)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *StoreAction) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: StoreAction: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: StoreAction: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CreateNode", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Node{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Action = &StoreAction_CreateNode{v}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UpdateNode", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Node{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Action = &StoreAction_UpdateNode{v}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RemoveNode", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Action = &StoreAction_RemoveNode{string(data[iNdEx:postIndex])}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CreateTask", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Task{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Action = &StoreAction_CreateTask{v}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UpdateTask", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Task{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Action = &StoreAction_UpdateTask{v}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RemoveTask", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Action = &StoreAction_RemoveTask{string(data[iNdEx:postIndex])}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CreateJob", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Job{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Action = &StoreAction_CreateJob{v}
+			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UpdateJob", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Job{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Action = &StoreAction_UpdateJob{v}
+			iNdEx = postIndex
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RemoveJob", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Action = &StoreAction_RemoveJob{string(data[iNdEx:postIndex])}
+			iNdEx = postIndex
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CreateNetwork", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Network{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Action = &StoreAction_CreateNetwork{v}
+			iNdEx = postIndex
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UpdateNetwork", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Network{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Action = &StoreAction_UpdateNetwork{v}
+			iNdEx = postIndex
+		case 12:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RemoveNetwork", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Action = &StoreAction_RemoveNetwork{string(data[iNdEx:postIndex])}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(data[iNdEx:])

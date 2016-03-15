@@ -327,3 +327,33 @@ message WeightedPeer {
 
 	// TODO(stevvooe): We must consolidate peer representation in the API.
 }
+
+// Contains one of many protobuf encoded objects to replicate
+// over the raft backend with a request ID to track when the
+// action is effectively applied
+message InternalRaftRequest {
+	uint64 id = 1 [(gogoproto.customname) = "ID"];
+
+	repeated StoreAction action = 2;
+}
+
+
+message StoreAction {
+	oneof action {
+		Node create_node = 1;
+		Node update_node = 2;
+		string remove_node = 3;
+
+		Task create_task = 4;
+		Task update_task = 5;
+		string remove_task = 6;
+
+		Job create_job = 7;
+		Job update_job = 8;
+		string remove_job = 9;
+
+		Network create_network = 10;
+		Network update_network = 11;
+		string remove_network = 12;
+	}
+}

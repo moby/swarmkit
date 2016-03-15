@@ -15,7 +15,7 @@ var managerCmd = &cobra.Command{
 			return err
 		}
 
-		store := state.NewMemoryStore()
+		store := state.NewMemoryStore(nil)
 
 		m := manager.New(&manager.Config{
 			Store:       store,

@@ -11,7 +11,7 @@ import (
 )
 
 func TestOrchestrator(t *testing.T) {
-	store := state.NewMemoryStore()
+	store := state.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
 	orchestrator := New(store)
