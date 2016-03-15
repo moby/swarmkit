@@ -112,9 +112,10 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	nid := node.ID // prevent the closure from holding onto the entire Node.
 
 	expireFunc := func() {
-		nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "node was marked as down because of heartbeat fail"}
+		nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "heartbeat failure"}
+		log.WithField("node.id", nid).Debugf("heartbeat expiration")
 		if err := d.nodeRemove(nid, nodeStatus); err != nil {
-			log.Errorf("error deregistering node %s after heartbeat was not received: %v", nid, err)
+			log.Errorf("error deregistering node %s after heartbeat expiration: %v", nid, err)
 		}
 	}
 
@@ -221,20 +222,22 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 }
 
 func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
-	rn := d.nodes.Delete(id)
-	if rn == nil {
+	err := d.store.Update(func(tx state.Tx) error {
+		node := tx.Nodes().Get(id)
+		if node == nil {
+			return errors.New("node not found")
+		}
+		node.Status = status
+		return tx.Nodes().Update(node)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update node %s status to down: %v", id, err)
+	}
+
+	if rn := d.nodes.Delete(id); rn == nil {
 		return fmt.Errorf("node %s is not found in local storage", id)
 	}
 
-	rn.mu.Lock()
-	defer rn.mu.Unlock()
-	rn.Node.Status = status
-	err := d.store.Update(func(tx state.Tx) error {
-		return tx.Nodes().Update(rn.Node)
-	})
-	if err != nil {
-		return fmt.Errorf("failed to update node %s status to down", id)
-	}
 	return nil
 }
 
