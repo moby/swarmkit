@@ -23,7 +23,7 @@ func TestServiceConfigValidate(t *testing.T) {
 	}
 }
 
-func TestDiffServiceConfigs(t *testing.T) {
+func TestServiceConfigsDiff(t *testing.T) {
 	service := &ServiceConfig{Name: "name", Instances: 1, ContainerConfig: ContainerConfig{Image: "nginx"}}
 
 	diff, err := service.Diff("remote", "local",

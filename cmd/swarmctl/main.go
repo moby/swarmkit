@@ -38,6 +38,7 @@ func init() {
 
 	mainCmd.AddCommand(
 		deployCmd,
+		diffCmd,
 		node.Cmd,
 		job.Cmd,
 		task.Cmd,

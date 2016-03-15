@@ -48,7 +48,8 @@ func (s *ServiceConfig) Parse(r io.Reader) error {
 func (s *ServiceConfig) JobSpec() *api.JobSpec {
 	return &api.JobSpec{
 		Meta: api.Meta{
-			Name: s.Name,
+			Name:   s.Name,
+			Labels: make(map[string]string),
 		},
 		Template: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{

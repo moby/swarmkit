@@ -1,32 +1,34 @@
 package spec
 
 import (
-	"io/ioutil"
+	"fmt"
+	"io"
 
 	yaml "github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/docker/swarm-v2/api"
+	"github.com/pmezard/go-difflib/difflib"
 )
 
 // Spec is a human representation of the API spec.
 type Spec struct {
-	Version  int                       `yaml:"version,omitempty"`
-	Services map[string]*ServiceConfig `yaml:"services,omitempty"`
+	Version   int                       `yaml:"version,omitempty"`
+	Namespace string                    `yaml:"namespace,omitempty"`
+	Services  map[string]*ServiceConfig `yaml:"services,omitempty"`
 }
 
-// ReadFrom creates a Spec from a file located at `path`.
-func ReadFrom(path string) (*Spec, error) {
-	s := &Spec{}
-
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
+// Parse creates a Spec from a io.Reader.
+func (s *Spec) Parse(r io.Reader) error {
+	if err := yaml.NewDecoder(r).Decode(s); err != nil {
+		return err
+	}
+	if err := s.validate(); err != nil {
+		return err
 	}
 
-	if err := yaml.Unmarshal(data, s); err != nil {
-		return nil, err
+	if s.Version == 2 {
+		fmt.Println("WARNING: v2 format is only partially supported, please update to v3")
 	}
-
-	return s, s.validate()
+	return nil
 }
 
 func (s *Spec) validate() error {
@@ -43,7 +45,40 @@ func (s *Spec) validate() error {
 func (s *Spec) JobSpecs() []*api.JobSpec {
 	jobSpecs := []*api.JobSpec{}
 	for _, service := range s.Services {
-		jobSpecs = append(jobSpecs, service.JobSpec())
+		jobSpec := service.JobSpec()
+		jobSpec.Meta.Labels["namespace"] = s.Namespace
+		jobSpecs = append(jobSpecs, jobSpec)
 	}
 	return jobSpecs
+}
+
+// FromJobSpecs converts Jobs to a Spec.
+func (s *Spec) FromJobSpecs(jobspecs []*api.JobSpec) {
+	for _, j := range jobspecs {
+		service := &ServiceConfig{}
+		service.FromJobSpec(j)
+		s.Services[j.Meta.Name] = service
+	}
+}
+
+// Diff returns a diff between two Specs.
+func (s *Spec) Diff(fromFile, toFile string, other *Spec) (string, error) {
+	from, err := yaml.Marshal(other)
+	if err != nil {
+		return "", err
+	}
+
+	to, err := yaml.Marshal(s)
+	if err != nil {
+		return "", err
+	}
+
+	diff := difflib.UnifiedDiff{
+		A:        difflib.SplitLines(string(from)),
+		FromFile: fromFile,
+		B:        difflib.SplitLines(string(to)),
+		ToFile:   toFile,
+	}
+
+	return difflib.GetUnifiedDiffString(diff)
 }
