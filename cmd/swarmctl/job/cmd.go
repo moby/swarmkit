@@ -19,5 +19,6 @@ func init() {
 		removeCmd,
 
 		diffCmd,
+		editCmd,
 	)
 }

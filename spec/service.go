@@ -75,21 +75,22 @@ func (s *ServiceConfig) FromJobSpec(jobSpec *api.JobSpec) {
 }
 
 // Diff returns a diff between two ServiceConfigs.
-func (s *ServiceConfig) Diff(other *ServiceConfig) (string, error) {
-	local, err := yaml.Marshal(s)
+func (s *ServiceConfig) Diff(fromFile, toFile string, other *ServiceConfig) (string, error) {
+	from, err := yaml.Marshal(other)
 	if err != nil {
 		return "", err
 	}
-	remote, err := yaml.Marshal(other)
+
+	to, err := yaml.Marshal(s)
 	if err != nil {
 		return "", err
 	}
 
 	diff := difflib.UnifiedDiff{
-		A:        difflib.SplitLines(string(remote)),
-		B:        difflib.SplitLines(string(local)),
-		FromFile: "remote",
-		ToFile:   "local",
+		A:        difflib.SplitLines(string(from)),
+		FromFile: fromFile,
+		B:        difflib.SplitLines(string(to)),
+		ToFile:   toFile,
 	}
 
 	return difflib.GetUnifiedDiffString(diff)
