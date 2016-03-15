@@ -15,6 +15,7 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 // 	- "Control", since this controls a swarm cluster
 // 	- "User" because it is user facing.
 service Cluster {
+	rpc GetNode(GetNodeRequest) returns (GetNodeResponse) {}
 	rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {}
 	rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse) {}
 
@@ -22,7 +23,6 @@ service Cluster {
 	rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {}
 	rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse) {}
 	rpc RemoveTask(RemoveTaskRequest) returns (RemoveTaskResponse) {}
-
 
 	rpc GetJob(GetJobRequest) returns (GetJobResponse) {}
 	rpc ListJobs(ListJobsRequest) returns (ListJobsResponse) {}
@@ -36,6 +36,14 @@ service Cluster {
 	rpc RemoveNetwork(RemoveNetworkRequest) returns (RemoveNetworkResponse) {};
 }
 
+message GetNodeRequest {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+}
+
+message GetNodeResponse {
+	Node node = 1;
+}
+
 message ListNodesRequest {
 }
 
@@ -44,8 +52,8 @@ message ListNodesResponse {
 }
 
 // UpdateNodeRequest requests an update to the specified node. This may be used
-// to request a new state for a node, such as DOWN. Invalid updates will be
-// denied and cause an error.
+// to request a new availability for a node, such as PAUSE. Invalid updates
+// will be denied and cause an error.
 message UpdateNodeRequest {
 	string node_id = 1 [(gogoproto.customname) = "NodeID"];
 	NodeSpec spec = 2;
