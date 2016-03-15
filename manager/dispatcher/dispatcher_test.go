@@ -40,7 +40,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	api.RegisterDispatcherServer(s, d)
 	go func() {
 		// Serve will always return an error (even when properly stopped).
-		// Explictly ignore it.
+		// Explicitly ignore it.
 		_ = s.Serve(l)
 	}()
 	conn, err := grpc.Dial(l.Addr().String(), grpc.WithInsecure(), grpc.WithTimeout(10*time.Second))
