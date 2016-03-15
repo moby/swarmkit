@@ -16,7 +16,7 @@ all: check build binaries test
 
 check: fmt vet lint errcheck complexity
 
-ci: check build binaries checkprotos coverage
+ci: all checkprotos coverage
 
 AUTHORS: .mailmap .git/HEAD
 	git log --format='%aN <%aE>' | sort -fu > $@
