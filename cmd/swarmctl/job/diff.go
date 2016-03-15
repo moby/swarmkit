@@ -42,7 +42,7 @@ var (
 
 			remoteService := &spec.ServiceConfig{}
 			remoteService.FromJobSpec(r.Job.Spec)
-			diff, err := localService.Diff(remoteService)
+			diff, err := localService.Diff("remote", "local", remoteService)
 			if err != nil {
 				return err
 			}
