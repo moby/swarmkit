@@ -1,19 +1,18 @@
-package agent
+package exec
 
 import (
 	"errors"
 	"runtime"
 	"testing"
 
-	"golang.org/x/net/context"
-
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 )
 
-//go:generate mockgen -package agent -destination runner_test.mock.go -source runner.go Runner
+//go:generate mockgen -package exec -destination runner_test.mock.go -source runner.go Runner
 
 func TestRun(t *testing.T) {
 	ctx, runner, reporter, finish := genRunTestEnv(t)

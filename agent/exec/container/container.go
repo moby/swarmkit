@@ -9,7 +9,7 @@ import (
 	"github.com/docker/engine-api/types/events"
 	"github.com/docker/engine-api/types/filters"
 	"github.com/docker/engine-api/types/network"
-	"github.com/docker/swarm-v2/agent"
+	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 )
 
@@ -28,7 +28,7 @@ func newContainerConfig(t *api.Task) (*containerConfig, error) {
 
 	runtime := t.Spec.GetContainer()
 	if runtime == nil {
-		return nil, agent.ErrRuntimeUnsupported
+		return nil, exec.ErrRuntimeUnsupported
 	}
 
 	if runtime.Image == nil {

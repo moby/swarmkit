@@ -1,4 +1,4 @@
-package agent
+package exec
 
 import (
 	"github.com/docker/swarm-v2/api"

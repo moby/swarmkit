@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	engineapi "github.com/docker/engine-api/client"
-	"github.com/docker/swarm-v2/agent"
+	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -67,7 +67,7 @@ func TestRunnerFlowIntegration(t *testing.T) {
 	assert.NoError(t, runner.Close())
 
 	// NOTE(stevvooe): testify has no clue how to correctly do error equality.
-	if err := runner.Close(); err != agent.ErrRunnerClosed {
+	if err := runner.Close(); err != exec.ErrRunnerClosed {
 		t.Fatalf("expected runner to be closed: %v", err)
 	}
 }
