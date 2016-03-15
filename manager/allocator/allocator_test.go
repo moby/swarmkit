@@ -71,16 +71,15 @@ func TestAllocator(t *testing.T) {
 	// Now verify if we get network and tasks updated properly
 	n1, err := watchNetwork(t, netWatch)
 	assert.NoError(t, err)
-	assert.NotEqual(t, n1.Spec.IPAM.IPv4, nil)
-	assert.Equal(t, len(n1.Spec.IPAM.IPv6), 0)
-	assert.Equal(t, len(n1.Spec.IPAM.IPv4), 1)
-	assert.Equal(t, n1.Spec.IPAM.IPv4[0].Range, "")
-	assert.Equal(t, len(n1.Spec.IPAM.IPv4[0].Reserved), 0)
+	assert.NotEqual(t, n1.Spec.IPAM.Configurations, nil)
+	assert.Equal(t, len(n1.Spec.IPAM.Configurations), 1)
+	assert.Equal(t, n1.Spec.IPAM.Configurations[0].Range, "")
+	assert.Equal(t, len(n1.Spec.IPAM.Configurations[0].Reserved), 0)
 
-	_, subnet, err := net.ParseCIDR(n1.Spec.IPAM.IPv4[0].Subnet)
+	_, subnet, err := net.ParseCIDR(n1.Spec.IPAM.Configurations[0].Subnet)
 	assert.NoError(t, err)
 
-	ip := net.ParseIP(n1.Spec.IPAM.IPv4[0].Gateway)
+	ip := net.ParseIP(n1.Spec.IPAM.Configurations[0].Gateway)
 	assert.NotEqual(t, ip, nil)
 
 	t1, err := watchTask(t, taskWatch)
@@ -107,16 +106,15 @@ func TestAllocator(t *testing.T) {
 
 	n2, err := watchNetwork(t, netWatch)
 	assert.NoError(t, err)
-	assert.NotEqual(t, n2.Spec.IPAM.IPv4, nil)
-	assert.Equal(t, len(n2.Spec.IPAM.IPv6), 0)
-	assert.Equal(t, len(n2.Spec.IPAM.IPv4), 1)
-	assert.Equal(t, n2.Spec.IPAM.IPv4[0].Range, "")
-	assert.Equal(t, len(n2.Spec.IPAM.IPv4[0].Reserved), 0)
+	assert.NotEqual(t, n2.Spec.IPAM.Configurations, nil)
+	assert.Equal(t, len(n2.Spec.IPAM.Configurations), 1)
+	assert.Equal(t, n2.Spec.IPAM.Configurations[0].Range, "")
+	assert.Equal(t, len(n2.Spec.IPAM.Configurations[0].Reserved), 0)
 
-	_, subnet, err = net.ParseCIDR(n2.Spec.IPAM.IPv4[0].Subnet)
+	_, subnet, err = net.ParseCIDR(n2.Spec.IPAM.Configurations[0].Subnet)
 	assert.NoError(t, err)
 
-	ip = net.ParseIP(n2.Spec.IPAM.IPv4[0].Gateway)
+	ip = net.ParseIP(n2.Spec.IPAM.Configurations[0].Gateway)
 	assert.NotEqual(t, ip, nil)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
@@ -196,16 +194,15 @@ func TestAllocator(t *testing.T) {
 
 	n3, err := watchNetwork(t, netWatch)
 	assert.NoError(t, err)
-	assert.NotEqual(t, n3.Spec.IPAM.IPv4, nil)
-	assert.Equal(t, len(n3.Spec.IPAM.IPv6), 0)
-	assert.Equal(t, len(n3.Spec.IPAM.IPv4), 1)
-	assert.Equal(t, n3.Spec.IPAM.IPv4[0].Range, "")
-	assert.Equal(t, len(n3.Spec.IPAM.IPv4[0].Reserved), 0)
+	assert.NotEqual(t, n3.Spec.IPAM.Configurations, nil)
+	assert.Equal(t, len(n3.Spec.IPAM.Configurations), 1)
+	assert.Equal(t, n3.Spec.IPAM.Configurations[0].Range, "")
+	assert.Equal(t, len(n3.Spec.IPAM.Configurations[0].Reserved), 0)
 
-	_, subnet, err = net.ParseCIDR(n3.Spec.IPAM.IPv4[0].Subnet)
+	_, subnet, err = net.ParseCIDR(n3.Spec.IPAM.Configurations[0].Subnet)
 	assert.NoError(t, err)
 
-	ip = net.ParseIP(n3.Spec.IPAM.IPv4[0].Gateway)
+	ip = net.ParseIP(n3.Spec.IPAM.Configurations[0].Gateway)
 	assert.NotEqual(t, ip, nil)
 
 	t3, err := watchTask(t, taskWatch)

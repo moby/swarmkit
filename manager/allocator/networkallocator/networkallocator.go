@@ -259,8 +259,12 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 	}
 
 	// Construct IPAM data for driver consumption.
-	ipv4Data := make([]driverapi.IPAMData, 0, len(n.Spec.IPAM.IPv4))
-	for _, ic := range n.Spec.IPAM.IPv4 {
+	ipv4Data := make([]driverapi.IPAMData, 0, len(n.Spec.IPAM.Configurations))
+	for _, ic := range n.Spec.IPAM.Configurations {
+		if ic.Family == api.IPAMConfiguration_IPV6 {
+			continue
+		}
+
 		_, subnet, err := net.ParseCIDR(ic.Subnet)
 		if err != nil {
 			return fmt.Errorf("error parsing subnet %s while allocating driver state: %v", ic.Subnet, err)
@@ -330,7 +334,7 @@ func (na *NetworkAllocator) freePools(n *api.Network, pools map[string]string) e
 		return fmt.Errorf("failed to resolve IPAM while freeing pools for network %s: %v", n.ID, err)
 	}
 
-	releasePools(ipam, n.Spec.IPAM.IPv4, pools)
+	releasePools(ipam, n.Spec.IPAM.Configurations, pools)
 	return nil
 }
 
@@ -364,15 +368,15 @@ func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, er
 	pools := make(map[string]string)
 
 	if n.Spec.IPAM == nil {
-		n.Spec.IPAM = &api.NetworkSpec_IPAMOptions{}
+		n.Spec.IPAM = &api.IPAMOptions{}
 	}
 
-	ipamConfigs := n.Spec.IPAM.IPv4
-	if n.Spec.IPAM.IPv4 == nil {
+	ipamConfigs := n.Spec.IPAM.Configurations
+	if n.Spec.IPAM.Configurations == nil {
 		// Auto-generate new IPAM configuration if the user
 		// provided no configuration.
 		ipamConfigs = append(ipamConfigs, &api.IPAMConfiguration{})
-		n.Spec.IPAM.IPv4 = ipamConfigs
+		n.Spec.IPAM.Configurations = ipamConfigs
 	}
 
 	for i, ic := range ipamConfigs {

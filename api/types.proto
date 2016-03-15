@@ -21,7 +21,7 @@ message NodeSpec {
 	enum Availability {
 		option (gogoproto.goproto_enum_prefix) = false;
 
-		// Active nodes. 
+		// Active nodes.
 		ACTIVE = 0 [(gogoproto.enumvalue_customname) = "NodeAvailabilityActive"];
 
 		// Paused nodes won't be considered by the scheduler, preventing any
@@ -198,7 +198,7 @@ message TaskStatus {
 	//
 	// The following states should report a companion error:
 	//
-	// 	FAILED, REJECTED
+	//	FAILED, REJECTED
 	//
 	// TODO(stevvooe) Integrate this field with the error interface.
 	string err = 2;
@@ -261,21 +261,31 @@ message IPAMConfiguration {
 	// instances. For now, we will follow the conventions of libnetwork and
 	// specify this as part of the network specification.
 
+	// AddressFamily specifies the network address family that
+	// this IPAMConfiguration belongs to.
+	enum AddressFamily {
+		UNKNOWN = 0; // satisfy proto3
+		IPV4 = 4;
+		IPV6 = 6;
+	}
+
+	AddressFamily family = 1;
+
 	// Subnet defines a network as a CIDR address (ie network and mask
 	// 192.168.0.1/24).
-	string subnet = 1;
+	string subnet = 2;
 
 	// Range defines the portion of the subnet to allocate to tasks. This is
 	// defined as a subnet within the primary subnet.
-	string range = 2;
+	string range = 3;
 
 	// Gateway address within the subnet.
-	string gateway = 3;
+	string gateway = 4;
 
 	// Reserved is a list of address from the master pool that should *not* be
 	// allocated. These addresses may have already been allocated or may be
 	// reserved for another allocation manager.
-	map<string, string> reserved = 4;
+	map<string, string> reserved = 5;
 }
 
 
@@ -288,15 +298,14 @@ message Driver {
 	map <string, string> options = 2;
 }
 
+message IPAMOptions {
+	Driver driver = 1;
+	repeated IPAMConfiguration configurations = 3;
+}
+
 // NetworkSpec specifies user defined network parameters.
 message NetworkSpec {
 	Meta meta = 1 [(gogoproto.nullable) = false];
-
-	message IPAMOptions {
-		Driver driver = 1;
-		repeated IPAMConfiguration ipv4 = 3 [(gogoproto.customname) = "IPv4"];
-		repeated IPAMConfiguration ipv6 = 4 [(gogoproto.customname) = "IPv6"];
-	}
 
 	// Driver specific configuration consumed by the network driver.
 	Driver driver_configuration = 2;
@@ -317,6 +326,10 @@ message Network {
 
 	// Driver specific operational state provided by the network driver.
 	Driver driver_state = 3;
+
+	// Runtime state of IPAM options. This may not reflect the
+	// ipam options from NetworkSpec.
+	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
 }
 
 // WeightedPeer should be used anywhere where we are describing a remote peer
