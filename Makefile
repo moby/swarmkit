@@ -16,7 +16,7 @@ all: check build binaries test
 
 check: fmt vet lint errcheck complexity
 
-ci: all checkprotos coverage
+ci: check build binaries checkprotos coverage
 
 AUTHORS: .mailmap .git/HEAD
 	git log --format='%aN <%aE>' | sort -fu > $@
@@ -101,6 +101,6 @@ clean:
 
 coverage:
 	@echo "🐳 $@"
-	@for pkg in ${PACKAGES}; do \
-		go test -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=count $$pkg; \
-	done
+	@( for pkg in ${PACKAGES}; do \
+		go test -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=count $$pkg || exit; \
+	done )
