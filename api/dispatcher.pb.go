@@ -30,11 +30,11 @@ var _ = fmt.Errorf
 var _ = math.Inf
 
 type RegisterRequest struct {
-	Spec *NodeSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 	// NodeID identifies the registering node.
 	//
 	// This contents of this field *must* be authenticated.
-	NodeID string `protobuf:"bytes,2,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	NodeID      string           `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	Description *NodeDescription `protobuf:"bytes,2,opt,name=description" json:"description,omitempty"`
 }
 
 func (m *RegisterRequest) Reset()      { *m = RegisterRequest{} }
@@ -185,8 +185,8 @@ func (m *RegisterRequest) Copy() *RegisterRequest {
 	}
 
 	o := &RegisterRequest{
-		Spec:   m.Spec.Copy(),
-		NodeID: m.NodeID,
+		NodeID:      m.NodeID,
+		Description: m.Description.Copy(),
 	}
 
 	return o
@@ -328,10 +328,10 @@ func (this *RegisterRequest) GoString() string {
 	}
 	s := make([]string, 0, 6)
 	s = append(s, "&api.RegisterRequest{")
-	if this.Spec != nil {
-		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
-	}
 	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
+	if this.Description != nil {
+		s = append(s, "Description: "+fmt.Sprintf("%#v", this.Description)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -738,21 +738,21 @@ func (m *RegisterRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Spec != nil {
+	if len(m.NodeID) > 0 {
 		data[i] = 0xa
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(m.Spec.Size()))
-		n1, err := m.Spec.MarshalTo(data[i:])
+		i = encodeVarintDispatcher(data, i, uint64(len(m.NodeID)))
+		i += copy(data[i:], m.NodeID)
+	}
+	if m.Description != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintDispatcher(data, i, uint64(m.Description.Size()))
+		n1, err := m.Description.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n1
-	}
-	if len(m.NodeID) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintDispatcher(data, i, uint64(len(m.NodeID)))
-		i += copy(data[i:], m.NodeID)
 	}
 	return i, nil
 }
@@ -1060,12 +1060,12 @@ func encodeVarintDispatcher(data []byte, offset int, v uint64) int {
 func (m *RegisterRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Spec != nil {
-		l = m.Spec.Size()
-		n += 1 + l + sovDispatcher(uint64(l))
-	}
 	l = len(m.NodeID)
 	if l > 0 {
+		n += 1 + l + sovDispatcher(uint64(l))
+	}
+	if m.Description != nil {
+		l = m.Description.Size()
 		n += 1 + l + sovDispatcher(uint64(l))
 	}
 	return n
@@ -1207,8 +1207,8 @@ func (this *RegisterRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RegisterRequest{`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NodeSpec", "NodeSpec", 1) + `,`,
 		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
+		`Description:` + strings.Replace(fmt.Sprintf("%v", this.Description), "NodeDescription", "NodeDescription", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1348,39 +1348,6 @@ func (m *RegisterRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDispatcher
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthDispatcher
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Spec == nil {
-				m.Spec = &NodeSpec{}
-			}
-			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
 			}
 			var stringLen uint64
@@ -1407,6 +1374,39 @@ func (m *RegisterRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.NodeID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDispatcher
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthDispatcher
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Description == nil {
+				m.Description = &NodeDescription{}
+			}
+			if err := m.Description.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

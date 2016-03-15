@@ -89,14 +89,16 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	err := d.store.Update(func(tx state.Tx) error {
 		node = tx.Nodes().Get(r.NodeID)
 		if node != nil {
-			node.Spec = r.Spec
-			node.Status.State = api.NodeStatus_READY
+			node.Description = r.Description
+			node.Status = api.NodeStatus{
+				State: api.NodeStatus_READY,
+			}
 			return tx.Nodes().Update(node)
 		}
 
 		node = &api.Node{
-			ID:   r.NodeID,
-			Spec: r.Spec,
+			ID:          r.NodeID,
+			Description: r.Description,
 			Status: api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},

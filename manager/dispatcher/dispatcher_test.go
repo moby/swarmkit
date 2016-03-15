@@ -66,14 +66,14 @@ func TestRegisterTwice(t *testing.T) {
 	testNode := &api.Node{ID: "test"}
 	var expectedSessionID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID, Spec: testNode.Spec})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
 	}
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID, Spec: testNode.Spec})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode.ID)
 		// session should be different!
@@ -92,7 +92,7 @@ func TestHeartbeat(t *testing.T) {
 	testNode := &api.Node{ID: "test"}
 	var expectedSessionID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID, Spec: testNode.Spec})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
@@ -130,10 +130,10 @@ func TestHeartbeatTimeout(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode := &api.Node{ID: "test", Spec: &api.NodeSpec{Meta: api.Meta{Name: "test"}}}
+	testNode := &api.Node{ID: "test"}
 	var expectedSessionID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID, Spec: testNode.Spec})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
@@ -146,7 +146,6 @@ func TestHeartbeatTimeout(t *testing.T) {
 		storeNode := readTx.Nodes().Get("test")
 		assert.NotNil(t, storeNode)
 		assert.Equal(t, api.NodeStatus_DOWN, storeNode.Status.State)
-		assert.Equal(t, "test", storeNode.Spec.Meta.Name)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -175,7 +174,7 @@ func TestTasks(t *testing.T) {
 	testNode := &api.Node{ID: "test"}
 	var expectedSessionID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID, Spec: testNode.Spec})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
@@ -270,7 +269,7 @@ func TestTaskUpdate(t *testing.T) {
 	testNode := &api.Node{ID: "test"}
 	var expectedSessionID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID, Spec: testNode.Spec})
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
@@ -328,7 +327,7 @@ func TestSession(t *testing.T) {
 	defer gd.Close()
 
 	testNode := &api.Node{ID: "test"}
-	resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID, Spec: testNode.Spec})
+	resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
 	assert.NoError(t, err)
 	assert.Equal(t, resp.NodeID, testNode.ID)
 	assert.NotEmpty(t, resp.SessionID)
