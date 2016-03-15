@@ -32,9 +32,10 @@ func createSpec(name, image string, instances int64) *api.JobSpec {
 	}
 }
 
-func createJob(ts *testServer, name, image string, instances int64) *api.Job {
+func createJob(t *testing.T, ts *testServer, name, image string, instances int64) *api.Job {
 	spec := createSpec(name, image, instances)
-	r, _ := ts.Client.CreateJob(context.Background(), &api.CreateJobRequest{Spec: spec})
+	r, err := ts.Client.CreateJob(context.Background(), &api.CreateJobRequest{Spec: spec})
+	assert.NoError(t, err)
 	return r.Job
 }
 
@@ -177,7 +178,11 @@ func TestGetJob(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
-	job := createJob(ts, "name", "image", 1)
+	_, err = ts.Client.GetJob(context.Background(), &api.GetJobRequest{JobID: "invalid"})
+	assert.Error(t, err)
+	assert.Equal(t, codes.NotFound, grpc.Code(err))
+
+	job := createJob(t, ts, "name", "image", 1)
 	r, err := ts.Client.GetJob(context.Background(), &api.GetJobRequest{JobID: job.ID})
 	assert.NoError(t, err)
 	assert.Equal(t, job, r.Job)
@@ -189,7 +194,11 @@ func TestUpdateJob(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
-	job := createJob(ts, "name", "image", 1)
+	_, err = ts.Client.UpdateJob(context.Background(), &api.UpdateJobRequest{JobID: "invalid"})
+	assert.Error(t, err)
+	assert.Equal(t, codes.NotFound, grpc.Code(err))
+
+	job := createJob(t, ts, "name", "image", 1)
 	_, err = ts.Client.UpdateJob(context.Background(), &api.UpdateJobRequest{JobID: job.ID})
 	assert.NoError(t, err)
 
@@ -222,7 +231,7 @@ func TestRemoveJob(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
-	job := createJob(ts, "name", "image", 1)
+	job := createJob(t, ts, "name", "image", 1)
 	r, err := ts.Client.RemoveJob(context.Background(), &api.RemoveJobRequest{JobID: job.ID})
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
@@ -232,15 +241,15 @@ func TestListJobs(t *testing.T) {
 	ts := newTestServer(t)
 	r, err := ts.Client.ListJobs(context.Background(), &api.ListJobsRequest{})
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(r.Jobs))
+	assert.Empty(t, r.Jobs)
 
-	_ = createJob(ts, "name1", "image", 1)
+	createJob(t, ts, "name1", "image", 1)
 	r, err = ts.Client.ListJobs(context.Background(), &api.ListJobsRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Jobs))
 
-	_ = createJob(ts, "name2", "image", 1)
-	_ = createJob(ts, "name3", "image", 1)
+	createJob(t, ts, "name2", "image", 1)
+	createJob(t, ts, "name3", "image", 1)
 	r, err = ts.Client.ListJobs(context.Background(), &api.ListJobsRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Jobs))
