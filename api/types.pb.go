@@ -315,9 +315,9 @@ type ContainerSpec struct {
 	// Command to run the the container. The first element is a path to the
 	// executable and the following elements are treated as arguments.
 	//
-	// If command is empty, execution will fall back to the entrypoint.
+	// If command is empty, execution will fall back to the image's entrypoint.
 	Command []string `protobuf:"bytes,2,rep,name=command" json:"command,omitempty"`
-	// Args specifies arguments provided to the entrypoint of the container.
+	// Args specifies arguments provided to the image's entrypoint.
 	// Ignored if command is specified.
 	Args []string `protobuf:"bytes,3,rep,name=args" json:"args,omitempty"`
 	// Env specifies the environment variables for the container in NAME=VALUE

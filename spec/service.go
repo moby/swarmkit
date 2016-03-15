@@ -16,10 +16,10 @@ type ContainerConfig struct {
 	// Command to run the the container. The first element is a path to the
 	// executable and the following elements are treated as arguments.
 	//
-	// If command is empty, execution will fall back to the entrypoint.
+	// If command is empty, execution will fall back to the image's entrypoint.
 	Command []string `yaml:"command,omitempty"`
 
-	// Args specifies arguments provided to the entrypoint of the container.
+	// Args specifies arguments provided to the image's entrypoint.
 	// Ignored if command is specified.
 	Args []string `yaml:"args,omitempty"`
 
