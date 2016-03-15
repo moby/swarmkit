@@ -60,7 +60,7 @@ func validateIPAMConfiguration(ipamConf *api.IPAMConfiguration) error {
 	return nil
 }
 
-func validateIPAM(ipam *api.NetworkSpec_IPAMOptions) error {
+func validateIPAM(ipam *api.IPAMOptions) error {
 	if ipam == nil {
 		// It is ok to not specify any IPAM configurations. We
 		// will choose good defaults.
@@ -71,14 +71,8 @@ func validateIPAM(ipam *api.NetworkSpec_IPAMOptions) error {
 		return err
 	}
 
-	for _, ipv4Conf := range ipam.IPv4 {
-		if err := validateIPAMConfiguration(ipv4Conf); err != nil {
-			return err
-		}
-	}
-
-	for _, ipv6Conf := range ipam.IPv6 {
-		if err := validateIPAMConfiguration(ipv6Conf); err != nil {
+	for _, ipamConf := range ipam.Configurations {
+		if err := validateIPAMConfiguration(ipamConf); err != nil {
 			return err
 		}
 	}
