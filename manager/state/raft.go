@@ -128,7 +128,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 		},
 		ticker:   time.NewTicker(time.Second),
 		stopCh:   make(chan struct{}),
-		reqIDGen: idutil.NewGenerator(uint8(opts.ID), time.Now()),
+		reqIDGen: idutil.NewGenerator(uint16(opts.ID), time.Now()),
 		stateDir: opts.StateDir,
 	}
 	n.memoryStore = NewMemoryStore(n)
