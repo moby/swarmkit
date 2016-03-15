@@ -19,7 +19,7 @@ type grpcDispatcher struct {
 	Client           api.DispatcherClient
 	Store            state.Store
 	grpcServer       *grpc.Server
-	dispatcherServer api.DispatcherServer
+	dispatcherServer *Dispatcher
 	conn             *grpc.ClientConn
 }
 
@@ -337,4 +337,29 @@ func TestSession(t *testing.T) {
 	msg, err := stream.Recv()
 	assert.Equal(t, 1, len(msg.Managers))
 	assert.False(t, msg.Disconnect)
+}
+
+func TestNodesCount(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.HeartbeatPeriod = 100 * time.Millisecond
+	cfg.HeartbeatEpsilon = 0
+	gd, err := startDispatcher(cfg)
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	testNode1 := &api.Node{ID: "test1"}
+	testNode2 := &api.Node{ID: "test2"}
+	{
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode1.ID})
+		assert.NoError(t, err)
+		assert.Equal(t, resp.NodeID, testNode1.ID)
+	}
+	{
+		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode2.ID})
+		assert.NoError(t, err)
+		assert.Equal(t, resp.NodeID, testNode2.ID)
+	}
+	assert.Equal(t, 2, gd.dispatcherServer.NodeCount())
+	time.Sleep(500 * time.Millisecond)
+	assert.Equal(t, 0, gd.dispatcherServer.NodeCount())
 }
