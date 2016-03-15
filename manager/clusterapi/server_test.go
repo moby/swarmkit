@@ -17,6 +17,7 @@ import (
 type testServer struct {
 	Server *Server
 	Client api.ClusterClient
+	Store  state.WatchableStore
 
 	grpcServer *grpc.Server
 	clientConn *grpc.ClientConn
@@ -30,9 +31,9 @@ func (ts *testServer) Stop() {
 func newTestServer(t *testing.T) *testServer {
 	ts := &testServer{}
 
-	store := state.NewMemoryStore()
-	assert.NotNil(t, store)
-	ts.Server = NewServer(store)
+	ts.Store = state.NewMemoryStore()
+	assert.NotNil(t, ts.Store)
+	ts.Server = NewServer(ts.Store)
 	assert.NotNil(t, ts.Server)
 
 	temp, err := ioutil.TempFile("", "test-socket")

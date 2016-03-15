@@ -29,6 +29,8 @@
 		NetworkSpec
 		Network
 		WeightedPeer
+		GetNodeRequest
+		GetNodeResponse
 		ListNodesRequest
 		ListNodesResponse
 		UpdateNodeRequest
