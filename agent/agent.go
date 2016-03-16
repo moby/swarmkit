@@ -162,8 +162,7 @@ func (a *Agent) run(ctx context.Context) {
 	}
 
 	var (
-		session = newSession(ctx, a)           // start the initial session
-		backlog = map[string]*api.TaskStatus{} // backlogged status updates
+		session = newSession(ctx, a) // start the initial session
 		tick    = time.NewTimer(500 * time.Millisecond)
 	)
 	defer tick.Stop()
@@ -172,72 +171,22 @@ func (a *Agent) run(ctx context.Context) {
 	// and begin to manage them. This may be as simple as reporting their run
 	// status and waiting for instruction from the manager.
 
+	// TODO(stevvoe): Read tasks from disk store.
+
 	for {
 		select {
 		case report := <-a.statusq:
-			// if it was in the backlog, remove it
-			delete(backlog, report.taskID)
-
-			err := a.updateStatus(ctx, report)
-			if report.response != nil {
-				report.response <- err
+			if err := a.handleTaskStatusReport(ctx, session, report); err != nil {
+				log.G(ctx).WithError(err).Errorf("task status report handler failed")
 			}
-
-			if err != nil {
-				if err != errTaskDead && err != errTaskStatusUpdateNoChange {
-					log.G(ctx).WithError(err).Errorf("update status in agent failed")
-					continue
-				}
-			}
-
-			// TODO(stevvooe): Coalesce status updates.
-			go func() {
-				if err := session.sendTaskStatus(ctx, report.taskID, a.statuses[report.taskID]); err != nil {
-					log.G(ctx).WithError(err).Errorf("sending task status update failed")
-					report.response = nil
-
-					// queue for retry
-					select {
-					case a.statusq <- report:
-					case <-a.closed:
-					case <-ctx.Done():
-					}
-				}
-			}()
 		case msg := <-session.tasks:
-			if err := a.assign(ctx, msg.Tasks); err != nil {
+			if err := a.handleTaskAssignment(ctx, msg.Tasks); err != nil {
 				log.G(ctx).WithError(err).Errorf("task assignment failed")
 			}
 		case msg := <-session.messages:
-			seen := map[string]struct{}{}
-			for _, manager := range msg.Managers {
-				if manager.Addr == "" {
-					log.G(ctx).WithField("manager.addr", manager.Addr).
-						Warnf("skipping bad manager address")
-					continue
-				}
-
-				a.config.Managers.Observe(manager.Addr, manager.Weight)
-				seen[manager.Addr] = struct{}{}
+			if err := a.handleSessionMessage(ctx, msg); err != nil {
+				log.G(ctx).WithError(err).Errorf("session message handler failed")
 			}
-
-			if msg.Disconnect {
-				if err := a.picker.Reset(); err != nil {
-					// TODO(stevvooe): This may actually be fatal.
-					log.G(ctx).WithError(err).Errorf("picker reset failed")
-				}
-			}
-
-			// TODO(stevvooe): Right now, this deletes all the command line
-			// entered managers, which stinks for working in development.
-
-			// prune managers not in list.
-			// known := a.config.Managers.All()
-			// for _, addr := range known {
-			// 	if _, ok := seen[addr]; !ok {
-			// 		a.config.Managers.Remove(addr)
-			// 	}
-			// }
 		case err := <-session.errs:
 			log.G(ctx).Debugf("agent: rebuild session")
 			// TODO(stevvooe): This may actually block if a session is closed
@@ -286,6 +235,122 @@ func (a *Agent) connect(ctx context.Context) error {
 	return err
 }
 
+func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMessage) error {
+	seen := map[string]struct{}{}
+	for _, manager := range message.Managers {
+		if manager.Addr == "" {
+			log.G(ctx).WithField("manager.addr", manager.Addr).
+				Warnf("skipping bad manager address")
+			continue
+		}
+
+		a.config.Managers.Observe(manager.Addr, manager.Weight)
+		seen[manager.Addr] = struct{}{}
+	}
+
+	if message.Disconnect {
+		// TODO(stevvooe): This may actually be fatal if there is a failure.
+		return a.picker.Reset()
+	}
+
+	return nil
+
+	// TODO(stevvooe): Right now, this deletes all the command line
+	// entered managers, which stinks for working in development.
+
+	// prune managers not in list.
+	// known := a.config.Managers.All()
+	// for _, addr := range known {
+	// 	if _, ok := seen[addr]; !ok {
+	// 		a.config.Managers.Remove(addr)
+	// 	}
+	// }
+
+}
+
+// assign the set of tasks to the agent. Any tasks on the agent currently that
+// are not in the provided set will be terminated.
+//
+// This method run synchronously in the main session loop. It has direct access
+// to fields and datastructures but must not block.
+func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) error {
+	log.G(ctx).Debugf("(*Agent).handleTaskAssignment")
+
+	assigned := map[string]*api.Task{}
+	for _, task := range tasks {
+		assigned[task.ID] = task
+		ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", task.ID))
+
+		if _, ok := a.controllers[task.ID]; ok {
+			if err := a.updateTask(ctx, task); err != nil {
+				log.G(ctx).WithError(err).Errorf("task update failed")
+			}
+			continue
+		}
+		log.G(ctx).Debugf("assigned")
+		if err := a.acceptTask(ctx, task); err != nil {
+			log.G(ctx).WithError(err).Errorf("starting task controller failed")
+			go func() {
+				if err := a.report(ctx, task.ID, api.TaskStateRejected, err); err != nil {
+					log.G(ctx).WithError(err).Errorf("reporting task rejection failed")
+				}
+			}()
+		}
+	}
+
+	for id, task := range a.tasks {
+		if _, ok := assigned[id]; ok {
+			continue
+		}
+		delete(a.assigned, id)
+
+		ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", id))
+
+		// if the task is already in finalize state, no need to call removeTask.
+		if a.statuses[task.ID].State >= api.TaskStateFinalize {
+			continue
+		}
+
+		// TODO(stevvooe): Modify this to take the task through a graceful
+		// shutdown. This just outright removes it.
+		if err := a.removeTask(ctx, task); err != nil {
+			log.G(ctx).WithError(err).Errorf("removing task failed")
+		}
+	}
+
+	return nil
+}
+
+func (a *Agent) handleTaskStatusReport(ctx context.Context, session *session, report taskStatusReport) error {
+	err := a.updateStatus(ctx, report)
+	if report.response != nil {
+		// this channel is always buffered.
+		report.response <- err
+		report.response = nil // clear response channel
+	}
+
+	if err != nil {
+		if err != errTaskDead && err != errTaskStatusUpdateNoChange {
+			return err
+		}
+	}
+
+	// TODO(stevvooe): Coalesce status updates.
+	go func() {
+		if err := session.sendTaskStatus(ctx, report.taskID, a.statuses[report.taskID]); err != nil {
+			log.G(ctx).WithError(err).Errorf("sending task status update failed")
+
+			select {
+			case a.statusq <- report: // queue for retry
+			case <-a.closed:
+			case <-ctx.Done():
+			}
+		}
+	}()
+
+	return nil
+}
+
 func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error {
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("task.id", report.taskID))
 
@@ -330,23 +395,17 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 
 	log.G(ctx).Infof("%v -> %v", original.State, status.State)
 
-	// TODO(stevvooe): This switch is laid out here to support actions based on
-	// state transition. Each state below will include code that is only run
-	// when transitioning into a task state for the first time.
 	switch status.State {
-	case api.TaskStateNew:
-	case api.TaskStateAllocated:
-	case api.TaskStateAssigned:
-	case api.TaskStateAccepted:
-	case api.TaskStatePreparing:
-	case api.TaskStateReady:
-	case api.TaskStateStarting:
-	case api.TaskStateRunning:
-	case api.TaskStateShutdown:
-	case api.TaskStateCompleted:
-	case api.TaskStateFailed:
-	case api.TaskStateRejected:
-	case api.TaskStateFinalize:
+	case api.TaskStateNew, api.TaskStateAllocated,
+		api.TaskStateAssigned, api.TaskStateAccepted,
+		api.TaskStatePreparing, api.TaskStateReady,
+		api.TaskStateStarting, api.TaskStateRunning,
+		api.TaskStateShutdown, api.TaskStateCompleted,
+		api.TaskStateFailed, api.TaskStateRejected,
+		api.TaskStateFinalize:
+		// TODO(stevvooe): This switch is laid out here to support actions
+		// based on state transition. Each state below will include code that
+		// is only run when transitioning into a task state for the first time.
 	case api.TaskStateDead:
 		// once a task is dead, we remove all resources associated with it.
 		delete(a.controllers, report.taskID)
@@ -354,59 +413,6 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 		delete(a.statuses, report.taskID)
 
 		return errTaskDead
-	}
-
-	return nil
-}
-
-// assign the set of tasks to the agent. Any tasks on the agent currently that
-// are not in the provided set will be terminated.
-//
-// This method run synchronously in the main session loop. It has direct access
-// to fields and datastructures but must not block.
-func (a *Agent) assign(ctx context.Context, tasks []*api.Task) error {
-	log.G(ctx).Debugf("(*Agent).assign")
-
-	assigned := map[string]*api.Task{}
-	for _, task := range tasks {
-		assigned[task.ID] = task
-		ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", task.ID))
-
-		if _, ok := a.controllers[task.ID]; ok {
-			if err := a.updateTask(ctx, task); err != nil {
-				log.G(ctx).WithError(err).Errorf("task update failed")
-			}
-			continue
-		}
-		log.G(ctx).Debugf("assigned")
-		if err := a.acceptTask(ctx, task); err != nil {
-			log.G(ctx).WithError(err).Errorf("starting task controller failed")
-			go func() {
-				if err := a.report(ctx, task.ID, api.TaskStateRejected, err); err != nil {
-					log.G(ctx).WithError(err).Errorf("reporting task rejection failed")
-				}
-			}()
-		}
-	}
-
-	for id, task := range a.tasks {
-		if _, ok := assigned[id]; ok {
-			continue
-		}
-		delete(a.assigned, id)
-
-		ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", id))
-
-		// if the task is already in finalize state, no need to call removeTask.
-		if a.statuses[task.ID].State >= api.TaskStateFinalize {
-			continue
-		}
-
-		// TODO(stevvooe): Modify this to take the task through a graceful
-		// shutdown. This just outright removes it.
-		if err := a.removeTask(ctx, task); err != nil {
-			log.G(ctx).WithError(err).Errorf("removing task failed")
-		}
 	}
 
 	return nil
