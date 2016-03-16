@@ -113,10 +113,10 @@ func (c *containerController) events(ctx context.Context, client engineapi.APICl
 		default:
 		}
 
-		var event events.Message
 		dec := json.NewDecoder(rc)
 
 		for {
+			var event events.Message
 			if err := dec.Decode(&event); err != nil {
 				// TODO(stevvooe): This error handling isn't quite right.
 				if err == io.EOF {

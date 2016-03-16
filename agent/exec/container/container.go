@@ -86,12 +86,14 @@ func (c *containerConfig) buildPullOptions() (types.ImagePullOptions, error) {
 		return types.ImagePullOptions{}, err
 	}
 
-	if _, ok := named.(reference.Tagged); !ok {
+	if namedtagged, ok := named.(reference.NamedTagged); !ok {
 		tagged, err := reference.WithTag(named, "latest")
 		if err != nil {
 			return types.ImagePullOptions{}, err
 		}
 		ref = tagged
+	} else {
+		ref = namedtagged
 	}
 
 	return types.ImagePullOptions{
