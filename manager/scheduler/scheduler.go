@@ -36,7 +36,6 @@ func (s *Scheduler) setupTasksList(tx state.ReadTx) error {
 	}
 	for _, t := range tasks {
 		if t.NodeID == "" {
-			log.Infof("Queueing %#v", t)
 			s.enqueue(t)
 		}
 	}
@@ -154,11 +153,11 @@ func (s *Scheduler) tick() {
 func (s *Scheduler) scheduleTask(tx state.Tx, nodes []*api.Node, t api.Task) *api.Task {
 	node := s.selectNodeForTask(tx, nodes, &t)
 	if node == nil {
-		log.Info("No nodes available to assign tasks to")
+		log.WithField("task.id", t.ID).Debug("No nodes available to assign tasks to")
 		return nil
 	}
 
-	log.Infof("Assigning task %s to node %s", t.ID, node.ID)
+	log.WithField("task.id", t.ID).Debugf("Assigning to node %s", node.ID)
 	t.NodeID = node.ID
 	t.Status = &api.TaskStatus{State: api.TaskStateAssigned}
 	if err := tx.Tasks().Update(&t); err != nil {
