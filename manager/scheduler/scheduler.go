@@ -175,7 +175,7 @@ func (s *Scheduler) selectNodeForTask(tx state.Tx, nodes []*api.Node, t *api.Tas
 	targetTasks := 0
 
 	for _, n := range nodes {
-		if n.Status.State != api.NodeStatus_READY {
+		if n.Status.State != api.NodeStatus_READY || (n.Spec != nil && n.Spec.Availability != api.NodeAvailabilityActive) {
 			continue
 		}
 
