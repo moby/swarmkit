@@ -29,9 +29,22 @@ var (
 				// Ignore flushing errors - there's nothing we can do.
 				_ = w.Flush()
 			}()
-			fmt.Fprintln(w, "ID\tName\tStatus")
+			fmt.Fprintln(w, "ID\tName\tStatus\tAvailability")
 			for _, n := range r.Nodes {
-				fmt.Fprintf(w, "%s\t%s\t%s\n", n.ID, n.Spec.Meta.Name, n.Status.State.String())
+				spec := n.Spec
+				if spec == nil {
+					spec = &api.NodeSpec{}
+				}
+				name := spec.Meta.Name
+				if name == "" {
+					name = n.Description.Hostname
+				}
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+					n.ID,
+					name,
+					n.Status.State.String(),
+					spec.Availability.String(),
+				)
 			}
 			return nil
 		},
