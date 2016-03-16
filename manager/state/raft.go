@@ -83,7 +83,7 @@ type Node struct {
 	wal         *wal.WAL
 	snapshotter *snap.Snapshotter
 	stateDir    string
-	isLeader    bool
+	wasLeader   bool
 
 	ticker *time.Ticker
 	stopCh chan struct{}
@@ -312,11 +312,11 @@ func (n *Node) Start() (errCh <-chan error) {
 				// if that happens we will apply them as any
 				// follower would.
 				if rd.SoftState != nil {
-					if n.isLeader && rd.SoftState.RaftState != raft.StateLeader {
-						n.isLeader = false
+					if n.wasLeader && rd.SoftState.RaftState != raft.StateLeader {
+						n.wasLeader = false
 						n.wait.cancelAll()
-					} else if !n.isLeader && rd.SoftState.RaftState == raft.StateLeader {
-						n.isLeader = true
+					} else if !n.wasLeader && rd.SoftState.RaftState == raft.StateLeader {
+						n.wasLeader = true
 					}
 				}
 
@@ -592,7 +592,7 @@ func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRa
 	ch := n.wait.register(r.ID)
 
 	// Do this check after calling register to avoid a race.
-	if !n.isLeader {
+	if !n.IsLeader() {
 		n.wait.trigger(r.ID, nil)
 		return nil, ErrLostLeadership
 	}
