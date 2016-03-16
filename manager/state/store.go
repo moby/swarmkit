@@ -16,6 +16,10 @@ var (
 	// provided ID is not found.
 	ErrNotExist = errors.New("object does not exist")
 
+	// ErrNameConflict is returned by create/update if the object name is
+	// already in use by another object.
+	ErrNameConflict = errors.New("name conflicts with an existing object")
+
 	// ErrInvalidFindBy is returned if an unrecognized type is passed to Find.
 	ErrInvalidFindBy = errors.New("invalid find argument type")
 )
