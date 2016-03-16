@@ -64,15 +64,25 @@ func pollNodeFunc(nodes map[uint64]*Node, f func(*Node) bool) error {
 	}
 }
 
+func getTermAndLeader(n *Node) (uint64, uint64) {
+	status := n.Status()
+	return status.Lead, status.Term
+}
+
 // waitForCluster waits until leader will be one of specified nodes
 func waitForCluster(t *testing.T, nodes map[uint64]*Node) {
 	assert.NoError(t, pollNodeFunc(nodes, func(n *Node) bool {
-		for id := range nodes {
-			if n.Leader() == id {
-				return true
+		l, t := getTermAndLeader(n)
+		if _, ok := nodes[l]; !ok {
+			return false
+		}
+		for _, node := range nodes {
+			rl, rt := getTermAndLeader(node)
+			if rl != l || rt != t {
+				return false
 			}
 		}
-		return false
+		return true
 	}))
 }
 
