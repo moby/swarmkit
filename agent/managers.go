@@ -180,6 +180,7 @@ type picker struct {
 	addr string // currently selected manager address
 	conn *grpc.Conn
 	i    float64
+	mu   sync.Mutex
 }
 
 var _ grpc.Picker = &picker{}
@@ -190,22 +191,32 @@ func newPicker(initial string, m Managers) *picker {
 
 // Init does initial processing for the Picker, e.g., initiate some connections.
 func (p *picker) Init(cc *grpc.ClientConn) error {
-	p.m.Observe(p.addr, 1)
+	p.mu.Lock()
+	addr := p.addr
+	p.mu.Unlock()
+
+	p.m.Observe(addr, 1)
 	c, err := grpc.NewConn(cc)
 	if err != nil {
 		return err
 	}
 
+	p.mu.Lock()
 	p.conn = c
+	p.mu.Unlock()
 	return nil
 }
 
 // Pick blocks until either a transport.ClientTransport is ready for the upcoming RPC
 // or some error happens.
 func (p *picker) Pick(ctx context.Context) (transport.ClientTransport, error) {
+	p.mu.Lock()
+	addr := p.addr
+	p.mu.Unlock()
 	transport, err := p.conn.Wait(ctx)
 	if err != nil {
-		p.m.Observe(p.addr, -1)
+
+		p.m.Observe(addr, -1)
 	}
 
 	return transport, err
@@ -214,14 +225,21 @@ func (p *picker) Pick(ctx context.Context) (transport.ClientTransport, error) {
 // PickAddr picks a peer address for connecting. This will be called repeated for
 // connecting/reconnecting.
 func (p *picker) PickAddr() (string, error) {
-	p.m.Observe(p.addr, -1) // downweight the current addr
+	p.mu.Lock()
+	addr := p.addr
+	p.mu.Unlock()
 
-	addr, err := p.m.Select()
+	p.m.Observe(addr, -1) // downweight the current addr
+
+	var err error
+	addr, err = p.m.Select()
 	if err != nil {
 		return "", err
 	}
 
+	p.mu.Lock()
 	p.addr = addr
+	p.mu.Unlock()
 	return p.addr, err
 }
 
@@ -233,7 +251,12 @@ func (p *picker) State() (grpc.ConnectivityState, error) {
 // WaitForStateChange blocks until the state changes to something other than
 // the sourceState. It returns the new state or error.
 func (p *picker) WaitForStateChange(ctx context.Context, sourceState grpc.ConnectivityState) (grpc.ConnectivityState, error) {
-	state, err := p.conn.WaitForStateChange(ctx, sourceState)
+	p.mu.Lock()
+	conn := p.conn
+	addr := p.addr
+	p.mu.Unlock()
+
+	state, err := conn.WaitForStateChange(ctx, sourceState)
 	if err != nil {
 		return state, err
 	}
@@ -244,15 +267,15 @@ func (p *picker) WaitForStateChange(ctx context.Context, sourceState grpc.Connec
 	// TODO(stevvooe): This is questionable, but we'll see how it works.
 	switch state {
 	case grpc.Idle:
-		p.m.Observe(p.addr, 1)
+		p.m.Observe(addr, 1)
 	case grpc.Connecting:
-		p.m.Observe(p.addr, 1)
+		p.m.Observe(addr, 1)
 	case grpc.Ready:
-		p.m.Observe(p.addr, 1)
+		p.m.Observe(addr, 1)
 	case grpc.TransientFailure:
-		p.m.Observe(p.addr, -1)
+		p.m.Observe(addr, -1)
 	case grpc.Shutdown:
-		p.m.Observe(p.addr, -1)
+		p.m.Observe(addr, -1)
 	}
 
 	return state, err
@@ -260,11 +283,19 @@ func (p *picker) WaitForStateChange(ctx context.Context, sourceState grpc.Connec
 
 // Reset the current connection and force a reconnect to another address.
 func (p *picker) Reset() error {
-	p.conn.NotifyReset()
+	p.mu.Lock()
+	conn := p.conn
+	p.mu.Unlock()
+
+	conn.NotifyReset()
 	return nil
 }
 
 // Close closes all the Conn's owned by this Picker.
 func (p *picker) Close() error {
-	return p.conn.Close()
+	p.mu.Lock()
+	conn := p.conn
+	p.mu.Unlock()
+
+	return conn.Close()
 }
