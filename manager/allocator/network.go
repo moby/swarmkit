@@ -16,7 +16,7 @@ const (
 	networkVoter = "network"
 )
 
-// Network context information which is used througout the network allocation code.
+// Network context information which is used throughout the network allocation code.
 type networkContext struct {
 	// Instance of the low-level network allocator which performs
 	// the actual network allocation.

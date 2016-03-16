@@ -98,7 +98,7 @@ func (a *Agent) session(ctx context.Context) error {
 		tasks   = make(chan *api.TasksMessage)
 	)
 
-	// TODO(stevvooe): Kick off all asychronous goroutine tasks for servicing
+	// TODO(stevvooe): Kick off all asynchronous goroutine tasks for servicing
 	// the connection.  The goal here is to route all messages back into the
 	// select statement below. When we wake up, we call back into the notified
 	// compoent, be it the agent or something else.

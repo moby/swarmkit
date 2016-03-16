@@ -48,7 +48,7 @@ func newTestServer(t *testing.T) *testServer {
 	api.RegisterClusterServer(ts.grpcServer, ts.Server)
 	go func() {
 		// Serve will always return an error (even when properly stopped).
-		// Explictly ignore it.
+		// Explicitly ignore it.
 		_ = ts.grpcServer.Serve(lis)
 	}()
 

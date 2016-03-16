@@ -40,7 +40,7 @@ func TestRunPreparedIdempotence(t *testing.T) {
 	defer finish()
 
 	// We return ErrTaskPrepared from Prepare and make sure we have a
-	// succesful run. We skip reporting on "READY" and go right to starting
+	// successful run. We skip reporting on "READY" and go right to starting
 	// here.
 	gomock.InOrder(
 		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing),
@@ -62,7 +62,7 @@ func TestRunStartedWhenPreparedIdempotence(t *testing.T) {
 	defer finish()
 
 	// First, we return ErrTaskStarted from Prepare and make sure we have a
-	// succesful run. We should report that we are running jump right to wait.
+	// successful run. We should report that we are running jump right to wait.
 	gomock.InOrder(
 		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing),
 		runner.EXPECT().Prepare(gomock.Any()).Return(ErrTaskStarted),
