@@ -75,7 +75,6 @@ var (
 )
 
 func init() {
-	updateCmd.Flags().StringP("file", "f", "", "Spec to use")
 	updateCmd.Flags().StringSlice("args", nil, "Args")
 	updateCmd.Flags().StringSlice("env", nil, "Env")
 	updateCmd.Flags().StringP("file", "f", "", "Spec to use")
