@@ -40,6 +40,16 @@ var (
 					return err
 				}
 
+				containerArgs, err := flags.GetStringSlice("args")
+				if err != nil {
+					return err
+				}
+
+				env, err := flags.GetStringSlice("env")
+				if err != nil {
+					return err
+				}
+
 				spec = &api.JobSpec{
 					Meta: api.Meta{
 						Name: name,
@@ -50,6 +60,9 @@ var (
 								Image: &api.ImageSpec{
 									Reference: image,
 								},
+								Command: args,
+								Args:    containerArgs,
+								Env:     env,
 							},
 						},
 					},
@@ -78,6 +91,8 @@ var (
 func init() {
 	createCmd.Flags().String("name", "", "Job name")
 	createCmd.Flags().String("image", "", "Image")
+	createCmd.Flags().StringSlice("args", nil, "Args")
+	createCmd.Flags().StringSlice("env", nil, "Env")
 	createCmd.Flags().StringP("file", "f", "", "Spec to use")
 	// TODO(aluzzardi): This should be called `service-instances` so that every
 	// orchestrator can have its own flag namespace.

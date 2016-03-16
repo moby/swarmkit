@@ -37,4 +37,10 @@ func TestServiceConfigsDiff(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, "--- old\n+++ new\n@@ -3 +3 @@\n-instances: 2\n+instances: 1\n", diff)
+
+	diff, err = service.Diff("old", "new",
+		&ServiceConfig{Name: "name", Instances: 2, ContainerConfig: ContainerConfig{Image: "nginx", Env: []string{"DEBUG=1"}}},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, "--- old\n+++ new\n@@ -2,2 +1,0 @@\n-env:\n-- DEBUG=1\n@@ -5 +3 @@\n-instances: 2\n+instances: 1\n", diff)
 }
