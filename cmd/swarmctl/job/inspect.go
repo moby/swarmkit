@@ -25,7 +25,9 @@ var (
 				return err
 			}
 
-			r, err := c.GetJob(common.Context(cmd), &api.GetJobRequest{JobID: args[0]})
+			id := common.LookupID(common.Context(cmd), c, api.Job{}, args[0])
+			fmt.Println(id)
+			r, err := c.GetJob(common.Context(cmd), &api.GetJobRequest{JobID: id})
 			if err != nil {
 				return err
 			}
