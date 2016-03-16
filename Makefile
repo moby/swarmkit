@@ -33,6 +33,10 @@ ${PREFIX}/bin/swarmd: version/version.go $(shell find . -type f -name '*.go')
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/swarmd
 
+${PREFIX}/bin/swarm-bench: version/version.go $(shell find . -type f -name '*.go')
+	@echo "🐳 $@"
+	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/swarm-bench
+
 ${PREFIX}/bin/protoc-gen-gogoswarm: version/version.go $(shell find . -type f -name '*.go')
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/protoc-gen-gogoswarm
@@ -92,7 +96,7 @@ test:
 	@echo "🐳 $@"
 	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" ${PACKAGES}
 
-binaries: ${PREFIX}/bin/swarmctl ${PREFIX}/bin/swarmd ${PREFIX}/bin/protoc-gen-gogoswarm
+binaries: ${PREFIX}/bin/swarmctl ${PREFIX}/bin/swarmd ${PREFIX}/bin/swarm-bench ${PREFIX}/bin/protoc-gen-gogoswarm
 	@echo "🐳 $@"
 
 clean:
