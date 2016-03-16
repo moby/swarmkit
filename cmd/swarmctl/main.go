@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/swarm-v2/cmd/swarmctl/job"
 	"github.com/docker/swarm-v2/cmd/swarmctl/node"
+	"github.com/docker/swarm-v2/cmd/swarmctl/root"
 	"github.com/docker/swarm-v2/cmd/swarmctl/task"
 	"github.com/docker/swarm-v2/version"
 	"github.com/spf13/cobra"
@@ -36,9 +37,9 @@ var (
 func init() {
 	mainCmd.PersistentFlags().StringP("addr", "a", "127.0.0.1:4242", "Address of the Swarm manager")
 
+	mainCmd.AddCommand(root.Cmds...)
+
 	mainCmd.AddCommand(
-		deployCmd,
-		diffCmd,
 		node.Cmd,
 		job.Cmd,
 		task.Cmd,
