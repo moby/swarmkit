@@ -6,10 +6,6 @@
 	],
 	"Deps": [
 		{
-			"ImportPath": "github.com/cloudfoundry-incubator/candiedyaml",
-			"Rev": "4e924c79e32959414e8c7aaed6607176d8ee79c3"
-		},
-		{
 			"ImportPath": "github.com/Microsoft/go-winio",
 			"Rev": "f778f05015353be65d242f3fedc18695756153bb"
 		},
@@ -104,6 +100,11 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/pbutil",
+			"Comment": "v2.3.0-alpha.0-825-gc8994aa",
+			"Rev": "c8994aab62d5b16af4990af9d039a8598fb0f210"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/pkg/testutil",
 			"Comment": "v2.3.0-alpha.0-825-gc8994aa",
 			"Rev": "c8994aab62d5b16af4990af9d039a8598fb0f210"
 		},
@@ -628,6 +629,10 @@
 		{
 			"ImportPath": "github.com/pmezard/go-difflib/difflib",
 			"Rev": "792786c7400a136282c1664665ae0a8db921c6c2"
+		},
+		{
+			"ImportPath": "github.com/rcrowley/go-metrics",
+			"Rev": "51425a2415d21afadfd55cd93432c0bc69e9598d"
 		},
 		{
 			"ImportPath": "github.com/spf13/cobra",
