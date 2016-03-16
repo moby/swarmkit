@@ -50,6 +50,10 @@ type Reporter interface {
 	// Report the state of the task run. If an error is returned, execution
 	// will be stopped.
 	Report(ctx context.Context, state api.TaskState) error
+
+	// TODO(stevvooe): It is very likely we will need to report more
+	// information back from the runner into the agent. We'll likely expand
+	// this interface to do so.
 }
 
 // Run runs a runner, reporting state along the way. Under normal execution,
