@@ -104,7 +104,7 @@ message SessionRequest {
 // SessionMessage instructs an agent on various actions as part of the current
 // session. An agent should act immediately on the contents.
 message SessionMessage {
-	// Managers provides a weight list of alternative dispatchers 
+	// Managers provides a weight list of alternative dispatchers
 	repeated WeightedPeer managers = 1;
 
 	// Disconnect instructs the agent to disconnect from the current disptacher
@@ -120,7 +120,7 @@ message HeartbeatRequest {
 
 message HeartbeatResponse {
 	// Period is the duration to wait before sending the next heartbeat.
-	// Well-behaved agents should update this on every heartbeat round trip. 
+	// Well-behaved agents should update this on every heartbeat round trip.
 	uint64 Period = 1 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
 }
 
@@ -129,7 +129,13 @@ message UpdateTaskStatusRequest {
 	// field must be set. The spec is not required.
 	string node_id = 1 [(gogoproto.customname) = "NodeID"];
 	string session_id = 2 [(gogoproto.customname) = "SessionID"];
-	repeated Task tasks = 3;
+
+	message TaskStatusUpdate {
+		string task_id = 1 [(gogoproto.customname) = "TaskID"];
+		TaskStatus status = 2;
+	}
+
+	repeated TaskStatusUpdate updates = 3;
 }
 
 message  UpdateTaskStatusResponse{
