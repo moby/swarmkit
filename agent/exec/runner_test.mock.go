@@ -30,6 +30,16 @@ func (_m *MockRunner) EXPECT() *_MockRunnerRecorder {
 	return _m.recorder
 }
 
+func (_m *MockRunner) Update(ctx context.Context, t *api.Task) error {
+	ret := _m.ctrl.Call(_m, "Update", ctx, t)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockRunnerRecorder) Update(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Update", arg0, arg1)
+}
+
 func (_m *MockRunner) Prepare(ctx context.Context) error {
 	ret := _m.ctrl.Call(_m, "Prepare", ctx)
 	ret0, _ := ret[0].(error)

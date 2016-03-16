@@ -10,6 +10,13 @@ import (
 //
 // All methods should be idempotent and thread-safe.
 type Runner interface {
+	// Update the task definition seen by the runner. Will return
+	// ErrTaskUpdateFailed if the provided task definition changes fields that
+	// cannot be changed.
+	//
+	// Will be ignored if the task has exited.
+	Update(ctx context.Context, t *api.Task) error
+
 	// Prepare the task for execution. This should ensure that all resources
 	// are created such that a call to start should execute immediately.
 	Prepare(ctx context.Context) error

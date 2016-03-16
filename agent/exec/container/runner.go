@@ -41,6 +41,15 @@ func NewRunner(client engineapi.APIClient, task *api.Task) (*Runner, error) {
 	}, nil
 }
 
+// Update tasks a recent task update and applies it to the container.
+func (r *Runner) Update(ctx context.Context, t *api.Task) error {
+	log.G(ctx).Warnf("task updates not yet supported")
+	// TODO(stevvooe): While assignment of tasks is idempotent, we do allow
+	// updates of metadata, such as labelling, as well as any other properties
+	// that make sense.
+	return nil
+}
+
 // Prepare creates a container and ensures the image is pulled.
 //
 // If the container has already be created, exec.ErrTaskPrepared is returned.
