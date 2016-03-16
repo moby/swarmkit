@@ -5,7 +5,6 @@ import (
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
-	"github.com/docker/swarm-v2/spec"
 	"github.com/spf13/cobra"
 )
 
@@ -14,18 +13,9 @@ var (
 		Use:   "deploy",
 		Short: "Deploy an app",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, err := cmd.Flags().GetString("file")
+			s, err := readSpec(cmd.Flags())
 			if err != nil {
 				return err
-			}
-
-			s, err := spec.ReadFrom(path)
-			if err != nil {
-				return err
-			}
-
-			if s.Version == 2 {
-				fmt.Println("WARNING: v2 format is only partially supported, please update to v3")
 			}
 
 			c, err := common.Dial(cmd)

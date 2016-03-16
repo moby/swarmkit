@@ -1,4 +1,5 @@
 version: '3'
+namespace: my_app
 
 services:
   web:

@@ -1,0 +1,11 @@
+version: '3'
+namespace: my_app
+
+services:
+  web:
+    instances: 6
+    image: nginx
+
+  redis:
+    instances: 5
+    image: redis:alpine
