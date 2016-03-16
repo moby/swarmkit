@@ -1,10 +1,12 @@
 package state
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,6 +26,54 @@ var (
 
 func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
+}
+
+func pollNodeFunc(nodes map[uint64]*Node, f func(*Node) bool) error {
+	var tickers []*time.Ticker
+	var wg sync.WaitGroup
+	for _, n := range nodes {
+		wg.Add(1)
+		if f(n) {
+			wg.Done()
+			continue
+		}
+		tick := time.NewTicker(50 * time.Millisecond)
+		tickers = append(tickers, tick)
+		go func(n *Node) {
+			for range tick.C {
+				if f(n) {
+					break
+				}
+			}
+			wg.Done()
+		}(n)
+	}
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return nil
+	case <-time.After(10 * time.Second):
+		for _, tick := range tickers {
+			tick.Stop()
+		}
+		return fmt.Errorf("polling failed")
+	}
+}
+
+// waitForCluster waits until leader will be one of specified nodes
+func waitForCluster(t *testing.T, nodes map[uint64]*Node) {
+	assert.NoError(t, pollNodeFunc(nodes, func(n *Node) bool {
+		for id := range nodes {
+			if n.Leader() == id {
+				return true
+			}
+		}
+		return false
+	}))
 }
 
 func newInitNode(t *testing.T, id uint64) *Node {
@@ -113,35 +163,28 @@ func newJoinNode(t *testing.T, id uint64, join string) *Node {
 		assert.Error(t, <-done)
 	}()
 
-	time.Sleep(1 * time.Second)
 	return n
 }
 
 func newRaftCluster(t *testing.T) map[uint64]*Node {
-	nodes := make(map[uint64]*Node, 0)
-
+	nodes := make(map[uint64]*Node)
 	nodes[1] = newInitNode(t, 1)
-	time.Sleep(1 * time.Second)
 	nodes[2] = newJoinNode(t, 2, nodes[1].Listener.Addr().String())
 	nodes[3] = newJoinNode(t, 3, nodes[1].Listener.Addr().String())
-
+	waitForCluster(t, nodes)
 	return nodes
 }
 
 func addRaftNode(t *testing.T, nodes map[uint64]*Node) {
 	n := uint64(len(nodes) + 1)
 	nodes[n] = newJoinNode(t, uint64(n), nodes[1].Listener.Addr().String())
+	waitForCluster(t, nodes)
 }
 
 func teardownCluster(t *testing.T, nodes map[uint64]*Node) {
 	for _, node := range nodes {
 		shutdownNode(node)
 	}
-	nodes = nil
-
-	// FIXME We have to wait a little bit for the
-	// connections to be cleaned up properly
-	time.Sleep(2 * time.Second)
 }
 
 func removeNode(nodes map[string]*Node, node string) {
@@ -151,9 +194,6 @@ func removeNode(nodes map[string]*Node, node string) {
 
 func shutdownNode(node *Node) {
 	node.Server.Stop()
-	node.Server.TestingCloseConns()
-	_ = node.Listener.Close()
-	node.Listener = nil
 	node.Shutdown()
 	os.RemoveAll(node.stateDir)
 }
@@ -246,8 +286,12 @@ func TestRaftLeaderDown(t *testing.T) {
 	// Stop node 1
 	nodes[1].Stop()
 
+	newCluster := map[uint64]*Node{
+		2: nodes[2],
+		3: nodes[3],
+	}
 	// Wait for the re-election to occur
-	time.Sleep(4 * time.Second)
+	waitForCluster(t, newCluster)
 
 	// Leader should not be 1
 	assert.NotEqual(t, nodes[2].Leader(), nodes[1].ID)
@@ -277,9 +321,6 @@ func TestRaftFollowerDown(t *testing.T) {
 
 	// Stop node 3
 	nodes[3].Stop()
-
-	// Wait election tick
-	time.Sleep(4 * time.Second)
 
 	// Leader should still be 1
 	assert.True(t, nodes[1].IsLeader(), "node 1 is not a leader anymore")
@@ -378,7 +419,6 @@ func TestRaftFollowerLeave(t *testing.T) {
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
-	// Wait heartbeat tick
 	time.Sleep(1 * time.Second)
 
 	// Propose a value
@@ -415,8 +455,12 @@ func TestRaftLeaderLeave(t *testing.T) {
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
+	newCluster := map[uint64]*Node{
+		2: nodes[2],
+		3: nodes[3],
+	}
 	// Wait for election tick
-	time.Sleep(6 * time.Second)
+	waitForCluster(t, newCluster)
 
 	// Leader should not be 1
 	assert.NotEqual(t, nodes[2].Leader(), nodes[1].ID)
