@@ -83,7 +83,7 @@ func TestSpecDiff(t *testing.T) {
 		},
 	}
 
-	diff, err := spec.Diff("remote", "local",
+	diff, err := spec.Diff(0, "remote", "local",
 		&Spec{
 			Version:   3,
 			Namespace: "namespace",
@@ -96,7 +96,7 @@ func TestSpecDiff(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "--- remote\n+++ local\n@@ -6 +6 @@\n-    instances: 2\n+    instances: 1\n@@ -9 +9 @@\n-    instances: 3\n+    instances: 1\n", diff)
 
-	diff, err = spec.Diff("old", "new",
+	diff, err = spec.Diff(0, "old", "new",
 		&Spec{
 			Version:   3,
 			Namespace: "namespace",

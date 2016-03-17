@@ -19,12 +19,19 @@ var (
 				return err
 			}
 
+			flags := cmd.Flags()
+
+			context, err := flags.GetInt("context")
+			if err != nil {
+				return err
+			}
+
 			r, err := c.ListJobs(common.Context(cmd), &api.ListJobsRequest{})
 			if err != nil {
 				return err
 			}
 
-			localSpec, err := readSpec(cmd.Flags())
+			localSpec, err := readSpec(flags)
 			if err != nil {
 				return err
 			}
@@ -43,7 +50,7 @@ var (
 			}
 			remoteSpec.FromJobSpecs(jobspecs)
 
-			diff, err := localSpec.Diff("remote", "local", remoteSpec)
+			diff, err := localSpec.Diff(context, "remote", "local", remoteSpec)
 			if err != nil {
 				return err
 			}
@@ -55,4 +62,5 @@ var (
 
 func init() {
 	diffCmd.Flags().StringP("file", "f", "docker.yml", "Spec file to diff")
+	diffCmd.Flags().IntP("context", "c", 3, "lines of copied context (default 3)")
 }

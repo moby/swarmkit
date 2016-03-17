@@ -73,7 +73,7 @@ var (
 				return err
 			}
 
-			diff, err := newService.Diff("old", "new", service)
+			diff, err := newService.Diff(3, "old", "new", service)
 			if err != nil {
 				return err
 			}

@@ -25,6 +25,11 @@ var (
 				return errors.New("--file is mandatory")
 			}
 
+			context, err := flags.GetInt("context")
+			if err != nil {
+				return err
+			}
+
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
@@ -43,7 +48,7 @@ var (
 
 			remoteService := &spec.ServiceConfig{}
 			remoteService.FromJobSpec(r.Job.Spec)
-			diff, err := localService.Diff("remote", "local", remoteService)
+			diff, err := localService.Diff(context, "remote", "local", remoteService)
 			if err != nil {
 				return err
 			}
@@ -55,4 +60,5 @@ var (
 
 func init() {
 	diffCmd.Flags().StringP("file", "f", "", "Spec to use")
+	diffCmd.Flags().IntP("context", "c", 3, "lines of copied context (default 3)")
 }

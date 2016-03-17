@@ -68,7 +68,7 @@ func (s *Spec) FromJobSpecs(jobspecs []*api.JobSpec) {
 }
 
 // Diff returns a diff between two Specs.
-func (s *Spec) Diff(fromFile, toFile string, other *Spec) (string, error) {
+func (s *Spec) Diff(context int, fromFile, toFile string, other *Spec) (string, error) {
 	from, err := yaml.Marshal(other)
 	if err != nil {
 		return "", err
@@ -84,8 +84,7 @@ func (s *Spec) Diff(fromFile, toFile string, other *Spec) (string, error) {
 		FromFile: fromFile,
 		B:        difflib.SplitLines(string(to)),
 		ToFile:   toFile,
-		// TODO(aluzzardi): Make this configurable through a flag.
-		Context: 3,
+		Context:  context,
 	}
 
 	return difflib.GetUnifiedDiffString(diff)
