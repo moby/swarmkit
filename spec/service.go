@@ -48,15 +48,27 @@ func (s *ServiceConfig) Validate() error {
 	return nil
 }
 
-// Parse creates a ServiceConfig from a io.Reader.
-func (s *ServiceConfig) Parse(r io.Reader) error {
-	s.Instances = 1
+// Reset resets the service config to its defaults.
+func (s *ServiceConfig) Reset() {
+	*s = ServiceConfig{
+		Instances: 1,
+	}
+}
+
+// Read reads a ServiceConfig from an io.Reader.
+func (s *ServiceConfig) Read(r io.Reader) error {
+	s.Reset()
 
 	if err := yaml.NewDecoder(r).Decode(s); err != nil {
 		return err
 	}
 
 	return s.Validate()
+}
+
+// Write writes a ServiceConfig to an io.Reader.
+func (s *ServiceConfig) Write(w io.Writer) error {
+	return yaml.NewEncoder(w).Encode(s)
 }
 
 // JobSpec converts a ServiceConfig to a JobSpec.
@@ -88,12 +100,16 @@ func (s *ServiceConfig) JobSpec() *api.JobSpec {
 
 // FromJobSpec converts a JobSpec to a ServiceConfig.
 func (s *ServiceConfig) FromJobSpec(jobSpec *api.JobSpec) {
-	s.Image = jobSpec.Template.GetContainer().Image.Reference
-	s.Name = jobSpec.Meta.Name
-	s.Instances = jobSpec.GetService().Instances
-	s.Env = jobSpec.Template.GetContainer().Env
-	s.Args = jobSpec.Template.GetContainer().Args
-	s.Command = jobSpec.Template.GetContainer().Command
+	*s = ServiceConfig{
+		Name:      jobSpec.Meta.Name,
+		Instances: jobSpec.GetService().Instances,
+		ContainerConfig: ContainerConfig{
+			Image:   jobSpec.Template.GetContainer().Image.Reference,
+			Env:     jobSpec.Template.GetContainer().Env,
+			Args:    jobSpec.Template.GetContainer().Args,
+			Command: jobSpec.Template.GetContainer().Command,
+		},
+	}
 }
 
 // Diff returns a diff between two ServiceConfigs.
@@ -113,6 +129,8 @@ func (s *ServiceConfig) Diff(fromFile, toFile string, other *ServiceConfig) (str
 		FromFile: fromFile,
 		B:        difflib.SplitLines(string(to)),
 		ToFile:   toFile,
+		// TODO(aluzzardi): Make this configurable through a flag.
+		Context: 3,
 	}
 
 	return difflib.GetUnifiedDiffString(diff)

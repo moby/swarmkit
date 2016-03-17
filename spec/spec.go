@@ -16,8 +16,9 @@ type Spec struct {
 	Services  map[string]*ServiceConfig `yaml:"services,omitempty"`
 }
 
-// Parse creates a Spec from a io.Reader.
-func (s *Spec) Parse(r io.Reader) error {
+// Read reads a Spec from an io.Reader.
+func (s *Spec) Read(r io.Reader) error {
+	s.Reset()
 	if err := yaml.NewDecoder(r).Decode(s); err != nil {
 		return err
 	}
@@ -29,6 +30,11 @@ func (s *Spec) Parse(r io.Reader) error {
 		fmt.Println("WARNING: v2 format is only partially supported, please update to v3")
 	}
 	return nil
+}
+
+// Reset resets the service config to its defaults.
+func (s *Spec) Reset() {
+	*s = Spec{}
 }
 
 func (s *Spec) validate() error {
@@ -78,6 +84,8 @@ func (s *Spec) Diff(fromFile, toFile string, other *Spec) (string, error) {
 		FromFile: fromFile,
 		B:        difflib.SplitLines(string(to)),
 		ToFile:   toFile,
+		// TODO(aluzzardi): Make this configurable through a flag.
+		Context: 3,
 	}
 
 	return difflib.GetUnifiedDiffString(diff)

@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"strings"
 
-	yaml "github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
 	"github.com/docker/swarm-v2/spec"
@@ -43,34 +42,44 @@ var (
 			service := &spec.ServiceConfig{}
 			service.FromJobSpec(r.Job.Spec)
 
-			file, err := ioutil.TempFile(os.TempDir(), "swarm-job-edit")
+			original, err := ioutil.TempFile(os.TempDir(), "swarm-job-edit")
 			if err != nil {
 				return err
 			}
-			defer file.Close()
+			defer os.Remove(original.Name())
 
-			if err := yaml.NewEncoder(file).Encode(service); err != nil {
+			if err := service.Write(original); err != nil {
+				original.Close()
 				return err
 			}
+			original.Close()
 
-			editor := exec.Command(editorPath, file.Name())
+			editor := exec.Command(editorPath, original.Name())
 			editor.Stdin = os.Stdin
 			editor.Stdout = os.Stdout
 			editor.Stderr = os.Stderr
 			if err := editor.Run(); err != nil {
-				return err
+				return fmt.Errorf("there was a problem with the editor '%s': %v", editorPath, err)
 			}
 
-			file.Seek(0, 0)
+			updated, err := os.Open(original.Name())
+			if err != nil {
+				return err
+			}
+			defer updated.Close()
 
 			newService := &spec.ServiceConfig{}
-			if err := newService.Parse(file); err != nil {
+			if err := newService.Read(updated); err != nil {
 				return err
 			}
 
 			diff, err := newService.Diff("old", "new", service)
 			if err != nil {
 				return err
+			}
+			if diff == "" {
+				fmt.Println("no changes detected")
+				return nil
 			}
 			fmt.Print(diff)
 			if !confirm() {

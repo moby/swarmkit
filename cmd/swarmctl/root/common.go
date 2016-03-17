@@ -19,7 +19,7 @@ func readSpec(flags *flag.FlagSet) (*spec.Spec, error) {
 	defer file.Close()
 
 	s := &spec.Spec{}
-	if err := s.Parse(file); err != nil {
+	if err := s.Read(file); err != nil {
 		return nil, err
 	}
 

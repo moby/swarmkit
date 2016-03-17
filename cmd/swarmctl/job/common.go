@@ -19,7 +19,7 @@ func readServiceConfig(flags *flag.FlagSet) (*spec.ServiceConfig, error) {
 	defer file.Close()
 
 	service := &spec.ServiceConfig{}
-	if err := service.Parse(file); err != nil {
+	if err := service.Read(file); err != nil {
 		return nil, err
 	}
 
