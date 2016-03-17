@@ -36,8 +36,13 @@ var (
 					jobspecs = append(jobspecs, j.Spec)
 				}
 			}
-			remoteSpec := &spec.Spec{Version: localSpec.Version, Namespace: localSpec.Namespace, Services: make(map[string]*spec.ServiceConfig)}
+			remoteSpec := &spec.Spec{
+				Version:   localSpec.Version,
+				Namespace: localSpec.Namespace,
+				Services:  make(map[string]*spec.ServiceConfig),
+			}
 			remoteSpec.FromJobSpecs(jobspecs)
+
 			diff, err := localSpec.Diff("remote", "local", remoteSpec)
 			if err != nil {
 				return err
