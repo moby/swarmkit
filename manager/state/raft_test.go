@@ -20,6 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const testTick = 50 * time.Millisecond
+
 var (
 	raftLogger = &raft.DefaultLogger{Logger: log.New(ioutil.Discard, "", 0)}
 )
@@ -37,7 +39,7 @@ func pollNodeFunc(nodes map[uint64]*Node, f func(*Node) bool) error {
 			wg.Done()
 			continue
 		}
-		tick := time.NewTicker(50 * time.Millisecond)
+		tick := time.NewTicker(testTick)
 		tickers = append(tickers, tick)
 		go func(n *Node) {
 			for range tick.C {
@@ -98,10 +100,11 @@ func newInitNode(t *testing.T, id uint64) *Node {
 	assert.NoError(t, err, "can't create temporary state directory")
 
 	newNodeOpts := NewNodeOptions{
-		ID:       id,
-		Addr:     l.Addr().String(),
-		Config:   cfg,
-		StateDir: stateDir,
+		ID:           id,
+		Addr:         l.Addr().String(),
+		Config:       cfg,
+		StateDir:     stateDir,
+		TickInterval: testTick,
 	}
 	n, err := NewNode(context.Background(), newNodeOpts)
 	assert.NoError(t, err, "can't create raft node")
@@ -138,10 +141,11 @@ func newJoinNode(t *testing.T, id uint64, join string) *Node {
 	assert.NoError(t, err, "can't create temporary state directory")
 
 	newNodeOpts := NewNodeOptions{
-		ID:       id,
-		Addr:     l.Addr().String(),
-		Config:   cfg,
-		StateDir: stateDir,
+		ID:           id,
+		Addr:         l.Addr().String(),
+		Config:       cfg,
+		StateDir:     stateDir,
+		TickInterval: testTick,
 	}
 
 	n, err := NewNode(context.Background(), newNodeOpts)

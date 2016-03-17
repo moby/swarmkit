@@ -92,10 +92,11 @@ type Node struct {
 
 // NewNodeOptions provides arguments for NewNode
 type NewNodeOptions struct {
-	ID       uint64
-	Addr     string
-	Config   *raft.Config
-	StateDir string
+	ID           uint64
+	Addr         string
+	Config       *raft.Config
+	StateDir     string
+	TickInterval time.Duration
 }
 
 // NewNode generates a new Raft node based on an unique
@@ -106,6 +107,9 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 	cfg := opts.Config
 	if cfg == nil {
 		cfg = DefaultNodeConfig()
+	}
+	if opts.TickInterval == 0 {
+		opts.TickInterval = time.Second
 	}
 
 	raftStore := raft.NewMemoryStorage()
@@ -126,7 +130,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 			MaxInflightMsgs: cfg.MaxInflightMsgs,
 			Logger:          cfg.Logger,
 		},
-		ticker:   time.NewTicker(time.Second),
+		ticker:   time.NewTicker(opts.TickInterval),
 		stopCh:   make(chan struct{}),
 		reqIDGen: idutil.NewGenerator(uint16(opts.ID), time.Now()),
 		stateDir: opts.StateDir,
