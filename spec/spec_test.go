@@ -16,7 +16,7 @@ func getTempFile(content string) *os.File {
 	return tmpfile
 }
 
-func TestParse(t *testing.T) {
+func TestRead(t *testing.T) {
 	bads := []string{
 		"",
 		"version:3",
@@ -36,7 +36,7 @@ services:
 		f := getTempFile(bad)
 		defer os.Remove(f.Name())
 		s := Spec{}
-		assert.Error(t, s.Parse(f))
+		assert.Error(t, s.Read(f))
 	}
 
 	goods := map[int]string{
@@ -63,7 +63,7 @@ services:
 		f := getTempFile(good)
 		defer os.Remove(f.Name())
 		s := Spec{}
-		assert.NoError(t, s.Parse(f))
+		assert.NoError(t, s.Read(f))
 		assert.Equal(t, size, len(s.JobSpecs()))
 		for i, jobSpec := range s.JobSpecs() {
 			assert.Equal(t, fmt.Sprintf("name%d", i+1), jobSpec.Meta.Name)
