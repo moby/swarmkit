@@ -1,6 +1,0 @@
-name: ping
-image: alpine
-command: ["ping", "$HOST"]
-instances: 2
-env:
- - HOST=google.com

@@ -1,6 +1,6 @@
 name: ping
 image: alpine
-command: ["ping", "$HOST"]
-instances: 4
+command: ["sh", "-c", "ping $HOST"]
+instances: 2
 env:
  - HOST=google.com

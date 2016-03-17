@@ -1,0 +1,18 @@
+version: '3'
+namespace: app
+
+services:
+  web:
+    image: nginx
+    instances: 3
+
+  redis:
+    image: redis
+    instances: 1
+
+  ping:
+      image: alpine
+      command: ["sh", "-c", "ping $HOST"]
+      env:
+          - HOST=google.com
+      instances: 2
