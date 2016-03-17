@@ -4,6 +4,7 @@ import (
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/swarm-v2/agent"
 	"github.com/docker/swarm-v2/agent/exec/container"
+	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
 	"github.com/spf13/cobra"
@@ -45,7 +46,27 @@ already present, the agent will recover and startup.`,
 			}
 
 			log.G(ctx).Debugf("managers: %v", managerAddrs)
+			stateDir, err := cmd.Flags().GetString("state-dir")
+			if err != nil {
+				return err
+			}
+
+			token, err := cmd.Flags().GetString("token")
+			if err != nil {
+				return err
+			}
+
 			managers := agent.NewManagers(managerAddrs...)
+
+			managerAddr, err := managers.Select()
+			if err != nil {
+				return err
+			}
+
+			securityConfig, err := ca.LoadOrCreateAgentSecurityConfig(stateDir, token, managerAddr)
+			if err != nil {
+				return err
+			}
 
 			client, err := engineapi.NewClient(engineAddr, "", nil, nil)
 			if err != nil {
@@ -55,10 +76,11 @@ already present, the agent will recover and startup.`,
 			executor := container.NewExecutor(client)
 
 			ag, err := agent.New(&agent.Config{
-				ID:       id,
-				Hostname: hostname,
-				Managers: managers,
-				Executor: executor,
+				ID:             id,
+				Hostname:       hostname,
+				Managers:       managers,
+				Executor:       executor,
+				SecurityConfig: securityConfig,
 			})
 			if err != nil {
 				log.G(ctx).Fatalln(err)

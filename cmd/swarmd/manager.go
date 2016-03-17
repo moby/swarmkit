@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/manager"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -16,7 +17,7 @@ var managerCmd = &cobra.Command{
 			return err
 		}
 
-		joinRaft, err := cmd.Flags().GetString("join-cluster")
+		managerAddr, err := cmd.Flags().GetString("join-cluster")
 		if err != nil {
 			return err
 		}
@@ -26,11 +27,22 @@ var managerCmd = &cobra.Command{
 			return err
 		}
 
+		token, err := cmd.Flags().GetString("token")
+		if err != nil {
+			return err
+		}
+
+		securityConfig, err := ca.LoadOrCreateManagerSecurityConfig(stateDir, token, managerAddr, false)
+		if err != nil {
+			return err
+		}
+
 		m, err := manager.New(&manager.Config{
-			ListenProto: "tcp",
-			ListenAddr:  addr,
-			JoinRaft:    joinRaft,
-			StateDir:    stateDir,
+			ListenProto:    "tcp",
+			SecurityConfig: securityConfig,
+			ListenAddr:     addr,
+			JoinRaft:       managerAddr,
+			StateDir:       stateDir,
 		})
 		if err != nil {
 			return err
@@ -42,5 +54,4 @@ var managerCmd = &cobra.Command{
 func init() {
 	managerCmd.Flags().String("listen-addr", "0.0.0.0:4242", "Listen address")
 	managerCmd.Flags().String("join-cluster", "", "Join cluster with a node at this address")
-	managerCmd.Flags().String("state-dir", "/var/lib/docker/cluster", "State directory")
 }

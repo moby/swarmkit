@@ -12,6 +12,7 @@
 		cluster.proto
 		dispatcher.proto
 		raft.proto
+		ca.proto
 
 	It has these top-level messages:
 		Version
@@ -89,6 +90,9 @@
 		TasksMessage
 		InternalRaftRequest
 		StoreAction
+		IssuanceStatus
+		IssueCertificateRequest
+		IssueCertificateResponse
 */
 package api
 

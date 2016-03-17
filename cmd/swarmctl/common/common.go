@@ -1,10 +1,13 @@
 package common
 
 import (
+	"crypto/tls"
+
 	"github.com/docker/swarm-v2/api"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // Dial establishes a connection and creates a client.
@@ -15,7 +18,13 @@ func Dial(cmd *cobra.Command) (api.ClusterClient, error) {
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	// TODO(diogo): this can't be an insecure connection. Either using CA cert,
+	// TOFU, or local unix socket
+	opts := []grpc.DialOption{}
+	insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
+	opts = append(opts, grpc.WithTransportCredentials(insecureCreds))
+
+	conn, err := grpc.Dial(addr, opts...)
 	if err != nil {
 		return nil, err
 	}

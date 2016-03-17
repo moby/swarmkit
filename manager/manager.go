@@ -10,6 +10,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/allocator"
 	"github.com/docker/swarm-v2/manager/clusterapi"
@@ -26,6 +27,8 @@ var _ api.ManagerServer = &Manager{}
 
 // Config is used to tune the Manager.
 type Config struct {
+	SecurityConfig *ca.ManagerSecurityConfig
+
 	ListenProto string
 	ListenAddr  string
 	// Listener will be used for grpc serving if it's not nil, ListenProto and
@@ -47,6 +50,7 @@ type Manager struct {
 	config *Config
 
 	apiserver    api.ClusterServer
+	caserver     *ca.Server
 	dispatcher   *dispatcher.Dispatcher
 	orchestrator *orchestrator.Orchestrator
 	drainer      *drainer.Drainer
@@ -86,11 +90,17 @@ func New(config *Config) (*Manager, error) {
 
 	leadershipCh := make(chan state.LeadershipState)
 
+	clientTLSCreds, err := ca.NewClientTLSCredentials(config.SecurityConfig.ServerCert, config.SecurityConfig.RootCACert, "manager")
+	if err != nil {
+		return nil, err
+	}
+
 	newNodeOpts := state.NewNodeOptions{
-		Addr:     config.ListenAddr,
-		JoinAddr: config.JoinRaft,
-		Config:   raftCfg,
-		StateDir: raftStateDir,
+		Addr:           config.ListenAddr,
+		JoinAddr:       config.JoinRaft,
+		Config:         raftCfg,
+		StateDir:       raftStateDir,
+		TLSCredentials: clientTLSCreds,
 	}
 	raftNode, err := state.NewNode(context.TODO(), newNodeOpts, leadershipCh)
 	if err != nil {
@@ -101,15 +111,20 @@ func New(config *Config) (*Manager, error) {
 
 	localapi := clusterapi.NewServer(store)
 	proxy := api.NewRaftProxyClusterServer(localapi, raftNode)
+	opts = []grpc.ServerOption{
+		grpc.Creds(config.SecurityConfig.ServerTLSCreds)}
+
 	m := &Manager{
 		config:       config,
 		apiserver:    proxy,
+		caserver:     ca.NewServer(config.SecurityConfig),
 		dispatcher:   dispatcher.New(store, dispatcherConfig),
-		server:       grpc.NewServer(),
+		server:       grpc.NewServer(opts...),
 		raftNode:     raftNode,
 		leadershipCh: leadershipCh,
 	}
 
+	api.RegisterCAServer(m.server, m.caserver)
 	api.RegisterManagerServer(m.server, m)
 	api.RegisterClusterServer(m.server, m.apiserver)
 	api.RegisterDispatcherServer(m.server, m.dispatcher)
@@ -248,6 +263,13 @@ func (m *Manager) Stop() {
 // NodeCount returns number of nodes connected to particular manager.
 // Supposed to be called only by cluster leader.
 func (m *Manager) NodeCount(ctx context.Context, r *api.NodeCountRequest) (*api.NodeCountResponse, error) {
+	managerID, err := ca.AuthorizeOU(ctx, []string{"manager"})
+	if err != nil {
+		return nil, err
+	}
+
+	log.WithField("request", r).Debugf("(*Manager).NodeCount from node %s", managerID)
+
 	return &api.NodeCountResponse{
 		Count: m.dispatcher.NodeCount(),
 	}, nil

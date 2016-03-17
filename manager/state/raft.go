@@ -1,6 +1,7 @@
 package state
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +13,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+
+	"golang.org/x/net/context"
+
+	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -19,13 +26,12 @@ import (
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state/leaderconn"
 	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/pivotal-golang/clock"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -84,9 +90,11 @@ type Node struct {
 	raft.Node
 	cluster *cluster
 
-	Client *Raft
-	Server *grpc.Server
-	Ctx    context.Context
+	Client         *Raft
+	Server         *grpc.Server
+	Ctx            context.Context
+	tlsConfig      *tls.Config
+	tlsCredentials credentials.TransportAuthenticator
 
 	Address string
 	Error   error
@@ -154,7 +162,9 @@ type NewNodeOptions struct {
 	ClockSource clock.Clock
 	// SendTimeout is the timeout on the sending messages to other raft
 	// nodes. Leave this as 0 to get the default value.
-	SendTimeout time.Duration
+	SendTimeout    time.Duration
+	TLSConfig      *tls.Config
+	TLSCredentials credentials.TransportAuthenticator
 }
 
 func init() {
@@ -162,7 +172,10 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-// NewNode generates a new Raft node.
+// NewNode generates a new Raft node based on an unique
+// ID, an address and optionally: a handler and receive
+// only channel to send event when an entry is committed
+// to the logs
 func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan LeadershipState) (*Node, error) {
 	cfg := opts.Config
 	if cfg == nil {
@@ -175,10 +188,11 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 	raftStore := raft.NewMemoryStorage()
 
 	n := &Node{
-		Ctx:       ctx,
-		cluster:   newCluster(),
-		raftStore: raftStore,
-		Address:   opts.Addr,
+		Ctx:            ctx,
+		cluster:        newCluster(),
+		tlsCredentials: opts.TLSCredentials,
+		raftStore:      raftStore,
+		Address:        opts.Addr,
 		Config: &raft.Config{
 			ElectionTick:    cfg.ElectionTick,
 			HeartbeatTick:   cfg.HeartbeatTick,
@@ -231,7 +245,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 
 	if n.startNodePeers != nil {
 		if n.joinAddr != "" {
-			c, err := GetRaftClient(n.joinAddr, 10*time.Second)
+			c, err := n.GetRaftClient(n.joinAddr, 10*time.Second)
 			if err != nil {
 				return nil, err
 			}
@@ -537,6 +551,12 @@ func (n *Node) Leader() uint64 {
 // beginning the log replication process. This method
 // is called from an aspiring member to an existing member
 func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinResponse, error) {
+	agentID, err := ca.AuthorizeOU(ctx, []string{"manager"})
+	if err != nil {
+		return nil, err
+	}
+	logrus.Debugf("(*Join). message from node %s", agentID)
+
 	// can't stop the raft node while an async RPC is in progress
 	n.stopMu.RLock()
 	defer n.stopMu.RUnlock()
@@ -585,6 +605,12 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 // from a member who is willing to leave its raft
 // membership to an active member of the raft
 func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResponse, error) {
+	agentID, err := ca.AuthorizeOU(ctx, []string{"manager"})
+	if err != nil {
+		return nil, err
+	}
+	logrus.Debugf("(*Leave). message from node %s", agentID)
+
 	// can't stop the raft node while an async RPC is in progress
 	n.stopMu.RLock()
 	defer n.stopMu.RUnlock()
@@ -601,7 +627,7 @@ func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResp
 	}
 
 	// Wait for a raft round to process the configuration change
-	err := n.configure(ctx, cc)
+	err = n.configure(ctx, cc)
 	if err != nil {
 		return nil, err
 	}
@@ -613,6 +639,12 @@ func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResp
 // raft state machine with the provided message on the
 // receiving node
 func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessageRequest) (*api.ProcessRaftMessageResponse, error) {
+	agentID, err := ca.AuthorizeOU(ctx, []string{"manager"})
+	if err != nil {
+		return nil, err
+	}
+	logrus.Debugf("(*ProcessRaftMessage). message from node %s", agentID)
+
 	// can't stop the raft node while an async RPC is in progress
 	n.stopMu.RLock()
 	defer n.stopMu.RUnlock()
@@ -620,7 +652,7 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 		return nil, ErrStopped
 	}
 
-	err := n.Step(n.Ctx, *msg.Msg)
+	err = n.Step(n.Ctx, *msg.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -651,7 +683,7 @@ func (n *Node) registerNode(node *api.RaftNode) error {
 		// should keep retrying as long as necessary, in case the peer
 		// is temporarily unavailable.
 		var err error
-		if client, err = GetRaftClient(node.Addr, 0); err != nil {
+		if client, err = n.GetRaftClient(node.Addr, 0); err != nil {
 			return err
 		}
 	}
@@ -1087,4 +1119,18 @@ func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
 	}
 
 	return nil
+}
+
+// GetRaftClient returns a raft client object to communicate
+// with other raft members
+func (n *Node) GetRaftClient(addr string, timeout time.Duration) (*Raft, error) {
+	conn, err := dial(addr, "tcp", n.tlsCredentials, timeout)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Raft{
+		RaftClient: api.NewRaftClient(conn),
+		Conn:       conn,
+	}, nil
 }

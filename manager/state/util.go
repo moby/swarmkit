@@ -5,6 +5,13 @@ import (
 
 	"github.com/docker/swarm-v2/api"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+)
+
+const (
+	// MaxRetries is the maximum number of retries allowed to
+	// initiate a grpc connection to a remote raft member
+	MaxRetries = 3
 )
 
 // Raft represents a connection to a raft member
@@ -13,32 +20,20 @@ type Raft struct {
 	Conn *grpc.ClientConn
 }
 
-// GetRaftClient returns a raft client object to communicate
-// with other raft members
-func GetRaftClient(addr string, timeout time.Duration) (*Raft, error) {
-	conn, err := dial(addr, "tcp", timeout)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Raft{
-		RaftClient: api.NewRaftClient(conn),
-		Conn:       conn,
-	}, nil
-}
-
 // dial returns a grpc client connection
-func dial(addr string, protocol string, timeout time.Duration) (*grpc.ClientConn, error) {
+func dial(addr string, protocol string, creds credentials.TransportAuthenticator, timeout time.Duration) (*grpc.ClientConn, error) {
 	backoffConfig := *grpc.DefaultBackoffConfig
 	backoffConfig.MaxDelay = 2 * time.Second
 
 	grpcOptions := []grpc.DialOption{
-		grpc.WithInsecure(),
 		grpc.WithBackoffConfig(&backoffConfig),
+		grpc.WithTransportCredentials(creds),
 	}
+
 	if timeout != 0 {
 		grpcOptions = append(grpcOptions, grpc.WithTimeout(timeout))
 	}
+
 	return grpc.Dial(addr, grpcOptions...)
 }
 

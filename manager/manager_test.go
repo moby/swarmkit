@@ -14,6 +14,7 @@ import (
 	"github.com/docker/swarm-v2/agent"
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/manager/dispatcher"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/stretchr/testify/assert"
@@ -46,10 +47,15 @@ func TestManager(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(stateDir)
 
+	agentSecurityConfig, managerSecurityConfig, tmpDir, err := testutils.GenerateAgentAndManagerSecurityConfig()
+	assert.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
 	m, err := New(&Config{
-		ListenProto: "unix",
-		ListenAddr:  temp.Name(),
-		StateDir:    stateDir,
+		ListenProto:    "unix",
+		ListenAddr:     temp.Name(),
+		StateDir:       stateDir,
+		SecurityConfig: managerSecurityConfig,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, m)
@@ -60,10 +66,13 @@ func TestManager(t *testing.T) {
 		done <- m.Run(ctx)
 	}()
 
-	conn, err := grpc.Dial(temp.Name(), grpc.WithInsecure(), grpc.WithTimeout(10*time.Second),
-		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("unix", addr, timeout)
-		}))
+	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
+	opts = append(opts, grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds))
+	opts = append(opts, grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
+		return net.DialTimeout("unix", addr, timeout)
+	}))
+
+	conn, err := grpc.Dial(temp.Name(), opts...)
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, conn.Close())
@@ -91,19 +100,27 @@ func TestManagerNodeCount(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(stateDir)
 
+	agentSecurityConfig, managerSecurityConfig, tmpDir, err := testutils.GenerateAgentAndManagerSecurityConfig()
+	assert.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
 	m, err := New(&Config{
-		Listener: l,
-		StateDir: stateDir,
+		Listener:       l,
+		StateDir:       stateDir,
+		SecurityConfig: managerSecurityConfig,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, m)
 	go m.Run(ctx)
 	defer m.Stop()
 
-	conn, err := grpc.Dial(l.Addr().String(), grpc.WithInsecure(), grpc.WithTimeout(10*time.Second),
-		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout(l.Addr().Network(), addr, timeout)
-		}))
+	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
+	opts = append(opts, grpc.WithTransportCredentials(managerSecurityConfig.ClientTLSCreds))
+	opts = append(opts, grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
+		return net.DialTimeout(l.Addr().Network(), addr, timeout)
+	}))
+
+	conn, err := grpc.Dial(l.Addr().String(), opts...)
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, conn.Close())
@@ -114,17 +131,19 @@ func TestManagerNodeCount(t *testing.T) {
 
 	managers := agent.NewManagers(l.Addr().String())
 	a1, err := agent.New(&agent.Config{
-		ID:       "test1",
-		Hostname: "hostname1",
-		Managers: managers,
-		Executor: &NoopExecutor{},
+		ID:             "test1",
+		Hostname:       "hostname1",
+		Managers:       managers,
+		Executor:       &NoopExecutor{},
+		SecurityConfig: agentSecurityConfig,
 	})
 	require.NoError(t, err)
 	a2, err := agent.New(&agent.Config{
-		ID:       "test2",
-		Hostname: "hostname2",
-		Managers: managers,
-		Executor: &NoopExecutor{},
+		ID:             "test2",
+		Hostname:       "hostname2",
+		Managers:       managers,
+		Executor:       &NoopExecutor{},
+		SecurityConfig: agentSecurityConfig,
 	})
 	require.NoError(t, err)
 
