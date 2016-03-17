@@ -109,9 +109,9 @@ func TestScheduler(t *testing.T) {
 	assignment2 := watchAssignment(t, watch)
 	// must assign to id2 or id3 since id1 already has a task
 	if assignment1.NodeID == "id2" {
-		assert.Equal(t, assignment2.NodeID, "id3")
+		assert.Equal(t, "id3", assignment2.NodeID)
 	} else {
-		assert.Equal(t, assignment2.NodeID, "id2")
+		assert.Equal(t, "id2", assignment2.NodeID)
 	}
 
 	err = store.Update(func(tx state.Tx) error {
@@ -133,7 +133,7 @@ func TestScheduler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignment3 := watchAssignment(t, watch)
-	assert.Equal(t, assignment3.NodeID, "id1")
+	assert.Equal(t, "id1", assignment3.NodeID)
 
 	// Update a task to make it unassigned. It should get assigned by the
 	// scheduler.
@@ -153,7 +153,7 @@ func TestScheduler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignment4 := watchAssignment(t, watch)
-	assert.Equal(t, assignment4.NodeID, "id1")
+	assert.Equal(t, "id1", assignment4.NodeID)
 
 	err = store.Update(func(tx state.Tx) error {
 		// Create a ready node, then remove it. No tasks should ever
@@ -186,7 +186,7 @@ func TestScheduler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignmentRemovedNode := watchAssignment(t, watch)
-	assert.NotEqual(t, assignmentRemovedNode.NodeID, "removednode")
+	assert.NotEqual(t, "removednode", assignmentRemovedNode.NodeID)
 
 	err = store.Update(func(tx state.Tx) error {
 		// Create a ready node. It should be used for the next
@@ -218,7 +218,7 @@ func TestScheduler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignment5 := watchAssignment(t, watch)
-	assert.Equal(t, assignment5.NodeID, "id4")
+	assert.Equal(t, "id4", assignment5.NodeID)
 
 	err = store.Update(func(tx state.Tx) error {
 		// Create a non-ready node. It should NOT be used for the next
@@ -250,7 +250,7 @@ func TestScheduler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignment6 := watchAssignment(t, watch)
-	assert.NotEqual(t, assignment6.NodeID, "id5")
+	assert.NotEqual(t, "id5", assignment6.NodeID)
 
 	err = store.Update(func(tx state.Tx) error {
 		// Update node id5 to put it in the READY state.
@@ -282,7 +282,7 @@ func TestScheduler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignment7 := watchAssignment(t, watch)
-	assert.Equal(t, assignment7.NodeID, "id5")
+	assert.Equal(t, "id5", assignment7.NodeID)
 
 	err = store.Update(func(tx state.Tx) error {
 		// Create a ready node, then immediately take it down. The next
@@ -316,7 +316,7 @@ func TestScheduler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignment8 := watchAssignment(t, watch)
-	assert.NotEqual(t, assignment8.NodeID, "id6")
+	assert.NotEqual(t, "id6", assignment8.NodeID)
 
 	scheduler.Stop()
 }
@@ -369,7 +369,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignment := watchAssignment(t, watch)
-	assert.Equal(t, assignment.NodeID, "newnode")
+	assert.Equal(t, "newnode", assignment.NodeID)
 
 	scheduler.Stop()
 }
