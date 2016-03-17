@@ -17,6 +17,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/docker/swarm-v2/api"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const testTick = 1 * time.Second
@@ -84,7 +85,7 @@ func waitForCluster(t *testing.T, nodes map[uint64]*Node) {
 		}
 		return true
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // waitForPeerNumber waits until peers in cluster converge to specified number
@@ -101,14 +102,14 @@ func waitForPeerNumber(t *testing.T, nodes map[uint64]*Node, count int) {
 
 func newInitNode(t *testing.T, id uint64) *Node {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(t, err, "can't bind to raft service port")
+	require.NoError(t, err, "can't bind to raft service port")
 	s := grpc.NewServer()
 
 	cfg := DefaultNodeConfig()
 	cfg.Logger = raftLogger
 
 	stateDir, err := ioutil.TempDir("", "test-raft")
-	assert.NoError(t, err, "can't create temporary state directory")
+	require.NoError(t, err, "can't create temporary state directory")
 
 	newNodeOpts := NewNodeOptions{
 		ID:           id,
@@ -118,12 +119,12 @@ func newInitNode(t *testing.T, id uint64) *Node {
 		TickInterval: testTick,
 	}
 	n, err := NewNode(context.Background(), newNodeOpts)
-	assert.NoError(t, err, "can't create raft node")
+	require.NoError(t, err, "can't create raft node")
 	n.Listener = l
 	n.Server = s
 
 	err = n.Campaign(n.Ctx)
-	assert.NoError(t, err, "can't campaign to be the leader")
+	require.NoError(t, err, "can't campaign to be the leader")
 	n.Start()
 
 	Register(s, n)
@@ -142,14 +143,14 @@ func newInitNode(t *testing.T, id uint64) *Node {
 
 func newJoinNode(t *testing.T, id uint64, join string) *Node {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(t, err, "can't bind to raft service port")
+	require.NoError(t, err, "can't bind to raft service port")
 	s := grpc.NewServer()
 
 	cfg := DefaultNodeConfig()
 	cfg.Logger = raftLogger
 
 	stateDir, err := ioutil.TempDir("", "test-raft")
-	assert.NoError(t, err, "can't create temporary state directory")
+	require.NoError(t, err, "can't create temporary state directory")
 
 	newNodeOpts := NewNodeOptions{
 		ID:           id,
@@ -160,7 +161,7 @@ func newJoinNode(t *testing.T, id uint64, join string) *Node {
 	}
 
 	n, err := NewNode(context.Background(), newNodeOpts)
-	assert.NoError(t, err, "can't create raft node")
+	require.NoError(t, err, "can't create raft node")
 	n.Listener = l
 	n.Server = s
 
@@ -172,10 +173,10 @@ func newJoinNode(t *testing.T, id uint64, join string) *Node {
 	resp, err := c.Join(n.Ctx, &api.JoinRequest{
 		Node: &api.RaftNode{ID: id, Addr: l.Addr().String()},
 	})
-	assert.NoError(t, err, "can't join existing Raft")
+	require.NoError(t, err, "can't join existing Raft")
 
 	err = n.RegisterNodes(resp.Members)
-	assert.NoError(t, err, "can't add nodes to the local cluster list")
+	require.NoError(t, err, "can't add nodes to the local cluster list")
 
 	Register(s, n)
 
