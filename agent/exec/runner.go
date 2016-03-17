@@ -10,6 +10,13 @@ import (
 //
 // All methods should be idempotent and thread-safe.
 type Runner interface {
+	// Update the task definition seen by the runner. Will return
+	// ErrTaskUpdateFailed if the provided task definition changes fields that
+	// cannot be changed.
+	//
+	// Will be ignored if the task has exited.
+	Update(ctx context.Context, t *api.Task) error
+
 	// Prepare the task for execution. This should ensure that all resources
 	// are created such that a call to start should execute immediately.
 	Prepare(ctx context.Context) error
@@ -43,6 +50,10 @@ type Reporter interface {
 	// Report the state of the task run. If an error is returned, execution
 	// will be stopped.
 	Report(ctx context.Context, state api.TaskState) error
+
+	// TODO(stevvooe): It is very likely we will need to report more
+	// information back from the runner into the agent. We'll likely expand
+	// this interface to do so.
 }
 
 // Run runs a runner, reporting state along the way. Under normal execution,

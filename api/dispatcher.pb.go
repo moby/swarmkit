@@ -135,13 +135,23 @@ func (*HeartbeatResponse) ProtoMessage() {}
 type UpdateTaskStatusRequest struct {
 	// Tasks should contain all statuses for running tasks. Only the status
 	// field must be set. The spec is not required.
-	NodeID    string  `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
-	SessionID string  `protobuf:"bytes,2,opt,name=session_id,proto3" json:"session_id,omitempty"`
-	Tasks     []*Task `protobuf:"bytes,3,rep,name=tasks" json:"tasks,omitempty"`
+	NodeID    string                                      `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	SessionID string                                      `protobuf:"bytes,2,opt,name=session_id,proto3" json:"session_id,omitempty"`
+	Updates   []*UpdateTaskStatusRequest_TaskStatusUpdate `protobuf:"bytes,3,rep,name=updates" json:"updates,omitempty"`
 }
 
 func (m *UpdateTaskStatusRequest) Reset()      { *m = UpdateTaskStatusRequest{} }
 func (*UpdateTaskStatusRequest) ProtoMessage() {}
+
+type UpdateTaskStatusRequest_TaskStatusUpdate struct {
+	TaskID string      `protobuf:"bytes,1,opt,name=task_id,proto3" json:"task_id,omitempty"`
+	Status *TaskStatus `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
+}
+
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Reset() {
+	*m = UpdateTaskStatusRequest_TaskStatusUpdate{}
+}
+func (*UpdateTaskStatusRequest_TaskStatusUpdate) ProtoMessage() {}
 
 type UpdateTaskStatusResponse struct {
 }
@@ -174,6 +184,7 @@ func init() {
 	proto.RegisterType((*HeartbeatRequest)(nil), "api.HeartbeatRequest")
 	proto.RegisterType((*HeartbeatResponse)(nil), "api.HeartbeatResponse")
 	proto.RegisterType((*UpdateTaskStatusRequest)(nil), "api.UpdateTaskStatusRequest")
+	proto.RegisterType((*UpdateTaskStatusRequest_TaskStatusUpdate)(nil), "api.UpdateTaskStatusRequest.TaskStatusUpdate")
 	proto.RegisterType((*UpdateTaskStatusResponse)(nil), "api.UpdateTaskStatusResponse")
 	proto.RegisterType((*TasksRequest)(nil), "api.TasksRequest")
 	proto.RegisterType((*TasksMessage)(nil), "api.TasksMessage")
@@ -272,11 +283,24 @@ func (m *UpdateTaskStatusRequest) Copy() *UpdateTaskStatusRequest {
 		SessionID: m.SessionID,
 	}
 
-	if m.Tasks != nil {
-		o.Tasks = make([]*Task, 0, len(m.Tasks))
-		for _, v := range m.Tasks {
-			o.Tasks = append(o.Tasks, v.Copy())
+	if m.Updates != nil {
+		o.Updates = make([]*UpdateTaskStatusRequest_TaskStatusUpdate, 0, len(m.Updates))
+		for _, v := range m.Updates {
+			o.Updates = append(o.Updates, v.Copy())
 		}
+	}
+
+	return o
+}
+
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Copy() *UpdateTaskStatusRequest_TaskStatusUpdate {
+	if m == nil {
+		return nil
+	}
+
+	o := &UpdateTaskStatusRequest_TaskStatusUpdate{
+		TaskID: m.TaskID,
+		Status: m.Status.Copy(),
 	}
 
 	return o
@@ -399,8 +423,21 @@ func (this *UpdateTaskStatusRequest) GoString() string {
 	s = append(s, "&api.UpdateTaskStatusRequest{")
 	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
 	s = append(s, "SessionID: "+fmt.Sprintf("%#v", this.SessionID)+",\n")
-	if this.Tasks != nil {
-		s = append(s, "Tasks: "+fmt.Sprintf("%#v", this.Tasks)+",\n")
+	if this.Updates != nil {
+		s = append(s, "Updates: "+fmt.Sprintf("%#v", this.Updates)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *UpdateTaskStatusRequest_TaskStatusUpdate) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.UpdateTaskStatusRequest_TaskStatusUpdate{")
+	s = append(s, "TaskID: "+fmt.Sprintf("%#v", this.TaskID)+",\n")
+	if this.Status != nil {
+		s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -937,8 +974,8 @@ func (m *UpdateTaskStatusRequest) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintDispatcher(data, i, uint64(len(m.SessionID)))
 		i += copy(data[i:], m.SessionID)
 	}
-	if len(m.Tasks) > 0 {
-		for _, msg := range m.Tasks {
+	if len(m.Updates) > 0 {
+		for _, msg := range m.Updates {
 			data[i] = 0x1a
 			i++
 			i = encodeVarintDispatcher(data, i, uint64(msg.Size()))
@@ -948,6 +985,40 @@ func (m *UpdateTaskStatusRequest) MarshalTo(data []byte) (int, error) {
 			}
 			i += n
 		}
+	}
+	return i, nil
+}
+
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.TaskID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintDispatcher(data, i, uint64(len(m.TaskID)))
+		i += copy(data[i:], m.TaskID)
+	}
+	if m.Status != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintDispatcher(data, i, uint64(m.Status.Size()))
+		n2, err := m.Status.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
 	}
 	return i, nil
 }
@@ -1148,11 +1219,25 @@ func (m *UpdateTaskStatusRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovDispatcher(uint64(l))
 	}
-	if len(m.Tasks) > 0 {
-		for _, e := range m.Tasks {
+	if len(m.Updates) > 0 {
+		for _, e := range m.Updates {
 			l = e.Size()
 			n += 1 + l + sovDispatcher(uint64(l))
 		}
+	}
+	return n
+}
+
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.TaskID)
+	if l > 0 {
+		n += 1 + l + sovDispatcher(uint64(l))
+	}
+	if m.Status != nil {
+		l = m.Status.Size()
+		n += 1 + l + sovDispatcher(uint64(l))
 	}
 	return n
 }
@@ -1274,7 +1359,18 @@ func (this *UpdateTaskStatusRequest) String() string {
 	s := strings.Join([]string{`&UpdateTaskStatusRequest{`,
 		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
 		`SessionID:` + fmt.Sprintf("%v", this.SessionID) + `,`,
-		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "Task", 1) + `,`,
+		`Updates:` + strings.Replace(fmt.Sprintf("%v", this.Updates), "UpdateTaskStatusRequest_TaskStatusUpdate", "UpdateTaskStatusRequest_TaskStatusUpdate", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateTaskStatusRequest_TaskStatusUpdate) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateTaskStatusRequest_TaskStatusUpdate{`,
+		`TaskID:` + fmt.Sprintf("%v", this.TaskID) + `,`,
+		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "TaskStatus", "TaskStatus", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2012,7 +2108,7 @@ func (m *UpdateTaskStatusRequest) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Tasks", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Updates", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -2036,8 +2132,120 @@ func (m *UpdateTaskStatusRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Tasks = append(m.Tasks, &Task{})
-			if err := m.Tasks[len(m.Tasks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			m.Updates = append(m.Updates, &UpdateTaskStatusRequest_TaskStatusUpdate{})
+			if err := m.Updates[len(m.Updates)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDispatcher(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthDispatcher
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDispatcher
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TaskStatusUpdate: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TaskStatusUpdate: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TaskID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDispatcher
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthDispatcher
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TaskID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDispatcher
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthDispatcher
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Status == nil {
+				m.Status = &TaskStatus{}
+			}
+			if err := m.Status.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

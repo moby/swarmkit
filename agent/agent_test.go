@@ -1,6 +1,12 @@
 package agent
 
-import "testing"
+import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
+)
 
 func TestAgent(t *testing.T) {
 	// TODO(stevvooe): The current agent is fairly monolithic, making it hard
@@ -24,4 +30,25 @@ func TestAgent(t *testing.T) {
 	//
 	// We may also move the Assign/Watch to a Driver type and have the agent
 	// oversee everything.
+}
+
+func TestAgentStartStop(t *testing.T) {
+	agent, err := New(&Config{
+		ID:       "test",
+		Hostname: "test.local",
+		Managers: NewManagers("localhost:4949"),
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, agent)
+
+	ctx, _ := context.WithTimeout(context.Background(), 5000*time.Millisecond)
+
+	assert.Equal(t, errAgentNotStarted, agent.Stop(ctx))
+	assert.NoError(t, agent.Start(ctx))
+
+	if err := agent.Start(ctx); err != errAgentStarted {
+		t.Fatalf("expected agent started error: %v", err)
+	}
+
+	assert.NoError(t, agent.Stop(ctx))
 }

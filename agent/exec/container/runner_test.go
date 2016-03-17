@@ -108,7 +108,7 @@ func TestRunnerWait(t *testing.T) {
 		client.EXPECT().Events(gomock.Any(), types.EventsOptions{
 			Since:   "0",
 			Filters: config.eventFilter(),
-		}).Return(makeEvents(t, "create", "die"), nil),
+		}).Return(makeEvents(t, config, "create", "die"), nil),
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
 				ContainerJSONBase: &types.ContainerJSONBase{
@@ -131,7 +131,7 @@ func TestRunnerWaitExitError(t *testing.T) {
 		client.EXPECT().Events(gomock.Any(), types.EventsOptions{
 			Since:   "0",
 			Filters: config.eventFilter(),
-		}).Return(makeEvents(t, "create", "die"), nil),
+		}).Return(makeEvents(t, config, "create", "die"), nil),
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
 				ContainerJSONBase: &types.ContainerJSONBase{
@@ -215,7 +215,7 @@ func genTask(t *testing.T) *api.Task {
 	const (
 		nodeID    = "dockerexec-test-node-id"
 		jobID     = "dockerexec-test-job"
-		reference = "stevvooe/foo"
+		reference = "stevvooe/foo:latest"
 	)
 
 	return &api.Task{
@@ -234,14 +234,22 @@ func genTask(t *testing.T) *api.Task {
 	}
 }
 
-func makeEvents(t *testing.T, actions ...string) io.ReadCloser {
+func makeEvents(t *testing.T, container *containerConfig, actions ...string) io.ReadCloser {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 
 	for _, action := range actions {
 		event := events.Message{
+			Type:   events.ContainerEventType,
 			Action: action,
+			Actor: events.Actor{
+				// TODO(stevvooe): Resolve container id.
+				Attributes: map[string]string{
+					"name": container.name(),
+				},
+			},
 		}
+
 		if err := enc.Encode(event); err != nil {
 			t.Fatalf("error preparing events: %v (encoding %v)", err, event)
 		}

@@ -141,10 +141,30 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 		return nil, err
 	}
-
 	err := d.store.Update(func(tx state.Tx) error {
-		for _, t := range r.Tasks {
-			if err := tx.Tasks().Update(&api.Task{ID: t.ID, Status: t.Status}); err != nil {
+		for _, u := range r.Updates {
+			logger := log.WithField("task.id", u.TaskID)
+			if u.Status == nil {
+				logger.Warnf("task report has nil status")
+				continue
+			}
+			task := tx.Tasks().Get(u.TaskID)
+			if task == nil {
+				logger.Errorf("task unavailable")
+				continue
+			}
+
+			var state api.TaskState
+			if task.Status != nil {
+				state = task.Status.State
+			} else {
+				state = api.TaskStateNew
+			}
+
+			logger.Debugf("%v -> %v", state, u.Status.State)
+			task.Status = u.Status
+
+			if err := tx.Tasks().Update(task); err != nil {
 				return err
 			}
 		}

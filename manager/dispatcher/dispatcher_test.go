@@ -294,9 +294,17 @@ func TestTaskUpdate(t *testing.T) {
 	testTask2.Status = &api.TaskStatus{State: api.TaskStateAssigned}
 	updReq := &api.UpdateTaskStatusRequest{
 		NodeID: testNode.ID,
-		Tasks:  []*api.Task{testTask1, testTask2},
+		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
+			{
+				TaskID: testTask1.ID,
+				Status: testTask1.Status,
+			},
+			{
+				TaskID: testTask2.ID,
+				Status: testTask2.Status,
+			},
+		},
 	}
-
 	{
 		// without correct SessionID should fail
 		resp, err := gd.Client.UpdateTaskStatus(context.Background(), updReq)
@@ -311,8 +319,10 @@ func TestTaskUpdate(t *testing.T) {
 	err = gd.Store.View(func(readTx state.ReadTx) error {
 		storeTask1 := readTx.Tasks().Get(testTask1.ID)
 		assert.NotNil(t, storeTask1)
+		assert.NotNil(t, storeTask1.Status)
 		storeTask2 := readTx.Tasks().Get(testTask2.ID)
 		assert.NotNil(t, storeTask2)
+		assert.NotNil(t, storeTask2.Status)
 		assert.Equal(t, storeTask1.Status.State, api.TaskStateAssigned)
 		assert.Equal(t, storeTask2.Status.State, api.TaskStateAssigned)
 		return nil

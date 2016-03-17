@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	engineapi "github.com/docker/engine-api/client"
+	"github.com/docker/engine-api/types/events"
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
@@ -40,6 +41,15 @@ func NewRunner(client engineapi.APIClient, task *api.Task) (*Runner, error) {
 	}, nil
 }
 
+// Update tasks a recent task update and applies it to the container.
+func (r *Runner) Update(ctx context.Context, t *api.Task) error {
+	log.G(ctx).Warnf("task updates not yet supported")
+	// TODO(stevvooe): While assignment of tasks is idempotent, we do allow
+	// updates of metadata, such as labelling, as well as any other properties
+	// that make sense.
+	return nil
+}
+
 // Prepare creates a container and ensures the image is pulled.
 //
 // If the container has already be created, exec.ErrTaskPrepared is returned.
@@ -66,6 +76,8 @@ func (r *Runner) Prepare(ctx context.Context) error {
 			if err := r.controller.pullImage(ctx, r.client); err != nil {
 				return err
 			}
+
+			continue // retry to create the container
 		}
 
 		break
@@ -124,7 +136,12 @@ func (r *Runner) Wait(pctx context.Context) error {
 	for {
 		select {
 		case event := <-eventq:
-			log.G(ctx).Debugf("%#v", event)
+			log.G(ctx).Debugf("%v", event)
+
+			if !r.matchevent(event) {
+				continue
+			}
+
 			switch event.Action {
 			case "die": // exit on terminal events
 				ctnr, err := r.controller.inspect(ctx, r.client)
@@ -201,6 +218,21 @@ func (r *Runner) Close() error {
 		close(r.closed)
 	}
 	return nil
+}
+
+func (r *Runner) matchevent(event events.Message) bool {
+	if event.Type != events.ContainerEventType {
+		return false
+	}
+
+	// TODO(stevvooe): Filter based on ID matching, in addition to name.
+
+	// Make sure the events are for this container.
+	if event.Actor.Attributes["name"] != r.controller.container.name() {
+		return false
+	}
+
+	return true
 }
 
 func (r *Runner) checkClosed() error {

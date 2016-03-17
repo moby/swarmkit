@@ -18,19 +18,19 @@ var (
 empty path, the agent will allocate an identity and startup. If data is
 already present, the agent will recover and startup.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			name, err := cmd.Flags().GetString("name")
+			hostname, err := cmd.Flags().GetString("hostname")
 			if err != nil {
 				return err
 			}
 
-			if name == "" {
+			if hostname == "" {
 				hn, err := os.Hostname()
 				if err != nil {
 					return err
 				}
 
 				log.Debugf("agent: fallback to hostname as name")
-				name = hn
+				hostname = hn
 			}
 
 			id, err := cmd.Flags().GetString("id")
@@ -53,7 +53,7 @@ already present, the agent will recover and startup.`,
 
 			ag, err := agent.New(&agent.Config{
 				ID:       id,
-				Name:     name,
+				Hostname: hostname,
 				Managers: managers,
 			})
 			if err != nil {
@@ -63,17 +63,19 @@ already present, the agent will recover and startup.`,
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			if err := ag.Run(ctx); err != nil {
-				log.Fatalln(err)
+			if err := ag.Start(ctx); err != nil {
+				return err
 			}
 
-			return nil
+			// TODO(stevvooe): Register signal to gracefully shutdown agent.
+
+			return ag.Err()
 		},
 	}
 )
 
 func init() {
 	agentCmd.Flags().String("id", "", "Specifies the identity of the node")
-	agentCmd.Flags().String("name", "", "Agent name. Defaults to hostname")
+	agentCmd.Flags().String("hostname", "", "Override reported agent hostname")
 	agentCmd.Flags().StringSliceP("manager", "m", []string{"localhost:4242"}, "Specify one or more manager addresses")
 }

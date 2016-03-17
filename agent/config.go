@@ -7,8 +7,8 @@ type Config struct {
 	// ID is the identifier to be used for the agent.
 	ID string
 
-	// Name is a human readable name for the agent instance.
-	Name string
+	// Hostname the name of host for agent instance.
+	Hostname string
 
 	// Managers provides the manager backend used by the agent. It will be
 	// updated with managers weights as observed by the agent.
@@ -20,7 +20,7 @@ func (c *Config) validate() error {
 		return fmt.Errorf("config: id required")
 	}
 
-	if c.Name == "" {
+	if c.Hostname == "" {
 		return fmt.Errorf("config: name required")
 	}
 
