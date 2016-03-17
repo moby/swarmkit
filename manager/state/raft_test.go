@@ -88,6 +88,13 @@ func waitForCluster(t *testing.T, nodes map[uint64]*Node) {
 	}))
 }
 
+// waitForPeerNumber waits until peers in cluster converge to specified number
+func waitForPeerNumber(t *testing.T, nodes map[uint64]*Node, count int) {
+	assert.NoError(t, pollNodeFunc(nodes, func(n *Node) bool {
+		return len(n.Cluster.Peers()) == count
+	}))
+}
+
 func newInitNode(t *testing.T, id uint64) *Node {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.NoError(t, err, "can't bind to raft service port")
@@ -321,7 +328,7 @@ func TestRaftLeaderDown(t *testing.T) {
 	checkValue(t, nodes[2], value)
 	assert.Equal(t, len(nodes[2].Cluster.Peers()), 3)
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	checkValue(t, nodes[3], value)
 	assert.Equal(t, len(nodes[3].Cluster.Peers()), 3)
@@ -348,7 +355,7 @@ func TestRaftFollowerDown(t *testing.T) {
 	checkValue(t, nodes[1], value)
 	assert.Equal(t, len(nodes[1].Cluster.Peers()), 3)
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	checkValue(t, nodes[2], value)
 	assert.Equal(t, len(nodes[2].Cluster.Peers()), 3)
@@ -367,7 +374,7 @@ func TestRaftLogReplication(t *testing.T) {
 	// All nodes should have the value in the physical store
 	checkValue(t, nodes[1], value)
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	checkValue(t, nodes[2], value)
 	checkValue(t, nodes[3], value)
@@ -388,7 +395,7 @@ func TestRaftLogReplicationWithoutLeader(t *testing.T) {
 	// No value should be replicated in the store in the absence of the leader
 	checkNoValue(t, nodes[2])
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	checkNoValue(t, nodes[3])
 }
@@ -414,7 +421,7 @@ func TestRaftQuorumFailure(t *testing.T) {
 	// The value should not be replicated, we have no majority
 	checkNoValue(t, nodes[2])
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	checkNoValue(t, nodes[1])
 }
@@ -433,7 +440,9 @@ func TestRaftFollowerLeave(t *testing.T) {
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
-	time.Sleep(1 * time.Second)
+	delete(nodes, 5)
+
+	waitForPeerNumber(t, nodes, 4)
 
 	// Propose a value
 	value, err := proposeValue(t, nodes[1])
@@ -441,18 +450,14 @@ func TestRaftFollowerLeave(t *testing.T) {
 
 	// Value should be replicated on every node
 	checkValue(t, nodes[1], value)
-	assert.Equal(t, len(nodes[1].Cluster.Peers()), 4)
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	checkValue(t, nodes[2], value)
-	assert.Equal(t, len(nodes[2].Cluster.Peers()), 4)
 
 	checkValue(t, nodes[3], value)
-	assert.Equal(t, len(nodes[3].Cluster.Peers()), 4)
 
 	checkValue(t, nodes[4], value)
-	assert.Equal(t, len(nodes[4].Cluster.Peers()), 4)
 }
 
 func TestRaftLeaderLeave(t *testing.T) {
@@ -494,7 +499,7 @@ func TestRaftLeaderLeave(t *testing.T) {
 	checkValue(t, nodes[leader], value)
 	assert.Equal(t, len(nodes[leader].Cluster.Peers()), 2)
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	checkValue(t, nodes[follower], value)
 	assert.Equal(t, len(nodes[follower].Cluster.Peers()), 2)
@@ -514,7 +519,7 @@ func TestRaftNewNodeGetsData(t *testing.T) {
 	// Add a new node
 	addRaftNode(t, nodes)
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	// Value should be replicated on every node
 	for _, node := range nodes {
