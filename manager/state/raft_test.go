@@ -230,7 +230,7 @@ func TestRaftBootstrap(t *testing.T) {
 	assert.Equal(t, len(nodes[3].Cluster.Peers()), 3)
 }
 
-func TestLeader(t *testing.T) {
+func TestRaftLeader(t *testing.T) {
 	t.Parallel()
 
 	nodes := newRaftCluster(t)
