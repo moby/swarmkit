@@ -58,7 +58,7 @@ func pollNodeFunc(nodes map[uint64]*Node, f func(*Node) bool) error {
 	select {
 	case <-done:
 		return nil
-	case <-time.After(10 * time.Second):
+	case <-time.After(32 * time.Second):
 		for _, tick := range tickers {
 			tick.Stop()
 		}
