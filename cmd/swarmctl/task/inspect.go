@@ -28,19 +28,22 @@ var (
 			if err != nil {
 				return err
 			}
+
+			res := common.NewResolver(cmd, c)
+
 			w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
 			defer func() {
 				// Ignore flushing errors - there's nothing we can do.
 				_ = w.Flush()
 			}()
 			fmt.Fprintf(w, "ID:\t%s\n", r.Task.ID)
-			fmt.Fprintf(w, "JobID:\t%s\n", r.Task.JobID)
+			fmt.Fprintf(w, "Job:\t%s\n", res.Resolve(api.Job{}, r.Task.JobID))
 			if r.Task.Status.Err != "" {
 				fmt.Fprintf(w, "Status:\t%s (%s)\n", r.Task.Status.State.String(), r.Task.Status.Err)
 			} else {
 				fmt.Fprintf(w, "Status:\t%s\n", r.Task.Status.State.String())
 			}
-			fmt.Fprintf(w, "NodeID:\t%s\n", r.Task.NodeID)
+			fmt.Fprintf(w, "Node:\t%s\n", res.Resolve(api.Node{}, r.Task.NodeID))
 			return nil
 		},
 	}

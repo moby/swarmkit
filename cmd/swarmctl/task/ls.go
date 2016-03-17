@@ -23,15 +23,21 @@ var (
 			if err != nil {
 				return err
 			}
+			res := common.NewResolver(cmd, c)
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
 			defer func() {
 				// Ignore flushing errors - there's nothing we can do.
 				_ = w.Flush()
 			}()
-			fmt.Fprintln(w, "ID\tJobID\tStatus\tNodeID")
+			fmt.Fprintln(w, "ID\tJob\tStatus\tNode")
 			for _, t := range r.Tasks {
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", t.ID, t.JobID, t.Status.State.String(), t.NodeID)
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+					t.ID,
+					res.Resolve(api.Job{}, t.JobID),
+					t.Status.State.String(),
+					res.Resolve(api.Node{}, t.NodeID),
+				)
 			}
 			return nil
 		},
