@@ -91,9 +91,9 @@ func NewMemoryStore(proposer Proposer) *MemoryStore {
 						Indexer: jobIndexerByID{},
 					},
 					indexName: {
-						Name:         indexName,
-						AllowMissing: true,
-						Indexer:      jobIndexerByName{},
+						Name:    indexName,
+						Unique:  true,
+						Indexer: jobIndexerByName{},
 					},
 				},
 			},
@@ -722,11 +722,27 @@ func (jobs jobs) table() string {
 	return tableJob
 }
 
+// lookup is an internal typed wrapper around memdb.
+func (jobs jobs) lookup(index, id string) *api.Job {
+	j, err := jobs.memDBTx.First(jobs.table(), index, id)
+	if err != nil {
+		return nil
+	}
+	if j != nil {
+		return j.(*api.Job)
+	}
+	return nil
+}
+
 // Create adds a new job to the store.
 // Returns ErrExist if the ID is already taken.
 func (jobs jobs) Create(j *api.Job) error {
-	if jobs.Get(j.ID) != nil {
+	if jobs.lookup(indexID, j.ID) != nil {
 		return ErrExist
+	}
+	// Ensure the name is not already in use.
+	if j.Spec != nil && jobs.lookup(indexName, j.Spec.Meta.Name) != nil {
+		return ErrNameConflict
 	}
 
 	err := jobs.memDBTx.Insert(jobs.table(), j.Copy())
@@ -739,8 +755,14 @@ func (jobs jobs) Create(j *api.Job) error {
 // Update updates an existing job in the store.
 // Returns ErrNotExist if the job doesn't exist.
 func (jobs jobs) Update(j *api.Job) error {
-	if jobs.Get(j.ID) == nil {
+	if jobs.lookup(indexID, j.ID) == nil {
 		return ErrNotExist
+	}
+	// Ensure the name is either not in use or already used by this same Job.
+	if existing := jobs.lookup(indexName, j.Spec.Meta.Name); existing != nil {
+		if existing.ID != j.ID {
+			return ErrNameConflict
+		}
 	}
 
 	err := jobs.memDBTx.Insert(jobs.table(), j.Copy())
@@ -753,7 +775,7 @@ func (jobs jobs) Update(j *api.Job) error {
 // Delete removes a job from the store.
 // Returns ErrNotExist if the node doesn't exist.
 func (jobs jobs) Delete(id string) error {
-	j := jobs.Get(id)
+	j := jobs.lookup(indexID, id)
 	if j == nil {
 		return ErrNotExist
 	}
@@ -768,14 +790,8 @@ func (jobs jobs) Delete(id string) error {
 // Job looks up a job by ID.
 // Returns nil if the job doesn't exist.
 func (jobs jobs) Get(id string) *api.Job {
-	obj, err := jobs.memDBTx.First(jobs.table(), indexID, id)
-	if err != nil {
-		return nil
-	}
-	if obj != nil {
-		if j, ok := obj.(*api.Job); ok {
-			return j.Copy()
-		}
+	if j := jobs.lookup(indexID, id); j != nil {
+		return j.Copy()
 	}
 	return nil
 }

@@ -61,8 +61,7 @@ var (
 			ID: "id3",
 			Spec: &api.JobSpec{
 				Meta: api.Meta{
-					// intentionally conflicting name
-					Name: "name2",
+					Name: "name3",
 				},
 			},
 		},
@@ -243,11 +242,25 @@ func TestStoreJob(t *testing.T) {
 	setupTestStore(t, s)
 
 	err = s.Update(func(tx Tx) error {
-		allJobs, err := tx.Jobs().Find(All)
-		assert.NoError(t, err)
-		assert.Len(t, allJobs, len(jobSet))
+		assert.Equal(t,
+			tx.Jobs().Create(&api.Job{
+				ID: "id1",
+				Spec: &api.JobSpec{
+					Meta: api.Meta{
+						Name: "name4",
+					},
+				},
+			}), ErrExist, "duplicate IDs must be rejected")
 
-		assert.Error(t, tx.Jobs().Create(jobSet[0]), "duplicate IDs must be rejected")
+		assert.Equal(t,
+			tx.Jobs().Create(&api.Job{
+				ID: "id4",
+				Spec: &api.JobSpec{
+					Meta: api.Meta{
+						Name: "name1",
+					},
+				},
+			}), ErrNameConflict, "duplicate names must be rejected")
 		return nil
 	})
 	assert.NoError(t, err)
@@ -260,9 +273,6 @@ func TestStoreJob(t *testing.T) {
 		foundJobs, err := readTx.Jobs().Find(ByName("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundJobs, 1)
-		foundJobs, err = readTx.Jobs().Find(ByName("name2"))
-		assert.NoError(t, err)
-		assert.Len(t, foundJobs, 2)
 		foundJobs, err = readTx.Jobs().Find(ByName("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundJobs, 0)
@@ -271,36 +281,55 @@ func TestStoreJob(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Update.
-	update := &api.Job{
-		ID: "id3",
-		Spec: &api.JobSpec{
-			Meta: api.Meta{
-				// intentionally conflicting name
-				Name: "name3",
-			},
-		},
-	}
 	err = s.Update(func(tx Tx) error {
-		assert.NotEqual(t, update, tx.Jobs().Get("id3"))
+		// Regular update.
+		update := jobSet[0].Copy()
+		update.Spec.Meta.Labels = map[string]string{
+			"foo": "bar",
+		}
+
+		assert.NotEqual(t, update, tx.Jobs().Get(update.ID))
 		assert.NoError(t, tx.Jobs().Update(update))
-		assert.Equal(t, update, tx.Jobs().Get("id3"))
+		assert.Equal(t, update, tx.Jobs().Get(update.ID))
 
-		foundJobs, err := tx.Jobs().Find(ByName("name2"))
+		// Name conflict.
+		update = tx.Jobs().Get(update.ID)
+		update.Spec.Meta.Name = "name2"
+		assert.Equal(t, tx.Jobs().Update(update), ErrNameConflict, "duplicate names should be rejected")
+
+		// Name change.
+		update = tx.Jobs().Get(update.ID)
+		foundJobs, err := tx.Jobs().Find(ByName("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundJobs, 1)
-		foundJobs, err = tx.Jobs().Find(ByName("name3"))
+		foundJobs, err = tx.Jobs().Find(ByName("name4"))
+		assert.NoError(t, err)
+		assert.Empty(t, foundJobs)
+
+		update.Spec.Meta.Name = "name4"
+		assert.NoError(t, tx.Jobs().Update(update))
+		foundJobs, err = tx.Jobs().Find(ByName("name1"))
+		assert.NoError(t, err)
+		assert.Empty(t, foundJobs)
+		foundJobs, err = tx.Jobs().Find(ByName("name4"))
 		assert.NoError(t, err)
 		assert.Len(t, foundJobs, 1)
 
-		invalidUpdate := *jobSet[0]
+		// Invalid update.
+		invalidUpdate := jobSet[0].Copy()
 		invalidUpdate.ID = "invalid"
-		assert.Error(t, tx.Jobs().Update(&invalidUpdate), "invalid IDs should be rejected")
+		assert.Error(t, tx.Jobs().Update(invalidUpdate), "invalid IDs should be rejected")
 
-		// Delete
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Delete
+	err = s.Update(func(tx Tx) error {
 		assert.NotNil(t, tx.Jobs().Get("id1"))
 		assert.NoError(t, tx.Jobs().Delete("id1"))
 		assert.Nil(t, tx.Jobs().Get("id1"))
-		foundJobs, err = tx.Jobs().Find(ByName("name1"))
+		foundJobs, err := tx.Jobs().Find(ByName("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundJobs)
 
@@ -585,17 +614,10 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Update job
-	updateJob := &api.Job{
-		ID: "id3",
-		Spec: &api.JobSpec{
-			Meta: api.Meta{
-				Name: "name3",
-			},
-		},
-	}
-
+	updateJob := jobSet[2].Copy()
+	updateJob.Spec.Meta.Name = "new-name"
 	err = s1.Update(func(tx1 Tx) error {
-		assert.NotEqual(t, updateJob, tx1.Jobs().Get("id3"))
+		assert.NotEqual(t, updateJob, tx1.Jobs().Get(updateJob.ID))
 		assert.NoError(t, tx1.Jobs().Update(updateJob))
 		return nil
 	})
