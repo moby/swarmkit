@@ -6,9 +6,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/swarm-v2/agent/exec"
-	"github.com/docker/swarm-v2/agent/exec/container"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"golang.org/x/net/context"
@@ -19,10 +17,9 @@ import (
 // cluster. The primary functionality id to run and report on the status of
 // tasks assigned to the node.
 type Agent struct {
-	config   *Config
-	executor exec.Executor
-	conn     *grpc.ClientConn
-	picker   *picker
+	config *Config
+	conn   *grpc.ClientConn
+	picker *picker
 
 	tasks       map[string]*api.Task // contains all managed tasks
 	assigned    map[string]*api.Task // contains current assignment set
@@ -43,16 +40,8 @@ func New(config *Config) (*Agent, error) {
 		return nil, err
 	}
 
-	// TODO(stevvooe): Move this elsewhere, need to support reconnection.
-	client, err := engineapi.NewClient("unix:///var/run/docker.sock", "", nil, nil)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Agent{
-		config:   config,
-		executor: container.NewExecutor(client),
-
+		config:      config,
 		tasks:       make(map[string]*api.Task),
 		assigned:    make(map[string]*api.Task),
 		statuses:    make(map[string]*api.TaskStatus),
@@ -433,7 +422,7 @@ func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 	a.statuses[task.ID] = task.Status
 	task.Status = nil
 
-	runner, err := a.executor.Runner(task.Copy())
+	runner, err := a.config.Executor.Runner(task.Copy())
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("runner resolution failed")
 		return err
