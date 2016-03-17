@@ -2,15 +2,22 @@ package scheduler
 
 import (
 	"container/list"
+	"reflect"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
 )
 
+type schedulingDecision struct {
+	old *api.Task
+	new *api.Task
+}
+
 // Scheduler assigns tasks to nodes.
 type Scheduler struct {
-	store           state.WatchableStore
+	masterStore     state.WatchableStore
+	localStore      state.WatchableStore
 	unassignedTasks *list.List
 
 	// stopChan signals to the state machine to stop running
@@ -22,7 +29,7 @@ type Scheduler struct {
 // New creates a new scheduler.
 func New(store state.WatchableStore) *Scheduler {
 	return &Scheduler{
-		store:           store,
+		masterStore:     store,
 		unassignedTasks: list.New(),
 		stopChan:        make(chan struct{}),
 		doneChan:        make(chan struct{}),
@@ -47,12 +54,18 @@ func (s *Scheduler) setupTasksList(tx state.ReadTx) error {
 func (s *Scheduler) Run() error {
 	defer close(s.doneChan)
 
-	updates := s.store.WatchQueue().Watch()
-	defer s.store.WatchQueue().StopWatch(updates)
+	s.localStore = state.NewMemoryStore(nil)
 
-	err := s.store.View(s.setupTasksList)
+	updates, err := state.ViewAndWatch(s.masterStore, s.localStore.CopyFrom)
 	if err != nil {
 		log.Errorf("could not snapshot store: %v", err)
+		return err
+	}
+	defer s.masterStore.WatchQueue().StopWatch(updates)
+
+	err = s.localStore.View(s.setupTasksList)
+	if err != nil {
+		log.Errorf("could not set up scheduler tasks list: %v", err)
 		return err
 	}
 
@@ -65,6 +78,9 @@ func (s *Scheduler) Run() error {
 	for {
 		select {
 		case event := <-updates:
+			if err := state.Apply(s.localStore, event); err != nil {
+				log.Errorf("scheduler could not apply state change")
+			}
 			switch v := event.Payload.(type) {
 			case state.EventCreateTask:
 				pendingChanges += s.createTask(v.Task)
@@ -112,17 +128,9 @@ func (s *Scheduler) createTask(t *api.Task) int {
 
 // tick attempts to schedule the queue.
 func (s *Scheduler) tick() {
-	nextBatch := list.New()
+	schedulingDecisions := make(map[string]schedulingDecision, s.unassignedTasks.Len())
 
-	// TODO(aaronl): Ideally, we would make scheduling decisions outside
-	// of an Update callback, since Update blocks other writes to the
-	// store. The current approach of making the decisions inside Update
-	// is done to keep the store simple. Eventually, we may want to break
-	// this up into a View where the decisions are made, and an Update that
-	// applies them. This will require keeping local state to keep track of
-	// allocations as they are made, since the store itself can't be
-	// changed through View.
-	err := s.store.Update(func(tx state.Tx) error {
+	err := s.localStore.Update(func(tx state.Tx) error {
 		nodes, err := tx.Nodes().Find(state.All)
 		if err != nil {
 			return err
@@ -131,21 +139,88 @@ func (s *Scheduler) tick() {
 		var next *list.Element
 		for e := s.unassignedTasks.Front(); e != nil; e = next {
 			next = e.Next()
-			t := e.Value.(*api.Task)
-			if newT := s.scheduleTask(tx, nodes, *t); newT == nil {
-				// scheduling failed; keep this task in the list
-				nextBatch.PushBack(t)
+			id := e.Value.(*api.Task).ID
+			if _, ok := schedulingDecisions[id]; ok {
+				s.unassignedTasks.Remove(e)
+				continue
+			}
+			t := tx.Tasks().Get(e.Value.(*api.Task).ID)
+			if t == nil || t.NodeID != "" {
+				// task deleted or already assigned
+				s.unassignedTasks.Remove(e)
+				continue
+			}
+			if newT := s.scheduleTask(tx, nodes, *t); newT != nil {
+				schedulingDecisions[id] = schedulingDecision{old: t, new: newT}
+				s.unassignedTasks.Remove(e)
 			}
 		}
 		return nil
 	})
 
 	if err != nil {
-		log.Errorf("Error in transaction: %v", err)
+		log.Errorf("Error in scheduler local store transaction: %v", err)
+		s.readdUnassignedTasks(schedulingDecisions)
+		return
+	}
 
-		// leave unassignedTasks list in place
-	} else {
-		s.unassignedTasks = nextBatch
+	failedSchedulingDecisions := make(map[string]schedulingDecision)
+
+	// Apply changes to master store
+	err = s.masterStore.Update(func(tx state.Tx) error {
+		for id, decision := range schedulingDecisions {
+			t := tx.Tasks().Get(id)
+			if t == nil {
+				// Task no longer exists
+				failedSchedulingDecisions[id] = decision
+				continue
+			}
+			// TODO(aaronl): When we have a sequencer in place,
+			// this expensive comparison won't be necessary.
+			if !reflect.DeepEqual(t, decision.old) {
+				log.Debugf("task changed between scheduling decision and application: %s", t.ID)
+				failedSchedulingDecisions[id] = decision
+				continue
+			}
+
+			if err := tx.Tasks().Update(decision.new); err != nil {
+				log.Debugf("scheduler failed to update task %s; will retry", t.ID)
+				failedSchedulingDecisions[id] = decision
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Errorf("Error in master store transaction: %v", err)
+
+		s.rollbackLocalStore(schedulingDecisions)
+		s.readdUnassignedTasks(schedulingDecisions)
+		return
+	}
+	s.rollbackLocalStore(failedSchedulingDecisions)
+	s.readdUnassignedTasks(failedSchedulingDecisions)
+}
+
+func (s *Scheduler) rollbackLocalStore(decisions map[string]schedulingDecision) {
+	err := s.localStore.Update(func(tx state.Tx) error {
+		for _, decision := range decisions {
+			if err := tx.Tasks().Update(decision.old); err != nil {
+				// Should never fail
+				panic("scheduler rollback update failed")
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		// Should never fail
+		panic("scheduler rollback failed")
+	}
+}
+
+func (s *Scheduler) readdUnassignedTasks(decisions map[string]schedulingDecision) {
+	for _, decision := range decisions {
+		s.enqueue(decision.old)
 	}
 }
 
