@@ -76,6 +76,7 @@ var (
 	errTaskInvalidStateTransition = errors.New("agent: invalid task transition")
 	errTaskStatusUpdateNoChange   = errors.New("agent: no change in task status")
 	errTaskDead                   = errors.New("agent: task dead")
+	errTaskUnknown                = errors.New("agent: task unknown")
 )
 
 // Start begins execution of the agent in the provided context, if not already
@@ -322,17 +323,20 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 }
 
 func (a *Agent) handleTaskStatusReport(ctx context.Context, session *session, report taskStatusReport) error {
+	var respErr error
 	err := a.updateStatus(ctx, report)
+	if err == errTaskUnknown || err == errTaskDead || err == errTaskStatusUpdateNoChange {
+		respErr = nil
+	}
+
 	if report.response != nil {
 		// this channel is always buffered.
-		report.response <- err
+		report.response <- respErr
 		report.response = nil // clear response channel
 	}
 
 	if err != nil {
-		if err != errTaskDead && err != errTaskStatusUpdateNoChange {
-			return err
-		}
+		return respErr
 	}
 
 	// TODO(stevvooe): Coalesce status updates.
@@ -340,6 +344,7 @@ func (a *Agent) handleTaskStatusReport(ctx context.Context, session *session, re
 		if err := session.sendTaskStatus(ctx, report.taskID, a.statuses[report.taskID]); err != nil {
 			log.G(ctx).WithError(err).Errorf("sending task status update failed")
 
+			time.Sleep(time.Second) // backoff for retry
 			select {
 			case a.statusq <- report: // queue for retry
 			case <-a.closed:
@@ -354,12 +359,16 @@ func (a *Agent) handleTaskStatusReport(ctx context.Context, session *session, re
 func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error {
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("task.id", report.taskID))
 
-	status := a.statuses[report.taskID]
+	status, ok := a.statuses[report.taskID]
+	if !ok {
+		return errTaskUnknown
+	}
+
 	original := status.Copy()
 
 	// validate transition only moves forward
 	if report.state <= status.State && report.err == nil {
-		log.G(ctx).WithError(report.err).Errorf("%v -> %v invalid!", status.State, report.state)
+		log.G(ctx).Errorf("%v -> %v invalid!", status.State, report.state)
 		return errTaskInvalidStateTransition
 	}
 
@@ -485,18 +494,11 @@ func (a *Agent) removeTask(ctx context.Context, t *api.Task) error {
 	)
 	go func() {
 		if err := a.report(ctx, taskID, api.TaskStateFinalize); err != nil {
-			if err != errTaskInvalidStateTransition {
-				if err != errTaskDead {
-					log.G(ctx).WithError(err).Errorf("failed to report finalization")
-				}
-			}
+			log.G(ctx).WithError(err).Errorf("failed to report finalization")
 			return
 		}
 
 		if err := ctlr.Remove(ctx); err != nil {
-			// TODO(stevvooe): Right now, if this fails, we have no way of
-			// retrying the removal. The task will be stuck in finalize until a
-			// restart.
 			log.G(ctx).WithError(err).Errorf("remove failed")
 			if err := a.report(ctx, taskID, api.TaskStateFinalize, err); err != nil {
 				log.G(ctx).WithError(err).Errorf("report remove error failed")
