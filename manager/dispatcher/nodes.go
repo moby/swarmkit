@@ -56,6 +56,12 @@ func newNodeStore(hbPeriod, hbEpsilon time.Duration, graceMultiplier int) *nodeS
 	}
 }
 
+func (s *nodeStore) Len() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.nodes)
+}
+
 // Add adds new node and returns it, it replaces existing without notification.
 func (s *nodeStore) Add(n *api.Node, expireFunc func()) *registeredNode {
 	s.mu.Lock()

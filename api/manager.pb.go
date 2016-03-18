@@ -16,6 +16,9 @@
 		ProcessRaftMessageRequest
 		ProcessRaftMessageResponse
 		RaftNode
+		Pair
+		NodeCountRequest
+		NodeCountResponse
 */
 package api
 
@@ -101,6 +104,29 @@ type RaftNode struct {
 func (m *RaftNode) Reset()      { *m = RaftNode{} }
 func (*RaftNode) ProtoMessage() {}
 
+// TODO(abronan): remove when the integration with store is completed
+type Pair struct {
+	Key   string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (m *Pair) Reset()      { *m = Pair{} }
+func (*Pair) ProtoMessage() {}
+
+type NodeCountRequest struct {
+}
+
+func (m *NodeCountRequest) Reset()      { *m = NodeCountRequest{} }
+func (*NodeCountRequest) ProtoMessage() {}
+
+type NodeCountResponse struct {
+	// Count is number of nodes connected to specific manager.
+	Count int `protobuf:"varint,1,opt,name=count,proto3,customtype=int" json:"count"`
+}
+
+func (m *NodeCountResponse) Reset()      { *m = NodeCountResponse{} }
+func (*NodeCountResponse) ProtoMessage() {}
+
 func init() {
 	proto.RegisterType((*JoinRequest)(nil), "api.JoinRequest")
 	proto.RegisterType((*JoinResponse)(nil), "api.JoinResponse")
@@ -109,6 +135,9 @@ func init() {
 	proto.RegisterType((*ProcessRaftMessageRequest)(nil), "api.ProcessRaftMessageRequest")
 	proto.RegisterType((*ProcessRaftMessageResponse)(nil), "api.ProcessRaftMessageResponse")
 	proto.RegisterType((*RaftNode)(nil), "api.RaftNode")
+	proto.RegisterType((*Pair)(nil), "api.Pair")
+	proto.RegisterType((*NodeCountRequest)(nil), "api.NodeCountRequest")
+	proto.RegisterType((*NodeCountResponse)(nil), "api.NodeCountResponse")
 }
 func (this *JoinRequest) GoString() string {
 	if this == nil {
@@ -187,6 +216,36 @@ func (this *RaftNode) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
+func (this *Pair) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.Pair{")
+	s = append(s, "Key: "+fmt.Sprintf("%#v", this.Key)+",\n")
+	s = append(s, "Value: "+fmt.Sprintf("%#v", this.Value)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *NodeCountRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&api.NodeCountRequest{")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *NodeCountResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.NodeCountResponse{")
+	s = append(s, "Count: "+fmt.Sprintf("%#v", this.Count)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func valueToGoStringManager(v interface{}, typ string) string {
 	rv := reflect.ValueOf(v)
 	if rv.IsNil() {
@@ -217,9 +276,9 @@ func extensionToGoStringManager(e map[int32]github_com_gogo_protobuf_proto.Exten
 var _ context.Context
 var _ grpc.ClientConn
 
-// Client API for Manager service
+// Client API for Raft service
 
-type ManagerClient interface {
+type RaftClient interface {
 	// Join joins an existing Manager or set of Managers to form
 	// a raft cluster for the log replication backend
 	Join(ctx context.Context, in *JoinRequest, opts ...grpc.CallOption) (*JoinResponse, error)
@@ -230,44 +289,44 @@ type ManagerClient interface {
 	ProcessRaftMessage(ctx context.Context, in *ProcessRaftMessageRequest, opts ...grpc.CallOption) (*ProcessRaftMessageResponse, error)
 }
 
-type managerClient struct {
+type raftClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewManagerClient(cc *grpc.ClientConn) ManagerClient {
-	return &managerClient{cc}
+func NewRaftClient(cc *grpc.ClientConn) RaftClient {
+	return &raftClient{cc}
 }
 
-func (c *managerClient) Join(ctx context.Context, in *JoinRequest, opts ...grpc.CallOption) (*JoinResponse, error) {
+func (c *raftClient) Join(ctx context.Context, in *JoinRequest, opts ...grpc.CallOption) (*JoinResponse, error) {
 	out := new(JoinResponse)
-	err := grpc.Invoke(ctx, "/api.Manager/Join", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/api.Raft/Join", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *managerClient) Leave(ctx context.Context, in *LeaveRequest, opts ...grpc.CallOption) (*LeaveResponse, error) {
+func (c *raftClient) Leave(ctx context.Context, in *LeaveRequest, opts ...grpc.CallOption) (*LeaveResponse, error) {
 	out := new(LeaveResponse)
-	err := grpc.Invoke(ctx, "/api.Manager/Leave", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/api.Raft/Leave", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *managerClient) ProcessRaftMessage(ctx context.Context, in *ProcessRaftMessageRequest, opts ...grpc.CallOption) (*ProcessRaftMessageResponse, error) {
+func (c *raftClient) ProcessRaftMessage(ctx context.Context, in *ProcessRaftMessageRequest, opts ...grpc.CallOption) (*ProcessRaftMessageResponse, error) {
 	out := new(ProcessRaftMessageResponse)
-	err := grpc.Invoke(ctx, "/api.Manager/ProcessRaftMessage", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/api.Raft/ProcessRaftMessage", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Manager service
+// Server API for Raft service
 
-type ManagerServer interface {
+type RaftServer interface {
 	// Join joins an existing Manager or set of Managers to form
 	// a raft cluster for the log replication backend
 	Join(context.Context, *JoinRequest) (*JoinResponse, error)
@@ -278,40 +337,109 @@ type ManagerServer interface {
 	ProcessRaftMessage(context.Context, *ProcessRaftMessageRequest) (*ProcessRaftMessageResponse, error)
 }
 
-func RegisterManagerServer(s *grpc.Server, srv ManagerServer) {
-	s.RegisterService(&_Manager_serviceDesc, srv)
+func RegisterRaftServer(s *grpc.Server, srv RaftServer) {
+	s.RegisterService(&_Raft_serviceDesc, srv)
 }
 
-func _Manager_Join_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Raft_Join_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(JoinRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ManagerServer).Join(ctx, in)
+	out, err := srv.(RaftServer).Join(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Manager_Leave_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Raft_Leave_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(LeaveRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ManagerServer).Leave(ctx, in)
+	out, err := srv.(RaftServer).Leave(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Manager_ProcessRaftMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Raft_ProcessRaftMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(ProcessRaftMessageRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ManagerServer).ProcessRaftMessage(ctx, in)
+	out, err := srv.(RaftServer).ProcessRaftMessage(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+var _Raft_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "api.Raft",
+	HandlerType: (*RaftServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Join",
+			Handler:    _Raft_Join_Handler,
+		},
+		{
+			MethodName: "Leave",
+			Handler:    _Raft_Leave_Handler,
+		},
+		{
+			MethodName: "ProcessRaftMessage",
+			Handler:    _Raft_ProcessRaftMessage_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{},
+}
+
+// Client API for Manager service
+
+type ManagerClient interface {
+	// NodeCount returns number of nodes connected to particular manager.
+	// Supposed to be called only by cluster leader.
+	NodeCount(ctx context.Context, in *NodeCountRequest, opts ...grpc.CallOption) (*NodeCountResponse, error)
+}
+
+type managerClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewManagerClient(cc *grpc.ClientConn) ManagerClient {
+	return &managerClient{cc}
+}
+
+func (c *managerClient) NodeCount(ctx context.Context, in *NodeCountRequest, opts ...grpc.CallOption) (*NodeCountResponse, error) {
+	out := new(NodeCountResponse)
+	err := grpc.Invoke(ctx, "/api.Manager/NodeCount", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for Manager service
+
+type ManagerServer interface {
+	// NodeCount returns number of nodes connected to particular manager.
+	// Supposed to be called only by cluster leader.
+	NodeCount(context.Context, *NodeCountRequest) (*NodeCountResponse, error)
+}
+
+func RegisterManagerServer(s *grpc.Server, srv ManagerServer) {
+	s.RegisterService(&_Manager_serviceDesc, srv)
+}
+
+func _Manager_NodeCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(NodeCountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(ManagerServer).NodeCount(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -323,16 +451,8 @@ var _Manager_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*ManagerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Join",
-			Handler:    _Manager_Join_Handler,
-		},
-		{
-			MethodName: "Leave",
-			Handler:    _Manager_Leave_Handler,
-		},
-		{
-			MethodName: "ProcessRaftMessage",
-			Handler:    _Manager_ProcessRaftMessage_Handler,
+			MethodName: "NodeCount",
+			Handler:    _Manager_NodeCount_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},
@@ -517,6 +637,79 @@ func (m *RaftNode) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *Pair) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Pair) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Key) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintManager(data, i, uint64(len(m.Key)))
+		i += copy(data[i:], m.Key)
+	}
+	if m.Value != nil {
+		if len(m.Value) > 0 {
+			data[i] = 0x12
+			i++
+			i = encodeVarintManager(data, i, uint64(len(m.Value)))
+			i += copy(data[i:], m.Value)
+		}
+	}
+	return i, nil
+}
+
+func (m *NodeCountRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *NodeCountRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *NodeCountResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *NodeCountResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Count != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintManager(data, i, uint64(m.Count))
+	}
+	return i, nil
+}
+
 func encodeFixed64Manager(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	data[offset+1] = uint8(v >> 8)
@@ -611,6 +804,37 @@ func (m *RaftNode) Size() (n int) {
 	return n
 }
 
+func (m *Pair) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovManager(uint64(l))
+	}
+	if m.Value != nil {
+		l = len(m.Value)
+		if l > 0 {
+			n += 1 + l + sovManager(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *NodeCountRequest) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *NodeCountResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.Count != 0 {
+		n += 1 + sovManager(uint64(m.Count))
+	}
+	return n
+}
+
 func sovManager(x uint64) (n int) {
 	for {
 		n++
@@ -689,6 +913,36 @@ func (this *RaftNode) String() string {
 	s := strings.Join([]string{`&RaftNode{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Pair) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Pair{`,
+		`Key:` + fmt.Sprintf("%v", this.Key) + `,`,
+		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *NodeCountRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&NodeCountRequest{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *NodeCountResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&NodeCountResponse{`,
+		`Count:` + fmt.Sprintf("%v", this.Count) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1208,6 +1462,235 @@ func (m *RaftNode) Unmarshal(data []byte) error {
 			}
 			m.Addr = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipManager(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthManager
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Pair) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowManager
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Pair: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Pair: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowManager
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthManager
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Key = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowManager
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthManager
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Value = append(m.Value[:0], data[iNdEx:postIndex]...)
+			if m.Value == nil {
+				m.Value = []byte{}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipManager(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthManager
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *NodeCountRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowManager
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: NodeCountRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: NodeCountRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipManager(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthManager
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *NodeCountResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowManager
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: NodeCountResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: NodeCountResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Count", wireType)
+			}
+			m.Count = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowManager
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Count |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipManager(data[iNdEx:])

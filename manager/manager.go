@@ -3,6 +3,8 @@ package manager
 import (
 	"net"
 
+	"golang.org/x/net/context"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/clusterapi"
@@ -13,6 +15,8 @@ import (
 	"github.com/docker/swarm-v2/manager/state"
 	"google.golang.org/grpc"
 )
+
+var _ api.ManagerServer = &Manager{}
 
 // Config is used to tune the Manager.
 type Config struct {
@@ -56,6 +60,7 @@ func New(config *Config) *Manager {
 		server:       grpc.NewServer(),
 	}
 
+	api.RegisterManagerServer(m.server, m)
 	api.RegisterClusterServer(m.server, m.apiserver)
 	api.RegisterDispatcherServer(m.server, m.dispatcher)
 
@@ -102,4 +107,14 @@ func (m *Manager) Stop() {
 	m.drainer.Stop()
 	m.orchestrator.Stop()
 	m.scheduler.Stop()
+}
+
+// GRPC Methods
+
+// NodeCount returns number of nodes connected to particular manager.
+// Supposed to be called only by cluster leader.
+func (m *Manager) NodeCount(ctx context.Context, r *api.NodeCountRequest) (*api.NodeCountResponse, error) {
+	return &api.NodeCountResponse{
+		Count: m.dispatcher.NodeCount(),
+	}, nil
 }
