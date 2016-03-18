@@ -184,6 +184,14 @@ func TestStoreNode(t *testing.T) {
 		foundNodes, err = readTx.Nodes().Find(ByName("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 0)
+
+		foundNodes, err = readTx.Nodes().Find(ByQuery("name"))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 0)
+		foundNodes, err = readTx.Nodes().Find(ByQuery("id"))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 3)
+
 		return nil
 	})
 	assert.NoError(t, err)
@@ -276,6 +284,14 @@ func TestStoreJob(t *testing.T) {
 		foundJobs, err = readTx.Jobs().Find(ByName("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundJobs, 0)
+
+		foundJobs, err = readTx.Jobs().Find(ByQuery("name"))
+		assert.NoError(t, err)
+		assert.Len(t, foundJobs, 0)
+		foundJobs, err = readTx.Jobs().Find(ByQuery("id"))
+		assert.NoError(t, err)
+		assert.Len(t, foundJobs, 3)
+
 		return nil
 	})
 	assert.NoError(t, err)
@@ -921,6 +937,17 @@ func BenchmarkFindNodeByName(b *testing.B) {
 	_ = s.View(func(tx1 ReadTx) error {
 		for i := 0; i < b.N; i++ {
 			_, _ = tx1.Nodes().Find(ByName("name" + strconv.Itoa(i)))
+		}
+		return nil
+	})
+}
+
+func BenchmarkFindNodeByQuery(b *testing.B) {
+	s, _ := setupNodes(b, benchmarkNumNodes)
+	b.ResetTimer()
+	_ = s.View(func(tx1 ReadTx) error {
+		for i := 0; i < b.N; i++ {
+			_, _ = tx1.Nodes().Find(ByQuery("name" + strconv.Itoa(i)))
 		}
 		return nil
 	})

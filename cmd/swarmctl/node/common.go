@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"golang.org/x/net/context"
+
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
 	"github.com/spf13/cobra"
@@ -22,14 +24,11 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	if err != nil {
 		return err
 	}
-	id := common.LookupID(common.Context(cmd), c, api.Node{}, args[0])
-	r, err := c.GetNode(common.Context(cmd), &api.GetNodeRequest{
-		NodeID: id,
-	})
+	node, err := getNode(common.Context(cmd), c, args[0])
 	if err != nil {
 		return err
 	}
-	spec := r.Node.Spec
+	spec := node.Spec
 	if spec == nil {
 		spec = &api.NodeSpec{}
 	}
@@ -41,7 +40,7 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	spec.Availability = availability
 
 	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
-		NodeID: r.Node.ID,
+		NodeID: node.ID,
 		Spec:   spec,
 	})
 
@@ -50,4 +49,27 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	}
 
 	return nil
+}
+
+func getNode(ctx context.Context, c api.ClusterClient, input string) (*api.Node, error) {
+	// GetNode to match via full ID.
+	rg, err := c.GetNode(ctx, &api.GetNodeRequest{NodeID: input})
+	if err != nil {
+		// If any error (including NotFound), ListJobs to match via ID prefix and full name.
+		rl, err := c.ListNodes(ctx, &api.ListNodesRequest{Options: &api.ListOptions{Query: input}})
+		if err != nil {
+			return nil, err
+		}
+
+		if len(rl.Nodes) == 0 {
+			return nil, fmt.Errorf("node %s not found", input)
+		}
+
+		if l := len(rl.Nodes); l > 1 {
+			return nil, fmt.Errorf("node %s is ambigious (%d matches found)", input, l)
+		}
+
+		return rl.Nodes[0], nil
+	}
+	return rg.Node, nil
 }
