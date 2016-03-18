@@ -65,10 +65,9 @@ services:
 		s := Spec{}
 		assert.NoError(t, s.Read(f))
 		assert.Equal(t, size, len(s.JobSpecs()))
-		for i, jobSpec := range s.JobSpecs() {
-			assert.Equal(t, fmt.Sprintf("name%d", i+1), jobSpec.Meta.Name)
-			assert.EqualValues(t, i+1, jobSpec.GetService().Instances)
-			assert.Equal(t, fmt.Sprintf("image%d", i+1), jobSpec.Template.GetContainer().Image.Reference)
+		for _, jobSpec := range s.JobSpecs() {
+			assert.Equal(t, fmt.Sprintf("name%d", jobSpec.GetService().Instances), jobSpec.Meta.Name)
+			assert.Equal(t, fmt.Sprintf("image%d", jobSpec.GetService().Instances), jobSpec.Template.GetContainer().Image.Reference)
 		}
 	}
 }
