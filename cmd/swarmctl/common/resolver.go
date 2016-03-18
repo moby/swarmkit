@@ -63,30 +63,17 @@ func (r *Resolver) Resolve(t interface{}, id string) string {
 
 // LookupID attempts to resolve a Name into an ID.
 // TODO(aluzzardi): This is a giant hack until we have server-side name lookups.
-func LookupID(ctx context.Context, c api.ClusterClient, t interface{}, name string) string {
-	switch t.(type) {
-	case api.Node:
-		r, err := c.ListNodes(ctx, &api.ListNodesRequest{})
-		if err != nil {
-			return name
+func LookupID(ctx context.Context, c api.ClusterClient, name string) string {
+	r, err := c.ListNodes(ctx, &api.ListNodesRequest{})
+	if err != nil {
+		return name
+	}
+	for _, n := range r.Nodes {
+		if n.Spec != nil && n.Spec.Meta.Name == name {
+			return n.ID
 		}
-		for _, n := range r.Nodes {
-			if n.Spec != nil && n.Spec.Meta.Name == name {
-				return n.ID
-			}
-			if n.Description != nil && n.Description.Hostname == name {
-				return n.ID
-			}
-		}
-	case api.Job:
-		r, err := c.ListJobs(ctx, &api.ListJobsRequest{})
-		if err != nil {
-			return name
-		}
-		for _, j := range r.Jobs {
-			if j.Spec != nil && j.Spec.Meta.Name == name {
-				return j.ID
-			}
+		if n.Description != nil && n.Description.Hostname == name {
+			return n.ID
 		}
 	}
 	return name

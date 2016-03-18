@@ -33,8 +33,7 @@ var (
 				return err
 			}
 
-			id := common.LookupID(common.Context(cmd), c, api.Job{}, args[0])
-			r, err := c.GetJob(common.Context(cmd), &api.GetJobRequest{JobID: id})
+			r, err := c.GetJob(common.Context(cmd), &api.GetJobRequest{JobID: args[0]})
 			if err != nil {
 				return err
 			}
@@ -86,7 +85,7 @@ var (
 				return nil
 			}
 
-			ru, err := c.UpdateJob(common.Context(cmd), &api.UpdateJobRequest{JobID: id, Spec: newService.JobSpec()})
+			ru, err := c.UpdateJob(common.Context(cmd), &api.UpdateJobRequest{JobID: args[0], Spec: newService.JobSpec()})
 			if err != nil {
 				return err
 			}

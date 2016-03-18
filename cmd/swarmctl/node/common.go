@@ -22,7 +22,7 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	if err != nil {
 		return err
 	}
-	id := common.LookupID(common.Context(cmd), c, api.Node{}, args[0])
+	id := common.LookupID(common.Context(cmd), c, args[0])
 	r, err := c.GetNode(common.Context(cmd), &api.GetNodeRequest{
 		NodeID: id,
 	})

@@ -23,12 +23,11 @@ var (
 				return err
 			}
 
-			id := common.LookupID(common.Context(cmd), c, api.Job{}, args[0])
-			_, err = c.RemoveJob(common.Context(cmd), &api.RemoveJobRequest{JobID: id})
+			_, err = c.RemoveJob(common.Context(cmd), &api.RemoveJobRequest{JobID: args[0]})
 			if err != nil {
 				return err
 			}
-			fmt.Println(id)
+			fmt.Println(args[0])
 			return nil
 		},
 	}
