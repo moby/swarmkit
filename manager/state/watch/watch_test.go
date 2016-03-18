@@ -77,3 +77,44 @@ func TestWatch(t *testing.T) {
 		t.Fatal("expected c2 to be closed")
 	}
 }
+
+func BenchmarkWatch10(b *testing.B) {
+	benchmarkWatch(b, 10)
+}
+
+func BenchmarkWatch100(b *testing.B) {
+	benchmarkWatch(b, 100)
+}
+
+func BenchmarkWatch1000(b *testing.B) {
+	benchmarkWatch(b, 1000)
+}
+
+func BenchmarkWatch10000(b *testing.B) {
+	benchmarkWatch(b, 10000)
+}
+
+func benchmarkWatch(b *testing.B, nlisteners int) {
+	q := NewQueue(0)
+	for i := 0; i < nlisteners; i++ {
+		go func(n int) {
+			w := q.Watch()
+			var i int
+			for range q.Watch() {
+				i++
+
+				if i >= n {
+					break
+				}
+			}
+			q.StopWatch(w)
+			if i != n {
+				b.Fatalf("expected %v messages, got %v", n, i)
+			}
+		}(b.N)
+	}
+
+	for i := 0; i < b.N; i++ {
+		q.Publish(Event{Payload: "myevent"})
+	}
+}
