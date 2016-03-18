@@ -17,6 +17,7 @@ const (
 	indexName   = "name"
 	indexJobID  = "jobid"
 	indexNodeID = "nodeid"
+	indexPrefix = "prefix"
 
 	tableNode    = "node"
 	tableTask    = "task"
@@ -85,6 +86,11 @@ func NewMemoryStore(proposer Proposer) *MemoryStore {
 			tableJob: {
 				Name: tableJob,
 				Indexes: map[string]*memdb.IndexSchema{
+					indexPrefix: {
+						Name:    indexPrefix,
+						Unique:  true,
+						Indexer: jobIndexerByPrefix{},
+					},
 					indexID: {
 						Name:    indexID,
 						Unique:  true,
@@ -724,7 +730,7 @@ func (jobs jobs) table() string {
 
 // lookup is an internal typed wrapper around memdb.
 func (jobs jobs) lookup(index, id string) *api.Job {
-	j, err := jobs.memDBTx.First(jobs.table(), index, id)
+	j, err := jobs.memDBTx.First(jobs.table(), indexPrefix, id)
 	if err != nil {
 		return nil
 	}
@@ -828,6 +834,31 @@ func (jobs jobs) Find(by By) ([]*api.Job, error) {
 	default:
 		return nil, ErrInvalidFindBy
 	}
+}
+
+type jobIndexerByPrefix struct{}
+
+func (ji jobIndexerByPrefix) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (ji jobIndexerByPrefix) FromObject(obj interface{}) (bool, [][]byte, error) {
+	j, ok := obj.(*api.Job)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	vals := make([][]byte, 2) // 2 minimum: ID and Name
+
+	// Add the null character as a terminator
+	for i := len(j.ID); i >= 0; i-- {
+		vals = append(vals, []byte(j.ID[:i]+"\x00"))
+	}
+
+	for i := len(j.Spec.Meta.Name); i >= 0; i-- {
+		vals = append(vals, []byte(j.Spec.Meta.Name[:i]+"\x00"))
+	}
+	return true, vals, nil
 }
 
 type jobIndexerByID struct{}
