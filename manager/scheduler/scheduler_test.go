@@ -1,10 +1,13 @@
 package scheduler
 
 import (
+	"runtime"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/watch"
 	"github.com/stretchr/testify/assert"
@@ -149,8 +152,6 @@ func TestScheduler(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Discard first UpdateTask - that's our own UpdateTask
-	watchAssignment(t, watch)
 	assignment4 := watchAssignment(t, watch)
 	assert.Equal(t, assignment4.NodeID, "id1")
 
@@ -378,10 +379,99 @@ func watchAssignment(t *testing.T, watch chan watch.Event) *api.Task {
 		select {
 		case event := <-watch:
 			if task, ok := event.Payload.(state.EventUpdateTask); ok {
-				return task.Task
+				if task.Task.NodeID != "" {
+					return task.Task
+				}
 			}
 		case <-time.After(time.Second):
 			t.Fatalf("no task assignment")
 		}
+	}
+}
+
+func BenchmarkScheduler1kNodes1kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e3)
+}
+
+func BenchmarkScheduler1kNodes10kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e4)
+}
+
+func BenchmarkScheduler1kNodes100kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e5)
+}
+
+func BenchmarkScheduler100kNodes100kTasks(b *testing.B) {
+	benchScheduler(b, 1e5, 1e5)
+}
+
+func BenchmarkScheduler100kNodes1MTasks(b *testing.B) {
+	benchScheduler(b, 1e5, 1e6)
+}
+
+func BenchmarkScheduler1MNodes1MTasks(b *testing.B) {
+	benchScheduler(b, 1e6, 1e6)
+}
+
+func BenchmarkScheduler1MNodes10MTasks(b *testing.B) {
+	benchScheduler(b, 1e6, 1e7)
+}
+
+func benchScheduler(b *testing.B, nodes, tasks int) {
+	for iters := 0; iters < b.N; iters++ {
+		b.StopTimer()
+		s := state.NewMemoryStore(nil)
+		scheduler := New(s)
+
+		watch := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+
+		go func() {
+			_ = scheduler.Run()
+		}()
+
+		// Let the scheduler get started
+		runtime.Gosched()
+
+		_ = s.Update(func(tx state.Tx) error {
+			// Create initial nodes and tasks
+			for i := 0; i < nodes; i++ {
+				err := tx.Nodes().Create(&api.Node{
+					ID: identity.NewID(),
+					Spec: &api.NodeSpec{
+						Meta: api.Meta{
+							Name: "name" + strconv.Itoa(i),
+						},
+					},
+					Status: api.NodeStatus{
+						State: api.NodeStatus_READY,
+					},
+				})
+				if err != nil {
+					panic(err)
+				}
+			}
+			for i := 0; i < tasks; i++ {
+				id := "task" + strconv.Itoa(i)
+				err := tx.Tasks().Create(&api.Task{
+					ID:   id,
+					Spec: &api.TaskSpec{},
+					Meta: api.Meta{
+						Name: id,
+					},
+				})
+				if err != nil {
+					panic(err)
+				}
+			}
+			b.StartTimer()
+			return nil
+		})
+
+		for i := 0; i != tasks; i++ {
+			<-watch
+		}
+
+		scheduler.Stop()
+		s.WatchQueue().StopWatch(watch)
 	}
 }
