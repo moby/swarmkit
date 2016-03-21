@@ -509,10 +509,22 @@ func (nodes nodes) table() string {
 	return tableNode
 }
 
+// lookup is an internal typed wrapper around memdb.
+func (nodes nodes) lookup(index, id string) *api.Node {
+	j, err := nodes.memDBTx.First(nodes.table(), index, id)
+	if err != nil {
+		return nil
+	}
+	if j != nil {
+		return j.(*api.Node)
+	}
+	return nil
+}
+
 // Create adds a new node to the store.
 // Returns ErrExist if the ID is already taken.
 func (nodes nodes) Create(n *api.Node) error {
-	if nodes.Get(n.ID) != nil {
+	if nodes.lookup(indexID, n.ID) != nil {
 		return ErrExist
 	}
 
@@ -531,7 +543,7 @@ func (nodes nodes) Create(n *api.Node) error {
 // Update updates an existing node in the store.
 // Returns ErrNotExist if the node doesn't exist.
 func (nodes nodes) Update(n *api.Node) error {
-	oldN := nodes.Get(n.ID)
+	oldN := nodes.lookup(indexID, n.ID)
 	if oldN == nil {
 		return ErrNotExist
 	}
@@ -554,7 +566,7 @@ func (nodes nodes) Update(n *api.Node) error {
 // Delete removes a node from the store.
 // Returns ErrNotExist if the node doesn't exist.
 func (nodes nodes) Delete(id string) error {
-	n := nodes.Get(id)
+	n := nodes.lookup(indexID, id)
 	if n == nil {
 		return ErrNotExist
 	}
@@ -569,16 +581,7 @@ func (nodes nodes) Delete(id string) error {
 // Get looks up a node by ID.
 // Returns nil if the node doesn't exist.
 func (nodes nodes) Get(id string) *api.Node {
-	obj, err := nodes.memDBTx.First(nodes.table(), indexID, id)
-	if err != nil {
-		return nil
-	}
-	if obj != nil {
-		if n, ok := obj.(*api.Node); ok {
-			return n.Copy()
-		}
-	}
-	return nil
+	return nodes.lookup(indexID, id).Copy()
 }
 
 // Find selects a set of nodes and returns them. If by is nil,
@@ -696,10 +699,22 @@ func (tasks tasks) table() string {
 	return tableTask
 }
 
+// lookup is an internal typed wrapper around memdb.
+func (tasks tasks) lookup(index, id string) *api.Task {
+	j, err := tasks.memDBTx.First(tasks.table(), index, id)
+	if err != nil {
+		return nil
+	}
+	if j != nil {
+		return j.(*api.Task)
+	}
+	return nil
+}
+
 // Create adds a new task to the store.
 // Returns ErrExist if the ID is already taken.
 func (tasks tasks) Create(t *api.Task) error {
-	if tasks.Get(t.ID) != nil {
+	if tasks.lookup(indexID, t.ID) != nil {
 		return ErrExist
 	}
 
@@ -718,7 +733,7 @@ func (tasks tasks) Create(t *api.Task) error {
 // Update updates an existing task in the store.
 // Returns ErrNotExist if the task doesn't exist.
 func (tasks tasks) Update(t *api.Task) error {
-	oldT := tasks.Get(t.ID)
+	oldT := tasks.lookup(indexID, t.ID)
 	if oldT == nil {
 		return ErrNotExist
 	}
@@ -741,7 +756,7 @@ func (tasks tasks) Update(t *api.Task) error {
 // Delete removes a task from the store.
 // Returns ErrNotExist if the task doesn't exist.
 func (tasks tasks) Delete(id string) error {
-	t := tasks.Get(id)
+	t := tasks.lookup(indexID, id)
 	if t == nil {
 		return ErrNotExist
 	}
@@ -756,16 +771,7 @@ func (tasks tasks) Delete(id string) error {
 // Get looks up a task by ID.
 // Returns nil if the task doesn't exist.
 func (tasks tasks) Get(id string) *api.Task {
-	obj, err := tasks.memDBTx.First(tasks.table(), indexID, id)
-	if err != nil {
-		return nil
-	}
-	if obj != nil {
-		if t, ok := obj.(*api.Task); ok {
-			return t.Copy()
-		}
-	}
-	return nil
+	return tasks.lookup(indexID, id).Copy()
 }
 
 // Find selects a set of tasks and returns them. If by is nil,
@@ -978,10 +984,7 @@ func (jobs jobs) Delete(id string) error {
 // Job looks up a job by ID.
 // Returns nil if the job doesn't exist.
 func (jobs jobs) Get(id string) *api.Job {
-	if j := jobs.lookup(indexID, id); j != nil {
-		return j.Copy()
-	}
-	return nil
+	return jobs.lookup(indexID, id).Copy()
 }
 
 // Find selects a set of jobs and returns them. If by is nil,
@@ -1101,10 +1104,22 @@ func (networks networks) table() string {
 	return tableNetwork
 }
 
+// lookup is an internal typed wrapper around memdb.
+func (networks networks) lookup(index, id string) *api.Network {
+	j, err := networks.memDBTx.First(networks.table(), index, id)
+	if err != nil {
+		return nil
+	}
+	if j != nil {
+		return j.(*api.Network)
+	}
+	return nil
+}
+
 // Create adds a new network to the store.
 // Returns ErrExist if the ID is already taken.
 func (networks networks) Create(n *api.Network) error {
-	if networks.Get(n.ID) != nil {
+	if networks.lookup(indexID, n.ID) != nil {
 		return ErrExist
 	}
 
@@ -1123,7 +1138,7 @@ func (networks networks) Create(n *api.Network) error {
 // Update updates an existing network in the store.
 // Returns ErrNotExist if the network doesn't exist.
 func (networks networks) Update(n *api.Network) error {
-	oldN := networks.Get(n.ID)
+	oldN := networks.lookup(indexID, n.ID)
 	if oldN == nil {
 		return ErrNotExist
 	}
@@ -1146,7 +1161,7 @@ func (networks networks) Update(n *api.Network) error {
 // Delete removes a network from the store.
 // Returns ErrNotExist if the node doesn't exist.
 func (networks networks) Delete(id string) error {
-	n := networks.Get(id)
+	n := networks.lookup(indexID, id)
 	if n == nil {
 		return ErrNotExist
 	}
@@ -1161,16 +1176,7 @@ func (networks networks) Delete(id string) error {
 // Get looks up a network by ID.
 // Returns nil if the network doesn't exist.
 func (networks networks) Get(id string) *api.Network {
-	obj, err := networks.memDBTx.First(networks.table(), indexID, id)
-	if err != nil {
-		return nil
-	}
-	if obj != nil {
-		if n, ok := obj.(*api.Network); ok {
-			return n.Copy()
-		}
-	}
-	return nil
+	return networks.lookup(indexID, id).Copy()
 }
 
 // Find selects a set of networks and returns them. If by is nil,
