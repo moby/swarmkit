@@ -292,9 +292,8 @@ func applyStoreAction(tx tx, sa *api.StoreAction) error {
 
 	case *api.StoreAction_CreateNetwork:
 		return tx.Networks().Create(v.CreateNetwork)
-	// TODO(aaronl): being added
-	//case *api.StoreAction_UpdateNetwork:
-	//	return tx.Networks().Update(v.UpdateNetwork)
+	case *api.StoreAction_UpdateNetwork:
+		return tx.Networks().Update(v.UpdateNetwork)
 	case *api.StoreAction_RemoveNetwork:
 		return tx.Networks().Delete(v.RemoveNetwork)
 
@@ -319,18 +318,40 @@ func (s *MemoryStore) update(proposer Proposer, cb func(Tx) error) error {
 	s.updateLock.Lock()
 	memDBTx := s.memDB.Txn(true)
 
-	tx := tx{
-		nodes:    nodes{memDBTx: memDBTx},
-		jobs:     jobs{memDBTx: memDBTx},
-		tasks:    tasks{memDBTx: memDBTx},
-		networks: networks{memDBTx: memDBTx},
-		volumes:  volumes{memDBTx: memDBTx},
+	var (
+		tx         tx
+		curVersion *api.Version
+	)
+
+	if proposer != nil {
+		curVersion = proposer.GetVersion()
 	}
-	tx.nodes.tx = &tx
-	tx.jobs.tx = &tx
-	tx.tasks.tx = &tx
-	tx.networks.tx = &tx
-	tx.volumes.tx = &tx
+
+	tx.nodes = nodes{
+		tx:         &tx,
+		memDBTx:    memDBTx,
+		curVersion: curVersion,
+	}
+	tx.jobs = jobs{
+		tx:         &tx,
+		memDBTx:    memDBTx,
+		curVersion: curVersion,
+	}
+	tx.tasks = tasks{
+		tx:         &tx,
+		memDBTx:    memDBTx,
+		curVersion: curVersion,
+	}
+	tx.networks = networks{
+		tx:         &tx,
+		memDBTx:    memDBTx,
+		curVersion: curVersion,
+	}
+	tx.volumes = volumes{
+		tx:         &tx,
+		memDBTx:    memDBTx,
+		curVersion: curVersion,
+	}
 
 	err := cb(tx)
 
@@ -414,11 +435,10 @@ func (tx tx) newStoreAction() ([]*api.StoreAction, error) {
 			sa.Action = &api.StoreAction_CreateNetwork{
 				CreateNetwork: v.Network,
 			}
-		// TODO(aaronl): being added
-		/*case EventUpdateNetwork:
-		sa.Action = &api.StoreAction_UpdateNetwork{
-			UpdateNetwork: v.Network,
-		}*/
+		case EventUpdateNetwork:
+			sa.Action = &api.StoreAction_UpdateNetwork{
+				UpdateNetwork: v.Network,
+			}
 		case EventDeleteNetwork:
 			sa.Action = &api.StoreAction_RemoveNetwork{
 				RemoveNetwork: v.Network.ID,
@@ -480,8 +500,9 @@ func (tx tx) Volumes() VolumeSet {
 }
 
 type nodes struct {
-	tx      *tx
-	memDBTx *memdb.Txn
+	tx         *tx
+	memDBTx    *memdb.Txn
+	curVersion *api.Version
 }
 
 func (nodes nodes) table() string {
@@ -495,9 +516,14 @@ func (nodes nodes) Create(n *api.Node) error {
 		return ErrExist
 	}
 
-	err := nodes.memDBTx.Insert(nodes.table(), n.Copy())
+	copy := n.Copy()
+	if nodes.curVersion != nil {
+		copy.Version = *nodes.curVersion
+	}
+
+	err := nodes.memDBTx.Insert(nodes.table(), copy)
 	if err == nil {
-		nodes.tx.changelist = append(nodes.tx.changelist, EventCreateNode{Node: n})
+		nodes.tx.changelist = append(nodes.tx.changelist, EventCreateNode{Node: copy})
 	}
 	return err
 }
@@ -505,13 +531,22 @@ func (nodes nodes) Create(n *api.Node) error {
 // Update updates an existing node in the store.
 // Returns ErrNotExist if the node doesn't exist.
 func (nodes nodes) Update(n *api.Node) error {
-	if nodes.Get(n.ID) == nil {
+	oldN := nodes.Get(n.ID)
+	if oldN == nil {
 		return ErrNotExist
 	}
+	if oldN.Version != n.Version {
+		return ErrSequenceConflict
+	}
 
-	err := nodes.memDBTx.Insert(nodes.table(), n.Copy())
+	copy := n.Copy()
+	if nodes.curVersion != nil {
+		copy.Version = *nodes.curVersion
+	}
+
+	err := nodes.memDBTx.Insert(nodes.table(), copy)
 	if err == nil {
-		nodes.tx.changelist = append(nodes.tx.changelist, EventUpdateNode{Node: n})
+		nodes.tx.changelist = append(nodes.tx.changelist, EventUpdateNode{Node: copy})
 	}
 	return err
 }
@@ -652,8 +687,9 @@ func (ni nodeIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 }
 
 type tasks struct {
-	tx      *tx
-	memDBTx *memdb.Txn
+	tx         *tx
+	memDBTx    *memdb.Txn
+	curVersion *api.Version
 }
 
 func (tasks tasks) table() string {
@@ -667,9 +703,14 @@ func (tasks tasks) Create(t *api.Task) error {
 		return ErrExist
 	}
 
-	err := tasks.memDBTx.Insert(tasks.table(), t.Copy())
+	copy := t.Copy()
+	if tasks.curVersion != nil {
+		copy.Version = *tasks.curVersion
+	}
+
+	err := tasks.memDBTx.Insert(tasks.table(), copy)
 	if err == nil {
-		tasks.tx.changelist = append(tasks.tx.changelist, EventCreateTask{Task: t})
+		tasks.tx.changelist = append(tasks.tx.changelist, EventCreateTask{Task: copy})
 	}
 	return err
 }
@@ -677,13 +718,22 @@ func (tasks tasks) Create(t *api.Task) error {
 // Update updates an existing task in the store.
 // Returns ErrNotExist if the task doesn't exist.
 func (tasks tasks) Update(t *api.Task) error {
-	if tasks.Get(t.ID) == nil {
+	oldT := tasks.Get(t.ID)
+	if oldT == nil {
 		return ErrNotExist
 	}
+	if oldT.Version != t.Version {
+		return ErrSequenceConflict
+	}
 
-	err := tasks.memDBTx.Insert(tasks.table(), t.Copy())
+	copy := t.Copy()
+	if tasks.curVersion != nil {
+		copy.Version = *tasks.curVersion
+	}
+
+	err := tasks.memDBTx.Insert(tasks.table(), copy)
 	if err == nil {
-		tasks.tx.changelist = append(tasks.tx.changelist, EventUpdateTask{Task: t})
+		tasks.tx.changelist = append(tasks.tx.changelist, EventUpdateTask{Task: copy})
 	}
 	return err
 }
@@ -836,8 +886,9 @@ func (ti taskIndexerByNodeID) FromObject(obj interface{}) (bool, []byte, error) 
 }
 
 type jobs struct {
-	tx      *tx
-	memDBTx *memdb.Txn
+	tx         *tx
+	memDBTx    *memdb.Txn
+	curVersion *api.Version
 }
 
 func (jobs jobs) table() string {
@@ -867,9 +918,14 @@ func (jobs jobs) Create(j *api.Job) error {
 		return ErrNameConflict
 	}
 
-	err := jobs.memDBTx.Insert(jobs.table(), j.Copy())
+	copy := j.Copy()
+	if jobs.curVersion != nil {
+		copy.Version = *jobs.curVersion
+	}
+
+	err := jobs.memDBTx.Insert(jobs.table(), copy)
 	if err == nil {
-		jobs.tx.changelist = append(jobs.tx.changelist, EventCreateJob{Job: j})
+		jobs.tx.changelist = append(jobs.tx.changelist, EventCreateJob{Job: copy})
 	}
 	return err
 }
@@ -877,9 +933,14 @@ func (jobs jobs) Create(j *api.Job) error {
 // Update updates an existing job in the store.
 // Returns ErrNotExist if the job doesn't exist.
 func (jobs jobs) Update(j *api.Job) error {
-	if jobs.lookup(indexID, j.ID) == nil {
+	oldJ := jobs.lookup(indexID, j.ID)
+	if oldJ == nil {
 		return ErrNotExist
 	}
+	if oldJ.Version != j.Version {
+		return ErrSequenceConflict
+	}
+
 	// Ensure the name is either not in use or already used by this same Job.
 	if existing := jobs.lookup(indexName, j.Spec.Meta.Name); existing != nil {
 		if existing.ID != j.ID {
@@ -887,9 +948,14 @@ func (jobs jobs) Update(j *api.Job) error {
 		}
 	}
 
-	err := jobs.memDBTx.Insert(jobs.table(), j.Copy())
+	copy := j.Copy()
+	if jobs.curVersion != nil {
+		copy.Version = *jobs.curVersion
+	}
+
+	err := jobs.memDBTx.Insert(jobs.table(), copy)
 	if err == nil {
-		jobs.tx.changelist = append(jobs.tx.changelist, EventUpdateJob{Job: j})
+		jobs.tx.changelist = append(jobs.tx.changelist, EventUpdateJob{Job: copy})
 	}
 	return err
 }
@@ -1026,8 +1092,9 @@ func (ji jobIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 }
 
 type networks struct {
-	tx      *tx
-	memDBTx *memdb.Txn
+	tx         *tx
+	memDBTx    *memdb.Txn
+	curVersion *api.Version
 }
 
 func (networks networks) table() string {
@@ -1041,9 +1108,14 @@ func (networks networks) Create(n *api.Network) error {
 		return ErrExist
 	}
 
-	err := networks.memDBTx.Insert(networks.table(), n.Copy())
+	copy := n.Copy()
+	if networks.curVersion != nil {
+		copy.Version = *networks.curVersion
+	}
+
+	err := networks.memDBTx.Insert(networks.table(), copy)
 	if err == nil {
-		networks.tx.changelist = append(networks.tx.changelist, EventCreateNetwork{Network: n})
+		networks.tx.changelist = append(networks.tx.changelist, EventCreateNetwork{Network: copy})
 	}
 	return err
 }
@@ -1051,13 +1123,22 @@ func (networks networks) Create(n *api.Network) error {
 // Update updates an existing network in the store.
 // Returns ErrNotExist if the network doesn't exist.
 func (networks networks) Update(n *api.Network) error {
-	if networks.Get(n.ID) == nil {
+	oldN := networks.Get(n.ID)
+	if oldN == nil {
 		return ErrNotExist
 	}
+	if oldN.Version != n.Version {
+		return ErrSequenceConflict
+	}
 
-	err := networks.memDBTx.Insert(networks.table(), n.Copy())
+	copy := n.Copy()
+	if networks.curVersion != nil {
+		copy.Version = *networks.curVersion
+	}
+
+	err := networks.memDBTx.Insert(networks.table(), copy)
 	if err == nil {
-		networks.tx.changelist = append(networks.tx.changelist, EventUpdateNetwork{Network: n})
+		networks.tx.changelist = append(networks.tx.changelist, EventUpdateNetwork{Network: copy})
 	}
 	return err
 }
@@ -1165,8 +1246,9 @@ func (ni networkIndexerByName) FromObject(obj interface{}) (bool, []byte, error)
 }
 
 type volumes struct {
-	tx      *tx
-	memDBTx *memdb.Txn
+	tx         *tx
+	memDBTx    *memdb.Txn
+	curVersion *api.Version
 }
 
 func (volumes volumes) table() string {
@@ -1197,9 +1279,14 @@ func (volumes volumes) Create(v *api.Volume) error {
 		return ErrNameConflict
 	}
 
-	err := volumes.memDBTx.Insert(volumes.table(), v.Copy())
+	copy := v.Copy()
+	if volumes.curVersion != nil {
+		copy.Version = *volumes.curVersion
+	}
+
+	err := volumes.memDBTx.Insert(volumes.table(), copy)
 	if err == nil {
-		volumes.tx.changelist = append(volumes.tx.changelist, EventCreateVolume{Volume: v})
+		volumes.tx.changelist = append(volumes.tx.changelist, EventCreateVolume{Volume: copy})
 	}
 	return err
 }
@@ -1218,9 +1305,14 @@ func (volumes volumes) Update(v *api.Volume) error {
 		}
 	}
 
-	err := volumes.memDBTx.Insert(volumes.table(), v.Copy())
+	copy := v.Copy()
+	if volumes.curVersion != nil {
+		copy.Version = *volumes.curVersion
+	}
+
+	err := volumes.memDBTx.Insert(volumes.table(), copy)
 	if err == nil {
-		volumes.tx.changelist = append(volumes.tx.changelist, EventUpdateVolume{Volume: v})
+		volumes.tx.changelist = append(volumes.tx.changelist, EventUpdateVolume{Volume: copy})
 	}
 	return err
 }
@@ -1406,6 +1498,10 @@ func (s *MemoryStore) Save() ([]byte, error) {
 		if err != nil {
 			return err
 		}
+		snapshot.Volumes, err = tx.Volumes().Find(All)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -1453,6 +1549,12 @@ func (s *MemoryStore) Restore(data []byte) error {
 
 		for _, t := range snapshot.Tasks {
 			if err := tx.Tasks().Create(t); err != nil {
+				return err
+			}
+		}
+
+		for _, t := range snapshot.Volumes {
+			if err := tx.Volumes().Create(t); err != nil {
 				return err
 			}
 		}

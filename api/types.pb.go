@@ -12,6 +12,7 @@
 
 	It has these top-level messages:
 		Meta
+		Version
 		Resources
 		Platform
 		NodeSpec
@@ -263,6 +264,14 @@ type Meta struct {
 func (m *Meta) Reset()      { *m = Meta{} }
 func (*Meta) ProtoMessage() {}
 
+// Version tracks the last time an object in the store was updated.
+type Version struct {
+	Index uint64 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
+}
+
+func (m *Version) Reset()      { *m = Version{} }
+func (*Version) ProtoMessage() {}
+
 type Resources struct {
 	// Number of CPU cores.
 	CPU float64 `protobuf:"fixed64,1,opt,name=cpu,proto3" json:"cpu,omitempty"`
@@ -307,14 +316,16 @@ func (*NodeDescription) ProtoMessage() {}
 type Node struct {
 	// ID specifies the identity of the node.
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Version tracks the last time the node was modified.
+	Version Version `protobuf:"bytes,2,opt,name=version" json:"version"`
 	// Spec defines the desired state of the node as specified by the user.
 	// The system will honor this and will *never* modify it.
-	Spec *NodeSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
+	Spec *NodeSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
 	// Description encapsulated the properties of the Node as reported by the
 	// agent.
-	Description *NodeDescription `protobuf:"bytes,3,opt,name=description" json:"description,omitempty"`
+	Description *NodeDescription `protobuf:"bytes,4,opt,name=description" json:"description,omitempty"`
 	// Status provides the current status of the node, as seen by the manager.
-	Status NodeStatus `protobuf:"bytes,4,opt,name=status" json:"status"`
+	Status NodeStatus `protobuf:"bytes,5,opt,name=status" json:"status"`
 }
 
 func (m *Node) Reset()      { *m = Node{} }
@@ -744,21 +755,23 @@ func (*TaskStatus) ProtoMessage() {}
 // dispatched to another node.
 type Task struct {
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Version tracks the last time the task was modified.
+	Version Version `protobuf:"bytes,2,opt,name=version" json:"version"`
 	// JobID indicates the job under which this task is orchestrated. This
 	// should almost always be set.
-	JobID string `protobuf:"bytes,2,opt,name=job_id,proto3" json:"job_id,omitempty"`
+	JobID string `protobuf:"bytes,3,opt,name=job_id,proto3" json:"job_id,omitempty"`
 	// NodeID indicates the node to which the task is assigned. If this field
 	// is empty or not set, the task is unassigned.
-	NodeID string `protobuf:"bytes,3,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	NodeID string `protobuf:"bytes,4,opt,name=node_id,proto3" json:"node_id,omitempty"`
 	// Meta inherits labels from the JobSpec.Meta associated with this task. It
 	// may include other labels added by the manager. The name will be a human
 	// readable name, calculated based on the JobSpec.Meta.Name field.
-	Meta Meta `protobuf:"bytes,4,opt,name=meta" json:"meta"`
+	Meta Meta `protobuf:"bytes,5,opt,name=meta" json:"meta"`
 	// Spec declares the runtime parameters for the task. This is copied out of
 	// the job's template field.
-	Spec     *TaskSpec                 `protobuf:"bytes,5,opt,name=spec" json:"spec,omitempty"`
-	Status   *TaskStatus               `protobuf:"bytes,6,opt,name=status" json:"status,omitempty"`
-	Networks []*Task_NetworkAttachment `protobuf:"bytes,7,rep,name=networks" json:"networks,omitempty"`
+	Spec     *TaskSpec                 `protobuf:"bytes,6,opt,name=spec" json:"spec,omitempty"`
+	Status   *TaskStatus               `protobuf:"bytes,7,opt,name=status" json:"status,omitempty"`
+	Networks []*Task_NetworkAttachment `protobuf:"bytes,8,rep,name=networks" json:"networks,omitempty"`
 }
 
 func (m *Task) Reset()      { *m = Task{} }
@@ -778,8 +791,10 @@ func (m *Task_NetworkAttachment) Reset()      { *m = Task_NetworkAttachment{} }
 func (*Task_NetworkAttachment) ProtoMessage() {}
 
 type Job struct {
-	ID   string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Spec *JobSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Version tracks the last time the job was modified.
+	Version Version  `protobuf:"bytes,2,opt,name=version" json:"version"`
+	Spec    *JobSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *Job) Reset()      { *m = Job{} }
@@ -842,10 +857,12 @@ func (m *NetworkSpec) Reset()      { *m = NetworkSpec{} }
 func (*NetworkSpec) ProtoMessage() {}
 
 type Network struct {
-	ID   string       `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Spec *NetworkSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
+	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Version tracks the last time the network was modified.
+	Version Version      `protobuf:"bytes,2,opt,name=version" json:"version"`
+	Spec    *NetworkSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
 	// Driver specific operational state provided by the network driver.
-	DriverState *Driver `protobuf:"bytes,3,opt,name=driver_state" json:"driver_state,omitempty"`
+	DriverState *Driver `protobuf:"bytes,4,opt,name=driver_state" json:"driver_state,omitempty"`
 	// Runtime state of IPAM options. This may not reflect the
 	// ipam options from NetworkSpec.
 	IPAM *IPAMOptions `protobuf:"bytes,5,opt,name=ipam" json:"ipam,omitempty"`
@@ -865,10 +882,12 @@ func (m *VolumeSpec) Reset()      { *m = VolumeSpec{} }
 func (*VolumeSpec) ProtoMessage() {}
 
 type Volume struct {
-	ID   string      `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Spec *VolumeSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
+	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Version tracks the last time the volume was modified.
+	Version Version     `protobuf:"bytes,2,opt,name=version" json:"version"`
+	Spec    *VolumeSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
 	// Driver specific operational state provided by the Volume driver.
-	DriverState *Driver `protobuf:"bytes,3,opt,name=driver_state" json:"driver_state,omitempty"`
+	DriverState *Driver `protobuf:"bytes,4,opt,name=driver_state" json:"driver_state,omitempty"`
 }
 
 func (m *Volume) Reset()      { *m = Volume{} }
@@ -1320,6 +1339,7 @@ func _StoreAction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Bu
 
 func init() {
 	proto.RegisterType((*Meta)(nil), "api.Meta")
+	proto.RegisterType((*Version)(nil), "api.Version")
 	proto.RegisterType((*Resources)(nil), "api.Resources")
 	proto.RegisterType((*Platform)(nil), "api.Platform")
 	proto.RegisterType((*NodeSpec)(nil), "api.NodeSpec")
@@ -1369,6 +1389,18 @@ func (m *Meta) Copy() *Meta {
 		for k, v := range m.Labels {
 			o.Labels[k] = v
 		}
+	}
+
+	return o
+}
+
+func (m *Version) Copy() *Version {
+	if m == nil {
+		return nil
+	}
+
+	o := &Version{
+		Index: m.Index,
 	}
 
 	return o
@@ -1434,6 +1466,7 @@ func (m *Node) Copy() *Node {
 
 	o := &Node{
 		ID:          m.ID,
+		Version:     *m.Version.Copy(),
 		Spec:        m.Spec.Copy(),
 		Description: m.Description.Copy(),
 		Status:      *m.Status.Copy(),
@@ -1655,12 +1688,13 @@ func (m *Task) Copy() *Task {
 	}
 
 	o := &Task{
-		ID:     m.ID,
-		JobID:  m.JobID,
-		NodeID: m.NodeID,
-		Meta:   *m.Meta.Copy(),
-		Spec:   m.Spec.Copy(),
-		Status: m.Status.Copy(),
+		ID:      m.ID,
+		Version: *m.Version.Copy(),
+		JobID:   m.JobID,
+		NodeID:  m.NodeID,
+		Meta:    *m.Meta.Copy(),
+		Spec:    m.Spec.Copy(),
+		Status:  m.Status.Copy(),
 	}
 
 	if m.Networks != nil {
@@ -1698,8 +1732,9 @@ func (m *Job) Copy() *Job {
 	}
 
 	o := &Job{
-		ID:   m.ID,
-		Spec: m.Spec.Copy(),
+		ID:      m.ID,
+		Version: *m.Version.Copy(),
+		Spec:    m.Spec.Copy(),
 	}
 
 	return o
@@ -1788,6 +1823,7 @@ func (m *Network) Copy() *Network {
 
 	o := &Network{
 		ID:          m.ID,
+		Version:     *m.Version.Copy(),
 		Spec:        m.Spec.Copy(),
 		DriverState: m.DriverState.Copy(),
 		IPAM:        m.IPAM.Copy(),
@@ -1816,6 +1852,7 @@ func (m *Volume) Copy() *Volume {
 
 	o := &Volume{
 		ID:          m.ID,
+		Version:     *m.Version.Copy(),
 		Spec:        m.Spec.Copy(),
 		DriverState: m.DriverState.Copy(),
 	}
@@ -1981,6 +2018,16 @@ func (this *Meta) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
+func (this *Version) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.Version{")
+	s = append(s, "Index: "+fmt.Sprintf("%#v", this.Index)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func (this *Resources) GoString() string {
 	if this == nil {
 		return "nil"
@@ -2034,9 +2081,10 @@ func (this *Node) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 8)
+	s := make([]string, 0, 9)
 	s = append(s, "&api.Node{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
+	s = append(s, "Version: "+strings.Replace(this.Version.GoString(), `&`, ``, 1)+",\n")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
@@ -2236,9 +2284,10 @@ func (this *Task) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 11)
+	s := make([]string, 0, 12)
 	s = append(s, "&api.Task{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
+	s = append(s, "Version: "+strings.Replace(this.Version.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "JobID: "+fmt.Sprintf("%#v", this.JobID)+",\n")
 	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
 	s = append(s, "Meta: "+strings.Replace(this.Meta.GoString(), `&`, ``, 1)+",\n")
@@ -2271,9 +2320,10 @@ func (this *Job) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 7)
 	s = append(s, "&api.Job{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
+	s = append(s, "Version: "+strings.Replace(this.Version.GoString(), `&`, ``, 1)+",\n")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
@@ -2366,9 +2416,10 @@ func (this *Network) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 8)
+	s := make([]string, 0, 9)
 	s = append(s, "&api.Network{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
+	s = append(s, "Version: "+strings.Replace(this.Version.GoString(), `&`, ``, 1)+",\n")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
@@ -2398,9 +2449,10 @@ func (this *Volume) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 7)
+	s := make([]string, 0, 8)
 	s = append(s, "&api.Volume{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
+	s = append(s, "Version: "+strings.Replace(this.Version.GoString(), `&`, ``, 1)+",\n")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
@@ -2632,6 +2684,29 @@ func (m *Meta) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *Version) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Version) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Index != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Index))
+	}
+	return i, nil
+}
+
 func (m *Resources) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -2786,34 +2861,42 @@ func (m *Node) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintTypes(data, i, uint64(len(m.ID)))
 		i += copy(data[i:], m.ID)
 	}
-	if m.Spec != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n4, err := m.Spec.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n4
+	data[i] = 0x12
+	i++
+	i = encodeVarintTypes(data, i, uint64(m.Version.Size()))
+	n4, err := m.Version.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
-	if m.Description != nil {
+	i += n4
+	if m.Spec != nil {
 		data[i] = 0x1a
 		i++
-		i = encodeVarintTypes(data, i, uint64(m.Description.Size()))
-		n5, err := m.Description.MarshalTo(data[i:])
+		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
+		n5, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n5
 	}
-	data[i] = 0x22
+	if m.Description != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Description.Size()))
+		n6, err := m.Description.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n6
+	}
+	data[i] = 0x2a
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Status.Size()))
-	n6, err := m.Status.MarshalTo(data[i:])
+	n7, err := m.Status.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n6
+	i += n7
 	return i, nil
 }
 
@@ -2889,11 +2972,11 @@ func (m *ContainerSpec) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Image.Size()))
-		n7, err := m.Image.MarshalTo(data[i:])
+		n8, err := m.Image.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n7
+		i += n8
 	}
 	if len(m.Command) > 0 {
 		for _, s := range m.Command {
@@ -2971,11 +3054,11 @@ func (m *ContainerSpec_NetworkAttachmentSpec) MarshalTo(data []byte) (int, error
 	var l int
 	_ = l
 	if m.Reference != nil {
-		nn8, err := m.Reference.MarshalTo(data[i:])
+		nn9, err := m.Reference.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn8
+		i += nn9
 	}
 	return i, nil
 }
@@ -3012,11 +3095,11 @@ func (m *TaskSpec) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if m.Runtime != nil {
-		nn9, err := m.Runtime.MarshalTo(data[i:])
+		nn10, err := m.Runtime.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn9
+		i += nn10
 	}
 	return i, nil
 }
@@ -3027,11 +3110,11 @@ func (m *TaskSpec_Container) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Container.Size()))
-		n10, err := m.Container.MarshalTo(data[i:])
+		n11, err := m.Container.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n10
+		i += n11
 	}
 	return i, nil
 }
@@ -3053,27 +3136,27 @@ func (m *JobSpec) MarshalTo(data []byte) (int, error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-	n11, err := m.Meta.MarshalTo(data[i:])
+	n12, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n11
+	i += n12
 	if m.Orchestration != nil {
-		nn12, err := m.Orchestration.MarshalTo(data[i:])
+		nn13, err := m.Orchestration.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn12
+		i += nn13
 	}
 	if m.Template != nil {
 		data[i] = 0x32
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Template.Size()))
-		n13, err := m.Template.MarshalTo(data[i:])
+		n14, err := m.Template.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n13
+		i += n14
 	}
 	return i, nil
 }
@@ -3084,11 +3167,11 @@ func (m *JobSpec_Service) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Service.Size()))
-		n14, err := m.Service.MarshalTo(data[i:])
+		n15, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n14
+		i += n15
 	}
 	return i, nil
 }
@@ -3098,11 +3181,11 @@ func (m *JobSpec_Batch) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Batch.Size()))
-		n15, err := m.Batch.MarshalTo(data[i:])
+		n16, err := m.Batch.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n15
+		i += n16
 	}
 	return i, nil
 }
@@ -3112,11 +3195,11 @@ func (m *JobSpec_Global) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x22
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Global.Size()))
-		n16, err := m.Global.MarshalTo(data[i:])
+		n17, err := m.Global.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n16
+		i += n17
 	}
 	return i, nil
 }
@@ -3126,11 +3209,11 @@ func (m *JobSpec_Cron) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Cron.Size()))
-		n17, err := m.Cron.MarshalTo(data[i:])
+		n18, err := m.Cron.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n17
+		i += n18
 	}
 	return i, nil
 }
@@ -3271,49 +3354,57 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintTypes(data, i, uint64(len(m.ID)))
 		i += copy(data[i:], m.ID)
 	}
+	data[i] = 0x12
+	i++
+	i = encodeVarintTypes(data, i, uint64(m.Version.Size()))
+	n19, err := m.Version.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n19
 	if len(m.JobID) > 0 {
-		data[i] = 0x12
+		data[i] = 0x1a
 		i++
 		i = encodeVarintTypes(data, i, uint64(len(m.JobID)))
 		i += copy(data[i:], m.JobID)
 	}
 	if len(m.NodeID) > 0 {
-		data[i] = 0x1a
+		data[i] = 0x22
 		i++
 		i = encodeVarintTypes(data, i, uint64(len(m.NodeID)))
 		i += copy(data[i:], m.NodeID)
 	}
-	data[i] = 0x22
+	data[i] = 0x2a
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-	n18, err := m.Meta.MarshalTo(data[i:])
+	n20, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n18
+	i += n20
 	if m.Spec != nil {
-		data[i] = 0x2a
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n19, err := m.Spec.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n19
-	}
-	if m.Status != nil {
 		data[i] = 0x32
 		i++
-		i = encodeVarintTypes(data, i, uint64(m.Status.Size()))
-		n20, err := m.Status.MarshalTo(data[i:])
+		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
+		n21, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n20
+		i += n21
+	}
+	if m.Status != nil {
+		data[i] = 0x3a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Status.Size()))
+		n22, err := m.Status.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n22
 	}
 	if len(m.Networks) > 0 {
 		for _, msg := range m.Networks {
-			data[i] = 0x3a
+			data[i] = 0x42
 			i++
 			i = encodeVarintTypes(data, i, uint64(msg.Size()))
 			n, err := msg.MarshalTo(data[i:])
@@ -3345,11 +3436,11 @@ func (m *Task_NetworkAttachment) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Network.Size()))
-		n21, err := m.Network.MarshalTo(data[i:])
+		n23, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n21
+		i += n23
 	}
 	if len(m.Addresses) > 0 {
 		for _, s := range m.Addresses {
@@ -3390,15 +3481,23 @@ func (m *Job) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintTypes(data, i, uint64(len(m.ID)))
 		i += copy(data[i:], m.ID)
 	}
+	data[i] = 0x12
+	i++
+	i = encodeVarintTypes(data, i, uint64(m.Version.Size()))
+	n24, err := m.Version.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n24
 	if m.Spec != nil {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n22, err := m.Spec.MarshalTo(data[i:])
+		n25, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n22
+		i += n25
 	}
 	return i, nil
 }
@@ -3521,11 +3620,11 @@ func (m *IPAMOptions) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Driver.Size()))
-		n23, err := m.Driver.MarshalTo(data[i:])
+		n26, err := m.Driver.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n23
+		i += n26
 	}
 	if len(m.Configurations) > 0 {
 		for _, msg := range m.Configurations {
@@ -3560,20 +3659,20 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-	n24, err := m.Meta.MarshalTo(data[i:])
+	n27, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n24
+	i += n27
 	if m.DriverConfiguration != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.DriverConfiguration.Size()))
-		n25, err := m.DriverConfiguration.MarshalTo(data[i:])
+		n28, err := m.DriverConfiguration.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n25
+		i += n28
 	}
 	if m.Ipv6Enabled {
 		data[i] = 0x18
@@ -3599,11 +3698,11 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.IPAM.Size()))
-		n26, err := m.IPAM.MarshalTo(data[i:])
+		n29, err := m.IPAM.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n26
+		i += n29
 	}
 	return i, nil
 }
@@ -3629,35 +3728,43 @@ func (m *Network) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintTypes(data, i, uint64(len(m.ID)))
 		i += copy(data[i:], m.ID)
 	}
-	if m.Spec != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n27, err := m.Spec.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n27
+	data[i] = 0x12
+	i++
+	i = encodeVarintTypes(data, i, uint64(m.Version.Size()))
+	n30, err := m.Version.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
-	if m.DriverState != nil {
+	i += n30
+	if m.Spec != nil {
 		data[i] = 0x1a
 		i++
-		i = encodeVarintTypes(data, i, uint64(m.DriverState.Size()))
-		n28, err := m.DriverState.MarshalTo(data[i:])
+		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
+		n31, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n28
+		i += n31
+	}
+	if m.DriverState != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.DriverState.Size()))
+		n32, err := m.DriverState.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n32
 	}
 	if m.IPAM != nil {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.IPAM.Size()))
-		n29, err := m.IPAM.MarshalTo(data[i:])
+		n33, err := m.IPAM.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n29
+		i += n33
 	}
 	return i, nil
 }
@@ -3680,20 +3787,20 @@ func (m *VolumeSpec) MarshalTo(data []byte) (int, error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-	n30, err := m.Meta.MarshalTo(data[i:])
+	n34, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n30
+	i += n34
 	if m.DriverConfiguration != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.DriverConfiguration.Size()))
-		n31, err := m.DriverConfiguration.MarshalTo(data[i:])
+		n35, err := m.DriverConfiguration.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n31
+		i += n35
 	}
 	return i, nil
 }
@@ -3719,25 +3826,33 @@ func (m *Volume) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintTypes(data, i, uint64(len(m.ID)))
 		i += copy(data[i:], m.ID)
 	}
-	if m.Spec != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n32, err := m.Spec.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n32
+	data[i] = 0x12
+	i++
+	i = encodeVarintTypes(data, i, uint64(m.Version.Size()))
+	n36, err := m.Version.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
-	if m.DriverState != nil {
+	i += n36
+	if m.Spec != nil {
 		data[i] = 0x1a
 		i++
-		i = encodeVarintTypes(data, i, uint64(m.DriverState.Size()))
-		n33, err := m.DriverState.MarshalTo(data[i:])
+		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
+		n37, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n33
+		i += n37
+	}
+	if m.DriverState != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.DriverState.Size()))
+		n38, err := m.DriverState.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n38
 	}
 	return i, nil
 }
@@ -3822,11 +3937,11 @@ func (m *StoreAction) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if m.Action != nil {
-		nn34, err := m.Action.MarshalTo(data[i:])
+		nn39, err := m.Action.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn34
+		i += nn39
 	}
 	return i, nil
 }
@@ -3837,11 +3952,11 @@ func (m *StoreAction_CreateNode) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.CreateNode.Size()))
-		n35, err := m.CreateNode.MarshalTo(data[i:])
+		n40, err := m.CreateNode.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n35
+		i += n40
 	}
 	return i, nil
 }
@@ -3851,11 +3966,11 @@ func (m *StoreAction_UpdateNode) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.UpdateNode.Size()))
-		n36, err := m.UpdateNode.MarshalTo(data[i:])
+		n41, err := m.UpdateNode.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n36
+		i += n41
 	}
 	return i, nil
 }
@@ -3873,11 +3988,11 @@ func (m *StoreAction_CreateTask) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x22
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.CreateTask.Size()))
-		n37, err := m.CreateTask.MarshalTo(data[i:])
+		n42, err := m.CreateTask.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n37
+		i += n42
 	}
 	return i, nil
 }
@@ -3887,11 +4002,11 @@ func (m *StoreAction_UpdateTask) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.UpdateTask.Size()))
-		n38, err := m.UpdateTask.MarshalTo(data[i:])
+		n43, err := m.UpdateTask.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n38
+		i += n43
 	}
 	return i, nil
 }
@@ -3909,11 +4024,11 @@ func (m *StoreAction_CreateJob) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x3a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.CreateJob.Size()))
-		n39, err := m.CreateJob.MarshalTo(data[i:])
+		n44, err := m.CreateJob.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n39
+		i += n44
 	}
 	return i, nil
 }
@@ -3923,11 +4038,11 @@ func (m *StoreAction_UpdateJob) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x42
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.UpdateJob.Size()))
-		n40, err := m.UpdateJob.MarshalTo(data[i:])
+		n45, err := m.UpdateJob.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n40
+		i += n45
 	}
 	return i, nil
 }
@@ -3945,11 +4060,11 @@ func (m *StoreAction_CreateNetwork) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x52
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.CreateNetwork.Size()))
-		n41, err := m.CreateNetwork.MarshalTo(data[i:])
+		n46, err := m.CreateNetwork.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n41
+		i += n46
 	}
 	return i, nil
 }
@@ -3959,11 +4074,11 @@ func (m *StoreAction_UpdateNetwork) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x5a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.UpdateNetwork.Size()))
-		n42, err := m.UpdateNetwork.MarshalTo(data[i:])
+		n47, err := m.UpdateNetwork.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n42
+		i += n47
 	}
 	return i, nil
 }
@@ -3981,11 +4096,11 @@ func (m *StoreAction_CreateVolume) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x6a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.CreateVolume.Size()))
-		n43, err := m.CreateVolume.MarshalTo(data[i:])
+		n48, err := m.CreateVolume.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n43
+		i += n48
 	}
 	return i, nil
 }
@@ -3995,11 +4110,11 @@ func (m *StoreAction_UpdateVolume) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x72
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.UpdateVolume.Size()))
-		n44, err := m.UpdateVolume.MarshalTo(data[i:])
+		n49, err := m.UpdateVolume.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n44
+		i += n49
 	}
 	return i, nil
 }
@@ -4052,6 +4167,15 @@ func (m *Meta) Size() (n int) {
 			mapEntrySize := 1 + len(k) + sovTypes(uint64(len(k))) + 1 + len(v) + sovTypes(uint64(len(v)))
 			n += mapEntrySize + 1 + sovTypes(uint64(mapEntrySize))
 		}
+	}
+	return n
+}
+
+func (m *Version) Size() (n int) {
+	var l int
+	_ = l
+	if m.Index != 0 {
+		n += 1 + sovTypes(uint64(m.Index))
 	}
 	return n
 }
@@ -4118,6 +4242,8 @@ func (m *Node) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
+	l = m.Version.Size()
+	n += 1 + l + sovTypes(uint64(l))
 	if m.Spec != nil {
 		l = m.Spec.Size()
 		n += 1 + l + sovTypes(uint64(l))
@@ -4333,6 +4459,8 @@ func (m *Task) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
+	l = m.Version.Size()
+	n += 1 + l + sovTypes(uint64(l))
 	l = len(m.JobID)
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
@@ -4383,6 +4511,8 @@ func (m *Job) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
+	l = m.Version.Size()
+	n += 1 + l + sovTypes(uint64(l))
 	if m.Spec != nil {
 		l = m.Spec.Size()
 		n += 1 + l + sovTypes(uint64(l))
@@ -4482,6 +4612,8 @@ func (m *Network) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
+	l = m.Version.Size()
+	n += 1 + l + sovTypes(uint64(l))
 	if m.Spec != nil {
 		l = m.Spec.Size()
 		n += 1 + l + sovTypes(uint64(l))
@@ -4516,6 +4648,8 @@ func (m *Volume) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
+	l = m.Version.Size()
+	n += 1 + l + sovTypes(uint64(l))
 	if m.Spec != nil {
 		l = m.Spec.Size()
 		n += 1 + l + sovTypes(uint64(l))
@@ -4724,6 +4858,16 @@ func (this *Meta) String() string {
 	}, "")
 	return s
 }
+func (this *Version) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Version{`,
+		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *Resources) String() string {
 	if this == nil {
 		return "nil"
@@ -4775,6 +4919,7 @@ func (this *Node) String() string {
 	}
 	s := strings.Join([]string{`&Node{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NodeSpec", "NodeSpec", 1) + `,`,
 		`Description:` + strings.Replace(fmt.Sprintf("%v", this.Description), "NodeDescription", "NodeDescription", 1) + `,`,
 		`Status:` + strings.Replace(strings.Replace(this.Status.String(), "NodeStatus", "NodeStatus", 1), `&`, ``, 1) + `,`,
@@ -4975,6 +5120,7 @@ func (this *Task) String() string {
 	}
 	s := strings.Join([]string{`&Task{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
 		`JobID:` + fmt.Sprintf("%v", this.JobID) + `,`,
 		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
 		`Meta:` + strings.Replace(strings.Replace(this.Meta.String(), "Meta", "Meta", 1), `&`, ``, 1) + `,`,
@@ -5002,6 +5148,7 @@ func (this *Job) String() string {
 	}
 	s := strings.Join([]string{`&Job{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
 		`}`,
 	}, "")
@@ -5083,6 +5230,7 @@ func (this *Network) String() string {
 	}
 	s := strings.Join([]string{`&Network{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NetworkSpec", "NetworkSpec", 1) + `,`,
 		`DriverState:` + strings.Replace(fmt.Sprintf("%v", this.DriverState), "Driver", "Driver", 1) + `,`,
 		`IPAM:` + strings.Replace(fmt.Sprintf("%v", this.IPAM), "IPAMOptions", "IPAMOptions", 1) + `,`,
@@ -5107,6 +5255,7 @@ func (this *Volume) String() string {
 	}
 	s := strings.Join([]string{`&Volume{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "VolumeSpec", "VolumeSpec", 1) + `,`,
 		`DriverState:` + strings.Replace(fmt.Sprintf("%v", this.DriverState), "Driver", "Driver", 1) + `,`,
 		`}`,
@@ -5472,6 +5621,75 @@ func (m *Meta) Unmarshal(data []byte) error {
 			}
 			m.Labels[mapkey] = mapvalue
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Version) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Version: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Version: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Index", wireType)
+			}
+			m.Index = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Index |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(data[iNdEx:])
@@ -5992,6 +6210,36 @@ func (m *Node) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Version.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
 			}
 			var msglen int
@@ -6023,7 +6271,7 @@ func (m *Node) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
 			}
@@ -6056,7 +6304,7 @@ func (m *Node) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
 			}
@@ -7331,6 +7579,36 @@ func (m *Task) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Version.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field JobID", wireType)
 			}
 			var stringLen uint64
@@ -7358,7 +7636,7 @@ func (m *Task) Unmarshal(data []byte) error {
 			}
 			m.JobID = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
 			}
@@ -7387,7 +7665,7 @@ func (m *Task) Unmarshal(data []byte) error {
 			}
 			m.NodeID = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Meta", wireType)
 			}
@@ -7417,7 +7695,7 @@ func (m *Task) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 5:
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
 			}
@@ -7450,7 +7728,7 @@ func (m *Task) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 6:
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
 			}
@@ -7483,7 +7761,7 @@ func (m *Task) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 7:
+		case 8:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Networks", wireType)
 			}
@@ -7704,6 +7982,36 @@ func (m *Job) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Version.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -8576,6 +8884,36 @@ func (m *Network) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Version.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
 			}
 			var msglen int
@@ -8607,7 +8945,7 @@ func (m *Network) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field DriverState", wireType)
 			}
@@ -8867,6 +9205,36 @@ func (m *Volume) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Version.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
 			}
 			var msglen int
@@ -8898,7 +9266,7 @@ func (m *Volume) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field DriverState", wireType)
 			}

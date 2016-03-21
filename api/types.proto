@@ -12,6 +12,11 @@ message Meta {
 	map<string, string> labels = 2;
 }
 
+// Version tracks the last time an object in the store was updated.
+message Version {
+	uint64 index = 1;
+}
+
 message Resources {
 	// Number of CPU cores.
 	double cpu = 1 [(gogoproto.customname) = "CPU"];
@@ -64,17 +69,19 @@ message Node {
 	// ID specifies the identity of the node.
 	string id = 1 [(gogoproto.customname) = "ID"];
 
+	// Version tracks the last time the node was modified.
+	Version version = 2 [(gogoproto.nullable) = false];
+
 	// Spec defines the desired state of the node as specified by the user.
 	// The system will honor this and will *never* modify it.
-	NodeSpec spec = 2;
+	NodeSpec spec = 3;
 
 	// Description encapsulated the properties of the Node as reported by the
 	// agent.
-	NodeDescription description = 3;
+	NodeDescription description = 4;
 
 	// Status provides the current status of the node, as seen by the manager.
-	NodeStatus status = 4 [(gogoproto.nullable) = false];
-
+	NodeStatus status = 5 [(gogoproto.nullable) = false];
 }
 
 message NodeStatus {
@@ -228,9 +235,12 @@ message TaskStatus {
 message Task {
 	string id = 1 [(gogoproto.customname) = "ID"];
 
+	// Version tracks the last time the task was modified.
+	Version version = 2 [(gogoproto.nullable) = false];
+
 	// JobID indicates the job under which this task is orchestrated. This
 	// should almost always be set.
-	string job_id = 2 [(gogoproto.customname) = "JobID"];
+	string job_id = 3 [(gogoproto.customname) = "JobID"];
 
 	// TODO(stevvooe): Consider bringing back assignment, rather than using a
 	// node id field. We like having this concept be first-class. It helps to
@@ -238,18 +248,18 @@ message Task {
 
 	// NodeID indicates the node to which the task is assigned. If this field
 	// is empty or not set, the task is unassigned.
-	string node_id = 3 [(gogoproto.customname) = "NodeID"];
+	string node_id = 4 [(gogoproto.customname) = "NodeID"];
 
 	// Meta inherits labels from the JobSpec.Meta associated with this task. It
 	// may include other labels added by the manager. The name will be a human
 	// readable name, calculated based on the JobSpec.Meta.Name field.
-	Meta meta = 4 [(gogoproto.nullable) = false];
+	Meta meta = 5 [(gogoproto.nullable) = false];
 
 	// Spec declares the runtime parameters for the task. This is copied out of
 	// the job's template field.
-	TaskSpec spec = 5;
+	TaskSpec spec = 6;
 
-	TaskStatus status = 6;
+	TaskStatus status = 7;
 
 	message NetworkAttachment {
 		// Network state as a whole becomes part of Task so
@@ -262,11 +272,15 @@ message Task {
 		repeated string addresses = 2;
 	}
 
-	repeated NetworkAttachment networks = 7;
+	repeated NetworkAttachment networks = 8;
 }
 
 message Job {
 	string id = 1 [(gogoproto.customname) = "ID"];
+
+	// Version tracks the last time the job was modified.
+	Version version = 2 [(gogoproto.nullable) = false];
+
 	JobSpec spec = 3;
 }
 
@@ -338,10 +352,14 @@ message NetworkSpec {
 
 message Network {
 	string id = 1 [(gogoproto.customname) = "ID"];
-	NetworkSpec spec = 2;
+
+	// Version tracks the last time the network was modified.
+	Version version = 2 [(gogoproto.nullable) = false];
+
+	NetworkSpec spec = 3;
 
 	// Driver specific operational state provided by the network driver.
-	Driver driver_state = 3;
+	Driver driver_state = 4;
 
 	// Runtime state of IPAM options. This may not reflect the
 	// ipam options from NetworkSpec.
@@ -358,10 +376,14 @@ message VolumeSpec {
 
 message Volume {
 	string id = 1 [(gogoproto.customname) = "ID"];
-	VolumeSpec spec = 2;
+
+	// Version tracks the last time the volume was modified.
+	Version version = 2 [(gogoproto.nullable) = false];
+
+	VolumeSpec spec = 3;
 
 	// Driver specific operational state provided by the Volume driver.
-	Driver driver_state = 3;
+	Driver driver_state = 4;
 }
 
 // WeightedPeer should be used anywhere where we are describing a remote peer

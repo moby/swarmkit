@@ -63,6 +63,7 @@ type Proposer interface {
 	// sure that the changes are committed before it interacts further
 	// with the store.
 	ProposeValue(ctx context.Context, storeAction []*api.StoreAction, cb func()) error
+	GetVersion() *api.Version
 }
 
 // LeadershipState indicates whether the node is a leader or follower.
@@ -591,6 +592,12 @@ func (n *Node) ProposeValue(ctx context.Context, storeAction []*api.StoreAction,
 		return err
 	}
 	return nil
+}
+
+// GetVersion returns the sequence information for the current raft round.
+func (n *Node) GetVersion() *api.Version {
+	status := n.Node.Status()
+	return &api.Version{Index: status.Commit}
 }
 
 // Saves a log entry to our Store
