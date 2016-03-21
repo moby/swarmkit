@@ -216,6 +216,10 @@ func ViewAndWatch(store WatchableStore, cb func(ReadTx) error) (watch chan watch
 		watch = store.WatchQueue().Watch()
 		return nil
 	})
+	if watch != nil && err != nil {
+		store.WatchQueue().StopWatch(watch)
+		watch = nil
+	}
 	return
 }
 
