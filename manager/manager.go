@@ -24,6 +24,9 @@ type Config struct {
 
 	ListenProto string
 	ListenAddr  string
+	// Listener will be used for grpc serving if it's not nil, ListenProto and
+	// ListenAddr fields will be used otherwise.
+	Listener net.Listener
 }
 
 // Manager is the cluster manager for Swarm.
@@ -71,9 +74,13 @@ func New(config *Config) *Manager {
 // address.
 // The call never returns unless an error occurs or `Stop()` is called.
 func (m *Manager) Run() error {
-	lis, err := net.Listen(m.config.ListenProto, m.config.ListenAddr)
-	if err != nil {
-		return err
+	lis := m.config.Listener
+	if lis == nil {
+		l, err := net.Listen(m.config.ListenProto, m.config.ListenAddr)
+		if err != nil {
+			return err
+		}
+		lis = l
 	}
 
 	// Start all sub-components in separate goroutines.
@@ -95,7 +102,7 @@ func (m *Manager) Run() error {
 		}
 	}()
 
-	log.WithFields(log.Fields{"proto": m.config.ListenProto, "addr": m.config.ListenAddr}).Info("Listening for connections")
+	log.WithFields(log.Fields{"proto": lis.Addr().Network(), "addr": lis.Addr().String()}).Info("Listening for connections")
 
 	return m.server.Serve(lis)
 }

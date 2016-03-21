@@ -11,10 +11,12 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/docker/swarm-v2/agent"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/dispatcher"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestManager(t *testing.T) {
@@ -63,23 +65,19 @@ func TestManagerNodeCount(t *testing.T) {
 	store := state.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
-	temp, err := ioutil.TempFile("", "test-socket")
-	assert.NoError(t, err)
-	assert.NoError(t, temp.Close())
-	assert.NoError(t, os.Remove(temp.Name()))
+	l, err := net.Listen("tcp", "127.0.0.1:0")
 
 	m := New(&Config{
-		Store:       store,
-		ListenProto: "unix",
-		ListenAddr:  temp.Name(),
+		Store:    store,
+		Listener: l,
 	})
 	assert.NotNil(t, m)
 	go m.Run()
 	defer m.Stop()
 
-	conn, err := grpc.Dial(temp.Name(), grpc.WithInsecure(), grpc.WithTimeout(10*time.Second),
+	conn, err := grpc.Dial(l.Addr().String(), grpc.WithInsecure(), grpc.WithTimeout(10*time.Second),
 		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("unix", addr, timeout)
+			return net.DialTimeout(l.Addr().Network(), addr, timeout)
 		}))
 	assert.NoError(t, err)
 	defer func() {
@@ -88,13 +86,31 @@ func TestManagerNodeCount(t *testing.T) {
 
 	// We have to send a dummy request to verify if the connection is actually up.
 	mClient := api.NewManagerClient(conn)
-	dClient := api.NewDispatcherClient(conn)
 
-	_, err = dClient.Register(context.Background(), &api.RegisterRequest{NodeID: "test1"})
-	assert.NoError(t, err)
+	managers := agent.NewManagers(l.Addr().String())
+	a1, err := agent.New(&agent.Config{
+		ID:       "test1",
+		Hostname: "hostname1",
+		Managers: managers,
+	})
+	require.NoError(t, err)
+	a2, err := agent.New(&agent.Config{
+		ID:       "test2",
+		Hostname: "hostname2",
+		Managers: managers,
+	})
+	require.NoError(t, err)
 
-	_, err = dClient.Register(context.Background(), &api.RegisterRequest{NodeID: "test2"})
-	assert.NoError(t, err)
+	require.NoError(t, a1.Start(context.Background()))
+	require.NoError(t, a2.Start(context.Background()))
+
+	defer func() {
+		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		a1.Stop(ctx)
+		a2.Stop(ctx)
+	}()
+
+	time.Sleep(500 * time.Millisecond)
 
 	resp, err := mClient.NodeCount(context.Background(), &api.NodeCountRequest{})
 	assert.NoError(t, err)
