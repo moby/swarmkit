@@ -15,6 +15,13 @@ var (
 		Use:   "ls",
 		Short: "List tasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			flags := cmd.Flags()
+
+			quiet, err := flags.GetBool("quiet")
+			if err != nil {
+				return err
+			}
+
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
@@ -25,21 +32,35 @@ var (
 			}
 			res := common.NewResolver(cmd, c)
 
-			w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-			defer func() {
-				// Ignore flushing errors - there's nothing we can do.
-				_ = w.Flush()
-			}()
-			fmt.Fprintln(w, "ID\tJob\tStatus\tNode")
+			var output func(t *api.Task)
+
+			if !quiet {
+				w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+				defer func() {
+					// Ignore flushing errors - there's nothing we can do.
+					_ = w.Flush()
+				}()
+				fmt.Fprintln(w, "ID\tJob\tStatus\tNode")
+				output = func(t *api.Task) {
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+						t.ID,
+						res.Resolve(api.Job{}, t.JobID),
+						t.Status.State.String(),
+						res.Resolve(api.Node{}, t.NodeID),
+					)
+				}
+			} else {
+				output = func(t *api.Task) { fmt.Println(t.ID) }
+			}
+
 			for _, t := range r.Tasks {
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-					t.ID,
-					res.Resolve(api.Job{}, t.JobID),
-					t.Status.State.String(),
-					res.Resolve(api.Node{}, t.NodeID),
-				)
+				output(t)
 			}
 			return nil
 		},
 	}
 )
+
+func init() {
+	lsCmd.Flags().BoolP("quiet", "q", false, "Only display IDs")
+}
