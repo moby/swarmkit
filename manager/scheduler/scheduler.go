@@ -27,6 +27,11 @@ type Scheduler struct {
 	stopChan chan struct{}
 	// doneChan is closed when the state machine terminates
 	doneChan chan struct{}
+
+	// This currently exists only for benchmarking. It tells the scheduler
+	// scan the whole heap instead of taking the minimum-valued node
+	// blindly.
+	scanAllNodes bool
 }
 
 // New creates a new scheduler.
@@ -283,12 +288,47 @@ func (s *Scheduler) rollbackLocalState(decisions map[string]schedulingDecision) 
 
 // scheduleTask schedules a single task.
 func (s *Scheduler) scheduleTask(t *api.Task) *api.Task {
-	heapEntry := s.nodeHeap.peek()
-	if heapEntry == nil {
+	bestNodeIndex := -1
+	minTasks := int(^uint(0) >> 1) // max int
+	nextStoppingPoint := 0
+	levelSize := 1
+
+	for i := 0; i < s.nodeHeap.Len(); i++ {
+		heapEntry := s.nodeHeap.heap[i]
+
+		if s.meetsConstraints(heapEntry.node, t) && heapEntry.numTasks < minTasks {
+			bestNodeIndex = i
+			minTasks = heapEntry.numTasks
+		}
+		if !s.scanAllNodes {
+			if i == nextStoppingPoint && bestNodeIndex >= 0 {
+				// If there were any nodes in this row with
+				// lower values that did not satisfy the
+				// constraints, check their children
+				// recursively.
+				for j := i - levelSize + 1; j <= i; j++ {
+					heapEntry = s.nodeHeap.heap[i]
+					if heapEntry.numTasks < minTasks {
+						newBestNodeIndex, newMinTasks := s.findBestChildBelowThreshold(t, i, minTasks)
+						if newBestNodeIndex >= 0 {
+							bestNodeIndex, minTasks = newBestNodeIndex, newMinTasks
+						}
+					}
+				}
+				break
+			}
+			// Search the whole next level of the heap
+			levelSize *= 2
+			nextStoppingPoint += levelSize
+		}
+	}
+
+	if bestNodeIndex == -1 {
 		log.WithField("task.id", t.ID).Debug("No nodes available to assign tasks to")
 		return nil
 	}
 
+	heapEntry := s.nodeHeap.heap[bestNodeIndex]
 	n := heapEntry.node
 	log.WithField("task.id", t.ID).Debugf("Assigning to node %s", n.ID)
 	newT := *t
@@ -301,6 +341,35 @@ func (s *Scheduler) scheduleTask(t *api.Task) *api.Task {
 	s.tasksByNode[t.NodeID][t.ID] = &newT
 	s.nodeHeap.updateNode(n.ID, heapEntry.numTasks+1)
 	return &newT
+}
+
+func (s *Scheduler) meetsConstraints(n *api.Node, t *api.Task) bool {
+	// TODO(aaronl): This is where we should check that a node
+	// satisfies any necessary constraints.
+	return true
+}
+
+func (s *Scheduler) findBestChildBelowThreshold(t *api.Task, index int, threshold int) (int, int) {
+	bestNodeIndex := -1
+
+	for i := index*2 + 1; i <= index*2+2; i++ {
+		if i <= len(s.nodeHeap.heap) {
+			break
+		}
+		heapEntry := s.nodeHeap.heap[i]
+		if heapEntry.numTasks < threshold {
+			if s.meetsConstraints(heapEntry.node, t) {
+				bestNodeIndex, threshold = i, heapEntry.numTasks
+			} else {
+				newBestNodeIndex, newMinTasks := s.findBestChildBelowThreshold(t, i, threshold)
+				if newBestNodeIndex >= 0 {
+					bestNodeIndex, threshold = newBestNodeIndex, newMinTasks
+				}
+			}
+		}
+	}
+
+	return bestNodeIndex, threshold
 }
 
 func (s *Scheduler) buildNodeHeap(tx state.ReadTx) error {

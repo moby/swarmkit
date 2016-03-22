@@ -390,38 +390,51 @@ func watchAssignment(t *testing.T, watch chan watch.Event) *api.Task {
 }
 
 func BenchmarkScheduler1kNodes1kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e3)
+	benchScheduler(b, 1e3, 1e3, false)
 }
 
 func BenchmarkScheduler1kNodes10kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e4)
+	benchScheduler(b, 1e3, 1e4, false)
 }
 
 func BenchmarkScheduler1kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e5)
+	benchScheduler(b, 1e3, 1e5, false)
 }
 
 func BenchmarkScheduler100kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e5, 1e5)
+	benchScheduler(b, 1e5, 1e5, false)
 }
 
 func BenchmarkScheduler100kNodes1MTasks(b *testing.B) {
-	benchScheduler(b, 1e5, 1e6)
+	benchScheduler(b, 1e5, 1e6, false)
 }
 
-func BenchmarkScheduler1MNodes1MTasks(b *testing.B) {
-	benchScheduler(b, 1e6, 1e6)
+func BenchmarkSchedulerWorstCase1kNodes1kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e3, true)
 }
 
-func BenchmarkScheduler1MNodes10MTasks(b *testing.B) {
-	benchScheduler(b, 1e6, 1e7)
+func BenchmarkSchedulerWorstCase1kNodes10kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e4, true)
 }
 
-func benchScheduler(b *testing.B, nodes, tasks int) {
+func BenchmarkSchedulerWorstCase1kNodes100kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e5, true)
+}
+
+func BenchmarkSchedulerWorstCase100kNodes100kTasks(b *testing.B) {
+	benchScheduler(b, 1e5, 1e5, true)
+}
+
+func BenchmarkSchedulerWorstCase100kNodes1MTasks(b *testing.B) {
+	benchScheduler(b, 1e5, 1e6, true)
+}
+
+func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 	for iters := 0; iters < b.N; iters++ {
 		b.StopTimer()
 		s := state.NewMemoryStore(nil)
 		scheduler := New(s)
+		scheduler.scanAllNodes = worstCase
 
 		watch := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 
