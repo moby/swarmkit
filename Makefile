@@ -9,12 +9,12 @@ PACKAGES=$(shell go list ./... | grep -v /vendor/)
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
-.PHONY: clean all fmt vet lint errcheck complexity build binaries test setup checkprotos coverage ci check
+.PHONY: clean all fmt vet lint errcheck build binaries test setup checkprotos coverage ci check
 .DEFAULT: default
 
 all: check build binaries test
 
-check: fmt vet lint errcheck complexity
+check: fmt vet lint errcheck
 
 ci: check build binaries checkprotos coverage
 
@@ -45,7 +45,6 @@ setup:
 	@echo "🐳 $@"
 	# TODO(stevvooe): Install these from the vendor directory
 	@go get -u github.com/golang/lint/golint
-	@go get -u github.com/fzipp/gocyclo
 	@go get -u github.com/kisielk/errcheck
 	@go get -u github.com/golang/mock/mockgen
 
@@ -83,10 +82,6 @@ lint:
 errcheck:
 	@echo "🐳 $@"
 	@test -z "$$(golint ./... | grep -v vendor/ | grep -v ".pb.go:" | grep -v ".mock.go" | tee /dev/stderr)"
-
-complexity:
-	@echo "🐳 $@"
-	@test -z "$$(gocyclo -over 15 . | grep -v vendor/ | grep -v "pb_test.go:" | grep -v ".pb.go:" | tee /dev/stderr)"
 
 build:
 	@echo "🐳 $@"
