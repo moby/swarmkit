@@ -7,6 +7,7 @@ import (
 	"github.com/docker/swarm-v2/cmd/swarmctl/node"
 	"github.com/docker/swarm-v2/cmd/swarmctl/root"
 	"github.com/docker/swarm-v2/cmd/swarmctl/task"
+	"github.com/docker/swarm-v2/cmd/swarmctl/volume"
 	"github.com/docker/swarm-v2/version"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -44,6 +45,7 @@ func init() {
 		node.Cmd,
 		job.Cmd,
 		task.Cmd,
+		volume.Cmd,
 		version.Cmd,
 	)
 }
