@@ -44,15 +44,28 @@ var (
 						fmt.Printf("%s: %v", jobSpec.Meta.Name, err)
 						continue
 					}
-					fmt.Printf("%s: %s\n", jobSpec.Meta.Name, r.Job.ID)
+					fmt.Printf("%s: %s - UPDATED\n", jobSpec.Meta.Name, r.Job.ID)
+					delete(jobs, jobSpec.Meta.Name)
 				} else if !ok {
 					r, err := c.CreateJob(common.Context(cmd), &api.CreateJobRequest{Spec: jobSpec})
 					if err != nil {
 						fmt.Printf("%s: %v", jobSpec.Meta.Name, err)
 						continue
 					}
-					fmt.Printf("%s: %s\n", jobSpec.Meta.Name, r.Job.ID)
+					fmt.Printf("%s: %s - CREATED\n", jobSpec.Meta.Name, r.Job.ID)
+				} else {
+					// nothing to update
+					delete(jobs, jobSpec.Meta.Name)
 				}
+			}
+
+			for _, job := range jobs {
+				_, err := c.RemoveJob(common.Context(cmd), &api.RemoveJobRequest{JobID: job.ID})
+				if err != nil {
+
+					return err
+				}
+				fmt.Printf("%s: %s - REMOVED\n", job.Spec.Meta.Name, job.ID)
 			}
 			return nil
 		},
