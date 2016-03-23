@@ -4,9 +4,23 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/swarm-v2/agent/exec"
+	"github.com/docker/swarm-v2/api"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
+
+// NoopExecutor is a dummy executor that implements enough to get the agent started.
+type NoopExecutor struct {
+}
+
+func (e *NoopExecutor) Describe(ctx context.Context) (*api.NodeDescription, error) {
+	return &api.NodeDescription{}, nil
+}
+
+func (e *NoopExecutor) Runner(t *api.Task) (exec.Runner, error) {
+	return nil, exec.ErrRuntimeUnsupported
+}
 
 func TestAgent(t *testing.T) {
 	// TODO(stevvooe): The current agent is fairly monolithic, making it hard
@@ -35,7 +49,7 @@ func TestAgent(t *testing.T) {
 func TestAgentStartStop(t *testing.T) {
 	agent, err := New(&Config{
 		ID:       "test",
-		Hostname: "test.local",
+		Executor: &NoopExecutor{},
 		Managers: NewManagers("localhost:4949"),
 	})
 	assert.NoError(t, err)

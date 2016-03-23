@@ -27,9 +27,5 @@ func (c *Config) validate() error {
 		return fmt.Errorf("config: id required")
 	}
 
-	if c.Hostname == "" {
-		return fmt.Errorf("config: name required")
-	}
-
 	return nil
 }

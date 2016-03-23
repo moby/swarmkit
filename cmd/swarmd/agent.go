@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os"
-
 	log "github.com/Sirupsen/logrus"
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/swarm-v2/agent"
@@ -23,16 +21,6 @@ already present, the agent will recover and startup.`,
 			hostname, err := cmd.Flags().GetString("hostname")
 			if err != nil {
 				return err
-			}
-
-			if hostname == "" {
-				hn, err := os.Hostname()
-				if err != nil {
-					return err
-				}
-
-				log.Debugf("agent: fallback to hostname as name")
-				hostname = hn
 			}
 
 			id, err := cmd.Flags().GetString("id")
