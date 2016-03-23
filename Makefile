@@ -9,14 +9,14 @@ PACKAGES=$(shell go list ./... | grep -v /vendor/)
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
-.PHONY: clean all fmt vet lint errcheck build binaries test setup checkprotos coverage ci check
+.PHONY: clean all fmt vet lint errcheck build binaries test setup checkprotos coverage ci check help
 .DEFAULT: default
 
-all: check build binaries test
+all: check build binaries test ## run fmt, vet, lint, errcheck build the binaries and run the tests
 
-check: fmt vet lint errcheck
+check: fmt vet lint errcheck ## run fmt, vet, lint and errcheck
 
-ci: check build binaries checkprotos coverage
+ci: check build binaries checkprotos coverage ## to be used by the CI
 
 AUTHORS: .mailmap .git/HEAD
 	git log --format='%aN <%aE>' | sort -fu > $@
@@ -41,29 +41,29 @@ ${PREFIX}/bin/protoc-gen-gogoswarm: version/version.go $(shell find . -type f -n
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/protoc-gen-gogoswarm
 
-setup:
+setup: ## install dependencies
 	@echo "🐳 $@"
 	# TODO(stevvooe): Install these from the vendor directory
 	@go get -u github.com/golang/lint/golint
 	@go get -u github.com/kisielk/errcheck
 	@go get -u github.com/golang/mock/mockgen
 
-generate: ${PREFIX}/bin/protoc-gen-gogoswarm
+generate: ${PREFIX}/bin/protoc-gen-gogoswarm ## generate protobufs
 	@echo "🐳 $@"
 	@PATH=${PREFIX}/bin:${PATH} go generate -x ${PACKAGES}
 
-checkprotos: generate
+checkprotos: generate ## check if protobufs needs to be generated again
 	@echo "🐳 $@"
 	@test -z "$$(git status --short | grep ".pb.go" | tee /dev/stderr)" || \
 		(echo "👹 please run 'make generate' when making changes to proto files" && false)
 
 # Depends on binaries because vet will silently fail if it can't load compiled
 # imports
-vet: binaries
+vet: binaries ## run go vet
 	@echo "🐳 $@"
 	@test -z "$$(go vet ${PACKAGES} 2>&1 | grep -v 'constant [0-9]* not a string in call to Errorf' | grep -v 'exit status 1' | tee /dev/stderr)"
 
-fmt:
+fmt: ## run go fmt
 	@echo "🐳 $@"
 	@test -z "$$(gofmt -s -l . | grep -v vendor/ | grep -v ".pb.go$$" | tee /dev/stderr)" || \
 		(echo "👹 please format Go code with 'gofmt -s'" && false)
@@ -75,31 +75,34 @@ fmt:
 		(echo "👹 meta fields in proto files must have option (gogoproto.nullable) = false" && false)
 
 
-lint:
+lint: ## run go lint
 	@echo "🐳 $@"
 	@test -z "$$(golint ./... | grep -v vendor/ | grep -v ".pb.go:" | grep -v ".mock.go" | tee /dev/stderr)"
 
-errcheck:
+errcheck: ## run go errcheck
 	@echo "🐳 $@"
 	@test -z "$$(golint ./... | grep -v vendor/ | grep -v ".pb.go:" | grep -v ".mock.go" | tee /dev/stderr)"
 
-build:
+build: ## build the go packages
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -v ${GO_LDFLAGS} ${GO_GCFLAGS} ${PACKAGES}
 
-test:
+test: ## run test
 	@echo "🐳 $@"
 	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" ${PACKAGES}
 
-binaries: ${PREFIX}/bin/swarmctl ${PREFIX}/bin/swarmd ${PREFIX}/bin/swarm-bench ${PREFIX}/bin/protoc-gen-gogoswarm
+binaries: ${PREFIX}/bin/swarmctl ${PREFIX}/bin/swarmd ${PREFIX}/bin/swarm-bench ${PREFIX}/bin/protoc-gen-gogoswarm ## build the binaries
 	@echo "🐳 $@"
 
-clean:
+clean: ## clean up binaries
 	@echo "🐳 $@"
 	@rm -rf "${PREFIX}/bin/swarmctl" "${PREFIX}/bin/swarmd" "${PREFIX}/bin/protoc-gen-gogoswarm"
 
-coverage:
+coverage: ## generate coverprofiles from the tests
 	@echo "🐳 $@"
 	@( for pkg in ${PACKAGES}; do \
 		go test -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=count $$pkg || exit; \
 	done )
+
+help: ## this help
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
