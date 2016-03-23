@@ -23,7 +23,11 @@ var (
 				return err
 			}
 
-			_, err = c.RemoveJob(common.Context(cmd), &api.RemoveJobRequest{JobID: args[0]})
+			job, err := getJob(common.Context(cmd), c, args[0])
+			if err != nil {
+				return err
+			}
+			_, err = c.RemoveJob(common.Context(cmd), &api.RemoveJobRequest{JobID: job.ID})
 			if err != nil {
 				return err
 			}

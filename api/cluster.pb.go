@@ -183,6 +183,7 @@ func (m *RemoveJobResponse) Reset()      { *m = RemoveJobResponse{} }
 func (*RemoveJobResponse) ProtoMessage() {}
 
 type ListJobsRequest struct {
+	Prefix string `protobuf:"bytes,1,opt,name=prefix,proto3" json:"prefix,omitempty"`
 }
 
 func (m *ListJobsRequest) Reset()      { *m = ListJobsRequest{} }
@@ -559,7 +560,9 @@ func (m *ListJobsRequest) Copy() *ListJobsRequest {
 		return nil
 	}
 
-	o := &ListJobsRequest{}
+	o := &ListJobsRequest{
+		Prefix: m.Prefix,
+	}
 
 	return o
 }
@@ -928,8 +931,9 @@ func (this *ListJobsRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 4)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.ListJobsRequest{")
+	s = append(s, "Prefix: "+fmt.Sprintf("%#v", this.Prefix)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -2112,6 +2116,12 @@ func (m *ListJobsRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.Prefix) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintCluster(data, i, uint64(len(m.Prefix)))
+		i += copy(data[i:], m.Prefix)
+	}
 	return i, nil
 }
 
@@ -2601,6 +2611,10 @@ func (m *RemoveJobResponse) Size() (n int) {
 func (m *ListJobsRequest) Size() (n int) {
 	var l int
 	_ = l
+	l = len(m.Prefix)
+	if l > 0 {
+		n += 1 + l + sovCluster(uint64(l))
+	}
 	return n
 }
 
@@ -2934,6 +2948,7 @@ func (this *ListJobsRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ListJobsRequest{`,
+		`Prefix:` + fmt.Sprintf("%v", this.Prefix) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4793,6 +4808,35 @@ func (m *ListJobsRequest) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: ListJobsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Prefix", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCluster
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCluster
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Prefix = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipCluster(data[iNdEx:])

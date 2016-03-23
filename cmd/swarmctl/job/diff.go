@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
 	"github.com/docker/swarm-v2/spec"
 	"github.com/spf13/cobra"
@@ -35,7 +34,7 @@ var (
 				return err
 			}
 
-			r, err := c.GetJob(common.Context(cmd), &api.GetJobRequest{JobID: args[0]})
+			job, err := getJob(common.Context(cmd), c, args[0])
 			if err != nil {
 				return err
 			}
@@ -46,7 +45,7 @@ var (
 			}
 
 			remoteService := &spec.ServiceConfig{}
-			remoteService.FromJobSpec(r.Job.Spec)
+			remoteService.FromJobSpec(job.Spec)
 			diff, err := localService.Diff(context, "remote", "local", remoteService)
 			if err != nil {
 				return err

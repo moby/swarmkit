@@ -88,7 +88,6 @@ func NewMemoryStore(proposer Proposer) *MemoryStore {
 				Indexes: map[string]*memdb.IndexSchema{
 					indexPrefix: {
 						Name:    indexPrefix,
-						Unique:  true,
 						Indexer: jobIndexerByPrefix{},
 					},
 					indexID: {
@@ -730,7 +729,7 @@ func (jobs jobs) table() string {
 
 // lookup is an internal typed wrapper around memdb.
 func (jobs jobs) lookup(index, id string) *api.Job {
-	j, err := jobs.memDBTx.First(jobs.table(), indexPrefix, id)
+	j, err := jobs.memDBTx.First(jobs.table(), index, id)
 	if err != nil {
 		return nil
 	}
@@ -779,7 +778,7 @@ func (jobs jobs) Update(j *api.Job) error {
 }
 
 // Delete removes a job from the store.
-// Returns ErrNotExist if the node doesn't exist.
+// Returns ErrNotExist if the job doesn't exist.
 func (jobs jobs) Delete(id string) error {
 	j := jobs.lookup(indexID, id)
 	if j == nil {
@@ -807,13 +806,17 @@ func (jobs jobs) Get(id string) *api.Job {
 func (jobs jobs) Find(by By) ([]*api.Job, error) {
 	fromResultIterator := func(it memdb.ResultIterator) []*api.Job {
 		jobs := []*api.Job{}
+		ids := make(map[string]struct{})
 		for {
 			obj := it.Next()
 			if obj == nil {
 				break
 			}
 			if j, ok := obj.(*api.Job); ok {
-				jobs = append(jobs, j.Copy())
+				if _, exists := ids[j.ID]; !exists {
+					jobs = append(jobs, j.Copy())
+					ids[j.ID] = struct{}{}
+				}
 			}
 		}
 		return jobs
@@ -827,6 +830,12 @@ func (jobs jobs) Find(by By) ([]*api.Job, error) {
 		return fromResultIterator(it), nil
 	case byName:
 		it, err := jobs.memDBTx.Get(jobs.table(), indexName, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return fromResultIterator(it), nil
+	case byPrefix:
+		it, err := jobs.memDBTx.Get(jobs.table(), indexPrefix, string(v))
 		if err != nil {
 			return nil, err
 		}

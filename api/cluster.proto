@@ -126,6 +126,7 @@ message RemoveJobResponse {
 }
 
 message ListJobsRequest {
+	string prefix = 1;
 }
 
 message ListJobsResponse {

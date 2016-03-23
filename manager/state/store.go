@@ -310,3 +310,13 @@ func (b byNode) isBy() {
 func ByNodeID(nodeID string) By {
 	return byNode(nodeID)
 }
+
+type byPrefix string
+
+func (b byPrefix) isBy() {
+}
+
+// ByPrefix creates an object to pass to Find to select by prefix.
+func ByPrefix(prefix string) By {
+	return byPrefix(prefix)
+}

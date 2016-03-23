@@ -25,7 +25,7 @@ var (
 				return err
 			}
 
-			r, err := c.GetJob(common.Context(cmd), &api.GetJobRequest{JobID: args[0]})
+			job, err := getJob(common.Context(cmd), c, args[0])
 			if err != nil {
 				return err
 			}
@@ -34,10 +34,10 @@ var (
 				// Ignore flushing errors - there's nothing we can do.
 				_ = w.Flush()
 			}()
-			common.FprintfIfNotEmpty(w, "ID:\t%s\n", r.Job.ID)
-			common.FprintfIfNotEmpty(w, "Name:\t%s\n", r.Job.Spec.Meta.Name)
+			common.FprintfIfNotEmpty(w, "ID:\t%s\n", job.ID)
+			common.FprintfIfNotEmpty(w, "Name:\t%s\n", job.Spec.Meta.Name)
 			orchestration := ""
-			switch o := r.Job.Spec.Orchestration.(type) {
+			switch o := job.Spec.Orchestration.(type) {
 			case *api.JobSpec_Batch:
 				orchestration = "BATCH"
 			case *api.JobSpec_Cron:
@@ -50,13 +50,13 @@ var (
 			common.FprintfIfNotEmpty(w, "Orchestration:\t%s\n", orchestration)
 			fmt.Fprintln(w, "Template:")
 			fmt.Fprintln(w, " Container:")
-			common.FprintfIfNotEmpty(w, "  Image:\t%s\n", r.Job.Spec.Template.GetContainer().Image.Reference)
-			common.FprintfIfNotEmpty(w, "  Command:\t%q\n", strings.Join(r.Job.Spec.Template.GetContainer().Command, " "))
-			common.FprintfIfNotEmpty(w, "  Args:\t[%s]\n", strings.Join(r.Job.Spec.Template.GetContainer().Args, ", "))
-			common.FprintfIfNotEmpty(w, "  Env:\t[%s]\n", strings.Join(r.Job.Spec.Template.GetContainer().Env, ", "))
-			if len(r.Job.Spec.Template.GetContainer().Networks) > 0 {
+			common.FprintfIfNotEmpty(w, "  Image:\t%s\n", job.Spec.Template.GetContainer().Image.Reference)
+			common.FprintfIfNotEmpty(w, "  Command:\t%q\n", strings.Join(job.Spec.Template.GetContainer().Command, " "))
+			common.FprintfIfNotEmpty(w, "  Args:\t[%s]\n", strings.Join(job.Spec.Template.GetContainer().Args, ", "))
+			common.FprintfIfNotEmpty(w, "  Env:\t[%s]\n", strings.Join(job.Spec.Template.GetContainer().Env, ", "))
+			if len(job.Spec.Template.GetContainer().Networks) > 0 {
 				fmt.Fprintln(w, "  Networks:")
-				for _, n := range r.Job.Spec.Template.GetContainer().Networks {
+				for _, n := range job.Spec.Template.GetContainer().Networks {
 					fmt.Fprintf(w, " %s\n", n.GetName())
 				}
 			}
