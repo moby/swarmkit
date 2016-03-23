@@ -34,6 +34,11 @@ service Cluster {
 	rpc ListNetworks(ListNetworksRequest) returns (ListNetworksResponse) {};
 	rpc CreateNetwork(CreateNetworkRequest) returns (CreateNetworkResponse) {};
 	rpc RemoveNetwork(RemoveNetworkRequest) returns (RemoveNetworkResponse) {};
+
+	rpc GetVolume(GetVolumeRequest) returns (GetVolumeResponse) {};
+	rpc ListVolumes(ListVolumesRequest) returns (ListVolumesResponse) {};
+	rpc CreateVolume(CreateVolumeRequest) returns (CreateVolumeResponse) {};
+	rpc RemoveVolume(RemoveVolumeRequest) returns (RemoveVolumeResponse) {};
 }
 
 message ListOptions {
@@ -166,4 +171,32 @@ message ListNetworksRequest {}
 
 message ListNetworksResponse {
 	repeated Network networks = 1;
+}
+
+message CreateVolumeRequest {
+	VolumeSpec spec = 1;
+}
+
+message CreateVolumeResponse {
+	Volume volume = 1;
+}
+
+message GetVolumeRequest {
+	string volume_id = 1 [(gogoproto.customname) = "VolumeID"];
+}
+
+message GetVolumeResponse {
+	Volume volume = 1;
+}
+
+message RemoveVolumeRequest {
+	string volume_id = 1 [(gogoproto.customname) = "VolumeID"];
+}
+
+message RemoveVolumeResponse {}
+
+message ListVolumesRequest {}
+
+message ListVolumesResponse {
+	repeated Volume volumes = 1;
 }

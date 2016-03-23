@@ -120,6 +120,33 @@ var (
 			},
 		},
 	}
+
+	volumeSet = []*api.Volume{
+		{
+			ID: "id1",
+			Spec: &api.VolumeSpec{
+				Meta: api.Meta{
+					Name: "name1",
+				},
+			},
+		},
+		{
+			ID: "id2",
+			Spec: &api.VolumeSpec{
+				Meta: api.Meta{
+					Name: "name2",
+				},
+			},
+		},
+		{
+			ID: "id3",
+			Spec: &api.VolumeSpec{
+				Meta: api.Meta{
+					Name: "name3",
+				},
+			},
+		},
+	}
 )
 
 func setupTestStore(t *testing.T, s Store) {
@@ -140,6 +167,10 @@ func setupTestStore(t *testing.T, s Store) {
 		// Prepopulate networks
 		for _, n := range networkSet {
 			assert.NoError(t, tx.Networks().Create(n))
+		}
+		// Prepopulate volumes
+		for _, v := range volumeSet {
+			assert.NoError(t, tx.Volumes().Create(v))
 		}
 		return nil
 	})
@@ -504,6 +535,118 @@ func TestStoreTask(t *testing.T) {
 		assert.Empty(t, foundTasks)
 
 		assert.Equal(t, tx.Tasks().Delete("nonexistent"), ErrNotExist)
+		return nil
+	})
+	assert.NoError(t, err)
+}
+
+func TestStoreVolume(t *testing.T) {
+	s := NewMemoryStore(nil)
+	assert.NotNil(t, s)
+
+	err := s.View(func(readTx ReadTx) error {
+		allVolumes, err := readTx.Volumes().Find(All)
+		assert.NoError(t, err)
+		assert.Empty(t, allVolumes)
+		return nil
+	})
+	assert.NoError(t, err)
+
+	setupTestStore(t, s)
+
+	err = s.Update(func(tx Tx) error {
+		assert.Equal(t,
+			tx.Volumes().Create(&api.Volume{
+				ID: "id1",
+				Spec: &api.VolumeSpec{
+					Meta: api.Meta{
+						Name: "name4",
+					},
+				},
+			}), ErrExist, "duplicate IDs must be rejected")
+
+		assert.Equal(t,
+			tx.Volumes().Create(&api.Volume{
+				ID: "id4",
+				Spec: &api.VolumeSpec{
+					Meta: api.Meta{
+						Name: "name1",
+					},
+				},
+			}), ErrNameConflict, "duplicate names must be rejected")
+		return nil
+	})
+	assert.NoError(t, err)
+
+	err = s.View(func(readTx ReadTx) error {
+		assert.Equal(t, volumeSet[0], readTx.Volumes().Get("id1"))
+		assert.Equal(t, volumeSet[1], readTx.Volumes().Get("id2"))
+		assert.Equal(t, volumeSet[2], readTx.Volumes().Get("id3"))
+
+		foundVolumes, err := readTx.Volumes().Find(ByName("name1"))
+		assert.NoError(t, err)
+		assert.Len(t, foundVolumes, 1)
+		foundVolumes, err = readTx.Volumes().Find(ByName("invalid"))
+		assert.NoError(t, err)
+		assert.Len(t, foundVolumes, 0)
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Update.
+	err = s.Update(func(tx Tx) error {
+		// Regular update.
+		update := volumeSet[0].Copy()
+		update.Spec.Meta.Labels = map[string]string{
+			"foo": "bar",
+		}
+
+		assert.NotEqual(t, update, tx.Volumes().Get(update.ID))
+		assert.NoError(t, tx.Volumes().Update(update))
+		assert.Equal(t, update, tx.Volumes().Get(update.ID))
+
+		// Name conflict.
+		update = tx.Volumes().Get(update.ID)
+		update.Spec.Meta.Name = "name2"
+		assert.Equal(t, tx.Volumes().Update(update), ErrNameConflict, "duplicate names should be rejected")
+
+		// Name change.
+		update = tx.Volumes().Get(update.ID)
+		foundVolumes, err := tx.Volumes().Find(ByName("name1"))
+		assert.NoError(t, err)
+		assert.Len(t, foundVolumes, 1)
+		foundVolumes, err = tx.Volumes().Find(ByName("name4"))
+		assert.NoError(t, err)
+		assert.Empty(t, foundVolumes)
+
+		update.Spec.Meta.Name = "name4"
+		assert.NoError(t, tx.Volumes().Update(update))
+		foundVolumes, err = tx.Volumes().Find(ByName("name1"))
+		assert.NoError(t, err)
+		assert.Empty(t, foundVolumes)
+		foundVolumes, err = tx.Volumes().Find(ByName("name4"))
+		assert.NoError(t, err)
+		assert.Len(t, foundVolumes, 1)
+
+		// Invalid update.
+		invalidUpdate := volumeSet[0].Copy()
+		invalidUpdate.ID = "invalid"
+		assert.Error(t, tx.Volumes().Update(invalidUpdate), "invalid IDs should be rejected")
+
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Delete
+	err = s.Update(func(tx Tx) error {
+		assert.NotNil(t, tx.Volumes().Get("id1"))
+		assert.NoError(t, tx.Volumes().Delete("id1"))
+		assert.Nil(t, tx.Volumes().Get("id1"))
+		foundVolumes, err := tx.Volumes().Find(ByName("name1"))
+		assert.NoError(t, err)
+		assert.Empty(t, foundVolumes)
+
+		assert.Equal(t, tx.Volumes().Delete("nonexistent"), ErrNotExist)
 		return nil
 	})
 	assert.NoError(t, err)

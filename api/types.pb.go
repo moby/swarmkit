@@ -30,6 +30,8 @@
 		IPAMOptions
 		NetworkSpec
 		Network
+		VolumeSpec
+		Volume
 		WeightedPeer
 		InternalRaftRequest
 		StoreAction
@@ -66,6 +68,14 @@
 		RemoveNetworkResponse
 		ListNetworksRequest
 		ListNetworksResponse
+		CreateVolumeRequest
+		CreateVolumeResponse
+		GetVolumeRequest
+		GetVolumeResponse
+		RemoveVolumeRequest
+		RemoveVolumeResponse
+		ListVolumesRequest
+		ListVolumesResponse
 		RegisterRequest
 		RegisterResponse
 		SessionRequest
@@ -844,6 +854,26 @@ type Network struct {
 func (m *Network) Reset()      { *m = Network{} }
 func (*Network) ProtoMessage() {}
 
+// VolumeSpec defines the properties of a Volume.
+type VolumeSpec struct {
+	Meta Meta `protobuf:"bytes,1,opt,name=meta" json:"meta"`
+	// Driver specific configuration consumed by the Volume driver.
+	DriverConfiguration *Driver `protobuf:"bytes,2,opt,name=driver_configuration" json:"driver_configuration,omitempty"`
+}
+
+func (m *VolumeSpec) Reset()      { *m = VolumeSpec{} }
+func (*VolumeSpec) ProtoMessage() {}
+
+type Volume struct {
+	ID   string      `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Spec *VolumeSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
+	// Driver specific operational state provided by the Volume driver.
+	DriverState *Driver `protobuf:"bytes,3,opt,name=driver_state" json:"driver_state,omitempty"`
+}
+
+func (m *Volume) Reset()      { *m = Volume{} }
+func (*Volume) ProtoMessage() {}
+
 // WeightedPeer should be used anywhere where we are describing a remote peer
 // with a weight.
 type WeightedPeer struct {
@@ -879,6 +909,9 @@ type StoreAction struct {
 	//	*StoreAction_CreateNetwork
 	//	*StoreAction_UpdateNetwork
 	//	*StoreAction_RemoveNetwork
+	//	*StoreAction_CreateVolume
+	//	*StoreAction_UpdateVolume
+	//	*StoreAction_RemoveVolume
 	Action isStoreAction_Action `protobuf_oneof:"action"`
 }
 
@@ -927,6 +960,15 @@ type StoreAction_UpdateNetwork struct {
 type StoreAction_RemoveNetwork struct {
 	RemoveNetwork string `protobuf:"bytes,12,opt,name=remove_network,proto3,oneof"`
 }
+type StoreAction_CreateVolume struct {
+	CreateVolume *Volume `protobuf:"bytes,13,opt,name=create_volume,oneof"`
+}
+type StoreAction_UpdateVolume struct {
+	UpdateVolume *Volume `protobuf:"bytes,14,opt,name=update_volume,oneof"`
+}
+type StoreAction_RemoveVolume struct {
+	RemoveVolume string `protobuf:"bytes,15,opt,name=remove_volume,proto3,oneof"`
+}
 
 func (*StoreAction_CreateNode) isStoreAction_Action()    {}
 func (*StoreAction_UpdateNode) isStoreAction_Action()    {}
@@ -940,6 +982,9 @@ func (*StoreAction_RemoveJob) isStoreAction_Action()     {}
 func (*StoreAction_CreateNetwork) isStoreAction_Action() {}
 func (*StoreAction_UpdateNetwork) isStoreAction_Action() {}
 func (*StoreAction_RemoveNetwork) isStoreAction_Action() {}
+func (*StoreAction_CreateVolume) isStoreAction_Action()  {}
+func (*StoreAction_UpdateVolume) isStoreAction_Action()  {}
+func (*StoreAction_RemoveVolume) isStoreAction_Action()  {}
 
 func (m *StoreAction) GetAction() isStoreAction_Action {
 	if m != nil {
@@ -1032,6 +1077,27 @@ func (m *StoreAction) GetRemoveNetwork() string {
 	return ""
 }
 
+func (m *StoreAction) GetCreateVolume() *Volume {
+	if x, ok := m.GetAction().(*StoreAction_CreateVolume); ok {
+		return x.CreateVolume
+	}
+	return nil
+}
+
+func (m *StoreAction) GetUpdateVolume() *Volume {
+	if x, ok := m.GetAction().(*StoreAction_UpdateVolume); ok {
+		return x.UpdateVolume
+	}
+	return nil
+}
+
+func (m *StoreAction) GetRemoveVolume() string {
+	if x, ok := m.GetAction().(*StoreAction_RemoveVolume); ok {
+		return x.RemoveVolume
+	}
+	return ""
+}
+
 // XXX_OneofFuncs is for the internal use of the proto package.
 func (*StoreAction) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
 	return _StoreAction_OneofMarshaler, _StoreAction_OneofUnmarshaler, []interface{}{
@@ -1047,6 +1113,9 @@ func (*StoreAction) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) e
 		(*StoreAction_CreateNetwork)(nil),
 		(*StoreAction_UpdateNetwork)(nil),
 		(*StoreAction_RemoveNetwork)(nil),
+		(*StoreAction_CreateVolume)(nil),
+		(*StoreAction_UpdateVolume)(nil),
+		(*StoreAction_RemoveVolume)(nil),
 	}
 }
 
@@ -1106,6 +1175,19 @@ func _StoreAction_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 	case *StoreAction_RemoveNetwork:
 		_ = b.EncodeVarint(12<<3 | proto.WireBytes)
 		_ = b.EncodeStringBytes(x.RemoveNetwork)
+	case *StoreAction_CreateVolume:
+		_ = b.EncodeVarint(13<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.CreateVolume); err != nil {
+			return err
+		}
+	case *StoreAction_UpdateVolume:
+		_ = b.EncodeVarint(14<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.UpdateVolume); err != nil {
+			return err
+		}
+	case *StoreAction_RemoveVolume:
+		_ = b.EncodeVarint(15<<3 | proto.WireBytes)
+		_ = b.EncodeStringBytes(x.RemoveVolume)
 	case nil:
 	default:
 		return fmt.Errorf("StoreAction.Action has unexpected type %T", x)
@@ -1208,6 +1290,29 @@ func _StoreAction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Bu
 		x, err := b.DecodeStringBytes()
 		m.Action = &StoreAction_RemoveNetwork{x}
 		return true, err
+	case 13: // action.create_volume
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Volume)
+		err := b.DecodeMessage(msg)
+		m.Action = &StoreAction_CreateVolume{msg}
+		return true, err
+	case 14: // action.update_volume
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Volume)
+		err := b.DecodeMessage(msg)
+		m.Action = &StoreAction_UpdateVolume{msg}
+		return true, err
+	case 15: // action.remove_volume
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeStringBytes()
+		m.Action = &StoreAction_RemoveVolume{x}
+		return true, err
 	default:
 		return false, nil
 	}
@@ -1239,6 +1344,8 @@ func init() {
 	proto.RegisterType((*IPAMOptions)(nil), "api.IPAMOptions")
 	proto.RegisterType((*NetworkSpec)(nil), "api.NetworkSpec")
 	proto.RegisterType((*Network)(nil), "api.Network")
+	proto.RegisterType((*VolumeSpec)(nil), "api.VolumeSpec")
+	proto.RegisterType((*Volume)(nil), "api.Volume")
 	proto.RegisterType((*WeightedPeer)(nil), "api.WeightedPeer")
 	proto.RegisterType((*InternalRaftRequest)(nil), "api.InternalRaftRequest")
 	proto.RegisterType((*StoreAction)(nil), "api.StoreAction")
@@ -1689,6 +1796,33 @@ func (m *Network) Copy() *Network {
 	return o
 }
 
+func (m *VolumeSpec) Copy() *VolumeSpec {
+	if m == nil {
+		return nil
+	}
+
+	o := &VolumeSpec{
+		Meta:                *m.Meta.Copy(),
+		DriverConfiguration: m.DriverConfiguration.Copy(),
+	}
+
+	return o
+}
+
+func (m *Volume) Copy() *Volume {
+	if m == nil {
+		return nil
+	}
+
+	o := &Volume{
+		ID:          m.ID,
+		Spec:        m.Spec.Copy(),
+		DriverState: m.DriverState.Copy(),
+	}
+
+	return o
+}
+
 func (m *WeightedPeer) Copy() *WeightedPeer {
 	if m == nil {
 		return nil
@@ -1798,6 +1932,24 @@ func (m *StoreAction) Copy() *StoreAction {
 	case *StoreAction_RemoveNetwork:
 		i := &StoreAction_RemoveNetwork{
 			RemoveNetwork: m.GetRemoveNetwork(),
+		}
+
+		o.Action = i
+	case *StoreAction_CreateVolume:
+		i := &StoreAction_CreateVolume{
+			CreateVolume: m.GetCreateVolume().Copy(),
+		}
+
+		o.Action = i
+	case *StoreAction_UpdateVolume:
+		i := &StoreAction_UpdateVolume{
+			UpdateVolume: m.GetUpdateVolume().Copy(),
+		}
+
+		o.Action = i
+	case *StoreAction_RemoveVolume:
+		i := &StoreAction_RemoveVolume{
+			RemoveVolume: m.GetRemoveVolume(),
 		}
 
 		o.Action = i
@@ -2229,6 +2381,35 @@ func (this *Network) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
+func (this *VolumeSpec) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.VolumeSpec{")
+	s = append(s, "Meta: "+strings.Replace(this.Meta.GoString(), `&`, ``, 1)+",\n")
+	if this.DriverConfiguration != nil {
+		s = append(s, "DriverConfiguration: "+fmt.Sprintf("%#v", this.DriverConfiguration)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Volume) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 7)
+	s = append(s, "&api.Volume{")
+	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
+	if this.Spec != nil {
+		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
+	}
+	if this.DriverState != nil {
+		s = append(s, "DriverState: "+fmt.Sprintf("%#v", this.DriverState)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func (this *WeightedPeer) GoString() string {
 	if this == nil {
 		return "nil"
@@ -2257,7 +2438,7 @@ func (this *StoreAction) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 16)
+	s := make([]string, 0, 19)
 	s = append(s, "&api.StoreAction{")
 	if this.Action != nil {
 		s = append(s, "Action: "+fmt.Sprintf("%#v", this.Action)+",\n")
@@ -2359,6 +2540,30 @@ func (this *StoreAction_RemoveNetwork) GoString() string {
 	}
 	s := strings.Join([]string{`&api.StoreAction_RemoveNetwork{` +
 		`RemoveNetwork:` + fmt.Sprintf("%#v", this.RemoveNetwork) + `}`}, ", ")
+	return s
+}
+func (this *StoreAction_CreateVolume) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_CreateVolume{` +
+		`CreateVolume:` + fmt.Sprintf("%#v", this.CreateVolume) + `}`}, ", ")
+	return s
+}
+func (this *StoreAction_UpdateVolume) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_UpdateVolume{` +
+		`UpdateVolume:` + fmt.Sprintf("%#v", this.UpdateVolume) + `}`}, ", ")
+	return s
+}
+func (this *StoreAction_RemoveVolume) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_RemoveVolume{` +
+		`RemoveVolume:` + fmt.Sprintf("%#v", this.RemoveVolume) + `}`}, ", ")
 	return s
 }
 func valueToGoStringTypes(v interface{}, typ string) string {
@@ -3457,6 +3662,86 @@ func (m *Network) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *VolumeSpec) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *VolumeSpec) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
+	n30, err := m.Meta.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n30
+	if m.DriverConfiguration != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.DriverConfiguration.Size()))
+		n31, err := m.DriverConfiguration.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n31
+	}
+	return i, nil
+}
+
+func (m *Volume) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Volume) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.ID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.ID)))
+		i += copy(data[i:], m.ID)
+	}
+	if m.Spec != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
+		n32, err := m.Spec.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n32
+	}
+	if m.DriverState != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.DriverState.Size()))
+		n33, err := m.DriverState.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n33
+	}
+	return i, nil
+}
+
 func (m *WeightedPeer) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -3537,11 +3822,11 @@ func (m *StoreAction) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if m.Action != nil {
-		nn30, err := m.Action.MarshalTo(data[i:])
+		nn34, err := m.Action.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn30
+		i += nn34
 	}
 	return i, nil
 }
@@ -3552,11 +3837,11 @@ func (m *StoreAction_CreateNode) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.CreateNode.Size()))
-		n31, err := m.CreateNode.MarshalTo(data[i:])
+		n35, err := m.CreateNode.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n31
+		i += n35
 	}
 	return i, nil
 }
@@ -3566,11 +3851,11 @@ func (m *StoreAction_UpdateNode) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.UpdateNode.Size()))
-		n32, err := m.UpdateNode.MarshalTo(data[i:])
+		n36, err := m.UpdateNode.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n32
+		i += n36
 	}
 	return i, nil
 }
@@ -3588,11 +3873,11 @@ func (m *StoreAction_CreateTask) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x22
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.CreateTask.Size()))
-		n33, err := m.CreateTask.MarshalTo(data[i:])
+		n37, err := m.CreateTask.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n33
+		i += n37
 	}
 	return i, nil
 }
@@ -3602,11 +3887,11 @@ func (m *StoreAction_UpdateTask) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.UpdateTask.Size()))
-		n34, err := m.UpdateTask.MarshalTo(data[i:])
+		n38, err := m.UpdateTask.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n34
+		i += n38
 	}
 	return i, nil
 }
@@ -3624,11 +3909,11 @@ func (m *StoreAction_CreateJob) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x3a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.CreateJob.Size()))
-		n35, err := m.CreateJob.MarshalTo(data[i:])
+		n39, err := m.CreateJob.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n35
+		i += n39
 	}
 	return i, nil
 }
@@ -3638,11 +3923,11 @@ func (m *StoreAction_UpdateJob) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x42
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.UpdateJob.Size()))
-		n36, err := m.UpdateJob.MarshalTo(data[i:])
+		n40, err := m.UpdateJob.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n36
+		i += n40
 	}
 	return i, nil
 }
@@ -3660,11 +3945,11 @@ func (m *StoreAction_CreateNetwork) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x52
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.CreateNetwork.Size()))
-		n37, err := m.CreateNetwork.MarshalTo(data[i:])
+		n41, err := m.CreateNetwork.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n37
+		i += n41
 	}
 	return i, nil
 }
@@ -3674,11 +3959,11 @@ func (m *StoreAction_UpdateNetwork) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x5a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.UpdateNetwork.Size()))
-		n38, err := m.UpdateNetwork.MarshalTo(data[i:])
+		n42, err := m.UpdateNetwork.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n38
+		i += n42
 	}
 	return i, nil
 }
@@ -3688,6 +3973,42 @@ func (m *StoreAction_RemoveNetwork) MarshalTo(data []byte) (int, error) {
 	i++
 	i = encodeVarintTypes(data, i, uint64(len(m.RemoveNetwork)))
 	i += copy(data[i:], m.RemoveNetwork)
+	return i, nil
+}
+func (m *StoreAction_CreateVolume) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.CreateVolume != nil {
+		data[i] = 0x6a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.CreateVolume.Size()))
+		n43, err := m.CreateVolume.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n43
+	}
+	return i, nil
+}
+func (m *StoreAction_UpdateVolume) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.UpdateVolume != nil {
+		data[i] = 0x72
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.UpdateVolume.Size()))
+		n44, err := m.UpdateVolume.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n44
+	}
+	return i, nil
+}
+func (m *StoreAction_RemoveVolume) MarshalTo(data []byte) (int, error) {
+	i := 0
+	data[i] = 0x7a
+	i++
+	i = encodeVarintTypes(data, i, uint64(len(m.RemoveVolume)))
+	i += copy(data[i:], m.RemoveVolume)
 	return i, nil
 }
 func encodeFixed64Types(data []byte, offset int, v uint64) int {
@@ -4176,6 +4497,36 @@ func (m *Network) Size() (n int) {
 	return n
 }
 
+func (m *VolumeSpec) Size() (n int) {
+	var l int
+	_ = l
+	l = m.Meta.Size()
+	n += 1 + l + sovTypes(uint64(l))
+	if m.DriverConfiguration != nil {
+		l = m.DriverConfiguration.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
+func (m *Volume) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.ID)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.Spec != nil {
+		l = m.Spec.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.DriverState != nil {
+		l = m.DriverState.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
 func (m *WeightedPeer) Size() (n int) {
 	var l int
 	_ = l
@@ -4310,6 +4661,31 @@ func (m *StoreAction_RemoveNetwork) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.RemoveNetwork)
+	n += 1 + l + sovTypes(uint64(l))
+	return n
+}
+func (m *StoreAction_CreateVolume) Size() (n int) {
+	var l int
+	_ = l
+	if m.CreateVolume != nil {
+		l = m.CreateVolume.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *StoreAction_UpdateVolume) Size() (n int) {
+	var l int
+	_ = l
+	if m.UpdateVolume != nil {
+		l = m.UpdateVolume.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *StoreAction_RemoveVolume) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.RemoveVolume)
 	n += 1 + l + sovTypes(uint64(l))
 	return n
 }
@@ -4714,6 +5090,29 @@ func (this *Network) String() string {
 	}, "")
 	return s
 }
+func (this *VolumeSpec) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&VolumeSpec{`,
+		`Meta:` + strings.Replace(strings.Replace(this.Meta.String(), "Meta", "Meta", 1), `&`, ``, 1) + `,`,
+		`DriverConfiguration:` + strings.Replace(fmt.Sprintf("%v", this.DriverConfiguration), "Driver", "Driver", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Volume) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Volume{`,
+		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "VolumeSpec", "VolumeSpec", 1) + `,`,
+		`DriverState:` + strings.Replace(fmt.Sprintf("%v", this.DriverState), "Driver", "Driver", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *WeightedPeer) String() string {
 	if this == nil {
 		return "nil"
@@ -4862,6 +5261,36 @@ func (this *StoreAction_RemoveNetwork) String() string {
 	}
 	s := strings.Join([]string{`&StoreAction_RemoveNetwork{`,
 		`RemoveNetwork:` + fmt.Sprintf("%v", this.RemoveNetwork) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_CreateVolume) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_CreateVolume{`,
+		`CreateVolume:` + strings.Replace(fmt.Sprintf("%v", this.CreateVolume), "Volume", "Volume", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_UpdateVolume) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_UpdateVolume{`,
+		`UpdateVolume:` + strings.Replace(fmt.Sprintf("%v", this.UpdateVolume), "Volume", "Volume", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_RemoveVolume) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_RemoveVolume{`,
+		`RemoveVolume:` + fmt.Sprintf("%v", this.RemoveVolume) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8265,6 +8694,264 @@ func (m *Network) Unmarshal(data []byte) error {
 	}
 	return nil
 }
+func (m *VolumeSpec) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: VolumeSpec: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: VolumeSpec: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Meta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Meta.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DriverConfiguration", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.DriverConfiguration == nil {
+				m.DriverConfiguration = &Driver{}
+			}
+			if err := m.DriverConfiguration.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Volume) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Volume: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Volume: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Spec == nil {
+				m.Spec = &VolumeSpec{}
+			}
+			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DriverState", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.DriverState == nil {
+				m.DriverState = &Driver{}
+			}
+			if err := m.DriverState.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *WeightedPeer) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
@@ -8862,6 +9549,99 @@ func (m *StoreAction) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Action = &StoreAction_RemoveNetwork{string(data[iNdEx:postIndex])}
+			iNdEx = postIndex
+		case 13:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CreateVolume", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Volume{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Action = &StoreAction_CreateVolume{v}
+			iNdEx = postIndex
+		case 14:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UpdateVolume", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Volume{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Action = &StoreAction_UpdateVolume{v}
+			iNdEx = postIndex
+		case 15:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RemoveVolume", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Action = &StoreAction_RemoveVolume{string(data[iNdEx:postIndex])}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

@@ -11,20 +11,6 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func validateDriver(driver *api.Driver) error {
-	if driver == nil {
-		// It is ok to not specify the driver. We will choose
-		// a default driver.
-		return nil
-	}
-
-	if driver.Name == "" {
-		return grpc.Errorf(codes.InvalidArgument, "driver name: if driver is specified name is required")
-	}
-
-	return nil
-}
-
 func validateIPAMConfiguration(ipamConf *api.IPAMConfiguration) error {
 	if ipamConf == nil {
 		return grpc.Errorf(codes.InvalidArgument, "ipam configuration: cannot be empty")

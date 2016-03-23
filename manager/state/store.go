@@ -93,6 +93,29 @@ type NetworkSet interface {
 	NetworkSetWriter
 }
 
+// VolumeSetWriter is the write half of a volume dataset.
+type VolumeSetWriter interface {
+	Create(v *api.Volume) error
+	Update(v *api.Volume) error
+	Delete(id string) error
+}
+
+// VolumeSetReader is the read half of a volume dataset.
+type VolumeSetReader interface {
+	// Get returns the volume with this ID, or nil if none exists with the
+	// specified ID.
+	Get(id string) *api.Volume
+	// Find selects a set of volumes and returns them. If by is nil,
+	// returns all jobs.
+	Find(by By) ([]*api.Volume, error)
+}
+
+// VolumeSet is a readable and writable consistent view of volumes.
+type VolumeSet interface {
+	VolumeSetReader
+	VolumeSetWriter
+}
+
 // TaskSetWriter is the write half of a task dataset.
 type TaskSetWriter interface {
 	Create(t *api.Task) error
@@ -125,6 +148,7 @@ type ReadTx interface {
 	Jobs() JobSetReader
 	Networks() NetworkSetReader
 	Tasks() TaskSetReader
+	Volumes() VolumeSetReader
 }
 
 // Tx is a read/write transaction. Note that transaction does not imply
@@ -136,6 +160,7 @@ type Tx interface {
 	Jobs() JobSet
 	Networks() NetworkSet
 	Tasks() TaskSet
+	Volumes() VolumeSet
 }
 
 // A StoreCopier is capable of reading the full contents of a store from a
@@ -200,6 +225,10 @@ func (tx snapshotReadTx) Tasks() TaskSetReader {
 	return tx.tx.Tasks()
 }
 
+func (tx snapshotReadTx) Volumes() VolumeSetReader {
+	return tx.tx.Volumes()
+}
+
 // ViewAndWatch calls a callback which can observe the state of this Store. It
 // also returns a channel that will return further events from this point so
 // the snapshot can be kept up to date. The watch channel must be released with
@@ -261,6 +290,16 @@ func DeleteAll(tx Tx) error {
 	}
 	for _, t := range tasks {
 		if err := tx.Tasks().Delete(t.ID); err != nil {
+			return err
+		}
+	}
+
+	volumes, err := tx.Volumes().Find(All)
+	if err != nil {
+		return err
+	}
+	for _, v := range volumes {
+		if err := tx.Volumes().Delete(v.ID); err != nil {
 			return err
 		}
 	}
