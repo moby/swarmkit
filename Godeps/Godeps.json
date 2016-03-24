@@ -1,7 +1,6 @@
 {
 	"ImportPath": "github.com/docker/swarm-v2",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v58",
 	"Packages": [
 		"./..."
 	],
@@ -242,6 +241,10 @@
 			"ImportPath": "github.com/docker/go-connections/tlsconfig",
 			"Comment": "v0.2.0",
 			"Rev": "34b5052da6b11e27f5f2e357b38b571ddddd3928"
+		},
+		{
+			"ImportPath": "github.com/docker/go-events",
+			"Rev": "7f8e3610c50b7735246f8c17aba740ba78374776"
 		},
 		{
 			"ImportPath": "github.com/docker/go-units",
