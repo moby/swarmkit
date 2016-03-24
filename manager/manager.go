@@ -11,6 +11,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/clusterapi"
+	"github.com/docker/swarm-v2/manager/collector"
 	"github.com/docker/swarm-v2/manager/dispatcher"
 	"github.com/docker/swarm-v2/manager/drainer"
 	"github.com/docker/swarm-v2/manager/orchestrator"
@@ -36,6 +37,8 @@ type Config struct {
 
 	// Top-level state directory
 	StateDir string
+
+	DispatcherConfig *dispatcher.Config
 }
 
 // Manager is the cluster manager for Swarm.
@@ -58,20 +61,40 @@ type Manager struct {
 	managerDone chan struct{}
 }
 
+type clusterConns struct {
+	cl *state.Cluster
+}
+
+func (cc *clusterConns) Connections() []*collector.ManagerConn {
+	var res []*collector.ManagerConn
+	for _, m := range cc.cl.Peers() {
+		if m.Client == nil {
+			continue
+		}
+		res = append(res, &collector.ManagerConn{Addr: m.Addr, Conn: m.Client.Conn})
+	}
+	return res
+}
+
 // New creates a Manager which has not started to accept requests yet.
 func New(config *Config) (*Manager, error) {
 	dispatcherConfig := dispatcher.DefaultConfig()
 
+	if config.Listener != nil {
+		config.ListenAddr = config.Listener.Addr().String()
+	}
 	// TODO(stevvooe): Reported address of manager is plumbed to listen addr
 	// for now, may want to make this separate. This can be tricky to get right
 	// so we need to make it easy to override. This needs to be the address
 	// through which agent nodes access the manager.
-	dispatcherConfig.Addr = config.ListenAddr
+	config.DispatcherConfig.Addr = config.ListenAddr
 
 	err := os.MkdirAll(config.StateDir, 0700)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create state directory: %v", err)
 	}
+
+	ctx := context.Background()
 
 	raftStateDir := filepath.Join(config.StateDir, "raft")
 	err = os.MkdirAll(raftStateDir, 0700)
@@ -88,17 +111,22 @@ func New(config *Config) (*Manager, error) {
 		Config:   raftCfg,
 		StateDir: raftStateDir,
 	}
-	raftNode, err := state.NewNode(context.Background(), newNodeOpts, leadershipCh)
+	raftNode, err := state.NewNode(ctx, newNodeOpts, leadershipCh)
 	if err != nil {
 		return nil, fmt.Errorf("can't create raft node: %v", err)
 	}
 
 	store := raftNode.MemoryStore()
 
+	collector := collector.New(ctx, &clusterConns{cl: raftNode.Cluster}, collector.DefaultConfig())
+
 	m := &Manager{
 		config:       config,
 		apiserver:    clusterapi.NewServer(store),
-		dispatcher:   dispatcher.New(store, dispatcherConfig),
+		dispatcher:   dispatcher.New(store, collector, dispatcherConfig),
+		orchestrator: orchestrator.New(store),
+		scheduler:    scheduler.New(store),
+		drainer:      drainer.New(store),
 		server:       grpc.NewServer(),
 		raftNode:     raftNode,
 		leadershipCh: leadershipCh,

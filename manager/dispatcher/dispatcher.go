@@ -8,8 +8,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/manager/collector"
 	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/watch"
 	"golang.org/x/net/context"
 )
 
@@ -17,6 +17,7 @@ const (
 	defaultHeartBeatPeriod       = 5 * time.Second
 	defaultHeartBeatEpsilon      = 500 * time.Millisecond
 	defaultGracePeriodMultiplier = 3
+	defaultSessionTick           = 5 * time.Second
 )
 
 var (
@@ -38,6 +39,7 @@ type Config struct {
 	Addr                  string
 	HeartbeatPeriod       time.Duration
 	HeartbeatEpsilon      time.Duration
+	SessionTick           time.Duration
 	GracePeriodMultiplier int
 }
 
@@ -46,35 +48,29 @@ func DefaultConfig() *Config {
 	return &Config{
 		HeartbeatPeriod:       defaultHeartBeatPeriod,
 		HeartbeatEpsilon:      defaultHeartBeatEpsilon,
+		SessionTick:           defaultSessionTick,
 		GracePeriodMultiplier: defaultGracePeriodMultiplier,
 	}
 }
 
 // Dispatcher is responsible for dispatching tasks and tracking agent health.
 type Dispatcher struct {
-	mu               sync.Mutex
-	addr             string
-	nodes            *nodeStore
-	store            state.WatchableStore
-	mgrQueue         *watch.Queue
-	lastSeenManagers []*api.WeightedPeer
-	config           *Config
+	mu        sync.Mutex
+	addr      string
+	nodes     *nodeStore
+	store     state.WatchableStore
+	config    *Config
+	collector collector.Collector
 }
 
 // New returns Dispatcher with store.
-func New(store state.WatchableStore, c *Config) *Dispatcher {
+func New(store state.WatchableStore, collector collector.Collector, c *Config) *Dispatcher {
 	return &Dispatcher{
-		addr:     c.Addr,
-		nodes:    newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier),
-		store:    store,
-		mgrQueue: watch.NewQueue(16),
-		config:   c,
-		lastSeenManagers: []*api.WeightedPeer{
-			{
-				Addr:   c.Addr, // TODO: change after raft
-				Weight: 1,
-			},
-		},
+		addr:      c.Addr,
+		nodes:     newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier),
+		store:     store,
+		config:    c,
+		collector: collector,
 	}
 }
 
@@ -271,30 +267,19 @@ func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*a
 	return &api.HeartbeatResponse{Period: period}, err
 }
 
-func (d *Dispatcher) watchManagers() {
-	publish := func() {
-		mgrs := []*api.WeightedPeer{
-			{
-				Addr:   d.addr, // TODO: change after raft
-				Weight: 1,
-			},
-		}
-		d.mu.Lock()
-		d.lastSeenManagers = mgrs
-		d.mu.Unlock()
-		d.mgrQueue.Publish(mgrs)
-	}
-	publish()
-	// TODO: here should be code which asks leader about managers with their weights
-	for range time.Tick(1 * time.Second) {
-		publish()
-	}
-}
-
 func (d *Dispatcher) getManagers() []*api.WeightedPeer {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	return d.lastSeenManagers
+	mgrs := d.collector.Managers()
+	var res []*api.WeightedPeer
+	for _, m := range mgrs {
+		var w float64
+		if m.NodeCount == 0 {
+			w = 1
+		} else {
+			w = 1 / float64(m.NodeCount)
+		}
+		res = append(res, &api.WeightedPeer{Addr: m.Addr, Weight: w})
+	}
+	return res
 }
 
 // Session is stream which controls agent connection.
@@ -313,9 +298,8 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 	}); err != nil {
 		return err
 	}
-
-	mgrUpdates, cancel := d.mgrQueue.Watch()
-	defer cancel()
+	tick := time.NewTicker(d.config.SessionTick)
+	defer tick.Stop()
 
 	for {
 		// After each message send, we need to check the nodes sessionID hasn't
@@ -332,8 +316,8 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		select {
 		case <-node.Disconnect:
 			disconnect = true
-		case ev := <-mgrUpdates:
-			mgrs = ev.([]*api.WeightedPeer)
+		case <-tick.C:
+			mgrs = d.getManagers()
 		case <-stream.Context().Done():
 			return stream.Context().Err()
 		}
@@ -353,8 +337,6 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		}); err != nil {
 			return err
 		}
-
-		time.Sleep(5 * time.Second) // TODO(stevvooe): This should really be watch activated.
 	}
 }
 

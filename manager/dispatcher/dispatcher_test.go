@@ -29,6 +29,18 @@ func (gd *grpcDispatcher) Close() {
 	gd.grpcServer.Stop()
 }
 
+type testCollector struct {
+}
+
+func (t testCollector) Managers() []*api.ManagerInfo {
+	return []*api.ManagerInfo{
+		{
+			Addr:      "127.0.0.1",
+			NodeCount: 1,
+		},
+	}
+}
+
 func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -36,7 +48,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	}
 	s := grpc.NewServer()
 	store := state.NewMemoryStore(nil)
-	d := New(store, c)
+	d := New(store, testCollector{}, c)
 	api.RegisterDispatcherServer(s, d)
 	go func() {
 		// Serve will always return an error (even when properly stopped).
