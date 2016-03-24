@@ -59,6 +59,16 @@ type Proposer interface {
 	ProposeValue(ctx context.Context, storeAction []*api.StoreAction) error
 }
 
+// LeadershipState indicates whether the node is a leader or follower.
+type LeadershipState int
+
+const (
+	// IsLeader indicates that the node is a raft leader.
+	IsLeader LeadershipState = iota
+	// IsFollower indicates that the node is a raft follower.
+	IsFollower
+)
+
 // Node represents the Raft Node useful
 // configuration.
 type Node struct {
@@ -87,7 +97,10 @@ type Node struct {
 
 	ticker *time.Ticker
 	stopCh chan struct{}
+	doneCh chan struct{}
 	errCh  chan error
+
+	leadershipCh chan LeadershipState
 }
 
 // NewNodeOptions provides arguments for NewNode
@@ -103,7 +116,7 @@ type NewNodeOptions struct {
 // ID, an address and optionally: a handler and receive
 // only channel to send event when an entry is committed
 // to the logs
-func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
+func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan LeadershipState) (*Node, error) {
 	cfg := opts.Config
 	if cfg == nil {
 		cfg = DefaultNodeConfig()
@@ -130,10 +143,12 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 			MaxInflightMsgs: cfg.MaxInflightMsgs,
 			Logger:          cfg.Logger,
 		},
-		ticker:   time.NewTicker(opts.TickInterval),
-		stopCh:   make(chan struct{}),
-		reqIDGen: idutil.NewGenerator(uint16(opts.ID), time.Now()),
-		stateDir: opts.StateDir,
+		ticker:       time.NewTicker(opts.TickInterval),
+		stopCh:       make(chan struct{}),
+		doneCh:       make(chan struct{}),
+		reqIDGen:     idutil.NewGenerator(uint16(opts.ID), time.Now()),
+		stateDir:     opts.StateDir,
+		leadershipCh: leadershipCh,
 	}
 	n.memoryStore = NewMemoryStore(n)
 
@@ -167,6 +182,11 @@ func DefaultNodeConfig() *raft.Config {
 		MaxInflightMsgs: 256,
 		Logger:          defaultLogger,
 	}
+}
+
+// MemoryStore returns the memory store that is kept in sync with the raft log.
+func (n *Node) MemoryStore() WatchableStore {
+	return n.memoryStore
 }
 
 func (n *Node) walDir() string {
@@ -214,6 +234,7 @@ func (n *Node) load() error {
 			return err
 		}
 	}
+
 	// Read logs to fully catch up store
 	return n.readWAL(snapshot)
 }
@@ -257,8 +278,10 @@ func (n *Node) readWAL(snapshot *raftpb.Snapshot) error {
 	// TODO(aaronl): deserialize metadata, and set node ID and cluster ID
 	// from it.
 	// TODO(aaronl): do we need to change NewNode so it doesn't take an ID?
-	if err := n.raftStore.ApplySnapshot(*snapshot); err != nil {
-		return err
+	if snapshot != nil {
+		if err := n.raftStore.ApplySnapshot(*snapshot); err != nil {
+			return err
+		}
 	}
 	if err := n.raftStore.SetHardState(st); err != nil {
 		return err
@@ -315,8 +338,14 @@ func (n *Node) Start() (errCh <-chan error) {
 					if n.wasLeader && rd.SoftState.RaftState != raft.StateLeader {
 						n.wasLeader = false
 						n.wait.cancelAll()
+						if n.leadershipCh != nil {
+							n.leadershipCh <- IsFollower
+						}
 					} else if !n.wasLeader && rd.SoftState.RaftState == raft.StateLeader {
 						n.wasLeader = true
+						if n.leadershipCh != nil {
+							n.leadershipCh <- IsLeader
+						}
 					}
 				}
 
@@ -326,7 +355,7 @@ func (n *Node) Start() (errCh <-chan error) {
 			case <-n.stopCh:
 				n.Stop()
 				n.Node = nil
-				close(n.stopCh)
+				close(n.doneCh)
 				return
 			}
 		}
@@ -336,9 +365,10 @@ func (n *Node) Start() (errCh <-chan error) {
 
 // Shutdown stops the raft node processing loop.
 // Calling Shutdown on an already stopped node
-// will result in a deadlock
+// will result in a panic.
 func (n *Node) Shutdown() {
-	n.stopCh <- struct{}{}
+	close(n.stopCh)
+	<-n.doneCh
 }
 
 // IsLeader checks if we are the leader or not
@@ -650,6 +680,10 @@ func (n *Node) processEntry(entry raftpb.Entry) error {
 	err := proto.Unmarshal(entry.Data, r)
 	if err != nil {
 		return err
+	}
+
+	if r.Action == nil {
+		return nil
 	}
 
 	if !n.wait.trigger(r.ID, &applyResult{resp: r, err: nil}) {
