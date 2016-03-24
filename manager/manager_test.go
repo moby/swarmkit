@@ -12,12 +12,25 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/docker/swarm-v2/agent"
+	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/dispatcher"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// NoopExecutor is a dummy executor that implements enough to get the agent started.
+type NoopExecutor struct {
+}
+
+func (e *NoopExecutor) Describe(ctx context.Context) (*api.NodeDescription, error) {
+	return &api.NodeDescription{}, nil
+}
+
+func (e *NoopExecutor) Runner(t *api.Task) (exec.Runner, error) {
+	return nil, exec.ErrRuntimeUnsupported
+}
 
 func TestManager(t *testing.T) {
 	store := state.NewMemoryStore(nil)
@@ -92,12 +105,14 @@ func TestManagerNodeCount(t *testing.T) {
 		ID:       "test1",
 		Hostname: "hostname1",
 		Managers: managers,
+		Executor: &NoopExecutor{},
 	})
 	require.NoError(t, err)
 	a2, err := agent.New(&agent.Config{
 		ID:       "test2",
 		Hostname: "hostname2",
 		Managers: managers,
+		Executor: &NoopExecutor{},
 	})
 	require.NoError(t, err)
 
