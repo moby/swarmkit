@@ -56,7 +56,12 @@ var (
 
 // A Proposer can propose actions to a cluster.
 type Proposer interface {
-	ProposeValue(ctx context.Context, storeAction []*api.StoreAction) error
+	// ProposeValue adds storeAction to the distributed log. If this
+	// completes successfully, ProposeValue calls cb to commit the
+	// proposed changes. The callback is necessary for the Proposer to make
+	// sure that the changes are committed before it interacts further
+	// with the store.
+	ProposeValue(ctx context.Context, storeAction []*api.StoreAction, cb func()) error
 }
 
 // LeadershipState indicates whether the node is a leader or follower.
@@ -94,6 +99,18 @@ type Node struct {
 	snapshotter *snap.Snapshotter
 	stateDir    string
 	wasLeader   bool
+
+	// snapshotInterval is the number of log messages after which a new
+	// snapshot should be generated.
+	snapshotInterval uint64
+
+	// logEntriesForSlowFollowers is the number of log entries to keep
+	// around to sync up slow followers after a snapshot is created.
+	logEntriesForSlowFollowers uint64
+
+	confState     raftpb.ConfState
+	appliedIndex  uint64
+	snapshotIndex uint64
 
 	ticker *time.Ticker
 	stopCh chan struct{}
@@ -143,6 +160,8 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 			MaxInflightMsgs: cfg.MaxInflightMsgs,
 			Logger:          cfg.Logger,
 		},
+		snapshotInterval:           1000,
+		logEntriesForSlowFollowers: 500,
 		ticker:       time.NewTicker(opts.TickInterval),
 		stopCh:       make(chan struct{}),
 		doneCh:       make(chan struct{}),
@@ -165,6 +184,16 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 			},
 		},
 	)
+
+	snapshot, err := raftStore.Snapshot()
+	// Snapshot never returns an error
+	if err != nil {
+		panic("could not get snapshot of raft store")
+	}
+
+	n.confState = snapshot.Metadata.ConfState
+	n.appliedIndex = snapshot.Metadata.Index
+	n.snapshotIndex = snapshot.Metadata.Index
 
 	// TODO(aaronl): This should be RestartNode in cases where the cluster
 	// info has been restored from storage.
@@ -313,17 +342,34 @@ func (n *Node) Start() (errCh <-chan error) {
 					n.errCh <- err
 				}
 
-				// TODO(aaronl): Update the MemoryStore based
-				// on the incoming message.
-
 				// Send raft messages to peers
 				if err = n.send(rd.Messages); err != nil {
 					n.errCh <- err
 				}
 
+				// Apply snapshot to memory store. The snapshot
+				// was applied to the raft store in
+				// saveToStorage.
+				if !raft.IsEmptySnap(rd.Snapshot) {
+					// Load the snapshot data into the store
+					if err := n.memoryStore.Restore(rd.Snapshot.Data); err != nil {
+						n.errCh <- err
+					}
+					n.appliedIndex = rd.Snapshot.Metadata.Index
+					n.snapshotIndex = rd.Snapshot.Metadata.Index
+					n.confState = rd.Snapshot.Metadata.ConfState
+				}
+
 				// Process committed entries
 				for _, entry := range rd.CommittedEntries {
-					if err = n.processCommitted(entry); err != nil {
+					if err := n.processCommitted(entry); err != nil {
+						n.errCh <- err
+					}
+				}
+
+				// Trigger a snapshot every once in awhile
+				if n.appliedIndex-n.snapshotIndex >= n.snapshotInterval {
+					if err := n.doSnapshot(); err != nil {
 						n.errCh <- err
 					}
 				}
@@ -526,8 +572,8 @@ func (n *Node) UnregisterNode(id uint64) error {
 
 // ProposeValue calls Propose on the raft and waits
 // on the commit log action before returning a result
-func (n *Node) ProposeValue(ctx context.Context, storeAction []*api.StoreAction) error {
-	_, err := n.processInternalRaftRequest(ctx, &api.InternalRaftRequest{Action: storeAction})
+func (n *Node) ProposeValue(ctx context.Context, storeAction []*api.StoreAction, cb func()) error {
+	_, err := n.processInternalRaftRequest(ctx, &api.InternalRaftRequest{Action: storeAction}, cb)
 	if err != nil {
 		return err
 	}
@@ -536,17 +582,6 @@ func (n *Node) ProposeValue(ctx context.Context, storeAction []*api.StoreAction)
 
 // Saves a log entry to our Store
 func (n *Node) saveToStorage(hardState raftpb.HardState, entries []raftpb.Entry, snapshot raftpb.Snapshot) (err error) {
-	// TODO(aaronl): Should this move to the end of the function?
-	if err = n.raftStore.Append(entries); err != nil {
-		return ErrAppendEntry
-	}
-
-	if !raft.IsEmptyHardState(hardState) {
-		if err = n.raftStore.SetHardState(hardState); err != nil {
-			return ErrSetHardState
-		}
-	}
-
 	if !raft.IsEmptySnap(snapshot) {
 		if err := n.saveSnapshot(snapshot); err != nil {
 			return ErrApplySnapshot
@@ -562,7 +597,9 @@ func (n *Node) saveToStorage(hardState raftpb.HardState, entries []raftpb.Entry,
 		return ErrApplySnapshot
 	}
 
-	// TODO(aaronl): trigger a snapshot every once in awhile
+	if err = n.raftStore.Append(entries); err != nil {
+		return ErrAppendEntry
+	}
 
 	return nil
 }
@@ -586,6 +623,34 @@ func (n *Node) saveSnapshot(snapshot raftpb.Snapshot) error {
 	return nil
 }
 
+func (n *Node) doSnapshot() error {
+	// TODO(aaronl): This should be made async
+	// TODO(aaronl): Should probably disable snapshotting while a
+	// previous snapshot is in-flight to followers.
+	d, err := n.memoryStore.Save()
+	if err != nil {
+		return err
+	}
+	snap, err := n.raftStore.CreateSnapshot(n.appliedIndex, &n.confState, d)
+	if err == nil {
+		if err := n.saveSnapshot(snap); err != nil {
+			return err
+		}
+		n.snapshotIndex = n.appliedIndex
+
+		if n.appliedIndex > n.logEntriesForSlowFollowers {
+			err := n.raftStore.Compact(n.appliedIndex - n.logEntriesForSlowFollowers)
+			if err != nil && err != raft.ErrCompacted {
+				return err
+			}
+		}
+	} else if err != raft.ErrSnapOutOfDate {
+		return err
+	}
+
+	return nil
+}
+
 // Sends a series of messages to members in the raft
 func (n *Node) send(messages []raftpb.Message) error {
 	peers := n.Cluster.Peers()
@@ -603,7 +668,12 @@ func (n *Node) send(messages []raftpb.Message) error {
 		if peer, ok := peers[m.To]; ok {
 			_, err := peer.Client.ProcessRaftMessage(n.Ctx, &api.ProcessRaftMessageRequest{Msg: &m})
 			if err != nil {
+				if m.Type == raftpb.MsgSnap {
+					n.ReportSnapshot(m.To, raft.SnapshotFailure)
+				}
 				n.ReportUnreachable(peer.ID)
+			} else if m.Type == raftpb.MsgSnap {
+				n.ReportSnapshot(m.To, raft.SnapshotFinish)
 			}
 		}
 	}
@@ -616,31 +686,31 @@ type applyResult struct {
 	err  error
 }
 
-func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRaftRequest) (proto.Message, error) {
+func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRaftRequest, cb func()) (proto.Message, error) {
 	r.ID = n.reqIDGen.Next()
 
-	ch := n.wait.register(r.ID)
+	ch := n.wait.register(r.ID, cb)
 
 	// Do this check after calling register to avoid a race.
 	if !n.IsLeader() {
-		n.wait.trigger(r.ID, nil)
+		n.wait.cancel(r.ID)
 		return nil, ErrLostLeadership
 	}
 
 	data, err := r.Marshal()
 	if err != nil {
-		n.wait.trigger(r.ID, nil)
+		n.wait.cancel(r.ID)
 		return nil, err
 	}
 
 	if len(data) > maxRequestBytes {
-		n.wait.trigger(r.ID, nil)
+		n.wait.cancel(r.ID)
 		return nil, ErrRequestTooLarge
 	}
 
 	err = n.Propose(ctx, data)
 	if err != nil {
-		n.wait.trigger(r.ID, nil)
+		n.wait.cancel(r.ID)
 		return nil, err
 	}
 
@@ -652,7 +722,7 @@ func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRa
 		}
 		return nil, ErrLostLeadership
 	case <-n.stopCh:
-		n.wait.trigger(r.ID, nil)
+		n.wait.cancel(r.ID)
 		return nil, ErrStopped
 	}
 }
@@ -672,6 +742,7 @@ func (n *Node) processCommitted(entry raftpb.Entry) error {
 		}
 	}
 
+	n.appliedIndex = entry.Index
 	return nil
 }
 
@@ -723,7 +794,7 @@ func (n *Node) processConfChange(conf raftpb.Entry) error {
 		return err
 	}
 
-	n.ApplyConfChange(cc)
+	n.confState = *n.ApplyConfChange(cc)
 	return nil
 }
 

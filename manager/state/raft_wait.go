@@ -5,49 +5,64 @@ import (
 	"sync"
 )
 
+type waitItem struct {
+	// channel to wait up the waiter
+	ch chan interface{}
+	// callback which is called synchronously when the wait is triggered
+	cb func()
+}
+
 type wait struct {
 	l sync.Mutex
-	m map[uint64]chan interface{}
+	m map[uint64]waitItem
 }
 
 func newWait() *wait {
-	return &wait{m: make(map[uint64]chan interface{})}
+	return &wait{m: make(map[uint64]waitItem)}
 }
 
-func (w *wait) register(id uint64) <-chan interface{} {
+func (w *wait) register(id uint64, cb func()) <-chan interface{} {
 	w.l.Lock()
 	defer w.l.Unlock()
-	ch := w.m[id]
-	if ch == nil {
-		ch = make(chan interface{}, 1)
-		w.m[id] = ch
-	} else {
-		panic(fmt.Sprintf("duplicate id %x", id))
+	_, ok := w.m[id]
+	if !ok {
+		ch := make(chan interface{}, 1)
+		w.m[id] = waitItem{ch: ch, cb: cb}
+		return ch
 	}
-	return ch
+	panic(fmt.Sprintf("duplicate id %x", id))
 }
 
 func (w *wait) trigger(id uint64, x interface{}) bool {
 	w.l.Lock()
-	ch := w.m[id]
+	waitItem, ok := w.m[id]
 	delete(w.m, id)
 	w.l.Unlock()
-	if ch != nil {
-		ch <- x
-		close(ch)
+	if ok {
+		waitItem.cb()
+		waitItem.ch <- x
+		close(waitItem.ch)
 		return true
 	}
 	return false
+}
+
+func (w *wait) cancel(id uint64) {
+	w.l.Lock()
+	waitItem, ok := w.m[id]
+	delete(w.m, id)
+	w.l.Unlock()
+	if ok {
+		close(waitItem.ch)
+	}
 }
 
 func (w *wait) cancelAll() {
 	w.l.Lock()
 	defer w.l.Unlock()
 
-	for id, ch := range w.m {
+	for id, waitItem := range w.m {
 		delete(w.m, id)
-		if ch != nil {
-			close(ch)
-		}
+		close(waitItem.ch)
 	}
 }

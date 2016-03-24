@@ -265,8 +265,7 @@ func applyStoreAction(tx tx, sa *api.StoreAction) error {
 	return errors.New("unrecognized action type")
 }
 
-// Update executes a read/write transaction.
-func (s *MemoryStore) Update(cb func(Tx) error) error {
+func (s *MemoryStore) update(proposer Proposer, cb func(Tx) error) error {
 	s.updateLock.Lock()
 	memDBTx := s.memDB.Txn(true)
 
@@ -283,18 +282,26 @@ func (s *MemoryStore) Update(cb func(Tx) error) error {
 
 	err := cb(tx)
 
-	if err == nil && s.proposer != nil {
-		var sa []*api.StoreAction
-		sa, err = tx.newStoreAction()
+	if err == nil {
+		if proposer == nil {
+			memDBTx.Commit()
+		} else {
+			var sa []*api.StoreAction
+			sa, err = tx.newStoreAction()
 
-		if err == nil && sa != nil {
-			err = s.proposer.ProposeValue(context.Background(), sa)
+			if err == nil {
+				if sa != nil {
+					err = proposer.ProposeValue(context.Background(), sa, func() {
+						memDBTx.Commit()
+					})
+				} else {
+					memDBTx.Commit()
+				}
+			}
 		}
 	}
 
 	if err == nil {
-		memDBTx.Commit()
-
 		for _, c := range tx.changelist {
 			Publish(s.queue, c)
 		}
@@ -306,6 +313,16 @@ func (s *MemoryStore) Update(cb func(Tx) error) error {
 	}
 	s.updateLock.Unlock()
 	return err
+
+}
+
+func (s *MemoryStore) updateLocal(cb func(Tx) error) error {
+	return s.update(nil, cb)
+}
+
+// Update executes a read/write transaction.
+func (s *MemoryStore) Update(cb func(Tx) error) error {
+	return s.update(s.proposer, cb)
 }
 
 func (tx tx) newStoreAction() ([]*api.StoreAction, error) {
@@ -1103,7 +1120,7 @@ func (s *MemoryStore) Restore(data []byte) error {
 		return fmt.Errorf("unrecognized snapshot version %d", snapshot.Version)
 	}
 
-	return s.Update(func(tx Tx) error {
+	return s.updateLocal(func(tx Tx) error {
 		if err := DeleteAll(tx); err != nil {
 			return err
 		}

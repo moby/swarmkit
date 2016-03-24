@@ -6,6 +6,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -247,12 +249,16 @@ func TestRaftLeader(t *testing.T) {
 	assert.Equal(t, nodes[3].Leader(), nodes[1].ID)
 }
 
-func proposeValue(t *testing.T, raftNode *Node) (*api.Node, error) {
+func proposeValue(t *testing.T, raftNode *Node, nodeID ...string) (*api.Node, error) {
+	nodeIDStr := "id1"
+	if len(nodeID) != 0 {
+		nodeIDStr = nodeID[0]
+	}
 	node := &api.Node{
-		ID: "id1",
+		ID: nodeIDStr,
 		Spec: &api.NodeSpec{
 			Meta: api.Meta{
-				Name: "name1",
+				Name: nodeIDStr,
 			},
 		},
 	}
@@ -265,13 +271,13 @@ func proposeValue(t *testing.T, raftNode *Node) (*api.Node, error) {
 		},
 	}
 
-	err := raftNode.ProposeValue(context.Background(), storeActions)
+	err := raftNode.ProposeValue(context.Background(), storeActions, func() {
+		err := raftNode.memoryStore.applyStoreActions(storeActions)
+		assert.NoError(t, err, "error applying actions")
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	err = raftNode.memoryStore.applyStoreActions(storeActions)
-	assert.NoError(t, err, "error applying actions")
 
 	return node, nil
 }
@@ -532,9 +538,73 @@ func TestRaftNewNodeGetsData(t *testing.T) {
 }
 
 func TestRaftSnapshot(t *testing.T) {
-	t.Skip()
-}
+	t.Parallel()
 
-func TestRaftRecoverSnapshot(t *testing.T) {
-	t.Skip()
+	// Bring up a 3 node cluster
+	nodes := newRaftCluster(t)
+	defer teardownCluster(t, nodes)
+
+	// Override the interval between snapshots
+	for _, node := range nodes {
+		// Note that the cluster setup appears to involve 5 messages.
+		atomic.StoreUint64(&node.snapshotInterval, 9)
+		atomic.StoreUint64(&node.logEntriesForSlowFollowers, 0)
+	}
+
+	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5"}
+	values := make([]*api.Node, len(nodeIDs))
+
+	// Propose 4 values
+	for i, nodeID := range nodeIDs[:4] {
+		var err error
+		values[i], err = proposeValue(t, nodes[1], nodeID)
+		assert.NoError(t, err, "failed to propose value")
+	}
+
+	// None of the nodes should have snapshot files yet
+	for _, node := range nodes {
+		dirents, err := ioutil.ReadDir(filepath.Join(node.stateDir, "snap"))
+		assert.NoError(t, err)
+		assert.Len(t, dirents, 0)
+	}
+
+	// Propose a 5th value
+	var err error
+	values[4], err = proposeValue(t, nodes[1], nodeIDs[4])
+	assert.NoError(t, err, "failed to propose value")
+
+	// All nodes should now have a snapshot file
+	time.Sleep(500 * time.Millisecond)
+	for _, node := range nodes {
+		dirents, err := ioutil.ReadDir(filepath.Join(node.stateDir, "snap"))
+		assert.NoError(t, err)
+		assert.Len(t, dirents, 1)
+	}
+
+	// Add a node to the cluster
+	addRaftNode(t, nodes)
+
+	// It should get a copy of the snapshot
+	time.Sleep(500 * time.Millisecond)
+	dirents, err := ioutil.ReadDir(filepath.Join(nodes[4].stateDir, "snap"))
+	assert.NoError(t, err)
+	assert.Len(t, dirents, 1)
+
+	// All nodes should have all the data
+	for _, node := range nodes {
+		err = node.memoryStore.View(func(tx ReadTx) error {
+			allNodes, err := tx.Nodes().Find(All)
+			if err != nil {
+				return err
+			}
+			assert.Len(t, allNodes, 5)
+
+			for i, nodeID := range nodeIDs {
+				n := tx.Nodes().Get(nodeID)
+				assert.Equal(t, n, values[i])
+			}
+			return nil
+		})
+		assert.NoError(t, err)
+	}
 }
