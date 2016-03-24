@@ -40,15 +40,16 @@ func killProcesses(processes []*os.Process) {
 	}
 }
 
-// ManagerProcesses represents the managers processes.
-var ManagerProcesses []*os.Process
-
-// ManagerPorts represents the managers binding ports.
-var ManagerPorts []int
+// Test represents an integration Test
+type Test struct {
+	managerProcesses []*os.Process
+	managerPorts     []int
+	agentProcesses   []*os.Process
+}
 
 // StartManagers starts `instances` managers binding on a random port each.
 // Fills ManagerProcesses and ManagerPorts.
-func StartManagers(instances int) {
+func (t *Test) StartManagers(instances int) {
 	for i := 0; i < instances; i++ {
 		port := getPort()
 		tmp, err := ioutil.TempDir("", "swarm_integration")
@@ -62,44 +63,47 @@ func StartManagers(instances int) {
 			}
 		}()
 		time.Sleep(100 * time.Millisecond)
-		ManagerProcesses = append(ManagerProcesses, cmd.Process)
-		ManagerPorts = append(ManagerPorts, port)
+		t.managerProcesses = append(t.managerProcesses, cmd.Process)
+		t.managerPorts = append(t.managerPorts, port)
 	}
 }
 
 // StopManagers stop all the managers listed in ManagerProcesses.
-func StopManagers() {
-	killProcesses(ManagerProcesses)
+func (t *Test) StopManagers() {
+	killProcesses(t.managerProcesses)
 }
 
-// AgentProcesses represents the agents processes.
-var AgentProcesses []*os.Process
-
 // StartAgents starts `instances` agents.
-func StartAgents(instances int) {
+func (t *Test) StartAgents(instances int) {
 	for i := 0; i < instances; i++ {
-		cmd := exec.Command(getBinDir()+"/bin/swarmd", "--log-level=debug", "agent", fmt.Sprintf("--manager=127.0.0.1:%d", ManagerPorts[0]), fmt.Sprintf("--id=agent-%d", i), fmt.Sprintf("--hostname=agent-%d", i))
+		cmd := exec.Command(getBinDir()+"/bin/swarmd", "--log-level=debug", "agent", fmt.Sprintf("--manager=127.0.0.1:%d", t.managerPorts[0]), fmt.Sprintf("--id=agent-%d", i), fmt.Sprintf("--hostname=agent-%d", i))
 		go func() {
 			if err := cmd.Start(); err != nil {
 				panic(err)
 			}
 		}()
 		time.Sleep(500 * time.Millisecond)
-		AgentProcesses = append(AgentProcesses, cmd.Process)
+		t.agentProcesses = append(t.agentProcesses, cmd.Process)
 	}
 }
 
 // StopAgents stop all the managers listed in AgentProcesses.
-func StopAgents() {
-	killProcesses(AgentProcesses)
+func (t *Test) StopAgents() {
+	killProcesses(t.agentProcesses)
 }
 
 // SwarmCtl invokes the swarmclt binary connected to the 1st manager started.
-func SwarmCtl(args ...string) (Output, error) {
-	cmd := exec.Command(getBinDir()+"/bin/swarmctl", append([]string{fmt.Sprintf("--addr=127.0.0.1:%d", ManagerPorts[0])}, args...)...)
+func (t *Test) SwarmCtl(args ...string) (Output, error) {
+	cmd := exec.Command(getBinDir()+"/bin/swarmctl", append([]string{fmt.Sprintf("--addr=127.0.0.1:%d", t.managerPorts[0])}, args...)...)
 	output, err := cmd.Output()
 	return Output(output), err
 
+}
+
+// Cleanup stops agents and managers.
+func (t *Test) Cleanup() {
+	t.StopAgents()
+	t.StopManagers()
 }
 
 // Output represents the output of SwarmCtl.

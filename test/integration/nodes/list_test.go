@@ -8,13 +8,12 @@ import (
 )
 
 func TestListNodes(t *testing.T) {
-	integration.StartManagers(1)
-	defer integration.StopManagers()
+	test := integration.Test{}
+	test.StartManagers(1)
+	test.StartAgents(2)
+	defer test.Cleanup()
 
-	integration.StartAgents(2)
-	defer integration.StopAgents()
-
-	output, err := integration.SwarmCtl("node", "ls", "-q")
+	output, err := test.SwarmCtl("node", "ls", "-q")
 	assert.NoError(t, err)
 	assert.EqualValues(t, 2, len(output.Lines()))
 

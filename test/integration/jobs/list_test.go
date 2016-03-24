@@ -9,24 +9,25 @@ import (
 )
 
 func TestListJobs(t *testing.T) {
-	integration.StartManagers(1)
-	defer integration.StopManagers()
+	test := integration.Test{}
+	test.StartManagers(1)
+	defer test.StopManagers()
 
-	output, err := integration.SwarmCtl("job", "ls", "-q")
+	output, err := test.SwarmCtl("job", "ls", "-q")
 	assert.NoError(t, err)
 	fmt.Printf("%q\n", output)
 	assert.EqualValues(t, 0, len(output.Lines()))
 
-	_, err = integration.SwarmCtl("job", "create", "--name=job0", "--image=image")
+	_, err = test.SwarmCtl("job", "create", "--name=job0", "--image=image")
 	assert.NoError(t, err)
-	output, err = integration.SwarmCtl("job", "ls", "-q")
+	output, err = test.SwarmCtl("job", "ls", "-q")
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, len(output.Lines()))
 
-	_, err = integration.SwarmCtl("job", "create", "--name=job1", "--image=image")
+	_, err = test.SwarmCtl("job", "create", "--name=job1", "--image=image")
 	assert.NoError(t, err)
 
-	output, err = integration.SwarmCtl("job", "ls", "-q")
+	output, err = test.SwarmCtl("job", "ls", "-q")
 	assert.NoError(t, err)
 	assert.EqualValues(t, 2, len(output.Lines()))
 
