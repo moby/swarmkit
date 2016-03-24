@@ -137,8 +137,7 @@ func (a *Agent) run(ctx context.Context) {
 	defer cancel()
 
 	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(logrus.Fields{
-		"agent.id":       a.config.ID,
-		"agent.hostname": a.config.Hostname,
+		"agent.id": a.config.ID,
 	}))
 
 	log.G(ctx).Debugf("(*Agent).run")

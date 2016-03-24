@@ -13,6 +13,19 @@ message Meta {
 }
 
 message Resources {
+	// Number of CPU cores.
+	double cpu = 1 [(gogoproto.customname) = "CPU"];
+
+	// Memory in bytes.
+	int64 memory = 2;
+}
+
+message Platform {
+	// Architecture (e.g. x86_64)
+	string architecture = 1;
+
+	// Operating System (e.g. linux)
+	string os = 2 [(gogoproto.customname) = "OS"];
 }
 
 message NodeSpec {
@@ -38,10 +51,13 @@ message NodeSpec {
 message NodeDescription {
 	// Hostname of the node as reported by the agent.
 	// This is different from spec.meta.name which is user-defined.
-	string hostname = 2;
+	string hostname = 1;
+
+	// Platform of the node.
+	Platform platform = 2;
 
 	// Total resources of the node.
-	Resources resources = 5 [(gogoproto.nullable) = false];
+	Resources resources = 3;
 }
 
 message Node {

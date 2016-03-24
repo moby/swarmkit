@@ -13,6 +13,7 @@
 	It has these top-level messages:
 		Meta
 		Resources
+		Platform
 		NodeSpec
 		NodeDescription
 		Node
@@ -252,10 +253,24 @@ func (m *Meta) Reset()      { *m = Meta{} }
 func (*Meta) ProtoMessage() {}
 
 type Resources struct {
+	// Number of CPU cores.
+	CPU float64 `protobuf:"fixed64,1,opt,name=cpu,proto3" json:"cpu,omitempty"`
+	// Memory in bytes.
+	Memory int64 `protobuf:"varint,2,opt,name=memory,proto3" json:"memory,omitempty"`
 }
 
 func (m *Resources) Reset()      { *m = Resources{} }
 func (*Resources) ProtoMessage() {}
+
+type Platform struct {
+	// Architecture (e.g. x86_64)
+	Architecture string `protobuf:"bytes,1,opt,name=architecture,proto3" json:"architecture,omitempty"`
+	// Operating System (e.g. linux)
+	OS string `protobuf:"bytes,2,opt,name=os,proto3" json:"os,omitempty"`
+}
+
+func (m *Platform) Reset()      { *m = Platform{} }
+func (*Platform) ProtoMessage() {}
 
 type NodeSpec struct {
 	Meta         Meta                  `protobuf:"bytes,1,opt,name=meta" json:"meta"`
@@ -268,9 +283,11 @@ func (*NodeSpec) ProtoMessage() {}
 type NodeDescription struct {
 	// Hostname of the node as reported by the agent.
 	// This is different from spec.meta.name which is user-defined.
-	Hostname string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	Hostname string `protobuf:"bytes,1,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	// Platform of the node.
+	Platform *Platform `protobuf:"bytes,2,opt,name=platform" json:"platform,omitempty"`
 	// Total resources of the node.
-	Resources Resources `protobuf:"bytes,5,opt,name=resources" json:"resources"`
+	Resources *Resources `protobuf:"bytes,3,opt,name=resources" json:"resources,omitempty"`
 }
 
 func (m *NodeDescription) Reset()      { *m = NodeDescription{} }
@@ -1198,6 +1215,7 @@ func _StoreAction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Bu
 func init() {
 	proto.RegisterType((*Meta)(nil), "api.Meta")
 	proto.RegisterType((*Resources)(nil), "api.Resources")
+	proto.RegisterType((*Platform)(nil), "api.Platform")
 	proto.RegisterType((*NodeSpec)(nil), "api.NodeSpec")
 	proto.RegisterType((*NodeDescription)(nil), "api.NodeDescription")
 	proto.RegisterType((*Node)(nil), "api.Node")
@@ -1253,7 +1271,23 @@ func (m *Resources) Copy() *Resources {
 		return nil
 	}
 
-	o := &Resources{}
+	o := &Resources{
+		CPU:    m.CPU,
+		Memory: m.Memory,
+	}
+
+	return o
+}
+
+func (m *Platform) Copy() *Platform {
+	if m == nil {
+		return nil
+	}
+
+	o := &Platform{
+		Architecture: m.Architecture,
+		OS:           m.OS,
+	}
 
 	return o
 }
@@ -1278,7 +1312,8 @@ func (m *NodeDescription) Copy() *NodeDescription {
 
 	o := &NodeDescription{
 		Hostname:  m.Hostname,
-		Resources: *m.Resources.Copy(),
+		Platform:  m.Platform.Copy(),
+		Resources: m.Resources.Copy(),
 	}
 
 	return o
@@ -1797,8 +1832,21 @@ func (this *Resources) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 4)
+	s := make([]string, 0, 6)
 	s = append(s, "&api.Resources{")
+	s = append(s, "CPU: "+fmt.Sprintf("%#v", this.CPU)+",\n")
+	s = append(s, "Memory: "+fmt.Sprintf("%#v", this.Memory)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Platform) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.Platform{")
+	s = append(s, "Architecture: "+fmt.Sprintf("%#v", this.Architecture)+",\n")
+	s = append(s, "OS: "+fmt.Sprintf("%#v", this.OS)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1817,10 +1865,15 @@ func (this *NodeDescription) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 7)
 	s = append(s, "&api.NodeDescription{")
 	s = append(s, "Hostname: "+fmt.Sprintf("%#v", this.Hostname)+",\n")
-	s = append(s, "Resources: "+strings.Replace(this.Resources.GoString(), `&`, ``, 1)+",\n")
+	if this.Platform != nil {
+		s = append(s, "Platform: "+fmt.Sprintf("%#v", this.Platform)+",\n")
+	}
+	if this.Resources != nil {
+		s = append(s, "Resources: "+fmt.Sprintf("%#v", this.Resources)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -2388,6 +2441,46 @@ func (m *Resources) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.CPU != 0 {
+		data[i] = 0x9
+		i++
+		i = encodeFixed64Types(data, i, uint64(math.Float64bits(float64(m.CPU))))
+	}
+	if m.Memory != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Memory))
+	}
+	return i, nil
+}
+
+func (m *Platform) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Platform) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Architecture) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.Architecture)))
+		i += copy(data[i:], m.Architecture)
+	}
+	if len(m.OS) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.OS)))
+		i += copy(data[i:], m.OS)
+	}
 	return i, nil
 }
 
@@ -2438,19 +2531,31 @@ func (m *NodeDescription) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if len(m.Hostname) > 0 {
-		data[i] = 0x12
+		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(len(m.Hostname)))
 		i += copy(data[i:], m.Hostname)
 	}
-	data[i] = 0x2a
-	i++
-	i = encodeVarintTypes(data, i, uint64(m.Resources.Size()))
-	n2, err := m.Resources.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
+	if m.Platform != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Platform.Size()))
+		n2, err := m.Platform.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
 	}
-	i += n2
+	if m.Resources != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Resources.Size()))
+		n3, err := m.Resources.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n3
+	}
 	return i, nil
 }
 
@@ -2479,30 +2584,30 @@ func (m *Node) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n3, err := m.Spec.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n3
-	}
-	if m.Description != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Description.Size()))
-		n4, err := m.Description.MarshalTo(data[i:])
+		n4, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n4
 	}
+	if m.Description != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Description.Size()))
+		n5, err := m.Description.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n5
+	}
 	data[i] = 0x22
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Status.Size()))
-	n5, err := m.Status.MarshalTo(data[i:])
+	n6, err := m.Status.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n5
+	i += n6
 	return i, nil
 }
 
@@ -2578,11 +2683,11 @@ func (m *ContainerSpec) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Image.Size()))
-		n6, err := m.Image.MarshalTo(data[i:])
+		n7, err := m.Image.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n6
+		i += n7
 	}
 	if len(m.Command) > 0 {
 		for _, s := range m.Command {
@@ -2660,11 +2765,11 @@ func (m *ContainerSpec_NetworkAttachmentSpec) MarshalTo(data []byte) (int, error
 	var l int
 	_ = l
 	if m.Reference != nil {
-		nn7, err := m.Reference.MarshalTo(data[i:])
+		nn8, err := m.Reference.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn7
+		i += nn8
 	}
 	return i, nil
 }
@@ -2701,11 +2806,11 @@ func (m *TaskSpec) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if m.Runtime != nil {
-		nn8, err := m.Runtime.MarshalTo(data[i:])
+		nn9, err := m.Runtime.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn8
+		i += nn9
 	}
 	return i, nil
 }
@@ -2716,11 +2821,11 @@ func (m *TaskSpec_Container) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Container.Size()))
-		n9, err := m.Container.MarshalTo(data[i:])
+		n10, err := m.Container.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n9
+		i += n10
 	}
 	return i, nil
 }
@@ -2742,27 +2847,27 @@ func (m *JobSpec) MarshalTo(data []byte) (int, error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-	n10, err := m.Meta.MarshalTo(data[i:])
+	n11, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n10
+	i += n11
 	if m.Orchestration != nil {
-		nn11, err := m.Orchestration.MarshalTo(data[i:])
+		nn12, err := m.Orchestration.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn11
+		i += nn12
 	}
 	if m.Template != nil {
 		data[i] = 0x32
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Template.Size()))
-		n12, err := m.Template.MarshalTo(data[i:])
+		n13, err := m.Template.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n12
+		i += n13
 	}
 	return i, nil
 }
@@ -2773,11 +2878,11 @@ func (m *JobSpec_Service) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Service.Size()))
-		n13, err := m.Service.MarshalTo(data[i:])
+		n14, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n13
+		i += n14
 	}
 	return i, nil
 }
@@ -2787,11 +2892,11 @@ func (m *JobSpec_Batch) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Batch.Size()))
-		n14, err := m.Batch.MarshalTo(data[i:])
+		n15, err := m.Batch.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n14
+		i += n15
 	}
 	return i, nil
 }
@@ -2801,11 +2906,11 @@ func (m *JobSpec_Global) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x22
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Global.Size()))
-		n15, err := m.Global.MarshalTo(data[i:])
+		n16, err := m.Global.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n15
+		i += n16
 	}
 	return i, nil
 }
@@ -2815,11 +2920,11 @@ func (m *JobSpec_Cron) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Cron.Size()))
-		n16, err := m.Cron.MarshalTo(data[i:])
+		n17, err := m.Cron.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n16
+		i += n17
 	}
 	return i, nil
 }
@@ -2975,30 +3080,30 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x22
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-	n17, err := m.Meta.MarshalTo(data[i:])
+	n18, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n17
+	i += n18
 	if m.Spec != nil {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n18, err := m.Spec.MarshalTo(data[i:])
+		n19, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n18
+		i += n19
 	}
 	if m.Status != nil {
 		data[i] = 0x32
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Status.Size()))
-		n19, err := m.Status.MarshalTo(data[i:])
+		n20, err := m.Status.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n19
+		i += n20
 	}
 	if len(m.Networks) > 0 {
 		for _, msg := range m.Networks {
@@ -3034,11 +3139,11 @@ func (m *Task_NetworkAttachment) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Network.Size()))
-		n20, err := m.Network.MarshalTo(data[i:])
+		n21, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n20
+		i += n21
 	}
 	if len(m.Addresses) > 0 {
 		for _, s := range m.Addresses {
@@ -3083,11 +3188,11 @@ func (m *Job) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n21, err := m.Spec.MarshalTo(data[i:])
+		n22, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n21
+		i += n22
 	}
 	return i, nil
 }
@@ -3210,11 +3315,11 @@ func (m *IPAMOptions) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Driver.Size()))
-		n22, err := m.Driver.MarshalTo(data[i:])
+		n23, err := m.Driver.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n22
+		i += n23
 	}
 	if len(m.Configurations) > 0 {
 		for _, msg := range m.Configurations {
@@ -3249,20 +3354,20 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-	n23, err := m.Meta.MarshalTo(data[i:])
+	n24, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n23
+	i += n24
 	if m.DriverConfiguration != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.DriverConfiguration.Size()))
-		n24, err := m.DriverConfiguration.MarshalTo(data[i:])
+		n25, err := m.DriverConfiguration.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n24
+		i += n25
 	}
 	if m.Ipv6Enabled {
 		data[i] = 0x18
@@ -3288,11 +3393,11 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.IPAM.Size()))
-		n25, err := m.IPAM.MarshalTo(data[i:])
+		n26, err := m.IPAM.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n25
+		i += n26
 	}
 	return i, nil
 }
@@ -3322,31 +3427,31 @@ func (m *Network) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n26, err := m.Spec.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n26
-	}
-	if m.DriverState != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.DriverState.Size()))
-		n27, err := m.DriverState.MarshalTo(data[i:])
+		n27, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n27
 	}
-	if m.IPAM != nil {
-		data[i] = 0x2a
+	if m.DriverState != nil {
+		data[i] = 0x1a
 		i++
-		i = encodeVarintTypes(data, i, uint64(m.IPAM.Size()))
-		n28, err := m.IPAM.MarshalTo(data[i:])
+		i = encodeVarintTypes(data, i, uint64(m.DriverState.Size()))
+		n28, err := m.DriverState.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n28
+	}
+	if m.IPAM != nil {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.IPAM.Size()))
+		n29, err := m.IPAM.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n29
 	}
 	return i, nil
 }
@@ -3431,11 +3536,11 @@ func (m *StoreAction) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if m.Action != nil {
-		nn29, err := m.Action.MarshalTo(data[i:])
+		nn30, err := m.Action.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn29
+		i += nn30
 	}
 	return i, nil
 }
@@ -3446,11 +3551,11 @@ func (m *StoreAction_CreateNode) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.CreateNode.Size()))
-		n30, err := m.CreateNode.MarshalTo(data[i:])
+		n31, err := m.CreateNode.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n30
+		i += n31
 	}
 	return i, nil
 }
@@ -3460,11 +3565,11 @@ func (m *StoreAction_UpdateNode) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.UpdateNode.Size()))
-		n31, err := m.UpdateNode.MarshalTo(data[i:])
+		n32, err := m.UpdateNode.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n31
+		i += n32
 	}
 	return i, nil
 }
@@ -3482,11 +3587,11 @@ func (m *StoreAction_CreateTask) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x22
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.CreateTask.Size()))
-		n32, err := m.CreateTask.MarshalTo(data[i:])
+		n33, err := m.CreateTask.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n32
+		i += n33
 	}
 	return i, nil
 }
@@ -3496,11 +3601,11 @@ func (m *StoreAction_UpdateTask) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.UpdateTask.Size()))
-		n33, err := m.UpdateTask.MarshalTo(data[i:])
+		n34, err := m.UpdateTask.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n33
+		i += n34
 	}
 	return i, nil
 }
@@ -3518,11 +3623,11 @@ func (m *StoreAction_CreateJob) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x3a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.CreateJob.Size()))
-		n34, err := m.CreateJob.MarshalTo(data[i:])
+		n35, err := m.CreateJob.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n34
+		i += n35
 	}
 	return i, nil
 }
@@ -3532,11 +3637,11 @@ func (m *StoreAction_UpdateJob) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x42
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.UpdateJob.Size()))
-		n35, err := m.UpdateJob.MarshalTo(data[i:])
+		n36, err := m.UpdateJob.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n35
+		i += n36
 	}
 	return i, nil
 }
@@ -3554,11 +3659,11 @@ func (m *StoreAction_CreateNetwork) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x52
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.CreateNetwork.Size()))
-		n36, err := m.CreateNetwork.MarshalTo(data[i:])
+		n37, err := m.CreateNetwork.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n36
+		i += n37
 	}
 	return i, nil
 }
@@ -3568,11 +3673,11 @@ func (m *StoreAction_UpdateNetwork) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x5a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.UpdateNetwork.Size()))
-		n37, err := m.UpdateNetwork.MarshalTo(data[i:])
+		n38, err := m.UpdateNetwork.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n37
+		i += n38
 	}
 	return i, nil
 }
@@ -3632,6 +3737,26 @@ func (m *Meta) Size() (n int) {
 func (m *Resources) Size() (n int) {
 	var l int
 	_ = l
+	if m.CPU != 0 {
+		n += 9
+	}
+	if m.Memory != 0 {
+		n += 1 + sovTypes(uint64(m.Memory))
+	}
+	return n
+}
+
+func (m *Platform) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Architecture)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	l = len(m.OS)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
 	return n
 }
 
@@ -3653,8 +3778,14 @@ func (m *NodeDescription) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
-	l = m.Resources.Size()
-	n += 1 + l + sovTypes(uint64(l))
+	if m.Platform != nil {
+		l = m.Platform.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.Resources != nil {
+		l = m.Resources.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
 	return n
 }
 
@@ -4221,6 +4352,19 @@ func (this *Resources) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&Resources{`,
+		`CPU:` + fmt.Sprintf("%v", this.CPU) + `,`,
+		`Memory:` + fmt.Sprintf("%v", this.Memory) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Platform) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Platform{`,
+		`Architecture:` + fmt.Sprintf("%v", this.Architecture) + `,`,
+		`OS:` + fmt.Sprintf("%v", this.OS) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4242,7 +4386,8 @@ func (this *NodeDescription) String() string {
 	}
 	s := strings.Join([]string{`&NodeDescription{`,
 		`Hostname:` + fmt.Sprintf("%v", this.Hostname) + `,`,
-		`Resources:` + strings.Replace(strings.Replace(this.Resources.String(), "Resources", "Resources", 1), `&`, ``, 1) + `,`,
+		`Platform:` + strings.Replace(fmt.Sprintf("%v", this.Platform), "Platform", "Platform", 1) + `,`,
+		`Resources:` + strings.Replace(fmt.Sprintf("%v", this.Resources), "Resources", "Resources", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4947,6 +5092,151 @@ func (m *Resources) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: Resources: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
+		case 1:
+			if wireType != 1 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CPU", wireType)
+			}
+			var v uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += 8
+			v = uint64(data[iNdEx-8])
+			v |= uint64(data[iNdEx-7]) << 8
+			v |= uint64(data[iNdEx-6]) << 16
+			v |= uint64(data[iNdEx-5]) << 24
+			v |= uint64(data[iNdEx-4]) << 32
+			v |= uint64(data[iNdEx-3]) << 40
+			v |= uint64(data[iNdEx-2]) << 48
+			v |= uint64(data[iNdEx-1]) << 56
+			m.CPU = float64(math.Float64frombits(v))
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Memory", wireType)
+			}
+			m.Memory = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Memory |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Platform) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Platform: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Platform: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Architecture", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Architecture = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OS", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.OS = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(data[iNdEx:])
@@ -5096,7 +5386,7 @@ func (m *NodeDescription) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: NodeDescription: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 2:
+		case 1:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Hostname", wireType)
 			}
@@ -5125,7 +5415,40 @@ func (m *NodeDescription) Unmarshal(data []byte) error {
 			}
 			m.Hostname = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 5:
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Platform", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Platform == nil {
+				m.Platform = &Platform{}
+			}
+			if err := m.Platform.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Resources", wireType)
 			}
@@ -5150,6 +5473,9 @@ func (m *NodeDescription) Unmarshal(data []byte) error {
 			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
+			}
+			if m.Resources == nil {
+				m.Resources = &Resources{}
 			}
 			if err := m.Resources.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
