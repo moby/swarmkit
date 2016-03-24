@@ -1,6 +1,7 @@
 package state
 
 import (
+	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state/watch"
 )
@@ -8,16 +9,20 @@ import (
 // Event is the type used for events passed over watcher channels, and also
 // the type used to specify filtering in calls to Watch.
 type Event interface {
+	// TODO(stevvooe): Consider whether it makes sense to squish both the
+	// matcher type and the primary type into the same type. It might be better
+	// to build a matcher from an event prototype.
+
 	// matches checks if this item in a watch queue matches the event
 	// description.
-	matches(watch.Event) bool
+	matches(events.Event) bool
 }
 
 // EventCommit delineates a transaction boundary.
 type EventCommit struct{}
 
-func (e EventCommit) matches(watchEvent watch.Event) bool {
-	_, ok := watchEvent.Payload.(EventCommit)
+func (e EventCommit) matches(watchEvent events.Event) bool {
+	_, ok := watchEvent.(EventCommit)
 	return ok
 }
 
@@ -45,8 +50,8 @@ type EventCreateTask struct {
 	Checks []TaskCheckFunc
 }
 
-func (e EventCreateTask) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventCreateTask)
+func (e EventCreateTask) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventCreateTask)
 	if !ok {
 		return false
 	}
@@ -69,8 +74,8 @@ type EventUpdateTask struct {
 	Checks []TaskCheckFunc
 }
 
-func (e EventUpdateTask) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventUpdateTask)
+func (e EventUpdateTask) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventUpdateTask)
 	if !ok {
 		return false
 	}
@@ -93,8 +98,8 @@ type EventDeleteTask struct {
 	Checks []TaskCheckFunc
 }
 
-func (e EventDeleteTask) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventDeleteTask)
+func (e EventDeleteTask) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventDeleteTask)
 	if !ok {
 		return false
 	}
@@ -126,8 +131,8 @@ type EventCreateJob struct {
 	Checks []JobCheckFunc
 }
 
-func (e EventCreateJob) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventCreateJob)
+func (e EventCreateJob) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventCreateJob)
 	if !ok {
 		return false
 	}
@@ -150,8 +155,8 @@ type EventUpdateJob struct {
 	Checks []JobCheckFunc
 }
 
-func (e EventUpdateJob) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventUpdateJob)
+func (e EventUpdateJob) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventUpdateJob)
 	if !ok {
 		return false
 	}
@@ -174,8 +179,8 @@ type EventDeleteJob struct {
 	Checks []JobCheckFunc
 }
 
-func (e EventDeleteJob) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventDeleteJob)
+func (e EventDeleteJob) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventDeleteJob)
 	if !ok {
 		return false
 	}
@@ -207,8 +212,8 @@ type EventCreateNetwork struct {
 	Checks []NetworkCheckFunc
 }
 
-func (e EventCreateNetwork) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventCreateNetwork)
+func (e EventCreateNetwork) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventCreateNetwork)
 	if !ok {
 		return false
 	}
@@ -231,8 +236,8 @@ type EventUpdateNetwork struct {
 	Checks []NetworkCheckFunc
 }
 
-func (e EventUpdateNetwork) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventUpdateNetwork)
+func (e EventUpdateNetwork) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventUpdateNetwork)
 	if !ok {
 		return false
 	}
@@ -255,8 +260,8 @@ type EventDeleteNetwork struct {
 	Checks []NetworkCheckFunc
 }
 
-func (e EventDeleteNetwork) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventDeleteNetwork)
+func (e EventDeleteNetwork) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventDeleteNetwork)
 	if !ok {
 		return false
 	}
@@ -293,8 +298,8 @@ type EventCreateNode struct {
 	Checks []NodeCheckFunc
 }
 
-func (e EventCreateNode) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventCreateNode)
+func (e EventCreateNode) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventCreateNode)
 	if !ok {
 		return false
 	}
@@ -317,8 +322,8 @@ type EventUpdateNode struct {
 	Checks []NodeCheckFunc
 }
 
-func (e EventUpdateNode) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventUpdateNode)
+func (e EventUpdateNode) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventUpdateNode)
 	if !ok {
 		return false
 	}
@@ -341,8 +346,8 @@ type EventDeleteNode struct {
 	Checks []NodeCheckFunc
 }
 
-func (e EventDeleteNode) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventDeleteNode)
+func (e EventDeleteNode) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventDeleteNode)
 	if !ok {
 		return false
 	}
@@ -374,8 +379,8 @@ type EventCreateVolume struct {
 	Checks []VolumeCheckFunc
 }
 
-func (e EventCreateVolume) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventCreateVolume)
+func (e EventCreateVolume) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventCreateVolume)
 	if !ok {
 		return false
 	}
@@ -398,8 +403,8 @@ type EventUpdateVolume struct {
 	Checks []VolumeCheckFunc
 }
 
-func (e EventUpdateVolume) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventUpdateVolume)
+func (e EventUpdateVolume) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventUpdateVolume)
 	if !ok {
 		return false
 	}
@@ -422,8 +427,8 @@ type EventDeleteVolume struct {
 	Checks []VolumeCheckFunc
 }
 
-func (e EventDeleteVolume) matches(watchEvent watch.Event) bool {
-	typedEvent, ok := watchEvent.Payload.(EventDeleteVolume)
+func (e EventDeleteVolume) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventDeleteVolume)
 	if !ok {
 		return false
 	}
@@ -463,21 +468,16 @@ func (e EventDeleteVolume) matches(watchEvent watch.Event) bool {
 //                                                 func(t1, t2 *api.Task) bool {
 //                                                         return t1.JobID == t2.JobID
 //                                                 }}})
-func Watch(queue *watch.Queue, specifiers ...Event) chan watch.Event {
+func Watch(queue *watch.Queue, specifiers ...Event) (eventq chan events.Event, cancel func()) {
 	if len(specifiers) == 0 {
 		return queue.Watch()
 	}
-	return queue.CallbackWatch(func(event watch.Event) bool {
+	return queue.CallbackWatch(events.MatcherFunc(func(event events.Event) bool {
 		for _, s := range specifiers {
 			if s.matches(event) {
 				return true
 			}
 		}
 		return false
-	})
-}
-
-// Publish publishes an event to a queue.
-func Publish(queue *watch.Queue, event Event) {
-	queue.Publish(watch.Event{Payload: event})
+	}))
 }

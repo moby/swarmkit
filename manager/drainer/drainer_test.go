@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/watch"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -145,8 +145,8 @@ func TestDrainer(t *testing.T) {
 
 	drainer := New(store)
 
-	watch := state.Watch(store.WatchQueue(), state.EventDeleteTask{})
-	defer store.WatchQueue().StopWatch(watch)
+	watch, cancel := state.Watch(store.WatchQueue(), state.EventDeleteTask{})
+	defer cancel()
 
 	go func() {
 		assert.NoError(t, drainer.Run())
@@ -207,11 +207,11 @@ func TestDrainer(t *testing.T) {
 	drainer.Stop()
 }
 
-func watchDeleteTask(t *testing.T, watch chan watch.Event) *api.Task {
+func watchDeleteTask(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
 		case event := <-watch:
-			if task, ok := event.Payload.(state.EventDeleteTask); ok {
+			if task, ok := event.(state.EventDeleteTask); ok {
 				return task.Task
 			}
 		case <-time.After(time.Second):

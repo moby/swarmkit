@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/watch"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -95,8 +95,8 @@ func TestScheduler(t *testing.T) {
 
 	scheduler := New(store)
 
-	watch := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
-	defer store.WatchQueue().StopWatch(watch)
+	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
 
 	go func() {
 		assert.NoError(t, scheduler.Run())
@@ -342,8 +342,8 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 
 	scheduler := New(store)
 
-	watch := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
-	defer store.WatchQueue().StopWatch(watch)
+	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
 
 	go func() {
 		assert.NoError(t, scheduler.Run())
@@ -374,11 +374,11 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 	scheduler.Stop()
 }
 
-func watchAssignment(t *testing.T, watch chan watch.Event) *api.Task {
+func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
 		case event := <-watch:
-			if task, ok := event.Payload.(state.EventUpdateTask); ok {
+			if task, ok := event.(state.EventUpdateTask); ok {
 				if task.Task.NodeID != "" {
 					return task.Task
 				}
@@ -436,7 +436,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 		scheduler := New(s)
 		scheduler.scanAllNodes = worstCase
 
-		watch := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+		watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 
 		go func() {
 			_ = scheduler.Run()
@@ -485,6 +485,6 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 		}
 
 		scheduler.Stop()
-		s.WatchQueue().StopWatch(watch)
+		cancel()
 	}
 }

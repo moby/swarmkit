@@ -8,9 +8,9 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/watch"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -60,10 +60,10 @@ func TestAllocator(t *testing.T) {
 		return nil
 	}))
 
-	netWatch := state.Watch(store.WatchQueue(), state.EventUpdateNetwork{}, state.EventDeleteNetwork{})
-	taskWatch := state.Watch(store.WatchQueue(), state.EventUpdateTask{}, state.EventDeleteTask{})
-	defer store.WatchQueue().StopWatch(netWatch)
-	defer store.WatchQueue().StopWatch(taskWatch)
+	netWatch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateNetwork{}, state.EventDeleteNetwork{})
+	defer cancel()
+	taskWatch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{}, state.EventDeleteTask{})
+	defer cancel()
 
 	// Start allocator
 	assert.NoError(t, a.Start(context.Background()))
@@ -261,18 +261,18 @@ func TestAllocator(t *testing.T) {
 	a.Stop()
 }
 
-func watchNetwork(t *testing.T, watch chan watch.Event) (*api.Network, error) {
+func watchNetwork(t *testing.T, watch chan events.Event) (*api.Network, error) {
 	for {
 		select {
 		case event := <-watch:
-			if n, ok := event.Payload.(state.EventUpdateNetwork); ok {
+			if n, ok := event.(state.EventUpdateNetwork); ok {
 				return n.Network, nil
 			}
-			if n, ok := event.Payload.(state.EventDeleteNetwork); ok {
+			if n, ok := event.(state.EventDeleteNetwork); ok {
 				return n.Network, nil
 			}
 
-			return nil, fmt.Errorf("got event %T when expecting EventUpdateNetwork/EventDeleteNetwork", event.Payload)
+			return nil, fmt.Errorf("got event %T when expecting EventUpdateNetwork/EventDeleteNetwork", event)
 		case <-time.After(250 * time.Millisecond):
 			return nil, fmt.Errorf("timed out")
 
@@ -280,17 +280,17 @@ func watchNetwork(t *testing.T, watch chan watch.Event) (*api.Network, error) {
 	}
 }
 
-func watchTask(t *testing.T, watch chan watch.Event) (*api.Task, error) {
+func watchTask(t *testing.T, watch chan events.Event) (*api.Task, error) {
 	for {
 		select {
 		case event := <-watch:
-			if t, ok := event.Payload.(state.EventUpdateTask); ok {
+			if t, ok := event.(state.EventUpdateTask); ok {
 				return t.Task, nil
 			}
-			if t, ok := event.Payload.(state.EventDeleteTask); ok {
+			if t, ok := event.(state.EventDeleteTask); ok {
 				return t.Task, nil
 			}
-			return nil, fmt.Errorf("got event %T when expecting EventUpdateTask/EventDeleteTask", event.Payload)
+			return nil, fmt.Errorf("got event %T when expecting EventUpdateTask/EventDeleteTask", event)
 		case <-time.After(250 * time.Millisecond):
 			return nil, fmt.Errorf("timed out")
 

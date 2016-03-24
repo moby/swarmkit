@@ -2,7 +2,8 @@ package watch
 
 import (
 	"testing"
-	"time"
+
+	"github.com/docker/go-events"
 )
 
 func TestWatch(t *testing.T) {
@@ -14,67 +15,71 @@ func TestWatch(t *testing.T) {
 		str  string
 	}
 
-	tagFilter := func(t string) topicFunc {
-		return func(event Event) bool {
-			testEvent := event.Payload.(testEvent)
+	tagFilter := func(t string) events.Matcher {
+		return events.MatcherFunc(func(event events.Event) bool {
+			testEvent := event.(testEvent)
 			for _, itemTag := range testEvent.tags {
 				if t == itemTag {
 					return true
 				}
 			}
 			return false
-		}
+		})
 	}
 
 	// Create filtered watchers
-	c1 := q.CallbackWatch(tagFilter("t1"))
-	c2 := q.CallbackWatch(tagFilter("t2"))
+	c1, c1cancel := q.CallbackWatch(tagFilter("t1"))
+	defer c1cancel()
+	c2, c2cancel := q.CallbackWatch(tagFilter("t2"))
+	defer c2cancel()
 
 	// Publish items on the queue
-	q.Publish(Event{Payload: testEvent{tags: []string{"t1"}, str: "foo"}})
-	q.Publish(Event{Payload: testEvent{tags: []string{"t2"}, str: "bar"}})
-	q.Publish(Event{Payload: testEvent{tags: []string{"t1", "t2"}, str: "foobar"}})
-	q.Publish(Event{Payload: testEvent{tags: []string{"t3"}, str: "baz"}})
+	q.Publish(testEvent{tags: []string{"t1"}, str: "foo"})
+	q.Publish(testEvent{tags: []string{"t2"}, str: "bar"})
+	q.Publish(testEvent{tags: []string{"t1", "t2"}, str: "foobar"})
+	q.Publish(testEvent{tags: []string{"t3"}, str: "baz"})
 
-	if (<-c1).Payload.(testEvent).str != "foo" {
+	if (<-c1).(testEvent).str != "foo" {
 		t.Fatal(`expected "foo" on c1`)
 	}
-	if (<-c1).Payload.(testEvent).str != "foobar" {
-		t.Fatal(`expected "foobar" on c1`)
+
+	ev := (<-c1).(testEvent)
+	if ev.str != "foobar" {
+		t.Fatal(`expected "foobar" on c1`, ev)
 	}
-	if (<-c2).Payload.(testEvent).str != "bar" {
+	if (<-c2).(testEvent).str != "bar" {
 		t.Fatal(`expected "bar" on c2`)
 	}
-	if (<-c2).Payload.(testEvent).str != "foobar" {
+	if (<-c2).(testEvent).str != "foobar" {
 		t.Fatal(`expected "foobar" on c2`)
 	}
 
-	q.StopWatch(c1)
+	c1cancel()
 
 	select {
 	case _, ok := <-c1:
 		if ok {
 			t.Fatal("unexpected value on c1")
 		}
-	case <-time.After(time.Second):
-		t.Fatal("expected c1 to be closed")
+	default:
+		// operation does not proceed after cancel
 	}
 
-	q.Publish(Event{Payload: testEvent{tags: []string{"t1", "t2"}, str: "foobar"}})
+	q.Publish(testEvent{tags: []string{"t1", "t2"}, str: "foobar"})
 
-	if (<-c2).Payload.(testEvent).str != "foobar" {
+	if (<-c2).(testEvent).str != "foobar" {
 		t.Fatal(`expected "foobar" on c2`)
 	}
 
-	q.StopWatch(c2)
+	c2cancel()
 
 	select {
 	case _, ok := <-c2:
 		if ok {
 			t.Fatal("unexpected value on c2")
 		}
-	case <-time.After(time.Second):
-		t.Fatal("expected c2 to be closed")
+	default:
+		// operation does not proceed after cancel
 	}
 }
 
@@ -98,16 +103,21 @@ func benchmarkWatch(b *testing.B, nlisteners int) {
 	q := NewQueue(0)
 	for i := 0; i < nlisteners; i++ {
 		go func(n int) {
-			w := q.Watch()
+			w, cancel := q.Watch()
+			defer cancel()
 			var i int
-			for range q.Watch() {
-				i++
 
-				if i >= n {
-					break
+		loop:
+			for {
+				select {
+				case <-w:
+					i++
+
+					if i >= n {
+						break loop
+					}
 				}
 			}
-			q.StopWatch(w)
 			if i != n {
 				b.Fatalf("expected %v messages, got %v", n, i)
 			}
@@ -115,6 +125,6 @@ func benchmarkWatch(b *testing.B, nlisteners int) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		q.Publish(Event{Payload: "myevent"})
+		q.Publish("myevent")
 	}
 }

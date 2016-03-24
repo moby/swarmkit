@@ -3,14 +3,14 @@ package state
 import (
 	"errors"
 
-	"github.com/docker/swarm-v2/manager/state/watch"
+	"github.com/docker/go-events"
 )
 
 // Apply takes an item from the event stream of one Store and applies it to
 // a second Store.
-func Apply(store Store, item watch.Event) (err error) {
+func Apply(store Store, item events.Event) (err error) {
 	return store.Update(func(tx Tx) error {
-		switch v := item.Payload.(type) {
+		switch v := item.(type) {
 		case EventCreateTask:
 			return tx.Tasks().Create(v.Task)
 		case EventUpdateTask:

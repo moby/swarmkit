@@ -661,8 +661,8 @@ func TestStoreSnapshot(t *testing.T) {
 	// Fork
 	s2 := NewMemoryStore(nil)
 	assert.NotNil(t, s2)
-	watcher, err := ViewAndWatch(s1, s2.CopyFrom)
-	defer s1.WatchQueue().StopWatch(watcher)
+	watcher, cancel, err := ViewAndWatch(s1, s2.CopyFrom)
+	defer cancel()
 	assert.NoError(t, err)
 
 	err = s2.View(func(tx2 ReadTx) error {

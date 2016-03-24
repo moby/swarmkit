@@ -3,6 +3,7 @@ package state
 import (
 	"errors"
 
+	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state/watch"
 )
@@ -234,7 +235,7 @@ func (tx snapshotReadTx) Volumes() VolumeSetReader {
 // the snapshot can be kept up to date. The watch channel must be released with
 // watch.StopWatch when it is no longer needed. The channel is guaranteed to
 // get all events after the moment of the snapshot, and only those events.
-func ViewAndWatch(store WatchableStore, cb func(ReadTx) error) (watch chan watch.Event, err error) {
+func ViewAndWatch(store WatchableStore, cb func(ReadTx) error) (watch chan events.Event, cancel func(), err error) {
 	// Using Update to lock the store and guarantee consistency between
 	// the watcher and the the state seen by the callback. snapshotReadTx
 	// exposes this Tx as a ReadTx so the callback can't modify it.
@@ -242,11 +243,12 @@ func ViewAndWatch(store WatchableStore, cb func(ReadTx) error) (watch chan watch
 		if err = cb(snapshotReadTx{tx: tx}); err != nil {
 			return err
 		}
-		watch = store.WatchQueue().Watch()
+		watch, cancel = store.WatchQueue().Watch()
 		return nil
 	})
 	if watch != nil && err != nil {
-		store.WatchQueue().StopWatch(watch)
+		cancel()
+		cancel = nil
 		watch = nil
 	}
 	return

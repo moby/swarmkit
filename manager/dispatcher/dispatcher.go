@@ -187,14 +187,14 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	}
 
 	watchQueue := d.store.WatchQueue()
-	nodeTasks := state.Watch(watchQueue,
+	nodeTasks, cancel := state.Watch(watchQueue,
 		state.EventCreateTask{Task: &api.Task{NodeID: r.NodeID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
 		state.EventUpdateTask{Task: &api.Task{NodeID: r.NodeID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
 		state.EventDeleteTask{Task: &api.Task{NodeID: r.NodeID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}})
-	defer watchQueue.StopWatch(nodeTasks)
+	defer cancel()
 
 	tasksMap := make(map[string]*api.Task)
 	err := d.store.View(func(readTx state.ReadTx) error {
@@ -227,7 +227,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 
 		select {
 		case event := <-nodeTasks:
-			switch v := event.Payload.(type) {
+			switch v := event.(type) {
 			case state.EventCreateTask:
 				tasksMap[v.Task.ID] = v.Task
 			case state.EventUpdateTask:
@@ -282,7 +282,7 @@ func (d *Dispatcher) watchManagers() {
 		d.mu.Lock()
 		d.lastSeenManagers = mgrs
 		d.mu.Unlock()
-		d.mgrQueue.Publish(watch.Event{Payload: mgrs})
+		d.mgrQueue.Publish(mgrs)
 	}
 	publish()
 	// TODO: here should be code which asks leader about managers with their weights
@@ -314,7 +314,8 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		return err
 	}
 
-	mgrUpdates := d.mgrQueue.Watch()
+	mgrUpdates, cancel := d.mgrQueue.Watch()
+	defer cancel()
 
 	for {
 		// After each message send, we need to check the nodes sessionID hasn't
@@ -332,7 +333,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		case <-node.Disconnect:
 			disconnect = true
 		case ev := <-mgrUpdates:
-			mgrs = ev.Payload.([]*api.WeightedPeer)
+			mgrs = ev.([]*api.WeightedPeer)
 		case <-stream.Context().Done():
 			return stream.Context().Err()
 		}

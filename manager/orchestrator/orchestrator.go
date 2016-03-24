@@ -33,7 +33,8 @@ func (o *Orchestrator) Run() error {
 
 	// Watch changes to jobs and tasks
 	queue := o.store.WatchQueue()
-	watcher := queue.Watch()
+	watcher, cancel := queue.Watch()
+	defer cancel()
 
 	// Balance existing jobs
 	var existingJobs []*api.Job
@@ -53,7 +54,7 @@ func (o *Orchestrator) Run() error {
 	for {
 		select {
 		case event := <-watcher:
-			switch v := event.Payload.(type) {
+			switch v := event.(type) {
 			case state.EventDeleteJob:
 				o.deleteJob(v.Job)
 			case state.EventCreateJob:
@@ -64,7 +65,6 @@ func (o *Orchestrator) Run() error {
 				o.deleteTask(v.Task)
 			}
 		case <-o.stopChan:
-			queue.StopWatch(watcher)
 			return nil
 		}
 	}
