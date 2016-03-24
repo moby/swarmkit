@@ -6,15 +6,42 @@ import (
 	"github.com/docker/swarm-v2/api"
 )
 
-// Cluster represents a set of active
-// raft members
-type Cluster struct {
-	lock  sync.RWMutex
-	peers map[uint64]*Peer
+// Cluster represents a raft cluster
+type Cluster interface {
+	// ID returns the cluster ID
+	ID() uint64
+	// Members returns a map of members identified by their raft ID
+	Members() map[uint64]*Member
+	// AddMember adds a member to the cluster memberlist
+	AddMember(*Member) error
+	// RemoveMember removes a member from the memberlist and add
+	// it to the remove set
+	RemoveMember(uint64) error
+	// Member retrieves a particular member based on ID, or nil if the
+	// member does not exist in the cluster
+	GetMember(id uint64) *Member
+	// IsIDRemoved checks whether the given ID has been removed from this
+	// cluster at some point in the past
+	IsIDRemoved(id uint64) bool
 }
 
-// Peer represents a raft cluster peer
-type Peer struct {
+// cluster represents a set of active
+// raft members
+type cluster struct {
+	id uint64
+
+	lock    sync.RWMutex
+	members map[uint64]*Member
+
+	// removed contains the list of removed members,
+	// those ids cannot be reused
+	removed map[uint64]bool
+}
+
+// Member represents a raft cluster member
+type Member struct {
+	l sync.RWMutex
+
 	*api.RaftNode
 
 	Client *Raft
@@ -22,40 +49,57 @@ type Peer struct {
 
 // NewCluster creates a new cluster neighbors
 // list for a raft member
-func NewCluster() *Cluster {
-	return &Cluster{
-		peers: make(map[uint64]*Peer),
+func NewCluster() Cluster {
+	// TODO generate cluster ID
+
+	return &cluster{
+		members: make(map[uint64]*Member),
+		removed: make(map[uint64]bool),
 	}
 }
 
-// Peers returns the list of peers in the cluster
-func (c *Cluster) Peers() map[uint64]*Peer {
-	peers := make(map[uint64]*Peer)
+func (c *cluster) ID() uint64 {
+	return c.id
+}
+
+// Members returns the list of raft members in the cluster
+func (c *cluster) Members() map[uint64]*Member {
+	members := make(map[uint64]*Member)
 	c.lock.RLock()
-	for k, v := range c.peers {
-		peers[k] = v
+	for k, v := range c.members {
+		members[k] = v
 	}
 	c.lock.RUnlock()
-	return peers
+	return members
 }
 
-// GetPeer returns informations on a given peer
-func (c *Cluster) GetPeer(id uint64) *Peer {
+// GetMember returns informations on a given member
+func (c *cluster) GetMember(id uint64) *Member {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	return c.peers[id]
+	return c.members[id]
 }
 
-// AddPeer adds a node to our neighbors
-func (c *Cluster) AddPeer(peer *Peer) {
+// AddMember adds a node to the cluster memberlist
+func (c *cluster) AddMember(member *Member) error {
 	c.lock.Lock()
-	c.peers[peer.ID] = peer
-	c.lock.Unlock()
+	defer c.lock.Unlock()
+	c.members[member.ID] = member
+	return nil
 }
 
-// RemovePeer removes a node from our neighbors
-func (c *Cluster) RemovePeer(id uint64) {
+// RemoveMember removes a node from the cluster memberlist
+func (c *cluster) RemoveMember(id uint64) error {
 	c.lock.Lock()
-	delete(c.peers, id)
-	c.lock.Unlock()
+	defer c.lock.Unlock()
+	c.removed[id] = true
+	delete(c.members, id)
+	return nil
+}
+
+// IsIDRemoved checks if a member is in the remove set
+func (c *cluster) IsIDRemoved(id uint64) bool {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return c.removed[id]
 }
