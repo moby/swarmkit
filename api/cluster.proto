@@ -49,6 +49,7 @@ message GetNodeResponse {
 }
 
 message ListNodesRequest {
+	ListOptions options = 1;
 }
 
 message ListNodesResponse {

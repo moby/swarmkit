@@ -56,6 +56,10 @@ func NewMemoryStore(proposer Proposer) *MemoryStore {
 						AllowMissing: true,
 						Indexer:      nodeIndexerByName{},
 					},
+					indexIDName: {
+						Name:    indexIDName,
+						Indexer: nodeIndexerByIDName{},
+					},
 				},
 			},
 			tableTask: {
@@ -483,13 +487,17 @@ func (nodes nodes) Get(id string) *api.Node {
 func (nodes nodes) Find(by By) ([]*api.Node, error) {
 	fromResultIterator := func(it memdb.ResultIterator) []*api.Node {
 		nodes := []*api.Node{}
+		ids := make(map[string]struct{})
 		for {
 			obj := it.Next()
 			if obj == nil {
 				break
 			}
 			if n, ok := obj.(*api.Node); ok {
-				nodes = append(nodes, n.Copy())
+				if _, exists := ids[n.ID]; !exists {
+					nodes = append(nodes, n.Copy())
+					ids[n.ID] = struct{}{}
+				}
 			}
 		}
 		return nodes
@@ -507,9 +515,41 @@ func (nodes nodes) Find(by By) ([]*api.Node, error) {
 			return nil, err
 		}
 		return fromResultIterator(it), nil
+	case byPrefix:
+		it, err := nodes.memDBTx.Get(nodes.table(), indexIDName+"_prefix", string(v))
+		if err != nil {
+			return nil, err
+		}
+		return fromResultIterator(it), nil
 	default:
 		return nil, ErrInvalidFindBy
 	}
+}
+
+type nodeIndexerByIDName struct{}
+
+func (ji nodeIndexerByIDName) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (ji nodeIndexerByIDName) FromObject(obj interface{}) (bool, [][]byte, error) {
+	n, ok := obj.(*api.Node)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	vals := make([][]byte, 1)
+
+	// Add the null character as a terminator
+	vals = append(vals, []byte(n.ID+"\x00"))
+	if n.Spec != nil && n.Spec.Meta.Name != "" {
+		vals = append(vals, []byte(n.Spec.Meta.Name+"\x00"))
+	}
+	return true, vals, nil
+}
+
+func (ji nodeIndexerByIDName) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
 }
 
 type nodeIndexerByID struct{}

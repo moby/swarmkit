@@ -60,21 +60,3 @@ func (r *Resolver) Resolve(t interface{}, id string) string {
 	r.cache[id] = name
 	return name
 }
-
-// LookupID attempts to resolve a Name into an ID.
-// TODO(aluzzardi): This is a giant hack until we have server-side name lookups.
-func LookupID(ctx context.Context, c api.ClusterClient, name string) string {
-	r, err := c.ListNodes(ctx, &api.ListNodesRequest{})
-	if err != nil {
-		return name
-	}
-	for _, n := range r.Nodes {
-		if n.Spec != nil && n.Spec.Meta.Name == name {
-			return n.ID
-		}
-		if n.Description != nil && n.Description.Hostname == name {
-			return n.ID
-		}
-	}
-	return name
-}

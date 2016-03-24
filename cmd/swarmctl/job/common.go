@@ -29,7 +29,6 @@ func readServiceConfig(flags *flag.FlagSet) (*spec.ServiceConfig, error) {
 
 	return service, nil
 }
-
 func getJob(ctx context.Context, c api.ClusterClient, prefix string) (*api.Job, error) {
 	r, err := c.ListJobs(ctx, &api.ListJobsRequest{Options: &api.ListOptions{Prefix: prefix}})
 	if err != nil {
