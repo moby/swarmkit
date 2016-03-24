@@ -85,7 +85,7 @@ var (
 				return nil
 			}
 
-			r, err := c.UpdateJob(common.Context(cmd), &api.UpdateJobRequest{JobID: args[0], Spec: newService.JobSpec()})
+			r, err := c.UpdateJob(common.Context(cmd), &api.UpdateJobRequest{JobID: job.ID, Spec: newService.JobSpec()})
 			if err != nil {
 				return err
 			}

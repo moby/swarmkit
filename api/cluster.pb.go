@@ -27,6 +27,13 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+type ListOptions struct {
+	Prefix string `protobuf:"bytes,1,opt,name=prefix,proto3" json:"prefix,omitempty"`
+}
+
+func (m *ListOptions) Reset()      { *m = ListOptions{} }
+func (*ListOptions) ProtoMessage() {}
+
 type GetNodeRequest struct {
 	NodeID string `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
 }
@@ -183,7 +190,7 @@ func (m *RemoveJobResponse) Reset()      { *m = RemoveJobResponse{} }
 func (*RemoveJobResponse) ProtoMessage() {}
 
 type ListJobsRequest struct {
-	Prefix string `protobuf:"bytes,1,opt,name=prefix,proto3" json:"prefix,omitempty"`
+	Options *ListOptions `protobuf:"bytes,1,opt,name=options" json:"options,omitempty"`
 }
 
 func (m *ListJobsRequest) Reset()      { *m = ListJobsRequest{} }
@@ -253,6 +260,7 @@ func (m *ListNetworksResponse) Reset()      { *m = ListNetworksResponse{} }
 func (*ListNetworksResponse) ProtoMessage() {}
 
 func init() {
+	proto.RegisterType((*ListOptions)(nil), "api.ListOptions")
 	proto.RegisterType((*GetNodeRequest)(nil), "api.GetNodeRequest")
 	proto.RegisterType((*GetNodeResponse)(nil), "api.GetNodeResponse")
 	proto.RegisterType((*ListNodesRequest)(nil), "api.ListNodesRequest")
@@ -285,6 +293,18 @@ func init() {
 	proto.RegisterType((*RemoveNetworkResponse)(nil), "api.RemoveNetworkResponse")
 	proto.RegisterType((*ListNetworksRequest)(nil), "api.ListNetworksRequest")
 	proto.RegisterType((*ListNetworksResponse)(nil), "api.ListNetworksResponse")
+}
+
+func (m *ListOptions) Copy() *ListOptions {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListOptions{
+		Prefix: m.Prefix,
+	}
+
+	return o
 }
 
 func (m *GetNodeRequest) Copy() *GetNodeRequest {
@@ -561,7 +581,7 @@ func (m *ListJobsRequest) Copy() *ListJobsRequest {
 	}
 
 	o := &ListJobsRequest{
-		Prefix: m.Prefix,
+		Options: m.Options.Copy(),
 	}
 
 	return o
@@ -683,6 +703,16 @@ func (m *ListNetworksResponse) Copy() *ListNetworksResponse {
 	return o
 }
 
+func (this *ListOptions) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.ListOptions{")
+	s = append(s, "Prefix: "+fmt.Sprintf("%#v", this.Prefix)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func (this *GetNodeRequest) GoString() string {
 	if this == nil {
 		return "nil"
@@ -933,7 +963,9 @@ func (this *ListJobsRequest) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.ListJobsRequest{")
-	s = append(s, "Prefix: "+fmt.Sprintf("%#v", this.Prefix)+",\n")
+	if this.Options != nil {
+		s = append(s, "Options: "+fmt.Sprintf("%#v", this.Options)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1529,6 +1561,30 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 	Streams: []grpc.StreamDesc{},
 }
 
+func (m *ListOptions) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ListOptions) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Prefix) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintCluster(data, i, uint64(len(m.Prefix)))
+		i += copy(data[i:], m.Prefix)
+	}
+	return i, nil
+}
+
 func (m *GetNodeRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -2116,11 +2172,15 @@ func (m *ListJobsRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.Prefix) > 0 {
+	if m.Options != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintCluster(data, i, uint64(len(m.Prefix)))
-		i += copy(data[i:], m.Prefix)
+		i = encodeVarintCluster(data, i, uint64(m.Options.Size()))
+		n12, err := m.Options.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n12
 	}
 	return i, nil
 }
@@ -2174,11 +2234,11 @@ func (m *CreateNetworkRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Spec.Size()))
-		n12, err := m.Spec.MarshalTo(data[i:])
+		n13, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n12
+		i += n13
 	}
 	return i, nil
 }
@@ -2202,11 +2262,11 @@ func (m *CreateNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Network.Size()))
-		n13, err := m.Network.MarshalTo(data[i:])
+		n14, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n13
+		i += n14
 	}
 	return i, nil
 }
@@ -2260,11 +2320,11 @@ func (m *GetNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Network.Size()))
-		n14, err := m.Network.MarshalTo(data[i:])
+		n15, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n14
+		i += n15
 	}
 	return i, nil
 }
@@ -2392,6 +2452,16 @@ func encodeVarintCluster(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	return offset + 1
 }
+func (m *ListOptions) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Prefix)
+	if l > 0 {
+		n += 1 + l + sovCluster(uint64(l))
+	}
+	return n
+}
+
 func (m *GetNodeRequest) Size() (n int) {
 	var l int
 	_ = l
@@ -2611,8 +2681,8 @@ func (m *RemoveJobResponse) Size() (n int) {
 func (m *ListJobsRequest) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.Prefix)
-	if l > 0 {
+	if m.Options != nil {
+		l = m.Options.Size()
 		n += 1 + l + sovCluster(uint64(l))
 	}
 	return n
@@ -2724,6 +2794,16 @@ func sovCluster(x uint64) (n int) {
 }
 func sozCluster(x uint64) (n int) {
 	return sovCluster(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *ListOptions) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListOptions{`,
+		`Prefix:` + fmt.Sprintf("%v", this.Prefix) + `,`,
+		`}`,
+	}, "")
+	return s
 }
 func (this *GetNodeRequest) String() string {
 	if this == nil {
@@ -2948,7 +3028,7 @@ func (this *ListJobsRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ListJobsRequest{`,
-		`Prefix:` + fmt.Sprintf("%v", this.Prefix) + `,`,
+		`Options:` + strings.Replace(fmt.Sprintf("%v", this.Options), "ListOptions", "ListOptions", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3050,6 +3130,85 @@ func valueToStringCluster(v interface{}) string {
 	}
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
+}
+func (m *ListOptions) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCluster
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListOptions: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListOptions: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Prefix", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCluster
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCluster
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Prefix = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCluster(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCluster
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
 }
 func (m *GetNodeRequest) Unmarshal(data []byte) error {
 	l := len(data)
@@ -4810,9 +4969,9 @@ func (m *ListJobsRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Prefix", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Options", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowCluster
@@ -4822,20 +4981,24 @@ func (m *ListJobsRequest) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthCluster
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Prefix = string(data[iNdEx:postIndex])
+			if m.Options == nil {
+				m.Options = &ListOptions{}
+			}
+			if err := m.Options.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

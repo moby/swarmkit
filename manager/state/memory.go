@@ -17,7 +17,7 @@ const (
 	indexName   = "name"
 	indexJobID  = "jobid"
 	indexNodeID = "nodeid"
-	indexPrefix = "prefix"
+	indexIDName = "id_name"
 
 	tableNode    = "node"
 	tableTask    = "task"
@@ -86,10 +86,6 @@ func NewMemoryStore(proposer Proposer) *MemoryStore {
 			tableJob: {
 				Name: tableJob,
 				Indexes: map[string]*memdb.IndexSchema{
-					indexPrefix: {
-						Name:    indexPrefix,
-						Indexer: jobIndexerByPrefix{},
-					},
 					indexID: {
 						Name:    indexID,
 						Unique:  true,
@@ -99,6 +95,10 @@ func NewMemoryStore(proposer Proposer) *MemoryStore {
 						Name:    indexName,
 						Unique:  true,
 						Indexer: jobIndexerByName{},
+					},
+					indexIDName: {
+						Name:    indexIDName,
+						Indexer: jobIndexerByIDName{},
 					},
 				},
 			},
@@ -144,6 +144,20 @@ func fromArgs(args ...interface{}) ([]byte, error) {
 	// Add the null character as a terminator
 	arg += "\x00"
 	return []byte(arg), nil
+}
+
+func prefixFromArgs(args ...interface{}) ([]byte, error) {
+	val, err := fromArgs(args...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Strip the null terminator, the rest is a prefix
+	n := len(val)
+	if n > 0 {
+		return val[:n-1], nil
+	}
+	return val, nil
 }
 
 type readTx struct {
@@ -835,7 +849,7 @@ func (jobs jobs) Find(by By) ([]*api.Job, error) {
 		}
 		return fromResultIterator(it), nil
 	case byPrefix:
-		it, err := jobs.memDBTx.Get(jobs.table(), indexPrefix, string(v))
+		it, err := jobs.memDBTx.Get(jobs.table(), indexIDName+"_prefix", string(v))
 		if err != nil {
 			return nil, err
 		}
@@ -845,29 +859,28 @@ func (jobs jobs) Find(by By) ([]*api.Job, error) {
 	}
 }
 
-type jobIndexerByPrefix struct{}
+type jobIndexerByIDName struct{}
 
-func (ji jobIndexerByPrefix) FromArgs(args ...interface{}) ([]byte, error) {
+func (ji jobIndexerByIDName) FromArgs(args ...interface{}) ([]byte, error) {
 	return fromArgs(args...)
 }
 
-func (ji jobIndexerByPrefix) FromObject(obj interface{}) (bool, [][]byte, error) {
+func (ji jobIndexerByIDName) FromObject(obj interface{}) (bool, [][]byte, error) {
 	j, ok := obj.(*api.Job)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
 
-	vals := make([][]byte, 2) // 2 minimum: ID and Name
+	vals := make([][]byte, 2)
 
 	// Add the null character as a terminator
-	for i := len(j.ID); i >= 0; i-- {
-		vals = append(vals, []byte(j.ID[:i]+"\x00"))
-	}
-
-	for i := len(j.Spec.Meta.Name); i >= 0; i-- {
-		vals = append(vals, []byte(j.Spec.Meta.Name[:i]+"\x00"))
-	}
+	vals = append(vals, []byte(j.ID+"\x00"))
+	vals = append(vals, []byte(j.Spec.Meta.Name+"\x00"))
 	return true, vals, nil
+}
+
+func (ji jobIndexerByIDName) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
 }
 
 type jobIndexerByID struct{}
@@ -887,10 +900,18 @@ func (ji jobIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
 	return true, []byte(val), nil
 }
 
+func (ji jobIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
+}
+
 type jobIndexerByName struct{}
 
 func (ji jobIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
 	return fromArgs(args...)
+}
+
+func (ji jobIndexerByName) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
 }
 
 func (ji jobIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {

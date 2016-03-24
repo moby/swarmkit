@@ -36,6 +36,10 @@ service Cluster {
 	rpc RemoveNetwork(RemoveNetworkRequest) returns (RemoveNetworkResponse) {};
 }
 
+message ListOptions {
+	string prefix = 1;
+}
+
 message GetNodeRequest {
 	string node_id = 1 [(gogoproto.customname) = "NodeID"];
 }
@@ -126,7 +130,7 @@ message RemoveJobResponse {
 }
 
 message ListJobsRequest {
-	string prefix = 1;
+	ListOptions options = 1;
 }
 
 message ListJobsResponse {
