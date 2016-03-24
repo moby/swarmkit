@@ -5,7 +5,7 @@ PREFIX?=$(shell pwd)
 VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
 
 # Project packages.
-PACKAGES=$(shell go list ./... | grep -v /vendor/)
+PACKAGES=$(shell go list ./... | grep -v /vendor/ | grep -v /test/)
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
@@ -87,9 +87,13 @@ build: ## build the go packages
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -v ${GO_LDFLAGS} ${GO_GCFLAGS} ${PACKAGES}
 
-test: ## run test
+test: ## run tests
 	@echo "🐳 $@"
 	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" ${PACKAGES}
+
+test-integration: binaries ## run integration tests
+	@echo "🐳 $@"
+	@go test "${DOCKER_BUILDTAGS}" ./test/...
 
 binaries: ${PREFIX}/bin/swarmctl ${PREFIX}/bin/swarmd ${PREFIX}/bin/swarm-bench ${PREFIX}/bin/protoc-gen-gogoswarm ## build the binaries
 	@echo "🐳 $@"
