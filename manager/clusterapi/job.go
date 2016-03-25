@@ -113,6 +113,7 @@ func (s *Server) GetJob(ctx context.Context, request *api.GetJobRequest) (*api.G
 	if job == nil {
 		return nil, grpc.Errorf(codes.NotFound, "job %s not found", request.JobID)
 	}
+
 	return &api.GetJobResponse{
 		Job: job,
 	}, nil
@@ -184,8 +185,11 @@ func (s *Server) ListJobs(ctx context.Context, request *api.ListJobsRequest) (*a
 	var jobs []*api.Job
 	err := s.store.View(func(tx state.ReadTx) error {
 		var err error
-
-		jobs, err = tx.Jobs().Find(state.All)
+		if request.Options == nil || request.Options.Prefix == "" {
+			jobs, err = tx.Jobs().Find(state.All)
+		} else {
+			jobs, err = tx.Jobs().Find(state.ByPrefix(request.Options.Prefix))
+		}
 		return err
 	})
 	if err != nil {

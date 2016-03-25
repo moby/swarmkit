@@ -44,8 +44,11 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 	var nodes []*api.Node
 	err := s.store.View(func(tx state.ReadTx) error {
 		var err error
-
-		nodes, err = tx.Nodes().Find(state.All)
+		if request.Options == nil || request.Options.Prefix == "" {
+			nodes, err = tx.Nodes().Find(state.All)
+		} else {
+			nodes, err = tx.Nodes().Find(state.ByPrefix(request.Options.Prefix))
+		}
 		return err
 	})
 	if err != nil {

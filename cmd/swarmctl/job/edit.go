@@ -33,14 +33,13 @@ var (
 				return err
 			}
 
-			id := common.LookupID(common.Context(cmd), c, api.Job{}, args[0])
-			r, err := c.GetJob(common.Context(cmd), &api.GetJobRequest{JobID: id})
+			job, err := getJob(common.Context(cmd), c, args[0])
 			if err != nil {
 				return err
 			}
 
 			service := &spec.ServiceConfig{}
-			service.FromJobSpec(r.Job.Spec)
+			service.FromJobSpec(job.Spec)
 
 			original, err := ioutil.TempFile(os.TempDir(), "swarm-job-edit")
 			if err != nil {
@@ -86,11 +85,11 @@ var (
 				return nil
 			}
 
-			ru, err := c.UpdateJob(common.Context(cmd), &api.UpdateJobRequest{JobID: id, Spec: newService.JobSpec()})
+			r, err := c.UpdateJob(common.Context(cmd), &api.UpdateJobRequest{JobID: job.ID, Spec: newService.JobSpec()})
 			if err != nil {
 				return err
 			}
-			fmt.Println(ru.Job.ID)
+			fmt.Println(r.Job.ID)
 			return nil
 		},
 	}

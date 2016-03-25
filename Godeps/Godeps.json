@@ -477,7 +477,7 @@
 		},
 		{
 			"ImportPath": "github.com/hashicorp/go-memdb",
-			"Rev": "98f52f52d7a476958fa9da671354d270c50661a7"
+			"Rev": "608dda3b1410a73eaf3ac8b517c9ae7ebab6aa87"
 		},
 		{
 			"ImportPath": "github.com/hashicorp/golang-lru/simplelru",
