@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -117,10 +118,11 @@ type Output string
 
 // Lines returns all the non-empty line in an Output.
 func (o *Output) Lines() []string {
+	scanner := bufio.NewScanner(strings.NewReader(string(*o)))
 	var lines []string
-	for _, line := range strings.Split(string(*o), "\n") {
-		if trimmed := strings.TrimSpace(line); trimmed != "" {
-			lines = append(lines, trimmed)
+	for scanner.Scan() {
+		if line := scanner.Text(); line != "" {
+			lines = append(lines, line)
 		}
 	}
 	return lines
