@@ -3,6 +3,7 @@ package integration
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"os"
 	"os/exec"
@@ -77,7 +78,7 @@ func (t *Test) StopManagers() {
 // StartAgents starts `instances` agents.
 func (t *Test) StartAgents(instances int) {
 	for i := 0; i < instances; i++ {
-		cmd := exec.Command(getBinDir()+"/bin/swarmd", "--log-level=debug", "agent", fmt.Sprintf("--manager=127.0.0.1:%d", t.managerPorts[0]), fmt.Sprintf("--id=agent-%d", i), fmt.Sprintf("--hostname=agent-%d", i))
+		cmd := exec.Command(getBinDir()+"/bin/swarmd", "--log-level=debug", "agent", fmt.Sprintf("--manager=127.0.0.1:%d", t.managerPorts[rand.Intn(len(t.managerPorts))]), fmt.Sprintf("--id=agent-%d", i), fmt.Sprintf("--hostname=agent-%d", i))
 		go func() {
 			if err := cmd.Start(); err != nil {
 				panic(err)
@@ -95,7 +96,7 @@ func (t *Test) StopAgents() {
 
 // SwarmCtl invokes the swarmclt binary connected to the 1st manager started.
 func (t *Test) SwarmCtl(args ...string) (Output, int, error) {
-	cmd := exec.Command(getBinDir()+"/bin/swarmctl", append([]string{fmt.Sprintf("--addr=127.0.0.1:%d", t.managerPorts[0])}, args...)...)
+	cmd := exec.Command(getBinDir()+"/bin/swarmctl", append([]string{fmt.Sprintf("--addr=127.0.0.1:%d", t.managerPorts[rand.Intn(len(t.managerPorts))])}, args...)...)
 	output, err := cmd.Output()
 	exitCode := 0
 	if msg, ok := err.(*exec.ExitError); ok { // TODO(vieux): doesn't work on windows.
