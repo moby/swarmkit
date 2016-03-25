@@ -16,6 +16,5 @@ func TestListNodes(t *testing.T) {
 	output, code, err := test.SwarmCtl("node", "ls", "-q")
 	assert.NoError(t, err)
 	assert.Equal(t, 0, code)
-	assert.EqualValues(t, 2, len(output.Lines()))
-
+	assert.EqualValues(t, 2, len(output))
 }

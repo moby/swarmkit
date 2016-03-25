@@ -2,13 +2,13 @@ package integration
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
 	"os/exec"
-	"strings"
 	"syscall"
 	"time"
 )
@@ -87,14 +87,14 @@ func (t *Test) StopAgents() {
 }
 
 // SwarmCtl invokes the swarmclt binary connected to the 1st manager started.
-func (t *Test) SwarmCtl(args ...string) (Output, int, error) {
+func (t *Test) SwarmCtl(args ...string) ([]string, int, error) {
 	cmd := exec.Command("swarmctl", append([]string{fmt.Sprintf("--addr=127.0.0.1:%d", t.managerPorts[rand.Intn(len(t.managerPorts))])}, args...)...)
 	output, err := cmd.Output()
 	exitCode := 0
 	if msg, ok := err.(*exec.ExitError); ok { // TODO(vieux): doesn't work on windows.
 		exitCode = msg.Sys().(syscall.WaitStatus).ExitStatus()
 	}
-	return Output(output), exitCode, err
+	return splitLines(output), exitCode, err
 
 }
 
@@ -104,12 +104,8 @@ func (t *Test) Cleanup() {
 	t.StopManagers()
 }
 
-// Output represents the output of SwarmCtl.
-type Output string
-
-// Lines returns all the non-empty line in an Output.
-func (o *Output) Lines() []string {
-	scanner := bufio.NewScanner(strings.NewReader(string(*o)))
+func splitLines(b []byte) []string {
+	scanner := bufio.NewScanner(bytes.NewReader(b))
 	var lines []string
 	for scanner.Scan() {
 		if line := scanner.Text(); line != "" {
