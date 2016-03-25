@@ -16,7 +16,7 @@ all: check build binaries test ## run fmt, vet, lint, errcheck build the binarie
 
 check: fmt vet lint errcheck ## run fmt, vet, lint and errcheck
 
-ci: check build binaries checkprotos coverage ## to be used by the CI
+ci: check build binaries checkprotos test-integration coverage ## to be used by the CI
 
 AUTHORS: .mailmap .git/HEAD
 	git log --format='%aN <%aE>' | sort -fu > $@
