@@ -2,7 +2,6 @@ package manager
 
 import (
 	"fmt"
-	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
@@ -82,12 +81,9 @@ func New(config *Config) (*Manager, error) {
 
 	raftCfg := state.DefaultNodeConfig()
 
-	rand.Seed(time.Now().UnixNano())
-
 	leadershipCh := make(chan state.LeadershipState)
 
 	newNodeOpts := state.NewNodeOptions{
-		ID:       uint64(rand.Int63()), // FIXME(aaronl)
 		Addr:     config.ListenAddr,
 		Config:   raftCfg,
 		StateDir: raftStateDir,
@@ -129,18 +125,7 @@ func (m *Manager) startRaftNode() {
 	}()
 }
 
-func (m *Manager) initRaft() error {
-	err := m.raftNode.Campaign(m.raftNode.Ctx)
-	if err != nil {
-		return fmt.Errorf("couldn't campaign to be the leader: %v", err)
-	}
-
-	m.startRaftNode()
-
-	return nil
-}
-
-func (m *Manager) joinRaft(lis net.Listener) error {
+func (m *Manager) joinRaft() error {
 	m.startRaftNode()
 
 	c, err := state.GetRaftClient(m.config.JoinRaft, 10*time.Second)
@@ -149,7 +134,7 @@ func (m *Manager) joinRaft(lis net.Listener) error {
 	}
 
 	resp, err := c.Join(m.raftNode.Ctx, &api.JoinRequest{
-		Node: &api.RaftNode{ID: m.raftNode.ID, Addr: m.config.ListenAddr},
+		Node: &api.RaftNode{ID: m.raftNode.Config.ID, Addr: m.config.ListenAddr},
 	})
 	if err != nil {
 		return fmt.Errorf("can't join raft cluster: %v", err)
@@ -176,7 +161,6 @@ func (m *Manager) Run() error {
 		lis = l
 	}
 
-	m.raftNode.Listener = lis
 	m.raftNode.Server = m.server
 
 	m.managerDone = make(chan struct{})
@@ -231,14 +215,12 @@ func (m *Manager) Run() error {
 	}()
 
 	log.WithFields(log.Fields{"proto": lis.Addr().Network(), "addr": lis.Addr().String()}).Info("Listening for connections")
-	var err error
 	if m.config.JoinRaft != "" {
-		err = m.joinRaft(lis)
+		if err := m.joinRaft(); err != nil {
+			return err
+		}
 	} else {
-		err = m.initRaft()
-	}
-	if err != nil {
-		return err
+		m.startRaftNode()
 	}
 
 	state.Register(m.server, m.raftNode)

@@ -6,7 +6,7 @@ import (
 	"io"
 	"log"
 	"math"
-	"net"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
@@ -79,15 +79,12 @@ const (
 type Node struct {
 	raft.Node
 
-	Client   *Raft
-	Cluster  *Cluster
-	Server   *grpc.Server
-	Listener net.Listener
-	Ctx      context.Context
+	Client  *Raft
+	Cluster *Cluster
+	Server  *grpc.Server
+	Ctx     context.Context
 
-	ID      uint64
 	Address string
-	Port    int
 	Error   error
 
 	raftStore   *raft.MemoryStorage
@@ -122,7 +119,6 @@ type Node struct {
 
 // NewNodeOptions provides arguments for NewNode
 type NewNodeOptions struct {
-	ID                         uint64
 	Addr                       string
 	Config                     *raft.Config
 	StateDir                   string
@@ -131,10 +127,12 @@ type NewNodeOptions struct {
 	LogEntriesForSlowFollowers *uint64 // optional; pointer because 0 is valid
 }
 
-// NewNode generates a new Raft node based on an unique
-// ID, an address and optionally: a handler and receive
-// only channel to send event when an entry is committed
-// to the logs
+func init() {
+	// TODO(aaronl): Remove once we're no longer generating random IDs.
+	rand.Seed(time.Now().UnixNano())
+}
+
+// NewNode generates a new Raft node.
 func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan LeadershipState) (*Node, error) {
 	cfg := opts.Config
 	if cfg == nil {
@@ -145,16 +143,13 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 	}
 
 	raftStore := raft.NewMemoryStorage()
-	peers := []raft.Peer{{ID: opts.ID}}
 
 	n := &Node{
-		ID:        opts.ID,
 		Ctx:       ctx,
 		Cluster:   NewCluster(),
 		raftStore: raftStore,
 		Address:   opts.Addr,
 		Config: &raft.Config{
-			ID:              opts.ID,
 			ElectionTick:    cfg.ElectionTick,
 			HeartbeatTick:   cfg.HeartbeatTick,
 			Storage:         raftStore,
@@ -167,7 +162,6 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 		ticker:       time.NewTicker(opts.TickInterval),
 		stopCh:       make(chan struct{}),
 		doneCh:       make(chan struct{}),
-		reqIDGen:     idutil.NewGenerator(uint16(opts.ID), time.Now()),
 		stateDir:     opts.StateDir,
 		leadershipCh: leadershipCh,
 	}
@@ -180,19 +174,10 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 		n.logEntriesForSlowFollowers = *opts.LogEntriesForSlowFollowers
 	}
 
-	if err := n.load(); err != nil {
+	if err := n.loadAndStart(); err != nil {
 		n.ticker.Stop()
 		return nil, err
 	}
-
-	n.Cluster.AddPeer(
-		&Peer{
-			RaftNode: &api.RaftNode{
-				ID:   opts.ID,
-				Addr: opts.Addr,
-			},
-		},
-	)
 
 	snapshot, err := raftStore.Snapshot()
 	// Snapshot never returns an error
@@ -203,10 +188,8 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 	n.confState = snapshot.Metadata.ConfState
 	n.appliedIndex = snapshot.Metadata.Index
 	n.snapshotIndex = snapshot.Metadata.Index
+	n.reqIDGen = idutil.NewGenerator(uint16(n.Config.ID), time.Now())
 
-	// TODO(aaronl): This should be RestartNode in cases where the cluster
-	// info has been restored from storage.
-	n.Node = raft.StartNode(n.Config, peers)
 	return n, nil
 }
 
@@ -235,11 +218,9 @@ func (n *Node) snapDir() string {
 	return filepath.Join(n.stateDir, "snap")
 }
 
-func (n *Node) load() error {
+func (n *Node) loadAndStart() error {
 	walDir := n.walDir()
 	snapDir := n.snapDir()
-
-	haveWAL := wal.Exist(walDir)
 
 	if err := os.MkdirAll(snapDir, 0700); err != nil {
 		return fmt.Errorf("create snapshot directory error: %v", err)
@@ -248,14 +229,27 @@ func (n *Node) load() error {
 	// Create a snapshotter
 	n.snapshotter = snap.New(snapDir)
 
-	if !haveWAL {
-		// TODO(aaronl): serialize node ID and cluster ID, and pass the
-		// result in to wal.Create
-		var err error
-		n.wal, err = wal.Create(walDir, []byte{})
+	if !wal.Exist(walDir) {
+		// FIXME(aaronl): Generate unique ID on remote side if joining
+		// an existing cluster.
+		n.Config.ID = uint64(rand.Int63()) + 1
+
+		raftNode := &api.RaftNode{
+			ID:   n.Config.ID,
+			Addr: n.Address,
+		}
+		metadata, err := raftNode.Marshal()
+		if err != nil {
+			return fmt.Errorf("error marshalling raft node: %v", err)
+		}
+		n.wal, err = wal.Create(walDir, metadata)
 		if err != nil {
 			return fmt.Errorf("create wal error: %v", err)
 		}
+
+		n.Cluster.AddPeer(&Peer{RaftNode: raftNode})
+
+		n.Node = raft.StartNode(n.Config, []raft.Peer{{ID: n.Config.ID}})
 		return nil
 	}
 
@@ -274,16 +268,21 @@ func (n *Node) load() error {
 	}
 
 	// Read logs to fully catch up store
-	return n.readWAL(snapshot)
+	if err := n.readWAL(snapshot); err != nil {
+		return err
+	}
+
+	n.Node = raft.RestartNode(n.Config)
+	return nil
 }
 
 func (n *Node) readWAL(snapshot *raftpb.Snapshot) error {
 	var (
-		walsnap walpb.Snapshot
-		err     error
-		//wmetadata []byte
-		st   raftpb.HardState
-		ents []raftpb.Entry
+		walsnap  walpb.Snapshot
+		err      error
+		metadata []byte
+		st       raftpb.HardState
+		ents     []raftpb.Entry
 	)
 
 	if snapshot != nil {
@@ -296,7 +295,7 @@ func (n *Node) readWAL(snapshot *raftpb.Snapshot) error {
 		if n.wal, err = wal.Open(n.walDir(), walsnap); err != nil {
 			return fmt.Errorf("open wal error: %v", err)
 		}
-		if /*wmetadata*/ _, st, ents, err = n.wal.ReadAll(); err != nil {
+		if metadata, st, ents, err = n.wal.ReadAll(); err != nil {
 			if err := n.wal.Close(); err != nil {
 				return err
 			}
@@ -313,18 +312,26 @@ func (n *Node) readWAL(snapshot *raftpb.Snapshot) error {
 		}
 		break
 	}
-	// TODO(aaronl): deserialize metadata, and set node ID and cluster ID
-	// from it.
-	// TODO(aaronl): do we need to change NewNode so it doesn't take an ID?
+
+	var raftNode api.RaftNode
+	if err := raftNode.Unmarshal(metadata); err != nil {
+		n.wal.Close()
+		return fmt.Errorf("error unmarshalling wal metadata: %v", err)
+	}
+	n.Config.ID = raftNode.ID
+
 	if snapshot != nil {
 		if err := n.raftStore.ApplySnapshot(*snapshot); err != nil {
+			n.wal.Close()
 			return err
 		}
 	}
 	if err := n.raftStore.SetHardState(st); err != nil {
+		n.wal.Close()
 		return err
 	}
 	if err := n.raftStore.Append(ents); err != nil {
+		n.wal.Close()
 		return err
 	}
 
@@ -409,6 +416,7 @@ func (n *Node) Start() (errCh <-chan error) {
 
 			case <-n.stopCh:
 				n.Stop()
+				n.wal.Close()
 				n.Node = nil
 				close(n.doneCh)
 				return
@@ -428,7 +436,7 @@ func (n *Node) Shutdown() {
 
 // IsLeader checks if we are the leader or not
 func (n *Node) IsLeader() bool {
-	if n.Node.Status().Lead == n.ID {
+	if n.Node.Status().Lead == n.Config.ID {
 		return true
 	}
 	return false
@@ -444,7 +452,7 @@ func (n *Node) Leader() uint64 {
 // beginning the log replication process. This method
 // is called from an aspiring member to an existing member
 func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinResponse, error) {
-	meta, err := proto.Marshal(req.Node)
+	meta, err := req.Node.Marshal()
 	if err != nil {
 		return nil, err
 	}
@@ -561,7 +569,7 @@ func (n *Node) RegisterNodes(nodes []*api.RaftNode) (err error) {
 // has gracefully left the raft subsystem
 func (n *Node) UnregisterNode(id uint64) error {
 	// Do not unregister yourself
-	if n.ID == id {
+	if n.Config.ID == id {
 		return nil
 	}
 
@@ -666,7 +674,7 @@ func (n *Node) send(messages []raftpb.Message) error {
 
 	for _, m := range messages {
 		// Process locally
-		if m.To == n.ID {
+		if m.To == n.Config.ID {
 			if err := n.Step(n.Ctx, m); err != nil {
 				return err
 			}
@@ -822,7 +830,7 @@ func (n *Node) applyAddNode(conf raftpb.ConfChange) error {
 		return nil
 	}
 
-	if n.ID != peer.ID {
+	if n.Config.ID != peer.ID {
 		if err = n.RegisterNode(peer); err != nil {
 			return err
 		}
@@ -835,7 +843,7 @@ func (n *Node) applyAddNode(conf raftpb.ConfChange) error {
 // from the existing raft cluster
 func (n *Node) applyRemoveNode(conf raftpb.ConfChange) (err error) {
 	// The leader steps down
-	if n.ID == n.Leader() && n.ID == conf.NodeID {
+	if n.Config.ID == n.Leader() && n.Config.ID == conf.NodeID {
 		n.Stop()
 		return
 	}
