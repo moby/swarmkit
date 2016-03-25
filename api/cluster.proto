@@ -42,6 +42,7 @@ service Cluster {
 }
 
 message ListOptions {
+	// TODO(vieux): Replace `query` with more powerful selectors.
 	string query = 1;
 }
 
