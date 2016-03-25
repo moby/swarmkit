@@ -27,15 +27,6 @@ func getPort() int {
 	return l.Addr().(*net.TCPAddr).Port
 }
 
-// TODO(vieux): this is ugly.
-func getBinDir() string {
-	wd, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-	return strings.Split(wd, "/test/")[0]
-}
-
 func killProcesses(processes []*os.Process) {
 	for _, process := range processes {
 		process.Kill()
@@ -59,7 +50,7 @@ func (t *Test) StartManagers(instances int) {
 		if err != nil {
 			panic(err)
 		}
-		cmd := exec.Command(getBinDir()+"/bin/swarmd", "--log-level=debug", "manager", fmt.Sprintf("--listen-addr=127.0.0.1:%d", port), "--state-dir="+tmp)
+		cmd := exec.Command("swarmd", "--log-level=debug", "manager", fmt.Sprintf("--listen-addr=127.0.0.1:%d", port), "--state-dir="+tmp)
 		go func() {
 			if err := cmd.Start(); err != nil {
 				panic(err)
@@ -79,7 +70,7 @@ func (t *Test) StopManagers() {
 // StartAgents starts `instances` agents.
 func (t *Test) StartAgents(instances int) {
 	for i := 0; i < instances; i++ {
-		cmd := exec.Command(getBinDir()+"/bin/swarmd", "--log-level=debug", "agent", fmt.Sprintf("--manager=127.0.0.1:%d", t.managerPorts[rand.Intn(len(t.managerPorts))]), fmt.Sprintf("--id=agent-%d", i), fmt.Sprintf("--hostname=agent-%d", i))
+		cmd := exec.Command("swarmd", "--log-level=debug", "agent", fmt.Sprintf("--manager=127.0.0.1:%d", t.managerPorts[rand.Intn(len(t.managerPorts))]), fmt.Sprintf("--id=agent-%d", i), fmt.Sprintf("--hostname=agent-%d", i))
 		go func() {
 			if err := cmd.Start(); err != nil {
 				panic(err)
@@ -97,7 +88,7 @@ func (t *Test) StopAgents() {
 
 // SwarmCtl invokes the swarmclt binary connected to the 1st manager started.
 func (t *Test) SwarmCtl(args ...string) (Output, int, error) {
-	cmd := exec.Command(getBinDir()+"/bin/swarmctl", append([]string{fmt.Sprintf("--addr=127.0.0.1:%d", t.managerPorts[rand.Intn(len(t.managerPorts))])}, args...)...)
+	cmd := exec.Command("swarmctl", append([]string{fmt.Sprintf("--addr=127.0.0.1:%d", t.managerPorts[rand.Intn(len(t.managerPorts))])}, args...)...)
 	output, err := cmd.Output()
 	exitCode := 0
 	if msg, ok := err.(*exec.ExitError); ok { // TODO(vieux): doesn't work on windows.

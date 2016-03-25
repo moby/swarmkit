@@ -93,7 +93,7 @@ test: ## run tests
 
 test-integration: binaries ## run integration tests
 	@echo "🐳 $@"
-	@go test "${DOCKER_BUILDTAGS}" ./test/...
+	@PATH=${PREFIX}/bin:${PATH} go test "${DOCKER_BUILDTAGS}" ./test/...
 
 binaries: ${PREFIX}/bin/swarmctl ${PREFIX}/bin/swarmd ${PREFIX}/bin/swarm-bench ${PREFIX}/bin/protoc-gen-gogoswarm ## build the binaries
 	@echo "🐳 $@"
