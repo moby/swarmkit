@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -93,10 +94,14 @@ func (t *Test) StopAgents() {
 }
 
 // SwarmCtl invokes the swarmclt binary connected to the 1st manager started.
-func (t *Test) SwarmCtl(args ...string) (Output, error) {
+func (t *Test) SwarmCtl(args ...string) (Output, int, error) {
 	cmd := exec.Command(getBinDir()+"/bin/swarmctl", append([]string{fmt.Sprintf("--addr=127.0.0.1:%d", t.managerPorts[0])}, args...)...)
 	output, err := cmd.Output()
-	return Output(output), err
+	exitCode := 0
+	if msg, ok := err.(*exec.ExitError); ok { // TODO(vieux): doesn't work on windows.
+		exitCode = msg.Sys().(syscall.WaitStatus).ExitStatus()
+	}
+	return Output(output), exitCode, err
 
 }
 
