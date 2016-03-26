@@ -1,10 +1,13 @@
 package scheduler
 
 import (
+	"runtime"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/watch"
 	"github.com/stretchr/testify/assert"
@@ -106,9 +109,9 @@ func TestScheduler(t *testing.T) {
 	assignment2 := watchAssignment(t, watch)
 	// must assign to id2 or id3 since id1 already has a task
 	if assignment1.NodeID == "id2" {
-		assert.Equal(t, assignment2.NodeID, "id3")
+		assert.Equal(t, "id3", assignment2.NodeID)
 	} else {
-		assert.Equal(t, assignment2.NodeID, "id2")
+		assert.Equal(t, "id2", assignment2.NodeID)
 	}
 
 	err = store.Update(func(tx state.Tx) error {
@@ -130,7 +133,7 @@ func TestScheduler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignment3 := watchAssignment(t, watch)
-	assert.Equal(t, assignment3.NodeID, "id1")
+	assert.Equal(t, "id1", assignment3.NodeID)
 
 	// Update a task to make it unassigned. It should get assigned by the
 	// scheduler.
@@ -149,10 +152,8 @@ func TestScheduler(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Discard first UpdateTask - that's our own UpdateTask
-	watchAssignment(t, watch)
 	assignment4 := watchAssignment(t, watch)
-	assert.Equal(t, assignment4.NodeID, "id1")
+	assert.Equal(t, "id1", assignment4.NodeID)
 
 	err = store.Update(func(tx state.Tx) error {
 		// Create a ready node, then remove it. No tasks should ever
@@ -185,7 +186,7 @@ func TestScheduler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignmentRemovedNode := watchAssignment(t, watch)
-	assert.NotEqual(t, assignmentRemovedNode.NodeID, "removednode")
+	assert.NotEqual(t, "removednode", assignmentRemovedNode.NodeID)
 
 	err = store.Update(func(tx state.Tx) error {
 		// Create a ready node. It should be used for the next
@@ -217,7 +218,7 @@ func TestScheduler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignment5 := watchAssignment(t, watch)
-	assert.Equal(t, assignment5.NodeID, "id4")
+	assert.Equal(t, "id4", assignment5.NodeID)
 
 	err = store.Update(func(tx state.Tx) error {
 		// Create a non-ready node. It should NOT be used for the next
@@ -249,7 +250,7 @@ func TestScheduler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignment6 := watchAssignment(t, watch)
-	assert.NotEqual(t, assignment6.NodeID, "id5")
+	assert.NotEqual(t, "id5", assignment6.NodeID)
 
 	err = store.Update(func(tx state.Tx) error {
 		// Update node id5 to put it in the READY state.
@@ -281,7 +282,7 @@ func TestScheduler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignment7 := watchAssignment(t, watch)
-	assert.Equal(t, assignment7.NodeID, "id5")
+	assert.Equal(t, "id5", assignment7.NodeID)
 
 	err = store.Update(func(tx state.Tx) error {
 		// Create a ready node, then immediately take it down. The next
@@ -315,7 +316,7 @@ func TestScheduler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignment8 := watchAssignment(t, watch)
-	assert.NotEqual(t, assignment8.NodeID, "id6")
+	assert.NotEqual(t, "id6", assignment8.NodeID)
 
 	scheduler.Stop()
 }
@@ -368,7 +369,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 	assert.NoError(t, err)
 
 	assignment := watchAssignment(t, watch)
-	assert.Equal(t, assignment.NodeID, "newnode")
+	assert.Equal(t, "newnode", assignment.NodeID)
 
 	scheduler.Stop()
 }
@@ -378,10 +379,112 @@ func watchAssignment(t *testing.T, watch chan watch.Event) *api.Task {
 		select {
 		case event := <-watch:
 			if task, ok := event.Payload.(state.EventUpdateTask); ok {
-				return task.Task
+				if task.Task.NodeID != "" {
+					return task.Task
+				}
 			}
 		case <-time.After(time.Second):
 			t.Fatalf("no task assignment")
 		}
+	}
+}
+
+func BenchmarkScheduler1kNodes1kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e3, false)
+}
+
+func BenchmarkScheduler1kNodes10kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e4, false)
+}
+
+func BenchmarkScheduler1kNodes100kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e5, false)
+}
+
+func BenchmarkScheduler100kNodes100kTasks(b *testing.B) {
+	benchScheduler(b, 1e5, 1e5, false)
+}
+
+func BenchmarkScheduler100kNodes1MTasks(b *testing.B) {
+	benchScheduler(b, 1e5, 1e6, false)
+}
+
+func BenchmarkSchedulerWorstCase1kNodes1kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e3, true)
+}
+
+func BenchmarkSchedulerWorstCase1kNodes10kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e4, true)
+}
+
+func BenchmarkSchedulerWorstCase1kNodes100kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e5, true)
+}
+
+func BenchmarkSchedulerWorstCase100kNodes100kTasks(b *testing.B) {
+	benchScheduler(b, 1e5, 1e5, true)
+}
+
+func BenchmarkSchedulerWorstCase100kNodes1MTasks(b *testing.B) {
+	benchScheduler(b, 1e5, 1e6, true)
+}
+
+func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
+	for iters := 0; iters < b.N; iters++ {
+		b.StopTimer()
+		s := state.NewMemoryStore(nil)
+		scheduler := New(s)
+		scheduler.scanAllNodes = worstCase
+
+		watch := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+
+		go func() {
+			_ = scheduler.Run()
+		}()
+
+		// Let the scheduler get started
+		runtime.Gosched()
+
+		_ = s.Update(func(tx state.Tx) error {
+			// Create initial nodes and tasks
+			for i := 0; i < nodes; i++ {
+				err := tx.Nodes().Create(&api.Node{
+					ID: identity.NewID(),
+					Spec: &api.NodeSpec{
+						Meta: api.Meta{
+							Name: "name" + strconv.Itoa(i),
+						},
+					},
+					Status: api.NodeStatus{
+						State: api.NodeStatus_READY,
+					},
+				})
+				if err != nil {
+					panic(err)
+				}
+			}
+			for i := 0; i < tasks; i++ {
+				id := "task" + strconv.Itoa(i)
+				err := tx.Tasks().Create(&api.Task{
+					ID:   id,
+					Spec: &api.TaskSpec{},
+					Meta: api.Meta{
+						Name: id,
+					},
+				})
+				if err != nil {
+					panic(err)
+				}
+			}
+			b.StartTimer()
+			return nil
+		})
+
+		for i := 0; i != tasks; i++ {
+			<-watch
+		}
+
+		scheduler.Stop()
+		s.WatchQueue().StopWatch(watch)
 	}
 }
