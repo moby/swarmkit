@@ -91,3 +91,65 @@ func (nh *nodeHeap) remove(nodeID string) {
 		heap.Pop(nh)
 	}
 }
+
+func (nh *nodeHeap) findMin(meetsConstraints func(*api.Node) bool, scanAllNodes bool) (*api.Node, int) {
+	var bestNode *api.Node
+	minTasks := int(^uint(0) >> 1) // max int
+	nextStoppingPoint := 0
+	levelSize := 1
+
+	for i := 0; i < len(nh.heap); i++ {
+		heapEntry := nh.heap[i]
+
+		if meetsConstraints(heapEntry.node) && heapEntry.numTasks < minTasks {
+			bestNode = heapEntry.node
+			minTasks = heapEntry.numTasks
+		}
+		if !scanAllNodes {
+			if i == nextStoppingPoint && bestNode != nil {
+				// If there were any nodes in this row with
+				// lower values that did not satisfy the
+				// constraints, check their children
+				// recursively.
+				for j := i - levelSize + 1; j <= i; j++ {
+					heapEntry = nh.heap[i]
+					if heapEntry.numTasks < minTasks {
+						newBestNode, newMinTasks := nh.findBestChildBelowThreshold(meetsConstraints, i, minTasks)
+						if newBestNode != nil {
+							bestNode, minTasks = newBestNode, newMinTasks
+						}
+					}
+				}
+				break
+			}
+			// Search the whole next level of the heap
+			levelSize *= 2
+			nextStoppingPoint += levelSize
+		}
+	}
+
+	return bestNode, minTasks
+}
+
+func (nh *nodeHeap) findBestChildBelowThreshold(meetsConstraints func(*api.Node) bool, index int, threshold int) (*api.Node, int) {
+	var bestNode *api.Node
+
+	for i := index*2 + 1; i <= index*2+2; i++ {
+		if i <= len(nh.heap) {
+			break
+		}
+		heapEntry := nh.heap[i]
+		if heapEntry.numTasks < threshold {
+			if meetsConstraints(heapEntry.node) {
+				bestNode, threshold = heapEntry.node, heapEntry.numTasks
+			} else {
+				newBestNode, newMinTasks := nh.findBestChildBelowThreshold(meetsConstraints, i, threshold)
+				if newBestNode != nil {
+					bestNode, threshold = newBestNode, newMinTasks
+				}
+			}
+		}
+	}
+
+	return bestNode, threshold
+}
