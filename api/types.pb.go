@@ -33,6 +33,7 @@
 		WeightedPeer
 		InternalRaftRequest
 		StoreAction
+		ListOptions
 		GetNodeRequest
 		GetNodeResponse
 		ListNodesRequest

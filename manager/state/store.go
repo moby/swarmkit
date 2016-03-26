@@ -310,3 +310,13 @@ func (b byNode) isBy() {
 func ByNodeID(nodeID string) By {
 	return byNode(nodeID)
 }
+
+type byQuery string
+
+func (b byQuery) isBy() {
+}
+
+// ByQuery creates an object to pass to Find to select by query.
+func ByQuery(query string) By {
+	return byQuery(query)
+}

@@ -22,6 +22,8 @@ const (
 	tableTask    = "task"
 	tableJob     = "job"
 	tableNetwork = "network"
+
+	prefix = "_prefix"
 )
 
 // MemoryStore is a concurrency-safe, in-memory implementation of the Store
@@ -139,6 +141,20 @@ func fromArgs(args ...interface{}) ([]byte, error) {
 	// Add the null character as a terminator
 	arg += "\x00"
 	return []byte(arg), nil
+}
+
+func prefixFromArgs(args ...interface{}) ([]byte, error) {
+	val, err := fromArgs(args...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Strip the null terminator, the rest is a prefix
+	n := len(val)
+	if n > 0 {
+		return val[:n-1], nil
+	}
+	return val, nil
 }
 
 type readTx struct {
@@ -475,6 +491,27 @@ func (nodes nodes) Find(by By) ([]*api.Node, error) {
 		}
 		return nodes
 	}
+
+	fromResultIterators := func(its ...memdb.ResultIterator) []*api.Node {
+		nodes := []*api.Node{}
+		ids := make(map[string]struct{})
+		for _, it := range its {
+			for {
+				obj := it.Next()
+				if obj == nil {
+					break
+				}
+				if n, ok := obj.(*api.Node); ok {
+					if _, exists := ids[n.ID]; !exists {
+						nodes = append(nodes, n.Copy())
+						ids[n.ID] = struct{}{}
+					}
+				}
+			}
+		}
+		return nodes
+	}
+
 	switch v := by.(type) {
 	case all:
 		it, err := nodes.memDBTx.Get(nodes.table(), indexID)
@@ -488,6 +525,16 @@ func (nodes nodes) Find(by By) ([]*api.Node, error) {
 			return nil, err
 		}
 		return fromResultIterator(it), nil
+	case byQuery:
+		itID, err := nodes.memDBTx.Get(nodes.table(), indexID+prefix, string(v))
+		if err != nil {
+			return nil, err
+		}
+		itName, err := nodes.memDBTx.Get(nodes.table(), indexName, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return fromResultIterators(itID, itName), nil
 	default:
 		return nil, ErrInvalidFindBy
 	}
@@ -508,6 +555,10 @@ func (ni nodeIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
 	// Add the null character as a terminator
 	val := n.ID + "\x00"
 	return true, []byte(val), nil
+}
+
+func (ni nodeIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
 }
 
 type nodeIndexerByName struct{}
@@ -773,7 +824,7 @@ func (jobs jobs) Update(j *api.Job) error {
 }
 
 // Delete removes a job from the store.
-// Returns ErrNotExist if the node doesn't exist.
+// Returns ErrNotExist if the job doesn't exist.
 func (jobs jobs) Delete(id string) error {
 	j := jobs.lookup(indexID, id)
 	if j == nil {
@@ -812,6 +863,27 @@ func (jobs jobs) Find(by By) ([]*api.Job, error) {
 		}
 		return jobs
 	}
+
+	fromResultIterators := func(its ...memdb.ResultIterator) []*api.Job {
+		jobs := []*api.Job{}
+		ids := make(map[string]struct{})
+		for _, it := range its {
+			for {
+				obj := it.Next()
+				if obj == nil {
+					break
+				}
+				if j, ok := obj.(*api.Job); ok {
+					if _, exists := ids[j.ID]; !exists {
+						jobs = append(jobs, j.Copy())
+						ids[j.ID] = struct{}{}
+					}
+				}
+			}
+		}
+		return jobs
+	}
+
 	switch v := by.(type) {
 	case all:
 		it, err := jobs.memDBTx.Get(jobs.table(), indexID)
@@ -825,6 +897,17 @@ func (jobs jobs) Find(by By) ([]*api.Job, error) {
 			return nil, err
 		}
 		return fromResultIterator(it), nil
+	case byQuery:
+		itID, err := jobs.memDBTx.Get(jobs.table(), indexID+prefix, string(v))
+		if err != nil {
+			return nil, err
+		}
+
+		itName, err := jobs.memDBTx.Get(jobs.table(), indexName, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return fromResultIterators(itID, itName), nil
 	default:
 		return nil, ErrInvalidFindBy
 	}
@@ -845,6 +928,10 @@ func (ji jobIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
 	// Add the null character as a terminator
 	val := j.ID + "\x00"
 	return true, []byte(val), nil
+}
+
+func (ji jobIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
 }
 
 type jobIndexerByName struct{}
