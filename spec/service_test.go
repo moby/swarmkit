@@ -7,40 +7,146 @@ import (
 )
 
 func TestServiceConfigValidate(t *testing.T) {
-	for _, bad := range []*ServiceConfig{
-		{Name: "", ContainerConfig: ContainerConfig{Image: ""}},
-		{Name: "name", ContainerConfig: ContainerConfig{Image: ""}},
-		{Name: "", ContainerConfig: ContainerConfig{Image: "image"}},
-	} {
-		assert.Error(t, bad.Validate())
+	bad := []*ServiceConfig{
+		// Missing name and image.
+		{
+			Name: "",
+			ContainerConfig: ContainerConfig{
+				Image: "",
+			},
+		},
+
+		// Missing image
+		{
+			Name: "name",
+			ContainerConfig: ContainerConfig{
+				Image: "",
+			},
+		},
+
+		// Missing name
+		{
+			Name: "",
+			ContainerConfig: ContainerConfig{
+				Image: "image",
+			},
+		},
+
+		// Invalid memory limit
+		{
+			Name: "name",
+			ContainerConfig: ContainerConfig{
+				Image: "image",
+				Resources: &ResourceRequirements{
+					Limits: &Resources{
+						Memory: "invalid",
+					},
+				},
+			},
+		},
 	}
 
-	for _, good := range []ServiceConfig{
-		{Name: "name", ContainerConfig: ContainerConfig{Image: "image"}},
-	} {
+	good := []*ServiceConfig{
+		{
+			Name: "name",
+			ContainerConfig: ContainerConfig{
+				Image: "image",
+			},
+		},
 
-		assert.NoError(t, good.Validate())
+		{
+			Name: "name",
+			ContainerConfig: ContainerConfig{
+				Image: "image",
+				Resources: &ResourceRequirements{
+					Limits: &Resources{
+						Memory: "1024",
+					},
+				},
+			},
+		},
+
+		{
+			Name: "name",
+			ContainerConfig: ContainerConfig{
+				Image: "image",
+				Resources: &ResourceRequirements{
+					Limits: &Resources{
+						Memory: "1KiB",
+					},
+				},
+			},
+		},
+	}
+
+	for _, i := range bad {
+		assert.Error(t, i.Validate())
+	}
+
+	for _, i := range good {
+		assert.NoError(t, i.Validate())
 	}
 }
 
 func TestServiceConfigsDiff(t *testing.T) {
-	service := &ServiceConfig{Name: "name", Instances: 1, ContainerConfig: ContainerConfig{Image: "nginx"}}
+	makeService := func() *ServiceConfig {
+		s := &ServiceConfig{
+			Name:      "name",
+			Instances: 1,
+			ContainerConfig: ContainerConfig{
+				Image: "nginx",
 
-	diff, err := service.Diff(0, "remote", "local",
-		&ServiceConfig{Name: "name", Instances: 1, ContainerConfig: ContainerConfig{Image: "redis"}},
-	)
-	assert.NoError(t, err)
-	assert.Equal(t, "--- remote\n+++ local\n@@ -1 +1 @@\n-image: redis\n+image: nginx\n", diff)
+				Resources: &ResourceRequirements{
+					Limits: &Resources{
+						Memory: "1GiB",
+					},
+				},
+			},
+		}
+		assert.NoError(t, s.Validate())
+		return s
+	}
+	service := makeService()
 
-	diff, err = service.Diff(0, "old", "new",
-		&ServiceConfig{Name: "name", Instances: 2, ContainerConfig: ContainerConfig{Image: "nginx"}},
-	)
+	against := makeService()
+	diff, err := service.Diff(0, "remote", "local", against)
 	assert.NoError(t, err)
-	assert.Equal(t, "--- old\n+++ new\n@@ -3 +3 @@\n-instances: 2\n+instances: 1\n", diff)
+	assert.Empty(t, diff)
 
-	diff, err = service.Diff(0, "old", "new",
-		&ServiceConfig{Name: "name", Instances: 2, ContainerConfig: ContainerConfig{Image: "nginx", Env: []string{"DEBUG=1"}}},
-	)
+	against = makeService()
+	against.Image = "redis"
+	assert.NoError(t, against.Validate())
+	diff, err = service.Diff(0, "remote", "local", against)
 	assert.NoError(t, err)
-	assert.Equal(t, "--- old\n+++ new\n@@ -2,2 +1,0 @@\n-env:\n-- DEBUG=1\n@@ -5 +3 @@\n-instances: 2\n+instances: 1\n", diff)
+	assert.Contains(t, diff, "image: nginx")
+
+	against = makeService()
+	against.Instances = 2
+	assert.NoError(t, against.Validate())
+	diff, err = service.Diff(0, "old", "new", against)
+	assert.NoError(t, err)
+	assert.Contains(t, diff, "instances: 2")
+
+	against = makeService()
+	against.Env = []string{"DEBUG=1"}
+	assert.NoError(t, against.Validate())
+	diff, err = service.Diff(0, "old", "new", against)
+	assert.NoError(t, err)
+	assert.Contains(t, diff, "DEBUG=1")
+
+	against = makeService()
+	against.Resources.Limits.Memory = "2Gi"
+	assert.NoError(t, against.Validate())
+	diff, err = service.Diff(0, "old", "new", against)
+	assert.NoError(t, err)
+	// 2GB = 2147483648
+	assert.Contains(t, diff, "memory: 2.0 GiB")
+
+	against = makeService()
+	// 1GB and 1024MB shouldn't trigger a diff.
+	against.Resources.Limits.Memory = "1024MiB"
+	assert.NoError(t, against.Validate())
+	diff, err = service.Diff(0, "old", "new", against)
+	assert.NoError(t, err)
+	assert.Empty(t, diff)
 }

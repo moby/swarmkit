@@ -1,3 +1,7 @@
 name: web
 image: nginx
 instances: 1
+resources:
+    limits:
+        cpu: 1.5
+        memory: 500Mi

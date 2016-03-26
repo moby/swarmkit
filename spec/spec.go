@@ -51,7 +51,7 @@ func (s *Spec) validate() error {
 func (s *Spec) JobSpecs() []*api.JobSpec {
 	jobSpecs := []*api.JobSpec{}
 	for _, service := range s.Services {
-		jobSpec := service.JobSpec()
+		jobSpec := service.ToProto()
 		jobSpec.Meta.Labels["namespace"] = s.Namespace
 		jobSpecs = append(jobSpecs, jobSpec)
 	}
@@ -62,7 +62,7 @@ func (s *Spec) JobSpecs() []*api.JobSpec {
 func (s *Spec) FromJobSpecs(jobspecs []*api.JobSpec) {
 	for _, j := range jobspecs {
 		service := &ServiceConfig{}
-		service.FromJobSpec(j)
+		service.FromProto(j)
 		s.Services[j.Meta.Name] = service
 	}
 }

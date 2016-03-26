@@ -39,7 +39,7 @@ var (
 			}
 
 			service := &spec.ServiceConfig{}
-			service.FromJobSpec(job.Spec)
+			service.FromProto(job.Spec)
 
 			original, err := ioutil.TempFile(os.TempDir(), "swarm-job-edit")
 			if err != nil {
@@ -85,7 +85,7 @@ var (
 				return nil
 			}
 
-			r, err := c.UpdateJob(common.Context(cmd), &api.UpdateJobRequest{JobID: job.ID, Spec: newService.JobSpec()})
+			r, err := c.UpdateJob(common.Context(cmd), &api.UpdateJobRequest{JobID: job.ID, Spec: newService.ToProto()})
 			if err != nil {
 				return err
 			}

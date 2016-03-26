@@ -2,6 +2,7 @@ package container
 
 import (
 	"strings"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/engine-api/types"
@@ -11,6 +12,12 @@ import (
 	"github.com/docker/engine-api/types/network"
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
+)
+
+const (
+	// Explictly use the kernel's default setting for CPU quota of 100ms.
+	// https://www.kernel.org/doc/Documentation/scheduler/sched-bwc.txt
+	cpuQuotaPeriod = 100 * time.Millisecond
 )
 
 // containerConfig converts task properties into docker container compatible
@@ -68,7 +75,34 @@ func (c *containerConfig) config() *enginecontainer.Config {
 }
 
 func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
-	return &enginecontainer.HostConfig{}
+	return &enginecontainer.HostConfig{
+		Resources: c.resources(),
+	}
+}
+
+func (c *containerConfig) resources() enginecontainer.Resources {
+	resources := enginecontainer.Resources{}
+
+	// If no limits are specified let the engine use its defaults.
+	//
+	// TODO(aluzzardi): We might want to set some limits anyway otherwise
+	// "unlimited" tasks will step over the reservation of other tasks.
+	r := c.task.Spec.GetContainer().Resources
+	if r == nil || r.Limits == nil {
+		return resources
+	}
+
+	if r.Limits.MemoryBytes > 0 {
+		resources.Memory = r.Limits.MemoryBytes
+	}
+
+	if r.Limits.NanoCPUs > 0 {
+		// CPU Period must be set in microseconds.
+		resources.CPUPeriod = int64(cpuQuotaPeriod / time.Microsecond)
+		resources.CPUQuota = r.Limits.NanoCPUs * resources.CPUPeriod / 1e9
+	}
+
+	return resources
 }
 
 func (c *containerConfig) networkingConfig() *network.NetworkingConfig {

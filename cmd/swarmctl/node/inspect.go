@@ -4,12 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"text/tabwriter"
 
-	"github.com/docker/go-units"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
 
@@ -55,8 +54,8 @@ var (
 			common.FprintfIfNotEmpty(w, "  Availability\t: %s\n", spec.Availability.String())
 
 			fmt.Fprintln(w, "Resources:\t")
-			common.FprintfIfNotEmpty(w, "  CPUs\t: %s\n", strconv.Itoa(int(desc.Resources.CPU)))
-			common.FprintfIfNotEmpty(w, "  Memory\t: %s\n", units.BytesSize(float64(desc.Resources.Memory)))
+			fmt.Fprintf(w, "  CPUs\t: %d\n", desc.Resources.NanoCPUs/1e9)
+			fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(desc.Resources.MemoryBytes)))
 			return nil
 		},
 	}

@@ -18,11 +18,16 @@ message Version {
 }
 
 message Resources {
-	// Number of CPU cores.
-	double cpu = 1 [(gogoproto.customname) = "CPU"];
+	// Amount of CPUs (e.g. 2000000000 = 2 CPU cores)
+	int64 nano_cpus = 1 [(gogoproto.customname) = "NanoCPUs"];
 
-	// Memory in bytes.
-	int64 memory = 2;
+	// Amount of memory in bytes.
+	int64 memory_bytes = 2;
+}
+
+message ResourceRequirements {
+	Resources limits = 1;
+	Resources reservations = 2;
 }
 
 message Platform {
@@ -112,22 +117,25 @@ message ImageSpec {
 }
 
 message ContainerSpec {
-	ImageSpec image = 1;
+	// Resource requirements for the container.
+	ResourceRequirements resources = 1;
+
+	ImageSpec image = 2;
 
 	// Command to run the the container. The first element is a path to the
 	// executable and the following elements are treated as arguments.
 	//
 	// If command is empty, execution will fall back to the image's entrypoint.
-	repeated string command = 2;
+	repeated string command = 3;
 
 	// Args specifies arguments provided to the image's entrypoint.
 	// Ignored if command is specified.
-	repeated string args = 3;
+	repeated string args = 4;
 
 	// Env specifies the environment variables for the container in NAME=VALUE
 	// format. These must be compliant with  [IEEE Std
 	// 1003.1-2001](http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html).
-	repeated string env = 4;
+	repeated string env = 5;
 
 	// NetworkAttachmentSpec describes a desired attachment to the named network or
 	// a specific network_id.
@@ -138,7 +146,7 @@ message ContainerSpec {
 		}
 	}
 
-	repeated NetworkAttachmentSpec networks = 5;
+	repeated NetworkAttachmentSpec networks = 6;
 }
 
 // TaskSpec defines properties required by the agent for execution.

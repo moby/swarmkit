@@ -39,6 +39,48 @@ func createJob(t *testing.T, ts *testServer, name, image string, instances int64
 	return r.Job
 }
 
+func TestValidateResources(t *testing.T) {
+	bad := []*api.Resources{
+		{MemoryBytes: 1},
+		{NanoCPUs: 42},
+	}
+
+	good := []*api.Resources{
+		{MemoryBytes: 4096 * 1024 * 1024},
+		{NanoCPUs: 1e9},
+	}
+
+	for _, b := range bad {
+		err := validateResources(b)
+		assert.Error(t, err)
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	}
+
+	for _, g := range good {
+		assert.NoError(t, validateResources(g))
+	}
+}
+
+func TestValidateResourceRequirements(t *testing.T) {
+	bad := []*api.ResourceRequirements{
+		{Limits: &api.Resources{MemoryBytes: 1}},
+		{Reservations: &api.Resources{MemoryBytes: 1}},
+	}
+	good := []*api.ResourceRequirements{
+		{Limits: &api.Resources{NanoCPUs: 1e9}},
+		{Reservations: &api.Resources{NanoCPUs: 1e9}},
+	}
+	for _, b := range bad {
+		err := validateResourceRequirements(b)
+		assert.Error(t, err)
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	}
+
+	for _, g := range good {
+		assert.NoError(t, validateResourceRequirements(g))
+	}
+}
+
 func TestValidateJobSpecTemplate(t *testing.T) {
 	type badSource struct {
 		s *api.JobSpec

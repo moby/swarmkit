@@ -342,6 +342,10 @@
 			"Rev": "47065cc01cf776a634c8ea12b4ccf7a051e71565"
 		},
 		{
+			"ImportPath": "github.com/dustin/go-humanize",
+			"Rev": "8929fe90cee4b2cb9deb468b51fb34eba64d1bf0"
+		},
+		{
 			"ImportPath": "github.com/gogo/protobuf/gogoproto",
 			"Comment": "v0.1-131-gf4cc079",
 			"Rev": "f4cc07910fc38f5b6b8d6e75d7457cf504157b6c"
