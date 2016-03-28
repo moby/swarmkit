@@ -9,6 +9,7 @@
 		types.proto
 		cluster.proto
 		dispatcher.proto
+		manager.proto
 
 	It has these top-level messages:
 		Meta
@@ -86,6 +87,8 @@
 		UpdateTaskStatusResponse
 		TasksRequest
 		TasksMessage
+		NodeCountRequest
+		NodeCountResponse
 */
 package api
 
