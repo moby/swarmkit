@@ -22,6 +22,7 @@ const (
 	tableTask    = "task"
 	tableJob     = "job"
 	tableNetwork = "network"
+	tableVolume  = "volume"
 
 	prefix = "_prefix"
 )
@@ -114,6 +115,21 @@ func NewMemoryStore(proposer Proposer) *MemoryStore {
 					},
 				},
 			},
+			tableVolume: {
+				Name: tableVolume,
+				Indexes: map[string]*memdb.IndexSchema{
+					indexID: {
+						Name:    indexID,
+						Unique:  true,
+						Indexer: volumeIndexerByID{},
+					},
+					indexName: {
+						Name:    indexName,
+						Unique:  true,
+						Indexer: volumeIndexerByName{},
+					},
+				},
+			},
 		},
 	}
 
@@ -162,6 +178,7 @@ type readTx struct {
 	jobs     jobs
 	tasks    tasks
 	networks networks
+	volumes  volumes
 }
 
 // View executes a read transaction.
@@ -179,6 +196,9 @@ func (s *MemoryStore) View(cb func(ReadTx) error) error {
 			memDBTx: memDBTx,
 		},
 		networks: networks{
+			memDBTx: memDBTx,
+		},
+		volumes: volumes{
 			memDBTx: memDBTx,
 		},
 	}
@@ -203,11 +223,16 @@ func (t readTx) Tasks() TaskSetReader {
 	return t.tasks
 }
 
+func (t readTx) Volumes() VolumeSetReader {
+	return t.volumes
+}
+
 type tx struct {
 	nodes      nodes
 	jobs       jobs
 	tasks      tasks
 	networks   networks
+	volumes    volumes
 	changelist []Event
 }
 
@@ -221,11 +246,13 @@ func (s *MemoryStore) applyStoreActions(actions []*api.StoreAction) error {
 		jobs:     jobs{memDBTx: memDBTx},
 		tasks:    tasks{memDBTx: memDBTx},
 		networks: networks{memDBTx: memDBTx},
+		volumes:  volumes{memDBTx: memDBTx},
 	}
 	tx.nodes.tx = &tx
 	tx.jobs.tx = &tx
 	tx.tasks.tx = &tx
 	tx.networks.tx = &tx
+	tx.volumes.tx = &tx
 
 	for _, sa := range actions {
 		if err := applyStoreAction(tx, sa); err != nil {
@@ -277,6 +304,13 @@ func applyStoreAction(tx tx, sa *api.StoreAction) error {
 		return tx.Nodes().Update(v.UpdateNode)
 	case *api.StoreAction_RemoveNode:
 		return tx.Nodes().Delete(v.RemoveNode)
+
+	case *api.StoreAction_CreateVolume:
+		return tx.Volumes().Create(v.CreateVolume)
+	case *api.StoreAction_UpdateVolume:
+		return tx.Volumes().Update(v.UpdateVolume)
+	case *api.StoreAction_RemoveVolume:
+		return tx.Volumes().Delete(v.RemoveVolume)
 	}
 	return errors.New("unrecognized action type")
 }
@@ -290,11 +324,13 @@ func (s *MemoryStore) update(proposer Proposer, cb func(Tx) error) error {
 		jobs:     jobs{memDBTx: memDBTx},
 		tasks:    tasks{memDBTx: memDBTx},
 		networks: networks{memDBTx: memDBTx},
+		volumes:  volumes{memDBTx: memDBTx},
 	}
 	tx.nodes.tx = &tx
 	tx.jobs.tx = &tx
 	tx.tasks.tx = &tx
 	tx.networks.tx = &tx
+	tx.volumes.tx = &tx
 
 	err := cb(tx)
 
@@ -400,6 +436,20 @@ func (tx tx) newStoreAction() ([]*api.StoreAction, error) {
 			sa.Action = &api.StoreAction_RemoveNode{
 				RemoveNode: v.Node.ID,
 			}
+
+		case EventCreateVolume:
+			sa.Action = &api.StoreAction_CreateVolume{
+				CreateVolume: v.Volume,
+			}
+		case EventUpdateVolume:
+			sa.Action = &api.StoreAction_UpdateVolume{
+				UpdateVolume: v.Volume,
+			}
+		case EventDeleteVolume:
+			sa.Action = &api.StoreAction_RemoveVolume{
+				RemoveVolume: v.Volume.ID,
+			}
+
 		default:
 			return nil, errors.New("unrecognized event type")
 		}
@@ -423,6 +473,10 @@ func (tx tx) Jobs() JobSet {
 
 func (tx tx) Tasks() TaskSet {
 	return tx.tasks
+}
+
+func (tx tx) Volumes() VolumeSet {
+	return tx.volumes
 }
 
 type nodes struct {
@@ -1110,6 +1164,163 @@ func (ni networkIndexerByName) FromObject(obj interface{}) (bool, []byte, error)
 	return true, []byte(n.Spec.Meta.Name + "\x00"), nil
 }
 
+type volumes struct {
+	tx      *tx
+	memDBTx *memdb.Txn
+}
+
+func (volumes volumes) table() string {
+	return tableVolume
+}
+
+// lookup is an internal typed wrapper around memdb.
+func (volumes volumes) lookup(index, id string) *api.Volume {
+	v, err := volumes.memDBTx.First(volumes.table(), index, id)
+	if err != nil {
+		return nil
+	}
+	if v != nil {
+		return v.(*api.Volume)
+	}
+	return nil
+}
+
+// Create adds a new volume to the store.
+// Returns ErrExist if the ID is already taken.
+func (volumes volumes) Create(v *api.Volume) error {
+	if volumes.lookup(indexID, v.ID) != nil {
+		return ErrExist
+	}
+
+	// Ensure the name is not already in use.
+	if v.Spec != nil && volumes.lookup(indexName, v.Spec.Meta.Name) != nil {
+		return ErrNameConflict
+	}
+
+	err := volumes.memDBTx.Insert(volumes.table(), v.Copy())
+	if err == nil {
+		volumes.tx.changelist = append(volumes.tx.changelist, EventCreateVolume{Volume: v})
+	}
+	return err
+}
+
+// Update updates an existing volume in the store.
+// Returns ErrNotExist if the volume doesn't exist.
+func (volumes volumes) Update(v *api.Volume) error {
+	if volumes.lookup(indexID, v.ID) == nil {
+		return ErrNotExist
+	}
+
+	// Ensure the name is either not in use or already used by this same Volume.
+	if existing := volumes.lookup(indexName, v.Spec.Meta.Name); existing != nil {
+		if existing.ID != v.ID {
+			return ErrNameConflict
+		}
+	}
+
+	err := volumes.memDBTx.Insert(volumes.table(), v.Copy())
+	if err == nil {
+		volumes.tx.changelist = append(volumes.tx.changelist, EventUpdateVolume{Volume: v})
+	}
+	return err
+}
+
+// Delete removes a volume from the store.
+// Returns ErrNotExist if the volume doesn't exist.
+func (volumes volumes) Delete(id string) error {
+	v := volumes.lookup(indexID, id)
+	if v == nil {
+		return ErrNotExist
+	}
+
+	err := volumes.memDBTx.Delete(volumes.table(), v)
+	if err == nil {
+		volumes.tx.changelist = append(volumes.tx.changelist, EventDeleteVolume{Volume: v})
+	}
+	return err
+}
+
+// Get looks up a volume by ID.
+// Returns nil if the volume doesn't exist.
+func (volumes volumes) Get(id string) *api.Volume {
+	if v := volumes.lookup(indexID, id); v != nil {
+		return v.Copy()
+	}
+	return nil
+}
+
+// Find selects a set of volumes and returns them. If by is nil,
+// returns all volumes.
+func (volumes volumes) Find(by By) ([]*api.Volume, error) {
+	fromResultIterator := func(it memdb.ResultIterator) []*api.Volume {
+		volumes := []*api.Volume{}
+		for {
+			obj := it.Next()
+			if obj == nil {
+				break
+			}
+			if v, ok := obj.(*api.Volume); ok {
+				volumes = append(volumes, v.Copy())
+			}
+		}
+		return volumes
+	}
+	switch c := by.(type) {
+	case all:
+		it, err := volumes.memDBTx.Get(volumes.table(), indexID)
+		if err != nil {
+			return nil, err
+		}
+		return fromResultIterator(it), nil
+	case byName:
+		it, err := volumes.memDBTx.Get(volumes.table(), indexName, string(c))
+		if err != nil {
+			return nil, err
+		}
+		return fromResultIterator(it), nil
+	default:
+		return nil, ErrInvalidFindBy
+	}
+
+}
+
+type volumeIndexerByID struct{}
+
+func (vi volumeIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (vi volumeIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
+	v, ok := obj.(*api.Volume)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	// Add the null character as a terminator
+	val := v.ID + "\x00"
+	return true, []byte(val), nil
+}
+
+type volumeIndexerByName struct{}
+
+func (vi volumeIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (vi volumeIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
+	v, ok := obj.(*api.Volume)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	// Add the null character as a terminator
+	if v.Spec == nil {
+		return false, nil, nil
+	}
+	// Add the null character as a terminator
+	return true, []byte(v.Spec.Meta.Name + "\x00"), nil
+}
+
 // CopyFrom causes this store to hold a copy of the provided data set.
 func (s *MemoryStore) CopyFrom(readTx ReadTx) error {
 	return s.Update(func(tx Tx) error {
@@ -1154,6 +1365,16 @@ func (s *MemoryStore) CopyFrom(readTx ReadTx) error {
 		}
 		for _, n := range networks {
 			if err := tx.Networks().Create(n); err != nil {
+				return err
+			}
+		}
+
+		volumes, err := readTx.Volumes().Find(All)
+		if err != nil {
+			return err
+		}
+		for _, v := range volumes {
+			if err := tx.Volumes().Create(v); err != nil {
 				return err
 			}
 		}

@@ -1,5 +1,7 @@
 package volume
 
+// TODO(amitshukla): rename this file to remove.go and ls.Cmd to removeCmd - will do this change in a separate PR
+
 import (
 	"errors"
 	"fmt"
@@ -9,28 +11,19 @@ import (
 
 var (
 	rmCmd = &cobra.Command{
-		Use:     "remove <Volume name>",
+		Use:     "remove <volume ID>",
 		Short:   "Remove a volume",
 		Aliases: []string{"rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			flags := cmd.Flags()
-			if !flags.Changed("name") {
-				return errors.New("--name is required")
-			}
-			name, err := flags.GetString("name")
-			if err != nil {
-				return err
+			if len(args) == 0 {
+				return errors.New("volume ID is missing")
 			}
 
-			fmt.Printf("Volume Name = %s\n", name)
+			fmt.Printf("Volume ID = %s\n", args[0])
 
-			// TODO: Send it to the Manager thru grpc
+			// TODO(amitshukla): Send it to the Manager thru grpc
 
 			return nil
 		},
 	}
 )
-
-func init() {
-	rmCmd.Flags().String("name", "", "Volume name")
-}

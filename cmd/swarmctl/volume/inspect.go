@@ -9,26 +9,18 @@ import (
 
 var (
 	inspectCmd = &cobra.Command{
-		Use:   "inspect",
+		Use:   "inspect <volume ID>",
 		Short: "Inspect a volume",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			flags := cmd.Flags()
-			if !flags.Changed("name") {
-				return errors.New("--name is required")
-			}
-			name, err := flags.GetString("name")
-			if err != nil {
-				return err
+			if len(args) == 0 {
+				return errors.New("volume ID missing")
 			}
 
-			fmt.Printf("Volume Name = %s\n", name)
-			// TODO: Send it to the Manager thru grpc
+			fmt.Printf("Volume ID = %s\n", args[0])
+
+			// TODO(amitshukla): Send it to the Manager thru grpc
 
 			return nil
 		},
 	}
 )
-
-func init() {
-	inspectCmd.Flags().String("name", "", "Volume name")
-}

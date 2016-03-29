@@ -260,6 +260,60 @@ type ListNetworksResponse struct {
 func (m *ListNetworksResponse) Reset()      { *m = ListNetworksResponse{} }
 func (*ListNetworksResponse) ProtoMessage() {}
 
+type CreateVolumeRequest struct {
+	Spec *VolumeSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+}
+
+func (m *CreateVolumeRequest) Reset()      { *m = CreateVolumeRequest{} }
+func (*CreateVolumeRequest) ProtoMessage() {}
+
+type CreateVolumeResponse struct {
+	Volume *Volume `protobuf:"bytes,1,opt,name=volume" json:"volume,omitempty"`
+}
+
+func (m *CreateVolumeResponse) Reset()      { *m = CreateVolumeResponse{} }
+func (*CreateVolumeResponse) ProtoMessage() {}
+
+type GetVolumeRequest struct {
+	VolumeID string `protobuf:"bytes,1,opt,name=volume_id,proto3" json:"volume_id,omitempty"`
+}
+
+func (m *GetVolumeRequest) Reset()      { *m = GetVolumeRequest{} }
+func (*GetVolumeRequest) ProtoMessage() {}
+
+type GetVolumeResponse struct {
+	Volume *Volume `protobuf:"bytes,1,opt,name=volume" json:"volume,omitempty"`
+}
+
+func (m *GetVolumeResponse) Reset()      { *m = GetVolumeResponse{} }
+func (*GetVolumeResponse) ProtoMessage() {}
+
+type RemoveVolumeRequest struct {
+	VolumeID string `protobuf:"bytes,1,opt,name=volume_id,proto3" json:"volume_id,omitempty"`
+}
+
+func (m *RemoveVolumeRequest) Reset()      { *m = RemoveVolumeRequest{} }
+func (*RemoveVolumeRequest) ProtoMessage() {}
+
+type RemoveVolumeResponse struct {
+}
+
+func (m *RemoveVolumeResponse) Reset()      { *m = RemoveVolumeResponse{} }
+func (*RemoveVolumeResponse) ProtoMessage() {}
+
+type ListVolumesRequest struct {
+}
+
+func (m *ListVolumesRequest) Reset()      { *m = ListVolumesRequest{} }
+func (*ListVolumesRequest) ProtoMessage() {}
+
+type ListVolumesResponse struct {
+	Volumes []*Volume `protobuf:"bytes,1,rep,name=volumes" json:"volumes,omitempty"`
+}
+
+func (m *ListVolumesResponse) Reset()      { *m = ListVolumesResponse{} }
+func (*ListVolumesResponse) ProtoMessage() {}
+
 func init() {
 	proto.RegisterType((*ListOptions)(nil), "api.ListOptions")
 	proto.RegisterType((*GetNodeRequest)(nil), "api.GetNodeRequest")
@@ -294,6 +348,14 @@ func init() {
 	proto.RegisterType((*RemoveNetworkResponse)(nil), "api.RemoveNetworkResponse")
 	proto.RegisterType((*ListNetworksRequest)(nil), "api.ListNetworksRequest")
 	proto.RegisterType((*ListNetworksResponse)(nil), "api.ListNetworksResponse")
+	proto.RegisterType((*CreateVolumeRequest)(nil), "api.CreateVolumeRequest")
+	proto.RegisterType((*CreateVolumeResponse)(nil), "api.CreateVolumeResponse")
+	proto.RegisterType((*GetVolumeRequest)(nil), "api.GetVolumeRequest")
+	proto.RegisterType((*GetVolumeResponse)(nil), "api.GetVolumeResponse")
+	proto.RegisterType((*RemoveVolumeRequest)(nil), "api.RemoveVolumeRequest")
+	proto.RegisterType((*RemoveVolumeResponse)(nil), "api.RemoveVolumeResponse")
+	proto.RegisterType((*ListVolumesRequest)(nil), "api.ListVolumesRequest")
+	proto.RegisterType((*ListVolumesResponse)(nil), "api.ListVolumesResponse")
 }
 
 func (m *ListOptions) Copy() *ListOptions {
@@ -706,6 +768,103 @@ func (m *ListNetworksResponse) Copy() *ListNetworksResponse {
 	return o
 }
 
+func (m *CreateVolumeRequest) Copy() *CreateVolumeRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &CreateVolumeRequest{
+		Spec: m.Spec.Copy(),
+	}
+
+	return o
+}
+
+func (m *CreateVolumeResponse) Copy() *CreateVolumeResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &CreateVolumeResponse{
+		Volume: m.Volume.Copy(),
+	}
+
+	return o
+}
+
+func (m *GetVolumeRequest) Copy() *GetVolumeRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &GetVolumeRequest{
+		VolumeID: m.VolumeID,
+	}
+
+	return o
+}
+
+func (m *GetVolumeResponse) Copy() *GetVolumeResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &GetVolumeResponse{
+		Volume: m.Volume.Copy(),
+	}
+
+	return o
+}
+
+func (m *RemoveVolumeRequest) Copy() *RemoveVolumeRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &RemoveVolumeRequest{
+		VolumeID: m.VolumeID,
+	}
+
+	return o
+}
+
+func (m *RemoveVolumeResponse) Copy() *RemoveVolumeResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &RemoveVolumeResponse{}
+
+	return o
+}
+
+func (m *ListVolumesRequest) Copy() *ListVolumesRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListVolumesRequest{}
+
+	return o
+}
+
+func (m *ListVolumesResponse) Copy() *ListVolumesResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListVolumesResponse{}
+
+	if m.Volumes != nil {
+		o.Volumes = make([]*Volume, 0, len(m.Volumes))
+		for _, v := range m.Volumes {
+			o.Volumes = append(o.Volumes, v.Copy())
+		}
+	}
+
+	return o
+}
+
 func (this *ListOptions) GoString() string {
 	if this == nil {
 		return "nil"
@@ -1075,6 +1234,92 @@ func (this *ListNetworksResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
+func (this *CreateVolumeRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.CreateVolumeRequest{")
+	if this.Spec != nil {
+		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *CreateVolumeResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.CreateVolumeResponse{")
+	if this.Volume != nil {
+		s = append(s, "Volume: "+fmt.Sprintf("%#v", this.Volume)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *GetVolumeRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.GetVolumeRequest{")
+	s = append(s, "VolumeID: "+fmt.Sprintf("%#v", this.VolumeID)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *GetVolumeResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.GetVolumeResponse{")
+	if this.Volume != nil {
+		s = append(s, "Volume: "+fmt.Sprintf("%#v", this.Volume)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *RemoveVolumeRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.RemoveVolumeRequest{")
+	s = append(s, "VolumeID: "+fmt.Sprintf("%#v", this.VolumeID)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *RemoveVolumeResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&api.RemoveVolumeResponse{")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ListVolumesRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&api.ListVolumesRequest{")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ListVolumesResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.ListVolumesResponse{")
+	if this.Volumes != nil {
+		s = append(s, "Volumes: "+fmt.Sprintf("%#v", this.Volumes)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func valueToGoStringCluster(v interface{}, typ string) string {
 	rv := reflect.ValueOf(v)
 	if rv.IsNil() {
@@ -1124,6 +1369,10 @@ type ClusterClient interface {
 	ListNetworks(ctx context.Context, in *ListNetworksRequest, opts ...grpc.CallOption) (*ListNetworksResponse, error)
 	CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CreateNetworkResponse, error)
 	RemoveNetwork(ctx context.Context, in *RemoveNetworkRequest, opts ...grpc.CallOption) (*RemoveNetworkResponse, error)
+	GetVolume(ctx context.Context, in *GetVolumeRequest, opts ...grpc.CallOption) (*GetVolumeResponse, error)
+	ListVolumes(ctx context.Context, in *ListVolumesRequest, opts ...grpc.CallOption) (*ListVolumesResponse, error)
+	CreateVolume(ctx context.Context, in *CreateVolumeRequest, opts ...grpc.CallOption) (*CreateVolumeResponse, error)
+	RemoveVolume(ctx context.Context, in *RemoveVolumeRequest, opts ...grpc.CallOption) (*RemoveVolumeResponse, error)
 }
 
 type clusterClient struct {
@@ -1278,6 +1527,42 @@ func (c *clusterClient) RemoveNetwork(ctx context.Context, in *RemoveNetworkRequ
 	return out, nil
 }
 
+func (c *clusterClient) GetVolume(ctx context.Context, in *GetVolumeRequest, opts ...grpc.CallOption) (*GetVolumeResponse, error) {
+	out := new(GetVolumeResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/GetVolume", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) ListVolumes(ctx context.Context, in *ListVolumesRequest, opts ...grpc.CallOption) (*ListVolumesResponse, error) {
+	out := new(ListVolumesResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/ListVolumes", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) CreateVolume(ctx context.Context, in *CreateVolumeRequest, opts ...grpc.CallOption) (*CreateVolumeResponse, error) {
+	out := new(CreateVolumeResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/CreateVolume", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) RemoveVolume(ctx context.Context, in *RemoveVolumeRequest, opts ...grpc.CallOption) (*RemoveVolumeResponse, error) {
+	out := new(RemoveVolumeResponse)
+	err := grpc.Invoke(ctx, "/api.Cluster/RemoveVolume", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for Cluster service
 
 type ClusterServer interface {
@@ -1297,6 +1582,10 @@ type ClusterServer interface {
 	ListNetworks(context.Context, *ListNetworksRequest) (*ListNetworksResponse, error)
 	CreateNetwork(context.Context, *CreateNetworkRequest) (*CreateNetworkResponse, error)
 	RemoveNetwork(context.Context, *RemoveNetworkRequest) (*RemoveNetworkResponse, error)
+	GetVolume(context.Context, *GetVolumeRequest) (*GetVolumeResponse, error)
+	ListVolumes(context.Context, *ListVolumesRequest) (*ListVolumesResponse, error)
+	CreateVolume(context.Context, *CreateVolumeRequest) (*CreateVolumeResponse, error)
+	RemoveVolume(context.Context, *RemoveVolumeRequest) (*RemoveVolumeResponse, error)
 }
 
 func RegisterClusterServer(s *grpc.Server, srv ClusterServer) {
@@ -1495,6 +1784,54 @@ func _Cluster_RemoveNetwork_Handler(srv interface{}, ctx context.Context, dec fu
 	return out, nil
 }
 
+func _Cluster_GetVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(GetVolumeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(ClusterServer).GetVolume(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _Cluster_ListVolumes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(ListVolumesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(ClusterServer).ListVolumes(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _Cluster_CreateVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(CreateVolumeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(ClusterServer).CreateVolume(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _Cluster_RemoveVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(RemoveVolumeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(ClusterServer).RemoveVolume(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 var _Cluster_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "api.Cluster",
 	HandlerType: (*ClusterServer)(nil),
@@ -1562,6 +1899,22 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveNetwork",
 			Handler:    _Cluster_RemoveNetwork_Handler,
+		},
+		{
+			MethodName: "GetVolume",
+			Handler:    _Cluster_GetVolume_Handler,
+		},
+		{
+			MethodName: "ListVolumes",
+			Handler:    _Cluster_ListVolumes_Handler,
+		},
+		{
+			MethodName: "CreateVolume",
+			Handler:    _Cluster_CreateVolume_Handler,
+		},
+		{
+			MethodName: "RemoveVolume",
+			Handler:    _Cluster_RemoveVolume_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},
@@ -2441,6 +2794,204 @@ func (m *ListNetworksResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *CreateVolumeRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *CreateVolumeRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Spec != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintCluster(data, i, uint64(m.Spec.Size()))
+		n17, err := m.Spec.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n17
+	}
+	return i, nil
+}
+
+func (m *CreateVolumeResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *CreateVolumeResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Volume != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintCluster(data, i, uint64(m.Volume.Size()))
+		n18, err := m.Volume.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n18
+	}
+	return i, nil
+}
+
+func (m *GetVolumeRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *GetVolumeRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.VolumeID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintCluster(data, i, uint64(len(m.VolumeID)))
+		i += copy(data[i:], m.VolumeID)
+	}
+	return i, nil
+}
+
+func (m *GetVolumeResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *GetVolumeResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Volume != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintCluster(data, i, uint64(m.Volume.Size()))
+		n19, err := m.Volume.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n19
+	}
+	return i, nil
+}
+
+func (m *RemoveVolumeRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *RemoveVolumeRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.VolumeID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintCluster(data, i, uint64(len(m.VolumeID)))
+		i += copy(data[i:], m.VolumeID)
+	}
+	return i, nil
+}
+
+func (m *RemoveVolumeResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *RemoveVolumeResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *ListVolumesRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ListVolumesRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *ListVolumesResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ListVolumesResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Volumes) > 0 {
+		for _, msg := range m.Volumes {
+			data[i] = 0xa
+			i++
+			i = encodeVarintCluster(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
 func encodeFixed64Cluster(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	data[offset+1] = uint8(v >> 8)
@@ -2802,6 +3353,80 @@ func (m *ListNetworksResponse) Size() (n int) {
 	return n
 }
 
+func (m *CreateVolumeRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Spec != nil {
+		l = m.Spec.Size()
+		n += 1 + l + sovCluster(uint64(l))
+	}
+	return n
+}
+
+func (m *CreateVolumeResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.Volume != nil {
+		l = m.Volume.Size()
+		n += 1 + l + sovCluster(uint64(l))
+	}
+	return n
+}
+
+func (m *GetVolumeRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.VolumeID)
+	if l > 0 {
+		n += 1 + l + sovCluster(uint64(l))
+	}
+	return n
+}
+
+func (m *GetVolumeResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.Volume != nil {
+		l = m.Volume.Size()
+		n += 1 + l + sovCluster(uint64(l))
+	}
+	return n
+}
+
+func (m *RemoveVolumeRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.VolumeID)
+	if l > 0 {
+		n += 1 + l + sovCluster(uint64(l))
+	}
+	return n
+}
+
+func (m *RemoveVolumeResponse) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *ListVolumesRequest) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *ListVolumesResponse) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Volumes) > 0 {
+		for _, e := range m.Volumes {
+			l = e.Size()
+			n += 1 + l + sovCluster(uint64(l))
+		}
+	}
+	return n
+}
+
 func sovCluster(x uint64) (n int) {
 	for {
 		n++
@@ -3140,6 +3765,84 @@ func (this *ListNetworksResponse) String() string {
 	}
 	s := strings.Join([]string{`&ListNetworksResponse{`,
 		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Network", "Network", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *CreateVolumeRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&CreateVolumeRequest{`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "VolumeSpec", "VolumeSpec", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *CreateVolumeResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&CreateVolumeResponse{`,
+		`Volume:` + strings.Replace(fmt.Sprintf("%v", this.Volume), "Volume", "Volume", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *GetVolumeRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&GetVolumeRequest{`,
+		`VolumeID:` + fmt.Sprintf("%v", this.VolumeID) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *GetVolumeResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&GetVolumeResponse{`,
+		`Volume:` + strings.Replace(fmt.Sprintf("%v", this.Volume), "Volume", "Volume", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RemoveVolumeRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RemoveVolumeRequest{`,
+		`VolumeID:` + fmt.Sprintf("%v", this.VolumeID) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RemoveVolumeResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RemoveVolumeResponse{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListVolumesRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListVolumesRequest{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListVolumesResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListVolumesResponse{`,
+		`Volumes:` + strings.Replace(fmt.Sprintf("%v", this.Volumes), "Volume", "Volume", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5778,6 +6481,594 @@ func (m *ListNetworksResponse) Unmarshal(data []byte) error {
 			}
 			m.Networks = append(m.Networks, &Network{})
 			if err := m.Networks[len(m.Networks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCluster(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCluster
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CreateVolumeRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCluster
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CreateVolumeRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CreateVolumeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCluster
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCluster
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Spec == nil {
+				m.Spec = &VolumeSpec{}
+			}
+			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCluster(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCluster
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CreateVolumeResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCluster
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CreateVolumeResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CreateVolumeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Volume", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCluster
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCluster
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Volume == nil {
+				m.Volume = &Volume{}
+			}
+			if err := m.Volume.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCluster(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCluster
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetVolumeRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCluster
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetVolumeRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetVolumeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field VolumeID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCluster
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCluster
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.VolumeID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCluster(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCluster
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetVolumeResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCluster
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetVolumeResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetVolumeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Volume", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCluster
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCluster
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Volume == nil {
+				m.Volume = &Volume{}
+			}
+			if err := m.Volume.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCluster(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCluster
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RemoveVolumeRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCluster
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemoveVolumeRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemoveVolumeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field VolumeID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCluster
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCluster
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.VolumeID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCluster(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCluster
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RemoveVolumeResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCluster
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemoveVolumeResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemoveVolumeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCluster(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCluster
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListVolumesRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCluster
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListVolumesRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListVolumesRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCluster(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCluster
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListVolumesResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCluster
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListVolumesResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListVolumesResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Volumes", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCluster
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCluster
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Volumes = append(m.Volumes, &Volume{})
+			if err := m.Volumes[len(m.Volumes)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

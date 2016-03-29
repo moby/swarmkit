@@ -38,6 +38,13 @@ func Apply(store Store, item watch.Event) (err error) {
 			return tx.Nodes().Update(v.Node)
 		case EventDeleteNode:
 			return tx.Nodes().Delete(v.Node.ID)
+
+		case EventCreateVolume:
+			return tx.Volumes().Create(v.Volume)
+		case EventUpdateVolume:
+			return tx.Volumes().Update(v.Volume)
+		case EventDeleteVolume:
+			return tx.Volumes().Delete(v.Volume.ID)
 		case EventCommit:
 			return nil
 		}

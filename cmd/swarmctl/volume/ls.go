@@ -1,6 +1,17 @@
 package volume
 
-import "github.com/spf13/cobra"
+// TODO(amitshukla): rename this file to list.go and ls.Cmd to listCmd - will do this change in a separate PR
+
+import (
+	"fmt"
+	"os"
+	"text/tabwriter"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/spf13/cobra"
+)
 
 var (
 	lsCmd = &cobra.Command{
@@ -8,8 +19,50 @@ var (
 		Short:   "List volumes",
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// TODO: Send it to the Manager thru grpc
+			c, err := common.Dial(cmd)
+			if err != nil {
+				return err
+			}
+			r, err := c.ListVolumes(common.Context(cmd), &api.ListVolumesRequest{})
+			if err != nil {
+				return err
+			}
 
+			w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+			defer func() {
+				// Ignore flushing errors - there's nothing we can do.
+				_ = w.Flush()
+			}()
+			fmt.Fprintln(w, "ID\tName\tDriver\tOptions")
+			for _, v := range r.Volumes {
+				spec := v.Spec
+				if spec == nil {
+					spec = &api.VolumeSpec{}
+				}
+				name := spec.Meta.Name
+
+				// TODO(amitshukla): Right now we only implement the happy path
+				// and don't have any proper error handling whatsover.
+				// Instead of aborting, we should display what we can of the Volume.
+				if name == "" || v.ID == "" {
+					log.Fatalf("Malformed volume: %v", v)
+				}
+
+				driverName := ""
+				driverOptions := map[string]string{}
+				if spec.DriverConfiguration != nil {
+					driverName = spec.DriverConfiguration.Name
+					driverOptions = spec.DriverConfiguration.Options
+				}
+
+				// TODO(amitshukla): Improve formatting of driver options
+				fmt.Fprintf(w, "%s\t%s\t%s\t%v\n",
+					v.ID,
+					name,
+					driverName,
+					driverOptions,
+				)
+			}
 			return nil
 		},
 	}

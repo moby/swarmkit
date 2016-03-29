@@ -24,4 +24,5 @@ message StoreSnapshot {
 	repeated api.Job jobs = 3;
 	repeated api.Network networks = 4;
 	repeated api.Task tasks = 5;
+	repeated api.Volume volumes = 6;
 }

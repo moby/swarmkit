@@ -348,6 +348,22 @@ message Network {
 	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
 }
 
+// VolumeSpec defines the properties of a Volume.
+message VolumeSpec {
+	Meta meta = 1 [(gogoproto.nullable) = false];
+
+	// Driver specific configuration consumed by the Volume driver.
+	Driver driver_configuration = 2;
+}
+
+message Volume {
+	string id = 1 [(gogoproto.customname) = "ID"];
+	VolumeSpec spec = 2;
+
+	// Driver specific operational state provided by the Volume driver.
+	Driver driver_state = 3;
+}
+
 // WeightedPeer should be used anywhere where we are describing a remote peer
 // with a weight.
 message WeightedPeer {
@@ -384,5 +400,9 @@ message StoreAction {
 		Network create_network = 10;
 		Network update_network = 11;
 		string remove_network = 12;
+
+		Volume create_volume = 13;
+		Volume update_volume = 14;
+		string remove_volume = 15;
 	}
 }

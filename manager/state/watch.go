@@ -355,6 +355,87 @@ func (e EventDeleteNode) matches(watchEvent watch.Event) bool {
 	return true
 }
 
+// VolumeCheckFunc is the type of function used to perform filtering checks on
+// api.Volume structures.
+type VolumeCheckFunc func(v1, v2 *api.Volume) bool
+
+// VolumeCheckID is a VolumeCheckFunc for matching volume IDs.
+func VolumeCheckID(v1, v2 *api.Volume) bool {
+	return v1.ID == v2.ID
+}
+
+// EventCreateVolume is the type used to put CreateVolume events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventCreateVolume struct {
+	Volume *api.Volume
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []VolumeCheckFunc
+}
+
+func (e EventCreateVolume) matches(watchEvent watch.Event) bool {
+	typedEvent, ok := watchEvent.Payload.(EventCreateVolume)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Volume, typedEvent.Volume) {
+			return false
+		}
+	}
+	return true
+}
+
+// EventUpdateVolume is the type used to put UpdateVolume events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventUpdateVolume struct {
+	Volume *api.Volume
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []VolumeCheckFunc
+}
+
+func (e EventUpdateVolume) matches(watchEvent watch.Event) bool {
+	typedEvent, ok := watchEvent.Payload.(EventUpdateVolume)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Volume, typedEvent.Volume) {
+			return false
+		}
+	}
+	return true
+}
+
+// EventDeleteVolume is the type used to put DeleteVolume events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventDeleteVolume struct {
+	Volume *api.Volume
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []VolumeCheckFunc
+}
+
+func (e EventDeleteVolume) matches(watchEvent watch.Event) bool {
+	typedEvent, ok := watchEvent.Payload.(EventDeleteVolume)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Volume, typedEvent.Volume) {
+			return false
+		}
+	}
+	return true
+}
+
 // Watch takes a variable number of events to match against. The subscriber
 // will receive events that match any of the arguments passed to Watch.
 //

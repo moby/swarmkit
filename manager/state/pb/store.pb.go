@@ -57,6 +57,7 @@ type StoreSnapshot struct {
 	Jobs     []*api.Job            `protobuf:"bytes,3,rep,name=jobs" json:"jobs,omitempty"`
 	Networks []*api.Network        `protobuf:"bytes,4,rep,name=networks" json:"networks,omitempty"`
 	Tasks    []*api.Task           `protobuf:"bytes,5,rep,name=tasks" json:"tasks,omitempty"`
+	Volumes  []*api.Volume         `protobuf:"bytes,6,rep,name=volumes" json:"volumes,omitempty"`
 }
 
 func (m *StoreSnapshot) Reset()      { *m = StoreSnapshot{} }
@@ -70,7 +71,7 @@ func (this *StoreSnapshot) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 9)
+	s := make([]string, 0, 10)
 	s = append(s, "&pb.StoreSnapshot{")
 	s = append(s, "Version: "+fmt.Sprintf("%#v", this.Version)+",\n")
 	if this.Nodes != nil {
@@ -84,6 +85,9 @@ func (this *StoreSnapshot) GoString() string {
 	}
 	if this.Tasks != nil {
 		s = append(s, "Tasks: "+fmt.Sprintf("%#v", this.Tasks)+",\n")
+	}
+	if this.Volumes != nil {
+		s = append(s, "Volumes: "+fmt.Sprintf("%#v", this.Volumes)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -181,6 +185,18 @@ func (m *StoreSnapshot) MarshalTo(data []byte) (int, error) {
 			i += n
 		}
 	}
+	if len(m.Volumes) > 0 {
+		for _, msg := range m.Volumes {
+			data[i] = 0x32
+			i++
+			i = encodeVarintStore(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
 	return i, nil
 }
 
@@ -241,6 +257,12 @@ func (m *StoreSnapshot) Size() (n int) {
 			n += 1 + l + sovStore(uint64(l))
 		}
 	}
+	if len(m.Volumes) > 0 {
+		for _, e := range m.Volumes {
+			l = e.Size()
+			n += 1 + l + sovStore(uint64(l))
+		}
+	}
 	return n
 }
 
@@ -267,6 +289,7 @@ func (this *StoreSnapshot) String() string {
 		`Jobs:` + strings.Replace(fmt.Sprintf("%v", this.Jobs), "Job", "api.Job", 1) + `,`,
 		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Network", "api.Network", 1) + `,`,
 		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "api.Task", 1) + `,`,
+		`Volumes:` + strings.Replace(fmt.Sprintf("%v", this.Volumes), "Volume", "api.Volume", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -448,6 +471,37 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 			}
 			m.Tasks = append(m.Tasks, &api.Task{})
 			if err := m.Tasks[len(m.Tasks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Volumes", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowStore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthStore
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Volumes = append(m.Volumes, &api.Volume{})
+			if err := m.Volumes[len(m.Volumes)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
