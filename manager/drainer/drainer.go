@@ -57,14 +57,14 @@ func (d *Drainer) initialPass(tx state.ReadTx) error {
 func (d *Drainer) Run() error {
 	defer close(d.doneChan)
 
-	updates := state.Watch(d.store.WatchQueue(),
+	updates, cancel := state.Watch(d.store.WatchQueue(),
 		state.EventCreateTask{},
 		state.EventUpdateTask{},
 		state.EventCreateNode{},
 		state.EventUpdateNode{},
 		state.EventDeleteNode{},
 		state.EventCommit{})
-	defer d.store.WatchQueue().StopWatch(updates)
+	defer cancel()
 
 	err := d.store.View(d.initialPass)
 	if err != nil {
@@ -81,7 +81,7 @@ func (d *Drainer) Run() error {
 	for {
 		select {
 		case event := <-updates:
-			switch v := event.Payload.(type) {
+			switch v := event.(type) {
 			case state.EventCreateTask:
 				pendingChanges += d.taskChanged(v.Task)
 			case state.EventUpdateTask:

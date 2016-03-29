@@ -1,14 +1,10 @@
 package watch
 
+import "github.com/docker/go-events"
+
 // Queue is the structure used to publish events and watch for them.
 type Queue struct {
-	pub *publisher
-}
-
-// Event is a struct wrapping objects sent through the queue.
-type Event struct {
-	// Payload is the actual object being passed through the queue.
-	Payload interface{}
+	broadcast *events.Broadcaster
 }
 
 // NewQueue creates a new publish/subscribe queue which supports watchers.
@@ -16,30 +12,37 @@ type Event struct {
 // size specified by buffer.
 func NewQueue(buffer int) *Queue {
 	return &Queue{
-		pub: newPublisher(buffer),
+		broadcast: events.NewBroadcaster(),
 	}
 }
 
 // Watch returns a channel which will receive all items published to the
-// queue from this point, until StopWatch is closed.
-func (q *Queue) Watch() chan Event {
-	return q.pub.subscribe()
+// queue from this point, until cancel is called.
+func (q *Queue) Watch() (eventq chan events.Event, cancel func()) {
+	return q.CallbackWatch(nil)
 }
 
 // CallbackWatch returns a channel which will receive all events published to
 // the queue from this point that pass the check in the provided callback
-// function. StopWatch will stop the flow of events and close the channel.
-func (q *Queue) CallbackWatch(topicFunc topicFunc) chan Event {
-	return q.pub.subscribeTopic(topicFunc)
-}
+// function. The returned cancel function will stop the flow of events and
+// close the channel.
+func (q *Queue) CallbackWatch(matcher events.Matcher) (eventq chan events.Event, cancel func()) {
+	ch := events.NewChannel(0)
+	sink := events.Sink(events.NewQueue(ch))
 
-// StopWatch stops a watcher from receiving further events, and closes its
-// channel.
-func (q *Queue) StopWatch(ch chan Event) {
-	q.pub.evict(ch)
+	if matcher != nil {
+		sink = events.NewFilter(sink, matcher)
+	}
+
+	q.broadcast.Add(sink)
+	return ch.C, func() {
+		q.broadcast.Remove(sink)
+		ch.Close()
+		sink.Close()
+	}
 }
 
 // Publish adds an item to the queue.
-func (q *Queue) Publish(item Event) {
-	q.pub.publish(item)
+func (q *Queue) Publish(item events.Event) {
+	q.broadcast.Write(item)
 }

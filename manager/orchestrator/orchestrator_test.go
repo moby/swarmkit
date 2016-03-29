@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/watch"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,8 +16,8 @@ func TestOrchestrator(t *testing.T) {
 
 	orchestrator := New(store)
 
-	watch := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventDeleteTask{}*/)
-	defer store.WatchQueue().StopWatch(watch)
+	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventDeleteTask{}*/)
+	defer cancel()
 
 	// Create a job with two instances specified before the orchestrator is
 	// started. This should result in two tasks when the orchestrator
@@ -177,14 +177,14 @@ func TestOrchestrator(t *testing.T) {
 	orchestrator.Stop()
 }
 
-func watchTaskCreate(t *testing.T, watch chan watch.Event) *api.Task {
+func watchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
 		case event := <-watch:
-			if task, ok := event.Payload.(state.EventCreateTask); ok {
+			if task, ok := event.(state.EventCreateTask); ok {
 				return task.Task
 			}
-			if _, ok := event.Payload.(state.EventDeleteTask); ok {
+			if _, ok := event.(state.EventDeleteTask); ok {
 				t.Fatal("got EventDeleteTask when expecting EventCreateTask")
 			}
 		case <-time.After(time.Second):
@@ -193,14 +193,14 @@ func watchTaskCreate(t *testing.T, watch chan watch.Event) *api.Task {
 	}
 }
 
-func watchTaskDelete(t *testing.T, watch chan watch.Event) *api.Task {
+func watchTaskDelete(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
 		case event := <-watch:
-			if task, ok := event.Payload.(state.EventDeleteTask); ok {
+			if task, ok := event.(state.EventDeleteTask); ok {
 				return task.Task
 			}
-			if _, ok := event.Payload.(state.EventCreateTask); ok {
+			if _, ok := event.(state.EventCreateTask); ok {
 				t.Fatal("got EventCreateTask when expecting EventDeleteTask")
 			}
 		case <-time.After(time.Second):

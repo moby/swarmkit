@@ -3,8 +3,8 @@ package allocator
 import (
 	"sync"
 
+	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/watch"
 	"golang.org/x/net/context"
 )
 
@@ -50,14 +50,17 @@ type taskBallot struct {
 type allocActor struct {
 	// Channel through which the allocator gets all the events
 	// that it is interested in.
-	ch chan watch.Event
+	ch chan events.Event
+
+	// cancel unregisters the watcher.
+	cancel func()
 
 	// Task voter identity of the allocator.
 	taskVoter string
 
 	// Action routine which is called for every event that the
 	// allocator received.
-	action func(context.Context, watch.Event)
+	action func(context.Context, events.Event)
 
 	// Init routine which is called during the initialization of
 	// the allocator.
@@ -85,16 +88,19 @@ func (a *Allocator) Start(ctx context.Context) error {
 	a.cancel = cancel
 
 	var actors []func() error
+	watch, watchCancel := state.Watch(a.store.WatchQueue(),
+		state.EventCreateNetwork{},
+		state.EventDeleteNetwork{},
+		state.EventCreateTask{},
+		state.EventUpdateTask{},
+		state.EventDeleteTask{},
+		state.EventCommit{},
+	)
+
 	for _, aa := range []allocActor{
 		{
-			ch: state.Watch(a.store.WatchQueue(),
-				state.EventCreateNetwork{},
-				state.EventDeleteNetwork{},
-				state.EventCreateTask{},
-				state.EventUpdateTask{},
-				state.EventDeleteTask{},
-				state.EventCommit{},
-			),
+			ch:        watch,
+			cancel:    watchCancel,
 			taskVoter: networkVoter,
 			init:      a.doNetworkInit,
 			action:    a.doNetworkAlloc,
@@ -114,7 +120,7 @@ func (a *Allocator) Start(ctx context.Context) error {
 				// Stop the watches for this allocator
 				// if we are failing in the init of
 				// this allocator.
-				a.store.WatchQueue().StopWatch(aaCopy.ch)
+				aa.cancel()
 				return err
 			}
 
@@ -151,6 +157,7 @@ func (a *Allocator) Stop() {
 func (a *Allocator) run(ctx context.Context, aa allocActor) {
 	a.wg.Add(1)
 	defer a.wg.Done()
+	defer a.cancel()
 
 	for {
 		select {
@@ -161,7 +168,6 @@ func (a *Allocator) run(ctx context.Context, aa allocActor) {
 
 			aa.action(ctx, ev)
 		case <-ctx.Done():
-			a.store.WatchQueue().StopWatch(aa.ch)
 			return
 		}
 	}

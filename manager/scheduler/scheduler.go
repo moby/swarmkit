@@ -74,12 +74,12 @@ func (s *Scheduler) setupTasksList(tx state.ReadTx) error {
 func (s *Scheduler) Run() error {
 	defer close(s.doneChan)
 
-	updates, err := state.ViewAndWatch(s.store, s.setupTasksList)
+	updates, cancel, err := state.ViewAndWatch(s.store, s.setupTasksList)
 	if err != nil {
 		log.Errorf("could not snapshot store: %v", err)
 		return err
 	}
-	defer s.store.WatchQueue().StopWatch(updates)
+	defer cancel()
 
 	// Queue all unassigned tasks before processing changes.
 	s.tick()
@@ -90,7 +90,7 @@ func (s *Scheduler) Run() error {
 	for {
 		select {
 		case event := <-updates:
-			switch v := event.Payload.(type) {
+			switch v := event.(type) {
 			case state.EventCreateTask:
 				pendingChanges += s.createTask(v.Task)
 			case state.EventUpdateTask:

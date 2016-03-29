@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/allocator/networkallocator"
 	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/watch"
 	"golang.org/x/net/context"
 )
 
@@ -95,10 +95,10 @@ func (a *Allocator) doNetworkInit() error {
 	return nil
 }
 
-func (a *Allocator) doNetworkAlloc(ctx context.Context, ev watch.Event) {
+func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 	nc := a.netCtx
 
-	switch v := ev.Payload.(type) {
+	switch v := ev.(type) {
 	case state.EventCreateNetwork:
 		n := v.Network
 		if nc.nwkAllocator.IsAllocated(n) {
@@ -127,13 +127,13 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev watch.Event) {
 	}
 }
 
-func (a *Allocator) doTaskAlloc(nc *networkContext, ev watch.Event) {
+func (a *Allocator) doTaskAlloc(nc *networkContext, ev events.Event) {
 	var (
 		isDelete bool
 		t        *api.Task
 	)
 
-	switch v := ev.Payload.(type) {
+	switch v := ev.(type) {
 	case state.EventCreateTask:
 		t = v.Task
 	case state.EventUpdateTask:

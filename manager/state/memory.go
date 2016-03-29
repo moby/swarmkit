@@ -265,10 +265,10 @@ func (s *MemoryStore) applyStoreActions(actions []*api.StoreAction) error {
 	memDBTx.Commit()
 
 	for _, c := range tx.changelist {
-		Publish(s.queue, c)
+		s.queue.Publish(c)
 	}
 	if len(tx.changelist) != 0 {
-		Publish(s.queue, EventCommit{})
+		s.queue.Publish(EventCommit{})
 	}
 	s.updateLock.Unlock()
 	return nil
@@ -355,10 +355,10 @@ func (s *MemoryStore) update(proposer Proposer, cb func(Tx) error) error {
 
 	if err == nil {
 		for _, c := range tx.changelist {
-			Publish(s.queue, c)
+			s.queue.Publish(c)
 		}
 		if len(tx.changelist) != 0 {
-			Publish(s.queue, EventCommit{})
+			s.queue.Publish(EventCommit{})
 		}
 	} else {
 		memDBTx.Abort()
