@@ -1,4 +1,4 @@
-package node
+package task
 
 import (
 	"fmt"
@@ -11,9 +11,9 @@ import (
 )
 
 var (
-	lsCmd = &cobra.Command{
+	listCmd = &cobra.Command{
 		Use:   "ls",
-		Short: "List nodes",
+		Short: "List tasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			flags := cmd.Flags()
 
@@ -26,12 +26,13 @@ var (
 			if err != nil {
 				return err
 			}
-			r, err := c.ListNodes(common.Context(cmd), &api.ListNodesRequest{})
+			r, err := c.ListTasks(common.Context(cmd), &api.ListTasksRequest{})
 			if err != nil {
 				return err
 			}
+			res := common.NewResolver(cmd, c)
 
-			var output func(n *api.Node)
+			var output func(t *api.Task)
 
 			if !quiet {
 				w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
@@ -39,29 +40,21 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				fmt.Fprintln(w, "ID\tName\tStatus\tAvailability")
-				output = func(n *api.Node) {
-					spec := n.Spec
-					if spec == nil {
-						spec = &api.NodeSpec{}
-					}
-					name := spec.Meta.Name
-					if name == "" {
-						name = n.Description.Hostname
-					}
+				fmt.Fprintln(w, "ID\tJob\tStatus\tNode")
+				output = func(t *api.Task) {
 					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-						n.ID,
-						name,
-						n.Status.State.String(),
-						spec.Availability.String(),
+						t.ID,
+						res.Resolve(api.Job{}, t.JobID),
+						t.Status.State.String(),
+						res.Resolve(api.Node{}, t.NodeID),
 					)
 				}
 			} else {
-				output = func(n *api.Node) { fmt.Println(n.ID) }
+				output = func(t *api.Task) { fmt.Println(t.ID) }
 			}
 
-			for _, n := range r.Nodes {
-				output(n)
+			for _, t := range r.Tasks {
+				output(t)
 			}
 			return nil
 		},
@@ -69,5 +62,5 @@ var (
 )
 
 func init() {
-	lsCmd.Flags().BoolP("quiet", "q", false, "Only display IDs")
+	listCmd.Flags().BoolP("quiet", "q", false, "Only display IDs")
 }

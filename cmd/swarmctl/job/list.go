@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	lsCmd = &cobra.Command{
+	listCmd = &cobra.Command{
 		Use:   "ls",
 		Short: "List jobs",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -74,5 +74,5 @@ var (
 )
 
 func init() {
-	lsCmd.Flags().BoolP("quiet", "q", false, "Only display IDs")
+	listCmd.Flags().BoolP("quiet", "q", false, "Only display IDs")
 }
