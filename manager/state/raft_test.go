@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -102,7 +101,7 @@ func waitForPeerNumber(t *testing.T, nodes map[uint64]*Node, count int) {
 	}))
 }
 
-func newInitNode(t *testing.T, id uint64) *Node {
+func newInitNode(t *testing.T, id uint64, opts ...NewNodeOptions) *Node {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "can't bind to raft service port")
 	s := grpc.NewServer()
@@ -120,6 +119,17 @@ func newInitNode(t *testing.T, id uint64) *Node {
 		StateDir:     stateDir,
 		TickInterval: testTick,
 	}
+
+	if len(opts) > 1 {
+		panic("more than one optional argument provided")
+	}
+	if len(opts) == 1 {
+		if opts[0].SnapshotInterval != 0 {
+			newNodeOpts.SnapshotInterval = opts[0].SnapshotInterval
+		}
+		newNodeOpts.LogEntriesForSlowFollowers = opts[0].LogEntriesForSlowFollowers
+	}
+
 	n, err := NewNode(context.Background(), newNodeOpts, nil)
 	require.NoError(t, err, "can't create raft node")
 	n.Listener = l
@@ -143,7 +153,7 @@ func newInitNode(t *testing.T, id uint64) *Node {
 	return n
 }
 
-func newJoinNode(t *testing.T, id uint64, join string) *Node {
+func newJoinNode(t *testing.T, id uint64, join string, opts ...NewNodeOptions) *Node {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "can't bind to raft service port")
 	s := grpc.NewServer()
@@ -160,6 +170,16 @@ func newJoinNode(t *testing.T, id uint64, join string) *Node {
 		Config:       cfg,
 		StateDir:     stateDir,
 		TickInterval: testTick,
+	}
+
+	if len(opts) > 1 {
+		panic("more than one optional argument provided")
+	}
+	if len(opts) == 1 {
+		if opts[0].SnapshotInterval != 0 {
+			newNodeOpts.SnapshotInterval = opts[0].SnapshotInterval
+		}
+		newNodeOpts.LogEntriesForSlowFollowers = opts[0].LogEntriesForSlowFollowers
 	}
 
 	n, err := NewNode(context.Background(), newNodeOpts, nil)
@@ -193,17 +213,17 @@ func newJoinNode(t *testing.T, id uint64, join string) *Node {
 	return n
 }
 
-func newRaftCluster(t *testing.T) map[uint64]*Node {
+func newRaftCluster(t *testing.T, opts ...NewNodeOptions) map[uint64]*Node {
 	nodes := make(map[uint64]*Node)
-	nodes[1] = newInitNode(t, 1)
-	addRaftNode(t, nodes)
-	addRaftNode(t, nodes)
+	nodes[1] = newInitNode(t, 1, opts...)
+	addRaftNode(t, nodes, opts...)
+	addRaftNode(t, nodes, opts...)
 	return nodes
 }
 
-func addRaftNode(t *testing.T, nodes map[uint64]*Node) {
+func addRaftNode(t *testing.T, nodes map[uint64]*Node, opts ...NewNodeOptions) {
 	n := uint64(len(nodes) + 1)
-	nodes[n] = newJoinNode(t, uint64(n), nodes[1].Listener.Addr().String())
+	nodes[n] = newJoinNode(t, uint64(n), nodes[1].Listener.Addr().String(), opts...)
 	waitForCluster(t, nodes)
 }
 
@@ -541,15 +561,9 @@ func TestRaftSnapshot(t *testing.T) {
 	t.Parallel()
 
 	// Bring up a 3 node cluster
-	nodes := newRaftCluster(t)
+	var zero uint64
+	nodes := newRaftCluster(t, NewNodeOptions{SnapshotInterval: 9, LogEntriesForSlowFollowers: &zero})
 	defer teardownCluster(t, nodes)
-
-	// Override the interval between snapshots
-	for _, node := range nodes {
-		// Note that the cluster setup appears to involve 5 messages.
-		atomic.StoreUint64(&node.snapshotInterval, 9)
-		atomic.StoreUint64(&node.logEntriesForSlowFollowers, 0)
-	}
 
 	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5"}
 	values := make([]*api.Node, len(nodeIDs))

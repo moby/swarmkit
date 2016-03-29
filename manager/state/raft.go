@@ -122,11 +122,13 @@ type Node struct {
 
 // NewNodeOptions provides arguments for NewNode
 type NewNodeOptions struct {
-	ID           uint64
-	Addr         string
-	Config       *raft.Config
-	StateDir     string
-	TickInterval time.Duration
+	ID                         uint64
+	Addr                       string
+	Config                     *raft.Config
+	StateDir                   string
+	TickInterval               time.Duration
+	SnapshotInterval           uint64  // optional
+	LogEntriesForSlowFollowers *uint64 // optional; pointer because 0 is valid
 }
 
 // NewNode generates a new Raft node based on an unique
@@ -170,6 +172,13 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 		leadershipCh: leadershipCh,
 	}
 	n.memoryStore = NewMemoryStore(n)
+
+	if opts.SnapshotInterval != 0 {
+		n.snapshotInterval = opts.SnapshotInterval
+	}
+	if opts.LogEntriesForSlowFollowers != nil {
+		n.logEntriesForSlowFollowers = *opts.LogEntriesForSlowFollowers
+	}
 
 	if err := n.load(); err != nil {
 		n.ticker.Stop()
