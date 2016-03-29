@@ -1,7 +1,5 @@
 package volume
 
-// TODO(amitshukla): rename this file to list.go and ls.Cmd to listCmd - will do this change in a separate PR
-
 import (
 	"fmt"
 	"os"
@@ -14,7 +12,7 @@ import (
 )
 
 var (
-	lsCmd = &cobra.Command{
+	listCmd = &cobra.Command{
 		Use:     "list",
 		Short:   "List volumes",
 		Aliases: []string{"ls"},

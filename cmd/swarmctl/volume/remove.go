@@ -1,7 +1,5 @@
 package volume
 
-// TODO(amitshukla): rename this file to remove.go and ls.Cmd to removeCmd - will do this change in a separate PR
-
 import (
 	"errors"
 	"fmt"
@@ -10,7 +8,7 @@ import (
 )
 
 var (
-	rmCmd = &cobra.Command{
+	removeCmd = &cobra.Command{
 		Use:     "remove <volume ID>",
 		Short:   "Remove a volume",
 		Aliases: []string{"rm"},
