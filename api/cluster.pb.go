@@ -28,6 +28,7 @@ var _ = fmt.Errorf
 var _ = math.Inf
 
 type ListOptions struct {
+	// TODO(vieux): Replace `query` with more powerful selectors.
 	Query string `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
 }
 
