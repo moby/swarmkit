@@ -2,6 +2,7 @@ package agent
 
 import (
 	"errors"
+	"math/rand"
 	"reflect"
 	"time"
 
@@ -11,6 +12,11 @@ import (
 	"github.com/docker/swarm-v2/log"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+)
+
+const (
+	initialSessionFailureBackoff = time.Second
+	maxSessionFailureBackoff     = 8 * time.Second
 )
 
 // Agent implements the primary node functionality for a member of a swarm
@@ -151,10 +157,10 @@ func (a *Agent) run(ctx context.Context) {
 	}
 
 	var (
-		session = newSession(ctx, a) // start the initial session
-		tick    = time.NewTimer(500 * time.Millisecond)
+		backoff    time.Duration
+		session    = newSession(ctx, a, backoff) // start the initial session
+		registered = session.registered
 	)
-	defer tick.Stop()
 
 	// TODO(stevvooe): Read tasks known by executor associated with this node
 	// and begin to manage them. This may be as simple as reporting their run
@@ -176,20 +182,32 @@ func (a *Agent) run(ctx context.Context) {
 			if err := a.handleSessionMessage(ctx, msg); err != nil {
 				log.G(ctx).WithError(err).Errorf("session message handler failed")
 			}
+		case <-registered:
+			log.G(ctx).Debugln("agent: registered")
+			registered = nil // we only care about this once per session
+			backoff = 0      // reset backoff
 		case err := <-session.errs:
-			log.G(ctx).Debugf("agent: rebuild session")
 			// TODO(stevvooe): This may actually block if a session is closed
 			// but no error was sent. Session.close must only be called here
 			// for this to work.
 			if err != nil {
 				log.G(ctx).WithError(err).Errorf("agent: session failed")
+				backoff = initialSessionFailureBackoff + 2*backoff
+				if backoff > maxSessionFailureBackoff {
+					backoff = maxSessionFailureBackoff
+				}
 			}
 
 			if err := session.close(); err != nil {
 				log.G(ctx).WithError(err).Errorf("agent: closing session failed")
 			}
+		case <-session.closed:
+			log.G(ctx).Debugf("agent: rebuild session")
 
-			session = newSession(ctx, a)
+			// select a session registration delay from backoff range.
+			delay := time.Duration(rand.Int63n(int64(backoff)))
+			session = newSession(ctx, a, delay)
+			registered = session.registered
 		case <-a.stopped:
 			// TODO(stevvooe): Wait on shutdown and cleanup. May need to pump
 			// this loop a few times.
