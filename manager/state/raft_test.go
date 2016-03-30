@@ -68,21 +68,28 @@ func getTermAndLeader(n *Node) *leaderStatus {
 func waitForCluster(t *testing.T, nodes map[uint64]*Node) {
 	err := pollFunc(func() bool {
 		var prev *leaderStatus
+	nodeLoop:
 		for _, n := range nodes {
 			if prev == nil {
 				prev = getTermAndLeader(n)
-				if _, ok := nodes[prev.leader]; !ok {
-					return false
+				for _, n2 := range nodes {
+					if n2.Config.ID == prev.leader {
+						continue nodeLoop
+					}
 				}
-				continue
+				return false
 			}
 			cur := getTermAndLeader(n)
-			if _, ok := nodes[cur.leader]; !ok {
-				return false
+
+			for _, n2 := range nodes {
+				if n2.Config.ID == cur.leader {
+					if cur.leader != prev.leader || cur.term != prev.term {
+						return false
+					}
+					continue nodeLoop
+				}
 			}
-			if cur.leader != prev.leader || cur.term != prev.term {
-				return false
-			}
+			return false
 		}
 		return true
 	})
@@ -101,7 +108,7 @@ func waitForPeerNumber(t *testing.T, nodes map[uint64]*Node, count int) {
 	}))
 }
 
-func newInitNode(t *testing.T, id uint64, opts ...NewNodeOptions) *Node {
+func newInitNode(t *testing.T, opts ...NewNodeOptions) *Node {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "can't bind to raft service port")
 	s := grpc.NewServer()
@@ -113,7 +120,6 @@ func newInitNode(t *testing.T, id uint64, opts ...NewNodeOptions) *Node {
 	require.NoError(t, err, "can't create temporary state directory")
 
 	newNodeOpts := NewNodeOptions{
-		ID:           id,
 		Addr:         l.Addr().String(),
 		Config:       cfg,
 		StateDir:     stateDir,
@@ -132,7 +138,6 @@ func newInitNode(t *testing.T, id uint64, opts ...NewNodeOptions) *Node {
 
 	n, err := NewNode(context.Background(), newNodeOpts, nil)
 	require.NoError(t, err, "can't create raft node")
-	n.Listener = l
 	n.Server = s
 
 	err = n.Campaign(n.Ctx)
@@ -153,7 +158,7 @@ func newInitNode(t *testing.T, id uint64, opts ...NewNodeOptions) *Node {
 	return n
 }
 
-func newJoinNode(t *testing.T, id uint64, join string, opts ...NewNodeOptions) *Node {
+func newJoinNode(t *testing.T, join string, opts ...NewNodeOptions) *Node {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "can't bind to raft service port")
 	s := grpc.NewServer()
@@ -165,7 +170,6 @@ func newJoinNode(t *testing.T, id uint64, join string, opts ...NewNodeOptions) *
 	require.NoError(t, err, "can't create temporary state directory")
 
 	newNodeOpts := NewNodeOptions{
-		ID:           id,
 		Addr:         l.Addr().String(),
 		Config:       cfg,
 		StateDir:     stateDir,
@@ -184,7 +188,6 @@ func newJoinNode(t *testing.T, id uint64, join string, opts ...NewNodeOptions) *
 
 	n, err := NewNode(context.Background(), newNodeOpts, nil)
 	require.NoError(t, err, "can't create raft node")
-	n.Listener = l
 	n.Server = s
 
 	n.Start()
@@ -193,7 +196,52 @@ func newJoinNode(t *testing.T, id uint64, join string, opts ...NewNodeOptions) *
 	assert.NoError(t, err, "can't initiate connection with existing raft")
 
 	resp, err := c.Join(n.Ctx, &api.JoinRequest{
-		Node: &api.RaftNode{ID: id, Addr: l.Addr().String()},
+		Node: &api.RaftNode{ID: n.Config.ID, Addr: l.Addr().String()},
+	})
+	require.NoError(t, err, "can't join existing Raft")
+
+	err = n.RegisterNodes(resp.Members)
+	require.NoError(t, err, "can't add nodes to the local cluster list")
+
+	Register(s, n)
+
+	done := make(chan error)
+	go func() {
+		done <- s.Serve(l)
+	}()
+	go func() {
+		// After stopping, we should receive an error from Serve
+		assert.Error(t, <-done)
+	}()
+	return n
+}
+
+func restartNode(t *testing.T, n *Node, join string) *Node {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err, "can't bind to raft service port")
+	s := grpc.NewServer()
+
+	cfg := DefaultNodeConfig()
+	cfg.Logger = raftLogger
+
+	newNodeOpts := NewNodeOptions{
+		Addr:         l.Addr().String(),
+		Config:       cfg,
+		StateDir:     n.stateDir,
+		TickInterval: testTick,
+	}
+
+	n, err = NewNode(context.Background(), newNodeOpts, nil)
+	require.NoError(t, err, "can't create raft node")
+	n.Server = s
+
+	n.Start()
+
+	c, err := GetRaftClient(join, 500*time.Millisecond)
+	assert.NoError(t, err, "can't initiate connection with existing raft")
+
+	resp, err := c.Join(n.Ctx, &api.JoinRequest{
+		Node: &api.RaftNode{ID: n.Config.ID, Addr: l.Addr().String()},
 	})
 	require.NoError(t, err, "can't join existing Raft")
 
@@ -215,7 +263,7 @@ func newJoinNode(t *testing.T, id uint64, join string, opts ...NewNodeOptions) *
 
 func newRaftCluster(t *testing.T, opts ...NewNodeOptions) map[uint64]*Node {
 	nodes := make(map[uint64]*Node)
-	nodes[1] = newInitNode(t, 1, opts...)
+	nodes[1] = newInitNode(t, opts...)
 	addRaftNode(t, nodes, opts...)
 	addRaftNode(t, nodes, opts...)
 	return nodes
@@ -223,7 +271,7 @@ func newRaftCluster(t *testing.T, opts ...NewNodeOptions) map[uint64]*Node {
 
 func addRaftNode(t *testing.T, nodes map[uint64]*Node, opts ...NewNodeOptions) {
 	n := uint64(len(nodes) + 1)
-	nodes[n] = newJoinNode(t, uint64(n), nodes[1].Listener.Addr().String(), opts...)
+	nodes[n] = newJoinNode(t, nodes[1].Address, opts...)
 	waitForCluster(t, nodes)
 }
 
@@ -264,9 +312,9 @@ func TestRaftLeader(t *testing.T) {
 	assert.True(t, nodes[1].IsLeader(), "error: node 1 is not the Leader")
 
 	// nodes should all have the same leader
-	assert.Equal(t, nodes[1].Leader(), nodes[1].ID)
-	assert.Equal(t, nodes[2].Leader(), nodes[1].ID)
-	assert.Equal(t, nodes[3].Leader(), nodes[1].ID)
+	assert.Equal(t, nodes[1].Leader(), nodes[1].Config.ID)
+	assert.Equal(t, nodes[2].Leader(), nodes[1].Config.ID)
+	assert.Equal(t, nodes[3].Leader(), nodes[1].Config.ID)
 }
 
 func proposeValue(t *testing.T, raftNode *Node, nodeID ...string) (*api.Node, error) {
@@ -344,23 +392,42 @@ func TestRaftLeaderDown(t *testing.T) {
 	waitForCluster(t, newCluster)
 
 	// Leader should not be 1
-	assert.NotEqual(t, nodes[2].Leader(), nodes[1].ID)
+	assert.NotEqual(t, nodes[2].Leader(), nodes[1].Config.ID)
 
 	// Ensure that node 2 and node 3 have the same leader
 	assert.Equal(t, nodes[3].Leader(), nodes[2].Leader())
 
+	// Find the leader node and a follower node
+	var (
+		leaderNode   *Node
+		followerNode *Node
+	)
+	for i, n := range newCluster {
+		if n.Config.ID == n.Leader() {
+			leaderNode = n
+			if i == 2 {
+				followerNode = newCluster[3]
+			} else {
+				followerNode = newCluster[2]
+			}
+		}
+	}
+
+	require.NotNil(t, leaderNode)
+	require.NotNil(t, followerNode)
+
 	// Propose a value
-	value, err := proposeValue(t, nodes[2])
+	value, err := proposeValue(t, leaderNode)
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
-	checkValue(t, nodes[2], value)
-	assert.Equal(t, len(nodes[2].Cluster.Peers()), 3)
+	checkValue(t, leaderNode, value)
+	assert.Equal(t, len(leaderNode.Cluster.Peers()), 3)
 
 	time.Sleep(500 * time.Millisecond)
 
-	checkValue(t, nodes[3], value)
-	assert.Equal(t, len(nodes[3].Cluster.Peers()), 3)
+	checkValue(t, followerNode, value)
+	assert.Equal(t, len(followerNode.Cluster.Peers()), 3)
 }
 
 func TestRaftFollowerDown(t *testing.T) {
@@ -374,7 +441,7 @@ func TestRaftFollowerDown(t *testing.T) {
 
 	// Leader should still be 1
 	assert.True(t, nodes[1].IsLeader(), "node 1 is not a leader anymore")
-	assert.Equal(t, nodes[2].Leader(), nodes[1].ID)
+	assert.Equal(t, nodes[2].Leader(), nodes[1].Config.ID)
 
 	// Propose a value
 	value, err := proposeValue(t, nodes[1])
@@ -465,7 +532,7 @@ func TestRaftFollowerLeave(t *testing.T) {
 	defer teardownCluster(t, nodes)
 
 	// Node 5 leave the cluster
-	resp, err := nodes[5].Leave(nodes[5].Ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[5].ID}})
+	resp, err := nodes[5].Leave(nodes[5].Ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[5].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -496,10 +563,10 @@ func TestRaftLeaderLeave(t *testing.T) {
 	defer teardownCluster(t, nodes)
 
 	// node 1 is the leader
-	assert.Equal(t, nodes[1].Leader(), nodes[1].ID)
+	assert.Equal(t, nodes[1].Leader(), nodes[1].Config.ID)
 
 	// Try to leave the raft
-	resp, err := nodes[1].Leave(nodes[1].Ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[1].ID}})
+	resp, err := nodes[1].Leave(nodes[1].Ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[1].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -511,27 +578,42 @@ func TestRaftLeaderLeave(t *testing.T) {
 	waitForCluster(t, newCluster)
 
 	// Leader should not be 1
-	assert.NotEqual(t, nodes[2].Leader(), nodes[1].ID)
+	assert.NotEqual(t, nodes[2].Leader(), nodes[1].Config.ID)
 	assert.Equal(t, nodes[2].Leader(), nodes[3].Leader())
 
 	leader := nodes[2].Leader()
-	follower := uint64(2)
-	if leader == 2 {
-		follower = 3
+
+	// Find the leader node and a follower node
+	var (
+		leaderNode   *Node
+		followerNode *Node
+	)
+	for i, n := range nodes {
+		if n.Config.ID == leader {
+			leaderNode = n
+			if i == 2 {
+				followerNode = nodes[3]
+			} else {
+				followerNode = nodes[2]
+			}
+		}
 	}
 
+	require.NotNil(t, leaderNode)
+	require.NotNil(t, followerNode)
+
 	// Propose a value
-	value, err := proposeValue(t, nodes[leader])
+	value, err := proposeValue(t, leaderNode)
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
-	checkValue(t, nodes[leader], value)
-	assert.Equal(t, len(nodes[leader].Cluster.Peers()), 2)
+	checkValue(t, leaderNode, value)
+	assert.Equal(t, len(leaderNode.Cluster.Peers()), 2)
 
 	time.Sleep(500 * time.Millisecond)
 
-	checkValue(t, nodes[follower], value)
-	assert.Equal(t, len(nodes[follower].Cluster.Peers()), 2)
+	checkValue(t, followerNode, value)
+	assert.Equal(t, len(followerNode.Cluster.Peers()), 2)
 }
 
 func TestRaftNewNodeGetsData(t *testing.T) {
@@ -621,4 +703,60 @@ func TestRaftSnapshot(t *testing.T) {
 		})
 		assert.NoError(t, err)
 	}
+}
+
+func TestRaftRejoin(t *testing.T) {
+	t.Parallel()
+
+	nodes := newRaftCluster(t)
+	defer teardownCluster(t, nodes)
+
+	// Propose a value
+	values := make([]*api.Node, 2)
+	var err error
+	values[0], err = proposeValue(t, nodes[1], "id1")
+	assert.NoError(t, err, "failed to propose value")
+
+	// The value should be replicated on node 3
+	time.Sleep(500 * time.Millisecond)
+	checkValue(t, nodes[3], values[0])
+	assert.Equal(t, len(nodes[3].Cluster.Peers()), 3)
+
+	// Stop node 3
+	nodes[3].Server.Stop()
+	nodes[3].Shutdown()
+
+	// Propose another value
+	values[1], err = proposeValue(t, nodes[1], "id2")
+	assert.NoError(t, err, "failed to propose value")
+
+	time.Sleep(500 * time.Millisecond)
+
+	// Nodes 1 and 2 should have the new value
+	checkValues := func(checkNodes ...*Node) {
+		for _, node := range checkNodes {
+			err := node.memoryStore.View(func(tx ReadTx) error {
+				allNodes, err := tx.Nodes().Find(All)
+				if err != nil {
+					return err
+				}
+				assert.Len(t, allNodes, 2)
+
+				for i, nodeID := range []string{"id1", "id2"} {
+					n := tx.Nodes().Get(nodeID)
+					assert.Equal(t, n, values[i])
+				}
+				return nil
+			})
+			assert.NoError(t, err)
+		}
+	}
+	checkValues(nodes[1], nodes[2])
+
+	nodes[3] = restartNode(t, nodes[3], nodes[1].Address)
+	waitForCluster(t, nodes)
+
+	// Node 3 should have all values, including the one proposed while
+	// it was unavailable.
+	checkValues(nodes[1], nodes[2], nodes[3])
 }

@@ -98,6 +98,8 @@ func TestManagerNodeCount(t *testing.T) {
 	go m.Run()
 	defer m.Stop()
 
+	assert.NoError(t, m.raftNode.Campaign(m.raftNode.Ctx))
+
 	conn, err := grpc.Dial(l.Addr().String(), grpc.WithInsecure(), grpc.WithTimeout(10*time.Second),
 		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
 			return net.DialTimeout(l.Addr().Network(), addr, timeout)
