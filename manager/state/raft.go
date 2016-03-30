@@ -535,22 +535,14 @@ func (n *Node) RemoveNode(node *Peer) error {
 
 // RegisterNode registers a new node on the cluster
 func (n *Node) RegisterNode(node *api.RaftNode) error {
-	var (
-		client *Raft
-		err    error
-	)
-
-	for i := 1; i <= MaxRetries; i++ {
-		client, err = GetRaftClient(node.Addr, 2*time.Second)
-		if err != nil {
-			if i == MaxRetries {
-				return err
-			}
-		}
+	// We don't want to impose a timeout on the grpc connection. It
+	// should keep retrying as long as necessary, in case the peer
+	// is temporarily unavailable.
+	client, err := GetRaftClient(node.Addr, 0)
+	if err == nil {
+		n.Cluster.AddPeer(&Peer{RaftNode: node, Client: client})
 	}
-
-	n.Cluster.AddPeer(&Peer{RaftNode: node, Client: client})
-	return nil
+	return err
 }
 
 // RegisterNodes registers a set of nodes in the cluster

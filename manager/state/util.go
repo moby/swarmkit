@@ -8,12 +8,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-const (
-	// MaxRetries is the maximum number of retries allowed to
-	// initiate a grpc connection to a remote raft member
-	MaxRetries = 3
-)
-
 // Raft represents a connection to a raft member
 type Raft struct {
 	api.RaftClient
@@ -36,12 +30,11 @@ func GetRaftClient(addr string, timeout time.Duration) (*Raft, error) {
 
 // dial returns a grpc client connection
 func dial(addr string, protocol string, timeout time.Duration) (*grpc.ClientConn, error) {
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(timeout))
-	if err != nil {
-		return nil, err
+	grpcOptions := []grpc.DialOption{grpc.WithInsecure()}
+	if timeout != 0 {
+		grpcOptions = append(grpcOptions, grpc.WithTimeout(timeout))
 	}
-
-	return conn, nil
+	return grpc.Dial(addr, grpcOptions...)
 }
 
 // Register registers the node raft server
