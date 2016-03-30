@@ -4,13 +4,12 @@ import (
 	"errors"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 var (
@@ -35,7 +34,7 @@ type session struct {
 	closed     chan struct{}
 }
 
-func newSession(ctx context.Context, agent *Agent) *session {
+func newSession(ctx context.Context, agent *Agent, delay time.Duration) *session {
 	s := &session{
 		agent:      agent,
 		errs:       make(chan error),
@@ -45,11 +44,13 @@ func newSession(ctx context.Context, agent *Agent) *session {
 		closed:     make(chan struct{}),
 	}
 
-	go s.run(ctx)
+	go s.run(ctx, delay)
 	return s
 }
 
-func (s *session) run(ctx context.Context) {
+func (s *session) run(ctx context.Context, delay time.Duration) {
+	time.Sleep(delay) // delay before registering.
+
 	sessionID, err := s.register(ctx)
 	if err != nil {
 		select {
@@ -57,6 +58,7 @@ func (s *session) run(ctx context.Context) {
 		case <-s.closed:
 		case <-ctx.Done():
 		}
+		return
 	}
 
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("session.id", sessionID))
