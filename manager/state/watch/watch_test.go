@@ -1,6 +1,7 @@
 package watch
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/docker/go-events"
@@ -83,48 +84,113 @@ func TestWatch(t *testing.T) {
 	}
 }
 
+func BenchmarkPublish10(b *testing.B) {
+	benchmarkWatch(b, 10, 1, false)
+}
+
+func BenchmarkPublish100(b *testing.B) {
+	benchmarkWatch(b, 100, 1, false)
+}
+
+func BenchmarkPublish1000(b *testing.B) {
+	benchmarkWatch(b, 1000, 1, false)
+}
+
+func BenchmarkPublish10000(b *testing.B) {
+	benchmarkWatch(b, 10000, 1, false)
+}
+
+func BenchmarkPublish10Listeners4Publishers(b *testing.B) {
+	benchmarkWatch(b, 10, 4, false)
+}
+
+func BenchmarkPublish100Listeners8Publishers(b *testing.B) {
+	benchmarkWatch(b, 100, 8, false)
+}
+
+func BenchmarkPublish1000Listeners4Publishers(b *testing.B) {
+	benchmarkWatch(b, 1000, 4, false)
+}
+
+func BenchmarkPublish1000Listeners64Publishers(b *testing.B) {
+	benchmarkWatch(b, 1000, 64, false)
+}
+
 func BenchmarkWatch10(b *testing.B) {
-	benchmarkWatch(b, 10)
+	benchmarkWatch(b, 10, 1, true)
 }
 
 func BenchmarkWatch100(b *testing.B) {
-	benchmarkWatch(b, 100)
+	benchmarkWatch(b, 100, 1, true)
 }
 
 func BenchmarkWatch1000(b *testing.B) {
-	benchmarkWatch(b, 1000)
+	benchmarkWatch(b, 1000, 1, true)
 }
 
 func BenchmarkWatch10000(b *testing.B) {
-	benchmarkWatch(b, 10000)
+	benchmarkWatch(b, 10000, 1, true)
 }
 
-func benchmarkWatch(b *testing.B, nlisteners int) {
+func BenchmarkWatch10Listeners4Publishers(b *testing.B) {
+	benchmarkWatch(b, 10, 4, true)
+}
+
+func BenchmarkWatch100Listeners8Publishers(b *testing.B) {
+	benchmarkWatch(b, 100, 8, true)
+}
+
+func BenchmarkWatch1000Listeners4Publishers(b *testing.B) {
+	benchmarkWatch(b, 1000, 4, true)
+}
+
+func BenchmarkWatch1000Listeners64Publishers(b *testing.B) {
+	benchmarkWatch(b, 1000, 64, true)
+}
+
+func benchmarkWatch(b *testing.B, nlisteners, npublishers int, waitForWatchers bool) {
 	q := NewQueue(0)
+	var (
+		watchersAttached  sync.WaitGroup
+		watchersRunning   sync.WaitGroup
+		publishersRunning sync.WaitGroup
+	)
+
 	for i := 0; i < nlisteners; i++ {
+		watchersAttached.Add(1)
+		watchersRunning.Add(1)
 		go func(n int) {
 			w, cancel := q.Watch()
 			defer cancel()
-			var i int
+			watchersAttached.Done()
 
-		loop:
-			for {
-				select {
-				case <-w:
-					i++
-
-					if i >= n {
-						break loop
-					}
-				}
+			for i := 0; i != n; i++ {
+				<-w
 			}
-			if i != n {
-				b.Fatalf("expected %v messages, got %v", n, i)
+			if waitForWatchers {
+				watchersRunning.Done()
 			}
-		}(b.N)
+		}(b.N / npublishers * npublishers)
 	}
 
-	for i := 0; i < b.N; i++ {
-		q.Publish("myevent")
+	// Wait for watchers to be in place before we start publishing events.
+	watchersAttached.Wait()
+
+	b.ResetTimer()
+
+	for i := 0; i < npublishers; i++ {
+		publishersRunning.Add(1)
+		go func(n int) {
+			for i := 0; i < n; i++ {
+				q.Publish("myevent")
+			}
+			publishersRunning.Done()
+		}(b.N / npublishers)
+	}
+
+	publishersRunning.Wait()
+
+	if waitForWatchers {
+		watchersRunning.Wait()
 	}
 }
