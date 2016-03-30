@@ -5,7 +5,7 @@ PREFIX?=$(shell pwd)
 VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
 
 # Project packages.
-PACKAGES=$(shell go list ./... | grep -v /vendor/)
+PACKAGES=$(shell go list ./... | grep -v /vendor/ | grep -v /test/)
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
@@ -16,7 +16,7 @@ all: check build binaries test ## run fmt, vet, lint, errcheck build the binarie
 
 check: fmt vet lint errcheck ## run fmt, vet, lint and errcheck
 
-ci: check build binaries checkprotos coverage ## to be used by the CI
+ci: check build binaries checkprotos test-integration coverage ## to be used by the CI
 
 AUTHORS: .mailmap .git/HEAD
 	git log --format='%aN <%aE>' | sort -fu > $@
@@ -87,9 +87,13 @@ build: ## build the go packages
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -v ${GO_LDFLAGS} ${GO_GCFLAGS} ${PACKAGES}
 
-test: ## run test
+test: ## run tests
 	@echo "🐳 $@"
 	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" ${PACKAGES}
+
+test-integration: binaries ## run integration tests
+	@echo "🐳 $@"
+	@PATH=${PREFIX}/bin:${PATH} go test "${DOCKER_BUILDTAGS}" ./test/...
 
 binaries: ${PREFIX}/bin/swarmctl ${PREFIX}/bin/swarmd ${PREFIX}/bin/swarm-bench ${PREFIX}/bin/protoc-gen-gogoswarm ## build the binaries
 	@echo "🐳 $@"

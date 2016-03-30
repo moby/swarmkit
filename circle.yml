@@ -1,4 +1,6 @@
 machine:
+    services:
+        - docker
     environment:
         OS: "linux"
         ARCH: "amd64"
