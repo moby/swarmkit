@@ -130,11 +130,6 @@ message UpdateTaskStatusRequest {
 	string node_id = 1 [(gogoproto.customname) = "NodeID"];
 	string session_id = 2 [(gogoproto.customname) = "SessionID"];
 
-	message TaskStatusUpdate {
-		string task_id = 1 [(gogoproto.customname) = "TaskID"];
-		TaskStatus status = 2;
-	}
-
 	repeated TaskStatusUpdate updates = 3;
 }
 

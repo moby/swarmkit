@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package api;
 
+import "types.proto";
+
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 // Manager defines the RPC communication between managers.
@@ -9,12 +11,41 @@ service Manager {
 	// NodeCount returns number of nodes connected to particular manager.
 	// Supposed to be called only by cluster leader.
 	rpc NodeCount(NodeCountRequest) returns (NodeCountResponse) {}
+
+	// Leader methods
+
+	// NodeReady notifies that node is ready to accept request. Only cluster
+	// leader can process this request.
+	rpc NodeReady(NodeReadyRequest) returns (NodeReadyResponse) {}
+	// UpdateTasks used to update tasks statuses. Only cluster leader can
+	// process this request.
+	rpc UpdateTasks(UpdateTasksRequest) returns (UpdateTasksResponse) {}
 }
 
 message NodeCountRequest {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+
+	NodeDescription description = 2;
 }
 
 message NodeCountResponse {
 	// Count is number of nodes connected to specific manager.
 	uint32 count = 1 [(gogoproto.customtype) = "int", (gogoproto.nullable) = false];
+}
+
+message NodeReadyRequest {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+
+	NodeDescription description = 2;
+}
+
+message NodeReadyResponse {
+	Node node = 1;
+}
+
+message UpdateTasksRequest {
+	repeated TaskStatusUpdate updates = 1;
+}
+
+message UpdateTasksResponse {
 }

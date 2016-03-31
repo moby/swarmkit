@@ -294,7 +294,7 @@ func TestTaskUpdate(t *testing.T) {
 	testTask2.Status = &api.TaskStatus{State: api.TaskStateAssigned}
 	updReq := &api.UpdateTaskStatusRequest{
 		NodeID: testNode.ID,
-		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
+		Updates: []*api.TaskStatusUpdate{
 			{
 				TaskID: testTask1.ID,
 				Status: testTask1.Status,
