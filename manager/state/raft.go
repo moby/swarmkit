@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -115,6 +116,8 @@ type Node struct {
 	errCh  chan error
 
 	leadershipCh chan LeadershipState
+
+	sends sync.WaitGroup
 }
 
 // NewNodeOptions provides arguments for NewNode
@@ -415,6 +418,7 @@ func (n *Node) Start() (errCh <-chan error) {
 				n.Advance()
 
 			case <-n.stopCh:
+				n.sends.Wait()
 				n.Stop()
 				n.wal.Close()
 				n.Node = nil
@@ -664,6 +668,8 @@ func (n *Node) doSnapshot() error {
 func (n *Node) send(messages []raftpb.Message) error {
 	peers := n.Cluster.Peers()
 
+	ctx, _ := context.WithTimeout(n.Ctx, 2*time.Second)
+
 	for _, m := range messages {
 		// Process locally
 		if m.To == n.Config.ID {
@@ -675,19 +681,31 @@ func (n *Node) send(messages []raftpb.Message) error {
 
 		// If node is an active raft member send the message
 		if peer, ok := peers[m.To]; ok {
-			_, err := peer.Client.ProcessRaftMessage(n.Ctx, &api.ProcessRaftMessageRequest{Msg: &m})
-			if err != nil {
-				if m.Type == raftpb.MsgSnap {
-					n.ReportSnapshot(m.To, raft.SnapshotFailure)
-				}
-				n.ReportUnreachable(peer.ID)
-			} else if m.Type == raftpb.MsgSnap {
-				n.ReportSnapshot(m.To, raft.SnapshotFinish)
-			}
+			n.sends.Add(1)
+			go n.sendToPeer(ctx, peer, m)
 		}
 	}
 
 	return nil
+}
+
+func (n *Node) sendToPeer(ctx context.Context, peer *Peer, m raftpb.Message) {
+	_, err := peer.Client.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Msg: &m})
+	if err != nil {
+		if m.Type == raftpb.MsgSnap {
+			n.ReportSnapshot(m.To, raft.SnapshotFailure)
+		}
+		if peer == nil {
+			panic("peer is nil")
+		}
+		if n.Node == nil {
+			panic("node is nil")
+		}
+		n.ReportUnreachable(peer.ID)
+	} else if m.Type == raftpb.MsgSnap {
+		n.ReportSnapshot(m.To, raft.SnapshotFinish)
+	}
+	n.sends.Done()
 }
 
 type applyResult struct {

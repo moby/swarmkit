@@ -133,7 +133,8 @@ func (m *Manager) joinRaft() error {
 		return fmt.Errorf("can't join raft cluster: %v", err)
 	}
 
-	resp, err := c.Join(m.raftNode.Ctx, &api.JoinRequest{
+	ctx, _ := context.WithTimeout(m.raftNode.Ctx, 10*time.Second)
+	resp, err := c.Join(ctx, &api.JoinRequest{
 		Node: &api.RaftNode{ID: m.raftNode.Config.ID, Addr: m.config.ListenAddr},
 	})
 	if err != nil {
