@@ -13,6 +13,7 @@ import (
 	"github.com/docker/swarm-v2/manager/clusterapi"
 	"github.com/docker/swarm-v2/manager/dispatcher"
 	"github.com/docker/swarm-v2/manager/drainer"
+	"github.com/docker/swarm-v2/manager/leaderconn"
 	"github.com/docker/swarm-v2/manager/orchestrator"
 	"github.com/docker/swarm-v2/manager/scheduler"
 	"github.com/docker/swarm-v2/manager/state"
@@ -98,7 +99,7 @@ func New(config *Config) (*Manager, error) {
 	m := &Manager{
 		config:       config,
 		apiserver:    clusterapi.NewServer(store),
-		dispatcher:   dispatcher.New(store, dispatcherConfig),
+		dispatcher:   dispatcher.New(store, leaderconn.NewRaftLeaderConnGetter(raftNode), dispatcherConfig),
 		server:       grpc.NewServer(),
 		raftNode:     raftNode,
 		leadershipCh: leadershipCh,

@@ -17,6 +17,9 @@ service Manager {
 	// NodeReady notifies that node is ready to accept request. Only cluster
 	// leader can process this request.
 	rpc NodeReady(NodeReadyRequest) returns (NodeReadyResponse) {}
+	// UpdateNodeStatus updates only status of specific node. Only cluster leader
+	// can process this request.
+	rpc UpdateNodeStatus(UpdateNodeStatusRequest) returns (UpdateNodeStatusResponse) {}
 	// UpdateTasks used to update tasks statuses. Only cluster leader can
 	// process this request.
 	rpc UpdateTasks(UpdateTasksRequest) returns (UpdateTasksResponse) {}
@@ -41,6 +44,14 @@ message NodeReadyRequest {
 
 message NodeReadyResponse {
 	Node node = 1;
+}
+
+message UpdateNodeStatusRequest {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+	NodeStatus status = 4 [(gogoproto.nullable) = false];
+}
+
+message UpdateNodeStatusResponse {
 }
 
 message UpdateTasksRequest {

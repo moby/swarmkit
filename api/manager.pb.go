@@ -58,6 +58,20 @@ type NodeReadyResponse struct {
 func (m *NodeReadyResponse) Reset()      { *m = NodeReadyResponse{} }
 func (*NodeReadyResponse) ProtoMessage() {}
 
+type UpdateNodeStatusRequest struct {
+	NodeID string     `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	Status NodeStatus `protobuf:"bytes,4,opt,name=status" json:"status"`
+}
+
+func (m *UpdateNodeStatusRequest) Reset()      { *m = UpdateNodeStatusRequest{} }
+func (*UpdateNodeStatusRequest) ProtoMessage() {}
+
+type UpdateNodeStatusResponse struct {
+}
+
+func (m *UpdateNodeStatusResponse) Reset()      { *m = UpdateNodeStatusResponse{} }
+func (*UpdateNodeStatusResponse) ProtoMessage() {}
+
 type UpdateTasksRequest struct {
 	Updates []*TaskStatusUpdate `protobuf:"bytes,1,rep,name=updates" json:"updates,omitempty"`
 }
@@ -76,6 +90,8 @@ func init() {
 	proto.RegisterType((*NodeCountResponse)(nil), "api.NodeCountResponse")
 	proto.RegisterType((*NodeReadyRequest)(nil), "api.NodeReadyRequest")
 	proto.RegisterType((*NodeReadyResponse)(nil), "api.NodeReadyResponse")
+	proto.RegisterType((*UpdateNodeStatusRequest)(nil), "api.UpdateNodeStatusRequest")
+	proto.RegisterType((*UpdateNodeStatusResponse)(nil), "api.UpdateNodeStatusResponse")
 	proto.RegisterType((*UpdateTasksRequest)(nil), "api.UpdateTasksRequest")
 	proto.RegisterType((*UpdateTasksResponse)(nil), "api.UpdateTasksResponse")
 }
@@ -126,6 +142,29 @@ func (m *NodeReadyResponse) Copy() *NodeReadyResponse {
 	o := &NodeReadyResponse{
 		Node: m.Node.Copy(),
 	}
+
+	return o
+}
+
+func (m *UpdateNodeStatusRequest) Copy() *UpdateNodeStatusRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &UpdateNodeStatusRequest{
+		NodeID: m.NodeID,
+		Status: *m.Status.Copy(),
+	}
+
+	return o
+}
+
+func (m *UpdateNodeStatusResponse) Copy() *UpdateNodeStatusResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &UpdateNodeStatusResponse{}
 
 	return o
 }
@@ -205,6 +244,26 @@ func (this *NodeReadyResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
+func (this *UpdateNodeStatusRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.UpdateNodeStatusRequest{")
+	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
+	s = append(s, "Status: "+strings.Replace(this.Status.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *UpdateNodeStatusResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&api.UpdateNodeStatusResponse{")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func (this *UpdateTasksRequest) GoString() string {
 	if this == nil {
 		return "nil"
@@ -265,6 +324,9 @@ type ManagerClient interface {
 	// NodeReady notifies that node is ready to accept request. Only cluster
 	// leader can process this request.
 	NodeReady(ctx context.Context, in *NodeReadyRequest, opts ...grpc.CallOption) (*NodeReadyResponse, error)
+	// UpdateNodeStatus updates only status of specific node. Only cluster leader
+	// can process this request.
+	UpdateNodeStatus(ctx context.Context, in *UpdateNodeStatusRequest, opts ...grpc.CallOption) (*UpdateNodeStatusResponse, error)
 	// UpdateTasks used to update tasks statuses. Only cluster leader can
 	// process this request.
 	UpdateTasks(ctx context.Context, in *UpdateTasksRequest, opts ...grpc.CallOption) (*UpdateTasksResponse, error)
@@ -296,6 +358,15 @@ func (c *managerClient) NodeReady(ctx context.Context, in *NodeReadyRequest, opt
 	return out, nil
 }
 
+func (c *managerClient) UpdateNodeStatus(ctx context.Context, in *UpdateNodeStatusRequest, opts ...grpc.CallOption) (*UpdateNodeStatusResponse, error) {
+	out := new(UpdateNodeStatusResponse)
+	err := grpc.Invoke(ctx, "/api.Manager/UpdateNodeStatus", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *managerClient) UpdateTasks(ctx context.Context, in *UpdateTasksRequest, opts ...grpc.CallOption) (*UpdateTasksResponse, error) {
 	out := new(UpdateTasksResponse)
 	err := grpc.Invoke(ctx, "/api.Manager/UpdateTasks", in, out, c.cc, opts...)
@@ -314,6 +385,9 @@ type ManagerServer interface {
 	// NodeReady notifies that node is ready to accept request. Only cluster
 	// leader can process this request.
 	NodeReady(context.Context, *NodeReadyRequest) (*NodeReadyResponse, error)
+	// UpdateNodeStatus updates only status of specific node. Only cluster leader
+	// can process this request.
+	UpdateNodeStatus(context.Context, *UpdateNodeStatusRequest) (*UpdateNodeStatusResponse, error)
 	// UpdateTasks used to update tasks statuses. Only cluster leader can
 	// process this request.
 	UpdateTasks(context.Context, *UpdateTasksRequest) (*UpdateTasksResponse, error)
@@ -347,6 +421,18 @@ func _Manager_NodeReady_Handler(srv interface{}, ctx context.Context, dec func(i
 	return out, nil
 }
 
+func _Manager_UpdateNodeStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(UpdateNodeStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(ManagerServer).UpdateNodeStatus(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func _Manager_UpdateTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(UpdateTasksRequest)
 	if err := dec(in); err != nil {
@@ -370,6 +456,10 @@ var _Manager_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "NodeReady",
 			Handler:    _Manager_NodeReady_Handler,
+		},
+		{
+			MethodName: "UpdateNodeStatus",
+			Handler:    _Manager_UpdateNodeStatus_Handler,
 		},
 		{
 			MethodName: "UpdateTasks",
@@ -498,6 +588,56 @@ func (m *NodeReadyResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *UpdateNodeStatusRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *UpdateNodeStatusRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.NodeID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintManager(data, i, uint64(len(m.NodeID)))
+		i += copy(data[i:], m.NodeID)
+	}
+	data[i] = 0x22
+	i++
+	i = encodeVarintManager(data, i, uint64(m.Status.Size()))
+	n4, err := m.Status.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n4
+	return i, nil
+}
+
+func (m *UpdateNodeStatusResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *UpdateNodeStatusResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
 func (m *UpdateTasksRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -620,6 +760,24 @@ func (m *NodeReadyResponse) Size() (n int) {
 	return n
 }
 
+func (m *UpdateNodeStatusRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.NodeID)
+	if l > 0 {
+		n += 1 + l + sovManager(uint64(l))
+	}
+	l = m.Status.Size()
+	n += 1 + l + sovManager(uint64(l))
+	return n
+}
+
+func (m *UpdateNodeStatusResponse) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
 func (m *UpdateTasksRequest) Size() (n int) {
 	var l int
 	_ = l
@@ -689,6 +847,26 @@ func (this *NodeReadyResponse) String() string {
 	}
 	s := strings.Join([]string{`&NodeReadyResponse{`,
 		`Node:` + strings.Replace(fmt.Sprintf("%v", this.Node), "Node", "Node", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateNodeStatusRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateNodeStatusRequest{`,
+		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
+		`Status:` + strings.Replace(strings.Replace(this.Status.String(), "NodeStatus", "NodeStatus", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateNodeStatusResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateNodeStatusResponse{`,
 		`}`,
 	}, "")
 	return s
@@ -1075,6 +1253,165 @@ func (m *NodeReadyResponse) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipManager(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthManager
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UpdateNodeStatusRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowManager
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UpdateNodeStatusRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UpdateNodeStatusRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowManager
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthManager
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NodeID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowManager
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthManager
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Status.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipManager(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthManager
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UpdateNodeStatusResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowManager
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UpdateNodeStatusResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UpdateNodeStatusResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
 		default:
 			iNdEx = preIndex
 			skippy, err := skipManager(data[iNdEx:])

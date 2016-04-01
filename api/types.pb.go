@@ -92,6 +92,8 @@
 		NodeCountResponse
 		NodeReadyRequest
 		NodeReadyResponse
+		UpdateNodeStatusRequest
+		UpdateNodeStatusResponse
 		UpdateTasksRequest
 		UpdateTasksResponse
 */

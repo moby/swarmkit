@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/manager/leaderconn"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,6 +30,12 @@ func (gd *grpcDispatcher) Close() {
 	gd.grpcServer.Stop()
 }
 
+type localLeaderAlways struct{}
+
+func (localLeaderAlways) LeaderConn() (*grpc.ClientConn, error) {
+	return nil, leaderconn.ErrLocalLeader
+}
+
 func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -36,7 +43,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	}
 	s := grpc.NewServer()
 	store := state.NewMemoryStore(nil)
-	d := New(store, c)
+	d := New(store, localLeaderAlways{}, c)
 	api.RegisterDispatcherServer(s, d)
 	go func() {
 		// Serve will always return an error (even when properly stopped).
