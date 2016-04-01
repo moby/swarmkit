@@ -469,19 +469,27 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 		return nil, err
 	}
 
-	cc := raftpb.ConfChange{
-		ID:      req.Node.ID,
-		Type:    raftpb.ConfChangeAddNode,
-		NodeID:  req.Node.ID,
-		Context: meta,
+	if n.cluster.IsIDRemoved(req.Node.ID) {
+		return nil, ErrIDRemoved
 	}
 
-	// Wait for a raft round to process the configuration change
-	// TODO(abronan): There should probably be a timeout here or this could
-	// block forever if there is no majority left
-	err = n.configure(context.Background(), cc)
-	if err != nil {
-		return nil, err
+	// We submit a configuration change only if the node was not registered yet
+	// TODO(abronan, aaronl): determine if we need to snapshot the memberlist
+	if n.cluster.GetMember(req.Node.ID) == nil {
+		cc := raftpb.ConfChange{
+			ID:      req.Node.ID,
+			Type:    raftpb.ConfChangeAddNode,
+			NodeID:  req.Node.ID,
+			Context: meta,
+		}
+
+		// Wait for a raft round to process the configuration change
+		// TODO(abronan): There should probably be a timeout here or this could
+		// block forever if there is no majority left
+		err = n.configure(context.Background(), cc)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var nodes []*api.RaftNode
