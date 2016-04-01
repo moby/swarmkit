@@ -5,8 +5,37 @@ package pb;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "github.com/docker/swarm-v2/api/types.proto";
 
+// RaftNode represents a raft node to be added or removed from
+// an existing raft cluster.
+// FIXME(aaronl): This is copied from the api package because it's not
+// posssible to import manager.go.
+message RaftNode {
+	uint64 id = 1 [(gogoproto.customname) = "ID"];
+	string addr = 2;
+}
+
 // StoreSnapshot is used to store snapshots of the store.
 message StoreSnapshot {
+	// TODO(aaronl): The current method of assembling a StoreSnapshot
+	// structure and marshalling it is not optimal. It may be better to
+	// write out nodes, networks, tasks, etc. one at a time to an io.Writer
+	// using gogo-protobuf's io.DelimitedWriter. A new value of the version
+	// field could support this approach.
+
+	repeated api.Node nodes = 1;
+	repeated api.Job jobs = 2;
+	repeated api.Network networks = 3;
+	repeated api.Task tasks = 4;
+	repeated api.Volume volumes = 5;
+}
+
+// ClusterSnapshot stores cluster membership information in snapshots.
+message ClusterSnapshot {
+	repeated RaftNode members = 1;
+	repeated uint64 removed = 2;
+}
+
+message Snapshot {
 	enum Version {
 		// V0 is the initial version of the StoreSnapshot message.
 		V0 = 0;
@@ -14,15 +43,6 @@ message StoreSnapshot {
 
 	Version version = 1;
 
-	// TODO(aaronl): The current method of assembling a StoreSnapshot
-	// structure and marshalling it is not optimal. It may be better to
-	// write out nodes, networks, tasks, etc. one at a time to an io.Writer
-	// using gogo-protobuf's io.DelimitedWriter. A new value of the version
-	// field could support this approach.
-
-	repeated api.Node nodes = 2;
-	repeated api.Job jobs = 3;
-	repeated api.Network networks = 4;
-	repeated api.Task tasks = 5;
-	repeated api.Volume volumes = 6;
+	ClusterSnapshot membership = 2 [(gogoproto.nullable) = false];
+	StoreSnapshot store = 3 [(gogoproto.nullable) = false];
 }

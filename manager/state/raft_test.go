@@ -106,7 +106,7 @@ func waitForCluster(t *testing.T, nodes map[uint64]*testNode) {
 func waitForPeerNumber(t *testing.T, nodes map[uint64]*testNode, count int) {
 	assert.NoError(t, pollFunc(func() bool {
 		for _, n := range nodes {
-			if len(n.cluster.Members()) != count {
+			if len(n.cluster.listMembers()) != count {
 				return false
 			}
 		}
@@ -319,9 +319,9 @@ func TestRaftBootstrap(t *testing.T) {
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
-	assert.Equal(t, 3, len(nodes[1].cluster.Members()))
-	assert.Equal(t, 3, len(nodes[2].cluster.Members()))
-	assert.Equal(t, 3, len(nodes[3].cluster.Members()))
+	assert.Equal(t, 3, len(nodes[1].cluster.listMembers()))
+	assert.Equal(t, 3, len(nodes[2].cluster.listMembers()))
+	assert.Equal(t, 3, len(nodes[3].cluster.listMembers()))
 }
 
 func TestRaftLeader(t *testing.T) {
@@ -445,12 +445,12 @@ func TestRaftLeaderDown(t *testing.T) {
 
 	// The value should be replicated on all remaining nodes
 	checkValue(t, leaderNode, value)
-	assert.Equal(t, len(leaderNode.cluster.Members()), 3)
+	assert.Equal(t, len(leaderNode.cluster.listMembers()), 3)
 
 	time.Sleep(500 * time.Millisecond)
 
 	checkValue(t, followerNode, value)
-	assert.Equal(t, len(followerNode.cluster.Members()), 3)
+	assert.Equal(t, len(followerNode.cluster.listMembers()), 3)
 }
 
 func TestRaftFollowerDown(t *testing.T) {
@@ -472,12 +472,12 @@ func TestRaftFollowerDown(t *testing.T) {
 
 	// The value should be replicated on all remaining nodes
 	checkValue(t, nodes[1], value)
-	assert.Equal(t, len(nodes[1].cluster.Members()), 3)
+	assert.Equal(t, len(nodes[1].cluster.listMembers()), 3)
 
 	time.Sleep(500 * time.Millisecond)
 
 	checkValue(t, nodes[2], value)
-	assert.Equal(t, len(nodes[2].cluster.Members()), 3)
+	assert.Equal(t, len(nodes[2].cluster.listMembers()), 3)
 }
 
 func TestRaftLogReplication(t *testing.T) {
@@ -604,18 +604,18 @@ func TestRaftFollowerLeave(t *testing.T) {
 
 	// Value should be replicated on every node
 	checkValue(t, nodes[1], value)
-	assert.Equal(t, len(nodes[1].cluster.Members()), 4)
+	assert.Equal(t, len(nodes[1].cluster.listMembers()), 4)
 
 	time.Sleep(500 * time.Millisecond)
 
 	checkValue(t, nodes[2], value)
-	assert.Equal(t, len(nodes[2].cluster.Members()), 4)
+	assert.Equal(t, len(nodes[2].cluster.listMembers()), 4)
 
 	checkValue(t, nodes[3], value)
-	assert.Equal(t, len(nodes[3].cluster.Members()), 4)
+	assert.Equal(t, len(nodes[3].cluster.listMembers()), 4)
 
 	checkValue(t, nodes[4], value)
-	assert.Equal(t, len(nodes[4].cluster.Members()), 4)
+	assert.Equal(t, len(nodes[4].cluster.listMembers()), 4)
 }
 
 func TestRaftLeaderLeave(t *testing.T) {
@@ -670,12 +670,12 @@ func TestRaftLeaderLeave(t *testing.T) {
 
 	// The value should be replicated on all remaining nodes
 	checkValue(t, leaderNode, value)
-	assert.Equal(t, len(leaderNode.cluster.Members()), 2)
+	assert.Equal(t, len(leaderNode.cluster.listMembers()), 2)
 
 	time.Sleep(500 * time.Millisecond)
 
 	checkValue(t, followerNode, value)
-	assert.Equal(t, len(followerNode.cluster.Members()), 2)
+	assert.Equal(t, len(followerNode.cluster.listMembers()), 2)
 }
 
 func TestRaftNewNodeGetsData(t *testing.T) {
@@ -697,7 +697,7 @@ func TestRaftNewNodeGetsData(t *testing.T) {
 	// Value should be replicated on every node
 	for _, node := range nodes {
 		checkValue(t, node, value)
-		assert.Equal(t, len(node.cluster.Members()), 4)
+		assert.Equal(t, len(node.cluster.listMembers()), 4)
 	}
 }
 
@@ -748,6 +748,16 @@ func TestRaftSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, dirents, 1)
 
+	// It should know about the other nodes
+	nodesFromMembers := func(memberList map[uint64]*member) map[uint64]*api.RaftNode {
+		raftNodes := make(map[uint64]*api.RaftNode)
+		for k, v := range memberList {
+			raftNodes[k] = v.RaftNode
+		}
+		return raftNodes
+	}
+	assert.Equal(t, nodesFromMembers(nodes[1].cluster.listMembers()), nodesFromMembers(nodes[4].cluster.listMembers()))
+
 	// All nodes should have all the data
 	for _, node := range nodes {
 		err = node.memoryStore.View(func(tx ReadTx) error {
@@ -782,7 +792,7 @@ func TestRaftRejoin(t *testing.T) {
 	// The value should be replicated on node 3
 	time.Sleep(500 * time.Millisecond)
 	checkValue(t, nodes[3], values[0])
-	assert.Equal(t, len(nodes[3].cluster.Members()), 3)
+	assert.Equal(t, len(nodes[3].cluster.listMembers()), 3)
 
 	// Stop node 3
 	nodes[3].Server.Stop()

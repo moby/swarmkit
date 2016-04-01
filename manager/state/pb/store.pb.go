@@ -9,7 +9,10 @@
 		store.proto
 
 	It has these top-level messages:
+		RaftNode
 		StoreSnapshot
+		ClusterSnapshot
+		Snapshot
 */
 package pb
 
@@ -32,48 +35,90 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-type StoreSnapshot_Version int32
+type Snapshot_Version int32
 
 const (
 	// V0 is the initial version of the StoreSnapshot message.
-	StoreSnapshot_V0 StoreSnapshot_Version = 0
+	Snapshot_V0 Snapshot_Version = 0
 )
 
-var StoreSnapshot_Version_name = map[int32]string{
+var Snapshot_Version_name = map[int32]string{
 	0: "V0",
 }
-var StoreSnapshot_Version_value = map[string]int32{
+var Snapshot_Version_value = map[string]int32{
 	"V0": 0,
 }
 
-func (x StoreSnapshot_Version) String() string {
-	return proto.EnumName(StoreSnapshot_Version_name, int32(x))
+func (x Snapshot_Version) String() string {
+	return proto.EnumName(Snapshot_Version_name, int32(x))
 }
+
+// RaftNode represents a raft node to be added or removed from
+// an existing raft cluster.
+// FIXME(aaronl): This is copied from the api package because it's not
+// posssible to import manager.go.
+type RaftNode struct {
+	ID   uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Addr string `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`
+}
+
+func (m *RaftNode) Reset()      { *m = RaftNode{} }
+func (*RaftNode) ProtoMessage() {}
 
 // StoreSnapshot is used to store snapshots of the store.
 type StoreSnapshot struct {
-	Version  StoreSnapshot_Version `protobuf:"varint,1,opt,name=version,proto3,enum=pb.StoreSnapshot_Version" json:"version,omitempty"`
-	Nodes    []*api.Node           `protobuf:"bytes,2,rep,name=nodes" json:"nodes,omitempty"`
-	Jobs     []*api.Job            `protobuf:"bytes,3,rep,name=jobs" json:"jobs,omitempty"`
-	Networks []*api.Network        `protobuf:"bytes,4,rep,name=networks" json:"networks,omitempty"`
-	Tasks    []*api.Task           `protobuf:"bytes,5,rep,name=tasks" json:"tasks,omitempty"`
-	Volumes  []*api.Volume         `protobuf:"bytes,6,rep,name=volumes" json:"volumes,omitempty"`
+	Nodes    []*api.Node    `protobuf:"bytes,1,rep,name=nodes" json:"nodes,omitempty"`
+	Jobs     []*api.Job     `protobuf:"bytes,2,rep,name=jobs" json:"jobs,omitempty"`
+	Networks []*api.Network `protobuf:"bytes,3,rep,name=networks" json:"networks,omitempty"`
+	Tasks    []*api.Task    `protobuf:"bytes,4,rep,name=tasks" json:"tasks,omitempty"`
+	Volumes  []*api.Volume  `protobuf:"bytes,5,rep,name=volumes" json:"volumes,omitempty"`
 }
 
 func (m *StoreSnapshot) Reset()      { *m = StoreSnapshot{} }
 func (*StoreSnapshot) ProtoMessage() {}
 
+// ClusterSnapshot stores cluster membership information in snapshots.
+type ClusterSnapshot struct {
+	Members []*RaftNode `protobuf:"bytes,1,rep,name=members" json:"members,omitempty"`
+	Removed []uint64    `protobuf:"varint,2,rep,name=removed" json:"removed,omitempty"`
+}
+
+func (m *ClusterSnapshot) Reset()      { *m = ClusterSnapshot{} }
+func (*ClusterSnapshot) ProtoMessage() {}
+
+type Snapshot struct {
+	Version    Snapshot_Version `protobuf:"varint,1,opt,name=version,proto3,enum=pb.Snapshot_Version" json:"version,omitempty"`
+	Membership ClusterSnapshot  `protobuf:"bytes,2,opt,name=membership" json:"membership"`
+	Store      StoreSnapshot    `protobuf:"bytes,3,opt,name=store" json:"store"`
+}
+
+func (m *Snapshot) Reset()      { *m = Snapshot{} }
+func (*Snapshot) ProtoMessage() {}
+
 func init() {
+	proto.RegisterType((*RaftNode)(nil), "pb.RaftNode")
 	proto.RegisterType((*StoreSnapshot)(nil), "pb.StoreSnapshot")
-	proto.RegisterEnum("pb.StoreSnapshot_Version", StoreSnapshot_Version_name, StoreSnapshot_Version_value)
+	proto.RegisterType((*ClusterSnapshot)(nil), "pb.ClusterSnapshot")
+	proto.RegisterType((*Snapshot)(nil), "pb.Snapshot")
+	proto.RegisterEnum("pb.Snapshot_Version", Snapshot_Version_name, Snapshot_Version_value)
+}
+func (this *RaftNode) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&pb.RaftNode{")
+	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
+	s = append(s, "Addr: "+fmt.Sprintf("%#v", this.Addr)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
 }
 func (this *StoreSnapshot) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 10)
+	s := make([]string, 0, 9)
 	s = append(s, "&pb.StoreSnapshot{")
-	s = append(s, "Version: "+fmt.Sprintf("%#v", this.Version)+",\n")
 	if this.Nodes != nil {
 		s = append(s, "Nodes: "+fmt.Sprintf("%#v", this.Nodes)+",\n")
 	}
@@ -89,6 +134,31 @@ func (this *StoreSnapshot) GoString() string {
 	if this.Volumes != nil {
 		s = append(s, "Volumes: "+fmt.Sprintf("%#v", this.Volumes)+",\n")
 	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ClusterSnapshot) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&pb.ClusterSnapshot{")
+	if this.Members != nil {
+		s = append(s, "Members: "+fmt.Sprintf("%#v", this.Members)+",\n")
+	}
+	s = append(s, "Removed: "+fmt.Sprintf("%#v", this.Removed)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Snapshot) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 7)
+	s = append(s, "&pb.Snapshot{")
+	s = append(s, "Version: "+fmt.Sprintf("%#v", this.Version)+",\n")
+	s = append(s, "Membership: "+strings.Replace(this.Membership.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "Store: "+strings.Replace(this.Store.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -117,6 +187,35 @@ func extensionToGoStringStore(e map[int32]github_com_gogo_protobuf_proto.Extensi
 	s += strings.Join(ss, ",") + "}"
 	return s
 }
+func (m *RaftNode) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *RaftNode) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.ID != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintStore(data, i, uint64(m.ID))
+	}
+	if len(m.Addr) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintStore(data, i, uint64(len(m.Addr)))
+		i += copy(data[i:], m.Addr)
+	}
+	return i, nil
+}
+
 func (m *StoreSnapshot) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -132,14 +231,9 @@ func (m *StoreSnapshot) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Version != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintStore(data, i, uint64(m.Version))
-	}
 	if len(m.Nodes) > 0 {
 		for _, msg := range m.Nodes {
-			data[i] = 0x12
+			data[i] = 0xa
 			i++
 			i = encodeVarintStore(data, i, uint64(msg.Size()))
 			n, err := msg.MarshalTo(data[i:])
@@ -151,7 +245,7 @@ func (m *StoreSnapshot) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.Jobs) > 0 {
 		for _, msg := range m.Jobs {
-			data[i] = 0x1a
+			data[i] = 0x12
 			i++
 			i = encodeVarintStore(data, i, uint64(msg.Size()))
 			n, err := msg.MarshalTo(data[i:])
@@ -163,7 +257,7 @@ func (m *StoreSnapshot) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.Networks) > 0 {
 		for _, msg := range m.Networks {
-			data[i] = 0x22
+			data[i] = 0x1a
 			i++
 			i = encodeVarintStore(data, i, uint64(msg.Size()))
 			n, err := msg.MarshalTo(data[i:])
@@ -175,7 +269,7 @@ func (m *StoreSnapshot) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.Tasks) > 0 {
 		for _, msg := range m.Tasks {
-			data[i] = 0x2a
+			data[i] = 0x22
 			i++
 			i = encodeVarintStore(data, i, uint64(msg.Size()))
 			n, err := msg.MarshalTo(data[i:])
@@ -187,7 +281,7 @@ func (m *StoreSnapshot) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.Volumes) > 0 {
 		for _, msg := range m.Volumes {
-			data[i] = 0x32
+			data[i] = 0x2a
 			i++
 			i = encodeVarintStore(data, i, uint64(msg.Size()))
 			n, err := msg.MarshalTo(data[i:])
@@ -197,6 +291,82 @@ func (m *StoreSnapshot) MarshalTo(data []byte) (int, error) {
 			i += n
 		}
 	}
+	return i, nil
+}
+
+func (m *ClusterSnapshot) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ClusterSnapshot) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Members) > 0 {
+		for _, msg := range m.Members {
+			data[i] = 0xa
+			i++
+			i = encodeVarintStore(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if len(m.Removed) > 0 {
+		for _, num := range m.Removed {
+			data[i] = 0x10
+			i++
+			i = encodeVarintStore(data, i, uint64(num))
+		}
+	}
+	return i, nil
+}
+
+func (m *Snapshot) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Snapshot) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Version != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintStore(data, i, uint64(m.Version))
+	}
+	data[i] = 0x12
+	i++
+	i = encodeVarintStore(data, i, uint64(m.Membership.Size()))
+	n1, err := m.Membership.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n1
+	data[i] = 0x1a
+	i++
+	i = encodeVarintStore(data, i, uint64(m.Store.Size()))
+	n2, err := m.Store.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n2
 	return i, nil
 }
 
@@ -227,12 +397,22 @@ func encodeVarintStore(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	return offset + 1
 }
+func (m *RaftNode) Size() (n int) {
+	var l int
+	_ = l
+	if m.ID != 0 {
+		n += 1 + sovStore(uint64(m.ID))
+	}
+	l = len(m.Addr)
+	if l > 0 {
+		n += 1 + l + sovStore(uint64(l))
+	}
+	return n
+}
+
 func (m *StoreSnapshot) Size() (n int) {
 	var l int
 	_ = l
-	if m.Version != 0 {
-		n += 1 + sovStore(uint64(m.Version))
-	}
 	if len(m.Nodes) > 0 {
 		for _, e := range m.Nodes {
 			l = e.Size()
@@ -266,6 +446,36 @@ func (m *StoreSnapshot) Size() (n int) {
 	return n
 }
 
+func (m *ClusterSnapshot) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Members) > 0 {
+		for _, e := range m.Members {
+			l = e.Size()
+			n += 1 + l + sovStore(uint64(l))
+		}
+	}
+	if len(m.Removed) > 0 {
+		for _, e := range m.Removed {
+			n += 1 + sovStore(uint64(e))
+		}
+	}
+	return n
+}
+
+func (m *Snapshot) Size() (n int) {
+	var l int
+	_ = l
+	if m.Version != 0 {
+		n += 1 + sovStore(uint64(m.Version))
+	}
+	l = m.Membership.Size()
+	n += 1 + l + sovStore(uint64(l))
+	l = m.Store.Size()
+	n += 1 + l + sovStore(uint64(l))
+	return n
+}
+
 func sovStore(x uint64) (n int) {
 	for {
 		n++
@@ -279,17 +489,50 @@ func sovStore(x uint64) (n int) {
 func sozStore(x uint64) (n int) {
 	return sovStore(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
+func (this *RaftNode) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RaftNode{`,
+		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *StoreSnapshot) String() string {
 	if this == nil {
 		return "nil"
 	}
 	s := strings.Join([]string{`&StoreSnapshot{`,
-		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
 		`Nodes:` + strings.Replace(fmt.Sprintf("%v", this.Nodes), "Node", "api.Node", 1) + `,`,
 		`Jobs:` + strings.Replace(fmt.Sprintf("%v", this.Jobs), "Job", "api.Job", 1) + `,`,
 		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Network", "api.Network", 1) + `,`,
 		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "api.Task", 1) + `,`,
 		`Volumes:` + strings.Replace(fmt.Sprintf("%v", this.Volumes), "Volume", "api.Volume", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ClusterSnapshot) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ClusterSnapshot{`,
+		`Members:` + strings.Replace(fmt.Sprintf("%v", this.Members), "RaftNode", "RaftNode", 1) + `,`,
+		`Removed:` + fmt.Sprintf("%v", this.Removed) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Snapshot) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Snapshot{`,
+		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
+		`Membership:` + strings.Replace(strings.Replace(this.Membership.String(), "ClusterSnapshot", "ClusterSnapshot", 1), `&`, ``, 1) + `,`,
+		`Store:` + strings.Replace(strings.Replace(this.Store.String(), "StoreSnapshot", "StoreSnapshot", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -301,6 +544,104 @@ func valueToStringStore(v interface{}) string {
 	}
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
+}
+func (m *RaftNode) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowStore
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RaftNode: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RaftNode: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
+			}
+			m.ID = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowStore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.ID |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Addr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowStore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthStore
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Addr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipStore(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthStore
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
 }
 func (m *StoreSnapshot) Unmarshal(data []byte) error {
 	l := len(data)
@@ -332,25 +673,6 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 		}
 		switch fieldNum {
 		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
-			}
-			m.Version = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowStore
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.Version |= (StoreSnapshot_Version(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Nodes", wireType)
 			}
@@ -381,7 +703,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 3:
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Jobs", wireType)
 			}
@@ -412,7 +734,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 4:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Networks", wireType)
 			}
@@ -443,7 +765,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 5:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Tasks", wireType)
 			}
@@ -474,7 +796,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 6:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Volumes", wireType)
 			}
@@ -502,6 +824,236 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 			}
 			m.Volumes = append(m.Volumes, &api.Volume{})
 			if err := m.Volumes[len(m.Volumes)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipStore(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthStore
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ClusterSnapshot) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowStore
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ClusterSnapshot: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ClusterSnapshot: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Members", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowStore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthStore
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Members = append(m.Members, &RaftNode{})
+			if err := m.Members[len(m.Members)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Removed", wireType)
+			}
+			var v uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowStore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Removed = append(m.Removed, v)
+		default:
+			iNdEx = preIndex
+			skippy, err := skipStore(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthStore
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Snapshot) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowStore
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Snapshot: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Snapshot: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
+			}
+			m.Version = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowStore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Version |= (Snapshot_Version(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Membership", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowStore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthStore
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Membership.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Store", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowStore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthStore
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Store.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
