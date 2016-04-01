@@ -108,7 +108,7 @@ func waitForPeerNumber(t *testing.T, nodes map[uint64]*Node, count int) {
 	}))
 }
 
-func newInitNode(t *testing.T, opts ...NewNodeOptions) *Node {
+func newNode(t *testing.T, opts ...NewNodeOptions) (*Node, net.Listener) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "can't bind to raft service port")
 	s := grpc.NewServer()
@@ -140,15 +140,21 @@ func newInitNode(t *testing.T, opts ...NewNodeOptions) *Node {
 	require.NoError(t, err, "can't create raft node")
 	n.Server = s
 
-	err = n.Campaign(n.Ctx)
+	return n, l
+}
+
+func newInitNode(t *testing.T, opts ...NewNodeOptions) *Node {
+	n, l := newNode(t, opts...)
+
+	err := n.Campaign(n.Ctx)
 	require.NoError(t, err, "can't campaign to be the leader")
 	n.Start()
 
-	Register(s, n)
+	Register(n.Server, n)
 
 	done := make(chan error)
 	go func() {
-		done <- s.Serve(l)
+		done <- n.Server.Serve(l)
 	}()
 	go func() {
 		// After stopping, we should receive an error from Serve
@@ -159,36 +165,7 @@ func newInitNode(t *testing.T, opts ...NewNodeOptions) *Node {
 }
 
 func newJoinNode(t *testing.T, join string, opts ...NewNodeOptions) *Node {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err, "can't bind to raft service port")
-	s := grpc.NewServer()
-
-	cfg := DefaultNodeConfig()
-	cfg.Logger = raftLogger
-
-	stateDir, err := ioutil.TempDir("", "test-raft")
-	require.NoError(t, err, "can't create temporary state directory")
-
-	newNodeOpts := NewNodeOptions{
-		Addr:         l.Addr().String(),
-		Config:       cfg,
-		StateDir:     stateDir,
-		TickInterval: testTick,
-	}
-
-	if len(opts) > 1 {
-		panic("more than one optional argument provided")
-	}
-	if len(opts) == 1 {
-		if opts[0].SnapshotInterval != 0 {
-			newNodeOpts.SnapshotInterval = opts[0].SnapshotInterval
-		}
-		newNodeOpts.LogEntriesForSlowFollowers = opts[0].LogEntriesForSlowFollowers
-	}
-
-	n, err := NewNode(context.Background(), newNodeOpts, nil)
-	require.NoError(t, err, "can't create raft node")
-	n.Server = s
+	n, l := newNode(t, opts...)
 
 	n.Start()
 
@@ -200,14 +177,13 @@ func newJoinNode(t *testing.T, join string, opts ...NewNodeOptions) *Node {
 	})
 	require.NoError(t, err, "can't join existing Raft")
 
-	err = n.RegisterNodes(resp.Members)
-	require.NoError(t, err, "can't add nodes to the local cluster list")
+	n.RegisterNodes(resp.Members)
 
-	Register(s, n)
+	Register(n.Server, n)
 
 	done := make(chan error)
 	go func() {
-		done <- s.Serve(l)
+		done <- n.Server.Serve(l)
 	}()
 	go func() {
 		// After stopping, we should receive an error from Serve
@@ -245,8 +221,7 @@ func restartNode(t *testing.T, n *Node, join string) *Node {
 	})
 	require.NoError(t, err, "can't join existing Raft")
 
-	err = n.RegisterNodes(resp.Members)
-	require.NoError(t, err, "can't add nodes to the local cluster list")
+	n.RegisterNodes(resp.Members)
 
 	Register(s, n)
 
@@ -759,4 +734,56 @@ func TestRaftRejoin(t *testing.T) {
 	// Node 3 should have all values, including the one proposed while
 	// it was unavailable.
 	checkValues(nodes[1], nodes[2], nodes[3])
+}
+
+func TestRaftUnreachableNode(t *testing.T) {
+	t.Parallel()
+
+	nodes := make(map[uint64]*Node)
+	nodes[1] = newInitNode(t)
+
+	// Add a new node, but don't start its server yet
+	n, l := newNode(t)
+
+	c, err := GetRaftClient(nodes[1].Address, 500*time.Millisecond)
+	assert.NoError(t, err, "can't initiate connection with existing raft")
+
+	resp, err := c.Join(n.Ctx, &api.JoinRequest{
+		Node: &api.RaftNode{ID: n.Config.ID, Addr: n.Address},
+	})
+	require.NoError(t, err, "can't join existing Raft")
+
+	time.Sleep(5 * time.Second)
+
+	n.Start()
+
+	n.RegisterNodes(resp.Members)
+
+	Register(n.Server, n)
+
+	// Now start the new node's server
+	done := make(chan error)
+	go func() {
+		done <- n.Server.Serve(l)
+	}()
+	go func() {
+		// After stopping, we should receive an error from Serve
+		assert.Error(t, <-done)
+	}()
+
+	nodes[2] = n
+	waitForCluster(t, nodes)
+
+	defer teardownCluster(t, nodes)
+
+	// Propose a value
+	value, err := proposeValue(t, nodes[1])
+	assert.NoError(t, err, "failed to propose value")
+
+	// All nodes should have the value in the physical store
+	checkValue(t, nodes[1], value)
+
+	time.Sleep(500 * time.Millisecond)
+
+	checkValue(t, nodes[2], value)
 }
