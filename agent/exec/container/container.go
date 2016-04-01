@@ -80,25 +80,28 @@ func (c *containerConfig) pullOptions() types.ImagePullOptions {
 }
 
 func (c *containerConfig) buildPullOptions() (types.ImagePullOptions, error) {
-	var ref reference.NamedTagged
 	named, err := reference.ParseNamed(c.image())
 	if err != nil {
 		return types.ImagePullOptions{}, err
 	}
 
-	if namedtagged, ok := named.(reference.NamedTagged); !ok {
-		tagged, err := reference.WithTag(named, "latest")
-		if err != nil {
-			return types.ImagePullOptions{}, err
-		}
-		ref = tagged
-	} else {
-		ref = namedtagged
+	var (
+		name = named.Name()
+		tag  = "latest"
+	)
+
+	// replace tag with more specific item from ref
+	switch v := named.(type) {
+	case reference.Canonical:
+		tag = v.Digest().String()
+	case reference.NamedTagged:
+		tag = v.Tag()
+
 	}
 
 	return types.ImagePullOptions{
-		ImageID: ref.Name(),
-		Tag:     ref.Tag(),
+		ImageID: name,
+		Tag:     tag,
 	}, nil
 }
 
