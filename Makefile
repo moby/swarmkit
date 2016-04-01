@@ -1,11 +1,18 @@
-# Set an output prefix, which is the local directory if not specified.
-PREFIX?=$(shell pwd)
+# Root directory of the project (absolute path).
+ROOTDIR=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+# Base path used to install.
+DESTDIR=/usr/local
 
 # Used to populate version variable in main package.
 VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
 
 # Project packages.
 PACKAGES=$(shell go list ./... | grep -v /vendor/)
+
+# Project binaries.
+COMMANDS=swarmd swarmctl swarm-bench protoc-gen-gogoswarm
+BINARIES=$(addprefix bin/,$(COMMANDS))
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
@@ -25,22 +32,6 @@ AUTHORS: .mailmap .git/HEAD
 version/version.go:
 	./version/version.sh > $@
 
-${PREFIX}/bin/swarmctl: version/version.go $(shell find . -type f -name '*.go')
-	@echo "🐳 $@"
-	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/swarmctl
-
-${PREFIX}/bin/swarmd: version/version.go $(shell find . -type f -name '*.go')
-	@echo "🐳 $@"
-	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/swarmd
-
-${PREFIX}/bin/swarm-bench: version/version.go $(shell find . -type f -name '*.go')
-	@echo "🐳 $@"
-	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/swarm-bench
-
-${PREFIX}/bin/protoc-gen-gogoswarm: version/version.go $(shell find . -type f -name '*.go')
-	@echo "🐳 $@"
-	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./cmd/protoc-gen-gogoswarm
-
 setup: ## install dependencies
 	@echo "🐳 $@"
 	# TODO(stevvooe): Install these from the vendor directory
@@ -48,9 +39,9 @@ setup: ## install dependencies
 	@go get -u github.com/kisielk/errcheck
 	@go get -u github.com/golang/mock/mockgen
 
-generate: ${PREFIX}/bin/protoc-gen-gogoswarm ## generate protobufs
+generate: bin/protoc-gen-gogoswarm ## generate protobuf
 	@echo "🐳 $@"
-	@PATH=${PREFIX}/bin:${PATH} go generate -x ${PACKAGES}
+	@PATH=${ROOTDIR}/bin:${PATH} go generate -x ${PACKAGES}
 
 checkprotos: generate ## check if protobufs needs to be generated again
 	@echo "🐳 $@"
@@ -74,7 +65,6 @@ fmt: ## run go fmt
 	@test -z "$$(find . -path ./vendor -prune -o -name '*.proto' -type f -exec grep -Hn "Meta meta = " {} \; | grep -v '(gogoproto.nullable) = false' | tee /dev/stderr)" || \
 		(echo "👹 meta fields in proto files must have option (gogoproto.nullable) = false" && false)
 
-
 lint: ## run go lint
 	@echo "🐳 $@"
 	@test -z "$$(golint ./... | grep -v vendor/ | grep -v ".pb.go:" | grep -v ".mock.go" | tee /dev/stderr)"
@@ -91,12 +81,26 @@ test: ## run test
 	@echo "🐳 $@"
 	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" ${PACKAGES}
 
-binaries: ${PREFIX}/bin/swarmctl ${PREFIX}/bin/swarmd ${PREFIX}/bin/swarm-bench ${PREFIX}/bin/protoc-gen-gogoswarm ## build the binaries
+# Build a binary from a cmd.
+bin/%: cmd/% version/version.go $(shell find . -type f -name '*.go') ## build binary
+	@echo "🐳 $@"
+	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./$<
+
+binaries: $(BINARIES) ## build binaries
 	@echo "🐳 $@"
 
 clean: ## clean up binaries
 	@echo "🐳 $@"
-	@rm -rf "${PREFIX}/bin/swarmctl" "${PREFIX}/bin/swarmd" "${PREFIX}/bin/protoc-gen-gogoswarm"
+	@rm -f $(BINARIES)
+
+install: $(BINARIES) ## install binaries
+	@echo "🐳 $@"
+	@mkdir -p $(DESTDIR)/bin
+	@install $(BINARIES) $(DESTDIR)/bin
+
+uninstall:
+	@echo "🐳 $@"
+	@rm -f $(addprefix $(DESTDIR)/bin/,$(notdir $(BINARIES)))
 
 coverage: ## generate coverprofiles from the tests
 	@echo "🐳 $@"
