@@ -10,6 +10,9 @@ VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
 # Project packages.
 PACKAGES=$(shell go list ./... | grep -v /vendor/)
 
+# Project sources.
+SRC=$(shell find . -path ./vendor -prune -o -name '*.go' -print)
+
 # Project binaries.
 COMMANDS=swarmd swarmctl swarm-bench protoc-gen-gogoswarm
 BINARIES=$(addprefix bin/,$(COMMANDS))
@@ -82,7 +85,7 @@ test: ## run test
 	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" ${PACKAGES}
 
 # Build a binary from a cmd.
-bin/%: cmd/% version/version.go $(shell find . -type f -name '*.go') ## build binary
+bin/%: cmd/% version/version.go $(SRC) ## build binary
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./$<
 
