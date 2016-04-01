@@ -81,8 +81,10 @@ test: ## run test
 	@echo "🐳 $@"
 	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" ${PACKAGES}
 
+FORCE:
+
 # Build a binary from a cmd.
-bin/%: cmd/% version/version.go $(shell find . -type f -name '*.go') ## build binary
+bin/%: cmd/% FORCE
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./$<
 
