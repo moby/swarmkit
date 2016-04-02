@@ -111,44 +111,15 @@ func New(config *Config) (*Manager, error) {
 	return m, nil
 }
 
-func (m *Manager) startRaftNode() {
-	errCh := m.raftNode.Start()
-	go func() {
-		for {
-			select {
-			case err := <-errCh:
-				log.Error(err)
-			case <-m.managerDone:
-				return
-			}
+func (m *Manager) monitorRaftNode(errCh <-chan error) {
+	for {
+		select {
+		case err := <-errCh:
+			log.Error(err)
+		case <-m.managerDone:
+			return
 		}
-	}()
-}
-
-func (m *Manager) joinRaft() error {
-	m.startRaftNode()
-
-	c, err := state.GetRaftClient(m.config.JoinRaft, 10*time.Second)
-	if err != nil {
-		return fmt.Errorf("can't join raft cluster: %v", err)
 	}
-
-	ctx, cancel := context.WithTimeout(m.raftNode.Ctx, 10*time.Second)
-	defer cancel()
-
-	resp, err := c.Join(ctx, &api.JoinRequest{
-		Node: &api.RaftNode{ID: m.raftNode.Config.ID, Addr: m.config.ListenAddr},
-	})
-	if err != nil {
-		return fmt.Errorf("can't join raft cluster: %v", err)
-	}
-
-	err = m.raftNode.RegisterNodes(resp.Members)
-	if err != nil {
-		return fmt.Errorf("can't add members to the local cluster list: %v", err)
-	}
-
-	return nil
 }
 
 // Run starts all manager sub-systems and the gRPC server at the configured
@@ -218,13 +189,13 @@ func (m *Manager) Run() error {
 	}()
 
 	log.WithFields(log.Fields{"proto": lis.Addr().Network(), "addr": lis.Addr().String()}).Info("Listening for connections")
+	var errCh <-chan error
 	if m.config.JoinRaft != "" {
-		if err := m.joinRaft(); err != nil {
-			return err
-		}
+		errCh = m.raftNode.StartByJoining(m.config.JoinRaft)
 	} else {
-		m.startRaftNode()
+		errCh = m.raftNode.Start()
 	}
+	go m.monitorRaftNode(errCh)
 
 	state.Register(m.server, m.raftNode)
 

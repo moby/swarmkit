@@ -120,7 +120,8 @@ type Node struct {
 	doneCh chan struct{}
 	errCh  chan error
 
-	leadershipCh chan LeadershipState
+	leadershipCh   chan LeadershipState
+	startNodePeers []raft.Peer
 
 	sends sync.WaitGroup
 }
@@ -172,6 +173,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 		doneCh:       make(chan struct{}),
 		stateDir:     opts.StateDir,
 		leadershipCh: leadershipCh,
+		errCh:        make(chan error),
 	}
 	n.memoryStore = NewMemoryStore(n)
 
@@ -256,8 +258,8 @@ func (n *Node) loadAndStart() error {
 		}
 
 		n.cluster.AddMember(&Member{RaftNode: raftNode})
+		n.startNodePeers = []raft.Peer{{ID: n.Config.ID, Context: metadata}}
 
-		n.Node = raft.StartNode(n.Config, []raft.Peer{{ID: n.Config.ID}})
 		return nil
 	}
 
@@ -346,14 +348,59 @@ func (n *Node) readWAL(snapshot *raftpb.Snapshot) error {
 	return nil
 }
 
-// Start is the main loop for a Raft node, it
+// Start starts the raft node based on saved cluster state. If no saved state
+// exists, this starts a single-node cluster.
+func (n *Node) Start() <-chan error {
+	if n.startNodePeers != nil {
+		n.Node = raft.StartNode(n.Config, n.startNodePeers)
+		if len(n.startNodePeers) == 1 {
+			n.Campaign(n.Ctx)
+		}
+	} else {
+		n.Node = raft.RestartNode(n.Config)
+	}
+	return n.run()
+}
+
+// StartByJoining starts the raft node with the member list supplied by the
+// peer at the given address.
+func (n *Node) StartByJoining(joinAddr string) <-chan error {
+	if n.startNodePeers == nil {
+		go func() { n.errCh <- errors.New("can't join cluster because cluster state already exists") }()
+		return n.errCh
+	}
+
+	c, err := GetRaftClient(joinAddr, 10*time.Second)
+	if err != nil {
+		go func() { n.errCh <- err }()
+		return n.errCh
+	}
+	defer c.Conn.Close()
+
+	ctx, cancel := context.WithTimeout(n.Ctx, 10*time.Second)
+	defer cancel()
+	resp, err := c.Join(ctx, &api.JoinRequest{
+		Node: &api.RaftNode{ID: n.Config.ID, Addr: n.Address},
+	})
+	if err != nil {
+		go func() { n.errCh <- err }()
+		return n.errCh
+	}
+
+	n.Node = raft.StartNode(n.Config, []raft.Peer{})
+
+	n.RegisterNodes(resp.Members)
+
+	return n.run()
+}
+
+// run is the main loop for a Raft node, it
 // goes along the state machine, acting on the
 // messages received from other Raft nodes in
 // the cluster
-func (n *Node) Start() (errCh <-chan error) {
+func (n *Node) run() (errCh <-chan error) {
 	n.wait = newWait()
 	var err error
-	n.errCh = make(chan error)
 	go func() {
 		for {
 			select {
@@ -523,6 +570,12 @@ func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResp
 // raft state machine with the provided message on the
 // receiving node
 func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessageRequest) (*api.ProcessRaftMessageResponse, error) {
+	if msg.Msg == nil {
+		panic("received nil message")
+	}
+	if n.Node == nil {
+		panic("received RPC after raft node stopped")
+	}
 	err := n.Step(n.Ctx, *msg.Msg)
 	if err != nil {
 		return nil, err
