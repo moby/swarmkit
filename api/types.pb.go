@@ -13,6 +13,8 @@
 	It has these top-level messages:
 		Meta
 		Version
+		NamespaceSpec
+		Namespace
 		Resources
 		ResourceRequirements
 		Platform
@@ -38,6 +40,16 @@
 		InternalRaftRequest
 		StoreAction
 		ListOptions
+		GetNamespaceRequest
+		GetNamespaceResponse
+		ListNamespacesRequest
+		ListNamespacesResponse
+		CreateNamespaceRequest
+		CreateNamespaceResponse
+		UpdateNamespaceRequest
+		UpdateNamespaceResponse
+		RemoveNamespaceRequest
+		RemoveNamespaceResponse
 		GetNodeRequest
 		GetNodeResponse
 		ListNodesRequest
@@ -233,7 +245,7 @@ var NodeSpec_Availability_value = map[string]int32{
 func (x NodeSpec_Availability) String() string {
 	return proto.EnumName(NodeSpec_Availability_name, int32(x))
 }
-func (NodeSpec_Availability) EnumDescriptor() ([]byte, []int) { return fileDescriptorTypes, []int{5, 0} }
+func (NodeSpec_Availability) EnumDescriptor() ([]byte, []int) { return fileDescriptorTypes, []int{7, 0} }
 
 // TODO(aluzzardi) These should be using `gogoproto.enumvalue_customname`.
 type NodeStatus_State int32
@@ -265,7 +277,7 @@ var NodeStatus_State_value = map[string]int32{
 func (x NodeStatus_State) String() string {
 	return proto.EnumName(NodeStatus_State_name, int32(x))
 }
-func (NodeStatus_State) EnumDescriptor() ([]byte, []int) { return fileDescriptorTypes, []int{8, 0} }
+func (NodeStatus_State) EnumDescriptor() ([]byte, []int) { return fileDescriptorTypes, []int{10, 0} }
 
 // AddressFamily specifies the network address family that
 // this IPAMConfiguration belongs to.
@@ -292,7 +304,7 @@ func (x IPAMConfiguration_AddressFamily) String() string {
 	return proto.EnumName(IPAMConfiguration_AddressFamily_name, int32(x))
 }
 func (IPAMConfiguration_AddressFamily) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptorTypes, []int{16, 0}
+	return fileDescriptorTypes, []int{18, 0}
 }
 
 // Meta is common to all API objects types.
@@ -314,6 +326,43 @@ func (m *Version) Reset()                    { *m = Version{} }
 func (*Version) ProtoMessage()               {}
 func (*Version) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{1} }
 
+// NamespaceSpec defines the user editable fields of a cluster namespace.
+type NamespaceSpec struct {
+	Meta *Meta `protobuf:"bytes,1,opt,name=meta" json:"meta,omitempty"`
+}
+
+func (m *NamespaceSpec) Reset()                    { *m = NamespaceSpec{} }
+func (*NamespaceSpec) ProtoMessage()               {}
+func (*NamespaceSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{2} }
+
+// Namespace defines a collection of resources within the cluster. Each
+// resource is a member of a namespace. Objects that are a member of a
+// namespace inherit the namespace from the request context in which they were
+// created. The namespace id (not the name) is added on the object to indicate
+// it is a member. Objects may be considered part of a namespace if they are a
+// child of an object within a namespace.
+//
+// Two namespaces always exist. The first is the "default" namespace. The default
+// namespace is the namespace used when a namespace is not specified. The other
+// is the "system" namespace. The system namespace is used for processes
+// critical to running the swarm cluster.
+//
+// For the purpose of interactions with object, the namespace will be stored in
+// the GRPC metadata, under the name "namespace". If the header is not present,
+// the default namespace will be used.
+type Namespace struct {
+	// ID identifies the namespace.
+	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Version provides the storage revision for the namespace.
+	Version *Version `protobuf:"bytes,2,opt,name=Version,json=version" json:"Version,omitempty"`
+	// Spec provides the user specified details of the namespace.
+	Spec *NamespaceSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+}
+
+func (m *Namespace) Reset()                    { *m = Namespace{} }
+func (*Namespace) ProtoMessage()               {}
+func (*Namespace) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{3} }
+
 type Resources struct {
 	// Amount of CPUs (e.g. 2000000000 = 2 CPU cores)
 	NanoCPUs int64 `protobuf:"varint,1,opt,name=nano_cpus,json=nanoCpus,proto3" json:"nano_cpus,omitempty"`
@@ -323,7 +372,7 @@ type Resources struct {
 
 func (m *Resources) Reset()                    { *m = Resources{} }
 func (*Resources) ProtoMessage()               {}
-func (*Resources) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{2} }
+func (*Resources) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{4} }
 
 type ResourceRequirements struct {
 	Limits       *Resources `protobuf:"bytes,1,opt,name=limits" json:"limits,omitempty"`
@@ -332,7 +381,7 @@ type ResourceRequirements struct {
 
 func (m *ResourceRequirements) Reset()                    { *m = ResourceRequirements{} }
 func (*ResourceRequirements) ProtoMessage()               {}
-func (*ResourceRequirements) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{3} }
+func (*ResourceRequirements) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{5} }
 
 type Platform struct {
 	// Architecture (e.g. x86_64)
@@ -343,7 +392,7 @@ type Platform struct {
 
 func (m *Platform) Reset()                    { *m = Platform{} }
 func (*Platform) ProtoMessage()               {}
-func (*Platform) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{4} }
+func (*Platform) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{6} }
 
 type NodeSpec struct {
 	Meta         Meta                  `protobuf:"bytes,1,opt,name=meta" json:"meta"`
@@ -352,7 +401,7 @@ type NodeSpec struct {
 
 func (m *NodeSpec) Reset()                    { *m = NodeSpec{} }
 func (*NodeSpec) ProtoMessage()               {}
-func (*NodeSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{5} }
+func (*NodeSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{7} }
 
 type NodeDescription struct {
 	// Hostname of the node as reported by the agent.
@@ -366,7 +415,7 @@ type NodeDescription struct {
 
 func (m *NodeDescription) Reset()                    { *m = NodeDescription{} }
 func (*NodeDescription) ProtoMessage()               {}
-func (*NodeDescription) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{6} }
+func (*NodeDescription) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{8} }
 
 type Node struct {
 	// ID specifies the identity of the node.
@@ -385,7 +434,7 @@ type Node struct {
 
 func (m *Node) Reset()                    { *m = Node{} }
 func (*Node) ProtoMessage()               {}
-func (*Node) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{7} }
+func (*Node) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{9} }
 
 type NodeStatus struct {
 	State   NodeStatus_State `protobuf:"varint,1,opt,name=state,proto3,enum=docker.cluster.api.NodeStatus_State" json:"state,omitempty"`
@@ -394,7 +443,7 @@ type NodeStatus struct {
 
 func (m *NodeStatus) Reset()                    { *m = NodeStatus{} }
 func (*NodeStatus) ProtoMessage()               {}
-func (*NodeStatus) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{8} }
+func (*NodeStatus) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{10} }
 
 type ImageSpec struct {
 	// reference is a docker image reference. This can include a rpository, tag
@@ -405,7 +454,7 @@ type ImageSpec struct {
 
 func (m *ImageSpec) Reset()                    { *m = ImageSpec{} }
 func (*ImageSpec) ProtoMessage()               {}
-func (*ImageSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{9} }
+func (*ImageSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{11} }
 
 type ContainerSpec struct {
 	// Resource requirements for the container.
@@ -428,7 +477,7 @@ type ContainerSpec struct {
 
 func (m *ContainerSpec) Reset()                    { *m = ContainerSpec{} }
 func (*ContainerSpec) ProtoMessage()               {}
-func (*ContainerSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{10} }
+func (*ContainerSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{12} }
 
 // NetworkAttachmentSpec describes a desired attachment to the named network or
 // a specific network_id.
@@ -442,7 +491,7 @@ type ContainerSpec_NetworkAttachmentSpec struct {
 func (m *ContainerSpec_NetworkAttachmentSpec) Reset()      { *m = ContainerSpec_NetworkAttachmentSpec{} }
 func (*ContainerSpec_NetworkAttachmentSpec) ProtoMessage() {}
 func (*ContainerSpec_NetworkAttachmentSpec) Descriptor() ([]byte, []int) {
-	return fileDescriptorTypes, []int{10, 0}
+	return fileDescriptorTypes, []int{12, 0}
 }
 
 type isContainerSpec_NetworkAttachmentSpec_Reference interface {
@@ -558,7 +607,7 @@ type TaskSpec struct {
 
 func (m *TaskSpec) Reset()                    { *m = TaskSpec{} }
 func (*TaskSpec) ProtoMessage()               {}
-func (*TaskSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{11} }
+func (*TaskSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{13} }
 
 type isTaskSpec_Runtime interface {
 	isTaskSpec_Runtime()
@@ -664,7 +713,7 @@ type JobSpec struct {
 
 func (m *JobSpec) Reset()                    { *m = JobSpec{} }
 func (*JobSpec) ProtoMessage()               {}
-func (*JobSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{12} }
+func (*JobSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{14} }
 
 type isJobSpec_Orchestration interface {
 	isJobSpec_Orchestration()
@@ -845,7 +894,7 @@ type JobSpec_ServiceJob struct {
 
 func (m *JobSpec_ServiceJob) Reset()                    { *m = JobSpec_ServiceJob{} }
 func (*JobSpec_ServiceJob) ProtoMessage()               {}
-func (*JobSpec_ServiceJob) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{12, 0} }
+func (*JobSpec_ServiceJob) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{14, 0} }
 
 type JobSpec_BatchJob struct {
 	Completions int64 `protobuf:"varint,1,opt,name=completions,proto3" json:"completions,omitempty"`
@@ -854,21 +903,21 @@ type JobSpec_BatchJob struct {
 
 func (m *JobSpec_BatchJob) Reset()                    { *m = JobSpec_BatchJob{} }
 func (*JobSpec_BatchJob) ProtoMessage()               {}
-func (*JobSpec_BatchJob) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{12, 1} }
+func (*JobSpec_BatchJob) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{14, 1} }
 
 type JobSpec_GlobalJob struct {
 }
 
 func (m *JobSpec_GlobalJob) Reset()                    { *m = JobSpec_GlobalJob{} }
 func (*JobSpec_GlobalJob) ProtoMessage()               {}
-func (*JobSpec_GlobalJob) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{12, 2} }
+func (*JobSpec_GlobalJob) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{14, 2} }
 
 type JobSpec_CronJob struct {
 }
 
 func (m *JobSpec_CronJob) Reset()                    { *m = JobSpec_CronJob{} }
 func (*JobSpec_CronJob) ProtoMessage()               {}
-func (*JobSpec_CronJob) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{12, 3} }
+func (*JobSpec_CronJob) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{14, 3} }
 
 type TaskStatus struct {
 	// State expresses the current state of the task.
@@ -885,17 +934,21 @@ type TaskStatus struct {
 
 func (m *TaskStatus) Reset()                    { *m = TaskStatus{} }
 func (*TaskStatus) ProtoMessage()               {}
-func (*TaskStatus) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{13} }
+func (*TaskStatus) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{15} }
 
 // Task specifies the parameters for implementing a Spec. A task is effectively
 // immutable and idempotent. Once it is dispatched to a node, it will not be
 // dispatched to another node.
 type Task struct {
+	// ID uniquely identifies the task in the cluster.
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Version tracks the last time the task was modified.
 	Version Version `protobuf:"bytes,2,opt,name=version" json:"version"`
 	// JobID indicates the job under which this task is orchestrated. This
 	// should almost always be set.
+	//
+	// A task is considered a child of a job. Thus, task inherits the namespace
+	// from the job.
 	JobID string `protobuf:"bytes,3,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 	// NodeID indicates the node to which the task is assigned. If this field
 	// is empty or not set, the task is unassigned.
@@ -913,7 +966,7 @@ type Task struct {
 
 func (m *Task) Reset()                    { *m = Task{} }
 func (*Task) ProtoMessage()               {}
-func (*Task) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{14} }
+func (*Task) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{16} }
 
 type Task_NetworkAttachment struct {
 	// Network state as a whole becomes part of Task so
@@ -927,18 +980,21 @@ type Task_NetworkAttachment struct {
 
 func (m *Task_NetworkAttachment) Reset()                    { *m = Task_NetworkAttachment{} }
 func (*Task_NetworkAttachment) ProtoMessage()               {}
-func (*Task_NetworkAttachment) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{14, 0} }
+func (*Task_NetworkAttachment) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{16, 0} }
 
 type Job struct {
+	// ID uniquely identifies the job.
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Version tracks the last time the job was modified.
-	Version Version  `protobuf:"bytes,2,opt,name=version" json:"version"`
-	Spec    *JobSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	Version Version `protobuf:"bytes,2,opt,name=version" json:"version"`
+	// NamespaceID identifies the namespace to which this job belongs.
+	NamespaceID string   `protobuf:"bytes,3,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	Spec        *JobSpec `protobuf:"bytes,4,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *Job) Reset()                    { *m = Job{} }
 func (*Job) ProtoMessage()               {}
-func (*Job) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{15} }
+func (*Job) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{17} }
 
 // IPAMConfiguration specifies parameters for IP Address Management.
 type IPAMConfiguration struct {
@@ -959,7 +1015,7 @@ type IPAMConfiguration struct {
 
 func (m *IPAMConfiguration) Reset()                    { *m = IPAMConfiguration{} }
 func (*IPAMConfiguration) ProtoMessage()               {}
-func (*IPAMConfiguration) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{16} }
+func (*IPAMConfiguration) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{18} }
 
 // Driver is a generic driver type to be used throughout the API. For now, a
 // driver is simply a name and set of options. The field contents depend on the
@@ -972,7 +1028,7 @@ type Driver struct {
 
 func (m *Driver) Reset()                    { *m = Driver{} }
 func (*Driver) ProtoMessage()               {}
-func (*Driver) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{17} }
+func (*Driver) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{19} }
 
 type IPAMOptions struct {
 	Driver         *Driver              `protobuf:"bytes,1,opt,name=driver" json:"driver,omitempty"`
@@ -981,7 +1037,7 @@ type IPAMOptions struct {
 
 func (m *IPAMOptions) Reset()                    { *m = IPAMOptions{} }
 func (*IPAMOptions) ProtoMessage()               {}
-func (*IPAMOptions) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{18} }
+func (*IPAMOptions) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{20} }
 
 // NetworkSpec specifies user defined network parameters.
 type NetworkSpec struct {
@@ -998,23 +1054,25 @@ type NetworkSpec struct {
 
 func (m *NetworkSpec) Reset()                    { *m = NetworkSpec{} }
 func (*NetworkSpec) ProtoMessage()               {}
-func (*NetworkSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{19} }
+func (*NetworkSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{21} }
 
 type Network struct {
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Version tracks the last time the network was modified.
-	Version Version      `protobuf:"bytes,2,opt,name=version" json:"version"`
-	Spec    *NetworkSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	Version Version `protobuf:"bytes,2,opt,name=version" json:"version"`
+	// NamespaceID identifies the namespace to which this network belongs.
+	NamespaceID string       `protobuf:"bytes,3,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	Spec        *NetworkSpec `protobuf:"bytes,4,opt,name=spec" json:"spec,omitempty"`
 	// Driver specific operational state provided by the network driver.
-	DriverState *Driver `protobuf:"bytes,4,opt,name=driver_state,json=driverState" json:"driver_state,omitempty"`
+	DriverState *Driver `protobuf:"bytes,5,opt,name=driver_state,json=driverState" json:"driver_state,omitempty"`
 	// Runtime state of IPAM options. This may not reflect the
 	// ipam options from NetworkSpec.
-	IPAM *IPAMOptions `protobuf:"bytes,5,opt,name=ipam" json:"ipam,omitempty"`
+	IPAM *IPAMOptions `protobuf:"bytes,6,opt,name=ipam" json:"ipam,omitempty"`
 }
 
 func (m *Network) Reset()                    { *m = Network{} }
 func (*Network) ProtoMessage()               {}
-func (*Network) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{20} }
+func (*Network) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{22} }
 
 // VolumeSpec defines the properties of a Volume.
 type VolumeSpec struct {
@@ -1025,20 +1083,22 @@ type VolumeSpec struct {
 
 func (m *VolumeSpec) Reset()                    { *m = VolumeSpec{} }
 func (*VolumeSpec) ProtoMessage()               {}
-func (*VolumeSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{21} }
+func (*VolumeSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{23} }
 
 type Volume struct {
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Version tracks the last time the volume was modified.
-	Version Version     `protobuf:"bytes,2,opt,name=version" json:"version"`
-	Spec    *VolumeSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	Version Version `protobuf:"bytes,2,opt,name=version" json:"version"`
+	// NamespaceID identifies the namespace to which this volume belongs.
+	NamespaceID string      `protobuf:"bytes,3,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	Spec        *VolumeSpec `protobuf:"bytes,4,opt,name=spec" json:"spec,omitempty"`
 	// Driver specific operational state provided by the Volume driver.
-	DriverState *Driver `protobuf:"bytes,4,opt,name=driver_state,json=driverState" json:"driver_state,omitempty"`
+	DriverState *Driver `protobuf:"bytes,5,opt,name=driver_state,json=driverState" json:"driver_state,omitempty"`
 }
 
 func (m *Volume) Reset()                    { *m = Volume{} }
 func (*Volume) ProtoMessage()               {}
-func (*Volume) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{22} }
+func (*Volume) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{24} }
 
 // WeightedPeer should be used anywhere where we are describing a remote peer
 // with a weight.
@@ -1049,7 +1109,7 @@ type WeightedPeer struct {
 
 func (m *WeightedPeer) Reset()                    { *m = WeightedPeer{} }
 func (*WeightedPeer) ProtoMessage()               {}
-func (*WeightedPeer) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{23} }
+func (*WeightedPeer) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{25} }
 
 // Contains one of many protobuf encoded objects to replicate
 // over the raft backend with a request ID to track when the
@@ -1061,12 +1121,13 @@ type InternalRaftRequest struct {
 
 func (m *InternalRaftRequest) Reset()                    { *m = InternalRaftRequest{} }
 func (*InternalRaftRequest) ProtoMessage()               {}
-func (*InternalRaftRequest) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{24} }
+func (*InternalRaftRequest) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{26} }
 
 // StoreAction defines a taret and operation to apply on the storage system.
 type StoreAction struct {
 	Action StoreActionKind `protobuf:"varint,1,opt,name=action,proto3,enum=docker.cluster.api.StoreActionKind" json:"action,omitempty"`
 	// Types that are valid to be assigned to Target:
+	//	*StoreAction_Namespace
 	//	*StoreAction_Node
 	//	*StoreAction_Job
 	//	*StoreAction_Task
@@ -1077,7 +1138,7 @@ type StoreAction struct {
 
 func (m *StoreAction) Reset()                    { *m = StoreAction{} }
 func (*StoreAction) ProtoMessage()               {}
-func (*StoreAction) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{25} }
+func (*StoreAction) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{27} }
 
 type isStoreAction_Target interface {
 	isStoreAction_Target()
@@ -1085,31 +1146,42 @@ type isStoreAction_Target interface {
 	Size() int
 }
 
+type StoreAction_Namespace struct {
+	Namespace *Namespace `protobuf:"bytes,2,opt,name=namespace,oneof"`
+}
 type StoreAction_Node struct {
-	Node *Node `protobuf:"bytes,2,opt,name=node,oneof"`
+	Node *Node `protobuf:"bytes,3,opt,name=node,oneof"`
 }
 type StoreAction_Job struct {
-	Job *Job `protobuf:"bytes,3,opt,name=job,oneof"`
+	Job *Job `protobuf:"bytes,4,opt,name=job,oneof"`
 }
 type StoreAction_Task struct {
-	Task *Task `protobuf:"bytes,4,opt,name=task,oneof"`
+	Task *Task `protobuf:"bytes,5,opt,name=task,oneof"`
 }
 type StoreAction_Network struct {
-	Network *Network `protobuf:"bytes,5,opt,name=network,oneof"`
+	Network *Network `protobuf:"bytes,6,opt,name=network,oneof"`
 }
 type StoreAction_Volume struct {
-	Volume *Volume `protobuf:"bytes,6,opt,name=volume,oneof"`
+	Volume *Volume `protobuf:"bytes,7,opt,name=volume,oneof"`
 }
 
-func (*StoreAction_Node) isStoreAction_Target()    {}
-func (*StoreAction_Job) isStoreAction_Target()     {}
-func (*StoreAction_Task) isStoreAction_Target()    {}
-func (*StoreAction_Network) isStoreAction_Target() {}
-func (*StoreAction_Volume) isStoreAction_Target()  {}
+func (*StoreAction_Namespace) isStoreAction_Target() {}
+func (*StoreAction_Node) isStoreAction_Target()      {}
+func (*StoreAction_Job) isStoreAction_Target()       {}
+func (*StoreAction_Task) isStoreAction_Target()      {}
+func (*StoreAction_Network) isStoreAction_Target()   {}
+func (*StoreAction_Volume) isStoreAction_Target()    {}
 
 func (m *StoreAction) GetTarget() isStoreAction_Target {
 	if m != nil {
 		return m.Target
+	}
+	return nil
+}
+
+func (m *StoreAction) GetNamespace() *Namespace {
+	if x, ok := m.GetTarget().(*StoreAction_Namespace); ok {
+		return x.Namespace
 	}
 	return nil
 }
@@ -1152,6 +1224,7 @@ func (m *StoreAction) GetVolume() *Volume {
 // XXX_OneofFuncs is for the internal use of the proto package.
 func (*StoreAction) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
 	return _StoreAction_OneofMarshaler, _StoreAction_OneofUnmarshaler, _StoreAction_OneofSizer, []interface{}{
+		(*StoreAction_Namespace)(nil),
 		(*StoreAction_Node)(nil),
 		(*StoreAction_Job)(nil),
 		(*StoreAction_Task)(nil),
@@ -1164,28 +1237,33 @@ func _StoreAction_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 	m := msg.(*StoreAction)
 	// target
 	switch x := m.Target.(type) {
-	case *StoreAction_Node:
+	case *StoreAction_Namespace:
 		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Namespace); err != nil {
+			return err
+		}
+	case *StoreAction_Node:
+		_ = b.EncodeVarint(3<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Node); err != nil {
 			return err
 		}
 	case *StoreAction_Job:
-		_ = b.EncodeVarint(3<<3 | proto.WireBytes)
+		_ = b.EncodeVarint(4<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Job); err != nil {
 			return err
 		}
 	case *StoreAction_Task:
-		_ = b.EncodeVarint(4<<3 | proto.WireBytes)
+		_ = b.EncodeVarint(5<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Task); err != nil {
 			return err
 		}
 	case *StoreAction_Network:
-		_ = b.EncodeVarint(5<<3 | proto.WireBytes)
+		_ = b.EncodeVarint(6<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Network); err != nil {
 			return err
 		}
 	case *StoreAction_Volume:
-		_ = b.EncodeVarint(6<<3 | proto.WireBytes)
+		_ = b.EncodeVarint(7<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Volume); err != nil {
 			return err
 		}
@@ -1199,7 +1277,15 @@ func _StoreAction_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 func _StoreAction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
 	m := msg.(*StoreAction)
 	switch tag {
-	case 2: // target.node
+	case 2: // target.namespace
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Namespace)
+		err := b.DecodeMessage(msg)
+		m.Target = &StoreAction_Namespace{msg}
+		return true, err
+	case 3: // target.node
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
@@ -1207,7 +1293,7 @@ func _StoreAction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Bu
 		err := b.DecodeMessage(msg)
 		m.Target = &StoreAction_Node{msg}
 		return true, err
-	case 3: // target.job
+	case 4: // target.job
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
@@ -1215,7 +1301,7 @@ func _StoreAction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Bu
 		err := b.DecodeMessage(msg)
 		m.Target = &StoreAction_Job{msg}
 		return true, err
-	case 4: // target.task
+	case 5: // target.task
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
@@ -1223,7 +1309,7 @@ func _StoreAction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Bu
 		err := b.DecodeMessage(msg)
 		m.Target = &StoreAction_Task{msg}
 		return true, err
-	case 5: // target.network
+	case 6: // target.network
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
@@ -1231,7 +1317,7 @@ func _StoreAction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Bu
 		err := b.DecodeMessage(msg)
 		m.Target = &StoreAction_Network{msg}
 		return true, err
-	case 6: // target.volume
+	case 7: // target.volume
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
@@ -1248,29 +1334,34 @@ func _StoreAction_OneofSizer(msg proto.Message) (n int) {
 	m := msg.(*StoreAction)
 	// target
 	switch x := m.Target.(type) {
+	case *StoreAction_Namespace:
+		s := proto.Size(x.Namespace)
+		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
 	case *StoreAction_Node:
 		s := proto.Size(x.Node)
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(3<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *StoreAction_Job:
 		s := proto.Size(x.Job)
-		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += proto.SizeVarint(4<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *StoreAction_Task:
 		s := proto.Size(x.Task)
-		n += proto.SizeVarint(4<<3 | proto.WireBytes)
+		n += proto.SizeVarint(5<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *StoreAction_Network:
 		s := proto.Size(x.Network)
-		n += proto.SizeVarint(5<<3 | proto.WireBytes)
+		n += proto.SizeVarint(6<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *StoreAction_Volume:
 		s := proto.Size(x.Volume)
-		n += proto.SizeVarint(6<<3 | proto.WireBytes)
+		n += proto.SizeVarint(7<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case nil:
@@ -1283,6 +1374,8 @@ func _StoreAction_OneofSizer(msg proto.Message) (n int) {
 func init() {
 	proto.RegisterType((*Meta)(nil), "docker.cluster.api.Meta")
 	proto.RegisterType((*Version)(nil), "docker.cluster.api.Version")
+	proto.RegisterType((*NamespaceSpec)(nil), "docker.cluster.api.NamespaceSpec")
+	proto.RegisterType((*Namespace)(nil), "docker.cluster.api.Namespace")
 	proto.RegisterType((*Resources)(nil), "docker.cluster.api.Resources")
 	proto.RegisterType((*ResourceRequirements)(nil), "docker.cluster.api.ResourceRequirements")
 	proto.RegisterType((*Platform)(nil), "docker.cluster.api.Platform")
@@ -1346,6 +1439,32 @@ func (m *Version) Copy() *Version {
 
 	o := &Version{
 		Index: m.Index,
+	}
+
+	return o
+}
+
+func (m *NamespaceSpec) Copy() *NamespaceSpec {
+	if m == nil {
+		return nil
+	}
+
+	o := &NamespaceSpec{
+		Meta: m.Meta.Copy(),
+	}
+
+	return o
+}
+
+func (m *Namespace) Copy() *Namespace {
+	if m == nil {
+		return nil
+	}
+
+	o := &Namespace{
+		ID:      m.ID,
+		Version: m.Version.Copy(),
+		Spec:    m.Spec.Copy(),
 	}
 
 	return o
@@ -1691,9 +1810,10 @@ func (m *Job) Copy() *Job {
 	}
 
 	o := &Job{
-		ID:      m.ID,
-		Version: *m.Version.Copy(),
-		Spec:    m.Spec.Copy(),
+		ID:          m.ID,
+		Version:     *m.Version.Copy(),
+		NamespaceID: m.NamespaceID,
+		Spec:        m.Spec.Copy(),
 	}
 
 	return o
@@ -1783,6 +1903,7 @@ func (m *Network) Copy() *Network {
 	o := &Network{
 		ID:          m.ID,
 		Version:     *m.Version.Copy(),
+		NamespaceID: m.NamespaceID,
 		Spec:        m.Spec.Copy(),
 		DriverState: m.DriverState.Copy(),
 		IPAM:        m.IPAM.Copy(),
@@ -1812,6 +1933,7 @@ func (m *Volume) Copy() *Volume {
 	o := &Volume{
 		ID:          m.ID,
 		Version:     *m.Version.Copy(),
+		NamespaceID: m.NamespaceID,
 		Spec:        m.Spec.Copy(),
 		DriverState: m.DriverState.Copy(),
 	}
@@ -1861,6 +1983,12 @@ func (m *StoreAction) Copy() *StoreAction {
 	}
 
 	switch m.Target.(type) {
+	case *StoreAction_Namespace:
+		i := &StoreAction_Namespace{
+			Namespace: m.GetNamespace().Copy(),
+		}
+
+		o.Target = i
 	case *StoreAction_Node:
 		i := &StoreAction_Node{
 			Node: m.GetNode().Copy(),
@@ -1926,6 +2054,34 @@ func (this *Version) GoString() string {
 	s := make([]string, 0, 5)
 	s = append(s, "&api.Version{")
 	s = append(s, "Index: "+fmt.Sprintf("%#v", this.Index)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *NamespaceSpec) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.NamespaceSpec{")
+	if this.Meta != nil {
+		s = append(s, "Meta: "+fmt.Sprintf("%#v", this.Meta)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Namespace) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 7)
+	s = append(s, "&api.Namespace{")
+	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
+	if this.Version != nil {
+		s = append(s, "Version: "+fmt.Sprintf("%#v", this.Version)+",\n")
+	}
+	if this.Spec != nil {
+		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -2239,10 +2395,11 @@ func (this *Job) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 7)
+	s := make([]string, 0, 8)
 	s = append(s, "&api.Job{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	s = append(s, "Version: "+strings.Replace(this.Version.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "NamespaceID: "+fmt.Sprintf("%#v", this.NamespaceID)+",\n")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
@@ -2335,10 +2492,11 @@ func (this *Network) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 9)
+	s := make([]string, 0, 10)
 	s = append(s, "&api.Network{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	s = append(s, "Version: "+strings.Replace(this.Version.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "NamespaceID: "+fmt.Sprintf("%#v", this.NamespaceID)+",\n")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
@@ -2368,10 +2526,11 @@ func (this *Volume) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 8)
+	s := make([]string, 0, 9)
 	s = append(s, "&api.Volume{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	s = append(s, "Version: "+strings.Replace(this.Version.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "NamespaceID: "+fmt.Sprintf("%#v", this.NamespaceID)+",\n")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
@@ -2409,7 +2568,7 @@ func (this *StoreAction) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 10)
+	s := make([]string, 0, 11)
 	s = append(s, "&api.StoreAction{")
 	s = append(s, "Action: "+fmt.Sprintf("%#v", this.Action)+",\n")
 	if this.Target != nil {
@@ -2417,6 +2576,14 @@ func (this *StoreAction) GoString() string {
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
+}
+func (this *StoreAction_Namespace) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.StoreAction_Namespace{` +
+		`Namespace:` + fmt.Sprintf("%#v", this.Namespace) + `}`}, ", ")
+	return s
 }
 func (this *StoreAction_Node) GoString() string {
 	if this == nil {
@@ -2547,6 +2714,78 @@ func (m *Version) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *NamespaceSpec) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *NamespaceSpec) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Meta != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
+		n1, err := m.Meta.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	return i, nil
+}
+
+func (m *Namespace) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Namespace) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.ID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.ID)))
+		i += copy(data[i:], m.ID)
+	}
+	if m.Version != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Version.Size()))
+		n2, err := m.Version.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
+	}
+	if m.Spec != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
+		n3, err := m.Spec.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n3
+	}
+	return i, nil
+}
+
 func (m *Resources) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -2594,21 +2833,21 @@ func (m *ResourceRequirements) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Limits.Size()))
-		n1, err := m.Limits.MarshalTo(data[i:])
+		n4, err := m.Limits.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n1
+		i += n4
 	}
 	if m.Reservations != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Reservations.Size()))
-		n2, err := m.Reservations.MarshalTo(data[i:])
+		n5, err := m.Reservations.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n2
+		i += n5
 	}
 	return i, nil
 }
@@ -2661,11 +2900,11 @@ func (m *NodeSpec) MarshalTo(data []byte) (int, error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-	n3, err := m.Meta.MarshalTo(data[i:])
+	n6, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n3
+	i += n6
 	if m.Availability != 0 {
 		data[i] = 0x10
 		i++
@@ -2699,21 +2938,21 @@ func (m *NodeDescription) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Platform.Size()))
-		n4, err := m.Platform.MarshalTo(data[i:])
+		n7, err := m.Platform.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n4
+		i += n7
 	}
 	if m.Resources != nil {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Resources.Size()))
-		n5, err := m.Resources.MarshalTo(data[i:])
+		n8, err := m.Resources.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n5
+		i += n8
 	}
 	return i, nil
 }
@@ -2742,39 +2981,39 @@ func (m *Node) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Version.Size()))
-	n6, err := m.Version.MarshalTo(data[i:])
+	n9, err := m.Version.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n6
+	i += n9
 	if m.Spec != nil {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n7, err := m.Spec.MarshalTo(data[i:])
+		n10, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n7
+		i += n10
 	}
 	if m.Description != nil {
 		data[i] = 0x22
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Description.Size()))
-		n8, err := m.Description.MarshalTo(data[i:])
+		n11, err := m.Description.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n8
+		i += n11
 	}
 	data[i] = 0x2a
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Status.Size()))
-	n9, err := m.Status.MarshalTo(data[i:])
+	n12, err := m.Status.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n9
+	i += n12
 	return i, nil
 }
 
@@ -2850,21 +3089,21 @@ func (m *ContainerSpec) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Resources.Size()))
-		n10, err := m.Resources.MarshalTo(data[i:])
+		n13, err := m.Resources.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n10
+		i += n13
 	}
 	if m.Image != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Image.Size()))
-		n11, err := m.Image.MarshalTo(data[i:])
+		n14, err := m.Image.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n11
+		i += n14
 	}
 	if len(m.Command) > 0 {
 		for _, s := range m.Command {
@@ -2942,11 +3181,11 @@ func (m *ContainerSpec_NetworkAttachmentSpec) MarshalTo(data []byte) (int, error
 	var l int
 	_ = l
 	if m.Reference != nil {
-		nn12, err := m.Reference.MarshalTo(data[i:])
+		nn15, err := m.Reference.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn12
+		i += nn15
 	}
 	return i, nil
 }
@@ -2983,11 +3222,11 @@ func (m *TaskSpec) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if m.Runtime != nil {
-		nn13, err := m.Runtime.MarshalTo(data[i:])
+		nn16, err := m.Runtime.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn13
+		i += nn16
 	}
 	return i, nil
 }
@@ -2998,11 +3237,11 @@ func (m *TaskSpec_Container) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Container.Size()))
-		n14, err := m.Container.MarshalTo(data[i:])
+		n17, err := m.Container.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n14
+		i += n17
 	}
 	return i, nil
 }
@@ -3024,27 +3263,27 @@ func (m *JobSpec) MarshalTo(data []byte) (int, error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-	n15, err := m.Meta.MarshalTo(data[i:])
+	n18, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n15
+	i += n18
 	if m.Orchestration != nil {
-		nn16, err := m.Orchestration.MarshalTo(data[i:])
+		nn19, err := m.Orchestration.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn16
+		i += nn19
 	}
 	if m.Template != nil {
 		data[i] = 0x32
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Template.Size()))
-		n17, err := m.Template.MarshalTo(data[i:])
+		n20, err := m.Template.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n17
+		i += n20
 	}
 	return i, nil
 }
@@ -3055,11 +3294,11 @@ func (m *JobSpec_Service) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Service.Size()))
-		n18, err := m.Service.MarshalTo(data[i:])
+		n21, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n18
+		i += n21
 	}
 	return i, nil
 }
@@ -3069,11 +3308,11 @@ func (m *JobSpec_Batch) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Batch.Size()))
-		n19, err := m.Batch.MarshalTo(data[i:])
+		n22, err := m.Batch.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n19
+		i += n22
 	}
 	return i, nil
 }
@@ -3083,11 +3322,11 @@ func (m *JobSpec_Global) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x22
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Global.Size()))
-		n20, err := m.Global.MarshalTo(data[i:])
+		n23, err := m.Global.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n20
+		i += n23
 	}
 	return i, nil
 }
@@ -3097,11 +3336,11 @@ func (m *JobSpec_Cron) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Cron.Size()))
-		n21, err := m.Cron.MarshalTo(data[i:])
+		n24, err := m.Cron.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n21
+		i += n24
 	}
 	return i, nil
 }
@@ -3245,11 +3484,11 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Version.Size()))
-	n22, err := m.Version.MarshalTo(data[i:])
+	n25, err := m.Version.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n22
+	i += n25
 	if len(m.JobID) > 0 {
 		data[i] = 0x1a
 		i++
@@ -3265,30 +3504,30 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x2a
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-	n23, err := m.Meta.MarshalTo(data[i:])
+	n26, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n23
+	i += n26
 	if m.Spec != nil {
 		data[i] = 0x32
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n24, err := m.Spec.MarshalTo(data[i:])
+		n27, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n24
+		i += n27
 	}
 	if m.Status != nil {
 		data[i] = 0x3a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Status.Size()))
-		n25, err := m.Status.MarshalTo(data[i:])
+		n28, err := m.Status.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n25
+		i += n28
 	}
 	if len(m.Networks) > 0 {
 		for _, msg := range m.Networks {
@@ -3324,11 +3563,11 @@ func (m *Task_NetworkAttachment) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Network.Size()))
-		n26, err := m.Network.MarshalTo(data[i:])
+		n29, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n26
+		i += n29
 	}
 	if len(m.Addresses) > 0 {
 		for _, s := range m.Addresses {
@@ -3372,20 +3611,26 @@ func (m *Job) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Version.Size()))
-	n27, err := m.Version.MarshalTo(data[i:])
+	n30, err := m.Version.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n27
-	if m.Spec != nil {
+	i += n30
+	if len(m.NamespaceID) > 0 {
 		data[i] = 0x1a
 		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.NamespaceID)))
+		i += copy(data[i:], m.NamespaceID)
+	}
+	if m.Spec != nil {
+		data[i] = 0x22
+		i++
 		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n28, err := m.Spec.MarshalTo(data[i:])
+		n31, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n28
+		i += n31
 	}
 	return i, nil
 }
@@ -3508,11 +3753,11 @@ func (m *IPAMOptions) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.Driver.Size()))
-		n29, err := m.Driver.MarshalTo(data[i:])
+		n32, err := m.Driver.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n29
+		i += n32
 	}
 	if len(m.Configurations) > 0 {
 		for _, msg := range m.Configurations {
@@ -3547,20 +3792,20 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-	n30, err := m.Meta.MarshalTo(data[i:])
+	n33, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n30
+	i += n33
 	if m.DriverConfiguration != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.DriverConfiguration.Size()))
-		n31, err := m.DriverConfiguration.MarshalTo(data[i:])
+		n34, err := m.DriverConfiguration.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n31
+		i += n34
 	}
 	if m.Ipv6Enabled {
 		data[i] = 0x18
@@ -3586,11 +3831,11 @@ func (m *NetworkSpec) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.IPAM.Size()))
-		n32, err := m.IPAM.MarshalTo(data[i:])
+		n35, err := m.IPAM.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n32
+		i += n35
 	}
 	return i, nil
 }
@@ -3619,40 +3864,46 @@ func (m *Network) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Version.Size()))
-	n33, err := m.Version.MarshalTo(data[i:])
+	n36, err := m.Version.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n33
-	if m.Spec != nil {
+	i += n36
+	if len(m.NamespaceID) > 0 {
 		data[i] = 0x1a
 		i++
-		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n34, err := m.Spec.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n34
+		i = encodeVarintTypes(data, i, uint64(len(m.NamespaceID)))
+		i += copy(data[i:], m.NamespaceID)
 	}
-	if m.DriverState != nil {
+	if m.Spec != nil {
 		data[i] = 0x22
 		i++
-		i = encodeVarintTypes(data, i, uint64(m.DriverState.Size()))
-		n35, err := m.DriverState.MarshalTo(data[i:])
+		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
+		n37, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n35
+		i += n37
 	}
-	if m.IPAM != nil {
+	if m.DriverState != nil {
 		data[i] = 0x2a
 		i++
-		i = encodeVarintTypes(data, i, uint64(m.IPAM.Size()))
-		n36, err := m.IPAM.MarshalTo(data[i:])
+		i = encodeVarintTypes(data, i, uint64(m.DriverState.Size()))
+		n38, err := m.DriverState.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n36
+		i += n38
+	}
+	if m.IPAM != nil {
+		data[i] = 0x32
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.IPAM.Size()))
+		n39, err := m.IPAM.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n39
 	}
 	return i, nil
 }
@@ -3675,20 +3926,20 @@ func (m *VolumeSpec) MarshalTo(data []byte) (int, error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Meta.Size()))
-	n37, err := m.Meta.MarshalTo(data[i:])
+	n40, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n37
+	i += n40
 	if m.DriverConfiguration != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintTypes(data, i, uint64(m.DriverConfiguration.Size()))
-		n38, err := m.DriverConfiguration.MarshalTo(data[i:])
+		n41, err := m.DriverConfiguration.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n38
+		i += n41
 	}
 	return i, nil
 }
@@ -3717,30 +3968,36 @@ func (m *Volume) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintTypes(data, i, uint64(m.Version.Size()))
-	n39, err := m.Version.MarshalTo(data[i:])
+	n42, err := m.Version.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n39
-	if m.Spec != nil {
+	i += n42
+	if len(m.NamespaceID) > 0 {
 		data[i] = 0x1a
 		i++
-		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
-		n40, err := m.Spec.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n40
+		i = encodeVarintTypes(data, i, uint64(len(m.NamespaceID)))
+		i += copy(data[i:], m.NamespaceID)
 	}
-	if m.DriverState != nil {
+	if m.Spec != nil {
 		data[i] = 0x22
 		i++
-		i = encodeVarintTypes(data, i, uint64(m.DriverState.Size()))
-		n41, err := m.DriverState.MarshalTo(data[i:])
+		i = encodeVarintTypes(data, i, uint64(m.Spec.Size()))
+		n43, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n41
+		i += n43
+	}
+	if m.DriverState != nil {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.DriverState.Size()))
+		n44, err := m.DriverState.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n44
 	}
 	return i, nil
 }
@@ -3830,64 +4087,22 @@ func (m *StoreAction) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintTypes(data, i, uint64(m.Action))
 	}
 	if m.Target != nil {
-		nn42, err := m.Target.MarshalTo(data[i:])
+		nn45, err := m.Target.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn42
+		i += nn45
 	}
 	return i, nil
 }
 
-func (m *StoreAction_Node) MarshalTo(data []byte) (int, error) {
+func (m *StoreAction_Namespace) MarshalTo(data []byte) (int, error) {
 	i := 0
-	if m.Node != nil {
+	if m.Namespace != nil {
 		data[i] = 0x12
 		i++
-		i = encodeVarintTypes(data, i, uint64(m.Node.Size()))
-		n43, err := m.Node.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n43
-	}
-	return i, nil
-}
-func (m *StoreAction_Job) MarshalTo(data []byte) (int, error) {
-	i := 0
-	if m.Job != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Job.Size()))
-		n44, err := m.Job.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n44
-	}
-	return i, nil
-}
-func (m *StoreAction_Task) MarshalTo(data []byte) (int, error) {
-	i := 0
-	if m.Task != nil {
-		data[i] = 0x22
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Task.Size()))
-		n45, err := m.Task.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n45
-	}
-	return i, nil
-}
-func (m *StoreAction_Network) MarshalTo(data []byte) (int, error) {
-	i := 0
-	if m.Network != nil {
-		data[i] = 0x2a
-		i++
-		i = encodeVarintTypes(data, i, uint64(m.Network.Size()))
-		n46, err := m.Network.MarshalTo(data[i:])
+		i = encodeVarintTypes(data, i, uint64(m.Namespace.Size()))
+		n46, err := m.Namespace.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -3895,17 +4110,73 @@ func (m *StoreAction_Network) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *StoreAction_Volume) MarshalTo(data []byte) (int, error) {
+func (m *StoreAction_Node) MarshalTo(data []byte) (int, error) {
 	i := 0
-	if m.Volume != nil {
-		data[i] = 0x32
+	if m.Node != nil {
+		data[i] = 0x1a
 		i++
-		i = encodeVarintTypes(data, i, uint64(m.Volume.Size()))
-		n47, err := m.Volume.MarshalTo(data[i:])
+		i = encodeVarintTypes(data, i, uint64(m.Node.Size()))
+		n47, err := m.Node.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n47
+	}
+	return i, nil
+}
+func (m *StoreAction_Job) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Job != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Job.Size()))
+		n48, err := m.Job.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n48
+	}
+	return i, nil
+}
+func (m *StoreAction_Task) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Task != nil {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Task.Size()))
+		n49, err := m.Task.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n49
+	}
+	return i, nil
+}
+func (m *StoreAction_Network) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Network != nil {
+		data[i] = 0x32
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Network.Size()))
+		n50, err := m.Network.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n50
+	}
+	return i, nil
+}
+func (m *StoreAction_Volume) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Volume != nil {
+		data[i] = 0x3a
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Volume.Size()))
+		n51, err := m.Volume.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n51
 	}
 	return i, nil
 }
@@ -3959,6 +4230,34 @@ func (m *Version) Size() (n int) {
 	_ = l
 	if m.Index != 0 {
 		n += 1 + sovTypes(uint64(m.Index))
+	}
+	return n
+}
+
+func (m *NamespaceSpec) Size() (n int) {
+	var l int
+	_ = l
+	if m.Meta != nil {
+		l = m.Meta.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
+func (m *Namespace) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.ID)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.Version != nil {
+		l = m.Version.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.Spec != nil {
+		l = m.Spec.Size()
+		n += 1 + l + sovTypes(uint64(l))
 	}
 	return n
 }
@@ -4314,6 +4613,10 @@ func (m *Job) Size() (n int) {
 	}
 	l = m.Version.Size()
 	n += 1 + l + sovTypes(uint64(l))
+	l = len(m.NamespaceID)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
 	if m.Spec != nil {
 		l = m.Spec.Size()
 		n += 1 + l + sovTypes(uint64(l))
@@ -4415,6 +4718,10 @@ func (m *Network) Size() (n int) {
 	}
 	l = m.Version.Size()
 	n += 1 + l + sovTypes(uint64(l))
+	l = len(m.NamespaceID)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
 	if m.Spec != nil {
 		l = m.Spec.Size()
 		n += 1 + l + sovTypes(uint64(l))
@@ -4451,6 +4758,10 @@ func (m *Volume) Size() (n int) {
 	}
 	l = m.Version.Size()
 	n += 1 + l + sovTypes(uint64(l))
+	l = len(m.NamespaceID)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
 	if m.Spec != nil {
 		l = m.Spec.Size()
 		n += 1 + l + sovTypes(uint64(l))
@@ -4502,6 +4813,15 @@ func (m *StoreAction) Size() (n int) {
 	return n
 }
 
+func (m *StoreAction_Namespace) Size() (n int) {
+	var l int
+	_ = l
+	if m.Namespace != nil {
+		l = m.Namespace.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
 func (m *StoreAction_Node) Size() (n int) {
 	var l int
 	_ = l
@@ -4588,6 +4908,28 @@ func (this *Version) String() string {
 	}
 	s := strings.Join([]string{`&Version{`,
 		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *NamespaceSpec) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&NamespaceSpec{`,
+		`Meta:` + strings.Replace(fmt.Sprintf("%v", this.Meta), "Meta", "Meta", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Namespace) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Namespace{`,
+		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`Version:` + strings.Replace(fmt.Sprintf("%v", this.Version), "Version", "Version", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NamespaceSpec", "NamespaceSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4885,6 +5227,7 @@ func (this *Job) String() string {
 	s := strings.Join([]string{`&Job{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
+		`NamespaceID:` + fmt.Sprintf("%v", this.NamespaceID) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
 		`}`,
 	}, "")
@@ -4967,6 +5310,7 @@ func (this *Network) String() string {
 	s := strings.Join([]string{`&Network{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
+		`NamespaceID:` + fmt.Sprintf("%v", this.NamespaceID) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NetworkSpec", "NetworkSpec", 1) + `,`,
 		`DriverState:` + strings.Replace(fmt.Sprintf("%v", this.DriverState), "Driver", "Driver", 1) + `,`,
 		`IPAM:` + strings.Replace(fmt.Sprintf("%v", this.IPAM), "IPAMOptions", "IPAMOptions", 1) + `,`,
@@ -4992,6 +5336,7 @@ func (this *Volume) String() string {
 	s := strings.Join([]string{`&Volume{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
+		`NamespaceID:` + fmt.Sprintf("%v", this.NamespaceID) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "VolumeSpec", "VolumeSpec", 1) + `,`,
 		`DriverState:` + strings.Replace(fmt.Sprintf("%v", this.DriverState), "Driver", "Driver", 1) + `,`,
 		`}`,
@@ -5027,6 +5372,16 @@ func (this *StoreAction) String() string {
 	s := strings.Join([]string{`&StoreAction{`,
 		`Action:` + fmt.Sprintf("%v", this.Action) + `,`,
 		`Target:` + fmt.Sprintf("%v", this.Target) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StoreAction_Namespace) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StoreAction_Namespace{`,
+		`Namespace:` + strings.Replace(fmt.Sprintf("%v", this.Namespace), "Namespace", "Namespace", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5327,6 +5682,234 @@ func (m *Version) Unmarshal(data []byte) error {
 					break
 				}
 			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *NamespaceSpec) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: NamespaceSpec: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: NamespaceSpec: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Meta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Meta == nil {
+				m.Meta = &Meta{}
+			}
+			if err := m.Meta.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Namespace) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Namespace: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Namespace: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Version == nil {
+				m.Version = &Version{}
+			}
+			if err := m.Version.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Spec == nil {
+				m.Spec = &NamespaceSpec{}
+			}
+			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(data[iNdEx:])
@@ -7802,6 +8385,35 @@ func (m *Job) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NamespaceID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NamespaceID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
 			}
 			var msglen int
@@ -8701,6 +9313,35 @@ func (m *Network) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NamespaceID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NamespaceID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
 			}
 			var msglen int
@@ -8732,7 +9373,7 @@ func (m *Network) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field DriverState", wireType)
 			}
@@ -8765,7 +9406,7 @@ func (m *Network) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 5:
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field IPAM", wireType)
 			}
@@ -9022,6 +9663,35 @@ func (m *Volume) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NamespaceID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NamespaceID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
 			}
 			var msglen int
@@ -9053,7 +9723,7 @@ func (m *Volume) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field DriverState", wireType)
 			}
@@ -9354,6 +10024,38 @@ func (m *StoreAction) Unmarshal(data []byte) error {
 			}
 		case 2:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Namespace", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Namespace{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Target = &StoreAction_Namespace{v}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Node", wireType)
 			}
 			var msglen int
@@ -9384,7 +10086,7 @@ func (m *StoreAction) Unmarshal(data []byte) error {
 			}
 			m.Target = &StoreAction_Node{v}
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Job", wireType)
 			}
@@ -9416,7 +10118,7 @@ func (m *StoreAction) Unmarshal(data []byte) error {
 			}
 			m.Target = &StoreAction_Job{v}
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Task", wireType)
 			}
@@ -9448,7 +10150,7 @@ func (m *StoreAction) Unmarshal(data []byte) error {
 			}
 			m.Target = &StoreAction_Task{v}
 			iNdEx = postIndex
-		case 5:
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Network", wireType)
 			}
@@ -9480,7 +10182,7 @@ func (m *StoreAction) Unmarshal(data []byte) error {
 			}
 			m.Target = &StoreAction_Network{v}
 			iNdEx = postIndex
-		case 6:
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Volume", wireType)
 			}
@@ -9639,143 +10341,149 @@ var (
 )
 
 var fileDescriptorTypes = []byte{
-	// 2194 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xcc, 0x58, 0x4b, 0x73, 0xdb, 0xd6,
-	0x15, 0x16, 0x49, 0x10, 0x24, 0x0f, 0x29, 0x9b, 0xbe, 0x7e, 0x44, 0x81, 0x6d, 0x49, 0x86, 0xed,
-	0xc4, 0x71, 0x67, 0x98, 0x8c, 0x9d, 0x3a, 0x89, 0xdd, 0x4c, 0x07, 0x7c, 0xc8, 0x61, 0x2c, 0x53,
-	0x9c, 0x4b, 0xc9, 0x6e, 0xba, 0xf1, 0x40, 0xe0, 0x15, 0x05, 0x9b, 0x04, 0x58, 0x00, 0x94, 0xab,
-	0xae, 0xba, 0xcc, 0x24, 0xd3, 0xf7, 0xa6, 0xd3, 0x4e, 0xa6, 0x8b, 0xe6, 0x57, 0xf4, 0x17, 0x78,
-	0xe9, 0x65, 0x57, 0x99, 0x26, 0xab, 0x2e, 0x3b, 0xfd, 0x05, 0x3d, 0xf7, 0x01, 0x12, 0xa4, 0x49,
-	0xc9, 0x6e, 0xea, 0x99, 0x2e, 0x28, 0x01, 0xf7, 0x7e, 0xe7, 0xdc, 0x7b, 0xde, 0xe7, 0x00, 0x8a,
-	0xd1, 0xe1, 0x90, 0x85, 0x95, 0x61, 0xe0, 0x47, 0x3e, 0x21, 0x5d, 0xdf, 0x79, 0xc2, 0x82, 0x8a,
-	0xd3, 0x1f, 0x85, 0x11, 0xfe, 0xb7, 0x87, 0xae, 0x71, 0xa6, 0xe7, 0xf7, 0x7c, 0xb1, 0xfd, 0x2e,
-	0x7f, 0x92, 0x48, 0xf3, 0x0f, 0x29, 0xd0, 0xee, 0xb3, 0xc8, 0x26, 0x04, 0x34, 0xcf, 0x1e, 0xb0,
-	0x95, 0xd4, 0x7a, 0xea, 0x5a, 0x81, 0x8a, 0x67, 0xf2, 0x23, 0xd0, 0xfb, 0xf6, 0x2e, 0xeb, 0x87,
-	0x2b, 0xe9, 0xf5, 0xcc, 0xb5, 0xe2, 0x8d, 0x2b, 0x95, 0x17, 0xf9, 0x56, 0x38, 0x75, 0x65, 0x53,
-	0xc0, 0x1a, 0x5e, 0x14, 0x1c, 0x52, 0x45, 0x63, 0x7c, 0x04, 0xc5, 0xc4, 0x32, 0x29, 0x43, 0xe6,
-	0x09, 0x3b, 0x54, 0xfc, 0xf9, 0x23, 0x39, 0x03, 0xd9, 0x03, 0xbb, 0x3f, 0x62, 0xc8, 0x9d, 0xaf,
-	0xc9, 0x97, 0xdb, 0xe9, 0x0f, 0x53, 0xe6, 0x1a, 0xe4, 0x1e, 0xb0, 0x20, 0x74, 0x7d, 0x8f, 0x83,
-	0x5c, 0xaf, 0xcb, 0x7e, 0x2e, 0x08, 0x35, 0x2a, 0x5f, 0xcc, 0xcf, 0xa0, 0x40, 0x59, 0xe8, 0x8f,
-	0x02, 0x87, 0x85, 0xe4, 0x1d, 0x28, 0x78, 0xb6, 0xe7, 0x3f, 0x72, 0x86, 0xa3, 0x50, 0xc0, 0x32,
-	0xd5, 0xd2, 0x77, 0xdf, 0xac, 0xe5, 0x5b, 0xb8, 0x58, 0x6b, 0xef, 0x84, 0x34, 0xcf, 0xb7, 0x6b,
-	0xb8, 0x4b, 0x2e, 0x41, 0x69, 0xc0, 0x06, 0x7e, 0x70, 0xf8, 0x68, 0xf7, 0x30, 0x62, 0xa1, 0x38,
-	0x39, 0x43, 0x8b, 0x72, 0xad, 0xca, 0x97, 0xcc, 0xdf, 0xa6, 0xe0, 0x4c, 0xcc, 0x9b, 0xb2, 0x9f,
-	0x8d, 0xdc, 0x80, 0x0d, 0x98, 0x17, 0x85, 0xe4, 0x87, 0xa8, 0x0d, 0x77, 0xe0, 0x46, 0xf2, 0x8c,
-	0xe2, 0x8d, 0x8b, 0xf3, 0xb4, 0x31, 0xbe, 0x15, 0x55, 0x60, 0x62, 0x41, 0x29, 0x60, 0x21, 0x0b,
-	0x0e, 0xec, 0x08, 0xe5, 0x91, 0x47, 0x1e, 0x4b, 0x3c, 0x45, 0x62, 0x6e, 0x40, 0xbe, 0xdd, 0xb7,
-	0xa3, 0x3d, 0x3f, 0x18, 0x10, 0x13, 0x4a, 0x76, 0xe0, 0xec, 0xbb, 0x11, 0x73, 0xa2, 0x51, 0x10,
-	0xdb, 0x6b, 0x6a, 0x8d, 0x9c, 0x83, 0xb4, 0x2f, 0x0f, 0x2a, 0x54, 0x75, 0xd4, 0x44, 0x7a, 0xab,
-	0x43, 0x71, 0xc5, 0xfc, 0x63, 0x1a, 0xf2, 0x2d, 0xbf, 0xcb, 0x3a, 0x43, 0xe6, 0x90, 0x1b, 0xa0,
-	0x0d, 0xd0, 0x74, 0x4a, 0x98, 0x95, 0x45, 0xa6, 0xad, 0x6a, 0xcf, 0xbe, 0x59, 0x5b, 0xa2, 0x02,
-	0x4b, 0xee, 0xe3, 0xe1, 0x07, 0xb6, 0x8b, 0x06, 0x76, 0xfb, 0x6e, 0x74, 0x28, 0x8e, 0x38, 0x71,
-	0xe3, 0x9d, 0x79, 0xb4, 0xf1, 0x39, 0x15, 0x2b, 0x41, 0x40, 0xa7, 0xc8, 0xcd, 0xcf, 0x53, 0x50,
-	0x4a, 0x6e, 0x93, 0xb7, 0x40, 0xb7, 0x6a, 0xdb, 0xcd, 0x07, 0x8d, 0xf2, 0x92, 0x61, 0x7c, 0xf1,
-	0xd5, 0xfa, 0x39, 0xce, 0x25, 0x89, 0xb0, 0x9c, 0xc8, 0x3d, 0x60, 0xe4, 0x0a, 0x64, 0xdb, 0xd6,
-	0x4e, 0xa7, 0x51, 0x4e, 0x19, 0x6f, 0x22, 0xec, 0xec, 0x2c, 0xac, 0x6d, 0x8f, 0x42, 0x81, 0xaa,
-	0x53, 0xab, 0xd9, 0x2a, 0xa7, 0xe7, 0xa3, 0xea, 0x81, 0xed, 0x7a, 0x86, 0xf6, 0xf9, 0x5f, 0x57,
-	0x97, 0xcc, 0xaf, 0x53, 0x70, 0x92, 0xef, 0xd7, 0x59, 0xe8, 0x04, 0xee, 0x90, 0xeb, 0x9d, 0x18,
-	0x90, 0xdf, 0xf7, 0xc3, 0x28, 0x11, 0x16, 0xe3, 0x77, 0xf2, 0x21, 0xe4, 0x87, 0xca, 0x24, 0xca,
-	0xa2, 0x17, 0xe6, 0x69, 0x21, 0x36, 0x1b, 0x1d, 0xa3, 0xc9, 0x1d, 0x28, 0x04, 0xb1, 0x9d, 0x57,
-	0x32, 0x2f, 0xe3, 0x0c, 0x13, 0xbc, 0xf9, 0xfb, 0x34, 0x68, 0xfc, 0x9a, 0xdc, 0xc4, 0x6e, 0x57,
-	0xde, 0x4a, 0x9a, 0xb8, 0x59, 0xa7, 0xb8, 0x82, 0xdc, 0x73, 0x07, 0x32, 0x72, 0xd4, 0xb5, 0xce,
-	0xcf, 0xe3, 0xad, 0x82, 0x4b, 0xd9, 0x36, 0xa6, 0x20, 0xef, 0x81, 0x16, 0xa2, 0xc9, 0xd4, 0xad,
-	0x2e, 0x1c, 0x65, 0x56, 0x2a, 0x90, 0xa4, 0x01, 0xc5, 0xee, 0x44, 0x63, 0x2b, 0x9a, 0x20, 0xbc,
-	0xbc, 0x88, 0x30, 0xa1, 0x5c, 0x9a, 0xa4, 0xe3, 0x89, 0x26, 0x8c, 0xec, 0x08, 0xc3, 0x37, 0x2b,
-	0x38, 0xac, 0x2e, 0x3c, 0x5a, 0xa0, 0xd4, 0xbd, 0x15, 0x8d, 0xf9, 0x97, 0x14, 0xc0, 0x64, 0x93,
-	0xdc, 0x86, 0x2c, 0xdf, 0x90, 0x36, 0x3b, 0x31, 0x3f, 0x69, 0x4d, 0xe0, 0x15, 0xfe, 0x8f, 0x51,
-	0x49, 0x42, 0x56, 0x20, 0x37, 0x60, 0x61, 0x68, 0xf7, 0xe2, 0xa4, 0x14, 0xbf, 0x9a, 0x77, 0x20,
-	0x2b, 0x90, 0xa4, 0x08, 0xb9, 0x9d, 0xd6, 0xbd, 0xd6, 0xd6, 0xc3, 0x56, 0x79, 0x89, 0xe4, 0x41,
-	0xab, 0xf3, 0xa7, 0x14, 0x29, 0x40, 0x96, 0x36, 0xac, 0xfa, 0x67, 0xe5, 0x34, 0x66, 0xba, 0x52,
-	0xbd, 0xd9, 0xa9, 0x6d, 0xb5, 0x5a, 0x8d, 0xda, 0x76, 0xa3, 0x5e, 0xce, 0x98, 0x98, 0xa1, 0x9a,
-	0x03, 0xe4, 0x22, 0x02, 0xef, 0x02, 0x77, 0x80, 0x3d, 0x16, 0x30, 0xcf, 0x89, 0xfd, 0x6a, 0xb2,
-	0x60, 0xfe, 0x2a, 0x03, 0xcb, 0x35, 0xdf, 0x8b, 0xd0, 0x35, 0x59, 0x20, 0xf0, 0x1b, 0x49, 0x87,
-	0x91, 0xd1, 0x7a, 0xed, 0x28, 0x87, 0x49, 0x26, 0xad, 0x84, 0xef, 0x90, 0x9b, 0x98, 0x49, 0x07,
-	0xb1, 0x64, 0x0b, 0x9c, 0x6e, 0x7c, 0x4b, 0x2a, 0xb1, 0x5c, 0x21, 0x8e, 0x3f, 0x18, 0xd8, 0x5e,
-	0x17, 0xbd, 0x22, 0xc3, 0x15, 0xa2, 0x5e, 0x79, 0xc1, 0xb0, 0x83, 0x5e, 0x88, 0x36, 0xe7, 0xcb,
-	0xe2, 0x99, 0xe7, 0x78, 0xe6, 0x1d, 0xa0, 0x11, 0xf9, 0x12, 0x7f, 0x24, 0x1d, 0xc8, 0x7b, 0x2c,
-	0x7a, 0xea, 0x07, 0x4f, 0xc2, 0x15, 0x5d, 0x14, 0x91, 0x0f, 0xe6, 0x9d, 0x3b, 0x25, 0x71, 0xa5,
-	0x25, 0x29, 0xac, 0x28, 0xb2, 0x9d, 0x7d, 0x2e, 0x87, 0xb8, 0xd1, 0x98, 0x91, 0xf1, 0x18, 0xce,
-	0xce, 0x85, 0x60, 0xb1, 0x48, 0x14, 0xb1, 0x4f, 0x96, 0x54, 0x19, 0xab, 0x00, 0x28, 0xd2, 0x47,
-	0x18, 0x33, 0x32, 0x2d, 0x2e, 0x63, 0xcc, 0x14, 0x14, 0x93, 0x66, 0x1d, 0xa1, 0x05, 0x05, 0x69,
-	0x76, 0xab, 0xc5, 0x84, 0x81, 0xcc, 0x9f, 0x40, 0x7e, 0xdb, 0x0e, 0x9f, 0x08, 0xf6, 0x16, 0x14,
-	0x9c, 0xf8, 0xa2, 0xca, 0x12, 0x97, 0x8e, 0x95, 0x86, 0xf3, 0x1e, 0x53, 0x55, 0x0b, 0x90, 0x0b,
-	0x46, 0x5e, 0xe4, 0x0e, 0x98, 0xf9, 0x27, 0x0d, 0x72, 0x9f, 0xfa, 0xbb, 0xff, 0x75, 0x32, 0xae,
-	0x42, 0x8e, 0xd7, 0x08, 0xd7, 0x89, 0x2d, 0xfa, 0xd6, 0x3c, 0x32, 0x75, 0x42, 0xa5, 0x23, 0xa1,
-	0xf8, 0x8a, 0x17, 0x8a, 0x09, 0x31, 0xf0, 0xb2, 0xbb, 0x76, 0xe4, 0xec, 0xab, 0x90, 0xbf, 0x72,
-	0x14, 0x87, 0x2a, 0x07, 0x4a, 0x7a, 0x49, 0x44, 0x7e, 0x0c, 0x7a, 0xaf, 0xef, 0xef, 0xda, 0x7d,
-	0x15, 0xf8, 0x57, 0x8f, 0x22, 0xbf, 0x2b, 0x90, 0x92, 0x5e, 0x91, 0x91, 0x8f, 0x40, 0x73, 0x02,
-	0xcc, 0x1b, 0xd9, 0xc5, 0x79, 0x23, 0x26, 0xaf, 0x21, 0x4e, 0x12, 0x0b, 0x12, 0x9e, 0x80, 0x23,
-	0x36, 0xe0, 0x59, 0x95, 0xa1, 0x63, 0x2d, 0xcc, 0x57, 0xb1, 0xed, 0xe8, 0x18, 0x6d, 0x5c, 0x07,
-	0x98, 0x28, 0x83, 0x47, 0xa3, 0xeb, 0x61, 0xf0, 0x7b, 0x71, 0x74, 0x65, 0xe8, 0x64, 0xc1, 0x68,
-	0x41, 0x3e, 0x16, 0x9b, 0xac, 0x43, 0x11, 0x7d, 0x7f, 0xd8, 0x67, 0xb2, 0x8e, 0x4b, 0x6c, 0x72,
-	0x89, 0x23, 0x86, 0x76, 0x60, 0xf7, 0x59, 0xbf, 0xef, 0x86, 0x83, 0xb8, 0xb9, 0x48, 0x2c, 0x19,
-	0xe8, 0x5a, 0x63, 0x3d, 0x18, 0xe8, 0x0b, 0x4a, 0xaa, 0xea, 0x49, 0x58, 0xf6, 0xb1, 0x82, 0xb3,
-	0x30, 0x0a, 0x44, 0xcd, 0x37, 0x3b, 0x00, 0xe2, 0xea, 0x32, 0xa5, 0xdd, 0x9c, 0x4e, 0x69, 0x17,
-	0x17, 0x4a, 0x9a, 0xcc, 0x65, 0x3c, 0x18, 0x83, 0x40, 0xe5, 0x31, 0xfe, 0x68, 0xfe, 0x3b, 0x03,
-	0x1a, 0x87, 0xbd, 0x9e, 0xea, 0xb1, 0x0e, 0xfa, 0x63, 0x7f, 0x97, 0x87, 0x58, 0x46, 0x30, 0x2e,
-	0x20, 0xe3, 0x2c, 0x0a, 0x87, 0xbc, 0xb3, 0xb8, 0xd1, 0xec, 0x92, 0xcb, 0x90, 0xf3, 0x30, 0xf1,
-	0x72, 0x88, 0x26, 0x20, 0x80, 0x10, 0x9d, 0xe7, 0x62, 0xc4, 0xe8, 0x7c, 0x0b, 0x41, 0x71, 0x28,
-	0x64, 0x5f, 0x21, 0x14, 0xe2, 0xc2, 0xf5, 0x32, 0x8e, 0x20, 0x0b, 0xd7, 0xad, 0x71, 0xc5, 0xc9,
-	0x2d, 0xae, 0x38, 0x13, 0x0b, 0xc4, 0xb5, 0x06, 0x93, 0xf1, 0x24, 0x9f, 0xe5, 0x45, 0x3e, 0xbb,
-	0xbe, 0x88, 0xf2, 0xc5, 0x34, 0x96, 0x48, 0x61, 0xfb, 0x70, 0xea, 0x85, 0x6d, 0xec, 0x30, 0x73,
-	0x0a, 0xa0, 0x12, 0xc1, 0x5c, 0xf5, 0x2b, 0x3a, 0x1a, 0x63, 0xb9, 0x0b, 0xdb, 0xdd, 0x2e, 0x26,
-	0xfa, 0x90, 0xc9, 0x4e, 0x1d, 0x0b, 0xca, 0x78, 0xc1, 0xfc, 0x32, 0x05, 0x19, 0xee, 0xbe, 0xaf,
-	0xc5, 0xe6, 0xef, 0x4e, 0x75, 0x0c, 0xe7, 0x8f, 0x08, 0x60, 0xa9, 0x77, 0xf3, 0x9f, 0x69, 0x38,
-	0xd5, 0x6c, 0x5b, 0xf7, 0x31, 0x45, 0xee, 0xb9, 0xbd, 0x91, 0xf4, 0x76, 0x72, 0x0f, 0xf4, 0x3d,
-	0x7b, 0xe0, 0xf6, 0x0f, 0x95, 0x83, 0xdf, 0x9c, 0x5b, 0x9b, 0x66, 0xc9, 0x2a, 0x96, 0x14, 0x72,
-	0x43, 0x90, 0x52, 0xc5, 0x02, 0x05, 0xd5, 0xc3, 0xd1, 0x2e, 0x2a, 0x47, 0xb9, 0xbe, 0x7a, 0xe3,
-	0x93, 0x44, 0x60, 0x7b, 0x58, 0xff, 0x32, 0x72, 0xdc, 0x10, 0x2f, 0xbc, 0xc0, 0xf5, 0x30, 0x5a,
-	0x9e, 0xda, 0x87, 0xd2, 0x27, 0x69, 0xfc, 0x4a, 0xb6, 0x20, 0x2f, 0xbb, 0x70, 0xd6, 0x15, 0x15,
-	0xad, 0xf8, 0xb2, 0xd7, 0xa2, 0x8a, 0x4a, 0x8e, 0x43, 0x63, 0x26, 0xc6, 0x1d, 0x58, 0x9e, 0xda,
-	0x7a, 0xa5, 0x91, 0xe8, 0x3d, 0x58, 0x9e, 0x12, 0xf7, 0x85, 0x3e, 0xa4, 0xd9, 0x7e, 0xf0, 0x7e,
-	0x59, 0x53, 0x4f, 0xb7, 0xca, 0xba, 0xf9, 0xe7, 0x14, 0xe8, 0xf5, 0x00, 0xdb, 0xe5, 0x60, 0xee,
-	0x70, 0x67, 0x41, 0xce, 0x1f, 0xc6, 0x23, 0x09, 0x97, 0xee, 0xed, 0x79, 0xd2, 0x49, 0x06, 0x95,
-	0x2d, 0x89, 0x94, 0x12, 0xc5, 0x74, 0xc6, 0x6d, 0x28, 0x25, 0x37, 0x5e, 0x49, 0x1e, 0x1c, 0xb3,
-	0x8a, 0x5c, 0x75, 0x8a, 0x01, 0x86, 0xbd, 0xde, 0x15, 0x67, 0x29, 0xd7, 0x37, 0x16, 0xdf, 0x86,
-	0x2a, 0x24, 0x8e, 0x23, 0x27, 0x9c, 0xa4, 0xe6, 0x43, 0xd1, 0xa3, 0x2c, 0xa8, 0x43, 0x2f, 0xd8,
-	0x89, 0xce, 0x10, 0x9b, 0xbf, 0x4e, 0x43, 0x51, 0x05, 0xd7, 0xf7, 0x98, 0x90, 0xce, 0xc8, 0xcb,
-	0x3d, 0x9a, 0x62, 0xae, 0x42, 0xeb, 0x28, 0xa1, 0x4e, 0x4b, 0xba, 0xe9, 0xc0, 0xc0, 0x79, 0xd5,
-	0x1d, 0x1e, 0xdc, 0x7a, 0xc4, 0x3c, 0x7b, 0xb7, 0xcf, 0x64, 0x66, 0xcd, 0xd3, 0x22, 0x5f, 0x6b,
-	0xc8, 0x25, 0x3e, 0xa5, 0xb8, 0x1e, 0xf2, 0xf2, 0x54, 0x19, 0xce, 0xd3, 0xf1, 0x3b, 0xf9, 0x18,
-	0x34, 0x77, 0x68, 0x0f, 0x54, 0x2e, 0x5d, 0x5b, 0xa4, 0x16, 0x65, 0x83, 0x6a, 0x1e, 0xd3, 0x82,
-	0xc6, 0x17, 0xa8, 0x20, 0x33, 0x7f, 0x97, 0x86, 0x9c, 0x52, 0xc8, 0xeb, 0x49, 0x1f, 0x37, 0xa7,
-	0xd2, 0xc7, 0xda, 0x11, 0xd9, 0x2e, 0x91, 0xba, 0x3f, 0x86, 0x92, 0x52, 0xb1, 0xac, 0x89, 0xda,
-	0xb1, 0xaa, 0x2d, 0x4a, 0xbc, 0xec, 0xdf, 0xbf, 0xa7, 0x4e, 0x7e, 0x83, 0xc3, 0xc6, 0x03, 0xbf,
-	0x3f, 0x1a, 0xb0, 0xff, 0x13, 0x1f, 0x31, 0x9f, 0x63, 0x9c, 0xcb, 0x1b, 0xbd, 0x1e, 0x23, 0xdd,
-	0x98, 0x32, 0xd2, 0xdc, 0x42, 0x39, 0x51, 0xc8, 0xff, 0xc4, 0x46, 0x26, 0x26, 0x96, 0x87, 0xcc,
-	0xed, 0xed, 0x47, 0xac, 0xdb, 0x66, 0x32, 0x7f, 0xf1, 0x82, 0x16, 0xe7, 0x2f, 0xfe, 0xcc, 0xd3,
-	0xfc, 0x53, 0x81, 0x11, 0x22, 0xa5, 0xa8, 0x7a, 0x33, 0xf7, 0xe0, 0x74, 0x53, 0xf9, 0x3f, 0xb5,
-	0xf7, 0x22, 0x3e, 0x0d, 0x61, 0x5b, 0x95, 0x50, 0x8d, 0x36, 0xa5, 0x9a, 0x0f, 0x40, 0xb7, 0x1d,
-	0xa5, 0xfe, 0xcc, 0x22, 0x87, 0xe8, 0x44, 0x7e, 0xc0, 0x2c, 0x01, 0xa3, 0x0a, 0x6e, 0x3e, 0xc7,
-	0x6c, 0x91, 0x58, 0x47, 0x1d, 0xc7, 0x8c, 0x64, 0x0d, 0xbb, 0x7c, 0x0c, 0xa3, 0x7b, 0xae, 0xd7,
-	0x8d, 0x99, 0xe1, 0x88, 0xa2, 0xf1, 0xf6, 0x47, 0x59, 0x67, 0x65, 0xd1, 0xc8, 0x2a, 0x46, 0x1a,
-	0x3e, 0xfe, 0xff, 0x00, 0x32, 0xd8, 0x52, 0x29, 0x93, 0xbc, 0xb1, 0xa0, 0xec, 0x22, 0x9a, 0xa3,
-	0x38, 0xf3, 0x08, 0xfb, 0x11, 0x65, 0x84, 0x95, 0x45, 0xfd, 0x0a, 0x67, 0xce, 0x71, 0xa8, 0x92,
-	0x71, 0x1b, 0x92, 0x3d, 0xb6, 0x0d, 0xe1, 0xd3, 0x44, 0xdc, 0x88, 0xbc, 0x0f, 0xfa, 0x81, 0xf0,
-	0x04, 0xd5, 0x88, 0x19, 0x8b, 0x7d, 0x85, 0x0f, 0x01, 0x12, 0x5b, 0xcd, 0x83, 0x1e, 0xe1, 0xf4,
-	0xc8, 0xa2, 0xeb, 0x5f, 0x6a, 0x50, 0x18, 0xb7, 0xb1, 0xe4, 0x4d, 0xc8, 0xb4, 0x1a, 0x0f, 0xcb,
-	0x4b, 0x46, 0xf9, 0x8b, 0xaf, 0xd6, 0x4b, 0xe3, 0xf5, 0x16, 0x7b, 0x4a, 0xae, 0x42, 0xc1, 0xda,
-	0xdc, 0xdc, 0xaa, 0x59, 0x7c, 0xbc, 0x4e, 0x19, 0xe7, 0x10, 0x40, 0xc6, 0x00, 0xab, 0xdf, 0xf7,
-	0x1d, 0xfc, 0xcf, 0xfb, 0xcd, 0xbc, 0xd5, 0xe9, 0x34, 0xef, 0xb6, 0x10, 0x95, 0x36, 0xce, 0x22,
-	0xea, 0xd4, 0x04, 0x15, 0x86, 0x6e, 0xcf, 0x53, 0xa0, 0x5a, 0xad, 0xd1, 0x16, 0x93, 0xfa, 0x2c,
-	0xc8, 0x71, 0xd8, 0x90, 0x73, 0xc2, 0x03, 0xdb, 0xb4, 0xd1, 0xb6, 0x68, 0xb3, 0x75, 0xb7, 0xac,
-	0xcd, 0x1c, 0xd8, 0x0e, 0x18, 0xf6, 0xf8, 0xae, 0xd7, 0x23, 0x17, 0xe3, 0x8f, 0x00, 0x59, 0x83,
-	0x20, 0xe4, 0xc4, 0xa4, 0x27, 0x67, 0x76, 0xf7, 0x90, 0x1f, 0xd5, 0xd9, 0xb6, 0xe8, 0x36, 0x67,
-	0xa2, 0xcf, 0x1c, 0x85, 0x7f, 0x82, 0x88, 0xf3, 0xb8, 0x04, 0x39, 0xba, 0xd3, 0x6a, 0x71, 0x4c,
-	0xce, 0x38, 0x83, 0x98, 0xf2, 0x84, 0xcb, 0xc8, 0xf3, 0x38, 0x84, 0xf3, 0xf9, 0x64, 0x67, 0x5b,
-	0x7c, 0x79, 0xc8, 0xcf, 0xf2, 0xd9, 0x1f, 0x45, 0x5d, 0xff, 0xa9, 0x47, 0xae, 0x40, 0xbe, 0xb6,
-	0x75, 0xbf, 0xbd, 0xd9, 0xd8, 0x6e, 0x94, 0x0b, 0x33, 0x37, 0xae, 0xc9, 0xa1, 0x05, 0x05, 0x5b,
-	0x03, 0x7d, 0xc3, 0x6a, 0x6e, 0xa2, 0xec, 0x60, 0x9c, 0x46, 0xcc, 0xc9, 0x31, 0x66, 0xc3, 0x76,
-	0xfb, 0x52, 0x3d, 0xb4, 0xf1, 0xa9, 0xfc, 0x90, 0x51, 0x9c, 0x39, 0x8b, 0xb2, 0xc7, 0xcc, 0x51,
-	0x8a, 0xde, 0x68, 0xb6, 0xac, 0xcd, 0xe6, 0x4f, 0x1b, 0xe5, 0xd2, 0x0c, 0x68, 0xc3, 0xc5, 0x48,
-	0x74, 0x7f, 0xc1, 0xc8, 0x79, 0xd0, 0xea, 0xa8, 0x9c, 0xf2, 0xb2, 0x71, 0x0a, 0x01, 0xcb, 0x63,
-	0x40, 0x1d, 0x75, 0x63, 0x9c, 0xe2, 0x5f, 0xe1, 0xfe, 0xf6, 0xf5, 0xea, 0xc4, 0xfe, 0xd7, 0x9f,
-	0xa5, 0xe0, 0xe4, 0x4c, 0xbc, 0x90, 0xb7, 0x13, 0x4d, 0x8f, 0xfc, 0x42, 0x38, 0x83, 0xd8, 0xf1,
-	0x9e, 0x78, 0x5c, 0xfa, 0xab, 0xa0, 0xd7, 0xd0, 0x14, 0xdb, 0xe3, 0x4f, 0x84, 0x33, 0xb8, 0x5a,
-	0xc0, 0xb8, 0x8f, 0x21, 0x6c, 0xa7, 0x5d, 0xe7, 0xb0, 0xf4, 0x5c, 0xd8, 0xce, 0xb0, 0xab, 0x60,
-	0xb4, 0x71, 0x7f, 0xeb, 0x41, 0x03, 0x3d, 0x64, 0x1e, 0x8c, 0xb2, 0x81, 0x7f, 0xc0, 0x8c, 0x37,
-	0x94, 0x10, 0xb3, 0xd7, 0xae, 0x5e, 0x78, 0xf6, 0xed, 0xea, 0xd2, 0xdf, 0xf1, 0xf7, 0xaf, 0x6f,
-	0x57, 0x53, 0xbf, 0xfc, 0x6e, 0x35, 0xf5, 0x0c, 0x7f, 0xcf, 0xf1, 0xf7, 0x0f, 0xfc, 0xed, 0xea,
-	0xe2, 0x53, 0xfc, 0xcd, 0xff, 0x04, 0x00, 0x00, 0xff, 0xff, 0xbf, 0x3f, 0xff, 0xb0, 0xc3, 0x17,
+	// 2290 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xcc, 0x59, 0xcd, 0x73, 0xdb, 0xc6,
+	0x15, 0x17, 0x49, 0x10, 0x24, 0x1f, 0x29, 0x9b, 0x5e, 0x7f, 0x44, 0x41, 0x6c, 0x49, 0x86, 0xed,
+	0xc4, 0x71, 0x3b, 0x4c, 0x46, 0x4e, 0x9c, 0xc4, 0xae, 0xa7, 0xc3, 0x2f, 0x39, 0x8c, 0x65, 0x8a,
+	0xb3, 0x94, 0xec, 0xa6, 0x17, 0x0f, 0x04, 0xae, 0x24, 0xd8, 0x24, 0xc0, 0x02, 0xa0, 0x5c, 0xf5,
+	0xd4, 0x43, 0x0f, 0x99, 0x74, 0xda, 0xf4, 0xe3, 0xd2, 0x69, 0x27, 0xd3, 0x43, 0xf3, 0x57, 0xf4,
+	0xd2, 0x53, 0x67, 0x7c, 0xec, 0xb1, 0xa7, 0x4c, 0x93, 0x53, 0x8f, 0x9d, 0xfe, 0x05, 0x7d, 0xfb,
+	0x01, 0x10, 0xa4, 0x49, 0xc9, 0x4e, 0x93, 0x19, 0x1f, 0x68, 0x01, 0xbb, 0xbf, 0xf7, 0xf6, 0xed,
+	0xfb, 0x7e, 0x30, 0x14, 0xc3, 0xc3, 0x21, 0x0b, 0x2a, 0x43, 0xdf, 0x0b, 0x3d, 0x42, 0x7a, 0x9e,
+	0xfd, 0x98, 0xf9, 0x15, 0xbb, 0x3f, 0x0a, 0x42, 0xfc, 0x6b, 0x0d, 0x1d, 0xe3, 0xcc, 0x9e, 0xb7,
+	0xe7, 0x89, 0xed, 0xb7, 0xf8, 0x93, 0x44, 0x9a, 0xbf, 0x4f, 0x81, 0x76, 0x8f, 0x85, 0x16, 0x21,
+	0xa0, 0xb9, 0xd6, 0x80, 0x2d, 0xa5, 0x56, 0x53, 0x57, 0x0b, 0x54, 0x3c, 0x93, 0x1f, 0x80, 0xde,
+	0xb7, 0x76, 0x58, 0x3f, 0x58, 0x4a, 0xaf, 0x66, 0xae, 0x16, 0xd7, 0x2e, 0x57, 0x9e, 0xe5, 0x5b,
+	0xe1, 0xd4, 0x95, 0x0d, 0x01, 0x6b, 0xba, 0xa1, 0x7f, 0x48, 0x15, 0x8d, 0xf1, 0x01, 0x14, 0x13,
+	0xcb, 0xa4, 0x0c, 0x99, 0xc7, 0xec, 0x50, 0xf1, 0xe7, 0x8f, 0xe4, 0x0c, 0x64, 0x0f, 0xac, 0xfe,
+	0x88, 0x21, 0x77, 0xbe, 0x26, 0x5f, 0x6e, 0xa6, 0xdf, 0x4f, 0x99, 0x2b, 0x90, 0xbb, 0xcf, 0xfc,
+	0xc0, 0xf1, 0x5c, 0x0e, 0x72, 0xdc, 0x1e, 0xfb, 0xa9, 0x20, 0xd4, 0xa8, 0x7c, 0x31, 0x6f, 0xc3,
+	0x62, 0x1b, 0x25, 0x0c, 0x86, 0x96, 0xcd, 0xba, 0x43, 0x66, 0x93, 0xef, 0x83, 0x36, 0x40, 0x41,
+	0x04, 0xaa, 0xb8, 0xb6, 0x34, 0x4f, 0x50, 0x2a, 0x50, 0xe6, 0x6f, 0x53, 0x50, 0x88, 0xe9, 0xc9,
+	0x39, 0x48, 0x3b, 0x3d, 0x29, 0x58, 0x4d, 0xff, 0xfa, 0xcb, 0x95, 0x74, 0xab, 0x41, 0x71, 0x85,
+	0xbc, 0x1b, 0x4b, 0x21, 0x24, 0x2c, 0xae, 0xbd, 0x36, 0x8b, 0xad, 0x82, 0xd0, 0xdc, 0x81, 0x92,
+	0xf8, 0x5d, 0xd0, 0x02, 0x14, 0x69, 0x29, 0x23, 0x68, 0x2e, 0xce, 0xa2, 0x99, 0x90, 0x9d, 0x0a,
+	0xb8, 0xf9, 0x31, 0x14, 0x28, 0x0b, 0xbc, 0x91, 0x6f, 0xb3, 0x80, 0xbc, 0x09, 0x05, 0xd7, 0x72,
+	0xbd, 0x87, 0xf6, 0x70, 0x14, 0x08, 0xc9, 0x32, 0xb5, 0x12, 0x4a, 0x96, 0x6f, 0xe3, 0x62, 0xbd,
+	0xb3, 0x1d, 0xd0, 0x3c, 0xdf, 0xae, 0xe3, 0x2e, 0xb9, 0x08, 0xa5, 0x01, 0x1b, 0x78, 0xfe, 0xe1,
+	0xc3, 0x9d, 0xc3, 0x90, 0x05, 0x42, 0xd4, 0x0c, 0x2d, 0xca, 0xb5, 0x1a, 0x5f, 0x32, 0x7f, 0x93,
+	0x82, 0x33, 0x11, 0x6f, 0xca, 0x7e, 0x32, 0x72, 0x7c, 0x36, 0x60, 0x6e, 0x18, 0xa0, 0xa8, 0x7a,
+	0xdf, 0x19, 0x38, 0x61, 0xa0, 0xf4, 0x76, 0x61, 0x96, 0xb0, 0xb1, 0x54, 0x54, 0x81, 0x49, 0x15,
+	0x4a, 0x3e, 0x0b, 0x98, 0x7f, 0x60, 0x85, 0x78, 0xe1, 0x40, 0x69, 0xe7, 0x18, 0xe2, 0x09, 0x12,
+	0x73, 0x1d, 0xf2, 0x9d, 0xbe, 0x15, 0xee, 0x7a, 0xfe, 0x80, 0x98, 0x50, 0xb2, 0x7c, 0x7b, 0xdf,
+	0x09, 0x99, 0x1d, 0x8e, 0xfc, 0xc8, 0x05, 0x27, 0xd6, 0xb8, 0x8d, 0x3c, 0x79, 0x90, 0xb2, 0xd1,
+	0x66, 0x97, 0xe2, 0x8a, 0xf9, 0x87, 0x34, 0xe4, 0xdb, 0x5e, 0x4f, 0x3a, 0xc1, 0xda, 0xf3, 0x39,
+	0x41, 0x4d, 0x7b, 0xfa, 0xe5, 0xca, 0x82, 0x74, 0x05, 0x72, 0x0f, 0x0f, 0x3f, 0xb0, 0x1c, 0xf4,
+	0x59, 0xa7, 0xef, 0x84, 0x87, 0xe2, 0x88, 0x13, 0x6b, 0x6f, 0xce, 0xb4, 0x9a, 0x3a, 0xa7, 0x52,
+	0x4d, 0x10, 0xd0, 0x09, 0x72, 0xf3, 0x93, 0x14, 0x94, 0x92, 0xdb, 0xe4, 0x75, 0xd0, 0xab, 0xf5,
+	0xad, 0xd6, 0xfd, 0x66, 0x79, 0xc1, 0x30, 0x3e, 0xfd, 0x7c, 0xf5, 0x1c, 0xe7, 0x92, 0x44, 0x54,
+	0xed, 0xd0, 0x39, 0x60, 0xe4, 0x32, 0x64, 0x3b, 0xd5, 0xed, 0x6e, 0xb3, 0x9c, 0x32, 0x5e, 0x45,
+	0xd8, 0xd9, 0x69, 0x58, 0xc7, 0x1a, 0x05, 0x02, 0xd5, 0xa0, 0xd5, 0x56, 0xbb, 0x9c, 0x9e, 0x8d,
+	0x6a, 0xf8, 0x96, 0xe3, 0x1a, 0xda, 0x27, 0x7f, 0x59, 0x5e, 0x30, 0xbf, 0x48, 0xc1, 0x49, 0xbe,
+	0xdf, 0x60, 0x81, 0xed, 0x3b, 0x43, 0xae, 0x77, 0x62, 0x40, 0x7e, 0xdf, 0x0b, 0xc2, 0x44, 0xa4,
+	0xc7, 0xef, 0xe4, 0x7d, 0xc8, 0x0f, 0x95, 0x49, 0x94, 0x45, 0xcf, 0xcf, 0xd2, 0x42, 0x64, 0x36,
+	0x1a, 0xa3, 0xc9, 0x2d, 0x28, 0xf8, 0x91, 0x9d, 0x95, 0xdb, 0x1f, 0xe3, 0x0c, 0x63, 0xbc, 0xf9,
+	0xbb, 0x34, 0x68, 0x5c, 0xcc, 0xb9, 0x61, 0x78, 0x0b, 0xa2, 0xd0, 0x7a, 0x8e, 0x30, 0x54, 0xb6,
+	0x8d, 0x83, 0xf1, 0xed, 0x89, 0x60, 0x3c, 0x7f, 0x94, 0x59, 0x65, 0x1c, 0x92, 0x26, 0x14, 0x7b,
+	0x63, 0x8d, 0x2d, 0x69, 0x82, 0xf0, 0xd2, 0x3c, 0xc2, 0x84, 0x72, 0x69, 0x92, 0x8e, 0xe7, 0xce,
+	0x20, 0xb4, 0x42, 0x0c, 0xdf, 0xac, 0xe0, 0xb0, 0x3c, 0xf7, 0x68, 0x81, 0x52, 0x72, 0x2b, 0x1a,
+	0xf3, 0xcf, 0x29, 0x80, 0xf1, 0x26, 0xb9, 0x09, 0x59, 0xbe, 0x21, 0x6d, 0x76, 0x62, 0x76, 0x1e,
+	0x1e, 0xc3, 0x2b, 0xfc, 0x0f, 0xa3, 0x92, 0x84, 0x2c, 0x41, 0x0e, 0x93, 0x4d, 0x60, 0xed, 0x45,
+	0x79, 0x36, 0x7a, 0x35, 0x6f, 0x41, 0x56, 0x20, 0x49, 0x11, 0x72, 0xdb, 0xed, 0xbb, 0xed, 0xcd,
+	0x07, 0xed, 0xf2, 0x02, 0xc9, 0x83, 0xd6, 0xe0, 0x4f, 0x29, 0x52, 0x80, 0x2c, 0x6d, 0x56, 0x1b,
+	0x1f, 0x97, 0xd3, 0x98, 0xbc, 0x4b, 0x8d, 0x56, 0xb7, 0xbe, 0xd9, 0x6e, 0x37, 0xeb, 0x5b, 0xcd,
+	0x46, 0x39, 0x63, 0x62, 0x86, 0x6a, 0x0d, 0x90, 0x8b, 0x08, 0xbc, 0xf3, 0xdc, 0x01, 0x76, 0x99,
+	0xcf, 0x5c, 0x3b, 0xf2, 0xab, 0xf1, 0x82, 0xf9, 0xab, 0x0c, 0x2c, 0xd6, 0x3d, 0x37, 0x44, 0xd7,
+	0x64, 0xbe, 0xc0, 0xaf, 0x27, 0x1d, 0x46, 0x46, 0xeb, 0xd5, 0xa3, 0x1c, 0x26, 0x99, 0xb4, 0x12,
+	0xbe, 0x43, 0xae, 0x63, 0x71, 0x18, 0x44, 0x37, 0x9b, 0xe3, 0x74, 0xb1, 0x94, 0x54, 0x62, 0xb9,
+	0x42, 0x6c, 0x6f, 0x30, 0xb0, 0xdc, 0x1e, 0x7a, 0x45, 0x86, 0x2b, 0x44, 0xbd, 0xf2, 0x1a, 0x68,
+	0xf9, 0x7b, 0x01, 0xda, 0x9c, 0x2f, 0x8b, 0x67, 0x5e, 0xb6, 0x98, 0x7b, 0x80, 0x46, 0xe4, 0x4b,
+	0xfc, 0x91, 0x74, 0x21, 0xef, 0xb2, 0xf0, 0x89, 0xe7, 0x3f, 0x0e, 0x96, 0x74, 0x51, 0x17, 0xdf,
+	0x9b, 0x75, 0xee, 0xc4, 0x8d, 0x2b, 0x6d, 0x49, 0x51, 0x0d, 0x43, 0xcb, 0xde, 0xe7, 0xf7, 0x10,
+	0x12, 0xc5, 0x8c, 0x8c, 0x47, 0x70, 0x76, 0x26, 0x04, 0xeb, 0x5f, 0xa2, 0x2e, 0x7f, 0xb8, 0xa0,
+	0x2a, 0x73, 0x05, 0x40, 0x91, 0x3e, 0xc4, 0x98, 0x91, 0x69, 0x71, 0x11, 0x63, 0xa6, 0xa0, 0x98,
+	0xb4, 0x1a, 0x08, 0x2d, 0x28, 0x48, 0xab, 0x57, 0x2b, 0x26, 0x0c, 0x64, 0xfe, 0x08, 0xf2, 0x5b,
+	0x56, 0xf0, 0x58, 0xb0, 0xaf, 0x42, 0xc1, 0x8e, 0x04, 0x55, 0x96, 0xb8, 0x78, 0xec, 0x6d, 0x38,
+	0xef, 0x98, 0xaa, 0x56, 0x80, 0x9c, 0x3f, 0x72, 0x43, 0x67, 0xc0, 0xcc, 0x3f, 0x6a, 0x90, 0xfb,
+	0xc8, 0xdb, 0xf9, 0xc6, 0xc9, 0xb8, 0x06, 0x39, 0x5e, 0x23, 0x1c, 0x3b, 0xb2, 0xe8, 0xeb, 0xb3,
+	0xc8, 0xd4, 0x09, 0x95, 0xae, 0x84, 0xe2, 0x2b, 0x0a, 0x14, 0x11, 0x62, 0xe0, 0x65, 0x77, 0xac,
+	0xd0, 0xde, 0x57, 0x21, 0x7f, 0xf9, 0x28, 0x0e, 0x35, 0x0e, 0x94, 0xf4, 0x92, 0x88, 0xfc, 0x10,
+	0xf4, 0xbd, 0xbe, 0xb7, 0x63, 0xf5, 0x55, 0xe0, 0x5f, 0x39, 0x8a, 0xfc, 0x8e, 0x40, 0x4a, 0x7a,
+	0x45, 0x46, 0x3e, 0x00, 0xcd, 0xf6, 0x31, 0x6f, 0x64, 0xe7, 0xe7, 0x8d, 0x88, 0xbc, 0x8e, 0x38,
+	0x49, 0x2c, 0x48, 0x78, 0x02, 0x0e, 0xd9, 0x80, 0x67, 0x55, 0x86, 0x8e, 0x35, 0x37, 0x5f, 0x45,
+	0xb6, 0xa3, 0x31, 0xda, 0xb8, 0x06, 0x30, 0x56, 0x06, 0x8f, 0x46, 0xc7, 0xc5, 0xe0, 0x77, 0xa3,
+	0xe8, 0xca, 0xd0, 0xf1, 0x82, 0xd1, 0x86, 0x7c, 0x74, 0x6d, 0xb2, 0x0a, 0x45, 0xf4, 0xfd, 0x61,
+	0x9f, 0xc9, 0x3a, 0x2e, 0xb1, 0xc9, 0x25, 0x8e, 0x18, 0x5a, 0xbe, 0xd5, 0x67, 0xfd, 0xbe, 0x13,
+	0x0c, 0xa2, 0xe6, 0x22, 0xb1, 0x64, 0xa0, 0x6b, 0xc5, 0x7a, 0x30, 0xd0, 0x17, 0xd4, 0xad, 0x6a,
+	0x27, 0x61, 0xd1, 0xc3, 0x0a, 0xce, 0x82, 0xd0, 0x17, 0x35, 0xdf, 0xec, 0x02, 0x08, 0xd1, 0x65,
+	0x4a, 0xbb, 0x3e, 0x99, 0xd2, 0x2e, 0xcc, 0xbd, 0x69, 0x32, 0x97, 0xf1, 0x60, 0xf4, 0x7d, 0x95,
+	0xc7, 0xf8, 0xa3, 0xf9, 0xdf, 0x0c, 0x68, 0x1c, 0xf6, 0xdd, 0x54, 0x8f, 0x55, 0xd0, 0x1f, 0x79,
+	0x3b, 0x3c, 0xc4, 0x32, 0x82, 0x71, 0x01, 0x19, 0x67, 0xf1, 0x72, 0xc8, 0x3b, 0x8b, 0x1b, 0xad,
+	0x1e, 0xb9, 0x04, 0x39, 0x17, 0x13, 0x2f, 0x87, 0x68, 0x02, 0x02, 0x08, 0xd1, 0x79, 0x2e, 0x46,
+	0x8c, 0xce, 0xb7, 0x10, 0x14, 0x85, 0x42, 0xf6, 0x05, 0x42, 0x21, 0x2a, 0x5c, 0xcf, 0xe3, 0x08,
+	0xb2, 0x70, 0xdd, 0x88, 0x2b, 0x4e, 0x6e, 0x7e, 0xc5, 0x19, 0x5b, 0x20, 0xaa, 0x35, 0x98, 0x8c,
+	0xc7, 0xf9, 0x2c, 0x2f, 0xf2, 0xd9, 0xb5, 0x79, 0x94, 0xcf, 0xa6, 0xb1, 0x44, 0x0a, 0xdb, 0x87,
+	0x53, 0xcf, 0x6c, 0xf3, 0x1e, 0x5a, 0x01, 0x54, 0x22, 0x98, 0xa9, 0x7e, 0x45, 0x47, 0x23, 0x2c,
+	0x77, 0x61, 0xab, 0xd7, 0xc3, 0x44, 0x1f, 0x30, 0x39, 0x7c, 0x60, 0x41, 0x89, 0x17, 0xcc, 0xbf,
+	0xa5, 0x20, 0xc3, 0xdd, 0xf7, 0x3b, 0xb1, 0xf9, 0x1a, 0x94, 0xdc, 0xa8, 0x3d, 0x1f, 0x5b, 0xfe,
+	0x24, 0xb2, 0x2f, 0xc6, 0x6d, 0x3b, 0x9e, 0x53, 0x8c, 0x41, 0x68, 0xe0, 0xb7, 0x94, 0xb1, 0xb4,
+	0xf9, 0xa7, 0xa9, 0xa0, 0x57, 0xcd, 0xfe, 0xbf, 0xd3, 0x70, 0xaa, 0xd5, 0xa9, 0xde, 0xc3, 0xb4,
+	0xba, 0xeb, 0xec, 0x8d, 0x64, 0x84, 0x90, 0xbb, 0xa0, 0xef, 0x5a, 0x03, 0xa7, 0x7f, 0xa8, 0x82,
+	0xe2, 0xfa, 0xcc, 0x7a, 0x36, 0x4d, 0x56, 0xa9, 0x4a, 0xc5, 0xac, 0x0b, 0x52, 0xaa, 0x58, 0xa0,
+	0x72, 0xf4, 0x60, 0xb4, 0x83, 0x0a, 0x55, 0xe1, 0xa2, 0xde, 0xf8, 0x40, 0xe5, 0x5b, 0x2e, 0xd6,
+	0xcc, 0x8c, 0x9c, 0xba, 0xc4, 0x0b, 0x2f, 0x8a, 0x7b, 0x18, 0x61, 0x4f, 0xac, 0x43, 0xe9, 0xc7,
+	0x34, 0x7a, 0x25, 0x9b, 0x90, 0x97, 0x9d, 0x3b, 0xeb, 0x89, 0x2a, 0x58, 0x7c, 0x5e, 0xb1, 0xa8,
+	0xa2, 0x92, 0x53, 0x61, 0xcc, 0xc4, 0xb8, 0x05, 0x8b, 0x13, 0x5b, 0x2f, 0x34, 0x19, 0xbe, 0x0d,
+	0x8b, 0x13, 0xd7, 0x7d, 0xa6, 0x77, 0x69, 0x75, 0xee, 0xbf, 0x53, 0xd6, 0xd4, 0xd3, 0x8d, 0xb2,
+	0x6e, 0xfe, 0x29, 0x05, 0x7a, 0xc3, 0xc7, 0x16, 0xdb, 0x9f, 0x39, 0xe3, 0x56, 0x21, 0xe7, 0x0d,
+	0xa3, 0x31, 0x86, 0xdf, 0xee, 0x8d, 0x59, 0xb7, 0x93, 0x0c, 0x2a, 0x9b, 0x12, 0x29, 0x6f, 0x14,
+	0xd1, 0x19, 0x37, 0xa1, 0x94, 0xdc, 0x78, 0xa1, 0xfb, 0xe0, 0x68, 0x56, 0xe4, 0xaa, 0x53, 0x0c,
+	0xd0, 0xfb, 0xf4, 0x9e, 0x38, 0x4b, 0x85, 0x8b, 0x31, 0x5f, 0x1a, 0xaa, 0x90, 0x38, 0xc2, 0x9c,
+	0xb0, 0x93, 0x9a, 0x0f, 0x44, 0x5f, 0x33, 0xa7, 0x76, 0x3d, 0x63, 0x27, 0x3a, 0x45, 0x6c, 0xfe,
+	0x3a, 0x0d, 0x45, 0x15, 0x90, 0xff, 0xc7, 0x54, 0x75, 0x46, 0x0a, 0xf7, 0x70, 0x82, 0xb9, 0x0a,
+	0xc7, 0xa3, 0x2e, 0x75, 0x5a, 0xd2, 0x4d, 0x06, 0x06, 0xce, 0xb8, 0xce, 0xf0, 0xe0, 0xc6, 0x43,
+	0xe6, 0x5a, 0x3b, 0x7d, 0x26, 0x63, 0x32, 0x4f, 0x8b, 0x7c, 0xad, 0x29, 0x97, 0xf8, 0x64, 0xe3,
+	0xb8, 0xc8, 0xcb, 0x55, 0xa5, 0x3b, 0x4f, 0xe3, 0x77, 0x72, 0x1b, 0x34, 0x67, 0x68, 0x0d, 0x54,
+	0xfe, 0x5d, 0x99, 0xa7, 0x16, 0x65, 0x83, 0x5a, 0x1e, 0x63, 0x5d, 0xe3, 0x0b, 0x54, 0x90, 0x99,
+	0x7f, 0x4f, 0x43, 0x4e, 0x29, 0xe4, 0xe5, 0x49, 0x39, 0xd7, 0x27, 0x52, 0xce, 0xca, 0x11, 0x59,
+	0x35, 0x51, 0x22, 0x6e, 0x43, 0x49, 0x99, 0x45, 0xd6, 0xde, 0xec, 0xb1, 0xe6, 0x28, 0x4a, 0xbc,
+	0x9c, 0x13, 0x22, 0x3d, 0xea, 0xdf, 0x4c, 0x8f, 0x9f, 0xe1, 0x50, 0x73, 0xdf, 0xeb, 0x8f, 0x06,
+	0xec, 0x25, 0xf1, 0x2b, 0xf3, 0x17, 0x69, 0xd0, 0xa5, 0x44, 0x2f, 0x8f, 0x61, 0xd7, 0x26, 0x0c,
+	0x3b, 0xb3, 0x88, 0x8f, 0x95, 0xf8, 0xad, 0xd8, 0xd5, 0xc4, 0x04, 0xf6, 0x80, 0x39, 0x7b, 0xfb,
+	0x21, 0xeb, 0x75, 0x98, 0xcc, 0x93, 0xbc, 0xd8, 0x46, 0x79, 0x92, 0x3f, 0xf3, 0x72, 0xf2, 0x44,
+	0x60, 0x84, 0x1a, 0x52, 0x54, 0xbd, 0x99, 0xbb, 0x70, 0xba, 0xa5, 0xe2, 0x8c, 0x5a, 0xbb, 0x21,
+	0x9f, 0xd4, 0xb0, 0xe5, 0x4b, 0xa8, 0x53, 0x9b, 0x50, 0xe7, 0x7b, 0xa0, 0x5b, 0xb6, 0x32, 0x59,
+	0x66, 0x9e, 0x13, 0x75, 0x43, 0xcf, 0x67, 0x55, 0x01, 0xa3, 0x0a, 0x6e, 0x7e, 0x96, 0x81, 0x62,
+	0x62, 0x1d, 0xed, 0x12, 0x31, 0x92, 0xb5, 0xf2, 0xd2, 0x31, 0x8c, 0xee, 0x3a, 0x6e, 0x2f, 0x62,
+	0x86, 0xfa, 0x2a, 0xc4, 0x2a, 0x3f, 0x6a, 0x76, 0x8c, 0x8d, 0x24, 0xa6, 0xa9, 0xf8, 0x83, 0x61,
+	0x05, 0xeb, 0x08, 0x76, 0x76, 0x6a, 0xc2, 0x58, 0x9a, 0x37, 0x8d, 0x8b, 0x69, 0x8d, 0x7f, 0xd9,
+	0xf8, 0x1e, 0x64, 0xb0, 0x5b, 0x54, 0x16, 0x7d, 0x65, 0x4e, 0x77, 0x80, 0x68, 0x8e, 0xe2, 0xcc,
+	0x43, 0x6c, 0xb5, 0x8e, 0x6a, 0x16, 0x79, 0x2b, 0xc6, 0x99, 0x73, 0x1c, 0x6a, 0x34, 0xee, 0xb0,
+	0xf4, 0x63, 0x3b, 0x2c, 0x3e, 0x28, 0x45, 0x3d, 0xd6, 0x3b, 0xa0, 0x1f, 0x08, 0x47, 0x52, 0xfd,
+	0xa2, 0x31, 0xdf, 0xd5, 0xf8, 0x7c, 0x23, 0xb1, 0xb5, 0x3c, 0xe8, 0x21, 0x0e, 0xc6, 0x2c, 0xbc,
+	0xf6, 0x4b, 0x0d, 0x0a, 0x71, 0x87, 0x4e, 0x5e, 0x85, 0x4c, 0xbb, 0xf9, 0xa0, 0xbc, 0x60, 0x94,
+	0x3f, 0xfd, 0x7c, 0xb5, 0x14, 0xaf, 0xb7, 0xd9, 0x13, 0x72, 0x05, 0x0a, 0xd5, 0x8d, 0x8d, 0xcd,
+	0x7a, 0x95, 0x7f, 0x39, 0x48, 0x19, 0xe7, 0x10, 0x40, 0x62, 0x40, 0xb5, 0xdf, 0xf7, 0x6c, 0xfc,
+	0xcb, 0x5b, 0xe9, 0x7c, 0xb5, 0xdb, 0x6d, 0xdd, 0x69, 0x23, 0x2a, 0x6d, 0x9c, 0x45, 0xd4, 0xa9,
+	0x31, 0x2a, 0x08, 0x9c, 0x3d, 0x57, 0x81, 0xea, 0xf5, 0x66, 0x47, 0x7c, 0x84, 0x98, 0x06, 0xd9,
+	0x36, 0x1b, 0x72, 0x4e, 0x78, 0x60, 0x87, 0x36, 0x3b, 0x55, 0xda, 0x6a, 0xdf, 0x29, 0x6b, 0x53,
+	0x07, 0x76, 0x7c, 0x86, 0xe3, 0x8b, 0xe3, 0xee, 0x91, 0x0b, 0xd1, 0xf7, 0x8d, 0xac, 0x41, 0x10,
+	0x72, 0x62, 0x3c, 0x6e, 0x30, 0xab, 0x77, 0xc8, 0x8f, 0xea, 0x6e, 0x55, 0xe9, 0x16, 0x67, 0xa2,
+	0x4f, 0x1d, 0x85, 0xff, 0xf8, 0x21, 0xe7, 0x71, 0x11, 0x72, 0x74, 0xbb, 0xdd, 0xe6, 0x98, 0x9c,
+	0x71, 0x06, 0x31, 0xe5, 0x31, 0x97, 0x91, 0xeb, 0x72, 0x08, 0xe7, 0xf3, 0xe1, 0xf6, 0x96, 0xf8,
+	0xa8, 0x92, 0x9f, 0xe6, 0xb3, 0x3f, 0x0a, 0x7b, 0xde, 0x13, 0x97, 0x5c, 0x86, 0x7c, 0x7d, 0xf3,
+	0x5e, 0x67, 0xa3, 0xb9, 0xd5, 0x2c, 0x17, 0xa6, 0x24, 0xae, 0xcb, 0x79, 0x0c, 0x2f, 0xb6, 0x02,
+	0xfa, 0x7a, 0xb5, 0xb5, 0x81, 0x77, 0x07, 0xe3, 0x34, 0x62, 0x4e, 0xc6, 0x98, 0x75, 0xcb, 0xe9,
+	0x4b, 0xf5, 0xd0, 0xe6, 0x47, 0xf2, 0x1b, 0x4d, 0x71, 0xea, 0x2c, 0xca, 0x1e, 0x31, 0x5b, 0x29,
+	0x7a, 0xbd, 0xd5, 0xae, 0x6e, 0xb4, 0x7e, 0xdc, 0x2c, 0x97, 0xa6, 0x40, 0xeb, 0x0e, 0x06, 0xb2,
+	0xf3, 0x33, 0x46, 0x5e, 0x03, 0xad, 0x81, 0xca, 0x29, 0x2f, 0x1a, 0xa7, 0x10, 0xb0, 0x18, 0x03,
+	0x1a, 0xa8, 0x1b, 0xe3, 0x14, 0xff, 0xc0, 0xf8, 0xd7, 0x2f, 0x96, 0xc7, 0xf6, 0xbf, 0xf6, 0x34,
+	0x05, 0x27, 0xa7, 0xc2, 0x8d, 0xbc, 0x91, 0xe8, 0xcd, 0xe4, 0xc7, 0xcf, 0x29, 0xc4, 0xb6, 0xfb,
+	0xd8, 0xe5, 0xb7, 0xbf, 0x02, 0x7a, 0x1d, 0x4d, 0xb1, 0x15, 0x7f, 0xfd, 0x9c, 0xc2, 0xd5, 0x7d,
+	0xc6, 0x7d, 0x0c, 0x61, 0xdb, 0x9d, 0x06, 0x87, 0xa5, 0x67, 0xc2, 0xb6, 0x87, 0x3d, 0x05, 0xa3,
+	0xcd, 0x7b, 0x9b, 0xf7, 0x9b, 0xe8, 0x21, 0xb3, 0x60, 0x94, 0x0d, 0xbc, 0x03, 0x66, 0xbc, 0xa2,
+	0x2e, 0x31, 0x2d, 0x76, 0xed, 0xfc, 0xd3, 0xaf, 0x96, 0x17, 0xfe, 0x89, 0xbf, 0xff, 0x7c, 0xb5,
+	0x9c, 0xfa, 0xf9, 0xd7, 0xcb, 0xa9, 0xa7, 0xf8, 0xfb, 0x07, 0xfe, 0xfe, 0x85, 0xbf, 0x1d, 0x5d,
+	0xfc, 0xc7, 0xc9, 0xf5, 0xff, 0x05, 0x00, 0x00, 0xff, 0xff, 0x13, 0xfa, 0xc4, 0x75, 0x71, 0x19,
 	0x00, 0x00,
 }

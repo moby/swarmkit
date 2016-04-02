@@ -15,6 +15,37 @@ message Version {
 	uint64 index = 1;
 }
 
+// NamespaceSpec defines the user editable fields of a cluster namespace.
+message NamespaceSpec {
+	Meta meta = 1;
+}
+
+// Namespace defines a collection of resources within the cluster. Each
+// resource is a member of a namespace. Objects that are a member of a
+// namespace inherit the namespace from the request context in which they were
+// created. The namespace id (not the name) is added on the object to indicate
+// it is a member. Objects may be considered part of a namespace if they are a
+// child of an object within a namespace.
+//
+// Two namespaces always exist. The first is the "default" namespace. The default
+// namespace is the namespace used when a namespace is not specified. The other
+// is the "system" namespace. The system namespace is used for processes
+// critical to running the swarm cluster.
+//
+// For the purpose of interactions with object, the namespace will be stored in
+// the GRPC metadata, under the name "namespace". If the header is not present,
+// the default namespace will be used.
+message Namespace {
+	// ID identifies the namespace.
+	string id = 1 [(gogoproto.customname) = "ID"];
+
+	// Version provides the storage revision for the namespace.
+	Version Version = 2;
+
+	// Spec provides the user specified details of the namespace.
+	NamespaceSpec spec = 3;
+}
+
 message Resources {
 	// Amount of CPUs (e.g. 2000000000 = 2 CPU cores)
 	int64 nano_cpus = 1 [(gogoproto.customname) = "NanoCPUs"];
@@ -239,6 +270,7 @@ message TaskStatus {
 // immutable and idempotent. Once it is dispatched to a node, it will not be
 // dispatched to another node.
 message Task {
+	// ID uniquely identifies the task in the cluster.
 	string id = 1 [(gogoproto.customname) = "ID"];
 
 	// Version tracks the last time the task was modified.
@@ -246,11 +278,10 @@ message Task {
 
 	// JobID indicates the job under which this task is orchestrated. This
 	// should almost always be set.
+	//
+	// A task is considered a child of a job. Thus, task inherits the namespace
+	// from the job.
 	string job_id = 3 [(gogoproto.customname) = "JobID"];
-
-	// TODO(stevvooe): Consider bringing back assignment, rather than using a
-	// node id field. We like having this concept be first-class. It helps to
-	// reason about storage and consistency.
 
 	// NodeID indicates the node to which the task is assigned. If this field
 	// is empty or not set, the task is unassigned.
@@ -267,6 +298,11 @@ message Task {
 
 	TaskStatus status = 7;
 
+	// TODO(stevvooe): Task attachement specifications need to be pushed down
+	// into a runtime type. With this change, TaskSpec may actually go away.
+	// The distinction here is that we need to understand whether or not the
+	// agent receives user data.
+
 	message NetworkAttachment {
 		// Network state as a whole becomes part of Task so
 		// that it always is available for use in agents so
@@ -282,12 +318,16 @@ message Task {
 }
 
 message Job {
+	// ID uniquely identifies the job.
 	string id = 1 [(gogoproto.customname) = "ID"];
 
 	// Version tracks the last time the job was modified.
 	Version version = 2 [(gogoproto.nullable) = false];
 
-	JobSpec spec = 3;
+	// NamespaceID identifies the namespace to which this job belongs.
+	string namespace_id = 3 [(gogoproto.customname) = "NamespaceID"];
+
+	JobSpec spec = 4;
 }
 
 // IPAMConfiguration specifies parameters for IP Address Management.
@@ -362,14 +402,17 @@ message Network {
 	// Version tracks the last time the network was modified.
 	Version version = 2 [(gogoproto.nullable) = false];
 
-	NetworkSpec spec = 3;
+	// NamespaceID identifies the namespace to which this network belongs.
+	string namespace_id = 3 [(gogoproto.customname) = "NamespaceID"];
+
+	NetworkSpec spec = 4;
 
 	// Driver specific operational state provided by the network driver.
-	Driver driver_state = 4;
+	Driver driver_state = 5;
 
 	// Runtime state of IPAM options. This may not reflect the
 	// ipam options from NetworkSpec.
-	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
+	IPAMOptions ipam = 6 [(gogoproto.customname) = "IPAM"];
 }
 
 // VolumeSpec defines the properties of a Volume.
@@ -385,11 +428,14 @@ message Volume {
 
 	// Version tracks the last time the volume was modified.
 	Version version = 2 [(gogoproto.nullable) = false];
+	
+	// NamespaceID identifies the namespace to which this volume belongs.
+	string namespace_id = 3 [(gogoproto.customname) = "NamespaceID"];
 
-	VolumeSpec spec = 3;
+	VolumeSpec spec = 4;
 
 	// Driver specific operational state provided by the Volume driver.
-	Driver driver_state = 4;
+	Driver driver_state = 5;
 }
 
 // WeightedPeer should be used anywhere where we are describing a remote peer
@@ -428,10 +474,11 @@ enum StoreActionKind {
 message StoreAction {
 	StoreActionKind action = 1;
 	oneof target {
-		Node node = 2;
-		Job job = 3;
-		Task task = 4;
-		Network network = 5;
-		Volume volume = 6;
+		Namespace namespace = 2;
+		Node node = 3;
+		Job job = 4;
+		Task task = 5;
+		Network network = 6;
+		Volume volume = 7;
 	}
 }

@@ -6,12 +6,13 @@ import "types.proto";
 import "gogoproto/gogo.proto";
 
 // Cluster defines the RPC methods for controlling a cluster.
-//
-// Other options for naming this interface:
-//
-// 	- "Control", since this controls a swarm cluster
-// 	- "User" because it is user facing.
 service Cluster {
+	rpc GetNamespace(GetNamespaceRequest) returns (GetNamespaceResponse) {}
+	rpc ListNamespaces(ListNamespacesRequest) returns (ListNamespacesResponse) {}
+	rpc CreateNamespace(CreateNamespaceRequest) returns (CreateNamespaceResponse) {}
+	rpc UpdateNamespace(UpdateNamespaceRequest) returns (UpdateNamespaceResponse) {}
+	rpc RemoveNamespace(RemoveNamespaceRequest) returns (RemoveNamespaceResponse) {}
+
 	rpc GetNode(GetNodeRequest) returns (GetNodeResponse) {}
 	rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {}
 	rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse) {}
@@ -41,6 +42,47 @@ service Cluster {
 message ListOptions {
 	// TODO(vieux): Replace `query` with more powerful selectors.
 	string query = 1;
+}
+
+message GetNamespaceRequest {
+	string namespace_id = 1 [(gogoproto.customname) = "NamespaceID"];
+}
+
+message GetNamespaceResponse {
+	Namespace namespace = 1;
+}
+
+message ListNamespacesRequest {
+	ListOptions options = 1;
+}
+
+message ListNamespacesResponse {
+	repeated Namespace namespaces = 1;
+}
+
+message CreateNamespaceRequest {
+	NamespaceSpec spec = 1;
+}
+
+message CreateNamespaceResponse {
+	Namespace namespace = 1;
+}
+
+message UpdateNamespaceRequest {
+	string namespace_id = 1 [(gogoproto.customname) = "NamespaceID"];
+	NamespaceSpec spec = 2;
+	Version version = 3;
+}
+
+message UpdateNamespaceResponse {
+	Namespace namespace = 1;
+}
+
+message RemoveNamespaceRequest {
+	string namespace_id = 1 [(gogoproto.customname) = "NamespaceID"];
+}
+
+message RemoveNamespaceResponse {
 }
 
 message GetNodeRequest {
