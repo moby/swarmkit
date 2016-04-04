@@ -259,8 +259,8 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 	}
 
 	// Construct IPAM data for driver consumption.
-	ipv4Data := make([]driverapi.IPAMData, 0, len(n.Spec.IPAM.Configurations))
-	for _, ic := range n.Spec.IPAM.Configurations {
+	ipv4Data := make([]driverapi.IPAMData, 0, len(n.IPAM.Configurations))
+	for _, ic := range n.IPAM.Configurations {
 		if ic.Family == api.IPAMConfiguration_IPV6 {
 			continue
 		}
@@ -334,7 +334,7 @@ func (na *NetworkAllocator) freePools(n *api.Network, pools map[string]string) e
 		return fmt.Errorf("failed to resolve IPAM while freeing pools for network %s: %v", n.ID, err)
 	}
 
-	releasePools(ipam, n.Spec.IPAM.Configurations, pools)
+	releasePools(ipam, n.IPAM.Configurations, pools)
 	return nil
 }
 
@@ -373,10 +373,13 @@ func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, er
 
 	ipamConfigs := n.Spec.IPAM.Configurations
 	if n.Spec.IPAM.Configurations == nil {
-		// Auto-generate new IPAM configuration if the user
-		// provided no configuration.
 		ipamConfigs = append(ipamConfigs, &api.IPAMConfiguration{})
-		n.Spec.IPAM.Configurations = ipamConfigs
+	}
+
+	// Update the runtime IPAM configurations with initial state
+	n.IPAM = &api.IPAMOptions{
+		Driver:         &api.Driver{Name: dName},
+		Configurations: ipamConfigs,
 	}
 
 	for i, ic := range ipamConfigs {
