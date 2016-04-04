@@ -23,6 +23,10 @@ var (
 
 	// ErrInvalidFindBy is returned if an unrecognized type is passed to Find.
 	ErrInvalidFindBy = errors.New("invalid find argument type")
+
+	// ErrSequenceConflict is returned when trying to update an object
+	// whose sequence information does not match the object in the store's.
+	ErrSequenceConflict = errors.New("update out of sequence")
 )
 
 // NodeSetWriter is the write half of a node dataset.

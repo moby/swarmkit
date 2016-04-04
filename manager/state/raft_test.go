@@ -672,7 +672,7 @@ func TestRaftSnapshot(t *testing.T) {
 
 			for i, nodeID := range nodeIDs {
 				n := tx.Nodes().Get(nodeID)
-				assert.Equal(t, n, values[i])
+				assert.Equal(t, values[i], n)
 			}
 			return nil
 		})

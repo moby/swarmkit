@@ -9,6 +9,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 )
 
 var (
@@ -919,6 +920,86 @@ func TestFailedTransaction(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
+}
+
+type mockProposer struct {
+	index uint64
+}
+
+func (mp *mockProposer) ProposeValue(ctx context.Context, storeAction []*api.StoreAction, cb func()) error {
+	if cb != nil {
+		cb()
+	}
+	return nil
+}
+
+func (mp *mockProposer) GetVersion() *api.Version {
+	mp.index += 3
+	return &api.Version{Index: mp.index}
+}
+
+func TestVersion(t *testing.T) {
+	var mockProposer mockProposer
+	s := NewMemoryStore(&mockProposer)
+	assert.NotNil(t, s)
+
+	var (
+		retrievedNode  *api.Node
+		retrievedNode2 *api.Node
+	)
+
+	// Create one node
+	n := &api.Node{
+		ID: "id1",
+		Spec: &api.NodeSpec{
+			Meta: api.Meta{
+				Name: "name1",
+			},
+		},
+	}
+	err := s.Update(func(tx Tx) error {
+		assert.NoError(t, tx.Nodes().Create(n))
+		retrievedNode = tx.Nodes().Get(n.ID)
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Try to update the node without using an object fetched from the
+	// store.
+	n.Spec.Meta.Name = "name2"
+	err = s.Update(func(tx Tx) error {
+		assert.Equal(t, ErrSequenceConflict, tx.Nodes().Update(n))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Try again, this time using the retrieved node.
+	retrievedNode.Spec.Meta.Name = "name2"
+	err = s.Update(func(tx Tx) error {
+		assert.NoError(t, tx.Nodes().Update(retrievedNode))
+		retrievedNode2 = tx.Nodes().Get(n.ID)
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Try to update retrievedNode again. This should fail because it was
+	// already used to perform an update.
+	retrievedNode.Spec.Meta.Name = "name3"
+	err = s.Update(func(tx Tx) error {
+		assert.Equal(t, ErrSequenceConflict, tx.Nodes().Update(n))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// But using retrievedNode2 should work, since it has the latest
+	// sequence information.
+	retrievedNode2.Spec.Meta.Name = "name3"
+	err = s.Update(func(tx Tx) error {
+		assert.NoError(t, tx.Nodes().Update(retrievedNode2))
+		return nil
+	})
+	assert.NoError(t, err)
+
 }
 
 func TestStoreSaveRestore(t *testing.T) {
