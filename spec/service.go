@@ -27,6 +27,8 @@ type ContainerConfig struct {
 	// format. These must be compliant with  [IEEE Std
 	// 1003.1-2001](http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html).
 	Env []string `yaml:"env,omitempty"`
+
+	Resources *ResourceRequirements `yaml:"resources,omitempty"`
 }
 
 // ServiceConfig is a human representation of the ServiceJob
@@ -44,6 +46,9 @@ func (s *ServiceConfig) Validate() error {
 	}
 	if s.Image == "" {
 		return fmt.Errorf("image is mandatory in %s", s.Name)
+	}
+	if err := s.Resources.Validate(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -71,9 +76,9 @@ func (s *ServiceConfig) Write(w io.Writer) error {
 	return yaml.NewEncoder(w).Encode(s)
 }
 
-// JobSpec converts a ServiceConfig to a JobSpec.
-func (s *ServiceConfig) JobSpec() *api.JobSpec {
-	return &api.JobSpec{
+// ToProto converts a ServiceConfig to a JobSpec.
+func (s *ServiceConfig) ToProto() *api.JobSpec {
+	spec := &api.JobSpec{
 		Meta: api.Meta{
 			Name:   s.Name,
 			Labels: make(map[string]string),
@@ -81,6 +86,7 @@ func (s *ServiceConfig) JobSpec() *api.JobSpec {
 		Template: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
+					Resources: s.Resources.ToProto(),
 					Image: &api.ImageSpec{
 						Reference: s.Image,
 					},
@@ -96,10 +102,12 @@ func (s *ServiceConfig) JobSpec() *api.JobSpec {
 			},
 		},
 	}
+
+	return spec
 }
 
-// FromJobSpec converts a JobSpec to a ServiceConfig.
-func (s *ServiceConfig) FromJobSpec(jobSpec *api.JobSpec) {
+// FromProto converts a JobSpec to a ServiceConfig.
+func (s *ServiceConfig) FromProto(jobSpec *api.JobSpec) {
 	*s = ServiceConfig{
 		Name:      jobSpec.Meta.Name,
 		Instances: jobSpec.GetService().Instances,
@@ -109,6 +117,10 @@ func (s *ServiceConfig) FromJobSpec(jobSpec *api.JobSpec) {
 			Args:    jobSpec.Template.GetContainer().Args,
 			Command: jobSpec.Template.GetContainer().Command,
 		},
+	}
+	if jobSpec.Template.GetContainer().Resources != nil {
+		s.Resources = &ResourceRequirements{}
+		s.Resources.FromProto(jobSpec.Template.GetContainer().Resources)
 	}
 }
 

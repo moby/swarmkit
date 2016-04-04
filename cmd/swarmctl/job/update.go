@@ -26,7 +26,7 @@ var (
 				if err != nil {
 					return err
 				}
-				spec = service.JobSpec()
+				spec = service.ToProto()
 			} else { // TODO(vieux): support or error on both file.
 				spec = &api.JobSpec{}
 

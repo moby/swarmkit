@@ -34,8 +34,8 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 			OS:           info.OSType,
 		},
 		Resources: &api.Resources{
-			CPU:    float64(info.NCPU),
-			Memory: info.MemTotal,
+			NanoCPUs:    int64(info.NCPU) * 1e9,
+			MemoryBytes: info.MemTotal,
 		},
 	}
 

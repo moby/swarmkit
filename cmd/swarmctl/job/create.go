@@ -22,7 +22,7 @@ var (
 				if err != nil {
 					return err
 				}
-				spec = service.JobSpec()
+				spec = service.ToProto()
 			} else { // TODO(vieux): support or error on both file.
 				if !flags.Changed("name") || !flags.Changed("image") {
 					return errors.New("--name and --image are mandatory")

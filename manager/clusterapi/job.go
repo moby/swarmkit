@@ -9,14 +9,52 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+func validateResources(r *api.Resources) error {
+	if r == nil {
+		return nil
+	}
+
+	if r.NanoCPUs != 0 && r.NanoCPUs < 1e6 {
+		return grpc.Errorf(codes.InvalidArgument, "invalid cpu value %d: Must be at least %d", r.NanoCPUs, 1e6)
+	}
+
+	if r.MemoryBytes != 0 && r.MemoryBytes < 4*1024*1024 {
+		return grpc.Errorf(codes.InvalidArgument, "invalid memory value %d: Must be at least 4MiB", r.MemoryBytes)
+	}
+	return nil
+}
+
+func validateResourceRequirements(r *api.ResourceRequirements) error {
+	if r == nil {
+		return nil
+	}
+	if err := validateResources(r.Limits); err != nil {
+		return err
+	}
+	if err := validateResources(r.Reservations); err != nil {
+		return err
+	}
+	return nil
+}
+
 func validateJobSpecTemplate(spec *api.JobSpec) error {
-	if spec.Template.GetRuntime() == nil {
+	tpl := spec.Template
+
+	if tpl == nil {
+		return grpc.Errorf(codes.InvalidArgument, "missing template in job spec")
+	}
+
+	if tpl.GetRuntime() == nil {
 		return grpc.Errorf(codes.InvalidArgument, "template: runtime container spec required in job spec task template")
 	}
 
-	container := spec.Template.GetContainer()
+	container := tpl.GetContainer()
 	if container == nil {
 		return grpc.Errorf(codes.Unimplemented, "template: unimplemented runtime in job spec task template")
+	}
+
+	if err := validateResourceRequirements(container.Resources); err != nil {
+		return err
 	}
 
 	image := container.Image
