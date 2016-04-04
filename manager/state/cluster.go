@@ -30,7 +30,7 @@ type Cluster interface {
 type cluster struct {
 	id uint64
 
-	lock    sync.RWMutex
+	mu      sync.RWMutex
 	members map[uint64]*Member
 
 	// removed contains the list of removed members,
@@ -40,8 +40,6 @@ type cluster struct {
 
 // Member represents a raft cluster member
 type Member struct {
-	l sync.RWMutex
-
 	*api.RaftNode
 
 	Client *Raft
@@ -65,33 +63,34 @@ func (c *cluster) ID() uint64 {
 // Members returns the list of raft members in the cluster
 func (c *cluster) Members() map[uint64]*Member {
 	members := make(map[uint64]*Member)
-	c.lock.RLock()
+	c.mu.RLock()
 	for k, v := range c.members {
 		members[k] = v
 	}
-	c.lock.RUnlock()
+	c.mu.RUnlock()
 	return members
 }
 
 // GetMember returns informations on a given member
 func (c *cluster) GetMember(id uint64) *Member {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.members[id]
 }
 
 // AddMember adds a node to the cluster memberlist
 func (c *cluster) AddMember(member *Member) error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.members[member.ID] = member
 	return nil
 }
 
 // RemoveMember removes a node from the cluster memberlist
 func (c *cluster) RemoveMember(id uint64) error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.members[id].Client.Conn.Close()
 	c.removed[id] = true
 	delete(c.members, id)
 	return nil
@@ -99,7 +98,7 @@ func (c *cluster) RemoveMember(id uint64) error {
 
 // IsIDRemoved checks if a member is in the remove set
 func (c *cluster) IsIDRemoved(id uint64) bool {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.removed[id]
 }

@@ -84,7 +84,6 @@ const (
 type Node struct {
 	raft.Node
 	cluster Cluster
-	lock    sync.RWMutex
 
 	Client *Raft
 	Server *grpc.Server
@@ -461,9 +460,6 @@ func (n *Node) Leader() uint64 {
 // beginning the log replication process. This method
 // is called from an aspiring member to an existing member
 func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinResponse, error) {
-	n.lock.Lock()
-	defer n.lock.Unlock()
-
 	meta, err := req.Node.Marshal()
 	if err != nil {
 		return nil, err
@@ -477,16 +473,13 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 	// TODO(abronan, aaronl): determine if we need to snapshot the memberlist
 	if n.cluster.GetMember(req.Node.ID) == nil {
 		cc := raftpb.ConfChange{
-			ID:      req.Node.ID,
 			Type:    raftpb.ConfChangeAddNode,
 			NodeID:  req.Node.ID,
 			Context: meta,
 		}
 
 		// Wait for a raft round to process the configuration change
-		// TODO(abronan): There should probably be a timeout here or this could
-		// block forever if there is no majority left
-		err = n.configure(context.Background(), cc)
+		err = n.configure(ctx, cc)
 		if err != nil {
 			return nil, err
 		}
@@ -509,9 +502,6 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 // from a member who is willing to leave its raft
 // membership to an active member of the raft
 func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResponse, error) {
-	n.lock.Lock()
-	defer n.lock.Unlock()
-
 	cc := raftpb.ConfChange{
 		ID:      req.Node.ID,
 		Type:    raftpb.ConfChangeRemoveNode,
@@ -520,9 +510,7 @@ func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResp
 	}
 
 	// Wait for a raft round to process the configuration change
-	// TODO(abronan): There should probably be a timeout here or this could
-	// block forever if there is no majority left
-	err := n.configure(context.Background(), cc)
+	err := n.configure(ctx, cc)
 	if err != nil {
 		return nil, err
 	}
@@ -544,6 +532,11 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 
 // RegisterNode registers a new node on the cluster
 func (n *Node) RegisterNode(node *api.RaftNode) error {
+	// Avoid opening a connection with ourself
+	if node.ID == n.Config.ID {
+		return nil
+	}
+
 	// We don't want to impose a timeout on the grpc connection. It
 	// should keep retrying as long as necessary, in case the peer
 	// is temporarily unavailable.
@@ -905,7 +898,6 @@ func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
 
 	// The leader steps down
 	if n.Config.ID == n.Leader() && n.Config.ID == cc.NodeID {
-		n.Stop()
 		return
 	}
 
@@ -913,6 +905,9 @@ func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
 	// a follower and the leader steps down, Campaign
 	// to be the leader
 	if cc.NodeID == n.Leader() {
+		// FIXME(abronan): it's probably risky for each follower to Campaign
+		// at the same time, but it might speed up the process of recovering
+		// a leader
 		if err = n.Campaign(n.Ctx); err != nil {
 			return err
 		}
