@@ -1,6 +1,7 @@
 package state
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -31,6 +32,11 @@ func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
 }
 
+type testNode struct {
+	*Node
+	listener *wrappedListener
+}
+
 func pollFunc(f func() bool) error {
 	if f() {
 		return nil
@@ -59,13 +65,13 @@ type leaderStatus struct {
 	term   uint64
 }
 
-func getTermAndLeader(n *Node) *leaderStatus {
+func getTermAndLeader(n *testNode) *leaderStatus {
 	status := n.Status()
 	return &leaderStatus{leader: status.Lead, term: status.Term}
 }
 
 // waitForCluster waits until leader will be one of specified nodes
-func waitForCluster(t *testing.T, nodes map[uint64]*Node) {
+func waitForCluster(t *testing.T, nodes map[uint64]*testNode) {
 	err := pollFunc(func() bool {
 		var prev *leaderStatus
 	nodeLoop:
@@ -97,7 +103,7 @@ func waitForCluster(t *testing.T, nodes map[uint64]*Node) {
 }
 
 // waitForPeerNumber waits until peers in cluster converge to specified number
-func waitForPeerNumber(t *testing.T, nodes map[uint64]*Node, count int) {
+func waitForPeerNumber(t *testing.T, nodes map[uint64]*testNode, count int) {
 	assert.NoError(t, pollFunc(func() bool {
 		for _, n := range nodes {
 			if len(n.cluster.Members()) != count {
@@ -108,9 +114,66 @@ func waitForPeerNumber(t *testing.T, nodes map[uint64]*Node, count int) {
 	}))
 }
 
-func newNode(t *testing.T, opts ...NewNodeOptions) (*Node, net.Listener) {
+// wrappedListener disables the Close method to make it possible to reuse a
+// socket. close must be called to release the socket.
+type wrappedListener struct {
+	net.Listener
+	acceptConn chan net.Conn
+	acceptErr  chan error
+	closed     chan struct{}
+}
+
+func newWrappedListener(l net.Listener) *wrappedListener {
+	wrappedListener := wrappedListener{
+		Listener:   l,
+		acceptConn: make(chan net.Conn),
+		acceptErr:  make(chan error, 1),
+		closed:     make(chan struct{}, 10), // grpc closes multiple times
+	}
+	// Accept connections
+	go func() {
+		for {
+			conn, err := l.Accept()
+			if err != nil {
+				wrappedListener.acceptErr <- err
+				return
+			}
+			wrappedListener.acceptConn <- conn
+		}
+	}()
+
+	return &wrappedListener
+}
+
+func (l *wrappedListener) Accept() (net.Conn, error) {
+	select {
+	case conn := <-l.acceptConn:
+		return conn, nil
+	case err := <-l.acceptErr:
+		return nil, err
+	case <-l.closed:
+		return nil, errors.New("listener closed")
+	}
+}
+
+func (l *wrappedListener) Close() error {
+	l.closed <- struct{}{}
+	return nil
+}
+
+func (l *wrappedListener) close() error {
+	return l.Listener.Close()
+}
+
+func (l *wrappedListener) Addr() net.Addr {
+	// stubbed out
+	return l.Listener.Addr()
+}
+
+func newNode(t *testing.T, opts ...NewNodeOptions) *testNode {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "can't bind to raft service port")
+	wrappedListener := newWrappedListener(l)
 	s := grpc.NewServer()
 
 	cfg := DefaultNodeConfig()
@@ -140,32 +203,28 @@ func newNode(t *testing.T, opts ...NewNodeOptions) (*Node, net.Listener) {
 	require.NoError(t, err, "can't create raft node")
 	n.Server = s
 
-	return n, l
+	return &testNode{Node: n, listener: wrappedListener}
 }
 
-func newInitNode(t *testing.T, opts ...NewNodeOptions) *Node {
-	n, l := newNode(t, opts...)
+func newInitNode(t *testing.T, opts ...NewNodeOptions) *testNode {
+	n := newNode(t, opts...)
 
 	err := n.Campaign(n.Ctx)
 	require.NoError(t, err, "can't campaign to be the leader")
 	n.Start()
 
-	Register(n.Server, n)
+	Register(n.Server, n.Node)
 
-	done := make(chan error)
-	go func() {
-		done <- n.Server.Serve(l)
-	}()
 	go func() {
 		// After stopping, we should receive an error from Serve
-		assert.Error(t, <-done)
+		assert.Error(t, n.Server.Serve(n.listener))
 	}()
 
 	return n
 }
 
-func newJoinNode(t *testing.T, join string, opts ...NewNodeOptions) *Node {
-	n, l := newNode(t, opts...)
+func newJoinNode(t *testing.T, join string, opts ...NewNodeOptions) *testNode {
+	n := newNode(t, opts...)
 
 	n.Start()
 
@@ -173,41 +232,36 @@ func newJoinNode(t *testing.T, join string, opts ...NewNodeOptions) *Node {
 	assert.NoError(t, err, "can't initiate connection with existing raft")
 
 	resp, err := c.Join(n.Ctx, &api.JoinRequest{
-		Node: &api.RaftNode{ID: n.Config.ID, Addr: l.Addr().String()},
+		Node: &api.RaftNode{ID: n.Config.ID, Addr: n.Address},
 	})
 	require.NoError(t, err, "can't join existing Raft")
 
 	n.RegisterNodes(resp.Members)
 
-	Register(n.Server, n)
+	Register(n.Server, n.Node)
 
-	done := make(chan error)
-	go func() {
-		done <- n.Server.Serve(l)
-	}()
 	go func() {
 		// After stopping, we should receive an error from Serve
-		assert.Error(t, <-done)
+		assert.Error(t, n.Server.Serve(n.listener))
 	}()
 	return n
 }
 
-func restartNode(t *testing.T, n *Node, join string) *Node {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err, "can't bind to raft service port")
+func restartNode(t *testing.T, oldNode *testNode, join string) *testNode {
+	wrappedListener := newWrappedListener(oldNode.listener.Listener)
 	s := grpc.NewServer()
 
 	cfg := DefaultNodeConfig()
 	cfg.Logger = raftLogger
 
 	newNodeOpts := NewNodeOptions{
-		Addr:         l.Addr().String(),
+		Addr:         oldNode.Address,
 		Config:       cfg,
-		StateDir:     n.stateDir,
+		StateDir:     oldNode.stateDir,
 		TickInterval: testTick,
 	}
 
-	n, err = NewNode(context.Background(), newNodeOpts, nil)
+	n, err := NewNode(context.Background(), newNodeOpts, nil)
 	require.NoError(t, err, "can't create raft node")
 	n.Server = s
 
@@ -217,7 +271,7 @@ func restartNode(t *testing.T, n *Node, join string) *Node {
 	assert.NoError(t, err, "can't initiate connection with existing raft")
 
 	resp, err := c.Join(n.Ctx, &api.JoinRequest{
-		Node: &api.RaftNode{ID: n.Config.ID, Addr: l.Addr().String()},
+		Node: &api.RaftNode{ID: n.Config.ID, Addr: n.Address},
 	})
 	require.NoError(t, err, "can't join existing Raft")
 
@@ -225,43 +279,40 @@ func restartNode(t *testing.T, n *Node, join string) *Node {
 
 	Register(s, n)
 
-	done := make(chan error)
-	go func() {
-		done <- s.Serve(l)
-	}()
 	go func() {
 		// After stopping, we should receive an error from Serve
-		assert.Error(t, <-done)
+		assert.Error(t, s.Serve(wrappedListener))
 	}()
-	return n
+	return &testNode{Node: n, listener: wrappedListener}
 }
 
-func newRaftCluster(t *testing.T, opts ...NewNodeOptions) map[uint64]*Node {
-	nodes := make(map[uint64]*Node)
+func newRaftCluster(t *testing.T, opts ...NewNodeOptions) map[uint64]*testNode {
+	nodes := make(map[uint64]*testNode)
 	nodes[1] = newInitNode(t, opts...)
 	addRaftNode(t, nodes, opts...)
 	addRaftNode(t, nodes, opts...)
 	return nodes
 }
 
-func addRaftNode(t *testing.T, nodes map[uint64]*Node, opts ...NewNodeOptions) {
+func addRaftNode(t *testing.T, nodes map[uint64]*testNode, opts ...NewNodeOptions) {
 	n := uint64(len(nodes) + 1)
 	nodes[n] = newJoinNode(t, nodes[1].Address, opts...)
 	waitForCluster(t, nodes)
 }
 
-func teardownCluster(t *testing.T, nodes map[uint64]*Node) {
+func teardownCluster(t *testing.T, nodes map[uint64]*testNode) {
 	for _, node := range nodes {
 		shutdownNode(node)
+		node.listener.close()
 	}
 }
 
-func removeNode(nodes map[string]*Node, node string) {
+func removeNode(nodes map[string]*testNode, node string) {
 	shutdownNode(nodes[node])
 	delete(nodes, node)
 }
 
-func shutdownNode(node *Node) {
+func shutdownNode(node *testNode) {
 	node.Server.Stop()
 	node.Shutdown()
 	os.RemoveAll(node.stateDir)
@@ -292,7 +343,7 @@ func TestRaftLeader(t *testing.T) {
 	assert.Equal(t, nodes[3].Leader(), nodes[1].Config.ID)
 }
 
-func proposeValue(t *testing.T, raftNode *Node, nodeID ...string) (*api.Node, error) {
+func proposeValue(t *testing.T, raftNode *testNode, nodeID ...string) (*api.Node, error) {
 	nodeIDStr := "id1"
 	if len(nodeID) != 0 {
 		nodeIDStr = nodeID[0]
@@ -325,7 +376,7 @@ func proposeValue(t *testing.T, raftNode *Node, nodeID ...string) (*api.Node, er
 	return node, nil
 }
 
-func checkValue(t *testing.T, raftNode *Node, createdNode *api.Node) {
+func checkValue(t *testing.T, raftNode *testNode, createdNode *api.Node) {
 	err := raftNode.memoryStore.View(func(tx ReadTx) error {
 		allNodes, err := tx.Nodes().Find(All)
 		if err != nil {
@@ -338,7 +389,7 @@ func checkValue(t *testing.T, raftNode *Node, createdNode *api.Node) {
 	assert.NoError(t, err)
 }
 
-func checkNoValue(t *testing.T, raftNode *Node) {
+func checkNoValue(t *testing.T, raftNode *testNode) {
 	err := raftNode.memoryStore.View(func(tx ReadTx) error {
 		allNodes, err := tx.Nodes().Find(All)
 		if err != nil {
@@ -359,7 +410,7 @@ func TestRaftLeaderDown(t *testing.T) {
 	// Stop node 1
 	nodes[1].Stop()
 
-	newCluster := map[uint64]*Node{
+	newCluster := map[uint64]*testNode{
 		2: nodes[2],
 		3: nodes[3],
 	}
@@ -374,8 +425,8 @@ func TestRaftLeaderDown(t *testing.T) {
 
 	// Find the leader node and a follower node
 	var (
-		leaderNode   *Node
-		followerNode *Node
+		leaderNode   *testNode
+		followerNode *testNode
 	)
 	for i, n := range newCluster {
 		if n.Config.ID == n.Leader() {
@@ -549,7 +600,7 @@ func TestRaftLeaderLeave(t *testing.T) {
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
-	newCluster := map[uint64]*Node{
+	newCluster := map[uint64]*testNode{
 		2: nodes[2],
 		3: nodes[3],
 	}
@@ -564,8 +615,8 @@ func TestRaftLeaderLeave(t *testing.T) {
 
 	// Find the leader node and a follower node
 	var (
-		leaderNode   *Node
-		followerNode *Node
+		leaderNode   *testNode
+		followerNode *testNode
 	)
 	for i, n := range nodes {
 		if n.Config.ID == leader {
@@ -709,10 +760,10 @@ func TestRaftRejoin(t *testing.T) {
 	values[1], err = proposeValue(t, nodes[1], "id2")
 	assert.NoError(t, err, "failed to propose value")
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(2 * time.Second)
 
 	// Nodes 1 and 2 should have the new value
-	checkValues := func(checkNodes ...*Node) {
+	checkValues := func(checkNodes ...*testNode) {
 		for _, node := range checkNodes {
 			err := node.memoryStore.View(func(tx ReadTx) error {
 				allNodes, err := tx.Nodes().Find(All)
@@ -743,11 +794,11 @@ func TestRaftRejoin(t *testing.T) {
 func TestRaftUnreachableNode(t *testing.T) {
 	t.Parallel()
 
-	nodes := make(map[uint64]*Node)
+	nodes := make(map[uint64]*testNode)
 	nodes[1] = newInitNode(t)
 
 	// Add a new node, but don't start its server yet
-	n, l := newNode(t)
+	n := newNode(t)
 
 	c, err := GetRaftClient(nodes[1].Address, 500*time.Millisecond)
 	assert.NoError(t, err, "can't initiate connection with existing raft")
@@ -763,16 +814,12 @@ func TestRaftUnreachableNode(t *testing.T) {
 
 	n.RegisterNodes(resp.Members)
 
-	Register(n.Server, n)
+	Register(n.Server, n.Node)
 
 	// Now start the new node's server
-	done := make(chan error)
-	go func() {
-		done <- n.Server.Serve(l)
-	}()
 	go func() {
 		// After stopping, we should receive an error from Serve
-		assert.Error(t, <-done)
+		assert.Error(t, n.Server.Serve(n.listener))
 	}()
 
 	nodes[2] = n
