@@ -227,17 +227,26 @@ func TestAllocator(t *testing.T) {
 	_, err = watchNetwork(t, netWatch)
 	assert.NoError(t, err)
 
+	// Try to create a task with no network attachments and test
+	// that it moves to ALLOCATED state.
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		t4 := &api.Task{
 			ID: "testTaskID4",
 			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
-			Spec: &api.TaskSpec{},
+			Spec: &api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+			},
 		}
 		assert.NoError(t, tx.Tasks().Create(t4))
 		return nil
 	}))
+	t4, err := watchTask(t, taskWatch)
+	assert.NoError(t, err)
+	assert.Equal(t, t4.Status.State, api.TaskStateAllocated)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Networks().Update(n2))

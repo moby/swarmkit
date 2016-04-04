@@ -10,6 +10,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/manager/allocator"
 	"github.com/docker/swarm-v2/manager/clusterapi"
 	"github.com/docker/swarm-v2/manager/dispatcher"
 	"github.com/docker/swarm-v2/manager/drainer"
@@ -49,6 +50,7 @@ type Manager struct {
 	orchestrator *orchestrator.Orchestrator
 	drainer      *drainer.Drainer
 	scheduler    *scheduler.Scheduler
+	allocator    *allocator.Allocator
 	server       *grpc.Server
 	raftNode     *state.Node
 
@@ -141,11 +143,25 @@ func (m *Manager) Run() error {
 					m.orchestrator = orchestrator.New(store)
 					m.scheduler = scheduler.New(store)
 					m.drainer = drainer.New(store)
+
+					allocator, err := allocator.New(store)
+					if err != nil {
+						log.Error(err)
+					}
+					m.allocator = allocator
+
 					m.leaderLock.Unlock()
 
 					// Start all sub-components in separate goroutines.
 					// TODO(aluzzardi): This should have some kind of error handling so that
 					// any component that goes down would bring the entire manager down.
+
+					if m.allocator != nil {
+						if err := m.allocator.Start(context.Background()); err != nil {
+							log.Error(err)
+						}
+					}
+
 					go func() {
 						if err := m.scheduler.Run(); err != nil {
 							log.Error(err)
@@ -167,9 +183,14 @@ func (m *Manager) Run() error {
 					m.orchestrator.Stop()
 					m.scheduler.Stop()
 
+					if m.allocator != nil {
+						m.allocator.Stop()
+					}
+
 					m.drainer = nil
 					m.orchestrator = nil
 					m.scheduler = nil
+					m.allocator = nil
 					m.leaderLock.Unlock()
 				}
 			case <-m.managerDone:

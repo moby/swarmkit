@@ -58,6 +58,9 @@ func TestScheduler(t *testing.T) {
 				Name: "name1",
 			},
 
+			Status: &api.TaskStatus{
+				State: api.TaskStateAllocated,
+			},
 			NodeID: initialNodeSet[0].ID,
 		},
 		{
@@ -66,12 +69,18 @@ func TestScheduler(t *testing.T) {
 			Meta: api.Meta{
 				Name: "name2",
 			},
+			Status: &api.TaskStatus{
+				State: api.TaskStateAllocated,
+			},
 		},
 		{
 			ID:   "id3",
 			Spec: &api.TaskSpec{},
 			Meta: api.Meta{
 				Name: "name2",
+			},
+			Status: &api.TaskStatus{
+				State: api.TaskStateAllocated,
 			},
 		},
 	}
@@ -126,6 +135,9 @@ func TestScheduler(t *testing.T) {
 			Meta: api.Meta{
 				Name: "name4",
 			},
+			Status: &api.TaskStatus{
+				State: api.TaskStateAllocated,
+			},
 		}
 		assert.NoError(t, tx.Tasks().Create(t4))
 		return nil
@@ -145,6 +157,9 @@ func TestScheduler(t *testing.T) {
 			Spec: &api.TaskSpec{},
 			Meta: api.Meta{
 				Name: "name4",
+			},
+			Status: &api.TaskStatus{
+				State: api.TaskStateAllocated,
 			},
 		}
 		assert.NoError(t, tx.Tasks().Update(t4))
@@ -179,6 +194,9 @@ func TestScheduler(t *testing.T) {
 			Meta: api.Meta{
 				Name: "removednode",
 			},
+			Status: &api.TaskStatus{
+				State: api.TaskStateAllocated,
+			},
 		}
 		assert.NoError(t, tx.Tasks().Create(task))
 		return nil
@@ -210,6 +228,9 @@ func TestScheduler(t *testing.T) {
 			Spec: &api.TaskSpec{},
 			Meta: api.Meta{
 				Name: "name5",
+			},
+			Status: &api.TaskStatus{
+				State: api.TaskStateAllocated,
 			},
 		}
 		assert.NoError(t, tx.Tasks().Create(t5))
@@ -243,6 +264,9 @@ func TestScheduler(t *testing.T) {
 			Meta: api.Meta{
 				Name: "name6",
 			},
+			Status: &api.TaskStatus{
+				State: api.TaskStateAllocated,
+			},
 		}
 		assert.NoError(t, tx.Tasks().Create(t6))
 		return nil
@@ -274,6 +298,9 @@ func TestScheduler(t *testing.T) {
 			Spec: &api.TaskSpec{},
 			Meta: api.Meta{
 				Name: "name7",
+			},
+			Status: &api.TaskStatus{
+				State: api.TaskStateAllocated,
 			},
 		}
 		assert.NoError(t, tx.Tasks().Create(t7))
@@ -309,6 +336,9 @@ func TestScheduler(t *testing.T) {
 			Meta: api.Meta{
 				Name: "name8",
 			},
+			Status: &api.TaskStatus{
+				State: api.TaskStateAllocated,
+			},
 		}
 		assert.NoError(t, tx.Tasks().Create(t8))
 		return nil
@@ -327,6 +357,9 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 		Spec: &api.TaskSpec{},
 		Meta: api.Meta{
 			Name: "name1",
+		},
+		Status: &api.TaskStatus{
+			State: api.TaskStateAllocated,
 		},
 	}
 
@@ -470,6 +503,9 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 					Spec: &api.TaskSpec{},
 					Meta: api.Meta{
 						Name: id,
+					},
+					Status: &api.TaskStatus{
+						State: api.TaskStateAllocated,
 					},
 				})
 				if err != nil {
