@@ -436,3 +436,8 @@ message StoreAction {
 		string remove_volume = 15;
 	}
 }
+
+message TaskStatusUpdate {
+	string task_id = 1 [(gogoproto.customname) = "TaskID"];
+	TaskStatus status = 2;
+}

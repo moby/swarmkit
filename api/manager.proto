@@ -2,77 +2,61 @@ syntax = "proto3";
 
 package api;
 
-// NOTE(stevvooe): Make sure your gopath is appropriately set for this to work
-// correctly.
-import "github.com/coreos/etcd/raft/raftpb/raft.proto";
-import weak "gogoproto/gogo.proto";
+import "types.proto";
 
-// Raft defines the RPC communication between raft nodes.
-service Raft {
-
-	// Join joins an existing Manager or set of Managers to form
-	// a raft cluster for the log replication backend
-	rpc Join(JoinRequest) returns (JoinResponse) {}
-
-	// Leave leaves an existing set of Managers running raft
-	rpc Leave(LeaveRequest) returns (LeaveResponse) {}
-
-	// ProcessRaftMessage sends a raft message to be processed on a raft member, it is
-	// called from the Manager willing to send a message to its destination ('To' field)
-	rpc ProcessRaftMessage(ProcessRaftMessageRequest) returns (ProcessRaftMessageResponse) {}
-}
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 // Manager defines the RPC communication between managers.
 service Manager {
 	// NodeCount returns number of nodes connected to particular manager.
 	// Supposed to be called only by cluster leader.
 	rpc NodeCount(NodeCountRequest) returns (NodeCountResponse) {}
-}
 
-message JoinRequest {
-	RaftNode node = 1;
-}
+	// Leader methods
 
-// TODO(abronan): currently we return the list of existing raft
-// members in the join response, the new node must then build
-// the raft memberlist by itself.
-// Ideally, the node taking care of adding a new node to raft
-// should send back this list to the new node, possibly in a
-// separate call (gossiping raft member presence before granting
-// the raft membership).
-message JoinResponse {
-	repeated RaftNode members = 1;
-}
-
-message LeaveRequest {
-	RaftNode node = 1;
-}
-
-message LeaveResponse {}
-
-message ProcessRaftMessageRequest {
-	raftpb.Message msg = 1;
-}
-
-message ProcessRaftMessageResponse {}
-
-// RaftNode represents a raft node to be added or removed from
-// an existing raft cluster
-message RaftNode {
-	uint64 id = 1 [(gogoproto.customname) = "ID"];
-	string addr = 2;
-}
-
-// TODO(abronan): remove when the integration with store is completed
-message Pair {
-	string key = 1;
-	bytes value = 2;
+	// NodeReady notifies that node is ready to accept request. Only cluster
+	// leader can process this request.
+	rpc NodeReady(NodeReadyRequest) returns (NodeReadyResponse) {}
+	// UpdateNodeStatus updates only status of specific node. Only cluster leader
+	// can process this request.
+	rpc UpdateNodeStatus(UpdateNodeStatusRequest) returns (UpdateNodeStatusResponse) {}
+	// UpdateTasks used to update tasks statuses. Only cluster leader can
+	// process this request.
+	rpc UpdateTasks(UpdateTasksRequest) returns (UpdateTasksResponse) {}
 }
 
 message NodeCountRequest {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+
+	NodeDescription description = 2;
 }
 
 message NodeCountResponse {
 	// Count is number of nodes connected to specific manager.
 	uint32 count = 1 [(gogoproto.customtype) = "int", (gogoproto.nullable) = false];
+}
+
+message NodeReadyRequest {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+
+	NodeDescription description = 2;
+}
+
+message NodeReadyResponse {
+	Node node = 1;
+}
+
+message UpdateNodeStatusRequest {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+	NodeStatus status = 4 [(gogoproto.nullable) = false];
+}
+
+message UpdateNodeStatusResponse {
+}
+
+message UpdateTasksRequest {
+	repeated TaskStatusUpdate updates = 1;
+}
+
+message UpdateTasksResponse {
 }

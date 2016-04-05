@@ -202,7 +202,7 @@ func (s *session) sendTaskStatus(ctx context.Context, taskID string, status *api
 	if _, err := client.UpdateTaskStatus(ctx, &api.UpdateTaskStatusRequest{
 		NodeID:    s.agent.config.ID,
 		SessionID: s.sessionID,
-		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
+		Updates: []*api.TaskStatusUpdate{
 			{
 				TaskID: taskID,
 				Status: status,

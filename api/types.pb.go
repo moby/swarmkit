@@ -9,6 +9,7 @@
 		types.proto
 		cluster.proto
 		dispatcher.proto
+		manager.proto
 
 	It has these top-level messages:
 		Meta
@@ -37,6 +38,7 @@
 		WeightedPeer
 		InternalRaftRequest
 		StoreAction
+		TaskStatusUpdate
 		ListOptions
 		GetNodeRequest
 		GetNodeResponse
@@ -88,6 +90,14 @@
 		UpdateTaskStatusResponse
 		TasksRequest
 		TasksMessage
+		NodeCountRequest
+		NodeCountResponse
+		NodeReadyRequest
+		NodeReadyResponse
+		UpdateNodeStatusRequest
+		UpdateNodeStatusResponse
+		UpdateTasksRequest
+		UpdateTasksResponse
 */
 package api
 
@@ -1348,6 +1358,14 @@ func _StoreAction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Bu
 	}
 }
 
+type TaskStatusUpdate struct {
+	TaskID string      `protobuf:"bytes,1,opt,name=task_id,proto3" json:"task_id,omitempty"`
+	Status *TaskStatus `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
+}
+
+func (m *TaskStatusUpdate) Reset()      { *m = TaskStatusUpdate{} }
+func (*TaskStatusUpdate) ProtoMessage() {}
+
 func init() {
 	proto.RegisterType((*Meta)(nil), "api.Meta")
 	proto.RegisterType((*Version)(nil), "api.Version")
@@ -1381,6 +1399,7 @@ func init() {
 	proto.RegisterType((*WeightedPeer)(nil), "api.WeightedPeer")
 	proto.RegisterType((*InternalRaftRequest)(nil), "api.InternalRaftRequest")
 	proto.RegisterType((*StoreAction)(nil), "api.StoreAction")
+	proto.RegisterType((*TaskStatusUpdate)(nil), "api.TaskStatusUpdate")
 	proto.RegisterEnum("api.TaskState", TaskState_name, TaskState_value)
 	proto.RegisterEnum("api.NodeSpec_Availability", NodeSpec_Availability_name, NodeSpec_Availability_value)
 	proto.RegisterEnum("api.NodeStatus_State", NodeStatus_State_name, NodeStatus_State_value)
@@ -2016,6 +2035,19 @@ func (m *StoreAction) Copy() *StoreAction {
 		}
 
 		o.Action = i
+	}
+
+	return o
+}
+
+func (m *TaskStatusUpdate) Copy() *TaskStatusUpdate {
+	if m == nil {
+		return nil
+	}
+
+	o := &TaskStatusUpdate{
+		TaskID: m.TaskID,
+		Status: m.Status.Copy(),
 	}
 
 	return o
@@ -2661,6 +2693,19 @@ func (this *StoreAction_RemoveVolume) GoString() string {
 	s := strings.Join([]string{`&api.StoreAction_RemoveVolume{` +
 		`RemoveVolume:` + fmt.Sprintf("%#v", this.RemoveVolume) + `}`}, ", ")
 	return s
+}
+func (this *TaskStatusUpdate) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.TaskStatusUpdate{")
+	s = append(s, "TaskID: "+fmt.Sprintf("%#v", this.TaskID)+",\n")
+	if this.Status != nil {
+		s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
 }
 func valueToGoStringTypes(v interface{}, typ string) string {
 	rv := reflect.ValueOf(v)
@@ -4218,6 +4263,40 @@ func (m *StoreAction_RemoveVolume) MarshalTo(data []byte) (int, error) {
 	i += copy(data[i:], m.RemoveVolume)
 	return i, nil
 }
+func (m *TaskStatusUpdate) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *TaskStatusUpdate) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.TaskID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.TaskID)))
+		i += copy(data[i:], m.TaskID)
+	}
+	if m.Status != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.Status.Size()))
+		n45, err := m.Status.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n45
+	}
+	return i, nil
+}
+
 func encodeFixed64Types(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	data[offset+1] = uint8(v >> 8)
@@ -4933,6 +5012,19 @@ func (m *StoreAction_RemoveVolume) Size() (n int) {
 	n += 1 + l + sovTypes(uint64(l))
 	return n
 }
+func (m *TaskStatusUpdate) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.TaskID)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.Status != nil {
+		l = m.Status.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
 
 func sovTypes(x uint64) (n int) {
 	for {
@@ -5562,6 +5654,17 @@ func (this *StoreAction_RemoveVolume) String() string {
 	}
 	s := strings.Join([]string{`&StoreAction_RemoveVolume{`,
 		`RemoveVolume:` + fmt.Sprintf("%v", this.RemoveVolume) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *TaskStatusUpdate) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&TaskStatusUpdate{`,
+		`TaskID:` + fmt.Sprintf("%v", this.TaskID) + `,`,
+		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "TaskStatus", "TaskStatus", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -10282,6 +10385,118 @@ func (m *StoreAction) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Action = &StoreAction_RemoveVolume{string(data[iNdEx:postIndex])}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *TaskStatusUpdate) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TaskStatusUpdate: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TaskStatusUpdate: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TaskID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TaskID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Status == nil {
+				m.Status = &TaskStatus{}
+			}
+			if err := m.Status.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

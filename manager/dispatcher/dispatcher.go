@@ -6,10 +6,15 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/manager/leaderconn"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/watch"
+	"github.com/docker/swarm-v2/manager/stateutil"
 	"golang.org/x/net/context"
 )
 
@@ -59,10 +64,11 @@ type Dispatcher struct {
 	mgrQueue         *watch.Queue
 	lastSeenManagers []*api.WeightedPeer
 	config           *Config
+	leaders          leaderconn.Getter
 }
 
 // New returns Dispatcher with store.
-func New(store state.WatchableStore, c *Config) *Dispatcher {
+func New(store state.WatchableStore, lc leaderconn.Getter, c *Config) *Dispatcher {
 	return &Dispatcher{
 		addr:     c.Addr,
 		nodes:    newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier),
@@ -75,7 +81,59 @@ func New(store state.WatchableStore, c *Config) *Dispatcher {
 				Weight: 1,
 			},
 		},
+		leaders: lc,
 	}
+}
+
+const maxLeaderRetries = 5
+
+func (d *Dispatcher) retryLeaderCall(localCall func() error, grpcCall func(client api.ManagerClient) error) error {
+	for i := 0; i < maxLeaderRetries; i++ {
+		leaderConn, err := d.leaders.LeaderConn()
+		if err == leaderconn.ErrLocalLeader {
+			if err := localCall(); err != nil {
+				if err == state.ErrLostLeadership {
+					continue
+				}
+				return err
+			}
+			return nil
+		}
+		if err := grpcCall(api.NewManagerClient(leaderConn)); err != nil {
+			if grpc.Code(err) == codes.FailedPrecondition {
+				continue
+			}
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("%d tries to find leader failed", maxLeaderRetries)
+}
+
+func (d *Dispatcher) nodeReady(ctx context.Context, id string, desc *api.NodeDescription) (*api.Node, error) {
+	var res *api.Node
+	localFunc := func() error {
+		node, err := stateutil.NodeReady(d.store, id, desc)
+		if err != nil {
+			return err
+		}
+		res = node
+		return nil
+	}
+	grpcFunc := func(client api.ManagerClient) error {
+		req := &api.NodeReadyRequest{
+			NodeID:      id,
+			Description: desc,
+		}
+		resp, err := client.NodeReady(ctx, req)
+		if err != nil {
+			return err
+		}
+		res = resp.Node
+		return nil
+	}
+	err := d.retryLeaderCall(localFunc, grpcFunc)
+	return res, err
 }
 
 // Register is used for registration of node with particular dispatcher.
@@ -83,28 +141,7 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	log.WithField("request", r).Debugf("(*Dispatcher).Register")
 	// TODO: here goes auth
 
-	// create or update node in store
-	// TODO(stevvooe): Validate node specification.
-	var node *api.Node
-	err := d.store.Update(func(tx state.Tx) error {
-		node = tx.Nodes().Get(r.NodeID)
-		if node != nil {
-			node.Description = r.Description
-			node.Status = api.NodeStatus{
-				State: api.NodeStatus_READY,
-			}
-			return tx.Nodes().Update(node)
-		}
-
-		node = &api.Node{
-			ID:          r.NodeID,
-			Description: r.Description,
-			Status: api.NodeStatus{
-				State: api.NodeStatus_READY,
-			},
-		}
-		return tx.Nodes().Create(node)
-	})
+	node, err := d.nodeReady(ctx, r.NodeID, r.Description)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +151,7 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	expireFunc := func() {
 		nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "heartbeat failure"}
 		log.WithField("node.id", nid).Debugf("heartbeat expiration")
-		if err := d.nodeRemove(nid, nodeStatus); err != nil {
+		if err := d.nodeRemove(context.Background(), nid, nodeStatus); err != nil {
 			log.Errorf("error deregistering node %s after heartbeat expiration: %v", nid, err)
 		}
 	}
@@ -133,6 +170,22 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	return &api.RegisterResponse{NodeID: rn.Node.ID, SessionID: rn.SessionID}, nil
 }
 
+func (d *Dispatcher) updateTaskStatus(ctx context.Context, us []*api.TaskStatusUpdate) error {
+	localFunc := func() error {
+		return stateutil.UpdateTasks(d.store, us)
+	}
+	grpcFunc := func(client api.ManagerClient) error {
+		req := &api.UpdateTasksRequest{
+			Updates: us,
+		}
+		if _, err := client.UpdateTasks(ctx, req); err != nil {
+			return err
+		}
+		return nil
+	}
+	return d.retryLeaderCall(localFunc, grpcFunc)
+}
+
 // UpdateTaskStatus updates status of task. Node should send such updates
 // on every status change of its tasks.
 func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStatusRequest) (*api.UpdateTaskStatusResponse, error) {
@@ -141,39 +194,7 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 		return nil, err
 	}
-	err := d.store.Update(func(tx state.Tx) error {
-		for _, u := range r.Updates {
-			logger := log.WithField("task.id", u.TaskID)
-			if u.Status == nil {
-				logger.Warnf("task report has nil status")
-				continue
-			}
-			task := tx.Tasks().Get(u.TaskID)
-			if task == nil {
-				logger.Errorf("task unavailable")
-				continue
-			}
-
-			var state api.TaskState
-			if task.Status != nil {
-				state = task.Status.State
-			} else {
-				state = api.TaskStateNew
-			}
-
-			logger.Debugf("%v -> %v", state, u.Status.State)
-			task.Status = u.Status
-
-			if err := tx.Tasks().Update(task); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return nil, nil
+	return nil, d.updateTaskStatus(ctx, r.Updates)
 }
 
 // Tasks is a stream of tasks state for node. Each message contains full list
@@ -241,15 +262,25 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	}
 }
 
-func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
-	err := d.store.Update(func(tx state.Tx) error {
-		node := tx.Nodes().Get(id)
-		if node == nil {
-			return errors.New("node not found")
+func (d *Dispatcher) updateNodeStatus(ctx context.Context, id string, status api.NodeStatus) error {
+	localFunc := func() error {
+		return stateutil.UpdateNodeStatus(d.store, id, status)
+	}
+	grpcFunc := func(client api.ManagerClient) error {
+		req := &api.UpdateNodeStatusRequest{
+			NodeID: id,
+			Status: status,
 		}
-		node.Status = status
-		return tx.Nodes().Update(node)
-	})
+		if _, err := client.UpdateNodeStatus(ctx, req); err != nil {
+			return err
+		}
+		return nil
+	}
+	return d.retryLeaderCall(localFunc, grpcFunc)
+}
+
+func (d *Dispatcher) nodeRemove(ctx context.Context, id string, status api.NodeStatus) error {
+	err := d.updateNodeStatus(ctx, id, status)
 	if err != nil {
 		return fmt.Errorf("failed to update node %s status to down: %v", id, err)
 	}
@@ -342,7 +373,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		}
 		if disconnect {
 			nodeStatus := api.NodeStatus{State: api.NodeStatus_DISCONNECTED, Message: "node is currently trying to find new manager"}
-			if err := d.nodeRemove(r.NodeID, nodeStatus); err != nil {
+			if err := d.nodeRemove(stream.Context(), r.NodeID, nodeStatus); err != nil {
 				log.Error(err)
 			}
 		}
