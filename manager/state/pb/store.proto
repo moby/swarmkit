@@ -2,17 +2,10 @@ syntax = "proto3";
 
 package pb;
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-import "github.com/docker/swarm-v2/api/types.proto";
+import "gogoproto/gogo.proto";
 
-// RaftNode represents a raft node to be added or removed from
-// an existing raft cluster.
-// FIXME(aaronl): This is copied from the api package because it's not
-// posssible to import manager.go.
-message RaftNode {
-	uint64 id = 1 [(gogoproto.customname) = "ID"];
-	string addr = 2;
-}
+import "github.com/docker/swarm-v2/api/types.proto";
+import "github.com/docker/swarm-v2/api/manager.proto";
 
 // StoreSnapshot is used to store snapshots of the store.
 message StoreSnapshot {
@@ -31,7 +24,7 @@ message StoreSnapshot {
 
 // ClusterSnapshot stores cluster membership information in snapshots.
 message ClusterSnapshot {
-	repeated RaftNode members = 1;
+	repeated api.RaftNode members = 1;
 	repeated uint64 removed = 2;
 }
 

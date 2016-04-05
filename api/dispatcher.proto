@@ -3,10 +3,7 @@ syntax = "proto3";
 package api;
 
 import "types.proto";
-
-// NOTE(stevvooe): Make sure your gopath is appropriately set for this to work
-// correctly.
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "gogoproto/gogo.proto";
 
 // Dispatcher is the API provided by a manager group for agents to connect to. Agents
 // connect to this service to receive task assignments and report status.

@@ -12,10 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"google.golang.org/grpc"
-
-	"golang.org/x/net/context"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/raft"
@@ -26,6 +22,8 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/gogo/protobuf/proto"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -706,7 +704,7 @@ func (n *Node) doSnapshot() error {
 
 	for _, peer := range n.cluster.listMembers() {
 		snapshot.Membership.Members = append(snapshot.Membership.Members,
-			&pb.RaftNode{
+			&api.RaftNode{
 				ID:   peer.ID,
 				Addr: peer.Addr,
 			})

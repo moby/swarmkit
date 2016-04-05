@@ -27,7 +27,7 @@ import fmt "fmt"
 import math "math"
 import raftpb "github.com/coreos/etcd/raft/raftpb"
 
-// skipping weak import gogoproto "gogoproto"
+// skipping weak import gogoproto "github.com/gogo/protobuf/gogoproto"
 
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
