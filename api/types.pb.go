@@ -110,6 +110,10 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto.GoGoProtoPackageIsVersion1
+
 // TODO(aluzzardi): Move it back into `TaskStatus` because of the naming
 // collisions of enums.
 //
@@ -171,6 +175,7 @@ var TaskState_value = map[string]int32{
 func (x TaskState) String() string {
 	return proto.EnumName(TaskState_name, int32(x))
 }
+func (TaskState) EnumDescriptor() ([]byte, []int) { return fileDescriptorTypes, []int{0} }
 
 type NodeSpec_Availability int32
 
@@ -199,6 +204,7 @@ var NodeSpec_Availability_value = map[string]int32{
 func (x NodeSpec_Availability) String() string {
 	return proto.EnumName(NodeSpec_Availability_name, int32(x))
 }
+func (NodeSpec_Availability) EnumDescriptor() ([]byte, []int) { return fileDescriptorTypes, []int{5, 0} }
 
 // TODO(aluzzardi) These should be using `gogoproto.enumvalue_customname`.
 type NodeStatus_State int32
@@ -230,6 +236,7 @@ var NodeStatus_State_value = map[string]int32{
 func (x NodeStatus_State) String() string {
 	return proto.EnumName(NodeStatus_State_name, int32(x))
 }
+func (NodeStatus_State) EnumDescriptor() ([]byte, []int) { return fileDescriptorTypes, []int{8, 0} }
 
 // AddressFamily specifies the network address family that
 // this IPAMConfiguration belongs to.
@@ -255,6 +262,9 @@ var IPAMConfiguration_AddressFamily_value = map[string]int32{
 func (x IPAMConfiguration_AddressFamily) String() string {
 	return proto.EnumName(IPAMConfiguration_AddressFamily_name, int32(x))
 }
+func (IPAMConfiguration_AddressFamily) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptorTypes, []int{16, 0}
+}
 
 // Meta is common to all API objects types.
 type Meta struct {
@@ -262,34 +272,38 @@ type Meta struct {
 	Labels map[string]string `protobuf:"bytes,2,rep,name=labels" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
-func (m *Meta) Reset()      { *m = Meta{} }
-func (*Meta) ProtoMessage() {}
+func (m *Meta) Reset()                    { *m = Meta{} }
+func (*Meta) ProtoMessage()               {}
+func (*Meta) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{0} }
 
 // Version tracks the last time an object in the store was updated.
 type Version struct {
 	Index uint64 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
 }
 
-func (m *Version) Reset()      { *m = Version{} }
-func (*Version) ProtoMessage() {}
+func (m *Version) Reset()                    { *m = Version{} }
+func (*Version) ProtoMessage()               {}
+func (*Version) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{1} }
 
 type Resources struct {
 	// Amount of CPUs (e.g. 2000000000 = 2 CPU cores)
-	NanoCPUs int64 `protobuf:"varint,1,opt,name=nano_cpus,proto3" json:"nano_cpus,omitempty"`
+	NanoCPUs int64 `protobuf:"varint,1,opt,name=nano_cpus,json=nanoCpus,proto3" json:"nano_cpus,omitempty"`
 	// Amount of memory in bytes.
-	MemoryBytes int64 `protobuf:"varint,2,opt,name=memory_bytes,proto3" json:"memory_bytes,omitempty"`
+	MemoryBytes int64 `protobuf:"varint,2,opt,name=memory_bytes,json=memoryBytes,proto3" json:"memory_bytes,omitempty"`
 }
 
-func (m *Resources) Reset()      { *m = Resources{} }
-func (*Resources) ProtoMessage() {}
+func (m *Resources) Reset()                    { *m = Resources{} }
+func (*Resources) ProtoMessage()               {}
+func (*Resources) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{2} }
 
 type ResourceRequirements struct {
 	Limits       *Resources `protobuf:"bytes,1,opt,name=limits" json:"limits,omitempty"`
 	Reservations *Resources `protobuf:"bytes,2,opt,name=reservations" json:"reservations,omitempty"`
 }
 
-func (m *ResourceRequirements) Reset()      { *m = ResourceRequirements{} }
-func (*ResourceRequirements) ProtoMessage() {}
+func (m *ResourceRequirements) Reset()                    { *m = ResourceRequirements{} }
+func (*ResourceRequirements) ProtoMessage()               {}
+func (*ResourceRequirements) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{3} }
 
 type Platform struct {
 	// Architecture (e.g. x86_64)
@@ -298,16 +312,18 @@ type Platform struct {
 	OS string `protobuf:"bytes,2,opt,name=os,proto3" json:"os,omitempty"`
 }
 
-func (m *Platform) Reset()      { *m = Platform{} }
-func (*Platform) ProtoMessage() {}
+func (m *Platform) Reset()                    { *m = Platform{} }
+func (*Platform) ProtoMessage()               {}
+func (*Platform) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{4} }
 
 type NodeSpec struct {
 	Meta         Meta                  `protobuf:"bytes,1,opt,name=meta" json:"meta"`
 	Availability NodeSpec_Availability `protobuf:"varint,2,opt,name=availability,proto3,enum=api.NodeSpec_Availability" json:"availability,omitempty"`
 }
 
-func (m *NodeSpec) Reset()      { *m = NodeSpec{} }
-func (*NodeSpec) ProtoMessage() {}
+func (m *NodeSpec) Reset()                    { *m = NodeSpec{} }
+func (*NodeSpec) ProtoMessage()               {}
+func (*NodeSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{5} }
 
 type NodeDescription struct {
 	// Hostname of the node as reported by the agent.
@@ -319,8 +335,9 @@ type NodeDescription struct {
 	Resources *Resources `protobuf:"bytes,3,opt,name=resources" json:"resources,omitempty"`
 }
 
-func (m *NodeDescription) Reset()      { *m = NodeDescription{} }
-func (*NodeDescription) ProtoMessage() {}
+func (m *NodeDescription) Reset()                    { *m = NodeDescription{} }
+func (*NodeDescription) ProtoMessage()               {}
+func (*NodeDescription) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{6} }
 
 type Node struct {
 	// ID specifies the identity of the node.
@@ -337,16 +354,18 @@ type Node struct {
 	Status NodeStatus `protobuf:"bytes,5,opt,name=status" json:"status"`
 }
 
-func (m *Node) Reset()      { *m = Node{} }
-func (*Node) ProtoMessage() {}
+func (m *Node) Reset()                    { *m = Node{} }
+func (*Node) ProtoMessage()               {}
+func (*Node) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{7} }
 
 type NodeStatus struct {
 	State   NodeStatus_State `protobuf:"varint,1,opt,name=state,proto3,enum=api.NodeStatus_State" json:"state,omitempty"`
 	Message string           `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 }
 
-func (m *NodeStatus) Reset()      { *m = NodeStatus{} }
-func (*NodeStatus) ProtoMessage() {}
+func (m *NodeStatus) Reset()                    { *m = NodeStatus{} }
+func (*NodeStatus) ProtoMessage()               {}
+func (*NodeStatus) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{8} }
 
 type ImageSpec struct {
 	// reference is a docker image reference. This can include a rpository, tag
@@ -355,8 +374,9 @@ type ImageSpec struct {
 	Reference string `protobuf:"bytes,1,opt,name=reference,proto3" json:"reference,omitempty"`
 }
 
-func (m *ImageSpec) Reset()      { *m = ImageSpec{} }
-func (*ImageSpec) ProtoMessage() {}
+func (m *ImageSpec) Reset()                    { *m = ImageSpec{} }
+func (*ImageSpec) ProtoMessage()               {}
+func (*ImageSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{9} }
 
 type ContainerSpec struct {
 	// Resource requirements for the container.
@@ -377,8 +397,9 @@ type ContainerSpec struct {
 	Networks []*ContainerSpec_NetworkAttachmentSpec `protobuf:"bytes,6,rep,name=networks" json:"networks,omitempty"`
 }
 
-func (m *ContainerSpec) Reset()      { *m = ContainerSpec{} }
-func (*ContainerSpec) ProtoMessage() {}
+func (m *ContainerSpec) Reset()                    { *m = ContainerSpec{} }
+func (*ContainerSpec) ProtoMessage()               {}
+func (*ContainerSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{10} }
 
 // NetworkAttachmentSpec describes a desired attachment to the named network or
 // a specific network_id.
@@ -391,6 +412,9 @@ type ContainerSpec_NetworkAttachmentSpec struct {
 
 func (m *ContainerSpec_NetworkAttachmentSpec) Reset()      { *m = ContainerSpec_NetworkAttachmentSpec{} }
 func (*ContainerSpec_NetworkAttachmentSpec) ProtoMessage() {}
+func (*ContainerSpec_NetworkAttachmentSpec) Descriptor() ([]byte, []int) {
+	return fileDescriptorTypes, []int{10, 0}
+}
 
 type isContainerSpec_NetworkAttachmentSpec_Reference interface {
 	isContainerSpec_NetworkAttachmentSpec_Reference()
@@ -402,7 +426,7 @@ type ContainerSpec_NetworkAttachmentSpec_Name struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3,oneof"`
 }
 type ContainerSpec_NetworkAttachmentSpec_NetworkID struct {
-	NetworkID string `protobuf:"bytes,2,opt,name=network_id,proto3,oneof"`
+	NetworkID string `protobuf:"bytes,2,opt,name=network_id,json=networkId,proto3,oneof"`
 }
 
 func (*ContainerSpec_NetworkAttachmentSpec_Name) isContainerSpec_NetworkAttachmentSpec_Reference() {}
@@ -431,8 +455,8 @@ func (m *ContainerSpec_NetworkAttachmentSpec) GetNetworkID() string {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*ContainerSpec_NetworkAttachmentSpec) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _ContainerSpec_NetworkAttachmentSpec_OneofMarshaler, _ContainerSpec_NetworkAttachmentSpec_OneofUnmarshaler, []interface{}{
+func (*ContainerSpec_NetworkAttachmentSpec) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _ContainerSpec_NetworkAttachmentSpec_OneofMarshaler, _ContainerSpec_NetworkAttachmentSpec_OneofUnmarshaler, _ContainerSpec_NetworkAttachmentSpec_OneofSizer, []interface{}{
 		(*ContainerSpec_NetworkAttachmentSpec_Name)(nil),
 		(*ContainerSpec_NetworkAttachmentSpec_NetworkID)(nil),
 	}
@@ -477,6 +501,25 @@ func _ContainerSpec_NetworkAttachmentSpec_OneofUnmarshaler(msg proto.Message, ta
 	}
 }
 
+func _ContainerSpec_NetworkAttachmentSpec_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*ContainerSpec_NetworkAttachmentSpec)
+	// reference
+	switch x := m.Reference.(type) {
+	case *ContainerSpec_NetworkAttachmentSpec_Name:
+		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.Name)))
+		n += len(x.Name)
+	case *ContainerSpec_NetworkAttachmentSpec_NetworkID:
+		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.NetworkID)))
+		n += len(x.NetworkID)
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 // TaskSpec defines properties required by the agent for execution.
 type TaskSpec struct {
 	// Types that are valid to be assigned to Runtime:
@@ -484,8 +527,9 @@ type TaskSpec struct {
 	Runtime isTaskSpec_Runtime `protobuf_oneof:"runtime"`
 }
 
-func (m *TaskSpec) Reset()      { *m = TaskSpec{} }
-func (*TaskSpec) ProtoMessage() {}
+func (m *TaskSpec) Reset()                    { *m = TaskSpec{} }
+func (*TaskSpec) ProtoMessage()               {}
+func (*TaskSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{11} }
 
 type isTaskSpec_Runtime interface {
 	isTaskSpec_Runtime()
@@ -514,8 +558,8 @@ func (m *TaskSpec) GetContainer() *ContainerSpec {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*TaskSpec) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _TaskSpec_OneofMarshaler, _TaskSpec_OneofUnmarshaler, []interface{}{
+func (*TaskSpec) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _TaskSpec_OneofMarshaler, _TaskSpec_OneofUnmarshaler, _TaskSpec_OneofSizer, []interface{}{
 		(*TaskSpec_Container)(nil),
 	}
 }
@@ -552,6 +596,22 @@ func _TaskSpec_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffe
 	}
 }
 
+func _TaskSpec_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*TaskSpec)
+	// runtime
+	switch x := m.Runtime.(type) {
+	case *TaskSpec_Container:
+		s := proto.Size(x.Container)
+		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 // JobSpec defines the properties of a Job. As tasks are created, they gain the
 // encapsulated template and any emergent properties from the job
 // configuration.
@@ -573,8 +633,9 @@ type JobSpec struct {
 	Template *TaskSpec `protobuf:"bytes,6,opt,name=template" json:"template,omitempty"`
 }
 
-func (m *JobSpec) Reset()      { *m = JobSpec{} }
-func (*JobSpec) ProtoMessage() {}
+func (m *JobSpec) Reset()                    { *m = JobSpec{} }
+func (*JobSpec) ProtoMessage()               {}
+func (*JobSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{12} }
 
 type isJobSpec_Orchestration interface {
 	isJobSpec_Orchestration()
@@ -636,8 +697,8 @@ func (m *JobSpec) GetCron() *JobSpec_CronJob {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*JobSpec) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _JobSpec_OneofMarshaler, _JobSpec_OneofUnmarshaler, []interface{}{
+func (*JobSpec) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _JobSpec_OneofMarshaler, _JobSpec_OneofUnmarshaler, _JobSpec_OneofSizer, []interface{}{
 		(*JobSpec_Service)(nil),
 		(*JobSpec_Batch)(nil),
 		(*JobSpec_Global)(nil),
@@ -716,34 +777,69 @@ func _JobSpec_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer
 	}
 }
 
+func _JobSpec_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*JobSpec)
+	// orchestration
+	switch x := m.Orchestration.(type) {
+	case *JobSpec_Service:
+		s := proto.Size(x.Service)
+		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *JobSpec_Batch:
+		s := proto.Size(x.Batch)
+		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *JobSpec_Global:
+		s := proto.Size(x.Global)
+		n += proto.SizeVarint(4<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *JobSpec_Cron:
+		s := proto.Size(x.Cron)
+		n += proto.SizeVarint(5<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 type JobSpec_ServiceJob struct {
 	// Instances specifies the number of instances of the service job that
 	// should be running.
 	Instances int64 `protobuf:"varint,1,opt,name=instances,proto3" json:"instances,omitempty"`
 }
 
-func (m *JobSpec_ServiceJob) Reset()      { *m = JobSpec_ServiceJob{} }
-func (*JobSpec_ServiceJob) ProtoMessage() {}
+func (m *JobSpec_ServiceJob) Reset()                    { *m = JobSpec_ServiceJob{} }
+func (*JobSpec_ServiceJob) ProtoMessage()               {}
+func (*JobSpec_ServiceJob) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{12, 0} }
 
 type JobSpec_BatchJob struct {
 	Completions int64 `protobuf:"varint,1,opt,name=completions,proto3" json:"completions,omitempty"`
 	Paralellism int64 `protobuf:"varint,2,opt,name=paralellism,proto3" json:"paralellism,omitempty"`
 }
 
-func (m *JobSpec_BatchJob) Reset()      { *m = JobSpec_BatchJob{} }
-func (*JobSpec_BatchJob) ProtoMessage() {}
+func (m *JobSpec_BatchJob) Reset()                    { *m = JobSpec_BatchJob{} }
+func (*JobSpec_BatchJob) ProtoMessage()               {}
+func (*JobSpec_BatchJob) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{12, 1} }
 
 type JobSpec_GlobalJob struct {
 }
 
-func (m *JobSpec_GlobalJob) Reset()      { *m = JobSpec_GlobalJob{} }
-func (*JobSpec_GlobalJob) ProtoMessage() {}
+func (m *JobSpec_GlobalJob) Reset()                    { *m = JobSpec_GlobalJob{} }
+func (*JobSpec_GlobalJob) ProtoMessage()               {}
+func (*JobSpec_GlobalJob) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{12, 2} }
 
 type JobSpec_CronJob struct {
 }
 
-func (m *JobSpec_CronJob) Reset()      { *m = JobSpec_CronJob{} }
-func (*JobSpec_CronJob) ProtoMessage() {}
+func (m *JobSpec_CronJob) Reset()                    { *m = JobSpec_CronJob{} }
+func (*JobSpec_CronJob) ProtoMessage()               {}
+func (*JobSpec_CronJob) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{12, 3} }
 
 type TaskStatus struct {
 	// State expresses the current state of the task.
@@ -758,8 +854,9 @@ type TaskStatus struct {
 	Err string `protobuf:"bytes,2,opt,name=err,proto3" json:"err,omitempty"`
 }
 
-func (m *TaskStatus) Reset()      { *m = TaskStatus{} }
-func (*TaskStatus) ProtoMessage() {}
+func (m *TaskStatus) Reset()                    { *m = TaskStatus{} }
+func (*TaskStatus) ProtoMessage()               {}
+func (*TaskStatus) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{13} }
 
 // Task specifies the parameters for implementing a Spec. A task is effectively
 // immutable and idempotent. Once it is dispatched to a node, it will not be
@@ -770,10 +867,10 @@ type Task struct {
 	Version Version `protobuf:"bytes,2,opt,name=version" json:"version"`
 	// JobID indicates the job under which this task is orchestrated. This
 	// should almost always be set.
-	JobID string `protobuf:"bytes,3,opt,name=job_id,proto3" json:"job_id,omitempty"`
+	JobID string `protobuf:"bytes,3,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 	// NodeID indicates the node to which the task is assigned. If this field
 	// is empty or not set, the task is unassigned.
-	NodeID string `protobuf:"bytes,4,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	NodeID string `protobuf:"bytes,4,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 	// Meta inherits labels from the JobSpec.Meta associated with this task. It
 	// may include other labels added by the manager. The name will be a human
 	// readable name, calculated based on the JobSpec.Meta.Name field.
@@ -785,8 +882,9 @@ type Task struct {
 	Networks []*Task_NetworkAttachment `protobuf:"bytes,8,rep,name=networks" json:"networks,omitempty"`
 }
 
-func (m *Task) Reset()      { *m = Task{} }
-func (*Task) ProtoMessage() {}
+func (m *Task) Reset()                    { *m = Task{} }
+func (*Task) ProtoMessage()               {}
+func (*Task) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{14} }
 
 type Task_NetworkAttachment struct {
 	// Network state as a whole becomes part of Task so
@@ -798,8 +896,9 @@ type Task_NetworkAttachment struct {
 	Addresses []string `protobuf:"bytes,2,rep,name=addresses" json:"addresses,omitempty"`
 }
 
-func (m *Task_NetworkAttachment) Reset()      { *m = Task_NetworkAttachment{} }
-func (*Task_NetworkAttachment) ProtoMessage() {}
+func (m *Task_NetworkAttachment) Reset()                    { *m = Task_NetworkAttachment{} }
+func (*Task_NetworkAttachment) ProtoMessage()               {}
+func (*Task_NetworkAttachment) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{14, 0} }
 
 type Job struct {
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -808,8 +907,9 @@ type Job struct {
 	Spec    *JobSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
 }
 
-func (m *Job) Reset()      { *m = Job{} }
-func (*Job) ProtoMessage() {}
+func (m *Job) Reset()                    { *m = Job{} }
+func (*Job) ProtoMessage()               {}
+func (*Job) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{15} }
 
 // IPAMConfiguration specifies parameters for IP Address Management.
 type IPAMConfiguration struct {
@@ -828,8 +928,9 @@ type IPAMConfiguration struct {
 	Reserved map[string]string `protobuf:"bytes,5,rep,name=reserved" json:"reserved,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
-func (m *IPAMConfiguration) Reset()      { *m = IPAMConfiguration{} }
-func (*IPAMConfiguration) ProtoMessage() {}
+func (m *IPAMConfiguration) Reset()                    { *m = IPAMConfiguration{} }
+func (*IPAMConfiguration) ProtoMessage()               {}
+func (*IPAMConfiguration) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{16} }
 
 // Driver is a generic driver type to be used throughout the API. For now, a
 // driver is simply a name and set of options. The field contents depend on the
@@ -840,32 +941,35 @@ type Driver struct {
 	Options map[string]string `protobuf:"bytes,2,rep,name=options" json:"options,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
-func (m *Driver) Reset()      { *m = Driver{} }
-func (*Driver) ProtoMessage() {}
+func (m *Driver) Reset()                    { *m = Driver{} }
+func (*Driver) ProtoMessage()               {}
+func (*Driver) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{17} }
 
 type IPAMOptions struct {
 	Driver         *Driver              `protobuf:"bytes,1,opt,name=driver" json:"driver,omitempty"`
 	Configurations []*IPAMConfiguration `protobuf:"bytes,3,rep,name=configurations" json:"configurations,omitempty"`
 }
 
-func (m *IPAMOptions) Reset()      { *m = IPAMOptions{} }
-func (*IPAMOptions) ProtoMessage() {}
+func (m *IPAMOptions) Reset()                    { *m = IPAMOptions{} }
+func (*IPAMOptions) ProtoMessage()               {}
+func (*IPAMOptions) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{18} }
 
 // NetworkSpec specifies user defined network parameters.
 type NetworkSpec struct {
 	Meta Meta `protobuf:"bytes,1,opt,name=meta" json:"meta"`
 	// Driver specific configuration consumed by the network driver.
-	DriverConfiguration *Driver `protobuf:"bytes,2,opt,name=driver_configuration" json:"driver_configuration,omitempty"`
+	DriverConfiguration *Driver `protobuf:"bytes,2,opt,name=driver_configuration,json=driverConfiguration" json:"driver_configuration,omitempty"`
 	// IPv6Enabled enables support for IPv6 on the network.
-	Ipv6Enabled bool `protobuf:"varint,3,opt,name=ipv6_enabled,proto3" json:"ipv6_enabled,omitempty"`
+	Ipv6Enabled bool `protobuf:"varint,3,opt,name=ipv6_enabled,json=ipv6Enabled,proto3" json:"ipv6_enabled,omitempty"`
 	// internal restricts external access to the network. This may be
 	// accomplished by disabling the default gateway or through other means.
 	Internal bool         `protobuf:"varint,4,opt,name=internal,proto3" json:"internal,omitempty"`
 	IPAM     *IPAMOptions `protobuf:"bytes,5,opt,name=ipam" json:"ipam,omitempty"`
 }
 
-func (m *NetworkSpec) Reset()      { *m = NetworkSpec{} }
-func (*NetworkSpec) ProtoMessage() {}
+func (m *NetworkSpec) Reset()                    { *m = NetworkSpec{} }
+func (*NetworkSpec) ProtoMessage()               {}
+func (*NetworkSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{19} }
 
 type Network struct {
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -873,24 +977,26 @@ type Network struct {
 	Version Version      `protobuf:"bytes,2,opt,name=version" json:"version"`
 	Spec    *NetworkSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
 	// Driver specific operational state provided by the network driver.
-	DriverState *Driver `protobuf:"bytes,4,opt,name=driver_state" json:"driver_state,omitempty"`
+	DriverState *Driver `protobuf:"bytes,4,opt,name=driver_state,json=driverState" json:"driver_state,omitempty"`
 	// Runtime state of IPAM options. This may not reflect the
 	// ipam options from NetworkSpec.
 	IPAM *IPAMOptions `protobuf:"bytes,5,opt,name=ipam" json:"ipam,omitempty"`
 }
 
-func (m *Network) Reset()      { *m = Network{} }
-func (*Network) ProtoMessage() {}
+func (m *Network) Reset()                    { *m = Network{} }
+func (*Network) ProtoMessage()               {}
+func (*Network) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{20} }
 
 // VolumeSpec defines the properties of a Volume.
 type VolumeSpec struct {
 	Meta Meta `protobuf:"bytes,1,opt,name=meta" json:"meta"`
 	// Driver specific configuration consumed by the Volume driver.
-	DriverConfiguration *Driver `protobuf:"bytes,2,opt,name=driver_configuration" json:"driver_configuration,omitempty"`
+	DriverConfiguration *Driver `protobuf:"bytes,2,opt,name=driver_configuration,json=driverConfiguration" json:"driver_configuration,omitempty"`
 }
 
-func (m *VolumeSpec) Reset()      { *m = VolumeSpec{} }
-func (*VolumeSpec) ProtoMessage() {}
+func (m *VolumeSpec) Reset()                    { *m = VolumeSpec{} }
+func (*VolumeSpec) ProtoMessage()               {}
+func (*VolumeSpec) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{21} }
 
 type Volume struct {
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -898,11 +1004,12 @@ type Volume struct {
 	Version Version     `protobuf:"bytes,2,opt,name=version" json:"version"`
 	Spec    *VolumeSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
 	// Driver specific operational state provided by the Volume driver.
-	DriverState *Driver `protobuf:"bytes,4,opt,name=driver_state" json:"driver_state,omitempty"`
+	DriverState *Driver `protobuf:"bytes,4,opt,name=driver_state,json=driverState" json:"driver_state,omitempty"`
 }
 
-func (m *Volume) Reset()      { *m = Volume{} }
-func (*Volume) ProtoMessage() {}
+func (m *Volume) Reset()                    { *m = Volume{} }
+func (*Volume) ProtoMessage()               {}
+func (*Volume) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{22} }
 
 // WeightedPeer should be used anywhere where we are describing a remote peer
 // with a weight.
@@ -911,8 +1018,9 @@ type WeightedPeer struct {
 	Weight float64 `protobuf:"fixed64,2,opt,name=weight,proto3" json:"weight,omitempty"`
 }
 
-func (m *WeightedPeer) Reset()      { *m = WeightedPeer{} }
-func (*WeightedPeer) ProtoMessage() {}
+func (m *WeightedPeer) Reset()                    { *m = WeightedPeer{} }
+func (*WeightedPeer) ProtoMessage()               {}
+func (*WeightedPeer) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{23} }
 
 // Contains one of many protobuf encoded objects to replicate
 // over the raft backend with a request ID to track when the
@@ -922,8 +1030,9 @@ type InternalRaftRequest struct {
 	Action []*StoreAction `protobuf:"bytes,2,rep,name=action" json:"action,omitempty"`
 }
 
-func (m *InternalRaftRequest) Reset()      { *m = InternalRaftRequest{} }
-func (*InternalRaftRequest) ProtoMessage() {}
+func (m *InternalRaftRequest) Reset()                    { *m = InternalRaftRequest{} }
+func (*InternalRaftRequest) ProtoMessage()               {}
+func (*InternalRaftRequest) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{24} }
 
 type StoreAction struct {
 	// Types that are valid to be assigned to Action:
@@ -945,8 +1054,9 @@ type StoreAction struct {
 	Action isStoreAction_Action `protobuf_oneof:"action"`
 }
 
-func (m *StoreAction) Reset()      { *m = StoreAction{} }
-func (*StoreAction) ProtoMessage() {}
+func (m *StoreAction) Reset()                    { *m = StoreAction{} }
+func (*StoreAction) ProtoMessage()               {}
+func (*StoreAction) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{25} }
 
 type isStoreAction_Action interface {
 	isStoreAction_Action()
@@ -955,49 +1065,49 @@ type isStoreAction_Action interface {
 }
 
 type StoreAction_CreateNode struct {
-	CreateNode *Node `protobuf:"bytes,1,opt,name=create_node,oneof"`
+	CreateNode *Node `protobuf:"bytes,1,opt,name=create_node,json=createNode,oneof"`
 }
 type StoreAction_UpdateNode struct {
-	UpdateNode *Node `protobuf:"bytes,2,opt,name=update_node,oneof"`
+	UpdateNode *Node `protobuf:"bytes,2,opt,name=update_node,json=updateNode,oneof"`
 }
 type StoreAction_RemoveNode struct {
-	RemoveNode string `protobuf:"bytes,3,opt,name=remove_node,proto3,oneof"`
+	RemoveNode string `protobuf:"bytes,3,opt,name=remove_node,json=removeNode,proto3,oneof"`
 }
 type StoreAction_CreateTask struct {
-	CreateTask *Task `protobuf:"bytes,4,opt,name=create_task,oneof"`
+	CreateTask *Task `protobuf:"bytes,4,opt,name=create_task,json=createTask,oneof"`
 }
 type StoreAction_UpdateTask struct {
-	UpdateTask *Task `protobuf:"bytes,5,opt,name=update_task,oneof"`
+	UpdateTask *Task `protobuf:"bytes,5,opt,name=update_task,json=updateTask,oneof"`
 }
 type StoreAction_RemoveTask struct {
-	RemoveTask string `protobuf:"bytes,6,opt,name=remove_task,proto3,oneof"`
+	RemoveTask string `protobuf:"bytes,6,opt,name=remove_task,json=removeTask,proto3,oneof"`
 }
 type StoreAction_CreateJob struct {
-	CreateJob *Job `protobuf:"bytes,7,opt,name=create_job,oneof"`
+	CreateJob *Job `protobuf:"bytes,7,opt,name=create_job,json=createJob,oneof"`
 }
 type StoreAction_UpdateJob struct {
-	UpdateJob *Job `protobuf:"bytes,8,opt,name=update_job,oneof"`
+	UpdateJob *Job `protobuf:"bytes,8,opt,name=update_job,json=updateJob,oneof"`
 }
 type StoreAction_RemoveJob struct {
-	RemoveJob string `protobuf:"bytes,9,opt,name=remove_job,proto3,oneof"`
+	RemoveJob string `protobuf:"bytes,9,opt,name=remove_job,json=removeJob,proto3,oneof"`
 }
 type StoreAction_CreateNetwork struct {
-	CreateNetwork *Network `protobuf:"bytes,10,opt,name=create_network,oneof"`
+	CreateNetwork *Network `protobuf:"bytes,10,opt,name=create_network,json=createNetwork,oneof"`
 }
 type StoreAction_UpdateNetwork struct {
-	UpdateNetwork *Network `protobuf:"bytes,11,opt,name=update_network,oneof"`
+	UpdateNetwork *Network `protobuf:"bytes,11,opt,name=update_network,json=updateNetwork,oneof"`
 }
 type StoreAction_RemoveNetwork struct {
-	RemoveNetwork string `protobuf:"bytes,12,opt,name=remove_network,proto3,oneof"`
+	RemoveNetwork string `protobuf:"bytes,12,opt,name=remove_network,json=removeNetwork,proto3,oneof"`
 }
 type StoreAction_CreateVolume struct {
-	CreateVolume *Volume `protobuf:"bytes,13,opt,name=create_volume,oneof"`
+	CreateVolume *Volume `protobuf:"bytes,13,opt,name=create_volume,json=createVolume,oneof"`
 }
 type StoreAction_UpdateVolume struct {
-	UpdateVolume *Volume `protobuf:"bytes,14,opt,name=update_volume,oneof"`
+	UpdateVolume *Volume `protobuf:"bytes,14,opt,name=update_volume,json=updateVolume,oneof"`
 }
 type StoreAction_RemoveVolume struct {
-	RemoveVolume string `protobuf:"bytes,15,opt,name=remove_volume,proto3,oneof"`
+	RemoveVolume string `protobuf:"bytes,15,opt,name=remove_volume,json=removeVolume,proto3,oneof"`
 }
 
 func (*StoreAction_CreateNode) isStoreAction_Action()    {}
@@ -1129,8 +1239,8 @@ func (m *StoreAction) GetRemoveVolume() string {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*StoreAction) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _StoreAction_OneofMarshaler, _StoreAction_OneofUnmarshaler, []interface{}{
+func (*StoreAction) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _StoreAction_OneofMarshaler, _StoreAction_OneofUnmarshaler, _StoreAction_OneofSizer, []interface{}{
 		(*StoreAction_CreateNode)(nil),
 		(*StoreAction_UpdateNode)(nil),
 		(*StoreAction_RemoveNode)(nil),
@@ -1346,6 +1456,87 @@ func _StoreAction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Bu
 	default:
 		return false, nil
 	}
+}
+
+func _StoreAction_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*StoreAction)
+	// action
+	switch x := m.Action.(type) {
+	case *StoreAction_CreateNode:
+		s := proto.Size(x.CreateNode)
+		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *StoreAction_UpdateNode:
+		s := proto.Size(x.UpdateNode)
+		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *StoreAction_RemoveNode:
+		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.RemoveNode)))
+		n += len(x.RemoveNode)
+	case *StoreAction_CreateTask:
+		s := proto.Size(x.CreateTask)
+		n += proto.SizeVarint(4<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *StoreAction_UpdateTask:
+		s := proto.Size(x.UpdateTask)
+		n += proto.SizeVarint(5<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *StoreAction_RemoveTask:
+		n += proto.SizeVarint(6<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.RemoveTask)))
+		n += len(x.RemoveTask)
+	case *StoreAction_CreateJob:
+		s := proto.Size(x.CreateJob)
+		n += proto.SizeVarint(7<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *StoreAction_UpdateJob:
+		s := proto.Size(x.UpdateJob)
+		n += proto.SizeVarint(8<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *StoreAction_RemoveJob:
+		n += proto.SizeVarint(9<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.RemoveJob)))
+		n += len(x.RemoveJob)
+	case *StoreAction_CreateNetwork:
+		s := proto.Size(x.CreateNetwork)
+		n += proto.SizeVarint(10<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *StoreAction_UpdateNetwork:
+		s := proto.Size(x.UpdateNetwork)
+		n += proto.SizeVarint(11<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *StoreAction_RemoveNetwork:
+		n += proto.SizeVarint(12<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.RemoveNetwork)))
+		n += len(x.RemoveNetwork)
+	case *StoreAction_CreateVolume:
+		s := proto.Size(x.CreateVolume)
+		n += proto.SizeVarint(13<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *StoreAction_UpdateVolume:
+		s := proto.Size(x.UpdateVolume)
+		n += proto.SizeVarint(14<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *StoreAction_RemoveVolume:
+		n += proto.SizeVarint(15<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.RemoveVolume)))
+		n += len(x.RemoveVolume)
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
 }
 
 func init() {
@@ -10408,3 +10599,145 @@ var (
 	ErrInvalidLengthTypes = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowTypes   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorTypes = []byte{
+	// 2201 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xbc, 0x58, 0xcd, 0x73, 0x1b, 0x49,
+	0x15, 0xb7, 0xa4, 0x91, 0x34, 0x7a, 0x23, 0x39, 0xca, 0xc4, 0x0e, 0xce, 0xec, 0x62, 0x3b, 0xb3,
+	0x81, 0xcd, 0x06, 0x56, 0xbb, 0xe5, 0x85, 0x00, 0xbb, 0x14, 0x85, 0xbe, 0x9c, 0xd5, 0xe2, 0xc8,
+	0xaa, 0xb1, 0x9d, 0x54, 0xb8, 0xb8, 0x46, 0xa3, 0xb6, 0x3c, 0x89, 0x34, 0xa3, 0x9d, 0x19, 0xd9,
+	0x98, 0x13, 0x07, 0x8a, 0xda, 0x5a, 0x38, 0x70, 0xe4, 0xb2, 0xa7, 0xe5, 0x2f, 0xe0, 0xc8, 0x89,
+	0x63, 0x8a, 0x13, 0x17, 0x28, 0x4e, 0x5b, 0x9b, 0xfd, 0x0b, 0x38, 0x73, 0xe2, 0x75, 0xf7, 0x9b,
+	0x0f, 0xc9, 0x86, 0x22, 0x54, 0x8a, 0x83, 0x92, 0x99, 0xf7, 0x7e, 0xfd, 0x5e, 0xbf, 0xaf, 0x5f,
+	0xf7, 0x18, 0xb4, 0xe8, 0x62, 0xc6, 0xc2, 0xc6, 0x2c, 0xf0, 0x23, 0x5f, 0x2f, 0xd8, 0x33, 0xd7,
+	0x78, 0x7b, 0xec, 0x46, 0xa7, 0xf3, 0x61, 0xc3, 0xf1, 0xa7, 0xef, 0x8c, 0xfd, 0xb1, 0xff, 0x8e,
+	0xd0, 0x0d, 0xe7, 0x27, 0xe2, 0x4d, 0xbc, 0x88, 0x27, 0xb9, 0xc6, 0xfc, 0x65, 0x0e, 0x94, 0x87,
+	0x2c, 0xb2, 0x75, 0x1d, 0x14, 0xcf, 0x9e, 0xb2, 0x8d, 0xdc, 0x76, 0xee, 0x6e, 0xc5, 0x12, 0xcf,
+	0xfa, 0xdb, 0x50, 0x9a, 0xd8, 0x43, 0x36, 0x09, 0x37, 0xf2, 0xdb, 0x85, 0xbb, 0xda, 0xce, 0x7a,
+	0x03, 0x3d, 0x34, 0x38, 0xbc, 0xb1, 0x27, 0xe4, 0x5d, 0x2f, 0x0a, 0x2e, 0x2c, 0x02, 0x19, 0x3f,
+	0x00, 0x2d, 0x23, 0xd6, 0xeb, 0x50, 0x78, 0xc6, 0x2e, 0xc8, 0x20, 0x7f, 0xd4, 0xd7, 0xa0, 0x78,
+	0x66, 0x4f, 0xe6, 0x0c, 0xcd, 0x71, 0x99, 0x7c, 0x79, 0x3f, 0xff, 0xfd, 0x9c, 0xb9, 0x05, 0xe5,
+	0x47, 0x2c, 0x08, 0x5d, 0xdf, 0xe3, 0x20, 0xd7, 0x1b, 0xb1, 0x9f, 0x89, 0x85, 0x8a, 0x25, 0x5f,
+	0xcc, 0x27, 0x50, 0xb1, 0x58, 0xe8, 0xcf, 0x03, 0x87, 0x85, 0xfa, 0x5b, 0x50, 0xf1, 0x6c, 0xcf,
+	0x3f, 0x76, 0x66, 0xf3, 0x50, 0xc0, 0x0a, 0xad, 0xea, 0x57, 0x5f, 0x6c, 0xa9, 0x7d, 0x14, 0xb6,
+	0x07, 0x47, 0xa1, 0xa5, 0x72, 0x75, 0x1b, 0xb5, 0xfa, 0x6d, 0xa8, 0x4e, 0xd9, 0xd4, 0x0f, 0x2e,
+	0x8e, 0x87, 0x17, 0x11, 0x0b, 0x85, 0xe7, 0x82, 0xa5, 0x49, 0x59, 0x8b, 0x8b, 0xcc, 0x00, 0xd6,
+	0x62, 0xd3, 0x16, 0xfb, 0x78, 0xee, 0x06, 0x6c, 0xca, 0xbc, 0x28, 0xd4, 0xbf, 0x89, 0xd1, 0xbb,
+	0x53, 0x37, 0x92, 0x2e, 0xb4, 0x9d, 0x55, 0x11, 0x7d, 0xb2, 0x0b, 0x8b, 0xb4, 0xfa, 0x0e, 0x54,
+	0x03, 0x16, 0xb2, 0xe0, 0xcc, 0x8e, 0x70, 0xff, 0xd2, 0xc5, 0x65, 0xf4, 0x02, 0xc6, 0xdc, 0x05,
+	0x75, 0x30, 0xb1, 0xa3, 0x13, 0x3f, 0x98, 0xea, 0x26, 0x54, 0xed, 0xc0, 0x39, 0x75, 0x23, 0xe6,
+	0x44, 0xf3, 0x20, 0xae, 0xc0, 0x82, 0x4c, 0xbf, 0x09, 0x79, 0x5f, 0x5a, 0xae, 0xb4, 0x4a, 0x18,
+	0x6a, 0x7e, 0xff, 0xc0, 0x42, 0x89, 0xf9, 0xcf, 0x1c, 0xa8, 0x7d, 0x7f, 0xc4, 0x0e, 0x66, 0xcc,
+	0xd1, 0xdf, 0x00, 0x65, 0x8a, 0xb5, 0xa1, 0xed, 0x56, 0x92, 0x62, 0xb5, 0x94, 0xe7, 0x5f, 0x6c,
+	0xad, 0x58, 0x42, 0xa9, 0xff, 0x08, 0xbd, 0x9d, 0xd9, 0x2e, 0x96, 0xcc, 0x9d, 0xb8, 0xd1, 0x85,
+	0xb0, 0xb9, 0xba, 0x63, 0x08, 0x70, 0x6c, 0xa9, 0xd1, 0xcc, 0x20, 0xac, 0x05, 0xbc, 0xf9, 0x49,
+	0x0e, 0xaa, 0x59, 0x35, 0x4f, 0x53, 0xb3, 0x7d, 0xd8, 0x7b, 0xd4, 0xad, 0xaf, 0x18, 0xc6, 0xa7,
+	0x9f, 0x6d, 0xdf, 0xe4, 0x56, 0xb2, 0x88, 0xa6, 0x13, 0xb9, 0x67, 0x4c, 0xbf, 0x03, 0xc5, 0x41,
+	0xf3, 0xe8, 0xa0, 0x5b, 0xcf, 0x19, 0xb7, 0x10, 0xb6, 0xbe, 0x0c, 0x1b, 0xd8, 0xf3, 0x50, 0xa0,
+	0x3a, 0x56, 0xb3, 0xd7, 0xaf, 0xe7, 0xaf, 0x46, 0x75, 0x02, 0xdb, 0xf5, 0x0c, 0xe5, 0x93, 0xcf,
+	0x37, 0x57, 0xcc, 0x5f, 0xe5, 0xe0, 0x1a, 0xd7, 0x77, 0x58, 0xe8, 0x04, 0xee, 0x8c, 0x67, 0x56,
+	0x37, 0x40, 0x3d, 0xf5, 0xc3, 0x28, 0xd3, 0xca, 0xc9, 0x3b, 0xb6, 0x8d, 0x3a, 0xa3, 0xa4, 0x53,
+	0x91, 0x6a, 0x22, 0xec, 0xb8, 0x12, 0x56, 0xa2, 0xd6, 0xbf, 0x0d, 0x95, 0x20, 0x2e, 0xdd, 0x46,
+	0xe1, 0xca, 0x82, 0xa6, 0x00, 0xf3, 0x6f, 0x38, 0x44, 0x7c, 0x23, 0xbc, 0x4c, 0xee, 0x48, 0xfa,
+	0x95, 0x65, 0xea, 0x75, 0x2c, 0x94, 0xa0, 0xb9, 0xf2, 0x99, 0x6c, 0x6f, 0x72, 0x5c, 0x15, 0xc6,
+	0xa8, 0xe5, 0xa9, 0x3e, 0x31, 0x04, 0x7b, 0x56, 0x09, 0xb1, 0x0a, 0xe4, 0xb7, 0xb6, 0x50, 0x1a,
+	0x4b, 0xa8, 0xf4, 0xfb, 0xa0, 0x8d, 0xd2, 0xa8, 0x37, 0x14, 0x81, 0x5c, 0x4b, 0x90, 0x99, 0x8c,
+	0x58, 0x59, 0x20, 0x9f, 0xe8, 0x30, 0xb2, 0x23, 0x1c, 0x9b, 0xa2, 0x58, 0x72, 0x2d, 0x35, 0x2e,
+	0xc4, 0xb4, 0x15, 0x02, 0x99, 0xbf, 0xcd, 0x01, 0xa4, 0x4a, 0xfd, 0x5b, 0x50, 0xe4, 0x0a, 0x99,
+	0xd9, 0x55, 0xa2, 0x83, 0x54, 0xdf, 0xe0, 0xff, 0x31, 0x4b, 0x62, 0xf4, 0x0d, 0x28, 0x4f, 0x59,
+	0x18, 0xda, 0xe3, 0x78, 0xdc, 0xe3, 0x57, 0xf3, 0x03, 0x28, 0x0a, 0xa4, 0xae, 0x41, 0xf9, 0xa8,
+	0xff, 0x93, 0xfe, 0xfe, 0xe3, 0x7e, 0x7d, 0x45, 0x57, 0x41, 0xe9, 0xf0, 0xa7, 0x9c, 0x5e, 0x81,
+	0xa2, 0xd5, 0x6d, 0x76, 0x9e, 0xd4, 0xf3, 0xc8, 0x21, 0xd5, 0x4e, 0xef, 0xa0, 0xbd, 0xdf, 0xef,
+	0x77, 0xdb, 0x87, 0xdd, 0x4e, 0xbd, 0x60, 0xe2, 0xec, 0xf7, 0xa6, 0x68, 0x45, 0x74, 0xfc, 0xeb,
+	0xbc, 0x4c, 0x27, 0x2c, 0x60, 0x9e, 0x13, 0x97, 0x3b, 0x15, 0x98, 0x5f, 0xe6, 0xa1, 0xd6, 0xf6,
+	0xbd, 0x08, 0x3b, 0x86, 0x05, 0x02, 0xff, 0xbd, 0x6c, 0x59, 0xe5, 0x98, 0xdc, 0x5a, 0x28, 0x6b,
+	0x96, 0x00, 0x32, 0x15, 0xe6, 0x6d, 0xe9, 0x4e, 0xe3, 0x50, 0xe2, 0x5e, 0x48, 0xf6, 0x61, 0x49,
+	0x25, 0x0f, 0x19, 0x69, 0x77, 0x6a, 0x7b, 0x23, 0xac, 0x5d, 0x81, 0x87, 0x4c, 0xaf, 0x9c, 0x5d,
+	0xed, 0x60, 0x1c, 0x62, 0xa1, 0xb8, 0x58, 0x3c, 0x73, 0x7e, 0x64, 0xde, 0x19, 0x16, 0x82, 0x8b,
+	0xf8, 0xa3, 0xde, 0x01, 0xd5, 0x63, 0xd1, 0xb9, 0x1f, 0x3c, 0x0b, 0x37, 0x4a, 0x82, 0x71, 0xef,
+	0x0a, 0x47, 0x0b, 0x41, 0x34, 0xfa, 0x12, 0xd2, 0x8c, 0x22, 0xdb, 0x39, 0xe5, 0x3b, 0x15, 0x5b,
+	0x48, 0x56, 0x1a, 0x4f, 0x61, 0xfd, 0x4a, 0x08, 0x32, 0x6b, 0x86, 0xe2, 0x3f, 0x5c, 0x21, 0x92,
+	0x6f, 0x00, 0xd0, 0xd2, 0x63, 0xec, 0x5d, 0x49, 0x31, 0x35, 0xec, 0xdd, 0x0a, 0x19, 0xe9, 0x75,
+	0x10, 0x5a, 0x21, 0x48, 0x6f, 0xd4, 0xd2, 0x32, 0x39, 0x37, 0x7b, 0xa0, 0x1e, 0xda, 0xe1, 0x33,
+	0x61, 0x7e, 0x07, 0x2a, 0x4e, 0xbc, 0x51, 0x4a, 0xae, 0x7e, 0x79, 0xfb, 0xdc, 0x58, 0x02, 0x6b,
+	0x55, 0xa0, 0x1c, 0xcc, 0xbd, 0xc8, 0x9d, 0x32, 0xf3, 0x4f, 0x05, 0x28, 0x7f, 0xe4, 0x0f, 0xff,
+	0x7b, 0x26, 0x7b, 0x0f, 0xca, 0x9c, 0x51, 0x5d, 0x27, 0xae, 0xca, 0xd7, 0x04, 0x8e, 0x6c, 0x34,
+	0x0e, 0xa4, 0x0e, 0x5f, 0xd1, 0x65, 0x8c, 0xc4, 0x01, 0x28, 0x0e, 0xed, 0xc8, 0x39, 0xa5, 0xe1,
+	0x5a, 0x5f, 0x58, 0xd2, 0xe2, 0x1a, 0xb9, 0x40, 0xa2, 0xf4, 0x77, 0xa1, 0x34, 0x9e, 0xf8, 0x43,
+	0x7b, 0x42, 0x23, 0x76, 0x73, 0x01, 0xff, 0x40, 0xa8, 0xe4, 0x02, 0xc2, 0xe9, 0xf7, 0x40, 0x71,
+	0x02, 0x1c, 0xc9, 0x62, 0x66, 0x24, 0x63, 0x7c, 0x1b, 0x15, 0x12, 0x2d, 0x30, 0x9c, 0x90, 0x22,
+	0x36, 0xe5, 0xa4, 0xc3, 0xb0, 0xde, 0xe9, 0xb0, 0xc7, 0x29, 0xb5, 0x12, 0xb5, 0x71, 0x0f, 0x20,
+	0x0d, 0x88, 0xf7, 0xbd, 0xeb, 0xe1, 0x98, 0x79, 0x71, 0x1f, 0x17, 0xac, 0x54, 0x60, 0xf4, 0x41,
+	0x8d, 0x23, 0xd1, 0xb7, 0x41, 0xc3, 0x1e, 0x9c, 0x4d, 0x98, 0x3c, 0x9b, 0x24, 0x36, 0x2b, 0xe2,
+	0x88, 0x99, 0x1d, 0xd8, 0x13, 0x36, 0x99, 0xb8, 0xe1, 0x34, 0x3e, 0x20, 0x33, 0x22, 0x03, 0x2b,
+	0x9e, 0x44, 0x6a, 0x60, 0xc5, 0x28, 0x8c, 0xd6, 0x35, 0xa8, 0xf9, 0x78, 0x48, 0xb1, 0x30, 0x0a,
+	0xc4, 0xb1, 0x66, 0x76, 0x00, 0xc4, 0xd6, 0x25, 0x5b, 0xdc, 0x59, 0x64, 0x8b, 0xd5, 0x34, 0xb4,
+	0x2c, 0x4d, 0xf0, 0x29, 0x08, 0x02, 0xa2, 0x08, 0xfe, 0x68, 0xfe, 0xae, 0x00, 0x0a, 0x87, 0xbd,
+	0x22, 0x36, 0xdd, 0x86, 0xd2, 0x53, 0x7f, 0xc8, 0x7b, 0xbb, 0x20, 0x2c, 0x55, 0xd0, 0x52, 0x11,
+	0xb7, 0x8f, 0xc6, 0x8a, 0xa8, 0xe8, 0x8d, 0xb0, 0xdb, 0xca, 0x1e, 0x92, 0x18, 0x87, 0x28, 0x02,
+	0x02, 0x08, 0x29, 0x71, 0x5e, 0x43, 0x4c, 0x89, 0xab, 0x04, 0x48, 0xb6, 0x64, 0xf1, 0x3f, 0xb5,
+	0x64, 0xcc, 0xdc, 0x57, 0x16, 0x53, 0x32, 0xf7, 0x9b, 0x09, 0x03, 0x97, 0x33, 0x0c, 0x9c, 0xa6,
+	0x2d, 0xe6, 0x5e, 0xe4, 0xaa, 0x94, 0x0c, 0x54, 0x41, 0x06, 0xaf, 0x25, 0xd0, 0xcb, 0x1c, 0x90,
+	0x99, 0xff, 0x27, 0x70, 0xfd, 0x92, 0x1a, 0x4f, 0xe9, 0x32, 0x01, 0x68, 0xa8, 0x64, 0xce, 0x08,
+	0x68, 0xc5, 0x4a, 0xde, 0x59, 0xf6, 0x68, 0x84, 0xc4, 0x17, 0x32, 0x79, 0xeb, 0x43, 0x46, 0x4d,
+	0x04, 0xe6, 0x14, 0x0a, 0xbc, 0xa9, 0x5e, 0x55, 0x61, 0xb2, 0xc7, 0x5c, 0x35, 0x3b, 0x29, 0x32,
+	0x57, 0xe6, 0x9f, 0xf3, 0x70, 0xbd, 0x37, 0x68, 0x3e, 0x44, 0x02, 0x39, 0x71, 0xc7, 0x73, 0xd9,
+	0x65, 0xfa, 0x0f, 0xa1, 0x74, 0x62, 0x4f, 0xdd, 0xc9, 0x05, 0x35, 0xd6, 0x1d, 0x49, 0xc6, 0xcb,
+	0xb8, 0x46, 0x53, 0x6e, 0x7b, 0x57, 0x60, 0x2d, 0x5a, 0x83, 0x7b, 0x2f, 0x85, 0xf3, 0x21, 0x86,
+	0x4b, 0x2d, 0x47, 0x6f, 0xfc, 0xda, 0x19, 0xd8, 0x1e, 0x32, 0x7c, 0x41, 0xde, 0x4d, 0xc5, 0x0b,
+	0x67, 0xf4, 0x31, 0x76, 0xe9, 0xb9, 0x7d, 0x21, 0x5b, 0xc3, 0x8a, 0x5f, 0xf5, 0x1f, 0x83, 0x2a,
+	0x6f, 0x74, 0x6c, 0x24, 0x28, 0x5c, 0xfb, 0xb7, 0xfb, 0xb0, 0x08, 0x26, 0x2f, 0xcb, 0xc9, 0x2a,
+	0xe3, 0x03, 0xa8, 0x2d, 0xa8, 0x5e, 0xea, 0xc2, 0xfc, 0x2e, 0xd4, 0x16, 0xe2, 0xbb, 0x74, 0x96,
+	0xf6, 0x06, 0x8f, 0xbe, 0x53, 0x57, 0xe8, 0xe9, 0x7e, 0xbd, 0x64, 0xfe, 0x26, 0x07, 0xa5, 0x4e,
+	0x80, 0x37, 0xb1, 0xe0, 0xca, 0xbb, 0xfe, 0x0e, 0x94, 0xfd, 0x59, 0x7c, 0x81, 0xe5, 0xe1, 0x6c,
+	0x88, 0x70, 0xe4, 0x8a, 0xc6, 0xbe, 0x54, 0xc9, 0x10, 0x62, 0xa0, 0xf1, 0x3e, 0x54, 0xb3, 0x8a,
+	0x97, 0x0a, 0x20, 0x00, 0x8d, 0xa7, 0x8a, 0xd6, 0xe3, 0x78, 0x95, 0x46, 0xc2, 0x15, 0xb5, 0xa7,
+	0x96, 0xf1, 0x6e, 0x91, 0x0a, 0xef, 0xae, 0xab, 0x4e, 0x36, 0xb5, 0xa1, 0x38, 0x66, 0x63, 0x56,
+	0xbe, 0x94, 0x79, 0x6b, 0x09, 0x6d, 0xbe, 0xc8, 0x81, 0x46, 0x1d, 0xff, 0x32, 0x17, 0xe6, 0x35,
+	0xe9, 0xfe, 0x78, 0xc1, 0x1a, 0x75, 0xf8, 0xc2, 0x3e, 0x6f, 0x48, 0xe0, 0x62, 0xbb, 0xe2, 0x17,
+	0x88, 0x3b, 0x3b, 0xbb, 0x7f, 0xcc, 0x3c, 0x7b, 0x38, 0x61, 0x92, 0x85, 0x54, 0x4b, 0xe3, 0xb2,
+	0xae, 0x14, 0xf1, 0x4b, 0xab, 0xeb, 0x45, 0x2c, 0xf0, 0xe8, 0x9c, 0x51, 0xad, 0xe4, 0x1d, 0x8f,
+	0x67, 0xc5, 0x9d, 0xd9, 0x53, 0xe2, 0x9d, 0x7a, 0x12, 0x29, 0x25, 0xae, 0xa5, 0xe2, 0xfc, 0x29,
+	0x5c, 0x60, 0x09, 0x9c, 0xf9, 0xd7, 0x1c, 0x94, 0x29, 0xc6, 0x57, 0x34, 0xa7, 0x77, 0x16, 0xe6,
+	0xb4, 0x9e, 0xe5, 0x8d, 0x0c, 0xaf, 0x35, 0xa0, 0x4a, 0x69, 0x92, 0xa4, 0xaf, 0x5c, 0x4e, 0x8f,
+	0x26, 0x01, 0xf2, 0xee, 0xf7, 0xb2, 0x71, 0x7d, 0x0c, 0xf0, 0xc8, 0x9f, 0xcc, 0xa7, 0xec, 0xff,
+	0x56, 0x39, 0xf3, 0x73, 0x9c, 0x18, 0xe9, 0xf3, 0x15, 0x65, 0xf2, 0x8d, 0x85, 0x4c, 0x4a, 0xe6,
+	0x4f, 0x83, 0xfa, 0xdf, 0x12, 0x69, 0xe2, 0x10, 0x3e, 0x66, 0xee, 0xf8, 0x34, 0x62, 0xa3, 0x01,
+	0x93, 0xc3, 0xcd, 0x09, 0x3b, 0x1e, 0x6e, 0xfe, 0xcc, 0x49, 0xef, 0x5c, 0x60, 0xc4, 0x2e, 0x73,
+	0x16, 0xbd, 0x99, 0x8f, 0xe1, 0x46, 0x8f, 0x1a, 0xcd, 0xb2, 0x4f, 0x22, 0x7e, 0xfb, 0xc5, 0xd3,
+	0x3c, 0x13, 0xad, 0xb2, 0x10, 0xed, 0x5d, 0x28, 0xd9, 0x0e, 0xa5, 0xb0, 0x90, 0x54, 0xed, 0x20,
+	0xf2, 0x03, 0xd6, 0x14, 0x72, 0x8b, 0xf4, 0xe6, 0x1f, 0x8a, 0xa0, 0x65, 0xe4, 0x98, 0x27, 0xcd,
+	0x09, 0x18, 0x6e, 0xf7, 0x98, 0x1f, 0xa7, 0x0b, 0x65, 0xe3, 0xe7, 0x2c, 0xde, 0x88, 0x40, 0xea,
+	0xc5, 0x67, 0x14, 0xa2, 0xe7, 0xb3, 0x51, 0x82, 0xce, 0x5f, 0x81, 0x96, 0x7a, 0x81, 0xbe, 0x0d,
+	0x1a, 0xde, 0xd8, 0xfd, 0x33, 0x42, 0x17, 0xe8, 0x76, 0x0b, 0x52, 0x18, 0x1b, 0x24, 0xf7, 0x11,
+	0x9e, 0x9e, 0x94, 0xd2, 0x4a, 0x72, 0x9c, 0xa6, 0xee, 0xc5, 0xbd, 0x23, 0x75, 0x2f, 0xd0, 0xc5,
+	0x2b, 0xd0, 0x52, 0x2f, 0xd0, 0xa9, 0x7b, 0x81, 0x2e, 0x2d, 0xba, 0x17, 0x90, 0xb7, 0x80, 0xcc,
+	0x1f, 0xe3, 0x85, 0x83, 0xce, 0x7d, 0x35, 0x3e, 0xef, 0xc4, 0x85, 0x58, 0x68, 0xf9, 0xd1, 0x8a,
+	0x50, 0xf2, 0xcd, 0xa1, 0xea, 0x65, 0xa8, 0xd4, 0x72, 0xe8, 0x16, 0x90, 0x0f, 0x01, 0xad, 0x90,
+	0xdf, 0x8a, 0x94, 0x71, 0xc0, 0x77, 0x91, 0x2e, 0x29, 0xe9, 0x74, 0xf4, 0xc3, 0xe5, 0xa3, 0x1f,
+	0x97, 0xd4, 0x28, 0xf5, 0xc4, 0x1a, 0xb8, 0x2c, 0xce, 0x3e, 0x2d, 0xd3, 0xae, 0x5e, 0x46, 0x35,
+	0xa0, 0x65, 0x6f, 0xc2, 0x6a, 0x5c, 0x06, 0x5a, 0x56, 0xa5, 0x2d, 0xd5, 0xa8, 0x12, 0x04, 0xdc,
+	0x01, 0x72, 0x78, 0x7c, 0x26, 0x7a, 0x7f, 0xa3, 0x96, 0xe9, 0x70, 0x39, 0x0e, 0xb8, 0xa8, 0x2a,
+	0x31, 0x34, 0x7f, 0xb8, 0x86, 0xf6, 0x44, 0x6b, 0x56, 0xaf, 0x5c, 0x23, 0x31, 0xb4, 0xe6, 0x1b,
+	0x40, 0x8e, 0xe3, 0x35, 0xd7, 0x68, 0x3f, 0x55, 0x29, 0x96, 0xb0, 0x96, 0x1a, 0x37, 0xf5, 0xbd,
+	0x5f, 0x2b, 0x50, 0x49, 0xee, 0xa7, 0xfa, 0x2d, 0x28, 0xf4, 0xbb, 0x8f, 0xeb, 0x2b, 0x46, 0xfd,
+	0xd3, 0xcf, 0xb6, 0xab, 0x89, 0xbc, 0xcf, 0xce, 0xd1, 0x72, 0xa5, 0xb9, 0xb7, 0xb7, 0xdf, 0x6e,
+	0xf2, 0x4f, 0xd2, 0x9c, 0x71, 0x13, 0x01, 0x7a, 0x02, 0x68, 0x4e, 0x26, 0xbe, 0x83, 0xff, 0xf3,
+	0x2b, 0xa3, 0xda, 0x3c, 0x38, 0xe8, 0x3d, 0xe8, 0x23, 0x2a, 0x6f, 0xac, 0x23, 0xea, 0x7a, 0x8a,
+	0x0a, 0x43, 0x77, 0xec, 0x11, 0xa8, 0xdd, 0xee, 0x0e, 0xc4, 0xd7, 0xed, 0x32, 0xc8, 0x71, 0xd8,
+	0x8c, 0x5b, 0x42, 0x87, 0x03, 0xab, 0x3b, 0x68, 0x5a, 0xbd, 0xfe, 0x83, 0xba, 0xb2, 0xe4, 0x70,
+	0x10, 0x30, 0xbc, 0xad, 0xbb, 0xde, 0x58, 0xff, 0x7a, 0xfc, 0xe1, 0x5c, 0x34, 0x74, 0x84, 0xac,
+	0xa6, 0x97, 0x6d, 0x66, 0x8f, 0x2e, 0xb8, 0xab, 0x83, 0xc3, 0xa6, 0x75, 0xc8, 0x8d, 0x94, 0x96,
+	0x5c, 0xe1, 0x3f, 0x41, 0xc4, 0x6d, 0xdc, 0x86, 0xb2, 0x75, 0xd4, 0xef, 0x73, 0x4c, 0xd9, 0x58,
+	0x43, 0x4c, 0x3d, 0xb5, 0x32, 0xf7, 0x3c, 0x0e, 0xe1, 0x76, 0x3e, 0x3c, 0x3a, 0x14, 0x5f, 0xeb,
+	0xea, 0xb2, 0x9d, 0xd3, 0x79, 0x34, 0xf2, 0xcf, 0xf9, 0xa9, 0xa1, 0xb6, 0xf7, 0x1f, 0x0e, 0xf6,
+	0xba, 0x87, 0xdd, 0x7a, 0x65, 0x69, 0xc7, 0x6d, 0xf9, 0xf9, 0x81, 0x81, 0x6d, 0x41, 0x69, 0xb7,
+	0xd9, 0xdb, 0xc3, 0xd8, 0xc1, 0xb8, 0x81, 0x98, 0x6b, 0x09, 0x66, 0xd7, 0x76, 0x27, 0x32, 0x3d,
+	0x56, 0xf7, 0x23, 0xf9, 0xf1, 0xaf, 0x2d, 0xf9, 0xb2, 0xd8, 0x53, 0xe6, 0x50, 0xa2, 0x77, 0x7b,
+	0xfd, 0xe6, 0x5e, 0xef, 0xa7, 0xdd, 0x7a, 0x75, 0x09, 0xb4, 0xeb, 0x22, 0xb9, 0xb9, 0x3f, 0x67,
+	0xfa, 0x6b, 0xa0, 0x74, 0x30, 0x39, 0xf5, 0x9a, 0x71, 0x1d, 0x01, 0xb5, 0x04, 0xd0, 0xc1, 0xdc,
+	0x18, 0xd7, 0xf9, 0x1f, 0x94, 0xfe, 0xf8, 0xfb, 0xcd, 0xb4, 0xfe, 0xad, 0xd7, 0x9f, 0xbf, 0xd8,
+	0x5c, 0xf9, 0x3b, 0xfe, 0xfe, 0xf1, 0x62, 0x33, 0xf7, 0x8b, 0xaf, 0x36, 0x73, 0xcf, 0xf1, 0xf7,
+	0x17, 0xfc, 0x7d, 0x89, 0xbf, 0x61, 0x49, 0xfc, 0xf9, 0xf4, 0xbd, 0x7f, 0x05, 0x00, 0x00, 0xff,
+	0xff, 0x1e, 0x8c, 0xd0, 0x20, 0x81, 0x15, 0x00, 0x00,
+}
