@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/docker/swarm-v2/manager/state/watch"
 )
 
@@ -192,11 +193,11 @@ type Store interface {
 	View(func(ReadTx) error) error
 
 	// Save serializes the data in the store.
-	Save() ([]byte, error)
+	Save() (*pb.StoreSnapshot, error)
 
 	// Restore sets the contents of the store to the serialized data in the
 	// argument.
-	Restore([]byte) error
+	Restore(*pb.StoreSnapshot) error
 }
 
 // WatchableStore is an extension of Store that publishes modifications to a

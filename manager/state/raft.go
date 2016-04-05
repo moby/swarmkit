@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -84,7 +85,7 @@ const (
 // configuration.
 type Node struct {
 	raft.Node
-	cluster Cluster
+	cluster *cluster
 
 	Client *Raft
 	Server *grpc.Server
@@ -155,7 +156,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 
 	n := &Node{
 		Ctx:       ctx,
-		cluster:   NewCluster(),
+		cluster:   newCluster(),
 		raftStore: raftStore,
 		Address:   opts.Addr,
 		Config: &raft.Config{
@@ -257,7 +258,7 @@ func (n *Node) loadAndStart() error {
 			return fmt.Errorf("create wal error: %v", err)
 		}
 
-		n.cluster.AddMember(&Member{RaftNode: raftNode})
+		n.cluster.addMember(&member{RaftNode: raftNode})
 		n.startNodePeers = []raft.Peer{{ID: n.Config.ID, Context: metadata}}
 
 		return nil
@@ -271,8 +272,7 @@ func (n *Node) loadAndStart() error {
 
 	if snapshot != nil {
 		// Load the snapshot data into the store
-		err := n.memoryStore.Restore(snapshot.Data)
-		if err != nil {
+		if err := n.restoreFromSnapshot(snapshot.Data); err != nil {
 			return err
 		}
 	}
@@ -389,7 +389,7 @@ func (n *Node) StartByJoining(joinAddr string) <-chan error {
 
 	n.Node = raft.StartNode(n.Config, []raft.Peer{})
 
-	n.RegisterNodes(resp.Members)
+	n.registerNodes(resp.Members)
 
 	return n.run()
 }
@@ -423,7 +423,7 @@ func (n *Node) run() (errCh <-chan error) {
 				// saveToStorage.
 				if !raft.IsEmptySnap(rd.Snapshot) {
 					// Load the snapshot data into the store
-					if err := n.memoryStore.Restore(rd.Snapshot.Data); err != nil {
+					if err := n.restoreFromSnapshot(rd.Snapshot.Data); err != nil {
 						n.errCh <- err
 					}
 					n.appliedIndex = rd.Snapshot.Metadata.Index
@@ -513,13 +513,12 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 		return nil, err
 	}
 
-	if n.cluster.IsIDRemoved(req.Node.ID) {
+	if n.cluster.isIDRemoved(req.Node.ID) {
 		return nil, ErrIDRemoved
 	}
 
 	// We submit a configuration change only if the node was not registered yet
-	// TODO(abronan, aaronl): determine if we need to snapshot the memberlist
-	if n.cluster.GetMember(req.Node.ID) == nil {
+	if n.cluster.getMember(req.Node.ID) == nil {
 		cc := raftpb.ConfChange{
 			Type:    raftpb.ConfChangeAddNode,
 			NodeID:  req.Node.ID,
@@ -534,14 +533,13 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 	}
 
 	var nodes []*api.RaftNode
-	for _, node := range n.cluster.Members() {
+	for _, node := range n.cluster.listMembers() {
 		nodes = append(nodes, &api.RaftNode{
 			ID:   node.ID,
 			Addr: node.Addr,
 		})
 	}
 
-	// TODO(aaronl): send back store snapshot after join?
 	return &api.JoinResponse{Members: nodes}, nil
 }
 
@@ -584,29 +582,26 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 	return &api.ProcessRaftMessageResponse{}, nil
 }
 
-// RegisterNode registers a new node on the cluster
-func (n *Node) RegisterNode(node *api.RaftNode) error {
+// registerNode registers a new node on the cluster
+func (n *Node) registerNode(node *api.RaftNode) error {
+	var client *Raft
 	// Avoid opening a connection with ourself
-	if node.ID == n.Config.ID {
-		return nil
+	if node.ID != n.Config.ID {
+		// We don't want to impose a timeout on the grpc connection. It
+		// should keep retrying as long as necessary, in case the peer
+		// is temporarily unavailable.
+		var err error
+		if client, err = GetRaftClient(node.Addr, 0); err != nil {
+			return err
+		}
 	}
-
-	// We don't want to impose a timeout on the grpc connection. It
-	// should keep retrying as long as necessary, in case the peer
-	// is temporarily unavailable.
-
-	client, err := GetRaftClient(node.Addr, 0)
-	if err == nil {
-		err = n.cluster.AddMember(&Member{RaftNode: node, Client: client})
-	}
-
-	return err
+	return n.cluster.addMember(&member{RaftNode: node, Client: client})
 }
 
-// RegisterNodes registers a set of nodes in the cluster
-func (n *Node) RegisterNodes(nodes []*api.RaftNode) (err error) {
+// registerNodes registers a set of nodes in the cluster
+func (n *Node) registerNodes(nodes []*api.RaftNode) (err error) {
 	for _, node := range nodes {
-		err = n.RegisterNode(node)
+		err = n.registerNode(node)
 		if err != nil {
 			return err
 		}
@@ -615,20 +610,20 @@ func (n *Node) RegisterNodes(nodes []*api.RaftNode) (err error) {
 	return nil
 }
 
-// UnregisterNode unregisters a node that has died or
+// deregisterNode unregisters a node that has died or
 // has gracefully left the raft subsystem
-func (n *Node) UnregisterNode(id uint64) error {
+func (n *Node) deregisterNode(id uint64) error {
 	// Do not unregister yourself
 	if n.Config.ID == id {
 		return nil
 	}
 
-	peer := n.cluster.GetMember(id)
+	peer := n.cluster.getMember(id)
 	if peer == nil {
 		return ErrIDNotFound
 	}
 
-	if err := n.cluster.RemoveMember(id); err != nil {
+	if err := n.cluster.removeMember(id); err != nil {
 		return err
 	}
 
@@ -702,7 +697,23 @@ func (n *Node) doSnapshot() error {
 	// TODO(aaronl): This should be made async
 	// TODO(aaronl): Should probably disable snapshotting while a
 	// previous snapshot is in-flight to followers.
-	d, err := n.memoryStore.Save()
+	snapshot := pb.Snapshot{Version: pb.Snapshot_V0}
+	storeSnapshot, err := n.memoryStore.Save()
+	if err != nil {
+		return err
+	}
+	snapshot.Store = *storeSnapshot
+
+	for _, peer := range n.cluster.listMembers() {
+		snapshot.Membership.Members = append(snapshot.Membership.Members,
+			&pb.RaftNode{
+				ID:   peer.ID,
+				Addr: peer.Addr,
+			})
+	}
+	snapshot.Membership.Removed = n.cluster.listRemoved()
+
+	d, err := snapshot.Marshal()
 	if err != nil {
 		return err
 	}
@@ -726,9 +737,33 @@ func (n *Node) doSnapshot() error {
 	return nil
 }
 
+func (n *Node) restoreFromSnapshot(data []byte) error {
+	var snapshot pb.Snapshot
+	if err := snapshot.Unmarshal(data); err != nil {
+		return err
+	}
+	if snapshot.Version != pb.Snapshot_V0 {
+		return fmt.Errorf("unrecognized snapshot version %d", snapshot.Version)
+	}
+
+	if err := n.memoryStore.Restore(&snapshot.Store); err != nil {
+		return err
+	}
+
+	n.cluster.clear()
+	for _, member := range snapshot.Membership.Members {
+		n.registerNode(&api.RaftNode{ID: member.ID, Addr: member.Addr})
+	}
+	for _, removedMember := range snapshot.Membership.Removed {
+		n.cluster.removeMember(removedMember)
+	}
+
+	return nil
+}
+
 // Sends a series of messages to members in the raft
 func (n *Node) send(messages []raftpb.Message) error {
-	members := n.cluster.Members()
+	members := n.cluster.listMembers()
 
 	ctx, _ := context.WithTimeout(n.Ctx, 2*time.Second)
 
@@ -751,7 +786,7 @@ func (n *Node) send(messages []raftpb.Message) error {
 	return nil
 }
 
-func (n *Node) sendToMember(ctx context.Context, member *Member, m raftpb.Message) {
+func (n *Node) sendToMember(ctx context.Context, member *member, m raftpb.Message) {
 	_, err := member.Client.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Msg: &m})
 	if err != nil {
 		if m.Type == raftpb.MsgSnap {
@@ -905,7 +940,7 @@ func (n *Node) processConfChange(entry raftpb.Entry) {
 		n.wait.trigger(cc.ID, err)
 	}
 
-	if n.cluster.IsIDRemoved(cc.NodeID) {
+	if n.cluster.isIDRemoved(cc.NodeID) {
 		n.wait.trigger(cc.ID, ErrIDRemoved)
 	}
 
@@ -928,7 +963,7 @@ func (n *Node) processConfChange(entry raftpb.Entry) {
 // from a member in the raft cluster, this adds a new
 // node to the existing raft cluster
 func (n *Node) applyAddNode(cc raftpb.ConfChange) error {
-	if n.cluster.GetMember(cc.NodeID) != nil {
+	if n.cluster.getMember(cc.NodeID) != nil {
 		return ErrIDExists
 	}
 
@@ -943,10 +978,8 @@ func (n *Node) applyAddNode(cc raftpb.ConfChange) error {
 		return nil
 	}
 
-	if n.Config.ID != member.ID {
-		if err = n.RegisterNode(member); err != nil {
-			return err
-		}
+	if err = n.registerNode(member); err != nil {
+		return err
 	}
 	return nil
 }
@@ -955,7 +988,7 @@ func (n *Node) applyAddNode(cc raftpb.ConfChange) error {
 // from a member in the raft cluster, this removes a node
 // from the existing raft cluster
 func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
-	if n.cluster.GetMember(cc.NodeID) == nil {
+	if n.cluster.getMember(cc.NodeID) == nil {
 		return ErrIDNotFound
 	}
 
@@ -977,7 +1010,7 @@ func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
 	}
 
 	// Unregister the node
-	if err = n.UnregisterNode(cc.NodeID); err != nil {
+	if err = n.deregisterNode(cc.NodeID); err != nil {
 		return err
 	}
 

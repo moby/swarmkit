@@ -1482,10 +1482,8 @@ func (s *MemoryStore) CopyFrom(readTx ReadTx) error {
 }
 
 // Save serializes the data in the store.
-func (s *MemoryStore) Save() ([]byte, error) {
-	snapshot := pb.StoreSnapshot{
-		Version: pb.StoreSnapshot_V0,
-	}
+func (s *MemoryStore) Save() (*pb.StoreSnapshot, error) {
+	var snapshot pb.StoreSnapshot
 	err := s.View(func(tx ReadTx) error {
 		var err error
 		snapshot.Nodes, err = tx.Nodes().Find(All)
@@ -1515,21 +1513,12 @@ func (s *MemoryStore) Save() ([]byte, error) {
 		return nil, err
 	}
 
-	return snapshot.Marshal()
+	return &snapshot, nil
 }
 
 // Restore sets the contents of the store to the serialized data in the
 // argument.
-func (s *MemoryStore) Restore(data []byte) error {
-	var snapshot pb.StoreSnapshot
-	if err := snapshot.Unmarshal(data); err != nil {
-		return err
-	}
-
-	if snapshot.Version != pb.StoreSnapshot_V0 {
-		return fmt.Errorf("unrecognized snapshot version %d", snapshot.Version)
-	}
-
+func (s *MemoryStore) Restore(snapshot *pb.StoreSnapshot) error {
 	return s.updateLocal(func(tx Tx) error {
 		if err := DeleteAll(tx); err != nil {
 			return err
