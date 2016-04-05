@@ -424,6 +424,17 @@ func (fr *Framer) SetMaxReadFrameSize(v uint32) {
 	fr.maxReadSize = v
 }
 
+// ErrorDetail returns a more detailed error of the last error
+// returned by Framer.ReadFrame. For instance, if ReadFrame
+// returns a StreamError with code PROTOCOL_ERROR, ErrorDetail
+// will say exactly what was invalid. ErrorDetail is not guaranteed
+// to return a non-nil value and like the rest of the http2 package,
+// its return value is not protected by an API compatibility promise.
+// ErrorDetail is reset after the next call to ReadFrame.
+func (fr *Framer) ErrorDetail() error {
+	return fr.errDetail
+}
+
 // ErrFrameTooLarge is returned from Framer.ReadFrame when the peer
 // sends a frame that is larger than declared with SetMaxReadFrameSize.
 var ErrFrameTooLarge = errors.New("http2: frame too large")

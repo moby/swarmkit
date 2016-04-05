@@ -40,6 +40,7 @@ package transport
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -117,7 +118,7 @@ func NewServerHandlerTransport(w http.ResponseWriter, r *http.Request) (ServerTr
 
 // serverHandlerTransport is an implementation of ServerTransport
 // which replies to exactly one gRPC request (exactly one HTTP request),
-// using the net/http.Handler interface. This http.Handler is guranteed
+// using the net/http.Handler interface. This http.Handler is guaranteed
 // at this point to be speaking over HTTP/2, so it's able to speak valid
 // gRPC.
 type serverHandlerTransport struct {
@@ -312,15 +313,21 @@ func (ht *serverHandlerTransport) HandleStreams(startStream func(*Stream)) {
 	readerDone := make(chan struct{})
 	go func() {
 		defer close(readerDone)
-		for {
-			buf := make([]byte, 1024) // TODO: minimize garbage, optimize recvBuffer code/ownership
+
+		// TODO: minimize garbage, optimize recvBuffer code/ownership
+		const readSize = 8196
+		for buf := make([]byte, readSize); ; {
 			n, err := req.Body.Read(buf)
 			if n > 0 {
-				s.buf.put(&recvMsg{data: buf[:n]})
+				s.buf.put(&recvMsg{data: buf[:n:n]})
+				buf = buf[n:]
 			}
 			if err != nil {
-				s.buf.put(&recvMsg{err: err})
+				s.buf.put(&recvMsg{err: mapRecvMsgError(err)})
 				return
+			}
+			if len(buf) == 0 {
+				buf = make([]byte, readSize)
 			}
 		}
 	}()
@@ -351,4 +358,26 @@ func (ht *serverHandlerTransport) runStream() {
 			return
 		}
 	}
+}
+
+// mapRecvMsgError returns the non-nil err into the appropriate
+// error value as expected by callers of *grpc.parser.recvMsg.
+// In particular, in can only be:
+//   * io.EOF
+//   * io.ErrUnexpectedEOF
+//   * of type transport.ConnectionError
+//   * of type transport.StreamError
+func mapRecvMsgError(err error) error {
+	if err == io.EOF || err == io.ErrUnexpectedEOF {
+		return err
+	}
+	if se, ok := err.(http2.StreamError); ok {
+		if code, ok := http2ErrConvTab[se.Code]; ok {
+			return StreamError{
+				Code: code,
+				Desc: se.Error(),
+			}
+		}
+	}
+	return ConnectionError{Desc: err.Error()}
 }
