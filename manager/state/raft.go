@@ -103,6 +103,7 @@ type Node struct {
 	snapshotter *snap.Snapshotter
 	stateDir    string
 	wasLeader   bool
+	joinAddr    string
 
 	// snapshotInterval is the number of log messages after which a new
 	// snapshot should be generated.
@@ -119,7 +120,6 @@ type Node struct {
 	ticker *time.Ticker
 	stopCh chan struct{}
 	doneCh chan struct{}
-	errCh  chan error
 
 	leadershipCh   chan LeadershipState
 	startNodePeers []raft.Peer
@@ -129,11 +129,22 @@ type Node struct {
 
 // NewNodeOptions provides arguments for NewNode
 type NewNodeOptions struct {
-	Addr                       string
-	Config                     *raft.Config
-	StateDir                   string
-	TickInterval               time.Duration
-	SnapshotInterval           uint64  // optional
+	// Addr is the address of this node's listener
+	Addr string
+	// JoinAddr is the cluster to join. May be an empty string to create
+	// a standalone cluster.
+	JoinAddr string
+	// Config is the raft config.
+	Config *raft.Config
+	// StateDir is the directory to store durable state.
+	StateDir string
+	// TickInterval interval is the time interval between raft ticks.
+	TickInterval time.Duration
+	// SnapshotInterval is the number of log entries that triggers a new
+	// snapshot.
+	SnapshotInterval uint64 // optional
+	// LogEntriesForSlowFollowers is the number of recent log entries to
+	// keep when compacting the log.
 	LogEntriesForSlowFollowers *uint64 // optional; pointer because 0 is valid
 }
 
@@ -173,8 +184,8 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 		stopCh:       make(chan struct{}),
 		doneCh:       make(chan struct{}),
 		stateDir:     opts.StateDir,
+		joinAddr:     opts.JoinAddr,
 		leadershipCh: leadershipCh,
-		errCh:        make(chan error),
 	}
 	n.memoryStore = NewMemoryStore(n)
 
@@ -201,6 +212,37 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 	n.snapshotIndex = snapshot.Metadata.Index
 	n.reqIDGen = idutil.NewGenerator(uint16(n.Config.ID), time.Now())
 
+	if n.startNodePeers != nil {
+		if n.joinAddr != "" {
+			c, err := GetRaftClient(n.joinAddr, 10*time.Second)
+			if err != nil {
+				return nil, err
+			}
+			defer c.Conn.Close()
+
+			ctx, cancel := context.WithTimeout(n.Ctx, 10*time.Second)
+			defer cancel()
+			resp, err := c.Join(ctx, &api.JoinRequest{
+				Node: &api.RaftNode{ID: n.Config.ID, Addr: n.Address},
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			n.Node = raft.StartNode(n.Config, []raft.Peer{})
+
+			n.registerNodes(resp.Members)
+		} else {
+			n.Node = raft.StartNode(n.Config, n.startNodePeers)
+			n.Campaign(n.Ctx)
+		}
+		return n, nil
+	}
+
+	if n.joinAddr != "" {
+		n.Config.Logger.Warning("ignoring request to join cluster, because raft state already exists")
+	}
+	n.Node = raft.RestartNode(n.Config)
 	return n, nil
 }
 
@@ -348,138 +390,89 @@ func (n *Node) readWAL(snapshot *raftpb.Snapshot) error {
 	return nil
 }
 
-// Start starts the raft node based on saved cluster state. If no saved state
-// exists, this starts a single-node cluster.
-func (n *Node) Start() <-chan error {
-	if n.startNodePeers != nil {
-		n.Node = raft.StartNode(n.Config, n.startNodePeers)
-		if len(n.startNodePeers) == 1 {
-			n.Campaign(n.Ctx)
-		}
-	} else {
-		n.Node = raft.RestartNode(n.Config)
-	}
-	return n.run()
-}
-
-// StartByJoining starts the raft node with the member list supplied by the
-// peer at the given address.
-func (n *Node) StartByJoining(joinAddr string) <-chan error {
-	if n.startNodePeers == nil {
-		go func() { n.errCh <- errors.New("can't join cluster because cluster state already exists") }()
-		return n.errCh
-	}
-
-	c, err := GetRaftClient(joinAddr, 10*time.Second)
-	if err != nil {
-		go func() { n.errCh <- err }()
-		return n.errCh
-	}
-	defer c.Conn.Close()
-
-	ctx, cancel := context.WithTimeout(n.Ctx, 10*time.Second)
-	defer cancel()
-	resp, err := c.Join(ctx, &api.JoinRequest{
-		Node: &api.RaftNode{ID: n.Config.ID, Addr: n.Address},
-	})
-	if err != nil {
-		go func() { n.errCh <- err }()
-		return n.errCh
-	}
-
-	n.Node = raft.StartNode(n.Config, []raft.Peer{})
-
-	n.registerNodes(resp.Members)
-
-	return n.run()
-}
-
-// run is the main loop for a Raft node, it
-// goes along the state machine, acting on the
-// messages received from other Raft nodes in
-// the cluster
-func (n *Node) run() (errCh <-chan error) {
+// Run is the main loop for a Raft node, it goes along the state machine,
+// acting on the messages received from other Raft nodes in the cluster.
+//
+// Before running the main loop, it first starts the raft node based on saved
+// cluster state. If no saved state exists, it starts a single-node cluster.
+func (n *Node) Run() {
 	n.wait = newWait()
-	var err error
-	go func() {
-		for {
-			select {
-			case <-n.ticker.C:
-				n.Tick()
+	for {
+		select {
+		case <-n.ticker.C:
+			n.Tick()
 
-			case rd := <-n.Ready():
-				// Save entries to storage
-				if err = n.saveToStorage(rd.HardState, rd.Entries, rd.Snapshot); err != nil {
-					n.errCh <- err
-				}
-
-				// Send raft messages to peers
-				if err = n.send(rd.Messages); err != nil {
-					n.errCh <- err
-				}
-
-				// Apply snapshot to memory store. The snapshot
-				// was applied to the raft store in
-				// saveToStorage.
-				if !raft.IsEmptySnap(rd.Snapshot) {
-					// Load the snapshot data into the store
-					if err := n.restoreFromSnapshot(rd.Snapshot.Data); err != nil {
-						n.errCh <- err
-					}
-					n.appliedIndex = rd.Snapshot.Metadata.Index
-					n.snapshotIndex = rd.Snapshot.Metadata.Index
-					n.confState = rd.Snapshot.Metadata.ConfState
-				}
-
-				// Process committed entries
-				for _, entry := range rd.CommittedEntries {
-					if err := n.processCommitted(entry); err != nil {
-						n.errCh <- err
-					}
-				}
-
-				// Trigger a snapshot every once in awhile
-				if n.appliedIndex-n.snapshotIndex >= n.snapshotInterval {
-					if err := n.doSnapshot(); err != nil {
-						n.errCh <- err
-					}
-				}
-
-				// If we cease to be the leader, we must cancel
-				// any proposals that are currently waiting for
-				// a quorum to acknowledge them. It is still
-				// possible for these to become committed, but
-				// if that happens we will apply them as any
-				// follower would.
-				if rd.SoftState != nil {
-					if n.wasLeader && rd.SoftState.RaftState != raft.StateLeader {
-						n.wasLeader = false
-						n.wait.cancelAll()
-						if n.leadershipCh != nil {
-							n.leadershipCh <- IsFollower
-						}
-					} else if !n.wasLeader && rd.SoftState.RaftState == raft.StateLeader {
-						n.wasLeader = true
-						if n.leadershipCh != nil {
-							n.leadershipCh <- IsLeader
-						}
-					}
-				}
-
-				// Advance the state machine
-				n.Advance()
-
-			case <-n.stopCh:
-				n.sends.Wait()
-				n.Stop()
-				n.wal.Close()
-				n.Node = nil
-				close(n.doneCh)
-				return
+		case rd := <-n.Ready():
+			// Save entries to storage
+			if err := n.saveToStorage(rd.HardState, rd.Entries, rd.Snapshot); err != nil {
+				n.Config.Logger.Error(err)
 			}
+
+			// Send raft messages to peers
+			if err := n.send(rd.Messages); err != nil {
+				n.Config.Logger.Error(err)
+			}
+
+			// Apply snapshot to memory store. The snapshot
+			// was applied to the raft store in
+			// saveToStorage.
+			if !raft.IsEmptySnap(rd.Snapshot) {
+				// Load the snapshot data into the store
+				if err := n.restoreFromSnapshot(rd.Snapshot.Data); err != nil {
+					n.Config.Logger.Error(err)
+				}
+				n.appliedIndex = rd.Snapshot.Metadata.Index
+				n.snapshotIndex = rd.Snapshot.Metadata.Index
+				n.confState = rd.Snapshot.Metadata.ConfState
+			}
+
+			// Process committed entries
+			for _, entry := range rd.CommittedEntries {
+				if err := n.processCommitted(entry); err != nil {
+					n.Config.Logger.Error(err)
+				}
+			}
+
+			// Trigger a snapshot every once in awhile
+			if n.appliedIndex-n.snapshotIndex >= n.snapshotInterval {
+				if err := n.doSnapshot(); err != nil {
+					n.Config.Logger.Error(err)
+				}
+			}
+
+			// If we cease to be the leader, we must cancel
+			// any proposals that are currently waiting for
+			// a quorum to acknowledge them. It is still
+			// possible for these to become committed, but
+			// if that happens we will apply them as any
+			// follower would.
+			if rd.SoftState != nil {
+				if n.wasLeader && rd.SoftState.RaftState != raft.StateLeader {
+					n.wasLeader = false
+					n.wait.cancelAll()
+					if n.leadershipCh != nil {
+						n.leadershipCh <- IsFollower
+					}
+				} else if !n.wasLeader && rd.SoftState.RaftState == raft.StateLeader {
+					n.wasLeader = true
+					if n.leadershipCh != nil {
+						n.leadershipCh <- IsLeader
+					}
+				}
+			}
+
+			// Advance the state machine
+			n.Advance()
+
+		case <-n.stopCh:
+			n.sends.Wait()
+			n.Stop()
+			n.wal.Close()
+			n.Node = nil
+			close(n.doneCh)
+			return
 		}
-	}()
-	return n.errCh
+	}
 }
 
 // Shutdown stops the raft node processing loop.
