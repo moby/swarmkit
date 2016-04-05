@@ -33,16 +33,17 @@ type RegisterRequest struct {
 	// NodeID identifies the registering node.
 	//
 	// This contents of this field *must* be authenticated.
-	NodeID      string           `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	NodeID      string           `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 	Description *NodeDescription `protobuf:"bytes,2,opt,name=description" json:"description,omitempty"`
 }
 
-func (m *RegisterRequest) Reset()      { *m = RegisterRequest{} }
-func (*RegisterRequest) ProtoMessage() {}
+func (m *RegisterRequest) Reset()                    { *m = RegisterRequest{} }
+func (*RegisterRequest) ProtoMessage()               {}
+func (*RegisterRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{0} }
 
 type RegisterResponse struct {
 	// NodeID identifies the registering node.
-	NodeID string `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	NodeID string `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 	// SessionID is allocated after a successful registration. It should be
 	// used on all RPC calls after registration. A dispatcher may choose to
 	// change the SessionID, at which time an agent must re-register and obtain
@@ -86,20 +87,22 @@ type RegisterResponse struct {
 	// We considered placing this field in a GRPC header. Because this is a
 	// critical feature of the protocol, we thought it should be represented
 	// directly in the RPC message set.
-	SessionID string `protobuf:"bytes,2,opt,name=session_id,proto3" json:"session_id,omitempty"`
+	SessionID string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 }
 
-func (m *RegisterResponse) Reset()      { *m = RegisterResponse{} }
-func (*RegisterResponse) ProtoMessage() {}
+func (m *RegisterResponse) Reset()                    { *m = RegisterResponse{} }
+func (*RegisterResponse) ProtoMessage()               {}
+func (*RegisterResponse) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{1} }
 
 // SessionRequest starts a session control stream.
 type SessionRequest struct {
-	NodeID    string `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
-	SessionID string `protobuf:"bytes,2,opt,name=session_id,proto3" json:"session_id,omitempty"`
+	NodeID    string `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	SessionID string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 }
 
-func (m *SessionRequest) Reset()      { *m = SessionRequest{} }
-func (*SessionRequest) ProtoMessage() {}
+func (m *SessionRequest) Reset()                    { *m = SessionRequest{} }
+func (*SessionRequest) ProtoMessage()               {}
+func (*SessionRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{2} }
 
 // SessionMessage instructs an agent on various actions as part of the current
 // session. An agent should act immediately on the contents.
@@ -111,40 +114,46 @@ type SessionMessage struct {
 	Disconnect bool `protobuf:"varint,2,opt,name=disconnect,proto3" json:"disconnect,omitempty"`
 }
 
-func (m *SessionMessage) Reset()      { *m = SessionMessage{} }
-func (*SessionMessage) ProtoMessage() {}
+func (m *SessionMessage) Reset()                    { *m = SessionMessage{} }
+func (*SessionMessage) ProtoMessage()               {}
+func (*SessionMessage) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{3} }
 
 // HeartbeatRequest provides identifying properties for a single heartbeat.
 type HeartbeatRequest struct {
-	NodeID    string `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
-	SessionID string `protobuf:"bytes,2,opt,name=session_id,proto3" json:"session_id,omitempty"`
+	NodeID    string `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	SessionID string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 }
 
-func (m *HeartbeatRequest) Reset()      { *m = HeartbeatRequest{} }
-func (*HeartbeatRequest) ProtoMessage() {}
+func (m *HeartbeatRequest) Reset()                    { *m = HeartbeatRequest{} }
+func (*HeartbeatRequest) ProtoMessage()               {}
+func (*HeartbeatRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{4} }
 
 type HeartbeatResponse struct {
 	// Period is the duration to wait before sending the next heartbeat.
 	// Well-behaved agents should update this on every heartbeat round trip.
-	Period time.Duration `protobuf:"varint,1,opt,name=Period,proto3,customtype=time.Duration" json:"Period"`
+	Period time.Duration `protobuf:"varint,1,opt,name=Period,json=period,proto3,customtype=time.Duration" json:"Period"`
 }
 
-func (m *HeartbeatResponse) Reset()      { *m = HeartbeatResponse{} }
-func (*HeartbeatResponse) ProtoMessage() {}
+func (m *HeartbeatResponse) Reset()                    { *m = HeartbeatResponse{} }
+func (*HeartbeatResponse) ProtoMessage()               {}
+func (*HeartbeatResponse) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{5} }
 
 type UpdateTaskStatusRequest struct {
 	// Tasks should contain all statuses for running tasks. Only the status
 	// field must be set. The spec is not required.
-	NodeID    string                                      `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
-	SessionID string                                      `protobuf:"bytes,2,opt,name=session_id,proto3" json:"session_id,omitempty"`
+	NodeID    string                                      `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	SessionID string                                      `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	Updates   []*UpdateTaskStatusRequest_TaskStatusUpdate `protobuf:"bytes,3,rep,name=updates" json:"updates,omitempty"`
 }
 
 func (m *UpdateTaskStatusRequest) Reset()      { *m = UpdateTaskStatusRequest{} }
 func (*UpdateTaskStatusRequest) ProtoMessage() {}
+func (*UpdateTaskStatusRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptorDispatcher, []int{6}
+}
 
 type UpdateTaskStatusRequest_TaskStatusUpdate struct {
-	TaskID string      `protobuf:"bytes,1,opt,name=task_id,proto3" json:"task_id,omitempty"`
+	TaskID string      `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
 	Status *TaskStatus `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
 }
 
@@ -152,20 +161,27 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Reset() {
 	*m = UpdateTaskStatusRequest_TaskStatusUpdate{}
 }
 func (*UpdateTaskStatusRequest_TaskStatusUpdate) ProtoMessage() {}
+func (*UpdateTaskStatusRequest_TaskStatusUpdate) Descriptor() ([]byte, []int) {
+	return fileDescriptorDispatcher, []int{6, 0}
+}
 
 type UpdateTaskStatusResponse struct {
 }
 
 func (m *UpdateTaskStatusResponse) Reset()      { *m = UpdateTaskStatusResponse{} }
 func (*UpdateTaskStatusResponse) ProtoMessage() {}
-
-type TasksRequest struct {
-	NodeID    string `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
-	SessionID string `protobuf:"bytes,2,opt,name=session_id,proto3" json:"session_id,omitempty"`
+func (*UpdateTaskStatusResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptorDispatcher, []int{7}
 }
 
-func (m *TasksRequest) Reset()      { *m = TasksRequest{} }
-func (*TasksRequest) ProtoMessage() {}
+type TasksRequest struct {
+	NodeID    string `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	SessionID string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+}
+
+func (m *TasksRequest) Reset()                    { *m = TasksRequest{} }
+func (*TasksRequest) ProtoMessage()               {}
+func (*TasksRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{8} }
 
 type TasksMessage struct {
 	// Tasks is the set of tasks that should be running on the node.
@@ -173,8 +189,9 @@ type TasksMessage struct {
 	Tasks []*Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
 }
 
-func (m *TasksMessage) Reset()      { *m = TasksMessage{} }
-func (*TasksMessage) ProtoMessage() {}
+func (m *TasksMessage) Reset()                    { *m = TasksMessage{} }
+func (*TasksMessage) ProtoMessage()               {}
+func (*TasksMessage) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{9} }
 
 func init() {
 	proto.RegisterType((*RegisterRequest)(nil), "api.RegisterRequest")
@@ -2613,3 +2630,43 @@ var (
 	ErrInvalidLengthDispatcher = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowDispatcher   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorDispatcher = []byte{
+	// 575 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xb4, 0x54, 0xcd, 0x6e, 0xd3, 0x4c,
+	0x14, 0xcd, 0xcf, 0x57, 0x27, 0xb9, 0xf9, 0x4a, 0x93, 0x81, 0x42, 0x64, 0x95, 0x04, 0x99, 0x05,
+	0x2c, 0x88, 0x03, 0x45, 0x02, 0x21, 0xb1, 0x8a, 0x22, 0x41, 0x16, 0xa0, 0xe2, 0x82, 0x58, 0x96,
+	0x89, 0x7d, 0x71, 0x2c, 0x14, 0x8f, 0xf1, 0x8c, 0x17, 0xec, 0x78, 0x0b, 0x5e, 0x88, 0x45, 0x96,
+	0x2c, 0x11, 0x8b, 0x88, 0xf6, 0x09, 0x78, 0x04, 0x66, 0xc6, 0x8e, 0xe3, 0x1a, 0x15, 0xd1, 0x45,
+	0x16, 0xa3, 0xc4, 0xe7, 0x9e, 0x99, 0x73, 0xee, 0x99, 0x1f, 0xe8, 0x78, 0x01, 0x8f, 0xa8, 0x70,
+	0xe7, 0x18, 0xdb, 0x51, 0xcc, 0x04, 0x23, 0x75, 0x1a, 0x05, 0x66, 0x5b, 0x7c, 0x8a, 0x90, 0xa7,
+	0x88, 0x39, 0xf4, 0x03, 0x31, 0x4f, 0x66, 0xb6, 0xcb, 0x16, 0x23, 0x9f, 0xf9, 0x6c, 0xa4, 0xe1,
+	0x59, 0xf2, 0x5e, 0x7f, 0xe9, 0x0f, 0xfd, 0x2f, 0xa5, 0x5b, 0x21, 0xec, 0x39, 0xe8, 0x07, 0x5c,
+	0x60, 0xec, 0xe0, 0xc7, 0x04, 0xb9, 0x20, 0xb7, 0xa1, 0x11, 0x32, 0x0f, 0x4f, 0x02, 0xaf, 0x57,
+	0xbd, 0x55, 0xbd, 0xdb, 0x1a, 0xc3, 0xd9, 0x6a, 0x60, 0xbc, 0x94, 0xd0, 0x74, 0xe2, 0x18, 0xaa,
+	0x34, 0xf5, 0xc8, 0x23, 0x68, 0x7b, 0xc8, 0xdd, 0x38, 0x88, 0x44, 0xc0, 0xc2, 0x5e, 0x4d, 0x12,
+	0xdb, 0x87, 0xd7, 0x6c, 0x69, 0xc7, 0x56, 0xcc, 0xc9, 0xa6, 0xe6, 0x14, 0x89, 0x16, 0x42, 0x67,
+	0xa3, 0xc7, 0x23, 0x16, 0x72, 0xfc, 0x37, 0xc1, 0x7b, 0x00, 0x1c, 0x39, 0x97, 0x6b, 0x28, 0x5e,
+	0x4d, 0xf3, 0x76, 0x25, 0xaf, 0x75, 0x9c, 0xa2, 0x92, 0xda, 0xca, 0x08, 0x53, 0xcf, 0x72, 0xe1,
+	0x4a, 0x86, 0x5f, 0xaa, 0xab, 0xcb, 0x89, 0x9c, 0xe4, 0x22, 0x2f, 0xe4, 0x0f, 0xf5, 0x91, 0x0c,
+	0xa1, 0xb9, 0xa0, 0xa1, 0xfc, 0x17, 0x73, 0xa9, 0x52, 0x97, 0x91, 0x74, 0x75, 0x24, 0x6f, 0x31,
+	0xf0, 0xe7, 0x02, 0xbd, 0x23, 0x94, 0x6d, 0xe7, 0x14, 0xd2, 0x07, 0x90, 0x3b, 0xea, 0xb2, 0x30,
+	0x44, 0x57, 0x68, 0xb9, 0xa6, 0x53, 0x40, 0x54, 0x58, 0xcf, 0x91, 0xc6, 0x62, 0x86, 0x54, 0x6c,
+	0xb1, 0x8f, 0x31, 0x74, 0x0b, 0x32, 0xd9, 0xa6, 0x0c, 0xc1, 0x38, 0xc2, 0x38, 0x60, 0xa9, 0xcc,
+	0x7f, 0xe3, 0xfd, 0xe5, 0x6a, 0x50, 0xf9, 0xb1, 0x1a, 0xec, 0x8a, 0x60, 0x81, 0xf6, 0x24, 0x89,
+	0xa9, 0xde, 0x5c, 0x23, 0xd2, 0x24, 0xeb, 0x4b, 0x0d, 0x6e, 0xbc, 0x89, 0x3c, 0x2a, 0xf0, 0x35,
+	0xe5, 0x1f, 0x8e, 0x05, 0x15, 0x09, 0xdf, 0x9e, 0x65, 0xf2, 0x0c, 0x1a, 0x89, 0x56, 0xe3, 0xbd,
+	0xba, 0xce, 0x79, 0xa8, 0x73, 0xbe, 0xc0, 0x81, 0xbd, 0x41, 0x52, 0x86, 0xb3, 0x9e, 0x6d, 0xbe,
+	0x83, 0x4e, 0xb9, 0xa8, 0xfc, 0x0a, 0x89, 0x95, 0xfc, 0x2a, 0x9a, 0xf2, 0xab, 0x4a, 0xd2, 0xc1,
+	0x1d, 0x30, 0xb8, 0x9e, 0x94, 0x9d, 0xfd, 0x3d, 0x6d, 0xa0, 0x20, 0x9d, 0x95, 0x2d, 0x13, 0x7a,
+	0x7f, 0xda, 0x4a, 0x43, 0xb6, 0x28, 0xfc, 0xaf, 0xd0, 0x2d, 0x26, 0x65, 0x8d, 0x32, 0x89, 0xf5,
+	0x11, 0x1d, 0xc0, 0x8e, 0xea, 0x60, 0x7d, 0x3e, 0x5b, 0xb9, 0x6d, 0x27, 0xc5, 0x0f, 0xbf, 0xd6,
+	0x00, 0x26, 0xf9, 0x3b, 0x43, 0x9e, 0x40, 0x73, 0x7d, 0x61, 0x49, 0x7a, 0xbf, 0x4b, 0xef, 0x85,
+	0xb9, 0x5f, 0x42, 0xb3, 0xde, 0x2a, 0xe4, 0x31, 0x34, 0x32, 0x4b, 0xe4, 0xaa, 0xe6, 0x9c, 0xbf,
+	0x92, 0xe6, 0x39, 0x30, 0xf3, 0x67, 0x55, 0xee, 0x57, 0xc9, 0x53, 0x68, 0xe5, 0x07, 0x92, 0xa4,
+	0xcb, 0x97, 0xef, 0x81, 0x79, 0xbd, 0x0c, 0xe7, 0xb2, 0xaf, 0xa0, 0x53, 0x0e, 0x9c, 0x1c, 0xfc,
+	0xed, 0x78, 0x98, 0x37, 0x2f, 0xa8, 0xe6, 0x4b, 0x3e, 0x80, 0x1d, 0x1d, 0x22, 0xe9, 0xe6, 0x71,
+	0xe5, 0x93, 0x0b, 0x50, 0xa1, 0x87, 0xf1, 0xc1, 0xf2, 0xb4, 0x5f, 0xf9, 0x2e, 0xc7, 0xaf, 0xd3,
+	0x7e, 0xf5, 0xf3, 0x59, 0xbf, 0xba, 0x94, 0xe3, 0x9b, 0x1c, 0x3f, 0xe5, 0x98, 0x19, 0xfa, 0xf5,
+	0x7d, 0xf8, 0x3b, 0x00, 0x00, 0xff, 0xff, 0xb7, 0x0d, 0x3d, 0x56, 0xd2, 0x05, 0x00, 0x00,
+}

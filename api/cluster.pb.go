@@ -32,288 +32,329 @@ type ListOptions struct {
 	Query string `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
 }
 
-func (m *ListOptions) Reset()      { *m = ListOptions{} }
-func (*ListOptions) ProtoMessage() {}
+func (m *ListOptions) Reset()                    { *m = ListOptions{} }
+func (*ListOptions) ProtoMessage()               {}
+func (*ListOptions) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{0} }
 
 type GetNodeRequest struct {
-	NodeID string `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	NodeID string `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 }
 
-func (m *GetNodeRequest) Reset()      { *m = GetNodeRequest{} }
-func (*GetNodeRequest) ProtoMessage() {}
+func (m *GetNodeRequest) Reset()                    { *m = GetNodeRequest{} }
+func (*GetNodeRequest) ProtoMessage()               {}
+func (*GetNodeRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{1} }
 
 type GetNodeResponse struct {
 	Node *Node `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
 }
 
-func (m *GetNodeResponse) Reset()      { *m = GetNodeResponse{} }
-func (*GetNodeResponse) ProtoMessage() {}
+func (m *GetNodeResponse) Reset()                    { *m = GetNodeResponse{} }
+func (*GetNodeResponse) ProtoMessage()               {}
+func (*GetNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{2} }
 
 type ListNodesRequest struct {
 	Options *ListOptions `protobuf:"bytes,1,opt,name=options" json:"options,omitempty"`
 }
 
-func (m *ListNodesRequest) Reset()      { *m = ListNodesRequest{} }
-func (*ListNodesRequest) ProtoMessage() {}
+func (m *ListNodesRequest) Reset()                    { *m = ListNodesRequest{} }
+func (*ListNodesRequest) ProtoMessage()               {}
+func (*ListNodesRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{3} }
 
 type ListNodesResponse struct {
 	Nodes []*Node `protobuf:"bytes,1,rep,name=nodes" json:"nodes,omitempty"`
 }
 
-func (m *ListNodesResponse) Reset()      { *m = ListNodesResponse{} }
-func (*ListNodesResponse) ProtoMessage() {}
+func (m *ListNodesResponse) Reset()                    { *m = ListNodesResponse{} }
+func (*ListNodesResponse) ProtoMessage()               {}
+func (*ListNodesResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{4} }
 
 // UpdateNodeRequest requests an update to the specified node. This may be used
 // to request a new availability for a node, such as PAUSE. Invalid updates
 // will be denied and cause an error.
 type UpdateNodeRequest struct {
-	NodeID string    `protobuf:"bytes,1,opt,name=node_id,proto3" json:"node_id,omitempty"`
+	NodeID string    `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 	Spec   *NodeSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
 }
 
-func (m *UpdateNodeRequest) Reset()      { *m = UpdateNodeRequest{} }
-func (*UpdateNodeRequest) ProtoMessage() {}
+func (m *UpdateNodeRequest) Reset()                    { *m = UpdateNodeRequest{} }
+func (*UpdateNodeRequest) ProtoMessage()               {}
+func (*UpdateNodeRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{5} }
 
 type UpdateNodeResponse struct {
 	Node *Node `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
 }
 
-func (m *UpdateNodeResponse) Reset()      { *m = UpdateNodeResponse{} }
-func (*UpdateNodeResponse) ProtoMessage() {}
+func (m *UpdateNodeResponse) Reset()                    { *m = UpdateNodeResponse{} }
+func (*UpdateNodeResponse) ProtoMessage()               {}
+func (*UpdateNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{6} }
 
 type CreateTaskRequest struct {
 	Spec *JobSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
-func (m *CreateTaskRequest) Reset()      { *m = CreateTaskRequest{} }
-func (*CreateTaskRequest) ProtoMessage() {}
+func (m *CreateTaskRequest) Reset()                    { *m = CreateTaskRequest{} }
+func (*CreateTaskRequest) ProtoMessage()               {}
+func (*CreateTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{7} }
 
 type CreateTaskResponse struct {
 	Task *Task `protobuf:"bytes,1,opt,name=task" json:"task,omitempty"`
 }
 
-func (m *CreateTaskResponse) Reset()      { *m = CreateTaskResponse{} }
-func (*CreateTaskResponse) ProtoMessage() {}
+func (m *CreateTaskResponse) Reset()                    { *m = CreateTaskResponse{} }
+func (*CreateTaskResponse) ProtoMessage()               {}
+func (*CreateTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{8} }
 
 type GetTaskRequest struct {
-	TaskID string `protobuf:"bytes,1,opt,name=task_id,proto3" json:"task_id,omitempty"`
+	TaskID string `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
 }
 
-func (m *GetTaskRequest) Reset()      { *m = GetTaskRequest{} }
-func (*GetTaskRequest) ProtoMessage() {}
+func (m *GetTaskRequest) Reset()                    { *m = GetTaskRequest{} }
+func (*GetTaskRequest) ProtoMessage()               {}
+func (*GetTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{9} }
 
 type GetTaskResponse struct {
 	Task *Task `protobuf:"bytes,1,opt,name=task" json:"task,omitempty"`
 }
 
-func (m *GetTaskResponse) Reset()      { *m = GetTaskResponse{} }
-func (*GetTaskResponse) ProtoMessage() {}
+func (m *GetTaskResponse) Reset()                    { *m = GetTaskResponse{} }
+func (*GetTaskResponse) ProtoMessage()               {}
+func (*GetTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{10} }
 
 type RemoveTaskRequest struct {
-	TaskID string `protobuf:"bytes,1,opt,name=task_id,proto3" json:"task_id,omitempty"`
+	TaskID string `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
 }
 
-func (m *RemoveTaskRequest) Reset()      { *m = RemoveTaskRequest{} }
-func (*RemoveTaskRequest) ProtoMessage() {}
+func (m *RemoveTaskRequest) Reset()                    { *m = RemoveTaskRequest{} }
+func (*RemoveTaskRequest) ProtoMessage()               {}
+func (*RemoveTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{11} }
 
 type RemoveTaskResponse struct {
 }
 
-func (m *RemoveTaskResponse) Reset()      { *m = RemoveTaskResponse{} }
-func (*RemoveTaskResponse) ProtoMessage() {}
+func (m *RemoveTaskResponse) Reset()                    { *m = RemoveTaskResponse{} }
+func (*RemoveTaskResponse) ProtoMessage()               {}
+func (*RemoveTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{12} }
 
 type ListTasksRequest struct {
 }
 
-func (m *ListTasksRequest) Reset()      { *m = ListTasksRequest{} }
-func (*ListTasksRequest) ProtoMessage() {}
+func (m *ListTasksRequest) Reset()                    { *m = ListTasksRequest{} }
+func (*ListTasksRequest) ProtoMessage()               {}
+func (*ListTasksRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{13} }
 
 type ListTasksResponse struct {
 	Tasks []*Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
 }
 
-func (m *ListTasksResponse) Reset()      { *m = ListTasksResponse{} }
-func (*ListTasksResponse) ProtoMessage() {}
+func (m *ListTasksResponse) Reset()                    { *m = ListTasksResponse{} }
+func (*ListTasksResponse) ProtoMessage()               {}
+func (*ListTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{14} }
 
 type CreateJobRequest struct {
 	Spec *JobSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
-func (m *CreateJobRequest) Reset()      { *m = CreateJobRequest{} }
-func (*CreateJobRequest) ProtoMessage() {}
+func (m *CreateJobRequest) Reset()                    { *m = CreateJobRequest{} }
+func (*CreateJobRequest) ProtoMessage()               {}
+func (*CreateJobRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{15} }
 
 type CreateJobResponse struct {
 	Job *Job `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
 }
 
-func (m *CreateJobResponse) Reset()      { *m = CreateJobResponse{} }
-func (*CreateJobResponse) ProtoMessage() {}
+func (m *CreateJobResponse) Reset()                    { *m = CreateJobResponse{} }
+func (*CreateJobResponse) ProtoMessage()               {}
+func (*CreateJobResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{16} }
 
 type GetJobRequest struct {
-	JobID string `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
+	JobID string `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 }
 
-func (m *GetJobRequest) Reset()      { *m = GetJobRequest{} }
-func (*GetJobRequest) ProtoMessage() {}
+func (m *GetJobRequest) Reset()                    { *m = GetJobRequest{} }
+func (*GetJobRequest) ProtoMessage()               {}
+func (*GetJobRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{17} }
 
 type GetJobResponse struct {
 	Job *Job `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
 }
 
-func (m *GetJobResponse) Reset()      { *m = GetJobResponse{} }
-func (*GetJobResponse) ProtoMessage() {}
+func (m *GetJobResponse) Reset()                    { *m = GetJobResponse{} }
+func (*GetJobResponse) ProtoMessage()               {}
+func (*GetJobResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{18} }
 
 type UpdateJobRequest struct {
-	JobID string   `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
+	JobID string   `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 	Spec  *JobSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
 }
 
-func (m *UpdateJobRequest) Reset()      { *m = UpdateJobRequest{} }
-func (*UpdateJobRequest) ProtoMessage() {}
+func (m *UpdateJobRequest) Reset()                    { *m = UpdateJobRequest{} }
+func (*UpdateJobRequest) ProtoMessage()               {}
+func (*UpdateJobRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{19} }
 
 type UpdateJobResponse struct {
 	Job *Job `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
 }
 
-func (m *UpdateJobResponse) Reset()      { *m = UpdateJobResponse{} }
-func (*UpdateJobResponse) ProtoMessage() {}
+func (m *UpdateJobResponse) Reset()                    { *m = UpdateJobResponse{} }
+func (*UpdateJobResponse) ProtoMessage()               {}
+func (*UpdateJobResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{20} }
 
 type RemoveJobRequest struct {
-	JobID string `protobuf:"bytes,1,opt,name=job_id,proto3" json:"job_id,omitempty"`
+	JobID string `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 }
 
-func (m *RemoveJobRequest) Reset()      { *m = RemoveJobRequest{} }
-func (*RemoveJobRequest) ProtoMessage() {}
+func (m *RemoveJobRequest) Reset()                    { *m = RemoveJobRequest{} }
+func (*RemoveJobRequest) ProtoMessage()               {}
+func (*RemoveJobRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{21} }
 
 type RemoveJobResponse struct {
 }
 
-func (m *RemoveJobResponse) Reset()      { *m = RemoveJobResponse{} }
-func (*RemoveJobResponse) ProtoMessage() {}
+func (m *RemoveJobResponse) Reset()                    { *m = RemoveJobResponse{} }
+func (*RemoveJobResponse) ProtoMessage()               {}
+func (*RemoveJobResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{22} }
 
 type ListJobsRequest struct {
 	Options *ListOptions `protobuf:"bytes,1,opt,name=options" json:"options,omitempty"`
 }
 
-func (m *ListJobsRequest) Reset()      { *m = ListJobsRequest{} }
-func (*ListJobsRequest) ProtoMessage() {}
+func (m *ListJobsRequest) Reset()                    { *m = ListJobsRequest{} }
+func (*ListJobsRequest) ProtoMessage()               {}
+func (*ListJobsRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{23} }
 
 type ListJobsResponse struct {
 	Jobs []*Job `protobuf:"bytes,1,rep,name=jobs" json:"jobs,omitempty"`
 }
 
-func (m *ListJobsResponse) Reset()      { *m = ListJobsResponse{} }
-func (*ListJobsResponse) ProtoMessage() {}
+func (m *ListJobsResponse) Reset()                    { *m = ListJobsResponse{} }
+func (*ListJobsResponse) ProtoMessage()               {}
+func (*ListJobsResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{24} }
 
 type CreateNetworkRequest struct {
 	Spec *NetworkSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
-func (m *CreateNetworkRequest) Reset()      { *m = CreateNetworkRequest{} }
-func (*CreateNetworkRequest) ProtoMessage() {}
+func (m *CreateNetworkRequest) Reset()                    { *m = CreateNetworkRequest{} }
+func (*CreateNetworkRequest) ProtoMessage()               {}
+func (*CreateNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{25} }
 
 type CreateNetworkResponse struct {
 	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
 }
 
-func (m *CreateNetworkResponse) Reset()      { *m = CreateNetworkResponse{} }
-func (*CreateNetworkResponse) ProtoMessage() {}
+func (m *CreateNetworkResponse) Reset()                    { *m = CreateNetworkResponse{} }
+func (*CreateNetworkResponse) ProtoMessage()               {}
+func (*CreateNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{26} }
 
 type GetNetworkRequest struct {
 	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	NetworkID string `protobuf:"bytes,2,opt,name=network_id,proto3" json:"network_id,omitempty"`
+	NetworkID string `protobuf:"bytes,2,opt,name=network_id,json=networkId,proto3" json:"network_id,omitempty"`
 }
 
-func (m *GetNetworkRequest) Reset()      { *m = GetNetworkRequest{} }
-func (*GetNetworkRequest) ProtoMessage() {}
+func (m *GetNetworkRequest) Reset()                    { *m = GetNetworkRequest{} }
+func (*GetNetworkRequest) ProtoMessage()               {}
+func (*GetNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{27} }
 
 type GetNetworkResponse struct {
 	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
 }
 
-func (m *GetNetworkResponse) Reset()      { *m = GetNetworkResponse{} }
-func (*GetNetworkResponse) ProtoMessage() {}
+func (m *GetNetworkResponse) Reset()                    { *m = GetNetworkResponse{} }
+func (*GetNetworkResponse) ProtoMessage()               {}
+func (*GetNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{28} }
 
 type RemoveNetworkRequest struct {
 	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	NetworkID string `protobuf:"bytes,2,opt,name=network_id,proto3" json:"network_id,omitempty"`
+	NetworkID string `protobuf:"bytes,2,opt,name=network_id,json=networkId,proto3" json:"network_id,omitempty"`
 }
 
-func (m *RemoveNetworkRequest) Reset()      { *m = RemoveNetworkRequest{} }
-func (*RemoveNetworkRequest) ProtoMessage() {}
+func (m *RemoveNetworkRequest) Reset()                    { *m = RemoveNetworkRequest{} }
+func (*RemoveNetworkRequest) ProtoMessage()               {}
+func (*RemoveNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{29} }
 
 type RemoveNetworkResponse struct {
 }
 
-func (m *RemoveNetworkResponse) Reset()      { *m = RemoveNetworkResponse{} }
-func (*RemoveNetworkResponse) ProtoMessage() {}
+func (m *RemoveNetworkResponse) Reset()                    { *m = RemoveNetworkResponse{} }
+func (*RemoveNetworkResponse) ProtoMessage()               {}
+func (*RemoveNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{30} }
 
 type ListNetworksRequest struct {
 }
 
-func (m *ListNetworksRequest) Reset()      { *m = ListNetworksRequest{} }
-func (*ListNetworksRequest) ProtoMessage() {}
+func (m *ListNetworksRequest) Reset()                    { *m = ListNetworksRequest{} }
+func (*ListNetworksRequest) ProtoMessage()               {}
+func (*ListNetworksRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{31} }
 
 type ListNetworksResponse struct {
 	Networks []*Network `protobuf:"bytes,1,rep,name=networks" json:"networks,omitempty"`
 }
 
-func (m *ListNetworksResponse) Reset()      { *m = ListNetworksResponse{} }
-func (*ListNetworksResponse) ProtoMessage() {}
+func (m *ListNetworksResponse) Reset()                    { *m = ListNetworksResponse{} }
+func (*ListNetworksResponse) ProtoMessage()               {}
+func (*ListNetworksResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{32} }
 
 type CreateVolumeRequest struct {
 	Spec *VolumeSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
-func (m *CreateVolumeRequest) Reset()      { *m = CreateVolumeRequest{} }
-func (*CreateVolumeRequest) ProtoMessage() {}
+func (m *CreateVolumeRequest) Reset()                    { *m = CreateVolumeRequest{} }
+func (*CreateVolumeRequest) ProtoMessage()               {}
+func (*CreateVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{33} }
 
 type CreateVolumeResponse struct {
 	Volume *Volume `protobuf:"bytes,1,opt,name=volume" json:"volume,omitempty"`
 }
 
-func (m *CreateVolumeResponse) Reset()      { *m = CreateVolumeResponse{} }
-func (*CreateVolumeResponse) ProtoMessage() {}
+func (m *CreateVolumeResponse) Reset()                    { *m = CreateVolumeResponse{} }
+func (*CreateVolumeResponse) ProtoMessage()               {}
+func (*CreateVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{34} }
 
 type GetVolumeRequest struct {
-	VolumeID string `protobuf:"bytes,1,opt,name=volume_id,proto3" json:"volume_id,omitempty"`
+	VolumeID string `protobuf:"bytes,1,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
 }
 
-func (m *GetVolumeRequest) Reset()      { *m = GetVolumeRequest{} }
-func (*GetVolumeRequest) ProtoMessage() {}
+func (m *GetVolumeRequest) Reset()                    { *m = GetVolumeRequest{} }
+func (*GetVolumeRequest) ProtoMessage()               {}
+func (*GetVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{35} }
 
 type GetVolumeResponse struct {
 	Volume *Volume `protobuf:"bytes,1,opt,name=volume" json:"volume,omitempty"`
 }
 
-func (m *GetVolumeResponse) Reset()      { *m = GetVolumeResponse{} }
-func (*GetVolumeResponse) ProtoMessage() {}
+func (m *GetVolumeResponse) Reset()                    { *m = GetVolumeResponse{} }
+func (*GetVolumeResponse) ProtoMessage()               {}
+func (*GetVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{36} }
 
 type RemoveVolumeRequest struct {
-	VolumeID string `protobuf:"bytes,1,opt,name=volume_id,proto3" json:"volume_id,omitempty"`
+	VolumeID string `protobuf:"bytes,1,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
 }
 
-func (m *RemoveVolumeRequest) Reset()      { *m = RemoveVolumeRequest{} }
-func (*RemoveVolumeRequest) ProtoMessage() {}
+func (m *RemoveVolumeRequest) Reset()                    { *m = RemoveVolumeRequest{} }
+func (*RemoveVolumeRequest) ProtoMessage()               {}
+func (*RemoveVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{37} }
 
 type RemoveVolumeResponse struct {
 }
 
-func (m *RemoveVolumeResponse) Reset()      { *m = RemoveVolumeResponse{} }
-func (*RemoveVolumeResponse) ProtoMessage() {}
+func (m *RemoveVolumeResponse) Reset()                    { *m = RemoveVolumeResponse{} }
+func (*RemoveVolumeResponse) ProtoMessage()               {}
+func (*RemoveVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{38} }
 
 type ListVolumesRequest struct {
 }
 
-func (m *ListVolumesRequest) Reset()      { *m = ListVolumesRequest{} }
-func (*ListVolumesRequest) ProtoMessage() {}
+func (m *ListVolumesRequest) Reset()                    { *m = ListVolumesRequest{} }
+func (*ListVolumesRequest) ProtoMessage()               {}
+func (*ListVolumesRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{39} }
 
 type ListVolumesResponse struct {
 	Volumes []*Volume `protobuf:"bytes,1,rep,name=volumes" json:"volumes,omitempty"`
 }
 
-func (m *ListVolumesResponse) Reset()      { *m = ListVolumesResponse{} }
-func (*ListVolumesResponse) ProtoMessage() {}
+func (m *ListVolumesResponse) Reset()                    { *m = ListVolumesResponse{} }
+func (*ListVolumesResponse) ProtoMessage()               {}
+func (*ListVolumesResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{40} }
 
 func init() {
 	proto.RegisterType((*ListOptions)(nil), "api.ListOptions")
@@ -7198,3 +7239,73 @@ var (
 	ErrInvalidLengthCluster = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowCluster   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorCluster = []byte{
+	// 1056 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xac, 0x57, 0xdd, 0x6e, 0x1b, 0x55,
+	0x10, 0xce, 0xaf, 0x7f, 0x26, 0x31, 0xb1, 0x8f, 0x7f, 0x92, 0x1c, 0x95, 0xb4, 0x6c, 0x00, 0x15,
+	0x54, 0x92, 0xd2, 0x50, 0x54, 0xc0, 0xd0, 0x2a, 0x05, 0x41, 0x11, 0x2a, 0xd2, 0x42, 0x2b, 0x24,
+	0x2e, 0x90, 0x1d, 0x2f, 0xc1, 0x50, 0x77, 0x8d, 0x77, 0x5d, 0xd4, 0x3b, 0x9e, 0x80, 0xe7, 0xea,
+	0x25, 0x97, 0x5c, 0x21, 0xda, 0x27, 0xe0, 0x11, 0x98, 0x73, 0x66, 0xce, 0xd9, 0x73, 0x76, 0x57,
+	0xc8, 0x8e, 0x7a, 0xb1, 0x52, 0xf6, 0x9b, 0xf9, 0xe6, 0x3f, 0x33, 0x6b, 0x68, 0x9c, 0x3d, 0x9a,
+	0x27, 0x69, 0x34, 0x3b, 0x9a, 0xce, 0xe2, 0x34, 0x16, 0xeb, 0x83, 0xe9, 0x58, 0x6e, 0xa5, 0x4f,
+	0xa7, 0x51, 0x42, 0x88, 0x7c, 0xe7, 0x7c, 0x9c, 0xfe, 0x34, 0x1f, 0x1e, 0x9d, 0xc5, 0x93, 0xe3,
+	0xf3, 0xf8, 0x3c, 0x3e, 0xd6, 0xf0, 0x70, 0xfe, 0xa3, 0x7e, 0xd3, 0x2f, 0xfa, 0x2f, 0x52, 0x0f,
+	0x0e, 0x61, 0xeb, 0xab, 0x71, 0x92, 0x7e, 0x3d, 0x4d, 0xc7, 0xf1, 0xe3, 0x44, 0x74, 0x60, 0xf3,
+	0xd7, 0x79, 0x34, 0x7b, 0xba, 0xb7, 0x7a, 0x65, 0xf5, 0x6a, 0x3d, 0xa4, 0x97, 0xe0, 0x26, 0xbc,
+	0xf2, 0x79, 0x94, 0xde, 0x8f, 0x47, 0x51, 0x18, 0x21, 0x92, 0xa4, 0xe2, 0x10, 0xaa, 0x8f, 0xf1,
+	0xf5, 0x87, 0xf1, 0x88, 0x34, 0x4f, 0xe1, 0xc5, 0xdf, 0x97, 0x2b, 0x4a, 0xe3, 0xde, 0xa7, 0x61,
+	0x45, 0x89, 0xee, 0x8d, 0x82, 0xeb, 0xb0, 0x63, 0x69, 0xc9, 0x14, 0xcd, 0x47, 0xe2, 0x55, 0xd8,
+	0x50, 0x42, 0x4d, 0xda, 0xba, 0x51, 0x3f, 0xc2, 0xf0, 0x8f, 0xb4, 0x82, 0x86, 0x83, 0x4f, 0xa0,
+	0xa9, 0xa2, 0x51, 0x48, 0x62, 0x5c, 0xbd, 0x0d, 0xd5, 0x98, 0xa2, 0x63, 0x56, 0x53, 0xb3, 0x9c,
+	0xa8, 0x43, 0xa3, 0x10, 0xbc, 0x07, 0x2d, 0x87, 0xcf, 0x3e, 0x2f, 0xc3, 0xa6, 0x32, 0xae, 0xe8,
+	0xeb, 0xbe, 0x53, 0xc2, 0x83, 0xef, 0xa1, 0xf5, 0x60, 0x3a, 0x1a, 0xa4, 0xd1, 0xb2, 0x19, 0x8a,
+	0xd7, 0x60, 0x23, 0x99, 0x46, 0x67, 0x7b, 0x6b, 0x3a, 0xb0, 0x86, 0xb5, 0xfc, 0x0d, 0x82, 0xa1,
+	0x16, 0x05, 0x27, 0x20, 0x5c, 0xe3, 0x8b, 0xd5, 0xe1, 0x26, 0xb4, 0xee, 0xce, 0x22, 0x24, 0x7d,
+	0x3b, 0x48, 0x7e, 0x31, 0x11, 0x5d, 0x61, 0x67, 0xc4, 0xd9, 0xd6, 0x9c, 0x2f, 0xe3, 0xa1, 0xef,
+	0xcb, 0xa5, 0x65, 0xbe, 0x52, 0x7c, 0xf7, 0x7c, 0x69, 0x05, 0x0d, 0x73, 0x73, 0x5d, 0x47, 0x98,
+	0xba, 0x92, 0xe4, 0x52, 0x57, 0x1a, 0x2a, 0x75, 0x25, 0xb2, 0xcd, 0x5d, 0xc6, 0xd1, 0x2d, 0x68,
+	0x85, 0xd1, 0x24, 0x7e, 0x12, 0x2d, 0xed, 0xab, 0x03, 0xc2, 0x65, 0x92, 0xbb, 0x40, 0xd0, 0xb0,
+	0x28, 0xcc, 0x0c, 0x8b, 0x19, 0x00, 0xc6, 0xb2, 0x01, 0x50, 0x86, 0xfc, 0x01, 0xd0, 0xa6, 0x08,
+	0x47, 0x56, 0x93, 0xea, 0x86, 0xe5, 0x5c, 0xbc, 0xda, 0xc7, 0xa6, 0x49, 0x9a, 0xc5, 0xbe, 0x24,
+	0xac, 0xff, 0x1c, 0x0f, 0x99, 0x55, 0x33, 0xac, 0x50, 0x81, 0xc1, 0xbb, 0xd0, 0xc0, 0x92, 0x79,
+	0x3e, 0x2a, 0x88, 0x67, 0xb9, 0xd7, 0x31, 0xf7, 0x4d, 0x94, 0x63, 0xea, 0x9b, 0x28, 0xc0, 0xcc,
+	0xaf, 0xe9, 0xe6, 0x2c, 0xea, 0xe0, 0x21, 0x34, 0x69, 0xd6, 0x96, 0xf1, 0x61, 0x33, 0x5d, 0xfb,
+	0xbf, 0x4c, 0x1d, 0xbb, 0x0b, 0x04, 0x82, 0x05, 0xa5, 0x86, 0x2d, 0x95, 0x6c, 0xdb, 0x0c, 0x88,
+	0xe3, 0x26, 0xf8, 0x18, 0x76, 0x54, 0x47, 0x11, 0xba, 0xd0, 0x46, 0xb8, 0x4e, 0x43, 0x42, 0x74,
+	0x8e, 0xfc, 0x12, 0x6c, 0xa0, 0x43, 0x33, 0x0e, 0x59, 0xe8, 0x1a, 0x0d, 0xfa, 0xd0, 0xa1, 0xb6,
+	0xde, 0x8f, 0xd2, 0xdf, 0xe2, 0x99, 0x9d, 0xd4, 0xd7, 0xbd, 0x81, 0x20, 0x97, 0xac, 0xe2, 0x94,
+	0xea, 0x36, 0x74, 0x73, 0x6c, 0x76, 0xfa, 0x26, 0xee, 0x13, 0x82, 0xbc, 0x91, 0x32, 0x6a, 0x46,
+	0x18, 0x3c, 0x80, 0x96, 0x5a, 0x9a, 0xbe, 0x6f, 0x81, 0xeb, 0x62, 0x30, 0x89, 0x78, 0x2b, 0xeb,
+	0xbf, 0xc5, 0x35, 0x00, 0xe6, 0xa8, 0x9a, 0xae, 0xe9, 0x9a, 0x36, 0xb0, 0xa6, 0x75, 0xe6, 0x62,
+	0x5d, 0xeb, 0xac, 0x80, 0xb5, 0xed, 0x83, 0x70, 0xcd, 0x2e, 0x19, 0xd4, 0x77, 0xd0, 0xa1, 0xce,
+	0xbc, 0xf4, 0xb8, 0x76, 0xa1, 0x9b, 0xb3, 0xcc, 0x7d, 0xef, 0x42, 0x5b, 0xaf, 0x72, 0x82, 0xed,
+	0x3f, 0xf8, 0x1d, 0xe8, 0xf8, 0x30, 0x67, 0x72, 0x15, 0x6a, 0x6c, 0xd4, 0xf4, 0xd5, 0x4f, 0xc5,
+	0x4a, 0x83, 0x0f, 0xa1, 0x4d, 0x1d, 0x7a, 0x18, 0x3f, 0x9a, 0x4f, 0x9c, 0x7d, 0xef, 0xb6, 0x77,
+	0x47, 0x93, 0x49, 0xc3, 0xe9, 0xee, 0x47, 0x66, 0x36, 0x0c, 0x97, 0xbd, 0x1f, 0x42, 0xe5, 0x89,
+	0x46, 0x98, 0xbe, 0xe5, 0xd0, 0x43, 0x16, 0xe1, 0x24, 0x37, 0xb1, 0x05, 0xbe, 0xd7, 0xb7, 0xa0,
+	0x4e, 0xd2, 0xec, 0xff, 0x62, 0x1b, 0x6b, 0x55, 0x23, 0x2d, 0x2c, 0x55, 0x8d, 0xc4, 0x58, 0xa9,
+	0x5b, 0x7a, 0x30, 0x2e, 0xe2, 0xf8, 0x0e, 0xb4, 0xa9, 0xc6, 0x17, 0xf6, 0xdd, 0x33, 0xfd, 0xf7,
+	0xdd, 0xab, 0xc5, 0xac, 0xba, 0x41, 0xa8, 0xed, 0x51, 0x9f, 0x5a, 0x67, 0x51, 0x8e, 0xf5, 0x0d,
+	0xa8, 0x92, 0x41, 0xd3, 0x21, 0x2f, 0x58, 0x23, 0xbb, 0xf1, 0x07, 0x40, 0xf5, 0x2e, 0x7d, 0xe4,
+	0x88, 0xf7, 0xa1, 0xca, 0x5f, 0x10, 0xa2, 0xad, 0x95, 0xfd, 0xcf, 0x10, 0xd9, 0xf1, 0x41, 0x8e,
+	0x6a, 0x45, 0xf4, 0xa1, 0x6e, 0xbf, 0x03, 0x44, 0xd7, 0x6e, 0x07, 0xf7, 0xbb, 0x42, 0xf6, 0xf2,
+	0xb0, 0x65, 0xdf, 0x06, 0xc8, 0x4e, 0xb6, 0x20, 0xbd, 0xc2, 0x07, 0x82, 0xdc, 0x2d, 0xe0, 0xd6,
+	0x00, 0x85, 0xad, 0x2e, 0x4c, 0x16, 0xb6, 0x73, 0xf4, 0xb2, 0xb0, 0xbd, 0x7b, 0x66, 0xc3, 0xd6,
+	0xd7, 0xcb, 0x09, 0xdb, 0xbd, 0x70, 0x4e, 0xd8, 0xde, 0x91, 0xa3, 0xb0, 0xb3, 0xeb, 0xcf, 0x61,
+	0x17, 0xbe, 0x22, 0x38, 0xec, 0xe2, 0x67, 0x02, 0x19, 0xc8, 0xce, 0x2c, 0x1b, 0x28, 0x5c, 0x6c,
+	0x36, 0x50, 0x72, 0x8f, 0x57, 0xc4, 0x09, 0x54, 0xe8, 0x5a, 0x09, 0x61, 0x32, 0xcc, 0x0e, 0x80,
+	0x6c, 0x7b, 0x98, 0x25, 0x7d, 0x00, 0x35, 0xb3, 0xa1, 0x45, 0xc7, 0x26, 0xe7, 0xec, 0x7b, 0xd9,
+	0xcd, 0xa1, 0x6e, 0xbd, 0xec, 0x05, 0xe6, 0x7a, 0xe5, 0xef, 0xb8, 0xec, 0xe5, 0x61, 0x97, 0x6d,
+	0xaf, 0x1a, 0xb3, 0xf3, 0xd7, 0x53, 0xf6, 0xf2, 0xb0, 0xcb, 0xb6, 0xc7, 0x8a, 0xd9, 0xf9, 0x93,
+	0x27, 0x7b, 0x79, 0xd8, 0x2d, 0x75, 0xb6, 0x8e, 0xb9, 0xd4, 0x85, 0xb5, 0xcf, 0xa5, 0x2e, 0xee,
+	0x6d, 0x34, 0xf0, 0x19, 0x6c, 0xbb, 0x7b, 0x50, 0xec, 0x65, 0xd3, 0xec, 0x6f, 0x4c, 0xb9, 0x5f,
+	0x22, 0xb1, 0x66, 0xbe, 0x80, 0x86, 0x77, 0xae, 0xc4, 0xbe, 0x53, 0xae, 0x5c, 0x34, 0xb2, 0x4c,
+	0xe4, 0x5a, 0xf2, 0x16, 0x39, 0x5b, 0x2a, 0x3b, 0x1b, 0x6c, 0xa9, 0x7c, 0xef, 0xeb, 0xca, 0xda,
+	0x45, 0xc7, 0x95, 0xcd, 0xef, 0x4d, 0xd9, 0xcb, 0xc3, 0x96, 0x7d, 0x4a, 0x3f, 0x68, 0x78, 0xf9,
+	0x88, 0x5d, 0x9b, 0xbd, 0xbf, 0xa4, 0xe4, 0x5e, 0x51, 0xe0, 0x16, 0xd7, 0x5d, 0xf3, 0x5c, 0xdc,
+	0x92, 0xab, 0x21, 0xf7, 0x4b, 0x24, 0xae, 0x19, 0x77, 0x6b, 0xb2, 0x99, 0x92, 0x55, 0x2c, 0xf7,
+	0x4b, 0x24, 0xc6, 0xcc, 0xe9, 0xa5, 0x67, 0xcf, 0x0f, 0x56, 0xfe, 0xc2, 0xe7, 0xdf, 0xe7, 0x07,
+	0xab, 0xbf, 0xbf, 0x38, 0x58, 0x7d, 0x86, 0xcf, 0x9f, 0xf8, 0xfc, 0x83, 0xcf, 0xb0, 0xa2, 0x7f,
+	0xc7, 0x9d, 0xfc, 0x17, 0x00, 0x00, 0xff, 0xff, 0x0a, 0x57, 0x32, 0x61, 0x19, 0x0e, 0x00, 0x00,
+}
