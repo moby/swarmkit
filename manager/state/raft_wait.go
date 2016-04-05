@@ -39,7 +39,9 @@ func (w *wait) trigger(id uint64, x interface{}) bool {
 	delete(w.m, id)
 	w.l.Unlock()
 	if ok {
-		waitItem.cb()
+		if waitItem.cb != nil {
+			waitItem.cb()
+		}
 		waitItem.ch <- x
 		close(waitItem.ch)
 		return true

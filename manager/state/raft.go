@@ -39,9 +39,7 @@ var (
 	ErrConfChangeRefused = errors.New("raft: propose configuration change refused")
 	// ErrApplyNotSpecified is returned during the creation of a raft node when no apply method was provided
 	ErrApplyNotSpecified = errors.New("raft: apply method was not specified")
-	// ErrPeerNotFound is returned when we try an operation on a peer that does not exist in the cluster list
-	ErrPeerNotFound = errors.New("raft: peer not found in cluster list")
-	// ErrAppendEntry is returned when the node fail to append an entry to the logs
+	// ErrAppendEntry is thrown when the node fail to append an entry to the logs
 	ErrAppendEntry = errors.New("raft: failed to append entry to logs")
 	// ErrSetHardState is returned when the node fails to set the hard state
 	ErrSetHardState = errors.New("raft: failed to set the hard state for log append entry")
@@ -53,6 +51,12 @@ var (
 	ErrLostLeadership = errors.New("raft: failed to process the request: node lost leader status")
 	// ErrRequestTooLarge is returned when a raft internal message is too large to be sent
 	ErrRequestTooLarge = errors.New("raft: raft message is too large and can't be sent")
+	// ErrIDExists is thrown when a node wants to join the existing cluster but its ID already exists
+	ErrIDExists = errors.New("raft: can't add node to cluster, node id is a duplicate")
+	// ErrIDRemoved is thrown when a node tries to join but is in the remove set
+	ErrIDRemoved = errors.New("raft: can't add node to cluster, node was removed during cluster lifetime")
+	// ErrIDNotFound is thrown when we try an operation on a member that does not exist in the cluster list
+	ErrIDNotFound = errors.New("raft: member not found in cluster list")
 )
 
 // A Proposer can propose actions to a cluster.
@@ -80,11 +84,11 @@ const (
 // configuration.
 type Node struct {
 	raft.Node
+	cluster Cluster
 
-	Client  *Raft
-	Cluster *Cluster
-	Server  *grpc.Server
-	Ctx     context.Context
+	Client *Raft
+	Server *grpc.Server
+	Ctx    context.Context
 
 	Address string
 	Error   error
@@ -150,7 +154,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 
 	n := &Node{
 		Ctx:       ctx,
-		Cluster:   NewCluster(),
+		cluster:   NewCluster(),
 		raftStore: raftStore,
 		Address:   opts.Addr,
 		Config: &raft.Config{
@@ -251,7 +255,7 @@ func (n *Node) loadAndStart() error {
 			return fmt.Errorf("create wal error: %v", err)
 		}
 
-		n.Cluster.AddPeer(&Peer{RaftNode: raftNode})
+		n.cluster.AddMember(&Member{RaftNode: raftNode})
 
 		n.Node = raft.StartNode(n.Config, []raft.Peer{{ID: n.Config.ID}})
 		return nil
@@ -462,31 +466,35 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 		return nil, err
 	}
 
-	confChange := raftpb.ConfChange{
-		ID:      req.Node.ID,
-		Type:    raftpb.ConfChangeAddNode,
-		NodeID:  req.Node.ID,
-		Context: meta,
+	if n.cluster.IsIDRemoved(req.Node.ID) {
+		return nil, ErrIDRemoved
 	}
 
-	err = n.ProposeConfChange(n.Ctx, confChange)
-	if err != nil {
-		return nil, err
+	// We submit a configuration change only if the node was not registered yet
+	// TODO(abronan, aaronl): determine if we need to snapshot the memberlist
+	if n.cluster.GetMember(req.Node.ID) == nil {
+		cc := raftpb.ConfChange{
+			Type:    raftpb.ConfChangeAddNode,
+			NodeID:  req.Node.ID,
+			Context: meta,
+		}
+
+		// Wait for a raft round to process the configuration change
+		err = n.configure(ctx, cc)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var nodes []*api.RaftNode
-	for _, node := range n.Cluster.Peers() {
+	for _, node := range n.cluster.Members() {
 		nodes = append(nodes, &api.RaftNode{
 			ID:   node.ID,
 			Addr: node.Addr,
 		})
 	}
 
-	// TODO (abronan): instead of sending back
-	// the list of nodes and let the new member
-	// add them itself to its local list: grpc
-	// call add from the node sending the conf
-	// change
+	// TODO(aaronl): send back store snapshot after join?
 	return &api.JoinResponse{Members: nodes}, nil
 }
 
@@ -495,14 +503,15 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 // from a member who is willing to leave its raft
 // membership to an active member of the raft
 func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResponse, error) {
-	confChange := raftpb.ConfChange{
+	cc := raftpb.ConfChange{
 		ID:      req.Node.ID,
 		Type:    raftpb.ConfChangeRemoveNode,
 		NodeID:  req.Node.ID,
 		Context: []byte(""),
 	}
 
-	err := n.ProposeConfChange(n.Ctx, confChange)
+	// Wait for a raft round to process the configuration change
+	err := n.configure(ctx, cc)
 	if err != nil {
 		return nil, err
 	}
@@ -522,31 +531,22 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 	return &api.ProcessRaftMessageResponse{}, nil
 }
 
-// RemoveNode removes a node from the raft cluster
-func (n *Node) RemoveNode(node *Peer) error {
-	confChange := raftpb.ConfChange{
-		ID:      node.ID,
-		Type:    raftpb.ConfChangeRemoveNode,
-		NodeID:  node.ID,
-		Context: []byte(""),
-	}
-
-	err := n.ProposeConfChange(n.Ctx, confChange)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // RegisterNode registers a new node on the cluster
 func (n *Node) RegisterNode(node *api.RaftNode) error {
+	// Avoid opening a connection with ourself
+	if node.ID == n.Config.ID {
+		return nil
+	}
+
 	// We don't want to impose a timeout on the grpc connection. It
 	// should keep retrying as long as necessary, in case the peer
 	// is temporarily unavailable.
+
 	client, err := GetRaftClient(node.Addr, 0)
 	if err == nil {
-		n.Cluster.AddPeer(&Peer{RaftNode: node, Client: client})
+		err = n.cluster.AddMember(&Member{RaftNode: node, Client: client})
 	}
+
 	return err
 }
 
@@ -570,17 +570,19 @@ func (n *Node) UnregisterNode(id uint64) error {
 		return nil
 	}
 
-	peer := n.Cluster.GetPeer(id)
+	peer := n.cluster.GetMember(id)
 	if peer == nil {
-		return ErrPeerNotFound
+		return ErrIDNotFound
 	}
 
-	err := peer.Client.Conn.Close()
-	if err != nil {
+	if err := n.cluster.RemoveMember(id); err != nil {
 		return err
 	}
 
-	n.Cluster.RemovePeer(id)
+	if err := peer.Client.Conn.Close(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -673,7 +675,7 @@ func (n *Node) doSnapshot() error {
 
 // Sends a series of messages to members in the raft
 func (n *Node) send(messages []raftpb.Message) error {
-	peers := n.Cluster.Peers()
+	members := n.cluster.Members()
 
 	ctx, _ := context.WithTimeout(n.Ctx, 2*time.Second)
 
@@ -687,28 +689,28 @@ func (n *Node) send(messages []raftpb.Message) error {
 		}
 
 		// If node is an active raft member send the message
-		if peer, ok := peers[m.To]; ok {
+		if member, ok := members[m.To]; ok {
 			n.sends.Add(1)
-			go n.sendToPeer(ctx, peer, m)
+			go n.sendToMember(ctx, member, m)
 		}
 	}
 
 	return nil
 }
 
-func (n *Node) sendToPeer(ctx context.Context, peer *Peer, m raftpb.Message) {
-	_, err := peer.Client.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Msg: &m})
+func (n *Node) sendToMember(ctx context.Context, member *Member, m raftpb.Message) {
+	_, err := member.Client.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Msg: &m})
 	if err != nil {
 		if m.Type == raftpb.MsgSnap {
 			n.ReportSnapshot(m.To, raft.SnapshotFailure)
 		}
-		if peer == nil {
-			panic("peer is nil")
+		if member == nil {
+			panic("member is nil")
 		}
 		if n.Node == nil {
 			panic("node is nil")
 		}
-		n.ReportUnreachable(peer.ID)
+		n.ReportUnreachable(member.ID)
 	} else if m.Type == raftpb.MsgSnap {
 		n.ReportSnapshot(m.To, raft.SnapshotFinish)
 	}
@@ -720,6 +722,9 @@ type applyResult struct {
 	err  error
 }
 
+// processInternalRaftRequest sends a message through consensus
+// and then waits for it to be applies to the server. It will
+// block until the change is performed or there is an error
 func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRaftRequest, cb func()) (proto.Message, error) {
 	r.ID = n.reqIDGen.Next()
 
@@ -761,6 +766,35 @@ func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRa
 	}
 }
 
+// configure sends a configuration change through consensus and
+// then waits for it to be applied to the server. It will block
+// until the change is performed or there is an error.
+func (n *Node) configure(ctx context.Context, cc raftpb.ConfChange) error {
+	cc.ID = n.reqIDGen.Next()
+	ch := n.wait.register(cc.ID, nil)
+
+	if err := n.ProposeConfChange(ctx, cc); err != nil {
+		n.wait.trigger(cc.ID, nil)
+		return err
+	}
+
+	select {
+	case x := <-ch:
+		if err, ok := x.(error); ok {
+			return err
+		}
+		if x != nil {
+			log.Panic("return type should always be error")
+		}
+		return nil
+	case <-ctx.Done():
+		n.wait.trigger(cc.ID, nil)
+		return ctx.Err()
+	case <-n.stopCh:
+		return ErrStopped
+	}
+}
+
 func (n *Node) processCommitted(entry raftpb.Entry) error {
 	// Process a normal entry
 	if entry.Type == raftpb.EntryNormal && entry.Data != nil {
@@ -771,9 +805,7 @@ func (n *Node) processCommitted(entry raftpb.Entry) error {
 
 	// Process a configuration change (add/remove node)
 	if entry.Type == raftpb.EntryConfChange {
-		if err := n.processConfChange(entry); err != nil {
-			return err
-		}
+		n.processConfChange(entry)
 	}
 
 	n.appliedIndex = entry.Index
@@ -807,14 +839,18 @@ func (n *Node) processEntry(entry raftpb.Entry) error {
 	return nil
 }
 
-func (n *Node) processConfChange(conf raftpb.Entry) error {
+func (n *Node) processConfChange(entry raftpb.Entry) {
 	var (
 		err error
 		cc  raftpb.ConfChange
 	)
 
-	if err = cc.Unmarshal(conf.Data); err != nil {
-		return err
+	if err = cc.Unmarshal(entry.Data); err != nil {
+		n.wait.trigger(cc.ID, err)
+	}
+
+	if n.cluster.IsIDRemoved(cc.NodeID) {
+		n.wait.trigger(cc.ID, ErrIDRemoved)
 	}
 
 	switch cc.Type {
@@ -825,30 +861,34 @@ func (n *Node) processConfChange(conf raftpb.Entry) error {
 	}
 
 	if err != nil {
-		return err
+		n.wait.trigger(cc.ID, err)
 	}
 
 	n.confState = *n.ApplyConfChange(cc)
-	return nil
+	n.wait.trigger(cc.ID, nil)
 }
 
 // applyAddNode is called when we receive a ConfChange
 // from a member in the raft cluster, this adds a new
 // node to the existing raft cluster
-func (n *Node) applyAddNode(conf raftpb.ConfChange) error {
-	peer := &api.RaftNode{}
-	err := proto.Unmarshal(conf.Context, peer)
+func (n *Node) applyAddNode(cc raftpb.ConfChange) error {
+	if n.cluster.GetMember(cc.NodeID) != nil {
+		return ErrIDExists
+	}
+
+	member := &api.RaftNode{}
+	err := proto.Unmarshal(cc.Context, member)
 	if err != nil {
 		return err
 	}
 
 	// ID must be non zero
-	if peer.ID == 0 {
+	if member.ID == 0 {
 		return nil
 	}
 
-	if n.Config.ID != peer.ID {
-		if err = n.RegisterNode(peer); err != nil {
+	if n.Config.ID != member.ID {
+		if err = n.RegisterNode(member); err != nil {
 			return err
 		}
 	}
@@ -858,24 +898,30 @@ func (n *Node) applyAddNode(conf raftpb.ConfChange) error {
 // applyRemoveNode is called when we receive a ConfChange
 // from a member in the raft cluster, this removes a node
 // from the existing raft cluster
-func (n *Node) applyRemoveNode(conf raftpb.ConfChange) (err error) {
+func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
+	if n.cluster.GetMember(cc.NodeID) == nil {
+		return ErrIDNotFound
+	}
+
 	// The leader steps down
-	if n.Config.ID == n.Leader() && n.Config.ID == conf.NodeID {
-		n.Stop()
+	if n.Config.ID == n.Leader() && n.Config.ID == cc.NodeID {
 		return
 	}
 
 	// If the node from where the remove is issued is
 	// a follower and the leader steps down, Campaign
 	// to be the leader
-	if conf.NodeID == n.Leader() {
+	if cc.NodeID == n.Leader() {
+		// FIXME(abronan): it's probably risky for each follower to Campaign
+		// at the same time, but it might speed up the process of recovering
+		// a leader
 		if err = n.Campaign(n.Ctx); err != nil {
 			return err
 		}
 	}
 
 	// Unregister the node
-	if err = n.UnregisterNode(conf.NodeID); err != nil {
+	if err = n.UnregisterNode(cc.NodeID); err != nil {
 		return err
 	}
 
