@@ -248,7 +248,7 @@ func newJoinNode(t *testing.T, join string, opts ...NewNodeOptions) *testNode {
 	return n
 }
 
-func restartNode(t *testing.T, oldNode *testNode, join string) *testNode {
+func restartNode(t *testing.T, oldNode *testNode) *testNode {
 	wrappedListener := recycleWrappedListener(oldNode.listener)
 	s := grpc.NewServer()
 
@@ -298,15 +298,19 @@ func teardownCluster(t *testing.T, nodes map[uint64]*testNode) {
 	}
 }
 
-func removeNode(nodes map[string]*testNode, node string) {
-	shutdownNode(nodes[node])
-	delete(nodes, node)
-}
-
 func shutdownNode(node *testNode) {
 	node.Server.Stop()
 	node.Shutdown()
 	os.RemoveAll(node.stateDir)
+}
+
+func leader(nodes map[uint64]*testNode) *testNode {
+	for _, n := range nodes {
+		if n.Config.ID == n.Leader() {
+			return n
+		}
+	}
+	panic("could not find a leader")
 }
 
 func TestRaftBootstrap(t *testing.T) {
@@ -356,7 +360,9 @@ func proposeValue(t *testing.T, raftNode *testNode, nodeID ...string) (*api.Node
 		},
 	}
 
-	err := raftNode.ProposeValue(context.Background(), storeActions, func() {
+	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
+
+	err := raftNode.ProposeValue(ctx, storeActions, func() {
 		err := raftNode.memoryStore.applyStoreActions(storeActions)
 		assert.NoError(t, err, "error applying actions")
 	})
@@ -523,12 +529,13 @@ func TestRaftQuorumFailure(t *testing.T) {
 	defer teardownCluster(t, nodes)
 
 	// Lose a majority
-	nodes[3].Stop()
-	nodes[4].Stop()
-	nodes[5].Stop()
+	for i := uint64(3); i <= 5; i++ {
+		nodes[i].Server.Stop()
+		nodes[i].Stop()
+	}
 
 	// Propose a value
-	_, err := proposeValue(t, nodes[2])
+	_, err := proposeValue(t, nodes[1])
 	assert.Error(t, err)
 
 	// The value should not be replicated, we have no majority
@@ -537,6 +544,40 @@ func TestRaftQuorumFailure(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	checkNoValue(t, nodes[1])
+}
+
+func TestRaftQuorumRecovery(t *testing.T) {
+	t.Parallel()
+
+	// Bring up a 5 nodes cluster
+	nodes := newRaftCluster(t)
+	addRaftNode(t, nodes)
+	addRaftNode(t, nodes)
+	defer teardownCluster(t, nodes)
+
+	// Lose a majority
+	for i := uint64(1); i <= 3; i++ {
+		nodes[i].Server.Stop()
+		nodes[i].Shutdown()
+	}
+
+	time.Sleep(5 * time.Second)
+
+	// Restore the majority by restarting node 3
+	nodes[3] = restartNode(t, nodes[3])
+
+	delete(nodes, 1)
+	delete(nodes, 2)
+	waitForCluster(t, nodes)
+
+	// Propose a value
+	value, err := proposeValue(t, leader(nodes))
+	assert.NoError(t, err)
+
+	time.Sleep(500 * time.Millisecond)
+	for _, node := range nodes {
+		checkValue(t, node, value)
+	}
 }
 
 func TestRaftFollowerLeave(t *testing.T) {
@@ -774,13 +815,82 @@ func TestRaftRejoin(t *testing.T) {
 	}
 	checkValues(nodes[1], nodes[2])
 
-	nodes[3] = restartNode(t, nodes[3], nodes[1].Address)
+	nodes[3] = restartNode(t, nodes[3])
 	waitForCluster(t, nodes)
 
 	// Node 3 should have all values, including the one proposed while
 	// it was unavailable.
 	time.Sleep(500 * time.Millisecond)
 	checkValues(nodes[1], nodes[2], nodes[3])
+}
+
+func testRaftRestartCluster(t *testing.T, stagger bool) {
+	nodes := newRaftCluster(t)
+	defer teardownCluster(t, nodes)
+
+	// Propose a value
+	values := make([]*api.Node, 2)
+	var err error
+	values[0], err = proposeValue(t, nodes[1], "id1")
+	assert.NoError(t, err, "failed to propose value")
+
+	// Stop all nodes
+	for _, node := range nodes {
+		node.Server.Stop()
+		node.Shutdown()
+	}
+
+	time.Sleep(5 * time.Second)
+
+	// Restart all nodes
+	i := 0
+	for k, node := range nodes {
+		if stagger && i != 0 {
+			time.Sleep(time.Second)
+		}
+		nodes[k] = restartNode(t, node)
+		i++
+	}
+	waitForCluster(t, nodes)
+
+	// Propose another value
+	values[1], err = proposeValue(t, leader(nodes), "id2")
+	assert.NoError(t, err, "failed to propose value")
+
+	time.Sleep(500 * time.Millisecond)
+
+	for _, node := range nodes {
+		err := node.memoryStore.View(func(tx ReadTx) error {
+			allNodes, err := tx.Nodes().Find(All)
+			if err != nil {
+				return err
+			}
+			assert.Len(t, allNodes, 2)
+
+			for i, nodeID := range []string{"id1", "id2"} {
+				n := tx.Nodes().Get(nodeID)
+				assert.Equal(t, n, values[i])
+			}
+			return nil
+		})
+		assert.NoError(t, err)
+	}
+}
+
+func TestRaftRestartClusterSimultaneously(t *testing.T) {
+	t.Parallel()
+
+	// Establish a cluster, stop all nodes (simulating a total outage), and
+	// restart them simultaneously.
+	testRaftRestartCluster(t, false)
+}
+
+func TestRaftRestartClusterStaggered(t *testing.T) {
+	t.Parallel()
+
+	// Establish a cluster, stop all nodes (simulating a total outage), and
+	// restart them one at a time.
+	testRaftRestartCluster(t, true)
 }
 
 func TestRaftUnreachableNode(t *testing.T) {
@@ -819,4 +929,28 @@ func TestRaftUnreachableNode(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	checkValue(t, nodes[2], value)
+}
+
+func TestRaftJoinFollower(t *testing.T) {
+	t.Parallel()
+
+	nodes := make(map[uint64]*testNode)
+	nodes[1] = newInitNode(t)
+	nodes[2] = newJoinNode(t, nodes[1].Address)
+	waitForCluster(t, nodes)
+
+	// Point StartByJoining at a follower's address, rather than the leader
+	nodes[3] = newJoinNode(t, nodes[2].Address)
+	waitForCluster(t, nodes)
+	defer teardownCluster(t, nodes)
+
+	// Propose a value
+	value, err := proposeValue(t, nodes[1])
+	assert.NoError(t, err, "failed to propose value")
+
+	// All nodes should have the value in the physical store
+	time.Sleep(500 * time.Millisecond)
+	checkValue(t, nodes[1], value)
+	checkValue(t, nodes[2], value)
+	checkValue(t, nodes[3], value)
 }

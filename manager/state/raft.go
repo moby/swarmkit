@@ -816,6 +816,9 @@ func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRa
 	case <-n.stopCh:
 		n.wait.cancel(r.ID)
 		return nil, ErrStopped
+	case <-ctx.Done():
+		n.wait.cancel(r.ID)
+		return nil, ctx.Err()
 	}
 }
 
