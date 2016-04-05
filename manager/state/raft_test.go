@@ -184,11 +184,6 @@ func recycleWrappedListener(old *wrappedListener) *wrappedListener {
 	}
 }
 
-func (l *wrappedListener) Addr() net.Addr {
-	// stubbed out
-	return l.Listener.Addr()
-}
-
 func newNode(t *testing.T, opts ...NewNodeOptions) *testNode {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "can't bind to raft service port")
@@ -228,8 +223,6 @@ func newNode(t *testing.T, opts ...NewNodeOptions) *testNode {
 func newInitNode(t *testing.T, opts ...NewNodeOptions) *testNode {
 	n := newNode(t, opts...)
 
-	err := n.Campaign(n.Ctx)
-	require.NoError(t, err, "can't campaign to be the leader")
 	n.Start()
 
 	Register(n.Server, n.Node)
@@ -245,19 +238,7 @@ func newInitNode(t *testing.T, opts ...NewNodeOptions) *testNode {
 func newJoinNode(t *testing.T, join string, opts ...NewNodeOptions) *testNode {
 	n := newNode(t, opts...)
 
-	n.Start()
-
-	c, err := GetRaftClient(join, 500*time.Millisecond)
-	assert.NoError(t, err, "can't initiate connection with existing raft")
-
-	ctx, _ := context.WithTimeout(context.Background(), 1000*time.Millisecond)
-	resp, err := c.Join(ctx, &api.JoinRequest{
-		Node: &api.RaftNode{ID: n.Config.ID, Addr: n.Address},
-	})
-	require.NoError(t, err, "can't join existing Raft")
-
-	n.RegisterNodes(resp.Members)
-
+	n.StartByJoining(join)
 	Register(n.Server, n.Node)
 
 	go func() {
@@ -286,16 +267,6 @@ func restartNode(t *testing.T, oldNode *testNode, join string) *testNode {
 	n.Server = s
 
 	n.Start()
-
-	c, err := GetRaftClient(join, 500*time.Millisecond)
-	assert.NoError(t, err, "can't initiate connection with existing raft")
-
-	resp, err := c.Join(n.Ctx, &api.JoinRequest{
-		Node: &api.RaftNode{ID: n.Config.ID, Addr: n.Address},
-	})
-	require.NoError(t, err, "can't join existing Raft")
-
-	n.RegisterNodes(resp.Members)
 
 	Register(s, n)
 
@@ -344,9 +315,9 @@ func TestRaftBootstrap(t *testing.T) {
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
-	assert.Equal(t, len(nodes[1].cluster.Members()), 3)
-	assert.Equal(t, len(nodes[2].cluster.Members()), 3)
-	assert.Equal(t, len(nodes[3].cluster.Members()), 3)
+	assert.Equal(t, 3, len(nodes[1].cluster.Members()))
+	assert.Equal(t, 3, len(nodes[2].cluster.Members()))
+	assert.Equal(t, 3, len(nodes[3].cluster.Members()))
 }
 
 func TestRaftLeader(t *testing.T) {
@@ -821,19 +792,9 @@ func TestRaftUnreachableNode(t *testing.T) {
 	// Add a new node, but don't start its server yet
 	n := newNode(t)
 
-	c, err := GetRaftClient(nodes[1].Address, 500*time.Millisecond)
-	assert.NoError(t, err, "can't initiate connection with existing raft")
-
-	resp, err := c.Join(n.Ctx, &api.JoinRequest{
-		Node: &api.RaftNode{ID: n.Config.ID, Addr: n.Address},
-	})
-	require.NoError(t, err, "can't join existing Raft")
+	n.StartByJoining(nodes[1].Address)
 
 	time.Sleep(5 * time.Second)
-
-	n.Start()
-
-	n.RegisterNodes(resp.Members)
 
 	Register(n.Server, n.Node)
 
