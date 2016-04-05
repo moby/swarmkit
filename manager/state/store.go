@@ -193,7 +193,7 @@ type Store interface {
 	View(func(ReadTx) error) error
 
 	// Save serializes the data in the store.
-	Save() (*pb.StoreSnapshot, error)
+	Save(ReadTx) (*pb.StoreSnapshot, error)
 
 	// Restore sets the contents of the store to the serialized data in the
 	// argument.

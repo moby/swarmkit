@@ -1538,33 +1538,28 @@ func (s *MemoryStore) CopyFrom(readTx ReadTx) error {
 }
 
 // Save serializes the data in the store.
-func (s *MemoryStore) Save() (*pb.StoreSnapshot, error) {
-	var snapshot pb.StoreSnapshot
-	err := s.View(func(tx ReadTx) error {
-		var err error
-		snapshot.Nodes, err = tx.Nodes().Find(All)
-		if err != nil {
-			return err
-		}
-		snapshot.Tasks, err = tx.Tasks().Find(All)
-		if err != nil {
-			return err
-		}
-		snapshot.Networks, err = tx.Networks().Find(All)
-		if err != nil {
-			return err
-		}
-		snapshot.Jobs, err = tx.Jobs().Find(All)
-		if err != nil {
-			return err
-		}
-		snapshot.Volumes, err = tx.Volumes().Find(All)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+func (s *MemoryStore) Save(tx ReadTx) (*pb.StoreSnapshot, error) {
+	var (
+		snapshot pb.StoreSnapshot
+		err      error
+	)
+	snapshot.Nodes, err = tx.Nodes().Find(All)
+	if err != nil {
+		return nil, err
+	}
+	snapshot.Tasks, err = tx.Tasks().Find(All)
+	if err != nil {
+		return nil, err
+	}
+	snapshot.Networks, err = tx.Networks().Find(All)
+	if err != nil {
+		return nil, err
+	}
+	snapshot.Jobs, err = tx.Jobs().Find(All)
+	if err != nil {
+		return nil, err
+	}
+	snapshot.Volumes, err = tx.Volumes().Find(All)
 	if err != nil {
 		return nil, err
 	}
