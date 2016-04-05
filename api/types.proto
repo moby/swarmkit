@@ -2,9 +2,7 @@ syntax = "proto3";
 
 package api;
 
-// NOTE(stevvooe): Make sure your gopath is appropriately set for this to work
-// correctly.
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "gogoproto/gogo.proto";
 
 // Meta is common to all API objects types.
 message Meta {
