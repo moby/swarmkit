@@ -436,3 +436,9 @@ message StoreAction {
 		string remove_volume = 15;
 	}
 }
+
+// ManagerInfo contains information about one manager.
+message ManagerInfo {
+	string addr = 1;
+	uint32 node_count = 2 [(gogoproto.customtype) = "int", (gogoproto.nullable) = false];
+}

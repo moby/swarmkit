@@ -46,9 +46,10 @@ func TestManager(t *testing.T) {
 	defer os.RemoveAll(stateDir)
 
 	m, err := New(&Config{
-		ListenProto: "unix",
-		ListenAddr:  temp.Name(),
-		StateDir:    stateDir,
+		ListenProto:      "unix",
+		ListenAddr:       temp.Name(),
+		StateDir:         stateDir,
+		DispatcherConfig: dispatcher.DefaultConfig(),
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, m)
@@ -90,8 +91,9 @@ func TestManagerNodeCount(t *testing.T) {
 	defer os.RemoveAll(stateDir)
 
 	m, err := New(&Config{
-		Listener: l,
-		StateDir: stateDir,
+		Listener:         l,
+		StateDir:         stateDir,
+		DispatcherConfig: dispatcher.DefaultConfig(),
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, m)

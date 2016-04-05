@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/docker/swarm-v2/manager"
+	"github.com/docker/swarm-v2/manager/dispatcher"
 	"github.com/spf13/cobra"
 )
 
@@ -25,10 +26,11 @@ var managerCmd = &cobra.Command{
 		}
 
 		m, err := manager.New(&manager.Config{
-			ListenProto: "tcp",
-			ListenAddr:  addr,
-			JoinRaft:    joinRaft,
-			StateDir:    stateDir,
+			ListenProto:      "tcp",
+			ListenAddr:       addr,
+			JoinRaft:         joinRaft,
+			StateDir:         stateDir,
+			DispatcherConfig: dispatcher.DefaultConfig(),
 		})
 		if err != nil {
 			return err

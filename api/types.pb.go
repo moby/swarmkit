@@ -9,6 +9,7 @@
 		types.proto
 		cluster.proto
 		dispatcher.proto
+		manager.proto
 
 	It has these top-level messages:
 		Meta
@@ -37,6 +38,7 @@
 		WeightedPeer
 		InternalRaftRequest
 		StoreAction
+		ManagerInfo
 		ListOptions
 		GetNodeRequest
 		GetNodeResponse
@@ -88,6 +90,8 @@
 		UpdateTaskStatusResponse
 		TasksRequest
 		TasksMessage
+		NodeCountRequest
+		NodeCountResponse
 */
 package api
 
@@ -1348,6 +1352,15 @@ func _StoreAction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Bu
 	}
 }
 
+// ManagerInfo contains information about one manager.
+type ManagerInfo struct {
+	Addr      string `protobuf:"bytes,1,opt,name=addr,proto3" json:"addr,omitempty"`
+	NodeCount int    `protobuf:"varint,2,opt,name=node_count,proto3,customtype=int" json:"node_count"`
+}
+
+func (m *ManagerInfo) Reset()      { *m = ManagerInfo{} }
+func (*ManagerInfo) ProtoMessage() {}
+
 func init() {
 	proto.RegisterType((*Meta)(nil), "api.Meta")
 	proto.RegisterType((*Version)(nil), "api.Version")
@@ -1381,6 +1394,7 @@ func init() {
 	proto.RegisterType((*WeightedPeer)(nil), "api.WeightedPeer")
 	proto.RegisterType((*InternalRaftRequest)(nil), "api.InternalRaftRequest")
 	proto.RegisterType((*StoreAction)(nil), "api.StoreAction")
+	proto.RegisterType((*ManagerInfo)(nil), "api.ManagerInfo")
 	proto.RegisterEnum("api.TaskState", TaskState_name, TaskState_value)
 	proto.RegisterEnum("api.NodeSpec_Availability", NodeSpec_Availability_name, NodeSpec_Availability_value)
 	proto.RegisterEnum("api.NodeStatus_State", NodeStatus_State_name, NodeStatus_State_value)
@@ -2016,6 +2030,19 @@ func (m *StoreAction) Copy() *StoreAction {
 		}
 
 		o.Action = i
+	}
+
+	return o
+}
+
+func (m *ManagerInfo) Copy() *ManagerInfo {
+	if m == nil {
+		return nil
+	}
+
+	o := &ManagerInfo{
+		Addr:      m.Addr,
+		NodeCount: m.NodeCount,
 	}
 
 	return o
@@ -2661,6 +2688,17 @@ func (this *StoreAction_RemoveVolume) GoString() string {
 	s := strings.Join([]string{`&api.StoreAction_RemoveVolume{` +
 		`RemoveVolume:` + fmt.Sprintf("%#v", this.RemoveVolume) + `}`}, ", ")
 	return s
+}
+func (this *ManagerInfo) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.ManagerInfo{")
+	s = append(s, "Addr: "+fmt.Sprintf("%#v", this.Addr)+",\n")
+	s = append(s, "NodeCount: "+fmt.Sprintf("%#v", this.NodeCount)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
 }
 func valueToGoStringTypes(v interface{}, typ string) string {
 	rv := reflect.ValueOf(v)
@@ -4218,6 +4256,35 @@ func (m *StoreAction_RemoveVolume) MarshalTo(data []byte) (int, error) {
 	i += copy(data[i:], m.RemoveVolume)
 	return i, nil
 }
+func (m *ManagerInfo) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ManagerInfo) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Addr) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTypes(data, i, uint64(len(m.Addr)))
+		i += copy(data[i:], m.Addr)
+	}
+	if m.NodeCount != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintTypes(data, i, uint64(m.NodeCount))
+	}
+	return i, nil
+}
+
 func encodeFixed64Types(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	data[offset+1] = uint8(v >> 8)
@@ -4933,6 +5000,18 @@ func (m *StoreAction_RemoveVolume) Size() (n int) {
 	n += 1 + l + sovTypes(uint64(l))
 	return n
 }
+func (m *ManagerInfo) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Addr)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.NodeCount != 0 {
+		n += 1 + sovTypes(uint64(m.NodeCount))
+	}
+	return n
+}
 
 func sovTypes(x uint64) (n int) {
 	for {
@@ -5562,6 +5641,17 @@ func (this *StoreAction_RemoveVolume) String() string {
 	}
 	s := strings.Join([]string{`&StoreAction_RemoveVolume{`,
 		`RemoveVolume:` + fmt.Sprintf("%v", this.RemoveVolume) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ManagerInfo) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ManagerInfo{`,
+		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
+		`NodeCount:` + fmt.Sprintf("%v", this.NodeCount) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -10283,6 +10373,104 @@ func (m *StoreAction) Unmarshal(data []byte) error {
 			}
 			m.Action = &StoreAction_RemoveVolume{string(data[iNdEx:postIndex])}
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ManagerInfo) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ManagerInfo: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ManagerInfo: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Addr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Addr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeCount", wireType)
+			}
+			m.NodeCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.NodeCount |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(data[iNdEx:])
