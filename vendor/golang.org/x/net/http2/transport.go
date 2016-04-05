@@ -333,8 +333,12 @@ func (t *Transport) newTLSConfig(host string) *tls.Config {
 	if t.TLSClientConfig != nil {
 		*cfg = *t.TLSClientConfig
 	}
-	cfg.NextProtos = []string{NextProtoTLS} // TODO: don't override if already in list
-	cfg.ServerName = host
+	if !strSliceContains(cfg.NextProtos, NextProtoTLS) {
+		cfg.NextProtos = append([]string{NextProtoTLS}, cfg.NextProtos...)
+	}
+	if cfg.ServerName == "" {
+		cfg.ServerName = host
+	}
 	return cfg
 }
 
@@ -414,8 +418,8 @@ func (t *Transport) NewClientConn(c net.Conn) (*ClientConn, error) {
 	}
 
 	initialSettings := []Setting{
-		Setting{ID: SettingEnablePush, Val: 0},
-		Setting{ID: SettingInitialWindowSize, Val: transportDefaultStreamFlow},
+		{ID: SettingEnablePush, Val: 0},
+		{ID: SettingInitialWindowSize, Val: transportDefaultStreamFlow},
 	}
 	if max := t.maxHeaderListSize(); max != 0 {
 		initialSettings = append(initialSettings, Setting{ID: SettingMaxHeaderListSize, Val: max})
@@ -941,14 +945,11 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 			// Host is :authority, already sent.
 			// Content-Length is automatic, set below.
 			continue
-		case "connection", "proxy-connection", "transfer-encoding", "upgrade":
+		case "connection", "proxy-connection", "transfer-encoding", "upgrade", "keep-alive":
 			// Per 8.1.2.2 Connection-Specific Header
 			// Fields, don't send connection-specific
-			// fields. We deal with these earlier in
-			// RoundTrip, deciding whether they're
-			// error-worthy, but we don't want to mutate
-			// the user's *Request so at this point, just
-			// skip over them at this point.
+			// fields. We have already checked if any
+			// are error-worthy so just ignore the rest.
 			continue
 		case "user-agent":
 			// Match Go's http1 behavior: at most one
@@ -1259,7 +1260,8 @@ func (rl *clientConnReadLoop) handleResponse(cs *clientStream, f *MetaHeadersFra
 	}
 
 	streamEnded := f.StreamEnded()
-	if !streamEnded || cs.req.Method == "HEAD" {
+	isHead := cs.req.Method == "HEAD"
+	if !streamEnded || isHead {
 		res.ContentLength = -1
 		if clens := res.Header["Content-Length"]; len(clens) == 1 {
 			if clen64, err := strconv.ParseInt(clens[0], 10, 64); err == nil {
@@ -1274,7 +1276,7 @@ func (rl *clientConnReadLoop) handleResponse(cs *clientStream, f *MetaHeadersFra
 		}
 	}
 
-	if streamEnded {
+	if streamEnded || isHead {
 		res.Body = noBody
 		return res, nil
 	}
