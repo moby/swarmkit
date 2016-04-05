@@ -146,6 +146,14 @@ func newWrappedListener(l net.Listener) *wrappedListener {
 }
 
 func (l *wrappedListener) Accept() (net.Conn, error) {
+	// closure must take precendence over taking a connection
+	// from the channel
+	select {
+	case <-l.closed:
+		return nil, errors.New("listener closed")
+	default:
+	}
+
 	select {
 	case conn := <-l.acceptConn:
 		return conn, nil
@@ -163,6 +171,17 @@ func (l *wrappedListener) Close() error {
 
 func (l *wrappedListener) close() error {
 	return l.Listener.Close()
+}
+
+// recycleWrappedListener creates a new wrappedListener that uses the same
+// listening socket as the supplied wrappedListener.
+func recycleWrappedListener(old *wrappedListener) *wrappedListener {
+	return &wrappedListener{
+		Listener:   old.Listener,
+		acceptConn: old.acceptConn,
+		acceptErr:  old.acceptErr,
+		closed:     make(chan struct{}, 10), // grpc closes multiple times
+	}
 }
 
 func (l *wrappedListener) Addr() net.Addr {
@@ -231,7 +250,8 @@ func newJoinNode(t *testing.T, join string, opts ...NewNodeOptions) *testNode {
 	c, err := GetRaftClient(join, 500*time.Millisecond)
 	assert.NoError(t, err, "can't initiate connection with existing raft")
 
-	resp, err := c.Join(n.Ctx, &api.JoinRequest{
+	ctx, _ := context.WithTimeout(context.Background(), 1000*time.Millisecond)
+	resp, err := c.Join(ctx, &api.JoinRequest{
 		Node: &api.RaftNode{ID: n.Config.ID, Addr: n.Address},
 	})
 	require.NoError(t, err, "can't join existing Raft")
@@ -248,7 +268,7 @@ func newJoinNode(t *testing.T, join string, opts ...NewNodeOptions) *testNode {
 }
 
 func restartNode(t *testing.T, oldNode *testNode, join string) *testNode {
-	wrappedListener := newWrappedListener(oldNode.listener.Listener)
+	wrappedListener := recycleWrappedListener(oldNode.listener)
 	s := grpc.NewServer()
 
 	cfg := DefaultNodeConfig()
@@ -788,6 +808,7 @@ func TestRaftRejoin(t *testing.T) {
 
 	// Node 3 should have all values, including the one proposed while
 	// it was unavailable.
+	time.Sleep(500 * time.Millisecond)
 	checkValues(nodes[1], nodes[2], nodes[3])
 }
 
