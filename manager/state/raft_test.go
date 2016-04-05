@@ -211,6 +211,7 @@ func newNode(t *testing.T, opts ...NewNodeOptions) *testNode {
 			newNodeOpts.SnapshotInterval = opts[0].SnapshotInterval
 		}
 		newNodeOpts.LogEntriesForSlowFollowers = opts[0].LogEntriesForSlowFollowers
+		newNodeOpts.JoinAddr = opts[0].JoinAddr
 	}
 
 	n, err := NewNode(context.Background(), newNodeOpts, nil)
@@ -223,7 +224,7 @@ func newNode(t *testing.T, opts ...NewNodeOptions) *testNode {
 func newInitNode(t *testing.T, opts ...NewNodeOptions) *testNode {
 	n := newNode(t, opts...)
 
-	n.Start()
+	go n.Run()
 
 	Register(n.Server, n.Node)
 
@@ -236,9 +237,14 @@ func newInitNode(t *testing.T, opts ...NewNodeOptions) *testNode {
 }
 
 func newJoinNode(t *testing.T, join string, opts ...NewNodeOptions) *testNode {
-	n := newNode(t, opts...)
+	var derivedOpts NewNodeOptions
+	if len(opts) == 1 {
+		derivedOpts = opts[0]
+	}
+	derivedOpts.JoinAddr = join
+	n := newNode(t, derivedOpts)
 
-	n.StartByJoining(join)
+	go n.Run()
 	Register(n.Server, n.Node)
 
 	go func() {
@@ -266,7 +272,7 @@ func restartNode(t *testing.T, oldNode *testNode) *testNode {
 	require.NoError(t, err, "can't create raft node")
 	n.Server = s
 
-	n.Start()
+	go n.Run()
 
 	Register(s, n)
 
@@ -910,9 +916,8 @@ func TestRaftUnreachableNode(t *testing.T) {
 	nodes[1] = newInitNode(t)
 
 	// Add a new node, but don't start its server yet
-	n := newNode(t)
-
-	n.StartByJoining(nodes[1].Address)
+	n := newNode(t, NewNodeOptions{JoinAddr: nodes[1].Address})
+	go n.Run()
 
 	time.Sleep(5 * time.Second)
 
@@ -949,7 +954,7 @@ func TestRaftJoinFollower(t *testing.T) {
 	nodes[2] = newJoinNode(t, nodes[1].Address)
 	waitForCluster(t, nodes)
 
-	// Point StartByJoining at a follower's address, rather than the leader
+	// Point new node at a follower's address, rather than the leader
 	nodes[3] = newJoinNode(t, nodes[2].Address)
 	waitForCluster(t, nodes)
 	defer teardownCluster(t, nodes)

@@ -85,6 +85,7 @@ func New(config *Config) (*Manager, error) {
 
 	newNodeOpts := state.NewNodeOptions{
 		Addr:     config.ListenAddr,
+		JoinAddr: config.JoinRaft,
 		Config:   raftCfg,
 		StateDir: raftStateDir,
 	}
@@ -109,17 +110,6 @@ func New(config *Config) (*Manager, error) {
 	api.RegisterDispatcherServer(m.server, m.dispatcher)
 
 	return m, nil
-}
-
-func (m *Manager) monitorRaftNode(errCh <-chan error) {
-	for {
-		select {
-		case err := <-errCh:
-			log.Error(err)
-		case <-m.managerDone:
-			return
-		}
-	}
 }
 
 // Run starts all manager sub-systems and the gRPC server at the configured
@@ -189,13 +179,7 @@ func (m *Manager) Run() error {
 	}()
 
 	log.WithFields(log.Fields{"proto": lis.Addr().Network(), "addr": lis.Addr().String()}).Info("Listening for connections")
-	var errCh <-chan error
-	if m.config.JoinRaft != "" {
-		errCh = m.raftNode.StartByJoining(m.config.JoinRaft)
-	} else {
-		errCh = m.raftNode.Start()
-	}
-	go m.monitorRaftNode(errCh)
+	go m.raftNode.Run()
 
 	state.Register(m.server, m.raftNode)
 
