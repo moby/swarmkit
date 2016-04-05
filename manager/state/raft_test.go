@@ -713,8 +713,8 @@ func TestRaftSnapshot(t *testing.T) {
 	values := make([]*api.Node, len(nodeIDs))
 
 	// Propose 4 values
+	var err error
 	for i, nodeID := range nodeIDs[:4] {
-		var err error
 		values[i], err = proposeValue(t, nodes[1], nodeID)
 		assert.NoError(t, err, "failed to propose value")
 	}
@@ -727,7 +727,6 @@ func TestRaftSnapshot(t *testing.T) {
 	}
 
 	// Propose a 5th value
-	var err error
 	values[4], err = proposeValue(t, nodes[1], nodeIDs[4])
 	assert.NoError(t, err, "failed to propose value")
 
@@ -765,7 +764,108 @@ func TestRaftSnapshot(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			assert.Len(t, allNodes, 5)
+			assert.Len(t, allNodes, len(nodeIDs))
+
+			for i, nodeID := range nodeIDs {
+				n := tx.Nodes().Get(nodeID)
+				assert.Equal(t, values[i], n)
+			}
+			return nil
+		})
+		assert.NoError(t, err)
+	}
+}
+
+func TestRaftSnapshotRestart(t *testing.T) {
+	t.Parallel()
+
+	// Bring up a 3 node cluster
+	var zero uint64
+	nodes := newRaftCluster(t, NewNodeOptions{SnapshotInterval: 10, LogEntriesForSlowFollowers: &zero})
+	defer teardownCluster(t, nodes)
+
+	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7"}
+	values := make([]*api.Node, len(nodeIDs))
+
+	// Propose 4 values
+	var err error
+	for i, nodeID := range nodeIDs[:4] {
+		values[i], err = proposeValue(t, nodes[1], nodeID)
+		assert.NoError(t, err, "failed to propose value")
+	}
+
+	// Take down node 3
+	nodes[3].Server.Stop()
+	nodes[3].Shutdown()
+
+	// Propose a 5th value before the snapshot
+	values[4], err = proposeValue(t, nodes[1], nodeIDs[4])
+	assert.NoError(t, err, "failed to propose value")
+
+	// Remaining nodes shouldn't have snapshot files yet
+	for _, node := range []*testNode{nodes[1], nodes[2]} {
+		dirents, err := ioutil.ReadDir(filepath.Join(node.stateDir, "snap"))
+		assert.NoError(t, err)
+		assert.Len(t, dirents, 0)
+	}
+
+	// Add a node to the cluster before the snapshot. This is the event
+	// that triggers the snapshot.
+	nodes[4] = newJoinNode(t, nodes[1].Address)
+	waitForCluster(t, map[uint64]*testNode{1: nodes[1], 2: nodes[2], 4: nodes[4]})
+
+	// Remaining nodes should now have a snapshot file
+	time.Sleep(500 * time.Millisecond)
+	for _, node := range []*testNode{nodes[1], nodes[2]} {
+		dirents, err := ioutil.ReadDir(filepath.Join(node.stateDir, "snap"))
+		assert.NoError(t, err)
+		assert.Len(t, dirents, 1)
+	}
+
+	// Propose a 6th value
+	values[5], err = proposeValue(t, nodes[1], nodeIDs[5])
+
+	// Add another node to the cluster
+	nodes[5] = newJoinNode(t, nodes[1].Address)
+	waitForCluster(t, map[uint64]*testNode{1: nodes[1], 2: nodes[2], 4: nodes[4], 5: nodes[5]})
+
+	// New node should get a copy of the snapshot
+	time.Sleep(500 * time.Millisecond)
+	dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].stateDir, "snap"))
+	assert.NoError(t, err)
+	assert.Len(t, dirents, 1)
+
+	// It should know about the other nodes, including the one that was just added
+	nodesFromMembers := func(memberList map[uint64]*member) map[uint64]*api.RaftNode {
+		raftNodes := make(map[uint64]*api.RaftNode)
+		for k, v := range memberList {
+			raftNodes[k] = v.RaftNode
+		}
+		return raftNodes
+	}
+	assert.Equal(t, nodesFromMembers(nodes[1].cluster.listMembers()), nodesFromMembers(nodes[4].cluster.listMembers()))
+
+	// Restart node 3
+	nodes[3] = restartNode(t, nodes[3])
+	waitForCluster(t, nodes)
+
+	// Node 3 should know about other nodes, including the new one
+	assert.Len(t, nodes[3].cluster.listMembers(), 5)
+	assert.Equal(t, nodesFromMembers(nodes[1].cluster.listMembers()), nodesFromMembers(nodes[3].cluster.listMembers()))
+
+	// Propose yet another value, to make sure the rejoined node is still
+	// receiving new logs
+	values[6], err = proposeValue(t, nodes[1], nodeIDs[6])
+	time.Sleep(500 * time.Millisecond)
+
+	// All nodes should have all the data
+	for _, node := range nodes {
+		err = node.memoryStore.View(func(tx ReadTx) error {
+			allNodes, err := tx.Nodes().Find(All)
+			if err != nil {
+				return err
+			}
+			assert.Len(t, allNodes, len(nodeIDs))
 
 			for i, nodeID := range nodeIDs {
 				n := tx.Nodes().Get(nodeID)
