@@ -102,9 +102,7 @@ func (s *Scheduler) Run() error {
 			case state.EventUpdateNode:
 				pendingChanges += s.updateNode(v.Node)
 			case state.EventDeleteNode:
-				if schedulableNode(v.Node) {
-					s.nodeHeap.remove(v.Node.ID)
-				}
+				s.nodeHeap.remove(v.Node.ID)
 			case state.EventCommit:
 				if pendingChanges > 0 {
 					s.tick()
@@ -191,24 +189,13 @@ func (s *Scheduler) deleteTask(t *api.Task) {
 }
 
 func (s *Scheduler) createNode(n *api.Node) int {
-	if schedulableNode(n) {
-		s.nodeHeap.addOrUpdateNode(n, len(s.tasksByNode[n.ID]))
-		return 1
-	}
-	return 0
+	s.nodeHeap.addOrUpdateNode(n, len(s.tasksByNode[n.ID]))
+	return 1
 }
 
 func (s *Scheduler) updateNode(n *api.Node) int {
-	pendingChanges := 0
-
-	if !schedulableNode(n) {
-		s.nodeHeap.remove(n.ID)
-	} else if schedulableNode(n) {
-		s.nodeHeap.addOrUpdateNode(n, len(s.tasksByNode[n.ID]))
-		pendingChanges = 1
-	}
-
-	return pendingChanges
+	s.nodeHeap.addOrUpdateNode(n, len(s.tasksByNode[n.ID]))
+	return 1
 }
 
 // tick attempts to schedule the queue.
@@ -288,13 +275,7 @@ func (s *Scheduler) rollbackLocalState(decisions map[string]schedulingDecision) 
 
 // scheduleTask schedules a single task.
 func (s *Scheduler) scheduleTask(t *api.Task) *api.Task {
-	meetsConstraints := func(n *api.Node) bool {
-		// TODO(aaronl): This is where we should check that a node
-		// satisfies any necessary constraints.
-		return true
-	}
-
-	n, numTasks := s.nodeHeap.findMin(meetsConstraints, s.scanAllNodes)
+	n, numTasks := s.nodeHeap.findMin(s.schedulableNode, s.scanAllNodes)
 	if n == nil {
 		log.WithField("task.id", t.ID).Debug("No nodes available to assign tasks to")
 		return nil
@@ -323,10 +304,6 @@ func (s *Scheduler) buildNodeHeap(tx state.ReadTx) error {
 
 	i := 0
 	for _, n := range nodes {
-		if !schedulableNode(n) {
-			continue
-		}
-
 		s.nodeHeap.heap = append(s.nodeHeap.heap, nodeHeapItem{node: n, numTasks: len(s.tasksByNode[n.ID])})
 		s.nodeHeap.index[n.ID] = i
 		i++
