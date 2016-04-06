@@ -360,8 +360,9 @@ func proposeValue(t *testing.T, raftNode *testNode, nodeID ...string) (*api.Node
 
 	storeActions := []*api.StoreAction{
 		{
-			Action: &api.StoreAction_CreateNode{
-				CreateNode: node,
+			Action: api.StoreActionKindCreate,
+			Target: &api.StoreAction_Node{
+				Node: node,
 			},
 		},
 	}
