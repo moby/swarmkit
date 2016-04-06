@@ -63,38 +63,29 @@ func pollFunc(f func() error) error {
 	}
 }
 
-type leaderStatus struct {
-	leader uint64
-	term   uint64
-}
-
-func getTermAndLeader(n *testNode) *leaderStatus {
-	status := n.Status()
-	return &leaderStatus{leader: status.Lead, term: status.Term}
-}
-
 // waitForCluster waits until leader will be one of specified nodes
 func waitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*testNode) {
 	err := pollFunc(func() error {
 		clockSource.Increment(time.Second)
-		var prev *leaderStatus
+		var prev *raft.Status
 	nodeLoop:
 		for _, n := range nodes {
 			if prev == nil {
-				prev = getTermAndLeader(n)
+				prev = new(raft.Status)
+				*prev = n.Status()
 				for _, n2 := range nodes {
-					if n2.Config.ID == prev.leader {
+					if n2.Config.ID == prev.Lead {
 						continue nodeLoop
 					}
 				}
 				return errors.New("did not find leader in member list")
 			}
-			cur := getTermAndLeader(n)
+			cur := n.Status()
 
 			for _, n2 := range nodes {
-				if n2.Config.ID == cur.leader {
-					if cur.leader != prev.leader || cur.term != prev.term {
-						return errors.New("leaders do not match")
+				if n2.Config.ID == cur.Lead {
+					if cur.Lead != prev.Lead || cur.Term != prev.Term || cur.Applied != prev.Applied {
+						return errors.New("state does not match on all nodes")
 					}
 					continue nodeLoop
 				}
@@ -624,7 +615,8 @@ func TestRaftFollowerLeave(t *testing.T) {
 	defer teardownCluster(t, nodes)
 
 	// Node 5 leave the cluster
-	resp, err := nodes[5].Leave(nodes[5].Ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[5].Config.ID}})
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	resp, err := nodes[1].Leave(ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[5].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 

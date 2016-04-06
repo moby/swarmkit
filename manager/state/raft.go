@@ -124,6 +124,9 @@ type Node struct {
 	startNodePeers []raft.Peer
 
 	sends sync.WaitGroup
+
+	// used to coordinate shutdown
+	stopMu sync.RWMutex
 }
 
 // NewNodeOptions provides arguments for NewNode
@@ -480,10 +483,19 @@ func (n *Node) Run() {
 
 		case <-n.stopCh:
 			n.sends.Wait()
+
+			n.stopMu.Lock()
+			members := n.cluster.listMembers()
+			for _, member := range members {
+				if member.Client != nil && member.Client.Conn != nil {
+					member.Client.Conn.Close()
+				}
+			}
 			n.Stop()
 			n.wal.Close()
 			n.Node = nil
 			close(n.doneCh)
+			n.stopMu.Unlock()
 			return
 		}
 	}
@@ -515,6 +527,14 @@ func (n *Node) Leader() uint64 {
 // beginning the log replication process. This method
 // is called from an aspiring member to an existing member
 func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinResponse, error) {
+	// can't stop the raft node while an async RPC is in progress
+	n.stopMu.RLock()
+	defer n.stopMu.RUnlock()
+
+	if n.Node == nil {
+		return nil, ErrStopped
+	}
+
 	meta, err := req.Node.Marshal()
 	if err != nil {
 		return nil, err
@@ -555,6 +575,14 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 // from a member who is willing to leave its raft
 // membership to an active member of the raft
 func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResponse, error) {
+	// can't stop the raft node while an async RPC is in progress
+	n.stopMu.RLock()
+	defer n.stopMu.RUnlock()
+
+	if n.Node == nil {
+		return nil, ErrStopped
+	}
+
 	cc := raftpb.ConfChange{
 		ID:      req.Node.ID,
 		Type:    raftpb.ConfChangeRemoveNode,
@@ -575,12 +603,13 @@ func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResp
 // raft state machine with the provided message on the
 // receiving node
 func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessageRequest) (*api.ProcessRaftMessageResponse, error) {
-	if msg.Msg == nil {
-		panic("received nil message")
-	}
+	// can't stop the raft node while an async RPC is in progress
+	n.stopMu.RLock()
+	defer n.stopMu.RUnlock()
 	if n.Node == nil {
-		panic("received RPC after raft node stopped")
+		return nil, ErrStopped
 	}
+
 	err := n.Step(n.Ctx, *msg.Msg)
 	if err != nil {
 		return nil, err
@@ -634,10 +663,7 @@ func (n *Node) deregisterNode(id uint64) error {
 		return err
 	}
 
-	if err := peer.Client.Conn.Close(); err != nil {
-		return err
-	}
-
+	peer.Client.Conn.Close()
 	return nil
 }
 
