@@ -604,12 +604,12 @@ func (nodes nodes) Update(n *api.Node) error {
 	if oldN == nil {
 		return ErrNotExist
 	}
-	if oldN.Version != n.Version {
-		return ErrSequenceConflict
-	}
 
 	copy := n.Copy()
 	if nodes.curVersion != nil {
+		if oldN.Version != n.Version {
+			return ErrSequenceConflict
+		}
 		copy.Version = *nodes.curVersion
 	}
 
@@ -794,12 +794,11 @@ func (tasks tasks) Update(t *api.Task) error {
 	if oldT == nil {
 		return ErrNotExist
 	}
-	if oldT.Version != t.Version {
-		return ErrSequenceConflict
-	}
-
 	copy := t.Copy()
 	if tasks.curVersion != nil {
+		if oldT.Version != t.Version {
+			return ErrSequenceConflict
+		}
 		copy.Version = *tasks.curVersion
 	}
 
@@ -1000,9 +999,6 @@ func (jobs jobs) Update(j *api.Job) error {
 	if oldJ == nil {
 		return ErrNotExist
 	}
-	if oldJ.Version != j.Version {
-		return ErrSequenceConflict
-	}
 
 	// Ensure the name is either not in use or already used by this same Job.
 	if existing := jobs.lookup(indexName, j.Spec.Meta.Name); existing != nil {
@@ -1013,6 +1009,9 @@ func (jobs jobs) Update(j *api.Job) error {
 
 	copy := j.Copy()
 	if jobs.curVersion != nil {
+		if oldJ.Version != j.Version {
+			return ErrSequenceConflict
+		}
 		copy.Version = *jobs.curVersion
 	}
 
@@ -1199,12 +1198,12 @@ func (networks networks) Update(n *api.Network) error {
 	if oldN == nil {
 		return ErrNotExist
 	}
-	if oldN.Version != n.Version {
-		return ErrSequenceConflict
-	}
 
 	copy := n.Copy()
 	if networks.curVersion != nil {
+		if oldN.Version != n.Version {
+			return ErrSequenceConflict
+		}
 		copy.Version = *networks.curVersion
 	}
 
