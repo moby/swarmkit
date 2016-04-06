@@ -410,27 +410,28 @@ message InternalRaftRequest {
 	repeated StoreAction action = 2;
 }
 
+// TODO(stevvooe): Storage actions may belong in another protobuf file. They
+// aren't necessarily first-class "types" in the cluster schema.
 
+// StoreActionKind defines the operation to take on the store for the target of
+// a storage action.
+enum StoreActionKind {
+	option (gogoproto.goproto_enum_prefix) = false;
+	option (gogoproto.enum_customname) = "StoreActionKind";
+	UNKNOWN = 0 [(gogoproto.enumvalue_customname) = "StoreActionKindUnknown"]; // default value, invalid
+	CREATE = 1 [(gogoproto.enumvalue_customname) = "StoreActionKindCreate"];
+	UPDATE = 2 [(gogoproto.enumvalue_customname) = "StoreActionKindUpdate"];
+	REMOVE = 3 [(gogoproto.enumvalue_customname) = "StoreActionKindRemove"];
+}
+
+// StoreAction defines a taret and operation to apply on the storage system.
 message StoreAction {
-	oneof action {
-		Node create_node = 1;
-		Node update_node = 2;
-		string remove_node = 3;
-
-		Task create_task = 4;
-		Task update_task = 5;
-		string remove_task = 6;
-
-		Job create_job = 7;
-		Job update_job = 8;
-		string remove_job = 9;
-
-		Network create_network = 10;
-		Network update_network = 11;
-		string remove_network = 12;
-
-		Volume create_volume = 13;
-		Volume update_volume = 14;
-		string remove_volume = 15;
+	StoreActionKind action = 1;
+	oneof target {
+		Node node = 2;
+		Job job = 3;
+		Task task = 4;
+		Network network = 5;
+		Volume volume = 6;
 	}
 }

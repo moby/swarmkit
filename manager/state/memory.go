@@ -275,42 +275,82 @@ func (s *MemoryStore) applyStoreActions(actions []*api.StoreAction) error {
 }
 
 func applyStoreAction(tx tx, sa *api.StoreAction) error {
-	switch v := sa.Action.(type) {
-	case *api.StoreAction_CreateTask:
-		return tx.Tasks().Create(v.CreateTask)
-	case *api.StoreAction_UpdateTask:
-		return tx.Tasks().Update(v.UpdateTask)
-	case *api.StoreAction_RemoveTask:
-		return tx.Tasks().Delete(v.RemoveTask)
+	// TODO(stevvooe): While this switch is still slightly complex, we can
+	// simplify it by making the object store interface more generic. When this
+	// is fixed, we can move the switch out of each branch and just set the
+	// target and dataset.
+	//
+	// The only tricky bit is the ID. However, we can make our object implement
+	// an ID interface and this goes away.
 
-	case *api.StoreAction_CreateJob:
-		return tx.Jobs().Create(v.CreateJob)
-	case *api.StoreAction_UpdateJob:
-		return tx.Jobs().Update(v.UpdateJob)
-	case *api.StoreAction_RemoveJob:
-		return tx.Jobs().Delete(v.RemoveJob)
-
-	case *api.StoreAction_CreateNetwork:
-		return tx.Networks().Create(v.CreateNetwork)
-	case *api.StoreAction_UpdateNetwork:
-		return tx.Networks().Update(v.UpdateNetwork)
-	case *api.StoreAction_RemoveNetwork:
-		return tx.Networks().Delete(v.RemoveNetwork)
-
-	case *api.StoreAction_CreateNode:
-		return tx.Nodes().Create(v.CreateNode)
-	case *api.StoreAction_UpdateNode:
-		return tx.Nodes().Update(v.UpdateNode)
-	case *api.StoreAction_RemoveNode:
-		return tx.Nodes().Delete(v.RemoveNode)
-
-	case *api.StoreAction_CreateVolume:
-		return tx.Volumes().Create(v.CreateVolume)
-	case *api.StoreAction_UpdateVolume:
-		return tx.Volumes().Update(v.UpdateVolume)
-	case *api.StoreAction_RemoveVolume:
-		return tx.Volumes().Delete(v.RemoveVolume)
+	switch v := sa.Target.(type) {
+	case *api.StoreAction_Node:
+		obj := v.Node
+		ds := tx.Nodes()
+		switch sa.Action {
+		case api.StoreActionKindCreate:
+			return ds.Create(obj)
+		case api.StoreActionKindUpdate:
+			return ds.Update(obj)
+		case api.StoreActionKindRemove:
+			return ds.Delete(obj.ID)
+		default:
+			return errors.New("unknown store action")
+		}
+	case *api.StoreAction_Job:
+		obj := v.Job
+		ds := tx.Jobs()
+		switch sa.Action {
+		case api.StoreActionKindCreate:
+			return ds.Create(obj)
+		case api.StoreActionKindUpdate:
+			return ds.Update(obj)
+		case api.StoreActionKindRemove:
+			return ds.Delete(obj.ID)
+		default:
+			return errors.New("unknown store action")
+		}
+	case *api.StoreAction_Task:
+		obj := v.Task
+		ds := tx.Tasks()
+		switch sa.Action {
+		case api.StoreActionKindCreate:
+			return ds.Create(obj)
+		case api.StoreActionKindUpdate:
+			return ds.Update(obj)
+		case api.StoreActionKindRemove:
+			return ds.Delete(obj.ID)
+		default:
+			return errors.New("unknown store action")
+		}
+	case *api.StoreAction_Network:
+		obj := v.Network
+		ds := tx.Networks()
+		switch sa.Action {
+		case api.StoreActionKindCreate:
+			return ds.Create(obj)
+		case api.StoreActionKindUpdate:
+			return ds.Update(obj)
+		case api.StoreActionKindRemove:
+			return ds.Delete(obj.ID)
+		default:
+			return errors.New("unknown store action")
+		}
+	case *api.StoreAction_Volume:
+		obj := v.Volume
+		ds := tx.Volumes()
+		switch sa.Action {
+		case api.StoreActionKindCreate:
+			return ds.Create(obj)
+		case api.StoreActionKindUpdate:
+			return ds.Update(obj)
+		case api.StoreActionKindRemove:
+			return ds.Delete(obj.ID)
+		default:
+			return errors.New("unknown store action")
+		}
 	}
+
 	return errors.New("unrecognized action type")
 }
 
@@ -404,72 +444,89 @@ func (tx tx) newStoreAction() ([]*api.StoreAction, error) {
 	for _, c := range tx.changelist {
 		var sa api.StoreAction
 
+		// TODO(stevvooe): Refactor events to better handle this switch. Too
+		// much repitition for an inner product space (CRUD x Resource).
+
 		switch v := c.(type) {
 		case EventCreateTask:
-			sa.Action = &api.StoreAction_CreateTask{
-				CreateTask: v.Task,
+			sa.Action = api.StoreActionKindCreate
+			sa.Target = &api.StoreAction_Task{
+				Task: v.Task,
 			}
 		case EventUpdateTask:
-			sa.Action = &api.StoreAction_UpdateTask{
-				UpdateTask: v.Task,
+			sa.Action = api.StoreActionKindUpdate
+			sa.Target = &api.StoreAction_Task{
+				Task: v.Task,
 			}
 		case EventDeleteTask:
-			sa.Action = &api.StoreAction_RemoveTask{
-				RemoveTask: v.Task.ID,
+			sa.Action = api.StoreActionKindRemove
+			sa.Target = &api.StoreAction_Task{
+				Task: v.Task,
 			}
 
 		case EventCreateJob:
-			sa.Action = &api.StoreAction_CreateJob{
-				CreateJob: v.Job,
+			sa.Action = api.StoreActionKindCreate
+			sa.Target = &api.StoreAction_Job{
+				Job: v.Job,
 			}
 		case EventUpdateJob:
-			sa.Action = &api.StoreAction_UpdateJob{
-				UpdateJob: v.Job,
+			sa.Action = api.StoreActionKindUpdate
+			sa.Target = &api.StoreAction_Job{
+				Job: v.Job,
 			}
 		case EventDeleteJob:
-			sa.Action = &api.StoreAction_RemoveJob{
-				RemoveJob: v.Job.ID,
+			sa.Action = api.StoreActionKindRemove
+			sa.Target = &api.StoreAction_Job{
+				Job: v.Job,
 			}
 
 		case EventCreateNetwork:
-			sa.Action = &api.StoreAction_CreateNetwork{
-				CreateNetwork: v.Network,
+			sa.Action = api.StoreActionKindCreate
+			sa.Target = &api.StoreAction_Network{
+				Network: v.Network,
 			}
 		case EventUpdateNetwork:
-			sa.Action = &api.StoreAction_UpdateNetwork{
-				UpdateNetwork: v.Network,
+			sa.Action = api.StoreActionKindUpdate
+			sa.Target = &api.StoreAction_Network{
+				Network: v.Network,
 			}
 		case EventDeleteNetwork:
-			sa.Action = &api.StoreAction_RemoveNetwork{
-				RemoveNetwork: v.Network.ID,
+			sa.Action = api.StoreActionKindRemove
+			sa.Target = &api.StoreAction_Network{
+				Network: v.Network,
 			}
 
 		case EventCreateNode:
-			sa.Action = &api.StoreAction_CreateNode{
-				CreateNode: v.Node,
+			sa.Action = api.StoreActionKindCreate
+			sa.Target = &api.StoreAction_Node{
+				Node: v.Node,
 			}
 		case EventUpdateNode:
-			sa.Action = &api.StoreAction_UpdateNode{
-				UpdateNode: v.Node,
+			sa.Action = api.StoreActionKindUpdate
+			sa.Target = &api.StoreAction_Node{
+				Node: v.Node,
 			}
 		case EventDeleteNode:
-			sa.Action = &api.StoreAction_RemoveNode{
-				RemoveNode: v.Node.ID,
+			sa.Action = api.StoreActionKindRemove
+			sa.Target = &api.StoreAction_Node{
+				Node: v.Node,
 			}
 
 		case EventCreateVolume:
-			sa.Action = &api.StoreAction_CreateVolume{
-				CreateVolume: v.Volume,
+			sa.Action = api.StoreActionKindCreate
+			sa.Target = &api.StoreAction_Volume{
+				Volume: v.Volume,
 			}
 		case EventUpdateVolume:
-			sa.Action = &api.StoreAction_UpdateVolume{
-				UpdateVolume: v.Volume,
+			sa.Action = api.StoreActionKindUpdate
+			sa.Target = &api.StoreAction_Volume{
+				Volume: v.Volume,
 			}
 		case EventDeleteVolume:
-			sa.Action = &api.StoreAction_RemoveVolume{
-				RemoveVolume: v.Volume.ID,
+			sa.Action = api.StoreActionKindRemove
+			sa.Target = &api.StoreAction_Volume{
+				Volume: v.Volume,
 			}
-
 		default:
 			return nil, errors.New("unrecognized event type")
 		}
