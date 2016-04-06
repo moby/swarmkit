@@ -1,9 +1,7 @@
 syntax = "proto3";
 
-package api;
+package docker.cluster.api;
 
-// NOTE(stevvooe): Make sure your gopath is appropriately set for this to work
-// correctly.
 import "github.com/coreos/etcd/raft/raftpb/raft.proto";
 import weak "gogoproto/gogo.proto";
 
