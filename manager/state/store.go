@@ -30,6 +30,24 @@ var (
 	ErrSequenceConflict = errors.New("update out of sequence")
 )
 
+// NamespaceSetWriter defines write operations on namespaces.
+type NamespaceSetWriter interface {
+	Create(n *api.Namespace) error
+	Update(n *api.Namespace) error
+	Delete(id string) error
+}
+
+// NamespaceSetReader is the read half of a namespace dataset.
+type NamespaceSetReader interface {
+	Get(id string) *api.Namespace
+	Find(by By) ([]*api.Namespace, error)
+}
+
+type NamespaceSet interface {
+	NamespaceSetWriter
+	NamespaceSetReader
+}
+
 // NodeSetWriter is the write half of a node dataset.
 type NodeSetWriter interface {
 	Create(n *api.Node) error
@@ -150,6 +168,7 @@ type TaskSet interface {
 // consistent view of the data that cannot be affected by other
 // transactions.
 type ReadTx interface {
+	Namespaces() NamespaceSetReader
 	Nodes() NodeSetReader
 	Jobs() JobSetReader
 	Networks() NetworkSetReader
@@ -162,6 +181,7 @@ type ReadTx interface {
 // user a guarantee that its changes won't be visible to other transactions
 // until the transaction is over.
 type Tx interface {
+	Namespaces() NamespaceSet
 	Nodes() NodeSet
 	Jobs() JobSet
 	Networks() NetworkSet
@@ -213,6 +233,10 @@ type WatchableStore interface {
 
 type snapshotReadTx struct {
 	tx Tx
+}
+
+func (tx snapshotReadTx) Namespaces() NamespaceSetReader {
+	return tx.tx.Namespaces()
 }
 
 func (tx snapshotReadTx) Nodes() NodeSetReader {

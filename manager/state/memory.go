@@ -18,11 +18,12 @@ const (
 	indexJobID  = "jobid"
 	indexNodeID = "nodeid"
 
-	tableNode    = "node"
-	tableTask    = "task"
-	tableJob     = "job"
-	tableNetwork = "network"
-	tableVolume  = "volume"
+	tableNamespace = "namespace"
+	tableNode      = "node"
+	tableTask      = "task"
+	tableJob       = "job"
+	tableNetwork   = "network"
+	tableVolume    = "volume"
 
 	prefix = "_prefix"
 )
@@ -45,6 +46,21 @@ type MemoryStore struct {
 func NewMemoryStore(proposer Proposer) *MemoryStore {
 	schema := &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{
+			tableNamespace: {
+				Name: tableNamespace,
+				Indexes: map[string]*memdb.IndexSchema{
+					indexID: {
+						Name:    indexID,
+						Unique:  true,
+						Indexer: namespaceIndexerByID{},
+					},
+					indexName: {
+						Name:    indexName,
+						Unique:  true,
+						Indexer: namespaceIndexerByName{},
+					},
+				},
+			},
 			tableNode: {
 				Name: tableNode,
 				Indexes: map[string]*memdb.IndexSchema{
@@ -98,6 +114,11 @@ func NewMemoryStore(proposer Proposer) *MemoryStore {
 						Unique:  true,
 						Indexer: jobIndexerByName{},
 					},
+					indexNamespaceName: {
+						Name:    indexNamespaceName,
+						Unique:  true,
+						Indexer: jobIndexerByNamespace{},
+					},
 				},
 			},
 			tableNetwork: {
@@ -113,6 +134,11 @@ func NewMemoryStore(proposer Proposer) *MemoryStore {
 						AllowMissing: true,
 						Indexer:      networkIndexerByName{},
 					},
+					indexNamespaceName: {
+						Name:         indexNamespaceName,
+						AllowMissing: true,
+						Indexer:      networkIndexerByNamespaceName{},
+					},
 				},
 			},
 			tableVolume: {
@@ -127,6 +153,11 @@ func NewMemoryStore(proposer Proposer) *MemoryStore {
 						Name:    indexName,
 						Unique:  true,
 						Indexer: volumeIndexerByName{},
+					},
+					indexName: {
+						Name:    indexNamespaceName,
+						Unique:  true,
+						Indexer: volumeIndexerByNamespaceName{},
 					},
 				},
 			},
@@ -174,11 +205,12 @@ func prefixFromArgs(args ...interface{}) ([]byte, error) {
 }
 
 type readTx struct {
-	nodes    nodes
-	jobs     jobs
-	tasks    tasks
-	networks networks
-	volumes  volumes
+	namespaces namespaces
+	nodes      nodes
+	jobs       jobs
+	tasks      tasks
+	networks   networks
+	volumes    volumes
 }
 
 // View executes a read transaction.
@@ -186,6 +218,9 @@ func (s *MemoryStore) View(cb func(ReadTx) error) error {
 	memDBTx := s.memDB.Txn(false)
 
 	readTx := readTx{
+		namespaces: namespaces{
+			memDBTx: memDBTx,
+		},
 		nodes: nodes{
 			memDBTx: memDBTx,
 		},
@@ -205,6 +240,10 @@ func (s *MemoryStore) View(cb func(ReadTx) error) error {
 	err := cb(readTx)
 	memDBTx.Commit()
 	return err
+}
+
+func (t readTx) Namespaces() NamespaceSetReader {
+	return t.namespaces
 }
 
 func (t readTx) Nodes() NodeSetReader {
@@ -228,6 +267,7 @@ func (t readTx) Volumes() VolumeSetReader {
 }
 
 type tx struct {
+	namespaces namespaces
 	nodes      nodes
 	jobs       jobs
 	tasks      tasks
@@ -242,12 +282,14 @@ func (s *MemoryStore) applyStoreActions(actions []*api.StoreAction) error {
 	memDBTx := s.memDB.Txn(true)
 
 	tx := tx{
-		nodes:    nodes{memDBTx: memDBTx},
-		jobs:     jobs{memDBTx: memDBTx},
-		tasks:    tasks{memDBTx: memDBTx},
-		networks: networks{memDBTx: memDBTx},
-		volumes:  volumes{memDBTx: memDBTx},
+		namespaces: namespaces{memDBTx: memDBTx},
+		nodes:      nodes{memDBTx: memDBTx},
+		jobs:       jobs{memDBTx: memDBTx},
+		tasks:      tasks{memDBTx: memDBTx},
+		networks:   networks{memDBTx: memDBTx},
+		volumes:    volumes{memDBTx: memDBTx},
 	}
+	tx.namespaces.tx = &tx
 	tx.nodes.tx = &tx
 	tx.jobs.tx = &tx
 	tx.tasks.tx = &tx
@@ -367,6 +409,11 @@ func (s *MemoryStore) update(proposer Proposer, cb func(Tx) error) error {
 		curVersion = proposer.GetVersion()
 	}
 
+	tx.namespaces = namespaces{
+		tx:         &tx,
+		memDBTx:    memDBTx,
+		curVersion: curVersion,
+	}
 	tx.nodes = nodes{
 		tx:         &tx,
 		memDBTx:    memDBTx,
@@ -448,6 +495,22 @@ func (tx tx) newStoreAction() ([]*api.StoreAction, error) {
 		// much repitition for an inner product space (CRUD x Resource).
 
 		switch v := c.(type) {
+		case EventCreateNamespace:
+			sa.Action = api.StoreActionKindCreate
+			sa.Target = api.StoreAction_Namespace{
+				Namespace: v.Namespace,
+			}
+		case EventUpdateNamespace:
+			sa.Action = api.StoreActionKindUpdate
+			sa.Target = api.StoreAction_Namespace{
+				Namespace: v.Namespace,
+			}
+		case EventDeleteNamespace:
+			sa.Action = api.StoreActionKindRemove
+			sa.Target = api.StoreAction_Namespace{
+				Namespace: v.Namespace,
+			}
+
 		case EventCreateTask:
 			sa.Action = api.StoreActionKindCreate
 			sa.Target = &api.StoreAction_Task{
@@ -527,6 +590,7 @@ func (tx tx) newStoreAction() ([]*api.StoreAction, error) {
 			sa.Target = &api.StoreAction_Volume{
 				Volume: v.Volume,
 			}
+
 		default:
 			return nil, errors.New("unrecognized event type")
 		}
@@ -554,6 +618,161 @@ func (tx tx) Tasks() TaskSet {
 
 func (tx tx) Volumes() VolumeSet {
 	return tx.volumes
+}
+
+type namespaces struct {
+	tx         *tx
+	memDBTx    *memdb.Txn
+	curVersion api.Version
+}
+
+func (namespaces namespaces) table() string {
+	return tableNamespace
+}
+
+func (namespaces namespaces) lookup(index, id string) *api.Namespace {
+	j, err := nodes.memDBTx.First(namespaces.table(), index, id)
+	if err != nil {
+		return nil
+	}
+
+	if j != nil {
+		return j.(*api.Namespace)
+	}
+
+	return nil
+}
+
+// Create adds a new node to the store.
+// Returns ErrExist if the ID is already taken.
+func (namespaces namespaces) Create(n *api.Namespace) error {
+	if namespaces.lookup(indexID, n.ID) != nil {
+		return ErrExist
+	}
+
+	if namespaces.lookup(indexName, n.Spec.Meta.Name) != nil {
+		return ErrExist
+	}
+
+	copy := n.Copy()
+	if nodes.curVersion != nil {
+		copy.Version = *nodes.curVersion
+	}
+
+	err := nodes.memDBTx.Insert(nodes.table(), copy)
+	if err == nil {
+		nodes.tx.changelist = append(nodes.tx.changelist, EventCreateNode{Node: copy})
+	}
+	return err
+}
+
+// Update updates an existing node in the store.
+// Returns ErrNotExist if the node doesn't exist.
+func (namespaces namespaces) Update(n *api.Node) error {
+	oldN := nodes.lookup(indexID, n.ID)
+	if oldN == nil {
+		return ErrNotExist
+	}
+	if oldN.Version != n.Version {
+		return ErrSequenceConflict
+	}
+
+	copy := n.Copy()
+	if nodes.curVersion != nil {
+		copy.Version = *nodes.curVersion
+	}
+
+	err := nodes.memDBTx.Insert(nodes.table(), copy)
+	if err == nil {
+		nodes.tx.changelist = append(nodes.tx.changelist, EventUpdateNode{Node: copy})
+	}
+	return err
+}
+
+// Delete removes a node from the store.
+// Returns ErrNotExist if the node doesn't exist.
+func (namespaces namespaces) Delete(id string) error {
+	n := nodes.lookup(indexID, id)
+	if n == nil {
+		return ErrNotExist
+	}
+
+	err := nodes.memDBTx.Delete(nodes.table(), n)
+	if err == nil {
+		nodes.tx.changelist = append(nodes.tx.changelist, EventDeleteNode{Node: n})
+	}
+	return err
+}
+
+// Get looks up a node by ID.
+// Returns nil if the node doesn't exist.
+func (namespaces namespaces) Get(id string) *api.Node {
+	return nodes.lookup(indexID, id).Copy()
+}
+
+// Find selects a set of nodes and returns them. If by is nil,
+// returns all nodes.
+func (namespaces namespaces) Find(by By) ([]*api.Node, error) {
+	fromResultIterator := func(it memdb.ResultIterator) []*api.Node {
+		nodes := []*api.Node{}
+		for {
+			obj := it.Next()
+			if obj == nil {
+				break
+			}
+			if n, ok := obj.(*api.Node); ok {
+				nodes = append(nodes, n.Copy())
+			}
+		}
+		return nodes
+	}
+
+	fromResultIterators := func(its ...memdb.ResultIterator) []*api.Node {
+		nodes := []*api.Node{}
+		ids := make(map[string]struct{})
+		for _, it := range its {
+			for {
+				obj := it.Next()
+				if obj == nil {
+					break
+				}
+				if n, ok := obj.(*api.Node); ok {
+					if _, exists := ids[n.ID]; !exists {
+						nodes = append(nodes, n.Copy())
+						ids[n.ID] = struct{}{}
+					}
+				}
+			}
+		}
+		return nodes
+	}
+
+	switch v := by.(type) {
+	case all:
+		it, err := nodes.memDBTx.Get(nodes.table(), indexID)
+		if err != nil {
+			return nil, err
+		}
+		return fromResultIterator(it), nil
+	case byName:
+		it, err := nodes.memDBTx.Get(nodes.table(), indexName, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return fromResultIterator(it), nil
+	case byQuery:
+		itID, err := nodes.memDBTx.Get(nodes.table(), indexID+prefix, string(v))
+		if err != nil {
+			return nil, err
+		}
+		itName, err := nodes.memDBTx.Get(nodes.table(), indexName, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return fromResultIterators(itID, itName), nil
+	default:
+		return nil, ErrInvalidFindBy
+	}
 }
 
 type nodes struct {
@@ -1482,6 +1701,11 @@ func (s *MemoryStore) CopyFrom(readTx ReadTx) error {
 			return err
 		}
 
+		namespaces, err := readTx.Namespaces().Find(All)
+		if err != nil {
+			return err
+		}
+
 		// Copy over new data
 		nodes, err := readTx.Nodes().Find(All)
 		if err != nil {
@@ -1542,6 +1766,11 @@ func (s *MemoryStore) Save() (*pb.StoreSnapshot, error) {
 	var snapshot pb.StoreSnapshot
 	err := s.View(func(tx ReadTx) error {
 		var err error
+		snapshot.Namespaces, err = tx.Namespaces().Find(All)
+		if err != nil {
+			return err
+		}
+
 		snapshot.Nodes, err = tx.Nodes().Find(All)
 		if err != nil {
 			return err
@@ -1578,6 +1807,12 @@ func (s *MemoryStore) Restore(snapshot *pb.StoreSnapshot) error {
 	return s.updateLocal(func(tx Tx) error {
 		if err := DeleteAll(tx); err != nil {
 			return err
+		}
+
+		for _, ns := range snapshot.Namespaces {
+			if err := tx.Namespaces().Create(ns); err != nil {
+				return err
+			}
 		}
 
 		for _, n := range snapshot.Nodes {
