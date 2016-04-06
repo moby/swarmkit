@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/manager/state/leaderconn"
 	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/pivotal-golang/clock"
@@ -616,6 +617,20 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 	}
 
 	return &api.ProcessRaftMessageResponse{}, nil
+}
+
+// LeaderConn returns *grpc.ClientConn to leader node if it's remote or
+// leaderconn.ErrLocalLeader error otherwise.
+func (n *Node) LeaderConn() (*grpc.ClientConn, error) {
+	l := n.Leader()
+	if l == n.Config.ID {
+		return nil, leaderconn.ErrLocalLeader
+	}
+	m := n.cluster.getMember(l)
+	if m == nil || m.Client == nil || m.Client.Conn == nil {
+		return nil, errors.New("incorrect state of cluster member")
+	}
+	return m.Client.Conn, nil
 }
 
 // registerNode registers a new node on the cluster
