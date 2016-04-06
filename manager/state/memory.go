@@ -109,9 +109,9 @@ func NewMemoryStore(proposer Proposer) *MemoryStore {
 						Indexer: networkIndexerByID{},
 					},
 					indexName: {
-						Name:         indexName,
-						AllowMissing: true,
-						Indexer:      networkIndexerByName{},
+						Name:    indexName,
+						Unique:  true,
+						Indexer: networkIndexerByName{},
 					},
 				},
 			},
@@ -1179,6 +1179,11 @@ func (networks networks) Create(n *api.Network) error {
 		return ErrExist
 	}
 
+	// Ensure the name is not already in use.
+	if n.Spec != nil && networks.lookup(indexName, n.Spec.Meta.Name) != nil {
+		return ErrNameConflict
+	}
+
 	copy := n.Copy()
 	if networks.curVersion != nil {
 		copy.Version = *networks.curVersion
@@ -1197,6 +1202,13 @@ func (networks networks) Update(n *api.Network) error {
 	oldN := networks.lookup(indexID, n.ID)
 	if oldN == nil {
 		return ErrNotExist
+	}
+
+	// Ensure the name is either not in use or already used by this same Network.
+	if existing := networks.lookup(indexName, n.Spec.Meta.Name); existing != nil {
+		if existing.ID != n.ID {
+			return ErrNameConflict
+		}
 	}
 
 	copy := n.Copy()
@@ -1251,6 +1263,27 @@ func (networks networks) Find(by By) ([]*api.Network, error) {
 		}
 		return networks
 	}
+
+	fromResultIterators := func(its ...memdb.ResultIterator) []*api.Network {
+		networks := []*api.Network{}
+		ids := make(map[string]struct{})
+		for _, it := range its {
+			for {
+				obj := it.Next()
+				if obj == nil {
+					break
+				}
+				if n, ok := obj.(*api.Network); ok {
+					if _, exists := ids[n.ID]; !exists {
+						networks = append(networks, n.Copy())
+						ids[n.ID] = struct{}{}
+					}
+				}
+			}
+		}
+		return networks
+	}
+
 	switch v := by.(type) {
 	case all:
 		it, err := networks.memDBTx.Get(networks.table(), indexID)
@@ -1264,6 +1297,17 @@ func (networks networks) Find(by By) ([]*api.Network, error) {
 			return nil, err
 		}
 		return fromResultIterator(it), nil
+	case byQuery:
+		itID, err := networks.memDBTx.Get(networks.table(), indexID+prefix, string(v))
+		if err != nil {
+			return nil, err
+		}
+
+		itName, err := networks.memDBTx.Get(networks.table(), indexName, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return fromResultIterators(itID, itName), nil
 	default:
 		return nil, ErrInvalidFindBy
 	}
@@ -1285,6 +1329,10 @@ func (ni networkIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
 	// Add the null character as a terminator
 	val := n.ID + "\x00"
 	return true, []byte(val), nil
+}
+
+func (ni networkIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
 }
 
 type networkIndexerByName struct{}
