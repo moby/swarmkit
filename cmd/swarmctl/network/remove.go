@@ -1,0 +1,38 @@
+package network
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/spf13/cobra"
+)
+
+var (
+	removeCmd = &cobra.Command{
+		Use:     "remove <network ID>",
+		Short:   "Remove a network",
+		Aliases: []string{"rm"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return errors.New("network ID missing")
+			}
+			c, err := common.Dial(cmd)
+			if err != nil {
+				return err
+			}
+
+			network, err := GetNetwork(common.Context(cmd), c, args[0])
+			if err != nil {
+				return err
+			}
+			_, err = c.RemoveNetwork(common.Context(cmd), &api.RemoveNetworkRequest{NetworkID: network.ID})
+			if err != nil {
+				return err
+			}
+			fmt.Println(args[0])
+			return nil
+		},
+	}
+)

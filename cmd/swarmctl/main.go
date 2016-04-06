@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/docker/swarm-v2/cmd/swarmctl/job"
+	"github.com/docker/swarm-v2/cmd/swarmctl/network"
 	"github.com/docker/swarm-v2/cmd/swarmctl/node"
 	"github.com/docker/swarm-v2/cmd/swarmctl/root"
 	"github.com/docker/swarm-v2/cmd/swarmctl/task"
@@ -47,5 +48,6 @@ func init() {
 		task.Cmd,
 		volume.Cmd,
 		version.Cmd,
+		network.Cmd,
 	)
 }
