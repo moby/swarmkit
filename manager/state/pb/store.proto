@@ -15,16 +15,17 @@ message StoreSnapshot {
 	// using gogo-protobuf's io.DelimitedWriter. A new value of the version
 	// field could support this approach.
 
-	repeated api.Node nodes = 1;
-	repeated api.Job jobs = 2;
-	repeated api.Network networks = 3;
-	repeated api.Task tasks = 4;
-	repeated api.Volume volumes = 5;
+	repeated docker.cluster.api.Node nodes = 1;
+	repeated docker.cluster.api.Job jobs = 2;
+	repeated docker.cluster.api.Network networks = 3;
+	repeated docker.cluster.api.Task tasks = 4;
+	repeated docker.cluster.api.Volume volumes = 5;
+
 }
 
 // ClusterSnapshot stores cluster membership information in snapshots.
 message ClusterSnapshot {
-	repeated api.RaftNode members = 1;
+	repeated docker.cluster.api.RaftNode members = 1;
 	repeated uint64 removed = 2;
 }
 
