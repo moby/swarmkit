@@ -22,13 +22,13 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/gogo/protobuf/proto"
+	"github.com/pivotal-golang/clock"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
 const (
-	maxRequestBytes       = 1.5 * 1024 * 1024
-	defaultProposeTimeout = 10 * time.Second
+	maxRequestBytes = 1.5 * 1024 * 1024
 )
 
 var (
@@ -115,9 +115,10 @@ type Node struct {
 	appliedIndex  uint64
 	snapshotIndex uint64
 
-	ticker *time.Ticker
-	stopCh chan struct{}
-	doneCh chan struct{}
+	ticker      clock.Ticker
+	sendTimeout time.Duration
+	stopCh      chan struct{}
+	doneCh      chan struct{}
 
 	leadershipCh   chan LeadershipState
 	startNodePeers []raft.Peer
@@ -144,6 +145,13 @@ type NewNodeOptions struct {
 	// LogEntriesForSlowFollowers is the number of recent log entries to
 	// keep when compacting the log.
 	LogEntriesForSlowFollowers *uint64 // optional; pointer because 0 is valid
+	// ClockSource is a Clock interface to use as a time base.
+	// Leave this nil except for tests that are designed not to run in real
+	// time.
+	ClockSource clock.Clock
+	// SendTimeout is the timeout on the sending messages to other raft
+	// nodes. Leave this as 0 to get the default value.
+	SendTimeout time.Duration
 }
 
 func init() {
@@ -178,12 +186,12 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 		},
 		snapshotInterval:           1000,
 		logEntriesForSlowFollowers: 500,
-		ticker:       time.NewTicker(opts.TickInterval),
 		stopCh:       make(chan struct{}),
 		doneCh:       make(chan struct{}),
 		stateDir:     opts.StateDir,
 		joinAddr:     opts.JoinAddr,
 		leadershipCh: leadershipCh,
+		sendTimeout:  2 * time.Second,
 	}
 	n.memoryStore = NewMemoryStore(n)
 
@@ -192,6 +200,14 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 	}
 	if opts.LogEntriesForSlowFollowers != nil {
 		n.logEntriesForSlowFollowers = *opts.LogEntriesForSlowFollowers
+	}
+	if opts.ClockSource == nil {
+		n.ticker = clock.NewClock().NewTicker(opts.TickInterval)
+	} else {
+		n.ticker = opts.ClockSource.NewTicker(opts.TickInterval)
+	}
+	if opts.SendTimeout != 0 {
+		n.sendTimeout = opts.SendTimeout
 	}
 
 	if err := n.loadAndStart(); err != nil {
@@ -397,7 +413,7 @@ func (n *Node) Run() {
 	n.wait = newWait()
 	for {
 		select {
-		case <-n.ticker.C:
+		case <-n.ticker.C():
 			n.Tick()
 
 		case rd := <-n.Ready():
@@ -756,7 +772,7 @@ func (n *Node) restoreFromSnapshot(data []byte) error {
 func (n *Node) send(messages []raftpb.Message) error {
 	members := n.cluster.listMembers()
 
-	ctx, _ := context.WithTimeout(n.Ctx, 2*time.Second)
+	ctx, _ := context.WithTimeout(n.Ctx, n.sendTimeout)
 
 	for _, m := range messages {
 		// Process locally
