@@ -166,7 +166,9 @@ message RemoveNetworkRequest {
 
 message RemoveNetworkResponse {}
 
-message ListNetworksRequest {}
+message ListNetworksRequest {
+	ListOptions options = 1;
+}
 
 message ListNetworksResponse {
 	repeated Network networks = 1;
