@@ -405,6 +405,25 @@ func checkNoValue(t *testing.T, raftNode *testNode) {
 	assert.NoError(t, err)
 }
 
+func checkValuesOnNodes(t *testing.T, checkNodes map[uint64]*testNode, ids []string, values []*api.Node) {
+	for _, node := range checkNodes {
+		err := node.memoryStore.View(func(tx ReadTx) error {
+			allNodes, err := tx.Nodes().Find(All)
+			if err != nil {
+				return err
+			}
+			assert.Len(t, allNodes, len(values))
+
+			for i, id := range ids {
+				n := tx.Nodes().Get(id)
+				assert.Equal(t, n, values[i])
+			}
+			return nil
+		})
+		assert.NoError(t, err)
+	}
+}
+
 func TestRaftLeaderDown(t *testing.T) {
 	t.Parallel()
 
@@ -765,22 +784,7 @@ func TestRaftSnapshot(t *testing.T) {
 	assert.Equal(t, nodesFromMembers(nodes[1].cluster.listMembers()), nodesFromMembers(nodes[4].cluster.listMembers()))
 
 	// All nodes should have all the data
-	for _, node := range nodes {
-		err = node.memoryStore.View(func(tx ReadTx) error {
-			allNodes, err := tx.Nodes().Find(All)
-			if err != nil {
-				return err
-			}
-			assert.Len(t, allNodes, len(nodeIDs))
-
-			for i, nodeID := range nodeIDs {
-				n := tx.Nodes().Get(nodeID)
-				assert.Equal(t, values[i], n)
-			}
-			return nil
-		})
-		assert.NoError(t, err)
-	}
+	checkValuesOnNodes(t, nodes, nodeIDs, values)
 }
 
 func TestRaftSnapshotRestart(t *testing.T) {
@@ -791,7 +795,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	nodes := newRaftCluster(t, NewNodeOptions{SnapshotInterval: 10, LogEntriesForSlowFollowers: &zero})
 	defer teardownCluster(t, nodes)
 
-	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7"}
+	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7", "id8"}
 	values := make([]*api.Node, len(nodeIDs))
 
 	// Propose 4 values
@@ -828,6 +832,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, dirents, 1)
 	}
+	checkValuesOnNodes(t, map[uint64]*testNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:5], values[:5])
 
 	// Propose a 6th value
 	values[5], err = proposeValue(t, nodes[1], nodeIDs[5])
@@ -841,6 +846,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].stateDir, "snap"))
 	assert.NoError(t, err)
 	assert.Len(t, dirents, 1)
+	checkValuesOnNodes(t, map[uint64]*testNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:6], values[:6])
 
 	// It should know about the other nodes, including the one that was just added
 	nodesFromMembers := func(memberList map[uint64]*member) map[uint64]*api.RaftNode {
@@ -866,22 +872,22 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	// All nodes should have all the data
-	for _, node := range nodes {
-		err = node.memoryStore.View(func(tx ReadTx) error {
-			allNodes, err := tx.Nodes().Find(All)
-			if err != nil {
-				return err
-			}
-			assert.Len(t, allNodes, len(nodeIDs))
+	checkValuesOnNodes(t, nodes, nodeIDs[:7], values[:7])
 
-			for i, nodeID := range nodeIDs {
-				n := tx.Nodes().Get(nodeID)
-				assert.Equal(t, values[i], n)
-			}
-			return nil
-		})
-		assert.NoError(t, err)
-	}
+	// Restart node 3 again. It should load the snapshot.
+	nodes[3].Server.Stop()
+	nodes[3].Shutdown()
+	nodes[3] = restartNode(t, nodes[3])
+	waitForCluster(t, nodes)
+
+	assert.Len(t, nodes[3].cluster.listMembers(), 5)
+	assert.Equal(t, nodesFromMembers(nodes[1].cluster.listMembers()), nodesFromMembers(nodes[3].cluster.listMembers()))
+	checkValuesOnNodes(t, nodes, nodeIDs[:7], values[:7])
+
+	// Propose again. Just to check consensus after this latest restart.
+	values[7], err = proposeValue(t, nodes[1], nodeIDs[7])
+	time.Sleep(500 * time.Millisecond)
+	checkValuesOnNodes(t, nodes, nodeIDs, values)
 }
 
 func TestRaftRejoin(t *testing.T) {
@@ -890,10 +896,12 @@ func TestRaftRejoin(t *testing.T) {
 	nodes := newRaftCluster(t)
 	defer teardownCluster(t, nodes)
 
+	ids := []string{"id1", "id2"}
+
 	// Propose a value
 	values := make([]*api.Node, 2)
 	var err error
-	values[0], err = proposeValue(t, nodes[1], "id1")
+	values[0], err = proposeValue(t, nodes[1], ids[0])
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on node 3
@@ -906,31 +914,13 @@ func TestRaftRejoin(t *testing.T) {
 	nodes[3].Shutdown()
 
 	// Propose another value
-	values[1], err = proposeValue(t, nodes[1], "id2")
+	values[1], err = proposeValue(t, nodes[1], ids[1])
 	assert.NoError(t, err, "failed to propose value")
 
 	time.Sleep(2 * time.Second)
 
 	// Nodes 1 and 2 should have the new value
-	checkValues := func(checkNodes ...*testNode) {
-		for _, node := range checkNodes {
-			err := node.memoryStore.View(func(tx ReadTx) error {
-				allNodes, err := tx.Nodes().Find(All)
-				if err != nil {
-					return err
-				}
-				assert.Len(t, allNodes, 2)
-
-				for i, nodeID := range []string{"id1", "id2"} {
-					n := tx.Nodes().Get(nodeID)
-					assert.Equal(t, n, values[i])
-				}
-				return nil
-			})
-			assert.NoError(t, err)
-		}
-	}
-	checkValues(nodes[1], nodes[2])
+	checkValuesOnNodes(t, map[uint64]*testNode{1: nodes[1], 2: nodes[2]}, ids, values)
 
 	nodes[3] = restartNode(t, nodes[3])
 	waitForCluster(t, nodes)
@@ -938,7 +928,7 @@ func TestRaftRejoin(t *testing.T) {
 	// Node 3 should have all values, including the one proposed while
 	// it was unavailable.
 	time.Sleep(500 * time.Millisecond)
-	checkValues(nodes[1], nodes[2], nodes[3])
+	checkValuesOnNodes(t, nodes, ids, values)
 }
 
 func testRaftRestartCluster(t *testing.T, stagger bool) {
