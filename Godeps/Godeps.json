@@ -635,6 +635,14 @@
 			"Rev": "8e8d01d38d7b4fb0a35bf89b72bc3e18c98882d7"
 		},
 		{
+			"ImportPath": "github.com/pivotal-golang/clock",
+			"Rev": "3fd3c1944c59d9742e1cd333672181cd1a6f9fa0"
+		},
+		{
+			"ImportPath": "github.com/pivotal-golang/clock/fakeclock",
+			"Rev": "3fd3c1944c59d9742e1cd333672181cd1a6f9fa0"
+		},
+		{
 			"ImportPath": "github.com/pmezard/go-difflib/difflib",
 			"Rev": "792786c7400a136282c1664665ae0a8db921c6c2"
 		},
