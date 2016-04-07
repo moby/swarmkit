@@ -2,6 +2,7 @@ package container
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"time"
 
@@ -42,19 +43,21 @@ func (c *containerController) pullImage(ctx context.Context, client engineapi.AP
 	}
 
 	dec := json.NewDecoder(rc)
+	m := map[string]interface{}{}
 	for {
-		m := map[string]interface{}{}
 		if err := dec.Decode(&m); err != nil {
 			if err == io.EOF {
 				break
 			}
 			return err
 		}
-
 		// TOOD(stevvooe): Report this status somewhere.
 		logrus.Debugln("pull progress", m)
 	}
-
+	// if the final stream object contained an error, return it
+	if errMsg, ok := m["error"]; ok {
+		return fmt.Errorf("%v", errMsg)
+	}
 	return nil
 }
 
