@@ -15,11 +15,12 @@ message StoreSnapshot {
 	// using gogo-protobuf's io.DelimitedWriter. A new value of the version
 	// field could support this approach.
 
-	repeated docker.cluster.api.Node nodes = 1;
-	repeated docker.cluster.api.Job jobs = 2;
-	repeated docker.cluster.api.Network networks = 3;
-	repeated docker.cluster.api.Task tasks = 4;
-	repeated docker.cluster.api.Volume volumes = 5;
+	repeated docker.cluster.api.Namespace namespaces = 1;
+	repeated docker.cluster.api.Node nodes = 2;
+	repeated docker.cluster.api.Job jobs = 3;
+	repeated docker.cluster.api.Network networks = 4;
+	repeated docker.cluster.api.Task tasks = 5;
+	repeated docker.cluster.api.Volume volumes = 6;
 
 }
 
