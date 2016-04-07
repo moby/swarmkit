@@ -1,6 +1,7 @@
 package container
 
 import (
+	"net"
 	"strings"
 	"time"
 
@@ -106,7 +107,75 @@ func (c *containerConfig) resources() enginecontainer.Resources {
 }
 
 func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
-	return &network.NetworkingConfig{}
+	epConfig := make(map[string]*network.EndpointSettings)
+	for _, na := range c.task.Networks {
+		var ipv4, ipv6 string
+		for _, addr := range na.Addresses {
+			ip, _, err := net.ParseCIDR(addr)
+			if err != nil {
+				continue
+			}
+
+			if ip.To4() != nil {
+				ipv4 = ip.String()
+				continue
+			}
+
+			if ip.To16() != nil {
+				ipv6 = ip.String()
+			}
+		}
+
+		epSettings := &network.EndpointSettings{
+			IPAMConfig: &network.EndpointIPAMConfig{
+				IPv4Address: ipv4,
+				IPv6Address: ipv6,
+			},
+		}
+
+		epConfig[na.Network.Spec.Meta.Name] = epSettings
+	}
+
+	return &network.NetworkingConfig{EndpointsConfig: epConfig}
+}
+
+func (c *containerConfig) networkCreateOptions() []types.NetworkCreate {
+	netOpts := make([]types.NetworkCreate, 0, len(c.task.Networks))
+	for _, na := range c.task.Networks {
+		options := types.NetworkCreate{
+			Name:   na.Network.Spec.Meta.Name,
+			ID:     na.Network.ID,
+			Driver: na.Network.DriverState.Name,
+			IPAM: network.IPAM{
+				Driver: na.Network.IPAM.Driver.Name,
+			},
+			Options:        na.Network.DriverState.Options,
+			CheckDuplicate: true,
+		}
+
+		for _, ic := range na.Network.IPAM.Configurations {
+			c := network.IPAMConfig{
+				Subnet:  ic.Subnet,
+				IPRange: ic.Range,
+				Gateway: ic.Gateway,
+			}
+			options.IPAM.Config = append(options.IPAM.Config, c)
+		}
+
+		netOpts = append(netOpts, options)
+
+	}
+
+	return netOpts
+}
+
+func (c *containerConfig) networks() []string {
+	networks := make([]string, 0, len(c.task.Networks))
+	for _, na := range c.task.Networks {
+		networks = append(networks, na.Network.ID)
+	}
+
+	return networks
 }
 
 func (c *containerConfig) pullOptions() types.ImagePullOptions {
