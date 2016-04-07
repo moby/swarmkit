@@ -4,11 +4,8 @@ package docker.cluster.api;
 
 import "gogoproto/gogo.proto";
 
-// Meta is common to all API objects types.
-message Meta {
-	string name = 1;
-	map<string, string> labels = 2;
-}
+// This file contains types that are common to objects and spec or that are not
+// considered first-class within the cluster object-model.
 
 // Version tracks the last time an object in the store was updated.
 message Version {
@@ -36,26 +33,6 @@ message Platform {
 	string os = 2 [(gogoproto.customname) = "OS"];
 }
 
-message NodeSpec {
-	Meta meta = 1 [(gogoproto.nullable) = false];
-
-	enum Availability {
-		option (gogoproto.goproto_enum_prefix) = false;
-
-		// Active nodes.
-		ACTIVE = 0 [(gogoproto.enumvalue_customname) = "NodeAvailabilityActive"];
-
-		// Paused nodes won't be considered by the scheduler, preventing any
-		// further task to run on them.
-		PAUSE = 1 [(gogoproto.enumvalue_customname) = "NodeAvailabilityPause"];
-
-		// Drained nodes are paused and any task already running on them will
-		// be evicted.
-		DRAIN = 2 [(gogoproto.enumvalue_customname) = "NodeAvailabilityDrain"];
-	}
-	Availability availability = 2;
-}
-
 message NodeDescription {
 	// Hostname of the node as reported by the agent.
 	// This is different from spec.meta.name which is user-defined.
@@ -66,25 +43,6 @@ message NodeDescription {
 
 	// Total resources of the node.
 	Resources resources = 3;
-}
-
-message Node {
-	// ID specifies the identity of the node.
-	string id = 1 [(gogoproto.customname) = "ID"];
-
-	// Version tracks the last time the node was modified.
-	Version version = 2 [(gogoproto.nullable) = false];
-
-	// Spec defines the desired state of the node as specified by the user.
-	// The system will honor this and will *never* modify it.
-	NodeSpec spec = 3;
-
-	// Description encapsulated the properties of the Node as reported by the
-	// agent.
-	NodeDescription description = 4;
-
-	// Status provides the current status of the node, as seen by the manager.
-	NodeStatus status = 5 [(gogoproto.nullable) = false];
 }
 
 message NodeStatus {
@@ -107,18 +65,19 @@ message NodeStatus {
 	string message = 2;
 }
 
-message ImageSpec {
+message Image {
 	// reference is a docker image reference. This can include a rpository, tag
 	// or be fully qualified witha digest. The format is specified in the
 	// distribution/reference package.
 	string reference = 1;
 }
 
-message ContainerSpec {
+// Container specifies runtime parameters for a container.
+message Container {
 	// Resource requirements for the container.
 	ResourceRequirements resources = 1;
 
-	ImageSpec image = 2;
+	Image image = 2;
 
 	// Command to run the the container. The first element is a path to the
 	// executable and the following elements are treated as arguments.
@@ -137,70 +96,23 @@ message ContainerSpec {
 
 	// NetworkAttachmentSpec describes a desired attachment to the named network or
 	// a specific network_id.
-	message NetworkAttachmentSpec {
+	message NetworkAttachment {
 		oneof reference {
 			string name = 1;
 			string network_id = 2 [(gogoproto.customname) = "NetworkID"];
 		}
 	}
 
-	repeated NetworkAttachmentSpec networks = 6;
+	repeated NetworkAttachment networks = 6;
 }
 
-// TaskSpec defines properties required by the agent for execution.
-message TaskSpec {
-	oneof runtime {
-		ContainerSpec container = 1;
-	}
-}
-
-// JobSpec defines the properties of a Job. As tasks are created, they gain the
-// encapsulated template and any emergent properties from the job
-// configuration.
-//
-// There are two key components to a spec. The first is a "source". A source
-// defines runnable content. For the swarm use case, this is a container but we
-// may extend it to provide other kinds of runnable targets. The second
-// component is the "orchestration". The orchestration defines the strategy
-// used to the schedule and run the target with a cluster.
-message JobSpec {
-	Meta meta = 1 [(gogoproto.nullable) = false];
-
-	message ServiceJob {
-		// Instances specifies the number of instances of the service job that
-		// should be running.
-		int64 instances = 1;
-	}
-
-	message BatchJob {
-		int64 completions = 1;
-		int64 paralellism = 2;
-	}
-
-	message GlobalJob {
-	}
-
-	message CronJob {
-	}
-
-	oneof orchestration {
-		ServiceJob service = 2;
-		BatchJob batch = 3;
-		GlobalJob global = 4;
-		CronJob cron = 5;
-	}
-
-	// Template defines the base configuration for tasks created for this job.
-	TaskSpec template = 6;
-}
-
-// TODO(aluzzardi): Move it back into `TaskStatus` because of the naming
-// collisions of enums.
-//
 // TaskState enumerates the states that a task progresses through within an
 // agent. States are designed to be monotonically increasing, such that if two
 // states are seen by a task, the greater of the new represents the true state.
 enum TaskState {
+	// TODO(aluzzardi): Move it back into `TaskStatus` because of the naming
+	// collisions of enums.
+
 	option (gogoproto.goproto_enum_prefix) = false;
 	option (gogoproto.enum_customname) = "TaskState";
 	NEW = 0 [(gogoproto.enumvalue_customname)="TaskStateNew"];
@@ -233,61 +145,6 @@ message TaskStatus {
 	string err = 2;
 
 	// TODO(stevvooe): Report on runtime statistics.
-}
-
-// Task specifies the parameters for implementing a Spec. A task is effectively
-// immutable and idempotent. Once it is dispatched to a node, it will not be
-// dispatched to another node.
-message Task {
-	string id = 1 [(gogoproto.customname) = "ID"];
-
-	// Version tracks the last time the task was modified.
-	Version version = 2 [(gogoproto.nullable) = false];
-
-	// JobID indicates the job under which this task is orchestrated. This
-	// should almost always be set.
-	string job_id = 3 [(gogoproto.customname) = "JobID"];
-
-	// TODO(stevvooe): Consider bringing back assignment, rather than using a
-	// node id field. We like having this concept be first-class. It helps to
-	// reason about storage and consistency.
-
-	// NodeID indicates the node to which the task is assigned. If this field
-	// is empty or not set, the task is unassigned.
-	string node_id = 4 [(gogoproto.customname) = "NodeID"];
-
-	// Meta inherits labels from the JobSpec.Meta associated with this task. It
-	// may include other labels added by the manager. The name will be a human
-	// readable name, calculated based on the JobSpec.Meta.Name field.
-	Meta meta = 5 [(gogoproto.nullable) = false];
-
-	// Spec declares the runtime parameters for the task. This is copied out of
-	// the job's template field.
-	TaskSpec spec = 6;
-
-	TaskStatus status = 7;
-
-	message NetworkAttachment {
-		// Network state as a whole becomes part of Task so
-		// that it always is available for use in agents so
-		// that agents don't have any other dependency during execution.
-		Network network = 1;
-
-		// List of IPv4/IPv6 addresses that are assigned to the task
-		// as part of getting attached to this network.
-		repeated string addresses = 2;
-	}
-
-	repeated NetworkAttachment networks = 8;
-}
-
-message Job {
-	string id = 1 [(gogoproto.customname) = "ID"];
-
-	// Version tracks the last time the job was modified.
-	Version version = 2 [(gogoproto.nullable) = false];
-
-	JobSpec spec = 3;
 }
 
 // IPAMConfiguration specifies parameters for IP Address Management.
@@ -339,59 +196,6 @@ message IPAMOptions {
 	repeated IPAMConfiguration configurations = 3;
 }
 
-// NetworkSpec specifies user defined network parameters.
-message NetworkSpec {
-	Meta meta = 1 [(gogoproto.nullable) = false];
-
-	// Driver specific configuration consumed by the network driver.
-	Driver driver_configuration = 2;
-
-	// IPv6Enabled enables support for IPv6 on the network.
-	bool ipv6_enabled = 3;
-
-	// internal restricts external access to the network. This may be
-	// accomplished by disabling the default gateway or through other means.
-	bool internal = 4;
-
-	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
-}
-
-message Network {
-	string id = 1 [(gogoproto.customname) = "ID"];
-
-	// Version tracks the last time the network was modified.
-	Version version = 2 [(gogoproto.nullable) = false];
-
-	NetworkSpec spec = 3;
-
-	// Driver specific operational state provided by the network driver.
-	Driver driver_state = 4;
-
-	// Runtime state of IPAM options. This may not reflect the
-	// ipam options from NetworkSpec.
-	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
-}
-
-// VolumeSpec defines the properties of a Volume.
-message VolumeSpec {
-	Meta meta = 1 [(gogoproto.nullable) = false];
-
-	// Driver specific configuration consumed by the Volume driver.
-	Driver driver_configuration = 2;
-}
-
-message Volume {
-	string id = 1 [(gogoproto.customname) = "ID"];
-
-	// Version tracks the last time the volume was modified.
-	Version version = 2 [(gogoproto.nullable) = false];
-
-	VolumeSpec spec = 3;
-
-	// Driver specific operational state provided by the Volume driver.
-	Driver driver_state = 4;
-}
-
 // WeightedPeer should be used anywhere where we are describing a remote peer
 // with a weight.
 message WeightedPeer {
@@ -399,39 +203,4 @@ message WeightedPeer {
 	double weight = 2;
 
 	// TODO(stevvooe): We must consolidate peer representation in the API.
-}
-
-// Contains one of many protobuf encoded objects to replicate
-// over the raft backend with a request ID to track when the
-// action is effectively applied
-message InternalRaftRequest {
-	uint64 id = 1 [(gogoproto.customname) = "ID"];
-
-	repeated StoreAction action = 2;
-}
-
-// TODO(stevvooe): Storage actions may belong in another protobuf file. They
-// aren't necessarily first-class "types" in the cluster schema.
-
-// StoreActionKind defines the operation to take on the store for the target of
-// a storage action.
-enum StoreActionKind {
-	option (gogoproto.goproto_enum_prefix) = false;
-	option (gogoproto.enum_customname) = "StoreActionKind";
-	UNKNOWN = 0 [(gogoproto.enumvalue_customname) = "StoreActionKindUnknown"]; // default value, invalid
-	CREATE = 1 [(gogoproto.enumvalue_customname) = "StoreActionKindCreate"];
-	UPDATE = 2 [(gogoproto.enumvalue_customname) = "StoreActionKindUpdate"];
-	REMOVE = 3 [(gogoproto.enumvalue_customname) = "StoreActionKindRemove"];
-}
-
-// StoreAction defines a taret and operation to apply on the storage system.
-message StoreAction {
-	StoreActionKind action = 1;
-	oneof target {
-		Node node = 2;
-		Job job = 3;
-		Task task = 4;
-		Network network = 5;
-		Volume volume = 6;
-	}
 }

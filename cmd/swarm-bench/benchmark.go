@@ -77,8 +77,8 @@ func (b *Benchmark) spec() *api.JobSpec {
 		},
 		Template: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
-				Container: &api.ContainerSpec{
-					Image: &api.ImageSpec{
+				Container: &api.Container{
+					Image: &api.Image{
 						Reference: "alpine:latest",
 					},
 					Command: []string{"nc", b.cfg.IP, strconv.Itoa(b.cfg.Port)},

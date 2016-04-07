@@ -44,10 +44,10 @@ func TestAllocator(t *testing.T) {
 			},
 			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
-					Container: &api.ContainerSpec{
-						Networks: []*api.ContainerSpec_NetworkAttachmentSpec{
+					Container: &api.Container{
+						Networks: []*api.Container_NetworkAttachment{
 							{
-								Reference: &api.ContainerSpec_NetworkAttachmentSpec_NetworkID{
+								Reference: &api.Container_NetworkAttachment_NetworkID{
 									NetworkID: "testID1",
 								},
 							},
@@ -125,10 +125,10 @@ func TestAllocator(t *testing.T) {
 			},
 			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
-					Container: &api.ContainerSpec{
-						Networks: []*api.ContainerSpec_NetworkAttachmentSpec{
+					Container: &api.Container{
+						Networks: []*api.Container_NetworkAttachment{
 							{
-								Reference: &api.ContainerSpec_NetworkAttachmentSpec_NetworkID{
+								Reference: &api.Container_NetworkAttachment_NetworkID{
 									NetworkID: "testID2",
 								},
 							},
@@ -158,10 +158,10 @@ func TestAllocator(t *testing.T) {
 			},
 			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
-					Container: &api.ContainerSpec{
-						Networks: []*api.ContainerSpec_NetworkAttachmentSpec{
+					Container: &api.Container{
+						Networks: []*api.Container_NetworkAttachment{
 							{
-								Reference: &api.ContainerSpec_NetworkAttachmentSpec_NetworkID{
+								Reference: &api.Container_NetworkAttachment_NetworkID{
 									NetworkID: "testID3",
 								},
 							},

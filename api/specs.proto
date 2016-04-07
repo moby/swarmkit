@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package docker.cluster.api;
+
+import "types.proto";
+import "gogoproto/gogo.proto";
+
+// Specs are container objects for user provided input. All creations and
+// updates are done through spec types. As a convention, user input from a spec
+// is never touched in created objects. This allows one to verify that the
+// users intent has not been modified.
+//
+// Put differently, spec types can be said to represent the desired state of
+// the system. In situations where modifications need to be made to a
+// particular component, API objects will either have a copy of the spec
+// component or a different representation to reflect allocation or resolution.
+
+// Meta is common to all API specs.
+message Meta {
+	string name = 1;
+	map<string, string> labels = 2;
+}
+
+message NodeSpec {
+	Meta meta = 1 [(gogoproto.nullable) = false];
+
+	enum Availability {
+		option (gogoproto.goproto_enum_prefix) = false;
+
+		// Active nodes.
+		ACTIVE = 0 [(gogoproto.enumvalue_customname) = "NodeAvailabilityActive"];
+
+		// Paused nodes won't be considered by the scheduler, preventing any
+		// further task to run on them.
+		PAUSE = 1 [(gogoproto.enumvalue_customname) = "NodeAvailabilityPause"];
+
+		// Drained nodes are paused and any task already running on them will
+		// be evicted.
+		DRAIN = 2 [(gogoproto.enumvalue_customname) = "NodeAvailabilityDrain"];
+	}
+	
+	// Availability allows a user to control the current scheduling status of a
+	// node.
+	Availability availability = 2;
+}
+
+// JobSpec defines the properties of a Job. As tasks are created, they gain the
+// encapsulated template and any emergent properties from the job
+// configuration.
+//
+// There are two key components to a spec. The first is a "source". A source
+// defines runnable content. For the swarm use case, this is a container but we
+// may extend it to provide other kinds of runnable targets. The second
+// component is the "orchestration". The orchestration defines the strategy
+// used to the schedule and run the target with a cluster.
+message JobSpec {
+	Meta meta = 1 [(gogoproto.nullable) = false];
+
+	message ServiceJob {
+		// Instances specifies the number of instances of the service job that
+		// should be running.
+		int64 instances = 1;
+	}
+
+	message BatchJob {
+		int64 completions = 1;
+		int64 paralellism = 2;
+	}
+
+	message GlobalJob {
+	}
+
+	message CronJob {
+	}
+
+	oneof orchestration {
+		ServiceJob service = 2;
+		BatchJob batch = 3;
+		GlobalJob global = 4;
+		CronJob cron = 5;
+	}
+
+	// Template defines the base configuration for tasks created for this job.
+	TaskSpec template = 6;
+}
+
+// TaskSpec defines properties required by the agent for execution.
+message TaskSpec {
+	oneof runtime {
+		Container container = 1;
+	}
+}
+
+// VolumeSpec defines the properties of a Volume.
+message VolumeSpec {
+	Meta meta = 1 [(gogoproto.nullable) = false];
+
+	// Driver specific configuration consumed by the Volume driver.
+	Driver driver_configuration = 2;
+}
+
+// NetworkSpec specifies user defined network parameters.
+message NetworkSpec {
+	Meta meta = 1 [(gogoproto.nullable) = false];
+
+	// Driver specific configuration consumed by the network driver.
+	Driver driver_configuration = 2;
+
+	// IPv6Enabled enables support for IPv6 on the network.
+	bool ipv6_enabled = 3;
+
+	// internal restricts external access to the network. This may be
+	// accomplished by disabling the default gateway or through other means.
+	bool internal = 4;
+
+	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
+}
+

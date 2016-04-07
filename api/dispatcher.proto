@@ -3,6 +3,7 @@ syntax = "proto3";
 package docker.cluster.api;
 
 import "types.proto";
+import "objects.proto";
 import "gogoproto/gogo.proto";
 
 // Dispatcher is the API provided by a manager group for agents to connect to. Agents
