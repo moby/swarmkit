@@ -22,6 +22,8 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
+import leaderconn "github.com/docker/swarm-v2/manager/state/leaderconn"
+
 import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1145,6 +1147,115 @@ func encodeVarintDispatcher(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	return offset + 1
 }
+
+type raftProxyDispatcherServer struct {
+	local   DispatcherServer
+	leaders leaderconn.ConnSelector
+}
+
+func NewRaftProxyDispatcherServer(local DispatcherServer, leaders leaderconn.ConnSelector) DispatcherServer {
+	return &raftProxyDispatcherServer{
+		local:   local,
+		leaders: leaders,
+	}
+}
+
+func (p *raftProxyDispatcherServer) Register(ctx context.Context, r *RegisterRequest) (*RegisterResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.Register(ctx, r)
+		}
+		return nil, err
+	}
+	return NewDispatcherClient(c).Register(ctx, r)
+}
+
+func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher_SessionServer) error {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.Session(r, stream)
+		}
+		return err
+	}
+	clientStream, err := NewDispatcherClient(c).Session(stream.Context(), r)
+
+	if err != nil {
+		return err
+	}
+
+	for {
+		msg, err := clientStream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if err := stream.Send(msg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *raftProxyDispatcherServer) Heartbeat(ctx context.Context, r *HeartbeatRequest) (*HeartbeatResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.Heartbeat(ctx, r)
+		}
+		return nil, err
+	}
+	return NewDispatcherClient(c).Heartbeat(ctx, r)
+}
+
+func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *UpdateTaskStatusRequest) (*UpdateTaskStatusResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.UpdateTaskStatus(ctx, r)
+		}
+		return nil, err
+	}
+	return NewDispatcherClient(c).UpdateTaskStatus(ctx, r)
+}
+
+func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_TasksServer) error {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.Tasks(r, stream)
+		}
+		return err
+	}
+	clientStream, err := NewDispatcherClient(c).Tasks(stream.Context(), r)
+
+	if err != nil {
+		return err
+	}
+
+	for {
+		msg, err := clientStream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if err := stream.Send(msg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (m *RegisterRequest) Size() (n int) {
 	var l int
 	_ = l
