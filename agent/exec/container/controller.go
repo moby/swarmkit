@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -59,6 +60,49 @@ func (c *containerController) pullImage(ctx context.Context, client engineapi.AP
 		return fmt.Errorf("%v", errMsg)
 	}
 	return nil
+}
+
+func (c *containerController) createNetworks(ctx context.Context, client engineapi.APIClient) error {
+	for _, opt := range c.container.networkCreateOptions() {
+		if _, err := client.NetworkCreate(ctx, opt); err != nil {
+			if isNetworkExistError(err, opt.Name) {
+				continue
+			}
+
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *containerController) removeNetworks(ctx context.Context, client engineapi.APIClient) error {
+	for _, nid := range c.container.networks() {
+		if err := client.NetworkRemove(ctx, nid); err != nil {
+			if isActiveEndpointError(err) {
+				continue
+			}
+
+			log.G(ctx).Errorf("network %s remove failed", nid)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func isActiveEndpointError(err error) bool {
+	// TODO(mrjana): There is no proper error code for network not
+	// found error in engine-api. Resort to string matching until
+	// engine-api is fixed.
+	return strings.Contains(err.Error(), "has active endpoints")
+}
+
+func isNetworkExistError(err error, name string) bool {
+	// TODO(mrjana): There is no proper error code for network not
+	// found error in engine-api. Resort to string matching until
+	// engine-api is fixed.
+	return strings.Contains(err.Error(), fmt.Sprintf("network with name %s already exists", name))
 }
 
 func (c *containerController) create(ctx context.Context, client engineapi.APIClient) error {

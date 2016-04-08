@@ -54,6 +54,15 @@ func (r *Runner) Update(ctx context.Context, t *api.Task) error {
 //
 // If the container has already be created, exec.ErrTaskPrepared is returned.
 func (r *Runner) Prepare(ctx context.Context) error {
+	if err := r.checkClosed(); err != nil {
+		return err
+	}
+
+	// Make sure all the networks that the task needs are created.
+	if err := r.controller.createNetworks(ctx, r.client); err != nil {
+		return err
+	}
+
 	for {
 		if err := r.checkClosed(); err != nil {
 			return err
@@ -202,6 +211,12 @@ func (r *Runner) Terminate(ctx context.Context) error {
 // Remove the container and its resources.
 func (r *Runner) Remove(ctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
+		return err
+	}
+
+	// Try removing networks referenced in this task in case this
+	// task is the last one referencing it
+	if err := r.controller.removeNetworks(ctx, r.client); err != nil {
 		return err
 	}
 
