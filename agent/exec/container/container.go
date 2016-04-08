@@ -25,7 +25,7 @@ const (
 // components.
 type containerConfig struct {
 	task    *api.Task
-	runtime *api.ContainerSpec // resolved container specification.
+	runtime *api.Container // resolved container specification.
 	popts   types.ImagePullOptions
 }
 

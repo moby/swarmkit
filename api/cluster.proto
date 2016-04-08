@@ -2,7 +2,8 @@ syntax = "proto3";
 
 package docker.cluster.api;
 
-import "types.proto";
+import "specs.proto";
+import "objects.proto";
 import "gogoproto/gogo.proto";
 
 // Cluster defines the RPC methods for controlling a cluster.

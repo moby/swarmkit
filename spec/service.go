@@ -85,9 +85,9 @@ func (s *ServiceConfig) ToProto() *api.JobSpec {
 		},
 		Template: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
-				Container: &api.ContainerSpec{
+				Container: &api.Container{
 					Resources: s.Resources.ToProto(),
-					Image: &api.ImageSpec{
+					Image: &api.Image{
 						Reference: s.Image,
 					},
 					Env:     s.Env,

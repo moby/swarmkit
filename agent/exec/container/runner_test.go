@@ -224,8 +224,8 @@ func genTask(t *testing.T) *api.Task {
 		NodeID: nodeID,
 		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
-				Container: &api.ContainerSpec{
-					Image: &api.ImageSpec{
+				Container: &api.Container{
+					Image: &api.Image{
 						Reference: reference,
 					},
 				},

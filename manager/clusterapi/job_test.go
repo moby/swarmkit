@@ -17,8 +17,8 @@ func createSpec(name, image string, instances int64) *api.JobSpec {
 		},
 		Template: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
-				Container: &api.ContainerSpec{
-					Image: &api.ImageSpec{
+				Container: &api.Container{
+					Image: &api.Image{
 						Reference: image,
 					},
 				},

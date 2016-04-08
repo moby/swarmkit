@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package docker.cluster.api;
+
+import "types.proto";
+import "specs.proto";
+import "gogoproto/gogo.proto";
+
+// This file contains definitions for all first-class objects in the cluster
+// API. Such types typically have a corresponding specification, with the
+// naming XXXSpec, but not all.
+
+// Node provides the internal node state as seen by the cluster.
+message Node {
+	// ID specifies the identity of the node.
+	string id = 1 [(gogoproto.customname) = "ID"];
+
+	// Version tracks the last time the node was modified.
+	Version version = 2 [(gogoproto.nullable) = false];
+
+	// Spec defines the desired state of the node as specified by the user.
+	// The system will honor this and will *never* modify it.
+	NodeSpec spec = 3;
+
+	// Description encapsulated the properties of the Node as reported by the
+	// agent.
+	NodeDescription description = 4;
+
+	// Status provides the current status of the node, as seen by the manager.
+	NodeStatus status = 5 [(gogoproto.nullable) = false];
+}
+
+message Job {
+	string id = 1 [(gogoproto.customname) = "ID"];
+
+	// Version tracks the last time the job was modified.
+	Version version = 2 [(gogoproto.nullable) = false];
+
+	JobSpec spec = 3;
+}
+
+// Task specifies the parameters for implementing a Spec. A task is effectively
+// immutable and idempotent. Once it is dispatched to a node, it will not be
+// dispatched to another node.
+message Task {
+	string id = 1 [(gogoproto.customname) = "ID"];
+
+	// Version tracks the last time the task was modified.
+	Version version = 2 [(gogoproto.nullable) = false];
+
+	// JobID indicates the job under which this task is orchestrated. This
+	// should almost always be set.
+	string job_id = 3 [(gogoproto.customname) = "JobID"];
+
+	// NodeID indicates the node to which the task is assigned. If this field
+	// is empty or not set, the task is unassigned.
+	string node_id = 4 [(gogoproto.customname) = "NodeID"];
+
+	// Meta inherits labels from the JobSpec.Meta associated with this task. It
+	// may include other labels added by the manager. The name will be a human
+	// readable name, calculated based on the JobSpec.Meta.Name field.
+	Meta meta = 5 [(gogoproto.nullable) = false];
+
+	// Spec declares the runtime parameters for the task. This is copied out of
+	// the job's template field.
+	TaskSpec spec = 6;
+
+	TaskStatus status = 7;
+
+	message NetworkAttachment {
+		// Network state as a whole becomes part of Task so
+		// that it always is available for use in agents so
+		// that agents don't have any other dependency during execution.
+		Network network = 1;
+
+		// List of IPv4/IPv6 addresses that are assigned to the task
+		// as part of getting attached to this network.
+		repeated string addresses = 2;
+	}
+
+	repeated NetworkAttachment networks = 8;
+}
+
+message Volume {
+	string id = 1 [(gogoproto.customname) = "ID"];
+
+	// Version tracks the last time the volume was modified.
+	Version version = 2 [(gogoproto.nullable) = false];
+
+	VolumeSpec spec = 3;
+
+	// Driver specific operational state provided by the Volume driver.
+	Driver driver_state = 4;
+}
+
+message Network {
+	string id = 1 [(gogoproto.customname) = "ID"];
+
+	// Version tracks the last time the network was modified.
+	Version version = 2 [(gogoproto.nullable) = false];
+
+	NetworkSpec spec = 3;
+
+	// Driver specific operational state provided by the network driver.
+	Driver driver_state = 4;
+
+	// Runtime state of IPAM options. This may not reflect the
+	// ipam options from NetworkSpec.
+	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
+}
