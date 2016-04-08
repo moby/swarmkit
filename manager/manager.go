@@ -44,7 +44,7 @@ type Config struct {
 type Manager struct {
 	config *Config
 
-	apiserver    *clusterapi.Server
+	apiserver    api.ClusterServer
 	dispatcher   *dispatcher.Dispatcher
 	orchestrator *orchestrator.Orchestrator
 	drainer      *drainer.Drainer
@@ -96,9 +96,11 @@ func New(config *Config) (*Manager, error) {
 
 	store := raftNode.MemoryStore()
 
+	localapi := clusterapi.NewServer(store)
+	proxy := api.NewRaftProxyClusterServer(localapi, raftNode)
 	m := &Manager{
 		config:       config,
-		apiserver:    clusterapi.NewServer(store),
+		apiserver:    proxy,
 		dispatcher:   dispatcher.New(store, dispatcherConfig),
 		server:       grpc.NewServer(),
 		raftNode:     raftNode,
