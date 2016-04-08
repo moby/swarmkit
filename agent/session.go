@@ -75,8 +75,10 @@ func (s *session) register(ctx context.Context) (string, error) {
 	client := api.NewDispatcherClient(s.agent.conn)
 
 	description, err := s.agent.config.Executor.Describe(ctx)
-	if s.agent.config.Hostname != "" {
-		description.Hostname = s.agent.config.Hostname
+	if err != nil {
+		log.G(ctx).WithError(err).WithField("executor", s.agent.config.Executor).
+			Errorf("node description unavailable")
+		return "", err
 	}
 
 	resp, err := client.Register(ctx, &api.RegisterRequest{
