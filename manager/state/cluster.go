@@ -67,24 +67,22 @@ func (c *cluster) getMember(id uint64) *member {
 }
 
 // addMember adds a node to the cluster memberlist.
-func (c *cluster) addMember(member *member) error {
+func (c *cluster) addMember(member *member) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.members[member.ID] = member
-	return nil
 }
 
 // removeMember removes a node from the cluster memberlist.
-func (c *cluster) removeMember(id uint64) error {
+func (c *cluster) removeMember(id uint64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	conn := c.members[id].Client.Conn
 	if conn != nil {
-		conn.Close()
+		_ = conn.Close()
 	}
 	c.removed[id] = true
 	delete(c.members, id)
-	return nil
 }
 
 // isIDRemoved checks if a member is in the remove set.

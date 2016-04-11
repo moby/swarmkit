@@ -79,8 +79,10 @@ func (p *reconnectPicker) Pick(ctx context.Context) (transport.ClientTransport, 
 	// try again. Unfortunately, NotifyReset doesn't seem to do anything
 	// immediate when a connection is in its retry cycle.
 	if p.conn.State() != grpc.Ready {
-		p.conn.Close()
-		p.Init(p.cc)
+		_ = p.conn.Close()
+		if err := p.Init(p.cc); err != nil {
+			return nil, err
+		}
 	}
 	return p.conn.Wait(ctx)
 }

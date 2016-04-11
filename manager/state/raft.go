@@ -237,7 +237,9 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 			if err != nil {
 				return nil, err
 			}
-			defer c.Conn.Close()
+			defer func() {
+				_ = c.Conn.Close()
+			}()
 
 			ctx, cancel := context.WithTimeout(n.Ctx, 10*time.Second)
 			defer cancel()
@@ -250,10 +252,14 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 
 			n.Node = raft.StartNode(n.Config, []raft.Peer{})
 
-			n.registerNodes(resp.Members)
+			if err := n.registerNodes(resp.Members); err != nil {
+				return nil, err
+			}
 		} else {
 			n.Node = raft.StartNode(n.Config, n.startNodePeers)
-			n.Campaign(n.Ctx)
+			if err := n.Campaign(n.Ctx); err != nil {
+				return nil, err
+			}
 		}
 		return n, nil
 	}
@@ -347,10 +353,9 @@ func (n *Node) loadAndStart() error {
 	return nil
 }
 
-func (n *Node) readWAL(snapshot *raftpb.Snapshot) error {
+func (n *Node) readWAL(snapshot *raftpb.Snapshot) (err error) {
 	var (
 		walsnap  walpb.Snapshot
-		err      error
 		metadata []byte
 		st       raftpb.HardState
 		ents     []raftpb.Entry
@@ -384,25 +389,29 @@ func (n *Node) readWAL(snapshot *raftpb.Snapshot) error {
 		break
 	}
 
+	defer func() {
+		if err != nil {
+			if walErr := n.wal.Close(); walErr != nil {
+				n.Config.Logger.Errorf("error closing raft WAL: %v", walErr)
+			}
+		}
+	}()
+
 	var raftNode api.RaftNode
 	if err := raftNode.Unmarshal(metadata); err != nil {
-		n.wal.Close()
 		return fmt.Errorf("error unmarshalling wal metadata: %v", err)
 	}
 	n.Config.ID = raftNode.ID
 
 	if snapshot != nil {
 		if err := n.raftStore.ApplySnapshot(*snapshot); err != nil {
-			n.wal.Close()
 			return err
 		}
 	}
 	if err := n.raftStore.SetHardState(st); err != nil {
-		n.wal.Close()
 		return err
 	}
 	if err := n.raftStore.Append(ents); err != nil {
-		n.wal.Close()
 		return err
 	}
 
@@ -488,11 +497,13 @@ func (n *Node) Run() {
 			members := n.cluster.listMembers()
 			for _, member := range members {
 				if member.Client != nil && member.Client.Conn != nil {
-					member.Client.Conn.Close()
+					_ = member.Client.Conn.Close()
 				}
 			}
 			n.Stop()
-			n.wal.Close()
+			if err := n.wal.Close(); err != nil {
+				n.Config.Logger.Error(err)
+			}
 			n.Node = nil
 			close(n.doneCh)
 			n.stopMu.Unlock()
@@ -631,14 +642,14 @@ func (n *Node) registerNode(node *api.RaftNode) error {
 			return err
 		}
 	}
-	return n.cluster.addMember(&member{RaftNode: node, Client: client})
+	n.cluster.addMember(&member{RaftNode: node, Client: client})
+	return nil
 }
 
 // registerNodes registers a set of nodes in the cluster
-func (n *Node) registerNodes(nodes []*api.RaftNode) (err error) {
+func (n *Node) registerNodes(nodes []*api.RaftNode) error {
 	for _, node := range nodes {
-		err = n.registerNode(node)
-		if err != nil {
+		if err := n.registerNode(node); err != nil {
 			return err
 		}
 	}
@@ -659,11 +670,9 @@ func (n *Node) deregisterNode(id uint64) error {
 		return ErrIDNotFound
 	}
 
-	if err := n.cluster.removeMember(id); err != nil {
-		return err
-	}
+	n.cluster.removeMember(id)
 
-	peer.Client.Conn.Close()
+	_ = peer.Client.Conn.Close()
 	return nil
 }
 
@@ -800,7 +809,9 @@ func (n *Node) restoreFromSnapshot(data []byte) error {
 
 	n.cluster.clear()
 	for _, member := range snapshot.Membership.Members {
-		n.registerNode(&api.RaftNode{ID: member.ID, Addr: member.Addr})
+		if err := n.registerNode(&api.RaftNode{ID: member.ID, Addr: member.Addr}); err != nil {
+			return err
+		}
 	}
 	for _, removedMember := range snapshot.Membership.Removed {
 		n.cluster.removeMember(removedMember)
