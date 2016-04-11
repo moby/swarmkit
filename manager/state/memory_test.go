@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
+	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -1007,13 +1008,20 @@ func TestStoreSaveRestore(t *testing.T) {
 	assert.NotNil(t, s1)
 
 	setupTestStore(t, s1)
-	serialized, err := s1.Save()
+
+	var snapshot *pb.StoreSnapshot
+	err := s1.View(func(tx ReadTx) error {
+		var err error
+		snapshot, err = s1.Save(tx)
+		assert.NoError(t, err)
+		return nil
+	})
 	assert.NoError(t, err)
 
 	s2 := NewMemoryStore(nil)
 	assert.NotNil(t, s2)
 
-	err = s2.Restore(serialized)
+	err = s2.Restore(snapshot)
 	assert.NoError(t, err)
 
 	err = s2.View(func(tx ReadTx) error {

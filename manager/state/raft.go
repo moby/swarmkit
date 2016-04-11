@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -123,10 +124,11 @@ type Node struct {
 	leadershipCh   chan LeadershipState
 	startNodePeers []raft.Peer
 
-	sends sync.WaitGroup
-
 	// used to coordinate shutdown
 	stopMu sync.RWMutex
+
+	snapshotInProgress int32
+	asyncTasks         sync.WaitGroup
 }
 
 // NewNodeOptions provides arguments for NewNode
@@ -451,10 +453,8 @@ func (n *Node) Run() {
 			}
 
 			// Trigger a snapshot every once in awhile
-			if n.appliedIndex-n.snapshotIndex >= n.snapshotInterval {
-				if err := n.doSnapshot(); err != nil {
-					n.Config.Logger.Error(err)
-				}
+			if n.appliedIndex-n.snapshotIndex >= n.snapshotInterval && atomic.LoadInt32(&n.snapshotInProgress) == 0 {
+				n.doSnapshot()
 			}
 
 			// If we cease to be the leader, we must cancel
@@ -482,7 +482,7 @@ func (n *Node) Run() {
 			n.Advance()
 
 		case <-n.stopCh:
-			n.sends.Wait()
+			n.asyncTasks.Wait()
 
 			n.stopMu.Lock()
 			members := n.cluster.listMembers()
@@ -726,17 +726,8 @@ func (n *Node) saveSnapshot(snapshot raftpb.Snapshot) error {
 	return nil
 }
 
-func (n *Node) doSnapshot() error {
-	// TODO(aaronl): This should be made async
-	// TODO(aaronl): Should probably disable snapshotting while a
-	// previous snapshot is in-flight to followers.
+func (n *Node) doSnapshot() {
 	snapshot := pb.Snapshot{Version: pb.Snapshot_V0}
-	storeSnapshot, err := n.memoryStore.Save()
-	if err != nil {
-		return err
-	}
-	snapshot.Store = *storeSnapshot
-
 	for _, peer := range n.cluster.listMembers() {
 		snapshot.Membership.Members = append(snapshot.Membership.Members,
 			&api.RaftNode{
@@ -746,28 +737,52 @@ func (n *Node) doSnapshot() error {
 	}
 	snapshot.Membership.Removed = n.cluster.listRemoved()
 
-	d, err := snapshot.Marshal()
-	if err != nil {
-		return err
-	}
-	snap, err := n.raftStore.CreateSnapshot(n.appliedIndex, &n.confState, d)
-	if err == nil {
-		if err := n.saveSnapshot(snap); err != nil {
+	viewStarted := make(chan struct{})
+	n.asyncTasks.Add(1)
+	atomic.AddInt32(&n.snapshotInProgress, 1)
+	go func() {
+		defer n.asyncTasks.Done()
+		defer atomic.AddInt32(&n.snapshotInProgress, -1)
+
+		err := n.memoryStore.View(func(tx ReadTx) error {
+			close(viewStarted)
+
+			storeSnapshot, err := n.memoryStore.Save(tx)
+			snapshot.Store = *storeSnapshot
 			return err
+		})
+		if err != nil {
+			n.Config.Logger.Error(err)
+			return
 		}
-		n.snapshotIndex = n.appliedIndex
 
-		if n.appliedIndex > n.logEntriesForSlowFollowers {
-			err := n.raftStore.Compact(n.appliedIndex - n.logEntriesForSlowFollowers)
-			if err != nil && err != raft.ErrCompacted {
-				return err
+		d, err := snapshot.Marshal()
+		if err != nil {
+			n.Config.Logger.Error(err)
+			return
+		}
+		snap, err := n.raftStore.CreateSnapshot(n.appliedIndex, &n.confState, d)
+		if err == nil {
+			if err := n.saveSnapshot(snap); err != nil {
+				n.Config.Logger.Error(err)
+				return
 			}
-		}
-	} else if err != raft.ErrSnapOutOfDate {
-		return err
-	}
+			n.snapshotIndex = n.appliedIndex
 
-	return nil
+			if n.appliedIndex > n.logEntriesForSlowFollowers {
+				err := n.raftStore.Compact(n.appliedIndex - n.logEntriesForSlowFollowers)
+				if err != nil && err != raft.ErrCompacted {
+					n.Config.Logger.Error(err)
+				}
+			}
+		} else if err != raft.ErrSnapOutOfDate {
+			n.Config.Logger.Error(err)
+		}
+	}()
+
+	// Wait for the goroutine to establish a read transaction, to make
+	// sure it sees the state as of this moment.
+	<-viewStarted
 }
 
 func (n *Node) restoreFromSnapshot(data []byte) error {
@@ -811,7 +826,7 @@ func (n *Node) send(messages []raftpb.Message) error {
 
 		// If node is an active raft member send the message
 		if member, ok := members[m.To]; ok {
-			n.sends.Add(1)
+			n.asyncTasks.Add(1)
 			go n.sendToMember(ctx, member, m)
 		}
 	}
@@ -835,7 +850,7 @@ func (n *Node) sendToMember(ctx context.Context, member *member, m raftpb.Messag
 	} else if m.Type == raftpb.MsgSnap {
 		n.ReportSnapshot(m.To, raft.SnapshotFinish)
 	}
-	n.sends.Done()
+	n.asyncTasks.Done()
 }
 
 type applyResult struct {
