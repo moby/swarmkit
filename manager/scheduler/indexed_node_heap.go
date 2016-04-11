@@ -6,16 +6,6 @@ import (
 	"github.com/docker/swarm-v2/api"
 )
 
-// NodeInfo contains a node and some additional metadata.
-type NodeInfo struct {
-	*api.Node
-	NumTasks int
-}
-
-func newNodeInfo(n *api.Node, numTasks int) NodeInfo {
-	return NodeInfo{Node: n, NumTasks: numTasks}
-}
-
 // A nodeHeap implements heap.Interface for nodes. It also includes an index
 // by node id.
 type nodeHeap struct {
@@ -28,7 +18,7 @@ func (nh nodeHeap) Len() int {
 }
 
 func (nh nodeHeap) Less(i, j int) bool {
-	return nh.heap[i].NumTasks < nh.heap[j].NumTasks
+	return len(nh.heap[i].Tasks) < len(nh.heap[j].Tasks)
 }
 
 func (nh nodeHeap) Swap(i, j int) {
@@ -65,25 +55,33 @@ func (nh *nodeHeap) peek() *NodeInfo {
 	return &nh.heap[0]
 }
 
+// nodeInfo returns the NodeInfo struct for a given node identified by its ID.
+func (nh *nodeHeap) nodeInfo(nodeID string) NodeInfo {
+	index, ok := nh.index[nodeID]
+	if ok {
+		return nh.heap[index]
+	}
+	return NodeInfo{}
+}
+
 // addOrUpdateNode sets the number of tasks for a given node. It adds the node
 // to the heap if it wasn't already tracked.
-func (nh *nodeHeap) addOrUpdateNode(n *api.Node, numTasks int) {
+func (nh *nodeHeap) addOrUpdateNode(n NodeInfo) {
 	index, ok := nh.index[n.ID]
 	if ok {
-		nh.heap[index].Node = n
-		nh.heap[index].NumTasks = numTasks
+		nh.heap[index] = n
 		heap.Fix(nh, index)
 	} else {
-		heap.Push(nh, newNodeInfo(n, numTasks))
+		heap.Push(nh, n)
 	}
 }
 
 // updateNode sets the number of tasks for a given node. It ignores the update
 // if the node isn't already tracked in the heap.
-func (nh *nodeHeap) updateNode(nodeID string, numTasks int) {
-	index, ok := nh.index[nodeID]
+func (nh *nodeHeap) updateNode(n NodeInfo) {
+	index, ok := nh.index[n.ID]
 	if ok {
-		nh.heap[index].NumTasks = numTasks
+		nh.heap[index] = n
 		heap.Fix(nh, index)
 	}
 }
@@ -91,24 +89,24 @@ func (nh *nodeHeap) updateNode(nodeID string, numTasks int) {
 func (nh *nodeHeap) remove(nodeID string) {
 	index, ok := nh.index[nodeID]
 	if ok {
-		nh.heap[index].NumTasks = -1
+		nh.heap[index].Tasks = nil
 		heap.Fix(nh, index)
 		heap.Pop(nh)
 	}
 }
 
-func (nh *nodeHeap) findMin(meetsConstraints func(NodeInfo) bool, scanAllNodes bool) (*api.Node, int) {
+func (nh *nodeHeap) findMin(meetsConstraints func(*NodeInfo) bool, scanAllNodes bool) (*api.Node, int) {
 	var bestNode *api.Node
 	minTasks := int(^uint(0) >> 1) // max int
 	nextStoppingPoint := 0
 	levelSize := 1
 
 	for i := 0; i < len(nh.heap); i++ {
-		heapEntry := nh.heap[i]
+		heapEntry := &nh.heap[i]
 
-		if meetsConstraints(heapEntry) && heapEntry.NumTasks < minTasks {
+		if meetsConstraints(heapEntry) && len(heapEntry.Tasks) < minTasks {
 			bestNode = heapEntry.Node
-			minTasks = heapEntry.NumTasks
+			minTasks = len(heapEntry.Tasks)
 		}
 		if !scanAllNodes {
 			if i == nextStoppingPoint && bestNode != nil {
@@ -117,8 +115,8 @@ func (nh *nodeHeap) findMin(meetsConstraints func(NodeInfo) bool, scanAllNodes b
 				// constraints, check their children
 				// recursively.
 				for j := i - levelSize + 1; j <= i; j++ {
-					heapEntry = nh.heap[i]
-					if heapEntry.NumTasks < minTasks {
+					heapEntry = &nh.heap[i]
+					if len(heapEntry.Tasks) < minTasks {
 						newBestNode, newMinTasks := nh.findBestChildBelowThreshold(meetsConstraints, i, minTasks)
 						if newBestNode != nil {
 							bestNode, minTasks = newBestNode, newMinTasks
@@ -136,17 +134,17 @@ func (nh *nodeHeap) findMin(meetsConstraints func(NodeInfo) bool, scanAllNodes b
 	return bestNode, minTasks
 }
 
-func (nh *nodeHeap) findBestChildBelowThreshold(meetsConstraints func(NodeInfo) bool, index int, threshold int) (*api.Node, int) {
+func (nh *nodeHeap) findBestChildBelowThreshold(meetsConstraints func(*NodeInfo) bool, index int, threshold int) (*api.Node, int) {
 	var bestNode *api.Node
 
 	for i := index*2 + 1; i <= index*2+2; i++ {
 		if i <= len(nh.heap) {
 			break
 		}
-		heapEntry := nh.heap[i]
-		if heapEntry.NumTasks < threshold {
+		heapEntry := &nh.heap[i]
+		if len(heapEntry.Tasks) < threshold {
 			if meetsConstraints(heapEntry) {
-				bestNode, threshold = heapEntry.Node, heapEntry.NumTasks
+				bestNode, threshold = heapEntry.Node, len(heapEntry.Tasks)
 			} else {
 				newBestNode, newMinTasks := nh.findBestChildBelowThreshold(meetsConstraints, i, threshold)
 				if newBestNode != nil {

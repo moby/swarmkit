@@ -21,7 +21,6 @@ type Scheduler struct {
 	unassignedTasks *list.List
 	nodeHeap        nodeHeap
 	allTasks        map[string]*api.Task
-	tasksByNode     map[string]map[string]*api.Task
 
 	// stopChan signals to the state machine to stop running
 	stopChan chan struct{}
@@ -40,7 +39,6 @@ func New(store state.WatchableStore) *Scheduler {
 		store:           store,
 		unassignedTasks: list.New(),
 		allTasks:        make(map[string]*api.Task),
-		tasksByNode:     make(map[string]map[string]*api.Task),
 		stopChan:        make(chan struct{}),
 		doneChan:        make(chan struct{}),
 	}
@@ -51,19 +49,21 @@ func (s *Scheduler) setupTasksList(tx state.ReadTx) error {
 	if err != nil {
 		return err
 	}
+
+	tasksByNode := make(map[string]map[string]*api.Task)
 	for _, t := range tasks {
 		s.allTasks[t.ID] = t
 		if t.NodeID == "" {
 			s.enqueue(t)
 		} else {
-			if s.tasksByNode[t.NodeID] == nil {
-				s.tasksByNode[t.NodeID] = make(map[string]*api.Task)
+			if tasksByNode[t.NodeID] == nil {
+				tasksByNode[t.NodeID] = make(map[string]*api.Task)
 			}
-			s.tasksByNode[t.NodeID][t.ID] = t
+			tasksByNode[t.NodeID][t.ID] = t
 		}
 	}
 
-	if err := s.buildNodeHeap(tx); err != nil {
+	if err := s.buildNodeHeap(tx, tasksByNode); err != nil {
 		return err
 	}
 
@@ -98,9 +98,11 @@ func (s *Scheduler) Run() error {
 			case state.EventDeleteTask:
 				s.deleteTask(v.Task)
 			case state.EventCreateNode:
-				pendingChanges += s.createNode(v.Node)
+				s.createOrUpdateNode(v.Node)
+				pendingChanges++
 			case state.EventUpdateNode:
-				pendingChanges += s.updateNode(v.Node)
+				s.createOrUpdateNode(v.Node)
+				pendingChanges++
 			case state.EventDeleteNode:
 				s.nodeHeap.remove(v.Node.ID)
 			case state.EventCommit:
@@ -127,11 +129,6 @@ func (s *Scheduler) enqueue(t *api.Task) {
 	s.unassignedTasks.PushBack(t)
 }
 
-func schedulableNode(n NodeInfo) bool {
-	return n.Status.State == api.NodeStatus_READY &&
-		(n.Spec == nil || n.Spec.Availability == api.NodeAvailabilityActive)
-}
-
 func (s *Scheduler) createTask(t *api.Task) int {
 	s.allTasks[t.ID] = t
 	if t.NodeID == "" {
@@ -139,63 +136,35 @@ func (s *Scheduler) createTask(t *api.Task) int {
 		s.enqueue(t)
 		return 1
 	}
-	if s.tasksByNode[t.NodeID] == nil {
-		s.tasksByNode[t.NodeID] = make(map[string]*api.Task)
-	}
-	s.tasksByNode[t.NodeID][t.ID] = t
 
-	s.nodeHeap.updateNode(t.NodeID, len(s.tasksByNode[t.NodeID]))
+	nodeInfo := s.nodeHeap.nodeInfo(t.NodeID)
+	nodeInfo.addTask(t)
+	s.nodeHeap.updateNode(nodeInfo)
 
 	return 0
 }
 
 func (s *Scheduler) updateTask(t *api.Task) int {
 	oldTask := s.allTasks[t.ID]
-	if oldTask != nil && t.NodeID != oldTask.NodeID {
-		if s.tasksByNode[oldTask.NodeID] != nil {
-			delete(s.tasksByNode[oldTask.NodeID], oldTask.ID)
-			if len(s.tasksByNode[oldTask.NodeID]) == 0 {
-				delete(s.tasksByNode, oldTask.NodeID)
-			}
-			s.nodeHeap.updateNode(oldTask.NodeID, len(s.tasksByNode[oldTask.NodeID]))
-		}
-		if t.NodeID != "" {
-			if s.tasksByNode[t.NodeID] == nil {
-				s.tasksByNode[t.NodeID] = make(map[string]*api.Task)
-			}
-			s.tasksByNode[t.NodeID][t.ID] = t
-			s.nodeHeap.updateNode(t.NodeID, len(s.tasksByNode[t.NodeID]))
-		}
+	if oldTask != nil {
+		s.deleteTask(oldTask)
 	}
-	s.allTasks[t.ID] = t
-
-	if t.NodeID == "" {
-		// unassigned task
-		s.enqueue(t)
-		return 1
-	}
-	return 0
+	return s.createTask(t)
 }
 
 func (s *Scheduler) deleteTask(t *api.Task) {
 	delete(s.allTasks, t.ID)
-	if s.tasksByNode[t.NodeID] != nil {
-		delete(s.tasksByNode[t.NodeID], t.ID)
-		if len(s.tasksByNode[t.NodeID]) == 0 {
-			delete(s.tasksByNode, t.NodeID)
-		}
-		s.nodeHeap.updateNode(t.NodeID, len(s.tasksByNode[t.NodeID]))
+	nodeInfo := s.nodeHeap.nodeInfo(t.NodeID)
+	nodeInfo.removeTask(t)
+	s.nodeHeap.updateNode(nodeInfo)
+}
+
+func (s *Scheduler) createOrUpdateNode(n *api.Node) {
+	var resources api.Resources
+	if n.Description != nil && n.Description.Resources != nil {
+		resources = *n.Description.Resources
 	}
-}
-
-func (s *Scheduler) createNode(n *api.Node) int {
-	s.nodeHeap.addOrUpdateNode(n, len(s.tasksByNode[n.ID]))
-	return 1
-}
-
-func (s *Scheduler) updateNode(n *api.Node) int {
-	s.nodeHeap.addOrUpdateNode(n, len(s.tasksByNode[n.ID]))
-	return 1
+	s.nodeHeap.addOrUpdateNode(newNodeInfo(n, map[string]*api.Task{}, resources))
 }
 
 // tick attempts to schedule the queue.
@@ -259,15 +228,12 @@ func (s *Scheduler) tick() {
 }
 
 func (s *Scheduler) rollbackLocalState(decisions map[string]schedulingDecision) {
-	for taskID, decision := range decisions {
-		assignedNodeID := decision.new.NodeID
-
+	for _, decision := range decisions {
 		s.allTasks[decision.old.ID] = decision.old
-		delete(s.tasksByNode[assignedNodeID], taskID)
-		if len(s.tasksByNode[assignedNodeID]) == 0 {
-			delete(s.tasksByNode, assignedNodeID)
-		}
-		s.nodeHeap.updateNode(assignedNodeID, len(s.tasksByNode[assignedNodeID]))
+
+		nodeInfo := s.nodeHeap.nodeInfo(decision.new.NodeID)
+		nodeInfo.removeTask(decision.new)
+		s.nodeHeap.updateNode(nodeInfo)
 
 		s.enqueue(decision.old)
 	}
@@ -275,7 +241,8 @@ func (s *Scheduler) rollbackLocalState(decisions map[string]schedulingDecision) 
 
 // scheduleTask schedules a single task.
 func (s *Scheduler) scheduleTask(t *api.Task) *api.Task {
-	n, numTasks := s.nodeHeap.findMin(schedulableNode, s.scanAllNodes)
+	pipeline := NewPipeline(t)
+	n, _ := s.nodeHeap.findMin(pipeline.Process, s.scanAllNodes)
 	if n == nil {
 		log.WithField("task.id", t.ID).Debug("No nodes available to assign tasks to")
 		return nil
@@ -286,15 +253,14 @@ func (s *Scheduler) scheduleTask(t *api.Task) *api.Task {
 	newT.NodeID = n.ID
 	newT.Status = &api.TaskStatus{State: api.TaskStateAssigned}
 	s.allTasks[t.ID] = &newT
-	if s.tasksByNode[t.NodeID] == nil {
-		s.tasksByNode[t.NodeID] = make(map[string]*api.Task)
-	}
-	s.tasksByNode[t.NodeID][t.ID] = &newT
-	s.nodeHeap.updateNode(n.ID, numTasks+1)
+
+	nodeInfo := s.nodeHeap.nodeInfo(n.ID)
+	nodeInfo.addTask(&newT)
+	s.nodeHeap.updateNode(nodeInfo)
 	return &newT
 }
 
-func (s *Scheduler) buildNodeHeap(tx state.ReadTx) error {
+func (s *Scheduler) buildNodeHeap(tx state.ReadTx, tasksByNode map[string]map[string]*api.Task) error {
 	nodes, err := tx.Nodes().Find(state.All)
 	if err != nil {
 		return err
@@ -304,7 +270,11 @@ func (s *Scheduler) buildNodeHeap(tx state.ReadTx) error {
 
 	i := 0
 	for _, n := range nodes {
-		s.nodeHeap.heap = append(s.nodeHeap.heap, newNodeInfo(n, len(s.tasksByNode[n.ID])))
+		var resources api.Resources
+		if n.Description != nil && n.Description.Resources != nil {
+			resources = *n.Description.Resources
+		}
+		s.nodeHeap.heap = append(s.nodeHeap.heap, newNodeInfo(n, tasksByNode[n.ID], resources))
 		s.nodeHeap.index[n.ID] = i
 		i++
 	}
