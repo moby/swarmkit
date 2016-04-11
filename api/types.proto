@@ -94,6 +94,9 @@ message Container {
 	// 1003.1-2001](http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html).
 	repeated string env = 5;
 
+	// Dir defines the working directory to set for the container process.
+	string dir = 6;
+
 	// NetworkAttachmentSpec describes a desired attachment to the named network or
 	// a specific network_id.
 	message NetworkAttachment {
@@ -103,7 +106,7 @@ message Container {
 		}
 	}
 
-	repeated NetworkAttachment networks = 6;
+	repeated NetworkAttachment networks = 7;
 }
 
 // TaskState enumerates the states that a task progresses through within an

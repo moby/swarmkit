@@ -69,9 +69,10 @@ func (c *containerConfig) image() string {
 
 func (c *containerConfig) config() *enginecontainer.Config {
 	return &enginecontainer.Config{
-		Cmd:   c.runtime.Command, // TODO(stevvooe): Fall back to entrypoint+args
-		Env:   c.runtime.Env,
-		Image: c.image(),
+		Cmd:        c.runtime.Command, // TODO(stevvooe): Fall back to entrypoint+args
+		Env:        c.runtime.Env,
+		WorkingDir: c.runtime.Dir,
+		Image:      c.image(),
 	}
 }
 

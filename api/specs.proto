@@ -38,7 +38,7 @@ message NodeSpec {
 		// be evicted.
 		DRAIN = 2 [(gogoproto.enumvalue_customname) = "NodeAvailabilityDrain"];
 	}
-	
+
 	// Availability allows a user to control the current scheduling status of a
 	// node.
 	Availability availability = 2;
