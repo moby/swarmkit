@@ -127,7 +127,7 @@ func (s *Scheduler) enqueue(t *api.Task) {
 	s.unassignedTasks.PushBack(t)
 }
 
-func schedulableNode(n *api.Node) bool {
+func schedulableNode(n NodeInfo) bool {
 	return n.Status.State == api.NodeStatus_READY &&
 		(n.Spec == nil || n.Spec.Availability == api.NodeAvailabilityActive)
 }
@@ -275,7 +275,7 @@ func (s *Scheduler) rollbackLocalState(decisions map[string]schedulingDecision) 
 
 // scheduleTask schedules a single task.
 func (s *Scheduler) scheduleTask(t *api.Task) *api.Task {
-	n, numTasks := s.nodeHeap.findMin(s.schedulableNode, s.scanAllNodes)
+	n, numTasks := s.nodeHeap.findMin(schedulableNode, s.scanAllNodes)
 	if n == nil {
 		log.WithField("task.id", t.ID).Debug("No nodes available to assign tasks to")
 		return nil
@@ -304,7 +304,7 @@ func (s *Scheduler) buildNodeHeap(tx state.ReadTx) error {
 
 	i := 0
 	for _, n := range nodes {
-		s.nodeHeap.heap = append(s.nodeHeap.heap, nodeHeapItem{node: n, numTasks: len(s.tasksByNode[n.ID])})
+		s.nodeHeap.heap = append(s.nodeHeap.heap, newNodeInfo(n, len(s.tasksByNode[n.ID])))
 		s.nodeHeap.index[n.ID] = i
 		i++
 	}

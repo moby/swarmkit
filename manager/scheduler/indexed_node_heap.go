@@ -6,15 +6,20 @@ import (
 	"github.com/docker/swarm-v2/api"
 )
 
-type nodeHeapItem struct {
-	node     *api.Node
-	numTasks int
+// NodeInfo contains a node and some additional metadata.
+type NodeInfo struct {
+	*api.Node
+	NumTasks int
+}
+
+func newNodeInfo(n *api.Node, numTasks int) NodeInfo {
+	return NodeInfo{Node: n, NumTasks: numTasks}
 }
 
 // A nodeHeap implements heap.Interface for nodes. It also includes an index
 // by node id.
 type nodeHeap struct {
-	heap  []nodeHeapItem
+	heap  []NodeInfo
 	index map[string]int // map from node id to heap index
 }
 
@@ -23,19 +28,19 @@ func (nh nodeHeap) Len() int {
 }
 
 func (nh nodeHeap) Less(i, j int) bool {
-	return nh.heap[i].numTasks < nh.heap[j].numTasks
+	return nh.heap[i].NumTasks < nh.heap[j].NumTasks
 }
 
 func (nh nodeHeap) Swap(i, j int) {
 	nh.heap[i], nh.heap[j] = nh.heap[j], nh.heap[i]
-	nh.index[nh.heap[i].node.ID] = i
-	nh.index[nh.heap[j].node.ID] = j
+	nh.index[nh.heap[i].ID] = i
+	nh.index[nh.heap[j].ID] = j
 }
 
 func (nh *nodeHeap) Push(x interface{}) {
 	n := len(nh.heap)
-	item := x.(nodeHeapItem)
-	nh.index[item.node.ID] = n
+	item := x.(NodeInfo)
+	nh.index[item.ID] = n
 	nh.heap = append(nh.heap, item)
 }
 
@@ -43,17 +48,17 @@ func (nh *nodeHeap) Pop() interface{} {
 	old := nh.heap
 	n := len(old)
 	item := old[n-1]
-	delete(nh.index, item.node.ID)
+	delete(nh.index, item.ID)
 	nh.heap = old[0 : n-1]
 	return item
 }
 
 func (nh *nodeHeap) alloc(n int) {
-	nh.heap = make([]nodeHeapItem, 0, n)
+	nh.heap = make([]NodeInfo, 0, n)
 	nh.index = make(map[string]int, n)
 }
 
-func (nh *nodeHeap) peek() *nodeHeapItem {
+func (nh *nodeHeap) peek() *NodeInfo {
 	if len(nh.heap) == 0 {
 		return nil
 	}
@@ -65,11 +70,11 @@ func (nh *nodeHeap) peek() *nodeHeapItem {
 func (nh *nodeHeap) addOrUpdateNode(n *api.Node, numTasks int) {
 	index, ok := nh.index[n.ID]
 	if ok {
-		nh.heap[index].node = n
-		nh.heap[index].numTasks = numTasks
+		nh.heap[index].Node = n
+		nh.heap[index].NumTasks = numTasks
 		heap.Fix(nh, index)
 	} else {
-		heap.Push(nh, nodeHeapItem{node: n, numTasks: numTasks})
+		heap.Push(nh, newNodeInfo(n, numTasks))
 	}
 }
 
@@ -78,7 +83,7 @@ func (nh *nodeHeap) addOrUpdateNode(n *api.Node, numTasks int) {
 func (nh *nodeHeap) updateNode(nodeID string, numTasks int) {
 	index, ok := nh.index[nodeID]
 	if ok {
-		nh.heap[index].numTasks = numTasks
+		nh.heap[index].NumTasks = numTasks
 		heap.Fix(nh, index)
 	}
 }
@@ -86,13 +91,13 @@ func (nh *nodeHeap) updateNode(nodeID string, numTasks int) {
 func (nh *nodeHeap) remove(nodeID string) {
 	index, ok := nh.index[nodeID]
 	if ok {
-		nh.heap[index].numTasks = -1
+		nh.heap[index].NumTasks = -1
 		heap.Fix(nh, index)
 		heap.Pop(nh)
 	}
 }
 
-func (nh *nodeHeap) findMin(meetsConstraints func(*api.Node) bool, scanAllNodes bool) (*api.Node, int) {
+func (nh *nodeHeap) findMin(meetsConstraints func(NodeInfo) bool, scanAllNodes bool) (*api.Node, int) {
 	var bestNode *api.Node
 	minTasks := int(^uint(0) >> 1) // max int
 	nextStoppingPoint := 0
@@ -101,9 +106,9 @@ func (nh *nodeHeap) findMin(meetsConstraints func(*api.Node) bool, scanAllNodes 
 	for i := 0; i < len(nh.heap); i++ {
 		heapEntry := nh.heap[i]
 
-		if meetsConstraints(heapEntry.node) && heapEntry.numTasks < minTasks {
-			bestNode = heapEntry.node
-			minTasks = heapEntry.numTasks
+		if meetsConstraints(heapEntry) && heapEntry.NumTasks < minTasks {
+			bestNode = heapEntry.Node
+			minTasks = heapEntry.NumTasks
 		}
 		if !scanAllNodes {
 			if i == nextStoppingPoint && bestNode != nil {
@@ -113,7 +118,7 @@ func (nh *nodeHeap) findMin(meetsConstraints func(*api.Node) bool, scanAllNodes 
 				// recursively.
 				for j := i - levelSize + 1; j <= i; j++ {
 					heapEntry = nh.heap[i]
-					if heapEntry.numTasks < minTasks {
+					if heapEntry.NumTasks < minTasks {
 						newBestNode, newMinTasks := nh.findBestChildBelowThreshold(meetsConstraints, i, minTasks)
 						if newBestNode != nil {
 							bestNode, minTasks = newBestNode, newMinTasks
@@ -131,7 +136,7 @@ func (nh *nodeHeap) findMin(meetsConstraints func(*api.Node) bool, scanAllNodes 
 	return bestNode, minTasks
 }
 
-func (nh *nodeHeap) findBestChildBelowThreshold(meetsConstraints func(*api.Node) bool, index int, threshold int) (*api.Node, int) {
+func (nh *nodeHeap) findBestChildBelowThreshold(meetsConstraints func(NodeInfo) bool, index int, threshold int) (*api.Node, int) {
 	var bestNode *api.Node
 
 	for i := index*2 + 1; i <= index*2+2; i++ {
@@ -139,9 +144,9 @@ func (nh *nodeHeap) findBestChildBelowThreshold(meetsConstraints func(*api.Node)
 			break
 		}
 		heapEntry := nh.heap[i]
-		if heapEntry.numTasks < threshold {
-			if meetsConstraints(heapEntry.node) {
-				bestNode, threshold = heapEntry.node, heapEntry.numTasks
+		if heapEntry.NumTasks < threshold {
+			if meetsConstraints(heapEntry) {
+				bestNode, threshold = heapEntry.Node, heapEntry.NumTasks
 			} else {
 				newBestNode, newMinTasks := nh.findBestChildBelowThreshold(meetsConstraints, i, threshold)
 				if newBestNode != nil {
