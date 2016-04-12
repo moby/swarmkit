@@ -1,6 +1,7 @@
 package raftproxy
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
@@ -57,6 +58,28 @@ func sigPrefix(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescrip
 	return "func (p *" + serviceTypeName(s) + ") " + m.GetName() + "("
 }
 
+func (g *raftProxyGen) genAddrObtain(ctxStr string) {
+	g.gen.P(fmt.Sprintf(`var addr string
+	s, ok := transport.StreamFromContext(%s)
+	if ok {
+		addr = s.ServerTransport().RemoteAddr().String()
+	}`, ctxStr))
+}
+
+func (g *raftProxyGen) genStreamRedirectCheck() {
+	g.genAddrObtain("stream.Context()")
+	g.gen.P(`md, ok := metadata.FromContext(stream.Context())
+	if ok && len(md["redirect"]) != 0 {
+		return grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+	}
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md["redirect"] = append(md["redirect"], addr)
+	ctx := metadata.NewContext(stream.Context(), md)
+	`)
+}
+
 func (g *raftProxyGen) genClientStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
 	g.gen.P(`
@@ -67,7 +90,8 @@ func (g *raftProxyGen) genClientStreamingMethod(s *descriptor.ServiceDescriptorP
 		}
 		return err
 	}`)
-	g.gen.P("clientStream, err := New" + s.GetName() + "Client(c)." + m.GetName() + "(stream.Context())")
+	g.genStreamRedirectCheck()
+	g.gen.P("clientStream, err := New" + s.GetName() + "Client(c)." + m.GetName() + "(ctx)")
 	g.gen.P(`
 	if err != nil {
 			return err
@@ -105,7 +129,8 @@ func (g *raftProxyGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorP
 		}
 		return err
 	}`)
-	g.gen.P("clientStream, err := New" + s.GetName() + "Client(c)." + m.GetName() + "(stream.Context(), r)")
+	g.genStreamRedirectCheck()
+	g.gen.P("clientStream, err := New" + s.GetName() + "Client(c)." + m.GetName() + "(ctx, r)")
 	g.gen.P(`
 	if err != nil {
 			return err
@@ -137,7 +162,8 @@ func (g *raftProxyGen) genClientServerStreamingMethod(s *descriptor.ServiceDescr
 		}
 		return err
 	}`)
-	g.gen.P("clientStream, err := New" + s.GetName() + "Client(c)." + m.GetName() + "(stream.Context())")
+	g.genStreamRedirectCheck()
+	g.gen.P("clientStream, err := New" + s.GetName() + "Client(c)." + m.GetName() + "(ctx)")
 	g.gen.P(`
 	if err != nil {
 			return err
@@ -153,7 +179,7 @@ func (g *raftProxyGen) genClientServerStreamingMethod(s *descriptor.ServiceDescr
 			errc <- err
 			return
 		}
-		if err := stream.Send(msg); err != nil {
+		if err := clientStream.Send(msg); err != nil {
 			errc <- err
 			return
 		}
@@ -186,6 +212,17 @@ func (g *raftProxyGen) genSimpleMethod(s *descriptor.ServiceDescriptorProto, m *
 		}
 		return nil, err
 	}`)
+	g.genAddrObtain("ctx")
+	g.gen.P(`md, ok := metadata.FromContext(ctx)
+	if ok && len(md["redirect"]) != 0 {
+		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+	}
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md["redirect"] = append(md["redirect"], addr)
+	ctx = metadata.NewContext(ctx, md)
+	`)
 	g.gen.P("return New" + s.GetName() + "Client(c)." + m.GetName() + "(ctx, r)")
 	g.gen.P("}")
 }
@@ -222,4 +259,7 @@ func (g *raftProxyGen) GenerateImports(file *generator.FileDescriptor) {
 		return
 	}
 	g.gen.P("import leaderconn \"github.com/docker/swarm-v2/manager/state/leaderconn\"")
+	g.gen.P("import codes \"google.golang.org/grpc/codes\"")
+	g.gen.P("import metadata \"google.golang.org/grpc/metadata\"")
+	g.gen.P("import transport \"google.golang.org/grpc/transport\"")
 }

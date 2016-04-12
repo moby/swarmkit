@@ -33,6 +33,9 @@ import (
 )
 
 import leaderconn "github.com/docker/swarm-v2/manager/state/leaderconn"
+import codes "google.golang.org/grpc/codes"
+import metadata "google.golang.org/grpc/metadata"
+import transport "google.golang.org/grpc/transport"
 
 import io "io"
 
@@ -730,6 +733,21 @@ func (p *raftProxyRouteGuideServer) GetFeature(ctx context.Context, r *Point) (*
 		}
 		return nil, err
 	}
+	var addr string
+	s, ok := transport.StreamFromContext(ctx)
+	if ok {
+		addr = s.ServerTransport().RemoteAddr().String()
+	}
+	md, ok := metadata.FromContext(ctx)
+	if ok && len(md["redirect"]) != 0 {
+		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+	}
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md["redirect"] = append(md["redirect"], addr)
+	ctx = metadata.NewContext(ctx, md)
+
 	return NewRouteGuideClient(c).GetFeature(ctx, r)
 }
 
@@ -742,7 +760,22 @@ func (p *raftProxyRouteGuideServer) ListFeatures(r *Rectangle, stream RouteGuide
 		}
 		return err
 	}
-	clientStream, err := NewRouteGuideClient(c).ListFeatures(stream.Context(), r)
+	var addr string
+	s, ok := transport.StreamFromContext(stream.Context())
+	if ok {
+		addr = s.ServerTransport().RemoteAddr().String()
+	}
+	md, ok := metadata.FromContext(stream.Context())
+	if ok && len(md["redirect"]) != 0 {
+		return grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+	}
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md["redirect"] = append(md["redirect"], addr)
+	ctx := metadata.NewContext(stream.Context(), md)
+
+	clientStream, err := NewRouteGuideClient(c).ListFeatures(ctx, r)
 
 	if err != nil {
 		return err
@@ -772,7 +805,22 @@ func (p *raftProxyRouteGuideServer) RecordRoute(stream RouteGuide_RecordRouteSer
 		}
 		return err
 	}
-	clientStream, err := NewRouteGuideClient(c).RecordRoute(stream.Context())
+	var addr string
+	s, ok := transport.StreamFromContext(stream.Context())
+	if ok {
+		addr = s.ServerTransport().RemoteAddr().String()
+	}
+	md, ok := metadata.FromContext(stream.Context())
+	if ok && len(md["redirect"]) != 0 {
+		return grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+	}
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md["redirect"] = append(md["redirect"], addr)
+	ctx := metadata.NewContext(stream.Context(), md)
+
+	clientStream, err := NewRouteGuideClient(c).RecordRoute(ctx)
 
 	if err != nil {
 		return err
@@ -808,7 +856,22 @@ func (p *raftProxyRouteGuideServer) RouteChat(stream RouteGuide_RouteChatServer)
 		}
 		return err
 	}
-	clientStream, err := NewRouteGuideClient(c).RouteChat(stream.Context())
+	var addr string
+	s, ok := transport.StreamFromContext(stream.Context())
+	if ok {
+		addr = s.ServerTransport().RemoteAddr().String()
+	}
+	md, ok := metadata.FromContext(stream.Context())
+	if ok && len(md["redirect"]) != 0 {
+		return grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+	}
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md["redirect"] = append(md["redirect"], addr)
+	ctx := metadata.NewContext(stream.Context(), md)
+
+	clientStream, err := NewRouteGuideClient(c).RouteChat(ctx)
 
 	if err != nil {
 		return err
@@ -824,7 +887,7 @@ func (p *raftProxyRouteGuideServer) RouteChat(stream RouteGuide_RouteChatServer)
 			errc <- err
 			return
 		}
-		if err := stream.Send(msg); err != nil {
+		if err := clientStream.Send(msg); err != nil {
 			errc <- err
 			return
 		}
