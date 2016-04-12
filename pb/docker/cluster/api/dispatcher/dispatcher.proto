@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package docker.cluster.api;
+package docker.cluster.api.disptacher;
 
-import "types.proto";
-import "objects.proto";
+import "docker/cluster/types/types.proto";
+import "docker/cluster/objects/objects.proto";
 import "gogoproto/gogo.proto";
 
 // Dispatcher is the API provided by a manager group for agents to connect to. Agents
@@ -40,7 +40,7 @@ message RegisterRequest {
 	// This contents of this field *must* be authenticated.
 	string node_id = 1 [(gogoproto.customname) = "NodeID"];
 
-	NodeDescription description = 2;
+	types.NodeDescription description = 2;
 }
 
 message RegisterResponse {
@@ -103,7 +103,7 @@ message SessionRequest {
 // session. An agent should act immediately on the contents.
 message SessionMessage {
 	// Managers provides a weight list of alternative dispatchers
-	repeated WeightedPeer managers = 1;
+	repeated types.WeightedPeer managers = 1;
 
 	// Disconnect instructs the agent to disconnect from the current disptacher
 	// and select a new one.
@@ -130,7 +130,7 @@ message UpdateTaskStatusRequest {
 
 	message TaskStatusUpdate {
 		string task_id = 1 [(gogoproto.customname) = "TaskID"];
-		TaskStatus status = 2;
+		types.TaskStatus status = 2;
 	}
 
 	repeated TaskStatusUpdate updates = 3;
@@ -148,6 +148,6 @@ message TasksRequest {
 message TasksMessage {
 	// Tasks is the set of tasks that should be running on the node.
 	// Tasks outside of this set running on the node should be terminated.
-	repeated Task tasks = 1;
+	repeated objects.Task tasks = 1;
 }
 

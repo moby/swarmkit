@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-package pb;
+package docker.cluster.snapshot;
 
-import "gogoproto/gogo.proto";
+import "docker/cluster/objects/objects.proto";
+import "docker/cluster/api/manager/manager.proto";
 
-import "github.com/docker/swarm-v2/api/objects.proto";
-import "github.com/docker/swarm-v2/api/manager.proto";
+import weak "gogoproto/gogo.proto";
 
 // StoreSnapshot is used to store snapshots of the store.
 message StoreSnapshot {
@@ -15,17 +15,16 @@ message StoreSnapshot {
 	// using gogo-protobuf's io.DelimitedWriter. A new value of the version
 	// field could support this approach.
 
-	repeated docker.cluster.api.Node nodes = 1;
-	repeated docker.cluster.api.Job jobs = 2;
-	repeated docker.cluster.api.Network networks = 3;
-	repeated docker.cluster.api.Task tasks = 4;
-	repeated docker.cluster.api.Volume volumes = 5;
-
+	repeated objects.Node nodes = 1;
+	repeated objects.Job jobs = 2;
+	repeated objects.Network networks = 3;
+	repeated objects.Task tasks = 4;
+	repeated objects.Volume volumes = 5;
 }
 
 // ClusterSnapshot stores cluster membership information in snapshots.
 message ClusterSnapshot {
-	repeated docker.cluster.api.RaftNode members = 1;
+	repeated api.manager.RaftNode members = 1;
 	repeated uint64 removed = 2;
 }
 

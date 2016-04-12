@@ -2,11 +2,31 @@
 // source: dispatcher.proto
 // DO NOT EDIT!
 
-package api
+/*
+	Package dispatcher is a generated protocol buffer package.
+
+	It is generated from these files:
+		dispatcher.proto
+
+	It has these top-level messages:
+		RegisterRequest
+		RegisterResponse
+		SessionRequest
+		SessionMessage
+		HeartbeatRequest
+		HeartbeatResponse
+		UpdateTaskStatusRequest
+		UpdateTaskStatusResponse
+		TasksRequest
+		TasksMessage
+*/
+package dispatcher
 
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
+import docker_cluster_types "github.com/docker/swarm-v2/pb/docker/cluster/types"
+import docker_cluster_objects "github.com/docker/swarm-v2/pb/docker/cluster/objects"
 import _ "github.com/gogo/protobuf/gogoproto"
 
 import time "time"
@@ -29,12 +49,16 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto.GoGoProtoPackageIsVersion1
+
 type RegisterRequest struct {
 	// NodeID identifies the registering node.
 	//
 	// This contents of this field *must* be authenticated.
-	NodeID      string           `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	Description *NodeDescription `protobuf:"bytes,2,opt,name=description" json:"description,omitempty"`
+	NodeID      string                                `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	Description *docker_cluster_types.NodeDescription `protobuf:"bytes,2,opt,name=description" json:"description,omitempty"`
 }
 
 func (m *RegisterRequest) Reset()                    { *m = RegisterRequest{} }
@@ -108,7 +132,7 @@ func (*SessionRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispa
 // session. An agent should act immediately on the contents.
 type SessionMessage struct {
 	// Managers provides a weight list of alternative dispatchers
-	Managers []*WeightedPeer `protobuf:"bytes,1,rep,name=managers" json:"managers,omitempty"`
+	Managers []*docker_cluster_types.WeightedPeer `protobuf:"bytes,1,rep,name=managers" json:"managers,omitempty"`
 	// Disconnect instructs the agent to disconnect from the current disptacher
 	// and select a new one.
 	Disconnect bool `protobuf:"varint,2,opt,name=disconnect,proto3" json:"disconnect,omitempty"`
@@ -153,8 +177,8 @@ func (*UpdateTaskStatusRequest) Descriptor() ([]byte, []int) {
 }
 
 type UpdateTaskStatusRequest_TaskStatusUpdate struct {
-	TaskID string      `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
-	Status *TaskStatus `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
+	TaskID string                           `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	Status *docker_cluster_types.TaskStatus `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
 }
 
 func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Reset() {
@@ -186,7 +210,7 @@ func (*TasksRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatc
 type TasksMessage struct {
 	// Tasks is the set of tasks that should be running on the node.
 	// Tasks outside of this set running on the node should be terminated.
-	Tasks []*Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
+	Tasks []*docker_cluster_objects.Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
 }
 
 func (m *TasksMessage) Reset()                    { *m = TasksMessage{} }
@@ -194,17 +218,17 @@ func (*TasksMessage) ProtoMessage()               {}
 func (*TasksMessage) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{9} }
 
 func init() {
-	proto.RegisterType((*RegisterRequest)(nil), "docker.cluster.api.RegisterRequest")
-	proto.RegisterType((*RegisterResponse)(nil), "docker.cluster.api.RegisterResponse")
-	proto.RegisterType((*SessionRequest)(nil), "docker.cluster.api.SessionRequest")
-	proto.RegisterType((*SessionMessage)(nil), "docker.cluster.api.SessionMessage")
-	proto.RegisterType((*HeartbeatRequest)(nil), "docker.cluster.api.HeartbeatRequest")
-	proto.RegisterType((*HeartbeatResponse)(nil), "docker.cluster.api.HeartbeatResponse")
-	proto.RegisterType((*UpdateTaskStatusRequest)(nil), "docker.cluster.api.UpdateTaskStatusRequest")
-	proto.RegisterType((*UpdateTaskStatusRequest_TaskStatusUpdate)(nil), "docker.cluster.api.UpdateTaskStatusRequest.TaskStatusUpdate")
-	proto.RegisterType((*UpdateTaskStatusResponse)(nil), "docker.cluster.api.UpdateTaskStatusResponse")
-	proto.RegisterType((*TasksRequest)(nil), "docker.cluster.api.TasksRequest")
-	proto.RegisterType((*TasksMessage)(nil), "docker.cluster.api.TasksMessage")
+	proto.RegisterType((*RegisterRequest)(nil), "docker.cluster.api.disptacher.RegisterRequest")
+	proto.RegisterType((*RegisterResponse)(nil), "docker.cluster.api.disptacher.RegisterResponse")
+	proto.RegisterType((*SessionRequest)(nil), "docker.cluster.api.disptacher.SessionRequest")
+	proto.RegisterType((*SessionMessage)(nil), "docker.cluster.api.disptacher.SessionMessage")
+	proto.RegisterType((*HeartbeatRequest)(nil), "docker.cluster.api.disptacher.HeartbeatRequest")
+	proto.RegisterType((*HeartbeatResponse)(nil), "docker.cluster.api.disptacher.HeartbeatResponse")
+	proto.RegisterType((*UpdateTaskStatusRequest)(nil), "docker.cluster.api.disptacher.UpdateTaskStatusRequest")
+	proto.RegisterType((*UpdateTaskStatusRequest_TaskStatusUpdate)(nil), "docker.cluster.api.disptacher.UpdateTaskStatusRequest.TaskStatusUpdate")
+	proto.RegisterType((*UpdateTaskStatusResponse)(nil), "docker.cluster.api.disptacher.UpdateTaskStatusResponse")
+	proto.RegisterType((*TasksRequest)(nil), "docker.cluster.api.disptacher.TasksRequest")
+	proto.RegisterType((*TasksMessage)(nil), "docker.cluster.api.disptacher.TasksMessage")
 }
 
 func (m *RegisterRequest) Copy() *RegisterRequest {
@@ -256,7 +280,7 @@ func (m *SessionMessage) Copy() *SessionMessage {
 	}
 
 	if m.Managers != nil {
-		o.Managers = make([]*WeightedPeer, 0, len(m.Managers))
+		o.Managers = make([]*docker_cluster_types.WeightedPeer, 0, len(m.Managers))
 		for _, v := range m.Managers {
 			o.Managers = append(o.Managers, v.Copy())
 		}
@@ -354,7 +378,7 @@ func (m *TasksMessage) Copy() *TasksMessage {
 	o := &TasksMessage{}
 
 	if m.Tasks != nil {
-		o.Tasks = make([]*Task, 0, len(m.Tasks))
+		o.Tasks = make([]*docker_cluster_objects.Task, 0, len(m.Tasks))
 		for _, v := range m.Tasks {
 			o.Tasks = append(o.Tasks, v.Copy())
 		}
@@ -368,7 +392,7 @@ func (this *RegisterRequest) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.RegisterRequest{")
+	s = append(s, "&dispatcher.RegisterRequest{")
 	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
 	if this.Description != nil {
 		s = append(s, "Description: "+fmt.Sprintf("%#v", this.Description)+",\n")
@@ -381,7 +405,7 @@ func (this *RegisterResponse) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.RegisterResponse{")
+	s = append(s, "&dispatcher.RegisterResponse{")
 	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
 	s = append(s, "SessionID: "+fmt.Sprintf("%#v", this.SessionID)+",\n")
 	s = append(s, "}")
@@ -392,7 +416,7 @@ func (this *SessionRequest) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.SessionRequest{")
+	s = append(s, "&dispatcher.SessionRequest{")
 	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
 	s = append(s, "SessionID: "+fmt.Sprintf("%#v", this.SessionID)+",\n")
 	s = append(s, "}")
@@ -403,7 +427,7 @@ func (this *SessionMessage) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.SessionMessage{")
+	s = append(s, "&dispatcher.SessionMessage{")
 	if this.Managers != nil {
 		s = append(s, "Managers: "+fmt.Sprintf("%#v", this.Managers)+",\n")
 	}
@@ -416,7 +440,7 @@ func (this *HeartbeatRequest) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.HeartbeatRequest{")
+	s = append(s, "&dispatcher.HeartbeatRequest{")
 	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
 	s = append(s, "SessionID: "+fmt.Sprintf("%#v", this.SessionID)+",\n")
 	s = append(s, "}")
@@ -427,7 +451,7 @@ func (this *HeartbeatResponse) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.HeartbeatResponse{")
+	s = append(s, "&dispatcher.HeartbeatResponse{")
 	s = append(s, "Period: "+fmt.Sprintf("%#v", this.Period)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -437,7 +461,7 @@ func (this *UpdateTaskStatusRequest) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 7)
-	s = append(s, "&api.UpdateTaskStatusRequest{")
+	s = append(s, "&dispatcher.UpdateTaskStatusRequest{")
 	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
 	s = append(s, "SessionID: "+fmt.Sprintf("%#v", this.SessionID)+",\n")
 	if this.Updates != nil {
@@ -451,7 +475,7 @@ func (this *UpdateTaskStatusRequest_TaskStatusUpdate) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.UpdateTaskStatusRequest_TaskStatusUpdate{")
+	s = append(s, "&dispatcher.UpdateTaskStatusRequest_TaskStatusUpdate{")
 	s = append(s, "TaskID: "+fmt.Sprintf("%#v", this.TaskID)+",\n")
 	if this.Status != nil {
 		s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
@@ -464,7 +488,7 @@ func (this *UpdateTaskStatusResponse) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 4)
-	s = append(s, "&api.UpdateTaskStatusResponse{")
+	s = append(s, "&dispatcher.UpdateTaskStatusResponse{")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -473,7 +497,7 @@ func (this *TasksRequest) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.TasksRequest{")
+	s = append(s, "&dispatcher.TasksRequest{")
 	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
 	s = append(s, "SessionID: "+fmt.Sprintf("%#v", this.SessionID)+",\n")
 	s = append(s, "}")
@@ -484,7 +508,7 @@ func (this *TasksMessage) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.TasksMessage{")
+	s = append(s, "&dispatcher.TasksMessage{")
 	if this.Tasks != nil {
 		s = append(s, "Tasks: "+fmt.Sprintf("%#v", this.Tasks)+",\n")
 	}
@@ -553,7 +577,7 @@ func NewDispatcherClient(cc *grpc.ClientConn) DispatcherClient {
 
 func (c *dispatcherClient) Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error) {
 	out := new(RegisterResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Dispatcher/Register", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.disptacher.Dispatcher/Register", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -561,7 +585,7 @@ func (c *dispatcherClient) Register(ctx context.Context, in *RegisterRequest, op
 }
 
 func (c *dispatcherClient) Session(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (Dispatcher_SessionClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Dispatcher_serviceDesc.Streams[0], c.cc, "/docker.cluster.api.Dispatcher/Session", opts...)
+	stream, err := grpc.NewClientStream(ctx, &_Dispatcher_serviceDesc.Streams[0], c.cc, "/docker.cluster.api.disptacher.Dispatcher/Session", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -594,7 +618,7 @@ func (x *dispatcherSessionClient) Recv() (*SessionMessage, error) {
 
 func (c *dispatcherClient) Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
 	out := new(HeartbeatResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Dispatcher/Heartbeat", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.disptacher.Dispatcher/Heartbeat", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -603,7 +627,7 @@ func (c *dispatcherClient) Heartbeat(ctx context.Context, in *HeartbeatRequest, 
 
 func (c *dispatcherClient) UpdateTaskStatus(ctx context.Context, in *UpdateTaskStatusRequest, opts ...grpc.CallOption) (*UpdateTaskStatusResponse, error) {
 	out := new(UpdateTaskStatusResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Dispatcher/UpdateTaskStatus", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.disptacher.Dispatcher/UpdateTaskStatus", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -611,7 +635,7 @@ func (c *dispatcherClient) UpdateTaskStatus(ctx context.Context, in *UpdateTaskS
 }
 
 func (c *dispatcherClient) Tasks(ctx context.Context, in *TasksRequest, opts ...grpc.CallOption) (Dispatcher_TasksClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Dispatcher_serviceDesc.Streams[1], c.cc, "/docker.cluster.api.Dispatcher/Tasks", opts...)
+	stream, err := grpc.NewClientStream(ctx, &_Dispatcher_serviceDesc.Streams[1], c.cc, "/docker.cluster.api.disptacher.Dispatcher/Tasks", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -747,7 +771,7 @@ func (x *dispatcherTasksServer) Send(m *TasksMessage) error {
 }
 
 var _Dispatcher_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "docker.cluster.api.Dispatcher",
+	ServiceName: "docker.cluster.api.disptacher.Dispatcher",
 	HandlerType: (*DispatcherServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -1310,7 +1334,7 @@ func (this *RegisterRequest) String() string {
 	}
 	s := strings.Join([]string{`&RegisterRequest{`,
 		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
-		`Description:` + strings.Replace(fmt.Sprintf("%v", this.Description), "NodeDescription", "NodeDescription", 1) + `,`,
+		`Description:` + strings.Replace(fmt.Sprintf("%v", this.Description), "NodeDescription", "docker_cluster_types.NodeDescription", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1342,7 +1366,7 @@ func (this *SessionMessage) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&SessionMessage{`,
-		`Managers:` + strings.Replace(fmt.Sprintf("%v", this.Managers), "WeightedPeer", "WeightedPeer", 1) + `,`,
+		`Managers:` + strings.Replace(fmt.Sprintf("%v", this.Managers), "WeightedPeer", "docker_cluster_types.WeightedPeer", 1) + `,`,
 		`Disconnect:` + fmt.Sprintf("%v", this.Disconnect) + `,`,
 		`}`,
 	}, "")
@@ -1387,7 +1411,7 @@ func (this *UpdateTaskStatusRequest_TaskStatusUpdate) String() string {
 	}
 	s := strings.Join([]string{`&UpdateTaskStatusRequest_TaskStatusUpdate{`,
 		`TaskID:` + fmt.Sprintf("%v", this.TaskID) + `,`,
-		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "TaskStatus", "TaskStatus", 1) + `,`,
+		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "TaskStatus", "docker_cluster_types.TaskStatus", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1417,7 +1441,7 @@ func (this *TasksMessage) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&TasksMessage{`,
-		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "Task", 1) + `,`,
+		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "docker_cluster_objects.Task", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1515,7 +1539,7 @@ func (m *RegisterRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Description == nil {
-				m.Description = &NodeDescription{}
+				m.Description = &docker_cluster_types.NodeDescription{}
 			}
 			if err := m.Description.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -1813,7 +1837,7 @@ func (m *SessionMessage) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Managers = append(m.Managers, &WeightedPeer{})
+			m.Managers = append(m.Managers, &docker_cluster_types.WeightedPeer{})
 			if err := m.Managers[len(m.Managers)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -2260,7 +2284,7 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Unmarshal(data []byte) error 
 				return io.ErrUnexpectedEOF
 			}
 			if m.Status == nil {
-				m.Status = &TaskStatus{}
+				m.Status = &docker_cluster_types.TaskStatus{}
 			}
 			if err := m.Status.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -2500,7 +2524,7 @@ func (m *TasksMessage) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Tasks = append(m.Tasks, &Task{})
+			m.Tasks = append(m.Tasks, &docker_cluster_objects.Task{})
 			if err := m.Tasks[len(m.Tasks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -2632,42 +2656,44 @@ var (
 )
 
 var fileDescriptorDispatcher = []byte{
-	// 586 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xb4, 0x55, 0xcd, 0x6e, 0xd3, 0x40,
-	0x10, 0x4e, 0x1a, 0xea, 0x24, 0x13, 0x02, 0x61, 0x05, 0x22, 0xb2, 0x50, 0x12, 0xb9, 0x20, 0x21,
-	0x51, 0x0c, 0x2a, 0x12, 0xa7, 0x8a, 0x43, 0x14, 0x24, 0x72, 0x00, 0x2a, 0x97, 0x52, 0x89, 0x0b,
-	0xda, 0xd8, 0xa3, 0xd4, 0x94, 0x7a, 0x8d, 0x77, 0x73, 0xe0, 0x80, 0xc4, 0x4b, 0xf1, 0x0e, 0x39,
-	0x72, 0x44, 0x3d, 0x44, 0xb4, 0x4f, 0xc0, 0x23, 0x30, 0x6b, 0x3b, 0x4e, 0x48, 0x9d, 0xd2, 0x1c,
-	0x72, 0x58, 0x79, 0x77, 0xf6, 0x9b, 0xfd, 0xbe, 0xf9, 0xd9, 0x35, 0x34, 0x3c, 0x5f, 0x86, 0x5c,
-	0xb9, 0x47, 0x18, 0xd9, 0x61, 0x24, 0x94, 0x60, 0xcc, 0x13, 0xee, 0x31, 0xad, 0xdc, 0xcf, 0x23,
-	0xa9, 0xe8, 0xcb, 0x43, 0xdf, 0xac, 0xa9, 0xaf, 0x21, 0xca, 0x04, 0x60, 0xd6, 0xc5, 0xe0, 0x13,
-	0xba, 0x6a, 0xba, 0xbc, 0x3d, 0x14, 0x43, 0x11, 0x4f, 0x9f, 0xe8, 0x59, 0x62, 0xb5, 0xbe, 0xc1,
-	0x4d, 0x07, 0x87, 0xbe, 0x3e, 0xc1, 0xc1, 0x2f, 0x23, 0x94, 0x8a, 0x6d, 0x41, 0x39, 0x10, 0x1e,
-	0x7e, 0xf4, 0xbd, 0x66, 0xb1, 0x53, 0x7c, 0x58, 0xed, 0xc2, 0xf9, 0xa4, 0x6d, 0xbc, 0x21, 0x53,
-	0xbf, 0xe7, 0x18, 0x7a, 0xab, 0xef, 0xb1, 0x97, 0x50, 0xf3, 0x50, 0xba, 0x91, 0x1f, 0x2a, 0x5f,
-	0x04, 0xcd, 0x0d, 0x02, 0xd6, 0x76, 0xb6, 0xec, 0x8b, 0x9a, 0x6c, 0xed, 0xd8, 0x9b, 0x41, 0x9d,
-	0x79, 0x3f, 0x0b, 0xa1, 0x31, 0xa3, 0x97, 0xa1, 0x08, 0x24, 0x5e, 0x8d, 0x7f, 0x1b, 0x40, 0xa2,
-	0x94, 0x74, 0x86, 0xc6, 0x6d, 0xc4, 0xb8, 0x3a, 0xe1, 0xaa, 0xfb, 0x89, 0x95, 0xa0, 0xd5, 0x14,
-	0xd0, 0xf7, 0x2c, 0x17, 0x6e, 0xa4, 0xf6, 0x95, 0x82, 0x5c, 0x8d, 0x24, 0xc8, 0x48, 0x5e, 0xd3,
-	0x87, 0x0f, 0x91, 0xed, 0x42, 0xe5, 0x84, 0x07, 0x34, 0x8b, 0x24, 0xb1, 0x94, 0x28, 0x43, 0x9d,
-	0xbc, 0x0c, 0x1d, 0xa2, 0x3f, 0x3c, 0x52, 0xe8, 0xed, 0x21, 0x65, 0x21, 0xf3, 0x60, 0x2d, 0x00,
-	0x2a, 0xba, 0x2b, 0x82, 0x80, 0xaa, 0x18, 0xb3, 0x57, 0x9c, 0x39, 0x8b, 0xce, 0xdd, 0x2b, 0xe4,
-	0x91, 0x1a, 0x20, 0x57, 0x6b, 0x0c, 0xab, 0x0b, 0xb7, 0xe6, 0x68, 0xd2, 0x1a, 0x3d, 0x06, 0x63,
-	0x0f, 0x23, 0x5f, 0x24, 0x34, 0xd7, 0xba, 0x77, 0xc6, 0x93, 0x76, 0xe1, 0x74, 0xd2, 0xae, 0x2b,
-	0xff, 0x04, 0xed, 0xde, 0x28, 0xe2, 0x71, 0xad, 0x8d, 0x30, 0x06, 0x59, 0x3f, 0x36, 0xe0, 0xee,
-	0x41, 0xe8, 0x71, 0x85, 0xef, 0xb8, 0x3c, 0xde, 0x57, 0x5c, 0x8d, 0xe4, 0xfa, 0x24, 0xb3, 0xf7,
-	0x50, 0x1e, 0xc5, 0x6c, 0xb2, 0x59, 0x8a, 0xd3, 0xbe, 0x9b, 0x97, 0xf6, 0x25, 0x82, 0xec, 0x99,
-	0x25, 0x41, 0x38, 0xd3, 0xc3, 0x4c, 0x01, 0x8d, 0xc5, 0x4d, 0x2d, 0x5f, 0x91, 0x6d, 0x41, 0xbe,
-	0x86, 0x69, 0xf9, 0x7a, 0x8b, 0x04, 0x3d, 0x07, 0x43, 0xc6, 0x4e, 0xe9, 0x45, 0x69, 0xe5, 0xe9,
-	0x99, 0x53, 0x92, 0xa2, 0x2d, 0x13, 0x9a, 0x17, 0x55, 0x26, 0x25, 0xb0, 0x38, 0x5c, 0xd7, 0xd6,
-	0x35, 0xe6, 0xd1, 0x7a, 0x91, 0x52, 0x4c, 0xfb, 0xd9, 0x86, 0x4d, 0x1d, 0xd0, 0xb4, 0x99, 0x9b,
-	0xcb, 0xa2, 0x70, 0x12, 0xd8, 0xce, 0x69, 0x09, 0xa0, 0x97, 0xbd, 0x5b, 0xec, 0x10, 0x2a, 0xd3,
-	0xcb, 0xce, 0x72, 0x9f, 0x8a, 0x85, 0x97, 0xc8, 0xbc, 0x7f, 0x39, 0x28, 0x4d, 0x44, 0x81, 0x1d,
-	0x40, 0x39, 0xd5, 0xcf, 0xac, 0x3c, 0x97, 0x7f, 0xef, 0xbe, 0x79, 0x19, 0x26, 0x0d, 0xd5, 0x2a,
-	0x3c, 0x2d, 0xb2, 0x0f, 0x50, 0xcd, 0x3a, 0x9f, 0xe5, 0x6a, 0x59, 0xbc, 0x7f, 0xe6, 0x83, 0xff,
-	0xa0, 0x32, 0xc9, 0xd4, 0x4a, 0x8b, 0x95, 0x65, 0x8f, 0x56, 0xe8, 0x52, 0x73, 0xfb, 0x6a, 0xe0,
-	0x8c, 0xf0, 0x2d, 0x6c, 0xc6, 0xb5, 0x64, 0x9d, 0x65, 0x55, 0xcb, 0x8e, 0x5e, 0x8e, 0x98, 0xcb,
-	0x4e, 0xf7, 0xde, 0xf8, 0xac, 0x55, 0xf8, 0x45, 0xe3, 0xcf, 0x59, 0xab, 0xf8, 0xfd, 0xbc, 0x55,
-	0x1c, 0xd3, 0xf8, 0x49, 0xe3, 0x37, 0x8d, 0x81, 0x11, 0xff, 0x5e, 0x9e, 0xfd, 0x0d, 0x00, 0x00,
-	0xff, 0xff, 0x08, 0x21, 0x0b, 0xbf, 0xb8, 0x06, 0x00, 0x00,
+	// 614 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xb4, 0x55, 0xc1, 0x6e, 0xd3, 0x4c,
+	0x10, 0x8e, 0xd3, 0xd6, 0x49, 0xa6, 0x7f, 0x7f, 0xc2, 0x0a, 0x44, 0x64, 0x95, 0x24, 0x32, 0x20,
+	0x21, 0x41, 0x9d, 0x2a, 0x48, 0xc0, 0x89, 0x43, 0x14, 0xa9, 0xe4, 0x00, 0xaa, 0x5c, 0x10, 0x47,
+	0xb4, 0xb1, 0x47, 0xa9, 0x09, 0xb1, 0x5d, 0xef, 0xe6, 0xc0, 0x09, 0x2e, 0xbc, 0x18, 0xa7, 0x70,
+	0xe3, 0x88, 0x38, 0x44, 0xb4, 0x4f, 0xc0, 0x23, 0xb0, 0xeb, 0xb5, 0x1d, 0x63, 0x0a, 0x49, 0x90,
+	0x72, 0xd8, 0xec, 0x66, 0xf6, 0x9b, 0x9d, 0xef, 0x9b, 0x9d, 0x59, 0x43, 0xdd, 0xf5, 0x58, 0x48,
+	0xb9, 0x73, 0x8a, 0x91, 0x15, 0x46, 0x01, 0x0f, 0xc8, 0x4d, 0x37, 0x70, 0xc6, 0xe2, 0x9f, 0xf3,
+	0x76, 0xca, 0xb8, 0x98, 0x69, 0xe8, 0x59, 0x12, 0xc4, 0xa9, 0x04, 0x19, 0x6d, 0xb5, 0xdd, 0x49,
+	0xb6, 0x3b, 0xfc, 0x5d, 0x88, 0x4c, 0xfd, 0xaa, 0x03, 0x8c, 0xdb, 0x05, 0x44, 0x30, 0x7c, 0x83,
+	0x0e, 0x67, 0xe9, 0x9c, 0xa0, 0xae, 0x8d, 0x82, 0x51, 0x10, 0x2f, 0x3b, 0x72, 0xa5, 0xac, 0xe6,
+	0x7b, 0xb8, 0x62, 0xe3, 0xc8, 0x93, 0x7e, 0x36, 0x9e, 0x4d, 0x91, 0x71, 0x72, 0x0b, 0x2a, 0x7e,
+	0xe0, 0xe2, 0x6b, 0xcf, 0x6d, 0x68, 0x6d, 0xed, 0x6e, 0xad, 0x07, 0x17, 0xf3, 0x96, 0xfe, 0x5c,
+	0x98, 0x06, 0x7d, 0x5b, 0x97, 0x5b, 0x03, 0x97, 0x1c, 0xc1, 0xae, 0x8b, 0xcc, 0x89, 0xbc, 0x90,
+	0x7b, 0x81, 0xdf, 0x28, 0x0b, 0xe0, 0x6e, 0xf7, 0x8e, 0x55, 0x90, 0xa2, 0x58, 0x4a, 0xd7, 0xfe,
+	0x02, 0x6c, 0xe7, 0x3d, 0x4d, 0x84, 0xfa, 0x82, 0x00, 0x0b, 0x03, 0x9f, 0xe1, 0x6a, 0x0c, 0xee,
+	0x03, 0x30, 0x64, 0x4c, 0x9c, 0x21, 0x71, 0xe5, 0x18, 0xb7, 0x27, 0x70, 0xb5, 0x13, 0x65, 0x15,
+	0xd0, 0x5a, 0x02, 0x18, 0xb8, 0xa6, 0x03, 0xff, 0x27, 0xf6, 0xb5, 0x64, 0xae, 0x17, 0x24, 0xcc,
+	0x82, 0x3c, 0x13, 0x13, 0x1d, 0x21, 0x79, 0x02, 0xd5, 0x09, 0xf5, 0xc5, 0x2a, 0x62, 0x22, 0xca,
+	0x96, 0xc8, 0x91, 0x79, 0x79, 0x8e, 0x5e, 0xa1, 0x37, 0x3a, 0xe5, 0xe8, 0x1e, 0xa3, 0xc8, 0x43,
+	0xe6, 0x43, 0x9a, 0x00, 0xa2, 0x14, 0x9c, 0xc0, 0xf7, 0xc5, 0x4d, 0xc6, 0xf1, 0xab, 0x76, 0xce,
+	0x22, 0xb3, 0xf7, 0x14, 0x69, 0xc4, 0x87, 0x48, 0xf9, 0x06, 0x85, 0xf5, 0xe0, 0x6a, 0x2e, 0x4c,
+	0x72, 0x4b, 0x07, 0xa0, 0x1f, 0x63, 0xe4, 0x05, 0x2a, 0xcc, 0x76, 0xef, 0xfa, 0x6c, 0xde, 0x2a,
+	0x7d, 0x9b, 0xb7, 0xf6, 0xb8, 0x37, 0x41, 0xab, 0x3f, 0x8d, 0x68, 0x7c, 0xdb, 0x7a, 0x18, 0x83,
+	0xcc, 0x4f, 0x65, 0xb8, 0xf1, 0x32, 0x74, 0x29, 0xc7, 0x17, 0x94, 0x8d, 0x4f, 0x38, 0xe5, 0x53,
+	0xb6, 0x39, 0xca, 0x84, 0x42, 0x65, 0x1a, 0x47, 0x63, 0x8d, 0xad, 0x38, 0xf1, 0x47, 0xd6, 0x5f,
+	0xfb, 0xcc, 0xfa, 0x03, 0x37, 0x6b, 0x61, 0x51, 0x08, 0x3b, 0x3d, 0xd7, 0x38, 0x83, 0x7a, 0x71,
+	0x53, 0x2a, 0xe1, 0xc2, 0x56, 0x50, 0x22, 0x61, 0x52, 0x89, 0xdc, 0x12, 0xdc, 0x1e, 0x83, 0xce,
+	0x62, 0xa7, 0xa4, 0x6f, 0xda, 0x97, 0xd7, 0x44, 0x8e, 0x4b, 0x82, 0x37, 0x0d, 0x68, 0xfc, 0xce,
+	0x53, 0xdd, 0x87, 0x49, 0xe1, 0x3f, 0x69, 0x65, 0x1b, 0xad, 0x03, 0x15, 0x22, 0x2d, 0xef, 0x2e,
+	0xec, 0x48, 0x49, 0x69, 0x6d, 0xef, 0x17, 0x75, 0xa4, 0x2f, 0x90, 0x74, 0xb2, 0x15, 0xb4, 0xfb,
+	0x79, 0x1b, 0xa0, 0x9f, 0xbd, 0x81, 0x64, 0x02, 0xd5, 0xb4, 0xff, 0x89, 0xb5, 0xe4, 0x8a, 0x0a,
+	0x2f, 0x95, 0xd1, 0x59, 0x19, 0x9f, 0xa4, 0xa8, 0x44, 0xc6, 0x50, 0x49, 0x94, 0x91, 0x83, 0x25,
+	0xde, 0xbf, 0xbe, 0x17, 0xc6, 0x8a, 0xf0, 0x24, 0x35, 0x66, 0xe9, 0x50, 0x23, 0x21, 0xd4, 0xb2,
+	0xb6, 0x21, 0xcb, 0xc8, 0x16, 0xfb, 0xd8, 0x38, 0x5c, 0xdd, 0x21, 0x93, 0xf7, 0x51, 0x83, 0x7a,
+	0xb1, 0x40, 0xc8, 0xc3, 0x7f, 0xab, 0x7c, 0xe3, 0xd1, 0xda, 0x7e, 0x19, 0x0f, 0x84, 0x9d, 0xb8,
+	0x50, 0xc8, 0xbd, 0x25, 0x67, 0xe4, 0x2b, 0xd6, 0x58, 0x09, 0x9c, 0x4b, 0x70, 0x6f, 0x7f, 0x76,
+	0xde, 0x2c, 0x7d, 0x15, 0xe3, 0xc7, 0x79, 0x53, 0xfb, 0x70, 0xd1, 0xd4, 0x66, 0x62, 0x7c, 0x11,
+	0xe3, 0xbb, 0x18, 0x43, 0x3d, 0xfe, 0xc4, 0x3d, 0xf8, 0x19, 0x00, 0x00, 0xff, 0xff, 0x33, 0x11,
+	0xf7, 0x31, 0x73, 0x07, 0x00, 0x00,
 }

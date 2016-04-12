@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package docker.cluster.api;
+package docker.cluster.api.raft;
 
-import "objects.proto";
+import "docker/cluster/objects/objects.proto";
 import "gogoproto/gogo.proto";
 
 // Contains one of many protobuf encoded objects to replicate
@@ -32,10 +32,10 @@ enum StoreActionKind {
 message StoreAction {
 	StoreActionKind action = 1;
 	oneof target {
-		Node node = 2;
-		Job job = 3;
-		Task task = 4;
-		Network network = 5;
-		Volume volume = 6;
+		objects.Node node = 2;
+		objects.Job job = 3;
+		objects.Task task = 4;
+		objects.Network network = 5;
+		objects.Volume volume = 6;
 	}
 }
