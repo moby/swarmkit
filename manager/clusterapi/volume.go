@@ -1,15 +1,17 @@
 package clusterapi
 
 import (
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
-func validateVolumeSpec(spec *api.VolumeSpec) error {
+func validateVolumeSpec(spec *specspb.VolumeSpec) error {
 	if spec == nil {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
@@ -34,7 +36,7 @@ func (s *Server) CreateVolume(ctx context.Context, request *api.CreateVolumeRequ
 
 	// TODO(amitshukla): Consider using `Name` as a primary key to handle
 	// duplicate creations. See #65
-	volume := &api.Volume{
+	volume := &objectspb.Volume{
 		ID:   identity.NewID(),
 		Spec: request.Spec,
 	}
@@ -59,7 +61,7 @@ func (s *Server) GetVolume(ctx context.Context, request *api.GetVolumeRequest) (
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	var volume *api.Volume
+	var volume *objectspb.Volume
 	err := s.store.View(func(tx state.ReadTx) error {
 		volume = tx.Volumes().Get(request.VolumeID)
 		return nil
@@ -98,7 +100,7 @@ func (s *Server) RemoveVolume(ctx context.Context, request *api.RemoveVolumeRequ
 
 // ListVolumes returns a list of all volumes.
 func (s *Server) ListVolumes(ctx context.Context, request *api.ListVolumesRequest) (*api.ListVolumesResponse, error) {
-	var volumes []*api.Volume
+	var volumes []*objectspb.Volume
 	err := s.store.View(func(tx state.ReadTx) error {
 		var err error
 

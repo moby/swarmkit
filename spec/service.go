@@ -5,7 +5,8 @@ import (
 	"io"
 
 	yaml "github.com/cloudfoundry-incubator/candiedyaml"
-	"github.com/docker/swarm-v2/api"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/pmezard/go-difflib/difflib"
 )
 
@@ -77,17 +78,17 @@ func (s *ServiceConfig) Write(w io.Writer) error {
 }
 
 // ToProto converts a ServiceConfig to a JobSpec.
-func (s *ServiceConfig) ToProto() *api.JobSpec {
-	spec := &api.JobSpec{
-		Meta: api.Meta{
+func (s *ServiceConfig) ToProto() *specspb.JobSpec {
+	spec := &specspb.JobSpec{
+		Meta: specspb.Meta{
 			Name:   s.Name,
 			Labels: make(map[string]string),
 		},
-		Template: &api.TaskSpec{
-			Runtime: &api.TaskSpec_Container{
-				Container: &api.Container{
+		Template: &specspb.TaskSpec{
+			Runtime: &specspb.TaskSpec_Container{
+				Container: &typespb.Container{
 					Resources: s.Resources.ToProto(),
-					Image: &api.Image{
+					Image: &typespb.Image{
 						Reference: s.Image,
 					},
 					Env:     s.Env,
@@ -96,8 +97,8 @@ func (s *ServiceConfig) ToProto() *api.JobSpec {
 				},
 			},
 		},
-		Orchestration: &api.JobSpec_Service{
-			Service: &api.JobSpec_ServiceJob{
+		Orchestration: &specspb.JobSpec_Service{
+			Service: &specspb.JobSpec_ServiceJob{
 				Instances: s.Instances,
 			},
 		},
@@ -107,7 +108,7 @@ func (s *ServiceConfig) ToProto() *api.JobSpec {
 }
 
 // FromProto converts a JobSpec to a ServiceConfig.
-func (s *ServiceConfig) FromProto(jobSpec *api.JobSpec) {
+func (s *ServiceConfig) FromProto(jobSpec *specspb.JobSpec) {
 	*s = ServiceConfig{
 		Name:      jobSpec.Meta.Name,
 		Instances: jobSpec.GetService().Instances,

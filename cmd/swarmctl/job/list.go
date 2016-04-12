@@ -6,8 +6,9 @@ import (
 	"text/tabwriter"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +33,7 @@ var (
 				return err
 			}
 
-			var output func(j *api.Job)
+			var output func(j *objectspb.Job)
 
 			if !quiet {
 				w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
@@ -41,7 +42,7 @@ var (
 					_ = w.Flush()
 				}()
 				fmt.Fprintln(w, "ID\tName\tImage\tInstances")
-				output = func(j *api.Job) {
+				output = func(j *objectspb.Job) {
 					spec := j.Spec
 					service := spec.GetService()
 					image := spec.Template.GetContainer().Image
@@ -62,7 +63,7 @@ var (
 				}
 
 			} else {
-				output = func(j *api.Job) { fmt.Println(j.ID) }
+				output = func(j *objectspb.Job) { fmt.Println(j.ID) }
 			}
 
 			for _, j := range r.Jobs {

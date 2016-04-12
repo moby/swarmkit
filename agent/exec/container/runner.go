@@ -7,8 +7,8 @@ import (
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types/events"
 	"github.com/docker/swarm-v2/agent/exec"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
 	"golang.org/x/net/context"
 )
 
@@ -18,7 +18,7 @@ import (
 // which is unique to the task.
 type Runner struct {
 	client     engineapi.APIClient
-	task       *api.Task
+	task       *objectspb.Task
 	controller *containerController
 	closed     chan struct{}
 	err        error
@@ -27,7 +27,7 @@ type Runner struct {
 var _ exec.Runner = &Runner{}
 
 // NewRunner returns a dockerexec runner for the provided task.
-func NewRunner(client engineapi.APIClient, task *api.Task) (*Runner, error) {
+func NewRunner(client engineapi.APIClient, task *objectspb.Task) (*Runner, error) {
 	ctrl, err := newContainerController(task)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func NewRunner(client engineapi.APIClient, task *api.Task) (*Runner, error) {
 }
 
 // Update tasks a recent task update and applies it to the container.
-func (r *Runner) Update(ctx context.Context, t *api.Task) error {
+func (r *Runner) Update(ctx context.Context, t *objectspb.Task) error {
 	log.G(ctx).Warnf("task updates not yet supported")
 	// TODO(stevvooe): While assignment of tasks is idempotent, we do allow
 	// updates of metadata, such as labelling, as well as any other properties

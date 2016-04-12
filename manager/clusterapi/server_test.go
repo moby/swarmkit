@@ -7,11 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/grpc"
-
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 )
 
 type testServer struct {

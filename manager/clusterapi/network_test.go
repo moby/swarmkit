@@ -3,18 +3,18 @@ package clusterapi
 import (
 	"testing"
 
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-
-	"github.com/docker/swarm-v2/api"
-	"github.com/stretchr/testify/assert"
 )
 
-func createNetworkSpec(name string) *api.NetworkSpec {
-	return &api.NetworkSpec{
-		Meta: api.Meta{
+func createNetworkSpec(name string) *specspb.NetworkSpec {
+	return &specspb.NetworkSpec{
+		Meta: specspb.Meta{
 			Name: name,
 		},
 	}
@@ -23,7 +23,7 @@ func createNetworkSpec(name string) *api.NetworkSpec {
 func TestValidateDriver(t *testing.T) {
 	assert.NoError(t, validateDriver(nil))
 
-	err := validateDriver(&api.Driver{Name: ""})
+	err := validateDriver(&typespb.Driver{Name: ""})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 }
@@ -33,7 +33,7 @@ func TestValidateIPAMConfiguration(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
-	IPAMConf := &api.IPAMConfiguration{
+	IPAMConf := &typespb.IPAMConfiguration{
 		Subnet: "",
 	}
 

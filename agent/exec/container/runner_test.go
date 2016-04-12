@@ -12,9 +12,11 @@ import (
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/events"
 	"github.com/docker/swarm-v2/agent/exec"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -185,7 +187,7 @@ func TestRunnerRemove(t *testing.T) {
 	assert.NoError(t, runner.Remove(ctx))
 }
 
-func genTestRunnerEnv(t *testing.T, task *api.Task) (context.Context, *MockAPIClient, *Runner, *containerConfig, func(t *testing.T)) {
+func genTestRunnerEnv(t *testing.T, task *objectspb.Task) (context.Context, *MockAPIClient, *Runner, *containerConfig, func(t *testing.T)) {
 	mocks := gomock.NewController(t)
 	client := NewMockAPIClient(mocks)
 	runner, err := NewRunner(client, task)
@@ -211,21 +213,21 @@ func genTestRunnerEnv(t *testing.T, task *api.Task) (context.Context, *MockAPICl
 	}
 }
 
-func genTask(t *testing.T) *api.Task {
+func genTask(t *testing.T) *objectspb.Task {
 	const (
 		nodeID    = "dockerexec-test-node-id"
 		jobID     = "dockerexec-test-job"
 		reference = "stevvooe/foo:latest"
 	)
 
-	return &api.Task{
+	return &objectspb.Task{
 		ID:     identity.NewID(),
 		JobID:  jobID,
 		NodeID: nodeID,
-		Spec: &api.TaskSpec{
-			Runtime: &api.TaskSpec_Container{
-				Container: &api.Container{
-					Image: &api.Image{
+		Spec: &specspb.TaskSpec{
+			Runtime: &specspb.TaskSpec_Container{
+				Container: &typespb.Container{
+					Image: &typespb.Image{
 						Reference: reference,
 					},
 				},

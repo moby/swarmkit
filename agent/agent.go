@@ -8,8 +8,10 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/agent/exec"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
+	dispatcherpb "github.com/docker/swarm-v2/pb/docker/cluster/api/dispatcher"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -27,9 +29,9 @@ type Agent struct {
 	conn   *grpc.ClientConn
 	picker *picker
 
-	tasks       map[string]*api.Task // contains all managed tasks
-	assigned    map[string]*api.Task // contains current assignment set
-	statuses    map[string]*api.TaskStatus
+	tasks       map[string]*objectspb.Task // contains all managed tasks
+	assigned    map[string]*objectspb.Task // contains current assignment set
+	statuses    map[string]*typespb.TaskStatus
 	controllers map[string]exec.Runner // contains all runners
 
 	statusq chan taskStatusReport
@@ -48,9 +50,9 @@ func New(config *Config) (*Agent, error) {
 
 	return &Agent{
 		config:      config,
-		tasks:       make(map[string]*api.Task),
-		assigned:    make(map[string]*api.Task),
-		statuses:    make(map[string]*api.TaskStatus),
+		tasks:       make(map[string]*objectspb.Task),
+		assigned:    make(map[string]*objectspb.Task),
+		statuses:    make(map[string]*typespb.TaskStatus),
 		controllers: make(map[string]exec.Runner),
 
 		statusq: make(chan taskStatusReport),
@@ -242,7 +244,7 @@ func (a *Agent) connect(ctx context.Context) error {
 	return err
 }
 
-func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMessage) error {
+func (a *Agent) handleSessionMessage(ctx context.Context, message *dispatcherpb.SessionMessage) error {
 	seen := map[string]struct{}{}
 	for _, manager := range message.Managers {
 		if manager.Addr == "" {
@@ -280,10 +282,10 @@ func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMe
 //
 // This method run synchronously in the main session loop. It has direct access
 // to fields and datastructures but must not block.
-func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) error {
+func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*objectspb.Task) error {
 	log.G(ctx).Debugf("(*Agent).handleTaskAssignment")
 
-	assigned := map[string]*api.Task{}
+	assigned := map[string]*objectspb.Task{}
 	for _, task := range tasks {
 		assigned[task.ID] = task
 		ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", task.ID))
@@ -298,7 +300,7 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 		if err := a.acceptTask(ctx, task); err != nil {
 			log.G(ctx).WithError(err).Errorf("starting task controller failed")
 			go func() {
-				if err := a.report(ctx, task.ID, api.TaskStateRejected, err); err != nil {
+				if err := a.report(ctx, task.ID, typespb.TaskStateRejected, err); err != nil {
 					log.G(ctx).WithError(err).Errorf("reporting task rejection failed")
 				}
 			}()
@@ -314,7 +316,7 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 		ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", id))
 
 		// if the task is already in finalize state, no need to call removeTask.
-		if a.statuses[task.ID].State >= api.TaskStateFinalize {
+		if a.statuses[task.ID].State >= typespb.TaskStateFinalize {
 			continue
 		}
 
@@ -383,19 +385,19 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 		// not, we return rejected. While we don't do much differently for each
 		// error type, it tells us the stage in which an error was encountered.
 		switch status.State {
-		case api.TaskStateNew, api.TaskStateAllocated,
-			api.TaskStateAssigned, api.TaskStateAccepted,
-			api.TaskStatePreparing:
-			status.State = api.TaskStateRejected
+		case typespb.TaskStateNew, typespb.TaskStateAllocated,
+			typespb.TaskStateAssigned, typespb.TaskStateAccepted,
+			typespb.TaskStatePreparing:
+			status.State = typespb.TaskStateRejected
 			status.Err = report.err.Error()
-		case api.TaskStateReady, api.TaskStateStarting,
-			api.TaskStateRunning, api.TaskStateShutdown:
-			status.State = api.TaskStateFailed
+		case typespb.TaskStateReady, typespb.TaskStateStarting,
+			typespb.TaskStateRunning, typespb.TaskStateShutdown:
+			status.State = typespb.TaskStateFailed
 			status.Err = report.err.Error()
-		case api.TaskStateCompleted, api.TaskStateFailed,
-			api.TaskStateRejected, api.TaskStateDead:
+		case typespb.TaskStateCompleted, typespb.TaskStateFailed,
+			typespb.TaskStateRejected, typespb.TaskStateDead:
 			// noop when we get an error in these states
-		case api.TaskStateFinalize:
+		case typespb.TaskStateFinalize:
 			if err := a.removeTask(ctx, a.tasks[report.taskID].Copy()); err != nil {
 				log.G(ctx).WithError(err).Errorf("failed retrying remove task")
 			}
@@ -411,17 +413,17 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 	log.G(ctx).Infof("%v -> %v", original.State, status.State)
 
 	switch status.State {
-	case api.TaskStateNew, api.TaskStateAllocated,
-		api.TaskStateAssigned, api.TaskStateAccepted,
-		api.TaskStatePreparing, api.TaskStateReady,
-		api.TaskStateStarting, api.TaskStateRunning,
-		api.TaskStateShutdown, api.TaskStateCompleted,
-		api.TaskStateFailed, api.TaskStateRejected,
-		api.TaskStateFinalize:
+	case typespb.TaskStateNew, typespb.TaskStateAllocated,
+		typespb.TaskStateAssigned, typespb.TaskStateAccepted,
+		typespb.TaskStatePreparing, typespb.TaskStateReady,
+		typespb.TaskStateStarting, typespb.TaskStateRunning,
+		typespb.TaskStateShutdown, typespb.TaskStateCompleted,
+		typespb.TaskStateFailed, typespb.TaskStateRejected,
+		typespb.TaskStateFinalize:
 		// TODO(stevvooe): This switch is laid out here to support actions
 		// based on state transition. Each state below will include code that
 		// is only run when transitioning into a task state for the first time.
-	case api.TaskStateDead:
+	case typespb.TaskStateDead:
 		// once a task is dead, we remove all resources associated with it.
 		delete(a.controllers, report.taskID)
 		delete(a.tasks, report.taskID)
@@ -433,7 +435,7 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 	return nil
 }
 
-func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
+func (a *Agent) acceptTask(ctx context.Context, task *objectspb.Task) error {
 	a.tasks[task.ID] = task
 	a.assigned[task.ID] = task
 	a.statuses[task.ID] = task.Status
@@ -450,7 +452,7 @@ func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 	taskID := task.ID
 
 	go func() {
-		if err := reporter.Report(ctx, api.TaskStateAccepted); err != nil {
+		if err := reporter.Report(ctx, typespb.TaskStateAccepted); err != nil {
 			// TODO(stevvooe): What to do here? should be a rare error or never happen
 			log.G(ctx).WithError(err).Errorf("reporting accepted status")
 			return
@@ -458,7 +460,7 @@ func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 
 		if err := exec.Run(ctx, runner, reporter); err != nil {
 			log.G(ctx).WithError(err).Errorf("task run failed")
-			if err := a.report(ctx, taskID, api.TaskStateFailed, err); err != nil {
+			if err := a.report(ctx, taskID, typespb.TaskStateFailed, err); err != nil {
 				log.G(ctx).WithError(err).Errorf("reporting task run error failed")
 			}
 			return
@@ -468,7 +470,7 @@ func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 	return nil
 }
 
-func (a *Agent) updateTask(ctx context.Context, t *api.Task) error {
+func (a *Agent) updateTask(ctx context.Context, t *objectspb.Task) error {
 	if _, ok := a.assigned[t.ID]; !ok {
 		return errTaskNotAssigned
 	}
@@ -491,7 +493,7 @@ func (a *Agent) updateTask(ctx context.Context, t *api.Task) error {
 	return nil
 }
 
-func (a *Agent) removeTask(ctx context.Context, t *api.Task) error {
+func (a *Agent) removeTask(ctx context.Context, t *objectspb.Task) error {
 	log.G(ctx).Debugf("(*Agent).removeTask")
 
 	var (
@@ -499,20 +501,20 @@ func (a *Agent) removeTask(ctx context.Context, t *api.Task) error {
 		taskID = t.ID
 	)
 	go func() {
-		if err := a.report(ctx, taskID, api.TaskStateFinalize); err != nil {
+		if err := a.report(ctx, taskID, typespb.TaskStateFinalize); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed to report finalization")
 			return
 		}
 
 		if err := ctlr.Remove(ctx); err != nil {
 			log.G(ctx).WithError(err).Errorf("remove failed")
-			if err := a.report(ctx, taskID, api.TaskStateFinalize, err); err != nil {
+			if err := a.report(ctx, taskID, typespb.TaskStateFinalize, err); err != nil {
 				log.G(ctx).WithError(err).Errorf("report remove error failed")
 				return
 			}
 		}
 
-		if err := a.report(ctx, taskID, api.TaskStateDead); err != nil {
+		if err := a.report(ctx, taskID, typespb.TaskStateDead); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed to report finalization")
 			return
 		}
@@ -523,12 +525,12 @@ func (a *Agent) removeTask(ctx context.Context, t *api.Task) error {
 
 type taskStatusReport struct {
 	taskID   string
-	state    api.TaskState
+	state    typespb.TaskState
 	err      error
 	response chan error
 }
 
-func (a *Agent) report(ctx context.Context, taskID string, state api.TaskState, errs ...error) error {
+func (a *Agent) report(ctx context.Context, taskID string, state typespb.TaskState, errs ...error) error {
 	log.G(ctx).Debugf("(*Agent).report")
 	if len(errs) > 1 {
 		panic("only one error per report is allowed")
@@ -562,15 +564,15 @@ func (a *Agent) report(ctx context.Context, taskID string, state api.TaskState, 
 	}
 }
 
-func (a *Agent) reporter(ctx context.Context, t *api.Task) exec.Reporter {
+func (a *Agent) reporter(ctx context.Context, t *objectspb.Task) exec.Reporter {
 	id := t.ID
-	return reporterFunc(func(ctx context.Context, state api.TaskState) error {
+	return reporterFunc(func(ctx context.Context, state typespb.TaskState) error {
 		return a.report(ctx, id, state)
 	})
 }
 
-type reporterFunc func(ctx context.Context, state api.TaskState) error
+type reporterFunc func(ctx context.Context, state typespb.TaskState) error
 
-func (fn reporterFunc) Report(ctx context.Context, state api.TaskState) error {
+func (fn reporterFunc) Report(ctx context.Context, state typespb.TaskState) error {
 	return fn(ctx, state)
 }

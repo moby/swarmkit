@@ -7,54 +7,56 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestScheduler(t *testing.T) {
-	initialNodeSet := []*api.Node{
+	initialNodeSet := []*objectspb.Node{
 		{
 			ID: "id1",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name1",
 				},
 			},
-			Status: api.NodeStatus{
-				State: api.NodeStatus_READY,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_READY,
 			},
 		},
 		{
 			ID: "id2",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name2",
 				},
 			},
-			Status: api.NodeStatus{
-				State: api.NodeStatus_READY,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_READY,
 			},
 		},
 		{
 			ID: "id3",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name2",
 				},
 			},
-			Status: api.NodeStatus{
-				State: api.NodeStatus_READY,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_READY,
 			},
 		},
 	}
 
-	initialTaskSet := []*api.Task{
+	initialTaskSet := []*objectspb.Task{
 		{
 			ID:   "id1",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name1",
 			},
 
@@ -62,15 +64,15 @@ func TestScheduler(t *testing.T) {
 		},
 		{
 			ID:   "id2",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name2",
 			},
 		},
 		{
 			ID:   "id3",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name2",
 			},
 		},
@@ -120,10 +122,10 @@ func TestScheduler(t *testing.T) {
 		assert.NoError(t, tx.Tasks().Delete("id1"))
 
 		// Create a new task. It should get assigned to id1.
-		t4 := &api.Task{
+		t4 := &objectspb.Task{
 			ID:   "id4",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name4",
 			},
 		}
@@ -140,10 +142,10 @@ func TestScheduler(t *testing.T) {
 	err = store.Update(func(tx state.Tx) error {
 		// Remove assignment from task id4. It should get assigned
 		// to node id1.
-		t4 := &api.Task{
+		t4 := &objectspb.Task{
 			ID:   "id4",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name4",
 			},
 		}
@@ -158,25 +160,25 @@ func TestScheduler(t *testing.T) {
 	err = store.Update(func(tx state.Tx) error {
 		// Create a ready node, then remove it. No tasks should ever
 		// be assigned to it.
-		node := &api.Node{
+		node := &objectspb.Node{
 			ID: "removednode",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "removednode",
 				},
 			},
-			Status: api.NodeStatus{
-				State: api.NodeStatus_DOWN,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_DOWN,
 			},
 		}
 		assert.NoError(t, tx.Nodes().Create(node))
 		assert.NoError(t, tx.Nodes().Delete(node.ID))
 
 		// Create an unassigned task.
-		task := &api.Task{
+		task := &objectspb.Task{
 			ID:   "removednode",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "removednode",
 			},
 		}
@@ -191,24 +193,24 @@ func TestScheduler(t *testing.T) {
 	err = store.Update(func(tx state.Tx) error {
 		// Create a ready node. It should be used for the next
 		// assignment.
-		n4 := &api.Node{
+		n4 := &objectspb.Node{
 			ID: "id4",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name4",
 				},
 			},
-			Status: api.NodeStatus{
-				State: api.NodeStatus_READY,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_READY,
 			},
 		}
 		assert.NoError(t, tx.Nodes().Create(n4))
 
 		// Create an unassigned task.
-		t5 := &api.Task{
+		t5 := &objectspb.Task{
 			ID:   "id5",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name5",
 			},
 		}
@@ -223,24 +225,24 @@ func TestScheduler(t *testing.T) {
 	err = store.Update(func(tx state.Tx) error {
 		// Create a non-ready node. It should NOT be used for the next
 		// assignment.
-		n5 := &api.Node{
+		n5 := &objectspb.Node{
 			ID: "id5",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name5",
 				},
 			},
-			Status: api.NodeStatus{
-				State: api.NodeStatus_DOWN,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_DOWN,
 			},
 		}
 		assert.NoError(t, tx.Nodes().Create(n5))
 
 		// Create an unassigned task.
-		t6 := &api.Task{
+		t6 := &objectspb.Task{
 			ID:   "id6",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name6",
 			},
 		}
@@ -254,25 +256,25 @@ func TestScheduler(t *testing.T) {
 
 	err = store.Update(func(tx state.Tx) error {
 		// Update node id5 to put it in the READY state.
-		n5 := &api.Node{
+		n5 := &objectspb.Node{
 			ID: "id5",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name5",
 				},
 			},
-			Status: api.NodeStatus{
-				State: api.NodeStatus_READY,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_READY,
 			},
 		}
 		assert.NoError(t, tx.Nodes().Update(n5))
 
 		// Create an unassigned task. Should be assigned to the
 		// now-ready node.
-		t7 := &api.Task{
+		t7 := &objectspb.Task{
 			ID:   "id7",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name7",
 			},
 		}
@@ -287,26 +289,26 @@ func TestScheduler(t *testing.T) {
 	err = store.Update(func(tx state.Tx) error {
 		// Create a ready node, then immediately take it down. The next
 		// unassigned task should NOT be assigned to it.
-		n6 := &api.Node{
+		n6 := &objectspb.Node{
 			ID: "id6",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name6",
 				},
 			},
-			Status: api.NodeStatus{
-				State: api.NodeStatus_READY,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_READY,
 			},
 		}
 		assert.NoError(t, tx.Nodes().Create(n6))
-		n6.Status.State = api.NodeStatus_DOWN
+		n6.Status.State = typespb.NodeStatus_DOWN
 		assert.NoError(t, tx.Nodes().Update(n6))
 
 		// Create an unassigned task.
-		t8 := &api.Task{
+		t8 := &objectspb.Task{
 			ID:   "id8",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name8",
 			},
 		}
@@ -322,10 +324,10 @@ func TestScheduler(t *testing.T) {
 }
 
 func TestSchedulerNoReadyNodes(t *testing.T) {
-	initialTask := &api.Task{
+	initialTask := &objectspb.Task{
 		ID:   "id1",
-		Spec: &api.TaskSpec{},
-		Meta: api.Meta{
+		Spec: &specspb.TaskSpec{},
+		Meta: specspb.Meta{
 			Name: "name1",
 		},
 	}
@@ -352,15 +354,15 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 	err = store.Update(func(tx state.Tx) error {
 		// Create a ready node. The task should get assigned to this
 		// node.
-		node := &api.Node{
+		node := &objectspb.Node{
 			ID: "newnode",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "newnode",
 				},
 			},
-			Status: api.NodeStatus{
-				State: api.NodeStatus_READY,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_READY,
 			},
 		}
 		assert.NoError(t, tx.Nodes().Create(node))
@@ -374,7 +376,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 	scheduler.Stop()
 }
 
-func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
+func watchAssignment(t *testing.T, watch chan events.Event) *objectspb.Task {
 	for {
 		select {
 		case event := <-watch:
@@ -448,15 +450,15 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 		_ = s.Update(func(tx state.Tx) error {
 			// Create initial nodes and tasks
 			for i := 0; i < nodes; i++ {
-				err := tx.Nodes().Create(&api.Node{
+				err := tx.Nodes().Create(&objectspb.Node{
 					ID: identity.NewID(),
-					Spec: &api.NodeSpec{
-						Meta: api.Meta{
+					Spec: &specspb.NodeSpec{
+						Meta: specspb.Meta{
 							Name: "name" + strconv.Itoa(i),
 						},
 					},
-					Status: api.NodeStatus{
-						State: api.NodeStatus_READY,
+					Status: typespb.NodeStatus{
+						State: typespb.NodeStatus_READY,
 					},
 				})
 				if err != nil {
@@ -465,10 +467,10 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 			}
 			for i := 0; i < tasks; i++ {
 				id := "task" + strconv.Itoa(i)
-				err := tx.Tasks().Create(&api.Task{
+				err := tx.Tasks().Create(&objectspb.Task{
 					ID:   id,
-					Spec: &api.TaskSpec{},
-					Meta: api.Meta{
+					Spec: &specspb.TaskSpec{},
+					Meta: specspb.Meta{
 						Name: id,
 					},
 				})

@@ -3,7 +3,7 @@ package node
 import (
 	"fmt"
 
-	"github.com/docker/swarm-v2/api"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"github.com/spf13/cobra"
 )
 
@@ -12,7 +12,7 @@ var (
 		Use:   "pause <node ID>",
 		Short: "Pause a node",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := changeNodeAvailability(cmd, args, api.NodeAvailabilityPause); err != nil {
+			if err := changeNodeAvailability(cmd, args, specspb.NodeAvailabilityPause); err != nil {
 				if err == errNoChange {
 					return fmt.Errorf("Node %s was already paused", args[0])
 				}

@@ -6,8 +6,9 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
@@ -36,11 +37,11 @@ var (
 			}()
 			spec := node.Spec
 			if spec == nil {
-				spec = &api.NodeSpec{}
+				spec = &specspb.NodeSpec{}
 			}
 			desc := node.Description
 			if desc == nil {
-				desc = &api.NodeDescription{}
+				desc = &typespb.NodeDescription{}
 			}
 
 			common.FprintfIfNotEmpty(w, "ID\t: %s\n", node.ID)

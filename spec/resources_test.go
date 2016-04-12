@@ -3,7 +3,7 @@ package spec
 import (
 	"testing"
 
-	"github.com/docker/swarm-v2/api"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,13 +43,13 @@ func TestResourceRequirementsValidate(t *testing.T) {
 func TestResourcesToProto(t *testing.T) {
 	type conv struct {
 		from *Resources
-		to   *api.Resources
+		to   *typespb.Resources
 	}
 
 	set := []*conv{
 		{from: nil, to: nil},
-		{from: &Resources{CPU: "1", Memory: "1024"}, to: &api.Resources{NanoCPUs: 1e9, MemoryBytes: 1024}},
-		{from: &Resources{CPU: "1", Memory: "1KiB"}, to: &api.Resources{NanoCPUs: 1e9, MemoryBytes: 1024}},
+		{from: &Resources{CPU: "1", Memory: "1024"}, to: &typespb.Resources{NanoCPUs: 1e9, MemoryBytes: 1024}},
+		{from: &Resources{CPU: "1", Memory: "1KiB"}, to: &typespb.Resources{NanoCPUs: 1e9, MemoryBytes: 1024}},
 	}
 
 	for _, i := range set {
@@ -59,12 +59,12 @@ func TestResourcesToProto(t *testing.T) {
 
 func TestResourcesFromProto(t *testing.T) {
 	type conv struct {
-		from *api.Resources
+		from *typespb.Resources
 		to   *Resources
 	}
 
 	set := []*conv{
-		{from: &api.Resources{NanoCPUs: 1e9, MemoryBytes: 1024}, to: &Resources{CPU: "1", Memory: "1.0 KiB"}},
+		{from: &typespb.Resources{NanoCPUs: 1e9, MemoryBytes: 1024}, to: &Resources{CPU: "1", Memory: "1.0 KiB"}},
 	}
 
 	for _, i := range set {
@@ -77,15 +77,15 @@ func TestResourcesFromProto(t *testing.T) {
 func TestResourceRequirementsMaintainUnset(t *testing.T) {
 	type conv struct {
 		from *ResourceRequirements
-		to   *api.ResourceRequirements
+		to   *typespb.ResourceRequirements
 	}
 
 	set := []*conv{
 		{from: nil, to: nil},
-		{from: &ResourceRequirements{Limits: nil, Reservations: nil}, to: &api.ResourceRequirements{Limits: nil, Reservations: nil}},
-		{from: &ResourceRequirements{Limits: &Resources{CPU: "1", Memory: "1 B"}, Reservations: nil}, to: &api.ResourceRequirements{Limits: &api.Resources{NanoCPUs: 1e9, MemoryBytes: 1}, Reservations: nil}},
-		{from: &ResourceRequirements{Limits: nil, Reservations: &Resources{CPU: "1", Memory: "1 B"}}, to: &api.ResourceRequirements{Limits: nil, Reservations: &api.Resources{NanoCPUs: 1e9, MemoryBytes: 1}}},
-		{from: &ResourceRequirements{Limits: &Resources{CPU: "1", Memory: "1 B"}, Reservations: &Resources{CPU: "1", Memory: "1 B"}}, to: &api.ResourceRequirements{Limits: &api.Resources{NanoCPUs: 1e9, MemoryBytes: 1}, Reservations: &api.Resources{NanoCPUs: 1e9, MemoryBytes: 1}}},
+		{from: &ResourceRequirements{Limits: nil, Reservations: nil}, to: &typespb.ResourceRequirements{Limits: nil, Reservations: nil}},
+		{from: &ResourceRequirements{Limits: &Resources{CPU: "1", Memory: "1 B"}, Reservations: nil}, to: &typespb.ResourceRequirements{Limits: &typespb.Resources{NanoCPUs: 1e9, MemoryBytes: 1}, Reservations: nil}},
+		{from: &ResourceRequirements{Limits: nil, Reservations: &Resources{CPU: "1", Memory: "1 B"}}, to: &typespb.ResourceRequirements{Limits: nil, Reservations: &typespb.Resources{NanoCPUs: 1e9, MemoryBytes: 1}}},
+		{from: &ResourceRequirements{Limits: &Resources{CPU: "1", Memory: "1 B"}, Reservations: &Resources{CPU: "1", Memory: "1 B"}}, to: &typespb.ResourceRequirements{Limits: &typespb.Resources{NanoCPUs: 1e9, MemoryBytes: 1}, Reservations: &typespb.Resources{NanoCPUs: 1e9, MemoryBytes: 1}}},
 	}
 
 	for _, i := range set {

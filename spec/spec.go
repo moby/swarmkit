@@ -5,7 +5,7 @@ import (
 	"io"
 
 	yaml "github.com/cloudfoundry-incubator/candiedyaml"
-	"github.com/docker/swarm-v2/api"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"github.com/pmezard/go-difflib/difflib"
 )
 
@@ -48,8 +48,8 @@ func (s *Spec) validate() error {
 }
 
 // JobSpecs returns all the JobSpecs in the Spec.
-func (s *Spec) JobSpecs() []*api.JobSpec {
-	jobSpecs := []*api.JobSpec{}
+func (s *Spec) JobSpecs() []*specspb.JobSpec {
+	jobSpecs := []*specspb.JobSpec{}
 	for _, service := range s.Services {
 		jobSpec := service.ToProto()
 		jobSpec.Meta.Labels["namespace"] = s.Namespace
@@ -59,7 +59,7 @@ func (s *Spec) JobSpecs() []*api.JobSpec {
 }
 
 // FromJobSpecs converts Jobs to a Spec.
-func (s *Spec) FromJobSpecs(jobspecs []*api.JobSpec) {
+func (s *Spec) FromJobSpecs(jobspecs []*specspb.JobSpec) {
 	for _, j := range jobspecs {
 		service := &ServiceConfig{}
 		service.FromProto(j)

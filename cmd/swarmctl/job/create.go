@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +17,7 @@ var (
 		Short: "Create a job",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			flags := cmd.Flags()
-			var spec *api.JobSpec
+			var spec *specspb.JobSpec
 
 			if flags.Changed("file") {
 				service, err := readServiceConfig(flags)
@@ -50,14 +52,14 @@ var (
 					return err
 				}
 
-				spec = &api.JobSpec{
-					Meta: api.Meta{
+				spec = &specspb.JobSpec{
+					Meta: specspb.Meta{
 						Name: name,
 					},
-					Template: &api.TaskSpec{
-						Runtime: &api.TaskSpec_Container{
-							Container: &api.Container{
-								Image: &api.Image{
+					Template: &specspb.TaskSpec{
+						Runtime: &specspb.TaskSpec_Container{
+							Container: &typespb.Container{
+								Image: &typespb.Image{
 									Reference: image,
 								},
 								Command: args,
@@ -66,8 +68,8 @@ var (
 							},
 						},
 					},
-					Orchestration: &api.JobSpec_Service{
-						Service: &api.JobSpec_ServiceJob{
+					Orchestration: &specspb.JobSpec_Service{
+						Service: &specspb.JobSpec_ServiceJob{
 							Instances: instances,
 						},
 					},

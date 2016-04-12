@@ -3,16 +3,18 @@ package clusterapi
 import (
 	"testing"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
-func createNode(t *testing.T, ts *testServer, id string) *api.Node {
-	node := &api.Node{
+func createNode(t *testing.T, ts *testServer, id string) *objectspb.Node {
+	node := &objectspb.Node{
 		ID: id,
 	}
 	err := ts.Store.Update(func(tx state.Tx) error {
@@ -66,8 +68,8 @@ func TestUpdateNode(t *testing.T) {
 
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID: "id",
-		Spec: &api.NodeSpec{
-			Availability: api.NodeAvailabilityDrain,
+		Spec: &specspb.NodeSpec{
+			Availability: specspb.NodeAvailabilityDrain,
 		},
 	})
 	assert.Error(t, err)
@@ -85,8 +87,8 @@ func TestUpdateNode(t *testing.T) {
 
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID: "id",
-		Spec: &api.NodeSpec{
-			Availability: api.NodeAvailabilityDrain,
+		Spec: &specspb.NodeSpec{
+			Availability: specspb.NodeAvailabilityDrain,
 		},
 	})
 	assert.NoError(t, err)
@@ -95,5 +97,5 @@ func TestUpdateNode(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, r.Node)
 	assert.NotNil(t, r.Node.Spec)
-	assert.Equal(t, api.NodeAvailabilityDrain, r.Node.Spec.Availability)
+	assert.Equal(t, specspb.NodeAvailabilityDrain, r.Node.Spec.Availability)
 }

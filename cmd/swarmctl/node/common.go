@@ -4,18 +4,19 @@ import (
 	"errors"
 	"fmt"
 
-	"golang.org/x/net/context"
-
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
 )
 
 var (
 	errNoChange = errors.New("availability was already set to the requested value")
 )
 
-func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.NodeSpec_Availability) error {
+func changeNodeAvailability(cmd *cobra.Command, args []string, availability specspb.NodeSpec_Availability) error {
 	if len(args) == 0 {
 		return errors.New("missing Node ID")
 	}
@@ -30,7 +31,7 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	}
 	spec := node.Spec
 	if spec == nil {
-		spec = &api.NodeSpec{}
+		spec = &specspb.NodeSpec{}
 	}
 
 	if spec.Availability == availability {
@@ -51,7 +52,7 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	return nil
 }
 
-func getNode(ctx context.Context, c api.ClusterClient, input string) (*api.Node, error) {
+func getNode(ctx context.Context, c api.ClusterClient, input string) (*objectspb.Node, error) {
 	// GetNode to match via full ID.
 	rg, err := c.GetNode(ctx, &api.GetNodeRequest{NodeID: input})
 	if err != nil {

@@ -1,14 +1,16 @@
 package clusterapi
 
 import (
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
-func validateNodeSpec(spec *api.NodeSpec) error {
+func validateNodeSpec(spec *specspb.NodeSpec) error {
 	if spec == nil {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
@@ -23,7 +25,7 @@ func (s *Server) GetNode(ctx context.Context, request *api.GetNodeRequest) (*api
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	var node *api.Node
+	var node *objectspb.Node
 	err := s.store.View(func(tx state.ReadTx) error {
 		node = tx.Nodes().Get(request.NodeID)
 		return nil
@@ -41,7 +43,7 @@ func (s *Server) GetNode(ctx context.Context, request *api.GetNodeRequest) (*api
 
 // ListNodes returns a list of all nodes.
 func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (*api.ListNodesResponse, error) {
-	var nodes []*api.Node
+	var nodes []*objectspb.Node
 	err := s.store.View(func(tx state.ReadTx) error {
 		var err error
 		if request.Options == nil || request.Options.Query == "" {
@@ -68,7 +70,7 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 		return nil, err
 	}
 
-	var node *api.Node
+	var node *objectspb.Node
 	err := s.store.Update(func(tx state.Tx) error {
 		node = tx.Nodes().Get(request.NodeID)
 		if node == nil {

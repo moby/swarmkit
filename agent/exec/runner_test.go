@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -20,14 +20,14 @@ func TestRun(t *testing.T) {
 
 	// Slightly contrived but it helps to keep the reporting straight.
 	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStatePreparing),
 		runner.EXPECT().Prepare(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateReady),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateStarting),
 		runner.EXPECT().Start(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateRunning),
 		runner.EXPECT().Wait(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateCompleted),
 	)
 
 	assert.NoError(t, Run(ctx, runner, reporter))
@@ -43,13 +43,13 @@ func TestRunPreparedIdempotence(t *testing.T) {
 	// successful run. We skip reporting on "READY" and go right to starting
 	// here.
 	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStatePreparing),
 		runner.EXPECT().Prepare(gomock.Any()).Return(ErrTaskPrepared),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateStarting),
 		runner.EXPECT().Start(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateRunning),
 		runner.EXPECT().Wait(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateCompleted),
 	)
 
 	assert.NoError(t, Run(ctx, runner, reporter))
@@ -64,11 +64,11 @@ func TestRunStartedWhenPreparedIdempotence(t *testing.T) {
 	// First, we return ErrTaskStarted from Prepare and make sure we have a
 	// successful run. We should report that we are running jump right to wait.
 	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStatePreparing),
 		runner.EXPECT().Prepare(gomock.Any()).Return(ErrTaskStarted),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateRunning),
 		runner.EXPECT().Wait(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateCompleted),
 	)
 
 	assert.NoError(t, Run(ctx, runner, reporter))
@@ -81,14 +81,14 @@ func TestRunStartedWhenStartedIdempotence(t *testing.T) {
 
 	// Do the same thing, but return from Start.
 	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStatePreparing),
 		runner.EXPECT().Prepare(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateReady),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateStarting),
 		runner.EXPECT().Start(gomock.Any()).Return(ErrTaskStarted),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateRunning),
 		runner.EXPECT().Wait(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateCompleted),
 	)
 
 	assert.NoError(t, Run(ctx, runner, reporter))
@@ -104,12 +104,12 @@ func TestRunReportingError(t *testing.T) {
 	errShouldPropagate := errors.New("test error")
 
 	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStatePreparing),
 		runner.EXPECT().Prepare(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateReady),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateStarting),
 		runner.EXPECT().Start(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning).
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateRunning).
 			Return(errShouldPropagate),
 	)
 
@@ -127,10 +127,10 @@ func TestRunRunnerError(t *testing.T) {
 	errShouldPropagate := errors.New("test error")
 
 	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStatePreparing),
 		runner.EXPECT().Prepare(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateReady),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateStarting),
 		runner.EXPECT().Start(gomock.Any()).Return(errShouldPropagate),
 	)
 
@@ -146,10 +146,10 @@ func TestRunCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing),
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStatePreparing),
 		runner.EXPECT().Prepare(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady).Do(
-			func(ctx context.Context, state api.TaskState) error {
+		reporter.EXPECT().Report(gomock.Any(), typespb.TaskStateReady).Do(
+			func(ctx context.Context, state typespb.TaskState) error {
 				// cancelling context ensures next report never happens.
 				cancel()
 				return nil

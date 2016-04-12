@@ -4,9 +4,9 @@ import (
 	"errors"
 
 	"github.com/docker/go-events"
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/docker/swarm-v2/manager/state/watch"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	snapshotpb "github.com/docker/swarm-v2/pb/docker/cluster/snapshot"
 )
 
 var (
@@ -32,8 +32,8 @@ var (
 
 // NodeSetWriter is the write half of a node dataset.
 type NodeSetWriter interface {
-	Create(n *api.Node) error
-	Update(n *api.Node) error
+	Create(n *objectspb.Node) error
+	Update(n *objectspb.Node) error
 	Delete(id string) error
 }
 
@@ -41,10 +41,10 @@ type NodeSetWriter interface {
 type NodeSetReader interface {
 	// Get returns the node with this ID, or nil if none exists with the
 	// specified ID.
-	Get(id string) *api.Node
+	Get(id string) *objectspb.Node
 	// Find selects a set of nodes and returns them. If by is nil,
 	// returns all nodes.
-	Find(by By) ([]*api.Node, error)
+	Find(by By) ([]*objectspb.Node, error)
 }
 
 // NodeSet is a readable and writable consistent view of nodes.
@@ -55,8 +55,8 @@ type NodeSet interface {
 
 // JobSetWriter is the write half of a job dataset.
 type JobSetWriter interface {
-	Create(j *api.Job) error
-	Update(j *api.Job) error
+	Create(j *objectspb.Job) error
+	Update(j *objectspb.Job) error
 	Delete(id string) error
 }
 
@@ -64,10 +64,10 @@ type JobSetWriter interface {
 type JobSetReader interface {
 	// Get returns the job with this ID, or nil if none exists with the
 	// specified ID.
-	Get(id string) *api.Job
+	Get(id string) *objectspb.Job
 	// Find selects a set of jobs and returns them. If by is nil,
 	// returns all jobs.
-	Find(by By) ([]*api.Job, error)
+	Find(by By) ([]*objectspb.Job, error)
 }
 
 // JobSet is a readable and writable consistent view of jobs.
@@ -78,8 +78,8 @@ type JobSet interface {
 
 // NetworkSetWriter is the write half of a network dataset.
 type NetworkSetWriter interface {
-	Create(n *api.Network) error
-	Update(n *api.Network) error
+	Create(n *objectspb.Network) error
+	Update(n *objectspb.Network) error
 	Delete(id string) error
 }
 
@@ -87,10 +87,10 @@ type NetworkSetWriter interface {
 type NetworkSetReader interface {
 	// Get returns the network with this ID, or nil if none exists with the
 	// specified ID.
-	Get(id string) *api.Network
+	Get(id string) *objectspb.Network
 	// Find selects a set of networks and returns them. If by is nil,
 	// returns all jobs.
-	Find(by By) ([]*api.Network, error)
+	Find(by By) ([]*objectspb.Network, error)
 }
 
 // NetworkSet is a readable and writable consistent view of networks.
@@ -101,8 +101,8 @@ type NetworkSet interface {
 
 // VolumeSetWriter is the write half of a volume dataset.
 type VolumeSetWriter interface {
-	Create(v *api.Volume) error
-	Update(v *api.Volume) error
+	Create(v *objectspb.Volume) error
+	Update(v *objectspb.Volume) error
 	Delete(id string) error
 }
 
@@ -110,10 +110,10 @@ type VolumeSetWriter interface {
 type VolumeSetReader interface {
 	// Get returns the volume with this ID, or nil if none exists with the
 	// specified ID.
-	Get(id string) *api.Volume
+	Get(id string) *objectspb.Volume
 	// Find selects a set of volumes and returns them. If by is nil,
 	// returns all jobs.
-	Find(by By) ([]*api.Volume, error)
+	Find(by By) ([]*objectspb.Volume, error)
 }
 
 // VolumeSet is a readable and writable consistent view of volumes.
@@ -124,8 +124,8 @@ type VolumeSet interface {
 
 // TaskSetWriter is the write half of a task dataset.
 type TaskSetWriter interface {
-	Create(t *api.Task) error
-	Update(t *api.Task) error
+	Create(t *objectspb.Task) error
+	Update(t *objectspb.Task) error
 	Delete(id string) error
 }
 
@@ -133,10 +133,10 @@ type TaskSetWriter interface {
 type TaskSetReader interface {
 	// Get returns the task with this ID, or nil if none exists with the
 	// specified ID.
-	Get(id string) *api.Task
+	Get(id string) *objectspb.Task
 	// Find selects a set of tasks and returns them. If by is nil,
 	// returns all tasks.
-	Find(by By) ([]*api.Task, error)
+	Find(by By) ([]*objectspb.Task, error)
 }
 
 // TaskSet is a readable and writable consistent view of tasks.
@@ -193,11 +193,11 @@ type Store interface {
 	View(func(ReadTx) error) error
 
 	// Save serializes the data in the store.
-	Save(ReadTx) (*pb.StoreSnapshot, error)
+	Save(ReadTx) (*snapshotpb.StoreSnapshot, error)
 
 	// Restore sets the contents of the store to the serialized data in the
 	// argument.
-	Restore(*pb.StoreSnapshot) error
+	Restore(*snapshotpb.StoreSnapshot) error
 }
 
 // WatchableStore is an extension of Store that publishes modifications to a

@@ -5,8 +5,9 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
+	dispatcherpb "github.com/docker/swarm-v2/pb/docker/cluster/api/dispatcher"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -27,8 +28,8 @@ type session struct {
 	agent     *Agent
 	sessionID string
 	errs      chan error
-	messages  chan *api.SessionMessage
-	tasks     chan *api.TasksMessage
+	messages  chan *dispatcherpb.SessionMessage
+	tasks     chan *dispatcherpb.TasksMessage
 
 	registered chan struct{} // closed registration
 	closed     chan struct{}
@@ -38,8 +39,8 @@ func newSession(ctx context.Context, agent *Agent, delay time.Duration) *session
 	s := &session{
 		agent:      agent,
 		errs:       make(chan error),
-		messages:   make(chan *api.SessionMessage),
-		tasks:      make(chan *api.TasksMessage),
+		messages:   make(chan *dispatcherpb.SessionMessage),
+		tasks:      make(chan *dispatcherpb.TasksMessage),
 		registered: make(chan struct{}),
 		closed:     make(chan struct{}),
 	}
@@ -72,7 +73,7 @@ func (s *session) run(ctx context.Context, delay time.Duration) {
 
 func (s *session) register(ctx context.Context) (string, error) {
 	log.G(ctx).Debugf("(*session).register")
-	client := api.NewDispatcherClient(s.agent.conn)
+	client := dispatcherpb.NewDispatcherClient(s.agent.conn)
 
 	description, err := s.agent.config.Executor.Describe(ctx)
 	if err != nil {
@@ -81,7 +82,7 @@ func (s *session) register(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	resp, err := client.Register(ctx, &api.RegisterRequest{
+	resp, err := client.Register(ctx, &dispatcherpb.RegisterRequest{
 		NodeID:      s.agent.config.ID,
 		Description: description,
 	})
@@ -98,7 +99,7 @@ func (s *session) register(ctx context.Context) (string, error) {
 
 func (s *session) heartbeat(ctx context.Context) error {
 	log.G(ctx).Debugf("(*session).heartbeat")
-	client := api.NewDispatcherClient(s.agent.conn)
+	client := dispatcherpb.NewDispatcherClient(s.agent.conn)
 	heartbeat := time.NewTimer(1) // send out a heartbeat right away
 	defer heartbeat.Stop()
 
@@ -106,7 +107,7 @@ func (s *session) heartbeat(ctx context.Context) error {
 		select {
 		case <-heartbeat.C:
 			start := time.Now()
-			resp, err := client.Heartbeat(ctx, &api.HeartbeatRequest{
+			resp, err := client.Heartbeat(ctx, &dispatcherpb.HeartbeatRequest{
 				NodeID:    s.agent.config.ID,
 				SessionID: s.sessionID,
 			})
@@ -134,8 +135,8 @@ func (s *session) heartbeat(ctx context.Context) error {
 
 func (s *session) listen(ctx context.Context) error {
 	log.G(ctx).Debugf("(*session).listen")
-	client := api.NewDispatcherClient(s.agent.conn)
-	session, err := client.Session(ctx, &api.SessionRequest{
+	client := dispatcherpb.NewDispatcherClient(s.agent.conn)
+	session, err := client.Session(ctx, &dispatcherpb.SessionRequest{
 		NodeID:    s.agent.config.ID,
 		SessionID: s.sessionID,
 	})
@@ -161,8 +162,8 @@ func (s *session) listen(ctx context.Context) error {
 
 func (s *session) watch(ctx context.Context) error {
 	log.G(ctx).Debugf("(*session).watch")
-	client := api.NewDispatcherClient(s.agent.conn)
-	watch, err := client.Tasks(ctx, &api.TasksRequest{
+	client := dispatcherpb.NewDispatcherClient(s.agent.conn)
+	watch, err := client.Tasks(ctx, &dispatcherpb.TasksRequest{
 		NodeID:    s.agent.config.ID,
 		SessionID: s.sessionID})
 	if err != nil {
@@ -186,7 +187,7 @@ func (s *session) watch(ctx context.Context) error {
 }
 
 // sendTaskStatus uses the current session to send the status of a single task.
-func (s *session) sendTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error {
+func (s *session) sendTaskStatus(ctx context.Context, taskID string, status *typespb.TaskStatus) error {
 	select {
 	case <-s.registered:
 		select {
@@ -200,11 +201,11 @@ func (s *session) sendTaskStatus(ctx context.Context, taskID string, status *api
 		return ctx.Err()
 	}
 
-	client := api.NewDispatcherClient(s.agent.conn)
-	if _, err := client.UpdateTaskStatus(ctx, &api.UpdateTaskStatusRequest{
+	client := dispatcherpb.NewDispatcherClient(s.agent.conn)
+	if _, err := client.UpdateTaskStatus(ctx, &dispatcherpb.UpdateTaskStatusRequest{
 		NodeID:    s.agent.config.ID,
 		SessionID: s.sessionID,
-		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
+		Updates: []*dispatcherpb.UpdateTaskStatusRequest_TaskStatusUpdate{
 			{
 				TaskID: taskID,
 				Status: status,

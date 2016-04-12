@@ -3,7 +3,7 @@ package clusterapi
 import (
 	"testing"
 
-	"github.com/docker/swarm-v2/api"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -11,15 +11,15 @@ import (
 
 func TestValidateMeta(t *testing.T) {
 	type BadMeta struct {
-		m api.Meta
+		m specspb.Meta
 		c codes.Code
 	}
 
-	err := validateMeta(api.Meta{})
+	err := validateMeta(specspb.Meta{})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
-	for _, good := range []api.Meta{
+	for _, good := range []specspb.Meta{
 		{Name: "name"},
 	} {
 		err := validateMeta(good)

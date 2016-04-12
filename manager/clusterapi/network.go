@@ -3,15 +3,18 @@ package clusterapi
 import (
 	"net"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
-func validateIPAMConfiguration(ipamConf *api.IPAMConfiguration) error {
+func validateIPAMConfiguration(ipamConf *typespb.IPAMConfiguration) error {
 	if ipamConf == nil {
 		return grpc.Errorf(codes.InvalidArgument, "ipam configuration: cannot be empty")
 	}
@@ -46,7 +49,7 @@ func validateIPAMConfiguration(ipamConf *api.IPAMConfiguration) error {
 	return nil
 }
 
-func validateIPAM(ipam *api.IPAMOptions) error {
+func validateIPAM(ipam *typespb.IPAMOptions) error {
 	if ipam == nil {
 		// It is ok to not specify any IPAM configurations. We
 		// will choose good defaults.
@@ -66,7 +69,7 @@ func validateIPAM(ipam *api.IPAMOptions) error {
 	return nil
 }
 
-func validateNetworkSpec(spec *api.NetworkSpec) error {
+func validateNetworkSpec(spec *specspb.NetworkSpec) error {
 	if spec == nil {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
@@ -96,7 +99,7 @@ func (s *Server) CreateNetwork(ctx context.Context, request *api.CreateNetworkRe
 
 	// TODO(mrjana): Consider using `Name` as a primary key to handle
 	// duplicate creations. See #65
-	n := &api.Network{
+	n := &objectspb.Network{
 		ID:   identity.NewID(),
 		Spec: request.Spec,
 	}
@@ -121,7 +124,7 @@ func (s *Server) GetNetwork(ctx context.Context, request *api.GetNetworkRequest)
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	var n *api.Network
+	var n *objectspb.Network
 	err := s.store.View(func(tx state.ReadTx) error {
 		n = tx.Networks().Get(request.NetworkID)
 		return nil
@@ -160,7 +163,7 @@ func (s *Server) RemoveNetwork(ctx context.Context, request *api.RemoveNetworkRe
 
 // ListNetworks returns a list of all networks.
 func (s *Server) ListNetworks(ctx context.Context, request *api.ListNetworksRequest) (*api.ListNetworksResponse, error) {
-	var networks []*api.Network
+	var networks []*objectspb.Network
 	err := s.store.View(func(tx state.ReadTx) error {
 		var err error
 

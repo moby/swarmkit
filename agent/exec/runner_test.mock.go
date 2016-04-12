@@ -4,7 +4,8 @@
 package exec
 
 import (
-	api "github.com/docker/swarm-v2/api"
+	objects "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	types "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	gomock "github.com/golang/mock/gomock"
 	context "golang.org/x/net/context"
 )
@@ -30,7 +31,7 @@ func (_m *MockRunner) EXPECT() *_MockRunnerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockRunner) Update(ctx context.Context, t *api.Task) error {
+func (_m *MockRunner) Update(ctx context.Context, t *objects.Task) error {
 	ret := _m.ctrl.Call(_m, "Update", ctx, t)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -131,7 +132,7 @@ func (_m *MockReporter) EXPECT() *_MockReporterRecorder {
 	return _m.recorder
 }
 
-func (_m *MockReporter) Report(ctx context.Context, state api.TaskState) error {
+func (_m *MockReporter) Report(ctx context.Context, state types.TaskState) error {
 	ret := _m.ctrl.Call(_m, "Report", ctx, state)
 	ret0, _ := ret[0].(error)
 	return ret0

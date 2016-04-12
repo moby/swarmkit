@@ -3,7 +3,7 @@ package state
 import (
 	"sync"
 
-	"github.com/docker/swarm-v2/api"
+	managerpb "github.com/docker/swarm-v2/pb/docker/cluster/api/manager"
 )
 
 // cluster represents a set of active
@@ -21,7 +21,7 @@ type cluster struct {
 
 // member represents a raft cluster member
 type member struct {
-	*api.RaftNode
+	*managerpb.RaftNode
 
 	Client *Raft
 }

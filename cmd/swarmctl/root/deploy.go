@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +30,7 @@ var (
 				return err
 			}
 
-			jobs := map[string]*api.Job{}
+			jobs := map[string]*objectspb.Job{}
 
 			for _, j := range r.Jobs {
 				if j.Spec.Meta.Labels["namespace"] == s.Namespace {

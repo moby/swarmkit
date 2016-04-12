@@ -5,8 +5,10 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,15 +25,15 @@ func TestOrchestrator(t *testing.T) {
 	// started. This should result in two tasks when the orchestrator
 	// starts up.
 	err := store.Update(func(tx state.Tx) error {
-		j1 := &api.Job{
+		j1 := &objectspb.Job{
 			ID: "id1",
-			Spec: &api.JobSpec{
-				Meta: api.Meta{
+			Spec: &specspb.JobSpec{
+				Meta: specspb.Meta{
 					Name: "name1",
 				},
-				Template: &api.TaskSpec{},
-				Orchestration: &api.JobSpec_Service{
-					Service: &api.JobSpec_ServiceJob{
+				Template: &specspb.TaskSpec{},
+				Orchestration: &specspb.JobSpec_Service{
+					Service: &specspb.JobSpec_ServiceJob{
 						Instances: 2,
 					},
 				},
@@ -48,24 +50,24 @@ func TestOrchestrator(t *testing.T) {
 	}()
 
 	observedTask1 := watchTaskCreate(t, watch)
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask1.Status.State, typespb.TaskStateNew)
 	assert.Equal(t, observedTask1.Meta.Name, "name1")
 
 	observedTask2 := watchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask2.Status.State, typespb.TaskStateNew)
 	assert.Equal(t, observedTask2.Meta.Name, "name1")
 
 	// Create a second job.
 	err = store.Update(func(tx state.Tx) error {
-		j2 := &api.Job{
+		j2 := &objectspb.Job{
 			ID: "id2",
-			Spec: &api.JobSpec{
-				Meta: api.Meta{
+			Spec: &specspb.JobSpec{
+				Meta: specspb.Meta{
 					Name: "name2",
 				},
-				Template: &api.TaskSpec{},
-				Orchestration: &api.JobSpec_Service{
-					Service: &api.JobSpec_ServiceJob{
+				Template: &specspb.TaskSpec{},
+				Orchestration: &specspb.JobSpec_Service{
+					Service: &specspb.JobSpec_ServiceJob{
 						Instances: 1,
 					},
 				},
@@ -77,20 +79,20 @@ func TestOrchestrator(t *testing.T) {
 	assert.NoError(t, err)
 
 	observedTask3 := watchTaskCreate(t, watch)
-	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask3.Status.State, typespb.TaskStateNew)
 	assert.Equal(t, observedTask3.Meta.Name, "name2")
 
 	// Update a job to scale it out to 3 instances
 	err = store.Update(func(tx state.Tx) error {
-		j2 := &api.Job{
+		j2 := &objectspb.Job{
 			ID: "id2",
-			Spec: &api.JobSpec{
-				Meta: api.Meta{
+			Spec: &specspb.JobSpec{
+				Meta: specspb.Meta{
 					Name: "name2",
 				},
-				Template: &api.TaskSpec{},
-				Orchestration: &api.JobSpec_Service{
-					Service: &api.JobSpec_ServiceJob{
+				Template: &specspb.TaskSpec{},
+				Orchestration: &specspb.JobSpec_Service{
+					Service: &specspb.JobSpec_ServiceJob{
 						Instances: 3,
 					},
 				},
@@ -102,24 +104,24 @@ func TestOrchestrator(t *testing.T) {
 	assert.NoError(t, err)
 
 	observedTask4 := watchTaskCreate(t, watch)
-	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask4.Status.State, typespb.TaskStateNew)
 	assert.Equal(t, observedTask4.Meta.Name, "name2")
 
 	observedTask5 := watchTaskCreate(t, watch)
-	assert.Equal(t, observedTask5.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask5.Status.State, typespb.TaskStateNew)
 	assert.Equal(t, observedTask5.Meta.Name, "name2")
 
 	// Now scale it back down to 1 instance
 	err = store.Update(func(tx state.Tx) error {
-		j2 := &api.Job{
+		j2 := &objectspb.Job{
 			ID: "id2",
-			Spec: &api.JobSpec{
-				Meta: api.Meta{
+			Spec: &specspb.JobSpec{
+				Meta: specspb.Meta{
 					Name: "name2",
 				},
-				Template: &api.TaskSpec{},
-				Orchestration: &api.JobSpec_Service{
-					Service: &api.JobSpec_ServiceJob{
+				Template: &specspb.TaskSpec{},
+				Orchestration: &specspb.JobSpec_Service{
+					Service: &specspb.JobSpec_ServiceJob{
 						Instances: 1,
 					},
 				},
@@ -131,15 +133,15 @@ func TestOrchestrator(t *testing.T) {
 	assert.NoError(t, err)
 
 	observedDeletion1 := watchTaskDelete(t, watch)
-	assert.Equal(t, observedDeletion1.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedDeletion1.Status.State, typespb.TaskStateNew)
 	assert.Equal(t, observedDeletion1.Meta.Name, "name2")
 
 	observedDeletion2 := watchTaskDelete(t, watch)
-	assert.Equal(t, observedDeletion2.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedDeletion2.Status.State, typespb.TaskStateNew)
 	assert.Equal(t, observedDeletion2.Meta.Name, "name2")
 
 	// There should be one remaining task attached to job id2/name2.
-	var tasks []*api.Task
+	var tasks []*objectspb.Task
 	err = store.View(func(readTx state.ReadTx) error {
 		var err error
 		tasks, err = readTx.Tasks().Find(state.ByJobID("id2"))
@@ -160,7 +162,7 @@ func TestOrchestrator(t *testing.T) {
 	watchTaskDelete(t, watch)
 
 	observedTask6 := watchTaskCreate(t, watch)
-	assert.Equal(t, observedTask6.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask6.Status.State, typespb.TaskStateNew)
 	assert.Equal(t, observedTask6.Meta.Name, "name2")
 
 	// Delete the job. Its remaining task should go away.
@@ -171,13 +173,13 @@ func TestOrchestrator(t *testing.T) {
 	assert.NoError(t, err)
 
 	observedDeletion3 := watchTaskDelete(t, watch)
-	assert.Equal(t, observedDeletion3.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedDeletion3.Status.State, typespb.TaskStateNew)
 	assert.Equal(t, observedDeletion3.Meta.Name, "name2")
 
 	orchestrator.Stop()
 }
 
-func watchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
+func watchTaskCreate(t *testing.T, watch chan events.Event) *objectspb.Task {
 	for {
 		select {
 		case event := <-watch:
@@ -193,7 +195,7 @@ func watchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
 	}
 }
 
-func watchTaskDelete(t *testing.T, watch chan events.Event) *api.Task {
+func watchTaskDelete(t *testing.T, watch chan events.Event) *objectspb.Task {
 	for {
 		select {
 		case event := <-watch:

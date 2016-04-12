@@ -2,9 +2,10 @@ package orchestrator
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 )
 
 // An Orchestrator runs a reconciliation loop to create and destroy
@@ -37,7 +38,7 @@ func (o *Orchestrator) Run() error {
 	defer cancel()
 
 	// Balance existing jobs
-	var existingJobs []*api.Job
+	var existingJobs []*objectspb.Job
 	err := o.store.View(func(readTx state.ReadTx) error {
 		var err error
 		existingJobs, err = readTx.Jobs().Find(state.All)
@@ -76,7 +77,7 @@ func (o *Orchestrator) Stop() {
 	<-o.doneChan
 }
 
-func (o *Orchestrator) deleteJob(job *api.Job) {
+func (o *Orchestrator) deleteJob(job *objectspb.Job) {
 	log.Debugf("Job %s was deleted", job.ID)
 	err := o.store.Update(func(tx state.Tx) error {
 		tasks, err := tx.Tasks().Find(state.ByJobID(job.ID))
@@ -96,9 +97,9 @@ func (o *Orchestrator) deleteJob(job *api.Job) {
 	}
 }
 
-func (o *Orchestrator) deleteTask(task *api.Task) {
+func (o *Orchestrator) deleteTask(task *objectspb.Task) {
 	if task.JobID != "" {
-		var job *api.Job
+		var job *objectspb.Job
 		err := o.store.View(func(tx state.ReadTx) error {
 			job = tx.Jobs().Get(task.JobID)
 			return nil
@@ -112,7 +113,7 @@ func (o *Orchestrator) deleteTask(task *api.Task) {
 	}
 }
 
-func (o *Orchestrator) balance(job *api.Job) {
+func (o *Orchestrator) balance(job *objectspb.Job) {
 	err := o.store.Update(func(tx state.Tx) error {
 		tasks, err := tx.Tasks().Find(state.ByJobID(job.ID))
 		if err != nil {
@@ -139,13 +140,13 @@ func (o *Orchestrator) balance(job *api.Job) {
 			meta := job.Spec.Meta // TODO(stevvooe): Copy metadata with nice name.
 
 			for i := int64(0); i < diff; i++ {
-				task := &api.Task{
+				task := &objectspb.Task{
 					ID:    identity.NewID(),
 					Meta:  meta,
 					Spec:  &spec,
 					JobID: job.ID,
-					Status: &api.TaskStatus{
-						State: api.TaskStateNew,
+					Status: &typespb.TaskStatus{
+						State: typespb.TaskStateNew,
 					},
 				}
 				if err := tx.Tasks().Create(task); err != nil {

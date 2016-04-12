@@ -4,8 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +20,7 @@ var (
 			}
 
 			flags := cmd.Flags()
-			var spec *api.JobSpec
+			var spec *specspb.JobSpec
 
 			if flags.Changed("file") {
 				service, err := readServiceConfig(flags)
@@ -28,15 +29,15 @@ var (
 				}
 				spec = service.ToProto()
 			} else { // TODO(vieux): support or error on both file.
-				spec = &api.JobSpec{}
+				spec = &specspb.JobSpec{}
 
 				if flags.Changed("instances") {
 					instances, err := flags.GetInt64("instances")
 					if err != nil {
 						return err
 					}
-					spec.Orchestration = &api.JobSpec_Service{
-						Service: &api.JobSpec_ServiceJob{
+					spec.Orchestration = &specspb.JobSpec_Service{
+						Service: &specspb.JobSpec_ServiceJob{
 							Instances: instances,
 						},
 					}

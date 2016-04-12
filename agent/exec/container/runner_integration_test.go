@@ -6,7 +6,9 @@ import (
 
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/swarm-v2/agent/exec"
-	"github.com/docker/swarm-v2/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -40,15 +42,15 @@ func TestRunnerFlowIntegration(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
 
-	task := &api.Task{
+	task := &objectspb.Task{
 		ID:     "dockerexec-integration-task-id",
 		JobID:  "dockerexec-integration-job-id",
 		NodeID: "dockerexec-integration-node-id",
-		Spec: &api.TaskSpec{
-			Runtime: &api.TaskSpec_Container{
-				Container: &api.Container{
+		Spec: &specspb.TaskSpec{
+			Runtime: &specspb.TaskSpec_Container{
+				Container: &typespb.Container{
 					Command: []string{"sh", "-c", "sleep 5"},
-					Image: &api.Image{
+					Image: &typespb.Image{
 						Reference: "alpine",
 					},
 				},

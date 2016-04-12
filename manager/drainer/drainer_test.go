@@ -5,121 +5,123 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDrainer(t *testing.T) {
-	initialNodeSet := []*api.Node{
+	initialNodeSet := []*objectspb.Node{
 		{
 			ID: "id1",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name1",
 				},
-				Availability: api.NodeAvailabilityActive,
+				Availability: specspb.NodeAvailabilityActive,
 			},
-			Status: api.NodeStatus{
-				State: api.NodeStatus_READY,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_READY,
 			},
 		},
 		{
 			ID: "id2",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name2",
 				},
-				Availability: api.NodeAvailabilityActive,
+				Availability: specspb.NodeAvailabilityActive,
 			},
-			Status: api.NodeStatus{
-				State: api.NodeStatus_DOWN,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_DOWN,
 			},
 		},
 		{
 			ID: "id3",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name3",
 				},
-				Availability: api.NodeAvailabilityActive,
+				Availability: specspb.NodeAvailabilityActive,
 			},
-			Status: api.NodeStatus{
-				State: api.NodeStatus_DISCONNECTED,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_DISCONNECTED,
 			},
 		},
 		{
 			ID: "id4",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name4",
 				},
-				Availability: api.NodeAvailabilityPause,
+				Availability: specspb.NodeAvailabilityPause,
 			},
-			Status: api.NodeStatus{
-				State: api.NodeStatus_READY,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_READY,
 			},
 		},
 		{
 			ID: "id5",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name5",
 				},
-				Availability: api.NodeAvailabilityDrain,
+				Availability: specspb.NodeAvailabilityDrain,
 			},
-			Status: api.NodeStatus{
-				State: api.NodeStatus_READY,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_READY,
 			},
 		},
 	}
 
-	initialTaskSet := []*api.Task{
+	initialTaskSet := []*objectspb.Task{
 		// Task not assigned to any node
 		{
 			ID:   "id0",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name0",
 			},
 		},
 		// Tasks assigned to the nodes defined above
 		{
 			ID:   "id1",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name1",
 			},
 			NodeID: "id1",
 		},
 		{
 			ID:   "id2",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name2",
 			},
 			NodeID: "id2",
 		},
 		{
 			ID:   "id3",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name3",
 			},
 			NodeID: "id3",
 		},
 		{
 			ID:   "id4",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name4",
 			},
 			NodeID: "id4",
 		},
 		{
 			ID:   "id5",
-			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Spec: &specspb.TaskSpec{},
+			Meta: specspb.Meta{
 				Name: "name5",
 			},
 			NodeID: "id5",
@@ -183,7 +185,7 @@ func TestDrainer(t *testing.T) {
 	// Set node id4 to the DRAINED state
 	err = store.Update(func(tx state.Tx) error {
 		n := initialNodeSet[3].Copy()
-		n.Spec.Availability = api.NodeAvailabilityDrain
+		n.Spec.Availability = specspb.NodeAvailabilityDrain
 		assert.NoError(t, tx.Nodes().Update(n))
 		return nil
 	})
@@ -207,7 +209,7 @@ func TestDrainer(t *testing.T) {
 	drainer.Stop()
 }
 
-func watchDeleteTask(t *testing.T, watch chan events.Event) *api.Task {
+func watchDeleteTask(t *testing.T, watch chan events.Event) *objectspb.Task {
 	for {
 		select {
 		case event := <-watch:

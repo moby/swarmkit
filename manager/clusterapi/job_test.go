@@ -3,36 +3,39 @@ package clusterapi
 import (
 	"testing"
 
-	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
-func createSpec(name, image string, instances int64) *api.JobSpec {
-	return &api.JobSpec{
-		Meta: api.Meta{
+func createSpec(name, image string, instances int64) *specspb.JobSpec {
+	return &specspb.JobSpec{
+		Meta: specspb.Meta{
 			Name: name,
 		},
-		Template: &api.TaskSpec{
-			Runtime: &api.TaskSpec_Container{
-				Container: &api.Container{
-					Image: &api.Image{
+		Template: &specspb.TaskSpec{
+			Runtime: &specspb.TaskSpec_Container{
+				Container: &typespb.Container{
+					Image: &typespb.Image{
 						Reference: image,
 					},
 				},
 			},
 		},
-		Orchestration: &api.JobSpec_Service{
-			Service: &api.JobSpec_ServiceJob{
+		Orchestration: &specspb.JobSpec_Service{
+			Service: &specspb.JobSpec_ServiceJob{
 				Instances: instances,
 			},
 		},
 	}
 }
 
-func createJob(t *testing.T, ts *testServer, name, image string, instances int64) *api.Job {
+func createJob(t *testing.T, ts *testServer, name, image string, instances int64) *objectspb.Job {
 	spec := createSpec(name, image, instances)
 	r, err := ts.Client.CreateJob(context.Background(), &api.CreateJobRequest{Spec: spec})
 	assert.NoError(t, err)
@@ -40,12 +43,12 @@ func createJob(t *testing.T, ts *testServer, name, image string, instances int64
 }
 
 func TestValidateResources(t *testing.T) {
-	bad := []*api.Resources{
+	bad := []*typespb.Resources{
 		{MemoryBytes: 1},
 		{NanoCPUs: 42},
 	}
 
-	good := []*api.Resources{
+	good := []*typespb.Resources{
 		{MemoryBytes: 4096 * 1024 * 1024},
 		{NanoCPUs: 1e9},
 	}
@@ -62,13 +65,13 @@ func TestValidateResources(t *testing.T) {
 }
 
 func TestValidateResourceRequirements(t *testing.T) {
-	bad := []*api.ResourceRequirements{
-		{Limits: &api.Resources{MemoryBytes: 1}},
-		{Reservations: &api.Resources{MemoryBytes: 1}},
+	bad := []*typespb.ResourceRequirements{
+		{Limits: &typespb.Resources{MemoryBytes: 1}},
+		{Reservations: &typespb.Resources{MemoryBytes: 1}},
 	}
-	good := []*api.ResourceRequirements{
-		{Limits: &api.Resources{NanoCPUs: 1e9}},
-		{Reservations: &api.Resources{NanoCPUs: 1e9}},
+	good := []*typespb.ResourceRequirements{
+		{Limits: &typespb.Resources{NanoCPUs: 1e9}},
+		{Reservations: &typespb.Resources{NanoCPUs: 1e9}},
 	}
 	for _, b := range bad {
 		err := validateResourceRequirements(b)
@@ -83,18 +86,18 @@ func TestValidateResourceRequirements(t *testing.T) {
 
 func TestValidateJobSpecTemplate(t *testing.T) {
 	type badSource struct {
-		s *api.JobSpec
+		s *specspb.JobSpec
 		c codes.Code
 	}
 
 	for _, bad := range []badSource{
 		{
-			s: &api.JobSpec{Template: nil},
+			s: &specspb.JobSpec{Template: nil},
 			c: codes.InvalidArgument,
 		},
 		{
-			s: &api.JobSpec{
-				Template: &api.TaskSpec{
+			s: &specspb.JobSpec{
+				Template: &specspb.TaskSpec{
 					Runtime: nil,
 				},
 			},
@@ -120,7 +123,7 @@ func TestValidateJobSpecTemplate(t *testing.T) {
 		assert.Equal(t, bad.c, grpc.Code(err))
 	}
 
-	for _, good := range []*api.JobSpec{
+	for _, good := range []*specspb.JobSpec{
 		createSpec("", "image", 0),
 	} {
 		err := validateJobSpecTemplate(good)
@@ -130,21 +133,21 @@ func TestValidateJobSpecTemplate(t *testing.T) {
 
 func TestValidateJobSpecOrchestration(t *testing.T) {
 	type BadJobSpecOrchestration struct {
-		s *api.JobSpec
+		s *specspb.JobSpec
 		c codes.Code
 	}
 
 	for _, bad := range []BadJobSpecOrchestration{
 		{
-			s: &api.JobSpec{Orchestration: nil},
+			s: &specspb.JobSpec{Orchestration: nil},
 			c: codes.InvalidArgument,
 		},
 		{
-			s: &api.JobSpec{Orchestration: &api.JobSpec_Service{}},
+			s: &specspb.JobSpec{Orchestration: &specspb.JobSpec_Service{}},
 			c: codes.InvalidArgument,
 		},
 		{
-			s: &api.JobSpec{Orchestration: &api.JobSpec_Batch{}},
+			s: &specspb.JobSpec{Orchestration: &specspb.JobSpec_Batch{}},
 			c: codes.Unimplemented,
 		},
 	} {
@@ -153,7 +156,7 @@ func TestValidateJobSpecOrchestration(t *testing.T) {
 		assert.Equal(t, bad.c, grpc.Code(err))
 	}
 
-	for _, good := range []*api.JobSpec{
+	for _, good := range []*specspb.JobSpec{
 		createSpec("", "", 1),
 	} {
 		err := validateJobSpecOrchestration(good)
@@ -163,7 +166,7 @@ func TestValidateJobSpecOrchestration(t *testing.T) {
 
 func TestValidateJobSpec(t *testing.T) {
 	type BadJobSpec struct {
-		spec *api.JobSpec
+		spec *specspb.JobSpec
 		c    codes.Code
 	}
 
@@ -173,7 +176,7 @@ func TestValidateJobSpec(t *testing.T) {
 			c:    codes.InvalidArgument,
 		},
 		{
-			spec: &api.JobSpec{Meta: api.Meta{Name: "name"}},
+			spec: &specspb.JobSpec{Meta: specspb.Meta{Name: "name"}},
 			c:    codes.InvalidArgument,
 		},
 		{
@@ -194,7 +197,7 @@ func TestValidateJobSpec(t *testing.T) {
 		assert.Equal(t, bad.c, grpc.Code(err))
 	}
 
-	for _, good := range []*api.JobSpec{
+	for _, good := range []*specspb.JobSpec{
 		createSpec("name", "image", 1),
 	} {
 		err := validateJobSpec(good)
@@ -251,9 +254,9 @@ func TestUpdateJob(t *testing.T) {
 
 	_, err = ts.Client.UpdateJob(context.Background(), &api.UpdateJobRequest{
 		JobID: job.ID,
-		Spec: &api.JobSpec{
-			Orchestration: &api.JobSpec_Service{
-				Service: &api.JobSpec_ServiceJob{
+		Spec: &specspb.JobSpec{
+			Orchestration: &specspb.JobSpec_Service{
+				Service: &specspb.JobSpec_ServiceJob{
 					Instances: 42,
 				},
 			},

@@ -1,15 +1,18 @@
 package clusterapi
 
 import (
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
-func validateResources(r *api.Resources) error {
+func validateResources(r *typespb.Resources) error {
 	if r == nil {
 		return nil
 	}
@@ -24,7 +27,7 @@ func validateResources(r *api.Resources) error {
 	return nil
 }
 
-func validateResourceRequirements(r *api.ResourceRequirements) error {
+func validateResourceRequirements(r *typespb.ResourceRequirements) error {
 	if r == nil {
 		return nil
 	}
@@ -37,7 +40,7 @@ func validateResourceRequirements(r *api.ResourceRequirements) error {
 	return nil
 }
 
-func validateJobSpecTemplate(spec *api.JobSpec) error {
+func validateJobSpecTemplate(spec *specspb.JobSpec) error {
 	tpl := spec.Template
 
 	if tpl == nil {
@@ -67,19 +70,19 @@ func validateJobSpecTemplate(spec *api.JobSpec) error {
 	return nil
 }
 
-func validateJobSpecOrchestration(spec *api.JobSpec) error {
+func validateJobSpecOrchestration(spec *specspb.JobSpec) error {
 	if spec.GetOrchestration() == nil {
 		return grpc.Errorf(codes.InvalidArgument, "orchestration: required in job spec")
 	}
 
 	switch o := spec.Orchestration.(type) {
-	case *api.JobSpec_Batch:
+	case *specspb.JobSpec_Batch:
 		return grpc.Errorf(codes.Unimplemented, "orchestration: batch is not supported")
-	case *api.JobSpec_Cron:
+	case *specspb.JobSpec_Cron:
 		return grpc.Errorf(codes.Unimplemented, "orchestration: cron is not supported")
-	case *api.JobSpec_Global:
+	case *specspb.JobSpec_Global:
 		return grpc.Errorf(codes.Unimplemented, "orchestration: global is not supported")
-	case *api.JobSpec_Service:
+	case *specspb.JobSpec_Service:
 		if o.Service == nil {
 			return grpc.Errorf(codes.InvalidArgument, "orchestration: service must be provided")
 		}
@@ -87,7 +90,7 @@ func validateJobSpecOrchestration(spec *api.JobSpec) error {
 	return nil
 }
 
-func validateJobSpec(spec *api.JobSpec) error {
+func validateJobSpec(spec *specspb.JobSpec) error {
 	if spec == nil {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
@@ -115,7 +118,7 @@ func (s *Server) CreateJob(ctx context.Context, request *api.CreateJobRequest) (
 
 	// TODO(aluzzardi): Consider using `Name` as a primary key to handle
 	// duplicate creations. See #65
-	job := &api.Job{
+	job := &objectspb.Job{
 		ID:   identity.NewID(),
 		Spec: request.Spec,
 	}
@@ -140,7 +143,7 @@ func (s *Server) GetJob(ctx context.Context, request *api.GetJobRequest) (*api.G
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	var job *api.Job
+	var job *objectspb.Job
 	err := s.store.View(func(tx state.ReadTx) error {
 		job = tx.Jobs().Get(request.JobID)
 		return nil
@@ -174,7 +177,7 @@ func (s *Server) UpdateJob(ctx context.Context, request *api.UpdateJobRequest) (
 		}
 	}
 
-	var job *api.Job
+	var job *objectspb.Job
 	err := s.store.Update(func(tx state.Tx) error {
 		jobs := tx.Jobs()
 		job = jobs.Get(request.JobID)
@@ -220,7 +223,7 @@ func (s *Server) RemoveJob(ctx context.Context, request *api.RemoveJobRequest) (
 
 // ListJobs returns a list of all jobs.
 func (s *Server) ListJobs(ctx context.Context, request *api.ListJobsRequest) (*api.ListJobsResponse, error) {
-	var jobs []*api.Job
+	var jobs []*objectspb.Job
 	err := s.store.View(func(tx state.ReadTx) error {
 		var err error
 		if request.Options == nil || request.Options.Query == "" {

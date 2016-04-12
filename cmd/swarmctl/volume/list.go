@@ -6,8 +6,9 @@ import (
 	"text/tabwriter"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +36,7 @@ var (
 			for _, v := range r.Volumes {
 				spec := v.Spec
 				if spec == nil {
-					spec = &api.VolumeSpec{}
+					spec = &specspb.VolumeSpec{}
 				}
 				name := spec.Meta.Name
 

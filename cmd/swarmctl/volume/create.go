@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +30,7 @@ var (
 				return err
 			}
 
-			driver := new(api.Driver)
+			driver := new(typespb.Driver)
 			driver.Name = driverName
 			opts, err := cmd.Flags().GetStringSlice("opts")
 			if err != nil {
@@ -44,8 +46,8 @@ var (
 				driver.Options[optPair[0]] = optPair[1]
 			}
 
-			spec := &api.VolumeSpec{
-				Meta: api.Meta{
+			spec := &specspb.VolumeSpec{
+				Meta: specspb.Meta{
 					Name: name,
 				},
 				DriverConfiguration: driver,

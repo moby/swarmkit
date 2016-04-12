@@ -3,11 +3,11 @@ package scheduler
 import (
 	"container/heap"
 
-	"github.com/docker/swarm-v2/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
 )
 
 type nodeHeapItem struct {
-	node     *api.Node
+	node     *objectspb.Node
 	numTasks int
 }
 
@@ -62,7 +62,7 @@ func (nh *nodeHeap) peek() *nodeHeapItem {
 
 // addOrUpdateNode sets the number of tasks for a given node. It adds the node
 // to the heap if it wasn't already tracked.
-func (nh *nodeHeap) addOrUpdateNode(n *api.Node, numTasks int) {
+func (nh *nodeHeap) addOrUpdateNode(n *objectspb.Node, numTasks int) {
 	index, ok := nh.index[n.ID]
 	if ok {
 		nh.heap[index].node = n
@@ -92,8 +92,8 @@ func (nh *nodeHeap) remove(nodeID string) {
 	}
 }
 
-func (nh *nodeHeap) findMin(meetsConstraints func(*api.Node) bool, scanAllNodes bool) (*api.Node, int) {
-	var bestNode *api.Node
+func (nh *nodeHeap) findMin(meetsConstraints func(*objectspb.Node) bool, scanAllNodes bool) (*objectspb.Node, int) {
+	var bestNode *objectspb.Node
 	minTasks := int(^uint(0) >> 1) // max int
 	nextStoppingPoint := 0
 	levelSize := 1
@@ -131,8 +131,8 @@ func (nh *nodeHeap) findMin(meetsConstraints func(*api.Node) bool, scanAllNodes 
 	return bestNode, minTasks
 }
 
-func (nh *nodeHeap) findBestChildBelowThreshold(meetsConstraints func(*api.Node) bool, index int, threshold int) (*api.Node, int) {
-	var bestNode *api.Node
+func (nh *nodeHeap) findBestChildBelowThreshold(meetsConstraints func(*objectspb.Node) bool, index int, threshold int) (*objectspb.Node, int) {
+	var bestNode *objectspb.Node
 
 	for i := index*2 + 1; i <= index*2+2; i++ {
 		if i <= len(nh.heap) {

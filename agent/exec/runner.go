@@ -1,8 +1,9 @@
 package exec
 
 import (
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"golang.org/x/net/context"
 )
 
@@ -15,7 +16,7 @@ type Runner interface {
 	// cannot be changed.
 	//
 	// Will be ignored if the task has exited.
-	Update(ctx context.Context, t *api.Task) error
+	Update(ctx context.Context, t *objectspb.Task) error
 
 	// Prepare the task for execution. This should ensure that all resources
 	// are created such that a call to start should execute immediately.
@@ -49,7 +50,7 @@ type Runner interface {
 type Reporter interface {
 	// Report the state of the task run. If an error is returned, execution
 	// will be stopped.
-	Report(ctx context.Context, state api.TaskState) error
+	Report(ctx context.Context, state typespb.TaskState) error
 
 	// TODO(stevvooe): It is very likely we will need to report more
 	// information back from the runner into the agent. We'll likely expand
@@ -59,7 +60,7 @@ type Reporter interface {
 // Run runs a runner, reporting state along the way. Under normal execution,
 // this function blocks until the task is completed.
 func Run(ctx context.Context, runner Runner, reporter Reporter) error {
-	if err := report(ctx, reporter, api.TaskStatePreparing); err != nil {
+	if err := report(ctx, reporter, typespb.TaskStatePreparing); err != nil {
 		return err
 	}
 
@@ -76,7 +77,7 @@ func Run(ctx context.Context, runner Runner, reporter Reporter) error {
 		}
 	}
 
-	if err := report(ctx, reporter, api.TaskStateReady); err != nil {
+	if err := report(ctx, reporter, typespb.TaskStateReady); err != nil {
 		return err
 	}
 
@@ -87,7 +88,7 @@ func Run(ctx context.Context, runner Runner, reporter Reporter) error {
 // off to `runWait`. It will block until task execution is completed or an
 // error is encountered.
 func runStart(ctx context.Context, runner Runner, reporter Reporter) error {
-	if err := report(ctx, reporter, api.TaskStateStarting); err != nil {
+	if err := report(ctx, reporter, typespb.TaskStateStarting); err != nil {
 		return err
 	}
 
@@ -105,7 +106,7 @@ func runStart(ctx context.Context, runner Runner, reporter Reporter) error {
 // runWait reports that the task is running and calls Wait. When Wait exits,
 // the task will be reported as completed.
 func runWait(ctx context.Context, runner Runner, reporter Reporter) error {
-	if err := report(ctx, reporter, api.TaskStateRunning); err != nil {
+	if err := report(ctx, reporter, typespb.TaskStateRunning); err != nil {
 		return err
 	}
 
@@ -116,10 +117,10 @@ func runWait(ctx context.Context, runner Runner, reporter Reporter) error {
 		return err
 	}
 
-	return report(ctx, reporter, api.TaskStateCompleted)
+	return report(ctx, reporter, typespb.TaskStateCompleted)
 }
 
-func report(ctx context.Context, reporter Reporter, state api.TaskState) error {
+func report(ctx context.Context, reporter Reporter, state typespb.TaskState) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
