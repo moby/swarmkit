@@ -1,4 +1,4 @@
-//go:generate protoc -I.:../vendor:../vendor/github.com/gogo/protobuf --gogoswarm_out=plugins=grpc+deepcopy,import_path=github.com/docker/swarm-v2/api,Mgogoproto/gogo.proto=github.com/gogo/protobuf/gogoproto:. types.proto specs.proto objects.proto cluster.proto dispatcher.proto raft.proto
+//go:generate protoc -I.:../vendor:../vendor/github.com/gogo/protobuf --gogoswarm_out=plugins=grpc+deepcopy+raftproxy,import_path=github.com/docker/swarm-v2/api,Mgogoproto/gogo.proto=github.com/gogo/protobuf/gogoproto:. types.proto specs.proto objects.proto cluster.proto dispatcher.proto raft.proto
 
 // BUG(stevvooe): The generation line below is nearly identical to the line
 // above, except that deepcopy is disabled. There is a bug in deepcopy that

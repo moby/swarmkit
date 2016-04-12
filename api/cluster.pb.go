@@ -20,6 +20,8 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
+import leaderconn "github.com/docker/swarm-v2/manager/state/leaderconn"
+
 import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -3061,6 +3063,259 @@ func encodeVarintCluster(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	return offset + 1
 }
+
+type raftProxyClusterServer struct {
+	local   ClusterServer
+	leaders leaderconn.ConnSelector
+}
+
+func NewRaftProxyClusterServer(local ClusterServer, leaders leaderconn.ConnSelector) ClusterServer {
+	return &raftProxyClusterServer{
+		local:   local,
+		leaders: leaders,
+	}
+}
+
+func (p *raftProxyClusterServer) GetNode(ctx context.Context, r *GetNodeRequest) (*GetNodeResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.GetNode(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).GetNode(ctx, r)
+}
+
+func (p *raftProxyClusterServer) ListNodes(ctx context.Context, r *ListNodesRequest) (*ListNodesResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.ListNodes(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).ListNodes(ctx, r)
+}
+
+func (p *raftProxyClusterServer) UpdateNode(ctx context.Context, r *UpdateNodeRequest) (*UpdateNodeResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.UpdateNode(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).UpdateNode(ctx, r)
+}
+
+func (p *raftProxyClusterServer) GetTask(ctx context.Context, r *GetTaskRequest) (*GetTaskResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.GetTask(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).GetTask(ctx, r)
+}
+
+func (p *raftProxyClusterServer) ListTasks(ctx context.Context, r *ListTasksRequest) (*ListTasksResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.ListTasks(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).ListTasks(ctx, r)
+}
+
+func (p *raftProxyClusterServer) CreateTask(ctx context.Context, r *CreateTaskRequest) (*CreateTaskResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.CreateTask(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).CreateTask(ctx, r)
+}
+
+func (p *raftProxyClusterServer) RemoveTask(ctx context.Context, r *RemoveTaskRequest) (*RemoveTaskResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.RemoveTask(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).RemoveTask(ctx, r)
+}
+
+func (p *raftProxyClusterServer) GetJob(ctx context.Context, r *GetJobRequest) (*GetJobResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.GetJob(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).GetJob(ctx, r)
+}
+
+func (p *raftProxyClusterServer) ListJobs(ctx context.Context, r *ListJobsRequest) (*ListJobsResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.ListJobs(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).ListJobs(ctx, r)
+}
+
+func (p *raftProxyClusterServer) CreateJob(ctx context.Context, r *CreateJobRequest) (*CreateJobResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.CreateJob(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).CreateJob(ctx, r)
+}
+
+func (p *raftProxyClusterServer) UpdateJob(ctx context.Context, r *UpdateJobRequest) (*UpdateJobResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.UpdateJob(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).UpdateJob(ctx, r)
+}
+
+func (p *raftProxyClusterServer) RemoveJob(ctx context.Context, r *RemoveJobRequest) (*RemoveJobResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.RemoveJob(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).RemoveJob(ctx, r)
+}
+
+func (p *raftProxyClusterServer) GetNetwork(ctx context.Context, r *GetNetworkRequest) (*GetNetworkResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.GetNetwork(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).GetNetwork(ctx, r)
+}
+
+func (p *raftProxyClusterServer) ListNetworks(ctx context.Context, r *ListNetworksRequest) (*ListNetworksResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.ListNetworks(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).ListNetworks(ctx, r)
+}
+
+func (p *raftProxyClusterServer) CreateNetwork(ctx context.Context, r *CreateNetworkRequest) (*CreateNetworkResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.CreateNetwork(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).CreateNetwork(ctx, r)
+}
+
+func (p *raftProxyClusterServer) RemoveNetwork(ctx context.Context, r *RemoveNetworkRequest) (*RemoveNetworkResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.RemoveNetwork(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).RemoveNetwork(ctx, r)
+}
+
+func (p *raftProxyClusterServer) GetVolume(ctx context.Context, r *GetVolumeRequest) (*GetVolumeResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.GetVolume(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).GetVolume(ctx, r)
+}
+
+func (p *raftProxyClusterServer) ListVolumes(ctx context.Context, r *ListVolumesRequest) (*ListVolumesResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.ListVolumes(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).ListVolumes(ctx, r)
+}
+
+func (p *raftProxyClusterServer) CreateVolume(ctx context.Context, r *CreateVolumeRequest) (*CreateVolumeResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.CreateVolume(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).CreateVolume(ctx, r)
+}
+
+func (p *raftProxyClusterServer) RemoveVolume(ctx context.Context, r *RemoveVolumeRequest) (*RemoveVolumeResponse, error) {
+
+	c, err := p.leaders.LeaderConn()
+	if err != nil {
+		if err == leaderconn.ErrLocalLeader {
+			return p.local.RemoveVolume(ctx, r)
+		}
+		return nil, err
+	}
+	return NewClusterClient(c).RemoveVolume(ctx, r)
+}
+
 func (m *ListOptions) Size() (n int) {
 	var l int
 	_ = l

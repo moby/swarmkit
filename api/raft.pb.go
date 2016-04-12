@@ -603,6 +603,7 @@ func encodeVarintRaft(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	return offset + 1
 }
+
 func (m *InternalRaftRequest) Size() (n int) {
 	var l int
 	_ = l
