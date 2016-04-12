@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"

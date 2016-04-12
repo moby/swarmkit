@@ -1,8 +1,9 @@
 package clusterapi
 
 import (
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -22,7 +23,7 @@ func (s *Server) GetTask(ctx context.Context, request *api.GetTaskRequest) (*api
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	var task *api.Task
+	var task *objectspb.Task
 	err := s.store.View(func(tx state.ReadTx) error {
 		task = tx.Tasks().Get(request.TaskID)
 		return nil
@@ -61,7 +62,7 @@ func (s *Server) RemoveTask(ctx context.Context, request *api.RemoveTaskRequest)
 
 // ListTasks returns a list of all tasks.
 func (s *Server) ListTasks(ctx context.Context, request *api.ListTasksRequest) (*api.ListTasksResponse, error) {
-	var tasks []*api.Task
+	var tasks []*objectspb.Task
 	err := s.store.View(func(tx state.ReadTx) error {
 		var err error
 

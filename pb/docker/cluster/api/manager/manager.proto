@@ -1,13 +1,12 @@
 syntax = "proto3";
 
-package docker.cluster.api;
+package docker.cluster.api.manager;
 
 import "github.com/coreos/etcd/raft/raftpb/raft.proto";
 import weak "gogoproto/gogo.proto";
 
 // Raft defines the RPC communication between raft nodes.
 service Raft {
-
 	// Join joins an existing Manager or set of Managers to form
 	// a raft cluster for the log replication backend
 	rpc Join(JoinRequest) returns (JoinResponse) {}

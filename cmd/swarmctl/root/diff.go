@@ -3,8 +3,9 @@ package root
 import (
 	"fmt"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"github.com/docker/swarm-v2/spec"
 	"github.com/spf13/cobra"
 )
@@ -36,7 +37,7 @@ var (
 				return err
 			}
 
-			jobspecs := []*api.JobSpec{}
+			jobspecs := []*specspb.JobSpec{}
 
 			for _, j := range r.Jobs {
 				if j.Spec.Meta.Labels["namespace"] == localSpec.Namespace {

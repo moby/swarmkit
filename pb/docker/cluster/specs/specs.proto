@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package docker.cluster.api;
+package docker.cluster.specs;
 
-import "types.proto";
+import "docker/cluster/types/types.proto";
 import "gogoproto/gogo.proto";
 
 // Specs are container objects for user provided input. All creations and
@@ -87,7 +87,7 @@ message JobSpec {
 // TaskSpec defines properties required by the agent for execution.
 message TaskSpec {
 	oneof runtime {
-		Container container = 1;
+		docker.cluster.types.Container container = 1;
 	}
 }
 
@@ -96,7 +96,7 @@ message VolumeSpec {
 	Meta meta = 1 [(gogoproto.nullable) = false];
 
 	// Driver specific configuration consumed by the Volume driver.
-	Driver driver_configuration = 2;
+	docker.cluster.types.Driver driver_configuration = 2;
 }
 
 // NetworkSpec specifies user defined network parameters.
@@ -104,7 +104,7 @@ message NetworkSpec {
 	Meta meta = 1 [(gogoproto.nullable) = false];
 
 	// Driver specific configuration consumed by the network driver.
-	Driver driver_configuration = 2;
+	docker.cluster.types.Driver driver_configuration = 2;
 
 	// IPv6Enabled enables support for IPv6 on the network.
 	bool ipv6_enabled = 3;
@@ -113,6 +113,6 @@ message NetworkSpec {
 	// accomplished by disabling the default gateway or through other means.
 	bool internal = 4;
 
-	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
+	docker.cluster.types.IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
 }
 

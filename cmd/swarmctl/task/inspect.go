@@ -6,8 +6,9 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
 	"github.com/spf13/cobra"
 )
 
@@ -37,13 +38,13 @@ var (
 				_ = w.Flush()
 			}()
 			fmt.Fprintf(w, "ID:\t%s\n", r.Task.ID)
-			fmt.Fprintf(w, "Job:\t%s\n", res.Resolve(api.Job{}, r.Task.JobID))
+			fmt.Fprintf(w, "Job:\t%s\n", res.Resolve(objectspb.Job{}, r.Task.JobID))
 			if r.Task.Status.Err != "" {
 				fmt.Fprintf(w, "Status:\t%s (%s)\n", r.Task.Status.State.String(), r.Task.Status.Err)
 			} else {
 				fmt.Fprintf(w, "Status:\t%s\n", r.Task.Status.State.String())
 			}
-			fmt.Fprintf(w, "Node:\t%s\n", res.Resolve(api.Node{}, r.Task.NodeID))
+			fmt.Fprintf(w, "Node:\t%s\n", res.Resolve(objectspb.Node{}, r.Task.NodeID))
 			return nil
 		},
 	}

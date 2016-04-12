@@ -7,28 +7,29 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
-
-	"google.golang.org/grpc"
-
 	"github.com/docker/swarm-v2/agent"
 	"github.com/docker/swarm-v2/agent/exec"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/dispatcher"
 	"github.com/docker/swarm-v2/manager/state"
+	dispatcherpb "github.com/docker/swarm-v2/pb/docker/cluster/api/dispatcher"
+	managerpb "github.com/docker/swarm-v2/pb/docker/cluster/api/manager"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 // NoopExecutor is a dummy executor that implements enough to get the agent started.
 type NoopExecutor struct {
 }
 
-func (e *NoopExecutor) Describe(ctx context.Context) (*api.NodeDescription, error) {
-	return &api.NodeDescription{}, nil
+func (e *NoopExecutor) Describe(ctx context.Context) (*typespb.NodeDescription, error) {
+	return &typespb.NodeDescription{}, nil
 }
 
-func (e *NoopExecutor) Runner(t *api.Task) (exec.Runner, error) {
+func (e *NoopExecutor) Runner(t *objectspb.Task) (exec.Runner, error) {
 	return nil, exec.ErrRuntimeUnsupported
 }
 
@@ -69,8 +70,8 @@ func TestManager(t *testing.T) {
 	}()
 
 	// We have to send a dummy request to verify if the connection is actually up.
-	client := api.NewDispatcherClient(conn)
-	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: "foo"})
+	client := dispatcherpb.NewDispatcherClient(conn)
+	_, err = client.Heartbeat(context.Background(), &dispatcherpb.HeartbeatRequest{NodeID: "foo"})
 	assert.Equal(t, grpc.ErrorDesc(err), dispatcher.ErrNodeNotRegistered.Error())
 
 	m.Stop()
@@ -108,7 +109,7 @@ func TestManagerNodeCount(t *testing.T) {
 	}()
 
 	// We have to send a dummy request to verify if the connection is actually up.
-	mClient := api.NewManagerClient(conn)
+	mClient := managerpb.NewManagerClient(conn)
 
 	managers := agent.NewManagers(l.Addr().String())
 	a1, err := agent.New(&agent.Config{
@@ -137,7 +138,7 @@ func TestManagerNodeCount(t *testing.T) {
 
 	time.Sleep(1500 * time.Millisecond)
 
-	resp, err := mClient.NodeCount(context.Background(), &api.NodeCountRequest{})
+	resp, err := mClient.NodeCount(context.Background(), &managerpb.NodeCountRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, resp.Count)
 }

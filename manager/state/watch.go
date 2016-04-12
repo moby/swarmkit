@@ -2,8 +2,8 @@ package state
 
 import (
 	"github.com/docker/go-events"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state/watch"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
 )
 
 // Event is the type used for events passed over watcher channels, and also
@@ -28,22 +28,22 @@ func (e EventCommit) matches(watchEvent events.Event) bool {
 
 // TaskCheckFunc is the type of function used to perform filtering checks on
 // api.Task structures.
-type TaskCheckFunc func(t1, t2 *api.Task) bool
+type TaskCheckFunc func(t1, t2 *objectspb.Task) bool
 
 // TaskCheckID is a TaskCheckFunc for matching task IDs.
-func TaskCheckID(t1, t2 *api.Task) bool {
+func TaskCheckID(t1, t2 *objectspb.Task) bool {
 	return t1.ID == t2.ID
 }
 
 // TaskCheckNodeID is a TaskCheckFunc for matching node IDs.
-func TaskCheckNodeID(t1, t2 *api.Task) bool {
+func TaskCheckNodeID(t1, t2 *objectspb.Task) bool {
 	return t1.NodeID == t2.NodeID
 }
 
 // EventCreateTask is the type used to put CreateTask events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventCreateTask struct {
-	Task *api.Task
+	Task *objectspb.Task
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
@@ -67,7 +67,7 @@ func (e EventCreateTask) matches(watchEvent events.Event) bool {
 // EventUpdateTask is the type used to put UpdateTask events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventUpdateTask struct {
-	Task *api.Task
+	Task *objectspb.Task
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
@@ -91,7 +91,7 @@ func (e EventUpdateTask) matches(watchEvent events.Event) bool {
 // EventDeleteTask is the type used to put DeleteTask events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventDeleteTask struct {
-	Task *api.Task
+	Task *objectspb.Task
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
@@ -114,17 +114,17 @@ func (e EventDeleteTask) matches(watchEvent events.Event) bool {
 
 // JobCheckFunc is the type of function used to perform filtering checks on
 // api.Job structures.
-type JobCheckFunc func(j1, j2 *api.Job) bool
+type JobCheckFunc func(j1, j2 *objectspb.Job) bool
 
 // JobCheckID is a JobCheckFunc for matching job IDs.
-func JobCheckID(j1, j2 *api.Job) bool {
+func JobCheckID(j1, j2 *objectspb.Job) bool {
 	return j1.ID == j2.ID
 }
 
 // EventCreateJob is the type used to put CreateJob events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventCreateJob struct {
-	Job *api.Job
+	Job *objectspb.Job
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
@@ -148,7 +148,7 @@ func (e EventCreateJob) matches(watchEvent events.Event) bool {
 // EventUpdateJob is the type used to put UpdateJob events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventUpdateJob struct {
-	Job *api.Job
+	Job *objectspb.Job
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
@@ -172,7 +172,7 @@ func (e EventUpdateJob) matches(watchEvent events.Event) bool {
 // EventDeleteJob is the type used to put DeleteJob events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventDeleteJob struct {
-	Job *api.Job
+	Job *objectspb.Job
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
@@ -195,17 +195,17 @@ func (e EventDeleteJob) matches(watchEvent events.Event) bool {
 
 // NetworkCheckFunc is the type of function used to perform filtering checks on
 // api.Job structures.
-type NetworkCheckFunc func(n1, n2 *api.Network) bool
+type NetworkCheckFunc func(n1, n2 *objectspb.Network) bool
 
 // NetworkCheckID is a NetworkCheckFunc for matching network IDs.
-func NetworkCheckID(n1, n2 *api.Network) bool {
+func NetworkCheckID(n1, n2 *objectspb.Network) bool {
 	return n1.ID == n2.ID
 }
 
 // EventCreateNetwork is the type used to put CreateNetwork events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventCreateNetwork struct {
-	Network *api.Network
+	Network *objectspb.Network
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
@@ -229,7 +229,7 @@ func (e EventCreateNetwork) matches(watchEvent events.Event) bool {
 // EventUpdateNetwork is the type used to put UpdateNetwork events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventUpdateNetwork struct {
-	Network *api.Network
+	Network *objectspb.Network
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
@@ -253,7 +253,7 @@ func (e EventUpdateNetwork) matches(watchEvent events.Event) bool {
 // EventDeleteNetwork is the type used to put DeleteNetwork events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventDeleteNetwork struct {
-	Network *api.Network
+	Network *objectspb.Network
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
@@ -276,22 +276,22 @@ func (e EventDeleteNetwork) matches(watchEvent events.Event) bool {
 
 // NodeCheckFunc is the type of function used to perform filtering checks on
 // api.Job structures.
-type NodeCheckFunc func(n1, n2 *api.Node) bool
+type NodeCheckFunc func(n1, n2 *objectspb.Node) bool
 
 // NodeCheckID is a NodeCheckFunc for matching node IDs.
-func NodeCheckID(n1, n2 *api.Node) bool {
+func NodeCheckID(n1, n2 *objectspb.Node) bool {
 	return n1.ID == n2.ID
 }
 
 // NodeCheckStatus is a NodeCheckFunc for matching node status.
-func NodeCheckStatus(n1, n2 *api.Node) bool {
+func NodeCheckStatus(n1, n2 *objectspb.Node) bool {
 	return n1.Status == n2.Status
 }
 
 // EventCreateNode is the type used to put CreateNode events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventCreateNode struct {
-	Node *api.Node
+	Node *objectspb.Node
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
@@ -315,7 +315,7 @@ func (e EventCreateNode) matches(watchEvent events.Event) bool {
 // EventUpdateNode is the type used to put DeleteNode events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventUpdateNode struct {
-	Node *api.Node
+	Node *objectspb.Node
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
@@ -339,7 +339,7 @@ func (e EventUpdateNode) matches(watchEvent events.Event) bool {
 // EventDeleteNode is the type used to put DeleteNode events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventDeleteNode struct {
-	Node *api.Node
+	Node *objectspb.Node
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
@@ -362,17 +362,17 @@ func (e EventDeleteNode) matches(watchEvent events.Event) bool {
 
 // VolumeCheckFunc is the type of function used to perform filtering checks on
 // api.Volume structures.
-type VolumeCheckFunc func(v1, v2 *api.Volume) bool
+type VolumeCheckFunc func(v1, v2 *objectspb.Volume) bool
 
 // VolumeCheckID is a VolumeCheckFunc for matching volume IDs.
-func VolumeCheckID(v1, v2 *api.Volume) bool {
+func VolumeCheckID(v1, v2 *objectspb.Volume) bool {
 	return v1.ID == v2.ID
 }
 
 // EventCreateVolume is the type used to put CreateVolume events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventCreateVolume struct {
-	Volume *api.Volume
+	Volume *objectspb.Volume
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
@@ -396,7 +396,7 @@ func (e EventCreateVolume) matches(watchEvent events.Event) bool {
 // EventUpdateVolume is the type used to put UpdateVolume events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventUpdateVolume struct {
-	Volume *api.Volume
+	Volume *objectspb.Volume
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
@@ -420,7 +420,7 @@ func (e EventUpdateVolume) matches(watchEvent events.Event) bool {
 // EventDeleteVolume is the type used to put DeleteVolume events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventDeleteVolume struct {
-	Volume *api.Volume
+	Volume *objectspb.Volume
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.

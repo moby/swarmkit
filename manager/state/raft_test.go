@@ -12,16 +12,17 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/grpclog"
-
 	"github.com/coreos/etcd/raft"
-	"github.com/docker/swarm-v2/api"
+	managerpb "github.com/docker/swarm-v2/pb/docker/cluster/api/manager"
+	raftpb "github.com/docker/swarm-v2/pb/docker/cluster/api/raft"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 )
 
 var (
@@ -344,24 +345,24 @@ func TestRaftLeader(t *testing.T) {
 	assert.Equal(t, nodes[3].Leader(), nodes[1].Config.ID)
 }
 
-func proposeValue(t *testing.T, raftNode *testNode, nodeID ...string) (*api.Node, error) {
+func proposeValue(t *testing.T, raftNode *testNode, nodeID ...string) (*objectspb.Node, error) {
 	nodeIDStr := "id1"
 	if len(nodeID) != 0 {
 		nodeIDStr = nodeID[0]
 	}
-	node := &api.Node{
+	node := &objectspb.Node{
 		ID: nodeIDStr,
-		Spec: &api.NodeSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NodeSpec{
+			Meta: specspb.Meta{
 				Name: nodeIDStr,
 			},
 		},
 	}
 
-	storeActions := []*api.StoreAction{
+	storeActions := []*raftpb.StoreAction{
 		{
-			Action: api.StoreActionKindCreate,
-			Target: &api.StoreAction_Node{
+			Action: raftpb.StoreActionKindCreate,
+			Target: &raftpb.StoreAction_Node{
 				Node: node,
 			},
 		},
@@ -380,7 +381,7 @@ func proposeValue(t *testing.T, raftNode *testNode, nodeID ...string) (*api.Node
 	return node, nil
 }
 
-func checkValue(t *testing.T, raftNode *testNode, createdNode *api.Node) {
+func checkValue(t *testing.T, raftNode *testNode, createdNode *objectspb.Node) {
 	assert.NoError(t, pollFunc(func() error {
 		return raftNode.memoryStore.View(func(tx ReadTx) error {
 			allNodes, err := tx.Nodes().Find(All)
@@ -413,7 +414,7 @@ func checkNoValue(t *testing.T, raftNode *testNode) {
 	}))
 }
 
-func checkValuesOnNodes(t *testing.T, checkNodes map[uint64]*testNode, ids []string, values []*api.Node) {
+func checkValuesOnNodes(t *testing.T, checkNodes map[uint64]*testNode, ids []string, values []*objectspb.Node) {
 	for _, node := range checkNodes {
 		assert.NoError(t, pollFunc(func() error {
 			return node.memoryStore.View(func(tx ReadTx) error {
@@ -616,7 +617,7 @@ func TestRaftFollowerLeave(t *testing.T) {
 
 	// Node 5 leave the cluster
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	resp, err := nodes[1].Leave(ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[5].Config.ID}})
+	resp, err := nodes[1].Leave(ctx, &managerpb.LeaveRequest{Node: &managerpb.RaftNode{ID: nodes[5].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -652,7 +653,7 @@ func TestRaftLeaderLeave(t *testing.T) {
 	assert.Equal(t, nodes[1].Leader(), nodes[1].Config.ID)
 
 	// Try to leave the raft
-	resp, err := nodes[1].Leave(nodes[1].Ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[1].Config.ID}})
+	resp, err := nodes[1].Leave(nodes[1].Ctx, &managerpb.LeaveRequest{Node: &managerpb.RaftNode{ID: nodes[1].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -730,7 +731,7 @@ func TestRaftSnapshot(t *testing.T) {
 	defer teardownCluster(t, nodes)
 
 	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5"}
-	values := make([]*api.Node, len(nodeIDs))
+	values := make([]*objectspb.Node, len(nodeIDs))
 
 	// Propose 4 values
 	var err error
@@ -780,8 +781,8 @@ func TestRaftSnapshot(t *testing.T) {
 	}))
 
 	// It should know about the other nodes
-	nodesFromMembers := func(memberList map[uint64]*member) map[uint64]*api.RaftNode {
-		raftNodes := make(map[uint64]*api.RaftNode)
+	nodesFromMembers := func(memberList map[uint64]*member) map[uint64]*managerpb.RaftNode {
+		raftNodes := make(map[uint64]*managerpb.RaftNode)
 		for k, v := range memberList {
 			raftNodes[k] = v.RaftNode
 		}
@@ -802,7 +803,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	defer teardownCluster(t, nodes)
 
 	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7", "id8"}
-	values := make([]*api.Node, len(nodeIDs))
+	values := make([]*objectspb.Node, len(nodeIDs))
 
 	// Propose 4 values
 	var err error
@@ -871,8 +872,8 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	checkValuesOnNodes(t, map[uint64]*testNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:6], values[:6])
 
 	// It should know about the other nodes, including the one that was just added
-	nodesFromMembers := func(memberList map[uint64]*member) map[uint64]*api.RaftNode {
-		raftNodes := make(map[uint64]*api.RaftNode)
+	nodesFromMembers := func(memberList map[uint64]*member) map[uint64]*managerpb.RaftNode {
+		raftNodes := make(map[uint64]*managerpb.RaftNode)
 		for k, v := range memberList {
 			raftNodes[k] = v.RaftNode
 		}
@@ -919,7 +920,7 @@ func TestRaftRejoin(t *testing.T) {
 	ids := []string{"id1", "id2"}
 
 	// Propose a value
-	values := make([]*api.Node, 2)
+	values := make([]*objectspb.Node, 2)
 	var err error
 	values[0], err = proposeValue(t, nodes[1], ids[0])
 	assert.NoError(t, err, "failed to propose value")
@@ -952,7 +953,7 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 	defer teardownCluster(t, nodes)
 
 	// Propose a value
-	values := make([]*api.Node, 2)
+	values := make([]*objectspb.Node, 2)
 	var err error
 	values[0], err = proposeValue(t, nodes[1], "id1")
 	assert.NoError(t, err, "failed to propose value")

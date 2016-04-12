@@ -6,13 +6,15 @@ import (
 	"reflect"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 )
 
 type schedulingDecision struct {
-	old *api.Task
-	new *api.Task
+	old *objectspb.Task
+	new *objectspb.Task
 }
 
 // Scheduler assigns tasks to nodes.
@@ -20,8 +22,8 @@ type Scheduler struct {
 	store           state.WatchableStore
 	unassignedTasks *list.List
 	nodeHeap        nodeHeap
-	allTasks        map[string]*api.Task
-	tasksByNode     map[string]map[string]*api.Task
+	allTasks        map[string]*objectspb.Task
+	tasksByNode     map[string]map[string]*objectspb.Task
 
 	// stopChan signals to the state machine to stop running
 	stopChan chan struct{}
@@ -39,8 +41,8 @@ func New(store state.WatchableStore) *Scheduler {
 	return &Scheduler{
 		store:           store,
 		unassignedTasks: list.New(),
-		allTasks:        make(map[string]*api.Task),
-		tasksByNode:     make(map[string]map[string]*api.Task),
+		allTasks:        make(map[string]*objectspb.Task),
+		tasksByNode:     make(map[string]map[string]*objectspb.Task),
 		stopChan:        make(chan struct{}),
 		doneChan:        make(chan struct{}),
 	}
@@ -57,7 +59,7 @@ func (s *Scheduler) setupTasksList(tx state.ReadTx) error {
 			s.enqueue(t)
 		} else {
 			if s.tasksByNode[t.NodeID] == nil {
-				s.tasksByNode[t.NodeID] = make(map[string]*api.Task)
+				s.tasksByNode[t.NodeID] = make(map[string]*objectspb.Task)
 			}
 			s.tasksByNode[t.NodeID][t.ID] = t
 		}
@@ -125,16 +127,16 @@ func (s *Scheduler) Stop() {
 }
 
 // enqueue queues a task for scheduling.
-func (s *Scheduler) enqueue(t *api.Task) {
+func (s *Scheduler) enqueue(t *objectspb.Task) {
 	s.unassignedTasks.PushBack(t)
 }
 
-func schedulableNode(n *api.Node) bool {
-	return n.Status.State == api.NodeStatus_READY &&
-		(n.Spec == nil || n.Spec.Availability == api.NodeAvailabilityActive)
+func schedulableNode(n *objectspb.Node) bool {
+	return n.Status.State == typespb.NodeStatus_READY &&
+		(n.Spec == nil || n.Spec.Availability == specspb.NodeAvailabilityActive)
 }
 
-func (s *Scheduler) createTask(t *api.Task) int {
+func (s *Scheduler) createTask(t *objectspb.Task) int {
 	s.allTasks[t.ID] = t
 	if t.NodeID == "" {
 		// unassigned task
@@ -142,7 +144,7 @@ func (s *Scheduler) createTask(t *api.Task) int {
 		return 1
 	}
 	if s.tasksByNode[t.NodeID] == nil {
-		s.tasksByNode[t.NodeID] = make(map[string]*api.Task)
+		s.tasksByNode[t.NodeID] = make(map[string]*objectspb.Task)
 	}
 	s.tasksByNode[t.NodeID][t.ID] = t
 
@@ -151,7 +153,7 @@ func (s *Scheduler) createTask(t *api.Task) int {
 	return 0
 }
 
-func (s *Scheduler) updateTask(t *api.Task) int {
+func (s *Scheduler) updateTask(t *objectspb.Task) int {
 	oldTask := s.allTasks[t.ID]
 	if oldTask != nil && t.NodeID != oldTask.NodeID {
 		if s.tasksByNode[oldTask.NodeID] != nil {
@@ -163,7 +165,7 @@ func (s *Scheduler) updateTask(t *api.Task) int {
 		}
 		if t.NodeID != "" {
 			if s.tasksByNode[t.NodeID] == nil {
-				s.tasksByNode[t.NodeID] = make(map[string]*api.Task)
+				s.tasksByNode[t.NodeID] = make(map[string]*objectspb.Task)
 			}
 			s.tasksByNode[t.NodeID][t.ID] = t
 			s.nodeHeap.updateNode(t.NodeID, len(s.tasksByNode[t.NodeID]))
@@ -179,7 +181,7 @@ func (s *Scheduler) updateTask(t *api.Task) int {
 	return 0
 }
 
-func (s *Scheduler) deleteTask(t *api.Task) {
+func (s *Scheduler) deleteTask(t *objectspb.Task) {
 	delete(s.allTasks, t.ID)
 	if s.tasksByNode[t.NodeID] != nil {
 		delete(s.tasksByNode[t.NodeID], t.ID)
@@ -190,7 +192,7 @@ func (s *Scheduler) deleteTask(t *api.Task) {
 	}
 }
 
-func (s *Scheduler) createNode(n *api.Node) int {
+func (s *Scheduler) createNode(n *objectspb.Node) int {
 	if schedulableNode(n) {
 		s.nodeHeap.addOrUpdateNode(n, len(s.tasksByNode[n.ID]))
 		return 1
@@ -198,7 +200,7 @@ func (s *Scheduler) createNode(n *api.Node) int {
 	return 0
 }
 
-func (s *Scheduler) updateNode(n *api.Node) int {
+func (s *Scheduler) updateNode(n *objectspb.Node) int {
 	pendingChanges := 0
 
 	if !schedulableNode(n) {
@@ -218,12 +220,12 @@ func (s *Scheduler) tick() {
 	var next *list.Element
 	for e := s.unassignedTasks.Front(); e != nil; e = next {
 		next = e.Next()
-		id := e.Value.(*api.Task).ID
+		id := e.Value.(*objectspb.Task).ID
 		if _, ok := schedulingDecisions[id]; ok {
 			s.unassignedTasks.Remove(e)
 			continue
 		}
-		t := s.allTasks[e.Value.(*api.Task).ID]
+		t := s.allTasks[e.Value.(*objectspb.Task).ID]
 		if t == nil || t.NodeID != "" {
 			// task deleted or already assigned
 			s.unassignedTasks.Remove(e)
@@ -287,8 +289,8 @@ func (s *Scheduler) rollbackLocalState(decisions map[string]schedulingDecision) 
 }
 
 // scheduleTask schedules a single task.
-func (s *Scheduler) scheduleTask(t *api.Task) *api.Task {
-	meetsConstraints := func(n *api.Node) bool {
+func (s *Scheduler) scheduleTask(t *objectspb.Task) *objectspb.Task {
+	meetsConstraints := func(n *objectspb.Node) bool {
 		// TODO(aaronl): This is where we should check that a node
 		// satisfies any necessary constraints.
 		return true
@@ -303,10 +305,10 @@ func (s *Scheduler) scheduleTask(t *api.Task) *api.Task {
 	log.WithField("task.id", t.ID).Debugf("Assigning to node %s", n.ID)
 	newT := *t
 	newT.NodeID = n.ID
-	newT.Status = &api.TaskStatus{State: api.TaskStateAssigned}
+	newT.Status = &typespb.TaskStatus{State: typespb.TaskStateAssigned}
 	s.allTasks[t.ID] = &newT
 	if s.tasksByNode[t.NodeID] == nil {
-		s.tasksByNode[t.NodeID] = make(map[string]*api.Task)
+		s.tasksByNode[t.NodeID] = make(map[string]*objectspb.Task)
 	}
 	s.tasksByNode[t.NodeID][t.ID] = &newT
 	s.nodeHeap.updateNode(n.ID, numTasks+1)

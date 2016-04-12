@@ -3,7 +3,8 @@ package container
 import (
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/swarm-v2/agent/exec"
-	"github.com/docker/swarm-v2/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"golang.org/x/net/context"
 )
 
@@ -21,19 +22,19 @@ func NewExecutor(client engineapi.APIClient) exec.Executor {
 }
 
 // Describe returns the underlying node description from the docker client.
-func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
+func (e *executor) Describe(ctx context.Context) (*typespb.NodeDescription, error) {
 	info, err := e.client.Info(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	description := &api.NodeDescription{
+	description := &typespb.NodeDescription{
 		Hostname: info.Name,
-		Platform: &api.Platform{
+		Platform: &typespb.Platform{
 			Architecture: info.Architecture,
 			OS:           info.OSType,
 		},
-		Resources: &api.Resources{
+		Resources: &typespb.Resources{
 			NanoCPUs:    int64(info.NCPU) * 1e9,
 			MemoryBytes: info.MemTotal,
 		},
@@ -43,7 +44,7 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 }
 
 // Runner returns a docker container runner.
-func (e *executor) Runner(t *api.Task) (exec.Runner, error) {
+func (e *executor) Runner(t *objectspb.Task) (exec.Runner, error) {
 	runner, err := NewRunner(e.client, t)
 	if err != nil {
 		return nil, err

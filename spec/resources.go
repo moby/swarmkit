@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/docker/swarm-v2/api"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/dustin/go-humanize"
 )
 
@@ -61,12 +61,12 @@ func (r *Resources) Validate() error {
 }
 
 // ToProto converts native Resources into protos.
-func (r *Resources) ToProto() *api.Resources {
+func (r *Resources) ToProto() *typespb.Resources {
 	if r == nil {
 		return nil
 	}
 
-	p := &api.Resources{}
+	p := &typespb.Resources{}
 
 	// Skip error checking here - `Validate` must have been called before.
 	if r.CPU != "" {
@@ -83,7 +83,7 @@ func (r *Resources) ToProto() *api.Resources {
 }
 
 // FromProto converts proto Resources back into native types.
-func (r *Resources) FromProto(p *api.Resources) {
+func (r *Resources) FromProto(p *typespb.Resources) {
 	if p == nil {
 		return
 	}
@@ -120,18 +120,18 @@ func (r *ResourceRequirements) Validate() error {
 }
 
 // ToProto converts native ResourceRequirements into protos.
-func (r *ResourceRequirements) ToProto() *api.ResourceRequirements {
+func (r *ResourceRequirements) ToProto() *typespb.ResourceRequirements {
 	if r == nil {
 		return nil
 	}
-	return &api.ResourceRequirements{
+	return &typespb.ResourceRequirements{
 		Limits:       r.Limits.ToProto(),
 		Reservations: r.Reservations.ToProto(),
 	}
 }
 
 // FromProto converts proto ResourceRequirements back into native types.
-func (r *ResourceRequirements) FromProto(p *api.ResourceRequirements) {
+func (r *ResourceRequirements) FromProto(p *typespb.ResourceRequirements) {
 	if p == nil {
 		return
 	}

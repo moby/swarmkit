@@ -8,8 +8,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
 	"github.com/docker/swarm-v2/spec"
 	"github.com/spf13/cobra"
 )

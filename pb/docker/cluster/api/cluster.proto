@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package docker.cluster.api;
 
-import "specs.proto";
-import "objects.proto";
+import "docker/cluster/specs/specs.proto";
+import "docker/cluster/objects/objects.proto";
 import "gogoproto/gogo.proto";
 
 // Cluster defines the RPC methods for controlling a cluster.
@@ -49,7 +49,7 @@ message GetNodeRequest {
 }
 
 message GetNodeResponse {
-	Node node = 1;
+	docker.cluster.objects.Node node = 1;
 }
 
 message ListNodesRequest {
@@ -57,7 +57,7 @@ message ListNodesRequest {
 }
 
 message ListNodesResponse {
-	repeated Node nodes = 1;
+	repeated objects.Node nodes = 1;
 }
 
 // UpdateNodeRequest requests an update to the specified node. This may be used
@@ -65,19 +65,19 @@ message ListNodesResponse {
 // will be denied and cause an error.
 message UpdateNodeRequest {
 	string node_id = 1 [(gogoproto.customname) = "NodeID"];
-	NodeSpec spec = 2;
+	specs.NodeSpec spec = 2;
 }
 
 message UpdateNodeResponse {
-	Node node = 1;
+	objects.Node node = 1;
 }
 
 message CreateTaskRequest {
-	JobSpec spec = 1;
+	specs.JobSpec spec = 1;
 }
 
 message CreateTaskResponse {
-	Task task = 1;
+	objects.Task task = 1;
 }
 
 message GetTaskRequest {
@@ -85,7 +85,7 @@ message GetTaskRequest {
 }
 
 message GetTaskResponse {
-	Task task = 1;
+	objects.Task task = 1;
 }
 
 message RemoveTaskRequest {
@@ -99,15 +99,15 @@ message ListTasksRequest {
 }
 
 message ListTasksResponse {
-	repeated Task tasks = 1;
+	repeated objects.Task tasks = 1;
 }
 
 message CreateJobRequest {
-	JobSpec spec = 1;
+	specs.JobSpec spec = 1;
 }
 
 message CreateJobResponse {
-	Job job = 1;
+	objects.Job job = 1;
 }
 
 message GetJobRequest {
@@ -115,16 +115,16 @@ message GetJobRequest {
 }
 
 message GetJobResponse {
-	Job job = 1;
+	objects.Job job = 1;
 }
 
 message UpdateJobRequest {
 	string job_id = 1 [(gogoproto.customname) = "JobID"];
-	JobSpec spec = 2;
+	specs.JobSpec spec = 2;
 }
 
 message UpdateJobResponse {
-	Job job = 1;
+	objects.Job job = 1;
 }
 
 message RemoveJobRequest {
@@ -139,15 +139,15 @@ message ListJobsRequest {
 }
 
 message ListJobsResponse {
-	repeated Job jobs = 1;
+	repeated objects.Job jobs = 1;
 }
 
 message CreateNetworkRequest {
-	NetworkSpec spec = 1;
+	specs.NetworkSpec spec = 1;
 }
 
 message CreateNetworkResponse {
-	Network network = 1;
+	objects.Network network = 1;
 }
 
 message GetNetworkRequest {
@@ -156,7 +156,7 @@ message GetNetworkRequest {
 }
 
 message GetNetworkResponse {
-	Network network = 1;
+	objects.Network network = 1;
 }
 
 message RemoveNetworkRequest {
@@ -169,15 +169,15 @@ message RemoveNetworkResponse {}
 message ListNetworksRequest {}
 
 message ListNetworksResponse {
-	repeated Network networks = 1;
+	repeated objects.Network networks = 1;
 }
 
 message CreateVolumeRequest {
-	VolumeSpec spec = 1;
+	specs.VolumeSpec spec = 1;
 }
 
 message CreateVolumeResponse {
-	Volume volume = 1;
+	objects.Volume volume = 1;
 }
 
 message GetVolumeRequest {
@@ -185,7 +185,7 @@ message GetVolumeRequest {
 }
 
 message GetVolumeResponse {
-	Volume volume = 1;
+	objects.Volume volume = 1;
 }
 
 message RemoveVolumeRequest {
@@ -197,5 +197,5 @@ message RemoveVolumeResponse {}
 message ListVolumesRequest {}
 
 message ListVolumesResponse {
-	repeated Volume volumes = 1;
+	repeated objects.Volume volumes = 1;
 }

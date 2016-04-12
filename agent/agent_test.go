@@ -5,7 +5,8 @@ import (
 	"time"
 
 	"github.com/docker/swarm-v2/agent/exec"
-	"github.com/docker/swarm-v2/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -14,11 +15,11 @@ import (
 type NoopExecutor struct {
 }
 
-func (e *NoopExecutor) Describe(ctx context.Context) (*api.NodeDescription, error) {
-	return &api.NodeDescription{}, nil
+func (e *NoopExecutor) Describe(ctx context.Context) (*typespb.NodeDescription, error) {
+	return &typespb.NodeDescription{}, nil
 }
 
-func (e *NoopExecutor) Runner(t *api.Task) (exec.Runner, error) {
+func (e *NoopExecutor) Runner(t *objectspb.Task) (exec.Runner, error) {
 	return nil, exec.ErrRuntimeUnsupported
 }
 

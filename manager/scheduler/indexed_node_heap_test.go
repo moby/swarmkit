@@ -7,7 +7,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/docker/swarm-v2/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,10 +21,10 @@ func TestFindMin(t *testing.T) {
 		nh.alloc(numNodes)
 
 		for i := 0; i != numNodes; i++ {
-			n := &api.Node{
+			n := &objectspb.Node{
 				ID: "id" + strconv.Itoa(i),
-				Spec: &api.NodeSpec{
-					Meta: api.Meta{
+				Spec: &specspb.NodeSpec{
+					Meta: specspb.Meta{
 						Labels: make(map[string]string),
 					},
 				},
@@ -39,7 +40,7 @@ func TestFindMin(t *testing.T) {
 
 		heap.Init(&nh)
 
-		isSpecial := func(n *api.Node) bool {
+		isSpecial := func(n *objectspb.Node) bool {
 			return n.Spec.Meta.Labels["special"] == "true"
 		}
 
@@ -47,7 +48,7 @@ func TestFindMin(t *testing.T) {
 		assert.NotNil(t, bestNode)
 
 		// Verify with manual search
-		var manualBestNode *api.Node
+		var manualBestNode *objectspb.Node
 		manualBestTasks := uint64(math.MaxUint64)
 		for i := 0; i < nh.Len(); i++ {
 			if !isSpecial(nh.heap[i].node) {

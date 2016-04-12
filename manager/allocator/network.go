@@ -5,9 +5,10 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/go-events"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/allocator/networkallocator"
 	"github.com/docker/swarm-v2/manager/state"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"golang.org/x/net/context"
 )
 
@@ -24,7 +25,7 @@ type networkContext struct {
 
 	// A table of unallocated tasks which will be revisited if any thing
 	// changes in system state that might help task allocation.
-	unallocatedTasks map[string]*api.Task
+	unallocatedTasks map[string]*objectspb.Task
 }
 
 func (a *Allocator) doNetworkInit() error {
@@ -35,11 +36,11 @@ func (a *Allocator) doNetworkInit() error {
 
 	nc := &networkContext{
 		nwkAllocator:     na,
-		unallocatedTasks: make(map[string]*api.Task),
+		unallocatedTasks: make(map[string]*objectspb.Task),
 	}
 
 	// Allocate networks in the store so far before we started watching.
-	var networks []*api.Network
+	var networks []*objectspb.Network
 	err = a.store.View(func(tx state.ReadTx) error {
 		var err error
 		networks, err = tx.Networks().Find(state.All)
@@ -130,7 +131,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 func (a *Allocator) doTaskAlloc(nc *networkContext, ev events.Event) {
 	var (
 		isDelete bool
-		t        *api.Task
+		t        *objectspb.Task
 	)
 
 	switch v := ev.(type) {
@@ -168,14 +169,14 @@ func (a *Allocator) doTaskAlloc(nc *networkContext, ev events.Event) {
 	// If the task has stopped running or it's being deleted then
 	// we should free the network resources associated with the
 	// task.
-	if t.Status.State > api.TaskStateRunning || isDelete {
+	if t.Status.State > typespb.TaskStateRunning || isDelete {
 		if err := nc.nwkAllocator.DeallocateTask(t); err != nil {
 			logrus.Errorf("Failed freeing network resources for task %s: %v", t.ID, err)
 		}
 	}
 }
 
-func (a *Allocator) allocateNetwork(nc *networkContext, n *api.Network) error {
+func (a *Allocator) allocateNetwork(nc *networkContext, n *objectspb.Network) error {
 	if err := nc.nwkAllocator.Allocate(n); err != nil {
 		return fmt.Errorf("failed during network allocation for network %s: %v", n.ID, err)
 	}
@@ -196,7 +197,7 @@ func (a *Allocator) allocateNetwork(nc *networkContext, n *api.Network) error {
 	return nil
 }
 
-func (a *Allocator) allocateTask(nc *networkContext, tx state.Tx, t *api.Task) error {
+func (a *Allocator) allocateTask(nc *networkContext, tx state.Tx, t *objectspb.Task) error {
 	// We might be here even if a task allocation has already
 	// happened but wasn't successfully committed to store. In such
 	// cases skip allocation and go straight ahead to updating the
@@ -214,7 +215,7 @@ func (a *Allocator) allocateTask(nc *networkContext, tx state.Tx, t *api.Task) e
 				return fmt.Errorf("network %s attached to task %s not allocated yet", n.ID, t.ID)
 			}
 
-			t.Networks = append(t.Networks, &api.Task_NetworkAttachment{Network: n})
+			t.Networks = append(t.Networks, &objectspb.Task_NetworkAttachment{Network: n})
 		}
 
 		if err := nc.nwkAllocator.AllocateTask(t); err != nil {
@@ -232,7 +233,7 @@ func (a *Allocator) allocateTask(nc *networkContext, tx state.Tx, t *api.Task) e
 	// Update the network allocations and moving to
 	// ALLOCATED state on top of the latest store state.
 	if a.taskAllocateVote(networkVoter, t.ID) {
-		storeT.Status.State = api.TaskStateAllocated
+		storeT.Status.State = typespb.TaskStateAllocated
 	}
 
 	storeT.Networks = t.Networks

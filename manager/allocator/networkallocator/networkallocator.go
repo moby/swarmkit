@@ -9,7 +9,8 @@ import (
 	"github.com/docker/libnetwork/drivers/overlay/ovmanager"
 	"github.com/docker/libnetwork/drvregistry"
 	"github.com/docker/libnetwork/ipamapi"
-	"github.com/docker/swarm-v2/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 )
 
 const (
@@ -69,7 +70,7 @@ func New() (*NetworkAllocator, error) {
 
 // Allocate allocates all the necessary resources both general
 // and driver-specific which may be specified in the NetworkSpec
-func (na *NetworkAllocator) Allocate(n *api.Network) error {
+func (na *NetworkAllocator) Allocate(n *objectspb.Network) error {
 	if _, ok := na.networks[n.ID]; ok {
 		return fmt.Errorf("network %s already allocated", n.ID)
 	}
@@ -98,7 +99,7 @@ func (na *NetworkAllocator) getNetwork(id string) *network {
 
 // Deallocate frees all the general and driver specific resources
 // whichs were assigned to the passed network.
-func (na *NetworkAllocator) Deallocate(n *api.Network) error {
+func (na *NetworkAllocator) Deallocate(n *objectspb.Network) error {
 	localNet := na.getNetwork(n.ID)
 	if localNet == nil {
 		return fmt.Errorf("could not get networker state for network %s", n.ID)
@@ -113,13 +114,13 @@ func (na *NetworkAllocator) Deallocate(n *api.Network) error {
 }
 
 // IsAllocated returns if the passed network has been allocated or not.
-func (na *NetworkAllocator) IsAllocated(n *api.Network) bool {
+func (na *NetworkAllocator) IsAllocated(n *objectspb.Network) bool {
 	_, ok := na.networks[n.ID]
 	return ok
 }
 
 // IsTaskAllocated returns if the passed task has it's network resources allocated or not.
-func (na *NetworkAllocator) IsTaskAllocated(t *api.Task) bool {
+func (na *NetworkAllocator) IsTaskAllocated(t *objectspb.Task) bool {
 	// If Networks is empty there is no way this Task is allocated.
 	if len(t.Networks) == 0 {
 		return false
@@ -151,7 +152,7 @@ func (na *NetworkAllocator) IsTaskAllocated(t *api.Task) bool {
 
 // AllocateTask allocates all the endpoint resources for all the
 // networks that a task is attached to.
-func (na *NetworkAllocator) AllocateTask(t *api.Task) error {
+func (na *NetworkAllocator) AllocateTask(t *objectspb.Task) error {
 	for i, nAttach := range t.Networks {
 		ipam, _, err := na.resolveIPAM(nAttach.Network)
 		if err != nil {
@@ -176,11 +177,11 @@ func (na *NetworkAllocator) AllocateTask(t *api.Task) error {
 
 // DeallocateTask releases all the endpoint resources for all the
 // networks that a task is attached to.
-func (na *NetworkAllocator) DeallocateTask(t *api.Task) error {
+func (na *NetworkAllocator) DeallocateTask(t *objectspb.Task) error {
 	return na.releaseEndpoints(t.Networks)
 }
 
-func (na *NetworkAllocator) releaseEndpoints(networks []*api.Task_NetworkAttachment) error {
+func (na *NetworkAllocator) releaseEndpoints(networks []*objectspb.Task_NetworkAttachment) error {
 	for _, nAttach := range networks {
 		ipam, _, err := na.resolveIPAM(nAttach.Network)
 		if err != nil {
@@ -221,7 +222,7 @@ func (na *NetworkAllocator) releaseEndpoints(networks []*api.Task_NetworkAttachm
 }
 
 // allocate the endpoint IP addresses for a single network attachment of the task.
-func (na *NetworkAllocator) allocateNetworkIPs(nAttach *api.Task_NetworkAttachment, ipam ipamapi.Ipam, localNet *network) error {
+func (na *NetworkAllocator) allocateNetworkIPs(nAttach *objectspb.Task_NetworkAttachment, ipam ipamapi.Ipam, localNet *network) error {
 	var ip *net.IPNet
 	for _, poolID := range localNet.pools {
 		var err error
@@ -243,7 +244,7 @@ func (na *NetworkAllocator) allocateNetworkIPs(nAttach *api.Task_NetworkAttachme
 	return fmt.Errorf("could not find an available IP")
 }
 
-func (na *NetworkAllocator) freeDriverState(n *api.Network) error {
+func (na *NetworkAllocator) freeDriverState(n *objectspb.Network) error {
 	d, _, err := na.resolveDriver(n)
 	if err != nil {
 		return err
@@ -252,7 +253,7 @@ func (na *NetworkAllocator) freeDriverState(n *api.Network) error {
 	return d.NetworkFree(n.ID)
 }
 
-func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
+func (na *NetworkAllocator) allocateDriverState(n *objectspb.Network) error {
 	d, dName, err := na.resolveDriver(n)
 	if err != nil {
 		return err
@@ -261,7 +262,7 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 	// Construct IPAM data for driver consumption.
 	ipv4Data := make([]driverapi.IPAMData, 0, len(n.Spec.IPAM.Configurations))
 	for _, ic := range n.Spec.IPAM.Configurations {
-		if ic.Family == api.IPAMConfiguration_IPV6 {
+		if ic.Family == typespb.IPAMConfiguration_IPV6 {
 			continue
 		}
 
@@ -290,7 +291,7 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 	}
 
 	// Update network object with the obtained driver state.
-	n.DriverState = &api.Driver{
+	n.DriverState = &typespb.Driver{
 		Name:    dName,
 		Options: ds,
 	}
@@ -299,7 +300,7 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 }
 
 // Resolve network driver
-func (na *NetworkAllocator) resolveDriver(n *api.Network) (driverapi.Driver, string, error) {
+func (na *NetworkAllocator) resolveDriver(n *objectspb.Network) (driverapi.Driver, string, error) {
 	dName := defaultDriver
 	if n.Spec.DriverConfiguration != nil && n.Spec.DriverConfiguration.Name != "" {
 		dName = n.Spec.DriverConfiguration.Name
@@ -314,7 +315,7 @@ func (na *NetworkAllocator) resolveDriver(n *api.Network) (driverapi.Driver, str
 }
 
 // Resolve the IPAM driver
-func (na *NetworkAllocator) resolveIPAM(n *api.Network) (ipamapi.Ipam, string, error) {
+func (na *NetworkAllocator) resolveIPAM(n *objectspb.Network) (ipamapi.Ipam, string, error) {
 	dName := ipamapi.DefaultIPAM
 	if n.Spec.IPAM != nil && n.Spec.IPAM.Driver != nil && n.Spec.IPAM.Driver.Name != "" {
 		dName = n.Spec.IPAM.Driver.Name
@@ -328,7 +329,7 @@ func (na *NetworkAllocator) resolveIPAM(n *api.Network) (ipamapi.Ipam, string, e
 	return ipam, dName, nil
 }
 
-func (na *NetworkAllocator) freePools(n *api.Network, pools map[string]string) error {
+func (na *NetworkAllocator) freePools(n *objectspb.Network, pools map[string]string) error {
 	ipam, _, err := na.resolveIPAM(n)
 	if err != nil {
 		return fmt.Errorf("failed to resolve IPAM while freeing pools for network %s: %v", n.ID, err)
@@ -338,7 +339,7 @@ func (na *NetworkAllocator) freePools(n *api.Network, pools map[string]string) e
 	return nil
 }
 
-func releasePools(ipam ipamapi.Ipam, icList []*api.IPAMConfiguration, pools map[string]string) {
+func releasePools(ipam ipamapi.Ipam, icList []*typespb.IPAMConfiguration, pools map[string]string) {
 	for _, ic := range icList {
 		if err := ipam.ReleaseAddress(pools[ic.Subnet], net.ParseIP(ic.Gateway)); err != nil {
 			logrus.Errorf("Failed to release address %s: %v", ic.Subnet, err)
@@ -352,7 +353,7 @@ func releasePools(ipam ipamapi.Ipam, icList []*api.IPAMConfiguration, pools map[
 	}
 }
 
-func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, error) {
+func (na *NetworkAllocator) allocatePools(n *objectspb.Network) (map[string]string, error) {
 	ipam, dName, err := na.resolveIPAM(n)
 	if err != nil {
 		return nil, err
@@ -368,14 +369,14 @@ func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, er
 	pools := make(map[string]string)
 
 	if n.Spec.IPAM == nil {
-		n.Spec.IPAM = &api.IPAMOptions{}
+		n.Spec.IPAM = &typespb.IPAMOptions{}
 	}
 
 	ipamConfigs := n.Spec.IPAM.Configurations
 	if n.Spec.IPAM.Configurations == nil {
 		// Auto-generate new IPAM configuration if the user
 		// provided no configuration.
-		ipamConfigs = append(ipamConfigs, &api.IPAMConfiguration{})
+		ipamConfigs = append(ipamConfigs, &typespb.IPAMConfiguration{})
 		n.Spec.IPAM.Configurations = ipamConfigs
 	}
 

@@ -6,7 +6,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -70,30 +73,30 @@ func (b *Benchmark) Run() error {
 	return nil
 }
 
-func (b *Benchmark) spec() *api.JobSpec {
-	return &api.JobSpec{
-		Meta: api.Meta{
+func (b *Benchmark) spec() *specspb.JobSpec {
+	return &specspb.JobSpec{
+		Meta: specspb.Meta{
 			Name: "benchmark",
 		},
-		Template: &api.TaskSpec{
-			Runtime: &api.TaskSpec_Container{
-				Container: &api.Container{
-					Image: &api.Image{
+		Template: &specspb.TaskSpec{
+			Runtime: &specspb.TaskSpec_Container{
+				Container: &typespb.Container{
+					Image: &typespb.Image{
 						Reference: "alpine:latest",
 					},
 					Command: []string{"nc", b.cfg.IP, strconv.Itoa(b.cfg.Port)},
 				},
 			},
 		},
-		Orchestration: &api.JobSpec_Service{
-			Service: &api.JobSpec_ServiceJob{
+		Orchestration: &specspb.JobSpec_Service{
+			Service: &specspb.JobSpec_ServiceJob{
 				Instances: b.cfg.Count,
 			},
 		},
 	}
 }
 
-func (b *Benchmark) launch() (*api.Job, error) {
+func (b *Benchmark) launch() (*objectspb.Job, error) {
 	conn, err := grpc.Dial(b.cfg.Manager, grpc.WithInsecure())
 	if err != nil {
 		return nil, err

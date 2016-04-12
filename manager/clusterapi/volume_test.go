@@ -3,22 +3,24 @@ package clusterapi
 import (
 	"testing"
 
-	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
-func createVolumeSpec(name string) *api.VolumeSpec {
-	return &api.VolumeSpec{
-		Meta: api.Meta{
+func createVolumeSpec(name string) *specspb.VolumeSpec {
+	return &specspb.VolumeSpec{
+		Meta: specspb.Meta{
 			Name: name,
 		},
 	}
 }
 
-func createVolume(t *testing.T, ts *testServer, name string) *api.Volume {
+func createVolume(t *testing.T, ts *testServer, name string) *objectspb.Volume {
 	spec := createVolumeSpec(name)
 	r, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{Spec: spec})
 	assert.NoError(t, err)

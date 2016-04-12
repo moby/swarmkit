@@ -4,8 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/swarm-v2/api"
-
+	managerpb "github.com/docker/swarm-v2/pb/docker/cluster/api/manager"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/transport"
@@ -13,7 +12,7 @@ import (
 
 // Raft represents a connection to a raft member
 type Raft struct {
-	api.RaftClient
+	managerpb.RaftClient
 	Conn *grpc.ClientConn
 }
 
@@ -26,7 +25,9 @@ func GetRaftClient(addr string, timeout time.Duration) (*Raft, error) {
 	}
 
 	return &Raft{
-		RaftClient: api.NewRaftClient(conn),
+		// TODO(stevvooe): Having raft in the manager stack makes no sense.
+		// Need to fix this in another refactor as it is too big of a change.
+		RaftClient: managerpb.NewRaftClient(conn),
 		Conn:       conn,
 	}, nil
 }
@@ -42,7 +43,7 @@ func dial(addr string, protocol string, timeout time.Duration) (*grpc.ClientConn
 
 // Register registers the node raft server
 func Register(server *grpc.Server, node *Node) {
-	api.RegisterRaftServer(server, node)
+	managerpb.RegisterRaftServer(server, node)
 }
 
 // reconnectPicker is a Picker which attempts a new connection if necessary

@@ -4,7 +4,9 @@ import (
 	"net"
 	"testing"
 
-	"github.com/docker/swarm-v2/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,15 +23,15 @@ func TestNew(t *testing.T) {
 
 func TestAllocateInvalidIPAM(t *testing.T) {
 	na := newNetworkAllocator(t)
-	n := &api.Network{
+	n := &objectspb.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NetworkSpec{
+			Meta: specspb.Meta{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{
+			DriverConfiguration: &typespb.Driver{},
+			IPAM: &typespb.IPAMOptions{
+				Driver: &typespb.Driver{
 					Name: "invalidipam,",
 				},
 			},
@@ -41,13 +43,13 @@ func TestAllocateInvalidIPAM(t *testing.T) {
 
 func TestAllocateInvalidDriver(t *testing.T) {
 	na := newNetworkAllocator(t)
-	n := &api.Network{
+	n := &objectspb.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NetworkSpec{
+			Meta: specspb.Meta{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{
+			DriverConfiguration: &typespb.Driver{
 				Name: "invaliddriver",
 			},
 		},
@@ -59,10 +61,10 @@ func TestAllocateInvalidDriver(t *testing.T) {
 
 func TestNetworkDoubleAllocate(t *testing.T) {
 	na := newNetworkAllocator(t)
-	n := &api.Network{
+	n := &objectspb.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NetworkSpec{
+			Meta: specspb.Meta{
 				Name: "test",
 			},
 		},
@@ -77,10 +79,10 @@ func TestNetworkDoubleAllocate(t *testing.T) {
 
 func TestAllocateEmptyConfig(t *testing.T) {
 	na := newNetworkAllocator(t)
-	n := &api.Network{
+	n := &objectspb.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NetworkSpec{
+			Meta: specspb.Meta{
 				Name: "test",
 			},
 		},
@@ -102,16 +104,16 @@ func TestAllocateEmptyConfig(t *testing.T) {
 
 func TestAllocateWithOneSubnet(t *testing.T) {
 	na := newNetworkAllocator(t)
-	n := &api.Network{
+	n := &objectspb.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NetworkSpec{
+			Meta: specspb.Meta{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+			DriverConfiguration: &typespb.Driver{},
+			IPAM: &typespb.IPAMOptions{
+				Driver: &typespb.Driver{},
+				Configurations: []*typespb.IPAMConfiguration{
 					{
 						Subnet: "192.168.1.0/24",
 					},
@@ -133,16 +135,16 @@ func TestAllocateWithOneSubnet(t *testing.T) {
 
 func TestAllocateWithOneSubnetGateway(t *testing.T) {
 	na := newNetworkAllocator(t)
-	n := &api.Network{
+	n := &objectspb.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NetworkSpec{
+			Meta: specspb.Meta{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+			DriverConfiguration: &typespb.Driver{},
+			IPAM: &typespb.IPAMOptions{
+				Driver: &typespb.Driver{},
+				Configurations: []*typespb.IPAMConfiguration{
 					{
 						Subnet:  "192.168.1.0/24",
 						Gateway: "192.168.1.1",
@@ -163,16 +165,16 @@ func TestAllocateWithOneSubnetGateway(t *testing.T) {
 
 func TestAllocateWithOneSubnetInvalidGateway(t *testing.T) {
 	na := newNetworkAllocator(t)
-	n := &api.Network{
+	n := &objectspb.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NetworkSpec{
+			Meta: specspb.Meta{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+			DriverConfiguration: &typespb.Driver{},
+			IPAM: &typespb.IPAMOptions{
+				Driver: &typespb.Driver{},
+				Configurations: []*typespb.IPAMConfiguration{
 					{
 						Subnet:  "192.168.1.0/24",
 						Gateway: "192.168.2.1",
@@ -188,16 +190,16 @@ func TestAllocateWithOneSubnetInvalidGateway(t *testing.T) {
 
 func TestAllocateWithInvalidSubnet(t *testing.T) {
 	na := newNetworkAllocator(t)
-	n := &api.Network{
+	n := &objectspb.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NetworkSpec{
+			Meta: specspb.Meta{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+			DriverConfiguration: &typespb.Driver{},
+			IPAM: &typespb.IPAMOptions{
+				Driver: &typespb.Driver{},
+				Configurations: []*typespb.IPAMConfiguration{
 					{
 						Subnet: "1.1.1.1/32",
 					},
@@ -212,16 +214,16 @@ func TestAllocateWithInvalidSubnet(t *testing.T) {
 
 func TestAllocateWithTwoSubnetsNoGateway(t *testing.T) {
 	na := newNetworkAllocator(t)
-	n := &api.Network{
+	n := &objectspb.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NetworkSpec{
+			Meta: specspb.Meta{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+			DriverConfiguration: &typespb.Driver{},
+			IPAM: &typespb.IPAMOptions{
+				Driver: &typespb.Driver{},
+				Configurations: []*typespb.IPAMConfiguration{
 					{
 						Subnet: "192.168.1.0/24",
 					},
@@ -251,16 +253,16 @@ func TestAllocateWithTwoSubnetsNoGateway(t *testing.T) {
 
 func TestFree(t *testing.T) {
 	na := newNetworkAllocator(t)
-	n := &api.Network{
+	n := &objectspb.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NetworkSpec{
+			Meta: specspb.Meta{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+			DriverConfiguration: &typespb.Driver{},
+			IPAM: &typespb.IPAMOptions{
+				Driver: &typespb.Driver{},
+				Configurations: []*typespb.IPAMConfiguration{
 					{
 						Subnet:  "192.168.1.0/24",
 						Gateway: "192.168.1.1",
@@ -283,16 +285,16 @@ func TestFree(t *testing.T) {
 
 func TestAllocateTaskFree(t *testing.T) {
 	na := newNetworkAllocator(t)
-	n1 := &api.Network{
+	n1 := &objectspb.Network{
 		ID: "testID1",
-		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NetworkSpec{
+			Meta: specspb.Meta{
 				Name: "test1",
 			},
-			DriverConfiguration: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+			DriverConfiguration: &typespb.Driver{},
+			IPAM: &typespb.IPAMOptions{
+				Driver: &typespb.Driver{},
+				Configurations: []*typespb.IPAMConfiguration{
 					{
 						Subnet:  "192.168.1.0/24",
 						Gateway: "192.168.1.1",
@@ -302,16 +304,16 @@ func TestAllocateTaskFree(t *testing.T) {
 		},
 	}
 
-	n2 := &api.Network{
+	n2 := &objectspb.Network{
 		ID: "testID2",
-		Spec: &api.NetworkSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NetworkSpec{
+			Meta: specspb.Meta{
 				Name: "test2",
 			},
-			DriverConfiguration: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+			DriverConfiguration: &typespb.Driver{},
+			IPAM: &typespb.IPAMOptions{
+				Driver: &typespb.Driver{},
+				Configurations: []*typespb.IPAMConfiguration{
 					{
 						Subnet:  "192.168.2.0/24",
 						Gateway: "192.168.2.1",
@@ -321,8 +323,8 @@ func TestAllocateTaskFree(t *testing.T) {
 		},
 	}
 
-	task := &api.Task{
-		Networks: []*api.Task_NetworkAttachment{
+	task := &objectspb.Task{
+		Networks: []*objectspb.Task_NetworkAttachment{
 			{
 				Network: n1,
 			},

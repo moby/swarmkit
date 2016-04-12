@@ -5,12 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/dispatcher/heartbeat"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 var errNodeMustDisconnect = errors.New("node should disconnect immediately")
@@ -18,7 +17,7 @@ var errNodeMustDisconnect = errors.New("node should disconnect immediately")
 type registeredNode struct {
 	SessionID  string
 	Heartbeat  *heartbeat.Heartbeat
-	Node       *api.Node
+	Node       *objectspb.Node
 	Disconnect chan struct{} // signal to disconnect
 	mu         sync.Mutex
 }
@@ -63,7 +62,7 @@ func (s *nodeStore) Len() int {
 }
 
 // Add adds new node and returns it, it replaces existing without notification.
-func (s *nodeStore) Add(n *api.Node, expireFunc func()) *registeredNode {
+func (s *nodeStore) Add(n *objectspb.Node, expireFunc func()) *registeredNode {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if existRn, ok := s.nodes[n.ID]; ok {

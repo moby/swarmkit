@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
-
 	"github.com/docker/go-events"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 )
 
 func TestAllocator(t *testing.T) {
@@ -24,10 +25,10 @@ func TestAllocator(t *testing.T) {
 
 	// Try adding some objects to store before allocator is started
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
-		n1 := &api.Network{
+		n1 := &objectspb.Network{
 			ID: "testID1",
-			Spec: &api.NetworkSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NetworkSpec{
+				Meta: specspb.Meta{
 					Name: "test1",
 				},
 			},
@@ -37,17 +38,17 @@ func TestAllocator(t *testing.T) {
 	}))
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
-		t1 := &api.Task{
+		t1 := &objectspb.Task{
 			ID: "testTaskID1",
-			Status: &api.TaskStatus{
-				State: api.TaskStateNew,
+			Status: &typespb.TaskStatus{
+				State: typespb.TaskStateNew,
 			},
-			Spec: &api.TaskSpec{
-				Runtime: &api.TaskSpec_Container{
-					Container: &api.Container{
-						Networks: []*api.Container_NetworkAttachment{
+			Spec: &specspb.TaskSpec{
+				Runtime: &specspb.TaskSpec_Container{
+					Container: &typespb.Container{
+						Networks: []*typespb.Container_NetworkAttachment{
 							{
-								Reference: &api.Container_NetworkAttachment_NetworkID{
+								Reference: &typespb.Container_NetworkAttachment_NetworkID{
 									NetworkID: "testID1",
 								},
 							},
@@ -88,14 +89,14 @@ func TestAllocator(t *testing.T) {
 	ip, _, err = net.ParseCIDR(t1.Networks[0].Addresses[0])
 	assert.NoError(t, err)
 	assert.Equal(t, subnet.Contains(ip), true)
-	assert.Equal(t, t1.Status.State, api.TaskStateAllocated)
+	assert.Equal(t, t1.Status.State, typespb.TaskStateAllocated)
 
 	// Add new networks and tasks after allocator is started.
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
-		n2 := &api.Network{
+		n2 := &objectspb.Network{
 			ID: "testID2",
-			Spec: &api.NetworkSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NetworkSpec{
+				Meta: specspb.Meta{
 					Name: "test2",
 				},
 			},
@@ -118,17 +119,17 @@ func TestAllocator(t *testing.T) {
 	assert.NotEqual(t, ip, nil)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
-		t2 := &api.Task{
+		t2 := &objectspb.Task{
 			ID: "testTaskID2",
-			Status: &api.TaskStatus{
-				State: api.TaskStateNew,
+			Status: &typespb.TaskStatus{
+				State: typespb.TaskStateNew,
 			},
-			Spec: &api.TaskSpec{
-				Runtime: &api.TaskSpec_Container{
-					Container: &api.Container{
-						Networks: []*api.Container_NetworkAttachment{
+			Spec: &specspb.TaskSpec{
+				Runtime: &specspb.TaskSpec_Container{
+					Container: &typespb.Container{
+						Networks: []*typespb.Container_NetworkAttachment{
 							{
-								Reference: &api.Container_NetworkAttachment_NetworkID{
+								Reference: &typespb.Container_NetworkAttachment_NetworkID{
 									NetworkID: "testID2",
 								},
 							},
@@ -147,21 +148,21 @@ func TestAllocator(t *testing.T) {
 	ip, _, err = net.ParseCIDR(t2.Networks[0].Addresses[0])
 	assert.NoError(t, err)
 	assert.Equal(t, subnet.Contains(ip), true)
-	assert.Equal(t, t2.Status.State, api.TaskStateAllocated)
+	assert.Equal(t, t2.Status.State, typespb.TaskStateAllocated)
 
 	// Now try adding a task which depends on a network before adding the network.
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
-		t3 := &api.Task{
+		t3 := &objectspb.Task{
 			ID: "testTaskID3",
-			Status: &api.TaskStatus{
-				State: api.TaskStateNew,
+			Status: &typespb.TaskStatus{
+				State: typespb.TaskStateNew,
 			},
-			Spec: &api.TaskSpec{
-				Runtime: &api.TaskSpec_Container{
-					Container: &api.Container{
-						Networks: []*api.Container_NetworkAttachment{
+			Spec: &specspb.TaskSpec{
+				Runtime: &specspb.TaskSpec_Container{
+					Container: &typespb.Container{
+						Networks: []*typespb.Container_NetworkAttachment{
 							{
-								Reference: &api.Container_NetworkAttachment_NetworkID{
+								Reference: &typespb.Container_NetworkAttachment_NetworkID{
 									NetworkID: "testID3",
 								},
 							},
@@ -180,10 +181,10 @@ func TestAllocator(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
-		n3 := &api.Network{
+		n3 := &objectspb.Network{
 			ID: "testID3",
-			Spec: &api.NetworkSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NetworkSpec{
+				Meta: specspb.Meta{
 					Name: "test3",
 				},
 			},
@@ -211,7 +212,7 @@ func TestAllocator(t *testing.T) {
 	ip, _, err = net.ParseCIDR(t3.Networks[0].Addresses[0])
 	assert.NoError(t, err)
 	assert.Equal(t, subnet.Contains(ip), true)
-	assert.Equal(t, t3.Status.State, api.TaskStateAllocated)
+	assert.Equal(t, t3.Status.State, typespb.TaskStateAllocated)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Tasks().Delete("testTaskID3"))
@@ -228,12 +229,12 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
-		t4 := &api.Task{
+		t4 := &objectspb.Task{
 			ID: "testTaskID4",
-			Status: &api.TaskStatus{
-				State: api.TaskStateNew,
+			Status: &typespb.TaskStatus{
+				State: typespb.TaskStateNew,
 			},
-			Spec: &api.TaskSpec{},
+			Spec: &specspb.TaskSpec{},
 		}
 		assert.NoError(t, tx.Tasks().Create(t4))
 		return nil
@@ -261,7 +262,7 @@ func TestAllocator(t *testing.T) {
 	a.Stop()
 }
 
-func watchNetwork(t *testing.T, watch chan events.Event) (*api.Network, error) {
+func watchNetwork(t *testing.T, watch chan events.Event) (*objectspb.Network, error) {
 	for {
 		select {
 		case event := <-watch:
@@ -280,7 +281,7 @@ func watchNetwork(t *testing.T, watch chan events.Event) (*api.Network, error) {
 	}
 }
 
-func watchTask(t *testing.T, watch chan events.Event) (*api.Task, error) {
+func watchTask(t *testing.T, watch chan events.Event) (*objectspb.Task, error) {
 	for {
 		select {
 		case event := <-watch:

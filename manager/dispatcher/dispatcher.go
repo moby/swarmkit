@@ -7,9 +7,11 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/watch"
+	dispatcherpb "github.com/docker/swarm-v2/pb/docker/cluster/api/dispatcher"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"golang.org/x/net/context"
 )
 
@@ -57,7 +59,7 @@ type Dispatcher struct {
 	nodes            *nodeStore
 	store            state.WatchableStore
 	mgrQueue         *watch.Queue
-	lastSeenManagers []*api.WeightedPeer
+	lastSeenManagers []*typespb.WeightedPeer
 	config           *Config
 }
 
@@ -69,7 +71,7 @@ func New(store state.WatchableStore, c *Config) *Dispatcher {
 		store:    store,
 		mgrQueue: watch.NewQueue(16),
 		config:   c,
-		lastSeenManagers: []*api.WeightedPeer{
+		lastSeenManagers: []*typespb.WeightedPeer{
 			{
 				Addr:   c.Addr, // TODO: change after raft
 				Weight: 1,
@@ -79,28 +81,28 @@ func New(store state.WatchableStore, c *Config) *Dispatcher {
 }
 
 // Register is used for registration of node with particular dispatcher.
-func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
+func (d *Dispatcher) Register(ctx context.Context, r *dispatcherpb.RegisterRequest) (*dispatcherpb.RegisterResponse, error) {
 	log.WithField("request", r).Debugf("(*Dispatcher).Register")
 	// TODO: here goes auth
 
 	// create or update node in store
 	// TODO(stevvooe): Validate node specification.
-	var node *api.Node
+	var node *objectspb.Node
 	err := d.store.Update(func(tx state.Tx) error {
 		node = tx.Nodes().Get(r.NodeID)
 		if node != nil {
 			node.Description = r.Description
-			node.Status = api.NodeStatus{
-				State: api.NodeStatus_READY,
+			node.Status = typespb.NodeStatus{
+				State: typespb.NodeStatus_READY,
 			}
 			return tx.Nodes().Update(node)
 		}
 
-		node = &api.Node{
+		node = &objectspb.Node{
 			ID:          r.NodeID,
 			Description: r.Description,
-			Status: api.NodeStatus{
-				State: api.NodeStatus_READY,
+			Status: typespb.NodeStatus{
+				State: typespb.NodeStatus_READY,
 			},
 		}
 		return tx.Nodes().Create(node)
@@ -112,7 +114,7 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	nid := node.ID // prevent the closure from holding onto the entire Node.
 
 	expireFunc := func() {
-		nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "heartbeat failure"}
+		nodeStatus := typespb.NodeStatus{State: typespb.NodeStatus_DOWN, Message: "heartbeat failure"}
 		log.WithField("node.id", nid).Debugf("heartbeat expiration")
 		if err := d.nodeRemove(nid, nodeStatus); err != nil {
 			log.Errorf("error deregistering node %s after heartbeat expiration: %v", nid, err)
@@ -130,12 +132,12 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	// time a node registers, we invalidate the session and issue a new
 	// session, once identity is proven. This will cause misbehaved agents to
 	// be kicked when multiple connections are made.
-	return &api.RegisterResponse{NodeID: rn.Node.ID, SessionID: rn.SessionID}, nil
+	return &dispatcherpb.RegisterResponse{NodeID: rn.Node.ID, SessionID: rn.SessionID}, nil
 }
 
 // UpdateTaskStatus updates status of task. Node should send such updates
 // on every status change of its tasks.
-func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStatusRequest) (*api.UpdateTaskStatusResponse, error) {
+func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *dispatcherpb.UpdateTaskStatusRequest) (*dispatcherpb.UpdateTaskStatusResponse, error) {
 	log.WithField("request", r).Debugf("(*Dispatcher).UpdateTaskStatus")
 
 	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
@@ -154,11 +156,11 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 				continue
 			}
 
-			var state api.TaskState
+			var state typespb.TaskState
 			if task.Status != nil {
 				state = task.Status.State
 			} else {
-				state = api.TaskStateNew
+				state = typespb.TaskStateNew
 			}
 
 			logger.Debugf("%v -> %v", state, u.Status.State)
@@ -179,7 +181,7 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 // Tasks is a stream of tasks state for node. Each message contains full list
 // of tasks which should be run on node, if task is not present in that list,
 // it should be terminated.
-func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
+func (d *Dispatcher) Tasks(r *dispatcherpb.TasksRequest, stream dispatcherpb.Dispatcher_TasksServer) error {
 	log.WithField("request", r).Debugf("(*Dispatcher).Tasks")
 
 	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
@@ -188,15 +190,15 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 
 	watchQueue := d.store.WatchQueue()
 	nodeTasks, cancel := state.Watch(watchQueue,
-		state.EventCreateTask{Task: &api.Task{NodeID: r.NodeID},
+		state.EventCreateTask{Task: &objectspb.Task{NodeID: r.NodeID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
-		state.EventUpdateTask{Task: &api.Task{NodeID: r.NodeID},
+		state.EventUpdateTask{Task: &objectspb.Task{NodeID: r.NodeID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
-		state.EventDeleteTask{Task: &api.Task{NodeID: r.NodeID},
+		state.EventDeleteTask{Task: &objectspb.Task{NodeID: r.NodeID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}})
 	defer cancel()
 
-	tasksMap := make(map[string]*api.Task)
+	tasksMap := make(map[string]*objectspb.Task)
 	err := d.store.View(func(readTx state.ReadTx) error {
 		tasks, err := readTx.Tasks().Find(state.ByNodeID(r.NodeID))
 		if err != nil {
@@ -216,12 +218,12 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 			return err
 		}
 
-		var tasks []*api.Task
+		var tasks []*objectspb.Task
 		for _, t := range tasksMap {
 			tasks = append(tasks, t)
 		}
 
-		if err := stream.Send(&api.TasksMessage{Tasks: tasks}); err != nil {
+		if err := stream.Send(&dispatcherpb.TasksMessage{Tasks: tasks}); err != nil {
 			return err
 		}
 
@@ -241,7 +243,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	}
 }
 
-func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
+func (d *Dispatcher) nodeRemove(id string, status typespb.NodeStatus) error {
 	err := d.store.Update(func(tx state.Tx) error {
 		node := tx.Nodes().Get(id)
 		if node == nil {
@@ -264,16 +266,16 @@ func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
 // Heartbeat is heartbeat method for nodes. It returns new TTL in response.
 // Node should send new heartbeat earlier than now + TTL, otherwise it will
 // be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
-func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*api.HeartbeatResponse, error) {
+func (d *Dispatcher) Heartbeat(ctx context.Context, r *dispatcherpb.HeartbeatRequest) (*dispatcherpb.HeartbeatResponse, error) {
 	log.WithField("request", r).Debugf("(*Dispatcher).Heartbeat")
 
 	period, err := d.nodes.Heartbeat(r.NodeID, r.SessionID)
-	return &api.HeartbeatResponse{Period: period}, err
+	return &dispatcherpb.HeartbeatResponse{Period: period}, err
 }
 
 func (d *Dispatcher) watchManagers() {
 	publish := func() {
-		mgrs := []*api.WeightedPeer{
+		mgrs := []*typespb.WeightedPeer{
 			{
 				Addr:   d.addr, // TODO: change after raft
 				Weight: 1,
@@ -291,7 +293,7 @@ func (d *Dispatcher) watchManagers() {
 	}
 }
 
-func (d *Dispatcher) getManagers() []*api.WeightedPeer {
+func (d *Dispatcher) getManagers() []*typespb.WeightedPeer {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return d.lastSeenManagers
@@ -301,13 +303,13 @@ func (d *Dispatcher) getManagers() []*api.WeightedPeer {
 // Each message contains list of backup Managers with weights. Also there is
 // special boolean field Disconnect which if true indicates that node should
 // reconnect to another Manager immediately.
-func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_SessionServer) error {
+func (d *Dispatcher) Session(r *dispatcherpb.SessionRequest, stream dispatcherpb.Dispatcher_SessionServer) error {
 	log.WithField("request", r).Debugf("(*Dispatcher).Session")
 	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 		return err
 	}
 
-	if err := stream.Send(&api.SessionMessage{
+	if err := stream.Send(&dispatcherpb.SessionMessage{
 		Managers:   d.getManagers(),
 		Disconnect: false,
 	}); err != nil {
@@ -327,13 +329,13 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		}
 		var (
 			disconnect bool
-			mgrs       []*api.WeightedPeer
+			mgrs       []*typespb.WeightedPeer
 		)
 		select {
 		case <-node.Disconnect:
 			disconnect = true
 		case ev := <-mgrUpdates:
-			mgrs = ev.([]*api.WeightedPeer)
+			mgrs = ev.([]*typespb.WeightedPeer)
 		case <-stream.Context().Done():
 			return stream.Context().Err()
 		}
@@ -341,13 +343,13 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			mgrs = d.getManagers()
 		}
 		if disconnect {
-			nodeStatus := api.NodeStatus{State: api.NodeStatus_DISCONNECTED, Message: "node is currently trying to find new manager"}
+			nodeStatus := typespb.NodeStatus{State: typespb.NodeStatus_DISCONNECTED, Message: "node is currently trying to find new manager"}
 			if err := d.nodeRemove(r.NodeID, nodeStatus); err != nil {
 				log.Error(err)
 			}
 		}
 
-		if err := stream.Send(&api.SessionMessage{
+		if err := stream.Send(&dispatcherpb.SessionMessage{
 			Managers:   mgrs,
 			Disconnect: disconnect,
 		}); err != nil {

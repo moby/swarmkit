@@ -12,7 +12,8 @@ import (
 	"github.com/docker/engine-api/types/filters"
 	"github.com/docker/engine-api/types/network"
 	"github.com/docker/swarm-v2/agent/exec"
-	"github.com/docker/swarm-v2/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 )
 
 const (
@@ -24,14 +25,14 @@ const (
 // containerConfig converts task properties into docker container compatible
 // components.
 type containerConfig struct {
-	task    *api.Task
-	runtime *api.Container // resolved container specification.
+	task    *objectspb.Task
+	runtime *typespb.Container // resolved container specification.
 	popts   types.ImagePullOptions
 }
 
 // newContainerConfig returns a validated container config. No methods should
 // return an error if this function returns without error.
-func newContainerConfig(t *api.Task) (*containerConfig, error) {
+func newContainerConfig(t *objectspb.Task) (*containerConfig, error) {
 	c := &containerConfig{task: t}
 
 	runtime := t.Spec.GetContainer()

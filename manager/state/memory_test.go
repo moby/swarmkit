@@ -6,35 +6,38 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
-	"github.com/docker/swarm-v2/manager/state/pb"
+	raftpb "github.com/docker/swarm-v2/pb/docker/cluster/api/raft"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	snapshotpb "github.com/docker/swarm-v2/pb/docker/cluster/snapshot"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
 
 var (
-	nodeSet = []*api.Node{
+	nodeSet = []*objectspb.Node{
 		{
 			ID: "id1",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name1",
 				},
 			},
 		},
 		{
 			ID: "id2",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name2",
 				},
 			},
 		},
 		{
 			ID: "id3",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					// intentionally conflicting name
 					Name: "name2",
 				},
@@ -42,80 +45,80 @@ var (
 		},
 	}
 
-	jobSet = []*api.Job{
+	jobSet = []*objectspb.Job{
 		{
 			ID: "id1",
-			Spec: &api.JobSpec{
-				Meta: api.Meta{
+			Spec: &specspb.JobSpec{
+				Meta: specspb.Meta{
 					Name: "name1",
 				},
 			},
 		},
 		{
 			ID: "id2",
-			Spec: &api.JobSpec{
-				Meta: api.Meta{
+			Spec: &specspb.JobSpec{
+				Meta: specspb.Meta{
 					Name: "name2",
 				},
 			},
 		},
 		{
 			ID: "id3",
-			Spec: &api.JobSpec{
-				Meta: api.Meta{
+			Spec: &specspb.JobSpec{
+				Meta: specspb.Meta{
 					Name: "name3",
 				},
 			},
 		},
 	}
 
-	taskSet = []*api.Task{
+	taskSet = []*objectspb.Task{
 		{
 			ID: "id1",
-			Meta: api.Meta{
+			Meta: specspb.Meta{
 				Name: "name1",
 			},
-			Spec:   &api.TaskSpec{},
+			Spec:   &specspb.TaskSpec{},
 			NodeID: nodeSet[0].ID,
 		},
 		{
 			ID: "id2",
-			Meta: api.Meta{
+			Meta: specspb.Meta{
 				Name: "name2",
 			},
-			Spec:  &api.TaskSpec{},
+			Spec:  &specspb.TaskSpec{},
 			JobID: jobSet[0].ID,
 		},
 		{
 			ID: "id3",
-			Meta: api.Meta{
+			Meta: specspb.Meta{
 				Name: "name2",
 			},
-			Spec: &api.TaskSpec{},
+			Spec: &specspb.TaskSpec{},
 		},
 	}
 
-	networkSet = []*api.Network{
+	networkSet = []*objectspb.Network{
 		{
 			ID: "id1",
-			Spec: &api.NetworkSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NetworkSpec{
+				Meta: specspb.Meta{
 					Name: "name1",
 				},
 			},
 		},
 		{
 			ID: "id2",
-			Spec: &api.NetworkSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NetworkSpec{
+				Meta: specspb.Meta{
 					Name: "name2",
 				},
 			},
 		},
 		{
 			ID: "id3",
-			Spec: &api.NetworkSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NetworkSpec{
+				Meta: specspb.Meta{
 					// intentionally conflicting name
 					Name: "name2",
 				},
@@ -123,27 +126,27 @@ var (
 		},
 	}
 
-	volumeSet = []*api.Volume{
+	volumeSet = []*objectspb.Volume{
 		{
 			ID: "id1",
-			Spec: &api.VolumeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.VolumeSpec{
+				Meta: specspb.Meta{
 					Name: "name1",
 				},
 			},
 		},
 		{
 			ID: "id2",
-			Spec: &api.VolumeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.VolumeSpec{
+				Meta: specspb.Meta{
 					Name: "name2",
 				},
 			},
 		},
 		{
 			ID: "id3",
-			Spec: &api.VolumeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.VolumeSpec{
+				Meta: specspb.Meta{
 					Name: "name3",
 				},
 			},
@@ -230,10 +233,10 @@ func TestStoreNode(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Update.
-	update := &api.Node{
+	update := &objectspb.Node{
 		ID: "id3",
-		Spec: &api.NodeSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NodeSpec{
+			Meta: specspb.Meta{
 				Name: "name3",
 			},
 		},
@@ -284,20 +287,20 @@ func TestStoreJob(t *testing.T) {
 
 	err = s.Update(func(tx Tx) error {
 		assert.Equal(t,
-			tx.Jobs().Create(&api.Job{
+			tx.Jobs().Create(&objectspb.Job{
 				ID: "id1",
-				Spec: &api.JobSpec{
-					Meta: api.Meta{
+				Spec: &specspb.JobSpec{
+					Meta: specspb.Meta{
 						Name: "name4",
 					},
 				},
 			}), ErrExist, "duplicate IDs must be rejected")
 
 		assert.Equal(t,
-			tx.Jobs().Create(&api.Job{
+			tx.Jobs().Create(&objectspb.Job{
 				ID: "id4",
-				Spec: &api.JobSpec{
-					Meta: api.Meta{
+				Spec: &specspb.JobSpec{
+					Meta: specspb.Meta{
 						Name: "name1",
 					},
 				},
@@ -505,12 +508,12 @@ func TestStoreTask(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Update.
-	update := &api.Task{
+	update := &objectspb.Task{
 		ID: "id3",
-		Meta: api.Meta{
+		Meta: specspb.Meta{
 			Name: "name3",
 		},
-		Spec: &api.TaskSpec{},
+		Spec: &specspb.TaskSpec{},
 	}
 	err = s.Update(func(tx Tx) error {
 		assert.NotEqual(t, update, tx.Tasks().Get("id3"))
@@ -558,20 +561,20 @@ func TestStoreVolume(t *testing.T) {
 
 	err = s.Update(func(tx Tx) error {
 		assert.Equal(t,
-			tx.Volumes().Create(&api.Volume{
+			tx.Volumes().Create(&objectspb.Volume{
 				ID: "id1",
-				Spec: &api.VolumeSpec{
-					Meta: api.Meta{
+				Spec: &specspb.VolumeSpec{
+					Meta: specspb.Meta{
 						Name: "name4",
 					},
 				},
 			}), ErrExist, "duplicate IDs must be rejected")
 
 		assert.Equal(t,
-			tx.Volumes().Create(&api.Volume{
+			tx.Volumes().Create(&objectspb.Volume{
 				ID: "id4",
-				Spec: &api.VolumeSpec{
-					Meta: api.Meta{
+				Spec: &specspb.VolumeSpec{
+					Meta: specspb.Meta{
 						Name: "name1",
 					},
 				},
@@ -684,10 +687,10 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create node
-	createNode := &api.Node{
+	createNode := &objectspb.Node{
 		ID: "id4",
-		Spec: &api.NodeSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NodeSpec{
+			Meta: specspb.Meta{
 				Name: "name4",
 			},
 		},
@@ -709,10 +712,10 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Update node
-	updateNode := &api.Node{
+	updateNode := &objectspb.Node{
 		ID: "id3",
-		Spec: &api.NodeSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NodeSpec{
+			Meta: specspb.Meta{
 				Name: "name3",
 			},
 		},
@@ -750,10 +753,10 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create job
-	createJob := &api.Job{
+	createJob := &objectspb.Job{
 		ID: "id4",
-		Spec: &api.JobSpec{
-			Meta: api.Meta{
+		Spec: &specspb.JobSpec{
+			Meta: specspb.Meta{
 				Name: "name4",
 			},
 		},
@@ -810,12 +813,12 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create task
-	createTask := &api.Task{
+	createTask := &objectspb.Task{
 		ID: "id4",
-		Meta: api.Meta{
+		Meta: specspb.Meta{
 			Name: "name4",
 		},
-		Spec: &api.TaskSpec{},
+		Spec: &specspb.TaskSpec{},
 	}
 
 	err = s1.Update(func(tx1 Tx) error {
@@ -834,12 +837,12 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Update task
-	updateTask := &api.Task{
+	updateTask := &objectspb.Task{
 		ID: "id3",
-		Meta: api.Meta{
+		Meta: specspb.Meta{
 			Name: "name3",
 		},
-		Spec: &api.TaskSpec{},
+		Spec: &specspb.TaskSpec{},
 	}
 
 	err = s1.Update(func(tx1 Tx) error {
@@ -878,10 +881,10 @@ func TestFailedTransaction(t *testing.T) {
 
 	// Create one node
 	err := s.Update(func(tx Tx) error {
-		n := &api.Node{
+		n := &objectspb.Node{
 			ID: "id1",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name1",
 				},
 			},
@@ -894,10 +897,10 @@ func TestFailedTransaction(t *testing.T) {
 
 	// Create a second node, but then roll back the transaction
 	err = s.Update(func(tx Tx) error {
-		n := &api.Node{
+		n := &objectspb.Node{
 			ID: "id2",
-			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+			Spec: &specspb.NodeSpec{
+				Meta: specspb.Meta{
 					Name: "name2",
 				},
 			},
@@ -927,16 +930,16 @@ type mockProposer struct {
 	index uint64
 }
 
-func (mp *mockProposer) ProposeValue(ctx context.Context, storeAction []*api.StoreAction, cb func()) error {
+func (mp *mockProposer) ProposeValue(ctx context.Context, storeAction []*raftpb.StoreAction, cb func()) error {
 	if cb != nil {
 		cb()
 	}
 	return nil
 }
 
-func (mp *mockProposer) GetVersion() *api.Version {
+func (mp *mockProposer) GetVersion() *typespb.Version {
 	mp.index += 3
-	return &api.Version{Index: mp.index}
+	return &typespb.Version{Index: mp.index}
 }
 
 func TestVersion(t *testing.T) {
@@ -945,15 +948,15 @@ func TestVersion(t *testing.T) {
 	assert.NotNil(t, s)
 
 	var (
-		retrievedNode  *api.Node
-		retrievedNode2 *api.Node
+		retrievedNode  *objectspb.Node
+		retrievedNode2 *objectspb.Node
 	)
 
 	// Create one node
-	n := &api.Node{
+	n := &objectspb.Node{
 		ID: "id1",
-		Spec: &api.NodeSpec{
-			Meta: api.Meta{
+		Spec: &specspb.NodeSpec{
+			Meta: specspb.Meta{
 				Name: "name1",
 			},
 		},
@@ -1009,7 +1012,7 @@ func TestStoreSaveRestore(t *testing.T) {
 
 	setupTestStore(t, s1)
 
-	var snapshot *pb.StoreSnapshot
+	var snapshot *snapshotpb.StoreSnapshot
 	err := s1.View(func(tx ReadTx) error {
 		var err error
 		snapshot, err = s1.Save(tx)
@@ -1073,10 +1076,10 @@ func setupNodes(b *testing.B, n int) (Store, []string) {
 
 	_ = s.Update(func(tx1 Tx) error {
 		for i := 0; i < n; i++ {
-			_ = tx1.Nodes().Create(&api.Node{
+			_ = tx1.Nodes().Create(&objectspb.Node{
 				ID: nodeIDs[i],
-				Spec: &api.NodeSpec{
-					Meta: api.Meta{
+				Spec: &specspb.NodeSpec{
+					Meta: specspb.Meta{
 						Name: "name" + strconv.Itoa(i),
 					},
 				},
@@ -1097,10 +1100,10 @@ func BenchmarkUpdateNode(b *testing.B) {
 	b.ResetTimer()
 	_ = s.Update(func(tx1 Tx) error {
 		for i := 0; i < b.N; i++ {
-			_ = tx1.Nodes().Update(&api.Node{
+			_ = tx1.Nodes().Update(&objectspb.Node{
 				ID: nodeIDs[i%benchmarkNumNodes],
-				Spec: &api.NodeSpec{
-					Meta: api.Meta{
+				Spec: &specspb.NodeSpec{
+					Meta: specspb.Meta{
 						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
 					},
 				},
@@ -1115,10 +1118,10 @@ func BenchmarkUpdateNodeTransaction(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = s.Update(func(tx1 Tx) error {
-			_ = tx1.Nodes().Update(&api.Node{
+			_ = tx1.Nodes().Update(&objectspb.Node{
 				ID: nodeIDs[i%benchmarkNumNodes],
-				Spec: &api.NodeSpec{
-					Meta: api.Meta{
+				Spec: &specspb.NodeSpec{
+					Meta: specspb.Meta{
 						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
 					},
 				},
@@ -1197,10 +1200,10 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 			defer wg.Done()
 			for i := 0; i < b.N; i++ {
 				_ = s.Update(func(tx1 Tx) error {
-					_ = tx1.Nodes().Update(&api.Node{
+					_ = tx1.Nodes().Update(&objectspb.Node{
 						ID: nodeIDs[i%benchmarkNumNodes],
-						Spec: &api.NodeSpec{
-							Meta: api.Meta{
+						Spec: &specspb.NodeSpec{
+							Meta: specspb.Meta{
 								Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(c) + "_" + strconv.Itoa(i),
 							},
 						},

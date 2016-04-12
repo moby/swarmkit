@@ -3,7 +3,7 @@ package node
 import (
 	"fmt"
 
-	"github.com/docker/swarm-v2/api"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"github.com/spf13/cobra"
 )
 
@@ -12,7 +12,7 @@ var (
 		Use:   "drain <node ID>",
 		Short: "Drain a node",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := changeNodeAvailability(cmd, args, api.NodeAvailabilityDrain); err != nil {
+			if err := changeNodeAvailability(cmd, args, specspb.NodeAvailabilityDrain); err != nil {
 				if err == errNoChange {
 					return fmt.Errorf("Node %s was already drained", args[0])
 				}

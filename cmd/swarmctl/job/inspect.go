@@ -8,8 +8,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
@@ -40,13 +41,13 @@ var (
 			common.FprintfIfNotEmpty(w, "Name\t: %s\n", job.Spec.Meta.Name)
 			orchestration := ""
 			switch o := job.Spec.Orchestration.(type) {
-			case *api.JobSpec_Batch:
+			case *specspb.JobSpec_Batch:
 				orchestration = "BATCH"
-			case *api.JobSpec_Cron:
+			case *specspb.JobSpec_Cron:
 				orchestration = "CRON"
-			case *api.JobSpec_Global:
+			case *specspb.JobSpec_Global:
 				orchestration = "GLOBAL"
-			case *api.JobSpec_Service:
+			case *specspb.JobSpec_Service:
 				orchestration = fmt.Sprintf("SERVICE (%d instances)", o.Service.Instances)
 			}
 			common.FprintfIfNotEmpty(w, "Orchestration\t: %s\n", orchestration)
@@ -60,7 +61,7 @@ var (
 			if ctr.Resources != nil {
 				res := ctr.Resources
 				fmt.Fprintln(w, "  Resources:\t")
-				printResources := func(w io.Writer, r *api.Resources) {
+				printResources := func(w io.Writer, r *typespb.Resources) {
 					if r.NanoCPUs != 0 {
 						fmt.Fprintf(w, "      CPU\t: %g\n", float64(r.NanoCPUs)/1e9)
 					}

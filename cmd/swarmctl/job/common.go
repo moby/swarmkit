@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"golang.org/x/net/context"
-
-	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
 	"github.com/docker/swarm-v2/spec"
 	flag "github.com/spf13/pflag"
+	"golang.org/x/net/context"
 )
 
 func readServiceConfig(flags *flag.FlagSet) (*spec.ServiceConfig, error) {
@@ -30,7 +30,7 @@ func readServiceConfig(flags *flag.FlagSet) (*spec.ServiceConfig, error) {
 	return service, nil
 }
 
-func getJob(ctx context.Context, c api.ClusterClient, input string) (*api.Job, error) {
+func getJob(ctx context.Context, c api.ClusterClient, input string) (*objectspb.Job, error) {
 	// GetJob to match via full ID.
 	rg, err := c.GetJob(ctx, &api.GetJobRequest{JobID: input})
 	if err != nil {

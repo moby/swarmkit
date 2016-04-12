@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/docker/swarm-v2/manager/state/watch"
+	etcdraftpb "github.com/docker/swarm-v2/pb/docker/cluster/api/raft"
+	raftpb "github.com/docker/swarm-v2/pb/docker/cluster/api/raft"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	snapshotpb "github.com/docker/swarm-v2/pb/docker/cluster/snapshot"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	memdb "github.com/hashicorp/go-memdb"
 	"golang.org/x/net/context"
 )
@@ -237,7 +240,7 @@ type tx struct {
 }
 
 // applyStoreActions updates a store based on StoreAction messages.
-func (s *MemoryStore) applyStoreActions(actions []*api.StoreAction) error {
+func (s *MemoryStore) applyStoreActions(actions []*etcdraftpb.StoreAction) error {
 	s.updateLock.Lock()
 	memDBTx := s.memDB.Txn(true)
 
@@ -274,7 +277,7 @@ func (s *MemoryStore) applyStoreActions(actions []*api.StoreAction) error {
 	return nil
 }
 
-func applyStoreAction(tx tx, sa *api.StoreAction) error {
+func applyStoreAction(tx tx, sa *raftpb.StoreAction) error {
 	// TODO(stevvooe): While this switch is still slightly complex, we can
 	// simplify it by making the object store interface more generic. When this
 	// is fixed, we can move the switch out of each branch and just set the
@@ -284,67 +287,67 @@ func applyStoreAction(tx tx, sa *api.StoreAction) error {
 	// an ID interface and this goes away.
 
 	switch v := sa.Target.(type) {
-	case *api.StoreAction_Node:
+	case *raftpb.StoreAction_Node:
 		obj := v.Node
 		ds := tx.Nodes()
 		switch sa.Action {
-		case api.StoreActionKindCreate:
+		case raftpb.StoreActionKindCreate:
 			return ds.Create(obj)
-		case api.StoreActionKindUpdate:
+		case raftpb.StoreActionKindUpdate:
 			return ds.Update(obj)
-		case api.StoreActionKindRemove:
+		case raftpb.StoreActionKindRemove:
 			return ds.Delete(obj.ID)
 		default:
 			return errors.New("unknown store action")
 		}
-	case *api.StoreAction_Job:
+	case *raftpb.StoreAction_Job:
 		obj := v.Job
 		ds := tx.Jobs()
 		switch sa.Action {
-		case api.StoreActionKindCreate:
+		case raftpb.StoreActionKindCreate:
 			return ds.Create(obj)
-		case api.StoreActionKindUpdate:
+		case raftpb.StoreActionKindUpdate:
 			return ds.Update(obj)
-		case api.StoreActionKindRemove:
+		case raftpb.StoreActionKindRemove:
 			return ds.Delete(obj.ID)
 		default:
 			return errors.New("unknown store action")
 		}
-	case *api.StoreAction_Task:
+	case *raftpb.StoreAction_Task:
 		obj := v.Task
 		ds := tx.Tasks()
 		switch sa.Action {
-		case api.StoreActionKindCreate:
+		case raftpb.StoreActionKindCreate:
 			return ds.Create(obj)
-		case api.StoreActionKindUpdate:
+		case raftpb.StoreActionKindUpdate:
 			return ds.Update(obj)
-		case api.StoreActionKindRemove:
+		case raftpb.StoreActionKindRemove:
 			return ds.Delete(obj.ID)
 		default:
 			return errors.New("unknown store action")
 		}
-	case *api.StoreAction_Network:
+	case *raftpb.StoreAction_Network:
 		obj := v.Network
 		ds := tx.Networks()
 		switch sa.Action {
-		case api.StoreActionKindCreate:
+		case raftpb.StoreActionKindCreate:
 			return ds.Create(obj)
-		case api.StoreActionKindUpdate:
+		case raftpb.StoreActionKindUpdate:
 			return ds.Update(obj)
-		case api.StoreActionKindRemove:
+		case raftpb.StoreActionKindRemove:
 			return ds.Delete(obj.ID)
 		default:
 			return errors.New("unknown store action")
 		}
-	case *api.StoreAction_Volume:
+	case *raftpb.StoreAction_Volume:
 		obj := v.Volume
 		ds := tx.Volumes()
 		switch sa.Action {
-		case api.StoreActionKindCreate:
+		case raftpb.StoreActionKindCreate:
 			return ds.Create(obj)
-		case api.StoreActionKindUpdate:
+		case raftpb.StoreActionKindUpdate:
 			return ds.Update(obj)
-		case api.StoreActionKindRemove:
+		case raftpb.StoreActionKindRemove:
 			return ds.Delete(obj.ID)
 		default:
 			return errors.New("unknown store action")
@@ -360,7 +363,7 @@ func (s *MemoryStore) update(proposer Proposer, cb func(Tx) error) error {
 
 	var (
 		tx         tx
-		curVersion *api.Version
+		curVersion *typespb.Version
 	)
 
 	if proposer != nil {
@@ -399,7 +402,7 @@ func (s *MemoryStore) update(proposer Proposer, cb func(Tx) error) error {
 		if proposer == nil {
 			memDBTx.Commit()
 		} else {
-			var sa []*api.StoreAction
+			var sa []*raftpb.StoreAction
 			sa, err = tx.newStoreAction()
 
 			if err == nil {
@@ -438,93 +441,93 @@ func (s *MemoryStore) Update(cb func(Tx) error) error {
 	return s.update(s.proposer, cb)
 }
 
-func (tx tx) newStoreAction() ([]*api.StoreAction, error) {
-	var actions []*api.StoreAction
+func (tx tx) newStoreAction() ([]*etcdraftpb.StoreAction, error) {
+	var actions []*raftpb.StoreAction
 
 	for _, c := range tx.changelist {
-		var sa api.StoreAction
+		var sa raftpb.StoreAction
 
 		// TODO(stevvooe): Refactor events to better handle this switch. Too
 		// much repitition for an inner product space (CRUD x Resource).
 
 		switch v := c.(type) {
 		case EventCreateTask:
-			sa.Action = api.StoreActionKindCreate
-			sa.Target = &api.StoreAction_Task{
+			sa.Action = raftpb.StoreActionKindCreate
+			sa.Target = &raftpb.StoreAction_Task{
 				Task: v.Task,
 			}
 		case EventUpdateTask:
-			sa.Action = api.StoreActionKindUpdate
-			sa.Target = &api.StoreAction_Task{
+			sa.Action = raftpb.StoreActionKindUpdate
+			sa.Target = &raftpb.StoreAction_Task{
 				Task: v.Task,
 			}
 		case EventDeleteTask:
-			sa.Action = api.StoreActionKindRemove
-			sa.Target = &api.StoreAction_Task{
+			sa.Action = raftpb.StoreActionKindRemove
+			sa.Target = &raftpb.StoreAction_Task{
 				Task: v.Task,
 			}
 
 		case EventCreateJob:
-			sa.Action = api.StoreActionKindCreate
-			sa.Target = &api.StoreAction_Job{
+			sa.Action = raftpb.StoreActionKindCreate
+			sa.Target = &raftpb.StoreAction_Job{
 				Job: v.Job,
 			}
 		case EventUpdateJob:
-			sa.Action = api.StoreActionKindUpdate
-			sa.Target = &api.StoreAction_Job{
+			sa.Action = raftpb.StoreActionKindUpdate
+			sa.Target = &raftpb.StoreAction_Job{
 				Job: v.Job,
 			}
 		case EventDeleteJob:
-			sa.Action = api.StoreActionKindRemove
-			sa.Target = &api.StoreAction_Job{
+			sa.Action = raftpb.StoreActionKindRemove
+			sa.Target = &raftpb.StoreAction_Job{
 				Job: v.Job,
 			}
 
 		case EventCreateNetwork:
-			sa.Action = api.StoreActionKindCreate
-			sa.Target = &api.StoreAction_Network{
+			sa.Action = raftpb.StoreActionKindCreate
+			sa.Target = &raftpb.StoreAction_Network{
 				Network: v.Network,
 			}
 		case EventUpdateNetwork:
-			sa.Action = api.StoreActionKindUpdate
-			sa.Target = &api.StoreAction_Network{
+			sa.Action = raftpb.StoreActionKindUpdate
+			sa.Target = &raftpb.StoreAction_Network{
 				Network: v.Network,
 			}
 		case EventDeleteNetwork:
-			sa.Action = api.StoreActionKindRemove
-			sa.Target = &api.StoreAction_Network{
+			sa.Action = raftpb.StoreActionKindRemove
+			sa.Target = &raftpb.StoreAction_Network{
 				Network: v.Network,
 			}
 
 		case EventCreateNode:
-			sa.Action = api.StoreActionKindCreate
-			sa.Target = &api.StoreAction_Node{
+			sa.Action = raftpb.StoreActionKindCreate
+			sa.Target = &raftpb.StoreAction_Node{
 				Node: v.Node,
 			}
 		case EventUpdateNode:
-			sa.Action = api.StoreActionKindUpdate
-			sa.Target = &api.StoreAction_Node{
+			sa.Action = raftpb.StoreActionKindUpdate
+			sa.Target = &raftpb.StoreAction_Node{
 				Node: v.Node,
 			}
 		case EventDeleteNode:
-			sa.Action = api.StoreActionKindRemove
-			sa.Target = &api.StoreAction_Node{
+			sa.Action = raftpb.StoreActionKindRemove
+			sa.Target = &raftpb.StoreAction_Node{
 				Node: v.Node,
 			}
 
 		case EventCreateVolume:
-			sa.Action = api.StoreActionKindCreate
-			sa.Target = &api.StoreAction_Volume{
+			sa.Action = raftpb.StoreActionKindCreate
+			sa.Target = &raftpb.StoreAction_Volume{
 				Volume: v.Volume,
 			}
 		case EventUpdateVolume:
-			sa.Action = api.StoreActionKindUpdate
-			sa.Target = &api.StoreAction_Volume{
+			sa.Action = raftpb.StoreActionKindUpdate
+			sa.Target = &raftpb.StoreAction_Volume{
 				Volume: v.Volume,
 			}
 		case EventDeleteVolume:
-			sa.Action = api.StoreActionKindRemove
-			sa.Target = &api.StoreAction_Volume{
+			sa.Action = raftpb.StoreActionKindRemove
+			sa.Target = &raftpb.StoreAction_Volume{
 				Volume: v.Volume,
 			}
 		default:
@@ -559,7 +562,7 @@ func (tx tx) Volumes() VolumeSet {
 type nodes struct {
 	tx         *tx
 	memDBTx    *memdb.Txn
-	curVersion *api.Version
+	curVersion *typespb.Version
 }
 
 func (nodes nodes) table() string {
@@ -567,20 +570,20 @@ func (nodes nodes) table() string {
 }
 
 // lookup is an internal typed wrapper around memdb.
-func (nodes nodes) lookup(index, id string) *api.Node {
+func (nodes nodes) lookup(index, id string) *objectspb.Node {
 	j, err := nodes.memDBTx.First(nodes.table(), index, id)
 	if err != nil {
 		return nil
 	}
 	if j != nil {
-		return j.(*api.Node)
+		return j.(*objectspb.Node)
 	}
 	return nil
 }
 
 // Create adds a new node to the store.
 // Returns ErrExist if the ID is already taken.
-func (nodes nodes) Create(n *api.Node) error {
+func (nodes nodes) Create(n *objectspb.Node) error {
 	if nodes.lookup(indexID, n.ID) != nil {
 		return ErrExist
 	}
@@ -599,7 +602,7 @@ func (nodes nodes) Create(n *api.Node) error {
 
 // Update updates an existing node in the store.
 // Returns ErrNotExist if the node doesn't exist.
-func (nodes nodes) Update(n *api.Node) error {
+func (nodes nodes) Update(n *objectspb.Node) error {
 	oldN := nodes.lookup(indexID, n.ID)
 	if oldN == nil {
 		return ErrNotExist
@@ -637,29 +640,29 @@ func (nodes nodes) Delete(id string) error {
 
 // Get looks up a node by ID.
 // Returns nil if the node doesn't exist.
-func (nodes nodes) Get(id string) *api.Node {
+func (nodes nodes) Get(id string) *objectspb.Node {
 	return nodes.lookup(indexID, id).Copy()
 }
 
 // Find selects a set of nodes and returns them. If by is nil,
 // returns all nodes.
-func (nodes nodes) Find(by By) ([]*api.Node, error) {
-	fromResultIterator := func(it memdb.ResultIterator) []*api.Node {
-		nodes := []*api.Node{}
+func (nodes nodes) Find(by By) ([]*objectspb.Node, error) {
+	fromResultIterator := func(it memdb.ResultIterator) []*objectspb.Node {
+		nodes := []*objectspb.Node{}
 		for {
 			obj := it.Next()
 			if obj == nil {
 				break
 			}
-			if n, ok := obj.(*api.Node); ok {
+			if n, ok := obj.(*objectspb.Node); ok {
 				nodes = append(nodes, n.Copy())
 			}
 		}
 		return nodes
 	}
 
-	fromResultIterators := func(its ...memdb.ResultIterator) []*api.Node {
-		nodes := []*api.Node{}
+	fromResultIterators := func(its ...memdb.ResultIterator) []*objectspb.Node {
+		nodes := []*objectspb.Node{}
 		ids := make(map[string]struct{})
 		for _, it := range its {
 			for {
@@ -667,7 +670,7 @@ func (nodes nodes) Find(by By) ([]*api.Node, error) {
 				if obj == nil {
 					break
 				}
-				if n, ok := obj.(*api.Node); ok {
+				if n, ok := obj.(*objectspb.Node); ok {
 					if _, exists := ids[n.ID]; !exists {
 						nodes = append(nodes, n.Copy())
 						ids[n.ID] = struct{}{}
@@ -713,7 +716,7 @@ func (ni nodeIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ni nodeIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
-	n, ok := obj.(*api.Node)
+	n, ok := obj.(*objectspb.Node)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -734,7 +737,7 @@ func (ni nodeIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ni nodeIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
-	n, ok := obj.(*api.Node)
+	n, ok := obj.(*objectspb.Node)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -749,7 +752,7 @@ func (ni nodeIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 type tasks struct {
 	tx         *tx
 	memDBTx    *memdb.Txn
-	curVersion *api.Version
+	curVersion *typespb.Version
 }
 
 func (tasks tasks) table() string {
@@ -757,20 +760,20 @@ func (tasks tasks) table() string {
 }
 
 // lookup is an internal typed wrapper around memdb.
-func (tasks tasks) lookup(index, id string) *api.Task {
+func (tasks tasks) lookup(index, id string) *objectspb.Task {
 	j, err := tasks.memDBTx.First(tasks.table(), index, id)
 	if err != nil {
 		return nil
 	}
 	if j != nil {
-		return j.(*api.Task)
+		return j.(*objectspb.Task)
 	}
 	return nil
 }
 
 // Create adds a new task to the store.
 // Returns ErrExist if the ID is already taken.
-func (tasks tasks) Create(t *api.Task) error {
+func (tasks tasks) Create(t *objectspb.Task) error {
 	if tasks.lookup(indexID, t.ID) != nil {
 		return ErrExist
 	}
@@ -789,7 +792,7 @@ func (tasks tasks) Create(t *api.Task) error {
 
 // Update updates an existing task in the store.
 // Returns ErrNotExist if the task doesn't exist.
-func (tasks tasks) Update(t *api.Task) error {
+func (tasks tasks) Update(t *objectspb.Task) error {
 	oldT := tasks.lookup(indexID, t.ID)
 	if oldT == nil {
 		return ErrNotExist
@@ -826,21 +829,21 @@ func (tasks tasks) Delete(id string) error {
 
 // Get looks up a task by ID.
 // Returns nil if the task doesn't exist.
-func (tasks tasks) Get(id string) *api.Task {
+func (tasks tasks) Get(id string) *objectspb.Task {
 	return tasks.lookup(indexID, id).Copy()
 }
 
 // Find selects a set of tasks and returns them. If by is nil,
 // returns all tasks.
-func (tasks tasks) Find(by By) ([]*api.Task, error) {
-	fromResultIterator := func(it memdb.ResultIterator) []*api.Task {
-		tasks := []*api.Task{}
+func (tasks tasks) Find(by By) ([]*objectspb.Task, error) {
+	fromResultIterator := func(it memdb.ResultIterator) []*objectspb.Task {
+		tasks := []*objectspb.Task{}
 		for {
 			obj := it.Next()
 			if obj == nil {
 				break
 			}
-			if t, ok := obj.(*api.Task); ok {
+			if t, ok := obj.(*objectspb.Task); ok {
 				tasks = append(tasks, t.Copy())
 			}
 		}
@@ -884,7 +887,7 @@ func (ti taskIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ti taskIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
-	t, ok := obj.(*api.Task)
+	t, ok := obj.(*objectspb.Task)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -901,7 +904,7 @@ func (ti taskIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ti taskIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
-	t, ok := obj.(*api.Task)
+	t, ok := obj.(*objectspb.Task)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -920,7 +923,7 @@ func (ti taskIndexerByJobID) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ti taskIndexerByJobID) FromObject(obj interface{}) (bool, []byte, error) {
-	t, ok := obj.(*api.Task)
+	t, ok := obj.(*objectspb.Task)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -937,7 +940,7 @@ func (ti taskIndexerByNodeID) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ti taskIndexerByNodeID) FromObject(obj interface{}) (bool, []byte, error) {
-	t, ok := obj.(*api.Task)
+	t, ok := obj.(*objectspb.Task)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -950,7 +953,7 @@ func (ti taskIndexerByNodeID) FromObject(obj interface{}) (bool, []byte, error) 
 type jobs struct {
 	tx         *tx
 	memDBTx    *memdb.Txn
-	curVersion *api.Version
+	curVersion *typespb.Version
 }
 
 func (jobs jobs) table() string {
@@ -958,20 +961,20 @@ func (jobs jobs) table() string {
 }
 
 // lookup is an internal typed wrapper around memdb.
-func (jobs jobs) lookup(index, id string) *api.Job {
+func (jobs jobs) lookup(index, id string) *objectspb.Job {
 	j, err := jobs.memDBTx.First(jobs.table(), index, id)
 	if err != nil {
 		return nil
 	}
 	if j != nil {
-		return j.(*api.Job)
+		return j.(*objectspb.Job)
 	}
 	return nil
 }
 
 // Create adds a new job to the store.
 // Returns ErrExist if the ID is already taken.
-func (jobs jobs) Create(j *api.Job) error {
+func (jobs jobs) Create(j *objectspb.Job) error {
 	if jobs.lookup(indexID, j.ID) != nil {
 		return ErrExist
 	}
@@ -994,7 +997,7 @@ func (jobs jobs) Create(j *api.Job) error {
 
 // Update updates an existing job in the store.
 // Returns ErrNotExist if the job doesn't exist.
-func (jobs jobs) Update(j *api.Job) error {
+func (jobs jobs) Update(j *objectspb.Job) error {
 	oldJ := jobs.lookup(indexID, j.ID)
 	if oldJ == nil {
 		return ErrNotExist
@@ -1039,29 +1042,29 @@ func (jobs jobs) Delete(id string) error {
 
 // Job looks up a job by ID.
 // Returns nil if the job doesn't exist.
-func (jobs jobs) Get(id string) *api.Job {
+func (jobs jobs) Get(id string) *objectspb.Job {
 	return jobs.lookup(indexID, id).Copy()
 }
 
 // Find selects a set of jobs and returns them. If by is nil,
 // returns all jobs.
-func (jobs jobs) Find(by By) ([]*api.Job, error) {
-	fromResultIterator := func(it memdb.ResultIterator) []*api.Job {
-		jobs := []*api.Job{}
+func (jobs jobs) Find(by By) ([]*objectspb.Job, error) {
+	fromResultIterator := func(it memdb.ResultIterator) []*objectspb.Job {
+		jobs := []*objectspb.Job{}
 		for {
 			obj := it.Next()
 			if obj == nil {
 				break
 			}
-			if j, ok := obj.(*api.Job); ok {
+			if j, ok := obj.(*objectspb.Job); ok {
 				jobs = append(jobs, j.Copy())
 			}
 		}
 		return jobs
 	}
 
-	fromResultIterators := func(its ...memdb.ResultIterator) []*api.Job {
-		jobs := []*api.Job{}
+	fromResultIterators := func(its ...memdb.ResultIterator) []*objectspb.Job {
+		jobs := []*objectspb.Job{}
 		ids := make(map[string]struct{})
 		for _, it := range its {
 			for {
@@ -1069,7 +1072,7 @@ func (jobs jobs) Find(by By) ([]*api.Job, error) {
 				if obj == nil {
 					break
 				}
-				if j, ok := obj.(*api.Job); ok {
+				if j, ok := obj.(*objectspb.Job); ok {
 					if _, exists := ids[j.ID]; !exists {
 						jobs = append(jobs, j.Copy())
 						ids[j.ID] = struct{}{}
@@ -1116,7 +1119,7 @@ func (ji jobIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ji jobIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
-	j, ok := obj.(*api.Job)
+	j, ok := obj.(*objectspb.Job)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -1137,7 +1140,7 @@ func (ji jobIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ji jobIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
-	j, ok := obj.(*api.Job)
+	j, ok := obj.(*objectspb.Job)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -1153,7 +1156,7 @@ func (ji jobIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 type networks struct {
 	tx         *tx
 	memDBTx    *memdb.Txn
-	curVersion *api.Version
+	curVersion *typespb.Version
 }
 
 func (networks networks) table() string {
@@ -1161,20 +1164,20 @@ func (networks networks) table() string {
 }
 
 // lookup is an internal typed wrapper around memdb.
-func (networks networks) lookup(index, id string) *api.Network {
+func (networks networks) lookup(index, id string) *objectspb.Network {
 	j, err := networks.memDBTx.First(networks.table(), index, id)
 	if err != nil {
 		return nil
 	}
 	if j != nil {
-		return j.(*api.Network)
+		return j.(*objectspb.Network)
 	}
 	return nil
 }
 
 // Create adds a new network to the store.
 // Returns ErrExist if the ID is already taken.
-func (networks networks) Create(n *api.Network) error {
+func (networks networks) Create(n *objectspb.Network) error {
 	if networks.lookup(indexID, n.ID) != nil {
 		return ErrExist
 	}
@@ -1193,7 +1196,7 @@ func (networks networks) Create(n *api.Network) error {
 
 // Update updates an existing network in the store.
 // Returns ErrNotExist if the network doesn't exist.
-func (networks networks) Update(n *api.Network) error {
+func (networks networks) Update(n *objectspb.Network) error {
 	oldN := networks.lookup(indexID, n.ID)
 	if oldN == nil {
 		return ErrNotExist
@@ -1231,21 +1234,21 @@ func (networks networks) Delete(id string) error {
 
 // Get looks up a network by ID.
 // Returns nil if the network doesn't exist.
-func (networks networks) Get(id string) *api.Network {
+func (networks networks) Get(id string) *objectspb.Network {
 	return networks.lookup(indexID, id).Copy()
 }
 
 // Find selects a set of networks and returns them. If by is nil,
 // returns all networks.
-func (networks networks) Find(by By) ([]*api.Network, error) {
-	fromResultIterator := func(it memdb.ResultIterator) []*api.Network {
-		networks := []*api.Network{}
+func (networks networks) Find(by By) ([]*objectspb.Network, error) {
+	fromResultIterator := func(it memdb.ResultIterator) []*objectspb.Network {
+		networks := []*objectspb.Network{}
 		for {
 			obj := it.Next()
 			if obj == nil {
 				break
 			}
-			if n, ok := obj.(*api.Network); ok {
+			if n, ok := obj.(*objectspb.Network); ok {
 				networks = append(networks, n.Copy())
 			}
 		}
@@ -1277,7 +1280,7 @@ func (ni networkIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ni networkIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
-	n, ok := obj.(*api.Network)
+	n, ok := obj.(*objectspb.Network)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -1294,7 +1297,7 @@ func (ni networkIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ni networkIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
-	n, ok := obj.(*api.Network)
+	n, ok := obj.(*objectspb.Network)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -1310,7 +1313,7 @@ func (ni networkIndexerByName) FromObject(obj interface{}) (bool, []byte, error)
 type volumes struct {
 	tx         *tx
 	memDBTx    *memdb.Txn
-	curVersion *api.Version
+	curVersion *typespb.Version
 }
 
 func (volumes volumes) table() string {
@@ -1318,20 +1321,20 @@ func (volumes volumes) table() string {
 }
 
 // lookup is an internal typed wrapper around memdb.
-func (volumes volumes) lookup(index, id string) *api.Volume {
+func (volumes volumes) lookup(index, id string) *objectspb.Volume {
 	v, err := volumes.memDBTx.First(volumes.table(), index, id)
 	if err != nil {
 		return nil
 	}
 	if v != nil {
-		return v.(*api.Volume)
+		return v.(*objectspb.Volume)
 	}
 	return nil
 }
 
 // Create adds a new volume to the store.
 // Returns ErrExist if the ID is already taken.
-func (volumes volumes) Create(v *api.Volume) error {
+func (volumes volumes) Create(v *objectspb.Volume) error {
 	if volumes.lookup(indexID, v.ID) != nil {
 		return ErrExist
 	}
@@ -1355,7 +1358,7 @@ func (volumes volumes) Create(v *api.Volume) error {
 
 // Update updates an existing volume in the store.
 // Returns ErrNotExist if the volume doesn't exist.
-func (volumes volumes) Update(v *api.Volume) error {
+func (volumes volumes) Update(v *objectspb.Volume) error {
 	if volumes.lookup(indexID, v.ID) == nil {
 		return ErrNotExist
 	}
@@ -1396,7 +1399,7 @@ func (volumes volumes) Delete(id string) error {
 
 // Get looks up a volume by ID.
 // Returns nil if the volume doesn't exist.
-func (volumes volumes) Get(id string) *api.Volume {
+func (volumes volumes) Get(id string) *objectspb.Volume {
 	if v := volumes.lookup(indexID, id); v != nil {
 		return v.Copy()
 	}
@@ -1405,15 +1408,15 @@ func (volumes volumes) Get(id string) *api.Volume {
 
 // Find selects a set of volumes and returns them. If by is nil,
 // returns all volumes.
-func (volumes volumes) Find(by By) ([]*api.Volume, error) {
-	fromResultIterator := func(it memdb.ResultIterator) []*api.Volume {
-		volumes := []*api.Volume{}
+func (volumes volumes) Find(by By) ([]*objectspb.Volume, error) {
+	fromResultIterator := func(it memdb.ResultIterator) []*objectspb.Volume {
+		volumes := []*objectspb.Volume{}
 		for {
 			obj := it.Next()
 			if obj == nil {
 				break
 			}
-			if v, ok := obj.(*api.Volume); ok {
+			if v, ok := obj.(*objectspb.Volume); ok {
 				volumes = append(volumes, v.Copy())
 			}
 		}
@@ -1445,7 +1448,7 @@ func (vi volumeIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (vi volumeIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
-	v, ok := obj.(*api.Volume)
+	v, ok := obj.(*objectspb.Volume)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -1462,7 +1465,7 @@ func (vi volumeIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (vi volumeIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
-	v, ok := obj.(*api.Volume)
+	v, ok := obj.(*objectspb.Volume)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -1538,9 +1541,9 @@ func (s *MemoryStore) CopyFrom(readTx ReadTx) error {
 }
 
 // Save serializes the data in the store.
-func (s *MemoryStore) Save(tx ReadTx) (*pb.StoreSnapshot, error) {
+func (s *MemoryStore) Save(tx ReadTx) (*snapshotpb.StoreSnapshot, error) {
 	var (
-		snapshot pb.StoreSnapshot
+		snapshot snapshotpb.StoreSnapshot
 		err      error
 	)
 	snapshot.Nodes, err = tx.Nodes().Find(All)
@@ -1569,7 +1572,7 @@ func (s *MemoryStore) Save(tx ReadTx) (*pb.StoreSnapshot, error) {
 
 // Restore sets the contents of the store to the serialized data in the
 // argument.
-func (s *MemoryStore) Restore(snapshot *pb.StoreSnapshot) error {
+func (s *MemoryStore) Restore(snapshot *snapshotpb.StoreSnapshot) error {
 	return s.updateLocal(func(tx Tx) error {
 		if err := DeleteAll(tx); err != nil {
 			return err

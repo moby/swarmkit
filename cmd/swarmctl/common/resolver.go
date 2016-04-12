@@ -1,7 +1,8 @@
 package common
 
 import (
-	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -26,7 +27,7 @@ func NewResolver(cmd *cobra.Command, c api.ClusterClient) *Resolver {
 
 func (r *Resolver) get(t interface{}, id string) string {
 	switch t.(type) {
-	case api.Node:
+	case objectspb.Node:
 		res, err := r.c.GetNode(r.ctx, &api.GetNodeRequest{NodeID: id})
 		if err != nil {
 			return id
@@ -35,7 +36,7 @@ func (r *Resolver) get(t interface{}, id string) string {
 			return res.Node.Spec.Meta.Name
 		}
 		return res.Node.Description.Hostname
-	case api.Job:
+	case objectspb.Job:
 		res, err := r.c.GetJob(r.ctx, &api.GetJobRequest{JobID: id})
 		if err != nil {
 			return id

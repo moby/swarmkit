@@ -5,8 +5,9 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +33,7 @@ var (
 			}
 			res := common.NewResolver(cmd, c)
 
-			var output func(t *api.Task)
+			var output func(t *objectspb.Task)
 
 			if !quiet {
 				w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
@@ -41,16 +42,16 @@ var (
 					_ = w.Flush()
 				}()
 				fmt.Fprintln(w, "ID\tJob\tStatus\tNode")
-				output = func(t *api.Task) {
+				output = func(t *objectspb.Task) {
 					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 						t.ID,
-						res.Resolve(api.Job{}, t.JobID),
+						res.Resolve(objectspb.Job{}, t.JobID),
 						t.Status.State.String(),
-						res.Resolve(api.Node{}, t.NodeID),
+						res.Resolve(objectspb.Node{}, t.NodeID),
 					)
 				}
 			} else {
-				output = func(t *api.Task) { fmt.Println(t.ID) }
+				output = func(t *objectspb.Task) { fmt.Println(t.ID) }
 			}
 
 			for _, t := range r.Tasks {

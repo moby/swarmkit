@@ -11,8 +11,8 @@ import (
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/events"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
 	"golang.org/x/net/context"
 )
 
@@ -23,7 +23,7 @@ type containerController struct {
 	container *containerConfig
 }
 
-func newContainerController(task *api.Task) (*containerController, error) {
+func newContainerController(task *objectspb.Task) (*containerController, error) {
 	ctnr, err := newContainerConfig(task)
 	if err != nil {
 		return nil, err

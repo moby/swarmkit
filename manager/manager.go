@@ -9,18 +9,20 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/clusterapi"
 	"github.com/docker/swarm-v2/manager/dispatcher"
 	"github.com/docker/swarm-v2/manager/drainer"
 	"github.com/docker/swarm-v2/manager/orchestrator"
 	"github.com/docker/swarm-v2/manager/scheduler"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	dispatcherpb "github.com/docker/swarm-v2/pb/docker/cluster/api/dispatcher"
+	managerpb "github.com/docker/swarm-v2/pb/docker/cluster/api/manager"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
-var _ api.ManagerServer = &Manager{}
+var _ managerpb.ManagerServer = &Manager{}
 
 // Config is used to tune the Manager.
 type Config struct {
@@ -105,9 +107,9 @@ func New(config *Config) (*Manager, error) {
 		leadershipCh: leadershipCh,
 	}
 
-	api.RegisterManagerServer(m.server, m)
+	managerpb.RegisterManagerServer(m.server, m)
 	api.RegisterClusterServer(m.server, m.apiserver)
-	api.RegisterDispatcherServer(m.server, m.dispatcher)
+	dispatcherpb.RegisterDispatcherServer(m.server, m.dispatcher)
 
 	return m, nil
 }
@@ -213,8 +215,8 @@ func (m *Manager) Stop() {
 
 // NodeCount returns number of nodes connected to particular manager.
 // Supposed to be called only by cluster leader.
-func (m *Manager) NodeCount(ctx context.Context, r *api.NodeCountRequest) (*api.NodeCountResponse, error) {
-	return &api.NodeCountResponse{
+func (m *Manager) NodeCount(ctx context.Context, r *managerpb.NodeCountRequest) (*managerpb.NodeCountResponse, error) {
+	return &managerpb.NodeCountResponse{
 		Count: m.dispatcher.NodeCount(),
 	}, nil
 }

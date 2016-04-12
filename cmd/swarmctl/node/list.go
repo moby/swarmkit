@@ -5,8 +5,10 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/pb/docker/cluster/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +33,7 @@ var (
 				return err
 			}
 
-			var output func(n *api.Node)
+			var output func(n *objectspb.Node)
 
 			if !quiet {
 				w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
@@ -40,10 +42,10 @@ var (
 					_ = w.Flush()
 				}()
 				fmt.Fprintln(w, "ID\tName\tStatus\tAvailability")
-				output = func(n *api.Node) {
+				output = func(n *objectspb.Node) {
 					spec := n.Spec
 					if spec == nil {
-						spec = &api.NodeSpec{}
+						spec = &specspb.NodeSpec{}
 					}
 					name := spec.Meta.Name
 					if name == "" {
@@ -57,7 +59,7 @@ var (
 					)
 				}
 			} else {
-				output = func(n *api.Node) { fmt.Println(n.ID) }
+				output = func(n *objectspb.Node) { fmt.Println(n.ID) }
 			}
 
 			for _, n := range r.Nodes {

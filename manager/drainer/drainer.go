@@ -4,8 +4,10 @@ import (
 	"container/list"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	specspb "github.com/docker/swarm-v2/pb/docker/cluster/specs"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 )
 
 // Drainer removes tasks which are assigned to nodes that are no longer
@@ -30,10 +32,10 @@ func New(store state.WatchableStore) *Drainer {
 	}
 }
 
-func invalidNode(n *api.Node) bool {
+func invalidNode(n *objectspb.Node) bool {
 	return n == nil ||
-		n.Status.State != api.NodeStatus_READY ||
-		(n.Spec != nil && n.Spec.Availability == api.NodeAvailabilityDrain)
+		n.Status.State != typespb.NodeStatus_READY ||
+		(n.Spec != nil && n.Spec.Availability == specspb.NodeAvailabilityDrain)
 }
 
 func (d *Drainer) initialPass(tx state.ReadTx) error {
@@ -111,16 +113,16 @@ func (d *Drainer) Stop() {
 }
 
 // enqueue queues a task for deletion.
-func (d *Drainer) enqueue(t *api.Task) {
+func (d *Drainer) enqueue(t *objectspb.Task) {
 	d.deleteTasks.PushBack(t)
 }
 
-func (d *Drainer) taskChanged(t *api.Task) int {
+func (d *Drainer) taskChanged(t *objectspb.Task) int {
 	if t.NodeID == "" {
 		return 0
 	}
 
-	var n *api.Node
+	var n *objectspb.Node
 	err := d.store.View(func(tx state.ReadTx) error {
 		n = tx.Nodes().Get(t.NodeID)
 		return nil
@@ -137,7 +139,7 @@ func (d *Drainer) taskChanged(t *api.Task) int {
 }
 
 func (d *Drainer) removeTasksByNodeID(nodeID string) int {
-	var tasks []*api.Task
+	var tasks []*objectspb.Task
 	err := d.store.View(func(tx state.ReadTx) error {
 		var err error
 		tasks, err = tx.Tasks().Find(state.ByNodeID(nodeID))
@@ -156,7 +158,7 @@ func (d *Drainer) removeTasksByNodeID(nodeID string) int {
 	return pendingChanges
 }
 
-func (d *Drainer) nodeChanged(n *api.Node) int {
+func (d *Drainer) nodeChanged(n *objectspb.Node) int {
 	if !invalidNode(n) {
 		return 0
 	}
@@ -170,7 +172,7 @@ func (d *Drainer) tick() {
 		var next *list.Element
 		for e := d.deleteTasks.Front(); e != nil; e = next {
 			next = e.Next()
-			t := e.Value.(*api.Task)
+			t := e.Value.(*objectspb.Task)
 
 			// Ignore the error on deletion, because something else
 			// may have deleted the task before we got to it.

@@ -1,7 +1,8 @@
 package exec
 
 import (
-	"github.com/docker/swarm-v2/api"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
 	"golang.org/x/net/context"
 )
 
@@ -10,8 +11,8 @@ type Executor interface {
 	// TODO(stevvooe): Allow instropsection of tasks known by executor.
 
 	// Describe returns the underlying node description.
-	Describe(ctx context.Context) (*api.NodeDescription, error)
+	Describe(ctx context.Context) (*typespb.NodeDescription, error)
 
 	// Runner provides a runner for the given task.
-	Runner(t *api.Task) (Runner, error)
+	Runner(t *objectspb.Task) (Runner, error)
 }

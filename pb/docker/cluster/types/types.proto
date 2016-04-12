@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package docker.cluster.api;
+package docker.cluster.types;
 
 import "gogoproto/gogo.proto";
 

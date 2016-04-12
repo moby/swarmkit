@@ -2,11 +2,26 @@
 // source: objects.proto
 // DO NOT EDIT!
 
-package api
+/*
+	Package objects is a generated protocol buffer package.
+
+	It is generated from these files:
+		objects.proto
+
+	It has these top-level messages:
+		Node
+		Job
+		Task
+		Volume
+		Network
+*/
+package objects
 
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
+import docker_cluster_types "github.com/docker/swarm-v2/pb/docker/cluster/types"
+import docker_cluster_specs "github.com/docker/swarm-v2/pb/docker/cluster/specs"
 import _ "github.com/gogo/protobuf/gogoproto"
 
 import strings "strings"
@@ -22,20 +37,24 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto.GoGoProtoPackageIsVersion1
+
 // Node provides the internal node state as seen by the cluster.
 type Node struct {
 	// ID specifies the identity of the node.
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Version tracks the last time the node was modified.
-	Version Version `protobuf:"bytes,2,opt,name=version" json:"version"`
+	Version docker_cluster_types.Version `protobuf:"bytes,2,opt,name=version" json:"version"`
 	// Spec defines the desired state of the node as specified by the user.
 	// The system will honor this and will *never* modify it.
-	Spec *NodeSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	Spec *docker_cluster_specs.NodeSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
 	// Description encapsulated the properties of the Node as reported by the
 	// agent.
-	Description *NodeDescription `protobuf:"bytes,4,opt,name=description" json:"description,omitempty"`
+	Description *docker_cluster_types.NodeDescription `protobuf:"bytes,4,opt,name=description" json:"description,omitempty"`
 	// Status provides the current status of the node, as seen by the manager.
-	Status NodeStatus `protobuf:"bytes,5,opt,name=status" json:"status"`
+	Status docker_cluster_types.NodeStatus `protobuf:"bytes,5,opt,name=status" json:"status"`
 }
 
 func (m *Node) Reset()                    { *m = Node{} }
@@ -45,8 +64,8 @@ func (*Node) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{
 type Job struct {
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Version tracks the last time the job was modified.
-	Version Version  `protobuf:"bytes,2,opt,name=version" json:"version"`
-	Spec    *JobSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	Version docker_cluster_types.Version  `protobuf:"bytes,2,opt,name=version" json:"version"`
+	Spec    *docker_cluster_specs.JobSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *Job) Reset()                    { *m = Job{} }
@@ -59,7 +78,7 @@ func (*Job) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{1
 type Task struct {
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Version tracks the last time the task was modified.
-	Version Version `protobuf:"bytes,2,opt,name=version" json:"version"`
+	Version docker_cluster_types.Version `protobuf:"bytes,2,opt,name=version" json:"version"`
 	// JobID indicates the job under which this task is orchestrated. This
 	// should almost always be set.
 	JobID string `protobuf:"bytes,3,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
@@ -69,12 +88,12 @@ type Task struct {
 	// Meta inherits labels from the JobSpec.Meta associated with this task. It
 	// may include other labels added by the manager. The name will be a human
 	// readable name, calculated based on the JobSpec.Meta.Name field.
-	Meta Meta `protobuf:"bytes,5,opt,name=meta" json:"meta"`
+	Meta docker_cluster_specs.Meta `protobuf:"bytes,5,opt,name=meta" json:"meta"`
 	// Spec declares the runtime parameters for the task. This is copied out of
 	// the job's template field.
-	Spec     *TaskSpec                 `protobuf:"bytes,6,opt,name=spec" json:"spec,omitempty"`
-	Status   *TaskStatus               `protobuf:"bytes,7,opt,name=status" json:"status,omitempty"`
-	Networks []*Task_NetworkAttachment `protobuf:"bytes,8,rep,name=networks" json:"networks,omitempty"`
+	Spec     *docker_cluster_specs.TaskSpec   `protobuf:"bytes,6,opt,name=spec" json:"spec,omitempty"`
+	Status   *docker_cluster_types.TaskStatus `protobuf:"bytes,7,opt,name=status" json:"status,omitempty"`
+	Networks []*Task_NetworkAttachment        `protobuf:"bytes,8,rep,name=networks" json:"networks,omitempty"`
 }
 
 func (m *Task) Reset()                    { *m = Task{} }
@@ -98,10 +117,10 @@ func (*Task_NetworkAttachment) Descriptor() ([]byte, []int) { return fileDescrip
 type Volume struct {
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Version tracks the last time the volume was modified.
-	Version Version     `protobuf:"bytes,2,opt,name=version" json:"version"`
-	Spec    *VolumeSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	Version docker_cluster_types.Version     `protobuf:"bytes,2,opt,name=version" json:"version"`
+	Spec    *docker_cluster_specs.VolumeSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
 	// Driver specific operational state provided by the Volume driver.
-	DriverState *Driver `protobuf:"bytes,4,opt,name=driver_state,json=driverState" json:"driver_state,omitempty"`
+	DriverState *docker_cluster_types.Driver `protobuf:"bytes,4,opt,name=driver_state,json=driverState" json:"driver_state,omitempty"`
 }
 
 func (m *Volume) Reset()                    { *m = Volume{} }
@@ -111,13 +130,13 @@ func (*Volume) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []in
 type Network struct {
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Version tracks the last time the network was modified.
-	Version Version      `protobuf:"bytes,2,opt,name=version" json:"version"`
-	Spec    *NetworkSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	Version docker_cluster_types.Version      `protobuf:"bytes,2,opt,name=version" json:"version"`
+	Spec    *docker_cluster_specs.NetworkSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
 	// Driver specific operational state provided by the network driver.
-	DriverState *Driver `protobuf:"bytes,4,opt,name=driver_state,json=driverState" json:"driver_state,omitempty"`
+	DriverState *docker_cluster_types.Driver `protobuf:"bytes,4,opt,name=driver_state,json=driverState" json:"driver_state,omitempty"`
 	// Runtime state of IPAM options. This may not reflect the
 	// ipam options from NetworkSpec.
-	IPAM *IPAMOptions `protobuf:"bytes,5,opt,name=ipam" json:"ipam,omitempty"`
+	IPAM *docker_cluster_types.IPAMOptions `protobuf:"bytes,5,opt,name=ipam" json:"ipam,omitempty"`
 }
 
 func (m *Network) Reset()                    { *m = Network{} }
@@ -125,12 +144,12 @@ func (*Network) ProtoMessage()               {}
 func (*Network) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{4} }
 
 func init() {
-	proto.RegisterType((*Node)(nil), "docker.cluster.api.Node")
-	proto.RegisterType((*Job)(nil), "docker.cluster.api.Job")
-	proto.RegisterType((*Task)(nil), "docker.cluster.api.Task")
-	proto.RegisterType((*Task_NetworkAttachment)(nil), "docker.cluster.api.Task.NetworkAttachment")
-	proto.RegisterType((*Volume)(nil), "docker.cluster.api.Volume")
-	proto.RegisterType((*Network)(nil), "docker.cluster.api.Network")
+	proto.RegisterType((*Node)(nil), "docker.cluster.objects.Node")
+	proto.RegisterType((*Job)(nil), "docker.cluster.objects.Job")
+	proto.RegisterType((*Task)(nil), "docker.cluster.objects.Task")
+	proto.RegisterType((*Task_NetworkAttachment)(nil), "docker.cluster.objects.Task.NetworkAttachment")
+	proto.RegisterType((*Volume)(nil), "docker.cluster.objects.Volume")
+	proto.RegisterType((*Network)(nil), "docker.cluster.objects.Network")
 }
 
 func (m *Node) Copy() *Node {
@@ -243,7 +262,7 @@ func (this *Node) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 9)
-	s = append(s, "&api.Node{")
+	s = append(s, "&objects.Node{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	s = append(s, "Version: "+strings.Replace(this.Version.GoString(), `&`, ``, 1)+",\n")
 	if this.Spec != nil {
@@ -261,7 +280,7 @@ func (this *Job) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 7)
-	s = append(s, "&api.Job{")
+	s = append(s, "&objects.Job{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	s = append(s, "Version: "+strings.Replace(this.Version.GoString(), `&`, ``, 1)+",\n")
 	if this.Spec != nil {
@@ -275,7 +294,7 @@ func (this *Task) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 12)
-	s = append(s, "&api.Task{")
+	s = append(s, "&objects.Task{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	s = append(s, "Version: "+strings.Replace(this.Version.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "JobID: "+fmt.Sprintf("%#v", this.JobID)+",\n")
@@ -298,7 +317,7 @@ func (this *Task_NetworkAttachment) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.Task_NetworkAttachment{")
+	s = append(s, "&objects.Task_NetworkAttachment{")
 	if this.Network != nil {
 		s = append(s, "Network: "+fmt.Sprintf("%#v", this.Network)+",\n")
 	}
@@ -311,7 +330,7 @@ func (this *Volume) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 8)
-	s = append(s, "&api.Volume{")
+	s = append(s, "&objects.Volume{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	s = append(s, "Version: "+strings.Replace(this.Version.GoString(), `&`, ``, 1)+",\n")
 	if this.Spec != nil {
@@ -328,7 +347,7 @@ func (this *Network) GoString() string {
 		return "nil"
 	}
 	s := make([]string, 0, 9)
-	s = append(s, "&api.Network{")
+	s = append(s, "&objects.Network{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	s = append(s, "Version: "+strings.Replace(this.Version.GoString(), `&`, ``, 1)+",\n")
 	if this.Spec != nil {
@@ -891,10 +910,10 @@ func (this *Node) String() string {
 	}
 	s := strings.Join([]string{`&Node{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
-		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NodeSpec", "NodeSpec", 1) + `,`,
-		`Description:` + strings.Replace(fmt.Sprintf("%v", this.Description), "NodeDescription", "NodeDescription", 1) + `,`,
-		`Status:` + strings.Replace(strings.Replace(this.Status.String(), "NodeStatus", "NodeStatus", 1), `&`, ``, 1) + `,`,
+		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "docker_cluster_types.Version", 1), `&`, ``, 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NodeSpec", "docker_cluster_specs.NodeSpec", 1) + `,`,
+		`Description:` + strings.Replace(fmt.Sprintf("%v", this.Description), "NodeDescription", "docker_cluster_types.NodeDescription", 1) + `,`,
+		`Status:` + strings.Replace(strings.Replace(this.Status.String(), "NodeStatus", "docker_cluster_types.NodeStatus", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -905,8 +924,8 @@ func (this *Job) String() string {
 	}
 	s := strings.Join([]string{`&Job{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
-		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
+		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "docker_cluster_types.Version", 1), `&`, ``, 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "docker_cluster_specs.JobSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -917,12 +936,12 @@ func (this *Task) String() string {
 	}
 	s := strings.Join([]string{`&Task{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
-		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
+		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "docker_cluster_types.Version", 1), `&`, ``, 1) + `,`,
 		`JobID:` + fmt.Sprintf("%v", this.JobID) + `,`,
 		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
-		`Meta:` + strings.Replace(strings.Replace(this.Meta.String(), "Meta", "Meta", 1), `&`, ``, 1) + `,`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "TaskSpec", "TaskSpec", 1) + `,`,
-		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "TaskStatus", "TaskStatus", 1) + `,`,
+		`Meta:` + strings.Replace(strings.Replace(this.Meta.String(), "Meta", "docker_cluster_specs.Meta", 1), `&`, ``, 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "TaskSpec", "docker_cluster_specs.TaskSpec", 1) + `,`,
+		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "TaskStatus", "docker_cluster_types.TaskStatus", 1) + `,`,
 		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Task_NetworkAttachment", "Task_NetworkAttachment", 1) + `,`,
 		`}`,
 	}, "")
@@ -945,9 +964,9 @@ func (this *Volume) String() string {
 	}
 	s := strings.Join([]string{`&Volume{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
-		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "VolumeSpec", "VolumeSpec", 1) + `,`,
-		`DriverState:` + strings.Replace(fmt.Sprintf("%v", this.DriverState), "Driver", "Driver", 1) + `,`,
+		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "docker_cluster_types.Version", 1), `&`, ``, 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "VolumeSpec", "docker_cluster_specs.VolumeSpec", 1) + `,`,
+		`DriverState:` + strings.Replace(fmt.Sprintf("%v", this.DriverState), "Driver", "docker_cluster_types.Driver", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -958,10 +977,10 @@ func (this *Network) String() string {
 	}
 	s := strings.Join([]string{`&Network{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
-		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NetworkSpec", "NetworkSpec", 1) + `,`,
-		`DriverState:` + strings.Replace(fmt.Sprintf("%v", this.DriverState), "Driver", "Driver", 1) + `,`,
-		`IPAM:` + strings.Replace(fmt.Sprintf("%v", this.IPAM), "IPAMOptions", "IPAMOptions", 1) + `,`,
+		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "docker_cluster_types.Version", 1), `&`, ``, 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NetworkSpec", "docker_cluster_specs.NetworkSpec", 1) + `,`,
+		`DriverState:` + strings.Replace(fmt.Sprintf("%v", this.DriverState), "Driver", "docker_cluster_types.Driver", 1) + `,`,
+		`IPAM:` + strings.Replace(fmt.Sprintf("%v", this.IPAM), "IPAMOptions", "docker_cluster_types.IPAMOptions", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1089,7 +1108,7 @@ func (m *Node) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &NodeSpec{}
+				m.Spec = &docker_cluster_specs.NodeSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -1122,7 +1141,7 @@ func (m *Node) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Description == nil {
-				m.Description = &NodeDescription{}
+				m.Description = &docker_cluster_types.NodeDescription{}
 			}
 			if err := m.Description.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -1294,7 +1313,7 @@ func (m *Job) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &JobSpec{}
+				m.Spec = &docker_cluster_specs.JobSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -1524,7 +1543,7 @@ func (m *Task) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &TaskSpec{}
+				m.Spec = &docker_cluster_specs.TaskSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -1557,7 +1576,7 @@ func (m *Task) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Status == nil {
-				m.Status = &TaskStatus{}
+				m.Status = &docker_cluster_types.TaskStatus{}
 			}
 			if err := m.Status.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -1842,7 +1861,7 @@ func (m *Volume) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &VolumeSpec{}
+				m.Spec = &docker_cluster_specs.VolumeSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -1875,7 +1894,7 @@ func (m *Volume) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.DriverState == nil {
-				m.DriverState = &Driver{}
+				m.DriverState = &docker_cluster_types.Driver{}
 			}
 			if err := m.DriverState.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -2017,7 +2036,7 @@ func (m *Network) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &NetworkSpec{}
+				m.Spec = &docker_cluster_specs.NetworkSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -2050,7 +2069,7 @@ func (m *Network) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.DriverState == nil {
-				m.DriverState = &Driver{}
+				m.DriverState = &docker_cluster_types.Driver{}
 			}
 			if err := m.DriverState.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -2083,7 +2102,7 @@ func (m *Network) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.IPAM == nil {
-				m.IPAM = &IPAMOptions{}
+				m.IPAM = &docker_cluster_types.IPAMOptions{}
 			}
 			if err := m.IPAM.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -2216,40 +2235,41 @@ var (
 )
 
 var fileDescriptorObjects = []byte{
-	// 545 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xb4, 0x54, 0xcd, 0x6e, 0xd3, 0x40,
-	0x10, 0xae, 0x7f, 0xe2, 0x24, 0x13, 0x38, 0xb0, 0x42, 0xc8, 0x0a, 0x51, 0x12, 0xb9, 0x97, 0x8a,
-	0x83, 0x8b, 0x52, 0xc1, 0x05, 0x38, 0x34, 0x0a, 0x48, 0x41, 0x6a, 0x41, 0x06, 0xf5, 0x5a, 0x39,
-	0xf6, 0xaa, 0x75, 0xd3, 0x64, 0x2d, 0xef, 0x06, 0xc4, 0x8d, 0x3b, 0x27, 0x78, 0xaa, 0x1c, 0x7b,
-	0xe4, 0x54, 0xd1, 0x3e, 0x01, 0xe2, 0x09, 0x98, 0x5d, 0x6f, 0xfe, 0x54, 0x9b, 0x13, 0x39, 0xac,
-	0x6c, 0xcf, 0x7c, 0xdf, 0xfc, 0x7c, 0x33, 0x6b, 0xb8, 0xcf, 0x46, 0x17, 0x34, 0x12, 0xdc, 0x4f,
-	0x33, 0x26, 0x18, 0x21, 0x31, 0x8b, 0xc6, 0x34, 0xf3, 0xa3, 0xcb, 0x19, 0x17, 0xf8, 0x0c, 0xd3,
-	0xa4, 0xd9, 0x10, 0x5f, 0x52, 0xaa, 0x01, 0xcd, 0x06, 0x4f, 0x69, 0xb4, 0xf8, 0x78, 0x78, 0xc6,
-	0xce, 0x98, 0x7a, 0xdd, 0x97, 0x6f, 0xb9, 0xd5, 0xfb, 0x61, 0x82, 0x7d, 0xcc, 0x62, 0x4a, 0x1e,
-	0x81, 0x99, 0xc4, 0xae, 0xd1, 0x35, 0xf6, 0xea, 0x7d, 0xe7, 0xf6, 0xba, 0x63, 0x0e, 0x07, 0x01,
-	0x5a, 0xc8, 0x0b, 0xa8, 0x7e, 0xa2, 0x19, 0x4f, 0xd8, 0xd4, 0x35, 0xd1, 0xd9, 0xe8, 0x3d, 0xf6,
-	0xef, 0xa6, 0xf5, 0x4f, 0x72, 0x48, 0xdf, 0x9e, 0x5f, 0x77, 0x76, 0x82, 0x05, 0x83, 0x3c, 0x05,
-	0x5b, 0x96, 0xe0, 0x5a, 0x8a, 0xd9, 0x2a, 0x62, 0xca, 0xe4, 0x1f, 0x10, 0x13, 0x28, 0x24, 0x79,
-	0x0d, 0x8d, 0x98, 0xf2, 0x28, 0x4b, 0x52, 0x21, 0x53, 0xda, 0x8a, 0xb8, 0x5b, 0x46, 0x1c, 0xac,
-	0xa0, 0xc1, 0x3a, 0x8f, 0xbc, 0x04, 0x87, 0x8b, 0x50, 0xcc, 0xb8, 0x5b, 0x51, 0x11, 0xda, 0xa5,
-	0xa9, 0x15, 0x4a, 0xd7, 0xad, 0x39, 0xde, 0x37, 0x03, 0xac, 0xb7, 0x6c, 0xb4, 0x1d, 0x4d, 0xf6,
-	0x37, 0x34, 0x29, 0x64, 0x62, 0xee, 0x95, 0x24, 0xde, 0x1f, 0x0b, 0xec, 0x8f, 0x21, 0x1f, 0x6f,
-	0xa7, 0x9c, 0x2e, 0x38, 0x17, 0x6c, 0x74, 0x8a, 0x81, 0x2d, 0x15, 0xb8, 0x8e, 0x81, 0x2b, 0x58,
-	0x00, 0xc6, 0xae, 0xa0, 0x63, 0x18, 0x93, 0x5d, 0xa8, 0x4e, 0x51, 0x29, 0x09, 0xb1, 0x15, 0x04,
-	0x10, 0xe2, 0x48, 0xf1, 0x10, 0xe3, 0x48, 0x17, 0x82, 0x7a, 0x60, 0x4f, 0xa8, 0x08, 0xb5, 0xdc,
-	0x6e, 0x51, 0x01, 0x47, 0xe8, 0xd7, 0xd9, 0x15, 0x76, 0xb9, 0x1d, 0x4e, 0xf9, 0x76, 0xc8, 0xbe,
-	0xd7, 0xb6, 0xe3, 0xf9, 0x72, 0xac, 0xd5, 0xf2, 0xb1, 0x2a, 0x8e, 0x42, 0x2d, 0x06, 0x4a, 0xde,
-	0x40, 0x6d, 0x4a, 0xc5, 0x67, 0x96, 0x8d, 0xb9, 0x5b, 0xeb, 0x5a, 0xc8, 0x7c, 0x52, 0xc6, 0xf4,
-	0x8f, 0x73, 0xe0, 0xa1, 0x10, 0x61, 0x74, 0x3e, 0xa1, 0x53, 0x11, 0x2c, 0xb9, 0xcd, 0x73, 0x78,
-	0x70, 0xc7, 0x4d, 0x9e, 0xa1, 0x3e, 0xb9, 0x51, 0xcd, 0xa6, 0x44, 0x7e, 0xcd, 0x0b, 0x16, 0x58,
-	0xd2, 0x82, 0x7a, 0x18, 0xc7, 0x19, 0xe5, 0x9c, 0x72, 0x9c, 0x9b, 0xb5, 0x57, 0x0f, 0x56, 0x06,
-	0xef, 0xca, 0x00, 0xe7, 0x84, 0x5d, 0xce, 0x26, 0x5b, 0xba, 0x99, 0xbd, 0x8d, 0x2d, 0x2c, 0xd4,
-	0x31, 0x4f, 0xbf, 0xa6, 0xfe, 0x2b, 0xb8, 0x17, 0x67, 0x09, 0x46, 0x38, 0x95, 0xb2, 0x52, 0x7d,
-	0x39, 0x9b, 0x45, 0xdc, 0x81, 0xc2, 0xe1, 0x9d, 0x54, 0x4f, 0x39, 0x0d, 0xea, 0x7d, 0x37, 0xa1,
-	0xaa, 0x55, 0xd8, 0x4e, 0x4f, 0x07, 0x1b, 0x3d, 0x75, 0xfe, 0x31, 0x85, 0xff, 0xd6, 0x14, 0xd2,
-	0xed, 0x24, 0x0d, 0x27, 0x7a, 0xef, 0x0b, 0x73, 0x0e, 0xdf, 0x1f, 0x1e, 0xbd, 0x53, 0xbf, 0x25,
-	0xde, 0xaf, 0x61, 0xaf, 0xb6, 0x34, 0x04, 0x8a, 0xd6, 0x6f, 0xcd, 0x6f, 0xda, 0x3b, 0x3f, 0xf1,
-	0xfc, 0xbe, 0x69, 0x1b, 0x5f, 0x6f, 0xdb, 0xc6, 0x1c, 0xcf, 0x15, 0x9e, 0x5f, 0x78, 0x46, 0x8e,
-	0xfa, 0x47, 0x1f, 0xfc, 0x0d, 0x00, 0x00, 0xff, 0xff, 0x41, 0xfa, 0xf2, 0xf6, 0xf8, 0x05, 0x00,
-	0x00,
+	// 576 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xb4, 0x54, 0xcb, 0x6e, 0xd3, 0x40,
+	0x14, 0xad, 0x93, 0x89, 0x93, 0x4c, 0x60, 0xc1, 0x08, 0x55, 0x51, 0x94, 0x26, 0xae, 0x11, 0x52,
+	0x57, 0x8e, 0x08, 0x45, 0x82, 0x05, 0xa0, 0x46, 0x91, 0x50, 0x2a, 0xb5, 0x20, 0x17, 0x75, 0x5b,
+	0x39, 0xf6, 0xa8, 0xb8, 0x79, 0x8c, 0xe5, 0x99, 0x80, 0xd8, 0x21, 0x7e, 0x80, 0x35, 0x7c, 0x51,
+	0x96, 0xac, 0x10, 0xab, 0x8a, 0xf6, 0x0b, 0xf8, 0x04, 0xee, 0x3c, 0xf2, 0x6a, 0x9d, 0xae, 0xc8,
+	0x62, 0xec, 0xd1, 0x9d, 0x73, 0xee, 0x9c, 0x7b, 0xee, 0xcc, 0xe0, 0xfb, 0xac, 0x7f, 0x41, 0x43,
+	0xc1, 0xbd, 0x24, 0x65, 0x82, 0x91, 0xed, 0x88, 0x85, 0x03, 0x9a, 0x7a, 0xe1, 0x70, 0xc2, 0x05,
+	0xfc, 0xcd, 0x6a, 0xcd, 0xd1, 0xf1, 0x96, 0x89, 0xb7, 0xc4, 0xe7, 0x84, 0x72, 0xfd, 0xd5, 0xcc,
+	0x5b, 0x08, 0x9e, 0xd0, 0x90, 0xeb, 0xaf, 0x41, 0x3c, 0x3c, 0x67, 0xe7, 0x4c, 0x4d, 0x5b, 0x72,
+	0xa6, 0xa3, 0xee, 0x8f, 0x1c, 0x46, 0xc7, 0x2c, 0xa2, 0x64, 0x1b, 0xe7, 0xe2, 0xa8, 0x6a, 0x39,
+	0xd6, 0x5e, 0xb9, 0x63, 0x5f, 0x5f, 0x36, 0x73, 0xbd, 0xae, 0x0f, 0x11, 0xf2, 0x12, 0x17, 0x3f,
+	0xd2, 0x94, 0xc7, 0x6c, 0x5c, 0xcd, 0xc1, 0x62, 0xa5, 0xbd, 0xe3, 0xdd, 0x10, 0xa9, 0x65, 0x9c,
+	0x6a, 0x50, 0x07, 0x4d, 0x2f, 0x9b, 0x5b, 0xfe, 0x8c, 0x43, 0xda, 0x18, 0x49, 0x11, 0xd5, 0xbc,
+	0xe2, 0x36, 0x6e, 0x72, 0xb5, 0x40, 0x29, 0xe0, 0x04, 0x66, 0xbe, 0xc2, 0x92, 0x37, 0xb8, 0x12,
+	0x51, 0x1e, 0xa6, 0x71, 0x22, 0xe4, 0xb6, 0x48, 0x51, 0x1f, 0x67, 0x6f, 0x2b, 0xa9, 0xdd, 0x05,
+	0xd8, 0x5f, 0x66, 0x92, 0x57, 0xd8, 0xe6, 0x22, 0x10, 0x13, 0x5e, 0x2d, 0xa8, 0x1c, 0xce, 0xfa,
+	0x1c, 0x27, 0x0a, 0x67, 0xd4, 0x1b, 0x96, 0xfb, 0xcd, 0xc2, 0xf9, 0x43, 0xd6, 0xdf, 0x94, 0x37,
+	0x4f, 0x56, 0xbc, 0xd9, 0xc9, 0xf6, 0x06, 0xf6, 0x5f, 0x58, 0xe3, 0x7e, 0x45, 0x18, 0xbd, 0x0f,
+	0xf8, 0x60, 0x53, 0x92, 0x1c, 0x6c, 0x5f, 0xb0, 0xfe, 0x19, 0xa4, 0xce, 0xab, 0xd4, 0x65, 0x48,
+	0x5d, 0x00, 0x09, 0x90, 0xbd, 0x00, 0x0b, 0xbd, 0x88, 0x3c, 0xc2, 0xc5, 0x31, 0xf8, 0x25, 0x21,
+	0x48, 0x41, 0x30, 0x40, 0x6c, 0x69, 0x21, 0x60, 0x6c, 0xb9, 0x04, 0xa0, 0x7d, 0x8c, 0x46, 0x54,
+	0x04, 0xc6, 0xf6, 0x5a, 0x76, 0x65, 0x47, 0x80, 0x30, 0xfb, 0x2b, 0xf4, 0xfc, 0xac, 0xd8, 0x77,
+	0x9d, 0x15, 0x59, 0xfd, 0xd2, 0x59, 0x79, 0x3e, 0x6f, 0x71, 0xf1, 0xae, 0x16, 0x2b, 0x96, 0xc2,
+	0xcd, 0x9a, 0x4b, 0x0e, 0x71, 0x69, 0x4c, 0xc5, 0x27, 0x96, 0x0e, 0x78, 0xb5, 0xe4, 0xe4, 0x81,
+	0xeb, 0x79, 0xd9, 0xd7, 0x4f, 0xb1, 0xbd, 0x63, 0x0d, 0x3e, 0x10, 0x22, 0x08, 0x3f, 0x8c, 0xe8,
+	0x58, 0xf8, 0x73, 0x7e, 0x6d, 0x88, 0x1f, 0xdc, 0x5a, 0x26, 0x2f, 0xc0, 0x29, 0x1d, 0x54, 0x7d,
+	0xaa, 0xb4, 0x9b, 0xeb, 0xf2, 0x1b, 0xae, 0x3f, 0xc3, 0x93, 0x3a, 0x2e, 0x07, 0x51, 0x94, 0x52,
+	0xce, 0x29, 0x87, 0x3e, 0xe6, 0xf7, 0xca, 0xfe, 0x22, 0xe0, 0xfe, 0xb2, 0xb0, 0x7d, 0xca, 0x86,
+	0x93, 0xd1, 0xc6, 0x6e, 0xed, 0xfe, 0xca, 0xc9, 0x74, 0xb2, 0x3b, 0xa1, 0x25, 0x2c, 0xf5, 0xe2,
+	0x35, 0xbe, 0x17, 0xa5, 0x31, 0xe4, 0x38, 0x93, 0x16, 0x53, 0x73, 0x71, 0xeb, 0xd9, 0x3b, 0x77,
+	0x15, 0x12, 0xee, 0xab, 0xfa, 0xcb, 0xde, 0x50, 0xf7, 0x7b, 0x0e, 0x17, 0x8d, 0x17, 0x9b, 0xaa,
+	0xec, 0xd9, 0x4a, 0x65, 0xbb, 0x6b, 0xde, 0x23, 0xad, 0xe1, 0x3f, 0x96, 0x06, 0x09, 0x50, 0x9c,
+	0x04, 0x23, 0x73, 0x23, 0x76, 0xb3, 0x89, 0xbd, 0x77, 0x07, 0x47, 0x6f, 0xd5, 0xd3, 0xc5, 0x3b,
+	0x25, 0xa8, 0x19, 0xc9, 0x80, 0xaf, 0x88, 0x9d, 0xfa, 0xf4, 0xaa, 0xb1, 0xf5, 0x1b, 0xc6, 0xdf,
+	0xab, 0x86, 0xf5, 0xe5, 0xba, 0x61, 0x4d, 0x61, 0xfc, 0x84, 0xf1, 0x07, 0x46, 0xdf, 0x56, 0xaf,
+	0xf9, 0xd3, 0x7f, 0x01, 0x00, 0x00, 0xff, 0xff, 0xf3, 0xf2, 0x7d, 0xf4, 0x50, 0x06, 0x00, 0x00,
 }

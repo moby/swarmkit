@@ -5,18 +5,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/swarm-v2/manager/state"
+	dispatcherpb "github.com/docker/swarm-v2/pb/docker/cluster/api/dispatcher"
+	objectspb "github.com/docker/swarm-v2/pb/docker/cluster/objects"
+	typespb "github.com/docker/swarm-v2/pb/docker/cluster/types"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/manager/state"
-	"github.com/stretchr/testify/assert"
 )
 
 type grpcDispatcher struct {
-	Client           api.DispatcherClient
+	Client           dispatcherpb.DispatcherClient
 	Store            state.Store
 	grpcServer       *grpc.Server
 	dispatcherServer *Dispatcher
@@ -37,7 +37,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	s := grpc.NewServer()
 	store := state.NewMemoryStore(nil)
 	d := New(store, c)
-	api.RegisterDispatcherServer(s, d)
+	dispatcherpb.RegisterDispatcherServer(s, d)
 	go func() {
 		// Serve will always return an error (even when properly stopped).
 		// Explicitly ignore it.
@@ -48,7 +48,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 		s.Stop()
 		return nil, err
 	}
-	cli := api.NewDispatcherClient(conn)
+	cli := dispatcherpb.NewDispatcherClient(conn)
 	return &grpcDispatcher{
 		Client:           cli,
 		Store:            store,
@@ -63,17 +63,17 @@ func TestRegisterTwice(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode := &api.Node{ID: "test"}
+	testNode := &objectspb.Node{ID: "test"}
 	var expectedSessionID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
+		resp, err := gd.Client.Register(context.Background(), &dispatcherpb.RegisterRequest{NodeID: testNode.ID})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
 	}
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
+		resp, err := gd.Client.Register(context.Background(), &dispatcherpb.RegisterRequest{NodeID: testNode.ID})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode.ID)
 		// session should be different!
@@ -89,10 +89,10 @@ func TestHeartbeat(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode := &api.Node{ID: "test"}
+	testNode := &objectspb.Node{ID: "test"}
 	var expectedSessionID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
+		resp, err := gd.Client.Register(context.Background(), &dispatcherpb.RegisterRequest{NodeID: testNode.ID})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
@@ -102,13 +102,13 @@ func TestHeartbeat(t *testing.T) {
 
 	{
 		// heartbeat without correct SessionID should fail
-		resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID})
+		resp, err := gd.Client.Heartbeat(context.Background(), &dispatcherpb.HeartbeatRequest{NodeID: testNode.ID})
 		assert.Nil(t, resp)
 		assert.Error(t, err)
 		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
 	}
 
-	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID, SessionID: expectedSessionID})
+	resp, err := gd.Client.Heartbeat(context.Background(), &dispatcherpb.HeartbeatRequest{NodeID: testNode.ID, SessionID: expectedSessionID})
 	assert.NoError(t, err)
 	assert.NotZero(t, resp.Period)
 	time.Sleep(300 * time.Millisecond)
@@ -116,7 +116,7 @@ func TestHeartbeat(t *testing.T) {
 	err = gd.Store.View(func(readTx state.ReadTx) error {
 		storeNode := readTx.Nodes().Get("test")
 		assert.NotNil(t, storeNode)
-		assert.Equal(t, storeNode.Status.State, api.NodeStatus_READY)
+		assert.Equal(t, storeNode.Status.State, typespb.NodeStatus_READY)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -130,10 +130,10 @@ func TestHeartbeatTimeout(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode := &api.Node{ID: "test"}
+	testNode := &objectspb.Node{ID: "test"}
 	var expectedSessionID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
+		resp, err := gd.Client.Register(context.Background(), &dispatcherpb.RegisterRequest{NodeID: testNode.ID})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
@@ -145,13 +145,13 @@ func TestHeartbeatTimeout(t *testing.T) {
 	err = gd.Store.View(func(readTx state.ReadTx) error {
 		storeNode := readTx.Nodes().Get("test")
 		assert.NotNil(t, storeNode)
-		assert.Equal(t, api.NodeStatus_DOWN, storeNode.Status.State)
+		assert.Equal(t, typespb.NodeStatus_DOWN, storeNode.Status.State)
 		return nil
 	})
 	assert.NoError(t, err)
 
 	// check that node is deregistered
-	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID, SessionID: expectedSessionID})
+	resp, err := gd.Client.Heartbeat(context.Background(), &dispatcherpb.HeartbeatRequest{NodeID: testNode.ID, SessionID: expectedSessionID})
 	assert.Nil(t, resp)
 	assert.Error(t, err)
 	assert.Equal(t, grpc.ErrorDesc(err), ErrNodeNotRegistered.Error())
@@ -161,7 +161,7 @@ func TestHeartbeatUnregistered(t *testing.T) {
 	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
-	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: "test"})
+	resp, err := gd.Client.Heartbeat(context.Background(), &dispatcherpb.HeartbeatRequest{NodeID: "test"})
 	assert.Nil(t, resp)
 	assert.Error(t, err)
 	assert.Equal(t, grpc.ErrorDesc(err), ErrNodeNotRegistered.Error())
@@ -171,27 +171,27 @@ func TestTasks(t *testing.T) {
 	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
-	testNode := &api.Node{ID: "test"}
+	testNode := &objectspb.Node{ID: "test"}
 	var expectedSessionID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
+		resp, err := gd.Client.Register(context.Background(), &dispatcherpb.RegisterRequest{NodeID: testNode.ID})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
 	}
-	testTask1 := &api.Task{
+	testTask1 := &objectspb.Task{
 		ID:     "testTask1",
 		NodeID: testNode.ID,
 	}
-	testTask2 := &api.Task{
+	testTask2 := &objectspb.Task{
 		ID:     "testTask2",
 		NodeID: testNode.ID,
 	}
 
 	{
 		// without correct SessionID should fail
-		stream, err := gd.Client.Tasks(context.Background(), &api.TasksRequest{NodeID: testNode.ID})
+		stream, err := gd.Client.Tasks(context.Background(), &dispatcherpb.TasksRequest{NodeID: testNode.ID})
 		assert.NoError(t, err)
 		assert.NotNil(t, stream)
 		resp, err := stream.Recv()
@@ -200,7 +200,7 @@ func TestTasks(t *testing.T) {
 		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
 	}
 
-	stream, err := gd.Client.Tasks(context.Background(), &api.TasksRequest{NodeID: testNode.ID, SessionID: expectedSessionID})
+	stream, err := gd.Client.Tasks(context.Background(), &dispatcherpb.TasksRequest{NodeID: testNode.ID, SessionID: expectedSessionID})
 	assert.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond)
@@ -213,10 +213,10 @@ func TestTasks(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = gd.Store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Update(&api.Task{
+		assert.NoError(t, tx.Tasks().Update(&objectspb.Task{
 			ID:     testTask1.ID,
 			NodeID: testNode.ID,
-			Status: &api.TaskStatus{State: api.TaskStateFailed, Err: "1234"},
+			Status: &typespb.TaskStatus{State: typespb.TaskStateFailed, Err: "1234"},
 		}))
 		return nil
 	})
@@ -247,7 +247,7 @@ func TestTasks(t *testing.T) {
 	assert.Equal(t, len(resp.Tasks), 2)
 	for _, task := range resp.Tasks {
 		if task.ID == "testTask1" {
-			assert.Equal(t, task.Status.State, api.TaskStateFailed)
+			assert.Equal(t, task.Status.State, typespb.TaskStateFailed)
 			assert.Equal(t, task.Status.Err, "1234")
 		}
 	}
@@ -266,20 +266,20 @@ func TestTaskUpdate(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode := &api.Node{ID: "test"}
+	testNode := &objectspb.Node{ID: "test"}
 	var expectedSessionID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
+		resp, err := gd.Client.Register(context.Background(), &dispatcherpb.RegisterRequest{NodeID: testNode.ID})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
 	}
-	testTask1 := &api.Task{
+	testTask1 := &objectspb.Task{
 		ID:     "testTask1",
 		NodeID: testNode.ID,
 	}
-	testTask2 := &api.Task{
+	testTask2 := &objectspb.Task{
 		ID:     "testTask2",
 		NodeID: testNode.ID,
 	}
@@ -290,11 +290,11 @@ func TestTaskUpdate(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	testTask1.Status = &api.TaskStatus{State: api.TaskStateAssigned}
-	testTask2.Status = &api.TaskStatus{State: api.TaskStateAssigned}
-	updReq := &api.UpdateTaskStatusRequest{
+	testTask1.Status = &typespb.TaskStatus{State: typespb.TaskStateAssigned}
+	testTask2.Status = &typespb.TaskStatus{State: typespb.TaskStateAssigned}
+	updReq := &dispatcherpb.UpdateTaskStatusRequest{
 		NodeID: testNode.ID,
-		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
+		Updates: []*dispatcherpb.UpdateTaskStatusRequest_TaskStatusUpdate{
 			{
 				TaskID: testTask1.ID,
 				Status: testTask1.Status,
@@ -323,8 +323,8 @@ func TestTaskUpdate(t *testing.T) {
 		storeTask2 := readTx.Tasks().Get(testTask2.ID)
 		assert.NotNil(t, storeTask2)
 		assert.NotNil(t, storeTask2.Status)
-		assert.Equal(t, storeTask1.Status.State, api.TaskStateAssigned)
-		assert.Equal(t, storeTask2.Status.State, api.TaskStateAssigned)
+		assert.Equal(t, storeTask1.Status.State, typespb.TaskStateAssigned)
+		assert.Equal(t, storeTask2.Status.State, typespb.TaskStateAssigned)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -336,14 +336,14 @@ func TestSession(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode := &api.Node{ID: "test"}
-	resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
+	testNode := &objectspb.Node{ID: "test"}
+	resp, err := gd.Client.Register(context.Background(), &dispatcherpb.RegisterRequest{NodeID: testNode.ID})
 	assert.NoError(t, err)
 	assert.Equal(t, resp.NodeID, testNode.ID)
 	assert.NotEmpty(t, resp.SessionID)
 	sid := resp.SessionID
 
-	stream, err := gd.Client.Session(context.Background(), &api.SessionRequest{NodeID: testNode.ID, SessionID: sid})
+	stream, err := gd.Client.Session(context.Background(), &dispatcherpb.SessionRequest{NodeID: testNode.ID, SessionID: sid})
 	msg, err := stream.Recv()
 	assert.Equal(t, 1, len(msg.Managers))
 	assert.False(t, msg.Disconnect)
@@ -357,15 +357,15 @@ func TestNodesCount(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode1 := &api.Node{ID: "test1"}
-	testNode2 := &api.Node{ID: "test2"}
+	testNode1 := &objectspb.Node{ID: "test1"}
+	testNode2 := &objectspb.Node{ID: "test2"}
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode1.ID})
+		resp, err := gd.Client.Register(context.Background(), &dispatcherpb.RegisterRequest{NodeID: testNode1.ID})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode1.ID)
 	}
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode2.ID})
+		resp, err := gd.Client.Register(context.Background(), &dispatcherpb.RegisterRequest{NodeID: testNode2.ID})
 		assert.NoError(t, err)
 		assert.Equal(t, resp.NodeID, testNode2.ID)
 	}
