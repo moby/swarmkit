@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"math/rand"
 	"os"
@@ -21,6 +20,7 @@ import (
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state/leaderconn"
 	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/gogo/protobuf/proto"
@@ -34,8 +34,6 @@ const (
 )
 
 var (
-	defaultLogger = &raft.DefaultLogger{Logger: log.New(os.Stderr, "raft", log.LstdFlags)}
-
 	// ErrConfChangeRefused is returned when there is an issue with the configuration change
 	ErrConfChangeRefused = errors.New("raft: propose configuration change refused")
 	// ErrApplyNotSpecified is returned during the creation of a raft node when no apply method was provided
@@ -274,7 +272,7 @@ func DefaultNodeConfig() *raft.Config {
 		ElectionTick:    3,
 		MaxSizePerMsg:   math.MaxUint16,
 		MaxInflightMsgs: 256,
-		Logger:          defaultLogger,
+		Logger:          log.G(context.Background()),
 	}
 }
 
@@ -938,7 +936,7 @@ func (n *Node) configure(ctx context.Context, cc raftpb.ConfChange) error {
 			return err
 		}
 		if x != nil {
-			log.Panic("return type should always be error")
+			log.G(ctx).Panic("raft: configuration change error, return type should always be error")
 		}
 		return nil
 	case <-ctx.Done():

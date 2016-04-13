@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/raft"
 	"github.com/docker/swarm-v2/api"
 	"github.com/pivotal-golang/clock/fakeclock"
@@ -24,12 +25,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	raftLogger = &raft.DefaultLogger{Logger: log.New(ioutil.Discard, "", 0)}
-)
-
 func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
+	logrus.SetOutput(ioutil.Discard)
 }
 
 type testNode struct {
@@ -187,7 +185,6 @@ func newNode(t *testing.T, clockSource *fakeclock.FakeClock, opts ...NewNodeOpti
 	s := grpc.NewServer()
 
 	cfg := DefaultNodeConfig()
-	cfg.Logger = raftLogger
 
 	stateDir, err := ioutil.TempDir("", "test-raft")
 	require.NoError(t, err, "can't create temporary state directory")
@@ -257,7 +254,6 @@ func restartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *testNo
 	s := grpc.NewServer()
 
 	cfg := DefaultNodeConfig()
-	cfg.Logger = raftLogger
 
 	newNodeOpts := NewNodeOptions{
 		Addr:        oldNode.Address,
