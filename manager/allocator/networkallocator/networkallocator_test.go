@@ -88,15 +88,15 @@ func TestAllocateEmptyConfig(t *testing.T) {
 
 	err := na.Allocate(n)
 	assert.NoError(t, err)
-	assert.NotEqual(t, n.Spec.IPAM.Configurations, nil)
-	assert.Equal(t, len(n.Spec.IPAM.Configurations), 1)
-	assert.Equal(t, n.Spec.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n.Spec.IPAM.Configurations[0].Reserved), 0)
+	assert.NotEqual(t, n.IPAM.Configurations, nil)
+	assert.Equal(t, len(n.IPAM.Configurations), 1)
+	assert.Equal(t, n.IPAM.Configurations[0].Range, "")
+	assert.Equal(t, len(n.IPAM.Configurations[0].Reserved), 0)
 
-	_, _, err = net.ParseCIDR(n.Spec.IPAM.Configurations[0].Subnet)
+	_, _, err = net.ParseCIDR(n.IPAM.Configurations[0].Subnet)
 	assert.NoError(t, err)
 
-	ip := net.ParseIP(n.Spec.IPAM.Configurations[0].Gateway)
+	ip := net.ParseIP(n.IPAM.Configurations[0].Gateway)
 	assert.NotEqual(t, ip, nil)
 }
 
@@ -122,12 +122,12 @@ func TestAllocateWithOneSubnet(t *testing.T) {
 
 	err := na.Allocate(n)
 	assert.NoError(t, err)
-	assert.Equal(t, len(n.Spec.IPAM.Configurations), 1)
-	assert.Equal(t, n.Spec.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n.Spec.IPAM.Configurations[0].Reserved), 0)
-	assert.Equal(t, n.Spec.IPAM.Configurations[0].Subnet, "192.168.1.0/24")
+	assert.Equal(t, len(n.IPAM.Configurations), 1)
+	assert.Equal(t, n.IPAM.Configurations[0].Range, "")
+	assert.Equal(t, len(n.IPAM.Configurations[0].Reserved), 0)
+	assert.Equal(t, n.IPAM.Configurations[0].Subnet, "192.168.1.0/24")
 
-	ip := net.ParseIP(n.Spec.IPAM.Configurations[0].Gateway)
+	ip := net.ParseIP(n.IPAM.Configurations[0].Gateway)
 	assert.NotEqual(t, ip, nil)
 }
 
@@ -154,11 +154,11 @@ func TestAllocateWithOneSubnetGateway(t *testing.T) {
 
 	err := na.Allocate(n)
 	assert.NoError(t, err)
-	assert.Equal(t, len(n.Spec.IPAM.Configurations), 1)
-	assert.Equal(t, n.Spec.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n.Spec.IPAM.Configurations[0].Reserved), 0)
-	assert.Equal(t, n.Spec.IPAM.Configurations[0].Subnet, "192.168.1.0/24")
-	assert.Equal(t, n.Spec.IPAM.Configurations[0].Gateway, "192.168.1.1")
+	assert.Equal(t, len(n.IPAM.Configurations), 1)
+	assert.Equal(t, n.IPAM.Configurations[0].Range, "")
+	assert.Equal(t, len(n.IPAM.Configurations[0].Reserved), 0)
+	assert.Equal(t, n.IPAM.Configurations[0].Subnet, "192.168.1.0/24")
+	assert.Equal(t, n.IPAM.Configurations[0].Gateway, "192.168.1.1")
 }
 
 func TestAllocateWithOneSubnetInvalidGateway(t *testing.T) {
@@ -235,17 +235,17 @@ func TestAllocateWithTwoSubnetsNoGateway(t *testing.T) {
 
 	err := na.Allocate(n)
 	assert.NoError(t, err)
-	assert.Equal(t, len(n.Spec.IPAM.Configurations), 2)
-	assert.Equal(t, n.Spec.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n.Spec.IPAM.Configurations[0].Reserved), 0)
-	assert.Equal(t, n.Spec.IPAM.Configurations[0].Subnet, "192.168.1.0/24")
-	assert.Equal(t, n.Spec.IPAM.Configurations[1].Range, "")
-	assert.Equal(t, len(n.Spec.IPAM.Configurations[1].Reserved), 0)
-	assert.Equal(t, n.Spec.IPAM.Configurations[1].Subnet, "192.168.2.0/24")
+	assert.Equal(t, len(n.IPAM.Configurations), 2)
+	assert.Equal(t, n.IPAM.Configurations[0].Range, "")
+	assert.Equal(t, len(n.IPAM.Configurations[0].Reserved), 0)
+	assert.Equal(t, n.IPAM.Configurations[0].Subnet, "192.168.1.0/24")
+	assert.Equal(t, n.IPAM.Configurations[1].Range, "")
+	assert.Equal(t, len(n.IPAM.Configurations[1].Reserved), 0)
+	assert.Equal(t, n.IPAM.Configurations[1].Subnet, "192.168.2.0/24")
 
-	ip := net.ParseIP(n.Spec.IPAM.Configurations[0].Gateway)
+	ip := net.ParseIP(n.IPAM.Configurations[0].Gateway)
 	assert.NotEqual(t, ip, nil)
-	ip = net.ParseIP(n.Spec.IPAM.Configurations[1].Gateway)
+	ip = net.ParseIP(n.IPAM.Configurations[1].Gateway)
 	assert.NotEqual(t, ip, nil)
 }
 

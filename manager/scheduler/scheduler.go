@@ -52,6 +52,12 @@ func (s *Scheduler) setupTasksList(tx state.ReadTx) error {
 		return err
 	}
 	for _, t := range tasks {
+		// Ignore all tasks that have not reached ALLOCATED
+		// state.
+		if t.Status == nil || t.Status.State < api.TaskStateAllocated {
+			continue
+		}
+
 		s.allTasks[t.ID] = t
 		if t.NodeID == "" {
 			s.enqueue(t)
@@ -135,6 +141,12 @@ func schedulableNode(n *api.Node) bool {
 }
 
 func (s *Scheduler) createTask(t *api.Task) int {
+	// Ignore all tasks that have not reached ALLOCATED
+	// state.
+	if t.Status == nil || t.Status.State < api.TaskStateAllocated {
+		return 0
+	}
+
 	s.allTasks[t.ID] = t
 	if t.NodeID == "" {
 		// unassigned task
@@ -152,6 +164,12 @@ func (s *Scheduler) createTask(t *api.Task) int {
 }
 
 func (s *Scheduler) updateTask(t *api.Task) int {
+	// Ignore all tasks that have not reached ALLOCATED
+	// state.
+	if t.Status == nil || t.Status.State < api.TaskStateAllocated {
+		return 0
+	}
+
 	oldTask := s.allTasks[t.ID]
 	if oldTask != nil && t.NodeID != oldTask.NodeID {
 		if s.tasksByNode[oldTask.NodeID] != nil {

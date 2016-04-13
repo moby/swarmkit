@@ -71,15 +71,15 @@ func TestAllocator(t *testing.T) {
 	// Now verify if we get network and tasks updated properly
 	n1, err := watchNetwork(t, netWatch)
 	assert.NoError(t, err)
-	assert.NotEqual(t, n1.Spec.IPAM.Configurations, nil)
-	assert.Equal(t, len(n1.Spec.IPAM.Configurations), 1)
-	assert.Equal(t, n1.Spec.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n1.Spec.IPAM.Configurations[0].Reserved), 0)
+	assert.NotEqual(t, n1.IPAM.Configurations, nil)
+	assert.Equal(t, len(n1.IPAM.Configurations), 1)
+	assert.Equal(t, n1.IPAM.Configurations[0].Range, "")
+	assert.Equal(t, len(n1.IPAM.Configurations[0].Reserved), 0)
 
-	_, subnet, err := net.ParseCIDR(n1.Spec.IPAM.Configurations[0].Subnet)
+	_, subnet, err := net.ParseCIDR(n1.IPAM.Configurations[0].Subnet)
 	assert.NoError(t, err)
 
-	ip := net.ParseIP(n1.Spec.IPAM.Configurations[0].Gateway)
+	ip := net.ParseIP(n1.IPAM.Configurations[0].Gateway)
 	assert.NotEqual(t, ip, nil)
 
 	t1, err := watchTask(t, taskWatch)
@@ -106,15 +106,15 @@ func TestAllocator(t *testing.T) {
 
 	n2, err := watchNetwork(t, netWatch)
 	assert.NoError(t, err)
-	assert.NotEqual(t, n2.Spec.IPAM.Configurations, nil)
-	assert.Equal(t, len(n2.Spec.IPAM.Configurations), 1)
-	assert.Equal(t, n2.Spec.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n2.Spec.IPAM.Configurations[0].Reserved), 0)
+	assert.NotEqual(t, n2.IPAM.Configurations, nil)
+	assert.Equal(t, len(n2.IPAM.Configurations), 1)
+	assert.Equal(t, n2.IPAM.Configurations[0].Range, "")
+	assert.Equal(t, len(n2.IPAM.Configurations[0].Reserved), 0)
 
-	_, subnet, err = net.ParseCIDR(n2.Spec.IPAM.Configurations[0].Subnet)
+	_, subnet, err = net.ParseCIDR(n2.IPAM.Configurations[0].Subnet)
 	assert.NoError(t, err)
 
-	ip = net.ParseIP(n2.Spec.IPAM.Configurations[0].Gateway)
+	ip = net.ParseIP(n2.IPAM.Configurations[0].Gateway)
 	assert.NotEqual(t, ip, nil)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
@@ -194,15 +194,15 @@ func TestAllocator(t *testing.T) {
 
 	n3, err := watchNetwork(t, netWatch)
 	assert.NoError(t, err)
-	assert.NotEqual(t, n3.Spec.IPAM.Configurations, nil)
-	assert.Equal(t, len(n3.Spec.IPAM.Configurations), 1)
-	assert.Equal(t, n3.Spec.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n3.Spec.IPAM.Configurations[0].Reserved), 0)
+	assert.NotEqual(t, n3.IPAM.Configurations, nil)
+	assert.Equal(t, len(n3.IPAM.Configurations), 1)
+	assert.Equal(t, n3.IPAM.Configurations[0].Range, "")
+	assert.Equal(t, len(n3.IPAM.Configurations[0].Reserved), 0)
 
-	_, subnet, err = net.ParseCIDR(n3.Spec.IPAM.Configurations[0].Subnet)
+	_, subnet, err = net.ParseCIDR(n3.IPAM.Configurations[0].Subnet)
 	assert.NoError(t, err)
 
-	ip = net.ParseIP(n3.Spec.IPAM.Configurations[0].Gateway)
+	ip = net.ParseIP(n3.IPAM.Configurations[0].Gateway)
 	assert.NotEqual(t, ip, nil)
 
 	t3, err := watchTask(t, taskWatch)
@@ -227,17 +227,26 @@ func TestAllocator(t *testing.T) {
 	_, err = watchNetwork(t, netWatch)
 	assert.NoError(t, err)
 
+	// Try to create a task with no network attachments and test
+	// that it moves to ALLOCATED state.
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		t4 := &api.Task{
 			ID: "testTaskID4",
 			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
-			Spec: &api.TaskSpec{},
+			Spec: &api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+			},
 		}
 		assert.NoError(t, tx.Tasks().Create(t4))
 		return nil
 	}))
+	t4, err := watchTask(t, taskWatch)
+	assert.NoError(t, err)
+	assert.Equal(t, t4.Status.State, api.TaskStateAllocated)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Networks().Update(n2))

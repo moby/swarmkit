@@ -152,6 +152,35 @@ func (a *Allocator) doTaskAlloc(nc *networkContext, ev events.Event) {
 	}
 
 	if len(t.Spec.GetContainer().Networks) == 0 {
+		// If we are already in allocated state, there is
+		// absolutely nothing else to do.
+		if t.Status.State == api.TaskStateAllocated {
+			return
+		}
+
+		// If the task is not attached to any network, network
+		// allocators job is done. Immediately cast a vote so
+		// that the task can be moved to ALLOCATED state as
+		// soon as possible.
+		if err := a.store.Update(func(tx state.Tx) error {
+			storeT := tx.Tasks().Get(t.ID)
+			if storeT == nil {
+				return fmt.Errorf("task %s not found while trying to update state", t.ID)
+			}
+
+			if a.taskAllocateVote(networkVoter, t.ID) {
+				storeT.Status.State = api.TaskStateAllocated
+			}
+
+			if err := tx.Tasks().Update(storeT); err != nil {
+				return fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
+			}
+
+			return nil
+		}); err != nil {
+			logrus.Error(err)
+		}
+
 		return
 	}
 
