@@ -80,6 +80,10 @@ func (s *session) register(ctx context.Context) (string, error) {
 			Errorf("node description unavailable")
 		return "", err
 	}
+	// Override hostname
+	if s.agent.config.Hostname != "" {
+		description.Hostname = s.agent.config.Hostname
+	}
 
 	resp, err := client.Register(ctx, &api.RegisterRequest{
 		NodeID:      s.agent.config.ID,
