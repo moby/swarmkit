@@ -116,8 +116,7 @@ var (
 			ID: "id3",
 			Spec: &api.NetworkSpec{
 				Meta: api.Meta{
-					// intentionally conflicting name
-					Name: "name2",
+					Name: "name3",
 				},
 			},
 		},
@@ -422,7 +421,7 @@ func TestStoreNetwork(t *testing.T) {
 		assert.Len(t, foundNetworks, 1)
 		foundNetworks, err = readTx.Networks().Find(ByName("name2"))
 		assert.NoError(t, err)
-		assert.Len(t, foundNetworks, 2)
+		assert.Len(t, foundNetworks, 1)
 		foundNetworks, err = readTx.Networks().Find(ByName("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNetworks, 0)

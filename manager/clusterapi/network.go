@@ -164,7 +164,11 @@ func (s *Server) ListNetworks(ctx context.Context, request *api.ListNetworksRequ
 	err := s.store.View(func(tx state.ReadTx) error {
 		var err error
 
-		networks, err = tx.Networks().Find(state.All)
+		if request.Options == nil || request.Options.Query == "" {
+			networks, err = tx.Networks().Find(state.All)
+		} else {
+			networks, err = tx.Networks().Find(state.ByQuery(request.Options.Query))
+		}
 		return err
 	})
 	if err != nil {
