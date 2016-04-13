@@ -237,7 +237,7 @@ func TestAllocator(t *testing.T) {
 			},
 			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
-					Container: &api.ContainerSpec{},
+					Container: &api.Container{},
 				},
 			},
 		}
