@@ -154,7 +154,7 @@ func (a *Allocator) doTaskAlloc(nc *networkContext, ev events.Event) {
 	if len(t.Spec.GetContainer().Networks) == 0 {
 		// If we are already in allocated state, there is
 		// absolutely nothing else to do.
-		if t.Status.State == api.TaskStateAllocated {
+		if t.Status.State >= api.TaskStateAllocated {
 			return
 		}
 
