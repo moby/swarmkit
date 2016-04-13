@@ -17,28 +17,25 @@ import (
 var (
 	nodeSet = []*api.Node{
 		{
-			ID: "id1",
-			Spec: &api.NodeSpec{
-				Annotations: api.Annotations{
-					Name: "name1",
-				},
+			ID:   "id1",
+			Spec: &api.NodeSpec{},
+			Description: &api.NodeDescription{
+				Hostname: "name1",
 			},
 		},
 		{
-			ID: "id2",
-			Spec: &api.NodeSpec{
-				Annotations: api.Annotations{
-					Name: "name2",
-				},
+			ID:   "id2",
+			Spec: &api.NodeSpec{},
+			Description: &api.NodeDescription{
+				Hostname: "name2",
 			},
 		},
 		{
-			ID: "id3",
-			Spec: &api.NodeSpec{
-				Annotations: api.Annotations{
-					// intentionally conflicting name
-					Name: "name2",
-				},
+			ID:   "id3",
+			Spec: &api.NodeSpec{},
+			Description: &api.NodeDescription{
+				// intentionally conflicting hostname
+				Hostname: "name2",
 			},
 		},
 	}
@@ -221,6 +218,9 @@ func TestStoreNode(t *testing.T) {
 		foundNodes, err = readTx.Nodes().Find(state.ByQuery("name"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 0)
+		foundNodes, err = readTx.Nodes().Find(state.ByQuery("name1"))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 1)
 		foundNodes, err = readTx.Nodes().Find(state.ByQuery("id"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 3)
@@ -231,11 +231,10 @@ func TestStoreNode(t *testing.T) {
 
 	// Update.
 	update := &api.Node{
-		ID: "id3",
-		Spec: &api.NodeSpec{
-			Annotations: api.Annotations{
-				Name: "name3",
-			},
+		ID:   "id3",
+		Spec: &api.NodeSpec{},
+		Description: &api.NodeDescription{
+			Hostname: "name3",
 		},
 	}
 	err = s.Update(func(tx state.Tx) error {
@@ -937,11 +936,10 @@ func TestFailedTransaction(t *testing.T) {
 	// Create one node
 	err := s.Update(func(tx state.Tx) error {
 		n := &api.Node{
-			ID: "id1",
-			Spec: &api.NodeSpec{
-				Annotations: api.Annotations{
-					Name: "name1",
-				},
+			ID:   "id1",
+			Spec: &api.NodeSpec{},
+			Description: &api.NodeDescription{
+				Hostname: "name1",
 			},
 		}
 
@@ -953,11 +951,10 @@ func TestFailedTransaction(t *testing.T) {
 	// Create a second node, but then roll back the transaction
 	err = s.Update(func(tx state.Tx) error {
 		n := &api.Node{
-			ID: "id2",
-			Spec: &api.NodeSpec{
-				Annotations: api.Annotations{
-					Name: "name2",
-				},
+			ID:   "id2",
+			Spec: &api.NodeSpec{},
+			Description: &api.NodeDescription{
+				Hostname: "name2",
 			},
 		}
 

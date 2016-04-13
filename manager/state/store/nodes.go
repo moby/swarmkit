@@ -20,10 +20,11 @@ func init() {
 					Unique:  true,
 					Indexer: nodeIndexerByID{},
 				},
+				// TODO(aluzzardi): Use `indexHostname` instead.
 				indexName: {
 					Name:         indexName,
 					AllowMissing: true,
-					Indexer:      nodeIndexerByName{},
+					Indexer:      nodeIndexerByHostname{},
 				},
 			},
 		},
@@ -200,21 +201,21 @@ func (ni nodeIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
 	return prefixFromArgs(args...)
 }
 
-type nodeIndexerByName struct{}
+type nodeIndexerByHostname struct{}
 
-func (ni nodeIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
+func (ni nodeIndexerByHostname) FromArgs(args ...interface{}) ([]byte, error) {
 	return fromArgs(args...)
 }
 
-func (ni nodeIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
+func (ni nodeIndexerByHostname) FromObject(obj interface{}) (bool, []byte, error) {
 	n, ok := obj.(nodeEntry)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
 
-	if n.Spec == nil {
+	if n.Description == nil {
 		return false, nil, nil
 	}
 	// Add the null character as a terminator
-	return true, []byte(n.Spec.Annotations.Name + "\x00"), nil
+	return true, []byte(n.Description.Hostname + "\x00"), nil
 }
