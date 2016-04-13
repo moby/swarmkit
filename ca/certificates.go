@@ -44,6 +44,8 @@ func GetRootCA(certFile string) ([]byte, error) {
 		return nil, err
 	}
 
+	// TODO(diogo): check expiration
+
 	return caPem, nil
 }
 
@@ -51,7 +53,6 @@ func GetRootCA(certFile string) ([]byte, error) {
 // overwriting any existing CAs.
 func CreateRootCA(pathToCert, pathToKey, rootCN string) (signer.Signer, []byte, error) {
 	// Create a simple CSR for the CA using the default CA validator and policy
-	// TODO(diogo): review the default policy to ensure it matches our requirements
 	log.Debugf("generating a new CA in: %s with CN=%s, using a %dbit %s key.", pathToCert, rootCN, RootKeySize, RootKeyAlgo)
 	req := cfcsr.CertificateRequest{
 		CN:         rootCN,
@@ -78,7 +79,7 @@ func CreateRootCA(pathToCert, pathToKey, rootCN string) (signer.Signer, []byte, 
 	}
 
 	// Create a Signer out of the private key
-	signer, err := local.NewSigner(parsedKey, parsedCert, signer.DefaultSigAlgo(parsedKey), nil)
+	signer, err := local.NewSigner(parsedKey, parsedCert, signer.DefaultSigAlgo(parsedKey), DefaultPolicy())
 	if err != nil {
 		log.Errorf("failed to create signer: %v", err)
 		return nil, nil, err
@@ -187,6 +188,9 @@ func ParseValidateAndSignCSR(caSigner signer.Signer, csrBytes []byte, cn, nodeTy
 // GetRemoteCA returns the remote endpoint's CA certificate, assuming the server
 // is server the whole chain.
 func GetRemoteCA(managerAddr, hashStr string) ([]byte, error) {
+	// This TLS Config is intentionally using InsecureSkipVerify. Either we're
+	// doing TOFU, in which case we don't validate the remote CA, or we're using
+	// a user supplied hash to check the integrity of the CA certificate.
 	config := tls.Config{InsecureSkipVerify: true}
 	conn, err := net.Dial("tcp", managerAddr)
 	if err != nil {

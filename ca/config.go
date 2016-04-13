@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	cfconfig "github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
+
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"golang.org/x/net/context"
@@ -97,6 +99,24 @@ func (s *ManagerSecurityConfig) validate() error {
 	return nil
 }
 
+var DefaultPolicy = func() *cfconfig.Signing {
+	return &cfconfig.Signing{
+		Default: &cfconfig.SigningProfile{
+			Usage: []string{"signing", "key encipherment", "server auth", "client auth"},
+			// 3 months of expiry
+			ExpiryString: "2160h",
+			Expiry:       2160 * time.Hour,
+			// Only trust the key components from the CSR. Everything else should
+			// come directly from API call params.
+			CSRWhitelist: &cfconfig.CSRWhitelist{
+				PublicKey:          true,
+				PublicKeyAlgorithm: true,
+				SignatureAlgorithm: true,
+			},
+		},
+	}
+}
+
 func loadAgentSecurityConfig(baseCertDir string) *AgentSecurityConfig {
 	pathToRootCACert := filepath.Join(baseCertDir, rootCACertFilename)
 	pathToTLSKey := filepath.Join(baseCertDir, agentTLSKeyFilename)
@@ -132,24 +152,8 @@ func loadManagerSecurityConfig(baseCertDir string) *ManagerSecurityConfig {
 		securityConfig.RootCACert = rootCACert
 	}
 
-	// Define our signer policy
-	policy := &cfconfig.Signing{
-		Default: &cfconfig.SigningProfile{
-			Usage: []string{"signing", "key encipherment", "server auth", "client auth"},
-			// 3 months of expiry
-			ExpiryString: "2160h",
-			// Only trust the key components from the CSR. Everything else should
-			// come directly from API call params.
-			CSRWhitelist: &cfconfig.CSRWhitelist{
-				PublicKey:          true,
-				PublicKeyAlgorithm: true,
-				SignatureAlgorithm: true,
-			},
-		},
-	}
-
 	// If there is a root CA full keypair, we're going to get a signer from it and set rootCA to true
-	securityConfig.Signer, err = local.NewSignerFromFile(pathToRootCACert, pathToRootCAKey, policy)
+	securityConfig.Signer, err = local.NewSignerFromFile(pathToRootCACert, pathToRootCAKey, DefaultPolicy())
 	if err == nil {
 		log.Debugf("loaded a root CA from: %s\n", pathToRootCACert)
 		securityConfig.RootCA = true
@@ -160,7 +164,7 @@ func loadManagerSecurityConfig(baseCertDir string) *ManagerSecurityConfig {
 	pathToIntermediateCACert := filepath.Join(baseCertDir, intCACertFilename)
 	pathToIntermediateCAKey := filepath.Join(baseCertDir, intCAKeyFilename)
 	if securityConfig.Signer == nil {
-		securityConfig.Signer, err = local.NewSignerFromFile(pathToIntermediateCACert, pathToIntermediateCAKey, nil)
+		securityConfig.Signer, err = local.NewSignerFromFile(pathToIntermediateCACert, pathToIntermediateCAKey, DefaultPolicy())
 		if err == nil {
 			log.Debugf("loaded an intermediate CA from: %s\n", pathToIntermediateCACert)
 			securityConfig.IntCA = true
