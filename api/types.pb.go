@@ -29,12 +29,12 @@
 		WeightedPeer
 		Meta
 		NodeSpec
-		JobSpec
+		ServiceSpec
 		TaskSpec
 		VolumeSpec
 		NetworkSpec
 		Node
-		Job
+		Service
 		Task
 		Volume
 		Network
@@ -53,16 +53,16 @@
 		RemoveTaskResponse
 		ListTasksRequest
 		ListTasksResponse
-		CreateJobRequest
-		CreateJobResponse
-		GetJobRequest
-		GetJobResponse
-		UpdateJobRequest
-		UpdateJobResponse
-		RemoveJobRequest
-		RemoveJobResponse
-		ListJobsRequest
-		ListJobsResponse
+		CreateServiceRequest
+		CreateServiceResponse
+		GetServiceRequest
+		GetServiceResponse
+		UpdateServiceRequest
+		UpdateServiceResponse
+		RemoveServiceRequest
+		RemoveServiceResponse
+		ListServicesRequest
+		ListServicesResponse
 		CreateNetworkRequest
 		CreateNetworkResponse
 		GetNetworkRequest
