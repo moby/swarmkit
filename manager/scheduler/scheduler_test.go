@@ -431,7 +431,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 		ID: "id1",
 		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
-				Container: &api.ContainerSpec{
+				Container: &api.Container{
 					Resources: &api.ResourceRequirements{
 						Reservations: &api.Resources{
 							MemoryBytes: 2e9,
@@ -442,6 +442,9 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 		},
 		Meta: api.Meta{
 			Name: "name1",
+		},
+		Status: &api.TaskStatus{
+			State: api.TaskStateAllocated,
 		},
 	}
 
