@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -19,6 +20,7 @@ import (
 func TestCreateRootCA(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
 	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
 
 	pathToRootCACert := filepath.Join(tempBaseDir, "root.crt")
 	pathToRootCAKey := filepath.Join(tempBaseDir, "root.key")
@@ -39,6 +41,7 @@ func TestCreateRootCA(t *testing.T) {
 func TestGetRootCA(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
 	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
 
 	pathToRootCACert := filepath.Join(tempBaseDir, "root.crt")
 	pathToRootCAKey := filepath.Join(tempBaseDir, "root.key")
@@ -54,6 +57,7 @@ func TestGetRootCA(t *testing.T) {
 func TestGenerateAndSignNewTLSCert(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
 	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
 
 	pathToRootCACert := filepath.Join(tempBaseDir, "root.crt")
 	pathToRootCAKey := filepath.Join(tempBaseDir, "root.key")
@@ -79,6 +83,7 @@ func TestGenerateAndSignNewTLSCert(t *testing.T) {
 func TestGenerateAndWriteNewCSR(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
 	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
 
 	pathToCSR := filepath.Join(tempBaseDir, "cert.csr")
 	pathToKey := filepath.Join(tempBaseDir, "cert.key")
@@ -104,6 +109,7 @@ func TestGenerateAndWriteNewCSR(t *testing.T) {
 func TestParseValidateAndSignCSR(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
 	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
 
 	pathToRootCACert := filepath.Join(tempBaseDir, "root.crt")
 	pathToRootCAKey := filepath.Join(tempBaseDir, "root.key")
@@ -130,6 +136,7 @@ func TestParseValidateAndSignCSR(t *testing.T) {
 func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
 	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
 
 	pathToRootCACert := filepath.Join(tempBaseDir, "root.crt")
 	pathToRootCAKey := filepath.Join(tempBaseDir, "root.key")
@@ -146,7 +153,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 		},
 		CN:         "maliciousCN",
 		Hosts:      []string{"docker.com"},
-		KeyRequest: &cfcsr.BasicKeyRequest{"ecdsa", 256},
+		KeyRequest: &cfcsr.BasicKeyRequest{A: "ecdsa", S: 256},
 	}
 
 	csr, _, err := cfcsr.ParseRequest(req)
@@ -169,6 +176,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 func TestGetRemoteCA(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
 	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
 
 	pathToRootCACert := filepath.Join(tempBaseDir, "root.crt")
 	pathToRootCAKey := filepath.Join(tempBaseDir, "root.key")
@@ -203,6 +211,7 @@ func TestGetRemoteCA(t *testing.T) {
 func TestGetRemoteCAInvalidHash(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
 	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
 
 	pathToRootCACert := filepath.Join(tempBaseDir, "root.crt")
 	pathToRootCAKey := filepath.Join(tempBaseDir, "root.key")

@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -35,6 +36,10 @@ const (
 	// TODO(diogo): These names should be randomly generated, and probably used as filenames to allow agents
 	// to participate in multiple clusters without filename collision
 	rootCN = "swarm-ca"
+	// ManagerRole represents the Manager node type, and is used for authorization to endpoints
+	ManagerRole = "manager"
+	// AgentRole represents the Agent node type, and is used for authorization to endpoints
+	AgentRole = "agent"
 )
 
 // InvalidTLSCertificatesError represents a failure validating the TLS Certificates
@@ -53,20 +58,19 @@ func (err NoSwarmCAError) Error() string {
 
 // AgentSecurityConfig is used to configure the security params of the agents
 type AgentSecurityConfig struct {
-	RootCACert     []byte
-	ClientCert     *tls.Certificate
+	RootCAPool     *x509.CertPool
 	ClientTLSCreds credentials.TransportAuthenticator
 }
 
 func (s *AgentSecurityConfig) validate() error {
 	// TODO(diogo): Validate expiration of all certificates
-	// Having a Root CA certificate is mandatory
-	if s.RootCACert == nil {
+	// Having a valid Root CA Pool is mandatory
+	if s.RootCAPool == nil {
 		return NoSwarmCAError{}
 	}
 
 	// We also need valid Server TLS Certificates to join the cluster
-	if s.ClientCert == nil {
+	if s.ClientTLSCreds == nil {
 		return InvalidTLSCertificatesError{}
 	}
 
@@ -76,9 +80,9 @@ func (s *AgentSecurityConfig) validate() error {
 // ManagerSecurityConfig is used to configure the CA stack of the manager
 type ManagerSecurityConfig struct {
 	RootCACert     []byte
+	RootCAPool     *x509.CertPool
 	RootCA         bool
 	IntCA          bool
-	ServerCert     *tls.Certificate
 	ServerTLSCreds credentials.TransportAuthenticator
 	ClientTLSCreds credentials.TransportAuthenticator
 	Signer         signer.Signer
@@ -86,19 +90,21 @@ type ManagerSecurityConfig struct {
 
 func (s *ManagerSecurityConfig) validate() error {
 	// TODO(diogo): Validate expiration of all certificates
-	// Having a Root CA certificate is mandatory
-	if s.RootCACert == nil {
+	// Having a Root CA certificate and Pool are mandatory
+	if s.RootCACert == nil || s.RootCAPool == nil {
 		return NoSwarmCAError{}
 	}
 
-	// We also need valid Server TLS Certificates to join the cluster
-	if s.ServerCert == nil {
+	// We also need valid Server TLS Certificates
+	if s.ServerTLSCreds == nil || s.ClientTLSCreds == nil {
 		return InvalidTLSCertificatesError{}
 	}
 
 	return nil
 }
 
+// DefaultPolicy is the default policy used by the signers to ensure that the only fields
+// from the remote CSRs we trust are: PublicKey, PublicKeyAlgorithm and SignatureAlgorithm.
 var DefaultPolicy = func() *cfconfig.Signing {
 	return &cfconfig.Signing{
 		Default: &cfconfig.SigningProfile{
@@ -117,24 +123,60 @@ var DefaultPolicy = func() *cfconfig.Signing {
 	}
 }
 
-func loadAgentSecurityConfig(baseCertDir string) *AgentSecurityConfig {
+// SecurityConfigPaths is used as a helper to hold all the pashs of security relevant files
+type SecurityConfigPaths struct {
+	AgentCert, AgentKey, AgentCSR       string
+	ManagerCert, ManagerKey, ManagerCSR string
+	RootCACert, RootCAKey               string
+	IntCACert, IntCAKey                 string
+}
+
+// NewConfigPaths returns the absolute paths to all of the different types of files
+func NewConfigPaths(baseCertDir string) *SecurityConfigPaths {
+	pathToAgentTLSCert := filepath.Join(baseCertDir, agentTLSCertFilename)
+	pathToAgentTLSKey := filepath.Join(baseCertDir, agentTLSKeyFilename)
+	pathToAgentCSR := filepath.Join(baseCertDir, agentCSRFilename)
+	pathToManagerTLSCert := filepath.Join(baseCertDir, managerTLSCertFilename)
+	pathToManagerTLSKey := filepath.Join(baseCertDir, managerTLSKeyFilename)
+	pathToManagerCSR := filepath.Join(baseCertDir, managerCSRFilename)
 	pathToRootCACert := filepath.Join(baseCertDir, rootCACertFilename)
-	pathToTLSKey := filepath.Join(baseCertDir, agentTLSKeyFilename)
-	pathToTLSCertificate := filepath.Join(baseCertDir, agentTLSCertFilename)
+	pathToRootCAKey := filepath.Join(baseCertDir, rootCAKeyFilename)
+	pathToIntCACert := filepath.Join(baseCertDir, intCACertFilename)
+	pathToIntCAKey := filepath.Join(baseCertDir, intCAKeyFilename)
+
+	return &SecurityConfigPaths{
+		AgentCert:   pathToAgentTLSCert,
+		AgentKey:    pathToAgentTLSKey,
+		AgentCSR:    pathToAgentCSR,
+		ManagerCert: pathToManagerTLSCert,
+		ManagerKey:  pathToManagerTLSKey,
+		ManagerCSR:  pathToManagerCSR,
+		RootCACert:  pathToRootCACert,
+		RootCAKey:   pathToRootCAKey,
+		IntCACert:   pathToIntCACert,
+		IntCAKey:    pathToIntCAKey,
+	}
+}
+
+func loadAgentSecurityConfig(baseCertDir string) *AgentSecurityConfig {
+	paths := NewConfigPaths(baseCertDir)
 
 	securityConfig := &AgentSecurityConfig{}
 	// Check if we have joined any cluster before and store the CA's certificate PEM file
-	rootCACert, err := GetRootCA(pathToRootCACert)
+	rootCACert, err := GetRootCA(paths.RootCACert)
 	if err == nil {
-		securityConfig.RootCACert = rootCACert
+		// Create a Pool with our RootCACertificate
+		rootCAPool := x509.NewCertPool()
+		if rootCAPool.AppendCertsFromPEM(rootCACert) {
+			securityConfig.RootCAPool = rootCAPool
+		}
 	}
 
-	agentTLSCert, err := tls.LoadX509KeyPair(pathToTLSCertificate, pathToTLSKey)
+	agentTLSCert, err := tls.LoadX509KeyPair(paths.AgentCert, paths.AgentKey)
 	if err == nil {
-		securityConfig.ClientCert = &agentTLSCert
-		tlsConfig, err := NewClientTLSConfig(&agentTLSCert, rootCACert, "manager")
+		creds, err := NewClientTLSCredentials(&agentTLSCert, securityConfig.RootCAPool, ManagerRole)
 		if err == nil {
-			securityConfig.ClientTLSCreds = credentials.NewTLS(tlsConfig)
+			securityConfig.ClientTLSCreds = creds
 		}
 	}
 
@@ -142,50 +184,48 @@ func loadAgentSecurityConfig(baseCertDir string) *AgentSecurityConfig {
 }
 
 func loadManagerSecurityConfig(baseCertDir string) *ManagerSecurityConfig {
-	pathToRootCACert := filepath.Join(baseCertDir, rootCACertFilename)
-	pathToRootCAKey := filepath.Join(baseCertDir, rootCAKeyFilename)
+	paths := NewConfigPaths(baseCertDir)
 
 	securityConfig := &ManagerSecurityConfig{}
 	// Check if we have joined any cluster before and store the CA's certificate PEM file
-	rootCACert, err := GetRootCA(pathToRootCACert)
+	rootCACert, err := GetRootCA(paths.RootCACert)
 	if err == nil {
 		securityConfig.RootCACert = rootCACert
+		// Create a Pool with our RootCACertificate
+		rootCAPool := x509.NewCertPool()
+		if rootCAPool.AppendCertsFromPEM(rootCACert) {
+			securityConfig.RootCAPool = rootCAPool
+		}
 	}
 
 	// If there is a root CA full keypair, we're going to get a signer from it and set rootCA to true
-	securityConfig.Signer, err = local.NewSignerFromFile(pathToRootCACert, pathToRootCAKey, DefaultPolicy())
+	securityConfig.Signer, err = local.NewSignerFromFile(paths.RootCACert, paths.RootCAKey, DefaultPolicy())
 	if err == nil {
-		log.Debugf("loaded a root CA from: %s\n", pathToRootCACert)
+		log.Debugf("loaded a root CA from: %s\n", paths.RootCACert)
 		securityConfig.RootCA = true
 	}
 
 	// If there was no root CA but there is an intermediate CA, we're going to get a signer from it
 	// and set intermediateCA to true
-	pathToIntermediateCACert := filepath.Join(baseCertDir, intCACertFilename)
-	pathToIntermediateCAKey := filepath.Join(baseCertDir, intCAKeyFilename)
 	if securityConfig.Signer == nil {
-		securityConfig.Signer, err = local.NewSignerFromFile(pathToIntermediateCACert, pathToIntermediateCAKey, DefaultPolicy())
+		securityConfig.Signer, err = local.NewSignerFromFile(paths.IntCACert, paths.IntCAKey, DefaultPolicy())
 		if err == nil {
-			log.Debugf("loaded an intermediate CA from: %s\n", pathToIntermediateCACert)
+			log.Debugf("loaded an intermediate CA from: %s\n", paths.IntCACert)
 			securityConfig.IntCA = true
 		}
 	}
 
-	pathToTLSCert := filepath.Join(baseCertDir, managerTLSCertFilename)
-	pathToTLSKey := filepath.Join(baseCertDir, managerTLSKeyFilename)
-	serverCert, err := tls.LoadX509KeyPair(pathToTLSCert, pathToTLSKey)
+	serverCert, err := tls.LoadX509KeyPair(paths.ManagerCert, paths.ManagerKey)
 	if err == nil {
-		log.Debugf("loaded server TLS certificate from: %s\n", pathToTLSCert)
-		securityConfig.ServerCert = &serverCert
-		serverTLSConfig, err := NewServerTLSConfig(securityConfig.ServerCert, rootCACert)
+		log.Debugf("loaded server TLS certificate from: %s\n", paths.ManagerCert)
+		serverTLSCreds, err := NewServerTLSCredentials(&serverCert, securityConfig.RootCAPool)
 		if err == nil {
-			securityConfig.ServerTLSCreds = credentials.NewTLS(serverTLSConfig)
+			securityConfig.ServerTLSCreds = serverTLSCreds
 		}
-		clientTLSConfig, err := NewClientTLSConfig(&serverCert, rootCACert, "manager")
+		clientTLSCreds, err := NewClientTLSCredentials(&serverCert, securityConfig.RootCAPool, ManagerRole)
 		if err == nil {
-			securityConfig.ClientTLSCreds = credentials.NewTLS(clientTLSConfig)
+			securityConfig.ClientTLSCreds = clientTLSCreds
 		}
-
 	}
 
 	return securityConfig
@@ -194,7 +234,9 @@ func loadManagerSecurityConfig(baseCertDir string) *ManagerSecurityConfig {
 // LoadOrCreateAgentSecurityConfig encapsulates the security logic behind starting or joining a cluster
 // as an Agent. Every agent requires at least a set of TLS certificates with which to join
 // the cluster.
-func LoadOrCreateAgentSecurityConfig(baseCertDir, caHash, managerAddr string) (*AgentSecurityConfig, error) {
+func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash, managerAddr string) (*AgentSecurityConfig, error) {
+	paths := NewConfigPaths(baseCertDir)
+
 	// Attempts to load and validate the current state on disk.
 	securityConfig := loadAgentSecurityConfig(baseCertDir)
 	err := securityConfig.validate()
@@ -208,59 +250,64 @@ func LoadOrCreateAgentSecurityConfig(baseCertDir, caHash, managerAddr string) (*
 		return nil, fmt.Errorf("address of a manager is required to join a cluster")
 	}
 
+	// Make sure the necessary dirs exist and they are writable
+	err = os.MkdirAll(baseCertDir, 0755)
+	if err != nil {
+		return nil, err
+	}
+
 	// If the RootCACert is nil, we should retrieve the CA from the remote host
 	// checking to see if the signature matches the hash provided by the user.
-	if securityConfig.RootCACert == nil {
+	if securityConfig.RootCAPool == nil {
 		rootCACert, err := GetRemoteCA(managerAddr, caHash)
 		if err != nil {
 			return nil, err
 		}
 
-		// Save the rootCA to disk.
-		pathToRootCACert := filepath.Join(baseCertDir, rootCACertFilename)
-		if err := ioutil.WriteFile(pathToRootCACert, rootCACert, 0644); err != nil {
+		// Create a Pool with our RootCACertificate
+		rootCAPool := x509.NewCertPool()
+		if !rootCAPool.AppendCertsFromPEM(rootCACert) {
+			return nil, fmt.Errorf("failed to append certificate to cert pool")
+		}
+
+		// If creating a pool succeeded, save the rootCA to disk
+		if err := ioutil.WriteFile(paths.RootCACert, rootCACert, 0644); err != nil {
 			return nil, err
 		}
-		securityConfig.RootCACert = rootCACert
+
+		securityConfig.RootCAPool = rootCAPool
 	}
 
 	// Create a new key/pair and CSR
-	pathToCSR := filepath.Join(baseCertDir, agentCSRFilename)
-	pathToTLSCert := filepath.Join(baseCertDir, agentTLSCertFilename)
-	pathToTLSKey := filepath.Join(baseCertDir, agentTLSKeyFilename)
-	csr, _, err := GenerateAndWriteNewCSR(pathToCSR, pathToTLSKey)
+	csr, _, err := GenerateAndWriteNewCSR(paths.AgentCSR, paths.AgentKey)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get a certificate issued by this CA
-	signedCert, err := getSignedCertificate(csr, securityConfig.RootCACert, "agent", managerAddr)
+	signedCert, err := getSignedCertificate(ctx, csr, securityConfig.RootCAPool, AgentRole, managerAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	// Append the root certificate to the certificate to create a valid chain
-	certChain := append(signedCert, securityConfig.RootCACert...)
-
 	// Write the chain to disk
-	if err := ioutil.WriteFile(pathToTLSCert, certChain, 0644); err != nil {
+	if err := ioutil.WriteFile(paths.AgentCert, signedCert, 0644); err != nil {
 		return nil, err
 	}
 
 	// Load the agent key pair into a tls.Certificate
-	tlsKeyPair, err := tls.LoadX509KeyPair(pathToTLSCert, pathToTLSKey)
+	tlsKeyPair, err := tls.LoadX509KeyPair(paths.AgentCert, paths.AgentKey)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create a client TLSConfig out of the key pair
-	tlsConfig, err := NewClientTLSConfig(&tlsKeyPair, securityConfig.RootCACert, "manager")
+	clientTLSCreds, err := NewClientTLSCredentials(&tlsKeyPair, securityConfig.RootCAPool, ManagerRole)
 	if err != nil {
 		return nil, err
 	}
 
-	securityConfig.ClientCert = &tlsKeyPair
-	securityConfig.ClientTLSCreds = credentials.NewTLS(tlsConfig)
+	securityConfig.ClientTLSCreds = clientTLSCreds
 
 	return securityConfig, nil
 }
@@ -271,12 +318,8 @@ func LoadOrCreateAgentSecurityConfig(baseCertDir, caHash, managerAddr string) (*
 // this manager will also be taking intermediate CA responsabilities, and should ensure to request
 // an intermediate certificate. Finally, if no manager addresses are provided, we assume we're
 // creating a new Cluster, and this manager will have to generate its own self-signed CA.
-func LoadOrCreateManagerSecurityConfig(baseCertDir, caHash, managerAddr string, CA bool) (*ManagerSecurityConfig, error) {
-	pathToTLSCert := filepath.Join(baseCertDir, managerTLSCertFilename)
-	pathToTLSKey := filepath.Join(baseCertDir, managerTLSKeyFilename)
-	pathToCSR := filepath.Join(baseCertDir, managerCSRFilename)
-	pathToRootCACert := filepath.Join(baseCertDir, rootCACertFilename)
-	pathToRootCAKey := filepath.Join(baseCertDir, rootCAKeyFilename)
+func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash, managerAddr string, CA bool) (*ManagerSecurityConfig, error) {
+	paths := NewConfigPaths(baseCertDir)
 
 	// Attempt to load the current files available on this baseDir
 	securityConfig := loadManagerSecurityConfig(baseCertDir)
@@ -286,32 +329,45 @@ func LoadOrCreateManagerSecurityConfig(baseCertDir, caHash, managerAddr string, 
 	}
 	log.Debugf("failed to validate the manager config: %v\n", err)
 
+	// Make sure the necessary dirs exist and they are writable
+	derr := os.MkdirAll(baseCertDir, 0755)
+	if derr != nil {
+		return nil, derr
+	}
+
 	switch err.(type) {
 	case NoSwarmCAError:
 		// We have no CA and no remote managers are being passed in, means we're creating a new cluster
 		if managerAddr == "" {
-			signer, rootCACert, err := CreateRootCA(pathToRootCACert, pathToRootCAKey, rootCN)
+			// Create our new RootCA and write the certificate and key to disk
+			signer, rootCACert, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, rootCN)
 			if err != nil {
 				return nil, err
+			}
+
+			// Create a Pool with our RootCACertificate
+			rootCAPool := x509.NewCertPool()
+			if !rootCAPool.AppendCertsFromPEM(rootCACert) {
+				return nil, fmt.Errorf("failed to append certificate to cert pool")
 			}
 
 			// Create a new random ID for this manager
 			managerID := identity.NewID()
 
 			// Generate TLS Certificates using the local Root
-			serverCert, err := GenerateAndSignNewTLSCert(signer, rootCACert, pathToTLSCert, pathToTLSKey, managerID, "manager")
+			serverCert, err := GenerateAndSignNewTLSCert(signer, rootCACert, paths.ManagerCert, paths.ManagerKey, managerID, ManagerRole)
 			if err != nil {
 				return nil, err
 			}
 
 			// Create the TLS Credentials for this manager
-			serverTLSConfig, err := NewServerTLSConfig(serverCert, rootCACert)
+			serverTLSCreds, err := NewServerTLSCredentials(serverCert, rootCAPool)
 			if err != nil {
 				return nil, err
 			}
 
-			// Create a TLSConfig to be used when this manager connects as a client to another remote manager
-			clientTLSConfig, err := NewClientTLSConfig(serverCert, rootCACert, "manager")
+			// Create the TLS Credentials to be used when this manager connects as a client to another remote manager
+			clientTLSCreds, err := NewClientTLSCredentials(serverCert, rootCAPool, ManagerRole)
 			if err != nil {
 				return nil, err
 			}
@@ -320,9 +376,9 @@ func LoadOrCreateManagerSecurityConfig(baseCertDir, caHash, managerAddr string, 
 			securityConfig.Signer = signer
 			securityConfig.RootCA = true
 			securityConfig.RootCACert = rootCACert
-			securityConfig.ServerCert = serverCert
-			securityConfig.ServerTLSCreds = credentials.NewTLS(serverTLSConfig)
-			securityConfig.ClientTLSCreds = credentials.NewTLS(clientTLSConfig)
+			securityConfig.RootCAPool = rootCAPool
+			securityConfig.ServerTLSCreds = serverTLSCreds
+			securityConfig.ClientTLSCreds = clientTLSCreds
 
 			return securityConfig, nil
 		}
@@ -336,29 +392,36 @@ func LoadOrCreateManagerSecurityConfig(baseCertDir, caHash, managerAddr string, 
 
 	// If the RootCACert is nil, we should retrieve the CA from the remote host
 	// checking to see if the signature matches the hash provided
-	if securityConfig.RootCACert == nil {
+	if securityConfig.RootCACert == nil || securityConfig.RootCAPool == nil {
 		rootCACert, err := GetRemoteCA(managerAddr, caHash)
 		if err != nil {
 			return nil, err
 		}
 
-		// Save the rootCA to disk.
-		pathToRootCACert := filepath.Join(baseCertDir, rootCACertFilename)
-		if err := ioutil.WriteFile(pathToRootCACert, rootCACert, 0644); err != nil {
+		// Create a Pool with our RootCACertificate
+		rootCACertPool := x509.NewCertPool()
+		if !rootCACertPool.AppendCertsFromPEM(rootCACert) {
+			return nil, fmt.Errorf("failed to append certificate to cert pool")
+		}
+
+		// If the root certificate got loaded successfully, save the rootCA to disk.
+		if err := ioutil.WriteFile(paths.RootCACert, rootCACert, 0644); err != nil {
 			return nil, err
 		}
+
+		securityConfig.RootCAPool = rootCACertPool
 		securityConfig.RootCACert = rootCACert
 	}
 
 	// Create a new key/pair and CSR for the new manager
-	csr, key, err := GenerateAndWriteNewCSR(pathToCSR, pathToTLSKey)
+	csr, key, err := GenerateAndWriteNewCSR(paths.ManagerCSR, paths.ManagerKey)
 	if err != nil {
 		log.Debugf("error when generating new node certs: %v\n", err)
 		return nil, err
 	}
 
 	// Get the remote manager to issue a CA signed certificate for this node
-	signedCert, err := getSignedCertificate(csr, securityConfig.RootCACert, "manager", managerAddr)
+	signedCert, err := getSignedCertificate(ctx, csr, securityConfig.RootCAPool, ManagerRole, managerAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -374,106 +437,84 @@ func LoadOrCreateManagerSecurityConfig(baseCertDir, caHash, managerAddr string, 
 	}
 
 	// Create the TLS Credentials for this manager
-	serverTLSConfig, err := NewServerTLSConfig(&tlsKeyPair, securityConfig.RootCACert)
+	securityConfig.ServerTLSCreds, err = NewServerTLSCredentials(&tlsKeyPair, securityConfig.RootCAPool)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create a TLSConfig to be used when this manager connects as a client to another remote manager
-	clientTLSConfig, err := NewClientTLSConfig(&tlsKeyPair, securityConfig.RootCACert, "manager")
+	securityConfig.ClientTLSCreds, err = NewClientTLSCredentials(&tlsKeyPair, securityConfig.RootCAPool, ManagerRole)
 	if err != nil {
 		return nil, err
 	}
 
-	securityConfig.ServerCert = &tlsKeyPair
-	securityConfig.ServerTLSCreds = credentials.NewTLS(serverTLSConfig)
-	securityConfig.ClientTLSCreds = credentials.NewTLS(clientTLSConfig)
-
 	return securityConfig, nil
 }
 
-// NewServerTLSConfig returns a tls.Config configured for a TLS Server, given a tls.Certificate
+// newServerTLSConfig returns a tls.Config configured for a TLS Server, given a tls.Certificate
 // and the PEM-encoded root CA Certificate
-func NewServerTLSConfig(cert *tls.Certificate, rootCAPEM []byte) (*tls.Config, error) {
-	if rootCAPEM == nil {
-		return nil, fmt.Errorf("no root PEM certificate provided")
-	}
-	certPool := x509.NewCertPool()
-
-	if ok := certPool.AppendCertsFromPEM(rootCAPEM); !ok {
-		return nil, fmt.Errorf("failed to parse PEM data to pool")
+func newServerTLSConfig(cert *tls.Certificate, rootCAPool *x509.CertPool) (*tls.Config, error) {
+	if rootCAPool == nil {
+		return nil, fmt.Errorf("valid root CA pool required")
 	}
 
 	return &tls.Config{
-		Certificates:             []tls.Certificate{*cert},
+		Certificates: []tls.Certificate{*cert},
+		// Since we're using the same CA server to issue Certificates to new nodes, we can't
+		// use tls.RequireAndVerifyClientCert
 		ClientAuth:               tls.VerifyClientCertIfGiven,
-		RootCAs:                  certPool,
-		ClientCAs:                certPool,
+		RootCAs:                  rootCAPool,
+		ClientCAs:                rootCAPool,
 		PreferServerCipherSuites: true,
 		MinVersion:               tls.VersionTLS12,
 	}, nil
 }
 
-// NewClientTLSConfig returns a tls.Config configured for a TLS Client, given a tls.Certificate
+// newClientTLSConfig returns a tls.Config configured for a TLS Client, given a tls.Certificate
 // the PEM-encoded root CA Certificate, and the name of the remote server the client wants to connect to.
-func NewClientTLSConfig(cert *tls.Certificate, rootCAPEM []byte, serverName string) (*tls.Config, error) {
-	if rootCAPEM == nil {
-		return nil, fmt.Errorf("no root PEM certificate provided")
-	}
-	certPool := x509.NewCertPool()
-
-	if ok := certPool.AppendCertsFromPEM(rootCAPEM); !ok {
-		return nil, fmt.Errorf("failed to parse PEM data to pool")
+func newClientTLSConfig(cert *tls.Certificate, rootCAPool *x509.CertPool, serverName string) (*tls.Config, error) {
+	if rootCAPool == nil {
+		return nil, fmt.Errorf("valid root CA pool required")
 	}
 
 	return &tls.Config{
 		ServerName:   serverName,
 		Certificates: []tls.Certificate{*cert},
-		RootCAs:      certPool,
+		RootCAs:      rootCAPool,
 		MinVersion:   tls.VersionTLS12,
 	}, nil
 }
 
 // NewClientTLSCredentials returns GRPC credentials for a TLS GRPC client, given a tls.Certificate
 // a PEM-Encoded root CA Certificate, and the name of the remote server the client wants to connect to.
-func NewClientTLSCredentials(cert *tls.Certificate, rootCAPEM []byte, serverName string) (credentials.TransportAuthenticator, error) {
-	if rootCAPEM == nil {
-		return nil, fmt.Errorf("no root PEM certificate provided")
-	}
-	certPool := x509.NewCertPool()
-
-	if ok := certPool.AppendCertsFromPEM(rootCAPEM); !ok {
-		return nil, fmt.Errorf("failed to parse PEM data to pool")
-	}
-
-	tlsConfig := &tls.Config{
-		ServerName:   serverName,
-		Certificates: []tls.Certificate{*cert},
-		RootCAs:      certPool,
-		MinVersion:   tls.VersionTLS12,
+func NewClientTLSCredentials(cert *tls.Certificate, rootCAPool *x509.CertPool, serverName string) (credentials.TransportAuthenticator, error) {
+	tlsConfig, err := newClientTLSConfig(cert, rootCAPool, serverName)
+	if err != nil {
+		return nil, err
 	}
 
 	return credentials.NewTLS(tlsConfig), nil
 }
 
-func getSignedCertificate(csr, rootCACert []byte, nodeType, managerAddr string) ([]byte, error) {
-	opts := []grpc.DialOption{}
-
-	if rootCACert == nil {
-		// Create grpc TLS options that are insecure for our first Certificate
-		// request
-		insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
-		opts = append(opts, grpc.WithTransportCredentials(insecureCreds))
-
-	} else {
-		cp := x509.NewCertPool()
-		if !cp.AppendCertsFromPEM(rootCACert) {
-			return nil, fmt.Errorf("credentials: failed to append certificates")
-		}
-
-		creds := credentials.NewTLS(&tls.Config{ServerName: "manager", RootCAs: cp})
-		opts = append(opts, grpc.WithTransportCredentials(creds))
+// NewServerTLSCredentials returns GRPC credentials for a TLS GRPC client, given a tls.Certificate
+// a PEM-Encoded root CA Certificate, and the name of the remote server the client wants to connect to.
+func NewServerTLSCredentials(cert *tls.Certificate, rootCAPool *x509.CertPool) (credentials.TransportAuthenticator, error) {
+	tlsConfig, err := newServerTLSConfig(cert, rootCAPool)
+	if err != nil {
+		return nil, err
 	}
+
+	return credentials.NewTLS(tlsConfig), nil
+}
+
+func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.CertPool, role, managerAddr string) ([]byte, error) {
+	if rootCAPool == nil {
+		return nil, fmt.Errorf("valid root CA pool required")
+	}
+
+	// This is our only non-MTLS request
+	creds := credentials.NewTLS(&tls.Config{ServerName: ManagerRole, RootCAs: rootCAPool})
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 
 	// TODO(diogo): Add a connection picker
 	conn, err := grpc.Dial(managerAddr, opts...)
@@ -481,15 +522,11 @@ func getSignedCertificate(csr, rootCACert []byte, nodeType, managerAddr string) 
 		return nil, err
 	}
 	// Create a CAClient to retreive a new Certificate
-	caCLient := api.NewCAClient(conn)
-
-	// Create a context for our GRPC call
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	caClient := api.NewCAClient(conn)
 
 	// Send the Request and retrieve the certificate
-	request := &api.IssueCertificateRequest{CSR: csr, NodeType: nodeType}
-	response, err := caCLient.IssueCertificate(ctx, request)
+	request := &api.IssueCertificateRequest{CSR: csr, Role: role}
+	response, err := caClient.IssueCertificate(ctx, request)
 	if err != nil {
 		return nil, err
 	}

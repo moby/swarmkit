@@ -27,6 +27,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var securityConfig *ca.ManagerSecurityConfig
+
 func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
 	logrus.SetOutput(ioutil.Discard)
@@ -446,7 +448,6 @@ func checkValuesOnNodes(t *testing.T, checkNodes map[uint64]*testNode, ids []str
 }
 
 func TestRaftLeaderDown(t *testing.T) {
-	t.Skip("Test disabled until we convert to real GRPC servers.")
 	t.Parallel()
 
 	nodes, clockSource := newRaftCluster(t, securityConfig)
@@ -615,7 +616,6 @@ func TestRaftQuorumRecovery(t *testing.T) {
 }
 
 func TestRaftFollowerLeave(t *testing.T) {
-	t.Skip("Test disabled until we convert to real GRPC servers.")
 	t.Parallel()
 
 	// Bring up a 5 nodes cluster
@@ -627,9 +627,14 @@ func TestRaftFollowerLeave(t *testing.T) {
 	addRaftNode(t, clockSource, nodes, securityConfig)
 	defer teardownCluster(t, nodes)
 
-	// Node 5 leave the cluster
+	// Node 5 leaves the cluster
+	// Use gRPC instead of calling handler directly because of
+	// authorization check.
+	client, err := nodes[1].GetRaftClient(nodes[1].Address, 10*time.Second)
+	assert.NoError(t, err)
+	defer client.Conn.Close()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	resp, err := nodes[1].Leave(ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[5].Config.ID}})
+	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[5].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -656,7 +661,6 @@ func TestRaftFollowerLeave(t *testing.T) {
 }
 
 func TestRaftLeaderLeave(t *testing.T) {
-	t.Skip("Test disabled until we convert to real GRPC servers.")
 	t.Parallel()
 
 	nodes, clockSource := newRaftCluster(t, securityConfig)
@@ -666,7 +670,13 @@ func TestRaftLeaderLeave(t *testing.T) {
 	assert.Equal(t, nodes[1].Leader(), nodes[1].Config.ID)
 
 	// Try to leave the raft
-	resp, err := nodes[1].Leave(nodes[1].Ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[1].Config.ID}})
+	// Use gRPC instead of calling handler directly because of
+	// authorization check.
+	client, err := nodes[1].GetRaftClient(nodes[1].Address, 10*time.Second)
+	assert.NoError(t, err)
+	defer client.Conn.Close()
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[1].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -927,7 +937,6 @@ func TestRaftSnapshotRestart(t *testing.T) {
 }
 
 func TestRaftRejoin(t *testing.T) {
-	t.Skip("Test disabled until we convert to real GRPC servers.")
 	t.Parallel()
 
 	nodes, clockSource := newRaftCluster(t, securityConfig)

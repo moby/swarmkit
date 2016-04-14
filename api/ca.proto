@@ -16,7 +16,8 @@ message IssuanceStatus {
 	enum Status {
 		option (gogoproto.goproto_enum_prefix) = false;
 
-		PREPARING = 0 [(gogoproto.enumvalue_customname) = "IssuanceStatusPreparing"];
+		UNKNOWN = 0 [(gogoproto.enumvalue_customname) = "IssuanceStatusUnknown"];
+		PREPARING = 1 [(gogoproto.enumvalue_customname) = "IssuanceStatusPreparing"];
 		READY = 2 [(gogoproto.enumvalue_customname)="IssuanceStatusReady"]; // Certificate has been accepted and signed and it's ready
 		COMPLETE = 3 [(gogoproto.enumvalue_customname)="IssuanceStatusComplete"]; // successful completion of task (not error code, just ran)
 		FAILED = 4 [(gogoproto.enumvalue_customname)="IssuanceStatusFailed"]; // Certificate issuance failed
@@ -35,13 +36,13 @@ message IssuanceStatus {
 }
 
 message IssueCertificateRequest {
-	string node_type = 1 [(gogoproto.customname) = "NodeType"];
+	string role = 1;
 	bytes csr = 2 [(gogoproto.customname) = "CSR"];
 }
 
 // TODO(diogo): This response should be a random ID that agents
 // can then query for status.
 message IssueCertificateResponse {
-	IssuanceStatus status = 1 [(gogoproto.customname) = "Status"];
-	bytes certificate_chain = 3 [(gogoproto.customname) = "CertificateChain"];
+	IssuanceStatus status = 1;
+	bytes certificate_chain = 2;
 }

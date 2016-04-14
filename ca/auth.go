@@ -4,9 +4,11 @@ import (
 	"crypto/tls"
 	"crypto/x509/pkix"
 	"fmt"
-	"log"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
+
+	"github.com/docker/swarm-v2/log"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -14,11 +16,10 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-// LogTLSState logs information about TLS state in the form:
-// "<method>: peer certs: [<Subject.CommonName>...], chain: [[<CommonName>...][..]]"
-func LogTLSState(tlsState *tls.ConnectionState) {
+// LogTLSState logs information about the TLS connection and remote peers
+func LogTLSState(ctx context.Context, tlsState *tls.ConnectionState) {
 	if tlsState == nil {
-		log.Printf("no TLS chains found\n")
+		log.G(ctx).Debugf("no TLS Chains found")
 		return
 	}
 
@@ -34,7 +35,11 @@ func LogTLSState(tlsState *tls.ConnectionState) {
 		}
 		verifiedChain = append(verifiedChain, strings.Join(subjects, ","))
 	}
-	log.Printf("peer certs: %v, chain: %v\n", peerCerts, verifiedChain)
+
+	log.G(ctx).WithFields(logrus.Fields{
+		"peer.peerCert": peerCerts,
+		// "peer.verifiedChain": verifiedChain},
+	}).Debugf("")
 }
 
 // GetCertificateUser extract the username from a client certificate.
@@ -45,16 +50,16 @@ func GetCertificateUser(tlsState *tls.ConnectionState) (pkix.Name, error) {
 	if len(tlsState.PeerCertificates) == 0 {
 		return pkix.Name{}, fmt.Errorf("no client certificates in request")
 	}
-	if len(tlsState.VerifiedChains) != len(tlsState.PeerCertificates) {
-		return pkix.Name{}, fmt.Errorf("client cerficates not verified")
+	if len(tlsState.VerifiedChains) == 0 {
+		return pkix.Name{}, fmt.Errorf("no verified chains for remote certificate")
 	}
 
-	return tlsState.PeerCertificates[0].Subject, nil
+	return tlsState.VerifiedChains[0][0].Subject, nil
 }
 
-// AuthorizeOU takes in a context and a list of organizations, and returns
+// AuthorizeRole takes in a context and a list of organizations, and returns
 // the CN of the certificate if one of the OU matches.
-func AuthorizeOU(ctx context.Context, ou []string) (string, error) {
+func AuthorizeRole(ctx context.Context, ou []string) (string, error) {
 	if peer, ok := peer.FromContext(ctx); ok {
 		if tlsInfo, ok := peer.AuthInfo.(credentials.TLSInfo); ok {
 			certName, err := GetCertificateUser(&tlsInfo.State)
@@ -65,7 +70,7 @@ func AuthorizeOU(ctx context.Context, ou []string) (string, error) {
 			// Check if the current certificate has an OU that authorizes
 			// access to this method
 			if intersectArrays(certName.OrganizationalUnit, ou) {
-				// LogTLSState(&tlsInfo.State)
+				LogTLSState(ctx, &tlsInfo.State)
 				return certName.CommonName, nil
 			}
 

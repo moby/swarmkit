@@ -81,7 +81,7 @@ func New(store state.WatchableStore, c *Config) *Dispatcher {
 
 // Register is used for registration of node with particular dispatcher.
 func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
-	agentID, err := ca.AuthorizeOU(ctx, []string{"agent"})
+	agentID, err := ca.AuthorizeRole(ctx, []string{ca.AgentRole})
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 // UpdateTaskStatus updates status of task. Node should send such updates
 // on every status change of its tasks.
 func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStatusRequest) (*api.UpdateTaskStatusResponse, error) {
-	agentID, err := ca.AuthorizeOU(ctx, []string{"agent"})
+	agentID, err := ca.AuthorizeRole(ctx, []string{ca.AgentRole})
 	if err != nil {
 		return nil, err
 	}
@@ -188,12 +188,13 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 // of tasks which should be run on node, if task is not present in that list,
 // it should be terminated.
 func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
-	agentID, err := ca.AuthorizeOU(stream.Context(), []string{"agent"})
+	agentID, err := ca.AuthorizeRole(stream.Context(), []string{ca.AgentRole})
 	if err != nil {
 		return err
 	}
 	log.G(stream.Context()).WithField("request", r).Debugf("(*Dispatcher).Tasks from node %s", agentID)
 
+	// TODO(diogo): Ensure we only allow nodes to change their own tasks
 	if _, err = d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 		return err
 	}
@@ -277,13 +278,14 @@ func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
 // Node should send new heartbeat earlier than now + TTL, otherwise it will
 // be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
 func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*api.HeartbeatResponse, error) {
-	agentID, err := ca.AuthorizeOU(ctx, []string{"agent"})
+	agentID, err := ca.AuthorizeRole(ctx, []string{ca.AgentRole})
 	if err != nil {
 		return nil, err
 	}
 
 	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Heartbeat for node %s", agentID)
 
+	// TODO(diogo): Ensure we only allow nodes to change their own heartbeat status
 	period, err := d.nodes.Heartbeat(r.NodeID, r.SessionID)
 	return &api.HeartbeatResponse{Period: period}, err
 }
@@ -320,12 +322,15 @@ func (d *Dispatcher) getManagers() []*api.WeightedPeer {
 // reconnect to another Manager immediately.
 func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_SessionServer) error {
 	ctx := stream.Context()
-	agentID, err := ca.AuthorizeOU(ctx, []string{"agent"})
+	agentID, err := ca.AuthorizeRole(ctx, []string{ca.AgentRole})
 	if err != nil {
 		return err
 	}
+
 	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Session for node %s", agentID)
-	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
+
+	// TODO(diogo): Ensure we only allow nodes to change their own Session
+	if _, err = d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 		return err
 	}
 

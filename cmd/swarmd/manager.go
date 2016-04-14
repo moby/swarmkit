@@ -32,7 +32,11 @@ var managerCmd = &cobra.Command{
 			return err
 		}
 
-		securityConfig, err := ca.LoadOrCreateManagerSecurityConfig(stateDir, token, managerAddr, false)
+		// Create a context for our GRPC call
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		securityConfig, err := ca.LoadOrCreateManagerSecurityConfig(ctx, stateDir, token, managerAddr, false)
 		if err != nil {
 			return err
 		}

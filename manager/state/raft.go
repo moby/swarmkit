@@ -1,7 +1,6 @@
 package state
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -93,7 +92,6 @@ type Node struct {
 	Client         *Raft
 	Server         *grpc.Server
 	Ctx            context.Context
-	tlsConfig      *tls.Config
 	tlsCredentials credentials.TransportAuthenticator
 
 	Address string
@@ -163,7 +161,6 @@ type NewNodeOptions struct {
 	// SendTimeout is the timeout on the sending messages to other raft
 	// nodes. Leave this as 0 to get the default value.
 	SendTimeout    time.Duration
-	TLSConfig      *tls.Config
 	TLSCredentials credentials.TransportAuthenticator
 }
 
@@ -172,10 +169,7 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-// NewNode generates a new Raft node based on an unique
-// ID, an address and optionally: a handler and receive
-// only channel to send event when an entry is committed
-// to the logs
+// NewNode generates a new Raft node
 func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan LeadershipState) (*Node, error) {
 	cfg := opts.Config
 	if cfg == nil {
@@ -551,7 +545,7 @@ func (n *Node) Leader() uint64 {
 // beginning the log replication process. This method
 // is called from an aspiring member to an existing member
 func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinResponse, error) {
-	agentID, err := ca.AuthorizeOU(ctx, []string{"manager"})
+	agentID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
 	if err != nil {
 		return nil, err
 	}
@@ -605,7 +599,7 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 // from a member who is willing to leave its raft
 // membership to an active member of the raft
 func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResponse, error) {
-	agentID, err := ca.AuthorizeOU(ctx, []string{"manager"})
+	agentID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
 	if err != nil {
 		return nil, err
 	}
@@ -639,7 +633,7 @@ func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResp
 // raft state machine with the provided message on the
 // receiving node
 func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessageRequest) (*api.ProcessRaftMessageResponse, error) {
-	agentID, err := ca.AuthorizeOU(ctx, []string{"manager"})
+	agentID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
 	if err != nil {
 		return nil, err
 	}

@@ -90,17 +90,12 @@ func New(config *Config) (*Manager, error) {
 
 	leadershipCh := make(chan state.LeadershipState)
 
-	clientTLSCreds, err := ca.NewClientTLSCredentials(config.SecurityConfig.ServerCert, config.SecurityConfig.RootCACert, "manager")
-	if err != nil {
-		return nil, err
-	}
-
 	newNodeOpts := state.NewNodeOptions{
 		Addr:           config.ListenAddr,
 		JoinAddr:       config.JoinRaft,
 		Config:         raftCfg,
 		StateDir:       raftStateDir,
-		TLSCredentials: clientTLSCreds,
+		TLSCredentials: config.SecurityConfig.ClientTLSCreds,
 	}
 	raftNode, err := state.NewNode(context.TODO(), newNodeOpts, leadershipCh)
 	if err != nil {
@@ -111,7 +106,7 @@ func New(config *Config) (*Manager, error) {
 
 	localapi := clusterapi.NewServer(store)
 	proxy := api.NewRaftProxyClusterServer(localapi, raftNode)
-	opts = []grpc.ServerOption{
+	opts := []grpc.ServerOption{
 		grpc.Creds(config.SecurityConfig.ServerTLSCreds)}
 
 	m := &Manager{
@@ -263,12 +258,12 @@ func (m *Manager) Stop() {
 // NodeCount returns number of nodes connected to particular manager.
 // Supposed to be called only by cluster leader.
 func (m *Manager) NodeCount(ctx context.Context, r *api.NodeCountRequest) (*api.NodeCountResponse, error) {
-	managerID, err := ca.AuthorizeOU(ctx, []string{"manager"})
+	managerID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
 	if err != nil {
 		return nil, err
 	}
 
-	log.WithField("request", r).Debugf("(*Manager).NodeCount from node %s", managerID)
+	log.G(ctx).WithField("request", r).Debugf("(*Manager).NodeCount from node %s", managerID)
 
 	return &api.NodeCountResponse{
 		Count: m.dispatcher.NodeCount(),

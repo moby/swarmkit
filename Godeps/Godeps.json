@@ -1,6 +1,7 @@
 {
 	"ImportPath": "github.com/docker/swarm-v2",
 	"GoVersion": "go1.6",
+	"GodepVersion": "v62",
 	"Packages": [
 		"./..."
 	],
@@ -732,6 +733,10 @@
 			"ImportPath": "github.com/opencontainers/runc/libcontainer/user",
 			"Comment": "v0.0.7-38-g8e8d01d",
 			"Rev": "8e8d01d38d7b4fb0a35bf89b72bc3e18c98882d7"
+		},
+		{
+			"ImportPath": "github.com/phayes/permbits",
+			"Rev": "f7e3ac5e859d0b919c5068d581cc4c5d4f4f9bc5"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/clock",

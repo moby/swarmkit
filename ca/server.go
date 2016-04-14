@@ -29,17 +29,32 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
+	// If this manager isn't a rootCA or an intermediate CA, we can't issue certificates
+	if !s.securityConfig.RootCA && !s.securityConfig.IntCA {
+		return nil, grpc.Errorf(codes.Unavailable, codes.Unavailable.String())
+	}
+
+	// Validate if this request is for a valid role
+	if request.Role != ManagerRole && request.Role != AgentRole {
+		return nil, grpc.Errorf(codes.InvalidArgument, "invalid role type requested")
+	}
+
+	// Generate a random ID for this new node
 	randomID := identity.NewID()
-	// TODO(diogo): Add pending for node types other than "agent"
-	cert, err := ParseValidateAndSignCSR(s.securityConfig.Signer, request.CSR, randomID, request.NodeType)
+
+	// TODO(diogo): Add pending for node types other than TypeAgent
+	cert, err := ParseValidateAndSignCSR(s.securityConfig.Signer, request.CSR, randomID, request.Role)
 	if err != nil {
 		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
-	log.Debugf("(*CA).IssueCertificate: Issued certificate for CN=%s and OU=%s", randomID, request.NodeType)
+	// Remote users are expecting a full certificate chain, not just a signed certificate
+	certChain := append(cert, s.securityConfig.RootCACert...)
+
+	log.Debugf("(*CA).IssueCertificate: Issued certificate for CN=%s and OU=%s", randomID, request.Role)
 
 	return &api.IssueCertificateResponse{
 		Status:           &api.IssuanceStatus{Status: api.IssuanceStatusComplete},
-		CertificateChain: cert,
+		CertificateChain: certChain,
 	}, nil
 }

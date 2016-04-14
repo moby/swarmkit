@@ -8,12 +8,6 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-const (
-	// MaxRetries is the maximum number of retries allowed to
-	// initiate a grpc connection to a remote raft member
-	MaxRetries = 3
-)
-
 // Raft represents a connection to a raft member
 type Raft struct {
 	api.RaftClient

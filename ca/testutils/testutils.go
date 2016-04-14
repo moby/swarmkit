@@ -1,12 +1,12 @@
 package testutils
 
 import (
+	"crypto/x509"
+	"fmt"
 	"io/ioutil"
-	"path/filepath"
 
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/identity"
-	"google.golang.org/grpc/credentials"
 )
 
 // GenerateAgentAndManagerSecurityConfig is a helper function that creates two valid
@@ -17,55 +17,55 @@ func GenerateAgentAndManagerSecurityConfig() (*ca.AgentSecurityConfig, *ca.Manag
 		return nil, nil, "", err
 	}
 
-	pathToAgentTLSCert := filepath.Join(tempBaseDir, "swarm-agent.crt")
-	pathToAgentTLSKey := filepath.Join(tempBaseDir, "swarm-agent.key")
-	pathToManagerTLSCert := filepath.Join(tempBaseDir, "swarm-manager.crt")
-	pathToManagerTLSKey := filepath.Join(tempBaseDir, "swarm-manager.key")
-	pathToRootCACert := filepath.Join(tempBaseDir, "swarm-root-ca.crt")
-	pathToRootCAKey := filepath.Join(tempBaseDir, "swarm-root-ca.key")
+	paths := ca.NewConfigPaths(tempBaseDir)
 
-	signer, rootCACert, err := ca.CreateRootCA(pathToRootCACert, pathToRootCAKey, "swarm-test-CA")
+	signer, rootCACert, err := ca.CreateRootCA(paths.RootCACert, paths.RootCAKey, "swarm-test-CA")
 	if err != nil {
 		return nil, nil, "", err
 	}
 
+	// Create a Pool with our RootCACertificate
+	rootCAPool := x509.NewCertPool()
+	if !rootCAPool.AppendCertsFromPEM(rootCACert) {
+		return nil, nil, "", fmt.Errorf("failed to append certificate to cert pool")
+	}
+
 	agentID := identity.NewID()
-	agentCert, err := ca.GenerateAndSignNewTLSCert(signer, rootCACert, pathToAgentTLSCert, pathToAgentTLSKey, agentID, "agent")
+	agentCert, err := ca.GenerateAndSignNewTLSCert(signer, rootCACert, paths.AgentCert, paths.AgentKey, agentID, ca.AgentRole)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
 	managerID := identity.NewID()
-	managerCert, err := ca.GenerateAndSignNewTLSCert(signer, rootCACert, pathToManagerTLSCert, pathToManagerTLSKey, managerID, "manager")
+	managerCert, err := ca.GenerateAndSignNewTLSCert(signer, rootCACert, paths.ManagerCert, paths.ManagerKey, managerID, ca.ManagerRole)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
-	clientTLSConfig, err := ca.NewClientTLSConfig(agentCert, rootCACert, "manager")
+	agentClientTLSCreds, err := ca.NewClientTLSCredentials(agentCert, rootCAPool, ca.ManagerRole)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
-	managerTLSConfig, err := ca.NewServerTLSConfig(managerCert, rootCACert)
+	managerTLSCreds, err := ca.NewServerTLSCredentials(managerCert, rootCAPool)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
-	managerClientTLSConfig, err := ca.NewClientTLSConfig(managerCert, rootCACert, "manager")
+	managerClientTLSCreds, err := ca.NewClientTLSCredentials(managerCert, rootCAPool, ca.ManagerRole)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
 	AgentSecurityConfig := &ca.AgentSecurityConfig{}
-	AgentSecurityConfig.ClientCert = agentCert
-	AgentSecurityConfig.RootCACert = rootCACert
-	AgentSecurityConfig.ClientTLSCreds = credentials.NewTLS(clientTLSConfig)
+	AgentSecurityConfig.RootCAPool = rootCAPool
+	AgentSecurityConfig.ClientTLSCreds = agentClientTLSCreds
 
 	ManagerSecurityConfig := &ca.ManagerSecurityConfig{}
-	ManagerSecurityConfig.ServerCert = managerCert
 	ManagerSecurityConfig.RootCACert = rootCACert
-	ManagerSecurityConfig.ServerTLSCreds = credentials.NewTLS(managerTLSConfig)
-	ManagerSecurityConfig.ClientTLSCreds = credentials.NewTLS(managerClientTLSConfig)
+	ManagerSecurityConfig.RootCAPool = rootCAPool
+	ManagerSecurityConfig.ServerTLSCreds = managerTLSCreds
+	ManagerSecurityConfig.ClientTLSCreds = managerClientTLSCreds
 	ManagerSecurityConfig.RootCA = true
 	ManagerSecurityConfig.Signer = signer
 

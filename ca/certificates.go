@@ -168,14 +168,14 @@ func generateNewCSR() (csr, key []byte, err error) {
 }
 
 // ParseValidateAndSignCSR returns a signed certificate from a particular signer and a CSR.
-func ParseValidateAndSignCSR(caSigner signer.Signer, csrBytes []byte, cn, nodeType string) ([]byte, error) {
+func ParseValidateAndSignCSR(caSigner signer.Signer, csrBytes []byte, cn, role string) ([]byte, error) {
 	cert, err := caSigner.Sign(signer.SignRequest{
 		Request: string(csrBytes),
 		// OU is used for Authentication of the node type. The CN has the random
 		// node ID.
-		Subject: &signer.Subject{CN: cn, Names: []cfcsr.Name{{OU: nodeType}}},
-		// Adding nodeType as DNS alt name, so clients can connect to "manager"
-		Hosts: []string{nodeType},
+		Subject: &signer.Subject{CN: cn, Names: []cfcsr.Name{{OU: role}}},
+		// Adding role as DNS alt name, so clients can connect to "manager"
+		Hosts: []string{role},
 	})
 	if err != nil {
 		log.Debugf("failed to sign node certificate: %v", err)
@@ -196,6 +196,7 @@ func GetRemoteCA(managerAddr, hashStr string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 
 	client := tls.Client(conn, &config)
 	err = client.Handshake()
@@ -209,8 +210,6 @@ func GetRemoteCA(managerAddr, hashStr string) ([]byte, error) {
 	if chainLen < 2 {
 		return nil, fmt.Errorf("invalid TLS chain from remote peer")
 	}
-
-	conn.Close()
 
 	// Return the last certificate in the chain (should be the CA)
 	// TODO(diogo): Validate that the last certificate is indeed a CA

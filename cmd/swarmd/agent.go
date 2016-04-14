@@ -63,7 +63,10 @@ already present, the agent will recover and startup.`,
 				return err
 			}
 
-			securityConfig, err := ca.LoadOrCreateAgentSecurityConfig(stateDir, token, managerAddr)
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
+			securityConfig, err := ca.LoadOrCreateAgentSecurityConfig(ctx, stateDir, token, managerAddr)
 			if err != nil {
 				return err
 			}
@@ -85,9 +88,6 @@ already present, the agent will recover and startup.`,
 			if err != nil {
 				log.G(ctx).Fatalln(err)
 			}
-
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
 
 			if err := ag.Start(ctx); err != nil {
 				return err
