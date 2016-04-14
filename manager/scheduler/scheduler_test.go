@@ -407,6 +407,95 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 	scheduler.Stop()
 }
 
+func TestSchedulerResourceConstraint(t *testing.T) {
+	// Create a ready node without enough memory to run the task.
+	underprovisionedNode := &api.Node{
+		ID: "underprovisioned",
+		Spec: &api.NodeSpec{
+			Meta: api.Meta{
+				Name: "underprovisioned",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+		Description: &api.NodeDescription{
+			Resources: &api.Resources{
+				NanoCPUs:    1e9,
+				MemoryBytes: 1e9,
+			},
+		},
+	}
+
+	initialTask := &api.Task{
+		ID: "id1",
+		Spec: &api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Resources: &api.ResourceRequirements{
+						Reservations: &api.Resources{
+							MemoryBytes: 2e9,
+						},
+					},
+				},
+			},
+		},
+		Meta: api.Meta{
+			Name: "name1",
+		},
+	}
+
+	store := state.NewMemoryStore(nil)
+	assert.NotNil(t, store)
+
+	err := store.Update(func(tx state.Tx) error {
+		// Add initial node and task
+		assert.NoError(t, tx.Tasks().Create(initialTask))
+		assert.NoError(t, tx.Nodes().Create(underprovisionedNode))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(store)
+
+	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run())
+	}()
+
+	err = store.Update(func(tx state.Tx) error {
+		// Create a node with enough memory. The task should get
+		// assigned to this node.
+		node := &api.Node{
+			ID: "bignode",
+			Spec: &api.NodeSpec{
+				Meta: api.Meta{
+					Name: "bignode",
+				},
+			},
+			Description: &api.NodeDescription{
+				Resources: &api.Resources{
+					NanoCPUs:    4e9,
+					MemoryBytes: 8e9,
+				},
+			},
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+		}
+		assert.NoError(t, tx.Nodes().Create(node))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	assignment := watchAssignment(t, watch)
+	assert.Equal(t, "bignode", assignment.NodeID)
+
+	scheduler.Stop()
+}
+
 func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {

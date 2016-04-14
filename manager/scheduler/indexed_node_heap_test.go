@@ -33,13 +33,17 @@ func TestFindMin(t *testing.T) {
 			if i%100 == 0 {
 				n.Spec.Meta.Labels["special"] = "true"
 			}
-			nh.heap = append(nh.heap, nodeHeapItem{node: n, numTasks: int(rand.Int())})
+			tasks := make(map[string]*api.Task)
+			for i := rand.Intn(25); i > 0; i-- {
+				tasks[strconv.Itoa(i)] = &api.Task{ID: strconv.Itoa(i)}
+			}
+			nh.heap = append(nh.heap, NodeInfo{Node: n, Tasks: tasks})
 			nh.index[n.ID] = i
 		}
 
 		heap.Init(&nh)
 
-		isSpecial := func(n *api.Node) bool {
+		isSpecial := func(n *NodeInfo) bool {
 			return n.Spec.Meta.Labels["special"] == "true"
 		}
 
@@ -50,16 +54,16 @@ func TestFindMin(t *testing.T) {
 		var manualBestNode *api.Node
 		manualBestTasks := uint64(math.MaxUint64)
 		for i := 0; i < nh.Len(); i++ {
-			if !isSpecial(nh.heap[i].node) {
+			if !isSpecial(&nh.heap[i]) {
 				continue
 			}
-			if uint64(nh.heap[i].numTasks) < manualBestTasks {
-				manualBestNode = nh.heap[i].node
-				manualBestTasks = uint64(nh.heap[i].numTasks)
-			} else if uint64(nh.heap[i].numTasks) == manualBestTasks && nh.heap[i].node == bestNode {
+			if uint64(len(nh.heap[i].Tasks)) < manualBestTasks {
+				manualBestNode = nh.heap[i].Node
+				manualBestTasks = uint64(len(nh.heap[i].Tasks))
+			} else if uint64(len(nh.heap[i].Tasks)) == manualBestTasks && nh.heap[i].Node == bestNode {
 				// prefer the node that findMin chose when
 				// there are multiple best choices
-				manualBestNode = nh.heap[i].node
+				manualBestNode = nh.heap[i].Node
 			}
 		}
 
