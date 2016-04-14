@@ -44,7 +44,7 @@ func (b *Benchmark) Run() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Job %s launched (%d instances)\n", j.ID, b.cfg.Count)
+	fmt.Printf("Service %s launched (%d instances)\n", j.ID, b.cfg.Count)
 
 	// Periodically print stats.
 	doneCh := make(chan struct{})
@@ -70,8 +70,8 @@ func (b *Benchmark) Run() error {
 	return nil
 }
 
-func (b *Benchmark) spec() *api.JobSpec {
-	return &api.JobSpec{
+func (b *Benchmark) spec() *api.ServiceSpec {
+	return &api.ServiceSpec{
 		Meta: api.Meta{
 			Name: "benchmark",
 		},
@@ -85,25 +85,21 @@ func (b *Benchmark) spec() *api.JobSpec {
 				},
 			},
 		},
-		Orchestration: &api.JobSpec_Service{
-			Service: &api.JobSpec_ServiceJob{
-				Instances: b.cfg.Count,
-			},
-		},
+		Instances: b.cfg.Count,
 	}
 }
 
-func (b *Benchmark) launch() (*api.Job, error) {
+func (b *Benchmark) launch() (*api.Service, error) {
 	conn, err := grpc.Dial(b.cfg.Manager, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
 	client := api.NewClusterClient(conn)
-	r, err := client.CreateJob(context.Background(), &api.CreateJobRequest{
+	r, err := client.CreateService(context.Background(), &api.CreateServiceRequest{
 		Spec: b.spec(),
 	})
 	if err != nil {
 		return nil, err
 	}
-	return r.Job, nil
+	return r.Service, nil
 }

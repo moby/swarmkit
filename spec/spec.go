@@ -47,20 +47,20 @@ func (s *Spec) validate() error {
 	return nil
 }
 
-// JobSpecs returns all the JobSpecs in the Spec.
-func (s *Spec) JobSpecs() []*api.JobSpec {
-	jobSpecs := []*api.JobSpec{}
+// ServiceSpecs returns all the ServiceSpecs in the Spec.
+func (s *Spec) ServiceSpecs() []*api.ServiceSpec {
+	serviceSpecs := []*api.ServiceSpec{}
 	for _, service := range s.Services {
-		jobSpec := service.ToProto()
-		jobSpec.Meta.Labels["namespace"] = s.Namespace
-		jobSpecs = append(jobSpecs, jobSpec)
+		serviceSpec := service.ToProto()
+		serviceSpec.Meta.Labels["namespace"] = s.Namespace
+		serviceSpecs = append(serviceSpecs, serviceSpec)
 	}
-	return jobSpecs
+	return serviceSpecs
 }
 
-// FromJobSpecs converts Jobs to a Spec.
-func (s *Spec) FromJobSpecs(jobspecs []*api.JobSpec) {
-	for _, j := range jobspecs {
+// FromServiceSpecs converts Services to a Spec.
+func (s *Spec) FromServiceSpecs(servicespecs []*api.ServiceSpec) {
+	for _, j := range servicespecs {
 		service := &ServiceConfig{}
 		service.FromProto(j)
 		s.Services[j.Meta.Name] = service

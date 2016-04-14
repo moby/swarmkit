@@ -12,10 +12,10 @@ import (
 // one entry then it is returned to the caller. Otherwise an error is
 // returned.
 func GetNetwork(ctx context.Context, c api.ClusterClient, input string) (*api.Network, error) {
-	// GetJob to match via full ID.
+	// GetService to match via full ID.
 	rg, err := c.GetNetwork(ctx, &api.GetNetworkRequest{NetworkID: input})
 	if err != nil {
-		// If any error (including NotFound), ListJobs to match via ID prefix and full name.
+		// If any error (including NotFound), ListServices to match via ID prefix and full name.
 		rl, err := c.ListNetworks(ctx, &api.ListNetworksRequest{Options: &api.ListOptions{Query: input}})
 		if err != nil {
 			return nil, err

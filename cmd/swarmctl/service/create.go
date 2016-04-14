@@ -1,4 +1,4 @@
-package job
+package service
 
 import (
 	"errors"
@@ -13,10 +13,10 @@ import (
 var (
 	createCmd = &cobra.Command{
 		Use:   "create",
-		Short: "Create a job",
+		Short: "Create a service",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			flags := cmd.Flags()
-			var spec *api.JobSpec
+			var spec *api.ServiceSpec
 
 			c, err := common.Dial(cmd)
 			if err != nil {
@@ -56,7 +56,7 @@ var (
 					return err
 				}
 
-				spec = &api.JobSpec{
+				spec = &api.ServiceSpec{
 					Meta: api.Meta{
 						Name: name,
 					},
@@ -72,11 +72,7 @@ var (
 							},
 						},
 					},
-					Orchestration: &api.JobSpec_Service{
-						Service: &api.JobSpec_ServiceJob{
-							Instances: instances,
-						},
-					},
+					Instances: instances,
 				}
 
 				if flags.Changed("network") {
@@ -100,18 +96,18 @@ var (
 				}
 			}
 
-			r, err := c.CreateJob(common.Context(cmd), &api.CreateJobRequest{Spec: spec})
+			r, err := c.CreateService(common.Context(cmd), &api.CreateServiceRequest{Spec: spec})
 			if err != nil {
 				return err
 			}
-			fmt.Println(r.Job.ID)
+			fmt.Println(r.Service.ID)
 			return nil
 		},
 	}
 )
 
 func init() {
-	createCmd.Flags().String("name", "", "Job name")
+	createCmd.Flags().String("name", "", "Service name")
 	createCmd.Flags().String("image", "", "Image")
 	createCmd.Flags().StringSlice("args", nil, "Args")
 	createCmd.Flags().StringSlice("env", nil, "Env")
@@ -119,5 +115,5 @@ func init() {
 	createCmd.Flags().String("network", "", "Network name")
 	// TODO(aluzzardi): This should be called `service-instances` so that every
 	// orchestrator can have its own flag namespace.
-	createCmd.Flags().Int64("instances", 1, "Number of instances for the service Job")
+	createCmd.Flags().Int64("instances", 1, "Number of instances for the service Service")
 }

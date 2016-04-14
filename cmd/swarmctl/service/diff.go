@@ -1,4 +1,4 @@
-package job
+package service
 
 import (
 	"errors"
@@ -11,11 +11,11 @@ import (
 
 var (
 	diffCmd = &cobra.Command{
-		Use:   "diff <job ID>",
-		Short: "Diff a job",
+		Use:   "diff <service ID>",
+		Short: "Diff a service",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return errors.New("job ID missing")
+				return errors.New("service ID missing")
 			}
 
 			flags := cmd.Flags()
@@ -34,7 +34,7 @@ var (
 				return err
 			}
 
-			job, err := getJob(common.Context(cmd), c, args[0])
+			service, err := getService(common.Context(cmd), c, args[0])
 			if err != nil {
 				return err
 			}
@@ -45,7 +45,7 @@ var (
 			}
 
 			remoteService := &spec.ServiceConfig{}
-			remoteService.FromProto(job.Spec)
+			remoteService.FromProto(service.Spec)
 			diff, err := localService.Diff(context, "remote", "local", remoteService)
 			if err != nil {
 				return err

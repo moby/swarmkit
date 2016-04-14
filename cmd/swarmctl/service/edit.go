@@ -1,4 +1,4 @@
-package job
+package service
 
 import (
 	"errors"
@@ -16,11 +16,11 @@ import (
 
 var (
 	editCmd = &cobra.Command{
-		Use:   "edit <job ID>",
-		Short: "Edit a job",
+		Use:   "edit <service ID>",
+		Short: "Edit a service",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return errors.New("job ID missing")
+				return errors.New("service ID missing")
 			}
 
 			editorPath := os.Getenv("EDITOR")
@@ -33,15 +33,15 @@ var (
 				return err
 			}
 
-			job, err := getJob(common.Context(cmd), c, args[0])
+			servicePB, err := getService(common.Context(cmd), c, args[0])
 			if err != nil {
 				return err
 			}
 
 			service := &spec.ServiceConfig{}
-			service.FromProto(job.Spec)
+			service.FromProto(servicePB.Spec)
 
-			original, err := ioutil.TempFile(os.TempDir(), "swarm-job-edit")
+			original, err := ioutil.TempFile(os.TempDir(), "swarm-service-edit")
 			if err != nil {
 				return err
 			}
@@ -85,11 +85,11 @@ var (
 				return nil
 			}
 
-			r, err := c.UpdateJob(common.Context(cmd), &api.UpdateJobRequest{JobID: job.ID, Spec: newService.ToProto()})
+			r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{ServiceID: servicePB.ID, Spec: newService.ToProto()})
 			if err != nil {
 				return err
 			}
-			fmt.Println(r.Job.ID)
+			fmt.Println(r.Service.ID)
 			return nil
 		},
 	}

@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-// CreateTask creates and return a Task based on the provided JobSpec.
+// CreateTask creates and return a Task based on the provided ServiceSpec.
 // TODO(aluzzardi): Not implemented.
 func (s *Server) CreateTask(ctx context.Context, request *api.CreateTaskRequest) (*api.CreateTaskResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, errNotImplemented.Error())

@@ -41,9 +41,9 @@ func TestRunnerFlowIntegration(t *testing.T) {
 	assert.NotNil(t, client)
 
 	task := &api.Task{
-		ID:     "dockerexec-integration-task-id",
-		JobID:  "dockerexec-integration-job-id",
-		NodeID: "dockerexec-integration-node-id",
+		ID:        "dockerexec-integration-task-id",
+		ServiceID: "dockerexec-integration-service-id",
+		NodeID:    "dockerexec-integration-node-id",
 		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.Container{

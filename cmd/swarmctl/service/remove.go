@@ -1,4 +1,4 @@
-package job
+package service
 
 import (
 	"errors"
@@ -11,23 +11,23 @@ import (
 
 var (
 	removeCmd = &cobra.Command{
-		Use:     "remove <job ID>",
-		Short:   "Remove a job",
+		Use:     "remove <service ID>",
+		Short:   "Remove a service",
 		Aliases: []string{"rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return errors.New("job ID missing")
+				return errors.New("service ID missing")
 			}
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
 			}
 
-			job, err := getJob(common.Context(cmd), c, args[0])
+			service, err := getService(common.Context(cmd), c, args[0])
 			if err != nil {
 				return err
 			}
-			_, err = c.RemoveJob(common.Context(cmd), &api.RemoveJobRequest{JobID: job.ID})
+			_, err = c.RemoveService(common.Context(cmd), &api.RemoveServiceRequest{ServiceID: service.ID})
 			if err != nil {
 				return err
 			}

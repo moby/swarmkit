@@ -31,7 +31,7 @@ type ContainerConfig struct {
 	Resources *ResourceRequirements `yaml:"resources,omitempty"`
 }
 
-// ServiceConfig is a human representation of the ServiceJob
+// ServiceConfig is a human representation of the Service
 type ServiceConfig struct {
 	ContainerConfig
 
@@ -76,9 +76,9 @@ func (s *ServiceConfig) Write(w io.Writer) error {
 	return yaml.NewEncoder(w).Encode(s)
 }
 
-// ToProto converts a ServiceConfig to a JobSpec.
-func (s *ServiceConfig) ToProto() *api.JobSpec {
-	spec := &api.JobSpec{
+// ToProto converts a ServiceConfig to a ServiceSpec.
+func (s *ServiceConfig) ToProto() *api.ServiceSpec {
+	spec := &api.ServiceSpec{
 		Meta: api.Meta{
 			Name:   s.Name,
 			Labels: make(map[string]string),
@@ -96,31 +96,27 @@ func (s *ServiceConfig) ToProto() *api.JobSpec {
 				},
 			},
 		},
-		Orchestration: &api.JobSpec_Service{
-			Service: &api.JobSpec_ServiceJob{
-				Instances: s.Instances,
-			},
-		},
+		Instances: s.Instances,
 	}
 
 	return spec
 }
 
-// FromProto converts a JobSpec to a ServiceConfig.
-func (s *ServiceConfig) FromProto(jobSpec *api.JobSpec) {
+// FromProto converts a ServiceSpec to a ServiceConfig.
+func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	*s = ServiceConfig{
-		Name:      jobSpec.Meta.Name,
-		Instances: jobSpec.GetService().Instances,
+		Name:      serviceSpec.Meta.Name,
+		Instances: serviceSpec.Instances,
 		ContainerConfig: ContainerConfig{
-			Image:   jobSpec.Template.GetContainer().Image.Reference,
-			Env:     jobSpec.Template.GetContainer().Env,
-			Args:    jobSpec.Template.GetContainer().Args,
-			Command: jobSpec.Template.GetContainer().Command,
+			Image:   serviceSpec.Template.GetContainer().Image.Reference,
+			Env:     serviceSpec.Template.GetContainer().Env,
+			Args:    serviceSpec.Template.GetContainer().Args,
+			Command: serviceSpec.Template.GetContainer().Command,
 		},
 	}
-	if jobSpec.Template.GetContainer().Resources != nil {
+	if serviceSpec.Template.GetContainer().Resources != nil {
 		s.Resources = &ResourceRequirements{}
-		s.Resources.FromProto(jobSpec.Template.GetContainer().Resources)
+		s.Resources.FromProto(serviceSpec.Template.GetContainer().Resources)
 	}
 }
 

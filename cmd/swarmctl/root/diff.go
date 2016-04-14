@@ -26,7 +26,7 @@ var (
 				return err
 			}
 
-			r, err := c.ListJobs(common.Context(cmd), &api.ListJobsRequest{})
+			r, err := c.ListServices(common.Context(cmd), &api.ListServicesRequest{})
 			if err != nil {
 				return err
 			}
@@ -36,11 +36,11 @@ var (
 				return err
 			}
 
-			jobspecs := []*api.JobSpec{}
+			servicespecs := []*api.ServiceSpec{}
 
-			for _, j := range r.Jobs {
+			for _, j := range r.Services {
 				if j.Spec.Meta.Labels["namespace"] == localSpec.Namespace {
-					jobspecs = append(jobspecs, j.Spec)
+					servicespecs = append(servicespecs, j.Spec)
 				}
 			}
 			remoteSpec := &spec.Spec{
@@ -48,7 +48,7 @@ var (
 				Namespace: localSpec.Namespace,
 				Services:  make(map[string]*spec.ServiceConfig),
 			}
-			remoteSpec.FromJobSpecs(jobspecs)
+			remoteSpec.FromServiceSpecs(servicespecs)
 
 			diff, err := localSpec.Diff(context, "remote", "local", remoteSpec)
 			if err != nil {

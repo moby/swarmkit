@@ -18,12 +18,12 @@ func Apply(store Store, item events.Event) (err error) {
 		case EventDeleteTask:
 			return tx.Tasks().Delete(v.Task.ID)
 
-		case EventCreateJob:
-			return tx.Jobs().Create(v.Job)
-		case EventUpdateJob:
-			return tx.Jobs().Update(v.Job)
-		case EventDeleteJob:
-			return tx.Jobs().Delete(v.Job.ID)
+		case EventCreateService:
+			return tx.Services().Create(v.Service)
+		case EventUpdateService:
+			return tx.Services().Update(v.Service)
+		case EventDeleteService:
+			return tx.Services().Delete(v.Service.ID)
 
 		case EventCreateNetwork:
 			return tx.Networks().Create(v.Network)

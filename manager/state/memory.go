@@ -13,14 +13,14 @@ import (
 )
 
 const (
-	indexID     = "id"
-	indexName   = "name"
-	indexJobID  = "jobid"
-	indexNodeID = "nodeid"
+	indexID        = "id"
+	indexName      = "name"
+	indexServiceID = "serviceid"
+	indexNodeID    = "nodeid"
 
 	tableNode    = "node"
 	tableTask    = "task"
-	tableJob     = "job"
+	tableService = "service"
 	tableNetwork = "network"
 	tableVolume  = "volume"
 
@@ -73,10 +73,10 @@ func NewMemoryStore(proposer Proposer) *MemoryStore {
 						AllowMissing: true,
 						Indexer:      taskIndexerByName{},
 					},
-					indexJobID: {
-						Name:         indexJobID,
+					indexServiceID: {
+						Name:         indexServiceID,
 						AllowMissing: true,
-						Indexer:      taskIndexerByJobID{},
+						Indexer:      taskIndexerByServiceID{},
 					},
 					indexNodeID: {
 						Name:         indexNodeID,
@@ -85,18 +85,18 @@ func NewMemoryStore(proposer Proposer) *MemoryStore {
 					},
 				},
 			},
-			tableJob: {
-				Name: tableJob,
+			tableService: {
+				Name: tableService,
 				Indexes: map[string]*memdb.IndexSchema{
 					indexID: {
 						Name:    indexID,
 						Unique:  true,
-						Indexer: jobIndexerByID{},
+						Indexer: serviceIndexerByID{},
 					},
 					indexName: {
 						Name:    indexName,
 						Unique:  true,
-						Indexer: jobIndexerByName{},
+						Indexer: serviceIndexerByName{},
 					},
 				},
 			},
@@ -175,7 +175,7 @@ func prefixFromArgs(args ...interface{}) ([]byte, error) {
 
 type readTx struct {
 	nodes    nodes
-	jobs     jobs
+	services services
 	tasks    tasks
 	networks networks
 	volumes  volumes
@@ -189,7 +189,7 @@ func (s *MemoryStore) View(cb func(ReadTx) error) error {
 		nodes: nodes{
 			memDBTx: memDBTx,
 		},
-		jobs: jobs{
+		services: services{
 			memDBTx: memDBTx,
 		},
 		tasks: tasks{
@@ -211,8 +211,8 @@ func (t readTx) Nodes() NodeSetReader {
 	return t.nodes
 }
 
-func (t readTx) Jobs() JobSetReader {
-	return t.jobs
+func (t readTx) Services() ServiceSetReader {
+	return t.services
 }
 
 func (t readTx) Networks() NetworkSetReader {
@@ -229,7 +229,7 @@ func (t readTx) Volumes() VolumeSetReader {
 
 type tx struct {
 	nodes      nodes
-	jobs       jobs
+	services   services
 	tasks      tasks
 	networks   networks
 	volumes    volumes
@@ -243,13 +243,13 @@ func (s *MemoryStore) applyStoreActions(actions []*api.StoreAction) error {
 
 	tx := tx{
 		nodes:    nodes{memDBTx: memDBTx},
-		jobs:     jobs{memDBTx: memDBTx},
+		services: services{memDBTx: memDBTx},
 		tasks:    tasks{memDBTx: memDBTx},
 		networks: networks{memDBTx: memDBTx},
 		volumes:  volumes{memDBTx: memDBTx},
 	}
 	tx.nodes.tx = &tx
-	tx.jobs.tx = &tx
+	tx.services.tx = &tx
 	tx.tasks.tx = &tx
 	tx.networks.tx = &tx
 	tx.volumes.tx = &tx
@@ -297,9 +297,9 @@ func applyStoreAction(tx tx, sa *api.StoreAction) error {
 		default:
 			return errors.New("unknown store action")
 		}
-	case *api.StoreAction_Job:
-		obj := v.Job
-		ds := tx.Jobs()
+	case *api.StoreAction_Service:
+		obj := v.Service
+		ds := tx.Services()
 		switch sa.Action {
 		case api.StoreActionKindCreate:
 			return ds.Create(obj)
@@ -372,7 +372,7 @@ func (s *MemoryStore) update(proposer Proposer, cb func(Tx) error) error {
 		memDBTx:    memDBTx,
 		curVersion: curVersion,
 	}
-	tx.jobs = jobs{
+	tx.services = services{
 		tx:         &tx,
 		memDBTx:    memDBTx,
 		curVersion: curVersion,
@@ -464,20 +464,20 @@ func (tx tx) newStoreAction() ([]*api.StoreAction, error) {
 				Task: v.Task,
 			}
 
-		case EventCreateJob:
+		case EventCreateService:
 			sa.Action = api.StoreActionKindCreate
-			sa.Target = &api.StoreAction_Job{
-				Job: v.Job,
+			sa.Target = &api.StoreAction_Service{
+				Service: v.Service,
 			}
-		case EventUpdateJob:
+		case EventUpdateService:
 			sa.Action = api.StoreActionKindUpdate
-			sa.Target = &api.StoreAction_Job{
-				Job: v.Job,
+			sa.Target = &api.StoreAction_Service{
+				Service: v.Service,
 			}
-		case EventDeleteJob:
+		case EventDeleteService:
 			sa.Action = api.StoreActionKindRemove
-			sa.Target = &api.StoreAction_Job{
-				Job: v.Job,
+			sa.Target = &api.StoreAction_Service{
+				Service: v.Service,
 			}
 
 		case EventCreateNetwork:
@@ -544,8 +544,8 @@ func (tx tx) Networks() NetworkSet {
 	return tx.networks
 }
 
-func (tx tx) Jobs() JobSet {
-	return tx.jobs
+func (tx tx) Services() ServiceSet {
+	return tx.services
 }
 
 func (tx tx) Tasks() TaskSet {
@@ -866,8 +866,8 @@ func (tasks tasks) Find(by By) ([]*api.Task, error) {
 		}
 		return fromResultIterator(it), nil
 
-	case byJob:
-		it, err := tasks.memDBTx.Get(tasks.table(), indexJobID, string(v))
+	case byService:
+		it, err := tasks.memDBTx.Get(tasks.table(), indexServiceID, string(v))
 		if err != nil {
 			return nil, err
 		}
@@ -913,20 +913,20 @@ func (ti taskIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 	return true, []byte(t.Meta.Name + "\x00"), nil
 }
 
-type taskIndexerByJobID struct{}
+type taskIndexerByServiceID struct{}
 
-func (ti taskIndexerByJobID) FromArgs(args ...interface{}) ([]byte, error) {
+func (ti taskIndexerByServiceID) FromArgs(args ...interface{}) ([]byte, error) {
 	return fromArgs(args...)
 }
 
-func (ti taskIndexerByJobID) FromObject(obj interface{}) (bool, []byte, error) {
+func (ti taskIndexerByServiceID) FromObject(obj interface{}) (bool, []byte, error) {
 	t, ok := obj.(*api.Task)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
 
 	// Add the null character as a terminator
-	val := t.JobID + "\x00"
+	val := t.ServiceID + "\x00"
 	return true, []byte(val), nil
 }
 
@@ -947,121 +947,121 @@ func (ti taskIndexerByNodeID) FromObject(obj interface{}) (bool, []byte, error) 
 	return true, []byte(val), nil
 }
 
-type jobs struct {
+type services struct {
 	tx         *tx
 	memDBTx    *memdb.Txn
 	curVersion *api.Version
 }
 
-func (jobs jobs) table() string {
-	return tableJob
+func (services services) table() string {
+	return tableService
 }
 
 // lookup is an internal typed wrapper around memdb.
-func (jobs jobs) lookup(index, id string) *api.Job {
-	j, err := jobs.memDBTx.First(jobs.table(), index, id)
+func (services services) lookup(index, id string) *api.Service {
+	j, err := services.memDBTx.First(services.table(), index, id)
 	if err != nil {
 		return nil
 	}
 	if j != nil {
-		return j.(*api.Job)
+		return j.(*api.Service)
 	}
 	return nil
 }
 
-// Create adds a new job to the store.
+// Create adds a new service to the store.
 // Returns ErrExist if the ID is already taken.
-func (jobs jobs) Create(j *api.Job) error {
-	if jobs.lookup(indexID, j.ID) != nil {
+func (services services) Create(j *api.Service) error {
+	if services.lookup(indexID, j.ID) != nil {
 		return ErrExist
 	}
 	// Ensure the name is not already in use.
-	if j.Spec != nil && jobs.lookup(indexName, j.Spec.Meta.Name) != nil {
+	if j.Spec != nil && services.lookup(indexName, j.Spec.Meta.Name) != nil {
 		return ErrNameConflict
 	}
 
 	copy := j.Copy()
-	if jobs.curVersion != nil {
-		copy.Version = *jobs.curVersion
+	if services.curVersion != nil {
+		copy.Version = *services.curVersion
 	}
 
-	err := jobs.memDBTx.Insert(jobs.table(), copy)
+	err := services.memDBTx.Insert(services.table(), copy)
 	if err == nil {
-		jobs.tx.changelist = append(jobs.tx.changelist, EventCreateJob{Job: copy})
+		services.tx.changelist = append(services.tx.changelist, EventCreateService{Service: copy})
 	}
 	return err
 }
 
-// Update updates an existing job in the store.
-// Returns ErrNotExist if the job doesn't exist.
-func (jobs jobs) Update(j *api.Job) error {
-	oldJ := jobs.lookup(indexID, j.ID)
-	if oldJ == nil {
+// Update updates an existing service in the store.
+// Returns ErrNotExist if the service doesn't exist.
+func (services services) Update(s *api.Service) error {
+	oldS := services.lookup(indexID, s.ID)
+	if oldS == nil {
 		return ErrNotExist
 	}
 
-	// Ensure the name is either not in use or already used by this same Job.
-	if existing := jobs.lookup(indexName, j.Spec.Meta.Name); existing != nil {
-		if existing.ID != j.ID {
+	// Ensure the name is either not in use or already used by this same Service.
+	if existing := services.lookup(indexName, s.Spec.Meta.Name); existing != nil {
+		if existing.ID != s.ID {
 			return ErrNameConflict
 		}
 	}
 
-	copy := j.Copy()
-	if jobs.curVersion != nil {
-		if oldJ.Version != j.Version {
+	copy := s.Copy()
+	if services.curVersion != nil {
+		if oldS.Version != s.Version {
 			return ErrSequenceConflict
 		}
-		copy.Version = *jobs.curVersion
+		copy.Version = *services.curVersion
 	}
 
-	err := jobs.memDBTx.Insert(jobs.table(), copy)
+	err := services.memDBTx.Insert(services.table(), copy)
 	if err == nil {
-		jobs.tx.changelist = append(jobs.tx.changelist, EventUpdateJob{Job: copy})
+		services.tx.changelist = append(services.tx.changelist, EventUpdateService{Service: copy})
 	}
 	return err
 }
 
-// Delete removes a job from the store.
-// Returns ErrNotExist if the job doesn't exist.
-func (jobs jobs) Delete(id string) error {
-	j := jobs.lookup(indexID, id)
+// Delete removes a service from the store.
+// Returns ErrNotExist if the service doesn't exist.
+func (services services) Delete(id string) error {
+	j := services.lookup(indexID, id)
 	if j == nil {
 		return ErrNotExist
 	}
 
-	err := jobs.memDBTx.Delete(jobs.table(), j)
+	err := services.memDBTx.Delete(services.table(), j)
 	if err == nil {
-		jobs.tx.changelist = append(jobs.tx.changelist, EventDeleteJob{Job: j})
+		services.tx.changelist = append(services.tx.changelist, EventDeleteService{Service: j})
 	}
 	return err
 }
 
-// Job looks up a job by ID.
-// Returns nil if the job doesn't exist.
-func (jobs jobs) Get(id string) *api.Job {
-	return jobs.lookup(indexID, id).Copy()
+// Service looks up a service by ID.
+// Returns nil if the service doesn't exist.
+func (services services) Get(id string) *api.Service {
+	return services.lookup(indexID, id).Copy()
 }
 
-// Find selects a set of jobs and returns them. If by is nil,
-// returns all jobs.
-func (jobs jobs) Find(by By) ([]*api.Job, error) {
-	fromResultIterator := func(it memdb.ResultIterator) []*api.Job {
-		jobs := []*api.Job{}
+// Find selects a set of services and returns them. If by is nil,
+// returns all services.
+func (services services) Find(by By) ([]*api.Service, error) {
+	fromResultIterator := func(it memdb.ResultIterator) []*api.Service {
+		services := []*api.Service{}
 		for {
 			obj := it.Next()
 			if obj == nil {
 				break
 			}
-			if j, ok := obj.(*api.Job); ok {
-				jobs = append(jobs, j.Copy())
+			if j, ok := obj.(*api.Service); ok {
+				services = append(services, j.Copy())
 			}
 		}
-		return jobs
+		return services
 	}
 
-	fromResultIterators := func(its ...memdb.ResultIterator) []*api.Job {
-		jobs := []*api.Job{}
+	fromResultIterators := func(its ...memdb.ResultIterator) []*api.Service {
+		services := []*api.Service{}
 		ids := make(map[string]struct{})
 		for _, it := range its {
 			for {
@@ -1069,37 +1069,37 @@ func (jobs jobs) Find(by By) ([]*api.Job, error) {
 				if obj == nil {
 					break
 				}
-				if j, ok := obj.(*api.Job); ok {
+				if j, ok := obj.(*api.Service); ok {
 					if _, exists := ids[j.ID]; !exists {
-						jobs = append(jobs, j.Copy())
+						services = append(services, j.Copy())
 						ids[j.ID] = struct{}{}
 					}
 				}
 			}
 		}
-		return jobs
+		return services
 	}
 
 	switch v := by.(type) {
 	case all:
-		it, err := jobs.memDBTx.Get(jobs.table(), indexID)
+		it, err := services.memDBTx.Get(services.table(), indexID)
 		if err != nil {
 			return nil, err
 		}
 		return fromResultIterator(it), nil
 	case byName:
-		it, err := jobs.memDBTx.Get(jobs.table(), indexName, string(v))
+		it, err := services.memDBTx.Get(services.table(), indexName, string(v))
 		if err != nil {
 			return nil, err
 		}
 		return fromResultIterator(it), nil
 	case byQuery:
-		itID, err := jobs.memDBTx.Get(jobs.table(), indexID+prefix, string(v))
+		itID, err := services.memDBTx.Get(services.table(), indexID+prefix, string(v))
 		if err != nil {
 			return nil, err
 		}
 
-		itName, err := jobs.memDBTx.Get(jobs.table(), indexName, string(v))
+		itName, err := services.memDBTx.Get(services.table(), indexName, string(v))
 		if err != nil {
 			return nil, err
 		}
@@ -1109,14 +1109,14 @@ func (jobs jobs) Find(by By) ([]*api.Job, error) {
 	}
 }
 
-type jobIndexerByID struct{}
+type serviceIndexerByID struct{}
 
-func (ji jobIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
+func (ji serviceIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
 	return fromArgs(args...)
 }
 
-func (ji jobIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
-	j, ok := obj.(*api.Job)
+func (ji serviceIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
+	j, ok := obj.(*api.Service)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -1126,18 +1126,18 @@ func (ji jobIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
 	return true, []byte(val), nil
 }
 
-func (ji jobIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+func (ji serviceIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
 	return prefixFromArgs(args...)
 }
 
-type jobIndexerByName struct{}
+type serviceIndexerByName struct{}
 
-func (ji jobIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
+func (ji serviceIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
 	return fromArgs(args...)
 }
 
-func (ji jobIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
-	j, ok := obj.(*api.Job)
+func (ji serviceIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
+	j, ok := obj.(*api.Service)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -1551,12 +1551,12 @@ func (s *MemoryStore) CopyFrom(readTx ReadTx) error {
 			}
 		}
 
-		jobs, err := readTx.Jobs().Find(All)
+		services, err := readTx.Services().Find(All)
 		if err != nil {
 			return err
 		}
-		for _, j := range jobs {
-			if err := tx.Jobs().Create(j); err != nil {
+		for _, j := range services {
+			if err := tx.Services().Create(j); err != nil {
 				return err
 			}
 		}
@@ -1603,7 +1603,7 @@ func (s *MemoryStore) Save(tx ReadTx) (*pb.StoreSnapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	snapshot.Jobs, err = tx.Jobs().Find(All)
+	snapshot.Services, err = tx.Services().Find(All)
 	if err != nil {
 		return nil, err
 	}
@@ -1629,8 +1629,8 @@ func (s *MemoryStore) Restore(snapshot *pb.StoreSnapshot) error {
 			}
 		}
 
-		for _, j := range snapshot.Jobs {
-			if err := tx.Jobs().Create(j); err != nil {
+		for _, j := range snapshot.Services {
+			if err := tx.Services().Create(j); err != nil {
 				return err
 			}
 		}

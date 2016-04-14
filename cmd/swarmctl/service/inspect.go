@@ -1,4 +1,4 @@
-package job
+package service
 
 import (
 	"errors"
@@ -16,18 +16,18 @@ import (
 
 var (
 	inspectCmd = &cobra.Command{
-		Use:   "inspect <job ID>",
-		Short: "Inspect a job",
+		Use:   "inspect <service ID>",
+		Short: "Inspect a service",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return errors.New("job ID missing")
+				return errors.New("service ID missing")
 			}
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
 			}
 
-			job, err := getJob(common.Context(cmd), c, args[0])
+			service, err := getService(common.Context(cmd), c, args[0])
 			if err != nil {
 				return err
 			}
@@ -36,23 +36,13 @@ var (
 				// Ignore flushing errors - there's nothing we can do.
 				_ = w.Flush()
 			}()
-			common.FprintfIfNotEmpty(w, "ID\t: %s\n", job.ID)
-			common.FprintfIfNotEmpty(w, "Name\t: %s\n", job.Spec.Meta.Name)
-			orchestration := ""
-			switch o := job.Spec.Orchestration.(type) {
-			case *api.JobSpec_Batch:
-				orchestration = "BATCH"
-			case *api.JobSpec_Cron:
-				orchestration = "CRON"
-			case *api.JobSpec_Global:
-				orchestration = "GLOBAL"
-			case *api.JobSpec_Service:
-				orchestration = fmt.Sprintf("SERVICE (%d instances)", o.Service.Instances)
-			}
-			common.FprintfIfNotEmpty(w, "Orchestration\t: %s\n", orchestration)
+			common.FprintfIfNotEmpty(w, "ID\t: %s\n", service.ID)
+			common.FprintfIfNotEmpty(w, "Name\t: %s\n", service.Spec.Meta.Name)
+			common.FprintfIfNotEmpty(w, "Instances\t: %s\n", service.Spec.Instances)
+			common.FprintfIfNotEmpty(w, "Strategy\t: %s\n", service.Spec.Strategy)
 			fmt.Fprintln(w, "Template:\t")
 			fmt.Fprintln(w, " Container:\t")
-			ctr := job.Spec.Template.GetContainer()
+			ctr := service.Spec.Template.GetContainer()
 			common.FprintfIfNotEmpty(w, "  Image\t: %s\n", ctr.Image.Reference)
 			common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))
 			common.FprintfIfNotEmpty(w, "  Args\t: [%s]\n", strings.Join(ctr.Args, ", "))

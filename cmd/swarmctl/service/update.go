@@ -1,4 +1,4 @@
-package job
+package service
 
 import (
 	"errors"
@@ -11,15 +11,15 @@ import (
 
 var (
 	updateCmd = &cobra.Command{
-		Use:   "update <job ID>",
-		Short: "Update a job",
+		Use:   "update <service ID>",
+		Short: "Update a service",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return errors.New("job ID missing")
+				return errors.New("service ID missing")
 			}
 
 			flags := cmd.Flags()
-			var spec *api.JobSpec
+			var spec *api.ServiceSpec
 
 			if flags.Changed("file") {
 				service, err := readServiceConfig(flags)
@@ -28,18 +28,14 @@ var (
 				}
 				spec = service.ToProto()
 			} else { // TODO(vieux): support or error on both file.
-				spec = &api.JobSpec{}
+				spec = &api.ServiceSpec{}
 
 				if flags.Changed("instances") {
 					instances, err := flags.GetInt64("instances")
 					if err != nil {
 						return err
 					}
-					spec.Orchestration = &api.JobSpec_Service{
-						Service: &api.JobSpec_ServiceJob{
-							Instances: instances,
-						},
-					}
+					spec.Instances = instances
 				}
 				if len(args) > 1 {
 					spec.Template.GetContainer().Command = args[1:]
@@ -64,15 +60,15 @@ var (
 				return err
 			}
 
-			job, err := getJob(common.Context(cmd), c, args[0])
+			service, err := getService(common.Context(cmd), c, args[0])
 			if err != nil {
 				return err
 			}
-			r, err := c.UpdateJob(common.Context(cmd), &api.UpdateJobRequest{JobID: job.ID, Spec: spec})
+			r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: spec})
 			if err != nil {
 				return err
 			}
-			fmt.Println(r.Job.ID)
+			fmt.Println(r.Service.ID)
 			return nil
 		},
 	}
@@ -84,7 +80,7 @@ func init() {
 	updateCmd.Flags().StringP("file", "f", "", "Spec to use")
 	// TODO(aluzzardi): This should be called `service-instances` so that every
 	// orchestrator can have its own flag namespace.
-	updateCmd.Flags().Int64("instances", 0, "Number of instances for the service Job")
+	updateCmd.Flags().Int64("instances", 0, "Number of instances for the service")
 	// TODO(vieux): This could probably be done in one step
 	updateCmd.Flags().Lookup("instances").DefValue = ""
 }

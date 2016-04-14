@@ -37,7 +37,7 @@ var (
 				_ = w.Flush()
 			}()
 			fmt.Fprintf(w, "ID:\t%s\n", r.Task.ID)
-			fmt.Fprintf(w, "Job:\t%s\n", res.Resolve(api.Job{}, r.Task.JobID))
+			fmt.Fprintf(w, "Service:\t%s\n", res.Resolve(api.Service{}, r.Task.ServiceID))
 			if r.Task.Status.Err != "" {
 				fmt.Fprintf(w, "Status:\t%s (%s)\n", r.Task.Status.State.String(), r.Task.Status.Err)
 			} else {
