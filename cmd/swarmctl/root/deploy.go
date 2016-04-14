@@ -24,48 +24,48 @@ var (
 				return err
 			}
 
-			r, err := c.ListJobs(common.Context(cmd), &api.ListJobsRequest{})
+			r, err := c.ListServices(common.Context(cmd), &api.ListServicesRequest{})
 			if err != nil {
 				return err
 			}
 
-			jobs := map[string]*api.Job{}
+			services := map[string]*api.Service{}
 
-			for _, j := range r.Jobs {
+			for _, j := range r.Services {
 				if j.Spec.Meta.Labels["namespace"] == s.Namespace {
-					jobs[j.Spec.Meta.Name] = j
+					services[j.Spec.Meta.Name] = j
 				}
 			}
 
-			for _, jobSpec := range s.JobSpecs() {
-				if job, ok := jobs[jobSpec.Meta.Name]; ok && !reflect.DeepEqual(job.Spec, jobSpec) {
-					r, err := c.UpdateJob(common.Context(cmd), &api.UpdateJobRequest{JobID: job.ID, Spec: jobSpec})
+			for _, serviceSpec := range s.ServiceSpecs() {
+				if service, ok := services[serviceSpec.Meta.Name]; ok && !reflect.DeepEqual(service.Spec, serviceSpec) {
+					r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: serviceSpec})
 					if err != nil {
-						fmt.Printf("%s: %v", jobSpec.Meta.Name, err)
+						fmt.Printf("%s: %v", serviceSpec.Meta.Name, err)
 						continue
 					}
-					fmt.Printf("%s: %s - UPDATED\n", jobSpec.Meta.Name, r.Job.ID)
-					delete(jobs, jobSpec.Meta.Name)
+					fmt.Printf("%s: %s - UPDATED\n", serviceSpec.Meta.Name, r.Service.ID)
+					delete(services, serviceSpec.Meta.Name)
 				} else if !ok {
-					r, err := c.CreateJob(common.Context(cmd), &api.CreateJobRequest{Spec: jobSpec})
+					r, err := c.CreateService(common.Context(cmd), &api.CreateServiceRequest{Spec: serviceSpec})
 					if err != nil {
-						fmt.Printf("%s: %v", jobSpec.Meta.Name, err)
+						fmt.Printf("%s: %v", serviceSpec.Meta.Name, err)
 						continue
 					}
-					fmt.Printf("%s: %s - CREATED\n", jobSpec.Meta.Name, r.Job.ID)
+					fmt.Printf("%s: %s - CREATED\n", serviceSpec.Meta.Name, r.Service.ID)
 				} else {
 					// nothing to update
-					delete(jobs, jobSpec.Meta.Name)
+					delete(services, serviceSpec.Meta.Name)
 				}
 			}
 
-			for _, job := range jobs {
-				_, err := c.RemoveJob(common.Context(cmd), &api.RemoveJobRequest{JobID: job.ID})
+			for _, service := range services {
+				_, err := c.RemoveService(common.Context(cmd), &api.RemoveServiceRequest{ServiceID: service.ID})
 				if err != nil {
 
 					return err
 				}
-				fmt.Printf("%s: %s - REMOVED\n", job.Spec.Meta.Name, job.ID)
+				fmt.Printf("%s: %s - REMOVED\n", service.Spec.Meta.Name, service.ID)
 			}
 			return nil
 		},

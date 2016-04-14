@@ -1,11 +1,10 @@
-package job
+package service
 
 import (
 	"fmt"
 	"os"
 	"text/tabwriter"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
 	"github.com/spf13/cobra"
@@ -14,7 +13,7 @@ import (
 var (
 	listCmd = &cobra.Command{
 		Use:   "ls",
-		Short: "List jobs",
+		Short: "List services",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			flags := cmd.Flags()
 
@@ -27,12 +26,12 @@ var (
 			if err != nil {
 				return err
 			}
-			r, err := c.ListJobs(common.Context(cmd), &api.ListJobsRequest{})
+			r, err := c.ListServices(common.Context(cmd), &api.ListServicesRequest{})
 			if err != nil {
 				return err
 			}
 
-			var output func(j *api.Job)
+			var output func(j *api.Service)
 
 			if !quiet {
 				w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
@@ -41,31 +40,31 @@ var (
 					_ = w.Flush()
 				}()
 				fmt.Fprintln(w, "ID\tName\tImage\tInstances")
-				output = func(j *api.Job) {
-					spec := j.Spec
-					service := spec.GetService()
-					image := spec.Template.GetContainer().Image
+				output = func(s *api.Service) {
+					spec := s.Spec
+					var reference string
 
-					// TODO(aluzzardi): Right now we only implement the happy path
-					// and don't have any proper error handling whatsover.
-					// Instead of aborting, we should display what we can of the job.
-					if service == nil || image == nil {
-						log.Fatalf("Malformed job: %v", j)
+					if spec.Template != nil {
+						if spec.Template.GetContainer() != nil {
+							if spec.Template.GetContainer().Image != nil {
+								reference = spec.Template.GetContainer().Image.Reference
+							}
+						}
 					}
 
 					fmt.Fprintf(w, "%s\t%s\t%s\t%d\n",
-						j.ID,
+						s.ID,
 						spec.Meta.Name,
-						image.Reference,
-						service.Instances,
+						reference,
+						s.Spec.Instances,
 					)
 				}
 
 			} else {
-				output = func(j *api.Job) { fmt.Println(j.ID) }
+				output = func(j *api.Service) { fmt.Println(j.ID) }
 			}
 
-			for _, j := range r.Jobs {
+			for _, j := range r.Services {
 				output(j)
 			}
 			return nil

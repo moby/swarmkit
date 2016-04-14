@@ -35,12 +35,12 @@ func (r *Resolver) get(t interface{}, id string) string {
 			return res.Node.Spec.Meta.Name
 		}
 		return res.Node.Description.Hostname
-	case api.Job:
-		res, err := r.c.GetJob(r.ctx, &api.GetJobRequest{JobID: id})
+	case api.Service:
+		res, err := r.c.GetService(r.ctx, &api.GetServiceRequest{ServiceID: id})
 		if err != nil {
 			return id
 		}
-		return res.Job.Spec.Meta.Name
+		return res.Service.Spec.Meta.Name
 	default:
 		return id
 	}

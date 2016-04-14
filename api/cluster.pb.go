@@ -94,7 +94,7 @@ func (*UpdateNodeResponse) ProtoMessage()               {}
 func (*UpdateNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{6} }
 
 type CreateTaskRequest struct {
-	Spec *JobSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	Spec *ServiceSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *CreateTaskRequest) Reset()                    { *m = CreateTaskRequest{} }
@@ -155,85 +155,85 @@ func (m *ListTasksResponse) Reset()                    { *m = ListTasksResponse{
 func (*ListTasksResponse) ProtoMessage()               {}
 func (*ListTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{14} }
 
-type CreateJobRequest struct {
-	Spec *JobSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+type CreateServiceRequest struct {
+	Spec *ServiceSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
-func (m *CreateJobRequest) Reset()                    { *m = CreateJobRequest{} }
-func (*CreateJobRequest) ProtoMessage()               {}
-func (*CreateJobRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{15} }
+func (m *CreateServiceRequest) Reset()                    { *m = CreateServiceRequest{} }
+func (*CreateServiceRequest) ProtoMessage()               {}
+func (*CreateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{15} }
 
-type CreateJobResponse struct {
-	Job *Job `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
+type CreateServiceResponse struct {
+	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
 }
 
-func (m *CreateJobResponse) Reset()                    { *m = CreateJobResponse{} }
-func (*CreateJobResponse) ProtoMessage()               {}
-func (*CreateJobResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{16} }
+func (m *CreateServiceResponse) Reset()                    { *m = CreateServiceResponse{} }
+func (*CreateServiceResponse) ProtoMessage()               {}
+func (*CreateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{16} }
 
-type GetJobRequest struct {
-	JobID string `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+type GetServiceRequest struct {
+	ServiceID string `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
 }
 
-func (m *GetJobRequest) Reset()                    { *m = GetJobRequest{} }
-func (*GetJobRequest) ProtoMessage()               {}
-func (*GetJobRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{17} }
+func (m *GetServiceRequest) Reset()                    { *m = GetServiceRequest{} }
+func (*GetServiceRequest) ProtoMessage()               {}
+func (*GetServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{17} }
 
-type GetJobResponse struct {
-	Job *Job `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
+type GetServiceResponse struct {
+	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
 }
 
-func (m *GetJobResponse) Reset()                    { *m = GetJobResponse{} }
-func (*GetJobResponse) ProtoMessage()               {}
-func (*GetJobResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{18} }
+func (m *GetServiceResponse) Reset()                    { *m = GetServiceResponse{} }
+func (*GetServiceResponse) ProtoMessage()               {}
+func (*GetServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{18} }
 
-type UpdateJobRequest struct {
-	JobID string   `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	Spec  *JobSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
+type UpdateServiceRequest struct {
+	ServiceID string       `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	Spec      *ServiceSpec `protobuf:"bytes,2,opt,name=spec" json:"spec,omitempty"`
 }
 
-func (m *UpdateJobRequest) Reset()                    { *m = UpdateJobRequest{} }
-func (*UpdateJobRequest) ProtoMessage()               {}
-func (*UpdateJobRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{19} }
+func (m *UpdateServiceRequest) Reset()                    { *m = UpdateServiceRequest{} }
+func (*UpdateServiceRequest) ProtoMessage()               {}
+func (*UpdateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{19} }
 
-type UpdateJobResponse struct {
-	Job *Job `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
+type UpdateServiceResponse struct {
+	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
 }
 
-func (m *UpdateJobResponse) Reset()                    { *m = UpdateJobResponse{} }
-func (*UpdateJobResponse) ProtoMessage()               {}
-func (*UpdateJobResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{20} }
+func (m *UpdateServiceResponse) Reset()                    { *m = UpdateServiceResponse{} }
+func (*UpdateServiceResponse) ProtoMessage()               {}
+func (*UpdateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{20} }
 
-type RemoveJobRequest struct {
-	JobID string `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+type RemoveServiceRequest struct {
+	ServiceID string `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
 }
 
-func (m *RemoveJobRequest) Reset()                    { *m = RemoveJobRequest{} }
-func (*RemoveJobRequest) ProtoMessage()               {}
-func (*RemoveJobRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{21} }
+func (m *RemoveServiceRequest) Reset()                    { *m = RemoveServiceRequest{} }
+func (*RemoveServiceRequest) ProtoMessage()               {}
+func (*RemoveServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{21} }
 
-type RemoveJobResponse struct {
+type RemoveServiceResponse struct {
 }
 
-func (m *RemoveJobResponse) Reset()                    { *m = RemoveJobResponse{} }
-func (*RemoveJobResponse) ProtoMessage()               {}
-func (*RemoveJobResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{22} }
+func (m *RemoveServiceResponse) Reset()                    { *m = RemoveServiceResponse{} }
+func (*RemoveServiceResponse) ProtoMessage()               {}
+func (*RemoveServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{22} }
 
-type ListJobsRequest struct {
+type ListServicesRequest struct {
 	Options *ListOptions `protobuf:"bytes,1,opt,name=options" json:"options,omitempty"`
 }
 
-func (m *ListJobsRequest) Reset()                    { *m = ListJobsRequest{} }
-func (*ListJobsRequest) ProtoMessage()               {}
-func (*ListJobsRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{23} }
+func (m *ListServicesRequest) Reset()                    { *m = ListServicesRequest{} }
+func (*ListServicesRequest) ProtoMessage()               {}
+func (*ListServicesRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{23} }
 
-type ListJobsResponse struct {
-	Jobs []*Job `protobuf:"bytes,1,rep,name=jobs" json:"jobs,omitempty"`
+type ListServicesResponse struct {
+	Services []*Service `protobuf:"bytes,1,rep,name=services" json:"services,omitempty"`
 }
 
-func (m *ListJobsResponse) Reset()                    { *m = ListJobsResponse{} }
-func (*ListJobsResponse) ProtoMessage()               {}
-func (*ListJobsResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{24} }
+func (m *ListServicesResponse) Reset()                    { *m = ListServicesResponse{} }
+func (*ListServicesResponse) ProtoMessage()               {}
+func (*ListServicesResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{24} }
 
 type CreateNetworkRequest struct {
 	Spec *NetworkSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
@@ -378,16 +378,16 @@ func init() {
 	proto.RegisterType((*RemoveTaskResponse)(nil), "docker.cluster.api.RemoveTaskResponse")
 	proto.RegisterType((*ListTasksRequest)(nil), "docker.cluster.api.ListTasksRequest")
 	proto.RegisterType((*ListTasksResponse)(nil), "docker.cluster.api.ListTasksResponse")
-	proto.RegisterType((*CreateJobRequest)(nil), "docker.cluster.api.CreateJobRequest")
-	proto.RegisterType((*CreateJobResponse)(nil), "docker.cluster.api.CreateJobResponse")
-	proto.RegisterType((*GetJobRequest)(nil), "docker.cluster.api.GetJobRequest")
-	proto.RegisterType((*GetJobResponse)(nil), "docker.cluster.api.GetJobResponse")
-	proto.RegisterType((*UpdateJobRequest)(nil), "docker.cluster.api.UpdateJobRequest")
-	proto.RegisterType((*UpdateJobResponse)(nil), "docker.cluster.api.UpdateJobResponse")
-	proto.RegisterType((*RemoveJobRequest)(nil), "docker.cluster.api.RemoveJobRequest")
-	proto.RegisterType((*RemoveJobResponse)(nil), "docker.cluster.api.RemoveJobResponse")
-	proto.RegisterType((*ListJobsRequest)(nil), "docker.cluster.api.ListJobsRequest")
-	proto.RegisterType((*ListJobsResponse)(nil), "docker.cluster.api.ListJobsResponse")
+	proto.RegisterType((*CreateServiceRequest)(nil), "docker.cluster.api.CreateServiceRequest")
+	proto.RegisterType((*CreateServiceResponse)(nil), "docker.cluster.api.CreateServiceResponse")
+	proto.RegisterType((*GetServiceRequest)(nil), "docker.cluster.api.GetServiceRequest")
+	proto.RegisterType((*GetServiceResponse)(nil), "docker.cluster.api.GetServiceResponse")
+	proto.RegisterType((*UpdateServiceRequest)(nil), "docker.cluster.api.UpdateServiceRequest")
+	proto.RegisterType((*UpdateServiceResponse)(nil), "docker.cluster.api.UpdateServiceResponse")
+	proto.RegisterType((*RemoveServiceRequest)(nil), "docker.cluster.api.RemoveServiceRequest")
+	proto.RegisterType((*RemoveServiceResponse)(nil), "docker.cluster.api.RemoveServiceResponse")
+	proto.RegisterType((*ListServicesRequest)(nil), "docker.cluster.api.ListServicesRequest")
+	proto.RegisterType((*ListServicesResponse)(nil), "docker.cluster.api.ListServicesResponse")
 	proto.RegisterType((*CreateNetworkRequest)(nil), "docker.cluster.api.CreateNetworkRequest")
 	proto.RegisterType((*CreateNetworkResponse)(nil), "docker.cluster.api.CreateNetworkResponse")
 	proto.RegisterType((*GetNetworkRequest)(nil), "docker.cluster.api.GetNetworkRequest")
@@ -593,124 +593,124 @@ func (m *ListTasksResponse) Copy() *ListTasksResponse {
 	return o
 }
 
-func (m *CreateJobRequest) Copy() *CreateJobRequest {
+func (m *CreateServiceRequest) Copy() *CreateServiceRequest {
 	if m == nil {
 		return nil
 	}
 
-	o := &CreateJobRequest{
+	o := &CreateServiceRequest{
 		Spec: m.Spec.Copy(),
 	}
 
 	return o
 }
 
-func (m *CreateJobResponse) Copy() *CreateJobResponse {
+func (m *CreateServiceResponse) Copy() *CreateServiceResponse {
 	if m == nil {
 		return nil
 	}
 
-	o := &CreateJobResponse{
-		Job: m.Job.Copy(),
+	o := &CreateServiceResponse{
+		Service: m.Service.Copy(),
 	}
 
 	return o
 }
 
-func (m *GetJobRequest) Copy() *GetJobRequest {
+func (m *GetServiceRequest) Copy() *GetServiceRequest {
 	if m == nil {
 		return nil
 	}
 
-	o := &GetJobRequest{
-		JobID: m.JobID,
+	o := &GetServiceRequest{
+		ServiceID: m.ServiceID,
 	}
 
 	return o
 }
 
-func (m *GetJobResponse) Copy() *GetJobResponse {
+func (m *GetServiceResponse) Copy() *GetServiceResponse {
 	if m == nil {
 		return nil
 	}
 
-	o := &GetJobResponse{
-		Job: m.Job.Copy(),
+	o := &GetServiceResponse{
+		Service: m.Service.Copy(),
 	}
 
 	return o
 }
 
-func (m *UpdateJobRequest) Copy() *UpdateJobRequest {
+func (m *UpdateServiceRequest) Copy() *UpdateServiceRequest {
 	if m == nil {
 		return nil
 	}
 
-	o := &UpdateJobRequest{
-		JobID: m.JobID,
-		Spec:  m.Spec.Copy(),
+	o := &UpdateServiceRequest{
+		ServiceID: m.ServiceID,
+		Spec:      m.Spec.Copy(),
 	}
 
 	return o
 }
 
-func (m *UpdateJobResponse) Copy() *UpdateJobResponse {
+func (m *UpdateServiceResponse) Copy() *UpdateServiceResponse {
 	if m == nil {
 		return nil
 	}
 
-	o := &UpdateJobResponse{
-		Job: m.Job.Copy(),
+	o := &UpdateServiceResponse{
+		Service: m.Service.Copy(),
 	}
 
 	return o
 }
 
-func (m *RemoveJobRequest) Copy() *RemoveJobRequest {
+func (m *RemoveServiceRequest) Copy() *RemoveServiceRequest {
 	if m == nil {
 		return nil
 	}
 
-	o := &RemoveJobRequest{
-		JobID: m.JobID,
+	o := &RemoveServiceRequest{
+		ServiceID: m.ServiceID,
 	}
 
 	return o
 }
 
-func (m *RemoveJobResponse) Copy() *RemoveJobResponse {
+func (m *RemoveServiceResponse) Copy() *RemoveServiceResponse {
 	if m == nil {
 		return nil
 	}
 
-	o := &RemoveJobResponse{}
+	o := &RemoveServiceResponse{}
 
 	return o
 }
 
-func (m *ListJobsRequest) Copy() *ListJobsRequest {
+func (m *ListServicesRequest) Copy() *ListServicesRequest {
 	if m == nil {
 		return nil
 	}
 
-	o := &ListJobsRequest{
+	o := &ListServicesRequest{
 		Options: m.Options.Copy(),
 	}
 
 	return o
 }
 
-func (m *ListJobsResponse) Copy() *ListJobsResponse {
+func (m *ListServicesResponse) Copy() *ListServicesResponse {
 	if m == nil {
 		return nil
 	}
 
-	o := &ListJobsResponse{}
+	o := &ListServicesResponse{}
 
-	if m.Jobs != nil {
-		o.Jobs = make([]*Job, 0, len(m.Jobs))
-		for _, v := range m.Jobs {
-			o.Jobs = append(o.Jobs, v.Copy())
+	if m.Services != nil {
+		o.Services = make([]*Service, 0, len(m.Services))
+		for _, v := range m.Services {
+			o.Services = append(o.Services, v.Copy())
 		}
 	}
 
@@ -1082,116 +1082,116 @@ func (this *ListTasksResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *CreateJobRequest) GoString() string {
+func (this *CreateServiceRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.CreateJobRequest{")
+	s = append(s, "&api.CreateServiceRequest{")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *CreateJobResponse) GoString() string {
+func (this *CreateServiceResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.CreateJobResponse{")
-	if this.Job != nil {
-		s = append(s, "Job: "+fmt.Sprintf("%#v", this.Job)+",\n")
+	s = append(s, "&api.CreateServiceResponse{")
+	if this.Service != nil {
+		s = append(s, "Service: "+fmt.Sprintf("%#v", this.Service)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *GetJobRequest) GoString() string {
+func (this *GetServiceRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.GetJobRequest{")
-	s = append(s, "JobID: "+fmt.Sprintf("%#v", this.JobID)+",\n")
+	s = append(s, "&api.GetServiceRequest{")
+	s = append(s, "ServiceID: "+fmt.Sprintf("%#v", this.ServiceID)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *GetJobResponse) GoString() string {
+func (this *GetServiceResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.GetJobResponse{")
-	if this.Job != nil {
-		s = append(s, "Job: "+fmt.Sprintf("%#v", this.Job)+",\n")
+	s = append(s, "&api.GetServiceResponse{")
+	if this.Service != nil {
+		s = append(s, "Service: "+fmt.Sprintf("%#v", this.Service)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *UpdateJobRequest) GoString() string {
+func (this *UpdateServiceRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.UpdateJobRequest{")
-	s = append(s, "JobID: "+fmt.Sprintf("%#v", this.JobID)+",\n")
+	s = append(s, "&api.UpdateServiceRequest{")
+	s = append(s, "ServiceID: "+fmt.Sprintf("%#v", this.ServiceID)+",\n")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *UpdateJobResponse) GoString() string {
+func (this *UpdateServiceResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.UpdateJobResponse{")
-	if this.Job != nil {
-		s = append(s, "Job: "+fmt.Sprintf("%#v", this.Job)+",\n")
+	s = append(s, "&api.UpdateServiceResponse{")
+	if this.Service != nil {
+		s = append(s, "Service: "+fmt.Sprintf("%#v", this.Service)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *RemoveJobRequest) GoString() string {
+func (this *RemoveServiceRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.RemoveJobRequest{")
-	s = append(s, "JobID: "+fmt.Sprintf("%#v", this.JobID)+",\n")
+	s = append(s, "&api.RemoveServiceRequest{")
+	s = append(s, "ServiceID: "+fmt.Sprintf("%#v", this.ServiceID)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *RemoveJobResponse) GoString() string {
+func (this *RemoveServiceResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 4)
-	s = append(s, "&api.RemoveJobResponse{")
+	s = append(s, "&api.RemoveServiceResponse{")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *ListJobsRequest) GoString() string {
+func (this *ListServicesRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.ListJobsRequest{")
+	s = append(s, "&api.ListServicesRequest{")
 	if this.Options != nil {
 		s = append(s, "Options: "+fmt.Sprintf("%#v", this.Options)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *ListJobsResponse) GoString() string {
+func (this *ListServicesResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.ListJobsResponse{")
-	if this.Jobs != nil {
-		s = append(s, "Jobs: "+fmt.Sprintf("%#v", this.Jobs)+",\n")
+	s = append(s, "&api.ListServicesResponse{")
+	if this.Services != nil {
+		s = append(s, "Services: "+fmt.Sprintf("%#v", this.Services)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -1413,11 +1413,11 @@ type ClusterClient interface {
 	ListTasks(ctx context.Context, in *ListTasksRequest, opts ...grpc.CallOption) (*ListTasksResponse, error)
 	CreateTask(ctx context.Context, in *CreateTaskRequest, opts ...grpc.CallOption) (*CreateTaskResponse, error)
 	RemoveTask(ctx context.Context, in *RemoveTaskRequest, opts ...grpc.CallOption) (*RemoveTaskResponse, error)
-	GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
-	ListJobs(ctx context.Context, in *ListJobsRequest, opts ...grpc.CallOption) (*ListJobsResponse, error)
-	CreateJob(ctx context.Context, in *CreateJobRequest, opts ...grpc.CallOption) (*CreateJobResponse, error)
-	UpdateJob(ctx context.Context, in *UpdateJobRequest, opts ...grpc.CallOption) (*UpdateJobResponse, error)
-	RemoveJob(ctx context.Context, in *RemoveJobRequest, opts ...grpc.CallOption) (*RemoveJobResponse, error)
+	GetService(ctx context.Context, in *GetServiceRequest, opts ...grpc.CallOption) (*GetServiceResponse, error)
+	ListServices(ctx context.Context, in *ListServicesRequest, opts ...grpc.CallOption) (*ListServicesResponse, error)
+	CreateService(ctx context.Context, in *CreateServiceRequest, opts ...grpc.CallOption) (*CreateServiceResponse, error)
+	UpdateService(ctx context.Context, in *UpdateServiceRequest, opts ...grpc.CallOption) (*UpdateServiceResponse, error)
+	RemoveService(ctx context.Context, in *RemoveServiceRequest, opts ...grpc.CallOption) (*RemoveServiceResponse, error)
 	GetNetwork(ctx context.Context, in *GetNetworkRequest, opts ...grpc.CallOption) (*GetNetworkResponse, error)
 	ListNetworks(ctx context.Context, in *ListNetworksRequest, opts ...grpc.CallOption) (*ListNetworksResponse, error)
 	CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CreateNetworkResponse, error)
@@ -1499,45 +1499,45 @@ func (c *clusterClient) RemoveTask(ctx context.Context, in *RemoveTaskRequest, o
 	return out, nil
 }
 
-func (c *clusterClient) GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error) {
-	out := new(GetJobResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Cluster/GetJob", in, out, c.cc, opts...)
+func (c *clusterClient) GetService(ctx context.Context, in *GetServiceRequest, opts ...grpc.CallOption) (*GetServiceResponse, error) {
+	out := new(GetServiceResponse)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.Cluster/GetService", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *clusterClient) ListJobs(ctx context.Context, in *ListJobsRequest, opts ...grpc.CallOption) (*ListJobsResponse, error) {
-	out := new(ListJobsResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Cluster/ListJobs", in, out, c.cc, opts...)
+func (c *clusterClient) ListServices(ctx context.Context, in *ListServicesRequest, opts ...grpc.CallOption) (*ListServicesResponse, error) {
+	out := new(ListServicesResponse)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.Cluster/ListServices", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *clusterClient) CreateJob(ctx context.Context, in *CreateJobRequest, opts ...grpc.CallOption) (*CreateJobResponse, error) {
-	out := new(CreateJobResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Cluster/CreateJob", in, out, c.cc, opts...)
+func (c *clusterClient) CreateService(ctx context.Context, in *CreateServiceRequest, opts ...grpc.CallOption) (*CreateServiceResponse, error) {
+	out := new(CreateServiceResponse)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.Cluster/CreateService", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *clusterClient) UpdateJob(ctx context.Context, in *UpdateJobRequest, opts ...grpc.CallOption) (*UpdateJobResponse, error) {
-	out := new(UpdateJobResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Cluster/UpdateJob", in, out, c.cc, opts...)
+func (c *clusterClient) UpdateService(ctx context.Context, in *UpdateServiceRequest, opts ...grpc.CallOption) (*UpdateServiceResponse, error) {
+	out := new(UpdateServiceResponse)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.Cluster/UpdateService", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *clusterClient) RemoveJob(ctx context.Context, in *RemoveJobRequest, opts ...grpc.CallOption) (*RemoveJobResponse, error) {
-	out := new(RemoveJobResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Cluster/RemoveJob", in, out, c.cc, opts...)
+func (c *clusterClient) RemoveService(ctx context.Context, in *RemoveServiceRequest, opts ...grpc.CallOption) (*RemoveServiceResponse, error) {
+	out := new(RemoveServiceResponse)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.Cluster/RemoveService", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1626,11 +1626,11 @@ type ClusterServer interface {
 	ListTasks(context.Context, *ListTasksRequest) (*ListTasksResponse, error)
 	CreateTask(context.Context, *CreateTaskRequest) (*CreateTaskResponse, error)
 	RemoveTask(context.Context, *RemoveTaskRequest) (*RemoveTaskResponse, error)
-	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
-	ListJobs(context.Context, *ListJobsRequest) (*ListJobsResponse, error)
-	CreateJob(context.Context, *CreateJobRequest) (*CreateJobResponse, error)
-	UpdateJob(context.Context, *UpdateJobRequest) (*UpdateJobResponse, error)
-	RemoveJob(context.Context, *RemoveJobRequest) (*RemoveJobResponse, error)
+	GetService(context.Context, *GetServiceRequest) (*GetServiceResponse, error)
+	ListServices(context.Context, *ListServicesRequest) (*ListServicesResponse, error)
+	CreateService(context.Context, *CreateServiceRequest) (*CreateServiceResponse, error)
+	UpdateService(context.Context, *UpdateServiceRequest) (*UpdateServiceResponse, error)
+	RemoveService(context.Context, *RemoveServiceRequest) (*RemoveServiceResponse, error)
 	GetNetwork(context.Context, *GetNetworkRequest) (*GetNetworkResponse, error)
 	ListNetworks(context.Context, *ListNetworksRequest) (*ListNetworksResponse, error)
 	CreateNetwork(context.Context, *CreateNetworkRequest) (*CreateNetworkResponse, error)
@@ -1729,60 +1729,60 @@ func _Cluster_RemoveTask_Handler(srv interface{}, ctx context.Context, dec func(
 	return out, nil
 }
 
-func _Cluster_GetJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(GetJobRequest)
+func _Cluster_GetService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(GetServiceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).GetJob(ctx, in)
+	out, err := srv.(ClusterServer).GetService(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Cluster_ListJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(ListJobsRequest)
+func _Cluster_ListServices_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(ListServicesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).ListJobs(ctx, in)
+	out, err := srv.(ClusterServer).ListServices(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Cluster_CreateJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(CreateJobRequest)
+func _Cluster_CreateService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(CreateServiceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).CreateJob(ctx, in)
+	out, err := srv.(ClusterServer).CreateService(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Cluster_UpdateJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(UpdateJobRequest)
+func _Cluster_UpdateService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(UpdateServiceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).UpdateJob(ctx, in)
+	out, err := srv.(ClusterServer).UpdateService(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Cluster_RemoveJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(RemoveJobRequest)
+func _Cluster_RemoveService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(RemoveServiceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).RemoveJob(ctx, in)
+	out, err := srv.(ClusterServer).RemoveService(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -1918,24 +1918,24 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Cluster_RemoveTask_Handler,
 		},
 		{
-			MethodName: "GetJob",
-			Handler:    _Cluster_GetJob_Handler,
+			MethodName: "GetService",
+			Handler:    _Cluster_GetService_Handler,
 		},
 		{
-			MethodName: "ListJobs",
-			Handler:    _Cluster_ListJobs_Handler,
+			MethodName: "ListServices",
+			Handler:    _Cluster_ListServices_Handler,
 		},
 		{
-			MethodName: "CreateJob",
-			Handler:    _Cluster_CreateJob_Handler,
+			MethodName: "CreateService",
+			Handler:    _Cluster_CreateService_Handler,
 		},
 		{
-			MethodName: "UpdateJob",
-			Handler:    _Cluster_UpdateJob_Handler,
+			MethodName: "UpdateService",
+			Handler:    _Cluster_UpdateService_Handler,
 		},
 		{
-			MethodName: "RemoveJob",
-			Handler:    _Cluster_RemoveJob_Handler,
+			MethodName: "RemoveService",
+			Handler:    _Cluster_RemoveService_Handler,
 		},
 		{
 			MethodName: "GetNetwork",
@@ -2367,7 +2367,7 @@ func (m *ListTasksResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *CreateJobRequest) Marshal() (data []byte, err error) {
+func (m *CreateServiceRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2377,7 +2377,7 @@ func (m *CreateJobRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *CreateJobRequest) MarshalTo(data []byte) (int, error) {
+func (m *CreateServiceRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -2395,7 +2395,7 @@ func (m *CreateJobRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *CreateJobResponse) Marshal() (data []byte, err error) {
+func (m *CreateServiceResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2405,16 +2405,16 @@ func (m *CreateJobResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *CreateJobResponse) MarshalTo(data []byte) (int, error) {
+func (m *CreateServiceResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.Job != nil {
+	if m.Service != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintCluster(data, i, uint64(m.Job.Size()))
-		n9, err := m.Job.MarshalTo(data[i:])
+		i = encodeVarintCluster(data, i, uint64(m.Service.Size()))
+		n9, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -2423,7 +2423,7 @@ func (m *CreateJobResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *GetJobRequest) Marshal() (data []byte, err error) {
+func (m *GetServiceRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2433,21 +2433,21 @@ func (m *GetJobRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *GetJobRequest) MarshalTo(data []byte) (int, error) {
+func (m *GetServiceRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.JobID) > 0 {
+	if len(m.ServiceID) > 0 {
 		data[i] = 0xa
 		i++
-		i = encodeVarintCluster(data, i, uint64(len(m.JobID)))
-		i += copy(data[i:], m.JobID)
+		i = encodeVarintCluster(data, i, uint64(len(m.ServiceID)))
+		i += copy(data[i:], m.ServiceID)
 	}
 	return i, nil
 }
 
-func (m *GetJobResponse) Marshal() (data []byte, err error) {
+func (m *GetServiceResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2457,16 +2457,16 @@ func (m *GetJobResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *GetJobResponse) MarshalTo(data []byte) (int, error) {
+func (m *GetServiceResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.Job != nil {
+	if m.Service != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintCluster(data, i, uint64(m.Job.Size()))
-		n10, err := m.Job.MarshalTo(data[i:])
+		i = encodeVarintCluster(data, i, uint64(m.Service.Size()))
+		n10, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -2475,7 +2475,7 @@ func (m *GetJobResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *UpdateJobRequest) Marshal() (data []byte, err error) {
+func (m *UpdateServiceRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2485,16 +2485,16 @@ func (m *UpdateJobRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *UpdateJobRequest) MarshalTo(data []byte) (int, error) {
+func (m *UpdateServiceRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.JobID) > 0 {
+	if len(m.ServiceID) > 0 {
 		data[i] = 0xa
 		i++
-		i = encodeVarintCluster(data, i, uint64(len(m.JobID)))
-		i += copy(data[i:], m.JobID)
+		i = encodeVarintCluster(data, i, uint64(len(m.ServiceID)))
+		i += copy(data[i:], m.ServiceID)
 	}
 	if m.Spec != nil {
 		data[i] = 0x12
@@ -2509,7 +2509,7 @@ func (m *UpdateJobRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *UpdateJobResponse) Marshal() (data []byte, err error) {
+func (m *UpdateServiceResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2519,16 +2519,16 @@ func (m *UpdateJobResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *UpdateJobResponse) MarshalTo(data []byte) (int, error) {
+func (m *UpdateServiceResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.Job != nil {
+	if m.Service != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintCluster(data, i, uint64(m.Job.Size()))
-		n12, err := m.Job.MarshalTo(data[i:])
+		i = encodeVarintCluster(data, i, uint64(m.Service.Size()))
+		n12, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -2537,7 +2537,7 @@ func (m *UpdateJobResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *RemoveJobRequest) Marshal() (data []byte, err error) {
+func (m *RemoveServiceRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2547,21 +2547,21 @@ func (m *RemoveJobRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *RemoveJobRequest) MarshalTo(data []byte) (int, error) {
+func (m *RemoveServiceRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.JobID) > 0 {
+	if len(m.ServiceID) > 0 {
 		data[i] = 0xa
 		i++
-		i = encodeVarintCluster(data, i, uint64(len(m.JobID)))
-		i += copy(data[i:], m.JobID)
+		i = encodeVarintCluster(data, i, uint64(len(m.ServiceID)))
+		i += copy(data[i:], m.ServiceID)
 	}
 	return i, nil
 }
 
-func (m *RemoveJobResponse) Marshal() (data []byte, err error) {
+func (m *RemoveServiceResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2571,7 +2571,7 @@ func (m *RemoveJobResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *RemoveJobResponse) MarshalTo(data []byte) (int, error) {
+func (m *RemoveServiceResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -2579,7 +2579,7 @@ func (m *RemoveJobResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *ListJobsRequest) Marshal() (data []byte, err error) {
+func (m *ListServicesRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2589,7 +2589,7 @@ func (m *ListJobsRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *ListJobsRequest) MarshalTo(data []byte) (int, error) {
+func (m *ListServicesRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -2607,7 +2607,7 @@ func (m *ListJobsRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *ListJobsResponse) Marshal() (data []byte, err error) {
+func (m *ListServicesResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2617,13 +2617,13 @@ func (m *ListJobsResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *ListJobsResponse) MarshalTo(data []byte) (int, error) {
+func (m *ListServicesResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.Jobs) > 0 {
-		for _, msg := range m.Jobs {
+	if len(m.Services) > 0 {
+		for _, msg := range m.Services {
 			data[i] = 0xa
 			i++
 			i = encodeVarintCluster(data, i, uint64(msg.Size()))
@@ -3284,12 +3284,12 @@ func (p *raftProxyClusterServer) RemoveTask(ctx context.Context, r *RemoveTaskRe
 	return NewClusterClient(c).RemoveTask(ctx, r)
 }
 
-func (p *raftProxyClusterServer) GetJob(ctx context.Context, r *GetJobRequest) (*GetJobResponse, error) {
+func (p *raftProxyClusterServer) GetService(ctx context.Context, r *GetServiceRequest) (*GetServiceResponse, error) {
 
 	c, err := p.leaders.LeaderConn()
 	if err != nil {
 		if err == leaderconn.ErrLocalLeader {
-			return p.local.GetJob(ctx, r)
+			return p.local.GetService(ctx, r)
 		}
 		return nil, err
 	}
@@ -3308,15 +3308,15 @@ func (p *raftProxyClusterServer) GetJob(ctx context.Context, r *GetJobRequest) (
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).GetJob(ctx, r)
+	return NewClusterClient(c).GetService(ctx, r)
 }
 
-func (p *raftProxyClusterServer) ListJobs(ctx context.Context, r *ListJobsRequest) (*ListJobsResponse, error) {
+func (p *raftProxyClusterServer) ListServices(ctx context.Context, r *ListServicesRequest) (*ListServicesResponse, error) {
 
 	c, err := p.leaders.LeaderConn()
 	if err != nil {
 		if err == leaderconn.ErrLocalLeader {
-			return p.local.ListJobs(ctx, r)
+			return p.local.ListServices(ctx, r)
 		}
 		return nil, err
 	}
@@ -3335,15 +3335,15 @@ func (p *raftProxyClusterServer) ListJobs(ctx context.Context, r *ListJobsReques
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).ListJobs(ctx, r)
+	return NewClusterClient(c).ListServices(ctx, r)
 }
 
-func (p *raftProxyClusterServer) CreateJob(ctx context.Context, r *CreateJobRequest) (*CreateJobResponse, error) {
+func (p *raftProxyClusterServer) CreateService(ctx context.Context, r *CreateServiceRequest) (*CreateServiceResponse, error) {
 
 	c, err := p.leaders.LeaderConn()
 	if err != nil {
 		if err == leaderconn.ErrLocalLeader {
-			return p.local.CreateJob(ctx, r)
+			return p.local.CreateService(ctx, r)
 		}
 		return nil, err
 	}
@@ -3362,15 +3362,15 @@ func (p *raftProxyClusterServer) CreateJob(ctx context.Context, r *CreateJobRequ
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).CreateJob(ctx, r)
+	return NewClusterClient(c).CreateService(ctx, r)
 }
 
-func (p *raftProxyClusterServer) UpdateJob(ctx context.Context, r *UpdateJobRequest) (*UpdateJobResponse, error) {
+func (p *raftProxyClusterServer) UpdateService(ctx context.Context, r *UpdateServiceRequest) (*UpdateServiceResponse, error) {
 
 	c, err := p.leaders.LeaderConn()
 	if err != nil {
 		if err == leaderconn.ErrLocalLeader {
-			return p.local.UpdateJob(ctx, r)
+			return p.local.UpdateService(ctx, r)
 		}
 		return nil, err
 	}
@@ -3389,15 +3389,15 @@ func (p *raftProxyClusterServer) UpdateJob(ctx context.Context, r *UpdateJobRequ
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).UpdateJob(ctx, r)
+	return NewClusterClient(c).UpdateService(ctx, r)
 }
 
-func (p *raftProxyClusterServer) RemoveJob(ctx context.Context, r *RemoveJobRequest) (*RemoveJobResponse, error) {
+func (p *raftProxyClusterServer) RemoveService(ctx context.Context, r *RemoveServiceRequest) (*RemoveServiceResponse, error) {
 
 	c, err := p.leaders.LeaderConn()
 	if err != nil {
 		if err == leaderconn.ErrLocalLeader {
-			return p.local.RemoveJob(ctx, r)
+			return p.local.RemoveService(ctx, r)
 		}
 		return nil, err
 	}
@@ -3416,7 +3416,7 @@ func (p *raftProxyClusterServer) RemoveJob(ctx context.Context, r *RemoveJobRequ
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).RemoveJob(ctx, r)
+	return NewClusterClient(c).RemoveService(ctx, r)
 }
 
 func (p *raftProxyClusterServer) GetNetwork(ctx context.Context, r *GetNetworkRequest) (*GetNetworkResponse, error) {
@@ -3785,7 +3785,7 @@ func (m *ListTasksResponse) Size() (n int) {
 	return n
 }
 
-func (m *CreateJobRequest) Size() (n int) {
+func (m *CreateServiceRequest) Size() (n int) {
 	var l int
 	_ = l
 	if m.Spec != nil {
@@ -3795,40 +3795,40 @@ func (m *CreateJobRequest) Size() (n int) {
 	return n
 }
 
-func (m *CreateJobResponse) Size() (n int) {
+func (m *CreateServiceResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.Job != nil {
-		l = m.Job.Size()
+	if m.Service != nil {
+		l = m.Service.Size()
 		n += 1 + l + sovCluster(uint64(l))
 	}
 	return n
 }
 
-func (m *GetJobRequest) Size() (n int) {
+func (m *GetServiceRequest) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.JobID)
+	l = len(m.ServiceID)
 	if l > 0 {
 		n += 1 + l + sovCluster(uint64(l))
 	}
 	return n
 }
 
-func (m *GetJobResponse) Size() (n int) {
+func (m *GetServiceResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.Job != nil {
-		l = m.Job.Size()
+	if m.Service != nil {
+		l = m.Service.Size()
 		n += 1 + l + sovCluster(uint64(l))
 	}
 	return n
 }
 
-func (m *UpdateJobRequest) Size() (n int) {
+func (m *UpdateServiceRequest) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.JobID)
+	l = len(m.ServiceID)
 	if l > 0 {
 		n += 1 + l + sovCluster(uint64(l))
 	}
@@ -3839,33 +3839,33 @@ func (m *UpdateJobRequest) Size() (n int) {
 	return n
 }
 
-func (m *UpdateJobResponse) Size() (n int) {
+func (m *UpdateServiceResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.Job != nil {
-		l = m.Job.Size()
+	if m.Service != nil {
+		l = m.Service.Size()
 		n += 1 + l + sovCluster(uint64(l))
 	}
 	return n
 }
 
-func (m *RemoveJobRequest) Size() (n int) {
+func (m *RemoveServiceRequest) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.JobID)
+	l = len(m.ServiceID)
 	if l > 0 {
 		n += 1 + l + sovCluster(uint64(l))
 	}
 	return n
 }
 
-func (m *RemoveJobResponse) Size() (n int) {
+func (m *RemoveServiceResponse) Size() (n int) {
 	var l int
 	_ = l
 	return n
 }
 
-func (m *ListJobsRequest) Size() (n int) {
+func (m *ListServicesRequest) Size() (n int) {
 	var l int
 	_ = l
 	if m.Options != nil {
@@ -3875,11 +3875,11 @@ func (m *ListJobsRequest) Size() (n int) {
 	return n
 }
 
-func (m *ListJobsResponse) Size() (n int) {
+func (m *ListServicesResponse) Size() (n int) {
 	var l int
 	_ = l
-	if len(m.Jobs) > 0 {
-		for _, e := range m.Jobs {
+	if len(m.Services) > 0 {
+		for _, e := range m.Services {
 			l = e.Size()
 			n += 1 + l + sovCluster(uint64(l))
 		}
@@ -4136,7 +4136,7 @@ func (this *CreateTaskRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&CreateTaskRequest{`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "ServiceSpec", "ServiceSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4209,102 +4209,102 @@ func (this *ListTasksResponse) String() string {
 	}, "")
 	return s
 }
-func (this *CreateJobRequest) String() string {
+func (this *CreateServiceRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&CreateJobRequest{`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
+	s := strings.Join([]string{`&CreateServiceRequest{`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "ServiceSpec", "ServiceSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *CreateJobResponse) String() string {
+func (this *CreateServiceResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&CreateJobResponse{`,
-		`Job:` + strings.Replace(fmt.Sprintf("%v", this.Job), "Job", "Job", 1) + `,`,
+	s := strings.Join([]string{`&CreateServiceResponse{`,
+		`Service:` + strings.Replace(fmt.Sprintf("%v", this.Service), "Service", "Service", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *GetJobRequest) String() string {
+func (this *GetServiceRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&GetJobRequest{`,
-		`JobID:` + fmt.Sprintf("%v", this.JobID) + `,`,
+	s := strings.Join([]string{`&GetServiceRequest{`,
+		`ServiceID:` + fmt.Sprintf("%v", this.ServiceID) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *GetJobResponse) String() string {
+func (this *GetServiceResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&GetJobResponse{`,
-		`Job:` + strings.Replace(fmt.Sprintf("%v", this.Job), "Job", "Job", 1) + `,`,
+	s := strings.Join([]string{`&GetServiceResponse{`,
+		`Service:` + strings.Replace(fmt.Sprintf("%v", this.Service), "Service", "Service", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *UpdateJobRequest) String() string {
+func (this *UpdateServiceRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&UpdateJobRequest{`,
-		`JobID:` + fmt.Sprintf("%v", this.JobID) + `,`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "JobSpec", "JobSpec", 1) + `,`,
+	s := strings.Join([]string{`&UpdateServiceRequest{`,
+		`ServiceID:` + fmt.Sprintf("%v", this.ServiceID) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "ServiceSpec", "ServiceSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *UpdateJobResponse) String() string {
+func (this *UpdateServiceResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&UpdateJobResponse{`,
-		`Job:` + strings.Replace(fmt.Sprintf("%v", this.Job), "Job", "Job", 1) + `,`,
+	s := strings.Join([]string{`&UpdateServiceResponse{`,
+		`Service:` + strings.Replace(fmt.Sprintf("%v", this.Service), "Service", "Service", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *RemoveJobRequest) String() string {
+func (this *RemoveServiceRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&RemoveJobRequest{`,
-		`JobID:` + fmt.Sprintf("%v", this.JobID) + `,`,
+	s := strings.Join([]string{`&RemoveServiceRequest{`,
+		`ServiceID:` + fmt.Sprintf("%v", this.ServiceID) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *RemoveJobResponse) String() string {
+func (this *RemoveServiceResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&RemoveJobResponse{`,
+	s := strings.Join([]string{`&RemoveServiceResponse{`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *ListJobsRequest) String() string {
+func (this *ListServicesRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&ListJobsRequest{`,
+	s := strings.Join([]string{`&ListServicesRequest{`,
 		`Options:` + strings.Replace(fmt.Sprintf("%v", this.Options), "ListOptions", "ListOptions", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *ListJobsResponse) String() string {
+func (this *ListServicesResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&ListJobsResponse{`,
-		`Jobs:` + strings.Replace(fmt.Sprintf("%v", this.Jobs), "Job", "Job", 1) + `,`,
+	s := strings.Join([]string{`&ListServicesResponse{`,
+		`Services:` + strings.Replace(fmt.Sprintf("%v", this.Services), "Service", "Service", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5132,7 +5132,7 @@ func (m *CreateTaskRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &JobSpec{}
+				m.Spec = &ServiceSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -5664,7 +5664,7 @@ func (m *ListTasksResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *CreateJobRequest) Unmarshal(data []byte) error {
+func (m *CreateServiceRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5687,10 +5687,10 @@ func (m *CreateJobRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: CreateJobRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: CreateServiceRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: CreateJobRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: CreateServiceRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -5720,7 +5720,7 @@ func (m *CreateJobRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &JobSpec{}
+				m.Spec = &ServiceSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -5747,7 +5747,7 @@ func (m *CreateJobRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *CreateJobResponse) Unmarshal(data []byte) error {
+func (m *CreateServiceResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5770,15 +5770,15 @@ func (m *CreateJobResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: CreateJobResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: CreateServiceResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: CreateJobResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: CreateServiceResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Job", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Service", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -5802,10 +5802,10 @@ func (m *CreateJobResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Job == nil {
-				m.Job = &Job{}
+			if m.Service == nil {
+				m.Service = &Service{}
 			}
-			if err := m.Job.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Service.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -5830,7 +5830,7 @@ func (m *CreateJobResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *GetJobRequest) Unmarshal(data []byte) error {
+func (m *GetServiceRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5853,15 +5853,15 @@ func (m *GetJobRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: GetJobRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: GetServiceRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: GetJobRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: GetServiceRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field JobID", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ServiceID", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -5886,7 +5886,7 @@ func (m *GetJobRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.JobID = string(data[iNdEx:postIndex])
+			m.ServiceID = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -5909,7 +5909,7 @@ func (m *GetJobRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *GetJobResponse) Unmarshal(data []byte) error {
+func (m *GetServiceResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5932,15 +5932,15 @@ func (m *GetJobResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: GetJobResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: GetServiceResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: GetJobResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: GetServiceResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Job", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Service", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -5964,10 +5964,10 @@ func (m *GetJobResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Job == nil {
-				m.Job = &Job{}
+			if m.Service == nil {
+				m.Service = &Service{}
 			}
-			if err := m.Job.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Service.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -5992,7 +5992,7 @@ func (m *GetJobResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *UpdateJobRequest) Unmarshal(data []byte) error {
+func (m *UpdateServiceRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6015,15 +6015,15 @@ func (m *UpdateJobRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: UpdateJobRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: UpdateServiceRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: UpdateJobRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: UpdateServiceRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field JobID", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ServiceID", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -6048,7 +6048,7 @@ func (m *UpdateJobRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.JobID = string(data[iNdEx:postIndex])
+			m.ServiceID = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -6077,7 +6077,7 @@ func (m *UpdateJobRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &JobSpec{}
+				m.Spec = &ServiceSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -6104,7 +6104,7 @@ func (m *UpdateJobRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *UpdateJobResponse) Unmarshal(data []byte) error {
+func (m *UpdateServiceResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6127,15 +6127,15 @@ func (m *UpdateJobResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: UpdateJobResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: UpdateServiceResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: UpdateJobResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: UpdateServiceResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Job", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Service", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -6159,10 +6159,10 @@ func (m *UpdateJobResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Job == nil {
-				m.Job = &Job{}
+			if m.Service == nil {
+				m.Service = &Service{}
 			}
-			if err := m.Job.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Service.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -6187,7 +6187,7 @@ func (m *UpdateJobResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RemoveJobRequest) Unmarshal(data []byte) error {
+func (m *RemoveServiceRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6210,15 +6210,15 @@ func (m *RemoveJobRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RemoveJobRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: RemoveServiceRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RemoveJobRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RemoveServiceRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field JobID", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ServiceID", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -6243,7 +6243,7 @@ func (m *RemoveJobRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.JobID = string(data[iNdEx:postIndex])
+			m.ServiceID = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -6266,7 +6266,7 @@ func (m *RemoveJobRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RemoveJobResponse) Unmarshal(data []byte) error {
+func (m *RemoveServiceResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6289,10 +6289,10 @@ func (m *RemoveJobResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RemoveJobResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: RemoveServiceResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RemoveJobResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RemoveServiceResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -6316,7 +6316,7 @@ func (m *RemoveJobResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *ListJobsRequest) Unmarshal(data []byte) error {
+func (m *ListServicesRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6339,10 +6339,10 @@ func (m *ListJobsRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ListJobsRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: ListServicesRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ListJobsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: ListServicesRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -6399,7 +6399,7 @@ func (m *ListJobsRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *ListJobsResponse) Unmarshal(data []byte) error {
+func (m *ListServicesResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6422,15 +6422,15 @@ func (m *ListJobsResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ListJobsResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: ListServicesResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ListJobsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: ListServicesResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Jobs", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Services", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -6454,8 +6454,8 @@ func (m *ListJobsResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Jobs = append(m.Jobs, &Job{})
-			if err := m.Jobs[len(m.Jobs)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			m.Services = append(m.Services, &Service{})
+			if err := m.Services[len(m.Services)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -7853,74 +7853,71 @@ var (
 )
 
 var fileDescriptorCluster = []byte{
-	// 1096 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xac, 0x58, 0x51, 0x6f, 0x1b, 0x45,
-	0x10, 0x4e, 0xd2, 0xc4, 0x8e, 0x27, 0x75, 0x6b, 0x6f, 0x5c, 0x1a, 0x2d, 0x55, 0x5a, 0x36, 0x75,
-	0xeb, 0x08, 0x94, 0x42, 0xda, 0x0a, 0x10, 0x82, 0xa2, 0xa4, 0x52, 0x95, 0xa6, 0xa4, 0x70, 0xb4,
-	0x80, 0x90, 0x10, 0x24, 0xf6, 0x51, 0x25, 0x6d, 0x7a, 0xc6, 0x77, 0x29, 0xe2, 0x8d, 0x9f, 0xd7,
-	0x47, 0x1e, 0x79, 0x42, 0xb4, 0x0f, 0x3c, 0xf3, 0x13, 0x98, 0xdd, 0xd9, 0xdd, 0xdb, 0x3b, 0xef,
-	0xdd, 0xe1, 0xd4, 0x0f, 0x27, 0xdd, 0xed, 0x7e, 0xfb, 0xcd, 0xdc, 0xcc, 0xe7, 0x9b, 0x4f, 0x86,
-	0x66, 0xff, 0xd9, 0x49, 0x9c, 0x84, 0xa3, 0x8d, 0xe1, 0x28, 0x4a, 0x22, 0xc6, 0x06, 0x51, 0xff,
-	0x29, 0x3e, 0x99, 0xd5, 0xfd, 0xe1, 0x21, 0x5f, 0x8a, 0x87, 0x61, 0x3f, 0x26, 0x00, 0x6f, 0x46,
-	0x07, 0x47, 0x61, 0x3f, 0x31, 0x8f, 0x9d, 0x27, 0xd1, 0x93, 0x48, 0xdd, 0xde, 0x90, 0x77, 0xb4,
-	0x2a, 0xd6, 0x60, 0xe9, 0xc1, 0x61, 0x9c, 0x3c, 0x1c, 0x26, 0x87, 0xd1, 0xf3, 0x98, 0x75, 0x60,
-	0xe1, 0x97, 0x93, 0x70, 0xf4, 0xdb, 0xca, 0xec, 0x95, 0xd9, 0x5e, 0x23, 0xa0, 0x07, 0x71, 0x1b,
-	0xce, 0xdd, 0x0b, 0x93, 0xbd, 0x68, 0x10, 0x06, 0x21, 0xae, 0xc4, 0x09, 0x5b, 0x83, 0xfa, 0x73,
-	0x7c, 0xfc, 0xf1, 0x70, 0x40, 0xc8, 0x2d, 0x78, 0xfd, 0xd7, 0xe5, 0x9a, 0x44, 0xec, 0xdc, 0x0d,
-	0x6a, 0x72, 0x6b, 0x67, 0x20, 0xee, 0xc0, 0x79, 0x7b, 0x2c, 0x1e, 0x22, 0x7d, 0xc8, 0xde, 0x83,
-	0x79, 0xb9, 0xa9, 0x0e, 0x2d, 0x6d, 0xae, 0x6c, 0x8c, 0xbf, 0xc3, 0x86, 0xc2, 0x2b, 0x94, 0xf8,
-	0x02, 0x5a, 0x32, 0x39, 0xb9, 0x12, 0x9b, 0xc8, 0x1f, 0x43, 0x3d, 0xa2, 0x64, 0x35, 0xc9, 0x65,
-	0x1f, 0x89, 0xf3, 0x4e, 0x81, 0xc1, 0x8b, 0x6d, 0x68, 0x3b, 0x74, 0x3a, 0xa3, 0x0d, 0x58, 0x90,
-	0xb1, 0x24, 0xdb, 0x99, 0xd2, 0x94, 0x08, 0x26, 0x8e, 0xa0, 0xfd, 0x78, 0x38, 0xd8, 0x4f, 0xc2,
-	0x49, 0xcb, 0xc1, 0xde, 0x87, 0x79, 0xd9, 0x9e, 0x95, 0x39, 0x95, 0xf6, 0xa5, 0xa2, 0x40, 0x5f,
-	0x23, 0x26, 0x50, 0x48, 0xb1, 0x05, 0xcc, 0x8d, 0x75, 0xaa, 0x1a, 0xde, 0x85, 0xf6, 0xf6, 0x28,
-	0x44, 0x8e, 0x47, 0xfb, 0xf1, 0x53, 0x93, 0xef, 0x0d, 0x9d, 0x0a, 0x51, 0xbc, 0xed, 0xa3, 0xb8,
-	0x1f, 0x1d, 0x64, 0x33, 0x71, 0x59, 0xd2, 0x4c, 0x12, 0x7c, 0x2e, 0xcb, 0x44, 0xe1, 0x15, 0x4a,
-	0xab, 0xc8, 0x4d, 0x03, 0xcb, 0x26, 0x77, 0x72, 0x65, 0x93, 0x08, 0x59, 0x36, 0xb9, 0x65, 0x55,
-	0xf4, 0x06, 0x71, 0x3f, 0x82, 0x76, 0x10, 0x1e, 0x47, 0x2f, 0xc2, 0x89, 0x43, 0x77, 0x80, 0xb9,
-	0x27, 0x29, 0xba, 0x60, 0xa4, 0x4a, 0xb9, 0x66, 0x54, 0x69, 0xa4, 0xa5, 0xd7, 0x52, 0x69, 0x49,
-	0xa2, 0x52, 0x69, 0x29, 0x66, 0x82, 0x21, 0x49, 0x8b, 0x8a, 0x8c, 0xb5, 0x3f, 0x75, 0xa7, 0x3e,
-	0x33, 0xfd, 0x56, 0x24, 0x3a, 0x93, 0x75, 0x38, 0x73, 0x14, 0x1d, 0x68, 0x92, 0x8b, 0x05, 0x24,
-	0x81, 0xc4, 0x88, 0x0f, 0xa0, 0x89, 0xe5, 0x76, 0x32, 0xb8, 0x02, 0x35, 0x5c, 0x4f, 0x0b, 0xd5,
-	0xc0, 0x42, 0x2d, 0xe0, 0x3e, 0xd6, 0x69, 0x01, 0x37, 0xb0, 0x4c, 0x9f, 0xa8, 0xc6, 0x9e, 0x32,
-	0x5e, 0x08, 0x2d, 0xd2, 0xf8, 0x24, 0x21, 0x6d, 0x59, 0xe6, 0x26, 0x28, 0x8b, 0x13, 0x66, 0xf2,
-	0x34, 0x6f, 0x41, 0x8b, 0xa4, 0x30, 0x51, 0x65, 0x96, 0x8d, 0xf4, 0x9c, 0xa8, 0xe2, 0x01, 0x9c,
-	0x97, 0x5a, 0xc1, 0xa5, 0x69, 0x7c, 0xd4, 0xee, 0x90, 0x1a, 0x89, 0x4d, 0xbf, 0xd7, 0xbb, 0x30,
-	0x8f, 0xf1, 0x8d, 0xee, 0x0a, 0x5f, 0x4c, 0x81, 0xc4, 0x2e, 0x74, 0x48, 0x30, 0x7b, 0x61, 0xf2,
-	0x6b, 0x34, 0xb2, 0xbf, 0x90, 0x9b, 0x19, 0xe5, 0x79, 0x13, 0xd2, 0x27, 0x9c, 0x32, 0xef, 0xc1,
-	0x85, 0x1c, 0x99, 0x4e, 0xe9, 0x36, 0x7e, 0x21, 0x69, 0xa9, 0x4c, 0xca, 0xe6, 0x94, 0xc1, 0x8a,
-	0xc7, 0xd0, 0x96, 0x23, 0x24, 0x9b, 0x19, 0xc3, 0x0f, 0xe0, 0xfe, 0x71, 0xa8, 0x67, 0x94, 0xba,
-	0xc7, 0x4f, 0x02, 0xe8, 0x33, 0xb2, 0x1f, 0x73, 0xaa, 0x1f, 0x4d, 0xec, 0x47, 0x43, 0x9f, 0xc5,
-	0x9e, 0x34, 0x34, 0x00, 0xfb, 0xb2, 0x0b, 0xcc, 0xa5, 0x7d, 0xb3, 0x1c, 0xbf, 0x83, 0x0e, 0x35,
-	0x79, 0xea, 0x69, 0x5e, 0x84, 0x0b, 0x39, 0x66, 0x2d, 0xa1, 0x2f, 0x61, 0x59, 0x4d, 0x32, 0x5a,
-	0x9e, 0x86, 0x8c, 0x1e, 0x42, 0x27, 0xcb, 0xa8, 0x6b, 0xf2, 0x21, 0x2c, 0xea, 0x7c, 0x8c, 0x9c,
-	0x4a, 0x8b, 0x62, 0xc1, 0x62, 0x07, 0x96, 0x49, 0x09, 0xdf, 0x44, 0xcf, 0x4e, 0x8e, 0xed, 0xa4,
-	0xdc, 0xcc, 0xa8, 0x6a, 0xd5, 0xc7, 0x45, 0x07, 0x1c, 0x51, 0xdd, 0x37, 0x0a, 0x35, 0x54, 0x3a,
-	0xb7, 0x4d, 0xa8, 0xbd, 0x50, 0x2b, 0x9a, 0x8d, 0x17, 0xb3, 0x05, 0x1a, 0x29, 0x3e, 0x85, 0x16,
-	0x76, 0x3e, 0x9b, 0xd3, 0x3a, 0x34, 0x68, 0x37, 0xfd, 0x29, 0x9f, 0xc5, 0x9e, 0x2c, 0x12, 0x0a,
-	0x5b, 0xb2, 0x48, 0xdb, 0xd8, 0x91, 0x7b, 0x4a, 0x8f, 0x53, 0xc8, 0xe3, 0x73, 0x58, 0xa6, 0xd6,
-	0x9e, 0x3a, 0x95, 0xb7, 0x8c, 0xec, 0xb2, 0xd9, 0xc8, 0xa1, 0x25, 0x3b, 0x49, 0xab, 0x76, 0x40,
-	0xed, 0x92, 0x62, 0xec, 0xaa, 0x4e, 0xfd, 0x16, 0xd4, 0x89, 0xd0, 0x74, 0xb7, 0x2c, 0x77, 0x03,
-	0xdd, 0xfc, 0xe7, 0x1c, 0xd4, 0xb7, 0x69, 0x9f, 0x3d, 0x82, 0xba, 0x36, 0x79, 0x4c, 0xf8, 0xce,
-	0x66, 0x8d, 0x23, 0x5f, 0x2b, 0xc5, 0xe8, 0x57, 0x98, 0x61, 0xdf, 0x43, 0xc3, 0x5a, 0x35, 0x76,
-	0xb5, 0x48, 0xc5, 0xae, 0x31, 0xe4, 0xdd, 0x0a, 0x94, 0xe5, 0xfe, 0x01, 0x20, 0x75, 0x55, 0xcc,
-	0x7b, 0x6c, 0xcc, 0xe1, 0xf1, 0x6b, 0x55, 0x30, 0x4b, 0x4f, 0x05, 0x91, 0x73, 0xbd, 0xb0, 0x20,
-	0x8e, 0x11, 0x29, 0x2c, 0x48, 0xc6, 0x72, 0xd8, 0x82, 0x28, 0x83, 0x51, 0x5c, 0x10, 0xd7, 0x93,
-	0x14, 0x17, 0x24, 0xe3, 0x52, 0xa8, 0x20, 0xa9, 0xb9, 0xf3, 0x17, 0x64, 0xcc, 0x42, 0xfa, 0x0b,
-	0x32, 0xee, 0x11, 0x89, 0x3e, 0x75, 0x51, 0x7e, 0xfa, 0x31, 0x7f, 0xe6, 0xa7, 0xf7, 0x98, 0xb1,
-	0x19, 0xf6, 0x15, 0xd4, 0xc8, 0x7d, 0xb0, 0x77, 0x0a, 0x4a, 0x99, 0x8e, 0x6c, 0x2e, 0xca, 0x20,
-	0x96, 0xf2, 0x5b, 0x58, 0x34, 0x33, 0x95, 0xad, 0x15, 0x55, 0xd1, 0x99, 0xdf, 0xfc, 0x6a, 0x39,
-	0xc8, 0xed, 0xa2, 0x35, 0x67, 0xfe, 0x2e, 0xe6, 0x0d, 0x20, 0xef, 0x56, 0xa0, 0x5c, 0x6e, 0xeb,
-	0x70, 0xfc, 0xdc, 0x79, 0x9f, 0xc5, 0xbb, 0x15, 0x28, 0x97, 0xdb, 0xfa, 0x18, 0x3f, 0x77, 0xde,
-	0x1c, 0xf1, 0x6e, 0x05, 0xca, 0x95, 0x47, 0x3a, 0x8b, 0xfd, 0xf2, 0x18, 0xb3, 0x00, 0x7e, 0x79,
-	0x8c, 0x8f, 0x74, 0xa4, 0xef, 0xc3, 0x59, 0x77, 0xb0, 0xb1, 0xeb, 0x85, 0x9f, 0x89, 0xec, 0x30,
-	0xe5, 0xbd, 0x6a, 0xa0, 0x0d, 0xf2, 0x33, 0x34, 0x33, 0xb6, 0x87, 0xf5, 0x8a, 0xbb, 0x96, 0x7b,
-	0x93, 0xf5, 0xff, 0x81, 0x74, 0xe3, 0x64, 0x0c, 0x81, 0x3f, 0x8e, 0xcf, 0x8d, 0xf8, 0xe3, 0xf8,
-	0xdd, 0x85, 0xea, 0xb7, 0x1d, 0x73, 0xfe, 0x7e, 0xe7, 0x87, 0x28, 0xef, 0x56, 0xa0, 0x2c, 0xf7,
-	0x4f, 0xf4, 0x8f, 0x83, 0x9e, 0x44, 0xec, 0x5a, 0x51, 0x99, 0xb3, 0x03, 0x8c, 0x5f, 0xaf, 0xc4,
-	0xb9, 0x2d, 0x77, 0xfd, 0x82, 0xbf, 0xe5, 0x1e, 0x73, 0xc2, 0x7b, 0xd5, 0x40, 0x37, 0x88, 0x3b,
-	0x7e, 0xfd, 0x41, 0x3c, 0x23, 0x9e, 0xf7, 0xaa, 0x81, 0x26, 0xc8, 0xd6, 0xa5, 0x97, 0xaf, 0x56,
-	0x67, 0xfe, 0xc4, 0xeb, 0xdf, 0x57, 0xab, 0xb3, 0xbf, 0xbf, 0x5e, 0x9d, 0x7d, 0x89, 0xd7, 0x1f,
-	0x78, 0xfd, 0x8d, 0xd7, 0x41, 0x4d, 0xfd, 0x85, 0x73, 0xf3, 0xbf, 0x00, 0x00, 0x00, 0xff, 0xff,
-	0x1c, 0x65, 0xf0, 0x63, 0x19, 0x12, 0x00, 0x00,
+	// 1052 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xac, 0x58, 0xdd, 0x4e, 0x13, 0x5b,
+	0x14, 0xa6, 0x1c, 0x68, 0xe9, 0x82, 0x1e, 0xe8, 0xa6, 0x9c, 0x43, 0xe6, 0x90, 0x72, 0x32, 0x08,
+	0x94, 0x84, 0x54, 0x53, 0x24, 0xea, 0x85, 0x51, 0x81, 0x04, 0x11, 0x05, 0x33, 0x80, 0x31, 0x26,
+	0x46, 0x4b, 0x3b, 0x92, 0xf2, 0x37, 0xb5, 0x33, 0x60, 0xb8, 0xf3, 0x59, 0x7c, 0x1a, 0x2e, 0xbd,
+	0xf4, 0xca, 0x08, 0x4f, 0xe0, 0x23, 0xb8, 0xff, 0x67, 0xcf, 0xcc, 0x9e, 0x29, 0xa5, 0xbd, 0x68,
+	0xd2, 0xd9, 0xfb, 0xdb, 0xdf, 0xfa, 0xf6, 0x5a, 0xab, 0xb3, 0xbe, 0x14, 0x72, 0xb5, 0xe3, 0x33,
+	0xd7, 0xb3, 0x5b, 0xe5, 0x66, 0xcb, 0xf1, 0x1c, 0x84, 0xea, 0x4e, 0xed, 0x08, 0x3f, 0x89, 0xd5,
+	0x6a, 0xb3, 0x61, 0x0c, 0xbb, 0x4d, 0xbb, 0xe6, 0x32, 0x80, 0x91, 0x73, 0xf6, 0x0f, 0xed, 0x9a,
+	0x27, 0x1e, 0x0b, 0x07, 0xce, 0x81, 0x43, 0xbf, 0xde, 0x25, 0xdf, 0xd8, 0xaa, 0x39, 0x03, 0xc3,
+	0x2f, 0x1b, 0xae, 0xb7, 0xdd, 0xf4, 0x1a, 0xce, 0xa9, 0x8b, 0x0a, 0x30, 0xf8, 0xf9, 0xcc, 0x6e,
+	0x5d, 0x4c, 0xa6, 0xfe, 0x4f, 0x95, 0xb2, 0x16, 0x7b, 0x30, 0x97, 0xe1, 0xef, 0x75, 0xdb, 0xdb,
+	0x72, 0xea, 0xb6, 0x65, 0xe3, 0x15, 0xd7, 0x43, 0x33, 0x90, 0x39, 0xc5, 0x8f, 0x1f, 0x1a, 0x75,
+	0x86, 0x5c, 0x81, 0xeb, 0x9f, 0xd3, 0x69, 0x82, 0xd8, 0x58, 0xb3, 0xd2, 0x64, 0x6b, 0xa3, 0x6e,
+	0x3e, 0x81, 0x51, 0x79, 0xcc, 0x6d, 0x62, 0x7a, 0x1b, 0x2d, 0xc2, 0x00, 0xd9, 0xa4, 0x87, 0x86,
+	0x2b, 0x93, 0xe5, 0xe8, 0x1d, 0xca, 0x14, 0x4f, 0x51, 0xe6, 0x2b, 0x18, 0x23, 0xe2, 0xc8, 0x8a,
+	0x2b, 0x22, 0x3f, 0x82, 0x8c, 0xc3, 0xc4, 0x72, 0x92, 0x69, 0x1d, 0x89, 0x72, 0x27, 0x4b, 0xe0,
+	0xcd, 0x55, 0xc8, 0x2b, 0x74, 0x5c, 0x51, 0x19, 0x06, 0x49, 0x2c, 0xc2, 0xf6, 0x57, 0xa2, 0x24,
+	0x06, 0x33, 0x0f, 0x21, 0xbf, 0xd7, 0xac, 0x57, 0x3d, 0xbb, 0xd3, 0x74, 0xa0, 0x7b, 0x30, 0x40,
+	0xca, 0x33, 0xd9, 0x4f, 0x65, 0x4f, 0xc5, 0x05, 0xda, 0xc1, 0x18, 0x8b, 0x22, 0xcd, 0x15, 0x40,
+	0x6a, 0xac, 0x5b, 0xe5, 0xf0, 0x39, 0xe4, 0x57, 0x5b, 0x36, 0xe6, 0xd8, 0xad, 0xba, 0x47, 0x42,
+	0xef, 0x12, 0x97, 0x92, 0x90, 0xc1, 0x1d, 0xbb, 0x75, 0xde, 0xa8, 0x85, 0xd4, 0xa8, 0x4c, 0xbe,
+	0x1a, 0x0f, 0x3f, 0x27, 0xa9, 0xa1, 0x78, 0x8a, 0xe2, 0x9d, 0xa4, 0x4a, 0xc1, 0xa9, 0x23, 0x3b,
+	0xa1, 0xd4, 0x11, 0x04, 0x49, 0x1d, 0xd9, 0x92, 0x9d, 0xd4, 0x45, 0xdc, 0x87, 0x90, 0xb7, 0xec,
+	0x13, 0xe7, 0xdc, 0xee, 0x38, 0x74, 0x01, 0x90, 0x7a, 0x92, 0x45, 0x37, 0x11, 0xeb, 0x4c, 0xb2,
+	0x26, 0x3a, 0x53, 0xb4, 0x17, 0x5f, 0xf3, 0xdb, 0x8b, 0x10, 0x25, 0xb6, 0x17, 0x65, 0x66, 0x30,
+	0x73, 0x13, 0x0a, 0x2c, 0xc9, 0x3c, 0xff, 0x5d, 0x55, 0x6c, 0x0b, 0x26, 0x42, 0x64, 0x5c, 0xd5,
+	0x32, 0x64, 0x5c, 0xb6, 0xc4, 0x09, 0xff, 0x4b, 0x20, 0xb4, 0x04, 0xd6, 0x7c, 0x06, 0x79, 0x5c,
+	0x86, 0x90, 0xb2, 0x45, 0x00, 0xbe, 0xef, 0x27, 0x32, 0x87, 0x13, 0x99, 0xe5, 0x38, 0x9c, 0xcb,
+	0x2c, 0x07, 0xe0, 0x74, 0x6e, 0x02, 0x52, 0x29, 0xba, 0xd3, 0x73, 0x01, 0x05, 0xf6, 0xfb, 0xe8,
+	0x46, 0x92, 0x4c, 0x6d, 0x7f, 0x87, 0xa9, 0x0d, 0x85, 0xee, 0xee, 0x2a, 0x6b, 0x50, 0x60, 0x6d,
+	0xd6, 0x55, 0x76, 0xff, 0x85, 0x89, 0x10, 0x0b, 0xef, 0xd7, 0xd7, 0x30, 0x4e, 0x7a, 0x93, 0x2f,
+	0xf7, 0xe2, 0x65, 0xba, 0x0d, 0x85, 0x20, 0x23, 0xbf, 0xff, 0x03, 0x18, 0xe2, 0x7a, 0x44, 0xcf,
+	0x27, 0x26, 0x40, 0x82, 0xfd, 0xce, 0xdf, 0xb2, 0xbd, 0x2f, 0x4e, 0xab, 0x93, 0x77, 0x15, 0x3f,
+	0xa1, 0xeb, 0x7c, 0x49, 0xe6, 0x97, 0xe7, 0x94, 0x2d, 0x25, 0x95, 0x47, 0x9c, 0x12, 0x58, 0x73,
+	0x8f, 0x76, 0x7e, 0x48, 0x19, 0xc2, 0x2f, 0xe2, 0xea, 0x89, 0xcd, 0x67, 0x25, 0xfd, 0x4e, 0xea,
+	0xc5, 0xcf, 0x90, 0x7a, 0xf5, 0xfb, 0xf5, 0xe2, 0x67, 0x49, 0xbd, 0x38, 0x40, 0xfe, 0x1a, 0x7a,
+	0xa4, 0xf1, 0xad, 0x68, 0xa1, 0x9e, 0xcb, 0x94, 0x6d, 0x15, 0x52, 0x2a, 0xda, 0x8a, 0x2f, 0xf7,
+	0xb0, 0xad, 0x7c, 0x46, 0xbf, 0xad, 0xb8, 0x9e, 0xc4, 0xb6, 0x12, 0x02, 0x25, 0xd8, 0xdc, 0x80,
+	0x71, 0xd6, 0x09, 0x6f, 0x9c, 0xe3, 0xb3, 0x13, 0xf9, 0xbb, 0xaa, 0x04, 0xba, 0xaa, 0xa8, 0xe3,
+	0x62, 0x07, 0x94, 0xa6, 0x7a, 0x21, 0x3a, 0x54, 0x50, 0x71, 0x6d, 0x15, 0x48, 0x9f, 0xd3, 0x15,
+	0xce, 0x66, 0xc4, 0xb3, 0x59, 0x1c, 0x69, 0x3e, 0x86, 0x31, 0x5c, 0xf9, 0xa0, 0xa6, 0x05, 0xc8,
+	0xb2, 0x5d, 0xff, 0xa7, 0x3e, 0x82, 0x6b, 0x32, 0xc4, 0x50, 0xb8, 0x24, 0x43, 0x6c, 0x1b, 0x57,
+	0x64, 0x9d, 0xf6, 0x63, 0x0f, 0x74, 0x3c, 0x85, 0x71, 0x56, 0xda, 0x5b, 0x4b, 0xf9, 0x47, 0xb4,
+	0x5d, 0x50, 0x0d, 0x19, 0x9c, 0xa4, 0x92, 0x6c, 0x55, 0x0e, 0xc9, 0x4d, 0xd6, 0x31, 0x72, 0x95,
+	0x4b, 0xbf, 0x0f, 0x19, 0x46, 0x28, 0xaa, 0x9b, 0xa4, 0x5d, 0x40, 0x2b, 0xdf, 0x46, 0x21, 0xb3,
+	0xca, 0xf6, 0xd1, 0x2e, 0x64, 0xb8, 0xd9, 0x44, 0xa6, 0xee, 0x6c, 0xd0, 0xc0, 0x1a, 0x33, 0x89,
+	0x18, 0x7e, 0x85, 0x3e, 0xf4, 0x0e, 0xb2, 0xd2, 0x32, 0xa2, 0x3b, 0x71, 0x5d, 0xac, 0x1a, 0x54,
+	0x63, 0xb6, 0x0d, 0x4a, 0x72, 0xbf, 0x07, 0xf0, 0xdd, 0x1d, 0xd2, 0x1e, 0x8b, 0x38, 0x4d, 0x63,
+	0xae, 0x1d, 0x4c, 0xd2, 0xb3, 0x84, 0x10, 0x6f, 0x11, 0x9b, 0x10, 0xc5, 0x0c, 0xc5, 0x26, 0x24,
+	0x60, 0x7b, 0x64, 0x42, 0xa8, 0xc9, 0x89, 0x4f, 0x88, 0xea, 0x8b, 0xe2, 0x13, 0x12, 0x70, 0x4a,
+	0x2c, 0x21, 0xbe, 0xc1, 0xd4, 0x27, 0x24, 0x62, 0x65, 0xf5, 0x09, 0x89, 0xfa, 0x54, 0x46, 0xef,
+	0x3b, 0x39, 0x3d, 0x7d, 0xc4, 0x23, 0xea, 0xe9, 0x35, 0x86, 0x90, 0xd2, 0xfb, 0xce, 0x46, 0x4f,
+	0x1f, 0x31, 0x4f, 0x7a, 0xfa, 0xa8, 0x41, 0xc2, 0xf4, 0x35, 0x18, 0x51, 0xe7, 0x2d, 0x9a, 0x8f,
+	0xcb, 0x6a, 0x68, 0xc6, 0x1b, 0xa5, 0xf6, 0x40, 0x19, 0xe4, 0x13, 0xe4, 0x02, 0x86, 0x11, 0x95,
+	0xe2, 0xb3, 0x1b, 0xba, 0xc9, 0xc2, 0x0d, 0x90, 0x6a, 0x9c, 0x80, 0x7b, 0xd2, 0xc7, 0xd1, 0x79,
+	0x3b, 0x7d, 0x1c, 0xad, 0x15, 0x63, 0x71, 0x02, 0x7e, 0x48, 0x1f, 0x47, 0x67, 0xbc, 0xf4, 0x71,
+	0xf4, 0xe6, 0x4a, 0xd4, 0x9e, 0x0f, 0x9f, 0xd8, 0xda, 0x07, 0xe7, 0x72, 0x6c, 0xed, 0xc3, 0x43,
+	0x56, 0xd6, 0x5e, 0x0c, 0xc5, 0xf8, 0xda, 0x87, 0x06, 0x71, 0x7c, 0xed, 0xc3, 0xf3, 0x55, 0xad,
+	0xbd, 0xb8, 0x46, 0x42, 0xed, 0x43, 0x37, 0x59, 0xb8, 0x01, 0x32, 0x5a, 0x93, 0xc4, 0x38, 0x3a,
+	0x27, 0x93, 0x54, 0x93, 0x68, 0x1c, 0xfc, 0xa6, 0x92, 0x23, 0x52, 0xff, 0xa6, 0x0a, 0x0f, 0x60,
+	0x63, 0xb6, 0x0d, 0x4a, 0x72, 0x7f, 0x64, 0xff, 0x9a, 0xf0, 0x29, 0x86, 0xe6, 0xe2, 0xd2, 0x1c,
+	0x1c, 0x7e, 0xc6, 0x7c, 0x5b, 0x9c, 0x5a, 0x72, 0xd5, 0x6b, 0xe8, 0x4b, 0xae, 0x31, 0x36, 0x46,
+	0xa9, 0x3d, 0x50, 0x0d, 0xa2, 0x8e, 0x6e, 0x7d, 0x10, 0x8d, 0x3d, 0x30, 0x4a, 0xed, 0x81, 0x22,
+	0xc8, 0xca, 0xd4, 0xe5, 0x55, 0xb1, 0xef, 0x07, 0xfe, 0xfc, 0xbe, 0x2a, 0xa6, 0xbe, 0x5e, 0x17,
+	0x53, 0x97, 0xf8, 0xf3, 0x1d, 0x7f, 0x7e, 0xe1, 0xcf, 0x7e, 0x9a, 0xfe, 0x0d, 0xb5, 0xf4, 0x27,
+	0x00, 0x00, 0xff, 0xff, 0xe7, 0x56, 0x31, 0xea, 0xdd, 0x12, 0x00, 0x00,
 }

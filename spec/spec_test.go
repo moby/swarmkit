@@ -64,10 +64,10 @@ services:
 		defer os.Remove(f.Name())
 		s := Spec{}
 		assert.NoError(t, s.Read(f))
-		assert.Equal(t, size, len(s.JobSpecs()))
-		for _, jobSpec := range s.JobSpecs() {
-			assert.Equal(t, fmt.Sprintf("name%d", jobSpec.GetService().Instances), jobSpec.Meta.Name)
-			assert.Equal(t, fmt.Sprintf("image%d", jobSpec.GetService().Instances), jobSpec.Template.GetContainer().Image.Reference)
+		assert.Equal(t, size, len(s.ServiceSpecs()))
+		for _, serviceSpec := range s.ServiceSpecs() {
+			assert.Equal(t, fmt.Sprintf("name%d", serviceSpec.Instances), serviceSpec.Meta.Name)
+			assert.Equal(t, fmt.Sprintf("image%d", serviceSpec.Instances), serviceSpec.Template.GetContainer().Image.Reference)
 		}
 	}
 }

@@ -40,11 +40,11 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				fmt.Fprintln(w, "ID\tJob\tStatus\tNode")
+				fmt.Fprintln(w, "ID\tService\tStatus\tNode")
 				output = func(t *api.Task) {
 					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 						t.ID,
-						res.Resolve(api.Job{}, t.JobID),
+						res.Resolve(api.Service{}, t.ServiceID),
 						t.Status.State.String(),
 						res.Resolve(api.Node{}, t.NodeID),
 					)

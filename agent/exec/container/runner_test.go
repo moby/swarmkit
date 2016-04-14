@@ -214,14 +214,14 @@ func genTestRunnerEnv(t *testing.T, task *api.Task) (context.Context, *MockAPICl
 func genTask(t *testing.T) *api.Task {
 	const (
 		nodeID    = "dockerexec-test-node-id"
-		jobID     = "dockerexec-test-job"
+		serviceID = "dockerexec-test-service"
 		reference = "stevvooe/foo:latest"
 	)
 
 	return &api.Task{
-		ID:     identity.NewID(),
-		JobID:  jobID,
-		NodeID: nodeID,
+		ID:        identity.NewID(),
+		ServiceID: serviceID,
+		NodeID:    nodeID,
 		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.Container{

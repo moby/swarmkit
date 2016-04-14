@@ -112,81 +112,81 @@ func (e EventDeleteTask) matches(watchEvent events.Event) bool {
 	return true
 }
 
-// JobCheckFunc is the type of function used to perform filtering checks on
-// api.Job structures.
-type JobCheckFunc func(j1, j2 *api.Job) bool
+// ServiceCheckFunc is the type of function used to perform filtering checks on
+// api.Service structures.
+type ServiceCheckFunc func(j1, j2 *api.Service) bool
 
-// JobCheckID is a JobCheckFunc for matching job IDs.
-func JobCheckID(j1, j2 *api.Job) bool {
+// ServiceCheckID is a ServiceCheckFunc for matching service IDs.
+func ServiceCheckID(j1, j2 *api.Service) bool {
 	return j1.ID == j2.ID
 }
 
-// EventCreateJob is the type used to put CreateJob events on the
+// EventCreateService is the type used to put CreateService events on the
 // publish/subscribe queue and filter these events in calls to Watch.
-type EventCreateJob struct {
-	Job *api.Job
+type EventCreateService struct {
+	Service *api.Service
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
-	Checks []JobCheckFunc
+	Checks []ServiceCheckFunc
 }
 
-func (e EventCreateJob) matches(watchEvent events.Event) bool {
-	typedEvent, ok := watchEvent.(EventCreateJob)
+func (e EventCreateService) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventCreateService)
 	if !ok {
 		return false
 	}
 
 	for _, check := range e.Checks {
-		if !check(e.Job, typedEvent.Job) {
+		if !check(e.Service, typedEvent.Service) {
 			return false
 		}
 	}
 	return true
 }
 
-// EventUpdateJob is the type used to put UpdateJob events on the
+// EventUpdateService is the type used to put UpdateService events on the
 // publish/subscribe queue and filter these events in calls to Watch.
-type EventUpdateJob struct {
-	Job *api.Job
+type EventUpdateService struct {
+	Service *api.Service
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
-	Checks []JobCheckFunc
+	Checks []ServiceCheckFunc
 }
 
-func (e EventUpdateJob) matches(watchEvent events.Event) bool {
-	typedEvent, ok := watchEvent.(EventUpdateJob)
+func (e EventUpdateService) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventUpdateService)
 	if !ok {
 		return false
 	}
 
 	for _, check := range e.Checks {
-		if !check(e.Job, typedEvent.Job) {
+		if !check(e.Service, typedEvent.Service) {
 			return false
 		}
 	}
 	return true
 }
 
-// EventDeleteJob is the type used to put DeleteJob events on the
+// EventDeleteService is the type used to put DeleteService events on the
 // publish/subscribe queue and filter these events in calls to Watch.
-type EventDeleteJob struct {
-	Job *api.Job
+type EventDeleteService struct {
+	Service *api.Service
 	// Checks is a list of functions to call to filter events for a watch
 	// stream. They are applied with AND logic. They are only applicable for
 	// calls to Watch.
-	Checks []JobCheckFunc
+	Checks []ServiceCheckFunc
 }
 
-func (e EventDeleteJob) matches(watchEvent events.Event) bool {
-	typedEvent, ok := watchEvent.(EventDeleteJob)
+func (e EventDeleteService) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventDeleteService)
 	if !ok {
 		return false
 	}
 
 	for _, check := range e.Checks {
-		if !check(e.Job, typedEvent.Job) {
+		if !check(e.Service, typedEvent.Service) {
 			return false
 		}
 	}
@@ -194,7 +194,7 @@ func (e EventDeleteJob) matches(watchEvent events.Event) bool {
 }
 
 // NetworkCheckFunc is the type of function used to perform filtering checks on
-// api.Job structures.
+// api.Service structures.
 type NetworkCheckFunc func(n1, n2 *api.Network) bool
 
 // NetworkCheckID is a NetworkCheckFunc for matching network IDs.
@@ -275,7 +275,7 @@ func (e EventDeleteNetwork) matches(watchEvent events.Event) bool {
 }
 
 // NodeCheckFunc is the type of function used to perform filtering checks on
-// api.Job structures.
+// api.Service structures.
 type NodeCheckFunc func(n1, n2 *api.Node) bool
 
 // NodeCheckID is a NodeCheckFunc for matching node IDs.
@@ -460,13 +460,13 @@ func (e EventDeleteVolume) matches(watchEvent events.Event) bool {
 //                         Checks: []TaskCheckFunc{TaskCheckNodeID}})
 //
 // // subscribe to UpdateTask for node 123, as well as CreateTask
-// // for node 123 that also has JobID set to "abc"
+// // for node 123 that also has ServiceID set to "abc"
 // Watch(q, EventUpdateTask{Task: &api.Task{NodeID: 123},
 //                         Checks: []TaskCheckFunc{TaskCheckNodeID}},
-//         EventCreateTask{Task: &api.Task{NodeID: 123, JobID: "abc"},
+//         EventCreateTask{Task: &api.Task{NodeID: 123, ServiceID: "abc"},
 //                         Checks: []TaskCheckFunc{TaskCheckNodeID,
 //                                                 func(t1, t2 *api.Task) bool {
-//                                                         return t1.JobID == t2.JobID
+//                                                         return t1.ServiceID == t2.ServiceID
 //                                                 }}})
 func Watch(queue *watch.Queue, specifiers ...Event) (eventq chan events.Event, cancel func()) {
 	if len(specifiers) == 0 {

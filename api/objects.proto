@@ -30,13 +30,13 @@ message Node {
 	NodeStatus status = 5 [(gogoproto.nullable) = false];
 }
 
-message Job {
+message Service {
 	string id = 1 [(gogoproto.customname) = "ID"];
 
-	// Version tracks the last time the job was modified.
+	// Version tracks the last time the service was modified.
 	Version version = 2 [(gogoproto.nullable) = false];
 
-	JobSpec spec = 3;
+	ServiceSpec spec = 3;
 }
 
 // Task specifies the parameters for implementing a Spec. A task is effectively
@@ -48,21 +48,21 @@ message Task {
 	// Version tracks the last time the task was modified.
 	Version version = 2 [(gogoproto.nullable) = false];
 
-	// JobID indicates the job under which this task is orchestrated. This
+	// ServiceID indicates the service under which this task is orchestrated. This
 	// should almost always be set.
-	string job_id = 3 [(gogoproto.customname) = "JobID"];
+	string service_id = 3 [(gogoproto.customname) = "ServiceID"];
 
 	// NodeID indicates the node to which the task is assigned. If this field
 	// is empty or not set, the task is unassigned.
 	string node_id = 4 [(gogoproto.customname) = "NodeID"];
 
-	// Meta inherits labels from the JobSpec.Meta associated with this task. It
+	// Meta inherits labels from the ServiceSpec.Meta associated with this task. It
 	// may include other labels added by the manager. The name will be a human
-	// readable name, calculated based on the JobSpec.Meta.Name field.
+	// readable name, calculated based on the ServiceSpec.Meta.Name field.
 	Meta meta = 5 [(gogoproto.nullable) = false];
 
 	// Spec declares the runtime parameters for the task. This is copied out of
-	// the job's template field.
+	// the service's template field.
 	TaskSpec spec = 6;
 
 	TaskStatus status = 7;

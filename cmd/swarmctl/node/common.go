@@ -55,7 +55,7 @@ func getNode(ctx context.Context, c api.ClusterClient, input string) (*api.Node,
 	// GetNode to match via full ID.
 	rg, err := c.GetNode(ctx, &api.GetNodeRequest{NodeID: input})
 	if err != nil {
-		// If any error (including NotFound), ListJobs to match via ID prefix and full name.
+		// If any error (including NotFound), ListServices to match via ID prefix and full name.
 		rl, err := c.ListNodes(ctx, &api.ListNodesRequest{Options: &api.ListOptions{Query: input}})
 		if err != nil {
 			return nil, err

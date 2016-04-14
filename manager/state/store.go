@@ -53,27 +53,27 @@ type NodeSet interface {
 	NodeSetWriter
 }
 
-// JobSetWriter is the write half of a job dataset.
-type JobSetWriter interface {
-	Create(j *api.Job) error
-	Update(j *api.Job) error
+// ServiceSetWriter is the write half of a service dataset.
+type ServiceSetWriter interface {
+	Create(j *api.Service) error
+	Update(j *api.Service) error
 	Delete(id string) error
 }
 
-// JobSetReader is the read half of a job dataset.
-type JobSetReader interface {
-	// Get returns the job with this ID, or nil if none exists with the
+// ServiceSetReader is the read half of a service dataset.
+type ServiceSetReader interface {
+	// Get returns the service with this ID, or nil if none exists with the
 	// specified ID.
-	Get(id string) *api.Job
-	// Find selects a set of jobs and returns them. If by is nil,
-	// returns all jobs.
-	Find(by By) ([]*api.Job, error)
+	Get(id string) *api.Service
+	// Find selects a set of services and returns them. If by is nil,
+	// returns all services.
+	Find(by By) ([]*api.Service, error)
 }
 
-// JobSet is a readable and writable consistent view of jobs.
-type JobSet interface {
-	JobSetReader
-	JobSetWriter
+// ServiceSet is a readable and writable consistent view of services.
+type ServiceSet interface {
+	ServiceSetReader
+	ServiceSetWriter
 }
 
 // NetworkSetWriter is the write half of a network dataset.
@@ -89,7 +89,7 @@ type NetworkSetReader interface {
 	// specified ID.
 	Get(id string) *api.Network
 	// Find selects a set of networks and returns them. If by is nil,
-	// returns all jobs.
+	// returns all services.
 	Find(by By) ([]*api.Network, error)
 }
 
@@ -112,7 +112,7 @@ type VolumeSetReader interface {
 	// specified ID.
 	Get(id string) *api.Volume
 	// Find selects a set of volumes and returns them. If by is nil,
-	// returns all jobs.
+	// returns all services.
 	Find(by By) ([]*api.Volume, error)
 }
 
@@ -151,7 +151,7 @@ type TaskSet interface {
 // transactions.
 type ReadTx interface {
 	Nodes() NodeSetReader
-	Jobs() JobSetReader
+	Services() ServiceSetReader
 	Networks() NetworkSetReader
 	Tasks() TaskSetReader
 	Volumes() VolumeSetReader
@@ -163,7 +163,7 @@ type ReadTx interface {
 // until the transaction is over.
 type Tx interface {
 	Nodes() NodeSet
-	Jobs() JobSet
+	Services() ServiceSet
 	Networks() NetworkSet
 	Tasks() TaskSet
 	Volumes() VolumeSet
@@ -219,8 +219,8 @@ func (tx snapshotReadTx) Nodes() NodeSetReader {
 	return tx.tx.Nodes()
 }
 
-func (tx snapshotReadTx) Jobs() JobSetReader {
-	return tx.tx.Jobs()
+func (tx snapshotReadTx) Services() ServiceSetReader {
+	return tx.tx.Services()
 }
 
 func (tx snapshotReadTx) Networks() NetworkSetReader {
@@ -271,12 +271,12 @@ func DeleteAll(tx Tx) error {
 		}
 	}
 
-	jobs, err := tx.Jobs().Find(All)
+	services, err := tx.Services().Find(All)
 	if err != nil {
 		return err
 	}
-	for _, j := range jobs {
-		if err := tx.Jobs().Delete(j.ID); err != nil {
+	for _, j := range services {
+		if err := tx.Services().Delete(j.ID); err != nil {
 			return err
 		}
 	}
@@ -341,14 +341,14 @@ func ByName(name string) By {
 	return byName(name)
 }
 
-type byJob string
+type byService string
 
-func (b byJob) isBy() {
+func (b byService) isBy() {
 }
 
-// ByJobID creates an object to pass to Find to select by job.
-func ByJobID(jobID string) By {
-	return byJob(jobID)
+// ByServiceID creates an object to pass to Find to select by service.
+func ByServiceID(serviceID string) By {
+	return byService(serviceID)
 }
 
 type byNode string

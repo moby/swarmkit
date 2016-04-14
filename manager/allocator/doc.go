@@ -5,7 +5,7 @@
 //
 // One of the instances where it needs coordination is when to move a
 // task to ALLOCATED state. Since a task can move to ALLOCATED state
-// only when all task allocators have completed their job of
+// only when all task allocators have completed their service of
 // allocation, they all have to agree on that. The way this achieved
 // in `allocator` is by creating a `taskBallot` to which all task
 // allocators register themselves as mandatory voters. For each task

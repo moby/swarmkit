@@ -1,12 +1,12 @@
-package job
+package service
 
 import "github.com/spf13/cobra"
 
 var (
-	// Cmd exposes the top-level job command.
+	// Cmd exposes the top-level service command.
 	Cmd = &cobra.Command{
-		Use:   "job",
-		Short: "Job management",
+		Use:   "service",
+		Short: "Service management",
 	}
 )
 

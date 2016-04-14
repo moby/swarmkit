@@ -60,7 +60,7 @@ func newContainerConfig(t *api.Task) (*containerConfig, error) {
 
 func (c *containerConfig) name() string {
 	const prefix = "com.docker.cluster.task"
-	return strings.Join([]string{prefix, c.task.NodeID, c.task.JobID, c.task.ID}, ".")
+	return strings.Join([]string{prefix, c.task.NodeID, c.task.ServiceID, c.task.ID}, ".")
 }
 
 func (c *containerConfig) image() string {
