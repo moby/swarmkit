@@ -23,6 +23,9 @@ import (
 )
 
 import leaderconn "github.com/docker/swarm-v2/manager/state/leaderconn"
+import codes "google.golang.org/grpc/codes"
+import metadata "google.golang.org/grpc/metadata"
+import transport "google.golang.org/grpc/transport"
 
 import io "io"
 
@@ -1169,6 +1172,21 @@ func (p *raftProxyDispatcherServer) Register(ctx context.Context, r *RegisterReq
 		}
 		return nil, err
 	}
+	var addr string
+	s, ok := transport.StreamFromContext(ctx)
+	if ok {
+		addr = s.ServerTransport().RemoteAddr().String()
+	}
+	md, ok := metadata.FromContext(ctx)
+	if ok && len(md["redirect"]) != 0 {
+		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+	}
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md["redirect"] = append(md["redirect"], addr)
+	ctx = metadata.NewContext(ctx, md)
+
 	return NewDispatcherClient(c).Register(ctx, r)
 }
 
@@ -1181,7 +1199,22 @@ func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher
 		}
 		return err
 	}
-	clientStream, err := NewDispatcherClient(c).Session(stream.Context(), r)
+	var addr string
+	s, ok := transport.StreamFromContext(stream.Context())
+	if ok {
+		addr = s.ServerTransport().RemoteAddr().String()
+	}
+	md, ok := metadata.FromContext(stream.Context())
+	if ok && len(md["redirect"]) != 0 {
+		return grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+	}
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md["redirect"] = append(md["redirect"], addr)
+	ctx := metadata.NewContext(stream.Context(), md)
+
+	clientStream, err := NewDispatcherClient(c).Session(ctx, r)
 
 	if err != nil {
 		return err
@@ -1211,6 +1244,21 @@ func (p *raftProxyDispatcherServer) Heartbeat(ctx context.Context, r *HeartbeatR
 		}
 		return nil, err
 	}
+	var addr string
+	s, ok := transport.StreamFromContext(ctx)
+	if ok {
+		addr = s.ServerTransport().RemoteAddr().String()
+	}
+	md, ok := metadata.FromContext(ctx)
+	if ok && len(md["redirect"]) != 0 {
+		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+	}
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md["redirect"] = append(md["redirect"], addr)
+	ctx = metadata.NewContext(ctx, md)
+
 	return NewDispatcherClient(c).Heartbeat(ctx, r)
 }
 
@@ -1223,6 +1271,21 @@ func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *Upd
 		}
 		return nil, err
 	}
+	var addr string
+	s, ok := transport.StreamFromContext(ctx)
+	if ok {
+		addr = s.ServerTransport().RemoteAddr().String()
+	}
+	md, ok := metadata.FromContext(ctx)
+	if ok && len(md["redirect"]) != 0 {
+		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+	}
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md["redirect"] = append(md["redirect"], addr)
+	ctx = metadata.NewContext(ctx, md)
+
 	return NewDispatcherClient(c).UpdateTaskStatus(ctx, r)
 }
 
@@ -1235,7 +1298,22 @@ func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_Tas
 		}
 		return err
 	}
-	clientStream, err := NewDispatcherClient(c).Tasks(stream.Context(), r)
+	var addr string
+	s, ok := transport.StreamFromContext(stream.Context())
+	if ok {
+		addr = s.ServerTransport().RemoteAddr().String()
+	}
+	md, ok := metadata.FromContext(stream.Context())
+	if ok && len(md["redirect"]) != 0 {
+		return grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+	}
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md["redirect"] = append(md["redirect"], addr)
+	ctx := metadata.NewContext(stream.Context(), md)
+
+	clientStream, err := NewDispatcherClient(c).Tasks(ctx, r)
 
 	if err != nil {
 		return err
