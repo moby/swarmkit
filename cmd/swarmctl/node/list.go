@@ -39,7 +39,7 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				fmt.Fprintln(w, "ID\tName\tStatus\tAvailability")
+				common.PrintHeader(w, "ID", "Name", "Status", "Availability")
 				output = func(n *api.Node) {
 					spec := n.Spec
 					if spec == nil {

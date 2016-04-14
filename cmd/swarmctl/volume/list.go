@@ -31,7 +31,7 @@ var (
 				// Ignore flushing errors - there's nothing we can do.
 				_ = w.Flush()
 			}()
-			fmt.Fprintln(w, "ID\tName\tDriver\tOptions")
+			common.PrintHeader(w, "ID", "Name", "Driver", "Options")
 			for _, v := range r.Volumes {
 				spec := v.Spec
 				if spec == nil {

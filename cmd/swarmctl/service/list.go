@@ -39,7 +39,7 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				fmt.Fprintln(w, "ID\tName\tImage\tInstances")
+				common.PrintHeader(w, "ID", "Name", "Image", "Instances")
 				output = func(s *api.Service) {
 					spec := s.Spec
 					var reference string

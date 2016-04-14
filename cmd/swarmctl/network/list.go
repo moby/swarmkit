@@ -39,7 +39,7 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				fmt.Fprintln(w, "ID\tName\tDriver")
+				common.PrintHeader(w, "ID", "Name", "Driver")
 				output = func(n *api.Network) {
 					spec := n.Spec
 					fmt.Fprintf(w, "%s\t%s\t%s\n",

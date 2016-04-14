@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/docker/swarm-v2/api"
@@ -44,6 +45,14 @@ var (
 				fmt.Fprintf(w, "Status:\t%s\n", r.Task.Status.State.String())
 			}
 			fmt.Fprintf(w, "Node:\t%s\n", res.Resolve(api.Node{}, r.Task.NodeID))
+
+			fmt.Fprintln(w, "Spec:\t")
+			ctr := r.Task.Spec.GetContainer()
+			common.FprintfIfNotEmpty(w, "  Image\t: %s\n", ctr.Image.Reference)
+			common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))
+			common.FprintfIfNotEmpty(w, "  Args\t: [%s]\n", strings.Join(ctr.Args, ", "))
+			common.FprintfIfNotEmpty(w, "  Env\t: [%s]\n", strings.Join(ctr.Env, ", "))
+
 			return nil
 		},
 	}
