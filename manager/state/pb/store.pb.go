@@ -19,8 +19,8 @@ import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
-import docker_cluster_api2 "github.com/docker/swarm-v2/api"
 import docker_cluster_api3 "github.com/docker/swarm-v2/api"
+import docker_cluster_api4 "github.com/docker/swarm-v2/api"
 
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
@@ -60,11 +60,11 @@ func (Snapshot_Version) EnumDescriptor() ([]byte, []int) { return fileDescriptor
 
 // StoreSnapshot is used to store snapshots of the store.
 type StoreSnapshot struct {
-	Nodes    []*docker_cluster_api2.Node    `protobuf:"bytes,1,rep,name=nodes" json:"nodes,omitempty"`
-	Services []*docker_cluster_api2.Service `protobuf:"bytes,2,rep,name=services" json:"services,omitempty"`
-	Networks []*docker_cluster_api2.Network `protobuf:"bytes,3,rep,name=networks" json:"networks,omitempty"`
-	Tasks    []*docker_cluster_api2.Task    `protobuf:"bytes,4,rep,name=tasks" json:"tasks,omitempty"`
-	Volumes  []*docker_cluster_api2.Volume  `protobuf:"bytes,5,rep,name=volumes" json:"volumes,omitempty"`
+	Nodes    []*docker_cluster_api3.Node    `protobuf:"bytes,1,rep,name=nodes" json:"nodes,omitempty"`
+	Services []*docker_cluster_api3.Service `protobuf:"bytes,2,rep,name=services" json:"services,omitempty"`
+	Networks []*docker_cluster_api3.Network `protobuf:"bytes,3,rep,name=networks" json:"networks,omitempty"`
+	Tasks    []*docker_cluster_api3.Task    `protobuf:"bytes,4,rep,name=tasks" json:"tasks,omitempty"`
+	Volumes  []*docker_cluster_api3.Volume  `protobuf:"bytes,5,rep,name=volumes" json:"volumes,omitempty"`
 }
 
 func (m *StoreSnapshot) Reset()                    { *m = StoreSnapshot{} }
@@ -73,7 +73,7 @@ func (*StoreSnapshot) Descriptor() ([]byte, []int) { return fileDescriptorStore,
 
 // ClusterSnapshot stores cluster membership information in snapshots.
 type ClusterSnapshot struct {
-	Members []*docker_cluster_api3.RaftNode `protobuf:"bytes,1,rep,name=members" json:"members,omitempty"`
+	Members []*docker_cluster_api4.RaftNode `protobuf:"bytes,1,rep,name=members" json:"members,omitempty"`
 	Removed []uint64                        `protobuf:"varint,2,rep,name=removed" json:"removed,omitempty"`
 }
 
@@ -436,11 +436,11 @@ func (this *StoreSnapshot) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&StoreSnapshot{`,
-		`Nodes:` + strings.Replace(fmt.Sprintf("%v", this.Nodes), "Node", "docker_cluster_api2.Node", 1) + `,`,
-		`Services:` + strings.Replace(fmt.Sprintf("%v", this.Services), "Service", "docker_cluster_api2.Service", 1) + `,`,
-		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Network", "docker_cluster_api2.Network", 1) + `,`,
-		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "docker_cluster_api2.Task", 1) + `,`,
-		`Volumes:` + strings.Replace(fmt.Sprintf("%v", this.Volumes), "Volume", "docker_cluster_api2.Volume", 1) + `,`,
+		`Nodes:` + strings.Replace(fmt.Sprintf("%v", this.Nodes), "Node", "docker_cluster_api3.Node", 1) + `,`,
+		`Services:` + strings.Replace(fmt.Sprintf("%v", this.Services), "Service", "docker_cluster_api3.Service", 1) + `,`,
+		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Network", "docker_cluster_api3.Network", 1) + `,`,
+		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "docker_cluster_api3.Task", 1) + `,`,
+		`Volumes:` + strings.Replace(fmt.Sprintf("%v", this.Volumes), "Volume", "docker_cluster_api3.Volume", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -450,7 +450,7 @@ func (this *ClusterSnapshot) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ClusterSnapshot{`,
-		`Members:` + strings.Replace(fmt.Sprintf("%v", this.Members), "RaftNode", "docker_cluster_api3.RaftNode", 1) + `,`,
+		`Members:` + strings.Replace(fmt.Sprintf("%v", this.Members), "RaftNode", "docker_cluster_api4.RaftNode", 1) + `,`,
 		`Removed:` + fmt.Sprintf("%v", this.Removed) + `,`,
 		`}`,
 	}, "")
@@ -531,7 +531,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Nodes = append(m.Nodes, &docker_cluster_api2.Node{})
+			m.Nodes = append(m.Nodes, &docker_cluster_api3.Node{})
 			if err := m.Nodes[len(m.Nodes)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -562,7 +562,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Services = append(m.Services, &docker_cluster_api2.Service{})
+			m.Services = append(m.Services, &docker_cluster_api3.Service{})
 			if err := m.Services[len(m.Services)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -593,7 +593,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Networks = append(m.Networks, &docker_cluster_api2.Network{})
+			m.Networks = append(m.Networks, &docker_cluster_api3.Network{})
 			if err := m.Networks[len(m.Networks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -624,7 +624,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Tasks = append(m.Tasks, &docker_cluster_api2.Task{})
+			m.Tasks = append(m.Tasks, &docker_cluster_api3.Task{})
 			if err := m.Tasks[len(m.Tasks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -655,7 +655,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Volumes = append(m.Volumes, &docker_cluster_api2.Volume{})
+			m.Volumes = append(m.Volumes, &docker_cluster_api3.Volume{})
 			if err := m.Volumes[len(m.Volumes)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -736,7 +736,7 @@ func (m *ClusterSnapshot) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Members = append(m.Members, &docker_cluster_api3.RaftNode{})
+			m.Members = append(m.Members, &docker_cluster_api4.RaftNode{})
 			if err := m.Members[len(m.Members)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}

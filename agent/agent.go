@@ -10,6 +10,7 @@ import (
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -404,6 +405,13 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 		status.State = report.state
 	}
 
+	tsp, err := ptypes.TimestampProto(report.timestamp)
+	if err != nil {
+		return err
+	}
+
+	status.Timestamp = tsp
+
 	if reflect.DeepEqual(status, original) {
 		return errTaskStatusUpdateNoChange
 	}
@@ -522,10 +530,11 @@ func (a *Agent) removeTask(ctx context.Context, t *api.Task) error {
 }
 
 type taskStatusReport struct {
-	taskID   string
-	state    api.TaskState
-	err      error
-	response chan error
+	timestamp time.Time
+	taskID    string
+	state     api.TaskState
+	err       error
+	response  chan error
 }
 
 func (a *Agent) report(ctx context.Context, taskID string, state api.TaskState, errs ...error) error {
@@ -543,10 +552,12 @@ func (a *Agent) report(ctx context.Context, taskID string, state api.TaskState, 
 
 	select {
 	case a.statusq <- taskStatusReport{
-		taskID:   taskID,
-		state:    state,
-		err:      err,
-		response: response}:
+		timestamp: time.Now(),
+		taskID:    taskID,
+		state:     state,
+		err:       err,
+		response:  response,
+	}:
 		select {
 		case err := <-response:
 			return err

@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package docker.cluster.api;
 
+import "timestamp/timestamp.proto"; // TODO(stevvooe): use our own until we fix gogoproto/deepcopy
 import "gogoproto/gogo.proto";
 
 // This file contains types that are common to objects and spec or that are not
@@ -135,8 +136,10 @@ enum TaskState {
 }
 
 message TaskStatus {
+	Timestamp timestamp = 1;
+
 	// State expresses the current state of the task.
-	TaskState state = 1;
+	TaskState state = 2;
 
 	// Err is set if the task is in an error state.
 	//
@@ -145,7 +148,7 @@ message TaskStatus {
 	//	FAILED, REJECTED
 	//
 	// TODO(stevvooe) Integrate this field with the error interface.
-	string err = 2;
+	string err = 3;
 
 	// TODO(stevvooe): Report on runtime statistics.
 }
