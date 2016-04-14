@@ -167,18 +167,22 @@ func (d *Drainer) nodeChanged(ctx context.Context, n *api.Node) int {
 
 // tick deletes tasks that were selected for deletion.
 func (d *Drainer) tick(ctx context.Context) {
-	err := d.store.Update(func(tx state.Tx) error {
+	_, err := d.store.Batch(func(batch state.Batch) error {
 		var next *list.Element
 		for e := d.deleteTasks.Front(); e != nil; e = next {
 			next = e.Next()
 			t := e.Value.(*api.Task)
-			t = tx.Tasks().Get(t.ID)
-			if t != nil {
-				t.DesiredState = api.TaskStateDead
-				err := tx.Tasks().Update(t)
-				if err != nil && err != state.ErrNotExist {
-					log.G(ctx).WithError(err).Errorf("failed to drain task")
+			err := batch.Update(func(tx state.Tx) error {
+				// TODO(aaronl): optimistic update?
+				t = tx.Tasks().Get(t.ID)
+				if t != nil {
+					t.DesiredState = api.TaskStateDead
+					return tx.Tasks().Update(t)
 				}
+				return nil
+			})
+			if err != nil {
+				log.G(ctx).WithError(err).Errorf("failed to drain task")
 			}
 		}
 		return nil

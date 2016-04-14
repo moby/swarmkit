@@ -33,10 +33,6 @@ import (
 	"github.com/pivotal-golang/clock"
 )
 
-const (
-	maxRequestBytes = 1.5 * 1024 * 1024
-)
-
 var (
 	// ErrConfChangeRefused is returned when there is an issue with the configuration change
 	ErrConfChangeRefused = errors.New("raft: propose configuration change refused")
@@ -927,7 +923,7 @@ func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRa
 		return nil, err
 	}
 
-	if len(data) > maxRequestBytes {
+	if len(data) > state.MaxTransactionBytes {
 		n.wait.cancel(r.ID)
 		return nil, ErrRequestTooLarge
 	}

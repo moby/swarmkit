@@ -64,12 +64,18 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 	}
 
 	// Allocate tasks in the store so far before we started watching.
-	if err := a.store.Update(func(tx state.Tx) error {
-		tasks, err := tx.Tasks().Find(state.All)
+	var tasks []*api.Task
+	if err := a.store.View(func(tx state.ReadTx) error {
+		tasks, err = tx.Tasks().Find(state.All)
 		if err != nil {
 			return fmt.Errorf("error listing all tasks in store while trying to allocate during init: %v", err)
 		}
+		return nil
+	}); err != nil {
+		return err
+	}
 
+	if _, err := a.store.Batch(func(batch state.Batch) error {
 		for _, t := range tasks {
 			// No container or network configured. Not interested.
 			if t.Spec.GetContainer() == nil {
@@ -80,7 +86,10 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 				continue
 			}
 
-			if err := a.allocateTask(ctx, nc, tx, t); err != nil {
+			err := batch.Update(func(tx state.Tx) error {
+				return a.allocateTask(ctx, nc, tx, t)
+			})
+			if err != nil {
 				log.G(ctx).Errorf("failed allocating task %s during init: %v", t.ID, err)
 				nc.unallocatedTasks[t.ID] = t
 			}
@@ -273,20 +282,26 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sta
 }
 
 func (a *Allocator) procUnallocatedTasks(ctx context.Context, nc *networkContext) {
-	if err := a.store.Update(func(tx state.Tx) error {
+	tasks := make([]*api.Task, 0, len(nc.unallocatedTasks))
+
+	committed, err := a.store.Batch(func(batch state.Batch) error {
 		for _, t := range nc.unallocatedTasks {
-			if err := a.allocateTask(ctx, nc, tx, t); err != nil {
+			tasks = append(tasks, t)
+			err := batch.Update(func(tx state.Tx) error {
+				return a.allocateTask(ctx, nc, tx, t)
+			})
+			if err != nil {
 				return fmt.Errorf("task allocation failure: %v", err)
 			}
-
-			// If we are here then the allocation of the task and
-			// the subsequent update of the store was
-			// successfull. No need to remember this task any
-			// more.
-			delete(nc.unallocatedTasks, t.ID)
 		}
+
 		return nil
-	}); err != nil {
+	})
+	if err != nil {
 		log.G(ctx).WithError(err).Error("failed to allocate task")
+	}
+
+	for i := 0; i != committed; i++ {
+		delete(nc.unallocatedTasks, tasks[i].ID)
 	}
 }

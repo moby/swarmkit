@@ -3,6 +3,7 @@ package store
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"sync"
 
 	"github.com/docker/swarm-v2/api"
@@ -20,6 +21,10 @@ const (
 	indexNodeID    = "nodeid"
 
 	prefix = "_prefix"
+
+	// MaxChangesPerTransaction is the number of changes after which a new
+	// transaction should be started within Batch.
+	MaxChangesPerTransaction = 200
 )
 
 var (
@@ -216,30 +221,8 @@ func (s *MemoryStore) update(proposer state.Proposer, cb func(state.Tx) error) e
 		curVersion = proposer.GetVersion()
 	}
 
-	tx := tx{
-		memDBTx:    memDBTx,
-		curVersion: curVersion,
-	}
-	tx.nodes = nodes{
-		tx:      &tx,
-		memDBTx: memDBTx,
-	}
-	tx.services = services{
-		tx:      &tx,
-		memDBTx: memDBTx,
-	}
-	tx.tasks = tasks{
-		tx:      &tx,
-		memDBTx: memDBTx,
-	}
-	tx.networks = networks{
-		tx:      &tx,
-		memDBTx: memDBTx,
-	}
-	tx.volumes = volumes{
-		tx:      &tx,
-		memDBTx: memDBTx,
-	}
+	var tx tx
+	tx.init(memDBTx, curVersion)
 
 	err := cb(tx)
 
@@ -248,7 +231,7 @@ func (s *MemoryStore) update(proposer state.Proposer, cb func(state.Tx) error) e
 			memDBTx.Commit()
 		} else {
 			var sa []*api.StoreAction
-			sa, err = tx.newStoreAction()
+			sa, err = tx.changelistStoreActions()
 
 			if err == nil {
 				if sa != nil {
@@ -286,22 +269,196 @@ func (s *MemoryStore) Update(cb func(state.Tx) error) error {
 	return s.update(s.proposer, cb)
 }
 
-func (tx tx) newStoreAction() ([]*api.StoreAction, error) {
-	var actions []*api.StoreAction
+type batch struct {
+	tx                      tx
+	store                   *MemoryStore
+	applied                 int
+	committed               int
+	transactionSizeEstimate int
+	changelistLen           int
+	err                     error
+}
 
-changelist:
-	for _, c := range tx.changelist {
-		for _, os := range objectStorers {
-			sa, err := os.NewStoreAction(c)
-			if err == nil {
-				actions = append(actions, &sa)
-				continue changelist
-			} else if err != errUnknownStoreAction {
-				return nil, err
-			}
+func (batch *batch) Update(cb func(state.Tx) error) error {
+	if batch.err != nil {
+		return batch.err
+	}
+
+	if err := cb(batch.tx); err != nil {
+		return err
+	}
+
+	batch.applied++
+
+	// TODO(aaronl): Creating a StoreAction and marshalling it here
+	// for the size estimate is redundant because it gets created
+	// and marshalled a second time at commit time. This could be
+	// avoided by doing the marshalling only here, and streaming
+	// the serialized StoreActions to the proposer, which it would
+	// write using gogo-protobuf's io.DelimitedWriter. This would
+	// take some interface changes, so I'm leaving it as a TODO for
+	// now.
+	for batch.changelistLen < len(batch.tx.changelist) {
+		sa, err := newStoreAction(batch.tx.changelist[batch.changelistLen])
+		if err != nil {
+			return err
+		}
+		marshalled, err := sa.Marshal()
+		if err != nil {
+			return err
+		}
+		batch.transactionSizeEstimate += len(marshalled)
+		batch.changelistLen++
+	}
+
+	if batch.changelistLen >= MaxChangesPerTransaction || batch.transactionSizeEstimate >= (state.MaxTransactionBytes*3)/4 {
+		if err := batch.commit(); err != nil {
+			return err
 		}
 
-		return nil, errors.New("unrecognized event type")
+		// Yield the update lock
+		batch.store.updateLock.Unlock()
+		runtime.Gosched()
+		batch.store.updateLock.Lock()
+
+		batch.newTx()
+	}
+
+	return nil
+}
+
+func (batch *batch) newTx() {
+	var curVersion *api.Version
+
+	if batch.store.proposer != nil {
+		curVersion = batch.store.proposer.GetVersion()
+	}
+
+	batch.tx.init(batch.store.memDB.Txn(true), curVersion)
+	batch.transactionSizeEstimate = 0
+	batch.changelistLen = 0
+}
+
+func (batch *batch) commit() error {
+	if batch.store.proposer != nil {
+		var sa []*api.StoreAction
+		sa, batch.err = batch.tx.changelistStoreActions()
+
+		if batch.err == nil {
+			if sa != nil {
+				batch.err = batch.store.proposer.ProposeValue(context.Background(), sa, func() {
+					batch.tx.memDBTx.Commit()
+				})
+			} else {
+				batch.tx.memDBTx.Commit()
+			}
+		}
+	} else {
+		batch.tx.memDBTx.Commit()
+	}
+
+	if batch.err != nil {
+		batch.tx.memDBTx.Abort()
+		return batch.err
+	}
+
+	batch.committed = batch.applied
+
+	for _, c := range batch.tx.changelist {
+		batch.store.queue.Publish(c)
+	}
+	if len(batch.tx.changelist) != 0 {
+		batch.store.queue.Publish(state.EventCommit{})
+	}
+
+	return nil
+}
+
+// Batch performs one or more transactions that allow reads and writes
+// It invokes a callback that is passed a Batch object. The callback may
+// call batch.Update for each change it wants to make as part of the
+// batch. The changes in the batch may be split over multiple
+// transactions if necessary to keep transactions below the size limit.
+// Batch holds a lock over the state, but will yield this lock every
+// it creates a new transaction to allow other writers to proceed.
+// Thus, unrelated changes to the state may occur between calls to
+// batch.Update.
+//
+// This method allows the caller to iterate over a data set and apply
+// changes in sequence without holding the store write lock for an
+// excessive time, or producing a transaction that exceeds the maximum
+// size.
+//
+// Batch returns the number of calls to batch.Update whose changes were
+// successfully committed to the store.
+func (s *MemoryStore) Batch(cb func(state.Batch) error) (int, error) {
+	s.updateLock.Lock()
+
+	batch := batch{
+		store: s,
+	}
+	batch.newTx()
+
+	if err := cb(&batch); err != nil {
+		batch.tx.memDBTx.Abort()
+		s.updateLock.Unlock()
+		return batch.committed, err
+	}
+
+	err := batch.commit()
+	s.updateLock.Unlock()
+	return batch.committed, err
+}
+
+func (tx *tx) init(memDBTx *memdb.Txn, curVersion *api.Version) {
+	tx.memDBTx = memDBTx
+	tx.curVersion = curVersion
+	tx.changelist = nil
+
+	tx.nodes = nodes{
+		tx:      tx,
+		memDBTx: memDBTx,
+	}
+	tx.services = services{
+		tx:      tx,
+		memDBTx: memDBTx,
+	}
+	tx.tasks = tasks{
+		tx:      tx,
+		memDBTx: memDBTx,
+	}
+	tx.networks = networks{
+		tx:      tx,
+		memDBTx: memDBTx,
+	}
+	tx.volumes = volumes{
+		tx:      tx,
+		memDBTx: memDBTx,
+	}
+}
+
+func newStoreAction(c state.Event) (*api.StoreAction, error) {
+	for _, os := range objectStorers {
+		sa, err := os.NewStoreAction(c)
+		if err == nil {
+			return &sa, nil
+		} else if err != errUnknownStoreAction {
+			return nil, err
+		}
+	}
+
+	return nil, errors.New("unrecognized event type")
+}
+
+func (tx tx) changelistStoreActions() ([]*api.StoreAction, error) {
+	var actions []*api.StoreAction
+
+	for _, c := range tx.changelist {
+		sa, err := newStoreAction(c)
+		if err != nil {
+			return nil, err
+		}
+		actions = append(actions, sa)
 	}
 
 	return actions, nil

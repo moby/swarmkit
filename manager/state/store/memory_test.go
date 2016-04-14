@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
@@ -1054,7 +1055,120 @@ func TestVersion(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
+}
 
+func TestBatch(t *testing.T) {
+	var mockProposer mockProposer
+	s := NewMemoryStore(&mockProposer)
+	assert.NotNil(t, s)
+
+	watch, cancel := s.WatchQueue().Watch()
+	defer cancel()
+
+	// Create 405 nodes. Should get split across 3 transactions.
+	committed, err := s.Batch(func(batch state.Batch) error {
+		for i := 0; i != 2*MaxChangesPerTransaction+5; i++ {
+			n := &api.Node{
+				ID: "id" + strconv.Itoa(i),
+				Spec: &api.NodeSpec{
+					Annotations: api.Annotations{
+						Name: "name" + strconv.Itoa(i),
+					},
+				},
+			}
+
+			batch.Update(func(tx state.Tx) error {
+				assert.NoError(t, tx.Nodes().Create(n))
+				return nil
+			})
+		}
+
+		return nil
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 2*MaxChangesPerTransaction+5, committed)
+
+	for i := 0; i != MaxChangesPerTransaction; i++ {
+		event := <-watch
+		if _, ok := event.(state.EventCreateNode); !ok {
+			t.Fatalf("expected EventCreateNode; got %#v", event)
+		}
+	}
+	event := <-watch
+	if _, ok := event.(state.EventCommit); !ok {
+		t.Fatalf("expected EventCommit; got %#v", event)
+	}
+	for i := 0; i != MaxChangesPerTransaction; i++ {
+		event := <-watch
+		if _, ok := event.(state.EventCreateNode); !ok {
+			t.Fatalf("expected EventCreateNode; got %#v", event)
+		}
+	}
+	event = <-watch
+	if _, ok := event.(state.EventCommit); !ok {
+		t.Fatalf("expected EventCommit; got %#v", event)
+	}
+	for i := 0; i != 5; i++ {
+		event := <-watch
+		if _, ok := event.(state.EventCreateNode); !ok {
+			t.Fatalf("expected EventCreateNode; got %#v", event)
+		}
+	}
+	event = <-watch
+	if _, ok := event.(state.EventCommit); !ok {
+		t.Fatalf("expected EventCommit; got %#v", event)
+	}
+}
+
+func TestBatchFailure(t *testing.T) {
+	var mockProposer mockProposer
+	s := NewMemoryStore(&mockProposer)
+	assert.NotNil(t, s)
+
+	watch, cancel := s.WatchQueue().Watch()
+	defer cancel()
+
+	// Return an error partway through a transaction.
+	committed, err := s.Batch(func(batch state.Batch) error {
+		for i := 0; ; i++ {
+			n := &api.Node{
+				ID: "id" + strconv.Itoa(i),
+				Spec: &api.NodeSpec{
+					Annotations: api.Annotations{
+						Name: "name" + strconv.Itoa(i),
+					},
+				},
+			}
+
+			batch.Update(func(tx state.Tx) error {
+				assert.NoError(t, tx.Nodes().Create(n))
+				return nil
+			})
+			if i == MaxChangesPerTransaction+8 {
+				return errors.New("failing the current tx")
+			}
+		}
+	})
+	assert.Error(t, err)
+	assert.Equal(t, MaxChangesPerTransaction, committed)
+
+	for i := 0; i != MaxChangesPerTransaction; i++ {
+		event := <-watch
+		if _, ok := event.(state.EventCreateNode); !ok {
+			t.Fatalf("expected EventCreateNode; got %#v", event)
+		}
+	}
+	event := <-watch
+	if _, ok := event.(state.EventCommit); !ok {
+		t.Fatalf("expected EventCommit; got %#v", event)
+	}
+
+	// Shouldn't be anything after the first transaction
+	select {
+	case <-watch:
+		t.Fatalf("unexpected additional events")
+	case <-time.After(50 * time.Millisecond):
+	}
 }
 
 func TestStoreSaveRestore(t *testing.T) {

@@ -99,15 +99,35 @@ func (o *Orchestrator) Stop() {
 
 func (o *Orchestrator) deleteService(ctx context.Context, service *api.Service) {
 	log.G(ctx).Debugf("Service %s was deleted", service.ID)
-	err := o.store.Update(func(tx state.Tx) error {
-		tasks, err := tx.Tasks().Find(state.ByServiceID(service.ID))
+
+	var tasks []*api.Task
+	err := o.store.View(func(tx state.ReadTx) error {
+		var err error
+		tasks, err = tx.Tasks().Find(state.ByServiceID(service.ID))
 		if err != nil {
 			log.G(ctx).WithError(err).Errorf("failed finding tasks for service")
 			return err
 		}
+
+		return nil
+	})
+	if err != nil {
+		log.G(ctx).WithError(err).Errorf("deleteService transaction failed")
+		return
+	}
+
+	_, err = o.store.Batch(func(batch state.Batch) error {
 		for _, t := range tasks {
-			t.DesiredState = api.TaskStateDead
-			if err := tx.Tasks().Update(t); err != nil {
+			// TODO(aaronl): optimistic update?
+			err := batch.Update(func(tx state.Tx) error {
+				t = tx.Tasks().Get(t.ID)
+				if t != nil {
+					t.DesiredState = api.TaskStateDead
+					return tx.Tasks().Update(t)
+				}
+				return nil
+			})
+			if err != nil {
 				return err
 			}
 		}
@@ -145,99 +165,115 @@ func taskSuccessful(t *api.Task) bool {
 }
 
 func (o *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
-	err := o.store.Update(func(tx state.Tx) error {
-		tasks, err := tx.Tasks().Find(state.ByServiceID(service.ID))
+	var tasks []*api.Task
+	err := o.store.View(func(tx state.ReadTx) error {
+		var err error
+		tasks, err = tx.Tasks().Find(state.ByServiceID(service.ID))
 		if err != nil {
 			log.G(ctx).WithError(err).Errorf("reconcile failed finding tasks")
-			return nil
 		}
+		return err
+	})
+	if err != nil {
+		log.G(ctx).WithError(err).Errorf("reconcile transaction failed")
+		return
+	}
 
-		restartCondition := api.RestartAlways
-		if service.Spec.Restart != nil {
-			restartCondition = service.Spec.Restart.Condition
+	restartCondition := api.RestartAlways
+	if service.Spec.Restart != nil {
+		restartCondition = service.Spec.Restart.Condition
+	}
+
+	var numTasks int
+	runningTasks := make([]*api.Task, 0, len(tasks))
+	for _, t := range tasks {
+		if taskRunning(t) {
+			runningTasks = append(runningTasks, t)
 		}
+	}
 
-		var numTasks int64
-		runningTasks := make([]*api.Task, 0, len(tasks))
+	switch restartCondition {
+	case api.RestartAlways:
+		// For "always restart", we seek to balance
+		// running_tasks == instances
+		numTasks = len(runningTasks)
+	case api.RestartOnFailure:
+		// For "restart on failure", we seek to balance
+		// running_tasks + successful_tasks == instances
+		// TODO(aaronl): This may need to become more complex
+		// when we garbage collect tasks.
 		for _, t := range tasks {
-			if taskRunning(t) {
-				runningTasks = append(runningTasks, t)
+			if taskRunning(t) || taskSuccessful(t) {
+				numTasks++
 			}
 		}
+	case api.RestartNever:
+		// For "restart on failure", we seek to balance
+		// running_tasks + failed_tasks + successful_tasks == instances
+		// TODO(aaronl): This may need to become more complex
+		// when we garbage collect tasks.
+		numTasks = len(tasks)
+	}
+	specifiedInstances := int(service.Spec.Instances)
 
-		switch restartCondition {
-		case api.RestartAlways:
-			// For "always restart", we seek to balance
-			// running_tasks == instances
-			numTasks = int64(len(runningTasks))
-		case api.RestartOnFailure:
-			// For "restart on failure", we seek to balance
-			// running_tasks + successful_tasks == instances
-			// TODO(aaronl): This may need to become more complex
-			// when we garbage collect tasks.
-			for _, t := range tasks {
-				if taskRunning(t) || taskSuccessful(t) {
-					numTasks++
-				}
-			}
-		case api.RestartNever:
-			// For "restart on failure", we seek to balance
-			// running_tasks + failed_tasks + successful_tasks == instances
-			// TODO(aaronl): This may need to become more complex
-			// when we garbage collect tasks.
-			numTasks = int64(len(tasks))
-		}
-		specifiedInstances := service.Spec.Instances
+	// TODO(aaronl): Add support for restart delays.
 
-		// TODO(aaronl): Add support for restart delays.
-
+	_, err = o.store.Batch(func(batch state.Batch) error {
 		switch {
 		case specifiedInstances > numTasks:
 			log.G(ctx).Debugf("Service %s was scaled up from %d to %d instances", service.ID, numTasks, specifiedInstances)
 			// Update all current tasks then add missing tasks
-			o.updateTasks(ctx, tx, service, runningTasks)
-			o.addTasks(ctx, tx, service, specifiedInstances-numTasks)
+			o.updateTasks(ctx, batch, service, runningTasks)
+			o.addTasks(ctx, batch, service, specifiedInstances-numTasks)
 
 		case specifiedInstances < numTasks:
 			// Update up to N tasks then remove the extra
-			if specifiedInstances > int64(len(runningTasks)) {
-				o.updateTasks(ctx, tx, service, runningTasks)
+			if specifiedInstances > len(runningTasks) {
+				o.updateTasks(ctx, batch, service, runningTasks)
 			} else {
 				log.G(ctx).Debugf("Service %s was scaled down from %d to %d instances", service.ID, numTasks, specifiedInstances)
-				o.updateTasks(ctx, tx, service, runningTasks[:specifiedInstances])
-				o.removeTasks(ctx, tx, service, runningTasks[specifiedInstances:])
+				o.updateTasks(ctx, batch, service, runningTasks[:specifiedInstances])
+				o.removeTasks(ctx, batch, service, runningTasks[specifiedInstances:])
 			}
 
 		case specifiedInstances == numTasks:
 			// Simple update, no scaling - update all tasks.
-			o.updateTasks(ctx, tx, service, runningTasks)
+			o.updateTasks(ctx, batch, service, runningTasks)
 		}
-
 		return nil
 	})
+
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("reconcile transaction failed")
+		log.G(ctx).WithError(err).Errorf("reconcile batch failed")
 	}
 }
 
-func (o *Orchestrator) updateTasks(ctx context.Context, tx state.Tx, service *api.Service, tasks []*api.Task) {
+func (o *Orchestrator) updateTasks(ctx context.Context, batch state.Batch, service *api.Service, tasks []*api.Task) {
 	for _, t := range tasks {
 		if reflect.DeepEqual(service.Spec.Template, t.Spec) {
 			continue
 		}
-		o.addTasks(ctx, tx, service, 1)
-		t.DesiredState = api.TaskStateDead
-		if err := tx.Tasks().Update(t); err != nil {
+		o.addTasks(ctx, batch, service, 1)
+		err := batch.Update(func(tx state.Tx) error {
+			// TODO(aaronl): optimistic update?
+			t = tx.Tasks().Get(t.ID)
+			if t != nil {
+				t.DesiredState = api.TaskStateDead
+				return tx.Tasks().Update(t)
+			}
+			return nil
+		})
+		if err != nil {
 			log.G(ctx).Errorf("Failed to remove %s: %v", t.ID, err)
 		}
 	}
 }
 
-func (o *Orchestrator) addTasks(ctx context.Context, tx state.Tx, service *api.Service, count int64) {
+func (o *Orchestrator) addTasks(ctx context.Context, batch state.Batch, service *api.Service, count int) {
 	spec := *service.Spec.Template
 	meta := service.Spec.Annotations // TODO(stevvooe): Copy metadata with nice name.
 
-	for i := int64(0); i < count; i++ {
+	for i := 0; i < count; i++ {
 		task := &api.Task{
 			ID:          identity.NewID(),
 			Annotations: meta,
@@ -248,16 +284,27 @@ func (o *Orchestrator) addTasks(ctx context.Context, tx state.Tx, service *api.S
 			},
 			DesiredState: api.TaskStateRunning,
 		}
-		if err := tx.Tasks().Create(task); err != nil {
+		err := batch.Update(func(tx state.Tx) error {
+			return tx.Tasks().Create(task)
+		})
+		if err != nil {
 			log.G(ctx).Errorf("Failed to create task: %v", err)
 		}
 	}
 }
 
-func (o *Orchestrator) removeTasks(ctx context.Context, tx state.Tx, service *api.Service, tasks []*api.Task) {
+func (o *Orchestrator) removeTasks(ctx context.Context, batch state.Batch, service *api.Service, tasks []*api.Task) {
 	for _, t := range tasks {
-		t.DesiredState = api.TaskStateDead
-		if err := tx.Tasks().Update(t); err != nil {
+		err := batch.Update(func(tx state.Tx) error {
+			// TODO(aaronl): optimistic update?
+			t = tx.Tasks().Get(t.ID)
+			if t != nil {
+				t.DesiredState = api.TaskStateDead
+				return tx.Tasks().Update(t)
+			}
+			return nil
+		})
+		if err != nil {
 			log.G(ctx).WithError(err).Errorf("removing task %s failed", t.ID)
 		}
 	}

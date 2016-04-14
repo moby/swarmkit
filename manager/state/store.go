@@ -30,6 +30,11 @@ var (
 	ErrSequenceConflict = errors.New("update out of sequence")
 )
 
+const (
+	// MaxTransactionBytes is the maximum serialized transaction size.
+	MaxTransactionBytes = 1.5 * 1024 * 1024
+)
+
 // Object is a generic object that can be handled by the store.
 type Object interface {
 	ID() string               // Get ID
@@ -179,6 +184,13 @@ type Tx interface {
 	Volumes() VolumeSet
 }
 
+// Batch provides an interface to batch updates to a store. Each call to
+// Update is atomic, but different calls to Update may be spread across
+// multiple transactions to circumvent transaction size limits.
+type Batch interface {
+	Update(func(Tx) error) error
+}
+
 // Store provides primitives for storing, accessing and manipulating swarm
 // objects.
 // TODO(aaronl): Refactor this interface to work on generic Objects. Provide
@@ -189,6 +201,25 @@ type Store interface {
 	// Tx interface. If the callback function returns nil, Update will
 	// attempt to commit the transaction.
 	Update(func(Tx) error) error
+
+	// Batch performs one or more transactions that allow reads and writes
+	// It invokes a callback that is passed a Batch object. The callback may
+	// call batch.Update for each change it wants to make as part of the
+	// batch. The changes in the batch may be split over multiple
+	// transactions if necessary to keep transactions below the size limit.
+	// Batch holds a lock over the state, but will yield this lock every
+	// it creates a new transaction to allow other writers to proceed.
+	// Thus, unrelated changes to the state may occur between calls to
+	// batch.Update.
+	//
+	// This method allows the caller to iterate over a data set and apply
+	// changes in sequence without holding the store write lock for an
+	// excessive time, or producing a transaction that exceeds the maximum
+	// size.
+	//
+	// Batch returns the number of calls to batch.Update whose changes were
+	// successfully committed to the store.
+	Batch(cb func(batch Batch) error) (int, error)
 
 	// View performs a transaction that only includes reads. Within the
 	// callback function, a consistent view of the data is available through
