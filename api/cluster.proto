@@ -22,11 +22,11 @@ service Cluster {
 	rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse) {}
 	rpc RemoveTask(RemoveTaskRequest) returns (RemoveTaskResponse) {}
 
-	rpc GetJob(GetJobRequest) returns (GetJobResponse) {}
-	rpc ListJobs(ListJobsRequest) returns (ListJobsResponse) {}
-	rpc CreateJob(CreateJobRequest) returns (CreateJobResponse) {}
-	rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse) {}
-	rpc RemoveJob(RemoveJobRequest) returns (RemoveJobResponse) {}
+	rpc GetService(GetServiceRequest) returns (GetServiceResponse) {}
+	rpc ListServices(ListServicesRequest) returns (ListServicesResponse) {}
+	rpc CreateService(CreateServiceRequest) returns (CreateServiceResponse) {}
+	rpc UpdateService(UpdateServiceRequest) returns (UpdateServiceResponse) {}
+	rpc RemoveService(RemoveServiceRequest) returns (RemoveServiceResponse) {}
 
 	rpc GetNetwork(GetNetworkRequest) returns (GetNetworkResponse) {};
 	rpc ListNetworks(ListNetworksRequest) returns (ListNetworksResponse) {};
@@ -73,7 +73,7 @@ message UpdateNodeResponse {
 }
 
 message CreateTaskRequest {
-	JobSpec spec = 1;
+	ServiceSpec spec = 1;
 }
 
 message CreateTaskResponse {
@@ -102,44 +102,44 @@ message ListTasksResponse {
 	repeated Task tasks = 1;
 }
 
-message CreateJobRequest {
-	JobSpec spec = 1;
+message CreateServiceRequest {
+	ServiceSpec spec = 1;
 }
 
-message CreateJobResponse {
-	Job job = 1;
+message CreateServiceResponse {
+	Service service = 1;
 }
 
-message GetJobRequest {
-	string job_id = 1 [(gogoproto.customname) = "JobID"];
+message GetServiceRequest {
+	string service_id = 1 [(gogoproto.customname) = "ServiceID"];
 }
 
-message GetJobResponse {
-	Job job = 1;
+message GetServiceResponse {
+	Service service = 1;
 }
 
-message UpdateJobRequest {
-	string job_id = 1 [(gogoproto.customname) = "JobID"];
-	JobSpec spec = 2;
+message UpdateServiceRequest {
+	string service_id = 1 [(gogoproto.customname) = "ServiceID"];
+	ServiceSpec spec = 2;
 }
 
-message UpdateJobResponse {
-	Job job = 1;
+message UpdateServiceResponse {
+	Service service = 1;
 }
 
-message RemoveJobRequest {
-	string job_id = 1 [(gogoproto.customname) = "JobID"];
+message RemoveServiceRequest {
+	string service_id = 1 [(gogoproto.customname) = "ServiceID"];
 }
 
-message RemoveJobResponse {
+message RemoveServiceResponse {
 }
 
-message ListJobsRequest {
+message ListServicesRequest {
 	ListOptions options = 1;
 }
 
-message ListJobsResponse {
-	repeated Job jobs = 1;
+message ListServicesResponse {
+	repeated Service services = 1;
 }
 
 message CreateNetworkRequest {

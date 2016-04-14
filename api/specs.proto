@@ -44,44 +44,37 @@ message NodeSpec {
 	Availability availability = 2;
 }
 
-// JobSpec defines the properties of a Job. As tasks are created, they gain the
-// encapsulated template and any emergent properties from the job
-// configuration.
+// ServiceSpec defines the properties of a service.
 //
-// There are two key components to a spec. The first is a "source". A source
-// defines runnable content. For the swarm use case, this is a container but we
-// may extend it to provide other kinds of runnable targets. The second
-// component is the "orchestration". The orchestration defines the strategy
-// used to the schedule and run the target with a cluster.
-message JobSpec {
+// A service instructs the cluster in orchestrating repeated instances of a
+// template, implemented as tasks. Based on the number of instances, scheduling
+// strategy and restart policy, a number of application-level behaviors can be
+// defined.
+message ServiceSpec {
 	Meta meta = 1 [(gogoproto.nullable) = false];
 
-	message ServiceJob {
-		// Instances specifies the number of instances of the service job that
-		// should be running.
-		int64 instances = 1;
+	// Template defines the base configuration for tasks created for this service.
+	TaskSpec template = 2;
+
+	// Instances specifies the number of instances of the service service that
+	// should be running.
+	int64 instances = 3;
+
+	enum Strategy {
+		option (gogoproto.goproto_enum_prefix) = false;
+		
+		// Spread instances evenly among candidate nodes.
+		SERIVCE_SCHEDULING_STRATEGY_SPREAD = 0 [(gogoproto.enumvalue_customname) = "ServiceSchedulingStrategySpread"];
+
+		// Pack instances tightly across available nodes.
+		SERIVCE_SCHEDULING_STRATEGY_BINPACK = 1 [(gogoproto.enumvalue_customname) = "ServiceSchedulingStrategyBinPack"];
+
+		// Fill each node with an instance of the service. The number instances is
+		// ignored in this strategy.
+		SERIVCE_SCHEDULING_STRATEGY_FILL = 2 [(gogoproto.enumvalue_customname) = "ServiceSchedulingStrategyFill"];
 	}
 
-	message BatchJob {
-		int64 completions = 1;
-		int64 paralellism = 2;
-	}
-
-	message GlobalJob {
-	}
-
-	message CronJob {
-	}
-
-	oneof orchestration {
-		ServiceJob service = 2;
-		BatchJob batch = 3;
-		GlobalJob global = 4;
-		CronJob cron = 5;
-	}
-
-	// Template defines the base configuration for tasks created for this job.
-	TaskSpec template = 6;
+	Strategy strategy = 4;
 }
 
 // TaskSpec defines properties required by the agent for execution.
