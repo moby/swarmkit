@@ -959,16 +959,15 @@ func TestVersion(t *testing.T) {
 	}
 	err := s.Update(func(tx Tx) error {
 		assert.NoError(t, tx.Nodes().Create(n))
-		retrievedNode = tx.Nodes().Get(n.ID)
 		return nil
 	})
 	assert.NoError(t, err)
 
-	// Try to update the node without using an object fetched from the
-	// store.
+	// Update the node using an object fetched from the store.
 	n.Spec.Meta.Name = "name2"
 	err = s.Update(func(tx Tx) error {
-		assert.Equal(t, ErrSequenceConflict, tx.Nodes().Update(n))
+		assert.NoError(t, tx.Nodes().Update(n))
+		retrievedNode = tx.Nodes().Get(n.ID)
 		return nil
 	})
 	assert.NoError(t, err)

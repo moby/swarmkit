@@ -585,11 +585,11 @@ func (nodes nodes) Create(n *api.Node) error {
 		return ErrExist
 	}
 
-	copy := n.Copy()
 	if nodes.curVersion != nil {
-		copy.Version = *nodes.curVersion
+		n.Version = *nodes.curVersion
 	}
 
+	copy := n.Copy()
 	err := nodes.memDBTx.Insert(nodes.table(), copy)
 	if err == nil {
 		nodes.tx.changelist = append(nodes.tx.changelist, EventCreateNode{Node: copy})
@@ -775,11 +775,11 @@ func (tasks tasks) Create(t *api.Task) error {
 		return ErrExist
 	}
 
-	copy := t.Copy()
 	if tasks.curVersion != nil {
-		copy.Version = *tasks.curVersion
+		t.Version = *tasks.curVersion
 	}
 
+	copy := t.Copy()
 	err := tasks.memDBTx.Insert(tasks.table(), copy)
 	if err == nil {
 		tasks.tx.changelist = append(tasks.tx.changelist, EventCreateTask{Task: copy})
@@ -971,20 +971,20 @@ func (services services) lookup(index, id string) *api.Service {
 
 // Create adds a new service to the store.
 // Returns ErrExist if the ID is already taken.
-func (services services) Create(j *api.Service) error {
-	if services.lookup(indexID, j.ID) != nil {
+func (services services) Create(s *api.Service) error {
+	if services.lookup(indexID, s.ID) != nil {
 		return ErrExist
 	}
 	// Ensure the name is not already in use.
-	if j.Spec != nil && services.lookup(indexName, j.Spec.Meta.Name) != nil {
+	if s.Spec != nil && services.lookup(indexName, s.Spec.Meta.Name) != nil {
 		return ErrNameConflict
 	}
 
-	copy := j.Copy()
 	if services.curVersion != nil {
-		copy.Version = *services.curVersion
+		s.Version = *services.curVersion
 	}
 
+	copy := s.Copy()
 	err := services.memDBTx.Insert(services.table(), copy)
 	if err == nil {
 		services.tx.changelist = append(services.tx.changelist, EventCreateService{Service: copy})
@@ -1184,11 +1184,11 @@ func (networks networks) Create(n *api.Network) error {
 		return ErrNameConflict
 	}
 
-	copy := n.Copy()
 	if networks.curVersion != nil {
-		copy.Version = *networks.curVersion
+		n.Version = *networks.curVersion
 	}
 
+	copy := n.Copy()
 	err := networks.memDBTx.Insert(networks.table(), copy)
 	if err == nil {
 		networks.tx.changelist = append(networks.tx.changelist, EventCreateNetwork{Network: copy})
@@ -1389,11 +1389,11 @@ func (volumes volumes) Create(v *api.Volume) error {
 		return ErrNameConflict
 	}
 
-	copy := v.Copy()
 	if volumes.curVersion != nil {
-		copy.Version = *volumes.curVersion
+		v.Version = *volumes.curVersion
 	}
 
+	copy := v.Copy()
 	err := volumes.memDBTx.Insert(volumes.table(), copy)
 	if err == nil {
 		volumes.tx.changelist = append(volumes.tx.changelist, EventCreateVolume{Volume: copy})
