@@ -39,9 +39,13 @@ var (
 
 			for _, serviceSpec := range s.ServiceSpecs() {
 				if service, ok := services[serviceSpec.Meta.Name]; ok && !reflect.DeepEqual(service.Spec, serviceSpec) {
-					r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: serviceSpec})
+					r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
+						ServiceID:      service.ID,
+						ServiceVersion: &service.Version,
+						Spec:           serviceSpec,
+					})
 					if err != nil {
-						fmt.Printf("%s: %v", serviceSpec.Meta.Name, err)
+						fmt.Printf("%s: %v\n", serviceSpec.Meta.Name, err)
 						continue
 					}
 					fmt.Printf("%s: %s - UPDATED\n", serviceSpec.Meta.Name, r.Service.ID)
@@ -49,7 +53,7 @@ var (
 				} else if !ok {
 					r, err := c.CreateService(common.Context(cmd), &api.CreateServiceRequest{Spec: serviceSpec})
 					if err != nil {
-						fmt.Printf("%s: %v", serviceSpec.Meta.Name, err)
+						fmt.Printf("%s: %v\n", serviceSpec.Meta.Name, err)
 						continue
 					}
 					fmt.Printf("%s: %s - CREATED\n", serviceSpec.Meta.Name, r.Service.ID)

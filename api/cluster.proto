@@ -4,6 +4,7 @@ package docker.cluster.api;
 
 import "specs.proto";
 import "objects.proto";
+import "types.proto";
 import "gogoproto/gogo.proto";
 
 // Cluster defines the RPC methods for controlling a cluster.
@@ -65,7 +66,8 @@ message ListNodesResponse {
 // will be denied and cause an error.
 message UpdateNodeRequest {
 	string node_id = 1 [(gogoproto.customname) = "NodeID"];
-	NodeSpec spec = 2;
+	Version node_version = 2;
+	NodeSpec spec = 3;
 }
 
 message UpdateNodeResponse {
@@ -120,7 +122,8 @@ message GetServiceResponse {
 
 message UpdateServiceRequest {
 	string service_id = 1 [(gogoproto.customname) = "ServiceID"];
-	ServiceSpec spec = 2;
+	Version service_version = 2;
+	ServiceSpec spec = 3;
 }
 
 message UpdateServiceResponse {

@@ -64,11 +64,16 @@ func TestUpdateNode(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: "invalid", Spec: &api.NodeSpec{}, NodeVersion: &api.Version{}})
+	assert.Error(t, err)
+	assert.Equal(t, codes.NotFound, grpc.Code(err))
+
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID: "id",
 		Spec: &api.NodeSpec{
 			Availability: api.NodeAvailabilityDrain,
 		},
+		NodeVersion: &api.Version{},
 	})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpc.Code(err))
@@ -89,6 +94,16 @@ func TestUpdateNode(t *testing.T) {
 			Availability: api.NodeAvailabilityDrain,
 		},
 	})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
+		NodeID: "id",
+		Spec: &api.NodeSpec{
+			Availability: api.NodeAvailabilityDrain,
+		},
+		NodeVersion: &r.Node.Version,
+	})
 	assert.NoError(t, err)
 
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: "id"})
@@ -96,4 +111,11 @@ func TestUpdateNode(t *testing.T) {
 	assert.NotNil(t, r.Node)
 	assert.NotNil(t, r.Node.Spec)
 	assert.Equal(t, api.NodeAvailabilityDrain, r.Node.Spec.Availability)
+
+	version := &r.Node.Version
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: "id", Spec: r.Node.Spec, NodeVersion: version})
+	assert.NoError(t, err)
+	// Perform an update with the "old" version.
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: "id", Spec: r.Node.Spec, NodeVersion: version})
+	assert.Error(t, err)
 }
