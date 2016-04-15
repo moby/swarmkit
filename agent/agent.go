@@ -232,10 +232,14 @@ func (a *Agent) connect(ctx context.Context) error {
 		return err
 	}
 
+	backoff := *grpc.DefaultBackoffConfig
+	backoff.MaxDelay = maxSessionFailureBackoff
+
 	a.picker = newPicker(manager, a.config.Managers)
 	a.conn, err = grpc.Dial(manager,
 		grpc.WithPicker(a.picker),
-		grpc.WithInsecure())
+		grpc.WithInsecure(),
+		grpc.WithBackoffConfig(&backoff))
 	if err != nil {
 		return err
 	}
