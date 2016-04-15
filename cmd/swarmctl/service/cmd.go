@@ -5,8 +5,9 @@ import "github.com/spf13/cobra"
 var (
 	// Cmd exposes the top-level service command.
 	Cmd = &cobra.Command{
-		Use:   "service",
-		Short: "Service management",
+		Use:     "service",
+		Aliases: []string{"svc"},
+		Short:   "Service management",
 	}
 )
 
