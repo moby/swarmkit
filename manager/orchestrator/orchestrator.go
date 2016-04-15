@@ -1,6 +1,8 @@
 package orchestrator
 
 import (
+	"reflect"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
@@ -48,7 +50,7 @@ func (o *Orchestrator) Run() error {
 	}
 
 	for _, j := range existingServices {
-		o.balance(j)
+		o.reconcile(j)
 	}
 
 	for {
@@ -58,9 +60,9 @@ func (o *Orchestrator) Run() error {
 			case state.EventDeleteService:
 				o.deleteService(v.Service)
 			case state.EventCreateService:
-				o.balance(v.Service)
+				o.reconcile(v.Service)
 			case state.EventUpdateService:
-				o.balance(v.Service)
+				o.reconcile(v.Service)
 			case state.EventDeleteTask:
 				o.deleteTask(v.Task)
 			}
@@ -107,63 +109,87 @@ func (o *Orchestrator) deleteTask(task *api.Task) {
 			log.Errorf("Error in transaction: %v", err)
 		}
 		if service != nil {
-			o.balance(service)
+			o.reconcile(service)
 		}
 	}
 }
 
-func (o *Orchestrator) balance(service *api.Service) {
+func (o *Orchestrator) reconcile(service *api.Service) {
 	err := o.store.Update(func(tx state.Tx) error {
 		tasks, err := tx.Tasks().Find(state.ByServiceID(service.ID))
 		if err != nil {
 			log.Errorf("Error finding tasks for service: %v", err)
 			return nil
 		}
-
 		numTasks := int64(len(tasks))
-
-		spec := service.Spec
-		specifiedInstances := spec.Instances
+		specifiedInstances := service.Spec.Instances
 
 		switch {
 		case specifiedInstances > numTasks:
-			// Scale up
 			log.Debugf("Service %s was scaled up from %d to %d instances", service.ID, numTasks, specifiedInstances)
-			diff := specifiedInstances - numTasks
-			spec := *service.Spec.Template
-			meta := service.Spec.Meta // TODO(stevvooe): Copy metadata with nice name.
+			// Update all current tasks then add missing tasks
+			o.updateTasks(tx, service, tasks)
+			o.addTasks(tx, service, specifiedInstances-numTasks)
 
-			for i := int64(0); i < diff; i++ {
-				task := &api.Task{
-					ID:        identity.NewID(),
-					Meta:      meta,
-					Spec:      &spec,
-					ServiceID: service.ID,
-					Status: &api.TaskStatus{
-						State: api.TaskStateNew,
-					},
-				}
-				if err := tx.Tasks().Create(task); err != nil {
-					log.Error(err)
-				}
-			}
 		case specifiedInstances < numTasks:
-			// Scale down
 			// TODO(aaronl): Scaling down needs to involve the
 			// planner. The orchestrator should not be deleting
 			// tasks directly.
 			log.Debugf("Service %s was scaled down from %d to %d instances", service.ID, numTasks, specifiedInstances)
-			diff := numTasks - specifiedInstances
-			for i := int64(0); i < diff; i++ {
-				// TODO(aluzzardi): Find a better way to deal with errors.
-				// If `Delete` fails, it probably means the task was already deleted which is fine.
-				_ = tx.Tasks().Delete(tasks[i].ID)
-			}
+			// Update up to N tasks then remove the extra
+			o.updateTasks(tx, service, tasks[0:specifiedInstances])
+			o.removeTasks(tx, service, tasks[specifiedInstances:numTasks])
+
+		case specifiedInstances == numTasks:
+			// Simple update, no scaling - update all tasks.
+			o.updateTasks(tx, service, tasks)
 		}
+
 		return nil
 	})
 	if err != nil {
 		log.Errorf("Error in transaction: %v", err)
-		return
+	}
+}
+
+func (o *Orchestrator) updateTasks(tx state.Tx, service *api.Service, tasks []*api.Task) {
+	for _, t := range tasks {
+		if reflect.DeepEqual(service.Spec.Template, t.Spec) {
+			continue
+		}
+		o.addTasks(tx, service, 1)
+		if err := tx.Tasks().Delete(t.ID); err != nil {
+			log.Errorf("Failed to remove %s: %v", t.ID, err)
+		}
+	}
+}
+
+func (o *Orchestrator) addTasks(tx state.Tx, service *api.Service, count int64) {
+	spec := *service.Spec.Template
+	meta := service.Spec.Meta // TODO(stevvooe): Copy metadata with nice name.
+
+	for i := int64(0); i < count; i++ {
+		task := &api.Task{
+			ID:        identity.NewID(),
+			Meta:      meta,
+			Spec:      &spec,
+			ServiceID: service.ID,
+			Status: &api.TaskStatus{
+				State: api.TaskStateNew,
+			},
+		}
+		if err := tx.Tasks().Create(task); err != nil {
+			log.Errorf("Failed to create task: %v", err)
+		}
+	}
+}
+
+func (o *Orchestrator) removeTasks(tx state.Tx, service *api.Service, tasks []*api.Task) {
+	for _, t := range tasks {
+		// TODO(aluzzardi): Find a better way to deal with errors.
+		// If `Delete` fails, it probably means the task was already deleted which is fine.
+		if err := tx.Tasks().Delete(t.ID); err != nil {
+			log.Errorf("Failed to remove task %s: %v", t.ID, err)
+		}
 	}
 }
