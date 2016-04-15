@@ -2,6 +2,8 @@ package common
 
 import (
 	"crypto/tls"
+	"net"
+	"time"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/spf13/cobra"
@@ -13,17 +15,18 @@ import (
 // Dial establishes a connection and creates a client.
 // It infers connection parameters from CLI options.
 func Dial(cmd *cobra.Command) (api.ControlClient, error) {
-	addr, err := cmd.Flags().GetString("host")
+	addr, err := cmd.Flags().GetString("socket")
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO(diogo): this can't be an insecure connection. Either using CA cert,
-	// TOFU, or local unix socket
 	opts := []grpc.DialOption{}
 	insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
 	opts = append(opts, grpc.WithTransportCredentials(insecureCreds))
-
+	opts = append(opts, grpc.WithDialer(
+		func(addr string, timeout time.Duration) (net.Conn, error) {
+			return net.DialTimeout("unix", addr, timeout)
+		}))
 	conn, err := grpc.Dial(addr, opts...)
 	if err != nil {
 		return nil, err

@@ -58,7 +58,7 @@ These instructions assume that `swarmd` and `swarmctl` are in your PATH.
 Start the manager:
 
 ```sh
-$ swarmd manager -l info --state-dir /tmp/manager1
+$ swarmd manager -l info --state-dir /tmp/manager1 --listen-control-api /tmp/manager1/swarm.sock
 ```
 
 In two additional terminals, start two agents:
@@ -68,9 +68,15 @@ $ swarmd agent -l info --hostname node-1 -d /tmp/agent1
 $ swarmd agent -l info --hostname node-2 -d /tmp/agent2
 ```
 
-In a fourth terminal, use `swarmctl` to explore and control the cluster.  List nodes:
+In a fourth terminal, use `swarmctl` to explore and control the cluster. Before
+running swarmctl, set the `SWARM_SOCKET` environment variable to the path to the
+manager socket that was specified to `--listen-control-api` when starting the
+manager.
+
+To list nodes:
 
 ```
+$ export SWARM_SOCKET=/tmp/manager1/swarm.sock
 $ swarmctl node ls
 ID                         Name      Status  Availability
 87pn3pug404xs4x86b5nwlwbr  node-1    READY   ACTIVE
@@ -244,14 +250,14 @@ erly2j4b8hygo2ag8sevm2zop    ping.4      alpine    RUNNING          RUNNING 2 mi
 You can setup multiple managers. To initiate the first manager:
 
 ```
-$ swarmd manager --state-dir "/tmp/manager1" --listen-addr "0.0.0.0:4242"
+$ swarmd manager --state-dir /tmp/manager1 --listen-remote-api "0.0.0.0:4242" --listen-control-api /tmp/manager1/swarm.sock
 ```
 
 To start additional managers:
 
 ```
-$ swarmd manager --state-dir "/tmp/manager2" --listen-addr "0.0.0.0:4243" --join-cluster "0.0.0.0:4242"
-$ swarmd manager --state-dir "/tmp/manager3" --listen-addr "0.0.0.0:4244" --join-cluster "0.0.0.0:4242"
+$ swarmd manager --state-dir /tmp/manager2 --listen-remote-api 0.0.0.0:4243 --listen-control-api /tmp/manager2/swarm.sock --join-cluster 0.0.0.0:4242
+$ swarmd manager --state-dir /tmp/manager3 --listen-remote-api 0.0.0.0:4244 --listen-control-api /tmp/manager3/swarm.sock --join-cluster 0.0.0.0:4242
 [...]
 ```
 
