@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
@@ -29,11 +28,8 @@ var _ api.ManagerServer = &Manager{}
 type Config struct {
 	SecurityConfig *ca.ManagerSecurityConfig
 
-	ListenProto string
-	ListenAddr  string
-	// Listener will be used for grpc serving if it's not nil, ListenProto and
-	// ListenAddr fields will be used otherwise.
-	Listener net.Listener
+	Listeners []net.Listener
+	ProtoAddr map[string]string
 
 	// JoinRaft is an optional address of a node in an existing raft
 	// cluster to join.
@@ -61,6 +57,7 @@ type Manager struct {
 
 	leadershipCh chan raft.LeadershipState
 	leaderLock   sync.Mutex
+	listeners    []net.Listener
 
 	managerDone chan struct{}
 }
@@ -73,9 +70,14 @@ func New(config *Config) (*Manager, error) {
 	// for now, may want to make this separate. This can be tricky to get right
 	// so we need to make it easy to override. This needs to be the address
 	// through which agent nodes access the manager.
-	dispatcherConfig.Addr = config.ListenAddr
+	dispatcherConfig.Addr = config.ProtoAddr["tcp"]
 
-	err := os.MkdirAll(config.StateDir, 0700)
+	err := os.MkdirAll(filepath.Dir(config.ProtoAddr["unix"]), 0700)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create socket directory: %v", err)
+	}
+
+	err = os.MkdirAll(config.StateDir, 0700)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create state directory: %v", err)
 	}
@@ -91,7 +93,7 @@ func New(config *Config) (*Manager, error) {
 	leadershipCh := make(chan raft.LeadershipState)
 
 	newNodeOpts := raft.NewNodeOptions{
-		Addr:           config.ListenAddr,
+		Addr:           config.ProtoAddr["tcp"],
 		JoinAddr:       config.JoinRaft,
 		Config:         raftCfg,
 		StateDir:       raftStateDir,
@@ -134,13 +136,16 @@ func New(config *Config) (*Manager, error) {
 // address.
 // The call never returns unless an error occurs or `Stop()` is called.
 func (m *Manager) Run(ctx context.Context) error {
-	lis := m.config.Listener
-	if lis == nil {
-		l, err := net.Listen(m.config.ListenProto, m.config.ListenAddr)
-		if err != nil {
-			return err
+	if len(m.config.Listeners) > 0 {
+		m.listeners = m.config.Listeners
+	} else {
+		for proto, addr := range m.config.ProtoAddr {
+			l, err := net.Listen(proto, addr)
+			if err != nil {
+				return err
+			}
+			m.listeners = append(m.listeners, l)
 		}
-		lis = l
 	}
 
 	m.raftNode.Server = m.server
@@ -221,11 +226,6 @@ func (m *Manager) Run(ctx context.Context) error {
 		}
 	}()
 
-	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(
-		logrus.Fields{
-			"proto": lis.Addr().Network(),
-			"addr":  lis.Addr().String()}))
-	log.G(ctx).Info("listening")
 	go m.raftNode.Run(ctx)
 
 	raft.Register(m.server, m.raftNode)
@@ -234,7 +234,16 @@ func (m *Manager) Run(ctx context.Context) error {
 	// FIXME(aaronl): This should not be handled by sleeping.
 	time.Sleep(time.Second)
 
-	return m.server.Serve(lis)
+	chErr := make(chan error)
+	for _, l := range m.listeners {
+		go func(lis net.Listener) {
+			log.G(ctx).Info("Listening for connections")
+			chErr <- m.server.Serve(lis)
+		}(l)
+	}
+
+	return <-chErr
+
 }
 
 // Stop stops the manager. It immediately closes all open connections and
@@ -252,6 +261,9 @@ func (m *Manager) Stop() {
 	}
 	m.leaderLock.Unlock()
 
+	for _, l := range m.listeners {
+		l.Close()
+	}
 	m.raftNode.Shutdown()
 	m.server.Stop()
 }

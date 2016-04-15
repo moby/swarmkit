@@ -22,6 +22,11 @@ var managerCmd = &cobra.Command{
 			return err
 		}
 
+		socket, err := cmd.Flags().GetString("listen-socket")
+		if err != nil {
+			return err
+		}
+
 		stateDir, err := cmd.Flags().GetString("state-dir")
 		if err != nil {
 			return err
@@ -42,9 +47,11 @@ var managerCmd = &cobra.Command{
 		}
 
 		m, err := manager.New(&manager.Config{
-			ListenProto:    "tcp",
+			ProtoAddr: map[string]string{
+				"tcp":  addr,
+				"unix": socket,
+			},
 			SecurityConfig: securityConfig,
-			ListenAddr:     addr,
 			JoinRaft:       managerAddr,
 			StateDir:       stateDir,
 		})
@@ -57,5 +64,6 @@ var managerCmd = &cobra.Command{
 
 func init() {
 	managerCmd.Flags().String("listen-addr", "0.0.0.0:4242", "Listen address")
+	managerCmd.Flags().String("listen-socket", "/var/run/docker/cluster/docker-swarmd.sock", "Listen socket")
 	managerCmd.Flags().String("join-cluster", "", "Join cluster with a node at this address")
 }

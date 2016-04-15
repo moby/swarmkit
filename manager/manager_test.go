@@ -52,8 +52,7 @@ func TestManager(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	m, err := New(&Config{
-		ListenProto:    "unix",
-		ListenAddr:     temp.Name(),
+		ProtoAddr:      map[string]string{"unix": temp.Name()},
 		StateDir:       stateDir,
 		SecurityConfig: managerSecurityConfig,
 	})
@@ -105,7 +104,7 @@ func TestManagerNodeCount(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	m, err := New(&Config{
-		Listener:       l,
+		Listeners:      []net.Listener{l},
 		StateDir:       stateDir,
 		SecurityConfig: managerSecurityConfig,
 	})
