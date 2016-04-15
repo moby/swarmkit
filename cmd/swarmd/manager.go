@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"os/signal"
+
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/manager"
 	"github.com/spf13/cobra"
@@ -58,6 +61,14 @@ var managerCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			<-c
+			m.Stop(ctx)
+		}()
+
 		return m.Run(ctx)
 	},
 }

@@ -28,8 +28,11 @@ var _ api.ManagerServer = &Manager{}
 type Config struct {
 	SecurityConfig *ca.ManagerSecurityConfig
 
-	Listeners []net.Listener
 	ProtoAddr map[string]string
+
+	// Listeners will be used for grpc serving if it's not nil,
+	// ProtoAddr fields will be used otherwise.
+	Listeners []net.Listener
 
 	// JoinRaft is an optional address of a node in an existing raft
 	// cluster to join.
@@ -248,7 +251,8 @@ func (m *Manager) Run(ctx context.Context) error {
 
 // Stop stops the manager. It immediately closes all open connections and
 // active RPCs as well as stopping the scheduler.
-func (m *Manager) Stop() {
+func (m *Manager) Stop(ctx context.Context) {
+	log.G(ctx).Info("Stopping manager")
 	m.leaderLock.Lock()
 	if m.drainer != nil {
 		m.drainer.Stop()
