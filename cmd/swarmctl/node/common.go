@@ -40,8 +40,9 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	spec.Availability = availability
 
 	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
-		NodeID: node.ID,
-		Spec:   spec,
+		NodeID:      node.ID,
+		NodeVersion: &node.Version,
+		Spec:        spec,
 	})
 
 	if err != nil {

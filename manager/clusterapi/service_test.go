@@ -190,21 +190,28 @@ func TestGetService(t *testing.T) {
 	service := createService(t, ts, "name", "image", 1)
 	r, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
 	assert.NoError(t, err)
+	service.Version = r.Service.Version
 	assert.Equal(t, service, r.Service)
 }
 
 func TestUpdateService(t *testing.T) {
 	ts := newTestServer(t)
+	service := createService(t, ts, "name", "image", 1)
+
 	_, err := ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
-	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: "invalid", Spec: &api.ServiceSpec{}})
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: "invalid", Spec: service.Spec, ServiceVersion: &api.Version{}})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpc.Code(err))
 
-	service := createService(t, ts, "name", "image", 1)
+	// No update options.
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: service.Spec})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: service.Spec, ServiceVersion: &service.Version})
 	assert.NoError(t, err)
 
 	r, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
@@ -214,9 +221,9 @@ func TestUpdateService(t *testing.T) {
 
 	r.Service.Spec.Instances = 42
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
-		ServiceID: service.ID,
-		Spec:      r.Service.Spec,
-		// TODO(stevvooe): Check specification version for modification.
+		ServiceID:      service.ID,
+		Spec:           r.Service.Spec,
+		ServiceVersion: &r.Service.Version,
 	})
 	assert.NoError(t, err)
 
@@ -224,6 +231,26 @@ func TestUpdateService(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, service.Spec.Meta.Name, r.Service.Spec.Meta.Name)
 	assert.EqualValues(t, 42, r.Service.Spec.Instances)
+
+	// Versioning.
+	r, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
+	assert.NoError(t, err)
+	version := &r.Service.Version
+
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:      service.ID,
+		Spec:           r.Service.Spec,
+		ServiceVersion: version,
+	})
+	assert.NoError(t, err)
+
+	// Perform an update with the "old" version.
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:      service.ID,
+		Spec:           r.Service.Spec,
+		ServiceVersion: version,
+	})
+	assert.Error(t, err)
 }
 
 func TestRemoveService(t *testing.T) {

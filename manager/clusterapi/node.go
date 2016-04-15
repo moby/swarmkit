@@ -64,6 +64,9 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 // - Returns `InvalidArgument` if the NodeSpec is malformed.
 // - Returns an error if the update fails.
 func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest) (*api.UpdateNodeResponse, error) {
+	if request.NodeID == "" || request.NodeVersion == nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+	}
 	if err := validateNodeSpec(request.Spec); err != nil {
 		return nil, err
 	}
@@ -74,7 +77,8 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 		if node == nil {
 			return nil
 		}
-		node.Spec = request.Spec
+		node.Version = *request.NodeVersion
+		node.Spec = request.Spec.Copy()
 		return tx.Nodes().Update(node)
 	})
 	if err != nil {

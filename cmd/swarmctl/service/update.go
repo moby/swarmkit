@@ -18,6 +18,16 @@ var (
 				return errors.New("service ID missing")
 			}
 
+			c, err := common.Dial(cmd)
+			if err != nil {
+				return err
+			}
+
+			service, err := getService(common.Context(cmd), c, args[0])
+			if err != nil {
+				return err
+			}
+
 			flags := cmd.Flags()
 			var spec *api.ServiceSpec
 
@@ -28,7 +38,7 @@ var (
 				}
 				spec = service.ToProto()
 			} else { // TODO(vieux): support or error on both file.
-				spec = &api.ServiceSpec{}
+				spec = service.Spec
 
 				if flags.Changed("instances") {
 					instances, err := flags.GetInt64("instances")
@@ -55,16 +65,12 @@ var (
 					spec.Template.GetContainer().Env = env
 				}
 			}
-			c, err := common.Dial(cmd)
-			if err != nil {
-				return err
-			}
 
-			service, err := getService(common.Context(cmd), c, args[0])
-			if err != nil {
-				return err
-			}
-			r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: spec})
+			r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
+				ServiceID:      service.ID,
+				ServiceVersion: &service.Version,
+				Spec:           spec,
+			})
 			if err != nil {
 				return err
 			}

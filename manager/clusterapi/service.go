@@ -139,15 +139,12 @@ func (s *Server) GetService(ctx context.Context, request *api.GetServiceRequest)
 // - Returns `InvalidArgument` if the ServiceSpec is malformed.
 // - Returns `Unimplemented` if the ServiceSpec references unimplemented features.
 // - Returns an error if the update fails.
-// TODO(vieux): Implement more than just `instances`.
 func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRequest) (*api.UpdateServiceResponse, error) {
-	if request.ServiceID == "" {
+	if request.ServiceID == "" || request.ServiceVersion == nil {
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
-
-	// TODO(stevvooe): Service validation is likely more sophisticated.
-	if request.Spec == nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "must provide a service spec")
+	if err := validateServiceSpec(request.Spec); err != nil {
+		return nil, err
 	}
 
 	var service *api.Service
@@ -157,6 +154,7 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		if service == nil {
 			return nil
 		}
+		service.Version = *request.ServiceVersion
 		service.Spec = request.Spec.Copy()
 		return services.Update(service)
 	})
