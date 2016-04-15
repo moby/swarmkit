@@ -64,17 +64,40 @@ message ServiceSpec {
 		option (gogoproto.goproto_enum_prefix) = false;
 		
 		// Spread instances evenly among candidate nodes.
-		SERIVCE_SCHEDULING_STRATEGY_SPREAD = 0 [(gogoproto.enumvalue_customname) = "ServiceSchedulingStrategySpread"];
+		SERVICE_STRATEGY_SPREAD = 0 [(gogoproto.enumvalue_customname) = "ServiceStrategySpread"];
 
 		// Pack instances tightly across available nodes.
-		SERIVCE_SCHEDULING_STRATEGY_BINPACK = 1 [(gogoproto.enumvalue_customname) = "ServiceSchedulingStrategyBinPack"];
+		SERVICE_STRATEGY_BINPACK = 1 [(gogoproto.enumvalue_customname) = "ServiceStrategyBinPack"];
 
 		// Fill each node with an instance of the service. The number instances is
 		// ignored in this strategy.
-		SERIVCE_SCHEDULING_STRATEGY_FILL = 2 [(gogoproto.enumvalue_customname) = "ServiceSchedulingStrategyFill"];
+		SERVICE_STRATEGY_FILL = 2 [(gogoproto.enumvalue_customname) = "ServiceStrategyFill"];
 	}
 
 	Strategy strategy = 4;
+
+	enum Mode {
+		option (gogoproto.goproto_enum_prefix) = false;
+
+		// Running sets the reconcilation target to ensure there are running
+		// tasks equal to the number instances. If the using the fill
+		// scheduling strategy, the number of nodes will be used instead.
+		SERVICE_MODE_RUNNING = 0 [(gogoproto.enumvalue_customname) = "ServiceModeRunning"];
+
+		// Batch sets reconcilation target as number of completed tasks. If in
+		// fill scheduling strategy, the number of instances will equal the number
+		// of nodes.
+		SERVICE_MODE_BATCH = 1 [(gogoproto.enumvalue_customname) = "ServiceModeBatch"];
+
+		// TODO(stevvooe): Consider specifying the node as a task completion
+		// reconcilation condition. This matches with model of the
+		// reconcilation loop in that we define under which conditions the
+		// service is satisfied.
+	}
+
+	// Mode defines the reconcilation target for the service. This effects the
+	// target state sought to satisfy the given service.
+	Mode mode = 5;
 }
 
 // TaskSpec defines properties required by the agent for execution.
