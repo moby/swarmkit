@@ -7,6 +7,7 @@ import (
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -128,7 +129,7 @@ func TestDrainer(t *testing.T) {
 		},
 	}
 
-	store := state.NewMemoryStore(nil)
+	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
 	err := store.Update(func(tx state.Tx) error {

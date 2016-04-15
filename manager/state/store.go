@@ -30,6 +30,16 @@ var (
 	ErrSequenceConflict = errors.New("update out of sequence")
 )
 
+// Object is a generic object that can be handled by the store.
+type Object interface {
+	ID() string               // Get ID
+	Version() api.Version     // Retrieve version information
+	Copy(*api.Version) Object // Return a copy of this object, optionally setting new version information on the copy
+	EventCreate() Event       // Return a creation event
+	EventUpdate() Event       // Return an update event
+	EventDelete() Event       // Return a deletion event
+}
+
 // NodeSetWriter is the write half of a node dataset.
 type NodeSetWriter interface {
 	Create(n *api.Node) error
@@ -169,18 +179,11 @@ type Tx interface {
 	Volumes() VolumeSet
 }
 
-// A StoreCopier is capable of reading the full contents of a store from a
-// read transaction, to take a snapshot.
-type StoreCopier interface {
-	// Copy reads a full snapshot from the provided read transaction.
-	CopyFrom(tx ReadTx) error
-}
-
 // Store provides primitives for storing, accessing and manipulating swarm
 // objects.
+// TODO(aaronl): Refactor this interface to work on generic Objects. Provide
+// type-specific helpers to manipulate objects in a type-safe way.
 type Store interface {
-	StoreCopier
-
 	// Update performs a full transaction that allows reads and writes.
 	// Within the callback function, changes can safely be made through the
 	// Tx interface. If the callback function returns nil, Update will
@@ -198,6 +201,9 @@ type Store interface {
 	// Restore sets the contents of the store to the serialized data in the
 	// argument.
 	Restore(*pb.StoreSnapshot) error
+
+	// ApplyStoreActions updates a store based on StoreAction messages.
+	ApplyStoreActions(actions []*api.StoreAction) error
 }
 
 // WatchableStore is an extension of Store that publishes modifications to a
@@ -259,61 +265,6 @@ func ViewAndWatch(store WatchableStore, cb func(ReadTx) error) (watch chan event
 	return
 }
 
-// DeleteAll clears the contents of a store.
-func DeleteAll(tx Tx) error {
-	nodes, err := tx.Nodes().Find(All)
-	if err != nil {
-		return err
-	}
-	for _, n := range nodes {
-		if err := tx.Nodes().Delete(n.ID); err != nil {
-			return err
-		}
-	}
-
-	services, err := tx.Services().Find(All)
-	if err != nil {
-		return err
-	}
-	for _, j := range services {
-		if err := tx.Services().Delete(j.ID); err != nil {
-			return err
-		}
-	}
-
-	networks, err := tx.Networks().Find(All)
-	if err != nil {
-		return err
-	}
-	for _, n := range networks {
-		if err := tx.Networks().Delete(n.ID); err != nil {
-			return err
-		}
-	}
-
-	tasks, err := tx.Tasks().Find(All)
-	if err != nil {
-		return err
-	}
-	for _, t := range tasks {
-		if err := tx.Tasks().Delete(t.ID); err != nil {
-			return err
-		}
-	}
-
-	volumes, err := tx.Volumes().Find(All)
-	if err != nil {
-		return err
-	}
-	for _, v := range volumes {
-		if err := tx.Volumes().Delete(v.ID); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // By is an interface type passed to Find methods. Implementations must be
 // defined in this package.
 type By interface {
@@ -322,51 +273,56 @@ type By interface {
 	isBy()
 }
 
-type all struct{}
+// AllFinder is the type used to list all items.
+type AllFinder struct{}
 
-func (a all) isBy() {
+func (a AllFinder) isBy() {
 }
 
 // All is an argument that can be passed to find to list all items in the
 // set.
-var All all
+var All AllFinder
 
-type byName string
+// NameFinder is the type used to find by name.
+type NameFinder string
 
-func (b byName) isBy() {
+func (b NameFinder) isBy() {
 }
 
 // ByName creates an object to pass to Find to select by name.
 func ByName(name string) By {
-	return byName(name)
+	return NameFinder(name)
 }
 
-type byService string
+// ServiceFinder is the type used to find by service ID.
+type ServiceFinder string
 
-func (b byService) isBy() {
+func (b ServiceFinder) isBy() {
 }
 
 // ByServiceID creates an object to pass to Find to select by service.
 func ByServiceID(serviceID string) By {
-	return byService(serviceID)
+	return ServiceFinder(serviceID)
 }
 
-type byNode string
+// NodeFinder is the type used to find by node ID.
+type NodeFinder string
 
-func (b byNode) isBy() {
+func (b NodeFinder) isBy() {
 }
 
 // ByNodeID creates an object to pass to Find to select by node.
 func ByNodeID(nodeID string) By {
-	return byNode(nodeID)
+	return NodeFinder(nodeID)
 }
 
-type byQuery string
+// QueryFinder is the type used to find by query.
+type QueryFinder string
 
-func (b byQuery) isBy() {
+func (b QueryFinder) isBy() {
 }
 
 // ByQuery creates an object to pass to Find to select by query.
 func ByQuery(query string) By {
-	return byQuery(query)
+	return QueryFinder(query)
 }

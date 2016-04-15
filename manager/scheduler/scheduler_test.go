@@ -10,6 +10,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -87,7 +88,7 @@ func TestScheduler(t *testing.T) {
 		},
 	}
 
-	store := state.NewMemoryStore(nil)
+	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
 	err := store.Update(func(tx state.Tx) error {
@@ -366,7 +367,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 		},
 	}
 
-	store := state.NewMemoryStore(nil)
+	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
 	err := store.Update(func(tx state.Tx) error {
@@ -452,7 +453,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 		},
 	}
 
-	store := state.NewMemoryStore(nil)
+	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
 	err := store.Update(func(tx state.Tx) error {
@@ -562,7 +563,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 	ctx := context.Background()
 	for iters := 0; iters < b.N; iters++ {
 		b.StopTimer()
-		s := state.NewMemoryStore(nil)
+		s := store.NewMemoryStore(nil)
 		scheduler := New(s)
 		scheduler.scanAllNodes = worstCase
 

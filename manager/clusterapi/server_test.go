@@ -13,6 +13,7 @@ import (
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -49,7 +50,7 @@ func (ts *testServer) Stop() {
 func newTestServer(t *testing.T) *testServer {
 	ts := &testServer{}
 
-	ts.Store = state.NewMemoryStore(&mockProposer{})
+	ts.Store = store.NewMemoryStore(&mockProposer{})
 	assert.NotNil(t, ts.Store)
 	ts.Server = NewServer(ts.Store)
 	assert.NotNil(t, ts.Server)

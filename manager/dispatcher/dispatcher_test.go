@@ -14,6 +14,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,7 +47,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	serverOpts := []grpc.ServerOption{grpc.Creds(managerSecurityConfig.ServerTLSCreds)}
 
 	s := grpc.NewServer(serverOpts...)
-	store := state.NewMemoryStore(nil)
+	store := store.NewMemoryStore(nil)
 	d := New(store, c)
 	api.RegisterDispatcherServer(s, d)
 	go func() {

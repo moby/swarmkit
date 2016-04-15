@@ -11,11 +11,12 @@ import (
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAllocator(t *testing.T) {
-	store := state.NewMemoryStore(nil)
+	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
 	a, err := New(store)

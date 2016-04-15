@@ -1,4 +1,4 @@
-package state
+package raft
 
 import (
 	"errors"
@@ -22,6 +22,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/ca/testutils"
+	"github.com/docker/swarm-v2/manager/state"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -380,7 +381,7 @@ func proposeValue(t *testing.T, raftNode *testNode, nodeID ...string) (*api.Node
 	ctx, _ := context.WithTimeout(context.Background(), time.Second)
 
 	err := raftNode.ProposeValue(ctx, storeActions, func() {
-		err := raftNode.memoryStore.applyStoreActions(storeActions)
+		err := raftNode.memoryStore.ApplyStoreActions(storeActions)
 		assert.NoError(t, err, "error applying actions")
 	})
 	if err != nil {
@@ -392,8 +393,8 @@ func proposeValue(t *testing.T, raftNode *testNode, nodeID ...string) (*api.Node
 
 func checkValue(t *testing.T, raftNode *testNode, createdNode *api.Node) {
 	assert.NoError(t, pollFunc(func() error {
-		return raftNode.memoryStore.View(func(tx ReadTx) error {
-			allNodes, err := tx.Nodes().Find(All)
+		return raftNode.memoryStore.View(func(tx state.ReadTx) error {
+			allNodes, err := tx.Nodes().Find(state.All)
 			if err != nil {
 				return err
 			}
@@ -410,8 +411,8 @@ func checkValue(t *testing.T, raftNode *testNode, createdNode *api.Node) {
 
 func checkNoValue(t *testing.T, raftNode *testNode) {
 	assert.NoError(t, pollFunc(func() error {
-		return raftNode.memoryStore.View(func(tx ReadTx) error {
-			allNodes, err := tx.Nodes().Find(All)
+		return raftNode.memoryStore.View(func(tx state.ReadTx) error {
+			allNodes, err := tx.Nodes().Find(state.All)
 			if err != nil {
 				return err
 			}
@@ -426,8 +427,8 @@ func checkNoValue(t *testing.T, raftNode *testNode) {
 func checkValuesOnNodes(t *testing.T, checkNodes map[uint64]*testNode, ids []string, values []*api.Node) {
 	for _, node := range checkNodes {
 		assert.NoError(t, pollFunc(func() error {
-			return node.memoryStore.View(func(tx ReadTx) error {
-				allNodes, err := tx.Nodes().Find(All)
+			return node.memoryStore.View(func(tx state.ReadTx) error {
+				allNodes, err := tx.Nodes().Find(state.All)
 				if err != nil {
 					return err
 				}
@@ -1008,8 +1009,8 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 
 	for _, node := range nodes {
 		assert.NoError(t, pollFunc(func() error {
-			return node.memoryStore.View(func(tx ReadTx) error {
-				allNodes, err := tx.Nodes().Find(All)
+			return node.memoryStore.View(func(tx state.ReadTx) error {
+				allNodes, err := tx.Nodes().Find(state.All)
 				if err != nil {
 					return err
 				}
