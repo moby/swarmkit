@@ -13,6 +13,7 @@ import (
 	"github.com/docker/libnetwork/driverapi"
 	"github.com/docker/libnetwork/idm"
 	"github.com/docker/libnetwork/netlabel"
+	"github.com/docker/libnetwork/types"
 )
 
 const (
@@ -187,33 +188,33 @@ func (n *network) releaseVxlanID() {
 }
 
 func (d *driver) CreateNetwork(id string, option map[string]interface{}, ipV4Data, ipV6Data []driverapi.IPAMData) error {
-	return fmt.Errorf("not implemented")
+	return types.NotImplementedErrorf("not implemented")
 }
 
 func (d *driver) DeleteNetwork(nid string) error {
-	return fmt.Errorf("not implemented")
+	return types.NotImplementedErrorf("not implemented")
 }
 
 func (d *driver) CreateEndpoint(nid, eid string, ifInfo driverapi.InterfaceInfo, epOptions map[string]interface{}) error {
-	return fmt.Errorf("not implemented")
+	return types.NotImplementedErrorf("not implemented")
 }
 
 func (d *driver) DeleteEndpoint(nid, eid string) error {
-	return fmt.Errorf("not implemented")
+	return types.NotImplementedErrorf("not implemented")
 }
 
 func (d *driver) EndpointOperInfo(nid, eid string) (map[string]interface{}, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, types.NotImplementedErrorf("not implemented")
 }
 
 // Join method is invoked when a Sandbox is attached to an endpoint.
 func (d *driver) Join(nid, eid string, sboxKey string, jinfo driverapi.JoinInfo, options map[string]interface{}) error {
-	return fmt.Errorf("not implemented")
+	return types.NotImplementedErrorf("not implemented")
 }
 
 // Leave method is invoked when a Sandbox detaches from an endpoint.
 func (d *driver) Leave(nid, eid string) error {
-	return fmt.Errorf("not implemented")
+	return types.NotImplementedErrorf("not implemented")
 }
 
 func (d *driver) Type() string {
@@ -222,10 +223,18 @@ func (d *driver) Type() string {
 
 // DiscoverNew is a notification for a new discovery event, such as a new node joining a cluster
 func (d *driver) DiscoverNew(dType discoverapi.DiscoveryType, data interface{}) error {
-	return fmt.Errorf("not implemented")
+	return types.NotImplementedErrorf("not implemented")
 }
 
 // DiscoverDelete is a notification for a discovery delete event, such as a node leaving a cluster
 func (d *driver) DiscoverDelete(dType discoverapi.DiscoveryType, data interface{}) error {
-	return fmt.Errorf("not implemented")
+	return types.NotImplementedErrorf("not implemented")
+}
+
+func (d *driver) ProgramExternalConnectivity(nid, eid string, options map[string]interface{}) error {
+	return types.NotImplementedErrorf("not implemented")
+}
+
+func (d *driver) RevokeExternalConnectivity(nid, eid string) error {
+	return types.NotImplementedErrorf("not implemented")
 }

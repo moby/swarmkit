@@ -399,17 +399,6 @@ func (a *Allocator) getPredefinedPool(as string, ipV6 bool) (*net.IPNet, error) 
 		}
 
 		if !aSpace.contains(as, nw) {
-			// TODO mrjana: fix it to do overlap check but
-			// without including the dependency of
-			// netutils in this package
-
-			// if as == localAddressSpace {
-			//	// Check if nw overlap with system routes, name servers
-			//	if _, err := ipamutils.FindAvailableNetwork([]*net.IPNet{nw}); err == nil {
-			//		return nw, nil
-			//	}
-			//	continue
-			// }
 			return nw, nil
 		}
 	}
