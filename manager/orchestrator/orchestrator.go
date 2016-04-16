@@ -19,6 +19,8 @@ type Orchestrator struct {
 	stopChan chan struct{}
 	// doneChan is closed when the state machine terminates.
 	doneChan chan struct{}
+
+	updater *UpdateSupervisor
 }
 
 // New creates a new orchestrator.
@@ -29,6 +31,7 @@ func New(store state.WatchableStore) *Orchestrator {
 		doneChan:          make(chan struct{}),
 		reconcileServices: make(map[string]*api.Service),
 		restartTasks:      make(map[string]struct{}),
+		updater:           NewUpdateSupervisor(store),
 	}
 }
 
@@ -75,6 +78,7 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 func (o *Orchestrator) Stop() {
 	close(o.stopChan)
 	<-o.doneChan
+	o.updater.CancelAll()
 }
 
 func (o *Orchestrator) tick(ctx context.Context) {
