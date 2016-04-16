@@ -10,6 +10,7 @@ import (
 	"github.com/docker/libnetwork/types"
 
 	builtinIpam "github.com/docker/libnetwork/ipams/builtin"
+	nullIpam "github.com/docker/libnetwork/ipams/null"
 	remoteIpam "github.com/docker/libnetwork/ipams/remote"
 )
 
@@ -28,6 +29,7 @@ type ipamData struct {
 type driverTable map[string]*driverData
 type ipamTable map[string]*ipamData
 
+// DrvRegistry holds the registry of all network drivers and IPAM drivers that it knows about.
 type DrvRegistry struct {
 	sync.Mutex
 	drivers     driverTable
@@ -37,12 +39,23 @@ type DrvRegistry struct {
 }
 
 // Functors definition
+
+// InitFunc defines the driver initialization function signature.
 type InitFunc func(driverapi.DriverCallback, map[string]interface{}) error
+
+// IPAMWalkFunc defines the IPAM driver table walker function signature.
 type IPAMWalkFunc func(name string, driver ipamapi.Ipam, cap *ipamapi.Capability) bool
+
+// DriverWalkFunc defines the network driver table walker function signature.
 type DriverWalkFunc func(name string, driver driverapi.Driver, capability driverapi.Capability) bool
+
+// IPAMNotifyFunc defines the notify function signature when a new IPAM driver gets registered.
 type IPAMNotifyFunc func(name string, driver ipamapi.Ipam, cap *ipamapi.Capability) error
+
+// DriverNotifyFunc defines the notify function signature when a new network driver gets registered.
 type DriverNotifyFunc func(name string, driver driverapi.Driver, capability driverapi.Capability) error
 
+// New retruns a new driver registry handle.
 func New(lDs, gDs interface{}, dfn DriverNotifyFunc, ifn IPAMNotifyFunc) (*DrvRegistry, error) {
 	r := &DrvRegistry{
 		drivers:     make(driverTable),
@@ -58,10 +71,12 @@ func New(lDs, gDs interface{}, dfn DriverNotifyFunc, ifn IPAMNotifyFunc) (*DrvRe
 	return r, nil
 }
 
+// AddDriver adds a network driver to the registry.
 func (r *DrvRegistry) AddDriver(ntype string, fn InitFunc, config map[string]interface{}) error {
 	return fn(r, config)
 }
 
+// WalkIPAMs walks the IPAM drivers registered in the registry and invokes the passed walk function and each one of them.
 func (r *DrvRegistry) WalkIPAMs(ifn IPAMWalkFunc) {
 	type ipamVal struct {
 		name string
@@ -82,6 +97,7 @@ func (r *DrvRegistry) WalkIPAMs(ifn IPAMWalkFunc) {
 	}
 }
 
+// WalkDrivers walks the network drivers registered in the registry and invokes the passed walk function and each one of them.
 func (r *DrvRegistry) WalkDrivers(dfn DriverWalkFunc) {
 	type driverVal struct {
 		name string
@@ -102,6 +118,7 @@ func (r *DrvRegistry) WalkDrivers(dfn DriverWalkFunc) {
 	}
 }
 
+// Driver returns the actual network driver instance and its capability  which registered with the passed name.
 func (r *DrvRegistry) Driver(name string) (driverapi.Driver, *driverapi.Capability) {
 	r.Lock()
 	defer r.Unlock()
@@ -114,6 +131,7 @@ func (r *DrvRegistry) Driver(name string) (driverapi.Driver, *driverapi.Capabili
 	return d.driver, &d.capability
 }
 
+// IPAM returns the actual IPAM driver instance and its capability which registered with the passed name.
 func (r *DrvRegistry) IPAM(name string) (ipamapi.Ipam, *ipamapi.Capability) {
 	r.Lock()
 	defer r.Unlock()
@@ -126,6 +144,7 @@ func (r *DrvRegistry) IPAM(name string) (ipamapi.Ipam, *ipamapi.Capability) {
 	return i.driver, i.capability
 }
 
+// IPAMDefaultAddressSpaces returns the default address space strings for the passed IPAM driver name.
 func (r *DrvRegistry) IPAMDefaultAddressSpaces(name string) (string, string, error) {
 	r.Lock()
 	defer r.Unlock()
@@ -142,6 +161,7 @@ func (r *DrvRegistry) initIPAMs(lDs, gDs interface{}) error {
 	for _, fn := range [](func(ipamapi.Callback, interface{}, interface{}) error){
 		builtinIpam.Init,
 		remoteIpam.Init,
+		nullIpam.Init,
 	} {
 		if err := fn(r, lDs, gDs); err != nil {
 			return err
@@ -151,6 +171,7 @@ func (r *DrvRegistry) initIPAMs(lDs, gDs interface{}) error {
 	return nil
 }
 
+// RegisterDriver registers the network driver when it gets discovered.
 func (r *DrvRegistry) RegisterDriver(ntype string, driver driverapi.Driver, capability driverapi.Capability) error {
 	if strings.TrimSpace(ntype) == "" {
 		return fmt.Errorf("network type string cannot be empty")
@@ -209,10 +230,12 @@ func (r *DrvRegistry) registerIpamDriver(name string, driver ipamapi.Ipam, caps 
 	return nil
 }
 
+// RegisterIpamDriver registers the IPAM driver discovered with default capabilities.
 func (r *DrvRegistry) RegisterIpamDriver(name string, driver ipamapi.Ipam) error {
 	return r.registerIpamDriver(name, driver, &ipamapi.Capability{})
 }
 
+// RegisterIpamDriverWithCapabilities registers the IPAM driver discovered with specified capabilities.
 func (r *DrvRegistry) RegisterIpamDriverWithCapabilities(name string, driver ipamapi.Ipam, caps *ipamapi.Capability) error {
 	return r.registerIpamDriver(name, driver, caps)
 }
