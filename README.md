@@ -177,3 +177,49 @@ ID                         Job   Status   Node
 afhq97lrlw7jx1vh15gnofy59  ping  RUNNING  ubuntu15
 b8peuqixb5nd34733ug0njpxo  ping  RUNNING  ubuntu15
 ```
+
+
+## Starting a cluster with Compose
+
+You can use the included `docker-compose.yml` to start a cluster as a set of containers for testing purposes:
+
+    $ docker-compose up -d
+    [...build output...]
+    Creating swarmv2_manager_1
+    Creating swarmv2_agent_1
+
+    $ docker-compose scale agent=4
+    Creating and starting swarmv2_agent_2 ... done
+    Creating and starting swarmv2_agent_3 ... done
+    Creating and starting swarmv2_agent_4 ... done
+
+    $ docker-compose ps
+          Name                    Command              State              Ports
+    ---------------------------------------------------------------------------------------
+    swarmv2_agent_1     swarmd agent -m manager:4242   Up
+    swarmv2_agent_2     swarmd agent -m manager:4242   Up
+    swarmv2_agent_3     swarmd agent -m manager:4242   Up
+    swarmv2_agent_4     swarmd agent -m manager:4242   Up
+    swarmv2_manager_1   swarmd manager                 Up      192.168.64.24:4242->4242/tcp
+
+    $ alias swarmctl='docker-compose run agent swarmctl -a manager:4242'
+
+    $ swarmctl node ls
+    ID                         Name    Status  Availability
+    --                         ----    ------  ------------
+    3y773r5as4ritj55ckqg12l7l  docker  READY   ACTIVE
+    5w2i03cyyhv7hsd2roysnssyu  docker  READY   ACTIVE
+    6j9lfh33mruhyrjq58bbv2fyh  docker  READY   ACTIVE
+    81hneegzxp7o0ghs5851pxclk  docker  READY   ACTIVE
+
+    $ swarmctl service create -f examples/service/ping.yml
+    5an56xpuich7uxqf2y73mpbgq
+
+    $ swarmctl task ls
+    ID                         Service  Status   Node
+    --                         -------  ------   ----
+    7cwxbnaw7voxoepd8ezycuk03  ping     RUNNING  docker
+    dmldn80vuosfqaju3dkap2x8p  ping     RUNNING  docker
+
+    $ docker-compose down
+    [containers and network are removed]
