@@ -21,7 +21,7 @@ $ make binaries
 ## Install
 
 ```sh
-$ make install
+$ sudo -E PATH=$PATH make install
 ```
 
 This will install `/usr/local/bin/swarmd` (the manager and agent) and `/usr/local/bin/swarmctl` (the command line tool).
@@ -90,7 +90,7 @@ Let's start it:
 ```
 $ swarmctl job create -f ping.yml
 chlkcf9v19kxbccspmiyuttgz
-$ swarmctl job ls 
+$ swarmctl job ls
 ID                         Name  Image   Instances
 chlkcf9v19kxbccspmiyuttgz  ping  alpine  2
 $ swarmctl task ls
@@ -159,7 +159,7 @@ $ EDITOR=nano swarmctl job edit ping
  name: ping
 -instances: 4
 +instances: 5
- 
+
 Apply changes? [N/y] y
 chlkcf9v19kxbccspmiyuttgz
 ```
@@ -177,5 +177,3 @@ ID                         Job   Status   Node
 afhq97lrlw7jx1vh15gnofy59  ping  RUNNING  ubuntu15
 b8peuqixb5nd34733ug0njpxo  ping  RUNNING  ubuntu15
 ```
-
-
