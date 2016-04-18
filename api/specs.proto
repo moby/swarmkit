@@ -68,10 +68,6 @@ message ServiceSpec {
 
 		// Pack instances tightly across available nodes.
 		SERVICE_STRATEGY_BINPACK = 1 [(gogoproto.enumvalue_customname) = "ServiceStrategyBinPack"];
-
-		// Fill each node with an instance of the service. The number instances is
-		// ignored in this strategy.
-		SERVICE_STRATEGY_FILL = 2 [(gogoproto.enumvalue_customname) = "ServiceStrategyFill"];
 	}
 
 	Strategy strategy = 4;
@@ -88,6 +84,9 @@ message ServiceSpec {
 		// fill scheduling strategy, the number of instances will equal the number
 		// of nodes.
 		SERVICE_MODE_BATCH = 1 [(gogoproto.enumvalue_customname) = "ServiceModeBatch"];
+
+		// Fill each node with instances number of tasks.
+		SERVICE_MODE_FILL = 2 [(gogoproto.enumvalue_customname) = "ServiceModeFill"];
 
 		// TODO(stevvooe): Consider specifying the node as a task completion
 		// reconcilation condition. This matches with model of the
