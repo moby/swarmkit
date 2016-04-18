@@ -97,6 +97,10 @@ message ServiceSpec {
 	// Mode defines the reconcilation target for the service. This effects the
 	// target state sought to satisfy the given service.
 	Mode mode = 5;
+
+	// Service endpoint specifies the user provided configuration
+	// to properly discover and load balance a service.
+	Endpoint endpoint = 6;
 }
 
 // TaskSpec defines properties required by the agent for execution.
