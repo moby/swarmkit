@@ -152,7 +152,7 @@ func (a *Agent) run(ctx context.Context) {
 	defer close(a.closed) // full shutdown.
 
 	if err := a.connect(ctx); err != nil {
-		log.G(ctx).WithError(err).Errorf("agent: connection failed")
+		log.G(ctx).WithError(err).Error("agent: connection failed")
 		a.err = err
 		return
 	}
@@ -173,15 +173,15 @@ func (a *Agent) run(ctx context.Context) {
 		select {
 		case report := <-a.statusq:
 			if err := a.handleTaskStatusReport(ctx, session, report); err != nil {
-				log.G(ctx).WithError(err).Errorf("task status report handler failed")
+				log.G(ctx).WithError(err).Error("task status report handler failed")
 			}
 		case msg := <-session.tasks:
 			if err := a.handleTaskAssignment(ctx, msg.Tasks); err != nil {
-				log.G(ctx).WithError(err).Errorf("task assignment failed")
+				log.G(ctx).WithError(err).Error("task assignment failed")
 			}
 		case msg := <-session.messages:
 			if err := a.handleSessionMessage(ctx, msg); err != nil {
-				log.G(ctx).WithError(err).Errorf("session message handler failed")
+				log.G(ctx).WithError(err).Error("session message handler failed")
 			}
 		case <-registered:
 			log.G(ctx).Debugln("agent: registered")
@@ -192,7 +192,7 @@ func (a *Agent) run(ctx context.Context) {
 			// but no error was sent. Session.close must only be called here
 			// for this to work.
 			if err != nil {
-				log.G(ctx).WithError(err).Errorf("agent: session failed")
+				log.G(ctx).WithError(err).Error("agent: session failed")
 				backoff = initialSessionFailureBackoff + 2*backoff
 				if backoff > maxSessionFailureBackoff {
 					backoff = maxSessionFailureBackoff
@@ -200,7 +200,7 @@ func (a *Agent) run(ctx context.Context) {
 			}
 
 			if err := session.close(); err != nil {
-				log.G(ctx).WithError(err).Errorf("agent: closing session failed")
+				log.G(ctx).WithError(err).Error("agent: closing session failed")
 			}
 		case <-session.closed:
 			log.G(ctx).Debugf("agent: rebuild session")
@@ -292,21 +292,25 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 
 	assigned := map[string]*api.Task{}
 	for _, task := range tasks {
+		if task.DesiredState > api.TaskStateRunning {
+			// Skip tasks which the manager wants to be stopped.
+			continue
+		}
 		assigned[task.ID] = task
 		ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", task.ID))
 
 		if _, ok := a.controllers[task.ID]; ok {
 			if err := a.updateTask(ctx, task); err != nil {
-				log.G(ctx).WithError(err).Errorf("task update failed")
+				log.G(ctx).WithError(err).Error("task update failed")
 			}
 			continue
 		}
 		log.G(ctx).Debugf("assigned")
 		if err := a.acceptTask(ctx, task); err != nil {
-			log.G(ctx).WithError(err).Errorf("starting task controller failed")
+			log.G(ctx).WithError(err).Error("starting task controller failed")
 			go func() {
 				if err := a.report(ctx, task.ID, api.TaskStateRejected, "rejected task during assignment", err); err != nil {
-					log.G(ctx).WithError(err).Errorf("reporting task rejection failed")
+					log.G(ctx).WithError(err).Error("reporting task rejection failed")
 				}
 			}()
 		}
@@ -325,10 +329,15 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 			continue
 		}
 
+		// don't remove the task if the manager doesn't want us to.
+		if task.DesiredState < api.TaskStateDead {
+			continue
+		}
+
 		// TODO(stevvooe): Modify this to take the task through a graceful
 		// shutdown. This just outright removes it.
 		if err := a.removeTask(ctx, task); err != nil {
-			log.G(ctx).WithError(err).Errorf("removing task failed")
+			log.G(ctx).WithError(err).Error("removing task failed")
 		}
 	}
 
@@ -355,7 +364,7 @@ func (a *Agent) handleTaskStatusReport(ctx context.Context, session *session, re
 	// TODO(stevvooe): Coalesce status updates.
 	go func() {
 		if err := session.sendTaskStatus(ctx, report.taskID, a.statuses[report.taskID]); err != nil {
-			log.G(ctx).WithError(err).Errorf("sending task status update failed")
+			log.G(ctx).WithError(err).Error("sending task status update failed")
 
 			time.Sleep(time.Second) // backoff for retry
 			select {
@@ -373,6 +382,10 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("task.id", report.taskID))
 
 	status, ok := a.statuses[report.taskID]
+	if !ok {
+		return errTaskUnknown
+	}
+	task, ok := a.tasks[report.taskID]
 	if !ok {
 		return errTaskUnknown
 	}
@@ -394,21 +407,29 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 			api.TaskStateAssigned, api.TaskStateAccepted,
 			api.TaskStatePreparing:
 			status.State = api.TaskStateRejected
+			status.TerminalState = api.TaskStateRejected
 			status.Err = report.err.Error()
 		case api.TaskStateReady, api.TaskStateStarting,
 			api.TaskStateRunning, api.TaskStateShutdown:
 			status.State = api.TaskStateFailed
+			status.TerminalState = api.TaskStateFailed
 			status.Err = report.err.Error()
 		case api.TaskStateCompleted, api.TaskStateFailed,
 			api.TaskStateRejected, api.TaskStateDead:
 			// noop when we get an error in these states
 		case api.TaskStateFinalize:
-			if err := a.removeTask(ctx, a.tasks[report.taskID].Copy()); err != nil {
-				log.G(ctx).WithError(err).Errorf("failed retrying remove task")
+			if task.DesiredState >= api.TaskStateDead {
+				if err := a.removeTask(ctx, task.Copy()); err != nil {
+					log.G(ctx).WithError(err).Error("failed retrying remove task")
+				}
 			}
 		}
 	} else {
 		status.State = report.state
+		switch report.state {
+		case api.TaskStateRejected, api.TaskStateFailed, api.TaskStateCompleted:
+			status.TerminalState = report.state
+		}
 	}
 
 	tsp, err := ptypes.TimestampProto(report.timestamp)
@@ -460,7 +481,7 @@ func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 
 	runner, err := a.config.Executor.Runner(task.Copy())
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("runner resolution failed")
+		log.G(ctx).WithError(err).Error("runner resolution failed")
 		return err
 	}
 
@@ -471,14 +492,19 @@ func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 	go func() {
 		if err := reporter.Report(ctx, api.TaskStateAccepted, "accepted"); err != nil {
 			// TODO(stevvooe): What to do here? should be a rare error or never happen
-			log.G(ctx).WithError(err).Errorf("reporting accepted status")
+			log.G(ctx).WithError(err).Error("reporting accepted status")
+			return
+		}
+
+		if task.DesiredState < api.TaskStateRunning {
+			log.G(ctx).Error("accepting a task with a desired state below RUNNING is not yet implemented")
 			return
 		}
 
 		if err := exec.Run(ctx, runner, reporter); err != nil {
-			log.G(ctx).WithError(err).Errorf("task run failed")
+			log.G(ctx).WithError(err).Error("task run failed")
 			if err := a.report(ctx, taskID, api.TaskStateFailed, "execution failed", err); err != nil {
-				log.G(ctx).WithError(err).Errorf("reporting task run error failed")
+				log.G(ctx).WithError(err).Error("reporting task run error failed")
 			}
 			return
 		}
@@ -502,7 +528,7 @@ func (a *Agent) updateTask(ctx context.Context, t *api.Task) error {
 		// propagate the update if there are actual changes
 		go func() {
 			if err := ctlr.Update(ctx, t.Copy()); err != nil {
-				log.G(ctx).WithError(err).Errorf("propagating task update failed")
+				log.G(ctx).WithError(err).Error("propagating task update failed")
 			}
 		}()
 	}
@@ -517,22 +543,23 @@ func (a *Agent) removeTask(ctx context.Context, t *api.Task) error {
 		ctlr   = a.controllers[t.ID]
 		taskID = t.ID
 	)
+
 	go func() {
 		if err := a.report(ctx, taskID, api.TaskStateFinalize, "removing"); err != nil {
-			log.G(ctx).WithError(err).Errorf("failed to report finalization")
+			log.G(ctx).WithError(err).Error("failed to report finalization")
 			return
 		}
 
 		if err := ctlr.Remove(ctx); err != nil {
-			log.G(ctx).WithError(err).Errorf("remove failed")
+			log.G(ctx).WithError(err).Error("remove failed")
 			if err := a.report(ctx, taskID, api.TaskStateFinalize, "remove failed", err); err != nil {
-				log.G(ctx).WithError(err).Errorf("report remove error failed")
+				log.G(ctx).WithError(err).Error("report remove error failed")
 				return
 			}
 		}
 
 		if err := a.report(ctx, taskID, api.TaskStateDead, "finalized"); err != nil {
-			log.G(ctx).WithError(err).Errorf("failed reporting finalization")
+			log.G(ctx).WithError(err).Error("failed reporting finalization")
 			return
 		}
 	}()

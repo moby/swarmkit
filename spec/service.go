@@ -3,6 +3,7 @@ package spec
 import (
 	"fmt"
 	"io"
+	"time"
 
 	yaml "github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/docker/swarm-v2/api"
@@ -40,6 +41,9 @@ type ServiceConfig struct {
 
 	Name      string `yaml:"name,omitempty"`
 	Instances int64  `yaml:"instances,omitempty"`
+
+	Restart      string `yaml:"restart,omitempty"`
+	RestartDelay int64  `yaml:"restartdelay,omitempty"`
 }
 
 // Validate checks the validity of the ServiceConfig.
@@ -49,6 +53,12 @@ func (s *ServiceConfig) Validate() error {
 	}
 	if s.Image == "" {
 		return fmt.Errorf("image is mandatory in %s", s.Name)
+	}
+	switch s.Restart {
+	case "", "no", "on-failure":
+	case "always":
+	default:
+		return fmt.Errorf("unrecognized restart policy %s", s.Restart)
 	}
 	if err := s.Resources.Validate(); err != nil {
 		return err
@@ -105,6 +115,18 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 			},
 		},
 		Instances: s.Instances,
+		Restart: &api.RestartPolicy{
+			Delay: time.Duration(s.RestartDelay) * time.Second,
+		},
+	}
+
+	switch s.Restart {
+	case "no":
+		spec.Restart.Condition = api.RestartNever
+	case "on-failure":
+		spec.Restart.Condition = api.RestartOnFailure
+	case "", "always":
+		spec.Restart.Condition = api.RestartAlways
 	}
 
 	return spec
@@ -130,6 +152,17 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 		apiMounts := serviceSpec.Template.GetContainer().Mounts
 		s.Mounts = make(Mounts, len(apiMounts))
 		s.Mounts.FromProto(apiMounts)
+	}
+	if serviceSpec.Restart != nil {
+		switch serviceSpec.Restart.Condition {
+		case api.RestartNever:
+			s.Restart = "no"
+		case api.RestartOnFailure:
+			s.Restart = "on-failure"
+		case api.RestartAlways:
+			s.Restart = "always"
+		}
+		s.RestartDelay = int64(serviceSpec.Restart.Delay / time.Second)
 	}
 }
 

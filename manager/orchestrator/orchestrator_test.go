@@ -19,7 +19,7 @@ func TestOrchestrator(t *testing.T) {
 
 	orchestrator := New(store)
 
-	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventDeleteTask{}*/)
+	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -117,34 +117,35 @@ func TestOrchestrator(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	observedDeletion1 := watchTaskDelete(t, watch)
+	observedDeletion1 := watchDeadTask(t, watch)
 	assert.Equal(t, observedDeletion1.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedDeletion1.Annotations.Name, "name2")
 
-	observedDeletion2 := watchTaskDelete(t, watch)
+	observedDeletion2 := watchDeadTask(t, watch)
 	assert.Equal(t, observedDeletion2.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedDeletion2.Annotations.Name, "name2")
 
 	// There should be one remaining task attached to service id2/name2.
-	var tasks []*api.Task
+	var liveTasks []*api.Task
 	err = store.View(func(readTx state.ReadTx) error {
-		var err error
-		tasks, err = readTx.Tasks().Find(state.ByServiceID("id2"))
+		tasks, err := readTx.Tasks().Find(state.ByServiceID("id2"))
+		for _, t := range tasks {
+			if t.DesiredState == api.TaskStateRunning {
+				liveTasks = append(liveTasks, t)
+			}
+		}
 		return err
 	})
 	assert.NoError(t, err)
-	assert.Len(t, tasks, 1)
+	assert.Len(t, liveTasks, 1)
 
 	// Delete the remaining task directly. It should be recreated by the
 	// orchestrator.
 	err = store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Delete(tasks[0].ID))
+		assert.NoError(t, tx.Tasks().Delete(liveTasks[0].ID))
 		return nil
 	})
 	assert.NoError(t, err)
-
-	// Consume deletion event from the queue
-	watchTaskDelete(t, watch)
 
 	observedTask6 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask6.Status.State, api.TaskStateNew)
@@ -157,9 +158,243 @@ func TestOrchestrator(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	observedDeletion3 := watchTaskDelete(t, watch)
+	observedDeletion3 := watchDeadTask(t, watch)
 	assert.Equal(t, observedDeletion3.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedDeletion3.Annotations.Name, "name2")
+
+	orchestrator.Stop()
+}
+
+func TestOrchestratorRestartAlways(t *testing.T) {
+	ctx := context.Background()
+	store := store.NewMemoryStore(nil)
+	assert.NotNil(t, store)
+
+	orchestrator := New(store)
+
+	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	defer cancel()
+
+	// Create a service with two instances specified before the orchestrator is
+	// started. This should result in two tasks when the orchestrator
+	// starts up.
+	err := store.Update(func(tx state.Tx) error {
+		j1 := &api.Service{
+			ID: "id1",
+			Spec: &api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "name1",
+				},
+				Template:  &api.TaskSpec{},
+				Instances: 2,
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartAlways,
+				},
+			},
+		}
+		assert.NoError(t, tx.Services().Create(j1))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Start the orchestrator.
+	go func() {
+		assert.NoError(t, orchestrator.Run(ctx))
+	}()
+
+	observedTask1 := watchTaskCreate(t, watch)
+	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+
+	observedTask2 := watchTaskCreate(t, watch)
+	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+
+	// Fail the first task. Confirm that it gets restarted.
+	updatedTask1 := observedTask1.Copy()
+	updatedTask1.DesiredState = api.TaskStateDead
+	err = store.Update(func(tx state.Tx) error {
+		assert.NoError(t, tx.Tasks().Update(updatedTask1))
+		return nil
+	})
+	assert.NoError(t, err)
+	consumeTaskUpdate(t, watch)
+
+	observedTask3 := watchTaskCreate(t, watch)
+	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask3.Annotations.Name, "name1")
+
+	// Mark the second task as completed. Confirm that it gets restarted.
+	updatedTask2 := observedTask2.Copy()
+	updatedTask2.Status = &api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
+	err = store.Update(func(tx state.Tx) error {
+		assert.NoError(t, tx.Tasks().Update(updatedTask2))
+		return nil
+	})
+	assert.NoError(t, err)
+	consumeTaskUpdate(t, watch)
+
+	observedTask4 := watchTaskCreate(t, watch)
+	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask4.Annotations.Name, "name1")
+
+	orchestrator.Stop()
+}
+
+func TestOrchestratorRestartOnFailure(t *testing.T) {
+	ctx := context.Background()
+	store := store.NewMemoryStore(nil)
+	assert.NotNil(t, store)
+
+	orchestrator := New(store)
+
+	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	defer cancel()
+
+	// Create a service with two instances specified before the orchestrator is
+	// started. This should result in two tasks when the orchestrator
+	// starts up.
+	err := store.Update(func(tx state.Tx) error {
+		j1 := &api.Service{
+			ID: "id1",
+			Spec: &api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "name1",
+				},
+				Template:  &api.TaskSpec{},
+				Instances: 2,
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartOnFailure,
+				},
+			},
+		}
+		assert.NoError(t, tx.Services().Create(j1))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Start the orchestrator.
+	go func() {
+		assert.NoError(t, orchestrator.Run(ctx))
+	}()
+
+	observedTask1 := watchTaskCreate(t, watch)
+	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+
+	observedTask2 := watchTaskCreate(t, watch)
+	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+
+	// Fail the first task. Confirm that it gets restarted.
+	updatedTask1 := observedTask1.Copy()
+	updatedTask1.DesiredState = api.TaskStateDead
+	err = store.Update(func(tx state.Tx) error {
+		assert.NoError(t, tx.Tasks().Update(updatedTask1))
+		return nil
+	})
+	assert.NoError(t, err)
+	consumeTaskUpdate(t, watch)
+
+	observedTask3 := watchTaskCreate(t, watch)
+	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask3.Annotations.Name, "name1")
+
+	// Mark the second task as completed. Confirm that it does not get restarted.
+	updatedTask2 := observedTask2.Copy()
+	updatedTask2.Status = &api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
+	err = store.Update(func(tx state.Tx) error {
+		assert.NoError(t, tx.Tasks().Update(updatedTask2))
+		return nil
+	})
+	assert.NoError(t, err)
+	consumeTaskUpdate(t, watch)
+
+	select {
+	case <-watch:
+		t.Fatal("got unexpected event")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	orchestrator.Stop()
+}
+
+func TestOrchestratorRestartNever(t *testing.T) {
+	ctx := context.Background()
+	store := store.NewMemoryStore(nil)
+	assert.NotNil(t, store)
+
+	orchestrator := New(store)
+
+	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	defer cancel()
+
+	// Create a service with two instances specified before the orchestrator is
+	// started. This should result in two tasks when the orchestrator
+	// starts up.
+	err := store.Update(func(tx state.Tx) error {
+		j1 := &api.Service{
+			ID: "id1",
+			Spec: &api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "name1",
+				},
+				Template:  &api.TaskSpec{},
+				Instances: 2,
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartNever,
+				},
+			},
+		}
+		assert.NoError(t, tx.Services().Create(j1))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Start the orchestrator.
+	go func() {
+		assert.NoError(t, orchestrator.Run(ctx))
+	}()
+
+	observedTask1 := watchTaskCreate(t, watch)
+	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+
+	observedTask2 := watchTaskCreate(t, watch)
+	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+
+	// Fail the first task. Confirm that it does not get restarted.
+	updatedTask1 := observedTask1.Copy()
+	updatedTask1.DesiredState = api.TaskStateDead
+	err = store.Update(func(tx state.Tx) error {
+		assert.NoError(t, tx.Tasks().Update(updatedTask1))
+		return nil
+	})
+	assert.NoError(t, err)
+	consumeTaskUpdate(t, watch)
+
+	select {
+	case <-watch:
+		t.Fatal("got unexpected event")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	// Mark the second task as completed. Confirm that it does not get restarted.
+	updatedTask2 := observedTask2.Copy()
+	updatedTask2.Status = &api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
+	err = store.Update(func(tx state.Tx) error {
+		assert.NoError(t, tx.Tasks().Update(updatedTask2))
+		return nil
+	})
+	assert.NoError(t, err)
+	consumeTaskUpdate(t, watch)
+
+	select {
+	case <-watch:
+		t.Fatal("got unexpected event")
+	case <-time.After(100 * time.Millisecond):
+	}
 
 	orchestrator.Stop()
 }
@@ -171,8 +406,8 @@ func watchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
 			if task, ok := event.(state.EventCreateTask); ok {
 				return task.Task
 			}
-			if _, ok := event.(state.EventDeleteTask); ok {
-				t.Fatal("got EventDeleteTask when expecting EventCreateTask")
+			if _, ok := event.(state.EventUpdateTask); ok {
+				t.Fatal("got EventUpdateTask when expecting EventCreateTask")
 			}
 		case <-time.After(time.Second):
 			t.Fatal("no task assignment")
@@ -180,15 +415,38 @@ func watchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
 	}
 }
 
-func watchTaskDelete(t *testing.T, watch chan events.Event) *api.Task {
+func consumeTaskUpdate(t *testing.T, watch chan events.Event) {
+loop:
 	for {
 		select {
 		case event := <-watch:
-			if task, ok := event.(state.EventDeleteTask); ok {
+			if _, ok := event.(state.EventUpdateTask); ok {
+				break loop
+			}
+		case <-time.After(time.Second):
+			t.Fatal("no task update")
+		}
+	}
+	select {
+	case event := <-watch:
+		if _, ok := event.(state.EventCommit); !ok {
+			t.Fatal("expected commit event")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("no commit event")
+	}
+
+}
+
+func watchDeadTask(t *testing.T, watch chan events.Event) *api.Task {
+	for {
+		select {
+		case event := <-watch:
+			if task, ok := event.(state.EventUpdateTask); ok && task.Task.DesiredState == api.TaskStateDead {
 				return task.Task
 			}
 			if _, ok := event.(state.EventCreateTask); ok {
-				t.Fatal("got EventCreateTask when expecting EventDeleteTask")
+				t.Fatal("got EventCreateTask when expecting EventUpdateTask")
 			}
 		case <-time.After(time.Second):
 			t.Fatal("no task deletion")

@@ -45,7 +45,7 @@ func (d *Drainer) initialPass(tx state.ReadTx) error {
 	for _, t := range tasks {
 		if t.NodeID != "" {
 			n := tx.Nodes().Get(t.NodeID)
-			if invalidNode(n) {
+			if invalidNode(n) && (t.Status == nil || t.Status.State != api.TaskStateDead) && t.DesiredState != api.TaskStateDead {
 				d.enqueue(t)
 			}
 		}
@@ -130,7 +130,7 @@ func (d *Drainer) taskChanged(ctx context.Context, t *api.Task) int {
 		log.G(ctx).WithError(err).Errorf("drainer transaction failed getting tasks")
 		return 0
 	}
-	if invalidNode(n) {
+	if invalidNode(n) && (t.Status == nil || t.Status.State != api.TaskStateDead) && t.DesiredState != api.TaskStateDead {
 		d.enqueue(t)
 		return 1
 	}
@@ -172,19 +172,20 @@ func (d *Drainer) tick(ctx context.Context) {
 		for e := d.deleteTasks.Front(); e != nil; e = next {
 			next = e.Next()
 			t := e.Value.(*api.Task)
-
-			// Ignore the error on deletion, because something else
-			// may have deleted the task before we got to it.
-			_ = tx.Tasks().Delete(t.ID)
+			t = tx.Tasks().Get(t.ID)
+			if t != nil {
+				t.DesiredState = api.TaskStateDead
+				err := tx.Tasks().Update(t)
+				if err != nil && err != state.ErrNotExist {
+					log.G(ctx).WithError(err).Errorf("failed to drain task")
+				}
+			}
 		}
 		return nil
 	})
 
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("drainer tick transaction failed")
-
-		// leave deleteTasks list in place
-	} else {
-		d.deleteTasks = list.New()
 	}
+	d.deleteTasks = list.New()
 }

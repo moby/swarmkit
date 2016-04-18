@@ -126,6 +126,25 @@ message Container {
 	repeated Mount mounts = 8;
 }
 
+message RestartPolicy {
+	enum RestartCondition {
+		option (gogoproto.goproto_enum_prefix) = false;
+		option (gogoproto.enum_customname) = "RestartCondition";
+		RESTART_NEVER = 0 [(gogoproto.enumvalue_customname) = "RestartNever"];
+		RESTART_ON_FAILURE = 1 [(gogoproto.enumvalue_customname) = "RestartOnFailure"];
+		RESTART_ALWAYS = 2 [(gogoproto.enumvalue_customname) = "RestartAlways"];
+	}
+
+	RestartCondition condition = 1;
+
+	// Delay between restart attempts
+	uint64 delay = 2 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
+
+	// TODO(aaronl): Consider additional features such as a limit on the
+	// number of restart attempts, and a time period after which the
+	// failure count is reset.
+}
+
 // TaskState enumerates the states that a task progresses through within an
 // agent. States are designed to be monotonically increasing, such that if two
 // states are seen by a task, the greater of the new represents the true state.
@@ -174,6 +193,11 @@ message TaskStatus {
 	// State expresses the current state of the task.
 	TaskState state = 2;
 
+	// TerminalState indicates the state which led to the task stopping,
+	// i.e Rejected, Complete or Failed. If the task is not in a terminal
+	// state, this is set to New (0).
+	TaskState terminal_state = 3;
+
 	// Message reports a message for the task status. This should provide a
 	// human readable message that can point to how the task actually arrived
 	// at a current state.
@@ -183,7 +207,7 @@ message TaskStatus {
 	// prepared, we'd place "prepared" in this field. If we skipped preparation
 	// because the task is prepared, we would put "already prepared" in this
 	// field.
-	string message = 3;
+	string message = 4;
 
 	// Err is set if the task is in an error state.
 	//
@@ -192,7 +216,7 @@ message TaskStatus {
 	//	FAILED, REJECTED
 	//
 	// TODO(stevvooe) Integrate this field with the error interface.
-	string err = 4;
+	string err = 5;
 
 	// TODO(stevvooe): Report on runtime statistics.
 }
