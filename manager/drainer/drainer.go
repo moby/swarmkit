@@ -3,9 +3,10 @@ package drainer
 import (
 	"container/list"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
+	"golang.org/x/net/context"
 )
 
 // Drainer removes tasks which are assigned to nodes that are no longer
@@ -54,7 +55,7 @@ func (d *Drainer) initialPass(tx state.ReadTx) error {
 }
 
 // Run is the drainer event loop.
-func (d *Drainer) Run() error {
+func (d *Drainer) Run(ctx context.Context) error {
 	defer close(d.doneChan)
 
 	updates, cancel := state.Watch(d.store.WatchQueue(),
@@ -68,12 +69,12 @@ func (d *Drainer) Run() error {
 
 	err := d.store.View(d.initialPass)
 	if err != nil {
-		log.Errorf("could not run initial drainer pass: %v", err)
+		log.G(ctx).WithError(err).Errorf("initial drainer pass failed")
 		return err
 	}
 
 	// Remove all tasks that have an invalid node assigned
-	d.tick()
+	d.tick(ctx)
 
 	pendingChanges := 0
 
@@ -83,18 +84,18 @@ func (d *Drainer) Run() error {
 		case event := <-updates:
 			switch v := event.(type) {
 			case state.EventCreateTask:
-				pendingChanges += d.taskChanged(v.Task)
+				pendingChanges += d.taskChanged(ctx, v.Task)
 			case state.EventUpdateTask:
-				pendingChanges += d.taskChanged(v.Task)
+				pendingChanges += d.taskChanged(ctx, v.Task)
 			case state.EventCreateNode:
-				pendingChanges += d.nodeChanged(v.Node)
+				pendingChanges += d.nodeChanged(ctx, v.Node)
 			case state.EventUpdateNode:
-				pendingChanges += d.nodeChanged(v.Node)
+				pendingChanges += d.nodeChanged(ctx, v.Node)
 			case state.EventDeleteNode:
-				pendingChanges += d.removeTasksByNodeID(v.Node.ID)
+				pendingChanges += d.removeTasksByNodeID(ctx, v.Node.ID)
 			case state.EventCommit:
 				if pendingChanges > 0 {
-					d.tick()
+					d.tick(ctx)
 					pendingChanges = 0
 				}
 			}
@@ -115,7 +116,7 @@ func (d *Drainer) enqueue(t *api.Task) {
 	d.deleteTasks.PushBack(t)
 }
 
-func (d *Drainer) taskChanged(t *api.Task) int {
+func (d *Drainer) taskChanged(ctx context.Context, t *api.Task) int {
 	if t.NodeID == "" {
 		return 0
 	}
@@ -126,7 +127,7 @@ func (d *Drainer) taskChanged(t *api.Task) int {
 		return nil
 	})
 	if err != nil {
-		log.Errorf("error in drainer transaction: %v", err)
+		log.G(ctx).WithError(err).Errorf("drainer transaction failed getting tasks")
 		return 0
 	}
 	if invalidNode(n) {
@@ -136,7 +137,7 @@ func (d *Drainer) taskChanged(t *api.Task) int {
 	return 0
 }
 
-func (d *Drainer) removeTasksByNodeID(nodeID string) int {
+func (d *Drainer) removeTasksByNodeID(ctx context.Context, nodeID string) int {
 	var tasks []*api.Task
 	err := d.store.View(func(tx state.ReadTx) error {
 		var err error
@@ -144,7 +145,7 @@ func (d *Drainer) removeTasksByNodeID(nodeID string) int {
 		return err
 	})
 	if err != nil {
-		log.Errorf("error in drainer transaction: %v", err)
+		log.G(ctx).WithError(err).Errorf("drainer transaction failed removing task")
 		return 0
 	}
 
@@ -156,16 +157,16 @@ func (d *Drainer) removeTasksByNodeID(nodeID string) int {
 	return pendingChanges
 }
 
-func (d *Drainer) nodeChanged(n *api.Node) int {
+func (d *Drainer) nodeChanged(ctx context.Context, n *api.Node) int {
 	if !invalidNode(n) {
 		return 0
 	}
 
-	return d.removeTasksByNodeID(n.ID)
+	return d.removeTasksByNodeID(ctx, n.ID)
 }
 
 // tick deletes tasks that were selected for deletion.
-func (d *Drainer) tick() {
+func (d *Drainer) tick(ctx context.Context) {
 	err := d.store.Update(func(tx state.Tx) error {
 		var next *list.Element
 		for e := d.deleteTasks.Front(); e != nil; e = next {
@@ -180,7 +181,7 @@ func (d *Drainer) tick() {
 	})
 
 	if err != nil {
-		log.Errorf("Error in transaction: %v", err)
+		log.G(ctx).WithError(err).Errorf("drainer tick transaction failed")
 
 		// leave deleteTasks list in place
 	} else {

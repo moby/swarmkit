@@ -216,10 +216,11 @@ func newNode(t *testing.T, clockSource *fakeclock.FakeClock, opts ...NewNodeOpti
 }
 
 func newInitNode(t *testing.T, opts ...NewNodeOptions) (*testNode, *fakeclock.FakeClock) {
+	ctx := context.Background()
 	clockSource := fakeclock.NewFakeClock(time.Now())
 	n := newNode(t, clockSource, opts...)
 
-	go n.Run()
+	go n.Run(ctx)
 
 	Register(n.Server, n.Node)
 
@@ -239,7 +240,7 @@ func newJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, op
 	derivedOpts.JoinAddr = join
 	n := newNode(t, clockSource, derivedOpts)
 
-	go n.Run()
+	go n.Run(context.Background())
 	Register(n.Server, n.Node)
 
 	go func() {
@@ -263,11 +264,12 @@ func restartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *testNo
 		SendTimeout: 100 * time.Millisecond,
 	}
 
-	n, err := NewNode(context.Background(), newNodeOpts, nil)
+	ctx := context.Background()
+	n, err := NewNode(ctx, newNodeOpts, nil)
 	require.NoError(t, err, "can't create raft node")
 	n.Server = s
 
-	go n.Run()
+	go n.Run(ctx)
 
 	Register(s, n)
 
@@ -1022,9 +1024,10 @@ func TestRaftUnreachableNode(t *testing.T) {
 	var clockSource *fakeclock.FakeClock
 	nodes[1], clockSource = newInitNode(t)
 
+	ctx := context.Background()
 	// Add a new node, but don't start its server yet
 	n := newNode(t, clockSource, NewNodeOptions{JoinAddr: nodes[1].Address})
-	go n.Run()
+	go n.Run(ctx)
 
 	advanceTicks(clockSource, 5)
 	time.Sleep(100 * time.Millisecond)

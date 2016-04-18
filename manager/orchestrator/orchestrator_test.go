@@ -8,9 +8,11 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 )
 
 func TestOrchestrator(t *testing.T) {
+	ctx := context.Background()
 	store := state.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
@@ -40,7 +42,7 @@ func TestOrchestrator(t *testing.T) {
 
 	// Start the orchestrator.
 	go func() {
-		assert.NoError(t, orchestrator.Run())
+		assert.NoError(t, orchestrator.Run(ctx))
 	}()
 
 	observedTask1 := watchTaskCreate(t, watch)

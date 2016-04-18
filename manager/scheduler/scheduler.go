@@ -5,9 +5,10 @@ import (
 	"container/list"
 	"reflect"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
+	"golang.org/x/net/context"
 )
 
 type schedulingDecision struct {
@@ -77,18 +78,18 @@ func (s *Scheduler) setupTasksList(tx state.ReadTx) error {
 }
 
 // Run is the scheduler event loop.
-func (s *Scheduler) Run() error {
+func (s *Scheduler) Run(ctx context.Context) error {
 	defer close(s.doneChan)
 
 	updates, cancel, err := state.ViewAndWatch(s.store, s.setupTasksList)
 	if err != nil {
-		log.Errorf("could not snapshot store: %v", err)
+		log.G(ctx).WithError(err).Errorf("snapshot store update failed")
 		return err
 	}
 	defer cancel()
 
 	// Queue all unassigned tasks before processing changes.
-	s.tick()
+	s.tick(ctx)
 
 	pendingChanges := 0
 
@@ -98,11 +99,11 @@ func (s *Scheduler) Run() error {
 		case event := <-updates:
 			switch v := event.(type) {
 			case state.EventCreateTask:
-				pendingChanges += s.createTask(v.Task)
+				pendingChanges += s.createTask(ctx, v.Task)
 			case state.EventUpdateTask:
-				pendingChanges += s.updateTask(v.Task)
+				pendingChanges += s.updateTask(ctx, v.Task)
 			case state.EventDeleteTask:
-				s.deleteTask(v.Task)
+				s.deleteTask(ctx, v.Task)
 			case state.EventCreateNode:
 				s.createOrUpdateNode(v.Node)
 				pendingChanges++
@@ -113,7 +114,7 @@ func (s *Scheduler) Run() error {
 				s.nodeHeap.remove(v.Node.ID)
 			case state.EventCommit:
 				if pendingChanges > 0 {
-					s.tick()
+					s.tick(ctx)
 					pendingChanges = 0
 				}
 			}
@@ -135,7 +136,7 @@ func (s *Scheduler) enqueue(t *api.Task) {
 	s.unassignedTasks.PushBack(t)
 }
 
-func (s *Scheduler) createTask(t *api.Task) int {
+func (s *Scheduler) createTask(ctx context.Context, t *api.Task) int {
 	// Ignore all tasks that have not reached ALLOCATED
 	// state.
 	if t.Status == nil || t.Status.State < api.TaskStateAllocated {
@@ -156,7 +157,7 @@ func (s *Scheduler) createTask(t *api.Task) int {
 	return 0
 }
 
-func (s *Scheduler) updateTask(t *api.Task) int {
+func (s *Scheduler) updateTask(ctx context.Context, t *api.Task) int {
 	// Ignore all tasks that have not reached ALLOCATED
 	// state.
 	if t.Status == nil || t.Status.State < api.TaskStateAllocated {
@@ -165,12 +166,12 @@ func (s *Scheduler) updateTask(t *api.Task) int {
 
 	oldTask := s.allTasks[t.ID]
 	if oldTask != nil {
-		s.deleteTask(oldTask)
+		s.deleteTask(ctx, oldTask)
 	}
-	return s.createTask(t)
+	return s.createTask(ctx, t)
 }
 
-func (s *Scheduler) deleteTask(t *api.Task) {
+func (s *Scheduler) deleteTask(ctx context.Context, t *api.Task) {
 	delete(s.allTasks, t.ID)
 	nodeInfo := s.nodeHeap.nodeInfo(t.NodeID)
 	nodeInfo.removeTask(t)
@@ -186,7 +187,7 @@ func (s *Scheduler) createOrUpdateNode(n *api.Node) {
 }
 
 // tick attempts to schedule the queue.
-func (s *Scheduler) tick() {
+func (s *Scheduler) tick(ctx context.Context) {
 	schedulingDecisions := make(map[string]schedulingDecision, s.unassignedTasks.Len())
 
 	var next *list.Element
@@ -203,7 +204,7 @@ func (s *Scheduler) tick() {
 			s.unassignedTasks.Remove(e)
 			continue
 		}
-		if newT := s.scheduleTask(t); newT != nil {
+		if newT := s.scheduleTask(ctx, t); newT != nil {
 			schedulingDecisions[id] = schedulingDecision{old: t, new: newT}
 			s.unassignedTasks.Remove(e)
 		}
@@ -223,13 +224,13 @@ func (s *Scheduler) tick() {
 			// TODO(aaronl): When we have a sequencer in place,
 			// this expensive comparison won't be necessary.
 			if !reflect.DeepEqual(t, decision.old) {
-				log.Debugf("task changed between scheduling decision and application: %s", t.ID)
+				log.G(ctx).Debugf("task changed between scheduling decision and application: %s", t.ID)
 				failedSchedulingDecisions[id] = decision
 				continue
 			}
 
 			if err := tx.Tasks().Update(decision.new); err != nil {
-				log.Debugf("scheduler failed to update task %s; will retry", t.ID)
+				log.G(ctx).Debugf("scheduler failed to update task %s; will retry", t.ID)
 				failedSchedulingDecisions[id] = decision
 			}
 		}
@@ -237,7 +238,7 @@ func (s *Scheduler) tick() {
 	})
 
 	if err != nil {
-		log.Errorf("Error in master store transaction: %v", err)
+		log.G(ctx).WithError(err).Error("scheduler tick transaction failed")
 
 		s.rollbackLocalState(schedulingDecisions)
 		return
@@ -258,15 +259,15 @@ func (s *Scheduler) rollbackLocalState(decisions map[string]schedulingDecision) 
 }
 
 // scheduleTask schedules a single task.
-func (s *Scheduler) scheduleTask(t *api.Task) *api.Task {
+func (s *Scheduler) scheduleTask(ctx context.Context, t *api.Task) *api.Task {
 	pipeline := NewPipeline(t)
 	n, _ := s.nodeHeap.findMin(pipeline.Process, s.scanAllNodes)
 	if n == nil {
-		log.WithField("task.id", t.ID).Debug("No nodes available to assign tasks to")
+		log.G(ctx).WithField("task.id", t.ID).Debug("No nodes available to assign tasks to")
 		return nil
 	}
 
-	log.WithField("task.id", t.ID).Debugf("Assigning to node %s", n.ID)
+	log.G(ctx).WithField("task.id", t.ID).Debugf("Assigning to node %s", n.ID)
 	newT := *t
 	newT.NodeID = n.ID
 	newT.Status = &api.TaskStatus{State: api.TaskStateAssigned}

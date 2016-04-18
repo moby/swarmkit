@@ -3,12 +3,14 @@ package main
 import (
 	"github.com/docker/swarm-v2/manager"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
 )
 
 var managerCmd = &cobra.Command{
 	Use:   "manager",
 	Short: "Run the swarm manager",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := context.Background()
 		addr, err := cmd.Flags().GetString("listen-addr")
 		if err != nil {
 			return err
@@ -33,7 +35,7 @@ var managerCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return m.Run()
+		return m.Run(ctx)
 	},
 }
 

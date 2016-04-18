@@ -4,13 +4,14 @@ import (
 	"os"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/version"
 	"github.com/spf13/cobra"
 )
 
 func main() {
 	if err := mainCmd.Execute(); err != nil {
-		logrus.Fatal(err)
+		log.L.Fatal(err)
 	}
 }
 
@@ -22,11 +23,11 @@ var (
 			logrus.SetOutput(os.Stderr)
 			flag, err := cmd.Flags().GetString("log-level")
 			if err != nil {
-				logrus.Fatal(err)
+				log.L.Fatal(err)
 			}
 			level, err := logrus.ParseLevel(flag)
 			if err != nil {
-				logrus.Fatal(err)
+				log.L.Fatal(err)
 			}
 			logrus.SetLevel(level)
 		},

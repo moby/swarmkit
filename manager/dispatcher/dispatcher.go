@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/watch"
 	"golang.org/x/net/context"
@@ -80,7 +80,7 @@ func New(store state.WatchableStore, c *Config) *Dispatcher {
 
 // Register is used for registration of node with particular dispatcher.
 func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
-	log.WithField("request", r).Debugf("(*Dispatcher).Register")
+	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Register")
 	// TODO: here goes auth
 
 	// create or update node in store
@@ -113,9 +113,9 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 
 	expireFunc := func() {
 		nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "heartbeat failure"}
-		log.WithField("node.id", nid).Debugf("heartbeat expiration")
+		log.G(ctx).WithField("node.id", nid).Debugf("heartbeat expiration")
 		if err := d.nodeRemove(nid, nodeStatus); err != nil {
-			log.Errorf("error deregistering node %s after heartbeat expiration: %v", nid, err)
+			log.G(ctx).WithError(err).Errorf("failed deregistering node %s after heartbeat expiration", nid)
 		}
 	}
 
@@ -136,14 +136,14 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 // UpdateTaskStatus updates status of task. Node should send such updates
 // on every status change of its tasks.
 func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStatusRequest) (*api.UpdateTaskStatusResponse, error) {
-	log.WithField("request", r).Debugf("(*Dispatcher).UpdateTaskStatus")
+	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).UpdateTaskStatus")
 
 	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 		return nil, err
 	}
 	err := d.store.Update(func(tx state.Tx) error {
 		for _, u := range r.Updates {
-			logger := log.WithField("task.id", u.TaskID)
+			logger := log.G(ctx).WithField("task.id", u.TaskID)
 			if u.Status == nil {
 				logger.Warnf("task report has nil status")
 				continue
@@ -180,7 +180,7 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 // of tasks which should be run on node, if task is not present in that list,
 // it should be terminated.
 func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
-	log.WithField("request", r).Debugf("(*Dispatcher).Tasks")
+	log.G(stream.Context()).WithField("request", r).Debugf("(*Dispatcher).Tasks")
 
 	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 		return err
@@ -265,7 +265,7 @@ func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
 // Node should send new heartbeat earlier than now + TTL, otherwise it will
 // be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
 func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*api.HeartbeatResponse, error) {
-	log.WithField("request", r).Debugf("(*Dispatcher).Heartbeat")
+	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Heartbeat")
 
 	period, err := d.nodes.Heartbeat(r.NodeID, r.SessionID)
 	return &api.HeartbeatResponse{Period: period}, err
@@ -302,7 +302,8 @@ func (d *Dispatcher) getManagers() []*api.WeightedPeer {
 // special boolean field Disconnect which if true indicates that node should
 // reconnect to another Manager immediately.
 func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_SessionServer) error {
-	log.WithField("request", r).Debugf("(*Dispatcher).Session")
+	ctx := stream.Context()
+	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Session")
 	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 		return err
 	}
@@ -343,7 +344,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		if disconnect {
 			nodeStatus := api.NodeStatus{State: api.NodeStatus_DISCONNECTED, Message: "node is currently trying to find new manager"}
 			if err := d.nodeRemove(r.NodeID, nodeStatus); err != nil {
-				log.Error(err)
+				log.G(ctx).WithError(err).Error("failed to remove node")
 			}
 		}
 

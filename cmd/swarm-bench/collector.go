@@ -7,8 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/docker/swarm-v2/log"
 	"github.com/rcrowley/go-metrics"
+	"golang.org/x/net/context"
 )
 
 // Collector waits for tasks to phone home while collecting statistics.
@@ -34,7 +35,7 @@ func (c *Collector) Collect(count int64) {
 	for i := int64(0); i < count; i++ {
 		conn, err := c.ln.Accept()
 		if err != nil {
-			logrus.Error(err)
+			log.G(context.Background()).WithError(err).Error("failure accepting connection")
 			continue
 		}
 		c.t.UpdateSince(start)

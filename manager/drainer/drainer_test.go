@@ -8,9 +8,11 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 )
 
 func TestDrainer(t *testing.T) {
+	ctx := context.Background()
 	initialNodeSet := []*api.Node{
 		{
 			ID: "id1",
@@ -149,7 +151,7 @@ func TestDrainer(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, drainer.Run())
+		assert.NoError(t, drainer.Run(ctx))
 	}()
 
 	// id2, id3, and id5 should be deleted immediately
