@@ -227,6 +227,7 @@ func (a *Agent) run(ctx context.Context) {
 // agent.
 func (a *Agent) connect(ctx context.Context) error {
 	log.G(ctx).Debugf("(*Agent).connect")
+
 	manager, err := a.config.Managers.Select()
 	if err != nil {
 		return err
@@ -235,10 +236,11 @@ func (a *Agent) connect(ctx context.Context) error {
 	backoff := *grpc.DefaultBackoffConfig
 	backoff.MaxDelay = maxSessionFailureBackoff
 
+	creds := a.config.SecurityConfig.ClientTLSCreds
 	a.picker = newPicker(manager, a.config.Managers)
 	a.conn, err = grpc.Dial(manager,
 		grpc.WithPicker(a.picker),
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(creds),
 		grpc.WithBackoffConfig(&backoff))
 	if err != nil {
 		return err

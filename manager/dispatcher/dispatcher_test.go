@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/stretchr/testify/assert"
 )
@@ -34,7 +36,16 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := grpc.NewServer()
+
+	agentSecurityConfig, managerSecurityConfig, tmpDir, err := testutils.GenerateAgentAndManagerSecurityConfig()
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(tmpDir)
+
+	serverOpts := []grpc.ServerOption{grpc.Creds(managerSecurityConfig.ServerTLSCreds)}
+
+	s := grpc.NewServer(serverOpts...)
 	store := state.NewMemoryStore(nil)
 	d := New(store, c)
 	api.RegisterDispatcherServer(s, d)
@@ -43,7 +54,11 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 		// Explicitly ignore it.
 		_ = s.Serve(l)
 	}()
-	conn, err := grpc.Dial(l.Addr().String(), grpc.WithInsecure(), grpc.WithTimeout(10*time.Second))
+
+	clientOpts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
+	clientOpts = append(clientOpts, grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds))
+
+	conn, err := grpc.Dial(l.Addr().String(), clientOpts...)
 	if err != nil {
 		s.Stop()
 		return nil, err
@@ -85,7 +100,7 @@ func TestHeartbeat(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.HeartbeatPeriod = 500 * time.Millisecond
 	cfg.HeartbeatEpsilon = 0
-	gd, err := startDispatcher(cfg)
+	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
 

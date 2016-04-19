@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/watch"
@@ -80,13 +81,16 @@ func New(store state.WatchableStore, c *Config) *Dispatcher {
 
 // Register is used for registration of node with particular dispatcher.
 func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
-	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Register")
-	// TODO: here goes auth
+	agentID, err := ca.AuthorizeRole(ctx, []string{ca.AgentRole})
+	if err != nil {
+		return nil, err
+	}
+	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Register from node %s", agentID)
 
 	// create or update node in store
 	// TODO(stevvooe): Validate node specification.
 	var node *api.Node
-	err := d.store.Update(func(tx state.Tx) error {
+	err = d.store.Update(func(tx state.Tx) error {
 		node = tx.Nodes().Get(r.NodeID)
 		if node != nil {
 			node.Description = r.Description
@@ -136,12 +140,16 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 // UpdateTaskStatus updates status of task. Node should send such updates
 // on every status change of its tasks.
 func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStatusRequest) (*api.UpdateTaskStatusResponse, error) {
-	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).UpdateTaskStatus")
+	agentID, err := ca.AuthorizeRole(ctx, []string{ca.AgentRole})
+	if err != nil {
+		return nil, err
+	}
+	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).UpdateTaskStatus from node: %s", agentID)
 
 	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 		return nil, err
 	}
-	err := d.store.Update(func(tx state.Tx) error {
+	err = d.store.Update(func(tx state.Tx) error {
 		for _, u := range r.Updates {
 			logger := log.G(ctx).WithField("task.id", u.TaskID)
 			if u.Status == nil {
@@ -180,9 +188,14 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 // of tasks which should be run on node, if task is not present in that list,
 // it should be terminated.
 func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
-	log.G(stream.Context()).WithField("request", r).Debugf("(*Dispatcher).Tasks")
+	agentID, err := ca.AuthorizeRole(stream.Context(), []string{ca.AgentRole})
+	if err != nil {
+		return err
+	}
+	log.G(stream.Context()).WithField("request", r).Debugf("(*Dispatcher).Tasks from node %s", agentID)
 
-	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
+	// TODO(diogo): Ensure we only allow nodes to change their own tasks
+	if _, err = d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 		return err
 	}
 
@@ -197,7 +210,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	defer cancel()
 
 	tasksMap := make(map[string]*api.Task)
-	err := d.store.View(func(readTx state.ReadTx) error {
+	err = d.store.View(func(readTx state.ReadTx) error {
 		tasks, err := readTx.Tasks().Find(state.ByNodeID(r.NodeID))
 		if err != nil {
 			return nil
@@ -265,8 +278,14 @@ func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
 // Node should send new heartbeat earlier than now + TTL, otherwise it will
 // be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
 func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*api.HeartbeatResponse, error) {
-	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Heartbeat")
+	agentID, err := ca.AuthorizeRole(ctx, []string{ca.AgentRole})
+	if err != nil {
+		return nil, err
+	}
 
+	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Heartbeat for node %s", agentID)
+
+	// TODO(diogo): Ensure we only allow nodes to change their own heartbeat status
 	period, err := d.nodes.Heartbeat(r.NodeID, r.SessionID)
 	return &api.HeartbeatResponse{Period: period}, err
 }
@@ -303,8 +322,15 @@ func (d *Dispatcher) getManagers() []*api.WeightedPeer {
 // reconnect to another Manager immediately.
 func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_SessionServer) error {
 	ctx := stream.Context()
-	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Session")
-	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
+	agentID, err := ca.AuthorizeRole(ctx, []string{ca.AgentRole})
+	if err != nil {
+		return err
+	}
+
+	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Session for node %s", agentID)
+
+	// TODO(diogo): Ensure we only allow nodes to change their own Session
+	if _, err = d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
 		return err
 	}
 

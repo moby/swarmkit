@@ -1,11 +1,13 @@
 package agent
 
 import (
+	"os"
 	"testing"
 	"time"
 
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/ca/testutils"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -47,10 +49,15 @@ func TestAgent(t *testing.T) {
 }
 
 func TestAgentStartStop(t *testing.T) {
+	agentSecurityConfig, _, tmpDir, err := testutils.GenerateAgentAndManagerSecurityConfig()
+	assert.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
 	agent, err := New(&Config{
-		ID:       "test",
-		Executor: &NoopExecutor{},
-		Managers: NewManagers("localhost:4949"),
+		ID:             "test",
+		Executor:       &NoopExecutor{},
+		Managers:       NewManagers("localhost:4949"),
+		SecurityConfig: agentSecurityConfig,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, agent)

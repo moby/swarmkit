@@ -36,6 +36,8 @@ var (
 
 func init() {
 	mainCmd.PersistentFlags().StringP("log-level", "l", "info", "Log level (options \"debug\", \"info\", \"warn\", \"error\", \"fatal\", \"panic\")")
+	mainCmd.PersistentFlags().StringP("state-dir", "d", "/var/lib/docker/cluster", "State directory")
+	mainCmd.PersistentFlags().StringP("token", "t", "", "Specifies the token necessary to join the cluster securely")
 
 	mainCmd.AddCommand(
 		agentCmd,

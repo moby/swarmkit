@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package docker.cluster.api;
+
+import "specs.proto";
+import "objects.proto";
+import "gogoproto/gogo.proto";
+
+// CA defines the RPC methods for requesting certificates from a CA.
+
+service CA {
+	rpc IssueCertificate(IssueCertificateRequest) returns (IssueCertificateResponse) {}
+}
+
+message IssuanceStatus {
+	enum Status {
+		option (gogoproto.goproto_enum_prefix) = false;
+
+		UNKNOWN = 0 [(gogoproto.enumvalue_customname) = "IssuanceStatusUnknown"];
+		PREPARING = 1 [(gogoproto.enumvalue_customname) = "IssuanceStatusPreparing"];
+		READY = 2 [(gogoproto.enumvalue_customname)="IssuanceStatusReady"]; // Certificate has been accepted and signed and it's ready
+		COMPLETE = 3 [(gogoproto.enumvalue_customname)="IssuanceStatusComplete"]; // successful completion of task (not error code, just ran)
+		FAILED = 4 [(gogoproto.enumvalue_customname)="IssuanceStatusFailed"]; // Certificate issuance failed
+		REJECTED = 5 [(gogoproto.enumvalue_customname)="IssuanceStatusRejected"]; // Certificate issuance got rejected
+	}
+	Status status = 1 [(gogoproto.customname) = "Status"];
+
+
+	// Err is set if the Certificate Issuance is in an error state.
+	//
+	// The following states should report a companion error:
+	//
+	//	FAILED, REJECTED
+	//
+	string err = 2;
+}
+
+message IssueCertificateRequest {
+	string role = 1;
+	bytes csr = 2 [(gogoproto.customname) = "CSR"];
+}
+
+// TODO(diogo): This response should be a random ID that agents
+// can then query for status.
+message IssueCertificateResponse {
+	IssuanceStatus status = 1;
+	bytes certificate_chain = 2;
+}

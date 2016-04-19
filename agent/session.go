@@ -72,6 +72,7 @@ func (s *session) run(ctx context.Context, delay time.Duration) {
 
 func (s *session) register(ctx context.Context) (string, error) {
 	log.G(ctx).Debugf("(*session).register")
+
 	client := api.NewDispatcherClient(s.agent.conn)
 
 	description, err := s.agent.config.Executor.Describe(ctx)
