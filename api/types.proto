@@ -121,18 +121,19 @@ enum TaskState {
 	option (gogoproto.enum_customname) = "TaskState";
 	NEW = 0 [(gogoproto.enumvalue_customname)="TaskStateNew"];
 	ALLOCATED = 1 [(gogoproto.enumvalue_customname)="TaskStateAllocated"]; // successful allocation of resources that the task needs
-	ASSIGNED = 2 [(gogoproto.enumvalue_customname)="TaskStateAssigned"];
-	ACCEPTED = 3 [(gogoproto.enumvalue_customname)="TaskStateAccepted"]; // task has been accepted by an agent.
-	PREPARING = 4 [(gogoproto.enumvalue_customname)="TaskStatePreparing"];
-	READY = 5 [(gogoproto.enumvalue_customname)="TaskStateReady"];
-	STARTING = 6 [(gogoproto.enumvalue_customname)="TaskStateStarting"];
-	RUNNING = 7 [(gogoproto.enumvalue_customname)="TaskStateRunning"];
-	SHUTDOWN = 8 [(gogoproto.enumvalue_customname)="TaskStateShutdown"];
-	COMPLETE = 9 [(gogoproto.enumvalue_customname)="TaskStateCompleted"]; // successful completion of task (not error code, just ran)
-	FAILED = 10 [(gogoproto.enumvalue_customname)="TaskStateFailed"]; // task execution failed with error
-	REJECTED = 11 [(gogoproto.enumvalue_customname)="TaskStateRejected"]; // task could not be executed here.
-	FINALIZE = 12 [(gogoproto.enumvalue_customname)="TaskStateFinalize"]; // when task is deallocated from node, waiting on cleanup
-	DEAD = 13 [(gogoproto.enumvalue_customname)="TaskStateDead"]; // completely finished, unallocated task.
+	PENDING = 2 [(gogoproto.enumvalue_customname) = "TaskStatePending"]; // observed by scheduler but unassigned. 
+	ASSIGNED = 3 [(gogoproto.enumvalue_customname)="TaskStateAssigned"];
+	ACCEPTED = 4 [(gogoproto.enumvalue_customname)="TaskStateAccepted"]; // task has been accepted by an agent.
+	PREPARING = 5 [(gogoproto.enumvalue_customname)="TaskStatePreparing"];
+	READY = 6 [(gogoproto.enumvalue_customname)="TaskStateReady"];
+	STARTING = 7 [(gogoproto.enumvalue_customname)="TaskStateStarting"];
+	RUNNING = 8 [(gogoproto.enumvalue_customname)="TaskStateRunning"];
+	SHUTDOWN = 9 [(gogoproto.enumvalue_customname)="TaskStateShutdown"];
+	COMPLETE = 10 [(gogoproto.enumvalue_customname)="TaskStateCompleted"]; // successful completion of task (not error code, just ran)
+	FAILED = 11 [(gogoproto.enumvalue_customname)="TaskStateFailed"]; // task execution failed with error
+	REJECTED = 12 [(gogoproto.enumvalue_customname)="TaskStateRejected"]; // task could not be executed here.
+	FINALIZE = 13 [(gogoproto.enumvalue_customname)="TaskStateFinalize"]; // when task is deallocated from node, waiting on cleanup
+	DEAD = 14 [(gogoproto.enumvalue_customname)="TaskStateDead"]; // completely finished, unallocated task.
 }
 
 message TaskStatus {
