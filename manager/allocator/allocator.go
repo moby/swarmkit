@@ -64,7 +64,7 @@ type allocActor struct {
 
 	// Init routine which is called during the initialization of
 	// the allocator.
-	init func() error
+	init func(ctx context.Context) error
 }
 
 // New returns a new instance of Allocator for use during allocation
@@ -116,7 +116,7 @@ func (a *Allocator) Start(ctx context.Context) error {
 			// init might return an allocator specific context
 			// which is a child of the passed in context to hold
 			// allocator specific state
-			if err := aaCopy.init(); err != nil {
+			if err := aaCopy.init(ctx); err != nil {
 				// Stop the watches for this allocator
 				// if we are failing in the init of
 				// this allocator.

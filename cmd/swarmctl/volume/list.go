@@ -5,10 +5,11 @@ import (
 	"os"
 	"text/tabwriter"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/log"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
 )
 
 var (
@@ -17,6 +18,7 @@ var (
 		Short:   "List volumes",
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := context.Background()
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
@@ -43,7 +45,7 @@ var (
 				// and don't have any proper error handling whatsover.
 				// Instead of aborting, we should display what we can of the Volume.
 				if name == "" || v.ID == "" {
-					log.Fatalf("Malformed volume: %v", v)
+					log.G(ctx).Fatalf("Malformed volume: %v", v)
 				}
 
 				driverName := ""

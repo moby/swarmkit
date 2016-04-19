@@ -3,9 +3,9 @@ package allocator
 import (
 	"fmt"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/allocator/networkallocator"
 	"github.com/docker/swarm-v2/manager/state"
 	"golang.org/x/net/context"
@@ -27,7 +27,7 @@ type networkContext struct {
 	unallocatedTasks map[string]*api.Task
 }
 
-func (a *Allocator) doNetworkInit() error {
+func (a *Allocator) doNetworkInit(ctx context.Context) error {
 	na, err := networkallocator.New()
 	if err != nil {
 		return err
@@ -58,8 +58,8 @@ func (a *Allocator) doNetworkInit() error {
 			continue
 		}
 
-		if err := a.allocateNetwork(nc, n); err != nil {
-			logrus.Errorf("failed allocating network %s during init: %v", n.ID, err)
+		if err := a.allocateNetwork(ctx, nc, n); err != nil {
+			log.G(ctx).Errorf("failed allocating network %s during init: %v", n.ID, err)
 		}
 	}
 
@@ -80,8 +80,8 @@ func (a *Allocator) doNetworkInit() error {
 				continue
 			}
 
-			if err := a.allocateTask(nc, tx, t); err != nil {
-				logrus.Errorf("failed allocating task %s during init: %v", t.ID, err)
+			if err := a.allocateTask(ctx, nc, tx, t); err != nil {
+				log.G(ctx).Errorf("failed allocating task %s during init: %v", t.ID, err)
 				nc.unallocatedTasks[t.ID] = t
 			}
 		}
@@ -105,13 +105,13 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			break
 		}
 
-		if err := a.allocateNetwork(nc, n); err != nil {
-			logrus.Errorf("Failed allocation for network %s: %v", n.ID, err)
+		if err := a.allocateNetwork(ctx, nc, n); err != nil {
+			log.G(ctx).Errorf("Failed allocation for network %s: %v", n.ID, err)
 			break
 		}
 
 		// We successfully allocated a network. Time to revisit unallocated tasks.
-		a.procUnallocatedTasks(nc)
+		a.procUnallocatedTasks(ctx, nc)
 	case state.EventDeleteNetwork:
 		n := v.Network
 
@@ -120,14 +120,14 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		// thing that needs to happen is free the network
 		// resources.
 		if err := nc.nwkAllocator.Deallocate(n); err != nil {
-			logrus.Errorf("Failed during network free for network %s: %v", n.ID, err)
+			log.G(ctx).Errorf("Failed during network free for network %s: %v", n.ID, err)
 		}
 	case state.EventCreateTask, state.EventUpdateTask, state.EventDeleteTask, state.EventCommit:
-		a.doTaskAlloc(nc, ev)
+		a.doTaskAlloc(ctx, nc, ev)
 	}
 }
 
-func (a *Allocator) doTaskAlloc(nc *networkContext, ev events.Event) {
+func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev events.Event) {
 	var (
 		isDelete bool
 		t        *api.Task
@@ -142,7 +142,7 @@ func (a *Allocator) doTaskAlloc(nc *networkContext, ev events.Event) {
 		isDelete = true
 		t = v.Task
 	case state.EventCommit:
-		a.procUnallocatedTasks(nc)
+		a.procUnallocatedTasks(ctx, nc)
 		return
 	}
 
@@ -178,7 +178,7 @@ func (a *Allocator) doTaskAlloc(nc *networkContext, ev events.Event) {
 
 			return nil
 		}); err != nil {
-			logrus.Error(err)
+			log.G(ctx).WithError(err).Error("error updating task network")
 		}
 
 		return
@@ -199,12 +199,12 @@ func (a *Allocator) doTaskAlloc(nc *networkContext, ev events.Event) {
 	// task.
 	if t.Status.State > api.TaskStateRunning || isDelete {
 		if err := nc.nwkAllocator.DeallocateTask(t); err != nil {
-			logrus.Errorf("Failed freeing network resources for task %s: %v", t.ID, err)
+			log.G(ctx).Errorf("Failed freeing network resources for task %s: %v", t.ID, err)
 		}
 	}
 }
 
-func (a *Allocator) allocateNetwork(nc *networkContext, n *api.Network) error {
+func (a *Allocator) allocateNetwork(ctx context.Context, nc *networkContext, n *api.Network) error {
 	if err := nc.nwkAllocator.Allocate(n); err != nil {
 		return fmt.Errorf("failed during network allocation for network %s: %v", n.ID, err)
 	}
@@ -216,7 +216,7 @@ func (a *Allocator) allocateNetwork(nc *networkContext, n *api.Network) error {
 		return nil
 	}); err != nil {
 		if err := nc.nwkAllocator.Deallocate(n); err != nil {
-			logrus.Errorf("Failed rolling back allocation for network %s: %v", n.ID, err)
+			log.G(ctx).WithError(err).Errorf("failed rolling back allocation of network %s", n.ID)
 		}
 
 		return err
@@ -225,7 +225,7 @@ func (a *Allocator) allocateNetwork(nc *networkContext, n *api.Network) error {
 	return nil
 }
 
-func (a *Allocator) allocateTask(nc *networkContext, tx state.Tx, t *api.Task) error {
+func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx state.Tx, t *api.Task) error {
 	// We might be here even if a task allocation has already
 	// happened but wasn't successfully committed to store. In such
 	// cases skip allocation and go straight ahead to updating the
@@ -272,10 +272,10 @@ func (a *Allocator) allocateTask(nc *networkContext, tx state.Tx, t *api.Task) e
 	return nil
 }
 
-func (a *Allocator) procUnallocatedTasks(nc *networkContext) {
+func (a *Allocator) procUnallocatedTasks(ctx context.Context, nc *networkContext) {
 	if err := a.store.Update(func(tx state.Tx) error {
 		for _, t := range nc.unallocatedTasks {
-			if err := a.allocateTask(nc, tx, t); err != nil {
+			if err := a.allocateTask(ctx, nc, tx, t); err != nil {
 				return fmt.Errorf("task allocation failure: %v", err)
 			}
 
@@ -287,6 +287,6 @@ func (a *Allocator) procUnallocatedTasks(nc *networkContext) {
 		}
 		return nil
 	}); err != nil {
-		logrus.Error(err)
+		log.G(ctx).WithError(err).Error("failed to allocate task")
 	}
 }

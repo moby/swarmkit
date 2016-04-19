@@ -33,6 +33,7 @@ func (e *NoopExecutor) Runner(t *api.Task) (exec.Runner, error) {
 }
 
 func TestManager(t *testing.T) {
+	ctx := context.TODO()
 	store := state.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
@@ -56,7 +57,7 @@ func TestManager(t *testing.T) {
 	done := make(chan error)
 	defer close(done)
 	go func() {
-		done <- m.Run()
+		done <- m.Run(ctx)
 	}()
 
 	conn, err := grpc.Dial(temp.Name(), grpc.WithInsecure(), grpc.WithTimeout(10*time.Second),
@@ -80,6 +81,7 @@ func TestManager(t *testing.T) {
 }
 
 func TestManagerNodeCount(t *testing.T) {
+	ctx := context.TODO()
 	store := state.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
@@ -95,7 +97,7 @@ func TestManagerNodeCount(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, m)
-	go m.Run()
+	go m.Run(ctx)
 	defer m.Stop()
 
 	conn, err := grpc.Dial(l.Addr().String(), grpc.WithInsecure(), grpc.WithTimeout(10*time.Second),

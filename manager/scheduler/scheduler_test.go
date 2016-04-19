@@ -11,9 +11,11 @@ import (
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 )
 
 func TestScheduler(t *testing.T) {
+	ctx := context.Background()
 	initialNodeSet := []*api.Node{
 		{
 			ID: "id1",
@@ -108,7 +110,7 @@ func TestScheduler(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run())
+		assert.NoError(t, scheduler.Run(ctx))
 	}()
 
 	assignment1 := watchAssignment(t, watch)
@@ -352,6 +354,7 @@ func TestScheduler(t *testing.T) {
 }
 
 func TestSchedulerNoReadyNodes(t *testing.T) {
+	ctx := context.Background()
 	initialTask := &api.Task{
 		ID:   "id1",
 		Spec: &api.TaskSpec{},
@@ -379,7 +382,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run())
+		assert.NoError(t, scheduler.Run(ctx))
 	}()
 
 	err = store.Update(func(tx state.Tx) error {
@@ -408,6 +411,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 }
 
 func TestSchedulerResourceConstraint(t *testing.T) {
+	ctx := context.Background()
 	// Create a ready node without enough memory to run the task.
 	underprovisionedNode := &api.Node{
 		ID: "underprovisioned",
@@ -465,7 +469,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run())
+		assert.NoError(t, scheduler.Run(ctx))
 	}()
 
 	err = store.Update(func(tx state.Tx) error {
@@ -555,6 +559,7 @@ func BenchmarkSchedulerWorstCase100kNodes1MTasks(b *testing.B) {
 }
 
 func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
+	ctx := context.Background()
 	for iters := 0; iters < b.N; iters++ {
 		b.StopTimer()
 		s := state.NewMemoryStore(nil)
@@ -564,7 +569,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 		watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 
 		go func() {
-			_ = scheduler.Run()
+			_ = scheduler.Run(ctx)
 		}()
 
 		// Let the scheduler get started

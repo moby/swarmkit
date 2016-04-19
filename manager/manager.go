@@ -8,8 +8,9 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/allocator"
 	"github.com/docker/swarm-v2/manager/clusterapi"
 	"github.com/docker/swarm-v2/manager/dispatcher"
@@ -91,7 +92,7 @@ func New(config *Config) (*Manager, error) {
 		Config:   raftCfg,
 		StateDir: raftStateDir,
 	}
-	raftNode, err := state.NewNode(context.Background(), newNodeOpts, leadershipCh)
+	raftNode, err := state.NewNode(context.TODO(), newNodeOpts, leadershipCh)
 	if err != nil {
 		return nil, fmt.Errorf("can't create raft node: %v", err)
 	}
@@ -119,7 +120,7 @@ func New(config *Config) (*Manager, error) {
 // Run starts all manager sub-systems and the gRPC server at the configured
 // address.
 // The call never returns unless an error occurs or `Stop()` is called.
-func (m *Manager) Run() error {
+func (m *Manager) Run(ctx context.Context) error {
 	lis := m.config.Listener
 	if lis == nil {
 		l, err := net.Listen(m.config.ListenProto, m.config.ListenAddr)
@@ -146,9 +147,15 @@ func (m *Manager) Run() error {
 					m.scheduler = scheduler.New(store)
 					m.drainer = drainer.New(store)
 
+					// TODO(stevvooe): Allocate a context that can be used to
+					// shutdown underlying manager processes when leadership is
+					// lost.
+
 					allocator, err := allocator.New(store)
 					if err != nil {
-						log.Error(err)
+						log.G(ctx).WithError(err).Error("failed to create allocator")
+						// TODO(stevvooe): It doesn't seem correct here to fail
+						// creating the allocator but then use it anyways.
 					}
 					m.allocator = allocator
 
@@ -159,24 +166,24 @@ func (m *Manager) Run() error {
 					// any component that goes down would bring the entire manager down.
 
 					if m.allocator != nil {
-						if err := m.allocator.Start(context.Background()); err != nil {
-							log.Error(err)
+						if err := m.allocator.Start(ctx); err != nil {
+							log.G(ctx).WithError(err).Error("allocator exited with an error")
 						}
 					}
 
 					go func() {
-						if err := m.scheduler.Run(); err != nil {
-							log.Error(err)
+						if err := m.scheduler.Run(ctx); err != nil {
+							log.G(ctx).WithError(err).Error("scheduler exited with an error")
 						}
 					}()
 					go func() {
-						if err := m.orchestrator.Run(); err != nil {
-							log.Error(err)
+						if err := m.orchestrator.Run(ctx); err != nil {
+							log.G(ctx).WithError(err).Error("orchestrator exited with an error")
 						}
 					}()
 					go func() {
-						if err := m.drainer.Run(); err != nil {
-							log.Error(err)
+						if err := m.drainer.Run(ctx); err != nil {
+							log.G(ctx).WithError(err).Error("drainer exited with an error")
 						}
 					}()
 				} else if newState == state.IsFollower {
@@ -201,8 +208,12 @@ func (m *Manager) Run() error {
 		}
 	}()
 
-	log.WithFields(log.Fields{"proto": lis.Addr().Network(), "addr": lis.Addr().String()}).Info("Listening for connections")
-	go m.raftNode.Run()
+	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(
+		logrus.Fields{
+			"proto": lis.Addr().Network(),
+			"addr":  lis.Addr().String()}))
+	log.G(ctx).Info("listening")
+	go m.raftNode.Run(ctx)
 
 	state.Register(m.server, m.raftNode)
 

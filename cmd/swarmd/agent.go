@@ -1,11 +1,11 @@
 package main
 
 import (
-	log "github.com/Sirupsen/logrus"
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/swarm-v2/agent"
 	"github.com/docker/swarm-v2/agent/exec/container"
 	"github.com/docker/swarm-v2/identity"
+	"github.com/docker/swarm-v2/log"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -18,6 +18,7 @@ var (
 empty path, the agent will allocate an identity and startup. If data is
 already present, the agent will recover and startup.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := context.Background()
 			hostname, err := cmd.Flags().GetString("hostname")
 			if err != nil {
 				return err
@@ -29,7 +30,7 @@ already present, the agent will recover and startup.`,
 			}
 
 			if id == "" {
-				log.Debugf("agent: generated random identifier")
+				log.G(ctx).Debugf("agent: generated random identifier")
 				id = identity.NewID()
 			}
 
@@ -43,7 +44,7 @@ already present, the agent will recover and startup.`,
 				return err
 			}
 
-			log.Debugf("managers: %v", managerAddrs)
+			log.G(ctx).Debugf("managers: %v", managerAddrs)
 			managers := agent.NewManagers(managerAddrs...)
 
 			client, err := engineapi.NewClient(engineAddr, "", nil, nil)
@@ -60,10 +61,10 @@ already present, the agent will recover and startup.`,
 				Executor: executor,
 			})
 			if err != nil {
-				log.Fatalln(err)
+				log.G(ctx).Fatalln(err)
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
 			if err := ag.Start(ctx); err != nil {

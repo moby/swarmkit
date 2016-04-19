@@ -12,7 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -214,7 +213,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 		n.sendTimeout = opts.SendTimeout
 	}
 
-	if err := n.loadAndStart(); err != nil {
+	if err := n.loadAndStart(ctx); err != nil {
 		n.ticker.Stop()
 		return nil, err
 	}
@@ -278,7 +277,7 @@ func DefaultNodeConfig() *raft.Config {
 		ElectionTick:    3,
 		MaxSizePerMsg:   math.MaxUint16,
 		MaxInflightMsgs: 256,
-		Logger:          log.G(context.Background()),
+		Logger:          log.L,
 	}
 }
 
@@ -295,7 +294,7 @@ func (n *Node) snapDir() string {
 	return filepath.Join(n.stateDir, "snap")
 }
 
-func (n *Node) loadAndStart() error {
+func (n *Node) loadAndStart(ctx context.Context) error {
 	walDir := n.walDir()
 	snapDir := n.snapDir()
 
@@ -344,7 +343,7 @@ func (n *Node) loadAndStart() error {
 	}
 
 	// Read logs to fully catch up store
-	if err := n.readWAL(snapshot); err != nil {
+	if err := n.readWAL(ctx, snapshot); err != nil {
 		return err
 	}
 
@@ -352,7 +351,7 @@ func (n *Node) loadAndStart() error {
 	return nil
 }
 
-func (n *Node) readWAL(snapshot *raftpb.Snapshot) (err error) {
+func (n *Node) readWAL(ctx context.Context, snapshot *raftpb.Snapshot) (err error) {
 	var (
 		walsnap  walpb.Snapshot
 		metadata []byte
@@ -381,7 +380,7 @@ func (n *Node) readWAL(snapshot *raftpb.Snapshot) (err error) {
 			if !wal.Repair(n.walDir()) {
 				return fmt.Errorf("WAL error (%v) cannot be repaired", err)
 			}
-			logrus.Infof("repaired WAL error (%v)", err)
+			log.G(ctx).Infof("repaired WAL error (%v)", err)
 			repaired = true
 			continue
 		}
@@ -422,7 +421,7 @@ func (n *Node) readWAL(snapshot *raftpb.Snapshot) (err error) {
 //
 // Before running the main loop, it first starts the raft node based on saved
 // cluster state. If no saved state exists, it starts a single-node cluster.
-func (n *Node) Run() {
+func (n *Node) Run(ctx context.Context) {
 	n.wait = newWait()
 	for {
 		select {
@@ -507,6 +506,7 @@ func (n *Node) Run() {
 			close(n.doneCh)
 			n.stopMu.Unlock()
 			return
+			// TODO(stevvooe): Handle ctx.Done()
 		}
 	}
 }
@@ -996,7 +996,7 @@ func (n *Node) processEntry(entry raftpb.Entry) error {
 
 		err := n.memoryStore.applyStoreActions(r.Action)
 		if err != nil {
-			logrus.Errorf("error applying actions from raft: %v", err)
+			log.G(context.Background()).Errorf("error applying actions from raft: %v", err)
 		}
 	}
 	return nil

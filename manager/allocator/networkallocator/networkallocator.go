@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/libnetwork/driverapi"
 	"github.com/docker/libnetwork/drivers/overlay/ovmanager"
 	"github.com/docker/libnetwork/drvregistry"
 	"github.com/docker/libnetwork/ipamapi"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/log"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -165,7 +166,7 @@ func (na *NetworkAllocator) AllocateTask(t *api.Task) error {
 
 		if err := na.allocateNetworkIPs(nAttach, ipam, localNet); err != nil {
 			if err := na.releaseEndpoints(t.Networks[:i]); err != nil {
-				logrus.Errorf("Failed to release IP addresses while rolling back allocation for task %s network %s: %v", t.ID, nAttach.Network.ID, err)
+				log.G(context.TODO()).Errorf("Failed to release IP addresses while rolling back allocation for task %s network %s: %v", t.ID, nAttach.Network.ID, err)
 			}
 			return fmt.Errorf("failed to allocate network IP for task %s network %s: %v", t.ID, nAttach.Network.ID, err)
 		}
@@ -203,12 +204,12 @@ func (na *NetworkAllocator) releaseEndpoints(networks []*api.Task_NetworkAttachm
 
 			ip, _, err := net.ParseCIDR(addr)
 			if err != nil {
-				logrus.Errorf("Could not parse IP address %s while releasing", addr)
+				log.G(context.TODO()).Errorf("Could not parse IP address %s while releasing", addr)
 				continue
 			}
 
 			if err := ipam.ReleaseAddress(poolID, ip); err != nil {
-				logrus.Errorf("IPAM failure while releasing IP address %s: %v", addr, err)
+				log.G(context.TODO()).Errorf("IPAM failure while releasing IP address %s: %v", addr, err)
 			}
 		}
 
@@ -341,13 +342,13 @@ func (na *NetworkAllocator) freePools(n *api.Network, pools map[string]string) e
 func releasePools(ipam ipamapi.Ipam, icList []*api.IPAMConfiguration, pools map[string]string) {
 	for _, ic := range icList {
 		if err := ipam.ReleaseAddress(pools[ic.Subnet], net.ParseIP(ic.Gateway)); err != nil {
-			logrus.Errorf("Failed to release address %s: %v", ic.Subnet, err)
+			log.G(context.TODO()).Errorf("Failed to release address %s: %v", ic.Subnet, err)
 		}
 	}
 
 	for k, p := range pools {
 		if err := ipam.ReleasePool(p); err != nil {
-			logrus.Errorf("Failed to release pool %s: %v", k, err)
+			log.G(context.TODO()).Errorf("Failed to release pool %s: %v", k, err)
 		}
 	}
 }
