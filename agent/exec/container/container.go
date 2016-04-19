@@ -132,6 +132,10 @@ func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
 				IPv4Address: ipv4,
 				IPv6Address: ipv6,
 			},
+			ServiceConfig: &network.EndpointServiceConfig{
+				Name: c.task.Meta.Name,
+				ID:   c.task.ServiceID,
+			},
 		}
 
 		epConfig[na.Network.Spec.Meta.Name] = epSettings
