@@ -131,12 +131,12 @@ func (_m *MockReporter) EXPECT() *_MockReporterRecorder {
 	return _m.recorder
 }
 
-func (_m *MockReporter) Report(ctx context.Context, state api.TaskState) error {
-	ret := _m.ctrl.Call(_m, "Report", ctx, state)
+func (_m *MockReporter) Report(ctx context.Context, state api.TaskState, msg string) error {
+	ret := _m.ctrl.Call(_m, "Report", ctx, state, msg)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockReporterRecorder) Report(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Report", arg0, arg1)
+func (_mr *_MockReporterRecorder) Report(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Report", arg0, arg1, arg2)
 }

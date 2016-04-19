@@ -141,6 +141,20 @@ message TaskStatus {
 	// State expresses the current state of the task.
 	TaskState state = 2;
 
+	// Msg reports a message for the task status. This should provide a human
+	// readable message that can point to how the task actually arrived at a
+	// current state.
+	//
+	// As a convention, we place the a small message here that led to the
+	// current state. For example, if the task is in ready, because it was
+	// prepared, we'd place "prepared" in this field. If we skipped preparation
+	// because the task is prepared, we would put "already prepared" in this
+	// field.
+	//
+	// We abbreviate to avoid common collisions with protobuf names using
+	// `Message`.
+	string msg = 3;
+
 	// Err is set if the task is in an error state.
 	//
 	// The following states should report a companion error:
@@ -148,7 +162,7 @@ message TaskStatus {
 	//	FAILED, REJECTED
 	//
 	// TODO(stevvooe) Integrate this field with the error interface.
-	string err = 3;
+	string err = 4;
 
 	// TODO(stevvooe): Report on runtime statistics.
 }

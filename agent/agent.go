@@ -305,7 +305,7 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 		if err := a.acceptTask(ctx, task); err != nil {
 			log.G(ctx).WithError(err).Errorf("starting task controller failed")
 			go func() {
-				if err := a.report(ctx, task.ID, api.TaskStateRejected, err); err != nil {
+				if err := a.report(ctx, task.ID, api.TaskStateRejected, "rejected task during assignment", err); err != nil {
 					log.G(ctx).WithError(err).Errorf("reporting task rejection failed")
 				}
 			}()
@@ -379,8 +379,8 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 
 	original := status.Copy()
 
-	// validate transition only moves forward
-	if report.state <= status.State && report.err == nil {
+	// validate transition only moves forward or updates fields
+	if report.state < status.State && report.err == nil {
 		log.G(ctx).Errorf("%v -> %v invalid!", status.State, report.state)
 		return errTaskInvalidStateTransition
 	}
@@ -417,12 +417,17 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 	}
 
 	status.Timestamp = tsp
+	status.Msg = report.message
 
 	if reflect.DeepEqual(status, original) {
 		return errTaskStatusUpdateNoChange
 	}
 
-	log.G(ctx).Infof("%v -> %v", original.State, status.State)
+	log.G(ctx).WithFields(logrus.Fields{
+		"state.from": original.State,
+		"state.to":   status.State,
+		"state.msg":  status.Msg,
+	}).Infof("task status updated")
 
 	switch status.State {
 	case api.TaskStateNew, api.TaskStateAllocated,
@@ -464,7 +469,7 @@ func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 	taskID := task.ID
 
 	go func() {
-		if err := reporter.Report(ctx, api.TaskStateAccepted); err != nil {
+		if err := reporter.Report(ctx, api.TaskStateAccepted, "accepted"); err != nil {
 			// TODO(stevvooe): What to do here? should be a rare error or never happen
 			log.G(ctx).WithError(err).Errorf("reporting accepted status")
 			return
@@ -472,7 +477,7 @@ func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 
 		if err := exec.Run(ctx, runner, reporter); err != nil {
 			log.G(ctx).WithError(err).Errorf("task run failed")
-			if err := a.report(ctx, taskID, api.TaskStateFailed, err); err != nil {
+			if err := a.report(ctx, taskID, api.TaskStateFailed, "execution failed", err); err != nil {
 				log.G(ctx).WithError(err).Errorf("reporting task run error failed")
 			}
 			return
@@ -513,21 +518,21 @@ func (a *Agent) removeTask(ctx context.Context, t *api.Task) error {
 		taskID = t.ID
 	)
 	go func() {
-		if err := a.report(ctx, taskID, api.TaskStateFinalize); err != nil {
+		if err := a.report(ctx, taskID, api.TaskStateFinalize, "removing"); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed to report finalization")
 			return
 		}
 
 		if err := ctlr.Remove(ctx); err != nil {
 			log.G(ctx).WithError(err).Errorf("remove failed")
-			if err := a.report(ctx, taskID, api.TaskStateFinalize, err); err != nil {
+			if err := a.report(ctx, taskID, api.TaskStateFinalize, "remove failed", err); err != nil {
 				log.G(ctx).WithError(err).Errorf("report remove error failed")
 				return
 			}
 		}
 
-		if err := a.report(ctx, taskID, api.TaskStateDead); err != nil {
-			log.G(ctx).WithError(err).Errorf("failed to report finalization")
+		if err := a.report(ctx, taskID, api.TaskStateDead, "finalized"); err != nil {
+			log.G(ctx).WithError(err).Errorf("failed reporting finalization")
 			return
 		}
 	}()
@@ -539,11 +544,12 @@ type taskStatusReport struct {
 	timestamp time.Time
 	taskID    string
 	state     api.TaskState
+	message   string
 	err       error
 	response  chan error
 }
 
-func (a *Agent) report(ctx context.Context, taskID string, state api.TaskState, errs ...error) error {
+func (a *Agent) report(ctx context.Context, taskID string, state api.TaskState, msg string, errs ...error) error {
 	log.G(ctx).Debugf("(*Agent).report")
 	if len(errs) > 1 {
 		panic("only one error per report is allowed")
@@ -561,6 +567,7 @@ func (a *Agent) report(ctx context.Context, taskID string, state api.TaskState, 
 		timestamp: time.Now(),
 		taskID:    taskID,
 		state:     state,
+		message:   msg,
 		err:       err,
 		response:  response,
 	}:
@@ -581,13 +588,13 @@ func (a *Agent) report(ctx context.Context, taskID string, state api.TaskState, 
 
 func (a *Agent) reporter(ctx context.Context, t *api.Task) exec.Reporter {
 	id := t.ID
-	return reporterFunc(func(ctx context.Context, state api.TaskState) error {
-		return a.report(ctx, id, state)
+	return reporterFunc(func(ctx context.Context, state api.TaskState, msg string) error {
+		return a.report(ctx, id, state, msg)
 	})
 }
 
-type reporterFunc func(ctx context.Context, state api.TaskState) error
+type reporterFunc func(ctx context.Context, state api.TaskState, msg string) error
 
-func (fn reporterFunc) Report(ctx context.Context, state api.TaskState) error {
-	return fn(ctx, state)
+func (fn reporterFunc) Report(ctx context.Context, state api.TaskState, msg string) error {
+	return fn(ctx, state, msg)
 }
