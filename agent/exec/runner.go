@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"golang.org/x/net/context"
@@ -49,7 +50,7 @@ type Runner interface {
 type Reporter interface {
 	// Report the state of the task run. If an error is returned, execution
 	// will be stopped.
-	Report(ctx context.Context, state api.TaskState) error
+	Report(ctx context.Context, state api.TaskState, msg string) error
 
 	// TODO(stevvooe): It is very likely we will need to report more
 	// information back from the runner into the agent. We'll likely expand
@@ -59,7 +60,7 @@ type Reporter interface {
 // Run runs a runner, reporting state along the way. Under normal execution,
 // this function blocks until the task is completed.
 func Run(ctx context.Context, runner Runner, reporter Reporter) error {
-	if err := report(ctx, reporter, api.TaskStatePreparing); err != nil {
+	if err := report(ctx, reporter, api.TaskStatePreparing, "preparing"); err != nil {
 		return err
 	}
 
@@ -67,45 +68,47 @@ func Run(ctx context.Context, runner Runner, reporter Reporter) error {
 		switch err {
 		case ErrTaskPrepared:
 			log.G(ctx).Warnf("already prepared")
-			return runStart(ctx, runner, reporter)
+			return runStart(ctx, runner, reporter, "already prepared")
 		case ErrTaskStarted:
 			log.G(ctx).Warnf("already started")
-			return runWait(ctx, runner, reporter)
+			return runWait(ctx, runner, reporter, "already started")
 		default:
 			return err
 		}
 	}
 
-	if err := report(ctx, reporter, api.TaskStateReady); err != nil {
+	if err := report(ctx, reporter, api.TaskStateReady, "prepared"); err != nil {
 		return err
 	}
 
-	return runStart(ctx, runner, reporter)
+	return runStart(ctx, runner, reporter, "starting")
 }
 
 // runStart reports that the task is starting, calls Start and hands execution
 // off to `runWait`. It will block until task execution is completed or an
 // error is encountered.
-func runStart(ctx context.Context, runner Runner, reporter Reporter) error {
-	if err := report(ctx, reporter, api.TaskStateStarting); err != nil {
+func runStart(ctx context.Context, runner Runner, reporter Reporter, msg string) error {
+	if err := report(ctx, reporter, api.TaskStateStarting, msg); err != nil {
 		return err
 	}
 
+	msg = "started"
 	if err := runner.Start(ctx); err != nil {
 		switch err {
 		case ErrTaskStarted:
 			log.G(ctx).Warnf("already started")
+			msg = "already started"
 		default:
 			return err
 		}
 	}
-	return runWait(ctx, runner, reporter)
+	return runWait(ctx, runner, reporter, msg)
 }
 
 // runWait reports that the task is running and calls Wait. When Wait exits,
 // the task will be reported as completed.
-func runWait(ctx context.Context, runner Runner, reporter Reporter) error {
-	if err := report(ctx, reporter, api.TaskStateRunning); err != nil {
+func runWait(ctx context.Context, runner Runner, reporter Reporter, msg string) error {
+	if err := report(ctx, reporter, api.TaskStateRunning, msg); err != nil {
 		return err
 	}
 
@@ -116,16 +119,17 @@ func runWait(ctx context.Context, runner Runner, reporter Reporter) error {
 		return err
 	}
 
-	return report(ctx, reporter, api.TaskStateCompleted)
+	return report(ctx, reporter, api.TaskStateCompleted, "completed")
 }
 
-func report(ctx context.Context, reporter Reporter, state api.TaskState) error {
+func report(ctx context.Context, reporter Reporter, state api.TaskState, msg string) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
 	}
 
-	log.G(ctx).WithField("state", state).Debugf("Report")
-	return reporter.Report(ctx, state)
+	log.G(ctx).WithFields(logrus.Fields{
+		"state": state, "msg": msg}).Debug("Report")
+	return reporter.Report(ctx, state, msg)
 }
