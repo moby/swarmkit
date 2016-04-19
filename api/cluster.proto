@@ -20,7 +20,6 @@ service Cluster {
 
 	rpc GetTask(GetTaskRequest) returns (GetTaskResponse) {}
 	rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {}
-	rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse) {}
 	rpc RemoveTask(RemoveTaskRequest) returns (RemoveTaskResponse) {}
 
 	rpc GetService(GetServiceRequest) returns (GetServiceResponse) {}
@@ -72,14 +71,6 @@ message UpdateNodeRequest {
 
 message UpdateNodeResponse {
 	Node node = 1;
-}
-
-message CreateTaskRequest {
-	ServiceSpec spec = 1;
-}
-
-message CreateTaskResponse {
-	Task task = 1;
 }
 
 message GetTaskRequest {

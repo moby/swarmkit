@@ -8,12 +8,6 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-// CreateTask creates and return a Task based on the provided ServiceSpec.
-// TODO(aluzzardi): Not implemented.
-func (s *Server) CreateTask(ctx context.Context, request *api.CreateTaskRequest) (*api.CreateTaskResponse, error) {
-	return nil, grpc.Errorf(codes.Unimplemented, errNotImplemented.Error())
-}
-
 // GetTask returns a Task given a TaskID.
 // - Returns `InvalidArgument` if TaskID is not provided.
 // - Returns `NotFound` if the Task is not found.

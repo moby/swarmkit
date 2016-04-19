@@ -94,29 +94,13 @@ func (m *UpdateNodeResponse) Reset()                    { *m = UpdateNodeRespons
 func (*UpdateNodeResponse) ProtoMessage()               {}
 func (*UpdateNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{6} }
 
-type CreateTaskRequest struct {
-	Spec *ServiceSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
-}
-
-func (m *CreateTaskRequest) Reset()                    { *m = CreateTaskRequest{} }
-func (*CreateTaskRequest) ProtoMessage()               {}
-func (*CreateTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{7} }
-
-type CreateTaskResponse struct {
-	Task *Task `protobuf:"bytes,1,opt,name=task" json:"task,omitempty"`
-}
-
-func (m *CreateTaskResponse) Reset()                    { *m = CreateTaskResponse{} }
-func (*CreateTaskResponse) ProtoMessage()               {}
-func (*CreateTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{8} }
-
 type GetTaskRequest struct {
 	TaskID string `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
 }
 
 func (m *GetTaskRequest) Reset()                    { *m = GetTaskRequest{} }
 func (*GetTaskRequest) ProtoMessage()               {}
-func (*GetTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{9} }
+func (*GetTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{7} }
 
 type GetTaskResponse struct {
 	Task *Task `protobuf:"bytes,1,opt,name=task" json:"task,omitempty"`
@@ -124,7 +108,7 @@ type GetTaskResponse struct {
 
 func (m *GetTaskResponse) Reset()                    { *m = GetTaskResponse{} }
 func (*GetTaskResponse) ProtoMessage()               {}
-func (*GetTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{10} }
+func (*GetTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{8} }
 
 type RemoveTaskRequest struct {
 	TaskID string `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
@@ -132,21 +116,21 @@ type RemoveTaskRequest struct {
 
 func (m *RemoveTaskRequest) Reset()                    { *m = RemoveTaskRequest{} }
 func (*RemoveTaskRequest) ProtoMessage()               {}
-func (*RemoveTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{11} }
+func (*RemoveTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{9} }
 
 type RemoveTaskResponse struct {
 }
 
 func (m *RemoveTaskResponse) Reset()                    { *m = RemoveTaskResponse{} }
 func (*RemoveTaskResponse) ProtoMessage()               {}
-func (*RemoveTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{12} }
+func (*RemoveTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{10} }
 
 type ListTasksRequest struct {
 }
 
 func (m *ListTasksRequest) Reset()                    { *m = ListTasksRequest{} }
 func (*ListTasksRequest) ProtoMessage()               {}
-func (*ListTasksRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{13} }
+func (*ListTasksRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{11} }
 
 type ListTasksResponse struct {
 	Tasks []*Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
@@ -154,7 +138,7 @@ type ListTasksResponse struct {
 
 func (m *ListTasksResponse) Reset()                    { *m = ListTasksResponse{} }
 func (*ListTasksResponse) ProtoMessage()               {}
-func (*ListTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{14} }
+func (*ListTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{12} }
 
 type CreateServiceRequest struct {
 	Spec *ServiceSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
@@ -162,7 +146,7 @@ type CreateServiceRequest struct {
 
 func (m *CreateServiceRequest) Reset()                    { *m = CreateServiceRequest{} }
 func (*CreateServiceRequest) ProtoMessage()               {}
-func (*CreateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{15} }
+func (*CreateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{13} }
 
 type CreateServiceResponse struct {
 	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
@@ -170,7 +154,7 @@ type CreateServiceResponse struct {
 
 func (m *CreateServiceResponse) Reset()                    { *m = CreateServiceResponse{} }
 func (*CreateServiceResponse) ProtoMessage()               {}
-func (*CreateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{16} }
+func (*CreateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{14} }
 
 type GetServiceRequest struct {
 	ServiceID string `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
@@ -178,7 +162,7 @@ type GetServiceRequest struct {
 
 func (m *GetServiceRequest) Reset()                    { *m = GetServiceRequest{} }
 func (*GetServiceRequest) ProtoMessage()               {}
-func (*GetServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{17} }
+func (*GetServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{15} }
 
 type GetServiceResponse struct {
 	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
@@ -186,7 +170,7 @@ type GetServiceResponse struct {
 
 func (m *GetServiceResponse) Reset()                    { *m = GetServiceResponse{} }
 func (*GetServiceResponse) ProtoMessage()               {}
-func (*GetServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{18} }
+func (*GetServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{16} }
 
 type UpdateServiceRequest struct {
 	ServiceID      string       `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
@@ -196,7 +180,7 @@ type UpdateServiceRequest struct {
 
 func (m *UpdateServiceRequest) Reset()                    { *m = UpdateServiceRequest{} }
 func (*UpdateServiceRequest) ProtoMessage()               {}
-func (*UpdateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{19} }
+func (*UpdateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{17} }
 
 type UpdateServiceResponse struct {
 	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
@@ -204,7 +188,7 @@ type UpdateServiceResponse struct {
 
 func (m *UpdateServiceResponse) Reset()                    { *m = UpdateServiceResponse{} }
 func (*UpdateServiceResponse) ProtoMessage()               {}
-func (*UpdateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{20} }
+func (*UpdateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{18} }
 
 type RemoveServiceRequest struct {
 	ServiceID string `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
@@ -212,14 +196,14 @@ type RemoveServiceRequest struct {
 
 func (m *RemoveServiceRequest) Reset()                    { *m = RemoveServiceRequest{} }
 func (*RemoveServiceRequest) ProtoMessage()               {}
-func (*RemoveServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{21} }
+func (*RemoveServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{19} }
 
 type RemoveServiceResponse struct {
 }
 
 func (m *RemoveServiceResponse) Reset()                    { *m = RemoveServiceResponse{} }
 func (*RemoveServiceResponse) ProtoMessage()               {}
-func (*RemoveServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{22} }
+func (*RemoveServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{20} }
 
 type ListServicesRequest struct {
 	Options *ListOptions `protobuf:"bytes,1,opt,name=options" json:"options,omitempty"`
@@ -227,7 +211,7 @@ type ListServicesRequest struct {
 
 func (m *ListServicesRequest) Reset()                    { *m = ListServicesRequest{} }
 func (*ListServicesRequest) ProtoMessage()               {}
-func (*ListServicesRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{23} }
+func (*ListServicesRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{21} }
 
 type ListServicesResponse struct {
 	Services []*Service `protobuf:"bytes,1,rep,name=services" json:"services,omitempty"`
@@ -235,7 +219,7 @@ type ListServicesResponse struct {
 
 func (m *ListServicesResponse) Reset()                    { *m = ListServicesResponse{} }
 func (*ListServicesResponse) ProtoMessage()               {}
-func (*ListServicesResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{24} }
+func (*ListServicesResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{22} }
 
 type CreateNetworkRequest struct {
 	Spec *NetworkSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
@@ -243,7 +227,7 @@ type CreateNetworkRequest struct {
 
 func (m *CreateNetworkRequest) Reset()                    { *m = CreateNetworkRequest{} }
 func (*CreateNetworkRequest) ProtoMessage()               {}
-func (*CreateNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{25} }
+func (*CreateNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{23} }
 
 type CreateNetworkResponse struct {
 	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
@@ -251,7 +235,7 @@ type CreateNetworkResponse struct {
 
 func (m *CreateNetworkResponse) Reset()                    { *m = CreateNetworkResponse{} }
 func (*CreateNetworkResponse) ProtoMessage()               {}
-func (*CreateNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{26} }
+func (*CreateNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{24} }
 
 type GetNetworkRequest struct {
 	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -260,7 +244,7 @@ type GetNetworkRequest struct {
 
 func (m *GetNetworkRequest) Reset()                    { *m = GetNetworkRequest{} }
 func (*GetNetworkRequest) ProtoMessage()               {}
-func (*GetNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{27} }
+func (*GetNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{25} }
 
 type GetNetworkResponse struct {
 	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
@@ -268,7 +252,7 @@ type GetNetworkResponse struct {
 
 func (m *GetNetworkResponse) Reset()                    { *m = GetNetworkResponse{} }
 func (*GetNetworkResponse) ProtoMessage()               {}
-func (*GetNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{28} }
+func (*GetNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{26} }
 
 type RemoveNetworkRequest struct {
 	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -277,14 +261,14 @@ type RemoveNetworkRequest struct {
 
 func (m *RemoveNetworkRequest) Reset()                    { *m = RemoveNetworkRequest{} }
 func (*RemoveNetworkRequest) ProtoMessage()               {}
-func (*RemoveNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{29} }
+func (*RemoveNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{27} }
 
 type RemoveNetworkResponse struct {
 }
 
 func (m *RemoveNetworkResponse) Reset()                    { *m = RemoveNetworkResponse{} }
 func (*RemoveNetworkResponse) ProtoMessage()               {}
-func (*RemoveNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{30} }
+func (*RemoveNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{28} }
 
 type ListNetworksRequest struct {
 	Options *ListOptions `protobuf:"bytes,1,opt,name=options" json:"options,omitempty"`
@@ -292,7 +276,7 @@ type ListNetworksRequest struct {
 
 func (m *ListNetworksRequest) Reset()                    { *m = ListNetworksRequest{} }
 func (*ListNetworksRequest) ProtoMessage()               {}
-func (*ListNetworksRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{31} }
+func (*ListNetworksRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{29} }
 
 type ListNetworksResponse struct {
 	Networks []*Network `protobuf:"bytes,1,rep,name=networks" json:"networks,omitempty"`
@@ -300,7 +284,7 @@ type ListNetworksResponse struct {
 
 func (m *ListNetworksResponse) Reset()                    { *m = ListNetworksResponse{} }
 func (*ListNetworksResponse) ProtoMessage()               {}
-func (*ListNetworksResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{32} }
+func (*ListNetworksResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{30} }
 
 type CreateVolumeRequest struct {
 	Spec *VolumeSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
@@ -308,7 +292,7 @@ type CreateVolumeRequest struct {
 
 func (m *CreateVolumeRequest) Reset()                    { *m = CreateVolumeRequest{} }
 func (*CreateVolumeRequest) ProtoMessage()               {}
-func (*CreateVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{33} }
+func (*CreateVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{31} }
 
 type CreateVolumeResponse struct {
 	Volume *Volume `protobuf:"bytes,1,opt,name=volume" json:"volume,omitempty"`
@@ -316,7 +300,7 @@ type CreateVolumeResponse struct {
 
 func (m *CreateVolumeResponse) Reset()                    { *m = CreateVolumeResponse{} }
 func (*CreateVolumeResponse) ProtoMessage()               {}
-func (*CreateVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{34} }
+func (*CreateVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{32} }
 
 type GetVolumeRequest struct {
 	VolumeID string `protobuf:"bytes,1,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
@@ -324,7 +308,7 @@ type GetVolumeRequest struct {
 
 func (m *GetVolumeRequest) Reset()                    { *m = GetVolumeRequest{} }
 func (*GetVolumeRequest) ProtoMessage()               {}
-func (*GetVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{35} }
+func (*GetVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{33} }
 
 type GetVolumeResponse struct {
 	Volume *Volume `protobuf:"bytes,1,opt,name=volume" json:"volume,omitempty"`
@@ -332,7 +316,7 @@ type GetVolumeResponse struct {
 
 func (m *GetVolumeResponse) Reset()                    { *m = GetVolumeResponse{} }
 func (*GetVolumeResponse) ProtoMessage()               {}
-func (*GetVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{36} }
+func (*GetVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{34} }
 
 type RemoveVolumeRequest struct {
 	VolumeID string `protobuf:"bytes,1,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
@@ -340,21 +324,21 @@ type RemoveVolumeRequest struct {
 
 func (m *RemoveVolumeRequest) Reset()                    { *m = RemoveVolumeRequest{} }
 func (*RemoveVolumeRequest) ProtoMessage()               {}
-func (*RemoveVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{37} }
+func (*RemoveVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{35} }
 
 type RemoveVolumeResponse struct {
 }
 
 func (m *RemoveVolumeResponse) Reset()                    { *m = RemoveVolumeResponse{} }
 func (*RemoveVolumeResponse) ProtoMessage()               {}
-func (*RemoveVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{38} }
+func (*RemoveVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{36} }
 
 type ListVolumesRequest struct {
 }
 
 func (m *ListVolumesRequest) Reset()                    { *m = ListVolumesRequest{} }
 func (*ListVolumesRequest) ProtoMessage()               {}
-func (*ListVolumesRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{39} }
+func (*ListVolumesRequest) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{37} }
 
 type ListVolumesResponse struct {
 	Volumes []*Volume `protobuf:"bytes,1,rep,name=volumes" json:"volumes,omitempty"`
@@ -362,7 +346,7 @@ type ListVolumesResponse struct {
 
 func (m *ListVolumesResponse) Reset()                    { *m = ListVolumesResponse{} }
 func (*ListVolumesResponse) ProtoMessage()               {}
-func (*ListVolumesResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{40} }
+func (*ListVolumesResponse) Descriptor() ([]byte, []int) { return fileDescriptorCluster, []int{38} }
 
 func init() {
 	proto.RegisterType((*ListOptions)(nil), "docker.cluster.api.ListOptions")
@@ -372,8 +356,6 @@ func init() {
 	proto.RegisterType((*ListNodesResponse)(nil), "docker.cluster.api.ListNodesResponse")
 	proto.RegisterType((*UpdateNodeRequest)(nil), "docker.cluster.api.UpdateNodeRequest")
 	proto.RegisterType((*UpdateNodeResponse)(nil), "docker.cluster.api.UpdateNodeResponse")
-	proto.RegisterType((*CreateTaskRequest)(nil), "docker.cluster.api.CreateTaskRequest")
-	proto.RegisterType((*CreateTaskResponse)(nil), "docker.cluster.api.CreateTaskResponse")
 	proto.RegisterType((*GetTaskRequest)(nil), "docker.cluster.api.GetTaskRequest")
 	proto.RegisterType((*GetTaskResponse)(nil), "docker.cluster.api.GetTaskResponse")
 	proto.RegisterType((*RemoveTaskRequest)(nil), "docker.cluster.api.RemoveTaskRequest")
@@ -494,30 +476,6 @@ func (m *UpdateNodeResponse) Copy() *UpdateNodeResponse {
 
 	o := &UpdateNodeResponse{
 		Node: m.Node.Copy(),
-	}
-
-	return o
-}
-
-func (m *CreateTaskRequest) Copy() *CreateTaskRequest {
-	if m == nil {
-		return nil
-	}
-
-	o := &CreateTaskRequest{
-		Spec: m.Spec.Copy(),
-	}
-
-	return o
-}
-
-func (m *CreateTaskResponse) Copy() *CreateTaskResponse {
-	if m == nil {
-		return nil
-	}
-
-	o := &CreateTaskResponse{
-		Task: m.Task.Copy(),
 	}
 
 	return o
@@ -1003,30 +961,6 @@ func (this *UpdateNodeResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *CreateTaskRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.CreateTaskRequest{")
-	if this.Spec != nil {
-		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *CreateTaskResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.CreateTaskResponse{")
-	if this.Task != nil {
-		s = append(s, "Task: "+fmt.Sprintf("%#v", this.Task)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
 func (this *GetTaskRequest) GoString() string {
 	if this == nil {
 		return "nil"
@@ -1421,7 +1355,6 @@ type ClusterClient interface {
 	UpdateNode(ctx context.Context, in *UpdateNodeRequest, opts ...grpc.CallOption) (*UpdateNodeResponse, error)
 	GetTask(ctx context.Context, in *GetTaskRequest, opts ...grpc.CallOption) (*GetTaskResponse, error)
 	ListTasks(ctx context.Context, in *ListTasksRequest, opts ...grpc.CallOption) (*ListTasksResponse, error)
-	CreateTask(ctx context.Context, in *CreateTaskRequest, opts ...grpc.CallOption) (*CreateTaskResponse, error)
 	RemoveTask(ctx context.Context, in *RemoveTaskRequest, opts ...grpc.CallOption) (*RemoveTaskResponse, error)
 	GetService(ctx context.Context, in *GetServiceRequest, opts ...grpc.CallOption) (*GetServiceResponse, error)
 	ListServices(ctx context.Context, in *ListServicesRequest, opts ...grpc.CallOption) (*ListServicesResponse, error)
@@ -1485,15 +1418,6 @@ func (c *clusterClient) GetTask(ctx context.Context, in *GetTaskRequest, opts ..
 func (c *clusterClient) ListTasks(ctx context.Context, in *ListTasksRequest, opts ...grpc.CallOption) (*ListTasksResponse, error) {
 	out := new(ListTasksResponse)
 	err := grpc.Invoke(ctx, "/docker.cluster.api.Cluster/ListTasks", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *clusterClient) CreateTask(ctx context.Context, in *CreateTaskRequest, opts ...grpc.CallOption) (*CreateTaskResponse, error) {
-	out := new(CreateTaskResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Cluster/CreateTask", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1634,7 +1558,6 @@ type ClusterServer interface {
 	UpdateNode(context.Context, *UpdateNodeRequest) (*UpdateNodeResponse, error)
 	GetTask(context.Context, *GetTaskRequest) (*GetTaskResponse, error)
 	ListTasks(context.Context, *ListTasksRequest) (*ListTasksResponse, error)
-	CreateTask(context.Context, *CreateTaskRequest) (*CreateTaskResponse, error)
 	RemoveTask(context.Context, *RemoveTaskRequest) (*RemoveTaskResponse, error)
 	GetService(context.Context, *GetServiceRequest) (*GetServiceResponse, error)
 	ListServices(context.Context, *ListServicesRequest) (*ListServicesResponse, error)
@@ -1709,18 +1632,6 @@ func _Cluster_ListTasks_Handler(srv interface{}, ctx context.Context, dec func(i
 		return nil, err
 	}
 	out, err := srv.(ClusterServer).ListTasks(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func _Cluster_CreateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(CreateTaskRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(ClusterServer).CreateTask(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -1918,10 +1829,6 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListTasks",
 			Handler:    _Cluster_ListTasks_Handler,
-		},
-		{
-			MethodName: "CreateTask",
-			Handler:    _Cluster_CreateTask_Handler,
 		},
 		{
 			MethodName: "RemoveTask",
@@ -2189,62 +2096,6 @@ func (m *UpdateNodeResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *CreateTaskRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *CreateTaskRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Spec != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintCluster(data, i, uint64(m.Spec.Size()))
-		n6, err := m.Spec.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n6
-	}
-	return i, nil
-}
-
-func (m *CreateTaskResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *CreateTaskResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Task != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintCluster(data, i, uint64(m.Task.Size()))
-		n7, err := m.Task.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n7
-	}
-	return i, nil
-}
-
 func (m *GetTaskRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -2288,11 +2139,11 @@ func (m *GetTaskResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Task.Size()))
-		n8, err := m.Task.MarshalTo(data[i:])
+		n6, err := m.Task.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n8
+		i += n6
 	}
 	return i, nil
 }
@@ -2406,11 +2257,11 @@ func (m *CreateServiceRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Spec.Size()))
-		n9, err := m.Spec.MarshalTo(data[i:])
+		n7, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n9
+		i += n7
 	}
 	return i, nil
 }
@@ -2434,11 +2285,11 @@ func (m *CreateServiceResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Service.Size()))
-		n10, err := m.Service.MarshalTo(data[i:])
+		n8, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n10
+		i += n8
 	}
 	return i, nil
 }
@@ -2486,11 +2337,11 @@ func (m *GetServiceResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Service.Size()))
-		n11, err := m.Service.MarshalTo(data[i:])
+		n9, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n11
+		i += n9
 	}
 	return i, nil
 }
@@ -2520,21 +2371,21 @@ func (m *UpdateServiceRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.ServiceVersion.Size()))
-		n12, err := m.ServiceVersion.MarshalTo(data[i:])
+		n10, err := m.ServiceVersion.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n12
+		i += n10
 	}
 	if m.Spec != nil {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Spec.Size()))
-		n13, err := m.Spec.MarshalTo(data[i:])
+		n11, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n13
+		i += n11
 	}
 	return i, nil
 }
@@ -2558,11 +2409,11 @@ func (m *UpdateServiceResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Service.Size()))
-		n14, err := m.Service.MarshalTo(data[i:])
+		n12, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n14
+		i += n12
 	}
 	return i, nil
 }
@@ -2628,11 +2479,11 @@ func (m *ListServicesRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Options.Size()))
-		n15, err := m.Options.MarshalTo(data[i:])
+		n13, err := m.Options.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n15
+		i += n13
 	}
 	return i, nil
 }
@@ -2686,11 +2537,11 @@ func (m *CreateNetworkRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Spec.Size()))
-		n16, err := m.Spec.MarshalTo(data[i:])
+		n14, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n16
+		i += n14
 	}
 	return i, nil
 }
@@ -2714,11 +2565,11 @@ func (m *CreateNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Network.Size()))
-		n17, err := m.Network.MarshalTo(data[i:])
+		n15, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n17
+		i += n15
 	}
 	return i, nil
 }
@@ -2772,11 +2623,11 @@ func (m *GetNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Network.Size()))
-		n18, err := m.Network.MarshalTo(data[i:])
+		n16, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n18
+		i += n16
 	}
 	return i, nil
 }
@@ -2848,11 +2699,11 @@ func (m *ListNetworksRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Options.Size()))
-		n19, err := m.Options.MarshalTo(data[i:])
+		n17, err := m.Options.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n19
+		i += n17
 	}
 	return i, nil
 }
@@ -2906,11 +2757,11 @@ func (m *CreateVolumeRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Spec.Size()))
-		n20, err := m.Spec.MarshalTo(data[i:])
+		n18, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n20
+		i += n18
 	}
 	return i, nil
 }
@@ -2934,11 +2785,11 @@ func (m *CreateVolumeResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Volume.Size()))
-		n21, err := m.Volume.MarshalTo(data[i:])
+		n19, err := m.Volume.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n21
+		i += n19
 	}
 	return i, nil
 }
@@ -2986,11 +2837,11 @@ func (m *GetVolumeResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintCluster(data, i, uint64(m.Volume.Size()))
-		n22, err := m.Volume.MarshalTo(data[i:])
+		n20, err := m.Volume.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n22
+		i += n20
 	}
 	return i, nil
 }
@@ -3258,33 +3109,6 @@ func (p *raftProxyClusterServer) ListTasks(ctx context.Context, r *ListTasksRequ
 	ctx = metadata.NewContext(ctx, md)
 
 	return NewClusterClient(c).ListTasks(ctx, r)
-}
-
-func (p *raftProxyClusterServer) CreateTask(ctx context.Context, r *CreateTaskRequest) (*CreateTaskResponse, error) {
-
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.CreateTask(ctx, r)
-		}
-		return nil, err
-	}
-	var addr string
-	s, ok := transport.StreamFromContext(ctx)
-	if ok {
-		addr = s.ServerTransport().RemoteAddr().String()
-	}
-	md, ok := metadata.FromContext(ctx)
-	if ok && len(md["redirect"]) != 0 {
-		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
-	}
-	if !ok {
-		md = metadata.New(map[string]string{})
-	}
-	md["redirect"] = append(md["redirect"], addr)
-	ctx = metadata.NewContext(ctx, md)
-
-	return NewClusterClient(c).CreateTask(ctx, r)
 }
 
 func (p *raftProxyClusterServer) RemoveTask(ctx context.Context, r *RemoveTaskRequest) (*RemoveTaskResponse, error) {
@@ -3745,26 +3569,6 @@ func (m *UpdateNodeResponse) Size() (n int) {
 	return n
 }
 
-func (m *CreateTaskRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Spec != nil {
-		l = m.Spec.Size()
-		n += 1 + l + sovCluster(uint64(l))
-	}
-	return n
-}
-
-func (m *CreateTaskResponse) Size() (n int) {
-	var l int
-	_ = l
-	if m.Task != nil {
-		l = m.Task.Size()
-		n += 1 + l + sovCluster(uint64(l))
-	}
-	return n
-}
-
 func (m *GetTaskRequest) Size() (n int) {
 	var l int
 	_ = l
@@ -4166,26 +3970,6 @@ func (this *UpdateNodeResponse) String() string {
 	}
 	s := strings.Join([]string{`&UpdateNodeResponse{`,
 		`Node:` + strings.Replace(fmt.Sprintf("%v", this.Node), "Node", "Node", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *CreateTaskRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&CreateTaskRequest{`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "ServiceSpec", "ServiceSpec", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *CreateTaskResponse) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&CreateTaskResponse{`,
-		`Task:` + strings.Replace(fmt.Sprintf("%v", this.Task), "Task", "Task", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5125,172 +4909,6 @@ func (m *UpdateNodeResponse) Unmarshal(data []byte) error {
 				m.Node = &Node{}
 			}
 			if err := m.Node.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipCluster(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthCluster
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *CreateTaskRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowCluster
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: CreateTaskRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: CreateTaskRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCluster
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthCluster
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Spec == nil {
-				m.Spec = &ServiceSpec{}
-			}
-			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipCluster(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthCluster
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *CreateTaskResponse) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowCluster
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: CreateTaskResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: CreateTaskResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Task", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCluster
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthCluster
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Task == nil {
-				m.Task = &Task{}
-			}
-			if err := m.Task.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -7959,75 +7577,73 @@ var (
 )
 
 var fileDescriptorCluster = []byte{
-	// 1108 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xac, 0x58, 0xdd, 0x6e, 0x1b, 0x45,
-	0x14, 0xae, 0xfb, 0x63, 0xc7, 0xc7, 0x71, 0x53, 0x4f, 0x5c, 0xb0, 0xb6, 0x95, 0x8b, 0x36, 0xb4,
-	0x75, 0xa4, 0xca, 0x20, 0x87, 0x0a, 0xb8, 0xe0, 0x2f, 0x89, 0x54, 0x42, 0x20, 0x45, 0xdb, 0x26,
-	0x42, 0x48, 0x08, 0x1c, 0x7b, 0x88, 0x4c, 0x7e, 0xd6, 0x78, 0x37, 0x46, 0xb9, 0xe3, 0x59, 0xb8,
-	0xe4, 0x25, 0xb8, 0xcd, 0x25, 0x97, 0x5c, 0x21, 0x92, 0x27, 0xe0, 0x11, 0x3a, 0x3f, 0x67, 0x66,
-	0x67, 0x77, 0x67, 0xd7, 0x71, 0xec, 0x8b, 0x95, 0xbc, 0x33, 0xdf, 0x9c, 0xf3, 0xcd, 0xf9, 0xce,
-	0xec, 0x7c, 0x32, 0x54, 0x7b, 0x47, 0xa7, 0x41, 0x48, 0x47, 0xed, 0xe1, 0xc8, 0x0f, 0x7d, 0x42,
-	0xfa, 0x7e, 0xef, 0x90, 0xbd, 0xa9, 0xd1, 0xee, 0x70, 0xe0, 0x54, 0x82, 0x21, 0xed, 0x05, 0x12,
-	0xe0, 0x54, 0xfd, 0xfd, 0x5f, 0x68, 0x2f, 0x54, 0xaf, 0x95, 0xf0, 0x6c, 0x48, 0xd5, 0x4b, 0xfd,
-	0xc0, 0x3f, 0xf0, 0xc5, 0xcf, 0xf7, 0xf8, 0x2f, 0x39, 0xea, 0xae, 0x40, 0xe5, 0xeb, 0x41, 0x10,
-	0xbe, 0x1c, 0x86, 0x03, 0xff, 0x24, 0x20, 0x75, 0xb8, 0xf3, 0xeb, 0x29, 0x1d, 0x9d, 0x35, 0x0a,
-	0xef, 0x14, 0x5a, 0x65, 0x4f, 0xbe, 0xb8, 0xcf, 0xe1, 0xee, 0x0b, 0x1a, 0xee, 0xf8, 0x7d, 0xea,
-	0x51, 0x36, 0x12, 0x84, 0x64, 0x05, 0x4a, 0x27, 0xec, 0xf5, 0xc7, 0x41, 0x5f, 0x22, 0xd7, 0xe1,
-	0xf2, 0xdf, 0x47, 0x45, 0x8e, 0xd8, 0xda, 0xf4, 0x8a, 0x7c, 0x6a, 0xab, 0xef, 0x7e, 0x06, 0x4b,
-	0x7a, 0x59, 0x30, 0x64, 0xe1, 0x29, 0x79, 0x06, 0xb7, 0xf9, 0xa4, 0x58, 0x54, 0xe9, 0x34, 0xda,
-	0xe9, 0x0d, 0xb5, 0x05, 0x5e, 0xa0, 0xdc, 0x6f, 0xe0, 0x1e, 0x27, 0xc7, 0x47, 0x02, 0x95, 0xf9,
-	0x63, 0x28, 0xf9, 0x92, 0x2c, 0x06, 0x79, 0x64, 0x0b, 0x62, 0xec, 0xc9, 0x53, 0x78, 0x77, 0x03,
-	0x6a, 0x46, 0x38, 0x64, 0xd4, 0x86, 0x3b, 0x3c, 0x17, 0x8f, 0x76, 0x2b, 0x97, 0x92, 0x84, 0xb9,
-	0x7f, 0x16, 0xa0, 0xb6, 0x3b, 0xec, 0x77, 0x43, 0x3a, 0x6d, 0x3d, 0xc8, 0xa7, 0xb0, 0x28, 0x40,
-	0x63, 0x3a, 0x0a, 0x18, 0xa1, 0xc6, 0x4d, 0xc1, 0xff, 0x81, 0x2d, 0xe3, 0x9e, 0x84, 0x78, 0x15,
-	0xbe, 0x00, 0x5f, 0xc8, 0xfb, 0x70, 0x9b, 0x8b, 0xdd, 0xb8, 0x25, 0xd6, 0x3d, 0xcc, 0x62, 0xfa,
-	0x8a, 0x61, 0x3c, 0x81, 0x74, 0xd7, 0x81, 0x98, 0x5c, 0xaf, 0x25, 0xc2, 0x97, 0x50, 0xdb, 0x18,
-	0x51, 0x16, 0xe3, 0x75, 0x37, 0x38, 0x54, 0xfb, 0x5d, 0x43, 0x2a, 0x39, 0x12, 0xbc, 0xa2, 0xa3,
-	0xf1, 0xa0, 0x97, 0x60, 0x63, 0x46, 0x8a, 0xd8, 0x84, 0xec, 0x3d, 0x8f, 0x8d, 0xc0, 0x0b, 0x14,
-	0xb6, 0xa2, 0x49, 0x85, 0x95, 0x9e, 0xcf, 0x24, 0x4a, 0xcf, 0x11, 0xbc, 0xf4, 0x7c, 0x4a, 0xb7,
-	0xe2, 0x0c, 0x79, 0x3f, 0x82, 0x9a, 0x47, 0x8f, 0xfd, 0x31, 0x9d, 0x3a, 0x75, 0x1d, 0x88, 0xb9,
-	0x52, 0x66, 0x77, 0x89, 0x6c, 0x6d, 0x3e, 0xa6, 0x5a, 0x5b, 0xf5, 0x27, 0x8e, 0x45, 0xfd, 0xc9,
-	0x03, 0xe5, 0xf6, 0xa7, 0x88, 0x2c, 0x61, 0xee, 0x36, 0xd4, 0x65, 0x91, 0xb1, 0xfe, 0x33, 0x29,
-	0xb6, 0x03, 0xf7, 0x13, 0xc1, 0x90, 0xd5, 0x73, 0x28, 0x05, 0x72, 0x08, 0x03, 0x3e, 0xc8, 0x09,
-	0xe8, 0x29, 0xac, 0xfb, 0x05, 0xd4, 0x98, 0x0c, 0x09, 0x66, 0xcf, 0x00, 0x70, 0x3e, 0x2a, 0x64,
-	0x95, 0x15, 0xb2, 0x8c, 0x38, 0x56, 0xcb, 0x32, 0x02, 0x58, 0x39, 0xb7, 0x81, 0x98, 0x21, 0x66,
-	0xe3, 0xf3, 0x57, 0x01, 0xea, 0xf2, 0x80, 0xcc, 0xc2, 0x89, 0x6c, 0xc2, 0x92, 0x42, 0x4f, 0x71,
-	0xb6, 0xef, 0xe2, 0x1a, 0x75, 0xbc, 0xd7, 0x62, 0xc7, 0xfb, 0xea, 0x0a, 0x25, 0x36, 0x30, 0x5b,
-	0x45, 0x36, 0xa1, 0x2e, 0xbb, 0x75, 0x26, 0x91, 0xde, 0x86, 0xfb, 0x89, 0x28, 0xd8, 0xf6, 0xdf,
-	0xc2, 0x32, 0x6f, 0x71, 0x1c, 0x9e, 0xc7, 0x47, 0xfd, 0x25, 0xd4, 0xe3, 0x11, 0x71, 0xff, 0x1f,
-	0xc2, 0x02, 0xf2, 0x51, 0x47, 0x27, 0xb7, 0x00, 0x1a, 0x1c, 0x1d, 0xa0, 0x1d, 0x1a, 0xfe, 0xe6,
-	0x8f, 0xa6, 0xf9, 0xe4, 0xe1, 0x0a, 0xdb, 0x01, 0xd2, 0xc1, 0x22, 0x79, 0x4e, 0xe4, 0x50, 0x9e,
-	0x3c, 0x6a, 0x95, 0xc2, 0xba, 0xbb, 0xe2, 0x00, 0x25, 0x98, 0x11, 0xf6, 0x3d, 0xef, 0x1e, 0x53,
-	0xbc, 0xb3, 0xc5, 0x6f, 0xae, 0x17, 0xae, 0xe1, 0x7a, 0xdd, 0x8c, 0xf4, 0xc2, 0xb5, 0x5c, 0x2f,
-	0x04, 0xe8, 0x43, 0x35, 0x27, 0x8e, 0xdf, 0xa9, 0x16, 0x9a, 0x3b, 0x4d, 0xdd, 0x56, 0x09, 0xa6,
-	0xaa, 0xad, 0x70, 0x78, 0x8e, 0x6d, 0x15, 0x45, 0x8c, 0xda, 0x0a, 0xf9, 0xe4, 0xb6, 0x95, 0x22,
-	0xa8, 0xc1, 0xee, 0x16, 0x2c, 0xcb, 0x4e, 0xd8, 0xf3, 0x8f, 0x4e, 0x8f, 0xf5, 0xb9, 0xea, 0xc4,
-	0xba, 0xaa, 0x69, 0xfd, 0x5e, 0x88, 0x05, 0x46, 0x53, 0x7d, 0xa5, 0x3a, 0x54, 0x85, 0x42, 0x6e,
-	0x1d, 0x28, 0x8e, 0xc5, 0x08, 0x46, 0x73, 0xb2, 0xa3, 0x79, 0x88, 0x74, 0x3f, 0x81, 0x7b, 0x4c,
-	0xf9, 0x38, 0xa7, 0x55, 0x28, 0xcb, 0xd9, 0xe8, 0xa8, 0x2f, 0x32, 0x4d, 0x16, 0x24, 0x8a, 0x49,
-	0xb2, 0x20, 0xa7, 0x99, 0x22, 0x2f, 0x44, 0x3f, 0xce, 0x81, 0xc7, 0xe7, 0xb0, 0x2c, 0xa5, 0xbd,
-	0x36, 0x95, 0xb7, 0x54, 0xdb, 0xc5, 0xd9, 0xf0, 0xfb, 0x97, 0x2b, 0x29, 0x47, 0xf5, 0x5d, 0xbb,
-	0x2d, 0x3b, 0x46, 0x8f, 0x22, 0xf5, 0x0f, 0xa0, 0x24, 0x03, 0x2a, 0x75, 0xf3, 0xb8, 0x2b, 0x68,
-	0xe7, 0x8f, 0x25, 0x28, 0x6d, 0xc8, 0x79, 0xf2, 0x1a, 0x4a, 0x68, 0x7a, 0x89, 0x6b, 0x5b, 0x1b,
-	0x37, 0xd2, 0xce, 0x4a, 0x2e, 0x06, 0xb7, 0x70, 0x83, 0x7c, 0x0f, 0x65, 0x6d, 0x5d, 0xc9, 0xbb,
-	0x59, 0x5d, 0x6c, 0x1a, 0x65, 0xe7, 0xf1, 0x04, 0x94, 0x8e, 0xfd, 0x03, 0x40, 0x64, 0x12, 0x89,
-	0x75, 0x59, 0xca, 0xf0, 0x3a, 0x4f, 0x26, 0xc1, 0x74, 0x78, 0x59, 0x10, 0x6e, 0x51, 0x32, 0x0b,
-	0x62, 0x78, 0xaa, 0xcc, 0x82, 0xc4, 0xdc, 0x93, 0x2e, 0x88, 0xf0, 0x4a, 0xd9, 0x05, 0x31, 0xed,
-	0x55, 0x76, 0x41, 0x62, 0x86, 0x4b, 0x16, 0x24, 0xf2, 0xa9, 0xf6, 0x82, 0xa4, 0x1c, 0xb1, 0xbd,
-	0x20, 0x69, 0xbb, 0x2b, 0xc3, 0x47, 0x86, 0xd0, 0x1e, 0x3e, 0x65, 0x35, 0xed, 0xe1, 0x2d, 0xbe,
-	0x52, 0x84, 0x8f, 0x0c, 0x92, 0x3d, 0x7c, 0xca, 0x83, 0xd9, 0xc3, 0xa7, 0x7d, 0x16, 0x0b, 0xdf,
-	0x83, 0x45, 0xf3, 0xbe, 0x25, 0x4f, 0xb3, 0xaa, 0x9a, 0xb8, 0xe3, 0x9d, 0xd6, 0x64, 0xa0, 0x4e,
-	0xf2, 0x33, 0x54, 0x63, 0xbe, 0x93, 0xb4, 0xb2, 0xab, 0x9b, 0xd8, 0xc9, 0xea, 0x15, 0x90, 0x66,
-	0x9e, 0x98, 0x7b, 0xb2, 0xe7, 0xb1, 0x39, 0x44, 0x7b, 0x1e, 0xab, 0x15, 0x93, 0x79, 0x62, 0x7e,
-	0xc8, 0x9e, 0xc7, 0x66, 0xbc, 0xec, 0x79, 0xec, 0xe6, 0x4a, 0x69, 0x8f, 0x97, 0x4f, 0xa6, 0xf6,
-	0xf1, 0x7b, 0x39, 0x53, 0xfb, 0xe4, 0x25, 0xab, 0xb5, 0x57, 0x97, 0x62, 0xb6, 0xf6, 0x89, 0x8b,
-	0x38, 0x5b, 0xfb, 0xe4, 0xfd, 0x6a, 0x6a, 0xaf, 0xb6, 0x91, 0xa3, 0x7d, 0x62, 0x27, 0xab, 0x57,
-	0x40, 0xa6, 0x35, 0xc9, 0xcd, 0x63, 0x73, 0x32, 0x79, 0x9a, 0xa4, 0xf3, 0xb0, 0x2f, 0x95, 0xbe,
-	0x22, 0xed, 0x5f, 0xaa, 0xe4, 0x05, 0xec, 0x3c, 0x9e, 0x80, 0xd2, 0xb1, 0x7f, 0x92, 0xff, 0xde,
-	0xe0, 0x2d, 0x46, 0x9e, 0x64, 0x95, 0x39, 0x7e, 0xf9, 0x39, 0x4f, 0x27, 0xe2, 0x4c, 0xc9, 0x4d,
-	0xaf, 0x61, 0x97, 0xdc, 0x62, 0x6c, 0x9c, 0xd6, 0x64, 0xa0, 0x99, 0xc4, 0xbc, 0xba, 0xed, 0x49,
-	0x2c, 0xf6, 0xc0, 0x69, 0x4d, 0x06, 0xaa, 0x24, 0xeb, 0x0f, 0xcf, 0x2f, 0x9a, 0x37, 0xfe, 0x61,
-	0xcf, 0xff, 0x17, 0xcd, 0xc2, 0xef, 0x97, 0xcd, 0xc2, 0x39, 0x7b, 0xfe, 0x66, 0xcf, 0x7f, 0xec,
-	0xd9, 0x2f, 0x8a, 0xbf, 0xc3, 0xd6, 0xde, 0x04, 0x00, 0x00, 0xff, 0xff, 0x67, 0xe5, 0x90, 0x01,
-	0x72, 0x13, 0x00, 0x00,
+	// 1078 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xac, 0x58, 0x5b, 0x4f, 0x3b, 0x45,
+	0x14, 0xa7, 0x5c, 0x5a, 0x7a, 0x4a, 0x81, 0x0e, 0x45, 0x9b, 0x85, 0x14, 0xb3, 0x08, 0x94, 0x84,
+	0x54, 0x53, 0x24, 0xea, 0x83, 0x37, 0x20, 0x21, 0x88, 0x82, 0x59, 0x2e, 0x31, 0x26, 0x46, 0x4b,
+	0x3b, 0x92, 0xca, 0x65, 0x6b, 0x77, 0xa9, 0xe1, 0xcd, 0xcf, 0xe3, 0x97, 0xf0, 0xc1, 0x17, 0x1e,
+	0x7d, 0xf4, 0xc9, 0x08, 0x9f, 0xe0, 0xff, 0x11, 0xfe, 0x73, 0xdf, 0xd9, 0xed, 0xec, 0x96, 0xd2,
+	0x3e, 0x6c, 0xd2, 0x9d, 0xf9, 0x9d, 0xcb, 0x9c, 0xdf, 0x99, 0x3d, 0xbf, 0x14, 0xf2, 0x8d, 0x9b,
+	0x7b, 0xcf, 0xc7, 0x9d, 0x6a, 0xbb, 0xe3, 0xfa, 0x2e, 0x42, 0x4d, 0xb7, 0x71, 0x4d, 0xde, 0xe4,
+	0x6a, 0xbd, 0xdd, 0xb2, 0x72, 0x5e, 0x1b, 0x37, 0x3c, 0x0e, 0xb0, 0xf2, 0xee, 0xe5, 0xaf, 0xb8,
+	0xe1, 0xcb, 0xd7, 0x9c, 0xff, 0xd0, 0xc6, 0xf2, 0xa5, 0x78, 0xe5, 0x5e, 0xb9, 0xec, 0xe7, 0x07,
+	0xf4, 0x17, 0x5f, 0xb5, 0x57, 0x21, 0xf7, 0x4d, 0xcb, 0xf3, 0x4f, 0xda, 0x7e, 0xcb, 0xbd, 0xf3,
+	0x50, 0x11, 0xa6, 0x7e, 0xbb, 0xc7, 0x9d, 0x87, 0x52, 0xea, 0xbd, 0x54, 0x25, 0xeb, 0xf0, 0x17,
+	0x7b, 0x07, 0x66, 0x0f, 0xb0, 0x7f, 0xec, 0x36, 0xb1, 0x83, 0xc9, 0x8a, 0xe7, 0xa3, 0x55, 0xc8,
+	0xdc, 0x91, 0xd7, 0x9f, 0x5a, 0x4d, 0x8e, 0xdc, 0x85, 0xe7, 0xff, 0x56, 0xd2, 0x14, 0x71, 0xb8,
+	0xef, 0xa4, 0xe9, 0xd6, 0x61, 0xd3, 0xfe, 0x02, 0xe6, 0x94, 0x99, 0xd7, 0x26, 0xee, 0x31, 0xda,
+	0x82, 0x49, 0xba, 0xc9, 0x8c, 0x72, 0xb5, 0x52, 0xb5, 0xf7, 0x40, 0x55, 0x86, 0x67, 0x28, 0xfb,
+	0x5b, 0x98, 0xa7, 0xc9, 0xd1, 0x15, 0x4f, 0x46, 0xfe, 0x14, 0x32, 0x2e, 0x4f, 0x56, 0x38, 0x59,
+	0x31, 0x39, 0xd1, 0xce, 0xe4, 0x48, 0xbc, 0xbd, 0x07, 0x05, 0xcd, 0x9d, 0xc8, 0xa8, 0x0a, 0x53,
+	0x34, 0x16, 0xf5, 0x36, 0x91, 0x98, 0x12, 0x87, 0xd9, 0x7f, 0xa6, 0xa0, 0x70, 0xde, 0x6e, 0xd6,
+	0x7d, 0x3c, 0x68, 0x3d, 0xd0, 0xe7, 0x30, 0xc3, 0x40, 0x5d, 0xdc, 0xf1, 0x48, 0x42, 0xa5, 0x71,
+	0x96, 0xff, 0x92, 0x29, 0xe2, 0x05, 0x87, 0x38, 0x39, 0x6a, 0x20, 0x5e, 0xd0, 0x87, 0x30, 0x49,
+	0xc9, 0x2e, 0x4d, 0x30, 0xbb, 0xe5, 0xb8, 0x4c, 0x4f, 0x09, 0xc6, 0x61, 0x48, 0x7b, 0x17, 0x90,
+	0x9e, 0xeb, 0xab, 0x48, 0xe0, 0xe4, 0x9f, 0xd5, 0xbd, 0x6b, 0xed, 0xb0, 0x3e, 0x79, 0x8d, 0x1c,
+	0x96, 0x22, 0xe8, 0x61, 0xe9, 0x96, 0x22, 0x9f, 0x9b, 0x05, 0x71, 0xe9, 0x66, 0x52, 0x5c, 0x86,
+	0x67, 0x28, 0xfb, 0x13, 0x28, 0x38, 0xf8, 0xd6, 0xed, 0xe2, 0x81, 0x43, 0x17, 0x01, 0xe9, 0x96,
+	0x3c, 0xba, 0x8d, 0x78, 0x33, 0xd1, 0x35, 0xd9, 0x4c, 0xb2, 0x23, 0xc4, 0x5a, 0xd0, 0x11, 0xd4,
+	0x51, 0x62, 0x47, 0x30, 0xcf, 0x1c, 0x66, 0x1f, 0x41, 0x71, 0xaf, 0x83, 0x49, 0x91, 0x4f, 0x71,
+	0xa7, 0xdb, 0x6a, 0xa8, 0x9e, 0xd8, 0x16, 0x74, 0x25, 0xb4, 0xa9, 0xb0, 0xd0, 0x18, 0x3b, 0x86,
+	0xc5, 0x88, 0x33, 0x91, 0xd5, 0x0e, 0x64, 0x3c, 0xbe, 0x24, 0x1c, 0x2e, 0x25, 0x38, 0x74, 0x24,
+	0xd6, 0xfe, 0x0a, 0x0a, 0x84, 0x86, 0x48, 0x66, 0x5b, 0x00, 0x62, 0x3f, 0x28, 0x64, 0x9e, 0x14,
+	0x32, 0x2b, 0x70, 0xa4, 0x96, 0x59, 0x01, 0x20, 0xe5, 0x3c, 0x02, 0xa4, 0xbb, 0x18, 0x2e, 0x9f,
+	0xbf, 0x52, 0x50, 0xe4, 0x2d, 0x39, 0x4c, 0x4e, 0x68, 0x1f, 0xe6, 0x24, 0x7a, 0x80, 0xdb, 0x34,
+	0x2b, 0x6c, 0xe4, 0x85, 0xda, 0x0e, 0x5d, 0xa8, 0x97, 0x33, 0x14, 0x39, 0xc0, 0x70, 0x15, 0xd9,
+	0x87, 0x22, 0xef, 0xd6, 0xa1, 0x48, 0x7a, 0x17, 0x16, 0x23, 0x5e, 0x44, 0xdb, 0x7f, 0x07, 0x0b,
+	0xb4, 0xc5, 0xc5, 0xf2, 0x28, 0x3e, 0xa3, 0x27, 0x50, 0x0c, 0x7b, 0x14, 0xe7, 0xff, 0x18, 0xa6,
+	0x45, 0x3e, 0xf2, 0xea, 0x24, 0x16, 0x40, 0x81, 0x83, 0x0b, 0x74, 0x8c, 0xfd, 0xdf, 0xdd, 0xce,
+	0xf5, 0x00, 0x17, 0x48, 0x58, 0x98, 0x2e, 0x90, 0x72, 0x16, 0xd0, 0x73, 0xc7, 0x97, 0x92, 0xe8,
+	0x91, 0x56, 0x12, 0x6b, 0x9f, 0xb3, 0x0b, 0x14, 0xc9, 0x0c, 0x91, 0x2f, 0x68, 0xfd, 0x16, 0x8b,
+	0x29, 0xc9, 0x7e, 0x53, 0xbe, 0x84, 0x0d, 0xe5, 0x6b, 0x3c, 0xe0, 0x4b, 0xd8, 0x52, 0xbe, 0x04,
+	0x40, 0x5d, 0xaa, 0x11, 0xe5, 0xf8, 0xbd, 0x6c, 0xa1, 0x91, 0xa7, 0xa9, 0xda, 0x2a, 0x92, 0xa9,
+	0x6c, 0x2b, 0xb1, 0x3c, 0xc2, 0xb6, 0x0a, 0x3c, 0x06, 0x6d, 0x25, 0xf2, 0x49, 0x6c, 0x2b, 0x99,
+	0xa0, 0x02, 0xdb, 0x87, 0xb0, 0xc0, 0x3b, 0xe1, 0xc2, 0xbd, 0xb9, 0xbf, 0x55, 0xf7, 0xaa, 0x16,
+	0xea, 0xaa, 0xb2, 0xf1, 0x7b, 0xc1, 0x0c, 0xb4, 0xa6, 0xfa, 0x5a, 0x76, 0xa8, 0x74, 0x25, 0x72,
+	0xab, 0x41, 0xba, 0xcb, 0x56, 0x84, 0x37, 0x2b, 0xde, 0x9b, 0x23, 0x90, 0xf6, 0x67, 0x30, 0x4f,
+	0x98, 0x0f, 0xe7, 0xb4, 0x09, 0x59, 0xbe, 0x1b, 0x5c, 0xf5, 0x19, 0xc2, 0xc9, 0x34, 0x47, 0x11,
+	0x4a, 0xa6, 0xf9, 0x36, 0x61, 0xe4, 0x80, 0xf5, 0xe3, 0x08, 0xf2, 0xf8, 0x12, 0x16, 0x38, 0xb5,
+	0xaf, 0x4e, 0xe5, 0x1d, 0xd9, 0x76, 0xe1, 0x6c, 0xe8, 0xfc, 0xa5, 0x4c, 0xf2, 0x55, 0x35, 0x6b,
+	0x8f, 0x78, 0xc7, 0xa8, 0x55, 0x91, 0xfa, 0x47, 0x90, 0xe1, 0x0e, 0x25, 0xbb, 0x49, 0xb9, 0x4b,
+	0x68, 0xed, 0xef, 0x59, 0xc8, 0xec, 0xf1, 0x7d, 0x74, 0x06, 0x19, 0x21, 0x33, 0x91, 0x6d, 0xb2,
+	0x0d, 0x4b, 0x57, 0x6b, 0x35, 0x11, 0x23, 0x8e, 0x30, 0x86, 0x7e, 0x80, 0xac, 0x12, 0x8b, 0xe8,
+	0xfd, 0xb8, 0x2e, 0xd6, 0xa5, 0xa9, 0xb5, 0xd6, 0x07, 0xa5, 0x7c, 0xff, 0x08, 0x10, 0xc8, 0x32,
+	0x64, 0x34, 0xeb, 0x91, 0x98, 0xd6, 0x7a, 0x3f, 0x98, 0x72, 0xcf, 0x0b, 0x42, 0x25, 0x4a, 0x6c,
+	0x41, 0x34, 0x4d, 0x15, 0x5b, 0x90, 0x90, 0x7a, 0x52, 0x05, 0x61, 0x5a, 0x29, 0xbe, 0x20, 0xba,
+	0xbc, 0x8a, 0x2f, 0x48, 0x48, 0x70, 0xf1, 0x82, 0x04, 0x8a, 0xcd, 0x5c, 0x90, 0x1e, 0x2d, 0x68,
+	0x2e, 0x88, 0x41, 0xf8, 0x31, 0xf7, 0x81, 0x82, 0x31, 0xbb, 0xef, 0x11, 0x49, 0x66, 0xf7, 0xbd,
+	0x42, 0x88, 0xb8, 0x6f, 0xc0, 0x8c, 0x3e, 0x10, 0xd1, 0x46, 0xdc, 0xb1, 0x23, 0x43, 0xd8, 0xaa,
+	0xf4, 0x07, 0xaa, 0x20, 0xbf, 0x40, 0x3e, 0x24, 0x0c, 0x91, 0xd1, 0xd8, 0x24, 0x44, 0xad, 0xcd,
+	0x17, 0x20, 0xf5, 0x38, 0x21, 0x79, 0x63, 0x8e, 0x63, 0x92, 0x70, 0xe6, 0x38, 0x46, 0xad, 0xc4,
+	0xe3, 0x84, 0x04, 0x8b, 0x39, 0x8e, 0x49, 0x19, 0x99, 0xe3, 0x98, 0xd5, 0x8f, 0xe4, 0x5e, 0x4c,
+	0x87, 0x58, 0xee, 0xc3, 0x83, 0x33, 0x96, 0xfb, 0xe8, 0x14, 0x54, 0xdc, 0xcb, 0xa9, 0x15, 0xcf,
+	0x7d, 0x64, 0x52, 0xc6, 0x73, 0x1f, 0x1d, 0x80, 0x3a, 0xf7, 0xf2, 0x18, 0x09, 0xdc, 0x47, 0x4e,
+	0xb2, 0xf9, 0x02, 0x64, 0x2f, 0x27, 0x89, 0x71, 0x4c, 0x52, 0x23, 0x89, 0x93, 0xde, 0x38, 0xe4,
+	0x53, 0xa2, 0x66, 0x98, 0xf9, 0x53, 0x12, 0x9d, 0x90, 0xd6, 0x5a, 0x1f, 0x94, 0xf2, 0xfd, 0x33,
+	0xff, 0x43, 0x43, 0x8c, 0x19, 0xb4, 0x1e, 0x57, 0xe6, 0xf0, 0x74, 0xb2, 0x36, 0xfa, 0xe2, 0x74,
+	0xca, 0x75, 0x31, 0x60, 0xa6, 0xdc, 0xa0, 0x3c, 0xac, 0x4a, 0x7f, 0xa0, 0x1e, 0x44, 0x9f, 0xad,
+	0xe6, 0x20, 0x86, 0xf9, 0x6d, 0x55, 0xfa, 0x03, 0x65, 0x90, 0xdd, 0xe5, 0xc7, 0xa7, 0xf2, 0xd8,
+	0xbf, 0xe4, 0x79, 0xf3, 0x54, 0x4e, 0xfd, 0xf1, 0x5c, 0x4e, 0x3d, 0x92, 0xe7, 0x1f, 0xf2, 0xfc,
+	0x4f, 0x9e, 0xcb, 0x34, 0xfb, 0x87, 0x68, 0xfb, 0x6d, 0x00, 0x00, 0x00, 0xff, 0xff, 0xdc, 0xd4,
+	0x5d, 0x18, 0x85, 0x12, 0x00, 0x00,
 }
