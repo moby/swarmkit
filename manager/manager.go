@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
@@ -32,7 +33,7 @@ type Config struct {
 
 	// Listeners will be used for grpc serving if it's not nil,
 	// ProtoAddr fields will be used otherwise.
-	Listeners []net.Listener
+	Listeners map[string]net.Listener
 
 	// JoinRaft is an optional address of a node in an existing raft
 	// cluster to join.
@@ -56,11 +57,12 @@ type Manager struct {
 	scheduler    *scheduler.Scheduler
 	allocator    *allocator.Allocator
 	server       *grpc.Server
+	localserver  *grpc.Server
 	raftNode     *raft.Node
 
 	leadershipCh chan raft.LeadershipState
 	leaderLock   sync.Mutex
-	listeners    []net.Listener
+	listeners    map[string]net.Listener
 
 	managerDone chan struct{}
 }
@@ -123,13 +125,15 @@ func New(config *Config) (*Manager, error) {
 		caserver:     ca.NewServer(config.SecurityConfig),
 		dispatcher:   dispatcher.New(store, dispatcherConfig),
 		server:       grpc.NewServer(opts...),
+		localserver:  grpc.NewServer(opts...),
 		raftNode:     raftNode,
 		leadershipCh: leadershipCh,
+		listeners:    make(map[string]net.Listener),
 	}
 
 	api.RegisterCAServer(m.server, m.caserver)
 	api.RegisterManagerServer(m.server, m)
-	api.RegisterClusterServer(m.server, m.apiserver)
+	api.RegisterClusterServer(m.localserver, m.apiserver)
 	api.RegisterDispatcherServer(m.server, m.dispatcher)
 
 	return m, nil
@@ -147,7 +151,7 @@ func (m *Manager) Run(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			m.listeners = append(m.listeners, l)
+			m.listeners[proto] = l
 		}
 	}
 
@@ -238,11 +242,21 @@ func (m *Manager) Run(ctx context.Context) error {
 	time.Sleep(time.Second)
 
 	chErr := make(chan error)
-	for _, l := range m.listeners {
-		go func(lis net.Listener) {
-			log.G(ctx).Info("Listening for connections")
-			chErr <- m.server.Serve(lis)
-		}(l)
+	for proto, l := range m.listeners {
+		go func(proto string, lis net.Listener) {
+
+			if proto == "unix" {
+				log.G(ctx).WithFields(logrus.Fields{
+					"proto": lis.Addr().Network(),
+					"addr":  lis.Addr().String()}).Info("Listening for local connections")
+				chErr <- m.localserver.Serve(lis)
+			} else {
+				log.G(ctx).WithFields(logrus.Fields{
+					"proto": lis.Addr().Network(),
+					"addr":  lis.Addr().String()}).Info("Listening for connections")
+				chErr <- m.server.Serve(lis)
+			}
+		}(proto, l)
 	}
 
 	return <-chErr
@@ -270,6 +284,7 @@ func (m *Manager) Stop(ctx context.Context) {
 	}
 	m.raftNode.Shutdown()
 	m.server.Stop()
+	m.localserver.Stop()
 }
 
 // GRPC Methods
