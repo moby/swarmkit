@@ -22,7 +22,7 @@
 //
 // WatchableStore is a version of Store that exposes watch functionality.
 // These expose a publish/subscribe queue where code can subscribe to
-// changes of interest. This can be combined with the Snapshot method to
+// changes of interest. This can be combined with the ViewAndWatch function to
 // "fork" a store, by making a snapshot and then applying future changes
 // to keep the copy in sync. This approach lets consumers of the data
 // use their own data structures and implement their own concurrency

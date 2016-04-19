@@ -16,7 +16,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/manager/dispatcher"
-	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,7 +35,7 @@ func (e *NoopExecutor) Runner(t *api.Task) (exec.Runner, error) {
 
 func TestManager(t *testing.T) {
 	ctx := context.TODO()
-	store := state.NewMemoryStore(nil)
+	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
 	temp, err := ioutil.TempFile("", "test-socket")
@@ -91,7 +91,7 @@ func TestManager(t *testing.T) {
 
 func TestManagerNodeCount(t *testing.T) {
 	ctx := context.TODO()
-	store := state.NewMemoryStore(nil)
+	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")

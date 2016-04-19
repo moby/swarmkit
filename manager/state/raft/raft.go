@@ -1,4 +1,4 @@
-package state
+package raft
 
 import (
 	"errors"
@@ -27,8 +27,10 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
+	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/leaderconn"
 	"github.com/docker/swarm-v2/manager/state/pb"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/gogo/protobuf/proto"
 	"github.com/pivotal-golang/clock"
 )
@@ -62,17 +64,6 @@ var (
 	ErrIDNotFound = errors.New("raft: member not found in cluster list")
 )
 
-// A Proposer can propose actions to a cluster.
-type Proposer interface {
-	// ProposeValue adds storeAction to the distributed log. If this
-	// completes successfully, ProposeValue calls cb to commit the
-	// proposed changes. The callback is necessary for the Proposer to make
-	// sure that the changes are committed before it interacts further
-	// with the store.
-	ProposeValue(ctx context.Context, storeAction []*api.StoreAction, cb func()) error
-	GetVersion() *api.Version
-}
-
 // LeadershipState indicates whether the node is a leader or follower.
 type LeadershipState int
 
@@ -98,7 +89,7 @@ type Node struct {
 	Error   error
 
 	raftStore   *raft.MemoryStorage
-	memoryStore *MemoryStore
+	memoryStore *store.MemoryStore
 	Config      *raft.Config
 	reqIDGen    *idutil.Generator
 	wait        *wait
@@ -204,7 +195,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 		leadershipCh: leadershipCh,
 		sendTimeout:  2 * time.Second,
 	}
-	n.memoryStore = NewMemoryStore(n)
+	n.memoryStore = store.NewMemoryStore(n)
 
 	if opts.SnapshotInterval != 0 {
 		n.snapshotInterval = opts.SnapshotInterval
@@ -290,7 +281,7 @@ func DefaultNodeConfig() *raft.Config {
 }
 
 // MemoryStore returns the memory store that is kept in sync with the raft log.
-func (n *Node) MemoryStore() WatchableStore {
+func (n *Node) MemoryStore() state.WatchableStore {
 	return n.memoryStore
 }
 
@@ -792,7 +783,7 @@ func (n *Node) doSnapshot() {
 		defer n.asyncTasks.Done()
 		defer atomic.AddInt32(&n.snapshotInProgress, -1)
 
-		err := n.memoryStore.View(func(tx ReadTx) error {
+		err := n.memoryStore.View(func(tx state.ReadTx) error {
 			close(viewStarted)
 
 			storeSnapshot, err := n.memoryStore.Save(tx)
@@ -1020,7 +1011,7 @@ func (n *Node) processEntry(entry raftpb.Entry) error {
 		// position and cancelling the transaction. Create a new
 		// transaction to commit the data.
 
-		err := n.memoryStore.applyStoreActions(r.Action)
+		err := n.memoryStore.ApplyStoreActions(r.Action)
 		if err != nil {
 			log.G(context.Background()).Errorf("error applying actions from raft: %v", err)
 		}

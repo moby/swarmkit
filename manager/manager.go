@@ -18,7 +18,7 @@ import (
 	"github.com/docker/swarm-v2/manager/drainer"
 	"github.com/docker/swarm-v2/manager/orchestrator"
 	"github.com/docker/swarm-v2/manager/scheduler"
-	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/raft"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -57,9 +57,9 @@ type Manager struct {
 	scheduler    *scheduler.Scheduler
 	allocator    *allocator.Allocator
 	server       *grpc.Server
-	raftNode     *state.Node
+	raftNode     *raft.Node
 
-	leadershipCh chan state.LeadershipState
+	leadershipCh chan raft.LeadershipState
 	leaderLock   sync.Mutex
 
 	managerDone chan struct{}
@@ -86,18 +86,18 @@ func New(config *Config) (*Manager, error) {
 		return nil, fmt.Errorf("failed to create raft state directory: %v", err)
 	}
 
-	raftCfg := state.DefaultNodeConfig()
+	raftCfg := raft.DefaultNodeConfig()
 
-	leadershipCh := make(chan state.LeadershipState)
+	leadershipCh := make(chan raft.LeadershipState)
 
-	newNodeOpts := state.NewNodeOptions{
+	newNodeOpts := raft.NewNodeOptions{
 		Addr:           config.ListenAddr,
 		JoinAddr:       config.JoinRaft,
 		Config:         raftCfg,
 		StateDir:       raftStateDir,
 		TLSCredentials: config.SecurityConfig.ClientTLSCreds,
 	}
-	raftNode, err := state.NewNode(context.TODO(), newNodeOpts, leadershipCh)
+	raftNode, err := raft.NewNode(context.TODO(), newNodeOpts, leadershipCh)
 	if err != nil {
 		return nil, fmt.Errorf("can't create raft node: %v", err)
 	}
@@ -149,7 +149,7 @@ func (m *Manager) Run(ctx context.Context) error {
 		for {
 			select {
 			case newState := <-m.leadershipCh:
-				if newState == state.IsLeader {
+				if newState == raft.IsLeader {
 					store := m.raftNode.MemoryStore()
 
 					m.leaderLock.Lock()
@@ -196,7 +196,7 @@ func (m *Manager) Run(ctx context.Context) error {
 							log.G(ctx).WithError(err).Error("drainer exited with an error")
 						}
 					}()
-				} else if newState == state.IsFollower {
+				} else if newState == raft.IsFollower {
 					m.leaderLock.Lock()
 					m.drainer.Stop()
 					m.orchestrator.Stop()
@@ -225,7 +225,7 @@ func (m *Manager) Run(ctx context.Context) error {
 	log.G(ctx).Info("listening")
 	go m.raftNode.Run(ctx)
 
-	state.Register(m.server, m.raftNode)
+	raft.Register(m.server, m.raftNode)
 
 	// Wait for raft to become available.
 	// FIXME(aaronl): This should not be handled by sleeping.
