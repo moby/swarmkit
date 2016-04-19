@@ -1,6 +1,7 @@
 package container
 
 import (
+	"fmt"
 	"net"
 	"strings"
 	"time"
@@ -76,9 +77,20 @@ func (c *containerConfig) config() *enginecontainer.Config {
 	}
 }
 
+func (c *containerConfig) bindMounts() []string {
+	mounts := c.runtime.Mounts
+	r := make([]string, len(mounts))
+	for i, val := range mounts {
+		r[i] = fmt.Sprintf("%s:%s:%s", val.Source, val.Target, val.Mask)
+	}
+
+	return r
+}
+
 func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 	return &enginecontainer.HostConfig{
 		Resources: c.resources(),
+		Binds:     c.bindMounts(),
 	}
 }
 

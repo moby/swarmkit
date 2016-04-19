@@ -73,6 +73,20 @@ message Image {
 	string reference = 1;
 }
 
+message Mount {
+	// Target path in container
+	string target = 1;
+
+	// Source path to mount
+	string source = 2;
+
+	// Mask
+	string mask = 3;
+
+	// mount type (BindHostDir, scratch, remote)
+	string type = 4;
+}
+
 // Container specifies runtime parameters for a container.
 message Container {
 	// Resource requirements for the container.
@@ -108,6 +122,8 @@ message Container {
 	}
 
 	repeated NetworkAttachment networks = 7;
+
+	repeated Mount mounts = 8;
 }
 
 // TaskState enumerates the states that a task progresses through within an
