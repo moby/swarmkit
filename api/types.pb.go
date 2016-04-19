@@ -45,8 +45,6 @@
 		ListNodesResponse
 		UpdateNodeRequest
 		UpdateNodeResponse
-		CreateTaskRequest
-		CreateTaskResponse
 		GetTaskRequest
 		GetTaskResponse
 		RemoveTaskRequest
