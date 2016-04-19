@@ -37,6 +37,12 @@ message Service {
 	Version version = 2 [(gogoproto.nullable) = false];
 
 	ServiceSpec spec = 3;
+
+	// Runtime state of service endpoint. This may be different
+	// from the spec version because the user may not have entered
+	// the optional fields like node_port or virtual_ip and it
+	// could be auto allocated by the system.
+	Endpoint endpoint = 4;
 }
 
 // Task specifies the parameters for implementing a Spec. A task is effectively
@@ -79,6 +85,10 @@ message Task {
 	}
 
 	repeated NetworkAttachment networks = 8;
+
+	// A copy of runtime state of service endpoint from Service
+	// object to be distributed to agents as part of the task.
+	Endpoint endpoint = 9;
 }
 
 message Volume {
