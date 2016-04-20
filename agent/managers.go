@@ -15,20 +15,18 @@ import (
 // observations.
 type Managers interface {
 	// Weight returns the managers with their current weights.
-	Weights() map[string]float64
+	Weights() map[string]int
 
 	// Select a manager from the set of available managers.
 	Select() (string, error)
 
-	// Observe records an experience with the manager. A positive weight
-	// indicates a good experience and a negative weight a bad experience. The
-	// provided weight should be between -1.0 and 1.0, so it is good practive to
-	// normalize weights before calling Observe.
+	// Observe records an experience with a particular manager. A positive weight
+	// indicates a good experience and a negative weight a bad experience.
 	//
 	// The observation will be used to calculate a moving weight, which is
 	// implementation dependent. This method will be called such that repeated
 	// observations of the same master in each session request are favored.
-	Observe(addr string, weight float64)
+	Observe(addr string, weight int)
 
 	// Remove the manager from the list completely.
 	Remove(addrs ...string)
@@ -38,7 +36,7 @@ type Managers interface {
 // Entries provided are heavily weighted initially.
 func NewManagers(addrs ...string) Managers {
 	mwr := &managersWeightedRandom{
-		managers: make(map[string]float64),
+		managers: make(map[string]int),
 	}
 
 	for _, addr := range addrs {
@@ -49,7 +47,7 @@ func NewManagers(addrs ...string) Managers {
 }
 
 type managersWeightedRandom struct {
-	managers map[string]float64
+	managers map[string]int
 	mu       sync.Mutex
 
 	// workspace to avoid reallocation. these get lazily allocated when
@@ -58,11 +56,11 @@ type managersWeightedRandom struct {
 	addrs []string
 }
 
-func (mwr *managersWeightedRandom) Weights() map[string]float64 {
+func (mwr *managersWeightedRandom) Weights() map[string]int {
 	mwr.mu.Lock()
 	defer mwr.mu.Unlock()
 
-	ms := make(map[string]float64, len(mwr.managers))
+	ms := make(map[string]int, len(mwr.managers))
 	for addr, weight := range mwr.managers {
 		ms[addr] = weight
 	}
@@ -107,7 +105,7 @@ func (mwr *managersWeightedRandom) Select() (string, error) {
 			weight = 0
 		}
 
-		cum += weight + bias
+		cum += float64(weight) + bias
 		mwr.cdf = append(mwr.cdf, cum)
 		mwr.addrs = append(mwr.addrs, addr)
 	}
@@ -117,11 +115,11 @@ func (mwr *managersWeightedRandom) Select() (string, error) {
 	return mwr.addrs[i], nil
 }
 
-func (mwr *managersWeightedRandom) Observe(addr string, weight float64) {
+func (mwr *managersWeightedRandom) Observe(addr string, weight int) {
 	mwr.mu.Lock()
 	defer mwr.mu.Unlock()
 
-	mwr.observe(addr, weight)
+	mwr.observe(addr, float64(weight))
 }
 
 func (mwr *managersWeightedRandom) Remove(addrs ...string) {
@@ -140,7 +138,7 @@ const (
 	// https://en.wikipedia.org/wiki/Exponential_smoothing#Basic_exponential_smoothing
 	// for details.
 	managerWeightSmoothingFactor = 0.7
-	managerWeightMax             = 1.0
+	managerWeightMax             = 1 << 8
 )
 
 func clip(x float64) float64 {
@@ -163,7 +161,7 @@ func (mwr *managersWeightedRandom) observe(addr string, weight float64) {
 
 	// makes the math easier to read below
 	var (
-		w0 = mwr.managers[addr]
+		w0 = float64(mwr.managers[addr])
 		w1 = clip(weight)
 	)
 	const α = managerWeightSmoothingFactor
@@ -172,14 +170,13 @@ func (mwr *managersWeightedRandom) observe(addr string, weight float64) {
 	// value.
 	wn := clip(α*w1 + (1-α)*w0)
 
-	mwr.managers[addr] = wn
+	mwr.managers[addr] = int(math.Ceil(wn))
 }
 
 type picker struct {
 	m    Managers
 	addr string // currently selected manager address
 	conn *grpc.Conn
-	i    float64
 	mu   sync.Mutex
 }
 

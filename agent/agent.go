@@ -258,7 +258,7 @@ func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMe
 			continue
 		}
 
-		a.config.Managers.Observe(manager.Addr, manager.Weight)
+		a.config.Managers.Observe(manager.Addr, int(manager.Weight))
 		seen[manager.Addr] = struct{}{}
 	}
 
