@@ -384,3 +384,121 @@ func TestAllocateTaskFree(t *testing.T) {
 	err = na.DeallocateTask(task)
 	assert.NoError(t, err)
 }
+
+func TestServiceAllocate(t *testing.T) {
+	na := newNetworkAllocator(t)
+	s := &api.Service{
+		ID: "testID1",
+		Spec: &api.ServiceSpec{
+			Endpoint: &api.Endpoint{
+				Ports: []*api.Endpoint_PortConfiguration{
+					{
+						Name: "http",
+						Port: 80,
+					},
+					{
+						Name: "https",
+						Port: 443,
+					},
+				},
+			},
+		},
+	}
+
+	err := na.ServiceAllocate(s)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(s.Endpoint.Ports))
+	assert.True(t, s.Endpoint.Ports[0].NodePort >= dynamicPortStart &&
+		s.Endpoint.Ports[0].NodePort <= dynamicPortEnd)
+	assert.True(t, s.Endpoint.Ports[1].NodePort >= dynamicPortStart &&
+		s.Endpoint.Ports[1].NodePort <= dynamicPortEnd)
+}
+
+func TestServiceAllocateUserDefinedPorts(t *testing.T) {
+	na := newNetworkAllocator(t)
+	s := &api.Service{
+		ID: "testID1",
+		Spec: &api.ServiceSpec{
+			Endpoint: &api.Endpoint{
+				Ports: []*api.Endpoint_PortConfiguration{
+					{
+						Name:     "some_tcp",
+						Port:     1234,
+						NodePort: 1234,
+					},
+					{
+						Name:     "some_udp",
+						Port:     1234,
+						NodePort: 1234,
+						Protocol: api.Endpoint_UDP,
+					},
+				},
+			},
+		},
+	}
+
+	err := na.ServiceAllocate(s)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(s.Endpoint.Ports))
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].NodePort)
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[1].NodePort)
+}
+
+func TestServiceAllocateConflictingUserDefinedPorts(t *testing.T) {
+	na := newNetworkAllocator(t)
+	s := &api.Service{
+		ID: "testID1",
+		Spec: &api.ServiceSpec{
+			Endpoint: &api.Endpoint{
+				Ports: []*api.Endpoint_PortConfiguration{
+					{
+						Name:     "some_tcp",
+						Port:     1234,
+						NodePort: 1234,
+					},
+					{
+						Name:     "some_other_tcp",
+						Port:     1234,
+						NodePort: 1234,
+					},
+				},
+			},
+		},
+	}
+
+	err := na.ServiceAllocate(s)
+	assert.Error(t, err)
+}
+
+func TestServiceDeallocateAllocate(t *testing.T) {
+	na := newNetworkAllocator(t)
+	s := &api.Service{
+		ID: "testID1",
+		Spec: &api.ServiceSpec{
+			Endpoint: &api.Endpoint{
+				Ports: []*api.Endpoint_PortConfiguration{
+					{
+						Name:     "some_tcp",
+						Port:     1234,
+						NodePort: 1234,
+					},
+				},
+			},
+		},
+	}
+
+	err := na.ServiceAllocate(s)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(s.Endpoint.Ports))
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].NodePort)
+
+	err = na.ServiceDeallocate(s)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(s.Endpoint.Ports))
+
+	// Allocate again.
+	err = na.ServiceAllocate(s)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(s.Endpoint.Ports))
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].NodePort)
+}
