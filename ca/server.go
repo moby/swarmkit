@@ -1,12 +1,11 @@
 package ca
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
+	"github.com/docker/swarm-v2/log"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-
 	"google.golang.org/grpc/codes"
 )
 
@@ -51,10 +50,20 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 	// Remote users are expecting a full certificate chain, not just a signed certificate
 	certChain := append(cert, s.securityConfig.RootCACert...)
 
-	log.Debugf("(*CA).IssueCertificate: Issued certificate for CN=%s and OU=%s", randomID, request.Role)
+	log.G(ctx).Debugf("(*Server).IssueCertificate: Issued certificate for CN=%s and OU=%s", randomID, request.Role)
 
 	return &api.IssueCertificateResponse{
 		Status:           &api.IssuanceStatus{Status: api.IssuanceStatusComplete},
 		CertificateChain: certChain,
+	}, nil
+}
+
+// GetRootCACertificate returns the certificate of the Root CA.
+func (s *Server) GetRootCACertificate(ctx context.Context, request *api.GetRootCACertificateRequest) (*api.GetRootCACertificateResponse, error) {
+
+	log.G(ctx).Debugf("(*Server).GetRootCACertificate called ")
+
+	return &api.GetRootCACertificateResponse{
+		Certificate: s.securityConfig.RootCACert,
 	}, nil
 }
