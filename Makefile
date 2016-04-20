@@ -16,12 +16,12 @@ BINARIES=$(addprefix bin/,$(COMMANDS))
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
-.PHONY: clean all fmt vet lint errcheck build binaries test setup checkprotos coverage ci check help
+.PHONY: clean all fmt vet lint build binaries test setup checkprotos coverage ci check help
 .DEFAULT: default
 
-all: check build binaries test ## run fmt, vet, lint, errcheck build the binaries and run the tests
+all: check build binaries test ## run fmt, vet, lint, build the binaries and run the tests
 
-check: fmt vet lint errcheck ## run fmt, vet, lint and errcheck
+check: fmt vet lint ## run fmt, vet, lint
 
 ci: check build binaries checkprotos coverage ## to be used by the CI
 
@@ -36,7 +36,7 @@ setup: ## install dependencies
 	@echo "🐳 $@"
 	# TODO(stevvooe): Install these from the vendor directory
 	@go get -u github.com/golang/lint/golint
-	@go get -u github.com/kisielk/errcheck
+	#@go get -u github.com/kisielk/errcheck
 	@go get -u github.com/golang/mock/mockgen
 
 generate: bin/protoc-gen-gogoswarm ## generate protobuf
@@ -69,9 +69,9 @@ lint: ## run go lint
 	@echo "🐳 $@"
 	@test -z "$$(golint ./... | grep -v vendor/ | grep -v ".pb.go:" | grep -v ".mock.go" | tee /dev/stderr)"
 
-errcheck: ## run go errcheck
-	@echo "🐳 $@"
-	@test -z "$$(golint ./... | grep -v vendor/ | grep -v ".pb.go:" | grep -v ".mock.go" | tee /dev/stderr)"
+#errcheck: ## run go errcheck
+#	@echo "🐳 $@"
+#	@test -z "$$(errcheck ./... | grep -v vendor/ | grep -v ".pb.go:" | grep -v ".mock.go" | tee /dev/stderr)"
 
 build: ## build the go packages
 	@echo "🐳 $@"
