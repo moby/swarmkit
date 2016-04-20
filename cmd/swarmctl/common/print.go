@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	tspb "github.com/docker/swarm-v2/api/timestamp"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
+	"github.com/dustin/go-humanize"
 )
 
 // PrintHeader prints a nice little header.
@@ -23,4 +27,16 @@ func FprintfIfNotEmpty(w io.Writer, format string, v interface{}) {
 	if v != nil && v != "" {
 		fmt.Fprintf(w, format, v)
 	}
+}
+
+// TimestampAgo returns a relatime time string from a timestamp (e.g. "12 seconds ago").
+func TimestampAgo(ts *tspb.Timestamp) string {
+	if ts == nil {
+		return ""
+	}
+	t, err := ptypes.Timestamp(ts)
+	if err != nil {
+		panic(err)
+	}
+	return humanize.Time(t)
 }
