@@ -29,6 +29,9 @@ type ContainerConfig struct {
 	Env []string `yaml:"env,omitempty"`
 
 	Resources *ResourceRequirements `yaml:"resources,omitempty"`
+
+	// Mounts describe how volumes should be mounted in the container
+	Mounts Mounts `yaml:"mounts,omitempty"`
 }
 
 // ServiceConfig is a human representation of the Service
@@ -50,6 +53,10 @@ func (s *ServiceConfig) Validate() error {
 	if err := s.Resources.Validate(); err != nil {
 		return err
 	}
+	if err := s.Mounts.Validate(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -87,6 +94,7 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.Container{
 					Resources: s.Resources.ToProto(),
+					Mounts:    s.Mounts.ToProto(),
 					Image: &api.Image{
 						Reference: s.Image,
 					},
@@ -117,6 +125,11 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	if serviceSpec.Template.GetContainer().Resources != nil {
 		s.Resources = &ResourceRequirements{}
 		s.Resources.FromProto(serviceSpec.Template.GetContainer().Resources)
+	}
+	if serviceSpec.Template.GetContainer().Mounts != nil {
+		apiMounts := serviceSpec.Template.GetContainer().Mounts
+		s.Mounts = make(Mounts, len(apiMounts))
+		s.Mounts.FromProto(apiMounts)
 	}
 }
 

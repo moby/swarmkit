@@ -57,6 +57,15 @@ func printServiceSummary(service *api.Service) {
 			fmt.Fprintf(w, " %s\n", n.GetName())
 		}
 	}
+	if len(ctr.Mounts) > 0 {
+		fmt.Fprintln(w, "  Mounts:")
+		for _, v := range ctr.Mounts {
+			fmt.Fprintf(w, "    - target = %s\n", v.Target)
+			fmt.Fprintf(w, "      source = %s\n", v.Source)
+			fmt.Fprintf(w, "      mask = %s\n", v.Mask)
+			fmt.Fprintf(w, "      type = %s\n", v.Type)
+		}
+	}
 }
 
 func printTasks(tasks []*api.Task, res *common.Resolver) {

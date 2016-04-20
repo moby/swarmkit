@@ -1,0 +1,12 @@
+name: web
+image: nginx
+instances: 1
+mounts:
+  - target: /data
+    source: /home/docker
+    mask: ro
+    type: BindHostDir
+  - target: /dataRW
+    source: /home/docker
+    mask: rw
+    type: BindHostDir
