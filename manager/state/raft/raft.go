@@ -227,6 +227,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 	n.appliedIndex = snapshot.Metadata.Index
 	n.snapshotIndex = snapshot.Metadata.Index
 	n.reqIDGen = idutil.NewGenerator(uint16(n.Config.ID), time.Now())
+	n.wait = newWait()
 
 	if n.startNodePeers != nil {
 		if n.joinAddr != "" {
@@ -421,7 +422,6 @@ func (n *Node) readWAL(ctx context.Context, snapshot *raftpb.Snapshot) (err erro
 // Before running the main loop, it first starts the raft node based on saved
 // cluster state. If no saved state exists, it starts a single-node cluster.
 func (n *Node) Run(ctx context.Context) {
-	n.wait = newWait()
 	for {
 		select {
 		case <-n.ticker.C():
