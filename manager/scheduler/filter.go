@@ -39,7 +39,11 @@ func (f *ResourceFilter) Enabled(t *api.Task) bool {
 	if c == nil {
 		return false
 	}
-	if r := c.Resources; r == nil || (r.Reservations.NanoCPUs == 0 && r.Reservations.MemoryBytes == 0) {
+	r := c.Resources
+	if r == nil || r.Reservations == nil {
+		return false
+	}
+	if r.Reservations.NanoCPUs == 0 && r.Reservations.MemoryBytes == 0 {
 		return false
 	}
 	return true
