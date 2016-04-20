@@ -67,6 +67,9 @@ func (nh *nodeHeap) nodeInfo(nodeID string) NodeInfo {
 // addOrUpdateNode sets the number of tasks for a given node. It adds the node
 // to the heap if it wasn't already tracked.
 func (nh *nodeHeap) addOrUpdateNode(n NodeInfo) {
+	if n.Node == nil {
+		return
+	}
 	index, ok := nh.index[n.ID]
 	if ok {
 		nh.heap[index] = n
@@ -79,6 +82,9 @@ func (nh *nodeHeap) addOrUpdateNode(n NodeInfo) {
 // updateNode sets the number of tasks for a given node. It ignores the update
 // if the node isn't already tracked in the heap.
 func (nh *nodeHeap) updateNode(n NodeInfo) {
+	if n.Node == nil {
+		return
+	}
 	index, ok := nh.index[n.ID]
 	if ok {
 		nh.heap[index] = n
