@@ -107,8 +107,8 @@ uninstall:
 coverage: ## generate coverprofiles from the tests
 	@echo "🐳 $@"
 	@( for pkg in ${PACKAGES}; do \
-		go test -i -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=count $$pkg || exit; \
-		go test -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=count $$pkg || exit; \
+		go test -i -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
+		go test -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
 	done )
 
 help: ## this help
