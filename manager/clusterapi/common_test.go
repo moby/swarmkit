@@ -9,20 +9,20 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func TestValidateMeta(t *testing.T) {
-	type BadMeta struct {
-		m api.Meta
+func TestValidateAnnotations(t *testing.T) {
+	type BadAnnotations struct {
+		m api.Annotations
 		c codes.Code
 	}
 
-	err := validateMeta(api.Meta{})
+	err := validateAnnotations(api.Annotations{})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
-	for _, good := range []api.Meta{
+	for _, good := range []api.Annotations{
 		{Name: "name"},
 	} {
-		err := validateMeta(good)
+		err := validateAnnotations(good)
 		assert.NoError(t, err)
 	}
 }

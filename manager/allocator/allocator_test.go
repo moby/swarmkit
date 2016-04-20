@@ -28,7 +28,7 @@ func TestAllocator(t *testing.T) {
 		n1 := &api.Network{
 			ID: "testID1",
 			Spec: &api.NetworkSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "test1",
 				},
 			},
@@ -96,7 +96,7 @@ func TestAllocator(t *testing.T) {
 		n2 := &api.Network{
 			ID: "testID2",
 			Spec: &api.NetworkSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "test2",
 				},
 			},
@@ -184,7 +184,7 @@ func TestAllocator(t *testing.T) {
 		n3 := &api.Network{
 			ID: "testID3",
 			Spec: &api.NetworkSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "test3",
 				},
 			},

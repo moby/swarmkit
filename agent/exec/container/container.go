@@ -145,12 +145,12 @@ func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
 				IPv6Address: ipv6,
 			},
 			ServiceConfig: &network.EndpointServiceConfig{
-				Name: c.task.Meta.Name,
+				Name: c.task.Annotations.Name,
 				ID:   c.task.ServiceID,
 			},
 		}
 
-		epConfig[na.Network.Spec.Meta.Name] = epSettings
+		epConfig[na.Network.Spec.Annotations.Name] = epSettings
 	}
 
 	return &network.NetworkingConfig{EndpointsConfig: epConfig}
@@ -160,7 +160,7 @@ func (c *containerConfig) networkCreateOptions() []types.NetworkCreate {
 	netOpts := make([]types.NetworkCreate, 0, len(c.task.Networks))
 	for _, na := range c.task.Networks {
 		options := types.NetworkCreate{
-			Name:   na.Network.Spec.Meta.Name,
+			Name:   na.Network.Spec.Annotations.Name,
 			ID:     na.Network.ID,
 			Driver: na.Network.DriverState.Name,
 			IPAM: network.IPAM{

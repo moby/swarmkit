@@ -15,14 +15,15 @@ import "gogoproto/gogo.proto";
 // particular component, API objects will either have a copy of the spec
 // component or a different representation to reflect allocation or resolution.
 
-// Meta is common to all API specs.
-message Meta {
+// Annotations provide useful information to identify API objects. They are
+// common to all API specs.
+message Annotations {
 	string name = 1;
 	map<string, string> labels = 2;
 }
 
 message NodeSpec {
-	Meta meta = 1 [(gogoproto.nullable) = false];
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
 	enum Availability {
 		option (gogoproto.goproto_enum_prefix) = false;
@@ -51,7 +52,7 @@ message NodeSpec {
 // strategy and restart policy, a number of application-level behaviors can be
 // defined.
 message ServiceSpec {
-	Meta meta = 1 [(gogoproto.nullable) = false];
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
 	// Template defines the base configuration for tasks created for this service.
 	TaskSpec template = 2;
@@ -112,7 +113,7 @@ message TaskSpec {
 
 // VolumeSpec defines the properties of a Volume.
 message VolumeSpec {
-	Meta meta = 1 [(gogoproto.nullable) = false];
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
 	// Driver specific configuration consumed by the Volume driver.
 	Driver driver_configuration = 2;
@@ -120,7 +121,7 @@ message VolumeSpec {
 
 // NetworkSpec specifies user defined network parameters.
 message NetworkSpec {
-	Meta meta = 1 [(gogoproto.nullable) = false];
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
 	// Driver specific configuration consumed by the network driver.
 	Driver driver_configuration = 2;

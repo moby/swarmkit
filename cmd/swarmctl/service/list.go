@@ -54,7 +54,7 @@ var (
 
 					fmt.Fprintf(w, "%s\t%s\t%s\t%d\n",
 						s.ID,
-						spec.Meta.Name,
+						spec.Annotations.Name,
 						reference,
 						s.Spec.Instances,
 					)

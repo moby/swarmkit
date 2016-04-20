@@ -21,7 +21,7 @@ func printServiceSummary(service *api.Service) {
 		_ = w.Flush()
 	}()
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", service.ID)
-	common.FprintfIfNotEmpty(w, "Name\t: %s\n", service.Spec.Meta.Name)
+	common.FprintfIfNotEmpty(w, "Name\t: %s\n", service.Spec.Annotations.Name)
 	common.FprintfIfNotEmpty(w, "Instances\t: %d\n", service.Spec.Instances)
 	common.FprintfIfNotEmpty(w, "Strategy\t: %s\n", service.Spec.Strategy)
 	fmt.Fprintln(w, "Template:\t")

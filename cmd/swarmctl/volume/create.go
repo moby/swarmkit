@@ -45,7 +45,7 @@ var (
 			}
 
 			spec := &api.VolumeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: name,
 				},
 				DriverConfiguration: driver,

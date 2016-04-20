@@ -39,7 +39,7 @@ var (
 			servicespecs := []*api.ServiceSpec{}
 
 			for _, j := range r.Services {
-				if j.Spec.Meta.Labels["namespace"] == localSpec.Namespace {
+				if j.Spec.Annotations.Labels["namespace"] == localSpec.Namespace {
 					servicespecs = append(servicespecs, j.Spec)
 				}
 			}

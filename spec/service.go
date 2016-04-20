@@ -86,7 +86,7 @@ func (s *ServiceConfig) Write(w io.Writer) error {
 // ToProto converts a ServiceConfig to a ServiceSpec.
 func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 	spec := &api.ServiceSpec{
-		Meta: api.Meta{
+		Annotations: api.Annotations{
 			Name:   s.Name,
 			Labels: make(map[string]string),
 		},
@@ -113,7 +113,7 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 // FromProto converts a ServiceSpec to a ServiceConfig.
 func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	*s = ServiceConfig{
-		Name:      serviceSpec.Meta.Name,
+		Name:      serviceSpec.Annotations.Name,
 		Instances: serviceSpec.Instances,
 		ContainerConfig: ContainerConfig{
 			Image:   serviceSpec.Template.GetContainer().Image.Reference,

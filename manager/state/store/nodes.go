@@ -216,5 +216,5 @@ func (ni nodeIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 		return false, nil, nil
 	}
 	// Add the null character as a terminator
-	return true, []byte(n.Spec.Meta.Name + "\x00"), nil
+	return true, []byte(n.Spec.Annotations.Name + "\x00"), nil
 }

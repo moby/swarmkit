@@ -12,7 +12,7 @@ import (
 
 func createVolumeSpec(name string) *api.VolumeSpec {
 	return &api.VolumeSpec{
-		Meta: api.Meta{
+		Annotations: api.Annotations{
 			Name: name,
 		},
 	}

@@ -21,7 +21,7 @@ func TestScheduler(t *testing.T) {
 		{
 			ID: "id1",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name1",
 				},
 			},
@@ -32,7 +32,7 @@ func TestScheduler(t *testing.T) {
 		{
 			ID: "id2",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name2",
 				},
 			},
@@ -43,7 +43,7 @@ func TestScheduler(t *testing.T) {
 		{
 			ID: "id3",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name2",
 				},
 			},
@@ -57,7 +57,7 @@ func TestScheduler(t *testing.T) {
 		{
 			ID:   "id1",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name1",
 			},
 
@@ -69,7 +69,7 @@ func TestScheduler(t *testing.T) {
 		{
 			ID:   "id2",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name2",
 			},
 			Status: &api.TaskStatus{
@@ -79,7 +79,7 @@ func TestScheduler(t *testing.T) {
 		{
 			ID:   "id3",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name2",
 			},
 			Status: &api.TaskStatus{
@@ -135,7 +135,7 @@ func TestScheduler(t *testing.T) {
 		t4 := &api.Task{
 			ID:   "id4",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name4",
 			},
 			Status: &api.TaskStatus{
@@ -158,7 +158,7 @@ func TestScheduler(t *testing.T) {
 		t4 := &api.Task{
 			ID:   "id4",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name4",
 			},
 			Status: &api.TaskStatus{
@@ -179,7 +179,7 @@ func TestScheduler(t *testing.T) {
 		node := &api.Node{
 			ID: "removednode",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "removednode",
 				},
 			},
@@ -194,7 +194,7 @@ func TestScheduler(t *testing.T) {
 		task := &api.Task{
 			ID:   "removednode",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "removednode",
 			},
 			Status: &api.TaskStatus{
@@ -215,7 +215,7 @@ func TestScheduler(t *testing.T) {
 		n4 := &api.Node{
 			ID: "id4",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name4",
 				},
 			},
@@ -229,7 +229,7 @@ func TestScheduler(t *testing.T) {
 		t5 := &api.Task{
 			ID:   "id5",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name5",
 			},
 			Status: &api.TaskStatus{
@@ -250,7 +250,7 @@ func TestScheduler(t *testing.T) {
 		n5 := &api.Node{
 			ID: "id5",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name5",
 				},
 			},
@@ -264,7 +264,7 @@ func TestScheduler(t *testing.T) {
 		t6 := &api.Task{
 			ID:   "id6",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name6",
 			},
 			Status: &api.TaskStatus{
@@ -284,7 +284,7 @@ func TestScheduler(t *testing.T) {
 		n5 := &api.Node{
 			ID: "id5",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name5",
 				},
 			},
@@ -299,7 +299,7 @@ func TestScheduler(t *testing.T) {
 		t7 := &api.Task{
 			ID:   "id7",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name7",
 			},
 			Status: &api.TaskStatus{
@@ -320,7 +320,7 @@ func TestScheduler(t *testing.T) {
 		n6 := &api.Node{
 			ID: "id6",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name6",
 				},
 			},
@@ -336,7 +336,7 @@ func TestScheduler(t *testing.T) {
 		t8 := &api.Task{
 			ID:   "id8",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name8",
 			},
 			Status: &api.TaskStatus{
@@ -359,7 +359,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 	initialTask := &api.Task{
 		ID:   "id1",
 		Spec: &api.TaskSpec{},
-		Meta: api.Meta{
+		Annotations: api.Annotations{
 			Name: "name1",
 		},
 		Status: &api.TaskStatus{
@@ -392,7 +392,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 		node := &api.Node{
 			ID: "newnode",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "newnode",
 				},
 			},
@@ -417,7 +417,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 	underprovisionedNode := &api.Node{
 		ID: "underprovisioned",
 		Spec: &api.NodeSpec{
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "underprovisioned",
 			},
 		},
@@ -445,7 +445,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 				},
 			},
 		},
-		Meta: api.Meta{
+		Annotations: api.Annotations{
 			Name: "name1",
 		},
 		Status: &api.TaskStatus{
@@ -479,7 +479,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 		node := &api.Node{
 			ID: "bignode",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "bignode",
 				},
 			},
@@ -582,7 +582,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 				err := tx.Nodes().Create(&api.Node{
 					ID: identity.NewID(),
 					Spec: &api.NodeSpec{
-						Meta: api.Meta{
+						Annotations: api.Annotations{
 							Name: "name" + strconv.Itoa(i),
 						},
 					},
@@ -599,7 +599,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 				err := tx.Tasks().Create(&api.Task{
 					ID:   id,
 					Spec: &api.TaskSpec{},
-					Meta: api.Meta{
+					Annotations: api.Annotations{
 						Name: id,
 					},
 					Status: &api.TaskStatus{

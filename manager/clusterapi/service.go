@@ -71,7 +71,7 @@ func validateServiceSpec(spec *api.ServiceSpec) error {
 	if spec == nil {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
-	if err := validateMeta(spec.Meta); err != nil {
+	if err := validateAnnotations(spec.Annotations); err != nil {
 		return err
 	}
 	if err := validateServiceSpecTemplate(spec); err != nil {

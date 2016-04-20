@@ -45,7 +45,7 @@ var (
 					if spec == nil {
 						spec = &api.NodeSpec{}
 					}
-					name := spec.Meta.Name
+					name := spec.Annotations.Name
 					if name == "" {
 						name = n.Description.Hostname
 					}

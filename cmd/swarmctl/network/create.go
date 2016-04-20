@@ -59,7 +59,7 @@ var (
 			}
 
 			spec := &api.NetworkSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: name,
 				},
 				DriverConfiguration: driver,

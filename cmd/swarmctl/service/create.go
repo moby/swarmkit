@@ -57,7 +57,7 @@ var (
 				}
 
 				spec = &api.ServiceSpec{
-					Meta: api.Meta{
+					Annotations: api.Annotations{
 						Name: name,
 					},
 					Template: &api.TaskSpec{

@@ -39,7 +39,7 @@ var (
 				if spec == nil {
 					spec = &api.VolumeSpec{}
 				}
-				name := spec.Meta.Name
+				name := spec.Annotations.Name
 
 				// TODO(amitshukla): Right now we only implement the happy path
 				// and don't have any proper error handling whatsover.

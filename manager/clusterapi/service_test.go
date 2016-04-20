@@ -12,7 +12,7 @@ import (
 
 func createSpec(name, image string, instances int64) *api.ServiceSpec {
 	return &api.ServiceSpec{
-		Meta: api.Meta{
+		Annotations: api.Annotations{
 			Name: name,
 		},
 		Template: &api.TaskSpec{
@@ -136,7 +136,7 @@ func TestValidateServiceSpec(t *testing.T) {
 			c:    codes.InvalidArgument,
 		},
 		{
-			spec: &api.ServiceSpec{Meta: api.Meta{Name: "name"}},
+			spec: &api.ServiceSpec{Annotations: api.Annotations{Name: "name"}},
 			c:    codes.InvalidArgument,
 		},
 		{
@@ -216,7 +216,7 @@ func TestUpdateService(t *testing.T) {
 
 	r, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
 	assert.NoError(t, err)
-	assert.Equal(t, service.Spec.Meta.Name, r.Service.Spec.Meta.Name)
+	assert.Equal(t, service.Spec.Annotations.Name, r.Service.Spec.Annotations.Name)
 	assert.EqualValues(t, 1, r.Service.Spec.Instances)
 
 	r.Service.Spec.Instances = 42
@@ -229,7 +229,7 @@ func TestUpdateService(t *testing.T) {
 
 	r, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
 	assert.NoError(t, err)
-	assert.Equal(t, service.Spec.Meta.Name, r.Service.Spec.Meta.Name)
+	assert.Equal(t, service.Spec.Annotations.Name, r.Service.Spec.Annotations.Name)
 	assert.EqualValues(t, 42, r.Service.Spec.Instances)
 
 	// Versioning.

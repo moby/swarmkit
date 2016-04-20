@@ -30,7 +30,7 @@
 		Driver
 		IPAMOptions
 		WeightedPeer
-		Meta
+		Annotations
 		NodeSpec
 		ServiceSpec
 		TaskSpec

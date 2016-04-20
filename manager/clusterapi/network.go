@@ -71,7 +71,7 @@ func validateNetworkSpec(spec *api.NetworkSpec) error {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	if err := validateMeta(spec.Meta); err != nil {
+	if err := validateAnnotations(spec.Annotations); err != nil {
 		return err
 	}
 

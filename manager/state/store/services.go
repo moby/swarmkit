@@ -136,7 +136,7 @@ func (services services) table() string {
 // Returns ErrExist if the ID is already taken.
 func (services services) Create(s *api.Service) error {
 	// Ensure the name is not already in use.
-	if s.Spec != nil && lookup(services.memDBTx, services.table(), indexName, s.Spec.Meta.Name) != nil {
+	if s.Spec != nil && lookup(services.memDBTx, services.table(), indexName, s.Spec.Annotations.Name) != nil {
 		return state.ErrNameConflict
 	}
 
@@ -151,7 +151,7 @@ func (services services) Create(s *api.Service) error {
 // Returns ErrNotExist if the service doesn't exist.
 func (services services) Update(s *api.Service) error {
 	// Ensure the name is either not in use or already used by this same Service.
-	if existing := lookup(services.memDBTx, services.table(), indexName, s.Spec.Meta.Name); existing != nil {
+	if existing := lookup(services.memDBTx, services.table(), indexName, s.Spec.Annotations.Name); existing != nil {
 		if existing.ID() != s.ID {
 			return state.ErrNameConflict
 		}
@@ -229,5 +229,5 @@ func (si serviceIndexerByName) FromObject(obj interface{}) (bool, []byte, error)
 		return false, nil, nil
 	}
 	// Add the null character as a terminator
-	return true, []byte(s.Spec.Meta.Name + "\x00"), nil
+	return true, []byte(s.Spec.Annotations.Name + "\x00"), nil
 }

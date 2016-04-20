@@ -52,7 +52,7 @@ func (s *Spec) ServiceSpecs() []*api.ServiceSpec {
 	serviceSpecs := []*api.ServiceSpec{}
 	for _, service := range s.Services {
 		serviceSpec := service.ToProto()
-		serviceSpec.Meta.Labels["namespace"] = s.Namespace
+		serviceSpec.Annotations.Labels["namespace"] = s.Namespace
 		serviceSpecs = append(serviceSpecs, serviceSpec)
 	}
 	return serviceSpecs
@@ -63,7 +63,7 @@ func (s *Spec) FromServiceSpecs(servicespecs []*api.ServiceSpec) {
 	for _, j := range servicespecs {
 		service := &ServiceConfig{}
 		service.FromProto(j)
-		s.Services[j.Meta.Name] = service
+		s.Services[j.Annotations.Name] = service
 	}
 }
 
