@@ -15,7 +15,7 @@ type Mount struct {
 	// Source directory to be mounted
 	Source string `yaml:"source,omitempty"`
 
-	// Supported types are: BindHostDir, Ephemeral, ??
+	// Supported types are: BindHostDir, EphemeralDir, ??
 	Type string `yaml:"type,omitempty"`
 
 	// Supported masks are: RO, RW (case insensitive)
@@ -32,18 +32,8 @@ func (vm *Mount) Validate() error {
 		return nil
 	}
 
-	// if Mask is not specified, set it to RO
-	if vm.Mask == "" {
-		vm.Mask = "ro"
-	} else {
-		vm.Mask = strings.ToLower(vm.Mask)
-		if strings.Compare(vm.Mask, "ro") != 0 && strings.Compare(vm.Mask, "rw") != 0 {
-			return fmt.Errorf("valid volume mount masks are: ro, rw")
-		}
-	}
-
-	if strings.Compare(vm.Type, "BindHostDir") != 0 {
-		return fmt.Errorf("valid volume mount types are: BindHostDir")
+	if strings.Compare(vm.Type, "BindHostDir") != 0 && strings.Compare(vm.Type, "EphemeralDir") != 0 {
+		return fmt.Errorf("valid volume mount types are: BindHostDir, EphemeralDir")
 	}
 
 	if vm.Target == "" {
@@ -53,6 +43,25 @@ func (vm *Mount) Validate() error {
 	if strings.Compare(vm.Type, "BindHostDir") == 0 {
 		if vm.Source == "" {
 			return fmt.Errorf("For volume mount type 'BindHostDir', source is required")
+		}
+
+		// if Mask is not specified, set it to RO
+		if vm.Mask == "" {
+			vm.Mask = "ro"
+		} else {
+			vm.Mask = strings.ToLower(vm.Mask)
+			if strings.Compare(vm.Mask, "ro") != 0 && strings.Compare(vm.Mask, "rw") != 0 {
+				return fmt.Errorf("valid volume mount masks are: ro, rw")
+			}
+		}
+
+	}
+	if strings.Compare(vm.Type, "EphemeralDir") == 0 {
+		if vm.Source != "" {
+			return fmt.Errorf("For volume mount type 'EphemeralDir', source cannot be specified")
+		}
+		if vm.Mask != "" {
+			return fmt.Errorf("For volume mount type 'EphemeralDir', mask cannot be specified")
 		}
 	}
 
@@ -100,7 +109,11 @@ func (vm *Mount) ToProto() *api.Mount {
 	apiVM.Target = vm.Target
 	apiVM.Source = vm.Source
 	apiVM.Mask = vm.Mask
-	apiVM.Type = vm.Type
+	if strings.Compare(vm.Type, "BindHostDir") == 0 {
+		apiVM.Type = api.Mount_BIND
+	} else if strings.Compare(vm.Type, "EphemeralDir") == 0 {
+		apiVM.Type = api.Mount_EPHEMERAL
+	}
 
 	return apiVM
 }
@@ -127,5 +140,9 @@ func (vm *Mount) FromProto(apivm *api.Mount) {
 	vm.Target = apivm.Target
 	vm.Source = apivm.Source
 	vm.Mask = apivm.Mask
-	vm.Type = apivm.Type
+	if apivm.Type == api.Mount_BIND {
+		vm.Type = "BindHostDir"
+	} else if apivm.Type == api.Mount_EPHEMERAL {
+		vm.Type = "EphemeralDir"
+	}
 }
