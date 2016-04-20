@@ -87,7 +87,6 @@ func (s *session) register(ctx context.Context) (string, error) {
 	}
 
 	resp, err := client.Register(ctx, &api.RegisterRequest{
-		NodeID:      s.agent.config.ID,
 		Description: description,
 	})
 	if err != nil {
@@ -112,7 +111,6 @@ func (s *session) heartbeat(ctx context.Context) error {
 		case <-heartbeat.C:
 			start := time.Now()
 			resp, err := client.Heartbeat(ctx, &api.HeartbeatRequest{
-				NodeID:    s.agent.config.ID,
 				SessionID: s.sessionID,
 			})
 			if err != nil {
@@ -141,7 +139,6 @@ func (s *session) listen(ctx context.Context) error {
 	log.G(ctx).Debugf("(*session).listen")
 	client := api.NewDispatcherClient(s.agent.conn)
 	session, err := client.Session(ctx, &api.SessionRequest{
-		NodeID:    s.agent.config.ID,
 		SessionID: s.sessionID,
 	})
 	if err != nil {
@@ -168,7 +165,6 @@ func (s *session) watch(ctx context.Context) error {
 	log.G(ctx).Debugf("(*session).watch")
 	client := api.NewDispatcherClient(s.agent.conn)
 	watch, err := client.Tasks(ctx, &api.TasksRequest{
-		NodeID:    s.agent.config.ID,
 		SessionID: s.sessionID})
 	if err != nil {
 		return err
@@ -207,7 +203,6 @@ func (s *session) sendTaskStatus(ctx context.Context, taskID string, status *api
 
 	client := api.NewDispatcherClient(s.agent.conn)
 	if _, err := client.UpdateTaskStatus(ctx, &api.UpdateTaskStatusRequest{
-		NodeID:    s.agent.config.ID,
 		SessionID: s.sessionID,
 		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
 			{

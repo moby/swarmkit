@@ -34,7 +34,7 @@ func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
 	logrus.SetOutput(ioutil.Discard)
 	var tmpDir string
-	_, securityConfig, tmpDir, _ = testutils.GenerateAgentAndManagerSecurityConfig()
+	_, securityConfig, tmpDir, _ = testutils.GenerateAgentAndManagerSecurityConfig(1)
 	defer os.RemoveAll(tmpDir)
 }
 

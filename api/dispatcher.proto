@@ -35,12 +35,7 @@ service Dispatcher { // maybe dispatch, al likes this
 }
 
 message RegisterRequest {
-	// NodeID identifies the registering node.
-	//
-	// This contents of this field *must* be authenticated.
-	string node_id = 1 [(gogoproto.customname) = "NodeID"];
-
-	NodeDescription description = 2;
+	NodeDescription description = 1;
 }
 
 message RegisterResponse {
@@ -95,8 +90,7 @@ message RegisterResponse {
 
 // SessionRequest starts a session control stream.
 message SessionRequest {
-	string node_id = 1 [(gogoproto.customname) = "NodeID"];
-	string session_id = 2 [(gogoproto.customname) = "SessionID"];
+	string session_id = 1 [(gogoproto.customname) = "SessionID"];
 }
 
 // SessionMessage instructs an agent on various actions as part of the current
@@ -112,8 +106,7 @@ message SessionMessage {
 
 // HeartbeatRequest provides identifying properties for a single heartbeat.
 message HeartbeatRequest {
-	string node_id = 1 [(gogoproto.customname) = "NodeID"];
-	string session_id = 2 [(gogoproto.customname) = "SessionID"];
+	string session_id = 1 [(gogoproto.customname) = "SessionID"];
 }
 
 message HeartbeatResponse {
@@ -125,8 +118,7 @@ message HeartbeatResponse {
 message UpdateTaskStatusRequest {
 	// Tasks should contain all statuses for running tasks. Only the status
 	// field must be set. The spec is not required.
-	string node_id = 1 [(gogoproto.customname) = "NodeID"];
-	string session_id = 2 [(gogoproto.customname) = "SessionID"];
+	string session_id = 1 [(gogoproto.customname) = "SessionID"];
 
 	message TaskStatusUpdate {
 		string task_id = 1 [(gogoproto.customname) = "TaskID"];
@@ -141,8 +133,7 @@ message  UpdateTaskStatusResponse{
 }
 
 message TasksRequest {
-	string node_id = 1 [(gogoproto.customname) = "NodeID"];
-	string session_id = 2 [(gogoproto.customname) = "SessionID"];
+	string session_id = 1 [(gogoproto.customname) = "SessionID"];
 }
 
 message TasksMessage {

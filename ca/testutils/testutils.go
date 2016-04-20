@@ -11,7 +11,7 @@ import (
 
 // GenerateAgentAndManagerSecurityConfig is a helper function that creates two valid
 // SecurityConfigurations, one for an agent and one for a manager.
-func GenerateAgentAndManagerSecurityConfig() (*ca.AgentSecurityConfig, *ca.ManagerSecurityConfig, string, error) {
+func GenerateAgentAndManagerSecurityConfig(numAgents int) ([]*ca.AgentSecurityConfig, *ca.ManagerSecurityConfig, string, error) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-agent-test-")
 	if err != nil {
 		return nil, nil, "", err
@@ -30,19 +30,28 @@ func GenerateAgentAndManagerSecurityConfig() (*ca.AgentSecurityConfig, *ca.Manag
 		return nil, nil, "", fmt.Errorf("failed to append certificate to cert pool")
 	}
 
-	agentID := identity.NewID()
-	agentCert, err := ca.GenerateAndSignNewTLSCert(signer, rootCACert, paths.AgentCert, paths.AgentKey, agentID, ca.AgentRole)
-	if err != nil {
-		return nil, nil, "", err
+	var agentConfigs []*ca.AgentSecurityConfig
+	for i := 0; i < numAgents; i++ {
+		agentID := identity.NewID()
+		agentCert, err := ca.GenerateAndSignNewTLSCert(signer, rootCACert, paths.AgentCert, paths.AgentKey, agentID, ca.AgentRole)
+		if err != nil {
+			return nil, nil, "", err
+		}
+
+		agentClientTLSCreds, err := ca.NewClientTLSCredentials(agentCert, rootCAPool, ca.ManagerRole)
+		if err != nil {
+			return nil, nil, "", err
+		}
+
+		agentSecurityConfig := &ca.AgentSecurityConfig{}
+		agentSecurityConfig.RootCAPool = rootCAPool
+		agentSecurityConfig.ClientTLSCreds = agentClientTLSCreds
+
+		agentConfigs = append(agentConfigs, agentSecurityConfig)
 	}
 
 	managerID := identity.NewID()
 	managerCert, err := ca.GenerateAndSignNewTLSCert(signer, rootCACert, paths.ManagerCert, paths.ManagerKey, managerID, ca.ManagerRole)
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	agentClientTLSCreds, err := ca.NewClientTLSCredentials(agentCert, rootCAPool, ca.ManagerRole)
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -57,17 +66,13 @@ func GenerateAgentAndManagerSecurityConfig() (*ca.AgentSecurityConfig, *ca.Manag
 		return nil, nil, "", err
 	}
 
-	AgentSecurityConfig := &ca.AgentSecurityConfig{}
-	AgentSecurityConfig.RootCAPool = rootCAPool
-	AgentSecurityConfig.ClientTLSCreds = agentClientTLSCreds
+	managerSecurityConfig := &ca.ManagerSecurityConfig{}
+	managerSecurityConfig.RootCACert = rootCACert
+	managerSecurityConfig.RootCAPool = rootCAPool
+	managerSecurityConfig.ServerTLSCreds = managerTLSCreds
+	managerSecurityConfig.ClientTLSCreds = managerClientTLSCreds
+	managerSecurityConfig.RootCA = true
+	managerSecurityConfig.Signer = signer
 
-	ManagerSecurityConfig := &ca.ManagerSecurityConfig{}
-	ManagerSecurityConfig.RootCACert = rootCACert
-	ManagerSecurityConfig.RootCAPool = rootCAPool
-	ManagerSecurityConfig.ServerTLSCreds = managerTLSCreds
-	ManagerSecurityConfig.ClientTLSCreds = managerClientTLSCreds
-	ManagerSecurityConfig.RootCA = true
-	ManagerSecurityConfig.Signer = signer
-
-	return AgentSecurityConfig, ManagerSecurityConfig, tempBaseDir, nil
+	return agentConfigs, managerSecurityConfig, tempBaseDir, nil
 }
