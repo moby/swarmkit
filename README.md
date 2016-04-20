@@ -70,12 +70,10 @@ by2ihzjyg9m674j3cjdit3reo  ubuntu15  READY   ACTIVE
 
 **Create and manage a Service**
 
-Note:  the term "Job" is being gradually replaced by "Service."
-
-The `ping` job in `examples/job/ping.yml` is a place to start:
+The `ping` service in `examples/service/ping.yml` is a place to start:
 
 ```
-$ cd examples/job/
+$ cd examples/service/
 $ cat ping.yml
 name: ping
 image: alpine
@@ -88,13 +86,13 @@ env:
 Let's start it:
 
 ```
-$ swarmctl job create -f ping.yml
+$ swarmctl service create -f ping.yml
 chlkcf9v19kxbccspmiyuttgz
-$ swarmctl job ls
+$ swarmctl service ls
 ID                         Name  Image   Instances
 chlkcf9v19kxbccspmiyuttgz  ping  alpine  2
 $ swarmctl task ls
-ID                         Job   Status   Node
+ID                         Service   Status   Node
 1y72dcy9us5vvgsltz5dgm2pp  ping  RUNNING  ubuntu15
 afhq97lrlw7jx1vh15gnofy59  ping  RUNNING  ubuntu15
 ```
@@ -109,7 +107,7 @@ $ vi ping.yml
 Let's look at the delta:
 
 ```sh
-$ swarmctl job diff ping -f ping.yml
+$ swarmctl service diff ping -f ping.yml
 --- remote
 +++ local
 @@ -6,5 +6,5 @@
@@ -120,12 +118,12 @@ $ swarmctl job diff ping -f ping.yml
 +instances: 3
 ```
 
-Update the job with the modified manifest and see the result:
+Update the service with the modified manifest and see the result:
 
 ```sh
-$ swarmctl job update ping -f ping.yml
+$ swarmctl service update ping -f ping.yml
 chlkcf9v19kxbccspmiyuttgz
-$ swarmctl job ls
+$ swarmctl service ls
 ID                         Name  Image   Instances
 chlkcf9v19kxbccspmiyuttgz  ping  alpine  3
 ```
@@ -133,23 +131,23 @@ chlkcf9v19kxbccspmiyuttgz  ping  alpine  3
 You can also update instance count on the command line with `--instances`:
 
 ```sh
-$ swarmctl job update ping --instances 4
+$ swarmctl service update ping --instances 4
 chlkcf9v19kxbccspmiyuttgz
-$ swarmctl job ls
+$ swarmctl service ls
 ID                         Name  Image   Instances
 chlkcf9v19kxbccspmiyuttgz  ping  alpine  4
 $ swarmctl task ls
-ID                         Job   Status   Node
-1y72dcy9us5vvgsltz5dgm2pp  ping  RUNNING  ubuntu15
-703xq3ou3mokfayl2pceu024v  ping  RUNNING  ubuntu15
-afhq97lrlw7jx1vh15gnofy59  ping  RUNNING  ubuntu15
-b8peuqixb5nd34733ug0njpxo  ping  RUNNING  ubuntu15
+ID                         Service   Status   Node
+1y72dcy9us5vvgsltz5dgm2pp  ping      RUNNING  ubuntu15
+703xq3ou3mokfayl2pceu024v  ping      RUNNING  ubuntu15
+afhq97lrlw7jx1vh15gnofy59  ping      RUNNING  ubuntu15
+b8peuqixb5nd34733ug0njpxo  ping      RUNNING  ubuntu15
 ```
 
 You can also live edit the state file on the manager:
 
 ```
-$ EDITOR=nano swarmctl job edit ping
+$ EDITOR=nano swarmctl service edit ping
 [change instances to 5, Ctrl+o to save, Ctrl+x to exit]
 --- old
 +++ new
@@ -167,13 +165,13 @@ chlkcf9v19kxbccspmiyuttgz
 Now check the result:
 
 ```sh
-$ swarmctl job ls
+$ swarmctl service ls
 ID                         Name  Image   Instances
 chlkcf9v19kxbccspmiyuttgz  ping  alpine  5
 $ swarmctl task ls
-ID                         Job   Status   Node
-1y72dcy9us5vvgsltz5dgm2pp  ping  RUNNING  ubuntu15
-703xq3ou3mokfayl2pceu024v  ping  RUNNING  ubuntu15
-afhq97lrlw7jx1vh15gnofy59  ping  RUNNING  ubuntu15
-b8peuqixb5nd34733ug0njpxo  ping  RUNNING  ubuntu15
+ID                         Service   Status   Node
+1y72dcy9us5vvgsltz5dgm2pp  ping      RUNNING  ubuntu15
+703xq3ou3mokfayl2pceu024v  ping      RUNNING  ubuntu15
+afhq97lrlw7jx1vh15gnofy59  ping      RUNNING  ubuntu15
+b8peuqixb5nd34733ug0njpxo  ping      RUNNING  ubuntu15
 ```
