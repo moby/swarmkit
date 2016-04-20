@@ -83,8 +83,14 @@ message Mount {
 	// Mask
 	string mask = 3;
 
+	enum MountType {
+	   BIND = 0; // Bind mount host dir
+	   EPHEMERAL = 1; // Scratch dir
+	   PLUGIN = 2; // Remote storage volumes
+	}
+
 	// mount type (BindHostDir, scratch, remote)
-	string type = 4;
+	MountType type = 4;
 }
 
 // Container specifies runtime parameters for a container.
