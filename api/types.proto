@@ -404,3 +404,27 @@ message WeightedPeer {
 
 	// TODO(stevvooe): We must consolidate peer representation in the API.
 }
+
+enum IssuanceState {
+	option (gogoproto.goproto_enum_prefix) = false;
+
+	ISSUANCEUNKNOWN = 0 [(gogoproto.enumvalue_customname) = "IssuanceStateUnknown"];
+	ISSUANCEPENDING = 1 [(gogoproto.enumvalue_customname)="IssuanceStatePending"]; // Certificate has been accepted and signed and it's ready
+	ISSUANCEACCEPTED = 2 [(gogoproto.enumvalue_customname)="IssuanceStateAccepted"]; // successful completion of task (not error code, just ran)
+	ISSUANCEFAILED = 4 [(gogoproto.enumvalue_customname)="IssuanceStateFailed"]; // Certificate issuance failed
+	ISSUANCEREJECTED = 5 [(gogoproto.enumvalue_customname)="IssuanceStateRejected"]; // Certificate issuance got rejected
+	ISSUANCEBLOCKED = 6 [(gogoproto.enumvalue_customname)="IssuanceStateBlocked"]; // Certificate issuance got rejected
+}
+
+message IssuanceStatus {
+	IssuanceState state = 1;
+
+	// Err is set if the Certificate Issuance is in an error state.
+	//
+	// The following states should report a companion error:
+	//
+	//	FAILED, REJECTED
+	//
+	string err = 2;
+}
+

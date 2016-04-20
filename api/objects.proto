@@ -153,3 +153,23 @@ message Network {
 	// ipam options from NetworkSpec.
 	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
 }
+
+message RegisteredCertificate {
+	string id = 1 [(gogoproto.customname) = "ID"];
+
+	// Version tracks the last time the network was modified.
+	Version version = 2 [(gogoproto.nullable) = false];
+
+	RegisteredCertificateSpec spec = 3;
+
+	string role = 4;
+
+	bytes csr = 5 [(gogoproto.customname) = "CSR"];
+
+	IssuanceStatus status = 6;
+
+	bytes certificate = 7;
+
+	string cn = 8 [(gogoproto.customname) = "CN"];
+}
+

@@ -53,7 +53,7 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 	log.G(ctx).Debugf("(*Server).IssueCertificate: Issued certificate for CN=%s and OU=%s", randomID, request.Role)
 
 	return &api.IssueCertificateResponse{
-		Status:           &api.IssuanceStatus{Status: api.IssuanceStatusComplete},
+		Status:           &api.IssuanceStatus{State: api.IssuanceStateAccepted},
 		CertificateChain: certChain,
 	}, nil
 }
