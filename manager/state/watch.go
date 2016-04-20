@@ -441,6 +441,87 @@ func (e EventDeleteVolume) matches(watchEvent events.Event) bool {
 	return true
 }
 
+
+// RegisteredCertificateCheckFunc is the type of function used to perform filtering checks on
+// api.Service structures.
+type RegisteredCertificateCheckFunc func(n1, n2 *api.RegisteredCertificate) bool
+
+// RegisteredCertificateCheckID is a RegisteredCertificateCheckFunc for matching registered certificate IDs.
+func RegisteredCertificateCheckID(n1, n2 *api.RegisteredCertificate) bool {
+	return n1.ID == n2.ID
+}
+
+// EventCreateRegisteredCertificate is the type used to put CreateRegisteredCertificate events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventCreateRegisteredCertificate struct {
+	RegisteredCertificate *api.RegisteredCertificate
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []RegisteredCertificateCheckFunc
+}
+
+func (e EventCreateRegisteredCertificate) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventCreateRegisteredCertificate)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.RegisteredCertificate, typedEvent.RegisteredCertificate) {
+			return false
+		}
+	}
+	return true
+}
+
+// EventUpdateRegisteredCertificate is the type used to put UpdateRegisteredCertificate events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventUpdateRegisteredCertificate struct {
+	RegisteredCertificate *api.RegisteredCertificate
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []RegisteredCertificateCheckFunc
+}
+
+func (e EventUpdateRegisteredCertificate) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventUpdateRegisteredCertificate)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.RegisteredCertificate, typedEvent.RegisteredCertificate) {
+			return false
+		}
+	}
+	return true
+}
+
+// EventDeleteRegisteredCertificate is the type used to put DeleteRegisteredCertificate events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventDeleteRegisteredCertificate struct {
+	RegisteredCertificate *api.RegisteredCertificate
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []RegisteredCertificateCheckFunc
+}
+
+func (e EventDeleteRegisteredCertificate) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventDeleteRegisteredCertificate)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.RegisteredCertificate, typedEvent.RegisteredCertificate) {
+			return false
+		}
+	}
+	return true
+}
 // Watch takes a variable number of events to match against. The subscriber
 // will receive events that match any of the arguments passed to Watch.
 //
