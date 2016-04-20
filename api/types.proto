@@ -295,7 +295,7 @@ message IPAMOptions {
 // with a weight.
 message WeightedPeer {
 	string addr = 1;
-	double weight = 2;
+	int64 weight = 2;
 
 	// TODO(stevvooe): We must consolidate peer representation in the API.
 }

@@ -30,7 +30,7 @@ func TestManagersSimple(t *testing.T) {
 	}
 
 	weights := managers.Weights()
-	var value float64
+	var value int
 	for addr := range seen {
 		weight, ok := weights[addr]
 		if !ok {
@@ -71,7 +71,7 @@ func TestManagersConvergence(t *testing.T) {
 	managers.Observe("one", 1)
 
 	// zero weighted against 1
-	if managers.Weights()["one"] < managerWeightSmoothingFactor {
+	if float64(managers.Weights()["one"]) < managerWeightSmoothingFactor {
 		t.Fatalf("unexpected weight: %v < %v", managers.Weights()["one"], managerWeightSmoothingFactor)
 	}
 
@@ -80,12 +80,12 @@ func TestManagersConvergence(t *testing.T) {
 		managers.Observe("one", 1)
 	}
 
-	if managers.Weights()["one"] < managerWeightSmoothingFactor {
+	if float64(managers.Weights()["one"]) < managerWeightSmoothingFactor {
 		t.Fatalf("did not converge towards 1: %v < %v", managers.Weights()["one"], managerWeightSmoothingFactor)
 	}
 
-	if managers.Weights()["one"] > 1.0 {
-		t.Fatalf("should never go over towards 1: %v > %v", managers.Weights()["one"], 1.0)
+	if managers.Weights()["one"] > managerWeightMax {
+		t.Fatalf("should never go over towards %v: %v > %v", managerWeightMax, managers.Weights()["one"], 1.0)
 	}
 
 	// provided a poor review
@@ -98,7 +98,7 @@ func TestManagersConvergence(t *testing.T) {
 	// The manager should be heavily downweighted but not completely to -1
 	expected := (-managerWeightSmoothingFactor + (1 - managerWeightSmoothingFactor))
 	epsilon := -1e-5
-	if managers.Weights()["one"] < expected+epsilon {
+	if float64(managers.Weights()["one"]) < expected+epsilon {
 		t.Fatalf("weight should not drop so quickly: %v < %v", managers.Weights()["one"], expected)
 	}
 }
@@ -159,13 +159,13 @@ func TestManagersLargeRanges(t *testing.T) {
 		index[addr] = struct{}{}
 	}
 
-	managers.Observe(addrs[0], math.NaN())
-	managers.Observe(addrs[1], math.Inf(1))
-	managers.Observe(addrs[2], math.Inf(-1))
-	managers.Observe(addrs[2], 1) // three bounces back!
+	managers.Observe(addrs[0], 0)
+	managers.Observe(addrs[1], math.MaxInt64)
+	managers.Observe(addrs[2], math.MinInt64)
+	managers.Observe(addrs[2], managerWeightMax) // three bounces back!
 
 	seen := make(map[string]int)
-	for i := 0; i < len(addrs)*30; i++ {
+	for i := 0; i < len(addrs)*managerWeightMax; i++ {
 		next, err := managers.Select()
 		if err != nil {
 			t.Fatalf("error selecting manager: %v", err)
