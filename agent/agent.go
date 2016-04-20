@@ -417,16 +417,16 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 	}
 
 	status.Timestamp = tsp
-	status.Msg = report.message
+	status.Message = report.message
 
 	if reflect.DeepEqual(status, original) {
 		return errTaskStatusUpdateNoChange
 	}
 
 	log.G(ctx).WithFields(logrus.Fields{
-		"state.from": original.State,
-		"state.to":   status.State,
-		"state.msg":  status.Msg,
+		"state.from":    original.State,
+		"state.to":      status.State,
+		"state.message": status.Message,
 	}).Infof("task status updated")
 
 	switch status.State {
