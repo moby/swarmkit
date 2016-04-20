@@ -91,7 +91,7 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	// TODO(stevvooe): Validate node specification.
 	var node *api.Node
 	err = d.store.Update(func(tx state.Tx) error {
-		node = tx.Nodes().Get(r.NodeID)
+		node = tx.Nodes().Get(agentID)
 		if node != nil {
 			node.Description = r.Description
 			node.Status = api.NodeStatus{
@@ -101,7 +101,7 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 		}
 
 		node = &api.Node{
-			ID:          r.NodeID,
+			ID:          agentID,
 			Description: r.Description,
 			Status: api.NodeStatus{
 				State: api.NodeStatus_READY,
@@ -146,7 +146,7 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 	}
 	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).UpdateTaskStatus from node: %s", agentID)
 
-	if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
+	if _, err := d.nodes.GetWithSession(agentID, r.SessionID); err != nil {
 		return nil, err
 	}
 	err = d.store.Update(func(tx state.Tx) error {
@@ -194,24 +194,23 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	}
 	log.G(stream.Context()).WithField("request", r).Debugf("(*Dispatcher).Tasks from node %s", agentID)
 
-	// TODO(diogo): Ensure we only allow nodes to change their own tasks
-	if _, err = d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
+	if _, err = d.nodes.GetWithSession(agentID, r.SessionID); err != nil {
 		return err
 	}
 
 	watchQueue := d.store.WatchQueue()
 	nodeTasks, cancel := state.Watch(watchQueue,
-		state.EventCreateTask{Task: &api.Task{NodeID: r.NodeID},
+		state.EventCreateTask{Task: &api.Task{NodeID: agentID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
-		state.EventUpdateTask{Task: &api.Task{NodeID: r.NodeID},
+		state.EventUpdateTask{Task: &api.Task{NodeID: agentID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
-		state.EventDeleteTask{Task: &api.Task{NodeID: r.NodeID},
+		state.EventDeleteTask{Task: &api.Task{NodeID: agentID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}})
 	defer cancel()
 
 	tasksMap := make(map[string]*api.Task)
 	err = d.store.View(func(readTx state.ReadTx) error {
-		tasks, err := readTx.Tasks().Find(state.ByNodeID(r.NodeID))
+		tasks, err := readTx.Tasks().Find(state.ByNodeID(agentID))
 		if err != nil {
 			return nil
 		}
@@ -225,7 +224,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	}
 
 	for {
-		if _, err := d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
+		if _, err := d.nodes.GetWithSession(agentID, r.SessionID); err != nil {
 			return err
 		}
 
@@ -285,8 +284,7 @@ func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*a
 
 	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Heartbeat for node %s", agentID)
 
-	// TODO(diogo): Ensure we only allow nodes to change their own heartbeat status
-	period, err := d.nodes.Heartbeat(r.NodeID, r.SessionID)
+	period, err := d.nodes.Heartbeat(agentID, r.SessionID)
 	return &api.HeartbeatResponse{Period: period}, err
 }
 
@@ -329,8 +327,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 
 	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Session for node %s", agentID)
 
-	// TODO(diogo): Ensure we only allow nodes to change their own Session
-	if _, err = d.nodes.GetWithSession(r.NodeID, r.SessionID); err != nil {
+	if _, err = d.nodes.GetWithSession(agentID, r.SessionID); err != nil {
 		return err
 	}
 
@@ -348,7 +345,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		// After each message send, we need to check the nodes sessionID hasn't
 		// changed. If it has, we will the stream and make the node
 		// re-register.
-		node, err := d.nodes.GetWithSession(r.NodeID, r.SessionID)
+		node, err := d.nodes.GetWithSession(agentID, r.SessionID)
 		if err != nil {
 			return err
 		}
@@ -369,7 +366,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		}
 		if disconnect {
 			nodeStatus := api.NodeStatus{State: api.NodeStatus_DISCONNECTED, Message: "node is currently trying to find new manager"}
-			if err := d.nodeRemove(r.NodeID, nodeStatus); err != nil {
+			if err := d.nodeRemove(agentID, nodeStatus); err != nil {
 				log.G(ctx).WithError(err).Error("failed to remove node")
 			}
 		}

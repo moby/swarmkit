@@ -521,6 +521,8 @@ func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.Cert
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
+
 	// Create a CAClient to retreive a new Certificate
 	caClient := api.NewCAClient(conn)
 

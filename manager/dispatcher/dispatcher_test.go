@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
@@ -19,16 +20,19 @@ import (
 )
 
 type grpcDispatcher struct {
-	Client           api.DispatcherClient
-	Store            state.Store
-	grpcServer       *grpc.Server
-	dispatcherServer *Dispatcher
-	conn             *grpc.ClientConn
+	Clients              []api.DispatcherClient
+	Store                state.Store
+	grpcServer           *grpc.Server
+	dispatcherServer     *Dispatcher
+	conns                []*grpc.ClientConn
+	agentSecurityConfigs []*ca.AgentSecurityConfig
 }
 
 func (gd *grpcDispatcher) Close() {
 	// Close the client connection.
-	_ = gd.conn.Close()
+	for _, conn := range gd.conns {
+		conn.Close()
+	}
 	gd.grpcServer.Stop()
 }
 
@@ -38,7 +42,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 		return nil, err
 	}
 
-	agentSecurityConfig, managerSecurityConfig, tmpDir, err := testutils.GenerateAgentAndManagerSecurityConfig()
+	agentSecurityConfigs, managerSecurityConfig, tmpDir, err := testutils.GenerateAgentAndManagerSecurityConfig(2)
 	if err != nil {
 		return nil, err
 	}
@@ -57,20 +61,30 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	}()
 
 	clientOpts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
-	clientOpts = append(clientOpts, grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds))
+	clientOpts1 := append(clientOpts, grpc.WithTransportCredentials(agentSecurityConfigs[0].ClientTLSCreds))
+	clientOpts2 := append(clientOpts, grpc.WithTransportCredentials(agentSecurityConfigs[1].ClientTLSCreds))
 
-	conn, err := grpc.Dial(l.Addr().String(), clientOpts...)
+	conn1, err := grpc.Dial(l.Addr().String(), clientOpts1...)
 	if err != nil {
 		s.Stop()
 		return nil, err
 	}
-	cli := api.NewDispatcherClient(conn)
+
+	conn2, err := grpc.Dial(l.Addr().String(), clientOpts2...)
+	if err != nil {
+		s.Stop()
+		return nil, err
+	}
+
+	clients := []api.DispatcherClient{api.NewDispatcherClient(conn1), api.NewDispatcherClient(conn2)}
+	conns := []*grpc.ClientConn{conn1, conn2}
 	return &grpcDispatcher{
-		Client:           cli,
-		Store:            store,
-		dispatcherServer: d,
-		conn:             conn,
-		grpcServer:       s,
+		Clients:              clients,
+		Store:                store,
+		dispatcherServer:     d,
+		conns:                conns,
+		grpcServer:           s,
+		agentSecurityConfigs: agentSecurityConfigs,
 	}, nil
 }
 
@@ -79,19 +93,16 @@ func TestRegisterTwice(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode := &api.Node{ID: "test"}
 	var expectedSessionID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
+		resp, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
 		assert.NoError(t, err)
-		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
 	}
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
+		resp, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
 		assert.NoError(t, err)
-		assert.Equal(t, resp.NodeID, testNode.ID)
 		// session should be different!
 		assert.NotEqual(t, resp.SessionID, expectedSessionID)
 	}
@@ -105,12 +116,10 @@ func TestHeartbeat(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode := &api.Node{ID: "test"}
 	var expectedSessionID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
+		resp, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
 		assert.NoError(t, err)
-		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
 	}
@@ -118,21 +127,22 @@ func TestHeartbeat(t *testing.T) {
 
 	{
 		// heartbeat without correct SessionID should fail
-		resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID})
+		resp, err := gd.Clients[0].Heartbeat(context.Background(), &api.HeartbeatRequest{})
 		assert.Nil(t, resp)
 		assert.Error(t, err)
 		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
 	}
 
-	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID, SessionID: expectedSessionID})
+	resp, err := gd.Clients[0].Heartbeat(context.Background(), &api.HeartbeatRequest{SessionID: expectedSessionID})
 	assert.NoError(t, err)
 	assert.NotZero(t, resp.Period)
 	time.Sleep(300 * time.Millisecond)
 
 	err = gd.Store.View(func(readTx state.ReadTx) error {
-		storeNode := readTx.Nodes().Get("test")
-		assert.NotNil(t, storeNode)
-		assert.Equal(t, storeNode.Status.State, api.NodeStatus_READY)
+		storeNodes, err := readTx.Nodes().Find(state.All)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, storeNodes)
+		assert.Equal(t, storeNodes[0].Status.State, api.NodeStatus_READY)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -146,12 +156,10 @@ func TestHeartbeatTimeout(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode := &api.Node{ID: "test"}
 	var expectedSessionID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
+		resp, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
 		assert.NoError(t, err)
-		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
 
@@ -159,15 +167,16 @@ func TestHeartbeatTimeout(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	err = gd.Store.View(func(readTx state.ReadTx) error {
-		storeNode := readTx.Nodes().Get("test")
-		assert.NotNil(t, storeNode)
-		assert.Equal(t, api.NodeStatus_DOWN, storeNode.Status.State)
+		storeNodes, err := readTx.Nodes().Find(state.All)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, storeNodes)
+		assert.Equal(t, api.NodeStatus_DOWN, storeNodes[0].Status.State)
 		return nil
 	})
 	assert.NoError(t, err)
 
 	// check that node is deregistered
-	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: testNode.ID, SessionID: expectedSessionID})
+	resp, err := gd.Clients[0].Heartbeat(context.Background(), &api.HeartbeatRequest{SessionID: expectedSessionID})
 	assert.Nil(t, resp)
 	assert.Error(t, err)
 	assert.Equal(t, grpc.ErrorDesc(err), ErrNodeNotRegistered.Error())
@@ -177,7 +186,7 @@ func TestHeartbeatUnregistered(t *testing.T) {
 	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
-	resp, err := gd.Client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: "test"})
+	resp, err := gd.Clients[0].Heartbeat(context.Background(), &api.HeartbeatRequest{})
 	assert.Nil(t, resp)
 	assert.Error(t, err)
 	assert.Equal(t, grpc.ErrorDesc(err), ErrNodeNotRegistered.Error())
@@ -187,27 +196,29 @@ func TestTasks(t *testing.T) {
 	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
-	testNode := &api.Node{ID: "test"}
+
 	var expectedSessionID string
+	var nodeID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
+		resp, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
 		assert.NoError(t, err)
-		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
+		nodeID = resp.NodeID
 	}
+
 	testTask1 := &api.Task{
+		NodeID: nodeID,
 		ID:     "testTask1",
-		NodeID: testNode.ID,
 	}
 	testTask2 := &api.Task{
+		NodeID: nodeID,
 		ID:     "testTask2",
-		NodeID: testNode.ID,
 	}
 
 	{
 		// without correct SessionID should fail
-		stream, err := gd.Client.Tasks(context.Background(), &api.TasksRequest{NodeID: testNode.ID})
+		stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{})
 		assert.NoError(t, err)
 		assert.NotNil(t, stream)
 		resp, err := stream.Recv()
@@ -216,7 +227,7 @@ func TestTasks(t *testing.T) {
 		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
 	}
 
-	stream, err := gd.Client.Tasks(context.Background(), &api.TasksRequest{NodeID: testNode.ID, SessionID: expectedSessionID})
+	stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{SessionID: expectedSessionID})
 	assert.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond)
@@ -231,7 +242,7 @@ func TestTasks(t *testing.T) {
 	err = gd.Store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Tasks().Update(&api.Task{
 			ID:     testTask1.ID,
-			NodeID: testNode.ID,
+			NodeID: nodeID,
 			Status: &api.TaskStatus{State: api.TaskStateFailed, Err: "1234"},
 		}))
 		return nil
@@ -282,22 +293,18 @@ func TestTaskUpdate(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode := &api.Node{ID: "test"}
 	var expectedSessionID string
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
+		resp, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
 		assert.NoError(t, err)
-		assert.Equal(t, resp.NodeID, testNode.ID)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
 	}
 	testTask1 := &api.Task{
-		ID:     "testTask1",
-		NodeID: testNode.ID,
+		ID: "testTask1",
 	}
 	testTask2 := &api.Task{
-		ID:     "testTask2",
-		NodeID: testNode.ID,
+		ID: "testTask2",
 	}
 	err = gd.Store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Tasks().Create(testTask1))
@@ -309,7 +316,6 @@ func TestTaskUpdate(t *testing.T) {
 	testTask1.Status = &api.TaskStatus{State: api.TaskStateAssigned}
 	testTask2.Status = &api.TaskStatus{State: api.TaskStateAssigned}
 	updReq := &api.UpdateTaskStatusRequest{
-		NodeID: testNode.ID,
 		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
 			{
 				TaskID: testTask1.ID,
@@ -323,14 +329,14 @@ func TestTaskUpdate(t *testing.T) {
 	}
 	{
 		// without correct SessionID should fail
-		resp, err := gd.Client.UpdateTaskStatus(context.Background(), updReq)
+		resp, err := gd.Clients[0].UpdateTaskStatus(context.Background(), updReq)
 		assert.Nil(t, resp)
 		assert.Error(t, err)
 		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
 	}
 
 	updReq.SessionID = expectedSessionID
-	_, err = gd.Client.UpdateTaskStatus(context.Background(), updReq)
+	_, err = gd.Clients[0].UpdateTaskStatus(context.Background(), updReq)
 	assert.NoError(t, err)
 	err = gd.Store.View(func(readTx state.ReadTx) error {
 		storeTask1 := readTx.Tasks().Get(testTask1.ID)
@@ -352,14 +358,12 @@ func TestSession(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode := &api.Node{ID: "test"}
-	resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode.ID})
+	resp, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
 	assert.NoError(t, err)
-	assert.Equal(t, resp.NodeID, testNode.ID)
 	assert.NotEmpty(t, resp.SessionID)
 	sid := resp.SessionID
 
-	stream, err := gd.Client.Session(context.Background(), &api.SessionRequest{NodeID: testNode.ID, SessionID: sid})
+	stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{SessionID: sid})
 	msg, err := stream.Recv()
 	assert.Equal(t, 1, len(msg.Managers))
 	assert.False(t, msg.Disconnect)
@@ -373,17 +377,13 @@ func TestNodesCount(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	testNode1 := &api.Node{ID: "test1"}
-	testNode2 := &api.Node{ID: "test2"}
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode1.ID})
+		_, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
 		assert.NoError(t, err)
-		assert.Equal(t, resp.NodeID, testNode1.ID)
 	}
 	{
-		resp, err := gd.Client.Register(context.Background(), &api.RegisterRequest{NodeID: testNode2.ID})
+		_, err := gd.Clients[1].Register(context.Background(), &api.RegisterRequest{})
 		assert.NoError(t, err)
-		assert.Equal(t, resp.NodeID, testNode2.ID)
 	}
 	assert.Equal(t, 2, gd.dispatcherServer.NodeCount())
 	time.Sleep(500 * time.Millisecond)

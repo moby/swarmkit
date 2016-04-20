@@ -49,7 +49,7 @@ func TestAgent(t *testing.T) {
 }
 
 func TestAgentStartStop(t *testing.T) {
-	agentSecurityConfig, _, tmpDir, err := testutils.GenerateAgentAndManagerSecurityConfig()
+	agentSecurityConfigs, _, tmpDir, err := testutils.GenerateAgentAndManagerSecurityConfig(1)
 	assert.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -57,7 +57,7 @@ func TestAgentStartStop(t *testing.T) {
 		ID:             "test",
 		Executor:       &NoopExecutor{},
 		Managers:       NewManagers("localhost:4949"),
-		SecurityConfig: agentSecurityConfig,
+		SecurityConfig: agentSecurityConfigs[0],
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, agent)

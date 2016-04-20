@@ -47,7 +47,7 @@ func TestManager(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(stateDir)
 
-	agentSecurityConfig, managerSecurityConfig, tmpDir, err := testutils.GenerateAgentAndManagerSecurityConfig()
+	agentSecurityConfigs, managerSecurityConfig, tmpDir, err := testutils.GenerateAgentAndManagerSecurityConfig(1)
 	assert.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -67,7 +67,7 @@ func TestManager(t *testing.T) {
 	}()
 
 	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
-	opts = append(opts, grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds))
+	opts = append(opts, grpc.WithTransportCredentials(agentSecurityConfigs[0].ClientTLSCreds))
 	opts = append(opts, grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
 		return net.DialTimeout("unix", addr, timeout)
 	}))
@@ -80,7 +80,7 @@ func TestManager(t *testing.T) {
 
 	// We have to send a dummy request to verify if the connection is actually up.
 	client := api.NewDispatcherClient(conn)
-	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{NodeID: "foo"})
+	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
 	assert.Equal(t, grpc.ErrorDesc(err), dispatcher.ErrNodeNotRegistered.Error())
 
 	m.Stop()
@@ -100,7 +100,7 @@ func TestManagerNodeCount(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(stateDir)
 
-	agentSecurityConfig, managerSecurityConfig, tmpDir, err := testutils.GenerateAgentAndManagerSecurityConfig()
+	agentSecurityConfigs, managerSecurityConfig, tmpDir, err := testutils.GenerateAgentAndManagerSecurityConfig(2)
 	assert.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -135,7 +135,7 @@ func TestManagerNodeCount(t *testing.T) {
 		Hostname:       "hostname1",
 		Managers:       managers,
 		Executor:       &NoopExecutor{},
-		SecurityConfig: agentSecurityConfig,
+		SecurityConfig: agentSecurityConfigs[0],
 	})
 	require.NoError(t, err)
 	a2, err := agent.New(&agent.Config{
@@ -143,7 +143,7 @@ func TestManagerNodeCount(t *testing.T) {
 		Hostname:       "hostname2",
 		Managers:       managers,
 		Executor:       &NoopExecutor{},
-		SecurityConfig: agentSecurityConfig,
+		SecurityConfig: agentSecurityConfigs[1],
 	})
 	require.NoError(t, err)
 
