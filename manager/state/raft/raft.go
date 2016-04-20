@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"google.golang.org/grpc"
@@ -122,7 +121,7 @@ type Node struct {
 	// used to coordinate shutdown
 	stopMu sync.RWMutex
 
-	snapshotInProgress int32
+	snapshotInProgress chan uint64
 	asyncTasks         sync.WaitGroup
 }
 
@@ -459,7 +458,7 @@ func (n *Node) Run(ctx context.Context) {
 			}
 
 			// Trigger a snapshot every once in awhile
-			if n.appliedIndex-n.snapshotIndex >= n.snapshotInterval && atomic.LoadInt32(&n.snapshotInProgress) == 0 {
+			if n.snapshotInProgress == nil && n.appliedIndex-n.snapshotIndex >= n.snapshotInterval {
 				n.doSnapshot()
 			}
 
@@ -486,6 +485,12 @@ func (n *Node) Run(ctx context.Context) {
 
 			// Advance the state machine
 			n.Advance()
+
+		case snapshotIndex := <-n.snapshotInProgress:
+			if snapshotIndex > n.snapshotIndex {
+				n.snapshotIndex = snapshotIndex
+			}
+			n.snapshotInProgress = nil
 
 		case <-n.stopCh:
 			n.asyncTasks.Wait()
@@ -778,10 +783,12 @@ func (n *Node) doSnapshot() {
 
 	viewStarted := make(chan struct{})
 	n.asyncTasks.Add(1)
-	atomic.AddInt32(&n.snapshotInProgress, 1)
-	go func() {
-		defer n.asyncTasks.Done()
-		defer atomic.AddInt32(&n.snapshotInProgress, -1)
+	n.snapshotInProgress = make(chan uint64, 1) // buffered in case Shutdown is called during the snapshot
+	go func(appliedIndex, snapshotIndex uint64) {
+		defer func() {
+			n.asyncTasks.Done()
+			n.snapshotInProgress <- snapshotIndex
+		}()
 
 		err := n.memoryStore.View(func(tx state.ReadTx) error {
 			close(viewStarted)
@@ -800,16 +807,16 @@ func (n *Node) doSnapshot() {
 			n.Config.Logger.Error(err)
 			return
 		}
-		snap, err := n.raftStore.CreateSnapshot(n.appliedIndex, &n.confState, d)
+		snap, err := n.raftStore.CreateSnapshot(appliedIndex, &n.confState, d)
 		if err == nil {
 			if err := n.saveSnapshot(snap); err != nil {
 				n.Config.Logger.Error(err)
 				return
 			}
-			n.snapshotIndex = n.appliedIndex
+			snapshotIndex = appliedIndex
 
-			if n.appliedIndex > n.logEntriesForSlowFollowers {
-				err := n.raftStore.Compact(n.appliedIndex - n.logEntriesForSlowFollowers)
+			if appliedIndex > n.logEntriesForSlowFollowers {
+				err := n.raftStore.Compact(appliedIndex - n.logEntriesForSlowFollowers)
 				if err != nil && err != raft.ErrCompacted {
 					n.Config.Logger.Error(err)
 				}
@@ -817,7 +824,7 @@ func (n *Node) doSnapshot() {
 		} else if err != raft.ErrSnapOutOfDate {
 			n.Config.Logger.Error(err)
 		}
-	}()
+	}(n.appliedIndex, n.snapshotIndex)
 
 	// Wait for the goroutine to establish a read transaction, to make
 	// sure it sees the state as of this moment.
