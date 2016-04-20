@@ -29,8 +29,15 @@ type NetworkAllocator struct {
 	// IPAM and network drivers.
 	drvRegistry *drvregistry.DrvRegistry
 
+	// The port allocator instance for allocating node ports
+	portAllocator *portAllocator
+
 	// Local network state used by NetworkAllocator to do network management.
 	networks map[string]*network
+
+	// Allocator state to indicate if allocation has been
+	// successfully completed for this service.
+	services map[string]struct{}
 }
 
 // Local in-memory state related to netwok that need to be tracked by NetworkAllocator
@@ -50,6 +57,7 @@ type network struct {
 func New() (*NetworkAllocator, error) {
 	na := &NetworkAllocator{
 		networks: make(map[string]*network),
+		services: make(map[string]struct{}),
 	}
 
 	// There are no driver configurations and notification
@@ -64,6 +72,12 @@ func New() (*NetworkAllocator, error) {
 		return nil, err
 	}
 
+	pa, err := newPortAllocator()
+	if err != nil {
+		return nil, err
+	}
+
+	na.portAllocator = pa
 	na.drvRegistry = reg
 	return na, nil
 }
@@ -113,6 +127,26 @@ func (na *NetworkAllocator) Deallocate(n *api.Network) error {
 	return na.freePools(n, localNet.pools)
 }
 
+// ServiceAllocate allocates all the network resources such as virtual
+// IP and ports needed by the service.
+func (na *NetworkAllocator) ServiceAllocate(s *api.Service) error {
+	if err := na.portAllocator.serviceAllocatePorts(s); err != nil {
+		return err
+	}
+
+	na.services[s.ID] = struct{}{}
+	return nil
+}
+
+// ServiceDeallocate de-allocates all the network resources such as
+// virtual IP and ports associated with the service.
+func (na *NetworkAllocator) ServiceDeallocate(s *api.Service) error {
+	na.portAllocator.serviceDeallocatePorts(s)
+	delete(na.services, s.ID)
+
+	return nil
+}
+
 // IsAllocated returns if the passed network has been allocated or not.
 func (na *NetworkAllocator) IsAllocated(n *api.Network) bool {
 	_, ok := na.networks[n.ID]
@@ -148,6 +182,18 @@ func (na *NetworkAllocator) IsTaskAllocated(t *api.Task) bool {
 	}
 
 	return true
+}
+
+// IsServiceAllocated returns if the passed service has it's network resources allocated or not.
+func (na *NetworkAllocator) IsServiceAllocated(s *api.Service) bool {
+	// If there is no service endpoint configuration there is no
+	// possibility of allocation.
+	if s.Spec.Endpoint == nil {
+		return false
+	}
+
+	_, ok := na.services[s.ID]
+	return ok
 }
 
 // AllocateTask allocates all the endpoint resources for all the
