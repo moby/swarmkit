@@ -168,14 +168,14 @@ func (o *Orchestrator) updateTasks(ctx context.Context, tx state.Tx, service *ap
 
 func (o *Orchestrator) addTasks(ctx context.Context, tx state.Tx, service *api.Service, count int64) {
 	spec := *service.Spec.Template
-	meta := service.Spec.Meta // TODO(stevvooe): Copy metadata with nice name.
+	meta := service.Spec.Annotations // TODO(stevvooe): Copy metadata with nice name.
 
 	for i := int64(0); i < count; i++ {
 		task := &api.Task{
-			ID:        identity.NewID(),
-			Meta:      meta,
-			Spec:      &spec,
-			ServiceID: service.ID,
+			ID:          identity.NewID(),
+			Annotations: meta,
+			Spec:        &spec,
+			ServiceID:   service.ID,
 			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},

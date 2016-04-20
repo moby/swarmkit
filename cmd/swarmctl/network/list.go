@@ -44,7 +44,7 @@ var (
 					spec := n.Spec
 					fmt.Fprintf(w, "%s\t%s\t%s\n",
 						n.ID,
-						spec.Meta.Name,
+						spec.Annotations.Name,
 						n.DriverState.Name,
 					)
 				}

@@ -19,7 +19,7 @@ var (
 		{
 			ID: "id1",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name1",
 				},
 			},
@@ -27,7 +27,7 @@ var (
 		{
 			ID: "id2",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name2",
 				},
 			},
@@ -35,7 +35,7 @@ var (
 		{
 			ID: "id3",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					// intentionally conflicting name
 					Name: "name2",
 				},
@@ -47,7 +47,7 @@ var (
 		{
 			ID: "id1",
 			Spec: &api.ServiceSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name1",
 				},
 			},
@@ -55,7 +55,7 @@ var (
 		{
 			ID: "id2",
 			Spec: &api.ServiceSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name2",
 				},
 			},
@@ -63,7 +63,7 @@ var (
 		{
 			ID: "id3",
 			Spec: &api.ServiceSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name3",
 				},
 			},
@@ -73,7 +73,7 @@ var (
 	taskSet = []*api.Task{
 		{
 			ID: "id1",
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name1",
 			},
 			Spec:   &api.TaskSpec{},
@@ -81,7 +81,7 @@ var (
 		},
 		{
 			ID: "id2",
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name2",
 			},
 			Spec:      &api.TaskSpec{},
@@ -89,7 +89,7 @@ var (
 		},
 		{
 			ID: "id3",
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name2",
 			},
 			Spec: &api.TaskSpec{},
@@ -100,7 +100,7 @@ var (
 		{
 			ID: "id1",
 			Spec: &api.NetworkSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name1",
 				},
 			},
@@ -108,7 +108,7 @@ var (
 		{
 			ID: "id2",
 			Spec: &api.NetworkSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name2",
 				},
 			},
@@ -116,7 +116,7 @@ var (
 		{
 			ID: "id3",
 			Spec: &api.NetworkSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name3",
 				},
 			},
@@ -127,7 +127,7 @@ var (
 		{
 			ID: "id1",
 			Spec: &api.VolumeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name1",
 				},
 			},
@@ -135,7 +135,7 @@ var (
 		{
 			ID: "id2",
 			Spec: &api.VolumeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name2",
 				},
 			},
@@ -143,7 +143,7 @@ var (
 		{
 			ID: "id3",
 			Spec: &api.VolumeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name3",
 				},
 			},
@@ -233,7 +233,7 @@ func TestStoreNode(t *testing.T) {
 	update := &api.Node{
 		ID: "id3",
 		Spec: &api.NodeSpec{
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name3",
 			},
 		},
@@ -287,7 +287,7 @@ func TestStoreService(t *testing.T) {
 			tx.Services().Create(&api.Service{
 				ID: "id1",
 				Spec: &api.ServiceSpec{
-					Meta: api.Meta{
+					Annotations: api.Annotations{
 						Name: "name4",
 					},
 				},
@@ -297,7 +297,7 @@ func TestStoreService(t *testing.T) {
 			tx.Services().Create(&api.Service{
 				ID: "id4",
 				Spec: &api.ServiceSpec{
-					Meta: api.Meta{
+					Annotations: api.Annotations{
 						Name: "name1",
 					},
 				},
@@ -333,7 +333,7 @@ func TestStoreService(t *testing.T) {
 	err = s.Update(func(tx state.Tx) error {
 		// Regular update.
 		update := serviceSet[0].Copy()
-		update.Spec.Meta.Labels = map[string]string{
+		update.Spec.Annotations.Labels = map[string]string{
 			"foo": "bar",
 		}
 
@@ -343,7 +343,7 @@ func TestStoreService(t *testing.T) {
 
 		// Name conflict.
 		update = tx.Services().Get(update.ID)
-		update.Spec.Meta.Name = "name2"
+		update.Spec.Annotations.Name = "name2"
 		assert.Equal(t, tx.Services().Update(update), state.ErrNameConflict, "duplicate names should be rejected")
 
 		// Name change.
@@ -355,7 +355,7 @@ func TestStoreService(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Empty(t, foundServices)
 
-		update.Spec.Meta.Name = "name4"
+		update.Spec.Annotations.Name = "name4"
 		assert.NoError(t, tx.Services().Update(update))
 		foundServices, err = tx.Services().Find(state.ByName("name1"))
 		assert.NoError(t, err)
@@ -507,7 +507,7 @@ func TestStoreTask(t *testing.T) {
 	// Update.
 	update := &api.Task{
 		ID: "id3",
-		Meta: api.Meta{
+		Annotations: api.Annotations{
 			Name: "name3",
 		},
 		Spec: &api.TaskSpec{},
@@ -561,7 +561,7 @@ func TestStoreVolume(t *testing.T) {
 			tx.Volumes().Create(&api.Volume{
 				ID: "id1",
 				Spec: &api.VolumeSpec{
-					Meta: api.Meta{
+					Annotations: api.Annotations{
 						Name: "name4",
 					},
 				},
@@ -571,7 +571,7 @@ func TestStoreVolume(t *testing.T) {
 			tx.Volumes().Create(&api.Volume{
 				ID: "id4",
 				Spec: &api.VolumeSpec{
-					Meta: api.Meta{
+					Annotations: api.Annotations{
 						Name: "name1",
 					},
 				},
@@ -599,7 +599,7 @@ func TestStoreVolume(t *testing.T) {
 	err = s.Update(func(tx state.Tx) error {
 		// Regular update.
 		update := volumeSet[0].Copy()
-		update.Spec.Meta.Labels = map[string]string{
+		update.Spec.Annotations.Labels = map[string]string{
 			"foo": "bar",
 		}
 
@@ -609,7 +609,7 @@ func TestStoreVolume(t *testing.T) {
 
 		// Name conflict.
 		update = tx.Volumes().Get(update.ID)
-		update.Spec.Meta.Name = "name2"
+		update.Spec.Annotations.Name = "name2"
 		assert.Equal(t, tx.Volumes().Update(update), state.ErrNameConflict, "duplicate names should be rejected")
 
 		// Name change.
@@ -621,7 +621,7 @@ func TestStoreVolume(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Empty(t, foundVolumes)
 
-		update.Spec.Meta.Name = "name4"
+		update.Spec.Annotations.Name = "name4"
 		assert.NoError(t, tx.Volumes().Update(update))
 		foundVolumes, err = tx.Volumes().Find(state.ByName("name1"))
 		assert.NoError(t, err)
@@ -745,7 +745,7 @@ func TestStoreSnapshot(t *testing.T) {
 	createNode := &api.Node{
 		ID: "id4",
 		Spec: &api.NodeSpec{
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name4",
 			},
 		},
@@ -770,7 +770,7 @@ func TestStoreSnapshot(t *testing.T) {
 	updateNode := &api.Node{
 		ID: "id3",
 		Spec: &api.NodeSpec{
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name3",
 			},
 		},
@@ -811,7 +811,7 @@ func TestStoreSnapshot(t *testing.T) {
 	createService := &api.Service{
 		ID: "id4",
 		Spec: &api.ServiceSpec{
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name4",
 			},
 		},
@@ -834,7 +834,7 @@ func TestStoreSnapshot(t *testing.T) {
 
 	// Update service
 	updateService := serviceSet[2].Copy()
-	updateService.Spec.Meta.Name = "new-name"
+	updateService.Spec.Annotations.Name = "new-name"
 	err = s1.Update(func(tx1 state.Tx) error {
 		assert.NotEqual(t, updateService, tx1.Services().Get(updateService.ID))
 		assert.NoError(t, tx1.Services().Update(updateService))
@@ -870,7 +870,7 @@ func TestStoreSnapshot(t *testing.T) {
 	// Create task
 	createTask := &api.Task{
 		ID: "id4",
-		Meta: api.Meta{
+		Annotations: api.Annotations{
 			Name: "name4",
 		},
 		Spec: &api.TaskSpec{},
@@ -894,7 +894,7 @@ func TestStoreSnapshot(t *testing.T) {
 	// Update task
 	updateTask := &api.Task{
 		ID: "id3",
-		Meta: api.Meta{
+		Annotations: api.Annotations{
 			Name: "name3",
 		},
 		Spec: &api.TaskSpec{},
@@ -939,7 +939,7 @@ func TestFailedTransaction(t *testing.T) {
 		n := &api.Node{
 			ID: "id1",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name1",
 				},
 			},
@@ -955,7 +955,7 @@ func TestFailedTransaction(t *testing.T) {
 		n := &api.Node{
 			ID: "id2",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name2",
 				},
 			},
@@ -1011,7 +1011,7 @@ func TestVersion(t *testing.T) {
 	n := &api.Node{
 		ID: "id1",
 		Spec: &api.NodeSpec{
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name1",
 			},
 		},
@@ -1023,7 +1023,7 @@ func TestVersion(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Update the node using an object fetched from the store.
-	n.Spec.Meta.Name = "name2"
+	n.Spec.Annotations.Name = "name2"
 	err = s.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Nodes().Update(n))
 		retrievedNode = tx.Nodes().Get(n.ID)
@@ -1032,7 +1032,7 @@ func TestVersion(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Try again, this time using the retrieved node.
-	retrievedNode.Spec.Meta.Name = "name2"
+	retrievedNode.Spec.Annotations.Name = "name2"
 	err = s.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Nodes().Update(retrievedNode))
 		retrievedNode2 = tx.Nodes().Get(n.ID)
@@ -1042,7 +1042,7 @@ func TestVersion(t *testing.T) {
 
 	// Try to update retrievedNode again. This should fail because it was
 	// already used to perform an update.
-	retrievedNode.Spec.Meta.Name = "name3"
+	retrievedNode.Spec.Annotations.Name = "name3"
 	err = s.Update(func(tx state.Tx) error {
 		assert.Equal(t, state.ErrSequenceConflict, tx.Nodes().Update(n))
 		return nil
@@ -1051,7 +1051,7 @@ func TestVersion(t *testing.T) {
 
 	// But using retrievedNode2 should work, since it has the latest
 	// sequence information.
-	retrievedNode2.Spec.Meta.Name = "name3"
+	retrievedNode2.Spec.Annotations.Name = "name3"
 	err = s.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Nodes().Update(retrievedNode2))
 		return nil
@@ -1133,7 +1133,7 @@ func setupNodes(b *testing.B, n int) (state.Store, []string) {
 			_ = tx1.Nodes().Create(&api.Node{
 				ID: nodeIDs[i],
 				Spec: &api.NodeSpec{
-					Meta: api.Meta{
+					Annotations: api.Annotations{
 						Name: "name" + strconv.Itoa(i),
 					},
 				},
@@ -1157,7 +1157,7 @@ func BenchmarkUpdateNode(b *testing.B) {
 			_ = tx1.Nodes().Update(&api.Node{
 				ID: nodeIDs[i%benchmarkNumNodes],
 				Spec: &api.NodeSpec{
-					Meta: api.Meta{
+					Annotations: api.Annotations{
 						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
 					},
 				},
@@ -1175,7 +1175,7 @@ func BenchmarkUpdateNodeTransaction(b *testing.B) {
 			_ = tx1.Nodes().Update(&api.Node{
 				ID: nodeIDs[i%benchmarkNumNodes],
 				Spec: &api.NodeSpec{
-					Meta: api.Meta{
+					Annotations: api.Annotations{
 						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
 					},
 				},
@@ -1257,7 +1257,7 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 					_ = tx1.Nodes().Update(&api.Node{
 						ID: nodeIDs[i%benchmarkNumNodes],
 						Spec: &api.NodeSpec{
-							Meta: api.Meta{
+							Annotations: api.Annotations{
 								Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(c) + "_" + strconv.Itoa(i),
 							},
 						},

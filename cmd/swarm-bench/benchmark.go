@@ -72,7 +72,7 @@ func (b *Benchmark) Run() error {
 
 func (b *Benchmark) spec() *api.ServiceSpec {
 	return &api.ServiceSpec{
-		Meta: api.Meta{
+		Annotations: api.Annotations{
 			Name: "benchmark",
 		},
 		Template: &api.TaskSpec{

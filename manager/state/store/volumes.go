@@ -136,7 +136,7 @@ func (volumes volumes) table() string {
 // Returns ErrExist if the ID is already taken.
 func (volumes volumes) Create(v *api.Volume) error {
 	// Ensure the name is not already in use.
-	if v.Spec != nil && lookup(volumes.memDBTx, volumes.table(), indexName, v.Spec.Meta.Name) != nil {
+	if v.Spec != nil && lookup(volumes.memDBTx, volumes.table(), indexName, v.Spec.Annotations.Name) != nil {
 		return state.ErrNameConflict
 	}
 
@@ -151,7 +151,7 @@ func (volumes volumes) Create(v *api.Volume) error {
 // Returns ErrNotExist if the volume doesn't exist.
 func (volumes volumes) Update(v *api.Volume) error {
 	// Ensure the name is either not in use or already used by this same Service.
-	if existing := lookup(volumes.memDBTx, volumes.table(), indexName, v.Spec.Meta.Name); existing != nil {
+	if existing := lookup(volumes.memDBTx, volumes.table(), indexName, v.Spec.Annotations.Name); existing != nil {
 		if existing.ID() != v.ID {
 			return state.ErrNameConflict
 		}
@@ -225,5 +225,5 @@ func (vi volumeIndexerByName) FromObject(obj interface{}) (bool, []byte, error) 
 		return false, nil, nil
 	}
 	// Add the null character as a terminator
-	return true, []byte(v.Spec.Meta.Name + "\x00"), nil
+	return true, []byte(v.Spec.Annotations.Name + "\x00"), nil
 }

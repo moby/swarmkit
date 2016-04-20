@@ -136,7 +136,7 @@ func (networks networks) table() string {
 // Returns ErrExist if the ID is already taken.
 func (networks networks) Create(n *api.Network) error {
 	// Ensure the name is not already in use.
-	if n.Spec != nil && lookup(networks.memDBTx, networks.table(), indexName, n.Spec.Meta.Name) != nil {
+	if n.Spec != nil && lookup(networks.memDBTx, networks.table(), indexName, n.Spec.Annotations.Name) != nil {
 		return state.ErrNameConflict
 	}
 
@@ -151,7 +151,7 @@ func (networks networks) Create(n *api.Network) error {
 // Returns ErrNotExist if the network doesn't exist.
 func (networks networks) Update(n *api.Network) error {
 	// Ensure the name is either not in use or already used by this same Network.
-	if existing := lookup(networks.memDBTx, networks.table(), indexName, n.Spec.Meta.Name); existing != nil {
+	if existing := lookup(networks.memDBTx, networks.table(), indexName, n.Spec.Annotations.Name); existing != nil {
 		if existing.ID() != n.ID {
 			return state.ErrNameConflict
 		}
@@ -229,5 +229,5 @@ func (ni networkIndexerByName) FromObject(obj interface{}) (bool, []byte, error)
 		return false, nil, nil
 	}
 	// Add the null character as a terminator
-	return true, []byte(n.Spec.Meta.Name + "\x00"), nil
+	return true, []byte(n.Spec.Annotations.Name + "\x00"), nil
 }

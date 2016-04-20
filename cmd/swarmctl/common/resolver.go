@@ -31,8 +31,8 @@ func (r *Resolver) get(t interface{}, id string) string {
 		if err != nil {
 			return id
 		}
-		if res.Node.Spec != nil && res.Node.Spec.Meta.Name != "" {
-			return res.Node.Spec.Meta.Name
+		if res.Node.Spec != nil && res.Node.Spec.Annotations.Name != "" {
+			return res.Node.Spec.Annotations.Name
 		}
 		return res.Node.Description.Hostname
 	case api.Service:
@@ -40,7 +40,7 @@ func (r *Resolver) get(t interface{}, id string) string {
 		if err != nil {
 			return id
 		}
-		return res.Service.Spec.Meta.Name
+		return res.Service.Spec.Annotations.Name
 	default:
 		return id
 	}

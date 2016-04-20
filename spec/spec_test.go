@@ -66,7 +66,7 @@ services:
 		assert.NoError(t, s.Read(f))
 		assert.Equal(t, size, len(s.ServiceSpecs()))
 		for _, serviceSpec := range s.ServiceSpecs() {
-			assert.Equal(t, fmt.Sprintf("name%d", serviceSpec.Instances), serviceSpec.Meta.Name)
+			assert.Equal(t, fmt.Sprintf("name%d", serviceSpec.Instances), serviceSpec.Annotations.Name)
 			assert.Equal(t, fmt.Sprintf("image%d", serviceSpec.Instances), serviceSpec.Template.GetContainer().Image.Reference)
 		}
 	}

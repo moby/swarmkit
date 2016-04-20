@@ -32,34 +32,34 @@ var (
 			services := map[string]*api.Service{}
 
 			for _, j := range r.Services {
-				if j.Spec.Meta.Labels["namespace"] == s.Namespace {
-					services[j.Spec.Meta.Name] = j
+				if j.Spec.Annotations.Labels["namespace"] == s.Namespace {
+					services[j.Spec.Annotations.Name] = j
 				}
 			}
 
 			for _, serviceSpec := range s.ServiceSpecs() {
-				if service, ok := services[serviceSpec.Meta.Name]; ok && !reflect.DeepEqual(service.Spec, serviceSpec) {
+				if service, ok := services[serviceSpec.Annotations.Name]; ok && !reflect.DeepEqual(service.Spec, serviceSpec) {
 					r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
 						ServiceID:      service.ID,
 						ServiceVersion: &service.Version,
 						Spec:           serviceSpec,
 					})
 					if err != nil {
-						fmt.Printf("%s: %v\n", serviceSpec.Meta.Name, err)
+						fmt.Printf("%s: %v\n", serviceSpec.Annotations.Name, err)
 						continue
 					}
-					fmt.Printf("%s: %s - UPDATED\n", serviceSpec.Meta.Name, r.Service.ID)
-					delete(services, serviceSpec.Meta.Name)
+					fmt.Printf("%s: %s - UPDATED\n", serviceSpec.Annotations.Name, r.Service.ID)
+					delete(services, serviceSpec.Annotations.Name)
 				} else if !ok {
 					r, err := c.CreateService(common.Context(cmd), &api.CreateServiceRequest{Spec: serviceSpec})
 					if err != nil {
-						fmt.Printf("%s: %v\n", serviceSpec.Meta.Name, err)
+						fmt.Printf("%s: %v\n", serviceSpec.Annotations.Name, err)
 						continue
 					}
-					fmt.Printf("%s: %s - CREATED\n", serviceSpec.Meta.Name, r.Service.ID)
+					fmt.Printf("%s: %s - CREATED\n", serviceSpec.Annotations.Name, r.Service.ID)
 				} else {
 					// nothing to update
-					delete(services, serviceSpec.Meta.Name)
+					delete(services, serviceSpec.Annotations.Name)
 				}
 			}
 
@@ -69,7 +69,7 @@ var (
 
 					return err
 				}
-				fmt.Printf("%s: %s - REMOVED\n", service.Spec.Meta.Name, service.ID)
+				fmt.Printf("%s: %s - REMOVED\n", service.Spec.Annotations.Name, service.ID)
 			}
 			return nil
 		},

@@ -18,7 +18,7 @@ func TestDrainer(t *testing.T) {
 		{
 			ID: "id1",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name1",
 				},
 				Availability: api.NodeAvailabilityActive,
@@ -30,7 +30,7 @@ func TestDrainer(t *testing.T) {
 		{
 			ID: "id2",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name2",
 				},
 				Availability: api.NodeAvailabilityActive,
@@ -42,7 +42,7 @@ func TestDrainer(t *testing.T) {
 		{
 			ID: "id3",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name3",
 				},
 				Availability: api.NodeAvailabilityActive,
@@ -54,7 +54,7 @@ func TestDrainer(t *testing.T) {
 		{
 			ID: "id4",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name4",
 				},
 				Availability: api.NodeAvailabilityPause,
@@ -66,7 +66,7 @@ func TestDrainer(t *testing.T) {
 		{
 			ID: "id5",
 			Spec: &api.NodeSpec{
-				Meta: api.Meta{
+				Annotations: api.Annotations{
 					Name: "name5",
 				},
 				Availability: api.NodeAvailabilityDrain,
@@ -82,7 +82,7 @@ func TestDrainer(t *testing.T) {
 		{
 			ID:   "id0",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name0",
 			},
 		},
@@ -90,7 +90,7 @@ func TestDrainer(t *testing.T) {
 		{
 			ID:   "id1",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name1",
 			},
 			NodeID: "id1",
@@ -98,7 +98,7 @@ func TestDrainer(t *testing.T) {
 		{
 			ID:   "id2",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name2",
 			},
 			NodeID: "id2",
@@ -106,7 +106,7 @@ func TestDrainer(t *testing.T) {
 		{
 			ID:   "id3",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name3",
 			},
 			NodeID: "id3",
@@ -114,7 +114,7 @@ func TestDrainer(t *testing.T) {
 		{
 			ID:   "id4",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name4",
 			},
 			NodeID: "id4",
@@ -122,7 +122,7 @@ func TestDrainer(t *testing.T) {
 		{
 			ID:   "id5",
 			Spec: &api.TaskSpec{},
-			Meta: api.Meta{
+			Annotations: api.Annotations{
 				Name: "name5",
 			},
 			NodeID: "id5",

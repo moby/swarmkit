@@ -44,7 +44,7 @@ var (
 			}
 
 			common.FprintfIfNotEmpty(w, "ID\t: %s\n", node.ID)
-			common.FprintfIfNotEmpty(w, "Name\t: %s\n", spec.Meta.Name)
+			common.FprintfIfNotEmpty(w, "Name\t: %s\n", spec.Annotations.Name)
 			common.FprintfIfNotEmpty(w, "Hostname\t: %s\n", node.Description.Hostname)
 			fmt.Fprintf(w, "Platform\t: %s-%s\n", desc.Platform.OS, desc.Platform.Architecture)
 
