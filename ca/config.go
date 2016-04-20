@@ -14,10 +14,8 @@ import (
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
 
-	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 
 	"google.golang.org/grpc/credentials"
 )
@@ -259,7 +257,7 @@ func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash, m
 	// If the RootCACert is nil, we should retrieve the CA from the remote host
 	// checking to see if the signature matches the hash provided by the user.
 	if securityConfig.RootCAPool == nil {
-		rootCACert, err := GetRemoteCA(managerAddr, caHash)
+		rootCACert, err := GetRemoteCA(ctx, managerAddr, caHash)
 		if err != nil {
 			return nil, err
 		}
@@ -393,7 +391,7 @@ func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash,
 	// If the RootCACert is nil, we should retrieve the CA from the remote host
 	// checking to see if the signature matches the hash provided
 	if securityConfig.RootCACert == nil || securityConfig.RootCAPool == nil {
-		rootCACert, err := GetRemoteCA(managerAddr, caHash)
+		rootCACert, err := GetRemoteCA(ctx, managerAddr, caHash)
 		if err != nil {
 			return nil, err
 		}
@@ -505,33 +503,4 @@ func NewServerTLSCredentials(cert *tls.Certificate, rootCAPool *x509.CertPool) (
 	}
 
 	return credentials.NewTLS(tlsConfig), nil
-}
-
-func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.CertPool, role, managerAddr string) ([]byte, error) {
-	if rootCAPool == nil {
-		return nil, fmt.Errorf("valid root CA pool required")
-	}
-
-	// This is our only non-MTLS request
-	creds := credentials.NewTLS(&tls.Config{ServerName: ManagerRole, RootCAs: rootCAPool})
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
-
-	// TODO(diogo): Add a connection picker
-	conn, err := grpc.Dial(managerAddr, opts...)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	// Create a CAClient to retreive a new Certificate
-	caClient := api.NewCAClient(conn)
-
-	// Send the Request and retrieve the certificate
-	request := &api.IssueCertificateRequest{CSR: csr, Role: role}
-	response, err := caClient.IssueCertificate(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-
-	return response.CertificateChain, nil
 }

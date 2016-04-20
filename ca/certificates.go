@@ -3,11 +3,11 @@ package ca
 import (
 	"crypto/sha256"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
-	"encoding/pem"
 	"fmt"
 	"io/ioutil"
-	"net"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	cfcsr "github.com/cloudflare/cfssl/csr"
@@ -16,6 +16,10 @@ import (
 	cflog "github.com/cloudflare/cfssl/log"
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
+	"github.com/docker/swarm-v2/api"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 const (
@@ -187,43 +191,29 @@ func ParseValidateAndSignCSR(caSigner signer.Signer, csrBytes []byte, cn, role s
 
 // GetRemoteCA returns the remote endpoint's CA certificate, assuming the server
 // is server the whole chain.
-func GetRemoteCA(managerAddr, hashStr string) ([]byte, error) {
+func GetRemoteCA(ctx context.Context, managerAddr, hashStr string) ([]byte, error) {
 	// This TLS Config is intentionally using InsecureSkipVerify. Either we're
 	// doing TOFU, in which case we don't validate the remote CA, or we're using
 	// a user supplied hash to check the integrity of the CA certificate.
-	config := tls.Config{InsecureSkipVerify: true}
-	conn, err := net.Dial("tcp", managerAddr)
+	insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
+	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second),
+		grpc.WithTransportCredentials(insecureCreds)}
+
+	conn, err := grpc.Dial(managerAddr, opts...)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	client := tls.Client(conn, &config)
-	err = client.Handshake()
+	client := api.NewCAClient(conn)
+	response, err := client.GetRootCACertificate(ctx, &api.GetRootCACertificateRequest{})
 	if err != nil {
 		return nil, err
 	}
 
-	state := client.ConnectionState()
-	chainLen := len(state.PeerCertificates)
-	// We need at least the CA and the actual server certificate.
-	if chainLen < 2 {
-		return nil, fmt.Errorf("invalid TLS chain from remote peer")
-	}
-
-	// Return the last certificate in the chain (should be the CA)
-	// TODO(diogo): Validate that the last certificate is indeed a CA
-	caCert := state.PeerCertificates[chainLen-1]
-
-	// Encode the root certificate as a PEM certificate
-	block := pem.Block{Type: "CERTIFICATE", Bytes: caCert.Raw}
-	pemEncodedRootCA := pem.EncodeToMemory(&block)
-
-	// If the use provided a validation token, validate that the hash is correct.
-	// TODO(diogo): This might be a token that contains a hash, not the direct hash
 	if hashStr != "" {
 		shaHash := sha256.New()
-		shaHash.Write(pemEncodedRootCA)
+		shaHash.Write(response.Certificate)
 		md := shaHash.Sum(nil)
 		mdStr := hex.EncodeToString(md)
 		if hashStr != mdStr {
@@ -231,5 +221,34 @@ func GetRemoteCA(managerAddr, hashStr string) ([]byte, error) {
 		}
 	}
 
-	return pemEncodedRootCA, nil
+	return response.Certificate, nil
+}
+
+func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.CertPool, role, managerAddr string) ([]byte, error) {
+	if rootCAPool == nil {
+		return nil, fmt.Errorf("valid root CA pool required")
+	}
+
+	// This is our only non-MTLS request
+	creds := credentials.NewTLS(&tls.Config{ServerName: ManagerRole, RootCAs: rootCAPool})
+	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second), grpc.WithTransportCredentials(creds)}
+
+	// TODO(diogo): Add a connection picker
+	conn, err := grpc.Dial(managerAddr, opts...)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	// Create a CAClient to retreive a new Certificate
+	caClient := api.NewCAClient(conn)
+
+	// Send the Request and retrieve the certificate
+	request := &api.IssueCertificateRequest{CSR: csr, Role: role}
+	response, err := caClient.IssueCertificate(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.CertificateChain, nil
 }
