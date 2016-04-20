@@ -32,26 +32,16 @@ func (testRouteGuide) RouteChat(RouteGuide_RouteChatServer) error {
 	panic("not implemented")
 }
 
-type testLeaderConn struct{}
-
-func (testLeaderConn) LeaderConn() (*grpc.ClientConn, error) {
-	panic("not implemented")
+type mockCluster struct {
+	addr string
 }
 
-func TestNew(t *testing.T) {
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, testLeaderConn{})
-	proxy, ok := api.(*raftProxyRouteGuideServer)
-	assert.True(t, ok, "wrong proxy type")
-	assert.NotNil(t, proxy.local)
-	assert.NotNil(t, proxy.leaders)
+func (m *mockCluster) LeaderAddr() (string, error) {
+	return m.addr, nil
 }
 
-type mockConn struct {
-	conn *grpc.ClientConn
-}
-
-func (m *mockConn) LeaderConn() (*grpc.ClientConn, error) {
-	return m.conn, nil
+func (m *mockCluster) IsLeader() bool {
+	return false
 }
 
 func TestSimpleRedirect(t *testing.T) {
@@ -61,7 +51,8 @@ func TestSimpleRedirect(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, &mockConn{conn: conn})
+	api, err := NewRaftProxyRouteGuideServer(testRouteGuide{}, &mockCluster{addr: l.Addr().String()})
+	require.NoError(t, err)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -79,7 +70,8 @@ func TestServerStreamRedirect(t *testing.T) {
 	conn, err := grpc.Dial(l.Addr().String(), grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 	require.NoError(t, err)
 
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, &mockConn{conn: conn})
+	api, err := NewRaftProxyRouteGuideServer(testRouteGuide{}, &mockCluster{addr: l.Addr().String()})
+	require.NoError(t, err)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -100,7 +92,8 @@ func TestClientStreamRedirect(t *testing.T) {
 	conn, err := grpc.Dial(l.Addr().String(), grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 	require.NoError(t, err)
 
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, &mockConn{conn: conn})
+	api, err := NewRaftProxyRouteGuideServer(testRouteGuide{}, &mockCluster{addr: l.Addr().String()})
+	require.NoError(t, err)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -123,7 +116,8 @@ func TestClientServerStreamRedirect(t *testing.T) {
 	conn, err := grpc.Dial(l.Addr().String(), grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 	require.NoError(t, err)
 
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, &mockConn{conn: conn})
+	api, err := NewRaftProxyRouteGuideServer(testRouteGuide{}, &mockCluster{addr: l.Addr().String()})
+	require.NoError(t, err)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)

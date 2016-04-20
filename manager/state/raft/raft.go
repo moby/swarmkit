@@ -27,7 +27,6 @@ import (
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/leaderconn"
 	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/gogo/protobuf/proto"
@@ -650,18 +649,20 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 	return &api.ProcessRaftMessageResponse{}, nil
 }
 
-// LeaderConn returns *grpc.ClientConn to leader node if it's remote or
-// leaderconn.ErrLocalLeader error otherwise.
-func (n *Node) LeaderConn() (*grpc.ClientConn, error) {
-	l := n.Leader()
-	if l == n.Config.ID {
-		return nil, leaderconn.ErrLocalLeader
+// LeaderAddr returns address of current cluster leader.
+// With this method Node satisfies raftpicker.AddrSelector interface.
+func (n *Node) LeaderAddr() (string, error) {
+	n.stopMu.RLock()
+	defer n.stopMu.RUnlock()
+	if n.Node == nil {
+		return "", ErrStopped
 	}
-	m := n.cluster.getMember(l)
-	if m == nil || m.Client == nil || m.Client.Conn == nil {
-		return nil, errors.New("incorrect state of cluster member")
+	ms := n.cluster.listMembers()
+	l := ms[n.Leader()]
+	if l == nil {
+		return "", fmt.Errorf("incorrect cluster state")
 	}
-	return m.Client.Conn, nil
+	return l.Addr, nil
 }
 
 // registerNode registers a new node on the cluster

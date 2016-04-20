@@ -20,10 +20,11 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-import leaderconn "github.com/docker/swarm-v2/manager/state/leaderconn"
+import raftpicker "github.com/docker/swarm-v2/manager/raftpicker"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
+import sync "sync"
 
 import io "io"
 
@@ -394,26 +395,43 @@ func encodeVarintCa(data []byte, offset int, v uint64) int {
 }
 
 type raftProxyCAServer struct {
-	local   CAServer
-	leaders leaderconn.ConnSelector
+	local    CAServer
+	conn     *grpc.ClientConn
+	cluster  raftpicker.RaftCluster
+	connOnce sync.Once
 }
 
-func NewRaftProxyCAServer(local CAServer, leaders leaderconn.ConnSelector) CAServer {
+func NewRaftProxyCAServer(local CAServer, cluster raftpicker.RaftCluster) (CAServer, error) {
 	return &raftProxyCAServer{
 		local:   local,
-		leaders: leaders,
+		cluster: cluster,
+	}, nil
+}
+func (p *raftProxyCAServer) initConn() error {
+	var err error
+	p.connOnce.Do(func() {
+		cLeader, leadErr := p.cluster.LeaderAddr()
+		if err != nil {
+			err = leadErr
+			return
+		}
+		p.conn, err = grpc.Dial(cLeader, grpc.WithInsecure(), grpc.WithPicker(raftpicker.New(p.cluster)))
+	})
+	if err != nil {
+		return grpc.Errorf(codes.Internal, err.Error())
 	}
+	return nil
 }
 
 func (p *raftProxyCAServer) IssueCertificate(ctx context.Context, r *IssueCertificateRequest) (*IssueCertificateResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.IssueCertificate(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.IssueCertificate(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -429,7 +447,7 @@ func (p *raftProxyCAServer) IssueCertificate(ctx context.Context, r *IssueCertif
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewCAClient(c).IssueCertificate(ctx, r)
+	return NewCAClient(p.conn).IssueCertificate(ctx, r)
 }
 
 func (m *IssuanceStatus) Size() (n int) {
