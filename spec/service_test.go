@@ -32,6 +32,15 @@ func TestServiceConfigValidate(t *testing.T) {
 			},
 		},
 
+		// incorrect service mode
+		{
+			Name: "name",
+			Mode: "SERVICE_MODE_INVALID",
+			ContainerConfig: ContainerConfig{
+				Image: "image",
+			},
+		},
+
 		// Invalid memory limit
 		{
 			Name: "name",
@@ -63,6 +72,15 @@ func TestServiceConfigValidate(t *testing.T) {
 						Memory: "1024",
 					},
 				},
+			},
+		},
+
+		// test service mode
+		{
+			Name: "name",
+			Mode: "SERVICE_MODE_FILL",
+			ContainerConfig: ContainerConfig{
+				Image: "image",
 			},
 		},
 

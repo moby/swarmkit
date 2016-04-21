@@ -1,6 +1,7 @@
 name: web
 image: nginx
 instances: 1
+mode: SERVICE_MODE_RUNNING
 resources:
     limits:
         cpu: 1.5

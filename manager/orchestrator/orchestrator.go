@@ -51,6 +51,9 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 	}
 
 	for _, j := range existingServices {
+		if !isRelatedService(j) {
+			continue
+		}
 		o.reconcile(ctx, j)
 	}
 
@@ -62,21 +65,32 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 			// TODO(stevvooe): Use ctx to limit running time of operation.
 			switch v := event.(type) {
 			case state.EventDeleteService:
+				if !isRelatedService(v.Service) {
+					continue
+				}
 				o.deleteService(ctx, v.Service)
 			case state.EventCreateService:
+				if !isRelatedService(v.Service) {
+					continue
+				}
 				servicesToReconcile[v.Service.ID] = v.Service
 			case state.EventUpdateService:
+				if !isRelatedService(v.Service) {
+					continue
+				}
 				servicesToReconcile[v.Service.ID] = v.Service
 			case state.EventDeleteTask:
 				service := o.resolveService(ctx, v.Task)
-				if service != nil {
-					servicesToReconcile[service.ID] = service
+				if !isRelatedService(service) {
+					continue
 				}
+				servicesToReconcile[service.ID] = service
 			case state.EventUpdateTask:
 				service := o.resolveService(ctx, v.Task)
-				if service != nil {
-					servicesToReconcile[service.ID] = service
+				if !isRelatedService(service) {
+					continue
 				}
+				servicesToReconcile[service.ID] = service
 			case state.EventCommit:
 				if len(servicesToReconcile) > 0 {
 					for _, s := range servicesToReconcile {
@@ -308,4 +322,9 @@ func (o *Orchestrator) removeTasks(ctx context.Context, batch state.Batch, servi
 			log.G(ctx).WithError(err).Errorf("removing task %s failed", t.ID)
 		}
 	}
+}
+
+// isRelatedService decides if this service is related to current orchestrator
+func isRelatedService(service *api.Service) bool {
+	return service != nil && service.Spec != nil && service.Spec.Mode == api.ServiceModeRunning
 }

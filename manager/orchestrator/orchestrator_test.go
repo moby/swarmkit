@@ -34,6 +34,7 @@ func TestOrchestrator(t *testing.T) {
 				},
 				Template:  &api.TaskSpec{},
 				Instances: 2,
+				Mode:      api.ServiceModeRunning,
 			},
 		}
 		assert.NoError(t, tx.Services().Create(j1))
@@ -64,6 +65,7 @@ func TestOrchestrator(t *testing.T) {
 				},
 				Template:  &api.TaskSpec{},
 				Instances: 1,
+				Mode:      api.ServiceModeRunning,
 			},
 		}
 		assert.NoError(t, tx.Services().Create(j2))
@@ -85,6 +87,7 @@ func TestOrchestrator(t *testing.T) {
 				},
 				Template:  &api.TaskSpec{},
 				Instances: 3,
+				Mode:      api.ServiceModeRunning,
 			},
 		}
 		assert.NoError(t, tx.Services().Update(j2))
@@ -110,6 +113,7 @@ func TestOrchestrator(t *testing.T) {
 				},
 				Template:  &api.TaskSpec{},
 				Instances: 1,
+				Mode:      api.ServiceModeRunning,
 			},
 		}
 		assert.NoError(t, tx.Services().Update(j2))
@@ -187,6 +191,7 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 				},
 				Template:  &api.TaskSpec{},
 				Instances: 2,
+				Mode:      api.ServiceModeRunning,
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartAlways,
 				},
@@ -263,6 +268,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 				},
 				Template:  &api.TaskSpec{},
 				Instances: 2,
+				Mode:      api.ServiceModeRunning,
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnFailure,
 				},
@@ -341,6 +347,7 @@ func TestOrchestratorRestartNever(t *testing.T) {
 				},
 				Template:  &api.TaskSpec{},
 				Instances: 2,
+				Mode:      api.ServiceModeRunning,
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartNever,
 				},

@@ -41,6 +41,7 @@ type ServiceConfig struct {
 
 	Name      string `yaml:"name,omitempty"`
 	Instances int64  `yaml:"instances,omitempty"`
+	Mode      string `yaml:"mode,omitempty"`
 
 	Restart      string `yaml:"restart,omitempty"`
 	RestartDelay int64  `yaml:"restartdelay,omitempty"`
@@ -53,6 +54,11 @@ func (s *ServiceConfig) Validate() error {
 	}
 	if s.Image == "" {
 		return fmt.Errorf("image is mandatory in %s", s.Name)
+	}
+	if s.Mode != "" {
+		if _, exists := api.ServiceSpec_Mode_value[s.Mode]; !exists {
+			return fmt.Errorf("mode %s is not valid", s.Mode)
+		}
 	}
 	switch s.Restart {
 	case "", "no", "on-failure":
@@ -120,6 +126,15 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 		},
 	}
 
+	switch s.Mode {
+	case "", api.ServiceModeRunning.String():
+		spec.Mode = api.ServiceModeRunning
+	case api.ServiceModeBatch.String():
+		spec.Mode = api.ServiceModeBatch
+	case api.ServiceModeFill.String():
+		spec.Mode = api.ServiceModeFill
+	}
+
 	switch s.Restart {
 	case "no":
 		spec.Restart.Condition = api.RestartNever
@@ -137,6 +152,7 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	*s = ServiceConfig{
 		Name:      serviceSpec.Annotations.Name,
 		Instances: serviceSpec.Instances,
+		Mode:      serviceSpec.Mode.String(),
 		ContainerConfig: ContainerConfig{
 			Image:   serviceSpec.Template.GetContainer().Image.Reference,
 			Env:     serviceSpec.Template.GetContainer().Env,
