@@ -49,7 +49,6 @@ type Config struct {
 type Manager struct {
 	config *Config
 
-	apiserver    api.ClusterServer
 	caserver     *ca.Server
 	dispatcher   *dispatcher.Dispatcher
 	orchestrator *orchestrator.Orchestrator
@@ -106,26 +105,15 @@ func New(config *Config) (*Manager, error) {
 
 	opts := []grpc.ServerOption{
 		grpc.Creds(config.SecurityConfig.ServerTLSCreds)}
-	localAPI := clusterapi.NewServer(store)
-	proxyAPI, err := api.NewRaftProxyClusterServer(localAPI, raftNode)
-	if err != nil {
-		return nil, err
-	}
 
 	m := &Manager{
 		config:       config,
-		apiserver:    proxyAPI,
 		caserver:     ca.NewServer(config.SecurityConfig),
 		dispatcher:   dispatcher.New(store, dispatcherConfig),
 		server:       grpc.NewServer(opts...),
 		raftNode:     raftNode,
 		leadershipCh: leadershipCh,
 	}
-
-	api.RegisterCAServer(m.server, m.caserver)
-	api.RegisterManagerServer(m.server, m)
-	api.RegisterClusterServer(m.server, m.apiserver)
-	api.RegisterDispatcherServer(m.server, m.dispatcher)
 
 	return m, nil
 }
@@ -228,11 +216,21 @@ func (m *Manager) Run(ctx context.Context) error {
 	log.G(ctx).Info("listening")
 	go m.raftNode.Run(ctx)
 
-	raft.Register(m.server, m.raftNode)
-
 	// Wait for raft to become available.
 	// FIXME(aaronl): This should not be handled by sleeping.
 	time.Sleep(time.Second)
+
+	localAPI := clusterapi.NewServer(m.raftNode.MemoryStore())
+	proxyAPI, err := api.NewRaftProxyClusterServer(localAPI, m.raftNode)
+	if err != nil {
+		return err
+	}
+
+	api.RegisterCAServer(m.server, m.caserver)
+	api.RegisterManagerServer(m.server, m)
+	api.RegisterClusterServer(m.server, proxyAPI)
+	api.RegisterDispatcherServer(m.server, m.dispatcher)
+	api.RegisterRaftServer(m.server, m.raftNode)
 
 	return m.server.Serve(lis)
 }
