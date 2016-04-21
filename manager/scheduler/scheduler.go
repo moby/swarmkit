@@ -3,7 +3,6 @@ package scheduler
 import (
 	"container/heap"
 	"container/list"
-	"reflect"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
@@ -210,28 +209,28 @@ func (s *Scheduler) tick(ctx context.Context) {
 		}
 	}
 
-	failedSchedulingDecisions := make(map[string]schedulingDecision)
+	var failedSchedulingDecisions []schedulingDecision
+	schedulingDecisionsSlice := make([]schedulingDecision, 0, len(schedulingDecisions))
+
+	for _, decision := range schedulingDecisions {
+		schedulingDecisionsSlice = append(schedulingDecisionsSlice, decision)
+	}
 
 	// Apply changes to master store
-	err := s.store.Update(func(tx state.Tx) error {
-		for id, decision := range schedulingDecisions {
-			t := tx.Tasks().Get(id)
-			if t == nil {
-				// Task no longer exists
-				failedSchedulingDecisions[id] = decision
-				continue
-			}
-			// TODO(aaronl): When we have a sequencer in place,
-			// this expensive comparison won't be necessary.
-			if !reflect.DeepEqual(t, decision.old) {
-				log.G(ctx).Debugf("task changed between scheduling decision and application: %s", t.ID)
-				failedSchedulingDecisions[id] = decision
-				continue
-			}
+	applied, err := s.store.Batch(func(batch state.Batch) error {
+		for _, decision := range schedulingDecisionsSlice {
+			err := batch.Update(func(tx state.Tx) error {
+				t := tx.Tasks().Get(decision.old.ID)
+				if t == nil {
+					// Task no longer exists. Do nothing.
+					return nil
+				}
 
-			if err := tx.Tasks().Update(decision.new); err != nil {
-				log.G(ctx).Debugf("scheduler failed to update task %s; will retry", t.ID)
-				failedSchedulingDecisions[id] = decision
+				return tx.Tasks().Update(decision.new)
+			})
+			if err != nil {
+				log.G(ctx).Debugf("scheduler failed to update task %s; will retry", decision.old.ID)
+				failedSchedulingDecisions = append(failedSchedulingDecisions, decision)
 			}
 		}
 		return nil
@@ -240,13 +239,13 @@ func (s *Scheduler) tick(ctx context.Context) {
 	if err != nil {
 		log.G(ctx).WithError(err).Error("scheduler tick transaction failed")
 
-		s.rollbackLocalState(schedulingDecisions)
+		s.rollbackLocalState(schedulingDecisionsSlice[applied:])
 		return
 	}
 	s.rollbackLocalState(failedSchedulingDecisions)
 }
 
-func (s *Scheduler) rollbackLocalState(decisions map[string]schedulingDecision) {
+func (s *Scheduler) rollbackLocalState(decisions []schedulingDecision) {
 	for _, decision := range decisions {
 		s.allTasks[decision.old.ID] = decision.old
 
