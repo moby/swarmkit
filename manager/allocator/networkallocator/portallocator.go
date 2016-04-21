@@ -73,10 +73,49 @@ func newPortSpace(protocol api.Endpoint_Protocol) (*portSpace, error) {
 	}, nil
 }
 
+func reconcilePortConfigs(s *api.Service) []*api.Endpoint_PortConfiguration {
+	// If runtime state hasn't been created or if port config has
+	// changed from port state return the port config from Spec.
+	if s.Endpoint == nil || len(s.Spec.Endpoint.Ports) != len(s.Endpoint.Ports) {
+		return s.Spec.Endpoint.Ports
+	}
+
+	var portConfigs []*api.Endpoint_PortConfiguration
+	for i, portConfig := range s.Spec.Endpoint.Ports {
+		portState := s.Endpoint.Ports[i]
+
+		// If the portConfig is exactly the same as portState
+		// except if NodePort is not user-define then prefer
+		// portState to ensure sticky allocation of the same
+		// port that was allocated before.
+		if portConfig.Name == portState.Name &&
+			portConfig.Port == portState.Port &&
+			portConfig.Protocol == portState.Protocol &&
+			portConfig.NodePort == 0 {
+			portConfigs = append(portConfigs, portState)
+			continue
+		}
+
+		// For all other cases prefer the portConfig
+		portConfigs = append(portConfigs, portConfig)
+	}
+
+	return portConfigs
+}
+
 func (pa *portAllocator) serviceAllocatePorts(s *api.Service) (err error) {
 	if s.Spec.Endpoint == nil {
 		return nil
 	}
+
+	// We might have previous allocations which we want to stick
+	// to if possible. So instead of strictly going by port
+	// configs in the Spec reconcile the list of port configs from
+	// both the Spec and runtime state.
+	portConfigs := reconcilePortConfigs(s)
+
+	// Port configuration might have changed. Cleanup all old allocations first.
+	pa.serviceDeallocatePorts(s)
 
 	defer func() {
 		if err != nil {
@@ -86,7 +125,7 @@ func (pa *portAllocator) serviceAllocatePorts(s *api.Service) (err error) {
 		}
 	}()
 
-	for _, portConfig := range s.Spec.Endpoint.Ports {
+	for _, portConfig := range portConfigs {
 		// Make a copy of port config to create runtime state
 		portState := portConfig.Copy()
 		if err = pa.portSpaces[portState.Protocol].allocate(portState); err != nil {
@@ -104,11 +143,57 @@ func (pa *portAllocator) serviceAllocatePorts(s *api.Service) (err error) {
 }
 
 func (pa *portAllocator) serviceDeallocatePorts(s *api.Service) {
+	if s.Endpoint == nil {
+		return
+	}
+
 	for _, portState := range s.Endpoint.Ports {
 		pa.portSpaces[portState.Protocol].free(portState)
 	}
 
 	s.Endpoint.Ports = nil
+}
+
+func (pa *portAllocator) isPortsAllocated(s *api.Service) bool {
+	if s.Endpoint == nil {
+		return false
+	}
+
+	// If we don't have same number of port states as port configs
+	// we assume it is not allocated.
+	if len(s.Spec.Endpoint.Ports) != len(s.Endpoint.Ports) {
+		return false
+	}
+
+	for i, portConfig := range s.Spec.Endpoint.Ports {
+		// The port configuration slice and port state slice
+		// are expected to be in the same order.
+		portState := s.Endpoint.Ports[i]
+
+		// If name, port, protocol values don't match then we
+		// are not allocated.
+		if portConfig.Name != portState.Name ||
+			portConfig.Port != portState.Port ||
+			portConfig.Protocol != portState.Protocol {
+			return false
+		}
+
+		// If NodePort was user defined but the port state
+		// NodePort doesn't match we are not allocated.
+		if portConfig.NodePort != portState.NodePort &&
+			portConfig.NodePort != 0 {
+			return false
+		}
+
+		// If NodePort was not defined by user and port state
+		// is not initialized with a valid NodePort value then
+		// we are not allocated.
+		if portConfig.NodePort == 0 && portState.NodePort == 0 {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (ps *portSpace) allocate(p *api.Endpoint_PortConfiguration) (err error) {
