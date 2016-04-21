@@ -95,6 +95,8 @@
 		IssuanceStatus
 		IssueCertificateRequest
 		IssueCertificateResponse
+		GetRootCACertificateRequest
+		GetRootCACertificateResponse
 */
 package api
 

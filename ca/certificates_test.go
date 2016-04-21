@@ -2,102 +2,96 @@ package ca
 
 import (
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/hex"
 	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
+	"net"
 	"os"
-	"path/filepath"
 	"testing"
 
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
+	"github.com/docker/swarm-v2/api"
 	"github.com/phayes/permbits"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 func TestCreateRootCA(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	pathToRootCACert := filepath.Join(tempBaseDir, "root.crt")
-	pathToRootCAKey := filepath.Join(tempBaseDir, "root.key")
+	paths := NewConfigPaths(tempBaseDir)
 
-	_, _, err = CreateRootCA(pathToRootCACert, pathToRootCAKey, "rootCN")
+	_, _, err = CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
 	assert.NoError(t, err)
 
-	perms, err := permbits.Stat(pathToRootCACert)
+	perms, err := permbits.Stat(paths.RootCACert)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
-	perms, err = permbits.Stat(pathToRootCAKey)
+	perms, err = permbits.Stat(paths.RootCAKey)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
 }
 
 func TestGetRootCA(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	pathToRootCACert := filepath.Join(tempBaseDir, "root.crt")
-	pathToRootCAKey := filepath.Join(tempBaseDir, "root.key")
+	paths := NewConfigPaths(tempBaseDir)
 
-	_, rootCACert, err := CreateRootCA(pathToRootCACert, pathToRootCAKey, "rootCN")
+	_, rootCACert, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
 	assert.NoError(t, err)
 
-	rootCACertificate, err := GetRootCA(pathToRootCACert)
+	rootCACertificate, err := GetRootCA(paths.RootCACert)
 	assert.NoError(t, err)
 	assert.Equal(t, rootCACert, rootCACertificate)
 }
 
 func TestGenerateAndSignNewTLSCert(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	pathToRootCACert := filepath.Join(tempBaseDir, "root.crt")
-	pathToRootCAKey := filepath.Join(tempBaseDir, "root.key")
-	pathToCert := filepath.Join(tempBaseDir, "cert.crt")
-	pathToKey := filepath.Join(tempBaseDir, "cert.key")
+	paths := NewConfigPaths(tempBaseDir)
 
-	signer, rootCACert, err := CreateRootCA(pathToRootCACert, pathToRootCAKey, "rootCN")
+	signer, rootCACert, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
 	assert.NoError(t, err)
 
-	_, err = GenerateAndSignNewTLSCert(signer, rootCACert, pathToCert, pathToKey, "CN", "OU")
+	_, err = GenerateAndSignNewTLSCert(signer, rootCACert, paths.ManagerCert, paths.ManagerKey, "CN", "OU")
 	assert.NoError(t, err)
 
-	perms, err := permbits.Stat(pathToCert)
+	perms, err := permbits.Stat(paths.ManagerCert)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
-	perms, err = permbits.Stat(pathToKey)
+	perms, err = permbits.Stat(paths.ManagerKey)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
 }
 
 func TestGenerateAndWriteNewCSR(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	pathToCSR := filepath.Join(tempBaseDir, "cert.csr")
-	pathToKey := filepath.Join(tempBaseDir, "cert.key")
+	paths := NewConfigPaths(tempBaseDir)
 
-	csr, key, err := GenerateAndWriteNewCSR(pathToCSR, pathToKey)
+	csr, key, err := GenerateAndWriteNewCSR(paths.ManagerCSR, paths.ManagerKey)
 	assert.NoError(t, err)
 	assert.NotNil(t, csr)
 	assert.NotNil(t, key)
 
-	perms, err := permbits.Stat(pathToCSR)
+	perms, err := permbits.Stat(paths.ManagerCSR)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
-	perms, err = permbits.Stat(pathToKey)
+	perms, err = permbits.Stat(paths.ManagerKey)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
@@ -107,14 +101,13 @@ func TestGenerateAndWriteNewCSR(t *testing.T) {
 }
 
 func TestParseValidateAndSignCSR(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	pathToRootCACert := filepath.Join(tempBaseDir, "root.crt")
-	pathToRootCAKey := filepath.Join(tempBaseDir, "root.key")
+	paths := NewConfigPaths(tempBaseDir)
 
-	signer, _, err := CreateRootCA(pathToRootCACert, pathToRootCAKey, "rootCN")
+	signer, _, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
 	assert.NoError(t, err)
 
 	csr, _, err := generateNewCSR()
@@ -134,14 +127,13 @@ func TestParseValidateAndSignCSR(t *testing.T) {
 }
 
 func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	pathToRootCACert := filepath.Join(tempBaseDir, "root.crt")
-	pathToRootCAKey := filepath.Join(tempBaseDir, "root.key")
+	paths := NewConfigPaths(tempBaseDir)
 
-	signer, _, err := CreateRootCA(pathToRootCACert, pathToRootCAKey, "rootCN")
+	signer, _, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
 	assert.NoError(t, err)
 
 	req := &cfcsr.CertificateRequest{
@@ -174,66 +166,72 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 }
 
 func TestGetRemoteCA(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	pathToRootCACert := filepath.Join(tempBaseDir, "root.crt")
-	pathToRootCAKey := filepath.Join(tempBaseDir, "root.key")
-	pathToCert := filepath.Join(tempBaseDir, "cert.crt")
-	pathToKey := filepath.Join(tempBaseDir, "cert.key")
+	paths := NewConfigPaths(tempBaseDir)
 
-	signer, rootCACert, err := CreateRootCA(pathToRootCACert, pathToRootCAKey, "rootCN")
+	signer, rootCACert, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "swarm-test-CA")
+	assert.NoError(t, err)
+	managerConfig, err := genManagerSecurityConfig(signer, rootCACert, tempBaseDir)
 	assert.NoError(t, err)
 
-	tlsCert, err := GenerateAndSignNewTLSCert(signer, rootCACert, pathToCert, pathToKey, "CN", "OU")
+	ctx := context.Background()
+
+	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
+	grpcServer := grpc.NewServer(opts...)
+	caserver := NewServer(managerConfig)
+	api.RegisterCAServer(grpcServer, caserver)
+	l, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.NoError(t, err)
 
-	config := &tls.Config{
-		Certificates: []tls.Certificate{*tlsCert},
-		MinVersion:   tls.VersionTLS12,
-	}
-
-	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	ts.TLS = config
-	ts.StartTLS()
-	defer ts.Close()
+	done := make(chan error)
+	defer close(done)
+	go func() {
+		done <- grpcServer.Serve(l)
+	}()
 
 	shaHash := sha256.New()
 	shaHash.Write(rootCACert)
 	md := shaHash.Sum(nil)
 	mdStr := hex.EncodeToString(md)
 
-	_, err = GetRemoteCA(ts.Listener.Addr().String(), mdStr)
+	_, err = GetRemoteCA(ctx, l.Addr().String(), mdStr)
 	assert.NoError(t, err)
+	grpcServer.Stop()
+
+	// After stopping we should receive an error from ListenAndServe.
+	assert.Error(t, <-done)
 }
 
 func TestGetRemoteCAInvalidHash(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-test-")
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	pathToRootCACert := filepath.Join(tempBaseDir, "root.crt")
-	pathToRootCAKey := filepath.Join(tempBaseDir, "root.key")
-	pathToCert := filepath.Join(tempBaseDir, "cert.crt")
-	pathToKey := filepath.Join(tempBaseDir, "cert.key")
+	paths := NewConfigPaths(tempBaseDir)
 
-	signer, rootCACert, err := CreateRootCA(pathToRootCACert, pathToRootCAKey, "rootCN")
+	signer, rootCACert, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "swarm-test-CA")
+	assert.NoError(t, err)
+	managerConfig, err := genManagerSecurityConfig(signer, rootCACert, tempBaseDir)
 	assert.NoError(t, err)
 
-	tlsCert, err := GenerateAndSignNewTLSCert(signer, rootCACert, pathToCert, pathToKey, "CN", "OU")
+	ctx := context.Background()
+
+	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
+	grpcServer := grpc.NewServer(opts...)
+	caserver := NewServer(managerConfig)
+	api.RegisterCAServer(grpcServer, caserver)
+	l, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.NoError(t, err)
 
-	config := &tls.Config{
-		Certificates: []tls.Certificate{*tlsCert},
-		MinVersion:   tls.VersionTLS12,
-	}
+	done := make(chan error)
+	defer close(done)
+	go func() {
+		done <- grpcServer.Serve(l)
+	}()
 
-	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	ts.TLS = config
-	ts.StartTLS()
-	defer ts.Close()
-
-	_, err = GetRemoteCA(ts.Listener.Addr().String(), "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b")
+	_, err = GetRemoteCA(ctx, l.Addr().String(), "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b")
 	assert.Error(t, err)
 }
