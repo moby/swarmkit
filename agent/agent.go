@@ -329,11 +329,6 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 			continue
 		}
 
-		// don't remove the task if the manager doesn't want us to.
-		if task.DesiredState < api.TaskStateDead {
-			continue
-		}
-
 		// TODO(stevvooe): Modify this to take the task through a graceful
 		// shutdown. This just outright removes it.
 		if err := a.removeTask(ctx, task); err != nil {
