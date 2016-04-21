@@ -37,6 +37,8 @@ service Cluster {
 	rpc ListVolumes(ListVolumesRequest) returns (ListVolumesResponse) {};
 	rpc CreateVolume(CreateVolumeRequest) returns (CreateVolumeResponse) {};
 	rpc RemoveVolume(RemoveVolumeRequest) returns (RemoveVolumeResponse) {};
+
+	rpc ListManagers(ListManagersRequest) returns (ListManagersResponse) {};
 }
 
 message ListOptions {
@@ -194,4 +196,12 @@ message ListVolumesRequest {}
 
 message ListVolumesResponse {
 	repeated Volume volumes = 1;
+}
+
+message ListManagersRequest {
+	ListOptions options = 1;
+}
+
+message ListManagersResponse {
+	repeated Member managers = 1;
 }

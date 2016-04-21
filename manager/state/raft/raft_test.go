@@ -1,28 +1,26 @@
-package raft
+package raft_test
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
-
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 
+	"golang.org/x/net/context"
+
 	"github.com/Sirupsen/logrus"
-	"github.com/coreos/etcd/raft"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
-	"github.com/docker/swarm-v2/ca/testutils"
+	cautils "github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/raft"
+	raftutils "github.com/docker/swarm-v2/manager/state/raft/testutils"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,318 +32,26 @@ func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
 	logrus.SetOutput(ioutil.Discard)
 	var tmpDir string
-	_, securityConfig, tmpDir, _ = testutils.GenerateAgentAndManagerSecurityConfig(1)
+	_, securityConfig, tmpDir, _ = cautils.GenerateAgentAndManagerSecurityConfig(1)
 	defer os.RemoveAll(tmpDir)
-}
-
-type testNode struct {
-	*Node
-	listener *wrappedListener
-}
-
-func advanceTicks(clockSource *fakeclock.FakeClock, ticks int) {
-	// A FakeClock timer won't fire multiple times if time is advanced
-	// more than its interval.
-	for i := 0; i != ticks; i++ {
-		clockSource.Increment(time.Second)
-	}
-}
-
-func pollFunc(f func() error) error {
-	if f() == nil {
-		return nil
-	}
-	timeout := time.After(10 * time.Second)
-	for {
-		err := f()
-		if err == nil {
-			return nil
-		}
-		select {
-		case <-timeout:
-			return fmt.Errorf("polling failed: %v", err)
-		case <-time.After(50 * time.Millisecond):
-		}
-	}
-}
-
-// waitForCluster waits until leader will be one of specified nodes
-func waitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*testNode) {
-	err := pollFunc(func() error {
-		clockSource.Increment(time.Second)
-		var prev *raft.Status
-	nodeLoop:
-		for _, n := range nodes {
-			if prev == nil {
-				prev = new(raft.Status)
-				*prev = n.Status()
-				for _, n2 := range nodes {
-					if n2.Config.ID == prev.Lead {
-						continue nodeLoop
-					}
-				}
-				return errors.New("did not find leader in member list")
-			}
-			cur := n.Status()
-
-			for _, n2 := range nodes {
-				if n2.Config.ID == cur.Lead {
-					if cur.Lead != prev.Lead || cur.Term != prev.Term || cur.Applied != prev.Applied {
-						return errors.New("state does not match on all nodes")
-					}
-					continue nodeLoop
-				}
-			}
-			return errors.New("did not find leader in member list")
-		}
-		return nil
-	})
-	require.NoError(t, err)
-}
-
-// waitForPeerNumber waits until peers in cluster converge to specified number
-func waitForPeerNumber(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*testNode, count int) {
-	assert.NoError(t, pollFunc(func() error {
-		clockSource.Increment(time.Second)
-		for _, n := range nodes {
-			if len(n.cluster.listMembers()) != count {
-				return errors.New("unexpected number of members")
-			}
-		}
-		return nil
-	}))
-}
-
-// wrappedListener disables the Close method to make it possible to reuse a
-// socket. close must be called to release the socket.
-type wrappedListener struct {
-	net.Listener
-	acceptConn chan net.Conn
-	acceptErr  chan error
-	closed     chan struct{}
-}
-
-func newWrappedListener(l net.Listener) *wrappedListener {
-	wrappedListener := wrappedListener{
-		Listener:   l,
-		acceptConn: make(chan net.Conn),
-		acceptErr:  make(chan error, 1),
-		closed:     make(chan struct{}, 10), // grpc closes multiple times
-	}
-	// Accept connections
-	go func() {
-		for {
-			conn, err := l.Accept()
-			if err != nil {
-				wrappedListener.acceptErr <- err
-				return
-			}
-			wrappedListener.acceptConn <- conn
-		}
-	}()
-
-	return &wrappedListener
-}
-
-func (l *wrappedListener) Accept() (net.Conn, error) {
-	// closure must take precendence over taking a connection
-	// from the channel
-	select {
-	case <-l.closed:
-		return nil, errors.New("listener closed")
-	default:
-	}
-
-	select {
-	case conn := <-l.acceptConn:
-		return conn, nil
-	case err := <-l.acceptErr:
-		return nil, err
-	case <-l.closed:
-		return nil, errors.New("listener closed")
-	}
-}
-
-func (l *wrappedListener) Close() error {
-	l.closed <- struct{}{}
-	return nil
-}
-
-func (l *wrappedListener) close() error {
-	return l.Listener.Close()
-}
-
-// recycleWrappedListener creates a new wrappedListener that uses the same
-// listening socket as the supplied wrappedListener.
-func recycleWrappedListener(old *wrappedListener) *wrappedListener {
-	return &wrappedListener{
-		Listener:   old.Listener,
-		acceptConn: old.acceptConn,
-		acceptErr:  old.acceptErr,
-		closed:     make(chan struct{}, 10), // grpc closes multiple times
-	}
-}
-
-func newNode(t *testing.T, clockSource *fakeclock.FakeClock, securityConfig *ca.ManagerSecurityConfig, opts ...NewNodeOptions) *testNode {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err, "can't bind to raft service port")
-	wrappedListener := newWrappedListener(l)
-
-	serverOpts := []grpc.ServerOption{grpc.Creds(securityConfig.ServerTLSCreds)}
-	s := grpc.NewServer(serverOpts...)
-
-	cfg := DefaultNodeConfig()
-
-	stateDir, err := ioutil.TempDir("", "test-raft")
-	require.NoError(t, err, "can't create temporary state directory")
-
-	newNodeOpts := NewNodeOptions{
-		Addr:           l.Addr().String(),
-		Config:         cfg,
-		StateDir:       stateDir,
-		ClockSource:    clockSource,
-		SendTimeout:    100 * time.Millisecond,
-		TLSCredentials: securityConfig.ClientTLSCreds,
-	}
-
-	if len(opts) > 1 {
-		panic("more than one optional argument provided")
-	}
-	if len(opts) == 1 {
-		if opts[0].SnapshotInterval != 0 {
-			newNodeOpts.SnapshotInterval = opts[0].SnapshotInterval
-		}
-		newNodeOpts.LogEntriesForSlowFollowers = opts[0].LogEntriesForSlowFollowers
-		newNodeOpts.JoinAddr = opts[0].JoinAddr
-	}
-
-	n, err := NewNode(context.Background(), newNodeOpts, nil)
-	require.NoError(t, err, "can't create raft node")
-	n.Server = s
-
-	return &testNode{Node: n, listener: wrappedListener}
-}
-
-func newInitNode(t *testing.T, securityConfig *ca.ManagerSecurityConfig, opts ...NewNodeOptions) (*testNode, *fakeclock.FakeClock) {
-	ctx := context.Background()
-	clockSource := fakeclock.NewFakeClock(time.Now())
-	n := newNode(t, clockSource, securityConfig, opts...)
-
-	go n.Run(ctx)
-
-	Register(n.Server, n.Node)
-
-	go func() {
-		// After stopping, we should receive an error from Serve
-		assert.Error(t, n.Server.Serve(n.listener))
-	}()
-
-	return n, clockSource
-}
-
-func newJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, securityConfig *ca.ManagerSecurityConfig, opts ...NewNodeOptions) *testNode {
-	var derivedOpts NewNodeOptions
-	if len(opts) == 1 {
-		derivedOpts = opts[0]
-	}
-	derivedOpts.JoinAddr = join
-	n := newNode(t, clockSource, securityConfig, derivedOpts)
-
-	go n.Run(context.Background())
-	Register(n.Server, n.Node)
-
-	go func() {
-		// After stopping, we should receive an error from Serve
-		assert.Error(t, n.Server.Serve(n.listener))
-	}()
-	return n
-}
-
-func restartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *testNode, securityConfig *ca.ManagerSecurityConfig) *testNode {
-	wrappedListener := recycleWrappedListener(oldNode.listener)
-	serverOpts := []grpc.ServerOption{grpc.Creds(securityConfig.ServerTLSCreds)}
-	s := grpc.NewServer(serverOpts...)
-
-	cfg := DefaultNodeConfig()
-
-	newNodeOpts := NewNodeOptions{
-		Addr:           oldNode.Address,
-		Config:         cfg,
-		StateDir:       oldNode.stateDir,
-		ClockSource:    clockSource,
-		SendTimeout:    100 * time.Millisecond,
-		TLSCredentials: securityConfig.ClientTLSCreds,
-	}
-
-	ctx := context.Background()
-	n, err := NewNode(ctx, newNodeOpts, nil)
-	require.NoError(t, err, "can't create raft node")
-	n.Server = s
-
-	go n.Run(ctx)
-
-	Register(s, n)
-
-	go func() {
-		// After stopping, we should receive an error from Serve
-		assert.Error(t, s.Serve(wrappedListener))
-	}()
-	return &testNode{Node: n, listener: wrappedListener}
-}
-
-func newRaftCluster(t *testing.T, securityConfig *ca.ManagerSecurityConfig, opts ...NewNodeOptions) (map[uint64]*testNode, *fakeclock.FakeClock) {
-	var clockSource *fakeclock.FakeClock
-	nodes := make(map[uint64]*testNode)
-	nodes[1], clockSource = newInitNode(t, securityConfig, opts...)
-	addRaftNode(t, clockSource, nodes, securityConfig, opts...)
-	addRaftNode(t, clockSource, nodes, securityConfig, opts...)
-	return nodes, clockSource
-}
-
-func addRaftNode(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*testNode, securityConfig *ca.ManagerSecurityConfig, opts ...NewNodeOptions) {
-	n := uint64(len(nodes) + 1)
-	nodes[n] = newJoinNode(t, clockSource, nodes[1].Address, securityConfig, opts...)
-	waitForCluster(t, clockSource, nodes)
-}
-
-func teardownCluster(t *testing.T, nodes map[uint64]*testNode) {
-	for _, node := range nodes {
-		shutdownNode(node)
-		node.listener.close()
-	}
-}
-
-func shutdownNode(node *testNode) {
-	node.Server.Stop()
-	node.Shutdown()
-	os.RemoveAll(node.stateDir)
-}
-
-func leader(nodes map[uint64]*testNode) *testNode {
-	for _, n := range nodes {
-		if n.Config.ID == n.Leader() {
-			return n
-		}
-	}
-	panic("could not find a leader")
 }
 
 func TestRaftBootstrap(t *testing.T) {
 	t.Parallel()
 
-	nodes, _ := newRaftCluster(t, securityConfig)
-	defer teardownCluster(t, nodes)
+	nodes, _ := raftutils.NewRaftCluster(t, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
 
-	assert.Equal(t, 3, len(nodes[1].cluster.listMembers()))
-	assert.Equal(t, 3, len(nodes[2].cluster.listMembers()))
-	assert.Equal(t, 3, len(nodes[3].cluster.listMembers()))
+	assert.Equal(t, 3, len(nodes[1].GetMemberlist()))
+	assert.Equal(t, 3, len(nodes[2].GetMemberlist()))
+	assert.Equal(t, 3, len(nodes[3].GetMemberlist()))
 }
 
 func TestRaftLeader(t *testing.T) {
 	t.Parallel()
 
-	nodes, _ := newRaftCluster(t, securityConfig)
-	defer teardownCluster(t, nodes)
+	nodes, _ := raftutils.NewRaftCluster(t, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	assert.True(t, nodes[1].IsLeader(), "error: node 1 is not the Leader")
 
@@ -355,114 +61,21 @@ func TestRaftLeader(t *testing.T) {
 	assert.Equal(t, nodes[3].Leader(), nodes[1].Config.ID)
 }
 
-func proposeValue(t *testing.T, raftNode *testNode, nodeID ...string) (*api.Node, error) {
-	nodeIDStr := "id1"
-	if len(nodeID) != 0 {
-		nodeIDStr = nodeID[0]
-	}
-	node := &api.Node{
-		ID: nodeIDStr,
-		Spec: &api.NodeSpec{
-			Annotations: api.Annotations{
-				Name: nodeIDStr,
-			},
-		},
-	}
-
-	storeActions := []*api.StoreAction{
-		{
-			Action: api.StoreActionKindCreate,
-			Target: &api.StoreAction_Node{
-				Node: node,
-			},
-		},
-	}
-
-	ctx, _ := context.WithTimeout(context.Background(), time.Second)
-
-	err := raftNode.ProposeValue(ctx, storeActions, func() {
-		err := raftNode.memoryStore.ApplyStoreActions(storeActions)
-		assert.NoError(t, err, "error applying actions")
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return node, nil
-}
-
-func checkValue(t *testing.T, raftNode *testNode, createdNode *api.Node) {
-	assert.NoError(t, pollFunc(func() error {
-		return raftNode.memoryStore.View(func(tx state.ReadTx) error {
-			allNodes, err := tx.Nodes().Find(state.All)
-			if err != nil {
-				return err
-			}
-			if len(allNodes) != 1 {
-				return fmt.Errorf("expected 1 node, got %d nodes", len(allNodes))
-			}
-			if !reflect.DeepEqual(allNodes[0], createdNode) {
-				return errors.New("node did not match expected value")
-			}
-			return nil
-		})
-	}))
-}
-
-func checkNoValue(t *testing.T, raftNode *testNode) {
-	assert.NoError(t, pollFunc(func() error {
-		return raftNode.memoryStore.View(func(tx state.ReadTx) error {
-			allNodes, err := tx.Nodes().Find(state.All)
-			if err != nil {
-				return err
-			}
-			if len(allNodes) != 0 {
-				return fmt.Errorf("expected no nodes, got %d", len(allNodes))
-			}
-			return nil
-		})
-	}))
-}
-
-func checkValuesOnNodes(t *testing.T, checkNodes map[uint64]*testNode, ids []string, values []*api.Node) {
-	for _, node := range checkNodes {
-		assert.NoError(t, pollFunc(func() error {
-			return node.memoryStore.View(func(tx state.ReadTx) error {
-				allNodes, err := tx.Nodes().Find(state.All)
-				if err != nil {
-					return err
-				}
-				if len(allNodes) != len(ids) {
-					return fmt.Errorf("expected %d nodes, got %d", len(ids), len(allNodes))
-				}
-
-				for i, id := range ids {
-					n := tx.Nodes().Get(id)
-					if !reflect.DeepEqual(values[i], n) {
-						return fmt.Errorf("node %s did not match expected value", id)
-					}
-				}
-				return nil
-			})
-		}))
-	}
-}
-
 func TestRaftLeaderDown(t *testing.T) {
 	t.Parallel()
 
-	nodes, clockSource := newRaftCluster(t, securityConfig)
-	defer teardownCluster(t, nodes)
+	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop node 1
 	nodes[1].Stop()
 
-	newCluster := map[uint64]*testNode{
+	newCluster := map[uint64]*raftutils.TestNode{
 		2: nodes[2],
 		3: nodes[3],
 	}
 	// Wait for the re-election to occur
-	waitForCluster(t, clockSource, newCluster)
+	raftutils.WaitForCluster(t, clockSource, newCluster)
 
 	// Leader should not be 1
 	assert.NotEqual(t, nodes[2].Leader(), nodes[1].Config.ID)
@@ -472,8 +85,8 @@ func TestRaftLeaderDown(t *testing.T) {
 
 	// Find the leader node and a follower node
 	var (
-		leaderNode   *testNode
-		followerNode *testNode
+		leaderNode   *raftutils.TestNode
+		followerNode *raftutils.TestNode
 	)
 	for i, n := range newCluster {
 		if n.Config.ID == n.Leader() {
@@ -490,22 +103,22 @@ func TestRaftLeaderDown(t *testing.T) {
 	require.NotNil(t, followerNode)
 
 	// Propose a value
-	value, err := proposeValue(t, leaderNode)
+	value, err := raftutils.ProposeValue(t, leaderNode)
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
-	checkValue(t, leaderNode, value)
-	assert.Equal(t, len(leaderNode.cluster.listMembers()), 3)
+	raftutils.CheckValue(t, leaderNode, value)
+	assert.Equal(t, len(leaderNode.GetMemberlist()), 3)
 
-	checkValue(t, followerNode, value)
-	assert.Equal(t, len(followerNode.cluster.listMembers()), 3)
+	raftutils.CheckValue(t, followerNode, value)
+	assert.Equal(t, len(followerNode.GetMemberlist()), 3)
 }
 
 func TestRaftFollowerDown(t *testing.T) {
 	t.Parallel()
 
-	nodes, _ := newRaftCluster(t, securityConfig)
-	defer teardownCluster(t, nodes)
+	nodes, _ := raftutils.NewRaftCluster(t, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop node 3
 	nodes[3].Stop()
@@ -515,58 +128,58 @@ func TestRaftFollowerDown(t *testing.T) {
 	assert.Equal(t, nodes[2].Leader(), nodes[1].Config.ID)
 
 	// Propose a value
-	value, err := proposeValue(t, nodes[1])
+	value, err := raftutils.ProposeValue(t, nodes[1])
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
-	checkValue(t, nodes[1], value)
-	assert.Equal(t, len(nodes[1].cluster.listMembers()), 3)
+	raftutils.CheckValue(t, nodes[1], value)
+	assert.Equal(t, len(nodes[1].GetMemberlist()), 3)
 
-	checkValue(t, nodes[2], value)
-	assert.Equal(t, len(nodes[2].cluster.listMembers()), 3)
+	raftutils.CheckValue(t, nodes[2], value)
+	assert.Equal(t, len(nodes[2].GetMemberlist()), 3)
 }
 
 func TestRaftLogReplication(t *testing.T) {
 	t.Parallel()
 
-	nodes, _ := newRaftCluster(t, securityConfig)
-	defer teardownCluster(t, nodes)
+	nodes, _ := raftutils.NewRaftCluster(t, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	// Propose a value
-	value, err := proposeValue(t, nodes[1])
+	value, err := raftutils.ProposeValue(t, nodes[1])
 	assert.NoError(t, err, "failed to propose value")
 
 	// All nodes should have the value in the physical store
-	checkValue(t, nodes[1], value)
-	checkValue(t, nodes[2], value)
-	checkValue(t, nodes[3], value)
+	raftutils.CheckValue(t, nodes[1], value)
+	raftutils.CheckValue(t, nodes[2], value)
+	raftutils.CheckValue(t, nodes[3], value)
 }
 
 func TestRaftLogReplicationWithoutLeader(t *testing.T) {
 	t.Parallel()
-	nodes, _ := newRaftCluster(t, securityConfig)
-	defer teardownCluster(t, nodes)
+	nodes, _ := raftutils.NewRaftCluster(t, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop the leader
 	nodes[1].Stop()
 
 	// Propose a value
-	_, err := proposeValue(t, nodes[2])
+	_, err := raftutils.ProposeValue(t, nodes[2])
 	assert.Error(t, err)
 
 	// No value should be replicated in the store in the absence of the leader
-	checkNoValue(t, nodes[2])
-	checkNoValue(t, nodes[3])
+	raftutils.CheckNoValue(t, nodes[2])
+	raftutils.CheckNoValue(t, nodes[3])
 }
 
 func TestRaftQuorumFailure(t *testing.T) {
 	t.Parallel()
 
 	// Bring up a 5 nodes cluster
-	nodes, clockSource := newRaftCluster(t, securityConfig)
-	addRaftNode(t, clockSource, nodes, securityConfig)
-	addRaftNode(t, clockSource, nodes, securityConfig)
-	defer teardownCluster(t, nodes)
+	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
+	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	// Lose a majority
 	for i := uint64(3); i <= 5; i++ {
@@ -575,22 +188,22 @@ func TestRaftQuorumFailure(t *testing.T) {
 	}
 
 	// Propose a value
-	_, err := proposeValue(t, nodes[1])
+	_, err := raftutils.ProposeValue(t, nodes[1])
 	assert.Error(t, err)
 
 	// The value should not be replicated, we have no majority
-	checkNoValue(t, nodes[2])
-	checkNoValue(t, nodes[1])
+	raftutils.CheckNoValue(t, nodes[2])
+	raftutils.CheckNoValue(t, nodes[1])
 }
 
 func TestRaftQuorumRecovery(t *testing.T) {
 	t.Parallel()
 
 	// Bring up a 5 nodes cluster
-	nodes, clockSource := newRaftCluster(t, securityConfig)
-	addRaftNode(t, clockSource, nodes, securityConfig)
-	addRaftNode(t, clockSource, nodes, securityConfig)
-	defer teardownCluster(t, nodes)
+	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
+	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	// Lose a majority
 	for i := uint64(1); i <= 3; i++ {
@@ -598,21 +211,21 @@ func TestRaftQuorumRecovery(t *testing.T) {
 		nodes[i].Shutdown()
 	}
 
-	advanceTicks(clockSource, 5)
+	raftutils.AdvanceTicks(clockSource, 5)
 
 	// Restore the majority by restarting node 3
-	nodes[3] = restartNode(t, clockSource, nodes[3], securityConfig)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig)
 
 	delete(nodes, 1)
 	delete(nodes, 2)
-	waitForCluster(t, clockSource, nodes)
+	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Propose a value
-	value, err := proposeValue(t, leader(nodes))
+	value, err := raftutils.ProposeValue(t, raftutils.Leader(nodes))
 	assert.NoError(t, err)
 
 	for _, node := range nodes {
-		checkValue(t, node, value)
+		raftutils.CheckValue(t, node, value)
 	}
 }
 
@@ -620,13 +233,13 @@ func TestRaftFollowerLeave(t *testing.T) {
 	t.Parallel()
 
 	// Bring up a 5 nodes cluster
-	nodes, clockSource := newRaftCluster(t, securityConfig)
-	addRaftNode(t, clockSource, nodes, securityConfig)
-	addRaftNode(t, clockSource, nodes, securityConfig)
-	nodes, clockSource = newRaftCluster(t, securityConfig)
-	addRaftNode(t, clockSource, nodes, securityConfig)
-	addRaftNode(t, clockSource, nodes, securityConfig)
-	defer teardownCluster(t, nodes)
+	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
+	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
+	nodes, clockSource = raftutils.NewRaftCluster(t, securityConfig)
+	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
+	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	// Node 5 leaves the cluster
 	// Use gRPC instead of calling handler directly because of
@@ -641,31 +254,31 @@ func TestRaftFollowerLeave(t *testing.T) {
 
 	delete(nodes, 5)
 
-	waitForPeerNumber(t, clockSource, nodes, 4)
+	raftutils.WaitForPeerNumber(t, clockSource, nodes, 4)
 
 	// Propose a value
-	value, err := proposeValue(t, nodes[1])
+	value, err := raftutils.ProposeValue(t, nodes[1])
 	assert.NoError(t, err, "failed to propose value")
 
 	// Value should be replicated on every node
-	checkValue(t, nodes[1], value)
-	assert.Equal(t, len(nodes[1].cluster.listMembers()), 4)
+	raftutils.CheckValue(t, nodes[1], value)
+	assert.Equal(t, len(nodes[1].GetMemberlist()), 4)
 
-	checkValue(t, nodes[2], value)
-	assert.Equal(t, len(nodes[2].cluster.listMembers()), 4)
+	raftutils.CheckValue(t, nodes[2], value)
+	assert.Equal(t, len(nodes[2].GetMemberlist()), 4)
 
-	checkValue(t, nodes[3], value)
-	assert.Equal(t, len(nodes[3].cluster.listMembers()), 4)
+	raftutils.CheckValue(t, nodes[3], value)
+	assert.Equal(t, len(nodes[3].GetMemberlist()), 4)
 
-	checkValue(t, nodes[4], value)
-	assert.Equal(t, len(nodes[4].cluster.listMembers()), 4)
+	raftutils.CheckValue(t, nodes[4], value)
+	assert.Equal(t, len(nodes[4].GetMemberlist()), 4)
 }
 
 func TestRaftLeaderLeave(t *testing.T) {
 	t.Parallel()
 
-	nodes, clockSource := newRaftCluster(t, securityConfig)
-	defer teardownCluster(t, nodes)
+	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	// node 1 is the leader
 	assert.Equal(t, nodes[1].Leader(), nodes[1].Config.ID)
@@ -681,12 +294,12 @@ func TestRaftLeaderLeave(t *testing.T) {
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
-	newCluster := map[uint64]*testNode{
+	newCluster := map[uint64]*raftutils.TestNode{
 		2: nodes[2],
 		3: nodes[3],
 	}
 	// Wait for election tick
-	waitForCluster(t, clockSource, newCluster)
+	raftutils.WaitForCluster(t, clockSource, newCluster)
 
 	// Leader should not be 1
 	assert.NotEqual(t, nodes[2].Leader(), nodes[1].Config.ID)
@@ -696,8 +309,8 @@ func TestRaftLeaderLeave(t *testing.T) {
 
 	// Find the leader node and a follower node
 	var (
-		leaderNode   *testNode
-		followerNode *testNode
+		leaderNode   *raftutils.TestNode
+		followerNode *raftutils.TestNode
 	)
 	for i, n := range nodes {
 		if n.Config.ID == leader {
@@ -714,37 +327,37 @@ func TestRaftLeaderLeave(t *testing.T) {
 	require.NotNil(t, followerNode)
 
 	// Propose a value
-	value, err := proposeValue(t, leaderNode)
+	value, err := raftutils.ProposeValue(t, leaderNode)
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
-	checkValue(t, leaderNode, value)
-	assert.Equal(t, len(leaderNode.cluster.listMembers()), 2)
+	raftutils.CheckValue(t, leaderNode, value)
+	assert.Equal(t, len(leaderNode.GetMemberlist()), 2)
 
-	checkValue(t, followerNode, value)
-	assert.Equal(t, len(followerNode.cluster.listMembers()), 2)
+	raftutils.CheckValue(t, followerNode, value)
+	assert.Equal(t, len(followerNode.GetMemberlist()), 2)
 }
 
 func TestRaftNewNodeGetsData(t *testing.T) {
 	t.Parallel()
 
 	// Bring up a 3 node cluster
-	nodes, clockSource := newRaftCluster(t, securityConfig)
-	defer teardownCluster(t, nodes)
+	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	// Propose a value
-	value, err := proposeValue(t, nodes[1])
+	value, err := raftutils.ProposeValue(t, nodes[1])
 	assert.NoError(t, err, "failed to propose value")
 
 	// Add a new node
-	addRaftNode(t, clockSource, nodes, securityConfig)
+	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
 
 	time.Sleep(500 * time.Millisecond)
 
 	// Value should be replicated on every node
 	for _, node := range nodes {
-		checkValue(t, node, value)
-		assert.Equal(t, len(node.cluster.listMembers()), 4)
+		raftutils.CheckValue(t, node, value)
+		assert.Equal(t, len(node.GetMemberlist()), 4)
 	}
 }
 
@@ -753,8 +366,8 @@ func TestRaftSnapshot(t *testing.T) {
 
 	// Bring up a 3 node cluster
 	var zero uint64
-	nodes, clockSource := newRaftCluster(t, securityConfig, NewNodeOptions{SnapshotInterval: 9, LogEntriesForSlowFollowers: &zero})
-	defer teardownCluster(t, nodes)
+	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig, raft.NewNodeOptions{SnapshotInterval: 9, LogEntriesForSlowFollowers: &zero})
+	defer raftutils.TeardownCluster(t, nodes)
 
 	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5"}
 	values := make([]*api.Node, len(nodeIDs))
@@ -762,25 +375,25 @@ func TestRaftSnapshot(t *testing.T) {
 	// Propose 4 values
 	var err error
 	for i, nodeID := range nodeIDs[:4] {
-		values[i], err = proposeValue(t, nodes[1], nodeID)
+		values[i], err = raftutils.ProposeValue(t, nodes[1], nodeID)
 		assert.NoError(t, err, "failed to propose value")
 	}
 
 	// None of the nodes should have snapshot files yet
 	for _, node := range nodes {
-		dirents, err := ioutil.ReadDir(filepath.Join(node.stateDir, "snap"))
+		dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap"))
 		assert.NoError(t, err)
 		assert.Len(t, dirents, 0)
 	}
 
 	// Propose a 5th value
-	values[4], err = proposeValue(t, nodes[1], nodeIDs[4])
+	values[4], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[4])
 	assert.NoError(t, err, "failed to propose value")
 
 	// All nodes should now have a snapshot file
 	for _, node := range nodes {
-		assert.NoError(t, pollFunc(func() error {
-			dirents, err := ioutil.ReadDir(filepath.Join(node.stateDir, "snap"))
+		assert.NoError(t, raftutils.PollFunc(func() error {
+			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap"))
 			if err != nil {
 				return err
 			}
@@ -792,11 +405,11 @@ func TestRaftSnapshot(t *testing.T) {
 	}
 
 	// Add a node to the cluster
-	addRaftNode(t, clockSource, nodes, securityConfig)
+	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
 
 	// It should get a copy of the snapshot
-	assert.NoError(t, pollFunc(func() error {
-		dirents, err := ioutil.ReadDir(filepath.Join(nodes[4].stateDir, "snap"))
+	assert.NoError(t, raftutils.PollFunc(func() error {
+		dirents, err := ioutil.ReadDir(filepath.Join(nodes[4].StateDir, "snap"))
 		if err != nil {
 			return err
 		}
@@ -807,17 +420,20 @@ func TestRaftSnapshot(t *testing.T) {
 	}))
 
 	// It should know about the other nodes
-	nodesFromMembers := func(memberList map[uint64]*member) map[uint64]*api.RaftNode {
+	nodesFromMembers := func(memberList map[uint64]*api.Member) map[uint64]*api.RaftNode {
 		raftNodes := make(map[uint64]*api.RaftNode)
 		for k, v := range memberList {
-			raftNodes[k] = v.RaftNode
+			raftNodes[k] = &api.RaftNode{
+				ID:   v.ID,
+				Addr: v.Addr,
+			}
 		}
 		return raftNodes
 	}
-	assert.Equal(t, nodesFromMembers(nodes[1].cluster.listMembers()), nodesFromMembers(nodes[4].cluster.listMembers()))
+	assert.Equal(t, nodesFromMembers(nodes[1].GetMemberlist()), nodesFromMembers(nodes[4].GetMemberlist()))
 
 	// All nodes should have all the data
-	checkValuesOnNodes(t, nodes, nodeIDs, values)
+	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs, values)
 }
 
 func TestRaftSnapshotRestart(t *testing.T) {
@@ -825,8 +441,8 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Bring up a 3 node cluster
 	var zero uint64
-	nodes, clockSource := newRaftCluster(t, securityConfig, NewNodeOptions{SnapshotInterval: 10, LogEntriesForSlowFollowers: &zero})
-	defer teardownCluster(t, nodes)
+	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig, raft.NewNodeOptions{SnapshotInterval: 10, LogEntriesForSlowFollowers: &zero})
+	defer raftutils.TeardownCluster(t, nodes)
 
 	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7", "id8"}
 	values := make([]*api.Node, len(nodeIDs))
@@ -834,7 +450,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	// Propose 4 values
 	var err error
 	for i, nodeID := range nodeIDs[:4] {
-		values[i], err = proposeValue(t, nodes[1], nodeID)
+		values[i], err = raftutils.ProposeValue(t, nodes[1], nodeID)
 		assert.NoError(t, err, "failed to propose value")
 	}
 
@@ -843,25 +459,25 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	nodes[3].Shutdown()
 
 	// Propose a 5th value before the snapshot
-	values[4], err = proposeValue(t, nodes[1], nodeIDs[4])
+	values[4], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[4])
 	assert.NoError(t, err, "failed to propose value")
 
 	// Remaining nodes shouldn't have snapshot files yet
-	for _, node := range []*testNode{nodes[1], nodes[2]} {
-		dirents, err := ioutil.ReadDir(filepath.Join(node.stateDir, "snap"))
+	for _, node := range []*raftutils.TestNode{nodes[1], nodes[2]} {
+		dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap"))
 		assert.NoError(t, err)
 		assert.Len(t, dirents, 0)
 	}
 
 	// Add a node to the cluster before the snapshot. This is the event
 	// that triggers the snapshot.
-	nodes[4] = newJoinNode(t, clockSource, nodes[1].Address, securityConfig)
-	waitForCluster(t, clockSource, map[uint64]*testNode{1: nodes[1], 2: nodes[2], 4: nodes[4]})
+	nodes[4] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	raftutils.WaitForCluster(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2], 4: nodes[4]})
 
 	// Remaining nodes should now have a snapshot file
-	for _, node := range []*testNode{nodes[1], nodes[2]} {
-		assert.NoError(t, pollFunc(func() error {
-			dirents, err := ioutil.ReadDir(filepath.Join(node.stateDir, "snap"))
+	for _, node := range []*raftutils.TestNode{nodes[1], nodes[2]} {
+		assert.NoError(t, raftutils.PollFunc(func() error {
+			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap"))
 			if err != nil {
 				return err
 			}
@@ -871,18 +487,18 @@ func TestRaftSnapshotRestart(t *testing.T) {
 			return nil
 		}))
 	}
-	checkValuesOnNodes(t, map[uint64]*testNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:5], values[:5])
+	raftutils.CheckValuesOnNodes(t, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:5], values[:5])
 
 	// Propose a 6th value
-	values[5], err = proposeValue(t, nodes[1], nodeIDs[5])
+	values[5], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[5])
 
 	// Add another node to the cluster
-	nodes[5] = newJoinNode(t, clockSource, nodes[1].Address, securityConfig)
-	waitForCluster(t, clockSource, map[uint64]*testNode{1: nodes[1], 2: nodes[2], 4: nodes[4], 5: nodes[5]})
+	nodes[5] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	raftutils.WaitForCluster(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2], 4: nodes[4], 5: nodes[5]})
 
 	// New node should get a copy of the snapshot
-	assert.NoError(t, pollFunc(func() error {
-		dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].stateDir, "snap"))
+	assert.NoError(t, raftutils.PollFunc(func() error {
+		dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].StateDir, "snap"))
 		if err != nil {
 			return err
 		}
@@ -892,96 +508,99 @@ func TestRaftSnapshotRestart(t *testing.T) {
 		return nil
 	}))
 
-	dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].stateDir, "snap"))
+	dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].StateDir, "snap"))
 	assert.NoError(t, err)
 	assert.Len(t, dirents, 1)
-	checkValuesOnNodes(t, map[uint64]*testNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:6], values[:6])
+	raftutils.CheckValuesOnNodes(t, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:6], values[:6])
 
 	// It should know about the other nodes, including the one that was just added
-	nodesFromMembers := func(memberList map[uint64]*member) map[uint64]*api.RaftNode {
+	nodesFromMembers := func(memberList map[uint64]*api.Member) map[uint64]*api.RaftNode {
 		raftNodes := make(map[uint64]*api.RaftNode)
 		for k, v := range memberList {
-			raftNodes[k] = v.RaftNode
+			raftNodes[k] = &api.RaftNode{
+				ID:   v.ID,
+				Addr: v.Addr,
+			}
 		}
 		return raftNodes
 	}
-	assert.Equal(t, nodesFromMembers(nodes[1].cluster.listMembers()), nodesFromMembers(nodes[4].cluster.listMembers()))
+	assert.Equal(t, nodesFromMembers(nodes[1].GetMemberlist()), nodesFromMembers(nodes[4].GetMemberlist()))
 
 	// Restart node 3
-	nodes[3] = restartNode(t, clockSource, nodes[3], securityConfig)
-	waitForCluster(t, clockSource, nodes)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig)
+	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Node 3 should know about other nodes, including the new one
-	assert.Len(t, nodes[3].cluster.listMembers(), 5)
-	assert.Equal(t, nodesFromMembers(nodes[1].cluster.listMembers()), nodesFromMembers(nodes[3].cluster.listMembers()))
+	assert.Len(t, nodes[3].GetMemberlist(), 5)
+	assert.Equal(t, nodesFromMembers(nodes[1].GetMemberlist()), nodesFromMembers(nodes[3].GetMemberlist()))
 
 	// Propose yet another value, to make sure the rejoined node is still
 	// receiving new logs
-	values[6], err = proposeValue(t, nodes[1], nodeIDs[6])
+	values[6], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[6])
 
 	// All nodes should have all the data
-	checkValuesOnNodes(t, nodes, nodeIDs[:7], values[:7])
+	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:7], values[:7])
 
 	// Restart node 3 again. It should load the snapshot.
 	nodes[3].Server.Stop()
 	nodes[3].Shutdown()
-	nodes[3] = restartNode(t, clockSource, nodes[3], securityConfig)
-	waitForCluster(t, clockSource, nodes)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig)
+	raftutils.WaitForCluster(t, clockSource, nodes)
 
-	assert.Len(t, nodes[3].cluster.listMembers(), 5)
-	assert.Equal(t, nodesFromMembers(nodes[1].cluster.listMembers()), nodesFromMembers(nodes[3].cluster.listMembers()))
-	checkValuesOnNodes(t, nodes, nodeIDs[:7], values[:7])
+	assert.Len(t, nodes[3].GetMemberlist(), 5)
+	assert.Equal(t, nodesFromMembers(nodes[1].GetMemberlist()), nodesFromMembers(nodes[3].GetMemberlist()))
+	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:7], values[:7])
 
 	// Propose again. Just to check consensus after this latest restart.
-	values[7], err = proposeValue(t, nodes[1], nodeIDs[7])
-	checkValuesOnNodes(t, nodes, nodeIDs, values)
+	values[7], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[7])
+	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs, values)
 }
 
 func TestRaftRejoin(t *testing.T) {
 	t.Parallel()
 
-	nodes, clockSource := newRaftCluster(t, securityConfig)
-	defer teardownCluster(t, nodes)
+	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	ids := []string{"id1", "id2"}
 
 	// Propose a value
 	values := make([]*api.Node, 2)
 	var err error
-	values[0], err = proposeValue(t, nodes[1], ids[0])
+	values[0], err = raftutils.ProposeValue(t, nodes[1], ids[0])
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on node 3
-	checkValue(t, nodes[3], values[0])
-	assert.Equal(t, len(nodes[3].cluster.listMembers()), 3)
+	raftutils.CheckValue(t, nodes[3], values[0])
+	assert.Equal(t, len(nodes[3].GetMemberlist()), 3)
 
 	// Stop node 3
 	nodes[3].Server.Stop()
 	nodes[3].Shutdown()
 
 	// Propose another value
-	values[1], err = proposeValue(t, nodes[1], ids[1])
+	values[1], err = raftutils.ProposeValue(t, nodes[1], ids[1])
 	assert.NoError(t, err, "failed to propose value")
 
 	// Nodes 1 and 2 should have the new value
-	checkValuesOnNodes(t, map[uint64]*testNode{1: nodes[1], 2: nodes[2]}, ids, values)
+	raftutils.CheckValuesOnNodes(t, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, ids, values)
 
-	nodes[3] = restartNode(t, clockSource, nodes[3], securityConfig)
-	waitForCluster(t, clockSource, nodes)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig)
+	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Node 3 should have all values, including the one proposed while
 	// it was unavailable.
-	checkValuesOnNodes(t, nodes, ids, values)
+	raftutils.CheckValuesOnNodes(t, nodes, ids, values)
 }
 
 func testRaftRestartCluster(t *testing.T, stagger bool) {
-	nodes, clockSource := newRaftCluster(t, securityConfig)
-	defer teardownCluster(t, nodes)
+	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	// Propose a value
 	values := make([]*api.Node, 2)
 	var err error
-	values[0], err = proposeValue(t, nodes[1], "id1")
+	values[0], err = raftutils.ProposeValue(t, nodes[1], "id1")
 	assert.NoError(t, err, "failed to propose value")
 
 	// Stop all nodes
@@ -990,26 +609,26 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 		node.Shutdown()
 	}
 
-	advanceTicks(clockSource, 5)
+	raftutils.AdvanceTicks(clockSource, 5)
 
 	// Restart all nodes
 	i := 0
 	for k, node := range nodes {
 		if stagger && i != 0 {
-			advanceTicks(clockSource, 1)
+			raftutils.AdvanceTicks(clockSource, 1)
 		}
-		nodes[k] = restartNode(t, clockSource, node, securityConfig)
+		nodes[k] = raftutils.RestartNode(t, clockSource, node, securityConfig)
 		i++
 	}
-	waitForCluster(t, clockSource, nodes)
+	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Propose another value
-	values[1], err = proposeValue(t, leader(nodes), "id2")
+	values[1], err = raftutils.ProposeValue(t, raftutils.Leader(nodes), "id2")
 	assert.NoError(t, err, "failed to propose value")
 
 	for _, node := range nodes {
-		assert.NoError(t, pollFunc(func() error {
-			return node.memoryStore.View(func(tx state.ReadTx) error {
+		assert.NoError(t, raftutils.PollFunc(func() error {
+			return node.MemoryStore().View(func(tx state.ReadTx) error {
 				allNodes, err := tx.Nodes().Find(state.All)
 				if err != nil {
 					return err
@@ -1049,60 +668,60 @@ func TestRaftRestartClusterStaggered(t *testing.T) {
 func TestRaftUnreachableNode(t *testing.T) {
 	t.Parallel()
 
-	nodes := make(map[uint64]*testNode)
+	nodes := make(map[uint64]*raftutils.TestNode)
 	var clockSource *fakeclock.FakeClock
-	nodes[1], clockSource = newInitNode(t, securityConfig)
+	nodes[1], clockSource = raftutils.NewInitNode(t, securityConfig)
 
 	ctx := context.Background()
 	// Add a new node, but don't start its server yet
-	n := newNode(t, clockSource, securityConfig, NewNodeOptions{JoinAddr: nodes[1].Address})
+	n := raftutils.NewNode(t, clockSource, securityConfig, raft.NewNodeOptions{JoinAddr: nodes[1].Address})
 	go n.Run(ctx)
 
-	advanceTicks(clockSource, 5)
+	raftutils.AdvanceTicks(clockSource, 5)
 	time.Sleep(100 * time.Millisecond)
 
-	Register(n.Server, n.Node)
+	raft.Register(n.Server, n.Node)
 
 	// Now start the new node's server
 	go func() {
 		// After stopping, we should receive an error from Serve
-		assert.Error(t, n.Server.Serve(n.listener))
+		assert.Error(t, n.Server.Serve(n.Listener))
 	}()
 
 	nodes[2] = n
-	waitForCluster(t, clockSource, nodes)
+	raftutils.WaitForCluster(t, clockSource, nodes)
 
-	defer teardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	// Propose a value
-	value, err := proposeValue(t, nodes[1])
+	value, err := raftutils.ProposeValue(t, nodes[1])
 	assert.NoError(t, err, "failed to propose value")
 
 	// All nodes should have the value in the physical store
-	checkValue(t, nodes[1], value)
-	checkValue(t, nodes[2], value)
+	raftutils.CheckValue(t, nodes[1], value)
+	raftutils.CheckValue(t, nodes[2], value)
 }
 
 func TestRaftJoinFollower(t *testing.T) {
 	t.Parallel()
 
-	nodes := make(map[uint64]*testNode)
+	nodes := make(map[uint64]*raftutils.TestNode)
 	var clockSource *fakeclock.FakeClock
-	nodes[1], clockSource = newInitNode(t, securityConfig)
-	nodes[2] = newJoinNode(t, clockSource, nodes[1].Address, securityConfig)
-	waitForCluster(t, clockSource, nodes)
+	nodes[1], clockSource = raftutils.NewInitNode(t, securityConfig)
+	nodes[2] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Point new node at a follower's address, rather than the leader
-	nodes[3] = newJoinNode(t, clockSource, nodes[2].Address, securityConfig)
-	waitForCluster(t, clockSource, nodes)
-	defer teardownCluster(t, nodes)
+	nodes[3] = raftutils.NewJoinNode(t, clockSource, nodes[2].Address, securityConfig)
+	raftutils.WaitForCluster(t, clockSource, nodes)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	// Propose a value
-	value, err := proposeValue(t, nodes[1])
+	value, err := raftutils.ProposeValue(t, nodes[1])
 	assert.NoError(t, err, "failed to propose value")
 
 	// All nodes should have the value in the physical store
-	checkValue(t, nodes[1], value)
-	checkValue(t, nodes[2], value)
-	checkValue(t, nodes[3], value)
+	raftutils.CheckValue(t, nodes[1], value)
+	raftutils.CheckValue(t, nodes[2], value)
+	raftutils.CheckValue(t, nodes[3], value)
 }

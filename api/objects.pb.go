@@ -42,6 +42,27 @@ func (m *Node) Reset()                    { *m = Node{} }
 func (*Node) ProtoMessage()               {}
 func (*Node) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{0} }
 
+// Member provides informations about the state of a manager in the cluster.
+// A Member is essentially a Manager but from a Raft role perspective
+// TODO(abronan): this is not an appropriate name for a top level object (specific to raft),
+// this should be changed back to 'Manager'
+type Member struct {
+	// ID specifies the identity of the manager.
+	// TODO(abronan): This should be a string which maps to the raftID to be consistent with other objects.
+	ID   uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Addr string `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`
+	// MemberSpec declares labels applied to the Manager.
+	Spec *MemberSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	// Description encapsulates the properties of the Member as reported by another member of the Manager set.
+	Description *MemberDescription `protobuf:"bytes,4,opt,name=description" json:"description,omitempty"`
+	// Status provides the current status of the manager from the perspective of another manager.
+	Status MemberStatus `protobuf:"bytes,5,opt,name=status" json:"status"`
+}
+
+func (m *Member) Reset()                    { *m = Member{} }
+func (*Member) ProtoMessage()               {}
+func (*Member) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{1} }
+
 type Service struct {
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Version tracks the last time the service was modified.
@@ -56,7 +77,7 @@ type Service struct {
 
 func (m *Service) Reset()                    { *m = Service{} }
 func (*Service) ProtoMessage()               {}
-func (*Service) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{1} }
+func (*Service) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{2} }
 
 // Task specifies the parameters for implementing a Spec. A task is effectively
 // immutable and idempotent. Once it is dispatched to a node, it will not be
@@ -93,7 +114,7 @@ type Task struct {
 
 func (m *Task) Reset()                    { *m = Task{} }
 func (*Task) ProtoMessage()               {}
-func (*Task) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{2} }
+func (*Task) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{3} }
 
 type Task_NetworkAttachment struct {
 	// Network state as a whole becomes part of Task so
@@ -107,7 +128,7 @@ type Task_NetworkAttachment struct {
 
 func (m *Task_NetworkAttachment) Reset()                    { *m = Task_NetworkAttachment{} }
 func (*Task_NetworkAttachment) ProtoMessage()               {}
-func (*Task_NetworkAttachment) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{2, 0} }
+func (*Task_NetworkAttachment) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{3, 0} }
 
 type Volume struct {
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -120,7 +141,7 @@ type Volume struct {
 
 func (m *Volume) Reset()                    { *m = Volume{} }
 func (*Volume) ProtoMessage()               {}
-func (*Volume) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{3} }
+func (*Volume) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{4} }
 
 type Network struct {
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -136,10 +157,11 @@ type Network struct {
 
 func (m *Network) Reset()                    { *m = Network{} }
 func (*Network) ProtoMessage()               {}
-func (*Network) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{4} }
+func (*Network) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{5} }
 
 func init() {
 	proto.RegisterType((*Node)(nil), "docker.cluster.api.Node")
+	proto.RegisterType((*Member)(nil), "docker.cluster.api.Member")
 	proto.RegisterType((*Service)(nil), "docker.cluster.api.Service")
 	proto.RegisterType((*Task)(nil), "docker.cluster.api.Task")
 	proto.RegisterType((*Task_NetworkAttachment)(nil), "docker.cluster.api.Task.NetworkAttachment")
@@ -155,6 +177,22 @@ func (m *Node) Copy() *Node {
 	o := &Node{
 		ID:          m.ID,
 		Version:     *m.Version.Copy(),
+		Spec:        m.Spec.Copy(),
+		Description: m.Description.Copy(),
+		Status:      *m.Status.Copy(),
+	}
+
+	return o
+}
+
+func (m *Member) Copy() *Member {
+	if m == nil {
+		return nil
+	}
+
+	o := &Member{
+		ID:          m.ID,
+		Addr:        m.Addr,
 		Spec:        m.Spec.Copy(),
 		Description: m.Description.Copy(),
 		Status:      *m.Status.Copy(),
@@ -263,6 +301,24 @@ func (this *Node) GoString() string {
 	s = append(s, "&api.Node{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	s = append(s, "Version: "+strings.Replace(this.Version.GoString(), `&`, ``, 1)+",\n")
+	if this.Spec != nil {
+		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
+	}
+	if this.Description != nil {
+		s = append(s, "Description: "+fmt.Sprintf("%#v", this.Description)+",\n")
+	}
+	s = append(s, "Status: "+strings.Replace(this.Status.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Member) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 9)
+	s = append(s, "&api.Member{")
+	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
+	s = append(s, "Addr: "+fmt.Sprintf("%#v", this.Addr)+",\n")
 	if this.Spec != nil {
 		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
 	}
@@ -452,6 +508,63 @@ func (m *Node) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *Member) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Member) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.ID != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintObjects(data, i, uint64(m.ID))
+	}
+	if len(m.Addr) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintObjects(data, i, uint64(len(m.Addr)))
+		i += copy(data[i:], m.Addr)
+	}
+	if m.Spec != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
+		n5, err := m.Spec.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n5
+	}
+	if m.Description != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintObjects(data, i, uint64(m.Description.Size()))
+		n6, err := m.Description.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n6
+	}
+	data[i] = 0x2a
+	i++
+	i = encodeVarintObjects(data, i, uint64(m.Status.Size()))
+	n7, err := m.Status.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n7
+	return i, nil
+}
+
 func (m *Service) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -476,30 +589,30 @@ func (m *Service) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintObjects(data, i, uint64(m.Version.Size()))
-	n5, err := m.Version.MarshalTo(data[i:])
+	n8, err := m.Version.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n5
+	i += n8
 	if m.Spec != nil {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
-		n6, err := m.Spec.MarshalTo(data[i:])
+		n9, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n6
+		i += n9
 	}
 	if m.Endpoint != nil {
 		data[i] = 0x22
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.Endpoint.Size()))
-		n7, err := m.Endpoint.MarshalTo(data[i:])
+		n10, err := m.Endpoint.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n7
+		i += n10
 	}
 	return i, nil
 }
@@ -528,11 +641,11 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintObjects(data, i, uint64(m.Version.Size()))
-	n8, err := m.Version.MarshalTo(data[i:])
+	n11, err := m.Version.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n8
+	i += n11
 	if len(m.ServiceID) > 0 {
 		data[i] = 0x1a
 		i++
@@ -548,30 +661,30 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x2a
 	i++
 	i = encodeVarintObjects(data, i, uint64(m.Annotations.Size()))
-	n9, err := m.Annotations.MarshalTo(data[i:])
+	n12, err := m.Annotations.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n9
+	i += n12
 	if m.Spec != nil {
 		data[i] = 0x32
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
-		n10, err := m.Spec.MarshalTo(data[i:])
+		n13, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n10
+		i += n13
 	}
 	if m.Status != nil {
 		data[i] = 0x3a
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.Status.Size()))
-		n11, err := m.Status.MarshalTo(data[i:])
+		n14, err := m.Status.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n11
+		i += n14
 	}
 	if m.DesiredState != 0 {
 		data[i] = 0x40
@@ -594,11 +707,11 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x52
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.Endpoint.Size()))
-		n12, err := m.Endpoint.MarshalTo(data[i:])
+		n15, err := m.Endpoint.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n12
+		i += n15
 	}
 	return i, nil
 }
@@ -622,11 +735,11 @@ func (m *Task_NetworkAttachment) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.Network.Size()))
-		n13, err := m.Network.MarshalTo(data[i:])
+		n16, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n13
+		i += n16
 	}
 	if len(m.Addresses) > 0 {
 		for _, s := range m.Addresses {
@@ -670,30 +783,30 @@ func (m *Volume) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintObjects(data, i, uint64(m.Version.Size()))
-	n14, err := m.Version.MarshalTo(data[i:])
+	n17, err := m.Version.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n14
+	i += n17
 	if m.Spec != nil {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
-		n15, err := m.Spec.MarshalTo(data[i:])
+		n18, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n15
+		i += n18
 	}
 	if m.DriverState != nil {
 		data[i] = 0x22
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.DriverState.Size()))
-		n16, err := m.DriverState.MarshalTo(data[i:])
+		n19, err := m.DriverState.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n16
+		i += n19
 	}
 	return i, nil
 }
@@ -722,40 +835,40 @@ func (m *Network) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintObjects(data, i, uint64(m.Version.Size()))
-	n17, err := m.Version.MarshalTo(data[i:])
+	n20, err := m.Version.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n17
+	i += n20
 	if m.Spec != nil {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
-		n18, err := m.Spec.MarshalTo(data[i:])
+		n21, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n18
+		i += n21
 	}
 	if m.DriverState != nil {
 		data[i] = 0x22
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.DriverState.Size()))
-		n19, err := m.DriverState.MarshalTo(data[i:])
+		n22, err := m.DriverState.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n19
+		i += n22
 	}
 	if m.IPAM != nil {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.IPAM.Size()))
-		n20, err := m.IPAM.MarshalTo(data[i:])
+		n23, err := m.IPAM.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n20
+		i += n23
 	}
 	return i, nil
 }
@@ -797,6 +910,29 @@ func (m *Node) Size() (n int) {
 	}
 	l = m.Version.Size()
 	n += 1 + l + sovObjects(uint64(l))
+	if m.Spec != nil {
+		l = m.Spec.Size()
+		n += 1 + l + sovObjects(uint64(l))
+	}
+	if m.Description != nil {
+		l = m.Description.Size()
+		n += 1 + l + sovObjects(uint64(l))
+	}
+	l = m.Status.Size()
+	n += 1 + l + sovObjects(uint64(l))
+	return n
+}
+
+func (m *Member) Size() (n int) {
+	var l int
+	_ = l
+	if m.ID != 0 {
+		n += 1 + sovObjects(uint64(m.ID))
+	}
+	l = len(m.Addr)
+	if l > 0 {
+		n += 1 + l + sovObjects(uint64(l))
+	}
 	if m.Spec != nil {
 		l = m.Spec.Size()
 		n += 1 + l + sovObjects(uint64(l))
@@ -956,6 +1092,20 @@ func (this *Node) String() string {
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NodeSpec", "NodeSpec", 1) + `,`,
 		`Description:` + strings.Replace(fmt.Sprintf("%v", this.Description), "NodeDescription", "NodeDescription", 1) + `,`,
 		`Status:` + strings.Replace(strings.Replace(this.Status.String(), "NodeStatus", "NodeStatus", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Member) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Member{`,
+		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "MemberSpec", "MemberSpec", 1) + `,`,
+		`Description:` + strings.Replace(fmt.Sprintf("%v", this.Description), "MemberDescription", "MemberDescription", 1) + `,`,
+		`Status:` + strings.Replace(strings.Replace(this.Status.String(), "MemberStatus", "MemberStatus", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1187,6 +1337,200 @@ func (m *Node) Unmarshal(data []byte) error {
 			}
 			if m.Description == nil {
 				m.Description = &NodeDescription{}
+			}
+			if err := m.Description.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowObjects
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthObjects
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Status.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipObjects(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthObjects
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Member) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowObjects
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Member: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Member: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
+			}
+			m.ID = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowObjects
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.ID |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Addr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowObjects
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthObjects
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Addr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowObjects
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthObjects
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Spec == nil {
+				m.Spec = &MemberSpec{}
+			}
+			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowObjects
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthObjects
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Description == nil {
+				m.Description = &MemberDescription{}
 			}
 			if err := m.Description.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -2365,43 +2709,46 @@ var (
 )
 
 var fileDescriptorObjects = []byte{
-	// 600 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xc4, 0x55, 0xcf, 0x6e, 0xd3, 0x4e,
-	0x10, 0xae, 0x13, 0xd7, 0x89, 0x27, 0xed, 0x4f, 0xfa, 0xad, 0x10, 0xb2, 0x42, 0x48, 0xaa, 0xf4,
-	0x52, 0x21, 0x14, 0x50, 0x2a, 0x10, 0x12, 0x70, 0x48, 0x94, 0x82, 0x72, 0xa0, 0x20, 0x17, 0xf5,
-	0x5a, 0xb9, 0xf6, 0xaa, 0x35, 0x69, 0xbc, 0x96, 0x77, 0x53, 0xc4, 0x8d, 0x57, 0x28, 0x4f, 0x95,
-	0x0b, 0x52, 0x8f, 0x9c, 0x2a, 0xda, 0x27, 0xe0, 0x11, 0x98, 0x5d, 0xaf, 0xf3, 0x47, 0xb5, 0x2b,
-	0x21, 0x11, 0x71, 0x58, 0xd9, 0x1e, 0x7f, 0xdf, 0xcc, 0xee, 0x37, 0xdf, 0xd8, 0xb0, 0xc9, 0x8e,
-	0x3f, 0x51, 0x5f, 0xf0, 0x4e, 0x9c, 0x30, 0xc1, 0x08, 0x09, 0x98, 0x3f, 0xa2, 0x49, 0xc7, 0x3f,
-	0x9b, 0x70, 0x81, 0x57, 0x2f, 0x0e, 0xeb, 0x35, 0xf1, 0x25, 0xa6, 0x1a, 0x50, 0xaf, 0xf1, 0x98,
-	0xfa, 0xd9, 0xc3, 0xbd, 0x13, 0x76, 0xc2, 0xd4, 0xed, 0x13, 0x79, 0x97, 0x46, 0xdb, 0xdf, 0x4a,
-	0x60, 0xee, 0xb3, 0x80, 0x92, 0xfb, 0x50, 0x0a, 0x03, 0xc7, 0xd8, 0x32, 0x76, 0xec, 0xbe, 0x75,
-	0x73, 0xd5, 0x2a, 0x0d, 0x07, 0x2e, 0x46, 0xc8, 0x4b, 0xa8, 0x9c, 0xd3, 0x84, 0x87, 0x2c, 0x72,
-	0x4a, 0xf8, 0xb2, 0xd6, 0x7d, 0xd0, 0xb9, 0x5d, 0xb6, 0x73, 0x98, 0x42, 0xfa, 0xe6, 0xf4, 0xaa,
-	0xb5, 0xe6, 0x66, 0x0c, 0xf2, 0x14, 0x4c, 0xb9, 0x05, 0xa7, 0xac, 0x98, 0x8d, 0x3c, 0xa6, 0x2c,
-	0x7e, 0x80, 0x18, 0x57, 0x21, 0xc9, 0x1e, 0xd4, 0x02, 0xca, 0xfd, 0x24, 0x8c, 0x85, 0x2c, 0x69,
-	0x2a, 0xe2, 0x76, 0x11, 0x71, 0x30, 0x87, 0xba, 0x8b, 0x3c, 0xf2, 0x0a, 0x2c, 0x2e, 0x3c, 0x31,
-	0xe1, 0xce, 0xba, 0xca, 0xd0, 0x2c, 0x2c, 0xad, 0x50, 0x7a, 0xdf, 0x9a, 0xd3, 0xfe, 0x6e, 0x40,
-	0xe5, 0x80, 0x26, 0xe7, 0xa1, 0xbf, 0x22, 0x5d, 0x76, 0x97, 0x74, 0x69, 0xe5, 0x31, 0x75, 0xfd,
-	0x05, 0x69, 0x5e, 0x40, 0x95, 0x46, 0x41, 0xcc, 0xc2, 0x48, 0x68, 0x5d, 0x72, 0x05, 0xdd, 0xd3,
-	0x18, 0x77, 0x86, 0x6e, 0x5f, 0xac, 0x83, 0xf9, 0xd1, 0xe3, 0xa3, 0xd5, 0x1c, 0xe6, 0x31, 0x00,
-	0x4f, 0x37, 0x7b, 0x84, 0xc9, 0xcb, 0x2a, 0xf9, 0x26, 0x26, 0xb7, 0xf5, 0x11, 0xb0, 0x86, 0xad,
-	0x01, 0xc3, 0x80, 0x6c, 0x43, 0x25, 0x42, 0xdd, 0x25, 0xd4, 0x54, 0x50, 0x40, 0xa8, 0x25, 0x5b,
-	0x81, 0x38, 0x4b, 0xbe, 0x42, 0xd0, 0x5b, 0xa8, 0x79, 0x51, 0xc4, 0xb0, 0x1b, 0x58, 0x20, 0xeb,
-	0x61, 0xae, 0x4c, 0xbd, 0x39, 0x4c, 0xef, 0x6b, 0x91, 0x39, 0x33, 0xa0, 0x55, 0xac, 0x97, 0x14,
-	0x66, 0x41, 0xe5, 0xe7, 0x33, 0xe7, 0x54, 0x8a, 0x9d, 0xa3, 0x38, 0x0a, 0x95, 0x79, 0x86, 0xf4,
-	0x61, 0x13, 0x0d, 0x18, 0x26, 0x34, 0x38, 0x92, 0x11, 0xea, 0x54, 0x91, 0xfe, 0x5f, 0xf7, 0xe1,
-	0x5d, 0x74, 0xea, 0x6e, 0x68, 0x8e, 0x7a, 0x22, 0x6f, 0xa0, 0x1a, 0x51, 0xf1, 0x99, 0x25, 0x23,
-	0xee, 0xd8, 0x5b, 0x65, 0xac, 0xfe, 0xa8, 0x88, 0xde, 0xd9, 0x4f, 0x81, 0x3d, 0x21, 0x3c, 0xff,
-	0x74, 0x4c, 0x65, 0xbf, 0x33, 0xee, 0x92, 0x53, 0xe0, 0x4f, 0x9c, 0x52, 0x3f, 0x85, 0xff, 0x6f,
-	0x25, 0x26, 0xcf, 0xb0, 0x65, 0x69, 0x50, 0x59, 0xa7, 0xc0, 0x1d, 0x9a, 0xe7, 0x66, 0x58, 0xd2,
-	0x00, 0xdb, 0x0b, 0x82, 0x84, 0x72, 0x4e, 0x39, 0xda, 0xaa, 0xbc, 0x63, 0xbb, 0xf3, 0x40, 0xfb,
-	0xd2, 0x00, 0xeb, 0x90, 0x9d, 0x4d, 0xc6, 0x2b, 0x1a, 0xb1, 0xee, 0xd2, 0x88, 0xe5, 0x76, 0x31,
-	0x2d, 0xbf, 0xd0, 0xfb, 0xd7, 0xb0, 0x11, 0x24, 0x21, 0x66, 0xd0, 0x2d, 0x4c, 0xa7, 0xac, 0x9e,
-	0xc7, 0x1d, 0x28, 0x1c, 0x7e, 0x74, 0xd4, 0x55, 0xb5, 0xaf, 0x7d, 0x51, 0x82, 0x8a, 0x56, 0xe1,
-	0x9f, 0x7d, 0x36, 0x74, 0xfd, 0xbf, 0x76, 0x28, 0xa4, 0x9b, 0x61, 0xec, 0x8d, 0xef, 0x9a, 0xc1,
-	0xe1, 0x87, 0xde, 0xbb, 0xf7, 0x71, 0x3a, 0x83, 0x55, 0x3c, 0xab, 0x29, 0x03, 0xae, 0xa2, 0xf5,
-	0x1b, 0xd3, 0xeb, 0xe6, 0xda, 0x0f, 0x5c, 0xbf, 0xae, 0x9b, 0xc6, 0xd7, 0x9b, 0xa6, 0x31, 0xc5,
-	0x75, 0x89, 0xeb, 0x27, 0xae, 0x63, 0x4b, 0xfd, 0x84, 0x76, 0x7f, 0x07, 0x00, 0x00, 0xff, 0xff,
-	0x6b, 0x80, 0x8b, 0x5d, 0xd9, 0x06, 0x00, 0x00,
+	// 648 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xc4, 0x55, 0x5f, 0x6b, 0xd3, 0x50,
+	0x14, 0x5f, 0xda, 0x2c, 0x6d, 0x4e, 0x37, 0xc1, 0x8b, 0x48, 0xa8, 0xb3, 0x1b, 0x1d, 0x82, 0x88,
+	0x54, 0xd9, 0x50, 0x04, 0xff, 0x40, 0x4b, 0xa7, 0xf4, 0x61, 0x53, 0x32, 0xd9, 0xeb, 0x48, 0x93,
+	0xcb, 0x16, 0xbb, 0xe6, 0x86, 0xdc, 0x74, 0xe2, 0x9b, 0x5f, 0x61, 0x7e, 0xaa, 0xbe, 0x08, 0x7b,
+	0xf4, 0x69, 0xb8, 0x7d, 0x02, 0xfd, 0x06, 0x9e, 0x7b, 0x73, 0xd3, 0xa6, 0x2e, 0x29, 0x0a, 0x16,
+	0x1f, 0x2e, 0x4d, 0x6e, 0x7e, 0xbf, 0xf3, 0xbb, 0xe7, 0x9c, 0xdf, 0x3d, 0x85, 0x55, 0xd6, 0xff,
+	0x40, 0xdd, 0x98, 0xb7, 0xc2, 0x88, 0xc5, 0x8c, 0x10, 0x8f, 0xb9, 0x03, 0x1a, 0xb5, 0xdc, 0x93,
+	0x11, 0x8f, 0xf1, 0xd7, 0x09, 0xfd, 0x7a, 0x2d, 0xfe, 0x14, 0x52, 0x05, 0xa8, 0xd7, 0x78, 0x48,
+	0xdd, 0xf4, 0xe5, 0xd6, 0x11, 0x3b, 0x62, 0xf2, 0xf1, 0x91, 0x78, 0x4a, 0x76, 0x9b, 0x5f, 0x4a,
+	0xa0, 0xef, 0x31, 0x8f, 0x92, 0xdb, 0x50, 0xf2, 0x3d, 0x4b, 0xdb, 0xd0, 0xee, 0x9b, 0x1d, 0xe3,
+	0xea, 0x62, 0xbd, 0xd4, 0xeb, 0xda, 0xb8, 0x43, 0x9e, 0x43, 0xe5, 0x94, 0x46, 0xdc, 0x67, 0x81,
+	0x55, 0xc2, 0x8f, 0xb5, 0xad, 0x3b, 0xad, 0xeb, 0xb2, 0xad, 0x83, 0x04, 0xd2, 0xd1, 0xc7, 0x17,
+	0xeb, 0x4b, 0x76, 0xca, 0x20, 0x8f, 0x41, 0x17, 0x47, 0xb0, 0xca, 0x92, 0xb9, 0x96, 0xc7, 0x14,
+	0xe2, 0xfb, 0x88, 0xb1, 0x25, 0x92, 0xec, 0x40, 0xcd, 0xa3, 0xdc, 0x8d, 0xfc, 0x30, 0x16, 0x92,
+	0xba, 0x24, 0x6e, 0x16, 0x11, 0xbb, 0x53, 0xa8, 0x9d, 0xe5, 0x91, 0x17, 0x60, 0xf0, 0xd8, 0x89,
+	0x47, 0xdc, 0x5a, 0x96, 0x11, 0x1a, 0x85, 0xd2, 0x12, 0xa5, 0xce, 0xad, 0x38, 0xcd, 0x9f, 0x1a,
+	0x18, 0xbb, 0x74, 0xd8, 0xa7, 0x51, 0xa6, 0x2c, 0xfa, 0x4c, 0x59, 0x08, 0xe8, 0x8e, 0xe7, 0x45,
+	0xb2, 0x26, 0xa6, 0x2d, 0x9f, 0xc9, 0xd6, 0x4c, 0xb6, 0xb9, 0x92, 0x49, 0xd4, 0x4c, 0xbe, 0x6f,
+	0xf2, 0xf2, 0xbd, 0x57, 0x4c, 0x2d, 0xcc, 0xf8, 0xd5, 0x6f, 0x19, 0x6f, 0xcc, 0x91, 0xcf, 0xcb,
+	0xf9, 0xab, 0x06, 0x95, 0x7d, 0x1a, 0x9d, 0xfa, 0xee, 0x82, 0xbc, 0xb0, 0x3d, 0x53, 0x9d, 0xf5,
+	0x3c, 0xa6, 0xd2, 0xcf, 0x94, 0xe7, 0x19, 0x54, 0x69, 0xe0, 0x85, 0xcc, 0x0f, 0x62, 0x55, 0x9b,
+	0x5c, 0x13, 0xed, 0x28, 0x8c, 0x3d, 0x41, 0x37, 0xcf, 0x96, 0x41, 0x7f, 0xef, 0xf0, 0xc1, 0x62,
+	0x92, 0x79, 0x08, 0xc0, 0x93, 0xc3, 0x1e, 0x62, 0xf0, 0xb2, 0x0c, 0xbe, 0x8a, 0xc1, 0x4d, 0x95,
+	0x02, 0x6a, 0x98, 0x0a, 0xd0, 0xf3, 0xc8, 0x26, 0x54, 0x02, 0xf4, 0x9a, 0x80, 0xea, 0x12, 0x0a,
+	0x08, 0x35, 0x84, 0xfd, 0x10, 0x67, 0x88, 0x4f, 0x08, 0x42, 0x27, 0x38, 0x41, 0xc0, 0xb0, 0x1b,
+	0x28, 0x90, 0x76, 0x31, 0xb7, 0x4c, 0xed, 0x29, 0x4c, 0x9d, 0x2b, 0xcb, 0x9c, 0x5c, 0x3a, 0xa3,
+	0xb8, 0x5e, 0xa2, 0x30, 0x99, 0x2a, 0x3f, 0x9d, 0x78, 0xa7, 0x52, 0x6c, 0x5d, 0xc9, 0x91, 0xa8,
+	0xd4, 0x33, 0xa4, 0x03, 0xab, 0x68, 0x41, 0x3f, 0xa2, 0xde, 0xa1, 0xd8, 0xa1, 0x56, 0x15, 0xe9,
+	0x37, 0xb6, 0xee, 0xce, 0xa3, 0x53, 0x7b, 0x45, 0x71, 0xe4, 0x1b, 0x79, 0x0d, 0xd5, 0x80, 0xc6,
+	0x1f, 0x59, 0x34, 0xe0, 0x96, 0xb9, 0x51, 0x46, 0xf5, 0x07, 0x45, 0xf4, 0xd6, 0x5e, 0x02, 0x6c,
+	0xc7, 0xb1, 0xe3, 0x1e, 0x0f, 0xa9, 0xe8, 0x77, 0xca, 0x9d, 0x71, 0x0a, 0xfc, 0x8d, 0x53, 0xea,
+	0xc7, 0x70, 0xf3, 0x5a, 0x60, 0xf2, 0x04, 0x5b, 0x96, 0x6c, 0x4a, 0xeb, 0x14, 0xb8, 0x43, 0xf1,
+	0xec, 0x14, 0x4b, 0xd6, 0xc0, 0x14, 0xa3, 0x80, 0x72, 0x4e, 0x39, 0xda, 0xaa, 0x8c, 0xb3, 0x61,
+	0xba, 0xd1, 0x3c, 0xc7, 0xb9, 0x72, 0xc0, 0x4e, 0x46, 0xc3, 0x05, 0x5d, 0xb1, 0x3f, 0x18, 0x40,
+	0x89, 0x7c, 0xa6, 0xf7, 0x2f, 0x61, 0xc5, 0x8b, 0x7c, 0x8c, 0xa0, 0x5a, 0x98, 0xdc, 0xb2, 0x7a,
+	0x1e, 0xb7, 0x2b, 0x71, 0x38, 0x76, 0xe4, 0xaf, 0x6c, 0x5f, 0xf3, 0xac, 0x04, 0x15, 0x55, 0x85,
+	0xff, 0x36, 0x36, 0x94, 0xfe, 0x3f, 0x4b, 0x0a, 0xe9, 0xba, 0x1f, 0x3a, 0xc3, 0x79, 0x77, 0xb0,
+	0xf7, 0xae, 0xbd, 0xfb, 0x36, 0x4c, 0xee, 0x60, 0x15, 0x73, 0xd5, 0xc5, 0x86, 0x2d, 0x69, 0x9d,
+	0xb5, 0xf1, 0x65, 0x63, 0xe9, 0x1b, 0xae, 0x1f, 0x97, 0x0d, 0xed, 0xf3, 0x55, 0x43, 0x1b, 0xe3,
+	0x3a, 0xc7, 0xf5, 0x1d, 0x57, 0xdf, 0x90, 0x7f, 0xbc, 0xdb, 0xbf, 0x02, 0x00, 0x00, 0xff, 0xff,
+	0x64, 0x30, 0xa0, 0x42, 0xcd, 0x07, 0x00, 0x00,
 }
