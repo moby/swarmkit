@@ -8,6 +8,8 @@ import "gogoproto/gogo.proto";
 
 service CA {
 	rpc IssueCertificate(IssueCertificateRequest) returns (IssueCertificateResponse) {}
+	rpc GetRootCACertificate(GetRootCACertificateRequest) returns (GetRootCACertificateResponse) {}
+
 }
 
 message IssuanceStatus {
@@ -43,4 +45,10 @@ message IssueCertificateRequest {
 message IssueCertificateResponse {
 	IssuanceStatus status = 1;
 	bytes certificate_chain = 2;
+}
+
+message GetRootCACertificateRequest {}
+
+message GetRootCACertificateResponse {
+	bytes certificate = 1;
 }
