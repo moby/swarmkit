@@ -17,6 +17,11 @@ var (
 		RunE: func(cmd *cobra.Command, args []string) error {
 			flags := cmd.Flags()
 
+			all, err := flags.GetBool("all")
+			if err != nil {
+				return err
+			}
+
 			quiet, err := flags.GetBool("quiet")
 			if err != nil {
 				return err
@@ -55,7 +60,9 @@ var (
 			}
 
 			for _, t := range r.Tasks {
-				output(t)
+				if all || t.Status.State <= api.TaskStateRunning {
+					output(t)
+				}
 			}
 			return nil
 		},
@@ -63,5 +70,6 @@ var (
 )
 
 func init() {
+	listCmd.Flags().BoolP("all", "a", false, "Show all tasks (default shows just running)")
 	listCmd.Flags().BoolP("quiet", "q", false, "Only display IDs")
 }

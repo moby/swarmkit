@@ -68,12 +68,15 @@ func printServiceSummary(service *api.Service) {
 	}
 }
 
-func printTasks(tasks []*api.Task, res *common.Resolver) {
+func printTasks(tasks []*api.Task, all bool, res *common.Resolver) {
 	w := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
 	defer w.Flush()
 
 	common.PrintHeader(w, "Task ID", "Image", "Status", "Node")
 	for _, t := range tasks {
+		if !all && t.Status.State > api.TaskStateRunning {
+			continue
+		}
 		c := t.Spec.GetContainer()
 		fmt.Fprintf(w, "%s\t%s\t%s %s\t%s\n",
 			t.ID,
@@ -93,6 +96,14 @@ var (
 			if len(args) == 0 {
 				return errors.New("service ID missing")
 			}
+
+			flags := cmd.Flags()
+
+			all, err := flags.GetBool("all")
+			if err != nil {
+				return err
+			}
+
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
@@ -120,10 +131,14 @@ var (
 			printServiceSummary(service)
 			if len(tasks) > 0 {
 				fmt.Printf("\n")
-				printTasks(tasks, res)
+				printTasks(tasks, all, res)
 			}
 
 			return nil
 		},
 	}
 )
+
+func init() {
+	inspectCmd.Flags().BoolP("all", "a", false, "Show all tasks (default shows just running)")
+}

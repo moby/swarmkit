@@ -13,7 +13,7 @@ import (
 // Dial establishes a connection and creates a client.
 // It infers connection parameters from CLI options.
 func Dial(cmd *cobra.Command) (api.ClusterClient, error) {
-	addr, err := cmd.Flags().GetString("addr")
+	addr, err := cmd.Flags().GetString("host")
 	if err != nil {
 		return nil, err
 	}
