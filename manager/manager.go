@@ -15,7 +15,6 @@ import (
 	"github.com/docker/swarm-v2/manager/allocator"
 	"github.com/docker/swarm-v2/manager/clusterapi"
 	"github.com/docker/swarm-v2/manager/dispatcher"
-	"github.com/docker/swarm-v2/manager/drainer"
 	"github.com/docker/swarm-v2/manager/orchestrator"
 	"github.com/docker/swarm-v2/manager/raftpicker"
 	"github.com/docker/swarm-v2/manager/scheduler"
@@ -53,7 +52,6 @@ type Manager struct {
 	caserver     *ca.Server
 	dispatcher   *dispatcher.Dispatcher
 	orchestrator *orchestrator.Orchestrator
-	drainer      *drainer.Drainer
 	scheduler    *scheduler.Scheduler
 	allocator    *allocator.Allocator
 	server       *grpc.Server
@@ -147,7 +145,6 @@ func (m *Manager) Run(ctx context.Context) error {
 					m.leaderLock.Lock()
 					m.orchestrator = orchestrator.New(store)
 					m.scheduler = scheduler.New(store)
-					m.drainer = drainer.New(store)
 
 					// TODO(stevvooe): Allocate a context that can be used to
 					// shutdown underlying manager processes when leadership is
@@ -183,14 +180,8 @@ func (m *Manager) Run(ctx context.Context) error {
 							log.G(ctx).WithError(err).Error("orchestrator exited with an error")
 						}
 					}()
-					go func() {
-						if err := m.drainer.Run(ctx); err != nil {
-							log.G(ctx).WithError(err).Error("drainer exited with an error")
-						}
-					}()
 				} else if newState == raft.IsFollower {
 					m.leaderLock.Lock()
-					m.drainer.Stop()
 					m.orchestrator.Stop()
 					m.scheduler.Stop()
 
@@ -198,7 +189,6 @@ func (m *Manager) Run(ctx context.Context) error {
 						m.allocator.Stop()
 					}
 
-					m.drainer = nil
 					m.orchestrator = nil
 					m.scheduler = nil
 					m.allocator = nil
@@ -259,9 +249,6 @@ func (m *Manager) Run(ctx context.Context) error {
 // active RPCs as well as stopping the scheduler.
 func (m *Manager) Stop() {
 	m.leaderLock.Lock()
-	if m.drainer != nil {
-		m.drainer.Stop()
-	}
 	if m.orchestrator != nil {
 		m.orchestrator.Stop()
 	}
