@@ -85,7 +85,11 @@ var (
 				return nil
 			}
 
-			r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{ServiceID: servicePB.ID, Spec: newService.ToProto()})
+			r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
+				ServiceID:      servicePB.ID,
+				ServiceVersion: &servicePB.Version,
+				Spec:           newService.ToProto(),
+			})
 			if err != nil {
 				return err
 			}
