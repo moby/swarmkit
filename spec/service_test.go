@@ -77,8 +77,9 @@ func TestServiceConfigValidate(t *testing.T) {
 
 		// test service mode
 		{
-			Name: "name",
-			Mode: "fill",
+			Name:      "name",
+			Mode:      "fill",
+			Instances: 1,
 			ContainerConfig: ContainerConfig{
 				Image: "image",
 			},

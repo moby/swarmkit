@@ -50,13 +50,14 @@ type Manager struct {
 	config   *Config
 	listener net.Listener
 
-	caserver     *ca.Server
-	dispatcher   *dispatcher.Dispatcher
-	orchestrator *orchestrator.Orchestrator
-	scheduler    *scheduler.Scheduler
-	allocator    *allocator.Allocator
-	server       *grpc.Server
-	raftNode     *raft.Node
+	caserver         *ca.Server
+	dispatcher       *dispatcher.Dispatcher
+	orchestrator     *orchestrator.Orchestrator
+	fillOrchestrator *orchestrator.FillOrchestrator
+	scheduler        *scheduler.Scheduler
+	allocator        *allocator.Allocator
+	server           *grpc.Server
+	raftNode         *raft.Node
 
 	leadershipCh chan raft.LeadershipState
 	leaderLock   sync.Mutex
@@ -145,6 +146,7 @@ func (m *Manager) Run(ctx context.Context) error {
 
 					m.leaderLock.Lock()
 					m.orchestrator = orchestrator.New(store)
+					m.fillOrchestrator = orchestrator.NewFillOrchestrator(store)
 					m.scheduler = scheduler.New(store)
 
 					// TODO(stevvooe): Allocate a context that can be used to
@@ -181,9 +183,15 @@ func (m *Manager) Run(ctx context.Context) error {
 							log.G(ctx).WithError(err).Error("orchestrator exited with an error")
 						}
 					}()
+					go func() {
+						if err := m.fillOrchestrator.Run(ctx); err != nil {
+							log.G(ctx).WithError(err).Error("fillOrchestrator exited with an error")
+						}
+					}()
 				} else if newState == raft.IsFollower {
 					m.leaderLock.Lock()
 					m.orchestrator.Stop()
+					m.fillOrchestrator.Stop()
 					m.scheduler.Stop()
 
 					if m.allocator != nil {
@@ -191,6 +199,7 @@ func (m *Manager) Run(ctx context.Context) error {
 					}
 
 					m.orchestrator = nil
+					m.fillOrchestrator = nil
 					m.scheduler = nil
 					m.allocator = nil
 					m.leaderLock.Unlock()
@@ -247,6 +256,9 @@ func (m *Manager) Stop() {
 	m.leaderLock.Lock()
 	if m.orchestrator != nil {
 		m.orchestrator.Stop()
+	}
+	if m.fillOrchestrator != nil {
+		m.fillOrchestrator.Stop()
 	}
 	if m.scheduler != nil {
 		m.scheduler.Stop()
