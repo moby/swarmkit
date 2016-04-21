@@ -49,14 +49,14 @@ These instructions assume that `swarmd` and `swarmctl` are in your PATH.
 Start the manager:
 
 ```sh
-$ swarmd manager --log-level info --state-dir /tmp/manager-state
+$ swarmd manager -l info --state-dir /tmp/manager1
 ```
 
 In two additional terminals, start two agents:
 
 ```sh
-$ swarmd agent --log-level info --hostname node-1
-$ swarmd agent --log-level info --hostname node-2
+$ swarmd agent -l info --hostname node-1 -d /tmp/agent1
+$ swarmd agent -l info --hostname node-2 -d /tmp/agent2
 ```
 
 In a fourth terminal, use `swarmctl` to explore and control the cluster.  List nodes:
