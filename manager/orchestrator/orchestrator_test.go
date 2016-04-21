@@ -488,3 +488,13 @@ func watchDeadTask(t *testing.T, watch chan events.Event) *api.Task {
 		}
 	}
 }
+
+func skipEvents(t *testing.T, watch chan events.Event) {
+	for {
+		select {
+		case <-watch:
+		case <-time.After(200 * time.Millisecond):
+			return
+		}
+	}
+}
