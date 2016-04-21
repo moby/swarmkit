@@ -20,8 +20,8 @@ func printTaskStatus(w io.Writer, s *api.TaskStatus) {
 	if s.Timestamp != nil {
 		fmt.Fprintf(w, "  Timestamp\t: %s\n", ptypes.TimestampString(s.Timestamp))
 	}
-	if s.Msg != "" {
-		fmt.Fprintf(w, "  Message\t: %s\n", s.Msg)
+	if s.Message != "" {
+		fmt.Fprintf(w, "  Message\t: %s\n", s.Message)
 	}
 	if s.Err != "" {
 		fmt.Fprintf(w, "  Error\t: %s\n", s.Err)
