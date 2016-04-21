@@ -46,6 +46,8 @@ $ make all
 
 These instructions assume that `swarmd` and `swarmctl` are in your PATH.
 
+(Before starting, make sure `/tmp/managerN` and `/tmp/agentN` don't exist for any N.)
+
 Start the manager:
 
 ```sh
