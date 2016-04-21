@@ -22,10 +22,11 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-import leaderconn "github.com/docker/swarm-v2/manager/state/leaderconn"
+import raftpicker "github.com/docker/swarm-v2/manager/raftpicker"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
+import sync "sync"
 
 import io "io"
 
@@ -1104,26 +1105,43 @@ func encodeVarintDispatcher(data []byte, offset int, v uint64) int {
 }
 
 type raftProxyDispatcherServer struct {
-	local   DispatcherServer
-	leaders leaderconn.ConnSelector
+	local    DispatcherServer
+	conn     *grpc.ClientConn
+	cluster  raftpicker.RaftCluster
+	connOnce sync.Once
 }
 
-func NewRaftProxyDispatcherServer(local DispatcherServer, leaders leaderconn.ConnSelector) DispatcherServer {
+func NewRaftProxyDispatcherServer(local DispatcherServer, cluster raftpicker.RaftCluster) (DispatcherServer, error) {
 	return &raftProxyDispatcherServer{
 		local:   local,
-		leaders: leaders,
+		cluster: cluster,
+	}, nil
+}
+func (p *raftProxyDispatcherServer) initConn() error {
+	var err error
+	p.connOnce.Do(func() {
+		cLeader, leadErr := p.cluster.LeaderAddr()
+		if err != nil {
+			err = leadErr
+			return
+		}
+		p.conn, err = grpc.Dial(cLeader, grpc.WithInsecure(), grpc.WithPicker(raftpicker.New(p.cluster)))
+	})
+	if err != nil {
+		return grpc.Errorf(codes.Internal, err.Error())
 	}
+	return nil
 }
 
 func (p *raftProxyDispatcherServer) Register(ctx context.Context, r *RegisterRequest) (*RegisterResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.Register(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.Register(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -1139,16 +1157,15 @@ func (p *raftProxyDispatcherServer) Register(ctx context.Context, r *RegisterReq
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewDispatcherClient(c).Register(ctx, r)
+	return NewDispatcherClient(p.conn).Register(ctx, r)
 }
 
 func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher_SessionServer) error {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.Session(r, stream)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.Session(r, stream)
+	}
+	if err := p.initConn(); err != nil {
 		return err
 	}
 	var addr string
@@ -1166,7 +1183,7 @@ func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher
 	md["redirect"] = append(md["redirect"], addr)
 	ctx := metadata.NewContext(stream.Context(), md)
 
-	clientStream, err := NewDispatcherClient(c).Session(ctx, r)
+	clientStream, err := NewDispatcherClient(p.conn).Session(ctx, r)
 
 	if err != nil {
 		return err
@@ -1189,13 +1206,13 @@ func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher
 
 func (p *raftProxyDispatcherServer) Heartbeat(ctx context.Context, r *HeartbeatRequest) (*HeartbeatResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.Heartbeat(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.Heartbeat(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -1211,18 +1228,18 @@ func (p *raftProxyDispatcherServer) Heartbeat(ctx context.Context, r *HeartbeatR
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewDispatcherClient(c).Heartbeat(ctx, r)
+	return NewDispatcherClient(p.conn).Heartbeat(ctx, r)
 }
 
 func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *UpdateTaskStatusRequest) (*UpdateTaskStatusResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.UpdateTaskStatus(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.UpdateTaskStatus(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -1238,16 +1255,15 @@ func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *Upd
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewDispatcherClient(c).UpdateTaskStatus(ctx, r)
+	return NewDispatcherClient(p.conn).UpdateTaskStatus(ctx, r)
 }
 
 func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_TasksServer) error {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.Tasks(r, stream)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.Tasks(r, stream)
+	}
+	if err := p.initConn(); err != nil {
 		return err
 	}
 	var addr string
@@ -1265,7 +1281,7 @@ func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_Tas
 	md["redirect"] = append(md["redirect"], addr)
 	ctx := metadata.NewContext(stream.Context(), md)
 
-	clientStream, err := NewDispatcherClient(c).Tasks(ctx, r)
+	clientStream, err := NewDispatcherClient(p.conn).Tasks(ctx, r)
 
 	if err != nil {
 		return err

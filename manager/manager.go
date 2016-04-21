@@ -104,14 +104,17 @@ func New(config *Config) (*Manager, error) {
 
 	store := raftNode.MemoryStore()
 
-	localapi := clusterapi.NewServer(store)
-	proxy := api.NewRaftProxyClusterServer(localapi, raftNode)
 	opts := []grpc.ServerOption{
 		grpc.Creds(config.SecurityConfig.ServerTLSCreds)}
+	localAPI := clusterapi.NewServer(store)
+	proxyAPI, err := api.NewRaftProxyClusterServer(localAPI, raftNode)
+	if err != nil {
+		return nil, err
+	}
 
 	m := &Manager{
 		config:       config,
-		apiserver:    proxy,
+		apiserver:    proxyAPI,
 		caserver:     ca.NewServer(config.SecurityConfig),
 		dispatcher:   dispatcher.New(store, dispatcherConfig),
 		server:       grpc.NewServer(opts...),

@@ -20,10 +20,11 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-import leaderconn "github.com/docker/swarm-v2/manager/state/leaderconn"
+import raftpicker "github.com/docker/swarm-v2/manager/raftpicker"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
+import sync "sync"
 
 import io "io"
 
@@ -2965,26 +2966,43 @@ func encodeVarintCluster(data []byte, offset int, v uint64) int {
 }
 
 type raftProxyClusterServer struct {
-	local   ClusterServer
-	leaders leaderconn.ConnSelector
+	local    ClusterServer
+	conn     *grpc.ClientConn
+	cluster  raftpicker.RaftCluster
+	connOnce sync.Once
 }
 
-func NewRaftProxyClusterServer(local ClusterServer, leaders leaderconn.ConnSelector) ClusterServer {
+func NewRaftProxyClusterServer(local ClusterServer, cluster raftpicker.RaftCluster) (ClusterServer, error) {
 	return &raftProxyClusterServer{
 		local:   local,
-		leaders: leaders,
+		cluster: cluster,
+	}, nil
+}
+func (p *raftProxyClusterServer) initConn() error {
+	var err error
+	p.connOnce.Do(func() {
+		cLeader, leadErr := p.cluster.LeaderAddr()
+		if err != nil {
+			err = leadErr
+			return
+		}
+		p.conn, err = grpc.Dial(cLeader, grpc.WithInsecure(), grpc.WithPicker(raftpicker.New(p.cluster)))
+	})
+	if err != nil {
+		return grpc.Errorf(codes.Internal, err.Error())
 	}
+	return nil
 }
 
 func (p *raftProxyClusterServer) GetNode(ctx context.Context, r *GetNodeRequest) (*GetNodeResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.GetNode(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.GetNode(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3000,18 +3018,18 @@ func (p *raftProxyClusterServer) GetNode(ctx context.Context, r *GetNodeRequest)
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).GetNode(ctx, r)
+	return NewClusterClient(p.conn).GetNode(ctx, r)
 }
 
 func (p *raftProxyClusterServer) ListNodes(ctx context.Context, r *ListNodesRequest) (*ListNodesResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.ListNodes(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.ListNodes(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3027,18 +3045,18 @@ func (p *raftProxyClusterServer) ListNodes(ctx context.Context, r *ListNodesRequ
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).ListNodes(ctx, r)
+	return NewClusterClient(p.conn).ListNodes(ctx, r)
 }
 
 func (p *raftProxyClusterServer) UpdateNode(ctx context.Context, r *UpdateNodeRequest) (*UpdateNodeResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.UpdateNode(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.UpdateNode(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3054,18 +3072,18 @@ func (p *raftProxyClusterServer) UpdateNode(ctx context.Context, r *UpdateNodeRe
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).UpdateNode(ctx, r)
+	return NewClusterClient(p.conn).UpdateNode(ctx, r)
 }
 
 func (p *raftProxyClusterServer) GetTask(ctx context.Context, r *GetTaskRequest) (*GetTaskResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.GetTask(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.GetTask(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3081,18 +3099,18 @@ func (p *raftProxyClusterServer) GetTask(ctx context.Context, r *GetTaskRequest)
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).GetTask(ctx, r)
+	return NewClusterClient(p.conn).GetTask(ctx, r)
 }
 
 func (p *raftProxyClusterServer) ListTasks(ctx context.Context, r *ListTasksRequest) (*ListTasksResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.ListTasks(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.ListTasks(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3108,18 +3126,18 @@ func (p *raftProxyClusterServer) ListTasks(ctx context.Context, r *ListTasksRequ
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).ListTasks(ctx, r)
+	return NewClusterClient(p.conn).ListTasks(ctx, r)
 }
 
 func (p *raftProxyClusterServer) RemoveTask(ctx context.Context, r *RemoveTaskRequest) (*RemoveTaskResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.RemoveTask(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.RemoveTask(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3135,18 +3153,18 @@ func (p *raftProxyClusterServer) RemoveTask(ctx context.Context, r *RemoveTaskRe
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).RemoveTask(ctx, r)
+	return NewClusterClient(p.conn).RemoveTask(ctx, r)
 }
 
 func (p *raftProxyClusterServer) GetService(ctx context.Context, r *GetServiceRequest) (*GetServiceResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.GetService(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.GetService(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3162,18 +3180,18 @@ func (p *raftProxyClusterServer) GetService(ctx context.Context, r *GetServiceRe
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).GetService(ctx, r)
+	return NewClusterClient(p.conn).GetService(ctx, r)
 }
 
 func (p *raftProxyClusterServer) ListServices(ctx context.Context, r *ListServicesRequest) (*ListServicesResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.ListServices(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.ListServices(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3189,18 +3207,18 @@ func (p *raftProxyClusterServer) ListServices(ctx context.Context, r *ListServic
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).ListServices(ctx, r)
+	return NewClusterClient(p.conn).ListServices(ctx, r)
 }
 
 func (p *raftProxyClusterServer) CreateService(ctx context.Context, r *CreateServiceRequest) (*CreateServiceResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.CreateService(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.CreateService(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3216,18 +3234,18 @@ func (p *raftProxyClusterServer) CreateService(ctx context.Context, r *CreateSer
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).CreateService(ctx, r)
+	return NewClusterClient(p.conn).CreateService(ctx, r)
 }
 
 func (p *raftProxyClusterServer) UpdateService(ctx context.Context, r *UpdateServiceRequest) (*UpdateServiceResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.UpdateService(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.UpdateService(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3243,18 +3261,18 @@ func (p *raftProxyClusterServer) UpdateService(ctx context.Context, r *UpdateSer
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).UpdateService(ctx, r)
+	return NewClusterClient(p.conn).UpdateService(ctx, r)
 }
 
 func (p *raftProxyClusterServer) RemoveService(ctx context.Context, r *RemoveServiceRequest) (*RemoveServiceResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.RemoveService(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.RemoveService(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3270,18 +3288,18 @@ func (p *raftProxyClusterServer) RemoveService(ctx context.Context, r *RemoveSer
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).RemoveService(ctx, r)
+	return NewClusterClient(p.conn).RemoveService(ctx, r)
 }
 
 func (p *raftProxyClusterServer) GetNetwork(ctx context.Context, r *GetNetworkRequest) (*GetNetworkResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.GetNetwork(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.GetNetwork(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3297,18 +3315,18 @@ func (p *raftProxyClusterServer) GetNetwork(ctx context.Context, r *GetNetworkRe
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).GetNetwork(ctx, r)
+	return NewClusterClient(p.conn).GetNetwork(ctx, r)
 }
 
 func (p *raftProxyClusterServer) ListNetworks(ctx context.Context, r *ListNetworksRequest) (*ListNetworksResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.ListNetworks(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.ListNetworks(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3324,18 +3342,18 @@ func (p *raftProxyClusterServer) ListNetworks(ctx context.Context, r *ListNetwor
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).ListNetworks(ctx, r)
+	return NewClusterClient(p.conn).ListNetworks(ctx, r)
 }
 
 func (p *raftProxyClusterServer) CreateNetwork(ctx context.Context, r *CreateNetworkRequest) (*CreateNetworkResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.CreateNetwork(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.CreateNetwork(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3351,18 +3369,18 @@ func (p *raftProxyClusterServer) CreateNetwork(ctx context.Context, r *CreateNet
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).CreateNetwork(ctx, r)
+	return NewClusterClient(p.conn).CreateNetwork(ctx, r)
 }
 
 func (p *raftProxyClusterServer) RemoveNetwork(ctx context.Context, r *RemoveNetworkRequest) (*RemoveNetworkResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.RemoveNetwork(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.RemoveNetwork(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3378,18 +3396,18 @@ func (p *raftProxyClusterServer) RemoveNetwork(ctx context.Context, r *RemoveNet
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).RemoveNetwork(ctx, r)
+	return NewClusterClient(p.conn).RemoveNetwork(ctx, r)
 }
 
 func (p *raftProxyClusterServer) GetVolume(ctx context.Context, r *GetVolumeRequest) (*GetVolumeResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.GetVolume(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.GetVolume(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3405,18 +3423,18 @@ func (p *raftProxyClusterServer) GetVolume(ctx context.Context, r *GetVolumeRequ
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).GetVolume(ctx, r)
+	return NewClusterClient(p.conn).GetVolume(ctx, r)
 }
 
 func (p *raftProxyClusterServer) ListVolumes(ctx context.Context, r *ListVolumesRequest) (*ListVolumesResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.ListVolumes(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.ListVolumes(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3432,18 +3450,18 @@ func (p *raftProxyClusterServer) ListVolumes(ctx context.Context, r *ListVolumes
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).ListVolumes(ctx, r)
+	return NewClusterClient(p.conn).ListVolumes(ctx, r)
 }
 
 func (p *raftProxyClusterServer) CreateVolume(ctx context.Context, r *CreateVolumeRequest) (*CreateVolumeResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.CreateVolume(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.CreateVolume(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3459,18 +3477,18 @@ func (p *raftProxyClusterServer) CreateVolume(ctx context.Context, r *CreateVolu
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).CreateVolume(ctx, r)
+	return NewClusterClient(p.conn).CreateVolume(ctx, r)
 }
 
 func (p *raftProxyClusterServer) RemoveVolume(ctx context.Context, r *RemoveVolumeRequest) (*RemoveVolumeResponse, error) {
 
-	c, err := p.leaders.LeaderConn()
-	if err != nil {
-		if err == leaderconn.ErrLocalLeader {
-			return p.local.RemoveVolume(ctx, r)
-		}
+	if p.cluster.IsLeader() {
+		return p.local.RemoveVolume(ctx, r)
+	}
+	if err := p.initConn(); err != nil {
 		return nil, err
 	}
+
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3486,7 +3504,7 @@ func (p *raftProxyClusterServer) RemoveVolume(ctx context.Context, r *RemoveVolu
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewClusterClient(c).RemoveVolume(ctx, r)
+	return NewClusterClient(p.conn).RemoveVolume(ctx, r)
 }
 
 func (m *ListOptions) Size() (n int) {
