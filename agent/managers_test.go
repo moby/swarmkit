@@ -165,7 +165,7 @@ func TestManagersLargeRanges(t *testing.T) {
 	managers.Observe(addrs[2], managerWeightMax) // three bounces back!
 
 	seen := make(map[string]int)
-	for i := 0; i < len(addrs)*managerWeightMax; i++ {
+	for i := 0; i < len(addrs)*managerWeightMax*4; i++ {
 		next, err := managers.Select()
 		if err != nil {
 			t.Fatalf("error selecting manager: %v", err)
