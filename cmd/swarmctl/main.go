@@ -37,7 +37,7 @@ var (
 )
 
 func init() {
-	mainCmd.PersistentFlags().StringP("addr", "a", "127.0.0.1:4242", "Address of the Swarm manager")
+	mainCmd.PersistentFlags().StringP("host", "H", "127.0.0.1:4242", "Specify the address of the manager to connect to")
 	mainCmd.PersistentFlags().BoolP("no-resolve", "n", false, "Do not try to map IDs to Names when displaying them")
 
 	mainCmd.AddCommand(root.Cmds...)
