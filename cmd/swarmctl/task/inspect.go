@@ -3,14 +3,30 @@ package task
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"github.com/spf13/cobra"
 )
+
+func printTaskStatus(w io.Writer, s *api.TaskStatus) {
+	fmt.Fprintln(w, "Status\t")
+	fmt.Fprintf(w, "  State\t: %s\n", s.State.String())
+	if s.Timestamp != nil {
+		fmt.Fprintf(w, "  Timestamp\t: %s\n", ptypes.TimestampString(s.Timestamp))
+	}
+	if s.Msg != "" {
+		fmt.Fprintf(w, "  Message\t: %s\n", s.Msg)
+	}
+	if s.Err != "" {
+		fmt.Fprintf(w, "  Error\t: %s\n", s.Err)
+	}
+}
 
 var (
 	inspectCmd = &cobra.Command{
@@ -37,16 +53,12 @@ var (
 				// Ignore flushing errors - there's nothing we can do.
 				_ = w.Flush()
 			}()
-			fmt.Fprintf(w, "ID:\t%s\n", r.Task.ID)
-			fmt.Fprintf(w, "Service:\t%s\n", res.Resolve(api.Service{}, r.Task.ServiceID))
-			if r.Task.Status.Err != "" {
-				fmt.Fprintf(w, "Status:\t%s (%s)\n", r.Task.Status.State.String(), r.Task.Status.Err)
-			} else {
-				fmt.Fprintf(w, "Status:\t%s\n", r.Task.Status.State.String())
-			}
-			fmt.Fprintf(w, "Node:\t%s\n", res.Resolve(api.Node{}, r.Task.NodeID))
+			fmt.Fprintf(w, "ID\t: %s\n", r.Task.ID)
+			fmt.Fprintf(w, "Service\t: %s\n", res.Resolve(api.Service{}, r.Task.ServiceID))
+			printTaskStatus(w, r.Task.Status)
+			fmt.Fprintf(w, "Node\t: %s\n", res.Resolve(api.Node{}, r.Task.NodeID))
 
-			fmt.Fprintln(w, "Spec:\t")
+			fmt.Fprintln(w, "Spec\t")
 			ctr := r.Task.Spec.GetContainer()
 			common.FprintfIfNotEmpty(w, "  Image\t: %s\n", ctr.Image.Reference)
 			common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))

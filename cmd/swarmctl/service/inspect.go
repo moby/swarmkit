@@ -24,8 +24,8 @@ func printServiceSummary(service *api.Service) {
 	common.FprintfIfNotEmpty(w, "Name\t: %s\n", service.Spec.Annotations.Name)
 	common.FprintfIfNotEmpty(w, "Instances\t: %d\n", service.Spec.Instances)
 	common.FprintfIfNotEmpty(w, "Strategy\t: %s\n", service.Spec.Strategy)
-	fmt.Fprintln(w, "Template:\t")
-	fmt.Fprintln(w, " Container:\t")
+	fmt.Fprintln(w, "Template\t")
+	fmt.Fprintln(w, " Container\t")
 	ctr := service.Spec.Template.GetContainer()
 	common.FprintfIfNotEmpty(w, "  Image\t: %s\n", ctr.Image.Reference)
 	common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))
@@ -33,7 +33,7 @@ func printServiceSummary(service *api.Service) {
 	common.FprintfIfNotEmpty(w, "  Env\t: [%s]\n", strings.Join(ctr.Env, ", "))
 	if ctr.Resources != nil {
 		res := ctr.Resources
-		fmt.Fprintln(w, "  Resources:\t")
+		fmt.Fprintln(w, "  Resources\t")
 		printResources := func(w io.Writer, r *api.Resources) {
 			if r.NanoCPUs != 0 {
 				fmt.Fprintf(w, "      CPU\t: %g\n", float64(r.NanoCPUs)/1e9)
@@ -75,10 +75,11 @@ func printTasks(tasks []*api.Task, res *common.Resolver) {
 	common.PrintHeader(w, "Task ID", "Image", "Status", "Node")
 	for _, t := range tasks {
 		c := t.Spec.GetContainer()
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(w, "%s\t%s\t%s %s\t%s\n",
 			t.ID,
 			c.Image.Reference,
 			t.Status.State.String(),
+			common.TimestampAgo(t.Status.Timestamp),
 			res.Resolve(api.Node{}, t.NodeID),
 		)
 	}

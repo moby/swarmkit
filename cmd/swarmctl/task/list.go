@@ -42,10 +42,11 @@ var (
 				}()
 				common.PrintHeader(w, "ID", "Service", "Status", "Node")
 				output = func(t *api.Task) {
-					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+					fmt.Fprintf(w, "%s\t%s\t%s %s\t%s\n",
 						t.ID,
 						res.Resolve(api.Service{}, t.ServiceID),
 						t.Status.State.String(),
+						common.TimestampAgo(t.Status.Timestamp),
 						res.Resolve(api.Node{}, t.NodeID),
 					)
 				}
