@@ -2,6 +2,7 @@ package agent
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 	"reflect"
 	"time"
@@ -374,8 +375,6 @@ func (a *Agent) handleTaskStatusReport(ctx context.Context, session *session, re
 }
 
 func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error {
-	ctx = log.WithLogger(ctx, log.G(ctx).WithField("task.id", report.taskID))
-
 	status, ok := a.statuses[report.taskID]
 	if !ok {
 		return errTaskUnknown
@@ -386,10 +385,14 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 	}
 
 	original := status.Copy()
+	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(
+		logrus.Fields{
+			"state.transition": fmt.Sprintf("%v->%v", original.State, report.state),
+			"task.id":          report.taskID}))
 
 	// validate transition only moves forward or updates fields
 	if report.state < status.State && report.err == nil {
-		log.G(ctx).Errorf("%v -> %v invalid!", status.State, report.state)
+		log.G(ctx).Error("invalid transition")
 		return errTaskInvalidStateTransition
 	}
 
@@ -415,7 +418,7 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 		case api.TaskStateFinalize:
 			if task.DesiredState >= api.TaskStateDead {
 				if err := a.removeTask(ctx, task.Copy()); err != nil {
-					log.G(ctx).WithError(err).Error("failed retrying remove task")
+					log.G(ctx).WithError(err).Error("failed removing task")
 				}
 			}
 		}
@@ -440,8 +443,6 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 	}
 
 	log.G(ctx).WithFields(logrus.Fields{
-		"state.from":    original.State,
-		"state.to":      status.State,
 		"state.message": status.Message,
 	}).Infof("task status updated")
 
