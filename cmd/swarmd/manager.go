@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"os/signal"
+
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/manager"
 	"github.com/spf13/cobra"
@@ -13,6 +16,11 @@ var managerCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 		addr, err := cmd.Flags().GetString("listen-addr")
+		if err != nil {
+			return err
+		}
+
+		unix, err := cmd.Flags().GetString("listen-unix")
 		if err != nil {
 			return err
 		}
@@ -42,20 +50,31 @@ var managerCmd = &cobra.Command{
 		}
 
 		m, err := manager.New(&manager.Config{
-			ListenProto:    "tcp",
+			ProtoAddr: map[string]string{
+				"tcp":  addr,
+				"unix": unix,
+			},
 			SecurityConfig: securityConfig,
-			ListenAddr:     addr,
 			JoinRaft:       managerAddr,
 			StateDir:       stateDir,
 		})
 		if err != nil {
 			return err
 		}
+
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			<-c
+			m.Stop(ctx)
+		}()
+
 		return m.Run(ctx)
 	},
 }
 
 func init() {
 	managerCmd.Flags().String("listen-addr", "0.0.0.0:4242", "Listen address")
+	managerCmd.Flags().String("listen-unix", "/var/run/docker/cluster/docker-swarmd.sock", "Listen socket")
 	managerCmd.Flags().String("join-cluster", "", "Join cluster with a node at this address")
 }

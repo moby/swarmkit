@@ -29,11 +29,11 @@ var _ api.ManagerServer = &Manager{}
 type Config struct {
 	SecurityConfig *ca.ManagerSecurityConfig
 
-	ListenProto string
-	ListenAddr  string
-	// Listener will be used for grpc serving if it's not nil, ListenProto and
-	// ListenAddr fields will be used otherwise.
-	Listener net.Listener
+	ProtoAddr map[string]string
+
+	// Listeners will be used for grpc serving if it's not nil,
+	// ProtoAddr fields will be used otherwise.
+	Listeners map[string]net.Listener
 
 	// JoinRaft is an optional address of a node in an existing raft
 	// cluster to join.
@@ -57,10 +57,12 @@ type Manager struct {
 	scheduler    *scheduler.Scheduler
 	allocator    *allocator.Allocator
 	server       *grpc.Server
+	localserver  *grpc.Server
 	raftNode     *raft.Node
 
 	leadershipCh chan raft.LeadershipState
 	leaderLock   sync.Mutex
+	listeners    map[string]net.Listener
 
 	managerDone chan struct{}
 }
@@ -73,9 +75,14 @@ func New(config *Config) (*Manager, error) {
 	// for now, may want to make this separate. This can be tricky to get right
 	// so we need to make it easy to override. This needs to be the address
 	// through which agent nodes access the manager.
-	dispatcherConfig.Addr = config.ListenAddr
+	dispatcherConfig.Addr = config.ProtoAddr["tcp"]
 
-	err := os.MkdirAll(config.StateDir, 0700)
+	err := os.MkdirAll(filepath.Dir(config.ProtoAddr["unix"]), 0700)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create socket directory: %v", err)
+	}
+
+	err = os.MkdirAll(config.StateDir, 0700)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create state directory: %v", err)
 	}
@@ -91,7 +98,7 @@ func New(config *Config) (*Manager, error) {
 	leadershipCh := make(chan raft.LeadershipState)
 
 	newNodeOpts := raft.NewNodeOptions{
-		Addr:           config.ListenAddr,
+		Addr:           config.ProtoAddr["tcp"],
 		JoinAddr:       config.JoinRaft,
 		Config:         raftCfg,
 		StateDir:       raftStateDir,
@@ -118,13 +125,15 @@ func New(config *Config) (*Manager, error) {
 		caserver:     ca.NewServer(config.SecurityConfig),
 		dispatcher:   dispatcher.New(store, dispatcherConfig),
 		server:       grpc.NewServer(opts...),
+		localserver:  grpc.NewServer(opts...),
 		raftNode:     raftNode,
 		leadershipCh: leadershipCh,
+		listeners:    make(map[string]net.Listener),
 	}
 
 	api.RegisterCAServer(m.server, m.caserver)
 	api.RegisterManagerServer(m.server, m)
-	api.RegisterClusterServer(m.server, m.apiserver)
+	api.RegisterClusterServer(m.localserver, m.apiserver)
 	api.RegisterDispatcherServer(m.server, m.dispatcher)
 
 	return m, nil
@@ -134,13 +143,16 @@ func New(config *Config) (*Manager, error) {
 // address.
 // The call never returns unless an error occurs or `Stop()` is called.
 func (m *Manager) Run(ctx context.Context) error {
-	lis := m.config.Listener
-	if lis == nil {
-		l, err := net.Listen(m.config.ListenProto, m.config.ListenAddr)
-		if err != nil {
-			return err
+	if len(m.config.Listeners) > 0 {
+		m.listeners = m.config.Listeners
+	} else {
+		for proto, addr := range m.config.ProtoAddr {
+			l, err := net.Listen(proto, addr)
+			if err != nil {
+				return err
+			}
+			m.listeners[proto] = l
 		}
-		lis = l
 	}
 
 	m.raftNode.Server = m.server
@@ -221,11 +233,6 @@ func (m *Manager) Run(ctx context.Context) error {
 		}
 	}()
 
-	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(
-		logrus.Fields{
-			"proto": lis.Addr().Network(),
-			"addr":  lis.Addr().String()}))
-	log.G(ctx).Info("listening")
 	go m.raftNode.Run(ctx)
 
 	raft.Register(m.server, m.raftNode)
@@ -234,12 +241,32 @@ func (m *Manager) Run(ctx context.Context) error {
 	// FIXME(aaronl): This should not be handled by sleeping.
 	time.Sleep(time.Second)
 
-	return m.server.Serve(lis)
+	chErr := make(chan error)
+	for proto, l := range m.listeners {
+		go func(proto string, lis net.Listener) {
+
+			if proto == "unix" {
+				log.G(ctx).WithFields(logrus.Fields{
+					"proto": lis.Addr().Network(),
+					"addr":  lis.Addr().String()}).Info("Listening for local connections")
+				chErr <- m.localserver.Serve(lis)
+			} else {
+				log.G(ctx).WithFields(logrus.Fields{
+					"proto": lis.Addr().Network(),
+					"addr":  lis.Addr().String()}).Info("Listening for connections")
+				chErr <- m.server.Serve(lis)
+			}
+		}(proto, l)
+	}
+
+	return <-chErr
+
 }
 
 // Stop stops the manager. It immediately closes all open connections and
 // active RPCs as well as stopping the scheduler.
-func (m *Manager) Stop() {
+func (m *Manager) Stop(ctx context.Context) {
+	log.G(ctx).Info("Stopping manager")
 	m.leaderLock.Lock()
 	if m.drainer != nil {
 		m.drainer.Stop()
@@ -252,8 +279,12 @@ func (m *Manager) Stop() {
 	}
 	m.leaderLock.Unlock()
 
+	for _, l := range m.listeners {
+		l.Close()
+	}
 	m.raftNode.Shutdown()
 	m.server.Stop()
+	m.localserver.Stop()
 }
 
 // GRPC Methods
