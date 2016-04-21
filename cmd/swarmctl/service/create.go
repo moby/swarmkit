@@ -3,6 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
@@ -75,6 +77,30 @@ var (
 					Instances: instances,
 				}
 
+				if flags.Changed("ports") {
+					portConfigs, err := flags.GetStringSlice("ports")
+					if err != nil {
+						return err
+					}
+
+					endpoint := &api.Endpoint{}
+					for _, portConfig := range portConfigs {
+						name, protocol, port, nodePort, err := parsePortConfig(portConfig)
+						if err != nil {
+							return err
+						}
+
+						endpoint.Ports = append(endpoint.Ports, &api.Endpoint_PortConfiguration{
+							Name:     name,
+							Protocol: protocol,
+							Port:     port,
+							NodePort: nodePort,
+						})
+					}
+
+					spec.Endpoint = endpoint
+				}
+
 				if flags.Changed("network") {
 					input, err := flags.GetString("network")
 					if err != nil {
@@ -106,11 +132,67 @@ var (
 	}
 )
 
+func parsePortConfig(portConfig string) (string, api.Endpoint_Protocol, uint32, uint32, error) {
+	protocol := api.Endpoint_TCP
+	parts := strings.Split(portConfig, ":")
+	if len(parts) < 2 {
+		return "", protocol, 0, 0, fmt.Errorf("insuffient parameters in port configuration")
+	}
+
+	name := parts[0]
+
+	portSpec := parts[1]
+	protocol, port, err := parsePortSpec(portSpec)
+	if err != nil {
+		return "", protocol, 0, 0, fmt.Errorf("failed to parse port: %v", err)
+	}
+
+	if len(parts) > 2 {
+		var err error
+
+		portSpec := parts[2]
+		nodeProtocol, nodePort, err := parsePortSpec(portSpec)
+		if err != nil {
+			return "", protocol, 0, 0, fmt.Errorf("failed to parse node port: %v", err)
+		}
+
+		if nodeProtocol != protocol {
+			return "", protocol, 0, 0, fmt.Errorf("protocol mismatch")
+		}
+
+		return name, protocol, port, nodePort, nil
+	}
+
+	return name, protocol, port, 0, nil
+}
+
+func parsePortSpec(portSpec string) (api.Endpoint_Protocol, uint32, error) {
+	parts := strings.Split(portSpec, "/")
+	p := parts[0]
+	port, err := strconv.ParseUint(p, 10, 32)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if len(parts) > 1 {
+		proto := parts[1]
+		protocol, ok := api.Endpoint_Protocol_value[strings.ToUpper(proto)]
+		if !ok {
+			return 0, 0, fmt.Errorf("invalid protocol string: %s", proto)
+		}
+
+		return api.Endpoint_Protocol(protocol), uint32(port), nil
+	}
+
+	return api.Endpoint_TCP, uint32(port), nil
+}
+
 func init() {
 	createCmd.Flags().String("name", "", "Service name")
 	createCmd.Flags().String("image", "", "Image")
 	createCmd.Flags().StringSlice("args", nil, "Args")
 	createCmd.Flags().StringSlice("env", nil, "Env")
+	createCmd.Flags().StringSlice("ports", nil, "Ports")
 	createCmd.Flags().StringP("file", "f", "", "Spec to use")
 	createCmd.Flags().String("network", "", "Network name")
 	// TODO(aluzzardi): This should be called `service-instances` so that every
