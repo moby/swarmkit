@@ -148,7 +148,7 @@ func TestDrainer(t *testing.T) {
 
 	drainer := New(store)
 
-	watch, cancel := state.Watch(store.WatchQueue(), state.EventDeleteTask{})
+	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -159,13 +159,13 @@ func TestDrainer(t *testing.T) {
 	// NOTE: we can assume these will be emitted in lexical order because
 	// of the way indexing works in the store. If that ever changes, this
 	// part of the test might need to become more flexible.
-	deletion1 := watchDeleteTask(t, watch)
+	deletion1 := watchDeadTask(t, watch)
 	assert.Equal(t, deletion1.ID, "id2")
 	assert.Equal(t, deletion1.NodeID, "id2")
-	deletion2 := watchDeleteTask(t, watch)
+	deletion2 := watchDeadTask(t, watch)
 	assert.Equal(t, deletion2.ID, "id3")
 	assert.Equal(t, deletion2.NodeID, "id3")
-	deletion3 := watchDeleteTask(t, watch)
+	deletion3 := watchDeadTask(t, watch)
 	assert.Equal(t, deletion3.ID, "id5")
 	assert.Equal(t, deletion3.NodeID, "id5")
 
@@ -179,7 +179,7 @@ func TestDrainer(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	deletion4 := watchDeleteTask(t, watch)
+	deletion4 := watchDeadTask(t, watch)
 	assert.Equal(t, deletion4.ID, "newtask")
 	assert.Equal(t, deletion4.NodeID, "id2")
 
@@ -192,7 +192,7 @@ func TestDrainer(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	deletion5 := watchDeleteTask(t, watch)
+	deletion5 := watchDeadTask(t, watch)
 	assert.Equal(t, deletion5.ID, "id4")
 	assert.Equal(t, deletion5.NodeID, "id4")
 
@@ -203,22 +203,22 @@ func TestDrainer(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	deletion6 := watchDeleteTask(t, watch)
+	deletion6 := watchDeadTask(t, watch)
 	assert.Equal(t, deletion6.ID, "id1")
 	assert.Equal(t, deletion6.NodeID, "id1")
 
 	drainer.Stop()
 }
 
-func watchDeleteTask(t *testing.T, watch chan events.Event) *api.Task {
+func watchDeadTask(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
 		case event := <-watch:
-			if task, ok := event.(state.EventDeleteTask); ok {
+			if task, ok := event.(state.EventUpdateTask); ok && task.Task.DesiredState == api.TaskStateDead {
 				return task.Task
 			}
 		case <-time.After(time.Second):
-			t.Fatalf("no task deletion")
+			t.Fatalf("no task update")
 		}
 	}
 }

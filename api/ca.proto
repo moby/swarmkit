@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package docker.cluster.api;
 
-import "specs.proto";
-import "objects.proto";
 import "gogoproto/gogo.proto";
 
 // CA defines the RPC methods for requesting certificates from a CA.
