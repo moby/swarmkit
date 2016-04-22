@@ -3,6 +3,7 @@ package container
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/docker/engine-api/types/events"
 	"github.com/docker/engine-api/types/filters"
 	"github.com/docker/engine-api/types/network"
+	"github.com/docker/go-connections/nat"
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 )
@@ -70,11 +72,24 @@ func (c *containerConfig) image() string {
 
 func (c *containerConfig) config() *enginecontainer.Config {
 	return &enginecontainer.Config{
-		Cmd:        c.runtime.Command, // TODO(stevvooe): Fall back to entrypoint+args
-		Env:        c.runtime.Env,
-		WorkingDir: c.runtime.Dir,
-		Image:      c.image(),
+		Cmd:          c.runtime.Command, // TODO(stevvooe): Fall back to entrypoint+args
+		Env:          c.runtime.Env,
+		WorkingDir:   c.runtime.Dir,
+		Image:        c.image(),
+		ExposedPorts: c.exposedPorts(),
 	}
+}
+
+func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
+	exposedPorts := make(map[nat.Port]struct{})
+	if c.task.Endpoint != nil {
+		for _, portConfig := range c.task.Endpoint.Ports {
+			port := nat.Port(fmt.Sprintf("%d/%s", portConfig.Port, strings.ToLower(portConfig.Protocol.String())))
+			exposedPorts[port] = struct{}{}
+		}
+	}
+
+	return exposedPorts
 }
 
 func (c *containerConfig) bindMounts() []string {
@@ -89,9 +104,26 @@ func (c *containerConfig) bindMounts() []string {
 
 func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 	return &enginecontainer.HostConfig{
-		Resources: c.resources(),
-		Binds:     c.bindMounts(),
+		Resources:    c.resources(),
+		Binds:        c.bindMounts(),
+		PortBindings: c.portBindings(),
 	}
+}
+
+func (c *containerConfig) portBindings() nat.PortMap {
+	portBindings := nat.PortMap{}
+	if c.task.Endpoint != nil {
+		for _, portConfig := range c.task.Endpoint.Ports {
+			port := nat.Port(fmt.Sprintf("%d/%s", portConfig.Port, strings.ToLower(portConfig.Protocol.String())))
+			portBindings[port] = []nat.PortBinding{
+				{
+					HostPort: strconv.Itoa(int(portConfig.NodePort)),
+				},
+			}
+		}
+	}
+
+	return portBindings
 }
 
 func (c *containerConfig) resources() enginecontainer.Resources {
