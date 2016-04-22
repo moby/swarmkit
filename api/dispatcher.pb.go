@@ -26,7 +26,6 @@ import raftpicker "github.com/docker/swarm-v2/manager/raftpicker"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
-import sync "sync"
 
 import io "io"
 
@@ -1105,32 +1104,17 @@ func encodeVarintDispatcher(data []byte, offset int, v uint64) int {
 }
 
 type raftProxyDispatcherServer struct {
-	local    DispatcherServer
-	conn     *grpc.ClientConn
-	cluster  raftpicker.RaftCluster
-	connOnce sync.Once
+	local   DispatcherServer
+	conn    *grpc.ClientConn
+	cluster raftpicker.RaftCluster
 }
 
-func NewRaftProxyDispatcherServer(local DispatcherServer, cluster raftpicker.RaftCluster) (DispatcherServer, error) {
+func NewRaftProxyDispatcherServer(local DispatcherServer, conn *grpc.ClientConn, cluster raftpicker.RaftCluster) DispatcherServer {
 	return &raftProxyDispatcherServer{
 		local:   local,
 		cluster: cluster,
-	}, nil
-}
-func (p *raftProxyDispatcherServer) initConn() error {
-	var err error
-	p.connOnce.Do(func() {
-		cLeader, leadErr := p.cluster.LeaderAddr()
-		if err != nil {
-			err = leadErr
-			return
-		}
-		p.conn, err = grpc.Dial(cLeader, grpc.WithInsecure(), grpc.WithPicker(raftpicker.New(p.cluster)))
-	})
-	if err != nil {
-		return grpc.Errorf(codes.Internal, err.Error())
+		conn:    conn,
 	}
-	return nil
 }
 
 func (p *raftProxyDispatcherServer) Register(ctx context.Context, r *RegisterRequest) (*RegisterResponse, error) {
@@ -1138,10 +1122,6 @@ func (p *raftProxyDispatcherServer) Register(ctx context.Context, r *RegisterReq
 	if p.cluster.IsLeader() {
 		return p.local.Register(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -1164,9 +1144,6 @@ func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher
 
 	if p.cluster.IsLeader() {
 		return p.local.Session(r, stream)
-	}
-	if err := p.initConn(); err != nil {
-		return err
 	}
 	var addr string
 	s, ok := transport.StreamFromContext(stream.Context())
@@ -1209,10 +1186,6 @@ func (p *raftProxyDispatcherServer) Heartbeat(ctx context.Context, r *HeartbeatR
 	if p.cluster.IsLeader() {
 		return p.local.Heartbeat(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -1236,10 +1209,6 @@ func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *Upd
 	if p.cluster.IsLeader() {
 		return p.local.UpdateTaskStatus(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -1262,9 +1231,6 @@ func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_Tas
 
 	if p.cluster.IsLeader() {
 		return p.local.Tasks(r, stream)
-	}
-	if err := p.initConn(); err != nil {
-		return err
 	}
 	var addr string
 	s, ok := transport.StreamFromContext(stream.Context())

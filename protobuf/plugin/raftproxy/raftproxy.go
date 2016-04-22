@@ -29,35 +29,17 @@ func (g *raftProxyGen) genProxyStruct(s *descriptor.ServiceDescriptorProto) {
 	g.gen.P("\tlocal " + s.GetName() + "Server")
 	g.gen.P("\tconn *grpc.ClientConn")
 	g.gen.P("\tcluster raftpicker.RaftCluster")
-	g.gen.P("\tconnOnce sync.Once")
 	g.gen.P("}")
 }
 
 func (g *raftProxyGen) genProxyConstructor(s *descriptor.ServiceDescriptorProto) {
-	g.gen.P("func NewRaftProxy" + s.GetName() + "Server(local " + s.GetName() + "Server, cluster raftpicker.RaftCluster) (" + s.GetName() + "Server, error) {")
+	g.gen.P("func NewRaftProxy" + s.GetName() + "Server(local " + s.GetName() + "Server, conn *grpc.ClientConn, cluster raftpicker.RaftCluster) " + s.GetName() + "Server {")
 	g.gen.P("return &" + serviceTypeName(s) + `{
 		local: local,
 		cluster: cluster,
-	}, nil`)
-	g.gen.P("}")
-}
-
-func (g *raftProxyGen) genProxyInitConn(s *descriptor.ServiceDescriptorProto) {
-	g.gen.P(`func (p *` + serviceTypeName(s) + `) initConn() error {
-		var err error
-		p.connOnce.Do(func() {
-			cLeader, leadErr := p.cluster.LeaderAddr()
-			if err != nil {
-				err = leadErr
-				return
-			}
-			p.conn, err = grpc.Dial(cLeader, grpc.WithInsecure(), grpc.WithPicker(raftpicker.New(p.cluster)))
-		})
-		if err != nil {
-			return grpc.Errorf(codes.Internal, err.Error())
-		}
-		return nil
+		conn: conn,
 	}`)
+	g.gen.P("}")
 }
 
 func getInputTypeName(m *descriptor.MethodDescriptorProto) string {
@@ -105,9 +87,6 @@ func (g *raftProxyGen) genClientStreamingMethod(s *descriptor.ServiceDescriptorP
 	g.gen.P(`
 	if p.cluster.IsLeader() {
 			return p.local.` + m.GetName() + `(stream)
-	}
-	if err := p.initConn(); err != nil {
-		return err
 	}`)
 	g.genStreamRedirectCheck()
 	g.gen.P("clientStream, err := New" + s.GetName() + "Client(p.conn)." + m.GetName() + "(ctx)")
@@ -143,9 +122,6 @@ func (g *raftProxyGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorP
 	g.gen.P(`
 	if p.cluster.IsLeader() {
 			return p.local.` + m.GetName() + `(r, stream)
-	}
-	if err := p.initConn(); err != nil {
-		return err
 	}`)
 	g.genStreamRedirectCheck()
 	g.gen.P("clientStream, err := New" + s.GetName() + "Client(p.conn)." + m.GetName() + "(ctx, r)")
@@ -175,9 +151,6 @@ func (g *raftProxyGen) genClientServerStreamingMethod(s *descriptor.ServiceDescr
 	g.gen.P(`
 	if p.cluster.IsLeader() {
 			return p.local.` + m.GetName() + `(stream)
-	}
-	if err := p.initConn(); err != nil {
-		return err
 	}`)
 	g.genStreamRedirectCheck()
 	g.gen.P("clientStream, err := New" + s.GetName() + "Client(p.conn)." + m.GetName() + "(ctx)")
@@ -224,11 +197,7 @@ func (g *raftProxyGen) genSimpleMethod(s *descriptor.ServiceDescriptorProto, m *
 	g.gen.P(`
 	if p.cluster.IsLeader() {
 			return p.local.` + m.GetName() + `(ctx, r)
-	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-	`)
+	}`)
 	g.genAddrObtain("ctx")
 	g.gen.P(`md, ok := metadata.FromContext(ctx)
 	if ok && len(md["redirect"]) != 0 {
@@ -265,7 +234,6 @@ func (g *raftProxyGen) Generate(file *generator.FileDescriptor) {
 	for _, s := range file.Service {
 		g.genProxyStruct(s)
 		g.genProxyConstructor(s)
-		g.genProxyInitConn(s)
 		for _, m := range s.Method {
 			g.genProxyMethod(s, m)
 		}
@@ -281,5 +249,4 @@ func (g *raftProxyGen) GenerateImports(file *generator.FileDescriptor) {
 	g.gen.P("import codes \"google.golang.org/grpc/codes\"")
 	g.gen.P("import metadata \"google.golang.org/grpc/metadata\"")
 	g.gen.P("import transport \"google.golang.org/grpc/transport\"")
-	g.gen.P("import sync \"sync\"")
 }
