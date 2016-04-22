@@ -858,8 +858,6 @@ func (n *Node) restoreFromSnapshot(data []byte) error {
 func (n *Node) send(messages []raftpb.Message) error {
 	members := n.cluster.listMembers()
 
-	ctx, _ := context.WithTimeout(n.Ctx, n.sendTimeout)
-
 	for _, m := range messages {
 		// Process locally
 		if m.To == n.Config.ID {
@@ -872,14 +870,16 @@ func (n *Node) send(messages []raftpb.Message) error {
 		// If node is an active raft member send the message
 		if member, ok := members[m.To]; ok {
 			n.asyncTasks.Add(1)
-			go n.sendToMember(ctx, member, m)
+			go n.sendToMember(member, m)
 		}
 	}
 
 	return nil
 }
 
-func (n *Node) sendToMember(ctx context.Context, member *member, m raftpb.Message) {
+func (n *Node) sendToMember(member *member, m raftpb.Message) {
+	ctx, cancel := context.WithTimeout(n.Ctx, n.sendTimeout)
+
 	_, err := member.Client.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Msg: &m})
 	if err != nil {
 		if m.Type == raftpb.MsgSnap {
@@ -895,6 +895,7 @@ func (n *Node) sendToMember(ctx context.Context, member *member, m raftpb.Messag
 	} else if m.Type == raftpb.MsgSnap {
 		n.ReportSnapshot(m.To, raft.SnapshotFinish)
 	}
+	cancel()
 	n.asyncTasks.Done()
 }
 
