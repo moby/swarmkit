@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,49 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build windows
+// +build linux
 
 package fileutil
 
 import (
-	"errors"
 	"os"
+	"syscall"
 )
 
-var (
-	ErrLocked = errors.New("file already locked")
-)
-
-type lock struct {
-	fd   int
-	file *os.File
-}
-
-func (l *lock) Name() string {
-	return l.file.Name()
-}
-
-func (l *lock) TryLock() error {
-	return nil
-}
-
-func (l *lock) Lock() error {
-	return nil
-}
-
-func (l *lock) Unlock() error {
-	return nil
-}
-
-func (l *lock) Destroy() error {
-	return l.file.Close()
-}
-
-func NewLock(file string) (Lock, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	l := &lock{int(f.Fd()), f}
-	return l, nil
+// Fdatasync is similar to fsync(), but does not flush modified metadata
+// unless that metadata is needed in order to allow a subsequent data retrieval
+// to be correctly handled.
+func Fdatasync(f *os.File) error {
+	return syscall.Fdatasync(int(f.Fd()))
 }
