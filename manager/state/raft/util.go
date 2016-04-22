@@ -3,6 +3,8 @@ package raft
 import (
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/docker/swarm-v2/api"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -34,4 +36,24 @@ func dial(addr string, protocol string, creds credentials.TransportAuthenticator
 // Register registers the node raft server
 func Register(server *grpc.Server, node *Node) {
 	api.RegisterRaftServer(server, node)
+}
+
+// WaitForLeader waits until node observe some leader in cluster. It returns
+// error if ctx was cancelled before leader appeared.
+func WaitForLeader(ctx context.Context, n *Node) error {
+	l := n.Leader()
+	if l != 0 {
+		return nil
+	}
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+	for l == 0 {
+		select {
+		case <-ticker.C:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+		l = n.Leader()
+	}
+	return nil
 }

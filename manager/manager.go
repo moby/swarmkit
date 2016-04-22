@@ -17,6 +17,7 @@ import (
 	"github.com/docker/swarm-v2/manager/dispatcher"
 	"github.com/docker/swarm-v2/manager/drainer"
 	"github.com/docker/swarm-v2/manager/orchestrator"
+	"github.com/docker/swarm-v2/manager/raftpicker"
 	"github.com/docker/swarm-v2/manager/scheduler"
 	"github.com/docker/swarm-v2/manager/state/raft"
 	"golang.org/x/net/context"
@@ -209,6 +210,14 @@ func (m *Manager) Run(ctx context.Context) error {
 		}
 	}()
 
+	api.RegisterCAServer(m.server, m.caserver)
+	api.RegisterRaftServer(m.server, m.raftNode)
+
+	errServe := make(chan error, 1)
+	go func() {
+		errServe <- m.server.Serve(lis)
+	}()
+
 	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(
 		logrus.Fields{
 			"proto": lis.Addr().Network(),
@@ -216,23 +225,34 @@ func (m *Manager) Run(ctx context.Context) error {
 	log.G(ctx).Info("listening")
 	go m.raftNode.Run(ctx)
 
-	// Wait for raft to become available.
-	// FIXME(aaronl): This should not be handled by sleeping.
-	time.Sleep(time.Second)
+	leaderCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	if err := raft.WaitForLeader(leaderCtx, m.raftNode); err != nil {
+		return err
+	}
+	cancel()
 
-	localAPI := clusterapi.NewServer(m.raftNode.MemoryStore())
-	proxyAPI, err := api.NewRaftProxyClusterServer(localAPI, m.raftNode)
+	backoffConfig := *grpc.DefaultBackoffConfig
+	backoffConfig.MaxDelay = 2 * time.Second
+
+	proxyOpts := []grpc.DialOption{
+		grpc.WithBackoffConfig(&backoffConfig),
+		grpc.WithTransportCredentials(m.config.SecurityConfig.ClientTLSCreds),
+	}
+
+	raftConn, err := raftpicker.Dial(m.raftNode, proxyOpts...)
 	if err != nil {
+		m.server.Stop()
 		return err
 	}
 
-	api.RegisterCAServer(m.server, m.caserver)
+	localAPI := clusterapi.NewServer(m.raftNode.MemoryStore())
+	proxyAPI := api.NewRaftProxyClusterServer(localAPI, raftConn, m.raftNode)
+
 	api.RegisterManagerServer(m.server, m)
 	api.RegisterClusterServer(m.server, proxyAPI)
 	api.RegisterDispatcherServer(m.server, m.dispatcher)
-	api.RegisterRaftServer(m.server, m.raftNode)
 
-	return m.server.Serve(lis)
+	return <-errServe
 }
 
 // Stop stops the manager. It immediately closes all open connections and

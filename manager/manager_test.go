@@ -116,9 +116,6 @@ func TestManagerNodeCount(t *testing.T) {
 
 	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
 	opts = append(opts, grpc.WithTransportCredentials(managerSecurityConfig.ClientTLSCreds))
-	opts = append(opts, grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-		return net.DialTimeout(l.Addr().Network(), addr, timeout)
-	}))
 
 	conn, err := grpc.Dial(l.Addr().String(), opts...)
 	assert.NoError(t, err)

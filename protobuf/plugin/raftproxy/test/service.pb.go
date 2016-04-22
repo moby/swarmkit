@@ -36,7 +36,6 @@ import raftpicker "github.com/docker/swarm-v2/manager/raftpicker"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
-import sync "sync"
 
 import io "io"
 
@@ -714,32 +713,17 @@ func encodeVarintService(data []byte, offset int, v uint64) int {
 }
 
 type raftProxyRouteGuideServer struct {
-	local    RouteGuideServer
-	conn     *grpc.ClientConn
-	cluster  raftpicker.RaftCluster
-	connOnce sync.Once
+	local   RouteGuideServer
+	conn    *grpc.ClientConn
+	cluster raftpicker.RaftCluster
 }
 
-func NewRaftProxyRouteGuideServer(local RouteGuideServer, cluster raftpicker.RaftCluster) (RouteGuideServer, error) {
+func NewRaftProxyRouteGuideServer(local RouteGuideServer, conn *grpc.ClientConn, cluster raftpicker.RaftCluster) RouteGuideServer {
 	return &raftProxyRouteGuideServer{
 		local:   local,
 		cluster: cluster,
-	}, nil
-}
-func (p *raftProxyRouteGuideServer) initConn() error {
-	var err error
-	p.connOnce.Do(func() {
-		cLeader, leadErr := p.cluster.LeaderAddr()
-		if err != nil {
-			err = leadErr
-			return
-		}
-		p.conn, err = grpc.Dial(cLeader, grpc.WithInsecure(), grpc.WithPicker(raftpicker.New(p.cluster)))
-	})
-	if err != nil {
-		return grpc.Errorf(codes.Internal, err.Error())
+		conn:    conn,
 	}
-	return nil
 }
 
 func (p *raftProxyRouteGuideServer) GetFeature(ctx context.Context, r *Point) (*Feature, error) {
@@ -747,10 +731,6 @@ func (p *raftProxyRouteGuideServer) GetFeature(ctx context.Context, r *Point) (*
 	if p.cluster.IsLeader() {
 		return p.local.GetFeature(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -773,9 +753,6 @@ func (p *raftProxyRouteGuideServer) ListFeatures(r *Rectangle, stream RouteGuide
 
 	if p.cluster.IsLeader() {
 		return p.local.ListFeatures(r, stream)
-	}
-	if err := p.initConn(); err != nil {
-		return err
 	}
 	var addr string
 	s, ok := transport.StreamFromContext(stream.Context())
@@ -817,9 +794,6 @@ func (p *raftProxyRouteGuideServer) RecordRoute(stream RouteGuide_RecordRouteSer
 
 	if p.cluster.IsLeader() {
 		return p.local.RecordRoute(stream)
-	}
-	if err := p.initConn(); err != nil {
-		return err
 	}
 	var addr string
 	s, ok := transport.StreamFromContext(stream.Context())
@@ -867,9 +841,6 @@ func (p *raftProxyRouteGuideServer) RouteChat(stream RouteGuide_RouteChatServer)
 
 	if p.cluster.IsLeader() {
 		return p.local.RouteChat(stream)
-	}
-	if err := p.initConn(); err != nil {
-		return err
 	}
 	var addr string
 	s, ok := transport.StreamFromContext(stream.Context())

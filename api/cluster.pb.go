@@ -24,7 +24,6 @@ import raftpicker "github.com/docker/swarm-v2/manager/raftpicker"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
-import sync "sync"
 
 import io "io"
 
@@ -2966,32 +2965,17 @@ func encodeVarintCluster(data []byte, offset int, v uint64) int {
 }
 
 type raftProxyClusterServer struct {
-	local    ClusterServer
-	conn     *grpc.ClientConn
-	cluster  raftpicker.RaftCluster
-	connOnce sync.Once
+	local   ClusterServer
+	conn    *grpc.ClientConn
+	cluster raftpicker.RaftCluster
 }
 
-func NewRaftProxyClusterServer(local ClusterServer, cluster raftpicker.RaftCluster) (ClusterServer, error) {
+func NewRaftProxyClusterServer(local ClusterServer, conn *grpc.ClientConn, cluster raftpicker.RaftCluster) ClusterServer {
 	return &raftProxyClusterServer{
 		local:   local,
 		cluster: cluster,
-	}, nil
-}
-func (p *raftProxyClusterServer) initConn() error {
-	var err error
-	p.connOnce.Do(func() {
-		cLeader, leadErr := p.cluster.LeaderAddr()
-		if err != nil {
-			err = leadErr
-			return
-		}
-		p.conn, err = grpc.Dial(cLeader, grpc.WithInsecure(), grpc.WithPicker(raftpicker.New(p.cluster)))
-	})
-	if err != nil {
-		return grpc.Errorf(codes.Internal, err.Error())
+		conn:    conn,
 	}
-	return nil
 }
 
 func (p *raftProxyClusterServer) GetNode(ctx context.Context, r *GetNodeRequest) (*GetNodeResponse, error) {
@@ -2999,10 +2983,6 @@ func (p *raftProxyClusterServer) GetNode(ctx context.Context, r *GetNodeRequest)
 	if p.cluster.IsLeader() {
 		return p.local.GetNode(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3026,10 +3006,6 @@ func (p *raftProxyClusterServer) ListNodes(ctx context.Context, r *ListNodesRequ
 	if p.cluster.IsLeader() {
 		return p.local.ListNodes(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3053,10 +3029,6 @@ func (p *raftProxyClusterServer) UpdateNode(ctx context.Context, r *UpdateNodeRe
 	if p.cluster.IsLeader() {
 		return p.local.UpdateNode(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3080,10 +3052,6 @@ func (p *raftProxyClusterServer) GetTask(ctx context.Context, r *GetTaskRequest)
 	if p.cluster.IsLeader() {
 		return p.local.GetTask(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3107,10 +3075,6 @@ func (p *raftProxyClusterServer) ListTasks(ctx context.Context, r *ListTasksRequ
 	if p.cluster.IsLeader() {
 		return p.local.ListTasks(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3134,10 +3098,6 @@ func (p *raftProxyClusterServer) RemoveTask(ctx context.Context, r *RemoveTaskRe
 	if p.cluster.IsLeader() {
 		return p.local.RemoveTask(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3161,10 +3121,6 @@ func (p *raftProxyClusterServer) GetService(ctx context.Context, r *GetServiceRe
 	if p.cluster.IsLeader() {
 		return p.local.GetService(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3188,10 +3144,6 @@ func (p *raftProxyClusterServer) ListServices(ctx context.Context, r *ListServic
 	if p.cluster.IsLeader() {
 		return p.local.ListServices(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3215,10 +3167,6 @@ func (p *raftProxyClusterServer) CreateService(ctx context.Context, r *CreateSer
 	if p.cluster.IsLeader() {
 		return p.local.CreateService(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3242,10 +3190,6 @@ func (p *raftProxyClusterServer) UpdateService(ctx context.Context, r *UpdateSer
 	if p.cluster.IsLeader() {
 		return p.local.UpdateService(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3269,10 +3213,6 @@ func (p *raftProxyClusterServer) RemoveService(ctx context.Context, r *RemoveSer
 	if p.cluster.IsLeader() {
 		return p.local.RemoveService(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3296,10 +3236,6 @@ func (p *raftProxyClusterServer) GetNetwork(ctx context.Context, r *GetNetworkRe
 	if p.cluster.IsLeader() {
 		return p.local.GetNetwork(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3323,10 +3259,6 @@ func (p *raftProxyClusterServer) ListNetworks(ctx context.Context, r *ListNetwor
 	if p.cluster.IsLeader() {
 		return p.local.ListNetworks(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3350,10 +3282,6 @@ func (p *raftProxyClusterServer) CreateNetwork(ctx context.Context, r *CreateNet
 	if p.cluster.IsLeader() {
 		return p.local.CreateNetwork(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3377,10 +3305,6 @@ func (p *raftProxyClusterServer) RemoveNetwork(ctx context.Context, r *RemoveNet
 	if p.cluster.IsLeader() {
 		return p.local.RemoveNetwork(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3404,10 +3328,6 @@ func (p *raftProxyClusterServer) GetVolume(ctx context.Context, r *GetVolumeRequ
 	if p.cluster.IsLeader() {
 		return p.local.GetVolume(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3431,10 +3351,6 @@ func (p *raftProxyClusterServer) ListVolumes(ctx context.Context, r *ListVolumes
 	if p.cluster.IsLeader() {
 		return p.local.ListVolumes(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3458,10 +3374,6 @@ func (p *raftProxyClusterServer) CreateVolume(ctx context.Context, r *CreateVolu
 	if p.cluster.IsLeader() {
 		return p.local.CreateVolume(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
@@ -3485,10 +3397,6 @@ func (p *raftProxyClusterServer) RemoveVolume(ctx context.Context, r *RemoveVolu
 	if p.cluster.IsLeader() {
 		return p.local.RemoveVolume(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {

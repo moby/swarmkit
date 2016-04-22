@@ -24,7 +24,6 @@ import raftpicker "github.com/docker/swarm-v2/manager/raftpicker"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
-import sync "sync"
 
 import io "io"
 
@@ -395,32 +394,17 @@ func encodeVarintCa(data []byte, offset int, v uint64) int {
 }
 
 type raftProxyCAServer struct {
-	local    CAServer
-	conn     *grpc.ClientConn
-	cluster  raftpicker.RaftCluster
-	connOnce sync.Once
+	local   CAServer
+	conn    *grpc.ClientConn
+	cluster raftpicker.RaftCluster
 }
 
-func NewRaftProxyCAServer(local CAServer, cluster raftpicker.RaftCluster) (CAServer, error) {
+func NewRaftProxyCAServer(local CAServer, conn *grpc.ClientConn, cluster raftpicker.RaftCluster) CAServer {
 	return &raftProxyCAServer{
 		local:   local,
 		cluster: cluster,
-	}, nil
-}
-func (p *raftProxyCAServer) initConn() error {
-	var err error
-	p.connOnce.Do(func() {
-		cLeader, leadErr := p.cluster.LeaderAddr()
-		if err != nil {
-			err = leadErr
-			return
-		}
-		p.conn, err = grpc.Dial(cLeader, grpc.WithInsecure(), grpc.WithPicker(raftpicker.New(p.cluster)))
-	})
-	if err != nil {
-		return grpc.Errorf(codes.Internal, err.Error())
+		conn:    conn,
 	}
-	return nil
 }
 
 func (p *raftProxyCAServer) IssueCertificate(ctx context.Context, r *IssueCertificateRequest) (*IssueCertificateResponse, error) {
@@ -428,10 +412,6 @@ func (p *raftProxyCAServer) IssueCertificate(ctx context.Context, r *IssueCertif
 	if p.cluster.IsLeader() {
 		return p.local.IssueCertificate(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {

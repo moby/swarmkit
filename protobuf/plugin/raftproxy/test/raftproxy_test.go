@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/swarm-v2/manager/raftpicker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -47,12 +48,16 @@ func (m *mockCluster) IsLeader() bool {
 func TestSimpleRedirect(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	conn, err := grpc.Dial(l.Addr().String(), grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	addr := l.Addr().String()
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 	require.NoError(t, err)
 	defer conn.Close()
 
-	api, err := NewRaftProxyRouteGuideServer(testRouteGuide{}, &mockCluster{addr: l.Addr().String()})
+	cluster := &mockCluster{addr: addr}
+	cConn, err := raftpicker.Dial(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 	require.NoError(t, err)
+
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cConn, cluster)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -67,11 +72,16 @@ func TestSimpleRedirect(t *testing.T) {
 func TestServerStreamRedirect(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	conn, err := grpc.Dial(l.Addr().String(), grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	addr := l.Addr().String()
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	require.NoError(t, err)
+	defer conn.Close()
+
+	cluster := &mockCluster{addr: addr}
+	cConn, err := raftpicker.Dial(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 	require.NoError(t, err)
 
-	api, err := NewRaftProxyRouteGuideServer(testRouteGuide{}, &mockCluster{addr: l.Addr().String()})
-	require.NoError(t, err)
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cConn, cluster)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -89,11 +99,16 @@ func TestServerStreamRedirect(t *testing.T) {
 func TestClientStreamRedirect(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	conn, err := grpc.Dial(l.Addr().String(), grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	addr := l.Addr().String()
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	require.NoError(t, err)
+	defer conn.Close()
+
+	cluster := &mockCluster{addr: addr}
+	cConn, err := raftpicker.Dial(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 	require.NoError(t, err)
 
-	api, err := NewRaftProxyRouteGuideServer(testRouteGuide{}, &mockCluster{addr: l.Addr().String()})
-	require.NoError(t, err)
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cConn, cluster)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -113,11 +128,16 @@ func TestClientStreamRedirect(t *testing.T) {
 func TestClientServerStreamRedirect(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	conn, err := grpc.Dial(l.Addr().String(), grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	addr := l.Addr().String()
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	require.NoError(t, err)
+	defer conn.Close()
+
+	cluster := &mockCluster{addr: addr}
+	cConn, err := raftpicker.Dial(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 	require.NoError(t, err)
 
-	api, err := NewRaftProxyRouteGuideServer(testRouteGuide{}, &mockCluster{addr: l.Addr().String()})
-	require.NoError(t, err)
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cConn, cluster)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
