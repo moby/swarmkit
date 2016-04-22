@@ -422,8 +422,14 @@ func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, er
 	}
 
 	ipamConfigs := n.Spec.IPAM.Configurations
-	if n.Spec.IPAM.Configurations == nil {
-		ipamConfigs = append(ipamConfigs, &api.IPAMConfiguration{})
+	if ipamConfigs == nil {
+		if n.IPAM != nil {
+			ipamConfigs = n.IPAM.Configurations
+		}
+
+		if ipamConfigs == nil {
+			ipamConfigs = append(ipamConfigs, &api.IPAMConfiguration{})
+		}
 	}
 
 	// Update the runtime IPAM configurations with initial state
