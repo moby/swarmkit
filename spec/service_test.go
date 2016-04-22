@@ -35,7 +35,7 @@ func TestServiceConfigValidate(t *testing.T) {
 		// incorrect service mode
 		{
 			Name: "name",
-			Mode: "SERVICE_MODE_INVALID",
+			Mode: "invalid",
 			ContainerConfig: ContainerConfig{
 				Image: "image",
 			},
@@ -78,7 +78,7 @@ func TestServiceConfigValidate(t *testing.T) {
 		// test service mode
 		{
 			Name: "name",
-			Mode: "SERVICE_MODE_FILL",
+			Mode: "fill",
 			ContainerConfig: ContainerConfig{
 				Image: "image",
 			},

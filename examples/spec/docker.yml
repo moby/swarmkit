@@ -5,12 +5,12 @@ services:
   web:
     image: nginx
     instances: 3
-    mode: SERVICE_MODE_RUNNING
+    mode: running
 
   redis:
     image: redis
     instances: 1
-    mode: SERVICE_MODE_RUNNING
+    mode: running
 
   ping:
       image: alpine
@@ -18,4 +18,4 @@ services:
       env:
           - HOST=google.com
       instances: 2
-      mode: SERVICE_MODE_RUNNING
+      mode: running

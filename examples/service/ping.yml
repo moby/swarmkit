@@ -2,6 +2,6 @@ name: ping
 image: alpine
 command: ["sh", "-c", "ping $HOST"]
 instances: 2
-mode: SERVICE_MODE_RUNNING
+mode: running
 env:
  - HOST=google.com

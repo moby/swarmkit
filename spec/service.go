@@ -55,11 +55,12 @@ func (s *ServiceConfig) Validate() error {
 	if s.Image == "" {
 		return fmt.Errorf("image is mandatory in %s", s.Name)
 	}
-	if s.Mode != "" {
-		if _, exists := api.ServiceSpec_Mode_value[s.Mode]; !exists {
-			return fmt.Errorf("mode %s is not valid", s.Mode)
-		}
+	switch s.Mode {
+	case "", "running", "fill", "batch":
+	default:
+		return fmt.Errorf("unrecognized mode %s", s.Mode)
 	}
+
 	switch s.Restart {
 	case "", "no", "on-failure":
 	case "always":
@@ -127,11 +128,11 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 	}
 
 	switch s.Mode {
-	case "", api.ServiceModeRunning.String():
+	case "", "running":
 		spec.Mode = api.ServiceModeRunning
-	case api.ServiceModeBatch.String():
+	case "batch":
 		spec.Mode = api.ServiceModeBatch
-	case api.ServiceModeFill.String():
+	case "fill":
 		spec.Mode = api.ServiceModeFill
 	}
 
@@ -152,7 +153,6 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	*s = ServiceConfig{
 		Name:      serviceSpec.Annotations.Name,
 		Instances: serviceSpec.Instances,
-		Mode:      serviceSpec.Mode.String(),
 		ContainerConfig: ContainerConfig{
 			Image:   serviceSpec.Template.GetContainer().Image.Reference,
 			Env:     serviceSpec.Template.GetContainer().Env,
@@ -169,6 +169,16 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 		s.Mounts = make(Mounts, len(apiMounts))
 		s.Mounts.FromProto(apiMounts)
 	}
+
+	switch serviceSpec.Mode {
+	case api.ServiceModeRunning:
+		s.Mode = "running"
+	case api.ServiceModeFill:
+		s.Mode = "fill"
+	case api.ServiceModeBatch:
+		s.Mode = "batch"
+	}
+
 	if serviceSpec.Restart != nil {
 		switch serviceSpec.Restart.Condition {
 		case api.RestartNever:
