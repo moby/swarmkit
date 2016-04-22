@@ -357,3 +357,14 @@ func (b QueryFinder) isBy() {
 func ByQuery(query string) By {
 	return QueryFinder(query)
 }
+
+// ServiceModeFinder is the type used to find by service mode.
+type ServiceModeFinder api.ServiceSpec_Mode
+
+func (b ServiceModeFinder) isBy() {
+}
+
+// ByServiceMode creates an object to pass to Find to select by service mode.
+func ByServiceMode(mode api.ServiceSpec_Mode) By {
+	return ServiceModeFinder(mode)
+}

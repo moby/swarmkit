@@ -39,21 +39,18 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 	watcher, cancel := queue.Watch()
 	defer cancel()
 
-	// Balance existing services
-	var existingServices []*api.Service
+	// Balance existing running services
+	var runningServices []*api.Service
 	err := o.store.View(func(readTx state.ReadTx) error {
 		var err error
-		existingServices, err = readTx.Services().Find(state.All)
+		runningServices, err = readTx.Services().Find(state.ByServiceMode(api.ServiceModeRunning))
 		return err
 	})
 	if err != nil {
 		return err
 	}
 
-	for _, j := range existingServices {
-		if !isRelatedService(j) {
-			continue
-		}
+	for _, j := range runningServices {
 		o.reconcile(ctx, j)
 	}
 
