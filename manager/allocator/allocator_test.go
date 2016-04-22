@@ -38,6 +38,27 @@ func TestAllocator(t *testing.T) {
 	}))
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
+		s1 := &api.Service{
+			ID: "testServiceID1",
+			Spec: &api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "service1",
+				},
+				Endpoint: &api.Endpoint{
+					Ports: []*api.Endpoint_PortConfiguration{
+						{
+							Name: "http",
+							Port: 80,
+						},
+					},
+				},
+			},
+		}
+		assert.NoError(t, tx.Services().Create(s1))
+		return nil
+	}))
+
+	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		t1 := &api.Task{
 			ID: "testTaskID1",
 			Status: &api.TaskStatus{
@@ -65,6 +86,8 @@ func TestAllocator(t *testing.T) {
 	defer cancel()
 	taskWatch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{}, state.EventDeleteTask{})
 	defer cancel()
+	serviceWatch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateService{}, state.EventDeleteService{})
+	defer cancel()
 
 	// Start allocator
 	assert.NoError(t, a.Start(context.Background()))
@@ -83,6 +106,11 @@ func TestAllocator(t *testing.T) {
 	ip := net.ParseIP(n1.IPAM.Configurations[0].Gateway)
 	assert.NotEqual(t, ip, nil)
 
+	s1, err := watchService(t, serviceWatch)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(s1.Endpoint.Ports))
+	assert.NotEqual(t, 0, s1.Endpoint.Ports[0].NodePort)
+
 	t1, err := watchTask(t, taskWatch)
 	assert.NoError(t, err)
 	assert.Equal(t, len(t1.Networks[0].Addresses), 1)
@@ -91,7 +119,7 @@ func TestAllocator(t *testing.T) {
 	assert.Equal(t, subnet.Contains(ip), true)
 	assert.Equal(t, t1.Status.State, api.TaskStateAllocated)
 
-	// Add new networks and tasks after allocator is started.
+	// Add new networks/tasks/services after allocator is started.
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		n2 := &api.Network{
 			ID: "testID2",
@@ -119,11 +147,38 @@ func TestAllocator(t *testing.T) {
 	assert.NotEqual(t, ip, nil)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
+		s2 := &api.Service{
+			ID: "testServiceID2",
+			Spec: &api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "service2",
+				},
+				Endpoint: &api.Endpoint{
+					Ports: []*api.Endpoint_PortConfiguration{
+						{
+							Name: "http",
+							Port: 80,
+						},
+					},
+				},
+			},
+		}
+		assert.NoError(t, tx.Services().Create(s2))
+		return nil
+	}))
+
+	s2, err := watchService(t, serviceWatch)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(s2.Endpoint.Ports))
+	assert.NotEqual(t, 0, s2.Endpoint.Ports[0].NodePort)
+
+	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		t2 := &api.Task{
 			ID: "testTaskID2",
 			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
+			ServiceID: "testServiceID2",
 			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.Container{
@@ -149,6 +204,8 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, subnet.Contains(ip), true)
 	assert.Equal(t, t2.Status.State, api.TaskStateAllocated)
+	assert.NotEqual(t, nil, t2.Endpoint)
+	assert.Equal(t, s2.Endpoint, t2.Endpoint)
 
 	// Now try adding a task which depends on a network before adding the network.
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
@@ -222,10 +279,37 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
+		t5 := &api.Task{
+			ID: "testTaskID5",
+			Status: &api.TaskStatus{
+				State: api.TaskStateNew,
+			},
+			ServiceID: "testServiceID2",
+			Spec: &api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.Container{},
+				},
+			},
+		}
+		assert.NoError(t, tx.Tasks().Create(t5))
+		return nil
+	}))
+	t5, err := watchTask(t, taskWatch)
+	assert.NoError(t, err)
+	assert.Equal(t, t5.Status.State, api.TaskStateAllocated)
+
+	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Networks().Delete("testID3"))
 		return nil
 	}))
 	_, err = watchNetwork(t, netWatch)
+	assert.NoError(t, err)
+
+	assert.NoError(t, store.Update(func(tx state.Tx) error {
+		assert.NoError(t, tx.Services().Delete("testServiceID2"))
+		return nil
+	}))
+	_, err = watchService(t, serviceWatch)
 	assert.NoError(t, err)
 
 	// Try to create a task with no network attachments and test
@@ -283,6 +367,25 @@ func watchNetwork(t *testing.T, watch chan events.Event) (*api.Network, error) {
 			}
 
 			return nil, fmt.Errorf("got event %T when expecting EventUpdateNetwork/EventDeleteNetwork", event)
+		case <-time.After(250 * time.Millisecond):
+			return nil, fmt.Errorf("timed out")
+
+		}
+	}
+}
+
+func watchService(t *testing.T, watch chan events.Event) (*api.Service, error) {
+	for {
+		select {
+		case event := <-watch:
+			if s, ok := event.(state.EventUpdateService); ok {
+				return s.Service, nil
+			}
+			if s, ok := event.(state.EventDeleteService); ok {
+				return s.Service, nil
+			}
+
+			return nil, fmt.Errorf("got event %T when expecting EventUpdateService/EventDeleteService", event)
 		case <-time.After(250 * time.Millisecond):
 			return nil, fmt.Errorf("timed out")
 

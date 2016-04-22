@@ -192,8 +192,11 @@ func (na *NetworkAllocator) IsServiceAllocated(s *api.Service) bool {
 		return false
 	}
 
-	_, ok := na.services[s.ID]
-	return ok
+	if _, ok := na.services[s.ID]; !ok {
+		return false
+	}
+
+	return na.portAllocator.isPortsAllocated(s)
 }
 
 // AllocateTask allocates all the endpoint resources for all the

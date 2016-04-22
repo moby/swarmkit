@@ -63,6 +63,31 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 		}
 	}
 
+	// Allocate services in the store so far before we process watched events.
+	var services []*api.Service
+	err = a.store.View(func(tx state.ReadTx) error {
+		var err error
+		services, err = tx.Services().Find(state.All)
+		if err != nil {
+			return fmt.Errorf("error listing all services in store while trying to allocate during init: %v", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, s := range services {
+		if na.IsServiceAllocated(s) {
+			continue
+		}
+
+		if err := a.allocateService(ctx, nc, s); err != nil {
+			log.G(ctx).Errorf("failed allocating service %s during init: %v", s.ID, err)
+		}
+	}
+
 	// Allocate tasks in the store so far before we started watching.
 	var tasks []*api.Task
 	if err := a.store.View(func(tx state.ReadTx) error {
@@ -131,6 +156,59 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		if err := nc.nwkAllocator.Deallocate(n); err != nil {
 			log.G(ctx).Errorf("Failed during network free for network %s: %v", n.ID, err)
 		}
+	case state.EventCreateService:
+		s := v.Service
+
+		// No endpoint configuration. No network allocation needed.
+		if s.Spec.Endpoint == nil {
+			break
+		}
+
+		if nc.nwkAllocator.IsServiceAllocated(s) {
+			break
+		}
+
+		if err := a.allocateService(ctx, nc, s); err != nil {
+			log.G(ctx).Errorf("Failed allocation for service %s: %v", s.ID, err)
+			break
+		}
+
+		// We successfully allocated a service. Time to revisit unallocated tasks.
+		a.procUnallocatedTasks(ctx, nc)
+	case state.EventUpdateService:
+		s := v.Service
+
+		// No endpoint configuration and no endpoint state. Nothing to do.
+		if s.Spec.Endpoint == nil && s.Endpoint == nil {
+			break
+		}
+
+		if nc.nwkAllocator.IsServiceAllocated(s) {
+			break
+		}
+
+		if err := a.allocateService(ctx, nc, s); err != nil {
+			log.G(ctx).Errorf("Failed allocation during update of service %s: %v", s.ID, err)
+			break
+		}
+
+		// We successfully allocated a service. Time to revisit unallocated tasks.
+		a.procUnallocatedTasks(ctx, nc)
+	case state.EventDeleteService:
+		s := v.Service
+
+		// No endpoint configuration. No network allocation needed.
+		if s.Spec.Endpoint == nil {
+			break
+		}
+
+		if !nc.nwkAllocator.IsServiceAllocated(s) {
+			break
+		}
+
+		if err := nc.nwkAllocator.ServiceDeallocate(s); err != nil {
+			log.G(ctx).Errorf("Failed deallocation during delete of service %s: %v", s.ID, err)
+		}
 	case state.EventCreateTask, state.EventUpdateTask, state.EventDeleteTask, state.EventCommit:
 		a.doTaskAlloc(ctx, nc, ev)
 	}
@@ -160,7 +238,26 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 		return
 	}
 
-	if len(t.Spec.GetContainer().Networks) == 0 {
+	var s *api.Service
+	if t.ServiceID != "" {
+		if err := a.store.View(func(tx state.ReadTx) error {
+			s = tx.Services().Get(t.ServiceID)
+			if s == nil {
+				return fmt.Errorf("could not find service %s", t.ServiceID)
+			}
+			return nil
+		}); err != nil {
+			log.G(ctx).Errorf("Failed to get service %s for task %s: %v", t.ServiceID, t.ID, err)
+			return
+		}
+	}
+
+	// Task has no network attached and it is created for a
+	// service which has no endpoint configuration or the service
+	// is already allocated. Try to immediately move it to
+	// ALLOCATED state.
+	if len(t.Spec.GetContainer().Networks) == 0 &&
+		(s == nil || s.Spec.Endpoint == nil || nc.nwkAllocator.IsServiceAllocated(s)) {
 		// If we are already in allocated state, there is
 		// absolutely nothing else to do.
 		if t.Status.State >= api.TaskStateAllocated {
@@ -175,6 +272,13 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 			storeT := tx.Tasks().Get(t.ID)
 			if storeT == nil {
 				return fmt.Errorf("task %s not found while trying to update state", t.ID)
+			}
+
+			// Make sure to save the endpoint in task
+			// since we know by now that the service is
+			// allocated.
+			if s != nil {
+				storeT.Endpoint = s.Endpoint.Copy()
 			}
 
 			if a.taskAllocateVote(networkVoter, t.ID) {
@@ -193,7 +297,8 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 		return
 	}
 
-	if !nc.nwkAllocator.IsTaskAllocated(t) {
+	if !nc.nwkAllocator.IsTaskAllocated(t) ||
+		(s != nil && !nc.nwkAllocator.IsServiceAllocated(s)) {
 		if isDelete {
 			delete(nc.unallocatedTasks, t.ID)
 			return
@@ -211,6 +316,27 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 			log.G(ctx).Errorf("Failed freeing network resources for task %s: %v", t.ID, err)
 		}
 	}
+}
+
+func (a *Allocator) allocateService(ctx context.Context, nc *networkContext, s *api.Service) error {
+	if err := nc.nwkAllocator.ServiceAllocate(s); err != nil {
+		return err
+	}
+
+	if err := a.store.Update(func(tx state.Tx) error {
+		if err := tx.Services().Update(s); err != nil {
+			return fmt.Errorf("failed updating state in store transaction for service %s: %v", s.ID, err)
+		}
+		return nil
+	}); err != nil {
+		if err := nc.nwkAllocator.ServiceDeallocate(s); err != nil {
+			log.G(ctx).WithError(err).Errorf("failed rolling back allocation of service %s: %v", s.ID, err)
+		}
+
+		return err
+	}
+
+	return nil
 }
 
 func (a *Allocator) allocateNetwork(ctx context.Context, nc *networkContext, n *api.Network) error {
@@ -240,6 +366,19 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sta
 	// cases skip allocation and go straight ahead to updating the
 	// store.
 	if !nc.nwkAllocator.IsTaskAllocated(t) {
+		if t.ServiceID != "" {
+			s := tx.Services().Get(t.ServiceID)
+			if s == nil {
+				return fmt.Errorf("could not find service %s", t.ServiceID)
+			}
+
+			if !nc.nwkAllocator.IsServiceAllocated(s) {
+				return fmt.Errorf("service %s to which this task %s belongs has pending allocations", s.ID, t.ID)
+			}
+
+			t.Endpoint = s.Endpoint.Copy()
+		}
+
 		for _, na := range t.Spec.GetContainer().Networks {
 			n := tx.Networks().Get(na.GetNetworkID())
 			if n == nil {
