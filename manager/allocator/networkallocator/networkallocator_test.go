@@ -76,28 +76,81 @@ func TestNetworkDoubleAllocate(t *testing.T) {
 }
 
 func TestAllocateEmptyConfig(t *testing.T) {
-	na := newNetworkAllocator(t)
-	n := &api.Network{
-		ID: "testID",
+	na1 := newNetworkAllocator(t)
+	na2 := newNetworkAllocator(t)
+	n1 := &api.Network{
+		ID: "testID1",
 		Spec: &api.NetworkSpec{
 			Annotations: api.Annotations{
-				Name: "test",
+				Name: "test1",
 			},
 		},
 	}
 
-	err := na.Allocate(n)
-	assert.NoError(t, err)
-	assert.NotEqual(t, n.IPAM.Configurations, nil)
-	assert.Equal(t, len(n.IPAM.Configurations), 1)
-	assert.Equal(t, n.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n.IPAM.Configurations[0].Reserved), 0)
+	n2 := &api.Network{
+		ID: "testID2",
+		Spec: &api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "test2",
+			},
+		},
+	}
 
-	_, _, err = net.ParseCIDR(n.IPAM.Configurations[0].Subnet)
+	err := na1.Allocate(n1)
+	assert.NoError(t, err)
+	assert.NotEqual(t, n1.IPAM.Configurations, nil)
+	assert.Equal(t, len(n1.IPAM.Configurations), 1)
+	assert.Equal(t, n1.IPAM.Configurations[0].Range, "")
+	assert.Equal(t, len(n1.IPAM.Configurations[0].Reserved), 0)
+
+	_, subnet11, err := net.ParseCIDR(n1.IPAM.Configurations[0].Subnet)
 	assert.NoError(t, err)
 
-	ip := net.ParseIP(n.IPAM.Configurations[0].Gateway)
-	assert.NotEqual(t, ip, nil)
+	gwip11 := net.ParseIP(n1.IPAM.Configurations[0].Gateway)
+	assert.NotEqual(t, gwip11, nil)
+
+	err = na1.Allocate(n2)
+	assert.NoError(t, err)
+	assert.NotEqual(t, n2.IPAM.Configurations, nil)
+	assert.Equal(t, len(n2.IPAM.Configurations), 1)
+	assert.Equal(t, n2.IPAM.Configurations[0].Range, "")
+	assert.Equal(t, len(n2.IPAM.Configurations[0].Reserved), 0)
+
+	_, subnet21, err := net.ParseCIDR(n2.IPAM.Configurations[0].Subnet)
+	assert.NoError(t, err)
+
+	gwip21 := net.ParseIP(n2.IPAM.Configurations[0].Gateway)
+	assert.NotEqual(t, gwip21, nil)
+
+	// Allocate n1 ans n2 with another allocator instance but in
+	// intentionally reverse order.
+	err = na2.Allocate(n2)
+	assert.NoError(t, err)
+	assert.NotEqual(t, n2.IPAM.Configurations, nil)
+	assert.Equal(t, len(n2.IPAM.Configurations), 1)
+	assert.Equal(t, n2.IPAM.Configurations[0].Range, "")
+	assert.Equal(t, len(n2.IPAM.Configurations[0].Reserved), 0)
+
+	_, subnet22, err := net.ParseCIDR(n2.IPAM.Configurations[0].Subnet)
+	assert.NoError(t, err)
+	assert.Equal(t, subnet21, subnet22)
+
+	gwip22 := net.ParseIP(n2.IPAM.Configurations[0].Gateway)
+	assert.Equal(t, gwip21, gwip22)
+
+	err = na2.Allocate(n1)
+	assert.NoError(t, err)
+	assert.NotEqual(t, n1.IPAM.Configurations, nil)
+	assert.Equal(t, len(n1.IPAM.Configurations), 1)
+	assert.Equal(t, n1.IPAM.Configurations[0].Range, "")
+	assert.Equal(t, len(n1.IPAM.Configurations[0].Reserved), 0)
+
+	_, subnet12, err := net.ParseCIDR(n1.IPAM.Configurations[0].Subnet)
+	assert.NoError(t, err)
+	assert.Equal(t, subnet11, subnet12)
+
+	gwip12 := net.ParseIP(n1.IPAM.Configurations[0].Gateway)
+	assert.Equal(t, gwip11, gwip12)
 }
 
 func TestAllocateWithOneSubnet(t *testing.T) {
