@@ -273,20 +273,38 @@ func (na *NetworkAllocator) releaseEndpoints(networks []*api.Task_NetworkAttachm
 // allocate the endpoint IP addresses for a single network attachment of the task.
 func (na *NetworkAllocator) allocateNetworkIPs(nAttach *api.Task_NetworkAttachment, ipam ipamapi.Ipam, localNet *network) error {
 	var ip *net.IPNet
-	for _, poolID := range localNet.pools {
-		var err error
 
-		ip, _, err = ipam.RequestAddress(poolID, nil, nil)
-		if err != nil && err != ipamapi.ErrNoAvailableIPs {
-			return fmt.Errorf("could not allocate IP from IPAM: %v", err)
+	addresses := nAttach.Addresses
+	if addresses == nil {
+		addresses = []string{""}
+	}
+
+	for i, rawAddr := range addresses {
+		var addr net.IP
+		if rawAddr != "" {
+			var err error
+			addr, _, err = net.ParseCIDR(rawAddr)
+			if err != nil {
+				return err
+			}
 		}
 
-		// If we got an address then we are done.
-		if err == nil {
-			ipStr := ip.String()
-			localNet.endpoints[ipStr] = poolID
-			nAttach.Addresses = append(nAttach.Addresses, ipStr)
-			return nil
+		for _, poolID := range localNet.pools {
+			var err error
+
+			ip, _, err = ipam.RequestAddress(poolID, addr, nil)
+			if err != nil && err != ipamapi.ErrNoAvailableIPs && err != ipamapi.ErrIPOutOfRange {
+				return fmt.Errorf("could not allocate IP from IPAM: %v", err)
+			}
+
+			// If we got an address then we are done.
+			if err == nil {
+				ipStr := ip.String()
+				localNet.endpoints[ipStr] = poolID
+				addresses[i] = ipStr
+				nAttach.Addresses = addresses
+				return nil
+			}
 		}
 	}
 
