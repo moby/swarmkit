@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strconv"
 	"sync"
 
 	"github.com/docker/swarm-v2/api"
@@ -15,10 +16,11 @@ import (
 )
 
 const (
-	indexID        = "id"
-	indexName      = "name"
-	indexServiceID = "serviceid"
-	indexNodeID    = "nodeid"
+	indexID          = "id"
+	indexName        = "name"
+	indexServiceID   = "serviceid"
+	indexServiceMode = "servicemode"
+	indexNodeID      = "nodeid"
 
 	prefix = "_prefix"
 
@@ -620,6 +622,12 @@ func find(memDBTx *memdb.Txn, table string, by state.By, cb func(state.Object)) 
 		fromResultIterator(it)
 	case state.ServiceFinder:
 		it, err := memDBTx.Get(table, indexServiceID, string(v))
+		if err != nil {
+			return err
+		}
+		fromResultIterator(it)
+	case state.ServiceModeFinder:
+		it, err := memDBTx.Get(table, indexServiceMode, strconv.Itoa(int(v)))
 		if err != nil {
 			return err
 		}

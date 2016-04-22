@@ -53,6 +53,7 @@ var (
 		{
 			ID: "id2",
 			Spec: &api.ServiceSpec{
+				Mode: api.ServiceModeFill,
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
@@ -325,6 +326,15 @@ func TestStoreService(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 3)
 
+		foundServices, err = readTx.Services().Find(state.ByServiceMode(api.ServiceModeRunning))
+		assert.NoError(t, err)
+		assert.Len(t, foundServices, 2)
+		foundServices, err = readTx.Services().Find(state.ByServiceMode(api.ServiceModeFill))
+		assert.NoError(t, err)
+		assert.Len(t, foundServices, 1)
+		foundServices, err = readTx.Services().Find(state.ByServiceMode(api.ServiceModeBatch))
+		assert.NoError(t, err)
+		assert.Len(t, foundServices, 0)
 		return nil
 	})
 	assert.NoError(t, err)

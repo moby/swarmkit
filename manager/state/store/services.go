@@ -1,6 +1,8 @@
 package store
 
 import (
+	"strconv"
+
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/pb"
@@ -19,6 +21,11 @@ func init() {
 					Name:    indexID,
 					Unique:  true,
 					Indexer: serviceIndexerByID{},
+				},
+				indexServiceMode: {
+					Name:    indexServiceMode,
+					Unique:  false,
+					Indexer: serviceIndexerByMode{},
 				},
 				indexName: {
 					Name:    indexName,
@@ -179,7 +186,7 @@ func (services services) Get(id string) *api.Service {
 // Find selects a set of services and returns them.
 func (services services) Find(by state.By) ([]*api.Service, error) {
 	switch by.(type) {
-	case state.AllFinder, state.NameFinder, state.QueryFinder:
+	case state.AllFinder, state.NameFinder, state.QueryFinder, state.ServiceModeFinder:
 	default:
 		return nil, state.ErrInvalidFindBy
 	}
@@ -209,6 +216,27 @@ func (si serviceIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
 }
 
 func (si serviceIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
+}
+
+type serviceIndexerByMode struct{}
+
+func (si serviceIndexerByMode) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (si serviceIndexerByMode) FromObject(obj interface{}) (bool, []byte, error) {
+	s, ok := obj.(serviceEntry)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	// Add the null character as a terminator
+	val := strconv.Itoa(int(s.Service.Spec.Mode)) + "\x00"
+	return true, []byte(val), nil
+}
+
+func (si serviceIndexerByMode) PrefixFromArgs(args ...interface{}) ([]byte, error) {
 	return prefixFromArgs(args...)
 }
 

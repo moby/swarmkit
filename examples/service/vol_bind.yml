@@ -1,6 +1,7 @@
 name: web
 image: nginx
 instances: 1
+mode: running
 mounts:
   - target: /data
     source: /home/docker

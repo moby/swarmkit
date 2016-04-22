@@ -41,6 +41,7 @@ type ServiceConfig struct {
 
 	Name      string `yaml:"name,omitempty"`
 	Instances int64  `yaml:"instances,omitempty"`
+	Mode      string `yaml:"mode,omitempty"`
 
 	Restart      string `yaml:"restart,omitempty"`
 	RestartDelay int64  `yaml:"restartdelay,omitempty"`
@@ -54,6 +55,12 @@ func (s *ServiceConfig) Validate() error {
 	if s.Image == "" {
 		return fmt.Errorf("image is mandatory in %s", s.Name)
 	}
+	switch s.Mode {
+	case "", "running", "fill", "batch":
+	default:
+		return fmt.Errorf("unrecognized mode %s", s.Mode)
+	}
+
 	switch s.Restart {
 	case "", "no", "on-failure":
 	case "always":
@@ -120,6 +127,15 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 		},
 	}
 
+	switch s.Mode {
+	case "", "running":
+		spec.Mode = api.ServiceModeRunning
+	case "batch":
+		spec.Mode = api.ServiceModeBatch
+	case "fill":
+		spec.Mode = api.ServiceModeFill
+	}
+
 	switch s.Restart {
 	case "no":
 		spec.Restart.Condition = api.RestartNever
@@ -153,6 +169,16 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 		s.Mounts = make(Mounts, len(apiMounts))
 		s.Mounts.FromProto(apiMounts)
 	}
+
+	switch serviceSpec.Mode {
+	case api.ServiceModeRunning:
+		s.Mode = "running"
+	case api.ServiceModeFill:
+		s.Mode = "fill"
+	case api.ServiceModeBatch:
+		s.Mode = "batch"
+	}
+
 	if serviceSpec.Restart != nil {
 		switch serviceSpec.Restart.Condition {
 		case api.RestartNever:
