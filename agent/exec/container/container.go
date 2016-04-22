@@ -75,7 +75,7 @@ func (c *containerConfig) ephemeralDirs() map[string]struct{} {
 	r := make(map[string]struct{})
 	var x struct{}
 	for _, val := range mounts {
-		if val.Type == api.Mount_EPHEMERAL {
+		if val.Type == api.MountTypeEphemeral {
 			r[val.Target] = x
 		}
 	}
@@ -110,14 +110,14 @@ func (c *containerConfig) bindMounts() []string {
 
 	numBindMounts := 0
 	for _, val := range mounts {
-		if val.Type == api.Mount_BIND {
+		if val.Type == api.MountTypeBind {
 			numBindMounts++
 		}
 	}
 
 	r := make([]string, numBindMounts)
 	for i, val := range mounts {
-		if val.Type == api.Mount_BIND {
+		if val.Type == api.MountTypeBind {
 			r[i] = fmt.Sprintf("%s:%s:%s", val.Source, val.Target, val.Mask)
 		}
 	}

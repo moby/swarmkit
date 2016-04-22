@@ -60,14 +60,14 @@ func printServiceSummary(service *api.Service) {
 	if len(ctr.Mounts) > 0 {
 		fmt.Fprintln(w, "  Mounts:")
 		for _, v := range ctr.Mounts {
-			if v.Type == api.Mount_BIND {
+			if v.Type == api.MountTypeBind {
 				fmt.Fprintf(w, "    - target = %s\n", v.Target)
 				fmt.Fprintf(w, "      source = %s\n", v.Source)
-				fmt.Fprintf(w, "      mask = %s\n", v.Mask)
-				fmt.Fprintf(w, "      type = BindHostDir\n")
-			} else if v.Type == api.Mount_EPHEMERAL {
+				fmt.Fprintf(w, "      mask = %s\n", v.Mask.String())
+				fmt.Fprintf(w, "      type = bind\n")
+			} else if v.Type == api.MountTypeEphemeral {
 				fmt.Fprintf(w, "    - target = %s\n", v.Target)
-				fmt.Fprintf(w, "      type = EphemeralDir\n")
+				fmt.Fprintf(w, "      type = ephemeral\n")
 			}
 		}
 	}

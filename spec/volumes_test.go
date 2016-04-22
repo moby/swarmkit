@@ -30,13 +30,13 @@ func TestVolumesValidate(t *testing.T) {
 	}
 	good := []*Mount{
 		nil,
-		{Mask: "rw", Type: "BindHostDir", Target: "/foo", Source: "/foo"},
-		{Mask: "rW", Type: "BindHostDir", Target: "/foo", Source: "/foo"},
-		{Mask: "Ro", Type: "BindHostDir", Target: "/foo", Source: "/foo"},
-		{Mask: "", Type: "BindHostDir", Target: "/foo", Source: "/foo"},
+		{Mask: "rw", Type: "bind", Target: "/foo", Source: "/foo"},
+		{Mask: "rW", Type: "bind", Target: "/foo", Source: "/foo"},
+		{Mask: "Ro", Type: "bind", Target: "/foo", Source: "/foo"},
+		{Mask: "", Type: "bind", Target: "/foo", Source: "/foo"},
 
 		// Ephemeral
-		{Type: "EphemeralDir", Target: "/foo"},
+		{Type: "ephemeral", Target: "/foo"},
 	}
 
 	for _, b := range bad {
@@ -60,12 +60,12 @@ func TestVolumesToProto(t *testing.T) {
 			to:   nil,
 		},
 		{
-			from: &Mount{Mask: "rw", Type: "BindHostDir", Target: "/foo", Source: "/foo"},
-			to:   &api.Mount{Mask: "rw", Type: api.Mount_BIND, Target: "/foo", Source: "/foo"},
+			from: &Mount{Mask: "rw", Type: "bind", Target: "/foo", Source: "/foo"},
+			to:   &api.Mount{Mask: api.MountMaskReadWrite, Type: api.MountTypeBind, Target: "/foo", Source: "/foo"},
 		},
 		{
-			from: &Mount{Type: "EphemeralDir", Target: "/foo"},
-			to:   &api.Mount{Type: api.Mount_EPHEMERAL, Target: "/foo"},
+			from: &Mount{Type: "ephemeral", Target: "/foo"},
+			to:   &api.Mount{Type: api.MountTypeEphemeral, Target: "/foo"},
 		},
 	}
 
@@ -82,12 +82,12 @@ func TestVolumesFromProto(t *testing.T) {
 
 	set := []*conv{
 		{
-			from: &api.Mount{Mask: "rw", Type: api.Mount_BIND, Target: "/foo", Source: "/foo"},
-			to:   &Mount{Mask: "rw", Type: "BindHostDir", Target: "/foo", Source: "/foo"},
+			from: &api.Mount{Mask: api.MountMaskReadWrite, Type: api.MountTypeBind, Target: "/foo", Source: "/foo"},
+			to:   &Mount{Mask: "rw", Type: "bind", Target: "/foo", Source: "/foo"},
 		},
 		{
-			from: &api.Mount{Type: api.Mount_EPHEMERAL, Target: "/foo"},
-			to:   &Mount{Type: "EphemeralDir", Target: "/foo"},
+			from: &api.Mount{Type: api.MountTypeEphemeral, Target: "/foo"},
+			to:   &Mount{Type: "ephemeral", Target: "/foo", Mask: "ro"},
 		},
 	}
 

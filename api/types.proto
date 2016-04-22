@@ -81,16 +81,25 @@ message Mount {
 	string source = 2;
 
 	// Mask
-	string mask = 3;
+	enum Mask {
+		option (gogoproto.goproto_enum_prefix) = false;
+		option (gogoproto.enum_customname) = "Mask";
 
-	enum MountType {
-	   BIND = 0; // Bind mount host dir
-	   EPHEMERAL = 1; // Scratch dir
-	   PLUGIN = 2; // Remote storage volumes
+		READ_ONLY = 0 [(gogoproto.enumvalue_customname) = "MountMaskReadOnly"];
+		READ_WRITE = 1 [(gogoproto.enumvalue_customname) = "MountMaskReadWrite"];
+	}
+	Mask mask = 3;
+
+	enum Type {
+		option (gogoproto.goproto_enum_prefix) = false;
+		option (gogoproto.enum_customname) = "Type";
+
+		BIND = 0 [(gogoproto.enumvalue_customname) = "MountTypeBind"]; // Bind mount host dir
+		EPHEMERAL = 1 [(gogoproto.enumvalue_customname) = "MountTypeEphemeral"]; // Scratch dir
+		PLUGIN = 2 [(gogoproto.enumvalue_customname) = "MountTypePlugin"];  // Remote storage volumes
 	}
 
-	// mount type (BindHostDir, scratch, remote)
-	MountType type = 4;
+	Type type = 4;
 }
 
 // Container specifies runtime parameters for a container.
