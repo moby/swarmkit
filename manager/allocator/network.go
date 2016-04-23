@@ -79,6 +79,10 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 	}
 
 	for _, s := range services {
+		if s.Spec.Endpoint == nil {
+			continue
+		}
+
 		if na.IsServiceAllocated(s) {
 			continue
 		}
@@ -298,7 +302,7 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 	}
 
 	if !nc.nwkAllocator.IsTaskAllocated(t) ||
-		(s != nil && !nc.nwkAllocator.IsServiceAllocated(s)) {
+		(s != nil && s.Spec.Endpoint != nil && !nc.nwkAllocator.IsServiceAllocated(s)) {
 		if isDelete {
 			delete(nc.unallocatedTasks, t.ID)
 			return
@@ -372,7 +376,7 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sta
 				return fmt.Errorf("could not find service %s", t.ServiceID)
 			}
 
-			if s.Endpoint != nil && !nc.nwkAllocator.IsServiceAllocated(s) {
+			if s.Spec.Endpoint != nil && !nc.nwkAllocator.IsServiceAllocated(s) {
 				return fmt.Errorf("service %s to which this task %s belongs has pending allocations", s.ID, t.ID)
 			}
 
