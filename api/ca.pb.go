@@ -564,10 +564,6 @@ func (p *raftProxyCAServer) GetRootCACertificate(ctx context.Context, r *GetRoot
 	if p.cluster.IsLeader() {
 		return p.local.GetRootCACertificate(ctx, r)
 	}
-	if err := p.initConn(); err != nil {
-		return nil, err
-	}
-
 	var addr string
 	s, ok := transport.StreamFromContext(ctx)
 	if ok {
