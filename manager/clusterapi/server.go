@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/raft"
 )
 
 var (
@@ -14,11 +15,13 @@ var (
 // Server is the Cluster API gRPC server.
 type Server struct {
 	store state.Store
+	raft  *raft.Node
 }
 
 // NewServer creates a Cluster API server.
-func NewServer(store state.WatchableStore) *Server {
+func NewServer(store state.WatchableStore, raft *raft.Node) *Server {
 	return &Server{
 		store: store,
+		raft:  raft,
 	}
 }

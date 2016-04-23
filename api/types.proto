@@ -46,6 +46,32 @@ message NodeDescription {
 	Resources resources = 3;
 }
 
+message MemberDescription {
+	// Name of the node
+	string name = 1;
+
+	// Cluster the member belongs to
+	string cluster = 2;
+}
+
+message MemberStatus {
+	enum State {
+		// Unknown indicates that the manager state cannot be resolved
+		UNKNOWN = 0;
+
+		// Unreachable indicates that the node cannot be contacted by other
+		// raft cluster members.
+		UNREACHABLE = 1;
+
+		// Reachable indicates that the node is healthy and reachable
+		// by other members.
+		REACHABLE = 2;
+	}
+
+	State state = 1;
+	string message = 2;
+}
+
 message NodeStatus {
 	// TODO(aluzzardi) These should be using `gogoproto.enumvalue_customname`.
 	enum State {

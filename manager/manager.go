@@ -245,7 +245,7 @@ func (m *Manager) Run(ctx context.Context) error {
 		return err
 	}
 
-	localAPI := clusterapi.NewServer(m.raftNode.MemoryStore())
+	localAPI := clusterapi.NewServer(m.raftNode.MemoryStore(), m.raftNode)
 	proxyAPI := api.NewRaftProxyClusterServer(localAPI, raftConn, m.raftNode)
 
 	api.RegisterManagerServer(m.server, m)

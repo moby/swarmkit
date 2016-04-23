@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -79,8 +80,9 @@ type Node struct {
 	Ctx            context.Context
 	tlsCredentials credentials.TransportAuthenticator
 
-	Address string
-	Error   error
+	Address  string
+	StateDir string
+	Error    error
 
 	raftStore   *raft.MemoryStorage
 	memoryStore *store.MemoryStore
@@ -89,7 +91,6 @@ type Node struct {
 	wait        *wait
 	wal         *wal.WAL
 	snapshotter *snap.Snapshotter
-	stateDir    string
 	wasLeader   bool
 	joinAddr    string
 
@@ -184,7 +185,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 		logEntriesForSlowFollowers: 500,
 		stopCh:       make(chan struct{}),
 		doneCh:       make(chan struct{}),
-		stateDir:     opts.StateDir,
+		StateDir:     opts.StateDir,
 		joinAddr:     opts.JoinAddr,
 		leadershipCh: leadershipCh,
 		sendTimeout:  2 * time.Second,
@@ -281,11 +282,11 @@ func (n *Node) MemoryStore() state.WatchableStore {
 }
 
 func (n *Node) walDir() string {
-	return filepath.Join(n.stateDir, "wal")
+	return filepath.Join(n.StateDir, "wal")
 }
 
 func (n *Node) snapDir() string {
-	return filepath.Join(n.stateDir, "snap")
+	return filepath.Join(n.StateDir, "snap")
 }
 
 func (n *Node) loadAndStart(ctx context.Context) error {
@@ -722,6 +723,33 @@ func (n *Node) ProposeValue(ctx context.Context, storeAction []*api.StoreAction,
 func (n *Node) GetVersion() *api.Version {
 	status := n.Node.Status()
 	return &api.Version{Index: status.Commit}
+}
+
+// GetMemberlist returns the current list of raft members in the cluster.
+func (n *Node) GetMemberlist() map[uint64]*api.Member {
+	memberlist := make(map[uint64]*api.Member)
+	members := n.cluster.listMembers()
+
+	for id, member := range members {
+		status := api.MemberStatus_REACHABLE
+
+		if member.ID != n.Config.ID {
+			connState, err := member.Client.Conn.State()
+			if err != nil || connState != grpc.Ready {
+				status = api.MemberStatus_UNREACHABLE
+			}
+		}
+
+		sid := strconv.FormatUint(uint64(member.ID), 16)
+
+		memberlist[id] = &api.Member{
+			ID:     sid,
+			Addr:   member.Addr,
+			Status: api.MemberStatus{State: status},
+		}
+	}
+
+	return memberlist
 }
 
 // Saves a log entry to our Store

@@ -45,6 +45,10 @@ message NodeSpec {
 	Availability availability = 2;
 }
 
+message MemberSpec {
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
+}
+
 // ServiceSpec defines the properties of a service.
 //
 // A service instructs the cluster in orchestrating repeated instances of a
@@ -66,7 +70,7 @@ message ServiceSpec {
 
 	enum Strategy {
 		option (gogoproto.goproto_enum_prefix) = false;
-		
+
 		// Spread instances evenly among candidate nodes.
 		SERVICE_STRATEGY_SPREAD = 0 [(gogoproto.enumvalue_customname) = "ServiceStrategySpread"];
 
