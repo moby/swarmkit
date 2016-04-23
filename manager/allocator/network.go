@@ -372,7 +372,7 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sta
 				return fmt.Errorf("could not find service %s", t.ServiceID)
 			}
 
-			if !nc.nwkAllocator.IsServiceAllocated(s) {
+			if s.Endpoint != nil && !nc.nwkAllocator.IsServiceAllocated(s) {
 				return fmt.Errorf("service %s to which this task %s belongs has pending allocations", s.ID, t.ID)
 			}
 

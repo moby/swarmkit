@@ -335,7 +335,8 @@ func TestFree(t *testing.T) {
 }
 
 func TestAllocateTaskFree(t *testing.T) {
-	na := newNetworkAllocator(t)
+	na1 := newNetworkAllocator(t)
+	na2 := newNetworkAllocator(t)
 	n1 := &api.Network{
 		ID: "testID1",
 		Spec: &api.NetworkSpec{
@@ -374,7 +375,7 @@ func TestAllocateTaskFree(t *testing.T) {
 		},
 	}
 
-	task := &api.Task{
+	task1 := &api.Task{
 		Networks: []*api.Task_NetworkAttachment{
 			{
 				Network: n1,
@@ -385,56 +386,123 @@ func TestAllocateTaskFree(t *testing.T) {
 		},
 	}
 
-	err := na.Allocate(n1)
+	task2 := &api.Task{
+		Networks: []*api.Task_NetworkAttachment{
+			{
+				Network: n1,
+			},
+			{
+				Network: n2,
+			},
+		},
+	}
+
+	err := na1.Allocate(n1)
 	assert.NoError(t, err)
 
-	err = na.Allocate(n2)
+	err = na1.Allocate(n2)
 	assert.NoError(t, err)
 
-	err = na.AllocateTask(task)
+	err = na1.AllocateTask(task1)
 	assert.NoError(t, err)
-	assert.Equal(t, len(task.Networks[0].Addresses), 1)
-	assert.Equal(t, len(task.Networks[1].Addresses), 1)
+	assert.Equal(t, len(task1.Networks[0].Addresses), 1)
+	assert.Equal(t, len(task1.Networks[1].Addresses), 1)
 
 	_, subnet1, _ := net.ParseCIDR("192.168.1.0/24")
 	_, subnet2, _ := net.ParseCIDR("192.168.2.0/24")
 
-	ip1, _, err := net.ParseCIDR(task.Networks[0].Addresses[0])
+	// variable coding: network/task/allocator
+	ip111, _, err := net.ParseCIDR(task1.Networks[0].Addresses[0])
 	assert.NoError(t, err)
 
-	ip2, _, err := net.ParseCIDR(task.Networks[1].Addresses[0])
+	ip211, _, err := net.ParseCIDR(task1.Networks[1].Addresses[0])
 	assert.NoError(t, err)
 
-	assert.Equal(t, subnet1.Contains(ip1), true)
-	assert.Equal(t, subnet2.Contains(ip2), true)
+	assert.Equal(t, subnet1.Contains(ip111), true)
+	assert.Equal(t, subnet2.Contains(ip211), true)
 
-	err = na.DeallocateTask(task)
+	err = na1.AllocateTask(task2)
 	assert.NoError(t, err)
-	assert.Equal(t, len(task.Networks[0].Addresses), 0)
-	assert.Equal(t, len(task.Networks[1].Addresses), 0)
+	assert.Equal(t, len(task2.Networks[0].Addresses), 1)
+	assert.Equal(t, len(task2.Networks[1].Addresses), 1)
+
+	ip121, _, err := net.ParseCIDR(task2.Networks[0].Addresses[0])
+	assert.NoError(t, err)
+
+	ip221, _, err := net.ParseCIDR(task2.Networks[1].Addresses[0])
+	assert.NoError(t, err)
+
+	assert.Equal(t, subnet1.Contains(ip121), true)
+	assert.Equal(t, subnet2.Contains(ip221), true)
+
+	// Now allocate the same the same tasks in a second allocator
+	// but intentionally in reverse order.
+	err = na2.Allocate(n1)
+	assert.NoError(t, err)
+
+	err = na2.Allocate(n2)
+	assert.NoError(t, err)
+
+	err = na2.AllocateTask(task2)
+	assert.NoError(t, err)
+	assert.Equal(t, len(task2.Networks[0].Addresses), 1)
+	assert.Equal(t, len(task2.Networks[1].Addresses), 1)
+
+	ip122, _, err := net.ParseCIDR(task2.Networks[0].Addresses[0])
+	assert.NoError(t, err)
+
+	ip222, _, err := net.ParseCIDR(task2.Networks[1].Addresses[0])
+	assert.NoError(t, err)
+
+	assert.Equal(t, subnet1.Contains(ip122), true)
+	assert.Equal(t, subnet2.Contains(ip222), true)
+	assert.Equal(t, ip121, ip122)
+	assert.Equal(t, ip221, ip222)
+
+	err = na2.AllocateTask(task1)
+	assert.NoError(t, err)
+	assert.Equal(t, len(task1.Networks[0].Addresses), 1)
+	assert.Equal(t, len(task1.Networks[1].Addresses), 1)
+
+	ip112, _, err := net.ParseCIDR(task1.Networks[0].Addresses[0])
+	assert.NoError(t, err)
+
+	ip212, _, err := net.ParseCIDR(task1.Networks[1].Addresses[0])
+	assert.NoError(t, err)
+
+	assert.Equal(t, subnet1.Contains(ip112), true)
+	assert.Equal(t, subnet2.Contains(ip212), true)
+	assert.Equal(t, ip111, ip112)
+	assert.Equal(t, ip211, ip212)
+
+	// Deallocate task
+	err = na1.DeallocateTask(task1)
+	assert.NoError(t, err)
+	assert.Equal(t, len(task1.Networks[0].Addresses), 0)
+	assert.Equal(t, len(task1.Networks[1].Addresses), 0)
 
 	// Try allocation after free
-	err = na.AllocateTask(task)
+	err = na1.AllocateTask(task1)
 	assert.NoError(t, err)
-	assert.Equal(t, len(task.Networks[0].Addresses), 1)
-	assert.Equal(t, len(task.Networks[1].Addresses), 1)
+	assert.Equal(t, len(task1.Networks[0].Addresses), 1)
+	assert.Equal(t, len(task1.Networks[1].Addresses), 1)
 
-	ip1, _, err = net.ParseCIDR(task.Networks[0].Addresses[0])
-	assert.NoError(t, err)
-
-	ip2, _, err = net.ParseCIDR(task.Networks[1].Addresses[0])
+	ip111, _, err = net.ParseCIDR(task1.Networks[0].Addresses[0])
 	assert.NoError(t, err)
 
-	assert.Equal(t, subnet1.Contains(ip1), true)
-	assert.Equal(t, subnet2.Contains(ip2), true)
-
-	err = na.DeallocateTask(task)
+	ip211, _, err = net.ParseCIDR(task1.Networks[1].Addresses[0])
 	assert.NoError(t, err)
-	assert.Equal(t, len(task.Networks[0].Addresses), 0)
-	assert.Equal(t, len(task.Networks[1].Addresses), 0)
+
+	assert.Equal(t, subnet1.Contains(ip111), true)
+	assert.Equal(t, subnet2.Contains(ip211), true)
+
+	err = na1.DeallocateTask(task1)
+	assert.NoError(t, err)
+	assert.Equal(t, len(task1.Networks[0].Addresses), 0)
+	assert.Equal(t, len(task1.Networks[1].Addresses), 0)
 
 	// Try to free endpoints on an already freed task
-	err = na.DeallocateTask(task)
+	err = na1.DeallocateTask(task1)
 	assert.NoError(t, err)
 }
 
