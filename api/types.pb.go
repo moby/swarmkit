@@ -433,8 +433,6 @@ func (m *NodeDescription) Reset()                    { *m = NodeDescription{} }
 func (*NodeDescription) ProtoMessage()               {}
 func (*NodeDescription) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{4} }
 
-// TODO(abronan): make use of this when dealing with membership
-// and Multi-Region configurations
 type MemberDescription struct {
 	// Name of the node
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`

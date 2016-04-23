@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -423,8 +424,11 @@ func TestRaftSnapshot(t *testing.T) {
 	nodesFromMembers := func(memberList map[uint64]*api.Member) map[uint64]*api.RaftNode {
 		raftNodes := make(map[uint64]*api.RaftNode)
 		for k, v := range memberList {
+			id, err := strconv.ParseUint(v.ID, 16, 64)
+			assert.NoError(t, err)
+			assert.NotZero(t, id)
 			raftNodes[k] = &api.RaftNode{
-				ID:   v.ID,
+				ID:   id,
 				Addr: v.Addr,
 			}
 		}
@@ -517,8 +521,11 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	nodesFromMembers := func(memberList map[uint64]*api.Member) map[uint64]*api.RaftNode {
 		raftNodes := make(map[uint64]*api.RaftNode)
 		for k, v := range memberList {
+			id, err := strconv.ParseUint(v.ID, 16, 64)
+			assert.NoError(t, err)
+			assert.NotZero(t, id)
 			raftNodes[k] = &api.RaftNode{
-				ID:   v.ID,
+				ID:   id,
 				Addr: v.Addr,
 			}
 		}

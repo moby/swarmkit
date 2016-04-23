@@ -36,8 +36,7 @@ message Node {
 // this should be changed back to 'Manager'
 message Member {
 	// ID specifies the identity of the manager.
-	// TODO(abronan): This should be a string which maps to the raftID to be consistent with other objects.
-	uint64 id = 1 [(gogoproto.customname) = "ID"];
+	string id = 1 [(gogoproto.customname) = "ID"];
 
 	string addr = 2;
 

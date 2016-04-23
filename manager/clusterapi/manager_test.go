@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 	"testing"
 
 	"golang.org/x/net/context"
@@ -28,10 +29,13 @@ func init() {
 	defer os.RemoveAll(tmpDir)
 }
 
-func getMap(members []*api.Member) map[uint64]*api.Member {
+func getMap(t *testing.T, members []*api.Member) map[uint64]*api.Member {
 	m := make(map[uint64]*api.Member)
 	for _, member := range members {
-		m[member.ID] = member
+		id, err := strconv.ParseUint(member.ID, 16, 64)
+		assert.NoError(t, err)
+		assert.NotZero(t, id)
+		m[id] = member
 	}
 	return m
 }
@@ -49,7 +53,7 @@ func TestListManagers(t *testing.T) {
 	r, err := ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
-	members := getMap(r.Managers)
+	members := getMap(t, r.Managers)
 	assert.Equal(t, 3, len(ts.Server.raft.GetMemberlist()))
 	assert.Equal(t, 3, len(r.Managers))
 	for i := 1; i <= 3; i++ {
@@ -65,7 +69,7 @@ func TestListManagers(t *testing.T) {
 	r, err = ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
-	members = getMap(r.Managers)
+	members = getMap(t, r.Managers)
 	assert.Equal(t, 5, len(ts.Server.raft.GetMemberlist()))
 	assert.Equal(t, 5, len(r.Managers))
 	for i := 1; i <= 5; i++ {
@@ -85,7 +89,7 @@ func TestListManagers(t *testing.T) {
 			return err
 		}
 
-		members = getMap(r.Managers)
+		members = getMap(t, r.Managers)
 
 		if len(r.Managers) != 5 {
 			return fmt.Errorf("expected 5 nodes, got %d", len(r.Managers))
@@ -111,7 +115,7 @@ func TestListManagers(t *testing.T) {
 	r, err = ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
-	members = getMap(r.Managers)
+	members = getMap(t, r.Managers)
 	assert.Equal(t, 5, len(ts.Server.raft.GetMemberlist()))
 	assert.Equal(t, 5, len(r.Managers))
 	for i := 1; i <= 5; i++ {

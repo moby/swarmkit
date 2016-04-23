@@ -31,13 +31,6 @@ message JoinRequest {
 	RaftNode node = 1;
 }
 
-// TODO(abronan): currently we return the list of existing raft
-// members in the join response, the new node must then build
-// the raft memberlist by itself.
-// Ideally, the node taking care of adding a new node to raft
-// should send back this list to the new node, possibly in a
-// separate call (gossiping raft member presence before granting
-// the raft membership).
 message JoinResponse {
 	repeated RaftNode members = 1;
 }
@@ -59,12 +52,6 @@ message ProcessRaftMessageResponse {}
 message RaftNode {
 	uint64 id = 1 [(gogoproto.customname) = "ID"];
 	string addr = 2;
-}
-
-// TODO(abronan): remove when the integration with store is completed
-message Pair {
-	string key = 1;
-	bytes value = 2;
 }
 
 message NodeCountRequest {

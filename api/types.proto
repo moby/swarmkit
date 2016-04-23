@@ -46,8 +46,6 @@ message NodeDescription {
 	Resources resources = 3;
 }
 
-// TODO(abronan): make use of this when dealing with membership
-// and Multi-Region configurations
 message MemberDescription {
 	// Name of the node
 	string name = 1;

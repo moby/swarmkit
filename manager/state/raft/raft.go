@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -739,8 +740,10 @@ func (n *Node) GetMemberlist() map[uint64]*api.Member {
 			}
 		}
 
+		sid := strconv.FormatUint(uint64(member.ID), 16)
+
 		memberlist[id] = &api.Member{
-			ID:     member.ID,
+			ID:     sid,
 			Addr:   member.Addr,
 			Status: api.MemberStatus{State: status},
 		}
