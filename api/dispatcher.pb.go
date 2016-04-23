@@ -1104,16 +1104,16 @@ func encodeVarintDispatcher(data []byte, offset int, v uint64) int {
 }
 
 type raftProxyDispatcherServer struct {
-	local   DispatcherServer
-	conn    *grpc.ClientConn
-	cluster raftpicker.RaftCluster
+	local        DispatcherServer
+	connSelector *raftpicker.ConnSelector
+	cluster      raftpicker.RaftCluster
 }
 
-func NewRaftProxyDispatcherServer(local DispatcherServer, conn *grpc.ClientConn, cluster raftpicker.RaftCluster) DispatcherServer {
+func NewRaftProxyDispatcherServer(local DispatcherServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster) DispatcherServer {
 	return &raftProxyDispatcherServer{
-		local:   local,
-		cluster: cluster,
-		conn:    conn,
+		local:        local,
+		cluster:      cluster,
+		connSelector: connSelector,
 	}
 }
 
@@ -1137,13 +1137,21 @@ func (p *raftProxyDispatcherServer) Register(ctx context.Context, r *RegisterReq
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewDispatcherClient(p.conn).Register(ctx, r)
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return NewDispatcherClient(conn).Register(ctx, r)
 }
 
 func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher_SessionServer) error {
 
 	if p.cluster.IsLeader() {
 		return p.local.Session(r, stream)
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return err
 	}
 	var addr string
 	s, ok := transport.StreamFromContext(stream.Context())
@@ -1160,7 +1168,7 @@ func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher
 	md["redirect"] = append(md["redirect"], addr)
 	ctx := metadata.NewContext(stream.Context(), md)
 
-	clientStream, err := NewDispatcherClient(p.conn).Session(ctx, r)
+	clientStream, err := NewDispatcherClient(conn).Session(ctx, r)
 
 	if err != nil {
 		return err
@@ -1201,7 +1209,11 @@ func (p *raftProxyDispatcherServer) Heartbeat(ctx context.Context, r *HeartbeatR
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewDispatcherClient(p.conn).Heartbeat(ctx, r)
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return NewDispatcherClient(conn).Heartbeat(ctx, r)
 }
 
 func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *UpdateTaskStatusRequest) (*UpdateTaskStatusResponse, error) {
@@ -1224,13 +1236,21 @@ func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *Upd
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewDispatcherClient(p.conn).UpdateTaskStatus(ctx, r)
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return NewDispatcherClient(conn).UpdateTaskStatus(ctx, r)
 }
 
 func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_TasksServer) error {
 
 	if p.cluster.IsLeader() {
 		return p.local.Tasks(r, stream)
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return err
 	}
 	var addr string
 	s, ok := transport.StreamFromContext(stream.Context())
@@ -1247,7 +1267,7 @@ func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_Tas
 	md["redirect"] = append(md["redirect"], addr)
 	ctx := metadata.NewContext(stream.Context(), md)
 
-	clientStream, err := NewDispatcherClient(p.conn).Tasks(ctx, r)
+	clientStream, err := NewDispatcherClient(conn).Tasks(ctx, r)
 
 	if err != nil {
 		return err

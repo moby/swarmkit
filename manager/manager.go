@@ -210,26 +210,12 @@ func (m *Manager) Run(ctx context.Context) error {
 		}
 	}()
 
-	api.RegisterCAServer(m.server, m.caserver)
-	api.RegisterRaftServer(m.server, m.raftNode)
-
-	errServe := make(chan error, 1)
-	go func() {
-		errServe <- m.server.Serve(lis)
-	}()
-
 	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(
 		logrus.Fields{
 			"proto": lis.Addr().Network(),
 			"addr":  lis.Addr().String()}))
 	log.G(ctx).Info("listening")
 	go m.raftNode.Run(ctx)
-
-	leaderCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	if err := raft.WaitForLeader(leaderCtx, m.raftNode); err != nil {
-		return err
-	}
-	cancel()
 
 	backoffConfig := *grpc.DefaultBackoffConfig
 	backoffConfig.MaxDelay = 2 * time.Second
@@ -239,19 +225,28 @@ func (m *Manager) Run(ctx context.Context) error {
 		grpc.WithTransportCredentials(m.config.SecurityConfig.ClientTLSCreds),
 	}
 
-	raftConn, err := raftpicker.Dial(m.raftNode, proxyOpts...)
-	if err != nil {
-		m.server.Stop()
-		return err
-	}
+	cs := raftpicker.NewConnSelector(m.raftNode, proxyOpts...)
 
 	localAPI := clusterapi.NewServer(m.raftNode.MemoryStore(), m.raftNode)
-	proxyAPI := api.NewRaftProxyClusterServer(localAPI, raftConn, m.raftNode)
+	proxyAPI := api.NewRaftProxyClusterServer(localAPI, cs, m.raftNode)
 
+	api.RegisterCAServer(m.server, m.caserver)
+	api.RegisterRaftServer(m.server, m.raftNode)
 	api.RegisterManagerServer(m.server, m)
 	api.RegisterClusterServer(m.server, proxyAPI)
 	api.RegisterDispatcherServer(m.server, m.dispatcher)
 
+	errServe := make(chan error, 1)
+	go func() {
+		errServe <- m.server.Serve(lis)
+	}()
+
+	leaderCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	if err := raft.WaitForLeader(leaderCtx, m.raftNode); err != nil {
+		m.server.Stop()
+		return err
+	}
+	cancel()
 	return <-errServe
 }
 

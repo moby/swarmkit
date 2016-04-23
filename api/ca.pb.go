@@ -523,16 +523,16 @@ func encodeVarintCa(data []byte, offset int, v uint64) int {
 }
 
 type raftProxyCAServer struct {
-	local   CAServer
-	conn    *grpc.ClientConn
-	cluster raftpicker.RaftCluster
+	local        CAServer
+	connSelector *raftpicker.ConnSelector
+	cluster      raftpicker.RaftCluster
 }
 
-func NewRaftProxyCAServer(local CAServer, conn *grpc.ClientConn, cluster raftpicker.RaftCluster) CAServer {
+func NewRaftProxyCAServer(local CAServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster) CAServer {
 	return &raftProxyCAServer{
-		local:   local,
-		cluster: cluster,
-		conn:    conn,
+		local:        local,
+		cluster:      cluster,
+		connSelector: connSelector,
 	}
 }
 
@@ -556,7 +556,11 @@ func (p *raftProxyCAServer) IssueCertificate(ctx context.Context, r *IssueCertif
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewCAClient(p.conn).IssueCertificate(ctx, r)
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return NewCAClient(conn).IssueCertificate(ctx, r)
 }
 
 func (p *raftProxyCAServer) GetRootCACertificate(ctx context.Context, r *GetRootCACertificateRequest) (*GetRootCACertificateResponse, error) {
@@ -579,7 +583,11 @@ func (p *raftProxyCAServer) GetRootCACertificate(ctx context.Context, r *GetRoot
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewCAClient(p.conn).GetRootCACertificate(ctx, r)
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return NewCAClient(conn).GetRootCACertificate(ctx, r)
 }
 
 func (m *IssuanceStatus) Size() (n int) {
