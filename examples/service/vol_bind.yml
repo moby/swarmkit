@@ -11,3 +11,5 @@ mounts:
     source: /home/docker
     mask: rw
     type: BindHostDir
+  - target: /dataScratch
+    type: EphemeralDir

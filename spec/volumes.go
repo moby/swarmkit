@@ -15,7 +15,7 @@ type Mount struct {
 	// Source directory to be mounted
 	Source string `yaml:"source,omitempty"`
 
-	// Supported types are: BindHostDir, Ephemeral, ??
+	// Supported types are: BindHostDir, EphemeralDir, ??
 	Type string `yaml:"type,omitempty"`
 
 	// Supported masks are: RO, RW (case insensitive)
@@ -32,28 +32,30 @@ func (vm *Mount) Validate() error {
 		return nil
 	}
 
-	// if Mask is not specified, set it to RO
-	if vm.Mask == "" {
-		vm.Mask = "ro"
-	} else {
-		vm.Mask = strings.ToLower(vm.Mask)
-		if strings.Compare(vm.Mask, "ro") != 0 && strings.Compare(vm.Mask, "rw") != 0 {
-			return fmt.Errorf("valid volume mount masks are: ro, rw")
-		}
-	}
-
-	if strings.Compare(vm.Type, "BindHostDir") != 0 {
-		return fmt.Errorf("valid volume mount types are: BindHostDir")
-	}
-
 	if vm.Target == "" {
 		return fmt.Errorf("target is required")
 	}
 
-	if strings.Compare(vm.Type, "BindHostDir") == 0 {
+	switch strings.ToLower(vm.Type) {
+	case "bind":
 		if vm.Source == "" {
-			return fmt.Errorf("For volume mount type 'BindHostDir', source is required")
+			return fmt.Errorf("for volume mount type 'bind', source is required")
 		}
+
+		switch strings.ToLower(vm.Mask) {
+		case "", "ro", "rw":
+		default:
+			return fmt.Errorf("valid volume mount masks are: ro, rw")
+		}
+	case "ephemeral":
+		if vm.Source != "" {
+			return fmt.Errorf("for volume mount type 'ephemeral', source cannot be specified")
+		}
+		if vm.Mask != "" {
+			return fmt.Errorf("for volume mount type 'ephemeral', mask cannot be specified")
+		}
+	default:
+		return fmt.Errorf("invalid volume mount type: %s", vm.Type)
 	}
 
 	return nil
@@ -99,8 +101,18 @@ func (vm *Mount) ToProto() *api.Mount {
 	apiVM := &api.Mount{}
 	apiVM.Target = vm.Target
 	apiVM.Source = vm.Source
-	apiVM.Mask = vm.Mask
-	apiVM.Type = vm.Type
+	switch strings.ToLower(vm.Mask) {
+	case "ro":
+		apiVM.Mask = api.MountMaskReadOnly
+	case "rw":
+		apiVM.Mask = api.MountMaskReadWrite
+	}
+	switch strings.ToLower(vm.Type) {
+	case "bind":
+		apiVM.Type = api.MountTypeBind
+	case "ephemeral":
+		apiVM.Type = api.MountTypeEphemeral
+	}
 
 	return apiVM
 }
@@ -126,6 +138,16 @@ func (vm *Mount) FromProto(apivm *api.Mount) {
 
 	vm.Target = apivm.Target
 	vm.Source = apivm.Source
-	vm.Mask = apivm.Mask
-	vm.Type = apivm.Type
+	switch apivm.Mask {
+	case api.MountMaskReadOnly:
+		vm.Mask = "ro"
+	case api.MountMaskReadWrite:
+		vm.Mask = "rw"
+	}
+	switch apivm.Type {
+	case api.MountTypeBind:
+		vm.Type = "bind"
+	case api.MountTypeEphemeral:
+		vm.Type = "ephemeral"
+	}
 }

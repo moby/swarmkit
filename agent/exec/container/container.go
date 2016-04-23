@@ -70,6 +70,18 @@ func (c *containerConfig) image() string {
 	return c.runtime.Image.Reference
 }
 
+func (c *containerConfig) ephemeralDirs() map[string]struct{} {
+	mounts := c.runtime.Mounts
+	r := make(map[string]struct{})
+	var x struct{}
+	for _, val := range mounts {
+		if val.Type == api.MountTypeEphemeral {
+			r[val.Target] = x
+		}
+	}
+	return r
+}
+
 func (c *containerConfig) config() *enginecontainer.Config {
 	return &enginecontainer.Config{
 		Cmd:          c.runtime.Command, // TODO(stevvooe): Fall back to entrypoint+args
@@ -77,6 +89,7 @@ func (c *containerConfig) config() *enginecontainer.Config {
 		WorkingDir:   c.runtime.Dir,
 		Image:        c.image(),
 		ExposedPorts: c.exposedPorts(),
+		Volumes:      c.ephemeralDirs(),
 	}
 }
 
@@ -94,9 +107,19 @@ func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
 
 func (c *containerConfig) bindMounts() []string {
 	mounts := c.runtime.Mounts
-	r := make([]string, len(mounts))
+
+	numBindMounts := 0
+	for _, val := range mounts {
+		if val.Type == api.MountTypeBind {
+			numBindMounts++
+		}
+	}
+
+	r := make([]string, numBindMounts)
 	for i, val := range mounts {
-		r[i] = fmt.Sprintf("%s:%s:%s", val.Source, val.Target, val.Mask)
+		if val.Type == api.MountTypeBind {
+			r[i] = fmt.Sprintf("%s:%s:%s", val.Source, val.Target, val.Mask)
+		}
 	}
 
 	return r
