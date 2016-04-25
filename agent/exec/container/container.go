@@ -110,15 +110,24 @@ func (c *containerConfig) bindMounts() []string {
 
 	numBindMounts := 0
 	for _, val := range mounts {
-		if val.Type == api.MountTypeBind {
+		if val.Type == api.MountTypeBind || val.Type == api.MountTypeVolume {
 			numBindMounts++
 		}
 	}
 
 	r := make([]string, numBindMounts)
 	for i, val := range mounts {
+		mask := ""
+		switch val.Mask {
+		case api.MountMaskReadOnly:
+			mask = "ro"
+		case api.MountMaskReadWrite:
+			mask = "rw"
+		}
 		if val.Type == api.MountTypeBind {
-			r[i] = fmt.Sprintf("%s:%s:%s", val.Source, val.Target, val.Mask)
+			r[i] = fmt.Sprintf("%s:%s:%s", val.Source, val.Target, mask)
+		} else if val.Type == api.MountTypeVolume {
+			r[i] = fmt.Sprintf("%s:%s:%s", val.VolumeName, val.Target, mask)
 		}
 	}
 

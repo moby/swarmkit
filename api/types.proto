@@ -124,10 +124,13 @@ message Mount {
 
 		BIND = 0 [(gogoproto.enumvalue_customname) = "MountTypeBind"]; // Bind mount host dir
 		EPHEMERAL = 1 [(gogoproto.enumvalue_customname) = "MountTypeEphemeral"]; // Scratch dir
-		PLUGIN = 2 [(gogoproto.enumvalue_customname) = "MountTypePlugin"];  // Remote storage volumes
+		VOLUME = 2 [(gogoproto.enumvalue_customname) = "MountTypeVolume"];  // Remote storage volumes
 	}
 
 	Type type = 4;
+
+	// Source path to mount
+	string volume_name = 5;
 }
 
 // Container specifies runtime parameters for a container.

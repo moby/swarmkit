@@ -15,7 +15,10 @@ type Mount struct {
 	// Source directory to be mounted
 	Source string `yaml:"source,omitempty"`
 
-	// Supported types are: BindHostDir, EphemeralDir, ??
+	// Name of plugin volume
+	VolumeName string `yaml:"name,omitempty"`
+
+	// Supported types are: bind, ephemeral, volume
 	Type string `yaml:"type,omitempty"`
 
 	// Supported masks are: RO, RW (case insensitive)
@@ -53,6 +56,13 @@ func (vm *Mount) Validate() error {
 		}
 		if vm.Mask != "" {
 			return fmt.Errorf("for volume mount type 'ephemeral', mask cannot be specified")
+		}
+	case "volume":
+		if vm.Source != "" {
+			return fmt.Errorf("for volume mount type 'volume', source cannot be specified")
+		}
+		if vm.VolumeName == "" {
+			return fmt.Errorf("for volume mount type 'volume', name is required")
 		}
 	default:
 		return fmt.Errorf("invalid volume mount type: %s", vm.Type)
@@ -101,6 +111,7 @@ func (vm *Mount) ToProto() *api.Mount {
 	apiVM := &api.Mount{}
 	apiVM.Target = vm.Target
 	apiVM.Source = vm.Source
+	apiVM.VolumeName = vm.VolumeName
 	switch strings.ToLower(vm.Mask) {
 	case "ro":
 		apiVM.Mask = api.MountMaskReadOnly
@@ -112,6 +123,8 @@ func (vm *Mount) ToProto() *api.Mount {
 		apiVM.Type = api.MountTypeBind
 	case "ephemeral":
 		apiVM.Type = api.MountTypeEphemeral
+	case "volume":
+		apiVM.Type = api.MountTypeVolume
 	}
 
 	return apiVM
@@ -138,6 +151,7 @@ func (vm *Mount) FromProto(apivm *api.Mount) {
 
 	vm.Target = apivm.Target
 	vm.Source = apivm.Source
+	vm.VolumeName = apivm.VolumeName
 	switch apivm.Mask {
 	case api.MountMaskReadOnly:
 		vm.Mask = "ro"
@@ -149,5 +163,7 @@ func (vm *Mount) FromProto(apivm *api.Mount) {
 		vm.Type = "bind"
 	case api.MountTypeEphemeral:
 		vm.Type = "ephemeral"
+	case api.MountTypeVolume:
+		vm.Type = "volume"
 	}
 }
