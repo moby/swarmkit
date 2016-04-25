@@ -78,27 +78,32 @@ message Task {
 	// should almost always be set.
 	string service_id = 3 [(gogoproto.customname) = "ServiceID"];
 
+	// Instance is the instance number for a task. For example, if a
+	// running service has instances = 2, there will be a task with
+	// instance = 1, and another with instance = 2.
+	uint64 instance = 4;
+
 	// NodeID indicates the node to which the task is assigned. If this field
 	// is empty or not set, the task is unassigned.
-	string node_id = 4 [(gogoproto.customname) = "NodeID"];
+	string node_id = 5 [(gogoproto.customname) = "NodeID"];
 
 	// Annotations inherits labels from the ServiceSpec.Annotations associated
 	// with this task. It may include other labels added by the manager. The
 	// name will be a human readable name, calculated based on the
 	// ServiceSpec.Annotations.Name field.
-	Annotations annotations = 5 [(gogoproto.nullable) = false];
+	Annotations annotations = 6 [(gogoproto.nullable) = false];
 
 	// Spec declares the runtime parameters for the task. This is copied out of
 	// the service's template field.
-	TaskSpec spec = 6;
+	TaskSpec spec = 7;
 
-	TaskStatus status = 7;
+	TaskStatus status = 8;
 
 	// DesiredState is the target state for the task. It is set to
 	// TaskStateRunning when a task is first created, and changed to
 	// TaskStateDead if the manager wants to terminate the task. This field
 	// is only written by the manager.
-	TaskState desired_state = 8;
+	TaskState desired_state = 9;
 
 	message NetworkAttachment {
 		// Network state as a whole becomes part of Task so
@@ -111,11 +116,11 @@ message Task {
 		repeated string addresses = 2;
 	}
 
-	repeated NetworkAttachment networks = 9;
+	repeated NetworkAttachment networks = 10;
 
 	// A copy of runtime state of service endpoint from Service
 	// object to be distributed to agents as part of the task.
-	Endpoint endpoint = 10;
+	Endpoint endpoint = 11;
 }
 
 message Volume {

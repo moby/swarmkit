@@ -139,9 +139,11 @@ func (o *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
 	}
 
 	runningTasks := make([]*api.Task, 0, len(tasks))
+	runningInstances := make(map[uint64]struct{}) // this could be a bitfield...
 	for _, t := range tasks {
 		if t.DesiredState == api.TaskStateRunning {
 			runningTasks = append(runningTasks, t)
+			runningInstances[t.Instance] = struct{}{}
 		}
 	}
 	numTasks := len(runningTasks)
@@ -156,7 +158,7 @@ func (o *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
 			log.G(ctx).Debugf("Service %s was scaled up from %d to %d instances", service.ID, numTasks, specifiedInstances)
 			// Update all current tasks then add missing tasks
 			o.updateTasks(ctx, batch, service, runningTasks)
-			o.addTasks(ctx, batch, service, specifiedInstances-numTasks)
+			o.addTasks(ctx, batch, service, runningInstances, specifiedInstances-numTasks)
 
 		case specifiedInstances < numTasks:
 			// Update up to N tasks then remove the extra
@@ -181,26 +183,42 @@ func (o *Orchestrator) updateTasks(ctx context.Context, batch state.Batch, servi
 		if reflect.DeepEqual(service.Spec.Template, t.Spec) {
 			continue
 		}
-		o.addTasks(ctx, batch, service, 1)
 		err := batch.Update(func(tx state.Tx) error {
+			if err := tx.Tasks().Create(newTask(service, t.Instance)); err != nil {
+				log.G(ctx).Errorf("Failed to create task: %v", err)
+				return err
+			}
+
 			// TODO(aaronl): optimistic update?
 			t = tx.Tasks().Get(t.ID)
 			if t != nil {
 				t.DesiredState = api.TaskStateDead
-				return tx.Tasks().Update(t)
+				if err := tx.Tasks().Update(t); err != nil {
+					log.G(ctx).Errorf("Failed to update task %s: %v", t.ID, err)
+					return err
+				}
 			}
 			return nil
 		})
 		if err != nil {
-			log.G(ctx).Errorf("Failed to remove %s: %v", t.ID, err)
+			log.G(ctx).Errorf("orchestrator batch failed: %v", err)
 		}
 	}
 }
 
-func (o *Orchestrator) addTasks(ctx context.Context, batch state.Batch, service *api.Service, count int) {
+func (o *Orchestrator) addTasks(ctx context.Context, batch state.Batch, service *api.Service, runningInstances map[uint64]struct{}, count int) {
+	instance := uint64(0)
 	for i := 0; i < count; i++ {
+		// Find an instance number that is missing a running task
+		for {
+			instance++
+			if _, ok := runningInstances[instance]; !ok {
+				break
+			}
+		}
+
 		err := batch.Update(func(tx state.Tx) error {
-			return tx.Tasks().Create(newTask(service))
+			return tx.Tasks().Create(newTask(service, instance))
 		})
 		if err != nil {
 			log.G(ctx).Errorf("Failed to create task: %v", err)
