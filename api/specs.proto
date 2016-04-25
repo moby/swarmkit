@@ -63,7 +63,7 @@ message ServiceSpec {
 
 	// Instances specifies the number of instances of the service service that
 	// should be running.
-	int64 instances = 3;
+	uint64 instances = 3;
 
 	// RestartPolicy specifies what to do when a task fails or finishes.
 	RestartPolicy restart = 4;
@@ -96,7 +96,7 @@ message ServiceSpec {
 		// Fill each node with instances number of tasks.
 		SERVICE_MODE_FILL = 2 [(gogoproto.enumvalue_customname) = "ServiceModeFill"];
 
-		// TODO(stevvooe): Consider specifying the node as a task completion
+		// TODO(stevvooe): Consider specifying the mode as a task completion
 		// reconcilation condition. This matches with model of the
 		// reconcilation loop in that we define under which conditions the
 		// service is satisfied.

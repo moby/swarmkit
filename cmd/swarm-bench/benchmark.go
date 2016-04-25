@@ -13,7 +13,7 @@ import (
 
 // Config holds the benchmarking configuration.
 type Config struct {
-	Count   int64
+	Count   uint64
 	Manager string
 	IP      string
 	Port    int

@@ -45,12 +45,13 @@ var (
 				spec = &service.Spec
 
 				if flags.Changed("instances") {
-					instances, err := flags.GetInt64("instances")
+					instances, err := flags.GetUint64("instances")
 					if err != nil {
 						return err
 					}
 					spec.Instances = instances
 				}
+
 				if len(args) > 1 {
 					spec.Template.GetContainer().Command = args[1:]
 				}
