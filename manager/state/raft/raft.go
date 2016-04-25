@@ -729,9 +729,11 @@ func (n *Node) GetVersion() *api.Version {
 func (n *Node) GetMemberlist() map[uint64]*api.Member {
 	memberlist := make(map[uint64]*api.Member)
 	members := n.cluster.listMembers()
+	leaderID := n.Leader()
 
 	for id, member := range members {
 		status := api.MemberStatus_REACHABLE
+		leader := false
 
 		if member.ID != n.Config.ID {
 			connState, err := member.Client.Conn.State()
@@ -740,12 +742,19 @@ func (n *Node) GetMemberlist() map[uint64]*api.Member {
 			}
 		}
 
+		if member.ID == leaderID {
+			leader = true
+		}
+
 		sid := strconv.FormatUint(uint64(member.ID), 16)
 
 		memberlist[id] = &api.Member{
-			ID:     sid,
-			Addr:   member.Addr,
-			Status: api.MemberStatus{State: status},
+			ID:   sid,
+			Addr: member.Addr,
+			Status: api.MemberStatus{
+				Leader: leader,
+				State:  status,
+			},
 		}
 	}
 

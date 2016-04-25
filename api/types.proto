@@ -55,6 +55,8 @@ message MemberDescription {
 }
 
 message MemberStatus {
+	bool leader = 1;
+
 	enum State {
 		// Unknown indicates that the manager state cannot be resolved
 		UNKNOWN = 0;
@@ -68,8 +70,8 @@ message MemberStatus {
 		REACHABLE = 2;
 	}
 
-	State state = 1;
-	string message = 2;
+	State state = 2;
+	string message = 3;
 }
 
 message NodeStatus {
