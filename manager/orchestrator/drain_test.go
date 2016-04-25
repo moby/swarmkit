@@ -1,10 +1,8 @@
-package drainer
+package orchestrator
 
 import (
 	"testing"
-	"time"
 
-	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
@@ -12,8 +10,22 @@ import (
 	"golang.org/x/net/context"
 )
 
-func TestDrainer(t *testing.T) {
+func TestDrain(t *testing.T) {
 	ctx := context.Background()
+	initialService := &api.Service{
+		ID: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+			Template:  &api.TaskSpec{},
+			Instances: 1,
+			Mode:      api.ServiceModeRunning,
+			Restart: &api.RestartPolicy{
+				Condition: api.RestartNever,
+			},
+		},
+	}
 	initialNodeSet := []*api.Node{
 		{
 			ID: "id1",
@@ -80,52 +92,64 @@ func TestDrainer(t *testing.T) {
 	initialTaskSet := []*api.Task{
 		// Task not assigned to any node
 		{
-			ID:   "id0",
-			Spec: &api.TaskSpec{},
+			ID:     "id0",
+			Spec:   &api.TaskSpec{},
+			Status: &api.TaskStatus{},
 			Annotations: api.Annotations{
 				Name: "name0",
 			},
+			ServiceID: "id1",
 		},
 		// Tasks assigned to the nodes defined above
 		{
-			ID:   "id1",
-			Spec: &api.TaskSpec{},
+			ID:     "id1",
+			Spec:   &api.TaskSpec{},
+			Status: &api.TaskStatus{},
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
-			NodeID: "id1",
+			ServiceID: "id1",
+			NodeID:    "id1",
 		},
 		{
-			ID:   "id2",
-			Spec: &api.TaskSpec{},
+			ID:     "id2",
+			Spec:   &api.TaskSpec{},
+			Status: &api.TaskStatus{},
 			Annotations: api.Annotations{
 				Name: "name2",
 			},
-			NodeID: "id2",
+			ServiceID: "id1",
+			NodeID:    "id2",
 		},
 		{
-			ID:   "id3",
-			Spec: &api.TaskSpec{},
+			ID:     "id3",
+			Spec:   &api.TaskSpec{},
+			Status: &api.TaskStatus{},
 			Annotations: api.Annotations{
 				Name: "name3",
 			},
-			NodeID: "id3",
+			ServiceID: "id1",
+			NodeID:    "id3",
 		},
 		{
-			ID:   "id4",
-			Spec: &api.TaskSpec{},
+			ID:     "id4",
+			Spec:   &api.TaskSpec{},
+			Status: &api.TaskStatus{},
 			Annotations: api.Annotations{
 				Name: "name4",
 			},
-			NodeID: "id4",
+			ServiceID: "id1",
+			NodeID:    "id4",
 		},
 		{
-			ID:   "id5",
-			Spec: &api.TaskSpec{},
+			ID:     "id5",
+			Spec:   &api.TaskSpec{},
+			Status: &api.TaskStatus{},
 			Annotations: api.Annotations{
 				Name: "name5",
 			},
-			NodeID: "id5",
+			ServiceID: "id1",
+			NodeID:    "id5",
 		},
 	}
 
@@ -133,6 +157,8 @@ func TestDrainer(t *testing.T) {
 	assert.NotNil(t, store)
 
 	err := store.Update(func(tx state.Tx) error {
+		// Prepopulate service
+		assert.NoError(t, tx.Services().Create(initialService))
 		// Prepoulate nodes
 		for _, n := range initialNodeSet {
 			assert.NoError(t, tx.Nodes().Create(n))
@@ -146,28 +172,26 @@ func TestDrainer(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	drainer := New(store)
+	orchestrator := New(store)
 
 	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, drainer.Run(ctx))
+		assert.NoError(t, orchestrator.Run(ctx))
 	}()
 
-	// id2, id3, and id5 should be deleted immediately
-	// NOTE: we can assume these will be emitted in lexical order because
-	// of the way indexing works in the store. If that ever changes, this
-	// part of the test might need to become more flexible.
+	// id2, id3, and id5 should be killed immediately
 	deletion1 := watchDeadTask(t, watch)
-	assert.Equal(t, deletion1.ID, "id2")
-	assert.Equal(t, deletion1.NodeID, "id2")
 	deletion2 := watchDeadTask(t, watch)
-	assert.Equal(t, deletion2.ID, "id3")
-	assert.Equal(t, deletion2.NodeID, "id3")
 	deletion3 := watchDeadTask(t, watch)
-	assert.Equal(t, deletion3.ID, "id5")
-	assert.Equal(t, deletion3.NodeID, "id5")
+
+	assert.Regexp(t, "id(2|3|5)", deletion1.ID)
+	assert.Regexp(t, "id(2|3|5)", deletion1.NodeID)
+	assert.Regexp(t, "id(2|3|5)", deletion2.ID)
+	assert.Regexp(t, "id(2|3|5)", deletion2.NodeID)
+	assert.Regexp(t, "id(2|3|5)", deletion3.ID)
+	assert.Regexp(t, "id(2|3|5)", deletion3.NodeID)
 
 	// Create a new task, assigned to node id2
 	err = store.Update(func(tx state.Tx) error {
@@ -207,18 +231,5 @@ func TestDrainer(t *testing.T) {
 	assert.Equal(t, deletion6.ID, "id1")
 	assert.Equal(t, deletion6.NodeID, "id1")
 
-	drainer.Stop()
-}
-
-func watchDeadTask(t *testing.T, watch chan events.Event) *api.Task {
-	for {
-		select {
-		case event := <-watch:
-			if task, ok := event.(state.EventUpdateTask); ok && task.Task.DesiredState == api.TaskStateDead {
-				return task.Task
-			}
-		case <-time.After(time.Second):
-			t.Fatalf("no task update")
-		}
-	}
+	orchestrator.Stop()
 }

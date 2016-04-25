@@ -217,13 +217,16 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.DesiredState = api.TaskStateDead
+	updatedTask1.Status = &api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
 	err = store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Tasks().Update(updatedTask1))
 		return nil
 	})
 	assert.NoError(t, err)
-	consumeTaskUpdate(t, watch)
+	expectCommit(t, watch)
+	expectTaskUpdate(t, watch)
+	expectCommit(t, watch)
+	expectTaskUpdate(t, watch)
 
 	observedTask3 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
@@ -237,7 +240,10 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
-	consumeTaskUpdate(t, watch)
+	expectCommit(t, watch)
+	expectTaskUpdate(t, watch)
+	expectCommit(t, watch)
+	expectTaskUpdate(t, watch)
 
 	observedTask4 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
@@ -294,13 +300,17 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.DesiredState = api.TaskStateDead
+	updatedTask1.Status.TerminalState = api.TaskStateFailed
+	updatedTask1.Status = &api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
 	err = store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Tasks().Update(updatedTask1))
 		return nil
 	})
 	assert.NoError(t, err)
-	consumeTaskUpdate(t, watch)
+	expectCommit(t, watch)
+	expectTaskUpdate(t, watch)
+	expectCommit(t, watch)
+	expectTaskUpdate(t, watch)
 
 	observedTask3 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
@@ -314,7 +324,11 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
-	consumeTaskUpdate(t, watch)
+	expectCommit(t, watch)
+	expectTaskUpdate(t, watch)
+	expectCommit(t, watch)
+	expectTaskUpdate(t, watch)
+	expectCommit(t, watch)
 
 	select {
 	case <-watch:
@@ -373,13 +387,18 @@ func TestOrchestratorRestartNever(t *testing.T) {
 
 	// Fail the first task. Confirm that it does not get restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.DesiredState = api.TaskStateDead
+	updatedTask1.Status.TerminalState = api.TaskStateFailed
+	updatedTask1.Status.State = api.TaskStateDead
 	err = store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Tasks().Update(updatedTask1))
 		return nil
 	})
 	assert.NoError(t, err)
-	consumeTaskUpdate(t, watch)
+	expectCommit(t, watch)
+	expectTaskUpdate(t, watch)
+	expectCommit(t, watch)
+	expectTaskUpdate(t, watch)
+	expectCommit(t, watch)
 
 	select {
 	case <-watch:
@@ -395,7 +414,10 @@ func TestOrchestratorRestartNever(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
-	consumeTaskUpdate(t, watch)
+	expectTaskUpdate(t, watch)
+	expectCommit(t, watch)
+	expectTaskUpdate(t, watch)
+	expectCommit(t, watch)
 
 	select {
 	case <-watch:
@@ -422,25 +444,31 @@ func watchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
 	}
 }
 
-func consumeTaskUpdate(t *testing.T, watch chan events.Event) {
-loop:
+func expectTaskUpdate(t *testing.T, watch chan events.Event) {
 	for {
 		select {
 		case event := <-watch:
-			if _, ok := event.(state.EventUpdateTask); ok {
-				break loop
+			if _, ok := event.(state.EventUpdateTask); !ok {
+				t.Fatalf("expected task update event, got %#v", event)
 			}
+			return
 		case <-time.After(time.Second):
-			t.Fatal("no task update")
+			t.Fatal("no task update event")
 		}
 	}
-	select {
-	case event := <-watch:
-		if _, ok := event.(state.EventCommit); !ok {
-			t.Fatal("expected commit event")
+}
+
+func expectCommit(t *testing.T, watch chan events.Event) {
+	for {
+		select {
+		case event := <-watch:
+			if _, ok := event.(state.EventCommit); !ok {
+				t.Fatalf("expected commit event, got %#v", event)
+			}
+			return
+		case <-time.After(time.Second):
+			t.Fatal("no commit event")
 		}
-	case <-time.After(time.Second):
-		t.Fatal("no commit event")
 	}
 
 }
