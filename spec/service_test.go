@@ -144,7 +144,7 @@ func TestServiceConfigsDiff(t *testing.T) {
 	assert.Contains(t, diff, "image: nginx")
 
 	against = makeService()
-	instances := int64(2)
+	instances := uint64(2)
 	against.Instances = &instances
 	assert.NoError(t, against.Validate())
 	diff, err = service.Diff(0, "old", "new", against)

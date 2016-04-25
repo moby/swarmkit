@@ -42,11 +42,13 @@ var (
 				if err != nil {
 					return err
 				}
+
 				image, err := flags.GetString("image")
 				if err != nil {
 					return err
 				}
-				instances, err := flags.GetInt64("instances")
+
+				instances, err := flags.GetUint64("instances")
 				if err != nil {
 					return err
 				}

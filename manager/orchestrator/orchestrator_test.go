@@ -300,7 +300,6 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status.TerminalState = api.TaskStateFailed
 	updatedTask1.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
 	err = store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Tasks().Update(updatedTask1))

@@ -23,6 +23,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	// defaultTaskHistory is the number of tasks to keep.
+	defaultTaskHistory = 10
+)
+
 var _ api.ManagerServer = &Manager{}
 
 // Config is used to tune the Manager.
@@ -54,6 +59,7 @@ type Manager struct {
 	dispatcher       *dispatcher.Dispatcher
 	orchestrator     *orchestrator.Orchestrator
 	fillOrchestrator *orchestrator.FillOrchestrator
+	taskReaper       *orchestrator.TaskReaper
 	scheduler        *scheduler.Scheduler
 	allocator        *allocator.Allocator
 	server           *grpc.Server
@@ -147,6 +153,7 @@ func (m *Manager) Run(ctx context.Context) error {
 					m.leaderLock.Lock()
 					m.orchestrator = orchestrator.New(store)
 					m.fillOrchestrator = orchestrator.NewFillOrchestrator(store)
+					m.taskReaper = orchestrator.NewTaskReaper(store, defaultTaskHistory)
 					m.scheduler = scheduler.New(store)
 
 					// TODO(stevvooe): Allocate a context that can be used to
@@ -178,6 +185,9 @@ func (m *Manager) Run(ctx context.Context) error {
 							log.G(ctx).WithError(err).Error("scheduler exited with an error")
 						}
 					}(m.scheduler)
+					go func(taskReaper *orchestrator.TaskReaper) {
+						taskReaper.Run()
+					}(m.taskReaper)
 					go func(orchestrator *orchestrator.Orchestrator) {
 						if err := orchestrator.Run(ctx); err != nil {
 							log.G(ctx).WithError(err).Error("orchestrator exited with an error")
@@ -203,6 +213,9 @@ func (m *Manager) Run(ctx context.Context) error {
 
 					m.fillOrchestrator.Stop()
 					m.fillOrchestrator = nil
+
+					m.taskReaper.Stop()
+					m.taskReaper = nil
 
 					m.scheduler.Stop()
 					m.scheduler = nil
@@ -279,6 +292,9 @@ func (m *Manager) Stop() {
 	if m.fillOrchestrator != nil {
 		m.fillOrchestrator.Stop()
 		m.fillOrchestrator = nil
+	}
+	if m.taskReaper != nil {
+		m.taskReaper.Stop()
 	}
 	if m.scheduler != nil {
 		m.scheduler.Stop()

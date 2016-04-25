@@ -21,6 +21,7 @@ const (
 	indexServiceID   = "serviceid"
 	indexServiceMode = "servicemode"
 	indexNodeID      = "nodeid"
+	indexInstance    = "instance"
 
 	prefix = "_prefix"
 
@@ -622,6 +623,12 @@ func find(memDBTx *memdb.Txn, table string, by state.By, cb func(state.Object)) 
 		fromResultIterator(it)
 	case state.ServiceModeFinder:
 		it, err := memDBTx.Get(table, indexServiceMode, strconv.Itoa(int(v)))
+		if err != nil {
+			return err
+		}
+		fromResultIterator(it)
+	case state.InstanceFinder:
+		it, err := memDBTx.Get(table, indexInstance, v.ServiceID+"\x00"+strconv.FormatUint(uint64(v.Instance), 10))
 		if err != nil {
 			return err
 		}
