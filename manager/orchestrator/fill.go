@@ -21,7 +21,8 @@ type FillOrchestrator struct {
 	// doneChan is closed when the state machine terminates.
 	doneChan chan struct{}
 
-	updater *UpdateSupervisor
+	updater  *UpdateSupervisor
+	restarts *RestartSupervisor
 }
 
 // NewFillOrchestrator creates a new FillOrchestrator
@@ -33,6 +34,7 @@ func NewFillOrchestrator(store state.WatchableStore) *FillOrchestrator {
 		stopChan:     make(chan struct{}),
 		doneChan:     make(chan struct{}),
 		updater:      NewUpdateSupervisor(store),
+		restarts:     NewRestartSupervisor(store),
 	}
 }
 
@@ -121,8 +123,8 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 				// fill orchestrator needs to inspect when a task has terminated
 				// it should ignore tasks whose DesiredState is past running, which
 				// means the task has been processed
-				if isTaskTerminated(v.Task) && v.Task.DesiredState <= api.TaskStateRunning {
-					f.reconcileServiceOneNode(ctx, v.Task.ServiceID, v.Task.NodeID)
+				if isTaskTerminated(v.Task) {
+					f.restartTask(ctx, v.Task.ID, v.Task.ServiceID)
 				}
 			case state.EventDeleteTask:
 				// CLI allows deleting task
@@ -142,6 +144,7 @@ func (f *FillOrchestrator) Stop() {
 	close(f.stopChan)
 	<-f.doneChan
 	f.updater.CancelAll()
+	f.restarts.CancelAll()
 }
 
 func (f *FillOrchestrator) removeTasksFromNode(ctx context.Context, node *api.Node) {
@@ -177,18 +180,19 @@ func (f *FillOrchestrator) deleteNode(ctx context.Context, node *api.Node) {
 }
 
 func (f *FillOrchestrator) reconcileOneService(ctx context.Context, service *api.Service) {
-	var tasks []*api.Task
-	err := f.store.Update(func(tx state.Tx) error {
-		var err error
+	var (
+		tasks []*api.Task
+		err   error
+	)
+	f.store.View(func(tx state.ReadTx) {
 		tasks, err = tx.Tasks().Find(state.ByServiceID(service.ID))
-		return err
 	})
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("fillOrchestrator: reconcileOneService failed finding tasks")
 		return
 	}
 	restartPolicy := restartCondition(service)
-	// a node may have completed this servie
+	// a node may have completed this service
 	nodeCompleted := make(map[string]struct{})
 	// nodeID -> task list
 	nodeTasks := make(map[string][]*api.Task)
@@ -217,8 +221,6 @@ func (f *FillOrchestrator) reconcileOneService(ctx context.Context, service *api
 			}
 			// this node needs to run 1 copy of the task
 			if len(ntasks) == 0 {
-				// TODO(dongluochen): restart delay should
-				// take effect if this is a restart
 				f.addTask(ctx, batch, service, nodeID)
 			} else {
 				updateTasks = append(updateTasks, ntasks[0])
@@ -306,8 +308,6 @@ func (f *FillOrchestrator) reconcileServiceOneNode(ctx context.Context, serviceI
 		}
 		// this node needs to run 1 copy of the task
 		if len(tasks) == 0 {
-			// TODO(dongluochen): restart delay should
-			// take effect if this is a restart
 			f.addTask(ctx, batch, service, nodeID)
 		} else {
 			f.removeTasks(ctx, batch, service, tasks[1:])
@@ -316,6 +316,26 @@ func (f *FillOrchestrator) reconcileServiceOneNode(ctx context.Context, serviceI
 	})
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("FillOrchestrator: reconcileServiceOneNode batch failed")
+	}
+}
+
+// restartTask calls the restart supervisor's Restart function, which
+// sets a task's desired state to dead and restarts it if the restart
+// policy calls for it to be restarted.
+func (f *FillOrchestrator) restartTask(ctx context.Context, taskID string, serviceID string) {
+	err := f.store.Update(func(tx state.Tx) error {
+		t := tx.Tasks().Get(taskID)
+		if t == nil || t.DesiredState > api.TaskStateRunning {
+			return nil
+		}
+		service := tx.Services().Get(serviceID)
+		if service == nil {
+			return nil
+		}
+		return f.restarts.Restart(ctx, tx, service, *t)
+	})
+	if err != nil {
+		log.G(ctx).WithError(err).Errorf("FillOrchestrator: restartTask transaction failed")
 	}
 }
 
@@ -358,7 +378,7 @@ func (f *FillOrchestrator) isRelatedService(service *api.Service) bool {
 }
 
 func isTaskRunning(t *api.Task) bool {
-	return t != nil && t.DesiredState == api.TaskStateRunning && t.Status.State <= api.TaskStateRunning
+	return t != nil && t.DesiredState <= api.TaskStateRunning && t.Status.State <= api.TaskStateRunning
 }
 
 func isValidNode(n *api.Node) bool {
