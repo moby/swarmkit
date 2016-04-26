@@ -56,6 +56,17 @@ func TestListManagers(t *testing.T) {
 	members := getMap(t, r.Managers)
 	assert.Equal(t, 3, len(ts.Server.raft.GetMemberlist()))
 	assert.Equal(t, 3, len(r.Managers))
+
+	// Node 1 should be the leader
+	for i := 1; i <= 3; i++ {
+		if i == 1 {
+			assert.True(t, members[nodes[uint64(i)].Config.ID].Status.Leader)
+			continue
+		}
+		assert.False(t, members[nodes[uint64(i)].Config.ID].Status.Leader)
+	}
+
+	// All nodes should be reachable
 	for i := 1; i <= 3; i++ {
 		assert.Equal(t, api.MemberStatus_REACHABLE, members[nodes[uint64(i)].Config.ID].Status.State)
 	}
@@ -121,4 +132,64 @@ func TestListManagers(t *testing.T) {
 	for i := 1; i <= 5; i++ {
 		assert.Equal(t, api.MemberStatus_REACHABLE, members[nodes[uint64(i)].Config.ID].Status.State)
 	}
+
+	// Switch the raft node used by the server
+	ts.Server.raft = nodes[2].Node
+
+	// Stop node 1 (leader)
+	nodes[1].Stop()
+	nodes[1].Server.Stop()
+
+	newCluster := map[uint64]*raftutils.TestNode{
+		2: nodes[2],
+		3: nodes[3],
+		4: nodes[4],
+		5: nodes[5],
+	}
+
+	// Wait for the re-election to occur
+	raftutils.WaitForCluster(t, clockSource, newCluster)
+
+	// Node 1 should not be the leader anymore
+	assert.NoError(t, raftutils.PollFunc(func() error {
+		r, err = ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
+		if err != nil {
+			return err
+		}
+
+		members = getMap(t, r.Managers)
+
+		if members[nodes[1].Config.ID].Status.Leader {
+			return fmt.Errorf("expected node 1 not to be the leader")
+		}
+
+		if members[nodes[1].Config.ID].Status.State == api.MemberStatus_REACHABLE {
+			return fmt.Errorf("expected node 1 to be unreachable")
+		}
+
+		return nil
+	}))
+
+	// Restart node 1
+	nodes[1].Shutdown()
+	nodes[1] = raftutils.RestartNode(t, clockSource, nodes[1], securityConfig)
+	raftutils.WaitForCluster(t, clockSource, nodes)
+
+	// Ensure that node 1 is not the leader
+	assert.False(t, members[nodes[uint64(1)].Config.ID].Status.Leader)
+
+	// Check that another node got the leader status
+	leader := ""
+	leaderCount := 0
+	for i := 1; i <= 5; i++ {
+		if members[nodes[uint64(i)].Config.ID].Status.Leader {
+			leader = members[nodes[uint64(i)].Config.ID].ID
+			leaderCount++
+		}
+	}
+
+	// There should be only one leader after node 1 recovery and it
+	// should be different than node 1
+	assert.Equal(t, leaderCount, 1)
+	assert.NotEqual(t, leader, members[nodes[1].Config.ID].ID)
 }

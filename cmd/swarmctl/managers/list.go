@@ -41,12 +41,17 @@ var (
 				}()
 
 				// TODO(abronan): include member name and raft cluster it belongs to
-				common.PrintHeader(w, "ID", "Address", "Status")
+				common.PrintHeader(w, "ID", "Address", "Status", "Leader")
 				output = func(n *api.Member) {
-					fmt.Fprintf(w, "%s\t%s\t%s\n",
+					leader := ""
+					if n.Status.Leader {
+						leader = "*"
+					}
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 						n.ID,
 						n.Addr,
 						n.Status.State,
+						leader,
 					)
 				}
 			} else {
