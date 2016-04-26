@@ -336,8 +336,9 @@ message Endpoint {
 	// DNS A/AAAA query on the service name might return this IP
 	// to the client. This is strictly a logical IP and there may
 	// not be any interfaces assigned this IP address or any route
-	// created for this address.
-	repeated string virtual_ip = 1; // More than one to accomodate for both IPv4 and IPv6
+	// created for this address.  More than one to accomodate for
+	// both IPv4 and IPv6
+	repeated string virtual_ip = 1 [(gogoproto.customname) = "VirtualIP"];
 	repeated PortConfiguration ports = 2;
 }
 
