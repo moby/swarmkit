@@ -84,12 +84,13 @@ func (o *Orchestrator) tick(ctx context.Context) {
 	o.tickServices(ctx)
 }
 
-func newTask(service *api.Service) *api.Task {
+func newTask(service *api.Service, instance uint64) *api.Task {
 	return &api.Task{
 		ID:          identity.NewID(),
 		Annotations: service.Spec.Annotations, // TODO(stevvooe): Copy metadata with nice name.
 		Spec:        service.Spec.Template,
 		ServiceID:   service.ID,
+		Instance:    instance,
 		Status: &api.TaskStatus{
 			State: api.TaskStateNew,
 		},

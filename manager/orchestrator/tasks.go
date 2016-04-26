@@ -81,10 +81,10 @@ func (o *Orchestrator) tickTasks(ctx context.Context) {
 						// Restart task if applicable
 						switch restartCondition(service) {
 						case api.RestartAlways:
-							return tx.Tasks().Create(newTask(service))
+							return tx.Tasks().Create(newTask(service, t.Instance))
 						case api.RestartOnFailure:
 							if t.Status != nil && t.Status.TerminalState != api.TaskStateCompleted {
-								return tx.Tasks().Create(newTask(service))
+								return tx.Tasks().Create(newTask(service, t.Instance))
 							}
 						}
 					}
