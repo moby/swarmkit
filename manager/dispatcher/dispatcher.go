@@ -6,6 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
@@ -52,6 +56,13 @@ func DefaultConfig() *Config {
 	}
 }
 
+// Cluster is interface which represent raft cluster. mananger/state/raft.Node
+// is implenents it. This interface needed only for easier unit-testing.
+type Cluster interface {
+	GetMemberlist() map[uint64]*api.Member
+	MemoryStore() *store.MemoryStore
+}
+
 // Dispatcher is responsible for dispatching tasks and tracking agent health.
 type Dispatcher struct {
 	mu               sync.Mutex
@@ -61,32 +72,189 @@ type Dispatcher struct {
 	mgrQueue         *watch.Queue
 	lastSeenManagers []*api.WeightedPeer
 	config           *Config
+	cluster          Cluster
+	ctx              context.Context
+	cancel           context.CancelFunc
+	wg               sync.WaitGroup
 }
 
-// New returns Dispatcher with store.
-func New(store *store.MemoryStore, c *Config) *Dispatcher {
-	return &Dispatcher{
+// New returns Dispatcher with cluster interface(usually raft.Node) and config.
+// NOTE: each handler which does something with raft must add to Dispatcher.wg
+func New(cluster Cluster, c *Config) *Dispatcher {
+	d := &Dispatcher{
 		addr:     c.Addr,
 		nodes:    newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier),
-		store:    store,
+		store:    cluster.MemoryStore(),
+		cluster:  cluster,
 		mgrQueue: watch.NewQueue(16),
 		config:   c,
 		lastSeenManagers: []*api.WeightedPeer{
 			{
-				Addr:   c.Addr, // TODO: change after raft
+				Addr:   c.Addr,
 				Weight: 1,
 			},
 		},
 	}
+	return d
+}
+
+// Run runs dispatcher tasks which should be run on leader dispatcher.
+// Dispatcher can be stopped with cancelling ctx or calling Stop().
+func (d *Dispatcher) Run(ctx context.Context) error {
+	d.mu.Lock()
+	if d.isRunning() {
+		d.mu.Unlock()
+		return fmt.Errorf("dispatcher is stopped")
+	}
+	d.wg.Add(1)
+	defer d.wg.Done()
+	logger := log.G(ctx).WithField("module", "dispatcher")
+	ctx = log.WithLogger(ctx, logger)
+	if err := d.markNodesUnknown(ctx); err != nil {
+		logger.Errorf("failed to mark all nodes unknown: %v", err)
+	}
+	d.ctx, d.cancel = context.WithCancel(ctx)
+	d.mu.Unlock()
+
+	publishManagers := func() {
+		members := d.cluster.GetMemberlist()
+		var mgrs []*api.WeightedPeer
+		for _, m := range members {
+			mgrs = append(mgrs, &api.WeightedPeer{
+				Addr:   m.Addr,
+				Weight: 1,
+			})
+		}
+		d.mu.Lock()
+		d.lastSeenManagers = mgrs
+		d.mu.Unlock()
+		d.mgrQueue.Publish(mgrs)
+	}
+	publishManagers()
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			publishManagers()
+		case <-d.ctx.Done():
+			return nil
+		}
+	}
+}
+
+// Stop stops dispatcher and closes all grpc streams.
+func (d *Dispatcher) Stop() error {
+	d.mu.Lock()
+	if !d.isRunning() {
+		return fmt.Errorf("dispatcher is already stopped")
+	}
+	d.cancel()
+	d.mu.Unlock()
+	d.nodes.Clean()
+	// wait for all handlers to finish their raft deals, because manager will
+	// set raftNode to nil
+	d.wg.Wait()
+	return nil
+}
+
+func (d *Dispatcher) addTask() error {
+	d.mu.Lock()
+	if !d.isRunning() {
+		d.mu.Unlock()
+		return grpc.Errorf(codes.Aborted, "dispatcher is stopped")
+	}
+	d.wg.Add(1)
+	d.mu.Unlock()
+	return nil
+}
+
+func (d *Dispatcher) doneTask() {
+	d.wg.Done()
+}
+
+func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
+	log := log.G(ctx).WithField("function", "markNodesUnknown")
+	var nodes []*api.Node
+	var err error
+	d.store.View(func(tx store.ReadTx) {
+		nodes, err = store.FindNodes(tx, store.All)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get list of nodes: %v", err)
+	}
+	_, err = d.store.Batch(func(batch *store.Batch) error {
+		for _, n := range nodes {
+			err := batch.Update(func(tx store.Tx) error {
+				// check if node is still here
+				node := store.GetNode(tx, n.ID)
+				if node == nil {
+					return nil
+				}
+				// do not try to resurrect down nodes
+				if node.Status.State == api.NodeStatus_DOWN {
+					return nil
+				}
+				node.Status = api.NodeStatus{
+					State:   api.NodeStatus_UNKNOWN,
+					Message: "Node marked as unknown due to leadership change in cluster",
+				}
+				agentID := node.ID
+
+				expireFunc := func() {
+					log := log.WithField("node", agentID)
+					nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "heartbeat failure for unknown node"}
+					log.Debugf("heartbeat expiration for unknown node")
+					if err := d.nodeRemove(agentID, nodeStatus); err != nil {
+						log.WithError(err).Errorf("failed deregistering node after heartbeat expiration for unknown node")
+					}
+				}
+				if err := d.nodes.AddUnknown(node, expireFunc); err != nil {
+					return fmt.Errorf("add unknown node failed: %v", err)
+				}
+				if err := store.UpdateNode(tx, node); err != nil {
+					return fmt.Errorf("update failed %v", err)
+				}
+				return nil
+			})
+			if err != nil {
+				log.WithField("node", n.ID).WithError(err).Errorf("failed to mark node as unknown")
+			}
+		}
+		return nil
+	})
+	return err
+}
+
+func (d *Dispatcher) isRunning() bool {
+	if d.ctx == nil {
+		return false
+	}
+	select {
+	case <-d.ctx.Done():
+		return false
+	default:
+	}
+	return true
 }
 
 // Register is used for registration of node with particular dispatcher.
 func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
-	agentID, err := ca.AuthorizeRole(ctx, []string{ca.AgentRole})
+	// prevent register until we're ready to accept it
+	if err := d.addTask(); err != nil {
+		return nil, err
+	}
+	defer d.doneTask()
+
+	agentID, err := ca.AuthorizeForwardAgent(ctx)
 	if err != nil {
 		return nil, err
 	}
-	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Register from node %s", agentID)
+	log := log.G(ctx).WithFields(logrus.Fields{
+		"request":  r,
+		"agent.id": agentID,
+		"method":   "Register",
+	})
 
 	// create or update node in store
 	// TODO(stevvooe): Validate node specification.
@@ -114,13 +282,11 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 		return nil, err
 	}
 
-	nid := node.ID // prevent the closure from holding onto the entire Node.
-
 	expireFunc := func() {
 		nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "heartbeat failure"}
-		log.G(ctx).WithField("node.id", nid).Debugf("heartbeat expiration")
-		if err := d.nodeRemove(nid, nodeStatus); err != nil {
-			log.G(ctx).WithError(err).Errorf("failed deregistering node %s after heartbeat expiration", nid)
+		log.Debugf("heartbeat expiration")
+		if err := d.nodeRemove(agentID, nodeStatus); err != nil {
+			log.WithError(err).Errorf("failed deregistering node after heartbeat expiration")
 		}
 	}
 
@@ -141,18 +307,28 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 // UpdateTaskStatus updates status of task. Node should send such updates
 // on every status change of its tasks.
 func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStatusRequest) (*api.UpdateTaskStatusResponse, error) {
-	agentID, err := ca.AuthorizeRole(ctx, []string{ca.AgentRole})
+	if err := d.addTask(); err != nil {
+		return nil, err
+	}
+	defer d.doneTask()
+
+	agentID, err := ca.AuthorizeForwardAgent(ctx)
 	if err != nil {
 		return nil, err
 	}
-	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).UpdateTaskStatus from node: %s", agentID)
+	log := log.G(ctx).WithFields(logrus.Fields{
+		"request":  r,
+		"agent.id": agentID,
+		"method":   "UpdateTaskStatus",
+	})
+	log.Debugf("grpc call")
 
 	if _, err := d.nodes.GetWithSession(agentID, r.SessionID); err != nil {
 		return nil, err
 	}
 	err = d.store.Update(func(tx store.Tx) error {
 		for _, u := range r.Updates {
-			logger := log.G(ctx).WithField("task.id", u.TaskID)
+			logger := log.WithField("task.id", u.TaskID)
 			if u.Status == nil {
 				logger.Warnf("task report has nil status")
 				continue
@@ -194,11 +370,22 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 // of tasks which should be run on node, if task is not present in that list,
 // it should be terminated.
 func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
-	agentID, err := ca.AuthorizeRole(stream.Context(), []string{ca.AgentRole})
+	if err := d.addTask(); err != nil {
+		return err
+	}
+	defer d.doneTask()
+
+	agentID, err := ca.AuthorizeForwardAgent(stream.Context())
 	if err != nil {
 		return err
 	}
-	log.G(stream.Context()).WithField("request", r).Debugf("(*Dispatcher).Tasks from node %s", agentID)
+
+	log := log.G(stream.Context()).WithFields(logrus.Fields{
+		"request":  r,
+		"agent.id": agentID,
+		"method":   "Tasks",
+	})
+	log.Debugf("grpc call")
 
 	if _, err = d.nodes.GetWithSession(agentID, r.SessionID); err != nil {
 		return err
@@ -254,11 +441,17 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 			}
 		case <-stream.Context().Done():
 			return stream.Context().Err()
+		case <-d.ctx.Done():
+			return d.ctx.Err()
 		}
 	}
 }
 
 func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
+	if err := d.addTask(); err != nil {
+		return err
+	}
+	defer d.doneTask()
 	err := d.store.Update(func(tx store.Tx) error {
 		node := store.GetNode(tx, id)
 		if node == nil {
@@ -282,35 +475,20 @@ func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
 // Node should send new heartbeat earlier than now + TTL, otherwise it will
 // be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
 func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*api.HeartbeatResponse, error) {
-	agentID, err := ca.AuthorizeRole(ctx, []string{ca.AgentRole})
+	agentID, err := ca.AuthorizeForwardAgent(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Heartbeat for node %s", agentID)
+	log := log.G(ctx).WithFields(logrus.Fields{
+		"request":  r,
+		"agent.id": agentID,
+		"method":   "Heartbeat",
+	})
+	log.Debugf("grpc call")
 
 	period, err := d.nodes.Heartbeat(agentID, r.SessionID)
 	return &api.HeartbeatResponse{Period: period}, err
-}
-
-func (d *Dispatcher) watchManagers() {
-	publish := func() {
-		mgrs := []*api.WeightedPeer{
-			{
-				Addr:   d.addr, // TODO: change after raft
-				Weight: 1,
-			},
-		}
-		d.mu.Lock()
-		d.lastSeenManagers = mgrs
-		d.mu.Unlock()
-		d.mgrQueue.Publish(mgrs)
-	}
-	publish()
-	// TODO: here should be code which asks leader about managers with their weights
-	for range time.Tick(1 * time.Second) {
-		publish()
-	}
 }
 
 func (d *Dispatcher) getManagers() []*api.WeightedPeer {
@@ -324,13 +502,23 @@ func (d *Dispatcher) getManagers() []*api.WeightedPeer {
 // special boolean field Disconnect which if true indicates that node should
 // reconnect to another Manager immediately.
 func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_SessionServer) error {
+	if err := d.addTask(); err != nil {
+		return err
+	}
+	defer d.doneTask()
+
 	ctx := stream.Context()
-	agentID, err := ca.AuthorizeRole(ctx, []string{ca.AgentRole})
+	agentID, err := ca.AuthorizeForwardAgent(ctx)
 	if err != nil {
 		return err
 	}
 
-	log.G(ctx).WithField("request", r).Debugf("(*Dispatcher).Session for node %s", agentID)
+	log := log.G(ctx).WithFields(logrus.Fields{
+		"request":  r,
+		"agent.id": agentID,
+		"method":   "Session",
+	})
+	log.Debugf("grpc call")
 
 	if _, err = d.nodes.GetWithSession(agentID, r.SessionID); err != nil {
 		return err
@@ -343,8 +531,8 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		return err
 	}
 
-	mgrUpdates, cancel := d.mgrQueue.Watch()
-	defer cancel()
+	mgrUpdates, mgrCancel := d.mgrQueue.Watch()
+	defer mgrCancel()
 
 	for {
 		// After each message send, we need to check the nodes sessionID hasn't
@@ -355,35 +543,39 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			return err
 		}
 		var (
-			disconnect bool
-			mgrs       []*api.WeightedPeer
+			disconnectError error
+			mgrs            []*api.WeightedPeer
 		)
 		select {
-		case <-node.Disconnect:
-			disconnect = true
 		case ev := <-mgrUpdates:
 			mgrs = ev.([]*api.WeightedPeer)
 		case <-stream.Context().Done():
 			return stream.Context().Err()
+		case <-node.Disconnect:
+			disconnectError = grpc.Errorf(codes.Aborted, "node must disconnect")
+		case <-d.ctx.Done():
+			disconnectError = grpc.Errorf(codes.Aborted, "dispatcher stopped")
 		}
 		if mgrs == nil {
 			mgrs = d.getManagers()
 		}
-		if disconnect {
+		if disconnectError != nil {
 			nodeStatus := api.NodeStatus{State: api.NodeStatus_DISCONNECTED, Message: "node is currently trying to find new manager"}
 			if err := d.nodeRemove(agentID, nodeStatus); err != nil {
-				log.G(ctx).WithError(err).Error("failed to remove node")
+				log.WithError(err).Error("failed to remove node")
 			}
 		}
 
 		if err := stream.Send(&api.SessionMessage{
 			Managers:   mgrs,
-			Disconnect: disconnect,
+			Disconnect: disconnectError != nil,
 		}); err != nil {
 			return err
 		}
-
-		time.Sleep(5 * time.Second) // TODO(stevvooe): This should really be watch activated.
+		if disconnectError != nil {
+			log.WithError(disconnectError).Error("session end")
+			return disconnectError
+		}
 	}
 }
 

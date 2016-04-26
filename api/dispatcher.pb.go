@@ -1129,14 +1129,45 @@ type raftProxyDispatcherServer struct {
 	local        DispatcherServer
 	connSelector *raftpicker.ConnSelector
 	cluster      raftpicker.RaftCluster
+	ctxMods      []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyDispatcherServer(local DispatcherServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster) DispatcherServer {
+func NewRaftProxyDispatcherServer(local DispatcherServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster, ctxMods ...func(context.Context) (context.Context, error)) DispatcherServer {
+	redirectChecker := func(ctx context.Context) (context.Context, error) {
+		s, ok := transport.StreamFromContext(ctx)
+		if !ok {
+			return ctx, grpc.Errorf(codes.InvalidArgument, "remote addr is not found in context")
+		}
+		addr := s.ServerTransport().RemoteAddr().String()
+		md, ok := metadata.FromContext(ctx)
+		if ok && len(md["redirect"]) != 0 {
+			return ctx, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+		}
+		if !ok {
+			md = metadata.New(map[string]string{})
+		}
+		md["redirect"] = append(md["redirect"], addr)
+		return metadata.NewContext(ctx, md), nil
+	}
+	mods := []func(context.Context) (context.Context, error){redirectChecker}
+	mods = append(mods, ctxMods...)
+
 	return &raftProxyDispatcherServer{
 		local:        local,
 		cluster:      cluster,
 		connSelector: connSelector,
+		ctxMods:      mods,
 	}
+}
+func (p *raftProxyDispatcherServer) runCtxMods(ctx context.Context) (context.Context, error) {
+	var err error
+	for _, mod := range p.ctxMods {
+		ctx, err = mod(ctx)
+		if err != nil {
+			return ctx, err
+		}
+	}
+	return ctx, nil
 }
 
 func (p *raftProxyDispatcherServer) Register(ctx context.Context, r *RegisterRequest) (*RegisterResponse, error) {
@@ -1144,21 +1175,10 @@ func (p *raftProxyDispatcherServer) Register(ctx context.Context, r *RegisterReq
 	if p.cluster.IsLeader() {
 		return p.local.Register(ctx, r)
 	}
-	var addr string
-	s, ok := transport.StreamFromContext(ctx)
-	if ok {
-		addr = s.ServerTransport().RemoteAddr().String()
+	ctx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
 	}
-	md, ok := metadata.FromContext(ctx)
-	if ok && len(md["redirect"]) != 0 {
-		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
-	}
-	if !ok {
-		md = metadata.New(map[string]string{})
-	}
-	md["redirect"] = append(md["redirect"], addr)
-	ctx = metadata.NewContext(ctx, md)
-
 	conn, err := p.connSelector.Conn()
 	if err != nil {
 		return nil, err
@@ -1171,25 +1191,14 @@ func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher
 	if p.cluster.IsLeader() {
 		return p.local.Session(r, stream)
 	}
+	ctx, err := p.runCtxMods(stream.Context())
+	if err != nil {
+		return err
+	}
 	conn, err := p.connSelector.Conn()
 	if err != nil {
 		return err
 	}
-	var addr string
-	s, ok := transport.StreamFromContext(stream.Context())
-	if ok {
-		addr = s.ServerTransport().RemoteAddr().String()
-	}
-	md, ok := metadata.FromContext(stream.Context())
-	if ok && len(md["redirect"]) != 0 {
-		return grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
-	}
-	if !ok {
-		md = metadata.New(map[string]string{})
-	}
-	md["redirect"] = append(md["redirect"], addr)
-	ctx := metadata.NewContext(stream.Context(), md)
-
 	clientStream, err := NewDispatcherClient(conn).Session(ctx, r)
 
 	if err != nil {
@@ -1216,21 +1225,10 @@ func (p *raftProxyDispatcherServer) Heartbeat(ctx context.Context, r *HeartbeatR
 	if p.cluster.IsLeader() {
 		return p.local.Heartbeat(ctx, r)
 	}
-	var addr string
-	s, ok := transport.StreamFromContext(ctx)
-	if ok {
-		addr = s.ServerTransport().RemoteAddr().String()
+	ctx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
 	}
-	md, ok := metadata.FromContext(ctx)
-	if ok && len(md["redirect"]) != 0 {
-		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
-	}
-	if !ok {
-		md = metadata.New(map[string]string{})
-	}
-	md["redirect"] = append(md["redirect"], addr)
-	ctx = metadata.NewContext(ctx, md)
-
 	conn, err := p.connSelector.Conn()
 	if err != nil {
 		return nil, err
@@ -1243,21 +1241,10 @@ func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *Upd
 	if p.cluster.IsLeader() {
 		return p.local.UpdateTaskStatus(ctx, r)
 	}
-	var addr string
-	s, ok := transport.StreamFromContext(ctx)
-	if ok {
-		addr = s.ServerTransport().RemoteAddr().String()
+	ctx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
 	}
-	md, ok := metadata.FromContext(ctx)
-	if ok && len(md["redirect"]) != 0 {
-		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
-	}
-	if !ok {
-		md = metadata.New(map[string]string{})
-	}
-	md["redirect"] = append(md["redirect"], addr)
-	ctx = metadata.NewContext(ctx, md)
-
 	conn, err := p.connSelector.Conn()
 	if err != nil {
 		return nil, err
@@ -1270,25 +1257,14 @@ func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_Tas
 	if p.cluster.IsLeader() {
 		return p.local.Tasks(r, stream)
 	}
+	ctx, err := p.runCtxMods(stream.Context())
+	if err != nil {
+		return err
+	}
 	conn, err := p.connSelector.Conn()
 	if err != nil {
 		return err
 	}
-	var addr string
-	s, ok := transport.StreamFromContext(stream.Context())
-	if ok {
-		addr = s.ServerTransport().RemoteAddr().String()
-	}
-	md, ok := metadata.FromContext(stream.Context())
-	if ok && len(md["redirect"]) != 0 {
-		return grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
-	}
-	if !ok {
-		md = metadata.New(map[string]string{})
-	}
-	md["redirect"] = append(md["redirect"], addr)
-	ctx := metadata.NewContext(stream.Context(), md)
-
 	clientStream, err := NewDispatcherClient(conn).Tasks(ctx, r)
 
 	if err != nil {
