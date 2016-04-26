@@ -54,6 +54,7 @@ var (
 				_ = w.Flush()
 			}()
 			fmt.Fprintf(w, "ID\t: %s\n", r.Task.ID)
+			fmt.Fprintf(w, "Instance\t: %d\n", r.Task.Instance)
 			fmt.Fprintf(w, "Service\t: %s\n", res.Resolve(api.Service{}, r.Task.ServiceID))
 			printTaskStatus(w, r.Task.Status)
 			fmt.Fprintf(w, "Node\t: %s\n", res.Resolve(api.Node{}, r.Task.NodeID))

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"text/tabwriter"
 
@@ -73,18 +74,33 @@ func printServiceSummary(service *api.Service) {
 	}
 }
 
+type tasksByInstance []*api.Task
+
+func (t tasksByInstance) Len() int {
+	return len(t)
+}
+func (t tasksByInstance) Swap(i, j int) {
+	t[i], t[j] = t[j], t[i]
+}
+func (t tasksByInstance) Less(i, j int) bool {
+	return t[i].Instance < t[j].Instance
+}
+
 func printTasks(tasks []*api.Task, all bool, res *common.Resolver) {
+	sort.Sort(tasksByInstance(tasks))
+
 	w := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
 	defer w.Flush()
 
-	common.PrintHeader(w, "Task ID", "Image", "Status", "Node")
+	common.PrintHeader(w, "Task ID", "Instance", "Image", "Status", "Node")
 	for _, t := range tasks {
 		if !all && t.Status.State > api.TaskStateRunning {
 			continue
 		}
 		c := t.Spec.GetContainer()
-		fmt.Fprintf(w, "%s\t%s\t%s %s\t%s\n",
+		fmt.Fprintf(w, "%s\t%d\t%s\t%s %s\t%s\n",
 			t.ID,
+			t.Instance,
 			c.Image.Reference,
 			t.Status.State.String(),
 			common.TimestampAgo(t.Status.Timestamp),
@@ -109,6 +125,11 @@ var (
 				return err
 			}
 
+			instance, err := flags.GetUint64("instance")
+			if err != nil {
+				return err
+			}
+
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
@@ -128,15 +149,19 @@ var (
 			}
 			tasks := []*api.Task{}
 			for _, t := range r.Tasks {
-				if t.ServiceID == service.ID {
-					tasks = append(tasks, t)
+				if instance != 0 && t.Instance != instance {
+					continue
 				}
+				if t.ServiceID != service.ID {
+					continue
+				}
+				tasks = append(tasks, t)
 			}
 
 			printServiceSummary(service)
 			if len(tasks) > 0 {
 				fmt.Printf("\n")
-				printTasks(tasks, all, res)
+				printTasks(tasks, all || instance != 0, res)
 			}
 
 			return nil
@@ -146,4 +171,5 @@ var (
 
 func init() {
 	inspectCmd.Flags().BoolP("all", "a", false, "Show all tasks (default shows just running)")
+	inspectCmd.Flags().Uint64P("instance", "i", 0, "Show tasks with a specific instance number")
 }
