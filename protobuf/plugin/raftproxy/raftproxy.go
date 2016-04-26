@@ -1,7 +1,6 @@
 package raftproxy
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
@@ -29,17 +28,51 @@ func (g *raftProxyGen) genProxyStruct(s *descriptor.ServiceDescriptorProto) {
 	g.gen.P("\tlocal " + s.GetName() + "Server")
 	g.gen.P("\tconnSelector *raftpicker.ConnSelector")
 	g.gen.P("\tcluster raftpicker.RaftCluster")
+	g.gen.P("\tctxMods []func(context.Context)(context.Context, error)")
 	g.gen.P("}")
 }
 
 func (g *raftProxyGen) genProxyConstructor(s *descriptor.ServiceDescriptorProto) {
-	g.gen.P("func NewRaftProxy" + s.GetName() + "Server(local " + s.GetName() + "Server, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster) " + s.GetName() + "Server {")
+	g.gen.P("func NewRaftProxy" + s.GetName() + "Server(local " + s.GetName() + "Server, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster, ctxMods ...func(context.Context)(context.Context, error)) " + s.GetName() + "Server {")
+	g.gen.P(`redirectChecker := func(ctx context.Context)(context.Context, error) {
+		s, ok := transport.StreamFromContext(ctx)
+		if !ok {
+			return ctx, grpc.Errorf(codes.InvalidArgument, "remote addr is not found in context")
+		}
+		addr := s.ServerTransport().RemoteAddr().String()
+		md, ok := metadata.FromContext(ctx)
+		if ok && len(md["redirect"]) != 0 {
+			return ctx, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+		}
+		if !ok {
+			md = metadata.New(map[string]string{})
+		}
+		md["redirect"] = append(md["redirect"], addr)
+		return metadata.NewContext(ctx, md), nil
+	}
+	mods := []func(context.Context)(context.Context, error){redirectChecker}
+	mods = append(mods, ctxMods...)
+	`)
 	g.gen.P("return &" + serviceTypeName(s) + `{
 		local: local,
 		cluster: cluster,
 		connSelector: connSelector,
+		ctxMods: mods,
 	}`)
 	g.gen.P("}")
+}
+
+func (g *raftProxyGen) genRunCtxMods(s *descriptor.ServiceDescriptorProto) {
+	g.gen.P("func (p *" + serviceTypeName(s) + `) runCtxMods(ctx context.Context) (context.Context, error) {
+	var err error
+	for _, mod := range p.ctxMods {
+		ctx, err = mod(ctx)
+		if err != nil {
+			return ctx, err
+		}
+	}
+	return ctx, nil
+}`)
 }
 
 func getInputTypeName(m *descriptor.MethodDescriptorProto) string {
@@ -60,39 +93,20 @@ func sigPrefix(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescrip
 	return "func (p *" + serviceTypeName(s) + ") " + m.GetName() + "("
 }
 
-func (g *raftProxyGen) genAddrObtain(ctxStr string) {
-	g.gen.P(fmt.Sprintf(`var addr string
-	s, ok := transport.StreamFromContext(%s)
-	if ok {
-		addr = s.ServerTransport().RemoteAddr().String()
-	}`, ctxStr))
-}
-
-func (g *raftProxyGen) genStreamRedirectCheck() {
-	g.genAddrObtain("stream.Context()")
-	g.gen.P(`md, ok := metadata.FromContext(stream.Context())
-	if ok && len(md["redirect"]) != 0 {
-		return grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
-	}
-	if !ok {
-		md = metadata.New(map[string]string{})
-	}
-	md["redirect"] = append(md["redirect"], addr)
-	ctx := metadata.NewContext(stream.Context(), md)
-	`)
-}
-
 func (g *raftProxyGen) genClientStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
 	g.gen.P(`
 	if p.cluster.IsLeader() {
 			return p.local.` + m.GetName() + `(stream)
 	}
+	ctx, err := p.runCtxMods(stream.Context())
+	if err != nil {
+		return err
+	}
 	conn, err := p.connSelector.Conn()
 	if err != nil {
 		return err
 	}`)
-	g.genStreamRedirectCheck()
 	g.gen.P("clientStream, err := New" + s.GetName() + "Client(conn)." + m.GetName() + "(ctx)")
 	g.gen.P(`
 	if err != nil {
@@ -127,11 +141,14 @@ func (g *raftProxyGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorP
 	if p.cluster.IsLeader() {
 			return p.local.` + m.GetName() + `(r, stream)
 	}
+	ctx, err := p.runCtxMods(stream.Context())
+	if err != nil {
+		return err
+	}
 	conn, err := p.connSelector.Conn()
 	if err != nil {
 		return err
 	}`)
-	g.genStreamRedirectCheck()
 	g.gen.P("clientStream, err := New" + s.GetName() + "Client(conn)." + m.GetName() + "(ctx, r)")
 	g.gen.P(`
 	if err != nil {
@@ -160,11 +177,14 @@ func (g *raftProxyGen) genClientServerStreamingMethod(s *descriptor.ServiceDescr
 	if p.cluster.IsLeader() {
 			return p.local.` + m.GetName() + `(stream)
 	}
+	ctx, err := p.runCtxMods(stream.Context())
+	if err != nil {
+		return err
+	}
 	conn, err := p.connSelector.Conn()
 	if err != nil {
 		return err
 	}`)
-	g.genStreamRedirectCheck()
 	g.gen.P("clientStream, err := New" + s.GetName() + "Client(conn)." + m.GetName() + "(ctx)")
 	g.gen.P(`
 	if err != nil {
@@ -209,23 +229,15 @@ func (g *raftProxyGen) genSimpleMethod(s *descriptor.ServiceDescriptorProto, m *
 	g.gen.P(`
 	if p.cluster.IsLeader() {
 			return p.local.` + m.GetName() + `(ctx, r)
-	}`)
-	g.genAddrObtain("ctx")
-	g.gen.P(`md, ok := metadata.FromContext(ctx)
-	if ok && len(md["redirect"]) != 0 {
-		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
 	}
-	if !ok {
-		md = metadata.New(map[string]string{})
+	ctx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
 	}
-	md["redirect"] = append(md["redirect"], addr)
-	ctx = metadata.NewContext(ctx, md)
-
 	conn, err := p.connSelector.Conn()
 	if err != nil {
 		return nil, err
 	}`)
-
 	g.gen.P("return New" + s.GetName() + "Client(conn)." + m.GetName() + "(ctx, r)")
 	g.gen.P("}")
 }
@@ -250,6 +262,7 @@ func (g *raftProxyGen) Generate(file *generator.FileDescriptor) {
 	for _, s := range file.Service {
 		g.genProxyStruct(s)
 		g.genProxyConstructor(s)
+		g.genRunCtxMods(s)
 		for _, m := range s.Method {
 			g.genProxyMethod(s, m)
 		}

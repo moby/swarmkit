@@ -9,7 +9,6 @@ import (
 type Heartbeat struct {
 	timeout int64
 	timer   *time.Timer
-	quit    chan struct{}
 }
 
 // New creates new Heartbeat with specified duration. timeoutFunc will be called
