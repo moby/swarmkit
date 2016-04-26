@@ -8,8 +8,8 @@ import (
 	"google.golang.org/grpc/transport"
 )
 
-// Picker always picks address of cluster leader.
-type Picker struct {
+// picker always picks address of cluster leader.
+type picker struct {
 	mu   sync.Mutex
 	addr string
 	raft AddrSelector
@@ -17,20 +17,13 @@ type Picker struct {
 	cc   *grpc.ClientConn
 }
 
-// New returns new Picker with AddrSelector interface which it'll use for
-// picking. initAddr should be same as for Dial, because there is no way to get
-// target from ClientConn.
-func New(raft AddrSelector, initAddr string) grpc.Picker {
-	return &Picker{raft: raft, addr: initAddr}
-}
-
 // Init does initial processing for the Picker, e.g., initiate some connections.
-func (p *Picker) Init(cc *grpc.ClientConn) error {
+func (p *picker) Init(cc *grpc.ClientConn) error {
 	p.cc = cc
 	return nil
 }
 
-func (p *Picker) initConn() error {
+func (p *picker) initConn() error {
 	if p.conn == nil {
 		conn, err := grpc.NewConn(p.cc)
 		if err != nil {
@@ -43,7 +36,7 @@ func (p *Picker) initConn() error {
 
 // Pick blocks until either a transport.ClientTransport is ready for the upcoming RPC
 // or some error happens.
-func (p *Picker) Pick(ctx context.Context) (transport.ClientTransport, error) {
+func (p *picker) Pick(ctx context.Context) (transport.ClientTransport, error) {
 	p.mu.Lock()
 	if err := p.initConn(); err != nil {
 		p.mu.Unlock()
@@ -66,7 +59,7 @@ func (p *Picker) Pick(ctx context.Context) (transport.ClientTransport, error) {
 
 // PickAddr picks a peer address for connecting. This will be called repeated for
 // connecting/reconnecting.
-func (p *Picker) PickAddr() (string, error) {
+func (p *picker) PickAddr() (string, error) {
 	addr, err := p.raft.LeaderAddr()
 	if err != nil {
 		return "", err
@@ -78,35 +71,63 @@ func (p *Picker) PickAddr() (string, error) {
 }
 
 // State returns the connectivity state of the underlying connections.
-func (p *Picker) State() (grpc.ConnectivityState, error) {
+func (p *picker) State() (grpc.ConnectivityState, error) {
 	return p.conn.State(), nil
 }
 
 // WaitForStateChange blocks until the state changes to something other than
 // the sourceState. It returns the new state or error.
-func (p *Picker) WaitForStateChange(ctx context.Context, sourceState grpc.ConnectivityState) (grpc.ConnectivityState, error) {
+func (p *picker) WaitForStateChange(ctx context.Context, sourceState grpc.ConnectivityState) (grpc.ConnectivityState, error) {
 	return p.conn.WaitForStateChange(ctx, sourceState)
 }
 
 // Reset the current connection and force a reconnect to another address.
-func (p *Picker) Reset() error {
+func (p *picker) Reset() error {
 	p.conn.NotifyReset()
 	return nil
 }
 
 // Close closes all the Conn's owned by this Picker.
-func (p *Picker) Close() error {
+func (p *picker) Close() error {
 	return p.conn.Close()
 }
 
-// Dial returns *grpc.ClientConn with picker set to raftpicker with initial
-// address of cluster leader.
-func Dial(selector AddrSelector, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	addr, err := selector.LeaderAddr()
+// ConnSelector is struct for obtaining connection with raftpicker.
+type ConnSelector struct {
+	mu      sync.Mutex
+	cc      *grpc.ClientConn
+	cluster RaftCluster
+	opts    []grpc.DialOption
+}
+
+// NewConnSelector returns new ConnSelector with cluster and grpc.DialOpts which
+// will be used for Dial on first call of Conn.
+func NewConnSelector(cluster RaftCluster, opts ...grpc.DialOption) *ConnSelector {
+	return &ConnSelector{
+		cluster: cluster,
+		opts:    opts,
+	}
+}
+
+// Conn returns *grpc.ClientConn with picker which picks raft cluster leader.
+// Internal connection estabilished lazily on this call.
+// It can return error if cluster wasn't ready at the moment of initial call.
+func (c *ConnSelector) Conn() (*grpc.ClientConn, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.cc != nil {
+		return c.cc, nil
+	}
+	addr, err := c.cluster.LeaderAddr()
 	if err != nil {
 		return nil, err
 	}
-	picker := New(selector, addr)
-	opts = append(opts, grpc.WithPicker(picker))
-	return grpc.Dial(addr, opts...)
+	picker := &picker{raft: c.cluster, addr: addr}
+	opts := append(c.opts, grpc.WithPicker(picker))
+	cc, err := grpc.Dial(addr, opts...)
+	if err != nil {
+		return nil, err
+	}
+	c.cc = cc
+	return c.cc, nil
 }

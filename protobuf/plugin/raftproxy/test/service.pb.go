@@ -713,16 +713,16 @@ func encodeVarintService(data []byte, offset int, v uint64) int {
 }
 
 type raftProxyRouteGuideServer struct {
-	local   RouteGuideServer
-	conn    *grpc.ClientConn
-	cluster raftpicker.RaftCluster
+	local        RouteGuideServer
+	connSelector *raftpicker.ConnSelector
+	cluster      raftpicker.RaftCluster
 }
 
-func NewRaftProxyRouteGuideServer(local RouteGuideServer, conn *grpc.ClientConn, cluster raftpicker.RaftCluster) RouteGuideServer {
+func NewRaftProxyRouteGuideServer(local RouteGuideServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster) RouteGuideServer {
 	return &raftProxyRouteGuideServer{
-		local:   local,
-		cluster: cluster,
-		conn:    conn,
+		local:        local,
+		cluster:      cluster,
+		connSelector: connSelector,
 	}
 }
 
@@ -746,13 +746,21 @@ func (p *raftProxyRouteGuideServer) GetFeature(ctx context.Context, r *Point) (*
 	md["redirect"] = append(md["redirect"], addr)
 	ctx = metadata.NewContext(ctx, md)
 
-	return NewRouteGuideClient(p.conn).GetFeature(ctx, r)
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return NewRouteGuideClient(conn).GetFeature(ctx, r)
 }
 
 func (p *raftProxyRouteGuideServer) ListFeatures(r *Rectangle, stream RouteGuide_ListFeaturesServer) error {
 
 	if p.cluster.IsLeader() {
 		return p.local.ListFeatures(r, stream)
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return err
 	}
 	var addr string
 	s, ok := transport.StreamFromContext(stream.Context())
@@ -769,7 +777,7 @@ func (p *raftProxyRouteGuideServer) ListFeatures(r *Rectangle, stream RouteGuide
 	md["redirect"] = append(md["redirect"], addr)
 	ctx := metadata.NewContext(stream.Context(), md)
 
-	clientStream, err := NewRouteGuideClient(p.conn).ListFeatures(ctx, r)
+	clientStream, err := NewRouteGuideClient(conn).ListFeatures(ctx, r)
 
 	if err != nil {
 		return err
@@ -795,6 +803,10 @@ func (p *raftProxyRouteGuideServer) RecordRoute(stream RouteGuide_RecordRouteSer
 	if p.cluster.IsLeader() {
 		return p.local.RecordRoute(stream)
 	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return err
+	}
 	var addr string
 	s, ok := transport.StreamFromContext(stream.Context())
 	if ok {
@@ -810,7 +822,7 @@ func (p *raftProxyRouteGuideServer) RecordRoute(stream RouteGuide_RecordRouteSer
 	md["redirect"] = append(md["redirect"], addr)
 	ctx := metadata.NewContext(stream.Context(), md)
 
-	clientStream, err := NewRouteGuideClient(p.conn).RecordRoute(ctx)
+	clientStream, err := NewRouteGuideClient(conn).RecordRoute(ctx)
 
 	if err != nil {
 		return err
@@ -842,6 +854,10 @@ func (p *raftProxyRouteGuideServer) RouteChat(stream RouteGuide_RouteChatServer)
 	if p.cluster.IsLeader() {
 		return p.local.RouteChat(stream)
 	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return err
+	}
 	var addr string
 	s, ok := transport.StreamFromContext(stream.Context())
 	if ok {
@@ -857,7 +873,7 @@ func (p *raftProxyRouteGuideServer) RouteChat(stream RouteGuide_RouteChatServer)
 	md["redirect"] = append(md["redirect"], addr)
 	ctx := metadata.NewContext(stream.Context(), md)
 
-	clientStream, err := NewRouteGuideClient(p.conn).RouteChat(ctx)
+	clientStream, err := NewRouteGuideClient(conn).RouteChat(ctx)
 
 	if err != nil {
 		return err

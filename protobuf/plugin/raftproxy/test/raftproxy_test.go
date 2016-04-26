@@ -54,10 +54,9 @@ func TestSimpleRedirect(t *testing.T) {
 	defer conn.Close()
 
 	cluster := &mockCluster{addr: addr}
-	cConn, err := raftpicker.Dial(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
-	require.NoError(t, err)
+	cs := raftpicker.NewConnSelector(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cConn, cluster)
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -78,10 +77,9 @@ func TestServerStreamRedirect(t *testing.T) {
 	defer conn.Close()
 
 	cluster := &mockCluster{addr: addr}
-	cConn, err := raftpicker.Dial(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
-	require.NoError(t, err)
+	cs := raftpicker.NewConnSelector(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cConn, cluster)
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -105,10 +103,9 @@ func TestClientStreamRedirect(t *testing.T) {
 	defer conn.Close()
 
 	cluster := &mockCluster{addr: addr}
-	cConn, err := raftpicker.Dial(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
-	require.NoError(t, err)
+	cs := raftpicker.NewConnSelector(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cConn, cluster)
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -134,10 +131,9 @@ func TestClientServerStreamRedirect(t *testing.T) {
 	defer conn.Close()
 
 	cluster := &mockCluster{addr: addr}
-	cConn, err := raftpicker.Dial(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
-	require.NoError(t, err)
+	cs := raftpicker.NewConnSelector(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cConn, cluster)
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
