@@ -106,12 +106,20 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 
 	if _, err := a.store.Batch(func(batch state.Batch) error {
 		for _, t := range tasks {
+			if taskDead(t) {
+				continue
+			}
+
 			// No container or network configured. Not interested.
 			if t.Spec.GetContainer() == nil {
 				continue
 			}
 
 			if len(t.Spec.GetContainer().Networks) == 0 {
+				continue
+			}
+
+			if nc.nwkAllocator.IsTaskAllocated(t) {
 				continue
 			}
 
@@ -218,6 +226,17 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 	}
 }
 
+// taskRunning checks whether a task is either actively running, or in the
+// process of starting up.
+func taskRunning(t *api.Task) bool {
+	return t.DesiredState == api.TaskStateRunning && t.Status != nil && t.Status.State <= api.TaskStateRunning
+}
+
+// taskDead checks whether a task is not actively running as far as allocator purposes are concerned.
+func taskDead(t *api.Task) bool {
+	return t.DesiredState == api.TaskStateDead && t.Status != nil && t.Status.State > api.TaskStateRunning
+}
+
 func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev events.Event) {
 	var (
 		isDelete bool
@@ -237,6 +256,21 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 		return
 	}
 
+	// If the task has stopped running or it's being deleted then
+	// we should free the network resources associated with the
+	// task right away.
+	if taskDead(t) || isDelete {
+		if nc.nwkAllocator.IsTaskAllocated(t) {
+			if err := nc.nwkAllocator.DeallocateTask(t); err != nil {
+				log.G(ctx).Errorf("Failed freeing network resources for task %s: %v", t.ID, err)
+			}
+		}
+
+		// Cleanup any task references that might exist in unallocatedTasks
+		delete(nc.unallocatedTasks, t.ID)
+		return
+	}
+
 	// No container or network configured. Not interested.
 	if t.Spec.GetContainer() == nil {
 		return
@@ -251,8 +285,18 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 			}
 			return nil
 		}); err != nil {
-			log.G(ctx).Errorf("Failed to get service %s for task %s: %v", t.ServiceID, t.ID, err)
-			return
+			// If the task is running it is not normal to
+			// not be able to find the associated
+			// service. If the task is not running (task
+			// is either dead or the desired state is set
+			// to dead) then the service may not be
+			// available in store. But we still need to
+			// cleanup network resources associated with
+			// the task.
+			if taskRunning(t) && !isDelete {
+				log.G(ctx).Errorf("Event %T: Failed to get service %s for task %s state %s: %v", ev, t.ServiceID, t.ID, t.Status.State, err)
+				return
+			}
 		}
 	}
 
@@ -303,22 +347,8 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 
 	if !nc.nwkAllocator.IsTaskAllocated(t) ||
 		(s != nil && s.Spec.Endpoint != nil && !nc.nwkAllocator.IsServiceAllocated(s)) {
-		if isDelete {
-			delete(nc.unallocatedTasks, t.ID)
-			return
-		}
 
 		nc.unallocatedTasks[t.ID] = t
-		return
-	}
-
-	// If the task has stopped running or it's being deleted then
-	// we should free the network resources associated with the
-	// task.
-	if t.Status.State > api.TaskStateRunning || isDelete {
-		if err := nc.nwkAllocator.DeallocateTask(t); err != nil {
-			log.G(ctx).Errorf("Failed freeing network resources for task %s: %v", t.ID, err)
-		}
 	}
 }
 
@@ -413,7 +443,9 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sta
 	// Update the network allocations and moving to
 	// ALLOCATED state on top of the latest store state.
 	if a.taskAllocateVote(networkVoter, t.ID) {
-		storeT.Status.State = api.TaskStateAllocated
+		if storeT.Status.State < api.TaskStateAllocated {
+			storeT.Status.State = api.TaskStateAllocated
+		}
 	}
 
 	storeT.Networks = t.Networks

@@ -178,7 +178,8 @@ func TestAllocator(t *testing.T) {
 			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
-			ServiceID: "testServiceID2",
+			ServiceID:    "testServiceID2",
+			DesiredState: api.TaskStateRunning,
 			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.Container{
@@ -214,6 +215,7 @@ func TestAllocator(t *testing.T) {
 			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
+			DesiredState: api.TaskStateRunning,
 			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.Container{
@@ -284,7 +286,8 @@ func TestAllocator(t *testing.T) {
 			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
-			ServiceID: "testServiceID2",
+			DesiredState: api.TaskStateRunning,
+			ServiceID:    "testServiceID2",
 			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.Container{},
@@ -320,6 +323,7 @@ func TestAllocator(t *testing.T) {
 			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
+			DesiredState: api.TaskStateRunning,
 			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.Container{},
