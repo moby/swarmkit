@@ -214,7 +214,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 // taskRunning checks whether a task is either actively running, or in the
 // process of starting up.
 func taskRunning(t *api.Task) bool {
-	return t.DesiredState == api.TaskStateRunning && t.Status.State <= api.TaskStateRunning
+	return t.DesiredState <= api.TaskStateRunning && t.Status.State <= api.TaskStateRunning
 }
 
 // taskDead checks whether a task is not actively running as far as allocator purposes are concerned.

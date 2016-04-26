@@ -93,6 +93,9 @@ func TestDrain(t *testing.T) {
 		// Task not assigned to any node
 		{
 			ID: "id0",
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
 			Annotations: api.Annotations{
 				Name: "name0",
 			},
@@ -101,6 +104,9 @@ func TestDrain(t *testing.T) {
 		// Tasks assigned to the nodes defined above
 		{
 			ID: "id1",
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
@@ -109,6 +115,9 @@ func TestDrain(t *testing.T) {
 		},
 		{
 			ID: "id2",
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
 			Annotations: api.Annotations{
 				Name: "name2",
 			},
@@ -117,6 +126,9 @@ func TestDrain(t *testing.T) {
 		},
 		{
 			ID: "id3",
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
 			Annotations: api.Annotations{
 				Name: "name3",
 			},
@@ -125,6 +137,9 @@ func TestDrain(t *testing.T) {
 		},
 		{
 			ID: "id4",
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
 			Annotations: api.Annotations{
 				Name: "name4",
 			},
@@ -133,6 +148,9 @@ func TestDrain(t *testing.T) {
 		},
 		{
 			ID: "id5",
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
 			Annotations: api.Annotations{
 				Name: "name5",
 			},
@@ -192,8 +210,8 @@ func TestDrain(t *testing.T) {
 	assert.NoError(t, err)
 
 	deletion4 := watchDeadTask(t, watch)
-	assert.Equal(t, deletion4.ID, "newtask")
-	assert.Equal(t, deletion4.NodeID, "id2")
+	assert.Equal(t, "newtask", deletion4.ID)
+	assert.Equal(t, "id2", deletion4.NodeID)
 
 	// Set node id4 to the DRAINED state
 	err = store.Update(func(tx state.Tx) error {
@@ -205,8 +223,8 @@ func TestDrain(t *testing.T) {
 	assert.NoError(t, err)
 
 	deletion5 := watchDeadTask(t, watch)
-	assert.Equal(t, deletion5.ID, "id4")
-	assert.Equal(t, deletion5.NodeID, "id4")
+	assert.Equal(t, "id4", deletion5.ID)
+	assert.Equal(t, "id4", deletion5.NodeID)
 
 	// Delete node id1
 	err = store.Update(func(tx state.Tx) error {
@@ -216,8 +234,8 @@ func TestDrain(t *testing.T) {
 	assert.NoError(t, err)
 
 	deletion6 := watchDeadTask(t, watch)
-	assert.Equal(t, deletion6.ID, "id1")
-	assert.Equal(t, deletion6.NodeID, "id1")
+	assert.Equal(t, "id1", deletion6.ID)
+	assert.Equal(t, "id1", deletion6.NodeID)
 
 	orchestrator.Stop()
 }

@@ -131,7 +131,7 @@ func (tr *TaskReaper) tick() {
 			sort.Sort(tasksByTimestamp(historicTasks))
 
 			for _, t := range historicTasks {
-				if t.DesiredState == api.TaskStateRunning {
+				if t.DesiredState <= api.TaskStateRunning {
 					// Don't delete running tasks
 					continue
 				}
