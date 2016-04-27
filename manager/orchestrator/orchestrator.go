@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
+	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
 	"golang.org/x/net/context"
 )
@@ -105,4 +106,35 @@ func newTask(service *api.Service, instance uint64) *api.Task {
 // isRelatedService decides if this service is related to current orchestrator
 func isRelatedService(service *api.Service) bool {
 	return service != nil && service.Spec != nil && service.Spec.Mode == api.ServiceModeRunning
+}
+
+func deleteServiceTasks(ctx context.Context, store state.Store, service *api.Service) {
+	var tasks []*api.Task
+	err := store.View(func(tx state.ReadTx) error {
+		var err error
+		tasks, err = tx.Tasks().Find(state.ByServiceID(service.ID))
+		return err
+	})
+	if err != nil {
+		log.G(ctx).WithError(err).Errorf("task list transaction failed")
+		return
+	}
+
+	_, err = store.Batch(func(batch state.Batch) error {
+		for _, t := range tasks {
+			err := batch.Update(func(tx state.Tx) error {
+				if err := tx.Tasks().Delete(t.ID); err != nil {
+					log.G(ctx).WithError(err).Errorf("failed to delete task")
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		log.G(ctx).WithError(err).Errorf("task search transaction failed")
+	}
 }
