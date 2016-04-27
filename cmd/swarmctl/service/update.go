@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/cmd/swarmctl/network"
 	"github.com/spf13/cobra"
 )
 
@@ -37,6 +38,9 @@ var (
 					return err
 				}
 				spec = service.ToProto()
+				if err := network.ResolveServiceNetworks(common.Context(cmd), c, spec); err != nil {
+					return err
+				}
 			} else { // TODO(vieux): support or error on both file.
 				spec = service.Spec
 
