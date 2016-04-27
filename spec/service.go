@@ -72,7 +72,11 @@ func (s *ServiceConfig) Validate() error {
 	}
 
 	switch s.Mode {
-	case "", "running", "fill", "batch":
+	case "", "running", "batch":
+	case "fill":
+		if s.Instances != 1 {
+			return fmt.Errorf("fill mode only allows 1 instance per node")
+		}
 	default:
 		return fmt.Errorf("unrecognized mode %s", s.Mode)
 	}
