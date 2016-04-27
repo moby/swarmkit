@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/cmd/swarmctl/network"
 	"github.com/docker/swarm-v2/spec"
 	"github.com/spf13/cobra"
 )
@@ -38,6 +39,10 @@ var (
 			if err != nil {
 				return err
 			}
+			remoteSpec := service.Spec
+			if err := network.ResolveServiceNetworks(common.Context(cmd), c, remoteSpec); err != nil {
+				return err
+			}
 
 			localService, err := readServiceConfig(flags)
 			if err != nil {
@@ -45,7 +50,7 @@ var (
 			}
 
 			remoteService := &spec.ServiceConfig{}
-			remoteService.FromProto(service.Spec)
+			remoteService.FromProto(remoteSpec)
 			diff, err := localService.Diff(context, "remote", "local", remoteService)
 			if err != nil {
 				return err

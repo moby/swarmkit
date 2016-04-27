@@ -31,26 +31,8 @@ var (
 					return err
 				}
 				spec = service.ToProto()
-
-				// Convert network names to IDs
-				if len(spec.Template.GetContainer().Networks) != 0 {
-					networks := make([]*api.Container_NetworkAttachment, 0, len(spec.Template.GetContainer().Networks))
-					for _, na := range spec.Template.GetContainer().Networks {
-						nwkName := na.GetName()
-						n, err := network.GetNetwork(common.Context(cmd), c, nwkName)
-						if err != nil {
-							return err
-						}
-
-						networks = append(networks, &api.Container_NetworkAttachment{
-							Reference: &api.Container_NetworkAttachment_NetworkID{
-								NetworkID: n.ID,
-							},
-						})
-					}
-
-					spec.Template.GetContainer().Networks = networks
-
+				if err := network.ResolveServiceNetworks(common.Context(cmd), c, spec); err != nil {
+					return nil
 				}
 			} else { // TODO(vieux): support or error on both file.
 				if !flags.Changed("name") || !flags.Changed("image") {

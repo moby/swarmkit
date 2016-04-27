@@ -34,3 +34,26 @@ func GetNetwork(ctx context.Context, c api.ClusterClient, input string) (*api.Ne
 
 	return rg.Network, nil
 }
+
+// ResolveServiceNetworks takes a service spec and resolves network names to network IDs.
+func ResolveServiceNetworks(ctx context.Context, c api.ClusterClient, spec *api.ServiceSpec) error {
+	if len(spec.Template.GetContainer().Networks) == 0 {
+		return nil
+	}
+	networks := make([]*api.Container_NetworkAttachment, 0, len(spec.Template.GetContainer().Networks))
+	for _, na := range spec.Template.GetContainer().Networks {
+		n, err := GetNetwork(ctx, c, na.GetNetworkID())
+		if err != nil {
+			return err
+		}
+
+		networks = append(networks, &api.Container_NetworkAttachment{
+			Reference: &api.Container_NetworkAttachment_NetworkID{
+				NetworkID: n.ID,
+			},
+		})
+	}
+
+	spec.Template.GetContainer().Networks = networks
+	return nil
+}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/cmd/swarmctl/network"
 	"github.com/docker/swarm-v2/spec"
 	"github.com/spf13/cobra"
 )
@@ -37,9 +38,13 @@ var (
 			if err != nil {
 				return err
 			}
+			specPB := servicePB.Spec
+			if err := network.ResolveServiceNetworks(common.Context(cmd), c, specPB); err != nil {
+				return err
+			}
 
 			service := &spec.ServiceConfig{}
-			service.FromProto(servicePB.Spec)
+			service.FromProto(specPB)
 
 			original, err := ioutil.TempFile(os.TempDir(), "swarm-service-edit")
 			if err != nil {

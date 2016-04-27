@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/cmd/swarmctl/network"
 	"github.com/spf13/cobra"
 )
 
@@ -38,6 +39,9 @@ var (
 			}
 
 			for _, serviceSpec := range s.ServiceSpecs() {
+				if err := network.ResolveServiceNetworks(common.Context(cmd), c, serviceSpec); err != nil {
+					return err
+				}
 				if service, ok := services[serviceSpec.Annotations.Name]; ok && !reflect.DeepEqual(service.Spec, serviceSpec) {
 					r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
 						ServiceID:      service.ID,
