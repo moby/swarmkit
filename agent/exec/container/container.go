@@ -84,6 +84,7 @@ func (c *containerConfig) ephemeralDirs() map[string]struct{} {
 
 func (c *containerConfig) config() *enginecontainer.Config {
 	return &enginecontainer.Config{
+		User:         c.runtime.User,
 		Cmd:          c.runtime.Command, // TODO(stevvooe): Fall back to entrypoint+args
 		Env:          c.runtime.Env,
 		WorkingDir:   c.runtime.Dir,

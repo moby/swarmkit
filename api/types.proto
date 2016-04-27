@@ -158,6 +158,9 @@ message Container {
 	// Dir defines the working directory to set for the container process.
 	string dir = 6;
 
+	// User specifies the user that should be employed to run the container.
+	string user = 7;
+
 	// NetworkAttachmentSpec describes a desired attachment to the named network or
 	// a specific network_id.
 	message NetworkAttachment {
@@ -167,9 +170,9 @@ message Container {
 		}
 	}
 
-	repeated NetworkAttachment networks = 7;
+	repeated NetworkAttachment networks = 8;
 
-	repeated Mount mounts = 8;
+	repeated Mount mounts = 9;
 }
 
 message RestartPolicy {
