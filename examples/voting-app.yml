@@ -1,0 +1,28 @@
+version: '3'
+namespace: voting-app
+
+services:
+    frontend:
+        image: aluzzardi/s2_frontend
+        instances: 1
+        env:
+            - QUEUE_HOSTNAME=redis
+            - OPTION_A=Cats
+            - OPTION_B=Dogs
+        networks:
+            - mynetwork
+        ports:
+            - name: front
+              protocol: tcp
+              port: 80
+
+    redis:
+        image: redis
+        instances: 1
+        networks:
+            - mynetwork
+
+# TODO(aluzzardi): For now we have to manually run `swarmctl network create --name mynetwork`
+networks:
+    mynetwork:
+        driver: overlay

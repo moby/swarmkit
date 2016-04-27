@@ -1,0 +1,10 @@
+version: '3'
+namespace: hello-world
+
+services:
+  ping:
+      image: alpine
+      command: ["sh", "-c", "ping $HOST"]
+      env:
+          - HOST=google.com
+      instances: 2

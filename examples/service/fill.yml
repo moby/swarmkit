@@ -1,7 +1,0 @@
-name: filldemo
-image: alpine
-command: ["sh", "-c", "ping $HOST"]
-instances: 1
-mode: fill
-env:
- - HOST=google.com
