@@ -1,8 +1,6 @@
 package orchestrator
 
 import (
-	"reflect"
-
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
@@ -157,52 +155,24 @@ func (o *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
 		case specifiedInstances > numTasks:
 			log.G(ctx).Debugf("Service %s was scaled up from %d to %d instances", service.ID, numTasks, specifiedInstances)
 			// Update all current tasks then add missing tasks
-			o.updateTasks(ctx, batch, service, runningTasks)
+			o.updater.Update(ctx, service, runningTasks)
 			o.addTasks(ctx, batch, service, runningInstances, specifiedInstances-numTasks)
 
 		case specifiedInstances < numTasks:
 			// Update up to N tasks then remove the extra
 			log.G(ctx).Debugf("Service %s was scaled down from %d to %d instances", service.ID, numTasks, specifiedInstances)
-			o.updateTasks(ctx, batch, service, runningTasks[:specifiedInstances])
+			o.updater.Update(ctx, service, runningTasks[:specifiedInstances])
 			o.removeTasks(ctx, batch, service, runningTasks[specifiedInstances:])
 
 		case specifiedInstances == numTasks:
 			// Simple update, no scaling - update all tasks.
-			o.updateTasks(ctx, batch, service, runningTasks)
+			o.updater.Update(ctx, service, runningTasks)
 		}
 		return nil
 	})
 
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("reconcile batch failed")
-	}
-}
-
-func (o *Orchestrator) updateTasks(ctx context.Context, batch state.Batch, service *api.Service, tasks []*api.Task) {
-	for _, t := range tasks {
-		if reflect.DeepEqual(service.Spec.Template, t.Spec) {
-			continue
-		}
-		err := batch.Update(func(tx state.Tx) error {
-			if err := tx.Tasks().Create(newTask(service, t.Instance)); err != nil {
-				log.G(ctx).Errorf("Failed to create task: %v", err)
-				return err
-			}
-
-			// TODO(aaronl): optimistic update?
-			t = tx.Tasks().Get(t.ID)
-			if t != nil {
-				t.DesiredState = api.TaskStateDead
-				if err := tx.Tasks().Update(t); err != nil {
-					log.G(ctx).Errorf("Failed to update task %s: %v", t.ID, err)
-					return err
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			log.G(ctx).Errorf("orchestrator batch failed: %v", err)
-		}
 	}
 }
 

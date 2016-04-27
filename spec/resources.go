@@ -27,7 +27,7 @@ type Resources struct {
 // Validate checks the validity of Resources.
 func (r *Resources) Validate() error {
 	// Assume everything is alright if resoruces are not specified.
-	if r == nil || (r.CPU == "" && r.Memory == "") {
+	if r.CPU == "" && r.Memory == "" {
 		return nil
 	}
 
@@ -40,21 +40,12 @@ func (r *Resources) Validate() error {
 		if !nanoCPUs.IsInt() {
 			return fmt.Errorf("CPU value cannot have more than 9 decimal places: %s", r.CPU)
 		}
-		// Parse cpu back into human readable for normalization (e.g. 0.2000 -> 0.2).
-		// This will prevent useless diffs.
-		r.CPU = stripTrailingZeros(cpu.FloatString(9))
 	}
 
 	if r.Memory != "" {
-		bytes, err := humanize.ParseBytes(r.Memory)
-		if err != nil {
+		if _, err := humanize.ParseBytes(r.Memory); err != nil {
 			return err
 		}
-		// Parse the bytes back into human readable.
-		// This allows normalization (e.g. "1024MB" -> "1GB") and
-		// prevents diffs to show up if the unit used locally is
-		// different than the remote.
-		r.Memory = humanize.IBytes(bytes)
 	}
 
 	return nil
@@ -110,11 +101,15 @@ func (r *ResourceRequirements) Validate() error {
 	if r == nil {
 		return nil
 	}
-	if err := r.Limits.Validate(); err != nil {
-		return err
+	if r.Limits != nil {
+		if err := r.Limits.Validate(); err != nil {
+			return err
+		}
 	}
-	if err := r.Reservations.Validate(); err != nil {
-		return err
+	if r.Reservations != nil {
+		if err := r.Reservations.Validate(); err != nil {
+			return err
+		}
 	}
 	return nil
 }

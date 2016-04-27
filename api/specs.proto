@@ -106,9 +106,12 @@ message ServiceSpec {
 	// target state sought to satisfy the given service.
 	Mode mode = 6;
 
+	// UpdateStrategy controls the rate and policy of updates.
+	UpdateStrategy update = 7;
+
 	// Service endpoint specifies the user provided configuration
 	// to properly discover and load balance a service.
-	Endpoint endpoint = 7;
+	Endpoint endpoint = 8;
 }
 
 // TaskSpec defines properties required by the agent for execution.

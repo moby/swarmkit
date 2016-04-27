@@ -55,7 +55,9 @@ type ServiceConfig struct {
 	Mode      string `yaml:"mode,omitempty"`
 
 	Restart      string `yaml:"restart,omitempty"`
-	RestartDelay int64  `yaml:"restartdelay,omitempty"`
+	RestartDelay string `yaml:"restartdelay,omitempty"`
+
+	Update *UpdateStrategy `yaml:"update,omitempty"`
 
 	Ports []PortConfig `yaml:"ports,omitempty"`
 }
@@ -68,6 +70,7 @@ func (s *ServiceConfig) Validate() error {
 	if s.Image == "" {
 		return fmt.Errorf("image is mandatory in %s", s.Name)
 	}
+
 	switch s.Mode {
 	case "", "running", "fill", "batch":
 	default:
@@ -80,9 +83,24 @@ func (s *ServiceConfig) Validate() error {
 	default:
 		return fmt.Errorf("unrecognized restart policy %s", s.Restart)
 	}
-	if err := s.Resources.Validate(); err != nil {
-		return err
+	if s.RestartDelay != "" {
+		_, err := time.ParseDuration(s.RestartDelay)
+		if err != nil {
+			return err
+		}
 	}
+
+	if s.Resources != nil {
+		if err := s.Resources.Validate(); err != nil {
+			return err
+		}
+	}
+	if s.Update != nil {
+		if err := s.Update.Validate(); err != nil {
+			return err
+		}
+	}
+
 	if err := s.Mounts.Validate(); err != nil {
 		return err
 	}
@@ -134,10 +152,9 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 				},
 			},
 		},
+		Update:    s.Update.ToProto(),
 		Instances: s.Instances,
-		Restart: &api.RestartPolicy{
-			Delay: time.Duration(s.RestartDelay) * time.Second,
-		},
+		Restart:   &api.RestartPolicy{},
 	}
 
 	if len(s.Ports) != 0 {
@@ -185,6 +202,7 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 	case "", "always":
 		spec.Restart.Condition = api.RestartAlways
 	}
+	spec.Restart.Delay, _ = time.ParseDuration(s.RestartDelay)
 
 	return spec
 }
@@ -205,6 +223,7 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 		s.Resources = &ResourceRequirements{}
 		s.Resources.FromProto(serviceSpec.Template.GetContainer().Resources)
 	}
+
 	if serviceSpec.Template.GetContainer().Mounts != nil {
 		apiMounts := serviceSpec.Template.GetContainer().Mounts
 		s.Mounts = make(Mounts, len(apiMounts))
@@ -229,26 +248,38 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 		case api.RestartAlways:
 			s.Restart = "always"
 		}
-		s.RestartDelay = int64(serviceSpec.Restart.Delay / time.Second)
+		s.RestartDelay = serviceSpec.Restart.Delay.String()
+	}
+
+	if serviceSpec.Update != nil {
+		s.Update = &UpdateStrategy{}
+		s.Update.FromProto(serviceSpec.Update)
 	}
 }
 
 // Diff returns a diff between two ServiceConfigs.
 func (s *ServiceConfig) Diff(context int, fromFile, toFile string, other *ServiceConfig) (string, error) {
-	from, err := yaml.Marshal(other)
+	// Marshal back and forth to make sure we run with the same defaults.
+	from := &ServiceConfig{}
+	from.FromProto(other.ToProto())
+
+	to := &ServiceConfig{}
+	to.FromProto(s.ToProto())
+
+	fromYml, err := yaml.Marshal(from)
 	if err != nil {
 		return "", err
 	}
 
-	to, err := yaml.Marshal(s)
+	toYml, err := yaml.Marshal(to)
 	if err != nil {
 		return "", err
 	}
 
 	diff := difflib.UnifiedDiff{
-		A:        difflib.SplitLines(string(from)),
+		A:        difflib.SplitLines(string(fromYml)),
 		FromFile: fromFile,
-		B:        difflib.SplitLines(string(to)),
+		B:        difflib.SplitLines(string(toYml)),
 		ToFile:   toFile,
 		Context:  context,
 	}

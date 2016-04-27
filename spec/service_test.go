@@ -131,6 +131,12 @@ func TestServiceConfigsDiff(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, diff)
 
+	against = &ServiceConfig{}
+	against.FromProto(service.ToProto())
+	diff, err = service.Diff(0, "remote", "local", against)
+	assert.NoError(t, err)
+	assert.Empty(t, diff)
+
 	against = makeService()
 	against.Image = "redis"
 	assert.NoError(t, against.Validate())
