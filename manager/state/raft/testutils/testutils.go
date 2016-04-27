@@ -194,7 +194,7 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, securityConfig *ca.
 		Config:         cfg,
 		StateDir:       stateDir,
 		ClockSource:    clockSource,
-		SendTimeout:    100 * time.Millisecond,
+		SendTimeout:    10 * time.Second,
 		TLSCredentials: securityConfig.ClientTLSCreds,
 	}
 
@@ -267,7 +267,7 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 		Config:         cfg,
 		StateDir:       oldNode.StateDir,
 		ClockSource:    clockSource,
-		SendTimeout:    100 * time.Millisecond,
+		SendTimeout:    10 * time.Second,
 		TLSCredentials: securityConfig.ClientTLSCreds,
 	}
 

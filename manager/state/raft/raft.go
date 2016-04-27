@@ -78,6 +78,7 @@ type Node struct {
 	Client         *Raft
 	Server         *grpc.Server
 	Ctx            context.Context
+	cancel         func()
 	tlsCredentials credentials.TransportAuthenticator
 
 	Address  string
@@ -167,8 +168,11 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 
 	raftStore := raft.NewMemoryStorage()
 
+	ctx, cancel := context.WithCancel(ctx)
+
 	n := &Node{
 		Ctx:            ctx,
+		cancel:         cancel,
 		cluster:        newCluster(),
 		tlsCredentials: opts.TLSCredentials,
 		raftStore:      raftStore,
@@ -489,6 +493,7 @@ func (n *Node) Run(ctx context.Context) {
 			n.snapshotInProgress = nil
 
 		case <-n.stopCh:
+			n.cancel()
 			n.asyncTasks.Wait()
 
 			n.stopMu.Lock()
