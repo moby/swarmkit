@@ -30,7 +30,7 @@ func (o *Orchestrator) handleServiceEvent(ctx context.Context, event events.Even
 		if !isRelatedService(v.Service) {
 			return
 		}
-		o.handleDeleteService(ctx, v.Service)
+		deleteServiceTasks(ctx, o.store, v.Service)
 	case state.EventCreateService:
 		if !isRelatedService(v.Service) {
 			return
@@ -50,46 +50,6 @@ func (o *Orchestrator) tickServices(ctx context.Context) {
 			o.reconcile(ctx, s)
 		}
 		o.reconcileServices = make(map[string]*api.Service)
-	}
-}
-
-func (o *Orchestrator) handleDeleteService(ctx context.Context, service *api.Service) {
-	log.G(ctx).Debugf("Service %s was deleted", service.ID)
-
-	var tasks []*api.Task
-	err := o.store.View(func(tx state.ReadTx) error {
-		var err error
-		tasks, err = tx.Tasks().Find(state.ByServiceID(service.ID))
-		if err != nil {
-			log.G(ctx).WithError(err).Errorf("failed finding tasks for service")
-			return err
-		}
-
-		return nil
-	})
-	if err != nil {
-		log.G(ctx).WithError(err).Errorf("handleDeleteService transaction failed")
-		return
-	}
-
-	_, err = o.store.Batch(func(batch state.Batch) error {
-		for _, t := range tasks {
-			// TODO(aaronl): optimistic update?
-			err := batch.Update(func(tx state.Tx) error {
-				err := tx.Tasks().Delete(t.ID)
-				if err != nil {
-					log.G(ctx).WithError(err).Errorf("failed to delete task")
-				}
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		log.G(ctx).WithError(err).Errorf("handleDeleteService transaction failed")
 	}
 }
 

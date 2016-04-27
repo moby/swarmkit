@@ -98,7 +98,9 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 				if !f.isRelatedService(v.Service) {
 					continue
 				}
-				f.deleteService(ctx, v.Service)
+				deleteServiceTasks(ctx, f.store, v.Service)
+				// delete the service from service map
+				delete(f.fillServices, v.Service.ID)
 			case state.EventCreateNode:
 				f.nodes[v.Node.ID] = struct{}{}
 				f.reconcileOneNode(ctx, v.Node)
@@ -141,39 +143,6 @@ func (f *FillOrchestrator) Stop() {
 	close(f.stopChan)
 	<-f.doneChan
 	f.updater.CancelAll()
-}
-
-func (f *FillOrchestrator) deleteService(ctx context.Context, service *api.Service) {
-	var tasks []*api.Task
-	err := f.store.View(func(tx state.ReadTx) error {
-		var err error
-		tasks, err = tx.Tasks().Find(state.ByServiceID(service.ID))
-		return err
-	})
-	if err != nil {
-		log.G(ctx).WithError(err).Errorf("deleteService transaction failed")
-		return
-	}
-
-	_, err = f.store.Batch(func(batch state.Batch) error {
-		for _, t := range tasks {
-			err := batch.Update(func(tx state.Tx) error {
-				if err := tx.Tasks().Delete(t.ID); err != nil {
-					log.G(ctx).WithError(err).Errorf("failed to delete task")
-				}
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		log.G(ctx).WithError(err).Errorf("deleteService transaction failed")
-	}
-	// delete the service from service map
-	delete(f.fillServices, service.ID)
 }
 
 func (f *FillOrchestrator) removeTasksFromNode(ctx context.Context, node *api.Node) {
