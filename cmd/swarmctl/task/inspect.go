@@ -14,17 +14,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func printTaskStatus(w io.Writer, s *api.TaskStatus) {
+func printTaskStatus(w io.Writer, t *api.Task) {
 	fmt.Fprintln(w, "Status\t")
-	fmt.Fprintf(w, "  State\t: %s\n", s.State.String())
-	if s.Timestamp != nil {
-		fmt.Fprintf(w, "  Timestamp\t: %s\n", ptypes.TimestampString(s.Timestamp))
+	fmt.Fprintf(w, "  Desired State\t: %s\n", t.DesiredState.String())
+	fmt.Fprintf(w, "  Last State\t: %s\n", t.Status.State.String())
+	if t.Status.Timestamp != nil {
+		fmt.Fprintf(w, "  Timestamp\t: %s\n", ptypes.TimestampString(t.Status.Timestamp))
 	}
-	if s.Message != "" {
-		fmt.Fprintf(w, "  Message\t: %s\n", s.Message)
+	if t.Status.Message != "" {
+		fmt.Fprintf(w, "  Message\t: %s\n", t.Status.Message)
 	}
-	if s.Err != "" {
-		fmt.Fprintf(w, "  Error\t: %s\n", s.Err)
+	if t.Status.Err != "" {
+		fmt.Fprintf(w, "  Error\t: %s\n", t.Status.Err)
 	}
 }
 
@@ -56,7 +57,7 @@ var (
 			fmt.Fprintf(w, "ID\t: %s\n", r.Task.ID)
 			fmt.Fprintf(w, "Instance\t: %d\n", r.Task.Instance)
 			fmt.Fprintf(w, "Service\t: %s\n", res.Resolve(api.Service{}, r.Task.ServiceID))
-			printTaskStatus(w, r.Task.Status)
+			printTaskStatus(w, r.Task)
 			fmt.Fprintf(w, "Node\t: %s\n", res.Resolve(api.Node{}, r.Task.NodeID))
 
 			fmt.Fprintln(w, "Spec\t")
