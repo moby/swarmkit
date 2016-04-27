@@ -6,10 +6,10 @@ mounts:
   - target: /data
     source: /home/docker
     mask: ro
-    type: BindHostDir
+    type: bind
   - target: /dataRW
     source: /home/docker
     mask: rw
-    type: BindHostDir
+    type: bind
   - target: /dataScratch
-    type: EphemeralDir
+    type: ephemeral
