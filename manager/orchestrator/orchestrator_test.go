@@ -162,9 +162,9 @@ func TestOrchestrator(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	observedDeletion3 := watchDeadTask(t, watch)
-	assert.Equal(t, observedDeletion3.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedDeletion3.Annotations.Name, "name2")
+	deletedTask := watchTaskDelete(t, watch)
+	assert.Equal(t, deletedTask.Status.State, api.TaskStateNew)
+	assert.Equal(t, deletedTask.Annotations.Name, "name2")
 
 	orchestrator.Stop()
 }
@@ -444,6 +444,19 @@ func watchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
 	}
 }
 
+func watchTaskDelete(t *testing.T, watch chan events.Event) *api.Task {
+	for {
+		select {
+		case event := <-watch:
+			if task, ok := event.(state.EventDeleteTask); ok {
+				return task.Task
+			}
+		case <-time.After(time.Second):
+			t.Fatal("no task deletion")
+		}
+	}
+}
+
 func expectTaskUpdate(t *testing.T, watch chan events.Event) {
 	for {
 		select {
@@ -454,6 +467,20 @@ func expectTaskUpdate(t *testing.T, watch chan events.Event) {
 			return
 		case <-time.After(time.Second):
 			t.Fatal("no task update event")
+		}
+	}
+}
+
+func expectDeleteService(t *testing.T, watch chan events.Event) {
+	for {
+		select {
+		case event := <-watch:
+			if _, ok := event.(state.EventDeleteService); !ok {
+				t.Fatalf("expected service delete event, got %#v", event)
+			}
+			return
+		case <-time.After(time.Second):
+			t.Fatal("no service delete event")
 		}
 	}
 }
