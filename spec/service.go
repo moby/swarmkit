@@ -3,6 +3,7 @@ package spec
 import (
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	yaml "github.com/cloudfoundry-incubator/candiedyaml"
@@ -29,10 +30,20 @@ type ContainerConfig struct {
 	// 1003.1-2001](http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html).
 	Env []string `yaml:"env,omitempty"`
 
+	// Networks specifies all the networks that this service is attached to.
+	Networks  []string              `yaml:"networks,omitempty"`
 	Resources *ResourceRequirements `yaml:"resources,omitempty"`
 
 	// Mounts describe how volumes should be mounted in the container
 	Mounts Mounts `yaml:"mounts,omitempty"`
+}
+
+// PortConfig is a human representation of the PortConfiguration
+type PortConfig struct {
+	Name     string `yaml:"name,omitempty"`
+	Protocol string `yaml:"protocol,omitempty"`
+	Port     uint32 `yaml:"port,omitempty"`
+	NodePort uint32 `yaml:"node_port,omitempty"`
 }
 
 // ServiceConfig is a human representation of the Service
@@ -45,6 +56,8 @@ type ServiceConfig struct {
 
 	Restart      string `yaml:"restart,omitempty"`
 	RestartDelay int64  `yaml:"restartdelay,omitempty"`
+
+	Ports []PortConfig `yaml:"ports,omitempty"`
 }
 
 // Validate checks the validity of the ServiceConfig.
@@ -125,6 +138,34 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 		Restart: &api.RestartPolicy{
 			Delay: time.Duration(s.RestartDelay) * time.Second,
 		},
+	}
+
+	if len(s.Ports) != 0 {
+		endpoint := &api.Endpoint{}
+		for _, portConfig := range s.Ports {
+			endpoint.Ports = append(endpoint.Ports, &api.Endpoint_PortConfiguration{
+				Name:     portConfig.Name,
+				Protocol: api.Endpoint_Protocol(api.Endpoint_Protocol_value[strings.ToUpper(portConfig.Protocol)]),
+				Port:     portConfig.Port,
+				NodePort: portConfig.NodePort,
+			})
+		}
+
+		spec.Endpoint = endpoint
+	}
+
+	if len(s.Networks) != 0 {
+		networks := make([]*api.Container_NetworkAttachment, 0, len(s.Networks))
+		for _, nwkName := range s.Networks {
+			networks = append(networks, &api.Container_NetworkAttachment{
+				Reference: &api.Container_NetworkAttachment_Name{
+					Name: nwkName,
+				},
+			})
+		}
+
+		spec.Template.GetContainer().Networks = networks
+
 	}
 
 	switch s.Mode {
