@@ -47,7 +47,8 @@ type Config struct {
 // This is the high-level object holding and initializing all the manager
 // subsystems.
 type Manager struct {
-	config *Config
+	config   *Config
+	listener net.Listener
 
 	caserver     *ca.Server
 	dispatcher   *dispatcher.Dispatcher
@@ -84,6 +85,15 @@ func New(config *Config) (*Manager, error) {
 		return nil, fmt.Errorf("failed to create raft state directory: %v", err)
 	}
 
+	lis := config.Listener
+	if lis == nil {
+		l, err := net.Listen(config.ListenProto, config.ListenAddr)
+		if err != nil {
+			return nil, err
+		}
+		lis = l
+	}
+
 	raftCfg := raft.DefaultNodeConfig()
 
 	leadershipCh := make(chan raft.LeadershipState)
@@ -97,6 +107,7 @@ func New(config *Config) (*Manager, error) {
 	}
 	raftNode, err := raft.NewNode(context.TODO(), newNodeOpts, leadershipCh)
 	if err != nil {
+		lis.Close()
 		return nil, fmt.Errorf("can't create raft node: %v", err)
 	}
 
@@ -107,6 +118,7 @@ func New(config *Config) (*Manager, error) {
 
 	m := &Manager{
 		config:       config,
+		listener:     lis,
 		caserver:     ca.NewServer(config.SecurityConfig),
 		dispatcher:   dispatcher.New(store, dispatcherConfig),
 		server:       grpc.NewServer(opts...),
@@ -121,17 +133,6 @@ func New(config *Config) (*Manager, error) {
 // address.
 // The call never returns unless an error occurs or `Stop()` is called.
 func (m *Manager) Run(ctx context.Context) error {
-	lis := m.config.Listener
-	if lis == nil {
-		l, err := net.Listen(m.config.ListenProto, m.config.ListenAddr)
-		if err != nil {
-			return err
-		}
-		lis = l
-	}
-
-	m.raftNode.Server = m.server
-
 	m.managerDone = make(chan struct{})
 	defer close(m.managerDone)
 
@@ -202,8 +203,8 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(
 		logrus.Fields{
-			"proto": lis.Addr().Network(),
-			"addr":  lis.Addr().String()}))
+			"proto": m.listener.Addr().Network(),
+			"addr":  m.listener.Addr().String()}))
 	log.G(ctx).Info("listening")
 	go m.raftNode.Run(ctx)
 
@@ -228,7 +229,7 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	errServe := make(chan error, 1)
 	go func() {
-		errServe <- m.server.Serve(lis)
+		errServe <- m.server.Serve(m.listener)
 	}()
 
 	leaderCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
