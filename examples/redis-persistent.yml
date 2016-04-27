@@ -1,0 +1,22 @@
+version: '3'
+namespace: 'redis'
+
+services:
+    redis:
+        image: redis:3.0.7
+        instances: 1
+        mounts:
+            - type: volume
+              name: swarm-demo
+              target: /data
+              mask: rw
+        ports:
+            - name: redis
+              protocol: tcp
+              port: 6379
+              node_port: 6379
+
+# TODO(aluzzardi): For now, you must run `docker volume create --driver rexray swarm-demo` on one of the nodes.
+volumes:
+    swarm-demo:
+        driver: rexray
