@@ -3,12 +3,27 @@ package managers
 import (
 	"fmt"
 	"os"
+	"sort"
 	"text/tabwriter"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
 	"github.com/spf13/cobra"
 )
+
+type managersByID []*api.Member
+
+func (m managersByID) Len() int {
+	return len(m)
+}
+
+func (m managersByID) Swap(i, j int) {
+	m[i], m[j] = m[j], m[i]
+}
+
+func (m managersByID) Less(i, j int) bool {
+	return m[i].ID < m[j].ID
+}
 
 var (
 	listCmd = &cobra.Command{
@@ -58,7 +73,9 @@ var (
 				output = func(n *api.Member) { fmt.Println(n.ID) }
 			}
 
-			for _, n := range r.Managers {
+			sortedManagers := managersByID(r.Managers)
+			sort.Sort(sortedManagers)
+			for _, n := range sortedManagers {
 				output(n)
 			}
 			return nil
