@@ -53,11 +53,22 @@ func printServiceSummary(service *api.Service) {
 		}
 	}
 	if len(ctr.Networks) > 0 {
-		fmt.Fprintln(w, "  Networks:\t")
+		fmt.Fprintf(w, "  Networks:\t")
 		for _, n := range ctr.Networks {
-			fmt.Fprintf(w, " %s\n", n.GetName())
+			fmt.Fprintf(w, " %s", n.GetNetworkID())
 		}
 	}
+
+	if service.Endpoint != nil && len(service.Endpoint.Ports) > 0 {
+		fmt.Fprintln(w, "\nPorts:")
+		for _, port := range service.Endpoint.Ports {
+			fmt.Fprintf(w, "    - Name\t= %s\n", port.Name)
+			fmt.Fprintf(w, "      Protocol\t= %s\n", port.Protocol)
+			fmt.Fprintf(w, "      Port\t= %d\n", port.Port)
+			fmt.Fprintf(w, "      NodePort\t= %d\n", port.NodePort)
+		}
+	}
+
 	if len(ctr.Mounts) > 0 {
 		fmt.Fprintln(w, "  Mounts:")
 		for _, v := range ctr.Mounts {
