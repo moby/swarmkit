@@ -76,10 +76,9 @@ func (o *Orchestrator) handleDeleteService(ctx context.Context, service *api.Ser
 		for _, t := range tasks {
 			// TODO(aaronl): optimistic update?
 			err := batch.Update(func(tx state.Tx) error {
-				t = tx.Tasks().Get(t.ID)
-				if t != nil {
-					t.DesiredState = api.TaskStateDead
-					return tx.Tasks().Update(t)
+				err := tx.Tasks().Delete(t.ID)
+				if err != nil {
+					log.G(ctx).WithError(err).Errorf("failed to delete task")
 				}
 				return nil
 			})

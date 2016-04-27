@@ -158,9 +158,8 @@ func (f *FillOrchestrator) deleteService(ctx context.Context, service *api.Servi
 	_, err = f.store.Batch(func(batch state.Batch) error {
 		for _, t := range tasks {
 			err := batch.Update(func(tx state.Tx) error {
-				if t != nil {
-					t.DesiredState = api.TaskStateDead
-					return tx.Tasks().Update(t)
+				if err := tx.Tasks().Delete(t.ID); err != nil {
+					log.G(ctx).WithError(err).Errorf("failed to delete task")
 				}
 				return nil
 			})

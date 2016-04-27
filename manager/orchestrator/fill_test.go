@@ -144,8 +144,8 @@ func TestDeleteService(t *testing.T) {
 	skipEvents(t, watch)
 
 	deleteService(t, store, service1)
-	// task should be set to dead
-	observedTask := watchDeadTask(t, watch)
+	// task should be deleted
+	observedTask := watchTaskDelete(t, watch)
 	assert.Equal(t, observedTask.Annotations.Name, "name1")
 	assert.Equal(t, observedTask.NodeID, "id1")
 }
