@@ -13,7 +13,6 @@ func TestResourcesValidate(t *testing.T) {
 		{Memory: "12 FB"},
 	}
 	good := []*Resources{
-		nil,
 		{CPU: "0", Memory: ""},
 		{CPU: "0.1"},
 		{CPU: "4"},

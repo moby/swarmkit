@@ -191,6 +191,17 @@ message RestartPolicy {
 	// failure count is reset.
 }
 
+// UpdateStrategy specifies the rate and policy of updates.
+// TODO(aluzzardi): Consider making this a oneof with RollingStrategy and LockstepStrategy.
+message UpdateStrategy {
+	// Maximum number of tasks to be updated in one iteration.
+	// 0 means unlimited parallelism.
+	uint64 parallelism = 1;
+
+	// Amount of time between updates.
+	uint64 delay = 2 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
+}
+
 // TaskState enumerates the states that a task progresses through within an
 // agent. States are designed to be monotonically increasing, such that if two
 // states are seen by a task, the greater of the new represents the true state.
@@ -202,7 +213,7 @@ enum TaskState {
 	option (gogoproto.enum_customname) = "TaskState";
 	NEW = 0 [(gogoproto.enumvalue_customname)="TaskStateNew"];
 	ALLOCATED = 64 [(gogoproto.enumvalue_customname)="TaskStateAllocated"]; // successful allocation of resources that the task needs
-	PENDING = 128 [(gogoproto.enumvalue_customname) = "TaskStatePending"]; // observed by scheduler but unassigned. 
+	PENDING = 128 [(gogoproto.enumvalue_customname) = "TaskStatePending"]; // observed by scheduler but unassigned.
 	ASSIGNED = 192 [(gogoproto.enumvalue_customname)="TaskStateAssigned"];
 	ACCEPTED = 256 [(gogoproto.enumvalue_customname)="TaskStateAccepted"]; // task has been accepted by an agent.
 	PREPARING = 320 [(gogoproto.enumvalue_customname)="TaskStatePreparing"];
