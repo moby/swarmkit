@@ -177,10 +177,10 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 
 	if len(s.Networks) != 0 {
 		networks := make([]*api.Container_NetworkAttachment, 0, len(s.Networks))
-		for _, nwkName := range s.Networks {
+		for _, net := range s.Networks {
 			networks = append(networks, &api.Container_NetworkAttachment{
-				Reference: &api.Container_NetworkAttachment_Name{
-					Name: nwkName,
+				Reference: &api.Container_NetworkAttachment_NetworkID{
+					NetworkID: net,
 				},
 			})
 		}
