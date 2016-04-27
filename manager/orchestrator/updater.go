@@ -143,6 +143,9 @@ func (u *Updater) Run(ctx context.Context, service *api.Service, tasks []*api.Ta
 func (u *Updater) worker(ctx context.Context, service *api.Service, queue <-chan *api.Task) {
 	for t := range queue {
 		updated := newTask(service, t.Instance)
+		if service.Spec.Mode == api.ServiceModeFill {
+			updated.NodeID = t.NodeID
+		}
 
 		if err := u.updateTask(ctx, t, updated); err != nil {
 			log.G(ctx).WithError(err).WithField("task.id", t.ID).Error("update failed")

@@ -1,10 +1,7 @@
 package orchestrator
 
 import (
-	"reflect"
-
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
 	"golang.org/x/net/context"
@@ -23,6 +20,8 @@ type FillOrchestrator struct {
 	stopChan chan struct{}
 	// doneChan is closed when the state machine terminates.
 	doneChan chan struct{}
+
+	updater *UpdateSupervisor
 }
 
 // NewFillOrchestrator creates a new FillOrchestrator
@@ -33,6 +32,7 @@ func NewFillOrchestrator(store state.WatchableStore) *FillOrchestrator {
 		fillServices: make(map[string]*api.Service),
 		stopChan:     make(chan struct{}),
 		doneChan:     make(chan struct{}),
+		updater:      NewUpdateSupervisor(store),
 	}
 }
 
@@ -140,6 +140,7 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 func (f *FillOrchestrator) Stop() {
 	close(f.stopChan)
 	<-f.doneChan
+	f.updater.CancelAll()
 }
 
 func (f *FillOrchestrator) deleteService(ctx context.Context, service *api.Service) {
@@ -192,13 +193,7 @@ func (f *FillOrchestrator) removeTasksFromNode(ctx context.Context, node *api.No
 		for _, t := range tasks {
 			// fillOrchestrator only removes tasks from fillServices
 			if _, exists := f.fillServices[t.ServiceID]; exists {
-				err := batch.Update(func(tx state.Tx) error {
-					f.removeTask(ctx, tx, t)
-					return nil
-				})
-				if err != nil {
-					return err
-				}
+				f.removeTask(ctx, batch, t)
 			}
 		}
 		return nil
@@ -244,27 +239,25 @@ func (f *FillOrchestrator) reconcileOneService(ctx context.Context, service *api
 	}
 
 	_, err = f.store.Batch(func(batch state.Batch) error {
+		var updateTasks []*api.Task
 		for nodeID := range f.nodes {
-			err := batch.Update(func(tx state.Tx) error {
-				ntasks := nodeTasks[nodeID]
-				// if restart policy considers this node has finished its task
-				// it should remove all running tasks
-				if _, exists := nodeCompleted[nodeID]; exists {
-					f.removeTasks(ctx, tx, service, ntasks)
-					return nil
-				}
-				// this node needs to run 1 copy of the task
-				if len(ntasks) == 0 {
-					f.addTask(ctx, tx, service, nodeID)
-				} else {
-					f.updateTask(ctx, tx, service, ntasks[0])
-					f.removeTasks(ctx, tx, service, ntasks[1:])
-				}
+			ntasks := nodeTasks[nodeID]
+			// if restart policy considers this node has finished its task
+			// it should remove all running tasks
+			if _, exists := nodeCompleted[nodeID]; exists {
+				f.removeTasks(ctx, batch, service, ntasks)
 				return nil
-			})
-			if err != nil {
-				return err
 			}
+			// this node needs to run 1 copy of the task
+			if len(ntasks) == 0 {
+				f.addTask(ctx, batch, service, nodeID)
+			} else {
+				updateTasks = append(updateTasks, ntasks[0])
+				f.removeTasks(ctx, batch, service, ntasks[1:])
+			}
+		}
+		if len(updateTasks) > 0 {
+			f.updater.Update(ctx, service, updateTasks)
 		}
 		return nil
 	})
@@ -307,8 +300,7 @@ func (f *FillOrchestrator) reconcileServiceOneNode(ctx context.Context, serviceI
 	completed := false
 	// tasks for this node and service
 	var tasks []*api.Task
-	err := f.store.Update(func(tx state.Tx) error {
-		var err error
+	err := f.store.View(func(tx state.ReadTx) error {
 		tasksOnNode, err := tx.Tasks().Find(state.ByNodeID(nodeID))
 		if err != nil {
 			log.G(ctx).WithError(err).Errorf("fillOrchestrator: reconcile failed finding tasks")
@@ -327,74 +319,63 @@ func (f *FillOrchestrator) reconcileServiceOneNode(ctx context.Context, serviceI
 				}
 			}
 		}
-
-		// if restart policy considers this node has finished its task
-		// it should remove all running tasks
-		if completed {
-			f.removeTasks(ctx, tx, service, tasks)
-			return nil
-		}
-		// this node needs to run 1 copy of the task
-		if len(tasks) == 0 {
-			f.addTask(ctx, tx, service, nodeID)
-		} else {
-			f.updateTask(ctx, tx, service, tasks[0])
-			f.removeTasks(ctx, tx, service, tasks[1:])
-		}
 		return nil
 	})
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("FillOrchestrator: reconcileServiceOneNode transaction failed")
 	}
+
+	_, err = f.store.Batch(func(batch state.Batch) error {
+		// if restart policy considers this node has finished its task
+		// it should remove all running tasks
+		if completed {
+			f.removeTasks(ctx, batch, service, tasks)
+			return nil
+		}
+		// this node needs to run 1 copy of the task
+		if len(tasks) == 0 {
+			f.addTask(ctx, batch, service, nodeID)
+		} else {
+			f.removeTasks(ctx, batch, service, tasks[1:])
+		}
+		return nil
+	})
+	if err != nil {
+		log.G(ctx).WithError(err).Errorf("FillOrchestrator: reconcileServiceOneNode batch failed")
+	}
 }
 
-func (f *FillOrchestrator) updateTask(ctx context.Context, tx state.Tx, service *api.Service, t *api.Task) {
-	if t == nil || service == nil {
-		return
-	}
-	if reflect.DeepEqual(service.Spec.Template, t.Spec) {
-		return
-	}
-	f.addTask(ctx, tx, service, t.NodeID)
-	f.removeTask(ctx, tx, t)
-}
-
-func (f *FillOrchestrator) removeTask(ctx context.Context, tx state.Tx, t *api.Task) {
+func (f *FillOrchestrator) removeTask(ctx context.Context, batch state.Batch, t *api.Task) {
 	// set existing task DesiredState to TaskStateDead
 	// TODO(aaronl): optimistic update?
-	t = tx.Tasks().Get(t.ID)
-	if t != nil {
-		t.DesiredState = api.TaskStateDead
-		err := tx.Tasks().Update(t)
-		if err != nil {
-			log.G(ctx).Errorf("FillOrchestrator: removeTask failed to remove %s: %v", t.ID, err)
+	err := batch.Update(func(tx state.Tx) error {
+		t = tx.Tasks().Get(t.ID)
+		if t != nil {
+			t.DesiredState = api.TaskStateDead
+			return tx.Tasks().Update(t)
 		}
+		return nil
+	})
+	if err != nil {
+		log.G(ctx).WithError(err).Errorf("FillOrchestrator: removeTask failed to remove %s", t.ID)
 	}
 }
 
-func (f *FillOrchestrator) addTask(ctx context.Context, tx state.Tx, service *api.Service, nodeID string) {
-	spec := *service.Spec.Template
-	annotations := service.Spec.Annotations
+func (f *FillOrchestrator) addTask(ctx context.Context, batch state.Batch, service *api.Service, nodeID string) {
+	task := newTask(service, 0)
+	task.NodeID = nodeID
 
-	task := &api.Task{
-		ID:          identity.NewID(),
-		Annotations: annotations,
-		Spec:        &spec,
-		ServiceID:   service.ID,
-		NodeID:      nodeID,
-		Status: &api.TaskStatus{
-			State: api.TaskStateNew,
-		},
-		DesiredState: api.TaskStateRunning,
-	}
-	if err := tx.Tasks().Create(task); err != nil {
-		log.G(ctx).Errorf("FillOrchestrator: failed to create task: %v", err)
+	err := batch.Update(func(tx state.Tx) error {
+		return tx.Tasks().Create(task)
+	})
+	if err != nil {
+		log.G(ctx).WithError(err).Errorf("FillOrchestrator: failed to create task")
 	}
 }
 
-func (f *FillOrchestrator) removeTasks(ctx context.Context, tx state.Tx, service *api.Service, tasks []*api.Task) {
+func (f *FillOrchestrator) removeTasks(ctx context.Context, batch state.Batch, service *api.Service, tasks []*api.Task) {
 	for _, t := range tasks {
-		f.removeTask(ctx, tx, t)
+		f.removeTask(ctx, batch, t)
 	}
 }
 
