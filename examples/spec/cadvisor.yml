@@ -1,0 +1,31 @@
+version: '3'
+namespace: monitoring
+
+services:
+    cadvisor:
+        image: google/cadvisor:v0.22.0
+        instances: 2
+        update:
+            parallelism: 1
+            delay: 10s
+        ports:
+            - name: cadvisor
+              protocol: tcp
+              port: 8080
+        mounts:
+            - type: bind
+              source: /
+              target: /rootfs
+              mask: ro
+            - type: bind
+              source: /var/run
+              target: /var/run
+              mask: rw
+            - type: bind
+              source: /sys
+              target: /sys
+              mask: ro
+            - type: bind
+              source: /var/lib/docker/
+              target: /var/lib/docker
+              mask: ro
