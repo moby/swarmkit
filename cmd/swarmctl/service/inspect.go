@@ -69,6 +69,11 @@ func printServiceSummary(service *api.Service) {
 			} else if v.Type == api.MountTypeEphemeral {
 				fmt.Fprintf(w, "    - target = %s\n", v.Target)
 				fmt.Fprintf(w, "      type = ephemeral\n")
+			} else if v.Type == api.MountTypeVolume {
+				fmt.Fprintf(w, "    - target = %s\n", v.Target)
+				fmt.Fprintf(w, "      type = volume\n")
+				fmt.Fprintf(w, "      name = %s\n", v.VolumeName)
+				fmt.Fprintf(w, "      mask = %s\n", v.Mask.String())
 			}
 		}
 	}
