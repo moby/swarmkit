@@ -16,17 +16,21 @@ func TestVolumesValidate(t *testing.T) {
 		{Mask: "ro", Type: "unknown"},
 
 		// With BindHostDir, bith Source and Target have to be specified
-		{Mask: "ro", Type: "BindHostDir", Target: "/foo"},
-		{Mask: "rw", Type: "BindHostDir", Source: "/foo"},
+		{Mask: "ro", Type: "bind", Target: "/foo"},
+		{Mask: "rw", Type: "bind", Source: "/foo"},
 
 		// Ephemeral => no mask
-		{Mask: "ro", Type: "EphemeralDir"},
+		{Mask: "ro", Type: "ephemeral"},
 
 		// Ephemeral => no source
-		{Type: "EphemeralDir", Source: "/foo"},
+		{Type: "ephemeral", Source: "/foo"},
 
 		// Ephemeral => target required
-		{Type: "EphemeralDir"},
+		{Type: "ephemeral"},
+
+		// Volume
+		{Mask: "ro", Type: "volume", Target: "/foo"},
+		{Mask: "rw", Type: "volume", Source: "/foo"},
 	}
 	good := []*Mount{
 		nil,
@@ -37,6 +41,9 @@ func TestVolumesValidate(t *testing.T) {
 
 		// Ephemeral
 		{Type: "ephemeral", Target: "/foo"},
+
+		{Mask: "Ro", Type: "volume", Target: "/foo", VolumeName: "foo"},
+		{Mask: "", Type: "volume", Target: "/foo", VolumeName: "foo"},
 	}
 
 	for _, b := range bad {
@@ -67,6 +74,10 @@ func TestVolumesToProto(t *testing.T) {
 			from: &Mount{Type: "ephemeral", Target: "/foo"},
 			to:   &api.Mount{Type: api.MountTypeEphemeral, Target: "/foo"},
 		},
+		{
+			from: &Mount{Mask: "rw", Type: "volume", Target: "/foo", VolumeName: "foo"},
+			to:   &api.Mount{Mask: api.MountMaskReadWrite, Type: api.MountTypeVolume, Target: "/foo", VolumeName: "foo"},
+		},
 	}
 
 	for _, i := range set {
@@ -88,6 +99,10 @@ func TestVolumesFromProto(t *testing.T) {
 		{
 			from: &api.Mount{Type: api.MountTypeEphemeral, Target: "/foo"},
 			to:   &Mount{Type: "ephemeral", Target: "/foo", Mask: "ro"},
+		},
+		{
+			from: &api.Mount{Mask: api.MountMaskReadWrite, Type: api.MountTypeVolume, Target: "/foo", VolumeName: "foo"},
+			to:   &Mount{Mask: "rw", Type: "volume", Target: "/foo", VolumeName: "foo"},
 		},
 	}
 
