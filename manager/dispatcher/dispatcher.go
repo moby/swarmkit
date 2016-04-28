@@ -221,7 +221,10 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 
 		var tasks []*api.Task
 		for _, t := range tasksMap {
-			tasks = append(tasks, t)
+			// dispatcher only sends tasks that have been assigned to a node
+			if t != nil && t.Status.State >= api.TaskStateAssigned {
+				tasks = append(tasks, t)
+			}
 		}
 
 		if err := stream.Send(&api.TasksMessage{Tasks: tasks}); err != nil {

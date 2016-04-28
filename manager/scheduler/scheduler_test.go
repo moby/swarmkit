@@ -61,7 +61,7 @@ func TestScheduler(t *testing.T) {
 			},
 
 			Status: api.TaskStatus{
-				State: api.TaskStateAllocated,
+				State: api.TaskStateAssigned,
 			},
 			NodeID: initialNodeSet[0].ID,
 		},
@@ -592,6 +592,111 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	assert.Equal(t, "id1", assignment.NodeID)
 
 	scheduler.Stop()
+}
+
+func TestPreassignedTasks(t *testing.T) {
+	ctx := context.Background()
+	initialNodeSet := []*api.Node{
+		{
+			ID: "node1",
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Name: "name1",
+				},
+			},
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+		},
+		{
+			ID: "node2",
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Name: "name2",
+				},
+			},
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+		},
+	}
+
+	initialTaskSet := []*api.Task{
+		{
+			ID: "task1",
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+
+			Status: api.TaskStatus{
+				State: api.TaskStateAllocated,
+			},
+		},
+		{
+			ID: "task2",
+			Annotations: api.Annotations{
+				Name: "name2",
+			},
+			Status: api.TaskStatus{
+				State: api.TaskStateAllocated,
+			},
+			NodeID: initialNodeSet[0].ID,
+		},
+		{
+			ID: "task3",
+			Annotations: api.Annotations{
+				Name: "name2",
+			},
+			Status: api.TaskStatus{
+				State: api.TaskStateAllocated,
+			},
+			NodeID: initialNodeSet[0].ID,
+		},
+	}
+
+	store := store.NewMemoryStore(nil)
+	assert.NotNil(t, store)
+
+	err := store.Update(func(tx state.Tx) error {
+		// Prepoulate nodes
+		for _, n := range initialNodeSet {
+			assert.NoError(t, tx.Nodes().Create(n))
+		}
+
+		// Prepopulate tasks
+		for _, task := range initialTaskSet {
+			assert.NoError(t, tx.Tasks().Create(task))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(store)
+
+	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+
+	//preassigned tasks would be processed first
+	assignment1 := watchAssignment(t, watch)
+	// task2 and task3 are preassigned to node1
+	assert.Equal(t, assignment1.NodeID, "node1")
+	assert.Regexp(t, assignment1.ID, "(task2|task3)")
+
+	assignment2 := watchAssignment(t, watch)
+	if assignment1.ID == "task2" {
+		assert.Equal(t, "task3", assignment2.ID)
+	} else {
+		assert.Equal(t, "task2", assignment2.ID)
+	}
+
+	// task1 would be assigned to node2 because node1 has 2 tasks already
+	assignment3 := watchAssignment(t, watch)
+	assert.Equal(t, assignment3.ID, "task1")
+	assert.Equal(t, assignment3.NodeID, "node2")
 }
 
 func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
