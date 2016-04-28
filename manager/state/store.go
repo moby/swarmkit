@@ -5,7 +5,7 @@ import (
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/manager/state/pb"
+	pb "github.com/docker/swarm-v2/api" // used to access snapshots
 	"github.com/docker/swarm-v2/manager/state/watch"
 )
 

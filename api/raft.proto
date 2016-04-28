@@ -2,8 +2,46 @@ syntax = "proto3";
 
 package docker.cluster.api;
 
+import "types.proto";
 import "objects.proto";
-import "gogoproto/gogo.proto";
+import "github.com/coreos/etcd/raft/raftpb/raft.proto";
+import weak "gogoproto/gogo.proto";
+import weak "plugin/plugin.proto";
+
+// Raft defines the RPC communication between raft nodes.
+service Raft {
+	// Join joins an existing Manager or set of Managers to form
+	// a raft cluster for the log replication backend
+	rpc Join(JoinRequest) returns (JoinResponse) {}
+
+	// Leave leaves an existing set of Managers running raft
+	rpc Leave(LeaveRequest) returns (LeaveResponse) {}
+
+	// ProcessRaftMessage sends a raft message to be processed on a raft member, it is
+	// called from the Manager willing to send a message to its destination ('To' field)
+	rpc ProcessRaftMessage(ProcessRaftMessageRequest) returns (ProcessRaftMessageResponse) {}
+}
+
+message JoinRequest {
+	RaftNode node = 1;
+}
+
+message JoinResponse {
+	repeated RaftNode members = 1;
+}
+
+message LeaveRequest {
+	RaftNode node = 1;
+}
+
+message LeaveResponse {}
+
+message ProcessRaftMessageRequest {
+	option (docker.protobuf.plugin.deepcopy) = false;
+	raftpb.Message message = 1;
+}
+
+message ProcessRaftMessageResponse {}
 
 // Contains one of many protobuf encoded objects to replicate
 // over the raft backend with a request ID to track when the
