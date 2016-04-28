@@ -2,29 +2,11 @@
 // source: manager.proto
 // DO NOT EDIT!
 
-/*
-	Package api is a generated protocol buffer package.
-
-	It is generated from these files:
-		manager.proto
-
-	It has these top-level messages:
-		JoinRequest
-		JoinResponse
-		LeaveRequest
-		LeaveResponse
-		ProcessRaftMessageRequest
-		ProcessRaftMessageResponse
-		RaftNode
-		NodeCountRequest
-		NodeCountResponse
-*/
 package api
 
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import raftpb "github.com/coreos/etcd/raft/raftpb"
 
 // skipping weak import gogoproto "github.com/gogo/protobuf/gogoproto"
 
@@ -39,6 +21,11 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
+import raftpicker "github.com/docker/swarm-v2/manager/raftpicker"
+import codes "google.golang.org/grpc/codes"
+import metadata "google.golang.org/grpc/metadata"
+import transport "google.golang.org/grpc/transport"
+
 import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -46,75 +33,12 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-const _ = proto.GoGoProtoPackageIsVersion1
-
-type JoinRequest struct {
-	Node *RaftNode `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
-}
-
-func (m *JoinRequest) Reset()                    { *m = JoinRequest{} }
-func (*JoinRequest) ProtoMessage()               {}
-func (*JoinRequest) Descriptor() ([]byte, []int) { return fileDescriptorManager, []int{0} }
-
-type JoinResponse struct {
-	Members []*RaftNode `protobuf:"bytes,1,rep,name=members" json:"members,omitempty"`
-}
-
-func (m *JoinResponse) Reset()                    { *m = JoinResponse{} }
-func (*JoinResponse) ProtoMessage()               {}
-func (*JoinResponse) Descriptor() ([]byte, []int) { return fileDescriptorManager, []int{1} }
-
-type LeaveRequest struct {
-	Node *RaftNode `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
-}
-
-func (m *LeaveRequest) Reset()                    { *m = LeaveRequest{} }
-func (*LeaveRequest) ProtoMessage()               {}
-func (*LeaveRequest) Descriptor() ([]byte, []int) { return fileDescriptorManager, []int{2} }
-
-type LeaveResponse struct {
-}
-
-func (m *LeaveResponse) Reset()                    { *m = LeaveResponse{} }
-func (*LeaveResponse) ProtoMessage()               {}
-func (*LeaveResponse) Descriptor() ([]byte, []int) { return fileDescriptorManager, []int{3} }
-
-type ProcessRaftMessageRequest struct {
-	Msg *raftpb.Message `protobuf:"bytes,1,opt,name=msg" json:"msg,omitempty"`
-}
-
-func (m *ProcessRaftMessageRequest) Reset()                    { *m = ProcessRaftMessageRequest{} }
-func (*ProcessRaftMessageRequest) ProtoMessage()               {}
-func (*ProcessRaftMessageRequest) Descriptor() ([]byte, []int) { return fileDescriptorManager, []int{4} }
-
-type ProcessRaftMessageResponse struct {
-}
-
-func (m *ProcessRaftMessageResponse) Reset()      { *m = ProcessRaftMessageResponse{} }
-func (*ProcessRaftMessageResponse) ProtoMessage() {}
-func (*ProcessRaftMessageResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptorManager, []int{5}
-}
-
-// RaftNode represents a raft node to be added or removed from
-// an existing raft cluster
-type RaftNode struct {
-	ID   uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Addr string `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`
-}
-
-func (m *RaftNode) Reset()                    { *m = RaftNode{} }
-func (*RaftNode) ProtoMessage()               {}
-func (*RaftNode) Descriptor() ([]byte, []int) { return fileDescriptorManager, []int{6} }
-
 type NodeCountRequest struct {
 }
 
 func (m *NodeCountRequest) Reset()                    { *m = NodeCountRequest{} }
 func (*NodeCountRequest) ProtoMessage()               {}
-func (*NodeCountRequest) Descriptor() ([]byte, []int) { return fileDescriptorManager, []int{7} }
+func (*NodeCountRequest) Descriptor() ([]byte, []int) { return fileDescriptorManager, []int{0} }
 
 type NodeCountResponse struct {
 	// Count is number of nodes connected to specific manager.
@@ -123,96 +47,35 @@ type NodeCountResponse struct {
 
 func (m *NodeCountResponse) Reset()                    { *m = NodeCountResponse{} }
 func (*NodeCountResponse) ProtoMessage()               {}
-func (*NodeCountResponse) Descriptor() ([]byte, []int) { return fileDescriptorManager, []int{8} }
+func (*NodeCountResponse) Descriptor() ([]byte, []int) { return fileDescriptorManager, []int{1} }
 
 func init() {
-	proto.RegisterType((*JoinRequest)(nil), "docker.cluster.api.JoinRequest")
-	proto.RegisterType((*JoinResponse)(nil), "docker.cluster.api.JoinResponse")
-	proto.RegisterType((*LeaveRequest)(nil), "docker.cluster.api.LeaveRequest")
-	proto.RegisterType((*LeaveResponse)(nil), "docker.cluster.api.LeaveResponse")
-	proto.RegisterType((*ProcessRaftMessageRequest)(nil), "docker.cluster.api.ProcessRaftMessageRequest")
-	proto.RegisterType((*ProcessRaftMessageResponse)(nil), "docker.cluster.api.ProcessRaftMessageResponse")
-	proto.RegisterType((*RaftNode)(nil), "docker.cluster.api.RaftNode")
 	proto.RegisterType((*NodeCountRequest)(nil), "docker.cluster.api.NodeCountRequest")
 	proto.RegisterType((*NodeCountResponse)(nil), "docker.cluster.api.NodeCountResponse")
 }
-func (this *JoinRequest) GoString() string {
-	if this == nil {
-		return "nil"
+
+func (m *NodeCountRequest) Copy() *NodeCountRequest {
+	if m == nil {
+		return nil
 	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.JoinRequest{")
-	if this.Node != nil {
-		s = append(s, "Node: "+fmt.Sprintf("%#v", this.Node)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
+
+	o := &NodeCountRequest{}
+
+	return o
 }
-func (this *JoinResponse) GoString() string {
-	if this == nil {
-		return "nil"
+
+func (m *NodeCountResponse) Copy() *NodeCountResponse {
+	if m == nil {
+		return nil
 	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.JoinResponse{")
-	if this.Members != nil {
-		s = append(s, "Members: "+fmt.Sprintf("%#v", this.Members)+",\n")
+
+	o := &NodeCountResponse{
+		Count: m.Count,
 	}
-	s = append(s, "}")
-	return strings.Join(s, "")
+
+	return o
 }
-func (this *LeaveRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.LeaveRequest{")
-	if this.Node != nil {
-		s = append(s, "Node: "+fmt.Sprintf("%#v", this.Node)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *LeaveResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&api.LeaveResponse{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ProcessRaftMessageRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.ProcessRaftMessageRequest{")
-	if this.Msg != nil {
-		s = append(s, "Msg: "+fmt.Sprintf("%#v", this.Msg)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ProcessRaftMessageResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&api.ProcessRaftMessageResponse{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RaftNode) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&api.RaftNode{")
-	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
-	s = append(s, "Addr: "+fmt.Sprintf("%#v", this.Addr)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
+
 func (this *NodeCountRequest) GoString() string {
 	if this == nil {
 		return "nil"
@@ -261,127 +124,6 @@ func extensionToGoStringManager(e map[int32]github_com_gogo_protobuf_proto.Exten
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
 var _ grpc.ClientConn
-
-// Client API for Raft service
-
-type RaftClient interface {
-	// Join joins an existing Manager or set of Managers to form
-	// a raft cluster for the log replication backend
-	Join(ctx context.Context, in *JoinRequest, opts ...grpc.CallOption) (*JoinResponse, error)
-	// Leave leaves an existing set of Managers running raft
-	Leave(ctx context.Context, in *LeaveRequest, opts ...grpc.CallOption) (*LeaveResponse, error)
-	// ProcessRaftMessage sends a raft message to be processed on a raft member, it is
-	// called from the Manager willing to send a message to its destination ('To' field)
-	ProcessRaftMessage(ctx context.Context, in *ProcessRaftMessageRequest, opts ...grpc.CallOption) (*ProcessRaftMessageResponse, error)
-}
-
-type raftClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewRaftClient(cc *grpc.ClientConn) RaftClient {
-	return &raftClient{cc}
-}
-
-func (c *raftClient) Join(ctx context.Context, in *JoinRequest, opts ...grpc.CallOption) (*JoinResponse, error) {
-	out := new(JoinResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Raft/Join", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *raftClient) Leave(ctx context.Context, in *LeaveRequest, opts ...grpc.CallOption) (*LeaveResponse, error) {
-	out := new(LeaveResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Raft/Leave", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *raftClient) ProcessRaftMessage(ctx context.Context, in *ProcessRaftMessageRequest, opts ...grpc.CallOption) (*ProcessRaftMessageResponse, error) {
-	out := new(ProcessRaftMessageResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Raft/ProcessRaftMessage", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Server API for Raft service
-
-type RaftServer interface {
-	// Join joins an existing Manager or set of Managers to form
-	// a raft cluster for the log replication backend
-	Join(context.Context, *JoinRequest) (*JoinResponse, error)
-	// Leave leaves an existing set of Managers running raft
-	Leave(context.Context, *LeaveRequest) (*LeaveResponse, error)
-	// ProcessRaftMessage sends a raft message to be processed on a raft member, it is
-	// called from the Manager willing to send a message to its destination ('To' field)
-	ProcessRaftMessage(context.Context, *ProcessRaftMessageRequest) (*ProcessRaftMessageResponse, error)
-}
-
-func RegisterRaftServer(s *grpc.Server, srv RaftServer) {
-	s.RegisterService(&_Raft_serviceDesc, srv)
-}
-
-func _Raft_Join_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(JoinRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(RaftServer).Join(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func _Raft_Leave_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(LeaveRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(RaftServer).Leave(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func _Raft_ProcessRaftMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(ProcessRaftMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(RaftServer).ProcessRaftMessage(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-var _Raft_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "docker.cluster.api.Raft",
-	HandlerType: (*RaftServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Join",
-			Handler:    _Raft_Join_Handler,
-		},
-		{
-			MethodName: "Leave",
-			Handler:    _Raft_Leave_Handler,
-		},
-		{
-			MethodName: "ProcessRaftMessage",
-			Handler:    _Raft_ProcessRaftMessage_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{},
-}
 
 // Client API for Manager service
 
@@ -442,185 +184,6 @@ var _Manager_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{},
-}
-
-func (m *JoinRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *JoinRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Node != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintManager(data, i, uint64(m.Node.Size()))
-		n1, err := m.Node.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
-	return i, nil
-}
-
-func (m *JoinResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *JoinResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Members) > 0 {
-		for _, msg := range m.Members {
-			data[i] = 0xa
-			i++
-			i = encodeVarintManager(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	return i, nil
-}
-
-func (m *LeaveRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *LeaveRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Node != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintManager(data, i, uint64(m.Node.Size()))
-		n2, err := m.Node.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n2
-	}
-	return i, nil
-}
-
-func (m *LeaveResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *LeaveResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func (m *ProcessRaftMessageRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *ProcessRaftMessageRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Msg != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintManager(data, i, uint64(m.Msg.Size()))
-		n3, err := m.Msg.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n3
-	}
-	return i, nil
-}
-
-func (m *ProcessRaftMessageResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *ProcessRaftMessageResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func (m *RaftNode) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *RaftNode) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.ID != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintManager(data, i, uint64(m.ID))
-	}
-	if len(m.Addr) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintManager(data, i, uint64(len(m.Addr)))
-		i += copy(data[i:], m.Addr)
-	}
-	return i, nil
 }
 
 func (m *NodeCountRequest) Marshal() (data []byte, err error) {
@@ -691,71 +254,46 @@ func encodeVarintManager(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	return offset + 1
 }
-func (m *JoinRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Node != nil {
-		l = m.Node.Size()
-		n += 1 + l + sovManager(uint64(l))
-	}
-	return n
+
+type raftProxyManagerServer struct {
+	local        ManagerServer
+	connSelector *raftpicker.ConnSelector
+	cluster      raftpicker.RaftCluster
 }
 
-func (m *JoinResponse) Size() (n int) {
-	var l int
-	_ = l
-	if len(m.Members) > 0 {
-		for _, e := range m.Members {
-			l = e.Size()
-			n += 1 + l + sovManager(uint64(l))
-		}
+func NewRaftProxyManagerServer(local ManagerServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster) ManagerServer {
+	return &raftProxyManagerServer{
+		local:        local,
+		cluster:      cluster,
+		connSelector: connSelector,
 	}
-	return n
 }
 
-func (m *LeaveRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Node != nil {
-		l = m.Node.Size()
-		n += 1 + l + sovManager(uint64(l))
-	}
-	return n
-}
+func (p *raftProxyManagerServer) NodeCount(ctx context.Context, r *NodeCountRequest) (*NodeCountResponse, error) {
 
-func (m *LeaveResponse) Size() (n int) {
-	var l int
-	_ = l
-	return n
-}
-
-func (m *ProcessRaftMessageRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Msg != nil {
-		l = m.Msg.Size()
-		n += 1 + l + sovManager(uint64(l))
+	if p.cluster.IsLeader() {
+		return p.local.NodeCount(ctx, r)
 	}
-	return n
-}
-
-func (m *ProcessRaftMessageResponse) Size() (n int) {
-	var l int
-	_ = l
-	return n
-}
-
-func (m *RaftNode) Size() (n int) {
-	var l int
-	_ = l
-	if m.ID != 0 {
-		n += 1 + sovManager(uint64(m.ID))
+	var addr string
+	s, ok := transport.StreamFromContext(ctx)
+	if ok {
+		addr = s.ServerTransport().RemoteAddr().String()
 	}
-	l = len(m.Addr)
-	if l > 0 {
-		n += 1 + l + sovManager(uint64(l))
+	md, ok := metadata.FromContext(ctx)
+	if ok && len(md["redirect"]) != 0 {
+		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
 	}
-	return n
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md["redirect"] = append(md["redirect"], addr)
+	ctx = metadata.NewContext(ctx, md)
+
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return NewManagerClient(conn).NodeCount(ctx, r)
 }
 
 func (m *NodeCountRequest) Size() (n int) {
@@ -786,75 +324,6 @@ func sovManager(x uint64) (n int) {
 func sozManager(x uint64) (n int) {
 	return sovManager(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (this *JoinRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&JoinRequest{`,
-		`Node:` + strings.Replace(fmt.Sprintf("%v", this.Node), "RaftNode", "RaftNode", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *JoinResponse) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&JoinResponse{`,
-		`Members:` + strings.Replace(fmt.Sprintf("%v", this.Members), "RaftNode", "RaftNode", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *LeaveRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&LeaveRequest{`,
-		`Node:` + strings.Replace(fmt.Sprintf("%v", this.Node), "RaftNode", "RaftNode", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *LeaveResponse) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&LeaveResponse{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ProcessRaftMessageRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ProcessRaftMessageRequest{`,
-		`Msg:` + strings.Replace(fmt.Sprintf("%v", this.Msg), "Message", "raftpb.Message", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ProcessRaftMessageResponse) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ProcessRaftMessageResponse{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RaftNode) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RaftNode{`,
-		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
-		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
-		`}`,
-	}, "")
-	return s
-}
 func (this *NodeCountRequest) String() string {
 	if this == nil {
 		return "nil"
@@ -881,534 +350,6 @@ func valueToStringManager(v interface{}) string {
 	}
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
-}
-func (m *JoinRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowManager
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: JoinRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: JoinRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Node", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowManager
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthManager
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Node == nil {
-				m.Node = &RaftNode{}
-			}
-			if err := m.Node.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipManager(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthManager
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *JoinResponse) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowManager
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: JoinResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: JoinResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Members", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowManager
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthManager
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Members = append(m.Members, &RaftNode{})
-			if err := m.Members[len(m.Members)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipManager(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthManager
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *LeaveRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowManager
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: LeaveRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: LeaveRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Node", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowManager
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthManager
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Node == nil {
-				m.Node = &RaftNode{}
-			}
-			if err := m.Node.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipManager(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthManager
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *LeaveResponse) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowManager
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: LeaveResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: LeaveResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipManager(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthManager
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *ProcessRaftMessageRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowManager
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: ProcessRaftMessageRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ProcessRaftMessageRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Msg", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowManager
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthManager
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Msg == nil {
-				m.Msg = &raftpb.Message{}
-			}
-			if err := m.Msg.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipManager(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthManager
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *ProcessRaftMessageResponse) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowManager
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: ProcessRaftMessageResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ProcessRaftMessageResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipManager(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthManager
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RaftNode) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowManager
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: RaftNode: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RaftNode: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
-			}
-			m.ID = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowManager
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.ID |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Addr", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowManager
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthManager
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Addr = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipManager(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthManager
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
 }
 func (m *NodeCountRequest) Unmarshal(data []byte) error {
 	l := len(data)
@@ -1635,33 +576,17 @@ var (
 )
 
 var fileDescriptorManager = []byte{
-	// 444 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x9c, 0x93, 0xcf, 0xee, 0xd2, 0x40,
-	0x10, 0xc7, 0x69, 0xe9, 0x0f, 0x64, 0x80, 0xa0, 0x13, 0x63, 0xb0, 0x21, 0x14, 0x1a, 0x4d, 0xbc,
-	0xd0, 0x1a, 0x4c, 0x38, 0xaa, 0x41, 0x63, 0xe2, 0x1f, 0x88, 0xe9, 0xc9, 0x78, 0xeb, 0x9f, 0xb5,
-	0x36, 0xda, 0x6e, 0xed, 0xb6, 0x9e, 0x7d, 0x0e, 0x9f, 0x88, 0xa3, 0x47, 0xe3, 0x81, 0x08, 0x4f,
-	0xe0, 0x23, 0xb8, 0xdd, 0xb6, 0x84, 0x48, 0x11, 0xe3, 0x61, 0xd8, 0x65, 0xf6, 0xbb, 0x9f, 0x99,
-	0x7e, 0x27, 0x0b, 0xfd, 0xd0, 0x8e, 0x6c, 0x9f, 0x24, 0x46, 0x9c, 0xd0, 0x94, 0x22, 0x7a, 0xd4,
-	0xfd, 0xc0, 0xff, 0xb9, 0x1f, 0x33, 0x96, 0xf2, 0xd5, 0x8e, 0x03, 0x75, 0xe6, 0x07, 0xe9, 0xfb,
-	0xcc, 0x31, 0x5c, 0x1a, 0x9a, 0x2e, 0x4d, 0x08, 0x65, 0x26, 0x49, 0x5d, 0xcf, 0x4c, 0xec, 0x77,
-	0xa9, 0xf8, 0x89, 0x1d, 0xb1, 0x14, 0x08, 0xf5, 0xa6, 0x4f, 0x7d, 0x2a, 0xb6, 0x66, 0xbe, 0x2b,
-	0xb2, 0xfa, 0x23, 0xe8, 0xbe, 0xa0, 0x41, 0x64, 0x91, 0x4f, 0x19, 0x61, 0x29, 0xde, 0x07, 0x25,
-	0xa2, 0x1e, 0x19, 0x4a, 0x13, 0xe9, 0x5e, 0x77, 0x3e, 0x32, 0x4e, 0xcb, 0x1a, 0x16, 0x47, 0xae,
-	0xb9, 0xc6, 0x12, 0x4a, 0xfd, 0x19, 0xf4, 0x0a, 0x00, 0x8b, 0x69, 0xc4, 0x08, 0x2e, 0xa0, 0x1d,
-	0x92, 0xd0, 0x21, 0x09, 0xe3, 0x90, 0xe6, 0x45, 0x48, 0x25, 0xd6, 0x1f, 0x43, 0xef, 0x15, 0xb1,
-	0x3f, 0x93, 0xff, 0xef, 0x64, 0x00, 0xfd, 0x92, 0x50, 0xb4, 0xa2, 0x3f, 0x84, 0xdb, 0xaf, 0x13,
-	0xea, 0x12, 0xc6, 0x72, 0xe5, 0x8a, 0xaf, 0xdc, 0xd1, 0x8a, 0x3f, 0x85, 0x66, 0xc8, 0xfc, 0x12,
-	0x3f, 0x30, 0x0a, 0xbf, 0x8c, 0x4a, 0x94, 0x9f, 0xe9, 0x23, 0x50, 0xeb, 0xee, 0x97, 0xf4, 0x05,
-	0x5c, 0xab, 0x1a, 0xc0, 0x5b, 0x20, 0x07, 0x9e, 0x60, 0x29, 0xcb, 0xd6, 0x7e, 0xab, 0xc9, 0xcf,
-	0x9f, 0x5a, 0x3c, 0x83, 0x08, 0x8a, 0xed, 0x79, 0xc9, 0x50, 0xe6, 0x27, 0x1d, 0x4b, 0xec, 0x75,
-	0x84, 0xeb, 0xf9, 0x9d, 0x27, 0x34, 0x8b, 0xd2, 0xb2, 0x19, 0xce, 0xba, 0x71, 0x94, 0x2b, 0x9d,
-	0x9c, 0xc2, 0x95, 0x9b, 0x27, 0x04, 0xb7, 0xbf, 0xec, 0x6e, 0xb6, 0x5a, 0xe3, 0xc7, 0x56, 0x6b,
-	0x06, 0x5c, 0x53, 0x9c, 0xcc, 0xbf, 0xca, 0xa0, 0xe4, 0x4d, 0xe0, 0x4b, 0x50, 0xf2, 0x29, 0xa0,
-	0x56, 0xe7, 0xd3, 0xd1, 0x80, 0xd5, 0xc9, 0x79, 0x41, 0xf9, 0x5d, 0x0d, 0x5c, 0xc3, 0x95, 0x30,
-	0x12, 0x6b, 0xc5, 0xc7, 0x53, 0x52, 0xa7, 0x7f, 0x51, 0x1c, 0x78, 0x19, 0xe0, 0xa9, 0x8f, 0x38,
-	0xab, 0xbb, 0x7a, 0x76, 0x5e, 0xaa, 0xf1, 0xaf, 0xf2, 0xaa, 0xec, 0x9c, 0x40, 0x7b, 0x55, 0x3c,
-	0x22, 0x7c, 0x0b, 0x9d, 0x83, 0xbf, 0x78, 0xa7, 0x8e, 0xf4, 0xe7, 0x48, 0xd4, 0xbb, 0x17, 0x54,
-	0x55, 0x99, 0xe5, 0x68, 0xb3, 0x1b, 0x37, 0xbe, 0xf3, 0xf8, 0xb5, 0x1b, 0x4b, 0x5f, 0xf6, 0x63,
-	0x69, 0xc3, 0xe3, 0x1b, 0x8f, 0x9f, 0x3c, 0xde, 0x48, 0x4e, 0x4b, 0x3c, 0xb4, 0x07, 0xbf, 0x03,
-	0x00, 0x00, 0xff, 0xff, 0xc7, 0x66, 0xb4, 0x15, 0xd2, 0x03, 0x00, 0x00,
+	// 192 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0xcd, 0x4d, 0xcc, 0x4b,
+	0x4c, 0x4f, 0x2d, 0xd2, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x12, 0x4a, 0xc9, 0x4f, 0xce, 0x06,
+	0xf2, 0x92, 0x73, 0x4a, 0x8b, 0x4b, 0x80, 0x74, 0x62, 0x41, 0xa6, 0x94, 0x48, 0x7a, 0x7e, 0x7a,
+	0x3e, 0x58, 0x5a, 0x1f, 0xc4, 0x82, 0xa8, 0x54, 0x12, 0xe2, 0x12, 0xf0, 0xcb, 0x4f, 0x49, 0x75,
+	0xce, 0x2f, 0xcd, 0x2b, 0x09, 0x4a, 0x2d, 0x2c, 0x4d, 0x2d, 0x2e, 0x51, 0x32, 0xe3, 0x12, 0x44,
+	0x12, 0x2b, 0x2e, 0xc8, 0xcf, 0x2b, 0x4e, 0x15, 0x52, 0xe4, 0x62, 0x4d, 0x06, 0x09, 0x48, 0x30,
+	0x2a, 0x30, 0x6a, 0xf0, 0x3a, 0x71, 0x9f, 0xb8, 0x27, 0xcf, 0x70, 0xeb, 0x9e, 0x3c, 0x73, 0x26,
+	0x50, 0x0d, 0x44, 0xc6, 0x28, 0x95, 0x8b, 0xdd, 0x17, 0xe2, 0x0c, 0xa1, 0x28, 0x2e, 0x4e, 0xb8,
+	0x11, 0x42, 0x2a, 0x7a, 0x98, 0xce, 0xd1, 0x43, 0xb7, 0x55, 0x4a, 0x95, 0x80, 0x2a, 0x88, 0x3b,
+	0x94, 0x18, 0x9c, 0x64, 0x4e, 0x3c, 0x94, 0x63, 0xb8, 0x01, 0xc4, 0x1f, 0x1e, 0xca, 0x31, 0x36,
+	0x3c, 0x92, 0x63, 0x3c, 0x01, 0xc4, 0x17, 0x80, 0xf8, 0x01, 0x10, 0x47, 0x30, 0x24, 0xb1, 0x81,
+	0x7d, 0x66, 0x0c, 0x08, 0x00, 0x00, 0xff, 0xff, 0x24, 0xd8, 0xca, 0xd5, 0x14, 0x01, 0x00, 0x00,
 }

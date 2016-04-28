@@ -5,7 +5,6 @@ import (
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/pb"
 	memdb "github.com/hashicorp/go-memdb"
 )
 
@@ -34,12 +33,12 @@ func init() {
 				},
 			},
 		},
-		Save: func(tx state.ReadTx, snapshot *pb.StoreSnapshot) error {
+		Save: func(tx state.ReadTx, snapshot *api.StoreSnapshot) error {
 			var err error
 			snapshot.Services, err = tx.Services().Find(state.All)
 			return err
 		},
-		Restore: func(tx state.Tx, snapshot *pb.StoreSnapshot) error {
+		Restore: func(tx state.Tx, snapshot *api.StoreSnapshot) error {
 			services, err := tx.Services().Find(state.All)
 			if err != nil {
 				return err

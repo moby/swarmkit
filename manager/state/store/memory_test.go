@@ -10,7 +10,6 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -1175,7 +1174,7 @@ func TestStoreSaveRestore(t *testing.T) {
 
 	setupTestStore(t, s1)
 
-	var snapshot *pb.StoreSnapshot
+	var snapshot *api.StoreSnapshot
 	err := s1.View(func(tx state.ReadTx) error {
 		var err error
 		snapshot, err = s1.Save(tx)

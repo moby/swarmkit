@@ -1,6 +1,7 @@
 package deepcopy
 
 import (
+	"github.com/docker/swarm-v2/protobuf/plugin"
 	"github.com/gogo/protobuf/gogoproto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
@@ -23,6 +24,10 @@ func (d *deepCopyGen) Init(g *generator.Generator) {
 }
 
 func (d *deepCopyGen) genMsgDeepCopy(m *generator.Descriptor) {
+	if !plugin.DeepcopyEnabled(m.Options) {
+		return
+	}
+
 	ccTypeName := generator.CamelCaseSlice(m.TypeName())
 	d.gen.P("func (m *", ccTypeName, ") Copy() *", ccTypeName, "{")
 	d.gen.P("\tif m == nil {")

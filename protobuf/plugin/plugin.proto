@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+package docker.protobuf.plugin;
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.MessageOptions {
+	optional bool deepcopy = 70000 [default=true];
+}
