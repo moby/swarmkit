@@ -3,7 +3,6 @@ package store
 import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/pb"
 	memdb "github.com/hashicorp/go-memdb"
 )
 
@@ -12,8 +11,8 @@ import (
 type ObjectStoreConfig struct {
 	Name             string
 	Table            *memdb.TableSchema
-	Save             func(state.ReadTx, *pb.StoreSnapshot) error
-	Restore          func(state.Tx, *pb.StoreSnapshot) error
+	Save             func(state.ReadTx, *api.StoreSnapshot) error
+	Restore          func(state.Tx, *api.StoreSnapshot) error
 	ApplyStoreAction func(state.Tx, *api.StoreAction) error
 	NewStoreAction   func(state.Event) (api.StoreAction, error)
 }

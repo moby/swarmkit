@@ -2,56 +2,13 @@ syntax = "proto3";
 
 package docker.cluster.api;
 
-import "github.com/coreos/etcd/raft/raftpb/raft.proto";
 import weak "gogoproto/gogo.proto";
-
-// Raft defines the RPC communication between raft nodes.
-service Raft {
-
-	// Join joins an existing Manager or set of Managers to form
-	// a raft cluster for the log replication backend
-	rpc Join(JoinRequest) returns (JoinResponse) {}
-
-	// Leave leaves an existing set of Managers running raft
-	rpc Leave(LeaveRequest) returns (LeaveResponse) {}
-
-	// ProcessRaftMessage sends a raft message to be processed on a raft member, it is
-	// called from the Manager willing to send a message to its destination ('To' field)
-	rpc ProcessRaftMessage(ProcessRaftMessageRequest) returns (ProcessRaftMessageResponse) {}
-}
 
 // Manager defines the RPC communication between managers.
 service Manager {
 	// NodeCount returns number of nodes connected to particular manager.
 	// Supposed to be called only by cluster leader.
 	rpc NodeCount(NodeCountRequest) returns (NodeCountResponse) {}
-}
-
-message JoinRequest {
-	RaftNode node = 1;
-}
-
-message JoinResponse {
-	repeated RaftNode members = 1;
-}
-
-message LeaveRequest {
-	RaftNode node = 1;
-}
-
-message LeaveResponse {}
-
-message ProcessRaftMessageRequest {
-	raftpb.Message msg = 1;
-}
-
-message ProcessRaftMessageResponse {}
-
-// RaftNode represents a raft node to be added or removed from
-// an existing raft cluster
-message RaftNode {
-	uint64 id = 1 [(gogoproto.customname) = "ID"];
-	string addr = 2;
 }
 
 message NodeCountRequest {

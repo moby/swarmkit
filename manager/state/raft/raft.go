@@ -12,11 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-
-	"golang.org/x/net/context"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/raft"
@@ -28,10 +23,12 @@ import (
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/gogo/protobuf/proto"
 	"github.com/pivotal-golang/clock"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var (
@@ -643,7 +640,7 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 		return nil, ErrStopped
 	}
 
-	err = n.Step(n.Ctx, *msg.Msg)
+	err = n.Step(n.Ctx, *msg.Message)
 	if err != nil {
 		return nil, err
 	}
@@ -810,7 +807,7 @@ func (n *Node) saveSnapshot(snapshot raftpb.Snapshot) error {
 }
 
 func (n *Node) doSnapshot() {
-	snapshot := pb.Snapshot{Version: pb.Snapshot_V0}
+	snapshot := api.Snapshot{Version: api.Snapshot_V0}
 	for _, peer := range n.cluster.listMembers() {
 		snapshot.Membership.Members = append(snapshot.Membership.Members,
 			&api.RaftNode{
@@ -871,11 +868,11 @@ func (n *Node) doSnapshot() {
 }
 
 func (n *Node) restoreFromSnapshot(data []byte) error {
-	var snapshot pb.Snapshot
+	var snapshot api.Snapshot
 	if err := snapshot.Unmarshal(data); err != nil {
 		return err
 	}
-	if snapshot.Version != pb.Snapshot_V0 {
+	if snapshot.Version != api.Snapshot_V0 {
 		return fmt.Errorf("unrecognized snapshot version %d", snapshot.Version)
 	}
 
@@ -922,7 +919,7 @@ func (n *Node) send(messages []raftpb.Message) error {
 func (n *Node) sendToMember(member *member, m raftpb.Message) {
 	ctx, cancel := context.WithTimeout(n.Ctx, n.sendTimeout)
 
-	_, err := member.Client.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Msg: &m})
+	_, err := member.Client.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: &m})
 	if err != nil {
 		if m.Type == raftpb.MsgSnap {
 			n.ReportSnapshot(m.To, raft.SnapshotFailure)
