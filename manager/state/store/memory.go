@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/docker/swarm-v2/api"
+	pb "github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/pb"
 	"github.com/docker/swarm-v2/manager/state/watch"
 	memdb "github.com/hashicorp/go-memdb"
 	"golang.org/x/net/context"

@@ -5,6 +5,7 @@ import (
 	google_protobuf "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
 
-func DeepcopyEnabled(f *google_protobuf.FieldDescriptorProto) bool {
-	return proto.GetBoolExtension(f.Options, E_Deepcopy, true)
+// DeepcopyEnabled returns true if deepcopy is enabled for the descriptor.
+func DeepcopyEnabled(options *google_protobuf.MessageOptions) bool {
+	return proto.GetBoolExtension(options, E_Deepcopy, true)
 }
