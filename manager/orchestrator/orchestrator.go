@@ -47,11 +47,12 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 
 	// Balance existing services and drain initial tasks attached to invalid
 	// nodes
-	err := o.store.View(func(readTx state.ReadTx) error {
-		if err := o.initTasks(readTx); err != nil {
-			return err
+	var err error
+	o.store.View(func(readTx state.ReadTx) {
+		if err = o.initTasks(readTx); err != nil {
+			return
 		}
-		return o.initServices(readTx)
+		err = o.initServices(readTx)
 	})
 	if err != nil {
 		return err
@@ -109,14 +110,15 @@ func isRelatedService(service *api.Service) bool {
 }
 
 func deleteServiceTasks(ctx context.Context, store state.Store, service *api.Service) {
-	var tasks []*api.Task
-	err := store.View(func(tx state.ReadTx) error {
-		var err error
+	var (
+		tasks []*api.Task
+		err   error
+	)
+	store.View(func(tx state.ReadTx) {
 		tasks, err = tx.Tasks().Find(state.ByServiceID(service.ID))
-		return err
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("task list transaction failed")
+		log.G(ctx).WithError(err).Errorf("failed to list tasks")
 		return
 	}
 

@@ -118,13 +118,9 @@ func (s *Server) GetService(ctx context.Context, request *api.GetServiceRequest)
 	}
 
 	var service *api.Service
-	err := s.store.View(func(tx state.ReadTx) error {
+	s.store.View(func(tx state.ReadTx) {
 		service = tx.Services().Get(request.ServiceID)
-		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
 	if service == nil {
 		return nil, grpc.Errorf(codes.NotFound, "service %s not found", request.ServiceID)
 	}
@@ -192,15 +188,16 @@ func (s *Server) RemoveService(ctx context.Context, request *api.RemoveServiceRe
 
 // ListServices returns a list of all services.
 func (s *Server) ListServices(ctx context.Context, request *api.ListServicesRequest) (*api.ListServicesResponse, error) {
-	var services []*api.Service
-	err := s.store.View(func(tx state.ReadTx) error {
-		var err error
+	var (
+		services []*api.Service
+		err      error
+	)
+	s.store.View(func(tx state.ReadTx) {
 		if request.Options == nil || request.Options.Query == "" {
 			services, err = tx.Services().Find(state.All)
 		} else {
 			services, err = tx.Services().Find(state.ByQuery(request.Options.Query))
 		}
-		return err
 	})
 	if err != nil {
 		return nil, err

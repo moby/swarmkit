@@ -46,11 +46,12 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 	defer cancel()
 
 	// Get list of nodes
-	var nodes []*api.Node
-	err := f.store.View(func(readTx state.ReadTx) error {
-		var err error
+	var (
+		nodes []*api.Node
+		err   error
+	)
+	f.store.View(func(readTx state.ReadTx) {
 		nodes, err = readTx.Nodes().Find(state.All)
-		return err
 	})
 	if err != nil {
 		return err
@@ -64,10 +65,8 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 
 	// Lookup existing fill services
 	var existingServices []*api.Service
-	err = f.store.View(func(readTx state.ReadTx) error {
-		var err error
+	f.store.View(func(readTx state.ReadTx) {
 		existingServices, err = readTx.Services().Find(state.ByServiceMode(api.ServiceModeFill))
-		return err
 	})
 	if err != nil {
 		return err
@@ -267,12 +266,15 @@ func (f *FillOrchestrator) reconcileServiceOneNode(ctx context.Context, serviceI
 	// the node has completed this servie
 	completed := false
 	// tasks for this node and service
-	var tasks []*api.Task
-	err := f.store.View(func(tx state.ReadTx) error {
-		tasksOnNode, err := tx.Tasks().Find(state.ByNodeID(nodeID))
+	var (
+		tasks []*api.Task
+		err   error
+	)
+	f.store.View(func(tx state.ReadTx) {
+		var tasksOnNode []*api.Task
+		tasksOnNode, err = tx.Tasks().Find(state.ByNodeID(nodeID))
 		if err != nil {
-			log.G(ctx).WithError(err).Errorf("fillOrchestrator: reconcile failed finding tasks")
-			return err
+			return
 		}
 		for _, t := range tasksOnNode {
 			// only interested in one service
@@ -287,10 +289,10 @@ func (f *FillOrchestrator) reconcileServiceOneNode(ctx context.Context, serviceI
 				}
 			}
 		}
-		return nil
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("FillOrchestrator: reconcileServiceOneNode transaction failed")
+		log.G(ctx).WithError(err).Errorf("fillOrchestrator: reconcile failed finding tasks")
+		return
 	}
 
 	_, err = f.store.Batch(func(batch state.Batch) error {

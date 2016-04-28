@@ -20,6 +20,7 @@ import (
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarm-v2/api"
+	pb "github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
@@ -826,12 +827,13 @@ func (n *Node) doSnapshot() {
 			n.snapshotInProgress <- snapshotIndex
 		}()
 
-		err := n.memoryStore.View(func(tx state.ReadTx) error {
+		var err error
+		n.memoryStore.View(func(tx state.ReadTx) {
 			close(viewStarted)
 
-			storeSnapshot, err := n.memoryStore.Save(tx)
+			var storeSnapshot *pb.StoreSnapshot
+			storeSnapshot, err = n.memoryStore.Save(tx)
 			snapshot.Store = *storeSnapshot
-			return err
 		})
 		if err != nil {
 			n.Config.Logger.Error(err)
