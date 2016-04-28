@@ -96,7 +96,7 @@ func (u *Updater) Run(ctx context.Context, service *api.Service, tasks []*api.Ta
 
 	dirtyTasks := []*api.Task{}
 	for _, t := range tasks {
-		if !reflect.DeepEqual(service.Spec.Template, t.Spec) {
+		if !reflect.DeepEqual(service.Spec.Template, &t.Spec) {
 			dirtyTasks = append(dirtyTasks, t)
 		}
 	}
@@ -193,7 +193,7 @@ func (u *Updater) updateTask(ctx context.Context, original, updated *api.Task) e
 		select {
 		case e := <-taskUpdates:
 			updated = e.(state.EventUpdateTask).Task
-			if updated.Status != nil && updated.Status.State >= api.TaskStateRunning {
+			if updated.Status.State >= api.TaskStateRunning {
 				return nil
 			}
 		case <-u.stopChan:

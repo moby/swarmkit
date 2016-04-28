@@ -16,7 +16,7 @@ import (
 func invalidNode(n *api.Node) bool {
 	return n == nil ||
 		n.Status.State != api.NodeStatus_READY ||
-		(n.Spec != nil && n.Spec.Availability == api.NodeAvailabilityDrain)
+		n.Spec.Availability == api.NodeAvailabilityDrain
 }
 
 func (o *Orchestrator) initTasks(readTx state.ReadTx) error {
@@ -27,7 +27,7 @@ func (o *Orchestrator) initTasks(readTx state.ReadTx) error {
 	for _, t := range tasks {
 		if t.NodeID != "" {
 			n := readTx.Nodes().Get(t.NodeID)
-			if invalidNode(n) && (t.Status == nil || t.Status.State != api.TaskStateDead) && t.DesiredState != api.TaskStateDead {
+			if invalidNode(n) && t.Status.State != api.TaskStateDead && t.DesiredState != api.TaskStateDead {
 				o.restartTasks[t.ID] = struct{}{}
 			}
 		}
@@ -83,7 +83,7 @@ func (o *Orchestrator) tickTasks(ctx context.Context) {
 						case api.RestartAlways:
 							return tx.Tasks().Create(newTask(service, t.Instance))
 						case api.RestartOnFailure:
-							if t.Status != nil && t.Status.TerminalState != api.TaskStateCompleted {
+							if t.Status.TerminalState != api.TaskStateCompleted {
 								return tx.Tasks().Create(newTask(service, t.Instance))
 							}
 						}
@@ -162,7 +162,7 @@ func (o *Orchestrator) handleTaskChange(ctx context.Context, t *api.Task) {
 		return
 	}
 
-	if (t.Status != nil && t.Status.TerminalState != api.TaskStateNew) ||
+	if t.Status.TerminalState != api.TaskStateNew ||
 		(t.NodeID != "" && invalidNode(n)) ||
 		(t.ServiceID != "" && service == nil) {
 		o.restartTasks[t.ID] = struct{}{}

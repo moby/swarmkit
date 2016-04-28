@@ -54,7 +54,7 @@ func (s *Scheduler) setupTasksList(tx state.ReadTx) error {
 	for _, t := range tasks {
 		// Ignore all tasks that have not reached ALLOCATED
 		// state.
-		if t.Status == nil || t.Status.State < api.TaskStateAllocated {
+		if t.Status.State < api.TaskStateAllocated {
 			continue
 		}
 
@@ -138,7 +138,7 @@ func (s *Scheduler) enqueue(t *api.Task) {
 func (s *Scheduler) createTask(ctx context.Context, t *api.Task) int {
 	// Ignore all tasks that have not reached ALLOCATED
 	// state.
-	if t.Status == nil || t.Status.State < api.TaskStateAllocated {
+	if t.Status.State < api.TaskStateAllocated {
 		return 0
 	}
 
@@ -159,7 +159,7 @@ func (s *Scheduler) createTask(ctx context.Context, t *api.Task) int {
 func (s *Scheduler) updateTask(ctx context.Context, t *api.Task) int {
 	// Ignore all tasks that have not reached ALLOCATED
 	// state.
-	if t.Status == nil || t.Status.State < api.TaskStateAllocated {
+	if t.Status.State < api.TaskStateAllocated {
 		return 0
 	}
 
@@ -269,7 +269,7 @@ func (s *Scheduler) scheduleTask(ctx context.Context, t *api.Task) *api.Task {
 	log.G(ctx).WithField("task.id", t.ID).Debugf("Assigning to node %s", n.ID)
 	newT := *t
 	newT.NodeID = n.ID
-	newT.Status = &api.TaskStatus{State: api.TaskStateAssigned}
+	newT.Status = api.TaskStatus{State: api.TaskStateAssigned}
 	s.allTasks[t.ID] = &newT
 
 	nodeInfo := s.nodeHeap.nodeInfo(n.ID)

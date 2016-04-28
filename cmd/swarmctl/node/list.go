@@ -41,10 +41,7 @@ var (
 				}()
 				common.PrintHeader(w, "ID", "Name", "Status", "Availability")
 				output = func(n *api.Node) {
-					spec := n.Spec
-					if spec == nil {
-						spec = &api.NodeSpec{}
-					}
+					spec := &n.Spec
 					name := spec.Annotations.Name
 					if name == "" {
 						name = n.Description.Hostname

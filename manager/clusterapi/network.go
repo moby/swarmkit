@@ -98,7 +98,7 @@ func (s *Server) CreateNetwork(ctx context.Context, request *api.CreateNetworkRe
 	// duplicate creations. See #65
 	n := &api.Network{
 		ID:   identity.NewID(),
-		Spec: request.Spec,
+		Spec: *request.Spec,
 	}
 
 	err := s.store.Update(func(tx state.Tx) error {

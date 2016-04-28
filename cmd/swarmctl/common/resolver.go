@@ -31,7 +31,7 @@ func (r *Resolver) get(t interface{}, id string) string {
 		if err != nil {
 			return id
 		}
-		if res.Node.Spec != nil && res.Node.Spec.Annotations.Name != "" {
+		if res.Node.Spec.Annotations.Name != "" {
 			return res.Node.Spec.Annotations.Name
 		}
 		return res.Node.Description.Hostname

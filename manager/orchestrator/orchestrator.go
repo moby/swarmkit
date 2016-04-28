@@ -93,10 +93,10 @@ func newTask(service *api.Service, instance uint64) *api.Task {
 	return &api.Task{
 		ID:          identity.NewID(),
 		Annotations: service.Spec.Annotations, // TODO(stevvooe): Copy metadata with nice name.
-		Spec:        service.Spec.Template,
+		Spec:        *service.Spec.Template,
 		ServiceID:   service.ID,
 		Instance:    instance,
-		Status: &api.TaskStatus{
+		Status: api.TaskStatus{
 			State: api.TaskStateNew,
 		},
 		DesiredState: api.TaskStateRunning,
@@ -105,7 +105,7 @@ func newTask(service *api.Service, instance uint64) *api.Task {
 
 // isRelatedService decides if this service is related to current orchestrator
 func isRelatedService(service *api.Service) bool {
-	return service != nil && service.Spec != nil && service.Spec.Mode == api.ServiceModeRunning
+	return service != nil && service.Spec.Mode == api.ServiceModeRunning
 }
 
 func deleteServiceTasks(ctx context.Context, store state.Store, service *api.Service) {

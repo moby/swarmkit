@@ -44,7 +44,7 @@ func TestRunnerFlowIntegration(t *testing.T) {
 		ID:        "dockerexec-integration-task-id",
 		ServiceID: "dockerexec-integration-service-id",
 		NodeID:    "dockerexec-integration-node-id",
-		Spec: &api.TaskSpec{
+		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.Container{
 					Command: []string{"sh", "-c", "sleep 5"},
