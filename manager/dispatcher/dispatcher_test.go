@@ -206,10 +206,12 @@ func TestTasks(t *testing.T) {
 	testTask1 := &api.Task{
 		NodeID: nodeID,
 		ID:     "testTask1",
+		Status: api.TaskStatus{State: api.TaskStateAssigned},
 	}
 	testTask2 := &api.Task{
 		NodeID: nodeID,
 		ID:     "testTask2",
+		Status: api.TaskStatus{State: api.TaskStateAssigned},
 	}
 
 	{

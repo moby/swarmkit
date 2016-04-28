@@ -4,7 +4,7 @@ namespace: monitoring
 services:
     cadvisor:
         image: google/cadvisor:v0.22.0
-        instances: 2
+        mode: fill
         update:
             parallelism: 1
             delay: 10s
