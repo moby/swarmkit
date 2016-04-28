@@ -58,13 +58,9 @@ func (o *Orchestrator) resolveService(ctx context.Context, task *api.Task) *api.
 		return nil
 	}
 	var service *api.Service
-	err := o.store.View(func(tx state.ReadTx) error {
+	o.store.View(func(tx state.ReadTx) {
 		service = tx.Services().Get(task.ServiceID)
-		return nil
 	})
-	if err != nil {
-		log.G(ctx).WithError(err).Errorf("deleteTask transaction failed")
-	}
 	return service
 }
 
@@ -77,17 +73,15 @@ func restartCondition(service *api.Service) api.RestartPolicy_RestartCondition {
 }
 
 func (o *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
-	var tasks []*api.Task
-	err := o.store.View(func(tx state.ReadTx) error {
-		var err error
+	var (
+		tasks []*api.Task
+		err   error
+	)
+	o.store.View(func(tx state.ReadTx) {
 		tasks, err = tx.Tasks().Find(state.ByServiceID(service.ID))
-		if err != nil {
-			log.G(ctx).WithError(err).Errorf("reconcile failed finding tasks")
-		}
-		return err
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("reconcile transaction failed")
+		log.G(ctx).WithError(err).Errorf("reconcile failed finding tasks")
 		return
 	}
 

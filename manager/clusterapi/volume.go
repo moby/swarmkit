@@ -60,13 +60,9 @@ func (s *Server) GetVolume(ctx context.Context, request *api.GetVolumeRequest) (
 	}
 
 	var volume *api.Volume
-	err := s.store.View(func(tx state.ReadTx) error {
+	s.store.View(func(tx state.ReadTx) {
 		volume = tx.Volumes().Get(request.VolumeID)
-		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
 	if volume == nil {
 		return nil, grpc.Errorf(codes.NotFound, "volume %s not found", request.VolumeID)
 	}
@@ -98,12 +94,12 @@ func (s *Server) RemoveVolume(ctx context.Context, request *api.RemoveVolumeRequ
 
 // ListVolumes returns a list of all volumes.
 func (s *Server) ListVolumes(ctx context.Context, request *api.ListVolumesRequest) (*api.ListVolumesResponse, error) {
-	var volumes []*api.Volume
-	err := s.store.View(func(tx state.ReadTx) error {
-		var err error
-
+	var (
+		volumes []*api.Volume
+		err     error
+	)
+	s.store.View(func(tx state.ReadTx) {
 		volumes, err = tx.Volumes().Find(state.All)
-		return err
 	})
 	if err != nil {
 		return nil, err
