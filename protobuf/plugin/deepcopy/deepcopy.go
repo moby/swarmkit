@@ -1,6 +1,7 @@
 package deepcopy
 
 import (
+	"github.com/docker/swarm-v2/protobuf/plugin"
 	"github.com/gogo/protobuf/gogoproto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
@@ -35,6 +36,10 @@ func (d *deepCopyGen) genMsgDeepCopy(m *generator.Descriptor) {
 	var funcs []func()
 	oneOfFuncs := make(map[string][]func())
 	for _, f := range m.Field {
+		if !plugin.DeepcopyEnabled(f) {
+			continue
+		}
+
 		fName := generator.CamelCase(*f.Name)
 		if gogoproto.IsCustomName(f) {
 			fName = gogoproto.GetCustomName(f)
