@@ -1,0 +1,66 @@
+version: '3'
+namespace: reference
+
+services:
+    web:
+        image: nginx:1.9.14
+        # Command to run. Will default to image's default if not provided.
+        command: ["nginx", "-g", "daemon off;"]
+        # Arguments provided to the image's entrypoint. Ignored if command is specified.
+        args: []
+        env:
+            - ENVIRONMENT=dev
+        # running stands for "long running service" and is the default.
+        # other modes include "fill".
+        mode: running
+        # number of instances for a running service.
+        instances: 3
+        # restart policy
+        restart: always
+        restartdelay: 10s
+        # update strategy (rolling updates)
+        update:
+            parallelism: 1
+            delay: 10s
+        # resource requirements (scheduler reservation and system limits)
+        resources:
+            reservations:
+                cpu: 1
+                memory: 256Mi
+            limits:
+                cpu: 1.5
+                memory: 512Mi
+        # network settings
+        networks:
+            - mynetwork
+        ports:
+            - name: http
+              protocol: tcp
+              port: 80
+              # node_port is optional. If omitted, it will result in a random port allocation.
+              node_port: 80
+        # volume settings
+        mounts:
+            # bind mount from host
+            - type: bind
+              source: /sys
+              target: /sys
+              mask: ro
+            # ephemeral volume
+            - type: ephemeral
+              target: /var/run
+            # mount a specific volume
+            - type: volume
+              name: test-volume
+              target: /var/www
+              mask: rw
+
+# TODO(aluzzardi): Not interpreted by swarmctl right now.
+networks:
+    mynetwork:
+        driver: overlay
+  
+# TODO(aluzzardi): Not interpreted by swarmctl right now.
+volumes:
+    test-volume:
+        driver: local

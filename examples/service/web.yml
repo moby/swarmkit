@@ -1,8 +1,0 @@
-name: web
-image: nginx
-instances: 1
-mode: running
-resources:
-    limits:
-        cpu: 1.5
-        memory: 500Mi
