@@ -40,7 +40,7 @@ var (
 
 			for _, j := range r.Services {
 				if j.Spec.Annotations.Labels["namespace"] == localSpec.Namespace {
-					servicespecs = append(servicespecs, j.Spec)
+					servicespecs = append(servicespecs, &j.Spec)
 				}
 			}
 			remoteSpec := &spec.Spec{

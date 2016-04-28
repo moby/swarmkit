@@ -91,10 +91,6 @@ func (o *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
 		return
 	}
 
-	if service.Spec == nil {
-		return
-	}
-
 	runningTasks := make([]*api.Task, 0, len(tasks))
 	runningInstances := make(map[uint64]struct{}) // this could be a bitfield...
 	for _, t := range tasks {

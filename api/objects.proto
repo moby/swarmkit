@@ -20,7 +20,7 @@ message Node {
 
 	// Spec defines the desired state of the node as specified by the user.
 	// The system will honor this and will *never* modify it.
-	NodeSpec spec = 3;
+	NodeSpec spec = 3 [(gogoproto.nullable) = false];
 
 	// Description encapsulated the properties of the Node as reported by the
 	// agent.
@@ -56,7 +56,7 @@ message Service {
 	// Version tracks the last time the service was modified.
 	Version version = 2 [(gogoproto.nullable) = false];
 
-	ServiceSpec spec = 3;
+	ServiceSpec spec = 3 [(gogoproto.nullable) = false];
 
 	// Runtime state of service endpoint. This may be different
 	// from the spec version because the user may not have entered
@@ -95,9 +95,9 @@ message Task {
 
 	// Spec declares the runtime parameters for the task. This is copied out of
 	// the service's template field.
-	TaskSpec spec = 7;
+	TaskSpec spec = 7 [(gogoproto.nullable) = false];
 
-	TaskStatus status = 8;
+	TaskStatus status = 8 [(gogoproto.nullable) = false];
 
 	// DesiredState is the target state for the task. It is set to
 	// TaskStateRunning when a task is first created, and changed to
@@ -129,7 +129,7 @@ message Volume {
 	// Version tracks the last time the volume was modified.
 	Version version = 2 [(gogoproto.nullable) = false];
 
-	VolumeSpec spec = 3;
+	VolumeSpec spec = 3 [(gogoproto.nullable) = false];
 
 	// Driver specific operational state provided by the Volume driver.
 	Driver driver_state = 4;
@@ -141,7 +141,7 @@ message Network {
 	// Version tracks the last time the network was modified.
 	Version version = 2 [(gogoproto.nullable) = false];
 
-	NetworkSpec spec = 3;
+	NetworkSpec spec = 3 [(gogoproto.nullable) = false];
 
 	// Driver specific operational state provided by the network driver.
 	Driver driver_state = 4;

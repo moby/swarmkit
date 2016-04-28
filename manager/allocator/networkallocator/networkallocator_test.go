@@ -23,7 +23,7 @@ func TestAllocateInvalidIPAM(t *testing.T) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
+		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test",
 			},
@@ -43,7 +43,7 @@ func TestAllocateInvalidDriver(t *testing.T) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
+		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test",
 			},
@@ -61,7 +61,7 @@ func TestNetworkDoubleAllocate(t *testing.T) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
+		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test",
 			},
@@ -80,7 +80,7 @@ func TestAllocateEmptyConfig(t *testing.T) {
 	na2 := newNetworkAllocator(t)
 	n1 := &api.Network{
 		ID: "testID1",
-		Spec: &api.NetworkSpec{
+		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test1",
 			},
@@ -89,7 +89,7 @@ func TestAllocateEmptyConfig(t *testing.T) {
 
 	n2 := &api.Network{
 		ID: "testID2",
-		Spec: &api.NetworkSpec{
+		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test2",
 			},
@@ -157,7 +157,7 @@ func TestAllocateWithOneSubnet(t *testing.T) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
+		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test",
 			},
@@ -188,7 +188,7 @@ func TestAllocateWithOneSubnetGateway(t *testing.T) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
+		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test",
 			},
@@ -218,7 +218,7 @@ func TestAllocateWithOneSubnetInvalidGateway(t *testing.T) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
+		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test",
 			},
@@ -243,7 +243,7 @@ func TestAllocateWithInvalidSubnet(t *testing.T) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
+		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test",
 			},
@@ -267,7 +267,7 @@ func TestAllocateWithTwoSubnetsNoGateway(t *testing.T) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
+		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test",
 			},
@@ -306,7 +306,7 @@ func TestFree(t *testing.T) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
-		Spec: &api.NetworkSpec{
+		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test",
 			},
@@ -339,7 +339,7 @@ func TestAllocateTaskFree(t *testing.T) {
 	na2 := newNetworkAllocator(t)
 	n1 := &api.Network{
 		ID: "testID1",
-		Spec: &api.NetworkSpec{
+		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test1",
 			},
@@ -358,7 +358,7 @@ func TestAllocateTaskFree(t *testing.T) {
 
 	n2 := &api.Network{
 		ID: "testID2",
-		Spec: &api.NetworkSpec{
+		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test2",
 			},
@@ -510,7 +510,7 @@ func TestServiceAllocate(t *testing.T) {
 	na := newNetworkAllocator(t)
 	s := &api.Service{
 		ID: "testID1",
-		Spec: &api.ServiceSpec{
+		Spec: api.ServiceSpec{
 			Endpoint: &api.Endpoint{
 				Ports: []*api.Endpoint_PortConfiguration{
 					{
@@ -539,7 +539,7 @@ func TestServiceAllocateUserDefinedPorts(t *testing.T) {
 	na := newNetworkAllocator(t)
 	s := &api.Service{
 		ID: "testID1",
-		Spec: &api.ServiceSpec{
+		Spec: api.ServiceSpec{
 			Endpoint: &api.Endpoint{
 				Ports: []*api.Endpoint_PortConfiguration{
 					{
@@ -569,7 +569,7 @@ func TestServiceAllocateConflictingUserDefinedPorts(t *testing.T) {
 	na := newNetworkAllocator(t)
 	s := &api.Service{
 		ID: "testID1",
-		Spec: &api.ServiceSpec{
+		Spec: api.ServiceSpec{
 			Endpoint: &api.Endpoint{
 				Ports: []*api.Endpoint_PortConfiguration{
 					{
@@ -595,7 +595,7 @@ func TestServiceDeallocateAllocate(t *testing.T) {
 	na := newNetworkAllocator(t)
 	s := &api.Service{
 		ID: "testID1",
-		Spec: &api.ServiceSpec{
+		Spec: api.ServiceSpec{
 			Endpoint: &api.Endpoint{
 				Ports: []*api.Endpoint_PortConfiguration{
 					{
@@ -629,7 +629,7 @@ func TestServiceUpdate(t *testing.T) {
 	na2 := newNetworkAllocator(t)
 	s := &api.Service{
 		ID: "testID1",
-		Spec: &api.ServiceSpec{
+		Spec: api.ServiceSpec{
 			Endpoint: &api.Endpoint{
 				Ports: []*api.Endpoint_PortConfiguration{
 					{

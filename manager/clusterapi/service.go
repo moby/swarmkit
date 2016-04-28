@@ -94,7 +94,7 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 	// duplicate creations. See #65
 	service := &api.Service{
 		ID:   identity.NewID(),
-		Spec: request.Spec,
+		Spec: *request.Spec,
 	}
 
 	err := s.store.Update(func(tx state.Tx) error {
@@ -155,7 +155,7 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 			return nil
 		}
 		service.Version = *request.ServiceVersion
-		service.Spec = request.Spec.Copy()
+		service.Spec = *request.Spec.Copy()
 		return services.Update(service)
 	})
 	if err != nil {

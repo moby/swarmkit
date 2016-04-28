@@ -40,7 +40,7 @@ var (
 				return err
 			}
 			remoteSpec := service.Spec
-			if err := network.ResolveServiceNetworks(common.Context(cmd), c, remoteSpec); err != nil {
+			if err := network.ResolveServiceNetworks(common.Context(cmd), c, &remoteSpec); err != nil {
 				return err
 			}
 
@@ -50,7 +50,7 @@ var (
 			}
 
 			remoteService := &spec.ServiceConfig{}
-			remoteService.FromProto(remoteSpec)
+			remoteService.FromProto(&remoteSpec)
 			diff, err := localService.Diff(context, "remote", "local", remoteService)
 			if err != nil {
 				return err

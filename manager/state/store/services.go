@@ -143,7 +143,7 @@ func (services services) table() string {
 // Returns ErrExist if the ID is already taken.
 func (services services) Create(s *api.Service) error {
 	// Ensure the name is not already in use.
-	if s.Spec != nil && lookup(services.memDBTx, services.table(), indexName, s.Spec.Annotations.Name) != nil {
+	if lookup(services.memDBTx, services.table(), indexName, s.Spec.Annotations.Name) != nil {
 		return state.ErrNameConflict
 	}
 
@@ -252,10 +252,6 @@ func (si serviceIndexerByName) FromObject(obj interface{}) (bool, []byte, error)
 		panic("unexpected type passed to FromObject")
 	}
 
-	// Add the null character as a terminator
-	if s.Spec == nil {
-		return false, nil, nil
-	}
 	// Add the null character as a terminator
 	return true, []byte(s.Spec.Annotations.Name + "\x00"), nil
 }

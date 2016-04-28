@@ -136,7 +136,7 @@ func (volumes volumes) table() string {
 // Returns ErrExist if the ID is already taken.
 func (volumes volumes) Create(v *api.Volume) error {
 	// Ensure the name is not already in use.
-	if v.Spec != nil && lookup(volumes.memDBTx, volumes.table(), indexName, v.Spec.Annotations.Name) != nil {
+	if lookup(volumes.memDBTx, volumes.table(), indexName, v.Spec.Annotations.Name) != nil {
 		return state.ErrNameConflict
 	}
 
@@ -220,10 +220,6 @@ func (vi volumeIndexerByName) FromObject(obj interface{}) (bool, []byte, error) 
 		panic("unexpected type passed to FromObject")
 	}
 
-	// Add the null character as a terminator
-	if v.Spec == nil {
-		return false, nil, nil
-	}
 	// Add the null character as a terminator
 	return true, []byte(v.Spec.Annotations.Name + "\x00"), nil
 }

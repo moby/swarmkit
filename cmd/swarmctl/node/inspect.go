@@ -34,10 +34,7 @@ var (
 				// Ignore flushing errors - there's nothing we can do.
 				_ = w.Flush()
 			}()
-			spec := node.Spec
-			if spec == nil {
-				spec = &api.NodeSpec{}
-			}
+			spec := &node.Spec
 			desc := node.Description
 			if desc == nil {
 				desc = &api.NodeDescription{}
