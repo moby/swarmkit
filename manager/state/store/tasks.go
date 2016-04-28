@@ -218,9 +218,6 @@ func (ti taskIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 		panic("unexpected type passed to FromObject")
 	}
 
-	if t.Spec == nil {
-		return false, nil, nil
-	}
 	// Add the null character as a terminator
 	return true, []byte(t.Annotations.Name + "\x00"), nil
 }

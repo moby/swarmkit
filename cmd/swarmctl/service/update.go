@@ -42,7 +42,7 @@ var (
 					return err
 				}
 			} else { // TODO(vieux): support or error on both file.
-				spec = service.Spec
+				spec = &service.Spec
 
 				if flags.Changed("instances") {
 					instances, err := flags.GetInt64("instances")

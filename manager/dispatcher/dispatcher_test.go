@@ -243,7 +243,7 @@ func TestTasks(t *testing.T) {
 		assert.NoError(t, tx.Tasks().Update(&api.Task{
 			ID:     testTask1.ID,
 			NodeID: nodeID,
-			Status: &api.TaskStatus{State: api.TaskStateFailed, Err: "1234"},
+			Status: api.TaskStatus{State: api.TaskStateFailed, Err: "1234"},
 		}))
 		return nil
 	})
@@ -313,17 +313,17 @@ func TestTaskUpdate(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	testTask1.Status = &api.TaskStatus{State: api.TaskStateAssigned}
-	testTask2.Status = &api.TaskStatus{State: api.TaskStateAssigned}
+	testTask1.Status = api.TaskStatus{State: api.TaskStateAssigned}
+	testTask2.Status = api.TaskStatus{State: api.TaskStateAssigned}
 	updReq := &api.UpdateTaskStatusRequest{
 		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
 			{
 				TaskID: testTask1.ID,
-				Status: testTask1.Status,
+				Status: &testTask1.Status,
 			},
 			{
 				TaskID: testTask2.ID,
-				Status: testTask2.Status,
+				Status: &testTask2.Status,
 			},
 		},
 	}

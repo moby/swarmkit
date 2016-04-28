@@ -22,7 +22,7 @@ func TestFindMin(t *testing.T) {
 		for i := 0; i != numNodes; i++ {
 			n := &api.Node{
 				ID: "id" + strconv.Itoa(i),
-				Spec: &api.NodeSpec{
+				Spec: api.NodeSpec{
 					Annotations: api.Annotations{
 						Labels: make(map[string]string),
 					},

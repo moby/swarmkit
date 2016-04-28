@@ -348,25 +348,24 @@ func (f *FillOrchestrator) removeTasks(ctx context.Context, batch state.Batch, s
 }
 
 func (f *FillOrchestrator) isRelatedService(service *api.Service) bool {
-	return service != nil && service.Spec != nil && service.Spec.Mode == api.ServiceModeFill
+	return service != nil && service.Spec.Mode == api.ServiceModeFill
 }
 
 func isTaskRunning(t *api.Task) bool {
-	return t != nil && t.DesiredState == api.TaskStateRunning && t.Status != nil && t.Status.State <= api.TaskStateRunning
+	return t != nil && t.DesiredState == api.TaskStateRunning && t.Status.State <= api.TaskStateRunning
 }
 
 func isValidNode(n *api.Node) bool {
 	// current simulation spec could be nil
-	return n != nil &&
-		(n.Spec == nil || n.Spec != nil && n.Spec.Availability != api.NodeAvailabilityDrain)
+	return n != nil && n.Spec.Availability != api.NodeAvailabilityDrain
 }
 
 func isNodeInDrainState(n *api.Node) bool {
-	return n != nil && n.Spec != nil && n.Spec.Availability == api.NodeAvailabilityDrain
+	return n != nil && n.Spec.Availability == api.NodeAvailabilityDrain
 }
 
 func isTaskCompleted(t *api.Task, restartPolicy api.RestartPolicy_RestartCondition) bool {
-	if t == nil || isTaskRunning(t) || t.Status == nil {
+	if t == nil || isTaskRunning(t) {
 		return false
 	}
 	return restartPolicy == api.RestartNever ||
@@ -374,5 +373,5 @@ func isTaskCompleted(t *api.Task, restartPolicy api.RestartPolicy_RestartConditi
 }
 
 func isTaskTerminated(t *api.Task) bool {
-	return t != nil && t.Status != nil && t.Status.TerminalState > api.TaskStateNew
+	return t != nil && t.Status.TerminalState > api.TaskStateNew
 }

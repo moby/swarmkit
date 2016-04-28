@@ -12,15 +12,13 @@ import (
 
 var (
 	node1 = &api.Node{
-		ID:   "id1",
-		Spec: &api.NodeSpec{},
+		ID: "id1",
 		Description: &api.NodeDescription{
 			Hostname: "name1",
 		},
 	}
 	node2 = &api.Node{
-		ID:   "id2",
-		Spec: &api.NodeSpec{},
+		ID: "id2",
 		Description: &api.NodeDescription{
 			Hostname: "name2",
 		},
@@ -28,7 +26,7 @@ var (
 
 	service1 = &api.Service{
 		ID: "id1",
-		Spec: &api.ServiceSpec{
+		Spec: api.ServiceSpec{
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
@@ -40,7 +38,7 @@ var (
 
 	service2 = &api.Service{
 		ID: "id2",
-		Spec: &api.ServiceSpec{
+		Spec: api.ServiceSpec{
 			Annotations: api.Annotations{
 				Name: "name2",
 			},

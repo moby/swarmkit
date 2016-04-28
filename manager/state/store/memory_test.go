@@ -18,22 +18,19 @@ import (
 var (
 	nodeSet = []*api.Node{
 		{
-			ID:   "id1",
-			Spec: &api.NodeSpec{},
+			ID: "id1",
 			Description: &api.NodeDescription{
 				Hostname: "name1",
 			},
 		},
 		{
-			ID:   "id2",
-			Spec: &api.NodeSpec{},
+			ID: "id2",
 			Description: &api.NodeDescription{
 				Hostname: "name2",
 			},
 		},
 		{
-			ID:   "id3",
-			Spec: &api.NodeSpec{},
+			ID: "id3",
 			Description: &api.NodeDescription{
 				// intentionally conflicting hostname
 				Hostname: "name2",
@@ -44,7 +41,7 @@ var (
 	serviceSet = []*api.Service{
 		{
 			ID: "id1",
-			Spec: &api.ServiceSpec{
+			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
@@ -52,7 +49,7 @@ var (
 		},
 		{
 			ID: "id2",
-			Spec: &api.ServiceSpec{
+			Spec: api.ServiceSpec{
 				Mode: api.ServiceModeFill,
 				Annotations: api.Annotations{
 					Name: "name2",
@@ -61,7 +58,7 @@ var (
 		},
 		{
 			ID: "id3",
-			Spec: &api.ServiceSpec{
+			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
 					Name: "name3",
 				},
@@ -75,7 +72,6 @@ var (
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
-			Spec:   &api.TaskSpec{},
 			NodeID: nodeSet[0].ID,
 		},
 		{
@@ -83,7 +79,6 @@ var (
 			Annotations: api.Annotations{
 				Name: "name2",
 			},
-			Spec:      &api.TaskSpec{},
 			ServiceID: serviceSet[0].ID,
 		},
 		{
@@ -91,14 +86,13 @@ var (
 			Annotations: api.Annotations{
 				Name: "name2",
 			},
-			Spec: &api.TaskSpec{},
 		},
 	}
 
 	networkSet = []*api.Network{
 		{
 			ID: "id1",
-			Spec: &api.NetworkSpec{
+			Spec: api.NetworkSpec{
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
@@ -106,7 +100,7 @@ var (
 		},
 		{
 			ID: "id2",
-			Spec: &api.NetworkSpec{
+			Spec: api.NetworkSpec{
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
@@ -114,7 +108,7 @@ var (
 		},
 		{
 			ID: "id3",
-			Spec: &api.NetworkSpec{
+			Spec: api.NetworkSpec{
 				Annotations: api.Annotations{
 					Name: "name3",
 				},
@@ -125,7 +119,7 @@ var (
 	volumeSet = []*api.Volume{
 		{
 			ID: "id1",
-			Spec: &api.VolumeSpec{
+			Spec: api.VolumeSpec{
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
@@ -133,7 +127,7 @@ var (
 		},
 		{
 			ID: "id2",
-			Spec: &api.VolumeSpec{
+			Spec: api.VolumeSpec{
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
@@ -141,7 +135,7 @@ var (
 		},
 		{
 			ID: "id3",
-			Spec: &api.VolumeSpec{
+			Spec: api.VolumeSpec{
 				Annotations: api.Annotations{
 					Name: "name3",
 				},
@@ -233,8 +227,7 @@ func TestStoreNode(t *testing.T) {
 
 	// Update.
 	update := &api.Node{
-		ID:   "id3",
-		Spec: &api.NodeSpec{},
+		ID: "id3",
 		Description: &api.NodeDescription{
 			Hostname: "name3",
 		},
@@ -287,7 +280,7 @@ func TestStoreService(t *testing.T) {
 		assert.Equal(t,
 			tx.Services().Create(&api.Service{
 				ID: "id1",
-				Spec: &api.ServiceSpec{
+				Spec: api.ServiceSpec{
 					Annotations: api.Annotations{
 						Name: "name4",
 					},
@@ -297,7 +290,7 @@ func TestStoreService(t *testing.T) {
 		assert.Equal(t,
 			tx.Services().Create(&api.Service{
 				ID: "id4",
-				Spec: &api.ServiceSpec{
+				Spec: api.ServiceSpec{
 					Annotations: api.Annotations{
 						Name: "name1",
 					},
@@ -520,7 +513,6 @@ func TestStoreTask(t *testing.T) {
 		Annotations: api.Annotations{
 			Name: "name3",
 		},
-		Spec: &api.TaskSpec{},
 	}
 	err = s.Update(func(tx state.Tx) error {
 		assert.NotEqual(t, update, tx.Tasks().Get("id3"))
@@ -570,7 +562,7 @@ func TestStoreVolume(t *testing.T) {
 		assert.Equal(t,
 			tx.Volumes().Create(&api.Volume{
 				ID: "id1",
-				Spec: &api.VolumeSpec{
+				Spec: api.VolumeSpec{
 					Annotations: api.Annotations{
 						Name: "name4",
 					},
@@ -580,7 +572,7 @@ func TestStoreVolume(t *testing.T) {
 		assert.Equal(t,
 			tx.Volumes().Create(&api.Volume{
 				ID: "id4",
-				Spec: &api.VolumeSpec{
+				Spec: api.VolumeSpec{
 					Annotations: api.Annotations{
 						Name: "name1",
 					},
@@ -754,7 +746,7 @@ func TestStoreSnapshot(t *testing.T) {
 	// Create node
 	createNode := &api.Node{
 		ID: "id4",
-		Spec: &api.NodeSpec{
+		Spec: api.NodeSpec{
 			Annotations: api.Annotations{
 				Name: "name4",
 			},
@@ -779,7 +771,7 @@ func TestStoreSnapshot(t *testing.T) {
 	// Update node
 	updateNode := &api.Node{
 		ID: "id3",
-		Spec: &api.NodeSpec{
+		Spec: api.NodeSpec{
 			Annotations: api.Annotations{
 				Name: "name3",
 			},
@@ -820,7 +812,7 @@ func TestStoreSnapshot(t *testing.T) {
 	// Create service
 	createService := &api.Service{
 		ID: "id4",
-		Spec: &api.ServiceSpec{
+		Spec: api.ServiceSpec{
 			Annotations: api.Annotations{
 				Name: "name4",
 			},
@@ -883,7 +875,6 @@ func TestStoreSnapshot(t *testing.T) {
 		Annotations: api.Annotations{
 			Name: "name4",
 		},
-		Spec: &api.TaskSpec{},
 	}
 
 	err = s1.Update(func(tx1 state.Tx) error {
@@ -907,7 +898,6 @@ func TestStoreSnapshot(t *testing.T) {
 		Annotations: api.Annotations{
 			Name: "name3",
 		},
-		Spec: &api.TaskSpec{},
 	}
 
 	err = s1.Update(func(tx1 state.Tx) error {
@@ -947,8 +937,7 @@ func TestFailedTransaction(t *testing.T) {
 	// Create one node
 	err := s.Update(func(tx state.Tx) error {
 		n := &api.Node{
-			ID:   "id1",
-			Spec: &api.NodeSpec{},
+			ID: "id1",
 			Description: &api.NodeDescription{
 				Hostname: "name1",
 			},
@@ -962,8 +951,7 @@ func TestFailedTransaction(t *testing.T) {
 	// Create a second node, but then roll back the transaction
 	err = s.Update(func(tx state.Tx) error {
 		n := &api.Node{
-			ID:   "id2",
-			Spec: &api.NodeSpec{},
+			ID: "id2",
 			Description: &api.NodeDescription{
 				Hostname: "name2",
 			},
@@ -1018,7 +1006,7 @@ func TestVersion(t *testing.T) {
 	// Create one node
 	n := &api.Node{
 		ID: "id1",
-		Spec: &api.NodeSpec{
+		Spec: api.NodeSpec{
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
@@ -1080,7 +1068,7 @@ func TestBatch(t *testing.T) {
 		for i := 0; i != 2*MaxChangesPerTransaction+5; i++ {
 			n := &api.Node{
 				ID: "id" + strconv.Itoa(i),
-				Spec: &api.NodeSpec{
+				Spec: api.NodeSpec{
 					Annotations: api.Annotations{
 						Name: "name" + strconv.Itoa(i),
 					},
@@ -1143,7 +1131,7 @@ func TestBatchFailure(t *testing.T) {
 		for i := 0; ; i++ {
 			n := &api.Node{
 				ID: "id" + strconv.Itoa(i),
-				Spec: &api.NodeSpec{
+				Spec: api.NodeSpec{
 					Annotations: api.Annotations{
 						Name: "name" + strconv.Itoa(i),
 					},
@@ -1253,7 +1241,7 @@ func setupNodes(b *testing.B, n int) (state.Store, []string) {
 		for i := 0; i < n; i++ {
 			_ = tx1.Nodes().Create(&api.Node{
 				ID: nodeIDs[i],
-				Spec: &api.NodeSpec{
+				Spec: api.NodeSpec{
 					Annotations: api.Annotations{
 						Name: "name" + strconv.Itoa(i),
 					},
@@ -1277,7 +1265,7 @@ func BenchmarkUpdateNode(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_ = tx1.Nodes().Update(&api.Node{
 				ID: nodeIDs[i%benchmarkNumNodes],
-				Spec: &api.NodeSpec{
+				Spec: api.NodeSpec{
 					Annotations: api.Annotations{
 						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
 					},
@@ -1295,7 +1283,7 @@ func BenchmarkUpdateNodeTransaction(b *testing.B) {
 		_ = s.Update(func(tx1 state.Tx) error {
 			_ = tx1.Nodes().Update(&api.Node{
 				ID: nodeIDs[i%benchmarkNumNodes],
-				Spec: &api.NodeSpec{
+				Spec: api.NodeSpec{
 					Annotations: api.Annotations{
 						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
 					},
@@ -1377,7 +1365,7 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 				_ = s.Update(func(tx1 state.Tx) error {
 					_ = tx1.Nodes().Update(&api.Node{
 						ID: nodeIDs[i%benchmarkNumNodes],
-						Spec: &api.NodeSpec{
+						Spec: api.NodeSpec{
 							Annotations: api.Annotations{
 								Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(c) + "_" + strconv.Itoa(i),
 							},

@@ -36,7 +36,7 @@ func (s *Server) CreateVolume(ctx context.Context, request *api.CreateVolumeRequ
 	// duplicate creations. See #65
 	volume := &api.Volume{
 		ID:   identity.NewID(),
-		Spec: request.Spec,
+		Spec: *request.Spec,
 	}
 
 	err := s.store.Update(func(tx state.Tx) error {

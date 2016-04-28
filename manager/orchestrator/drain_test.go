@@ -14,7 +14,7 @@ func TestDrain(t *testing.T) {
 	ctx := context.Background()
 	initialService := &api.Service{
 		ID: "id1",
-		Spec: &api.ServiceSpec{
+		Spec: api.ServiceSpec{
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
@@ -29,7 +29,7 @@ func TestDrain(t *testing.T) {
 	initialNodeSet := []*api.Node{
 		{
 			ID: "id1",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
@@ -41,7 +41,7 @@ func TestDrain(t *testing.T) {
 		},
 		{
 			ID: "id2",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
@@ -53,7 +53,7 @@ func TestDrain(t *testing.T) {
 		},
 		{
 			ID: "id3",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "name3",
 				},
@@ -65,7 +65,7 @@ func TestDrain(t *testing.T) {
 		},
 		{
 			ID: "id4",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "name4",
 				},
@@ -77,7 +77,7 @@ func TestDrain(t *testing.T) {
 		},
 		{
 			ID: "id5",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "name5",
 				},
@@ -92,9 +92,7 @@ func TestDrain(t *testing.T) {
 	initialTaskSet := []*api.Task{
 		// Task not assigned to any node
 		{
-			ID:     "id0",
-			Spec:   &api.TaskSpec{},
-			Status: &api.TaskStatus{},
+			ID: "id0",
 			Annotations: api.Annotations{
 				Name: "name0",
 			},
@@ -102,9 +100,7 @@ func TestDrain(t *testing.T) {
 		},
 		// Tasks assigned to the nodes defined above
 		{
-			ID:     "id1",
-			Spec:   &api.TaskSpec{},
-			Status: &api.TaskStatus{},
+			ID: "id1",
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
@@ -112,9 +108,7 @@ func TestDrain(t *testing.T) {
 			NodeID:    "id1",
 		},
 		{
-			ID:     "id2",
-			Spec:   &api.TaskSpec{},
-			Status: &api.TaskStatus{},
+			ID: "id2",
 			Annotations: api.Annotations{
 				Name: "name2",
 			},
@@ -122,9 +116,7 @@ func TestDrain(t *testing.T) {
 			NodeID:    "id2",
 		},
 		{
-			ID:     "id3",
-			Spec:   &api.TaskSpec{},
-			Status: &api.TaskStatus{},
+			ID: "id3",
 			Annotations: api.Annotations{
 				Name: "name3",
 			},
@@ -132,9 +124,7 @@ func TestDrain(t *testing.T) {
 			NodeID:    "id3",
 		},
 		{
-			ID:     "id4",
-			Spec:   &api.TaskSpec{},
-			Status: &api.TaskStatus{},
+			ID: "id4",
 			Annotations: api.Annotations{
 				Name: "name4",
 			},
@@ -142,9 +132,7 @@ func TestDrain(t *testing.T) {
 			NodeID:    "id4",
 		},
 		{
-			ID:     "id5",
-			Spec:   &api.TaskSpec{},
-			Status: &api.TaskStatus{},
+			ID: "id5",
 			Annotations: api.Annotations{
 				Name: "name5",
 			},

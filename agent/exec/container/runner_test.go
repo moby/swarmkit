@@ -222,7 +222,7 @@ func genTask(t *testing.T) *api.Task {
 		ID:        identity.NewID(),
 		ServiceID: serviceID,
 		NodeID:    nodeID,
-		Spec: &api.TaskSpec{
+		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.Container{
 					Image: &api.Image{

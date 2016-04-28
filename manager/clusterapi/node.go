@@ -78,7 +78,7 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 			return nil
 		}
 		node.Version = *request.NodeVersion
-		node.Spec = request.Spec.Copy()
+		node.Spec = *request.Spec.Copy()
 		return tx.Nodes().Update(node)
 	})
 	if err != nil {

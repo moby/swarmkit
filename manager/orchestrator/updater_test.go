@@ -60,7 +60,7 @@ func TestUpdater(t *testing.T) {
 
 	service := &api.Service{
 		ID: "id1",
-		Spec: &api.ServiceSpec{
+		Spec: api.ServiceSpec{
 			Annotations: api.Annotations{
 				Name: "name1",
 			},

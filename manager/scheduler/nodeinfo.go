@@ -37,9 +37,6 @@ func (nodeInfo *NodeInfo) addTask(t *api.Task) {
 }
 
 func taskReservations(t *api.Task) (reservations api.Resources) {
-	if t.Spec == nil {
-		return
-	}
 	container := t.Spec.GetContainer()
 	if container != nil && container.Resources != nil && container.Resources.Reservations != nil {
 		reservations = *container.Resources.Reservations
