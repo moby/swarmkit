@@ -52,6 +52,16 @@ message MemberDescription {
 
 	// Cluster the member belongs to
 	string cluster = 2;
+
+	int32 election_tick = 3 [(gogoproto.customname) = "ElectionTick"];
+
+	int32 heartbeat_tick = 4 [(gogoproto.customname) = "HeartbeatTick"];
+
+	uint64 max_size_per_msg = 5 [(gogoproto.customname) = "MaxSizePerMsg"];
+
+	// SnapshotInterval is the number of log messages after which a new
+	// snapshot should be generated.
+	uint64 snapshot_interval = 6;
 }
 
 // RaftNode represents a raft node to be added or removed from
@@ -79,7 +89,14 @@ message MemberStatus {
 	}
 
 	State state = 2;
+
 	string message = 3;
+
+	// AppliedIndex is the current log index
+	uint64 applied_index = 4;
+
+	// SnapshotIndex is the index of the last snapshot
+	uint64 snapshot_index = 5;
 }
 
 message NodeStatus {
