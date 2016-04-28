@@ -187,7 +187,7 @@ func (s *session) watch(ctx context.Context) error {
 }
 
 // sendTaskStatus uses the current session to send the status of a single task.
-func (s *session) sendTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error {
+func (s *session) sendTaskStatus(ctx context.Context, taskID string, status api.TaskStatus) error {
 	select {
 	case <-s.registered:
 		select {
@@ -207,7 +207,7 @@ func (s *session) sendTaskStatus(ctx context.Context, taskID string, status *api
 		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
 			{
 				TaskID: taskID,
-				Status: status,
+				Status: &status,
 			},
 		},
 	}); err != nil {

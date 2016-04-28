@@ -28,7 +28,7 @@ func TestOrchestrator(t *testing.T) {
 	err := store.Update(func(tx state.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
-			Spec: &api.ServiceSpec{
+			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
@@ -59,7 +59,7 @@ func TestOrchestrator(t *testing.T) {
 	err = store.Update(func(tx state.Tx) error {
 		j2 := &api.Service{
 			ID: "id2",
-			Spec: &api.ServiceSpec{
+			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
@@ -81,7 +81,7 @@ func TestOrchestrator(t *testing.T) {
 	err = store.Update(func(tx state.Tx) error {
 		j2 := &api.Service{
 			ID: "id2",
-			Spec: &api.ServiceSpec{
+			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
@@ -107,7 +107,7 @@ func TestOrchestrator(t *testing.T) {
 	err = store.Update(func(tx state.Tx) error {
 		j2 := &api.Service{
 			ID: "id2",
-			Spec: &api.ServiceSpec{
+			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
@@ -185,7 +185,7 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 	err := store.Update(func(tx state.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
-			Spec: &api.ServiceSpec{
+			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
@@ -217,7 +217,7 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status = &api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
+	updatedTask1.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
 	err = store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Tasks().Update(updatedTask1))
 		return nil
@@ -234,7 +234,7 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 
 	// Mark the second task as completed. Confirm that it gets restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = &api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
+	updatedTask2.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
 	err = store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Tasks().Update(updatedTask2))
 		return nil
@@ -268,7 +268,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	err := store.Update(func(tx state.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
-			Spec: &api.ServiceSpec{
+			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
@@ -301,7 +301,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
 	updatedTask1.Status.TerminalState = api.TaskStateFailed
-	updatedTask1.Status = &api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
+	updatedTask1.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
 	err = store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Tasks().Update(updatedTask1))
 		return nil
@@ -318,7 +318,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 
 	// Mark the second task as completed. Confirm that it does not get restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = &api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
+	updatedTask2.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
 	err = store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Tasks().Update(updatedTask2))
 		return nil
@@ -355,7 +355,7 @@ func TestOrchestratorRestartNever(t *testing.T) {
 	err := store.Update(func(tx state.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
-			Spec: &api.ServiceSpec{
+			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
@@ -408,7 +408,7 @@ func TestOrchestratorRestartNever(t *testing.T) {
 
 	// Mark the second task as completed. Confirm that it does not get restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = &api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
+	updatedTask2.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
 	err = store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Tasks().Update(updatedTask2))
 		return nil

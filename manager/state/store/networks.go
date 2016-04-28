@@ -136,7 +136,7 @@ func (networks networks) table() string {
 // Returns ErrExist if the ID is already taken.
 func (networks networks) Create(n *api.Network) error {
 	// Ensure the name is not already in use.
-	if n.Spec != nil && lookup(networks.memDBTx, networks.table(), indexName, n.Spec.Annotations.Name) != nil {
+	if lookup(networks.memDBTx, networks.table(), indexName, n.Spec.Annotations.Name) != nil {
 		return state.ErrNameConflict
 	}
 
@@ -224,10 +224,6 @@ func (ni networkIndexerByName) FromObject(obj interface{}) (bool, []byte, error)
 		panic("unexpected type passed to FromObject")
 	}
 
-	// Add the null character as a terminator
-	if n.Spec == nil {
-		return false, nil, nil
-	}
 	// Add the null character as a terminator
 	return true, []byte(n.Spec.Annotations.Name + "\x00"), nil
 }

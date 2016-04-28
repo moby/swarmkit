@@ -162,15 +162,10 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 				continue
 			}
 
-			var state api.TaskState
-			if task.Status != nil {
-				state = task.Status.State
-			} else {
-				state = api.TaskStateNew
-			}
+			state := task.Status.State
 
 			logger.Debugf("%v -> %v", state, u.Status.State)
-			task.Status = u.Status
+			task.Status = *u.Status
 
 			if err := tx.Tasks().Update(task); err != nil {
 				return err

@@ -20,7 +20,7 @@ func TestScheduler(t *testing.T) {
 	initialNodeSet := []*api.Node{
 		{
 			ID: "id1",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
@@ -31,7 +31,7 @@ func TestScheduler(t *testing.T) {
 		},
 		{
 			ID: "id2",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
@@ -42,7 +42,7 @@ func TestScheduler(t *testing.T) {
 		},
 		{
 			ID: "id3",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
@@ -55,34 +55,31 @@ func TestScheduler(t *testing.T) {
 
 	initialTaskSet := []*api.Task{
 		{
-			ID:   "id1",
-			Spec: &api.TaskSpec{},
+			ID: "id1",
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
 
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateAllocated,
 			},
 			NodeID: initialNodeSet[0].ID,
 		},
 		{
-			ID:   "id2",
-			Spec: &api.TaskSpec{},
+			ID: "id2",
 			Annotations: api.Annotations{
 				Name: "name2",
 			},
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateAllocated,
 			},
 		},
 		{
-			ID:   "id3",
-			Spec: &api.TaskSpec{},
+			ID: "id3",
 			Annotations: api.Annotations{
 				Name: "name2",
 			},
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateAllocated,
 			},
 		},
@@ -133,12 +130,11 @@ func TestScheduler(t *testing.T) {
 
 		// Create a new task. It should get assigned to id1.
 		t4 := &api.Task{
-			ID:   "id4",
-			Spec: &api.TaskSpec{},
+			ID: "id4",
 			Annotations: api.Annotations{
 				Name: "name4",
 			},
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateAllocated,
 			},
 		}
@@ -156,12 +152,11 @@ func TestScheduler(t *testing.T) {
 		// Remove assignment from task id4. It should get assigned
 		// to node id1.
 		t4 := &api.Task{
-			ID:   "id4",
-			Spec: &api.TaskSpec{},
+			ID: "id4",
 			Annotations: api.Annotations{
 				Name: "name4",
 			},
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateAllocated,
 			},
 		}
@@ -178,7 +173,7 @@ func TestScheduler(t *testing.T) {
 		// be assigned to it.
 		node := &api.Node{
 			ID: "removednode",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "removednode",
 				},
@@ -192,12 +187,11 @@ func TestScheduler(t *testing.T) {
 
 		// Create an unassigned task.
 		task := &api.Task{
-			ID:   "removednode",
-			Spec: &api.TaskSpec{},
+			ID: "removednode",
 			Annotations: api.Annotations{
 				Name: "removednode",
 			},
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateAllocated,
 			},
 		}
@@ -214,7 +208,7 @@ func TestScheduler(t *testing.T) {
 		// assignment.
 		n4 := &api.Node{
 			ID: "id4",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "name4",
 				},
@@ -227,12 +221,11 @@ func TestScheduler(t *testing.T) {
 
 		// Create an unassigned task.
 		t5 := &api.Task{
-			ID:   "id5",
-			Spec: &api.TaskSpec{},
+			ID: "id5",
 			Annotations: api.Annotations{
 				Name: "name5",
 			},
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateAllocated,
 			},
 		}
@@ -249,7 +242,7 @@ func TestScheduler(t *testing.T) {
 		// assignment.
 		n5 := &api.Node{
 			ID: "id5",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "name5",
 				},
@@ -262,12 +255,11 @@ func TestScheduler(t *testing.T) {
 
 		// Create an unassigned task.
 		t6 := &api.Task{
-			ID:   "id6",
-			Spec: &api.TaskSpec{},
+			ID: "id6",
 			Annotations: api.Annotations{
 				Name: "name6",
 			},
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateAllocated,
 			},
 		}
@@ -283,7 +275,7 @@ func TestScheduler(t *testing.T) {
 		// Update node id5 to put it in the READY state.
 		n5 := &api.Node{
 			ID: "id5",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "name5",
 				},
@@ -297,12 +289,11 @@ func TestScheduler(t *testing.T) {
 		// Create an unassigned task. Should be assigned to the
 		// now-ready node.
 		t7 := &api.Task{
-			ID:   "id7",
-			Spec: &api.TaskSpec{},
+			ID: "id7",
 			Annotations: api.Annotations{
 				Name: "name7",
 			},
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateAllocated,
 			},
 		}
@@ -319,7 +310,7 @@ func TestScheduler(t *testing.T) {
 		// unassigned task should NOT be assigned to it.
 		n6 := &api.Node{
 			ID: "id6",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "name6",
 				},
@@ -334,12 +325,11 @@ func TestScheduler(t *testing.T) {
 
 		// Create an unassigned task.
 		t8 := &api.Task{
-			ID:   "id8",
-			Spec: &api.TaskSpec{},
+			ID: "id8",
 			Annotations: api.Annotations{
 				Name: "name8",
 			},
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateAllocated,
 			},
 		}
@@ -357,12 +347,11 @@ func TestScheduler(t *testing.T) {
 func TestSchedulerNoReadyNodes(t *testing.T) {
 	ctx := context.Background()
 	initialTask := &api.Task{
-		ID:   "id1",
-		Spec: &api.TaskSpec{},
+		ID: "id1",
 		Annotations: api.Annotations{
 			Name: "name1",
 		},
-		Status: &api.TaskStatus{
+		Status: api.TaskStatus{
 			State: api.TaskStateAllocated,
 		},
 	}
@@ -391,7 +380,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 		// node.
 		node := &api.Node{
 			ID: "newnode",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "newnode",
 				},
@@ -416,7 +405,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 	// Create a ready node without enough memory to run the task.
 	underprovisionedNode := &api.Node{
 		ID: "underprovisioned",
-		Spec: &api.NodeSpec{
+		Spec: api.NodeSpec{
 			Annotations: api.Annotations{
 				Name: "underprovisioned",
 			},
@@ -434,7 +423,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 
 	initialTask := &api.Task{
 		ID: "id1",
-		Spec: &api.TaskSpec{
+		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.Container{
 					Resources: &api.ResourceRequirements{
@@ -448,7 +437,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 		Annotations: api.Annotations{
 			Name: "name1",
 		},
-		Status: &api.TaskStatus{
+		Status: api.TaskStatus{
 			State: api.TaskStateAllocated,
 		},
 	}
@@ -478,7 +467,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 		// assigned to this node.
 		node := &api.Node{
 			ID: "bignode",
-			Spec: &api.NodeSpec{
+			Spec: api.NodeSpec{
 				Annotations: api.Annotations{
 					Name: "bignode",
 				},
@@ -581,7 +570,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 			for i := 0; i < nodes; i++ {
 				err := tx.Nodes().Create(&api.Node{
 					ID: identity.NewID(),
-					Spec: &api.NodeSpec{
+					Spec: api.NodeSpec{
 						Annotations: api.Annotations{
 							Name: "name" + strconv.Itoa(i),
 						},
@@ -597,12 +586,11 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 			for i := 0; i < tasks; i++ {
 				id := "task" + strconv.Itoa(i)
 				err := tx.Tasks().Create(&api.Task{
-					ID:   id,
-					Spec: &api.TaskSpec{},
+					ID: id,
 					Annotations: api.Annotations{
 						Name: id,
 					},
-					Status: &api.TaskStatus{
+					Status: api.TaskStatus{
 						State: api.TaskStateAllocated,
 					},
 				})

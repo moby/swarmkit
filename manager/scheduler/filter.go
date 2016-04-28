@@ -25,7 +25,7 @@ func (f *ReadyFilter) Enabled(t *api.Task) bool {
 // Check returns true if the task can be scheduled into the given node.
 func (f *ReadyFilter) Check(t *api.Task, n *NodeInfo) bool {
 	return n.Status.State == api.NodeStatus_READY &&
-		(n.Spec == nil || n.Spec.Availability == api.NodeAvailabilityActive)
+		n.Spec.Availability == api.NodeAvailabilityActive
 }
 
 // ResourceFilter checks that the node has enough resources available to run
@@ -51,9 +51,6 @@ func (f *ResourceFilter) Enabled(t *api.Task) bool {
 
 // Check returns true if the task can be scheduled into the given node.
 func (f *ResourceFilter) Check(t *api.Task, n *NodeInfo) bool {
-	if t.Spec == nil {
-		return true
-	}
 	container := t.Spec.GetContainer()
 	if container == nil || container.Resources == nil || container.Resources.Reservations == nil {
 		return true

@@ -35,10 +35,7 @@ var (
 			}()
 			common.PrintHeader(w, "ID", "Name", "Driver", "Options")
 			for _, v := range r.Volumes {
-				spec := v.Spec
-				if spec == nil {
-					spec = &api.VolumeSpec{}
-				}
+				spec := &v.Spec
 				name := spec.Annotations.Name
 
 				// TODO(amitshukla): Right now we only implement the happy path

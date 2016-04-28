@@ -38,7 +38,7 @@ var (
 			if err != nil {
 				return err
 			}
-			specPB := servicePB.Spec
+			specPB := &servicePB.Spec
 			if err := network.ResolveServiceNetworks(common.Context(cmd), c, specPB); err != nil {
 				return err
 			}

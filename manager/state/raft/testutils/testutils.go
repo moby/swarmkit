@@ -339,7 +339,7 @@ func ProposeValue(t *testing.T, raftNode *TestNode, nodeID ...string) (*api.Node
 	}
 	node := &api.Node{
 		ID: nodeIDStr,
-		Spec: &api.NodeSpec{
+		Spec: api.NodeSpec{
 			Annotations: api.Annotations{
 				Name: nodeIDStr,
 			},

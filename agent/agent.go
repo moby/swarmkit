@@ -31,7 +31,7 @@ type Agent struct {
 
 	tasks       map[string]*api.Task // contains all managed tasks
 	assigned    map[string]*api.Task // contains current assignment set
-	statuses    map[string]*api.TaskStatus
+	statuses    map[string]api.TaskStatus
 	controllers map[string]exec.Runner // contains all runners
 
 	statusq chan taskStatusReport
@@ -52,7 +52,7 @@ func New(config *Config) (*Agent, error) {
 		config:      config,
 		tasks:       make(map[string]*api.Task),
 		assigned:    make(map[string]*api.Task),
-		statuses:    make(map[string]*api.TaskStatus),
+		statuses:    make(map[string]api.TaskStatus),
 		controllers: make(map[string]exec.Runner),
 
 		statusq: make(chan taskStatusReport),
@@ -473,7 +473,6 @@ func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 	a.tasks[task.ID] = task
 	a.assigned[task.ID] = task
 	a.statuses[task.ID] = task.Status
-	task.Status = nil
 
 	runner, err := a.config.Executor.Runner(task.Copy())
 	if err != nil {
@@ -515,7 +514,6 @@ func (a *Agent) updateTask(ctx context.Context, t *api.Task) error {
 	}
 
 	original := a.tasks[t.ID]
-	t.Status = nil // clear this, since we keep it elsewhere to avoid overwrite.
 	a.tasks[t.ID] = t
 	a.assigned[t.ID] = t
 

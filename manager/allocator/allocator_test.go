@@ -27,7 +27,7 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		n1 := &api.Network{
 			ID: "testID1",
-			Spec: &api.NetworkSpec{
+			Spec: api.NetworkSpec{
 				Annotations: api.Annotations{
 					Name: "test1",
 				},
@@ -40,7 +40,7 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		s1 := &api.Service{
 			ID: "testServiceID1",
-			Spec: &api.ServiceSpec{
+			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
 					Name: "service1",
 				},
@@ -61,10 +61,10 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		t1 := &api.Task{
 			ID: "testTaskID1",
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
-			Spec: &api.TaskSpec{
+			Spec: api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.Container{
 						Networks: []*api.Container_NetworkAttachment{
@@ -123,7 +123,7 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		n2 := &api.Network{
 			ID: "testID2",
-			Spec: &api.NetworkSpec{
+			Spec: api.NetworkSpec{
 				Annotations: api.Annotations{
 					Name: "test2",
 				},
@@ -149,7 +149,7 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		s2 := &api.Service{
 			ID: "testServiceID2",
-			Spec: &api.ServiceSpec{
+			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
 					Name: "service2",
 				},
@@ -175,12 +175,12 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		t2 := &api.Task{
 			ID: "testTaskID2",
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			ServiceID:    "testServiceID2",
 			DesiredState: api.TaskStateRunning,
-			Spec: &api.TaskSpec{
+			Spec: api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.Container{
 						Networks: []*api.Container_NetworkAttachment{
@@ -212,11 +212,11 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		t3 := &api.Task{
 			ID: "testTaskID3",
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			DesiredState: api.TaskStateRunning,
-			Spec: &api.TaskSpec{
+			Spec: api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.Container{
 						Networks: []*api.Container_NetworkAttachment{
@@ -242,7 +242,7 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		n3 := &api.Network{
 			ID: "testID3",
-			Spec: &api.NetworkSpec{
+			Spec: api.NetworkSpec{
 				Annotations: api.Annotations{
 					Name: "test3",
 				},
@@ -283,12 +283,12 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		t5 := &api.Task{
 			ID: "testTaskID5",
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			DesiredState: api.TaskStateRunning,
 			ServiceID:    "testServiceID2",
-			Spec: &api.TaskSpec{
+			Spec: api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.Container{},
 				},
@@ -320,11 +320,11 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		t4 := &api.Task{
 			ID: "testTaskID4",
-			Status: &api.TaskStatus{
+			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			DesiredState: api.TaskStateRunning,
-			Spec: &api.TaskSpec{
+			Spec: api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.Container{},
 				},
