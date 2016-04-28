@@ -34,6 +34,24 @@ message Platform {
 	string os = 2 [(gogoproto.customname) = "OS"];
 }
 
+message PluginDescription {
+	// Type of plugin (Volume, Network etc.)
+	string type = 1;
+	// List of plugin names
+	repeated string names = 2;
+}
+
+message EngineDescription {
+	// Docker daemon version running on the node.
+	string engine_version = 1;
+
+	// Labels attached to the engine.
+	map<string, string> labels = 2;
+
+	// Volume, Network, and Auth plugins
+	repeated PluginDescription plugins = 3;
+}
+
 message NodeDescription {
 	// Hostname of the node as reported by the agent.
 	// This is different from spec.meta.name which is user-defined.
@@ -42,8 +60,11 @@ message NodeDescription {
 	// Platform of the node.
 	Platform platform = 2;
 
-	// Total resources of the node.
+	// Total resources on the node.
 	Resources resources = 3;
+
+	// Information about the Docker Engine on the node.
+	EngineDescription engine = 4;
 }
 
 message MemberDescription {
