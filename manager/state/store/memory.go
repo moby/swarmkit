@@ -107,7 +107,7 @@ type readTx struct {
 }
 
 // View executes a read transaction.
-func (s *MemoryStore) View(cb func(state.ReadTx) error) error {
+func (s *MemoryStore) View(cb func(state.ReadTx)) {
 	memDBTx := s.memDB.Txn(false)
 
 	readTx := readTx{
@@ -127,9 +127,8 @@ func (s *MemoryStore) View(cb func(state.ReadTx) error) error {
 			memDBTx: memDBTx,
 		},
 	}
-	err := cb(readTx)
+	cb(readTx)
 	memDBTx.Commit()
-	return err
 }
 
 func (t readTx) Nodes() state.NodeSetReader {

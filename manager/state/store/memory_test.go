@@ -175,17 +175,15 @@ func TestStoreNode(t *testing.T) {
 	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	err := s.View(func(readTx state.ReadTx) error {
+	s.View(func(readTx state.ReadTx) {
 		allNodes, err := readTx.Nodes().Find(state.All)
 		assert.NoError(t, err)
 		assert.Empty(t, allNodes)
-		return nil
 	})
-	assert.NoError(t, err)
 
 	setupTestStore(t, s)
 
-	err = s.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx state.Tx) error {
 		allNodes, err := tx.Nodes().Find(state.All)
 		assert.NoError(t, err)
 		assert.Len(t, allNodes, len(nodeSet))
@@ -195,7 +193,7 @@ func TestStoreNode(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = s.View(func(readTx state.ReadTx) error {
+	s.View(func(readTx state.ReadTx) {
 		assert.Equal(t, nodeSet[0], readTx.Nodes().Get("id1"))
 		assert.Equal(t, nodeSet[1], readTx.Nodes().Get("id2"))
 		assert.Equal(t, nodeSet[2], readTx.Nodes().Get("id3"))
@@ -219,10 +217,7 @@ func TestStoreNode(t *testing.T) {
 		foundNodes, err = readTx.Nodes().Find(state.ByQuery("id"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 3)
-
-		return nil
 	})
-	assert.NoError(t, err)
 
 	// Update.
 	update := &api.Node{
@@ -265,17 +260,15 @@ func TestStoreService(t *testing.T) {
 	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	err := s.View(func(readTx state.ReadTx) error {
+	s.View(func(readTx state.ReadTx) {
 		allServices, err := readTx.Services().Find(state.All)
 		assert.NoError(t, err)
 		assert.Empty(t, allServices)
-		return nil
 	})
-	assert.NoError(t, err)
 
 	setupTestStore(t, s)
 
-	err = s.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx state.Tx) error {
 		assert.Equal(t,
 			tx.Services().Create(&api.Service{
 				ID: "id1",
@@ -299,7 +292,7 @@ func TestStoreService(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = s.View(func(readTx state.ReadTx) error {
+	s.View(func(readTx state.ReadTx) {
 		assert.Equal(t, serviceSet[0], readTx.Services().Get("id1"))
 		assert.Equal(t, serviceSet[1], readTx.Services().Get("id2"))
 		assert.Equal(t, serviceSet[2], readTx.Services().Get("id3"))
@@ -327,9 +320,7 @@ func TestStoreService(t *testing.T) {
 		foundServices, err = readTx.Services().Find(state.ByServiceMode(api.ServiceModeBatch))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 0)
-		return nil
 	})
-	assert.NoError(t, err)
 
 	// Update.
 	err = s.Update(func(tx state.Tx) error {
@@ -394,17 +385,15 @@ func TestStoreNetwork(t *testing.T) {
 	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	err := s.View(func(readTx state.ReadTx) error {
+	s.View(func(readTx state.ReadTx) {
 		allNetworks, err := readTx.Networks().Find(state.All)
 		assert.NoError(t, err)
 		assert.Empty(t, allNetworks)
-		return nil
 	})
-	assert.NoError(t, err)
 
 	setupTestStore(t, s)
 
-	err = s.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx state.Tx) error {
 		allNetworks, err := tx.Networks().Find(state.All)
 		assert.NoError(t, err)
 		assert.Len(t, allNetworks, len(networkSet))
@@ -414,7 +403,7 @@ func TestStoreNetwork(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = s.View(func(readTx state.ReadTx) error {
+	s.View(func(readTx state.ReadTx) {
 		assert.Equal(t, networkSet[0], readTx.Networks().Get("id1"))
 		assert.Equal(t, networkSet[1], readTx.Networks().Get("id2"))
 		assert.Equal(t, networkSet[2], readTx.Networks().Get("id3"))
@@ -428,9 +417,7 @@ func TestStoreNetwork(t *testing.T) {
 		foundNetworks, err = readTx.Networks().Find(state.ByName("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNetworks, 0)
-		return nil
 	})
-	assert.NoError(t, err)
 
 	err = s.Update(func(tx state.Tx) error {
 		// Delete
@@ -452,17 +439,15 @@ func TestStoreTask(t *testing.T) {
 	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	err := s.View(func(tx state.ReadTx) error {
+	s.View(func(tx state.ReadTx) {
 		allTasks, err := tx.Tasks().Find(state.All)
 		assert.NoError(t, err)
 		assert.Empty(t, allTasks)
-		return nil
 	})
-	assert.NoError(t, err)
 
 	setupTestStore(t, s)
 
-	err = s.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx state.Tx) error {
 		allTasks, err := tx.Tasks().Find(state.All)
 		assert.NoError(t, err)
 		assert.Len(t, allTasks, len(taskSet))
@@ -472,7 +457,7 @@ func TestStoreTask(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = s.View(func(readTx state.ReadTx) error {
+	s.View(func(readTx state.ReadTx) {
 		assert.Equal(t, taskSet[0], readTx.Tasks().Get("id1"))
 		assert.Equal(t, taskSet[1], readTx.Tasks().Get("id2"))
 		assert.Equal(t, taskSet[2], readTx.Tasks().Get("id3"))
@@ -502,9 +487,7 @@ func TestStoreTask(t *testing.T) {
 		foundTasks, err = readTx.Tasks().Find(state.ByServiceID("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 0)
-		return nil
 	})
-	assert.NoError(t, err)
 
 	// Update.
 	update := &api.Task{
@@ -547,17 +530,15 @@ func TestStoreVolume(t *testing.T) {
 	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	err := s.View(func(readTx state.ReadTx) error {
+	s.View(func(readTx state.ReadTx) {
 		allVolumes, err := readTx.Volumes().Find(state.All)
 		assert.NoError(t, err)
 		assert.Empty(t, allVolumes)
-		return nil
 	})
-	assert.NoError(t, err)
 
 	setupTestStore(t, s)
 
-	err = s.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx state.Tx) error {
 		assert.Equal(t,
 			tx.Volumes().Create(&api.Volume{
 				ID: "id1",
@@ -581,7 +562,7 @@ func TestStoreVolume(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = s.View(func(readTx state.ReadTx) error {
+	s.View(func(readTx state.ReadTx) {
 		assert.Equal(t, volumeSet[0], readTx.Volumes().Get("id1"))
 		assert.Equal(t, volumeSet[1], readTx.Volumes().Get("id2"))
 		assert.Equal(t, volumeSet[2], readTx.Volumes().Get("id3"))
@@ -592,9 +573,7 @@ func TestStoreVolume(t *testing.T) {
 		foundVolumes, err = readTx.Volumes().Find(state.ByName("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundVolumes, 0)
-		return nil
 	})
-	assert.NoError(t, err)
 
 	// Update.
 	err = s.Update(func(tx state.Tx) error {
@@ -726,7 +705,7 @@ func TestStoreSnapshot(t *testing.T) {
 	defer cancel()
 	assert.NoError(t, err)
 
-	err = s2.View(func(tx2 state.ReadTx) error {
+	s2.View(func(tx2 state.ReadTx) {
 		assert.Equal(t, nodeSet[0], tx2.Nodes().Get("id1"))
 		assert.Equal(t, nodeSet[1], tx2.Nodes().Get("id2"))
 		assert.Equal(t, nodeSet[2], tx2.Nodes().Get("id3"))
@@ -738,9 +717,7 @@ func TestStoreSnapshot(t *testing.T) {
 		assert.Equal(t, taskSet[0], tx2.Tasks().Get("id1"))
 		assert.Equal(t, taskSet[1], tx2.Tasks().Get("id2"))
 		assert.Equal(t, taskSet[2], tx2.Tasks().Get("id3"))
-		return nil
 	})
-	assert.NoError(t, err)
 
 	// Create node
 	createNode := &api.Node{
@@ -761,11 +738,9 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, state.Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	err = s2.View(func(tx2 state.ReadTx) error {
+	s2.View(func(tx2 state.ReadTx) {
 		assert.Equal(t, createNode, tx2.Nodes().Get("id4"))
-		return nil
 	})
-	assert.NoError(t, err)
 
 	// Update node
 	updateNode := &api.Node{
@@ -786,11 +761,9 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, state.Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	err = s2.View(func(tx2 state.ReadTx) error {
+	s2.View(func(tx2 state.ReadTx) {
 		assert.Equal(t, updateNode, tx2.Nodes().Get("id3"))
-		return nil
 	})
-	assert.NoError(t, err)
 
 	err = s1.Update(func(tx1 state.Tx) error {
 		// Delete node
@@ -802,11 +775,9 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, state.Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	err = s2.View(func(tx2 state.ReadTx) error {
+	s2.View(func(tx2 state.ReadTx) {
 		assert.Nil(t, tx2.Nodes().Get("id1"))
-		return nil
 	})
-	assert.NoError(t, err)
 
 	// Create service
 	createService := &api.Service{
@@ -827,11 +798,9 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, state.Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	err = s2.View(func(tx2 state.ReadTx) error {
+	s2.View(func(tx2 state.ReadTx) {
 		assert.Equal(t, createService, tx2.Services().Get("id4"))
-		return nil
 	})
-	assert.NoError(t, err)
 
 	// Update service
 	updateService := serviceSet[2].Copy()
@@ -846,11 +815,9 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, state.Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	err = s2.View(func(tx2 state.ReadTx) error {
+	s2.View(func(tx2 state.ReadTx) {
 		assert.Equal(t, updateService, tx2.Services().Get("id3"))
-		return nil
 	})
-	assert.NoError(t, err)
 
 	err = s1.Update(func(tx1 state.Tx) error {
 		// Delete service
@@ -862,11 +829,9 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, state.Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	err = s2.View(func(tx2 state.ReadTx) error {
+	s2.View(func(tx2 state.ReadTx) {
 		assert.Nil(t, tx2.Services().Get("id1"))
-		return nil
 	})
-	assert.NoError(t, err)
 
 	// Create task
 	createTask := &api.Task{
@@ -885,11 +850,9 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, state.Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	err = s2.View(func(tx2 state.ReadTx) error {
+	s2.View(func(tx2 state.ReadTx) {
 		assert.Equal(t, createTask, tx2.Tasks().Get("id4"))
-		return nil
 	})
-	assert.NoError(t, err)
 
 	// Update task
 	updateTask := &api.Task{
@@ -907,11 +870,9 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, state.Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	err = s2.View(func(tx2 state.ReadTx) error {
+	s2.View(func(tx2 state.ReadTx) {
 		assert.Equal(t, updateTask, tx2.Tasks().Get("id3"))
-		return nil
 	})
-	assert.NoError(t, err)
 
 	err = s1.Update(func(tx1 state.Tx) error {
 		// Delete task
@@ -922,11 +883,9 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, state.Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	err = s2.View(func(tx2 state.ReadTx) error {
+	s2.View(func(tx2 state.ReadTx) {
 		assert.Nil(t, tx2.Tasks().Get("id1"))
-		return nil
 	})
-	assert.NoError(t, err)
 }
 
 func TestFailedTransaction(t *testing.T) {
@@ -961,7 +920,7 @@ func TestFailedTransaction(t *testing.T) {
 	})
 	assert.Error(t, err)
 
-	err = s.View(func(tx state.ReadTx) error {
+	s.View(func(tx state.ReadTx) {
 		foundNodes, err := tx.Nodes().Find(state.All)
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
@@ -971,9 +930,7 @@ func TestFailedTransaction(t *testing.T) {
 		foundNodes, err = tx.Nodes().Find(state.ByName("name2"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 0)
-		return nil
 	})
-	assert.NoError(t, err)
 }
 
 type mockProposer struct {
@@ -1175,21 +1132,19 @@ func TestStoreSaveRestore(t *testing.T) {
 	setupTestStore(t, s1)
 
 	var snapshot *api.StoreSnapshot
-	err := s1.View(func(tx state.ReadTx) error {
+	s1.View(func(tx state.ReadTx) {
 		var err error
 		snapshot, err = s1.Save(tx)
 		assert.NoError(t, err)
-		return nil
 	})
-	assert.NoError(t, err)
 
 	s2 := NewMemoryStore(nil)
 	assert.NotNil(t, s2)
 
-	err = s2.Restore(snapshot)
+	err := s2.Restore(snapshot)
 	assert.NoError(t, err)
 
-	err = s2.View(func(tx state.ReadTx) error {
+	s2.View(func(tx state.ReadTx) {
 		allTasks, err := tx.Tasks().Find(state.All)
 		assert.NoError(t, err)
 		assert.Len(t, allTasks, len(taskSet))
@@ -1217,10 +1172,7 @@ func TestStoreSaveRestore(t *testing.T) {
 		for i := range allServices {
 			assert.Equal(t, allServices[i], serviceSet[i])
 		}
-
-		return nil
 	})
-	assert.NoError(t, err)
 }
 
 const benchmarkNumNodes = 10000
@@ -1309,44 +1261,40 @@ func BenchmarkDeleteNodeTransaction(b *testing.B) {
 func BenchmarkGetNode(b *testing.B) {
 	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
-	_ = s.View(func(tx1 state.ReadTx) error {
+	s.View(func(tx1 state.ReadTx) {
 		for i := 0; i < b.N; i++ {
 			_ = tx1.Nodes().Get(nodeIDs[i%benchmarkNumNodes])
 		}
-		return nil
 	})
 }
 
 func BenchmarkFindAllNodes(b *testing.B) {
 	s, _ := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
-	_ = s.View(func(tx1 state.ReadTx) error {
+	s.View(func(tx1 state.ReadTx) {
 		for i := 0; i < b.N; i++ {
 			_, _ = tx1.Nodes().Find(state.All)
 		}
-		return nil
 	})
 }
 
 func BenchmarkFindNodeByName(b *testing.B) {
 	s, _ := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
-	_ = s.View(func(tx1 state.ReadTx) error {
+	s.View(func(tx1 state.ReadTx) {
 		for i := 0; i < b.N; i++ {
 			_, _ = tx1.Nodes().Find(state.ByName("name" + strconv.Itoa(i)))
 		}
-		return nil
 	})
 }
 
 func BenchmarkFindNodeByQuery(b *testing.B) {
 	s, _ := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
-	_ = s.View(func(tx1 state.ReadTx) error {
+	s.View(func(tx1 state.ReadTx) {
 		for i := 0; i < b.N; i++ {
 			_, _ = tx1.Nodes().Find(state.ByQuery("name" + strconv.Itoa(i)))
 		}
-		return nil
 	})
 }
 
@@ -1380,11 +1328,10 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_ = s.View(func(tx1 state.ReadTx) error {
+			s.View(func(tx1 state.ReadTx) {
 				for i := 0; i < b.N; i++ {
 					_ = tx1.Nodes().Get(nodeIDs[i%benchmarkNumNodes])
 				}
-				return nil
 			})
 		}()
 	}

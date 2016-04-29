@@ -131,14 +131,14 @@ func TestOrchestrator(t *testing.T) {
 
 	// There should be one remaining task attached to service id2/name2.
 	var liveTasks []*api.Task
-	err = store.View(func(readTx state.ReadTx) error {
-		tasks, err := readTx.Tasks().Find(state.ByServiceID("id2"))
+	store.View(func(readTx state.ReadTx) {
+		var tasks []*api.Task
+		tasks, err = readTx.Tasks().Find(state.ByServiceID("id2"))
 		for _, t := range tasks {
 			if t.DesiredState == api.TaskStateRunning {
 				liveTasks = append(liveTasks, t)
 			}
 		}
-		return err
 	})
 	assert.NoError(t, err)
 	assert.Len(t, liveTasks, 1)

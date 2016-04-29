@@ -106,10 +106,12 @@ func (o *Orchestrator) tickTasks(ctx context.Context) {
 }
 
 func (o *Orchestrator) restartTasksByNodeID(ctx context.Context, nodeID string) {
-	err := o.store.View(func(tx state.ReadTx) error {
-		tasks, err := tx.Tasks().Find(state.ByNodeID(nodeID))
+	var err error
+	o.store.View(func(tx state.ReadTx) {
+		var tasks []*api.Task
+		tasks, err = tx.Tasks().Find(state.ByNodeID(nodeID))
 		if err != nil {
-			return err
+			return
 		}
 
 		for _, t := range tasks {
@@ -118,10 +120,9 @@ func (o *Orchestrator) restartTasksByNodeID(ctx context.Context, nodeID string) 
 				o.restartTasks[t.ID] = struct{}{}
 			}
 		}
-		return nil
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("orchestrator transaction failed listing tasks to remove")
+		log.G(ctx).WithError(err).Errorf("failed to list tasks to remove")
 	}
 }
 
@@ -144,19 +145,14 @@ func (o *Orchestrator) handleTaskChange(ctx context.Context, t *api.Task) {
 		n       *api.Node
 		service *api.Service
 	)
-	err := o.store.View(func(tx state.ReadTx) error {
+	o.store.View(func(tx state.ReadTx) {
 		if t.NodeID != "" {
 			n = tx.Nodes().Get(t.NodeID)
 		}
 		if t.ServiceID != "" {
 			service = tx.Services().Get(t.ServiceID)
 		}
-		return nil
 	})
-	if err != nil {
-		log.G(ctx).WithError(err).Errorf("orchestrator transaction failed getting tasks")
-		return
-	}
 
 	if !isRelatedService(service) {
 		return

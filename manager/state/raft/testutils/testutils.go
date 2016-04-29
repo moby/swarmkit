@@ -371,19 +371,22 @@ func ProposeValue(t *testing.T, raftNode *TestNode, nodeID ...string) (*api.Node
 // CheckValue checks that the value has been propagated between raft members
 func CheckValue(t *testing.T, raftNode *TestNode, createdNode *api.Node) {
 	assert.NoError(t, PollFunc(func() error {
-		return raftNode.MemoryStore().View(func(tx state.ReadTx) error {
-			allNodes, err := tx.Nodes().Find(state.All)
+		var err error
+		raftNode.MemoryStore().View(func(tx state.ReadTx) {
+			var allNodes []*api.Node
+			allNodes, err = tx.Nodes().Find(state.All)
 			if err != nil {
-				return err
+				return
 			}
 			if len(allNodes) != 1 {
-				return fmt.Errorf("expected 1 node, got %d nodes", len(allNodes))
+				err = fmt.Errorf("expected 1 node, got %d nodes", len(allNodes))
+				return
 			}
 			if !reflect.DeepEqual(allNodes[0], createdNode) {
-				return errors.New("node did not match expected value")
+				err = errors.New("node did not match expected value")
 			}
-			return nil
 		})
+		return err
 	}))
 }
 
@@ -391,16 +394,18 @@ func CheckValue(t *testing.T, raftNode *TestNode, createdNode *api.Node) {
 // used to test the absence of a leader
 func CheckNoValue(t *testing.T, raftNode *TestNode) {
 	assert.NoError(t, PollFunc(func() error {
-		return raftNode.MemoryStore().View(func(tx state.ReadTx) error {
-			allNodes, err := tx.Nodes().Find(state.All)
+		var err error
+		raftNode.MemoryStore().View(func(tx state.ReadTx) {
+			var allNodes []*api.Node
+			allNodes, err = tx.Nodes().Find(state.All)
 			if err != nil {
-				return err
+				return
 			}
 			if len(allNodes) != 0 {
-				return fmt.Errorf("expected no nodes, got %d", len(allNodes))
+				err = fmt.Errorf("expected no nodes, got %d", len(allNodes))
 			}
-			return nil
 		})
+		return err
 	}))
 }
 
@@ -410,23 +415,27 @@ func CheckNoValue(t *testing.T, raftNode *TestNode) {
 func CheckValuesOnNodes(t *testing.T, checkNodes map[uint64]*TestNode, ids []string, values []*api.Node) {
 	for _, node := range checkNodes {
 		assert.NoError(t, PollFunc(func() error {
-			return node.MemoryStore().View(func(tx state.ReadTx) error {
-				allNodes, err := tx.Nodes().Find(state.All)
+			var err error
+			node.MemoryStore().View(func(tx state.ReadTx) {
+				var allNodes []*api.Node
+				allNodes, err = tx.Nodes().Find(state.All)
 				if err != nil {
-					return err
+					return
 				}
 				if len(allNodes) != len(ids) {
-					return fmt.Errorf("expected %d nodes, got %d", len(ids), len(allNodes))
+					err = fmt.Errorf("expected %d nodes, got %d", len(ids), len(allNodes))
+					return
 				}
 
 				for i, id := range ids {
 					n := tx.Nodes().Get(id)
 					if !reflect.DeepEqual(values[i], n) {
-						return fmt.Errorf("node %s did not match expected value", id)
+						err = fmt.Errorf("node %s did not match expected value", id)
+						return
 					}
 				}
-				return nil
 			})
+			return err
 		}))
 	}
 }
