@@ -138,14 +138,12 @@ func TestHeartbeat(t *testing.T) {
 	assert.NotZero(t, resp.Period)
 	time.Sleep(300 * time.Millisecond)
 
-	err = gd.Store.View(func(readTx state.ReadTx) error {
+	gd.Store.View(func(readTx state.ReadTx) {
 		storeNodes, err := readTx.Nodes().Find(state.All)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, storeNodes)
 		assert.Equal(t, storeNodes[0].Status.State, api.NodeStatus_READY)
-		return nil
 	})
-	assert.NoError(t, err)
 }
 
 func TestHeartbeatTimeout(t *testing.T) {
@@ -166,14 +164,12 @@ func TestHeartbeatTimeout(t *testing.T) {
 	}
 	time.Sleep(500 * time.Millisecond)
 
-	err = gd.Store.View(func(readTx state.ReadTx) error {
+	gd.Store.View(func(readTx state.ReadTx) {
 		storeNodes, err := readTx.Nodes().Find(state.All)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, storeNodes)
 		assert.Equal(t, api.NodeStatus_DOWN, storeNodes[0].Status.State)
-		return nil
 	})
-	assert.NoError(t, err)
 
 	// check that node is deregistered
 	resp, err := gd.Clients[0].Heartbeat(context.Background(), &api.HeartbeatRequest{SessionID: expectedSessionID})
@@ -338,7 +334,7 @@ func TestTaskUpdate(t *testing.T) {
 	updReq.SessionID = expectedSessionID
 	_, err = gd.Clients[0].UpdateTaskStatus(context.Background(), updReq)
 	assert.NoError(t, err)
-	err = gd.Store.View(func(readTx state.ReadTx) error {
+	gd.Store.View(func(readTx state.ReadTx) {
 		storeTask1 := readTx.Tasks().Get(testTask1.ID)
 		assert.NotNil(t, storeTask1)
 		assert.NotNil(t, storeTask1.Status)
@@ -347,9 +343,7 @@ func TestTaskUpdate(t *testing.T) {
 		assert.NotNil(t, storeTask2.Status)
 		assert.Equal(t, storeTask1.Status.State, api.TaskStateAssigned)
 		assert.Equal(t, storeTask2.Status.State, api.TaskStateAssigned)
-		return nil
 	})
-	assert.NoError(t, err)
 }
 
 func TestSession(t *testing.T) {

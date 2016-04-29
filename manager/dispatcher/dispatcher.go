@@ -204,19 +204,15 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	defer cancel()
 
 	tasksMap := make(map[string]*api.Task)
-	err = d.store.View(func(readTx state.ReadTx) error {
+	d.store.View(func(readTx state.ReadTx) {
 		tasks, err := readTx.Tasks().Find(state.ByNodeID(agentID))
 		if err != nil {
-			return nil
+			return
 		}
 		for _, t := range tasks {
 			tasksMap[t.ID] = t
 		}
-		return nil
 	})
-	if err != nil {
-		return err
-	}
 
 	for {
 		if _, err := d.nodes.GetWithSession(agentID, r.SessionID); err != nil {

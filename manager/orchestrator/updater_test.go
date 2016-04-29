@@ -17,9 +17,8 @@ func getRunnableServiceTasks(t *testing.T, store state.WatchableStore, s *api.Se
 		tasks []*api.Task
 	)
 
-	err = store.View(func(tx state.ReadTx) error {
+	store.View(func(tx state.ReadTx) {
 		tasks, err = tx.Tasks().Find(state.ByServiceID(s.ID))
-		return err
 	})
 	assert.NoError(t, err)
 

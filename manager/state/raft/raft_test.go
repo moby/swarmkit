@@ -635,23 +635,27 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 
 	for _, node := range nodes {
 		assert.NoError(t, raftutils.PollFunc(func() error {
-			return node.MemoryStore().View(func(tx state.ReadTx) error {
-				allNodes, err := tx.Nodes().Find(state.All)
+			var err error
+			node.MemoryStore().View(func(tx state.ReadTx) {
+				var allNodes []*api.Node
+				allNodes, err = tx.Nodes().Find(state.All)
 				if err != nil {
-					return err
+					return
 				}
 				if len(allNodes) != 2 {
-					return fmt.Errorf("expected 2 nodes, got %d", len(allNodes))
+					err = fmt.Errorf("expected 2 nodes, got %d", len(allNodes))
+					return
 				}
 
 				for i, nodeID := range []string{"id1", "id2"} {
 					n := tx.Nodes().Get(nodeID)
 					if !reflect.DeepEqual(n, values[i]) {
-						return fmt.Errorf("node %s did not match expected value", nodeID)
+						err = fmt.Errorf("node %s did not match expected value", nodeID)
+						return
 					}
 				}
-				return nil
 			})
+			return err
 		}))
 	}
 }

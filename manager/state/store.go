@@ -224,7 +224,7 @@ type Store interface {
 	// View performs a transaction that only includes reads. Within the
 	// callback function, a consistent view of the data is available through
 	// the ReadTx interface.
-	View(func(ReadTx) error) error
+	View(func(ReadTx))
 
 	// Save serializes the data in the store.
 	Save(ReadTx) (*pb.StoreSnapshot, error)

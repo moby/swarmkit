@@ -40,17 +40,11 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 
 	// Allocate networks in the store so far before we started watching.
 	var networks []*api.Network
-	err = a.store.View(func(tx state.ReadTx) error {
-		var err error
+	a.store.View(func(tx state.ReadTx) {
 		networks, err = tx.Networks().Find(state.All)
-		if err != nil {
-			return fmt.Errorf("error listing all networks in store while trying to allocate during init: %v", err)
-		}
-
-		return nil
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("error listing all networks in store while trying to allocate during init: %v", err)
 	}
 
 	for _, n := range networks {
@@ -65,17 +59,11 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 
 	// Allocate services in the store so far before we process watched events.
 	var services []*api.Service
-	err = a.store.View(func(tx state.ReadTx) error {
-		var err error
+	a.store.View(func(tx state.ReadTx) {
 		services, err = tx.Services().Find(state.All)
-		if err != nil {
-			return fmt.Errorf("error listing all services in store while trying to allocate during init: %v", err)
-		}
-
-		return nil
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("error listing all services in store while trying to allocate during init: %v", err)
 	}
 
 	for _, s := range services {
@@ -94,14 +82,11 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 
 	// Allocate tasks in the store so far before we started watching.
 	var tasks []*api.Task
-	if err := a.store.View(func(tx state.ReadTx) error {
+	a.store.View(func(tx state.ReadTx) {
 		tasks, err = tx.Tasks().Find(state.All)
-		if err != nil {
-			return fmt.Errorf("error listing all tasks in store while trying to allocate during init: %v", err)
-		}
-		return nil
-	}); err != nil {
-		return err
+	})
+	if err != nil {
+		return fmt.Errorf("error listing all tasks in store while trying to allocate during init: %v", err)
 	}
 
 	if _, err := a.store.Batch(func(batch state.Batch) error {
@@ -278,13 +263,10 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 
 	var s *api.Service
 	if t.ServiceID != "" {
-		if err := a.store.View(func(tx state.ReadTx) error {
+		a.store.View(func(tx state.ReadTx) {
 			s = tx.Services().Get(t.ServiceID)
-			if s == nil {
-				return fmt.Errorf("could not find service %s", t.ServiceID)
-			}
-			return nil
-		}); err != nil {
+		})
+		if s == nil {
 			// If the task is running it is not normal to
 			// not be able to find the associated
 			// service. If the task is not running (task
@@ -294,7 +276,7 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 			// cleanup network resources associated with
 			// the task.
 			if taskRunning(t) && !isDelete {
-				log.G(ctx).Errorf("Event %T: Failed to get service %s for task %s state %s: %v", ev, t.ServiceID, t.ID, t.Status.State, err)
+				log.G(ctx).Errorf("Event %T: Failed to get service %s for task %s state %s: could not find service %s", ev, t.ServiceID, t.ID, t.Status.State, t.ServiceID)
 				return
 			}
 		}

@@ -122,13 +122,9 @@ func (s *Server) GetNetwork(ctx context.Context, request *api.GetNetworkRequest)
 	}
 
 	var n *api.Network
-	err := s.store.View(func(tx state.ReadTx) error {
+	s.store.View(func(tx state.ReadTx) {
 		n = tx.Networks().Get(request.NetworkID)
-		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
 	if n == nil {
 		return nil, grpc.Errorf(codes.NotFound, "network %s not found", request.NetworkID)
 	}
@@ -160,16 +156,17 @@ func (s *Server) RemoveNetwork(ctx context.Context, request *api.RemoveNetworkRe
 
 // ListNetworks returns a list of all networks.
 func (s *Server) ListNetworks(ctx context.Context, request *api.ListNetworksRequest) (*api.ListNetworksResponse, error) {
-	var networks []*api.Network
-	err := s.store.View(func(tx state.ReadTx) error {
-		var err error
+	var (
+		networks []*api.Network
+		err      error
+	)
 
+	s.store.View(func(tx state.ReadTx) {
 		if request.Options == nil || request.Options.Query == "" {
 			networks, err = tx.Networks().Find(state.All)
 		} else {
 			networks, err = tx.Networks().Find(state.ByQuery(request.Options.Query))
 		}
-		return err
 	})
 	if err != nil {
 		return nil, err

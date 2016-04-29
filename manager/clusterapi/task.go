@@ -17,13 +17,9 @@ func (s *Server) GetTask(ctx context.Context, request *api.GetTaskRequest) (*api
 	}
 
 	var task *api.Task
-	err := s.store.View(func(tx state.ReadTx) error {
+	s.store.View(func(tx state.ReadTx) {
 		task = tx.Tasks().Get(request.TaskID)
-		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
 	if task == nil {
 		return nil, grpc.Errorf(codes.NotFound, "task %s not found", request.TaskID)
 	}
@@ -55,12 +51,12 @@ func (s *Server) RemoveTask(ctx context.Context, request *api.RemoveTaskRequest)
 
 // ListTasks returns a list of all tasks.
 func (s *Server) ListTasks(ctx context.Context, request *api.ListTasksRequest) (*api.ListTasksResponse, error) {
-	var tasks []*api.Task
-	err := s.store.View(func(tx state.ReadTx) error {
-		var err error
-
+	var (
+		tasks []*api.Task
+		err   error
+	)
+	s.store.View(func(tx state.ReadTx) {
 		tasks, err = tx.Tasks().Find(state.All)
-		return err
 	})
 	if err != nil {
 		return nil, err

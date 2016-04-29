@@ -24,13 +24,9 @@ func (s *Server) GetNode(ctx context.Context, request *api.GetNodeRequest) (*api
 	}
 
 	var node *api.Node
-	err := s.store.View(func(tx state.ReadTx) error {
+	s.store.View(func(tx state.ReadTx) {
 		node = tx.Nodes().Get(request.NodeID)
-		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
 	if node == nil {
 		return nil, grpc.Errorf(codes.NotFound, "node %s not found", request.NodeID)
 	}
@@ -41,15 +37,16 @@ func (s *Server) GetNode(ctx context.Context, request *api.GetNodeRequest) (*api
 
 // ListNodes returns a list of all nodes.
 func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (*api.ListNodesResponse, error) {
-	var nodes []*api.Node
-	err := s.store.View(func(tx state.ReadTx) error {
-		var err error
+	var (
+		nodes []*api.Node
+		err   error
+	)
+	s.store.View(func(tx state.ReadTx) {
 		if request.Options == nil || request.Options.Query == "" {
 			nodes, err = tx.Nodes().Find(state.All)
 		} else {
 			nodes, err = tx.Nodes().Find(state.ByQuery(request.Options.Query))
 		}
-		return err
 	})
 	if err != nil {
 		return nil, err
