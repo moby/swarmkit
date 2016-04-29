@@ -202,9 +202,9 @@ message RestartPolicy {
 	// failure count is reset.
 }
 
-// UpdateStrategy specifies the rate and policy of updates.
+// UpdateConfiguration specifies the rate and policy of updates.
 // TODO(aluzzardi): Consider making this a oneof with RollingStrategy and LockstepStrategy.
-message UpdateStrategy {
+message UpdateConfiguration {
 	// Maximum number of tasks to be updated in one iteration.
 	// 0 means unlimited parallelism.
 	uint64 parallelism = 1;
