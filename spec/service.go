@@ -57,7 +57,7 @@ type ServiceConfig struct {
 	Restart      string `yaml:"restart,omitempty"`
 	RestartDelay string `yaml:"restartdelay,omitempty"`
 
-	Update *UpdateStrategy `yaml:"update,omitempty"`
+	Update *UpdateConfiguration `yaml:"update,omitempty"`
 
 	Ports []PortConfig `yaml:"ports,omitempty"`
 }
@@ -256,7 +256,7 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	}
 
 	if serviceSpec.Update != nil {
-		s.Update = &UpdateStrategy{}
+		s.Update = &UpdateConfiguration{}
 		s.Update.FromProto(serviceSpec.Update)
 	}
 }
