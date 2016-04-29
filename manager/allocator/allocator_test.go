@@ -90,7 +90,9 @@ func TestAllocator(t *testing.T) {
 	defer cancel()
 
 	// Start allocator
-	assert.NoError(t, a.Start(context.Background()))
+	go func() {
+		assert.NoError(t, a.Run(context.Background()))
+	}()
 
 	// Now verify if we get network and tasks updated properly
 	n1, err := watchNetwork(t, netWatch)
