@@ -168,9 +168,11 @@ func (m *Manager) Run(ctx context.Context) error {
 					// any component that goes down would bring the entire manager down.
 
 					if m.allocator != nil {
-						if err := m.allocator.Start(ctx); err != nil {
-							log.G(ctx).WithError(err).Error("allocator exited with an error")
-						}
+						go func() {
+							if err := m.allocator.Run(ctx); err != nil {
+								log.G(ctx).WithError(err).Error("allocator exited with an error")
+							}
+						}()
 					}
 
 					go func() {
@@ -190,18 +192,21 @@ func (m *Manager) Run(ctx context.Context) error {
 					}()
 				} else if newState == raft.IsFollower {
 					m.leaderLock.Lock()
-					m.orchestrator.Stop()
-					m.fillOrchestrator.Stop()
-					m.scheduler.Stop()
 
 					if m.allocator != nil {
 						m.allocator.Stop()
+						m.allocator = nil
 					}
 
+					m.orchestrator.Stop()
 					m.orchestrator = nil
+
+					m.fillOrchestrator.Stop()
 					m.fillOrchestrator = nil
+
+					m.scheduler.Stop()
 					m.scheduler = nil
-					m.allocator = nil
+
 					m.leaderLock.Unlock()
 				}
 			case <-m.managerDone:
@@ -254,6 +259,9 @@ func (m *Manager) Run(ctx context.Context) error {
 // active RPCs as well as stopping the scheduler.
 func (m *Manager) Stop() {
 	m.leaderLock.Lock()
+	if m.allocator != nil {
+		m.allocator.Stop()
+	}
 	if m.orchestrator != nil {
 		m.orchestrator.Stop()
 	}
