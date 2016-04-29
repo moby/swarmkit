@@ -6,14 +6,14 @@ import (
 	"github.com/docker/swarm-v2/api"
 )
 
-// UpdateStrategy controls the rate and policy of updates.
-type UpdateStrategy struct {
+// UpdateConfiguration controls the rate and policy of updates.
+type UpdateConfiguration struct {
 	Parallelism uint64 `yaml:"parallelism,omitempty"`
 	Delay       string `yaml:"delay,omitempty"`
 }
 
 // Validate checks the validity of the strategy.
-func (u *UpdateStrategy) Validate() error {
+func (u *UpdateConfiguration) Validate() error {
 	if u == nil {
 		return nil
 	}
@@ -25,12 +25,12 @@ func (u *UpdateStrategy) Validate() error {
 	return nil
 }
 
-// ToProto converts native UpdateStrategy into protos.
-func (u *UpdateStrategy) ToProto() *api.UpdateStrategy {
+// ToProto converts native UpdateConfiguration into protos.
+func (u *UpdateConfiguration) ToProto() *api.UpdateConfiguration {
 	if u == nil {
 		return nil
 	}
-	p := &api.UpdateStrategy{
+	p := &api.UpdateConfiguration{
 		Parallelism: u.Parallelism,
 	}
 	if u.Delay != "" {
@@ -39,13 +39,13 @@ func (u *UpdateStrategy) ToProto() *api.UpdateStrategy {
 	return p
 }
 
-// FromProto converts proto UpdateStrategy back into native types.
-func (u *UpdateStrategy) FromProto(p *api.UpdateStrategy) {
+// FromProto converts proto UpdateConfiguration back into native types.
+func (u *UpdateConfiguration) FromProto(p *api.UpdateConfiguration) {
 	if p == nil {
 		return
 	}
 
-	*u = UpdateStrategy{
+	*u = UpdateConfiguration{
 		Parallelism: p.Parallelism,
 		Delay:       p.Delay.String(),
 	}
