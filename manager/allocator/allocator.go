@@ -10,14 +10,6 @@ import (
 
 // Allocator controls how the allocation stage in the manager is handled.
 type Allocator struct {
-	// The waitgroup on which we wait during a Stop for all go
-	// routines to exit.
-	wg *sync.WaitGroup
-
-	// The cancel function that we trigger during Stop to indicate
-	// all go routines to cancel themselves, cleanup and exit.
-	cancel context.CancelFunc
-
 	// The manager store.
 	store state.WatchableStore
 
@@ -29,6 +21,11 @@ type Allocator struct {
 	// context for the network allocator that will be needed by
 	// network allocator.
 	netCtx *networkContext
+
+	// stopChan signals to the allocator to stop running.
+	stopChan chan struct{}
+	// doneChan is closed when the allocator is finished running.
+	doneChan chan struct{}
 }
 
 // taskBallot controls how the voting for task allocation is
@@ -72,20 +69,27 @@ type allocActor struct {
 func New(store state.WatchableStore) (*Allocator, error) {
 	a := &Allocator{
 		store: store,
-		wg:    &sync.WaitGroup{},
 		taskBallot: &taskBallot{
 			votes: make(map[string][]string),
 		},
+		stopChan: make(chan struct{}),
+		doneChan: make(chan struct{}),
 	}
 
 	return a, nil
 }
 
-// Start starts all allocator go-routines which can be cancelled by invoking a subsequent Stop.
-func (a *Allocator) Start(ctx context.Context) error {
+// Run starts all allocator go-routines and waits for Stop to be called.
+func (a *Allocator) Run(ctx context.Context) error {
 	// Setup cancel context for all goroutines to use.
 	ctx, cancel := context.WithCancel(ctx)
-	a.cancel = cancel
+	var wg sync.WaitGroup
+
+	defer func() {
+		cancel()
+		wg.Wait()
+		close(a.doneChan)
+	}()
 
 	var actors []func() error
 	watch, watchCancel := state.Watch(a.store.WatchQueue(),
@@ -116,6 +120,7 @@ func (a *Allocator) Start(ctx context.Context) error {
 		// Copy the iterated value for variable capture.
 		aaCopy := aa
 		actor := func() error {
+			wg.Add(1)
 			// init might return an allocator specific context
 			// which is a child of the passed in context to hold
 			// allocator specific state
@@ -124,10 +129,14 @@ func (a *Allocator) Start(ctx context.Context) error {
 				// if we are failing in the init of
 				// this allocator.
 				aa.cancel()
+				wg.Done()
 				return err
 			}
 
-			go a.run(ctx, aaCopy)
+			go func() {
+				defer wg.Done()
+				a.run(ctx, aaCopy)
+			}()
 			return nil
 		}
 
@@ -136,32 +145,22 @@ func (a *Allocator) Start(ctx context.Context) error {
 
 	for _, actor := range actors {
 		if err := actor(); err != nil {
-			// Make sure all the allocators which were
-			// successfully started, are stopped before
-			// bailing out.
-			a.Stop()
-
 			return err
 		}
 	}
 
+	<-a.stopChan
 	return nil
 }
 
 // Stop stops the allocator
 func (a *Allocator) Stop() {
-	// Cancel all allocator goroutines
-	a.cancel()
-
+	close(a.stopChan)
 	// Wait for all allocator goroutines to truly exit
-	a.wg.Wait()
+	<-a.doneChan
 }
 
 func (a *Allocator) run(ctx context.Context, aa allocActor) {
-	a.wg.Add(1)
-	defer a.wg.Done()
-	defer a.cancel()
-
 	for {
 		select {
 		case ev, ok := <-aa.ch:
