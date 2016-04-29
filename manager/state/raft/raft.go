@@ -12,6 +12,11 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+
+	"golang.org/x/net/context"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/raft"
@@ -27,9 +32,6 @@ import (
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/gogo/protobuf/proto"
 	"github.com/pivotal-golang/clock"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 var (
@@ -55,6 +57,8 @@ var (
 	ErrIDRemoved = errors.New("raft: can't add node to cluster, node was removed during cluster lifetime")
 	// ErrIDNotFound is thrown when we try an operation on a member that does not exist in the cluster list
 	ErrIDNotFound = errors.New("raft: member not found in cluster list")
+	// ErrCannotRemoveMember is thrown when we try to remove a member from the cluster but this would result in a loss of quorum
+	ErrCannotRemoveMember = errors.New("raft: member cannot be removed from the list, this may result in a loss of quorum")
 )
 
 // LeadershipState indicates whether the node is a leader or follower.
@@ -565,14 +569,7 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 
 	// We submit a configuration change only if the node was not registered yet
 	if n.cluster.getMember(req.Node.ID) == nil {
-		cc := raftpb.ConfChange{
-			Type:    raftpb.ConfChangeAddNode,
-			NodeID:  req.Node.ID,
-			Context: meta,
-		}
-
-		// Wait for a raft round to process the configuration change
-		err = n.configure(ctx, cc)
+		err = n.AddMember(ctx, req.Node.ID, meta)
 		if err != nil {
 			return nil, err
 		}
@@ -587,6 +584,19 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 	}
 
 	return &api.JoinResponse{Members: nodes}, nil
+}
+
+// AddMember submits a configuration change to add a new member on the raft cluster.
+func (n *Node) AddMember(ctx context.Context, id uint64, meta []byte) error {
+	cc := raftpb.ConfChange{
+		Type:    raftpb.ConfChangeAddNode,
+		NodeID:  id,
+		Context: meta,
+	}
+
+	// Wait for a raft round to process the configuration change
+	err := n.configure(ctx, cc)
+	return err
 }
 
 // Leave asks to a member of the raft to remove
@@ -608,20 +618,30 @@ func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResp
 		return nil, ErrStopped
 	}
 
-	cc := raftpb.ConfChange{
-		ID:      req.Node.ID,
-		Type:    raftpb.ConfChangeRemoveNode,
-		NodeID:  req.Node.ID,
-		Context: []byte(""),
-	}
-
-	// Wait for a raft round to process the configuration change
-	err = n.configure(ctx, cc)
+	err = n.RemoveMember(ctx, req.Node.ID, []byte(""))
 	if err != nil {
 		return nil, err
 	}
 
 	return &api.LeaveResponse{}, nil
+}
+
+// RemoveMember submits a configuration change to remove a member from the raft cluster.
+func (n *Node) RemoveMember(ctx context.Context, id uint64, meta []byte) error {
+	if n.cluster.CanRemoveMember(n.Config.ID, id) {
+		cc := raftpb.ConfChange{
+			ID:      id,
+			Type:    raftpb.ConfChangeRemoveNode,
+			NodeID:  id,
+			Context: meta,
+		}
+
+		// Wait for a raft round to process the configuration change
+		err := n.configure(ctx, cc)
+		return err
+	}
+
+	return ErrCannotRemoveMember
 }
 
 // ProcessRaftMessage calls 'Step' which advances the
@@ -708,7 +728,6 @@ func (n *Node) deregisterNode(id uint64) error {
 
 	n.cluster.removeMember(id)
 
-	_ = peer.Client.Conn.Close()
 	return nil
 }
 
@@ -1127,8 +1146,9 @@ func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
 		return ErrIDNotFound
 	}
 
-	// The leader steps down
-	if n.Config.ID == n.Leader() && n.Config.ID == cc.NodeID {
+	// We are trying to remove ourselves
+	if n.Config.ID == cc.NodeID {
+		n.Stop()
 		return
 	}
 
@@ -1136,9 +1156,6 @@ func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
 	// a follower and the leader steps down, Campaign
 	// to be the leader
 	if cc.NodeID == n.Leader() {
-		// FIXME(abronan): it's probably risky for each follower to Campaign
-		// at the same time, but it might speed up the process of recovering
-		// a leader
 		if err = n.Campaign(n.Ctx); err != nil {
 			return err
 		}

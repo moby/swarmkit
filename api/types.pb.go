@@ -91,6 +91,8 @@
 		ListVolumesResponse
 		ListManagersRequest
 		ListManagersResponse
+		RemoveManagerRequest
+		RemoveManagerResponse
 		RegisterRequest
 		RegisterResponse
 		SessionRequest

@@ -13,5 +13,6 @@ var (
 func init() {
 	Cmd.AddCommand(
 		listCmd,
+		removeCmd,
 	)
 }
