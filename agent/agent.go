@@ -29,9 +29,8 @@ type Agent struct {
 	conn   *grpc.ClientConn
 	picker *picker
 
-	tasks       map[string]*api.Task // contains all managed tasks
-	assigned    map[string]*api.Task // contains current assignment set
-	statuses    map[string]api.TaskStatus
+	tasks       map[string]*api.Task   // contains all managed tasks
+	assigned    map[string]*api.Task   // contains current assignment set
 	controllers map[string]exec.Runner // contains all runners
 
 	statusq chan taskStatusReport
@@ -52,7 +51,6 @@ func New(config *Config) (*Agent, error) {
 		config:      config,
 		tasks:       make(map[string]*api.Task),
 		assigned:    make(map[string]*api.Task),
-		statuses:    make(map[string]api.TaskStatus),
 		controllers: make(map[string]exec.Runner),
 
 		statusq: make(chan taskStatusReport),
@@ -326,7 +324,7 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 		ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", id))
 
 		// if the task is already in finalize state, no need to call removeTask.
-		if a.statuses[task.ID].State >= api.TaskStateFinalize {
+		if task.Status.State >= api.TaskStateFinalize {
 			continue
 		}
 
@@ -342,9 +340,9 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 
 func (a *Agent) handleTaskStatusReport(ctx context.Context, session *session, report taskStatusReport) error {
 	var respErr error
-	err := a.updateStatus(ctx, report)
-	if err == errTaskUnknown || err == errTaskDead || err == errTaskStatusUpdateNoChange {
-		respErr = nil
+	status, err := a.updateStatus(ctx, report)
+	if err != errTaskUnknown && err != errTaskDead && err != errTaskStatusUpdateNoChange {
+		respErr = err
 	}
 
 	if report.response != nil {
@@ -359,7 +357,7 @@ func (a *Agent) handleTaskStatusReport(ctx context.Context, session *session, re
 
 	// TODO(stevvooe): Coalesce status updates.
 	go func() {
-		if err := session.sendTaskStatus(ctx, report.taskID, a.statuses[report.taskID]); err != nil {
+		if err := session.sendTaskStatus(ctx, report.taskID, status); err != nil {
 			log.G(ctx).WithError(err).Error("sending task status update failed")
 
 			time.Sleep(time.Second) // backoff for retry
@@ -374,17 +372,14 @@ func (a *Agent) handleTaskStatusReport(ctx context.Context, session *session, re
 	return nil
 }
 
-func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error {
-	status, ok := a.statuses[report.taskID]
-	if !ok {
-		return errTaskUnknown
-	}
+func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) (api.TaskStatus, error) {
 	task, ok := a.tasks[report.taskID]
 	if !ok {
-		return errTaskUnknown
+		return api.TaskStatus{}, errTaskUnknown
 	}
 
-	original := status.Copy()
+	status := task.Status
+	original := task.Status
 	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(
 		logrus.Fields{
 			"state.transition": fmt.Sprintf("%v->%v", original.State, report.state),
@@ -393,7 +388,7 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 	// validate transition only moves forward or updates fields
 	if report.state < status.State && report.err == nil {
 		log.G(ctx).Error("invalid transition")
-		return errTaskInvalidStateTransition
+		return api.TaskStatus{}, errTaskInvalidStateTransition
 	}
 
 	if report.err != nil {
@@ -432,14 +427,14 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 
 	tsp, err := ptypes.TimestampProto(report.timestamp)
 	if err != nil {
-		return err
+		return api.TaskStatus{}, err
 	}
 
 	status.Timestamp = tsp
 	status.Message = report.message
 
 	if reflect.DeepEqual(status, original) {
-		return errTaskStatusUpdateNoChange
+		return api.TaskStatus{}, errTaskStatusUpdateNoChange
 	}
 
 	log.G(ctx).WithFields(logrus.Fields{
@@ -461,18 +456,17 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) error
 		// once a task is dead, we remove all resources associated with it.
 		delete(a.controllers, report.taskID)
 		delete(a.tasks, report.taskID)
-		delete(a.statuses, report.taskID)
 
-		return errTaskDead
+		return api.TaskStatus{}, errTaskDead
 	}
 
-	return nil
+	task.Status = status // actually write out the task status.
+	return status, nil
 }
 
 func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 	a.tasks[task.ID] = task
 	a.assigned[task.ID] = task
-	a.statuses[task.ID] = task.Status
 
 	runner, err := a.config.Executor.Runner(task.Copy())
 	if err != nil {
@@ -514,6 +508,7 @@ func (a *Agent) updateTask(ctx context.Context, t *api.Task) error {
 	}
 
 	original := a.tasks[t.ID]
+	t.Status = original.Status // don't overwrite agent's task status
 	a.tasks[t.ID] = t
 	a.assigned[t.ID] = t
 
