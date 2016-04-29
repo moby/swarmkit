@@ -11,10 +11,17 @@ Requirements:
 - go 1.6
 - A [working golang](https://golang.org/doc/code.html) environment
 
+From the project root directory, run:
+```
+make binaries
+```
 
-From the project root directory run:
+Because this project's code continues to evolve rapidly, you should rebuild from master regularly. Any git tutorial can help you, but in general terms you will:
 
 ```sh
+$ cd $GOCODE/src/github/swarm-v2
+$ git checkout master
+$ git pull origin master
 $ make binaries
 ```
 
@@ -66,65 +73,94 @@ In a fourth terminal, use `swarmctl` to explore and control the cluster.  List n
 ```
 $ swarmctl node ls
 ID                         Name      Status  Availability
-87pn3pug404xs4x86b5nwlwbr  ubuntu15  READY   ACTIVE
-by2ihzjyg9m674j3cjdit3reo  ubuntu15  READY   ACTIVE
+87pn3pug404xs4x86b5nwlwbr  node-1    READY   ACTIVE
+by2ihzjyg9m674j3cjdit3reo  node-2    READY   ACTIVE
 ```
 
-**Create and manage a Service**
+**Create and manage an application**
 
-The `ping` service in `examples/service/ping.yml` is a place to start:
-
-```
-$ cd examples/service/
-$ cat ping.yml
-name: ping
-image: alpine
-command: ["sh", "-c", "ping $HOST"]
-instances: 2
-env:
- - HOST=google.com
-```
-
-Let's start it:
+Start with the `hello-world` application in `examples/hello-world.yml`. `hello-world` consists of 1 service: `ping`.
 
 ```
-$ swarmctl service create -f ping.yml
-chlkcf9v19kxbccspmiyuttgz
+$ cd examples/
+$ cat hello-world.yml
+version: '3'
+namespace: hello-world
+
+services:
+  ping:
+      image: alpine
+      command: ["sh", "-c", "ping $HOST"]
+      env:
+          - HOST=google.com
+      instances: 2
+```
+
+Start 'hello-world':
+
+```
+$ swarmctl deploy -f hello-world.yml
+ping: dazkblnyzh46hziagcrffgkkz - CREATED
+```
+
+List the running services:
+
+```
 $ swarmctl service ls
 ID                         Name  Image   Instances
 chlkcf9v19kxbccspmiyuttgz  ping  alpine  2
-$ swarmctl task ls
-ID                         Service   Status   Node
-1y72dcy9us5vvgsltz5dgm2pp  ping  RUNNING  ubuntu15
-afhq97lrlw7jx1vh15gnofy59  ping  RUNNING  ubuntu15
+```
+
+Inspect the service:
+
+```
+$ swarmctl service inspect ping
+ID                : 3ud29r25fop28v6ryznhwv0j6
+Name              : ping
+Instances         : 5
+Strategy          : SERVICE_STRATEGY_SPREAD
+Template
+ Container
+  Image           : alpine
+  Command         : "sh -c ping $HOST"
+  Env             : [HOST=google.com]
+
+Task ID                      Instance    Image     Desired State    Last State                Node
+-------                      --------    -----     -------------    ----------                ----
+50lq7imo6h5q1pxur5odm2n7j    ping.1      alpine    RUNNING          RUNNING 20 seconds ago    node-1
+7mveed4qn5iqtx44jyfabk5os    ping.2      alpine    RUNNING          RUNNING 20 seconds ago    node-2
 ```
 
 Now change instance count in the YAML file:
 
 ```
-$ vi ping.yml
+$ vi hello-world.yml
 [change instances to 3 and save]
 ```
 
 Let's look at the delta:
 
 ```sh
-$ swarmctl service diff ping -f ping.yml
+$ swarmctl diff -f hello-world.yml
 --- remote
 +++ local
-@@ -6,5 +6,5 @@
- env:
- - HOST=google.com
- name: ping
--instances: 2
-+instances: 3
+@@ -10,7 +10,7 @@
+     env:
+     - HOST=google.com
+     name: ping
+-    instances: 2
++    instances: 3
+     mode: running
+     restart: always
+     restartdelay: "0"
 ```
 
-Update the service with the modified manifest and see the result:
+Redeploy the service with the modified manifest and see the result:
 
 ```sh
-$ swarmctl service update ping -f ping.yml
-chlkcf9v19kxbccspmiyuttgz
+$ swarmctl deploy -f hello-world.yml
+ping: d73nsz5tzhflxlu9v23pfb5si - UPDATED
+$
 $ swarmctl service ls
 ID                         Name  Image   Instances
 chlkcf9v19kxbccspmiyuttgz  ping  alpine  3
@@ -132,18 +168,27 @@ chlkcf9v19kxbccspmiyuttgz  ping  alpine  3
 
 You can also update instance count on the command line with `--instances`:
 
-```sh
+```
 $ swarmctl service update ping --instances 4
 chlkcf9v19kxbccspmiyuttgz
-$ swarmctl service ls
-ID                         Name  Image   Instances
-chlkcf9v19kxbccspmiyuttgz  ping  alpine  4
-$ swarmctl task ls
-ID                         Service   Status   Node
-1y72dcy9us5vvgsltz5dgm2pp  ping      RUNNING  ubuntu15
-703xq3ou3mokfayl2pceu024v  ping      RUNNING  ubuntu15
-afhq97lrlw7jx1vh15gnofy59  ping      RUNNING  ubuntu15
-b8peuqixb5nd34733ug0njpxo  ping      RUNNING  ubuntu15
+$
+$ swarmctl service inspect ping
+ID                : 3ud29r25fop28v6ryznhwv0j6
+Name              : ping
+Instances         : 5
+Strategy          : SERVICE_STRATEGY_SPREAD
+Template
+ Container
+  Image           : alpine
+  Command         : "sh -c ping $HOST"
+  Env             : [HOST=google.com]
+
+Task ID                      Instance    Image     Desired State    Last State                Node
+-------                      --------    -----     -------------    ----------                ----
+50lq7imo6h5q1pxur5odm2n7j    ping.1      alpine    RUNNING          RUNNING 8 minutes ago     node-1
+7mveed4qn5iqtx44jyfabk5os    ping.2      alpine    RUNNING          RUNNING 8 minutes ago     node-2
+9aiegisquaggywa0o3w1syksb    ping.3      alpine    RUNNING          RUNNING 6 minutes ago     node-2
+erly2j4b8hygo2ag8sevm2zop    ping.4      alpine    RUNNING          RUNNING 26 seconds ago    node-1
 ```
 
 You can also live edit the state file on the manager:
@@ -153,12 +198,16 @@ $ EDITOR=nano swarmctl service edit ping
 [change instances to 5, Ctrl+o to save, Ctrl+x to exit]
 --- old
 +++ new
-@@ -6,5 +6,5 @@
+@@ -6,7 +6,7 @@
  env:
  - HOST=google.com
  name: ping
 -instances: 4
 +instances: 5
+ mode: running
+ restart: always
+ restartdelay: "0"
+Apply changes? [N/y]
 
 Apply changes? [N/y] y
 chlkcf9v19kxbccspmiyuttgz
@@ -170,10 +219,22 @@ Now check the result:
 $ swarmctl service ls
 ID                         Name  Image   Instances
 chlkcf9v19kxbccspmiyuttgz  ping  alpine  5
-$ swarmctl task ls
-ID                         Service   Status   Node
-1y72dcy9us5vvgsltz5dgm2pp  ping      RUNNING  ubuntu15
-703xq3ou3mokfayl2pceu024v  ping      RUNNING  ubuntu15
-afhq97lrlw7jx1vh15gnofy59  ping      RUNNING  ubuntu15
-b8peuqixb5nd34733ug0njpxo  ping      RUNNING  ubuntu15
+$ swarmctl service inspect ping
+ID                : 3ud29r25fop28v6ryznhwv0j6
+Name              : ping
+Instances         : 5
+Strategy          : SERVICE_STRATEGY_SPREAD
+Template
+ Container
+  Image           : alpine
+  Command         : "sh -c ping $HOST"
+  Env             : [HOST=google.com]
+
+Task ID                      Instance    Image     Desired State    Last State                Node
+-------                      --------    -----     -------------    ----------                ----
+50lq7imo6h5q1pxur5odm2n7j    ping.1      alpine    RUNNING          RUNNING 10 minutes ago    node-1
+7mveed4qn5iqtx44jyfabk5os    ping.2      alpine    RUNNING          RUNNING 10 minutes ago    node-2
+9aiegisquaggywa0o3w1syksb    ping.3      alpine    RUNNING          RUNNING 8 minutes ago     node-2
+erly2j4b8hygo2ag8sevm2zop    ping.4      alpine    RUNNING          RUNNING 2 minutes ago     node-1
+3f4peh8qiykhxrbswildn2qlr    ping.5      alpine    RUNNING          RUNNING 31 seconds ago    node-1
 ```
