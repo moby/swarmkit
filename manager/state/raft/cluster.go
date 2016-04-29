@@ -3,6 +3,8 @@ package raft
 import (
 	"sync"
 
+	"google.golang.org/grpc"
+
 	"github.com/docker/swarm-v2/api"
 )
 
@@ -98,4 +100,47 @@ func (c *cluster) clear() {
 	c.members = make(map[uint64]*member)
 	c.removed = make(map[uint64]bool)
 	c.mu.Unlock()
+}
+
+// CanRemoveMember checks if removing a member would not result in a loss
+// of quorum, this check is needed before submitting a configuration change
+// that might block or harm the cluster on member recovery
+func (c *cluster) CanRemoveMember(from uint64, id uint64) bool {
+	members := c.listMembers()
+
+	nmembers := 0
+	nreachable := 0
+
+	for _, member := range members {
+		// Local node from where the remove is issued
+		if uint64(member.ID) == from && uint64(member.ID) != id {
+			nmembers++
+			nreachable++
+			continue
+		}
+
+		// Skip the node that is going to be deleted
+		if uint64(member.ID) == id {
+			continue
+		}
+
+		connState, err := member.Client.Conn.State()
+		if err == nil && connState == grpc.Ready {
+			nreachable++
+		}
+
+		nmembers++
+	}
+
+	// Special case of 2 managers
+	if nreachable == 1 && len(members) <= 2 {
+		return false
+	}
+
+	nquorum := nmembers/2 + 1
+	if nreachable < nquorum {
+		return false
+	}
+
+	return true
 }
