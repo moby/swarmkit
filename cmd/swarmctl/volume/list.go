@@ -37,19 +37,14 @@ var (
 			for _, v := range r.Volumes {
 				spec := &v.Spec
 				name := spec.Annotations.Name
+				driverName := spec.DriverConfiguration.Name
+				driverOptions := spec.DriverConfiguration.Options
 
 				// TODO(amitshukla): Right now we only implement the happy path
 				// and don't have any proper error handling whatsover.
 				// Instead of aborting, we should display what we can of the Volume.
-				if name == "" || v.ID == "" {
+				if name == "" || v.ID == "" || driverName == "" {
 					log.G(ctx).Fatalf("Malformed volume: %v", v)
-				}
-
-				driverName := ""
-				driverOptions := map[string]string{}
-				if spec.DriverConfiguration != nil {
-					driverName = spec.DriverConfiguration.Name
-					driverOptions = spec.DriverConfiguration.Options
 				}
 
 				// TODO(amitshukla): Improve formatting of driver options

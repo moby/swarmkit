@@ -80,6 +80,11 @@ func (r *controller) Prepare(ctx context.Context) error {
 		return err
 	}
 
+	// Make sure all the volumes that the task needs are created.
+	if err := r.adapter.createVolumes(ctx, r.client); err != nil {
+		return err
+	}
+
 	for {
 		if err := r.checkClosed(); err != nil {
 			return err

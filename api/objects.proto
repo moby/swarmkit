@@ -141,6 +141,10 @@ message Container {
 	// A copy of runtime state of service endpoint from Service
 	// object to be distributed to agents as part of the task.
 	Endpoint endpoint = 3;
+
+	// Volumes enumerates the volume declarations needed to satisfy the mounts which use plugins
+	// used by this container
+	repeated Volume volumes = 4;
 }
 
 message Volume {
@@ -149,9 +153,6 @@ message Volume {
 	Meta meta = 2 [(gogoproto.nullable) = false];
 
 	VolumeSpec spec = 3 [(gogoproto.nullable) = false];
-
-	// Driver specific operational state provided by the Volume driver.
-	Driver driver_state = 4;
 }
 
 message Network {
