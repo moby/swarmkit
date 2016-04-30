@@ -4,7 +4,6 @@ namespace: voting-app
 services:
     frontend:
         image: aluzzardi/s2_frontend
-        instances: 1
         env:
             - QUEUE_HOSTNAME=redis
             - OPTION_A=Cats
@@ -18,7 +17,6 @@ services:
 
     redis:
         image: redis
-        instances: 1
         networks:
             - mynetwork
 
