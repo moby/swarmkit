@@ -571,13 +571,11 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	assert.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond)
-	err = store.View(func(tx state.ReadTx) error {
+	store.View(func(tx state.ReadTx) {
 		tasks, err := tx.Tasks().Find(state.ByNodeID(node.ID))
 		assert.NoError(t, err)
 		assert.Len(t, tasks, 1)
-		return nil
 	})
-	assert.NoError(t, err)
 
 	err = store.Update(func(tx state.Tx) error {
 		// The task becomes dead
