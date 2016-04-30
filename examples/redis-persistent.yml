@@ -4,7 +4,6 @@ namespace: 'redis'
 services:
     redis:
         image: redis:3.0.7
-        instances: 1
         mounts:
             - type: volume
               name: swarm-demo
