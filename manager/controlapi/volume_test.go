@@ -10,16 +10,19 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func createVolumeSpec(name string) *api.VolumeSpec {
+func createVolumeSpec(name string, driverName string) *api.VolumeSpec {
 	return &api.VolumeSpec{
 		Annotations: api.Annotations{
 			Name: name,
+		},
+		DriverConfiguration: &api.Driver{
+			Name: driverName,
 		},
 	}
 }
 
 func createVolume(t *testing.T, ts *testServer, name string) *api.Volume {
-	spec := createVolumeSpec(name)
+	spec := createVolumeSpec(name, name)
 	r, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{Spec: spec})
 	assert.NoError(t, err)
 	return r.Volume
@@ -37,7 +40,7 @@ func TestCreateVolume(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
-	spec := createVolumeSpec("name")
+	spec := createVolumeSpec("name", "driver")
 	r, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{Spec: spec})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, r.Volume.ID)
