@@ -30,7 +30,6 @@ import (
 	pb "github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
-	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/gogo/protobuf/proto"
 	"github.com/pivotal-golang/clock"
@@ -294,7 +293,7 @@ func DefaultNodeConfig() *raft.Config {
 }
 
 // MemoryStore returns the memory store that is kept in sync with the raft log.
-func (n *Node) MemoryStore() state.WatchableStore {
+func (n *Node) MemoryStore() *store.MemoryStore {
 	return n.memoryStore
 }
 
@@ -915,7 +914,7 @@ func (n *Node) doSnapshot() {
 		}()
 
 		var err error
-		n.memoryStore.View(func(tx state.ReadTx) {
+		n.memoryStore.View(func(tx store.ReadTx) {
 			close(viewStarted)
 
 			var storeSnapshot *pb.StoreSnapshot
@@ -1101,7 +1100,7 @@ func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRa
 		return nil, err
 	}
 
-	if len(data) > state.MaxTransactionBytes {
+	if len(data) > store.MaxTransactionBytes {
 		n.wait.cancel(r.ID)
 		return nil, ErrRequestTooLarge
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 )
 
 const (
@@ -23,7 +24,7 @@ type dirtyTuple struct {
 // A TaskReaper deletes old tasks when more than TaskHistory tasks
 // exist for the same service/instance or service/nodeid combination.
 type TaskReaper struct {
-	store state.WatchableStore
+	store *store.MemoryStore
 	// taskHistory is the number of tasks to keep
 	taskHistory int64
 	dirty       map[dirtyTuple]struct{}
@@ -34,7 +35,7 @@ type TaskReaper struct {
 }
 
 // NewTaskReaper creates a new TaskReaper.
-func NewTaskReaper(store state.WatchableStore, taskHistory int64) *TaskReaper {
+func NewTaskReaper(store *store.MemoryStore, taskHistory int64) *TaskReaper {
 	watcher, cancel := state.Watch(store.WatchQueue(), state.EventCreateTask{})
 
 	return &TaskReaper{
@@ -86,9 +87,9 @@ func (tr *TaskReaper) tick() {
 
 	var deleteTasks []string
 
-	tr.store.View(func(tx state.ReadTx) {
+	tr.store.View(func(tx store.ReadTx) {
 		for dirty := range tr.dirty {
-			service := tx.Services().Get(dirty.serviceID)
+			service := store.GetService(tx, dirty.serviceID)
 			if service == nil {
 				continue
 			}
@@ -104,13 +105,13 @@ func (tr *TaskReaper) tick() {
 			switch service.Spec.Mode {
 			case api.ServiceModeRunning:
 				var err error
-				historicTasks, err = tx.Tasks().Find(state.ByInstance(dirty.serviceID, dirty.instance))
+				historicTasks, err = store.FindTasks(tx, store.ByInstance(dirty.serviceID, dirty.instance))
 				if err != nil {
 					continue
 				}
 
 			case api.ServiceModeFill:
-				tasksByNode, err := tx.Tasks().Find(state.ByNodeID(dirty.nodeID))
+				tasksByNode, err := store.FindTasks(tx, store.ByNodeID(dirty.nodeID))
 				if err != nil {
 					continue
 				}
@@ -148,10 +149,10 @@ func (tr *TaskReaper) tick() {
 	})
 
 	if len(deleteTasks) > 0 {
-		tr.store.Batch(func(batch state.Batch) error {
+		tr.store.Batch(func(batch *store.Batch) error {
 			for _, taskID := range deleteTasks {
-				batch.Update(func(tx state.Tx) error {
-					return tx.Tasks().Delete(taskID)
+				batch.Update(func(tx store.Tx) error {
+					return store.DeleteTask(tx, taskID)
 				})
 			}
 			return nil

@@ -143,28 +143,28 @@ var (
 	}
 )
 
-func setupTestStore(t *testing.T, s state.Store) {
-	err := s.Update(func(tx state.Tx) error {
+func setupTestStore(t *testing.T, s *MemoryStore) {
+	err := s.Update(func(tx Tx) error {
 		// Prepoulate nodes
 		for _, n := range nodeSet {
-			assert.NoError(t, tx.Nodes().Create(n))
+			assert.NoError(t, CreateNode(tx, n))
 		}
 
 		// Prepopulate services
-		for _, j := range serviceSet {
-			assert.NoError(t, tx.Services().Create(j))
+		for _, s := range serviceSet {
+			assert.NoError(t, CreateService(tx, s))
 		}
 		// Prepopulate tasks
 		for _, task := range taskSet {
-			assert.NoError(t, tx.Tasks().Create(task))
+			assert.NoError(t, CreateTask(tx, task))
 		}
 		// Prepopulate networks
 		for _, n := range networkSet {
-			assert.NoError(t, tx.Networks().Create(n))
+			assert.NoError(t, CreateNetwork(tx, n))
 		}
 		// Prepopulate volumes
 		for _, v := range volumeSet {
-			assert.NoError(t, tx.Volumes().Create(v))
+			assert.NoError(t, CreateVolume(tx, v))
 		}
 		return nil
 	})
@@ -175,46 +175,46 @@ func TestStoreNode(t *testing.T) {
 	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	s.View(func(readTx state.ReadTx) {
-		allNodes, err := readTx.Nodes().Find(state.All)
+	s.View(func(readTx ReadTx) {
+		allNodes, err := FindNodes(readTx, All)
 		assert.NoError(t, err)
 		assert.Empty(t, allNodes)
 	})
 
 	setupTestStore(t, s)
 
-	err := s.Update(func(tx state.Tx) error {
-		allNodes, err := tx.Nodes().Find(state.All)
+	err := s.Update(func(tx Tx) error {
+		allNodes, err := FindNodes(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allNodes, len(nodeSet))
 
-		assert.Error(t, tx.Nodes().Create(nodeSet[0]), "duplicate IDs must be rejected")
+		assert.Error(t, CreateNode(tx, nodeSet[0]), "duplicate IDs must be rejected")
 		return nil
 	})
 	assert.NoError(t, err)
 
-	s.View(func(readTx state.ReadTx) {
-		assert.Equal(t, nodeSet[0], readTx.Nodes().Get("id1"))
-		assert.Equal(t, nodeSet[1], readTx.Nodes().Get("id2"))
-		assert.Equal(t, nodeSet[2], readTx.Nodes().Get("id3"))
+	s.View(func(readTx ReadTx) {
+		assert.Equal(t, nodeSet[0], GetNode(readTx, "id1"))
+		assert.Equal(t, nodeSet[1], GetNode(readTx, "id2"))
+		assert.Equal(t, nodeSet[2], GetNode(readTx, "id3"))
 
-		foundNodes, err := readTx.Nodes().Find(state.ByName("name1"))
+		foundNodes, err := FindNodes(readTx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
-		foundNodes, err = readTx.Nodes().Find(state.ByName("name2"))
+		foundNodes, err = FindNodes(readTx, ByName("name2"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 2)
-		foundNodes, err = readTx.Nodes().Find(state.ByName("invalid"))
+		foundNodes, err = FindNodes(readTx, ByName("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 0)
 
-		foundNodes, err = readTx.Nodes().Find(state.ByQuery("name"))
+		foundNodes, err = FindNodes(readTx, ByQuery("name"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 0)
-		foundNodes, err = readTx.Nodes().Find(state.ByQuery("name1"))
+		foundNodes, err = FindNodes(readTx, ByQuery("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
-		foundNodes, err = readTx.Nodes().Find(state.ByQuery("id"))
+		foundNodes, err = FindNodes(readTx, ByQuery("id"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 3)
 	})
@@ -226,31 +226,31 @@ func TestStoreNode(t *testing.T) {
 			Hostname: "name3",
 		},
 	}
-	err = s.Update(func(tx state.Tx) error {
-		assert.NotEqual(t, update, tx.Nodes().Get("id3"))
-		assert.NoError(t, tx.Nodes().Update(update))
-		assert.Equal(t, update, tx.Nodes().Get("id3"))
+	err = s.Update(func(tx Tx) error {
+		assert.NotEqual(t, update, GetNode(tx, "id3"))
+		assert.NoError(t, UpdateNode(tx, update))
+		assert.Equal(t, update, GetNode(tx, "id3"))
 
-		foundNodes, err := tx.Nodes().Find(state.ByName("name2"))
+		foundNodes, err := FindNodes(tx, ByName("name2"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
-		foundNodes, err = tx.Nodes().Find(state.ByName("name3"))
+		foundNodes, err = FindNodes(tx, ByName("name3"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 
 		invalidUpdate := *nodeSet[0]
 		invalidUpdate.ID = "invalid"
-		assert.Error(t, tx.Nodes().Update(&invalidUpdate), "invalid IDs should be rejected")
+		assert.Error(t, UpdateNode(tx, &invalidUpdate), "invalid IDs should be rejected")
 
 		// Delete
-		assert.NotNil(t, tx.Nodes().Get("id1"))
-		assert.NoError(t, tx.Nodes().Delete("id1"))
-		assert.Nil(t, tx.Nodes().Get("id1"))
-		foundNodes, err = tx.Nodes().Find(state.ByName("name1"))
+		assert.NotNil(t, GetNode(tx, "id1"))
+		assert.NoError(t, DeleteNode(tx, "id1"))
+		assert.Nil(t, GetNode(tx, "id1"))
+		foundNodes, err = FindNodes(tx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundNodes)
 
-		assert.Equal(t, tx.Nodes().Delete("nonexistent"), state.ErrNotExist)
+		assert.Equal(t, DeleteNode(tx, "nonexistent"), ErrNotExist)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -260,122 +260,122 @@ func TestStoreService(t *testing.T) {
 	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	s.View(func(readTx state.ReadTx) {
-		allServices, err := readTx.Services().Find(state.All)
+	s.View(func(readTx ReadTx) {
+		allServices, err := FindServices(readTx, All)
 		assert.NoError(t, err)
 		assert.Empty(t, allServices)
 	})
 
 	setupTestStore(t, s)
 
-	err := s.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx Tx) error {
 		assert.Equal(t,
-			tx.Services().Create(&api.Service{
+			CreateService(tx, &api.Service{
 				ID: "id1",
 				Spec: api.ServiceSpec{
 					Annotations: api.Annotations{
 						Name: "name4",
 					},
 				},
-			}), state.ErrExist, "duplicate IDs must be rejected")
+			}), ErrExist, "duplicate IDs must be rejected")
 
 		assert.Equal(t,
-			tx.Services().Create(&api.Service{
+			CreateService(tx, &api.Service{
 				ID: "id4",
 				Spec: api.ServiceSpec{
 					Annotations: api.Annotations{
 						Name: "name1",
 					},
 				},
-			}), state.ErrNameConflict, "duplicate names must be rejected")
+			}), ErrNameConflict, "duplicate names must be rejected")
 		return nil
 	})
 	assert.NoError(t, err)
 
-	s.View(func(readTx state.ReadTx) {
-		assert.Equal(t, serviceSet[0], readTx.Services().Get("id1"))
-		assert.Equal(t, serviceSet[1], readTx.Services().Get("id2"))
-		assert.Equal(t, serviceSet[2], readTx.Services().Get("id3"))
+	s.View(func(readTx ReadTx) {
+		assert.Equal(t, serviceSet[0], GetService(readTx, "id1"))
+		assert.Equal(t, serviceSet[1], GetService(readTx, "id2"))
+		assert.Equal(t, serviceSet[2], GetService(readTx, "id3"))
 
-		foundServices, err := readTx.Services().Find(state.ByName("name1"))
+		foundServices, err := FindServices(readTx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 1)
-		foundServices, err = readTx.Services().Find(state.ByName("invalid"))
+		foundServices, err = FindServices(readTx, ByName("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 0)
 
-		foundServices, err = readTx.Services().Find(state.ByQuery("name"))
+		foundServices, err = FindServices(readTx, ByQuery("name"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 0)
-		foundServices, err = readTx.Services().Find(state.ByQuery("id"))
+		foundServices, err = FindServices(readTx, ByQuery("id"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 3)
 
-		foundServices, err = readTx.Services().Find(state.ByServiceMode(api.ServiceModeRunning))
+		foundServices, err = FindServices(readTx, ByServiceMode(api.ServiceModeRunning))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 2)
-		foundServices, err = readTx.Services().Find(state.ByServiceMode(api.ServiceModeFill))
+		foundServices, err = FindServices(readTx, ByServiceMode(api.ServiceModeFill))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 1)
-		foundServices, err = readTx.Services().Find(state.ByServiceMode(api.ServiceModeBatch))
+		foundServices, err = FindServices(readTx, ByServiceMode(api.ServiceModeBatch))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 0)
 	})
 
 	// Update.
-	err = s.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx Tx) error {
 		// Regular update.
 		update := serviceSet[0].Copy()
 		update.Spec.Annotations.Labels = map[string]string{
 			"foo": "bar",
 		}
 
-		assert.NotEqual(t, update, tx.Services().Get(update.ID))
-		assert.NoError(t, tx.Services().Update(update))
-		assert.Equal(t, update, tx.Services().Get(update.ID))
+		assert.NotEqual(t, update, GetService(tx, update.ID))
+		assert.NoError(t, UpdateService(tx, update))
+		assert.Equal(t, update, GetService(tx, update.ID))
 
 		// Name conflict.
-		update = tx.Services().Get(update.ID)
+		update = GetService(tx, update.ID)
 		update.Spec.Annotations.Name = "name2"
-		assert.Equal(t, tx.Services().Update(update), state.ErrNameConflict, "duplicate names should be rejected")
+		assert.Equal(t, UpdateService(tx, update), ErrNameConflict, "duplicate names should be rejected")
 
 		// Name change.
-		update = tx.Services().Get(update.ID)
-		foundServices, err := tx.Services().Find(state.ByName("name1"))
+		update = GetService(tx, update.ID)
+		foundServices, err := FindServices(tx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 1)
-		foundServices, err = tx.Services().Find(state.ByName("name4"))
+		foundServices, err = FindServices(tx, ByName("name4"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundServices)
 
 		update.Spec.Annotations.Name = "name4"
-		assert.NoError(t, tx.Services().Update(update))
-		foundServices, err = tx.Services().Find(state.ByName("name1"))
+		assert.NoError(t, UpdateService(tx, update))
+		foundServices, err = FindServices(tx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundServices)
-		foundServices, err = tx.Services().Find(state.ByName("name4"))
+		foundServices, err = FindServices(tx, ByName("name4"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 1)
 
 		// Invalid update.
 		invalidUpdate := serviceSet[0].Copy()
 		invalidUpdate.ID = "invalid"
-		assert.Error(t, tx.Services().Update(invalidUpdate), "invalid IDs should be rejected")
+		assert.Error(t, UpdateService(tx, invalidUpdate), "invalid IDs should be rejected")
 
 		return nil
 	})
 	assert.NoError(t, err)
 
 	// Delete
-	err = s.Update(func(tx state.Tx) error {
-		assert.NotNil(t, tx.Services().Get("id1"))
-		assert.NoError(t, tx.Services().Delete("id1"))
-		assert.Nil(t, tx.Services().Get("id1"))
-		foundServices, err := tx.Services().Find(state.ByName("name1"))
+	err = s.Update(func(tx Tx) error {
+		assert.NotNil(t, GetService(tx, "id1"))
+		assert.NoError(t, DeleteService(tx, "id1"))
+		assert.Nil(t, GetService(tx, "id1"))
+		foundServices, err := FindServices(tx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundServices)
 
-		assert.Equal(t, tx.Services().Delete("nonexistent"), state.ErrNotExist)
+		assert.Equal(t, DeleteService(tx, "nonexistent"), ErrNotExist)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -385,50 +385,50 @@ func TestStoreNetwork(t *testing.T) {
 	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	s.View(func(readTx state.ReadTx) {
-		allNetworks, err := readTx.Networks().Find(state.All)
+	s.View(func(readTx ReadTx) {
+		allNetworks, err := FindNetworks(readTx, All)
 		assert.NoError(t, err)
 		assert.Empty(t, allNetworks)
 	})
 
 	setupTestStore(t, s)
 
-	err := s.Update(func(tx state.Tx) error {
-		allNetworks, err := tx.Networks().Find(state.All)
+	err := s.Update(func(tx Tx) error {
+		allNetworks, err := FindNetworks(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allNetworks, len(networkSet))
 
-		assert.Error(t, tx.Networks().Create(networkSet[0]), "duplicate IDs must be rejected")
+		assert.Error(t, CreateNetwork(tx, networkSet[0]), "duplicate IDs must be rejected")
 		return nil
 	})
 	assert.NoError(t, err)
 
-	s.View(func(readTx state.ReadTx) {
-		assert.Equal(t, networkSet[0], readTx.Networks().Get("id1"))
-		assert.Equal(t, networkSet[1], readTx.Networks().Get("id2"))
-		assert.Equal(t, networkSet[2], readTx.Networks().Get("id3"))
+	s.View(func(readTx ReadTx) {
+		assert.Equal(t, networkSet[0], GetNetwork(readTx, "id1"))
+		assert.Equal(t, networkSet[1], GetNetwork(readTx, "id2"))
+		assert.Equal(t, networkSet[2], GetNetwork(readTx, "id3"))
 
-		foundNetworks, err := readTx.Networks().Find(state.ByName("name1"))
+		foundNetworks, err := FindNetworks(readTx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNetworks, 1)
-		foundNetworks, err = readTx.Networks().Find(state.ByName("name2"))
+		foundNetworks, err = FindNetworks(readTx, ByName("name2"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNetworks, 1)
-		foundNetworks, err = readTx.Networks().Find(state.ByName("invalid"))
+		foundNetworks, err = FindNetworks(readTx, ByName("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNetworks, 0)
 	})
 
-	err = s.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx Tx) error {
 		// Delete
-		assert.NotNil(t, tx.Networks().Get("id1"))
-		assert.NoError(t, tx.Networks().Delete("id1"))
-		assert.Nil(t, tx.Networks().Get("id1"))
-		foundNetworks, err := tx.Networks().Find(state.ByName("name1"))
+		assert.NotNil(t, GetNetwork(tx, "id1"))
+		assert.NoError(t, DeleteNetwork(tx, "id1"))
+		assert.Nil(t, GetNetwork(tx, "id1"))
+		foundNetworks, err := FindNetworks(tx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundNetworks)
 
-		assert.Equal(t, tx.Tasks().Delete("nonexistent"), state.ErrNotExist)
+		assert.Equal(t, DeleteNetwork(tx, "nonexistent"), ErrNotExist)
 		return nil
 	})
 
@@ -439,52 +439,52 @@ func TestStoreTask(t *testing.T) {
 	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	s.View(func(tx state.ReadTx) {
-		allTasks, err := tx.Tasks().Find(state.All)
+	s.View(func(tx ReadTx) {
+		allTasks, err := FindTasks(tx, All)
 		assert.NoError(t, err)
 		assert.Empty(t, allTasks)
 	})
 
 	setupTestStore(t, s)
 
-	err := s.Update(func(tx state.Tx) error {
-		allTasks, err := tx.Tasks().Find(state.All)
+	err := s.Update(func(tx Tx) error {
+		allTasks, err := FindTasks(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allTasks, len(taskSet))
 
-		assert.Error(t, tx.Tasks().Create(taskSet[0]), "duplicate IDs must be rejected")
+		assert.Error(t, CreateTask(tx, taskSet[0]), "duplicate IDs must be rejected")
 		return nil
 	})
 	assert.NoError(t, err)
 
-	s.View(func(readTx state.ReadTx) {
-		assert.Equal(t, taskSet[0], readTx.Tasks().Get("id1"))
-		assert.Equal(t, taskSet[1], readTx.Tasks().Get("id2"))
-		assert.Equal(t, taskSet[2], readTx.Tasks().Get("id3"))
+	s.View(func(readTx ReadTx) {
+		assert.Equal(t, taskSet[0], GetTask(readTx, "id1"))
+		assert.Equal(t, taskSet[1], GetTask(readTx, "id2"))
+		assert.Equal(t, taskSet[2], GetTask(readTx, "id3"))
 
-		foundTasks, err := readTx.Tasks().Find(state.ByName("name1"))
+		foundTasks, err := FindTasks(readTx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
-		foundTasks, err = readTx.Tasks().Find(state.ByName("name2"))
+		foundTasks, err = FindTasks(readTx, ByName("name2"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 2)
-		foundTasks, err = readTx.Tasks().Find(state.ByName("invalid"))
+		foundTasks, err = FindTasks(readTx, ByName("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 0)
 
-		foundTasks, err = readTx.Tasks().Find(state.ByNodeID(nodeSet[0].ID))
+		foundTasks, err = FindTasks(readTx, ByNodeID(nodeSet[0].ID))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
 		assert.Equal(t, foundTasks[0], taskSet[0])
-		foundTasks, err = readTx.Tasks().Find(state.ByNodeID("invalid"))
+		foundTasks, err = FindTasks(readTx, ByNodeID("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 0)
 
-		foundTasks, err = readTx.Tasks().Find(state.ByServiceID(serviceSet[0].ID))
+		foundTasks, err = FindTasks(readTx, ByServiceID(serviceSet[0].ID))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
 		assert.Equal(t, foundTasks[0], taskSet[1])
-		foundTasks, err = readTx.Tasks().Find(state.ByServiceID("invalid"))
+		foundTasks, err = FindTasks(readTx, ByServiceID("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 0)
 	})
@@ -496,31 +496,31 @@ func TestStoreTask(t *testing.T) {
 			Name: "name3",
 		},
 	}
-	err = s.Update(func(tx state.Tx) error {
-		assert.NotEqual(t, update, tx.Tasks().Get("id3"))
-		assert.NoError(t, tx.Tasks().Update(update))
-		assert.Equal(t, update, tx.Tasks().Get("id3"))
+	err = s.Update(func(tx Tx) error {
+		assert.NotEqual(t, update, GetTask(tx, "id3"))
+		assert.NoError(t, UpdateTask(tx, update))
+		assert.Equal(t, update, GetTask(tx, "id3"))
 
-		foundTasks, err := tx.Tasks().Find(state.ByName("name2"))
+		foundTasks, err := FindTasks(tx, ByName("name2"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
-		foundTasks, err = tx.Tasks().Find(state.ByName("name3"))
+		foundTasks, err = FindTasks(tx, ByName("name3"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
 
 		invalidUpdate := *taskSet[0]
 		invalidUpdate.ID = "invalid"
-		assert.Error(t, tx.Tasks().Update(&invalidUpdate), "invalid IDs should be rejected")
+		assert.Error(t, UpdateTask(tx, &invalidUpdate), "invalid IDs should be rejected")
 
 		// Delete
-		assert.NotNil(t, tx.Tasks().Get("id1"))
-		assert.NoError(t, tx.Tasks().Delete("id1"))
-		assert.Nil(t, tx.Tasks().Get("id1"))
-		foundTasks, err = tx.Tasks().Find(state.ByName("name1"))
+		assert.NotNil(t, GetTask(tx, "id1"))
+		assert.NoError(t, DeleteTask(tx, "id1"))
+		assert.Nil(t, GetTask(tx, "id1"))
+		foundTasks, err = FindTasks(tx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundTasks)
 
-		assert.Equal(t, tx.Tasks().Delete("nonexistent"), state.ErrNotExist)
+		assert.Equal(t, DeleteTask(tx, "nonexistent"), ErrNotExist)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -530,105 +530,105 @@ func TestStoreVolume(t *testing.T) {
 	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	s.View(func(readTx state.ReadTx) {
-		allVolumes, err := readTx.Volumes().Find(state.All)
+	s.View(func(readTx ReadTx) {
+		allVolumes, err := FindVolumes(readTx, All)
 		assert.NoError(t, err)
 		assert.Empty(t, allVolumes)
 	})
 
 	setupTestStore(t, s)
 
-	err := s.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx Tx) error {
 		assert.Equal(t,
-			tx.Volumes().Create(&api.Volume{
+			CreateVolume(tx, &api.Volume{
 				ID: "id1",
 				Spec: api.VolumeSpec{
 					Annotations: api.Annotations{
 						Name: "name4",
 					},
 				},
-			}), state.ErrExist, "duplicate IDs must be rejected")
+			}), ErrExist, "duplicate IDs must be rejected")
 
 		assert.Equal(t,
-			tx.Volumes().Create(&api.Volume{
+			CreateVolume(tx, &api.Volume{
 				ID: "id4",
 				Spec: api.VolumeSpec{
 					Annotations: api.Annotations{
 						Name: "name1",
 					},
 				},
-			}), state.ErrNameConflict, "duplicate names must be rejected")
+			}), ErrNameConflict, "duplicate names must be rejected")
 		return nil
 	})
 	assert.NoError(t, err)
 
-	s.View(func(readTx state.ReadTx) {
-		assert.Equal(t, volumeSet[0], readTx.Volumes().Get("id1"))
-		assert.Equal(t, volumeSet[1], readTx.Volumes().Get("id2"))
-		assert.Equal(t, volumeSet[2], readTx.Volumes().Get("id3"))
+	s.View(func(readTx ReadTx) {
+		assert.Equal(t, volumeSet[0], GetVolume(readTx, "id1"))
+		assert.Equal(t, volumeSet[1], GetVolume(readTx, "id2"))
+		assert.Equal(t, volumeSet[2], GetVolume(readTx, "id3"))
 
-		foundVolumes, err := readTx.Volumes().Find(state.ByName("name1"))
+		foundVolumes, err := FindVolumes(readTx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundVolumes, 1)
-		foundVolumes, err = readTx.Volumes().Find(state.ByName("invalid"))
+		foundVolumes, err = FindVolumes(readTx, ByName("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundVolumes, 0)
 	})
 
 	// Update.
-	err = s.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx Tx) error {
 		// Regular update.
 		update := volumeSet[0].Copy()
 		update.Spec.Annotations.Labels = map[string]string{
 			"foo": "bar",
 		}
 
-		assert.NotEqual(t, update, tx.Volumes().Get(update.ID))
-		assert.NoError(t, tx.Volumes().Update(update))
-		assert.Equal(t, update, tx.Volumes().Get(update.ID))
+		assert.NotEqual(t, update, GetVolume(tx, update.ID))
+		assert.NoError(t, UpdateVolume(tx, update))
+		assert.Equal(t, update, GetVolume(tx, update.ID))
 
 		// Name conflict.
-		update = tx.Volumes().Get(update.ID)
+		update = GetVolume(tx, update.ID)
 		update.Spec.Annotations.Name = "name2"
-		assert.Equal(t, tx.Volumes().Update(update), state.ErrNameConflict, "duplicate names should be rejected")
+		assert.Equal(t, UpdateVolume(tx, update), ErrNameConflict, "duplicate names should be rejected")
 
 		// Name change.
-		update = tx.Volumes().Get(update.ID)
-		foundVolumes, err := tx.Volumes().Find(state.ByName("name1"))
+		update = GetVolume(tx, update.ID)
+		foundVolumes, err := FindVolumes(tx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundVolumes, 1)
-		foundVolumes, err = tx.Volumes().Find(state.ByName("name4"))
+		foundVolumes, err = FindVolumes(tx, ByName("name4"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundVolumes)
 
 		update.Spec.Annotations.Name = "name4"
-		assert.NoError(t, tx.Volumes().Update(update))
-		foundVolumes, err = tx.Volumes().Find(state.ByName("name1"))
+		assert.NoError(t, UpdateVolume(tx, update))
+		foundVolumes, err = FindVolumes(tx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundVolumes)
-		foundVolumes, err = tx.Volumes().Find(state.ByName("name4"))
+		foundVolumes, err = FindVolumes(tx, ByName("name4"))
 		assert.NoError(t, err)
 		assert.Len(t, foundVolumes, 1)
 
 		// Invalid update.
 		invalidUpdate := volumeSet[0].Copy()
 		invalidUpdate.ID = "invalid"
-		assert.Error(t, tx.Volumes().Update(invalidUpdate), "invalid IDs should be rejected")
+		assert.Error(t, UpdateVolume(tx, invalidUpdate), "invalid IDs should be rejected")
 
 		return nil
 	})
 	assert.NoError(t, err)
 
 	// Delete
-	err = s.Update(func(tx state.Tx) error {
-		assert.NotNil(t, tx.Volumes().Get("id1"))
-		assert.NoError(t, tx.Volumes().Delete("id1"))
-		assert.Nil(t, tx.Volumes().Get("id1"))
-		foundVolumes, err := tx.Volumes().Find(state.ByName("name1"))
+	err = s.Update(func(tx Tx) error {
+		assert.NotNil(t, GetVolume(tx, "id1"))
+		assert.NoError(t, DeleteVolume(tx, "id1"))
+		assert.Nil(t, GetVolume(tx, "id1"))
+		foundVolumes, err := FindVolumes(tx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundVolumes)
 
-		assert.Equal(t, tx.Volumes().Delete("nonexistent"), state.ErrNotExist)
+		assert.Equal(t, DeleteVolume(tx, "nonexistent"), ErrNotExist)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -643,55 +643,55 @@ func TestStoreSnapshot(t *testing.T) {
 	s2 := NewMemoryStore(nil)
 	assert.NotNil(t, s2)
 
-	copyToS2 := func(readTx state.ReadTx) error {
-		return s2.Update(func(tx state.Tx) error {
+	copyToS2 := func(readTx ReadTx) error {
+		return s2.Update(func(tx Tx) error {
 			// Copy over new data
-			nodes, err := readTx.Nodes().Find(state.All)
+			nodes, err := FindNodes(readTx, All)
 			if err != nil {
 				return err
 			}
 			for _, n := range nodes {
-				if err := tx.Nodes().Create(n); err != nil {
+				if err := CreateNode(tx, n); err != nil {
 					return err
 				}
 			}
 
-			tasks, err := readTx.Tasks().Find(state.All)
+			tasks, err := FindTasks(readTx, All)
 			if err != nil {
 				return err
 			}
 			for _, t := range tasks {
-				if err := tx.Tasks().Create(t); err != nil {
+				if err := CreateTask(tx, t); err != nil {
 					return err
 				}
 			}
 
-			services, err := readTx.Services().Find(state.All)
+			services, err := FindServices(readTx, All)
 			if err != nil {
 				return err
 			}
-			for _, j := range services {
-				if err := tx.Services().Create(j); err != nil {
+			for _, s := range services {
+				if err := CreateService(tx, s); err != nil {
 					return err
 				}
 			}
 
-			networks, err := readTx.Networks().Find(state.All)
+			networks, err := FindNetworks(readTx, All)
 			if err != nil {
 				return err
 			}
 			for _, n := range networks {
-				if err := tx.Networks().Create(n); err != nil {
+				if err := CreateNetwork(tx, n); err != nil {
 					return err
 				}
 			}
 
-			volumes, err := readTx.Volumes().Find(state.All)
+			volumes, err := FindVolumes(readTx, All)
 			if err != nil {
 				return err
 			}
 			for _, v := range volumes {
-				if err := tx.Volumes().Create(v); err != nil {
+				if err := CreateVolume(tx, v); err != nil {
 					return err
 				}
 			}
@@ -701,22 +701,22 @@ func TestStoreSnapshot(t *testing.T) {
 	}
 
 	// Fork
-	watcher, cancel, err := state.ViewAndWatch(s1, copyToS2)
+	watcher, cancel, err := ViewAndWatch(s1, copyToS2)
 	defer cancel()
 	assert.NoError(t, err)
 
-	s2.View(func(tx2 state.ReadTx) {
-		assert.Equal(t, nodeSet[0], tx2.Nodes().Get("id1"))
-		assert.Equal(t, nodeSet[1], tx2.Nodes().Get("id2"))
-		assert.Equal(t, nodeSet[2], tx2.Nodes().Get("id3"))
+	s2.View(func(tx2 ReadTx) {
+		assert.Equal(t, nodeSet[0], GetNode(tx2, "id1"))
+		assert.Equal(t, nodeSet[1], GetNode(tx2, "id2"))
+		assert.Equal(t, nodeSet[2], GetNode(tx2, "id3"))
 
-		assert.Equal(t, serviceSet[0], tx2.Services().Get("id1"))
-		assert.Equal(t, serviceSet[1], tx2.Services().Get("id2"))
-		assert.Equal(t, serviceSet[2], tx2.Services().Get("id3"))
+		assert.Equal(t, serviceSet[0], GetService(tx2, "id1"))
+		assert.Equal(t, serviceSet[1], GetService(tx2, "id2"))
+		assert.Equal(t, serviceSet[2], GetService(tx2, "id3"))
 
-		assert.Equal(t, taskSet[0], tx2.Tasks().Get("id1"))
-		assert.Equal(t, taskSet[1], tx2.Tasks().Get("id2"))
-		assert.Equal(t, taskSet[2], tx2.Tasks().Get("id3"))
+		assert.Equal(t, taskSet[0], GetTask(tx2, "id1"))
+		assert.Equal(t, taskSet[1], GetTask(tx2, "id2"))
+		assert.Equal(t, taskSet[2], GetTask(tx2, "id3"))
 	})
 
 	// Create node
@@ -729,17 +729,17 @@ func TestStoreSnapshot(t *testing.T) {
 		},
 	}
 
-	err = s1.Update(func(tx1 state.Tx) error {
-		assert.NoError(t, tx1.Nodes().Create(createNode))
+	err = s1.Update(func(tx1 Tx) error {
+		assert.NoError(t, CreateNode(tx1, createNode))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	assert.NoError(t, state.Apply(s2, <-watcher))
+	assert.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	s2.View(func(tx2 state.ReadTx) {
-		assert.Equal(t, createNode, tx2.Nodes().Get("id4"))
+	s2.View(func(tx2 ReadTx) {
+		assert.Equal(t, createNode, GetNode(tx2, "id4"))
 	})
 
 	// Update node
@@ -752,31 +752,31 @@ func TestStoreSnapshot(t *testing.T) {
 		},
 	}
 
-	err = s1.Update(func(tx1 state.Tx) error {
-		assert.NoError(t, tx1.Nodes().Update(updateNode))
+	err = s1.Update(func(tx1 Tx) error {
+		assert.NoError(t, UpdateNode(tx1, updateNode))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	assert.NoError(t, state.Apply(s2, <-watcher))
+	assert.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	s2.View(func(tx2 state.ReadTx) {
-		assert.Equal(t, updateNode, tx2.Nodes().Get("id3"))
+	s2.View(func(tx2 ReadTx) {
+		assert.Equal(t, updateNode, GetNode(tx2, "id3"))
 	})
 
-	err = s1.Update(func(tx1 state.Tx) error {
+	err = s1.Update(func(tx1 Tx) error {
 		// Delete node
-		assert.NoError(t, tx1.Nodes().Delete("id1"))
+		assert.NoError(t, DeleteNode(tx1, "id1"))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	assert.NoError(t, state.Apply(s2, <-watcher))
+	assert.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	s2.View(func(tx2 state.ReadTx) {
-		assert.Nil(t, tx2.Nodes().Get("id1"))
+	s2.View(func(tx2 ReadTx) {
+		assert.Nil(t, GetNode(tx2, "id1"))
 	})
 
 	// Create service
@@ -789,48 +789,48 @@ func TestStoreSnapshot(t *testing.T) {
 		},
 	}
 
-	err = s1.Update(func(tx1 state.Tx) error {
-		assert.NoError(t, tx1.Services().Create(createService))
+	err = s1.Update(func(tx1 Tx) error {
+		assert.NoError(t, CreateService(tx1, createService))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	assert.NoError(t, state.Apply(s2, <-watcher))
+	assert.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	s2.View(func(tx2 state.ReadTx) {
-		assert.Equal(t, createService, tx2.Services().Get("id4"))
+	s2.View(func(tx2 ReadTx) {
+		assert.Equal(t, createService, GetService(tx2, "id4"))
 	})
 
 	// Update service
 	updateService := serviceSet[2].Copy()
 	updateService.Spec.Annotations.Name = "new-name"
-	err = s1.Update(func(tx1 state.Tx) error {
-		assert.NotEqual(t, updateService, tx1.Services().Get(updateService.ID))
-		assert.NoError(t, tx1.Services().Update(updateService))
+	err = s1.Update(func(tx1 Tx) error {
+		assert.NotEqual(t, updateService, GetService(tx1, updateService.ID))
+		assert.NoError(t, UpdateService(tx1, updateService))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	assert.NoError(t, state.Apply(s2, <-watcher))
+	assert.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	s2.View(func(tx2 state.ReadTx) {
-		assert.Equal(t, updateService, tx2.Services().Get("id3"))
+	s2.View(func(tx2 ReadTx) {
+		assert.Equal(t, updateService, GetService(tx2, "id3"))
 	})
 
-	err = s1.Update(func(tx1 state.Tx) error {
+	err = s1.Update(func(tx1 Tx) error {
 		// Delete service
-		assert.NoError(t, tx1.Services().Delete("id1"))
+		assert.NoError(t, DeleteService(tx1, "id1"))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	assert.NoError(t, state.Apply(s2, <-watcher))
+	assert.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	s2.View(func(tx2 state.ReadTx) {
-		assert.Nil(t, tx2.Services().Get("id1"))
+	s2.View(func(tx2 ReadTx) {
+		assert.Nil(t, GetService(tx2, "id1"))
 	})
 
 	// Create task
@@ -841,17 +841,17 @@ func TestStoreSnapshot(t *testing.T) {
 		},
 	}
 
-	err = s1.Update(func(tx1 state.Tx) error {
-		assert.NoError(t, tx1.Tasks().Create(createTask))
+	err = s1.Update(func(tx1 Tx) error {
+		assert.NoError(t, CreateTask(tx1, createTask))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	assert.NoError(t, state.Apply(s2, <-watcher))
+	assert.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	s2.View(func(tx2 state.ReadTx) {
-		assert.Equal(t, createTask, tx2.Tasks().Get("id4"))
+	s2.View(func(tx2 ReadTx) {
+		assert.Equal(t, createTask, GetTask(tx2, "id4"))
 	})
 
 	// Update task
@@ -862,29 +862,29 @@ func TestStoreSnapshot(t *testing.T) {
 		},
 	}
 
-	err = s1.Update(func(tx1 state.Tx) error {
-		assert.NoError(t, tx1.Tasks().Update(updateTask))
+	err = s1.Update(func(tx1 Tx) error {
+		assert.NoError(t, UpdateTask(tx1, updateTask))
 		return nil
 	})
 	assert.NoError(t, err)
-	assert.NoError(t, state.Apply(s2, <-watcher))
+	assert.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	s2.View(func(tx2 state.ReadTx) {
-		assert.Equal(t, updateTask, tx2.Tasks().Get("id3"))
+	s2.View(func(tx2 ReadTx) {
+		assert.Equal(t, updateTask, GetTask(tx2, "id3"))
 	})
 
-	err = s1.Update(func(tx1 state.Tx) error {
+	err = s1.Update(func(tx1 Tx) error {
 		// Delete task
-		assert.NoError(t, tx1.Tasks().Delete("id1"))
+		assert.NoError(t, DeleteTask(tx1, "id1"))
 		return nil
 	})
 	assert.NoError(t, err)
-	assert.NoError(t, state.Apply(s2, <-watcher))
+	assert.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
-	s2.View(func(tx2 state.ReadTx) {
-		assert.Nil(t, tx2.Tasks().Get("id1"))
+	s2.View(func(tx2 ReadTx) {
+		assert.Nil(t, GetTask(tx2, "id1"))
 	})
 }
 
@@ -893,7 +893,7 @@ func TestFailedTransaction(t *testing.T) {
 	assert.NotNil(t, s)
 
 	// Create one node
-	err := s.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx Tx) error {
 		n := &api.Node{
 			ID: "id1",
 			Description: &api.NodeDescription{
@@ -901,13 +901,13 @@ func TestFailedTransaction(t *testing.T) {
 			},
 		}
 
-		assert.NoError(t, tx.Nodes().Create(n))
+		assert.NoError(t, CreateNode(tx, n))
 		return nil
 	})
 	assert.NoError(t, err)
 
 	// Create a second node, but then roll back the transaction
-	err = s.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx Tx) error {
 		n := &api.Node{
 			ID: "id2",
 			Description: &api.NodeDescription{
@@ -915,19 +915,19 @@ func TestFailedTransaction(t *testing.T) {
 			},
 		}
 
-		assert.NoError(t, tx.Nodes().Create(n))
+		assert.NoError(t, CreateNode(tx, n))
 		return errors.New("rollback")
 	})
 	assert.Error(t, err)
 
-	s.View(func(tx state.ReadTx) {
-		foundNodes, err := tx.Nodes().Find(state.All)
+	s.View(func(tx ReadTx) {
+		foundNodes, err := FindNodes(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
-		foundNodes, err = tx.Nodes().Find(state.ByName("name1"))
+		foundNodes, err = FindNodes(tx, ByName("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
-		foundNodes, err = tx.Nodes().Find(state.ByName("name2"))
+		foundNodes, err = FindNodes(tx, ByName("name2"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 0)
 	})
@@ -968,26 +968,26 @@ func TestVersion(t *testing.T) {
 			},
 		},
 	}
-	err := s.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Nodes().Create(n))
+	err := s.Update(func(tx Tx) error {
+		assert.NoError(t, CreateNode(tx, n))
 		return nil
 	})
 	assert.NoError(t, err)
 
 	// Update the node using an object fetched from the store.
 	n.Spec.Annotations.Name = "name2"
-	err = s.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Nodes().Update(n))
-		retrievedNode = tx.Nodes().Get(n.ID)
+	err = s.Update(func(tx Tx) error {
+		assert.NoError(t, UpdateNode(tx, n))
+		retrievedNode = GetNode(tx, n.ID)
 		return nil
 	})
 	assert.NoError(t, err)
 
 	// Try again, this time using the retrieved node.
 	retrievedNode.Spec.Annotations.Name = "name2"
-	err = s.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Nodes().Update(retrievedNode))
-		retrievedNode2 = tx.Nodes().Get(n.ID)
+	err = s.Update(func(tx Tx) error {
+		assert.NoError(t, UpdateNode(tx, retrievedNode))
+		retrievedNode2 = GetNode(tx, n.ID)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -995,8 +995,8 @@ func TestVersion(t *testing.T) {
 	// Try to update retrievedNode again. This should fail because it was
 	// already used to perform an update.
 	retrievedNode.Spec.Annotations.Name = "name3"
-	err = s.Update(func(tx state.Tx) error {
-		assert.Equal(t, state.ErrSequenceConflict, tx.Nodes().Update(n))
+	err = s.Update(func(tx Tx) error {
+		assert.Equal(t, ErrSequenceConflict, UpdateNode(tx, n))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -1004,8 +1004,8 @@ func TestVersion(t *testing.T) {
 	// But using retrievedNode2 should work, since it has the latest
 	// sequence information.
 	retrievedNode2.Spec.Annotations.Name = "name3"
-	err = s.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Nodes().Update(retrievedNode2))
+	err = s.Update(func(tx Tx) error {
+		assert.NoError(t, UpdateNode(tx, retrievedNode2))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -1020,7 +1020,7 @@ func TestBatch(t *testing.T) {
 	defer cancel()
 
 	// Create 405 nodes. Should get split across 3 transactions.
-	committed, err := s.Batch(func(batch state.Batch) error {
+	committed, err := s.Batch(func(batch *Batch) error {
 		for i := 0; i != 2*MaxChangesPerTransaction+5; i++ {
 			n := &api.Node{
 				ID: "id" + strconv.Itoa(i),
@@ -1031,8 +1031,8 @@ func TestBatch(t *testing.T) {
 				},
 			}
 
-			batch.Update(func(tx state.Tx) error {
-				assert.NoError(t, tx.Nodes().Create(n))
+			batch.Update(func(tx Tx) error {
+				assert.NoError(t, CreateNode(tx, n))
 				return nil
 			})
 		}
@@ -1083,7 +1083,7 @@ func TestBatchFailure(t *testing.T) {
 	defer cancel()
 
 	// Return an error partway through a transaction.
-	committed, err := s.Batch(func(batch state.Batch) error {
+	committed, err := s.Batch(func(batch *Batch) error {
 		for i := 0; ; i++ {
 			n := &api.Node{
 				ID: "id" + strconv.Itoa(i),
@@ -1094,8 +1094,8 @@ func TestBatchFailure(t *testing.T) {
 				},
 			}
 
-			batch.Update(func(tx state.Tx) error {
-				assert.NoError(t, tx.Nodes().Create(n))
+			batch.Update(func(tx Tx) error {
+				assert.NoError(t, CreateNode(tx, n))
 				return nil
 			})
 			if i == MaxChangesPerTransaction+8 {
@@ -1132,7 +1132,7 @@ func TestStoreSaveRestore(t *testing.T) {
 	setupTestStore(t, s1)
 
 	var snapshot *api.StoreSnapshot
-	s1.View(func(tx state.ReadTx) {
+	s1.View(func(tx ReadTx) {
 		var err error
 		snapshot, err = s1.Save(tx)
 		assert.NoError(t, err)
@@ -1144,29 +1144,29 @@ func TestStoreSaveRestore(t *testing.T) {
 	err := s2.Restore(snapshot)
 	assert.NoError(t, err)
 
-	s2.View(func(tx state.ReadTx) {
-		allTasks, err := tx.Tasks().Find(state.All)
+	s2.View(func(tx ReadTx) {
+		allTasks, err := FindTasks(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allTasks, len(taskSet))
 		for i := range allTasks {
 			assert.Equal(t, allTasks[i], taskSet[i])
 		}
 
-		allNodes, err := tx.Nodes().Find(state.All)
+		allNodes, err := FindNodes(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allNodes, len(nodeSet))
 		for i := range allNodes {
 			assert.Equal(t, allNodes[i], nodeSet[i])
 		}
 
-		allNetworks, err := tx.Networks().Find(state.All)
+		allNetworks, err := FindNetworks(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allNetworks, len(networkSet))
 		for i := range allNetworks {
 			assert.Equal(t, allNetworks[i], networkSet[i])
 		}
 
-		allServices, err := tx.Services().Find(state.All)
+		allServices, err := FindServices(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allServices, len(serviceSet))
 		for i := range allServices {
@@ -1177,7 +1177,7 @@ func TestStoreSaveRestore(t *testing.T) {
 
 const benchmarkNumNodes = 10000
 
-func setupNodes(b *testing.B, n int) (state.Store, []string) {
+func setupNodes(b *testing.B, n int) (*MemoryStore, []string) {
 	s := NewMemoryStore(nil)
 
 	nodeIDs := make([]string, n)
@@ -1188,9 +1188,9 @@ func setupNodes(b *testing.B, n int) (state.Store, []string) {
 
 	b.ResetTimer()
 
-	_ = s.Update(func(tx1 state.Tx) error {
+	_ = s.Update(func(tx1 Tx) error {
 		for i := 0; i < n; i++ {
-			_ = tx1.Nodes().Create(&api.Node{
+			_ = CreateNode(tx1, &api.Node{
 				ID: nodeIDs[i],
 				Spec: api.NodeSpec{
 					Annotations: api.Annotations{
@@ -1212,9 +1212,9 @@ func BenchmarkCreateNode(b *testing.B) {
 func BenchmarkUpdateNode(b *testing.B) {
 	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
-	_ = s.Update(func(tx1 state.Tx) error {
+	_ = s.Update(func(tx1 Tx) error {
 		for i := 0; i < b.N; i++ {
-			_ = tx1.Nodes().Update(&api.Node{
+			_ = UpdateNode(tx1, &api.Node{
 				ID: nodeIDs[i%benchmarkNumNodes],
 				Spec: api.NodeSpec{
 					Annotations: api.Annotations{
@@ -1231,8 +1231,8 @@ func BenchmarkUpdateNodeTransaction(b *testing.B) {
 	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = s.Update(func(tx1 state.Tx) error {
-			_ = tx1.Nodes().Update(&api.Node{
+		_ = s.Update(func(tx1 Tx) error {
+			_ = UpdateNode(tx1, &api.Node{
 				ID: nodeIDs[i%benchmarkNumNodes],
 				Spec: api.NodeSpec{
 					Annotations: api.Annotations{
@@ -1249,8 +1249,8 @@ func BenchmarkDeleteNodeTransaction(b *testing.B) {
 	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = s.Update(func(tx1 state.Tx) error {
-			_ = tx1.Nodes().Delete(nodeIDs[0])
+		_ = s.Update(func(tx1 Tx) error {
+			_ = DeleteNode(tx1, nodeIDs[0])
 			// Don't actually commit deletions, so we can delete
 			// things repeatedly to satisfy the benchmark structure.
 			return errors.New("don't commit this")
@@ -1261,9 +1261,9 @@ func BenchmarkDeleteNodeTransaction(b *testing.B) {
 func BenchmarkGetNode(b *testing.B) {
 	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
-	s.View(func(tx1 state.ReadTx) {
+	s.View(func(tx1 ReadTx) {
 		for i := 0; i < b.N; i++ {
-			_ = tx1.Nodes().Get(nodeIDs[i%benchmarkNumNodes])
+			_ = GetNode(tx1, nodeIDs[i%benchmarkNumNodes])
 		}
 	})
 }
@@ -1271,9 +1271,9 @@ func BenchmarkGetNode(b *testing.B) {
 func BenchmarkFindAllNodes(b *testing.B) {
 	s, _ := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
-	s.View(func(tx1 state.ReadTx) {
+	s.View(func(tx1 ReadTx) {
 		for i := 0; i < b.N; i++ {
-			_, _ = tx1.Nodes().Find(state.All)
+			_, _ = FindNodes(tx1, All)
 		}
 	})
 }
@@ -1281,9 +1281,9 @@ func BenchmarkFindAllNodes(b *testing.B) {
 func BenchmarkFindNodeByName(b *testing.B) {
 	s, _ := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
-	s.View(func(tx1 state.ReadTx) {
+	s.View(func(tx1 ReadTx) {
 		for i := 0; i < b.N; i++ {
-			_, _ = tx1.Nodes().Find(state.ByName("name" + strconv.Itoa(i)))
+			_, _ = FindNodes(tx1, ByName("name"+strconv.Itoa(i)))
 		}
 	})
 }
@@ -1291,9 +1291,9 @@ func BenchmarkFindNodeByName(b *testing.B) {
 func BenchmarkFindNodeByQuery(b *testing.B) {
 	s, _ := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
-	s.View(func(tx1 state.ReadTx) {
+	s.View(func(tx1 ReadTx) {
 		for i := 0; i < b.N; i++ {
-			_, _ = tx1.Nodes().Find(state.ByQuery("name" + strconv.Itoa(i)))
+			_, _ = FindNodes(tx1, ByQuery("name"+strconv.Itoa(i)))
 		}
 	})
 }
@@ -1309,8 +1309,8 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 		go func() {
 			defer wg.Done()
 			for i := 0; i < b.N; i++ {
-				_ = s.Update(func(tx1 state.Tx) error {
-					_ = tx1.Nodes().Update(&api.Node{
+				_ = s.Update(func(tx1 Tx) error {
+					_ = UpdateNode(tx1, &api.Node{
 						ID: nodeIDs[i%benchmarkNumNodes],
 						Spec: api.NodeSpec{
 							Annotations: api.Annotations{
@@ -1328,9 +1328,9 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			s.View(func(tx1 state.ReadTx) {
+			s.View(func(tx1 ReadTx) {
 				for i := 0; i < b.N; i++ {
-					_ = tx1.Nodes().Get(nodeIDs[i%benchmarkNumNodes])
+					_ = GetNode(tx1, nodeIDs[i%benchmarkNumNodes])
 				}
 			})
 		}()

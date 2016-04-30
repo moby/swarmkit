@@ -13,18 +13,18 @@ import (
 
 func TestOrchestratorRestartAlways(t *testing.T) {
 	ctx := context.Background()
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
 
-	orchestrator := New(store)
+	orchestrator := New(s)
 
-	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
 	// started. This should result in two tasks when the orchestrator
 	// starts up.
-	err := store.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx store.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
 			Spec: api.ServiceSpec{
@@ -39,7 +39,7 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, tx.Services().Create(j1))
+		assert.NoError(t, store.CreateService(tx, j1))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -60,8 +60,8 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
 	updatedTask1.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
-	err = store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Update(updatedTask1))
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -77,8 +77,8 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 	// Mark the second task as completed. Confirm that it gets restarted.
 	updatedTask2 := observedTask2.Copy()
 	updatedTask2.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
-	err = store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Update(updatedTask2))
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -96,18 +96,18 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 
 func TestOrchestratorRestartOnFailure(t *testing.T) {
 	ctx := context.Background()
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
 
-	orchestrator := New(store)
+	orchestrator := New(s)
 
-	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
 	// started. This should result in two tasks when the orchestrator
 	// starts up.
-	err := store.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx store.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
 			Spec: api.ServiceSpec{
@@ -122,7 +122,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, tx.Services().Create(j1))
+		assert.NoError(t, store.CreateService(tx, j1))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -144,8 +144,8 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	updatedTask1 := observedTask1.Copy()
 	updatedTask1.Status.TerminalState = api.TaskStateFailed
 	updatedTask1.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
-	err = store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Update(updatedTask1))
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -161,8 +161,8 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	// Mark the second task as completed. Confirm that it does not get restarted.
 	updatedTask2 := observedTask2.Copy()
 	updatedTask2.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
-	err = store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Update(updatedTask2))
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -183,18 +183,18 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 
 func TestOrchestratorRestartNever(t *testing.T) {
 	ctx := context.Background()
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
 
-	orchestrator := New(store)
+	orchestrator := New(s)
 
-	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
 	// started. This should result in two tasks when the orchestrator
 	// starts up.
-	err := store.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx store.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
 			Spec: api.ServiceSpec{
@@ -209,7 +209,7 @@ func TestOrchestratorRestartNever(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, tx.Services().Create(j1))
+		assert.NoError(t, store.CreateService(tx, j1))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -231,8 +231,8 @@ func TestOrchestratorRestartNever(t *testing.T) {
 	updatedTask1 := observedTask1.Copy()
 	updatedTask1.Status.TerminalState = api.TaskStateFailed
 	updatedTask1.Status.State = api.TaskStateDead
-	err = store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Update(updatedTask1))
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -251,8 +251,8 @@ func TestOrchestratorRestartNever(t *testing.T) {
 	// Mark the second task as completed. Confirm that it does not get restarted.
 	updatedTask2 := observedTask2.Copy()
 	updatedTask2.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
-	err = store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Update(updatedTask2))
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -272,18 +272,18 @@ func TestOrchestratorRestartNever(t *testing.T) {
 
 func TestOrchestratorRestartDelay(t *testing.T) {
 	ctx := context.Background()
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
 
-	orchestrator := New(store)
+	orchestrator := New(s)
 
-	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
 	// started. This should result in two tasks when the orchestrator
 	// starts up.
-	err := store.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx store.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
 			Spec: api.ServiceSpec{
@@ -299,7 +299,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, tx.Services().Create(j1))
+		assert.NoError(t, store.CreateService(tx, j1))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -321,8 +321,8 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 	updatedTask1 := observedTask1.Copy()
 	updatedTask1.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
 	before := time.Now()
-	err = store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Update(updatedTask1))
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
 	})
 	assert.NoError(t, err)

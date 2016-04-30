@@ -4,7 +4,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
-	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -12,12 +12,12 @@ import (
 
 // Server is the CA API gRPC server.
 type Server struct {
-	store          state.WatchableStore
+	store          *store.MemoryStore
 	securityConfig *ManagerSecurityConfig
 }
 
 // NewServer creates a CA API server.
-func NewServer(store state.WatchableStore, securityConfig *ManagerSecurityConfig) *Server {
+func NewServer(store *store.MemoryStore, securityConfig *ManagerSecurityConfig) *Server {
 	return &Server{
 		store:          store,
 		securityConfig: securityConfig,
@@ -31,11 +31,11 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 	}
 
 	var rCertificate *api.RegisteredCertificate
-	s.store.View(func(tx state.ReadTx) {
-		rCertificate = tx.RegisteredCertificates().Get(request.Token)
+	s.store.View(func(tx store.ReadTx) {
+		rCertificate = store.GetRegisteredCertificate(tx, request.Token)
 	})
 	if rCertificate == nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
+		return nil, grpc.Errorf(codes.NotFound, codes.NotFound.String())
 	}
 
 	// If this manager isn't a rootCA we can't issue certificates
@@ -58,13 +58,16 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 			State: api.IssuanceStateCompleted,
 		}
 
-		err = s.store.Update(func(tx state.Tx) error {
-			latestCertificate := tx.RegisteredCertificates().Get(request.Token)
+		err = s.store.Update(func(tx store.Tx) error {
+			latestCertificate := store.GetRegisteredCertificate(tx, request.Token)
+			if latestCertificate == nil {
+				return grpc.Errorf(codes.NotFound, codes.NotFound.String())
+			}
 			if latestCertificate.Status.State == api.IssuanceStateCompleted {
 				rCertificate = latestCertificate
 				return nil
 			}
-			return tx.RegisteredCertificates().Update(rCertificate)
+			return store.UpdateRegisteredCertificate(tx, rCertificate)
 		})
 		if err != nil {
 			return nil, grpc.Errorf(codes.InvalidArgument, err.Error())
@@ -93,7 +96,7 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 	log.G(ctx).Debugf("(*Server).IssueCertificate: added issue certificate entry for Role=%s with Token=%s", request.Role, token)
 
 	var certificate *api.RegisteredCertificate
-	err := s.store.Update(func(tx state.Tx) error {
+	err := s.store.Update(func(tx store.Tx) error {
 		certificate = &api.RegisteredCertificate{
 			ID:   token,
 			CSR:  request.CSR,
@@ -102,7 +105,7 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 				State: api.IssuanceStatePending,
 			},
 		}
-		return tx.RegisteredCertificates().Create(certificate)
+		return store.CreateRegisteredCertificate(tx, certificate)
 	})
 	if err != nil {
 		return nil, err

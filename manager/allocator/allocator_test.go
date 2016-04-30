@@ -10,24 +10,24 @@ import (
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
-	memorystore "github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var (
-	store = memorystore.NewMemoryStore(nil)
+	s = store.NewMemoryStore(nil)
 )
 
 func TestAllocator(t *testing.T) {
-	assert.NotNil(t, store)
+	assert.NotNil(t, s)
 
-	a, err := New(store)
+	a, err := New(s)
 	assert.NoError(t, err)
 	assert.NotNil(t, a)
 
 	// Try adding some objects to store before allocator is started
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		n1 := &api.Network{
 			ID: "testID1",
 			Spec: api.NetworkSpec{
@@ -36,11 +36,8 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, tx.Networks().Create(n1))
-		return nil
-	}))
+		assert.NoError(t, store.CreateNetwork(tx, n1))
 
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		s1 := &api.Service{
 			ID: "testServiceID1",
 			Spec: api.ServiceSpec{
@@ -50,11 +47,8 @@ func TestAllocator(t *testing.T) {
 				Endpoint: &api.Endpoint{},
 			},
 		}
-		assert.NoError(t, tx.Services().Create(s1))
-		return nil
-	}))
+		assert.NoError(t, store.CreateService(tx, s1))
 
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		t1 := &api.Task{
 			ID: "testTaskID1",
 			Status: api.TaskStatus{
@@ -74,15 +68,15 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, tx.Tasks().Create(t1))
+		assert.NoError(t, store.CreateTask(tx, t1))
 		return nil
 	}))
 
-	netWatch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateNetwork{}, state.EventDeleteNetwork{})
+	netWatch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateNetwork{}, state.EventDeleteNetwork{})
 	defer cancel()
-	taskWatch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{}, state.EventDeleteTask{})
+	taskWatch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{}, state.EventDeleteTask{})
 	defer cancel()
-	serviceWatch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateService{}, state.EventDeleteService{})
+	serviceWatch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateService{}, state.EventDeleteService{})
 	defer cancel()
 
 	// Start allocator
@@ -95,8 +89,8 @@ func TestAllocator(t *testing.T) {
 	watchTask(t, taskWatch, false, isValidTask)
 	watchService(t, serviceWatch, false, nil)
 
-	//Add new networks/tasks/services after allocator is started.
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
+	// Add new networks/tasks/services after allocator is started.
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		n2 := &api.Network{
 			ID: "testID2",
 			Spec: api.NetworkSpec{
@@ -105,13 +99,13 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, tx.Networks().Create(n2))
+		assert.NoError(t, store.CreateNetwork(tx, n2))
 		return nil
 	}))
 
 	watchNetwork(t, netWatch, false, isValidNetwork)
 
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		s2 := &api.Service{
 			ID: "testServiceID2",
 			Spec: api.ServiceSpec{
@@ -121,13 +115,13 @@ func TestAllocator(t *testing.T) {
 				Endpoint: &api.Endpoint{},
 			},
 		}
-		assert.NoError(t, tx.Services().Create(s2))
+		assert.NoError(t, store.CreateService(tx, s2))
 		return nil
 	}))
 
 	watchService(t, serviceWatch, false, nil)
 
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		t2 := &api.Task{
 			ID: "testTaskID2",
 			Status: api.TaskStatus{
@@ -149,14 +143,14 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, tx.Tasks().Create(t2))
+		assert.NoError(t, store.CreateTask(tx, t2))
 		return nil
 	}))
 
 	watchTask(t, taskWatch, false, isValidTask)
 
 	// Now try adding a task which depends on a network before adding the network.
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		t3 := &api.Task{
 			ID: "testTaskID3",
 			Status: api.TaskStatus{
@@ -177,7 +171,7 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, tx.Tasks().Create(t3))
+		assert.NoError(t, store.CreateTask(tx, t3))
 		return nil
 	}))
 
@@ -186,7 +180,7 @@ func TestAllocator(t *testing.T) {
 	// going through
 	time.Sleep(10 * time.Millisecond)
 
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		n3 := &api.Network{
 			ID: "testID3",
 			Spec: api.NetworkSpec{
@@ -195,20 +189,20 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, tx.Networks().Create(n3))
+		assert.NoError(t, store.CreateNetwork(tx, n3))
 		return nil
 	}))
 
 	watchNetwork(t, netWatch, false, isValidNetwork)
 	watchTask(t, taskWatch, false, isValidTask)
 
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Delete("testTaskID3"))
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteTask(tx, "testTaskID3"))
 		return nil
 	}))
 	watchTask(t, taskWatch, false, isValidTask)
 
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		t5 := &api.Task{
 			ID: "testTaskID5",
 			Status: api.TaskStatus{
@@ -222,26 +216,26 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, tx.Tasks().Create(t5))
+		assert.NoError(t, store.CreateTask(tx, t5))
 		return nil
 	}))
 	watchTask(t, taskWatch, false, isValidTask)
 
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Networks().Delete("testID3"))
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteNetwork(tx, "testID3"))
 		return nil
 	}))
 	watchNetwork(t, netWatch, false, isValidNetwork)
 
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Services().Delete("testServiceID2"))
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteService(tx, "testServiceID2"))
 		return nil
 	}))
 	watchService(t, serviceWatch, false, nil)
 
 	// Try to create a task with no network attachments and test
 	// that it moves to ALLOCATED state.
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		t4 := &api.Task{
 			ID: "testTaskID4",
 			Status: api.TaskStatus{
@@ -254,25 +248,25 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, tx.Tasks().Create(t4))
+		assert.NoError(t, store.CreateTask(tx, t4))
 		return nil
 	}))
 	watchTask(t, taskWatch, false, isValidTask)
 
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
-		n2 := tx.Networks().Get("testID2")
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		n2 := store.GetNetwork(tx, "testID2")
 		require.NotEqual(t, nil, n2)
-		assert.NoError(t, tx.Networks().Update(n2))
+		assert.NoError(t, store.UpdateNetwork(tx, n2))
 		return nil
 	}))
 	watchNetwork(t, netWatch, false, isValidNetwork)
 	watchNetwork(t, netWatch, true, nil)
 
 	// Try updating task which is already allocated
-	assert.NoError(t, store.Update(func(tx state.Tx) error {
-		t2 := tx.Tasks().Get("testTaskID2")
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		t2 := store.GetTask(tx, "testTaskID2")
 		require.NotEqual(t, nil, t2)
-		assert.NoError(t, tx.Tasks().Update(t2))
+		assert.NoError(t, store.UpdateTask(tx, t2))
 		return nil
 	}))
 	watchTask(t, taskWatch, false, isValidTask)
@@ -308,8 +302,8 @@ func isValidNetworkAttachment(t assert.TestingT, task *api.Task) bool {
 func isValidEndpoint(t assert.TestingT, task *api.Task) bool {
 	if task.ServiceID != "" {
 		var service *api.Service
-		store.View(func(tx state.ReadTx) {
-			service = tx.Services().Get(task.ServiceID)
+		s.View(func(tx store.ReadTx) {
+			service = store.GetService(tx, task.ServiceID)
 		})
 
 		if service == nil {

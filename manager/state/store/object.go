@@ -6,13 +6,24 @@ import (
 	memdb "github.com/hashicorp/go-memdb"
 )
 
+// Object is a generic object that can be handled by the store.
+type Object interface {
+	ID() string               // Get ID
+	Version() api.Version     // Retrieve version information
+	SetVersion(api.Version)   // Set version information
+	Copy(*api.Version) Object // Return a copy of this object, optionally setting new version information on the copy
+	EventCreate() state.Event // Return a creation event
+	EventUpdate() state.Event // Return an update event
+	EventDelete() state.Event // Return a deletion event
+}
+
 // ObjectStoreConfig provides the necessary methods to store a particular object
 // type inside MemoryStore.
 type ObjectStoreConfig struct {
 	Name             string
 	Table            *memdb.TableSchema
-	Save             func(state.ReadTx, *api.StoreSnapshot) error
-	Restore          func(state.Tx, *api.StoreSnapshot) error
-	ApplyStoreAction func(state.Tx, *api.StoreAction) error
+	Save             func(ReadTx, *api.StoreSnapshot) error
+	Restore          func(Tx, *api.StoreSnapshot) error
+	ApplyStoreAction func(Tx, *api.StoreAction) error
 	NewStoreAction   func(state.Event) (api.StoreAction, error)
 }

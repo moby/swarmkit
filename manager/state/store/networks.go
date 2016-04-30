@@ -26,40 +26,39 @@ func init() {
 				},
 			},
 		},
-		Save: func(tx state.ReadTx, snapshot *api.StoreSnapshot) error {
+		Save: func(tx ReadTx, snapshot *api.StoreSnapshot) error {
 			var err error
-			snapshot.Networks, err = tx.Networks().Find(state.All)
+			snapshot.Networks, err = FindNetworks(tx, All)
 			return err
 		},
-		Restore: func(tx state.Tx, snapshot *api.StoreSnapshot) error {
-			networks, err := tx.Networks().Find(state.All)
+		Restore: func(tx Tx, snapshot *api.StoreSnapshot) error {
+			networks, err := FindNetworks(tx, All)
 			if err != nil {
 				return err
 			}
 			for _, n := range networks {
-				if err := tx.Networks().Delete(n.ID); err != nil {
+				if err := DeleteNetwork(tx, n.ID); err != nil {
 					return err
 				}
 			}
 			for _, n := range snapshot.Networks {
-				if err := tx.Networks().Create(n); err != nil {
+				if err := CreateNetwork(tx, n); err != nil {
 					return err
 				}
 			}
 			return nil
 		},
-		ApplyStoreAction: func(tx state.Tx, sa *api.StoreAction) error {
+		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Network:
 				obj := v.Network
-				ds := tx.Networks()
 				switch sa.Action {
 				case api.StoreActionKindCreate:
-					return ds.Create(obj)
+					return CreateNetwork(tx, obj)
 				case api.StoreActionKindUpdate:
-					return ds.Update(obj)
+					return UpdateNetwork(tx, obj)
 				case api.StoreActionKindRemove:
-					return ds.Delete(obj.ID)
+					return DeleteNetwork(tx, obj.ID)
 				}
 			}
 			return errUnknownStoreAction
@@ -102,7 +101,11 @@ func (n networkEntry) Version() api.Version {
 	return n.Network.Version
 }
 
-func (n networkEntry) Copy(version *api.Version) state.Object {
+func (n networkEntry) SetVersion(version api.Version) {
+	n.Network.Version = version
+}
+
+func (n networkEntry) Copy(version *api.Version) Object {
 	copy := n.Network.Copy()
 	if version != nil {
 		copy.Version = *version
@@ -122,69 +125,56 @@ func (n networkEntry) EventDelete() state.Event {
 	return state.EventDeleteNetwork{Network: n.Network}
 }
 
-type networks struct {
-	tx      *tx
-	memDBTx *memdb.Txn
-}
-
-func (networks networks) table() string {
-	return tableNetwork
-}
-
-// Create adds a new network to the store.
+// CreateNetwork adds a new network to the store.
 // Returns ErrExist if the ID is already taken.
-func (networks networks) Create(n *api.Network) error {
+func CreateNetwork(tx Tx, n *api.Network) error {
 	// Ensure the name is not already in use.
-	if lookup(networks.memDBTx, networks.table(), indexName, n.Spec.Annotations.Name) != nil {
-		return state.ErrNameConflict
+	if tx.lookup(tableNetwork, indexName, n.Spec.Annotations.Name) != nil {
+		return ErrNameConflict
 	}
 
-	err := networks.tx.create(networks.table(), networkEntry{n})
-	if err == nil && networks.tx.curVersion != nil {
-		n.Version = *networks.tx.curVersion
-	}
-	return err
+	return tx.create(tableNetwork, networkEntry{n})
 }
 
-// Update updates an existing network in the store.
+// UpdateNetwork updates an existing network in the store.
 // Returns ErrNotExist if the network doesn't exist.
-func (networks networks) Update(n *api.Network) error {
+func UpdateNetwork(tx Tx, n *api.Network) error {
 	// Ensure the name is either not in use or already used by this same Network.
-	if existing := lookup(networks.memDBTx, networks.table(), indexName, n.Spec.Annotations.Name); existing != nil {
+	if existing := tx.lookup(tableNetwork, indexName, n.Spec.Annotations.Name); existing != nil {
 		if existing.ID() != n.ID {
-			return state.ErrNameConflict
+			return ErrNameConflict
 		}
 	}
 
-	return networks.tx.update(networks.table(), networkEntry{n})
+	return tx.update(tableNetwork, networkEntry{n})
 }
 
-// Delete removes a network from the store.
+// DeleteNetwork removes a network from the store.
 // Returns ErrNotExist if the network doesn't exist.
-func (networks networks) Delete(id string) error {
-	return networks.tx.delete(networks.table(), id)
+func DeleteNetwork(tx Tx, id string) error {
+	return tx.delete(tableNetwork, id)
 }
 
-// Get looks up a network by ID.
+// GetNetwork looks up a network by ID.
 // Returns nil if the network doesn't exist.
-func (networks networks) Get(id string) *api.Network {
-	n := get(networks.memDBTx, networks.table(), id)
+func GetNetwork(tx ReadTx, id string) *api.Network {
+	n := tx.get(tableNetwork, id)
 	if n == nil {
 		return nil
 	}
 	return n.(networkEntry).Network
 }
 
-// Find selects a set of networks and returns them.
-func (networks networks) Find(by state.By) ([]*api.Network, error) {
+// FindNetworks selects a set of networks and returns them.
+func FindNetworks(tx ReadTx, by By) ([]*api.Network, error) {
 	switch by.(type) {
-	case state.AllFinder, state.NameFinder, state.QueryFinder:
+	case byAll, byName, byQuery:
 	default:
-		return nil, state.ErrInvalidFindBy
+		return nil, ErrInvalidFindBy
 	}
 
 	networkList := []*api.Network{}
-	err := find(networks.memDBTx, networks.table(), by, func(o state.Object) {
+	err := tx.find(tableNetwork, by, func(o Object) {
 		networkList = append(networkList, o.(networkEntry).Network)
 	})
 	return networkList, err

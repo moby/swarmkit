@@ -33,40 +33,39 @@ func init() {
 				},
 			},
 		},
-		Save: func(tx state.ReadTx, snapshot *api.StoreSnapshot) error {
+		Save: func(tx ReadTx, snapshot *api.StoreSnapshot) error {
 			var err error
-			snapshot.Services, err = tx.Services().Find(state.All)
+			snapshot.Services, err = FindServices(tx, All)
 			return err
 		},
-		Restore: func(tx state.Tx, snapshot *api.StoreSnapshot) error {
-			services, err := tx.Services().Find(state.All)
+		Restore: func(tx Tx, snapshot *api.StoreSnapshot) error {
+			services, err := FindServices(tx, All)
 			if err != nil {
 				return err
 			}
 			for _, s := range services {
-				if err := tx.Services().Delete(s.ID); err != nil {
+				if err := DeleteService(tx, s.ID); err != nil {
 					return err
 				}
 			}
 			for _, s := range snapshot.Services {
-				if err := tx.Services().Create(s); err != nil {
+				if err := CreateService(tx, s); err != nil {
 					return err
 				}
 			}
 			return nil
 		},
-		ApplyStoreAction: func(tx state.Tx, sa *api.StoreAction) error {
+		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Service:
 				obj := v.Service
-				ds := tx.Services()
 				switch sa.Action {
 				case api.StoreActionKindCreate:
-					return ds.Create(obj)
+					return CreateService(tx, obj)
 				case api.StoreActionKindUpdate:
-					return ds.Update(obj)
+					return UpdateService(tx, obj)
 				case api.StoreActionKindRemove:
-					return ds.Delete(obj.ID)
+					return DeleteService(tx, obj.ID)
 				}
 			}
 			return errUnknownStoreAction
@@ -109,7 +108,11 @@ func (s serviceEntry) Version() api.Version {
 	return s.Service.Version
 }
 
-func (s serviceEntry) Copy(version *api.Version) state.Object {
+func (s serviceEntry) SetVersion(version api.Version) {
+	s.Service.Version = version
+}
+
+func (s serviceEntry) Copy(version *api.Version) Object {
 	copy := s.Service.Copy()
 	if version != nil {
 		copy.Version = *version
@@ -129,69 +132,56 @@ func (s serviceEntry) EventDelete() state.Event {
 	return state.EventDeleteService{Service: s.Service}
 }
 
-type services struct {
-	tx      *tx
-	memDBTx *memdb.Txn
-}
-
-func (services services) table() string {
-	return tableService
-}
-
-// Create adds a new service to the store.
+// CreateService adds a new service to the store.
 // Returns ErrExist if the ID is already taken.
-func (services services) Create(s *api.Service) error {
+func CreateService(tx Tx, s *api.Service) error {
 	// Ensure the name is not already in use.
-	if lookup(services.memDBTx, services.table(), indexName, s.Spec.Annotations.Name) != nil {
-		return state.ErrNameConflict
+	if tx.lookup(tableService, indexName, s.Spec.Annotations.Name) != nil {
+		return ErrNameConflict
 	}
 
-	err := services.tx.create(services.table(), serviceEntry{s})
-	if err == nil && services.tx.curVersion != nil {
-		s.Version = *services.tx.curVersion
-	}
-	return err
+	return tx.create(tableService, serviceEntry{s})
 }
 
-// Update updates an existing service in the store.
+// UpdateService updates an existing service in the store.
 // Returns ErrNotExist if the service doesn't exist.
-func (services services) Update(s *api.Service) error {
+func UpdateService(tx Tx, s *api.Service) error {
 	// Ensure the name is either not in use or already used by this same Service.
-	if existing := lookup(services.memDBTx, services.table(), indexName, s.Spec.Annotations.Name); existing != nil {
+	if existing := tx.lookup(tableService, indexName, s.Spec.Annotations.Name); existing != nil {
 		if existing.ID() != s.ID {
-			return state.ErrNameConflict
+			return ErrNameConflict
 		}
 	}
 
-	return services.tx.update(services.table(), serviceEntry{s})
+	return tx.update(tableService, serviceEntry{s})
 }
 
-// Delete removes a service from the store.
+// DeleteService removes a service from the store.
 // Returns ErrNotExist if the service doesn't exist.
-func (services services) Delete(id string) error {
-	return services.tx.delete(services.table(), id)
+func DeleteService(tx Tx, id string) error {
+	return tx.delete(tableService, id)
 }
 
-// Get looks up a service by ID.
+// GetService looks up a service by ID.
 // Returns nil if the service doesn't exist.
-func (services services) Get(id string) *api.Service {
-	s := get(services.memDBTx, services.table(), id)
+func GetService(tx ReadTx, id string) *api.Service {
+	s := tx.get(tableService, id)
 	if s == nil {
 		return nil
 	}
 	return s.(serviceEntry).Service
 }
 
-// Find selects a set of services and returns them.
-func (services services) Find(by state.By) ([]*api.Service, error) {
+// FindServices selects a set of services and returns them.
+func FindServices(tx ReadTx, by By) ([]*api.Service, error) {
 	switch by.(type) {
-	case state.AllFinder, state.NameFinder, state.QueryFinder, state.ServiceModeFinder:
+	case byAll, byName, byQuery, byServiceMode:
 	default:
-		return nil, state.ErrInvalidFindBy
+		return nil, ErrInvalidFindBy
 	}
 
 	serviceList := []*api.Service{}
-	err := find(services.memDBTx, services.table(), by, func(o state.Object) {
+	err := tx.find(tableService, by, func(o Object) {
 		serviceList = append(serviceList, o.(serviceEntry).Service)
 	})
 	return serviceList, err

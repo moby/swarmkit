@@ -27,40 +27,39 @@ func init() {
 				},
 			},
 		},
-		Save: func(tx state.ReadTx, snapshot *api.StoreSnapshot) error {
+		Save: func(tx ReadTx, snapshot *api.StoreSnapshot) error {
 			var err error
-			snapshot.Nodes, err = tx.Nodes().Find(state.All)
+			snapshot.Nodes, err = FindNodes(tx, All)
 			return err
 		},
-		Restore: func(tx state.Tx, snapshot *api.StoreSnapshot) error {
-			nodes, err := tx.Nodes().Find(state.All)
+		Restore: func(tx Tx, snapshot *api.StoreSnapshot) error {
+			nodes, err := FindNodes(tx, All)
 			if err != nil {
 				return err
 			}
 			for _, n := range nodes {
-				if err := tx.Nodes().Delete(n.ID); err != nil {
+				if err := DeleteNode(tx, n.ID); err != nil {
 					return err
 				}
 			}
 			for _, n := range snapshot.Nodes {
-				if err := tx.Nodes().Create(n); err != nil {
+				if err := CreateNode(tx, n); err != nil {
 					return err
 				}
 			}
 			return nil
 		},
-		ApplyStoreAction: func(tx state.Tx, sa *api.StoreAction) error {
+		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Node:
 				obj := v.Node
-				ds := tx.Nodes()
 				switch sa.Action {
 				case api.StoreActionKindCreate:
-					return ds.Create(obj)
+					return CreateNode(tx, obj)
 				case api.StoreActionKindUpdate:
-					return ds.Update(obj)
+					return UpdateNode(tx, obj)
 				case api.StoreActionKindRemove:
-					return ds.Delete(obj.ID)
+					return DeleteNode(tx, obj.ID)
 				}
 			}
 			return errUnknownStoreAction
@@ -103,7 +102,11 @@ func (n nodeEntry) Version() api.Version {
 	return n.Node.Version
 }
 
-func (n nodeEntry) Copy(version *api.Version) state.Object {
+func (n nodeEntry) SetVersion(version api.Version) {
+	n.Node.Version = version
+}
+
+func (n nodeEntry) Copy(version *api.Version) Object {
 	copy := n.Node.Copy()
 	if version != nil {
 		copy.Version = *version
@@ -123,57 +126,44 @@ func (n nodeEntry) EventDelete() state.Event {
 	return state.EventDeleteNode{Node: n.Node}
 }
 
-type nodes struct {
-	tx      *tx
-	memDBTx *memdb.Txn
-}
-
-func (nodes nodes) table() string {
-	return tableNode
-}
-
-// Create adds a new node to the store.
+// CreateNode adds a new node to the store.
 // Returns ErrExist if the ID is already taken.
-func (nodes nodes) Create(n *api.Node) error {
-	err := nodes.tx.create(nodes.table(), nodeEntry{n})
-	if err == nil && nodes.tx.curVersion != nil {
-		n.Version = *nodes.tx.curVersion
-	}
-	return err
+func CreateNode(tx Tx, n *api.Node) error {
+	return tx.create(tableNode, nodeEntry{n})
 }
 
-// Update updates an existing node in the store.
+// UpdateNode updates an existing node in the store.
 // Returns ErrNotExist if the node doesn't exist.
-func (nodes nodes) Update(n *api.Node) error {
-	return nodes.tx.update(nodes.table(), nodeEntry{n})
+func UpdateNode(tx Tx, n *api.Node) error {
+	return tx.update(tableNode, nodeEntry{n})
 }
 
-// Delete removes a node from the store.
+// DeleteNode removes a node from the store.
 // Returns ErrNotExist if the node doesn't exist.
-func (nodes nodes) Delete(id string) error {
-	return nodes.tx.delete(nodes.table(), id)
+func DeleteNode(tx Tx, id string) error {
+	return tx.delete(tableNode, id)
 }
 
-// Get looks up a node by ID.
+// GetNode looks up a node by ID.
 // Returns nil if the node doesn't exist.
-func (nodes nodes) Get(id string) *api.Node {
-	n := get(nodes.memDBTx, nodes.table(), id)
+func GetNode(tx ReadTx, id string) *api.Node {
+	n := tx.get(tableNode, id)
 	if n == nil {
 		return nil
 	}
 	return n.(nodeEntry).Node
 }
 
-// Find selects a set of nodes and returns them.
-func (nodes nodes) Find(by state.By) ([]*api.Node, error) {
+// FindNodes selects a set of nodes and returns them.
+func FindNodes(tx ReadTx, by By) ([]*api.Node, error) {
 	switch by.(type) {
-	case state.AllFinder, state.NameFinder, state.QueryFinder:
+	case byAll, byName, byQuery:
 	default:
-		return nil, state.ErrInvalidFindBy
+		return nil, ErrInvalidFindBy
 	}
 
 	nodeList := []*api.Node{}
-	err := find(nodes.memDBTx, nodes.table(), by, func(o state.Object) {
+	err := tx.find(tableNode, by, func(o Object) {
 		nodeList = append(nodeList, o.(nodeEntry).Node)
 	})
 	return nodeList, err

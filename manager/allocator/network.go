@@ -8,6 +8,7 @@ import (
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/allocator/networkallocator"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 )
 
@@ -40,8 +41,8 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 
 	// Allocate networks in the store so far before we started watching.
 	var networks []*api.Network
-	a.store.View(func(tx state.ReadTx) {
-		networks, err = tx.Networks().Find(state.All)
+	a.store.View(func(tx store.ReadTx) {
+		networks, err = store.FindNetworks(tx, store.All)
 	})
 	if err != nil {
 		return fmt.Errorf("error listing all networks in store while trying to allocate during init: %v", err)
@@ -59,8 +60,8 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 
 	// Allocate services in the store so far before we process watched events.
 	var services []*api.Service
-	a.store.View(func(tx state.ReadTx) {
-		services, err = tx.Services().Find(state.All)
+	a.store.View(func(tx store.ReadTx) {
+		services, err = store.FindServices(tx, store.All)
 	})
 	if err != nil {
 		return fmt.Errorf("error listing all services in store while trying to allocate during init: %v", err)
@@ -82,14 +83,14 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 
 	// Allocate tasks in the store so far before we started watching.
 	var tasks []*api.Task
-	a.store.View(func(tx state.ReadTx) {
-		tasks, err = tx.Tasks().Find(state.All)
+	a.store.View(func(tx store.ReadTx) {
+		tasks, err = store.FindTasks(tx, store.All)
 	})
 	if err != nil {
 		return fmt.Errorf("error listing all tasks in store while trying to allocate during init: %v", err)
 	}
 
-	if _, err := a.store.Batch(func(batch state.Batch) error {
+	if _, err := a.store.Batch(func(batch *store.Batch) error {
 		for _, t := range tasks {
 			if taskDead(t) {
 				continue
@@ -108,7 +109,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 				continue
 			}
 
-			err := batch.Update(func(tx state.Tx) error {
+			err := batch.Update(func(tx store.Tx) error {
 				_, err := a.allocateTask(ctx, nc, tx, t)
 				return err
 			})
@@ -264,8 +265,8 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 
 	var s *api.Service
 	if t.ServiceID != "" {
-		a.store.View(func(tx state.ReadTx) {
-			s = tx.Services().Get(t.ServiceID)
+		a.store.View(func(tx store.ReadTx) {
+			s = store.GetService(tx, t.ServiceID)
 		})
 		if s == nil {
 			// If the task is running it is not normal to
@@ -299,8 +300,8 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 		// allocators job is done. Immediately cast a vote so
 		// that the task can be moved to ALLOCATED state as
 		// soon as possible.
-		if err := a.store.Update(func(tx state.Tx) error {
-			storeT := tx.Tasks().Get(t.ID)
+		if err := a.store.Update(func(tx store.Tx) error {
+			storeT := store.GetTask(tx, t.ID)
 			if storeT == nil {
 				return fmt.Errorf("task %s not found while trying to update state", t.ID)
 			}
@@ -316,7 +317,7 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 				storeT.Status.State = api.TaskStateAllocated
 			}
 
-			if err := tx.Tasks().Update(storeT); err != nil {
+			if err := store.UpdateTask(tx, storeT); err != nil {
 				return fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
 			}
 
@@ -340,8 +341,8 @@ func (a *Allocator) allocateService(ctx context.Context, nc *networkContext, s *
 		return err
 	}
 
-	if err := a.store.Update(func(tx state.Tx) error {
-		if err := tx.Services().Update(s); err != nil {
+	if err := a.store.Update(func(tx store.Tx) error {
+		if err := store.UpdateService(tx, s); err != nil {
 			return fmt.Errorf("failed updating state in store transaction for service %s: %v", s.ID, err)
 		}
 		return nil
@@ -361,8 +362,8 @@ func (a *Allocator) allocateNetwork(ctx context.Context, nc *networkContext, n *
 		return fmt.Errorf("failed during network allocation for network %s: %v", n.ID, err)
 	}
 
-	if err := a.store.Update(func(tx state.Tx) error {
-		if err := tx.Networks().Update(n); err != nil {
+	if err := a.store.Update(func(tx store.Tx) error {
+		if err := store.UpdateNetwork(tx, n); err != nil {
 			return fmt.Errorf("failed updating state in store transaction for network %s: %v", n.ID, err)
 		}
 		return nil
@@ -377,14 +378,14 @@ func (a *Allocator) allocateNetwork(ctx context.Context, nc *networkContext, n *
 	return nil
 }
 
-func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx state.Tx, t *api.Task) (*api.Task, error) {
+func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx store.Tx, t *api.Task) (*api.Task, error) {
 	// We might be here even if a task allocation has already
 	// happened but wasn't successfully committed to store. In such
 	// cases skip allocation and go straight ahead to updating the
 	// store.
 	if !nc.nwkAllocator.IsTaskAllocated(t) {
 		if t.ServiceID != "" {
-			s := tx.Services().Get(t.ServiceID)
+			s := store.GetService(tx, t.ServiceID)
 			if s == nil {
 				return nil, fmt.Errorf("could not find service %s", t.ServiceID)
 			}
@@ -397,7 +398,7 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sta
 		}
 
 		for _, na := range t.Spec.GetContainer().Networks {
-			n := tx.Networks().Get(na.GetNetworkID())
+			n := store.GetNetwork(tx, na.GetNetworkID())
 			if n == nil {
 				t.Networks = t.Networks[:0]
 				return nil, fmt.Errorf("failed to retrieve network %s while allocating task %s", na.GetNetworkID(), t.ID)
@@ -418,7 +419,7 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sta
 	}
 
 	// Get the latest task state from the store before updating.
-	storeT := tx.Tasks().Get(t.ID)
+	storeT := store.GetTask(tx, t.ID)
 	if storeT == nil {
 		return nil, fmt.Errorf("could not find task %s while trying to update network allocation", t.ID)
 	}
@@ -432,7 +433,7 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sta
 	}
 
 	storeT.Networks = t.Networks
-	if err := tx.Tasks().Update(storeT); err != nil {
+	if err := store.UpdateTask(tx, storeT); err != nil {
 		return nil, fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
 	}
 
@@ -442,10 +443,10 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sta
 func (a *Allocator) procUnallocatedTasks(ctx context.Context, nc *networkContext) {
 	tasks := make([]*api.Task, 0, len(nc.unallocatedTasks))
 
-	committed, err := a.store.Batch(func(batch state.Batch) error {
+	committed, err := a.store.Batch(func(batch *store.Batch) error {
 		for _, t := range nc.unallocatedTasks {
 			var allocatedT *api.Task
-			err := batch.Update(func(tx state.Tx) error {
+			err := batch.Update(func(tx store.Tx) error {
 				var err error
 				allocatedT, err = a.allocateTask(ctx, nc, tx, t)
 				return err
@@ -480,10 +481,10 @@ func (a *Allocator) procUnallocatedTasks(ctx context.Context, nc *networkContext
 		}
 
 		updatedTasks := make([]*api.Task, 0, len(tasks))
-		committed, err = a.store.Batch(func(batch state.Batch) error {
+		committed, err = a.store.Batch(func(batch *store.Batch) error {
 			for _, t := range tasks {
-				err := batch.Update(func(tx state.Tx) error {
-					return tx.Tasks().Update(t)
+				err := batch.Update(func(tx store.Tx) error {
+					return store.UpdateTask(tx, t)
 				})
 
 				if err != nil {
