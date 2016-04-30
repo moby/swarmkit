@@ -12,19 +12,19 @@ import (
 
 func TestTaskHistory(t *testing.T) {
 	ctx := context.Background()
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
 
-	taskReaper := NewTaskReaper(store, 2)
-	orchestrator := New(store)
+	taskReaper := NewTaskReaper(s, 2)
+	orchestrator := New(s)
 
-	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
 	// started. This should result in two tasks when the orchestrator
 	// starts up.
-	err := store.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx store.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
 			Spec: api.ServiceSpec{
@@ -36,7 +36,7 @@ func TestTaskHistory(t *testing.T) {
 				Mode:      api.ServiceModeRunning,
 			},
 		}
-		assert.NoError(t, tx.Services().Create(j1))
+		assert.NoError(t, store.CreateService(tx, j1))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -64,9 +64,9 @@ func TestTaskHistory(t *testing.T) {
 	updatedTask2.Status.State = api.TaskStateDead
 	updatedTask2.Status.TerminalState = api.TaskStateFailed
 	updatedTask2.Annotations = api.Annotations{Name: "original"}
-	err = store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Update(updatedTask1))
-		assert.NoError(t, tx.Tasks().Update(updatedTask2))
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
+		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
 	})
 
@@ -93,9 +93,9 @@ func TestTaskHistory(t *testing.T) {
 	updatedTask4 := observedTask4.Copy()
 	updatedTask4.Status.State = api.TaskStateDead
 	updatedTask4.Status.TerminalState = api.TaskStateFailed
-	err = store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Update(updatedTask3))
-		assert.NoError(t, tx.Tasks().Update(updatedTask4))
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, updatedTask3))
+		assert.NoError(t, store.UpdateTask(tx, updatedTask4))
 		return nil
 	})
 
@@ -108,8 +108,8 @@ func TestTaskHistory(t *testing.T) {
 	assert.Equal(t, "original", deletedTask2.Annotations.Name)
 
 	var foundTasks []*api.Task
-	store.View(func(tx state.ReadTx) {
-		foundTasks, err = tx.Tasks().Find(state.All)
+	s.View(func(tx store.ReadTx) {
+		foundTasks, err = store.FindTasks(tx, store.All)
 	})
 	assert.NoError(t, err)
 	assert.Len(t, foundTasks, 4)

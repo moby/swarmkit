@@ -43,40 +43,39 @@ func init() {
 				},
 			},
 		},
-		Save: func(tx state.ReadTx, snapshot *api.StoreSnapshot) error {
+		Save: func(tx ReadTx, snapshot *api.StoreSnapshot) error {
 			var err error
-			snapshot.Tasks, err = tx.Tasks().Find(state.All)
+			snapshot.Tasks, err = FindTasks(tx, All)
 			return err
 		},
-		Restore: func(tx state.Tx, snapshot *api.StoreSnapshot) error {
-			tasks, err := tx.Tasks().Find(state.All)
+		Restore: func(tx Tx, snapshot *api.StoreSnapshot) error {
+			tasks, err := FindTasks(tx, All)
 			if err != nil {
 				return err
 			}
 			for _, t := range tasks {
-				if err := tx.Tasks().Delete(t.ID); err != nil {
+				if err := DeleteTask(tx, t.ID); err != nil {
 					return err
 				}
 			}
 			for _, t := range snapshot.Tasks {
-				if err := tx.Tasks().Create(t); err != nil {
+				if err := CreateTask(tx, t); err != nil {
 					return err
 				}
 			}
 			return nil
 		},
-		ApplyStoreAction: func(tx state.Tx, sa *api.StoreAction) error {
+		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Task:
 				obj := v.Task
-				ds := tx.Tasks()
 				switch sa.Action {
 				case api.StoreActionKindCreate:
-					return ds.Create(obj)
+					return CreateTask(tx, obj)
 				case api.StoreActionKindUpdate:
-					return ds.Update(obj)
+					return UpdateTask(tx, obj)
 				case api.StoreActionKindRemove:
-					return ds.Delete(obj.ID)
+					return DeleteTask(tx, obj.ID)
 				}
 			}
 			return errUnknownStoreAction
@@ -119,7 +118,11 @@ func (t taskEntry) Version() api.Version {
 	return t.Task.Version
 }
 
-func (t taskEntry) Copy(version *api.Version) state.Object {
+func (t taskEntry) SetVersion(version api.Version) {
+	t.Task.Version = version
+}
+
+func (t taskEntry) Copy(version *api.Version) Object {
 	copy := t.Task.Copy()
 	if version != nil {
 		copy.Version = *version
@@ -139,57 +142,44 @@ func (t taskEntry) EventDelete() state.Event {
 	return state.EventDeleteTask{Task: t.Task}
 }
 
-type tasks struct {
-	tx      *tx
-	memDBTx *memdb.Txn
-}
-
-func (tasks tasks) table() string {
-	return tableTask
-}
-
-// Create adds a new task to the store.
+// CreateTask adds a new task to the store.
 // Returns ErrExist if the ID is already taken.
-func (tasks tasks) Create(t *api.Task) error {
-	err := tasks.tx.create(tasks.table(), taskEntry{t})
-	if err == nil && tasks.tx.curVersion != nil {
-		t.Version = *tasks.tx.curVersion
-	}
-	return err
+func CreateTask(tx Tx, t *api.Task) error {
+	return tx.create(tableTask, taskEntry{t})
 }
 
-// Update updates an existing task in the store.
+// UpdateTask updates an existing task in the store.
 // Returns ErrNotExist if the node doesn't exist.
-func (tasks tasks) Update(t *api.Task) error {
-	return tasks.tx.update(tasks.table(), taskEntry{t})
+func UpdateTask(tx Tx, t *api.Task) error {
+	return tx.update(tableTask, taskEntry{t})
 }
 
-// Delete removes a task from the store.
+// DeleteTask removes a task from the store.
 // Returns ErrNotExist if the task doesn't exist.
-func (tasks tasks) Delete(id string) error {
-	return tasks.tx.delete(tasks.table(), id)
+func DeleteTask(tx Tx, id string) error {
+	return tx.delete(tableTask, id)
 }
 
-// Get looks up a task by ID.
+// GetTask looks up a task by ID.
 // Returns nil if the task doesn't exist.
-func (tasks tasks) Get(id string) *api.Task {
-	t := get(tasks.memDBTx, tasks.table(), id)
+func GetTask(tx ReadTx, id string) *api.Task {
+	t := tx.get(tableTask, id)
 	if t == nil {
 		return nil
 	}
 	return t.(taskEntry).Task
 }
 
-// Find selects a set of tasks and returns them.
-func (tasks tasks) Find(by state.By) ([]*api.Task, error) {
+// FindTasks selects a set of tasks and returns them.
+func FindTasks(tx ReadTx, by By) ([]*api.Task, error) {
 	switch by.(type) {
-	case state.AllFinder, state.NameFinder, state.NodeFinder, state.ServiceFinder, state.InstanceFinder:
+	case byAll, byName, byNode, byService, byInstance:
 	default:
-		return nil, state.ErrInvalidFindBy
+		return nil, ErrInvalidFindBy
 	}
 
 	taskList := []*api.Task{}
-	err := find(tasks.memDBTx, tasks.table(), by, func(o state.Object) {
+	err := tx.find(tableTask, by, func(o Object) {
 		taskList = append(taskList, o.(taskEntry).Task)
 	})
 	return taskList, err

@@ -14,14 +14,13 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
 
 type grpcCA struct {
 	Clients    []api.CAClient
-	Store      state.Store
+	Store      *store.MemoryStore
 	grpcServer *grpc.Server
 	caServer   *Server
 	conns      []*grpc.ClientConn
@@ -138,8 +137,8 @@ func TestIssueCertificate(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp.Token)
 
-	gc.Store.View(func(readTx state.ReadTx) {
-		storeCerts, err := readTx.RegisteredCertificates().Find(state.All)
+	gc.Store.View(func(readTx store.ReadTx) {
+		storeCerts, err := store.FindRegisteredCertificates(readTx, store.All)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, storeCerts)
 		assert.Equal(t, storeCerts[0].Status.State, api.IssuanceStatePending)
@@ -167,8 +166,8 @@ func TestCertificateStatus(t *testing.T) {
 		Status: api.IssuanceStatus{State: api.IssuanceStatePending},
 	}
 
-	err = gc.Store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.RegisteredCertificates().Create(testRegisteredCert))
+	err = gc.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateRegisteredCertificate(tx, testRegisteredCert))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -181,8 +180,8 @@ func TestCertificateStatus(t *testing.T) {
 	assert.NotEmpty(t, resp.Status)
 	assert.Equal(t, resp.Status.State, api.IssuanceStateCompleted)
 
-	gc.Store.View(func(readTx state.ReadTx) {
-		storeCerts, err := readTx.RegisteredCertificates().Find(state.All)
+	gc.Store.View(func(readTx store.ReadTx) {
+		storeCerts, err := store.FindRegisteredCertificates(readTx, store.All)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, storeCerts)
 		assert.Equal(t, storeCerts[0].Status.State, api.IssuanceStateCompleted)

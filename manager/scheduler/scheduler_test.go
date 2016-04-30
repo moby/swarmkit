@@ -85,26 +85,26 @@ func TestScheduler(t *testing.T) {
 		},
 	}
 
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
 
-	err := store.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx store.Tx) error {
 		// Prepoulate nodes
 		for _, n := range initialNodeSet {
-			assert.NoError(t, tx.Nodes().Create(n))
+			assert.NoError(t, store.CreateNode(tx, n))
 		}
 
 		// Prepopulate tasks
 		for _, task := range initialTaskSet {
-			assert.NoError(t, tx.Tasks().Create(task))
+			assert.NoError(t, store.CreateTask(tx, task))
 		}
 		return nil
 	})
 	assert.NoError(t, err)
 
-	scheduler := New(store)
+	scheduler := New(s)
 
-	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -124,20 +124,20 @@ func TestScheduler(t *testing.T) {
 		assert.Equal(t, "id2", assignment2.NodeID)
 	}
 
-	err = store.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx store.Tx) error {
 		// Update each node to make sure this doesn't mess up the
 		// scheduler's state.
 		for _, n := range initialNodeSet {
-			assert.NoError(t, tx.Nodes().Update(n))
+			assert.NoError(t, store.UpdateNode(tx, n))
 		}
 		return nil
 	})
 	assert.NoError(t, err)
 
-	err = store.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx store.Tx) error {
 		// Delete the task associated with node 1 so it's now the most lightly
 		// loaded node.
-		assert.NoError(t, tx.Tasks().Delete("id1"))
+		assert.NoError(t, store.DeleteTask(tx, "id1"))
 
 		// Create a new task. It should get assigned to id1.
 		t4 := &api.Task{
@@ -149,7 +149,7 @@ func TestScheduler(t *testing.T) {
 				State: api.TaskStateAllocated,
 			},
 		}
-		assert.NoError(t, tx.Tasks().Create(t4))
+		assert.NoError(t, store.CreateTask(tx, t4))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -159,7 +159,7 @@ func TestScheduler(t *testing.T) {
 
 	// Update a task to make it unassigned. It should get assigned by the
 	// scheduler.
-	err = store.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx store.Tx) error {
 		// Remove assignment from task id4. It should get assigned
 		// to node id1.
 		t4 := &api.Task{
@@ -171,7 +171,7 @@ func TestScheduler(t *testing.T) {
 				State: api.TaskStateAllocated,
 			},
 		}
-		assert.NoError(t, tx.Tasks().Update(t4))
+		assert.NoError(t, store.UpdateTask(tx, t4))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -179,7 +179,7 @@ func TestScheduler(t *testing.T) {
 	assignment4 := watchAssignment(t, watch)
 	assert.Equal(t, "id1", assignment4.NodeID)
 
-	err = store.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx store.Tx) error {
 		// Create a ready node, then remove it. No tasks should ever
 		// be assigned to it.
 		node := &api.Node{
@@ -193,8 +193,8 @@ func TestScheduler(t *testing.T) {
 				State: api.NodeStatus_DOWN,
 			},
 		}
-		assert.NoError(t, tx.Nodes().Create(node))
-		assert.NoError(t, tx.Nodes().Delete(node.ID))
+		assert.NoError(t, store.CreateNode(tx, node))
+		assert.NoError(t, store.DeleteNode(tx, node.ID))
 
 		// Create an unassigned task.
 		task := &api.Task{
@@ -206,7 +206,7 @@ func TestScheduler(t *testing.T) {
 				State: api.TaskStateAllocated,
 			},
 		}
-		assert.NoError(t, tx.Tasks().Create(task))
+		assert.NoError(t, store.CreateTask(tx, task))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -214,7 +214,7 @@ func TestScheduler(t *testing.T) {
 	assignmentRemovedNode := watchAssignment(t, watch)
 	assert.NotEqual(t, "removednode", assignmentRemovedNode.NodeID)
 
-	err = store.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx store.Tx) error {
 		// Create a ready node. It should be used for the next
 		// assignment.
 		n4 := &api.Node{
@@ -228,7 +228,7 @@ func TestScheduler(t *testing.T) {
 				State: api.NodeStatus_READY,
 			},
 		}
-		assert.NoError(t, tx.Nodes().Create(n4))
+		assert.NoError(t, store.CreateNode(tx, n4))
 
 		// Create an unassigned task.
 		t5 := &api.Task{
@@ -240,7 +240,7 @@ func TestScheduler(t *testing.T) {
 				State: api.TaskStateAllocated,
 			},
 		}
-		assert.NoError(t, tx.Tasks().Create(t5))
+		assert.NoError(t, store.CreateTask(tx, t5))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -248,7 +248,7 @@ func TestScheduler(t *testing.T) {
 	assignment5 := watchAssignment(t, watch)
 	assert.Equal(t, "id4", assignment5.NodeID)
 
-	err = store.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx store.Tx) error {
 		// Create a non-ready node. It should NOT be used for the next
 		// assignment.
 		n5 := &api.Node{
@@ -262,7 +262,7 @@ func TestScheduler(t *testing.T) {
 				State: api.NodeStatus_DOWN,
 			},
 		}
-		assert.NoError(t, tx.Nodes().Create(n5))
+		assert.NoError(t, store.CreateNode(tx, n5))
 
 		// Create an unassigned task.
 		t6 := &api.Task{
@@ -274,7 +274,7 @@ func TestScheduler(t *testing.T) {
 				State: api.TaskStateAllocated,
 			},
 		}
-		assert.NoError(t, tx.Tasks().Create(t6))
+		assert.NoError(t, store.CreateTask(tx, t6))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -282,7 +282,7 @@ func TestScheduler(t *testing.T) {
 	assignment6 := watchAssignment(t, watch)
 	assert.NotEqual(t, "id5", assignment6.NodeID)
 
-	err = store.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx store.Tx) error {
 		// Update node id5 to put it in the READY state.
 		n5 := &api.Node{
 			ID: "id5",
@@ -295,7 +295,7 @@ func TestScheduler(t *testing.T) {
 				State: api.NodeStatus_READY,
 			},
 		}
-		assert.NoError(t, tx.Nodes().Update(n5))
+		assert.NoError(t, store.UpdateNode(tx, n5))
 
 		// Create an unassigned task. Should be assigned to the
 		// now-ready node.
@@ -308,7 +308,7 @@ func TestScheduler(t *testing.T) {
 				State: api.TaskStateAllocated,
 			},
 		}
-		assert.NoError(t, tx.Tasks().Create(t7))
+		assert.NoError(t, store.CreateTask(tx, t7))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -316,7 +316,7 @@ func TestScheduler(t *testing.T) {
 	assignment7 := watchAssignment(t, watch)
 	assert.Equal(t, "id5", assignment7.NodeID)
 
-	err = store.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx store.Tx) error {
 		// Create a ready node, then immediately take it down. The next
 		// unassigned task should NOT be assigned to it.
 		n6 := &api.Node{
@@ -330,9 +330,9 @@ func TestScheduler(t *testing.T) {
 				State: api.NodeStatus_READY,
 			},
 		}
-		assert.NoError(t, tx.Nodes().Create(n6))
+		assert.NoError(t, store.CreateNode(tx, n6))
 		n6.Status.State = api.NodeStatus_DOWN
-		assert.NoError(t, tx.Nodes().Update(n6))
+		assert.NoError(t, store.UpdateNode(tx, n6))
 
 		// Create an unassigned task.
 		t8 := &api.Task{
@@ -344,7 +344,7 @@ func TestScheduler(t *testing.T) {
 				State: api.TaskStateAllocated,
 			},
 		}
-		assert.NoError(t, tx.Tasks().Create(t8))
+		assert.NoError(t, store.CreateTask(tx, t8))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -365,19 +365,19 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 		},
 	}
 
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
 
-	err := store.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx store.Tx) error {
 		// Add initial task
-		assert.NoError(t, tx.Tasks().Create(initialTask))
+		assert.NoError(t, store.CreateTask(tx, initialTask))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	scheduler := New(store)
+	scheduler := New(s)
 
-	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -385,7 +385,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 	}()
 	defer scheduler.Stop()
 
-	err = store.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx store.Tx) error {
 		// Create a ready node. The task should get assigned to this
 		// node.
 		node := &api.Node{
@@ -399,7 +399,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 				State: api.NodeStatus_READY,
 			},
 		}
-		assert.NoError(t, tx.Nodes().Create(node))
+		assert.NoError(t, store.CreateNode(tx, node))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -450,20 +450,20 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 		},
 	}
 
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
 
-	err := store.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx store.Tx) error {
 		// Add initial node and task
-		assert.NoError(t, tx.Tasks().Create(initialTask))
-		assert.NoError(t, tx.Nodes().Create(underprovisionedNode))
+		assert.NoError(t, store.CreateTask(tx, initialTask))
+		assert.NoError(t, store.CreateNode(tx, underprovisionedNode))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	scheduler := New(store)
+	scheduler := New(s)
 
-	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -471,7 +471,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 	}()
 	defer scheduler.Stop()
 
-	err = store.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx store.Tx) error {
 		// Create a node with enough memory. The task should get
 		// assigned to this node.
 		node := &api.Node{
@@ -491,7 +491,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 				State: api.NodeStatus_READY,
 			},
 		}
-		assert.NoError(t, tx.Nodes().Create(node))
+		assert.NoError(t, store.CreateNode(tx, node))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -545,20 +545,20 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	bigTask2 := bigTask1.Copy()
 	bigTask2.ID = "id2"
 
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
 
-	err := store.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx store.Tx) error {
 		// Add initial node and task
-		assert.NoError(t, tx.Nodes().Create(node))
-		assert.NoError(t, tx.Tasks().Create(bigTask1))
+		assert.NoError(t, store.CreateNode(tx, node))
+		assert.NoError(t, store.CreateTask(tx, bigTask1))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	scheduler := New(store)
+	scheduler := New(s)
 
-	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -571,25 +571,25 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	assert.Equal(t, "id1", assignment.ID)
 	assert.Equal(t, "id1", assignment.NodeID)
 
-	err = store.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx store.Tx) error {
 		// Add a second task. It shouldn't get assigned because of
 		// resource constraints.
-		return tx.Tasks().Create(bigTask2)
+		return store.CreateTask(tx, bigTask2)
 	})
 	assert.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond)
-	store.View(func(tx state.ReadTx) {
-		tasks, err := tx.Tasks().Find(state.ByNodeID(node.ID))
+	s.View(func(tx store.ReadTx) {
+		tasks, err := store.FindTasks(tx, store.ByNodeID(node.ID))
 		assert.NoError(t, err)
 		assert.Len(t, tasks, 1)
 	})
 
-	err = store.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx store.Tx) error {
 		// The task becomes dead
-		updatedTask := tx.Tasks().Get(bigTask1.ID)
+		updatedTask := store.GetTask(tx, bigTask1.ID)
 		updatedTask.Status.State = api.TaskStateDead
-		return tx.Tasks().Update(updatedTask)
+		return store.UpdateTask(tx, updatedTask)
 	})
 	assert.NoError(t, err)
 
@@ -647,20 +647,20 @@ func TestSchedulerPortConstraint(t *testing.T) {
 		},
 	}
 
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
 
 	// Add initial node and task
-	err := store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Create(dynamicPortTask))
-		assert.NoError(t, tx.Nodes().Create(n1))
+	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, dynamicPortTask))
+		assert.NoError(t, store.CreateNode(tx, n1))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	scheduler := New(store)
+	scheduler := New(s)
 
-	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -673,8 +673,8 @@ func TestSchedulerPortConstraint(t *testing.T) {
 	assert.Equal(t, "n1", assignment.NodeID)
 
 	// Dynamically assign a port to the task.
-	err = store.Update(func(tx state.Tx) error {
-		updatedTask := tx.Tasks().Get("dynamic")
+	err = s.Update(func(tx store.Tx) error {
+		updatedTask := store.GetTask(tx, "dynamic")
 		updatedTask.Status.RuntimeStatus = &api.TaskStatus_Container{
 			Container: &api.ContainerStatus{
 				ExposedPorts: []*api.PortConfig{
@@ -686,7 +686,7 @@ func TestSchedulerPortConstraint(t *testing.T) {
 			},
 		}
 
-		assert.NoError(t, tx.Tasks().Update(updatedTask))
+		assert.NoError(t, store.UpdateTask(tx, updatedTask))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -696,26 +696,26 @@ func TestSchedulerPortConstraint(t *testing.T) {
 	assert.Equal(t, "n1", assignment.NodeID)
 
 	// Create a task with a conflicting statically assigned port
-	err = store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Create(staticPortTask))
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, staticPortTask))
 		return nil
 	})
 	assert.NoError(t, err)
 
 	// The new task should not get assigned at first.
 	time.Sleep(100 * time.Millisecond)
-	store.View(func(tx state.ReadTx) {
-		staticTask := tx.Tasks().Get("static")
+	s.View(func(tx store.ReadTx) {
+		staticTask := store.GetTask(tx, "static")
 		if staticTask.Status.State >= api.TaskStateAssigned {
 			t.Fatal("conflicting task should not have been assigned")
 		}
 	})
 
 	// Kill original task
-	err = store.Update(func(tx state.Tx) error {
-		updatedTask := tx.Tasks().Get("dynamic")
+	err = s.Update(func(tx store.Tx) error {
+		updatedTask := store.GetTask(tx, "dynamic")
 		updatedTask.Status.State = api.TaskStateDead
-		assert.NoError(t, tx.Tasks().Update(updatedTask))
+		assert.NoError(t, store.UpdateTask(tx, updatedTask))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -786,26 +786,26 @@ func TestPreassignedTasks(t *testing.T) {
 		},
 	}
 
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
 
-	err := store.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx store.Tx) error {
 		// Prepoulate nodes
 		for _, n := range initialNodeSet {
-			assert.NoError(t, tx.Nodes().Create(n))
+			assert.NoError(t, store.CreateNode(tx, n))
 		}
 
 		// Prepopulate tasks
 		for _, task := range initialTaskSet {
-			assert.NoError(t, tx.Tasks().Create(task))
+			assert.NoError(t, store.CreateTask(tx, task))
 		}
 		return nil
 	})
 	assert.NoError(t, err)
 
-	scheduler := New(store)
+	scheduler := New(s)
 
-	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -903,10 +903,10 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 		// Let the scheduler get started
 		runtime.Gosched()
 
-		_ = s.Update(func(tx state.Tx) error {
+		_ = s.Update(func(tx store.Tx) error {
 			// Create initial nodes and tasks
 			for i := 0; i < nodes; i++ {
-				err := tx.Nodes().Create(&api.Node{
+				err := store.CreateNode(tx, &api.Node{
 					ID: identity.NewID(),
 					Spec: api.NodeSpec{
 						Annotations: api.Annotations{
@@ -923,7 +923,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 			}
 			for i := 0; i < tasks; i++ {
 				id := "task" + strconv.Itoa(i)
-				err := tx.Tasks().Create(&api.Task{
+				err := store.CreateTask(tx, &api.Task{
 					ID: id,
 					Annotations: api.Annotations{
 						Name: id,

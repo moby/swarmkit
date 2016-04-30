@@ -5,6 +5,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 )
 
@@ -13,8 +14,8 @@ import (
 // specifications. This is different from task-level orchestration, which
 // responds to changes in individual tasks (or nodes which run them).
 
-func (o *Orchestrator) initServices(readTx state.ReadTx) error {
-	runningServices, err := readTx.Services().Find(state.ByServiceMode(api.ServiceModeRunning))
+func (o *Orchestrator) initServices(readTx store.ReadTx) error {
+	runningServices, err := store.FindServices(readTx, store.ByServiceMode(api.ServiceModeRunning))
 	if err != nil {
 		return err
 	}
@@ -58,8 +59,8 @@ func (o *Orchestrator) resolveService(ctx context.Context, task *api.Task) *api.
 		return nil
 	}
 	var service *api.Service
-	o.store.View(func(tx state.ReadTx) {
-		service = tx.Services().Get(task.ServiceID)
+	o.store.View(func(tx store.ReadTx) {
+		service = store.GetService(tx, task.ServiceID)
 	})
 	return service
 }
@@ -69,8 +70,8 @@ func (o *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
 		tasks []*api.Task
 		err   error
 	)
-	o.store.View(func(tx state.ReadTx) {
-		tasks, err = tx.Tasks().Find(state.ByServiceID(service.ID))
+	o.store.View(func(tx store.ReadTx) {
+		tasks, err = store.FindTasks(tx, store.ByServiceID(service.ID))
 	})
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("reconcile failed finding tasks")
@@ -94,7 +95,7 @@ func (o *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
 
 	// TODO(aaronl): Add support for restart delays.
 
-	_, err = o.store.Batch(func(batch state.Batch) error {
+	_, err = o.store.Batch(func(batch *store.Batch) error {
 		switch {
 		case specifiedInstances > numTasks:
 			log.G(ctx).Debugf("Service %s was scaled up from %d to %d instances", service.ID, numTasks, specifiedInstances)
@@ -120,7 +121,7 @@ func (o *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
 	}
 }
 
-func (o *Orchestrator) addTasks(ctx context.Context, batch state.Batch, service *api.Service, runningInstances map[uint64]struct{}, count int) {
+func (o *Orchestrator) addTasks(ctx context.Context, batch *store.Batch, service *api.Service, runningInstances map[uint64]struct{}, count int) {
 	instance := uint64(0)
 	for i := 0; i < count; i++ {
 		// Find an instance number that is missing a running task
@@ -131,8 +132,8 @@ func (o *Orchestrator) addTasks(ctx context.Context, batch state.Batch, service 
 			}
 		}
 
-		err := batch.Update(func(tx state.Tx) error {
-			return tx.Tasks().Create(newTask(service, instance))
+		err := batch.Update(func(tx store.Tx) error {
+			return store.CreateTask(tx, newTask(service, instance))
 		})
 		if err != nil {
 			log.G(ctx).Errorf("Failed to create task: %v", err)
@@ -140,14 +141,14 @@ func (o *Orchestrator) addTasks(ctx context.Context, batch state.Batch, service 
 	}
 }
 
-func (o *Orchestrator) removeTasks(ctx context.Context, batch state.Batch, service *api.Service, tasks []*api.Task) {
+func (o *Orchestrator) removeTasks(ctx context.Context, batch *store.Batch, service *api.Service, tasks []*api.Task) {
 	for _, t := range tasks {
-		err := batch.Update(func(tx state.Tx) error {
+		err := batch.Update(func(tx store.Tx) error {
 			// TODO(aaronl): optimistic update?
-			t = tx.Tasks().Get(t.ID)
+			t = store.GetTask(tx, t.ID)
 			if t != nil {
 				t.DesiredState = api.TaskStateDead
-				return tx.Tasks().Update(t)
+				return store.UpdateTask(tx, t)
 			}
 			return nil
 		})

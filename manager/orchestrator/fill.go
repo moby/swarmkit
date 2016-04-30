@@ -4,13 +4,14 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 )
 
 // An FillOrchestrator runs a reconciliation loop to create and destroy
 // tasks as necessary for fill services.
 type FillOrchestrator struct {
-	store state.WatchableStore
+	store *store.MemoryStore
 	// nodes contains nodeID of all valid nodes in the cluster
 	nodes map[string]struct{}
 	// fillServices have all the FILL services in the cluster, indexed by ServiceID
@@ -26,7 +27,7 @@ type FillOrchestrator struct {
 }
 
 // NewFillOrchestrator creates a new FillOrchestrator
-func NewFillOrchestrator(store state.WatchableStore) *FillOrchestrator {
+func NewFillOrchestrator(store *store.MemoryStore) *FillOrchestrator {
 	return &FillOrchestrator{
 		store:        store,
 		nodes:        make(map[string]struct{}),
@@ -52,8 +53,8 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 		nodes []*api.Node
 		err   error
 	)
-	f.store.View(func(readTx state.ReadTx) {
-		nodes, err = readTx.Nodes().Find(state.All)
+	f.store.View(func(readTx store.ReadTx) {
+		nodes, err = store.FindNodes(readTx, store.All)
 	})
 	if err != nil {
 		return err
@@ -67,8 +68,8 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 
 	// Lookup existing fill services
 	var existingServices []*api.Service
-	f.store.View(func(readTx state.ReadTx) {
-		existingServices, err = readTx.Services().Find(state.ByServiceMode(api.ServiceModeFill))
+	f.store.View(func(readTx store.ReadTx) {
+		existingServices, err = store.FindServices(readTx, store.ByServiceMode(api.ServiceModeFill))
 	})
 	if err != nil {
 		return err
@@ -149,9 +150,9 @@ func (f *FillOrchestrator) Stop() {
 
 func (f *FillOrchestrator) removeTasksFromNode(ctx context.Context, node *api.Node) {
 	var tasks []*api.Task
-	err := f.store.Update(func(tx state.Tx) error {
+	err := f.store.Update(func(tx store.Tx) error {
 		var err error
-		tasks, err = tx.Tasks().Find(state.ByNodeID(node.ID))
+		tasks, err = store.FindTasks(tx, store.ByNodeID(node.ID))
 		return err
 	})
 	if err != nil {
@@ -159,7 +160,7 @@ func (f *FillOrchestrator) removeTasksFromNode(ctx context.Context, node *api.No
 		return
 	}
 
-	_, err = f.store.Batch(func(batch state.Batch) error {
+	_, err = f.store.Batch(func(batch *store.Batch) error {
 		for _, t := range tasks {
 			// fillOrchestrator only removes tasks from fillServices
 			if _, exists := f.fillServices[t.ServiceID]; exists {
@@ -178,8 +179,8 @@ func (f *FillOrchestrator) reconcileOneService(ctx context.Context, service *api
 		tasks []*api.Task
 		err   error
 	)
-	f.store.View(func(tx state.ReadTx) {
-		tasks, err = tx.Tasks().Find(state.ByServiceID(service.ID))
+	f.store.View(func(tx store.ReadTx) {
+		tasks, err = store.FindTasks(tx, store.ByServiceID(service.ID))
 	})
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("fillOrchestrator: reconcileOneService failed finding tasks")
@@ -203,7 +204,7 @@ func (f *FillOrchestrator) reconcileOneService(ctx context.Context, service *api
 		}
 	}
 
-	_, err = f.store.Batch(func(batch state.Batch) error {
+	_, err = f.store.Batch(func(batch *store.Batch) error {
 		var updateTasks []*api.Task
 		for nodeID := range f.nodes {
 			ntasks := nodeTasks[nodeID]
@@ -274,9 +275,9 @@ func (f *FillOrchestrator) reconcileServiceOneNode(ctx context.Context, serviceI
 		tasks []*api.Task
 		err   error
 	)
-	f.store.View(func(tx state.ReadTx) {
+	f.store.View(func(tx store.ReadTx) {
 		var tasksOnNode []*api.Task
-		tasksOnNode, err = tx.Tasks().Find(state.ByNodeID(nodeID))
+		tasksOnNode, err = store.FindTasks(tx, store.ByNodeID(nodeID))
 		if err != nil {
 			return
 		}
@@ -299,7 +300,7 @@ func (f *FillOrchestrator) reconcileServiceOneNode(ctx context.Context, serviceI
 		return
 	}
 
-	_, err = f.store.Batch(func(batch state.Batch) error {
+	_, err = f.store.Batch(func(batch *store.Batch) error {
 		// if restart policy considers this node has finished its task
 		// it should remove all running tasks
 		if completed {
@@ -323,12 +324,12 @@ func (f *FillOrchestrator) reconcileServiceOneNode(ctx context.Context, serviceI
 // sets a task's desired state to dead and restarts it if the restart
 // policy calls for it to be restarted.
 func (f *FillOrchestrator) restartTask(ctx context.Context, taskID string, serviceID string) {
-	err := f.store.Update(func(tx state.Tx) error {
-		t := tx.Tasks().Get(taskID)
+	err := f.store.Update(func(tx store.Tx) error {
+		t := store.GetTask(tx, taskID)
 		if t == nil || t.DesiredState > api.TaskStateRunning {
 			return nil
 		}
-		service := tx.Services().Get(serviceID)
+		service := store.GetService(tx, serviceID)
 		if service == nil {
 			return nil
 		}
@@ -339,14 +340,14 @@ func (f *FillOrchestrator) restartTask(ctx context.Context, taskID string, servi
 	}
 }
 
-func (f *FillOrchestrator) removeTask(ctx context.Context, batch state.Batch, t *api.Task) {
+func (f *FillOrchestrator) removeTask(ctx context.Context, batch *store.Batch, t *api.Task) {
 	// set existing task DesiredState to TaskStateDead
 	// TODO(aaronl): optimistic update?
-	err := batch.Update(func(tx state.Tx) error {
-		t = tx.Tasks().Get(t.ID)
+	err := batch.Update(func(tx store.Tx) error {
+		t = store.GetTask(tx, t.ID)
 		if t != nil {
 			t.DesiredState = api.TaskStateDead
-			return tx.Tasks().Update(t)
+			return store.UpdateTask(tx, t)
 		}
 		return nil
 	})
@@ -355,19 +356,19 @@ func (f *FillOrchestrator) removeTask(ctx context.Context, batch state.Batch, t 
 	}
 }
 
-func (f *FillOrchestrator) addTask(ctx context.Context, batch state.Batch, service *api.Service, nodeID string) {
+func (f *FillOrchestrator) addTask(ctx context.Context, batch *store.Batch, service *api.Service, nodeID string) {
 	task := newTask(service, 0)
 	task.NodeID = nodeID
 
-	err := batch.Update(func(tx state.Tx) error {
-		return tx.Tasks().Create(task)
+	err := batch.Update(func(tx store.Tx) error {
+		return store.CreateTask(tx, task)
 	})
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("FillOrchestrator: failed to create task")
 	}
 }
 
-func (f *FillOrchestrator) removeTasks(ctx context.Context, batch state.Batch, service *api.Service, tasks []*api.Task) {
+func (f *FillOrchestrator) removeTasks(ctx context.Context, batch *store.Batch, service *api.Service, tasks []*api.Task) {
 	for _, t := range tasks {
 		f.removeTask(ctx, batch, t)
 	}

@@ -10,19 +10,20 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/docker/swarm-v2/manager/state/watch"
 )
 
 // UpdateSupervisor supervises a set of updates. It's responsible for keeping track of updates,
 // shutting them down and replacing them.
 type UpdateSupervisor struct {
-	store   state.WatchableStore
+	store   *store.MemoryStore
 	updates map[string]*Updater
 	l       sync.Mutex
 }
 
 // NewUpdateSupervisor creates a new UpdateSupervisor.
-func NewUpdateSupervisor(store state.WatchableStore) *UpdateSupervisor {
+func NewUpdateSupervisor(store *store.MemoryStore) *UpdateSupervisor {
 	return &UpdateSupervisor{
 		store:   store,
 		updates: make(map[string]*Updater),
@@ -65,7 +66,7 @@ func (u *UpdateSupervisor) CancelAll() {
 
 // Updater updates a set of tasks to a new version.
 type Updater struct {
-	store      state.WatchableStore
+	store      *store.MemoryStore
 	watchQueue *watch.Queue
 
 	// stopChan signals to the state machine to stop running.
@@ -75,7 +76,7 @@ type Updater struct {
 }
 
 // NewUpdater creates a new Updater.
-func NewUpdater(store state.WatchableStore) *Updater {
+func NewUpdater(store *store.MemoryStore) *Updater {
 	return &Updater{
 		store:      store,
 		watchQueue: store.WatchQueue(),
@@ -171,14 +172,14 @@ func (u *Updater) updateTask(ctx context.Context, original, updated *api.Task) e
 	defer cancel()
 
 	// Atomically create the updated task and bring down the old one.
-	err := u.store.Update(func(tx state.Tx) error {
-		t := tx.Tasks().Get(original.ID)
+	err := u.store.Update(func(tx store.Tx) error {
+		t := store.GetTask(tx, original.ID)
 		t.DesiredState = api.TaskStateDead
-		if err := tx.Tasks().Update(t); err != nil {
+		if err := store.UpdateTask(tx, t); err != nil {
 			return err
 		}
 
-		if err := tx.Tasks().Create(updated); err != nil {
+		if err := store.CreateTask(tx, updated); err != nil {
 			return err
 		}
 		return nil

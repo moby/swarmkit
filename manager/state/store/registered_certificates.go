@@ -26,40 +26,39 @@ func init() {
 				},
 			},
 		},
-		Save: func(tx state.ReadTx, snapshot *api.StoreSnapshot) error {
+		Save: func(tx ReadTx, snapshot *api.StoreSnapshot) error {
 			var err error
-			snapshot.RegisteredCertificates, err = tx.RegisteredCertificates().Find(state.All)
+			snapshot.RegisteredCertificates, err = FindRegisteredCertificates(tx, All)
 			return err
 		},
-		Restore: func(tx state.Tx, snapshot *api.StoreSnapshot) error {
-			registeredCertificates, err := tx.RegisteredCertificates().Find(state.All)
+		Restore: func(tx Tx, snapshot *api.StoreSnapshot) error {
+			registeredCertificates, err := FindRegisteredCertificates(tx, All)
 			if err != nil {
 				return err
 			}
 			for _, n := range registeredCertificates {
-				if err := tx.RegisteredCertificates().Delete(n.ID); err != nil {
+				if err := DeleteRegisteredCertificate(tx, n.ID); err != nil {
 					return err
 				}
 			}
 			for _, n := range snapshot.RegisteredCertificates {
-				if err := tx.RegisteredCertificates().Create(n); err != nil {
+				if err := CreateRegisteredCertificate(tx, n); err != nil {
 					return err
 				}
 			}
 			return nil
 		},
-		ApplyStoreAction: func(tx state.Tx, sa *api.StoreAction) error {
+		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_RegisteredCertificate:
 				obj := v.RegisteredCertificate
-				ds := tx.RegisteredCertificates()
 				switch sa.Action {
 				case api.StoreActionKindCreate:
-					return ds.Create(obj)
+					return CreateRegisteredCertificate(tx, obj)
 				case api.StoreActionKindUpdate:
-					return ds.Update(obj)
+					return UpdateRegisteredCertificate(tx, obj)
 				case api.StoreActionKindRemove:
-					return ds.Delete(obj.ID)
+					return DeleteRegisteredCertificate(tx, obj.ID)
 				}
 			}
 			return errUnknownStoreAction
@@ -102,7 +101,11 @@ func (n registeredCertificateEntry) Version() api.Version {
 	return n.RegisteredCertificate.Version
 }
 
-func (n registeredCertificateEntry) Copy(version *api.Version) state.Object {
+func (n registeredCertificateEntry) SetVersion(version api.Version) {
+	n.RegisteredCertificate.Version = version
+}
+
+func (n registeredCertificateEntry) Copy(version *api.Version) Object {
 	copy := n.RegisteredCertificate.Copy()
 	if version != nil {
 		copy.Version = *version
@@ -122,57 +125,44 @@ func (n registeredCertificateEntry) EventDelete() state.Event {
 	return state.EventDeleteRegisteredCertificate{RegisteredCertificate: n.RegisteredCertificate}
 }
 
-type registeredCertificates struct {
-	tx      *tx
-	memDBTx *memdb.Txn
-}
-
-func (rc registeredCertificates) table() string {
-	return tableRegisteredCertificate
-}
-
-// Create adds a new RegisteredCertificate to the store.
+// CreateRegisteredCertificate adds a new RegisteredCertificate to the store.
 // Returns ErrExist if the ID is already taken.
-func (rc registeredCertificates) Create(n *api.RegisteredCertificate) error {
-	err := rc.tx.create(rc.table(), registeredCertificateEntry{n})
-	if err == nil && rc.tx.curVersion != nil {
-		n.Version = *rc.tx.curVersion
-	}
-	return err
+func CreateRegisteredCertificate(tx Tx, n *api.RegisteredCertificate) error {
+	return tx.create(tableRegisteredCertificate, registeredCertificateEntry{n})
 }
 
-// Update updates an existing RegisteredCertificate in the store.
+// UpdateRegisteredCertificate updates an existing RegisteredCertificate in the store.
 // Returns ErrNotExist if the RegisteredCertificate doesn't exist.
-func (rc registeredCertificates) Update(n *api.RegisteredCertificate) error {
-	return rc.tx.update(rc.table(), registeredCertificateEntry{n})
+func UpdateRegisteredCertificate(tx Tx, n *api.RegisteredCertificate) error {
+	return tx.update(tableRegisteredCertificate, registeredCertificateEntry{n})
 }
 
-// Delete removes a RegisteredCertificate from the store.
+// DeleteRegisteredCertificate removes a RegisteredCertificate from the store.
 // Returns ErrNotExist if the RegisteredCertificate doesn't exist.
-func (rc registeredCertificates) Delete(id string) error {
-	return rc.tx.delete(rc.table(), id)
+func DeleteRegisteredCertificate(tx Tx, id string) error {
+	return tx.delete(tableRegisteredCertificate, id)
 }
 
-// Get looks up a RegisteredCertificate by ID.
+// GetRegisteredCertificate looks up a RegisteredCertificate by ID.
 // Returns nil if the RegisteredCertificate doesn't exist.
-func (rc registeredCertificates) Get(id string) *api.RegisteredCertificate {
-	n := get(rc.memDBTx, rc.table(), id)
+func GetRegisteredCertificate(tx ReadTx, id string) *api.RegisteredCertificate {
+	n := tx.get(tableRegisteredCertificate, id)
 	if n == nil {
 		return nil
 	}
 	return n.(registeredCertificateEntry).RegisteredCertificate
 }
 
-// Find selects a set of RegisteredCertificates and returns them.
-func (rc registeredCertificates) Find(by state.By) ([]*api.RegisteredCertificate, error) {
+// FindRegisteredCertificates selects a set of RegisteredCertificates and returns them.
+func FindRegisteredCertificates(tx ReadTx, by By) ([]*api.RegisteredCertificate, error) {
 	switch by.(type) {
-	case state.AllFinder, state.NameFinder:
+	case byAll, byName:
 	default:
-		return nil, state.ErrInvalidFindBy
+		return nil, ErrInvalidFindBy
 	}
 
 	registeredCertificateList := []*api.RegisteredCertificate{}
-	err := find(rc.memDBTx, rc.table(), by, func(o state.Object) {
+	err := tx.find(tableRegisteredCertificate, by, func(o Object) {
 		registeredCertificateList = append(registeredCertificateList, o.(registeredCertificateEntry).RegisteredCertificate)
 	})
 	return registeredCertificateList, err

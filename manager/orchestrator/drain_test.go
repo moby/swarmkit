@@ -159,28 +159,28 @@ func TestDrain(t *testing.T) {
 		},
 	}
 
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
 
-	err := store.Update(func(tx state.Tx) error {
+	err := s.Update(func(tx store.Tx) error {
 		// Prepopulate service
-		assert.NoError(t, tx.Services().Create(initialService))
+		assert.NoError(t, store.CreateService(tx, initialService))
 		// Prepoulate nodes
 		for _, n := range initialNodeSet {
-			assert.NoError(t, tx.Nodes().Create(n))
+			assert.NoError(t, store.CreateNode(tx, n))
 		}
 
 		// Prepopulate tasks
 		for _, task := range initialTaskSet {
-			assert.NoError(t, tx.Tasks().Create(task))
+			assert.NoError(t, store.CreateTask(tx, task))
 		}
 		return nil
 	})
 	assert.NoError(t, err)
 
-	orchestrator := New(store)
+	orchestrator := New(s)
 
-	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -200,11 +200,11 @@ func TestDrain(t *testing.T) {
 	assert.Regexp(t, "id(2|3|5)", deletion3.NodeID)
 
 	// Create a new task, assigned to node id2
-	err = store.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx store.Tx) error {
 		task := initialTaskSet[2].Copy()
 		task.ID = "newtask"
 		task.NodeID = "id2"
-		assert.NoError(t, tx.Tasks().Create(task))
+		assert.NoError(t, store.CreateTask(tx, task))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -214,10 +214,10 @@ func TestDrain(t *testing.T) {
 	assert.Equal(t, "id2", deletion4.NodeID)
 
 	// Set node id4 to the DRAINED state
-	err = store.Update(func(tx state.Tx) error {
+	err = s.Update(func(tx store.Tx) error {
 		n := initialNodeSet[3].Copy()
 		n.Spec.Availability = api.NodeAvailabilityDrain
-		assert.NoError(t, tx.Nodes().Update(n))
+		assert.NoError(t, store.UpdateNode(tx, n))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -227,8 +227,8 @@ func TestDrain(t *testing.T) {
 	assert.Equal(t, "id4", deletion5.NodeID)
 
 	// Delete node id1
-	err = store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Nodes().Delete("id1"))
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteNode(tx, "id1"))
 		return nil
 	})
 	assert.NoError(t, err)
