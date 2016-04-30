@@ -153,43 +153,43 @@ func (m *Manager) Run(ctx context.Context) error {
 					// shutdown underlying manager processes when leadership is
 					// lost.
 
-					allocator, err := allocator.New(store)
+					var err error
+					m.allocator, err = allocator.New(store)
 					if err != nil {
 						log.G(ctx).WithError(err).Error("failed to create allocator")
 						// TODO(stevvooe): It doesn't seem correct here to fail
 						// creating the allocator but then use it anyways.
 					}
-					m.allocator = allocator
-
-					m.leaderLock.Unlock()
 
 					// Start all sub-components in separate goroutines.
 					// TODO(aluzzardi): This should have some kind of error handling so that
 					// any component that goes down would bring the entire manager down.
 
 					if m.allocator != nil {
-						go func() {
-							if err := m.allocator.Run(ctx); err != nil {
+						go func(allocator *allocator.Allocator) {
+							if err := allocator.Run(ctx); err != nil {
 								log.G(ctx).WithError(err).Error("allocator exited with an error")
 							}
-						}()
+						}(m.allocator)
 					}
 
-					go func() {
-						if err := m.scheduler.Run(ctx); err != nil {
+					go func(scheduler *scheduler.Scheduler) {
+						if err := scheduler.Run(ctx); err != nil {
 							log.G(ctx).WithError(err).Error("scheduler exited with an error")
 						}
-					}()
-					go func() {
-						if err := m.orchestrator.Run(ctx); err != nil {
+					}(m.scheduler)
+					go func(orchestrator *orchestrator.Orchestrator) {
+						if err := orchestrator.Run(ctx); err != nil {
 							log.G(ctx).WithError(err).Error("orchestrator exited with an error")
 						}
-					}()
-					go func() {
-						if err := m.fillOrchestrator.Run(ctx); err != nil {
+					}(m.orchestrator)
+					go func(fillOrchestrator *orchestrator.FillOrchestrator) {
+						if err := fillOrchestrator.Run(ctx); err != nil {
 							log.G(ctx).WithError(err).Error("fillOrchestrator exited with an error")
 						}
-					}()
+					}(m.fillOrchestrator)
+
+					m.leaderLock.Unlock()
 				} else if newState == raft.IsFollower {
 					m.leaderLock.Lock()
 
