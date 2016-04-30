@@ -51,7 +51,7 @@ type ServiceConfig struct {
 	ContainerConfig
 
 	Name      string `yaml:"name,omitempty"`
-	Instances int64  `yaml:"instances,omitempty"`
+	Instances *int64 `yaml:"instances,omitempty"`
 	Mode      string `yaml:"mode,omitempty"`
 
 	Restart      string `yaml:"restart,omitempty"`
@@ -72,10 +72,10 @@ func (s *ServiceConfig) Validate() error {
 	}
 
 	switch s.Mode {
-	case "", "running", "batch":
-	case "fill":
-		if s.Instances != 1 {
-			return fmt.Errorf("fill mode only allows 1 instance per node")
+	case "", "running":
+	case "batch", "fill":
+		if s.Instances != nil {
+			return fmt.Errorf("instances is not allowed in %s services", s.Mode)
 		}
 	default:
 		return fmt.Errorf("unrecognized mode %s", s.Mode)
@@ -114,9 +114,7 @@ func (s *ServiceConfig) Validate() error {
 
 // Reset resets the service config to its defaults.
 func (s *ServiceConfig) Reset() {
-	*s = ServiceConfig{
-		Instances: 1,
-	}
+	*s = ServiceConfig{}
 }
 
 // Read reads a ServiceConfig from an io.Reader.
@@ -156,9 +154,8 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 				},
 			},
 		},
-		Update:    s.Update.ToProto(),
-		Instances: s.Instances,
-		Restart:   &api.RestartPolicy{},
+		Update:  s.Update.ToProto(),
+		Restart: &api.RestartPolicy{},
 	}
 
 	if len(s.Ports) != 0 {
@@ -192,6 +189,11 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 	switch s.Mode {
 	case "", "running":
 		spec.Mode = api.ServiceModeRunning
+		// Default to 1 instance.
+		spec.Instances = 1
+		if s.Instances != nil {
+			spec.Instances = *s.Instances
+		}
 	case "batch":
 		spec.Mode = api.ServiceModeBatch
 	case "fill":
@@ -215,7 +217,7 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	*s = ServiceConfig{
 		Name:      serviceSpec.Annotations.Name,
-		Instances: serviceSpec.Instances,
+		Instances: &serviceSpec.Instances,
 		ContainerConfig: ContainerConfig{
 			Image:   serviceSpec.Template.GetContainer().Image.Reference,
 			Env:     serviceSpec.Template.GetContainer().Env,

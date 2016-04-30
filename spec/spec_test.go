@@ -77,31 +77,33 @@ func TestSpecDiff(t *testing.T) {
 		Version:   3,
 		Namespace: "namespace",
 		Services: map[string]*ServiceConfig{
-			"name1": {Instances: 1, ContainerConfig: ContainerConfig{Image: "img1"}},
-			"name2": {Instances: 1, ContainerConfig: ContainerConfig{Image: "img2"}},
+			"name1": {Name: "name1", ContainerConfig: ContainerConfig{Image: "img1"}},
+			"name2": {Name: "name2", ContainerConfig: ContainerConfig{Image: "img2"}},
 		},
 	}
 
+	twoInstances := int64(2)
+	threeInstances := int64(3)
 	diff, err := spec.Diff(0, "remote", "local",
 		&Spec{
 			Version:   3,
 			Namespace: "namespace",
 			Services: map[string]*ServiceConfig{
-				"name1": {Instances: 2, ContainerConfig: ContainerConfig{Image: "img1"}},
-				"name2": {Instances: 3, ContainerConfig: ContainerConfig{Image: "img2"}},
+				"name1": {Name: "name1", Instances: &twoInstances, ContainerConfig: ContainerConfig{Image: "img1"}},
+				"name2": {Name: "name2", Instances: &threeInstances, ContainerConfig: ContainerConfig{Image: "img2"}},
 			},
 		},
 	)
 	assert.NoError(t, err)
-	assert.Equal(t, "--- remote\n+++ local\n@@ -6 +6 @@\n-    instances: 2\n+    instances: 1\n@@ -9 +9 @@\n-    instances: 3\n+    instances: 1\n", diff)
+	assert.Equal(t, "--- remote\n+++ local\n@@ -7 +7 @@\n-    instances: 2\n+    instances: 1\n@@ -14 +14 @@\n-    instances: 3\n+    instances: 1\n", diff)
 
 	diff, err = spec.Diff(0, "old", "new",
 		&Spec{
 			Version:   3,
 			Namespace: "namespace",
 			Services: map[string]*ServiceConfig{
-				"name1": {Instances: 1, ContainerConfig: ContainerConfig{Image: "img3"}},
-				"name2": {Instances: 1, ContainerConfig: ContainerConfig{Image: "img2"}},
+				"name1": {Name: "name1", ContainerConfig: ContainerConfig{Image: "img3"}},
+				"name2": {Name: "name2", ContainerConfig: ContainerConfig{Image: "img2"}},
 			},
 		},
 	)

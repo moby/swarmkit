@@ -69,6 +69,10 @@ func (s *Spec) FromServiceSpecs(servicespecs []*api.ServiceSpec) {
 
 // Diff returns a diff between two Specs.
 func (s *Spec) Diff(context int, fromFile, toFile string, other *Spec) (string, error) {
+	// Force marshal/unmarshal.
+	other.FromServiceSpecs(other.ServiceSpecs())
+	s.FromServiceSpecs(s.ServiceSpecs())
+
 	from, err := yaml.Marshal(other)
 	if err != nil {
 		return "", err
