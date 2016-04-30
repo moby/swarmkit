@@ -271,13 +271,20 @@ func (s *MemoryStore) Update(cb func(state.Tx) error) error {
 }
 
 type batch struct {
-	tx                      tx
-	store                   *MemoryStore
-	applied                 int
-	committed               int
+	tx    tx
+	store *MemoryStore
+	// applied counts the times Update has run successfully
+	applied int
+	// committed is the number of times Update had run successfully as of
+	// the time pending changes were committed.
+	committed int
+	// transactionSizeEstimate is the running count of the size of the
+	// current transaction.
 	transactionSizeEstimate int
-	changelistLen           int
-	err                     error
+	// changelistLen is the last known length of the transaction's
+	// changelist.
+	changelistLen int
+	err           error
 }
 
 func (batch *batch) Update(cb func(state.Tx) error) error {
@@ -291,24 +298,12 @@ func (batch *batch) Update(cb func(state.Tx) error) error {
 
 	batch.applied++
 
-	// TODO(aaronl): Creating a StoreAction and marshalling it here
-	// for the size estimate is redundant because it gets created
-	// and marshalled a second time at commit time. This could be
-	// avoided by doing the marshalling only here, and streaming
-	// the serialized StoreActions to the proposer, which it would
-	// write using gogo-protobuf's io.DelimitedWriter. This would
-	// take some interface changes, so I'm leaving it as a TODO for
-	// now.
 	for batch.changelistLen < len(batch.tx.changelist) {
 		sa, err := newStoreAction(batch.tx.changelist[batch.changelistLen])
 		if err != nil {
 			return err
 		}
-		marshalled, err := sa.Marshal()
-		if err != nil {
-			return err
-		}
-		batch.transactionSizeEstimate += len(marshalled)
+		batch.transactionSizeEstimate += sa.Size()
 		batch.changelistLen++
 	}
 
