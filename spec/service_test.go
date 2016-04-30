@@ -77,9 +77,8 @@ func TestServiceConfigValidate(t *testing.T) {
 
 		// test service mode
 		{
-			Name:      "name",
-			Mode:      "fill",
-			Instances: 1,
+			Name: "name",
+			Mode: "fill",
 			ContainerConfig: ContainerConfig{
 				Image: "image",
 			},
@@ -110,8 +109,7 @@ func TestServiceConfigValidate(t *testing.T) {
 func TestServiceConfigsDiff(t *testing.T) {
 	makeService := func() *ServiceConfig {
 		s := &ServiceConfig{
-			Name:      "name",
-			Instances: 1,
+			Name: "name",
 			ContainerConfig: ContainerConfig{
 				Image: "nginx",
 
@@ -146,7 +144,8 @@ func TestServiceConfigsDiff(t *testing.T) {
 	assert.Contains(t, diff, "image: nginx")
 
 	against = makeService()
-	against.Instances = 2
+	instances := int64(2)
+	against.Instances = &instances
 	assert.NoError(t, against.Validate())
 	diff, err = service.Diff(0, "old", "new", against)
 	assert.NoError(t, err)
