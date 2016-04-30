@@ -493,6 +493,109 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 	scheduler.Stop()
 }
 
+func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
+	ctx := context.Background()
+	// Create a ready node without enough memory to run the task.
+	node := &api.Node{
+		ID: "id1",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+		Description: &api.NodeDescription{
+			Resources: &api.Resources{
+				NanoCPUs:    1e9,
+				MemoryBytes: 1e9,
+			},
+		},
+	}
+
+	bigTask1 := &api.Task{
+		ID: "id1",
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.Container{
+					Resources: &api.ResourceRequirements{
+						Reservations: &api.Resources{
+							MemoryBytes: 8e8,
+						},
+					},
+				},
+			},
+		},
+		Annotations: api.Annotations{
+			Name: "big",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStateAllocated,
+		},
+	}
+
+	bigTask2 := bigTask1.Copy()
+	bigTask2.ID = "id2"
+
+	store := store.NewMemoryStore(nil)
+	assert.NotNil(t, store)
+
+	err := store.Update(func(tx state.Tx) error {
+		// Add initial node and task
+		assert.NoError(t, tx.Nodes().Create(node))
+		assert.NoError(t, tx.Tasks().Create(bigTask1))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(store)
+
+	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+
+	// The task fits, so it should get assigned
+	assignment := watchAssignment(t, watch)
+	assert.Equal(t, "id1", assignment.ID)
+	assert.Equal(t, "id1", assignment.NodeID)
+
+	err = store.Update(func(tx state.Tx) error {
+		// Add a second task. It shouldn't get assigned because of
+		// resource constraints.
+		return tx.Tasks().Create(bigTask2)
+	})
+	assert.NoError(t, err)
+
+	time.Sleep(100 * time.Millisecond)
+	err = store.View(func(tx state.ReadTx) error {
+		tasks, err := tx.Tasks().Find(state.ByNodeID(node.ID))
+		assert.NoError(t, err)
+		assert.Len(t, tasks, 1)
+		return nil
+	})
+	assert.NoError(t, err)
+
+	err = store.Update(func(tx state.Tx) error {
+		// The task becomes dead
+		updatedTask := tx.Tasks().Get(bigTask1.ID)
+		updatedTask.Status.State = api.TaskStateDead
+		return tx.Tasks().Update(updatedTask)
+	})
+	assert.NoError(t, err)
+
+	// With the first task no longer consuming resources, the second
+	// one can be scheduled.
+	assignment = watchAssignment(t, watch)
+	assert.Equal(t, "id1", assignment.ID)
+	assert.Equal(t, "id1", assignment.NodeID)
+
+	scheduler.Stop()
+}
+
 func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
