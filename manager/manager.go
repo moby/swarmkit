@@ -137,6 +137,9 @@ func (m *Manager) Run(ctx context.Context) error {
 	m.managerDone = make(chan struct{})
 	defer close(m.managerDone)
 
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+
 	go func() {
 		for {
 			select {
@@ -209,6 +212,12 @@ func (m *Manager) Run(ctx context.Context) error {
 
 					m.leaderLock.Unlock()
 				}
+
+			case <-stopCh:
+				log.G(ctx).Error("manager was removed from the cluster")
+				m.Stop()
+				os.Exit(0)
+
 			case <-m.managerDone:
 				return
 			}
@@ -220,7 +229,8 @@ func (m *Manager) Run(ctx context.Context) error {
 			"proto": m.listener.Addr().Network(),
 			"addr":  m.listener.Addr().String()}))
 	log.G(ctx).Info("listening")
-	go m.raftNode.Run(ctx)
+
+	go m.raftNode.Run(ctx, stopCh)
 
 	backoffConfig := *grpc.DefaultBackoffConfig
 	backoffConfig.MaxDelay = 2 * time.Second
@@ -259,21 +269,26 @@ func (m *Manager) Run(ctx context.Context) error {
 // active RPCs as well as stopping the scheduler.
 func (m *Manager) Stop() {
 	m.leaderLock.Lock()
+	defer m.leaderLock.Unlock()
 	if m.allocator != nil {
 		m.allocator.Stop()
+		m.allocator = nil
 	}
 	if m.orchestrator != nil {
 		m.orchestrator.Stop()
+		m.orchestrator = nil
 	}
 	if m.fillOrchestrator != nil {
 		m.fillOrchestrator.Stop()
+		m.fillOrchestrator = nil
 	}
 	if m.scheduler != nil {
 		m.scheduler.Stop()
+		m.scheduler = nil
 	}
-	m.leaderLock.Unlock()
-
-	m.raftNode.Shutdown()
+	if m.raftNode.Node != nil {
+		m.raftNode.Shutdown()
+	}
 	m.server.Stop()
 }
 

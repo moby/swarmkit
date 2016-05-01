@@ -223,7 +223,7 @@ func NewInitNode(t *testing.T, securityConfig *ca.ManagerSecurityConfig, opts ..
 	clockSource := fakeclock.NewFakeClock(time.Now())
 	n := NewNode(t, clockSource, securityConfig, opts...)
 
-	go n.Run(ctx)
+	go n.Run(ctx, nil)
 
 	raft.Register(n.Server, n.Node)
 
@@ -244,7 +244,7 @@ func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, se
 	derivedOpts.JoinAddr = join
 	n := NewNode(t, clockSource, securityConfig, derivedOpts)
 
-	go n.Run(context.Background())
+	go n.Run(context.Background(), nil)
 	raft.Register(n.Server, n.Node)
 
 	go func() {
@@ -276,7 +276,7 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 	require.NoError(t, err, "can't create raft node")
 	n.Server = s
 
-	go n.Run(ctx)
+	go n.Run(ctx, nil)
 
 	raft.Register(s, n)
 
