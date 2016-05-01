@@ -112,15 +112,15 @@ func (c *cluster) CanRemoveMember(from uint64, id uint64) bool {
 	nreachable := 0
 
 	for _, member := range members {
-		// Local node from where the remove is issued
-		if uint64(member.ID) == from && uint64(member.ID) != id {
-			nmembers++
-			nreachable++
+		// Skip the node that is going to be deleted
+		if member.ID == id {
 			continue
 		}
 
-		// Skip the node that is going to be deleted
-		if uint64(member.ID) == id {
+		// Local node from where the remove is issued
+		if member.ID == from {
+			nmembers++
+			nreachable++
 			continue
 		}
 

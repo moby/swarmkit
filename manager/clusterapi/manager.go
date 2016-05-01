@@ -29,22 +29,19 @@ func (s *Server) ListManagers(ctx context.Context, request *api.ListManagersRequ
 func (s *Server) RemoveManager(ctx context.Context, request *api.RemoveManagerRequest) (*api.RemoveManagerResponse, error) {
 	memberlist := s.raft.GetMemberlist()
 
-	id, err := strconv.ParseUint(request.ManagerID, 16, 64)
+	removeID, err := strconv.ParseUint(request.ManagerID, 16, 64)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, err.Error())
 	}
 
-	if _, ok := memberlist[id]; !ok {
+	if _, exists := memberlist[removeID]; !exists {
 		return nil, grpc.Errorf(codes.NotFound, "member %s not found", request.ManagerID)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	if err != nil {
-		return nil, grpc.Errorf(codes.Internal, err.Error())
-	}
 	defer cancel()
 
-	err = s.raft.RemoveMember(ctx, id, []byte(""))
+	err = s.raft.RemoveMember(ctx, removeID, []byte(""))
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "cannot remove member %s from the cluster: %s", request.ManagerID, err)
 	}

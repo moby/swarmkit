@@ -53,12 +53,12 @@ var (
 	ErrRequestTooLarge = errors.New("raft: raft message is too large and can't be sent")
 	// ErrIDExists is thrown when a node wants to join the existing cluster but its ID already exists
 	ErrIDExists = errors.New("raft: can't add node to cluster, node id is a duplicate")
-	// ErrIDRemoved is thrown when a node tries to join but is in the remove set
-	ErrIDRemoved = errors.New("raft: can't add node to cluster, node was removed during cluster lifetime")
+	// ErrIDRemoved is thrown when a node tries to perform an operation on an existing cluster but was removed
+	ErrIDRemoved = errors.New("raft: node was removed during cluster lifetime")
 	// ErrIDNotFound is thrown when we try an operation on a member that does not exist in the cluster list
 	ErrIDNotFound = errors.New("raft: member not found in cluster list")
 	// ErrCannotRemoveMember is thrown when we try to remove a member from the cluster but this would result in a loss of quorum
-	ErrCannotRemoveMember = errors.New("raft: member cannot be removed from the list, this may result in a loss of quorum")
+	ErrCannotRemoveMember = errors.New("raft: member cannot be removed, because removing it may result in loss of quorum")
 )
 
 // LeadershipState indicates whether the node is a leader or follower.
@@ -95,6 +95,7 @@ type Node struct {
 	wal         *wal.WAL
 	snapshotter *snap.Snapshotter
 	wasLeader   bool
+	removed     bool
 	joinAddr    string
 
 	// snapshotInterval is the number of log messages after which a new
@@ -422,7 +423,7 @@ func (n *Node) readWAL(ctx context.Context, snapshot *raftpb.Snapshot) (err erro
 //
 // Before running the main loop, it first starts the raft node based on saved
 // cluster state. If no saved state exists, it starts a single-node cluster.
-func (n *Node) Run(ctx context.Context) {
+func (n *Node) Run(ctx context.Context, stopCh chan struct{}) {
 	for {
 		select {
 		case <-n.ticker.C():
@@ -483,6 +484,13 @@ func (n *Node) Run(ctx context.Context) {
 						n.leadershipCh <- IsLeader
 					}
 				}
+			}
+
+			// If the node was removed from other members,
+			// notify the manager to initiate the shutdown
+			// process.
+			if n.mustStop() && stopCh != nil {
+				stopCh <- struct{}{}
 			}
 
 			// Advance the state machine
@@ -636,7 +644,6 @@ func (n *Node) RemoveMember(ctx context.Context, id uint64, meta []byte) error {
 			Context: meta,
 		}
 
-		// Wait for a raft round to process the configuration change
 		err := n.configure(ctx, cc)
 		return err
 	}
@@ -653,6 +660,12 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 		return nil, err
 	}
 	logrus.Debugf("(*ProcessRaftMessage). message from node %s", agentID)
+
+	// Don't process the message if this comes from
+	// a node in the remove set
+	if n.cluster.isIDRemoved(msg.Message.From) {
+		return nil, ErrIDRemoved
+	}
 
 	// can't stop the raft node while an async RPC is in progress
 	n.stopMu.RLock()
@@ -781,6 +794,15 @@ func (n *Node) GetMemberlist() map[uint64]*api.Member {
 	}
 
 	return memberlist
+}
+
+// mustStop checks if the raft node must be stopped
+// because it was removed from the cluster from
+// other members
+func (n *Node) mustStop() bool {
+	n.stopMu.RLock()
+	defer n.stopMu.RUnlock()
+	return n.removed
 }
 
 // Saves a log entry to our Store
@@ -942,6 +964,11 @@ func (n *Node) sendToMember(member *member, m raftpb.Message) {
 
 	_, err := member.Client.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: &m})
 	if err != nil {
+		if grpc.ErrorDesc(err) == ErrIDRemoved.Error() {
+			n.stopMu.Lock()
+			n.removed = true
+			n.stopMu.Unlock()
+		}
 		if m.Type == raftpb.MsgSnap {
 			n.ReportSnapshot(m.To, raft.SnapshotFailure)
 		}
@@ -1146,15 +1173,15 @@ func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
 		return ErrIDNotFound
 	}
 
-	// We are trying to remove ourselves
+	// We are trying to remove ourselves, return and wait
+	// for the acknowledgment to start the shutdown process
 	if n.Config.ID == cc.NodeID {
-		n.Stop()
-		return
+		return nil
 	}
 
 	// If the node from where the remove is issued is
 	// a follower and the leader steps down, Campaign
-	// to be the leader
+	// to be the leader.
 	if cc.NodeID == n.Leader() {
 		if err = n.Campaign(n.Ctx); err != nil {
 			return err

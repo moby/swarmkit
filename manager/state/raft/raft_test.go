@@ -279,7 +279,6 @@ func TestRaftLeaderLeave(t *testing.T) {
 	t.Parallel()
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
-	defer raftutils.TeardownCluster(t, nodes)
 
 	// node 1 is the leader
 	assert.Equal(t, nodes[1].Leader(), nodes[1].Config.ID)
@@ -337,6 +336,8 @@ func TestRaftLeaderLeave(t *testing.T) {
 
 	raftutils.CheckValue(t, followerNode, value)
 	assert.Equal(t, len(followerNode.GetMemberlist()), 2)
+
+	raftutils.TeardownCluster(t, newCluster)
 }
 
 func TestRaftNewNodeGetsData(t *testing.T) {
@@ -686,7 +687,7 @@ func TestRaftUnreachableNode(t *testing.T) {
 	ctx := context.Background()
 	// Add a new node, but don't start its server yet
 	n := raftutils.NewNode(t, clockSource, securityConfig, raft.NewNodeOptions{JoinAddr: nodes[1].Address})
-	go n.Run(ctx)
+	go n.Run(ctx, nil)
 
 	raftutils.AdvanceTicks(clockSource, 5)
 	time.Sleep(100 * time.Millisecond)
