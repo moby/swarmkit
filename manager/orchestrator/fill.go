@@ -217,6 +217,8 @@ func (f *FillOrchestrator) reconcileOneService(ctx context.Context, service *api
 			}
 			// this node needs to run 1 copy of the task
 			if len(ntasks) == 0 {
+				// TODO(dongluochen): restart delay should
+				// take effect if this is a restart
 				f.addTask(ctx, batch, service, nodeID)
 			} else {
 				updateTasks = append(updateTasks, ntasks[0])
@@ -304,6 +306,8 @@ func (f *FillOrchestrator) reconcileServiceOneNode(ctx context.Context, serviceI
 		}
 		// this node needs to run 1 copy of the task
 		if len(tasks) == 0 {
+			// TODO(dongluochen): restart delay should
+			// take effect if this is a restart
 			f.addTask(ctx, batch, service, nodeID)
 		} else {
 			f.removeTasks(ctx, batch, service, tasks[1:])

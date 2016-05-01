@@ -19,8 +19,10 @@ type schedulingDecision struct {
 type Scheduler struct {
 	store           state.WatchableStore
 	unassignedTasks *list.List
-	nodeHeap        nodeHeap
-	allTasks        map[string]*api.Task
+	// preassignedTasks already have NodeID, need resource validation
+	preassignedTasks map[string]*api.Task
+	nodeHeap         nodeHeap
+	allTasks         map[string]*api.Task
 
 	// stopChan signals to the state machine to stop running
 	stopChan chan struct{}
@@ -36,11 +38,12 @@ type Scheduler struct {
 // New creates a new scheduler.
 func New(store state.WatchableStore) *Scheduler {
 	return &Scheduler{
-		store:           store,
-		unassignedTasks: list.New(),
-		allTasks:        make(map[string]*api.Task),
-		stopChan:        make(chan struct{}),
-		doneChan:        make(chan struct{}),
+		store:            store,
+		unassignedTasks:  list.New(),
+		preassignedTasks: make(map[string]*api.Task),
+		allTasks:         make(map[string]*api.Task),
+		stopChan:         make(chan struct{}),
+		doneChan:         make(chan struct{}),
 	}
 }
 
@@ -61,12 +64,18 @@ func (s *Scheduler) setupTasksList(tx state.ReadTx) error {
 		s.allTasks[t.ID] = t
 		if t.NodeID == "" {
 			s.enqueue(t)
-		} else {
-			if tasksByNode[t.NodeID] == nil {
-				tasksByNode[t.NodeID] = make(map[string]*api.Task)
-			}
-			tasksByNode[t.NodeID][t.ID] = t
+			continue
 		}
+		// preassigned tasks need to validate resource requirement on corresponding node
+		if t.Status.State == api.TaskStateAllocated {
+			s.preassignedTasks[t.ID] = t
+			continue
+		}
+
+		if tasksByNode[t.NodeID] == nil {
+			tasksByNode[t.NodeID] = make(map[string]*api.Task)
+		}
+		tasksByNode[t.NodeID][t.ID] = t
 	}
 
 	if err := s.buildNodeHeap(tx, tasksByNode); err != nil {
@@ -86,6 +95,11 @@ func (s *Scheduler) Run(ctx context.Context) error {
 		return err
 	}
 	defer cancel()
+
+	// Validate resource for tasks from preassigned tasks
+	// do this before other tasks because preassigned tasks like
+	// fill service should start before other tasks
+	s.processPreassignedTasks(ctx)
 
 	// Queue all unassigned tasks before processing changes.
 	s.tick(ctx)
@@ -112,6 +126,9 @@ func (s *Scheduler) Run(ctx context.Context) error {
 			case state.EventDeleteNode:
 				s.nodeHeap.remove(v.Node.ID)
 			case state.EventCommit:
+				if len(s.preassignedTasks) > 0 {
+					s.processPreassignedTasks(ctx)
+				}
 				if pendingChanges > 0 {
 					s.tick(ctx)
 					pendingChanges = 0
@@ -147,6 +164,12 @@ func (s *Scheduler) createTask(ctx context.Context, t *api.Task) int {
 		// unassigned task
 		s.enqueue(t)
 		return 1
+	}
+
+	if t.Status.State == api.TaskStateAllocated {
+		s.preassignedTasks[t.ID] = t
+		// preassigned tasks do not contribute to running tasks count
+		return 0
 	}
 
 	nodeInfo := s.nodeHeap.nodeInfo(t.NodeID)
@@ -191,6 +214,56 @@ func (s *Scheduler) createOrUpdateNode(n *api.Node) {
 	s.nodeHeap.addOrUpdateNode(newNodeInfo(n, map[string]*api.Task{}, resources))
 }
 
+func (s *Scheduler) processPreassignedTasks(ctx context.Context) {
+	var updatedTasks []*api.Task
+	// TODO: (dongluochen) extract common function to commit updates for preassignedTasks and unassignedTasks
+	applied, err := s.store.Batch(func(batch state.Batch) error {
+		for _, t := range s.preassignedTasks {
+			if newT := s.taskFitNode(ctx, t, t.NodeID); newT != nil {
+				err := batch.Update(func(tx state.Tx) error {
+					t := tx.Tasks().Get(t.ID)
+					if t == nil {
+						// Task no longer exists. Do nothing.
+						return nil
+					}
+					return tx.Tasks().Update(newT)
+				})
+				if err != nil {
+					log.G(ctx).Errorf("scheduler: failed to commit change to store for task %s", t.ID)
+					// return nil here so batch would commit outstanding updates
+					return nil
+				}
+				// move this tasks to succeeded list
+				updatedTasks = append(updatedTasks, newT)
+			}
+		}
+		return nil
+	})
+	if applied > len(updatedTasks) {
+		panic("scheduler: batch commit count is more than updated count")
+	}
+	if err != nil {
+		log.G(ctx).Errorf("scheduler: failed to commit change to store in batch mode")
+		// rollback resource claimed by these tasks
+		s.rollbackUpdatedTasks(ctx, updatedTasks[applied:])
+	}
+
+	// keep the failed tasks
+	for _, t := range updatedTasks[:applied] {
+		delete(s.preassignedTasks, t.ID)
+	}
+}
+
+func (s *Scheduler) rollbackUpdatedTasks(ctx context.Context, tasks []*api.Task) {
+	for _, t := range tasks {
+		// preassignedTasks keep the original copy
+		s.allTasks[t.ID] = s.preassignedTasks[t.ID]
+		nodeInfo := s.nodeHeap.nodeInfo(t.NodeID)
+		nodeInfo.removeTask(t)
+		s.nodeHeap.updateNode(nodeInfo)
+	}
+}
+
 // tick attempts to schedule the queue.
 func (s *Scheduler) tick(ctx context.Context) {
 	schedulingDecisions := make(map[string]schedulingDecision, s.unassignedTasks.Len())
@@ -215,7 +288,6 @@ func (s *Scheduler) tick(ctx context.Context) {
 		}
 	}
 
-	var failedSchedulingDecisions []schedulingDecision
 	schedulingDecisionsSlice := make([]schedulingDecision, 0, len(schedulingDecisions))
 
 	for _, decision := range schedulingDecisions {
@@ -236,7 +308,8 @@ func (s *Scheduler) tick(ctx context.Context) {
 			})
 			if err != nil {
 				log.G(ctx).Debugf("scheduler failed to update task %s; will retry", decision.old.ID)
-				failedSchedulingDecisions = append(failedSchedulingDecisions, decision)
+				// return nil so batch would commit outstanding updates
+				return nil
 			}
 		}
 		return nil
@@ -248,7 +321,6 @@ func (s *Scheduler) tick(ctx context.Context) {
 		s.rollbackLocalState(schedulingDecisionsSlice[applied:])
 		return
 	}
-	s.rollbackLocalState(failedSchedulingDecisions)
 }
 
 func (s *Scheduler) rollbackLocalState(decisions []schedulingDecision) {
@@ -261,6 +333,23 @@ func (s *Scheduler) rollbackLocalState(decisions []schedulingDecision) {
 
 		s.enqueue(decision.old)
 	}
+}
+
+// taskFitNode checks if a node has enough resource to accommodate a task
+func (s *Scheduler) taskFitNode(ctx context.Context, t *api.Task, nodeID string) *api.Task {
+	nodeInfo := s.nodeHeap.nodeInfo(nodeID)
+	pipeline := NewPipeline(t)
+	if !pipeline.Process(&nodeInfo) {
+		// this node cannot accommodate this task
+		return nil
+	}
+	newT := *t
+	newT.Status = api.TaskStatus{State: api.TaskStateAssigned}
+	s.allTasks[t.ID] = &newT
+
+	nodeInfo.addTask(&newT)
+	s.nodeHeap.updateNode(nodeInfo)
+	return &newT
 }
 
 // scheduleTask schedules a single task.
