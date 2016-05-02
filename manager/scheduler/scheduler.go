@@ -201,6 +201,7 @@ func (s *Scheduler) updateTask(ctx context.Context, t *api.Task) int {
 
 func (s *Scheduler) deleteTask(ctx context.Context, t *api.Task) {
 	delete(s.allTasks, t.ID)
+	delete(s.preassignedTasks, t.ID)
 	nodeInfo := s.nodeHeap.nodeInfo(t.NodeID)
 	nodeInfo.removeTask(t)
 	s.nodeHeap.updateNode(nodeInfo)
@@ -215,51 +216,24 @@ func (s *Scheduler) createOrUpdateNode(n *api.Node) {
 }
 
 func (s *Scheduler) processPreassignedTasks(ctx context.Context) {
-	var updatedTasks []*api.Task
-	// TODO: (dongluochen) extract common function to commit updates for preassignedTasks and unassignedTasks
-	applied, err := s.store.Batch(func(batch state.Batch) error {
-		for _, t := range s.preassignedTasks {
-			if newT := s.taskFitNode(ctx, t, t.NodeID); newT != nil {
-				err := batch.Update(func(tx state.Tx) error {
-					t := tx.Tasks().Get(t.ID)
-					if t == nil {
-						// Task no longer exists. Do nothing.
-						return nil
-					}
-					return tx.Tasks().Update(newT)
-				})
-				if err != nil {
-					log.G(ctx).Errorf("scheduler: failed to commit change to store for task %s", t.ID)
-					// return nil here so batch would commit outstanding updates
-					return nil
-				}
-				// move this tasks to succeeded list
-				updatedTasks = append(updatedTasks, newT)
-			}
+	schedulingDecisions := make(map[string]schedulingDecision, len(s.preassignedTasks))
+	for _, t := range s.preassignedTasks {
+		newT := s.taskFitNode(ctx, t, t.NodeID)
+		if newT == nil {
+			continue
 		}
-		return nil
-	})
-	if applied > len(updatedTasks) {
-		panic("scheduler: batch commit count is more than updated count")
-	}
-	if err != nil {
-		log.G(ctx).Errorf("scheduler: failed to commit change to store in batch mode")
-		// rollback resource claimed by these tasks
-		s.rollbackUpdatedTasks(ctx, updatedTasks[applied:])
+		schedulingDecisions[t.ID] = schedulingDecision{old: t, new: newT}
 	}
 
-	// keep the failed tasks
-	for _, t := range updatedTasks[:applied] {
-		delete(s.preassignedTasks, t.ID)
-	}
-}
+	successful, failed := s.applySchedulingDecisions(ctx, schedulingDecisions)
 
-func (s *Scheduler) rollbackUpdatedTasks(ctx context.Context, tasks []*api.Task) {
-	for _, t := range tasks {
-		// preassignedTasks keep the original copy
-		s.allTasks[t.ID] = s.preassignedTasks[t.ID]
-		nodeInfo := s.nodeHeap.nodeInfo(t.NodeID)
-		nodeInfo.removeTask(t)
+	for _, decision := range successful {
+		delete(s.preassignedTasks, decision.old.ID)
+	}
+	for _, decision := range failed {
+		s.allTasks[decision.old.ID] = decision.old
+		nodeInfo := s.nodeHeap.nodeInfo(decision.new.NodeID)
+		nodeInfo.removeTask(decision.new)
 		s.nodeHeap.updateNode(nodeInfo)
 	}
 }
@@ -288,28 +262,54 @@ func (s *Scheduler) tick(ctx context.Context) {
 		}
 	}
 
-	schedulingDecisionsSlice := make([]schedulingDecision, 0, len(schedulingDecisions))
+	_, failed := s.applySchedulingDecisions(ctx, schedulingDecisions)
+	for _, decision := range failed {
+		s.allTasks[decision.old.ID] = decision.old
 
-	for _, decision := range schedulingDecisions {
-		schedulingDecisionsSlice = append(schedulingDecisionsSlice, decision)
+		nodeInfo := s.nodeHeap.nodeInfo(decision.new.NodeID)
+		nodeInfo.removeTask(decision.new)
+		s.nodeHeap.updateNode(nodeInfo)
+
+		// enqueue task for next scheduling attempt
+		s.enqueue(decision.old)
 	}
+}
+
+func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDecisions map[string]schedulingDecision) (successful, failed []schedulingDecision) {
+	if len(schedulingDecisions) == 0 {
+		return
+	}
+
+	successful = make([]schedulingDecision, 0, len(schedulingDecisions))
 
 	// Apply changes to master store
 	applied, err := s.store.Batch(func(batch state.Batch) error {
-		for _, decision := range schedulingDecisionsSlice {
+		for len(schedulingDecisions) > 0 {
 			err := batch.Update(func(tx state.Tx) error {
-				t := tx.Tasks().Get(decision.old.ID)
-				if t == nil {
-					// Task no longer exists. Do nothing.
+				// Update exactly one task inside this Update
+				// callback.
+				for taskID, decision := range schedulingDecisions {
+					delete(schedulingDecisions, taskID)
+
+					t := tx.Tasks().Get(taskID)
+					if t == nil {
+						// Task no longer exists. Do nothing.
+						failed = append(failed, decision)
+						continue
+					}
+
+					if err := tx.Tasks().Update(decision.new); err != nil {
+						log.G(ctx).Debugf("scheduler failed to update task %s; will retry", taskID)
+						failed = append(failed, decision)
+						continue
+					}
+					successful = append(successful, decision)
 					return nil
 				}
-
-				return tx.Tasks().Update(decision.new)
+				return nil
 			})
 			if err != nil {
-				log.G(ctx).Debugf("scheduler failed to update task %s; will retry", decision.old.ID)
-				// return nil so batch would commit outstanding updates
-				return nil
+				return err
 			}
 		}
 		return nil
@@ -317,22 +317,10 @@ func (s *Scheduler) tick(ctx context.Context) {
 
 	if err != nil {
 		log.G(ctx).WithError(err).Error("scheduler tick transaction failed")
-
-		s.rollbackLocalState(schedulingDecisionsSlice[applied:])
-		return
+		failed = append(failed, successful[applied:]...)
+		successful = successful[:applied]
 	}
-}
-
-func (s *Scheduler) rollbackLocalState(decisions []schedulingDecision) {
-	for _, decision := range decisions {
-		s.allTasks[decision.old.ID] = decision.old
-
-		nodeInfo := s.nodeHeap.nodeInfo(decision.new.NodeID)
-		nodeInfo.removeTask(decision.new)
-		s.nodeHeap.updateNode(nodeInfo)
-
-		s.enqueue(decision.old)
-	}
+	return
 }
 
 // taskFitNode checks if a node has enough resource to accommodate a task
