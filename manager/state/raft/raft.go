@@ -116,6 +116,7 @@ type Node struct {
 	ticker      clock.Ticker
 	sendTimeout time.Duration
 	stopCh      chan struct{}
+	doneCh      chan struct{}
 
 	leadershipCh   chan LeadershipState
 	startNodePeers []raft.Peer
@@ -193,6 +194,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 		snapshotInterval:           1000,
 		logEntriesForSlowFollowers: 500,
 		stopCh:       make(chan struct{}),
+		doneCh:       make(chan struct{}),
 		StateDir:     opts.StateDir,
 		joinAddr:     opts.JoinAddr,
 		leadershipCh: leadershipCh,
@@ -425,6 +427,8 @@ func (n *Node) readWAL(ctx context.Context, snapshot *raftpb.Snapshot) (err erro
 // Before running the main loop, it first starts the raft node based on saved
 // cluster state. If no saved state exists, it starts a single-node cluster.
 func (n *Node) Run(ctx context.Context) error {
+	defer close(n.doneCh)
+
 	for {
 		select {
 		case <-n.ticker.C():
@@ -503,6 +507,9 @@ func (n *Node) Run(ctx context.Context) error {
 				n.snapshotIndex = snapshotIndex
 			}
 			n.snapshotInProgress = nil
+		case <-n.stopCh:
+			n.stop()
+			return nil
 		}
 	}
 }
@@ -511,6 +518,16 @@ func (n *Node) Run(ctx context.Context) error {
 // Calling Shutdown on an already stopped node
 // will result in a panic.
 func (n *Node) Shutdown() {
+	select {
+	case <-n.doneCh:
+		n.stop()
+	default:
+		close(n.stopCh)
+		<-n.doneCh
+	}
+}
+
+func (n *Node) stop() {
 	n.stopMu.Lock()
 	defer n.stopMu.Unlock()
 

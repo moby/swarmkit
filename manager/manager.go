@@ -61,7 +61,6 @@ type Manager struct {
 
 	leadershipCh chan raft.LeadershipState
 	leaderLock   sync.Mutex
-	once         sync.Once
 
 	managerDone chan struct{}
 }
@@ -227,7 +226,7 @@ func (m *Manager) Run(ctx context.Context) error {
 		if err != nil {
 			log.G(ctx).Error(err)
 			m.Stop()
-			os.Exit(0)
+			os.Exit(1)
 		}
 	}()
 
