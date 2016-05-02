@@ -61,6 +61,7 @@ type Manager struct {
 
 	leadershipCh chan raft.LeadershipState
 	leaderLock   sync.Mutex
+	once         sync.Once
 
 	managerDone chan struct{}
 }
@@ -137,9 +138,6 @@ func (m *Manager) Run(ctx context.Context) error {
 	m.managerDone = make(chan struct{})
 	defer close(m.managerDone)
 
-	stopCh := make(chan struct{})
-	defer close(stopCh)
-
 	go func() {
 		for {
 			select {
@@ -212,12 +210,6 @@ func (m *Manager) Run(ctx context.Context) error {
 
 					m.leaderLock.Unlock()
 				}
-
-			case <-stopCh:
-				log.G(ctx).Error("manager was removed from the cluster")
-				m.Stop()
-				os.Exit(0)
-
 			case <-m.managerDone:
 				return
 			}
@@ -230,7 +222,14 @@ func (m *Manager) Run(ctx context.Context) error {
 			"addr":  m.listener.Addr().String()}))
 	log.G(ctx).Info("listening")
 
-	go m.raftNode.Run(ctx, stopCh)
+	go func() {
+		err := m.raftNode.Run(ctx)
+		if err != nil {
+			log.G(ctx).Error(err)
+			m.Stop()
+			os.Exit(0)
+		}
+	}()
 
 	backoffConfig := *grpc.DefaultBackoffConfig
 	backoffConfig.MaxDelay = 2 * time.Second
@@ -286,10 +285,14 @@ func (m *Manager) Stop() {
 		m.scheduler.Stop()
 		m.scheduler = nil
 	}
-	if m.raftNode.Node != nil {
+	if m.raftNode != nil {
 		m.raftNode.Shutdown()
+		m.raftNode = nil
 	}
-	m.server.Stop()
+	if m.server != nil {
+		m.server.Stop()
+		m.server = nil
+	}
 }
 
 // GRPC Methods

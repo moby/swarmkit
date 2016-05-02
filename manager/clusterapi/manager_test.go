@@ -266,7 +266,7 @@ func TestRemoveManager(t *testing.T) {
 	assert.Equal(t, 3, len(mlist))
 	assert.NotNil(t, mlist[nodes[2].Config.ID])
 	assert.Equal(t, grpc.ErrorDesc(err), fmt.Sprintf(
-		"cannot remove member %s from the cluster: raft: member cannot be removed from the list, this may result in a loss of quorum",
+		"cannot remove member %s from the cluster: raft: member cannot be removed, because removing it may result in loss of quorum",
 		mlist[nodes[2].Config.ID].ID),
 	)
 
@@ -277,7 +277,7 @@ func TestRemoveManager(t *testing.T) {
 	assert.Equal(t, 3, len(mlist))
 	assert.NotNil(t, mlist[nodes[3].Config.ID])
 	assert.Equal(t, grpc.ErrorDesc(err), fmt.Sprintf(
-		"cannot remove member %s from the cluster: raft: member cannot be removed from the list, this may result in a loss of quorum",
+		"cannot remove member %s from the cluster: raft: member cannot be removed, because removing it may result in loss of quorum",
 		mlist[nodes[3].Config.ID].ID),
 	)
 
@@ -370,7 +370,7 @@ func TestRemoveManager(t *testing.T) {
 	assert.Equal(t, 2, len(mlist))
 	assert.NotNil(t, mlist[nodes[2].Config.ID])
 	assert.Equal(t, grpc.ErrorDesc(err), fmt.Sprintf(
-		"cannot remove member %s from the cluster: raft: member cannot be removed from the list, this may result in a loss of quorum",
+		"cannot remove member %s from the cluster: raft: member cannot be removed, because removing it may result in loss of quorum",
 		mlist[nodes[2].Config.ID].ID),
 	)
 }

@@ -41,7 +41,7 @@ func (s *Server) RemoveManager(ctx context.Context, request *api.RemoveManagerRe
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	err = s.raft.RemoveMember(ctx, removeID, []byte(""))
+	err = s.raft.RemoveMember(ctx, removeID)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "cannot remove member %s from the cluster: %s", request.ManagerID, err)
 	}
