@@ -687,7 +687,7 @@ func TestRaftUnreachableNode(t *testing.T) {
 	ctx := context.Background()
 	// Add a new node, but don't start its server yet
 	n := raftutils.NewNode(t, clockSource, securityConfig, raft.NewNodeOptions{JoinAddr: nodes[1].Address})
-	go n.Run(ctx, nil)
+	go n.Run(ctx)
 
 	raftutils.AdvanceTicks(clockSource, 5)
 	time.Sleep(100 * time.Millisecond)
