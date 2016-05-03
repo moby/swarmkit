@@ -142,9 +142,11 @@ func (a *Agent) run(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(logrus.Fields{
-		"agent.id": a.config.ID,
-	}))
+	// TODO(stevvooe): Bring this back when we can extract Agent ID from
+	// security configuration.
+	// ctx = log.WithLogger(ctx, log.G(ctx).WithFields(logrus.Fields{
+	// 	"agent.id": a.config.ID,
+	// }))
 
 	log.G(ctx).Debugf("(*Agent).run")
 	defer log.G(ctx).Debugf("(*Agent).run exited")
