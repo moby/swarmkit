@@ -5,7 +5,6 @@ import (
 	"github.com/docker/swarm-v2/agent"
 	"github.com/docker/swarm-v2/agent/exec/container"
 	"github.com/docker/swarm-v2/ca"
-	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -23,16 +22,6 @@ already present, the agent will recover and startup.`,
 			hostname, err := cmd.Flags().GetString("hostname")
 			if err != nil {
 				return err
-			}
-
-			id, err := cmd.Flags().GetString("id")
-			if err != nil {
-				return err
-			}
-
-			if id == "" {
-				log.G(ctx).Debugf("agent: generated random identifier")
-				id = identity.NewID()
 			}
 
 			managerAddrs, err := cmd.Flags().GetStringSlice("manager")
@@ -79,7 +68,6 @@ already present, the agent will recover and startup.`,
 			executor := container.NewExecutor(client)
 
 			ag, err := agent.New(&agent.Config{
-				ID:             id,
 				Hostname:       hostname,
 				Managers:       managers,
 				Executor:       executor,
@@ -101,7 +89,6 @@ already present, the agent will recover and startup.`,
 )
 
 func init() {
-	agentCmd.Flags().String("id", "", "Specifies the identity of the node")
 	agentCmd.Flags().String("engine-addr", "unix:///var/run/docker.sock", "Address of engine instance of agent.")
 	agentCmd.Flags().String("hostname", "", "Override reported agent hostname")
 	agentCmd.Flags().StringSliceP("manager", "m", []string{"localhost:4242"}, "Specify one or more manager addresses")
