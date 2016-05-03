@@ -202,9 +202,9 @@ message RestartPolicy {
 	// failure count is reset.
 }
 
-// UpdateConfiguration specifies the rate and policy of updates.
+// UpdateConfig specifies the rate and policy of updates.
 // TODO(aluzzardi): Consider making this a oneof with RollingStrategy and LockstepStrategy.
-message UpdateConfiguration {
+message UpdateConfig {
 	// Maximum number of tasks to be updated in one iteration.
 	// 0 means unlimited parallelism.
 	uint64 parallelism = 1;
@@ -289,15 +289,15 @@ message TaskStatus {
 	// TODO(stevvooe): Report on runtime statistics.
 }
 
-// IPAMConfiguration specifies parameters for IP Address Management.
-message IPAMConfiguration {
+// IPAMConfig specifies parameters for IP Address Management.
+message IPAMConfig {
 	// TODO(stevvooe): It may make more sense to manage IPAM and network
 	// definitions separately. This will allow multiple networks to share IPAM
 	// instances. For now, we will follow the conventions of libnetwork and
 	// specify this as part of the network specification.
 
 	// AddressFamily specifies the network address family that
-	// this IPAMConfiguration belongs to.
+	// this IPAMConfig belongs to.
 	enum AddressFamily {
 		UNKNOWN = 0; // satisfy proto3
 		IPV4 = 4;
@@ -332,13 +332,13 @@ message Endpoint {
 		UDP = 1;
 	}
 
-	// PortConfiguration specifies an exposed port which can be
+	// PortConfig specifies an exposed port which can be
 	// addressed using the given name. This can be later queried
 	// using a service discovery api or a DNS SRV query. The node
 	// port specifies a port that can be used to address this
 	// service external to the cluster by sending a connection
 	// request to this port to any node on the cluster.
-	message PortConfiguration {
+	message PortConfig {
 		// Name for the port. If provided the port information can
 		// be queried using the name as in a DNS SRV query.
 		string name = 1;
@@ -364,7 +364,7 @@ message Endpoint {
 	// created for this address.  More than one to accomodate for
 	// both IPv4 and IPv6
 	repeated string virtual_ip = 1 [(gogoproto.customname) = "VirtualIP"];
-	repeated PortConfiguration ports = 2;
+	repeated PortConfig ports = 2;
 }
 
 // Driver is a generic driver type to be used throughout the API. For now, a
@@ -378,7 +378,7 @@ message Driver {
 
 message IPAMOptions {
 	Driver driver = 1;
-	repeated IPAMConfiguration configurations = 3;
+	repeated IPAMConfig configs = 3;
 }
 
 // WeightedPeer should be used anywhere where we are describing a remote peer

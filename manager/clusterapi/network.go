@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func validateIPAMConfiguration(ipamConf *api.IPAMConfiguration) error {
+func validateIPAMConfiguration(ipamConf *api.IPAMConfig) error {
 	if ipamConf == nil {
 		return grpc.Errorf(codes.InvalidArgument, "ipam configuration: cannot be empty")
 	}
@@ -57,7 +57,7 @@ func validateIPAM(ipam *api.IPAMOptions) error {
 		return err
 	}
 
-	for _, ipamConf := range ipam.Configurations {
+	for _, ipamConf := range ipam.Configs {
 		if err := validateIPAMConfiguration(ipamConf); err != nil {
 			return err
 		}

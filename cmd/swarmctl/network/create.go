@@ -116,16 +116,16 @@ func processIPAMOptions(cmd *cobra.Command) (*api.IPAMOptions, error) {
 		return nil, err
 	}
 
-	ipamConfigs := make([]*api.IPAMConfiguration, 0, len(subnets))
+	ipamConfigs := make([]*api.IPAMConfig, 0, len(subnets))
 	for _, s := range subnets {
 		_, ipNet, err := net.ParseCIDR(s)
 		if err != nil {
 			return nil, err
 		}
 
-		family := api.IPAMConfiguration_IPV6
+		family := api.IPAMConfig_IPV6
 		if ipNet.IP.To4() != nil {
-			family = api.IPAMConfiguration_IPV4
+			family = api.IPAMConfig_IPV4
 		}
 
 		var gateway string
@@ -151,7 +151,7 @@ func processIPAMOptions(cmd *cobra.Command) (*api.IPAMOptions, error) {
 			}
 		}
 
-		ipamConfigs = append(ipamConfigs, &api.IPAMConfiguration{
+		ipamConfigs = append(ipamConfigs, &api.IPAMConfig{
 			Family:  family,
 			Subnet:  s,
 			Gateway: gateway,
@@ -163,7 +163,7 @@ func processIPAMOptions(cmd *cobra.Command) (*api.IPAMOptions, error) {
 		ipamOpts = &api.IPAMOptions{}
 	}
 
-	ipamOpts.Configurations = ipamConfigs
+	ipamOpts.Configs = ipamConfigs
 	return ipamOpts, nil
 }
 
