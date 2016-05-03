@@ -16,6 +16,7 @@ import (
 	cautils "github.com/docker/swarm-v2/ca/testutils"
 	raftutils "github.com/docker/swarm-v2/manager/state/raft/testutils"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -192,4 +193,184 @@ func TestListManagers(t *testing.T) {
 	// should be different than node 1
 	assert.Equal(t, leaderCount, 1)
 	assert.NotEqual(t, leader, members[nodes[1].Config.ID].ID)
+}
+
+func TestRemoveManager(t *testing.T) {
+	ts := newTestServer(t)
+
+	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
+
+	// Assign one of the raft node to the test server
+	ts.Server.raft = nodes[1].Node
+
+	// There should be 3 reachable managers listed
+	lsr, err := ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
+	assert.NoError(t, err)
+	assert.NotNil(t, lsr)
+	members := getMap(t, lsr.Managers)
+	assert.Equal(t, 3, len(ts.Server.raft.GetMemberlist()))
+	assert.Equal(t, 3, len(lsr.Managers))
+
+	// Try to remove an incorrect ID
+	rmr, err := ts.Client.RemoveManager(context.Background(), &api.RemoveManagerRequest{ManagerID: "ffffff"})
+	assert.Error(t, err)
+	assert.Nil(t, rmr)
+	mlist := ts.Server.raft.GetMemberlist()
+	assert.Equal(t, 3, len(mlist))
+	for i := 1; i <= 3; i++ {
+		assert.NotNil(t, mlist[nodes[uint64(i)].Config.ID])
+	}
+	assert.Equal(t, grpc.ErrorDesc(err), fmt.Sprintf(
+		"member %s not found",
+		"ffffff"),
+	)
+
+	// Stop node 2 and node 3 (2 nodes out of 3)
+	nodes[2].Server.Stop()
+	nodes[2].Shutdown()
+	nodes[3].Server.Stop()
+	nodes[3].Shutdown()
+
+	// Node 2 and Node 3 should be listed as Unreachable
+	assert.NoError(t, raftutils.PollFunc(func() error {
+		lsr, err = ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
+		if err != nil {
+			return err
+		}
+
+		members = getMap(t, lsr.Managers)
+
+		if len(lsr.Managers) != 3 {
+			return fmt.Errorf("expected 3 nodes, got %d", len(lsr.Managers))
+		}
+
+		if members[nodes[2].Config.ID].Status.State == api.MemberStatus_REACHABLE {
+			return fmt.Errorf("expected node 2 to be unreachable")
+		}
+
+		if members[nodes[3].Config.ID].Status.State == api.MemberStatus_REACHABLE {
+			return fmt.Errorf("expected node 3 to be unreachable")
+		}
+
+		return nil
+	}))
+
+	// We can't remove neither node 2 or node 3, this would potentially
+	// result in a loss of quorum if one of the 2 nodes recover and
+	// apply the configuration change on restart
+	rmr, err = ts.Client.RemoveManager(context.Background(), &api.RemoveManagerRequest{ManagerID: members[nodes[2].Config.ID].ID})
+	assert.Error(t, err)
+	assert.Nil(t, rmr)
+	mlist = ts.Server.raft.GetMemberlist()
+	assert.Equal(t, 3, len(mlist))
+	assert.NotNil(t, mlist[nodes[2].Config.ID])
+	assert.Equal(t, grpc.ErrorDesc(err), fmt.Sprintf(
+		"cannot remove member %s from the cluster: raft: member cannot be removed, because removing it may result in loss of quorum",
+		mlist[nodes[2].Config.ID].ID),
+	)
+
+	rmr, err = ts.Client.RemoveManager(context.Background(), &api.RemoveManagerRequest{ManagerID: members[nodes[3].Config.ID].ID})
+	assert.Error(t, err)
+	assert.Nil(t, rmr)
+	mlist = ts.Server.raft.GetMemberlist()
+	assert.Equal(t, 3, len(mlist))
+	assert.NotNil(t, mlist[nodes[3].Config.ID])
+	assert.Equal(t, grpc.ErrorDesc(err), fmt.Sprintf(
+		"cannot remove member %s from the cluster: raft: member cannot be removed, because removing it may result in loss of quorum",
+		mlist[nodes[3].Config.ID].ID),
+	)
+
+	// Restart node 2 and node 3
+	nodes[2] = raftutils.RestartNode(t, clockSource, nodes[2], securityConfig)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig)
+	raftutils.WaitForCluster(t, clockSource, nodes)
+
+	// Stop node 3 again
+	nodes[3].Server.Stop()
+
+	// Node 3 should be listed as Unreachable
+	assert.NoError(t, raftutils.PollFunc(func() error {
+		lsr, err = ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
+		if err != nil {
+			return err
+		}
+
+		members = getMap(t, lsr.Managers)
+
+		if len(lsr.Managers) != 3 {
+			return fmt.Errorf("expected 3 nodes, got %d", len(lsr.Managers))
+		}
+
+		if members[nodes[3].Config.ID].Status.State == api.MemberStatus_REACHABLE {
+			return fmt.Errorf("expected node 3 to be unreachable")
+		}
+
+		return nil
+	}))
+
+	// Try to remove node 3, this should succeed, we still have an active quorum
+	rmr, err = ts.Client.RemoveManager(context.Background(), &api.RemoveManagerRequest{ManagerID: members[nodes[3].Config.ID].ID})
+	assert.NoError(t, err)
+	assert.NotNil(t, rmr)
+
+	// Memberlist from both nodes should not list node 3
+	assert.NoError(t, raftutils.PollFunc(func() error {
+		mlist = ts.Server.raft.GetMemberlist()
+		if len(mlist) != 2 {
+			return fmt.Errorf("expected 2 nodes, got %d", len(mlist))
+		}
+		if mlist[nodes[3].Config.ID] != nil {
+			return fmt.Errorf("expected memberlist not to list node 3")
+		}
+
+		ts.Server.raft = nodes[2].Node
+		mlist = ts.Server.raft.GetMemberlist()
+		if len(mlist) != 2 {
+			return fmt.Errorf("expected 2 nodes, got %d", len(mlist))
+		}
+		if mlist[nodes[3].Config.ID] != nil {
+			return fmt.Errorf("expected memberlist not to list node 3")
+		}
+
+		return nil
+	}))
+
+	// Switch back to node 1
+	ts.Server.raft = nodes[1].Node
+
+	// Loss of Quorum: stop node 2
+	nodes[2].Server.Stop()
+
+	// Node 2 should be listed as Unreachable
+	assert.NoError(t, raftutils.PollFunc(func() error {
+		lsr, err = ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
+		if err != nil {
+			return err
+		}
+
+		members = getMap(t, lsr.Managers)
+
+		if len(lsr.Managers) != 2 {
+			return fmt.Errorf("expected 2 nodes, got %d", len(lsr.Managers))
+		}
+
+		if members[nodes[2].Config.ID].Status.State == api.MemberStatus_REACHABLE {
+			return fmt.Errorf("expected node 2 to be unreachable")
+		}
+
+		return nil
+	}))
+
+	// Removing node 2 should fail, there is no quorum so the deadline on proposal should apply
+	rmr, err = ts.Client.RemoveManager(context.Background(), &api.RemoveManagerRequest{ManagerID: members[nodes[2].Config.ID].ID})
+	assert.Error(t, err)
+	assert.Nil(t, rmr)
+	mlist = ts.Server.raft.GetMemberlist()
+	assert.Equal(t, 2, len(mlist))
+	assert.NotNil(t, mlist[nodes[2].Config.ID])
+	assert.Equal(t, grpc.ErrorDesc(err), fmt.Sprintf(
+		"cannot remove member %s from the cluster: raft: member cannot be removed, because removing it may result in loss of quorum",
+		mlist[nodes[2].Config.ID].ID),
+	)
 }

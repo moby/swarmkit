@@ -10,7 +10,13 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+
+	"golang.org/x/net/context"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/pkg/idutil"
@@ -27,9 +33,6 @@ import (
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/gogo/protobuf/proto"
 	"github.com/pivotal-golang/clock"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 var (
@@ -51,10 +54,14 @@ var (
 	ErrRequestTooLarge = errors.New("raft: raft message is too large and can't be sent")
 	// ErrIDExists is thrown when a node wants to join the existing cluster but its ID already exists
 	ErrIDExists = errors.New("raft: can't add node to cluster, node id is a duplicate")
-	// ErrIDRemoved is thrown when a node tries to join but is in the remove set
-	ErrIDRemoved = errors.New("raft: can't add node to cluster, node was removed during cluster lifetime")
+	// ErrIDRemoved is thrown when a node tries to perform an operation on an existing cluster but was removed
+	ErrIDRemoved = errors.New("raft: node was removed during cluster lifetime")
 	// ErrIDNotFound is thrown when we try an operation on a member that does not exist in the cluster list
 	ErrIDNotFound = errors.New("raft: member not found in cluster list")
+	// ErrCannotRemoveMember is thrown when we try to remove a member from the cluster but this would result in a loss of quorum
+	ErrCannotRemoveMember = errors.New("raft: member cannot be removed, because removing it may result in loss of quorum")
+	// ErrMemberRemoved is thrown when a node was removed from the cluster
+	ErrMemberRemoved = errors.New("raft: member was removed from the cluster")
 )
 
 // LeadershipState indicates whether the node is a leader or follower.
@@ -91,6 +98,7 @@ type Node struct {
 	wal         *wal.WAL
 	snapshotter *snap.Snapshotter
 	wasLeader   bool
+	removed     uint32
 	joinAddr    string
 
 	// snapshotInterval is the number of log messages after which a new
@@ -418,7 +426,9 @@ func (n *Node) readWAL(ctx context.Context, snapshot *raftpb.Snapshot) (err erro
 //
 // Before running the main loop, it first starts the raft node based on saved
 // cluster state. If no saved state exists, it starts a single-node cluster.
-func (n *Node) Run(ctx context.Context) {
+func (n *Node) Run(ctx context.Context) error {
+	defer close(n.doneCh)
+
 	for {
 		select {
 		case <-n.ticker.C():
@@ -481,6 +491,14 @@ func (n *Node) Run(ctx context.Context) {
 				}
 			}
 
+			// If the node was removed from other members,
+			// send back an error to the caller to start
+			// the shutdown process.
+			if n.mustStop() {
+				close(n.stopCh)
+				return ErrMemberRemoved
+			}
+
 			// Advance the state machine
 			n.Advance()
 
@@ -489,27 +507,9 @@ func (n *Node) Run(ctx context.Context) {
 				n.snapshotIndex = snapshotIndex
 			}
 			n.snapshotInProgress = nil
-
 		case <-n.stopCh:
-			n.cancel()
-			n.asyncTasks.Wait()
-
-			n.stopMu.Lock()
-			members := n.cluster.listMembers()
-			for _, member := range members {
-				if member.Client != nil && member.Client.Conn != nil {
-					_ = member.Client.Conn.Close()
-				}
-			}
-			n.Stop()
-			if err := n.wal.Close(); err != nil {
-				n.Config.Logger.Error(err)
-			}
-			n.Node = nil
-			close(n.doneCh)
-			n.stopMu.Unlock()
-			return
-			// TODO(stevvooe): Handle ctx.Done()
+			n.stop()
+			return nil
 		}
 	}
 }
@@ -518,8 +518,33 @@ func (n *Node) Run(ctx context.Context) {
 // Calling Shutdown on an already stopped node
 // will result in a panic.
 func (n *Node) Shutdown() {
-	close(n.stopCh)
-	<-n.doneCh
+	select {
+	case <-n.doneCh:
+		n.stop()
+	default:
+		close(n.stopCh)
+		<-n.doneCh
+	}
+}
+
+func (n *Node) stop() {
+	n.stopMu.Lock()
+	defer n.stopMu.Unlock()
+
+	n.cancel()
+	n.asyncTasks.Wait()
+
+	members := n.cluster.listMembers()
+	for _, member := range members {
+		if member.Client != nil && member.Client.Conn != nil {
+			_ = member.Client.Conn.Close()
+		}
+	}
+	n.Stop()
+	if err := n.wal.Close(); err != nil {
+		n.Config.Logger.Error(err)
+	}
+	// TODO(stevvooe): Handle ctx.Done()
 }
 
 // IsLeader checks if we are the leader or not
@@ -554,25 +579,13 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 		return nil, ErrStopped
 	}
 
-	meta, err := req.Node.Marshal()
-	if err != nil {
-		return nil, err
-	}
-
 	if n.cluster.isIDRemoved(req.Node.ID) {
 		return nil, ErrIDRemoved
 	}
 
 	// We submit a configuration change only if the node was not registered yet
 	if n.cluster.getMember(req.Node.ID) == nil {
-		cc := raftpb.ConfChange{
-			Type:    raftpb.ConfChangeAddNode,
-			NodeID:  req.Node.ID,
-			Context: meta,
-		}
-
-		// Wait for a raft round to process the configuration change
-		err = n.configure(ctx, cc)
+		err = n.addMember(ctx, req.Node)
 		if err != nil {
 			return nil, err
 		}
@@ -587,6 +600,24 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 	}
 
 	return &api.JoinResponse{Members: nodes}, nil
+}
+
+// addMember submits a configuration change to add a new member on the raft cluster.
+func (n *Node) addMember(ctx context.Context, node *api.RaftNode) error {
+	meta, err := node.Marshal()
+	if err != nil {
+		return err
+	}
+
+	cc := raftpb.ConfChange{
+		Type:    raftpb.ConfChangeAddNode,
+		NodeID:  node.ID,
+		Context: meta,
+	}
+
+	// Wait for a raft round to process the configuration change
+	err = n.configure(ctx, cc)
+	return err
 }
 
 // Leave asks to a member of the raft to remove
@@ -608,20 +639,31 @@ func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResp
 		return nil, ErrStopped
 	}
 
-	cc := raftpb.ConfChange{
-		ID:      req.Node.ID,
-		Type:    raftpb.ConfChangeRemoveNode,
-		NodeID:  req.Node.ID,
-		Context: []byte(""),
-	}
-
-	// Wait for a raft round to process the configuration change
-	err = n.configure(ctx, cc)
+	err = n.RemoveMember(ctx, req.Node.ID)
 	if err != nil {
 		return nil, err
 	}
 
 	return &api.LeaveResponse{}, nil
+}
+
+// RemoveMember submits a configuration change to remove a member from the raft cluster.
+func (n *Node) RemoveMember(ctx context.Context, id uint64) error {
+	// TODO(abronan): this can race if multiple removes are processed, we should
+	// send all the requests to the Leader and track pending removals.
+	if n.cluster.CanRemoveMember(n.Config.ID, id) {
+		cc := raftpb.ConfChange{
+			ID:      id,
+			Type:    raftpb.ConfChangeRemoveNode,
+			NodeID:  id,
+			Context: []byte(""),
+		}
+
+		err := n.configure(ctx, cc)
+		return err
+	}
+
+	return ErrCannotRemoveMember
 }
 
 // ProcessRaftMessage calls 'Step' which advances the
@@ -633,6 +675,12 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 		return nil, err
 	}
 	logrus.Debugf("(*ProcessRaftMessage). message from node %s", agentID)
+
+	// Don't process the message if this comes from
+	// a node in the remove set
+	if n.cluster.isIDRemoved(msg.Message.From) {
+		return nil, ErrIDRemoved
+	}
 
 	// can't stop the raft node while an async RPC is in progress
 	n.stopMu.RLock()
@@ -708,7 +756,6 @@ func (n *Node) deregisterNode(id uint64) error {
 
 	n.cluster.removeMember(id)
 
-	_ = peer.Client.Conn.Close()
 	return nil
 }
 
@@ -762,6 +809,13 @@ func (n *Node) GetMemberlist() map[uint64]*api.Member {
 	}
 
 	return memberlist
+}
+
+// mustStop checks if the raft node must be stopped
+// because it was removed from the cluster from
+// other members
+func (n *Node) mustStop() bool {
+	return atomic.LoadUint32(&n.removed) == 1
 }
 
 // Saves a log entry to our Store
@@ -899,6 +953,9 @@ func (n *Node) restoreFromSnapshot(data []byte) error {
 func (n *Node) send(messages []raftpb.Message) error {
 	members := n.cluster.listMembers()
 
+	n.stopMu.RLock()
+	defer n.stopMu.RUnlock()
+
 	for _, m := range messages {
 		// Process locally
 		if m.To == n.Config.ID {
@@ -923,6 +980,9 @@ func (n *Node) sendToMember(member *member, m raftpb.Message) {
 
 	_, err := member.Client.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: &m})
 	if err != nil {
+		if grpc.ErrorDesc(err) == ErrIDRemoved.Error() {
+			atomic.StoreUint32(&n.removed, 1)
+		}
 		if m.Type == raftpb.MsgSnap {
 			n.ReportSnapshot(m.To, raft.SnapshotFailure)
 		}
@@ -1127,18 +1187,10 @@ func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
 		return ErrIDNotFound
 	}
 
-	// The leader steps down
-	if n.Config.ID == n.Leader() && n.Config.ID == cc.NodeID {
-		return
-	}
-
 	// If the node from where the remove is issued is
 	// a follower and the leader steps down, Campaign
-	// to be the leader
+	// to be the leader.
 	if cc.NodeID == n.Leader() {
-		// FIXME(abronan): it's probably risky for each follower to Campaign
-		// at the same time, but it might speed up the process of recovering
-		// a leader
 		if err = n.Campaign(n.Ctx); err != nil {
 			return err
 		}

@@ -5,7 +5,7 @@ import "github.com/spf13/cobra"
 var (
 	// Cmd exposes the top-level managers command.
 	Cmd = &cobra.Command{
-		Use:   "managers",
+		Use:   "manager",
 		Short: "Manager membership management and introspection",
 	}
 )
@@ -13,5 +13,6 @@ var (
 func init() {
 	Cmd.AddCommand(
 		listCmd,
+		removeCmd,
 	)
 }
