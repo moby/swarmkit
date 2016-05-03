@@ -105,6 +105,14 @@ func TestControllerWait(t *testing.T) {
 	defer finish(t)
 
 	gomock.InOrder(
+		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
+			Return(types.ContainerJSON{
+				ContainerJSONBase: &types.ContainerJSONBase{
+					State: &types.ContainerState{
+						Status: "running",
+					},
+				},
+			}, nil),
 		client.EXPECT().Events(gomock.Any(), types.EventsOptions{
 			Since:   "0",
 			Filters: config.eventFilter(),
@@ -128,6 +136,14 @@ func TestControllerWaitExitError(t *testing.T) {
 	defer finish(t)
 
 	gomock.InOrder(
+		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
+			Return(types.ContainerJSON{
+				ContainerJSONBase: &types.ContainerJSONBase{
+					State: &types.ContainerState{
+						Status: "running",
+					},
+				},
+			}, nil),
 		client.EXPECT().Events(gomock.Any(), types.EventsOptions{
 			Since:   "0",
 			Filters: config.eventFilter(),
@@ -137,6 +153,49 @@ func TestControllerWaitExitError(t *testing.T) {
 				ContainerJSONBase: &types.ContainerJSONBase{
 					State: &types.ContainerState{
 						Status:   "exited", // can be anything but created
+						ExitCode: 1,
+					},
+				},
+			}, nil),
+	)
+
+	err := ctlr.Wait(ctx)
+	assert.Equal(t, &exec.ExitError{
+		Code: 1,
+	}, err)
+}
+
+func TestControllerWaitExitedClean(t *testing.T) {
+	task := genTask(t)
+	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
+	defer finish(t)
+
+	gomock.InOrder(
+		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
+			Return(types.ContainerJSON{
+				ContainerJSONBase: &types.ContainerJSONBase{
+					State: &types.ContainerState{
+						Status: "exited",
+					},
+				},
+			}, nil),
+	)
+
+	err := ctlr.Wait(ctx)
+	assert.Nil(t, err)
+}
+
+func TestControllerWaitExitedError(t *testing.T) {
+	task := genTask(t)
+	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
+	defer finish(t)
+
+	gomock.InOrder(
+		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
+			Return(types.ContainerJSON{
+				ContainerJSONBase: &types.ContainerJSONBase{
+					State: &types.ContainerState{
+						Status:   "exited",
 						ExitCode: 1,
 					},
 				},
