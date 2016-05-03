@@ -43,16 +43,33 @@ var (
 			common.FprintfIfNotEmpty(w, "ID\t: %s\n", node.ID)
 			common.FprintfIfNotEmpty(w, "Name\t: %s\n", spec.Annotations.Name)
 			common.FprintfIfNotEmpty(w, "Hostname\t: %s\n", node.Description.Hostname)
-			fmt.Fprintf(w, "Platform\t: %s-%s\n", desc.Platform.OS, desc.Platform.Architecture)
 
 			fmt.Fprintln(w, "Status:\t")
 			common.FprintfIfNotEmpty(w, "  State\t: %s\n", node.Status.State.String())
 			common.FprintfIfNotEmpty(w, "  Message\t: %s\n", node.Status.Message)
 			common.FprintfIfNotEmpty(w, "  Availability\t: %s\n", spec.Availability.String())
 
+			fmt.Fprintln(w, "Platform:\t")
+			common.FprintfIfNotEmpty(w, "  Operating System\t: %s\n", desc.Platform.OS)
+			common.FprintfIfNotEmpty(w, "  Architecture\t: %s\n", desc.Platform.Architecture)
+
 			fmt.Fprintln(w, "Resources:\t")
 			fmt.Fprintf(w, "  CPUs\t: %d\n", desc.Resources.NanoCPUs/1e9)
 			fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(desc.Resources.MemoryBytes)))
+
+			fmt.Fprintln(w, "Plugins:\t")
+			for _, p := range desc.Engine.Plugins {
+				fmt.Fprintf(w, "  %s\t: %v\n", p.Type, p.Names)
+			}
+
+			common.FprintfIfNotEmpty(w, "Engine Version\t: %s\n", desc.Engine.EngineVersion)
+
+			if len(desc.Engine.Labels) != 0 {
+				fmt.Fprintln(w, "Engine Labels:\t")
+				for k, v := range desc.Engine.Labels {
+					fmt.Fprintf(w, "  %s = %s", k, v)
+				}
+			}
 			return nil
 		},
 	}
