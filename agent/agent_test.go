@@ -54,7 +54,6 @@ func TestAgentStartStop(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	agent, err := New(&Config{
-		ID:             "test",
 		Executor:       &NoopExecutor{},
 		Managers:       NewManagers("localhost:4949"),
 		SecurityConfig: agentSecurityConfigs[0],

@@ -9,9 +9,6 @@ import (
 
 // Config provides values for an Agent.
 type Config struct {
-	// ID is the identifier to be used for the agent.
-	ID string
-
 	// Hostname the name of host for agent instance.
 	Hostname string
 
@@ -27,10 +24,6 @@ type Config struct {
 }
 
 func (c *Config) validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("config: id required")
-	}
-
 	if c.SecurityConfig == nil {
 		return fmt.Errorf("config: SecurityConfig required")
 	}

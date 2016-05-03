@@ -128,7 +128,6 @@ func TestManagerNodeCount(t *testing.T) {
 
 	managers := agent.NewManagers(l.Addr().String())
 	a1, err := agent.New(&agent.Config{
-		ID:             "test1",
 		Hostname:       "hostname1",
 		Managers:       managers,
 		Executor:       &NoopExecutor{},
@@ -136,7 +135,6 @@ func TestManagerNodeCount(t *testing.T) {
 	})
 	require.NoError(t, err)
 	a2, err := agent.New(&agent.Config{
-		ID:             "test2",
 		Hostname:       "hostname2",
 		Managers:       managers,
 		Executor:       &NoopExecutor{},
