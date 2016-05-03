@@ -426,10 +426,10 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sto
 
 		networks := make([]*api.Container_NetworkAttachment, 0, len(t.GetContainer().Spec.Networks))
 		for _, na := range t.GetContainer().Spec.Networks {
-			n := store.GetNetwork(tx, na.GetNetworkID())
+			n := store.GetNetwork(tx, na.NetworkID)
 			if n == nil {
 				taskUpdateNetworks(t, nil)
-				return nil, fmt.Errorf("failed to retrieve network %s while allocating task %s", na.GetNetworkID(), t.ID)
+				return nil, fmt.Errorf("failed to retrieve network %s while allocating task %s", na.NetworkID, t.ID)
 			}
 
 			if !nc.nwkAllocator.IsAllocated(n) {

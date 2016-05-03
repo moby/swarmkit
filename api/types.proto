@@ -383,4 +383,3 @@ message IssuanceStatus {
 	//
 	string err = 2;
 }
-
