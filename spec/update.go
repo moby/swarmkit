@@ -26,11 +26,11 @@ func (u *UpdateConfiguration) Validate() error {
 }
 
 // ToProto converts native UpdateConfiguration into protos.
-func (u *UpdateConfiguration) ToProto() *api.UpdateConfiguration {
+func (u *UpdateConfiguration) ToProto() *api.UpdateConfig {
 	if u == nil {
 		return nil
 	}
-	p := &api.UpdateConfiguration{
+	p := &api.UpdateConfig{
 		Parallelism: u.Parallelism,
 	}
 	if u.Delay != "" {
@@ -40,7 +40,7 @@ func (u *UpdateConfiguration) ToProto() *api.UpdateConfiguration {
 }
 
 // FromProto converts proto UpdateConfiguration back into native types.
-func (u *UpdateConfiguration) FromProto(p *api.UpdateConfiguration) {
+func (u *UpdateConfiguration) FromProto(p *api.UpdateConfig) {
 	if p == nil {
 		return
 	}

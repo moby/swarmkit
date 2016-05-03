@@ -100,7 +100,7 @@ func TestUpdater(t *testing.T) {
 	}
 
 	service.Spec.Template.GetContainer().Image.Reference = "v:3"
-	service.Spec.Update = &api.UpdateConfiguration{
+	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
 	}
 	updater = NewUpdater(store)
@@ -111,7 +111,7 @@ func TestUpdater(t *testing.T) {
 	}
 
 	service.Spec.Template.GetContainer().Image.Reference = "v:4"
-	service.Spec.Update = &api.UpdateConfiguration{
+	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
 		Delay:       10 * time.Millisecond,
 	}

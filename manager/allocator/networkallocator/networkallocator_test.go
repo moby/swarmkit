@@ -98,58 +98,58 @@ func TestAllocateEmptyConfig(t *testing.T) {
 
 	err := na1.Allocate(n1)
 	assert.NoError(t, err)
-	assert.NotEqual(t, n1.IPAM.Configurations, nil)
-	assert.Equal(t, len(n1.IPAM.Configurations), 1)
-	assert.Equal(t, n1.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n1.IPAM.Configurations[0].Reserved), 0)
+	assert.NotEqual(t, n1.IPAM.Configs, nil)
+	assert.Equal(t, len(n1.IPAM.Configs), 1)
+	assert.Equal(t, n1.IPAM.Configs[0].Range, "")
+	assert.Equal(t, len(n1.IPAM.Configs[0].Reserved), 0)
 
-	_, subnet11, err := net.ParseCIDR(n1.IPAM.Configurations[0].Subnet)
+	_, subnet11, err := net.ParseCIDR(n1.IPAM.Configs[0].Subnet)
 	assert.NoError(t, err)
 
-	gwip11 := net.ParseIP(n1.IPAM.Configurations[0].Gateway)
+	gwip11 := net.ParseIP(n1.IPAM.Configs[0].Gateway)
 	assert.NotEqual(t, gwip11, nil)
 
 	err = na1.Allocate(n2)
 	assert.NoError(t, err)
-	assert.NotEqual(t, n2.IPAM.Configurations, nil)
-	assert.Equal(t, len(n2.IPAM.Configurations), 1)
-	assert.Equal(t, n2.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n2.IPAM.Configurations[0].Reserved), 0)
+	assert.NotEqual(t, n2.IPAM.Configs, nil)
+	assert.Equal(t, len(n2.IPAM.Configs), 1)
+	assert.Equal(t, n2.IPAM.Configs[0].Range, "")
+	assert.Equal(t, len(n2.IPAM.Configs[0].Reserved), 0)
 
-	_, subnet21, err := net.ParseCIDR(n2.IPAM.Configurations[0].Subnet)
+	_, subnet21, err := net.ParseCIDR(n2.IPAM.Configs[0].Subnet)
 	assert.NoError(t, err)
 
-	gwip21 := net.ParseIP(n2.IPAM.Configurations[0].Gateway)
+	gwip21 := net.ParseIP(n2.IPAM.Configs[0].Gateway)
 	assert.NotEqual(t, gwip21, nil)
 
 	// Allocate n1 ans n2 with another allocator instance but in
 	// intentionally reverse order.
 	err = na2.Allocate(n2)
 	assert.NoError(t, err)
-	assert.NotEqual(t, n2.IPAM.Configurations, nil)
-	assert.Equal(t, len(n2.IPAM.Configurations), 1)
-	assert.Equal(t, n2.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n2.IPAM.Configurations[0].Reserved), 0)
+	assert.NotEqual(t, n2.IPAM.Configs, nil)
+	assert.Equal(t, len(n2.IPAM.Configs), 1)
+	assert.Equal(t, n2.IPAM.Configs[0].Range, "")
+	assert.Equal(t, len(n2.IPAM.Configs[0].Reserved), 0)
 
-	_, subnet22, err := net.ParseCIDR(n2.IPAM.Configurations[0].Subnet)
+	_, subnet22, err := net.ParseCIDR(n2.IPAM.Configs[0].Subnet)
 	assert.NoError(t, err)
 	assert.Equal(t, subnet21, subnet22)
 
-	gwip22 := net.ParseIP(n2.IPAM.Configurations[0].Gateway)
+	gwip22 := net.ParseIP(n2.IPAM.Configs[0].Gateway)
 	assert.Equal(t, gwip21, gwip22)
 
 	err = na2.Allocate(n1)
 	assert.NoError(t, err)
-	assert.NotEqual(t, n1.IPAM.Configurations, nil)
-	assert.Equal(t, len(n1.IPAM.Configurations), 1)
-	assert.Equal(t, n1.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n1.IPAM.Configurations[0].Reserved), 0)
+	assert.NotEqual(t, n1.IPAM.Configs, nil)
+	assert.Equal(t, len(n1.IPAM.Configs), 1)
+	assert.Equal(t, n1.IPAM.Configs[0].Range, "")
+	assert.Equal(t, len(n1.IPAM.Configs[0].Reserved), 0)
 
-	_, subnet12, err := net.ParseCIDR(n1.IPAM.Configurations[0].Subnet)
+	_, subnet12, err := net.ParseCIDR(n1.IPAM.Configs[0].Subnet)
 	assert.NoError(t, err)
 	assert.Equal(t, subnet11, subnet12)
 
-	gwip12 := net.ParseIP(n1.IPAM.Configurations[0].Gateway)
+	gwip12 := net.ParseIP(n1.IPAM.Configs[0].Gateway)
 	assert.Equal(t, gwip11, gwip12)
 }
 
@@ -164,7 +164,7 @@ func TestAllocateWithOneSubnet(t *testing.T) {
 			DriverConfiguration: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+				Configs: []*api.IPAMConfig{
 					{
 						Subnet: "192.168.1.0/24",
 					},
@@ -175,12 +175,12 @@ func TestAllocateWithOneSubnet(t *testing.T) {
 
 	err := na.Allocate(n)
 	assert.NoError(t, err)
-	assert.Equal(t, len(n.IPAM.Configurations), 1)
-	assert.Equal(t, n.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n.IPAM.Configurations[0].Reserved), 0)
-	assert.Equal(t, n.IPAM.Configurations[0].Subnet, "192.168.1.0/24")
+	assert.Equal(t, len(n.IPAM.Configs), 1)
+	assert.Equal(t, n.IPAM.Configs[0].Range, "")
+	assert.Equal(t, len(n.IPAM.Configs[0].Reserved), 0)
+	assert.Equal(t, n.IPAM.Configs[0].Subnet, "192.168.1.0/24")
 
-	ip := net.ParseIP(n.IPAM.Configurations[0].Gateway)
+	ip := net.ParseIP(n.IPAM.Configs[0].Gateway)
 	assert.NotEqual(t, ip, nil)
 }
 
@@ -195,7 +195,7 @@ func TestAllocateWithOneSubnetGateway(t *testing.T) {
 			DriverConfiguration: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+				Configs: []*api.IPAMConfig{
 					{
 						Subnet:  "192.168.1.0/24",
 						Gateway: "192.168.1.1",
@@ -207,11 +207,11 @@ func TestAllocateWithOneSubnetGateway(t *testing.T) {
 
 	err := na.Allocate(n)
 	assert.NoError(t, err)
-	assert.Equal(t, len(n.IPAM.Configurations), 1)
-	assert.Equal(t, n.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n.IPAM.Configurations[0].Reserved), 0)
-	assert.Equal(t, n.IPAM.Configurations[0].Subnet, "192.168.1.0/24")
-	assert.Equal(t, n.IPAM.Configurations[0].Gateway, "192.168.1.1")
+	assert.Equal(t, len(n.IPAM.Configs), 1)
+	assert.Equal(t, n.IPAM.Configs[0].Range, "")
+	assert.Equal(t, len(n.IPAM.Configs[0].Reserved), 0)
+	assert.Equal(t, n.IPAM.Configs[0].Subnet, "192.168.1.0/24")
+	assert.Equal(t, n.IPAM.Configs[0].Gateway, "192.168.1.1")
 }
 
 func TestAllocateWithOneSubnetInvalidGateway(t *testing.T) {
@@ -225,7 +225,7 @@ func TestAllocateWithOneSubnetInvalidGateway(t *testing.T) {
 			DriverConfiguration: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+				Configs: []*api.IPAMConfig{
 					{
 						Subnet:  "192.168.1.0/24",
 						Gateway: "192.168.2.1",
@@ -250,7 +250,7 @@ func TestAllocateWithInvalidSubnet(t *testing.T) {
 			DriverConfiguration: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+				Configs: []*api.IPAMConfig{
 					{
 						Subnet: "1.1.1.1/32",
 					},
@@ -274,7 +274,7 @@ func TestAllocateWithTwoSubnetsNoGateway(t *testing.T) {
 			DriverConfiguration: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+				Configs: []*api.IPAMConfig{
 					{
 						Subnet: "192.168.1.0/24",
 					},
@@ -288,17 +288,17 @@ func TestAllocateWithTwoSubnetsNoGateway(t *testing.T) {
 
 	err := na.Allocate(n)
 	assert.NoError(t, err)
-	assert.Equal(t, len(n.IPAM.Configurations), 2)
-	assert.Equal(t, n.IPAM.Configurations[0].Range, "")
-	assert.Equal(t, len(n.IPAM.Configurations[0].Reserved), 0)
-	assert.Equal(t, n.IPAM.Configurations[0].Subnet, "192.168.1.0/24")
-	assert.Equal(t, n.IPAM.Configurations[1].Range, "")
-	assert.Equal(t, len(n.IPAM.Configurations[1].Reserved), 0)
-	assert.Equal(t, n.IPAM.Configurations[1].Subnet, "192.168.2.0/24")
+	assert.Equal(t, len(n.IPAM.Configs), 2)
+	assert.Equal(t, n.IPAM.Configs[0].Range, "")
+	assert.Equal(t, len(n.IPAM.Configs[0].Reserved), 0)
+	assert.Equal(t, n.IPAM.Configs[0].Subnet, "192.168.1.0/24")
+	assert.Equal(t, n.IPAM.Configs[1].Range, "")
+	assert.Equal(t, len(n.IPAM.Configs[1].Reserved), 0)
+	assert.Equal(t, n.IPAM.Configs[1].Subnet, "192.168.2.0/24")
 
-	ip := net.ParseIP(n.IPAM.Configurations[0].Gateway)
+	ip := net.ParseIP(n.IPAM.Configs[0].Gateway)
 	assert.NotEqual(t, ip, nil)
-	ip = net.ParseIP(n.IPAM.Configurations[1].Gateway)
+	ip = net.ParseIP(n.IPAM.Configs[1].Gateway)
 	assert.NotEqual(t, ip, nil)
 }
 
@@ -313,7 +313,7 @@ func TestFree(t *testing.T) {
 			DriverConfiguration: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+				Configs: []*api.IPAMConfig{
 					{
 						Subnet:  "192.168.1.0/24",
 						Gateway: "192.168.1.1",
@@ -346,7 +346,7 @@ func TestAllocateTaskFree(t *testing.T) {
 			DriverConfiguration: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+				Configs: []*api.IPAMConfig{
 					{
 						Subnet:  "192.168.1.0/24",
 						Gateway: "192.168.1.1",
@@ -365,7 +365,7 @@ func TestAllocateTaskFree(t *testing.T) {
 			DriverConfiguration: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
-				Configurations: []*api.IPAMConfiguration{
+				Configs: []*api.IPAMConfig{
 					{
 						Subnet:  "192.168.2.0/24",
 						Gateway: "192.168.2.1",
@@ -512,7 +512,7 @@ func TestServiceAllocate(t *testing.T) {
 		ID: "testID1",
 		Spec: api.ServiceSpec{
 			Endpoint: &api.Endpoint{
-				Ports: []*api.Endpoint_PortConfiguration{
+				Ports: []*api.Endpoint_PortConfig{
 					{
 						Name: "http",
 						Port: 80,
@@ -541,7 +541,7 @@ func TestServiceAllocateUserDefinedPorts(t *testing.T) {
 		ID: "testID1",
 		Spec: api.ServiceSpec{
 			Endpoint: &api.Endpoint{
-				Ports: []*api.Endpoint_PortConfiguration{
+				Ports: []*api.Endpoint_PortConfig{
 					{
 						Name:     "some_tcp",
 						Port:     1234,
@@ -571,7 +571,7 @@ func TestServiceAllocateConflictingUserDefinedPorts(t *testing.T) {
 		ID: "testID1",
 		Spec: api.ServiceSpec{
 			Endpoint: &api.Endpoint{
-				Ports: []*api.Endpoint_PortConfiguration{
+				Ports: []*api.Endpoint_PortConfig{
 					{
 						Name:     "some_tcp",
 						Port:     1234,
@@ -597,7 +597,7 @@ func TestServiceDeallocateAllocate(t *testing.T) {
 		ID: "testID1",
 		Spec: api.ServiceSpec{
 			Endpoint: &api.Endpoint{
-				Ports: []*api.Endpoint_PortConfiguration{
+				Ports: []*api.Endpoint_PortConfig{
 					{
 						Name:     "some_tcp",
 						Port:     1234,
@@ -631,7 +631,7 @@ func TestServiceUpdate(t *testing.T) {
 		ID: "testID1",
 		Spec: api.ServiceSpec{
 			Endpoint: &api.Endpoint{
-				Ports: []*api.Endpoint_PortConfiguration{
+				Ports: []*api.Endpoint_PortConfig{
 					{
 						Name:     "some_tcp",
 						Port:     1234,
