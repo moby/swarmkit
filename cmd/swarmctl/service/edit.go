@@ -90,10 +90,12 @@ var (
 				return nil
 			}
 
+			newServicePB := newService.ToProto()
+			newServicePB.Annotations = specPB.Annotations
 			r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
 				ServiceID:      servicePB.ID,
 				ServiceVersion: &servicePB.Version,
-				Spec:           newService.ToProto(),
+				Spec:           newServicePB,
 			})
 			if err != nil {
 				return err
