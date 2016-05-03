@@ -1,227 +1,258 @@
 package container
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
+	"errors"
 	"strings"
-	"time"
 
-	"github.com/Sirupsen/logrus"
 	engineapi "github.com/docker/engine-api/client"
-	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/events"
+	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"golang.org/x/net/context"
 )
 
-// containerController conducts remote operations for a container. All calls
-// are mostly naked calls to the client API, seeded with information from
-// containerConfig.
-type containerController struct {
-	container *containerConfig
+// Controller implements agent.Controller against docker's API.
+//
+// Most operations against docker's API are done through the container name,
+// which is unique to the task.
+type Controller struct {
+	client  engineapi.APIClient
+	task    *api.Task
+	adapter *containerAdapter
+	closed  chan struct{}
+	err     error
 }
 
-func newContainerController(task *api.Task) (*containerController, error) {
-	ctnr, err := newContainerConfig(task)
+var _ exec.Controller = &Controller{}
+
+// NewController returns a dockerexec controller for the provided task.
+func NewController(client engineapi.APIClient, task *api.Task) (*Controller, error) {
+	adapter, err := newContainerAdapter(task)
 	if err != nil {
 		return nil, err
 	}
 
-	return &containerController{
-		container: ctnr,
+	return &Controller{
+		client:  client,
+		task:    task,
+		adapter: adapter,
+		closed:  make(chan struct{}),
 	}, nil
 }
 
-func noopPrivilegeFn() (string, error) { return "", nil }
-
-func (c *containerController) pullImage(ctx context.Context, client engineapi.APIClient) error {
-
-	rc, err := client.ImagePull(ctx, c.container.pullOptions(), noopPrivilegeFn)
-	if err != nil {
-		return err
-	}
-
-	dec := json.NewDecoder(rc)
-	m := map[string]interface{}{}
-	for {
-		if err := dec.Decode(&m); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		// TOOD(stevvooe): Report this status somewhere.
-		logrus.Debugln("pull progress", m)
-	}
-	// if the final stream object contained an error, return it
-	if errMsg, ok := m["error"]; ok {
-		return fmt.Errorf("%v", errMsg)
-	}
+// Update tasks a recent task update and applies it to the container.
+func (r *Controller) Update(ctx context.Context, t *api.Task) error {
+	log.G(ctx).Warnf("task updates not yet supported")
+	// TODO(stevvooe): While assignment of tasks is idempotent, we do allow
+	// updates of metadata, such as labelling, as well as any other properties
+	// that make sense.
 	return nil
 }
 
-func (c *containerController) createNetworks(ctx context.Context, client engineapi.APIClient) error {
-	for _, opt := range c.container.networkCreateOptions() {
-		if _, err := client.NetworkCreate(ctx, opt); err != nil {
-			if isNetworkExistError(err, opt.Name) {
-				continue
-			}
-
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (c *containerController) removeNetworks(ctx context.Context, client engineapi.APIClient) error {
-	for _, nid := range c.container.networks() {
-		if err := client.NetworkRemove(ctx, nid); err != nil {
-			if isActiveEndpointError(err) {
-				continue
-			}
-
-			log.G(ctx).Errorf("network %s remove failed", nid)
-			return err
-		}
-	}
-
-	return nil
-}
-
-func isActiveEndpointError(err error) bool {
-	// TODO(mrjana): There is no proper error code for network not
-	// found error in engine-api. Resort to string matching until
-	// engine-api is fixed.
-	return strings.Contains(err.Error(), "has active endpoints")
-}
-
-func isNetworkExistError(err error, name string) bool {
-	// TODO(mrjana): There is no proper error code for network not
-	// found error in engine-api. Resort to string matching until
-	// engine-api is fixed.
-	return strings.Contains(err.Error(), fmt.Sprintf("network with name %s already exists", name))
-}
-
-func (c *containerController) create(ctx context.Context, client engineapi.APIClient) error {
-	if _, err := client.ContainerCreate(ctx,
-		c.container.config(),
-		c.container.hostConfig(),
-		c.container.networkingConfig(),
-		c.container.name()); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (c *containerController) start(ctx context.Context, client engineapi.APIClient) error {
-	return client.ContainerStart(ctx, c.container.name())
-}
-
-func (c *containerController) inspect(ctx context.Context, client engineapi.APIClient) (types.ContainerJSON, error) {
-	return client.ContainerInspect(ctx, c.container.name())
-}
-
-// events issues a call to the events API and returns a channel with all
-// events. The stream of events can be shutdown by cancelling the context.
+// Prepare creates a container and ensures the image is pulled.
 //
-// A chan struct{} is returned that will be closed if the event procressing
-// fails and needs to be restarted.
-func (c *containerController) events(ctx context.Context, client engineapi.APIClient) (<-chan events.Message, <-chan struct{}, error) {
-	// TODO(stevvooe): Move this to a single, global event dispatch. For
-	// now, we create a connection per container.
-	var (
-		eventsq = make(chan events.Message)
-		closed  = make(chan struct{})
-	)
-
-	log.G(ctx).Debugf("waiting on events")
-	// TODO(stevvooe): For long running tasks, it is likely that we will have
-	// to restart this under failure.
-	rc, err := client.Events(ctx, types.EventsOptions{
-		Since:   "0",
-		Filters: c.container.eventFilter(),
-	})
-	if err != nil {
-		return nil, nil, err
+// If the container has already be created, exec.ErrTaskPrepared is returned.
+func (r *Controller) Prepare(ctx context.Context) error {
+	if err := r.checkClosed(); err != nil {
+		return err
 	}
 
-	go func(rc io.ReadCloser) {
-		defer rc.Close()
-		defer close(closed)
+	// Make sure all the networks that the task needs are created.
+	if err := r.adapter.createNetworks(ctx, r.client); err != nil {
+		return err
+	}
 
-		select {
-		case <-ctx.Done():
-			// exit
-			return
-		default:
+	for {
+		if err := r.checkClosed(); err != nil {
+			return err
 		}
 
-		dec := json.NewDecoder(rc)
-
-		for {
-			var event events.Message
-			if err := dec.Decode(&event); err != nil {
-				// TODO(stevvooe): This error handling isn't quite right.
-				if err == io.EOF {
-					return
+		if err := r.adapter.create(ctx, r.client); err != nil {
+			if isContainerCreateNameConflict(err) {
+				if _, err := r.adapter.inspect(ctx, r.client); err != nil {
+					return err
 				}
 
-				log.G(ctx).Errorf("error decoding event: %v", err)
-				return
+				// container is already created. success!
+				return exec.ErrTaskPrepared
 			}
 
-			select {
-			case eventsq <- event:
-			case <-ctx.Done():
-				return
+			if !engineapi.IsErrImageNotFound(err) {
+				return err
 			}
+
+			if err := r.adapter.pullImage(ctx, r.client); err != nil {
+				return err
+			}
+
+			continue // retry to create the container
 		}
-	}(rc)
 
-	return eventsq, closed, nil
+		break
+	}
+
+	return nil
 }
 
-func (c *containerController) shutdown(ctx context.Context, client engineapi.APIClient) error {
-	timeout, err := resolveTimeout(ctx)
+func isContainerCreateNameConflict(err error) bool {
+	// TODO(stevvooe): Very fragile error reporting from daemon. Need better
+	// errors in engineapi.
+	return strings.Contains(err.Error(), "Conflict. The name")
+}
+
+// Start the container. An error will be returned if the container is already started.
+func (r *Controller) Start(ctx context.Context) error {
+	if err := r.checkClosed(); err != nil {
+		return err
+	}
+
+	ctnr, err := r.adapter.inspect(ctx, r.client)
 	if err != nil {
 		return err
 	}
 
-	// TODO(stevvooe): Sending Stop isn't quite right. The timeout is actually
-	// a grace period between SIGTERM and SIGKILL. We'll have to play with this
-	// a little but to figure how much we defer to the engine.
-	return client.ContainerStop(ctx, c.container.name(), timeout)
-}
-
-func (c *containerController) terminate(ctx context.Context, client engineapi.APIClient) error {
-	return client.ContainerKill(ctx, c.container.name(), "")
-}
-
-func (c *containerController) remove(ctx context.Context, client engineapi.APIClient) error {
-	return client.ContainerRemove(ctx, types.ContainerRemoveOptions{
-		ContainerID:   c.container.name(),
-		RemoveVolumes: true,
-		Force:         true,
-	})
-}
-
-// resolveTimeout calculates the timeout for second granularity timeout using
-// the context's deadline.
-func resolveTimeout(ctx context.Context) (int, error) {
-	timeout := 10 // we need to figure out how to pick this value.
-	if deadline, ok := ctx.Deadline(); ok {
-		left := deadline.Sub(time.Now())
-
-		if left <= 0 {
-			<-ctx.Done()
-			return 0, ctx.Err()
-		}
-
-		timeout = int(left.Seconds())
+	// Detect whether the container has *ever* been started. If so, we don't
+	// issue the start.
+	//
+	// TODO(stevvooe): This is very racy. While reading inspect, another could
+	// start the process and we could end up starting it twice.
+	if ctnr.State.Status != "created" {
+		return exec.ErrTaskStarted
 	}
-	return timeout, nil
+
+	if err := r.adapter.start(ctx, r.client); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Wait on the container to exit.
+func (r *Controller) Wait(pctx context.Context) error {
+	if err := r.checkClosed(); err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithCancel(pctx)
+	defer cancel()
+
+	eventq, closed, err := r.adapter.events(ctx, r.client)
+	if err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case event := <-eventq:
+			if !r.matchevent(event) {
+				continue
+			}
+
+			switch event.Action {
+			case "die": // exit on terminal events
+				ctnr, err := r.adapter.inspect(ctx, r.client)
+				if err != nil {
+					return err
+				}
+
+				if ctnr.State.ExitCode != 0 {
+					var cause error
+					if ctnr.State.Error != "" {
+						cause = errors.New(ctnr.State.Error)
+					}
+
+					return &exec.ExitError{
+						Code:  ctnr.State.ExitCode,
+						Cause: cause,
+					}
+				}
+
+				return nil
+			case "destroy":
+				// If we get here, something has gone wrong but we want to exit
+				// and report anyways.
+				return ErrContainerDestroyed
+			}
+		case <-closed:
+			// restart!
+			eventq, closed, err = r.adapter.events(ctx, r.client)
+			if err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-r.closed:
+			return r.err
+		}
+	}
+}
+
+// Shutdown the container cleanly.
+func (r *Controller) Shutdown(ctx context.Context) error {
+	if err := r.checkClosed(); err != nil {
+		return err
+	}
+
+	return r.adapter.shutdown(ctx, r.client)
+}
+
+// Terminate the container, with force.
+func (r *Controller) Terminate(ctx context.Context) error {
+	if err := r.checkClosed(); err != nil {
+		return err
+	}
+
+	return r.adapter.terminate(ctx, r.client)
+}
+
+// Remove the container and its resources.
+func (r *Controller) Remove(ctx context.Context) error {
+	if err := r.checkClosed(); err != nil {
+		return err
+	}
+
+	// Try removing networks referenced in this task in case this
+	// task is the last one referencing it
+	if err := r.adapter.removeNetworks(ctx, r.client); err != nil {
+		return err
+	}
+
+	return r.adapter.remove(ctx, r.client)
+}
+
+// Close the controller and clean up any ephemeral resources.
+func (r *Controller) Close() error {
+	select {
+	case <-r.closed:
+		return r.err
+	default:
+		r.err = exec.ErrControllerClosed
+		close(r.closed)
+	}
+	return nil
+}
+
+func (r *Controller) matchevent(event events.Message) bool {
+	if event.Type != events.ContainerEventType {
+		return false
+	}
+
+	// TODO(stevvooe): Filter based on ID matching, in addition to name.
+
+	// Make sure the events are for this container.
+	if event.Actor.Attributes["name"] != r.adapter.container.name() {
+		return false
+	}
+
+	return true
+}
+
+func (r *Controller) checkClosed() error {
+	select {
+	case <-r.closed:
+		return r.err
+	default:
+		return nil
+	}
 }

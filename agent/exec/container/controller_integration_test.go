@@ -19,7 +19,7 @@ func init() {
 	flag.StringVar(&dockerTestAddr, "test.docker.addr", "", "Set the address of the docker instance for testing")
 }
 
-// TestRunnerFlowIntegration simply runs the Runner flow against a docker
+// TestControllerFlowIntegration simply runs the Controller flow against a docker
 // instance to make sure we don't blow up.
 //
 // This is great for ad-hoc testing while doing development. We can add more
@@ -28,9 +28,9 @@ func init() {
 //
 // Run with something like this:
 //
-// 	go test -run TestRunnerFlowIntegration -test.docker.addr unix:///var/run/docker.sock
+// 	go test -run TestControllerFlowIntegration -test.docker.addr unix:///var/run/docker.sock
 //
-func TestRunnerFlowIntegration(t *testing.T) {
+func TestControllerFlowIntegration(t *testing.T) {
 	if dockerTestAddr == "" {
 		t.Skip("specify docker address to run integration")
 	}
@@ -56,18 +56,18 @@ func TestRunnerFlowIntegration(t *testing.T) {
 		},
 	}
 
-	runner, err := NewRunner(client, task)
+	ctlr, err := NewController(client, task)
 	assert.NoError(t, err)
-	assert.NotNil(t, runner)
-	assert.NoError(t, runner.Prepare(ctx))
-	assert.NoError(t, runner.Start(ctx))
-	assert.NoError(t, runner.Wait(ctx))
-	assert.NoError(t, runner.Shutdown(ctx))
-	assert.NoError(t, runner.Remove(ctx))
-	assert.NoError(t, runner.Close())
+	assert.NotNil(t, ctlr)
+	assert.NoError(t, ctlr.Prepare(ctx))
+	assert.NoError(t, ctlr.Start(ctx))
+	assert.NoError(t, ctlr.Wait(ctx))
+	assert.NoError(t, ctlr.Shutdown(ctx))
+	assert.NoError(t, ctlr.Remove(ctx))
+	assert.NoError(t, ctlr.Close())
 
 	// NOTE(stevvooe): testify has no clue how to correctly do error equality.
-	if err := runner.Close(); err != exec.ErrRunnerClosed {
-		t.Fatalf("expected runner to be closed: %v", err)
+	if err := ctlr.Close(); err != exec.ErrControllerClosed {
+		t.Fatalf("expected controller to be closed: %v", err)
 	}
 }
