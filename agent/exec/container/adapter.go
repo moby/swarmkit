@@ -19,24 +19,24 @@ import (
 // containerController conducts remote operations for a container. All calls
 // are mostly naked calls to the client API, seeded with information from
 // containerConfig.
-type containerController struct {
+type containerAdapter struct {
 	container *containerConfig
 }
 
-func newContainerController(task *api.Task) (*containerController, error) {
+func newContainerAdapter(task *api.Task) (*containerAdapter, error) {
 	ctnr, err := newContainerConfig(task)
 	if err != nil {
 		return nil, err
 	}
 
-	return &containerController{
+	return &containerAdapter{
 		container: ctnr,
 	}, nil
 }
 
 func noopPrivilegeFn() (string, error) { return "", nil }
 
-func (c *containerController) pullImage(ctx context.Context, client engineapi.APIClient) error {
+func (c *containerAdapter) pullImage(ctx context.Context, client engineapi.APIClient) error {
 
 	rc, err := client.ImagePull(ctx, c.container.pullOptions(), noopPrivilegeFn)
 	if err != nil {
@@ -62,7 +62,7 @@ func (c *containerController) pullImage(ctx context.Context, client engineapi.AP
 	return nil
 }
 
-func (c *containerController) createNetworks(ctx context.Context, client engineapi.APIClient) error {
+func (c *containerAdapter) createNetworks(ctx context.Context, client engineapi.APIClient) error {
 	for _, opt := range c.container.networkCreateOptions() {
 		if _, err := client.NetworkCreate(ctx, opt); err != nil {
 			if isNetworkExistError(err, opt.Name) {
@@ -76,7 +76,7 @@ func (c *containerController) createNetworks(ctx context.Context, client enginea
 	return nil
 }
 
-func (c *containerController) removeNetworks(ctx context.Context, client engineapi.APIClient) error {
+func (c *containerAdapter) removeNetworks(ctx context.Context, client engineapi.APIClient) error {
 	for _, nid := range c.container.networks() {
 		if err := client.NetworkRemove(ctx, nid); err != nil {
 			if isActiveEndpointError(err) {
@@ -105,7 +105,7 @@ func isNetworkExistError(err error, name string) bool {
 	return strings.Contains(err.Error(), fmt.Sprintf("network with name %s already exists", name))
 }
 
-func (c *containerController) create(ctx context.Context, client engineapi.APIClient) error {
+func (c *containerAdapter) create(ctx context.Context, client engineapi.APIClient) error {
 	if _, err := client.ContainerCreate(ctx,
 		c.container.config(),
 		c.container.hostConfig(),
@@ -117,11 +117,11 @@ func (c *containerController) create(ctx context.Context, client engineapi.APICl
 	return nil
 }
 
-func (c *containerController) start(ctx context.Context, client engineapi.APIClient) error {
+func (c *containerAdapter) start(ctx context.Context, client engineapi.APIClient) error {
 	return client.ContainerStart(ctx, c.container.name())
 }
 
-func (c *containerController) inspect(ctx context.Context, client engineapi.APIClient) (types.ContainerJSON, error) {
+func (c *containerAdapter) inspect(ctx context.Context, client engineapi.APIClient) (types.ContainerJSON, error) {
 	return client.ContainerInspect(ctx, c.container.name())
 }
 
@@ -130,7 +130,7 @@ func (c *containerController) inspect(ctx context.Context, client engineapi.APIC
 //
 // A chan struct{} is returned that will be closed if the event procressing
 // fails and needs to be restarted.
-func (c *containerController) events(ctx context.Context, client engineapi.APIClient) (<-chan events.Message, <-chan struct{}, error) {
+func (c *containerAdapter) events(ctx context.Context, client engineapi.APIClient) (<-chan events.Message, <-chan struct{}, error) {
 	// TODO(stevvooe): Move this to a single, global event dispatch. For
 	// now, we create a connection per container.
 	var (
@@ -185,7 +185,7 @@ func (c *containerController) events(ctx context.Context, client engineapi.APICl
 	return eventsq, closed, nil
 }
 
-func (c *containerController) shutdown(ctx context.Context, client engineapi.APIClient) error {
+func (c *containerAdapter) shutdown(ctx context.Context, client engineapi.APIClient) error {
 	timeout, err := resolveTimeout(ctx)
 	if err != nil {
 		return err
@@ -197,11 +197,11 @@ func (c *containerController) shutdown(ctx context.Context, client engineapi.API
 	return client.ContainerStop(ctx, c.container.name(), timeout)
 }
 
-func (c *containerController) terminate(ctx context.Context, client engineapi.APIClient) error {
+func (c *containerAdapter) terminate(ctx context.Context, client engineapi.APIClient) error {
 	return client.ContainerKill(ctx, c.container.name(), "")
 }
 
-func (c *containerController) remove(ctx context.Context, client engineapi.APIClient) error {
+func (c *containerAdapter) remove(ctx context.Context, client engineapi.APIClient) error {
 	return client.ContainerRemove(ctx, types.ContainerRemoveOptions{
 		ContainerID:   c.container.name(),
 		RemoveVolumes: true,
