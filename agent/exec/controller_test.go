@@ -12,7 +12,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-//go:generate mockgen -package exec -destination runner_test.mock.go -source runner.go Controller Reporter
+//go:generate mockgen -package exec -destination controller_test.mock.go -source controller.go Controller Reporter
 
 func TestRun(t *testing.T) {
 	ctx, ctlr, reporter, finish := genRunTestEnv(t)
