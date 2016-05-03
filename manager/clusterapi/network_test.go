@@ -33,7 +33,7 @@ func TestValidateIPAMConfiguration(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
-	IPAMConf := &api.IPAMConfiguration{
+	IPAMConf := &api.IPAMConfig{
 		Subnet: "",
 	}
 
