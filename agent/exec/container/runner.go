@@ -12,11 +12,11 @@ import (
 	"golang.org/x/net/context"
 )
 
-// Runner implements agent.Runner against docker's API.
+// Controller implements agent.Controller against docker's API.
 //
 // Most operations against docker's API are done through the container name,
 // which is unique to the task.
-type Runner struct {
+type Controller struct {
 	client     engineapi.APIClient
 	task       *api.Task
 	controller *containerController
@@ -24,16 +24,16 @@ type Runner struct {
 	err        error
 }
 
-var _ exec.Runner = &Runner{}
+var _ exec.Controller = &Controller{}
 
-// NewRunner returns a dockerexec runner for the provided task.
-func NewRunner(client engineapi.APIClient, task *api.Task) (*Runner, error) {
+// NewController returns a dockerexec controller for the provided task.
+func NewController(client engineapi.APIClient, task *api.Task) (*Controller, error) {
 	ctrl, err := newContainerController(task)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Runner{
+	return &Controller{
 		client:     client,
 		task:       task,
 		controller: ctrl,
@@ -42,7 +42,7 @@ func NewRunner(client engineapi.APIClient, task *api.Task) (*Runner, error) {
 }
 
 // Update tasks a recent task update and applies it to the container.
-func (r *Runner) Update(ctx context.Context, t *api.Task) error {
+func (r *Controller) Update(ctx context.Context, t *api.Task) error {
 	log.G(ctx).Warnf("task updates not yet supported")
 	// TODO(stevvooe): While assignment of tasks is idempotent, we do allow
 	// updates of metadata, such as labelling, as well as any other properties
@@ -53,7 +53,7 @@ func (r *Runner) Update(ctx context.Context, t *api.Task) error {
 // Prepare creates a container and ensures the image is pulled.
 //
 // If the container has already be created, exec.ErrTaskPrepared is returned.
-func (r *Runner) Prepare(ctx context.Context) error {
+func (r *Controller) Prepare(ctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func isContainerCreateNameConflict(err error) bool {
 }
 
 // Start the container. An error will be returned if the container is already started.
-func (r *Runner) Start(ctx context.Context) error {
+func (r *Controller) Start(ctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func (r *Runner) Start(ctx context.Context) error {
 }
 
 // Wait on the container to exit.
-func (r *Runner) Wait(pctx context.Context) error {
+func (r *Controller) Wait(pctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func (r *Runner) Wait(pctx context.Context) error {
 }
 
 // Shutdown the container cleanly.
-func (r *Runner) Shutdown(ctx context.Context) error {
+func (r *Controller) Shutdown(ctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func (r *Runner) Shutdown(ctx context.Context) error {
 }
 
 // Terminate the container, with force.
-func (r *Runner) Terminate(ctx context.Context) error {
+func (r *Controller) Terminate(ctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func (r *Runner) Terminate(ctx context.Context) error {
 }
 
 // Remove the container and its resources.
-func (r *Runner) Remove(ctx context.Context) error {
+func (r *Controller) Remove(ctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
@@ -221,19 +221,19 @@ func (r *Runner) Remove(ctx context.Context) error {
 	return r.controller.remove(ctx, r.client)
 }
 
-// Close the runner and clean up any ephemeral resources.
-func (r *Runner) Close() error {
+// Close the controller and clean up any ephemeral resources.
+func (r *Controller) Close() error {
 	select {
 	case <-r.closed:
 		return r.err
 	default:
-		r.err = exec.ErrRunnerClosed
+		r.err = exec.ErrControllerClosed
 		close(r.closed)
 	}
 	return nil
 }
 
-func (r *Runner) matchevent(event events.Message) bool {
+func (r *Controller) matchevent(event events.Message) bool {
 	if event.Type != events.ContainerEventType {
 		return false
 	}
@@ -248,7 +248,7 @@ func (r *Runner) matchevent(event events.Message) bool {
 	return true
 }
 
-func (r *Runner) checkClosed() error {
+func (r *Controller) checkClosed() error {
 	select {
 	case <-r.closed:
 		return r.err
