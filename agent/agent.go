@@ -29,9 +29,9 @@ type Agent struct {
 	conn   *grpc.ClientConn
 	picker *picker
 
-	tasks       map[string]*api.Task   // contains all managed tasks
-	assigned    map[string]*api.Task   // contains current assignment set
-	controllers map[string]exec.Runner // contains all runners
+	tasks       map[string]*api.Task       // contains all managed tasks
+	assigned    map[string]*api.Task       // contains current assignment set
+	controllers map[string]exec.Controller // contains all controllers
 
 	statusq chan taskStatusReport
 
@@ -51,7 +51,7 @@ func New(config *Config) (*Agent, error) {
 		config:      config,
 		tasks:       make(map[string]*api.Task),
 		assigned:    make(map[string]*api.Task),
-		controllers: make(map[string]exec.Runner),
+		controllers: make(map[string]exec.Controller),
 
 		statusq: make(chan taskStatusReport),
 
@@ -470,13 +470,13 @@ func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 	a.tasks[task.ID] = task
 	a.assigned[task.ID] = task
 
-	runner, err := a.config.Executor.Runner(task.Copy())
+	ctlr, err := a.config.Executor.Controller(task.Copy())
 	if err != nil {
-		log.G(ctx).WithError(err).Error("runner resolution failed")
+		log.G(ctx).WithError(err).Error("controller resolution failed")
 		return err
 	}
 
-	a.controllers[task.ID] = runner
+	a.controllers[task.ID] = ctlr
 	reporter := a.reporter(ctx, task)
 	taskID := task.ID
 
@@ -492,7 +492,7 @@ func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 			return
 		}
 
-		if err := exec.Run(ctx, runner, reporter); err != nil {
+		if err := exec.Run(ctx, ctlr, reporter); err != nil {
 			log.G(ctx).WithError(err).Error("task run failed")
 			if err := a.report(ctx, taskID, api.TaskStateFailed, "execution failed", err); err != nil {
 				log.G(ctx).WithError(err).Error("reporting task run error failed")

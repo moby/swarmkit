@@ -24,9 +24,9 @@ import (
 // to regenerate the mock, remove the "+" below and run `go generate`. Sorry.
 //+go:generate mockgen -package dockerexec -destination api_client_test.mock.go github.com/docker/engine-api/client APIClient
 
-func TestRunnerPrepare(t *testing.T) {
+func TestControllerPrepare(t *testing.T) {
 	task := genTask(t)
-	ctx, client, runner, config, finish := genTestRunnerEnv(t, task)
+	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
 	defer finish(t)
 
 	gomock.InOrder(
@@ -34,12 +34,12 @@ func TestRunnerPrepare(t *testing.T) {
 			Return(types.ContainerCreateResponse{ID: "contianer-id-" + task.ID}, nil),
 	)
 
-	assert.NoError(t, runner.Prepare(ctx))
+	assert.NoError(t, ctlr.Prepare(ctx))
 }
 
-func TestRunnerPrepareAlreadyPrepared(t *testing.T) {
+func TestControllerPrepareAlreadyPrepared(t *testing.T) {
 	task := genTask(t)
-	ctx, client, runner, config, finish := genTestRunnerEnv(t, task)
+	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
 	defer finish(t)
 
 	gomock.InOrder(
@@ -51,14 +51,14 @@ func TestRunnerPrepareAlreadyPrepared(t *testing.T) {
 	)
 
 	// ensure idempotence
-	if err := runner.Prepare(ctx); err != exec.ErrTaskPrepared {
+	if err := ctlr.Prepare(ctx); err != exec.ErrTaskPrepared {
 		t.Fatalf("expected error %v, got %v", exec.ErrTaskPrepared, err)
 	}
 }
 
-func TestRunnerStart(t *testing.T) {
+func TestControllerStart(t *testing.T) {
 	task := genTask(t)
-	ctx, client, runner, config, finish := genTestRunnerEnv(t, task)
+	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
 	defer finish(t)
 
 	gomock.InOrder(
@@ -74,12 +74,12 @@ func TestRunnerStart(t *testing.T) {
 			Return(nil),
 	)
 
-	assert.NoError(t, runner.Start(ctx))
+	assert.NoError(t, ctlr.Start(ctx))
 }
 
-func TestRunnerStartAlreadyStarted(t *testing.T) {
+func TestControllerStartAlreadyStarted(t *testing.T) {
 	task := genTask(t)
-	ctx, client, runner, config, finish := genTestRunnerEnv(t, task)
+	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
 	defer finish(t)
 
 	gomock.InOrder(
@@ -94,14 +94,14 @@ func TestRunnerStartAlreadyStarted(t *testing.T) {
 	)
 
 	// ensure idempotence
-	if err := runner.Start(ctx); err != exec.ErrTaskStarted {
+	if err := ctlr.Start(ctx); err != exec.ErrTaskStarted {
 		t.Fatalf("expected error %v, got %v", exec.ErrTaskPrepared, err)
 	}
 }
 
-func TestRunnerWait(t *testing.T) {
+func TestControllerWait(t *testing.T) {
 	task := genTask(t)
-	ctx, client, runner, config, finish := genTestRunnerEnv(t, task)
+	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
 	defer finish(t)
 
 	gomock.InOrder(
@@ -119,12 +119,12 @@ func TestRunnerWait(t *testing.T) {
 			}, nil),
 	)
 
-	assert.NoError(t, runner.Wait(ctx))
+	assert.NoError(t, ctlr.Wait(ctx))
 }
 
-func TestRunnerWaitExitError(t *testing.T) {
+func TestControllerWaitExitError(t *testing.T) {
 	task := genTask(t)
-	ctx, client, runner, config, finish := genTestRunnerEnv(t, task)
+	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
 	defer finish(t)
 
 	gomock.InOrder(
@@ -143,37 +143,37 @@ func TestRunnerWaitExitError(t *testing.T) {
 			}, nil),
 	)
 
-	err := runner.Wait(ctx)
+	err := ctlr.Wait(ctx)
 	assert.Equal(t, &exec.ExitError{
 		Code: 1,
 	}, err)
 }
 
-func TestRunnerShutdown(t *testing.T) {
+func TestControllerShutdown(t *testing.T) {
 	task := genTask(t)
-	ctx, client, runner, config, finish := genTestRunnerEnv(t, task)
+	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
 	defer finish(t)
 
 	gomock.InOrder(
 		client.EXPECT().ContainerStop(gomock.Any(), config.name(), 10),
 	)
 
-	assert.NoError(t, runner.Shutdown(ctx))
+	assert.NoError(t, ctlr.Shutdown(ctx))
 }
 
-func TestRunnerTerminate(t *testing.T) {
+func TestControllerTerminate(t *testing.T) {
 	task := genTask(t)
-	ctx, client, runner, config, finish := genTestRunnerEnv(t, task)
+	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
 	defer finish(t)
 
 	client.EXPECT().ContainerKill(gomock.Any(), config.name(), "")
 
-	assert.NoError(t, runner.Terminate(ctx))
+	assert.NoError(t, ctlr.Terminate(ctx))
 }
 
-func TestRunnerRemove(t *testing.T) {
+func TestControllerRemove(t *testing.T) {
 	task := genTask(t)
-	ctx, client, runner, config, finish := genTestRunnerEnv(t, task)
+	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
 	defer finish(t)
 
 	client.EXPECT().ContainerRemove(gomock.Any(), types.ContainerRemoveOptions{
@@ -182,13 +182,13 @@ func TestRunnerRemove(t *testing.T) {
 		Force:         true,
 	})
 
-	assert.NoError(t, runner.Remove(ctx))
+	assert.NoError(t, ctlr.Remove(ctx))
 }
 
-func genTestRunnerEnv(t *testing.T, task *api.Task) (context.Context, *MockAPIClient, *Runner, *containerConfig, func(t *testing.T)) {
+func genTestControllerEnv(t *testing.T, task *api.Task) (context.Context, *MockAPIClient, *Controller, *containerConfig, func(t *testing.T)) {
 	mocks := gomock.NewController(t)
 	client := NewMockAPIClient(mocks)
-	runner, err := NewRunner(client, task)
+	ctlr, err := NewController(client, task)
 	assert.NoError(t, err)
 
 	config, err := newContainerConfig(task)
@@ -205,7 +205,7 @@ func genTestRunnerEnv(t *testing.T, task *api.Task) (context.Context, *MockAPICl
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
-	return ctx, client, runner, config, func(t *testing.T) {
+	return ctx, client, ctlr, config, func(t *testing.T) {
 		cancel()
 		mocks.Finish()
 	}
