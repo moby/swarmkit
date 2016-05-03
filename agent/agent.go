@@ -343,7 +343,7 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 func (a *Agent) handleTaskStatusReport(ctx context.Context, session *session, report taskStatusReport) error {
 	var respErr error
 	status, err := a.updateStatus(ctx, report)
-	if err != errTaskUnknown && err != errTaskDead && err != errTaskStatusUpdateNoChange {
+	if err != errTaskUnknown && err != errTaskDead && err != errTaskStatusUpdateNoChange && err != errTaskInvalidStateTransition {
 		respErr = err
 	}
 
@@ -360,6 +360,10 @@ func (a *Agent) handleTaskStatusReport(ctx context.Context, session *session, re
 	// TODO(stevvooe): Coalesce status updates.
 	go func() {
 		if err := session.sendTaskStatus(ctx, report.taskID, status); err != nil {
+			if err == errTaskUnknown {
+				return // dispatcher no longer cares about this task.
+			}
+
 			log.G(ctx).WithError(err).Error("sending task status update failed")
 
 			time.Sleep(time.Second) // backoff for retry
@@ -514,11 +518,12 @@ func (a *Agent) updateTask(ctx context.Context, t *api.Task) error {
 	a.tasks[t.ID] = t
 	a.assigned[t.ID] = t
 
-	if !reflect.DeepEqual(t, original) {
+	if !tasksEqual(t, original) {
 		ctlr := a.controllers[t.ID]
+		t := t.Copy()
 		// propagate the update if there are actual changes
 		go func() {
-			if err := ctlr.Update(ctx, t.Copy()); err != nil {
+			if err := ctlr.Update(ctx, t); err != nil {
 				log.G(ctx).WithError(err).Error("propagating task update failed")
 			}
 		}()
@@ -615,4 +620,17 @@ type reporterFunc func(ctx context.Context, state api.TaskState, msg string) err
 
 func (fn reporterFunc) Report(ctx context.Context, state api.TaskState, msg string) error {
 	return fn(ctx, state, msg)
+}
+
+// tasksEqual returns true if the tasks are functionaly equal, ignoring status,
+// version and other superfluous fields.
+//
+// This used to decide whether or not to propagate a task update to a controller.
+func tasksEqual(a, b *api.Task) bool {
+	a, b = a.Copy(), b.Copy()
+
+	a.Status, b.Status = api.TaskStatus{}, api.TaskStatus{}
+	a.Version, b.Version = api.Version{}, api.Version{}
+
+	return reflect.DeepEqual(a, b)
 }

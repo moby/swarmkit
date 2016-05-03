@@ -211,6 +211,10 @@ func (s *session) sendTaskStatus(ctx context.Context, taskID string, status api.
 			},
 		},
 	}); err != nil {
+		if grpc.Code(err) == codes.NotFound {
+			return errTaskUnknown
+		}
+
 		return err
 	}
 
