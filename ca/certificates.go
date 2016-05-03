@@ -243,12 +243,21 @@ func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.Cert
 	// Create a CAClient to retreive a new Certificate
 	caClient := api.NewCAClient(conn)
 
-	// Send the Request and retrieve the certificate
-	request := &api.IssueCertificateRequest{CSR: csr, Role: role}
-	response, err := caClient.IssueCertificate(ctx, request)
+	// Send the Request and retrieve the request token
+	issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
+	issueResponse, err := caClient.IssueCertificate(ctx, issueRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	return response.CertificateChain, nil
+	token := issueResponse.Token
+
+	// Send the Request and retrieve the certificate
+	statusRequest := &api.CertificateStatusRequest{Token: token}
+	statusReponse, err := caClient.CertificateStatus(ctx, statusRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	return statusReponse.Certificate, nil
 }

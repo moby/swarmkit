@@ -127,7 +127,7 @@ func New(config *Config) (*Manager, error) {
 	m := &Manager{
 		config:       config,
 		listener:     lis,
-		caserver:     ca.NewServer(config.SecurityConfig),
+		caserver:     ca.NewServer(store, config.SecurityConfig),
 		dispatcher:   dispatcher.New(store, dispatcherConfig),
 		server:       grpc.NewServer(opts...),
 		raftNode:     raftNode,
