@@ -73,14 +73,14 @@ func newPortSpace(protocol api.Endpoint_Protocol) (*portSpace, error) {
 	}, nil
 }
 
-func reconcilePortConfigs(s *api.Service) []*api.Endpoint_PortConfiguration {
+func reconcilePortConfigs(s *api.Service) []*api.Endpoint_PortConfig {
 	// If runtime state hasn't been created or if port config has
 	// changed from port state return the port config from Spec.
 	if s.Endpoint == nil || len(s.Spec.Endpoint.Ports) != len(s.Endpoint.Ports) {
 		return s.Spec.Endpoint.Ports
 	}
 
-	var portConfigs []*api.Endpoint_PortConfiguration
+	var portConfigs []*api.Endpoint_PortConfig
 	for i, portConfig := range s.Spec.Endpoint.Ports {
 		portState := s.Endpoint.Ports[i]
 
@@ -196,7 +196,7 @@ func (pa *portAllocator) isPortsAllocated(s *api.Service) bool {
 	return true
 }
 
-func (ps *portSpace) allocate(p *api.Endpoint_PortConfiguration) (err error) {
+func (ps *portSpace) allocate(p *api.Endpoint_PortConfig) (err error) {
 	if p.NodePort != 0 {
 		// If it falls in the dynamic port range check out
 		// from dynamic port space first.
@@ -235,7 +235,7 @@ func (ps *portSpace) allocate(p *api.Endpoint_PortConfiguration) (err error) {
 	return nil
 }
 
-func (ps *portSpace) free(p *api.Endpoint_PortConfiguration) {
+func (ps *portSpace) free(p *api.Endpoint_PortConfig) {
 	if p.NodePort >= dynamicPortStart && p.NodePort <= dynamicPortEnd {
 		ps.dynamicPortSpace.Release(uint64(p.NodePort))
 	}

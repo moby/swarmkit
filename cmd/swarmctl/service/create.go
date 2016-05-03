@@ -93,7 +93,7 @@ var (
 							return err
 						}
 
-						endpoint.Ports = append(endpoint.Ports, &api.Endpoint_PortConfiguration{
+						endpoint.Ports = append(endpoint.Ports, &api.Endpoint_PortConfig{
 							Name:     name,
 							Protocol: protocol,
 							Port:     port,

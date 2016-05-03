@@ -235,7 +235,7 @@ func (c *containerConfig) networkCreateOptions() []types.NetworkCreate {
 			CheckDuplicate: true,
 		}
 
-		for _, ic := range na.Network.IPAM.Configurations {
+		for _, ic := range na.Network.IPAM.Configs {
 			c := network.IPAMConfig{
 				Subnet:  ic.Subnet,
 				IPRange: ic.Range,

@@ -161,7 +161,7 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 	if len(s.Ports) != 0 {
 		endpoint := &api.Endpoint{}
 		for _, portConfig := range s.Ports {
-			endpoint.Ports = append(endpoint.Ports, &api.Endpoint_PortConfiguration{
+			endpoint.Ports = append(endpoint.Ports, &api.Endpoint_PortConfig{
 				Name:     portConfig.Name,
 				Protocol: api.Endpoint_Protocol(api.Endpoint_Protocol_value[strings.ToUpper(portConfig.Protocol)]),
 				Port:     portConfig.Port,
