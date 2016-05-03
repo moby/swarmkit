@@ -754,9 +754,17 @@ func (n *Node) GetMemberlist() map[uint64]*api.Member {
 		memberlist[id] = &api.Member{
 			ID:   sid,
 			Addr: member.Addr,
+			Description: api.MemberDescription{
+				ElectionTick:     int32(n.Config.ElectionTick),
+				HeartbeatTick:    int32(n.Config.HeartbeatTick),
+				MaxSizePerMsg:    n.Config.MaxSizePerMsg,
+				SnapshotInterval: n.snapshotInterval,
+			},
 			Status: api.MemberStatus{
-				Leader: leader,
-				State:  status,
+				Leader:        leader,
+				State:         status,
+				AppliedIndex:  n.appliedIndex,
+				SnapshotIndex: n.snapshotIndex,
 			},
 		}
 	}

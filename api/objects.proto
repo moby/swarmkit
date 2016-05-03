@@ -44,7 +44,7 @@ message Member {
 	MemberSpec spec = 3;
 
 	// Description encapsulates the properties of the Member as reported by another member of the Manager set.
-	MemberDescription description = 4;
+	MemberDescription description = 4 [(gogoproto.nullable) = false];
 
 	// Status provides the current status of the manager from the perspective of another manager.
 	MemberStatus status = 5 [(gogoproto.nullable) = false];

@@ -38,6 +38,7 @@ service Cluster {
 	rpc CreateVolume(CreateVolumeRequest) returns (CreateVolumeResponse) {};
 	rpc RemoveVolume(RemoveVolumeRequest) returns (RemoveVolumeResponse) {};
 
+	rpc GetManager(GetManagerRequest) returns (GetManagerResponse) {};
 	rpc ListManagers(ListManagersRequest) returns (ListManagersResponse) {};
 }
 
@@ -196,6 +197,14 @@ message ListVolumesRequest {}
 
 message ListVolumesResponse {
 	repeated Volume volumes = 1;
+}
+
+message GetManagerRequest {
+	string manager_id = 1 [(gogoproto.customname) = "ManagerID"];
+}
+
+message GetManagerResponse {
+	Member manager = 1;
 }
 
 message ListManagersRequest {
