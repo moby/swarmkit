@@ -236,6 +236,23 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 		s.Mounts.FromProto(apiMounts)
 	}
 
+	if serviceSpec.Endpoint != nil {
+		for _, port := range serviceSpec.Endpoint.Ports {
+			s.Ports = append(s.Ports, PortConfig{
+				Name:     port.Name,
+				Protocol: strings.ToLower(port.Protocol.String()),
+				Port:     port.Port,
+				NodePort: port.NodePort,
+			})
+		}
+	}
+
+	if serviceSpec.Template.GetContainer().Networks != nil {
+		for _, net := range serviceSpec.Template.GetContainer().Networks {
+			s.Networks = append(s.Networks, net.GetNetworkID())
+		}
+	}
+
 	switch serviceSpec.Mode {
 	case api.ServiceModeRunning:
 		s.Mode = "running"
