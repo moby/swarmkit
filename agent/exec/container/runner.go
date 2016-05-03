@@ -145,8 +145,6 @@ func (r *Runner) Wait(pctx context.Context) error {
 	for {
 		select {
 		case event := <-eventq:
-			log.G(ctx).Debugf("%v", event)
-
 			if !r.matchevent(event) {
 				continue
 			}
