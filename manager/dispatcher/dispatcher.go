@@ -162,14 +162,24 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 				continue
 			}
 
-			state := task.Status.State
+			logger = logger.WithField("state.transition", fmt.Sprintf("%v->%v", task.Status.State, u.Status.State))
 
-			logger.Debugf("%v -> %v", state, u.Status.State)
+			if task.Status == *u.Status {
+				logger.Debug("task status identical, ignoring")
+				continue
+			}
+
+			if task.Status.State > u.Status.State {
+				logger.Debug("task status invalid transition")
+				continue
+			}
+
 			task.Status = *u.Status
-
 			if err := tx.Tasks().Update(task); err != nil {
+				logger.WithError(err).Error("failed to update task status")
 				return err
 			}
+			logger.Debug("task status updated")
 		}
 		return nil
 	})
