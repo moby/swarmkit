@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	engineapi "github.com/docker/engine-api/client"
+	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/events"
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
@@ -137,6 +138,22 @@ func (r *Controller) Wait(pctx context.Context) error {
 	ctx, cancel := context.WithCancel(pctx)
 	defer cancel()
 
+	// check the initial state and report that.
+	ctnr, err := r.adapter.inspect(ctx, r.client)
+	if err != nil {
+		return err
+	}
+
+	switch ctnr.State.Status {
+	case "exited", "dead":
+		// TODO(stevvooe): Treating container status dead as exited. There may
+		// be more to do if we have dead containers. Note that this is not the
+		// same as task state DEAD, which means the container is completely
+		// freed on a node.
+
+		return makeExitError(ctnr)
+	}
+
 	eventq, closed, err := r.adapter.events(ctx, r.client)
 	if err != nil {
 		return err
@@ -156,19 +173,7 @@ func (r *Controller) Wait(pctx context.Context) error {
 					return err
 				}
 
-				if ctnr.State.ExitCode != 0 {
-					var cause error
-					if ctnr.State.Error != "" {
-						cause = errors.New(ctnr.State.Error)
-					}
-
-					return &exec.ExitError{
-						Code:  ctnr.State.ExitCode,
-						Cause: cause,
-					}
-				}
-
-				return nil
+				return makeExitError(ctnr)
 			case "destroy":
 				// If we get here, something has gone wrong but we want to exit
 				// and report anyways.
@@ -255,4 +260,21 @@ func (r *Controller) checkClosed() error {
 	default:
 		return nil
 	}
+}
+
+func makeExitError(ctnr types.ContainerJSON) *exec.ExitError {
+	if ctnr.State.ExitCode != 0 {
+		var cause error
+		if ctnr.State.Error != "" {
+			cause = errors.New(ctnr.State.Error)
+		}
+
+		return &exec.ExitError{
+			Code:  ctnr.State.ExitCode,
+			Cause: cause,
+		}
+	}
+
+	return nil
+
 }
