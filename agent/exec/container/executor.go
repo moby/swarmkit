@@ -42,12 +42,12 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 	return description, nil
 }
 
-// Runner returns a docker container runner.
-func (e *executor) Runner(t *api.Task) (exec.Runner, error) {
-	runner, err := NewRunner(e.client, t)
+// Controller returns a docker container controller.
+func (e *executor) Controller(t *api.Task) (exec.Controller, error) {
+	ctlr, err := NewController(e.client, t)
 	if err != nil {
 		return nil, err
 	}
 
-	return runner, nil
+	return ctlr, nil
 }

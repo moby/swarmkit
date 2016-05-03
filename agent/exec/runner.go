@@ -7,11 +7,11 @@ import (
 	"golang.org/x/net/context"
 )
 
-// Runner controls execution of a task.
+// Controller controls execution of a task.
 //
 // All methods should be idempotent and thread-safe.
-type Runner interface {
-	// Update the task definition seen by the runner. Will return
+type Controller interface {
+	// Update the task definition seen by the controller. Will return
 	// ErrTaskUpdateFailed if the provided task definition changes fields that
 	// cannot be changed.
 	//
@@ -34,10 +34,10 @@ type Runner interface {
 	// Terminate the target.
 	Terminate(ctx context.Context) error
 
-	// Remove all resources allocated by the runner.
+	// Remove all resources allocated by the controller.
 	Remove(ctx context.Context) error
 
-	// Close closes any ephemeral resources associated with runner instance.
+	// Close closes any ephemeral resources associated with controller instance.
 	Close() error
 }
 
@@ -53,25 +53,25 @@ type Reporter interface {
 	Report(ctx context.Context, state api.TaskState, msg string) error
 
 	// TODO(stevvooe): It is very likely we will need to report more
-	// information back from the runner into the agent. We'll likely expand
+	// information back from the controller into the agent. We'll likely expand
 	// this interface to do so.
 }
 
-// Run runs a runner, reporting state along the way. Under normal execution,
+// Run runs a controller, reporting state along the way. Under normal execution,
 // this function blocks until the task is completed.
-func Run(ctx context.Context, runner Runner, reporter Reporter) error {
+func Run(ctx context.Context, ctlr Controller, reporter Reporter) error {
 	if err := report(ctx, reporter, api.TaskStatePreparing, "preparing"); err != nil {
 		return err
 	}
 
-	if err := runner.Prepare(ctx); err != nil {
+	if err := ctlr.Prepare(ctx); err != nil {
 		switch err {
 		case ErrTaskPrepared:
 			log.G(ctx).Warnf("already prepared")
-			return runStart(ctx, runner, reporter, "already prepared")
+			return runStart(ctx, ctlr, reporter, "already prepared")
 		case ErrTaskStarted:
 			log.G(ctx).Warnf("already started")
-			return runWait(ctx, runner, reporter, "already started")
+			return runWait(ctx, ctlr, reporter, "already started")
 		default:
 			return err
 		}
@@ -81,19 +81,19 @@ func Run(ctx context.Context, runner Runner, reporter Reporter) error {
 		return err
 	}
 
-	return runStart(ctx, runner, reporter, "starting")
+	return runStart(ctx, ctlr, reporter, "starting")
 }
 
 // runStart reports that the task is starting, calls Start and hands execution
 // off to `runWait`. It will block until task execution is completed or an
 // error is encountered.
-func runStart(ctx context.Context, runner Runner, reporter Reporter, msg string) error {
+func runStart(ctx context.Context, ctlr Controller, reporter Reporter, msg string) error {
 	if err := report(ctx, reporter, api.TaskStateStarting, msg); err != nil {
 		return err
 	}
 
 	msg = "started"
-	if err := runner.Start(ctx); err != nil {
+	if err := ctlr.Start(ctx); err != nil {
 		switch err {
 		case ErrTaskStarted:
 			log.G(ctx).Warnf("already started")
@@ -102,17 +102,17 @@ func runStart(ctx context.Context, runner Runner, reporter Reporter, msg string)
 			return err
 		}
 	}
-	return runWait(ctx, runner, reporter, msg)
+	return runWait(ctx, ctlr, reporter, msg)
 }
 
 // runWait reports that the task is running and calls Wait. When Wait exits,
 // the task will be reported as completed.
-func runWait(ctx context.Context, runner Runner, reporter Reporter, msg string) error {
+func runWait(ctx context.Context, ctlr Controller, reporter Reporter, msg string) error {
 	if err := report(ctx, reporter, api.TaskStateRunning, msg); err != nil {
 		return err
 	}
 
-	if err := runner.Wait(ctx); err != nil {
+	if err := ctlr.Wait(ctx); err != nil {
 		// NOTE(stevvooe): We *do not* handle the exit error here,
 		// since we may do something different based on whether we
 		// are in SHUTDOWN or having an unplanned exit,

@@ -20,7 +20,7 @@ func (e *NoopExecutor) Describe(ctx context.Context) (*api.NodeDescription, erro
 	return &api.NodeDescription{}, nil
 }
 
-func (e *NoopExecutor) Runner(t *api.Task) (exec.Runner, error) {
+func (e *NoopExecutor) Controller(t *api.Task) (exec.Controller, error) {
 	return nil, exec.ErrRuntimeUnsupported
 }
 

@@ -19,14 +19,14 @@ var (
 	// Start.
 	ErrTaskStarted = errors.New("exec: task already started")
 
-	// ErrTaskUpdateFailed is returned if a task runner update fails.
+	// ErrTaskUpdateFailed is returned if a task controller update fails.
 	ErrTaskUpdateFailed = errors.New("exec: task update failed")
 
-	// ErrRunnerClosed returned when a task runner has been closed.
-	ErrRunnerClosed = errors.New("exec: runner closed")
+	// ErrControllerClosed returned when a task controller has been closed.
+	ErrControllerClosed = errors.New("exec: controller closed")
 )
 
-// ExitError is returned by runner methods after encountering an error after a
+// ExitError is returned by controller methods after encountering an error after a
 // task exits. It should require any data to report on a non-zero exit code.
 type ExitError struct {
 	Code  int
