@@ -409,8 +409,9 @@ enum IssuanceState {
 	option (gogoproto.goproto_enum_prefix) = false;
 
 	ISSUANCEUNKNOWN = 0 [(gogoproto.enumvalue_customname) = "IssuanceStateUnknown"];
-	ISSUANCEPENDING = 1 [(gogoproto.enumvalue_customname)="IssuanceStatePending"]; // Certificate has been accepted and signed and it's ready
-	ISSUANCEACCEPTED = 2 [(gogoproto.enumvalue_customname)="IssuanceStateAccepted"]; // successful completion of task (not error code, just ran)
+	ISSUANCEPENDING = 1 [(gogoproto.enumvalue_customname)="IssuanceStatePending"]; // Certificate is pending acceptance
+	ISSUANCEACCEPTED = 2 [(gogoproto.enumvalue_customname)="IssuanceStateAccepted"]; // Certificate has been accepted to be issued
+	ISSUANCECOMPLETED = 3 [(gogoproto.enumvalue_customname)="IssuanceStateCompleted"]; // successful completion certificate issuance
 	ISSUANCEFAILED = 4 [(gogoproto.enumvalue_customname)="IssuanceStateFailed"]; // Certificate issuance failed
 	ISSUANCEREJECTED = 5 [(gogoproto.enumvalue_customname)="IssuanceStateRejected"]; // Certificate issuance got rejected
 	ISSUANCEBLOCKED = 6 [(gogoproto.enumvalue_customname)="IssuanceStateBlocked"]; // Certificate issuance got rejected
