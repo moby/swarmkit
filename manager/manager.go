@@ -220,7 +220,15 @@ func (m *Manager) Run(ctx context.Context) error {
 			"proto": m.listener.Addr().Network(),
 			"addr":  m.listener.Addr().String()}))
 	log.G(ctx).Info("listening")
-	go m.raftNode.Run(ctx)
+
+	go func() {
+		err := m.raftNode.Run(ctx)
+		if err != nil {
+			log.G(ctx).Error(err)
+			m.Stop()
+			os.Exit(1)
+		}
+	}()
 
 	backoffConfig := *grpc.DefaultBackoffConfig
 	backoffConfig.MaxDelay = 2 * time.Second
@@ -259,22 +267,31 @@ func (m *Manager) Run(ctx context.Context) error {
 // active RPCs as well as stopping the scheduler.
 func (m *Manager) Stop() {
 	m.leaderLock.Lock()
+	defer m.leaderLock.Unlock()
 	if m.allocator != nil {
 		m.allocator.Stop()
+		m.allocator = nil
 	}
 	if m.orchestrator != nil {
 		m.orchestrator.Stop()
+		m.orchestrator = nil
 	}
 	if m.fillOrchestrator != nil {
 		m.fillOrchestrator.Stop()
+		m.fillOrchestrator = nil
 	}
 	if m.scheduler != nil {
 		m.scheduler.Stop()
+		m.scheduler = nil
 	}
-	m.leaderLock.Unlock()
-
-	m.raftNode.Shutdown()
-	m.server.Stop()
+	if m.raftNode != nil {
+		m.raftNode.Shutdown()
+		m.raftNode = nil
+	}
+	if m.server != nil {
+		m.server.Stop()
+		m.server = nil
+	}
 }
 
 // GRPC Methods

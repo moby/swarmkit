@@ -39,6 +39,7 @@ service Cluster {
 	rpc RemoveVolume(RemoveVolumeRequest) returns (RemoveVolumeResponse) {};
 
 	rpc ListManagers(ListManagersRequest) returns (ListManagersResponse) {};
+	rpc RemoveManager(RemoveManagerRequest) returns (RemoveManagerResponse) {};
 }
 
 message ListOptions {
@@ -205,3 +206,9 @@ message ListManagersRequest {
 message ListManagersResponse {
 	repeated Member managers = 1;
 }
+
+message RemoveManagerRequest {
+	string manager_id = 1 [(gogoproto.customname) = "ManagerID"];
+}
+
+message RemoveManagerResponse {}
