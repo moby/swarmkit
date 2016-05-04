@@ -408,13 +408,13 @@ message WeightedPeer {
 enum IssuanceState {
 	option (gogoproto.goproto_enum_prefix) = false;
 
-	ISSUANCEUNKNOWN = 0 [(gogoproto.enumvalue_customname) = "IssuanceStateUnknown"];
-	ISSUANCEPENDING = 1 [(gogoproto.enumvalue_customname)="IssuanceStatePending"]; // Certificate is pending acceptance
-	ISSUANCEACCEPTED = 2 [(gogoproto.enumvalue_customname)="IssuanceStateAccepted"]; // Certificate has been accepted to be issued
-	ISSUANCECOMPLETED = 3 [(gogoproto.enumvalue_customname)="IssuanceStateCompleted"]; // successful completion certificate issuance
-	ISSUANCEFAILED = 4 [(gogoproto.enumvalue_customname)="IssuanceStateFailed"]; // Certificate issuance failed
-	ISSUANCEREJECTED = 5 [(gogoproto.enumvalue_customname)="IssuanceStateRejected"]; // Certificate issuance got rejected
-	ISSUANCEBLOCKED = 6 [(gogoproto.enumvalue_customname)="IssuanceStateBlocked"]; // Certificate issuance got rejected
+	ISSUANCE_UNKNOWN = 0 [(gogoproto.enumvalue_customname) = "IssuanceStateUnknown"];
+	ISSUANCE_PENDING = 1 [(gogoproto.enumvalue_customname)="IssuanceStatePending"]; // Certificate is pending acceptance
+	ISSUANCE_ACCEPTED = 2 [(gogoproto.enumvalue_customname)="IssuanceStateAccepted"]; // Certificate has been accepted to be issued
+	ISSUANCE_COMPLETED = 3 [(gogoproto.enumvalue_customname)="IssuanceStateCompleted"]; // successful completion certificate issuance
+	ISSUANCE_FAILED = 4 [(gogoproto.enumvalue_customname)="IssuanceStateFailed"]; // Certificate issuance failed
+	ISSUANCE_REJECTED = 5 [(gogoproto.enumvalue_customname)="IssuanceStateRejected"]; // Certificate issuance got rejected
+	ISSUANCE_BLOCKED = 6 [(gogoproto.enumvalue_customname)="IssuanceStateBlocked"]; // Certificate issuance got rejected
 }
 
 message IssuanceStatus {

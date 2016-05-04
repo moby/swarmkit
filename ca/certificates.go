@@ -16,6 +16,7 @@ import (
 	cflog "github.com/cloudflare/cfssl/log"
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
+	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -202,8 +203,7 @@ func GetRemoteCA(ctx context.Context, managerAddr, hashStr string) ([]byte, erro
 	// doing TOFU, in which case we don't validate the remote CA, or we're using
 	// a user supplied hash to check the integrity of the CA certificate.
 	insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
-	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second),
-		grpc.WithTransportCredentials(insecureCreds)}
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecureCreds)}
 
 	conn, err := grpc.Dial(managerAddr, opts...)
 	if err != nil {
@@ -237,7 +237,7 @@ func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.Cert
 
 	// This is our only non-MTLS request
 	creds := credentials.NewTLS(&tls.Config{ServerName: CARole, RootCAs: rootCAPool})
-	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second), grpc.WithTransportCredentials(creds)}
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 
 	// TODO(diogo): Add a connection picker
 	conn, err := grpc.Dial(caAddr, opts...)
@@ -258,11 +258,30 @@ func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.Cert
 
 	token := issueResponse.Token
 
-	// Send the Request and retrieve the certificate
 	statusRequest := &api.CertificateStatusRequest{Token: token}
-	statusReponse, err := caClient.CertificateStatus(ctx, statusRequest)
-	if err != nil {
-		return nil, err
+	var statusReponse *api.CertificateStatusResponse
+	expBackoff := events.NewExponentialBackoff(events.ExponentialBackoffConfig{
+		Base:   time.Second,
+		Factor: time.Second,
+		Max:    30 * time.Second,
+	})
+
+	// Exponential backoff with Max of 20 seconds to wait for the new certificate
+	for {
+		// Send the Request and retrieve the certificate
+		statusReponse, err = caClient.CertificateStatus(ctx, statusRequest)
+		if err != nil {
+			return nil, err
+		}
+
+		// If the request is completed, we have a certificate to return
+		if statusReponse.Status.State == api.IssuanceStateCompleted {
+			break
+		}
+
+		expBackoff.Failure(nil, nil)
+		// Wait for next retry
+		time.Sleep(expBackoff.Proceed(nil))
 	}
 
 	return statusReponse.Certificate, nil
