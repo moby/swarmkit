@@ -119,9 +119,9 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 					continue
 				}
 				// fill orchestrator needs to inspect when a task has terminated
-				// it should ignore tasks whose DesiredState is dead, which means the
-				// task has been processed
-				if isTaskTerminated(v.Task) && v.Task.DesiredState != api.TaskStateDead {
+				// it should ignore tasks whose DesiredState is past running, which
+				// means the task has been processed
+				if isTaskTerminated(v.Task) && v.Task.DesiredState <= api.TaskStateRunning {
 					f.reconcileServiceOneNode(ctx, v.Task.ServiceID, v.Task.NodeID)
 				}
 			case state.EventDeleteTask:
