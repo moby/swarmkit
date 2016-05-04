@@ -102,7 +102,7 @@ func (t tasksByInstance) Less(i, j int) bool {
 	return t[i].Instance < t[j].Instance
 }
 
-func printTasks(service *api.Service, tasks []*api.Task, all bool, res *common.Resolver) {
+func printTasks(tasks []*api.Task, all bool, res *common.Resolver) {
 	sort.Sort(tasksByInstance(tasks))
 
 	w := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
@@ -116,7 +116,7 @@ func printTasks(service *api.Service, tasks []*api.Task, all bool, res *common.R
 		c := t.Spec.GetContainer()
 		fmt.Fprintf(w, "%s\t%s.%d\t%s\t%s\t%s %s\t%s\n",
 			t.ID,
-			service.Spec.Annotations.Name,
+			t.Annotations.Name,
 			t.Instance,
 			c.Image.Reference,
 			t.DesiredState.String(),
@@ -179,7 +179,7 @@ var (
 			printServiceSummary(service)
 			if len(tasks) > 0 {
 				fmt.Printf("\n")
-				printTasks(service, tasks, all || instance != 0, res)
+				printTasks(tasks, all || instance != 0, res)
 			}
 
 			return nil

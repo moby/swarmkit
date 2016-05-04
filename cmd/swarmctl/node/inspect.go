@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"text/tabwriter"
 
 	"github.com/docker/swarm-v2/api"
@@ -11,6 +12,85 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
+
+func printNodeSummary(node *api.Node) {
+	w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
+	defer func() {
+		// Ignore flushing errors - there's nothing we can do.
+		_ = w.Flush()
+	}()
+	spec := &node.Spec
+	desc := node.Description
+	if desc == nil {
+		desc = &api.NodeDescription{}
+	}
+	common.FprintfIfNotEmpty(w, "ID\t: %s\n", node.ID)
+	common.FprintfIfNotEmpty(w, "Name\t: %s\n", spec.Annotations.Name)
+	common.FprintfIfNotEmpty(w, "Hostname\t: %s\n", node.Description.Hostname)
+
+	fmt.Fprintln(w, "Status:\t")
+	common.FprintfIfNotEmpty(w, "  State\t: %s\n", node.Status.State.String())
+	common.FprintfIfNotEmpty(w, "  Message\t: %s\n", node.Status.Message)
+	common.FprintfIfNotEmpty(w, "  Availability\t: %s\n", spec.Availability.String())
+
+	fmt.Fprintln(w, "Platform:\t")
+	common.FprintfIfNotEmpty(w, "  Operating System\t: %s\n", desc.Platform.OS)
+	common.FprintfIfNotEmpty(w, "  Architecture\t: %s\n", desc.Platform.Architecture)
+
+	fmt.Fprintln(w, "Resources:\t")
+	fmt.Fprintf(w, "  CPUs\t: %d\n", desc.Resources.NanoCPUs/1e9)
+	fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(desc.Resources.MemoryBytes)))
+
+	fmt.Fprintln(w, "Plugins:\t")
+	for _, p := range desc.Engine.Plugins {
+		fmt.Fprintf(w, "  %s\t: %v\n", p.Type, p.Names)
+	}
+
+	common.FprintfIfNotEmpty(w, "Engine Version\t: %s\n", desc.Engine.EngineVersion)
+
+	if len(desc.Engine.Labels) != 0 {
+		fmt.Fprintln(w, "Engine Labels:\t")
+		for k, v := range desc.Engine.Labels {
+			fmt.Fprintf(w, "  %s = %s", k, v)
+		}
+	}
+}
+
+type tasksByInstance []*api.Task
+
+func (t tasksByInstance) Len() int {
+	return len(t)
+}
+func (t tasksByInstance) Swap(i, j int) {
+	t[i], t[j] = t[j], t[i]
+}
+func (t tasksByInstance) Less(i, j int) bool {
+	return t[i].Instance < t[j].Instance
+}
+
+func printTasks(tasks []*api.Task, all bool) {
+	sort.Sort(tasksByInstance(tasks))
+
+	w := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
+	defer w.Flush()
+
+	common.PrintHeader(w, "Task ID", "Instance", "Image", "Desired State", "Last State")
+	for _, t := range tasks {
+		if !all && t.DesiredState > api.TaskStateRunning {
+			continue
+		}
+		c := t.Spec.GetContainer()
+		fmt.Fprintf(w, "%s\t%s.%d\t%s\t%s\t%s %s\t\n",
+			t.ID,
+			t.Annotations.Name,
+			t.Instance,
+			c.Image.Reference,
+			t.DesiredState.String(),
+			t.Status.State.String(),
+			common.TimestampAgo(t.Status.Timestamp),
+		)
+	}
+}
 
 var (
 	inspectCmd = &cobra.Command{
@@ -20,6 +100,14 @@ var (
 			if len(args) == 0 {
 				return errors.New("node ID missing")
 			}
+
+			flags := cmd.Flags()
+
+			all, err := flags.GetBool("all")
+			if err != nil {
+				return err
+			}
+
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
@@ -29,48 +117,30 @@ var (
 			if err != nil {
 				return err
 			}
-			w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
-			defer func() {
-				// Ignore flushing errors - there's nothing we can do.
-				_ = w.Flush()
-			}()
-			spec := &node.Spec
-			desc := node.Description
-			if desc == nil {
-				desc = &api.NodeDescription{}
+
+			// TODO(aluzzardi): This should be implemented as a ListOptions filter.
+			r, err := c.ListTasks(common.Context(cmd), &api.ListTasksRequest{})
+			if err != nil {
+				return err
 			}
-
-			common.FprintfIfNotEmpty(w, "ID\t: %s\n", node.ID)
-			common.FprintfIfNotEmpty(w, "Name\t: %s\n", spec.Annotations.Name)
-			common.FprintfIfNotEmpty(w, "Hostname\t: %s\n", node.Description.Hostname)
-
-			fmt.Fprintln(w, "Status:\t")
-			common.FprintfIfNotEmpty(w, "  State\t: %s\n", node.Status.State.String())
-			common.FprintfIfNotEmpty(w, "  Message\t: %s\n", node.Status.Message)
-			common.FprintfIfNotEmpty(w, "  Availability\t: %s\n", spec.Availability.String())
-
-			fmt.Fprintln(w, "Platform:\t")
-			common.FprintfIfNotEmpty(w, "  Operating System\t: %s\n", desc.Platform.OS)
-			common.FprintfIfNotEmpty(w, "  Architecture\t: %s\n", desc.Platform.Architecture)
-
-			fmt.Fprintln(w, "Resources:\t")
-			fmt.Fprintf(w, "  CPUs\t: %d\n", desc.Resources.NanoCPUs/1e9)
-			fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(desc.Resources.MemoryBytes)))
-
-			fmt.Fprintln(w, "Plugins:\t")
-			for _, p := range desc.Engine.Plugins {
-				fmt.Fprintf(w, "  %s\t: %v\n", p.Type, p.Names)
-			}
-
-			common.FprintfIfNotEmpty(w, "Engine Version\t: %s\n", desc.Engine.EngineVersion)
-
-			if len(desc.Engine.Labels) != 0 {
-				fmt.Fprintln(w, "Engine Labels:\t")
-				for k, v := range desc.Engine.Labels {
-					fmt.Fprintf(w, "  %s = %s", k, v)
+			tasks := []*api.Task{}
+			for _, t := range r.Tasks {
+				if t.NodeID == node.ID {
+					tasks = append(tasks, t)
 				}
 			}
+
+			printNodeSummary(node)
+			if len(tasks) > 0 {
+				fmt.Printf("\n")
+				printTasks(tasks, all)
+			}
+
 			return nil
 		},
 	}
 )
+
+func init() {
+	inspectCmd.Flags().BoolP("all", "a", false, "Show all tasks (default shows just running)")
+}
