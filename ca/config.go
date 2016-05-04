@@ -38,6 +38,8 @@ const (
 	ManagerRole = "manager"
 	// AgentRole represents the Agent node type, and is used for authorization to endpoints
 	AgentRole = "agent"
+	// CARole represents the CA node type, and is used for clients attempting to get new certificates issued
+	CARole = "ca"
 )
 
 // InvalidTLSCertificatesError represents a failure validating the TLS Certificates
