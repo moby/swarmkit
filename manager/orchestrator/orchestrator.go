@@ -1,7 +1,10 @@
 package orchestrator
 
 import (
+	"time"
+
 	"github.com/docker/swarm-v2/api"
+	tspb "github.com/docker/swarm-v2/api/timestamp"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
@@ -91,6 +94,14 @@ func (o *Orchestrator) tick(ctx context.Context) {
 }
 
 func newTask(service *api.Service, instance uint64) *api.Task {
+	t := time.Now()
+	seconds := t.Unix()
+	nanos := int32(t.Sub(time.Unix(seconds, 0)))
+	ts := &tspb.Timestamp{
+		Seconds: seconds,
+		Nanos:   nanos,
+	}
+
 	return &api.Task{
 		ID:          identity.NewID(),
 		Annotations: service.Spec.Annotations, // TODO(stevvooe): Copy metadata with nice name.
@@ -98,7 +109,8 @@ func newTask(service *api.Service, instance uint64) *api.Task {
 		ServiceID:   service.ID,
 		Instance:    instance,
 		Status: api.TaskStatus{
-			State: api.TaskStateNew,
+			State:     api.TaskStateNew,
+			Timestamp: ts,
 		},
 		DesiredState: api.TaskStateRunning,
 	}

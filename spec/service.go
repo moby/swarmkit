@@ -50,9 +50,9 @@ type PortConfig struct {
 type ServiceConfig struct {
 	ContainerConfig
 
-	Name      string `yaml:"name,omitempty"`
-	Instances *int64 `yaml:"instances,omitempty"`
-	Mode      string `yaml:"mode,omitempty"`
+	Name      string  `yaml:"name,omitempty"`
+	Instances *uint64 `yaml:"instances,omitempty"`
+	Mode      string  `yaml:"mode,omitempty"`
 
 	Restart      string `yaml:"restart,omitempty"`
 	RestartDelay string `yaml:"restartdelay,omitempty"`
@@ -183,7 +183,6 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 		}
 
 		spec.Template.GetContainer().Networks = networks
-
 	}
 
 	switch s.Mode {

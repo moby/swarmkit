@@ -79,7 +79,7 @@ func TestUpdater(t *testing.T) {
 
 	err := store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Services().Create(service))
-		for i := int64(0); i < service.Spec.Instances; i++ {
+		for i := uint64(0); i < service.Spec.Instances; i++ {
 			assert.NoError(t, tx.Tasks().Create(newTask(service, uint64(i))))
 		}
 		return nil
