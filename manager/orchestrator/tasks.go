@@ -27,7 +27,7 @@ func (o *Orchestrator) initTasks(readTx state.ReadTx) error {
 	for _, t := range tasks {
 		if t.NodeID != "" {
 			n := readTx.Nodes().Get(t.NodeID)
-			if invalidNode(n) && t.Status.State != api.TaskStateDead && t.DesiredState != api.TaskStateDead {
+			if invalidNode(n) && t.Status.State <= api.TaskStateRunning && t.DesiredState <= api.TaskStateRunning {
 				o.restartTasks[t.ID] = struct{}{}
 			}
 		}
@@ -66,6 +66,10 @@ func (o *Orchestrator) tickTasks(ctx context.Context) {
 					// TODO(aaronl): optimistic update?
 					t := tx.Tasks().Get(taskID)
 					if t != nil {
+						if t.DesiredState > api.TaskStateRunning {
+							return nil
+						}
+
 						service := tx.Services().Get(t.ServiceID)
 						if !isRelatedService(service) {
 							return nil
@@ -115,6 +119,9 @@ func (o *Orchestrator) restartTasksByNodeID(ctx context.Context, nodeID string) 
 		}
 
 		for _, t := range tasks {
+			if t.DesiredState > api.TaskStateRunning {
+				continue
+			}
 			service := tx.Services().Get(t.ServiceID)
 			if isRelatedService(service) {
 				o.restartTasks[t.ID] = struct{}{}
@@ -135,9 +142,9 @@ func (o *Orchestrator) handleNodeChange(ctx context.Context, n *api.Node) {
 }
 
 func (o *Orchestrator) handleTaskChange(ctx context.Context, t *api.Task) {
-	// If we already set the desired state to TaskStateDead, there is no
+	// If we already set the desired state past TaskStateRunning, there is no
 	// further action necessary.
-	if t.DesiredState == api.TaskStateDead {
+	if t.DesiredState > api.TaskStateRunning {
 		return
 	}
 
