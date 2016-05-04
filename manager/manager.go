@@ -66,9 +66,10 @@ type Manager struct {
 	raftNode         *raft.Node
 
 	leadershipCh chan raft.LeadershipState
-	leaderLock   sync.Mutex
+	mu           sync.Mutex
 
-	managerDone chan struct{}
+	started chan struct{}
+	stopped bool
 }
 
 // New creates a Manager which has not started to accept requests yet.
@@ -131,6 +132,7 @@ func New(config *Config) (*Manager, error) {
 		server:       grpc.NewServer(opts...),
 		raftNode:     raftNode,
 		leadershipCh: leadershipCh,
+		started:      make(chan struct{}),
 	}
 
 	return m, nil
@@ -140,91 +142,83 @@ func New(config *Config) (*Manager, error) {
 // address.
 // The call never returns unless an error occurs or `Stop()` is called.
 func (m *Manager) Run(ctx context.Context) error {
-	m.managerDone = make(chan struct{})
-	defer close(m.managerDone)
-
 	go func() {
-		for {
-			select {
-			case newState := <-m.leadershipCh:
-				if newState == raft.IsLeader {
-					store := m.raftNode.MemoryStore()
-
-					m.leaderLock.Lock()
-					m.orchestrator = orchestrator.New(store)
-					m.fillOrchestrator = orchestrator.NewFillOrchestrator(store)
-					m.taskReaper = orchestrator.NewTaskReaper(store, defaultTaskHistory)
-					m.scheduler = scheduler.New(store)
-
-					// TODO(stevvooe): Allocate a context that can be used to
-					// shutdown underlying manager processes when leadership is
-					// lost.
-
-					var err error
-					m.allocator, err = allocator.New(store)
-					if err != nil {
-						log.G(ctx).WithError(err).Error("failed to create allocator")
-						// TODO(stevvooe): It doesn't seem correct here to fail
-						// creating the allocator but then use it anyways.
-					}
-
-					// Start all sub-components in separate goroutines.
-					// TODO(aluzzardi): This should have some kind of error handling so that
-					// any component that goes down would bring the entire manager down.
-
-					if m.allocator != nil {
-						go func(allocator *allocator.Allocator) {
-							if err := allocator.Run(ctx); err != nil {
-								log.G(ctx).WithError(err).Error("allocator exited with an error")
-							}
-						}(m.allocator)
-					}
-
-					go func(scheduler *scheduler.Scheduler) {
-						if err := scheduler.Run(ctx); err != nil {
-							log.G(ctx).WithError(err).Error("scheduler exited with an error")
-						}
-					}(m.scheduler)
-					go func(taskReaper *orchestrator.TaskReaper) {
-						taskReaper.Run()
-					}(m.taskReaper)
-					go func(orchestrator *orchestrator.Orchestrator) {
-						if err := orchestrator.Run(ctx); err != nil {
-							log.G(ctx).WithError(err).Error("orchestrator exited with an error")
-						}
-					}(m.orchestrator)
-					go func(fillOrchestrator *orchestrator.FillOrchestrator) {
-						if err := fillOrchestrator.Run(ctx); err != nil {
-							log.G(ctx).WithError(err).Error("fillOrchestrator exited with an error")
-						}
-					}(m.fillOrchestrator)
-
-					m.leaderLock.Unlock()
-				} else if newState == raft.IsFollower {
-					m.leaderLock.Lock()
-
-					if m.allocator != nil {
-						m.allocator.Stop()
-						m.allocator = nil
-					}
-
-					m.orchestrator.Stop()
-					m.orchestrator = nil
-
-					m.fillOrchestrator.Stop()
-					m.fillOrchestrator = nil
-
-					m.taskReaper.Stop()
-					m.taskReaper = nil
-
-					m.scheduler.Stop()
-					m.scheduler = nil
-
-					m.leaderLock.Unlock()
-				}
-			case <-m.managerDone:
-				return
+		for newState := range m.leadershipCh {
+			m.mu.Lock()
+			if m.stopped {
+				m.mu.Unlock()
+				continue
 			}
+
+			if newState == raft.IsLeader {
+				store := m.raftNode.MemoryStore()
+
+				m.orchestrator = orchestrator.New(store)
+				m.fillOrchestrator = orchestrator.NewFillOrchestrator(store)
+				m.taskReaper = orchestrator.NewTaskReaper(store, defaultTaskHistory)
+				m.scheduler = scheduler.New(store)
+
+				// TODO(stevvooe): Allocate a context that can be used to
+				// shutdown underlying manager processes when leadership is
+				// lost.
+
+				var err error
+				m.allocator, err = allocator.New(store)
+				if err != nil {
+					log.G(ctx).WithError(err).Error("failed to create allocator")
+					// TODO(stevvooe): It doesn't seem correct here to fail
+					// creating the allocator but then use it anyways.
+				}
+
+				// Start all sub-components in separate goroutines.
+				// TODO(aluzzardi): This should have some kind of error handling so that
+				// any component that goes down would bring the entire manager down.
+
+				if m.allocator != nil {
+					go func(allocator *allocator.Allocator) {
+						if err := allocator.Run(ctx); err != nil {
+							log.G(ctx).WithError(err).Error("allocator exited with an error")
+						}
+					}(m.allocator)
+				}
+
+				go func(scheduler *scheduler.Scheduler) {
+					if err := scheduler.Run(ctx); err != nil {
+						log.G(ctx).WithError(err).Error("scheduler exited with an error")
+					}
+				}(m.scheduler)
+				go func(taskReaper *orchestrator.TaskReaper) {
+					taskReaper.Run()
+				}(m.taskReaper)
+				go func(orchestrator *orchestrator.Orchestrator) {
+					if err := orchestrator.Run(ctx); err != nil {
+						log.G(ctx).WithError(err).Error("orchestrator exited with an error")
+					}
+				}(m.orchestrator)
+				go func(fillOrchestrator *orchestrator.FillOrchestrator) {
+					if err := fillOrchestrator.Run(ctx); err != nil {
+						log.G(ctx).WithError(err).Error("fillOrchestrator exited with an error")
+					}
+				}(m.fillOrchestrator)
+			} else if newState == raft.IsFollower {
+				if m.allocator != nil {
+					m.allocator.Stop()
+					m.allocator = nil
+				}
+
+				m.orchestrator.Stop()
+				m.orchestrator = nil
+
+				m.fillOrchestrator.Stop()
+				m.fillOrchestrator = nil
+
+				m.taskReaper.Stop()
+				m.taskReaper = nil
+
+				m.scheduler.Stop()
+				m.scheduler = nil
+			}
+			m.mu.Unlock()
 		}
 	}()
 
@@ -239,7 +233,6 @@ func (m *Manager) Run(ctx context.Context) error {
 		if err != nil {
 			log.G(ctx).Error(err)
 			m.Stop()
-			os.Exit(1)
 		}
 	}()
 
@@ -273,41 +266,39 @@ func (m *Manager) Run(ctx context.Context) error {
 		return err
 	}
 	cancel()
+	close(m.started)
 	return <-errServe
 }
 
 // Stop stops the manager. It immediately closes all open connections and
 // active RPCs as well as stopping the scheduler.
 func (m *Manager) Stop() {
-	m.leaderLock.Lock()
-	defer m.leaderLock.Unlock()
+	// Don't shut things down while the manager is still starting up.
+	<-m.started
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.stopped {
+		return
+	}
 	if m.allocator != nil {
 		m.allocator.Stop()
-		m.allocator = nil
 	}
 	if m.orchestrator != nil {
 		m.orchestrator.Stop()
-		m.orchestrator = nil
 	}
 	if m.fillOrchestrator != nil {
 		m.fillOrchestrator.Stop()
-		m.fillOrchestrator = nil
 	}
 	if m.taskReaper != nil {
 		m.taskReaper.Stop()
 	}
 	if m.scheduler != nil {
 		m.scheduler.Stop()
-		m.scheduler = nil
 	}
-	if m.raftNode != nil {
-		m.raftNode.Shutdown()
-		m.raftNode = nil
-	}
-	if m.server != nil {
-		m.server.Stop()
-		m.server = nil
-	}
+	m.raftNode.Shutdown()
+	m.server.Stop()
+	m.stopped = true
 }
 
 // GRPC Methods
