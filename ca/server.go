@@ -24,22 +24,18 @@ func NewServer(store state.WatchableStore, securityConfig *ManagerSecurityConfig
 	}
 }
 
-// CertificateStatus
+// CertificateStatus returns the current issuance status of an issuance request identified by Token
 func (s *Server) CertificateStatus(ctx context.Context, request *api.CertificateStatusRequest) (*api.CertificateStatusResponse, error) {
 	if request.Token == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
 	var rCertificate *api.RegisteredCertificate
-	err := s.store.Update(func(tx state.Tx) error {
+	s.store.View(func(tx state.ReadTx) {
 		rCertificate = tx.RegisteredCertificates().Get(request.Token)
-		if rCertificate == nil {
-			return grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
-		}
-		return nil
 	})
-	if err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, err.Error())
+	if rCertificate == nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
 	// If this manager isn't a rootCA or an intermediate CA, we can't issue certificates
@@ -59,11 +55,16 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 		// Remote users are expecting a full certificate chain, not just a signed certificate
 		rCertificate.Certificate = append(cert, s.securityConfig.RootCACert...)
 		rCertificate.CN = randomID
-		rCertificate.Status = &api.IssuanceStatus{
+		rCertificate.Status = api.IssuanceStatus{
 			State: api.IssuanceStateCompleted,
 		}
 
 		err = s.store.Update(func(tx state.Tx) error {
+			latestCertificate := tx.RegisteredCertificates().Get(request.Token)
+			if latestCertificate.Status.State == api.IssuanceStateCompleted {
+				rCertificate = latestCertificate
+				return nil
+			}
 			return tx.RegisteredCertificates().Update(rCertificate)
 		})
 		if err != nil {
@@ -74,7 +75,7 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 
 	log.G(ctx).Debugf("(*Server).CertificateStatus: checking status for Token=%s, Status: %s", request.Token, rCertificate.Status)
 	return &api.CertificateStatusResponse{
-		Status:      rCertificate.Status,
+		Status:      &rCertificate.Status,
 		Certificate: rCertificate.Certificate,
 	}, nil
 
@@ -98,7 +99,7 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 			ID:   token,
 			CSR:  request.CSR,
 			Role: request.Role,
-			Status: &api.IssuanceStatus{
+			Status: api.IssuanceStatus{
 				State: api.IssuanceStatePending,
 			},
 		}
