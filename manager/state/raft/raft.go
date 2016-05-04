@@ -427,7 +427,12 @@ func (n *Node) readWAL(ctx context.Context, snapshot *raftpb.Snapshot) (err erro
 // Before running the main loop, it first starts the raft node based on saved
 // cluster state. If no saved state exists, it starts a single-node cluster.
 func (n *Node) Run(ctx context.Context) error {
-	defer close(n.doneCh)
+	defer func() {
+		close(n.doneCh)
+		if n.leadershipCh != nil {
+			close(n.leadershipCh)
+		}
+	}()
 
 	for {
 		select {
