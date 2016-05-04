@@ -164,7 +164,7 @@ func TestCertificateStatus(t *testing.T) {
 	testRegisteredCert := &api.RegisteredCertificate{
 		ID:     "token",
 		CSR:    csr,
-		Status: &api.IssuanceStatus{State: api.IssuanceStatePending},
+		Status: api.IssuanceStatus{State: api.IssuanceStatePending},
 	}
 
 	err = gc.Store.Update(func(tx state.Tx) error {

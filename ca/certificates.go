@@ -173,13 +173,19 @@ func generateNewCSR() (csr, key []byte, err error) {
 
 // ParseValidateAndSignCSR returns a signed certificate from a particular signer and a CSR.
 func ParseValidateAndSignCSR(caSigner signer.Signer, csrBytes []byte, cn, role string) ([]byte, error) {
+	// All managers get added the subject-alt-name of CA, so they can be used for cert issuance
+	hosts := []string{role}
+	if role == ManagerRole {
+		hosts = append(hosts, CARole)
+	}
+
 	cert, err := caSigner.Sign(signer.SignRequest{
 		Request: string(csrBytes),
 		// OU is used for Authentication of the node type. The CN has the random
 		// node ID.
 		Subject: &signer.Subject{CN: cn, Names: []cfcsr.Name{{OU: role}}},
-		// Adding role as DNS alt name, so clients can connect to "manager"
-		Hosts: []string{role},
+		// Adding role as DNS alt name, so clients can connect to "manager" and "ca"
+		Hosts: hosts,
 	})
 	if err != nil {
 		log.Debugf("failed to sign node certificate: %v", err)
@@ -224,17 +230,17 @@ func GetRemoteCA(ctx context.Context, managerAddr, hashStr string) ([]byte, erro
 	return response.Certificate, nil
 }
 
-func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.CertPool, role, managerAddr string) ([]byte, error) {
+func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.CertPool, role, caAddr string) ([]byte, error) {
 	if rootCAPool == nil {
 		return nil, fmt.Errorf("valid root CA pool required")
 	}
 
 	// This is our only non-MTLS request
-	creds := credentials.NewTLS(&tls.Config{ServerName: ManagerRole, RootCAs: rootCAPool})
+	creds := credentials.NewTLS(&tls.Config{ServerName: CARole, RootCAs: rootCAPool})
 	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second), grpc.WithTransportCredentials(creds)}
 
 	// TODO(diogo): Add a connection picker
-	conn, err := grpc.Dial(managerAddr, opts...)
+	conn, err := grpc.Dial(caAddr, opts...)
 	if err != nil {
 		return nil, err
 	}
