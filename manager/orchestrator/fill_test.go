@@ -110,6 +110,37 @@ func TestDeleteNode(t *testing.T) {
 	assert.Equal(t, observedTask.NodeID, "id1")
 }
 
+func TestNodeAvailability(t *testing.T) {
+	store := store.NewMemoryStore(nil)
+	assert.NotNil(t, store)
+
+	SetupCluster(t, store)
+
+	watch, cancel := state.Watch(store.WatchQueue())
+	defer cancel()
+
+	skipEvents(t, watch)
+
+	node1.Status.State = api.NodeStatus_READY
+	node1.Spec.Availability = api.NodeAvailabilityActive
+
+	// set node1 to drain
+	updateNodeAvailability(t, store, node1, api.NodeAvailabilityDrain)
+
+	// task should be set to dead
+	observedTask1 := watchDeadTask(t, watch)
+	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.NodeID, "id1")
+
+	// set node1 to active
+	updateNodeAvailability(t, store, node1, api.NodeAvailabilityActive)
+	// task should be added back
+	observedTask2 := watchTaskCreate(t, watch)
+	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.NodeID, "id1")
+}
+
 func TestAddService(t *testing.T) {
 	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
@@ -188,6 +219,14 @@ func deleteService(t *testing.T, store state.Store, service *api.Service) {
 func addNode(t *testing.T, store state.Store, node *api.Node) {
 	store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Nodes().Create(node))
+		return nil
+	})
+}
+
+func updateNodeAvailability(t *testing.T, store state.Store, node *api.Node, avail api.NodeSpec_Availability) {
+	node.Spec.Availability = avail
+	store.Update(func(tx state.Tx) error {
+		assert.NoError(t, tx.Nodes().Update(node))
 		return nil
 	})
 }
