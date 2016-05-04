@@ -93,7 +93,7 @@ func TestDrain(t *testing.T) {
 		// Task not assigned to any node
 		{
 			ID: "id0",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name0",
 			},
 			ServiceID: "id1",
@@ -101,7 +101,7 @@ func TestDrain(t *testing.T) {
 		// Tasks assigned to the nodes defined above
 		{
 			ID: "id1",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name1",
 			},
 			ServiceID: "id1",
@@ -109,7 +109,7 @@ func TestDrain(t *testing.T) {
 		},
 		{
 			ID: "id2",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
 			ServiceID: "id1",
@@ -117,7 +117,7 @@ func TestDrain(t *testing.T) {
 		},
 		{
 			ID: "id3",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name3",
 			},
 			ServiceID: "id1",
@@ -125,7 +125,7 @@ func TestDrain(t *testing.T) {
 		},
 		{
 			ID: "id4",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name4",
 			},
 			ServiceID: "id1",
@@ -133,7 +133,7 @@ func TestDrain(t *testing.T) {
 		},
 		{
 			ID: "id5",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name5",
 			},
 			ServiceID: "id1",

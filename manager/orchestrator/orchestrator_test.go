@@ -49,11 +49,11 @@ func TestOrchestrator(t *testing.T) {
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
 	// Create a second service.
 	err = store.Update(func(tx state.Tx) error {
@@ -75,7 +75,7 @@ func TestOrchestrator(t *testing.T) {
 
 	observedTask3 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask3.Annotations.Name, "name2")
+	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name2")
 
 	// Update a service to scale it out to 3 instances
 	err = store.Update(func(tx state.Tx) error {
@@ -97,11 +97,11 @@ func TestOrchestrator(t *testing.T) {
 
 	observedTask4 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask4.Annotations.Name, "name2")
+	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name2")
 
 	observedTask5 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask5.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask5.Annotations.Name, "name2")
+	assert.Equal(t, observedTask5.ServiceAnnotations.Name, "name2")
 
 	// Now scale it back down to 1 instance
 	err = store.Update(func(tx state.Tx) error {
@@ -123,11 +123,11 @@ func TestOrchestrator(t *testing.T) {
 
 	observedDeletion1 := watchDeadTask(t, watch)
 	assert.Equal(t, observedDeletion1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedDeletion1.Annotations.Name, "name2")
+	assert.Equal(t, observedDeletion1.ServiceAnnotations.Name, "name2")
 
 	observedDeletion2 := watchDeadTask(t, watch)
 	assert.Equal(t, observedDeletion2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedDeletion2.Annotations.Name, "name2")
+	assert.Equal(t, observedDeletion2.ServiceAnnotations.Name, "name2")
 
 	// There should be one remaining task attached to service id2/name2.
 	var liveTasks []*api.Task
@@ -153,7 +153,7 @@ func TestOrchestrator(t *testing.T) {
 
 	observedTask6 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask6.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask6.Annotations.Name, "name2")
+	assert.Equal(t, observedTask6.ServiceAnnotations.Name, "name2")
 
 	// Delete the service. Its remaining task should go away.
 	err = store.Update(func(tx state.Tx) error {
@@ -164,7 +164,7 @@ func TestOrchestrator(t *testing.T) {
 
 	deletedTask := watchTaskDelete(t, watch)
 	assert.Equal(t, deletedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, deletedTask.Annotations.Name, "name2")
+	assert.Equal(t, deletedTask.ServiceAnnotations.Name, "name2")
 
 	orchestrator.Stop()
 }
@@ -209,11 +209,11 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
@@ -230,7 +230,7 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 
 	observedTask3 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask3.Annotations.Name, "name1")
+	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
 
 	// Mark the second task as completed. Confirm that it gets restarted.
 	updatedTask2 := observedTask2.Copy()
@@ -247,7 +247,7 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 
 	observedTask4 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask4.Annotations.Name, "name1")
+	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name1")
 
 	orchestrator.Stop()
 }
@@ -292,11 +292,11 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
@@ -314,7 +314,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 
 	observedTask3 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask3.Annotations.Name, "name1")
+	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
 
 	// Mark the second task as completed. Confirm that it does not get restarted.
 	updatedTask2 := observedTask2.Copy()
@@ -379,11 +379,11 @@ func TestOrchestratorRestartNever(t *testing.T) {
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
 	// Fail the first task. Confirm that it does not get restarted.
 	updatedTask1 := observedTask1.Copy()

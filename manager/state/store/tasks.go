@@ -218,7 +218,7 @@ func (ti taskIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 	}
 
 	// Add the null character as a terminator
-	return true, []byte(t.Annotations.Name + "\x00"), nil
+	return true, []byte(t.ServiceAnnotations.Name + "\x00"), nil
 }
 
 type taskIndexerByServiceID struct{}

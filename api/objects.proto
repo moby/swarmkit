@@ -87,11 +87,14 @@ message Task {
 	// is empty or not set, the task is unassigned.
 	string node_id = 5 [(gogoproto.customname) = "NodeID"];
 
-	// Annotations inherits labels from the ServiceSpec.Annotations associated
-	// with this task. It may include other labels added by the manager. The
-	// name will be a human readable name, calculated based on the
+	// ServiceAnnotations inherits labels from the ServiceSpec.Annotations
+	// associated with this task. It may include other labels added by the
+	// manager. The name will be a human readable name, calculated based on the
 	// ServiceSpec.Annotations.Name field.
-	Annotations annotations = 6 [(gogoproto.nullable) = false];
+	//
+	// Any labels set here will be pushed down to the runtime target. Conflicts
+	// will be overwritten. The name will be ignored.
+	Annotations service_annotations = 6 [(gogoproto.nullable) = false];
 
 	// Spec declares the runtime parameters for the task. This is copied out of
 	// the service's template field.
