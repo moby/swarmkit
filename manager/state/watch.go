@@ -441,7 +441,6 @@ func (e EventDeleteVolume) matches(watchEvent events.Event) bool {
 	return true
 }
 
-
 // RegisteredCertificateCheckFunc is the type of function used to perform filtering checks on
 // api.Service structures.
 type RegisteredCertificateCheckFunc func(n1, n2 *api.RegisteredCertificate) bool
@@ -522,6 +521,7 @@ func (e EventDeleteRegisteredCertificate) matches(watchEvent events.Event) bool 
 	}
 	return true
 }
+
 // Watch takes a variable number of events to match against. The subscriber
 // will receive events that match any of the arguments passed to Watch.
 //

@@ -167,7 +167,7 @@ type RegisteredCertificateSetWriter interface {
 	Delete(id string) error
 }
 
-// RegisteredCertificateSetWriter is the read half of a RegisteredCertificate dataset.
+// RegisteredCertificateSetReader is the read half of a RegisteredCertificate dataset.
 type RegisteredCertificateSetReader interface {
 	// Get returns the registered certificate with this ID, or nil if none exists with the
 	// specified ID.
@@ -300,7 +300,6 @@ func (tx snapshotReadTx) Volumes() VolumeSetReader {
 func (tx snapshotReadTx) RegisteredCertificates() RegisteredCertificateSetReader {
 	return tx.tx.RegisteredCertificates()
 }
-
 
 // ViewAndWatch calls a callback which can observe the state of this Store. It
 // also returns a channel that will return further events from this point so

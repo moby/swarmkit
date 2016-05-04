@@ -157,16 +157,16 @@ message Network {
 message RegisteredCertificate {
 	string id = 1 [(gogoproto.customname) = "ID"];
 
-	// Version tracks the last time the network was modified.
+	// Version tracks the last time the registered certificate was modified.
 	Version version = 2 [(gogoproto.nullable) = false];
 
-	RegisteredCertificateSpec spec = 3;
+	RegisteredCertificateSpec spec = 3 [(gogoproto.nullable) = false];
 
 	string role = 4;
 
 	bytes csr = 5 [(gogoproto.customname) = "CSR"];
 
-	IssuanceStatus status = 6;
+	IssuanceStatus status = 6 [(gogoproto.nullable) = false];
 
 	bytes certificate = 7;
 
