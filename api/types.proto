@@ -202,6 +202,10 @@ message Container {
 	repeated NetworkAttachment networks = 8;
 
 	repeated Mount mounts = 9;
+
+	// TODO(stevvooe): Currently, name and labels of the container is inherited
+	// from the service. We may need to support a more granular approach, in
+	// which case we include the names and labels here.
 }
 
 message RestartPolicy {

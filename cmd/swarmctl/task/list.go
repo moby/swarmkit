@@ -45,9 +45,9 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				common.PrintHeader(w, "ID", "Service", "Desired State", "Last State", "Node")
+				common.PrintHeader(w, "ID", "Service", "Instance", "Desired State", "Last State", "Node")
 				output = func(t *api.Task) {
-					fmt.Fprintf(w, "%s\t%s.%d\t%s\t%s %s\t%s\n",
+					fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s %s\t%s\n",
 						t.ID,
 						res.Resolve(api.Service{}, t.ServiceID),
 						t.Instance,

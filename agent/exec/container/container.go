@@ -62,8 +62,7 @@ func newContainerConfig(t *api.Task) (*containerConfig, error) {
 }
 
 func (c *containerConfig) name() string {
-	const prefix = "com.docker.cluster.task"
-	return strings.Join([]string{prefix, c.task.NodeID, c.task.ServiceID, c.task.ID}, ".")
+	return strings.Join([]string{c.task.ServiceAnnotations.Name, fmt.Sprint(c.task.Instance), c.task.ID}, ".")
 }
 
 func (c *containerConfig) image() string {
@@ -91,7 +90,33 @@ func (c *containerConfig) config() *enginecontainer.Config {
 		Image:        c.image(),
 		ExposedPorts: c.exposedPorts(),
 		Volumes:      c.ephemeralDirs(),
+		Labels:       c.labels(),
 	}
+}
+
+func (c *containerConfig) labels() map[string]string {
+	var (
+		system = map[string]string{
+			"task":         "", // mark as cluster task
+			"task.id":      c.task.ID,
+			"task.name":    fmt.Sprintf("%v.%v", c.task.ServiceAnnotations.Name, c.task.Instance),
+			"node.id":      c.task.NodeID,
+			"service.id":   c.task.ServiceID,
+			"service.name": c.task.ServiceAnnotations.Name,
+		}
+		labels = make(map[string]string, len(c.task.ServiceAnnotations.Labels)+len(system))
+	)
+
+	for k, v := range c.task.ServiceAnnotations.Labels {
+		labels[k] = v
+	}
+
+	const prefix = "com.docker.cluster"
+	for k, v := range system {
+		labels[strings.Join([]string{prefix, k}, ".")] = v
+	}
+
+	return labels
 }
 
 func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
@@ -210,7 +235,7 @@ func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
 				IPv6Address: ipv6,
 			},
 			ServiceConfig: &network.EndpointServiceConfig{
-				Name: c.task.Annotations.Name,
+				Name: c.task.ServiceAnnotations.Name,
 				ID:   c.task.ServiceID,
 			},
 		}
@@ -290,9 +315,10 @@ func (c *containerConfig) buildPullOptions() (types.ImagePullOptions, error) {
 	}, nil
 }
 
-func (c containerConfig) eventFilter() filters.Args {
+func (c *containerConfig) eventFilter() filters.Args {
 	filter := filters.NewArgs()
 	filter.Add("type", events.ContainerEventType)
 	filter.Add("name", c.name())
+	filter.Add("label", fmt.Sprintf("com.docker.cluster.task.id=%v", c.task.ID))
 	return filter
 }
