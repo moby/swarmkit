@@ -60,8 +60,14 @@ type ServiceConfig struct {
 	Instances *uint64 `yaml:"instances,omitempty"`
 	Mode      string  `yaml:"mode,omitempty"`
 
-	Restart      string `yaml:"restart,omitempty"`
-	RestartDelay string `yaml:"restartdelay,omitempty"`
+	// TODO(aaronl): Should these be part of a separate struct?
+	// Pro: groups them together, removes a common prefix
+	// Con: requires nesting to specify a simple restart policy like
+	// "restart: never".
+	Restart            string `yaml:"restart,omitempty"`
+	RestartDelay       string `yaml:"restartdelay,omitempty"`
+	MaxRestartAttempts uint64 `yaml:"maxrestartattempts,omitempty"`
+	RestartWindow      string `yaml:"restartwindow,omitempty"`
 
 	Update *UpdateConfiguration `yaml:"update,omitempty"`
 }
@@ -93,6 +99,12 @@ func (s *ServiceConfig) Validate() error {
 	}
 	if s.RestartDelay != "" {
 		_, err := time.ParseDuration(s.RestartDelay)
+		if err != nil {
+			return err
+		}
+	}
+	if s.RestartWindow != "" {
+		_, err := time.ParseDuration(s.RestartWindow)
 		if err != nil {
 			return err
 		}
@@ -158,8 +170,10 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 			},
 		},
 
-		Update:  s.Update.ToProto(),
-		Restart: &api.RestartPolicy{},
+		Update: s.Update.ToProto(),
+		Restart: &api.RestartPolicy{
+			MaxAttempts: s.MaxRestartAttempts,
+		},
 	}
 
 	if len(s.Ports) != 0 {
@@ -211,11 +225,14 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 	case "", "always":
 		spec.Restart.Condition = api.RestartAlways
 	}
+
 	if s.RestartDelay == "" {
 		spec.Restart.Delay = defaultRestartDelay
 	} else {
 		spec.Restart.Delay, _ = time.ParseDuration(s.RestartDelay)
 	}
+
+	spec.Restart.Window, _ = time.ParseDuration(s.RestartWindow)
 
 	return spec
 }
@@ -279,6 +296,8 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 			s.Restart = "always"
 		}
 		s.RestartDelay = serviceSpec.Restart.Delay.String()
+		s.MaxRestartAttempts = serviceSpec.Restart.MaxAttempts
+		s.RestartWindow = serviceSpec.Restart.Window.String()
 	}
 
 	if serviceSpec.Update != nil {

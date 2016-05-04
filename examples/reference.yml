@@ -18,6 +18,8 @@ services:
         # restart policy
         restart: always
         restartdelay: 10s
+        maxrestartattempts: 5
+        restartwindow: 60s
         # update strategy (rolling updates)
         update:
             parallelism: 1

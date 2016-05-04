@@ -16,7 +16,9 @@ func TestTaskHistory(t *testing.T) {
 	assert.NotNil(t, s)
 
 	taskReaper := NewTaskReaper(s, 2)
+	defer taskReaper.Stop()
 	orchestrator := New(s)
+	defer orchestrator.Stop()
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
@@ -113,7 +115,4 @@ func TestTaskHistory(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Len(t, foundTasks, 4)
-
-	taskReaper.Stop()
-	orchestrator.Stop()
 }

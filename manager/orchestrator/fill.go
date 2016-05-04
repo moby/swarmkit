@@ -103,6 +103,7 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 				deleteServiceTasks(ctx, f.store, v.Service)
 				// delete the service from service map
 				delete(f.fillServices, v.Service.ID)
+				f.restarts.ClearServiceHistory(v.Service.ID)
 			case state.EventCreateNode:
 				f.reconcileOneNode(ctx, v.Node)
 			case state.EventUpdateNode:
