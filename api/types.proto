@@ -164,9 +164,13 @@ message RestartPolicy {
 	// Delay between restart attempts
 	uint64 delay = 2 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
 
-	// TODO(aaronl): Consider additional features such as a limit on the
-	// number of restart attempts, and a time period after which the
-	// failure count is reset.
+	// MaxAttempts is the maximum number of restarts to attempt on an
+	// instance before giving up. Ignored if 0.
+	uint64 max_attempts = 3;
+
+	// Window is the time window used to evaluate the restart policy.
+	// The time window is unbounded if this is 0.
+	uint64 window = 4 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
 }
 
 // UpdateConfig specifies the rate and policy of updates.
