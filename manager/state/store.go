@@ -368,3 +368,17 @@ func (b ServiceModeFinder) isBy() {
 func ByServiceMode(mode api.ServiceSpec_Mode) By {
 	return ServiceModeFinder(mode)
 }
+
+// InstanceFinder is the type used to find by instance number.
+type InstanceFinder struct {
+	ServiceID string
+	Instance  uint64
+}
+
+func (b InstanceFinder) isBy() {
+}
+
+// ByInstance creates an object to pass to Find to select by instance number.
+func ByInstance(serviceID string, instance uint64) By {
+	return InstanceFinder{ServiceID: serviceID, Instance: instance}
+}

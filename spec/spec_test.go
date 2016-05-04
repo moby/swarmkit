@@ -82,8 +82,8 @@ func TestSpecDiff(t *testing.T) {
 		},
 	}
 
-	twoInstances := int64(2)
-	threeInstances := int64(3)
+	twoInstances := uint64(2)
+	threeInstances := uint64(3)
 	diff, err := spec.Diff(0, "remote", "local",
 		&Spec{
 			Version:   3,

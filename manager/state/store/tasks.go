@@ -1,6 +1,8 @@
 package store
 
 import (
+	"strconv"
+
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
 	memdb "github.com/hashicorp/go-memdb"
@@ -33,6 +35,11 @@ func init() {
 					Name:         indexNodeID,
 					AllowMissing: true,
 					Indexer:      taskIndexerByNodeID{},
+				},
+				indexInstance: {
+					Name:         indexInstance,
+					AllowMissing: true,
+					Indexer:      taskIndexerByInstance{},
 				},
 			},
 		},
@@ -176,7 +183,7 @@ func (tasks tasks) Get(id string) *api.Task {
 // Find selects a set of tasks and returns them.
 func (tasks tasks) Find(by state.By) ([]*api.Task, error) {
 	switch by.(type) {
-	case state.AllFinder, state.NameFinder, state.NodeFinder, state.ServiceFinder:
+	case state.AllFinder, state.NameFinder, state.NodeFinder, state.ServiceFinder, state.InstanceFinder:
 	default:
 		return nil, state.ErrInvalidFindBy
 	}
@@ -252,5 +259,22 @@ func (ti taskIndexerByNodeID) FromObject(obj interface{}) (bool, []byte, error) 
 
 	// Add the null character as a terminator
 	val := t.NodeID + "\x00"
+	return true, []byte(val), nil
+}
+
+type taskIndexerByInstance struct{}
+
+func (ti taskIndexerByInstance) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (ti taskIndexerByInstance) FromObject(obj interface{}) (bool, []byte, error) {
+	t, ok := obj.(taskEntry)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	// Add the null character as a terminator
+	val := t.ServiceID + "\x00" + strconv.FormatUint(t.Instance, 10) + "\x00"
 	return true, []byte(val), nil
 }

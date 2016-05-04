@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func createSpec(name, image string, instances int64) *api.ServiceSpec {
+func createSpec(name, image string, instances uint64) *api.ServiceSpec {
 	return &api.ServiceSpec{
 		Annotations: api.Annotations{
 			Name: name,
@@ -28,7 +28,7 @@ func createSpec(name, image string, instances int64) *api.ServiceSpec {
 	}
 }
 
-func createService(t *testing.T, ts *testServer, name, image string, instances int64) *api.Service {
+func createService(t *testing.T, ts *testServer, name, image string, instances uint64) *api.Service {
 	spec := createSpec(name, image, instances)
 	r, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.NoError(t, err)
