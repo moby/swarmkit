@@ -173,8 +173,9 @@ func (s *Scheduler) createTask(ctx context.Context, t *api.Task) int {
 	}
 
 	nodeInfo := s.nodeHeap.nodeInfo(t.NodeID)
-	nodeInfo.addTask(t)
-	s.nodeHeap.updateNode(nodeInfo)
+	if nodeInfo.addTask(t) {
+		s.nodeHeap.updateNode(nodeInfo)
+	}
 
 	return 0
 }
@@ -187,24 +188,52 @@ func (s *Scheduler) updateTask(ctx context.Context, t *api.Task) int {
 	}
 
 	oldTask := s.allTasks[t.ID]
-	if oldTask != nil {
-		s.deleteTask(ctx, oldTask)
-	}
 
-	// Ignore tasks that no longer consume any resources.
+	// Ignore all tasks that have not reached ALLOCATED
+	// state, and tasks that no longer consume resources.
 	if t.Status.State >= api.TaskStateDead {
+		if oldTask != nil {
+			s.deleteTask(ctx, oldTask)
+		}
 		return 0
 	}
 
-	return s.createTask(ctx, t)
+	if t.NodeID == "" {
+		// unassigned task
+		if oldTask != nil {
+			s.deleteTask(ctx, oldTask)
+		}
+		s.allTasks[t.ID] = t
+		s.enqueue(t)
+		return 1
+	}
+
+	if t.Status.State == api.TaskStateAllocated {
+		if oldTask != nil {
+			s.deleteTask(ctx, oldTask)
+		}
+		s.allTasks[t.ID] = t
+		s.preassignedTasks[t.ID] = t
+		// preassigned tasks do not contribute to running tasks count
+		return 0
+	}
+
+	s.allTasks[t.ID] = t
+	nodeInfo := s.nodeHeap.nodeInfo(t.NodeID)
+	if nodeInfo.addTask(t) {
+		s.nodeHeap.updateNode(nodeInfo)
+	}
+
+	return 0
 }
 
 func (s *Scheduler) deleteTask(ctx context.Context, t *api.Task) {
 	delete(s.allTasks, t.ID)
 	delete(s.preassignedTasks, t.ID)
 	nodeInfo := s.nodeHeap.nodeInfo(t.NodeID)
-	nodeInfo.removeTask(t)
-	s.nodeHeap.updateNode(nodeInfo)
+	if nodeInfo.removeTask(t) {
+		s.nodeHeap.updateNode(nodeInfo)
+	}
 }
 
 func (s *Scheduler) createOrUpdateNode(n *api.Node) {
@@ -335,8 +364,9 @@ func (s *Scheduler) taskFitNode(ctx context.Context, t *api.Task, nodeID string)
 	newT.Status = api.TaskStatus{State: api.TaskStateAssigned}
 	s.allTasks[t.ID] = &newT
 
-	nodeInfo.addTask(&newT)
-	s.nodeHeap.updateNode(nodeInfo)
+	if nodeInfo.addTask(&newT) {
+		s.nodeHeap.updateNode(nodeInfo)
+	}
 	return &newT
 }
 
@@ -356,8 +386,9 @@ func (s *Scheduler) scheduleTask(ctx context.Context, t *api.Task) *api.Task {
 	s.allTasks[t.ID] = &newT
 
 	nodeInfo := s.nodeHeap.nodeInfo(n.ID)
-	nodeInfo.addTask(&newT)
-	s.nodeHeap.updateNode(nodeInfo)
+	if nodeInfo.addTask(&newT) {
+		s.nodeHeap.updateNode(nodeInfo)
+	}
 	return &newT
 }
 
