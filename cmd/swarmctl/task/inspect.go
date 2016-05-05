@@ -29,6 +29,24 @@ func printTaskStatus(w io.Writer, t *api.Task) {
 	}
 }
 
+func printTaskSummary(task *api.Task, res *common.Resolver) {
+	w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
+	defer w.Flush()
+
+	fmt.Fprintf(w, "ID\t: %s\n", task.ID)
+	fmt.Fprintf(w, "Instance\t: %d\n", task.Instance)
+	fmt.Fprintf(w, "Service\t: %s\n", res.Resolve(api.Service{}, task.ServiceID))
+	printTaskStatus(w, task)
+	fmt.Fprintf(w, "Node\t: %s\n", res.Resolve(api.Node{}, task.NodeID))
+
+	fmt.Fprintln(w, "Spec\t")
+	ctr := task.Spec.GetContainer()
+	common.FprintfIfNotEmpty(w, "  Image\t: %s\n", ctr.Image.Reference)
+	common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))
+	common.FprintfIfNotEmpty(w, "  Args\t: [%s]\n", strings.Join(ctr.Args, ", "))
+	common.FprintfIfNotEmpty(w, "  Env\t: [%s]\n", strings.Join(ctr.Env, ", "))
+}
+
 var (
 	inspectCmd = &cobra.Command{
 		Use:   "inspect <task ID>",
@@ -42,30 +60,31 @@ var (
 				return err
 			}
 
-			r, err := c.GetTask(common.Context(cmd), &api.GetTaskRequest{TaskID: args[0]})
+			t, err := c.GetTask(common.Context(cmd), &api.GetTaskRequest{TaskID: args[0]})
 			if err != nil {
 				return err
+			}
+			task := t.Task
+
+			// TODO(aluzzardi): This should be implemented as a ListOptions filter.
+			r, err := c.ListTasks(common.Context(cmd), &api.ListTasksRequest{})
+			if err != nil {
+				return err
+			}
+			previous := []*api.Task{}
+			for _, t := range r.Tasks {
+				if t.ServiceID == task.ServiceID && t.Instance == task.Instance {
+					previous = append(previous, t)
+				}
 			}
 
 			res := common.NewResolver(cmd, c)
 
-			w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
-			defer func() {
-				// Ignore flushing errors - there's nothing we can do.
-				_ = w.Flush()
-			}()
-			fmt.Fprintf(w, "ID\t: %s\n", r.Task.ID)
-			fmt.Fprintf(w, "Instance\t: %d\n", r.Task.Instance)
-			fmt.Fprintf(w, "Service\t: %s\n", res.Resolve(api.Service{}, r.Task.ServiceID))
-			printTaskStatus(w, r.Task)
-			fmt.Fprintf(w, "Node\t: %s\n", res.Resolve(api.Node{}, r.Task.NodeID))
-
-			fmt.Fprintln(w, "Spec\t")
-			ctr := r.Task.Spec.GetContainer()
-			common.FprintfIfNotEmpty(w, "  Image\t: %s\n", ctr.Image.Reference)
-			common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))
-			common.FprintfIfNotEmpty(w, "  Args\t: [%s]\n", strings.Join(ctr.Args, ", "))
-			common.FprintfIfNotEmpty(w, "  Env\t: [%s]\n", strings.Join(ctr.Env, ", "))
+			printTaskSummary(task, res)
+			if len(previous) > 0 {
+				fmt.Printf("\n===> Instance History\n")
+				Print(previous, true, res)
+			}
 
 			return nil
 		},

@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 	"text/tabwriter"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/cmd/swarmctl/task"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
@@ -56,42 +56,6 @@ func printNodeSummary(node *api.Node) {
 	}
 }
 
-type tasksByInstance []*api.Task
-
-func (t tasksByInstance) Len() int {
-	return len(t)
-}
-func (t tasksByInstance) Swap(i, j int) {
-	t[i], t[j] = t[j], t[i]
-}
-func (t tasksByInstance) Less(i, j int) bool {
-	return t[i].Instance < t[j].Instance
-}
-
-func printTasks(tasks []*api.Task, all bool) {
-	sort.Sort(tasksByInstance(tasks))
-
-	w := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	defer w.Flush()
-
-	common.PrintHeader(w, "Task ID", "Instance", "Image", "Desired State", "Last State")
-	for _, t := range tasks {
-		if !all && t.DesiredState > api.TaskStateRunning {
-			continue
-		}
-		c := t.Spec.GetContainer()
-		fmt.Fprintf(w, "%s\t%s.%d\t%s\t%s\t%s %s\t\n",
-			t.ID,
-			t.Annotations.Name,
-			t.Instance,
-			c.Image.Reference,
-			t.DesiredState.String(),
-			t.Status.State.String(),
-			common.TimestampAgo(t.Status.Timestamp),
-		)
-	}
-}
-
 var (
 	inspectCmd = &cobra.Command{
 		Use:   "inspect <node ID>",
@@ -133,7 +97,7 @@ var (
 			printNodeSummary(node)
 			if len(tasks) > 0 {
 				fmt.Printf("\n")
-				printTasks(tasks, all)
+				task.Print(tasks, all, common.NewResolver(cmd, c))
 			}
 
 			return nil
