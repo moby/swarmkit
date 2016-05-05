@@ -5,22 +5,20 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/cmd/swarmctl/task"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
 
 func printServiceSummary(service *api.Service) {
 	w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
-	defer func() {
-		// Ignore flushing errors - there's nothing we can do.
-		_ = w.Flush()
-	}()
+	defer w.Flush()
+
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", service.ID)
 	common.FprintfIfNotEmpty(w, "Name\t: %s\n", service.Spec.Annotations.Name)
 	common.FprintfIfNotEmpty(w, "Instances\t: %d\n", service.Spec.Instances)
@@ -90,43 +88,6 @@ func printServiceSummary(service *api.Service) {
 	}
 }
 
-type tasksByInstance []*api.Task
-
-func (t tasksByInstance) Len() int {
-	return len(t)
-}
-func (t tasksByInstance) Swap(i, j int) {
-	t[i], t[j] = t[j], t[i]
-}
-func (t tasksByInstance) Less(i, j int) bool {
-	return t[i].Instance < t[j].Instance
-}
-
-func printTasks(tasks []*api.Task, all bool, res *common.Resolver) {
-	sort.Sort(tasksByInstance(tasks))
-
-	w := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
-	defer w.Flush()
-
-	common.PrintHeader(w, "Task ID", "Instance", "Image", "Desired State", "Last State", "Node")
-	for _, t := range tasks {
-		if !all && t.DesiredState > api.TaskStateRunning {
-			continue
-		}
-		c := t.Spec.GetContainer()
-		fmt.Fprintf(w, "%s\t%s.%d\t%s\t%s\t%s %s\t%s\n",
-			t.ID,
-			t.Annotations.Name,
-			t.Instance,
-			c.Image.Reference,
-			t.DesiredState.String(),
-			t.Status.State.String(),
-			common.TimestampAgo(t.Status.Timestamp),
-			res.Resolve(api.Node{}, t.NodeID),
-		)
-	}
-}
-
 var (
 	inspectCmd = &cobra.Command{
 		Use:   "inspect <service ID>",
@@ -179,7 +140,7 @@ var (
 			printServiceSummary(service)
 			if len(tasks) > 0 {
 				fmt.Printf("\n")
-				printTasks(tasks, all || instance != 0, res)
+				task.Print(tasks, all || instance != 0, res)
 			}
 
 			return nil
