@@ -124,6 +124,16 @@ func TestScheduler(t *testing.T) {
 	}
 
 	err = store.Update(func(tx state.Tx) error {
+		// Update each node to make sure this doesn't mess up the
+		// scheduler's state.
+		for _, n := range initialNodeSet {
+			assert.NoError(t, tx.Nodes().Update(n))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	err = store.Update(func(tx state.Tx) error {
 		// Delete the task associated with node 1 so it's now the most lightly
 		// loaded node.
 		assert.NoError(t, tx.Tasks().Delete("id1"))
