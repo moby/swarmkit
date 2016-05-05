@@ -551,7 +551,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	assert.Len(t, nodes[3].GetMemberlist(), 5)
-	assert.Equal(t, nodes[1].GetMemberlist(), nodes[3].GetMemberlist())
+	assert.Equal(t, stripMembers(nodes[1].GetMemberlist()), stripMembers(nodes[3].GetMemberlist()))
 	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:7], values[:7])
 
 	// Propose again. Just to check consensus after this latest restart.
