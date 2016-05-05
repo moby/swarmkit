@@ -67,22 +67,6 @@ message NodeDescription {
 	EngineDescription engine = 4;
 }
 
-message MemberDescription {
-	// Name of the node
-	string name = 1;
-
-	// Cluster the member belongs to
-	string cluster = 2;
-}
-
-// RaftNode represents a raft node to be added or removed from
-// an existing raft cluster
-// TODO(stevvooe): Merge with MemberDescription.
-message RaftNode {
-	uint64 id = 1 [(gogoproto.customname) = "ID"];
-	string addr = 2;
-}
-
 message MemberStatus {
 	bool leader = 1;
 
