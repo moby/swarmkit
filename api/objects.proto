@@ -10,13 +10,18 @@ import "gogoproto/gogo.proto";
 // API. Such types typically have a corresponding specification, with the
 // naming XXXSpec, but not all.
 
+// Meta contains metadata about objects. Every object contains a meta field.
+message Meta {
+	// Version tracks the current version of the object.
+	Version version = 1 [(gogoproto.nullable) = false];
+}
+
 // Node provides the internal node state as seen by the cluster.
 message Node {
 	// ID specifies the identity of the node.
 	string id = 1 [(gogoproto.customname) = "ID"];
 
-	// Version tracks the last time the node was modified.
-	Version version = 2 [(gogoproto.nullable) = false];
+	Meta meta = 2 [(gogoproto.nullable) = false];
 
 	// Spec defines the desired state of the node as specified by the user.
 	// The system will honor this and will *never* modify it.
@@ -34,6 +39,7 @@ message Node {
 // A Member is essentially a Manager but from a Raft membership perspective
 // TODO(abronan): this is probably not an appropriate name for a top level object (specific to raft),
 // we should consider picking a new name
+// TODO(aluzzardi): This should contain Meta.
 message Member {
 	// ID specifies the identity of the manager. This is the ID used for client interaction with the server.
 	string id = 1 [(gogoproto.customname) = "ID"];
@@ -56,8 +62,7 @@ message Member {
 message Service {
 	string id = 1 [(gogoproto.customname) = "ID"];
 
-	// Version tracks the last time the service was modified.
-	Version version = 2 [(gogoproto.nullable) = false];
+	Meta meta = 2 [(gogoproto.nullable) = false];
 
 	ServiceSpec spec = 3 [(gogoproto.nullable) = false];
 
@@ -74,8 +79,7 @@ message Service {
 message Task {
 	string id = 1 [(gogoproto.customname) = "ID"];
 
-	// Version tracks the last time the task was modified.
-	Version version = 2 [(gogoproto.nullable) = false];
+	Meta meta = 2 [(gogoproto.nullable) = false];
 
 	// ServiceID indicates the service under which this task is orchestrated. This
 	// should almost always be set.
@@ -137,8 +141,7 @@ message Container {
 message Volume {
 	string id = 1 [(gogoproto.customname) = "ID"];
 
-	// Version tracks the last time the volume was modified.
-	Version version = 2 [(gogoproto.nullable) = false];
+	Meta meta = 2 [(gogoproto.nullable) = false];
 
 	VolumeSpec spec = 3 [(gogoproto.nullable) = false];
 
@@ -149,8 +152,7 @@ message Volume {
 message Network {
 	string id = 1 [(gogoproto.customname) = "ID"];
 
-	// Version tracks the last time the network was modified.
-	Version version = 2 [(gogoproto.nullable) = false];
+	Meta meta = 2 [(gogoproto.nullable) = false];
 
 	NetworkSpec spec = 3 [(gogoproto.nullable) = false];
 
@@ -165,8 +167,7 @@ message Network {
 message RegisteredCertificate {
 	string id = 1 [(gogoproto.customname) = "ID"];
 
-	// Version tracks the last time the registered certificate was modified.
-	Version version = 2 [(gogoproto.nullable) = false];
+	Meta meta = 2 [(gogoproto.nullable) = false];
 
 	RegisteredCertificateSpec spec = 3 [(gogoproto.nullable) = false];
 

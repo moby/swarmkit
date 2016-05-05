@@ -150,7 +150,7 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		if service == nil {
 			return nil
 		}
-		service.Version = *request.ServiceVersion
+		service.Meta.Version = *request.ServiceVersion
 		service.Spec = *request.Spec.Copy()
 		return store.UpdateService(tx, service)
 	})

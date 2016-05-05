@@ -94,7 +94,7 @@ var (
 			newServicePB.Annotations = specPB.Annotations
 			r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
 				ServiceID:      servicePB.ID,
-				ServiceVersion: &servicePB.Version,
+				ServiceVersion: &servicePB.Meta.Version,
 				Spec:           newServicePB,
 			})
 			if err != nil {

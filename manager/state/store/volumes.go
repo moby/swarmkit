@@ -97,20 +97,16 @@ func (v volumeEntry) ID() string {
 	return v.Volume.ID
 }
 
-func (v volumeEntry) Version() api.Version {
-	return v.Volume.Version
+func (v volumeEntry) Meta() api.Meta {
+	return v.Volume.Meta
 }
 
-func (v volumeEntry) SetVersion(version api.Version) {
-	v.Volume.Version = version
+func (v volumeEntry) SetMeta(meta api.Meta) {
+	v.Volume.Meta = meta
 }
 
-func (v volumeEntry) Copy(version *api.Version) Object {
-	copy := v.Volume.Copy()
-	if version != nil {
-		copy.Version = *version
-	}
-	return volumeEntry{copy}
+func (v volumeEntry) Copy() Object {
+	return volumeEntry{v.Volume.Copy()}
 }
 
 func (v volumeEntry) EventCreate() state.Event {

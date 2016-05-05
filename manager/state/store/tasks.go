@@ -114,20 +114,16 @@ func (t taskEntry) ID() string {
 	return t.Task.ID
 }
 
-func (t taskEntry) Version() api.Version {
-	return t.Task.Version
+func (t taskEntry) Meta() api.Meta {
+	return t.Task.Meta
 }
 
-func (t taskEntry) SetVersion(version api.Version) {
-	t.Task.Version = version
+func (t taskEntry) SetMeta(meta api.Meta) {
+	t.Task.Meta = meta
 }
 
-func (t taskEntry) Copy(version *api.Version) Object {
-	copy := t.Task.Copy()
-	if version != nil {
-		copy.Version = *version
-	}
-	return taskEntry{copy}
+func (t taskEntry) Copy() Object {
+	return taskEntry{t.Task.Copy()}
 }
 
 func (t taskEntry) EventCreate() state.Event {
