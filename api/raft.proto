@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package docker.cluster.api;
 
-import "types.proto";
 import "objects.proto";
 import "github.com/coreos/etcd/raft/raftpb/raft.proto";
 import weak "gogoproto/gogo.proto";
@@ -23,15 +22,15 @@ service Raft {
 }
 
 message JoinRequest {
-	RaftNode node = 1;
+	Member node = 1;
 }
 
 message JoinResponse {
-	repeated RaftNode members = 1;
+	repeated Member members = 1;
 }
 
 message LeaveRequest {
-	RaftNode node = 1;
+	Member node = 1;
 }
 
 message LeaveResponse {}
