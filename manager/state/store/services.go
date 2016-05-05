@@ -104,20 +104,16 @@ func (s serviceEntry) ID() string {
 	return s.Service.ID
 }
 
-func (s serviceEntry) Version() api.Version {
-	return s.Service.Version
+func (s serviceEntry) Meta() api.Meta {
+	return s.Service.Meta
 }
 
-func (s serviceEntry) SetVersion(version api.Version) {
-	s.Service.Version = version
+func (s serviceEntry) SetMeta(meta api.Meta) {
+	s.Service.Meta = meta
 }
 
-func (s serviceEntry) Copy(version *api.Version) Object {
-	copy := s.Service.Copy()
-	if version != nil {
-		copy.Version = *version
-	}
-	return serviceEntry{copy}
+func (s serviceEntry) Copy() Object {
+	return serviceEntry{s.Service.Copy()}
 }
 
 func (s serviceEntry) EventCreate() state.Event {

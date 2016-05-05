@@ -56,7 +56,7 @@ func TestGetVolume(t *testing.T) {
 	volume := createVolume(t, ts, "name")
 	r, err := ts.Client.GetVolume(context.Background(), &api.GetVolumeRequest{VolumeID: volume.ID})
 	assert.NoError(t, err)
-	volume.Version = r.Volume.Version
+	volume.Meta.Version = r.Volume.Meta.Version
 	assert.Equal(t, volume, r.Volume)
 }
 

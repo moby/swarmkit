@@ -98,20 +98,16 @@ func (n nodeEntry) ID() string {
 	return n.Node.ID
 }
 
-func (n nodeEntry) Version() api.Version {
-	return n.Node.Version
+func (n nodeEntry) Meta() api.Meta {
+	return n.Node.Meta
 }
 
-func (n nodeEntry) SetVersion(version api.Version) {
-	n.Node.Version = version
+func (n nodeEntry) SetMeta(meta api.Meta) {
+	n.Node.Meta = meta
 }
 
-func (n nodeEntry) Copy(version *api.Version) Object {
-	copy := n.Node.Copy()
-	if version != nil {
-		copy.Version = *version
-	}
-	return nodeEntry{copy}
+func (n nodeEntry) Copy() Object {
+	return nodeEntry{n.Node.Copy()}
 }
 
 func (n nodeEntry) EventCreate() state.Event {

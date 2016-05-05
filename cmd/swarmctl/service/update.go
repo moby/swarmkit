@@ -73,7 +73,7 @@ var (
 
 			r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
 				ServiceID:      service.ID,
-				ServiceVersion: &service.Version,
+				ServiceVersion: &service.Meta.Version,
 				Spec:           spec,
 			})
 			if err != nil {
