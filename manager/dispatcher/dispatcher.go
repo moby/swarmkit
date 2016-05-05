@@ -23,6 +23,16 @@ const (
 	defaultHeartBeatPeriod       = 5 * time.Second
 	defaultHeartBeatEpsilon      = 500 * time.Millisecond
 	defaultGracePeriodMultiplier = 3
+
+	// maxBatchItems is the threshold of queued writes that should
+	// trigger an actual transaction to commit them to the shared store.
+	maxBatchItems = 10000
+
+	// maxBatchInterval needs to strike a balance between keeping
+	// latency low, and realizing opportunities to combine many writes
+	// into a single transaction. A fraction of a second feels about
+	// right.
+	maxBatchInterval = 100 * time.Millisecond
 )
 
 var (
@@ -76,12 +86,17 @@ type Dispatcher struct {
 	ctx              context.Context
 	cancel           context.CancelFunc
 	wg               sync.WaitGroup
+
+	taskUpdates     map[string]*api.TaskStatus // indexed by task ID
+	taskUpdatesLock sync.Mutex
+
+	processTaskUpdatesTrigger chan struct{}
 }
 
 // New returns Dispatcher with cluster interface(usually raft.Node) and config.
 // NOTE: each handler which does something with raft must add to Dispatcher.wg
 func New(cluster Cluster, c *Config) *Dispatcher {
-	d := &Dispatcher{
+	return &Dispatcher{
 		addr:     c.Addr,
 		nodes:    newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier),
 		store:    cluster.MemoryStore(),
@@ -94,8 +109,9 @@ func New(cluster Cluster, c *Config) *Dispatcher {
 				Weight: 1,
 			},
 		},
+		taskUpdates:               make(map[string]*api.TaskStatus),
+		processTaskUpdatesTrigger: make(chan struct{}, 1),
 	}
-	return d
 }
 
 // Run runs dispatcher tasks which should be run on leader dispatcher.
@@ -131,12 +147,20 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 		d.mgrQueue.Publish(mgrs)
 	}
 	publishManagers()
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
+	publishTicker := time.NewTicker(1 * time.Second)
+	defer publishTicker.Stop()
+	batchTimer := time.NewTimer(maxBatchInterval)
+	defer batchTimer.Stop()
 	for {
 		select {
-		case <-ticker.C:
+		case <-publishTicker.C:
 			publishManagers()
+		case <-d.processTaskUpdatesTrigger:
+			d.processTaskUpdates()
+			batchTimer.Reset(maxBatchInterval)
+		case <-batchTimer.C:
+			d.processTaskUpdates()
+			batchTimer.Reset(maxBatchInterval)
 		case <-d.ctx.Done():
 			return nil
 		}
@@ -259,6 +283,7 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	// create or update node in store
 	// TODO(stevvooe): Validate node specification.
 	var node *api.Node
+	// TODO(aaronl): Is it worth batching node creations?
 	err = d.store.Update(func(tx store.Tx) error {
 		node = store.GetNode(tx, agentID)
 		if node != nil {
@@ -326,44 +351,74 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 	if _, err := d.nodes.GetWithSession(agentID, r.SessionID); err != nil {
 		return nil, err
 	}
-	err = d.store.Update(func(tx store.Tx) error {
-		for _, u := range r.Updates {
-			logger := log.WithField("task.id", u.TaskID)
-			if u.Status == nil {
-				logger.Warnf("task report has nil status")
-				continue
-			}
-			task := store.GetTask(tx, u.TaskID)
-			if task == nil {
-				logger.Errorf("task unavailable")
-				continue
-			}
+	d.taskUpdatesLock.Lock()
+	for _, u := range r.Updates {
+		if u.Status == nil {
+			log.WithField("task.id", u.TaskID).Warnf("task report has nil status")
+			continue
+		}
+		d.taskUpdates[u.TaskID] = u.Status
+	}
+	if len(d.taskUpdates) >= maxBatchItems {
+		d.processTaskUpdatesTrigger <- struct{}{}
+	}
+	d.taskUpdatesLock.Unlock()
+	return nil, nil
+}
 
-			logger = logger.WithField("state.transition", fmt.Sprintf("%v->%v", task.Status.State, u.Status.State))
+func (d *Dispatcher) processTaskUpdates() {
+	d.taskUpdatesLock.Lock()
+	if len(d.taskUpdates) == 0 {
+		d.taskUpdatesLock.Unlock()
+		return
+	}
+	taskUpdates := d.taskUpdates
+	d.taskUpdates = make(map[string]*api.TaskStatus)
+	d.taskUpdatesLock.Unlock()
 
-			if task.Status == *u.Status {
-				logger.Debug("task status identical, ignoring")
-				continue
-			}
+	log := log.G(d.ctx).WithFields(logrus.Fields{
+		"method": "processTaskUpdates",
+	})
 
-			if task.Status.State > u.Status.State {
-				logger.Debug("task status invalid transition")
-				continue
-			}
+	_, err := d.store.Batch(func(batch *store.Batch) error {
+		for taskID, status := range taskUpdates {
+			err := batch.Update(func(tx store.Tx) error {
+				logger := log.WithField("task.id", taskID)
+				task := store.GetTask(tx, taskID)
+				if task == nil {
+					logger.Errorf("task unavailable")
+					return nil
+				}
 
-			task.Status = *u.Status
-			if err := store.UpdateTask(tx, task); err != nil {
-				logger.WithError(err).Error("failed to update task status")
-				return err
+				logger = logger.WithField("state.transition", fmt.Sprintf("%v->%v", task.Status.State, status.State))
+
+				if task.Status == *status {
+					logger.Debug("task status identical, ignoring")
+					return nil
+				}
+
+				if task.Status.State > status.State {
+					logger.Debug("task status invalid transition")
+					return nil
+				}
+
+				task.Status = *status
+				if err := store.UpdateTask(tx, task); err != nil {
+					logger.WithError(err).Error("failed to update task status")
+					return nil
+				}
+				logger.Debug("task status updated")
+				return nil
+			})
+			if err != nil {
+				log.WithError(err).Error("dispatcher transaction failed")
 			}
-			logger.Debug("task status updated")
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		log.WithError(err).Error("dispatcher batch failed")
 	}
-	return nil, nil
 }
 
 // Tasks is a stream of tasks state for node. Each message contains full list
@@ -452,6 +507,7 @@ func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
 		return err
 	}
 	defer d.doneTask()
+	// TODO(aaronl): Is it worth batching node removals?
 	err := d.store.Update(func(tx store.Tx) error {
 		node := store.GetNode(tx, id)
 		if node == nil {
