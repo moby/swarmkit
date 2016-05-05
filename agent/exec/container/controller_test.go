@@ -281,9 +281,9 @@ func genTask(t *testing.T) *api.Task {
 		ID:        identity.NewID(),
 		ServiceID: serviceID,
 		NodeID:    nodeID,
-		Spec: api.TaskSpec{
-			Runtime: &api.TaskSpec_Container{
-				Container: &api.Container{
+		Runtime: &api.Task_Container{
+			Container: &api.Container{
+				Spec: api.ContainerSpec{
 					Image: &api.Image{
 						Reference: reference,
 					},

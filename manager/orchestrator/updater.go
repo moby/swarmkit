@@ -97,7 +97,12 @@ func (u *Updater) Run(ctx context.Context, service *api.Service, tasks []*api.Ta
 
 	dirtyTasks := []*api.Task{}
 	for _, t := range tasks {
-		if !reflect.DeepEqual(service.Spec.Template, &t.Spec) {
+		if service.Spec.GetContainer() == nil &&
+			reflect.DeepEqual(t.GetContainer().Spec, api.ContainerSpec{}) {
+			continue
+		}
+
+		if !reflect.DeepEqual(service.Spec.GetContainer(), &(t.GetContainer().Spec)) {
 			dirtyTasks = append(dirtyTasks, t)
 		}
 	}

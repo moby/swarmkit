@@ -15,12 +15,10 @@ func createSpec(name, image string, instances uint64) *api.ServiceSpec {
 		Annotations: api.Annotations{
 			Name: name,
 		},
-		Template: &api.TaskSpec{
-			Runtime: &api.TaskSpec_Container{
-				Container: &api.Container{
-					Image: &api.Image{
-						Reference: image,
-					},
+		RuntimeSpec: &api.ServiceSpec_Container{
+			Container: &api.ContainerSpec{
+				Image: &api.Image{
+					Reference: image,
 				},
 			},
 		},
@@ -85,13 +83,13 @@ func TestValidateServiceSpecTemplate(t *testing.T) {
 
 	for _, bad := range []badSource{
 		{
-			s: &api.ServiceSpec{Template: nil},
+			s: &api.ServiceSpec{RuntimeSpec: nil},
 			c: codes.InvalidArgument,
 		},
 		{
 			s: &api.ServiceSpec{
-				Template: &api.TaskSpec{
-					Runtime: nil,
+				RuntimeSpec: &api.ServiceSpec_Container{
+					Container: nil,
 				},
 			},
 			c: codes.InvalidArgument,

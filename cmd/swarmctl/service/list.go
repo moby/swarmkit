@@ -44,10 +44,10 @@ var (
 					spec := s.Spec
 					var reference string
 
-					if spec.Template != nil {
-						if spec.Template.GetContainer() != nil {
-							if spec.Template.GetContainer().Image != nil {
-								reference = spec.Template.GetContainer().Image.Reference
+					if spec.RuntimeSpec != nil {
+						if spec.GetContainer() != nil {
+							if spec.GetContainer().Image != nil {
+								reference = spec.GetContainer().Image.Reference
 							}
 						}
 					}

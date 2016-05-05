@@ -431,9 +431,9 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 
 	initialTask := &api.Task{
 		ID: "id1",
-		Spec: api.TaskSpec{
-			Runtime: &api.TaskSpec_Container{
-				Container: &api.Container{
+		Runtime: &api.Task_Container{
+			Container: &api.Container{
+				Spec: api.ContainerSpec{
 					Resources: &api.ResourceRequirements{
 						Reservations: &api.Resources{
 							MemoryBytes: 2e9,
@@ -523,9 +523,9 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 
 	bigTask1 := &api.Task{
 		ID: "id1",
-		Spec: api.TaskSpec{
-			Runtime: &api.TaskSpec_Container{
-				Container: &api.Container{
+		Runtime: &api.Task_Container{
+			Container: &api.Container{
+				Spec: api.ContainerSpec{
 					Resources: &api.ResourceRequirements{
 						Reservations: &api.Resources{
 							MemoryBytes: 8e8,
@@ -617,9 +617,9 @@ func TestSchedulerPortConstraint(t *testing.T) {
 
 	staticPortTask := &api.Task{
 		ID: "static",
-		Spec: api.TaskSpec{
-			Runtime: &api.TaskSpec_Container{
-				Container: &api.Container{
+		Runtime: &api.Task_Container{
+			Container: &api.Container{
+				Spec: api.ContainerSpec{
 					ExposedPorts: []*api.PortConfig{
 						{
 							Port:     5000,
