@@ -17,23 +17,31 @@ func newNodeInfo(n *api.Node, tasks map[string]*api.Task, availableResources api
 	}
 }
 
-func (nodeInfo *NodeInfo) removeTask(t *api.Task) {
-	reservations := taskReservations(t)
+func (nodeInfo *NodeInfo) removeTask(t *api.Task) bool {
 	if nodeInfo.Tasks != nil {
-		delete(nodeInfo.Tasks, t.ID)
+		if _, ok := nodeInfo.Tasks[t.ID]; ok {
+			delete(nodeInfo.Tasks, t.ID)
+			reservations := taskReservations(t)
+			nodeInfo.AvailableResources.MemoryBytes += reservations.MemoryBytes
+			nodeInfo.AvailableResources.NanoCPUs += reservations.NanoCPUs
+			return true
+		}
 	}
-	nodeInfo.AvailableResources.MemoryBytes += reservations.MemoryBytes
-	nodeInfo.AvailableResources.NanoCPUs += reservations.NanoCPUs
+	return false
 }
 
-func (nodeInfo *NodeInfo) addTask(t *api.Task) {
-	reservations := taskReservations(t)
+func (nodeInfo *NodeInfo) addTask(t *api.Task) bool {
 	if nodeInfo.Tasks == nil {
 		nodeInfo.Tasks = make(map[string]*api.Task)
 	}
-	nodeInfo.Tasks[t.ID] = t
-	nodeInfo.AvailableResources.MemoryBytes -= reservations.MemoryBytes
-	nodeInfo.AvailableResources.NanoCPUs -= reservations.NanoCPUs
+	if _, ok := nodeInfo.Tasks[t.ID]; !ok {
+		nodeInfo.Tasks[t.ID] = t
+		reservations := taskReservations(t)
+		nodeInfo.AvailableResources.MemoryBytes -= reservations.MemoryBytes
+		nodeInfo.AvailableResources.NanoCPUs -= reservations.NanoCPUs
+		return true
+	}
+	return false
 }
 
 func taskReservations(t *api.Task) (reservations api.Resources) {
