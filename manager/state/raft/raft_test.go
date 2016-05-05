@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"testing"
 	"time"
 
@@ -249,7 +248,7 @@ func TestRaftFollowerLeave(t *testing.T) {
 	assert.NoError(t, err)
 	defer client.Conn.Close()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[5].Config.ID}})
+	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: &api.Member{RaftID: nodes[5].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -290,7 +289,7 @@ func TestRaftLeaderLeave(t *testing.T) {
 	assert.NoError(t, err)
 	defer client.Conn.Close()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: &api.RaftNode{ID: nodes[1].Config.ID}})
+	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: &api.Member{RaftID: nodes[1].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -422,20 +421,18 @@ func TestRaftSnapshot(t *testing.T) {
 	}))
 
 	// It should know about the other nodes
-	nodesFromMembers := func(memberList map[uint64]*api.Member) map[uint64]*api.RaftNode {
-		raftNodes := make(map[uint64]*api.RaftNode)
+	stripMembers := func(memberList map[uint64]*api.Member) map[uint64]*api.Member {
+		raftNodes := make(map[uint64]*api.Member)
 		for k, v := range memberList {
-			id, err := strconv.ParseUint(v.ID, 16, 64)
-			assert.NoError(t, err)
-			assert.NotZero(t, id)
-			raftNodes[k] = &api.RaftNode{
-				ID:   id,
-				Addr: v.Addr,
+			raftNodes[k] = &api.Member{
+				ID:     v.ID,
+				RaftID: v.RaftID,
+				Addr:   v.Addr,
 			}
 		}
 		return raftNodes
 	}
-	assert.Equal(t, nodesFromMembers(nodes[1].GetMemberlist()), nodesFromMembers(nodes[4].GetMemberlist()))
+	assert.Equal(t, stripMembers(nodes[1].GetMemberlist()), stripMembers(nodes[4].GetMemberlist()))
 
 	// All nodes should have all the data
 	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs, values)
@@ -519,20 +516,18 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	raftutils.CheckValuesOnNodes(t, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:6], values[:6])
 
 	// It should know about the other nodes, including the one that was just added
-	nodesFromMembers := func(memberList map[uint64]*api.Member) map[uint64]*api.RaftNode {
-		raftNodes := make(map[uint64]*api.RaftNode)
+	stripMembers := func(memberList map[uint64]*api.Member) map[uint64]*api.Member {
+		raftNodes := make(map[uint64]*api.Member)
 		for k, v := range memberList {
-			id, err := strconv.ParseUint(v.ID, 16, 64)
-			assert.NoError(t, err)
-			assert.NotZero(t, id)
-			raftNodes[k] = &api.RaftNode{
-				ID:   id,
-				Addr: v.Addr,
+			raftNodes[k] = &api.Member{
+				ID:     v.ID,
+				RaftID: v.RaftID,
+				Addr:   v.Addr,
 			}
 		}
 		return raftNodes
 	}
-	assert.Equal(t, nodesFromMembers(nodes[1].GetMemberlist()), nodesFromMembers(nodes[4].GetMemberlist()))
+	assert.Equal(t, stripMembers(nodes[1].GetMemberlist()), stripMembers(nodes[4].GetMemberlist()))
 
 	// Restart node 3
 	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig)
@@ -540,7 +535,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Node 3 should know about other nodes, including the new one
 	assert.Len(t, nodes[3].GetMemberlist(), 5)
-	assert.Equal(t, nodesFromMembers(nodes[1].GetMemberlist()), nodesFromMembers(nodes[3].GetMemberlist()))
+	assert.Equal(t, stripMembers(nodes[1].GetMemberlist()), stripMembers(nodes[3].GetMemberlist()))
 
 	// Propose yet another value, to make sure the rejoined node is still
 	// receiving new logs
@@ -556,7 +551,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	assert.Len(t, nodes[3].GetMemberlist(), 5)
-	assert.Equal(t, nodesFromMembers(nodes[1].GetMemberlist()), nodesFromMembers(nodes[3].GetMemberlist()))
+	assert.Equal(t, nodes[1].GetMemberlist(), nodes[3].GetMemberlist())
 	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:7], values[:7])
 
 	// Propose again. Just to check consensus after this latest restart.

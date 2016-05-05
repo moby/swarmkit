@@ -23,7 +23,7 @@ type cluster struct {
 
 // member represents a raft cluster member
 type member struct {
-	*api.RaftNode
+	*api.Member
 
 	Client *Raft
 }
@@ -72,7 +72,7 @@ func (c *cluster) getMember(id uint64) *member {
 func (c *cluster) addMember(member *member) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.members[member.ID] = member
+	c.members[member.RaftID] = member
 }
 
 // removeMember removes a node from the cluster memberlist.
@@ -113,12 +113,12 @@ func (c *cluster) CanRemoveMember(from uint64, id uint64) bool {
 
 	for _, member := range members {
 		// Skip the node that is going to be deleted
-		if member.ID == id {
+		if member.RaftID == id {
 			continue
 		}
 
 		// Local node from where the remove is issued
-		if member.ID == from {
+		if member.RaftID == from {
 			nmembers++
 			nreachable++
 			continue
