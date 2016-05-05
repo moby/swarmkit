@@ -212,7 +212,10 @@ func (s *Scheduler) createOrUpdateNode(n *api.Node) {
 	if n.Description != nil && n.Description.Resources != nil {
 		resources = *n.Description.Resources
 	}
-	s.nodeHeap.addOrUpdateNode(newNodeInfo(n, map[string]*api.Task{}, resources))
+	nodeInfo := s.nodeHeap.nodeInfo(n.ID)
+	nodeInfo.Node = n
+	nodeInfo.AvailableResources = resources
+	s.nodeHeap.addOrUpdateNode(nodeInfo)
 }
 
 func (s *Scheduler) processPreassignedTasks(ctx context.Context) {
