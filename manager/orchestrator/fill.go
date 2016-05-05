@@ -101,7 +101,6 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 				// delete the service from service map
 				delete(f.fillServices, v.Service.ID)
 			case state.EventCreateNode:
-				f.nodes[v.Node.ID] = struct{}{}
 				f.reconcileOneNode(ctx, v.Node)
 			case state.EventUpdateNode:
 				switch v.Node.Status.State {
@@ -113,7 +112,8 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 					f.reconcileOneNode(ctx, v.Node)
 				}
 			case state.EventDeleteNode:
-				f.deleteNode(ctx, v.Node)
+				f.removeTasksFromNode(ctx, v.Node)
+				delete(f.nodes, v.Node.ID)
 			case state.EventUpdateTask:
 				if _, exists := f.fillServices[v.Task.ServiceID]; !exists {
 					continue
@@ -152,7 +152,7 @@ func (f *FillOrchestrator) removeTasksFromNode(ctx context.Context, node *api.No
 		return err
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("fillOrchestrator: deleteNode failed finding tasks")
+		log.G(ctx).WithError(err).Errorf("fillOrchestrator: removeTasksFromNode failed finding tasks")
 		return
 	}
 
@@ -168,12 +168,6 @@ func (f *FillOrchestrator) removeTasksFromNode(ctx context.Context, node *api.No
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("fillOrchestrator: removeTasksFromNode failed")
 	}
-}
-
-func (f *FillOrchestrator) deleteNode(ctx context.Context, node *api.Node) {
-	f.removeTasksFromNode(ctx, node)
-	// remove the node from node list
-	delete(f.nodes, node.ID)
 }
 
 func (f *FillOrchestrator) reconcileOneService(ctx context.Context, service *api.Service) {
@@ -237,13 +231,19 @@ func (f *FillOrchestrator) reconcileOneService(ctx context.Context, service *api
 
 // reconcileOneNode checks all fill services on one node
 func (f *FillOrchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
-	if _, exists := f.nodes[node.ID]; !exists {
-		log.G(ctx).Debugf("fillOrchestrator: node %s not in current node list", node.ID)
+	switch node.Spec.Availability {
+	case api.NodeAvailabilityDrain:
+		log.G(ctx).Debugf("fillOrchestrator: node %s in drain state, removing tasks from it", node.ID)
+		f.removeTasksFromNode(ctx, node)
+		delete(f.nodes, node.ID)
 		return
-	}
-	if isNodeInDrainState(node) {
-		log.G(ctx).Debugf("fillOrchestrator: node %s in drain state, remove tasks from it", node.ID)
-		f.deleteNode(ctx, node)
+	case api.NodeAvailabilityActive:
+		if _, exists := f.nodes[node.ID]; !exists {
+			log.G(ctx).Debugf("fillOrchestrator: node %s not in current node list, adding it", node.ID)
+			f.nodes[node.ID] = struct{}{}
+		}
+	default:
+		log.G(ctx).Debugf("fillOrchestrator: node %s in %s state, doing nothing", node.ID, node.Spec.Availability.String())
 		return
 	}
 	// typically there are only a few fill services on a node
@@ -364,10 +364,6 @@ func isTaskRunning(t *api.Task) bool {
 func isValidNode(n *api.Node) bool {
 	// current simulation spec could be nil
 	return n != nil && n.Spec.Availability != api.NodeAvailabilityDrain
-}
-
-func isNodeInDrainState(n *api.Node) bool {
-	return n != nil && n.Spec.Availability == api.NodeAvailabilityDrain
 }
 
 func isTaskCompleted(t *api.Task, restartPolicy api.RestartPolicy_RestartCondition) bool {

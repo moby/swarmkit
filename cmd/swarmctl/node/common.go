@@ -31,7 +31,7 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	spec := &node.Spec
 
 	if spec.Availability == availability {
-		return fmt.Errorf("node %s is already paused", args[0])
+		return errNoChange
 	}
 
 	spec.Availability = availability
