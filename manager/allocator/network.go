@@ -97,11 +97,11 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 			}
 
 			// No container or network configured. Not interested.
-			if t.Spec.GetContainer() == nil {
+			if t.GetContainer() == nil {
 				continue
 			}
 
-			if len(t.Spec.GetContainer().Networks) == 0 {
+			if len(t.GetContainer().Spec.Networks) == 0 {
 				continue
 			}
 
@@ -224,6 +224,31 @@ func taskDead(t *api.Task) bool {
 	return t.DesiredState > api.TaskStateRunning && t.Status.State > api.TaskStateRunning
 }
 
+func taskEnsureContainer(t *api.Task) {
+	if t.GetContainer() == nil {
+		t.Runtime = &api.Task_Container{
+			Container: &api.Container{},
+		}
+	}
+}
+
+func taskUpdateNetworks(t *api.Task, networks []*api.Container_NetworkAttachment) {
+	taskEnsureContainer(t)
+
+	networksCopy := make([]*api.Container_NetworkAttachment, 0, len(networks))
+	for _, n := range networks {
+		networksCopy = append(networksCopy, n.Copy())
+	}
+
+	t.GetContainer().Networks = networksCopy
+}
+
+func taskUpdateEndpoint(t *api.Task, endpoint *api.Endpoint) {
+	taskEnsureContainer(t)
+
+	t.GetContainer().Endpoint = endpoint.Copy()
+}
+
 func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev events.Event) {
 	var (
 		isDelete bool
@@ -259,7 +284,7 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 	}
 
 	// No container or network configured. Not interested.
-	if t.Spec.GetContainer() == nil {
+	if t.GetContainer() == nil {
 		return
 	}
 
@@ -288,7 +313,7 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 	// service which has no endpoint configuration or the service
 	// is already allocated. Try to immediately move it to
 	// ALLOCATED state.
-	if len(t.Spec.GetContainer().Networks) == 0 &&
+	if len(t.GetContainer().Spec.Networks) == 0 &&
 		(s == nil || s.Spec.Endpoint == nil || nc.nwkAllocator.IsServiceAllocated(s)) {
 		// If we are already in allocated state, there is
 		// absolutely nothing else to do.
@@ -310,7 +335,7 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 			// since we know by now that the service is
 			// allocated.
 			if s != nil {
-				storeT.Endpoint = s.Endpoint.Copy()
+				taskUpdateEndpoint(storeT, s.Endpoint)
 			}
 
 			if a.taskAllocateVote(networkVoter, t.ID) {
@@ -394,26 +419,28 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sto
 				return nil, fmt.Errorf("service %s to which this task %s belongs has pending allocations", s.ID, t.ID)
 			}
 
-			t.Endpoint = s.Endpoint.Copy()
+			taskUpdateEndpoint(t, s.Endpoint)
 		}
 
-		for _, na := range t.Spec.GetContainer().Networks {
+		networks := make([]*api.Container_NetworkAttachment, 0, len(t.GetContainer().Spec.Networks))
+		for _, na := range t.GetContainer().Spec.Networks {
 			n := store.GetNetwork(tx, na.GetNetworkID())
 			if n == nil {
-				t.Networks = t.Networks[:0]
+				taskUpdateNetworks(t, nil)
 				return nil, fmt.Errorf("failed to retrieve network %s while allocating task %s", na.GetNetworkID(), t.ID)
 			}
 
 			if !nc.nwkAllocator.IsAllocated(n) {
-				t.Networks = t.Networks[:0]
+				taskUpdateNetworks(t, nil)
 				return nil, fmt.Errorf("network %s attached to task %s not allocated yet", n.ID, t.ID)
 			}
 
-			t.Networks = append(t.Networks, &api.Task_NetworkAttachment{Network: n})
+			networks = append(networks, &api.Container_NetworkAttachment{Network: n})
 		}
+		taskUpdateNetworks(t, networks)
 
 		if err := nc.nwkAllocator.AllocateTask(t); err != nil {
-			t.Networks = t.Networks[:0]
+			t.GetContainer().Networks = t.GetContainer().Networks[:0]
 			return nil, fmt.Errorf("failed during networktask allocation for task %s: %v", t.ID, err)
 		}
 	}
@@ -432,7 +459,7 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sto
 		}
 	}
 
-	storeT.Networks = t.Networks
+	taskUpdateNetworks(storeT, t.GetContainer().Networks)
 	if err := store.UpdateTask(tx, storeT); err != nil {
 		return nil, fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
 	}

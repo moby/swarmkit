@@ -35,10 +35,12 @@ type ResourceFilter struct {
 
 // Enabled returns true when the filter is enabled for a given task.
 func (f *ResourceFilter) Enabled(t *api.Task) bool {
-	c := t.Spec.GetContainer()
-	if c == nil {
+	if t.GetContainer() == nil {
 		return false
 	}
+
+	c := t.GetContainer().Spec
+
 	r := c.Resources
 	if r == nil || r.Reservations == nil {
 		return false
@@ -51,8 +53,8 @@ func (f *ResourceFilter) Enabled(t *api.Task) bool {
 
 // Check returns true if the task can be scheduled into the given node.
 func (f *ResourceFilter) Check(t *api.Task, n *NodeInfo) bool {
-	container := t.Spec.GetContainer()
-	if container == nil || container.Resources == nil || container.Resources.Reservations == nil {
+	container := t.GetContainer().Spec
+	if container.Resources == nil || container.Resources.Reservations == nil {
 		return true
 	}
 
@@ -75,8 +77,12 @@ type PortFilter struct {
 
 // Enabled returns true when the filter is enabled for a given task.
 func (f *PortFilter) Enabled(t *api.Task) bool {
-	c := t.Spec.GetContainer()
-	if c == nil || len(c.ExposedPorts) == 0 {
+	if t.GetContainer() == nil {
+		return false
+	}
+
+	c := t.GetContainer().Spec
+	if len(c.ExposedPorts) == 0 {
 		return false
 	}
 	return true
@@ -84,10 +90,11 @@ func (f *PortFilter) Enabled(t *api.Task) bool {
 
 // Check returns true if the task can be scheduled into the given node.
 func (f *PortFilter) Check(t *api.Task, n *NodeInfo) bool {
-	container := t.Spec.GetContainer()
-	if container == nil {
-		return true
+	if t.GetContainer() == nil {
+		return false
 	}
+
+	container := t.GetContainer().Spec
 
 	for _, ep := range container.ExposedPorts {
 		if ep.HostPort == 0 {

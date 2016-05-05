@@ -38,19 +38,24 @@ func validateResourceRequirements(r *api.ResourceRequirements) error {
 }
 
 func validateServiceSpecTemplate(spec *api.ServiceSpec) error {
-	tpl := spec.Template
+	rSpec := spec.RuntimeSpec
 
-	if tpl == nil {
-		return grpc.Errorf(codes.InvalidArgument, "missing template in service spec")
+	if rSpec == nil {
+		return grpc.Errorf(codes.InvalidArgument, "missing runtime spec in service spec")
 	}
 
-	if tpl.GetRuntime() == nil {
-		return grpc.Errorf(codes.InvalidArgument, "template: runtime container spec required in service spec task template")
+	if spec.GetRuntimeSpec() == nil {
+		return grpc.Errorf(codes.InvalidArgument, "runtime spec required in service spec")
 	}
 
-	container := tpl.GetContainer()
+	ssContainer, ok := spec.GetRuntimeSpec().(*api.ServiceSpec_Container)
+	if !ok {
+		return grpc.Errorf(codes.Unimplemented, "RuntimeSpec: unimplemented runtime in service spec")
+	}
+
+	container := ssContainer.Container
 	if container == nil {
-		return grpc.Errorf(codes.Unimplemented, "template: unimplemented runtime in service spec task template")
+		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: missing in service spec")
 	}
 
 	if err := validateResourceRequirements(container.Resources); err != nil {
@@ -59,10 +64,10 @@ func validateServiceSpecTemplate(spec *api.ServiceSpec) error {
 
 	image := container.Image
 	if image == nil {
-		return grpc.Errorf(codes.Unimplemented, "template: container image not specified")
+		return grpc.Errorf(codes.Unimplemented, "ContainerSpec: container image not specified")
 	}
 	if image.Reference == "" {
-		return grpc.Errorf(codes.InvalidArgument, "template: image reference must be provided")
+		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: image reference must be provided")
 	}
 	return nil
 }

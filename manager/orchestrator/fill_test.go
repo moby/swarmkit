@@ -30,8 +30,8 @@ var (
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
-			Template: &api.TaskSpec{},
-			Mode:     api.ServiceModeFill,
+			RuntimeSpec: &api.ServiceSpec_Container{},
+			Mode:        api.ServiceModeFill,
 		},
 	}
 
@@ -41,8 +41,8 @@ var (
 			Annotations: api.Annotations{
 				Name: "name2",
 			},
-			Template: &api.TaskSpec{},
-			Mode:     api.ServiceModeFill,
+			RuntimeSpec: &api.ServiceSpec_Container{},
+			Mode:        api.ServiceModeFill,
 		},
 	}
 )

@@ -18,9 +18,9 @@ func TestDrain(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
-			Template:  &api.TaskSpec{},
-			Instances: 1,
-			Mode:      api.ServiceModeRunning,
+			RuntimeSpec: &api.ServiceSpec_Container{},
+			Instances:   1,
+			Mode:        api.ServiceModeRunning,
 			Restart: &api.RestartPolicy{
 				Condition: api.RestartNever,
 			},

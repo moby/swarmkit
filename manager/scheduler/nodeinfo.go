@@ -33,9 +33,9 @@ func (nodeInfo *NodeInfo) removeTask(t *api.Task) bool {
 	if nodeInfo.Tasks != nil {
 		if _, ok := nodeInfo.Tasks[t.ID]; ok {
 			delete(nodeInfo.Tasks, t.ID)
-			specContainer := t.Spec.GetContainer()
-			if specContainer != nil {
-				reservations := taskReservations(specContainer)
+			if t.GetContainer() != nil {
+				specContainer := t.GetContainer().Spec
+				reservations := taskReservations(&specContainer)
 				nodeInfo.AvailableResources.MemoryBytes += reservations.MemoryBytes
 				nodeInfo.AvailableResources.NanoCPUs += reservations.NanoCPUs
 
@@ -75,11 +75,12 @@ func (nodeInfo *NodeInfo) addTask(t *api.Task) bool {
 	if nodeInfo.Tasks == nil {
 		nodeInfo.Tasks = make(map[string]*api.Task)
 	}
-	specContainer := t.Spec.GetContainer()
+	container := t.GetContainer()
 	if _, ok := nodeInfo.Tasks[t.ID]; !ok {
 		nodeInfo.Tasks[t.ID] = t
-		if specContainer != nil {
-			reservations := taskReservations(specContainer)
+		if container != nil {
+			specContainer := container.Spec
+			reservations := taskReservations(&specContainer)
 			nodeInfo.AvailableResources.MemoryBytes -= reservations.MemoryBytes
 			nodeInfo.AvailableResources.NanoCPUs -= reservations.NanoCPUs
 
@@ -118,7 +119,7 @@ func (nodeInfo *NodeInfo) addTask(t *api.Task) bool {
 	return changes
 }
 
-func taskReservations(container *api.Container) (reservations api.Resources) {
+func taskReservations(container *api.ContainerSpec) (reservations api.Resources) {
 	if container != nil && container.Resources != nil && container.Resources.Reservations != nil {
 		reservations = *container.Resources.Reservations
 	}
