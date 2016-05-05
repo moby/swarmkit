@@ -23,15 +23,17 @@ var (
 				return err
 			}
 
-			service, err := getService(common.Context(cmd), c, args[0])
-			if err != nil {
-				return err
+			for _, serviceName := range args {
+				service, err := getService(common.Context(cmd), c, serviceName)
+				if err != nil {
+					return err
+				}
+				_, err = c.RemoveService(common.Context(cmd), &api.RemoveServiceRequest{ServiceID: service.ID})
+				if err != nil {
+					return err
+				}
+				fmt.Println(serviceName)
 			}
-			_, err = c.RemoveService(common.Context(cmd), &api.RemoveServiceRequest{ServiceID: service.ID})
-			if err != nil {
-				return err
-			}
-			fmt.Println(args[0])
 			return nil
 		},
 	}
