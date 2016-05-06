@@ -17,8 +17,9 @@ func main() {
 
 var (
 	mainCmd = &cobra.Command{
-		Use:   os.Args[0],
-		Short: "Run a swarm control process",
+		Use:          os.Args[0],
+		Short:        "Run a swarm control process",
+		SilenceUsage: true,
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			logrus.SetOutput(os.Stderr)
 			flag, err := cmd.Flags().GetString("log-level")
