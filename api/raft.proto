@@ -19,6 +19,9 @@ service Raft {
 	// ProcessRaftMessage sends a raft message to be processed on a raft member, it is
 	// called from the Manager willing to send a message to its destination ('To' field)
 	rpc ProcessRaftMessage(ProcessRaftMessageRequest) returns (ProcessRaftMessageResponse) {}
+
+	// ResolveAddress returns the address where the node with the given ID can be reached.
+	rpc ResolveAddress(ResolveAddressRequest) returns (ResolveAddressResponse) {}
 }
 
 message JoinRequest {
@@ -41,6 +44,16 @@ message ProcessRaftMessageRequest {
 }
 
 message ProcessRaftMessageResponse {}
+
+message ResolveAddressRequest {
+	// raft_id is the ID to resolve to an address.
+	uint64 raft_id = 1 [(gogoproto.customname) = "RaftID"];
+}
+
+message ResolveAddressResponse {
+	// Addr specifies the address of the member
+	string addr = 1;
+}
 
 // Contains one of many protobuf encoded objects to replicate
 // over the raft backend with a request ID to track when the

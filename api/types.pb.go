@@ -120,6 +120,8 @@
 		LeaveResponse
 		ProcessRaftMessageRequest
 		ProcessRaftMessageResponse
+		ResolveAddressRequest
+		ResolveAddressResponse
 		InternalRaftRequest
 		StoreAction
 */
