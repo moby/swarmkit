@@ -140,7 +140,7 @@ func TestLoadManagerSecurityConfigWithNoTLSCert(t *testing.T) {
 	os.Remove(paths.ManagerCert)
 
 	loadedManagerSecurityConfig := loadManagerSecurityConfig(tempBaseDir)
-	assert.EqualError(t, loadedManagerSecurityConfig.validate(), "swarm-pki: invalid or inexistent TLS server certificates")
+	assert.EqualError(t, loadedManagerSecurityConfig.validate(), "swarm-pki: invalid or nonexistent TLS server certificates")
 }
 
 func TestLoadManagerSecurityConfigWithNoTLSKey(t *testing.T) {
@@ -158,7 +158,7 @@ func TestLoadManagerSecurityConfigWithNoTLSKey(t *testing.T) {
 	os.Remove(paths.ManagerKey)
 
 	loadedManagerSecurityConfig := loadManagerSecurityConfig(tempBaseDir)
-	assert.EqualError(t, loadedManagerSecurityConfig.validate(), "swarm-pki: invalid or inexistent TLS server certificates")
+	assert.EqualError(t, loadedManagerSecurityConfig.validate(), "swarm-pki: invalid or nonexistent TLS server certificates")
 }
 
 func TestLoadAgentSecurityConfig(t *testing.T) {
@@ -240,7 +240,7 @@ func TestLoadAgentSecurityConfigWithNoTLSCert(t *testing.T) {
 	os.Remove(paths.AgentCert)
 
 	loadedAgentSecurityConfig := loadAgentSecurityConfig(tempBaseDir)
-	assert.EqualError(t, loadedAgentSecurityConfig.validate(), "swarm-pki: invalid or inexistent TLS server certificates")
+	assert.EqualError(t, loadedAgentSecurityConfig.validate(), "swarm-pki: invalid or nonexistent TLS server certificates")
 }
 
 func TestLoadAgentSecurityConfigWithNoTLSKey(t *testing.T) {
@@ -258,7 +258,7 @@ func TestLoadAgentSecurityConfigWithNoTLSKey(t *testing.T) {
 	os.Remove(paths.AgentKey)
 
 	loadedAgentSecurityConfig := loadAgentSecurityConfig(tempBaseDir)
-	assert.EqualError(t, loadedAgentSecurityConfig.validate(), "swarm-pki: invalid or inexistent TLS server certificates")
+	assert.EqualError(t, loadedAgentSecurityConfig.validate(), "swarm-pki: invalid or nonexistent TLS server certificates")
 }
 
 func TestLoadOrCreateManagerSecurityConfigNoCA(t *testing.T) {
