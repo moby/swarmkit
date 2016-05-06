@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 
 	"golang.org/x/net/context"
@@ -712,6 +713,21 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 	return &api.ProcessRaftMessageResponse{}, nil
 }
 
+// ResolveAddress returns the address reaching for a given node ID.
+func (n *Node) ResolveAddress(ctx context.Context, msg *api.ResolveAddressRequest) (*api.ResolveAddressResponse, error) {
+	agentID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
+	if err != nil {
+		return nil, err
+	}
+	logrus.Debugf("(*ResolveAddress). message from node %s", agentID)
+
+	member := n.cluster.getMember(msg.RaftID)
+	if member == nil {
+		return nil, grpc.Errorf(codes.NotFound, "member %s not found", strconv.FormatUint(msg.RaftID, 16))
+	}
+	return &api.ResolveAddressResponse{Addr: member.Addr}, nil
+}
+
 // LeaderAddr returns address of current cluster leader.
 // With this method Node satisfies raftpicker.AddrSelector interface.
 func (n *Node) LeaderAddr() (string, error) {
@@ -982,20 +998,68 @@ func (n *Node) send(messages []raftpb.Message) error {
 			continue
 		}
 
-		// If node is an active raft member send the message
-		if member, ok := members[m.To]; ok {
-			n.asyncTasks.Add(1)
-			go n.sendToMember(member, m)
-		}
+		n.asyncTasks.Add(1)
+		go n.sendToMember(members, m)
 	}
 
 	return nil
 }
 
-func (n *Node) sendToMember(member *member, m raftpb.Message) {
-	ctx, cancel := context.WithTimeout(n.Ctx, n.sendTimeout)
+func (n *Node) sendToMember(members map[uint64]*member, m raftpb.Message) {
+	defer n.asyncTasks.Done()
 
-	_, err := member.Client.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: &m})
+	if n.cluster.isIDRemoved(m.To) {
+		// Should not send to removed members
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(n.Ctx, n.sendTimeout)
+	defer cancel()
+
+	var (
+		conn *Raft
+	)
+	if toMember, ok := members[m.To]; ok {
+		conn = toMember.Client
+	} else {
+		// If we are being asked to send to a member that's not in
+		// our member list, that could indicate that the current leader
+		// was added while we were offline. Try to resolve its address.
+		n.Config.Logger.Warningf("sending message to an unrecognized member ID %s", strconv.FormatUint(m.To, 16))
+
+		// Choose a random member
+		var (
+			queryMember *member
+			id          uint64
+		)
+		for id, queryMember = range members {
+			if id != n.Config.ID {
+				break
+			}
+		}
+
+		if queryMember == nil {
+			n.Config.Logger.Error("could not find cluster member to query for leader address")
+			return
+		}
+
+		resp, err := queryMember.Client.ResolveAddress(ctx, &api.ResolveAddressRequest{RaftID: m.To})
+		if err != nil {
+			n.Config.Logger.Errorf("could not resolve address of member ID %s: %v", strconv.FormatUint(m.To, 16), err)
+			return
+		}
+		conn, err = n.GetRaftClient(resp.Addr, n.sendTimeout)
+		if err != nil {
+			n.Config.Logger.Errorf("could connect to member ID %s at %s: %v", strconv.FormatUint(m.To, 16), resp.Addr, err)
+			return
+		}
+		// The temporary connection is only used for this message.
+		// Eventually, we should catch up and add a long-lived
+		// connection to the member list.
+		defer conn.Conn.Close()
+	}
+
+	_, err := conn.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: &m})
 	if err != nil {
 		if grpc.ErrorDesc(err) == ErrIDRemoved.Error() {
 			atomic.StoreUint32(&n.removed, 1)
@@ -1003,18 +1067,13 @@ func (n *Node) sendToMember(member *member, m raftpb.Message) {
 		if m.Type == raftpb.MsgSnap {
 			n.ReportSnapshot(m.To, raft.SnapshotFailure)
 		}
-		if member == nil {
-			panic("member is nil")
-		}
 		if n.Node == nil {
 			panic("node is nil")
 		}
-		n.ReportUnreachable(member.RaftID)
+		n.ReportUnreachable(m.To)
 	} else if m.Type == raftpb.MsgSnap {
 		n.ReportSnapshot(m.To, raft.SnapshotFinish)
 	}
-	cancel()
-	n.asyncTasks.Done()
 }
 
 type applyResult struct {
