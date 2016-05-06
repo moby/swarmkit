@@ -44,14 +44,7 @@ func TestAllocator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "service1",
 				},
-				Endpoint: &api.Endpoint{
-					Ports: []*api.Endpoint_PortConfig{
-						{
-							Name: "http",
-							Port: 80,
-						},
-					},
-				},
+				Endpoint: &api.Endpoint{},
 			},
 		}
 		assert.NoError(t, tx.Services().Create(s1))
@@ -108,11 +101,6 @@ func TestAllocator(t *testing.T) {
 	ip := net.ParseIP(n1.IPAM.Configs[0].Gateway)
 	assert.NotEqual(t, ip, nil)
 
-	s1, err := watchService(t, serviceWatch)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(s1.Endpoint.Ports))
-	assert.NotEqual(t, 0, s1.Endpoint.Ports[0].NodePort)
-
 	t1, err := watchTask(t, taskWatch)
 	assert.NoError(t, err)
 	assert.Equal(t, len(t1.Networks[0].Addresses), 1)
@@ -155,14 +143,7 @@ func TestAllocator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "service2",
 				},
-				Endpoint: &api.Endpoint{
-					Ports: []*api.Endpoint_PortConfig{
-						{
-							Name: "http",
-							Port: 80,
-						},
-					},
-				},
+				Endpoint: &api.Endpoint{},
 			},
 		}
 		assert.NoError(t, tx.Services().Create(s2))
@@ -171,8 +152,6 @@ func TestAllocator(t *testing.T) {
 
 	s2, err := watchService(t, serviceWatch)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(s2.Endpoint.Ports))
-	assert.NotEqual(t, 0, s2.Endpoint.Ports[0].NodePort)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		t2 := &api.Task{
