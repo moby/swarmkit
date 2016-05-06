@@ -29,9 +29,6 @@ type NetworkAllocator struct {
 	// IPAM and network drivers.
 	drvRegistry *drvregistry.DrvRegistry
 
-	// The port allocator instance for allocating node ports
-	portAllocator *portAllocator
-
 	// Local network state used by NetworkAllocator to do network management.
 	networks map[string]*network
 
@@ -72,12 +69,6 @@ func New() (*NetworkAllocator, error) {
 		return nil, err
 	}
 
-	pa, err := newPortAllocator()
-	if err != nil {
-		return nil, err
-	}
-
-	na.portAllocator = pa
 	na.drvRegistry = reg
 	return na, nil
 }
@@ -127,21 +118,14 @@ func (na *NetworkAllocator) Deallocate(n *api.Network) error {
 	return na.freePools(n, localNet.pools)
 }
 
-// ServiceAllocate allocates all the network resources such as virtual
-// IP and ports needed by the service.
+// ServiceAllocate allocates all the network resources such as IPs.
 func (na *NetworkAllocator) ServiceAllocate(s *api.Service) error {
-	if err := na.portAllocator.serviceAllocatePorts(s); err != nil {
-		return err
-	}
-
 	na.services[s.ID] = struct{}{}
 	return nil
 }
 
-// ServiceDeallocate de-allocates all the network resources such as
-// virtual IP and ports associated with the service.
+// ServiceDeallocate de-allocates all the network resources such as IPs.
 func (na *NetworkAllocator) ServiceDeallocate(s *api.Service) error {
-	na.portAllocator.serviceDeallocatePorts(s)
 	delete(na.services, s.ID)
 
 	return nil
@@ -196,7 +180,7 @@ func (na *NetworkAllocator) IsServiceAllocated(s *api.Service) bool {
 		return false
 	}
 
-	return na.portAllocator.isPortsAllocated(s)
+	return true
 }
 
 // AllocateTask allocates all the endpoint resources for all the

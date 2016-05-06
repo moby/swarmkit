@@ -30,9 +30,13 @@ type ContainerConfig struct {
 	// 1003.1-2001](http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html).
 	Env []string `yaml:"env,omitempty"`
 
-	// Networks specifies all the networks that this service is attached to.
-	Networks  []string              `yaml:"networks,omitempty"`
 	Resources *ResourceRequirements `yaml:"resources,omitempty"`
+
+	// Networks specifies all the networks that this service is attached to.
+	Networks []string `yaml:"networks,omitempty"`
+
+	// Ports specifies port mappings.
+	Ports []PortConfig `yaml:"ports,omitempty"`
 
 	// Mounts describe how volumes should be mounted in the container
 	Mounts Mounts `yaml:"mounts,omitempty"`
@@ -43,7 +47,7 @@ type PortConfig struct {
 	Name     string `yaml:"name,omitempty"`
 	Protocol string `yaml:"protocol,omitempty"`
 	Port     uint32 `yaml:"port,omitempty"`
-	NodePort uint32 `yaml:"node_port,omitempty"`
+	HostPort uint32 `yaml:"host_port,omitempty"`
 }
 
 // ServiceConfig is a human representation of the Service
@@ -58,8 +62,6 @@ type ServiceConfig struct {
 	RestartDelay string `yaml:"restartdelay,omitempty"`
 
 	Update *UpdateConfiguration `yaml:"update,omitempty"`
-
-	Ports []PortConfig `yaml:"ports,omitempty"`
 }
 
 // Validate checks the validity of the ServiceConfig.
@@ -159,17 +161,17 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 	}
 
 	if len(s.Ports) != 0 {
-		endpoint := &api.Endpoint{}
+		ports := []*api.PortConfig{}
 		for _, portConfig := range s.Ports {
-			endpoint.Ports = append(endpoint.Ports, &api.Endpoint_PortConfig{
+			ports = append(ports, &api.PortConfig{
 				Name:     portConfig.Name,
-				Protocol: api.Endpoint_Protocol(api.Endpoint_Protocol_value[strings.ToUpper(portConfig.Protocol)]),
+				Protocol: api.PortConfig_Protocol(api.PortConfig_Protocol_value[strings.ToUpper(portConfig.Protocol)]),
 				Port:     portConfig.Port,
-				NodePort: portConfig.NodePort,
+				HostPort: portConfig.HostPort,
 			})
 		}
 
-		spec.Endpoint = endpoint
+		spec.Template.GetContainer().ExposedPorts = ports
 	}
 
 	if len(s.Networks) != 0 {
@@ -236,12 +238,12 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	}
 
 	if serviceSpec.Endpoint != nil {
-		for _, port := range serviceSpec.Endpoint.Ports {
+		for _, port := range serviceSpec.Template.GetContainer().ExposedPorts {
 			s.Ports = append(s.Ports, PortConfig{
 				Name:     port.Name,
 				Protocol: strings.ToLower(port.Protocol.String()),
 				Port:     port.Port,
-				NodePort: port.NodePort,
+				HostPort: port.HostPort,
 			})
 		}
 	}
