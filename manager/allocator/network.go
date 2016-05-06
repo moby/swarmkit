@@ -109,7 +109,8 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 			}
 
 			err := batch.Update(func(tx state.Tx) error {
-				return a.allocateTask(ctx, nc, tx, t)
+				_, err := a.allocateTask(ctx, nc, tx, t)
+				return err
 			})
 			if err != nil {
 				log.G(ctx).Errorf("failed allocating task %s during init: %v", t.ID, err)
@@ -376,7 +377,7 @@ func (a *Allocator) allocateNetwork(ctx context.Context, nc *networkContext, n *
 	return nil
 }
 
-func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx state.Tx, t *api.Task) error {
+func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx state.Tx, t *api.Task) (*api.Task, error) {
 	// We might be here even if a task allocation has already
 	// happened but wasn't successfully committed to store. In such
 	// cases skip allocation and go straight ahead to updating the
@@ -385,11 +386,11 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sta
 		if t.ServiceID != "" {
 			s := tx.Services().Get(t.ServiceID)
 			if s == nil {
-				return fmt.Errorf("could not find service %s", t.ServiceID)
+				return nil, fmt.Errorf("could not find service %s", t.ServiceID)
 			}
 
 			if s.Spec.Endpoint != nil && !nc.nwkAllocator.IsServiceAllocated(s) {
-				return fmt.Errorf("service %s to which this task %s belongs has pending allocations", s.ID, t.ID)
+				return nil, fmt.Errorf("service %s to which this task %s belongs has pending allocations", s.ID, t.ID)
 			}
 
 			t.Endpoint = s.Endpoint.Copy()
@@ -399,12 +400,12 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sta
 			n := tx.Networks().Get(na.GetNetworkID())
 			if n == nil {
 				t.Networks = t.Networks[:0]
-				return fmt.Errorf("failed to retrieve network %s while allocating task %s", na.GetNetworkID(), t.ID)
+				return nil, fmt.Errorf("failed to retrieve network %s while allocating task %s", na.GetNetworkID(), t.ID)
 			}
 
 			if !nc.nwkAllocator.IsAllocated(n) {
 				t.Networks = t.Networks[:0]
-				return fmt.Errorf("network %s attached to task %s not allocated yet", n.ID, t.ID)
+				return nil, fmt.Errorf("network %s attached to task %s not allocated yet", n.ID, t.ID)
 			}
 
 			t.Networks = append(t.Networks, &api.Task_NetworkAttachment{Network: n})
@@ -412,14 +413,14 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sta
 
 		if err := nc.nwkAllocator.AllocateTask(t); err != nil {
 			t.Networks = t.Networks[:0]
-			return fmt.Errorf("failed during networktask allocation for task %s: %v", t.ID, err)
+			return nil, fmt.Errorf("failed during networktask allocation for task %s: %v", t.ID, err)
 		}
 	}
 
 	// Get the latest task state from the store before updating.
 	storeT := tx.Tasks().Get(t.ID)
 	if storeT == nil {
-		return fmt.Errorf("could not find task %s while trying to update network allocation", t.ID)
+		return nil, fmt.Errorf("could not find task %s while trying to update network allocation", t.ID)
 	}
 
 	// Update the network allocations and moving to
@@ -432,10 +433,10 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sta
 
 	storeT.Networks = t.Networks
 	if err := tx.Tasks().Update(storeT); err != nil {
-		return fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
+		return nil, fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
 	}
 
-	return nil
+	return storeT, nil
 }
 
 func (a *Allocator) procUnallocatedTasks(ctx context.Context, nc *networkContext) {
@@ -443,22 +444,74 @@ func (a *Allocator) procUnallocatedTasks(ctx context.Context, nc *networkContext
 
 	committed, err := a.store.Batch(func(batch state.Batch) error {
 		for _, t := range nc.unallocatedTasks {
-			tasks = append(tasks, t)
+			var allocatedT *api.Task
 			err := batch.Update(func(tx state.Tx) error {
-				return a.allocateTask(ctx, nc, tx, t)
+				var err error
+				allocatedT, err = a.allocateTask(ctx, nc, tx, t)
+				return err
 			})
+
 			if err != nil {
-				return fmt.Errorf("task allocation failure: %v", err)
+				log.G(ctx).WithError(err).Error("task allocation failure")
+				continue
 			}
+
+			tasks = append(tasks, allocatedT)
 		}
 
 		return nil
 	})
+
 	if err != nil {
-		log.G(ctx).WithError(err).Error("failed to allocate task")
+		log.G(ctx).WithError(err).Error("failed a store batch operation while processing unallocated tasks")
 	}
 
-	for i := 0; i != committed; i++ {
-		delete(nc.unallocatedTasks, tasks[i].ID)
+	var retryCnt int
+	for len(tasks) != 0 {
+		var err error
+
+		for _, t := range tasks[:committed] {
+			delete(nc.unallocatedTasks, t.ID)
+		}
+
+		tasks = tasks[committed:]
+		if len(tasks) == 0 {
+			break
+		}
+
+		updatedTasks := make([]*api.Task, 0, len(tasks))
+		committed, err = a.store.Batch(func(batch state.Batch) error {
+			for _, t := range tasks {
+				err := batch.Update(func(tx state.Tx) error {
+					return tx.Tasks().Update(t)
+				})
+
+				if err != nil {
+					log.G(ctx).WithError(err).Error("allocated task store update failure")
+					continue
+				}
+
+				updatedTasks = append(updatedTasks, t)
+			}
+
+			return nil
+		})
+		if err != nil {
+			log.G(ctx).WithError(err).Error("failed a store batch operation while processing unallocated tasks")
+		}
+
+		tasks = updatedTasks
+
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		retryCnt++
+		if retryCnt >= 3 {
+			log.G(ctx).Errorf("failed to complete batch update of allocated tasks after 3 retries")
+			break
+		}
 	}
 }
