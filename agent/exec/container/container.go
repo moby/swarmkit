@@ -96,8 +96,8 @@ func (c *containerConfig) config() *enginecontainer.Config {
 
 func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
 	exposedPorts := make(map[nat.Port]struct{})
-	if c.task.Endpoint != nil {
-		for _, portConfig := range c.task.Endpoint.Ports {
+	if c.runtime.ExposedPorts != nil {
+		for _, portConfig := range c.runtime.ExposedPorts {
 			port := nat.Port(fmt.Sprintf("%d/%s", portConfig.Port, strings.ToLower(portConfig.Protocol.String())))
 			exposedPorts[port] = struct{}{}
 		}
@@ -145,14 +145,17 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 
 func (c *containerConfig) portBindings() nat.PortMap {
 	portBindings := nat.PortMap{}
-	if c.task.Endpoint != nil {
-		for _, portConfig := range c.task.Endpoint.Ports {
+	if c.runtime.ExposedPorts != nil {
+		for _, portConfig := range c.runtime.ExposedPorts {
 			port := nat.Port(fmt.Sprintf("%d/%s", portConfig.Port, strings.ToLower(portConfig.Protocol.String())))
-			portBindings[port] = []nat.PortBinding{
-				{
-					HostPort: strconv.Itoa(int(portConfig.NodePort)),
-				},
+			binding := []nat.PortBinding{
+				{},
 			}
+
+			if portConfig.HostPort != 0 {
+				binding[0].HostPort = strconv.Itoa(int(portConfig.HostPort))
+			}
+			portBindings[port] = binding
 		}
 	}
 

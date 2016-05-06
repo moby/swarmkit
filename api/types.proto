@@ -185,7 +185,9 @@ message Container {
 
 	repeated NetworkAttachment networks = 8;
 
-	repeated Mount mounts = 9;
+	repeated PortConfig exposed_ports = 9;
+
+	repeated Mount mounts = 10;
 }
 
 message RestartPolicy {
@@ -290,8 +292,6 @@ message TaskStatus {
 	//
 	// TODO(stevvooe) Integrate this field with the error interface.
 	string err = 5;
-
-	// TODO(stevvooe): Report on runtime statistics.
 }
 
 // IPAMConfig specifies parameters for IP Address Management.
@@ -328,39 +328,38 @@ message IPAMConfig {
 	map<string, string> reserved = 5;
 }
 
+// PortConfig specifies an exposed port which can be
+// addressed using the given name. This can be later queried
+// using a service discovery api or a DNS SRV query. The node
+// port specifies a port that can be used to address this
+// service external to the cluster by sending a connection
+// request to this port to any node on the cluster.
+message PortConfig {
+	enum Protocol {
+		option (gogoproto.goproto_enum_prefix) = false;
+
+		TCP = 0 [(gogoproto.enumvalue_customname) = "ProtocolTCP"];
+		UDP = 1 [(gogoproto.enumvalue_customname) = "ProtocolUDP"];
+	}
+
+	// Name for the port. If provided the port information can
+	// be queried using the name as in a DNS SRV query.
+	string name = 1;
+
+	// Protocol for the port which is exposed.
+	Protocol protocol = 2;
+
+	// The port which the application is exposing and is bound to.
+	uint32 port = 3;
+
+	// The exposed port on the host.
+	// If undefined, a random port will be chosen.
+	uint32 host_port = 4;
+}
+
 // Endpoint specified all the network parameters required to
 // correctly discover and load balance a service
 message Endpoint {
-	// Layer 4 port the port configuration belongs to.
-	enum Protocol {
-		TCP = 0;
-		UDP = 1;
-	}
-
-	// PortConfig specifies an exposed port which can be
-	// addressed using the given name. This can be later queried
-	// using a service discovery api or a DNS SRV query. The node
-	// port specifies a port that can be used to address this
-	// service external to the cluster by sending a connection
-	// request to this port to any node on the cluster.
-	message PortConfig {
-		// Name for the port. If provided the port information can
-		// be queried using the name as in a DNS SRV query.
-		string name = 1;
-
-		// The port which the application is exposing and is bound to.
-		uint32 port = 2;
-
-		// Protocol for the port which is exposed.
-		Protocol protocol = 3;
-
-		// A cluster-wide unique port which is assigned to
-		// this port configuration of the service used for
-		// requests ingressing into the cluster for this
-		// service port.
-		uint32 node_port = 4;
-	}
-
 	// A virtual IP is used to address this service in IP layer
 	// that the client can use to send requests to this service. A
 	// DNS A/AAAA query on the service name might return this IP
@@ -369,7 +368,6 @@ message Endpoint {
 	// created for this address.  More than one to accomodate for
 	// both IPv4 and IPv6
 	repeated string virtual_ip = 1 [(gogoproto.customname) = "VirtualIP"];
-	repeated PortConfig ports = 2;
 }
 
 // Driver is a generic driver type to be used throughout the API. For now, a

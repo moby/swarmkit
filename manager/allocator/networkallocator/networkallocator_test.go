@@ -511,117 +511,30 @@ func TestServiceAllocate(t *testing.T) {
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
-			Endpoint: &api.Endpoint{
-				Ports: []*api.Endpoint_PortConfig{
-					{
-						Name: "http",
-						Port: 80,
-					},
-					{
-						Name: "https",
-						Port: 443,
-					},
-				},
-			},
+			Endpoint: &api.Endpoint{},
 		},
 	}
 
 	err := na.ServiceAllocate(s)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(s.Endpoint.Ports))
-	assert.True(t, s.Endpoint.Ports[0].NodePort >= dynamicPortStart &&
-		s.Endpoint.Ports[0].NodePort <= dynamicPortEnd)
-	assert.True(t, s.Endpoint.Ports[1].NodePort >= dynamicPortStart &&
-		s.Endpoint.Ports[1].NodePort <= dynamicPortEnd)
-}
-
-func TestServiceAllocateUserDefinedPorts(t *testing.T) {
-	na := newNetworkAllocator(t)
-	s := &api.Service{
-		ID: "testID1",
-		Spec: api.ServiceSpec{
-			Endpoint: &api.Endpoint{
-				Ports: []*api.Endpoint_PortConfig{
-					{
-						Name:     "some_tcp",
-						Port:     1234,
-						NodePort: 1234,
-					},
-					{
-						Name:     "some_udp",
-						Port:     1234,
-						NodePort: 1234,
-						Protocol: api.Endpoint_UDP,
-					},
-				},
-			},
-		},
-	}
-
-	err := na.ServiceAllocate(s)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(s.Endpoint.Ports))
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].NodePort)
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[1].NodePort)
-}
-
-func TestServiceAllocateConflictingUserDefinedPorts(t *testing.T) {
-	na := newNetworkAllocator(t)
-	s := &api.Service{
-		ID: "testID1",
-		Spec: api.ServiceSpec{
-			Endpoint: &api.Endpoint{
-				Ports: []*api.Endpoint_PortConfig{
-					{
-						Name:     "some_tcp",
-						Port:     1234,
-						NodePort: 1234,
-					},
-					{
-						Name:     "some_other_tcp",
-						Port:     1234,
-						NodePort: 1234,
-					},
-				},
-			},
-		},
-	}
-
-	err := na.ServiceAllocate(s)
-	assert.Error(t, err)
 }
 
 func TestServiceDeallocateAllocate(t *testing.T) {
 	na := newNetworkAllocator(t)
 	s := &api.Service{
-		ID: "testID1",
-		Spec: api.ServiceSpec{
-			Endpoint: &api.Endpoint{
-				Ports: []*api.Endpoint_PortConfig{
-					{
-						Name:     "some_tcp",
-						Port:     1234,
-						NodePort: 1234,
-					},
-				},
-			},
-		},
+		ID:   "testID1",
+		Spec: api.ServiceSpec{},
 	}
 
 	err := na.ServiceAllocate(s)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(s.Endpoint.Ports))
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].NodePort)
 
 	err = na.ServiceDeallocate(s)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(s.Endpoint.Ports))
 
 	// Allocate again.
 	err = na.ServiceAllocate(s)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(s.Endpoint.Ports))
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].NodePort)
 }
 
 func TestServiceUpdate(t *testing.T) {
@@ -630,49 +543,20 @@ func TestServiceUpdate(t *testing.T) {
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
-			Endpoint: &api.Endpoint{
-				Ports: []*api.Endpoint_PortConfig{
-					{
-						Name:     "some_tcp",
-						Port:     1234,
-						NodePort: 1234,
-					},
-					{
-						Name:     "some_other_tcp",
-						Port:     1235,
-						NodePort: 0,
-					},
-				},
-			},
+			Endpoint: &api.Endpoint{},
 		},
 	}
 
 	err := na1.ServiceAllocate(s)
 	assert.NoError(t, err)
 	assert.Equal(t, true, na1.IsServiceAllocated(s))
-	assert.Equal(t, 2, len(s.Endpoint.Ports))
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].NodePort)
-	assert.NotEqual(t, 0, s.Endpoint.Ports[1].NodePort)
-
-	// Cache the secode node port
-	allocatedPort := s.Endpoint.Ports[1].NodePort
 
 	// Now allocate the same service in another allocator instance
 	err = na2.ServiceAllocate(s)
 	assert.NoError(t, err)
 	assert.Equal(t, true, na2.IsServiceAllocated(s))
-	assert.Equal(t, 2, len(s.Endpoint.Ports))
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].NodePort)
-	// Make sure we got the same port
-	assert.Equal(t, allocatedPort, s.Endpoint.Ports[1].NodePort)
-
-	s.Spec.Endpoint.Ports[1].NodePort = 1235
-	assert.Equal(t, false, na1.IsServiceAllocated(s))
 
 	err = na1.ServiceAllocate(s)
 	assert.NoError(t, err)
 	assert.Equal(t, true, na1.IsServiceAllocated(s))
-	assert.Equal(t, 2, len(s.Endpoint.Ports))
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].NodePort)
-	assert.Equal(t, uint32(1235), s.Endpoint.Ports[1].NodePort)
 }

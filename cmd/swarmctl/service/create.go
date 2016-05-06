@@ -88,22 +88,22 @@ var (
 						return err
 					}
 
-					endpoint := &api.Endpoint{}
+					ports := []*api.PortConfig{}
 					for _, portConfig := range portConfigs {
-						name, protocol, port, nodePort, err := parsePortConfig(portConfig)
+						name, protocol, port, hostPort, err := parsePortConfig(portConfig)
 						if err != nil {
 							return err
 						}
 
-						endpoint.Ports = append(endpoint.Ports, &api.Endpoint_PortConfig{
+						ports = append(ports, &api.PortConfig{
 							Name:     name,
 							Protocol: protocol,
 							Port:     port,
-							NodePort: nodePort,
+							HostPort: hostPort,
 						})
 					}
 
-					spec.Endpoint = endpoint
+					spec.Template.GetContainer().ExposedPorts = ports
 				}
 
 				if flags.Changed("network") {
@@ -137,8 +137,8 @@ var (
 	}
 )
 
-func parsePortConfig(portConfig string) (string, api.Endpoint_Protocol, uint32, uint32, error) {
-	protocol := api.Endpoint_TCP
+func parsePortConfig(portConfig string) (string, api.PortConfig_Protocol, uint32, uint32, error) {
+	protocol := api.ProtocolTCP
 	parts := strings.Split(portConfig, ":")
 	if len(parts) < 2 {
 		return "", protocol, 0, 0, fmt.Errorf("insuffient parameters in port configuration")
@@ -171,7 +171,7 @@ func parsePortConfig(portConfig string) (string, api.Endpoint_Protocol, uint32, 
 	return name, protocol, port, 0, nil
 }
 
-func parsePortSpec(portSpec string) (api.Endpoint_Protocol, uint32, error) {
+func parsePortSpec(portSpec string) (api.PortConfig_Protocol, uint32, error) {
 	parts := strings.Split(portSpec, "/")
 	p := parts[0]
 	port, err := strconv.ParseUint(p, 10, 32)
@@ -181,15 +181,15 @@ func parsePortSpec(portSpec string) (api.Endpoint_Protocol, uint32, error) {
 
 	if len(parts) > 1 {
 		proto := parts[1]
-		protocol, ok := api.Endpoint_Protocol_value[strings.ToUpper(proto)]
+		protocol, ok := api.PortConfig_Protocol_value[strings.ToUpper(proto)]
 		if !ok {
 			return 0, 0, fmt.Errorf("invalid protocol string: %s", proto)
 		}
 
-		return api.Endpoint_Protocol(protocol), uint32(port), nil
+		return api.PortConfig_Protocol(protocol), uint32(port), nil
 	}
 
-	return api.Endpoint_TCP, uint32(port), nil
+	return api.ProtocolTCP, uint32(port), nil
 }
 
 func init() {
