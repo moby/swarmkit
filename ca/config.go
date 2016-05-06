@@ -44,7 +44,7 @@ const (
 type InvalidTLSCertificatesError struct{}
 
 func (err InvalidTLSCertificatesError) Error() string {
-	return fmt.Sprintf("swarm-pki: invalid or inexistent TLS server certificates")
+	return fmt.Sprintf("swarm-pki: invalid or nonexistent TLS server certificates")
 }
 
 // NoSwarmCAError represents a failure when retreiving an existing Certificate Authority
