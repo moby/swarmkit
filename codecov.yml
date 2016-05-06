@@ -1,0 +1,10 @@
+comment:
+  layout: header, changes, diff, sunburst
+coverage:
+  status:
+    patch: false
+    project: true
+      default:
+        enabled: yes
+        threshold: 0
+    changes: false
