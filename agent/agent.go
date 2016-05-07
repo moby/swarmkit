@@ -29,9 +29,10 @@ type Agent struct {
 	conn   *grpc.ClientConn
 	picker *picker
 
-	tasks       map[string]*api.Task       // contains all managed tasks
-	assigned    map[string]*api.Task       // contains current assignment set
-	controllers map[string]exec.Controller // contains all controllers
+	tasks       map[string]*api.Task        // contains all managed tasks
+	assigned    map[string]*api.Task        // contains current assignment set
+	controllers map[string]exec.Controller  // contains all controllers
+	reports     map[string]taskStatusReport // pending reports, indexed by task ID
 
 	statusq chan taskStatusReport
 
@@ -52,6 +53,7 @@ func New(config *Config) (*Agent, error) {
 		tasks:       make(map[string]*api.Task),
 		assigned:    make(map[string]*api.Task),
 		controllers: make(map[string]exec.Controller),
+		reports:     make(map[string]taskStatusReport),
 
 		statusq: make(chan taskStatusReport),
 
@@ -322,6 +324,12 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 			continue
 		}
 		delete(a.assigned, id)
+		if report, ok := a.reports[id]; ok {
+			if report.response != nil {
+				report.response <- errTaskNotAssigned
+				delete(a.reports, id)
+			}
+		}
 
 		ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", id))
 
@@ -341,6 +349,29 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 }
 
 func (a *Agent) handleTaskStatusReport(ctx context.Context, session *session, report taskStatusReport) error {
+	t, ok := a.tasks[report.taskID]
+	if !ok {
+		return errTaskUnknown
+	}
+
+	if report.state > api.TaskStateRunning || t.DesiredState >= report.state {
+		return a.unblockTaskStatusReport(ctx, session, report)
+	}
+
+	if report.response != nil {
+		// Save report to unblock it once the manager sets a high enough
+		// DesiredState.
+		if existingReport, ok := a.reports[report.taskID]; ok && existingReport.response != report.response {
+			// It should not be possible for a task to be blocking on two
+			// report() calls simultaneously.
+			panic("duplicate blocked report")
+		}
+		a.reports[report.taskID] = report
+	}
+	return nil
+}
+
+func (a *Agent) unblockTaskStatusReport(ctx context.Context, session *session, report taskStatusReport) error {
 	var respErr error
 	status, err := a.updateStatus(ctx, report)
 	if err != errTaskUnknown && err != errTaskDead && err != errTaskStatusUpdateNoChange && err != errTaskInvalidStateTransition {
@@ -351,6 +382,7 @@ func (a *Agent) handleTaskStatusReport(ctx context.Context, session *session, re
 		// this channel is always buffered.
 		report.response <- respErr
 		report.response = nil // clear response channel
+		delete(a.reports, report.taskID)
 	}
 
 	if err != nil {
@@ -491,11 +523,6 @@ func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 			return
 		}
 
-		if task.DesiredState < api.TaskStateRunning {
-			log.G(ctx).Error("accepting a task with a desired state below RUNNING is not yet implemented")
-			return
-		}
-
 		if err := exec.Run(ctx, ctlr, reporter); err != nil {
 			log.G(ctx).WithError(err).Error("task run failed")
 			if err := a.report(ctx, taskID, api.TaskStateFailed, "execution failed", err); err != nil {
@@ -517,6 +544,17 @@ func (a *Agent) updateTask(ctx context.Context, t *api.Task) error {
 	t.Status = original.Status // don't overwrite agent's task status
 	a.tasks[t.ID] = t
 	a.assigned[t.ID] = t
+
+	if report, ok := a.reports[t.ID]; ok {
+		// Try to unblock report if the new DesiredState allows it
+		go func() {
+			select {
+			case a.statusq <- report:
+			case <-a.closed:
+			case <-ctx.Done():
+			}
+		}()
+	}
 
 	if !tasksEqual(t, original) {
 		ctlr := a.controllers[t.ID]

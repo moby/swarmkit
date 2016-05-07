@@ -1,10 +1,13 @@
 package orchestrator
 
 import (
+	"time"
+
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
 
@@ -19,7 +22,7 @@ func invalidNode(n *api.Node) bool {
 		n.Spec.Availability == api.NodeAvailabilityDrain
 }
 
-func (o *Orchestrator) initTasks(readTx state.ReadTx) error {
+func (o *Orchestrator) initTasks(ctx context.Context, readTx state.ReadTx) error {
 	tasks, err := readTx.Tasks().Find(state.All)
 	if err != nil {
 		return err
@@ -31,8 +34,50 @@ func (o *Orchestrator) initTasks(readTx state.ReadTx) error {
 				o.restartTasks[t.ID] = struct{}{}
 			}
 		}
+		if t.ServiceID != "" {
+			service := readTx.Services().Get(t.ServiceID)
+			if !isRelatedService(service) {
+				o.restartTasks[t.ID] = struct{}{}
+			}
+		}
 	}
-	return nil
+
+	_, err = o.store.Batch(func(batch state.Batch) error {
+		for _, t := range tasks {
+			if t.ServiceID == "" || t.DesiredState != api.TaskStateReady {
+				continue
+			}
+			service := readTx.Services().Get(t.ServiceID)
+			if !isRelatedService(service) {
+				continue
+			}
+			if service.Spec.Restart != nil && service.Spec.Restart.Delay != 0 {
+				timestamp, err := ptypes.Timestamp(t.Status.Timestamp)
+				if err == nil {
+					restartTime := timestamp.Add(service.Spec.Restart.Delay)
+					restartDelay := restartTime.Sub(time.Now())
+					if restartDelay > service.Spec.Restart.Delay {
+						restartDelay = service.Spec.Restart.Delay
+					}
+					if restartDelay > 0 {
+						o.restarts.DelayStart(ctx, t.ID, restartDelay)
+						continue
+					}
+				}
+			}
+
+			// Start now
+			err := batch.Update(func(tx state.Tx) error {
+				return o.restarts.StartNow(tx, t.ID)
+			})
+			if err != nil {
+				log.G(ctx).WithError(err).WithField("task.id", t.ID).Error("moving task out of delayed state failed")
+			}
+		}
+		return nil
+	})
+
+	return err
 }
 
 func (o *Orchestrator) handleTaskEvent(ctx context.Context, event events.Event) {
@@ -44,13 +89,14 @@ func (o *Orchestrator) handleTaskEvent(ctx context.Context, event events.Event) 
 	case state.EventUpdateNode:
 		o.handleNodeChange(ctx, v.Node)
 	case state.EventDeleteTask:
-		if v.Task.DesiredState == api.TaskStateRunning {
+		if v.Task.DesiredState <= api.TaskStateRunning {
 			service := o.resolveService(ctx, v.Task)
 			if !isRelatedService(service) {
 				return
 			}
 			o.reconcileServices[service.ID] = service
 		}
+		o.restarts.Cancel(v.Task.ID)
 	case state.EventUpdateTask:
 		o.handleTaskChange(ctx, v.Task)
 	case state.EventCreateTask:
@@ -75,21 +121,9 @@ func (o *Orchestrator) tickTasks(ctx context.Context) {
 							return nil
 						}
 
-						t.DesiredState = api.TaskStateDead
-						err := tx.Tasks().Update(t)
-						if err != nil {
-							log.G(ctx).WithError(err).Errorf("failed to set task desired state to dead")
-							return err
-						}
-
 						// Restart task if applicable
-						switch restartCondition(service) {
-						case api.RestartAlways:
-							return tx.Tasks().Create(newTask(service, t.Instance))
-						case api.RestartOnFailure:
-							if t.Status.TerminalState != api.TaskStateCompleted {
-								return tx.Tasks().Create(newTask(service, t.Instance))
-							}
+						if err := o.restarts.Restart(ctx, tx, service, *t); err != nil {
+							return err
 						}
 					}
 					return nil
@@ -165,7 +199,7 @@ func (o *Orchestrator) handleTaskChange(ctx context.Context, t *api.Task) {
 		return
 	}
 
-	if t.Status.TerminalState != api.TaskStateNew ||
+	if t.Status.TerminalState > api.TaskStateNew ||
 		(t.NodeID != "" && invalidNode(n)) ||
 		(t.ServiceID != "" && service == nil) {
 		o.restartTasks[t.ID] = struct{}{}

@@ -64,14 +64,6 @@ func (o *Orchestrator) resolveService(ctx context.Context, task *api.Task) *api.
 	return service
 }
 
-func restartCondition(service *api.Service) api.RestartPolicy_RestartCondition {
-	restartCondition := api.RestartAlways
-	if service.Spec.Restart != nil {
-		restartCondition = service.Spec.Restart.Condition
-	}
-	return restartCondition
-}
-
 func (o *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
 	var (
 		tasks []*api.Task
@@ -88,7 +80,10 @@ func (o *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
 	runningTasks := make([]*api.Task, 0, len(tasks))
 	runningInstances := make(map[uint64]struct{}) // this could be a bitfield...
 	for _, t := range tasks {
-		if t.DesiredState == api.TaskStateRunning {
+		// Technically the check below could just be
+		// t.DesiredState <= api.TaskStateRunning, but ignoring tasks
+		// with DesiredState == NEW simplifies the drainer unit tests.
+		if t.DesiredState >= api.TaskStateReady && t.DesiredState <= api.TaskStateRunning {
 			runningTasks = append(runningTasks, t)
 			runningInstances[t.Instance] = struct{}{}
 		}

@@ -24,7 +24,8 @@ type Orchestrator struct {
 	// doneChan is closed when the state machine terminates.
 	doneChan chan struct{}
 
-	updater *UpdateSupervisor
+	updater  *UpdateSupervisor
+	restarts *RestartSupervisor
 }
 
 // New creates a new orchestrator.
@@ -36,6 +37,7 @@ func New(store state.WatchableStore) *Orchestrator {
 		reconcileServices: make(map[string]*api.Service),
 		restartTasks:      make(map[string]struct{}),
 		updater:           NewUpdateSupervisor(store),
+		restarts:          NewRestartSupervisor(store),
 	}
 }
 
@@ -52,7 +54,7 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 	// nodes
 	var err error
 	o.store.View(func(readTx state.ReadTx) {
-		if err = o.initTasks(readTx); err != nil {
+		if err = o.initTasks(ctx, readTx); err != nil {
 			return
 		}
 		err = o.initServices(readTx)
@@ -84,6 +86,7 @@ func (o *Orchestrator) Stop() {
 	close(o.stopChan)
 	<-o.doneChan
 	o.updater.CancelAll()
+	o.restarts.CancelAll()
 }
 
 func (o *Orchestrator) tick(ctx context.Context) {
@@ -151,4 +154,12 @@ func deleteServiceTasks(ctx context.Context, store state.Store, service *api.Ser
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("task search transaction failed")
 	}
+}
+
+func restartCondition(service *api.Service) api.RestartPolicy_RestartCondition {
+	restartCondition := api.RestartAlways
+	if service.Spec.Restart != nil {
+		restartCondition = service.Spec.Restart.Condition
+	}
+	return restartCondition
 }
