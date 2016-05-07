@@ -262,6 +262,13 @@ enum TaskState {
 	// Remove this message when the states are deemed perfect.
 }
 
+// Container specific status.
+message ContainerStatus {
+	repeated PortConfig exposed_ports = 1;
+
+	// TODO(aluzzardi): Add container specific status information such as ExitCode.
+}
+
 message TaskStatus {
 	Timestamp timestamp = 1;
 
@@ -292,6 +299,11 @@ message TaskStatus {
 	//
 	// TODO(stevvooe) Integrate this field with the error interface.
 	string err = 5;
+
+	// Container status contains container specific status information.
+	oneof runtime_status {
+		ContainerStatus container = 6;
+	}
 }
 
 // IPAMConfig specifies parameters for IP Address Management.
