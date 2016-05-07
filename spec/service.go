@@ -11,6 +11,8 @@ import (
 	"github.com/pmezard/go-difflib/difflib"
 )
 
+const defaultRestartDelay = 5 * time.Second
+
 // ContainerConfig is a human representation of the ContainerSpec
 type ContainerConfig struct {
 	Image string `yaml:"image,omitempty"`
@@ -209,7 +211,11 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 	case "", "always":
 		spec.Restart.Condition = api.RestartAlways
 	}
-	spec.Restart.Delay, _ = time.ParseDuration(s.RestartDelay)
+	if s.RestartDelay == "" {
+		spec.Restart.Delay = defaultRestartDelay
+	} else {
+		spec.Restart.Delay, _ = time.ParseDuration(s.RestartDelay)
+	}
 
 	return spec
 }
