@@ -1476,6 +1476,10 @@ func extensionToGoStringCluster(e map[int32]github_com_gogo_protobuf_proto.Exten
 var _ context.Context
 var _ grpc.ClientConn
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion2
+
 // Client API for Cluster service
 
 type ClusterClient interface {
@@ -1729,256 +1733,382 @@ func RegisterClusterServer(s *grpc.Server, srv ClusterServer) {
 	s.RegisterService(&_Cluster_serviceDesc, srv)
 }
 
-func _Cluster_GetNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_GetNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetNodeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).GetNode(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).GetNode(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/GetNode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).GetNode(ctx, req.(*GetNodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_ListNodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_ListNodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListNodesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).ListNodes(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).ListNodes(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/ListNodes",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).ListNodes(ctx, req.(*ListNodesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_UpdateNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_UpdateNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateNodeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).UpdateNode(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).UpdateNode(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/UpdateNode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).UpdateNode(ctx, req.(*UpdateNodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_GetTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_GetTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).GetTask(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).GetTask(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/GetTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).GetTask(ctx, req.(*GetTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_ListTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_ListTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListTasksRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).ListTasks(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).ListTasks(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/ListTasks",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).ListTasks(ctx, req.(*ListTasksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_RemoveTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_RemoveTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RemoveTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).RemoveTask(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).RemoveTask(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/RemoveTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).RemoveTask(ctx, req.(*RemoveTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_GetService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_GetService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetServiceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).GetService(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).GetService(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/GetService",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).GetService(ctx, req.(*GetServiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_ListServices_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_ListServices_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListServicesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).ListServices(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).ListServices(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/ListServices",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).ListServices(ctx, req.(*ListServicesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_CreateService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_CreateService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateServiceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).CreateService(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).CreateService(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/CreateService",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).CreateService(ctx, req.(*CreateServiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_UpdateService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_UpdateService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateServiceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).UpdateService(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).UpdateService(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/UpdateService",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).UpdateService(ctx, req.(*UpdateServiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_RemoveService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_RemoveService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RemoveServiceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).RemoveService(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).RemoveService(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/RemoveService",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).RemoveService(ctx, req.(*RemoveServiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_GetNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_GetNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetNetworkRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).GetNetwork(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).GetNetwork(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/GetNetwork",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).GetNetwork(ctx, req.(*GetNetworkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_ListNetworks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_ListNetworks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListNetworksRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).ListNetworks(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).ListNetworks(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/ListNetworks",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).ListNetworks(ctx, req.(*ListNetworksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_CreateNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_CreateNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateNetworkRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).CreateNetwork(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).CreateNetwork(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/CreateNetwork",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).CreateNetwork(ctx, req.(*CreateNetworkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_RemoveNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_RemoveNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RemoveNetworkRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).RemoveNetwork(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).RemoveNetwork(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/RemoveNetwork",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).RemoveNetwork(ctx, req.(*RemoveNetworkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_GetVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_GetVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetVolumeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).GetVolume(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).GetVolume(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/GetVolume",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).GetVolume(ctx, req.(*GetVolumeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_ListVolumes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_ListVolumes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListVolumesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).ListVolumes(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).ListVolumes(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/ListVolumes",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).ListVolumes(ctx, req.(*ListVolumesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_CreateVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_CreateVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateVolumeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).CreateVolume(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).CreateVolume(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/CreateVolume",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).CreateVolume(ctx, req.(*CreateVolumeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_RemoveVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_RemoveVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RemoveVolumeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).RemoveVolume(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).RemoveVolume(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/RemoveVolume",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).RemoveVolume(ctx, req.(*RemoveVolumeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_ListManagers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_ListManagers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListManagersRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).ListManagers(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).ListManagers(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/ListManagers",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).ListManagers(ctx, req.(*ListManagersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_RemoveManager_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_RemoveManager_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RemoveManagerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).RemoveManager(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).RemoveManager(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Cluster/RemoveManager",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).RemoveManager(ctx, req.(*RemoveManagerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _Cluster_serviceDesc = grpc.ServiceDesc{

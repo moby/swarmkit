@@ -508,6 +508,10 @@ func extensionToGoStringDispatcher(e map[int32]github_com_gogo_protobuf_proto.Ex
 var _ context.Context
 var _ grpc.ClientConn
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion2
+
 // Client API for Dispatcher service
 
 type DispatcherClient interface {
@@ -655,16 +659,22 @@ func RegisterDispatcherServer(s *grpc.Server, srv DispatcherServer) {
 	s.RegisterService(&_Dispatcher_serviceDesc, srv)
 }
 
-func _Dispatcher_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Dispatcher_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RegisterRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(DispatcherServer).Register(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(DispatcherServer).Register(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Dispatcher/Register",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DispatcherServer).Register(ctx, req.(*RegisterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Dispatcher_Session_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -688,28 +698,40 @@ func (x *dispatcherSessionServer) Send(m *SessionMessage) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _Dispatcher_Heartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Dispatcher_Heartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HeartbeatRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(DispatcherServer).Heartbeat(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(DispatcherServer).Heartbeat(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Dispatcher/Heartbeat",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DispatcherServer).Heartbeat(ctx, req.(*HeartbeatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Dispatcher_UpdateTaskStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Dispatcher_UpdateTaskStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateTaskStatusRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(DispatcherServer).UpdateTaskStatus(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(DispatcherServer).UpdateTaskStatus(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Dispatcher/UpdateTaskStatus",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DispatcherServer).UpdateTaskStatus(ctx, req.(*UpdateTaskStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Dispatcher_Tasks_Handler(srv interface{}, stream grpc.ServerStream) error {
