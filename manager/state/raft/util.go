@@ -18,11 +18,8 @@ type Raft struct {
 
 // dial returns a grpc client connection
 func dial(addr string, protocol string, creds credentials.TransportAuthenticator, timeout time.Duration) (*grpc.ClientConn, error) {
-	backoffConfig := *grpc.DefaultBackoffConfig
-	backoffConfig.MaxDelay = 2 * time.Second
-
 	grpcOptions := []grpc.DialOption{
-		grpc.WithBackoffConfig(&backoffConfig),
+		grpc.WithBackoffMaxDelay(2 * time.Second),
 		grpc.WithTransportCredentials(creds),
 	}
 
