@@ -195,7 +195,7 @@ func (s *Scheduler) updateTask(ctx context.Context, t *api.Task) int {
 		if oldTask != nil {
 			s.deleteTask(ctx, oldTask)
 		}
-		return 0
+		return 1
 	}
 
 	if t.NodeID == "" {
@@ -378,7 +378,7 @@ func (s *Scheduler) scheduleTask(ctx context.Context, t *api.Task) *api.Task {
 	pipeline := NewPipeline(t)
 	n, _ := s.nodeHeap.findMin(pipeline.Process, s.scanAllNodes)
 	if n == nil {
-		log.G(ctx).WithField("task.id", t.ID).Debug("No nodes available to assign tasks to")
+		log.G(ctx).WithField("task.id", t.ID).Debug("No suitable node available for task")
 		return nil
 	}
 

@@ -7,6 +7,7 @@ var (
 		// Always check for readiness first.
 		&ReadyFilter{},
 		&ResourceFilter{},
+		&PortFilter{},
 	}
 )
 
