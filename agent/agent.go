@@ -236,15 +236,12 @@ func (a *Agent) connect(ctx context.Context) error {
 		return err
 	}
 
-	backoff := *grpc.DefaultBackoffConfig
-	backoff.MaxDelay = maxSessionFailureBackoff
-
 	creds := a.config.SecurityConfig.ClientTLSCreds
 	a.picker = newPicker(manager, a.config.Managers)
 	a.conn, err = grpc.Dial(manager,
 		grpc.WithPicker(a.picker),
 		grpc.WithTransportCredentials(creds),
-		grpc.WithBackoffConfig(&backoff))
+		grpc.WithBackoffMaxDelay(maxSessionFailureBackoff))
 	if err != nil {
 		return err
 	}

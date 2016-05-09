@@ -236,11 +236,8 @@ func (m *Manager) Run(ctx context.Context) error {
 		}
 	}()
 
-	backoffConfig := *grpc.DefaultBackoffConfig
-	backoffConfig.MaxDelay = 2 * time.Second
-
 	proxyOpts := []grpc.DialOption{
-		grpc.WithBackoffConfig(&backoffConfig),
+		grpc.WithBackoffMaxDelay(2 * time.Second),
 		grpc.WithTransportCredentials(m.config.SecurityConfig.ClientTLSCreds),
 	}
 
