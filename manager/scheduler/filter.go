@@ -68,3 +68,35 @@ func (f *ResourceFilter) Check(t *api.Task, n *NodeInfo) bool {
 
 	return true
 }
+
+// PortFilter checks that the node has the requested network ports available.
+type PortFilter struct {
+}
+
+// Enabled returns true when the filter is enabled for a given task.
+func (f *PortFilter) Enabled(t *api.Task) bool {
+	c := t.Spec.GetContainer()
+	if c == nil || len(c.ExposedPorts) == 0 {
+		return false
+	}
+	return true
+}
+
+// Check returns true if the task can be scheduled into the given node.
+func (f *PortFilter) Check(t *api.Task, n *NodeInfo) bool {
+	container := t.Spec.GetContainer()
+	if container == nil {
+		return true
+	}
+
+	for _, ep := range container.ExposedPorts {
+		if ep.HostPort == 0 {
+			continue
+		}
+		if _, found := n.ReservedPorts[ep.HostPort]; found {
+			return false
+		}
+	}
+
+	return true
+}
