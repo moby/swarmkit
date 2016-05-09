@@ -14,7 +14,7 @@ PACKAGES=$(shell go list ./... | grep -v /vendor/)
 COMMANDS=swarmd swarmctl swarm-bench protoc-gen-gogoswarm
 BINARIES=$(addprefix bin/,$(COMMANDS))
 
-GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
+GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION) -linkmode external -extldflags \"-static -lpthread -Wl,--unresolved-symbols=ignore-in-object-files\""
 
 .PHONY: clean all fmt vet lint build binaries test setup checkprotos coverage ci check help
 .DEFAULT: default
