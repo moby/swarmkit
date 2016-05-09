@@ -431,6 +431,11 @@
 			"Rev": "43a2e0b1c32252bfbbdf81f7faa7a88fb3fa4028"
 		},
 		{
+			"ImportPath": "github.com/gogo/protobuf/plugin/compare",
+			"Comment": "v0.2-15-g43a2e0b",
+			"Rev": "43a2e0b1c32252bfbbdf81f7faa7a88fb3fa4028"
+		},
+		{
 			"ImportPath": "github.com/gogo/protobuf/plugin/defaultcheck",
 			"Comment": "v0.2-15-g43a2e0b",
 			"Rev": "43a2e0b1c32252bfbbdf81f7faa7a88fb3fa4028"
