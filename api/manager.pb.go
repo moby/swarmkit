@@ -125,6 +125,10 @@ func extensionToGoStringManager(e map[int32]github_com_gogo_protobuf_proto.Exten
 var _ context.Context
 var _ grpc.ClientConn
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion2
+
 // Client API for Manager service
 
 type ManagerClient interface {
@@ -162,16 +166,22 @@ func RegisterManagerServer(s *grpc.Server, srv ManagerServer) {
 	s.RegisterService(&_Manager_serviceDesc, srv)
 }
 
-func _Manager_NodeCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Manager_NodeCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(NodeCountRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ManagerServer).NodeCount(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ManagerServer).NodeCount(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Manager/NodeCount",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ManagerServer).NodeCount(ctx, req.(*NodeCountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _Manager_serviceDesc = grpc.ServiceDesc{

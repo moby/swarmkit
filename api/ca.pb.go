@@ -269,6 +269,10 @@ func extensionToGoStringCa(e map[int32]github_com_gogo_protobuf_proto.Extension)
 var _ context.Context
 var _ grpc.ClientConn
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion2
+
 // Client API for CA service
 
 type CAClient interface {
@@ -313,28 +317,40 @@ func RegisterCAServer(s *grpc.Server, srv CAServer) {
 	s.RegisterService(&_CA_serviceDesc, srv)
 }
 
-func _CA_IssueCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _CA_IssueCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(IssueCertificateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(CAServer).IssueCertificate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(CAServer).IssueCertificate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.CA/IssueCertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CAServer).IssueCertificate(ctx, req.(*IssueCertificateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _CA_GetRootCACertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _CA_GetRootCACertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetRootCACertificateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(CAServer).GetRootCACertificate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(CAServer).GetRootCACertificate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.CA/GetRootCACertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CAServer).GetRootCACertificate(ctx, req.(*GetRootCACertificateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _CA_serviceDesc = grpc.ServiceDesc{
@@ -403,13 +419,11 @@ func (m *IssueCertificateRequest) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintCa(data, i, uint64(len(m.Role)))
 		i += copy(data[i:], m.Role)
 	}
-	if m.CSR != nil {
-		if len(m.CSR) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintCa(data, i, uint64(len(m.CSR)))
-			i += copy(data[i:], m.CSR)
-		}
+	if len(m.CSR) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintCa(data, i, uint64(len(m.CSR)))
+		i += copy(data[i:], m.CSR)
 	}
 	return i, nil
 }
@@ -439,13 +453,11 @@ func (m *IssueCertificateResponse) MarshalTo(data []byte) (int, error) {
 		}
 		i += n1
 	}
-	if m.CertificateChain != nil {
-		if len(m.CertificateChain) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintCa(data, i, uint64(len(m.CertificateChain)))
-			i += copy(data[i:], m.CertificateChain)
-		}
+	if len(m.CertificateChain) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintCa(data, i, uint64(len(m.CertificateChain)))
+		i += copy(data[i:], m.CertificateChain)
 	}
 	return i, nil
 }
@@ -483,13 +495,11 @@ func (m *GetRootCACertificateResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Certificate != nil {
-		if len(m.Certificate) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintCa(data, i, uint64(len(m.Certificate)))
-			i += copy(data[i:], m.Certificate)
-		}
+	if len(m.Certificate) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintCa(data, i, uint64(len(m.Certificate)))
+		i += copy(data[i:], m.Certificate)
 	}
 	return i, nil
 }
@@ -610,11 +620,9 @@ func (m *IssueCertificateRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovCa(uint64(l))
 	}
-	if m.CSR != nil {
-		l = len(m.CSR)
-		if l > 0 {
-			n += 1 + l + sovCa(uint64(l))
-		}
+	l = len(m.CSR)
+	if l > 0 {
+		n += 1 + l + sovCa(uint64(l))
 	}
 	return n
 }
@@ -626,11 +634,9 @@ func (m *IssueCertificateResponse) Size() (n int) {
 		l = m.Status.Size()
 		n += 1 + l + sovCa(uint64(l))
 	}
-	if m.CertificateChain != nil {
-		l = len(m.CertificateChain)
-		if l > 0 {
-			n += 1 + l + sovCa(uint64(l))
-		}
+	l = len(m.CertificateChain)
+	if l > 0 {
+		n += 1 + l + sovCa(uint64(l))
 	}
 	return n
 }
@@ -644,11 +650,9 @@ func (m *GetRootCACertificateRequest) Size() (n int) {
 func (m *GetRootCACertificateResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.Certificate != nil {
-		l = len(m.Certificate)
-		if l > 0 {
-			n += 1 + l + sovCa(uint64(l))
-		}
+	l = len(m.Certificate)
+	if l > 0 {
+		n += 1 + l + sovCa(uint64(l))
 	}
 	return n
 }
