@@ -332,23 +332,25 @@ func _CA_IssueCertificate_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-<<<<<<< cc47d6cf701fda325c99d19001dc7cdb9f88e541
-func _CA_GetRootCACertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-=======
-func _CA_CertificateStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _CA_CertificateStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CertificateStatusRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(CAServer).CertificateStatus(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(CAServer).CertificateStatus(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.CA/CertificateStatus",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CAServer).CertificateStatus(ctx, req.(*CertificateStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _CA_GetRootCACertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
->>>>>>> Changing Cert issuance to be Async, adding raft store for certs
+func _CA_GetRootCACertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetRootCACertificateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
@@ -435,13 +437,11 @@ func (m *CertificateStatusResponse) MarshalTo(data []byte) (int, error) {
 		}
 		i += n1
 	}
-	if m.Certificate != nil {
-		if len(m.Certificate) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintCa(data, i, uint64(len(m.Certificate)))
-			i += copy(data[i:], m.Certificate)
-		}
+	if len(m.Certificate) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintCa(data, i, uint64(len(m.Certificate)))
+		i += copy(data[i:], m.Certificate)
 	}
 	return i, nil
 }
@@ -494,23 +494,8 @@ func (m *IssueCertificateResponse) MarshalTo(data []byte) (int, error) {
 	if len(m.Token) > 0 {
 		data[i] = 0xa
 		i++
-<<<<<<< cc47d6cf701fda325c99d19001dc7cdb9f88e541
-		i = encodeVarintCa(data, i, uint64(m.Status.Size()))
-		n1, err := m.Status.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
-	if len(m.CertificateChain) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintCa(data, i, uint64(len(m.CertificateChain)))
-		i += copy(data[i:], m.CertificateChain)
-=======
 		i = encodeVarintCa(data, i, uint64(len(m.Token)))
 		i += copy(data[i:], m.Token)
->>>>>>> Changing Cert issuance to be Async, adding raft store for certs
 	}
 	return i, nil
 }
@@ -697,11 +682,9 @@ func (m *CertificateStatusResponse) Size() (n int) {
 		l = m.Status.Size()
 		n += 1 + l + sovCa(uint64(l))
 	}
-	if m.Certificate != nil {
-		l = len(m.Certificate)
-		if l > 0 {
-			n += 1 + l + sovCa(uint64(l))
-		}
+	l = len(m.Certificate)
+	if l > 0 {
+		n += 1 + l + sovCa(uint64(l))
 	}
 	return n
 }
@@ -727,13 +710,6 @@ func (m *IssueCertificateResponse) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovCa(uint64(l))
 	}
-<<<<<<< cc47d6cf701fda325c99d19001dc7cdb9f88e541
-	l = len(m.CertificateChain)
-	if l > 0 {
-		n += 1 + l + sovCa(uint64(l))
-	}
-=======
->>>>>>> Changing Cert issuance to be Async, adding raft store for certs
 	return n
 }
 
