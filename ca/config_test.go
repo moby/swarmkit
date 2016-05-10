@@ -269,7 +269,7 @@ func TestLoadOrCreateManagerSecurityConfigNoCA(t *testing.T) {
 
 	ctx := context.Background()
 
-	managerConfig, err := LoadOrCreateManagerSecurityConfig(ctx, tempBaseDir, "", "", true)
+	managerConfig, err := LoadOrCreateManagerSecurityConfig(ctx, tempBaseDir, "", "")
 	assert.NoError(t, err)
 	assert.NotNil(t, managerConfig)
 	assert.NotNil(t, managerConfig.Signer)
@@ -277,7 +277,6 @@ func TestLoadOrCreateManagerSecurityConfigNoCA(t *testing.T) {
 	assert.NotNil(t, managerConfig.ServerTLSCreds)
 	assert.NotNil(t, managerConfig.RootCAPool)
 	assert.True(t, managerConfig.RootCA)
-	assert.False(t, managerConfig.IntCA)
 }
 
 func TestLoadOrCreateManagerSecurityConfigNoCARemoteManager(t *testing.T) {
@@ -310,7 +309,7 @@ func TestLoadOrCreateManagerSecurityConfigNoCARemoteManager(t *testing.T) {
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(tempBaseDir)
-	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ctx, tempBaseDir, "", l.Addr().String(), true)
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ctx, tempBaseDir, "", l.Addr().String())
 	assert.NoError(t, err)
 	assert.NotNil(t, newManagerSecurityConfig)
 	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
@@ -318,7 +317,6 @@ func TestLoadOrCreateManagerSecurityConfigNoCARemoteManager(t *testing.T) {
 	assert.NotNil(t, newManagerSecurityConfig.RootCAPool)
 	assert.Nil(t, newManagerSecurityConfig.Signer)
 	assert.False(t, newManagerSecurityConfig.RootCA)
-	assert.False(t, newManagerSecurityConfig.IntCA)
 
 	grpcServer.Stop()
 
@@ -356,7 +354,7 @@ func TestLoadOrCreateManagerSecurityConfigNoCerts(t *testing.T) {
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(paths.ManagerCert)
-	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ctx, tempBaseDir, "", l.Addr().String(), true)
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ctx, tempBaseDir, "", l.Addr().String())
 	assert.NoError(t, err)
 	assert.NotNil(t, newManagerSecurityConfig)
 	assert.NotNil(t, newManagerSecurityConfig.Signer)
@@ -364,7 +362,6 @@ func TestLoadOrCreateManagerSecurityConfigNoCerts(t *testing.T) {
 	assert.NotNil(t, newManagerSecurityConfig.ServerTLSCreds)
 	assert.NotNil(t, newManagerSecurityConfig.RootCAPool)
 	assert.True(t, newManagerSecurityConfig.RootCA)
-	assert.False(t, newManagerSecurityConfig.IntCA)
 
 	grpcServer.Stop()
 
@@ -402,7 +399,7 @@ func TestLoadOrCreateManagerSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 
 	// Remove the certificate from the temp dir and try loading with a new manager
 	os.RemoveAll(paths.ManagerCert)
-	_, err = LoadOrCreateManagerSecurityConfig(ctx, tempBaseDir, "", "", true)
+	_, err = LoadOrCreateManagerSecurityConfig(ctx, tempBaseDir, "", "")
 	assert.Error(t, err, "address of a manager is required to join a cluster")
 
 	grpcServer.Stop()
