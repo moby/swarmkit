@@ -222,6 +222,10 @@ func extensionToGoStringService(e map[int32]github_com_gogo_protobuf_proto.Exten
 var _ context.Context
 var _ grpc.ClientConn
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion2
+
 // Client API for RouteGuide service
 
 type RouteGuideClient interface {
@@ -398,16 +402,22 @@ func RegisterRouteGuideServer(s *grpc.Server, srv RouteGuideServer) {
 	s.RegisterService(&_RouteGuide_serviceDesc, srv)
 }
 
-func _RouteGuide_GetFeature_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _RouteGuide_GetFeature_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Point)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(RouteGuideServer).GetFeature(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(RouteGuideServer).GetFeature(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/routeguide.RouteGuide/GetFeature",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RouteGuideServer).GetFeature(ctx, req.(*Point))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _RouteGuide_ListFeatures_Handler(srv interface{}, stream grpc.ServerStream) error {
