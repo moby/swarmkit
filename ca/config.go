@@ -23,8 +23,6 @@ import (
 const (
 	rootCACertFilename     = "swarm-root-ca.crt"
 	rootCAKeyFilename      = "swarm-root-ca.key"
-	intCACertFilename      = "swarm-intermediate-ca.crt"
-	intCAKeyFilename       = "swarm-intermediate-ca.key"
 	managerTLSCertFilename = "swarm-manager.crt"
 	managerTLSKeyFilename  = "swarm-manager.key"
 	managerCSRFilename     = "swarm-manager.csr"
@@ -85,7 +83,6 @@ type ManagerSecurityConfig struct {
 	RootCACert     []byte
 	RootCAPool     *x509.CertPool
 	RootCA         bool
-	IntCA          bool
 	ServerTLSCreds credentials.TransportAuthenticator
 	ClientTLSCreds credentials.TransportAuthenticator
 	Signer         signer.Signer
@@ -131,7 +128,6 @@ type SecurityConfigPaths struct {
 	AgentCert, AgentKey, AgentCSR       string
 	ManagerCert, ManagerKey, ManagerCSR string
 	RootCACert, RootCAKey               string
-	IntCACert, IntCAKey                 string
 }
 
 // NewConfigPaths returns the absolute paths to all of the different types of files
@@ -144,8 +140,6 @@ func NewConfigPaths(baseCertDir string) *SecurityConfigPaths {
 	pathToManagerCSR := filepath.Join(baseCertDir, managerCSRFilename)
 	pathToRootCACert := filepath.Join(baseCertDir, rootCACertFilename)
 	pathToRootCAKey := filepath.Join(baseCertDir, rootCAKeyFilename)
-	pathToIntCACert := filepath.Join(baseCertDir, intCACertFilename)
-	pathToIntCAKey := filepath.Join(baseCertDir, intCAKeyFilename)
 
 	return &SecurityConfigPaths{
 		AgentCert:   pathToAgentTLSCert,
@@ -156,8 +150,6 @@ func NewConfigPaths(baseCertDir string) *SecurityConfigPaths {
 		ManagerCSR:  pathToManagerCSR,
 		RootCACert:  pathToRootCACert,
 		RootCAKey:   pathToRootCAKey,
-		IntCACert:   pathToIntCACert,
-		IntCAKey:    pathToIntCAKey,
 	}
 }
 
@@ -206,16 +198,6 @@ func loadManagerSecurityConfig(baseCertDir string) *ManagerSecurityConfig {
 	if err == nil {
 		log.Debugf("loaded a root CA from: %s\n", paths.RootCACert)
 		securityConfig.RootCA = true
-	}
-
-	// If there was no root CA but there is an intermediate CA, we're going to get a signer from it
-	// and set intermediateCA to true
-	if securityConfig.Signer == nil {
-		securityConfig.Signer, err = local.NewSignerFromFile(paths.IntCACert, paths.IntCAKey, DefaultPolicy())
-		if err == nil {
-			log.Debugf("loaded an intermediate CA from: %s\n", paths.IntCACert)
-			securityConfig.IntCA = true
-		}
 	}
 
 	serverCert, err := tls.LoadX509KeyPair(paths.ManagerCert, paths.ManagerKey)
@@ -319,11 +301,9 @@ func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash, m
 
 // LoadOrCreateManagerSecurityConfig encapsulates the security logic behind starting or joining a cluster
 // as a Manager. Every manager requires at least a set of TLS certificates with which to serve
-// the cluster and the dispatcher's server. Additionally, passing the CA param as true means that
-// this manager will also be taking intermediate CA responsabilities, and should ensure to request
-// an intermediate certificate. Finally, if no manager addresses are provided, we assume we're
+// the cluster and the dispatcher's server. If no manager addresses are provided, we assume we're
 // creating a new Cluster, and this manager will have to generate its own self-signed CA.
-func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash, managerAddr string, CA bool) (*ManagerSecurityConfig, error) {
+func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash, managerAddr string) (*ManagerSecurityConfig, error) {
 	paths := NewConfigPaths(baseCertDir)
 
 	// Attempt to load the current files available on this baseDir
@@ -434,10 +414,6 @@ func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash,
 	// Write the chain to disk
 	if err := ioutil.WriteFile(paths.ManagerCert, signedCert, 0644); err != nil {
 		return nil, err
-	}
-
-	if CA {
-		// TODO(diogo): If CA is provided we need to go get ourselves an intermediate
 	}
 
 	// Create a valid TLSKeyPair out of the PEM encoded private key and certificate
