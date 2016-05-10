@@ -133,7 +133,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 
 	switch v := ev.(type) {
 	case state.EventCreateNetwork:
-		n := v.Network
+		n := v.Network.Copy()
 		if nc.nwkAllocator.IsAllocated(n) {
 			break
 		}
@@ -146,7 +146,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		// We successfully allocated a network. Time to revisit unallocated tasks.
 		a.procUnallocatedTasks(ctx, nc)
 	case state.EventDeleteNetwork:
-		n := v.Network
+		n := v.Network.Copy()
 
 		// The assumption here is that all dependent objects
 		// have been cleaned up when we are here so the only
@@ -156,7 +156,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			log.G(ctx).Errorf("Failed during network free for network %s: %v", n.ID, err)
 		}
 	case state.EventCreateService:
-		s := v.Service
+		s := v.Service.Copy()
 
 		// No endpoint configuration. No network allocation needed.
 		if s.Spec.Endpoint == nil {
@@ -175,7 +175,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		// We successfully allocated a service. Time to revisit unallocated tasks.
 		a.procUnallocatedTasks(ctx, nc)
 	case state.EventUpdateService:
-		s := v.Service
+		s := v.Service.Copy()
 
 		// No endpoint configuration and no endpoint state. Nothing to do.
 		if s.Spec.Endpoint == nil && s.Endpoint == nil {
@@ -194,7 +194,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		// We successfully allocated a service. Time to revisit unallocated tasks.
 		a.procUnallocatedTasks(ctx, nc)
 	case state.EventDeleteService:
-		s := v.Service
+		s := v.Service.Copy()
 
 		// No endpoint configuration. No network allocation needed.
 		if s.Spec.Endpoint == nil {
@@ -232,12 +232,12 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 
 	switch v := ev.(type) {
 	case state.EventCreateTask:
-		t = v.Task
+		t = v.Task.Copy()
 	case state.EventUpdateTask:
-		t = v.Task
+		t = v.Task.Copy()
 	case state.EventDeleteTask:
 		isDelete = true
-		t = v.Task
+		t = v.Task.Copy()
 	case state.EventCommit:
 		a.procUnallocatedTasks(ctx, nc)
 		return
