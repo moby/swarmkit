@@ -12,7 +12,6 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
@@ -36,7 +35,7 @@ func (mp *mockProposer) GetVersion() *api.Version {
 type testServer struct {
 	Server *Server
 	Client api.ClusterClient
-	Store  state.WatchableStore
+	Store  *store.MemoryStore
 
 	grpcServer *grpc.Server
 	clientConn *grpc.ClientConn

@@ -8,13 +8,14 @@ import (
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 )
 
 // An Orchestrator runs a reconciliation loop to create and destroy
 // tasks as necessary for the running services.
 type Orchestrator struct {
-	store state.WatchableStore
+	store *store.MemoryStore
 
 	reconcileServices map[string]*api.Service
 	restartTasks      map[string]struct{}
@@ -29,7 +30,7 @@ type Orchestrator struct {
 }
 
 // New creates a new orchestrator.
-func New(store state.WatchableStore) *Orchestrator {
+func New(store *store.MemoryStore) *Orchestrator {
 	return &Orchestrator{
 		store:             store,
 		stopChan:          make(chan struct{}),
@@ -53,7 +54,7 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 	// Balance existing services and drain initial tasks attached to invalid
 	// nodes
 	var err error
-	o.store.View(func(readTx state.ReadTx) {
+	o.store.View(func(readTx store.ReadTx) {
 		if err = o.initTasks(ctx, readTx); err != nil {
 			return
 		}
@@ -124,23 +125,23 @@ func isRelatedService(service *api.Service) bool {
 	return service != nil && service.Spec.Mode == api.ServiceModeRunning
 }
 
-func deleteServiceTasks(ctx context.Context, store state.Store, service *api.Service) {
+func deleteServiceTasks(ctx context.Context, s *store.MemoryStore, service *api.Service) {
 	var (
 		tasks []*api.Task
 		err   error
 	)
-	store.View(func(tx state.ReadTx) {
-		tasks, err = tx.Tasks().Find(state.ByServiceID(service.ID))
+	s.View(func(tx store.ReadTx) {
+		tasks, err = store.FindTasks(tx, store.ByServiceID(service.ID))
 	})
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("failed to list tasks")
 		return
 	}
 
-	_, err = store.Batch(func(batch state.Batch) error {
+	_, err = s.Batch(func(batch *store.Batch) error {
 		for _, t := range tasks {
-			err := batch.Update(func(tx state.Tx) error {
-				if err := tx.Tasks().Delete(t.ID); err != nil {
+			err := batch.Update(func(tx store.Tx) error {
+				if err := store.DeleteTask(tx, t.ID); err != nil {
 					log.G(ctx).WithError(err).Errorf("failed to delete task")
 				}
 				return nil

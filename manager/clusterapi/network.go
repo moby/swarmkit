@@ -5,7 +5,7 @@ import (
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
-	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -101,8 +101,8 @@ func (s *Server) CreateNetwork(ctx context.Context, request *api.CreateNetworkRe
 		Spec: *request.Spec,
 	}
 
-	err := s.store.Update(func(tx state.Tx) error {
-		return tx.Networks().Create(n)
+	err := s.store.Update(func(tx store.Tx) error {
+		return store.CreateNetwork(tx, n)
 	})
 	if err != nil {
 		return nil, err
@@ -122,8 +122,8 @@ func (s *Server) GetNetwork(ctx context.Context, request *api.GetNetworkRequest)
 	}
 
 	var n *api.Network
-	s.store.View(func(tx state.ReadTx) {
-		n = tx.Networks().Get(request.NetworkID)
+	s.store.View(func(tx store.ReadTx) {
+		n = store.GetNetwork(tx, request.NetworkID)
 	})
 	if n == nil {
 		return nil, grpc.Errorf(codes.NotFound, "network %s not found", request.NetworkID)
@@ -142,11 +142,11 @@ func (s *Server) RemoveNetwork(ctx context.Context, request *api.RemoveNetworkRe
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	err := s.store.Update(func(tx state.Tx) error {
-		return tx.Networks().Delete(request.NetworkID)
+	err := s.store.Update(func(tx store.Tx) error {
+		return store.DeleteNetwork(tx, request.NetworkID)
 	})
 	if err != nil {
-		if err == state.ErrNotExist {
+		if err == store.ErrNotExist {
 			return nil, grpc.Errorf(codes.NotFound, "network %s not found", request.NetworkID)
 		}
 		return nil, err
@@ -161,11 +161,11 @@ func (s *Server) ListNetworks(ctx context.Context, request *api.ListNetworksRequ
 		err      error
 	)
 
-	s.store.View(func(tx state.ReadTx) {
+	s.store.View(func(tx store.ReadTx) {
 		if request.Options == nil || request.Options.Query == "" {
-			networks, err = tx.Networks().Find(state.All)
+			networks, err = store.FindNetworks(tx, store.All)
 		} else {
-			networks, err = tx.Networks().Find(state.ByQuery(request.Options.Query))
+			networks, err = store.FindNetworks(tx, store.ByQuery(request.Options.Query))
 		}
 	})
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
@@ -22,32 +23,32 @@ func invalidNode(n *api.Node) bool {
 		n.Spec.Availability == api.NodeAvailabilityDrain
 }
 
-func (o *Orchestrator) initTasks(ctx context.Context, readTx state.ReadTx) error {
-	tasks, err := readTx.Tasks().Find(state.All)
+func (o *Orchestrator) initTasks(ctx context.Context, readTx store.ReadTx) error {
+	tasks, err := store.FindTasks(readTx, store.All)
 	if err != nil {
 		return err
 	}
 	for _, t := range tasks {
 		if t.NodeID != "" {
-			n := readTx.Nodes().Get(t.NodeID)
+			n := store.GetNode(readTx, t.NodeID)
 			if invalidNode(n) && t.Status.State <= api.TaskStateRunning && t.DesiredState <= api.TaskStateRunning {
 				o.restartTasks[t.ID] = struct{}{}
 			}
 		}
 		if t.ServiceID != "" {
-			service := readTx.Services().Get(t.ServiceID)
+			service := store.GetService(readTx, t.ServiceID)
 			if !isRelatedService(service) {
 				o.restartTasks[t.ID] = struct{}{}
 			}
 		}
 	}
 
-	_, err = o.store.Batch(func(batch state.Batch) error {
+	_, err = o.store.Batch(func(batch *store.Batch) error {
 		for _, t := range tasks {
 			if t.ServiceID == "" || t.DesiredState != api.TaskStateReady {
 				continue
 			}
-			service := readTx.Services().Get(t.ServiceID)
+			service := store.GetService(readTx, t.ServiceID)
 			if !isRelatedService(service) {
 				continue
 			}
@@ -67,7 +68,7 @@ func (o *Orchestrator) initTasks(ctx context.Context, readTx state.ReadTx) error
 			}
 
 			// Start now
-			err := batch.Update(func(tx state.Tx) error {
+			err := batch.Update(func(tx store.Tx) error {
 				return o.restarts.StartNow(tx, t.ID)
 			})
 			if err != nil {
@@ -106,17 +107,17 @@ func (o *Orchestrator) handleTaskEvent(ctx context.Context, event events.Event) 
 
 func (o *Orchestrator) tickTasks(ctx context.Context) {
 	if len(o.restartTasks) > 0 {
-		_, err := o.store.Batch(func(batch state.Batch) error {
+		_, err := o.store.Batch(func(batch *store.Batch) error {
 			for taskID := range o.restartTasks {
-				err := batch.Update(func(tx state.Tx) error {
+				err := batch.Update(func(tx store.Tx) error {
 					// TODO(aaronl): optimistic update?
-					t := tx.Tasks().Get(taskID)
+					t := store.GetTask(tx, taskID)
 					if t != nil {
 						if t.DesiredState > api.TaskStateRunning {
 							return nil
 						}
 
-						service := tx.Services().Get(t.ServiceID)
+						service := store.GetService(tx, t.ServiceID)
 						if !isRelatedService(service) {
 							return nil
 						}
@@ -145,9 +146,9 @@ func (o *Orchestrator) tickTasks(ctx context.Context) {
 
 func (o *Orchestrator) restartTasksByNodeID(ctx context.Context, nodeID string) {
 	var err error
-	o.store.View(func(tx state.ReadTx) {
+	o.store.View(func(tx store.ReadTx) {
 		var tasks []*api.Task
-		tasks, err = tx.Tasks().Find(state.ByNodeID(nodeID))
+		tasks, err = store.FindTasks(tx, store.ByNodeID(nodeID))
 		if err != nil {
 			return
 		}
@@ -156,7 +157,7 @@ func (o *Orchestrator) restartTasksByNodeID(ctx context.Context, nodeID string) 
 			if t.DesiredState > api.TaskStateRunning {
 				continue
 			}
-			service := tx.Services().Get(t.ServiceID)
+			service := store.GetService(tx, t.ServiceID)
 			if isRelatedService(service) {
 				o.restartTasks[t.ID] = struct{}{}
 			}
@@ -186,12 +187,12 @@ func (o *Orchestrator) handleTaskChange(ctx context.Context, t *api.Task) {
 		n       *api.Node
 		service *api.Service
 	)
-	o.store.View(func(tx state.ReadTx) {
+	o.store.View(func(tx store.ReadTx) {
 		if t.NodeID != "" {
-			n = tx.Nodes().Get(t.NodeID)
+			n = store.GetNode(tx, t.NodeID)
 		}
 		if t.ServiceID != "" {
-			service = tx.Services().Get(t.ServiceID)
+			service = store.GetService(tx, t.ServiceID)
 		}
 	})
 

@@ -7,6 +7,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 )
 
@@ -17,7 +18,7 @@ type schedulingDecision struct {
 
 // Scheduler assigns tasks to nodes.
 type Scheduler struct {
-	store           state.WatchableStore
+	store           *store.MemoryStore
 	unassignedTasks *list.List
 	// preassignedTasks already have NodeID, need resource validation
 	preassignedTasks map[string]*api.Task
@@ -36,7 +37,7 @@ type Scheduler struct {
 }
 
 // New creates a new scheduler.
-func New(store state.WatchableStore) *Scheduler {
+func New(store *store.MemoryStore) *Scheduler {
 	return &Scheduler{
 		store:            store,
 		unassignedTasks:  list.New(),
@@ -47,8 +48,8 @@ func New(store state.WatchableStore) *Scheduler {
 	}
 }
 
-func (s *Scheduler) setupTasksList(tx state.ReadTx) error {
-	tasks, err := tx.Tasks().Find(state.All)
+func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
+	tasks, err := store.FindTasks(tx, store.All)
 	if err != nil {
 		return err
 	}
@@ -89,7 +90,7 @@ func (s *Scheduler) setupTasksList(tx state.ReadTx) error {
 func (s *Scheduler) Run(ctx context.Context) error {
 	defer close(s.doneChan)
 
-	updates, cancel, err := state.ViewAndWatch(s.store, s.setupTasksList)
+	updates, cancel, err := store.ViewAndWatch(s.store, s.setupTasksList)
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("snapshot store update failed")
 		return err
@@ -315,22 +316,22 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 	successful = make([]schedulingDecision, 0, len(schedulingDecisions))
 
 	// Apply changes to master store
-	applied, err := s.store.Batch(func(batch state.Batch) error {
+	applied, err := s.store.Batch(func(batch *store.Batch) error {
 		for len(schedulingDecisions) > 0 {
-			err := batch.Update(func(tx state.Tx) error {
+			err := batch.Update(func(tx store.Tx) error {
 				// Update exactly one task inside this Update
 				// callback.
 				for taskID, decision := range schedulingDecisions {
 					delete(schedulingDecisions, taskID)
 
-					t := tx.Tasks().Get(taskID)
+					t := store.GetTask(tx, taskID)
 					if t == nil {
 						// Task no longer exists. Do nothing.
 						failed = append(failed, decision)
 						continue
 					}
 
-					if err := tx.Tasks().Update(decision.new); err != nil {
+					if err := store.UpdateTask(tx, decision.new); err != nil {
 						log.G(ctx).Debugf("scheduler failed to update task %s; will retry", taskID)
 						failed = append(failed, decision)
 						continue
@@ -395,8 +396,8 @@ func (s *Scheduler) scheduleTask(ctx context.Context, t *api.Task) *api.Task {
 	return &newT
 }
 
-func (s *Scheduler) buildNodeHeap(tx state.ReadTx, tasksByNode map[string]map[string]*api.Task) error {
-	nodes, err := tx.Nodes().Find(state.All)
+func (s *Scheduler) buildNodeHeap(tx store.ReadTx, tasksByNode map[string]map[string]*api.Task) error {
+	nodes, err := store.FindNodes(tx, store.All)
 	if err != nil {
 		return err
 	}

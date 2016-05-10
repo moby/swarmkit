@@ -14,19 +14,19 @@ import (
 
 func TestOrchestrator(t *testing.T) {
 	ctx := context.Background()
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
 
-	orchestrator := New(store)
+	orchestrator := New(s)
 
-	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
 	// started. This should result in two tasks when the orchestrator
 	// starts up.
-	err := store.Update(func(tx state.Tx) error {
-		j1 := &api.Service{
+	err := s.Update(func(tx store.Tx) error {
+		s1 := &api.Service{
 			ID: "id1",
 			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
@@ -37,7 +37,7 @@ func TestOrchestrator(t *testing.T) {
 				Mode:      api.ServiceModeRunning,
 			},
 		}
-		assert.NoError(t, tx.Services().Create(j1))
+		assert.NoError(t, store.CreateService(tx, s1))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -56,8 +56,8 @@ func TestOrchestrator(t *testing.T) {
 	assert.Equal(t, observedTask2.Annotations.Name, "name1")
 
 	// Create a second service.
-	err = store.Update(func(tx state.Tx) error {
-		j2 := &api.Service{
+	err = s.Update(func(tx store.Tx) error {
+		s2 := &api.Service{
 			ID: "id2",
 			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
@@ -68,7 +68,7 @@ func TestOrchestrator(t *testing.T) {
 				Mode:      api.ServiceModeRunning,
 			},
 		}
-		assert.NoError(t, tx.Services().Create(j2))
+		assert.NoError(t, store.CreateService(tx, s2))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -78,8 +78,8 @@ func TestOrchestrator(t *testing.T) {
 	assert.Equal(t, observedTask3.Annotations.Name, "name2")
 
 	// Update a service to scale it out to 3 instances
-	err = store.Update(func(tx state.Tx) error {
-		j2 := &api.Service{
+	err = s.Update(func(tx store.Tx) error {
+		s2 := &api.Service{
 			ID: "id2",
 			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
@@ -90,7 +90,7 @@ func TestOrchestrator(t *testing.T) {
 				Mode:      api.ServiceModeRunning,
 			},
 		}
-		assert.NoError(t, tx.Services().Update(j2))
+		assert.NoError(t, store.UpdateService(tx, s2))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -104,8 +104,8 @@ func TestOrchestrator(t *testing.T) {
 	assert.Equal(t, observedTask5.Annotations.Name, "name2")
 
 	// Now scale it back down to 1 instance
-	err = store.Update(func(tx state.Tx) error {
-		j2 := &api.Service{
+	err = s.Update(func(tx store.Tx) error {
+		s2 := &api.Service{
 			ID: "id2",
 			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
@@ -116,7 +116,7 @@ func TestOrchestrator(t *testing.T) {
 				Mode:      api.ServiceModeRunning,
 			},
 		}
-		assert.NoError(t, tx.Services().Update(j2))
+		assert.NoError(t, store.UpdateService(tx, s2))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -131,9 +131,9 @@ func TestOrchestrator(t *testing.T) {
 
 	// There should be one remaining task attached to service id2/name2.
 	var liveTasks []*api.Task
-	store.View(func(readTx state.ReadTx) {
+	s.View(func(readTx store.ReadTx) {
 		var tasks []*api.Task
-		tasks, err = readTx.Tasks().Find(state.ByServiceID("id2"))
+		tasks, err = store.FindTasks(readTx, store.ByServiceID("id2"))
 		for _, t := range tasks {
 			if t.DesiredState == api.TaskStateRunning {
 				liveTasks = append(liveTasks, t)
@@ -145,8 +145,8 @@ func TestOrchestrator(t *testing.T) {
 
 	// Delete the remaining task directly. It should be recreated by the
 	// orchestrator.
-	err = store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Delete(liveTasks[0].ID))
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteTask(tx, liveTasks[0].ID))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -156,8 +156,8 @@ func TestOrchestrator(t *testing.T) {
 	assert.Equal(t, observedTask6.Annotations.Name, "name2")
 
 	// Delete the service. Its remaining task should go away.
-	err = store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Services().Delete("id2"))
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteService(tx, "id2"))
 		return nil
 	})
 	assert.NoError(t, err)

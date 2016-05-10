@@ -2,7 +2,7 @@ package clusterapi
 
 import (
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -24,8 +24,8 @@ func (s *Server) GetNode(ctx context.Context, request *api.GetNodeRequest) (*api
 	}
 
 	var node *api.Node
-	s.store.View(func(tx state.ReadTx) {
-		node = tx.Nodes().Get(request.NodeID)
+	s.store.View(func(tx store.ReadTx) {
+		node = store.GetNode(tx, request.NodeID)
 	})
 	if node == nil {
 		return nil, grpc.Errorf(codes.NotFound, "node %s not found", request.NodeID)
@@ -41,11 +41,11 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 		nodes []*api.Node
 		err   error
 	)
-	s.store.View(func(tx state.ReadTx) {
+	s.store.View(func(tx store.ReadTx) {
 		if request.Options == nil || request.Options.Query == "" {
-			nodes, err = tx.Nodes().Find(state.All)
+			nodes, err = store.FindNodes(tx, store.All)
 		} else {
-			nodes, err = tx.Nodes().Find(state.ByQuery(request.Options.Query))
+			nodes, err = store.FindNodes(tx, store.ByQuery(request.Options.Query))
 		}
 	})
 	if err != nil {
@@ -69,14 +69,14 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 	}
 
 	var node *api.Node
-	err := s.store.Update(func(tx state.Tx) error {
-		node = tx.Nodes().Get(request.NodeID)
+	err := s.store.Update(func(tx store.Tx) error {
+		node = store.GetNode(tx, request.NodeID)
 		if node == nil {
 			return nil
 		}
 		node.Version = *request.NodeVersion
 		node.Spec = *request.Spec.Copy()
-		return tx.Nodes().Update(node)
+		return store.UpdateNode(tx, node)
 	})
 	if err != nil {
 		return nil, err

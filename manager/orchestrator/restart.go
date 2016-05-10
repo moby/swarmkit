@@ -6,7 +6,7 @@ import (
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
-	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 )
 
@@ -14,13 +14,13 @@ import (
 // delaying restarts when applicable.
 type RestartSupervisor struct {
 	mu       sync.Mutex
-	store    state.WatchableStore
+	store    *store.MemoryStore
 	delays   map[string]*time.Timer
 	delaysWG sync.WaitGroup
 }
 
 // NewRestartSupervisor creates a new RestartSupervisor.
-func NewRestartSupervisor(store state.WatchableStore) *RestartSupervisor {
+func NewRestartSupervisor(store *store.MemoryStore) *RestartSupervisor {
 	return &RestartSupervisor{
 		store:  store,
 		delays: make(map[string]*time.Timer),
@@ -29,9 +29,9 @@ func NewRestartSupervisor(store state.WatchableStore) *RestartSupervisor {
 
 // Restart initiates a new task to replace t if appropriate under the service's
 // restart policy.
-func (r *RestartSupervisor) Restart(ctx context.Context, tx state.Tx, service *api.Service, t api.Task) error {
+func (r *RestartSupervisor) Restart(ctx context.Context, tx store.Tx, service *api.Service, t api.Task) error {
 	t.DesiredState = api.TaskStateDead
-	err := tx.Tasks().Update(&t)
+	err := store.UpdateTask(tx, &t)
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("failed to set task desired state to dead")
 		return err
@@ -60,7 +60,7 @@ func (r *RestartSupervisor) Restart(ctx context.Context, tx state.Tx, service *a
 	if service.Spec.Restart != nil && service.Spec.Restart.Delay != 0 {
 		restartTask.DesiredState = api.TaskStateReady
 	}
-	if err := tx.Tasks().Create(restartTask); err != nil {
+	if err := store.CreateTask(tx, restartTask); err != nil {
 		log.G(ctx).WithError(err).WithField("task.id", restartTask.ID).Error("task create failed")
 		return err
 	}
@@ -76,7 +76,7 @@ func (r *RestartSupervisor) DelayStart(ctx context.Context, taskID string, delay
 	r.delaysWG.Add(1)
 	timer := time.AfterFunc(delay,
 		func() {
-			err := r.store.Update(func(tx state.Tx) error {
+			err := r.store.Update(func(tx store.Tx) error {
 				err := r.StartNow(tx, taskID)
 				if err != nil {
 					log.G(ctx).WithError(err).WithField("task.id", taskID).Error("moving task out of delayed state failed")
@@ -105,13 +105,13 @@ func (r *RestartSupervisor) DelayStart(ctx context.Context, taskID string, delay
 
 // StartNow moves the task into the RUNNING state so it will proceed to start
 // up.
-func (r *RestartSupervisor) StartNow(tx state.Tx, taskID string) error {
-	t := tx.Tasks().Get(taskID)
+func (r *RestartSupervisor) StartNow(tx store.Tx, taskID string) error {
+	t := store.GetTask(tx, taskID)
 	if t == nil || t.DesiredState > api.TaskStateReady {
 		return nil
 	}
 	t.DesiredState = api.TaskStateRunning
-	return tx.Tasks().Update(t)
+	return store.UpdateTask(tx, t)
 }
 
 // Cancel cancels a pending restart.

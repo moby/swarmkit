@@ -2,7 +2,7 @@ package clusterapi
 
 import (
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -17,8 +17,8 @@ func (s *Server) GetTask(ctx context.Context, request *api.GetTaskRequest) (*api
 	}
 
 	var task *api.Task
-	s.store.View(func(tx state.ReadTx) {
-		task = tx.Tasks().Get(request.TaskID)
+	s.store.View(func(tx store.ReadTx) {
+		task = store.GetTask(tx, request.TaskID)
 	})
 	if task == nil {
 		return nil, grpc.Errorf(codes.NotFound, "task %s not found", request.TaskID)
@@ -37,11 +37,11 @@ func (s *Server) RemoveTask(ctx context.Context, request *api.RemoveTaskRequest)
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	err := s.store.Update(func(tx state.Tx) error {
-		return tx.Tasks().Delete(request.TaskID)
+	err := s.store.Update(func(tx store.Tx) error {
+		return store.DeleteTask(tx, request.TaskID)
 	})
 	if err != nil {
-		if err == state.ErrNotExist {
+		if err == store.ErrNotExist {
 			return nil, grpc.Errorf(codes.NotFound, "task %s not found", request.TaskID)
 		}
 		return nil, err
@@ -55,8 +55,8 @@ func (s *Server) ListTasks(ctx context.Context, request *api.ListTasksRequest) (
 		tasks []*api.Task
 		err   error
 	)
-	s.store.View(func(tx state.ReadTx) {
-		tasks, err = tx.Tasks().Find(state.All)
+	s.store.View(func(tx store.ReadTx) {
+		tasks, err = store.FindTasks(tx, store.All)
 	})
 	if err != nil {
 		return nil, err
