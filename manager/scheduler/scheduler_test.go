@@ -110,6 +110,7 @@ func TestScheduler(t *testing.T) {
 	go func() {
 		assert.NoError(t, scheduler.Run(ctx))
 	}()
+	defer scheduler.Stop()
 
 	assignment1 := watchAssignment(t, watch)
 	// must assign to id2 or id3 since id1 already has a task
@@ -350,8 +351,6 @@ func TestScheduler(t *testing.T) {
 
 	assignment8 := watchAssignment(t, watch)
 	assert.NotEqual(t, "id6", assignment8.NodeID)
-
-	scheduler.Stop()
 }
 
 func TestSchedulerNoReadyNodes(t *testing.T) {
@@ -384,6 +383,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 	go func() {
 		assert.NoError(t, scheduler.Run(ctx))
 	}()
+	defer scheduler.Stop()
 
 	err = store.Update(func(tx state.Tx) error {
 		// Create a ready node. The task should get assigned to this
@@ -406,8 +406,6 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 
 	assignment := watchAssignment(t, watch)
 	assert.Equal(t, "newnode", assignment.NodeID)
-
-	scheduler.Stop()
 }
 
 func TestSchedulerResourceConstraint(t *testing.T) {
@@ -471,6 +469,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 	go func() {
 		assert.NoError(t, scheduler.Run(ctx))
 	}()
+	defer scheduler.Stop()
 
 	err = store.Update(func(tx state.Tx) error {
 		// Create a node with enough memory. The task should get
@@ -499,8 +498,6 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 
 	assignment := watchAssignment(t, watch)
 	assert.Equal(t, "bignode", assignment.NodeID)
-
-	scheduler.Stop()
 }
 
 func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
@@ -567,6 +564,7 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	go func() {
 		assert.NoError(t, scheduler.Run(ctx))
 	}()
+	defer scheduler.Stop()
 
 	// The task fits, so it should get assigned
 	assignment := watchAssignment(t, watch)
@@ -598,10 +596,134 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	// With the first task no longer consuming resources, the second
 	// one can be scheduled.
 	assignment = watchAssignment(t, watch)
-	assert.Equal(t, "id1", assignment.ID)
+	assert.Equal(t, "id2", assignment.ID)
 	assert.Equal(t, "id1", assignment.NodeID)
+}
 
-	scheduler.Stop()
+func TestSchedulerPortConstraint(t *testing.T) {
+	ctx := context.Background()
+	// Create a ready node
+	n1 := &api.Node{
+		ID: "n1",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "n1",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+	}
+
+	staticPortTask := &api.Task{
+		ID: "static",
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.Container{
+					ExposedPorts: []*api.PortConfig{
+						{
+							Port:     5000,
+							HostPort: 443,
+						},
+					},
+				},
+			},
+		},
+		Annotations: api.Annotations{
+			Name: "static",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStateAllocated,
+		},
+	}
+
+	dynamicPortTask := &api.Task{
+		ID: "dynamic",
+		Annotations: api.Annotations{
+			Name: "dynamic",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStateAllocated,
+		},
+	}
+
+	store := store.NewMemoryStore(nil)
+	assert.NotNil(t, store)
+
+	// Add initial node and task
+	err := store.Update(func(tx state.Tx) error {
+		assert.NoError(t, tx.Tasks().Create(dynamicPortTask))
+		assert.NoError(t, tx.Nodes().Create(n1))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(store)
+
+	watch, cancel := state.Watch(store.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+	defer scheduler.Stop()
+
+	// Initial task should get assigned.
+	assignment := watchAssignment(t, watch)
+	assert.Equal(t, "n1", assignment.NodeID)
+
+	// Dynamically assign a port to the task.
+	err = store.Update(func(tx state.Tx) error {
+		updatedTask := tx.Tasks().Get("dynamic")
+		updatedTask.Status.RuntimeStatus = &api.TaskStatus_Container{
+			Container: &api.ContainerStatus{
+				ExposedPorts: []*api.PortConfig{
+					{
+						Port:     5000,
+						HostPort: 443,
+					},
+				},
+			},
+		}
+
+		assert.NoError(t, tx.Tasks().Update(updatedTask))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	assignment = watchAssignment(t, watch)
+	assert.Equal(t, "dynamic", assignment.ID)
+	assert.Equal(t, "n1", assignment.NodeID)
+
+	// Create a task with a conflicting statically assigned port
+	err = store.Update(func(tx state.Tx) error {
+		assert.NoError(t, tx.Tasks().Create(staticPortTask))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// The new task should not get assigned at first.
+	time.Sleep(100 * time.Millisecond)
+	store.View(func(tx state.ReadTx) {
+		staticTask := tx.Tasks().Get("static")
+		if staticTask.Status.State >= api.TaskStateAssigned {
+			t.Fatal("conflicting task should not have been assigned")
+		}
+	})
+
+	// Kill original task
+	err = store.Update(func(tx state.Tx) error {
+		updatedTask := tx.Tasks().Get("dynamic")
+		updatedTask.Status.State = api.TaskStateDead
+		assert.NoError(t, tx.Tasks().Update(updatedTask))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Task with static port mapping should not get assigned.
+	assignment = watchAssignment(t, watch)
+	assert.Equal(t, "static", assignment.ID)
+	assert.Equal(t, "n1", assignment.NodeID)
 }
 
 func TestPreassignedTasks(t *testing.T) {
@@ -714,7 +836,7 @@ func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
 		select {
 		case event := <-watch:
 			if task, ok := event.(state.EventUpdateTask); ok {
-				if task.Task.NodeID != "" {
+				if task.Task.Status.State <= api.TaskStateRunning && task.Task.NodeID != "" {
 					return task.Task
 				}
 			}
