@@ -75,8 +75,8 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 
 	log.G(ctx).Debugf("(*Server).CertificateStatus: checking status for Token=%s, Status: %s", request.Token, rCertificate.Status)
 	return &api.CertificateStatusResponse{
-		Status:      &rCertificate.Status,
-		Certificate: rCertificate.Certificate,
+		Status:                &rCertificate.Status,
+		RegisteredCertificate: rCertificate,
 	}, nil
 
 }

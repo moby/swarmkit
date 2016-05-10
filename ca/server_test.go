@@ -176,7 +176,8 @@ func TestCertificateStatus(t *testing.T) {
 	issueRequest := &api.CertificateStatusRequest{Token: "token"}
 	resp, err := gc.Clients[1].CertificateStatus(context.Background(), issueRequest)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, resp.Certificate)
+	assert.NotEmpty(t, resp.RegisteredCertificate)
+	assert.NotEmpty(t, resp.RegisteredCertificate.Certificate)
 	assert.NotEmpty(t, resp.Status)
 	assert.Equal(t, resp.Status.State, api.IssuanceStateCompleted)
 
