@@ -202,5 +202,5 @@ func init() {
 	createCmd.Flags().String("network", "", "Network name")
 	// TODO(aluzzardi): This should be called `service-instances` so that every
 	// orchestrator can have its own flag namespace.
-	createCmd.Flags().Int64("instances", 1, "Number of instances for the service Service")
+	createCmd.Flags().Uint64("instances", 1, "Number of instances for the service Service")
 }
