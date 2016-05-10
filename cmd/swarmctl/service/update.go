@@ -91,7 +91,7 @@ func init() {
 	updateCmd.Flags().StringP("file", "f", "", "Spec to use")
 	// TODO(aluzzardi): This should be called `service-instances` so that every
 	// orchestrator can have its own flag namespace.
-	updateCmd.Flags().Int64("instances", 0, "Number of instances for the service")
+	updateCmd.Flags().Uint64("instances", 0, "Number of instances for the service")
 	// TODO(vieux): This could probably be done in one step
 	updateCmd.Flags().Lookup("instances").DefValue = ""
 }
