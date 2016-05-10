@@ -214,7 +214,9 @@ func loadManagerSecurityConfig(baseCertDir string) *ManagerSecurityConfig {
 	}
 
 	serverCert, err := tls.LoadX509KeyPair(paths.ManagerCert, paths.ManagerKey)
-	if err == nil {
+	if err != nil {
+		log.Debugf("failed to load manager keypair: %v", err)
+	} else {
 		log.Debugf("loaded server TLS certificate from: %s\n", paths.ManagerCert)
 		serverTLSCreds, err := NewServerTLSCredentials(&serverCert, securityConfig.RootCAPool)
 		if err == nil {
@@ -421,6 +423,11 @@ func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash,
 	// Get the remote manager to issue a CA signed certificate for this node
 	signedCert, err := getSignedCertificate(ctx, csr, securityConfig.RootCAPool, ManagerRole, managerAddr)
 	if err != nil {
+		return nil, err
+	}
+
+	// Write the chain to disk
+	if err := ioutil.WriteFile(paths.ManagerCert, signedCert, 0644); err != nil {
 		return nil, err
 	}
 
