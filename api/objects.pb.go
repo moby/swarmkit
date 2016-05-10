@@ -952,13 +952,11 @@ func (m *RegisteredCertificate) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintObjects(data, i, uint64(len(m.Role)))
 		i += copy(data[i:], m.Role)
 	}
-	if m.CSR != nil {
-		if len(m.CSR) > 0 {
-			data[i] = 0x2a
-			i++
-			i = encodeVarintObjects(data, i, uint64(len(m.CSR)))
-			i += copy(data[i:], m.CSR)
-		}
+	if len(m.CSR) > 0 {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintObjects(data, i, uint64(len(m.CSR)))
+		i += copy(data[i:], m.CSR)
 	}
 	data[i] = 0x32
 	i++
@@ -968,13 +966,11 @@ func (m *RegisteredCertificate) MarshalTo(data []byte) (int, error) {
 		return 0, err
 	}
 	i += n25
-	if m.Certificate != nil {
-		if len(m.Certificate) > 0 {
-			data[i] = 0x3a
-			i++
-			i = encodeVarintObjects(data, i, uint64(len(m.Certificate)))
-			i += copy(data[i:], m.Certificate)
-		}
+	if len(m.Certificate) > 0 {
+		data[i] = 0x3a
+		i++
+		i = encodeVarintObjects(data, i, uint64(len(m.Certificate)))
+		i += copy(data[i:], m.Certificate)
 	}
 	if len(m.CN) > 0 {
 		data[i] = 0x42
@@ -1187,19 +1183,15 @@ func (m *RegisteredCertificate) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovObjects(uint64(l))
 	}
-	if m.CSR != nil {
-		l = len(m.CSR)
-		if l > 0 {
-			n += 1 + l + sovObjects(uint64(l))
-		}
+	l = len(m.CSR)
+	if l > 0 {
+		n += 1 + l + sovObjects(uint64(l))
 	}
 	l = m.Status.Size()
 	n += 1 + l + sovObjects(uint64(l))
-	if m.Certificate != nil {
-		l = len(m.Certificate)
-		if l > 0 {
-			n += 1 + l + sovObjects(uint64(l))
-		}
+	l = len(m.Certificate)
+	if l > 0 {
+		n += 1 + l + sovObjects(uint64(l))
 	}
 	l = len(m.CN)
 	if l > 0 {
