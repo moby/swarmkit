@@ -100,11 +100,12 @@ func prefixFromArgs(args ...interface{}) ([]byte, error) {
 }
 
 type readTx struct {
-	nodes    nodes
-	services services
-	tasks    tasks
-	networks networks
-	volumes  volumes
+	nodes                  nodes
+	services               services
+	tasks                  tasks
+	networks               networks
+	volumes                volumes
+	registeredCertificates registeredCertificates
 }
 
 // View executes a read transaction.
@@ -125,6 +126,9 @@ func (s *MemoryStore) View(cb func(state.ReadTx)) {
 			memDBTx: memDBTx,
 		},
 		volumes: volumes{
+			memDBTx: memDBTx,
+		},
+		registeredCertificates: registeredCertificates{
 			memDBTx: memDBTx,
 		},
 	}
@@ -152,15 +156,20 @@ func (t readTx) Volumes() state.VolumeSetReader {
 	return t.volumes
 }
 
+func (t readTx) RegisteredCertificates() state.RegisteredCertificateSetReader {
+	return t.registeredCertificates
+}
+
 type tx struct {
-	nodes      nodes
-	services   services
-	tasks      tasks
-	networks   networks
-	volumes    volumes
-	curVersion *api.Version
-	memDBTx    *memdb.Txn
-	changelist []state.Event
+	nodes                  nodes
+	services               services
+	tasks                  tasks
+	networks               networks
+	volumes                volumes
+	registeredCertificates registeredCertificates
+	curVersion             *api.Version
+	memDBTx                *memdb.Txn
+	changelist             []state.Event
 }
 
 // ApplyStoreActions updates a store based on StoreAction messages.
@@ -169,18 +178,20 @@ func (s *MemoryStore) ApplyStoreActions(actions []*api.StoreAction) error {
 	memDBTx := s.memDB.Txn(true)
 
 	tx := tx{
-		nodes:    nodes{memDBTx: memDBTx},
-		services: services{memDBTx: memDBTx},
-		tasks:    tasks{memDBTx: memDBTx},
-		networks: networks{memDBTx: memDBTx},
-		volumes:  volumes{memDBTx: memDBTx},
-		memDBTx:  memDBTx,
+		nodes:                  nodes{memDBTx: memDBTx},
+		services:               services{memDBTx: memDBTx},
+		tasks:                  tasks{memDBTx: memDBTx},
+		networks:               networks{memDBTx: memDBTx},
+		volumes:                volumes{memDBTx: memDBTx},
+		registeredCertificates: registeredCertificates{memDBTx: memDBTx},
+		memDBTx:                memDBTx,
 	}
 	tx.nodes.tx = &tx
 	tx.services.tx = &tx
 	tx.tasks.tx = &tx
 	tx.networks.tx = &tx
 	tx.volumes.tx = &tx
+	tx.registeredCertificates.tx = &tx
 
 	for _, sa := range actions {
 		if err := applyStoreAction(tx, sa); err != nil {
@@ -432,6 +443,10 @@ func (tx *tx) init(memDBTx *memdb.Txn, curVersion *api.Version) {
 		tx:      tx,
 		memDBTx: memDBTx,
 	}
+	tx.registeredCertificates = registeredCertificates{
+		tx:      tx,
+		memDBTx: memDBTx,
+	}
 }
 
 func newStoreAction(c state.Event) (*api.StoreAction, error) {
@@ -479,6 +494,10 @@ func (tx tx) Tasks() state.TaskSet {
 
 func (tx tx) Volumes() state.VolumeSet {
 	return tx.volumes
+}
+
+func (tx tx) RegisteredCertificates() state.RegisteredCertificateSet {
+	return tx.registeredCertificates
 }
 
 // lookup is an internal typed wrapper around memdb.

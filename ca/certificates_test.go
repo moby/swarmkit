@@ -11,6 +11,7 @@ import (
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/phayes/permbits"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -181,7 +182,8 @@ func TestGetRemoteCA(t *testing.T) {
 
 	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(opts...)
-	caserver := NewServer(managerConfig)
+	store := store.NewMemoryStore(nil)
+	caserver := NewServer(store, managerConfig)
 	api.RegisterCAServer(grpcServer, caserver)
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.NoError(t, err)
@@ -221,7 +223,8 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 
 	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(opts...)
-	caserver := NewServer(managerConfig)
+	store := store.NewMemoryStore(nil)
+	caserver := NewServer(store, managerConfig)
 	api.RegisterCAServer(grpcServer, caserver)
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.NoError(t, err)

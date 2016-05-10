@@ -160,6 +160,29 @@ type TaskSet interface {
 	TaskSetWriter
 }
 
+// RegisteredCertificateSetWriter is the write half of a RegisteredCertificate dataset.
+type RegisteredCertificateSetWriter interface {
+	Create(t *api.RegisteredCertificate) error
+	Update(t *api.RegisteredCertificate) error
+	Delete(id string) error
+}
+
+// RegisteredCertificateSetReader is the read half of a RegisteredCertificate dataset.
+type RegisteredCertificateSetReader interface {
+	// Get returns the registered certificate with this ID, or nil if none exists with the
+	// specified ID.
+	Get(id string) *api.RegisteredCertificate
+	// Find selects a set of registered certificates and returns them. If by is nil,
+	// returns all registered certificates.
+	Find(by By) ([]*api.RegisteredCertificate, error)
+}
+
+// RegisteredCertificateSet is a readable and writable consistent view of registered certificates.
+type RegisteredCertificateSet interface {
+	RegisteredCertificateSetReader
+	RegisteredCertificateSetWriter
+}
+
 // ReadTx is a read transaction. Note that transaction does not imply
 // any internal batching. It only means that the transaction presents a
 // consistent view of the data that cannot be affected by other
@@ -170,6 +193,7 @@ type ReadTx interface {
 	Networks() NetworkSetReader
 	Tasks() TaskSetReader
 	Volumes() VolumeSetReader
+	RegisteredCertificates() RegisteredCertificateSetReader
 }
 
 // Tx is a read/write transaction. Note that transaction does not imply
@@ -182,6 +206,7 @@ type Tx interface {
 	Networks() NetworkSet
 	Tasks() TaskSet
 	Volumes() VolumeSet
+	RegisteredCertificates() RegisteredCertificateSet
 }
 
 // Batch provides an interface to batch updates to a store. Each call to
@@ -270,6 +295,10 @@ func (tx snapshotReadTx) Tasks() TaskSetReader {
 
 func (tx snapshotReadTx) Volumes() VolumeSetReader {
 	return tx.tx.Volumes()
+}
+
+func (tx snapshotReadTx) RegisteredCertificates() RegisteredCertificateSetReader {
+	return tx.tx.RegisteredCertificates()
 }
 
 // ViewAndWatch calls a callback which can observe the state of this Store. It

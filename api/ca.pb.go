@@ -32,53 +32,22 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-type IssuanceStatus_Status int32
-
-const (
-	IssuanceStatusUnknown   IssuanceStatus_Status = 0
-	IssuanceStatusPreparing IssuanceStatus_Status = 1
-	IssuanceStatusReady     IssuanceStatus_Status = 2
-	IssuanceStatusComplete  IssuanceStatus_Status = 3
-	IssuanceStatusFailed    IssuanceStatus_Status = 4
-	IssuanceStatusRejected  IssuanceStatus_Status = 5
-)
-
-var IssuanceStatus_Status_name = map[int32]string{
-	0: "UNKNOWN",
-	1: "PREPARING",
-	2: "READY",
-	3: "COMPLETE",
-	4: "FAILED",
-	5: "REJECTED",
-}
-var IssuanceStatus_Status_value = map[string]int32{
-	"UNKNOWN":   0,
-	"PREPARING": 1,
-	"READY":     2,
-	"COMPLETE":  3,
-	"FAILED":    4,
-	"REJECTED":  5,
+type CertificateStatusRequest struct {
+	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 }
 
-func (x IssuanceStatus_Status) String() string {
-	return proto.EnumName(IssuanceStatus_Status_name, int32(x))
-}
-func (IssuanceStatus_Status) EnumDescriptor() ([]byte, []int) { return fileDescriptorCa, []int{0, 0} }
+func (m *CertificateStatusRequest) Reset()                    { *m = CertificateStatusRequest{} }
+func (*CertificateStatusRequest) ProtoMessage()               {}
+func (*CertificateStatusRequest) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{0} }
 
-type IssuanceStatus struct {
-	Status IssuanceStatus_Status `protobuf:"varint,1,opt,name=status,proto3,enum=docker.cluster.api.IssuanceStatus_Status" json:"status,omitempty"`
-	// Err is set if the Certificate Issuance is in an error state.
-	//
-	// The following states should report a companion error:
-	//
-	// 	FAILED, REJECTED
-	//
-	Err string `protobuf:"bytes,2,opt,name=err,proto3" json:"err,omitempty"`
+type CertificateStatusResponse struct {
+	Status                *IssuanceStatus        `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
+	RegisteredCertificate *RegisteredCertificate `protobuf:"bytes,2,opt,name=registered_certificate,json=registeredCertificate" json:"registered_certificate,omitempty"`
 }
 
-func (m *IssuanceStatus) Reset()                    { *m = IssuanceStatus{} }
-func (*IssuanceStatus) ProtoMessage()               {}
-func (*IssuanceStatus) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{0} }
+func (m *CertificateStatusResponse) Reset()                    { *m = CertificateStatusResponse{} }
+func (*CertificateStatusResponse) ProtoMessage()               {}
+func (*CertificateStatusResponse) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{1} }
 
 type IssueCertificateRequest struct {
 	Role string `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
@@ -87,25 +56,22 @@ type IssueCertificateRequest struct {
 
 func (m *IssueCertificateRequest) Reset()                    { *m = IssueCertificateRequest{} }
 func (*IssueCertificateRequest) ProtoMessage()               {}
-func (*IssueCertificateRequest) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{1} }
+func (*IssueCertificateRequest) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{2} }
 
-// TODO(diogo): This response should be a random ID that agents
-// can then query for status.
 type IssueCertificateResponse struct {
-	Status           *IssuanceStatus `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
-	CertificateChain []byte          `protobuf:"bytes,2,opt,name=certificate_chain,json=certificateChain,proto3" json:"certificate_chain,omitempty"`
+	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 }
 
 func (m *IssueCertificateResponse) Reset()                    { *m = IssueCertificateResponse{} }
 func (*IssueCertificateResponse) ProtoMessage()               {}
-func (*IssueCertificateResponse) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{2} }
+func (*IssueCertificateResponse) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{3} }
 
 type GetRootCACertificateRequest struct {
 }
 
 func (m *GetRootCACertificateRequest) Reset()                    { *m = GetRootCACertificateRequest{} }
 func (*GetRootCACertificateRequest) ProtoMessage()               {}
-func (*GetRootCACertificateRequest) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{3} }
+func (*GetRootCACertificateRequest) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{4} }
 
 type GetRootCACertificateResponse struct {
 	Certificate []byte `protobuf:"bytes,1,opt,name=certificate,proto3" json:"certificate,omitempty"`
@@ -113,25 +79,37 @@ type GetRootCACertificateResponse struct {
 
 func (m *GetRootCACertificateResponse) Reset()                    { *m = GetRootCACertificateResponse{} }
 func (*GetRootCACertificateResponse) ProtoMessage()               {}
-func (*GetRootCACertificateResponse) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{4} }
+func (*GetRootCACertificateResponse) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{5} }
 
 func init() {
-	proto.RegisterType((*IssuanceStatus)(nil), "docker.cluster.api.IssuanceStatus")
+	proto.RegisterType((*CertificateStatusRequest)(nil), "docker.cluster.api.CertificateStatusRequest")
+	proto.RegisterType((*CertificateStatusResponse)(nil), "docker.cluster.api.CertificateStatusResponse")
 	proto.RegisterType((*IssueCertificateRequest)(nil), "docker.cluster.api.IssueCertificateRequest")
 	proto.RegisterType((*IssueCertificateResponse)(nil), "docker.cluster.api.IssueCertificateResponse")
 	proto.RegisterType((*GetRootCACertificateRequest)(nil), "docker.cluster.api.GetRootCACertificateRequest")
 	proto.RegisterType((*GetRootCACertificateResponse)(nil), "docker.cluster.api.GetRootCACertificateResponse")
-	proto.RegisterEnum("docker.cluster.api.IssuanceStatus_Status", IssuanceStatus_Status_name, IssuanceStatus_Status_value)
 }
 
-func (m *IssuanceStatus) Copy() *IssuanceStatus {
+func (m *CertificateStatusRequest) Copy() *CertificateStatusRequest {
 	if m == nil {
 		return nil
 	}
 
-	o := &IssuanceStatus{
-		Status: m.Status,
-		Err:    m.Err,
+	o := &CertificateStatusRequest{
+		Token: m.Token,
+	}
+
+	return o
+}
+
+func (m *CertificateStatusResponse) Copy() *CertificateStatusResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &CertificateStatusResponse{
+		Status:                m.Status.Copy(),
+		RegisteredCertificate: m.RegisteredCertificate.Copy(),
 	}
 
 	return o
@@ -156,8 +134,7 @@ func (m *IssueCertificateResponse) Copy() *IssueCertificateResponse {
 	}
 
 	o := &IssueCertificateResponse{
-		Status:           m.Status.Copy(),
-		CertificateChain: m.CertificateChain,
+		Token: m.Token,
 	}
 
 	return o
@@ -185,14 +162,28 @@ func (m *GetRootCACertificateResponse) Copy() *GetRootCACertificateResponse {
 	return o
 }
 
-func (this *IssuanceStatus) GoString() string {
+func (this *CertificateStatusRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.CertificateStatusRequest{")
+	s = append(s, "Token: "+fmt.Sprintf("%#v", this.Token)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *CertificateStatusResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.IssuanceStatus{")
-	s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
-	s = append(s, "Err: "+fmt.Sprintf("%#v", this.Err)+",\n")
+	s = append(s, "&api.CertificateStatusResponse{")
+	if this.Status != nil {
+		s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
+	}
+	if this.RegisteredCertificate != nil {
+		s = append(s, "RegisteredCertificate: "+fmt.Sprintf("%#v", this.RegisteredCertificate)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -211,12 +202,9 @@ func (this *IssueCertificateResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.IssueCertificateResponse{")
-	if this.Status != nil {
-		s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
-	}
-	s = append(s, "CertificateChain: "+fmt.Sprintf("%#v", this.CertificateChain)+",\n")
+	s = append(s, "Token: "+fmt.Sprintf("%#v", this.Token)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -277,6 +265,7 @@ const _ = grpc.SupportPackageIsVersion2
 
 type CAClient interface {
 	IssueCertificate(ctx context.Context, in *IssueCertificateRequest, opts ...grpc.CallOption) (*IssueCertificateResponse, error)
+	CertificateStatus(ctx context.Context, in *CertificateStatusRequest, opts ...grpc.CallOption) (*CertificateStatusResponse, error)
 	GetRootCACertificate(ctx context.Context, in *GetRootCACertificateRequest, opts ...grpc.CallOption) (*GetRootCACertificateResponse, error)
 }
 
@@ -297,6 +286,15 @@ func (c *cAClient) IssueCertificate(ctx context.Context, in *IssueCertificateReq
 	return out, nil
 }
 
+func (c *cAClient) CertificateStatus(ctx context.Context, in *CertificateStatusRequest, opts ...grpc.CallOption) (*CertificateStatusResponse, error) {
+	out := new(CertificateStatusResponse)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.CA/CertificateStatus", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *cAClient) GetRootCACertificate(ctx context.Context, in *GetRootCACertificateRequest, opts ...grpc.CallOption) (*GetRootCACertificateResponse, error) {
 	out := new(GetRootCACertificateResponse)
 	err := grpc.Invoke(ctx, "/docker.cluster.api.CA/GetRootCACertificate", in, out, c.cc, opts...)
@@ -310,6 +308,7 @@ func (c *cAClient) GetRootCACertificate(ctx context.Context, in *GetRootCACertif
 
 type CAServer interface {
 	IssueCertificate(context.Context, *IssueCertificateRequest) (*IssueCertificateResponse, error)
+	CertificateStatus(context.Context, *CertificateStatusRequest) (*CertificateStatusResponse, error)
 	GetRootCACertificate(context.Context, *GetRootCACertificateRequest) (*GetRootCACertificateResponse, error)
 }
 
@@ -331,6 +330,24 @@ func _CA_IssueCertificate_Handler(srv interface{}, ctx context.Context, dec func
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CAServer).IssueCertificate(ctx, req.(*IssueCertificateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CA_CertificateStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CertificateStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CAServer).CertificateStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.CA/CertificateStatus",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CAServer).CertificateStatus(ctx, req.(*CertificateStatusRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -362,6 +379,10 @@ var _CA_serviceDesc = grpc.ServiceDesc{
 			Handler:    _CA_IssueCertificate_Handler,
 		},
 		{
+			MethodName: "CertificateStatus",
+			Handler:    _CA_CertificateStatus_Handler,
+		},
+		{
 			MethodName: "GetRootCACertificate",
 			Handler:    _CA_GetRootCACertificate_Handler,
 		},
@@ -369,7 +390,7 @@ var _CA_serviceDesc = grpc.ServiceDesc{
 	Streams: []grpc.StreamDesc{},
 }
 
-func (m *IssuanceStatus) Marshal() (data []byte, err error) {
+func (m *CertificateStatusRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -379,21 +400,54 @@ func (m *IssuanceStatus) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *IssuanceStatus) MarshalTo(data []byte) (int, error) {
+func (m *CertificateStatusRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.Status != 0 {
-		data[i] = 0x8
+	if len(m.Token) > 0 {
+		data[i] = 0xa
 		i++
-		i = encodeVarintCa(data, i, uint64(m.Status))
+		i = encodeVarintCa(data, i, uint64(len(m.Token)))
+		i += copy(data[i:], m.Token)
 	}
-	if len(m.Err) > 0 {
+	return i, nil
+}
+
+func (m *CertificateStatusResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *CertificateStatusResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Status != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintCa(data, i, uint64(m.Status.Size()))
+		n1, err := m.Status.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	if m.RegisteredCertificate != nil {
 		data[i] = 0x12
 		i++
-		i = encodeVarintCa(data, i, uint64(len(m.Err)))
-		i += copy(data[i:], m.Err)
+		i = encodeVarintCa(data, i, uint64(m.RegisteredCertificate.Size()))
+		n2, err := m.RegisteredCertificate.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
 	}
 	return i, nil
 }
@@ -443,21 +497,11 @@ func (m *IssueCertificateResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Status != nil {
+	if len(m.Token) > 0 {
 		data[i] = 0xa
 		i++
-		i = encodeVarintCa(data, i, uint64(m.Status.Size()))
-		n1, err := m.Status.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
-	if len(m.CertificateChain) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintCa(data, i, uint64(len(m.CertificateChain)))
-		i += copy(data[i:], m.CertificateChain)
+		i = encodeVarintCa(data, i, uint64(len(m.Token)))
+		i += copy(data[i:], m.Token)
 	}
 	return i, nil
 }
@@ -573,6 +617,33 @@ func (p *raftProxyCAServer) IssueCertificate(ctx context.Context, r *IssueCertif
 	return NewCAClient(conn).IssueCertificate(ctx, r)
 }
 
+func (p *raftProxyCAServer) CertificateStatus(ctx context.Context, r *CertificateStatusRequest) (*CertificateStatusResponse, error) {
+
+	if p.cluster.IsLeader() {
+		return p.local.CertificateStatus(ctx, r)
+	}
+	var addr string
+	s, ok := transport.StreamFromContext(ctx)
+	if ok {
+		addr = s.ServerTransport().RemoteAddr().String()
+	}
+	md, ok := metadata.FromContext(ctx)
+	if ok && len(md["redirect"]) != 0 {
+		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+	}
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md["redirect"] = append(md["redirect"], addr)
+	ctx = metadata.NewContext(ctx, md)
+
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return NewCAClient(conn).CertificateStatus(ctx, r)
+}
+
 func (p *raftProxyCAServer) GetRootCACertificate(ctx context.Context, r *GetRootCACertificateRequest) (*GetRootCACertificateResponse, error) {
 
 	if p.cluster.IsLeader() {
@@ -600,14 +671,25 @@ func (p *raftProxyCAServer) GetRootCACertificate(ctx context.Context, r *GetRoot
 	return NewCAClient(conn).GetRootCACertificate(ctx, r)
 }
 
-func (m *IssuanceStatus) Size() (n int) {
+func (m *CertificateStatusRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Status != 0 {
-		n += 1 + sovCa(uint64(m.Status))
-	}
-	l = len(m.Err)
+	l = len(m.Token)
 	if l > 0 {
+		n += 1 + l + sovCa(uint64(l))
+	}
+	return n
+}
+
+func (m *CertificateStatusResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.Status != nil {
+		l = m.Status.Size()
+		n += 1 + l + sovCa(uint64(l))
+	}
+	if m.RegisteredCertificate != nil {
+		l = m.RegisteredCertificate.Size()
 		n += 1 + l + sovCa(uint64(l))
 	}
 	return n
@@ -630,11 +712,7 @@ func (m *IssueCertificateRequest) Size() (n int) {
 func (m *IssueCertificateResponse) Size() (n int) {
 	var l int
 	_ = l
-	if m.Status != nil {
-		l = m.Status.Size()
-		n += 1 + l + sovCa(uint64(l))
-	}
-	l = len(m.CertificateChain)
+	l = len(m.Token)
 	if l > 0 {
 		n += 1 + l + sovCa(uint64(l))
 	}
@@ -670,13 +748,23 @@ func sovCa(x uint64) (n int) {
 func sozCa(x uint64) (n int) {
 	return sovCa(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (this *IssuanceStatus) String() string {
+func (this *CertificateStatusRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&IssuanceStatus{`,
-		`Status:` + fmt.Sprintf("%v", this.Status) + `,`,
-		`Err:` + fmt.Sprintf("%v", this.Err) + `,`,
+	s := strings.Join([]string{`&CertificateStatusRequest{`,
+		`Token:` + fmt.Sprintf("%v", this.Token) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *CertificateStatusResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&CertificateStatusResponse{`,
+		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "IssuanceStatus", "IssuanceStatus", 1) + `,`,
+		`RegisteredCertificate:` + strings.Replace(fmt.Sprintf("%v", this.RegisteredCertificate), "RegisteredCertificate", "RegisteredCertificate", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -697,8 +785,7 @@ func (this *IssueCertificateResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&IssueCertificateResponse{`,
-		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "IssuanceStatus", "IssuanceStatus", 1) + `,`,
-		`CertificateChain:` + fmt.Sprintf("%v", this.CertificateChain) + `,`,
+		`Token:` + fmt.Sprintf("%v", this.Token) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -730,7 +817,7 @@ func valueToStringCa(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *IssuanceStatus) Unmarshal(data []byte) error {
+func (m *CertificateStatusRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -753,34 +840,15 @@ func (m *IssuanceStatus) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: IssuanceStatus: wiretype end group for non-group")
+			return fmt.Errorf("proto: CertificateStatusRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: IssuanceStatus: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: CertificateStatusRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
-			}
-			m.Status = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCa
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.Status |= (IssuanceStatus_Status(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Err", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Token", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -805,7 +873,123 @@ func (m *IssuanceStatus) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Err = string(data[iNdEx:postIndex])
+			m.Token = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCa(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCa
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CertificateStatusResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCa
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CertificateStatusResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CertificateStatusResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCa
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCa
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Status == nil {
+				m.Status = &IssuanceStatus{}
+			}
+			if err := m.Status.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RegisteredCertificate", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCa
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCa
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.RegisteredCertificate == nil {
+				m.RegisteredCertificate = &RegisteredCertificate{}
+			}
+			if err := m.RegisteredCertificate.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -969,9 +1153,9 @@ func (m *IssueCertificateResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Token", wireType)
 			}
-			var msglen int
+			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowCa
@@ -981,55 +1165,20 @@ func (m *IssueCertificateResponse) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if msglen < 0 {
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
 				return ErrInvalidLengthCa
 			}
-			postIndex := iNdEx + msglen
+			postIndex := iNdEx + intStringLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Status == nil {
-				m.Status = &IssuanceStatus{}
-			}
-			if err := m.Status.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field CertificateChain", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCa
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthCa
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.CertificateChain = append(m.CertificateChain[:0], data[iNdEx:postIndex]...)
-			if m.CertificateChain == nil {
-				m.CertificateChain = []byte{}
-			}
+			m.Token = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -1289,38 +1438,30 @@ var (
 )
 
 var fileDescriptorCa = []byte{
-	// 515 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x8c, 0x93, 0xc1, 0x6e, 0xd3, 0x40,
-	0x10, 0x86, 0x63, 0x27, 0x4d, 0x9b, 0x69, 0x55, 0x99, 0x25, 0xd0, 0x74, 0x5b, 0x42, 0x64, 0x21,
-	0x54, 0x28, 0x72, 0x51, 0xb8, 0x71, 0xc2, 0x71, 0xdd, 0x12, 0x68, 0xd3, 0x68, 0xdb, 0x0a, 0x71,
-	0x42, 0xc6, 0x19, 0x82, 0x69, 0xf0, 0x1a, 0x7b, 0x23, 0x84, 0xb8, 0x54, 0xe2, 0x82, 0x78, 0x07,
-	0x4e, 0xbc, 0x4c, 0x8f, 0x1c, 0x39, 0x21, 0xda, 0x27, 0x40, 0x88, 0x07, 0x60, 0x6d, 0x07, 0x88,
-	0x89, 0x81, 0x1c, 0x46, 0x3b, 0xda, 0xf9, 0xf6, 0xf7, 0x3f, 0x33, 0x32, 0xcc, 0xb9, 0x8e, 0x11,
-	0x84, 0x5c, 0x70, 0x42, 0x7a, 0xdc, 0x3d, 0xc2, 0xd0, 0x70, 0x07, 0xc3, 0x48, 0xc8, 0xd3, 0x09,
-	0x3c, 0x5a, 0xed, 0xf3, 0x3e, 0x4f, 0xca, 0x1b, 0x71, 0x96, 0x92, 0xfa, 0x77, 0x15, 0x16, 0xdb,
-	0x51, 0x34, 0x74, 0x7c, 0x17, 0xf7, 0x85, 0x23, 0x86, 0x11, 0xd9, 0x85, 0x72, 0x94, 0x64, 0x35,
-	0xa5, 0xa1, 0xac, 0x2d, 0x36, 0xaf, 0x19, 0x93, 0x6a, 0x46, 0xf6, 0x8d, 0x91, 0x1e, 0x2d, 0x38,
-	0xfb, 0x7c, 0xb9, 0x9c, 0xe6, 0x6c, 0x24, 0x42, 0x34, 0x28, 0x62, 0x18, 0xd6, 0x54, 0xa9, 0x55,
-	0x61, 0x71, 0xaa, 0x1f, 0xab, 0x30, 0x82, 0xc8, 0x55, 0x98, 0x3d, 0xec, 0xdc, 0xef, 0xec, 0x3d,
-	0xe8, 0x68, 0x05, 0xba, 0xfc, 0xee, 0x7d, 0xe3, 0x42, 0x56, 0xf8, 0xd0, 0x3f, 0xf2, 0xf9, 0x4b,
-	0x9f, 0x5c, 0x87, 0x4a, 0x97, 0xd9, 0x5d, 0x93, 0xb5, 0x3b, 0xdb, 0x9a, 0x42, 0x57, 0x24, 0xb9,
-	0x94, 0x25, 0xbb, 0x21, 0x06, 0x4e, 0xe8, 0xf9, 0x7d, 0xa2, 0xc3, 0x0c, 0xb3, 0xcd, 0xcd, 0x87,
-	0x9a, 0x4a, 0x97, 0x24, 0x77, 0x3e, 0xcb, 0x31, 0x74, 0x7a, 0xaf, 0xc8, 0x1a, 0xcc, 0x59, 0x7b,
-	0xbb, 0xdd, 0x1d, 0xfb, 0xc0, 0xd6, 0x8a, 0x94, 0x4a, 0xec, 0x62, 0x16, 0xb3, 0xf8, 0xf3, 0x60,
-	0x80, 0x02, 0xc9, 0x15, 0x28, 0x6f, 0x99, 0xed, 0x1d, 0x7b, 0x53, 0x2b, 0xd1, 0x9a, 0xe4, 0xaa,
-	0x59, 0x6e, 0xcb, 0xf1, 0x06, 0xd8, 0x8b, 0xf5, 0x98, 0x7d, 0xcf, 0xb6, 0x0e, 0x24, 0x37, 0x93,
-	0xa7, 0xc7, 0xf0, 0x19, 0xba, 0x02, 0x7b, 0xb4, 0xf4, 0xf6, 0x43, 0xbd, 0xa0, 0xdf, 0x85, 0xc4,
-	0x3e, 0x5a, 0x18, 0x0a, 0xef, 0x89, 0xe7, 0x3a, 0x02, 0x19, 0xbe, 0x18, 0x62, 0x24, 0x08, 0x81,
-	0x52, 0xc8, 0x07, 0x98, 0x0c, 0xbf, 0xc2, 0x92, 0x9c, 0x2c, 0x43, 0xd1, 0x8d, 0xd2, 0x19, 0x2e,
-	0xb4, 0x66, 0xe5, 0x90, 0x8b, 0xd6, 0x3e, 0x63, 0xf1, 0x9d, 0xfe, 0x46, 0x81, 0xda, 0xa4, 0x54,
-	0x14, 0x70, 0x3f, 0x42, 0x72, 0x3b, 0xb3, 0xca, 0xf9, 0xa6, 0xfe, 0xff, 0x55, 0xfe, 0xda, 0xdb,
-	0x3a, 0x9c, 0x73, 0x7f, 0x4b, 0x3e, 0x72, 0x9f, 0x3a, 0x9e, 0x9f, 0x3a, 0x60, 0xda, 0x58, 0xc1,
-	0x8a, 0xef, 0xf5, 0x4b, 0xb0, 0xb2, 0x8d, 0x82, 0x71, 0x2e, 0x2c, 0x73, 0xb2, 0x27, 0xfd, 0x0e,
-	0xac, 0xe6, 0x97, 0x47, 0x3e, 0x1b, 0x30, 0x3f, 0x26, 0x99, 0x98, 0x5d, 0x60, 0xe3, 0x57, 0xcd,
-	0x6f, 0x0a, 0xa8, 0x96, 0x49, 0x38, 0x68, 0x7f, 0x36, 0x4b, 0xd6, 0xff, 0xd6, 0x54, 0xce, 0x74,
-	0xe9, 0x8d, 0xe9, 0xe0, 0xd4, 0x97, 0x5e, 0x20, 0xaf, 0xa1, 0x9a, 0xe7, 0x9c, 0x6c, 0xe4, 0xe9,
-	0xfc, 0x63, 0x04, 0xf4, 0xe6, 0xf4, 0x0f, 0x7e, 0x7e, 0xbc, 0xb5, 0x7a, 0x72, 0x5a, 0x2f, 0x7c,
-	0x92, 0xf1, 0xf5, 0xb4, 0xae, 0x1c, 0x9f, 0xd5, 0x95, 0x13, 0x19, 0x1f, 0x65, 0x7c, 0x91, 0xf1,
-	0xb8, 0x9c, 0xfc, 0xc1, 0xb7, 0x7e, 0x04, 0x00, 0x00, 0xff, 0xff, 0xcb, 0xad, 0xeb, 0x3b, 0xf7,
-	0x03, 0x00, 0x00,
+	// 385 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x8c, 0x53, 0xbd, 0x52, 0xea, 0x40,
+	0x14, 0x26, 0x70, 0x2f, 0xf7, 0x7a, 0xc0, 0x19, 0xdd, 0x41, 0x85, 0x88, 0xc8, 0xa4, 0xd2, 0x51,
+	0x03, 0x83, 0x9d, 0x95, 0x90, 0x42, 0x6d, 0x97, 0x07, 0xd0, 0xb0, 0xac, 0x4c, 0x84, 0x61, 0xe3,
+	0xee, 0xa6, 0x70, 0x6c, 0x7c, 0x2d, 0xdf, 0x80, 0xd2, 0xd2, 0xca, 0x11, 0x0a, 0x6b, 0x1f, 0xc1,
+	0xfc, 0x81, 0x19, 0xb3, 0x38, 0x14, 0x67, 0xb2, 0x7b, 0xf2, 0xfd, 0x9c, 0xfd, 0xb2, 0x81, 0xff,
+	0xc4, 0x36, 0x5d, 0xce, 0x24, 0x43, 0xa8, 0xcf, 0xc8, 0x90, 0x72, 0x93, 0x8c, 0x3c, 0x21, 0xfd,
+	0xa7, 0xed, 0x3a, 0x7a, 0x41, 0x3e, 0xb8, 0x54, 0x44, 0x00, 0x7d, 0x9d, 0xf5, 0xee, 0x28, 0x91,
+	0xf3, 0x6d, 0x69, 0xc0, 0x06, 0x2c, 0x5c, 0x36, 0x82, 0x55, 0xd4, 0x35, 0x9a, 0x50, 0xb6, 0x28,
+	0x97, 0xce, 0xad, 0x43, 0x6c, 0x49, 0xbb, 0xd2, 0x96, 0x9e, 0xc0, 0xf4, 0xde, 0xa3, 0x42, 0xa2,
+	0x12, 0xfc, 0x95, 0x6c, 0x48, 0xc7, 0x65, 0xad, 0xae, 0x1d, 0xac, 0xe1, 0x68, 0x63, 0x3c, 0x6b,
+	0x50, 0x51, 0x50, 0x84, 0xcb, 0xc6, 0x82, 0xa2, 0x33, 0xc8, 0x8b, 0xb0, 0x13, 0x92, 0x0a, 0x2d,
+	0xc3, 0x4c, 0x8f, 0x69, 0x5e, 0x09, 0xe1, 0xd9, 0x63, 0x32, 0xe7, 0xc6, 0x0c, 0x74, 0x03, 0xdb,
+	0x9c, 0x0e, 0x9c, 0x00, 0x46, 0xfb, 0xd7, 0xe4, 0xdb, 0xa3, 0x9c, 0x0d, 0xb5, 0x0e, 0x55, 0x5a,
+	0x78, 0xc1, 0x48, 0x0c, 0x85, 0xb7, 0xb8, 0xaa, 0x6d, 0x5c, 0xc2, 0x4e, 0xe0, 0x4d, 0x93, 0xd0,
+	0xf8, 0xb0, 0x08, 0xfe, 0x70, 0x36, 0xa2, 0xf1, 0x59, 0xc3, 0x35, 0xaa, 0x40, 0x8e, 0x08, 0x1e,
+	0xba, 0x17, 0x3b, 0xff, 0x66, 0x6f, 0xfb, 0x39, 0xab, 0x8b, 0x71, 0xd0, 0x0b, 0x72, 0x4b, 0x2b,
+	0xc5, 0x19, 0xa8, 0x73, 0xdb, 0x83, 0xdd, 0x0b, 0x2a, 0x31, 0x63, 0xd2, 0x6a, 0xa7, 0xfd, 0x8d,
+	0x73, 0xa8, 0xaa, 0x5f, 0xc7, 0xa2, 0x75, 0x28, 0x24, 0x13, 0x09, 0xa4, 0x8b, 0x38, 0xd9, 0x6a,
+	0x7d, 0x64, 0x21, 0x6b, 0xb5, 0x11, 0x83, 0x8d, 0x9f, 0x93, 0xa1, 0xa3, 0x65, 0x5f, 0x41, 0x91,
+	0x84, 0x7e, 0xbc, 0x1a, 0x38, 0x9a, 0xcb, 0xc8, 0x20, 0x0e, 0x9b, 0xa9, 0xfb, 0x80, 0x94, 0x22,
+	0xcb, 0x6e, 0x9a, 0x7e, 0xb2, 0x22, 0x7a, 0xe1, 0xf9, 0x08, 0x25, 0x55, 0x5a, 0xa8, 0xa1, 0x12,
+	0xfa, 0x25, 0x76, 0xbd, 0xb9, 0x3a, 0x61, 0x6e, 0xde, 0xa9, 0x4e, 0xa6, 0xb5, 0xcc, 0xab, 0x5f,
+	0x9f, 0xd3, 0x9a, 0xf6, 0x34, 0xab, 0x69, 0x13, 0xbf, 0x5e, 0xfc, 0x7a, 0xf7, 0xab, 0x97, 0x0f,
+	0x7f, 0xac, 0xd3, 0xaf, 0x00, 0x00, 0x00, 0xff, 0xff, 0xb5, 0x80, 0x2e, 0x8e, 0xaa, 0x03, 0x00,
+	0x00,
 }

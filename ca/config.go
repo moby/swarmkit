@@ -31,6 +31,9 @@ const (
 	agentTLSCertFilename   = "swarm-agent.crt"
 	agentTLSKeyFilename    = "swarm-agent.key"
 	agentCSRFilename       = "swarm-agent.csr"
+)
+
+const (
 	// TODO(diogo): These names should be randomly generated, and probably used as filenames to allow agents
 	// to participate in multiple clusters without filename collision
 	rootCN = "swarm-ca"
@@ -38,6 +41,8 @@ const (
 	ManagerRole = "manager"
 	// AgentRole represents the Agent node type, and is used for authorization to endpoints
 	AgentRole = "agent"
+	// CARole represents the CA node type, and is used for clients attempting to get new certificates issued
+	CARole = "ca"
 )
 
 // InvalidTLSCertificatesError represents a failure validating the TLS Certificates
