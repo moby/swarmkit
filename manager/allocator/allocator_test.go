@@ -1,7 +1,6 @@
 package allocator
 
 import (
-	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -11,12 +10,16 @@ import (
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/store"
+	memorystore "github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+var (
+	store = memorystore.NewMemoryStore(nil)
 )
 
 func TestAllocator(t *testing.T) {
-	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
 
 	a, err := New(store)
@@ -88,28 +91,11 @@ func TestAllocator(t *testing.T) {
 	}()
 
 	// Now verify if we get network and tasks updated properly
-	n1, err := watchNetwork(t, netWatch)
-	assert.NoError(t, err)
-	assert.NotEqual(t, n1.IPAM.Configs, nil)
-	assert.Equal(t, len(n1.IPAM.Configs), 1)
-	assert.Equal(t, n1.IPAM.Configs[0].Range, "")
-	assert.Equal(t, len(n1.IPAM.Configs[0].Reserved), 0)
+	watchNetwork(t, netWatch, false, isValidNetwork)
+	watchTask(t, taskWatch, false, isValidTask)
+	watchService(t, serviceWatch, false, nil)
 
-	_, subnet, err := net.ParseCIDR(n1.IPAM.Configs[0].Subnet)
-	assert.NoError(t, err)
-
-	ip := net.ParseIP(n1.IPAM.Configs[0].Gateway)
-	assert.NotEqual(t, ip, nil)
-
-	t1, err := watchTask(t, taskWatch)
-	assert.NoError(t, err)
-	assert.Equal(t, len(t1.Networks[0].Addresses), 1)
-	ip, _, err = net.ParseCIDR(t1.Networks[0].Addresses[0])
-	assert.NoError(t, err)
-	assert.Equal(t, subnet.Contains(ip), true)
-	assert.Equal(t, t1.Status.State, api.TaskStateAllocated)
-
-	// Add new networks/tasks/services after allocator is started.
+	//Add new networks/tasks/services after allocator is started.
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		n2 := &api.Network{
 			ID: "testID2",
@@ -123,18 +109,7 @@ func TestAllocator(t *testing.T) {
 		return nil
 	}))
 
-	n2, err := watchNetwork(t, netWatch)
-	assert.NoError(t, err)
-	assert.NotEqual(t, n2.IPAM.Configs, nil)
-	assert.Equal(t, len(n2.IPAM.Configs), 1)
-	assert.Equal(t, n2.IPAM.Configs[0].Range, "")
-	assert.Equal(t, len(n2.IPAM.Configs[0].Reserved), 0)
-
-	_, subnet, err = net.ParseCIDR(n2.IPAM.Configs[0].Subnet)
-	assert.NoError(t, err)
-
-	ip = net.ParseIP(n2.IPAM.Configs[0].Gateway)
-	assert.NotEqual(t, ip, nil)
+	watchNetwork(t, netWatch, false, isValidNetwork)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		s2 := &api.Service{
@@ -150,8 +125,7 @@ func TestAllocator(t *testing.T) {
 		return nil
 	}))
 
-	s2, err := watchService(t, serviceWatch)
-	assert.NoError(t, err)
+	watchService(t, serviceWatch, false, nil)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		t2 := &api.Task{
@@ -179,15 +153,7 @@ func TestAllocator(t *testing.T) {
 		return nil
 	}))
 
-	t2, err := watchTask(t, taskWatch)
-	assert.NoError(t, err)
-	assert.Equal(t, len(t2.Networks[0].Addresses), 1)
-	ip, _, err = net.ParseCIDR(t2.Networks[0].Addresses[0])
-	assert.NoError(t, err)
-	assert.Equal(t, subnet.Contains(ip), true)
-	assert.Equal(t, t2.Status.State, api.TaskStateAllocated)
-	assert.NotEqual(t, nil, t2.Endpoint)
-	assert.Equal(t, s2.Endpoint, t2.Endpoint)
+	watchTask(t, taskWatch, false, isValidTask)
 
 	// Now try adding a task which depends on a network before adding the network.
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
@@ -233,33 +199,14 @@ func TestAllocator(t *testing.T) {
 		return nil
 	}))
 
-	n3, err := watchNetwork(t, netWatch)
-	assert.NoError(t, err)
-	assert.NotEqual(t, n3.IPAM.Configs, nil)
-	assert.Equal(t, len(n3.IPAM.Configs), 1)
-	assert.Equal(t, n3.IPAM.Configs[0].Range, "")
-	assert.Equal(t, len(n3.IPAM.Configs[0].Reserved), 0)
-
-	_, subnet, err = net.ParseCIDR(n3.IPAM.Configs[0].Subnet)
-	assert.NoError(t, err)
-
-	ip = net.ParseIP(n3.IPAM.Configs[0].Gateway)
-	assert.NotEqual(t, ip, nil)
-
-	t3, err := watchTask(t, taskWatch)
-	assert.NoError(t, err)
-	assert.Equal(t, len(t3.Networks[0].Addresses), 1)
-	ip, _, err = net.ParseCIDR(t3.Networks[0].Addresses[0])
-	assert.NoError(t, err)
-	assert.Equal(t, subnet.Contains(ip), true)
-	assert.Equal(t, t3.Status.State, api.TaskStateAllocated)
+	watchNetwork(t, netWatch, false, isValidNetwork)
+	watchTask(t, taskWatch, false, isValidTask)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Tasks().Delete("testTaskID3"))
 		return nil
 	}))
-	_, err = watchTask(t, taskWatch)
-	assert.NoError(t, err)
+	watchTask(t, taskWatch, false, isValidTask)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		t5 := &api.Task{
@@ -278,23 +225,19 @@ func TestAllocator(t *testing.T) {
 		assert.NoError(t, tx.Tasks().Create(t5))
 		return nil
 	}))
-	t5, err := watchTask(t, taskWatch)
-	assert.NoError(t, err)
-	assert.Equal(t, t5.Status.State, api.TaskStateAllocated)
+	watchTask(t, taskWatch, false, isValidTask)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Networks().Delete("testID3"))
 		return nil
 	}))
-	_, err = watchNetwork(t, netWatch)
-	assert.NoError(t, err)
+	watchNetwork(t, netWatch, false, isValidNetwork)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
 		assert.NoError(t, tx.Services().Delete("testServiceID2"))
 		return nil
 	}))
-	_, err = watchService(t, serviceWatch)
-	assert.NoError(t, err)
+	watchService(t, serviceWatch, false, nil)
 
 	// Try to create a task with no network attachments and test
 	// that it moves to ALLOCATED state.
@@ -314,84 +257,178 @@ func TestAllocator(t *testing.T) {
 		assert.NoError(t, tx.Tasks().Create(t4))
 		return nil
 	}))
-	t4, err := watchTask(t, taskWatch)
-	assert.NoError(t, err)
-	assert.Equal(t, t4.Status.State, api.TaskStateAllocated)
+	watchTask(t, taskWatch, false, isValidTask)
 
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
+		n2 := tx.Networks().Get("testID2")
+		require.NotEqual(t, nil, n2)
 		assert.NoError(t, tx.Networks().Update(n2))
 		return nil
 	}))
-	n2, err = watchNetwork(t, netWatch)
-	assert.NoError(t, err)
-	n2, err = watchNetwork(t, netWatch)
-	assert.Error(t, err)
+	watchNetwork(t, netWatch, false, isValidNetwork)
+	watchNetwork(t, netWatch, true, nil)
 
 	// Try updating task which is already allocated
 	assert.NoError(t, store.Update(func(tx state.Tx) error {
+		t2 := tx.Tasks().Get("testTaskID2")
+		require.NotEqual(t, nil, t2)
 		assert.NoError(t, tx.Tasks().Update(t2))
 		return nil
 	}))
-	_, err = watchTask(t, taskWatch)
-	assert.NoError(t, err)
-	_, err = watchTask(t, taskWatch)
-	assert.Error(t, err)
+	watchTask(t, taskWatch, false, isValidTask)
+	watchTask(t, taskWatch, true, nil)
 
 	a.Stop()
 }
 
-func watchNetwork(t *testing.T, watch chan events.Event) (*api.Network, error) {
+func isValidNetwork(t assert.TestingT, n *api.Network) bool {
+	return assert.NotEqual(t, n.IPAM.Configs, nil) &&
+		assert.Equal(t, len(n.IPAM.Configs), 1) &&
+		assert.Equal(t, n.IPAM.Configs[0].Range, "") &&
+		assert.Equal(t, len(n.IPAM.Configs[0].Reserved), 0) &&
+		isValidSubnet(t, n.IPAM.Configs[0].Subnet) &&
+		assert.NotEqual(t, net.ParseIP(n.IPAM.Configs[0].Gateway), nil)
+}
+
+func isValidTask(t assert.TestingT, task *api.Task) bool {
+	return isValidNetworkAttachment(t, task) &&
+		isValidEndpoint(t, task) &&
+		assert.Equal(t, task.Status.State, api.TaskStateAllocated)
+}
+
+func isValidNetworkAttachment(t assert.TestingT, task *api.Task) bool {
+	if len(task.Spec.GetContainer().Networks) != 0 {
+		return assert.Equal(t, len(task.Networks[0].Addresses), 1) &&
+			isValidSubnet(t, task.Networks[0].Addresses[0])
+	}
+
+	return true
+}
+
+func isValidEndpoint(t assert.TestingT, task *api.Task) bool {
+	if task.ServiceID != "" {
+		var service *api.Service
+		store.View(func(tx state.ReadTx) {
+			service = tx.Services().Get(task.ServiceID)
+		})
+
+		if service == nil {
+			return true
+		}
+
+		return assert.Equal(t, service.Endpoint, task.Endpoint)
+
+	}
+
+	return true
+}
+
+func isValidSubnet(t assert.TestingT, subnet string) bool {
+	_, _, err := net.ParseCIDR(subnet)
+	return assert.NoError(t, err)
+}
+
+type mockTester struct{}
+
+func (m mockTester) Errorf(format string, args ...interface{}) {
+}
+
+func watchNetwork(t *testing.T, watch chan events.Event, expectTimeout bool, fn func(t assert.TestingT, n *api.Network) bool) {
 	for {
+		var network *api.Network
 		select {
 		case event := <-watch:
 			if n, ok := event.(state.EventUpdateNetwork); ok {
-				return n.Network, nil
+				network = n.Network.Copy()
+				if fn == nil || (fn != nil && fn(mockTester{}, network)) {
+					return
+				}
 			}
+
 			if n, ok := event.(state.EventDeleteNetwork); ok {
-				return n.Network, nil
+				network = n.Network.Copy()
+				if fn == nil || (fn != nil && fn(mockTester{}, network)) {
+					return
+				}
 			}
 
-			return nil, fmt.Errorf("got event %T when expecting EventUpdateNetwork/EventDeleteNetwork", event)
+			//return nil, fmt.Errorf("got event %T when expecting EventUpdateNetwork/EventDeleteNetwork", event)
 		case <-time.After(250 * time.Millisecond):
-			return nil, fmt.Errorf("timed out")
+			if !expectTimeout {
+				if network != nil && fn != nil {
+					fn(t, network)
+				}
 
+				t.Fatal("timed out before watchNetwork found expected network state")
+			}
+
+			return
 		}
 	}
 }
 
-func watchService(t *testing.T, watch chan events.Event) (*api.Service, error) {
+func watchService(t *testing.T, watch chan events.Event, expectTimeout bool, fn func(t assert.TestingT, n *api.Service) bool) {
 	for {
+		var service *api.Service
 		select {
 		case event := <-watch:
 			if s, ok := event.(state.EventUpdateService); ok {
-				return s.Service, nil
+				service = s.Service.Copy()
+				if fn == nil || (fn != nil && fn(mockTester{}, service)) {
+					return
+				}
 			}
+
 			if s, ok := event.(state.EventDeleteService); ok {
-				return s.Service, nil
+				service = s.Service.Copy()
+				if fn == nil || (fn != nil && fn(mockTester{}, service)) {
+					return
+				}
 			}
 
-			return nil, fmt.Errorf("got event %T when expecting EventUpdateService/EventDeleteService", event)
 		case <-time.After(250 * time.Millisecond):
-			return nil, fmt.Errorf("timed out")
+			if !expectTimeout {
+				if service != nil && fn != nil {
+					fn(t, service)
+				}
 
+				t.Fatal("timed out before watchService found expected service state")
+			}
+
+			return
 		}
 	}
 }
 
-func watchTask(t *testing.T, watch chan events.Event) (*api.Task, error) {
+func watchTask(t *testing.T, watch chan events.Event, expectTimeout bool, fn func(t assert.TestingT, n *api.Task) bool) {
 	for {
+		var task *api.Task
 		select {
 		case event := <-watch:
 			if t, ok := event.(state.EventUpdateTask); ok {
-				return t.Task, nil
+				task = t.Task.Copy()
+				if fn == nil || (fn != nil && fn(mockTester{}, task)) {
+					return
+				}
 			}
-			if t, ok := event.(state.EventDeleteTask); ok {
-				return t.Task, nil
-			}
-			return nil, fmt.Errorf("got event %T when expecting EventUpdateTask/EventDeleteTask", event)
-		case <-time.After(250 * time.Millisecond):
-			return nil, fmt.Errorf("timed out")
 
+			if t, ok := event.(state.EventDeleteTask); ok {
+				task = t.Task.Copy()
+				if fn == nil || (fn != nil && fn(mockTester{}, task)) {
+					return
+				}
+			}
+
+		case <-time.After(250 * time.Millisecond):
+			if !expectTimeout {
+				if task != nil && fn != nil {
+					fn(t, task)
+				}
+
+				t.Fatal("timed out before watchTask found expected task state")
+			}
+
+			return
 		}
 	}
 }
