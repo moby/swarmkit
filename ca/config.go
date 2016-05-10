@@ -31,6 +31,9 @@ const (
 	agentTLSCertFilename   = "swarm-agent.crt"
 	agentTLSKeyFilename    = "swarm-agent.key"
 	agentCSRFilename       = "swarm-agent.csr"
+)
+
+const (
 	// TODO(diogo): These names should be randomly generated, and probably used as filenames to allow agents
 	// to participate in multiple clusters without filename collision
 	rootCN = "swarm-ca"

@@ -237,7 +237,7 @@ func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.Cert
 
 	// This is our only non-MTLS request
 	creds := credentials.NewTLS(&tls.Config{ServerName: CARole, RootCAs: rootCAPool})
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds), grpc.WithBackoffMaxDelay(10 * time.Second)}
 
 	// TODO(diogo): Add a connection picker
 	conn, err := grpc.Dial(caAddr, opts...)
@@ -284,5 +284,5 @@ func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.Cert
 		time.Sleep(expBackoff.Proceed(nil))
 	}
 
-	return statusReponse.Certificate, nil
+	return statusReponse.RegisteredCertificate.Certificate, nil
 }

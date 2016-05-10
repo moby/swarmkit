@@ -3,6 +3,7 @@ syntax = "proto3";
 package docker.cluster.api;
 
 import "types.proto";
+import "objects.proto";
 import "gogoproto/gogo.proto";
 
 // CA defines the RPC methods for requesting certificates from a CA.
@@ -21,7 +22,7 @@ message CertificateStatusRequest {
 
 message CertificateStatusResponse {
 	IssuanceStatus status = 1;
-	bytes certificate = 2;
+	RegisteredCertificate registered_certificate = 2;
 }
 
 message IssueCertificateRequest {
