@@ -16,6 +16,7 @@ import (
 	cflog "github.com/cloudflare/cfssl/log"
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
+	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -173,13 +174,19 @@ func generateNewCSR() (csr, key []byte, err error) {
 
 // ParseValidateAndSignCSR returns a signed certificate from a particular signer and a CSR.
 func ParseValidateAndSignCSR(caSigner signer.Signer, csrBytes []byte, cn, role string) ([]byte, error) {
+	// All managers get added the subject-alt-name of CA, so they can be used for cert issuance
+	hosts := []string{role}
+	if role == ManagerRole {
+		hosts = append(hosts, CARole)
+	}
+
 	cert, err := caSigner.Sign(signer.SignRequest{
 		Request: string(csrBytes),
 		// OU is used for Authentication of the node type. The CN has the random
 		// node ID.
 		Subject: &signer.Subject{CN: cn, Names: []cfcsr.Name{{OU: role}}},
-		// Adding role as DNS alt name, so clients can connect to "manager"
-		Hosts: []string{role},
+		// Adding role as DNS alt name, so clients can connect to "manager" and "ca"
+		Hosts: hosts,
 	})
 	if err != nil {
 		log.Debugf("failed to sign node certificate: %v", err)
@@ -196,8 +203,7 @@ func GetRemoteCA(ctx context.Context, managerAddr, hashStr string) ([]byte, erro
 	// doing TOFU, in which case we don't validate the remote CA, or we're using
 	// a user supplied hash to check the integrity of the CA certificate.
 	insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
-	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second),
-		grpc.WithTransportCredentials(insecureCreds)}
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecureCreds)}
 
 	conn, err := grpc.Dial(managerAddr, opts...)
 	if err != nil {
@@ -224,17 +230,17 @@ func GetRemoteCA(ctx context.Context, managerAddr, hashStr string) ([]byte, erro
 	return response.Certificate, nil
 }
 
-func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.CertPool, role, managerAddr string) ([]byte, error) {
+func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.CertPool, role, caAddr string) ([]byte, error) {
 	if rootCAPool == nil {
 		return nil, fmt.Errorf("valid root CA pool required")
 	}
 
 	// This is our only non-MTLS request
-	creds := credentials.NewTLS(&tls.Config{ServerName: ManagerRole, RootCAs: rootCAPool})
-	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second), grpc.WithTransportCredentials(creds)}
+	creds := credentials.NewTLS(&tls.Config{ServerName: CARole, RootCAs: rootCAPool})
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds), grpc.WithBackoffMaxDelay(10 * time.Second)}
 
 	// TODO(diogo): Add a connection picker
-	conn, err := grpc.Dial(managerAddr, opts...)
+	conn, err := grpc.Dial(caAddr, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -243,12 +249,40 @@ func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.Cert
 	// Create a CAClient to retreive a new Certificate
 	caClient := api.NewCAClient(conn)
 
-	// Send the Request and retrieve the certificate
-	request := &api.IssueCertificateRequest{CSR: csr, Role: role}
-	response, err := caClient.IssueCertificate(ctx, request)
+	// Send the Request and retrieve the request token
+	issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
+	issueResponse, err := caClient.IssueCertificate(ctx, issueRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	return response.CertificateChain, nil
+	token := issueResponse.Token
+
+	statusRequest := &api.CertificateStatusRequest{Token: token}
+	var statusReponse *api.CertificateStatusResponse
+	expBackoff := events.NewExponentialBackoff(events.ExponentialBackoffConfig{
+		Base:   time.Second,
+		Factor: time.Second,
+		Max:    30 * time.Second,
+	})
+
+	// Exponential backoff with Max of 20 seconds to wait for the new certificate
+	for {
+		// Send the Request and retrieve the certificate
+		statusReponse, err = caClient.CertificateStatus(ctx, statusRequest)
+		if err != nil {
+			return nil, err
+		}
+
+		// If the request is completed, we have a certificate to return
+		if statusReponse.Status.State == api.IssuanceStateCompleted {
+			break
+		}
+
+		expBackoff.Failure(nil, nil)
+		// Wait for next retry
+		time.Sleep(expBackoff.Proceed(nil))
+	}
+
+	return statusReponse.RegisteredCertificate.Certificate, nil
 }

@@ -146,3 +146,9 @@ message NetworkSpec {
 	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
 }
 
+// RegisteredCertificateSpec specifies user defined certificate parameters.
+message RegisteredCertificateSpec {
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
+
+	IssuanceState state = 2;
+}
