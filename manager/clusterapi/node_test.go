@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -15,8 +15,8 @@ func createNode(t *testing.T, ts *testServer, id string) *api.Node {
 	node := &api.Node{
 		ID: id,
 	}
-	err := ts.Store.Update(func(tx state.Tx) error {
-		return tx.Nodes().Create(node)
+	err := ts.Store.Update(func(tx store.Tx) error {
+		return store.CreateNode(tx, node)
 	})
 	assert.NoError(t, err)
 	return node

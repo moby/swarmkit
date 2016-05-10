@@ -26,40 +26,39 @@ func init() {
 				},
 			},
 		},
-		Save: func(tx state.ReadTx, snapshot *api.StoreSnapshot) error {
+		Save: func(tx ReadTx, snapshot *api.StoreSnapshot) error {
 			var err error
-			snapshot.Volumes, err = tx.Volumes().Find(state.All)
+			snapshot.Volumes, err = FindVolumes(tx, All)
 			return err
 		},
-		Restore: func(tx state.Tx, snapshot *api.StoreSnapshot) error {
-			volumes, err := tx.Volumes().Find(state.All)
+		Restore: func(tx Tx, snapshot *api.StoreSnapshot) error {
+			volumes, err := FindVolumes(tx, All)
 			if err != nil {
 				return err
 			}
 			for _, v := range volumes {
-				if err := tx.Volumes().Delete(v.ID); err != nil {
+				if err := DeleteVolume(tx, v.ID); err != nil {
 					return err
 				}
 			}
 			for _, v := range snapshot.Volumes {
-				if err := tx.Volumes().Create(v); err != nil {
+				if err := CreateVolume(tx, v); err != nil {
 					return err
 				}
 			}
 			return nil
 		},
-		ApplyStoreAction: func(tx state.Tx, sa *api.StoreAction) error {
+		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Volume:
 				obj := v.Volume
-				ds := tx.Volumes()
 				switch sa.Action {
 				case api.StoreActionKindCreate:
-					return ds.Create(obj)
+					return CreateVolume(tx, obj)
 				case api.StoreActionKindUpdate:
-					return ds.Update(obj)
+					return UpdateVolume(tx, obj)
 				case api.StoreActionKindRemove:
-					return ds.Delete(obj.ID)
+					return DeleteVolume(tx, obj.ID)
 				}
 			}
 			return errUnknownStoreAction
@@ -102,7 +101,11 @@ func (v volumeEntry) Version() api.Version {
 	return v.Volume.Version
 }
 
-func (v volumeEntry) Copy(version *api.Version) state.Object {
+func (v volumeEntry) SetVersion(version api.Version) {
+	v.Volume.Version = version
+}
+
+func (v volumeEntry) Copy(version *api.Version) Object {
 	copy := v.Volume.Copy()
 	if version != nil {
 		copy.Version = *version
@@ -122,69 +125,56 @@ func (v volumeEntry) EventDelete() state.Event {
 	return state.EventDeleteVolume{Volume: v.Volume}
 }
 
-type volumes struct {
-	tx      *tx
-	memDBTx *memdb.Txn
-}
-
-func (volumes volumes) table() string {
-	return tableVolume
-}
-
-// Create adds a new volume to the store.
+// CreateVolume adds a new volume to the store.
 // Returns ErrExist if the ID is already taken.
-func (volumes volumes) Create(v *api.Volume) error {
+func CreateVolume(tx Tx, v *api.Volume) error {
 	// Ensure the name is not already in use.
-	if lookup(volumes.memDBTx, volumes.table(), indexName, v.Spec.Annotations.Name) != nil {
-		return state.ErrNameConflict
+	if tx.lookup(tableVolume, indexName, v.Spec.Annotations.Name) != nil {
+		return ErrNameConflict
 	}
 
-	err := volumes.tx.create(volumes.table(), volumeEntry{v})
-	if err == nil && volumes.tx.curVersion != nil {
-		v.Version = *volumes.tx.curVersion
-	}
-	return err
+	return tx.create(tableVolume, volumeEntry{v})
 }
 
-// Update updates an existing volume in the store.
+// UpdateVolume updates an existing volume in the store.
 // Returns ErrNotExist if the volume doesn't exist.
-func (volumes volumes) Update(v *api.Volume) error {
+func UpdateVolume(tx Tx, v *api.Volume) error {
 	// Ensure the name is either not in use or already used by this same Service.
-	if existing := lookup(volumes.memDBTx, volumes.table(), indexName, v.Spec.Annotations.Name); existing != nil {
+	if existing := tx.lookup(tableVolume, indexName, v.Spec.Annotations.Name); existing != nil {
 		if existing.ID() != v.ID {
-			return state.ErrNameConflict
+			return ErrNameConflict
 		}
 	}
 
-	return volumes.tx.update(volumes.table(), volumeEntry{v})
+	return tx.update(tableVolume, volumeEntry{v})
 }
 
-// Delete removes a volume from the store.
+// DeleteVolume removes a volume from the store.
 // Returns ErrNotExist if the volume doesn't exist.
-func (volumes volumes) Delete(id string) error {
-	return volumes.tx.delete(volumes.table(), id)
+func DeleteVolume(tx Tx, id string) error {
+	return tx.delete(tableVolume, id)
 }
 
-// Get looks up a volume by ID.
+// GetVolume looks up a volume by ID.
 // Returns nil if the volume doesn't exist.
-func (volumes volumes) Get(id string) *api.Volume {
-	v := get(volumes.memDBTx, volumes.table(), id)
+func GetVolume(tx ReadTx, id string) *api.Volume {
+	v := tx.get(tableVolume, id)
 	if v == nil {
 		return nil
 	}
 	return v.(volumeEntry).Volume
 }
 
-// Find selects a set of volumes and returns them.
-func (volumes volumes) Find(by state.By) ([]*api.Volume, error) {
+// FindVolumes selects a set of volumes and returns them.
+func FindVolumes(tx ReadTx, by By) ([]*api.Volume, error) {
 	switch by.(type) {
-	case state.AllFinder, state.NameFinder:
+	case byAll, byName:
 	default:
-		return nil, state.ErrInvalidFindBy
+		return nil, ErrInvalidFindBy
 	}
 
 	volumeList := []*api.Volume{}
-	err := find(volumes.memDBTx, volumes.table(), by, func(o state.Object) {
+	err := tx.find(tableVolume, by, func(o Object) {
 		volumeList = append(volumeList, o.(volumeEntry).Volume)
 	})
 	return volumeList, err

@@ -11,14 +11,14 @@ import (
 	"golang.org/x/net/context"
 )
 
-func getRunnableServiceTasks(t *testing.T, store state.WatchableStore, s *api.Service) []*api.Task {
+func getRunnableServiceTasks(t *testing.T, s *store.MemoryStore, service *api.Service) []*api.Task {
 	var (
 		err   error
 		tasks []*api.Task
 	)
 
-	store.View(func(tx state.ReadTx) {
-		tasks, err = tx.Tasks().Find(state.ByServiceID(s.ID))
+	s.View(func(tx store.ReadTx) {
+		tasks, err = store.FindTasks(tx, store.ByServiceID(service.ID))
 	})
 	assert.NoError(t, err)
 
@@ -33,22 +33,22 @@ func getRunnableServiceTasks(t *testing.T, store state.WatchableStore, s *api.Se
 
 func TestUpdater(t *testing.T) {
 	ctx := context.Background()
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
 
 	// Move tasks to their desired state.
-	watch, cancel := state.Watch(store.WatchQueue(), state.EventCreateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventCreateTask{})
 	defer cancel()
 	go func() {
 		for {
 			select {
 			case e := <-watch:
 				task := e.(state.EventCreateTask).Task
-				err := store.Update(func(tx state.Tx) error {
-					task = tx.Tasks().Get(task.ID)
+				err := s.Update(func(tx store.Tx) error {
+					task = store.GetTask(tx, task.ID)
 					if task.DesiredState == api.TaskStateRunning {
 						task.Status.State = api.TaskStateRunning
-						return tx.Tasks().Update(task)
+						return store.UpdateTask(tx, task)
 					}
 					return nil
 				})
@@ -77,24 +77,24 @@ func TestUpdater(t *testing.T) {
 		},
 	}
 
-	err := store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Services().Create(service))
+	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateService(tx, service))
 		for i := uint64(0); i < service.Spec.Instances; i++ {
-			assert.NoError(t, tx.Tasks().Create(newTask(service, uint64(i))))
+			assert.NoError(t, store.CreateTask(tx, newTask(service, uint64(i))))
 		}
 		return nil
 	})
 	assert.NoError(t, err)
 
-	originalTasks := getRunnableServiceTasks(t, store, service)
+	originalTasks := getRunnableServiceTasks(t, s, service)
 	for _, task := range originalTasks {
 		assert.Equal(t, "v:1", task.Spec.GetContainer().Image.Reference)
 	}
 
 	service.Spec.Template.GetContainer().Image.Reference = "v:2"
-	updater := NewUpdater(store)
-	updater.Run(ctx, service, getRunnableServiceTasks(t, store, service))
-	updatedTasks := getRunnableServiceTasks(t, store, service)
+	updater := NewUpdater(s)
+	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
+	updatedTasks := getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
 		assert.Equal(t, "v:2", task.Spec.GetContainer().Image.Reference)
 	}
@@ -103,9 +103,9 @@ func TestUpdater(t *testing.T) {
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
 	}
-	updater = NewUpdater(store)
-	updater.Run(ctx, service, getRunnableServiceTasks(t, store, service))
-	updatedTasks = getRunnableServiceTasks(t, store, service)
+	updater = NewUpdater(s)
+	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
+	updatedTasks = getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
 		assert.Equal(t, "v:3", task.Spec.GetContainer().Image.Reference)
 	}
@@ -115,9 +115,9 @@ func TestUpdater(t *testing.T) {
 		Parallelism: 1,
 		Delay:       10 * time.Millisecond,
 	}
-	updater = NewUpdater(store)
-	updater.Run(ctx, service, getRunnableServiceTasks(t, store, service))
-	updatedTasks = getRunnableServiceTasks(t, store, service)
+	updater = NewUpdater(s)
+	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
+	updatedTasks = getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
 		assert.Equal(t, "v:4", task.Spec.GetContainer().Image.Reference)
 	}

@@ -3,7 +3,7 @@ package clusterapi
 import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
-	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -97,8 +97,8 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 		Spec: *request.Spec,
 	}
 
-	err := s.store.Update(func(tx state.Tx) error {
-		return tx.Services().Create(service)
+	err := s.store.Update(func(tx store.Tx) error {
+		return store.CreateService(tx, service)
 	})
 	if err != nil {
 		return nil, err
@@ -118,8 +118,8 @@ func (s *Server) GetService(ctx context.Context, request *api.GetServiceRequest)
 	}
 
 	var service *api.Service
-	s.store.View(func(tx state.ReadTx) {
-		service = tx.Services().Get(request.ServiceID)
+	s.store.View(func(tx store.ReadTx) {
+		service = store.GetService(tx, request.ServiceID)
 	})
 	if service == nil {
 		return nil, grpc.Errorf(codes.NotFound, "service %s not found", request.ServiceID)
@@ -144,15 +144,14 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 	}
 
 	var service *api.Service
-	err := s.store.Update(func(tx state.Tx) error {
-		services := tx.Services()
-		service = services.Get(request.ServiceID)
+	err := s.store.Update(func(tx store.Tx) error {
+		service = store.GetService(tx, request.ServiceID)
 		if service == nil {
 			return nil
 		}
 		service.Version = *request.ServiceVersion
 		service.Spec = *request.Spec.Copy()
-		return services.Update(service)
+		return store.UpdateService(tx, service)
 	})
 	if err != nil {
 		return nil, err
@@ -174,11 +173,11 @@ func (s *Server) RemoveService(ctx context.Context, request *api.RemoveServiceRe
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	err := s.store.Update(func(tx state.Tx) error {
-		return tx.Services().Delete(request.ServiceID)
+	err := s.store.Update(func(tx store.Tx) error {
+		return store.DeleteService(tx, request.ServiceID)
 	})
 	if err != nil {
-		if err == state.ErrNotExist {
+		if err == store.ErrNotExist {
 			return nil, grpc.Errorf(codes.NotFound, "service %s not found", request.ServiceID)
 		}
 		return nil, err
@@ -192,11 +191,11 @@ func (s *Server) ListServices(ctx context.Context, request *api.ListServicesRequ
 		services []*api.Service
 		err      error
 	)
-	s.store.View(func(tx state.ReadTx) {
+	s.store.View(func(tx store.ReadTx) {
 		if request.Options == nil || request.Options.Query == "" {
-			services, err = tx.Services().Find(state.All)
+			services, err = store.FindServices(tx, store.All)
 		} else {
-			services, err = tx.Services().Find(state.ByQuery(request.Options.Query))
+			services, err = store.FindServices(tx, store.ByQuery(request.Options.Query))
 		}
 	})
 	if err != nil {

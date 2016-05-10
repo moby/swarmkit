@@ -14,14 +14,13 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/ca/testutils"
-	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
 
 type grpcDispatcher struct {
 	Clients              []api.DispatcherClient
-	Store                state.Store
+	Store                *store.MemoryStore
 	grpcServer           *grpc.Server
 	dispatcherServer     *Dispatcher
 	conns                []*grpc.ClientConn
@@ -138,8 +137,8 @@ func TestHeartbeat(t *testing.T) {
 	assert.NotZero(t, resp.Period)
 	time.Sleep(300 * time.Millisecond)
 
-	gd.Store.View(func(readTx state.ReadTx) {
-		storeNodes, err := readTx.Nodes().Find(state.All)
+	gd.Store.View(func(readTx store.ReadTx) {
+		storeNodes, err := store.FindNodes(readTx, store.All)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, storeNodes)
 		assert.Equal(t, storeNodes[0].Status.State, api.NodeStatus_READY)
@@ -164,8 +163,8 @@ func TestHeartbeatTimeout(t *testing.T) {
 	}
 	time.Sleep(500 * time.Millisecond)
 
-	gd.Store.View(func(readTx state.ReadTx) {
-		storeNodes, err := readTx.Nodes().Find(state.All)
+	gd.Store.View(func(readTx store.ReadTx) {
+		storeNodes, err := store.FindNodes(readTx, store.All)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, storeNodes)
 		assert.Equal(t, api.NodeStatus_DOWN, storeNodes[0].Status.State)
@@ -230,15 +229,15 @@ func TestTasks(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	err = gd.Store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Create(testTask1))
-		assert.NoError(t, tx.Tasks().Create(testTask2))
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, testTask1))
+		assert.NoError(t, store.CreateTask(tx, testTask2))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	err = gd.Store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Update(&api.Task{
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, &api.Task{
 			ID:     testTask1.ID,
 			NodeID: nodeID,
 			Status: api.TaskStatus{State: api.TaskStateFailed, Err: "1234"},
@@ -247,9 +246,9 @@ func TestTasks(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = gd.Store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Delete(testTask1.ID))
-		assert.NoError(t, tx.Tasks().Delete(testTask2.ID))
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteTask(tx, testTask1.ID))
+		assert.NoError(t, store.DeleteTask(tx, testTask2.ID))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -304,9 +303,9 @@ func TestTaskUpdate(t *testing.T) {
 	testTask2 := &api.Task{
 		ID: "testTask2",
 	}
-	err = gd.Store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Create(testTask1))
-		assert.NoError(t, tx.Tasks().Create(testTask2))
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, testTask1))
+		assert.NoError(t, store.CreateTask(tx, testTask2))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -336,11 +335,11 @@ func TestTaskUpdate(t *testing.T) {
 	updReq.SessionID = expectedSessionID
 	_, err = gd.Clients[0].UpdateTaskStatus(context.Background(), updReq)
 	assert.NoError(t, err)
-	gd.Store.View(func(readTx state.ReadTx) {
-		storeTask1 := readTx.Tasks().Get(testTask1.ID)
+	gd.Store.View(func(readTx store.ReadTx) {
+		storeTask1 := store.GetTask(readTx, testTask1.ID)
 		assert.NotNil(t, storeTask1)
 		assert.NotNil(t, storeTask1.Status)
-		storeTask2 := readTx.Tasks().Get(testTask2.ID)
+		storeTask2 := store.GetTask(readTx, testTask2.ID)
 		assert.NotNil(t, storeTask2)
 		assert.NotNil(t, storeTask2.Status)
 		assert.Equal(t, storeTask1.Status.State, api.TaskStateAssigned)

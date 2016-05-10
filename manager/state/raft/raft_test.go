@@ -18,9 +18,9 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	cautils "github.com/docker/swarm-v2/ca/testutils"
-	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/raft"
 	raftutils "github.com/docker/swarm-v2/manager/state/raft/testutils"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -632,9 +632,9 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 	for _, node := range nodes {
 		assert.NoError(t, raftutils.PollFunc(func() error {
 			var err error
-			node.MemoryStore().View(func(tx state.ReadTx) {
+			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node
-				allNodes, err = tx.Nodes().Find(state.All)
+				allNodes, err = store.FindNodes(tx, store.All)
 				if err != nil {
 					return
 				}
@@ -644,7 +644,7 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 				}
 
 				for i, nodeID := range []string{"id1", "id2"} {
-					n := tx.Nodes().Get(nodeID)
+					n := store.GetNode(tx, nodeID)
 					if !reflect.DeepEqual(n, values[i]) {
 						err = fmt.Errorf("node %s did not match expected value", nodeID)
 						return

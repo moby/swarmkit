@@ -10,6 +10,7 @@ import (
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/docker/swarm-v2/manager/state/watch"
 	"golang.org/x/net/context"
 )
@@ -56,14 +57,14 @@ type Dispatcher struct {
 	mu               sync.Mutex
 	addr             string
 	nodes            *nodeStore
-	store            state.WatchableStore
+	store            *store.MemoryStore
 	mgrQueue         *watch.Queue
 	lastSeenManagers []*api.WeightedPeer
 	config           *Config
 }
 
 // New returns Dispatcher with store.
-func New(store state.WatchableStore, c *Config) *Dispatcher {
+func New(store *store.MemoryStore, c *Config) *Dispatcher {
 	return &Dispatcher{
 		addr:     c.Addr,
 		nodes:    newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier),
@@ -90,14 +91,14 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	// create or update node in store
 	// TODO(stevvooe): Validate node specification.
 	var node *api.Node
-	err = d.store.Update(func(tx state.Tx) error {
-		node = tx.Nodes().Get(agentID)
+	err = d.store.Update(func(tx store.Tx) error {
+		node = store.GetNode(tx, agentID)
 		if node != nil {
 			node.Description = r.Description
 			node.Status = api.NodeStatus{
 				State: api.NodeStatus_READY,
 			}
-			return tx.Nodes().Update(node)
+			return store.UpdateNode(tx, node)
 		}
 
 		node = &api.Node{
@@ -107,7 +108,7 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 				State: api.NodeStatus_READY,
 			},
 		}
-		return tx.Nodes().Create(node)
+		return store.CreateNode(tx, node)
 	})
 	if err != nil {
 		return nil, err
@@ -149,14 +150,14 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 	if _, err := d.nodes.GetWithSession(agentID, r.SessionID); err != nil {
 		return nil, err
 	}
-	err = d.store.Update(func(tx state.Tx) error {
+	err = d.store.Update(func(tx store.Tx) error {
 		for _, u := range r.Updates {
 			logger := log.G(ctx).WithField("task.id", u.TaskID)
 			if u.Status == nil {
 				logger.Warnf("task report has nil status")
 				continue
 			}
-			task := tx.Tasks().Get(u.TaskID)
+			task := store.GetTask(tx, u.TaskID)
 			if task == nil {
 				logger.Errorf("task unavailable")
 				continue
@@ -175,7 +176,7 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 			}
 
 			task.Status = *u.Status
-			if err := tx.Tasks().Update(task); err != nil {
+			if err := store.UpdateTask(tx, task); err != nil {
 				logger.WithError(err).Error("failed to update task status")
 				return err
 			}
@@ -214,8 +215,8 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	defer cancel()
 
 	tasksMap := make(map[string]*api.Task)
-	d.store.View(func(readTx state.ReadTx) {
-		tasks, err := readTx.Tasks().Find(state.ByNodeID(agentID))
+	d.store.View(func(readTx store.ReadTx) {
+		tasks, err := store.FindTasks(readTx, store.ByNodeID(agentID))
 		if err != nil {
 			return
 		}
@@ -258,13 +259,13 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 }
 
 func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
-	err := d.store.Update(func(tx state.Tx) error {
-		node := tx.Nodes().Get(id)
+	err := d.store.Update(func(tx store.Tx) error {
+		node := store.GetNode(tx, id)
 		if node == nil {
 			return errors.New("node not found")
 		}
 		node.Status = status
-		return tx.Nodes().Update(node)
+		return store.UpdateNode(tx, node)
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update node %s status to down: %v", id, err)

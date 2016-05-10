@@ -17,8 +17,8 @@ import (
 	etcdraft "github.com/coreos/etcd/raft"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
-	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/raft"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -372,9 +372,9 @@ func ProposeValue(t *testing.T, raftNode *TestNode, nodeID ...string) (*api.Node
 func CheckValue(t *testing.T, raftNode *TestNode, createdNode *api.Node) {
 	assert.NoError(t, PollFunc(func() error {
 		var err error
-		raftNode.MemoryStore().View(func(tx state.ReadTx) {
+		raftNode.MemoryStore().View(func(tx store.ReadTx) {
 			var allNodes []*api.Node
-			allNodes, err = tx.Nodes().Find(state.All)
+			allNodes, err = store.FindNodes(tx, store.All)
 			if err != nil {
 				return
 			}
@@ -395,9 +395,9 @@ func CheckValue(t *testing.T, raftNode *TestNode, createdNode *api.Node) {
 func CheckNoValue(t *testing.T, raftNode *TestNode) {
 	assert.NoError(t, PollFunc(func() error {
 		var err error
-		raftNode.MemoryStore().View(func(tx state.ReadTx) {
+		raftNode.MemoryStore().View(func(tx store.ReadTx) {
 			var allNodes []*api.Node
-			allNodes, err = tx.Nodes().Find(state.All)
+			allNodes, err = store.FindNodes(tx, store.All)
 			if err != nil {
 				return
 			}
@@ -416,9 +416,9 @@ func CheckValuesOnNodes(t *testing.T, checkNodes map[uint64]*TestNode, ids []str
 	for _, node := range checkNodes {
 		assert.NoError(t, PollFunc(func() error {
 			var err error
-			node.MemoryStore().View(func(tx state.ReadTx) {
+			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node
-				allNodes, err = tx.Nodes().Find(state.All)
+				allNodes, err = store.FindNodes(tx, store.All)
 				if err != nil {
 					return
 				}
@@ -428,7 +428,7 @@ func CheckValuesOnNodes(t *testing.T, checkNodes map[uint64]*TestNode, ids []str
 				}
 
 				for i, id := range ids {
-					n := tx.Nodes().Get(id)
+					n := store.GetNode(tx, id)
 					if !reflect.DeepEqual(values[i], n) {
 						err = fmt.Errorf("node %s did not match expected value", id)
 						return

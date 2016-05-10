@@ -202,52 +202,52 @@ func TestRemoveTask(t *testing.T) {
 	assert.Equal(t, observedTask2.NodeID, "id1")
 }
 
-func addService(t *testing.T, store state.Store, service *api.Service) {
-	store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Services().Create(service))
+func addService(t *testing.T, s *store.MemoryStore, service *api.Service) {
+	s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateService(tx, service))
 		return nil
 	})
 }
 
-func deleteService(t *testing.T, store state.Store, service *api.Service) {
-	store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Services().Delete(service.ID))
+func deleteService(t *testing.T, s *store.MemoryStore, service *api.Service) {
+	s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteService(tx, service.ID))
 		return nil
 	})
 }
 
-func addNode(t *testing.T, store state.Store, node *api.Node) {
-	store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Nodes().Create(node))
+func addNode(t *testing.T, s *store.MemoryStore, node *api.Node) {
+	s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateNode(tx, node))
 		return nil
 	})
 }
 
-func updateNodeAvailability(t *testing.T, store state.Store, node *api.Node, avail api.NodeSpec_Availability) {
+func updateNodeAvailability(t *testing.T, s *store.MemoryStore, node *api.Node, avail api.NodeSpec_Availability) {
 	node.Spec.Availability = avail
-	store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Nodes().Update(node))
+	s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateNode(tx, node))
 		return nil
 	})
 }
 
-func deleteNode(t *testing.T, store state.Store, node *api.Node) {
-	store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Nodes().Delete(node.ID))
+func deleteNode(t *testing.T, s *store.MemoryStore, node *api.Node) {
+	s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteNode(tx, node.ID))
 		return nil
 	})
 }
 
-func addTask(t *testing.T, store state.Store, task *api.Task) {
-	store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Create(task))
+func addTask(t *testing.T, s *store.MemoryStore, task *api.Task) {
+	s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, task))
 		return nil
 	})
 }
 
-func deleteTask(t *testing.T, store state.Store, task *api.Task) {
-	store.Update(func(tx state.Tx) error {
-		assert.NoError(t, tx.Tasks().Delete(task.ID))
+func deleteTask(t *testing.T, s *store.MemoryStore, task *api.Task) {
+	s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteTask(tx, task.ID))
 		return nil
 	})
 }

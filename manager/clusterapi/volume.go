@@ -3,7 +3,7 @@ package clusterapi
 import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
-	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -39,8 +39,8 @@ func (s *Server) CreateVolume(ctx context.Context, request *api.CreateVolumeRequ
 		Spec: *request.Spec,
 	}
 
-	err := s.store.Update(func(tx state.Tx) error {
-		return tx.Volumes().Create(volume)
+	err := s.store.Update(func(tx store.Tx) error {
+		return store.CreateVolume(tx, volume)
 	})
 	if err != nil {
 		return nil, err
@@ -60,8 +60,8 @@ func (s *Server) GetVolume(ctx context.Context, request *api.GetVolumeRequest) (
 	}
 
 	var volume *api.Volume
-	s.store.View(func(tx state.ReadTx) {
-		volume = tx.Volumes().Get(request.VolumeID)
+	s.store.View(func(tx store.ReadTx) {
+		volume = store.GetVolume(tx, request.VolumeID)
 	})
 	if volume == nil {
 		return nil, grpc.Errorf(codes.NotFound, "volume %s not found", request.VolumeID)
@@ -80,11 +80,11 @@ func (s *Server) RemoveVolume(ctx context.Context, request *api.RemoveVolumeRequ
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	err := s.store.Update(func(tx state.Tx) error {
-		return tx.Volumes().Delete(request.VolumeID)
+	err := s.store.Update(func(tx store.Tx) error {
+		return store.DeleteVolume(tx, request.VolumeID)
 	})
 	if err != nil {
-		if err == state.ErrNotExist {
+		if err == store.ErrNotExist {
 			return nil, grpc.Errorf(codes.NotFound, "volume %s not found", request.VolumeID)
 		}
 		return nil, err
@@ -98,8 +98,8 @@ func (s *Server) ListVolumes(ctx context.Context, request *api.ListVolumesReques
 		volumes []*api.Volume
 		err     error
 	)
-	s.store.View(func(tx state.ReadTx) {
-		volumes, err = tx.Volumes().Find(state.All)
+	s.store.View(func(tx store.ReadTx) {
+		volumes, err = store.FindVolumes(tx, store.All)
 	})
 	if err != nil {
 		return nil, err

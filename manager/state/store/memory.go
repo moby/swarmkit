@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	pb "github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
@@ -28,9 +29,31 @@ const (
 	// MaxChangesPerTransaction is the number of changes after which a new
 	// transaction should be started within Batch.
 	MaxChangesPerTransaction = 200
+
+	// MaxTransactionBytes is the maximum serialized transaction size.
+	MaxTransactionBytes = 1.5 * 1024 * 1024
 )
 
 var (
+	// ErrExist is returned by create operations if the provided ID is already
+	// taken.
+	ErrExist = errors.New("object already exists")
+
+	// ErrNotExist is returned by altering operations (update, delete) if the
+	// provided ID is not found.
+	ErrNotExist = errors.New("object does not exist")
+
+	// ErrNameConflict is returned by create/update if the object name is
+	// already in use by another object.
+	ErrNameConflict = errors.New("name conflicts with an existing object")
+
+	// ErrInvalidFindBy is returned if an unrecognized type is passed to Find.
+	ErrInvalidFindBy = errors.New("invalid find argument type")
+
+	// ErrSequenceConflict is returned when trying to update an object
+	// whose sequence information does not match the object in the store's.
+	ErrSequenceConflict = errors.New("update out of sequence")
+
 	objectStorers []ObjectStoreConfig
 	schema        = &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{},
@@ -99,77 +122,46 @@ func prefixFromArgs(args ...interface{}) ([]byte, error) {
 	return val, nil
 }
 
+// ReadTx is a read transaction. Note that transaction does not imply
+// any internal batching. It only means that the transaction presents a
+// consistent view of the data that cannot be affected by other
+// transactions.
+type ReadTx interface {
+	lookup(table, index, id string) Object
+	get(table, id string) Object
+	find(table string, by By, cb func(Object)) error
+}
+
 type readTx struct {
-	nodes                  nodes
-	services               services
-	tasks                  tasks
-	networks               networks
-	volumes                volumes
-	registeredCertificates registeredCertificates
+	memDBTx *memdb.Txn
 }
 
 // View executes a read transaction.
-func (s *MemoryStore) View(cb func(state.ReadTx)) {
+func (s *MemoryStore) View(cb func(ReadTx)) {
 	memDBTx := s.memDB.Txn(false)
 
 	readTx := readTx{
-		nodes: nodes{
-			memDBTx: memDBTx,
-		},
-		services: services{
-			memDBTx: memDBTx,
-		},
-		tasks: tasks{
-			memDBTx: memDBTx,
-		},
-		networks: networks{
-			memDBTx: memDBTx,
-		},
-		volumes: volumes{
-			memDBTx: memDBTx,
-		},
-		registeredCertificates: registeredCertificates{
-			memDBTx: memDBTx,
-		},
+		memDBTx: memDBTx,
 	}
 	cb(readTx)
 	memDBTx.Commit()
 }
 
-func (t readTx) Nodes() state.NodeSetReader {
-	return t.nodes
-}
-
-func (t readTx) Services() state.ServiceSetReader {
-	return t.services
-}
-
-func (t readTx) Networks() state.NetworkSetReader {
-	return t.networks
-}
-
-func (t readTx) Tasks() state.TaskSetReader {
-	return t.tasks
-}
-
-func (t readTx) Volumes() state.VolumeSetReader {
-	return t.volumes
-}
-
-func (t readTx) RegisteredCertificates() state.RegisteredCertificateSetReader {
-	return t.registeredCertificates
+// Tx is a read/write transaction. Note that transaction does not imply
+// any internal batching. The purpose of this transaction is to give the
+// user a guarantee that its changes won't be visible to other transactions
+// until the transaction is over.
+type Tx interface {
+	ReadTx
+	create(table string, o Object) error
+	update(table string, o Object) error
+	delete(table, id string) error
 }
 
 type tx struct {
-	nodes                  nodes
-	services               services
-	tasks                  tasks
-	networks               networks
-	volumes                volumes
-	registeredCertificates registeredCertificates
-	curVersion             *api.Version
-	memDBTx                *memdb.Txn
-	changelist             []state.Event
+	readTx
+	curVersion *api.Version
+	changelist []state.Event
 }
 
 // ApplyStoreActions updates a store based on StoreAction messages.
@@ -178,23 +170,13 @@ func (s *MemoryStore) ApplyStoreActions(actions []*api.StoreAction) error {
 	memDBTx := s.memDB.Txn(true)
 
 	tx := tx{
-		nodes:                  nodes{memDBTx: memDBTx},
-		services:               services{memDBTx: memDBTx},
-		tasks:                  tasks{memDBTx: memDBTx},
-		networks:               networks{memDBTx: memDBTx},
-		volumes:                volumes{memDBTx: memDBTx},
-		registeredCertificates: registeredCertificates{memDBTx: memDBTx},
-		memDBTx:                memDBTx,
+		readTx: readTx{
+			memDBTx: memDBTx,
+		},
 	}
-	tx.nodes.tx = &tx
-	tx.services.tx = &tx
-	tx.tasks.tx = &tx
-	tx.networks.tx = &tx
-	tx.volumes.tx = &tx
-	tx.registeredCertificates.tx = &tx
 
 	for _, sa := range actions {
-		if err := applyStoreAction(tx, sa); err != nil {
+		if err := applyStoreAction(&tx, sa); err != nil {
 			memDBTx.Abort()
 			s.updateLock.Unlock()
 			return err
@@ -213,7 +195,7 @@ func (s *MemoryStore) ApplyStoreActions(actions []*api.StoreAction) error {
 	return nil
 }
 
-func applyStoreAction(tx tx, sa *api.StoreAction) error {
+func applyStoreAction(tx Tx, sa *api.StoreAction) error {
 	for _, os := range objectStorers {
 		err := os.ApplyStoreAction(tx, sa)
 		if err != errUnknownStoreAction {
@@ -224,7 +206,7 @@ func applyStoreAction(tx tx, sa *api.StoreAction) error {
 	return errors.New("unrecognized action type")
 }
 
-func (s *MemoryStore) update(proposer state.Proposer, cb func(state.Tx) error) error {
+func (s *MemoryStore) update(proposer state.Proposer, cb func(Tx) error) error {
 	s.updateLock.Lock()
 	memDBTx := s.memDB.Txn(true)
 
@@ -237,7 +219,7 @@ func (s *MemoryStore) update(proposer state.Proposer, cb func(state.Tx) error) e
 	var tx tx
 	tx.init(memDBTx, curVersion)
 
-	err := cb(tx)
+	err := cb(&tx)
 
 	if err == nil {
 		if proposer == nil {
@@ -273,16 +255,17 @@ func (s *MemoryStore) update(proposer state.Proposer, cb func(state.Tx) error) e
 
 }
 
-func (s *MemoryStore) updateLocal(cb func(state.Tx) error) error {
+func (s *MemoryStore) updateLocal(cb func(Tx) error) error {
 	return s.update(nil, cb)
 }
 
 // Update executes a read/write transaction.
-func (s *MemoryStore) Update(cb func(state.Tx) error) error {
+func (s *MemoryStore) Update(cb func(Tx) error) error {
 	return s.update(s.proposer, cb)
 }
 
-type batch struct {
+// Batch provides a mechanism to batch updates to a store.
+type Batch struct {
 	tx    tx
 	store *MemoryStore
 	// applied counts the times Update has run successfully
@@ -299,12 +282,15 @@ type batch struct {
 	err           error
 }
 
-func (batch *batch) Update(cb func(state.Tx) error) error {
+// Update adds a single change to a batch. Each call to Update is atomic, but
+// different calls to Update may be spread across multiple transactions to
+// circumvent transaction size limits.
+func (batch *Batch) Update(cb func(Tx) error) error {
 	if batch.err != nil {
 		return batch.err
 	}
 
-	if err := cb(batch.tx); err != nil {
+	if err := cb(&batch.tx); err != nil {
 		return err
 	}
 
@@ -319,7 +305,7 @@ func (batch *batch) Update(cb func(state.Tx) error) error {
 		batch.changelistLen++
 	}
 
-	if batch.changelistLen >= MaxChangesPerTransaction || batch.transactionSizeEstimate >= (state.MaxTransactionBytes*3)/4 {
+	if batch.changelistLen >= MaxChangesPerTransaction || batch.transactionSizeEstimate >= (MaxTransactionBytes*3)/4 {
 		if err := batch.commit(); err != nil {
 			return err
 		}
@@ -335,7 +321,7 @@ func (batch *batch) Update(cb func(state.Tx) error) error {
 	return nil
 }
 
-func (batch *batch) newTx() {
+func (batch *Batch) newTx() {
 	var curVersion *api.Version
 
 	if batch.store.proposer != nil {
@@ -347,7 +333,7 @@ func (batch *batch) newTx() {
 	batch.changelistLen = 0
 }
 
-func (batch *batch) commit() error {
+func (batch *Batch) commit() error {
 	if batch.store.proposer != nil {
 		var sa []*api.StoreAction
 		sa, batch.err = batch.tx.changelistStoreActions()
@@ -399,10 +385,10 @@ func (batch *batch) commit() error {
 //
 // Batch returns the number of calls to batch.Update whose changes were
 // successfully committed to the store.
-func (s *MemoryStore) Batch(cb func(state.Batch) error) (int, error) {
+func (s *MemoryStore) Batch(cb func(*Batch) error) (int, error) {
 	s.updateLock.Lock()
 
-	batch := batch{
+	batch := Batch{
 		store: s,
 	}
 	batch.newTx()
@@ -422,31 +408,6 @@ func (tx *tx) init(memDBTx *memdb.Txn, curVersion *api.Version) {
 	tx.memDBTx = memDBTx
 	tx.curVersion = curVersion
 	tx.changelist = nil
-
-	tx.nodes = nodes{
-		tx:      tx,
-		memDBTx: memDBTx,
-	}
-	tx.services = services{
-		tx:      tx,
-		memDBTx: memDBTx,
-	}
-	tx.tasks = tasks{
-		tx:      tx,
-		memDBTx: memDBTx,
-	}
-	tx.networks = networks{
-		tx:      tx,
-		memDBTx: memDBTx,
-	}
-	tx.volumes = volumes{
-		tx:      tx,
-		memDBTx: memDBTx,
-	}
-	tx.registeredCertificates = registeredCertificates{
-		tx:      tx,
-		memDBTx: memDBTx,
-	}
 }
 
 func newStoreAction(c state.Event) (*api.StoreAction, error) {
@@ -476,68 +437,47 @@ func (tx tx) changelistStoreActions() ([]*api.StoreAction, error) {
 	return actions, nil
 }
 
-func (tx tx) Nodes() state.NodeSet {
-	return tx.nodes
-}
-
-func (tx tx) Networks() state.NetworkSet {
-	return tx.networks
-}
-
-func (tx tx) Services() state.ServiceSet {
-	return tx.services
-}
-
-func (tx tx) Tasks() state.TaskSet {
-	return tx.tasks
-}
-
-func (tx tx) Volumes() state.VolumeSet {
-	return tx.volumes
-}
-
-func (tx tx) RegisteredCertificates() state.RegisteredCertificateSet {
-	return tx.registeredCertificates
-}
-
 // lookup is an internal typed wrapper around memdb.
-func lookup(memDBTx *memdb.Txn, table, index, id string) state.Object {
-	j, err := memDBTx.First(table, index, id)
+func (tx readTx) lookup(table, index, id string) Object {
+	j, err := tx.memDBTx.First(table, index, id)
 	if err != nil {
 		return nil
 	}
 	if j != nil {
-		return j.(state.Object)
+		return j.(Object)
 	}
 	return nil
 }
 
 // create adds a new object to the store.
 // Returns ErrExist if the ID is already taken.
-func (tx *tx) create(table string, o state.Object) error {
-	if lookup(tx.memDBTx, table, indexID, o.ID()) != nil {
-		return state.ErrExist
+func (tx *tx) create(table string, o Object) error {
+	if tx.lookup(table, indexID, o.ID()) != nil {
+		return ErrExist
 	}
 
 	copy := o.Copy(tx.curVersion)
 	err := tx.memDBTx.Insert(table, copy)
 	if err == nil {
 		tx.changelist = append(tx.changelist, copy.EventCreate())
+		if tx.curVersion != nil {
+			o.SetVersion(*tx.curVersion)
+		}
 	}
 	return err
 }
 
 // Update updates an existing object in the store.
 // Returns ErrNotExist if the object doesn't exist.
-func (tx *tx) update(table string, o state.Object) error {
-	oldN := lookup(tx.memDBTx, table, indexID, o.ID())
+func (tx *tx) update(table string, o Object) error {
+	oldN := tx.lookup(table, indexID, o.ID())
 	if oldN == nil {
-		return state.ErrNotExist
+		return ErrNotExist
 	}
 
 	if tx.curVersion != nil {
-		if oldN.(state.Object).Version() != o.Version() {
-			return state.ErrSequenceConflict
+		if oldN.(Object).Version() != o.Version() {
+			return ErrSequenceConflict
 		}
 	}
 
@@ -553,9 +493,9 @@ func (tx *tx) update(table string, o state.Object) error {
 // Delete removes an object from the store.
 // Returns ErrNotExist if the object doesn't exist.
 func (tx *tx) delete(table, id string) error {
-	n := lookup(tx.memDBTx, table, indexID, id)
+	n := tx.lookup(table, indexID, id)
 	if n == nil {
-		return state.ErrNotExist
+		return ErrNotExist
 	}
 
 	err := tx.memDBTx.Delete(table, n)
@@ -567,8 +507,8 @@ func (tx *tx) delete(table, id string) error {
 
 // Get looks up an object by ID.
 // Returns nil if the object doesn't exist.
-func get(memDBTx *memdb.Txn, table, id string) state.Object {
-	o := lookup(memDBTx, table, indexID, id)
+func (tx readTx) get(table, id string) Object {
+	o := tx.lookup(table, indexID, id)
 	if o == nil {
 		return nil
 	}
@@ -576,14 +516,14 @@ func get(memDBTx *memdb.Txn, table, id string) state.Object {
 }
 
 // find selects a set of objects calls a callback for each matching object.
-func find(memDBTx *memdb.Txn, table string, by state.By, cb func(state.Object)) error {
+func (tx readTx) find(table string, by By, cb func(Object)) error {
 	fromResultIterator := func(it memdb.ResultIterator) {
 		for {
 			obj := it.Next()
 			if obj == nil {
 				break
 			}
-			cb(obj.(state.Object).Copy(nil))
+			cb(obj.(Object).Copy(nil))
 		}
 	}
 
@@ -595,7 +535,7 @@ func find(memDBTx *memdb.Txn, table string, by state.By, cb func(state.Object)) 
 				if obj == nil {
 					break
 				}
-				o := obj.(state.Object)
+				o := obj.(Object)
 				id := o.ID()
 				if _, exists := ids[id]; !exists {
 					cb(o.Copy(nil))
@@ -606,60 +546,60 @@ func find(memDBTx *memdb.Txn, table string, by state.By, cb func(state.Object)) 
 	}
 
 	switch v := by.(type) {
-	case state.AllFinder:
-		it, err := memDBTx.Get(table, indexID)
+	case byAll:
+		it, err := tx.memDBTx.Get(table, indexID)
 		if err != nil {
 			return err
 		}
 		fromResultIterator(it)
-	case state.NameFinder:
-		it, err := memDBTx.Get(table, indexName, string(v))
+	case byName:
+		it, err := tx.memDBTx.Get(table, indexName, string(v))
 		if err != nil {
 			return err
 		}
 		fromResultIterator(it)
-	case state.QueryFinder:
-		itID, err := memDBTx.Get(table, indexID+prefix, string(v))
+	case byQuery:
+		itID, err := tx.memDBTx.Get(table, indexID+prefix, string(v))
 		if err != nil {
 			return err
 		}
-		itName, err := memDBTx.Get(table, indexName, string(v))
+		itName, err := tx.memDBTx.Get(table, indexName, string(v))
 		if err != nil {
 			return err
 		}
 		fromResultIterators(itID, itName)
-	case state.NodeFinder:
-		it, err := memDBTx.Get(table, indexNodeID, string(v))
+	case byNode:
+		it, err := tx.memDBTx.Get(table, indexNodeID, string(v))
 		if err != nil {
 			return err
 		}
 		fromResultIterator(it)
-	case state.ServiceFinder:
-		it, err := memDBTx.Get(table, indexServiceID, string(v))
+	case byService:
+		it, err := tx.memDBTx.Get(table, indexServiceID, string(v))
 		if err != nil {
 			return err
 		}
 		fromResultIterator(it)
-	case state.ServiceModeFinder:
-		it, err := memDBTx.Get(table, indexServiceMode, strconv.Itoa(int(v)))
+	case byServiceMode:
+		it, err := tx.memDBTx.Get(table, indexServiceMode, strconv.Itoa(int(v)))
 		if err != nil {
 			return err
 		}
 		fromResultIterator(it)
-	case state.InstanceFinder:
-		it, err := memDBTx.Get(table, indexInstance, v.ServiceID+"\x00"+strconv.FormatUint(uint64(v.Instance), 10))
+	case byInstance:
+		it, err := tx.memDBTx.Get(table, indexInstance, v.serviceID+"\x00"+strconv.FormatUint(uint64(v.instance), 10))
 		if err != nil {
 			return err
 		}
 		fromResultIterator(it)
 	default:
-		return state.ErrInvalidFindBy
+		return ErrInvalidFindBy
 	}
 	return nil
 }
 
 // Save serializes the data in the store.
-func (s *MemoryStore) Save(tx state.ReadTx) (*pb.StoreSnapshot, error) {
+func (s *MemoryStore) Save(tx ReadTx) (*pb.StoreSnapshot, error) {
 	var snapshot pb.StoreSnapshot
 	for _, os := range objectStorers {
 		if err := os.Save(tx, &snapshot); err != nil {
@@ -673,7 +613,7 @@ func (s *MemoryStore) Save(tx state.ReadTx) (*pb.StoreSnapshot, error) {
 // Restore sets the contents of the store to the serialized data in the
 // argument.
 func (s *MemoryStore) Restore(snapshot *pb.StoreSnapshot) error {
-	return s.updateLocal(func(tx state.Tx) error {
+	return s.updateLocal(func(tx Tx) error {
 		for _, os := range objectStorers {
 			if err := os.Restore(tx, snapshot); err != nil {
 				return err
@@ -686,4 +626,29 @@ func (s *MemoryStore) Restore(snapshot *pb.StoreSnapshot) error {
 // WatchQueue returns the publish/subscribe queue.
 func (s *MemoryStore) WatchQueue() *watch.Queue {
 	return s.queue
+}
+
+// ViewAndWatch calls a callback which can observe the state of this
+// MemoryStore. It also returns a channel that will return further events from
+// this point so the snapshot can be kept up to date. The watch channel must be
+// released with watch.StopWatch when it is no longer needed. The channel is
+// guaranteed to get all events after the moment of the snapshot, and only
+// those events.
+func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error) (watch chan events.Event, cancel func(), err error) {
+	// Using Update to lock the store and guarantee consistency between
+	// the watcher and the the state seen by the callback. snapshotReadTx
+	// exposes this Tx as a ReadTx so the callback can't modify it.
+	err = store.Update(func(tx Tx) error {
+		if err = cb(tx); err != nil {
+			return err
+		}
+		watch, cancel = store.WatchQueue().Watch()
+		return nil
+	})
+	if watch != nil && err != nil {
+		cancel()
+		cancel = nil
+		watch = nil
+	}
+	return
 }

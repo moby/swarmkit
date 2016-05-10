@@ -5,13 +5,14 @@ import (
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 )
 
 // Allocator controls how the allocation stage in the manager is handled.
 type Allocator struct {
 	// The manager store.
-	store state.WatchableStore
+	store *store.MemoryStore
 
 	// the ballot used to synchronize across all allocators to ensure
 	// all of them have completed their respective allocations so that the
@@ -66,7 +67,7 @@ type allocActor struct {
 
 // New returns a new instance of Allocator for use during allocation
 // stage of the manager.
-func New(store state.WatchableStore) (*Allocator, error) {
+func New(store *store.MemoryStore) (*Allocator, error) {
 	a := &Allocator{
 		store: store,
 		taskBallot: &taskBallot{
