@@ -132,24 +132,15 @@ type SecurityConfigPaths struct {
 
 // NewConfigPaths returns the absolute paths to all of the different types of files
 func NewConfigPaths(baseCertDir string) *SecurityConfigPaths {
-	pathToAgentTLSCert := filepath.Join(baseCertDir, agentTLSCertFilename)
-	pathToAgentTLSKey := filepath.Join(baseCertDir, agentTLSKeyFilename)
-	pathToAgentCSR := filepath.Join(baseCertDir, agentCSRFilename)
-	pathToManagerTLSCert := filepath.Join(baseCertDir, managerTLSCertFilename)
-	pathToManagerTLSKey := filepath.Join(baseCertDir, managerTLSKeyFilename)
-	pathToManagerCSR := filepath.Join(baseCertDir, managerCSRFilename)
-	pathToRootCACert := filepath.Join(baseCertDir, rootCACertFilename)
-	pathToRootCAKey := filepath.Join(baseCertDir, rootCAKeyFilename)
-
 	return &SecurityConfigPaths{
-		AgentCert:   pathToAgentTLSCert,
-		AgentKey:    pathToAgentTLSKey,
-		AgentCSR:    pathToAgentCSR,
-		ManagerCert: pathToManagerTLSCert,
-		ManagerKey:  pathToManagerTLSKey,
-		ManagerCSR:  pathToManagerCSR,
-		RootCACert:  pathToRootCACert,
-		RootCAKey:   pathToRootCAKey,
+		AgentCert:   filepath.Join(baseCertDir, agentTLSCertFilename),
+		AgentKey:    filepath.Join(baseCertDir, agentTLSKeyFilename),
+		AgentCSR:    filepath.Join(baseCertDir, agentCSRFilename),
+		ManagerCert: filepath.Join(baseCertDir, managerTLSCertFilename),
+		ManagerKey:  filepath.Join(baseCertDir, managerTLSKeyFilename),
+		ManagerCSR:  filepath.Join(baseCertDir, managerCSRFilename),
+		RootCACert:  filepath.Join(baseCertDir, rootCACertFilename),
+		RootCAKey:   filepath.Join(baseCertDir, rootCAKeyFilename),
 	}
 }
 
