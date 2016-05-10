@@ -36,7 +36,7 @@ var managerCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		securityConfig, err := ca.LoadOrCreateManagerSecurityConfig(ctx, stateDir, token, managerAddr, false)
+		securityConfig, err := ca.LoadOrCreateManagerSecurityConfig(ctx, stateDir, token, managerAddr)
 		if err != nil {
 			return err
 		}
