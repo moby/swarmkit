@@ -38,10 +38,9 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
-	// If this manager isn't a rootCA or an intermediate CA, we can't issue certificates
+	// If this manager isn't a rootCA we can't issue certificates
 	// TODO(diogo): Issuance should only happen if we have a IssuanceStateAccepted.
-	if rCertificate.Status.State == api.IssuanceStatePending &&
-		(s.securityConfig.RootCA || s.securityConfig.IntCA) {
+	if rCertificate.Status.State == api.IssuanceStatePending && s.securityConfig.RootCA {
 
 		// Generate a random ID for this new node
 		randomID := identity.NewID()
