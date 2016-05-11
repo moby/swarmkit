@@ -3,11 +3,13 @@ package scheduler
 import (
 	"container/heap"
 	"container/list"
+	"time"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
 
@@ -365,7 +367,11 @@ func (s *Scheduler) taskFitNode(ctx context.Context, t *api.Task, nodeID string)
 		return nil
 	}
 	newT := *t
-	newT.Status = api.TaskStatus{State: api.TaskStateAssigned}
+	newT.Status = api.TaskStatus{
+		State:     api.TaskStateAssigned,
+		Timestamp: ptypes.MustTimestampProto(time.Now()),
+		Message:   "scheduler confirmed task can run on preassigned node",
+	}
 	s.allTasks[t.ID] = &newT
 
 	if nodeInfo.addTask(&newT) {
@@ -386,7 +392,11 @@ func (s *Scheduler) scheduleTask(ctx context.Context, t *api.Task) *api.Task {
 	log.G(ctx).WithField("task.id", t.ID).Debugf("Assigning to node %s", n.ID)
 	newT := *t
 	newT.NodeID = n.ID
-	newT.Status = api.TaskStatus{State: api.TaskStateAssigned}
+	newT.Status = api.TaskStatus{
+		State:     api.TaskStateAssigned,
+		Timestamp: ptypes.MustTimestampProto(time.Now()),
+		Message:   "scheduler assigned task to node",
+	}
 	s.allTasks[t.ID] = &newT
 
 	nodeInfo := s.nodeHeap.nodeInfo(n.ID)
