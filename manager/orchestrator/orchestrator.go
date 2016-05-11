@@ -4,11 +4,11 @@ import (
 	"time"
 
 	"github.com/docker/swarm-v2/api"
-	tspb "github.com/docker/swarm-v2/api/timestamp"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
 
@@ -98,14 +98,6 @@ func (o *Orchestrator) tick(ctx context.Context) {
 }
 
 func newTask(service *api.Service, instance uint64) *api.Task {
-	t := time.Now()
-	seconds := t.Unix()
-	nanos := int32(t.Sub(time.Unix(seconds, 0)))
-	ts := &tspb.Timestamp{
-		Seconds: seconds,
-		Nanos:   nanos,
-	}
-
 	containerSpec := api.ContainerSpec{}
 	if service.Spec.GetContainer() != nil {
 		containerSpec = *service.Spec.GetContainer().Copy()
@@ -123,7 +115,8 @@ func newTask(service *api.Service, instance uint64) *api.Task {
 		Instance:  instance,
 		Status: api.TaskStatus{
 			State:     api.TaskStateNew,
-			Timestamp: ts,
+			Timestamp: ptypes.MustTimestampProto(time.Now()),
+			Message:   "created",
 		},
 		DesiredState: api.TaskStateRunning,
 	}
