@@ -45,7 +45,7 @@ var (
 				if service, ok := services[serviceSpec.Annotations.Name]; ok && !reflect.DeepEqual(service.Spec, serviceSpec) {
 					r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
 						ServiceID:      service.ID,
-						ServiceVersion: &service.Version,
+						ServiceVersion: &service.Meta.Version,
 						Spec:           serviceSpec,
 					})
 					if err != nil {

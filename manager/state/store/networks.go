@@ -97,20 +97,16 @@ func (n networkEntry) ID() string {
 	return n.Network.ID
 }
 
-func (n networkEntry) Version() api.Version {
-	return n.Network.Version
+func (n networkEntry) Meta() api.Meta {
+	return n.Network.Meta
 }
 
-func (n networkEntry) SetVersion(version api.Version) {
-	n.Network.Version = version
+func (n networkEntry) SetMeta(meta api.Meta) {
+	n.Network.Meta = meta
 }
 
-func (n networkEntry) Copy(version *api.Version) Object {
-	copy := n.Network.Copy()
-	if version != nil {
-		copy.Version = *version
-	}
-	return networkEntry{copy}
+func (n networkEntry) Copy() Object {
+	return networkEntry{n.Network.Copy()}
 }
 
 func (n networkEntry) EventCreate() state.Event {

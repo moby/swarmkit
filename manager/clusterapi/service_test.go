@@ -188,7 +188,7 @@ func TestGetService(t *testing.T) {
 	service := createService(t, ts, "name", "image", 1)
 	r, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
 	assert.NoError(t, err)
-	service.Version = r.Service.Version
+	service.Meta.Version = r.Service.Meta.Version
 	assert.Equal(t, service, r.Service)
 }
 
@@ -209,7 +209,7 @@ func TestUpdateService(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
-	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: &service.Spec, ServiceVersion: &service.Version})
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: &service.Spec, ServiceVersion: &service.Meta.Version})
 	assert.NoError(t, err)
 
 	r, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
@@ -221,7 +221,7 @@ func TestUpdateService(t *testing.T) {
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      service.ID,
 		Spec:           &r.Service.Spec,
-		ServiceVersion: &r.Service.Version,
+		ServiceVersion: &r.Service.Meta.Version,
 	})
 	assert.NoError(t, err)
 
@@ -233,7 +233,7 @@ func TestUpdateService(t *testing.T) {
 	// Versioning.
 	r, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
 	assert.NoError(t, err)
-	version := &r.Service.Version
+	version := &r.Service.Meta.Version
 
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      service.ID,

@@ -101,7 +101,7 @@ func TestUpdateNode(t *testing.T) {
 		Spec: &api.NodeSpec{
 			Availability: api.NodeAvailabilityDrain,
 		},
-		NodeVersion: &r.Node.Version,
+		NodeVersion: &r.Node.Meta.Version,
 	})
 	assert.NoError(t, err)
 
@@ -111,7 +111,7 @@ func TestUpdateNode(t *testing.T) {
 	assert.NotNil(t, r.Node.Spec)
 	assert.Equal(t, api.NodeAvailabilityDrain, r.Node.Spec.Availability)
 
-	version := &r.Node.Version
+	version := &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: "id", Spec: &r.Node.Spec, NodeVersion: version})
 	assert.NoError(t, err)
 	// Perform an update with the "old" version.

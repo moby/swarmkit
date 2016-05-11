@@ -97,20 +97,16 @@ func (n registeredCertificateEntry) ID() string {
 	return n.RegisteredCertificate.ID
 }
 
-func (n registeredCertificateEntry) Version() api.Version {
-	return n.RegisteredCertificate.Version
+func (n registeredCertificateEntry) Meta() api.Meta {
+	return n.RegisteredCertificate.Meta
 }
 
-func (n registeredCertificateEntry) SetVersion(version api.Version) {
-	n.RegisteredCertificate.Version = version
+func (n registeredCertificateEntry) SetMeta(meta api.Meta) {
+	n.RegisteredCertificate.Meta = meta
 }
 
-func (n registeredCertificateEntry) Copy(version *api.Version) Object {
-	copy := n.RegisteredCertificate.Copy()
-	if version != nil {
-		copy.Version = *version
-	}
-	return registeredCertificateEntry{copy}
+func (n registeredCertificateEntry) Copy() Object {
+	return registeredCertificateEntry{n.RegisteredCertificate.Copy()}
 }
 
 func (n registeredCertificateEntry) EventCreate() state.Event {

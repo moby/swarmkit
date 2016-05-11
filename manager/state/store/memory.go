@@ -456,13 +456,17 @@ func (tx *tx) create(table string, o Object) error {
 		return ErrExist
 	}
 
-	copy := o.Copy(tx.curVersion)
+	meta := api.Meta{}
+	if tx.curVersion != nil {
+		meta.Version = *tx.curVersion
+	}
+
+	copy := o.Copy()
+	copy.SetMeta(meta)
 	err := tx.memDBTx.Insert(table, copy)
 	if err == nil {
 		tx.changelist = append(tx.changelist, copy.EventCreate())
-		if tx.curVersion != nil {
-			o.SetVersion(*tx.curVersion)
-		}
+		o.SetMeta(meta)
 	}
 	return err
 }
@@ -476,16 +480,23 @@ func (tx *tx) update(table string, o Object) error {
 	}
 
 	if tx.curVersion != nil {
-		if oldN.(Object).Version() != o.Version() {
+		if oldN.(Object).Meta().Version != o.Meta().Version {
 			return ErrSequenceConflict
 		}
 	}
 
-	copy := o.Copy(tx.curVersion)
+	meta := api.Meta{}
+	if tx.curVersion != nil {
+		meta.Version = *tx.curVersion
+	}
+
+	copy := o.Copy()
+	copy.SetMeta(meta)
 
 	err := tx.memDBTx.Insert(table, copy)
 	if err == nil {
 		tx.changelist = append(tx.changelist, copy.EventUpdate())
+		o.SetMeta(meta)
 	}
 	return err
 }
@@ -512,7 +523,7 @@ func (tx readTx) get(table, id string) Object {
 	if o == nil {
 		return nil
 	}
-	return o.Copy(nil)
+	return o.Copy()
 }
 
 // find selects a set of objects calls a callback for each matching object.
@@ -523,7 +534,7 @@ func (tx readTx) find(table string, by By, cb func(Object)) error {
 			if obj == nil {
 				break
 			}
-			cb(obj.(Object).Copy(nil))
+			cb(obj.(Object).Copy())
 		}
 	}
 
@@ -538,7 +549,7 @@ func (tx readTx) find(table string, by By, cb func(Object)) error {
 				o := obj.(Object)
 				id := o.ID()
 				if _, exists := ids[id]; !exists {
-					cb(o.Copy(nil))
+					cb(o.Copy())
 					ids[id] = struct{}{}
 				}
 			}

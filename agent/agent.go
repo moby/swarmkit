@@ -665,7 +665,7 @@ func tasksEqual(a, b *api.Task) bool {
 	a, b = a.Copy(), b.Copy()
 
 	a.Status, b.Status = api.TaskStatus{}, api.TaskStatus{}
-	a.Version, b.Version = api.Version{}, api.Version{}
+	a.Meta, b.Meta = api.Meta{}, api.Meta{}
 
 	return reflect.DeepEqual(a, b)
 }
