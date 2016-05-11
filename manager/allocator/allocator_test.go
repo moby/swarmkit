@@ -54,12 +54,12 @@ func TestAllocator(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
-			Spec: api.TaskSpec{
-				Runtime: &api.TaskSpec_Container{
-					Container: &api.Container{
-						Networks: []*api.Container_NetworkAttachment{
+			Runtime: &api.Task_Container{
+				Container: &api.Container{
+					Spec: api.ContainerSpec{
+						Networks: []*api.ContainerSpec_NetworkAttachment{
 							{
-								Reference: &api.Container_NetworkAttachment_NetworkID{
+								Reference: &api.ContainerSpec_NetworkAttachment_NetworkID{
 									NetworkID: "testID1",
 								},
 							},
@@ -129,12 +129,12 @@ func TestAllocator(t *testing.T) {
 			},
 			ServiceID:    "testServiceID2",
 			DesiredState: api.TaskStateRunning,
-			Spec: api.TaskSpec{
-				Runtime: &api.TaskSpec_Container{
-					Container: &api.Container{
-						Networks: []*api.Container_NetworkAttachment{
+			Runtime: &api.Task_Container{
+				Container: &api.Container{
+					Spec: api.ContainerSpec{
+						Networks: []*api.ContainerSpec_NetworkAttachment{
 							{
-								Reference: &api.Container_NetworkAttachment_NetworkID{
+								Reference: &api.ContainerSpec_NetworkAttachment_NetworkID{
 									NetworkID: "testID2",
 								},
 							},
@@ -157,12 +157,12 @@ func TestAllocator(t *testing.T) {
 				State: api.TaskStateNew,
 			},
 			DesiredState: api.TaskStateRunning,
-			Spec: api.TaskSpec{
-				Runtime: &api.TaskSpec_Container{
-					Container: &api.Container{
-						Networks: []*api.Container_NetworkAttachment{
+			Runtime: &api.Task_Container{
+				Container: &api.Container{
+					Spec: api.ContainerSpec{
+						Networks: []*api.ContainerSpec_NetworkAttachment{
 							{
-								Reference: &api.Container_NetworkAttachment_NetworkID{
+								Reference: &api.ContainerSpec_NetworkAttachment_NetworkID{
 									NetworkID: "testID3",
 								},
 							},
@@ -210,9 +210,9 @@ func TestAllocator(t *testing.T) {
 			},
 			DesiredState: api.TaskStateRunning,
 			ServiceID:    "testServiceID2",
-			Spec: api.TaskSpec{
-				Runtime: &api.TaskSpec_Container{
-					Container: &api.Container{},
+			Runtime: &api.Task_Container{
+				Container: &api.Container{
+					Spec: api.ContainerSpec{},
 				},
 			},
 		}
@@ -242,9 +242,9 @@ func TestAllocator(t *testing.T) {
 				State: api.TaskStateNew,
 			},
 			DesiredState: api.TaskStateRunning,
-			Spec: api.TaskSpec{
-				Runtime: &api.TaskSpec_Container{
-					Container: &api.Container{},
+			Runtime: &api.Task_Container{
+				Container: &api.Container{
+					Spec: api.ContainerSpec{},
 				},
 			},
 		}
@@ -291,9 +291,9 @@ func isValidTask(t assert.TestingT, task *api.Task) bool {
 }
 
 func isValidNetworkAttachment(t assert.TestingT, task *api.Task) bool {
-	if len(task.Spec.GetContainer().Networks) != 0 {
-		return assert.Equal(t, len(task.Networks[0].Addresses), 1) &&
-			isValidSubnet(t, task.Networks[0].Addresses[0])
+	if len(task.GetContainer().Spec.Networks) != 0 {
+		return assert.Equal(t, len(task.GetContainer().Networks[0].Addresses), 1) &&
+			isValidSubnet(t, task.GetContainer().Networks[0].Addresses[0])
 	}
 
 	return true
@@ -310,7 +310,7 @@ func isValidEndpoint(t assert.TestingT, task *api.Task) bool {
 			return true
 		}
 
-		return assert.Equal(t, service.Endpoint, task.Endpoint)
+		return assert.Equal(t, service.Endpoint, task.GetContainer().Endpoint)
 
 	}
 

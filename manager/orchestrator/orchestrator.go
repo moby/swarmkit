@@ -106,12 +106,21 @@ func newTask(service *api.Service, instance uint64) *api.Task {
 		Nanos:   nanos,
 	}
 
+	containerSpec := api.ContainerSpec{}
+	if service.Spec.GetContainer() != nil {
+		containerSpec = *service.Spec.GetContainer().Copy()
+	}
+
 	return &api.Task{
 		ID:          identity.NewID(),
 		Annotations: service.Spec.Annotations, // TODO(stevvooe): Copy metadata with nice name.
-		Spec:        *service.Spec.Template,
-		ServiceID:   service.ID,
-		Instance:    instance,
+		Runtime: &api.Task_Container{
+			Container: &api.Container{
+				Spec: containerSpec,
+			},
+		},
+		ServiceID: service.ID,
+		Instance:  instance,
 		Status: api.TaskStatus{
 			State:     api.TaskStateNew,
 			Timestamp: ts,

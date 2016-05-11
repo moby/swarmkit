@@ -75,14 +75,12 @@ func (b *Benchmark) spec() *api.ServiceSpec {
 		Annotations: api.Annotations{
 			Name: "benchmark",
 		},
-		Template: &api.TaskSpec{
-			Runtime: &api.TaskSpec_Container{
-				Container: &api.Container{
-					Image: &api.Image{
-						Reference: "alpine:latest",
-					},
-					Command: []string{"nc", b.cfg.IP, strconv.Itoa(b.cfg.Port)},
+		RuntimeSpec: &api.ServiceSpec_Container{
+			Container: &api.ContainerSpec{
+				Image: &api.Image{
+					Reference: "alpine:latest",
 				},
+				Command: []string{"nc", b.cfg.IP, strconv.Itoa(b.cfg.Port)},
 			},
 		},
 		Instances: b.cfg.Count,

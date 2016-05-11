@@ -63,12 +63,10 @@ func TestUpdater(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
-			Template: &api.TaskSpec{
-				Runtime: &api.TaskSpec_Container{
-					Container: &api.Container{
-						Image: &api.Image{
-							Reference: "v:1",
-						},
+			RuntimeSpec: &api.ServiceSpec_Container{
+				Container: &api.ContainerSpec{
+					Image: &api.Image{
+						Reference: "v:1",
 					},
 				},
 			},
@@ -88,18 +86,18 @@ func TestUpdater(t *testing.T) {
 
 	originalTasks := getRunnableServiceTasks(t, s, service)
 	for _, task := range originalTasks {
-		assert.Equal(t, "v:1", task.Spec.GetContainer().Image.Reference)
+		assert.Equal(t, "v:1", task.GetContainer().Spec.Image.Reference)
 	}
 
-	service.Spec.Template.GetContainer().Image.Reference = "v:2"
+	service.Spec.GetContainer().Image.Reference = "v:2"
 	updater := NewUpdater(s)
 	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
 	updatedTasks := getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
-		assert.Equal(t, "v:2", task.Spec.GetContainer().Image.Reference)
+		assert.Equal(t, "v:2", task.GetContainer().Spec.Image.Reference)
 	}
 
-	service.Spec.Template.GetContainer().Image.Reference = "v:3"
+	service.Spec.GetContainer().Image.Reference = "v:3"
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
 	}
@@ -107,10 +105,10 @@ func TestUpdater(t *testing.T) {
 	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
 	updatedTasks = getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
-		assert.Equal(t, "v:3", task.Spec.GetContainer().Image.Reference)
+		assert.Equal(t, "v:3", task.GetContainer().Spec.Image.Reference)
 	}
 
-	service.Spec.Template.GetContainer().Image.Reference = "v:4"
+	service.Spec.GetContainer().Image.Reference = "v:4"
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
 		Delay:       10 * time.Millisecond,
@@ -119,6 +117,6 @@ func TestUpdater(t *testing.T) {
 	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
 	updatedTasks = getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
-		assert.Equal(t, "v:4", task.Spec.GetContainer().Image.Reference)
+		assert.Equal(t, "v:4", task.GetContainer().Spec.Image.Reference)
 	}
 }
