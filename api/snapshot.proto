@@ -19,6 +19,7 @@ message StoreSnapshot {
 	repeated Task tasks = 4;
 	repeated Volume volumes = 5;
 	repeated RegisteredCertificate registered_certificates = 6;
+	repeated Cluster clusters = 7;
 }
 
 // ClusterSnapshot stores cluster membership information in snapshots.

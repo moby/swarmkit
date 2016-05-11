@@ -16,13 +16,12 @@ import (
 
 // Server is the CA API gRPC server.
 type Server struct {
-	mu               sync.Mutex
-	acceptancePolicy api.AcceptancePolicy
-	wg               sync.WaitGroup
-	ctx              context.Context
-	cancel           func()
-	store            *store.MemoryStore
-	securityConfig   *ManagerSecurityConfig
+	mu             sync.Mutex
+	wg             sync.WaitGroup
+	ctx            context.Context
+	cancel         func()
+	store          *store.MemoryStore
+	securityConfig *ManagerSecurityConfig
 }
 
 // DefaultAcceptancePolicy returns the default acceptance policy.
@@ -33,11 +32,10 @@ func DefaultAcceptancePolicy() api.AcceptancePolicy {
 }
 
 // NewServer creates a CA API server.
-func NewServer(store *store.MemoryStore, securityConfig *ManagerSecurityConfig, acceptancePolicy api.AcceptancePolicy) *Server {
+func NewServer(store *store.MemoryStore, securityConfig *ManagerSecurityConfig) *Server {
 	return &Server{
-		acceptancePolicy: acceptancePolicy,
-		store:            store,
-		securityConfig:   securityConfig,
+		store:          store,
+		securityConfig: securityConfig,
 	}
 }
 
@@ -280,9 +278,6 @@ func (s *Server) setCertState(rCertificate *api.RegisteredCertificate, state api
 }
 
 func (s *Server) evaluateAndSignCert(ctx context.Context, rCertificate *api.RegisteredCertificate) {
-	// FIXME(aaronl): Right now, this automatically signs any pending certificate. We need to
-	// add more flexible logic on acceptance modes.
-
 	// If the desired state and actual state are in sync, there's nothing
 	// to do.
 	if rCertificate.Spec.DesiredState == rCertificate.Status.State {
@@ -311,7 +306,20 @@ func (s *Server) evaluateAndSignCert(ctx context.Context, rCertificate *api.Regi
 		return
 	}
 
-	if s.acceptancePolicy.Autoaccept[rCertificate.Role] {
+	// Get acceptance policy
+	var cluster *api.Cluster
+	s.store.View(func(readTx store.ReadTx) {
+		clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
+		if err == nil && len(clusters) == 1 {
+			cluster = clusters[0]
+		}
+	})
+	if cluster == nil {
+		log.G(ctx).Error("(*Server).evaluateAndSignCert: failed to retrieve cluster object")
+		return
+	}
+
+	if cluster.Spec.AcceptancePolicy.Autoaccept != nil && cluster.Spec.AcceptancePolicy.Autoaccept[rCertificate.Role] {
 		s.signCert(ctx, rCertificate)
 		return
 	}

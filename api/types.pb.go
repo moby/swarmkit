@@ -47,6 +47,7 @@
 		VolumeSpec
 		NetworkSpec
 		RegisteredCertificateSpec
+		ClusterSpec
 		Meta
 		Node
 		Member
@@ -56,6 +57,7 @@
 		Volume
 		Network
 		RegisteredCertificate
+		Cluster
 		ListOptions
 		GetNodeRequest
 		GetNodeResponse
@@ -105,6 +107,12 @@
 		ListRegisteredCertificatesResponse
 		UpdateRegisteredCertificateRequest
 		UpdateRegisteredCertificateResponse
+		GetClusterRequest
+		GetClusterResponse
+		ListClustersRequest
+		ListClustersResponse
+		UpdateClusterRequest
+		UpdateClusterResponse
 		RegisterRequest
 		RegisterResponse
 		SessionRequest

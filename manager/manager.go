@@ -11,6 +11,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
+	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/allocator"
 	"github.com/docker/swarm-v2/manager/controlapi"
@@ -19,6 +20,7 @@ import (
 	"github.com/docker/swarm-v2/manager/raftpicker"
 	"github.com/docker/swarm-v2/manager/scheduler"
 	"github.com/docker/swarm-v2/manager/state/raft"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -129,7 +131,7 @@ func New(config *Config) (*Manager, error) {
 	m := &Manager{
 		config:     config,
 		listener:   lis,
-		caserver:   ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig, ca.DefaultAcceptancePolicy()),
+		caserver:   ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig),
 		dispatcher: dispatcher.New(raftNode, dispatcherConfig),
 		server:     grpc.NewServer(opts...),
 		raftNode:   raftNode,
@@ -155,19 +157,34 @@ func (m *Manager) Run(ctx context.Context) error {
 			newState := leadershipEvent.(raft.LeadershipState)
 
 			if newState == raft.IsLeader {
-				store := m.raftNode.MemoryStore()
+				s := m.raftNode.MemoryStore()
 
-				m.orchestrator = orchestrator.New(store)
-				m.fillOrchestrator = orchestrator.NewFillOrchestrator(store)
-				m.taskReaper = orchestrator.NewTaskReaper(store, defaultTaskHistory)
-				m.scheduler = scheduler.New(store)
+				// Add a default cluster object to the store. Don't check the error
+				// because we expect this to fail unless this is a brand new cluster.
+				s.Update(func(tx store.Tx) error {
+					store.CreateCluster(tx, &api.Cluster{
+						ID: identity.NewID(),
+						Spec: api.ClusterSpec{
+							Annotations: api.Annotations{
+								Name: store.DefaultClusterName,
+							},
+							AcceptancePolicy: ca.DefaultAcceptancePolicy(),
+						},
+					})
+					return nil
+				})
+
+				m.orchestrator = orchestrator.New(s)
+				m.fillOrchestrator = orchestrator.NewFillOrchestrator(s)
+				m.taskReaper = orchestrator.NewTaskReaper(s, defaultTaskHistory)
+				m.scheduler = scheduler.New(s)
 
 				// TODO(stevvooe): Allocate a context that can be used to
 				// shutdown underlying manager processes when leadership is
 				// lost.
 
 				var err error
-				m.allocator, err = allocator.New(store)
+				m.allocator, err = allocator.New(s)
 				if err != nil {
 					log.G(ctx).WithError(err).Error("failed to create allocator")
 					// TODO(stevvooe): It doesn't seem correct here to fail

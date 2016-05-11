@@ -34,7 +34,7 @@ func (ga *grpcCA) Close() {
 	ga.grpcServer.Stop()
 }
 
-func startCA() (*grpcCA, error) {
+func startCA(t *testing.T) (*grpcCA, error) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, err
@@ -67,7 +67,8 @@ func startCA() (*grpcCA, error) {
 
 	s := grpc.NewServer(serverOpts...)
 	store := store.NewMemoryStore(nil)
-	ca := NewServer(store, managerSecurityConfig, api.AcceptancePolicy{Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true}})
+	createClusterObject(t, store, AutoAcceptPolicy())
+	ca := NewServer(store, managerSecurityConfig)
 	api.RegisterCAServer(s, ca)
 	go func() {
 		// Serve will always return an error (even when properly stopped).
@@ -106,7 +107,7 @@ func startCA() (*grpcCA, error) {
 }
 
 func TestGetRootCACertificate(t *testing.T) {
-	gc, err := startCA()
+	gc, err := startCA(t)
 	assert.NoError(t, err)
 	defer gc.Close()
 
@@ -116,7 +117,7 @@ func TestGetRootCACertificate(t *testing.T) {
 }
 
 func TestIssueCertificate(t *testing.T) {
-	gc, err := startCA()
+	gc, err := startCA(t)
 	assert.NoError(t, err)
 	defer gc.Close()
 
@@ -146,7 +147,7 @@ func TestIssueCertificate(t *testing.T) {
 }
 
 func TestCertificateStatus(t *testing.T) {
-	gc, err := startCA()
+	gc, err := startCA(t)
 	assert.NoError(t, err)
 	defer gc.Close()
 
