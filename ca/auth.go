@@ -3,7 +3,6 @@ package ca
 import (
 	"crypto/tls"
 	"crypto/x509/pkix"
-	"fmt"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -42,43 +41,60 @@ func LogTLSState(ctx context.Context, tlsState *tls.ConnectionState) {
 	}).Debugf("")
 }
 
-// GetCertificateUser extract the username from a client certificate.
-func GetCertificateUser(tlsState *tls.ConnectionState) (pkix.Name, error) {
+// getCertificateSubject extract the subject from a client certificate.
+func getCertificateSubject(tlsState *tls.ConnectionState) (pkix.Name, error) {
 	if tlsState == nil {
-		return pkix.Name{}, fmt.Errorf("request is not using TLS")
+		return pkix.Name{}, grpc.Errorf(codes.PermissionDenied, "request is not using TLS")
 	}
 	if len(tlsState.PeerCertificates) == 0 {
-		return pkix.Name{}, fmt.Errorf("no client certificates in request")
+		return pkix.Name{}, grpc.Errorf(codes.PermissionDenied, "no client certificates in request")
 	}
 	if len(tlsState.VerifiedChains) == 0 {
-		return pkix.Name{}, fmt.Errorf("no verified chains for remote certificate")
+		return pkix.Name{}, grpc.Errorf(codes.PermissionDenied, "no verified chains for remote certificate")
 	}
 
 	return tlsState.VerifiedChains[0][0].Subject, nil
 }
 
+func tlsConnStateFromContext(ctx context.Context) (*tls.ConnectionState, error) {
+	peer, ok := peer.FromContext(ctx)
+	if !ok {
+		return nil, grpc.Errorf(codes.PermissionDenied, "Permission denied: no peer info")
+	}
+	tlsInfo, ok := peer.AuthInfo.(credentials.TLSInfo)
+	if !ok {
+		return nil, grpc.Errorf(codes.PermissionDenied, "Permission denied: peer didn't not present valid peer certificate")
+	}
+	return &tlsInfo.State, nil
+}
+
+// certSubjectFromContext extracts pkix.Name from context.
+func certSubjectFromContext(ctx context.Context) (pkix.Name, error) {
+	connState, err := tlsConnStateFromContext(ctx)
+	if err != nil {
+		return pkix.Name{}, err
+	}
+	return getCertificateSubject(connState)
+}
+
 // AuthorizeRole takes in a context and a list of organizations, and returns
 // the CN of the certificate if one of the OU matches.
 func AuthorizeRole(ctx context.Context, ou []string) (string, error) {
-	if peer, ok := peer.FromContext(ctx); ok {
-		if tlsInfo, ok := peer.AuthInfo.(credentials.TLSInfo); ok {
-			certName, err := GetCertificateUser(&tlsInfo.State)
-			if err != nil {
-				return "", err
-			}
-
-			// Check if the current certificate has an OU that authorizes
-			// access to this method
-			if intersectArrays(certName.OrganizationalUnit, ou) {
-				LogTLSState(ctx, &tlsInfo.State)
-				return certName.CommonName, nil
-			}
-
-			return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: remote certificate not part of OU %v", ou)
-		}
+	connState, err := tlsConnStateFromContext(ctx)
+	if err != nil {
+		return "", err
 	}
-
-	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: peer didn't not present valid peer certificate")
+	subj, err := getCertificateSubject(connState)
+	if err != nil {
+		return "", err
+	}
+	// Check if the current certificate has an OU that authorizes
+	// access to this method
+	if intersectArrays(subj.OrganizationalUnit, ou) {
+		LogTLSState(ctx, connState)
+		return subj.CommonName, nil
+	}
+	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: remote certificate not part of OU %v", ou)
 }
 
 // intersectArrays returns true when there is at least one element in common
@@ -92,4 +108,27 @@ func intersectArrays(orig, tgt []string) bool {
 		}
 	}
 	return false
+}
+
+// AuthorizeForwardAgent checks for proper roles of caller. It can be manager who
+// forward agent request or agent itself. It returns agent id.
+func AuthorizeForwardAgent(ctx context.Context) (string, error) {
+	certSubj, err := certSubjectFromContext(ctx)
+	if err != nil {
+		return "", err
+	}
+	// it's request from agent, just return its name
+	if intersectArrays(certSubj.OrganizationalUnit, []string{AgentRole}) {
+		return certSubj.CommonName, nil
+	}
+	// it's from manager, totally ok to forward, but we need forwarded name
+	// and ou
+	if intersectArrays(certSubj.OrganizationalUnit, []string{ManagerRole}) {
+		cn, err := forwardCNFromContext(ctx)
+		if err != nil {
+			return "", err
+		}
+		return cn, nil
+	}
+	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unknown peer role %v", certSubj.OrganizationalUnit)
 }

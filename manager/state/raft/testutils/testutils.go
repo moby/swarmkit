@@ -39,23 +39,29 @@ func AdvanceTicks(clockSource *fakeclock.FakeClock, ticks int) {
 	}
 }
 
-// PollFunc is used to periodically execute a check function
-func PollFunc(f func() error) error {
+// PollFuncWithTimeout is used to periodically execute a check function, it
+// returns error after timeout.
+func PollFuncWithTimeout(f func() error, timeout time.Duration) error {
 	if f() == nil {
 		return nil
 	}
-	timeout := time.After(10 * time.Second)
+	timer := time.After(timeout)
 	for {
 		err := f()
 		if err == nil {
 			return nil
 		}
 		select {
-		case <-timeout:
+		case <-timer:
 			return fmt.Errorf("polling failed: %v", err)
 		case <-time.After(50 * time.Millisecond):
 		}
 	}
+}
+
+// PollFunc is like PollFuncWithTimeout with timeout=10s.
+func PollFunc(f func() error) error {
+	return PollFuncWithTimeout(f, 10*time.Second)
 }
 
 // WaitForCluster waits until leader will be one of specified nodes
@@ -209,7 +215,7 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, securityConfig *ca.
 		newNodeOpts.JoinAddr = opts[0].JoinAddr
 	}
 
-	n, err := raft.NewNode(context.Background(), newNodeOpts, nil)
+	n, err := raft.NewNode(context.Background(), newNodeOpts)
 	require.NoError(t, err, "can't create raft node")
 	n.Server = s
 
@@ -272,7 +278,7 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 	}
 
 	ctx := context.Background()
-	n, err := raft.NewNode(ctx, newNodeOpts, nil)
+	n, err := raft.NewNode(ctx, newNodeOpts)
 	require.NoError(t, err, "can't create raft node")
 	n.Server = s
 

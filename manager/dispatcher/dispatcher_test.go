@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/ca/testutils"
@@ -29,10 +30,28 @@ type grpcDispatcher struct {
 
 func (gd *grpcDispatcher) Close() {
 	// Close the client connection.
+	gd.dispatcherServer.Stop()
 	for _, conn := range gd.conns {
 		conn.Close()
 	}
 	gd.grpcServer.Stop()
+}
+
+type testCluster struct {
+	addr  string
+	store *store.MemoryStore
+}
+
+func (t *testCluster) GetMemberlist() map[uint64]*api.Member {
+	return map[uint64]*api.Member{
+		1: {
+			Addr: t.addr,
+		},
+	}
+}
+
+func (t *testCluster) MemoryStore() *store.MemoryStore {
+	return t.store
 }
 
 func startDispatcher(c *Config) (*grpcDispatcher, error) {
@@ -50,14 +69,15 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	serverOpts := []grpc.ServerOption{grpc.Creds(managerSecurityConfig.ServerTLSCreds)}
 
 	s := grpc.NewServer(serverOpts...)
-	store := store.NewMemoryStore(nil)
-	d := New(store, c)
+	tc := &testCluster{addr: l.Addr().String(), store: store.NewMemoryStore(nil)}
+	d := New(tc, c)
 	api.RegisterDispatcherServer(s, d)
 	go func() {
 		// Serve will always return an error (even when properly stopped).
 		// Explicitly ignore it.
 		_ = s.Serve(l)
 	}()
+	go d.Run(context.Background())
 
 	clientOpts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
 	clientOpts1 := append(clientOpts, grpc.WithTransportCredentials(agentSecurityConfigs[0].ClientTLSCreds))
@@ -79,7 +99,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	conns := []*grpc.ClientConn{conn1, conn2}
 	return &grpcDispatcher{
 		Clients:              clients,
-		Store:                store,
+		Store:                tc.MemoryStore(),
 		dispatcherServer:     d,
 		conns:                conns,
 		grpcServer:           s,
@@ -146,6 +166,7 @@ func TestHeartbeat(t *testing.T) {
 }
 
 func TestHeartbeatTimeout(t *testing.T) {
+	logrus.SetLevel(logrus.DebugLevel)
 	cfg := DefaultConfig()
 	cfg.HeartbeatPeriod = 100 * time.Millisecond
 	cfg.HeartbeatEpsilon = 0

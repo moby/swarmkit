@@ -65,8 +65,7 @@ type Manager struct {
 	server           *grpc.Server
 	raftNode         *raft.Node
 
-	leadershipCh chan raft.LeadershipState
-	mu           sync.Mutex
+	mu sync.Mutex
 
 	started chan struct{}
 	stopped bool
@@ -75,6 +74,10 @@ type Manager struct {
 // New creates a Manager which has not started to accept requests yet.
 func New(config *Config) (*Manager, error) {
 	dispatcherConfig := dispatcher.DefaultConfig()
+
+	if config.Listener != nil {
+		config.ListenAddr = config.Listener.Addr().String()
+	}
 
 	// TODO(stevvooe): Reported address of manager is plumbed to listen addr
 	// for now, may want to make this separate. This can be tricky to get right
@@ -104,8 +107,6 @@ func New(config *Config) (*Manager, error) {
 
 	raftCfg := raft.DefaultNodeConfig()
 
-	leadershipCh := make(chan raft.LeadershipState)
-
 	newNodeOpts := raft.NewNodeOptions{
 		Addr:           config.ListenAddr,
 		JoinAddr:       config.JoinRaft,
@@ -113,26 +114,23 @@ func New(config *Config) (*Manager, error) {
 		StateDir:       raftStateDir,
 		TLSCredentials: config.SecurityConfig.ClientTLSCreds,
 	}
-	raftNode, err := raft.NewNode(context.TODO(), newNodeOpts, leadershipCh)
+	raftNode, err := raft.NewNode(context.TODO(), newNodeOpts)
 	if err != nil {
 		lis.Close()
 		return nil, fmt.Errorf("can't create raft node: %v", err)
 	}
 
-	store := raftNode.MemoryStore()
-
 	opts := []grpc.ServerOption{
 		grpc.Creds(config.SecurityConfig.ServerTLSCreds)}
 
 	m := &Manager{
-		config:       config,
-		listener:     lis,
-		caserver:     ca.NewServer(store, config.SecurityConfig),
-		dispatcher:   dispatcher.New(store, dispatcherConfig),
-		server:       grpc.NewServer(opts...),
-		raftNode:     raftNode,
-		leadershipCh: leadershipCh,
-		started:      make(chan struct{}),
+		config:     config,
+		listener:   lis,
+		caserver:   ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig),
+		dispatcher: dispatcher.New(raftNode, dispatcherConfig),
+		server:     grpc.NewServer(opts...),
+		raftNode:   raftNode,
+		started:    make(chan struct{}),
 	}
 
 	return m, nil
@@ -143,12 +141,15 @@ func New(config *Config) (*Manager, error) {
 // The call never returns unless an error occurs or `Stop()` is called.
 func (m *Manager) Run(ctx context.Context) error {
 	go func() {
-		for newState := range m.leadershipCh {
+		leadershipCh, cancel := m.raftNode.SubscribeLeadership()
+		defer cancel()
+		for leadershipEvent := range leadershipCh {
 			m.mu.Lock()
 			if m.stopped {
 				m.mu.Unlock()
 				continue
 			}
+			newState := leadershipEvent.(raft.LeadershipState)
 
 			if newState == raft.IsLeader {
 				store := m.raftNode.MemoryStore()
@@ -169,6 +170,12 @@ func (m *Manager) Run(ctx context.Context) error {
 					// TODO(stevvooe): It doesn't seem correct here to fail
 					// creating the allocator but then use it anyways.
 				}
+
+				go func(d *dispatcher.Dispatcher) {
+					if err := d.Run(ctx); err != nil {
+						log.G(ctx).WithError(err).Error("dispatcher exited with an error")
+					}
+				}(m.dispatcher)
 
 				// Start all sub-components in separate goroutines.
 				// TODO(aluzzardi): This should have some kind of error handling so that
@@ -201,6 +208,7 @@ func (m *Manager) Run(ctx context.Context) error {
 					}
 				}(m.fillOrchestrator)
 			} else if newState == raft.IsFollower {
+				m.dispatcher.Stop()
 				if m.allocator != nil {
 					m.allocator.Stop()
 					m.allocator = nil
@@ -245,12 +253,13 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	localAPI := clusterapi.NewServer(m.raftNode.MemoryStore(), m.raftNode)
 	proxyAPI := api.NewRaftProxyClusterServer(localAPI, cs, m.raftNode)
+	proxyDispatcher := api.NewRaftProxyDispatcherServer(m.dispatcher, cs, m.raftNode, ca.WithMetadataForwardCN)
 
 	api.RegisterCAServer(m.server, m.caserver)
 	api.RegisterRaftServer(m.server, m.raftNode)
 	api.RegisterManagerServer(m.server, m)
 	api.RegisterClusterServer(m.server, proxyAPI)
-	api.RegisterDispatcherServer(m.server, m.dispatcher)
+	api.RegisterDispatcherServer(m.server, proxyDispatcher)
 
 	errServe := make(chan error, 1)
 	go func() {
@@ -278,6 +287,7 @@ func (m *Manager) Stop() {
 	if m.stopped {
 		return
 	}
+	m.dispatcher.Stop()
 	if m.allocator != nil {
 		m.allocator.Stop()
 	}
