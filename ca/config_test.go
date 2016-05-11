@@ -306,6 +306,10 @@ func TestLoadOrCreateManagerSecurityConfigNoCARemoteManager(t *testing.T) {
 	go func() {
 		done <- grpcServer.Serve(l)
 	}()
+	go func() {
+		assert.NoError(t, caserver.Run(context.Background()))
+	}()
+	defer caserver.Stop()
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(tempBaseDir)
@@ -351,6 +355,10 @@ func TestLoadOrCreateManagerSecurityConfigNoCerts(t *testing.T) {
 	go func() {
 		done <- grpcServer.Serve(l)
 	}()
+	go func() {
+		assert.NoError(t, caserver.Run(context.Background()))
+	}()
+	defer caserver.Stop()
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(paths.ManagerCert)
@@ -396,6 +404,10 @@ func TestLoadOrCreateManagerSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 	go func() {
 		done <- grpcServer.Serve(l)
 	}()
+	go func() {
+		assert.NoError(t, caserver.Run(context.Background()))
+	}()
+	defer caserver.Stop()
 
 	// Remove the certificate from the temp dir and try loading with a new manager
 	os.RemoveAll(paths.ManagerCert)
@@ -435,6 +447,10 @@ func TestLoadOrCreateAgentSecurityConfigNoCARemoteManager(t *testing.T) {
 	go func() {
 		done <- grpcServer.Serve(l)
 	}()
+	go func() {
+		assert.NoError(t, caserver.Run(context.Background()))
+	}()
+	defer caserver.Stop()
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(tempBaseDir)
@@ -476,6 +492,10 @@ func TestLoadOrCreateAgentSecurityConfigNoCANoRemoteManager(t *testing.T) {
 	go func() {
 		done <- grpcServer.Serve(l)
 	}()
+	go func() {
+		assert.NoError(t, caserver.Run(context.Background()))
+	}()
+	defer caserver.Stop()
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(tempBaseDir)

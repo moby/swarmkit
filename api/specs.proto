@@ -191,5 +191,5 @@ message NetworkSpec {
 message RegisteredCertificateSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
-	IssuanceState state = 2;
+	IssuanceState desired_state = 2;
 }

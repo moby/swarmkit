@@ -178,5 +178,6 @@ message RegisteredCertificate {
 
 	bytes certificate = 7;
 
+	// CN represents the node ID.
 	string cn = 8 [(gogoproto.customname) = "CN"];
 }
