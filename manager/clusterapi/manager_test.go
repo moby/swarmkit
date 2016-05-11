@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"strconv"
 	"testing"
 
 	"golang.org/x/net/context"
@@ -33,10 +32,7 @@ func init() {
 func getMap(t *testing.T, members []*api.Member) map[uint64]*api.Member {
 	m := make(map[uint64]*api.Member)
 	for _, member := range members {
-		id, err := strconv.ParseUint(member.ID, 16, 64)
-		assert.NoError(t, err)
-		assert.NotZero(t, id)
-		m[id] = member
+		m[member.RaftID] = member
 	}
 	return m
 }
