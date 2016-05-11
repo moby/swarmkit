@@ -37,8 +37,10 @@ func newContainerAdapter(task *api.Task) (*containerAdapter, error) {
 func noopPrivilegeFn() (string, error) { return "", nil }
 
 func (c *containerAdapter) pullImage(ctx context.Context, client engineapi.APIClient) error {
-
-	rc, err := client.ImagePull(ctx, c.container.pullOptions(), noopPrivilegeFn)
+	rc, err := client.ImagePull(ctx, c.container.image(),
+		types.ImagePullOptions{
+			PrivilegeFunc: noopPrivilegeFn,
+		})
 	if err != nil {
 		return err
 	}
@@ -63,9 +65,14 @@ func (c *containerAdapter) pullImage(ctx context.Context, client engineapi.APICl
 }
 
 func (c *containerAdapter) createNetworks(ctx context.Context, client engineapi.APIClient) error {
-	for _, opt := range c.container.networkCreateOptions() {
-		if _, err := client.NetworkCreate(ctx, opt); err != nil {
-			if isNetworkExistError(err, opt.Name) {
+	for _, network := range c.container.networks() {
+		opts, err := c.container.networkCreateOptions(network)
+		if err != nil {
+			return err
+		}
+
+		if _, err := client.NetworkCreate(ctx, network, opts); err != nil {
+			if isNetworkExistError(err, network) {
 				continue
 			}
 
@@ -202,8 +209,7 @@ func (c *containerAdapter) terminate(ctx context.Context, client engineapi.APICl
 }
 
 func (c *containerAdapter) remove(ctx context.Context, client engineapi.APIClient) error {
-	return client.ContainerRemove(ctx, types.ContainerRemoveOptions{
-		ContainerID:   c.container.name(),
+	return client.ContainerRemove(ctx, c.container.name(), types.ContainerRemoveOptions{
 		RemoveVolumes: true,
 		Force:         true,
 	})
