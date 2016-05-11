@@ -144,20 +144,20 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 			Name:   s.Name,
 			Labels: make(map[string]string),
 		},
-		Template: &api.TaskSpec{
-			Runtime: &api.TaskSpec_Container{
-				Container: &api.Container{
-					Resources: s.Resources.ToProto(),
-					Mounts:    s.Mounts.ToProto(),
-					Image: &api.Image{
-						Reference: s.Image,
-					},
-					Env:     s.Env,
-					Command: s.Command,
-					Args:    s.Args,
+
+		RuntimeSpec: &api.ServiceSpec_Container{
+			Container: &api.ContainerSpec{
+				Resources: s.Resources.ToProto(),
+				Mounts:    s.Mounts.ToProto(),
+				Image: &api.Image{
+					Reference: s.Image,
 				},
+				Env:     s.Env,
+				Command: s.Command,
+				Args:    s.Args,
 			},
 		},
+
 		Update:  s.Update.ToProto(),
 		Restart: &api.RestartPolicy{},
 	}
@@ -173,20 +173,20 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 			})
 		}
 
-		spec.Template.GetContainer().ExposedPorts = ports
+		spec.GetContainer().ExposedPorts = ports
 	}
 
 	if len(s.Networks) != 0 {
-		networks := make([]*api.Container_NetworkAttachment, 0, len(s.Networks))
+		networks := make([]*api.ContainerSpec_NetworkAttachment, 0, len(s.Networks))
 		for _, net := range s.Networks {
-			networks = append(networks, &api.Container_NetworkAttachment{
-				Reference: &api.Container_NetworkAttachment_NetworkID{
+			networks = append(networks, &api.ContainerSpec_NetworkAttachment{
+				Reference: &api.ContainerSpec_NetworkAttachment_NetworkID{
 					NetworkID: net,
 				},
 			})
 		}
 
-		spec.Template.GetContainer().Networks = networks
+		spec.GetContainer().Networks = networks
 	}
 
 	switch s.Mode {
@@ -226,25 +226,25 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 		Name:      serviceSpec.Annotations.Name,
 		Instances: &serviceSpec.Instances,
 		ContainerConfig: ContainerConfig{
-			Image:   serviceSpec.Template.GetContainer().Image.Reference,
-			Env:     serviceSpec.Template.GetContainer().Env,
-			Args:    serviceSpec.Template.GetContainer().Args,
-			Command: serviceSpec.Template.GetContainer().Command,
+			Image:   serviceSpec.GetContainer().Image.Reference,
+			Env:     serviceSpec.GetContainer().Env,
+			Args:    serviceSpec.GetContainer().Args,
+			Command: serviceSpec.GetContainer().Command,
 		},
 	}
-	if serviceSpec.Template.GetContainer().Resources != nil {
+	if serviceSpec.GetContainer().Resources != nil {
 		s.Resources = &ResourceRequirements{}
-		s.Resources.FromProto(serviceSpec.Template.GetContainer().Resources)
+		s.Resources.FromProto(serviceSpec.GetContainer().Resources)
 	}
 
-	if serviceSpec.Template.GetContainer().Mounts != nil {
-		apiMounts := serviceSpec.Template.GetContainer().Mounts
+	if serviceSpec.GetContainer().Mounts != nil {
+		apiMounts := serviceSpec.GetContainer().Mounts
 		s.Mounts = make(Mounts, len(apiMounts))
 		s.Mounts.FromProto(apiMounts)
 	}
 
 	if serviceSpec.Endpoint != nil {
-		for _, port := range serviceSpec.Template.GetContainer().ExposedPorts {
+		for _, port := range serviceSpec.GetContainer().ExposedPorts {
 			s.Ports = append(s.Ports, PortConfig{
 				Name:     port.Name,
 				Protocol: strings.ToLower(port.Protocol.String()),
@@ -254,8 +254,8 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 		}
 	}
 
-	if serviceSpec.Template.GetContainer().Networks != nil {
-		for _, net := range serviceSpec.Template.GetContainer().Networks {
+	if serviceSpec.GetContainer().Networks != nil {
+		for _, net := range serviceSpec.GetContainer().Networks {
 			s.Networks = append(s.Networks, net.GetNetworkID())
 		}
 	}

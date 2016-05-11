@@ -27,9 +27,8 @@ const (
 // containerConfig converts task properties into docker container compatible
 // components.
 type containerConfig struct {
-	task    *api.Task
-	runtime *api.Container // resolved container specification.
-	popts   types.ImagePullOptions
+	task  *api.Task
+	popts types.ImagePullOptions
 }
 
 // newContainerConfig returns a validated container config. No methods should
@@ -37,20 +36,18 @@ type containerConfig struct {
 func newContainerConfig(t *api.Task) (*containerConfig, error) {
 	c := &containerConfig{task: t}
 
-	runtime := t.Spec.GetContainer()
-	if runtime == nil {
+	container := t.GetContainer()
+	if container == nil {
 		return nil, exec.ErrRuntimeUnsupported
 	}
 
-	if runtime.Image == nil {
+	if container.Spec.Image == nil {
 		return nil, ErrImageRequired
 	}
 
-	if runtime.Image.Reference == "" {
+	if container.Spec.Image.Reference == "" {
 		return nil, ErrImageRequired
 	}
-
-	c.runtime = runtime
 
 	var err error
 	c.popts, err = c.buildPullOptions()
@@ -61,17 +58,21 @@ func newContainerConfig(t *api.Task) (*containerConfig, error) {
 	return c, nil
 }
 
+func (c *containerConfig) spec() *api.ContainerSpec {
+	return &c.task.GetContainer().Spec
+}
+
 func (c *containerConfig) name() string {
 	const prefix = "com.docker.cluster.task"
 	return strings.Join([]string{prefix, c.task.NodeID, c.task.ServiceID, c.task.ID}, ".")
 }
 
 func (c *containerConfig) image() string {
-	return c.runtime.Image.Reference
+	return c.spec().Image.Reference
 }
 
 func (c *containerConfig) ephemeralDirs() map[string]struct{} {
-	mounts := c.runtime.Mounts
+	mounts := c.spec().Mounts
 	r := make(map[string]struct{})
 	var x struct{}
 	for _, val := range mounts {
@@ -84,10 +85,10 @@ func (c *containerConfig) ephemeralDirs() map[string]struct{} {
 
 func (c *containerConfig) config() *enginecontainer.Config {
 	return &enginecontainer.Config{
-		User:         c.runtime.User,
-		Cmd:          c.runtime.Command, // TODO(stevvooe): Fall back to entrypoint+args
-		Env:          c.runtime.Env,
-		WorkingDir:   c.runtime.Dir,
+		User:         c.spec().User,
+		Cmd:          c.spec().Command, // TODO(stevvooe): Fall back to entrypoint+args
+		Env:          c.spec().Env,
+		WorkingDir:   c.spec().Dir,
 		Image:        c.image(),
 		ExposedPorts: c.exposedPorts(),
 		Volumes:      c.ephemeralDirs(),
@@ -96,8 +97,8 @@ func (c *containerConfig) config() *enginecontainer.Config {
 
 func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
 	exposedPorts := make(map[nat.Port]struct{})
-	if c.runtime.ExposedPorts != nil {
-		for _, portConfig := range c.runtime.ExposedPorts {
+	if c.spec().ExposedPorts != nil {
+		for _, portConfig := range c.spec().ExposedPorts {
 			port := nat.Port(fmt.Sprintf("%d/%s", portConfig.Port, strings.ToLower(portConfig.Protocol.String())))
 			exposedPorts[port] = struct{}{}
 		}
@@ -107,7 +108,7 @@ func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
 }
 
 func (c *containerConfig) bindMounts() []string {
-	mounts := c.runtime.Mounts
+	mounts := c.spec().Mounts
 
 	numBindMounts := 0
 	for _, val := range mounts {
@@ -145,8 +146,8 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 
 func (c *containerConfig) portBindings() nat.PortMap {
 	portBindings := nat.PortMap{}
-	if c.runtime.ExposedPorts != nil {
-		for _, portConfig := range c.runtime.ExposedPorts {
+	if c.spec().ExposedPorts != nil {
+		for _, portConfig := range c.spec().ExposedPorts {
 			port := nat.Port(fmt.Sprintf("%d/%s", portConfig.Port, strings.ToLower(portConfig.Protocol.String())))
 			binding := []nat.PortBinding{
 				{},
@@ -169,7 +170,7 @@ func (c *containerConfig) resources() enginecontainer.Resources {
 	//
 	// TODO(aluzzardi): We might want to set some limits anyway otherwise
 	// "unlimited" tasks will step over the reservation of other tasks.
-	r := c.task.Spec.GetContainer().Resources
+	r := c.spec().Resources
 	if r == nil || r.Limits == nil {
 		return resources
 	}
@@ -188,8 +189,13 @@ func (c *containerConfig) resources() enginecontainer.Resources {
 }
 
 func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
+	var networks []*api.Container_NetworkAttachment
+	if c.task.GetContainer() != nil {
+		networks = c.task.GetContainer().Networks
+	}
+
 	epConfig := make(map[string]*network.EndpointSettings)
-	for _, na := range c.task.Networks {
+	for _, na := range networks {
 		var ipv4, ipv6 string
 		for _, addr := range na.Addresses {
 			ip, _, err := net.ParseCIDR(addr)
@@ -225,8 +231,12 @@ func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
 }
 
 func (c *containerConfig) networkCreateOptions() []types.NetworkCreate {
-	netOpts := make([]types.NetworkCreate, 0, len(c.task.Networks))
-	for _, na := range c.task.Networks {
+	if c.task.GetContainer() == nil {
+		return nil
+	}
+
+	netOpts := make([]types.NetworkCreate, 0, len(c.task.GetContainer().Networks))
+	for _, na := range c.task.GetContainer().Networks {
 		options := types.NetworkCreate{
 			Name:   na.Network.Spec.Annotations.Name,
 			ID:     na.Network.ID,
@@ -255,8 +265,12 @@ func (c *containerConfig) networkCreateOptions() []types.NetworkCreate {
 }
 
 func (c *containerConfig) networks() []string {
-	networks := make([]string, 0, len(c.task.Networks))
-	for _, na := range c.task.Networks {
+	if c.task.GetContainer() == nil {
+		return nil
+	}
+
+	networks := make([]string, 0, len(c.task.GetContainer().Networks))
+	for _, na := range c.task.GetContainer().Networks {
 		networks = append(networks, na.Network.ID)
 	}
 

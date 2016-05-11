@@ -25,7 +25,7 @@ func printServiceSummary(service *api.Service) {
 	common.FprintfIfNotEmpty(w, "Strategy\t: %s\n", service.Spec.Strategy)
 	fmt.Fprintln(w, "Template\t")
 	fmt.Fprintln(w, " Container\t")
-	ctr := service.Spec.Template.GetContainer()
+	ctr := service.Spec.GetContainer()
 	common.FprintfIfNotEmpty(w, "  Image\t: %s\n", ctr.Image.Reference)
 	common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))
 	common.FprintfIfNotEmpty(w, "  Args\t: [%s]\n", strings.Join(ctr.Args, ", "))

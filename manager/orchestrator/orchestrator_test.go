@@ -32,9 +32,9 @@ func TestOrchestrator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				Template:  &api.TaskSpec{},
-				Instances: 2,
-				Mode:      api.ServiceModeRunning,
+				RuntimeSpec: &api.ServiceSpec_Container{},
+				Instances:   2,
+				Mode:        api.ServiceModeRunning,
 			},
 		}
 		assert.NoError(t, store.CreateService(tx, s1))
@@ -63,9 +63,9 @@ func TestOrchestrator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
-				Template:  &api.TaskSpec{},
-				Instances: 1,
-				Mode:      api.ServiceModeRunning,
+				RuntimeSpec: &api.ServiceSpec_Container{},
+				Instances:   1,
+				Mode:        api.ServiceModeRunning,
 			},
 		}
 		assert.NoError(t, store.CreateService(tx, s2))
@@ -85,9 +85,9 @@ func TestOrchestrator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
-				Template:  &api.TaskSpec{},
-				Instances: 3,
-				Mode:      api.ServiceModeRunning,
+				RuntimeSpec: &api.ServiceSpec_Container{},
+				Instances:   3,
+				Mode:        api.ServiceModeRunning,
 			},
 		}
 		assert.NoError(t, store.UpdateService(tx, s2))
@@ -111,9 +111,9 @@ func TestOrchestrator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
-				Template:  &api.TaskSpec{},
-				Instances: 1,
-				Mode:      api.ServiceModeRunning,
+				RuntimeSpec: &api.ServiceSpec_Container{},
+				Instances:   1,
+				Mode:        api.ServiceModeRunning,
 			},
 		}
 		assert.NoError(t, store.UpdateService(tx, s2))

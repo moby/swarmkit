@@ -31,9 +31,9 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				Template:  &api.TaskSpec{},
-				Instances: 2,
-				Mode:      api.ServiceModeRunning,
+				RuntimeSpec: &api.ServiceSpec_Container{},
+				Instances:   2,
+				Mode:        api.ServiceModeRunning,
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartAlways,
 				},
@@ -114,9 +114,9 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				Template:  &api.TaskSpec{},
-				Instances: 2,
-				Mode:      api.ServiceModeRunning,
+				RuntimeSpec: &api.ServiceSpec_Container{},
+				Instances:   2,
+				Mode:        api.ServiceModeRunning,
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnFailure,
 				},
@@ -201,9 +201,9 @@ func TestOrchestratorRestartNever(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				Template:  &api.TaskSpec{},
-				Instances: 2,
-				Mode:      api.ServiceModeRunning,
+				RuntimeSpec: &api.ServiceSpec_Container{},
+				Instances:   2,
+				Mode:        api.ServiceModeRunning,
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartNever,
 				},
@@ -290,9 +290,9 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				Template:  &api.TaskSpec{},
-				Instances: 2,
-				Mode:      api.ServiceModeRunning,
+				RuntimeSpec: &api.ServiceSpec_Container{},
+				Instances:   2,
+				Mode:        api.ServiceModeRunning,
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartAlways,
 					Delay:     100 * time.Millisecond,

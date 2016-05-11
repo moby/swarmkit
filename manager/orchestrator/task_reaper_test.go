@@ -31,9 +31,9 @@ func TestTaskHistory(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				Template:  &api.TaskSpec{},
-				Instances: 2,
-				Mode:      api.ServiceModeRunning,
+				RuntimeSpec: &api.ServiceSpec_Container{},
+				Instances:   2,
+				Mode:        api.ServiceModeRunning,
 			},
 		}
 		assert.NoError(t, store.CreateService(tx, j1))

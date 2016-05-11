@@ -28,7 +28,7 @@ func init() {
 //
 // Run with something like this:
 //
-// 	go test -run TestControllerFlowIntegration -test.docker.addr unix:///var/run/docker.sock
+//	go test -run TestControllerFlowIntegration -test.docker.addr unix:///var/run/docker.sock
 //
 func TestControllerFlowIntegration(t *testing.T) {
 	if dockerTestAddr == "" {
@@ -44,9 +44,9 @@ func TestControllerFlowIntegration(t *testing.T) {
 		ID:        "dockerexec-integration-task-id",
 		ServiceID: "dockerexec-integration-service-id",
 		NodeID:    "dockerexec-integration-node-id",
-		Spec: api.TaskSpec{
-			Runtime: &api.TaskSpec_Container{
-				Container: &api.Container{
+		Runtime: &api.Task_Container{
+			Container: &api.Container{
+				Spec: api.ContainerSpec{
 					Command: []string{"sh", "-c", "sleep 5"},
 					Image: &api.Image{
 						Reference: "alpine",

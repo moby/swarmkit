@@ -67,16 +67,14 @@ var (
 					Annotations: api.Annotations{
 						Name: name,
 					},
-					Template: &api.TaskSpec{
-						Runtime: &api.TaskSpec_Container{
-							Container: &api.Container{
-								Image: &api.Image{
-									Reference: image,
-								},
-								Command: containerArgs,
-								Args:    args,
-								Env:     env,
+					RuntimeSpec: &api.ServiceSpec_Container{
+						Container: &api.ContainerSpec{
+							Image: &api.Image{
+								Reference: image,
 							},
+							Command: containerArgs,
+							Args:    args,
+							Env:     env,
 						},
 					},
 					Instances: instances,
@@ -103,7 +101,7 @@ var (
 						})
 					}
 
-					spec.Template.GetContainer().ExposedPorts = ports
+					spec.GetContainer().ExposedPorts = ports
 				}
 
 				if flags.Changed("network") {
@@ -117,9 +115,9 @@ var (
 						return err
 					}
 
-					spec.Template.GetContainer().Networks = []*api.Container_NetworkAttachment{
+					spec.GetContainer().Networks = []*api.ContainerSpec_NetworkAttachment{
 						{
-							Reference: &api.Container_NetworkAttachment_NetworkID{
+							Reference: &api.ContainerSpec_NetworkAttachment_NetworkID{
 								NetworkID: n.ID,
 							},
 						},

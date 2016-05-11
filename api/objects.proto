@@ -96,9 +96,11 @@ message Task {
 	// ServiceSpec.Annotations.Name field.
 	Annotations annotations = 6 [(gogoproto.nullable) = false];
 
-	// Spec declares the runtime parameters for the task. This is copied out of
-	// the service's template field.
-	TaskSpec spec = 7 [(gogoproto.nullable) = false];
+	// Task carries the runtime information which by itself carries the
+	// spec for the runtime. For e.g. Container contains ContainerSpec.
+	oneof runtime {
+		Container container = 7;
+	}
 
 	TaskStatus status = 8 [(gogoproto.nullable) = false];
 
@@ -107,6 +109,12 @@ message Task {
 	// TaskStateDead if the manager wants to terminate the task. This field
 	// is only written by the manager.
 	TaskState desired_state = 9;
+}
+
+// Container contains all runtime state of a task which is container runtime specific.
+message Container {
+	// Spec defines the container specific configuration for this container.
+	ContainerSpec spec = 1 [(gogoproto.nullable) = false];
 
 	message NetworkAttachment {
 		// Network state as a whole becomes part of Task so
@@ -119,11 +127,11 @@ message Task {
 		repeated string addresses = 2;
 	}
 
-	repeated NetworkAttachment networks = 10;
+	repeated NetworkAttachment networks = 2;
 
 	// A copy of runtime state of service endpoint from Service
 	// object to be distributed to agents as part of the task.
-	Endpoint endpoint = 11;
+	Endpoint endpoint = 3;
 }
 
 message Volume {
@@ -172,4 +180,3 @@ message RegisteredCertificate {
 
 	string cn = 8 [(gogoproto.customname) = "CN"];
 }
-
