@@ -46,9 +46,7 @@ var (
 
 					if spec.RuntimeSpec != nil {
 						if spec.GetContainer() != nil {
-							if spec.GetContainer().Image != nil {
-								reference = spec.GetContainer().Image.Reference
-							}
+							reference = spec.GetContainer().Image.Reference
 						}
 					}
 

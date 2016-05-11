@@ -149,7 +149,7 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 			Container: &api.ContainerSpec{
 				Resources: s.Resources.ToProto(),
 				Mounts:    s.Mounts.ToProto(),
-				Image: &api.Image{
+				Image: api.Image{
 					Reference: s.Image,
 				},
 				Env:     s.Env,
