@@ -65,7 +65,7 @@ func TestUpdater(t *testing.T) {
 			},
 			RuntimeSpec: &api.ServiceSpec_Container{
 				Container: &api.ContainerSpec{
-					Image: &api.Image{
+					Image: api.Image{
 						Reference: "v:1",
 					},
 				},
