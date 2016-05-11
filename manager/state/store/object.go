@@ -9,9 +9,9 @@ import (
 // Object is a generic object that can be handled by the store.
 type Object interface {
 	ID() string               // Get ID
-	Version() api.Version     // Retrieve version information
-	SetVersion(api.Version)   // Set version information
-	Copy(*api.Version) Object // Return a copy of this object, optionally setting new version information on the copy
+	Meta() api.Meta           // Retrieve metadata
+	SetMeta(api.Meta)         // Set metadata
+	Copy() Object             // Return a copy of this object
 	EventCreate() state.Event // Return a creation event
 	EventUpdate() state.Event // Return an update event
 	EventDelete() state.Event // Return a deletion event

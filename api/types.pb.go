@@ -47,6 +47,7 @@
 		VolumeSpec
 		NetworkSpec
 		RegisteredCertificateSpec
+		Meta
 		Node
 		Member
 		Service
