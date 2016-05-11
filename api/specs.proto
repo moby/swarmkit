@@ -119,31 +119,28 @@ message ServiceSpec {
 
 // Container specifies runtime parameters for a container.
 message ContainerSpec {
-	// Resource requirements for the container.
-	ResourceRequirements resources = 1;
-
-	Image image = 2;
+	Image image = 1 [(gogoproto.nullable) = false];
 
 	// Command to run the the container. The first element is a path to the
 	// executable and the following elements are treated as arguments.
 	//
 	// If command is empty, execution will fall back to the image's entrypoint.
-	repeated string command = 3;
+	repeated string command = 2;
 
 	// Args specifies arguments provided to the image's entrypoint.
 	// Ignored if command is specified.
-	repeated string args = 4;
+	repeated string args = 3;
 
 	// Env specifies the environment variables for the container in NAME=VALUE
 	// format. These must be compliant with  [IEEE Std
 	// 1003.1-2001](http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html).
-	repeated string env = 5;
+	repeated string env = 4;
 
 	// Dir defines the working directory to set for the container process.
-	string dir = 6;
+	string dir = 5;
 
 	// User specifies the user that should be employed to run the container.
-	string user = 7;
+	string user = 6;
 
 	// NetworkAttachmentSpec describes a desired attachment to the named network or
 	// a specific network_id.
@@ -154,11 +151,15 @@ message ContainerSpec {
 		}
 	}
 
-	repeated NetworkAttachment networks = 8;
+	repeated NetworkAttachment networks = 7;
 
-	repeated PortConfig exposed_ports = 9;
+	repeated PortConfig exposed_ports = 8;
 
-	repeated Mount mounts = 10;
+	repeated Mount mounts = 9;
+
+	// Resource requirements for the container.
+	ResourceRequirements resources = 10;
+
 }
 
 // VolumeSpec defines the properties of a Volume.

@@ -62,11 +62,7 @@ func validateServiceSpecTemplate(spec *api.ServiceSpec) error {
 		return err
 	}
 
-	image := container.Image
-	if image == nil {
-		return grpc.Errorf(codes.Unimplemented, "ContainerSpec: container image not specified")
-	}
-	if image.Reference == "" {
+	if container.Image.Reference == "" {
 		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: image reference must be provided")
 	}
 	return nil
