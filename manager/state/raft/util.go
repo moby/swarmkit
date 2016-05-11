@@ -10,12 +10,6 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// Raft represents a connection to a raft member
-type Raft struct {
-	api.RaftClient
-	Conn *grpc.ClientConn
-}
-
 // dial returns a grpc client connection
 func dial(addr string, protocol string, creds credentials.TransportAuthenticator, timeout time.Duration) (*grpc.ClientConn, error) {
 	grpcOptions := []grpc.DialOption{
