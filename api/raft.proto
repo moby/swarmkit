@@ -88,5 +88,6 @@ message StoreAction {
 		Network network = 5;
 		Volume volume = 6;
 		RegisteredCertificate registered_certificate = 7;
+		Cluster cluster = 8;
 	}
 }

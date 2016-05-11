@@ -193,3 +193,11 @@ message RegisteredCertificateSpec {
 
 	IssuanceState desired_state = 2;
 }
+
+// ClusterSpec specifies global cluster settings.
+message ClusterSpec {
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
+
+	// AcceptancePolicy defines the certificate issuance policy.
+	AcceptancePolicy acceptance_policy = 2 [(gogoproto.nullable) = false];
+}
