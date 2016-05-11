@@ -1303,14 +1303,45 @@ type raftProxyRaftServer struct {
 	local        RaftServer
 	connSelector *raftpicker.ConnSelector
 	cluster      raftpicker.RaftCluster
+	ctxMods      []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyRaftServer(local RaftServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster) RaftServer {
+func NewRaftProxyRaftServer(local RaftServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster, ctxMods ...func(context.Context) (context.Context, error)) RaftServer {
+	redirectChecker := func(ctx context.Context) (context.Context, error) {
+		s, ok := transport.StreamFromContext(ctx)
+		if !ok {
+			return ctx, grpc.Errorf(codes.InvalidArgument, "remote addr is not found in context")
+		}
+		addr := s.ServerTransport().RemoteAddr().String()
+		md, ok := metadata.FromContext(ctx)
+		if ok && len(md["redirect"]) != 0 {
+			return ctx, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+		}
+		if !ok {
+			md = metadata.New(map[string]string{})
+		}
+		md["redirect"] = append(md["redirect"], addr)
+		return metadata.NewContext(ctx, md), nil
+	}
+	mods := []func(context.Context) (context.Context, error){redirectChecker}
+	mods = append(mods, ctxMods...)
+
 	return &raftProxyRaftServer{
 		local:        local,
 		cluster:      cluster,
 		connSelector: connSelector,
+		ctxMods:      mods,
 	}
+}
+func (p *raftProxyRaftServer) runCtxMods(ctx context.Context) (context.Context, error) {
+	var err error
+	for _, mod := range p.ctxMods {
+		ctx, err = mod(ctx)
+		if err != nil {
+			return ctx, err
+		}
+	}
+	return ctx, nil
 }
 
 func (p *raftProxyRaftServer) Join(ctx context.Context, r *JoinRequest) (*JoinResponse, error) {
@@ -1318,21 +1349,10 @@ func (p *raftProxyRaftServer) Join(ctx context.Context, r *JoinRequest) (*JoinRe
 	if p.cluster.IsLeader() {
 		return p.local.Join(ctx, r)
 	}
-	var addr string
-	s, ok := transport.StreamFromContext(ctx)
-	if ok {
-		addr = s.ServerTransport().RemoteAddr().String()
+	ctx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
 	}
-	md, ok := metadata.FromContext(ctx)
-	if ok && len(md["redirect"]) != 0 {
-		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
-	}
-	if !ok {
-		md = metadata.New(map[string]string{})
-	}
-	md["redirect"] = append(md["redirect"], addr)
-	ctx = metadata.NewContext(ctx, md)
-
 	conn, err := p.connSelector.Conn()
 	if err != nil {
 		return nil, err
@@ -1345,21 +1365,10 @@ func (p *raftProxyRaftServer) Leave(ctx context.Context, r *LeaveRequest) (*Leav
 	if p.cluster.IsLeader() {
 		return p.local.Leave(ctx, r)
 	}
-	var addr string
-	s, ok := transport.StreamFromContext(ctx)
-	if ok {
-		addr = s.ServerTransport().RemoteAddr().String()
+	ctx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
 	}
-	md, ok := metadata.FromContext(ctx)
-	if ok && len(md["redirect"]) != 0 {
-		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
-	}
-	if !ok {
-		md = metadata.New(map[string]string{})
-	}
-	md["redirect"] = append(md["redirect"], addr)
-	ctx = metadata.NewContext(ctx, md)
-
 	conn, err := p.connSelector.Conn()
 	if err != nil {
 		return nil, err
@@ -1372,21 +1381,10 @@ func (p *raftProxyRaftServer) ProcessRaftMessage(ctx context.Context, r *Process
 	if p.cluster.IsLeader() {
 		return p.local.ProcessRaftMessage(ctx, r)
 	}
-	var addr string
-	s, ok := transport.StreamFromContext(ctx)
-	if ok {
-		addr = s.ServerTransport().RemoteAddr().String()
+	ctx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
 	}
-	md, ok := metadata.FromContext(ctx)
-	if ok && len(md["redirect"]) != 0 {
-		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
-	}
-	if !ok {
-		md = metadata.New(map[string]string{})
-	}
-	md["redirect"] = append(md["redirect"], addr)
-	ctx = metadata.NewContext(ctx, md)
-
 	conn, err := p.connSelector.Conn()
 	if err != nil {
 		return nil, err
@@ -1399,21 +1397,10 @@ func (p *raftProxyRaftServer) ResolveAddress(ctx context.Context, r *ResolveAddr
 	if p.cluster.IsLeader() {
 		return p.local.ResolveAddress(ctx, r)
 	}
-	var addr string
-	s, ok := transport.StreamFromContext(ctx)
-	if ok {
-		addr = s.ServerTransport().RemoteAddr().String()
+	ctx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
 	}
-	md, ok := metadata.FromContext(ctx)
-	if ok && len(md["redirect"]) != 0 {
-		return nil, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
-	}
-	if !ok {
-		md = metadata.New(map[string]string{})
-	}
-	md["redirect"] = append(md["redirect"], addr)
-	ctx = metadata.NewContext(ctx, md)
-
 	conn, err := p.connSelector.Conn()
 	if err != nil {
 		return nil, err

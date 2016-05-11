@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
+	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	pb "github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
@@ -113,12 +114,12 @@ type Node struct {
 	appliedIndex  uint64
 	snapshotIndex uint64
 
-	ticker      clock.Ticker
-	sendTimeout time.Duration
-	stopCh      chan struct{}
-	doneCh      chan struct{}
+	ticker              clock.Ticker
+	sendTimeout         time.Duration
+	stopCh              chan struct{}
+	doneCh              chan struct{}
+	leadershipBroadcast *events.Broadcaster
 
-	leadershipCh   chan LeadershipState
 	startNodePeers []raft.Peer
 
 	// used to coordinate shutdown
@@ -163,7 +164,7 @@ func init() {
 }
 
 // NewNode generates a new Raft node
-func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan LeadershipState) (*Node, error) {
+func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 	cfg := opts.Config
 	if cfg == nil {
 		cfg = DefaultNodeConfig()
@@ -193,12 +194,12 @@ func NewNode(ctx context.Context, opts NewNodeOptions, leadershipCh chan Leaders
 		},
 		snapshotInterval:           1000,
 		logEntriesForSlowFollowers: 500,
-		stopCh:       make(chan struct{}),
-		doneCh:       make(chan struct{}),
-		StateDir:     opts.StateDir,
-		joinAddr:     opts.JoinAddr,
-		leadershipCh: leadershipCh,
-		sendTimeout:  2 * time.Second,
+		stopCh:              make(chan struct{}),
+		doneCh:              make(chan struct{}),
+		StateDir:            opts.StateDir,
+		joinAddr:            opts.JoinAddr,
+		sendTimeout:         2 * time.Second,
+		leadershipBroadcast: events.NewBroadcaster(),
 	}
 	n.memoryStore = store.NewMemoryStore(n)
 
@@ -438,9 +439,6 @@ func (n *Node) readWAL(ctx context.Context, snapshot *raftpb.Snapshot) (err erro
 func (n *Node) Run(ctx context.Context) error {
 	defer func() {
 		close(n.doneCh)
-		if n.leadershipCh != nil {
-			close(n.leadershipCh)
-		}
 	}()
 
 	for {
@@ -494,14 +492,10 @@ func (n *Node) Run(ctx context.Context) error {
 				if n.wasLeader && rd.SoftState.RaftState != raft.StateLeader {
 					n.wasLeader = false
 					n.wait.cancelAll()
-					if n.leadershipCh != nil {
-						n.leadershipCh <- IsFollower
-					}
+					n.leadershipBroadcast.Write(IsFollower)
 				} else if !n.wasLeader && rd.SoftState.RaftState == raft.StateLeader {
 					n.wasLeader = true
-					if n.leadershipCh != nil {
-						n.leadershipCh <- IsLeader
-					}
+					n.leadershipBroadcast.Write(IsLeader)
 				}
 			}
 
@@ -1291,4 +1285,18 @@ func (n *Node) GetRaftClient(addr string, timeout time.Duration) (*Raft, error) 
 		RaftClient: api.NewRaftClient(conn),
 		Conn:       conn,
 	}, nil
+}
+
+// SubscribeLeadership returns channel to which events about leadership change
+// will be sent in form of raft.LeadershipState. Also cancel func is returned -
+// it should be called when listener is not longer interested in events.
+func (n *Node) SubscribeLeadership() (q chan events.Event, cancel func()) {
+	ch := events.NewChannel(0)
+	sink := events.Sink(events.NewQueue(ch))
+	n.leadershipBroadcast.Add(sink)
+	return ch.C, func() {
+		n.leadershipBroadcast.Remove(sink)
+		ch.Close()
+		sink.Close()
+	}
 }

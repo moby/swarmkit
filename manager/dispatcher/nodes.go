@@ -1,7 +1,6 @@
 package dispatcher
 
 import (
-	"errors"
 	"sync"
 	"time"
 
@@ -12,8 +11,6 @@ import (
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/dispatcher/heartbeat"
 )
-
-var errNodeMustDisconnect = errors.New("node should disconnect immediately")
 
 type registeredNode struct {
 	SessionID  string
@@ -60,6 +57,17 @@ func (s *nodeStore) Len() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return len(s.nodes)
+}
+
+func (s *nodeStore) AddUnknown(n *api.Node, expireFunc func()) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	rn := &registeredNode{
+		Node: n,
+	}
+	s.nodes[n.ID] = rn
+	rn.Heartbeat = heartbeat.New(s.periodChooser.Choose()*s.gracePeriodMultiplier, expireFunc)
+	return nil
 }
 
 // Add adds new node and returns it, it replaces existing without notification.
@@ -130,5 +138,16 @@ func (s *nodeStore) Disconnect(id string) {
 		close(rn.Disconnect)
 		rn.Heartbeat.Stop()
 	}
+	s.mu.Unlock()
+}
+
+// Clean removes all nodes and stops their heartbeats.
+// It's equivalent to invalidate all sessions.
+func (s *nodeStore) Clean() {
+	s.mu.Lock()
+	for _, rn := range s.nodes {
+		rn.Heartbeat.Stop()
+	}
+	s.nodes = make(map[string]*registeredNode)
 	s.mu.Unlock()
 }
