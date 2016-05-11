@@ -41,10 +41,6 @@ func newContainerConfig(t *api.Task) (*containerConfig, error) {
 		return nil, exec.ErrRuntimeUnsupported
 	}
 
-	if container.Spec.Image == nil {
-		return nil, ErrImageRequired
-	}
-
 	if container.Spec.Image.Reference == "" {
 		return nil, ErrImageRequired
 	}
