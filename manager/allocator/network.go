@@ -2,6 +2,7 @@ package allocator
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
@@ -9,6 +10,7 @@ import (
 	"github.com/docker/swarm-v2/manager/allocator/networkallocator"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
 
@@ -339,7 +341,7 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 			}
 
 			if a.taskAllocateVote(networkVoter, t.ID) {
-				storeT.Status.State = api.TaskStateAllocated
+				updateTaskStatus(storeT, api.TaskStateAllocated, "allocated")
 			}
 
 			if err := store.UpdateTask(tx, storeT); err != nil {
@@ -455,7 +457,7 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sto
 	// ALLOCATED state on top of the latest store state.
 	if a.taskAllocateVote(networkVoter, t.ID) {
 		if storeT.Status.State < api.TaskStateAllocated {
-			storeT.Status.State = api.TaskStateAllocated
+			updateTaskStatus(storeT, api.TaskStateAllocated, "allocated")
 		}
 	}
 
@@ -542,4 +544,11 @@ func (a *Allocator) procUnallocatedTasks(ctx context.Context, nc *networkContext
 			break
 		}
 	}
+}
+
+// updateTaskStatus sets TaskStatus and updates timestamp.
+func updateTaskStatus(t *api.Task, newStatus api.TaskState, message string) {
+	t.Status.State = newStatus
+	t.Status.Message = message
+	t.Status.Timestamp = ptypes.MustTimestampProto(time.Now())
 }
