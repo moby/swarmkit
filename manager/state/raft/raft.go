@@ -3,11 +3,8 @@ package raft
 import (
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"math/rand"
-	"os"
-	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -25,12 +22,11 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
-	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
-	pb "github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
+	"github.com/docker/swarm-v2/manager/state/raft/membership"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/gogo/protobuf/proto"
 	"github.com/pivotal-golang/clock"
@@ -53,12 +49,6 @@ var (
 	ErrLostLeadership = errors.New("raft: failed to process the request: node lost leader status")
 	// ErrRequestTooLarge is returned when a raft internal message is too large to be sent
 	ErrRequestTooLarge = errors.New("raft: raft message is too large and can't be sent")
-	// ErrIDExists is thrown when a node wants to join the existing cluster but its ID already exists
-	ErrIDExists = errors.New("raft: can't add node to cluster, node id is a duplicate")
-	// ErrIDRemoved is thrown when a node tries to perform an operation on an existing cluster but was removed
-	ErrIDRemoved = errors.New("raft: node was removed during cluster lifetime")
-	// ErrIDNotFound is thrown when we try an operation on a member that does not exist in the cluster list
-	ErrIDNotFound = errors.New("raft: member not found in cluster list")
 	// ErrCannotRemoveMember is thrown when we try to remove a member from the cluster but this would result in a loss of quorum
 	ErrCannotRemoveMember = errors.New("raft: member cannot be removed, because removing it may result in loss of quorum")
 	// ErrMemberRemoved is thrown when a node was removed from the cluster
@@ -79,9 +69,8 @@ const (
 // configuration.
 type Node struct {
 	raft.Node
-	cluster *cluster
+	cluster *membership.Cluster
 
-	Client         *Raft
 	Server         *grpc.Server
 	Ctx            context.Context
 	cancel         func()
@@ -180,7 +169,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 	n := &Node{
 		Ctx:            ctx,
 		cancel:         cancel,
-		cluster:        newCluster(),
+		cluster:        membership.NewCluster(),
 		tlsCredentials: opts.TLSCredentials,
 		raftStore:      raftStore,
 		Address:        opts.Addr,
@@ -237,7 +226,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 
 	if n.startNodePeers != nil {
 		if n.joinAddr != "" {
-			c, err := n.GetRaftClient(n.joinAddr, 10*time.Second)
+			c, err := n.ConnectToMember(n.joinAddr, 10*time.Second)
 			if err != nil {
 				return nil, err
 			}
@@ -296,139 +285,6 @@ func DefaultNodeConfig() *raft.Config {
 // MemoryStore returns the memory store that is kept in sync with the raft log.
 func (n *Node) MemoryStore() *store.MemoryStore {
 	return n.memoryStore
-}
-
-func (n *Node) walDir() string {
-	return filepath.Join(n.StateDir, "wal")
-}
-
-func (n *Node) snapDir() string {
-	return filepath.Join(n.StateDir, "snap")
-}
-
-func (n *Node) loadAndStart(ctx context.Context) error {
-	walDir := n.walDir()
-	snapDir := n.snapDir()
-
-	if err := os.MkdirAll(snapDir, 0700); err != nil {
-		return fmt.Errorf("create snapshot directory error: %v", err)
-	}
-
-	// Create a snapshotter
-	n.snapshotter = snap.New(snapDir)
-
-	if !wal.Exist(walDir) {
-		// FIXME(aaronl): Generate unique ID on remote side if joining
-		// an existing cluster.
-		n.Config.ID = uint64(rand.Int63()) + 1
-
-		sid := strconv.FormatUint(n.Config.ID, 16)
-
-		raftNode := &api.Member{
-			ID:     sid,
-			RaftID: n.Config.ID,
-			Addr:   n.Address,
-		}
-		metadata, err := raftNode.Marshal()
-		if err != nil {
-			return fmt.Errorf("error marshalling raft node: %v", err)
-		}
-		n.wal, err = wal.Create(walDir, metadata)
-		if err != nil {
-			return fmt.Errorf("create wal error: %v", err)
-		}
-
-		n.cluster.addMember(&member{Member: raftNode})
-		n.startNodePeers = []raft.Peer{{ID: n.Config.ID, Context: metadata}}
-
-		return nil
-	}
-
-	// Load snapshot data
-	snapshot, err := n.snapshotter.Load()
-	if err != nil && err != snap.ErrNoSnapshot {
-		return err
-	}
-
-	if snapshot != nil {
-		// Load the snapshot data into the store
-		if err := n.restoreFromSnapshot(snapshot.Data); err != nil {
-			return err
-		}
-	}
-
-	// Read logs to fully catch up store
-	if err := n.readWAL(ctx, snapshot); err != nil {
-		return err
-	}
-
-	n.Node = raft.RestartNode(n.Config)
-	return nil
-}
-
-func (n *Node) readWAL(ctx context.Context, snapshot *raftpb.Snapshot) (err error) {
-	var (
-		walsnap  walpb.Snapshot
-		metadata []byte
-		st       raftpb.HardState
-		ents     []raftpb.Entry
-	)
-
-	if snapshot != nil {
-		walsnap.Index = snapshot.Metadata.Index
-		walsnap.Term = snapshot.Metadata.Term
-	}
-
-	repaired := false
-	for {
-		if n.wal, err = wal.Open(n.walDir(), walsnap); err != nil {
-			return fmt.Errorf("open wal error: %v", err)
-		}
-		if metadata, st, ents, err = n.wal.ReadAll(); err != nil {
-			if err := n.wal.Close(); err != nil {
-				return err
-			}
-			// we can only repair ErrUnexpectedEOF and we never repair twice.
-			if repaired || err != io.ErrUnexpectedEOF {
-				return fmt.Errorf("read wal error (%v) and cannot be repaired", err)
-			}
-			if !wal.Repair(n.walDir()) {
-				return fmt.Errorf("WAL error (%v) cannot be repaired", err)
-			}
-			log.G(ctx).Infof("repaired WAL error (%v)", err)
-			repaired = true
-			continue
-		}
-		break
-	}
-
-	defer func() {
-		if err != nil {
-			if walErr := n.wal.Close(); walErr != nil {
-				n.Config.Logger.Errorf("error closing raft WAL: %v", walErr)
-			}
-		}
-	}()
-
-	var raftNode api.Member
-	if err := raftNode.Unmarshal(metadata); err != nil {
-		return fmt.Errorf("error unmarshalling wal metadata: %v", err)
-	}
-	n.Config.ID = raftNode.RaftID
-
-	if snapshot != nil {
-		if err := n.raftStore.ApplySnapshot(*snapshot); err != nil {
-			return err
-		}
-	}
-	if err := n.raftStore.SetHardState(st); err != nil {
-		return err
-	}
-	if err := n.raftStore.Append(ents); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // Run is the main loop for a Raft node, it goes along the state machine,
@@ -542,10 +398,10 @@ func (n *Node) stop() {
 	n.cancel()
 	n.asyncTasks.Wait()
 
-	members := n.cluster.listMembers()
+	members := n.cluster.Members()
 	for _, member := range members {
-		if member.Client != nil && member.Client.Conn != nil {
-			_ = member.Client.Conn.Close()
+		if member.Conn != nil {
+			_ = member.Conn.Close()
 		}
 	}
 	n.Stop()
@@ -587,12 +443,8 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 		return nil, ErrStopped
 	}
 
-	if n.cluster.isIDRemoved(req.Node.RaftID) {
-		return nil, ErrIDRemoved
-	}
-
 	// We submit a configuration change only if the node was not registered yet
-	if n.cluster.getMember(req.Node.RaftID) == nil {
+	if n.cluster.GetMember(req.Node.RaftID) == nil {
 		err = n.addMember(ctx, req.Node)
 		if err != nil {
 			return nil, err
@@ -600,7 +452,7 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 	}
 
 	var nodes []*api.Member
-	for _, node := range n.cluster.listMembers() {
+	for _, node := range n.cluster.Members() {
 		nodes = append(nodes, &api.Member{
 			ID:     node.ID,
 			RaftID: node.RaftID,
@@ -687,8 +539,8 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 
 	// Don't process the message if this comes from
 	// a node in the remove set
-	if n.cluster.isIDRemoved(msg.Message.From) {
-		return nil, ErrIDRemoved
+	if n.cluster.IsIDRemoved(msg.Message.From) {
+		return nil, ErrMemberRemoved
 	}
 
 	// can't stop the raft node while an async RPC is in progress
@@ -714,7 +566,7 @@ func (n *Node) ResolveAddress(ctx context.Context, msg *api.ResolveAddressReques
 	}
 	logrus.Debugf("(*ResolveAddress). message from node %s", agentID)
 
-	member := n.cluster.getMember(msg.RaftID)
+	member := n.cluster.GetMember(msg.RaftID)
 	if member == nil {
 		return nil, grpc.Errorf(codes.NotFound, "member %s not found", strconv.FormatUint(msg.RaftID, 16))
 	}
@@ -729,7 +581,7 @@ func (n *Node) LeaderAddr() (string, error) {
 	if n.Node == nil {
 		return "", ErrStopped
 	}
-	ms := n.cluster.listMembers()
+	ms := n.cluster.Members()
 	l := ms[n.Leader()]
 	if l == nil {
 		return "", fmt.Errorf("incorrect cluster state")
@@ -737,20 +589,29 @@ func (n *Node) LeaderAddr() (string, error) {
 	return l.Addr, nil
 }
 
-// registerNode registers a new node on the cluster
+// registerNode registers a new node on the cluster memberlist
 func (n *Node) registerNode(node *api.Member) error {
-	var client *Raft
-	// Avoid opening a connection with ourself
+	member := &membership.Member{}
+
+	// Avoid opening a connection to the local node
 	if node.RaftID != n.Config.ID {
 		// We don't want to impose a timeout on the grpc connection. It
 		// should keep retrying as long as necessary, in case the peer
 		// is temporarily unavailable.
 		var err error
-		if client, err = n.GetRaftClient(node.Addr, 0); err != nil {
+		if member, err = n.ConnectToMember(node.Addr, 0); err != nil {
 			return err
 		}
 	}
-	n.cluster.addMember(&member{Member: node, Client: client})
+
+	member.Member = node
+	err := n.cluster.AddMember(member)
+	if err != nil {
+		if member.Conn != nil {
+			_ = member.Conn.Close()
+		}
+		return err
+	}
 	return nil
 }
 
@@ -761,24 +622,6 @@ func (n *Node) registerNodes(nodes []*api.Member) error {
 			return err
 		}
 	}
-
-	return nil
-}
-
-// deregisterNode unregisters a node that has died or
-// has gracefully left the raft subsystem
-func (n *Node) deregisterNode(id uint64) error {
-	// Do not unregister yourself
-	if n.Config.ID == id {
-		return nil
-	}
-
-	peer := n.cluster.getMember(id)
-	if peer == nil {
-		return ErrIDNotFound
-	}
-
-	n.cluster.removeMember(id)
 
 	return nil
 }
@@ -802,7 +645,7 @@ func (n *Node) GetVersion() *api.Version {
 // GetMemberlist returns the current list of raft members in the cluster.
 func (n *Node) GetMemberlist() map[uint64]*api.Member {
 	memberlist := make(map[uint64]*api.Member)
-	members := n.cluster.listMembers()
+	members := n.cluster.Members()
 	leaderID := n.Leader()
 
 	for id, member := range members {
@@ -810,7 +653,7 @@ func (n *Node) GetMemberlist() map[uint64]*api.Member {
 		leader := false
 
 		if member.RaftID != n.Config.ID {
-			connState, err := member.Client.Conn.State()
+			connState, err := member.Conn.State()
 			if err != nil || connState != grpc.Ready {
 				status = api.MemberStatus_UNREACHABLE
 			}
@@ -867,117 +710,9 @@ func (n *Node) saveToStorage(hardState raftpb.HardState, entries []raftpb.Entry,
 	return nil
 }
 
-func (n *Node) saveSnapshot(snapshot raftpb.Snapshot) error {
-	err := n.wal.SaveSnapshot(walpb.Snapshot{
-		Index: snapshot.Metadata.Index,
-		Term:  snapshot.Metadata.Term,
-	})
-	if err != nil {
-		return err
-	}
-	err = n.snapshotter.SaveSnap(snapshot)
-	if err != nil {
-		return err
-	}
-	err = n.wal.ReleaseLockTo(snapshot.Metadata.Index)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (n *Node) doSnapshot() {
-	snapshot := api.Snapshot{Version: api.Snapshot_V0}
-	for _, member := range n.cluster.listMembers() {
-		snapshot.Membership.Members = append(snapshot.Membership.Members,
-			&api.Member{
-				ID:     member.ID,
-				RaftID: member.RaftID,
-				Addr:   member.Addr,
-			})
-	}
-	snapshot.Membership.Removed = n.cluster.listRemoved()
-
-	viewStarted := make(chan struct{})
-	n.asyncTasks.Add(1)
-	n.snapshotInProgress = make(chan uint64, 1) // buffered in case Shutdown is called during the snapshot
-	go func(appliedIndex, snapshotIndex uint64) {
-		defer func() {
-			n.asyncTasks.Done()
-			n.snapshotInProgress <- snapshotIndex
-		}()
-
-		var err error
-		n.memoryStore.View(func(tx store.ReadTx) {
-			close(viewStarted)
-
-			var storeSnapshot *pb.StoreSnapshot
-			storeSnapshot, err = n.memoryStore.Save(tx)
-			snapshot.Store = *storeSnapshot
-		})
-		if err != nil {
-			n.Config.Logger.Error(err)
-			return
-		}
-
-		d, err := snapshot.Marshal()
-		if err != nil {
-			n.Config.Logger.Error(err)
-			return
-		}
-		snap, err := n.raftStore.CreateSnapshot(appliedIndex, &n.confState, d)
-		if err == nil {
-			if err := n.saveSnapshot(snap); err != nil {
-				n.Config.Logger.Error(err)
-				return
-			}
-			snapshotIndex = appliedIndex
-
-			if appliedIndex > n.logEntriesForSlowFollowers {
-				err := n.raftStore.Compact(appliedIndex - n.logEntriesForSlowFollowers)
-				if err != nil && err != raft.ErrCompacted {
-					n.Config.Logger.Error(err)
-				}
-			}
-		} else if err != raft.ErrSnapOutOfDate {
-			n.Config.Logger.Error(err)
-		}
-	}(n.appliedIndex, n.snapshotIndex)
-
-	// Wait for the goroutine to establish a read transaction, to make
-	// sure it sees the state as of this moment.
-	<-viewStarted
-}
-
-func (n *Node) restoreFromSnapshot(data []byte) error {
-	var snapshot api.Snapshot
-	if err := snapshot.Unmarshal(data); err != nil {
-		return err
-	}
-	if snapshot.Version != api.Snapshot_V0 {
-		return fmt.Errorf("unrecognized snapshot version %d", snapshot.Version)
-	}
-
-	if err := n.memoryStore.Restore(&snapshot.Store); err != nil {
-		return err
-	}
-
-	n.cluster.clear()
-	for _, member := range snapshot.Membership.Members {
-		if err := n.registerNode(&api.Member{ID: member.ID, RaftID: member.RaftID, Addr: member.Addr}); err != nil {
-			return err
-		}
-	}
-	for _, removedMember := range snapshot.Membership.Removed {
-		n.cluster.removeMember(removedMember)
-	}
-
-	return nil
-}
-
 // Sends a series of messages to members in the raft
 func (n *Node) send(messages []raftpb.Message) error {
-	members := n.cluster.listMembers()
+	members := n.cluster.Members()
 
 	n.stopMu.RLock()
 	defer n.stopMu.RUnlock()
@@ -998,10 +733,10 @@ func (n *Node) send(messages []raftpb.Message) error {
 	return nil
 }
 
-func (n *Node) sendToMember(members map[uint64]*member, m raftpb.Message) {
+func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Message) {
 	defer n.asyncTasks.Done()
 
-	if n.cluster.isIDRemoved(m.To) {
+	if n.cluster.IsIDRemoved(m.To) {
 		// Should not send to removed members
 		return
 	}
@@ -1010,10 +745,10 @@ func (n *Node) sendToMember(members map[uint64]*member, m raftpb.Message) {
 	defer cancel()
 
 	var (
-		conn *Raft
+		conn *membership.Member
 	)
 	if toMember, ok := members[m.To]; ok {
-		conn = toMember.Client
+		conn = toMember
 	} else {
 		// If we are being asked to send to a member that's not in
 		// our member list, that could indicate that the current leader
@@ -1022,7 +757,7 @@ func (n *Node) sendToMember(members map[uint64]*member, m raftpb.Message) {
 
 		// Choose a random member
 		var (
-			queryMember *member
+			queryMember *membership.Member
 			id          uint64
 		)
 		for id, queryMember = range members {
@@ -1036,12 +771,12 @@ func (n *Node) sendToMember(members map[uint64]*member, m raftpb.Message) {
 			return
 		}
 
-		resp, err := queryMember.Client.ResolveAddress(ctx, &api.ResolveAddressRequest{RaftID: m.To})
+		resp, err := queryMember.ResolveAddress(ctx, &api.ResolveAddressRequest{RaftID: m.To})
 		if err != nil {
 			n.Config.Logger.Errorf("could not resolve address of member ID %s: %v", strconv.FormatUint(m.To, 16), err)
 			return
 		}
-		conn, err = n.GetRaftClient(resp.Addr, n.sendTimeout)
+		conn, err = n.ConnectToMember(resp.Addr, n.sendTimeout)
 		if err != nil {
 			n.Config.Logger.Errorf("could connect to member ID %s at %s: %v", strconv.FormatUint(m.To, 16), resp.Addr, err)
 			return
@@ -1054,7 +789,7 @@ func (n *Node) sendToMember(members map[uint64]*member, m raftpb.Message) {
 
 	_, err := conn.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: &m})
 	if err != nil {
-		if grpc.ErrorDesc(err) == ErrIDRemoved.Error() {
+		if grpc.ErrorDesc(err) == ErrMemberRemoved.Error() {
 			atomic.StoreUint32(&n.removed, 1)
 		}
 		if m.Type == raftpb.MsgSnap {
@@ -1200,12 +935,12 @@ func (n *Node) processConfChange(entry raftpb.Entry) {
 		cc  raftpb.ConfChange
 	)
 
-	if err = cc.Unmarshal(entry.Data); err != nil {
+	if err := proto.Unmarshal(entry.Data, &cc); err != nil {
 		n.wait.trigger(cc.ID, err)
 	}
 
-	if n.cluster.isIDRemoved(cc.NodeID) {
-		n.wait.trigger(cc.ID, ErrIDRemoved)
+	if err := n.cluster.ValidateConfigurationChange(cc); err != nil {
+		n.wait.trigger(cc.ID, err)
 	}
 
 	switch cc.Type {
@@ -1227,10 +962,6 @@ func (n *Node) processConfChange(entry raftpb.Entry) {
 // from a member in the raft cluster, this adds a new
 // node to the existing raft cluster
 func (n *Node) applyAddNode(cc raftpb.ConfChange) error {
-	if n.cluster.getMember(cc.NodeID) != nil {
-		return ErrIDExists
-	}
-
 	member := &api.Member{}
 	err := proto.Unmarshal(cc.Context, member)
 	if err != nil {
@@ -1252,10 +983,6 @@ func (n *Node) applyAddNode(cc raftpb.ConfChange) error {
 // from a member in the raft cluster, this removes a node
 // from the existing raft cluster
 func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
-	if n.cluster.getMember(cc.NodeID) == nil {
-		return ErrIDNotFound
-	}
-
 	// If the node from where the remove is issued is
 	// a follower and the leader steps down, Campaign
 	// to be the leader.
@@ -1265,23 +992,23 @@ func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
 		}
 	}
 
-	// Unregister the node
-	if err = n.deregisterNode(cc.NodeID); err != nil {
-		return err
+	// Do not unregister yourself
+	if n.Config.ID == cc.NodeID {
+		return nil
 	}
 
-	return nil
+	return n.cluster.RemoveMember(cc.NodeID)
 }
 
-// GetRaftClient returns a raft client object to communicate
-// with other raft members
-func (n *Node) GetRaftClient(addr string, timeout time.Duration) (*Raft, error) {
+// ConnectToMember returns a member object with an initialized
+// connection to communicate with other raft members
+func (n *Node) ConnectToMember(addr string, timeout time.Duration) (*membership.Member, error) {
 	conn, err := dial(addr, "tcp", n.tlsCredentials, timeout)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Raft{
+	return &membership.Member{
 		RaftClient: api.NewRaftClient(conn),
 		Conn:       conn,
 	}, nil
