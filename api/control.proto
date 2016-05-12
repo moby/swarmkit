@@ -7,13 +7,8 @@ import "objects.proto";
 import "types.proto";
 import "gogoproto/gogo.proto";
 
-// Cluster defines the RPC methods for controlling a cluster.
-//
-// Other options for naming this interface:
-//
-// 	- "Control", since this controls a swarm cluster
-// 	- "User" because it is user facing.
-service Cluster {
+// Control defines the RPC methods for controlling a cluster.
+service Control {
 	rpc GetNode(GetNodeRequest) returns (GetNodeResponse) {}
 	rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {}
 	rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse) {}
