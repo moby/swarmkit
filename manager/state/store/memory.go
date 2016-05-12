@@ -23,6 +23,7 @@ const (
 	indexServiceMode = "servicemode"
 	indexNodeID      = "nodeid"
 	indexInstance    = "instance"
+	indexCN          = "cn"
 
 	prefix = "_prefix"
 
@@ -565,6 +566,12 @@ func (tx readTx) find(table string, by By, cb func(Object)) error {
 		fromResultIterator(it)
 	case byName:
 		it, err := tx.memDBTx.Get(table, indexName, string(v))
+		if err != nil {
+			return err
+		}
+		fromResultIterator(it)
+	case byCN:
+		it, err := tx.memDBTx.Get(table, indexCN, string(v))
 		if err != nil {
 			return err
 		}

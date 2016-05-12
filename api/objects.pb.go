@@ -275,7 +275,8 @@ type RegisteredCertificate struct {
 	CSR         []byte                    `protobuf:"bytes,5,opt,name=csr,proto3" json:"csr,omitempty"`
 	Status      IssuanceStatus            `protobuf:"bytes,6,opt,name=status" json:"status"`
 	Certificate []byte                    `protobuf:"bytes,7,opt,name=certificate,proto3" json:"certificate,omitempty"`
-	CN          string                    `protobuf:"bytes,8,opt,name=cn,proto3" json:"cn,omitempty"`
+	// CN represents the node ID.
+	CN string `protobuf:"bytes,8,opt,name=cn,proto3" json:"cn,omitempty"`
 }
 
 func (m *RegisteredCertificate) Reset()                    { *m = RegisteredCertificate{} }
