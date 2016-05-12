@@ -983,6 +983,9 @@ func TestVersion(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
+	// Make sure the store is updating our local copy with the version.
+	assert.Equal(t, n.Meta.Version, retrievedNode.Meta.Version)
+
 	// Try again, this time using the retrieved node.
 	retrievedNode.Spec.Annotations.Name = "name2"
 	err = s.Update(func(tx Tx) error {
@@ -1009,6 +1012,58 @@ func TestVersion(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
+}
+
+func TestTimestamps(t *testing.T) {
+	var mockProposer mockProposer
+	s := NewMemoryStore(&mockProposer)
+	assert.NotNil(t, s)
+
+	var (
+		retrievedNode *api.Node
+		updatedNode   *api.Node
+	)
+
+	// Create one node
+	n := &api.Node{
+		ID: "id1",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+		},
+	}
+	err := s.Update(func(tx Tx) error {
+		assert.NoError(t, CreateNode(tx, n))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Make sure our local copy got updated.
+	assert.NotZero(t, n.Meta.CreatedAt)
+	assert.NotZero(t, n.Meta.UpdatedAt)
+	// Since this is a new node, CreatedAt should equal UpdatedAt.
+	assert.Equal(t, n.Meta.CreatedAt, n.Meta.UpdatedAt)
+
+	// Fetch the node from the store and make sure timestamps match.
+	s.View(func(tx ReadTx) {
+		retrievedNode = GetNode(tx, n.ID)
+	})
+	assert.Equal(t, retrievedNode.Meta.CreatedAt, n.Meta.CreatedAt)
+	assert.Equal(t, retrievedNode.Meta.UpdatedAt, n.Meta.UpdatedAt)
+
+	// Make an update.
+	retrievedNode.Spec.Annotations.Name = "name2"
+	err = s.Update(func(tx Tx) error {
+		assert.NoError(t, UpdateNode(tx, retrievedNode))
+		updatedNode = GetNode(tx, n.ID)
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Ensure `CreatedAt` is the same after the update and `UpdatedAt` got updated.
+	assert.Equal(t, updatedNode.Meta.CreatedAt, n.Meta.CreatedAt)
+	assert.NotEqual(t, updatedNode.Meta.CreatedAt, updatedNode.Meta.UpdatedAt)
 }
 
 func TestBatch(t *testing.T) {

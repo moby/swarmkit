@@ -6,12 +6,14 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	pb "github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/watch"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	memdb "github.com/hashicorp/go-memdb"
 	"golang.org/x/net/context"
 )
@@ -457,13 +459,13 @@ func (tx *tx) create(table string, o Object) error {
 		return ErrExist
 	}
 
-	meta := api.Meta{}
-	if tx.curVersion != nil {
-		meta.Version = *tx.curVersion
-	}
-
 	copy := o.Copy()
+	meta := copy.Meta()
+	if err := touchMeta(&meta, tx.curVersion); err != nil {
+		return err
+	}
 	copy.SetMeta(meta)
+
 	err := tx.memDBTx.Insert(table, copy)
 	if err == nil {
 		tx.changelist = append(tx.changelist, copy.EventCreate())
@@ -486,12 +488,11 @@ func (tx *tx) update(table string, o Object) error {
 		}
 	}
 
-	meta := api.Meta{}
-	if tx.curVersion != nil {
-		meta.Version = *tx.curVersion
-	}
-
 	copy := o.Copy()
+	meta := copy.Meta()
+	if err := touchMeta(&meta, tx.curVersion); err != nil {
+		return err
+	}
 	copy.SetMeta(meta)
 
 	err := tx.memDBTx.Insert(table, copy)
@@ -669,4 +670,30 @@ func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error) (watch chan events.
 		watch = nil
 	}
 	return
+}
+
+// touchMeta updates an object's timestamps when necessary and bumps the version
+// if provided.
+func touchMeta(meta *api.Meta, version *api.Version) error {
+	// Skip meta update if version is not defined as it means we're applying
+	// from raft or restoring from a snapshot.
+	if version == nil {
+		return nil
+	}
+
+	now, err := ptypes.TimestampProto(time.Now())
+	if err != nil {
+		return err
+	}
+
+	meta.Version = *version
+
+	// Updated CreatedAt if not defined
+	if meta.CreatedAt == nil {
+		meta.CreatedAt = now
+	}
+
+	meta.UpdatedAt = now
+
+	return nil
 }
