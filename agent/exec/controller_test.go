@@ -20,14 +20,14 @@ func TestRun(t *testing.T) {
 
 	// Slightly contrived but it helps to keep the reporting straight.
 	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing", nil),
 		ctlr.EXPECT().Prepare(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady, "prepared"),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting, "starting"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady, "prepared", nil),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting, "starting", nil),
 		ctlr.EXPECT().Start(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "started"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "started", nil),
 		ctlr.EXPECT().Wait(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted, "completed"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted, "completed", nil),
 	)
 
 	assert.NoError(t, Run(ctx, ctlr, reporter))
@@ -43,13 +43,13 @@ func TestRunPreparedIdempotence(t *testing.T) {
 	// successful run. We skip reporting on "READY" and go right to starting
 	// here.
 	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing", nil),
 		ctlr.EXPECT().Prepare(gomock.Any()).Return(ErrTaskPrepared),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting, "already prepared"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting, "already prepared", nil),
 		ctlr.EXPECT().Start(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "started"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "started", nil),
 		ctlr.EXPECT().Wait(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted, "completed"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted, "completed", nil),
 	)
 
 	assert.NoError(t, Run(ctx, ctlr, reporter))
@@ -64,11 +64,11 @@ func TestRunStartedWhenPreparedIdempotence(t *testing.T) {
 	// First, we return ErrTaskStarted from Prepare and make sure we have a
 	// successful run. We should report that we are running jump right to wait.
 	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing", nil),
 		ctlr.EXPECT().Prepare(gomock.Any()).Return(ErrTaskStarted),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "already started"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "already started", nil),
 		ctlr.EXPECT().Wait(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted, "completed"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted, "completed", nil),
 	)
 
 	assert.NoError(t, Run(ctx, ctlr, reporter))
@@ -81,11 +81,11 @@ func TestRunStartedWhenStartedIdempotence(t *testing.T) {
 
 	// Do the same thing, but return from Start.
 	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing", nil),
 		ctlr.EXPECT().Prepare(gomock.Any()).Return(ErrTaskStarted),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "already started"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "already started", nil),
 		ctlr.EXPECT().Wait(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted, "completed"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted, "completed", nil),
 	)
 
 	assert.NoError(t, Run(ctx, ctlr, reporter))
@@ -101,12 +101,12 @@ func TestRunReportingError(t *testing.T) {
 	errShouldPropagate := errors.New("test error")
 
 	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing", nil),
 		ctlr.EXPECT().Prepare(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady, "prepared"),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting, "starting"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady, "prepared", nil),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting, "starting", nil),
 		ctlr.EXPECT().Start(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "started").
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "started", nil).
 			Return(errShouldPropagate),
 	)
 
@@ -124,10 +124,10 @@ func TestRunControllerError(t *testing.T) {
 	errShouldPropagate := errors.New("test error")
 
 	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing", nil),
 		ctlr.EXPECT().Prepare(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady, "prepared"),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting, "starting"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady, "prepared", nil),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting, "starting", nil),
 		ctlr.EXPECT().Start(gomock.Any()).Return(errShouldPropagate),
 	)
 
@@ -143,10 +143,10 @@ func TestRunCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing"),
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing", nil),
 		ctlr.EXPECT().Prepare(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady, "prepared").Do(
-			func(ctx context.Context, state api.TaskState, msg string) error {
+		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady, "prepared", nil).Do(
+			func(ctx context.Context, state api.TaskState, msg string, cstatus *api.ContainerStatus) error {
 				// cancelling context ensures next report never happens.
 				cancel()
 				return nil

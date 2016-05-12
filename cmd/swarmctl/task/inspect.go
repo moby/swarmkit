@@ -27,6 +27,28 @@ func printTaskStatus(w io.Writer, t *api.Task) {
 	if t.Status.Err != "" {
 		fmt.Fprintf(w, "  Error\t: %s\n", t.Status.Err)
 	}
+	ctnr := t.Status.GetContainer()
+	if ctnr == nil {
+		return
+	}
+	if ctnr.ContainerID != "" {
+		fmt.Fprintf(w, "  ContainerID:\t: %s\n", ctnr.ContainerID)
+	}
+	if ctnr.PID != 0 {
+		fmt.Fprintf(w, "  Pid\t: %d\n", ctnr.PID)
+	}
+	if t.Status.State > api.TaskStateRunning {
+		fmt.Fprintf(w, "  ExitCode\t: %d\n", ctnr.ExitCode)
+	}
+
+	if ctnr.ExposedPorts != nil && len(ctnr.ExposedPorts) > 0 {
+		ports := []string{}
+		for _, port := range ctnr.ExposedPorts {
+			ports = append(ports, fmt.Sprintf("0.0.0.0:%d->%d/%s",
+				port.HostPort, port.Port, strings.ToLower(port.Protocol.String())))
+		}
+		fmt.Fprintf(w, "Ports\t: %s\n", strings.Join(ports, ", "))
+	}
 }
 
 func printTaskSummary(task *api.Task, res *common.Resolver) {
