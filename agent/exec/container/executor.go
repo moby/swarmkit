@@ -10,8 +10,6 @@ import (
 )
 
 type executor struct {
-	// TODO(stevvooe): This type needs to become much more sophisticated. It
-	// needs to handle reconnection, errors and authentication.
 	client engineapi.APIClient
 }
 
@@ -78,7 +76,7 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 
 // Controller returns a docker container controller.
 func (e *executor) Controller(t *api.Task) (exec.Controller, error) {
-	ctlr, err := NewController(e.client, t)
+	ctlr, err := newController(e.client, t)
 	if err != nil {
 		return nil, err
 	}
