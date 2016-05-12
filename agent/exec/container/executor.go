@@ -29,30 +29,28 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 		return nil, err
 	}
 
-	// convert plugins obtained into PluginDescription format
-	pluginsList := []*api.PluginDescription{
-		{
-			Type:  "Volume",
-			Names: info.Plugins.Volume,
-		},
-		{
-			Type:  "Network",
-			Names: info.Plugins.Network,
-		},
-		{
-			Type:  "Authorization",
-			Names: info.Plugins.Authorization,
-		},
+	var plugins []api.PluginDescription
+	addPlugins := func(typ string, names []string) {
+		for _, name := range names {
+			plugins = append(plugins, api.PluginDescription{
+				Type: typ,
+				Name: name,
+			})
+		}
 	}
 
+	addPlugins("Volume", info.Plugins.Volume)
+	addPlugins("Network", info.Plugins.Network)
+	addPlugins("Authorization", info.Plugins.Authorization)
+
 	// parse []string labels into a map[string]string
-	engineLabels := map[string]string{}
+	labels := map[string]string{}
 	for _, l := range info.Labels {
-		stringSlice := strings.Split(l, "=")
+		stringSlice := strings.SplitN(l, "=", 2)
 		// this will take the last value in the list for a given key
 		// ideally, one shouldn't assign multiple values to the same key
-		if len(stringSlice) == 2 {
-			engineLabels[stringSlice[0]] = stringSlice[1]
+		if len(stringSlice) > 1 {
+			labels[stringSlice[0]] = stringSlice[1]
 		}
 	}
 
@@ -64,8 +62,8 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 		},
 		Engine: &api.EngineDescription{
 			EngineVersion: info.ServerVersion,
-			Labels:        engineLabels,
-			Plugins:       pluginsList,
+			Labels:        labels,
+			Plugins:       plugins,
 		},
 		Resources: &api.Resources{
 			NanoCPUs:    int64(info.NCPU) * 1e9,
