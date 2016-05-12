@@ -13,11 +13,11 @@ import (
 	"golang.org/x/net/context"
 )
 
-// Controller implements agent.Controller against docker's API.
+// controller implements agent.Controller against docker's API.
 //
 // Most operations against docker's API are done through the container name,
 // which is unique to the task.
-type Controller struct {
+type controller struct {
 	client  engineapi.APIClient
 	task    *api.Task
 	adapter *containerAdapter
@@ -25,16 +25,16 @@ type Controller struct {
 	err     error
 }
 
-var _ exec.Controller = &Controller{}
+var _ exec.Controller = &controller{}
 
-// NewController returns a dockerexec controller for the provided task.
-func NewController(client engineapi.APIClient, task *api.Task) (*Controller, error) {
-	adapter, err := newContainerAdapter(task)
+// newController returns a dockerexec controller for the provided task.
+func newController(client engineapi.APIClient, task *api.Task) (exec.Controller, error) {
+	adapter, err := newContainerAdapter(client, task)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Controller{
+	return &controller{
 		client:  client,
 		task:    task,
 		adapter: adapter,
@@ -42,8 +42,12 @@ func NewController(client engineapi.APIClient, task *api.Task) (*Controller, err
 	}, nil
 }
 
+func (r *controller) Task() (*api.Task, error) {
+	return r.task, nil
+}
+
 // Update tasks a recent task update and applies it to the container.
-func (r *Controller) Update(ctx context.Context, t *api.Task) error {
+func (r *controller) Update(ctx context.Context, t *api.Task) error {
 	log.G(ctx).Warnf("task updates not yet supported")
 	// TODO(stevvooe): While assignment of tasks is idempotent, we do allow
 	// updates of metadata, such as labelling, as well as any other properties
@@ -54,13 +58,13 @@ func (r *Controller) Update(ctx context.Context, t *api.Task) error {
 // Prepare creates a container and ensures the image is pulled.
 //
 // If the container has already be created, exec.ErrTaskPrepared is returned.
-func (r *Controller) Prepare(ctx context.Context) error {
+func (r *controller) Prepare(ctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
 
 	// Make sure all the networks that the task needs are created.
-	if err := r.adapter.createNetworks(ctx, r.client); err != nil {
+	if err := r.adapter.createNetworks(ctx); err != nil {
 		return err
 	}
 
@@ -69,9 +73,9 @@ func (r *Controller) Prepare(ctx context.Context) error {
 			return err
 		}
 
-		if err := r.adapter.create(ctx, r.client); err != nil {
+		if err := r.adapter.create(ctx); err != nil {
 			if isContainerCreateNameConflict(err) {
-				if _, err := r.adapter.inspect(ctx, r.client); err != nil {
+				if _, err := r.adapter.inspect(ctx); err != nil {
 					return err
 				}
 
@@ -83,7 +87,7 @@ func (r *Controller) Prepare(ctx context.Context) error {
 				return err
 			}
 
-			if err := r.adapter.pullImage(ctx, r.client); err != nil {
+			if err := r.adapter.pullImage(ctx); err != nil {
 				return err
 			}
 
@@ -103,12 +107,12 @@ func isContainerCreateNameConflict(err error) bool {
 }
 
 // Start the container. An error will be returned if the container is already started.
-func (r *Controller) Start(ctx context.Context) error {
+func (r *controller) Start(ctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
 
-	ctnr, err := r.adapter.inspect(ctx, r.client)
+	ctnr, err := r.adapter.inspect(ctx)
 	if err != nil {
 		return err
 	}
@@ -122,7 +126,7 @@ func (r *Controller) Start(ctx context.Context) error {
 		return exec.ErrTaskStarted
 	}
 
-	if err := r.adapter.start(ctx, r.client); err != nil {
+	if err := r.adapter.start(ctx); err != nil {
 		return err
 	}
 
@@ -130,7 +134,7 @@ func (r *Controller) Start(ctx context.Context) error {
 }
 
 // Wait on the container to exit.
-func (r *Controller) Wait(pctx context.Context) error {
+func (r *controller) Wait(pctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
@@ -139,7 +143,7 @@ func (r *Controller) Wait(pctx context.Context) error {
 	defer cancel()
 
 	// check the initial state and report that.
-	ctnr, err := r.adapter.inspect(ctx, r.client)
+	ctnr, err := r.adapter.inspect(ctx)
 	if err != nil {
 		return err
 	}
@@ -154,7 +158,7 @@ func (r *Controller) Wait(pctx context.Context) error {
 		return makeExitError(ctnr)
 	}
 
-	eventq, closed, err := r.adapter.events(ctx, r.client)
+	eventq, closed, err := r.adapter.events(ctx)
 	if err != nil {
 		return err
 	}
@@ -168,7 +172,7 @@ func (r *Controller) Wait(pctx context.Context) error {
 
 			switch event.Action {
 			case "die": // exit on terminal events
-				ctnr, err := r.adapter.inspect(ctx, r.client)
+				ctnr, err := r.adapter.inspect(ctx)
 				if err != nil {
 					return err
 				}
@@ -181,7 +185,7 @@ func (r *Controller) Wait(pctx context.Context) error {
 			}
 		case <-closed:
 			// restart!
-			eventq, closed, err = r.adapter.events(ctx, r.client)
+			eventq, closed, err = r.adapter.events(ctx)
 			if err != nil {
 				return err
 			}
@@ -194,40 +198,40 @@ func (r *Controller) Wait(pctx context.Context) error {
 }
 
 // Shutdown the container cleanly.
-func (r *Controller) Shutdown(ctx context.Context) error {
+func (r *controller) Shutdown(ctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
 
-	return r.adapter.shutdown(ctx, r.client)
+	return r.adapter.shutdown(ctx)
 }
 
 // Terminate the container, with force.
-func (r *Controller) Terminate(ctx context.Context) error {
+func (r *controller) Terminate(ctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
 
-	return r.adapter.terminate(ctx, r.client)
+	return r.adapter.terminate(ctx)
 }
 
 // Remove the container and its resources.
-func (r *Controller) Remove(ctx context.Context) error {
+func (r *controller) Remove(ctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
 
 	// Try removing networks referenced in this task in case this
 	// task is the last one referencing it
-	if err := r.adapter.removeNetworks(ctx, r.client); err != nil {
+	if err := r.adapter.removeNetworks(ctx); err != nil {
 		return err
 	}
 
-	return r.adapter.remove(ctx, r.client)
+	return r.adapter.remove(ctx)
 }
 
 // Close the controller and clean up any ephemeral resources.
-func (r *Controller) Close() error {
+func (r *controller) Close() error {
 	select {
 	case <-r.closed:
 		return r.err
@@ -238,7 +242,7 @@ func (r *Controller) Close() error {
 	return nil
 }
 
-func (r *Controller) matchevent(event events.Message) bool {
+func (r *controller) matchevent(event events.Message) bool {
 	if event.Type != events.ContainerEventType {
 		return false
 	}
@@ -253,7 +257,7 @@ func (r *Controller) matchevent(event events.Message) bool {
 	return true
 }
 
-func (r *Controller) checkClosed() error {
+func (r *controller) checkClosed() error {
 	select {
 	case <-r.closed:
 		return r.err

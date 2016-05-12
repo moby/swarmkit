@@ -7,8 +7,6 @@ import (
 
 // Executor provides controllers for tasks.
 type Executor interface {
-	// TODO(stevvooe): Allow instropsection of tasks known by executor.
-
 	// Describe returns the underlying node description.
 	Describe(ctx context.Context) (*api.NodeDescription, error)
 
