@@ -11,13 +11,13 @@ import (
 // TestCA is struct for creating certs for managers and agents who can talk to
 // each other.
 type TestCA struct {
-	ca.Signer
+	ca.RootCA
 
 	dir   string
 	paths *ca.SecurityConfigPaths
 }
 
-// NewTestCA returns initialized with signer, cert and pool TestCA.
+// NewTestCA returns initialized with RootCA, cert and pool TestCA.
 func NewTestCA() (*TestCA, error) {
 	dir, err := ioutil.TempDir("", "swarm-agent-test-")
 	if err != nil {
@@ -26,13 +26,13 @@ func NewTestCA() (*TestCA, error) {
 
 	paths := ca.NewConfigPaths(dir)
 
-	signer, err := ca.CreateRootCA("swarm-test-CA", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
 	if err != nil {
 		return nil, err
 	}
 
 	return &TestCA{
-		Signer: signer,
+		RootCA: rootCA,
 		dir:    dir,
 		paths:  paths,
 	}, nil
@@ -46,23 +46,23 @@ func (tca *TestCA) Close() error {
 // ManagerConfig returns security config for manager usage.
 func (tca *TestCA) ManagerConfig() (*ca.ManagerSecurityConfig, error) {
 	managerID := identity.NewID()
-	managerCert, err := ca.GenerateAndSignNewTLSCert(tca.Signer, managerID, ca.ManagerRole, tca.paths.Manager)
+	managerCert, err := ca.GenerateAndSignNewTLSCert(tca.RootCA, managerID, ca.ManagerRole, tca.paths.Manager)
 	if err != nil {
 		return nil, err
 	}
 
-	managerTLSCreds, err := ca.NewServerTLSCredentials(managerCert, tca.Signer.RootCAPool)
+	managerTLSCreds, err := tca.RootCA.NewServerTLSCredentials(managerCert)
 	if err != nil {
 		return nil, err
 	}
 
-	managerClientTLSCreds, err := ca.NewClientTLSCredentials(managerCert, tca.Signer.RootCAPool, ca.ManagerRole)
+	managerClientTLSCreds, err := tca.RootCA.NewClientTLSCredentials(managerCert, ca.ManagerRole)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ca.ManagerSecurityConfig{
-		Signer:         tca.Signer,
+		RootCA:         tca.RootCA,
 		ServerTLSCreds: managerTLSCreds,
 		ClientTLSCreds: managerClientTLSCreds,
 	}, nil
@@ -71,18 +71,18 @@ func (tca *TestCA) ManagerConfig() (*ca.ManagerSecurityConfig, error) {
 // AgentConfig returns securty config for agent usage.
 func (tca *TestCA) AgentConfig() (*ca.AgentSecurityConfig, error) {
 	agentID := identity.NewID()
-	agentCert, err := ca.GenerateAndSignNewTLSCert(tca.Signer, agentID, ca.AgentRole, tca.paths.Agent)
+	agentCert, err := ca.GenerateAndSignNewTLSCert(tca.RootCA, agentID, ca.AgentRole, tca.paths.Agent)
 	if err != nil {
 		return nil, err
 	}
 
-	agentClientTLSCreds, err := ca.NewClientTLSCredentials(agentCert, tca.Signer.RootCAPool, ca.ManagerRole)
+	agentClientTLSCreds, err := tca.RootCA.NewClientTLSCredentials(agentCert, ca.ManagerRole)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ca.AgentSecurityConfig{
-		RootCAPool:     tca.Signer.RootCAPool,
+		RootCA:         tca.RootCA,
 		ClientTLSCreds: agentClientTLSCreds,
 	}, nil
 }
@@ -97,7 +97,7 @@ func GenerateAgentAndManagerSecurityConfig(numAgents int) ([]*ca.AgentSecurityCo
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 
-	signer, err := ca.CreateRootCA("swarm-test-CA", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -105,41 +105,41 @@ func GenerateAgentAndManagerSecurityConfig(numAgents int) ([]*ca.AgentSecurityCo
 	var agentConfigs []*ca.AgentSecurityConfig
 	for i := 0; i < numAgents; i++ {
 		agentID := identity.NewID()
-		agentCert, err := ca.GenerateAndSignNewTLSCert(signer, agentID, ca.AgentRole, paths.Agent)
+		agentCert, err := ca.GenerateAndSignNewTLSCert(rootCA, agentID, ca.AgentRole, paths.Agent)
 		if err != nil {
 			return nil, nil, "", err
 		}
 
-		agentClientTLSCreds, err := ca.NewClientTLSCredentials(agentCert, signer.RootCAPool, ca.ManagerRole)
+		agentClientTLSCreds, err := rootCA.NewClientTLSCredentials(agentCert, ca.ManagerRole)
 		if err != nil {
 			return nil, nil, "", err
 		}
 
 		agentSecurityConfig := &ca.AgentSecurityConfig{}
-		agentSecurityConfig.RootCAPool = signer.RootCAPool
+		agentSecurityConfig.RootCA = rootCA
 		agentSecurityConfig.ClientTLSCreds = agentClientTLSCreds
 
 		agentConfigs = append(agentConfigs, agentSecurityConfig)
 	}
 
 	managerID := identity.NewID()
-	managerCert, err := ca.GenerateAndSignNewTLSCert(signer, managerID, ca.ManagerRole, paths.Manager)
+	managerCert, err := ca.GenerateAndSignNewTLSCert(rootCA, managerID, ca.ManagerRole, paths.Manager)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
-	managerTLSCreds, err := ca.NewServerTLSCredentials(managerCert, signer.RootCAPool)
+	managerTLSCreds, err := rootCA.NewServerTLSCredentials(managerCert)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
-	managerClientTLSCreds, err := ca.NewClientTLSCredentials(managerCert, signer.RootCAPool, ca.ManagerRole)
+	managerClientTLSCreds, err := rootCA.NewClientTLSCredentials(managerCert, ca.ManagerRole)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
 	managerSecurityConfig := &ca.ManagerSecurityConfig{}
-	managerSecurityConfig.Signer = signer
+	managerSecurityConfig.RootCA = rootCA
 	managerSecurityConfig.ServerTLSCreds = managerTLSCreds
 	managerSecurityConfig.ClientTLSCreds = managerClientTLSCreds
 

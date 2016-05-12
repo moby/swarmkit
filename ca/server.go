@@ -115,15 +115,15 @@ func (s *Server) GetRootCACertificate(ctx context.Context, request *api.GetRootC
 	log.G(ctx).Debugf("(*Server).GetRootCACertificate called ")
 
 	return &api.GetRootCACertificateResponse{
-		Certificate: s.securityConfig.RootCACert,
+		Certificate: s.securityConfig.RootCA.Cert,
 	}, nil
 }
 
 // Run runs the CA signer main loop.
 // The CA signer can be stopped with cancelling ctx or calling Stop().
 func (s *Server) Run(ctx context.Context) error {
-	if !s.securityConfig.Signer.CanSign() {
-		return fmt.Errorf("CA signer has no root key")
+	if !s.securityConfig.RootCA.CanSign() {
+		return fmt.Errorf("no valid signer for Root CA found")
 	}
 
 	s.mu.Lock()
@@ -226,7 +226,7 @@ func (s *Server) evaluateAndSignCert(ctx context.Context, rCertificate *api.Regi
 }
 
 func (s *Server) signCert(ctx context.Context, rCertificate *api.RegisteredCertificate) {
-	cert, err := ParseValidateAndSignCSR(s.securityConfig.Signer, rCertificate.CSR, rCertificate.CN, rCertificate.Role)
+	cert, err := s.securityConfig.RootCA.ParseValidateAndSignCSR(rCertificate.CSR, rCertificate.CN, rCertificate.Role)
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("(*Server).evaluateAndSignCert: failed to parse CSR")
 	}
@@ -238,7 +238,7 @@ func (s *Server) signCert(ctx context.Context, rCertificate *api.RegisteredCerti
 		}
 
 		// Remote users are expecting a full certificate chain, not just a signed certificate
-		latestCertificate.Certificate = append(cert, s.securityConfig.RootCACert...)
+		latestCertificate.Certificate = append(cert, s.securityConfig.RootCA.Cert...)
 		latestCertificate.Status = api.IssuanceStatus{
 			State: api.IssuanceStateIssued,
 		}

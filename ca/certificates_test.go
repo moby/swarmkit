@@ -18,14 +18,14 @@ import (
 	"google.golang.org/grpc"
 )
 
-func TestCreateRootCA(t *testing.T) {
+func TestCreateAndWriteRootCA(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	_, err = CreateRootCA("rootCN", paths.RootCA)
+	_, err = CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
 	perms, err := permbits.Stat(paths.RootCA.Cert)
@@ -38,19 +38,19 @@ func TestCreateRootCA(t *testing.T) {
 	assert.False(t, perms.OtherRead())
 }
 
-func TestGetRootCA(t *testing.T) {
+func TestGetLocalRootCA(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, err := CreateRootCA("rootCN", paths.RootCA)
+	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	signer2, err := GetRootCA(paths.RootCA)
+	rootCA2, err := GetLocalRootCA(paths.RootCA)
 	assert.NoError(t, err)
-	assert.Equal(t, signer, signer2)
+	assert.Equal(t, rootCA, rootCA2)
 }
 
 func TestGenerateAndSignNewTLSCert(t *testing.T) {
@@ -60,10 +60,10 @@ func TestGenerateAndSignNewTLSCert(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, err := CreateRootCA("rootCN", paths.RootCA)
+	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	_, err = GenerateAndSignNewTLSCert(signer, "CN", "OU", paths.Manager)
+	_, err = GenerateAndSignNewTLSCert(rootCA, "CN", "OU", paths.Manager)
 	assert.NoError(t, err)
 
 	perms, err := permbits.Stat(paths.Manager.Cert)
@@ -108,13 +108,13 @@ func TestParseValidateAndSignCSR(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, err := CreateRootCA("rootCN", paths.RootCA)
+	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
 	csr, _, err := generateNewCSR()
 	assert.NoError(t, err)
 
-	signedCert, err := ParseValidateAndSignCSR(signer, csr, "CN", "OU")
+	signedCert, err := rootCA.ParseValidateAndSignCSR(csr, "CN", "OU")
 	assert.NoError(t, err)
 	assert.NotNil(t, signedCert)
 
@@ -134,7 +134,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, err := CreateRootCA("rootCN", paths.RootCA)
+	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
 	req := &cfcsr.CertificateRequest{
@@ -152,7 +152,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 	csr, _, err := cfcsr.ParseRequest(req)
 	assert.NoError(t, err)
 
-	signedCert, err := ParseValidateAndSignCSR(signer, csr, "CN", "OU")
+	signedCert, err := rootCA.ParseValidateAndSignCSR(csr, "CN", "OU")
 	assert.NoError(t, err)
 	assert.NotNil(t, signedCert)
 
@@ -173,9 +173,9 @@ func TestGetRemoteCA(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, err := CreateRootCA("rootCN", paths.RootCA)
+	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(signer, tempBaseDir)
+	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
 	assert.NoError(t, err)
 
 	ctx := context.Background()
@@ -195,7 +195,7 @@ func TestGetRemoteCA(t *testing.T) {
 	}()
 
 	shaHash := sha256.New()
-	shaHash.Write(signer.RootCACert)
+	shaHash.Write(rootCA.Cert)
 	md := shaHash.Sum(nil)
 	mdStr := hex.EncodeToString(md)
 
@@ -214,9 +214,9 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, err := CreateRootCA("rootCN", paths.RootCA)
+	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(signer, tempBaseDir)
+	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
 	assert.NoError(t, err)
 
 	ctx := context.Background()

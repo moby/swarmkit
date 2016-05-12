@@ -24,9 +24,9 @@ func TestLoadManagerSecurityConfigWithEmptyDir(t *testing.T) {
 	managerConfig, err := LoadOrCreateManagerSecurityConfig(context.Background(), tempBaseDir, "", "")
 	assert.NoError(t, err)
 	assert.NotNil(t, managerConfig)
-	assert.NotNil(t, managerConfig.Signer.CryptoSigner)
-	assert.NotNil(t, managerConfig.Signer.RootCACert)
-	assert.NotNil(t, managerConfig.Signer.RootCAPool)
+	assert.NotNil(t, managerConfig.RootCA.Signer)
+	assert.NotNil(t, managerConfig.RootCA.Cert)
+	assert.NotNil(t, managerConfig.RootCA.Pool)
 	assert.NotNil(t, managerConfig.ClientTLSCreds)
 	assert.NotNil(t, managerConfig.ServerTLSCreds)
 }
@@ -38,9 +38,9 @@ func TestLoadOrCreateManagerSecurityConfigNoCARemoteManager(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, err := CreateRootCA("swarm-test-CA", paths.RootCA)
+	rootCA, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
 	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(signer, tempBaseDir)
+	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
 	assert.NoError(t, err)
 
 	ctx := context.Background()
@@ -70,9 +70,9 @@ func TestLoadOrCreateManagerSecurityConfigNoCARemoteManager(t *testing.T) {
 	assert.NotNil(t, newManagerSecurityConfig)
 	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
 	assert.NotNil(t, newManagerSecurityConfig.ServerTLSCreds)
-	assert.NotNil(t, newManagerSecurityConfig.Signer.RootCAPool)
-	assert.NotNil(t, newManagerSecurityConfig.Signer.RootCACert)
-	assert.Nil(t, newManagerSecurityConfig.Signer.CryptoSigner)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Pool)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Cert)
+	assert.Nil(t, newManagerSecurityConfig.RootCA.Signer)
 
 	grpcServer.Stop()
 
@@ -87,9 +87,9 @@ func TestLoadOrCreateManagerSecurityConfigNoCerts(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, err := CreateRootCA("swarm-test-CA", paths.RootCA)
+	rootCA, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
 	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(signer, tempBaseDir)
+	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
 	assert.NoError(t, err)
 
 	ctx := context.Background()
@@ -119,9 +119,9 @@ func TestLoadOrCreateManagerSecurityConfigNoCerts(t *testing.T) {
 	assert.NotNil(t, newManagerSecurityConfig)
 	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
 	assert.NotNil(t, newManagerSecurityConfig.ServerTLSCreds)
-	assert.NotNil(t, newManagerSecurityConfig.Signer.RootCAPool)
-	assert.NotNil(t, newManagerSecurityConfig.Signer.RootCACert)
-	assert.NotNil(t, newManagerSecurityConfig.Signer.CryptoSigner)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Pool)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Cert)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Signer)
 
 	grpcServer.Stop()
 
@@ -136,9 +136,9 @@ func TestLoadOrCreateManagerSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, err := CreateRootCA("swarm-test-CA", paths.RootCA)
+	rootCA, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
 	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(signer, tempBaseDir)
+	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
 	assert.NoError(t, err)
 
 	ctx := context.Background()
@@ -163,6 +163,7 @@ func TestLoadOrCreateManagerSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 
 	// Remove the certificate from the temp dir and try loading with a new manager
 	os.RemoveAll(paths.Manager.Cert)
+	os.RemoveAll(paths.RootCA.Key)
 	_, err = LoadOrCreateManagerSecurityConfig(ctx, tempBaseDir, "", "")
 	assert.Error(t, err, "address of a manager is required to join a cluster")
 
@@ -179,9 +180,9 @@ func TestLoadOrCreateAgentSecurityConfigNoCARemoteManager(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, err := CreateRootCA("swarm-test-CA", paths.RootCA)
+	rootCA, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
 	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(signer, tempBaseDir)
+	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
 	assert.NoError(t, err)
 
 	ctx := context.Background()
@@ -209,7 +210,7 @@ func TestLoadOrCreateAgentSecurityConfigNoCARemoteManager(t *testing.T) {
 	agentSecurityConfig, err := LoadOrCreateAgentSecurityConfig(ctx, tempBaseDir, "", l.Addr().String())
 	assert.NoError(t, err)
 	assert.NotNil(t, agentSecurityConfig.ClientTLSCreds)
-	assert.NotNil(t, agentSecurityConfig.RootCAPool)
+	assert.NotNil(t, agentSecurityConfig.Pool)
 
 	grpcServer.Stop()
 
@@ -224,9 +225,9 @@ func TestLoadOrCreateAgentSecurityConfigNoCANoRemoteManager(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, err := CreateRootCA("swarm-test-CA", paths.RootCA)
+	rootCA, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
 	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(signer, tempBaseDir)
+	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
 	assert.NoError(t, err)
 
 	ctx := context.Background()
@@ -260,49 +261,49 @@ func TestLoadOrCreateAgentSecurityConfigNoCANoRemoteManager(t *testing.T) {
 	assert.Error(t, <-done)
 }
 
-func genManagerSecurityConfig(signer Signer, tempBaseDir string) (*ManagerSecurityConfig, error) {
+func genManagerSecurityConfig(rootCA RootCA, tempBaseDir string) (*ManagerSecurityConfig, error) {
 	paths := NewConfigPaths(tempBaseDir)
 
 	managerID := identity.NewID()
-	managerCert, err := GenerateAndSignNewTLSCert(signer, managerID, ManagerRole, paths.Manager)
+	managerCert, err := GenerateAndSignNewTLSCert(rootCA, managerID, ManagerRole, paths.Manager)
 	if err != nil {
 		return nil, err
 	}
 
-	managerTLSCreds, err := NewServerTLSCredentials(managerCert, signer.RootCAPool)
+	managerTLSCreds, err := rootCA.NewServerTLSCredentials(managerCert)
 	if err != nil {
 		return nil, err
 	}
 
-	managerClientTLSCreds, err := NewClientTLSCredentials(managerCert, signer.RootCAPool, ManagerRole)
+	managerClientTLSCreds, err := rootCA.NewClientTLSCredentials(managerCert, ManagerRole)
 	if err != nil {
 		return nil, err
 	}
 
 	ManagerSecurityConfig := &ManagerSecurityConfig{}
-	ManagerSecurityConfig.Signer = signer
+	ManagerSecurityConfig.RootCA = rootCA
 	ManagerSecurityConfig.ServerTLSCreds = managerTLSCreds
 	ManagerSecurityConfig.ClientTLSCreds = managerClientTLSCreds
 
 	return ManagerSecurityConfig, nil
 }
 
-func genAgentSecurityConfig(signer Signer, tempBaseDir string) (*AgentSecurityConfig, error) {
+func genAgentSecurityConfig(rootCA RootCA, tempBaseDir string) (*AgentSecurityConfig, error) {
 	paths := NewConfigPaths(tempBaseDir)
 
 	agentID := identity.NewID()
-	agentCert, err := GenerateAndSignNewTLSCert(signer, agentID, AgentRole, paths.Agent)
+	agentCert, err := GenerateAndSignNewTLSCert(rootCA, agentID, AgentRole, paths.Agent)
 	if err != nil {
 		return nil, err
 	}
 
-	agentClientTLSCreds, err := NewClientTLSCredentials(agentCert, signer.RootCAPool, ManagerRole)
+	agentClientTLSCreds, err := rootCA.NewClientTLSCredentials(agentCert, ManagerRole)
 	if err != nil {
 		return nil, err
 	}
 
 	AgentSecurityConfig := &AgentSecurityConfig{}
-	AgentSecurityConfig.RootCAPool = signer.RootCAPool
+	AgentSecurityConfig.RootCA = rootCA
 	AgentSecurityConfig.ClientTLSCreds = agentClientTLSCreds
 
 	return AgentSecurityConfig, nil
