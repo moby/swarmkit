@@ -1,4 +1,4 @@
-package clusterapi
+package controlapi
 
 import (
 	"io/ioutil"
@@ -34,7 +34,7 @@ func (mp *mockProposer) GetVersion() *api.Version {
 
 type testServer struct {
 	Server *Server
-	Client api.ClusterClient
+	Client api.ControlClient
 	Store  *store.MemoryStore
 
 	grpcServer *grpc.Server
@@ -63,7 +63,7 @@ func newTestServer(t *testing.T) *testServer {
 	assert.NoError(t, err)
 
 	ts.grpcServer = grpc.NewServer()
-	api.RegisterClusterServer(ts.grpcServer, ts.Server)
+	api.RegisterControlServer(ts.grpcServer, ts.Server)
 	go func() {
 		// Serve will always return an error (even when properly stopped).
 		// Explicitly ignore it.
@@ -76,7 +76,7 @@ func newTestServer(t *testing.T) *testServer {
 		}))
 	assert.NoError(t, err)
 
-	ts.Client = api.NewClusterClient(conn)
+	ts.Client = api.NewControlClient(conn)
 
 	return ts
 }
