@@ -1,6 +1,8 @@
 package main
 
 import (
+	"path/filepath"
+
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/swarm-v2/agent"
 	"github.com/docker/swarm-v2/agent/exec/container"
@@ -40,6 +42,8 @@ already present, the agent will recover and startup.`,
 				return err
 			}
 
+			certDir := filepath.Join(stateDir, "certificates")
+
 			token, err := cmd.Flags().GetString("token")
 			if err != nil {
 				return err
@@ -55,7 +59,7 @@ already present, the agent will recover and startup.`,
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
-			securityConfig, err := ca.LoadOrCreateAgentSecurityConfig(ctx, stateDir, token, managerAddr)
+			securityConfig, err := ca.LoadOrCreateAgentSecurityConfig(ctx, certDir, token, managerAddr)
 			if err != nil {
 				return err
 			}
