@@ -379,6 +379,73 @@ func (m *RemoveManagerResponse) Reset()                    { *m = RemoveManagerR
 func (*RemoveManagerResponse) ProtoMessage()               {}
 func (*RemoveManagerResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{42} }
 
+type GetRegisteredCertificateRequest struct {
+	RegisteredCertificateID string `protobuf:"bytes,1,opt,name=registered_certificate_id,json=registeredCertificateId,proto3" json:"registered_certificate_id,omitempty"`
+}
+
+func (m *GetRegisteredCertificateRequest) Reset()      { *m = GetRegisteredCertificateRequest{} }
+func (*GetRegisteredCertificateRequest) ProtoMessage() {}
+func (*GetRegisteredCertificateRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{43}
+}
+
+type GetRegisteredCertificateResponse struct {
+	RegisteredCertificate *RegisteredCertificate `protobuf:"bytes,1,opt,name=registered_certificate,json=registeredCertificate" json:"registered_certificate,omitempty"`
+}
+
+func (m *GetRegisteredCertificateResponse) Reset()      { *m = GetRegisteredCertificateResponse{} }
+func (*GetRegisteredCertificateResponse) ProtoMessage() {}
+func (*GetRegisteredCertificateResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{44}
+}
+
+type ListRegisteredCertificatesRequest struct {
+	// If State is specified, only certificates in the specified states
+	// are returned. Otherwise, all certificates are returned.
+	State []IssuanceState `protobuf:"varint,1,rep,name=state,enum=docker.cluster.api.IssuanceState" json:"state,omitempty"`
+}
+
+func (m *ListRegisteredCertificatesRequest) Reset()      { *m = ListRegisteredCertificatesRequest{} }
+func (*ListRegisteredCertificatesRequest) ProtoMessage() {}
+func (*ListRegisteredCertificatesRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{45}
+}
+
+type ListRegisteredCertificatesResponse struct {
+	Certificates []*RegisteredCertificate `protobuf:"bytes,1,rep,name=certificates" json:"certificates,omitempty"`
+}
+
+func (m *ListRegisteredCertificatesResponse) Reset()      { *m = ListRegisteredCertificatesResponse{} }
+func (*ListRegisteredCertificatesResponse) ProtoMessage() {}
+func (*ListRegisteredCertificatesResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{46}
+}
+
+type UpdateRegisteredCertificateRequest struct {
+	// CertificateID is the certificate ID to update.
+	RegisteredCertificateID string `protobuf:"bytes,1,opt,name=registered_certificate_id,json=registeredCertificateId,proto3" json:"registered_certificate_id,omitempty"`
+	// Version is the version of the registered certificate being updated.
+	RegisteredCertificateVersion *Version `protobuf:"bytes,2,opt,name=registered_certificate_version,json=registeredCertificateVersion" json:"registered_certificate_version,omitempty"`
+	// Spec is the new spec to apply to the registered certificate.
+	Spec *RegisteredCertificateSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+}
+
+func (m *UpdateRegisteredCertificateRequest) Reset()      { *m = UpdateRegisteredCertificateRequest{} }
+func (*UpdateRegisteredCertificateRequest) ProtoMessage() {}
+func (*UpdateRegisteredCertificateRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{47}
+}
+
+type UpdateRegisteredCertificateResponse struct {
+	RegisteredCertificate *RegisteredCertificate `protobuf:"bytes,1,opt,name=registered_certificate,json=registeredCertificate" json:"registered_certificate,omitempty"`
+}
+
+func (m *UpdateRegisteredCertificateResponse) Reset()      { *m = UpdateRegisteredCertificateResponse{} }
+func (*UpdateRegisteredCertificateResponse) ProtoMessage() {}
+func (*UpdateRegisteredCertificateResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{48}
+}
+
 func init() {
 	proto.RegisterType((*ListOptions)(nil), "docker.cluster.api.ListOptions")
 	proto.RegisterType((*GetNodeRequest)(nil), "docker.cluster.api.GetNodeRequest")
@@ -423,6 +490,12 @@ func init() {
 	proto.RegisterType((*ListManagersResponse)(nil), "docker.cluster.api.ListManagersResponse")
 	proto.RegisterType((*RemoveManagerRequest)(nil), "docker.cluster.api.RemoveManagerRequest")
 	proto.RegisterType((*RemoveManagerResponse)(nil), "docker.cluster.api.RemoveManagerResponse")
+	proto.RegisterType((*GetRegisteredCertificateRequest)(nil), "docker.cluster.api.GetRegisteredCertificateRequest")
+	proto.RegisterType((*GetRegisteredCertificateResponse)(nil), "docker.cluster.api.GetRegisteredCertificateResponse")
+	proto.RegisterType((*ListRegisteredCertificatesRequest)(nil), "docker.cluster.api.ListRegisteredCertificatesRequest")
+	proto.RegisterType((*ListRegisteredCertificatesResponse)(nil), "docker.cluster.api.ListRegisteredCertificatesResponse")
+	proto.RegisterType((*UpdateRegisteredCertificateRequest)(nil), "docker.cluster.api.UpdateRegisteredCertificateRequest")
+	proto.RegisterType((*UpdateRegisteredCertificateResponse)(nil), "docker.cluster.api.UpdateRegisteredCertificateResponse")
 }
 
 func (m *ListOptions) Copy() *ListOptions {
@@ -963,6 +1036,90 @@ func (m *RemoveManagerResponse) Copy() *RemoveManagerResponse {
 	return o
 }
 
+func (m *GetRegisteredCertificateRequest) Copy() *GetRegisteredCertificateRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &GetRegisteredCertificateRequest{
+		RegisteredCertificateID: m.RegisteredCertificateID,
+	}
+
+	return o
+}
+
+func (m *GetRegisteredCertificateResponse) Copy() *GetRegisteredCertificateResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &GetRegisteredCertificateResponse{
+		RegisteredCertificate: m.RegisteredCertificate.Copy(),
+	}
+
+	return o
+}
+
+func (m *ListRegisteredCertificatesRequest) Copy() *ListRegisteredCertificatesRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListRegisteredCertificatesRequest{}
+
+	if m.State != nil {
+		o.State = make([]IssuanceState, 0, len(m.State))
+		for _, v := range m.State {
+			o.State = append(o.State, v)
+		}
+	}
+
+	return o
+}
+
+func (m *ListRegisteredCertificatesResponse) Copy() *ListRegisteredCertificatesResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListRegisteredCertificatesResponse{}
+
+	if m.Certificates != nil {
+		o.Certificates = make([]*RegisteredCertificate, 0, len(m.Certificates))
+		for _, v := range m.Certificates {
+			o.Certificates = append(o.Certificates, v.Copy())
+		}
+	}
+
+	return o
+}
+
+func (m *UpdateRegisteredCertificateRequest) Copy() *UpdateRegisteredCertificateRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &UpdateRegisteredCertificateRequest{
+		RegisteredCertificateID:      m.RegisteredCertificateID,
+		RegisteredCertificateVersion: m.RegisteredCertificateVersion.Copy(),
+		Spec: m.Spec.Copy(),
+	}
+
+	return o
+}
+
+func (m *UpdateRegisteredCertificateResponse) Copy() *UpdateRegisteredCertificateResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &UpdateRegisteredCertificateResponse{
+		RegisteredCertificate: m.RegisteredCertificate.Copy(),
+	}
+
+	return o
+}
+
 func (this *ListOptions) GoString() string {
 	if this == nil {
 		return "nil"
@@ -1446,6 +1603,78 @@ func (this *RemoveManagerResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
+func (this *GetRegisteredCertificateRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.GetRegisteredCertificateRequest{")
+	s = append(s, "RegisteredCertificateID: "+fmt.Sprintf("%#v", this.RegisteredCertificateID)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *GetRegisteredCertificateResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.GetRegisteredCertificateResponse{")
+	if this.RegisteredCertificate != nil {
+		s = append(s, "RegisteredCertificate: "+fmt.Sprintf("%#v", this.RegisteredCertificate)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ListRegisteredCertificatesRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.ListRegisteredCertificatesRequest{")
+	s = append(s, "State: "+fmt.Sprintf("%#v", this.State)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ListRegisteredCertificatesResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.ListRegisteredCertificatesResponse{")
+	if this.Certificates != nil {
+		s = append(s, "Certificates: "+fmt.Sprintf("%#v", this.Certificates)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *UpdateRegisteredCertificateRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 7)
+	s = append(s, "&api.UpdateRegisteredCertificateRequest{")
+	s = append(s, "RegisteredCertificateID: "+fmt.Sprintf("%#v", this.RegisteredCertificateID)+",\n")
+	if this.RegisteredCertificateVersion != nil {
+		s = append(s, "RegisteredCertificateVersion: "+fmt.Sprintf("%#v", this.RegisteredCertificateVersion)+",\n")
+	}
+	if this.Spec != nil {
+		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *UpdateRegisteredCertificateResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&api.UpdateRegisteredCertificateResponse{")
+	if this.RegisteredCertificate != nil {
+		s = append(s, "RegisteredCertificate: "+fmt.Sprintf("%#v", this.RegisteredCertificate)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func valueToGoStringControl(v interface{}, typ string) string {
 	rv := reflect.ValueOf(v)
 	if rv.IsNil() {
@@ -1504,6 +1733,9 @@ type ControlClient interface {
 	RemoveVolume(ctx context.Context, in *RemoveVolumeRequest, opts ...grpc.CallOption) (*RemoveVolumeResponse, error)
 	ListManagers(ctx context.Context, in *ListManagersRequest, opts ...grpc.CallOption) (*ListManagersResponse, error)
 	RemoveManager(ctx context.Context, in *RemoveManagerRequest, opts ...grpc.CallOption) (*RemoveManagerResponse, error)
+	GetRegisteredCertificate(ctx context.Context, in *GetRegisteredCertificateRequest, opts ...grpc.CallOption) (*GetRegisteredCertificateResponse, error)
+	ListRegisteredCertificates(ctx context.Context, in *ListRegisteredCertificatesRequest, opts ...grpc.CallOption) (*ListRegisteredCertificatesResponse, error)
+	UpdateRegisteredCertificate(ctx context.Context, in *UpdateRegisteredCertificateRequest, opts ...grpc.CallOption) (*UpdateRegisteredCertificateResponse, error)
 }
 
 type controlClient struct {
@@ -1703,6 +1935,33 @@ func (c *controlClient) RemoveManager(ctx context.Context, in *RemoveManagerRequ
 	return out, nil
 }
 
+func (c *controlClient) GetRegisteredCertificate(ctx context.Context, in *GetRegisteredCertificateRequest, opts ...grpc.CallOption) (*GetRegisteredCertificateResponse, error) {
+	out := new(GetRegisteredCertificateResponse)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.Control/GetRegisteredCertificate", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlClient) ListRegisteredCertificates(ctx context.Context, in *ListRegisteredCertificatesRequest, opts ...grpc.CallOption) (*ListRegisteredCertificatesResponse, error) {
+	out := new(ListRegisteredCertificatesResponse)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.Control/ListRegisteredCertificates", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlClient) UpdateRegisteredCertificate(ctx context.Context, in *UpdateRegisteredCertificateRequest, opts ...grpc.CallOption) (*UpdateRegisteredCertificateResponse, error) {
+	out := new(UpdateRegisteredCertificateResponse)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.Control/UpdateRegisteredCertificate", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for Control service
 
 type ControlServer interface {
@@ -1727,6 +1986,9 @@ type ControlServer interface {
 	RemoveVolume(context.Context, *RemoveVolumeRequest) (*RemoveVolumeResponse, error)
 	ListManagers(context.Context, *ListManagersRequest) (*ListManagersResponse, error)
 	RemoveManager(context.Context, *RemoveManagerRequest) (*RemoveManagerResponse, error)
+	GetRegisteredCertificate(context.Context, *GetRegisteredCertificateRequest) (*GetRegisteredCertificateResponse, error)
+	ListRegisteredCertificates(context.Context, *ListRegisteredCertificatesRequest) (*ListRegisteredCertificatesResponse, error)
+	UpdateRegisteredCertificate(context.Context, *UpdateRegisteredCertificateRequest) (*UpdateRegisteredCertificateResponse, error)
 }
 
 func RegisterControlServer(s *grpc.Server, srv ControlServer) {
@@ -2111,6 +2373,60 @@ func _Control_RemoveManager_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Control_GetRegisteredCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRegisteredCertificateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).GetRegisteredCertificate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Control/GetRegisteredCertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).GetRegisteredCertificate(ctx, req.(*GetRegisteredCertificateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Control_ListRegisteredCertificates_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRegisteredCertificatesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).ListRegisteredCertificates(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Control/ListRegisteredCertificates",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).ListRegisteredCertificates(ctx, req.(*ListRegisteredCertificatesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Control_UpdateRegisteredCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateRegisteredCertificateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).UpdateRegisteredCertificate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Control/UpdateRegisteredCertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).UpdateRegisteredCertificate(ctx, req.(*UpdateRegisteredCertificateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Control_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "docker.cluster.api.Control",
 	HandlerType: (*ControlServer)(nil),
@@ -2198,6 +2514,18 @@ var _Control_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveManager",
 			Handler:    _Control_RemoveManager_Handler,
+		},
+		{
+			MethodName: "GetRegisteredCertificate",
+			Handler:    _Control_GetRegisteredCertificate_Handler,
+		},
+		{
+			MethodName: "ListRegisteredCertificates",
+			Handler:    _Control_ListRegisteredCertificates_Handler,
+		},
+		{
+			MethodName: "UpdateRegisteredCertificate",
+			Handler:    _Control_UpdateRegisteredCertificate_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},
@@ -3349,6 +3677,185 @@ func (m *RemoveManagerResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *GetRegisteredCertificateRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *GetRegisteredCertificateRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.RegisteredCertificateID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintControl(data, i, uint64(len(m.RegisteredCertificateID)))
+		i += copy(data[i:], m.RegisteredCertificateID)
+	}
+	return i, nil
+}
+
+func (m *GetRegisteredCertificateResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *GetRegisteredCertificateResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.RegisteredCertificate != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintControl(data, i, uint64(m.RegisteredCertificate.Size()))
+		n22, err := m.RegisteredCertificate.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n22
+	}
+	return i, nil
+}
+
+func (m *ListRegisteredCertificatesRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ListRegisteredCertificatesRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.State) > 0 {
+		for _, num := range m.State {
+			data[i] = 0x8
+			i++
+			i = encodeVarintControl(data, i, uint64(num))
+		}
+	}
+	return i, nil
+}
+
+func (m *ListRegisteredCertificatesResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ListRegisteredCertificatesResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Certificates) > 0 {
+		for _, msg := range m.Certificates {
+			data[i] = 0xa
+			i++
+			i = encodeVarintControl(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func (m *UpdateRegisteredCertificateRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *UpdateRegisteredCertificateRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.RegisteredCertificateID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintControl(data, i, uint64(len(m.RegisteredCertificateID)))
+		i += copy(data[i:], m.RegisteredCertificateID)
+	}
+	if m.RegisteredCertificateVersion != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintControl(data, i, uint64(m.RegisteredCertificateVersion.Size()))
+		n23, err := m.RegisteredCertificateVersion.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n23
+	}
+	if m.Spec != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintControl(data, i, uint64(m.Spec.Size()))
+		n24, err := m.Spec.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n24
+	}
+	return i, nil
+}
+
+func (m *UpdateRegisteredCertificateResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *UpdateRegisteredCertificateResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.RegisteredCertificate != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintControl(data, i, uint64(m.RegisteredCertificate.Size()))
+		n25, err := m.RegisteredCertificate.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n25
+	}
+	return i, nil
+}
+
 func encodeFixed64Control(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	data[offset+1] = uint8(v >> 8)
@@ -3756,6 +4263,54 @@ func (p *raftProxyControlServer) RemoveManager(ctx context.Context, r *RemoveMan
 		return nil, err
 	}
 	return NewControlClient(conn).RemoveManager(ctx, r)
+}
+
+func (p *raftProxyControlServer) GetRegisteredCertificate(ctx context.Context, r *GetRegisteredCertificateRequest) (*GetRegisteredCertificateResponse, error) {
+
+	if p.cluster.IsLeader() {
+		return p.local.GetRegisteredCertificate(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return NewControlClient(conn).GetRegisteredCertificate(ctx, r)
+}
+
+func (p *raftProxyControlServer) ListRegisteredCertificates(ctx context.Context, r *ListRegisteredCertificatesRequest) (*ListRegisteredCertificatesResponse, error) {
+
+	if p.cluster.IsLeader() {
+		return p.local.ListRegisteredCertificates(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return NewControlClient(conn).ListRegisteredCertificates(ctx, r)
+}
+
+func (p *raftProxyControlServer) UpdateRegisteredCertificate(ctx context.Context, r *UpdateRegisteredCertificateRequest) (*UpdateRegisteredCertificateResponse, error) {
+
+	if p.cluster.IsLeader() {
+		return p.local.UpdateRegisteredCertificate(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return NewControlClient(conn).UpdateRegisteredCertificate(ctx, r)
 }
 
 func (m *ListOptions) Size() (n int) {
@@ -4193,6 +4748,77 @@ func (m *RemoveManagerRequest) Size() (n int) {
 func (m *RemoveManagerResponse) Size() (n int) {
 	var l int
 	_ = l
+	return n
+}
+
+func (m *GetRegisteredCertificateRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.RegisteredCertificateID)
+	if l > 0 {
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *GetRegisteredCertificateResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.RegisteredCertificate != nil {
+		l = m.RegisteredCertificate.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *ListRegisteredCertificatesRequest) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.State) > 0 {
+		for _, e := range m.State {
+			n += 1 + sovControl(uint64(e))
+		}
+	}
+	return n
+}
+
+func (m *ListRegisteredCertificatesResponse) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Certificates) > 0 {
+		for _, e := range m.Certificates {
+			l = e.Size()
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *UpdateRegisteredCertificateRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.RegisteredCertificateID)
+	if l > 0 {
+		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.RegisteredCertificateVersion != nil {
+		l = m.RegisteredCertificateVersion.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.Spec != nil {
+		l = m.Spec.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *UpdateRegisteredCertificateResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.RegisteredCertificate != nil {
+		l = m.RegisteredCertificate.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
 	return n
 }
 
@@ -4634,6 +5260,68 @@ func (this *RemoveManagerResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RemoveManagerResponse{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *GetRegisteredCertificateRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&GetRegisteredCertificateRequest{`,
+		`RegisteredCertificateID:` + fmt.Sprintf("%v", this.RegisteredCertificateID) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *GetRegisteredCertificateResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&GetRegisteredCertificateResponse{`,
+		`RegisteredCertificate:` + strings.Replace(fmt.Sprintf("%v", this.RegisteredCertificate), "RegisteredCertificate", "RegisteredCertificate", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListRegisteredCertificatesRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListRegisteredCertificatesRequest{`,
+		`State:` + fmt.Sprintf("%v", this.State) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListRegisteredCertificatesResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListRegisteredCertificatesResponse{`,
+		`Certificates:` + strings.Replace(fmt.Sprintf("%v", this.Certificates), "RegisteredCertificate", "RegisteredCertificate", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateRegisteredCertificateRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateRegisteredCertificateRequest{`,
+		`RegisteredCertificateID:` + fmt.Sprintf("%v", this.RegisteredCertificateID) + `,`,
+		`RegisteredCertificateVersion:` + strings.Replace(fmt.Sprintf("%v", this.RegisteredCertificateVersion), "Version", "Version", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "RegisteredCertificateSpec", "RegisteredCertificateSpec", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateRegisteredCertificateResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateRegisteredCertificateResponse{`,
+		`RegisteredCertificate:` + strings.Replace(fmt.Sprintf("%v", this.RegisteredCertificate), "RegisteredCertificate", "RegisteredCertificate", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8110,6 +8798,547 @@ func (m *RemoveManagerResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
+func (m *GetRegisteredCertificateRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetRegisteredCertificateRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetRegisteredCertificateRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RegisteredCertificateID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RegisteredCertificateID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetRegisteredCertificateResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetRegisteredCertificateResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetRegisteredCertificateResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RegisteredCertificate", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.RegisteredCertificate == nil {
+				m.RegisteredCertificate = &RegisteredCertificate{}
+			}
+			if err := m.RegisteredCertificate.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListRegisteredCertificatesRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListRegisteredCertificatesRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListRegisteredCertificatesRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
+			}
+			var v IssuanceState
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (IssuanceState(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.State = append(m.State, v)
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListRegisteredCertificatesResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListRegisteredCertificatesResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListRegisteredCertificatesResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Certificates", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Certificates = append(m.Certificates, &RegisteredCertificate{})
+			if err := m.Certificates[len(m.Certificates)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UpdateRegisteredCertificateRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UpdateRegisteredCertificateRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UpdateRegisteredCertificateRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RegisteredCertificateID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RegisteredCertificateID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RegisteredCertificateVersion", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.RegisteredCertificateVersion == nil {
+				m.RegisteredCertificateVersion = &Version{}
+			}
+			if err := m.RegisteredCertificateVersion.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Spec == nil {
+				m.Spec = &RegisteredCertificateSpec{}
+			}
+			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UpdateRegisteredCertificateResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UpdateRegisteredCertificateResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UpdateRegisteredCertificateResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RegisteredCertificate", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.RegisteredCertificate == nil {
+				m.RegisteredCertificate = &RegisteredCertificate{}
+			}
+			if err := m.RegisteredCertificate.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func skipControl(data []byte) (n int, err error) {
 	l := len(data)
 	iNdEx := 0
@@ -8216,79 +9445,93 @@ var (
 )
 
 var fileDescriptorControl = []byte{
-	// 1174 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xac, 0x58, 0xdd, 0x6e, 0x1b, 0x45,
-	0x14, 0x8e, 0xfb, 0x13, 0xc7, 0xc7, 0x49, 0x9b, 0x4c, 0x5c, 0x88, 0xb6, 0x55, 0x8a, 0x36, 0xb4,
-	0x4d, 0xa4, 0xca, 0xa0, 0x84, 0xf2, 0x73, 0xc1, 0x5f, 0x12, 0xa9, 0x0a, 0x21, 0x29, 0xda, 0xfe,
-	0x08, 0x21, 0x21, 0x70, 0xec, 0x21, 0x32, 0x89, 0xbd, 0x66, 0x77, 0x13, 0xd4, 0x3b, 0x1e, 0x81,
-	0xe7, 0xe0, 0x25, 0xb8, 0xed, 0x25, 0x97, 0x5c, 0x21, 0xda, 0x27, 0xe0, 0x11, 0x98, 0x9f, 0x33,
-	0xb3, 0xb3, 0xe3, 0xd9, 0x71, 0x1c, 0xfb, 0x62, 0x55, 0xef, 0xec, 0x37, 0xe7, 0x9c, 0x39, 0xdf,
-	0x37, 0x33, 0x5f, 0x03, 0x0b, 0xed, 0xb8, 0x9f, 0x25, 0xf1, 0x69, 0x73, 0x90, 0xc4, 0x59, 0x4c,
-	0x48, 0x27, 0x6e, 0x9f, 0xd0, 0xa4, 0xd9, 0x3e, 0x3d, 0x4b, 0x33, 0xf6, 0x6f, 0x6b, 0xd0, 0x0d,
-	0xea, 0xe9, 0x80, 0xb6, 0x53, 0x09, 0x08, 0x16, 0xe2, 0xa3, 0x9f, 0x69, 0x3b, 0x53, 0xaf, 0xf5,
-	0xec, 0xe5, 0x80, 0xaa, 0x97, 0xc6, 0x71, 0x7c, 0x1c, 0x8b, 0x9f, 0xef, 0xf1, 0x5f, 0x72, 0x34,
-	0x5c, 0x83, 0xfa, 0xd7, 0xdd, 0x34, 0x7b, 0x32, 0xc8, 0xba, 0x71, 0x3f, 0x25, 0x0d, 0xb8, 0xfe,
-	0xcb, 0x19, 0x4d, 0x5e, 0xae, 0x54, 0xde, 0xa9, 0xac, 0xd7, 0x22, 0xf9, 0x12, 0x3e, 0x82, 0x1b,
-	0x8f, 0x69, 0x76, 0x18, 0x77, 0x68, 0x44, 0xd9, 0x48, 0x9a, 0x91, 0x35, 0xa8, 0xf6, 0xd9, 0xeb,
-	0x0f, 0xdd, 0x8e, 0x44, 0x6e, 0xc3, 0x9b, 0x7f, 0xee, 0xce, 0x72, 0xc4, 0xde, 0x6e, 0x34, 0xcb,
-	0x3f, 0xed, 0x75, 0xc2, 0xcf, 0xe1, 0xa6, 0x9e, 0x96, 0x0e, 0x58, 0x78, 0x4a, 0x1e, 0xc2, 0x35,
-	0xfe, 0x51, 0x4c, 0xaa, 0x6f, 0xae, 0x34, 0x87, 0x17, 0xd4, 0x14, 0x78, 0x81, 0x0a, 0x0f, 0x60,
-	0x91, 0x17, 0xc7, 0x47, 0x52, 0x95, 0xf9, 0x13, 0xa8, 0xc6, 0xb2, 0x58, 0x0c, 0x72, 0xd7, 0x15,
-	0xc4, 0x58, 0x53, 0xa4, 0xf0, 0xe1, 0x0e, 0x2c, 0x19, 0xe1, 0xb0, 0xa2, 0x26, 0x5c, 0xe7, 0xb9,
-	0x78, 0xb4, 0xab, 0xde, 0x92, 0x24, 0x2c, 0xfc, 0xa3, 0x02, 0x4b, 0xcf, 0x07, 0x9d, 0x56, 0x46,
-	0xc7, 0xed, 0x07, 0xf9, 0x0c, 0xe6, 0x05, 0xe8, 0x9c, 0x26, 0x29, 0x2b, 0x68, 0xe5, 0x8a, 0xa8,
-	0xff, 0xb6, 0x2b, 0xe3, 0x0b, 0x09, 0x89, 0xea, 0x7c, 0x02, 0xbe, 0x90, 0xf7, 0xe1, 0x1a, 0x27,
-	0x7b, 0xe5, 0xaa, 0x98, 0x77, 0xa7, 0xac, 0xd2, 0xa7, 0x0c, 0x13, 0x09, 0x64, 0xb8, 0x0d, 0xc4,
-	0xac, 0xf5, 0x52, 0x24, 0x48, 0xf2, 0x9f, 0xb5, 0xd2, 0x13, 0x63, 0xb1, 0x19, 0x7b, 0xb5, 0x16,
-	0xcb, 0x11, 0x7c, 0xb1, 0xfc, 0x93, 0x26, 0x5f, 0x4e, 0xcb, 0xf3, 0xf2, 0x8f, 0xbe, 0xbc, 0x02,
-	0x2f, 0x50, 0xe1, 0xc7, 0xb0, 0x14, 0xd1, 0x5e, 0x7c, 0x4e, 0xc7, 0x4e, 0xdd, 0x00, 0x62, 0xce,
-	0x94, 0xd9, 0x43, 0x22, 0xc5, 0xc4, 0xc7, 0x94, 0x98, 0x94, 0x22, 0x70, 0x2c, 0x57, 0x04, 0x0f,
-	0xe4, 0x55, 0x84, 0x88, 0x2c, 0x61, 0xe1, 0x3e, 0x34, 0x76, 0x12, 0xca, 0x9a, 0xfc, 0x94, 0x26,
-	0xe7, 0xdd, 0xb6, 0xd6, 0xc4, 0x16, 0xd2, 0xe5, 0x91, 0x29, 0xce, 0x30, 0x18, 0x3b, 0x84, 0x5b,
-	0x56, 0x30, 0xac, 0xea, 0x11, 0x54, 0x53, 0x39, 0x84, 0x01, 0x6f, 0x7b, 0x02, 0x46, 0x0a, 0x1b,
-	0x7e, 0x09, 0x4b, 0x8c, 0x06, 0xab, 0xb2, 0x87, 0x00, 0xf8, 0x3d, 0x6f, 0xe4, 0x02, 0x6b, 0x64,
-	0x0d, 0x71, 0xac, 0x97, 0x35, 0x04, 0xb0, 0x76, 0xee, 0x03, 0x31, 0x43, 0x4c, 0x56, 0xcf, 0x9f,
-	0x15, 0x68, 0x48, 0x49, 0x4e, 0x52, 0x13, 0xd9, 0x85, 0x9b, 0x0a, 0x3d, 0xc6, 0x6e, 0xba, 0x81,
-	0x73, 0xd4, 0x86, 0xda, 0x2a, 0x6c, 0xa8, 0x8b, 0x33, 0x64, 0x2d, 0x60, 0xb2, 0x8e, 0xec, 0x42,
-	0x43, 0xaa, 0x75, 0x22, 0x92, 0xde, 0x86, 0x5b, 0x56, 0x14, 0x94, 0xfd, 0x37, 0xb0, 0xcc, 0x25,
-	0x8e, 0xc3, 0xd3, 0x38, 0x46, 0x9f, 0x40, 0xa3, 0x18, 0x11, 0xd7, 0xff, 0x11, 0xcc, 0x61, 0x3d,
-	0x6a, 0xeb, 0x78, 0x1b, 0xa0, 0xc1, 0xf9, 0x06, 0x3a, 0xa4, 0xd9, 0xaf, 0x71, 0x72, 0x32, 0xc6,
-	0x06, 0xc2, 0x19, 0xae, 0x0d, 0xa4, 0x83, 0xe5, 0xf4, 0xf4, 0xe5, 0x90, 0x8f, 0x1e, 0x35, 0x4b,
-	0x61, 0xc3, 0xe7, 0x62, 0x03, 0x59, 0x95, 0x11, 0x76, 0x82, 0xb6, 0x7a, 0x14, 0x6f, 0x49, 0xf1,
-	0x9b, 0xf3, 0x85, 0x73, 0x38, 0x5f, 0x57, 0x72, 0xbe, 0x70, 0x2e, 0xe7, 0x0b, 0x01, 0x7a, 0x53,
-	0x4d, 0xa9, 0xc6, 0x6f, 0x95, 0x84, 0xa6, 0x5e, 0xa6, 0x96, 0x95, 0x55, 0xa9, 0x92, 0x15, 0x0e,
-	0x4f, 0x51, 0x56, 0x79, 0xc4, 0x5c, 0x56, 0x58, 0x8f, 0x57, 0x56, 0xaa, 0x40, 0x0d, 0x0e, 0xf7,
-	0x60, 0x59, 0x2a, 0xe1, 0x45, 0x7c, 0x7a, 0xd6, 0xd3, 0xfb, 0x6a, 0xb3, 0xa0, 0xaa, 0x55, 0xe7,
-	0x79, 0x21, 0x26, 0x18, 0xa2, 0xfa, 0x4a, 0x29, 0x54, 0x85, 0xc2, 0xda, 0x36, 0x61, 0xf6, 0x5c,
-	0x8c, 0x60, 0xb4, 0xa0, 0x3c, 0x5a, 0x84, 0xc8, 0xf0, 0x53, 0x58, 0x64, 0xcc, 0x17, 0x6b, 0xda,
-	0x80, 0x9a, 0xfc, 0x9a, 0x6f, 0xf5, 0x79, 0xc6, 0xc9, 0x9c, 0x44, 0x31, 0x4a, 0xe6, 0xe4, 0x67,
-	0xc6, 0xc8, 0x63, 0xa1, 0xc7, 0x29, 0xd4, 0xf1, 0x05, 0x2c, 0x4b, 0x6a, 0x2f, 0x5d, 0xca, 0x5b,
-	0x4a, 0x76, 0xc5, 0x6a, 0xf8, 0xfd, 0xcb, 0x99, 0x94, 0xa3, 0xfa, 0xae, 0xdd, 0x97, 0x8a, 0xd1,
-	0xa3, 0x58, 0xfa, 0x07, 0x50, 0x95, 0x01, 0x15, 0xbb, 0xbe, 0xda, 0x15, 0x54, 0xc9, 0xef, 0xa0,
-	0xd5, 0x6f, 0x1d, 0xb3, 0xc3, 0x7c, 0x0a, 0xf2, 0x3b, 0x94, 0xf2, 0xcb, 0x23, 0x62, 0x7d, 0x1f,
-	0xc2, 0x5c, 0x0f, 0xc7, 0x7c, 0x05, 0x1e, 0xd0, 0xde, 0x11, 0x4d, 0x22, 0x8d, 0xcd, 0x8f, 0x75,
-	0x8c, 0x68, 0x1c, 0xeb, 0x88, 0xb1, 0x8e, 0x75, 0xc4, 0xf1, 0xfd, 0x87, 0x00, 0x73, 0xff, 0xe9,
-	0x28, 0xb2, 0xac, 0xcd, 0xdf, 0x17, 0xa1, 0xba, 0x23, 0xff, 0x73, 0x40, 0x9e, 0x41, 0x15, 0x7d,
-	0x36, 0x09, 0x5d, 0xb5, 0x15, 0xbd, 0x7b, 0xb0, 0xe6, 0xc5, 0x20, 0x87, 0x33, 0xe4, 0x3b, 0xa8,
-	0x69, 0xb7, 0x4c, 0xde, 0x2d, 0xeb, 0xa3, 0xe9, 0xcd, 0x83, 0x7b, 0x23, 0x50, 0x3a, 0xf6, 0xf7,
-	0x00, 0xb9, 0x2f, 0x25, 0xce, 0x69, 0x43, 0x1e, 0x3b, 0xb8, 0x3f, 0x0a, 0xa6, 0xc3, 0xcb, 0x86,
-	0x70, 0x8f, 0x56, 0xda, 0x10, 0xc3, 0x54, 0x96, 0x36, 0xa4, 0x60, 0x1f, 0x75, 0x43, 0x84, 0x59,
-	0x2c, 0x6f, 0x88, 0xe9, 0x2f, 0xcb, 0x1b, 0x52, 0x70, 0x9c, 0xb2, 0x21, 0xb9, 0x65, 0x75, 0x37,
-	0x64, 0xc8, 0x0c, 0xbb, 0x1b, 0xe2, 0x70, 0xbe, 0x22, 0x7c, 0x6e, 0xe1, 0xdc, 0xe1, 0x87, 0x5c,
-	0xa2, 0x3b, 0xfc, 0xb0, 0x13, 0x64, 0xe1, 0xdb, 0x30, 0x6f, 0x3a, 0x02, 0xf2, 0xa0, 0x6c, 0xd9,
-	0x96, 0x0b, 0x09, 0xd6, 0x47, 0x03, 0x75, 0x92, 0x9f, 0x60, 0xa1, 0xe0, 0x8c, 0x89, 0x73, 0xb2,
-	0xcb, 0x89, 0x07, 0x1b, 0x17, 0x40, 0x9a, 0x79, 0x0a, 0xfe, 0xce, 0x9d, 0xc7, 0xe5, 0x61, 0xdd,
-	0x79, 0x9c, 0x66, 0x51, 0xe6, 0x29, 0x38, 0x36, 0x77, 0x1e, 0x97, 0x35, 0x74, 0xe7, 0x71, 0xdb,
-	0x3f, 0xc5, 0x3d, 0x5e, 0x8f, 0xa5, 0xdc, 0x17, 0x9d, 0x43, 0x29, 0xf7, 0xb6, 0x0d, 0xd0, 0xdc,
-	0xab, 0x6b, 0xbb, 0x9c, 0x7b, 0xcb, 0x2a, 0x94, 0x73, 0x6f, 0x3b, 0x00, 0x93, 0x7b, 0xb5, 0x0c,
-	0x0f, 0xf7, 0xd6, 0x4a, 0x36, 0x2e, 0x80, 0x1c, 0xe6, 0xc4, 0x9b, 0xc7, 0xe5, 0xb5, 0x7c, 0x9c,
-	0x0c, 0xe7, 0x61, 0x47, 0x89, 0xbe, 0xc4, 0xdd, 0x47, 0x89, 0x6d, 0x11, 0x82, 0x7b, 0x23, 0x50,
-	0x3a, 0xf6, 0x8f, 0xf2, 0x2f, 0x3a, 0x78, 0xcf, 0x92, 0xfb, 0x65, 0x6d, 0x2e, 0x5e, 0xcf, 0xc1,
-	0x83, 0x91, 0x38, 0x93, 0x72, 0xd3, 0x0d, 0xb9, 0x29, 0x77, 0x58, 0xaf, 0x60, 0x7d, 0x34, 0xd0,
-	0x4c, 0x62, 0x9a, 0x0b, 0x77, 0x12, 0x87, 0x81, 0x09, 0xd6, 0x47, 0x03, 0x6d, 0xf1, 0xaa, 0x4b,
-	0xbf, 0x5c, 0xbc, 0x96, 0xd1, 0x28, 0x17, 0xaf, 0xed, 0x1f, 0x4c, 0x51, 0xe1, 0x37, 0x9f, 0xa8,
-	0x8a, 0x66, 0xc1, 0x27, 0x2a, 0xcb, 0x10, 0x84, 0x33, 0xdb, 0x77, 0x5e, 0xbd, 0x5e, 0x9d, 0xf9,
-	0x9b, 0x3d, 0xff, 0xbd, 0x5e, 0xad, 0xfc, 0xf6, 0x66, 0xb5, 0xf2, 0x8a, 0x3d, 0x7f, 0xb1, 0xe7,
-	0x5f, 0xf6, 0x1c, 0xcd, 0x8a, 0xbf, 0xf7, 0x6d, 0xfd, 0x1f, 0x00, 0x00, 0xff, 0xff, 0xd7, 0xa4,
-	0x47, 0xa4, 0x53, 0x14, 0x00, 0x00,
+	// 1404 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xc4, 0x59, 0xcb, 0x4e, 0x1c, 0x47,
+	0x14, 0xa5, 0xc1, 0x30, 0x70, 0x79, 0xd8, 0x14, 0x83, 0x21, 0x0d, 0x02, 0xbb, 0x88, 0x6d, 0x90,
+	0x1c, 0x12, 0x81, 0x81, 0x64, 0x91, 0x87, 0x01, 0xc9, 0x22, 0x04, 0x1c, 0xb5, 0x1f, 0x89, 0xa2,
+	0x44, 0xf6, 0x30, 0x53, 0x46, 0x13, 0x60, 0x7a, 0xd2, 0xdd, 0x10, 0x39, 0xab, 0x2c, 0x22, 0x65,
+	0x15, 0x29, 0xff, 0x90, 0x5d, 0xfe, 0x21, 0xca, 0xd6, 0xcb, 0x2c, 0xb3, 0x8a, 0x62, 0x7f, 0x41,
+	0x3e, 0x21, 0x55, 0x5d, 0x8f, 0xae, 0xee, 0xa9, 0xaa, 0x61, 0xcc, 0x28, 0x59, 0x8c, 0x3c, 0x5d,
+	0x7d, 0xee, 0xa3, 0xee, 0x39, 0x55, 0x73, 0xaf, 0x81, 0xd1, 0x6a, 0xd8, 0x48, 0xa2, 0xf0, 0x78,
+	0xb9, 0x19, 0x85, 0x49, 0x88, 0x50, 0x2d, 0xac, 0x1e, 0x91, 0x68, 0xb9, 0x7a, 0x7c, 0x1a, 0x27,
+	0xf4, 0xdf, 0x4a, 0xb3, 0xee, 0x0f, 0xc7, 0x4d, 0x52, 0x8d, 0x39, 0xc0, 0x1f, 0x0d, 0x0f, 0xbe,
+	0x26, 0xd5, 0x44, 0x3e, 0x0e, 0x27, 0xcf, 0x9b, 0x44, 0x3e, 0x94, 0x0f, 0xc3, 0xc3, 0x30, 0xfd,
+	0xfa, 0x36, 0xfb, 0xc6, 0x57, 0xf1, 0x02, 0x0c, 0x7f, 0x52, 0x8f, 0x93, 0xfb, 0xcd, 0xa4, 0x1e,
+	0x36, 0x62, 0x54, 0x86, 0xfe, 0x6f, 0x4e, 0x49, 0xf4, 0x7c, 0xda, 0xbb, 0xe6, 0x2d, 0x0e, 0x05,
+	0xfc, 0x01, 0xaf, 0xc1, 0xd8, 0x3d, 0x92, 0xec, 0x87, 0x35, 0x12, 0x10, 0xba, 0x12, 0x27, 0x68,
+	0x01, 0x4a, 0x0d, 0xfa, 0xf8, 0xa4, 0x5e, 0xe3, 0xc8, 0x4d, 0x78, 0xf5, 0xd7, 0xfc, 0x00, 0x43,
+	0xec, 0x6c, 0x07, 0x03, 0xec, 0xd5, 0x4e, 0x0d, 0x7f, 0x08, 0x97, 0x95, 0x59, 0xdc, 0xa4, 0xee,
+	0x09, 0xba, 0x0d, 0x97, 0xd8, 0xcb, 0xd4, 0x68, 0x78, 0x65, 0x7a, 0xb9, 0x75, 0x43, 0xcb, 0x29,
+	0x3e, 0x45, 0xe1, 0x3d, 0xb8, 0xc2, 0x92, 0x63, 0x2b, 0xb1, 0x8c, 0xfc, 0x1e, 0x94, 0x42, 0x9e,
+	0xac, 0x70, 0x32, 0x6f, 0x72, 0xa2, 0xed, 0x29, 0x90, 0x78, 0xbc, 0x05, 0xe3, 0x9a, 0x3b, 0x91,
+	0xd1, 0x32, 0xf4, 0xb3, 0x58, 0xcc, 0x5b, 0x9f, 0x33, 0x25, 0x0e, 0xc3, 0xbf, 0x7a, 0x30, 0xfe,
+	0xa8, 0x59, 0xab, 0x24, 0xa4, 0xd3, 0x7a, 0xa0, 0x0f, 0x60, 0x24, 0x05, 0x9d, 0x91, 0x28, 0xa6,
+	0x09, 0x4d, 0xf7, 0xa6, 0xf9, 0xcf, 0x98, 0x22, 0x3e, 0xe6, 0x90, 0x60, 0x98, 0x19, 0x88, 0x07,
+	0xf4, 0x0e, 0x5c, 0x62, 0x64, 0x4f, 0xf7, 0xa5, 0x76, 0xb3, 0xb6, 0x4c, 0x1f, 0x50, 0x4c, 0x90,
+	0x22, 0xf1, 0x26, 0x20, 0x3d, 0xd7, 0xd7, 0x22, 0x81, 0x93, 0xff, 0xb0, 0x12, 0x1f, 0x69, 0x9b,
+	0x4d, 0xe8, 0x63, 0x61, 0xb3, 0x0c, 0xc1, 0x36, 0xcb, 0x5e, 0x29, 0xf2, 0xb9, 0x59, 0x16, 0x97,
+	0xbd, 0x74, 0xc5, 0x4d, 0xf1, 0x29, 0x0a, 0xbf, 0x0b, 0xe3, 0x01, 0x39, 0x09, 0xcf, 0x48, 0xc7,
+	0xa1, 0xcb, 0x80, 0x74, 0x4b, 0x1e, 0x1d, 0x23, 0x2e, 0x26, 0xb6, 0x26, 0xc5, 0x24, 0x15, 0x21,
+	0xd6, 0x32, 0x45, 0x30, 0x47, 0x4e, 0x45, 0xa4, 0x9e, 0x39, 0x0c, 0xef, 0x42, 0x79, 0x2b, 0x22,
+	0xb4, 0xc8, 0x0f, 0x48, 0x74, 0x56, 0xaf, 0x2a, 0x4d, 0xac, 0x0a, 0xba, 0x1c, 0x32, 0x15, 0x16,
+	0x1a, 0x63, 0xfb, 0x30, 0x59, 0x70, 0x26, 0xb2, 0x5a, 0x83, 0x52, 0xcc, 0x97, 0x84, 0xc3, 0x19,
+	0x87, 0xc3, 0x40, 0x62, 0xf1, 0x5d, 0x18, 0xa7, 0x34, 0x14, 0x32, 0xbb, 0x0d, 0x20, 0xde, 0x67,
+	0x85, 0x1c, 0xa5, 0x85, 0x1c, 0x12, 0x38, 0x5a, 0xcb, 0x21, 0x01, 0xa0, 0xe5, 0xdc, 0x05, 0xa4,
+	0xbb, 0xb8, 0x58, 0x3e, 0xbf, 0x7b, 0x50, 0xe6, 0x92, 0xbc, 0x48, 0x4e, 0x68, 0x1b, 0x2e, 0x4b,
+	0x74, 0x07, 0xa7, 0x69, 0x4c, 0xd8, 0xc8, 0x03, 0xb5, 0x9a, 0x3b, 0x50, 0xe7, 0x67, 0xa8, 0xb0,
+	0x81, 0x8b, 0x55, 0x64, 0x1b, 0xca, 0x5c, 0xad, 0x17, 0x22, 0x69, 0x0a, 0x26, 0x0b, 0x5e, 0x84,
+	0xec, 0x3f, 0x85, 0x09, 0x26, 0x71, 0xb1, 0xdc, 0x8d, 0x6b, 0xf4, 0x3e, 0x94, 0xf3, 0x1e, 0xc5,
+	0xfe, 0x37, 0x60, 0x50, 0xe4, 0x23, 0x8f, 0x8e, 0xb3, 0x00, 0x0a, 0x9c, 0x1d, 0xa0, 0x7d, 0x92,
+	0x7c, 0x1b, 0x46, 0x47, 0x1d, 0x1c, 0x20, 0x61, 0x61, 0x3a, 0x40, 0xca, 0x59, 0x46, 0x4f, 0x83,
+	0x2f, 0xb9, 0xe8, 0x91, 0x56, 0x12, 0x8b, 0x1f, 0xa5, 0x07, 0xa8, 0x90, 0x19, 0xa2, 0x37, 0x68,
+	0xe5, 0x84, 0x88, 0x5f, 0xc9, 0xf4, 0x3b, 0xe3, 0x4b, 0xd8, 0x30, 0xbe, 0x7a, 0x33, 0xbe, 0x84,
+	0x2d, 0xe3, 0x4b, 0x00, 0xd4, 0xa1, 0xea, 0x52, 0x8e, 0x9f, 0x4b, 0x09, 0x75, 0x3d, 0x4d, 0x25,
+	0xab, 0x42, 0xa6, 0x52, 0x56, 0x62, 0xb9, 0x8b, 0xb2, 0xca, 0x3c, 0x66, 0xb2, 0x12, 0xf9, 0x38,
+	0x65, 0x25, 0x13, 0x54, 0x60, 0xbc, 0x03, 0x13, 0x5c, 0x09, 0x8f, 0xc3, 0xe3, 0xd3, 0x13, 0x75,
+	0xae, 0x56, 0x72, 0xaa, 0x9a, 0x33, 0xde, 0x17, 0xa9, 0x81, 0x26, 0xaa, 0x8f, 0xa5, 0x42, 0xa5,
+	0x2b, 0x91, 0xdb, 0x0a, 0x0c, 0x9c, 0xa5, 0x2b, 0xc2, 0x9b, 0x6f, 0xf7, 0x16, 0x08, 0x24, 0x7e,
+	0x1f, 0xae, 0x50, 0xe6, 0xf3, 0x39, 0x2d, 0xc1, 0x10, 0x7f, 0x9b, 0x1d, 0xf5, 0x11, 0xca, 0xc9,
+	0x20, 0x47, 0x51, 0x4a, 0x06, 0xf9, 0x6b, 0xca, 0xc8, 0xbd, 0x54, 0x8f, 0x5d, 0xc8, 0xe3, 0x23,
+	0x98, 0xe0, 0xd4, 0xbe, 0x76, 0x2a, 0x57, 0xa5, 0xec, 0xf2, 0xd9, 0xb0, 0xdf, 0x5f, 0xc6, 0x24,
+	0x5f, 0x55, 0xbf, 0xb5, 0xbb, 0x5c, 0x31, 0x6a, 0x55, 0xa4, 0x7e, 0x07, 0x4a, 0xdc, 0xa1, 0x64,
+	0xd7, 0x95, 0xbb, 0x84, 0x4a, 0xf9, 0xed, 0x55, 0x1a, 0x95, 0x43, 0x7a, 0x99, 0x77, 0x41, 0x7e,
+	0xfb, 0x5c, 0x7e, 0x99, 0x47, 0x91, 0xdf, 0x3a, 0x0c, 0x9e, 0x88, 0x35, 0x57, 0x82, 0x7b, 0xe4,
+	0xe4, 0x80, 0x44, 0x81, 0xc2, 0x66, 0xd7, 0xba, 0xf0, 0xa8, 0x5d, 0xeb, 0x02, 0x53, 0xb8, 0xd6,
+	0x05, 0x8e, 0x9d, 0x3f, 0x01, 0xd0, 0xcf, 0x9f, 0xf2, 0x22, 0x6a, 0xfc, 0x1d, 0xcc, 0x53, 0x19,
+	0x04, 0xe4, 0xb0, 0xce, 0x52, 0x20, 0xb5, 0x2d, 0x12, 0x25, 0xf5, 0x67, 0xf5, 0x2a, 0xd5, 0xa8,
+	0x8c, 0xf4, 0x19, 0xbc, 0x11, 0xa9, 0xf7, 0x4f, 0xaa, 0x19, 0x20, 0x0b, 0x3c, 0x43, 0x03, 0x4f,
+	0x19, 0x9d, 0xd0, 0x34, 0xa6, 0x22, 0xe3, 0x8b, 0x1a, 0xfe, 0xc1, 0x83, 0x6b, 0xf6, 0xe0, 0xa2,
+	0x6e, 0x4f, 0xe1, 0xaa, 0x39, 0xba, 0x60, 0x66, 0xc9, 0x54, 0x45, 0xb3, 0xcb, 0x49, 0x63, 0x22,
+	0xf8, 0x4b, 0xb8, 0xce, 0x18, 0x33, 0xda, 0x28, 0x45, 0x6c, 0x40, 0x7f, 0x9c, 0xf0, 0xa8, 0x7d,
+	0x8b, 0x63, 0x2b, 0xd7, 0x4d, 0x51, 0x77, 0xe2, 0xf8, 0xb4, 0xd2, 0xa0, 0x3f, 0xf2, 0x0c, 0x18,
+	0x70, 0x3c, 0x8e, 0x01, 0xbb, 0xbc, 0x8b, 0x5d, 0xee, 0xc1, 0x88, 0xb6, 0x35, 0xa9, 0x90, 0x0e,
+	0xf6, 0x96, 0x33, 0xc7, 0xbf, 0xf4, 0x02, 0xe6, 0xcd, 0xc5, 0xff, 0xc2, 0x2c, 0xaa, 0xc0, 0x9c,
+	0xc5, 0x71, 0x07, 0x5d, 0xd6, 0xac, 0xd1, 0xbb, 0xec, 0xb9, 0xee, 0xe6, 0x7a, 0xae, 0xb7, 0xce,
+	0x5d, 0x29, 0xed, 0x36, 0xfe, 0xd1, 0x83, 0x05, 0x67, 0x95, 0xfe, 0x2b, 0x09, 0xae, 0xfc, 0x36,
+	0x01, 0xa5, 0x2d, 0x3e, 0xa2, 0xa3, 0x87, 0x50, 0x12, 0xd3, 0x2e, 0xc2, 0x26, 0xc7, 0xf9, 0x09,
+	0xda, 0x5f, 0x70, 0x62, 0xc4, 0x29, 0xef, 0x41, 0x5f, 0xc0, 0x90, 0x9a, 0x59, 0xd1, 0x9b, 0xb6,
+	0xdb, 0x4c, 0x9f, 0x90, 0xfd, 0x1b, 0x6d, 0x50, 0xca, 0xf7, 0x57, 0x00, 0xd9, 0x74, 0x88, 0x8c,
+	0x66, 0x2d, 0x93, 0xae, 0x7f, 0xb3, 0x1d, 0x4c, 0xb9, 0xe7, 0x05, 0x61, 0x93, 0x92, 0xb5, 0x20,
+	0xda, 0x68, 0x67, 0x2d, 0x48, 0x6e, 0x88, 0x53, 0x05, 0x49, 0x47, 0x36, 0x7b, 0x41, 0xf4, 0x29,
+	0xcf, 0x5e, 0x90, 0xdc, 0xdc, 0xc7, 0x0b, 0x92, 0x0d, 0x8e, 0xe6, 0x82, 0xb4, 0x8c, 0xa4, 0xe6,
+	0x82, 0x18, 0xe6, 0xcf, 0xd4, 0x7d, 0x36, 0x48, 0x99, 0xdd, 0xb7, 0xcc, 0x6a, 0x66, 0xf7, 0xad,
+	0xf3, 0x18, 0x75, 0x5f, 0x85, 0x11, 0xbd, 0x2f, 0x47, 0xb7, 0x6c, 0xdb, 0x2e, 0xcc, 0x02, 0xfe,
+	0x62, 0x7b, 0xa0, 0x0a, 0xf2, 0x0c, 0x46, 0x73, 0xf3, 0x29, 0x32, 0x1a, 0x9b, 0xe6, 0x61, 0x7f,
+	0xe9, 0x1c, 0x48, 0x3d, 0x4e, 0x6e, 0xca, 0x32, 0xc7, 0x31, 0x4d, 0x92, 0xe6, 0x38, 0xc6, 0x91,
+	0x8d, 0xc7, 0xc9, 0xcd, 0x4d, 0xe6, 0x38, 0xa6, 0x01, 0xcd, 0x5f, 0x3a, 0x07, 0xb2, 0xc0, 0xbd,
+	0x68, 0x52, 0xad, 0xdc, 0xe7, 0xfb, 0x77, 0x2b, 0xf7, 0xc5, 0x66, 0x5c, 0x71, 0x2f, 0x9b, 0x67,
+	0x3b, 0xf7, 0x85, 0x86, 0xdd, 0xce, 0x7d, 0xb1, 0x0f, 0xd7, 0xb9, 0x97, 0xdb, 0x70, 0x70, 0x5f,
+	0xd8, 0xc9, 0xd2, 0x39, 0x90, 0xad, 0x9c, 0x38, 0xe3, 0x98, 0x26, 0x1e, 0x17, 0x27, 0xad, 0x71,
+	0xe8, 0x55, 0xa2, 0x5a, 0x69, 0xf3, 0x55, 0x52, 0x6c, 0xd4, 0xfd, 0x1b, 0x6d, 0x50, 0xca, 0xf7,
+	0x53, 0xfe, 0xff, 0xaa, 0xa2, 0xdb, 0x45, 0x37, 0x6d, 0x65, 0xce, 0x37, 0xc9, 0xfe, 0xad, 0xb6,
+	0x38, 0x9d, 0x72, 0x7d, 0x26, 0x31, 0x53, 0x6e, 0x18, 0x80, 0xfc, 0xc5, 0xf6, 0x40, 0x3d, 0x88,
+	0xde, 0xe2, 0x9b, 0x83, 0x18, 0xc6, 0x08, 0x7f, 0xb1, 0x3d, 0xb0, 0x28, 0x5e, 0xd9, 0x7a, 0xdb,
+	0xc5, 0x5b, 0x68, 0xf7, 0xed, 0xe2, 0x2d, 0x76, 0xf1, 0xba, 0xa8, 0xc4, 0x3b, 0x97, 0xa8, 0xf2,
+	0x2d, 0xbb, 0x4b, 0x54, 0xc5, 0xb6, 0xbc, 0x07, 0xd1, 0xe6, 0x64, 0xda, 0xd6, 0x1c, 0xa3, 0x55,
+	0x8b, 0x7c, 0x5c, 0xdd, 0x9e, 0x7f, 0xa7, 0x33, 0x23, 0x95, 0xc9, 0x4f, 0x1e, 0xf8, 0xf6, 0x16,
+	0x16, 0xad, 0xd9, 0x8a, 0xe7, 0x6c, 0xa8, 0xfd, 0xf5, 0x4e, 0xcd, 0x54, 0x3e, 0x3f, 0x7b, 0x30,
+	0xe3, 0x68, 0xdb, 0xd0, 0xba, 0xfd, 0xde, 0x76, 0xd6, 0x67, 0xa3, 0x63, 0x3b, 0x99, 0xd2, 0xe6,
+	0xec, 0x8b, 0x97, 0x73, 0x3d, 0x7f, 0xd2, 0xcf, 0x3f, 0x2f, 0xe7, 0xbc, 0xef, 0x5f, 0xcd, 0x79,
+	0x2f, 0xe8, 0xe7, 0x0f, 0xfa, 0xf9, 0x9b, 0x7e, 0x0e, 0x06, 0xd2, 0x3f, 0x91, 0xac, 0xfe, 0x1b,
+	0x00, 0x00, 0xff, 0xff, 0x8d, 0x3a, 0x55, 0x0e, 0x86, 0x19, 0x00, 0x00,
 }

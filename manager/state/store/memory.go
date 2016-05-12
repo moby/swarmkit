@@ -19,13 +19,14 @@ import (
 )
 
 const (
-	indexID          = "id"
-	indexName        = "name"
-	indexServiceID   = "serviceid"
-	indexServiceMode = "servicemode"
-	indexNodeID      = "nodeid"
-	indexInstance    = "instance"
-	indexCN          = "cn"
+	indexID            = "id"
+	indexName          = "name"
+	indexServiceID     = "serviceid"
+	indexServiceMode   = "servicemode"
+	indexNodeID        = "nodeid"
+	indexInstance      = "instance"
+	indexCN            = "cn"
+	indexIssuanceState = "issuancestate"
 
 	prefix = "_prefix"
 
@@ -607,6 +608,12 @@ func (tx readTx) find(table string, by By, cb func(Object)) error {
 		fromResultIterator(it)
 	case byInstance:
 		it, err := tx.memDBTx.Get(table, indexInstance, v.serviceID+"\x00"+strconv.FormatUint(uint64(v.instance), 10))
+		if err != nil {
+			return err
+		}
+		fromResultIterator(it)
+	case byIssuanceState:
+		it, err := tx.memDBTx.Get(table, indexIssuanceState, strconv.FormatInt(int64(v), 10))
 		if err != nil {
 			return err
 		}
