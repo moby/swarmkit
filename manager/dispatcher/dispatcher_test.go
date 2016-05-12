@@ -356,6 +356,8 @@ func TestTaskUpdate(t *testing.T) {
 	updReq.SessionID = expectedSessionID
 	_, err = gd.Clients[0].UpdateTaskStatus(context.Background(), updReq)
 	assert.NoError(t, err)
+	gd.dispatcherServer.processTaskUpdates()
+
 	gd.Store.View(func(readTx store.ReadTx) {
 		storeTask1 := store.GetTask(readTx, testTask1.ID)
 		assert.NotNil(t, storeTask1)
