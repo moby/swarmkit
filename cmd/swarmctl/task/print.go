@@ -26,13 +26,11 @@ func (t tasksByInstance) Less(i, j int) bool {
 	}
 
 	// If same instance, sort by most recent.
-	// TODO(aluzzardi): This should actually be task creation
-	// time rather than task status.
-	it, err := ptypes.Timestamp(t[i].Status.Timestamp)
+	it, err := ptypes.Timestamp(t[i].Meta.CreatedAt)
 	if err != nil {
 		panic(err)
 	}
-	jt, err := ptypes.Timestamp(t[j].Status.Timestamp)
+	jt, err := ptypes.Timestamp(t[j].Meta.CreatedAt)
 	if err != nil {
 		panic(err)
 	}
