@@ -30,48 +30,53 @@ func newNodeInfo(n *api.Node, tasks map[string]*api.Task, availableResources api
 }
 
 func (nodeInfo *NodeInfo) removeTask(t *api.Task) bool {
-	if nodeInfo.Tasks != nil {
-		if _, ok := nodeInfo.Tasks[t.ID]; ok {
-			delete(nodeInfo.Tasks, t.ID)
-			if t.GetContainer() != nil {
-				specContainer := t.GetContainer().Spec
-				reservations := taskReservations(&specContainer)
-				nodeInfo.AvailableResources.MemoryBytes += reservations.MemoryBytes
-				nodeInfo.AvailableResources.NanoCPUs += reservations.NanoCPUs
+	if nodeInfo.Tasks == nil || nodeInfo.Node == nil {
+		return false
+	}
+	if _, ok := nodeInfo.Tasks[t.ID]; !ok {
+		return false
+	}
 
-				for _, ep := range specContainer.ExposedPorts {
-					if ep.HostPort == 0 {
-						continue
-					}
-					if nodeInfo.ReservedPorts[ep.HostPort] != nil {
-						delete(nodeInfo.ReservedPorts[ep.HostPort], t.ID)
-						if len(nodeInfo.ReservedPorts[ep.HostPort]) == 0 {
-							delete(nodeInfo.ReservedPorts, ep.HostPort)
-						}
-					}
+	delete(nodeInfo.Tasks, t.ID)
+	if t.GetContainer() != nil {
+		specContainer := t.GetContainer().Spec
+		reservations := taskReservations(&specContainer)
+		nodeInfo.AvailableResources.MemoryBytes += reservations.MemoryBytes
+		nodeInfo.AvailableResources.NanoCPUs += reservations.NanoCPUs
+
+		for _, ep := range specContainer.ExposedPorts {
+			if ep.HostPort == 0 {
+				continue
+			}
+			if nodeInfo.ReservedPorts[ep.HostPort] != nil {
+				delete(nodeInfo.ReservedPorts[ep.HostPort], t.ID)
+				if len(nodeInfo.ReservedPorts[ep.HostPort]) == 0 {
+					delete(nodeInfo.ReservedPorts, ep.HostPort)
 				}
 			}
-			if statusContainer := t.Status.GetContainer(); statusContainer != nil {
-				for _, ep := range statusContainer.ExposedPorts {
-					if ep.HostPort == 0 {
-						continue
-					}
-					if nodeInfo.ReservedPorts[ep.HostPort] != nil {
-						delete(nodeInfo.ReservedPorts[ep.HostPort], t.ID)
-						if len(nodeInfo.ReservedPorts[ep.HostPort]) == 0 {
-							delete(nodeInfo.ReservedPorts, ep.HostPort)
-						}
-					}
-				}
-
-			}
-			return true
 		}
 	}
-	return false
+	if statusContainer := t.Status.GetContainer(); statusContainer != nil {
+		for _, ep := range statusContainer.ExposedPorts {
+			if ep.HostPort == 0 {
+				continue
+			}
+			if nodeInfo.ReservedPorts[ep.HostPort] != nil {
+				delete(nodeInfo.ReservedPorts[ep.HostPort], t.ID)
+				if len(nodeInfo.ReservedPorts[ep.HostPort]) == 0 {
+					delete(nodeInfo.ReservedPorts, ep.HostPort)
+				}
+			}
+		}
+
+	}
+	return true
 }
 
 func (nodeInfo *NodeInfo) addTask(t *api.Task) bool {
+	if nodeInfo.Node == nil {
+		return false
+	}
 	if nodeInfo.Tasks == nil {
 		nodeInfo.Tasks = make(map[string]*api.Task)
 	}
