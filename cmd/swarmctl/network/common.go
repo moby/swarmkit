@@ -11,7 +11,7 @@ import (
 // found tries to query as a name. If the name query returns exactly
 // one entry then it is returned to the caller. Otherwise an error is
 // returned.
-func GetNetwork(ctx context.Context, c api.ClusterClient, input string) (*api.Network, error) {
+func GetNetwork(ctx context.Context, c api.ControlClient, input string) (*api.Network, error) {
 	// GetService to match via full ID.
 	rg, err := c.GetNetwork(ctx, &api.GetNetworkRequest{NetworkID: input})
 	if err != nil {
@@ -36,7 +36,7 @@ func GetNetwork(ctx context.Context, c api.ClusterClient, input string) (*api.Ne
 }
 
 // ResolveServiceNetworks takes a service spec and resolves network names to network IDs.
-func ResolveServiceNetworks(ctx context.Context, c api.ClusterClient, spec *api.ServiceSpec) error {
+func ResolveServiceNetworks(ctx context.Context, c api.ControlClient, spec *api.ServiceSpec) error {
 	if len(spec.GetContainer().Networks) == 0 {
 		return nil
 	}

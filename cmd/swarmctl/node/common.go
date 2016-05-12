@@ -49,7 +49,7 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	return nil
 }
 
-func getNode(ctx context.Context, c api.ClusterClient, input string) (*api.Node, error) {
+func getNode(ctx context.Context, c api.ControlClient, input string) (*api.Node, error) {
 	// GetNode to match via full ID.
 	rg, err := c.GetNode(ctx, &api.GetNodeRequest{NodeID: input})
 	if err != nil {

@@ -92,7 +92,7 @@ func (b *Benchmark) launch() (*api.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	client := api.NewClusterClient(conn)
+	client := api.NewControlClient(conn)
 	r, err := client.CreateService(context.Background(), &api.CreateServiceRequest{
 		Spec: b.spec(),
 	})

@@ -30,7 +30,7 @@ func readServiceConfig(flags *flag.FlagSet) (*spec.ServiceConfig, error) {
 	return service, nil
 }
 
-func getService(ctx context.Context, c api.ClusterClient, input string) (*api.Service, error) {
+func getService(ctx context.Context, c api.ControlClient, input string) (*api.Service, error) {
 	// GetService to match via full ID.
 	rg, err := c.GetService(ctx, &api.GetServiceRequest{ServiceID: input})
 	if err != nil {

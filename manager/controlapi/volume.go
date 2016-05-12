@@ -1,4 +1,4 @@
-package clusterapi
+package controlapi
 
 import (
 	"github.com/docker/swarm-v2/api"
