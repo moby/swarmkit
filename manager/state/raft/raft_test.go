@@ -213,7 +213,7 @@ func TestRaftQuorumRecovery(t *testing.T) {
 	raftutils.AdvanceTicks(clockSource, 5)
 
 	// Restore the majority by restarting node 3
-	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig, false)
 
 	delete(nodes, 1)
 	delete(nodes, 2)
@@ -390,7 +390,7 @@ func TestRaftRejoin(t *testing.T) {
 	// Nodes 1 and 2 should have the new value
 	raftutils.CheckValuesOnNodes(t, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, ids, values)
 
-	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig, false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Node 3 should have all values, including the one proposed while
@@ -422,7 +422,7 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 		if stagger && i != 0 {
 			raftutils.AdvanceTicks(clockSource, 1)
 		}
-		nodes[k] = raftutils.RestartNode(t, clockSource, node, securityConfig)
+		nodes[k] = raftutils.RestartNode(t, clockSource, node, securityConfig, false)
 		i++
 	}
 	raftutils.WaitForCluster(t, clockSource, nodes)
@@ -472,6 +472,95 @@ func TestRaftRestartClusterStaggered(t *testing.T) {
 	// Establish a cluster, stop all nodes (simulating a total outage), and
 	// restart them one at a time.
 	testRaftRestartCluster(t, true)
+}
+
+func TestRaftForceNewCluster(t *testing.T) {
+	t.Parallel()
+
+	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+
+	// Propose a value
+	values := make([]*api.Node, 2)
+	var err error
+	values[0], err = raftutils.ProposeValue(t, nodes[1], "id1")
+	assert.NoError(t, err, "failed to propose value")
+
+	// The memberlist should contain 3 members on each node
+	for i := 1; i <= 3; i++ {
+		assert.Equal(t, len(nodes[uint64(i)].GetMemberlist()), 3)
+	}
+
+	// Stop all nodes
+	for _, node := range nodes {
+		node.Server.Stop()
+		node.Shutdown()
+	}
+
+	raftutils.AdvanceTicks(clockSource, 5)
+
+	toClean := map[uint64]*raftutils.TestNode{
+		2: nodes[2],
+		3: nodes[3],
+	}
+	raftutils.TeardownCluster(t, toClean)
+	delete(nodes, 2)
+	delete(nodes, 3)
+
+	// Only restart the first node with force-new-cluster option
+	nodes[1] = raftutils.RestartNode(t, clockSource, nodes[1], securityConfig, true)
+	raftutils.WaitForCluster(t, clockSource, nodes)
+
+	// The memberlist should contain only one node (self)
+	assert.Equal(t, len(nodes[1].GetMemberlist()), 1)
+
+	// Add 2 more members
+	nodes[2] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	raftutils.WaitForCluster(t, clockSource, nodes)
+
+	nodes[3] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	raftutils.WaitForCluster(t, clockSource, nodes)
+
+	newCluster := map[uint64]*raftutils.TestNode{
+		1: nodes[1],
+		2: nodes[2],
+		3: nodes[3],
+	}
+	defer raftutils.TeardownCluster(t, newCluster)
+
+	// The memberlist should contain 3 members on each node
+	for i := 1; i <= 3; i++ {
+		assert.Equal(t, len(nodes[uint64(i)].GetMemberlist()), 3)
+	}
+
+	// Propose another value
+	values[1], err = raftutils.ProposeValue(t, raftutils.Leader(nodes), "id2")
+	assert.NoError(t, err, "failed to propose value")
+
+	for _, node := range nodes {
+		assert.NoError(t, raftutils.PollFunc(func() error {
+			var err error
+			node.MemoryStore().View(func(tx store.ReadTx) {
+				var allNodes []*api.Node
+				allNodes, err = store.FindNodes(tx, store.All)
+				if err != nil {
+					return
+				}
+				if len(allNodes) != 2 {
+					err = fmt.Errorf("expected 2 nodes, got %d", len(allNodes))
+					return
+				}
+
+				for i, nodeID := range []string{"id1", "id2"} {
+					n := store.GetNode(tx, nodeID)
+					if !reflect.DeepEqual(n, values[i]) {
+						err = fmt.Errorf("node %s did not match expected value", nodeID)
+						return
+					}
+				}
+			})
+			return err
+		}))
+	}
 }
 
 func TestRaftUnreachableNode(t *testing.T) {

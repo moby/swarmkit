@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -91,6 +92,10 @@ type Node struct {
 	removed     uint32
 	joinAddr    string
 
+	// forceNewCluster is a special flag used to recover from disaster
+	// scenario by pointing to an existing or backed up data directory.
+	forceNewCluster bool
+
 	// snapshotInterval is the number of log messages after which a new
 	// snapshot should be generated.
 	snapshotInterval uint64
@@ -122,6 +127,9 @@ type Node struct {
 type NewNodeOptions struct {
 	// Addr is the address of this node's listener
 	Addr string
+	// ForceNewCluster defines if we have to force a new cluster
+	// because we are recovering from a backup data directory.
+	ForceNewCluster bool
 	// JoinAddr is the cluster to join. May be an empty string to create
 	// a standalone cluster.
 	JoinAddr string
@@ -181,6 +189,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 			MaxInflightMsgs: cfg.MaxInflightMsgs,
 			Logger:          cfg.Logger,
 		},
+		forceNewCluster:            opts.ForceNewCluster,
 		snapshotInterval:           1000,
 		logEntriesForSlowFollowers: 500,
 		stopCh:              make(chan struct{}),
@@ -207,7 +216,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 		n.sendTimeout = opts.SendTimeout
 	}
 
-	if err := n.loadAndStart(ctx); err != nil {
+	if err := n.loadAndStart(ctx, opts.ForceNewCluster); err != nil {
 		n.ticker.Stop()
 		return nil, err
 	}
@@ -318,7 +327,7 @@ func (n *Node) Run(ctx context.Context) error {
 			// saveToStorage.
 			if !raft.IsEmptySnap(rd.Snapshot) {
 				// Load the snapshot data into the store
-				if err := n.restoreFromSnapshot(rd.Snapshot.Data); err != nil {
+				if err := n.restoreFromSnapshot(rd.Snapshot.Data, n.forceNewCluster); err != nil {
 					n.Config.Logger.Error(err)
 				}
 				n.appliedIndex = rd.Snapshot.Metadata.Index
@@ -1026,4 +1035,103 @@ func (n *Node) SubscribeLeadership() (q chan events.Event, cancel func()) {
 		ch.Close()
 		sink.Close()
 	}
+}
+
+// createConfigChangeEnts creates a series of Raft entries (i.e.
+// EntryConfChange) to remove the set of given IDs from the cluster. The ID
+// `self` is _not_ removed, even if present in the set.
+// If `self` is not inside the given ids, it creates a Raft entry to add a
+// default member with the given `self`.
+func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raftpb.Entry {
+	var ents []raftpb.Entry
+	next := index + 1
+	found := false
+	for _, id := range ids {
+		if id == self {
+			found = true
+			continue
+		}
+		cc := &raftpb.ConfChange{
+			Type:   raftpb.ConfChangeRemoveNode,
+			NodeID: id,
+		}
+		data, err := cc.Marshal()
+		if err != nil {
+			log.G(context.Background()).Panicf("marshal member should never fail: %v", err)
+		}
+		e := raftpb.Entry{
+			Type:  raftpb.EntryConfChange,
+			Data:  data,
+			Term:  term,
+			Index: next,
+		}
+		ents = append(ents, e)
+		next++
+	}
+	if !found {
+		m := &membership.Member{
+			Member: &api.Member{
+				RaftID: self,
+			},
+		}
+		ctx, err := json.Marshal(m)
+		if err != nil {
+			log.G(context.Background()).Panicf("marshal member should never fail: %v", err)
+		}
+		cc := &raftpb.ConfChange{
+			Type:    raftpb.ConfChangeAddNode,
+			NodeID:  self,
+			Context: ctx,
+		}
+		data, err := cc.Marshal()
+		if err != nil {
+			log.G(context.Background()).Panicf("marshal member should never fail: %v", err)
+		}
+		e := raftpb.Entry{
+			Type:  raftpb.EntryConfChange,
+			Data:  data,
+			Term:  term,
+			Index: next,
+		}
+		ents = append(ents, e)
+	}
+	return ents
+}
+
+// getIDs returns an ordered set of IDs included in the given snapshot and
+// the entries. The given snapshot/entries can contain two kinds of
+// ID-related entry:
+// - ConfChangeAddNode, in which case the contained ID will be added into the set.
+// - ConfChangeRemoveNode, in which case the contained ID will be removed from the set.
+func getIDs(snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
+	ids := make(map[uint64]bool)
+	if snap != nil {
+		for _, id := range snap.Metadata.ConfState.Nodes {
+			ids[id] = true
+		}
+	}
+	for _, e := range ents {
+		if e.Type != raftpb.EntryConfChange {
+			continue
+		}
+		var cc raftpb.ConfChange
+		if err := cc.Unmarshal(e.Data); err != nil {
+			log.G(context.Background()).Panicf("marshal member should never fail: %v", err)
+		}
+		switch cc.Type {
+		case raftpb.ConfChangeAddNode:
+			ids[cc.NodeID] = true
+		case raftpb.ConfChangeRemoveNode:
+			delete(ids, cc.NodeID)
+		case raftpb.ConfChangeUpdateNode:
+			// do nothing
+		default:
+			log.G(context.Background()).Panic("ConfChange Type should be either ConfChangeAddNode or ConfChangeRemoveNode!")
+		}
+	}
+	var sids []uint64
+	for id := range ids {
+		sids = append(sids, id)
+	}
+	return sids
 }

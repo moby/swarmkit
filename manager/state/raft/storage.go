@@ -28,7 +28,7 @@ func (n *Node) snapDir() string {
 	return filepath.Join(n.StateDir, "snap")
 }
 
-func (n *Node) loadAndStart(ctx context.Context) error {
+func (n *Node) loadAndStart(ctx context.Context, forceNewCluster bool) error {
 	walDir := n.walDir()
 	snapDir := n.snapDir()
 
@@ -74,13 +74,13 @@ func (n *Node) loadAndStart(ctx context.Context) error {
 
 	if snapshot != nil {
 		// Load the snapshot data into the store
-		if err := n.restoreFromSnapshot(snapshot.Data); err != nil {
+		if err := n.restoreFromSnapshot(snapshot.Data, forceNewCluster); err != nil {
 			return err
 		}
 	}
 
 	// Read logs to fully catch up store
-	if err := n.readWAL(ctx, snapshot); err != nil {
+	if err := n.readWAL(ctx, snapshot, forceNewCluster); err != nil {
 		return err
 	}
 
@@ -88,7 +88,7 @@ func (n *Node) loadAndStart(ctx context.Context) error {
 	return nil
 }
 
-func (n *Node) readWAL(ctx context.Context, snapshot *raftpb.Snapshot) (err error) {
+func (n *Node) readWAL(ctx context.Context, snapshot *raftpb.Snapshot, forceNewCluster bool) (err error) {
 	var (
 		walsnap  walpb.Snapshot
 		metadata []byte
@@ -137,6 +137,30 @@ func (n *Node) readWAL(ctx context.Context, snapshot *raftpb.Snapshot) (err erro
 		return fmt.Errorf("error unmarshalling wal metadata: %v", err)
 	}
 	n.Config.ID = raftNode.RaftID
+
+	if forceNewCluster {
+		// discard the previously uncommitted entries
+		for i, ent := range ents {
+			if ent.Index > st.Commit {
+				log.G(context.Background()).Infof("discarding %d uncommitted WAL entries ", len(ents)-i)
+				ents = ents[:i]
+				break
+			}
+		}
+
+		// force append the configuration change entries
+		toAppEnts := createConfigChangeEnts(getIDs(snapshot, ents), uint64(n.Config.ID), st.Term, st.Commit)
+		ents = append(ents, toAppEnts...)
+
+		// force commit newly appended entries
+		err := n.wal.Save(raftpb.HardState{}, toAppEnts)
+		if err != nil {
+			log.G(context.Background()).Fatalf("%v", err)
+		}
+		if len(ents) != 0 {
+			st.Commit = ents[len(ents)-1].Index
+		}
+	}
 
 	if snapshot != nil {
 		if err := n.raftStore.ApplySnapshot(*snapshot); err != nil {
@@ -235,7 +259,7 @@ func (n *Node) doSnapshot() {
 	<-viewStarted
 }
 
-func (n *Node) restoreFromSnapshot(data []byte) error {
+func (n *Node) restoreFromSnapshot(data []byte, forceNewCluster bool) error {
 	var snapshot api.Snapshot
 	if err := snapshot.Unmarshal(data); err != nil {
 		return err
@@ -249,13 +273,16 @@ func (n *Node) restoreFromSnapshot(data []byte) error {
 	}
 
 	n.cluster.Clear()
-	for _, member := range snapshot.Membership.Members {
-		if err := n.registerNode(&api.Member{ID: member.ID, RaftID: member.RaftID, Addr: member.Addr}); err != nil {
-			return err
+
+	if !forceNewCluster {
+		for _, member := range snapshot.Membership.Members {
+			if err := n.registerNode(&api.Member{ID: member.ID, RaftID: member.RaftID, Addr: member.Addr}); err != nil {
+				return err
+			}
 		}
-	}
-	for _, removedMember := range snapshot.Membership.Removed {
-		n.cluster.RemoveMember(removedMember)
+		for _, removedMember := range snapshot.Membership.Removed {
+			n.cluster.RemoveMember(removedMember)
+		}
 	}
 
 	return nil
