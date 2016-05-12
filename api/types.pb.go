@@ -9,7 +9,7 @@
 		types.proto
 		specs.proto
 		objects.proto
-		cluster.proto
+		control.proto
 		dispatcher.proto
 		manager.proto
 		ca.proto

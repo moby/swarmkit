@@ -13,7 +13,7 @@ import (
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/allocator"
-	"github.com/docker/swarm-v2/manager/clusterapi"
+	"github.com/docker/swarm-v2/manager/controlapi"
 	"github.com/docker/swarm-v2/manager/dispatcher"
 	"github.com/docker/swarm-v2/manager/orchestrator"
 	"github.com/docker/swarm-v2/manager/raftpicker"
@@ -259,14 +259,14 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	cs := raftpicker.NewConnSelector(m.raftNode, proxyOpts...)
 
-	localAPI := clusterapi.NewServer(m.raftNode.MemoryStore(), m.raftNode)
-	proxyAPI := api.NewRaftProxyClusterServer(localAPI, cs, m.raftNode)
+	localAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode)
+	proxyAPI := api.NewRaftProxyControlServer(localAPI, cs, m.raftNode)
 	proxyDispatcher := api.NewRaftProxyDispatcherServer(m.dispatcher, cs, m.raftNode, ca.WithMetadataForwardCN)
 
 	api.RegisterCAServer(m.server, m.caserver)
 	api.RegisterRaftServer(m.server, m.raftNode)
 	api.RegisterManagerServer(m.server, m)
-	api.RegisterClusterServer(m.server, proxyAPI)
+	api.RegisterControlServer(m.server, proxyAPI)
 	api.RegisterDispatcherServer(m.server, proxyDispatcher)
 
 	errServe := make(chan error, 1)

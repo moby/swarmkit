@@ -9,13 +9,13 @@ import (
 // Resolver provides ID to Name resolution.
 type Resolver struct {
 	cmd   *cobra.Command
-	c     api.ClusterClient
+	c     api.ControlClient
 	ctx   context.Context
 	cache map[string]string
 }
 
 // NewResolver creates a new Resolver.
-func NewResolver(cmd *cobra.Command, c api.ClusterClient) *Resolver {
+func NewResolver(cmd *cobra.Command, c api.ControlClient) *Resolver {
 	return &Resolver{
 		cmd:   cmd,
 		c:     c,
