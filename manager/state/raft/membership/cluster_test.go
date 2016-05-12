@@ -290,8 +290,8 @@ func TestCanRemoveMember(t *testing.T) {
 	assert.Equal(t, len(members), 3)
 
 	// Restart node 2 and node 3
-	nodes[2] = raftutils.RestartNode(t, clockSource, nodes[2], securityConfig)
-	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig)
+	nodes[2] = raftutils.RestartNode(t, clockSource, nodes[2], securityConfig, false)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig, false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Removing node 3 should succeed

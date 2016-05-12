@@ -91,6 +91,10 @@ type Node struct {
 	removed     uint32
 	joinAddr    string
 
+	// forceNewCluster is a special flag used to recover from disaster
+	// scenario by pointing to an existing or backed up data directory.
+	forceNewCluster bool
+
 	// snapshotInterval is the number of log messages after which a new
 	// snapshot should be generated.
 	snapshotInterval uint64
@@ -122,6 +126,9 @@ type Node struct {
 type NewNodeOptions struct {
 	// Addr is the address of this node's listener
 	Addr string
+	// ForceNewCluster defines if we have to force a new cluster
+	// because we are recovering from a backup data directory.
+	ForceNewCluster bool
 	// JoinAddr is the cluster to join. May be an empty string to create
 	// a standalone cluster.
 	JoinAddr string
@@ -181,6 +188,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 			MaxInflightMsgs: cfg.MaxInflightMsgs,
 			Logger:          cfg.Logger,
 		},
+		forceNewCluster:            opts.ForceNewCluster,
 		snapshotInterval:           1000,
 		logEntriesForSlowFollowers: 500,
 		stopCh:              make(chan struct{}),
@@ -189,6 +197,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 		joinAddr:            opts.JoinAddr,
 		sendTimeout:         2 * time.Second,
 		leadershipBroadcast: events.NewBroadcaster(),
+		wait:                newWait(),
 	}
 	n.memoryStore = store.NewMemoryStore(n)
 
@@ -207,7 +216,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 		n.sendTimeout = opts.SendTimeout
 	}
 
-	if err := n.loadAndStart(ctx); err != nil {
+	if err := n.loadAndStart(ctx, opts.ForceNewCluster); err != nil {
 		n.ticker.Stop()
 		return nil, err
 	}
@@ -222,7 +231,6 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 	n.appliedIndex = snapshot.Metadata.Index
 	n.snapshotIndex = snapshot.Metadata.Index
 	n.reqIDGen = idutil.NewGenerator(uint16(n.Config.ID), time.Now())
-	n.wait = newWait()
 
 	if n.startNodePeers != nil {
 		if n.joinAddr != "" {
@@ -318,7 +326,7 @@ func (n *Node) Run(ctx context.Context) error {
 			// saveToStorage.
 			if !raft.IsEmptySnap(rd.Snapshot) {
 				// Load the snapshot data into the store
-				if err := n.restoreFromSnapshot(rd.Snapshot.Data); err != nil {
+				if err := n.restoreFromSnapshot(rd.Snapshot.Data, n.forceNewCluster); err != nil {
 					n.Config.Logger.Error(err)
 				}
 				n.appliedIndex = rd.Snapshot.Metadata.Index
@@ -766,7 +774,7 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 			}
 		}
 
-		if queryMember == nil {
+		if queryMember == nil || id == n.Config.ID {
 			n.Config.Logger.Error("could not find cluster member to query for leader address")
 			return
 		}
