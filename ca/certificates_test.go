@@ -25,14 +25,14 @@ func TestCreateRootCA(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	_, _, err = CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
+	_, err = CreateRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	perms, err := permbits.Stat(paths.RootCACert)
+	perms, err := permbits.Stat(paths.RootCA.Cert)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
-	perms, err = permbits.Stat(paths.RootCAKey)
+	perms, err = permbits.Stat(paths.RootCA.Key)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
@@ -45,12 +45,12 @@ func TestGetRootCA(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	_, rootCACert, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
+	signer, err := CreateRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	rootCACertificate, err := GetRootCA(paths.RootCACert)
+	signer2, err := GetRootCA(paths.RootCA)
 	assert.NoError(t, err)
-	assert.Equal(t, rootCACert, rootCACertificate)
+	assert.Equal(t, signer, signer2)
 }
 
 func TestGenerateAndSignNewTLSCert(t *testing.T) {
@@ -60,17 +60,17 @@ func TestGenerateAndSignNewTLSCert(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, rootCACert, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
+	signer, err := CreateRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	_, err = GenerateAndSignNewTLSCert(signer, rootCACert, paths.ManagerCert, paths.ManagerKey, "CN", "OU")
+	_, err = GenerateAndSignNewTLSCert(signer, "CN", "OU", paths.Manager)
 	assert.NoError(t, err)
 
-	perms, err := permbits.Stat(paths.ManagerCert)
+	perms, err := permbits.Stat(paths.Manager.Cert)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
-	perms, err = permbits.Stat(paths.ManagerKey)
+	perms, err = permbits.Stat(paths.Manager.Key)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
@@ -83,16 +83,16 @@ func TestGenerateAndWriteNewCSR(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	csr, key, err := GenerateAndWriteNewCSR(paths.ManagerCSR, paths.ManagerKey)
+	csr, key, err := GenerateAndWriteNewCSR(paths.Manager)
 	assert.NoError(t, err)
 	assert.NotNil(t, csr)
 	assert.NotNil(t, key)
 
-	perms, err := permbits.Stat(paths.ManagerCSR)
+	perms, err := permbits.Stat(paths.Manager.CSR)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
-	perms, err = permbits.Stat(paths.ManagerKey)
+	perms, err = permbits.Stat(paths.Manager.Key)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
@@ -108,7 +108,7 @@ func TestParseValidateAndSignCSR(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, _, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
+	signer, err := CreateRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
 	csr, _, err := generateNewCSR()
@@ -134,7 +134,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, _, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
+	signer, err := CreateRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
 	req := &cfcsr.CertificateRequest{
@@ -173,9 +173,9 @@ func TestGetRemoteCA(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, rootCACert, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "swarm-test-CA")
+	signer, err := CreateRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(signer, rootCACert, tempBaseDir)
+	managerConfig, err := genManagerSecurityConfig(signer, tempBaseDir)
 	assert.NoError(t, err)
 
 	ctx := context.Background()
@@ -195,7 +195,7 @@ func TestGetRemoteCA(t *testing.T) {
 	}()
 
 	shaHash := sha256.New()
-	shaHash.Write(rootCACert)
+	shaHash.Write(signer.RootCACert)
 	md := shaHash.Sum(nil)
 	mdStr := hex.EncodeToString(md)
 
@@ -214,9 +214,9 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, rootCACert, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "swarm-test-CA")
+	signer, err := CreateRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(signer, rootCACert, tempBaseDir)
+	managerConfig, err := genManagerSecurityConfig(signer, tempBaseDir)
 	assert.NoError(t, err)
 
 	ctx := context.Background()

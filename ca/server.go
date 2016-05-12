@@ -122,7 +122,7 @@ func (s *Server) GetRootCACertificate(ctx context.Context, request *api.GetRootC
 // Run runs the CA signer main loop.
 // The CA signer can be stopped with cancelling ctx or calling Stop().
 func (s *Server) Run(ctx context.Context) error {
-	if s.securityConfig.Signer == nil {
+	if !s.securityConfig.Signer.CanSign() {
 		return fmt.Errorf("CA signer has no root key")
 	}
 
@@ -218,7 +218,7 @@ func (s *Server) evaluateAndSignCert(ctx context.Context, rCertificate *api.Regi
 	// FIXME(aaronl): Right now, this automatically signs any pending certificate. We need to
 	// add more flexible logic on acceptance modes.
 
-	if rCertificate.Status.State != api.IssuanceStatePending {
+	if rCertificate.Role == AgentRole && rCertificate.Status.State != api.IssuanceStatePending {
 		return
 	}
 
