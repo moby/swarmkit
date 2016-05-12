@@ -56,12 +56,14 @@ func (cli *Client) delete(ctx context.Context, path string, query url.Values, he
 }
 
 func (cli *Client) sendRequest(ctx context.Context, method, path string, query url.Values, obj interface{}, headers map[string][]string) (*serverResponse, error) {
-	body, err := encodeData(obj)
-	if err != nil {
-		return nil, err
-	}
+	var body io.Reader
 
-	if body != nil {
+	if obj != nil {
+		var err error
+		body, err = encodeData(obj)
+		if err != nil {
+			return nil, err
+		}
 		if headers == nil {
 			headers = make(map[string][]string)
 		}
@@ -83,6 +85,15 @@ func (cli *Client) sendClientRequest(ctx context.Context, method, path string, q
 	}
 
 	req, err := cli.newRequest(method, path, query, body, headers)
+	if err != nil {
+		return serverResp, err
+	}
+
+	if cli.proto == "unix" || cli.proto == "npipe" {
+		// For local communications, it doesn't matter what the host is. We just
+		// need a valid and meaningful host name. (See #189)
+		req.Host = "docker"
+	}
 	req.URL.Host = cli.addr
 	req.URL.Scheme = cli.transport.Scheme()
 
@@ -91,10 +102,6 @@ func (cli *Client) sendClientRequest(ctx context.Context, method, path string, q
 	}
 
 	resp, err := cancellable.Do(ctx, cli.transport, req)
-	if resp != nil {
-		serverResp.statusCode = resp.StatusCode
-	}
-
 	if err != nil {
 		if isTimeout(err) || strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "dial unix") {
 			return serverResp, ErrConnectionFailed
@@ -103,11 +110,16 @@ func (cli *Client) sendClientRequest(ctx context.Context, method, path string, q
 		if !cli.transport.Secure() && strings.Contains(err.Error(), "malformed HTTP response") {
 			return serverResp, fmt.Errorf("%v.\n* Are you trying to connect to a TLS-enabled daemon without TLS?", err)
 		}
+
 		if cli.transport.Secure() && strings.Contains(err.Error(), "remote error: bad certificate") {
 			return serverResp, fmt.Errorf("The server probably has client authentication (--tlsverify) enabled. Please check your TLS client certification settings: %v", err)
 		}
 
 		return serverResp, fmt.Errorf("An error occurred trying to connect: %v", err)
+	}
+
+	if resp != nil {
+		serverResp.statusCode = resp.StatusCode
 	}
 
 	if serverResp.statusCode < 200 || serverResp.statusCode >= 400 {

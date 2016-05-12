@@ -4,15 +4,15 @@
 package container
 
 import (
-	client "github.com/docker/engine-api/client"
-	types "github.com/docker/engine-api/types"
-	container "github.com/docker/engine-api/types/container"
-	filters "github.com/docker/engine-api/types/filters"
-	network "github.com/docker/engine-api/types/network"
-	registry "github.com/docker/engine-api/types/registry"
-	gomock "github.com/golang/mock/gomock"
-	context "golang.org/x/net/context"
 	io "io"
+
+	"github.com/docker/engine-api/types"
+	"github.com/docker/engine-api/types/container"
+	"github.com/docker/engine-api/types/filters"
+	"github.com/docker/engine-api/types/network"
+	"github.com/docker/engine-api/types/registry"
+	gomock "github.com/golang/mock/gomock"
+	"golang.org/x/net/context"
 )
 
 // Mock of APIClient interface
@@ -46,26 +46,26 @@ func (_mr *_MockAPIClientRecorder) ClientVersion() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ClientVersion")
 }
 
-func (_m *MockAPIClient) ContainerAttach(_param0 context.Context, _param1 types.ContainerAttachOptions) (types.HijackedResponse, error) {
-	ret := _m.ctrl.Call(_m, "ContainerAttach", _param0, _param1)
+func (_m *MockAPIClient) ContainerAttach(_param0 context.Context, _param1 string, _param2 types.ContainerAttachOptions) (types.HijackedResponse, error) {
+	ret := _m.ctrl.Call(_m, "ContainerAttach", _param0, _param1, _param2)
 	ret0, _ := ret[0].(types.HijackedResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockAPIClientRecorder) ContainerAttach(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerAttach", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) ContainerAttach(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerAttach", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ContainerCommit(_param0 context.Context, _param1 types.ContainerCommitOptions) (types.ContainerCommitResponse, error) {
-	ret := _m.ctrl.Call(_m, "ContainerCommit", _param0, _param1)
+func (_m *MockAPIClient) ContainerCommit(_param0 context.Context, _param1 string, _param2 types.ContainerCommitOptions) (types.ContainerCommitResponse, error) {
+	ret := _m.ctrl.Call(_m, "ContainerCommit", _param0, _param1, _param2)
 	ret0, _ := ret[0].(types.ContainerCommitResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockAPIClientRecorder) ContainerCommit(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerCommit", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) ContainerCommit(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerCommit", arg0, arg1, arg2)
 }
 
 func (_m *MockAPIClient) ContainerCreate(_param0 context.Context, _param1 *container.Config, _param2 *container.HostConfig, _param3 *network.NetworkingConfig, _param4 string) (types.ContainerCreateResponse, error) {
@@ -101,15 +101,15 @@ func (_mr *_MockAPIClientRecorder) ContainerExecAttach(arg0, arg1, arg2 interfac
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerExecAttach", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ContainerExecCreate(_param0 context.Context, _param1 types.ExecConfig) (types.ContainerExecCreateResponse, error) {
-	ret := _m.ctrl.Call(_m, "ContainerExecCreate", _param0, _param1)
+func (_m *MockAPIClient) ContainerExecCreate(_param0 context.Context, _param1 string, _param2 types.ExecConfig) (types.ContainerExecCreateResponse, error) {
+	ret := _m.ctrl.Call(_m, "ContainerExecCreate", _param0, _param1, _param2)
 	ret0, _ := ret[0].(types.ContainerExecCreateResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockAPIClientRecorder) ContainerExecCreate(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerExecCreate", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) ContainerExecCreate(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerExecCreate", arg0, arg1, arg2)
 }
 
 func (_m *MockAPIClient) ContainerExecInspect(_param0 context.Context, _param1 string) (types.ContainerExecInspect, error) {
@@ -123,14 +123,14 @@ func (_mr *_MockAPIClientRecorder) ContainerExecInspect(arg0, arg1 interface{}) 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerExecInspect", arg0, arg1)
 }
 
-func (_m *MockAPIClient) ContainerExecResize(_param0 context.Context, _param1 types.ResizeOptions) error {
-	ret := _m.ctrl.Call(_m, "ContainerExecResize", _param0, _param1)
+func (_m *MockAPIClient) ContainerExecResize(_param0 context.Context, _param1 string, _param2 types.ResizeOptions) error {
+	ret := _m.ctrl.Call(_m, "ContainerExecResize", _param0, _param1, _param2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockAPIClientRecorder) ContainerExecResize(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerExecResize", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) ContainerExecResize(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerExecResize", arg0, arg1, arg2)
 }
 
 func (_m *MockAPIClient) ContainerExecStart(_param0 context.Context, _param1 string, _param2 types.ExecStartCheck) error {
@@ -198,15 +198,15 @@ func (_mr *_MockAPIClientRecorder) ContainerList(arg0, arg1 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerList", arg0, arg1)
 }
 
-func (_m *MockAPIClient) ContainerLogs(_param0 context.Context, _param1 types.ContainerLogsOptions) (io.ReadCloser, error) {
-	ret := _m.ctrl.Call(_m, "ContainerLogs", _param0, _param1)
+func (_m *MockAPIClient) ContainerLogs(_param0 context.Context, _param1 string, _param2 types.ContainerLogsOptions) (io.ReadCloser, error) {
+	ret := _m.ctrl.Call(_m, "ContainerLogs", _param0, _param1, _param2)
 	ret0, _ := ret[0].(io.ReadCloser)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockAPIClientRecorder) ContainerLogs(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerLogs", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) ContainerLogs(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerLogs", arg0, arg1, arg2)
 }
 
 func (_m *MockAPIClient) ContainerPause(_param0 context.Context, _param1 string) error {
@@ -219,14 +219,14 @@ func (_mr *_MockAPIClientRecorder) ContainerPause(arg0, arg1 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerPause", arg0, arg1)
 }
 
-func (_m *MockAPIClient) ContainerRemove(_param0 context.Context, _param1 types.ContainerRemoveOptions) error {
-	ret := _m.ctrl.Call(_m, "ContainerRemove", _param0, _param1)
+func (_m *MockAPIClient) ContainerRemove(_param0 context.Context, _param1 string, _param2 types.ContainerRemoveOptions) error {
+	ret := _m.ctrl.Call(_m, "ContainerRemove", _param0, _param1, _param2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockAPIClientRecorder) ContainerRemove(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerRemove", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) ContainerRemove(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerRemove", arg0, arg1, arg2)
 }
 
 func (_m *MockAPIClient) ContainerRename(_param0 context.Context, _param1 string, _param2 string) error {
@@ -239,14 +239,14 @@ func (_mr *_MockAPIClientRecorder) ContainerRename(arg0, arg1, arg2 interface{})
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerRename", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ContainerResize(_param0 context.Context, _param1 types.ResizeOptions) error {
-	ret := _m.ctrl.Call(_m, "ContainerResize", _param0, _param1)
+func (_m *MockAPIClient) ContainerResize(_param0 context.Context, _param1 string, _param2 types.ResizeOptions) error {
+	ret := _m.ctrl.Call(_m, "ContainerResize", _param0, _param1, _param2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockAPIClientRecorder) ContainerResize(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerResize", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) ContainerResize(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerResize", arg0, arg1, arg2)
 }
 
 func (_m *MockAPIClient) ContainerRestart(_param0 context.Context, _param1 string, _param2 int) error {
@@ -355,14 +355,14 @@ func (_mr *_MockAPIClientRecorder) CopyFromContainer(arg0, arg1, arg2 interface{
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "CopyFromContainer", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) CopyToContainer(_param0 context.Context, _param1 types.CopyToContainerOptions) error {
-	ret := _m.ctrl.Call(_m, "CopyToContainer", _param0, _param1)
+func (_m *MockAPIClient) CopyToContainer(_param0 context.Context, _param1 string, _param2 string, _param3 io.Reader, _param4 types.CopyToContainerOptions) error {
+	ret := _m.ctrl.Call(_m, "CopyToContainer", _param0, _param1, _param2, _param3, _param4)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockAPIClientRecorder) CopyToContainer(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "CopyToContainer", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) CopyToContainer(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "CopyToContainer", arg0, arg1, arg2, arg3, arg4)
 }
 
 func (_m *MockAPIClient) Events(_param0 context.Context, _param1 types.EventsOptions) (io.ReadCloser, error) {
@@ -376,26 +376,26 @@ func (_mr *_MockAPIClientRecorder) Events(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Events", arg0, arg1)
 }
 
-func (_m *MockAPIClient) ImageBuild(_param0 context.Context, _param1 types.ImageBuildOptions) (types.ImageBuildResponse, error) {
-	ret := _m.ctrl.Call(_m, "ImageBuild", _param0, _param1)
+func (_m *MockAPIClient) ImageBuild(_param0 context.Context, _param1 io.Reader, _param2 types.ImageBuildOptions) (types.ImageBuildResponse, error) {
+	ret := _m.ctrl.Call(_m, "ImageBuild", _param0, _param1, _param2)
 	ret0, _ := ret[0].(types.ImageBuildResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockAPIClientRecorder) ImageBuild(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageBuild", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) ImageBuild(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageBuild", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ImageCreate(_param0 context.Context, _param1 types.ImageCreateOptions) (io.ReadCloser, error) {
-	ret := _m.ctrl.Call(_m, "ImageCreate", _param0, _param1)
+func (_m *MockAPIClient) ImageCreate(_param0 context.Context, _param1 string, _param2 types.ImageCreateOptions) (io.ReadCloser, error) {
+	ret := _m.ctrl.Call(_m, "ImageCreate", _param0, _param1, _param2)
 	ret0, _ := ret[0].(io.ReadCloser)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockAPIClientRecorder) ImageCreate(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageCreate", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) ImageCreate(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageCreate", arg0, arg1, arg2)
 }
 
 func (_m *MockAPIClient) ImageHistory(_param0 context.Context, _param1 string) ([]types.ImageHistory, error) {
@@ -409,15 +409,15 @@ func (_mr *_MockAPIClientRecorder) ImageHistory(arg0, arg1 interface{}) *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageHistory", arg0, arg1)
 }
 
-func (_m *MockAPIClient) ImageImport(_param0 context.Context, _param1 types.ImageImportOptions) (io.ReadCloser, error) {
-	ret := _m.ctrl.Call(_m, "ImageImport", _param0, _param1)
+func (_m *MockAPIClient) ImageImport(_param0 context.Context, _param1 types.ImageImportSource, _param2 string, _param3 types.ImageImportOptions) (io.ReadCloser, error) {
+	ret := _m.ctrl.Call(_m, "ImageImport", _param0, _param1, _param2, _param3)
 	ret0, _ := ret[0].(io.ReadCloser)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockAPIClientRecorder) ImageImport(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageImport", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) ImageImport(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageImport", arg0, arg1, arg2, arg3)
 }
 
 func (_m *MockAPIClient) ImageInspectWithRaw(_param0 context.Context, _param1 string, _param2 bool) (types.ImageInspect, []byte, error) {
@@ -454,7 +454,7 @@ func (_mr *_MockAPIClientRecorder) ImageLoad(arg0, arg1, arg2 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageLoad", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ImagePull(_param0 context.Context, _param1 types.ImagePullOptions, _param2 client.RequestPrivilegeFunc) (io.ReadCloser, error) {
+func (_m *MockAPIClient) ImagePull(_param0 context.Context, _param1 string, _param2 types.ImagePullOptions) (io.ReadCloser, error) {
 	ret := _m.ctrl.Call(_m, "ImagePull", _param0, _param1, _param2)
 	ret0, _ := ret[0].(io.ReadCloser)
 	ret1, _ := ret[1].(error)
@@ -465,7 +465,7 @@ func (_mr *_MockAPIClientRecorder) ImagePull(arg0, arg1, arg2 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImagePull", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ImagePush(_param0 context.Context, _param1 types.ImagePushOptions, _param2 client.RequestPrivilegeFunc) (io.ReadCloser, error) {
+func (_m *MockAPIClient) ImagePush(_param0 context.Context, _param1 string, _param2 types.ImagePushOptions) (io.ReadCloser, error) {
 	ret := _m.ctrl.Call(_m, "ImagePush", _param0, _param1, _param2)
 	ret0, _ := ret[0].(io.ReadCloser)
 	ret1, _ := ret[1].(error)
@@ -476,15 +476,15 @@ func (_mr *_MockAPIClientRecorder) ImagePush(arg0, arg1, arg2 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImagePush", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ImageRemove(_param0 context.Context, _param1 types.ImageRemoveOptions) ([]types.ImageDelete, error) {
-	ret := _m.ctrl.Call(_m, "ImageRemove", _param0, _param1)
+func (_m *MockAPIClient) ImageRemove(_param0 context.Context, _param1 string, _param2 types.ImageRemoveOptions) ([]types.ImageDelete, error) {
+	ret := _m.ctrl.Call(_m, "ImageRemove", _param0, _param1, _param2)
 	ret0, _ := ret[0].([]types.ImageDelete)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockAPIClientRecorder) ImageRemove(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageRemove", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) ImageRemove(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageRemove", arg0, arg1, arg2)
 }
 
 func (_m *MockAPIClient) ImageSave(_param0 context.Context, _param1 []string) (io.ReadCloser, error) {
@@ -498,7 +498,7 @@ func (_mr *_MockAPIClientRecorder) ImageSave(arg0, arg1 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageSave", arg0, arg1)
 }
 
-func (_m *MockAPIClient) ImageSearch(_param0 context.Context, _param1 types.ImageSearchOptions, _param2 client.RequestPrivilegeFunc) ([]registry.SearchResult, error) {
+func (_m *MockAPIClient) ImageSearch(_param0 context.Context, _param1 string, _param2 types.ImageSearchOptions) ([]registry.SearchResult, error) {
 	ret := _m.ctrl.Call(_m, "ImageSearch", _param0, _param1, _param2)
 	ret0, _ := ret[0].([]registry.SearchResult)
 	ret1, _ := ret[1].(error)
@@ -509,14 +509,14 @@ func (_mr *_MockAPIClientRecorder) ImageSearch(arg0, arg1, arg2 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageSearch", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ImageTag(_param0 context.Context, _param1 types.ImageTagOptions) error {
-	ret := _m.ctrl.Call(_m, "ImageTag", _param0, _param1)
+func (_m *MockAPIClient) ImageTag(_param0 context.Context, _param1 string, _param2 string, _param3 types.ImageTagOptions) error {
+	ret := _m.ctrl.Call(_m, "ImageTag", _param0, _param1, _param2, _param3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockAPIClientRecorder) ImageTag(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageTag", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) ImageTag(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageTag", arg0, arg1, arg2, arg3)
 }
 
 func (_m *MockAPIClient) Info(_param0 context.Context) (types.Info, error) {
@@ -540,15 +540,15 @@ func (_mr *_MockAPIClientRecorder) NetworkConnect(arg0, arg1, arg2, arg3 interfa
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "NetworkConnect", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockAPIClient) NetworkCreate(_param0 context.Context, _param1 types.NetworkCreate) (types.NetworkCreateResponse, error) {
-	ret := _m.ctrl.Call(_m, "NetworkCreate", _param0, _param1)
+func (_m *MockAPIClient) NetworkCreate(_param0 context.Context, _param1 string, _param2 types.NetworkCreate) (types.NetworkCreateResponse, error) {
+	ret := _m.ctrl.Call(_m, "NetworkCreate", _param0, _param1, _param2)
 	ret0, _ := ret[0].(types.NetworkCreateResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockAPIClientRecorder) NetworkCreate(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "NetworkCreate", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) NetworkCreate(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "NetworkCreate", arg0, arg1, arg2)
 }
 
 func (_m *MockAPIClient) NetworkDisconnect(_param0 context.Context, _param1 string, _param2 string, _param3 bool) error {
@@ -613,6 +613,14 @@ func (_m *MockAPIClient) ServerVersion(_param0 context.Context) (types.Version, 
 
 func (_mr *_MockAPIClientRecorder) ServerVersion(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ServerVersion", arg0)
+}
+
+func (_m *MockAPIClient) UpdateClientVersion(_param0 string) {
+	_m.ctrl.Call(_m, "UpdateClientVersion", _param0)
+}
+
+func (_mr *_MockAPIClientRecorder) UpdateClientVersion(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdateClientVersion", arg0)
 }
 
 func (_m *MockAPIClient) VolumeCreate(_param0 context.Context, _param1 types.VolumeCreateRequest) (types.Volume, error) {
