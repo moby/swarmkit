@@ -48,7 +48,7 @@ func startCA() (*grpcCA, error) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, err := CreateRootCA("swarm-test-CA", paths.RootCA)
+	signer, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
 	if err != nil {
 		return nil, err
 	}
