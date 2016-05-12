@@ -1,13 +1,13 @@
 package container
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/docker/distribution/reference"
 	"github.com/docker/engine-api/types"
 	enginecontainer "github.com/docker/engine-api/types/container"
 	"github.com/docker/engine-api/types/events"
@@ -27,31 +27,36 @@ const (
 // containerConfig converts task properties into docker container compatible
 // components.
 type containerConfig struct {
-	task  *api.Task
-	popts types.ImagePullOptions
+	task *api.Task
+
+	networksAttachments map[string]*api.Container_NetworkAttachment
 }
 
 // newContainerConfig returns a validated container config. No methods should
 // return an error if this function returns without error.
 func newContainerConfig(t *api.Task) (*containerConfig, error) {
-	c := &containerConfig{task: t}
+	var c containerConfig
+	return &c, c.setTask(t)
+}
 
+func (c *containerConfig) setTask(t *api.Task) error {
 	container := t.GetContainer()
 	if container == nil {
-		return nil, exec.ErrRuntimeUnsupported
+		return exec.ErrRuntimeUnsupported
 	}
 
 	if container.Spec.Image.Reference == "" {
-		return nil, ErrImageRequired
+		return ErrImageRequired
 	}
 
-	var err error
-	c.popts, err = c.buildPullOptions()
-	if err != nil {
-		return nil, err
+	// index the networks by name
+	c.networksAttachments = make(map[string]*api.Container_NetworkAttachment, len(container.Networks))
+	for _, attachment := range container.Networks {
+		c.networksAttachments[attachment.Network.Spec.Annotations.Name] = attachment
 	}
 
-	return c, nil
+	c.task = t
+	return nil
 }
 
 func (c *containerConfig) spec() *api.ContainerSpec {
@@ -226,81 +231,45 @@ func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
 	return &network.NetworkingConfig{EndpointsConfig: epConfig}
 }
 
-func (c *containerConfig) networkCreateOptions() []types.NetworkCreate {
-	if c.task.GetContainer() == nil {
-		return nil
-	}
-
-	netOpts := make([]types.NetworkCreate, 0, len(c.task.GetContainer().Networks))
-	for _, na := range c.task.GetContainer().Networks {
-		options := types.NetworkCreate{
-			Name:   na.Network.Spec.Annotations.Name,
-			ID:     na.Network.ID,
-			Driver: na.Network.DriverState.Name,
-			IPAM: network.IPAM{
-				Driver: na.Network.IPAM.Driver.Name,
-			},
-			Options:        na.Network.DriverState.Options,
-			CheckDuplicate: true,
-		}
-
-		for _, ic := range na.Network.IPAM.Configs {
-			c := network.IPAMConfig{
-				Subnet:  ic.Subnet,
-				IPRange: ic.Range,
-				Gateway: ic.Gateway,
-			}
-			options.IPAM.Config = append(options.IPAM.Config, c)
-		}
-
-		netOpts = append(netOpts, options)
-
-	}
-
-	return netOpts
-}
-
+// networks returns a list of network names attached to the container. The
+// returned name can be used to lookup the corresponding network create
+// options.
 func (c *containerConfig) networks() []string {
-	if c.task.GetContainer() == nil {
-		return nil
-	}
+	var networks []string
 
-	networks := make([]string, 0, len(c.task.GetContainer().Networks))
-	for _, na := range c.task.GetContainer().Networks {
-		networks = append(networks, na.Network.ID)
+	for name := range c.networksAttachments {
+		networks = append(networks, name)
 	}
 
 	return networks
 }
 
-func (c *containerConfig) pullOptions() types.ImagePullOptions {
-	return c.popts
-}
-
-func (c *containerConfig) buildPullOptions() (types.ImagePullOptions, error) {
-	named, err := reference.ParseNamed(c.image())
-	if err != nil {
-		return types.ImagePullOptions{}, err
+func (c *containerConfig) networkCreateOptions(name string) (types.NetworkCreate, error) {
+	na, ok := c.networksAttachments[name]
+	if !ok {
+		return types.NetworkCreate{}, errors.New("container: unknown network referenced")
 	}
 
-	var (
-		name = named.Name()
-		tag  = "latest"
-	)
-
-	// replace tag with more specific item from ref
-	switch v := named.(type) {
-	case reference.Canonical:
-		tag = v.Digest().String()
-	case reference.NamedTagged:
-		tag = v.Tag()
-
+	options := types.NetworkCreate{
+		ID:     na.Network.ID,
+		Driver: na.Network.DriverState.Name,
+		IPAM: network.IPAM{
+			Driver: na.Network.IPAM.Driver.Name,
+		},
+		Options:        na.Network.DriverState.Options,
+		CheckDuplicate: true,
 	}
 
-	return types.ImagePullOptions{
-		ImageID: name,
-		Tag:     tag,
-	}, nil
+	for _, ic := range na.Network.IPAM.Configs {
+		c := network.IPAMConfig{
+			Subnet:  ic.Subnet,
+			IPRange: ic.Range,
+			Gateway: ic.Gateway,
+		}
+		options.IPAM.Config = append(options.IPAM.Config, c)
+	}
+
+	return options, nil
 }
 
 func (c containerConfig) eventFilter() filters.Args {

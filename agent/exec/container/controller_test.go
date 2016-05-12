@@ -22,7 +22,10 @@ import (
 
 // TODO(stevvooe): Generation of mocks against circle ci is broken. If you need
 // to regenerate the mock, remove the "+" below and run `go generate`. Sorry.
-//+go:generate mockgen -package dockerexec -destination api_client_test.mock.go github.com/docker/engine-api/client APIClient
+// UPDATE(stevvooe): Gomock is still broken garbage. Sigh. This time, had to
+// generate, then manually "unvendor" imports. Futher cements the
+// realization that mocks are a garbage way to build tests.
+//+go:generate mockgen -package container -destination api_client_test.mock.go github.com/docker/engine-api/client APIClient
 
 func TestControllerPrepare(t *testing.T) {
 	task := genTask(t)
@@ -235,8 +238,7 @@ func TestControllerRemove(t *testing.T) {
 	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
 	defer finish(t)
 
-	client.EXPECT().ContainerRemove(gomock.Any(), types.ContainerRemoveOptions{
-		ContainerID:   config.name(),
+	client.EXPECT().ContainerRemove(gomock.Any(), config.name(), types.ContainerRemoveOptions{
 		RemoveVolumes: true,
 		Force:         true,
 	})
