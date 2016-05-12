@@ -67,7 +67,7 @@ func startCA() (*grpcCA, error) {
 
 	s := grpc.NewServer(serverOpts...)
 	store := store.NewMemoryStore(nil)
-	ca := NewServer(store, managerSecurityConfig)
+	ca := NewServer(store, managerSecurityConfig, api.AcceptancePolicy{Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true}})
 	api.RegisterCAServer(s, ca)
 	go func() {
 		// Serve will always return an error (even when properly stopped).
@@ -161,9 +161,12 @@ func TestCertificateStatus(t *testing.T) {
 	assert.NotNil(t, csr)
 
 	testRegisteredCert := &api.RegisteredCertificate{
-		ID:     "token",
-		CN:     "cn",
-		CSR:    csr,
+		ID:  "token",
+		CN:  "cn",
+		CSR: csr,
+		Spec: api.RegisteredCertificateSpec{
+			DesiredState: api.IssuanceStateIssued,
+		},
 		Status: api.IssuanceStatus{State: api.IssuanceStatePending},
 	}
 
@@ -175,8 +178,8 @@ func TestCertificateStatus(t *testing.T) {
 
 	gc.caServer.reconcileCertificates(context.Background(), []*api.RegisteredCertificate{testRegisteredCert})
 
-	issueRequest := &api.CertificateStatusRequest{Token: "token"}
-	resp, err := gc.Clients[1].CertificateStatus(context.Background(), issueRequest)
+	statusRequest := &api.CertificateStatusRequest{Token: "token"}
+	resp, err := gc.Clients[1].CertificateStatus(context.Background(), statusRequest)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp.RegisteredCertificate)
 	assert.NotEmpty(t, resp.RegisteredCertificate.Certificate)
