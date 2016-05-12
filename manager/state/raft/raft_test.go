@@ -243,7 +243,7 @@ func TestRaftFollowerLeave(t *testing.T) {
 	// Node 5 leaves the cluster
 	// Use gRPC instead of calling handler directly because of
 	// authorization check.
-	client, err := nodes[1].GetRaftClient(nodes[1].Address, 10*time.Second)
+	client, err := nodes[1].ConnectToMember(nodes[1].Address, 10*time.Second)
 	assert.NoError(t, err)
 	defer client.Conn.Close()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
@@ -284,7 +284,7 @@ func TestRaftLeaderLeave(t *testing.T) {
 	// Try to leave the raft
 	// Use gRPC instead of calling handler directly because of
 	// authorization check.
-	client, err := nodes[1].GetRaftClient(nodes[1].Address, 10*time.Second)
+	client, err := nodes[1].ConnectToMember(nodes[1].Address, 10*time.Second)
 	assert.NoError(t, err)
 	defer client.Conn.Close()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)

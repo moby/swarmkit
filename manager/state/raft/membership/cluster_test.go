@@ -253,7 +253,7 @@ func TestValidateConfigurationChange(t *testing.T) {
 	cc = raftpb.ConfChange{ID: 1, Type: 10, NodeID: 1, Context: newMember}
 	err = cls.ValidateConfigurationChange(cc)
 	assert.Error(t, err)
-	assert.Equal(t, err, membership.ErrConfChangeInvalid)
+	assert.Equal(t, err, membership.ErrConfigChangeInvalid)
 }
 
 func TestCanRemoveMember(t *testing.T) {

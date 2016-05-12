@@ -226,7 +226,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 
 	if n.startNodePeers != nil {
 		if n.joinAddr != "" {
-			c, err := n.GetRaftClient(n.joinAddr, 10*time.Second)
+			c, err := n.ConnectToMember(n.joinAddr, 10*time.Second)
 			if err != nil {
 				return nil, err
 			}
@@ -400,8 +400,8 @@ func (n *Node) stop() {
 
 	members := n.cluster.Members()
 	for _, member := range members {
-		if member.Client != nil && member.Client.Conn != nil {
-			_ = member.Client.Conn.Close()
+		if member.Conn != nil {
+			_ = member.Conn.Close()
 		}
 	}
 	n.Stop()
@@ -591,7 +591,7 @@ func (n *Node) LeaderAddr() (string, error) {
 
 // registerNode registers a new node on the cluster memberlist
 func (n *Node) registerNode(node *api.Member) error {
-	var client *membership.Raft
+	member := &membership.Member{}
 
 	// Avoid opening a connection to the local node
 	if node.RaftID != n.Config.ID {
@@ -599,13 +599,17 @@ func (n *Node) registerNode(node *api.Member) error {
 		// should keep retrying as long as necessary, in case the peer
 		// is temporarily unavailable.
 		var err error
-		if client, err = n.GetRaftClient(node.Addr, 0); err != nil {
+		if member, err = n.ConnectToMember(node.Addr, 0); err != nil {
 			return err
 		}
 	}
 
-	err := n.cluster.AddMember(&membership.Member{Member: node, Client: client})
+	member.Member = node
+	err := n.cluster.AddMember(member)
 	if err != nil {
+		if member.Conn != nil {
+			_ = member.Conn.Close()
+		}
 		return err
 	}
 	return nil
@@ -649,7 +653,7 @@ func (n *Node) GetMemberlist() map[uint64]*api.Member {
 		leader := false
 
 		if member.RaftID != n.Config.ID {
-			connState, err := member.Client.Conn.State()
+			connState, err := member.Conn.State()
 			if err != nil || connState != grpc.Ready {
 				status = api.MemberStatus_UNREACHABLE
 			}
@@ -741,10 +745,10 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 	defer cancel()
 
 	var (
-		conn *membership.Raft
+		conn *membership.Member
 	)
 	if toMember, ok := members[m.To]; ok {
-		conn = toMember.Client
+		conn = toMember
 	} else {
 		// If we are being asked to send to a member that's not in
 		// our member list, that could indicate that the current leader
@@ -767,12 +771,12 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 			return
 		}
 
-		resp, err := queryMember.Client.ResolveAddress(ctx, &api.ResolveAddressRequest{RaftID: m.To})
+		resp, err := queryMember.ResolveAddress(ctx, &api.ResolveAddressRequest{RaftID: m.To})
 		if err != nil {
 			n.Config.Logger.Errorf("could not resolve address of member ID %s: %v", strconv.FormatUint(m.To, 16), err)
 			return
 		}
-		conn, err = n.GetRaftClient(resp.Addr, n.sendTimeout)
+		conn, err = n.ConnectToMember(resp.Addr, n.sendTimeout)
 		if err != nil {
 			n.Config.Logger.Errorf("could connect to member ID %s at %s: %v", strconv.FormatUint(m.To, 16), resp.Addr, err)
 			return
@@ -996,15 +1000,15 @@ func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
 	return n.cluster.RemoveMember(cc.NodeID)
 }
 
-// GetRaftClient returns a raft client object to communicate
-// with other raft members
-func (n *Node) GetRaftClient(addr string, timeout time.Duration) (*membership.Raft, error) {
+// ConnectToMember returns a member object with an initialized
+// connection to communicate with other raft members
+func (n *Node) ConnectToMember(addr string, timeout time.Duration) (*membership.Member, error) {
 	conn, err := dial(addr, "tcp", n.tlsCredentials, timeout)
 	if err != nil {
 		return nil, err
 	}
 
-	return &membership.Raft{
+	return &membership.Member{
 		RaftClient: api.NewRaftClient(conn),
 		Conn:       conn,
 	}, nil
