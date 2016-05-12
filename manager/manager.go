@@ -177,6 +177,12 @@ func (m *Manager) Run(ctx context.Context) error {
 					}
 				}(m.dispatcher)
 
+				go func(server *ca.Server) {
+					if err := server.Run(ctx); err != nil {
+						log.G(ctx).WithError(err).Error("CA signer exited with an error")
+					}
+				}(m.caserver)
+
 				// Start all sub-components in separate goroutines.
 				// TODO(aluzzardi): This should have some kind of error handling so that
 				// any component that goes down would bring the entire manager down.
@@ -209,6 +215,8 @@ func (m *Manager) Run(ctx context.Context) error {
 				}(m.fillOrchestrator)
 			} else if newState == raft.IsFollower {
 				m.dispatcher.Stop()
+				m.caserver.Stop()
+
 				if m.allocator != nil {
 					m.allocator.Stop()
 					m.allocator = nil
@@ -287,7 +295,10 @@ func (m *Manager) Stop() {
 	if m.stopped {
 		return
 	}
+
 	m.dispatcher.Stop()
+	m.caserver.Stop()
+
 	if m.allocator != nil {
 		m.allocator.Stop()
 	}

@@ -162,6 +162,7 @@ func TestCertificateStatus(t *testing.T) {
 
 	testRegisteredCert := &api.RegisteredCertificate{
 		ID:     "token",
+		CN:     "cn",
 		CSR:    csr,
 		Status: api.IssuanceStatus{State: api.IssuanceStatePending},
 	}
@@ -172,18 +173,20 @@ func TestCertificateStatus(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
+	gc.caServer.reconcileCertificates(context.Background(), []*api.RegisteredCertificate{testRegisteredCert})
+
 	issueRequest := &api.CertificateStatusRequest{Token: "token"}
 	resp, err := gc.Clients[1].CertificateStatus(context.Background(), issueRequest)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp.RegisteredCertificate)
 	assert.NotEmpty(t, resp.RegisteredCertificate.Certificate)
 	assert.NotEmpty(t, resp.Status)
-	assert.Equal(t, resp.Status.State, api.IssuanceStateCompleted)
+	assert.Equal(t, resp.Status.State, api.IssuanceStateIssued)
 
 	gc.Store.View(func(readTx store.ReadTx) {
 		storeCerts, err := store.FindRegisteredCertificates(readTx, store.All)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, storeCerts)
-		assert.Equal(t, storeCerts[0].Status.State, api.IssuanceStateCompleted)
+		assert.Equal(t, storeCerts[0].Status.State, api.IssuanceStateIssued)
 	})
 }

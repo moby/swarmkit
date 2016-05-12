@@ -19,8 +19,8 @@ func init() {
 					Unique:  true,
 					Indexer: registeredCertificateIndexerByID{},
 				},
-				indexName: {
-					Name:         indexName,
+				indexCN: {
+					Name:         indexCN,
 					AllowMissing: true,
 					Indexer:      registeredCertificateIndexerByCN{},
 				},
@@ -152,7 +152,7 @@ func GetRegisteredCertificate(tx ReadTx, id string) *api.RegisteredCertificate {
 // FindRegisteredCertificates selects a set of RegisteredCertificates and returns them.
 func FindRegisteredCertificates(tx ReadTx, by By) ([]*api.RegisteredCertificate, error) {
 	switch by.(type) {
-	case byAll, byName:
+	case byAll, byCN:
 	default:
 		return nil, ErrInvalidFindBy
 	}

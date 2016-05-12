@@ -275,7 +275,7 @@ func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.Cert
 		}
 
 		// If the request is completed, we have a certificate to return
-		if statusReponse.Status.State == api.IssuanceStateCompleted {
+		if statusReponse.Status.State == api.IssuanceStateIssued {
 			break
 		}
 
