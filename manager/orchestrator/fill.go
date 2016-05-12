@@ -85,19 +85,19 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 			// TODO(stevvooe): Use ctx to limit running time of operation.
 			switch v := event.(type) {
 			case state.EventCreateService:
-				if !f.isRelatedService(v.Service) {
+				if v.Service.Spec.Mode != api.ServiceModeFill {
 					continue
 				}
 				f.fillServices[v.Service.ID] = v.Service
 				f.reconcileOneService(ctx, v.Service)
 			case state.EventUpdateService:
-				if !f.isRelatedService(v.Service) {
+				if v.Service.Spec.Mode != api.ServiceModeFill {
 					continue
 				}
 				f.fillServices[v.Service.ID] = v.Service
 				f.reconcileOneService(ctx, v.Service)
 			case state.EventDeleteService:
-				if !f.isRelatedService(v.Service) {
+				if v.Service.Spec.Mode != api.ServiceModeFill {
 					continue
 				}
 				deleteServiceTasks(ctx, f.store, v.Service)
@@ -149,11 +149,12 @@ func (f *FillOrchestrator) Stop() {
 }
 
 func (f *FillOrchestrator) removeTasksFromNode(ctx context.Context, node *api.Node) {
-	var tasks []*api.Task
-	err := f.store.Update(func(tx store.Tx) error {
-		var err error
+	var (
+		tasks []*api.Task
+		err   error
+	)
+	f.store.View(func(tx store.ReadTx) {
 		tasks, err = store.FindTasks(tx, store.ByNodeID(node.ID))
-		return err
 	})
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("fillOrchestrator: removeTasksFromNode failed finding tasks")
@@ -372,10 +373,6 @@ func (f *FillOrchestrator) removeTasks(ctx context.Context, batch *store.Batch, 
 	for _, t := range tasks {
 		f.removeTask(ctx, batch, t)
 	}
-}
-
-func (f *FillOrchestrator) isRelatedService(service *api.Service) bool {
-	return service != nil && service.Spec.Mode == api.ServiceModeFill
 }
 
 func isTaskRunning(t *api.Task) bool {

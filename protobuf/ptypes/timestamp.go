@@ -114,6 +114,16 @@ func TimestampProto(t time.Time) (*tspb.Timestamp, error) {
 	return ts, nil
 }
 
+// MustTimestampProto converts time.Time to a google.protobuf.Timestamp proto.
+// It panics if input timestamp is invalid.
+func MustTimestampProto(t time.Time) *tspb.Timestamp {
+	ts, err := TimestampProto(t)
+	if err != nil {
+		panic(err.Error())
+	}
+	return ts
+}
+
 // TimestampString returns the RFC 3339 string for valid Timestamps. For invalid
 // Timestamps, it returns an error message in parentheses.
 func TimestampString(ts *tspb.Timestamp) string {
