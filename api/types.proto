@@ -224,9 +224,12 @@ enum TaskState {
 
 // Container specific status.
 message ContainerStatus {
-	repeated PortConfig exposed_ports = 1;
+	string container_id = 1 [(gogoproto.customname) = "ContainerID"];
 
-	// TODO(aluzzardi): Add container specific status information such as ExitCode.
+	int32 pid = 2 [(gogoproto.customname) = "PID"];
+	int32 exit_code = 3;
+
+	repeated PortConfig exposed_ports = 4;
 }
 
 message TaskStatus {

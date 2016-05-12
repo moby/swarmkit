@@ -7,6 +7,11 @@ import (
 	"golang.org/x/net/context"
 )
 
+// ContainerController controls execution of container tasks.
+type ContainerController interface {
+	ContainerStatus(ctx context.Context) (*api.ContainerStatus, error)
+}
+
 // Controller controls execution of a task.
 //
 // All methods should be idempotent and thread-safe.
@@ -50,7 +55,8 @@ type Controller interface {
 type Reporter interface {
 	// Report the state of the task run. If an error is returned, execution
 	// will be stopped.
-	Report(ctx context.Context, state api.TaskState, msg string) error
+	// TODO(aluzzardi): This interface leaks ContainerStatus and needs fixing.
+	Report(ctx context.Context, state api.TaskState, msg string, cstatus *api.ContainerStatus) error
 
 	// TODO(stevvooe): It is very likely we will need to report more
 	// information back from the controller into the agent. We'll likely expand
@@ -60,7 +66,7 @@ type Reporter interface {
 // Run runs a controller, reporting state along the way. Under normal execution,
 // this function blocks until the task is completed.
 func Run(ctx context.Context, ctlr Controller, reporter Reporter) error {
-	if err := report(ctx, reporter, api.TaskStatePreparing, "preparing"); err != nil {
+	if err := report(ctx, reporter, api.TaskStatePreparing, "preparing", nil); err != nil {
 		return err
 	}
 
@@ -77,7 +83,7 @@ func Run(ctx context.Context, ctlr Controller, reporter Reporter) error {
 		}
 	}
 
-	if err := report(ctx, reporter, api.TaskStateReady, "prepared"); err != nil {
+	if err := report(ctx, reporter, api.TaskStateReady, "prepared", nil); err != nil {
 		return err
 	}
 
@@ -90,31 +96,31 @@ func Shutdown(ctx context.Context, ctlr Controller, reporter Reporter) error {
 		return err
 	}
 
-	return report(ctx, reporter, api.TaskStateShutdown, "shutdown requested")
+	return report(ctx, reporter, api.TaskStateShutdown, "shutdown requested", nil)
 }
 
 // Remove the task for the controller and report on the status.
 func Remove(ctx context.Context, ctlr Controller, reporter Reporter) error {
-	if err := report(ctx, reporter, api.TaskStateFinalize, "removing"); err != nil {
+	if err := report(ctx, reporter, api.TaskStateFinalize, "removing", nil); err != nil {
 		return err
 	}
 
 	if err := ctlr.Remove(ctx); err != nil {
 		log.G(ctx).WithError(err).Error("remove failed")
-		if err := report(ctx, reporter, api.TaskStateFinalize, "remove failed"); err != nil {
+		if err := report(ctx, reporter, api.TaskStateFinalize, "remove failed", nil); err != nil {
 			log.G(ctx).WithError(err).Error("report remove error failed")
 			return err
 		}
 	}
 
-	return report(ctx, reporter, api.TaskStateDead, "finalized")
+	return report(ctx, reporter, api.TaskStateDead, "finalized", nil)
 }
 
 // runStart reports that the task is starting, calls Start and hands execution
 // off to `runWait`. It will block until task execution is completed or an
 // error is encountered.
 func runStart(ctx context.Context, ctlr Controller, reporter Reporter, msg string) error {
-	if err := report(ctx, reporter, api.TaskStateStarting, msg); err != nil {
+	if err := report(ctx, reporter, api.TaskStateStarting, msg, nil); err != nil {
 		return err
 	}
 
@@ -135,7 +141,19 @@ func runStart(ctx context.Context, ctlr Controller, reporter Reporter, msg strin
 // runWait reports that the task is running and calls Wait. When Wait exits,
 // the task will be reported as completed.
 func runWait(ctx context.Context, ctlr Controller, reporter Reporter, msg string) error {
-	if err := report(ctx, reporter, api.TaskStateRunning, msg); err != nil {
+	getContainerStatus := func() (*api.ContainerStatus, error) {
+		if cs, ok := ctlr.(ContainerController); ok {
+			return cs.ContainerStatus(ctx)
+		}
+		return nil, nil
+	}
+
+	cstatus, err := getContainerStatus()
+	if err != nil {
+		return err
+	}
+
+	if err := report(ctx, reporter, api.TaskStateRunning, msg, cstatus); err != nil {
 		return err
 	}
 
@@ -146,10 +164,15 @@ func runWait(ctx context.Context, ctlr Controller, reporter Reporter, msg string
 		return err
 	}
 
-	return report(ctx, reporter, api.TaskStateCompleted, "completed")
+	cstatus, err = getContainerStatus()
+	if err != nil {
+		return err
+	}
+
+	return report(ctx, reporter, api.TaskStateCompleted, "completed", cstatus)
 }
 
-func report(ctx context.Context, reporter Reporter, state api.TaskState, msg string) error {
+func report(ctx context.Context, reporter Reporter, state api.TaskState, msg string, cstatus *api.ContainerStatus) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -161,5 +184,5 @@ func report(ctx context.Context, reporter Reporter, state api.TaskState, msg str
 			"state":      state,
 			"status.msg": msg}))
 	log.G(ctx).Debug("report status")
-	return reporter.Report(ctx, state, msg)
+	return reporter.Report(ctx, state, msg, cstatus)
 }

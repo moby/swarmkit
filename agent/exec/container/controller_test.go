@@ -154,9 +154,11 @@ func TestControllerWaitExitError(t *testing.T) {
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
 				ContainerJSONBase: &types.ContainerJSONBase{
+					ID: "cid",
 					State: &types.ContainerState{
 						Status:   "exited", // can be anything but created
 						ExitCode: 1,
+						Pid:      1,
 					},
 				},
 			}, nil),
@@ -165,6 +167,11 @@ func TestControllerWaitExitError(t *testing.T) {
 	err := ctlr.Wait(ctx)
 	assert.Equal(t, &exec.ExitError{
 		Code: 1,
+		ContainerStatus: &api.ContainerStatus{
+			ContainerID: "cid",
+			PID:         1,
+			ExitCode:    1,
+		},
 	}, err)
 }
 
@@ -197,9 +204,11 @@ func TestControllerWaitExitedError(t *testing.T) {
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
 				ContainerJSONBase: &types.ContainerJSONBase{
+					ID: "cid",
 					State: &types.ContainerState{
 						Status:   "exited",
 						ExitCode: 1,
+						Pid:      1,
 					},
 				},
 			}, nil),
@@ -208,6 +217,11 @@ func TestControllerWaitExitedError(t *testing.T) {
 	err := ctlr.Wait(ctx)
 	assert.Equal(t, &exec.ExitError{
 		Code: 1,
+		ContainerStatus: &api.ContainerStatus{
+			ContainerID: "cid",
+			PID:         1,
+			ExitCode:    1,
+		},
 	}, err)
 }
 

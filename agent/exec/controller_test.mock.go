@@ -9,6 +9,38 @@ import (
 	context "golang.org/x/net/context"
 )
 
+// Mock of ContainerController interface
+type MockContainerController struct {
+	ctrl     *gomock.Controller
+	recorder *_MockContainerControllerRecorder
+}
+
+// Recorder for MockContainerController (not exported)
+type _MockContainerControllerRecorder struct {
+	mock *MockContainerController
+}
+
+func NewMockContainerController(ctrl *gomock.Controller) *MockContainerController {
+	mock := &MockContainerController{ctrl: ctrl}
+	mock.recorder = &_MockContainerControllerRecorder{mock}
+	return mock
+}
+
+func (_m *MockContainerController) EXPECT() *_MockContainerControllerRecorder {
+	return _m.recorder
+}
+
+func (_m *MockContainerController) ContainerStatus(ctx context.Context) (*api.ContainerStatus, error) {
+	ret := _m.ctrl.Call(_m, "ContainerStatus", ctx)
+	ret0, _ := ret[0].(*api.ContainerStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockContainerControllerRecorder) ContainerStatus(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerStatus", arg0)
+}
+
 // Mock of Controller interface
 type MockController struct {
 	ctrl     *gomock.Controller
@@ -131,12 +163,12 @@ func (_m *MockReporter) EXPECT() *_MockReporterRecorder {
 	return _m.recorder
 }
 
-func (_m *MockReporter) Report(ctx context.Context, state api.TaskState, msg string) error {
-	ret := _m.ctrl.Call(_m, "Report", ctx, state, msg)
+func (_m *MockReporter) Report(ctx context.Context, state api.TaskState, msg string, cstatus *api.ContainerStatus) error {
+	ret := _m.ctrl.Call(_m, "Report", ctx, state, msg, cstatus)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockReporterRecorder) Report(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Report", arg0, arg1, arg2)
+func (_mr *_MockReporterRecorder) Report(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Report", arg0, arg1, arg2, arg3)
 }
