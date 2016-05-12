@@ -46,6 +46,10 @@ type Config struct {
 
 	// Top-level state directory
 	StateDir string
+
+	// ForceNewCluster defines if we have to force a new cluster
+	// because we are recovering from a backup data directory.
+	ForceNewCluster bool
 }
 
 // Manager is the cluster manager for Swarm.
@@ -108,11 +112,12 @@ func New(config *Config) (*Manager, error) {
 	raftCfg := raft.DefaultNodeConfig()
 
 	newNodeOpts := raft.NewNodeOptions{
-		Addr:           config.ListenAddr,
-		JoinAddr:       config.JoinRaft,
-		Config:         raftCfg,
-		StateDir:       raftStateDir,
-		TLSCredentials: config.SecurityConfig.ClientTLSCreds,
+		Addr:            config.ListenAddr,
+		JoinAddr:        config.JoinRaft,
+		Config:          raftCfg,
+		StateDir:        raftStateDir,
+		ForceNewCluster: config.ForceNewCluster,
+		TLSCredentials:  config.SecurityConfig.ClientTLSCreds,
 	}
 	raftNode, err := raft.NewNode(context.TODO(), newNodeOpts)
 	if err != nil {
