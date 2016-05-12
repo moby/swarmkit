@@ -479,7 +479,9 @@ func (*Platform) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []in
 
 // PluginDescription describes an engine plugin.
 type PluginDescription struct {
-	// Type of plugin (Volume, Network etc.)
+	// Type of plugin. Canonical values for existing types are
+	// Volume, Network, and Authorization. More types could be
+	// supported in the future.
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// Name of the plugin
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`

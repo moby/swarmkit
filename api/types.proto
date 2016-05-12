@@ -36,7 +36,9 @@ message Platform {
 
 // PluginDescription describes an engine plugin.
 message PluginDescription {
-	// Type of plugin (Volume, Network etc.)
+	// Type of plugin. Canonical values for existing types are
+	// Volume, Network, and Authorization. More types could be
+	// supported in the future.
 	string type = 1;
 
 	// Name of the plugin
