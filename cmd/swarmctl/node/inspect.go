@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"text/tabwriter"
 
 	"github.com/docker/swarm-v2/api"
@@ -42,8 +43,16 @@ func printNodeSummary(node *api.Node) {
 	fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(desc.Resources.MemoryBytes)))
 
 	fmt.Fprintln(w, "Plugins:\t")
+	var pluginTypes []string
+	pluginNamesByType := map[string][]string{}
 	for _, p := range desc.Engine.Plugins {
-		fmt.Fprintf(w, "  %s\t: %v\n", p.Type, p.Names)
+		pluginTypes = append(pluginTypes, p.Type)
+		pluginNamesByType[p.Type] = append(pluginNamesByType[p.Type], p.Name)
+	}
+
+	sort.Strings(pluginTypes) // ensure stable output
+	for _, pluginType := range pluginTypes {
+		fmt.Fprintf(w, "  %s\t: %v\n", pluginType, pluginNamesByType[pluginType])
 	}
 
 	common.FprintfIfNotEmpty(w, "Engine Version\t: %s\n", desc.Engine.EngineVersion)
