@@ -434,7 +434,7 @@ func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, er
 		}
 
 		if ipamConfigs == nil {
-			ipamConfigs = append(ipamConfigs, &api.IPAMConfig{})
+			ipamConfigs = append(ipamConfigs, &api.IPAMConfig{Family: api.IPAMConfig_IPV4})
 		}
 	}
 
