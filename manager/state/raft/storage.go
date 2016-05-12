@@ -139,27 +139,72 @@ func (n *Node) readWAL(ctx context.Context, snapshot *raftpb.Snapshot, forceNewC
 	n.Config.ID = raftNode.RaftID
 
 	if forceNewCluster {
-		// discard the previously uncommitted entries
+		// Create a snapshot representing a new cluster with only
+		// this member, and the data from the existing snapshot/WAL.
+
+		// Manually apply updates in the WAL to the MemoryStore.
 		for i, ent := range ents {
 			if ent.Index > st.Commit {
 				log.G(context.Background()).Infof("discarding %d uncommitted WAL entries ", len(ents)-i)
-				ents = ents[:i]
 				break
+			}
+			if ent.Type == raftpb.EntryNormal && (snapshot == nil || ent.Index > snapshot.Metadata.Index) {
+				if err := n.processEntry(ent); err != nil {
+					return err
+				}
 			}
 		}
 
-		// force append the configuration change entries
-		toAppEnts := createConfigChangeEnts(getIDs(snapshot, ents), uint64(n.Config.ID), st.Term, st.Commit)
-		ents = append(ents, toAppEnts...)
+		snapshotContents := api.Snapshot{
+			Version: api.Snapshot_V0,
+			Membership: api.ClusterSnapshot{
+				Members: []*api.Member{&raftNode},
+			},
+		}
 
-		// force commit newly appended entries
-		err := n.wal.Save(raftpb.HardState{}, toAppEnts)
+		var err error
+		n.memoryStore.View(func(tx store.ReadTx) {
+			var storeSnapshot *api.StoreSnapshot
+			storeSnapshot, err = n.memoryStore.Save(tx)
+			snapshotContents.Store = *storeSnapshot
+		})
 		if err != nil {
-			log.G(context.Background()).Fatalf("%v", err)
+			return err
 		}
-		if len(ents) != 0 {
-			st.Commit = ents[len(ents)-1].Index
+
+		d, err := snapshotContents.Marshal()
+		if err != nil {
+			return err
 		}
+
+		// Bump commit index so that this new cluster state is not
+		// confused with the old one.
+		st.Commit++
+
+		// Trick raftStore into creating a snapshot at an index that does not really exist.
+		n.raftStore.ApplySnapshot(raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: st.Commit - 1, Term: st.Term}})
+		n.raftStore.Append([]raftpb.Entry{{Index: st.Commit, Term: st.Term}})
+
+		snap, err := n.raftStore.CreateSnapshot(st.Commit, &raftpb.ConfState{Nodes: []uint64{raftNode.RaftID}}, d)
+		if err != nil {
+			return err
+		}
+		snapshot = &snap
+
+		if err := n.saveSnapshot(snap); err != nil {
+			return err
+		}
+
+		// Save the updated state in the WAL
+		if err = n.wal.Save(st, nil); err != nil {
+			return err
+		}
+
+		if err := n.registerNode(&raftNode); err != nil {
+			return err
+		}
+
+		ents = nil
 	}
 
 	if snapshot != nil {

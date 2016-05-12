@@ -1,7 +1,6 @@
 package raft
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -198,6 +197,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 		joinAddr:            opts.JoinAddr,
 		sendTimeout:         2 * time.Second,
 		leadershipBroadcast: events.NewBroadcaster(),
+		wait:                newWait(),
 	}
 	n.memoryStore = store.NewMemoryStore(n)
 
@@ -231,7 +231,6 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 	n.appliedIndex = snapshot.Metadata.Index
 	n.snapshotIndex = snapshot.Metadata.Index
 	n.reqIDGen = idutil.NewGenerator(uint16(n.Config.ID), time.Now())
-	n.wait = newWait()
 
 	if n.startNodePeers != nil {
 		if n.joinAddr != "" {
@@ -775,7 +774,7 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 			}
 		}
 
-		if queryMember == nil {
+		if queryMember == nil || id == n.Config.ID {
 			n.Config.Logger.Error("could not find cluster member to query for leader address")
 			return
 		}
@@ -1035,103 +1034,4 @@ func (n *Node) SubscribeLeadership() (q chan events.Event, cancel func()) {
 		ch.Close()
 		sink.Close()
 	}
-}
-
-// createConfigChangeEnts creates a series of Raft entries (i.e.
-// EntryConfChange) to remove the set of given IDs from the cluster. The ID
-// `self` is _not_ removed, even if present in the set.
-// If `self` is not inside the given ids, it creates a Raft entry to add a
-// default member with the given `self`.
-func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raftpb.Entry {
-	var ents []raftpb.Entry
-	next := index + 1
-	found := false
-	for _, id := range ids {
-		if id == self {
-			found = true
-			continue
-		}
-		cc := &raftpb.ConfChange{
-			Type:   raftpb.ConfChangeRemoveNode,
-			NodeID: id,
-		}
-		data, err := cc.Marshal()
-		if err != nil {
-			log.G(context.Background()).Panicf("marshal member should never fail: %v", err)
-		}
-		e := raftpb.Entry{
-			Type:  raftpb.EntryConfChange,
-			Data:  data,
-			Term:  term,
-			Index: next,
-		}
-		ents = append(ents, e)
-		next++
-	}
-	if !found {
-		m := &membership.Member{
-			Member: &api.Member{
-				RaftID: self,
-			},
-		}
-		ctx, err := json.Marshal(m)
-		if err != nil {
-			log.G(context.Background()).Panicf("marshal member should never fail: %v", err)
-		}
-		cc := &raftpb.ConfChange{
-			Type:    raftpb.ConfChangeAddNode,
-			NodeID:  self,
-			Context: ctx,
-		}
-		data, err := cc.Marshal()
-		if err != nil {
-			log.G(context.Background()).Panicf("marshal member should never fail: %v", err)
-		}
-		e := raftpb.Entry{
-			Type:  raftpb.EntryConfChange,
-			Data:  data,
-			Term:  term,
-			Index: next,
-		}
-		ents = append(ents, e)
-	}
-	return ents
-}
-
-// getIDs returns an ordered set of IDs included in the given snapshot and
-// the entries. The given snapshot/entries can contain two kinds of
-// ID-related entry:
-// - ConfChangeAddNode, in which case the contained ID will be added into the set.
-// - ConfChangeRemoveNode, in which case the contained ID will be removed from the set.
-func getIDs(snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
-	ids := make(map[uint64]bool)
-	if snap != nil {
-		for _, id := range snap.Metadata.ConfState.Nodes {
-			ids[id] = true
-		}
-	}
-	for _, e := range ents {
-		if e.Type != raftpb.EntryConfChange {
-			continue
-		}
-		var cc raftpb.ConfChange
-		if err := cc.Unmarshal(e.Data); err != nil {
-			log.G(context.Background()).Panicf("marshal member should never fail: %v", err)
-		}
-		switch cc.Type {
-		case raftpb.ConfChangeAddNode:
-			ids[cc.NodeID] = true
-		case raftpb.ConfChangeRemoveNode:
-			delete(ids, cc.NodeID)
-		case raftpb.ConfChangeUpdateNode:
-			// do nothing
-		default:
-			log.G(context.Background()).Panic("ConfChange Type should be either ConfChangeAddNode or ConfChangeRemoveNode!")
-		}
-	}
-	var sids []uint64
-	for id := range ids {
-		sids = append(sids, id)
-	}
-	return sids
 }
