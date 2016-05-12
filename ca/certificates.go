@@ -14,7 +14,7 @@ import (
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/initca"
 	cflog "github.com/cloudflare/cfssl/log"
-	"github.com/cloudflare/cfssl/signer"
+	cfsigner "github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
@@ -34,77 +34,100 @@ func init() {
 	cflog.Level = 5
 }
 
-// GetRootCA validates if the contents of certFile are a valid self-signed
+// CertPaths is a helper struct that keeps track of the paths of a
+// [CSR, Cert, Key] group
+type CertPaths struct {
+	CSR, Cert, Key string
+}
+
+// GetRootCA validates if the contents of the file are a valid self-signed
 // CA certificate, and returns the PEM-encoded Certificate if so
-func GetRootCA(certFile string) ([]byte, error) {
+func GetRootCA(paths CertPaths) (Signer, error) {
 	// Check if we have a Certificate file
-	caPem, err := ioutil.ReadFile(certFile)
+	rootCACert, err := ioutil.ReadFile(paths.Cert)
 	if err != nil {
-		return nil, err
+		return Signer{}, err
 	}
 
 	// Check to see if the Certificate file is a valid, self-signed Cert
-	_, err = helpers.ParseSelfSignedCertificatePEM(caPem)
+	_, err = helpers.ParseSelfSignedCertificatePEM(rootCACert)
 	if err != nil {
-		return nil, err
+		return Signer{}, err
 	}
 
-	// TODO(diogo): check expiration
+	// Create a Pool with our RootCACertificate
+	rootCAPool := x509.NewCertPool()
+	if !rootCAPool.AppendCertsFromPEM(rootCACert) {
+		return Signer{}, fmt.Errorf("error while adding root CA cert to Cert Pool")
+	}
 
-	return caPem, nil
+	// If there is a root CA keypair, we're going to try getting a crypto signer from it
+	cryptoSigner, err := local.NewSignerFromFile(paths.Cert, paths.Key, DefaultPolicy())
+	if err == nil {
+		log.Debugf("successfully loaded the signer for the Root CA: %s", paths.Cert)
+	}
+
+	return Signer{CryptoSigner: cryptoSigner, RootCACert: rootCACert, RootCAPool: rootCAPool}, nil
 }
 
 // CreateRootCA creates a Certificate authority for a new Swarm Cluster, potentially
 // overwriting any existing CAs.
-func CreateRootCA(pathToCert, pathToKey, rootCN string) (signer.Signer, []byte, error) {
+func CreateRootCA(rootCN string, paths CertPaths) (Signer, error) {
 	// Create a simple CSR for the CA using the default CA validator and policy
-	log.Debugf("generating a new CA in: %s with CN=%s, using a %dbit %s key.", pathToCert, rootCN, RootKeySize, RootKeyAlgo)
+	log.Debugf("generating a new CA in: %s with CN=%s, using a %dbit %s key.", paths.Cert, rootCN, RootKeySize, RootKeyAlgo)
 	req := cfcsr.CertificateRequest{
 		CN:         rootCN,
 		KeyRequest: cfcsr.NewBasicKeyRequest(),
+		// CA:         &cfcsr.CAConfig{Expiry: "10y"},
 	}
 
 	// Generate the CA and get the certificate and private key
-	cert, _, key, err := initca.New(&req)
+	rootCACert, _, key, err := initca.New(&req)
 	if err != nil {
-		return nil, nil, err
+		return Signer{}, err
 	}
 
 	// Convert the key given by initca to an object to create a signer
 	parsedKey, err := helpers.ParsePrivateKeyPEM(key)
 	if err != nil {
 		log.Errorf("failed to parse private key: %v", err)
-		return nil, nil, err
+		return Signer{}, err
 	}
 
 	// Convert the certificate into an object to create a signer
-	parsedCert, err := helpers.ParseCertificatePEM(cert)
+	parsedCert, err := helpers.ParseCertificatePEM(rootCACert)
 	if err != nil {
-		return nil, nil, err
+		return Signer{}, err
 	}
 
 	// Create a Signer out of the private key
-	signer, err := local.NewSigner(parsedKey, parsedCert, signer.DefaultSigAlgo(parsedKey), DefaultPolicy())
+	signer, err := local.NewSigner(parsedKey, parsedCert, cfsigner.DefaultSigAlgo(parsedKey), DefaultPolicy())
 	if err != nil {
 		log.Errorf("failed to create signer: %v", err)
-		return nil, nil, err
+		return Signer{}, err
 	}
 
 	// Write the Private Key and Certificate to disk, using decent permissions
-	if err := ioutil.WriteFile(pathToCert, cert, 0644); err != nil {
-		return nil, nil, err
+	if err := ioutil.WriteFile(paths.Cert, rootCACert, 0644); err != nil {
+		return Signer{}, err
 	}
-	if err := ioutil.WriteFile(pathToKey, key, 0600); err != nil {
-		return nil, nil, err
+	if err := ioutil.WriteFile(paths.Key, key, 0600); err != nil {
+		return Signer{}, err
 	}
 
-	return signer, cert, nil
+	// Create a Pool with our RootCACertificate
+	rootCAPool := x509.NewCertPool()
+	if !rootCAPool.AppendCertsFromPEM(rootCACert) {
+		return Signer{}, fmt.Errorf("failed to append certificate to cert pool")
+	}
+
+	return Signer{CryptoSigner: signer, RootCACert: rootCACert, RootCAPool: rootCAPool}, nil
 }
 
 // GenerateAndSignNewTLSCert creates a new keypair, signs the certificate using signer,
 // and saves the certificate and key to disk. This method is used to bootstrap the first
 // manager TLS certificates.
-func GenerateAndSignNewTLSCert(caSigner signer.Signer, rootCACert []byte, pathToCert, pathToKey, cn, ou string) (*tls.Certificate, error) {
+func GenerateAndSignNewTLSCert(signer Signer, cn, ou string, paths CertPaths) (*tls.Certificate, error) {
 	// Generate and new keypair and CSR
 	csr, key, err := generateNewCSR()
 	if err != nil {
@@ -112,20 +135,20 @@ func GenerateAndSignNewTLSCert(caSigner signer.Signer, rootCACert []byte, pathTo
 	}
 
 	// Obtain a signed Certificate
-	cert, err := ParseValidateAndSignCSR(caSigner, csr, cn, ou)
+	cert, err := ParseValidateAndSignCSR(signer, csr, cn, ou)
 	if err != nil {
 		log.Debugf("failed to sign node certificate: %v", err)
 		return nil, err
 	}
 
 	// Append the root CA Key to the certificate, to create a valid chain
-	certChain := append(cert, rootCACert...)
+	certChain := append(cert, signer.RootCACert...)
 
 	// Write both the chain and key to disk
-	if err := ioutil.WriteFile(pathToCert, certChain, 0644); err != nil {
+	if err := ioutil.WriteFile(paths.Cert, certChain, 0644); err != nil {
 		return nil, err
 	}
-	if err := ioutil.WriteFile(pathToKey, key, 0600); err != nil {
+	if err := ioutil.WriteFile(paths.Key, key, 0600); err != nil {
 		return nil, err
 	}
 
@@ -140,7 +163,7 @@ func GenerateAndSignNewTLSCert(caSigner signer.Signer, rootCACert []byte, pathTo
 
 // GenerateAndWriteNewCSR generates a new pub/priv key pair, writes it to disk
 // and returns the CSR and the private key material
-func GenerateAndWriteNewCSR(pathToCSR, pathToKey string) (csr, key []byte, err error) {
+func GenerateAndWriteNewCSR(paths CertPaths) (csr, key []byte, err error) {
 	// Generate a new key pair
 	csr, key, err = generateNewCSR()
 	if err != nil {
@@ -148,10 +171,10 @@ func GenerateAndWriteNewCSR(pathToCSR, pathToKey string) (csr, key []byte, err e
 	}
 
 	// Write CSR and key to disk
-	if err = ioutil.WriteFile(pathToCSR, csr, 0644); err != nil {
+	if err = ioutil.WriteFile(paths.CSR, csr, 0644); err != nil {
 		return
 	}
-	if err = ioutil.WriteFile(pathToKey, key, 0600); err != nil {
+	if err = ioutil.WriteFile(paths.Key, key, 0600); err != nil {
 		return
 	}
 
@@ -173,18 +196,18 @@ func generateNewCSR() (csr, key []byte, err error) {
 }
 
 // ParseValidateAndSignCSR returns a signed certificate from a particular signer and a CSR.
-func ParseValidateAndSignCSR(caSigner signer.Signer, csrBytes []byte, cn, role string) ([]byte, error) {
+func ParseValidateAndSignCSR(signer Signer, csrBytes []byte, cn, role string) ([]byte, error) {
 	// All managers get added the subject-alt-name of CA, so they can be used for cert issuance
 	hosts := []string{role}
 	if role == ManagerRole {
 		hosts = append(hosts, CARole)
 	}
 
-	cert, err := caSigner.Sign(signer.SignRequest{
+	cert, err := signer.CryptoSigner.Sign(cfsigner.SignRequest{
 		Request: string(csrBytes),
 		// OU is used for Authentication of the node type. The CN has the random
 		// node ID.
-		Subject: &signer.Subject{CN: cn, Names: []cfcsr.Name{{OU: role}}},
+		Subject: &cfsigner.Subject{CN: cn, Names: []cfcsr.Name{{OU: role}}},
 		// Adding role as DNS alt name, so clients can connect to "manager" and "ca"
 		Hosts: hosts,
 	})
@@ -196,9 +219,8 @@ func ParseValidateAndSignCSR(caSigner signer.Signer, csrBytes []byte, cn, role s
 	return cert, nil
 }
 
-// GetRemoteCA returns the remote endpoint's CA certificate, assuming the server
-// is server the whole chain.
-func GetRemoteCA(ctx context.Context, managerAddr, hashStr string) ([]byte, error) {
+// GetRemoteCA returns the remote endpoint's CA certificate
+func GetRemoteCA(ctx context.Context, managerAddr, hashStr string) (Signer, error) {
 	// This TLS Config is intentionally using InsecureSkipVerify. Either we're
 	// doing TOFU, in which case we don't validate the remote CA, or we're using
 	// a user supplied hash to check the integrity of the CA certificate.
@@ -207,14 +229,14 @@ func GetRemoteCA(ctx context.Context, managerAddr, hashStr string) ([]byte, erro
 
 	conn, err := grpc.Dial(managerAddr, opts...)
 	if err != nil {
-		return nil, err
+		return Signer{}, err
 	}
 	defer conn.Close()
 
 	client := api.NewCAClient(conn)
 	response, err := client.GetRootCACertificate(ctx, &api.GetRootCACertificateRequest{})
 	if err != nil {
-		return nil, err
+		return Signer{}, err
 	}
 
 	if hashStr != "" {
@@ -223,14 +245,47 @@ func GetRemoteCA(ctx context.Context, managerAddr, hashStr string) ([]byte, erro
 		md := shaHash.Sum(nil)
 		mdStr := hex.EncodeToString(md)
 		if hashStr != mdStr {
-			return nil, fmt.Errorf("remote CA does not match fingerprint. Expected: %s, got %s", hashStr, mdStr)
+			return Signer{}, fmt.Errorf("remote CA does not match fingerprint. Expected: %s, got %s", hashStr, mdStr)
 		}
 	}
 
-	return response.Certificate, nil
+	// Create a Pool with our RootCACertificate
+	rootCACertPool := x509.NewCertPool()
+	if !rootCACertPool.AppendCertsFromPEM(response.Certificate) {
+		return Signer{}, fmt.Errorf("failed to append certificate to cert pool")
+	}
+
+	return Signer{RootCACert: response.Certificate, RootCAPool: rootCACertPool}, nil
 }
 
-func getSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.CertPool, role, caAddr string) ([]byte, error) {
+func issueAndSaveNewCertificates(ctx context.Context, paths CertPaths, role, remoteAddr string, rootCAPool *x509.CertPool) (*tls.Certificate, error) {
+	// Create a new key/pair and CSR for the new manager
+	csr, key, err := GenerateAndWriteNewCSR(paths)
+	if err != nil {
+		log.Debugf("error when generating new node certs: %v", err)
+		return nil, err
+	}
+
+	// Get the remote manager to issue a CA signed certificate for this node
+	signedCert, err := getSignedCertificate(ctx, csr, role, remoteAddr, rootCAPool)
+	if err != nil {
+		return nil, err
+	}
+
+	// Write the chain to disk
+	if err := ioutil.WriteFile(paths.Cert, signedCert, 0644); err != nil {
+		return nil, err
+	}
+
+	// Create a valid TLSKeyPair out of the PEM encoded private key and certificate
+	tlsKeyPair, err := tls.X509KeyPair(signedCert, key)
+	if err != nil {
+		return nil, err
+	}
+	return &tlsKeyPair, nil
+}
+
+func getSignedCertificate(ctx context.Context, csr []byte, role, caAddr string, rootCAPool *x509.CertPool) ([]byte, error) {
 	if rootCAPool == nil {
 		return nil, fmt.Errorf("valid root CA pool required")
 	}

@@ -48,17 +48,17 @@ func startCA() (*grpcCA, error) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, rootCACert, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "swarm-test-CA")
+	signer, err := CreateRootCA("swarm-test-CA", paths.RootCA)
 	if err != nil {
 		return nil, err
 	}
 
-	managerSecurityConfig, err := genManagerSecurityConfig(signer, rootCACert, tempBaseDir)
+	managerSecurityConfig, err := genManagerSecurityConfig(signer, tempBaseDir)
 	if err != nil {
 		return nil, err
 	}
 
-	agentSecurityConfig, err := genAgentSecurityConfig(signer, rootCACert, tempBaseDir)
+	agentSecurityConfig, err := genAgentSecurityConfig(signer, tempBaseDir)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func TestIssueCertificate(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	csr, _, err := GenerateAndWriteNewCSR(paths.ManagerCSR, paths.ManagerKey)
+	csr, _, err := GenerateAndWriteNewCSR(paths.Manager)
 	assert.NoError(t, err)
 	assert.NotNil(t, csr)
 
@@ -156,7 +156,7 @@ func TestCertificateStatus(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	csr, _, err := GenerateAndWriteNewCSR(paths.ManagerCSR, paths.ManagerKey)
+	csr, _, err := GenerateAndWriteNewCSR(paths.Manager)
 	assert.NoError(t, err)
 	assert.NotNil(t, csr)
 
