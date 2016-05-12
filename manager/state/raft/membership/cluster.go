@@ -18,8 +18,8 @@ var (
 	ErrIDRemoved = errors.New("membership: node was removed during cluster lifetime")
 	// ErrIDNotFound is thrown when we try an operation on a member that does not exist in the cluster list
 	ErrIDNotFound = errors.New("membership: member not found in cluster list")
-	// ErrConfChangeInvalid is thrown when a configuration change we received looks invalid in form
-	ErrConfChangeInvalid = errors.New("membership: ConfChange type should be either AddNode, RemoveNode or UpdateNode")
+	// ErrConfigChangeInvalid is thrown when a configuration change we received looks invalid in form
+	ErrConfigChangeInvalid = errors.New("membership: ConfChange type should be either AddNode, RemoveNode or UpdateNode")
 	// ErrCannotUnmarshalConfig is thrown when a node cannot unmarshal a configuration change
 	ErrCannotUnmarshalConfig = errors.New("membership: cannot unmarshal configuration change")
 )
@@ -37,17 +37,12 @@ type Cluster struct {
 	removed map[uint64]bool
 }
 
-// Raft represents a connection to a raft Member
-type Raft struct {
-	api.RaftClient
-	Conn *grpc.ClientConn
-}
-
 // Member represents a raft Cluster Member
 type Member struct {
 	*api.Member
 
-	Client *Raft
+	api.RaftClient
+	Conn *grpc.ClientConn
 }
 
 // NewCluster creates a new Cluster neighbors
@@ -112,11 +107,9 @@ func (c *Cluster) RemoveMember(id uint64) error {
 		return ErrIDNotFound
 	}
 
-	if c.members[id].Client != nil {
-		conn := c.members[id].Client.Conn
-		if conn != nil {
-			_ = conn.Close()
-		}
+	conn := c.members[id].Conn
+	if conn != nil {
+		_ = conn.Close()
 	}
 
 	c.removed[id] = true
@@ -142,6 +135,9 @@ func (c *Cluster) Clear() {
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is valid.
 func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if c.removed[cc.NodeID] {
 		return ErrIDRemoved
 	}
@@ -159,7 +155,7 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 			return ErrIDNotFound
 		}
 	default:
-		return ErrConfChangeInvalid
+		return ErrConfigChangeInvalid
 	}
 	m := &api.Member{}
 	if err := proto.Unmarshal(cc.Context, m); err != nil {
@@ -190,7 +186,7 @@ func (c *Cluster) CanRemoveMember(from uint64, id uint64) bool {
 			continue
 		}
 
-		connState, err := m.Client.Conn.State()
+		connState, err := m.Conn.State()
 		if err == nil && connState == grpc.Ready {
 			nreachable++
 		}
