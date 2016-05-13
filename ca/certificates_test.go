@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
@@ -36,6 +37,23 @@ func TestCreateAndWriteRootCA(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
+}
+
+func TestCreateAndWriteRootCAExpiry(t *testing.T) {
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
+
+	paths := NewConfigPaths(tempBaseDir)
+
+	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
+	assert.NoError(t, err)
+
+	// Convert the certificate into an object to create a RootCA
+	parsedCert, err := helpers.ParseCertificatePEM(rootCA.Cert)
+	assert.NoError(t, err)
+	assert.True(t, time.Now().Add(time.Hour*24*364*20).Before(parsedCert.NotAfter))
+
 }
 
 func TestGetLocalRootCA(t *testing.T) {

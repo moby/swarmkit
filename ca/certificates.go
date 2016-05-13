@@ -80,6 +80,8 @@ func (rca *RootCA) NewServerTLSCredentials(cert *tls.Certificate) (credentials.T
 	return credentials.NewTLS(tlsConfig), nil
 }
 
+// IssueAndSaveNewCertificates gets new certificates issued, either by signing them locally if a signer is
+// available, or by requesting them from the remote server at remoteAddr.
 func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPaths, role, remoteAddr string) (*tls.Certificate, error) {
 	// Create a new key/pair and CSR for the new manager
 	csr, key, err := GenerateAndWriteNewCSR(paths)
@@ -229,8 +231,8 @@ func CreateAndWriteRootCA(rootCN string, paths CertPaths) (RootCA, error) {
 	req := cfcsr.CertificateRequest{
 		CN:         rootCN,
 		KeyRequest: cfcsr.NewBasicKeyRequest(),
-		// TODO(diogo): Add a reasonable expiration for the CA
-		// CA:         &cfcsr.CAConfig{Expiry: "10y"},
+		// Expiration for the root is 20 years
+		CA: &cfcsr.CAConfig{Expiry: "630720000s"},
 	}
 
 	// Generate the CA and get the certificate and private key
