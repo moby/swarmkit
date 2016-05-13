@@ -46,7 +46,10 @@ func printNodeSummary(node *api.Node) {
 	var pluginTypes []string
 	pluginNamesByType := map[string][]string{}
 	for _, p := range desc.Engine.Plugins {
-		pluginTypes = append(pluginTypes, p.Type)
+		// append to pluginTypes only if not done previously
+		if _, ok := pluginNamesByType[p.Type]; !ok {
+			pluginTypes = append(pluginTypes, p.Type)
+		}
 		pluginNamesByType[p.Type] = append(pluginNamesByType[p.Type], p.Name)
 	}
 
