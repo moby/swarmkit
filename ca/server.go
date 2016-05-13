@@ -48,19 +48,60 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 	}
 
 	var rCertificate *api.RegisteredCertificate
+
+	// We create a watcher before checking the cert so we can be sure we don't miss any events
+	event := state.EventUpdateRegisteredCertificate{
+		RegisteredCertificate: &api.RegisteredCertificate{ID: request.Token},
+		Checks:                []state.RegisteredCertificateCheckFunc{state.RegisteredCertificateCheckID},
+	}
+
+	updates, cancel := state.Watch(s.store.WatchQueue(), event)
+	defer cancel()
+
+	// Retrieve the current value of the certificate with this token
 	s.store.View(func(tx store.ReadTx) {
 		rCertificate = store.GetRegisteredCertificate(tx, request.Token)
 	})
+	// This token doesn't exist
 	if rCertificate == nil {
 		return nil, grpc.Errorf(codes.NotFound, codes.NotFound.String())
 	}
 
-	log.G(ctx).Debugf("(*Server).CertificateStatus: checking status for Token=%s, Status: %s", request.Token, rCertificate.Status)
+	log.G(ctx).Debugf("(*Server).CertificateStatus: token %s is in state: %s", request.Token, rCertificate.Status)
+
+	// If this certificate has a final state, return it immediately
+	if rCertificate.Status.State != api.IssuanceStatePending {
+		return &api.CertificateStatusResponse{
+			Status:                &rCertificate.Status,
+			RegisteredCertificate: rCertificate,
+		}, nil
+	}
+
+	log.G(ctx).Debugf("(*Server).CertificateStatus: watching for updates on token=%s.", request.Token)
+
+	// Certificate is Pending or in an Unknown state, let's wait for changes.
+L:
+	for {
+		select {
+		case event := <-updates:
+			switch v := event.(type) {
+			case state.EventUpdateRegisteredCertificate:
+				// We got an update on the certificate record. If the status is no
+				// longer pending, return.
+				if v.RegisteredCertificate.Status.State != api.IssuanceStatePending {
+					rCertificate = v.RegisteredCertificate
+					break L
+				}
+			}
+		case <-ctx.Done():
+			break L
+		}
+	}
+
 	return &api.CertificateStatusResponse{
 		Status:                &rCertificate.Status,
 		RegisteredCertificate: rCertificate,
 	}, nil
-
 }
 
 // IssueCertificate receives requests from a remote client indicating a node type and a CSR,
