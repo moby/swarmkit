@@ -1,6 +1,8 @@
 package store
 
 import (
+	"strconv"
+
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
 	memdb "github.com/hashicorp/go-memdb"
@@ -23,6 +25,11 @@ func init() {
 					Name:         indexCN,
 					AllowMissing: true,
 					Indexer:      registeredCertificateIndexerByCN{},
+				},
+				indexIssuanceState: {
+					Name:         indexIssuanceState,
+					AllowMissing: true,
+					Indexer:      registeredCertificateIndexerByIssuanceState{},
 				},
 			},
 		},
@@ -152,7 +159,7 @@ func GetRegisteredCertificate(tx ReadTx, id string) *api.RegisteredCertificate {
 // FindRegisteredCertificates selects a set of RegisteredCertificates and returns them.
 func FindRegisteredCertificates(tx ReadTx, by By) ([]*api.RegisteredCertificate, error) {
 	switch by.(type) {
-	case byAll, byCN:
+	case byAll, byCN, byIssuanceState:
 	default:
 		return nil, ErrInvalidFindBy
 	}
@@ -202,4 +209,23 @@ func (ni registeredCertificateIndexerByCN) FromObject(obj interface{}) (bool, []
 	}
 	// Add the null character as a terminator
 	return true, []byte(n.CN + "\x00"), nil
+}
+
+type registeredCertificateIndexerByIssuanceState struct{}
+
+func (ni registeredCertificateIndexerByIssuanceState) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (ni registeredCertificateIndexerByIssuanceState) FromObject(obj interface{}) (bool, []byte, error) {
+	n, ok := obj.(registeredCertificateEntry)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	if n.CN == "" {
+		return false, nil, nil
+	}
+	// Add the null character as a terminator
+	return true, []byte(strconv.FormatInt(int64(n.Status.State), 10) + "\x00"), nil
 }

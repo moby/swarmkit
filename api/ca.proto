@@ -12,9 +12,7 @@ service CA {
 	rpc IssueCertificate(IssueCertificateRequest) returns (IssueCertificateResponse) {}
 	rpc CertificateStatus(CertificateStatusRequest) returns (CertificateStatusResponse) {}
 	rpc GetRootCACertificate(GetRootCACertificateRequest) returns (GetRootCACertificateResponse) {}
-
 }
-
 
 message CertificateStatusRequest {
 	string token = 1;

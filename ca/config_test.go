@@ -48,7 +48,7 @@ func TestLoadOrCreateManagerSecurityConfigNoCARemoteManager(t *testing.T) {
 	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(opts...)
 	store := store.NewMemoryStore(nil)
-	caserver := NewServer(store, managerConfig)
+	caserver := NewServer(store, managerConfig, api.AcceptancePolicy{Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true}})
 	api.RegisterCAServer(grpcServer, caserver)
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.NoError(t, err)
@@ -97,7 +97,7 @@ func TestLoadOrCreateManagerSecurityConfigNoCerts(t *testing.T) {
 	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(opts...)
 	store := store.NewMemoryStore(nil)
-	caserver := NewServer(store, managerConfig)
+	caserver := NewServer(store, managerConfig, api.AcceptancePolicy{Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true}})
 	api.RegisterCAServer(grpcServer, caserver)
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.NoError(t, err)
@@ -146,7 +146,7 @@ func TestLoadOrCreateManagerSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(opts...)
 	store := store.NewMemoryStore(nil)
-	caserver := NewServer(store, managerConfig)
+	caserver := NewServer(store, managerConfig, api.AcceptancePolicy{Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true}})
 	api.RegisterCAServer(grpcServer, caserver)
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.NoError(t, err)
@@ -190,7 +190,7 @@ func TestLoadOrCreateAgentSecurityConfigNoCARemoteManager(t *testing.T) {
 	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(opts...)
 	store := store.NewMemoryStore(nil)
-	caserver := NewServer(store, managerConfig)
+	caserver := NewServer(store, managerConfig, api.AcceptancePolicy{Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true}})
 	api.RegisterCAServer(grpcServer, caserver)
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.NoError(t, err)
@@ -235,7 +235,7 @@ func TestLoadOrCreateAgentSecurityConfigNoCANoRemoteManager(t *testing.T) {
 	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(opts...)
 	store := store.NewMemoryStore(nil)
-	caserver := NewServer(store, managerConfig)
+	caserver := NewServer(store, managerConfig, api.AcceptancePolicy{Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true}})
 	api.RegisterCAServer(grpcServer, caserver)
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.NoError(t, err)
