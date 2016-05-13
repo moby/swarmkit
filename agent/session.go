@@ -48,6 +48,42 @@ func newSession(ctx context.Context, agent *Agent, delay time.Duration) *session
 	return s
 }
 
+func (s *session) initTasksReport(ctx context.Context) error {
+	const batchSize = 1024
+	select {
+	case <-s.closed:
+		return errSessionClosed
+	default:
+	}
+	client := api.NewDispatcherClient(s.agent.conn)
+	updates := make([]*api.UpdateTaskStatusRequest_TaskStatusUpdate, 0, batchSize)
+	for _, task := range s.agent.tasks {
+		updates = append(updates, &api.UpdateTaskStatusRequest_TaskStatusUpdate{
+			TaskID: task.ID,
+			Status: &task.Status,
+		})
+		if len(updates) != cap(updates) {
+			continue
+		}
+		if _, err := client.UpdateTaskStatus(ctx, &api.UpdateTaskStatusRequest{
+			SessionID: s.sessionID,
+			Updates:   updates,
+		}); err != nil {
+			log.G(ctx).WithError(err).Errorf("failed to send initial task report batch size of %d", len(updates))
+		}
+		updates = updates[:0]
+	}
+	if len(updates) != 0 {
+		if _, err := client.UpdateTaskStatus(ctx, &api.UpdateTaskStatusRequest{
+			SessionID: s.sessionID,
+			Updates:   updates,
+		}); err != nil {
+			log.G(ctx).WithError(err).Errorf("failed to send initial task report batch size of %d", len(updates))
+		}
+	}
+	return nil
+}
+
 func (s *session) run(ctx context.Context, delay time.Duration) {
 	time.Sleep(delay) // delay before registering.
 
@@ -63,11 +99,16 @@ func (s *session) run(ctx context.Context, delay time.Duration) {
 
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("session.id", sessionID))
 	s.sessionID = sessionID
-	close(s.registered)
 
 	go runctx(ctx, s.heartbeat, s.closed, s.errs)
 	go runctx(ctx, s.watch, s.closed, s.errs)
 	go runctx(ctx, s.listen, s.closed, s.errs)
+
+	if err := s.initTasksReport(ctx); err != nil {
+		log.G(ctx).WithError(err).Errorf("init task report")
+	}
+
+	close(s.registered)
 }
 
 func (s *session) register(ctx context.Context) (string, error) {
