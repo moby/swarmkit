@@ -28,8 +28,6 @@ const (
 	defaultTaskHistory = 10
 )
 
-var _ api.ManagerServer = &Manager{}
-
 // Config is used to tune the Manager.
 type Config struct {
 	SecurityConfig *ca.ManagerSecurityConfig
@@ -265,7 +263,6 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	api.RegisterCAServer(m.server, m.caserver)
 	api.RegisterRaftServer(m.server, m.raftNode)
-	api.RegisterManagerServer(m.server, m)
 	api.RegisterControlServer(m.server, proxyAPI)
 	api.RegisterDispatcherServer(m.server, proxyDispatcher)
 
@@ -317,21 +314,4 @@ func (m *Manager) Stop() {
 	m.raftNode.Shutdown()
 	m.server.Stop()
 	m.stopped = true
-}
-
-// GRPC Methods
-
-// NodeCount returns number of nodes connected to particular manager.
-// Supposed to be called only by cluster leader.
-func (m *Manager) NodeCount(ctx context.Context, r *api.NodeCountRequest) (*api.NodeCountResponse, error) {
-	managerID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
-	if err != nil {
-		return nil, err
-	}
-
-	log.G(ctx).WithField("request", r).Debugf("(*Manager).NodeCount from node %s", managerID)
-
-	return &api.NodeCountResponse{
-		Count: m.dispatcher.NodeCount(),
-	}, nil
 }
