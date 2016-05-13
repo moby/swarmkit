@@ -29,13 +29,13 @@ const (
 )
 
 const (
-	rootCN = "cluster-ca"
+	rootCN = "swarm-ca"
 	// ManagerRole represents the Manager node type, and is used for authorization to endpoints
-	ManagerRole = "cluster-manager"
+	ManagerRole = "swarm-manager"
 	// AgentRole represents the Agent node type, and is used for authorization to endpoints
-	AgentRole = "cluster-worker"
+	AgentRole = "swarm-worker"
 	// CARole represents the CA node type, and is used for clients attempting to get new certificates issued
-	CARole = "cluster-ca"
+	CARole = "swarm-ca"
 )
 
 // AgentSecurityConfig is used to configure the security params of the agents

@@ -218,7 +218,7 @@ func (s *Server) evaluateAndSignCert(ctx context.Context, rCertificate *api.Regi
 	// FIXME(aaronl): Right now, this automatically signs any pending certificate. We need to
 	// add more flexible logic on acceptance modes.
 
-	if rCertificate.Role == AgentRole && rCertificate.Status.State != api.IssuanceStatePending {
+	if rCertificate.Status.State != api.IssuanceStatePending {
 		return
 	}
 
