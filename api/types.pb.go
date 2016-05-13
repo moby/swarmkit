@@ -11,7 +11,6 @@
 		objects.proto
 		control.proto
 		dispatcher.proto
-		manager.proto
 		ca.proto
 		snapshot.proto
 		raft.proto
@@ -116,8 +115,6 @@
 		UpdateTaskStatusResponse
 		TasksRequest
 		TasksMessage
-		NodeCountRequest
-		NodeCountResponse
 		CertificateStatusRequest
 		CertificateStatusResponse
 		IssueCertificateRequest
