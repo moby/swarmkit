@@ -84,6 +84,32 @@ func Run(ctx context.Context, ctlr Controller, reporter Reporter) error {
 	return runStart(ctx, ctlr, reporter, "starting")
 }
 
+// Shutdown the task using the controller and report on the status.
+func Shutdown(ctx context.Context, ctlr Controller, reporter Reporter) error {
+	if err := ctlr.Shutdown(ctx); err != nil {
+		return err
+	}
+
+	return report(ctx, reporter, api.TaskStateShutdown, "shutdown requested")
+}
+
+// Remove the task for the controller and report on the status.
+func Remove(ctx context.Context, ctlr Controller, reporter Reporter) error {
+	if err := report(ctx, reporter, api.TaskStateFinalize, "removing"); err != nil {
+		return err
+	}
+
+	if err := ctlr.Remove(ctx); err != nil {
+		log.G(ctx).WithError(err).Error("remove failed")
+		if err := report(ctx, reporter, api.TaskStateFinalize, "remove failed"); err != nil {
+			log.G(ctx).WithError(err).Error("report remove error failed")
+			return err
+		}
+	}
+
+	return report(ctx, reporter, api.TaskStateDead, "finalized")
+}
+
 // runStart reports that the task is starting, calls Start and hands execution
 // off to `runWait`. It will block until task execution is completed or an
 // error is encountered.
@@ -102,6 +128,7 @@ func runStart(ctx context.Context, ctlr Controller, reporter Reporter, msg strin
 			return err
 		}
 	}
+
 	return runWait(ctx, ctlr, reporter, msg)
 }
 
@@ -129,7 +156,10 @@ func report(ctx context.Context, reporter Reporter, state api.TaskState, msg str
 	default:
 	}
 
-	log.G(ctx).WithFields(logrus.Fields{
-		"state": state, "msg": msg}).Debug("Report")
+	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(
+		logrus.Fields{
+			"state":      state,
+			"status.msg": msg}))
+	log.G(ctx).Debug("report status")
 	return reporter.Report(ctx, state, msg)
 }
