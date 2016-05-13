@@ -68,11 +68,12 @@ var (
 				}()
 
 				// TODO(abronan): include member name and raft cluster it belongs to
-				common.PrintHeader(w, "ID", "CN", "Status")
+				common.PrintHeader(w, "ID", "CN", "Role", "Status")
 				output = func(c *api.RegisteredCertificate) {
-					fmt.Fprintf(w, "%s\t%s\t%s\n",
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 						c.ID,
 						c.CN,
+						c.Role,
 						c.Status.State,
 					)
 				}
