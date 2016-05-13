@@ -91,3 +91,13 @@ func (b byInstance) isBy() {
 func ByInstance(serviceID string, instance uint64) By {
 	return byInstance{serviceID: serviceID, instance: instance}
 }
+
+type byIssuanceState api.IssuanceState
+
+func (b byIssuanceState) isBy() {
+}
+
+// ByIssuanceState creates an object to pass to Find to select by instance number.
+func ByIssuanceState(state api.IssuanceState) By {
+	return byIssuanceState(state)
+}

@@ -35,6 +35,10 @@ service Control {
 
 	rpc ListManagers(ListManagersRequest) returns (ListManagersResponse) {};
 	rpc RemoveManager(RemoveManagerRequest) returns (RemoveManagerResponse) {};
+
+	rpc GetRegisteredCertificate(GetRegisteredCertificateRequest) returns (GetRegisteredCertificateResponse) {}
+	rpc ListRegisteredCertificates(ListRegisteredCertificatesRequest) returns (ListRegisteredCertificatesResponse) {}
+	rpc UpdateRegisteredCertificate(UpdateRegisteredCertificateRequest) returns (UpdateRegisteredCertificateResponse) {}
 }
 
 message ListOptions {
@@ -207,3 +211,36 @@ message RemoveManagerRequest {
 }
 
 message RemoveManagerResponse {}
+
+message GetRegisteredCertificateRequest {
+	string registered_certificate_id = 1 [(gogoproto.customname) = "RegisteredCertificateID"];
+}
+
+message GetRegisteredCertificateResponse {
+	RegisteredCertificate registered_certificate = 1;
+}
+
+message ListRegisteredCertificatesRequest {
+	// If State is specified, only certificates in the specified states
+	// are returned. Otherwise, all certificates are returned.
+	repeated IssuanceState state = 1;
+}
+
+message ListRegisteredCertificatesResponse {
+	repeated RegisteredCertificate certificates = 1;
+}
+
+message UpdateRegisteredCertificateRequest {
+	// CertificateID is the certificate ID to update.
+	string registered_certificate_id = 1 [(gogoproto.customname) = "RegisteredCertificateID"];
+
+	// Version is the version of the registered certificate being updated.
+	Version registered_certificate_version = 2;
+
+	// Spec is the new spec to apply to the registered certificate.
+	RegisteredCertificateSpec spec = 3;
+}
+
+message UpdateRegisteredCertificateResponse {
+	RegisteredCertificate registered_certificate = 1;
+}

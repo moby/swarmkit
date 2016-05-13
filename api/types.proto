@@ -388,3 +388,12 @@ message IssuanceStatus {
 	string err = 2;
 }
 
+message AcceptancePolicy {
+	// FIXME(aaronl): This is not what the actual acceptance policy
+	// will look like. This simplistic version is for getting things
+	// working before we add the actual acceptance policies later on.
+
+	// Autoaccept controls which roles' certificates are automatically
+	// issued without administrator intervention.
+	map<string, bool> autoaccept = 1;
+}

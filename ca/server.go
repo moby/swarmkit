@@ -16,19 +16,28 @@ import (
 
 // Server is the CA API gRPC server.
 type Server struct {
-	mu             sync.Mutex
-	wg             sync.WaitGroup
-	ctx            context.Context
-	cancel         func()
-	store          *store.MemoryStore
-	securityConfig *ManagerSecurityConfig
+	mu               sync.Mutex
+	acceptancePolicy api.AcceptancePolicy
+	wg               sync.WaitGroup
+	ctx              context.Context
+	cancel           func()
+	store            *store.MemoryStore
+	securityConfig   *ManagerSecurityConfig
+}
+
+// DefaultAcceptancePolicy returns the default acceptance policy.
+func DefaultAcceptancePolicy() api.AcceptancePolicy {
+	return api.AcceptancePolicy{
+		Autoaccept: map[string]bool{AgentRole: true},
+	}
 }
 
 // NewServer creates a CA API server.
-func NewServer(store *store.MemoryStore, securityConfig *ManagerSecurityConfig) *Server {
+func NewServer(store *store.MemoryStore, securityConfig *ManagerSecurityConfig, acceptancePolicy api.AcceptancePolicy) *Server {
 	return &Server{
-		store:          store,
-		securityConfig: securityConfig,
+		acceptancePolicy: acceptancePolicy,
+		store:            store,
+		securityConfig:   securityConfig,
 	}
 }
 
@@ -165,6 +174,8 @@ func (s *Server) Run(ctx context.Context) error {
 			switch v := event.(type) {
 			case state.EventCreateRegisteredCertificate:
 				s.evaluateAndSignCert(ctx, v.RegisteredCertificate)
+			case state.EventUpdateRegisteredCertificate:
+				s.evaluateAndSignCert(ctx, v.RegisteredCertificate)
 			}
 
 		case <-s.ctx.Done():
@@ -214,27 +225,75 @@ func (s *Server) isRunning() bool {
 	return true
 }
 
+func (s *Server) setCertState(rCertificate *api.RegisteredCertificate, state api.IssuanceState) error {
+	return s.store.Update(func(tx store.Tx) error {
+		latestCertificate := store.GetRegisteredCertificate(tx, rCertificate.ID)
+		if latestCertificate == nil {
+			return store.ErrNotExist
+		}
+
+		// Remote users are expecting a full certificate chain, not just a signed certificate
+		latestCertificate.Status = api.IssuanceStatus{
+			State: state,
+		}
+
+		return store.UpdateRegisteredCertificate(tx, latestCertificate)
+	})
+}
+
 func (s *Server) evaluateAndSignCert(ctx context.Context, rCertificate *api.RegisteredCertificate) {
 	// FIXME(aaronl): Right now, this automatically signs any pending certificate. We need to
 	// add more flexible logic on acceptance modes.
+
+	// If the desired state and actual state are in sync, there's nothing
+	// to do.
+	if rCertificate.Spec.DesiredState == rCertificate.Status.State {
+		return
+	}
+
+	// If the desired state of a certificate was set to rejected or
+	// blocked, we should set the actual state according to those
+	// wishes right away, and that is all that should be done.
+	if rCertificate.Spec.DesiredState == api.IssuanceStateRejected {
+		err := s.setCertState(rCertificate, api.IssuanceStateRejected)
+		if err != nil {
+			log.G(ctx).WithError(err).Errorf("(*Server).evaluateAndSignCert: failed to change certificate state")
+		}
+		return
+	}
+	if rCertificate.Spec.DesiredState == api.IssuanceStateBlocked {
+		err := s.setCertState(rCertificate, api.IssuanceStateBlocked)
+		if err != nil {
+			log.G(ctx).WithError(err).Errorf("(*Server).evaluateAndSignCert: failed to change certificate state")
+		}
+		return
+	}
 
 	if rCertificate.Status.State != api.IssuanceStatePending {
 		return
 	}
 
-	s.signCert(ctx, rCertificate)
+	if s.acceptancePolicy.Autoaccept[rCertificate.Role] {
+		s.signCert(ctx, rCertificate)
+		return
+	}
+
+	if rCertificate.Spec.DesiredState == api.IssuanceStateIssued {
+		// Cert was approved by admin
+		s.signCert(ctx, rCertificate)
+	}
 }
 
 func (s *Server) signCert(ctx context.Context, rCertificate *api.RegisteredCertificate) {
 	cert, err := s.securityConfig.RootCA.ParseValidateAndSignCSR(rCertificate.CSR, rCertificate.CN, rCertificate.Role)
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("(*Server).evaluateAndSignCert: failed to parse CSR")
+		log.G(ctx).WithError(err).Errorf("(*Server).signCert: failed to parse CSR")
 	}
 
 	err = s.store.Update(func(tx store.Tx) error {
 		latestCertificate := store.GetRegisteredCertificate(tx, rCertificate.ID)
 		if latestCertificate == nil {
-			log.G(ctx).Errorf("(*Server).evaluateAndSignCert: registered certificate not found in store")
+			log.G(ctx).Errorf("(*Server).signCert: registered certificate not found in store")
 		}
 
 		// Remote users are expecting a full certificate chain, not just a signed certificate
@@ -246,9 +305,9 @@ func (s *Server) signCert(ctx context.Context, rCertificate *api.RegisteredCerti
 		return store.UpdateRegisteredCertificate(tx, latestCertificate)
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("(*Server).evaluateAndSignCert: transaction failed")
+		log.G(ctx).WithError(err).Errorf("(*Server).signCert: transaction failed")
 	}
-	log.G(ctx).Debugf("(*Server).evaluateAndSignCert: issued certificate for Node=%s and Role=%s", rCertificate.CN, rCertificate.Role)
+	log.G(ctx).Debugf("(*Server).signCert: issued certificate for Node=%s and Role=%s", rCertificate.CN, rCertificate.Role)
 }
 
 func (s *Server) reconcileCertificates(ctx context.Context, rCerts []*api.RegisteredCertificate) error {
