@@ -266,7 +266,7 @@ func (r *controller) checkClosed() error {
 	}
 }
 
-func makeExitError(ctnr types.ContainerJSON) *exec.ExitError {
+func makeExitError(ctnr types.ContainerJSON) error {
 	if ctnr.State.ExitCode != 0 {
 		var cause error
 		if ctnr.State.Error != "" {

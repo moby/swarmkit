@@ -198,8 +198,8 @@ enum TaskState {
 	READY = 384 [(gogoproto.enumvalue_customname)="TaskStateReady"];
 	STARTING = 448 [(gogoproto.enumvalue_customname)="TaskStateStarting"];
 	RUNNING = 512 [(gogoproto.enumvalue_customname)="TaskStateRunning"];
-	SHUTDOWN = 576 [(gogoproto.enumvalue_customname)="TaskStateShutdown"];
-	COMPLETE = 640 [(gogoproto.enumvalue_customname)="TaskStateCompleted"]; // successful completion of task (not error code, just ran)
+	COMPLETE = 576 [(gogoproto.enumvalue_customname)="TaskStateCompleted"]; // successful completion of task (not error code, just ran)
+	SHUTDOWN = 640 [(gogoproto.enumvalue_customname)="TaskStateShutdown"]; // orchestrator requested shutdown
 	FAILED = 704 [(gogoproto.enumvalue_customname)="TaskStateFailed"]; // task execution failed with error
 	REJECTED = 768 [(gogoproto.enumvalue_customname)="TaskStateRejected"]; // task could not be executed here.
 	FINALIZE = 832 [(gogoproto.enumvalue_customname)="TaskStateFinalize"]; // when task is deallocated from node, waiting on cleanup

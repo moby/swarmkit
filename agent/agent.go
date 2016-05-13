@@ -33,6 +33,8 @@ type Agent struct {
 	assigned    map[string]*api.Task        // contains current assignment set
 	controllers map[string]exec.Controller  // contains all controllers
 	reports     map[string]taskStatusReport // pending reports, indexed by task ID
+	shutdown    map[string]struct{}         // control shutdown jobs
+	remove      map[string]struct{}         // control shutdown jobs
 
 	statusq chan taskStatusReport
 
@@ -54,6 +56,8 @@ func New(config *Config) (*Agent, error) {
 		assigned:    make(map[string]*api.Task),
 		controllers: make(map[string]exec.Controller),
 		reports:     make(map[string]taskStatusReport),
+		shutdown:    make(map[string]struct{}),
+		remove:      make(map[string]struct{}),
 
 		statusq: make(chan taskStatusReport),
 
@@ -292,10 +296,6 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 
 	assigned := map[string]*api.Task{}
 	for _, task := range tasks {
-		if task.DesiredState > api.TaskStateRunning {
-			// Skip tasks which the manager wants to be stopped.
-			continue
-		}
 		assigned[task.ID] = task
 		ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", task.ID))
 
@@ -335,8 +335,6 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 			continue
 		}
 
-		// TODO(stevvooe): Modify this to take the task through a graceful
-		// shutdown. This just outright removes it.
 		if err := a.removeTask(ctx, task); err != nil {
 			log.G(ctx).WithError(err).Error("removing task failed")
 		}
@@ -438,12 +436,12 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) (api.
 			status.TerminalState = api.TaskStateRejected
 			status.Err = report.err.Error()
 		case api.TaskStateReady, api.TaskStateStarting,
-			api.TaskStateRunning, api.TaskStateShutdown:
+			api.TaskStateRunning:
 			status.State = api.TaskStateFailed
 			status.TerminalState = api.TaskStateFailed
 			status.Err = report.err.Error()
-		case api.TaskStateCompleted, api.TaskStateFailed,
-			api.TaskStateRejected, api.TaskStateDead:
+		case api.TaskStateCompleted, api.TaskStateShutdown,
+			api.TaskStateFailed, api.TaskStateRejected, api.TaskStateDead:
 			// noop when we get an error in these states
 		case api.TaskStateFinalize:
 			if task.DesiredState >= api.TaskStateDead {
@@ -455,7 +453,8 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) (api.
 	} else {
 		status.State = report.state
 		switch report.state {
-		case api.TaskStateRejected, api.TaskStateFailed, api.TaskStateCompleted:
+		case api.TaskStateRejected, api.TaskStateFailed,
+			api.TaskStateShutdown, api.TaskStateCompleted:
 			status.TerminalState = report.state
 		}
 	}
@@ -480,17 +479,17 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) (api.
 	case api.TaskStateNew, api.TaskStateAllocated,
 		api.TaskStateAssigned, api.TaskStateAccepted,
 		api.TaskStatePreparing, api.TaskStateReady,
-		api.TaskStateStarting, api.TaskStateRunning,
-		api.TaskStateShutdown, api.TaskStateCompleted,
+		api.TaskStateStarting, api.TaskStateRunning:
+	case api.TaskStateShutdown, api.TaskStateCompleted,
 		api.TaskStateFailed, api.TaskStateRejected,
 		api.TaskStateFinalize:
-		// TODO(stevvooe): This switch is laid out here to support actions
-		// based on state transition. Each state below will include code that
-		// is only run when transitioning into a task state for the first time.
+		delete(a.shutdown, report.taskID) // cleanup shutdown entry
 	case api.TaskStateDead:
 		// once a task is dead, we remove all resources associated with it.
 		delete(a.controllers, report.taskID)
 		delete(a.tasks, report.taskID)
+		delete(a.shutdown, report.taskID)
+		delete(a.remove, report.taskID)
 
 		return api.TaskStatus{}, errTaskDead
 	}
@@ -564,34 +563,71 @@ func (a *Agent) updateTask(ctx context.Context, t *api.Task) error {
 		}()
 	}
 
+	if t.DesiredState == api.TaskStateDead {
+		// Remove tasks that are marked as dead but still in the assignment
+		// set.
+		if err := a.removeTask(ctx, t); err != nil {
+			return err
+		}
+	} else if t.DesiredState > api.TaskStateRunning && t.Status.State < api.TaskStateCompleted {
+		if err := a.shutdownTask(ctx, t); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (a *Agent) shutdownTask(ctx context.Context, t *api.Task) error {
+	log.G(ctx).Debugf("(*Agent).shutdownTask")
+
+	if _, ok := a.shutdown[t.ID]; ok {
+		return nil // already shutdown
+	}
+	a.shutdown[t.ID] = struct{}{}
+
+	var (
+		ctlr = a.controllers[t.ID]
+	)
+
+	go func() {
+		reporter := a.reporter(ctx, t)
+		for {
+			if err := exec.Shutdown(ctx, ctlr, reporter); err != nil {
+				if err == exec.ErrControllerClosed {
+					return
+				}
+
+				log.G(ctx).WithError(err).Error("failed to shutdown task")
+				continue // retry until dead
+			}
+
+			return // success
+		}
+	}()
+
 	return nil
 }
 
 func (a *Agent) removeTask(ctx context.Context, t *api.Task) error {
 	log.G(ctx).Debugf("(*Agent).removeTask")
 
-	var (
-		ctlr   = a.controllers[t.ID]
-		taskID = t.ID
-	)
+	if _, ok := a.remove[t.ID]; ok {
+		return nil // already removing
+	}
 
+	a.remove[t.ID] = struct{}{}
+
+	t = t.Copy()
+	ctlr := a.controllers[t.ID]
 	go func() {
-		if err := a.report(ctx, taskID, api.TaskStateFinalize, "removing"); err != nil {
-			log.G(ctx).WithError(err).Error("failed to report finalization")
-			return
-		}
-
-		if err := ctlr.Remove(ctx); err != nil {
-			log.G(ctx).WithError(err).Error("remove failed")
-			if err := a.report(ctx, taskID, api.TaskStateFinalize, "remove failed", err); err != nil {
-				log.G(ctx).WithError(err).Error("report remove error failed")
-				return
+		reporter := a.reporter(ctx, t)
+		for {
+			if err := exec.Remove(ctx, ctlr, reporter); err != nil {
+				log.G(ctx).WithError(err).Error("remove failed")
+				continue
 			}
-		}
-
-		if err := a.report(ctx, taskID, api.TaskStateDead, "finalized"); err != nil {
-			log.G(ctx).WithError(err).Error("failed reporting finalization")
-			return
+			break
 		}
 	}()
 
