@@ -270,7 +270,7 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	}
 	defer d.doneTask()
 
-	agentID, err := ca.AuthorizeForwardAgent(ctx)
+	agentID, err := ca.AuthorizeForwardRole(ctx, []string{ca.AgentRole})
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +337,7 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 	}
 	defer d.doneTask()
 
-	agentID, err := ca.AuthorizeForwardAgent(ctx)
+	agentID, err := ca.AuthorizeForwardRole(ctx, []string{ca.AgentRole})
 	if err != nil {
 		return nil, err
 	}
@@ -430,7 +430,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	}
 	defer d.doneTask()
 
-	agentID, err := ca.AuthorizeForwardAgent(stream.Context())
+	agentID, err := ca.AuthorizeForwardRole(stream.Context(), []string{ca.AgentRole})
 	if err != nil {
 		return err
 	}
@@ -531,7 +531,7 @@ func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
 // Node should send new heartbeat earlier than now + TTL, otherwise it will
 // be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
 func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*api.HeartbeatResponse, error) {
-	agentID, err := ca.AuthorizeForwardAgent(ctx)
+	agentID, err := ca.AuthorizeForwardRole(ctx, []string{ca.AgentRole})
 	if err != nil {
 		return nil, err
 	}
@@ -564,7 +564,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 	defer d.doneTask()
 
 	ctx := stream.Context()
-	agentID, err := ca.AuthorizeForwardAgent(ctx)
+	agentID, err := ca.AuthorizeForwardRole(ctx, []string{ca.AgentRole})
 	if err != nil {
 		return err
 	}
