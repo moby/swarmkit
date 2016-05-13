@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
@@ -18,39 +19,56 @@ import (
 	"google.golang.org/grpc"
 )
 
-func TestCreateRootCA(t *testing.T) {
+func TestCreateAndWriteRootCA(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	_, _, err = CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
+	_, err = CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	perms, err := permbits.Stat(paths.RootCACert)
+	perms, err := permbits.Stat(paths.RootCA.Cert)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
-	perms, err = permbits.Stat(paths.RootCAKey)
+	perms, err = permbits.Stat(paths.RootCA.Key)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
 }
 
-func TestGetRootCA(t *testing.T) {
+func TestCreateAndWriteRootCAExpiry(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	_, rootCACert, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
+	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	rootCACertificate, err := GetRootCA(paths.RootCACert)
+	// Convert the certificate into an object to create a RootCA
+	parsedCert, err := helpers.ParseCertificatePEM(rootCA.Cert)
 	assert.NoError(t, err)
-	assert.Equal(t, rootCACert, rootCACertificate)
+	assert.True(t, time.Now().Add(time.Hour*24*364*20).Before(parsedCert.NotAfter))
+
+}
+
+func TestGetLocalRootCA(t *testing.T) {
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
+
+	paths := NewConfigPaths(tempBaseDir)
+
+	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
+	assert.NoError(t, err)
+
+	rootCA2, err := GetLocalRootCA(paths.RootCA)
+	assert.NoError(t, err)
+	assert.Equal(t, rootCA, rootCA2)
 }
 
 func TestGenerateAndSignNewTLSCert(t *testing.T) {
@@ -60,17 +78,17 @@ func TestGenerateAndSignNewTLSCert(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, rootCACert, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
+	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	_, err = GenerateAndSignNewTLSCert(signer, rootCACert, paths.ManagerCert, paths.ManagerKey, "CN", "OU")
+	_, err = GenerateAndSignNewTLSCert(rootCA, "CN", "OU", paths.Manager)
 	assert.NoError(t, err)
 
-	perms, err := permbits.Stat(paths.ManagerCert)
+	perms, err := permbits.Stat(paths.Manager.Cert)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
-	perms, err = permbits.Stat(paths.ManagerKey)
+	perms, err = permbits.Stat(paths.Manager.Key)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
@@ -83,16 +101,16 @@ func TestGenerateAndWriteNewCSR(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	csr, key, err := GenerateAndWriteNewCSR(paths.ManagerCSR, paths.ManagerKey)
+	csr, key, err := GenerateAndWriteNewCSR(paths.Manager)
 	assert.NoError(t, err)
 	assert.NotNil(t, csr)
 	assert.NotNil(t, key)
 
-	perms, err := permbits.Stat(paths.ManagerCSR)
+	perms, err := permbits.Stat(paths.Manager.CSR)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
-	perms, err = permbits.Stat(paths.ManagerKey)
+	perms, err = permbits.Stat(paths.Manager.Key)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
@@ -108,13 +126,13 @@ func TestParseValidateAndSignCSR(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, _, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
+	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
 	csr, _, err := generateNewCSR()
 	assert.NoError(t, err)
 
-	signedCert, err := ParseValidateAndSignCSR(signer, csr, "CN", "OU")
+	signedCert, err := rootCA.ParseValidateAndSignCSR(csr, "CN", "OU")
 	assert.NoError(t, err)
 	assert.NotNil(t, signedCert)
 
@@ -134,7 +152,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, _, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "rootCN")
+	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
 	req := &cfcsr.CertificateRequest{
@@ -152,7 +170,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 	csr, _, err := cfcsr.ParseRequest(req)
 	assert.NoError(t, err)
 
-	signedCert, err := ParseValidateAndSignCSR(signer, csr, "CN", "OU")
+	signedCert, err := rootCA.ParseValidateAndSignCSR(csr, "CN", "OU")
 	assert.NoError(t, err)
 	assert.NotNil(t, signedCert)
 
@@ -173,9 +191,9 @@ func TestGetRemoteCA(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, rootCACert, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "swarm-test-CA")
+	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(signer, rootCACert, tempBaseDir)
+	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
 	assert.NoError(t, err)
 
 	ctx := context.Background()
@@ -195,7 +213,7 @@ func TestGetRemoteCA(t *testing.T) {
 	}()
 
 	shaHash := sha256.New()
-	shaHash.Write(rootCACert)
+	shaHash.Write(rootCA.Cert)
 	md := shaHash.Sum(nil)
 	mdStr := hex.EncodeToString(md)
 
@@ -214,9 +232,9 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, rootCACert, err := CreateRootCA(paths.RootCACert, paths.RootCAKey, "swarm-test-CA")
+	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(signer, rootCACert, tempBaseDir)
+	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
 	assert.NoError(t, err)
 
 	ctx := context.Background()
