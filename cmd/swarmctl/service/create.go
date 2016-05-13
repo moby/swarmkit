@@ -117,9 +117,7 @@ var (
 
 					spec.GetContainer().Networks = []*api.ContainerSpec_NetworkAttachment{
 						{
-							Reference: &api.ContainerSpec_NetworkAttachment_NetworkID{
-								NetworkID: n.ID,
-							},
+							NetworkID: n.ID,
 						},
 					}
 				}

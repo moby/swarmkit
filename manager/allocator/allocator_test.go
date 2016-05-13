@@ -59,9 +59,7 @@ func TestAllocator(t *testing.T) {
 					Spec: api.ContainerSpec{
 						Networks: []*api.ContainerSpec_NetworkAttachment{
 							{
-								Reference: &api.ContainerSpec_NetworkAttachment_NetworkID{
-									NetworkID: "testID1",
-								},
+								NetworkID: "testID1",
 							},
 						},
 					},
@@ -134,9 +132,7 @@ func TestAllocator(t *testing.T) {
 					Spec: api.ContainerSpec{
 						Networks: []*api.ContainerSpec_NetworkAttachment{
 							{
-								Reference: &api.ContainerSpec_NetworkAttachment_NetworkID{
-									NetworkID: "testID2",
-								},
+								NetworkID: "testID2",
 							},
 						},
 					},
@@ -162,9 +158,7 @@ func TestAllocator(t *testing.T) {
 					Spec: api.ContainerSpec{
 						Networks: []*api.ContainerSpec_NetworkAttachment{
 							{
-								Reference: &api.ContainerSpec_NetworkAttachment_NetworkID{
-									NetworkID: "testID3",
-								},
+								NetworkID: "testID3",
 							},
 						},
 					},

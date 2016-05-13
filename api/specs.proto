@@ -142,13 +142,9 @@ message ContainerSpec {
 	// User specifies the user that should be employed to run the container.
 	string user = 6;
 
-	// NetworkAttachmentSpec describes a desired attachment to the named network or
-	// a specific network_id.
+	// NetworkAttachmentSpec describes a desired attachment to a specific network_id.
 	message NetworkAttachment {
-		oneof reference {
-			string name = 1;
-			string network_id = 2 [(gogoproto.customname) = "NetworkID"];
-		}
+		string network_id = 1 [(gogoproto.customname) = "NetworkID"];
 	}
 
 	repeated NetworkAttachment networks = 7;

@@ -53,7 +53,7 @@ func printServiceSummary(service *api.Service) {
 	if len(ctr.Networks) > 0 {
 		fmt.Fprintf(w, "  Networks:\t")
 		for _, n := range ctr.Networks {
-			fmt.Fprintf(w, " %s", n.GetNetworkID())
+			fmt.Fprintf(w, " %s", n.NetworkID)
 		}
 	}
 
