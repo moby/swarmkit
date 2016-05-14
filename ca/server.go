@@ -80,7 +80,6 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 	log.G(ctx).Debugf("(*Server).CertificateStatus: watching for updates on token=%s.", request.Token)
 
 	// Certificate is Pending or in an Unknown state, let's wait for changes.
-L:
 	for {
 		select {
 		case event := <-updates:
@@ -90,18 +89,16 @@ L:
 				// longer pending, return.
 				if v.RegisteredCertificate.Status.State != api.IssuanceStatePending {
 					rCertificate = v.RegisteredCertificate
-					break L
+					return &api.CertificateStatusResponse{
+						Status:                &rCertificate.Status,
+						RegisteredCertificate: rCertificate,
+					}, nil
 				}
 			}
 		case <-ctx.Done():
-			break L
+			return nil, ctx.Err()
 		}
 	}
-
-	return &api.CertificateStatusResponse{
-		Status:                &rCertificate.Status,
-		RegisteredCertificate: rCertificate,
-	}, nil
 }
 
 // IssueCertificate receives requests from a remote client indicating a node type and a CSR,
