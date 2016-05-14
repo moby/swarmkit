@@ -36,7 +36,7 @@ type TestService struct {
 	ctx          context.Context
 }
 
-func NewTestService(t *testing.T, policy api.AcceptancePolicy) TestService {
+func NewTestService(t *testing.T, policy api.AcceptancePolicy) *TestService {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-manager-test-")
 	assert.NoError(t, err)
 
@@ -62,7 +62,7 @@ func NewTestService(t *testing.T, policy api.AcceptancePolicy) TestService {
 		assert.NoError(t, caserver.Run(context.Background()))
 	}()
 
-	return TestService{
+	return &TestService{
 		rootCA: rootCA,
 		s:      s,
 		addr:   l.Addr().String(),
@@ -253,6 +253,17 @@ func TestGetRemoteCA(t *testing.T) {
 	assert.NotNil(t, cert)
 }
 
+func TestCanSign(t *testing.T) {
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
+
+	assert.True(t, ts.rootCA.CanSign())
+	ts.rootCA.Signer = nil
+	assert.False(t, ts.rootCA.CanSign())
+}
+
 func TestGetRemoteCAInvalidHash(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
 	defer os.RemoveAll(ts.tmpDir)
@@ -290,13 +301,25 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	csr, _, err := GenerateAndWriteNewCSR(ts.paths.Manager)
 	assert.NoError(t, err)
 
-	cert, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.addr, ts.rootCA.Pool)
+	certs, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.addr, ts.rootCA.Pool)
 	assert.NoError(t, err)
-	assert.NotNil(t, cert)
+	assert.NotNil(t, certs)
 
-	cert, err = getRemoteSignedCertificate(ts.ctx, csr, AgentRole, ts.addr, ts.rootCA.Pool)
+	parsedCerts, err := helpers.ParseCertificatesPEM(certs)
 	assert.NoError(t, err)
-	assert.NotNil(t, cert)
+	assert.Len(t, parsedCerts, 2)
+	assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
+	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ManagerRole)
+
+	certs, err = getRemoteSignedCertificate(ts.ctx, csr, AgentRole, ts.addr, ts.rootCA.Pool)
+	assert.NoError(t, err)
+	assert.NotNil(t, certs)
+	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
+	assert.NoError(t, err)
+	assert.Len(t, parsedCerts, 2)
+	assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
+	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], AgentRole)
+
 }
 
 func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
