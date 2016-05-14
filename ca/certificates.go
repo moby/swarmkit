@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -111,6 +113,12 @@ func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPa
 		}
 
 		log.Debugf("downloaded TLS credentials with role: %s and from %s.", role, remoteAddr)
+	}
+
+	// Ensure directory exists
+	err = os.MkdirAll(filepath.Dir(paths.Cert), 0755)
+	if err != nil {
+		return nil, err
 	}
 
 	// Write the chain to disk
@@ -261,6 +269,12 @@ func CreateAndWriteRootCA(rootCN string, paths CertPaths) (RootCA, error) {
 		return RootCA{}, err
 	}
 
+	// Ensure directory exists
+	err = os.MkdirAll(filepath.Dir(paths.Cert), 0755)
+	if err != nil {
+		return RootCA{}, err
+	}
+
 	// Write the Private Key and Certificate to disk, using decent permissions
 	if err := ioutil.WriteFile(paths.Cert, cert, 0644); err != nil {
 		return RootCA{}, err
@@ -298,6 +312,12 @@ func GenerateAndSignNewTLSCert(rootCA RootCA, cn, ou string, paths CertPaths) (*
 	// Append the root CA Key to the certificate, to create a valid chain
 	certChain := append(cert, rootCA.Cert...)
 
+	// Ensure directory exists
+	err = os.MkdirAll(filepath.Dir(paths.Cert), 0755)
+	if err != nil {
+		return nil, err
+	}
+
 	// Write both the chain and key to disk
 	if err := ioutil.WriteFile(paths.Cert, certChain, 0644); err != nil {
 		return nil, err
@@ -320,6 +340,12 @@ func GenerateAndSignNewTLSCert(rootCA RootCA, cn, ou string, paths CertPaths) (*
 func GenerateAndWriteNewCSR(paths CertPaths) (csr, key []byte, err error) {
 	// Generate a new key pair
 	csr, key, err = generateNewCSR()
+	if err != nil {
+		return
+	}
+
+	// Ensure directory exists
+	err = os.MkdirAll(filepath.Dir(paths.CSR), 0755)
 	if err != nil {
 		return
 	}
