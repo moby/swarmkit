@@ -80,7 +80,16 @@ func certSubjectFromContext(ctx context.Context) (pkix.Name, error) {
 // AuthorizeRole takes in a context and a list of organizations, and returns
 // the CN of the certificate if one of the OU matches.
 func AuthorizeRole(ctx context.Context, ou []string) (string, error) {
-	return authorizeRole(ctx, ou)
+	certSubj, err := certSubjectFromContext(ctx)
+	if err != nil {
+		return "", err
+	}
+	// Check if the current certificate has an OU that authorizes
+	// access to this method
+	if intersectArrays(certSubj.OrganizationalUnit, ou) {
+		return certSubj.CommonName, nil
+	}
+	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: remote certificate not part of OU %v", ou)
 }
 
 // AuthorizeForwardedRole takes in a context and a list of organizations, and returns
@@ -93,34 +102,18 @@ func AuthorizeForwardedRole(ctx context.Context, role string) (string, error) {
 // forward agent request or agent itself. It returns agent id.
 func authorizeForwardedRole(ctx context.Context, forwardedRole string, forwarderRoles []string) (string, error) {
 	// If the call is being done directly by an accepted role, return the CN
-	cn, err := authorizeRole(ctx, []string{forwardedRole})
+	cn, err := AuthorizeRole(ctx, []string{forwardedRole})
 	if err == nil {
 		return cn, nil
 	}
 
 	// If the call is being done by a manager, return the forwarded CN
-	_, err = authorizeRole(ctx, forwarderRoles)
+	_, err = AuthorizeRole(ctx, forwarderRoles)
 	if err == nil {
 		return forwardCNFromContext(ctx)
 	}
 
-	// If this wasn't an agent or a manager, fail
 	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unknown peer role.")
-}
-
-// authorizeRole takes in a context and a list of organizations, and returns
-// the CN of the certificate if one of the OU matches.
-func authorizeRole(ctx context.Context, ou []string) (string, error) {
-	certSubj, err := certSubjectFromContext(ctx)
-	if err != nil {
-		return "", err
-	}
-	// Check if the current certificate has an OU that authorizes
-	// access to this method
-	if intersectArrays(certSubj.OrganizationalUnit, ou) {
-		return certSubj.CommonName, nil
-	}
-	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: remote certificate not part of OU %v", ou)
 }
 
 // intersectArrays returns true when there is at least one element in common
