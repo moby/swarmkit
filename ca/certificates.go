@@ -404,30 +404,36 @@ func getRemoteSignedCertificate(ctx context.Context, csr []byte, role, caAddr st
 	token := issueResponse.Token
 
 	statusRequest := &api.CertificateStatusRequest{Token: token}
-	var statusReponse *api.CertificateStatusResponse
 	expBackoff := events.NewExponentialBackoff(events.ExponentialBackoffConfig{
 		Base:   time.Second,
 		Factor: time.Second,
 		Max:    30 * time.Second,
 	})
 
-	// Exponential backoff with Max of 20 seconds to wait for the new certificate
+	// Exponential backoff with Max of 30 seconds to wait for a new retry
 	for {
 		// Send the Request and retrieve the certificate
-		statusReponse, err = caClient.CertificateStatus(ctx, statusRequest)
+		statusReponse, err := caClient.CertificateStatus(ctx, statusRequest)
 		if err != nil {
 			return nil, err
 		}
 
-		// If the request is completed, we have a certificate to return
+		// If the certificate was issued, return
 		if statusReponse.Status.State == api.IssuanceStateIssued {
-			break
+			return statusReponse.RegisteredCertificate.Certificate, nil
 		}
 
+		// If the certificate has been rejected or blocked return with an error
+		retryStates := map[api.IssuanceState]bool{
+			api.IssuanceStateRejected: true,
+			api.IssuanceStateBlocked:  true}
+		if retryStates[statusReponse.Status.State] {
+			return nil, fmt.Errorf("certificate issuance rejected: %v", statusReponse.Status.State)
+		}
+
+		// If we're still pending, the issuance failed, or the state is unknown
+		// let's continue trying.
 		expBackoff.Failure(nil, nil)
-		// Wait for next retry
 		time.Sleep(expBackoff.Proceed(nil))
 	}
-
-	return statusReponse.RegisteredCertificate.Certificate, nil
 }
