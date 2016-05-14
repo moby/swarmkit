@@ -50,11 +50,11 @@ var (
 						}
 					}
 
-					fmt.Fprintf(w, "%s\t%s\t%s\t%d\n",
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 						s.ID,
 						spec.Annotations.Name,
 						reference,
-						s.Spec.Instances,
+						getServiceInstancesTxt(s),
 					)
 				}
 

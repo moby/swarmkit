@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"golang.org/x/net/context"
 
@@ -51,4 +52,11 @@ func getService(ctx context.Context, c api.ControlClient, input string) (*api.Se
 		return rl.Services[0], nil
 	}
 	return rg.Service, nil
+}
+
+func getServiceInstancesTxt(s *api.Service) string {
+	if s.Spec.Mode == api.ServiceModeFill {
+		return "fill"
+	}
+	return strconv.Itoa(int(s.Spec.Instances))
 }
