@@ -151,7 +151,7 @@ func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, role string) ([]
 		// OU is used for Authentication of the node type. The CN has the random
 		// node ID.
 		Subject: &signer.Subject{CN: cn, Names: []cfcsr.Name{{OU: role}}},
-		// Adding role as DNS alt name, so clients can connect to "manager" and "ca"
+		// Adding role as DNS alt name, so clients can connect to ManagerRole and CARole
 		Hosts: hosts,
 	})
 	if err != nil {
