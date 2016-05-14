@@ -12,12 +12,65 @@ import (
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/phayes/permbits"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
+
+func AutoAcceptPolicy() api.AcceptancePolicy {
+	return api.AcceptancePolicy{
+		Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true},
+	}
+}
+
+type TestService struct {
+	rootCA       RootCA
+	s            *store.MemoryStore
+	addr, tmpDir string
+	paths        *SecurityConfigPaths
+	server       grpc.Server
+	caServer     grpc.Server
+	ctx          context.Context
+}
+
+func NewTestService(t *testing.T, policy api.AcceptancePolicy) TestService {
+	tempBaseDir, err := ioutil.TempDir("", "swarm-manager-test-")
+	assert.NoError(t, err)
+
+	paths := NewConfigPaths(tempBaseDir)
+
+	rootCA, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
+	assert.NoError(t, err)
+	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
+	assert.NoError(t, err)
+
+	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
+	grpcServer := grpc.NewServer(opts...)
+	s := store.NewMemoryStore(nil)
+	caserver := NewServer(s, managerConfig, policy)
+	api.RegisterCAServer(grpcServer, caserver)
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+
+	go func() {
+		grpcServer.Serve(l)
+	}()
+	go func() {
+		assert.NoError(t, caserver.Run(context.Background()))
+	}()
+
+	return TestService{
+		rootCA: rootCA,
+		s:      s,
+		addr:   l.Addr().String(),
+		tmpDir: tempBaseDir,
+		paths:  paths,
+		ctx:    context.Background(),
+	}
+}
 
 func TestCreateAndWriteRootCA(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
@@ -185,74 +238,165 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 }
 
 func TestGetRemoteCA(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempBaseDir)
-
-	paths := NewConfigPaths(tempBaseDir)
-
-	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
-	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
-	assert.NoError(t, err)
-
-	ctx := context.Background()
-
-	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
-	grpcServer := grpc.NewServer(opts...)
-	store := store.NewMemoryStore(nil)
-	caserver := NewServer(store, managerConfig, api.AcceptancePolicy{Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true}})
-	api.RegisterCAServer(grpcServer, caserver)
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(t, err)
-
-	done := make(chan error)
-	defer close(done)
-	go func() {
-		done <- grpcServer.Serve(l)
-	}()
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
 
 	shaHash := sha256.New()
-	shaHash.Write(rootCA.Cert)
+	shaHash.Write(ts.rootCA.Cert)
 	md := shaHash.Sum(nil)
 	mdStr := hex.EncodeToString(md)
 
-	_, err = GetRemoteCA(ctx, l.Addr().String(), mdStr)
+	cert, err := GetRemoteCA(ts.ctx, ts.addr, mdStr)
 	assert.NoError(t, err)
-	grpcServer.Stop()
-
-	// After stopping we should receive an error from ListenAndServe.
-	assert.Error(t, <-done)
+	assert.NotNil(t, cert)
 }
 
 func TestGetRemoteCAInvalidHash(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
+
+	_, err := GetRemoteCA(ts.ctx, ts.addr, "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b")
+	assert.Error(t, err)
+}
+
+func TestIssueAndSaveNewCertificates(t *testing.T) {
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
+
+	// Copy the current RootCA without the signer
+	rca := RootCA{Cert: ts.rootCA.Cert, Pool: ts.rootCA.Pool}
+	cert, err := rca.IssueAndSaveNewCertificates(ts.ctx, ts.paths.Manager, ManagerRole, ts.addr)
 	assert.NoError(t, err)
-	defer os.RemoveAll(tempBaseDir)
-
-	paths := NewConfigPaths(tempBaseDir)
-
-	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
+	assert.NotNil(t, cert)
+	perms, err := permbits.Stat(ts.paths.Manager.Cert)
 	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
-	assert.NoError(t, err)
+	assert.False(t, perms.GroupWrite())
+	assert.False(t, perms.OtherWrite())
+}
 
-	ctx := context.Background()
+func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
 
-	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
-	grpcServer := grpc.NewServer(opts...)
-	store := store.NewMemoryStore(nil)
-	caserver := NewServer(store, managerConfig, api.AcceptancePolicy{Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true}})
-	api.RegisterCAServer(grpcServer, caserver)
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	// Create a new CSR to be signed
+	csr, _, err := GenerateAndWriteNewCSR(ts.paths.Manager)
 	assert.NoError(t, err)
 
-	done := make(chan error)
-	defer close(done)
+	cert, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.addr, ts.rootCA.Pool)
+	assert.NoError(t, err)
+	assert.NotNil(t, cert)
+
+	cert, err = getRemoteSignedCertificate(ts.ctx, csr, AgentRole, ts.addr, ts.rootCA.Pool)
+	assert.NoError(t, err)
+	assert.NotNil(t, cert)
+}
+
+func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
+	ts := NewTestService(t, DefaultAcceptancePolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
+
+	// Create a new CSR to be signed
+	csr, _, err := GenerateAndWriteNewCSR(ts.paths.Manager)
+	assert.NoError(t, err)
+
+	updates, cancel := state.Watch(ts.s.WatchQueue(), state.EventCreateRegisteredCertificate{})
+	defer cancel()
+
+	completed := make(chan error)
 	go func() {
-		done <- grpcServer.Serve(l)
+		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.addr, ts.rootCA.Pool)
+		completed <- err
 	}()
 
-	_, err = GetRemoteCA(ctx, l.Addr().String(), "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b")
-	assert.Error(t, err)
+	event := <-updates
+	regCert := event.(state.EventCreateRegisteredCertificate).RegisteredCertificate.Copy()
+
+	// Directly update the status of the store
+	err = ts.s.Update(func(tx store.Tx) error {
+		regCert.Status.State = api.IssuanceStateIssued
+
+		return store.UpdateRegisteredCertificate(tx, regCert)
+	})
+	assert.NoError(t, err)
+
+	// Make sure getRemoteSignedCertificate didn't return an error
+	assert.NoError(t, <-completed)
+}
+
+func TestGetRemoteSignedCertificateRejected(t *testing.T) {
+	ts := NewTestService(t, DefaultAcceptancePolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
+
+	// Create a new CSR to be signed
+	csr, _, err := GenerateAndWriteNewCSR(ts.paths.Manager)
+	assert.NoError(t, err)
+
+	updates, cancel := state.Watch(ts.s.WatchQueue(), state.EventCreateRegisteredCertificate{})
+	defer cancel()
+
+	completed := make(chan error)
+	go func() {
+		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.addr, ts.rootCA.Pool)
+		completed <- err
+	}()
+
+	event := <-updates
+	regCert := event.(state.EventCreateRegisteredCertificate).RegisteredCertificate.Copy()
+
+	// Directly update the status of the store
+	err = ts.s.Update(func(tx store.Tx) error {
+		regCert.Status.State = api.IssuanceStateRejected
+
+		return store.UpdateRegisteredCertificate(tx, regCert)
+	})
+	assert.NoError(t, err)
+
+	// Make sure getRemoteSignedCertificate didn't return an error
+	assert.EqualError(t, <-completed, "certificate issuance rejected: ISSUANCE_REJECTED")
+}
+
+func TestGetRemoteSignedCertificateBlocked(t *testing.T) {
+	ts := NewTestService(t, DefaultAcceptancePolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
+
+	// Create a new CSR to be signed
+	csr, _, err := GenerateAndWriteNewCSR(ts.paths.Manager)
+	assert.NoError(t, err)
+
+	updates, cancel := state.Watch(ts.s.WatchQueue(), state.EventCreateRegisteredCertificate{})
+	defer cancel()
+
+	completed := make(chan error)
+	go func() {
+		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.addr, ts.rootCA.Pool)
+		completed <- err
+	}()
+
+	event := <-updates
+	regCert := event.(state.EventCreateRegisteredCertificate).RegisteredCertificate.Copy()
+
+	// Directly update the status of the store
+	err = ts.s.Update(func(tx store.Tx) error {
+		regCert.Status.State = api.IssuanceStateBlocked
+
+		return store.UpdateRegisteredCertificate(tx, regCert)
+	})
+	assert.NoError(t, err)
+
+	// Make sure getRemoteSignedCertificate didn't return an error
+	assert.EqualError(t, <-completed, "certificate issuance rejected: ISSUANCE_BLOCKED")
 }
