@@ -426,7 +426,8 @@ func getRemoteSignedCertificate(ctx context.Context, csr []byte, role, caAddr st
 		// If the certificate has been rejected or blocked return with an error
 		retryStates := map[api.IssuanceState]bool{
 			api.IssuanceStateRejected: true,
-			api.IssuanceStateBlocked:  true}
+			api.IssuanceStateBlocked:  true,
+		}
 		if retryStates[statusReponse.Status.State] {
 			return nil, fmt.Errorf("certificate issuance rejected: %v", statusReponse.Status.State)
 		}
