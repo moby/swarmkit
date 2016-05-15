@@ -7,7 +7,6 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/docker/swarm-v2/identity"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -62,6 +61,90 @@ func TestLoadOrCreateManagerSecurityConfigNoCerts(t *testing.T) {
 	assert.NotNil(t, newManagerSecurityConfig.RootCA.Signer)
 }
 
+func TestLoadOrCreateManagerSecurityConfigInvalidCACertNoRemote(t *testing.T) {
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
+
+	// Write some garbage to the cert
+	ioutil.WriteFile(ts.paths.RootCA.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
+													some random garbage\n
+													-----END CERTIFICATE-----`), 0644)
+
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", "")
+	assert.NoError(t, err)
+	assert.NotNil(t, newManagerSecurityConfig)
+	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.ServerTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Pool)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Cert)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Signer)
+}
+
+func TestLoadOrCreateManagerSecurityConfigInvalidCACertWithRemote(t *testing.T) {
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
+
+	// Write some garbage to the cert
+	ioutil.WriteFile(ts.paths.RootCA.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
+													some random garbage\n
+													-----END CERTIFICATE-----`), 0644)
+
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
+	assert.NoError(t, err)
+	assert.NotNil(t, newManagerSecurityConfig)
+	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.ServerTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Pool)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Cert)
+	assert.Nil(t, newManagerSecurityConfig.RootCA.Signer)
+}
+
+func TestLoadOrCreateManagerSecurityConfigInvalidCert(t *testing.T) {
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
+
+	// Write some garbage to the cert
+	ioutil.WriteFile(ts.paths.Manager.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
+													some random garbage\n
+													-----END CERTIFICATE-----`), 0644)
+
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
+	assert.NoError(t, err)
+	assert.NotNil(t, newManagerSecurityConfig)
+	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.ServerTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Pool)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Cert)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Signer)
+}
+
+func TestLoadOrCreateManagerSecurityConfigInvalidKey(t *testing.T) {
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
+
+	// Write some garbage to the Key
+	ioutil.WriteFile(ts.paths.Manager.Key, []byte(`-----BEGIN EC PRIVATE KEY-----\n
+													some random garbage\n
+													-----END EC PRIVATE KEY-----`), 0644)
+
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
+	assert.NoError(t, err)
+	assert.NotNil(t, newManagerSecurityConfig)
+	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.ServerTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Pool)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Cert)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Signer)
+}
+
 func TestLoadOrCreateManagerSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
 	defer os.RemoveAll(ts.tmpDir)
@@ -72,7 +155,7 @@ func TestLoadOrCreateManagerSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 	os.RemoveAll(ts.paths.Manager.Cert)
 	os.RemoveAll(ts.paths.RootCA.Key)
 	_, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", "")
-	assert.EqualError(t, err, "no manager address provided.")
+	assert.EqualError(t, err, "no manager address provided")
 }
 
 func TestLoadOrCreateAgentSecurityConfigNoCARemoteManager(t *testing.T) {
@@ -99,25 +182,4 @@ func TestLoadOrCreateAgentSecurityConfigNoCANoRemoteManager(t *testing.T) {
 	os.RemoveAll(ts.tmpDir)
 	_, err := LoadOrCreateAgentSecurityConfig(ts.ctx, ts.tmpDir, "", "")
 	assert.EqualError(t, err, "address of a manager is required to join a cluster")
-}
-
-func genAgentSecurityConfig(rootCA RootCA, tempBaseDir string) (*AgentSecurityConfig, error) {
-	paths := NewConfigPaths(tempBaseDir)
-
-	agentID := identity.NewID()
-	agentCert, err := GenerateAndSignNewTLSCert(rootCA, agentID, AgentRole, paths.Agent)
-	if err != nil {
-		return nil, err
-	}
-
-	agentClientTLSCreds, err := rootCA.NewClientTLSCredentials(agentCert, ManagerRole)
-	if err != nil {
-		return nil, err
-	}
-
-	AgentSecurityConfig := &AgentSecurityConfig{}
-	AgentSecurityConfig.RootCA = rootCA
-	AgentSecurityConfig.ClientTLSCreds = agentClientTLSCreds
-
-	return AgentSecurityConfig, nil
 }

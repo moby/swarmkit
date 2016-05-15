@@ -107,7 +107,7 @@ func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPa
 		log.Debugf("issued TLS credentials with role: %s.", role)
 	} else {
 		if remoteAddr == "" {
-			return nil, fmt.Errorf("no manager address provided.")
+			return nil, fmt.Errorf("no manager address provided")
 		}
 		// Get the remote manager to issue a CA signed certificate for this node
 		signedCert, err = getRemoteSignedCertificate(ctx, csr, role, remoteAddr, rca.Pool)
