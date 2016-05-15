@@ -81,14 +81,17 @@ type SecurityConfigPaths struct {
 // NewConfigPaths returns the absolute paths to all of the different types of files
 func NewConfigPaths(baseCertDir string) *SecurityConfigPaths {
 	return &SecurityConfigPaths{
-		Agent: CertPaths{Cert: filepath.Join(baseCertDir, agentTLSCertFilename),
-			Key: filepath.Join(baseCertDir, agentTLSKeyFilename),
-			CSR: filepath.Join(baseCertDir, agentCSRFilename)},
-		Manager: CertPaths{Cert: filepath.Join(baseCertDir, managerTLSCertFilename),
-			Key: filepath.Join(baseCertDir, managerTLSKeyFilename),
-			CSR: filepath.Join(baseCertDir, managerCSRFilename)},
-		RootCA: CertPaths{Cert: filepath.Join(baseCertDir, rootCACertFilename),
-			Key: filepath.Join(baseCertDir, rootCAKeyFilename)},
+		Agent: CertPaths{
+			Cert: filepath.Join(baseCertDir, agentTLSCertFilename),
+			Key:  filepath.Join(baseCertDir, agentTLSKeyFilename),
+			CSR:  filepath.Join(baseCertDir, agentCSRFilename)},
+		Manager: CertPaths{
+			Cert: filepath.Join(baseCertDir, managerTLSCertFilename),
+			Key:  filepath.Join(baseCertDir, managerTLSKeyFilename),
+			CSR:  filepath.Join(baseCertDir, managerCSRFilename)},
+		RootCA: CertPaths{
+			Cert: filepath.Join(baseCertDir, rootCACertFilename),
+			Key:  filepath.Join(baseCertDir, rootCAKeyFilename)},
 	}
 }
 
