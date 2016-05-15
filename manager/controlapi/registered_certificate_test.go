@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -18,7 +19,7 @@ func TestGetRegisteredCertificate(t *testing.T) {
 	c1 := &api.RegisteredCertificate{
 		ID:   "id1",
 		CN:   "cn1",
-		Role: "manager",
+		Role: ca.ManagerRole,
 		Status: api.IssuanceStatus{
 			State: api.IssuanceStatePending,
 		},
@@ -48,7 +49,7 @@ func TestListRegisteredCertificates(t *testing.T) {
 	c1 := &api.RegisteredCertificate{
 		ID:   "id1",
 		CN:   "cn1",
-		Role: "manager",
+		Role: ca.ManagerRole,
 		Status: api.IssuanceStatus{
 			State: api.IssuanceStatePending,
 		},
@@ -57,7 +58,7 @@ func TestListRegisteredCertificates(t *testing.T) {
 	c2 := &api.RegisteredCertificate{
 		ID:   "id2",
 		CN:   "cn2",
-		Role: "manager",
+		Role: ca.ManagerRole,
 		Status: api.IssuanceStatus{
 			State: api.IssuanceStateIssued,
 		},
@@ -102,7 +103,7 @@ func TestUpdateRegisteredCertificate(t *testing.T) {
 	c1 := &api.RegisteredCertificate{
 		ID:   "id1",
 		CN:   "cn1",
-		Role: "manager",
+		Role: ca.ManagerRole,
 		Status: api.IssuanceStatus{
 			State: api.IssuanceStatePending,
 		},
@@ -135,7 +136,7 @@ func TestUpdateRegisteredCertificate(t *testing.T) {
 	c2 := &api.RegisteredCertificate{
 		ID:   "id2",
 		CN:   "cn2",
-		Role: "manager",
+		Role: ca.ManagerRole,
 		Status: api.IssuanceStatus{
 			State: api.IssuanceStatePending,
 		},
