@@ -106,6 +106,9 @@ func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPa
 
 		log.Debugf("issued TLS credentials with role: %s.", role)
 	} else {
+		if remoteAddr == "" {
+			return nil, fmt.Errorf("no manager address provided.")
+		}
 		// Get the remote manager to issue a CA signed certificate for this node
 		signedCert, err = getRemoteSignedCertificate(ctx, csr, role, remoteAddr, rca.Pool)
 		if err != nil {
@@ -381,10 +384,10 @@ func getRemoteSignedCertificate(ctx context.Context, csr []byte, role, caAddr st
 	}
 
 	// This is our only non-MTLS request
+	// We're using CARole as server name, so an external CA doesn't also have to have ManagerRole in the cert SANs
 	creds := credentials.NewTLS(&tls.Config{ServerName: CARole, RootCAs: rootCAPool})
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds), grpc.WithBackoffMaxDelay(10 * time.Second)}
 
-	// TODO(diogo): Add a connection picker
 	conn, err := grpc.Dial(caAddr, opts...)
 	if err != nil {
 		return nil, err
