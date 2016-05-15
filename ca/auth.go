@@ -41,7 +41,7 @@ func LogTLSState(ctx context.Context, tlsState *tls.ConnectionState) {
 	}).Debugf("")
 }
 
-// getCertificateSubject extract the subject from a client certificate.
+// getCertificateSubject extracts the subject from a verified client certificate
 func getCertificateSubject(tlsState *tls.ConnectionState) (pkix.Name, error) {
 	if tlsState == nil {
 		return pkix.Name{}, grpc.Errorf(codes.PermissionDenied, "request is not using TLS")
@@ -80,21 +80,40 @@ func certSubjectFromContext(ctx context.Context) (pkix.Name, error) {
 // AuthorizeRole takes in a context and a list of organizations, and returns
 // the CN of the certificate if one of the OU matches.
 func AuthorizeRole(ctx context.Context, ou []string) (string, error) {
-	connState, err := tlsConnStateFromContext(ctx)
-	if err != nil {
-		return "", err
-	}
-	subj, err := getCertificateSubject(connState)
+	certSubj, err := certSubjectFromContext(ctx)
 	if err != nil {
 		return "", err
 	}
 	// Check if the current certificate has an OU that authorizes
 	// access to this method
-	if intersectArrays(subj.OrganizationalUnit, ou) {
-		LogTLSState(ctx, connState)
-		return subj.CommonName, nil
+	if intersectArrays(certSubj.OrganizationalUnit, ou) {
+		return certSubj.CommonName, nil
 	}
 	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: remote certificate not part of OU %v", ou)
+}
+
+// AuthorizeForwardedRole takes in a context and a list of organizations, and returns
+// the CN of the certificate if one of the OU matches.
+func AuthorizeForwardedRole(ctx context.Context, role string) (string, error) {
+	return authorizeForwardedRole(ctx, role, []string{ManagerRole})
+}
+
+// authorizeForwardedRole checks for proper roles of caller. It can be manager who
+// forward agent request or agent itself. It returns agent id.
+func authorizeForwardedRole(ctx context.Context, forwardedRole string, forwarderRoles []string) (string, error) {
+	// If the call is being done directly by an accepted role, return the CN
+	cn, err := AuthorizeRole(ctx, []string{forwardedRole})
+	if err == nil {
+		return cn, nil
+	}
+
+	// If the call is being done by a manager, return the forwarded CN
+	_, err = AuthorizeRole(ctx, forwarderRoles)
+	if err == nil {
+		return forwardCNFromContext(ctx)
+	}
+
+	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unknown peer role.")
 }
 
 // intersectArrays returns true when there is at least one element in common
@@ -108,27 +127,4 @@ func intersectArrays(orig, tgt []string) bool {
 		}
 	}
 	return false
-}
-
-// AuthorizeForwardAgent checks for proper roles of caller. It can be manager who
-// forward agent request or agent itself. It returns agent id.
-func AuthorizeForwardAgent(ctx context.Context) (string, error) {
-	certSubj, err := certSubjectFromContext(ctx)
-	if err != nil {
-		return "", err
-	}
-	// it's request from agent, just return its name
-	if intersectArrays(certSubj.OrganizationalUnit, []string{AgentRole}) {
-		return certSubj.CommonName, nil
-	}
-	// it's from manager, totally ok to forward, but we need forwarded name
-	// and ou
-	if intersectArrays(certSubj.OrganizationalUnit, []string{ManagerRole}) {
-		cn, err := forwardCNFromContext(ctx)
-		if err != nil {
-			return "", err
-		}
-		return cn, nil
-	}
-	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unknown peer role %v", certSubj.OrganizationalUnit)
 }
