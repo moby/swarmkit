@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -113,6 +115,12 @@ func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPa
 		log.Debugf("downloaded TLS credentials with role: %s and from %s.", role, remoteAddr)
 	}
 
+	// Ensure directory exists
+	err = os.MkdirAll(filepath.Dir(paths.Cert), 0755)
+	if err != nil {
+		return nil, err
+	}
+
 	// Write the chain to disk
 	if err := ioutil.WriteFile(paths.Cert, signedCert, 0644); err != nil {
 		return nil, err
@@ -143,7 +151,7 @@ func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, role string) ([]
 		// OU is used for Authentication of the node type. The CN has the random
 		// node ID.
 		Subject: &signer.Subject{CN: cn, Names: []cfcsr.Name{{OU: role}}},
-		// Adding role as DNS alt name, so clients can connect to "manager" and "ca"
+		// Adding role as DNS alt name, so clients can connect to ManagerRole and CARole
 		Hosts: hosts,
 	})
 	if err != nil {
@@ -261,6 +269,12 @@ func CreateAndWriteRootCA(rootCN string, paths CertPaths) (RootCA, error) {
 		return RootCA{}, err
 	}
 
+	// Ensure directory exists
+	err = os.MkdirAll(filepath.Dir(paths.Cert), 0755)
+	if err != nil {
+		return RootCA{}, err
+	}
+
 	// Write the Private Key and Certificate to disk, using decent permissions
 	if err := ioutil.WriteFile(paths.Cert, cert, 0644); err != nil {
 		return RootCA{}, err
@@ -298,6 +312,12 @@ func GenerateAndSignNewTLSCert(rootCA RootCA, cn, ou string, paths CertPaths) (*
 	// Append the root CA Key to the certificate, to create a valid chain
 	certChain := append(cert, rootCA.Cert...)
 
+	// Ensure directory exists
+	err = os.MkdirAll(filepath.Dir(paths.Cert), 0755)
+	if err != nil {
+		return nil, err
+	}
+
 	// Write both the chain and key to disk
 	if err := ioutil.WriteFile(paths.Cert, certChain, 0644); err != nil {
 		return nil, err
@@ -320,6 +340,12 @@ func GenerateAndSignNewTLSCert(rootCA RootCA, cn, ou string, paths CertPaths) (*
 func GenerateAndWriteNewCSR(paths CertPaths) (csr, key []byte, err error) {
 	// Generate a new key pair
 	csr, key, err = generateNewCSR()
+	if err != nil {
+		return
+	}
+
+	// Ensure directory exists
+	err = os.MkdirAll(filepath.Dir(paths.CSR), 0755)
 	if err != nil {
 		return
 	}
@@ -378,30 +404,37 @@ func getRemoteSignedCertificate(ctx context.Context, csr []byte, role, caAddr st
 	token := issueResponse.Token
 
 	statusRequest := &api.CertificateStatusRequest{Token: token}
-	var statusReponse *api.CertificateStatusResponse
 	expBackoff := events.NewExponentialBackoff(events.ExponentialBackoffConfig{
 		Base:   time.Second,
 		Factor: time.Second,
 		Max:    30 * time.Second,
 	})
 
-	// Exponential backoff with Max of 20 seconds to wait for the new certificate
+	// Exponential backoff with Max of 30 seconds to wait for a new retry
 	for {
 		// Send the Request and retrieve the certificate
-		statusReponse, err = caClient.CertificateStatus(ctx, statusRequest)
+		statusReponse, err := caClient.CertificateStatus(ctx, statusRequest)
 		if err != nil {
 			return nil, err
 		}
 
-		// If the request is completed, we have a certificate to return
+		// If the certificate was issued, return
 		if statusReponse.Status.State == api.IssuanceStateIssued {
-			break
+			return statusReponse.RegisteredCertificate.Certificate, nil
 		}
 
+		// If the certificate has been rejected or blocked return with an error
+		retryStates := map[api.IssuanceState]bool{
+			api.IssuanceStateRejected: true,
+			api.IssuanceStateBlocked:  true,
+		}
+		if retryStates[statusReponse.Status.State] {
+			return nil, fmt.Errorf("certificate issuance rejected: %v", statusReponse.Status.State)
+		}
+
+		// If we're still pending, the issuance failed, or the state is unknown
+		// let's continue trying.
 		expBackoff.Failure(nil, nil)
-		// Wait for next retry
 		time.Sleep(expBackoff.Proceed(nil))
 	}
-
-	return statusReponse.RegisteredCertificate.Certificate, nil
 }
