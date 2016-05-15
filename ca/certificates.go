@@ -199,7 +199,7 @@ func GetRemoteCA(ctx context.Context, managerAddr, hashStr string) (RootCA, erro
 	// doing TOFU, in which case we don't validate the remote CA, or we're using
 	// a user supplied hash to check the integrity of the CA certificate.
 	insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecureCreds)}
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecureCreds), grpc.WithBackoffMaxDelay(10 * time.Second)}
 
 	conn, err := grpc.Dial(managerAddr, opts...)
 	if err != nil {
