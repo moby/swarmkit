@@ -451,3 +451,24 @@ func genManagerSecurityConfig(rootCA RootCA, tempBaseDir string) (*ManagerSecuri
 
 	return ManagerSecurityConfig, nil
 }
+
+func genAgentSecurityConfig(rootCA RootCA, tempBaseDir string) (*AgentSecurityConfig, error) {
+	paths := NewConfigPaths(tempBaseDir)
+
+	agentID := identity.NewID()
+	agentCert, err := GenerateAndSignNewTLSCert(rootCA, agentID, AgentRole, paths.Agent)
+	if err != nil {
+		return nil, err
+	}
+
+	agentClientTLSCreds, err := rootCA.NewClientTLSCredentials(agentCert, ManagerRole)
+	if err != nil {
+		return nil, err
+	}
+
+	AgentSecurityConfig := &AgentSecurityConfig{}
+	AgentSecurityConfig.RootCA = rootCA
+	AgentSecurityConfig.ClientTLSCreds = agentClientTLSCreds
+
+	return AgentSecurityConfig, nil
+}
