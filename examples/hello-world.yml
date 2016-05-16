@@ -5,5 +5,4 @@ services:
   ping:
       image: alpine
       command: ["sh", "-c", "ping google.com"]
-      networks: ["foo"]
       instances: 2
