@@ -367,7 +367,6 @@ func (n *Node) Run(ctx context.Context) error {
 			// send back an error to the caller to start
 			// the shutdown process.
 			if n.mustStop() {
-				close(n.stopCh)
 				return ErrMemberRemoved
 			}
 
