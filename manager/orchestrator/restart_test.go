@@ -11,7 +11,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func TestOrchestratorRestartAlways(t *testing.T) {
+func TestOrchestratorRestartOnAny(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -36,7 +36,7 @@ func TestOrchestratorRestartAlways(t *testing.T) {
 				Instances:   2,
 				Mode:        api.ServiceModeRunning,
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartAlways,
+					Condition: api.RestartOnAny,
 				},
 			},
 		}
@@ -179,7 +179,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	}
 }
 
-func TestOrchestratorRestartNever(t *testing.T) {
+func TestOrchestratorRestartOnNone(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -204,7 +204,7 @@ func TestOrchestratorRestartNever(t *testing.T) {
 				Instances:   2,
 				Mode:        api.ServiceModeRunning,
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartNever,
+					Condition: api.RestartOnNone,
 				},
 			},
 		}
@@ -292,7 +292,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 				Instances:   2,
 				Mode:        api.ServiceModeRunning,
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartAlways,
+					Condition: api.RestartOnAny,
 					Delay:     100 * time.Millisecond,
 				},
 			},
@@ -373,7 +373,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 				Instances: 2,
 				Mode:      api.ServiceModeRunning,
 				Restart: &api.RestartPolicy{
-					Condition:   api.RestartAlways,
+					Condition:   api.RestartOnAny,
 					Delay:       100 * time.Millisecond,
 					MaxAttempts: 1,
 				},
@@ -501,7 +501,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 				Instances: 2,
 				Mode:      api.ServiceModeRunning,
 				Restart: &api.RestartPolicy{
-					Condition:   api.RestartAlways,
+					Condition:   api.RestartOnAny,
 					Delay:       100 * time.Millisecond,
 					MaxAttempts: 1,
 					Window:      500 * time.Millisecond,
