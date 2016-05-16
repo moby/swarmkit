@@ -115,8 +115,8 @@ func TestListManagers(t *testing.T) {
 	}))
 
 	// Restart the 2 nodes
-	nodes[4] = raftutils.RestartNode(t, clockSource, nodes[4], securityConfig)
-	nodes[5] = raftutils.RestartNode(t, clockSource, nodes[5], securityConfig)
+	nodes[4] = raftutils.RestartNode(t, clockSource, nodes[4], securityConfig, false)
+	nodes[5] = raftutils.RestartNode(t, clockSource, nodes[5], securityConfig, false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// All the nodes should be reachable again
@@ -169,7 +169,7 @@ func TestListManagers(t *testing.T) {
 
 	// Restart node 1
 	nodes[1].Shutdown()
-	nodes[1] = raftutils.RestartNode(t, clockSource, nodes[1], securityConfig)
+	nodes[1] = raftutils.RestartNode(t, clockSource, nodes[1], securityConfig, false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Ensure that node 1 is not the leader
@@ -278,8 +278,8 @@ func TestRemoveManager(t *testing.T) {
 	)
 
 	// Restart node 2 and node 3
-	nodes[2] = raftutils.RestartNode(t, clockSource, nodes[2], securityConfig)
-	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig)
+	nodes[2] = raftutils.RestartNode(t, clockSource, nodes[2], securityConfig, false)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig, false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Stop node 3 again
