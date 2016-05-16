@@ -39,6 +39,10 @@ service Control {
 	rpc GetRegisteredCertificate(GetRegisteredCertificateRequest) returns (GetRegisteredCertificateResponse) {}
 	rpc ListRegisteredCertificates(ListRegisteredCertificatesRequest) returns (ListRegisteredCertificatesResponse) {}
 	rpc UpdateRegisteredCertificate(UpdateRegisteredCertificateRequest) returns (UpdateRegisteredCertificateResponse) {}
+
+	rpc GetCluster(GetClusterRequest) returns (GetClusterResponse) {};
+	rpc ListClusters(ListClustersRequest) returns (ListClustersResponse) {}
+	rpc UpdateCluster(UpdateClusterRequest) returns (UpdateClusterResponse) {}
 }
 
 message ListOptions {
@@ -231,10 +235,10 @@ message ListRegisteredCertificatesResponse {
 }
 
 message UpdateRegisteredCertificateRequest {
-	// CertificateID is the certificate ID to update.
+	// RegisteredCertificateID is the certificate ID to update.
 	string registered_certificate_id = 1 [(gogoproto.customname) = "RegisteredCertificateID"];
 
-	// Version is the version of the registered certificate being updated.
+	// RegisteredCertificateVersion is the version of the registered certificate being updated.
 	Version registered_certificate_version = 2;
 
 	// Spec is the new spec to apply to the registered certificate.
@@ -243,4 +247,35 @@ message UpdateRegisteredCertificateRequest {
 
 message UpdateRegisteredCertificateResponse {
 	RegisteredCertificate registered_certificate = 1;
+}
+
+message GetClusterRequest {
+	string cluster_id = 1 [(gogoproto.customname) = "ClusterID"];
+}
+
+message GetClusterResponse {
+	Cluster cluster = 1;
+}
+
+message ListClustersRequest {
+	ListOptions options = 1;
+}
+
+message ListClustersResponse {
+	repeated Cluster clusters = 1;
+}
+
+message UpdateClusterRequest {
+	// ClusterID is the cluster ID to update.
+	string cluster_id = 1 [(gogoproto.customname) = "ClusterID"];
+
+	// ClusterVersion is the version of the cluster being updated.
+	Version cluster_version = 2;
+
+	// Spec is the new spec to apply to the cluster.
+	ClusterSpec spec = 3;
+}
+
+message UpdateClusterResponse {
+	Cluster cluster = 1;
 }

@@ -187,3 +187,12 @@ message RegisteredCertificate {
 	// CN represents the node ID.
 	string cn = 8 [(gogoproto.customname) = "CN"];
 }
+
+// Cluster provides global cluster settings.
+message Cluster {
+	string id = 1 [(gogoproto.customname) = "ID"];
+
+	Meta meta = 2 [(gogoproto.nullable) = false];
+
+	ClusterSpec spec = 3 [(gogoproto.nullable) = false];
+}
