@@ -1,6 +1,8 @@
 package main
 
 import (
+	"path/filepath"
+
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/manager"
 	"github.com/spf13/cobra"
@@ -32,6 +34,8 @@ var managerCmd = &cobra.Command{
 			return err
 		}
 
+		certDir := filepath.Join(stateDir, "certificates")
+
 		token, err := cmd.Flags().GetString("token")
 		if err != nil {
 			return err
@@ -41,7 +45,7 @@ var managerCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		securityConfig, err := ca.LoadOrCreateManagerSecurityConfig(ctx, stateDir, token, managerAddr)
+		securityConfig, err := ca.LoadOrCreateManagerSecurityConfig(ctx, certDir, token, managerAddr)
 		if err != nil {
 			return err
 		}

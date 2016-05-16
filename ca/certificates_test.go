@@ -12,6 +12,7 @@ import (
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/phayes/permbits"
@@ -422,4 +423,52 @@ func TestGetRemoteSignedCertificateBlocked(t *testing.T) {
 
 	// Make sure getRemoteSignedCertificate didn't return an error
 	assert.EqualError(t, <-completed, "certificate issuance rejected: ISSUANCE_BLOCKED")
+}
+
+func genManagerSecurityConfig(rootCA RootCA, tempBaseDir string) (*ManagerSecurityConfig, error) {
+	paths := NewConfigPaths(tempBaseDir)
+
+	managerID := identity.NewID()
+	managerCert, err := GenerateAndSignNewTLSCert(rootCA, managerID, ManagerRole, paths.Manager)
+	if err != nil {
+		return nil, err
+	}
+
+	managerTLSCreds, err := rootCA.NewServerTLSCredentials(managerCert)
+	if err != nil {
+		return nil, err
+	}
+
+	managerClientTLSCreds, err := rootCA.NewClientTLSCredentials(managerCert, ManagerRole)
+	if err != nil {
+		return nil, err
+	}
+
+	ManagerSecurityConfig := &ManagerSecurityConfig{}
+	ManagerSecurityConfig.RootCA = rootCA
+	ManagerSecurityConfig.ServerTLSCreds = managerTLSCreds
+	ManagerSecurityConfig.ClientTLSCreds = managerClientTLSCreds
+
+	return ManagerSecurityConfig, nil
+}
+
+func genAgentSecurityConfig(rootCA RootCA, tempBaseDir string) (*AgentSecurityConfig, error) {
+	paths := NewConfigPaths(tempBaseDir)
+
+	agentID := identity.NewID()
+	agentCert, err := GenerateAndSignNewTLSCert(rootCA, agentID, AgentRole, paths.Agent)
+	if err != nil {
+		return nil, err
+	}
+
+	agentClientTLSCreds, err := rootCA.NewClientTLSCredentials(agentCert, ManagerRole)
+	if err != nil {
+		return nil, err
+	}
+
+	AgentSecurityConfig := &AgentSecurityConfig{}
+	AgentSecurityConfig.RootCA = rootCA
+	AgentSecurityConfig.ClientTLSCreds = agentClientTLSCreds
+
+	return AgentSecurityConfig, nil
 }
