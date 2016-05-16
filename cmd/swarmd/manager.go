@@ -22,6 +22,11 @@ var managerCmd = &cobra.Command{
 			return err
 		}
 
+		forceNewCluster, err := cmd.Flags().GetBool("force-new-cluster")
+		if err != nil {
+			return err
+		}
+
 		stateDir, err := cmd.Flags().GetString("state-dir")
 		if err != nil {
 			return err
@@ -42,11 +47,12 @@ var managerCmd = &cobra.Command{
 		}
 
 		m, err := manager.New(&manager.Config{
-			ListenProto:    "tcp",
-			SecurityConfig: securityConfig,
-			ListenAddr:     addr,
-			JoinRaft:       managerAddr,
-			StateDir:       stateDir,
+			ListenProto:     "tcp",
+			SecurityConfig:  securityConfig,
+			ListenAddr:      addr,
+			ForceNewCluster: forceNewCluster,
+			JoinRaft:        managerAddr,
+			StateDir:        stateDir,
 		})
 		if err != nil {
 			return err
@@ -58,4 +64,5 @@ var managerCmd = &cobra.Command{
 func init() {
 	managerCmd.Flags().String("listen-addr", "0.0.0.0:4242", "Listen address")
 	managerCmd.Flags().String("join-cluster", "", "Join cluster with a node at this address")
+	managerCmd.Flags().Bool("force-new-cluster", false, "Force the creation of a new cluster from data directory")
 }

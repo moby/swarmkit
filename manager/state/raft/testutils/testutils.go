@@ -261,7 +261,7 @@ func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, se
 }
 
 // RestartNode restarts a raft test node
-func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNode, securityConfig *ca.ManagerSecurityConfig) *TestNode {
+func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNode, securityConfig *ca.ManagerSecurityConfig, forceNewCluster bool) *TestNode {
 	wrappedListener := recycleWrappedListener(oldNode.Listener)
 	serverOpts := []grpc.ServerOption{grpc.Creds(securityConfig.ServerTLSCreds)}
 	s := grpc.NewServer(serverOpts...)
@@ -269,12 +269,13 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 	cfg := raft.DefaultNodeConfig()
 
 	newNodeOpts := raft.NewNodeOptions{
-		Addr:           oldNode.Address,
-		Config:         cfg,
-		StateDir:       oldNode.StateDir,
-		ClockSource:    clockSource,
-		SendTimeout:    10 * time.Second,
-		TLSCredentials: securityConfig.ClientTLSCreds,
+		Addr:            oldNode.Address,
+		Config:          cfg,
+		StateDir:        oldNode.StateDir,
+		ForceNewCluster: forceNewCluster,
+		ClockSource:     clockSource,
+		SendTimeout:     10 * time.Second,
+		TLSCredentials:  securityConfig.ClientTLSCreds,
 	}
 
 	ctx := context.Background()

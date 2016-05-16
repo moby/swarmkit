@@ -180,7 +180,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	assert.Equal(t, stripMembers(nodes[1].GetMemberlist()), stripMembers(nodes[4].GetMemberlist()))
 
 	// Restart node 3
-	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig, false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Node 3 should know about other nodes, including the new one
@@ -197,7 +197,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	// Restart node 3 again. It should load the snapshot.
 	nodes[3].Server.Stop()
 	nodes[3].Shutdown()
-	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig, false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	assert.Len(t, nodes[3].GetMemberlist(), 5)
