@@ -27,9 +27,7 @@ func TestLoadManagerSecurityConfigWithEmptyDir(t *testing.T) {
 
 func TestLoadOrCreateManagerSecurityConfigNoCARemoteManager(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+	defer ts.cleanup()
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(ts.tmpDir)
@@ -45,9 +43,7 @@ func TestLoadOrCreateManagerSecurityConfigNoCARemoteManager(t *testing.T) {
 
 func TestLoadOrCreateManagerSecurityConfigNoCerts(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+	defer ts.cleanup()
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(ts.paths.Manager.Cert)
@@ -63,9 +59,7 @@ func TestLoadOrCreateManagerSecurityConfigNoCerts(t *testing.T) {
 
 func TestLoadOrCreateManagerSecurityConfigInvalidCACertNoRemote(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+	defer ts.cleanup()
 
 	// Write some garbage to the cert
 	ioutil.WriteFile(ts.paths.RootCA.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
@@ -84,9 +78,7 @@ func TestLoadOrCreateManagerSecurityConfigInvalidCACertNoRemote(t *testing.T) {
 
 func TestLoadOrCreateManagerSecurityConfigInvalidCACertWithRemote(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+	ts.cleanup()
 
 	// Write some garbage to the cert
 	ioutil.WriteFile(ts.paths.RootCA.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
@@ -105,9 +97,8 @@ func TestLoadOrCreateManagerSecurityConfigInvalidCACertWithRemote(t *testing.T) 
 
 func TestLoadOrCreateManagerSecurityConfigInvalidCert(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+
+	defer ts.cleanup()
 
 	// Write some garbage to the cert
 	ioutil.WriteFile(ts.paths.Manager.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
@@ -126,10 +117,8 @@ func TestLoadOrCreateManagerSecurityConfigInvalidCert(t *testing.T) {
 
 func TestLoadOrCreateManagerSecurityConfigInvalidKey(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
 
+	defer ts.cleanup()
 	// Write some garbage to the Key
 	ioutil.WriteFile(ts.paths.Manager.Key, []byte(`-----BEGIN EC PRIVATE KEY-----\n
 													some random garbage\n
@@ -147,9 +136,8 @@ func TestLoadOrCreateManagerSecurityConfigInvalidKey(t *testing.T) {
 
 func TestLoadOrCreateManagerSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+
+	defer ts.cleanup()
 
 	// Remove the certificate from the temp dir and try loading with a new manager
 	os.RemoveAll(ts.paths.Manager.Cert)
@@ -160,9 +148,8 @@ func TestLoadOrCreateManagerSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 
 func TestLoadOrCreateAgentSecurityConfigNoCARemoteManager(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+
+	defer ts.cleanup()
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(ts.tmpDir)
@@ -174,9 +161,7 @@ func TestLoadOrCreateAgentSecurityConfigNoCARemoteManager(t *testing.T) {
 
 func TestLoadOrCreateAgentSecurityConfigNoCANoRemoteManager(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+	defer ts.cleanup()
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(ts.tmpDir)

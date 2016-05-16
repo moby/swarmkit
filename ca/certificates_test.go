@@ -37,6 +37,12 @@ type TestService struct {
 	ctx          context.Context
 }
 
+func (ts *TestService) cleanup() {
+	os.RemoveAll(ts.tmpDir)
+	ts.caServer.Stop()
+	ts.server.Stop()
+}
+
 func NewTestService(t *testing.T, policy api.AcceptancePolicy) *TestService {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-manager-test-")
 	assert.NoError(t, err)
@@ -241,9 +247,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 
 func TestGetRemoteCA(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+	defer ts.cleanup()
 
 	shaHash := sha256.New()
 	shaHash.Write(ts.rootCA.Cert)
@@ -257,9 +261,7 @@ func TestGetRemoteCA(t *testing.T) {
 
 func TestCanSign(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+	defer ts.cleanup()
 
 	assert.True(t, ts.rootCA.CanSign())
 	ts.rootCA.Signer = nil
@@ -268,9 +270,7 @@ func TestCanSign(t *testing.T) {
 
 func TestGetRemoteCAInvalidHash(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+	defer ts.cleanup()
 
 	_, err := GetRemoteCA(ts.ctx, ts.addr, "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b")
 	assert.Error(t, err)
@@ -278,9 +278,7 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 
 func TestIssueAndSaveNewCertificates(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+	defer ts.cleanup()
 
 	// Copy the current RootCA without the signer
 	rca := RootCA{Cert: ts.rootCA.Cert, Pool: ts.rootCA.Pool}
@@ -295,9 +293,7 @@ func TestIssueAndSaveNewCertificates(t *testing.T) {
 
 func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+	defer ts.cleanup()
 
 	// Create a new CSR to be signed
 	csr, _, err := GenerateAndWriteNewCSR(ts.paths.Manager)
@@ -326,9 +322,7 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 
 func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	ts := NewTestService(t, DefaultAcceptancePolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+	defer ts.cleanup()
 
 	// Create a new CSR to be signed
 	csr, _, err := GenerateAndWriteNewCSR(ts.paths.Manager)
@@ -360,9 +354,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 
 func TestGetRemoteSignedCertificateRejected(t *testing.T) {
 	ts := NewTestService(t, DefaultAcceptancePolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+	defer ts.cleanup()
 
 	// Create a new CSR to be signed
 	csr, _, err := GenerateAndWriteNewCSR(ts.paths.Manager)
@@ -394,9 +386,7 @@ func TestGetRemoteSignedCertificateRejected(t *testing.T) {
 
 func TestGetRemoteSignedCertificateBlocked(t *testing.T) {
 	ts := NewTestService(t, DefaultAcceptancePolicy())
-	defer os.RemoveAll(ts.tmpDir)
-	defer ts.caServer.Stop()
-	defer ts.server.Stop()
+	defer ts.cleanup()
 
 	// Create a new CSR to be signed
 	csr, _, err := GenerateAndWriteNewCSR(ts.paths.Manager)
