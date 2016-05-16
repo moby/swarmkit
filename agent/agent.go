@@ -309,7 +309,7 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 		if err := a.acceptTask(ctx, task); err != nil {
 			log.G(ctx).WithError(err).Error("starting task controller failed")
 			go func() {
-				if err := a.report(ctx, task.ID, api.TaskStateRejected, "rejected task during assignment", err); err != nil {
+				if err := a.report(ctx, task.ID, api.TaskStateRejected, "rejected task during assignment", err, nil); err != nil {
 					log.G(ctx).WithError(err).Error("reporting task rejection failed")
 				}
 			}()
@@ -425,6 +425,13 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) (api.
 	}
 
 	if report.err != nil {
+		// If the error contains a ContainerStatus, use it.
+		if exitErr, ok := report.err.(*exec.ExitError); ok {
+			if report.cstatus == nil {
+				report.cstatus = exitErr.ContainerStatus
+			}
+		}
+
 		// If the task has been started, we return fail on error. If it has
 		// not, we return rejected. While we don't do much differently for each
 		// error type, it tells us the stage in which an error was encountered.
@@ -466,6 +473,13 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) (api.
 
 	status.Timestamp = tsp
 	status.Message = report.message
+	if report.cstatus != nil {
+		status.RuntimeStatus = &api.TaskStatus_Container{
+			Container: report.cstatus,
+		}
+	} else {
+		status.RuntimeStatus = original.RuntimeStatus
+	}
 
 	if reflect.DeepEqual(status, original) {
 		return api.TaskStatus{}, errTaskStatusUpdateNoChange
@@ -513,7 +527,7 @@ func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 	taskID := task.ID
 
 	go func() {
-		if err := reporter.Report(ctx, api.TaskStateAccepted, "accepted"); err != nil {
+		if err := reporter.Report(ctx, api.TaskStateAccepted, "accepted", nil); err != nil {
 			// TODO(stevvooe): What to do here? should be a rare error or never happen
 			log.G(ctx).WithError(err).Error("reporting accepted status")
 			return
@@ -521,7 +535,7 @@ func (a *Agent) acceptTask(ctx context.Context, task *api.Task) error {
 
 		if err := exec.Run(ctx, ctlr, reporter); err != nil {
 			log.G(ctx).WithError(err).Error("task run failed")
-			if err := a.report(ctx, taskID, api.TaskStateFailed, "execution failed", err); err != nil {
+			if err := a.report(ctx, taskID, api.TaskStateFailed, "execution failed", err, nil); err != nil {
 				log.G(ctx).WithError(err).Error("reporting task run error failed")
 			}
 			return
@@ -638,22 +652,14 @@ type taskStatusReport struct {
 	timestamp time.Time
 	taskID    string
 	state     api.TaskState
+	cstatus   *api.ContainerStatus
 	message   string
 	err       error
 	response  chan error
 }
 
-func (a *Agent) report(ctx context.Context, taskID string, state api.TaskState, msg string, errs ...error) error {
+func (a *Agent) report(ctx context.Context, taskID string, state api.TaskState, msg string, err error, cstatus *api.ContainerStatus) error {
 	log.G(ctx).Debugf("(*Agent).report")
-	if len(errs) > 1 {
-		panic("only one error per report is allowed")
-	}
-
-	var err error
-	if len(errs) == 1 {
-		err = errs[0]
-	}
-
 	response := make(chan error, 1)
 
 	select {
@@ -661,6 +667,7 @@ func (a *Agent) report(ctx context.Context, taskID string, state api.TaskState, 
 		timestamp: time.Now(),
 		taskID:    taskID,
 		state:     state,
+		cstatus:   cstatus,
 		message:   msg,
 		err:       err,
 		response:  response,
@@ -682,15 +689,15 @@ func (a *Agent) report(ctx context.Context, taskID string, state api.TaskState, 
 
 func (a *Agent) reporter(ctx context.Context, t *api.Task) exec.Reporter {
 	id := t.ID
-	return reporterFunc(func(ctx context.Context, state api.TaskState, msg string) error {
-		return a.report(ctx, id, state, msg)
+	return reporterFunc(func(ctx context.Context, state api.TaskState, msg string, cstatus *api.ContainerStatus) error {
+		return a.report(ctx, id, state, msg, nil, cstatus)
 	})
 }
 
-type reporterFunc func(ctx context.Context, state api.TaskState, msg string) error
+type reporterFunc func(ctx context.Context, state api.TaskState, msg string, status *api.ContainerStatus) error
 
-func (fn reporterFunc) Report(ctx context.Context, state api.TaskState, msg string) error {
-	return fn(ctx, state, msg)
+func (fn reporterFunc) Report(ctx context.Context, state api.TaskState, msg string, status *api.ContainerStatus) error {
+	return fn(ctx, state, msg, status)
 }
 
 // tasksEqual returns true if the tasks are functionaly equal, ignoring status,

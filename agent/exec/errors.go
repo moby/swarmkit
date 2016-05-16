@@ -3,6 +3,8 @@ package exec
 import (
 	"errors"
 	"fmt"
+
+	"github.com/docker/swarm-v2/api"
 )
 
 var (
@@ -29,8 +31,9 @@ var (
 // ExitError is returned by controller methods after encountering an error after a
 // task exits. It should require any data to report on a non-zero exit code.
 type ExitError struct {
-	Code  int
-	Cause error
+	Code            int
+	Cause           error
+	ContainerStatus *api.ContainerStatus
 }
 
 func (e *ExitError) Error() string {
