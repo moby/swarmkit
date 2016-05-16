@@ -2,17 +2,11 @@ package ca
 
 import (
 	"io/ioutil"
-	"net"
 	"os"
 	"testing"
 
-	"google.golang.org/grpc"
-
 	"golang.org/x/net/context"
 
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/identity"
-	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,40 +26,14 @@ func TestLoadManagerSecurityConfigWithEmptyDir(t *testing.T) {
 }
 
 func TestLoadOrCreateManagerSecurityConfigNoCARemoteManager(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-manager-test-")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempBaseDir)
-
-	paths := NewConfigPaths(tempBaseDir)
-
-	rootCA, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
-	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
-	assert.NoError(t, err)
-
-	ctx := context.Background()
-
-	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
-	grpcServer := grpc.NewServer(opts...)
-	store := store.NewMemoryStore(nil)
-	caserver := NewServer(store, managerConfig, api.AcceptancePolicy{Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true}})
-	api.RegisterCAServer(grpcServer, caserver)
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(t, err)
-
-	done := make(chan error)
-	defer close(done)
-	go func() {
-		done <- grpcServer.Serve(l)
-	}()
-	go func() {
-		assert.NoError(t, caserver.Run(context.Background()))
-	}()
-	defer caserver.Stop()
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
 
 	// Remove all the contents from the temp dir and try again with a new manager
-	os.RemoveAll(tempBaseDir)
-	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ctx, tempBaseDir, "", l.Addr().String())
+	os.RemoveAll(ts.tmpDir)
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
 	assert.NoError(t, err)
 	assert.NotNil(t, newManagerSecurityConfig)
 	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
@@ -73,48 +41,17 @@ func TestLoadOrCreateManagerSecurityConfigNoCARemoteManager(t *testing.T) {
 	assert.NotNil(t, newManagerSecurityConfig.RootCA.Pool)
 	assert.NotNil(t, newManagerSecurityConfig.RootCA.Cert)
 	assert.Nil(t, newManagerSecurityConfig.RootCA.Signer)
-
-	grpcServer.Stop()
-
-	// After stopping we should receive an error from ListenAndServe.
-	assert.Error(t, <-done)
 }
 
 func TestLoadOrCreateManagerSecurityConfigNoCerts(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-manager-test-")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempBaseDir)
-
-	paths := NewConfigPaths(tempBaseDir)
-
-	rootCA, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
-	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
-	assert.NoError(t, err)
-
-	ctx := context.Background()
-
-	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
-	grpcServer := grpc.NewServer(opts...)
-	store := store.NewMemoryStore(nil)
-	caserver := NewServer(store, managerConfig, api.AcceptancePolicy{Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true}})
-	api.RegisterCAServer(grpcServer, caserver)
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(t, err)
-
-	done := make(chan error)
-	defer close(done)
-	go func() {
-		done <- grpcServer.Serve(l)
-	}()
-	go func() {
-		assert.NoError(t, caserver.Run(context.Background()))
-	}()
-	defer caserver.Stop()
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
 
 	// Remove all the contents from the temp dir and try again with a new manager
-	os.RemoveAll(paths.Manager.Cert)
-	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ctx, tempBaseDir, "", l.Addr().String())
+	os.RemoveAll(ts.paths.Manager.Cert)
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
 	assert.NoError(t, err)
 	assert.NotNil(t, newManagerSecurityConfig)
 	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
@@ -122,189 +59,127 @@ func TestLoadOrCreateManagerSecurityConfigNoCerts(t *testing.T) {
 	assert.NotNil(t, newManagerSecurityConfig.RootCA.Pool)
 	assert.NotNil(t, newManagerSecurityConfig.RootCA.Cert)
 	assert.NotNil(t, newManagerSecurityConfig.RootCA.Signer)
+}
 
-	grpcServer.Stop()
+func TestLoadOrCreateManagerSecurityConfigInvalidCACertNoRemote(t *testing.T) {
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
 
-	// After stopping we should receive an error from ListenAndServe.
-	assert.Error(t, <-done)
+	// Write some garbage to the cert
+	ioutil.WriteFile(ts.paths.RootCA.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
+													some random garbage\n
+													-----END CERTIFICATE-----`), 0644)
+
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", "")
+	assert.NoError(t, err)
+	assert.NotNil(t, newManagerSecurityConfig)
+	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.ServerTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Pool)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Cert)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Signer)
+}
+
+func TestLoadOrCreateManagerSecurityConfigInvalidCACertWithRemote(t *testing.T) {
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
+
+	// Write some garbage to the cert
+	ioutil.WriteFile(ts.paths.RootCA.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
+													some random garbage\n
+													-----END CERTIFICATE-----`), 0644)
+
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
+	assert.NoError(t, err)
+	assert.NotNil(t, newManagerSecurityConfig)
+	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.ServerTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Pool)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Cert)
+	assert.Nil(t, newManagerSecurityConfig.RootCA.Signer)
+}
+
+func TestLoadOrCreateManagerSecurityConfigInvalidCert(t *testing.T) {
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
+
+	// Write some garbage to the cert
+	ioutil.WriteFile(ts.paths.Manager.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
+													some random garbage\n
+													-----END CERTIFICATE-----`), 0644)
+
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
+	assert.NoError(t, err)
+	assert.NotNil(t, newManagerSecurityConfig)
+	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.ServerTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Pool)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Cert)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Signer)
+}
+
+func TestLoadOrCreateManagerSecurityConfigInvalidKey(t *testing.T) {
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
+
+	// Write some garbage to the Key
+	ioutil.WriteFile(ts.paths.Manager.Key, []byte(`-----BEGIN EC PRIVATE KEY-----\n
+													some random garbage\n
+													-----END EC PRIVATE KEY-----`), 0644)
+
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
+	assert.NoError(t, err)
+	assert.NotNil(t, newManagerSecurityConfig)
+	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.ServerTLSCreds)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Pool)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Cert)
+	assert.NotNil(t, newManagerSecurityConfig.RootCA.Signer)
 }
 
 func TestLoadOrCreateManagerSecurityConfigNoCertsAndNoRemote(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-manager-test-")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempBaseDir)
-
-	paths := NewConfigPaths(tempBaseDir)
-
-	rootCA, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
-	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
-	assert.NoError(t, err)
-
-	ctx := context.Background()
-
-	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
-	grpcServer := grpc.NewServer(opts...)
-	store := store.NewMemoryStore(nil)
-	caserver := NewServer(store, managerConfig, api.AcceptancePolicy{Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true}})
-	api.RegisterCAServer(grpcServer, caserver)
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(t, err)
-
-	done := make(chan error)
-	defer close(done)
-	go func() {
-		done <- grpcServer.Serve(l)
-	}()
-	go func() {
-		assert.NoError(t, caserver.Run(context.Background()))
-	}()
-	defer caserver.Stop()
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
 
 	// Remove the certificate from the temp dir and try loading with a new manager
-	os.RemoveAll(paths.Manager.Cert)
-	os.RemoveAll(paths.RootCA.Key)
-	_, err = LoadOrCreateManagerSecurityConfig(ctx, tempBaseDir, "", "")
-	assert.Error(t, err, "address of a manager is required to join a cluster")
-
-	grpcServer.Stop()
-
-	// After stopping we should receive an error from ListenAndServe.
-	assert.Error(t, <-done)
+	os.RemoveAll(ts.paths.Manager.Cert)
+	os.RemoveAll(ts.paths.RootCA.Key)
+	_, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", "")
+	assert.EqualError(t, err, "no manager address provided")
 }
 
 func TestLoadOrCreateAgentSecurityConfigNoCARemoteManager(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-agent-test-")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempBaseDir)
-
-	paths := NewConfigPaths(tempBaseDir)
-
-	rootCA, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
-	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
-	assert.NoError(t, err)
-
-	ctx := context.Background()
-
-	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
-	grpcServer := grpc.NewServer(opts...)
-	store := store.NewMemoryStore(nil)
-	caserver := NewServer(store, managerConfig, api.AcceptancePolicy{Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true}})
-	api.RegisterCAServer(grpcServer, caserver)
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(t, err)
-
-	done := make(chan error)
-	defer close(done)
-	go func() {
-		done <- grpcServer.Serve(l)
-	}()
-	go func() {
-		assert.NoError(t, caserver.Run(context.Background()))
-	}()
-	defer caserver.Stop()
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
 
 	// Remove all the contents from the temp dir and try again with a new manager
-	os.RemoveAll(tempBaseDir)
-	agentSecurityConfig, err := LoadOrCreateAgentSecurityConfig(ctx, tempBaseDir, "", l.Addr().String())
+	os.RemoveAll(ts.tmpDir)
+	agentSecurityConfig, err := LoadOrCreateAgentSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
 	assert.NoError(t, err)
 	assert.NotNil(t, agentSecurityConfig.ClientTLSCreds)
 	assert.NotNil(t, agentSecurityConfig.Pool)
-
-	grpcServer.Stop()
-
-	// After stopping we should receive an error from ListenAndServe.
-	assert.Error(t, <-done)
 }
 
 func TestLoadOrCreateAgentSecurityConfigNoCANoRemoteManager(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-agent-test-")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempBaseDir)
-
-	paths := NewConfigPaths(tempBaseDir)
-
-	rootCA, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
-	assert.NoError(t, err)
-	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
-	assert.NoError(t, err)
-
-	ctx := context.Background()
-
-	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
-	grpcServer := grpc.NewServer(opts...)
-	store := store.NewMemoryStore(nil)
-	caserver := NewServer(store, managerConfig, api.AcceptancePolicy{Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true}})
-	api.RegisterCAServer(grpcServer, caserver)
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(t, err)
-
-	done := make(chan error)
-	defer close(done)
-	go func() {
-		done <- grpcServer.Serve(l)
-	}()
-	go func() {
-		assert.NoError(t, caserver.Run(context.Background()))
-	}()
-	defer caserver.Stop()
+	ts := NewTestService(t, AutoAcceptPolicy())
+	defer os.RemoveAll(ts.tmpDir)
+	defer ts.caServer.Stop()
+	defer ts.server.Stop()
 
 	// Remove all the contents from the temp dir and try again with a new manager
-	os.RemoveAll(tempBaseDir)
-	_, err = LoadOrCreateAgentSecurityConfig(ctx, tempBaseDir, "", "")
-	assert.Error(t, err, "address of a manager is required to join a cluster")
-
-	grpcServer.Stop()
-
-	// After stopping we should receive an error from ListenAndServe.
-	assert.Error(t, <-done)
-}
-
-func genManagerSecurityConfig(rootCA RootCA, tempBaseDir string) (*ManagerSecurityConfig, error) {
-	paths := NewConfigPaths(tempBaseDir)
-
-	managerID := identity.NewID()
-	managerCert, err := GenerateAndSignNewTLSCert(rootCA, managerID, ManagerRole, paths.Manager)
-	if err != nil {
-		return nil, err
-	}
-
-	managerTLSCreds, err := rootCA.NewServerTLSCredentials(managerCert)
-	if err != nil {
-		return nil, err
-	}
-
-	managerClientTLSCreds, err := rootCA.NewClientTLSCredentials(managerCert, ManagerRole)
-	if err != nil {
-		return nil, err
-	}
-
-	ManagerSecurityConfig := &ManagerSecurityConfig{}
-	ManagerSecurityConfig.RootCA = rootCA
-	ManagerSecurityConfig.ServerTLSCreds = managerTLSCreds
-	ManagerSecurityConfig.ClientTLSCreds = managerClientTLSCreds
-
-	return ManagerSecurityConfig, nil
-}
-
-func genAgentSecurityConfig(rootCA RootCA, tempBaseDir string) (*AgentSecurityConfig, error) {
-	paths := NewConfigPaths(tempBaseDir)
-
-	agentID := identity.NewID()
-	agentCert, err := GenerateAndSignNewTLSCert(rootCA, agentID, AgentRole, paths.Agent)
-	if err != nil {
-		return nil, err
-	}
-
-	agentClientTLSCreds, err := rootCA.NewClientTLSCredentials(agentCert, ManagerRole)
-	if err != nil {
-		return nil, err
-	}
-
-	AgentSecurityConfig := &AgentSecurityConfig{}
-	AgentSecurityConfig.RootCA = rootCA
-	AgentSecurityConfig.ClientTLSCreds = agentClientTLSCreds
-
-	return AgentSecurityConfig, nil
+	os.RemoveAll(ts.tmpDir)
+	_, err := LoadOrCreateAgentSecurityConfig(ts.ctx, ts.tmpDir, "", "")
+	assert.EqualError(t, err, "address of a manager is required to join a cluster")
 }

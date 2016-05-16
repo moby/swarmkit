@@ -3,6 +3,7 @@ package ca
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -81,14 +82,17 @@ type SecurityConfigPaths struct {
 // NewConfigPaths returns the absolute paths to all of the different types of files
 func NewConfigPaths(baseCertDir string) *SecurityConfigPaths {
 	return &SecurityConfigPaths{
-		Agent: CertPaths{Cert: filepath.Join(baseCertDir, agentTLSCertFilename),
-			Key: filepath.Join(baseCertDir, agentTLSKeyFilename),
-			CSR: filepath.Join(baseCertDir, agentCSRFilename)},
-		Manager: CertPaths{Cert: filepath.Join(baseCertDir, managerTLSCertFilename),
-			Key: filepath.Join(baseCertDir, managerTLSKeyFilename),
-			CSR: filepath.Join(baseCertDir, managerCSRFilename)},
-		RootCA: CertPaths{Cert: filepath.Join(baseCertDir, rootCACertFilename),
-			Key: filepath.Join(baseCertDir, rootCAKeyFilename)},
+		Agent: CertPaths{
+			Cert: filepath.Join(baseCertDir, agentTLSCertFilename),
+			Key:  filepath.Join(baseCertDir, agentTLSKeyFilename),
+			CSR:  filepath.Join(baseCertDir, agentCSRFilename)},
+		Manager: CertPaths{
+			Cert: filepath.Join(baseCertDir, managerTLSCertFilename),
+			Key:  filepath.Join(baseCertDir, managerTLSKeyFilename),
+			CSR:  filepath.Join(baseCertDir, managerCSRFilename)},
+		RootCA: CertPaths{
+			Cert: filepath.Join(baseCertDir, rootCACertFilename),
+			Key:  filepath.Join(baseCertDir, rootCAKeyFilename)},
 	}
 }
 
@@ -139,7 +143,7 @@ func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash, m
 
 	// At this point we either had, or successfully retrieved a CA.
 	// The next step is to try to load our certificates.
-	_, clientTLSCreds, err = loadTLSCreds(rootCA, paths.Agent)
+	clientTLSCreds, _, err = loadTLSCreds(rootCA, paths.Agent)
 	if err != nil {
 		log.Debugf("no valid local TLS credentials found: %v", err)
 		// There was an error loading our Credentials, let's get a new certificate reissued
@@ -217,7 +221,7 @@ func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash,
 
 	// At this point we either fully boostraped the first Manager, or successfully retrieved a CA.
 	// The next step is to try to load our certificates.
-	serverTLSCreds, clientTLSCreds, err = loadTLSCreds(rootCA, paths.Manager)
+	clientTLSCreds, serverTLSCreds, err = loadTLSCreds(rootCA, paths.Manager)
 	if err != nil {
 		log.Debugf("no valid local TLS credentials found: %v", err)
 
@@ -248,25 +252,60 @@ func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash,
 }
 
 func loadTLSCreds(rootCA RootCA, paths CertPaths) (credentials.TransportAuthenticator, credentials.TransportAuthenticator, error) {
-	// TODO(diogo): check expiration of certificates
-	serverCert, err := tls.LoadX509KeyPair(paths.Cert, paths.Key)
+	// Read both the Cert and Key from disk
+	cert, err := ioutil.ReadFile(paths.Cert)
+	if err != nil {
+		return nil, nil, err
+	}
+	key, err := ioutil.ReadFile(paths.Key)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Create an x509 certificate out of the contents on disk
+	certBlock, _ := pem.Decode([]byte(cert))
+	if certBlock == nil {
+		return nil, nil, fmt.Errorf("failed to parse certificate PEM")
+	}
+
+	// Create an X509Cert so we can .Verify()
+	X509Cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Include our root pool
+	opts := x509.VerifyOptions{
+		Roots: rootCA.Pool,
+	}
+
+	// Check to see if this certificate was signed by our CA, and isn't expired
+	if _, err := X509Cert.Verify(opts); err != nil {
+		return nil, nil, err
+	}
+
+	// Now that we know this certificate is valid, create a TLS Certificate for our
+	// credentials
+	keyPair, err := tls.X509KeyPair(cert, key)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Load the manager Certificates as server credentials
-	serverTLSCreds, err := rootCA.NewServerTLSCredentials(&serverCert)
+	serverTLSCreds, err := rootCA.NewServerTLSCredentials(&keyPair)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Load the manager Certificates also as client credentials
-	clientTLSCreds, err := rootCA.NewClientTLSCredentials(&serverCert, ManagerRole)
+	// Load the manager Certificates also as client credentials.
+	// Both Agents and Managers always connect to remote Managers,
+	// so ServerName is always set to ManagerRole here.
+	clientTLSCreds, err := rootCA.NewClientTLSCredentials(&keyPair, ManagerRole)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return serverTLSCreds, clientTLSCreds, nil
+	return clientTLSCreds, serverTLSCreds, nil
 }
 
 // newServerTLSConfig returns a tls.Config configured for a TLS Server, given a tls.Certificate

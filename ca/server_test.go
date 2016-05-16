@@ -48,17 +48,17 @@ func startCA() (*grpcCA, error) {
 
 	paths := NewConfigPaths(tempBaseDir)
 
-	signer, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
+	rootCA, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
 	if err != nil {
 		return nil, err
 	}
 
-	managerSecurityConfig, err := genManagerSecurityConfig(signer, tempBaseDir)
+	managerSecurityConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
 	if err != nil {
 		return nil, err
 	}
 
-	agentSecurityConfig, err := genAgentSecurityConfig(signer, tempBaseDir)
+	agentSecurityConfig, err := genAgentSecurityConfig(rootCA, tempBaseDir)
 	if err != nil {
 		return nil, err
 	}
