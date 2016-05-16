@@ -22,7 +22,7 @@ func TestDrain(t *testing.T) {
 			Instances:   1,
 			Mode:        api.ServiceModeRunning,
 			Restart: &api.RestartPolicy{
-				Condition: api.RestartNever,
+				Condition: api.RestartOnNone,
 			},
 		},
 	}

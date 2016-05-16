@@ -160,7 +160,7 @@ func deleteServiceTasks(ctx context.Context, s *store.MemoryStore, service *api.
 }
 
 func restartCondition(service *api.Service) api.RestartPolicy_RestartCondition {
-	restartCondition := api.RestartAlways
+	restartCondition := api.RestartOnAny
 	if service.Spec.Restart != nil {
 		restartCondition = service.Spec.Restart.Condition
 	}

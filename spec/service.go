@@ -4,14 +4,11 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	yaml "github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/docker/swarm-v2/api"
 	"github.com/pmezard/go-difflib/difflib"
 )
-
-const defaultRestartDelay = 5 * time.Second
 
 // ContainerConfig is a human representation of the ContainerSpec
 type ContainerConfig struct {
@@ -60,16 +57,8 @@ type ServiceConfig struct {
 	Instances *uint64 `yaml:"instances,omitempty"`
 	Mode      string  `yaml:"mode,omitempty"`
 
-	// TODO(aaronl): Should these be part of a separate struct?
-	// Pro: groups them together, removes a common prefix
-	// Con: requires nesting to specify a simple restart policy like
-	// "restart: never".
-	Restart            string `yaml:"restart,omitempty"`
-	RestartDelay       string `yaml:"restartdelay,omitempty"`
-	MaxRestartAttempts uint64 `yaml:"maxrestartattempts,omitempty"`
-	RestartWindow      string `yaml:"restartwindow,omitempty"`
-
-	Update *UpdateConfiguration `yaml:"update,omitempty"`
+	Restart *RestartConfiguration `yaml:"restart,omitempty"`
+	Update  *UpdateConfiguration  `yaml:"update,omitempty"`
 }
 
 // Validate checks the validity of the ServiceConfig.
@@ -91,25 +80,6 @@ func (s *ServiceConfig) Validate() error {
 		return fmt.Errorf("unrecognized mode %s", s.Mode)
 	}
 
-	switch s.Restart {
-	case "", "no", "on-failure":
-	case "always":
-	default:
-		return fmt.Errorf("unrecognized restart policy %s", s.Restart)
-	}
-	if s.RestartDelay != "" {
-		_, err := time.ParseDuration(s.RestartDelay)
-		if err != nil {
-			return err
-		}
-	}
-	if s.RestartWindow != "" {
-		_, err := time.ParseDuration(s.RestartWindow)
-		if err != nil {
-			return err
-		}
-	}
-
 	if s.Resources != nil {
 		if err := s.Resources.Validate(); err != nil {
 			return err
@@ -117,6 +87,11 @@ func (s *ServiceConfig) Validate() error {
 	}
 	if s.Update != nil {
 		if err := s.Update.Validate(); err != nil {
+			return err
+		}
+	}
+	if s.Restart != nil {
+		if err := s.Restart.Validate(); err != nil {
 			return err
 		}
 	}
@@ -170,10 +145,8 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 			},
 		},
 
-		Update: s.Update.ToProto(),
-		Restart: &api.RestartPolicy{
-			MaxAttempts: s.MaxRestartAttempts,
-		},
+		Update:  s.Update.ToProto(),
+		Restart: s.Restart.ToProto(),
 	}
 
 	if len(s.Ports) != 0 {
@@ -216,23 +189,6 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 	case "fill":
 		spec.Mode = api.ServiceModeFill
 	}
-
-	switch s.Restart {
-	case "no":
-		spec.Restart.Condition = api.RestartNever
-	case "on-failure":
-		spec.Restart.Condition = api.RestartOnFailure
-	case "", "always":
-		spec.Restart.Condition = api.RestartAlways
-	}
-
-	if s.RestartDelay == "" {
-		spec.Restart.Delay = defaultRestartDelay
-	} else {
-		spec.Restart.Delay, _ = time.ParseDuration(s.RestartDelay)
-	}
-
-	spec.Restart.Window, _ = time.ParseDuration(s.RestartWindow)
 
 	return spec
 }
@@ -286,23 +242,14 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 		s.Mode = "batch"
 	}
 
-	if serviceSpec.Restart != nil {
-		switch serviceSpec.Restart.Condition {
-		case api.RestartNever:
-			s.Restart = "no"
-		case api.RestartOnFailure:
-			s.Restart = "on-failure"
-		case api.RestartAlways:
-			s.Restart = "always"
-		}
-		s.RestartDelay = serviceSpec.Restart.Delay.String()
-		s.MaxRestartAttempts = serviceSpec.Restart.MaxAttempts
-		s.RestartWindow = serviceSpec.Restart.Window.String()
-	}
-
 	if serviceSpec.Update != nil {
 		s.Update = &UpdateConfiguration{}
 		s.Update.FromProto(serviceSpec.Update)
+	}
+
+	if serviceSpec.Restart != nil {
+		s.Restart = &RestartConfiguration{}
+		s.Restart.FromProto(serviceSpec.Restart)
 	}
 }
 

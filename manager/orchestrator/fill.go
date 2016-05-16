@@ -389,7 +389,7 @@ func isTaskCompleted(t *api.Task, restartPolicy api.RestartPolicy_RestartConditi
 	if t == nil || isTaskRunning(t) {
 		return false
 	}
-	return restartPolicy == api.RestartNever ||
+	return restartPolicy == api.RestartOnNone ||
 		(restartPolicy == api.RestartOnFailure && t.Status.TerminalState == api.TaskStateCompleted)
 }
 
