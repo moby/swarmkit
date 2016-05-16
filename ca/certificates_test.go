@@ -51,7 +51,8 @@ func NewTestService(t *testing.T, policy api.AcceptancePolicy) *TestService {
 	opts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(opts...)
 	s := store.NewMemoryStore(nil)
-	caserver := NewServer(s, managerConfig, policy)
+	createClusterObject(t, s, policy)
+	caserver := NewServer(s, managerConfig)
 	api.RegisterCAServer(grpcServer, caserver)
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.NoError(t, err)
@@ -471,4 +472,19 @@ func genAgentSecurityConfig(rootCA RootCA, tempBaseDir string) (*AgentSecurityCo
 	AgentSecurityConfig.ClientTLSCreds = agentClientTLSCreds
 
 	return AgentSecurityConfig, nil
+}
+
+func createClusterObject(t *testing.T, s *store.MemoryStore, acceptancePolicy api.AcceptancePolicy) {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		store.CreateCluster(tx, &api.Cluster{
+			ID: identity.NewID(),
+			Spec: api.ClusterSpec{
+				Annotations: api.Annotations{
+					Name: store.DefaultClusterName,
+				},
+				AcceptancePolicy: acceptancePolicy,
+			},
+		})
+		return nil
+	}))
 }

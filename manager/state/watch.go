@@ -522,6 +522,87 @@ func (e EventDeleteRegisteredCertificate) matches(watchEvent events.Event) bool 
 	return true
 }
 
+// ClusterCheckFunc is the type of function used to perform filtering checks on
+// api.Cluster structures.
+type ClusterCheckFunc func(v1, v2 *api.Cluster) bool
+
+// ClusterCheckID is a ClusterCheckFunc for matching volume IDs.
+func ClusterCheckID(v1, v2 *api.Cluster) bool {
+	return v1.ID == v2.ID
+}
+
+// EventCreateCluster is the type used to put CreateCluster events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventCreateCluster struct {
+	Cluster *api.Cluster
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []ClusterCheckFunc
+}
+
+func (e EventCreateCluster) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventCreateCluster)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Cluster, typedEvent.Cluster) {
+			return false
+		}
+	}
+	return true
+}
+
+// EventUpdateCluster is the type used to put UpdateCluster events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventUpdateCluster struct {
+	Cluster *api.Cluster
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []ClusterCheckFunc
+}
+
+func (e EventUpdateCluster) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventUpdateCluster)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Cluster, typedEvent.Cluster) {
+			return false
+		}
+	}
+	return true
+}
+
+// EventDeleteCluster is the type used to put DeleteCluster events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventDeleteCluster struct {
+	Cluster *api.Cluster
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []ClusterCheckFunc
+}
+
+func (e EventDeleteCluster) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventDeleteCluster)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Cluster, typedEvent.Cluster) {
+			return false
+		}
+	}
+	return true
+}
+
 // Watch takes a variable number of events to match against. The subscriber
 // will receive events that match any of the arguments passed to Watch.
 //
