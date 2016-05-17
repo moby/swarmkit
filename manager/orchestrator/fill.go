@@ -103,6 +103,7 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 				deleteServiceTasks(ctx, f.store, v.Service)
 				// delete the service from service map
 				delete(f.fillServices, v.Service.ID)
+				f.restarts.ClearServiceHistory(v.Service.ID)
 			case state.EventCreateNode:
 				f.reconcileOneNode(ctx, v.Node)
 			case state.EventUpdateNode:
@@ -388,7 +389,7 @@ func isTaskCompleted(t *api.Task, restartPolicy api.RestartPolicy_RestartConditi
 	if t == nil || isTaskRunning(t) {
 		return false
 	}
-	return restartPolicy == api.RestartNever ||
+	return restartPolicy == api.RestartOnNone ||
 		(restartPolicy == api.RestartOnFailure && t.Status.TerminalState == api.TaskStateCompleted)
 }
 

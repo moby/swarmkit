@@ -15,7 +15,7 @@ const (
 	maxDirty = 1000
 )
 
-type dirtyTuple struct {
+type instanceTuple struct {
 	instance  uint64 // unset for fill tasks
 	serviceID string
 	nodeID    string // unset for running tasks
@@ -27,7 +27,7 @@ type TaskReaper struct {
 	store *store.MemoryStore
 	// taskHistory is the number of tasks to keep
 	taskHistory int64
-	dirty       map[dirtyTuple]struct{}
+	dirty       map[instanceTuple]struct{}
 	watcher     chan events.Event
 	cancelWatch func()
 	stopChan    chan struct{}
@@ -43,7 +43,7 @@ func NewTaskReaper(store *store.MemoryStore, taskHistory int64) *TaskReaper {
 		taskHistory: taskHistory,
 		watcher:     watcher,
 		cancelWatch: cancel,
-		dirty:       make(map[dirtyTuple]struct{}),
+		dirty:       make(map[instanceTuple]struct{}),
 		stopChan:    make(chan struct{}),
 		doneChan:    make(chan struct{}),
 	}
@@ -60,7 +60,7 @@ func (tr *TaskReaper) Run() {
 		select {
 		case event := <-tr.watcher:
 			t := event.(state.EventCreateTask).Task
-			tr.dirty[dirtyTuple{
+			tr.dirty[instanceTuple{
 				instance:  t.Instance,
 				serviceID: t.ServiceID,
 				nodeID:    t.NodeID,
@@ -82,7 +82,7 @@ func (tr *TaskReaper) tick() {
 	}
 
 	defer func() {
-		tr.dirty = make(map[dirtyTuple]struct{})
+		tr.dirty = make(map[instanceTuple]struct{})
 	}()
 
 	var deleteTasks []string

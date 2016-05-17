@@ -16,8 +16,11 @@ services:
         # number of instances for a running service.
         instances: 3
         # restart policy
-        restart: always
-        restartdelay: 10s
+        restart:
+            on: any
+            delay: 10s
+            attempts: 5
+            window: 60s
         # update strategy (rolling updates)
         update:
             parallelism: 1

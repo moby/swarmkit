@@ -22,7 +22,7 @@ func TestDrain(t *testing.T) {
 			Instances:   1,
 			Mode:        api.ServiceModeRunning,
 			Restart: &api.RestartPolicy{
-				Condition: api.RestartNever,
+				Condition: api.RestartOnNone,
 			},
 		},
 	}
@@ -179,6 +179,7 @@ func TestDrain(t *testing.T) {
 	assert.NoError(t, err)
 
 	orchestrator := New(s)
+	defer orchestrator.Stop()
 
 	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
@@ -236,6 +237,4 @@ func TestDrain(t *testing.T) {
 	deletion6 := watchDeadTask(t, watch)
 	assert.Equal(t, "id1", deletion6.ID)
 	assert.Equal(t, "id1", deletion6.NodeID)
-
-	orchestrator.Stop()
 }
