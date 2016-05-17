@@ -19,7 +19,11 @@ import (
 
 func invalidNode(n *api.Node) bool {
 	return n == nil ||
-		n.Status.State != api.NodeStatus_READY ||
+		n.Status.State != api.NodeStatus_READY
+}
+
+func drainedNode(n *api.Node) bool {
+	return n != nil &&
 		n.Spec.Availability == api.NodeAvailabilityDrain
 }
 
@@ -29,27 +33,38 @@ func (o *Orchestrator) initTasks(ctx context.Context, readTx store.ReadTx) error
 		return err
 	}
 	for _, t := range tasks {
-		if t.NodeID != "" {
+		if t.NodeID != "" && t.Status.State <= api.TaskStateRunning && t.DesiredState <= api.TaskStateRunning {
 			n := store.GetNode(readTx, t.NodeID)
-			if invalidNode(n) && t.Status.State <= api.TaskStateRunning && t.DesiredState <= api.TaskStateRunning {
-				o.restartTasks[t.ID] = struct{}{}
-			}
-		}
-		if t.ServiceID != "" {
-			service := store.GetService(readTx, t.ServiceID)
-			if !isRelatedService(service) {
-				o.restartTasks[t.ID] = struct{}{}
+			if drainedNode(n) {
+				o.restartTasks[t.ID] = restartTask{drained: true}
+			} else if invalidNode(n) {
+				o.restartTasks[t.ID] = restartTask{drained: false}
 			}
 		}
 	}
 
 	_, err = o.store.Batch(func(batch *store.Batch) error {
 		for _, t := range tasks {
-			if t.ServiceID == "" || t.DesiredState != api.TaskStateReady {
+			if t.ServiceID == "" {
 				continue
 			}
 			service := store.GetService(readTx, t.ServiceID)
-			if !isRelatedService(service) {
+			if service == nil {
+				// Service was deleted
+				err := batch.Update(func(tx store.Tx) error {
+					t.DesiredState = api.TaskStateDead
+					err := store.UpdateTask(tx, t)
+					if err != nil {
+						return err
+					}
+					return nil
+				})
+				if err != nil {
+					log.G(ctx).WithError(err).Errorf("failed to set task desired state to dead")
+				}
+				continue
+			}
+			if t.DesiredState != api.TaskStateReady || !isRelatedService(service) {
 				continue
 			}
 			if service.Spec.Restart != nil && service.Spec.Restart.Delay != 0 {
@@ -84,7 +99,7 @@ func (o *Orchestrator) initTasks(ctx context.Context, readTx store.ReadTx) error
 func (o *Orchestrator) handleTaskEvent(ctx context.Context, event events.Event) {
 	switch v := event.(type) {
 	case state.EventDeleteNode:
-		o.restartTasksByNodeID(ctx, v.Node.ID)
+		o.restartTasksByNodeID(ctx, v.Node.ID, restartTask{drained: false})
 	case state.EventCreateNode:
 		o.handleNodeChange(ctx, v.Node)
 	case state.EventUpdateNode:
@@ -108,7 +123,7 @@ func (o *Orchestrator) handleTaskEvent(ctx context.Context, event events.Event) 
 func (o *Orchestrator) tickTasks(ctx context.Context) {
 	if len(o.restartTasks) > 0 {
 		_, err := o.store.Batch(func(batch *store.Batch) error {
-			for taskID := range o.restartTasks {
+			for taskID, restartTask := range o.restartTasks {
 				err := batch.Update(func(tx store.Tx) error {
 					// TODO(aaronl): optimistic update?
 					t := store.GetTask(tx, taskID)
@@ -123,7 +138,7 @@ func (o *Orchestrator) tickTasks(ctx context.Context) {
 						}
 
 						// Restart task if applicable
-						if err := o.restarts.Restart(ctx, tx, service, *t); err != nil {
+						if err := o.restarts.Restart(ctx, tx, service, *t, restartTask.drained); err != nil {
 							return err
 						}
 					}
@@ -140,11 +155,11 @@ func (o *Orchestrator) tickTasks(ctx context.Context) {
 			log.G(ctx).WithError(err).Errorf("orchestator task removal batch failed")
 		}
 
-		o.restartTasks = make(map[string]struct{})
+		o.restartTasks = make(map[string]restartTask)
 	}
 }
 
-func (o *Orchestrator) restartTasksByNodeID(ctx context.Context, nodeID string) {
+func (o *Orchestrator) restartTasksByNodeID(ctx context.Context, nodeID string, restartTask restartTask) {
 	var err error
 	o.store.View(func(tx store.ReadTx) {
 		var tasks []*api.Task
@@ -159,7 +174,7 @@ func (o *Orchestrator) restartTasksByNodeID(ctx context.Context, nodeID string) 
 			}
 			service := store.GetService(tx, t.ServiceID)
 			if isRelatedService(service) {
-				o.restartTasks[t.ID] = struct{}{}
+				o.restartTasks[t.ID] = restartTask
 			}
 		}
 	})
@@ -169,11 +184,11 @@ func (o *Orchestrator) restartTasksByNodeID(ctx context.Context, nodeID string) 
 }
 
 func (o *Orchestrator) handleNodeChange(ctx context.Context, n *api.Node) {
-	if !invalidNode(n) {
-		return
+	if drainedNode(n) {
+		o.restartTasksByNodeID(ctx, n.ID, restartTask{drained: true})
+	} else if invalidNode(n) {
+		o.restartTasksByNodeID(ctx, n.ID, restartTask{drained: false})
 	}
-
-	o.restartTasksByNodeID(ctx, n.ID)
 }
 
 func (o *Orchestrator) handleTaskChange(ctx context.Context, t *api.Task) {
@@ -200,9 +215,11 @@ func (o *Orchestrator) handleTaskChange(ctx context.Context, t *api.Task) {
 		return
 	}
 
-	if t.Status.TerminalState > api.TaskStateNew ||
+	if drainedNode(n) {
+		o.restartTasks[t.ID] = restartTask{drained: true}
+	} else if t.Status.TerminalState > api.TaskStateNew ||
 		(t.NodeID != "" && invalidNode(n)) ||
 		(t.ServiceID != "" && service == nil) {
-		o.restartTasks[t.ID] = struct{}{}
+		o.restartTasks[t.ID] = restartTask{drained: false}
 	}
 }

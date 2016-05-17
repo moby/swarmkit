@@ -29,7 +29,7 @@ func NewRestartSupervisor(store *store.MemoryStore) *RestartSupervisor {
 
 // Restart initiates a new task to replace t if appropriate under the service's
 // restart policy.
-func (r *RestartSupervisor) Restart(ctx context.Context, tx store.Tx, service *api.Service, t api.Task) error {
+func (r *RestartSupervisor) Restart(ctx context.Context, tx store.Tx, service *api.Service, t api.Task, drained bool) error {
 	t.DesiredState = api.TaskStateDead
 	err := store.UpdateTask(tx, &t)
 	if err != nil {
@@ -57,7 +57,7 @@ func (r *RestartSupervisor) Restart(ctx context.Context, tx store.Tx, service *a
 		return nil
 	}
 
-	if service.Spec.Restart != nil && service.Spec.Restart.Delay != 0 {
+	if !drained && service.Spec.Restart != nil && service.Spec.Restart.Delay != 0 {
 		restartTask.DesiredState = api.TaskStateReady
 	}
 	if err := store.CreateTask(tx, restartTask); err != nil {

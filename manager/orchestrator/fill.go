@@ -334,7 +334,7 @@ func (f *FillOrchestrator) restartTask(ctx context.Context, taskID string, servi
 		if service == nil {
 			return nil
 		}
-		return f.restarts.Restart(ctx, tx, service, *t)
+		return f.restarts.Restart(ctx, tx, service, *t, false)
 	})
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("FillOrchestrator: restartTask transaction failed")
