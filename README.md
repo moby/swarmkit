@@ -238,3 +238,41 @@ Task ID                      Instance    Image     Desired State    Last State  
 erly2j4b8hygo2ag8sevm2zop    ping.4      alpine    RUNNING          RUNNING 2 minutes ago     node-1
 3f4peh8qiykhxrbswildn2qlr    ping.5      alpine    RUNNING          RUNNING 31 seconds ago    node-1
 ```
+
+## Multiple Managers
+
+You can setup multiple managers. To initiate the first manager:
+
+```
+$ swarmd manager --state-dir "/tmp/manager1" --listen-addr "0.0.0.0:4242"
+```
+
+To start additional managers:
+
+```
+$ swarmd manager --state-dir "/tmp/manager2 --listen-addr "0.0.0.0:4243" --join-cluster "0.0.0.0:4242"
+$ swarmd manager --state-dir "/tmp/manager3 --listen-addr "0.0.0.0:4244" --join-cluster "0.0.0.0:4242"
+[...]
+```
+
+To add a new manager, first start a new manager process. The manager will request a certificate, and this request must be approved
+before the manager can join the Raft cluster. Use `swarmctl cert ls` to view pending requests:
+
+```
+$ swarmctl cert ls
+ID                         CN                         Role           Status
+--                         --                         ----           ------
+643nz8xh4gwelv16x8262wumq  b9jbgg4mzhbepi7kxcb2gnitg  swarm-manager  ISSUANCE_PENDING
+```
+
+Then, accept the new manager using:
+
+```
+$ swarmctl cert accept 643nz8xh4gwelv16x8262wumq
+```
+
+You can bypass the need for manual certificate approval by turning on automatic certificate issuance using this command:
+
+```
+$ swarmctl cluster update default --autoaccept agent,manager
+```
