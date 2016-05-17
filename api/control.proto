@@ -33,6 +33,7 @@ service Control {
 	rpc CreateVolume(CreateVolumeRequest) returns (CreateVolumeResponse) {};
 	rpc RemoveVolume(RemoveVolumeRequest) returns (RemoveVolumeResponse) {};
 
+	rpc GetManager(GetManagerRequest) returns (GetManagerResponse) {};
 	rpc ListManagers(ListManagersRequest) returns (ListManagersResponse) {};
 	rpc RemoveManager(RemoveManagerRequest) returns (RemoveManagerResponse) {};
 
@@ -200,6 +201,14 @@ message ListVolumesRequest {}
 
 message ListVolumesResponse {
 	repeated Volume volumes = 1;
+}
+
+message GetManagerRequest {
+	string manager_id = 1 [(gogoproto.customname) = "ManagerID"];
+}
+
+message GetManagerResponse {
+	Manager manager = 1;
 }
 
 message ListManagersRequest {

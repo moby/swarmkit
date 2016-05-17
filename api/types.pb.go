@@ -100,6 +100,8 @@
 		RemoveVolumeResponse
 		ListVolumesRequest
 		ListVolumesResponse
+		GetManagerRequest
+		GetManagerResponse
 		ListManagersRequest
 		ListManagersResponse
 		RemoveManagerRequest
