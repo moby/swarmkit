@@ -18,7 +18,7 @@ type Orchestrator struct {
 	store *store.MemoryStore
 
 	reconcileServices map[string]*api.Service
-	restartTasks      map[string]struct{}
+	restartTasks      map[string]restartTask
 
 	// stopChan signals to the state machine to stop running.
 	stopChan chan struct{}
@@ -29,6 +29,13 @@ type Orchestrator struct {
 	restarts *RestartSupervisor
 }
 
+// restartTask contains information about a task that needs to be restarted.
+type restartTask struct {
+	// drained is set to true if the task is being restarted because the
+	// node it was assigned to was drained.
+	drained bool
+}
+
 // New creates a new orchestrator.
 func New(store *store.MemoryStore) *Orchestrator {
 	return &Orchestrator{
@@ -36,7 +43,7 @@ func New(store *store.MemoryStore) *Orchestrator {
 		stopChan:          make(chan struct{}),
 		doneChan:          make(chan struct{}),
 		reconcileServices: make(map[string]*api.Service),
-		restartTasks:      make(map[string]struct{}),
+		restartTasks:      make(map[string]restartTask),
 		updater:           NewUpdateSupervisor(store),
 		restarts:          NewRestartSupervisor(store),
 	}
