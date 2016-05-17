@@ -21,6 +21,7 @@ import (
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
+	"github.com/docker/swarm-v2/picker"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -84,7 +85,7 @@ func (rca *RootCA) NewServerTLSCredentials(cert *tls.Certificate) (credentials.T
 
 // IssueAndSaveNewCertificates gets new certificates issued, either by signing them locally if a signer is
 // available, or by requesting them from the remote server at remoteAddr.
-func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPaths, role, remoteAddr string) (*tls.Certificate, error) {
+func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPaths, role string, remoteAddrs ...string) (*tls.Certificate, error) {
 	// Create a new key/pair and CSR for the new manager
 	csr, key, err := GenerateAndWriteNewCSR(paths)
 	if err != nil {
@@ -106,16 +107,13 @@ func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPa
 
 		log.Debugf("issued TLS credentials with role: %s.", role)
 	} else {
-		if remoteAddr == "" {
-			return nil, fmt.Errorf("no manager address provided")
-		}
 		// Get the remote manager to issue a CA signed certificate for this node
-		signedCert, err = getRemoteSignedCertificate(ctx, csr, role, remoteAddr, rca.Pool)
+		signedCert, err = getRemoteSignedCertificate(ctx, csr, role, rca.Pool, remoteAddrs...)
 		if err != nil {
 			return nil, err
 		}
 
-		log.Infof("Downloaded TLS credentials with role %s from %s.", role, remoteAddr)
+		log.Debugf("Downloaded TLS credentials with role: %s.", role)
 	}
 
 	// Ensure directory exists
@@ -197,14 +195,24 @@ func GetLocalRootCA(paths CertPaths) (RootCA, error) {
 }
 
 // GetRemoteCA returns the remote endpoint's CA certificate
-func GetRemoteCA(ctx context.Context, managerAddr, hashStr string) (RootCA, error) {
+func GetRemoteCA(ctx context.Context, hashStr string, managerAddrs ...string) (RootCA, error) {
 	// This TLS Config is intentionally using InsecureSkipVerify. Either we're
 	// doing TOFU, in which case we don't validate the remote CA, or we're using
 	// a user supplied hash to check the integrity of the CA certificate.
 	insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecureCreds), grpc.WithBackoffMaxDelay(10 * time.Second)}
 
-	conn, err := grpc.Dial(managerAddr, opts...)
+	// Create a new manager picker for the agent
+	managers := picker.NewRemotes(managerAddrs...)
+	manager, err := managers.Select()
+	if err != nil {
+		return RootCA{}, err
+	}
+
+	picker := picker.NewPicker(manager, managers)
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecureCreds),
+		grpc.WithBackoffMaxDelay(10 * time.Second), grpc.WithPicker(picker)}
+
+	conn, err := grpc.Dial(manager, opts...)
 	if err != nil {
 		return RootCA{}, err
 	}
@@ -364,6 +372,17 @@ func GenerateAndWriteNewCSR(paths CertPaths) (csr, key []byte, err error) {
 	return
 }
 
+func saveRootCA(rootCA RootCA, paths CertPaths) error {
+	// Make sure the necessary dirs exist and they are writable
+	err := os.MkdirAll(filepath.Dir(paths.Cert), 0755)
+	if err != nil {
+		return err
+	}
+
+	// If the root certificate got returned successfully, save the rootCA to disk.
+	return ioutil.WriteFile(paths.Cert, rootCA.Cert, 0644)
+}
+
 func generateNewCSR() (csr, key []byte, err error) {
 	req := &cfcsr.CertificateRequest{
 		KeyRequest: cfcsr.NewBasicKeyRequest(),
@@ -378,7 +397,7 @@ func generateNewCSR() (csr, key []byte, err error) {
 	return
 }
 
-func getRemoteSignedCertificate(ctx context.Context, csr []byte, role, caAddr string, rootCAPool *x509.CertPool) ([]byte, error) {
+func getRemoteSignedCertificate(ctx context.Context, csr []byte, role string, rootCAPool *x509.CertPool, caAddrs ...string) ([]byte, error) {
 	if rootCAPool == nil {
 		return nil, fmt.Errorf("valid root CA pool required")
 	}
@@ -386,9 +405,19 @@ func getRemoteSignedCertificate(ctx context.Context, csr []byte, role, caAddr st
 	// This is our only non-MTLS request
 	// We're using CARole as server name, so an external CA doesn't also have to have ManagerRole in the cert SANs
 	creds := credentials.NewTLS(&tls.Config{ServerName: CARole, RootCAs: rootCAPool})
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds), grpc.WithBackoffMaxDelay(10 * time.Second)}
 
-	conn, err := grpc.Dial(caAddr, opts...)
+	// Create a new manager picker for the agent
+	CAs := picker.NewRemotes(caAddrs...)
+	ca, err := CAs.Select()
+	if err != nil {
+		return nil, err
+	}
+
+	picker := picker.NewPicker(ca, CAs)
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds),
+		grpc.WithBackoffMaxDelay(10 * time.Second), grpc.WithPicker(picker)}
+
+	conn, err := grpc.Dial(ca, opts...)
 	if err != nil {
 		return nil, err
 	}
