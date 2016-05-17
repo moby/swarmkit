@@ -11,7 +11,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/ca/testutils"
@@ -166,7 +165,6 @@ func TestHeartbeat(t *testing.T) {
 }
 
 func TestHeartbeatTimeout(t *testing.T) {
-	logrus.SetLevel(logrus.DebugLevel)
 	cfg := DefaultConfig()
 	cfg.HeartbeatPeriod = 100 * time.Millisecond
 	cfg.HeartbeatEpsilon = 0
