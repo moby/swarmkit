@@ -293,12 +293,10 @@ func (m *Manager) Run(ctx context.Context) error {
 		errServe <- m.server.Serve(m.listener)
 	}()
 
-	leaderCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	if err := raft.WaitForLeader(leaderCtx, m.raftNode); err != nil {
+	if err := raft.WaitForLeader(ctx, m.raftNode); err != nil {
 		m.server.Stop()
 		return err
 	}
-	cancel()
 	close(m.started)
 	return <-errServe
 }
