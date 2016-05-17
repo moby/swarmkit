@@ -238,6 +238,12 @@ func (r *controller) Remove(ctx context.Context) error {
 		return err
 	}
 
+	// It may be necessary to shut down the task before removing it.
+	if err := r.Shutdown(ctx); err != nil {
+		// This may fail if the task was already shut down.
+		log.G(ctx).WithError(err).Debug("shutdown failed on removal")
+	}
+
 	// Try removing networks referenced in this task in case this
 	// task is the last one referencing it
 	if err := r.adapter.removeNetworks(ctx); err != nil {

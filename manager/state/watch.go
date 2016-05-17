@@ -40,6 +40,11 @@ func TaskCheckNodeID(t1, t2 *api.Task) bool {
 	return t1.NodeID == t2.NodeID
 }
 
+// TaskCheckStateGreaterThan is a TaskCheckFunc for checking task state.
+func TaskCheckStateGreaterThan(t1, t2 *api.Task) bool {
+	return t2.Status.State > t1.Status.State
+}
+
 // EventCreateTask is the type used to put CreateTask events on the
 // publish/subscribe queue and filter these events in calls to Watch.
 type EventCreateTask struct {
@@ -283,9 +288,9 @@ func NodeCheckID(n1, n2 *api.Node) bool {
 	return n1.ID == n2.ID
 }
 
-// NodeCheckStatus is a NodeCheckFunc for matching node status.
-func NodeCheckStatus(n1, n2 *api.Node) bool {
-	return n1.Status == n2.Status
+// NodeCheckState is a NodeCheckFunc for matching node state.
+func NodeCheckState(n1, n2 *api.Node) bool {
+	return n1.Status.State == n2.Status.State
 }
 
 // EventCreateNode is the type used to put CreateNode events on the

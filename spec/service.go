@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	yaml "github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/docker/swarm-v2/api"
 	"github.com/pmezard/go-difflib/difflib"
 )
+
+const defaultStopGracePeriod = 60 * time.Second
 
 // ContainerConfig is a human representation of the ContainerSpec
 type ContainerConfig struct {
@@ -39,6 +42,10 @@ type ContainerConfig struct {
 
 	// Mounts describe how volumes should be mounted in the container
 	Mounts Mounts `yaml:"mounts,omitempty"`
+
+	// StopGracePeriod is the amount of time to wait for the container
+	// to terminate before forcefully killing it.
+	StopGracePeriod string `yaml:"stopgraceperiod,omitempty"`
 }
 
 // PortConfig is a human representation of the PortConfiguration
@@ -78,6 +85,13 @@ func (s *ServiceConfig) Validate() error {
 		}
 	default:
 		return fmt.Errorf("unrecognized mode %s", s.Mode)
+	}
+
+	if s.StopGracePeriod != "" {
+		_, err := time.ParseDuration(s.StopGracePeriod)
+		if err != nil {
+			return err
+		}
 	}
 
 	if s.Resources != nil {
@@ -190,6 +204,12 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 		spec.Mode = api.ServiceModeFill
 	}
 
+	if s.StopGracePeriod == "" {
+		spec.GetContainer().StopGracePeriod = defaultStopGracePeriod
+	} else {
+		spec.GetContainer().StopGracePeriod, _ = time.ParseDuration(s.StopGracePeriod)
+	}
+
 	return spec
 }
 
@@ -241,6 +261,8 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	case api.ServiceModeBatch:
 		s.Mode = "batch"
 	}
+
+	s.StopGracePeriod = serviceSpec.GetContainer().StopGracePeriod.String()
 
 	if serviceSpec.Update != nil {
 		s.Update = &UpdateConfiguration{}

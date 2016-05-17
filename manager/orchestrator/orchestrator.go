@@ -31,14 +31,16 @@ type Orchestrator struct {
 
 // New creates a new orchestrator.
 func New(store *store.MemoryStore) *Orchestrator {
+	restartSupervisor := NewRestartSupervisor(store)
+	updater := NewUpdateSupervisor(store, restartSupervisor)
 	return &Orchestrator{
 		store:             store,
 		stopChan:          make(chan struct{}),
 		doneChan:          make(chan struct{}),
 		reconcileServices: make(map[string]*api.Service),
 		restartTasks:      make(map[string]struct{}),
-		updater:           NewUpdateSupervisor(store),
-		restarts:          NewRestartSupervisor(store),
+		updater:           updater,
+		restarts:          restartSupervisor,
 	}
 }
 
