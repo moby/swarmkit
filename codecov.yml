@@ -3,7 +3,7 @@ comment:
 coverage:
   status:
     patch: false
-    project: true
+    project:
       default:
         enabled: yes
         threshold: 0
