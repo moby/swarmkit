@@ -3,6 +3,7 @@ package ca
 import (
 	"crypto/tls"
 	"crypto/x509/pkix"
+	"fmt"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -77,8 +78,8 @@ func certSubjectFromContext(ctx context.Context) (pkix.Name, error) {
 	return getCertificateSubject(connState)
 }
 
-// AuthorizeRole takes in a context and a list of organizations, and returns
-// the CN of the certificate if one of the OU matches.
+// AuthorizeRole takes in a context and a list of roles, and returns
+// the Node ID of the node.
 func AuthorizeRole(ctx context.Context, ou []string) (string, error) {
 	certSubj, err := certSubjectFromContext(ctx)
 	if err != nil {
@@ -92,8 +93,8 @@ func AuthorizeRole(ctx context.Context, ou []string) (string, error) {
 	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: remote certificate not part of OU %v", ou)
 }
 
-// AuthorizeForwardedRole takes in a context and a list of organizations, and returns
-// the CN of the certificate if one of the OU matches.
+// AuthorizeForwardedRole takes in a context, a list of roles, and a list of forwarder roles, and returns
+// the Node ID of the node.
 func AuthorizeForwardedRole(ctx context.Context, role string) (string, error) {
 	return authorizeForwardedRole(ctx, role, []string{ManagerRole})
 }
@@ -101,19 +102,24 @@ func AuthorizeForwardedRole(ctx context.Context, role string) (string, error) {
 // authorizeForwardedRole checks for proper roles of caller. It can be manager who
 // forward agent request or agent itself. It returns agent id.
 func authorizeForwardedRole(ctx context.Context, forwardedRole string, forwarderRoles []string) (string, error) {
-	// If the call is being done directly by an accepted role, return the CN
-	cn, err := AuthorizeRole(ctx, []string{forwardedRole})
+	// If the call is being done by one of the forwarded roles, and there is something being forwarded, return
+	_, err := AuthorizeRole(ctx, forwarderRoles)
 	if err == nil {
-		return cn, nil
+		fmt.Printf("Being forwarded by: %v\n", forwarderRoles)
+		if forwardedID, err := forwardCNFromContext(ctx); err == nil {
+			fmt.Printf("forwardCNFromContext succeded with: %v\n", forwardedID)
+			return forwardedID, nil
+		}
 	}
 
-	// If the call is being done by a manager, return the forwarded CN
-	_, err = AuthorizeRole(ctx, forwarderRoles)
+	// There wasn't any node being forwarded, check if this is a direct call by the expected role
+	nodeID, err := AuthorizeRole(ctx, []string{forwardedRole})
 	if err == nil {
-		return forwardCNFromContext(ctx)
+		fmt.Printf("Direct AuthorizeROle: %v\n", forwardedRole)
+		return nodeID, nil
 	}
 
-	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unknown peer role.")
+	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unauthorized peer role, expecting: %s", forwardedRole)
 }
 
 // intersectArrays returns true when there is at least one element in common
