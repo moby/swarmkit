@@ -10,6 +10,5 @@ var (
 	// fully closed.
 	ErrAgentClosed = errors.New("agent: closed")
 
-	errNodeNotRegistered   = fmt.Errorf("node not registered")
-	errManagersUnavailable = fmt.Errorf("managers unavailable")
+	errNodeNotRegistered = fmt.Errorf("node not registered")
 )
