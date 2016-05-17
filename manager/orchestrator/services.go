@@ -32,6 +32,7 @@ func (o *Orchestrator) handleServiceEvent(ctx context.Context, event events.Even
 			return
 		}
 		deleteServiceTasks(ctx, o.store, v.Service)
+		o.restarts.ClearServiceHistory(v.Service.ID)
 	case state.EventCreateService:
 		if !isRelatedService(v.Service) {
 			return

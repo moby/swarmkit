@@ -18,6 +18,7 @@ func TestOrchestrator(t *testing.T) {
 	assert.NotNil(t, s)
 
 	orchestrator := New(s)
+	defer orchestrator.Stop()
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
@@ -165,8 +166,6 @@ func TestOrchestrator(t *testing.T) {
 	deletedTask := watchTaskDelete(t, watch)
 	assert.Equal(t, deletedTask.Status.State, api.TaskStateNew)
 	assert.Equal(t, deletedTask.Annotations.Name, "name2")
-
-	orchestrator.Stop()
 }
 
 func watchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
@@ -239,6 +238,22 @@ func expectCommit(t *testing.T, watch chan events.Event) {
 		}
 	}
 
+}
+
+func watchTaskUpdate(t *testing.T, watch chan events.Event) *api.Task {
+	for {
+		select {
+		case event := <-watch:
+			if task, ok := event.(state.EventUpdateTask); ok {
+				return task.Task
+			}
+			if _, ok := event.(state.EventCreateTask); ok {
+				t.Fatal("got EventCreateTask when expecting EventUpdateTask")
+			}
+		case <-time.After(time.Second):
+			t.Fatal("no task update")
+		}
+	}
 }
 
 func watchDeadTask(t *testing.T, watch chan events.Event) *api.Task {
