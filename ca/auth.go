@@ -3,7 +3,6 @@ package ca
 import (
 	"crypto/tls"
 	"crypto/x509/pkix"
-	"fmt"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -105,9 +104,7 @@ func authorizeForwardedRole(ctx context.Context, forwardedRole string, forwarder
 	// If the call is being done by one of the forwarded roles, and there is something being forwarded, return
 	_, err := AuthorizeRole(ctx, forwarderRoles)
 	if err == nil {
-		fmt.Printf("Being forwarded by: %v\n", forwarderRoles)
 		if forwardedID, err := forwardCNFromContext(ctx); err == nil {
-			fmt.Printf("forwardCNFromContext succeded with: %v\n", forwardedID)
 			return forwardedID, nil
 		}
 	}
@@ -115,7 +112,6 @@ func authorizeForwardedRole(ctx context.Context, forwardedRole string, forwarder
 	// There wasn't any node being forwarded, check if this is a direct call by the expected role
 	nodeID, err := AuthorizeRole(ctx, []string{forwardedRole})
 	if err == nil {
-		fmt.Printf("Direct AuthorizeROle: %v\n", forwardedRole)
 		return nodeID, nil
 	}
 
