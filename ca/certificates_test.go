@@ -30,7 +30,7 @@ func AutoAcceptPolicy() api.AcceptancePolicy {
 type TestService struct {
 	rootCA       RootCA
 	s            *store.MemoryStore
-	addr, tmpDir string
+	tmpDir, addr string
 	paths        *SecurityConfigPaths
 	server       grpc.Server
 	caServer     grpc.Server
@@ -254,7 +254,7 @@ func TestGetRemoteCA(t *testing.T) {
 	md := shaHash.Sum(nil)
 	mdStr := hex.EncodeToString(md)
 
-	cert, err := GetRemoteCA(ts.ctx, ts.addr, mdStr)
+	cert, err := GetRemoteCA(ts.ctx, mdStr, ts.addr)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 }
@@ -272,7 +272,7 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
 	defer ts.cleanup()
 
-	_, err := GetRemoteCA(ts.ctx, ts.addr, "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b")
+	_, err := GetRemoteCA(ts.ctx, "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", ts.addr)
 	assert.Error(t, err)
 }
 
@@ -299,7 +299,7 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	csr, _, err := GenerateAndWriteNewCSR(ts.paths.Manager)
 	assert.NoError(t, err)
 
-	certs, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.addr, ts.rootCA.Pool)
+	certs, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.addr)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 
@@ -309,7 +309,7 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ManagerRole)
 
-	certs, err = getRemoteSignedCertificate(ts.ctx, csr, AgentRole, ts.addr, ts.rootCA.Pool)
+	certs, err = getRemoteSignedCertificate(ts.ctx, csr, AgentRole, ts.rootCA.Pool, ts.addr)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
@@ -333,7 +333,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.addr, ts.rootCA.Pool)
+		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.addr)
 		completed <- err
 	}()
 
@@ -365,7 +365,7 @@ func TestGetRemoteSignedCertificateRejected(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.addr, ts.rootCA.Pool)
+		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.addr)
 		completed <- err
 	}()
 
@@ -397,7 +397,7 @@ func TestGetRemoteSignedCertificateBlocked(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.addr, ts.rootCA.Pool)
+		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.addr)
 		completed <- err
 	}()
 

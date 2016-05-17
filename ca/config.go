@@ -6,7 +6,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -99,7 +98,7 @@ func NewConfigPaths(baseCertDir string) *SecurityConfigPaths {
 // LoadOrCreateAgentSecurityConfig encapsulates the security logic behind starting or joining a cluster
 // as an Agent. Every agent requires at least a set of TLS certificates with which to join
 // the cluster.
-func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash, managerAddr string) (*AgentSecurityConfig, error) {
+func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash string, managerAddrs ...string) (*AgentSecurityConfig, error) {
 	paths := NewConfigPaths(baseCertDir)
 
 	var (
@@ -113,30 +112,19 @@ func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash, m
 	rootCA, err = GetLocalRootCA(paths.RootCA)
 	if err != nil {
 		log.Debugf("no valid local CA certificate found: %v", err)
-		// Make sure the necessary dirs exist and they are writable
-		err = os.MkdirAll(baseCertDir, 0755)
-		if err != nil {
-			return nil, err
-		}
-
-		// We don't have a CA configured. Let's get it from the remote manager
-		// We need a remote manager to be able to download the remote CA
-		if managerAddr == "" {
-			return nil, fmt.Errorf("address of a manager is required to join a cluster")
-		}
 
 		// We were provided with a remote manager. Lets try retreiving the remote CA
-		rootCA, err = GetRemoteCA(ctx, managerAddr, caHash)
+		rootCA, err = GetRemoteCA(ctx, caHash, managerAddrs...)
 		if err != nil {
 			return nil, err
 		}
 
-		// If the root certificate got returned successfully, save the rootCA to disk.
-		if err = ioutil.WriteFile(paths.RootCA.Cert, rootCA.Cert, 0644); err != nil {
+		// Save root CA certificate to disk
+		if err = saveRootCA(rootCA, paths.RootCA); err != nil {
 			return nil, err
 		}
 
-		log.Debugf("downloaded remote CA certificate from: %s", managerAddr)
+		log.Debugf("downloaded remote CA certificate.")
 	} else {
 		log.Debugf("loaded local CA certificate from: %v", paths.RootCA.Cert)
 	}
@@ -148,7 +136,7 @@ func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash, m
 		log.Debugf("no valid local TLS credentials found: %v", err)
 		// There was an error loading our Credentials, let's get a new certificate reissued
 		// Contact the remote CA, get a new certificate issued and save it to disk
-		tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(ctx, paths.Agent, AgentRole, managerAddr)
+		tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(ctx, paths.Agent, AgentRole, managerAddrs...)
 		if err != nil {
 			return nil, err
 		}
@@ -171,7 +159,7 @@ func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash, m
 // as a Manager. Every manager requires at least a set of TLS certificates with which to serve
 // the cluster and the dispatcher's server. If no manager addresses are provided, we assume we're
 // creating a new Cluster, and this manager will have to generate its own self-signed CA.
-func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash, managerAddr string) (*ManagerSecurityConfig, error) {
+func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash string, managerAddrs ...string) (*ManagerSecurityConfig, error) {
 	paths := NewConfigPaths(baseCertDir)
 
 	var (
@@ -186,15 +174,9 @@ func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash,
 	if err != nil {
 		log.Debugf("no valid local CA certificate found: %v", err)
 
-		// Make sure the necessary dirs exist and they are writable
-		err = os.MkdirAll(baseCertDir, 0755)
-		if err != nil {
-			return nil, err
-		}
-
 		// We have no CA and no remote managers are being passed in, means we're creating a new cluster
 		// Create our new RootCA and write everything to disk
-		if managerAddr == "" {
+		if len(managerAddrs) == 0 {
 			rootCA, err = CreateAndWriteRootCA(rootCN, paths.RootCA)
 			if err != nil {
 				return nil, err
@@ -203,16 +185,17 @@ func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash,
 		} else {
 			// If we've been passed the address of a remote manager to join, attempt to retrieve the remote
 			// root CA details
-			rootCA, err = GetRemoteCA(ctx, managerAddr, caHash)
+			rootCA, err = GetRemoteCA(ctx, caHash, managerAddrs...)
 			if err != nil {
 				return nil, err
 			}
 
-			// If the root certificate got returned successfully, save the rootCA to disk.
-			if err = ioutil.WriteFile(paths.RootCA.Cert, rootCA.Cert, 0644); err != nil {
+			// Save root CA certificate to disk
+			if err = saveRootCA(rootCA, paths.RootCA); err != nil {
 				return nil, err
 			}
-			log.Debugf("downloaded remote CA certificate from: %s", managerAddr)
+
+			log.Debugf("downloaded remote CA certificate.")
 		}
 
 	} else {
@@ -227,7 +210,7 @@ func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash,
 
 		// There was an error loading our Credentials, let's get a new certificate reissued
 		// Contact the remote CA, get a new certificate issued and save it to disk
-		tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(ctx, paths.Manager, ManagerRole, managerAddr)
+		tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(ctx, paths.Manager, ManagerRole, managerAddrs...)
 		if err != nil {
 			return nil, err
 		}

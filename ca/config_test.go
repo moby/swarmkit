@@ -15,7 +15,7 @@ func TestLoadManagerSecurityConfigWithEmptyDir(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	managerConfig, err := LoadOrCreateManagerSecurityConfig(context.Background(), tempBaseDir, "", "")
+	managerConfig, err := LoadOrCreateManagerSecurityConfig(context.Background(), tempBaseDir, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, managerConfig)
 	assert.NotNil(t, managerConfig.RootCA.Signer)
@@ -66,7 +66,7 @@ func TestLoadOrCreateManagerSecurityConfigInvalidCACertNoRemote(t *testing.T) {
 													some random garbage\n
 													-----END CERTIFICATE-----`), 0644)
 
-	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", "")
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, newManagerSecurityConfig)
 	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
@@ -140,10 +140,10 @@ func TestLoadOrCreateManagerSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 	defer ts.cleanup()
 
 	// Remove the certificate from the temp dir and try loading with a new manager
-	os.RemoveAll(ts.paths.Manager.Cert)
-	os.RemoveAll(ts.paths.RootCA.Key)
-	_, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", "")
-	assert.EqualError(t, err, "no manager address provided")
+	os.Remove(ts.paths.Manager.Cert)
+	os.Remove(ts.paths.RootCA.Key)
+	_, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "")
+	assert.EqualError(t, err, "no remote hosts provided")
 }
 
 func TestLoadOrCreateAgentSecurityConfigNoCARemoteManager(t *testing.T) {
@@ -165,6 +165,6 @@ func TestLoadOrCreateAgentSecurityConfigNoCANoRemoteManager(t *testing.T) {
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(ts.tmpDir)
-	_, err := LoadOrCreateAgentSecurityConfig(ts.ctx, ts.tmpDir, "", "")
-	assert.EqualError(t, err, "address of a manager is required to join a cluster")
+	_, err := LoadOrCreateAgentSecurityConfig(ts.ctx, ts.tmpDir, "")
+	assert.EqualError(t, err, "no remote hosts provided")
 }
