@@ -212,7 +212,6 @@ func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash,
 			if err = ioutil.WriteFile(paths.RootCA.Cert, rootCA.Cert, 0644); err != nil {
 				return nil, err
 			}
-			log.Infof("Waiting for cluster membership to be approved to proceed with further action")
 			log.Debugf("downloaded remote CA certificate from: %s", managerAddr)
 		}
 
