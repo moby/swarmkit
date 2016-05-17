@@ -17,16 +17,18 @@ import (
 // UpdateSupervisor supervises a set of updates. It's responsible for keeping track of updates,
 // shutting them down and replacing them.
 type UpdateSupervisor struct {
-	store   *store.MemoryStore
-	updates map[string]*Updater
-	l       sync.Mutex
+	store    *store.MemoryStore
+	restarts *RestartSupervisor
+	updates  map[string]*Updater
+	l        sync.Mutex
 }
 
 // NewUpdateSupervisor creates a new UpdateSupervisor.
-func NewUpdateSupervisor(store *store.MemoryStore) *UpdateSupervisor {
+func NewUpdateSupervisor(store *store.MemoryStore, restartSupervisor *RestartSupervisor) *UpdateSupervisor {
 	return &UpdateSupervisor{
-		store:   store,
-		updates: make(map[string]*Updater),
+		store:    store,
+		updates:  make(map[string]*Updater),
+		restarts: restartSupervisor,
 	}
 }
 
@@ -42,7 +44,7 @@ func (u *UpdateSupervisor) Update(ctx context.Context, service *api.Service, tas
 		update.Cancel()
 	}
 
-	update := NewUpdater(u.store)
+	update := NewUpdater(u.store, u.restarts)
 	u.updates[id] = update
 	go func() {
 		update.Run(ctx, service, tasks)
@@ -68,6 +70,7 @@ func (u *UpdateSupervisor) CancelAll() {
 type Updater struct {
 	store      *store.MemoryStore
 	watchQueue *watch.Queue
+	restarts   *RestartSupervisor
 
 	// stopChan signals to the state machine to stop running.
 	stopChan chan struct{}
@@ -76,10 +79,11 @@ type Updater struct {
 }
 
 // NewUpdater creates a new Updater.
-func NewUpdater(store *store.MemoryStore) *Updater {
+func NewUpdater(store *store.MemoryStore, restartSupervisor *RestartSupervisor) *Updater {
 	return &Updater{
 		store:      store,
 		watchQueue: store.WatchQueue(),
+		restarts:   restartSupervisor,
 		stopChan:   make(chan struct{}),
 		doneChan:   make(chan struct{}),
 	}
@@ -97,7 +101,7 @@ func (u *Updater) Run(ctx context.Context, service *api.Service, tasks []*api.Ta
 
 	dirtyTasks := []*api.Task{}
 	for _, t := range tasks {
-		if service.Spec.GetContainer() == nil &&
+		if service.Spec.GetContainer() == nil ||
 			reflect.DeepEqual(t.GetContainer().Spec, api.ContainerSpec{}) {
 			continue
 		}
@@ -149,11 +153,12 @@ func (u *Updater) Run(ctx context.Context, service *api.Service, tasks []*api.Ta
 func (u *Updater) worker(ctx context.Context, service *api.Service, queue <-chan *api.Task) {
 	for t := range queue {
 		updated := newTask(service, t.Instance)
+		updated.DesiredState = api.TaskStateReady
 		if service.Spec.Mode == api.ServiceModeFill {
 			updated.NodeID = t.NodeID
 		}
 
-		if err := u.updateTask(ctx, t, updated); err != nil {
+		if err := u.updateTask(ctx, service, t, updated); err != nil {
 			log.G(ctx).WithError(err).WithField("task.id", t.ID).Error("update failed")
 		}
 
@@ -167,7 +172,7 @@ func (u *Updater) worker(ctx context.Context, service *api.Service, queue <-chan
 	}
 }
 
-func (u *Updater) updateTask(ctx context.Context, original, updated *api.Task) error {
+func (u *Updater) updateTask(ctx context.Context, service *api.Service, original, updated *api.Task) error {
 	log.G(ctx).Debugf("replacing %s with %s", original.ID, updated.ID)
 	// Kick off the watch before even creating the updated task. This is in order to avoid missing any event.
 	taskUpdates, cancel := state.Watch(u.watchQueue, state.EventUpdateTask{
@@ -176,6 +181,7 @@ func (u *Updater) updateTask(ctx context.Context, original, updated *api.Task) e
 	})
 	defer cancel()
 
+	var delayStartCh <-chan struct{}
 	// Atomically create the updated task and bring down the old one.
 	err := u.store.Update(func(tx store.Tx) error {
 		t := store.GetTask(tx, original.ID)
@@ -187,13 +193,21 @@ func (u *Updater) updateTask(ctx context.Context, original, updated *api.Task) e
 		if err := store.CreateTask(tx, updated); err != nil {
 			return err
 		}
+
+		// Wait for the old task to stop or time out, and then set the new one
+		// to RUNNING.
+		delayStartCh = u.restarts.DelayStart(ctx, tx, service, original, updated.ID, 0, true)
+
 		return nil
+
 	})
 	if err != nil {
 		return err
 	}
 
-	// Wait for the task to come up.
+	<-delayStartCh
+
+	// Wait for the new task to come up.
 	// TODO(aluzzardi): Consider adding a timeout here.
 	for {
 		select {

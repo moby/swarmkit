@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/Sirupsen/logrus"
 	engineapi "github.com/docker/engine-api/client"
@@ -195,15 +194,7 @@ func (c *containerAdapter) events(ctx context.Context) (<-chan events.Message, <
 }
 
 func (c *containerAdapter) shutdown(ctx context.Context) error {
-	timeout, err := resolveTimeout(ctx)
-	if err != nil {
-		return err
-	}
-
-	// TODO(stevvooe): Sending Stop isn't quite right. The timeout is actually
-	// a grace period between SIGTERM and SIGKILL. We'll have to play with this
-	// a little but to figure how much we defer to the engine.
-	return c.client.ContainerStop(ctx, c.container.name(), timeout)
+	return c.client.ContainerStop(ctx, c.container.name(), int(c.container.spec().StopGracePeriod.Seconds()))
 }
 
 func (c *containerAdapter) terminate(ctx context.Context) error {
@@ -215,23 +206,6 @@ func (c *containerAdapter) remove(ctx context.Context) error {
 		RemoveVolumes: true,
 		Force:         true,
 	})
-}
-
-// resolveTimeout calculates the timeout for second granularity timeout using
-// the context's deadline.
-func resolveTimeout(ctx context.Context) (int, error) {
-	timeout := 10 // we need to figure out how to pick this value.
-	if deadline, ok := ctx.Deadline(); ok {
-		left := deadline.Sub(time.Now())
-
-		if left <= 0 {
-			<-ctx.Done()
-			return 0, ctx.Err()
-		}
-
-		timeout = int(left.Seconds())
-	}
-	return timeout, nil
 }
 
 func (c *containerAdapter) createVolumes(ctx context.Context, client engineapi.APIClient) error {
