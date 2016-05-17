@@ -413,6 +413,7 @@ func getRemoteSignedCertificate(ctx context.Context, csr []byte, role, caAddr st
 		Max:    30 * time.Second,
 	})
 
+	log.Infof("Waiting for TLS certificate to be issued...")
 	// Exponential backoff with Max of 30 seconds to wait for a new retry
 	for {
 		// Send the Request and retrieve the certificate
