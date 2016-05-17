@@ -8,6 +8,7 @@ import (
 	"github.com/docker/swarm-v2/agent/exec/container"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
+	"github.com/docker/swarm-v2/picker"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -49,7 +50,7 @@ already present, the agent will recover and startup.`,
 				return err
 			}
 
-			managers := agent.NewManagers(managerAddrs...)
+			managers := picker.NewRemotes(managerAddrs...)
 
 			managerAddr, err := managers.Select()
 			if err != nil {

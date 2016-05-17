@@ -11,6 +11,7 @@ import (
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
+	"github.com/docker/swarm-v2/picker"
 	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -27,7 +28,7 @@ const (
 type Agent struct {
 	config *Config
 	conn   *grpc.ClientConn
-	picker *picker
+	picker *picker.Picker
 
 	tasks       map[string]*api.Task        // contains all managed tasks
 	assigned    map[string]*api.Task        // contains current assignment set
@@ -241,7 +242,7 @@ func (a *Agent) connect(ctx context.Context) error {
 	}
 
 	creds := a.config.SecurityConfig.ClientTLSCreds
-	a.picker = newPicker(manager, a.config.Managers)
+	a.picker = picker.NewPicker(manager, a.config.Managers)
 	a.conn, err = grpc.Dial(manager,
 		grpc.WithPicker(a.picker),
 		grpc.WithTransportCredentials(creds),
