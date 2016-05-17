@@ -140,8 +140,6 @@ func TestCertificateDesiredStateIssued(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	tc.caServer.reconcileCertificates(context.Background(), []*api.RegisteredCertificate{testRegisteredCert})
-
 	statusRequest := &api.CertificateStatusRequest{Token: "token"}
 	resp, err := tc.clients[1].CertificateStatus(context.Background(), statusRequest)
 	assert.NoError(t, err)
