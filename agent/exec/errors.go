@@ -28,6 +28,15 @@ var (
 	ErrControllerClosed = errors.New("exec: controller closed")
 )
 
+// Temporary indicates whether or not the error condition is temporary.
+//
+// If this is encountered in the controller, the failing operation will be
+// retried when this returns true. Otherwise, the operation is considered
+// fatal.
+type Temporary interface {
+	Temporary() bool
+}
+
 // ExitError is returned by controller methods after encountering an error after a
 // task exits. It should require any data to report on a non-zero exit code.
 type ExitError struct {
