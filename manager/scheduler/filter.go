@@ -107,3 +107,48 @@ func (f *PortFilter) Check(t *api.Task, n *NodeInfo) bool {
 
 	return true
 }
+
+// PluginFilter checks that the node has a specific volume plugin installed
+type PluginFilter struct {
+}
+
+// Enabled returns true when the filter is enabled for a given task.
+func (f *PluginFilter) Enabled(t *api.Task) bool {
+	c := t.GetContainer()
+	if c != nil && (len(c.Volumes) > 0 || len(c.Networks) > 0) {
+		return true
+	}
+
+	return false
+}
+
+// Check returns true if the task can be scheduled into the given node.
+// TODO(amitshukla): investigate storing Plugins as a map so it can be easily probed
+func (f *PluginFilter) Check(t *api.Task, n *NodeInfo) bool {
+	// Get list of plugins on the node
+	nodePlugins := n.Description.Engine.Plugins
+
+	// Check if all volume plugins required by task are installed on node
+	for _, tv := range t.GetContainer().Volumes {
+		if !f.pluginExistsOnNode("Volume", tv.Spec.DriverConfiguration.Name, nodePlugins) {
+			return false
+		}
+	}
+
+	// Check if all network plugins required by task are installed on node
+	for _, tn := range t.GetContainer().Networks {
+		if !f.pluginExistsOnNode("Network", tn.Network.Spec.DriverConfiguration.Name, nodePlugins) {
+			return false
+		}
+	}
+	return true
+}
+
+func (f *PluginFilter) pluginExistsOnNode(pluginType string, pluginName string, nodePlugins []api.PluginDescription) bool {
+	for _, np := range nodePlugins {
+		if pluginType == np.Type && pluginName == np.Name {
+			return true
+		}
+	}
+	return false
+}
