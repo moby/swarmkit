@@ -846,6 +846,310 @@ func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
 	}
 }
 
+func TestSchedulerPluginConstraint(t *testing.T) {
+	ctx := context.Background()
+
+	// Node1: vol plugin1
+	n1 := &api.Node{
+		ID: "node1_ID",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node1",
+			},
+		},
+		Description: &api.NodeDescription{
+			Engine: &api.EngineDescription{
+				Plugins: []api.PluginDescription{
+					{
+						Type: "Volume",
+						Name: "plugin1",
+					},
+				},
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+	}
+
+	// Node2: vol plugin1, vol plugin2
+	n2 := &api.Node{
+		ID: "node2_ID",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node2",
+			},
+		},
+		Description: &api.NodeDescription{
+			Engine: &api.EngineDescription{
+				Plugins: []api.PluginDescription{
+					{
+						Type: "Volume",
+						Name: "plugin1",
+					},
+					{
+						Type: "Volume",
+						Name: "plugin2",
+					},
+				},
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+	}
+
+	// Node3: vol plugin1, network plugin1
+	n3 := &api.Node{
+		ID: "node3_ID",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node3",
+			},
+		},
+		Description: &api.NodeDescription{
+			Engine: &api.EngineDescription{
+				Plugins: []api.PluginDescription{
+					{
+						Type: "Volume",
+						Name: "plugin1",
+					},
+					{
+						Type: "Network",
+						Name: "plugin1",
+					},
+				},
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+	}
+
+	// Task1: vol plugin1
+	t1 := &api.Task{
+		ID: "task1_ID",
+		Runtime: &api.Task_Container{
+			Container: &api.Container{
+				Spec: api.ContainerSpec{
+					Mounts: []*api.Mount{
+						{
+							Target:     "/foo",
+							Type:       api.MountTypeVolume,
+							VolumeName: "testVol1",
+						},
+					},
+				},
+				Volumes: []*api.Volume{
+					{
+						ID: "testVolID1",
+						Spec: api.VolumeSpec{
+							Annotations: api.Annotations{
+								Name: "testVol1",
+							},
+							DriverConfiguration: &api.Driver{
+								Name: "plugin1",
+							},
+						},
+					},
+				},
+			},
+		},
+		Annotations: api.Annotations{
+			Name: "task1",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStateAllocated,
+		},
+	}
+
+	// Task2: vol plugin1, vol plugin2
+	t2 := &api.Task{
+		ID: "task2_ID",
+		Runtime: &api.Task_Container{
+			Container: &api.Container{
+				Spec: api.ContainerSpec{
+					Mounts: []*api.Mount{
+						{
+							Target:     "/foo",
+							Type:       api.MountTypeVolume,
+							VolumeName: "testVol1",
+						},
+						{
+							Target:     "/foo",
+							Type:       api.MountTypeVolume,
+							VolumeName: "testVol2",
+						},
+					},
+				},
+				Volumes: []*api.Volume{
+					{
+						ID: "testVolID1",
+						Spec: api.VolumeSpec{
+							Annotations: api.Annotations{
+								Name: "testVol1",
+							},
+							DriverConfiguration: &api.Driver{
+								Name: "plugin1",
+							},
+						},
+					},
+					{
+						ID: "testVolID2",
+						Spec: api.VolumeSpec{
+							Annotations: api.Annotations{
+								Name: "testVol2",
+							},
+							DriverConfiguration: &api.Driver{
+								Name: "plugin2",
+							},
+						},
+					},
+				},
+			},
+		},
+		Annotations: api.Annotations{
+			Name: "task2",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStateAllocated,
+		},
+	}
+
+	// Task3: vol plugin1, network plugin1
+	t3 := &api.Task{
+		ID: "task3_ID",
+		Runtime: &api.Task_Container{
+			Container: &api.Container{
+				Spec: api.ContainerSpec{
+					Mounts: []*api.Mount{
+						{
+							Target:     "/foo",
+							Type:       api.MountTypeVolume,
+							VolumeName: "testVol1",
+						},
+					},
+				},
+				Volumes: []*api.Volume{
+					{
+						ID: "testVolID1",
+						Spec: api.VolumeSpec{
+							Annotations: api.Annotations{
+								Name: "testVol1",
+							},
+							DriverConfiguration: &api.Driver{
+								Name: "plugin1",
+							},
+						},
+					},
+				},
+				Networks: []*api.Container_NetworkAttachment{
+					{
+						Network: &api.Network{
+							ID: "testNwID1",
+							Spec: api.NetworkSpec{
+								Annotations: api.Annotations{
+									Name: "testVol1",
+								},
+								DriverConfiguration: &api.Driver{
+									Name: "plugin1",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Annotations: api.Annotations{
+			Name: "task2",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStateAllocated,
+		},
+	}
+
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+
+	// Add initial node and task
+	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, t1))
+		assert.NoError(t, store.CreateNode(tx, n1))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(s)
+
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+	defer scheduler.Stop()
+
+	// t1 should get assigned
+	assignment := watchAssignment(t, watch)
+	assert.Equal(t, assignment.NodeID, "node1_ID")
+
+	// Create t2; it should stay in the pending state because there is
+	// no node that with volume plugin `plugin2`
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, t2))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	time.Sleep(100 * time.Millisecond)
+	s.View(func(tx store.ReadTx) {
+		task := store.GetTask(tx, "task2_ID")
+		if task.Status.State >= api.TaskStateAssigned {
+			t.Fatal("task 'task2_ID' should not have been assigned")
+		}
+	})
+
+	// Now add the second node
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateNode(tx, n2))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Check that t2 has been assigned
+	assignment1 := watchAssignment(t, watch)
+	assert.Equal(t, assignment1.ID, "task2_ID")
+	assert.Equal(t, assignment1.NodeID, "node2_ID")
+
+	// Create t3; it should stay in the pending state because there is
+	// no node that with network plugin `plugin1`
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, t3))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	time.Sleep(100 * time.Millisecond)
+	s.View(func(tx store.ReadTx) {
+		task := store.GetTask(tx, "task3_ID")
+		if task.Status.State >= api.TaskStateAssigned {
+			t.Fatal("task 'task3_ID' should not have been assigned")
+		}
+	})
+
+	// Now add the node3
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateNode(tx, n3))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Check that t3 has been assigned
+	assignment2 := watchAssignment(t, watch)
+	assert.Equal(t, assignment2.ID, "task3_ID")
+	assert.Equal(t, assignment2.NodeID, "node3_ID")
+}
+
 func BenchmarkScheduler1kNodes1kTasks(b *testing.B) {
 	benchScheduler(b, 1e3, 1e3, false)
 }
