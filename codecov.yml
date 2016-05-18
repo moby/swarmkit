@@ -6,5 +6,5 @@ coverage:
     project:
       default:
         enabled: yes
-        threshold: 0
+        target: 0
     changes: false
