@@ -48,6 +48,11 @@ var (
 					return err
 				}
 
+				mode, err := flags.GetString("mode")
+				if err != nil {
+					return err
+				}
+
 				instances, err := flags.GetUint64("instances")
 				if err != nil {
 					return err
@@ -77,7 +82,17 @@ var (
 							Env:     env,
 						},
 					},
-					Instances: instances,
+				}
+
+				switch mode {
+				case "global":
+					spec.Mode = &api.ServiceSpec_Global{}
+				case "replicated":
+					spec.Mode = &api.ServiceSpec_Replicated{
+						Replicated: &api.ReplicatedService{
+							Instances: instances,
+						},
+					}
 				}
 
 				if flags.Changed("ports") {
@@ -200,5 +215,6 @@ func init() {
 	createCmd.Flags().String("network", "", "Network name")
 	// TODO(aluzzardi): This should be called `service-instances` so that every
 	// orchestrator can have its own flag namespace.
+	createCmd.Flags().String("mode", "replicated", "one of replicated, global")
 	createCmd.Flags().Uint64("instances", 1, "Number of instances for the service Service")
 }

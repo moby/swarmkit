@@ -33,8 +33,11 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 					Name: "name1",
 				},
 				RuntimeSpec: &api.ServiceSpec_Container{},
-				Instances:   2,
-				Mode:        api.ServiceModeRunning,
+				Mode: &api.ServiceSpec_Replicated{
+					Replicated: &api.ReplicatedService{
+						Instances: 2,
+					},
+				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
 				},
@@ -127,8 +130,11 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 					Name: "name1",
 				},
 				RuntimeSpec: &api.ServiceSpec_Container{},
-				Instances:   2,
-				Mode:        api.ServiceModeRunning,
+				Mode: &api.ServiceSpec_Replicated{
+					Replicated: &api.ReplicatedService{
+						Instances: 2,
+					},
+				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnFailure,
 				},
@@ -220,8 +226,11 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 					Name: "name1",
 				},
 				RuntimeSpec: &api.ServiceSpec_Container{},
-				Instances:   2,
-				Mode:        api.ServiceModeRunning,
+				Mode: &api.ServiceSpec_Replicated{
+					Replicated: &api.ReplicatedService{
+						Instances: 2,
+					},
+				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnNone,
 				},
@@ -308,8 +317,11 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 					Name: "name1",
 				},
 				RuntimeSpec: &api.ServiceSpec_Container{},
-				Instances:   2,
-				Mode:        api.ServiceModeRunning,
+				Mode: &api.ServiceSpec_Replicated{
+					Replicated: &api.ReplicatedService{
+						Instances: 2,
+					},
+				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
 					Delay:     100 * time.Millisecond,
@@ -389,8 +401,11 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				Instances: 2,
-				Mode:      api.ServiceModeRunning,
+				Mode: &api.ServiceSpec_Replicated{
+					Replicated: &api.ReplicatedService{
+						Instances: 2,
+					},
+				},
 				Restart: &api.RestartPolicy{
 					Condition:   api.RestartOnAny,
 					Delay:       100 * time.Millisecond,
@@ -517,8 +532,11 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				Instances: 2,
-				Mode:      api.ServiceModeRunning,
+				Mode: &api.ServiceSpec_Replicated{
+					Replicated: &api.ReplicatedService{
+						Instances: 2,
+					},
+				},
 				Restart: &api.RestartPolicy{
 					Condition:   api.RestartOnAny,
 					Delay:       100 * time.Millisecond,

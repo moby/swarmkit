@@ -600,12 +600,6 @@ func (tx readTx) find(table string, by By, cb func(Object)) error {
 			return err
 		}
 		fromResultIterator(it)
-	case byServiceMode:
-		it, err := tx.memDBTx.Get(table, indexServiceMode, strconv.Itoa(int(v)))
-		if err != nil {
-			return err
-		}
-		fromResultIterator(it)
 	case byInstance:
 		it, err := tx.memDBTx.Get(table, indexInstance, v.serviceID+"\x00"+strconv.FormatUint(uint64(v.instance), 10))
 		if err != nil {

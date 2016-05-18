@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/docker/swarm-v2/api"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -66,8 +67,9 @@ services:
 		assert.NoError(t, s.Read(f))
 		assert.Equal(t, size, len(s.ServiceSpecs()))
 		for _, serviceSpec := range s.ServiceSpecs() {
-			assert.Equal(t, fmt.Sprintf("name%d", serviceSpec.Instances), serviceSpec.Annotations.Name)
-			assert.Equal(t, fmt.Sprintf("image%d", serviceSpec.Instances), serviceSpec.GetContainer().Image.Reference)
+			replicated := serviceSpec.GetMode().(*api.ServiceSpec_Replicated)
+			assert.Equal(t, fmt.Sprintf("name%d", replicated.Replicated.Instances), serviceSpec.Annotations.Name)
+			assert.Equal(t, fmt.Sprintf("image%d", replicated.Replicated.Instances), serviceSpec.GetContainer().Image.Reference)
 		}
 	}
 }
@@ -95,7 +97,7 @@ func TestSpecDiff(t *testing.T) {
 		},
 	)
 	assert.NoError(t, err)
-	assert.Equal(t, "--- remote\n+++ local\n@@ -8 +8 @@\n-    instances: 2\n+    instances: 1\n@@ -14 +14 @@\n-    instances: 3\n+    instances: 1\n", diff)
+	assert.Equal(t, "--- remote\n+++ local\n@@ -9 +9 @@\n-    instances: 2\n+    instances: 1\n@@ -15 +15 @@\n-    instances: 3\n+    instances: 1\n", diff)
 
 	diff, err = spec.Diff(0, "old", "new",
 		&Spec{

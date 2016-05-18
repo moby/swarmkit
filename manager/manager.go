@@ -59,15 +59,15 @@ type Manager struct {
 	config   *Config
 	listener net.Listener
 
-	caserver         *ca.Server
-	dispatcher       *dispatcher.Dispatcher
-	orchestrator     *orchestrator.Orchestrator
-	fillOrchestrator *orchestrator.FillOrchestrator
-	taskReaper       *orchestrator.TaskReaper
-	scheduler        *scheduler.Scheduler
-	allocator        *allocator.Allocator
-	server           *grpc.Server
-	raftNode         *raft.Node
+	caserver               *ca.Server
+	dispatcher             *dispatcher.Dispatcher
+	replicatedOrchestrator *orchestrator.ReplicatedOrchestrator
+	globalOrchestrator     *orchestrator.GlobalOrchestrator
+	taskReaper             *orchestrator.TaskReaper
+	scheduler              *scheduler.Scheduler
+	allocator              *allocator.Allocator
+	server                 *grpc.Server
+	raftNode               *raft.Node
 
 	mu sync.Mutex
 
@@ -204,8 +204,8 @@ func (m *Manager) Run(ctx context.Context) error {
 					return nil
 				})
 
-				m.orchestrator = orchestrator.New(s)
-				m.fillOrchestrator = orchestrator.NewFillOrchestrator(s)
+				m.replicatedOrchestrator = orchestrator.New(s)
+				m.globalOrchestrator = orchestrator.NewGlobalOrchestrator(s)
 				m.taskReaper = orchestrator.NewTaskReaper(s)
 				m.scheduler = scheduler.New(s)
 
@@ -253,16 +253,16 @@ func (m *Manager) Run(ctx context.Context) error {
 				go func(taskReaper *orchestrator.TaskReaper) {
 					taskReaper.Run()
 				}(m.taskReaper)
-				go func(orchestrator *orchestrator.Orchestrator) {
+				go func(orchestrator *orchestrator.ReplicatedOrchestrator) {
 					if err := orchestrator.Run(ctx); err != nil {
-						log.G(ctx).WithError(err).Error("orchestrator exited with an error")
+						log.G(ctx).WithError(err).Error("replicated orchestrator exited with an error")
 					}
-				}(m.orchestrator)
-				go func(fillOrchestrator *orchestrator.FillOrchestrator) {
-					if err := fillOrchestrator.Run(ctx); err != nil {
-						log.G(ctx).WithError(err).Error("fillOrchestrator exited with an error")
+				}(m.replicatedOrchestrator)
+				go func(globalOrchestrator *orchestrator.GlobalOrchestrator) {
+					if err := globalOrchestrator.Run(ctx); err != nil {
+						log.G(ctx).WithError(err).Error("global orchestrator exited with an error")
 					}
-				}(m.fillOrchestrator)
+				}(m.globalOrchestrator)
 			} else if newState == raft.IsFollower {
 				m.dispatcher.Stop()
 				m.caserver.Stop()
@@ -272,11 +272,11 @@ func (m *Manager) Run(ctx context.Context) error {
 					m.allocator = nil
 				}
 
-				m.orchestrator.Stop()
-				m.orchestrator = nil
+				m.replicatedOrchestrator.Stop()
+				m.replicatedOrchestrator = nil
 
-				m.fillOrchestrator.Stop()
-				m.fillOrchestrator = nil
+				m.globalOrchestrator.Stop()
+				m.globalOrchestrator = nil
 
 				m.taskReaper.Stop()
 				m.taskReaper = nil
@@ -349,11 +349,11 @@ func (m *Manager) Stop() {
 	if m.allocator != nil {
 		m.allocator.Stop()
 	}
-	if m.orchestrator != nil {
-		m.orchestrator.Stop()
+	if m.replicatedOrchestrator != nil {
+		m.replicatedOrchestrator.Stop()
 	}
-	if m.fillOrchestrator != nil {
-		m.fillOrchestrator.Stop()
+	if m.globalOrchestrator != nil {
+		m.globalOrchestrator.Stop()
 	}
 	if m.taskReaper != nil {
 		m.taskReaper.Stop()

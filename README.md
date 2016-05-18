@@ -150,7 +150,7 @@ $ swarmctl diff -f hello-world.yml
      name: ping
 -    instances: 2
 +    instances: 3
-     mode: running
+     mode: replicated
      restart: always
      restartdelay: "0"
 ```
@@ -204,7 +204,7 @@ $ EDITOR=nano swarmctl service edit ping
  name: ping
 -instances: 4
 +instances: 5
- mode: running
+ mode: replicated
  restart: always
  restartdelay: "0"
 Apply changes? [N/y]

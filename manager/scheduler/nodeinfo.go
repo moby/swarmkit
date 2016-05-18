@@ -112,6 +112,9 @@ func (nodeInfo *NodeInfo) addTask(t *api.Task) bool {
 			if ep.HostPort == 0 {
 				continue
 			}
+			if nodeInfo.ReservedPorts == nil {
+				nodeInfo.ReservedPorts = make(map[uint32]map[string]struct{})
+			}
 			if _, found := nodeInfo.ReservedPorts[ep.HostPort]; !found {
 				nodeInfo.ReservedPorts[ep.HostPort] = make(map[string]struct{})
 			}

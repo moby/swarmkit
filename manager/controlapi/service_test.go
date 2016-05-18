@@ -22,7 +22,11 @@ func createSpec(name, image string, instances uint64) *api.ServiceSpec {
 				},
 			},
 		},
-		Instances: instances,
+		Mode: &api.ServiceSpec_Replicated{
+			Replicated: &api.ReplicatedService{
+				Instances: instances,
+			},
+		},
 	}
 }
 
@@ -215,9 +219,11 @@ func TestUpdateService(t *testing.T) {
 	r, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
 	assert.NoError(t, err)
 	assert.Equal(t, service.Spec.Annotations.Name, r.Service.Spec.Annotations.Name)
-	assert.EqualValues(t, 1, r.Service.Spec.Instances)
+	mode, ok := r.Service.Spec.GetMode().(*api.ServiceSpec_Replicated)
+	assert.Equal(t, ok, true)
+	assert.True(t, mode.Replicated.Instances == 1)
 
-	r.Service.Spec.Instances = 42
+	mode.Replicated.Instances = 42
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      service.ID,
 		Spec:           &r.Service.Spec,
@@ -228,7 +234,9 @@ func TestUpdateService(t *testing.T) {
 	r, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
 	assert.NoError(t, err)
 	assert.Equal(t, service.Spec.Annotations.Name, r.Service.Spec.Annotations.Name)
-	assert.EqualValues(t, 42, r.Service.Spec.Instances)
+	mode, ok = r.Service.Spec.GetMode().(*api.ServiceSpec_Replicated)
+	assert.Equal(t, ok, true)
+	assert.True(t, mode.Replicated.Instances == 42)
 
 	// Versioning.
 	r, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})

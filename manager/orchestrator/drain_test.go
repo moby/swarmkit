@@ -19,8 +19,11 @@ func TestDrain(t *testing.T) {
 				Name: "name1",
 			},
 			RuntimeSpec: &api.ServiceSpec_Container{},
-			Instances:   1,
-			Mode:        api.ServiceModeRunning,
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Instances: 1,
+				},
+			},
 			Restart: &api.RestartPolicy{
 				Condition: api.RestartOnNone,
 			},

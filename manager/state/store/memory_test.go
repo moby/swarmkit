@@ -49,9 +49,11 @@ var (
 		{
 			ID: "id2",
 			Spec: api.ServiceSpec{
-				Mode: api.ServiceModeFill,
 				Annotations: api.Annotations{
 					Name: "name2",
+				},
+				Mode: &api.ServiceSpec_Global{
+					Global: &api.GlobalService{},
 				},
 			},
 		},
@@ -310,16 +312,6 @@ func TestStoreService(t *testing.T) {
 		foundServices, err = FindServices(readTx, ByQuery("id"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 3)
-
-		foundServices, err = FindServices(readTx, ByServiceMode(api.ServiceModeRunning))
-		assert.NoError(t, err)
-		assert.Len(t, foundServices, 2)
-		foundServices, err = FindServices(readTx, ByServiceMode(api.ServiceModeFill))
-		assert.NoError(t, err)
-		assert.Len(t, foundServices, 1)
-		foundServices, err = FindServices(readTx, ByServiceMode(api.ServiceModeBatch))
-		assert.NoError(t, err)
-		assert.Len(t, foundServices, 0)
 	})
 
 	// Update.
