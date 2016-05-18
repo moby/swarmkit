@@ -51,16 +51,16 @@ already present, the agent will recover and startup.`,
 			}
 
 			managers := picker.NewRemotes(managerAddrs...)
-
 			managerAddr, err := managers.Select()
 			if err != nil {
 				return err
 			}
+			picker := picker.NewPicker(managerAddr, managers)
 
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
-			securityConfig, err := ca.LoadOrCreateAgentSecurityConfig(ctx, certDir, token, managerAddr)
+			securityConfig, err := ca.LoadOrCreateAgentSecurityConfig(ctx, certDir, token, picker)
 			if err != nil {
 				return err
 			}

@@ -15,7 +15,7 @@ func TestLoadManagerSecurityConfigWithEmptyDir(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	managerConfig, err := LoadOrCreateManagerSecurityConfig(context.Background(), tempBaseDir, "")
+	managerConfig, err := LoadOrCreateManagerSecurityConfig(context.Background(), tempBaseDir, "", nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, managerConfig)
 	assert.NotNil(t, managerConfig.RootCA.Signer)
@@ -31,7 +31,7 @@ func TestLoadOrCreateManagerSecurityConfigNoCARemoteManager(t *testing.T) {
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(ts.tmpDir)
-	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, newManagerSecurityConfig)
 	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
@@ -47,7 +47,7 @@ func TestLoadOrCreateManagerSecurityConfigNoCerts(t *testing.T) {
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(ts.paths.Manager.Cert)
-	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, newManagerSecurityConfig)
 	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
@@ -66,7 +66,7 @@ func TestLoadOrCreateManagerSecurityConfigInvalidCACertNoRemote(t *testing.T) {
 													some random garbage\n
 													-----END CERTIFICATE-----`), 0644)
 
-	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "")
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, newManagerSecurityConfig)
 	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
@@ -85,7 +85,7 @@ func TestLoadOrCreateManagerSecurityConfigInvalidCACertWithRemote(t *testing.T) 
 													some random garbage\n
 													-----END CERTIFICATE-----`), 0644)
 
-	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, newManagerSecurityConfig)
 	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
@@ -105,7 +105,7 @@ func TestLoadOrCreateManagerSecurityConfigInvalidCert(t *testing.T) {
 													some random garbage\n
 													-----END CERTIFICATE-----`), 0644)
 
-	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, newManagerSecurityConfig)
 	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
@@ -124,7 +124,7 @@ func TestLoadOrCreateManagerSecurityConfigInvalidKey(t *testing.T) {
 													some random garbage\n
 													-----END EC PRIVATE KEY-----`), 0644)
 
-	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
+	newManagerSecurityConfig, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", ts.picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, newManagerSecurityConfig)
 	assert.NotNil(t, newManagerSecurityConfig.ClientTLSCreds)
@@ -142,8 +142,8 @@ func TestLoadOrCreateManagerSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 	// Remove the certificate from the temp dir and try loading with a new manager
 	os.Remove(ts.paths.Manager.Cert)
 	os.Remove(ts.paths.RootCA.Key)
-	_, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "")
-	assert.EqualError(t, err, "no remote hosts provided")
+	_, err := LoadOrCreateManagerSecurityConfig(ts.ctx, ts.tmpDir, "", nil)
+	assert.EqualError(t, err, "valid remote address picker required")
 }
 
 func TestLoadOrCreateAgentSecurityConfigNoCARemoteManager(t *testing.T) {
@@ -153,7 +153,7 @@ func TestLoadOrCreateAgentSecurityConfigNoCARemoteManager(t *testing.T) {
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(ts.tmpDir)
-	agentSecurityConfig, err := LoadOrCreateAgentSecurityConfig(ts.ctx, ts.tmpDir, "", ts.addr)
+	agentSecurityConfig, err := LoadOrCreateAgentSecurityConfig(ts.ctx, ts.tmpDir, "", ts.picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, agentSecurityConfig.ClientTLSCreds)
 	assert.NotNil(t, agentSecurityConfig.Pool)
@@ -165,6 +165,6 @@ func TestLoadOrCreateAgentSecurityConfigNoCANoRemoteManager(t *testing.T) {
 
 	// Remove all the contents from the temp dir and try again with a new manager
 	os.RemoveAll(ts.tmpDir)
-	_, err := LoadOrCreateAgentSecurityConfig(ts.ctx, ts.tmpDir, "")
-	assert.EqualError(t, err, "no remote hosts provided")
+	_, err := LoadOrCreateAgentSecurityConfig(ts.ctx, ts.tmpDir, "", nil)
+	assert.EqualError(t, err, "valid remote address picker required")
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/manager"
+	"github.com/docker/swarm-v2/picker"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -45,7 +46,13 @@ var managerCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		securityConfig, err := ca.LoadOrCreateManagerSecurityConfig(ctx, certDir, token, managerAddr)
+		var p *picker.Picker
+		if managerAddr != "" {
+			managers := picker.NewRemotes(managerAddr)
+			p = picker.NewPicker(managerAddr, managers)
+		}
+
+		securityConfig, err := ca.LoadOrCreateManagerSecurityConfig(ctx, certDir, token, p)
 		if err != nil {
 			return err
 		}
