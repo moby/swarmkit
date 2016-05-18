@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestVolumesValidate(t *testing.T) {
+func TestMountsValidate(t *testing.T) {
 	bad := []*Mount{
 		// Only "", RO, RW masks are supported at this time
 		{Mask: "unknown"},
@@ -55,7 +55,7 @@ func TestVolumesValidate(t *testing.T) {
 	}
 }
 
-func TestVolumesToProto(t *testing.T) {
+func TestMountsToProto(t *testing.T) {
 	type conv struct {
 		from *Mount
 		to   *api.Mount
@@ -85,7 +85,7 @@ func TestVolumesToProto(t *testing.T) {
 	}
 }
 
-func TestVolumesFromProto(t *testing.T) {
+func TestMountsFromProto(t *testing.T) {
 	type conv struct {
 		from *api.Mount
 		to   *Mount

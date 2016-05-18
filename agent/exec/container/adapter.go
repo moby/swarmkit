@@ -233,3 +233,19 @@ func resolveTimeout(ctx context.Context) (int, error) {
 	}
 	return timeout, nil
 }
+
+func (c *containerAdapter) createVolumes(ctx context.Context, client engineapi.APIClient) error {
+	for _, vol := range c.container.task.GetContainer().Volumes {
+		req := c.container.volumeCreateRequest(vol)
+
+		// Check if this volume exists on the engine
+		if _, err := client.VolumeCreate(ctx, *req); err != nil {
+			// TODO(amitshukla): Today, volume create through the engine api does not return an error
+			// when the named volume with the same parameters already exists.
+			// It returns an error if the driver name is different - that is a valid error
+			return err
+		}
+	}
+
+	return nil
+}

@@ -109,17 +109,9 @@ func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
 }
 
 func (c *containerConfig) bindMounts() []string {
-	mounts := c.spec().Mounts
+	var r []string
 
-	numBindMounts := 0
-	for _, val := range mounts {
-		if val.Type == api.MountTypeBind || val.Type == api.MountTypeVolume {
-			numBindMounts++
-		}
-	}
-
-	r := make([]string, numBindMounts)
-	for i, val := range mounts {
+	for _, val := range c.spec().Mounts {
 		mask := ""
 		switch val.Mask {
 		case api.MountMaskReadOnly:
@@ -128,9 +120,9 @@ func (c *containerConfig) bindMounts() []string {
 			mask = "rw"
 		}
 		if val.Type == api.MountTypeBind {
-			r[i] = fmt.Sprintf("%s:%s:%s", val.Source, val.Target, mask)
+			r = append(r, fmt.Sprintf("%s:%s:%s", val.Source, val.Target, mask))
 		} else if val.Type == api.MountTypeVolume {
-			r[i] = fmt.Sprintf("%s:%s:%s", val.VolumeName, val.Target, mask)
+			r = append(r, fmt.Sprintf("%s:%s:%s", val.VolumeName, val.Target, mask))
 		}
 	}
 
@@ -142,6 +134,14 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 		Resources:    c.resources(),
 		Binds:        c.bindMounts(),
 		PortBindings: c.portBindings(),
+	}
+}
+
+func (c *containerConfig) volumeCreateRequest(vol *api.Volume) *types.VolumeCreateRequest {
+	return &types.VolumeCreateRequest{
+		Name:       vol.Spec.Annotations.Name,
+		Driver:     vol.Spec.DriverConfiguration.Name,
+		DriverOpts: vol.Spec.DriverConfiguration.Options,
 	}
 }
 
