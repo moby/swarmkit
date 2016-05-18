@@ -154,7 +154,7 @@ func (u *Updater) worker(ctx context.Context, service *api.Service, queue <-chan
 	for t := range queue {
 		updated := newTask(service, t.Instance)
 		updated.DesiredState = api.TaskStateReady
-		if service.Spec.Mode == api.ServiceModeFill {
+		if isGlobalService(service) {
 			updated.NodeID = t.NodeID
 		}
 

@@ -61,8 +61,8 @@ type ServiceConfig struct {
 	ContainerConfig
 
 	Name      string  `yaml:"name,omitempty"`
-	Instances *uint64 `yaml:"instances,omitempty"`
 	Mode      string  `yaml:"mode,omitempty"`
+	Instances *uint64 `yaml:"instances,omitempty"`
 
 	Restart *RestartConfiguration `yaml:"restart,omitempty"`
 	Update  *UpdateConfiguration  `yaml:"update,omitempty"`
@@ -77,9 +77,10 @@ func (s *ServiceConfig) Validate() error {
 		return fmt.Errorf("image is mandatory in %s", s.Name)
 	}
 
+	// validate
 	switch s.Mode {
-	case "", "running":
-	case "batch", "fill":
+	case "", "replicated":
+	case "global":
 		if s.Instances != nil {
 			return fmt.Errorf("instances is not allowed in %s services", s.Mode)
 		}
@@ -191,17 +192,21 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 	}
 
 	switch s.Mode {
-	case "", "running":
-		spec.Mode = api.ServiceModeRunning
+	case "", "replicated":
 		// Default to 1 instance.
-		spec.Instances = 1
+		var instances uint64 = 1
 		if s.Instances != nil {
-			spec.Instances = *s.Instances
+			instances = *s.Instances
 		}
-	case "batch":
-		spec.Mode = api.ServiceModeBatch
-	case "fill":
-		spec.Mode = api.ServiceModeFill
+		spec.Mode = &api.ServiceSpec_Replicated{
+			Replicated: &api.ReplicatedService{
+				Instances: instances,
+			},
+		}
+	case "global":
+		spec.Mode = &api.ServiceSpec_Global{
+			Global: &api.GlobalService{},
+		}
 	}
 
 	if s.StopGracePeriod == "" {
@@ -216,8 +221,7 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 // FromProto converts a ServiceSpec to a ServiceConfig.
 func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	*s = ServiceConfig{
-		Name:      serviceSpec.Annotations.Name,
-		Instances: &serviceSpec.Instances,
+		Name: serviceSpec.Annotations.Name,
 		ContainerConfig: ContainerConfig{
 			Image:   serviceSpec.GetContainer().Image.Reference,
 			Env:     serviceSpec.GetContainer().Env,
@@ -253,13 +257,12 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 		}
 	}
 
-	switch serviceSpec.Mode {
-	case api.ServiceModeRunning:
-		s.Mode = "running"
-	case api.ServiceModeFill:
-		s.Mode = "fill"
-	case api.ServiceModeBatch:
-		s.Mode = "batch"
+	switch t := serviceSpec.GetMode().(type) {
+	case *api.ServiceSpec_Replicated:
+		s.Mode = "replicated"
+		s.Instances = &t.Replicated.Instances
+	case *api.ServiceSpec_Global:
+		s.Mode = "global"
 	}
 
 	s.StopGracePeriod = serviceSpec.GetContainer().StopGracePeriod.String()

@@ -64,50 +64,16 @@ message ServiceSpec {
 		ContainerSpec container = 2;
 	}
 
-	// Instances specifies the number of instances of the service service that
-	// should be running.
-	uint64 instances = 3;
+	oneof mode {
+		ReplicatedService replicated = 3;
+		GlobalService global = 4;
+	}
 
 	// RestartPolicy specifies what to do when a task fails or finishes.
-	RestartPolicy restart = 4;
+	RestartPolicy restart = 5;
 
-	enum Strategy {
-		option (gogoproto.goproto_enum_prefix) = false;
-
-		// Spread instances evenly among candidate nodes.
-		SERVICE_STRATEGY_SPREAD = 0 [(gogoproto.enumvalue_customname) = "ServiceStrategySpread"];
-
-		// Pack instances tightly across available nodes.
-		SERVICE_STRATEGY_BINPACK = 1 [(gogoproto.enumvalue_customname) = "ServiceStrategyBinPack"];
-	}
-
-	Strategy strategy = 5;
-
-	enum Mode {
-		option (gogoproto.goproto_enum_prefix) = false;
-
-		// Running sets the reconcilation target to ensure there are running
-		// tasks equal to the number instances. If the using the fill
-		// scheduling strategy, the number of nodes will be used instead.
-		SERVICE_MODE_RUNNING = 0 [(gogoproto.enumvalue_customname) = "ServiceModeRunning"];
-
-		// Batch sets reconcilation target as number of completed tasks. If in
-		// fill scheduling strategy, the number of instances will equal the number
-		// of nodes.
-		SERVICE_MODE_BATCH = 1 [(gogoproto.enumvalue_customname) = "ServiceModeBatch"];
-
-		// Fill each node with instances number of tasks.
-		SERVICE_MODE_FILL = 2 [(gogoproto.enumvalue_customname) = "ServiceModeFill"];
-
-		// TODO(stevvooe): Consider specifying the mode as a task completion
-		// reconcilation condition. This matches with model of the
-		// reconcilation loop in that we define under which conditions the
-		// service is satisfied.
-	}
-
-	// Mode defines the reconcilation target for the service. This effects the
-	// target state sought to satisfy the given service.
-	Mode mode = 6;
+	// Placement specifies constraints and distribution preference.
+	Placement placement = 6;
 
 	// UpdateConfig controls the rate and policy of updates.
 	UpdateConfig update = 7;
@@ -115,6 +81,16 @@ message ServiceSpec {
 	// Service endpoint specifies the user provided configuration
 	// to properly discover and load balance a service.
 	Endpoint endpoint = 8;
+}
+
+// ReplicatedService set the reconcilation target to certain number of instances.
+message ReplicatedService {
+	uint64 instances = 1;
+}
+
+// GlobalService represent global service.
+message GlobalService {
+	// Empty message for now.
 }
 
 // Container specifies runtime parameters for a container.
