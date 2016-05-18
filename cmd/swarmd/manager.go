@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"net"
 	"path/filepath"
 
 	"github.com/docker/swarm-v2/ca"
@@ -17,6 +19,13 @@ var managerCmd = &cobra.Command{
 		addr, err := cmd.Flags().GetString("listen-addr")
 		if err != nil {
 			return err
+		}
+		addrHost, _, err := net.SplitHostPort(addr)
+		if err == nil {
+			ip := net.ParseIP(addrHost)
+			if ip != nil && (ip.IsUnspecified() || ip.IsLoopback()) {
+				fmt.Println("Warning: Specifying a valid address with --listen-addr may be necessary for other managers to reach this one.")
+			}
 		}
 
 		managerAddr, err := cmd.Flags().GetString("join-cluster")
