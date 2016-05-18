@@ -115,7 +115,7 @@ func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPa
 			return nil, err
 		}
 
-		log.Debugf("downloaded TLS credentials with role: %s and from %s.", role, remoteAddr)
+		log.Infof("Downloaded TLS credentials with role %s from %s.", role, remoteAddr)
 	}
 
 	// Ensure directory exists
