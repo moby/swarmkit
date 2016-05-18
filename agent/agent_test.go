@@ -8,6 +8,7 @@ import (
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca/testutils"
+	"github.com/docker/swarm-v2/picker"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -55,7 +56,7 @@ func TestAgentStartStop(t *testing.T) {
 
 	agent, err := New(&Config{
 		Executor:       &NoopExecutor{},
-		Managers:       NewManagers("localhost:4949"),
+		Managers:       picker.NewRemotes("localhost:4949"),
 		SecurityConfig: agentSecurityConfigs[0],
 	})
 	assert.NoError(t, err)

@@ -19,6 +19,7 @@ import (
 	catestutils "github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/manager/state/raft/testutils"
 	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/swarm-v2/picker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -59,7 +60,7 @@ func (mc *managersCluster) AddAgents(count int) error {
 		if err != nil {
 			return err
 		}
-		managers := agent.NewManagers(addrs...)
+		managers := picker.NewRemotes(addrs...)
 		id := strconv.Itoa(rand.Int())
 		a, err := agent.New(&agent.Config{
 			Hostname:       "hostname_" + id,
