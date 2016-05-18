@@ -102,6 +102,7 @@ func AuthorizeForwardedRole(ctx context.Context, role string) (string, error) {
 // forward agent request or agent itself. It returns agent id.
 func authorizeForwardedRole(ctx context.Context, forwardedRole string, forwarderRoles []string) (string, error) {
 	// If the call is being done by one of the forwarded roles, and there is something being forwarded, return
+	// the forwardedID
 	_, err := AuthorizeRole(ctx, forwarderRoles)
 	if err == nil {
 		if forwardedID, err := forwardCNFromContext(ctx); err == nil {

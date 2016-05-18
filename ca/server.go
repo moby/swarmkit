@@ -68,7 +68,7 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 	log.G(ctx).Debugf("(*Server).CertificateStatus: token %s is in state: %s", request.Token, rCertificate.Status)
 
 	// If this certificate has a final state, return it immediately (both pending and accepted are transition states)
-	if rCertificate.Status.State != api.IssuanceStatePending && rCertificate.Status.State != api.IssuanceStateAccepted {
+	if isFinalState(rCertificate.Status) {
 
 		return &api.CertificateStatusResponse{
 			Status:                &rCertificate.Status,
@@ -84,10 +84,9 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 		case event := <-updates:
 			switch v := event.(type) {
 			case state.EventUpdateRegisteredCertificate:
-				// We got an update on the certificate record. If the status is no
-				// longer pending, return.
-				if v.RegisteredCertificate.Status.State != api.IssuanceStatePending &&
-					v.RegisteredCertificate.Status.State != api.IssuanceStateAccepted {
+				// We got an update on the certificate record. If the status is a final state,
+				// return the certificate.
+				if isFinalState(v.RegisteredCertificate.Status) {
 					rCertificate = v.RegisteredCertificate
 
 					return &api.CertificateStatusResponse{
@@ -413,4 +412,13 @@ func (s *Server) reconcileCertificates(ctx context.Context, rCerts []*api.Regist
 	}
 
 	return nil
+}
+
+func isFinalState(status api.IssuanceStatus) bool {
+	if status.State != api.IssuanceStatePending &&
+		status.State != api.IssuanceStateAccepted {
+		return true
+	}
+
+	return false
 }
