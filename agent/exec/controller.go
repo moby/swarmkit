@@ -1,6 +1,8 @@
 package exec
 
 import (
+	"fmt"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
@@ -13,8 +15,6 @@ type ContainerController interface {
 }
 
 // Controller controls execution of a task.
-//
-// All methods should be idempotent and thread-safe.
 type Controller interface {
 	// Update the task definition seen by the controller. Will return
 	// ErrTaskUpdateFailed if the provided task definition changes fields that
@@ -101,13 +101,13 @@ func Shutdown(ctx context.Context, ctlr Controller, reporter Reporter) error {
 
 // Remove the task for the controller and report on the status.
 func Remove(ctx context.Context, ctlr Controller, reporter Reporter) error {
-	if err := report(ctx, reporter, api.TaskStateFinalize, "removing", nil); err != nil {
+	if err := report(ctx, reporter, api.TaskStateRemove, "removing", nil); err != nil {
 		return err
 	}
 
 	if err := ctlr.Remove(ctx); err != nil {
 		log.G(ctx).WithError(err).Error("remove failed")
-		if err := report(ctx, reporter, api.TaskStateFinalize, "remove failed", nil); err != nil {
+		if err := report(ctx, reporter, api.TaskStateRemove, "remove failed", nil); err != nil {
 			log.G(ctx).WithError(err).Error("report remove error failed")
 			return err
 		}
@@ -185,4 +185,194 @@ func report(ctx context.Context, reporter Reporter, state api.TaskState, msg str
 			"status.msg": msg}))
 	log.G(ctx).Debug("report status")
 	return reporter.Report(ctx, state, msg, cstatus)
+}
+
+// Do progresses the task state using the controller by a single operation
+// on the controller. The return TaskStatus should be marked as the new state
+// of the task.
+//
+// The returned status should be reported and placed back on to task
+// before the next call. The operation can be cancelled by creating a
+// cancelling context.
+//
+// Errors from the task controller will reported on the returned status. Any
+// errors coming from this function should not be reported as related to the
+// individual task.
+func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, error) {
+	status := task.Status.Copy()
+
+	// stay in the current state.
+	noop := func(errs ...error) (*api.TaskStatus, error) {
+		// TODO(stevvooe): May want to return sentinal error here to
+		// communicate that we cannot proceed past the current state.
+		return status, nil
+	}
+
+	// transition moves the task to the next state.
+	transition := func(state api.TaskState, msg string) (*api.TaskStatus, error) {
+		current := status.State
+		status.State = state
+		status.Message = msg
+
+		if current > state {
+			panic("invalid state transition")
+		}
+		return status, nil
+	}
+
+	// returned when a fatal execution of the task is fatal. In this case, we
+	// proceed to a terminal error state and set the appropriate fields.
+	//
+	// Common checks for the nature of an error should be included here. If the
+	// error is determined not to be fatal for the task,
+	fatal := func(err error) (*api.TaskStatus, error) {
+		log.G(ctx).WithError(err).Error("fatal task error")
+		if err == nil {
+			panic("err must not be nil when fatal")
+		}
+
+		if err, ok := err.(Temporary); ok && err.Temporary() {
+			return noop()
+		}
+
+		if err == context.DeadlineExceeded || err == context.Canceled {
+			return noop()
+		}
+
+		status.Err = err.Error()
+
+		switch {
+		case status.State < api.TaskStateStarting:
+			status.State = api.TaskStateRejected
+		case status.State < api.TaskStateRemove && status.State > api.TaskStateStarting:
+			status.State = api.TaskStateFailed
+		}
+
+		return status, nil
+	}
+
+	// below, we have several callbacks that are run after the state transition
+	// is completed.
+
+	defer func() {
+		log.G(ctx).WithField("state.transition", fmt.Sprintf("%v->%v", task.Status.State, status.State)).
+			Info("state changed")
+	}()
+
+	// handle the case of writing out the terminal state correctly.
+	defer func() {
+		if status.TerminalState != 0 {
+			return // never overwrite.
+		}
+
+		switch status.State {
+		case api.TaskStateCompleted, api.TaskStateFailed,
+			api.TaskStateRejected, api.TaskStateShutdown:
+			status.TerminalState = status.State
+		}
+	}()
+
+	// extract the container status from the container, if supported.
+	defer func() {
+		// only do this if in an active state
+		if status.State >= api.TaskStateRemove {
+			return
+		}
+
+		cctlr, ok := ctlr.(ContainerController)
+		if !ok {
+			return
+		}
+
+		cstatus, err := cctlr.ContainerStatus(ctx)
+		if err != nil {
+			log.G(ctx).WithError(err).Error("container status unavailable")
+			return
+		}
+
+		if cstatus != nil {
+			status.RuntimeStatus = &api.TaskStatus_Container{
+				Container: cstatus,
+			}
+		}
+	}()
+
+	switch task.DesiredState {
+	case api.TaskStateNew, api.TaskStateAllocated,
+		api.TaskStateAssigned, api.TaskStateAccepted,
+		api.TaskStatePreparing, api.TaskStateReady,
+		api.TaskStateStarting, api.TaskStateRunning,
+		api.TaskStateCompleted, api.TaskStateFailed,
+		api.TaskStateRejected, api.TaskStateRemove:
+
+		if task.DesiredState < status.State {
+			// do not yet proceed. the desired state is less than the current
+			// state.
+			return noop()
+		}
+
+		switch status.State {
+		case api.TaskStateNew, api.TaskStateAllocated,
+			api.TaskStateAssigned:
+			return transition(api.TaskStateAccepted, "accepted")
+		case api.TaskStateAccepted:
+			return transition(api.TaskStatePreparing, "preparing")
+		case api.TaskStatePreparing:
+			if err := ctlr.Prepare(ctx); err != nil && err != ErrTaskPrepared {
+				return fatal(err)
+			}
+
+			return transition(api.TaskStateReady, "prepared")
+		case api.TaskStateReady:
+			return transition(api.TaskStateStarting, "starting")
+		case api.TaskStateStarting:
+			if err := ctlr.Start(ctx); err != nil && err != ErrTaskStarted {
+				return fatal(err)
+			}
+
+			return transition(api.TaskStateRunning, "started")
+		case api.TaskStateRunning:
+			if err := ctlr.Wait(ctx); err != nil {
+				if _, ok := err.(*ExitError); ok {
+					return transition(api.TaskStateFailed, "failed")
+				}
+
+				// TODO(stevvooe): In most cases, failures of Wait are actually
+				// not a failure of the task. We account for this in fatal by
+				// checking temporary.
+				return fatal(err)
+			}
+
+			return transition(api.TaskStateCompleted, "finished")
+		}
+	case api.TaskStateShutdown:
+		if status.State >= api.TaskStateShutdown {
+			return noop()
+		}
+
+		if err := ctlr.Shutdown(ctx); err != nil {
+			return fatal(err)
+		}
+
+		return transition(api.TaskStateShutdown, "shutdown")
+	case api.TaskStateDead:
+		if status.State < api.TaskStateRemove {
+			// before proceeding with removal, place the task into the finalize
+			// state and return. Next time this is called, the actual removal
+			// will occur. Doing so notifies others that the task is being
+			// removed.
+			return transition(api.TaskStateRemove, "removing")
+		} else if status.State == api.TaskStateDead {
+			return noop()
+		}
+
+		if err := ctlr.Remove(ctx); err != nil {
+			log.G(ctx).WithError(err).Error("remove failed")
+			return fatal(err)
+		}
+
+		return transition(api.TaskStateDead, "removed")
+	}
+
+	panic("not reachable")
 }

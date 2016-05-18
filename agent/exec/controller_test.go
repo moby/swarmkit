@@ -14,6 +14,352 @@ import (
 
 //go:generate mockgen -package exec -destination controller_test.mock.go -source controller.go Controller Reporter
 
+func TestAcceptPrepare(t *testing.T) {
+	var (
+		task              = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
+		ctx, ctlr, finish = buildTestEnv(t, task)
+	)
+	defer finish()
+	gomock.InOrder(
+		ctlr.EXPECT().Prepare(gomock.Any()),
+	)
+
+	// Report acceptance.
+	status := checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateAccepted,
+		Message: "accepted",
+	})
+
+	// Actually prepare the task.
+	task.Status = *status
+
+	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStatePreparing,
+		Message: "preparing",
+	})
+
+	task.Status = *status
+
+	checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateReady,
+		Message: "prepared",
+	})
+}
+
+func TestPrepareAlready(t *testing.T) {
+	var (
+		task              = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
+		ctx, ctlr, finish = buildTestEnv(t, task)
+	)
+	defer finish()
+	gomock.InOrder(
+		ctlr.EXPECT().Prepare(gomock.Any()).Return(ErrTaskPrepared),
+	)
+
+	// Report acceptance.
+	status := checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateAccepted,
+		Message: "accepted",
+	})
+
+	// Actually prepare the task.
+	task.Status = *status
+
+	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStatePreparing,
+		Message: "preparing",
+	})
+
+	task.Status = *status
+
+	checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateReady,
+		Message: "prepared",
+	})
+}
+
+func TestPrepareFailure(t *testing.T) {
+	var (
+		task              = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
+		ctx, ctlr, finish = buildTestEnv(t, task)
+	)
+	defer finish()
+	gomock.InOrder(
+		ctlr.EXPECT().Prepare(gomock.Any()).Return(errors.New("test error")),
+	)
+
+	// Report acceptance.
+	status := checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateAccepted,
+		Message: "accepted",
+	})
+
+	// Actually prepare the task.
+	task.Status = *status
+
+	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStatePreparing,
+		Message: "preparing",
+	})
+
+	task.Status = *status
+
+	checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:         api.TaskStateRejected,
+		TerminalState: api.TaskStateRejected,
+		Message:       "preparing",
+		Err:           "test error",
+	})
+}
+
+func TestReadyRunning(t *testing.T) {
+	var (
+		task              = newTestTask(t, api.TaskStateReady, api.TaskStateRunning)
+		ctx, ctlr, finish = buildTestEnv(t, task)
+	)
+	defer finish()
+
+	gomock.InOrder(
+		ctlr.EXPECT().Start(gomock.Any()),
+		ctlr.EXPECT().Wait(gomock.Any()),
+	)
+
+	dctlr := &decorateController{
+		MockController: ctlr,
+		cstatus: &api.ContainerStatus{
+			ExitCode: 0,
+		},
+	}
+
+	// Report starting
+	status := checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateStarting,
+		Message: "starting",
+	})
+
+	task.Status = *status
+
+	// start the container
+	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateRunning,
+		Message: "started",
+	})
+
+	task.Status = *status
+	// wait and cancel
+	checkDo(t, ctx, task, dctlr, &api.TaskStatus{
+		State:         api.TaskStateCompleted,
+		TerminalState: api.TaskStateCompleted,
+		Message:       "finished",
+		RuntimeStatus: &api.TaskStatus_Container{
+			Container: &api.ContainerStatus{
+				ExitCode: 0,
+			},
+		},
+	})
+}
+
+func TestReadyRunningExitFailure(t *testing.T) {
+	var (
+		task              = newTestTask(t, api.TaskStateReady, api.TaskStateRunning)
+		ctx, ctlr, finish = buildTestEnv(t, task)
+	)
+	defer finish()
+
+	dctlr := &decorateController{
+		MockController: ctlr,
+		cstatus: &api.ContainerStatus{
+			ExitCode: 1,
+		},
+	}
+
+	gomock.InOrder(
+		ctlr.EXPECT().Start(gomock.Any()),
+		ctlr.EXPECT().Wait(gomock.Any()).Return(&ExitError{
+			Code: 1,
+		}),
+	)
+
+	// Report starting
+	status := checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateStarting,
+		Message: "starting",
+	})
+
+	task.Status = *status
+
+	// start the container
+	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateRunning,
+		Message: "started",
+	})
+
+	task.Status = *status
+	// wait and cancel
+	checkDo(t, ctx, task, dctlr, &api.TaskStatus{
+		State:         api.TaskStateFailed,
+		TerminalState: api.TaskStateFailed,
+		RuntimeStatus: &api.TaskStatus_Container{
+			Container: &api.ContainerStatus{
+				ExitCode: 1,
+			},
+		},
+		Message: "failed",
+	})
+}
+
+func TestAlreadyStarted(t *testing.T) {
+	var (
+		task              = newTestTask(t, api.TaskStateReady, api.TaskStateRunning)
+		ctx, ctlr, finish = buildTestEnv(t, task)
+	)
+	defer finish()
+
+	dctlr := &decorateController{
+		MockController: ctlr,
+		cstatus: &api.ContainerStatus{
+			ExitCode: 1,
+		},
+	}
+
+	gomock.InOrder(
+		ctlr.EXPECT().Start(gomock.Any()).Return(ErrTaskStarted),
+		ctlr.EXPECT().Wait(gomock.Any()).Return(context.Canceled),
+		ctlr.EXPECT().Wait(gomock.Any()).Return(&ExitError{Code: 1}),
+	)
+
+	// Before we can move to running, we have to move to startin.
+	status := checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateStarting,
+		Message: "starting",
+	})
+
+	task.Status = *status
+
+	// start the container
+	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateRunning,
+		Message: "started",
+	})
+
+	task.Status = *status
+
+	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateRunning,
+		Message: "started",
+	})
+
+	task.Status = *status
+
+	// now take the real exit to test wait cancelling.
+	checkDo(t, ctx, task, dctlr, &api.TaskStatus{
+		State:         api.TaskStateFailed,
+		TerminalState: api.TaskStateFailed,
+		RuntimeStatus: &api.TaskStatus_Container{
+			Container: &api.ContainerStatus{
+				ExitCode: 1,
+			},
+		},
+		Message: "failed",
+	})
+
+}
+func TestShutdown(t *testing.T) {
+	var (
+		task              = newTestTask(t, api.TaskStateNew, api.TaskStateShutdown)
+		ctx, ctlr, finish = buildTestEnv(t, task)
+	)
+	defer finish()
+	gomock.InOrder(
+		ctlr.EXPECT().Shutdown(gomock.Any()),
+	)
+
+	checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:         api.TaskStateShutdown,
+		TerminalState: api.TaskStateShutdown,
+		Message:       "shutdown",
+	})
+}
+
+// TestRemove ensures that we call remove when a task is in the desired state of dead.
+func TestRemove(t *testing.T) {
+	var (
+		task              = newTestTask(t, api.TaskStateNew, api.TaskStateDead)
+		ctx, ctlr, finish = buildTestEnv(t, task)
+	)
+	defer finish()
+
+	gomock.InOrder(
+		ctlr.EXPECT().Remove(gomock.Any()),
+	)
+
+	// First call proceeds the task into the finalize state.
+	status := checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateRemove,
+		Message: "removing",
+	})
+
+	task.Status = *status // update the status
+
+	// Second call actually does the removal.
+	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateDead,
+		Message: "removed",
+	})
+}
+
+// decorateController let's us decorate the mock as a ContainerController.
+//
+// Sorry this is here but GoMock is pure garbage.
+type decorateController struct {
+	*MockController
+	cstatus *api.ContainerStatus
+
+	waitFn func(ctx context.Context) error
+}
+
+func (dc *decorateController) ContainerStatus(ctx context.Context) (*api.ContainerStatus, error) {
+	return dc.cstatus, nil
+}
+
+func checkDo(t *testing.T, ctx context.Context, task *api.Task, ctlr Controller, expected *api.TaskStatus) *api.TaskStatus {
+	status, err := Do(ctx, task, ctlr)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, status)
+
+	return status
+}
+
+func newTestTask(t *testing.T, state, desired api.TaskState) *api.Task {
+	return &api.Task{
+		ID: "test-task",
+		Status: api.TaskStatus{
+			State: state,
+		},
+		DesiredState: desired,
+	}
+}
+
+func buildTestEnv(t *testing.T, task *api.Task) (context.Context, *MockController, func()) {
+	var (
+		ctx, cancel = context.WithCancel(context.Background())
+		mocks       = gomock.NewController(t)
+		ctlr        = NewMockController(mocks)
+	)
+
+	// Put test name into log messages. Awesome!
+	pc, _, _, ok := runtime.Caller(1)
+	if ok {
+		fn := runtime.FuncForPC(pc)
+		ctx = log.WithLogger(ctx, log.L.WithField("test", fn.Name()))
+	}
+
+	return ctx, ctlr, func() {
+		cancel()
+		mocks.Finish()
+	}
+}
+
 func TestRun(t *testing.T) {
 	ctx, ctlr, reporter, finish := genRunTestEnv(t)
 	defer finish()
