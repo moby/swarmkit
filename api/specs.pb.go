@@ -401,9 +401,8 @@ func _ContainerSpec_NetworkAttachment_OneofSizer(msg proto.Message) (n int) {
 
 // VolumeSpec defines the properties of a Volume.
 type VolumeSpec struct {
-	Annotations Annotations `protobuf:"bytes,1,opt,name=annotations" json:"annotations"`
-	// Driver specific configuration consumed by the Volume driver.
-	DriverConfiguration *Driver `protobuf:"bytes,2,opt,name=driver_configuration,json=driverConfiguration" json:"driver_configuration,omitempty"`
+	Annotations         Annotations `protobuf:"bytes,1,opt,name=annotations" json:"annotations"`
+	DriverConfiguration *Driver     `protobuf:"bytes,2,opt,name=driver_configuration,json=driverConfiguration" json:"driver_configuration,omitempty"`
 }
 
 func (m *VolumeSpec) Reset()                    { *m = VolumeSpec{} }

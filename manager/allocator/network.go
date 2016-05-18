@@ -323,36 +323,34 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 			return
 		}
 
-		// If the task is not attached to any network, network
-		// allocators job is done. Immediately cast a vote so
-		// that the task can be moved to ALLOCATED state as
-		// soon as possible.
-		if err := a.store.Update(func(tx store.Tx) error {
-			storeT := store.GetTask(tx, t.ID)
-			if storeT == nil {
-				return fmt.Errorf("task %s not found while trying to update state", t.ID)
-			}
+		if a.taskAllocateVote(networkVoter, t.ID) {
+			// If the task is not attached to any network, network
+			// allocators job is done. Immediately cast a vote so
+			// that the task can be moved to ALLOCATED state as
+			// soon as possible.
+			if err := a.store.Update(func(tx store.Tx) error {
+				storeT := store.GetTask(tx, t.ID)
+				if storeT == nil {
+					return fmt.Errorf("task %s not found while trying to update state", t.ID)
+				}
 
-			// Make sure to save the endpoint in task
-			// since we know by now that the service is
-			// allocated.
-			if s != nil {
-				taskUpdateEndpoint(storeT, s.Endpoint)
-			}
-
-			if a.taskAllocateVote(networkVoter, t.ID) {
+				// Make sure to save the endpoint in task
+				// since we know by now that the service is
+				// allocated.
+				if s != nil {
+					taskUpdateEndpoint(storeT, s.Endpoint)
+				}
 				updateTaskStatus(storeT, api.TaskStateAllocated, "allocated")
-			}
 
-			if err := store.UpdateTask(tx, storeT); err != nil {
-				return fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
-			}
+				if err := store.UpdateTask(tx, storeT); err != nil {
+					return fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
+				}
 
-			return nil
-		}); err != nil {
-			log.G(ctx).WithError(err).Error("error updating task network")
+				return nil
+			}); err != nil {
+				log.G(ctx).WithError(err).Error("error updating task network")
+			}
 		}
-
 		return
 	}
 

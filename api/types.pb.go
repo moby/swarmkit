@@ -562,6 +562,7 @@ func (m *Image) Reset()                    { *m = Image{} }
 func (*Image) ProtoMessage()               {}
 func (*Image) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{9} }
 
+// Mount describes volume mounts for a container
 type Mount struct {
 	// Target path in container
 	Target string `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`

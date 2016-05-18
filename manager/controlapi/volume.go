@@ -14,8 +14,8 @@ func validateVolumeSpec(spec *api.VolumeSpec) error {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	if err := validateDriver(spec.DriverConfiguration); err != nil {
-		return err
+	if spec.DriverConfiguration.Name == "" || spec.Annotations.Name == "" {
+		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
 	return nil
@@ -24,7 +24,7 @@ func validateVolumeSpec(spec *api.VolumeSpec) error {
 // CreateVolume creates and return a Volume based on the provided VolumeSpec.
 // - Returns `InvalidArgument` if the VolumeSpec is malformed.
 // - Returns `Unimplemented` if the VolumeSpec references unimplemented features.
-// - Returns `AlreadyExists` if the VolumeID conflicts.
+// - Returns `AlreadyExists` if the ID conflicts.
 // - Returns an error if the creation fails.
 func (s *Server) CreateVolume(ctx context.Context, request *api.CreateVolumeRequest) (*api.CreateVolumeResponse, error) {
 	if err := validateVolumeSpec(request.Spec); err != nil {
@@ -51,8 +51,8 @@ func (s *Server) CreateVolume(ctx context.Context, request *api.CreateVolumeRequ
 	}, nil
 }
 
-// GetVolume returns a Volume given a VolumeID.
-// - Returns `InvalidArgument` if VolumeID is not provided.
+// GetVolume returns a Volume given a ID.
+// - Returns `InvalidArgument` if ID is not provided.
 // - Returns `NotFound` if the Volume is not found.
 func (s *Server) GetVolume(ctx context.Context, request *api.GetVolumeRequest) (*api.GetVolumeResponse, error) {
 	if request.VolumeID == "" {
@@ -71,8 +71,8 @@ func (s *Server) GetVolume(ctx context.Context, request *api.GetVolumeRequest) (
 	}, nil
 }
 
-// RemoveVolume removes a Volume referenced by VolumeID.
-// - Returns `InvalidArgument` if VolumeID is not provided.
+// RemoveVolume removes a Volume referenced by ID.
+// - Returns `InvalidArgument` if ID is not provided.
 // - Returns `NotFound` if the Volume is not found.
 // - Returns an error if the deletion fails.
 func (s *Server) RemoveVolume(ctx context.Context, request *api.RemoveVolumeRequest) (*api.RemoveVolumeResponse, error) {

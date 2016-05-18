@@ -118,6 +118,7 @@ message Image {
 	string reference = 1;
 }
 
+// Mount describes volume mounts for a container
 message Mount {
 	// Target path in container
 	string target = 1;

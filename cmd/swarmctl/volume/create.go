@@ -28,27 +28,28 @@ var (
 				return err
 			}
 
-			driver := new(api.Driver)
-			driver.Name = driverName
 			opts, err := cmd.Flags().GetStringSlice("opts")
 			if err != nil {
 				return err
 			}
 
-			driver.Options = map[string]string{}
+			parsedOptions := map[string]string{}
 			for _, opt := range opts {
 				optPair := strings.Split(opt, "=")
 				if len(optPair) != 2 {
 					return fmt.Errorf("Malformed opts: %s", opt)
 				}
-				driver.Options[optPair[0]] = optPair[1]
+				parsedOptions[optPair[0]] = optPair[1]
 			}
 
 			spec := &api.VolumeSpec{
 				Annotations: api.Annotations{
 					Name: name,
 				},
-				DriverConfiguration: driver,
+				DriverConfiguration: &api.Driver{
+					Name:    driverName,
+					Options: parsedOptions,
+				},
 			}
 
 			c, err := common.Dial(cmd)

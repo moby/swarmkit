@@ -165,8 +165,6 @@ message ContainerSpec {
 // VolumeSpec defines the properties of a Volume.
 message VolumeSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
-
-	// Driver specific configuration consumed by the Volume driver.
 	Driver driver_configuration = 2;
 }
 
