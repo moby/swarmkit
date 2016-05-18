@@ -250,8 +250,8 @@ $ swarmd manager --state-dir "/tmp/manager1" --listen-addr "0.0.0.0:4242"
 To start additional managers:
 
 ```
-$ swarmd manager --state-dir "/tmp/manager2 --listen-addr "0.0.0.0:4243" --join-cluster "0.0.0.0:4242"
-$ swarmd manager --state-dir "/tmp/manager3 --listen-addr "0.0.0.0:4244" --join-cluster "0.0.0.0:4242"
+$ swarmd manager --state-dir "/tmp/manager2" --listen-addr "0.0.0.0:4243" --join-cluster "0.0.0.0:4242"
+$ swarmd manager --state-dir "/tmp/manager3" --listen-addr "0.0.0.0:4244" --join-cluster "0.0.0.0:4242"
 [...]
 ```
 
