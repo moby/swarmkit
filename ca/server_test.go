@@ -27,29 +27,16 @@ func TestIssueCertificate(t *testing.T) {
 	csr, _, err := GenerateAndWriteNewCSR(tc.paths.Agent)
 	assert.NoError(t, err)
 
-	var token string
 	role := AgentRole
-	completed := make(chan error)
-	go func() {
-		issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
-		issueResponse, err := tc.clients[0].IssueCertificate(context.Background(), issueRequest)
-		token = issueResponse.Token
-		assert.NotNil(t, token)
-		completed <- err
-	}()
+	issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
+	issueResponse, err := tc.clients[0].IssueCertificate(context.Background(), issueRequest)
+	assert.NotNil(t, issueResponse.Token)
 
-	assert.NoError(t, <-completed)
-
-	go func() {
-		statusRequest := &api.CertificateStatusRequest{Token: token}
-		statusResponse, err := tc.clients[0].CertificateStatus(context.Background(), statusRequest)
-		assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
-		assert.NotNil(t, statusResponse.RegisteredCertificate.Certificate)
-		assert.Equal(t, role, statusResponse.RegisteredCertificate.Role)
-		completed <- err
-	}()
-
-	assert.NoError(t, <-completed)
+	statusRequest := &api.CertificateStatusRequest{Token: issueResponse.Token}
+	statusResponse, err := tc.clients[0].CertificateStatus(context.Background(), statusRequest)
+	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
+	assert.NotNil(t, statusResponse.RegisteredCertificate.Certificate)
+	assert.Equal(t, role, statusResponse.RegisteredCertificate.Role)
 }
 
 func TestIssueCertificateAgentRenewal(t *testing.T) {
@@ -59,29 +46,16 @@ func TestIssueCertificateAgentRenewal(t *testing.T) {
 	csr, _, err := GenerateAndWriteNewCSR(tc.paths.Agent)
 	assert.NoError(t, err)
 
-	var token string
 	role := AgentRole
-	completed := make(chan error)
-	go func() {
-		issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
-		issueResponse, err := tc.clients[1].IssueCertificate(context.Background(), issueRequest)
-		token = issueResponse.Token
-		assert.NotNil(t, token)
-		completed <- err
-	}()
+	issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
+	issueResponse, err := tc.clients[1].IssueCertificate(context.Background(), issueRequest)
+	assert.NotNil(t, issueResponse.Token)
 
-	assert.NoError(t, <-completed)
-
-	go func() {
-		statusRequest := &api.CertificateStatusRequest{Token: token}
-		statusResponse, err := tc.clients[1].CertificateStatus(context.Background(), statusRequest)
-		assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
-		assert.NotNil(t, statusResponse.RegisteredCertificate.Certificate)
-		assert.Equal(t, role, statusResponse.RegisteredCertificate.Role)
-		completed <- err
-	}()
-
-	assert.NoError(t, <-completed)
+	statusRequest := &api.CertificateStatusRequest{Token: issueResponse.Token}
+	statusResponse, err := tc.clients[1].CertificateStatus(context.Background(), statusRequest)
+	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
+	assert.NotNil(t, statusResponse.RegisteredCertificate.Certificate)
+	assert.Equal(t, role, statusResponse.RegisteredCertificate.Role)
 }
 
 func TestIssueCertificateManagerRenewal(t *testing.T) {
@@ -92,29 +66,16 @@ func TestIssueCertificateManagerRenewal(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, csr)
 
-	var token string
 	role := ManagerRole
-	completed := make(chan error)
-	go func() {
-		issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
-		issueResponse, err := tc.clients[2].IssueCertificate(context.Background(), issueRequest)
-		token = issueResponse.Token
-		assert.NotNil(t, token)
-		completed <- err
-	}()
+	issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
+	issueResponse, err := tc.clients[2].IssueCertificate(context.Background(), issueRequest)
+	assert.NotNil(t, issueResponse.Token)
 
-	assert.NoError(t, <-completed)
-
-	go func() {
-		statusRequest := &api.CertificateStatusRequest{Token: token}
-		statusResponse, err := tc.clients[2].CertificateStatus(context.Background(), statusRequest)
-		assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
-		assert.NotNil(t, statusResponse.RegisteredCertificate.Certificate)
-		assert.Equal(t, role, statusResponse.RegisteredCertificate.Role)
-		completed <- err
-	}()
-
-	assert.NoError(t, <-completed)
+	statusRequest := &api.CertificateStatusRequest{Token: issueResponse.Token}
+	statusResponse, err := tc.clients[2].CertificateStatus(context.Background(), statusRequest)
+	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
+	assert.NotNil(t, statusResponse.RegisteredCertificate.Certificate)
+	assert.Equal(t, role, statusResponse.RegisteredCertificate.Role)
 }
 
 func TestCertificateDesiredStateIssued(t *testing.T) {

@@ -292,7 +292,7 @@ func TestGetRemoteCA(t *testing.T) {
 	md := shaHash.Sum(nil)
 	mdStr := hex.EncodeToString(md)
 
-	cert, err := GetRemoteCA(ts.ctx, mdStr, ts.picker)
+	cert, err := GetRemoteCA(tc.ctx, mdStr, tc.picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 }
@@ -310,7 +310,7 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 	tc := NewTestCA(t, AutoAcceptPolicy())
 	defer tc.Stop()
 
-	_, err := GetRemoteCA(ts.ctx, "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", ts.picker)
+	_, err := GetRemoteCA(tc.ctx, "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", tc.picker)
 	assert.Error(t, err)
 }
 
@@ -319,8 +319,8 @@ func TestIssueAndSaveNewCertificates(t *testing.T) {
 	defer tc.Stop()
 
 	// Copy the current RootCA without the signer
-	rca := RootCA{Cert: ts.rootCA.Cert, Pool: ts.rootCA.Pool}
-	cert, err := rca.IssueAndSaveNewCertificates(ts.ctx, ts.paths.Manager, ManagerRole, ts.picker)
+	rca := RootCA{Cert: tc.rootCA.Cert, Pool: tc.rootCA.Pool}
+	cert, err := rca.IssueAndSaveNewCertificates(tc.ctx, tc.paths.Manager, ManagerRole, tc.picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 	perms, err := permbits.Stat(tc.paths.Manager.Cert)
@@ -337,7 +337,7 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	csr, _, err := GenerateAndWriteNewCSR(tc.paths.Manager)
 	assert.NoError(t, err)
 
-	certs, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.picker)
+	certs, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, tc.rootCA.Pool, tc.picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 
@@ -347,7 +347,7 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ManagerRole)
 
-	certs, err = getRemoteSignedCertificate(ts.ctx, csr, AgentRole, ts.rootCA.Pool, ts.picker)
+	certs, err = getRemoteSignedCertificate(tc.ctx, csr, AgentRole, tc.rootCA.Pool, tc.picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
@@ -371,7 +371,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.picker)
+		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, tc.rootCA.Pool, tc.picker)
 		completed <- err
 	}()
 
@@ -403,7 +403,7 @@ func TestGetRemoteSignedCertificateRejected(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.picker)
+		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, tc.rootCA.Pool, tc.picker)
 		completed <- err
 	}()
 
@@ -435,7 +435,7 @@ func TestGetRemoteSignedCertificateBlocked(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.picker)
+		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, tc.rootCA.Pool, tc.picker)
 		completed <- err
 	}()
 
