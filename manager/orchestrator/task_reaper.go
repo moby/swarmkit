@@ -21,7 +21,7 @@ type instanceTuple struct {
 	nodeID    string // unset for running tasks
 }
 
-// A TaskReaper deletes old tasks when more than TaskHistory tasks
+// A TaskReaper deletes old tasks when more than TaskHistoryRetentionLimit tasks
 // exist for the same service/instance or service/nodeid combination.
 type TaskReaper struct {
 	store *store.MemoryStore
@@ -35,12 +35,11 @@ type TaskReaper struct {
 }
 
 // NewTaskReaper creates a new TaskReaper.
-func NewTaskReaper(store *store.MemoryStore, taskHistory int64) *TaskReaper {
-	watcher, cancel := state.Watch(store.WatchQueue(), state.EventCreateTask{})
+func NewTaskReaper(store *store.MemoryStore) *TaskReaper {
+	watcher, cancel := state.Watch(store.WatchQueue(), state.EventCreateTask{}, state.EventUpdateCluster{})
 
 	return &TaskReaper{
 		store:       store,
-		taskHistory: taskHistory,
 		watcher:     watcher,
 		cancelWatch: cancel,
 		dirty:       make(map[instanceTuple]struct{}),
@@ -53,20 +52,32 @@ func NewTaskReaper(store *store.MemoryStore, taskHistory int64) *TaskReaper {
 func (tr *TaskReaper) Run() {
 	defer close(tr.doneChan)
 
+	tr.store.View(func(readTx store.ReadTx) {
+		clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
+		if err == nil && len(clusters) == 1 {
+			tr.taskHistory = clusters[0].Spec.Orchestration.TaskHistoryRetentionLimit
+		}
+	})
+
 	ticker := time.NewTicker(250 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case event := <-tr.watcher:
-			t := event.(state.EventCreateTask).Task
-			tr.dirty[instanceTuple{
-				instance:  t.Instance,
-				serviceID: t.ServiceID,
-				nodeID:    t.NodeID,
-			}] = struct{}{}
-			if len(tr.dirty) > maxDirty {
-				tr.tick()
+			switch v := event.(type) {
+			case state.EventCreateTask:
+				t := v.Task
+				tr.dirty[instanceTuple{
+					instance:  t.Instance,
+					serviceID: t.ServiceID,
+					nodeID:    t.NodeID,
+				}] = struct{}{}
+				if len(tr.dirty) > maxDirty {
+					tr.tick()
+				}
+			case state.EventUpdateCluster:
+				tr.taskHistory = v.Cluster.Spec.Orchestration.TaskHistoryRetentionLimit
 			}
 		case <-ticker.C:
 			tr.tick()

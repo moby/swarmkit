@@ -406,3 +406,10 @@ message AcceptancePolicy {
 	// issued without administrator intervention.
 	map<string, bool> autoaccept = 1;
 }
+
+// OrchestrationConfig defines cluster-level orchestration settings.
+message OrchestrationConfig {
+	// TaskHistoryRetentionLimit is the number of historic tasks to keep per instance or
+	// node. If negative, never remove completed or failed tasks.
+	int64 task_history_retention_limit = 1;
+}
