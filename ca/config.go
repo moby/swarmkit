@@ -11,6 +11,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	cfconfig "github.com/cloudflare/cfssl/config"
+	"github.com/docker/swarm-v2/picker"
 
 	"golang.org/x/net/context"
 
@@ -98,7 +99,7 @@ func NewConfigPaths(baseCertDir string) *SecurityConfigPaths {
 // LoadOrCreateAgentSecurityConfig encapsulates the security logic behind starting or joining a cluster
 // as an Agent. Every agent requires at least a set of TLS certificates with which to join
 // the cluster.
-func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash string, managerAddrs ...string) (*AgentSecurityConfig, error) {
+func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash string, picker *picker.Picker) (*AgentSecurityConfig, error) {
 	paths := NewConfigPaths(baseCertDir)
 
 	var (
@@ -114,7 +115,7 @@ func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash st
 		log.Debugf("no valid local CA certificate found: %v", err)
 
 		// We were provided with a remote manager. Lets try retreiving the remote CA
-		rootCA, err = GetRemoteCA(ctx, caHash, managerAddrs...)
+		rootCA, err = GetRemoteCA(ctx, caHash, picker)
 		if err != nil {
 			return nil, err
 		}
@@ -136,7 +137,7 @@ func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash st
 		log.Debugf("no valid local TLS credentials found: %v", err)
 		// There was an error loading our Credentials, let's get a new certificate reissued
 		// Contact the remote CA, get a new certificate issued and save it to disk
-		tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(ctx, paths.Agent, AgentRole, managerAddrs...)
+		tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(ctx, paths.Agent, AgentRole, picker)
 		if err != nil {
 			return nil, err
 		}
@@ -159,7 +160,7 @@ func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash st
 // as a Manager. Every manager requires at least a set of TLS certificates with which to serve
 // the cluster and the dispatcher's server. If no manager addresses are provided, we assume we're
 // creating a new Cluster, and this manager will have to generate its own self-signed CA.
-func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash string, managerAddrs ...string) (*ManagerSecurityConfig, error) {
+func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash string, picker *picker.Picker) (*ManagerSecurityConfig, error) {
 	paths := NewConfigPaths(baseCertDir)
 
 	var (
@@ -176,7 +177,7 @@ func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash 
 
 		// We have no CA and no remote managers are being passed in, means we're creating a new cluster
 		// Create our new RootCA and write everything to disk
-		if len(managerAddrs) == 0 {
+		if picker == nil {
 			rootCA, err = CreateAndWriteRootCA(rootCN, paths.RootCA)
 			if err != nil {
 				return nil, err
@@ -185,7 +186,7 @@ func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash 
 		} else {
 			// If we've been passed the address of a remote manager to join, attempt to retrieve the remote
 			// root CA details
-			rootCA, err = GetRemoteCA(ctx, caHash, managerAddrs...)
+			rootCA, err = GetRemoteCA(ctx, caHash, picker)
 			if err != nil {
 				return nil, err
 			}
@@ -210,7 +211,7 @@ func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash 
 
 		// There was an error loading our Credentials, let's get a new certificate reissued
 		// Contact the remote CA, get a new certificate issued and save it to disk
-		tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(ctx, paths.Manager, ManagerRole, managerAddrs...)
+		tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(ctx, paths.Manager, ManagerRole, picker)
 		if err != nil {
 			return nil, err
 		}

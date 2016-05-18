@@ -85,7 +85,7 @@ func (rca *RootCA) NewServerTLSCredentials(cert *tls.Certificate) (credentials.T
 
 // IssueAndSaveNewCertificates gets new certificates issued, either by signing them locally if a signer is
 // available, or by requesting them from the remote server at remoteAddr.
-func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPaths, role string, remoteAddrs ...string) (*tls.Certificate, error) {
+func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPaths, role string, picker *picker.Picker) (*tls.Certificate, error) {
 	// Create a new key/pair and CSR for the new manager
 	csr, key, err := GenerateAndWriteNewCSR(paths)
 	if err != nil {
@@ -108,7 +108,7 @@ func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPa
 		log.Debugf("issued TLS credentials with role: %s.", role)
 	} else {
 		// Get the remote manager to issue a CA signed certificate for this node
-		signedCert, err = getRemoteSignedCertificate(ctx, csr, role, rca.Pool, remoteAddrs...)
+		signedCert, err = getRemoteSignedCertificate(ctx, csr, role, rca.Pool, picker)
 		if err != nil {
 			return nil, err
 		}
@@ -195,24 +195,27 @@ func GetLocalRootCA(paths CertPaths) (RootCA, error) {
 }
 
 // GetRemoteCA returns the remote endpoint's CA certificate
-func GetRemoteCA(ctx context.Context, hashStr string, managerAddrs ...string) (RootCA, error) {
+func GetRemoteCA(ctx context.Context, hashStr string, picker *picker.Picker) (RootCA, error) {
+	// We need a valid picker to be able to Dial to a remote CA
+	if picker == nil {
+		return RootCA{}, fmt.Errorf("valid remote address picker required")
+	}
+
 	// This TLS Config is intentionally using InsecureSkipVerify. Either we're
 	// doing TOFU, in which case we don't validate the remote CA, or we're using
 	// a user supplied hash to check the integrity of the CA certificate.
 	insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecureCreds),
+		grpc.WithBackoffMaxDelay(10 * time.Second),
+		grpc.WithPicker(picker)}
 
-	// Create a new manager picker for the agent
-	managers := picker.NewRemotes(managerAddrs...)
-	manager, err := managers.Select()
+	firstAddr, err := picker.PickAddr()
 	if err != nil {
 		return RootCA{}, err
 	}
 
-	picker := picker.NewPicker(manager, managers)
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecureCreds),
-		grpc.WithBackoffMaxDelay(10 * time.Second), grpc.WithPicker(picker)}
-
-	conn, err := grpc.Dial(manager, opts...)
+	conn, err := grpc.Dial(firstAddr, opts...)
 	if err != nil {
 		return RootCA{}, err
 	}
@@ -397,7 +400,7 @@ func generateNewCSR() (csr, key []byte, err error) {
 	return
 }
 
-func getRemoteSignedCertificate(ctx context.Context, csr []byte, role string, rootCAPool *x509.CertPool, caAddrs ...string) ([]byte, error) {
+func getRemoteSignedCertificate(ctx context.Context, csr []byte, role string, rootCAPool *x509.CertPool, picker *picker.Picker) ([]byte, error) {
 	if rootCAPool == nil {
 		return nil, fmt.Errorf("valid root CA pool required")
 	}
@@ -405,19 +408,19 @@ func getRemoteSignedCertificate(ctx context.Context, csr []byte, role string, ro
 	// This is our only non-MTLS request
 	// We're using CARole as server name, so an external CA doesn't also have to have ManagerRole in the cert SANs
 	creds := credentials.NewTLS(&tls.Config{ServerName: CARole, RootCAs: rootCAPool})
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds),
+		grpc.WithBackoffMaxDelay(10 * time.Second), grpc.WithPicker(picker)}
 
-	// Create a new manager picker for the agent
-	CAs := picker.NewRemotes(caAddrs...)
-	ca, err := CAs.Select()
+	if picker == nil {
+		return nil, fmt.Errorf("valid remote address picker required")
+	}
+
+	firstAddr, err := picker.PickAddr()
 	if err != nil {
 		return nil, err
 	}
 
-	picker := picker.NewPicker(ca, CAs)
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds),
-		grpc.WithBackoffMaxDelay(10 * time.Second), grpc.WithPicker(picker)}
-
-	conn, err := grpc.Dial(ca, opts...)
+	conn, err := grpc.Dial(firstAddr, opts...)
 	if err != nil {
 		return nil, err
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/swarm-v2/picker"
 	"github.com/phayes/permbits"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -28,13 +29,14 @@ func AutoAcceptPolicy() api.AcceptancePolicy {
 }
 
 type TestService struct {
-	rootCA       RootCA
-	s            *store.MemoryStore
-	tmpDir, addr string
-	paths        *SecurityConfigPaths
-	server       grpc.Server
-	caServer     grpc.Server
-	ctx          context.Context
+	rootCA   RootCA
+	s        *store.MemoryStore
+	tmpDir   string
+	paths    *SecurityConfigPaths
+	server   grpc.Server
+	caServer grpc.Server
+	ctx      context.Context
+	picker   *picker.Picker
 }
 
 func (ts *TestService) cleanup() {
@@ -70,13 +72,16 @@ func NewTestService(t *testing.T, policy api.AcceptancePolicy) *TestService {
 		assert.NoError(t, caserver.Run(context.Background()))
 	}()
 
+	remotes := picker.NewRemotes(l.Addr().String())
+	picker := picker.NewPicker(l.Addr().String(), remotes)
+
 	return &TestService{
 		rootCA: rootCA,
 		s:      s,
-		addr:   l.Addr().String(),
 		tmpDir: tempBaseDir,
 		paths:  paths,
 		ctx:    context.Background(),
+		picker: picker,
 	}
 }
 
@@ -254,7 +259,7 @@ func TestGetRemoteCA(t *testing.T) {
 	md := shaHash.Sum(nil)
 	mdStr := hex.EncodeToString(md)
 
-	cert, err := GetRemoteCA(ts.ctx, mdStr, ts.addr)
+	cert, err := GetRemoteCA(ts.ctx, mdStr, ts.picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 }
@@ -272,7 +277,7 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 	ts := NewTestService(t, AutoAcceptPolicy())
 	defer ts.cleanup()
 
-	_, err := GetRemoteCA(ts.ctx, "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", ts.addr)
+	_, err := GetRemoteCA(ts.ctx, "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", ts.picker)
 	assert.Error(t, err)
 }
 
@@ -282,7 +287,7 @@ func TestIssueAndSaveNewCertificates(t *testing.T) {
 
 	// Copy the current RootCA without the signer
 	rca := RootCA{Cert: ts.rootCA.Cert, Pool: ts.rootCA.Pool}
-	cert, err := rca.IssueAndSaveNewCertificates(ts.ctx, ts.paths.Manager, ManagerRole, ts.addr)
+	cert, err := rca.IssueAndSaveNewCertificates(ts.ctx, ts.paths.Manager, ManagerRole, ts.picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 	perms, err := permbits.Stat(ts.paths.Manager.Cert)
@@ -299,7 +304,7 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	csr, _, err := GenerateAndWriteNewCSR(ts.paths.Manager)
 	assert.NoError(t, err)
 
-	certs, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.addr)
+	certs, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 
@@ -309,7 +314,7 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ManagerRole)
 
-	certs, err = getRemoteSignedCertificate(ts.ctx, csr, AgentRole, ts.rootCA.Pool, ts.addr)
+	certs, err = getRemoteSignedCertificate(ts.ctx, csr, AgentRole, ts.rootCA.Pool, ts.picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
@@ -333,7 +338,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.addr)
+		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.picker)
 		completed <- err
 	}()
 
@@ -365,7 +370,7 @@ func TestGetRemoteSignedCertificateRejected(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.addr)
+		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.picker)
 		completed <- err
 	}()
 
@@ -397,7 +402,7 @@ func TestGetRemoteSignedCertificateBlocked(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.addr)
+		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, ts.rootCA.Pool, ts.picker)
 		completed <- err
 	}()
 
