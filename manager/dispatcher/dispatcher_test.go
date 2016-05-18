@@ -1,6 +1,7 @@
 package dispatcher
 
 import (
+	"crypto/tls"
 	"net"
 	"os"
 	"testing"
@@ -10,6 +11,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
@@ -81,21 +83,25 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	clientOpts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
 	clientOpts1 := append(clientOpts, grpc.WithTransportCredentials(agentSecurityConfigs[0].ClientTLSCreds))
 	clientOpts2 := append(clientOpts, grpc.WithTransportCredentials(agentSecurityConfigs[1].ClientTLSCreds))
+	clientOpts3 := append(clientOpts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})))
 
 	conn1, err := grpc.Dial(l.Addr().String(), clientOpts1...)
 	if err != nil {
-		s.Stop()
 		return nil, err
 	}
 
 	conn2, err := grpc.Dial(l.Addr().String(), clientOpts2...)
 	if err != nil {
-		s.Stop()
 		return nil, err
 	}
 
-	clients := []api.DispatcherClient{api.NewDispatcherClient(conn1), api.NewDispatcherClient(conn2)}
-	conns := []*grpc.ClientConn{conn1, conn2}
+	conn3, err := grpc.Dial(l.Addr().String(), clientOpts3...)
+	if err != nil {
+		return nil, err
+	}
+
+	clients := []api.DispatcherClient{api.NewDispatcherClient(conn1), api.NewDispatcherClient(conn2), api.NewDispatcherClient(conn3)}
+	conns := []*grpc.ClientConn{conn1, conn2, conn3}
 	return &grpcDispatcher{
 		Clients:              clients,
 		Store:                tc.MemoryStore(),
@@ -124,6 +130,17 @@ func TestRegisterTwice(t *testing.T) {
 		// session should be different!
 		assert.NotEqual(t, resp.SessionID, expectedSessionID)
 	}
+}
+
+func TestRegisterNoCert(t *testing.T) {
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	// This client has no certificates, this should fail
+	resp, err := gd.Clients[2].Register(context.Background(), &api.RegisterRequest{})
+	assert.Nil(t, resp)
+	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role, expecting: swarm-worker")
 }
 
 func TestHeartbeat(t *testing.T) {
@@ -162,6 +179,17 @@ func TestHeartbeat(t *testing.T) {
 		assert.NotEmpty(t, storeNodes)
 		assert.Equal(t, storeNodes[0].Status.State, api.NodeStatus_READY)
 	})
+}
+
+func TestHeartbeatNoCert(t *testing.T) {
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	// heartbeat without correct SessionID should fail
+	resp, err := gd.Clients[2].Heartbeat(context.Background(), &api.HeartbeatRequest{})
+	assert.Nil(t, resp)
+	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role, expecting: swarm-worker")
 }
 
 func TestHeartbeatTimeout(t *testing.T) {
@@ -304,6 +332,19 @@ func TestTasks(t *testing.T) {
 	assert.Equal(t, len(resp.Tasks), 0)
 }
 
+func TestTasksNoCert(t *testing.T) {
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	stream, err := gd.Clients[2].Tasks(context.Background(), &api.TasksRequest{})
+	assert.NoError(t, err)
+	assert.NotNil(t, stream)
+	resp, err := stream.Recv()
+	assert.Nil(t, resp)
+	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role, expecting: swarm-worker")
+}
+
 func TestTaskUpdate(t *testing.T) {
 	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
@@ -368,6 +409,36 @@ func TestTaskUpdate(t *testing.T) {
 	})
 }
 
+func TestTaskUpdateNoCert(t *testing.T) {
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	testTask1 := &api.Task{
+		ID: "testTask1",
+	}
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, testTask1))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	testTask1.Status = api.TaskStatus{State: api.TaskStateAssigned}
+	updReq := &api.UpdateTaskStatusRequest{
+		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
+			{
+				TaskID: testTask1.ID,
+				Status: &testTask1.Status,
+			},
+		},
+	}
+	// without correct SessionID should fail
+	resp, err := gd.Clients[2].UpdateTaskStatus(context.Background(), updReq)
+	assert.Nil(t, resp)
+	assert.Error(t, err)
+	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role, expecting: swarm-worker")
+}
+
 func TestSession(t *testing.T) {
 	cfg := DefaultConfig()
 	gd, err := startDispatcher(cfg)
@@ -383,6 +454,18 @@ func TestSession(t *testing.T) {
 	msg, err := stream.Recv()
 	assert.Equal(t, 1, len(msg.Managers))
 	assert.False(t, msg.Disconnect)
+}
+
+func TestSessionNoCert(t *testing.T) {
+	cfg := DefaultConfig()
+	gd, err := startDispatcher(cfg)
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	stream, err := gd.Clients[2].Session(context.Background(), &api.SessionRequest{SessionID: "fakesid"})
+	msg, err := stream.Recv()
+	assert.Nil(t, msg)
+	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role, expecting: swarm-worker")
 }
 
 func TestNodesCount(t *testing.T) {

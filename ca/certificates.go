@@ -87,6 +87,7 @@ func (rca *RootCA) NewServerTLSCredentials(cert *tls.Certificate) (credentials.T
 // available, or by requesting them from the remote server at remoteAddr.
 func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPaths, role string, picker *picker.Picker) (*tls.Certificate, error) {
 	// Create a new key/pair and CSR for the new manager
+
 	csr, key, err := GenerateAndWriteNewCSR(paths)
 	if err != nil {
 		log.Debugf("error when generating new node certs: %v", err)

@@ -264,12 +264,6 @@ func (d *Dispatcher) isRunning() bool {
 
 // Register is used for registration of node with particular dispatcher.
 func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
-	// prevent register until we're ready to accept it
-	if err := d.addTask(); err != nil {
-		return nil, err
-	}
-	defer d.doneTask()
-
 	agentID, err := ca.AuthorizeForwardedRole(ctx, ca.AgentRole)
 	if err != nil {
 		return nil, err
@@ -279,6 +273,12 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 		"agent.id": agentID,
 		"method":   "Register",
 	})
+
+	// prevent register until we're ready to accept it
+	if err := d.addTask(); err != nil {
+		return nil, err
+	}
+	defer d.doneTask()
 
 	// create or update node in store
 	// TODO(stevvooe): Validate node specification.
@@ -332,11 +332,6 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 // UpdateTaskStatus updates status of task. Node should send such updates
 // on every status change of its tasks.
 func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStatusRequest) (*api.UpdateTaskStatusResponse, error) {
-	if err := d.addTask(); err != nil {
-		return nil, err
-	}
-	defer d.doneTask()
-
 	agentID, err := ca.AuthorizeForwardedRole(ctx, ca.AgentRole)
 	if err != nil {
 		return nil, err
@@ -346,7 +341,11 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 		"agent.id": agentID,
 		"method":   "UpdateTaskStatus",
 	})
-	log.Debugf("grpc call")
+
+	if err := d.addTask(); err != nil {
+		return nil, err
+	}
+	defer d.doneTask()
 
 	if _, err := d.nodes.GetWithSession(agentID, r.SessionID); err != nil {
 		return nil, err
@@ -425,15 +424,15 @@ func (d *Dispatcher) processTaskUpdates() {
 // of tasks which should be run on node, if task is not present in that list,
 // it should be terminated.
 func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
-	if err := d.addTask(); err != nil {
-		return err
-	}
-	defer d.doneTask()
-
 	agentID, err := ca.AuthorizeForwardedRole(stream.Context(), ca.AgentRole)
 	if err != nil {
 		return err
 	}
+
+	if err := d.addTask(); err != nil {
+		return err
+	}
+	defer d.doneTask()
 
 	log := log.G(stream.Context()).WithFields(logrus.Fields{
 		"request":  r,
@@ -558,16 +557,16 @@ func (d *Dispatcher) getManagers() []*api.WeightedPeer {
 // special boolean field Disconnect which if true indicates that node should
 // reconnect to another Manager immediately.
 func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_SessionServer) error {
-	if err := d.addTask(); err != nil {
-		return err
-	}
-	defer d.doneTask()
-
 	ctx := stream.Context()
 	agentID, err := ca.AuthorizeForwardedRole(ctx, ca.AgentRole)
 	if err != nil {
 		return err
 	}
+
+	if err := d.addTask(); err != nil {
+		return err
+	}
+	defer d.doneTask()
 
 	log := log.G(ctx).WithFields(logrus.Fields{
 		"request":  r,
