@@ -67,8 +67,9 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 
 	log.G(ctx).Debugf("(*Server).CertificateStatus: token %s is in state: %s", request.Token, rCertificate.Status)
 
-	// If this certificate has a final state, return it immediately
-	if rCertificate.Status.State != api.IssuanceStatePending {
+	// If this certificate has a final state, return it immediately (both pending and accepted are transition states)
+	if isFinalState(rCertificate.Status) {
+
 		return &api.CertificateStatusResponse{
 			Status:                &rCertificate.Status,
 			RegisteredCertificate: rCertificate,
@@ -83,10 +84,11 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 		case event := <-updates:
 			switch v := event.(type) {
 			case state.EventUpdateRegisteredCertificate:
-				// We got an update on the certificate record. If the status is no
-				// longer pending, return.
-				if v.RegisteredCertificate.Status.State != api.IssuanceStatePending {
+				// We got an update on the certificate record. If the status is a final state,
+				// return the certificate.
+				if isFinalState(v.RegisteredCertificate.Status) {
 					rCertificate = v.RegisteredCertificate
+
 					return &api.CertificateStatusResponse{
 						Status:                &rCertificate.Status,
 						RegisteredCertificate: rCertificate,
@@ -106,7 +108,25 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
-	var token string
+	// TODO(diogo): token's shouldn't be seen by the user, add more bits?
+	token := identity.NewID()
+
+	// If the remote node is an Agent (either forwarded by a manager, or calling directly),
+	// issue an accepted Agent certificate with the correct ID
+	nodeID, err := AuthorizeForwardedRole(ctx, AgentRole)
+	if err == nil {
+		return s.issueAcceptedRegisteredCertificate(ctx, nodeID, AgentRole, token, request.CSR)
+	}
+
+	// If the remove node is a Manager, issue an accepted Manager certificate with the correct
+	// ID
+	nodeID, err = AuthorizeRole(ctx, []string{ManagerRole})
+	if err == nil {
+		return s.issueAcceptedRegisteredCertificate(ctx, nodeID, ManagerRole, token, request.CSR)
+	}
+
+	// The remote node didn't successfully present a valid MTLS certificate, let's issue
+	// a pending certificate with a new ID
 
 	// Max number of collisions of ID or CN to tolerate before giving up
 	maxRetries := 3
@@ -149,6 +169,30 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 		}
 	}
 
+	return &api.IssueCertificateResponse{
+		Token: token,
+	}, nil
+}
+
+func (s *Server) issueAcceptedRegisteredCertificate(ctx context.Context, nodeID, role, token string, csr []byte) (*api.IssueCertificateResponse, error) {
+	var certificate *api.RegisteredCertificate
+	err := s.store.Update(func(tx store.Tx) error {
+		certificate = &api.RegisteredCertificate{
+			ID:   token,
+			CSR:  csr,
+			CN:   nodeID,
+			Role: role,
+			Status: api.IssuanceStatus{
+				State: api.IssuanceStateAccepted,
+			},
+		}
+		return store.CreateRegisteredCertificate(tx, certificate)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	log.G(ctx).Debugf("(*Server).IssueCertificate: added issue certificate entry for Role=%s with Token=%s", role, token)
 	return &api.IssueCertificateResponse{
 		Token: token,
 	}, nil
@@ -302,6 +346,12 @@ func (s *Server) evaluateAndSignCert(ctx context.Context, rCertificate *api.Regi
 		return
 	}
 
+	// If the certificate state is accepted, then it is a server-sided accepted cert (cert renewals)
+	if rCertificate.Status.State == api.IssuanceStateAccepted {
+		s.signCert(ctx, rCertificate)
+		return
+	}
+
 	if rCertificate.Status.State != api.IssuanceStatePending {
 		return
 	}
@@ -362,4 +412,13 @@ func (s *Server) reconcileCertificates(ctx context.Context, rCerts []*api.Regist
 	}
 
 	return nil
+}
+
+func isFinalState(status api.IssuanceStatus) bool {
+	if status.State != api.IssuanceStatePending &&
+		status.State != api.IssuanceStateAccepted {
+		return true
+	}
+
+	return false
 }
