@@ -101,13 +101,13 @@ func Shutdown(ctx context.Context, ctlr Controller, reporter Reporter) error {
 
 // Remove the task for the controller and report on the status.
 func Remove(ctx context.Context, ctlr Controller, reporter Reporter) error {
-	if err := report(ctx, reporter, api.TaskStateFinalize, "removing", nil); err != nil {
+	if err := report(ctx, reporter, api.TaskStateRemove, "removing", nil); err != nil {
 		return err
 	}
 
 	if err := ctlr.Remove(ctx); err != nil {
 		log.G(ctx).WithError(err).Error("remove failed")
-		if err := report(ctx, reporter, api.TaskStateFinalize, "remove failed", nil); err != nil {
+		if err := report(ctx, reporter, api.TaskStateRemove, "remove failed", nil); err != nil {
 			log.G(ctx).WithError(err).Error("report remove error failed")
 			return err
 		}
