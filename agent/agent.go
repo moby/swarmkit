@@ -331,7 +331,7 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 		ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", id))
 
 		// if the task is already in finalize state, no need to call removeTask.
-		if task.Status.State >= api.TaskStateFinalize {
+		if task.Status.State >= api.TaskStateRemove {
 			continue
 		}
 
@@ -450,7 +450,7 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) (api.
 		case api.TaskStateCompleted, api.TaskStateShutdown,
 			api.TaskStateFailed, api.TaskStateRejected, api.TaskStateDead:
 			// noop when we get an error in these states
-		case api.TaskStateFinalize:
+		case api.TaskStateRemove:
 			if task.DesiredState >= api.TaskStateDead {
 				if err := a.removeTask(ctx, task.Copy()); err != nil {
 					log.G(ctx).WithError(err).Error("failed removing task")
@@ -496,7 +496,7 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) (api.
 		api.TaskStateStarting, api.TaskStateRunning:
 	case api.TaskStateShutdown, api.TaskStateCompleted,
 		api.TaskStateFailed, api.TaskStateRejected,
-		api.TaskStateFinalize:
+		api.TaskStateRemove:
 		delete(a.shutdown, report.taskID) // cleanup shutdown entry
 	case api.TaskStateDead:
 		// once a task is dead, we remove all resources associated with it.

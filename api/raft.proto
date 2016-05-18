@@ -73,9 +73,9 @@ enum StoreActionKind {
 	option (gogoproto.goproto_enum_prefix) = false;
 	option (gogoproto.enum_customname) = "StoreActionKind";
 	UNKNOWN = 0 [(gogoproto.enumvalue_customname) = "StoreActionKindUnknown"]; // default value, invalid
-	CREATE = 1 [(gogoproto.enumvalue_customname) = "StoreActionKindCreate"];
-	UPDATE = 2 [(gogoproto.enumvalue_customname) = "StoreActionKindUpdate"];
-	REMOVE = 3 [(gogoproto.enumvalue_customname) = "StoreActionKindRemove"];
+	STORE_ACTION_CREATE = 1 [(gogoproto.enumvalue_customname) = "StoreActionKindCreate"];
+	STORE_ACTION_UPDATE = 2 [(gogoproto.enumvalue_customname) = "StoreActionKindUpdate"];
+	STORE_ACTION_REMOVE = 3 [(gogoproto.enumvalue_customname) = "StoreActionKindRemove"];
 }
 
 // StoreAction defines a taret and operation to apply on the storage system.
