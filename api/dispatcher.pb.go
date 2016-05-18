@@ -527,6 +527,13 @@ type DispatcherClient interface {
 	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
 	// UpdateTaskStatus updates status of task. Node should send such updates
 	// on every status change of its tasks.
+	//
+	// Whether receiving batch updates or single status updates, this method
+	// should be accepting. Errors should only be returned if the entire update
+	// should be retried, due to data loss or other problems.
+	//
+	// If a task is unknown the dispatcher, the status update should be
+	// accepted regardless.
 	UpdateTaskStatus(ctx context.Context, in *UpdateTaskStatusRequest, opts ...grpc.CallOption) (*UpdateTaskStatusResponse, error)
 	// Tasks is a stream of tasks state for node. Each message contains full list
 	// of tasks which should be run on node, if task is not present in that list,
@@ -648,6 +655,13 @@ type DispatcherServer interface {
 	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
 	// UpdateTaskStatus updates status of task. Node should send such updates
 	// on every status change of its tasks.
+	//
+	// Whether receiving batch updates or single status updates, this method
+	// should be accepting. Errors should only be returned if the entire update
+	// should be retried, due to data loss or other problems.
+	//
+	// If a task is unknown the dispatcher, the status update should be
+	// accepted regardless.
 	UpdateTaskStatus(context.Context, *UpdateTaskStatusRequest) (*UpdateTaskStatusResponse, error)
 	// Tasks is a stream of tasks state for node. Each message contains full list
 	// of tasks which should be run on node, if task is not present in that list,
