@@ -198,4 +198,7 @@ message ClusterSpec {
 
 	// AcceptancePolicy defines the certificate issuance policy.
 	AcceptancePolicy acceptance_policy = 2 [(gogoproto.nullable) = false];
+
+	// Orchestration defines cluster-level orchestration settings.
+	OrchestrationConfig orchestration = 3 [(gogoproto.nullable) = false];
 }

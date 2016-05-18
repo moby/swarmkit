@@ -13,7 +13,8 @@ import (
 
 // ClusterConfig is the yaml representation of a cluster spec.
 type ClusterConfig struct {
-	AcceptancePolicy AcceptancePolicy `yaml:"acceptancepolicy,omitempty"`
+	AcceptancePolicy    AcceptancePolicy    `yaml:"acceptancepolicy,omitempty"`
+	OrchestrationConfig OrchestrationConfig `yaml:"orchestration,omitempty"`
 
 	Name string `yaml:"name"`
 }
@@ -21,6 +22,14 @@ type ClusterConfig struct {
 // AcceptancePolicy is the yaml representation of an acceptance policy.
 type AcceptancePolicy struct {
 	AutoacceptRoles []string `yaml:"autoacceptroles,omitempty"`
+}
+
+// OrchestrationConfig is the yaml representation of the cluster-wide
+// orchestration settings.
+type OrchestrationConfig struct {
+	// TaskHistoryRetentionLimit is the number of historic task entries to
+	// retain per service instance or node.
+	TaskHistoryRetentionLimit int64 `yaml:"taskhistory"`
 }
 
 // Reset resets the cluster config to its defaults.
@@ -72,6 +81,9 @@ func (c *ClusterConfig) ToProto() *api.ClusterSpec {
 		AcceptancePolicy: api.AcceptancePolicy{
 			Autoaccept: make(map[string]bool),
 		},
+		Orchestration: api.OrchestrationConfig{
+			TaskHistoryRetentionLimit: c.OrchestrationConfig.TaskHistoryRetentionLimit,
+		},
 	}
 
 	for _, role := range c.AcceptancePolicy.AutoacceptRoles {
@@ -94,6 +106,9 @@ func (c *ClusterConfig) FromProto(p *api.ClusterSpec) {
 
 	*c = ClusterConfig{
 		Name: p.Annotations.Name,
+		OrchestrationConfig: OrchestrationConfig{
+			TaskHistoryRetentionLimit: p.Orchestration.TaskHistoryRetentionLimit,
+		},
 	}
 
 	for role, auto := range p.AcceptancePolicy.Autoaccept {
