@@ -84,6 +84,44 @@ func (m *Service) Reset()                    { *m = Service{} }
 func (*Service) ProtoMessage()               {}
 func (*Service) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{3} }
 
+// Endpoint specified all the network parameters required to
+// correctly discover and load balance a service
+type Endpoint struct {
+	Spec *EndpointSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	// Runtime state of the exposed ports which may carry
+	// auto-allocated node ports in addition to the user
+	// configured information.
+	ExposedPorts []*PortConfig                  `protobuf:"bytes,2,rep,name=exposed_ports,json=exposedPorts" json:"exposed_ports,omitempty"`
+	Attachments  []*Endpoint_EndpointAttachment `protobuf:"bytes,3,rep,name=attachments" json:"attachments,omitempty"`
+}
+
+func (m *Endpoint) Reset()                    { *m = Endpoint{} }
+func (*Endpoint) ProtoMessage()               {}
+func (*Endpoint) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{4} }
+
+// An endpoint attachment specifies the data that the process
+// of attaching an endpoint to a network creates.
+type Endpoint_EndpointAttachment struct {
+	// Network for which this endpoint attachment was
+	// created.
+	NetworkID string `protobuf:"bytes,1,opt,name=network_id,json=networkId,proto3" json:"network_id,omitempty"`
+	// A virtual IP is used to address this service in IP
+	// layer that the client can use to send requests to
+	// this service. A DNS A/AAAA query on the service
+	// name might return this IP to the client. This is
+	// strictly a logical IP and there may not be any
+	// interfaces assigned this IP address or any route
+	// created for this address.  More than one to
+	// accomodate for both IPv4 and IPv6
+	VirtualIP []string `protobuf:"bytes,2,rep,name=virtual_ip,json=virtualIp" json:"virtual_ip,omitempty"`
+}
+
+func (m *Endpoint_EndpointAttachment) Reset()      { *m = Endpoint_EndpointAttachment{} }
+func (*Endpoint_EndpointAttachment) ProtoMessage() {}
+func (*Endpoint_EndpointAttachment) Descriptor() ([]byte, []int) {
+	return fileDescriptorObjects, []int{4, 0}
+}
+
 // Task specifies the parameters for implementing a Spec. A task is effectively
 // immutable and idempotent. Once it is dispatched to a node, it will not be
 // dispatched to another node.
@@ -116,12 +154,16 @@ type Task struct {
 	// TaskStateRunning when a task is first created, and changed to
 	// TaskStateDead if the manager wants to terminate the task. This field
 	// is only written by the manager.
-	DesiredState TaskState `protobuf:"varint,9,opt,name=desired_state,json=desiredState,proto3,enum=docker.cluster.api.TaskState" json:"desired_state,omitempty"`
+	DesiredState TaskState                 `protobuf:"varint,9,opt,name=desired_state,json=desiredState,proto3,enum=docker.cluster.api.TaskState" json:"desired_state,omitempty"`
+	Networks     []*Task_NetworkAttachment `protobuf:"bytes,10,rep,name=networks" json:"networks,omitempty"`
+	// A copy of runtime state of service endpoint from Service
+	// object to be distributed to agents as part of the task.
+	Endpoint *Endpoint `protobuf:"bytes,11,opt,name=endpoint" json:"endpoint,omitempty"`
 }
 
 func (m *Task) Reset()                    { *m = Task{} }
 func (*Task) ProtoMessage()               {}
-func (*Task) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{4} }
+func (*Task) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{5} }
 
 type isTask_Runtime interface {
 	isTask_Runtime()
@@ -204,24 +246,7 @@ func _Task_OneofSizer(msg proto.Message) (n int) {
 	return n
 }
 
-// Container contains all runtime state of a task which is container runtime specific.
-type Container struct {
-	// Spec defines the container specific configuration for this container.
-	Spec     ContainerSpec                  `protobuf:"bytes,1,opt,name=spec" json:"spec"`
-	Networks []*Container_NetworkAttachment `protobuf:"bytes,2,rep,name=networks" json:"networks,omitempty"`
-	// A copy of runtime state of service endpoint from Service
-	// object to be distributed to agents as part of the task.
-	Endpoint *Endpoint `protobuf:"bytes,3,opt,name=endpoint" json:"endpoint,omitempty"`
-	// Volumes enumerates the volume declarations needed to satisfy the mounts which use plugins
-	// used by this container
-	Volumes []*Volume `protobuf:"bytes,4,rep,name=volumes" json:"volumes,omitempty"`
-}
-
-func (m *Container) Reset()                    { *m = Container{} }
-func (*Container) ProtoMessage()               {}
-func (*Container) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{5} }
-
-type Container_NetworkAttachment struct {
+type Task_NetworkAttachment struct {
 	// Network state as a whole becomes part of Task so
 	// that it always is available for use in agents so
 	// that agents don't have any other dependency during execution.
@@ -231,11 +256,22 @@ type Container_NetworkAttachment struct {
 	Addresses []string `protobuf:"bytes,2,rep,name=addresses" json:"addresses,omitempty"`
 }
 
-func (m *Container_NetworkAttachment) Reset()      { *m = Container_NetworkAttachment{} }
-func (*Container_NetworkAttachment) ProtoMessage() {}
-func (*Container_NetworkAttachment) Descriptor() ([]byte, []int) {
-	return fileDescriptorObjects, []int{5, 0}
+func (m *Task_NetworkAttachment) Reset()                    { *m = Task_NetworkAttachment{} }
+func (*Task_NetworkAttachment) ProtoMessage()               {}
+func (*Task_NetworkAttachment) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{5, 0} }
+
+// Container contains all runtime state of a task which is container runtime specific.
+type Container struct {
+	// Spec defines the container specific configuration for this container.
+	Spec ContainerSpec `protobuf:"bytes,1,opt,name=spec" json:"spec"`
+	// Volumes enumerates the volume declarations needed to satisfy the mounts which use plugins
+	// used by this container
+	Volumes []*Volume `protobuf:"bytes,4,rep,name=volumes" json:"volumes,omitempty"`
 }
+
+func (m *Container) Reset()                    { *m = Container{} }
+func (*Container) ProtoMessage()               {}
+func (*Container) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{6} }
 
 type Volume struct {
 	ID   string     `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -245,7 +281,7 @@ type Volume struct {
 
 func (m *Volume) Reset()                    { *m = Volume{} }
 func (*Volume) ProtoMessage()               {}
-func (*Volume) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{6} }
+func (*Volume) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{7} }
 
 type Network struct {
 	ID   string      `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -260,7 +296,7 @@ type Network struct {
 
 func (m *Network) Reset()                    { *m = Network{} }
 func (*Network) ProtoMessage()               {}
-func (*Network) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{7} }
+func (*Network) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{8} }
 
 type RegisteredCertificate struct {
 	ID          string                    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -276,7 +312,7 @@ type RegisteredCertificate struct {
 
 func (m *RegisteredCertificate) Reset()                    { *m = RegisteredCertificate{} }
 func (*RegisteredCertificate) ProtoMessage()               {}
-func (*RegisteredCertificate) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{8} }
+func (*RegisteredCertificate) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{9} }
 
 // Cluster provides global cluster settings.
 type Cluster struct {
@@ -287,16 +323,18 @@ type Cluster struct {
 
 func (m *Cluster) Reset()                    { *m = Cluster{} }
 func (*Cluster) ProtoMessage()               {}
-func (*Cluster) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{9} }
+func (*Cluster) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{10} }
 
 func init() {
 	proto.RegisterType((*Meta)(nil), "docker.cluster.api.Meta")
 	proto.RegisterType((*Node)(nil), "docker.cluster.api.Node")
 	proto.RegisterType((*Manager)(nil), "docker.cluster.api.Manager")
 	proto.RegisterType((*Service)(nil), "docker.cluster.api.Service")
+	proto.RegisterType((*Endpoint)(nil), "docker.cluster.api.Endpoint")
+	proto.RegisterType((*Endpoint_EndpointAttachment)(nil), "docker.cluster.api.Endpoint.EndpointAttachment")
 	proto.RegisterType((*Task)(nil), "docker.cluster.api.Task")
+	proto.RegisterType((*Task_NetworkAttachment)(nil), "docker.cluster.api.Task.NetworkAttachment")
 	proto.RegisterType((*Container)(nil), "docker.cluster.api.Container")
-	proto.RegisterType((*Container_NetworkAttachment)(nil), "docker.cluster.api.Container.NetworkAttachment")
 	proto.RegisterType((*Volume)(nil), "docker.cluster.api.Volume")
 	proto.RegisterType((*Network)(nil), "docker.cluster.api.Network")
 	proto.RegisterType((*RegisteredCertificate)(nil), "docker.cluster.api.RegisteredCertificate")
@@ -362,6 +400,51 @@ func (m *Service) Copy() *Service {
 	return o
 }
 
+func (m *Endpoint) Copy() *Endpoint {
+	if m == nil {
+		return nil
+	}
+
+	o := &Endpoint{
+		Spec: m.Spec.Copy(),
+	}
+
+	if m.ExposedPorts != nil {
+		o.ExposedPorts = make([]*PortConfig, 0, len(m.ExposedPorts))
+		for _, v := range m.ExposedPorts {
+			o.ExposedPorts = append(o.ExposedPorts, v.Copy())
+		}
+	}
+
+	if m.Attachments != nil {
+		o.Attachments = make([]*Endpoint_EndpointAttachment, 0, len(m.Attachments))
+		for _, v := range m.Attachments {
+			o.Attachments = append(o.Attachments, v.Copy())
+		}
+	}
+
+	return o
+}
+
+func (m *Endpoint_EndpointAttachment) Copy() *Endpoint_EndpointAttachment {
+	if m == nil {
+		return nil
+	}
+
+	o := &Endpoint_EndpointAttachment{
+		NetworkID: m.NetworkID,
+	}
+
+	if m.VirtualIP != nil {
+		o.VirtualIP = make([]string, 0, len(m.VirtualIP))
+		for _, v := range m.VirtualIP {
+			o.VirtualIP = append(o.VirtualIP, v)
+		}
+	}
+
+	return o
+}
+
 func (m *Task) Copy() *Task {
 	if m == nil {
 		return nil
@@ -376,6 +459,14 @@ func (m *Task) Copy() *Task {
 		Annotations:  *m.Annotations.Copy(),
 		Status:       *m.Status.Copy(),
 		DesiredState: m.DesiredState,
+		Endpoint:     m.Endpoint.Copy(),
+	}
+
+	if m.Networks != nil {
+		o.Networks = make([]*Task_NetworkAttachment, 0, len(m.Networks))
+		for _, v := range m.Networks {
+			o.Networks = append(o.Networks, v.Copy())
+		}
 	}
 
 	switch m.Runtime.(type) {
@@ -390,39 +481,12 @@ func (m *Task) Copy() *Task {
 	return o
 }
 
-func (m *Container) Copy() *Container {
+func (m *Task_NetworkAttachment) Copy() *Task_NetworkAttachment {
 	if m == nil {
 		return nil
 	}
 
-	o := &Container{
-		Spec:     *m.Spec.Copy(),
-		Endpoint: m.Endpoint.Copy(),
-	}
-
-	if m.Networks != nil {
-		o.Networks = make([]*Container_NetworkAttachment, 0, len(m.Networks))
-		for _, v := range m.Networks {
-			o.Networks = append(o.Networks, v.Copy())
-		}
-	}
-
-	if m.Volumes != nil {
-		o.Volumes = make([]*Volume, 0, len(m.Volumes))
-		for _, v := range m.Volumes {
-			o.Volumes = append(o.Volumes, v.Copy())
-		}
-	}
-
-	return o
-}
-
-func (m *Container_NetworkAttachment) Copy() *Container_NetworkAttachment {
-	if m == nil {
-		return nil
-	}
-
-	o := &Container_NetworkAttachment{
+	o := &Task_NetworkAttachment{
 		Network: m.Network.Copy(),
 	}
 
@@ -430,6 +494,25 @@ func (m *Container_NetworkAttachment) Copy() *Container_NetworkAttachment {
 		o.Addresses = make([]string, 0, len(m.Addresses))
 		for _, v := range m.Addresses {
 			o.Addresses = append(o.Addresses, v)
+		}
+	}
+
+	return o
+}
+
+func (m *Container) Copy() *Container {
+	if m == nil {
+		return nil
+	}
+
+	o := &Container{
+		Spec: *m.Spec.Copy(),
+	}
+
+	if m.Volumes != nil {
+		o.Volumes = make([]*Volume, 0, len(m.Volumes))
+		for _, v := range m.Volumes {
+			o.Volumes = append(o.Volumes, v.Copy())
 		}
 	}
 
@@ -560,11 +643,40 @@ func (this *Service) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
+func (this *Endpoint) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 7)
+	s = append(s, "&api.Endpoint{")
+	if this.Spec != nil {
+		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
+	}
+	if this.ExposedPorts != nil {
+		s = append(s, "ExposedPorts: "+fmt.Sprintf("%#v", this.ExposedPorts)+",\n")
+	}
+	if this.Attachments != nil {
+		s = append(s, "Attachments: "+fmt.Sprintf("%#v", this.Attachments)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Endpoint_EndpointAttachment) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.Endpoint_EndpointAttachment{")
+	s = append(s, "NetworkID: "+fmt.Sprintf("%#v", this.NetworkID)+",\n")
+	s = append(s, "VirtualIP: "+fmt.Sprintf("%#v", this.VirtualIP)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func (this *Task) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 13)
+	s := make([]string, 0, 15)
 	s = append(s, "&api.Task{")
 	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
 	s = append(s, "Meta: "+strings.Replace(this.Meta.GoString(), `&`, ``, 1)+",\n")
@@ -577,6 +689,12 @@ func (this *Task) GoString() string {
 	}
 	s = append(s, "Status: "+strings.Replace(this.Status.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "DesiredState: "+fmt.Sprintf("%#v", this.DesiredState)+",\n")
+	if this.Networks != nil {
+		s = append(s, "Networks: "+fmt.Sprintf("%#v", this.Networks)+",\n")
+	}
+	if this.Endpoint != nil {
+		s = append(s, "Endpoint: "+fmt.Sprintf("%#v", this.Endpoint)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -588,35 +706,29 @@ func (this *Task_Container) GoString() string {
 		`Container:` + fmt.Sprintf("%#v", this.Container) + `}`}, ", ")
 	return s
 }
-func (this *Container) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 8)
-	s = append(s, "&api.Container{")
-	s = append(s, "Spec: "+strings.Replace(this.Spec.GoString(), `&`, ``, 1)+",\n")
-	if this.Networks != nil {
-		s = append(s, "Networks: "+fmt.Sprintf("%#v", this.Networks)+",\n")
-	}
-	if this.Endpoint != nil {
-		s = append(s, "Endpoint: "+fmt.Sprintf("%#v", this.Endpoint)+",\n")
-	}
-	if this.Volumes != nil {
-		s = append(s, "Volumes: "+fmt.Sprintf("%#v", this.Volumes)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Container_NetworkAttachment) GoString() string {
+func (this *Task_NetworkAttachment) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.Container_NetworkAttachment{")
+	s = append(s, "&api.Task_NetworkAttachment{")
 	if this.Network != nil {
 		s = append(s, "Network: "+fmt.Sprintf("%#v", this.Network)+",\n")
 	}
 	s = append(s, "Addresses: "+fmt.Sprintf("%#v", this.Addresses)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Container) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.Container{")
+	s = append(s, "Spec: "+strings.Replace(this.Spec.GoString(), `&`, ``, 1)+",\n")
+	if this.Volumes != nil {
+		s = append(s, "Volumes: "+fmt.Sprintf("%#v", this.Volumes)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -900,6 +1012,97 @@ func (m *Service) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *Endpoint) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Endpoint) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Spec != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
+		n13, err := m.Spec.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n13
+	}
+	if len(m.ExposedPorts) > 0 {
+		for _, msg := range m.ExposedPorts {
+			data[i] = 0x12
+			i++
+			i = encodeVarintObjects(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if len(m.Attachments) > 0 {
+		for _, msg := range m.Attachments {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintObjects(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func (m *Endpoint_EndpointAttachment) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Endpoint_EndpointAttachment) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.NetworkID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintObjects(data, i, uint64(len(m.NetworkID)))
+		i += copy(data[i:], m.NetworkID)
+	}
+	if len(m.VirtualIP) > 0 {
+		for _, s := range m.VirtualIP {
+			data[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
+	return i, nil
+}
+
 func (m *Task) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -924,11 +1127,11 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintObjects(data, i, uint64(m.Meta.Size()))
-	n13, err := m.Meta.MarshalTo(data[i:])
+	n14, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n13
+	i += n14
 	if len(m.ServiceID) > 0 {
 		data[i] = 0x1a
 		i++
@@ -949,74 +1152,34 @@ func (m *Task) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x32
 	i++
 	i = encodeVarintObjects(data, i, uint64(m.Annotations.Size()))
-	n14, err := m.Annotations.MarshalTo(data[i:])
+	n15, err := m.Annotations.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n14
+	i += n15
 	if m.Runtime != nil {
-		nn15, err := m.Runtime.MarshalTo(data[i:])
+		nn16, err := m.Runtime.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn15
+		i += nn16
 	}
 	data[i] = 0x42
 	i++
 	i = encodeVarintObjects(data, i, uint64(m.Status.Size()))
-	n16, err := m.Status.MarshalTo(data[i:])
+	n17, err := m.Status.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n16
+	i += n17
 	if m.DesiredState != 0 {
 		data[i] = 0x48
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.DesiredState))
 	}
-	return i, nil
-}
-
-func (m *Task_Container) MarshalTo(data []byte) (int, error) {
-	i := 0
-	if m.Container != nil {
-		data[i] = 0x3a
-		i++
-		i = encodeVarintObjects(data, i, uint64(m.Container.Size()))
-		n17, err := m.Container.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n17
-	}
-	return i, nil
-}
-func (m *Container) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Container) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	data[i] = 0xa
-	i++
-	i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
-	n18, err := m.Spec.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n18
 	if len(m.Networks) > 0 {
 		for _, msg := range m.Networks {
-			data[i] = 0x12
+			data[i] = 0x52
 			i++
 			i = encodeVarintObjects(data, i, uint64(msg.Size()))
 			n, err := msg.MarshalTo(data[i:])
@@ -1027,31 +1190,33 @@ func (m *Container) MarshalTo(data []byte) (int, error) {
 		}
 	}
 	if m.Endpoint != nil {
-		data[i] = 0x1a
+		data[i] = 0x5a
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.Endpoint.Size()))
-		n19, err := m.Endpoint.MarshalTo(data[i:])
+		n18, err := m.Endpoint.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n18
+	}
+	return i, nil
+}
+
+func (m *Task_Container) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Container != nil {
+		data[i] = 0x3a
+		i++
+		i = encodeVarintObjects(data, i, uint64(m.Container.Size()))
+		n19, err := m.Container.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n19
 	}
-	if len(m.Volumes) > 0 {
-		for _, msg := range m.Volumes {
-			data[i] = 0x22
-			i++
-			i = encodeVarintObjects(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
 	return i, nil
 }
-
-func (m *Container_NetworkAttachment) Marshal() (data []byte, err error) {
+func (m *Task_NetworkAttachment) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1061,7 +1226,7 @@ func (m *Container_NetworkAttachment) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Container_NetworkAttachment) MarshalTo(data []byte) (int, error) {
+func (m *Task_NetworkAttachment) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1094,6 +1259,44 @@ func (m *Container_NetworkAttachment) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *Container) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Container) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
+	n21, err := m.Spec.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n21
+	if len(m.Volumes) > 0 {
+		for _, msg := range m.Volumes {
+			data[i] = 0x22
+			i++
+			i = encodeVarintObjects(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
 func (m *Volume) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -1118,19 +1321,19 @@ func (m *Volume) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintObjects(data, i, uint64(m.Meta.Size()))
-	n21, err := m.Meta.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n21
-	data[i] = 0x1a
-	i++
-	i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
-	n22, err := m.Spec.MarshalTo(data[i:])
+	n22, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n22
+	data[i] = 0x1a
+	i++
+	i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
+	n23, err := m.Spec.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n23
 	return i, nil
 }
 
@@ -1158,38 +1361,38 @@ func (m *Network) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintObjects(data, i, uint64(m.Meta.Size()))
-	n23, err := m.Meta.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n23
-	data[i] = 0x1a
-	i++
-	i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
-	n24, err := m.Spec.MarshalTo(data[i:])
+	n24, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n24
+	data[i] = 0x1a
+	i++
+	i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
+	n25, err := m.Spec.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n25
 	if m.DriverState != nil {
 		data[i] = 0x22
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.DriverState.Size()))
-		n25, err := m.DriverState.MarshalTo(data[i:])
+		n26, err := m.DriverState.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n25
+		i += n26
 	}
 	if m.IPAM != nil {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintObjects(data, i, uint64(m.IPAM.Size()))
-		n26, err := m.IPAM.MarshalTo(data[i:])
+		n27, err := m.IPAM.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n26
+		i += n27
 	}
 	return i, nil
 }
@@ -1218,19 +1421,19 @@ func (m *RegisteredCertificate) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintObjects(data, i, uint64(m.Meta.Size()))
-	n27, err := m.Meta.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n27
-	data[i] = 0x1a
-	i++
-	i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
-	n28, err := m.Spec.MarshalTo(data[i:])
+	n28, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n28
+	data[i] = 0x1a
+	i++
+	i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
+	n29, err := m.Spec.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n29
 	if len(m.Role) > 0 {
 		data[i] = 0x22
 		i++
@@ -1246,11 +1449,11 @@ func (m *RegisteredCertificate) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x32
 	i++
 	i = encodeVarintObjects(data, i, uint64(m.Status.Size()))
-	n29, err := m.Status.MarshalTo(data[i:])
+	n30, err := m.Status.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n29
+	i += n30
 	if len(m.Certificate) > 0 {
 		data[i] = 0x3a
 		i++
@@ -1290,19 +1493,19 @@ func (m *Cluster) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintObjects(data, i, uint64(m.Meta.Size()))
-	n30, err := m.Meta.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n30
-	data[i] = 0x1a
-	i++
-	i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
-	n31, err := m.Spec.MarshalTo(data[i:])
+	n31, err := m.Meta.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n31
+	data[i] = 0x1a
+	i++
+	i = encodeVarintObjects(data, i, uint64(m.Spec.Size()))
+	n32, err := m.Spec.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n32
 	return i, nil
 }
 
@@ -1404,6 +1607,44 @@ func (m *Service) Size() (n int) {
 	return n
 }
 
+func (m *Endpoint) Size() (n int) {
+	var l int
+	_ = l
+	if m.Spec != nil {
+		l = m.Spec.Size()
+		n += 1 + l + sovObjects(uint64(l))
+	}
+	if len(m.ExposedPorts) > 0 {
+		for _, e := range m.ExposedPorts {
+			l = e.Size()
+			n += 1 + l + sovObjects(uint64(l))
+		}
+	}
+	if len(m.Attachments) > 0 {
+		for _, e := range m.Attachments {
+			l = e.Size()
+			n += 1 + l + sovObjects(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *Endpoint_EndpointAttachment) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.NetworkID)
+	if l > 0 {
+		n += 1 + l + sovObjects(uint64(l))
+	}
+	if len(m.VirtualIP) > 0 {
+		for _, s := range m.VirtualIP {
+			l = len(s)
+			n += 1 + l + sovObjects(uint64(l))
+		}
+	}
+	return n
+}
+
 func (m *Task) Size() (n int) {
 	var l int
 	_ = l
@@ -1434,6 +1675,16 @@ func (m *Task) Size() (n int) {
 	if m.DesiredState != 0 {
 		n += 1 + sovObjects(uint64(m.DesiredState))
 	}
+	if len(m.Networks) > 0 {
+		for _, e := range m.Networks {
+			l = e.Size()
+			n += 1 + l + sovObjects(uint64(l))
+		}
+	}
+	if m.Endpoint != nil {
+		l = m.Endpoint.Size()
+		n += 1 + l + sovObjects(uint64(l))
+	}
 	return n
 }
 
@@ -1446,31 +1697,7 @@ func (m *Task_Container) Size() (n int) {
 	}
 	return n
 }
-func (m *Container) Size() (n int) {
-	var l int
-	_ = l
-	l = m.Spec.Size()
-	n += 1 + l + sovObjects(uint64(l))
-	if len(m.Networks) > 0 {
-		for _, e := range m.Networks {
-			l = e.Size()
-			n += 1 + l + sovObjects(uint64(l))
-		}
-	}
-	if m.Endpoint != nil {
-		l = m.Endpoint.Size()
-		n += 1 + l + sovObjects(uint64(l))
-	}
-	if len(m.Volumes) > 0 {
-		for _, e := range m.Volumes {
-			l = e.Size()
-			n += 1 + l + sovObjects(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *Container_NetworkAttachment) Size() (n int) {
+func (m *Task_NetworkAttachment) Size() (n int) {
 	var l int
 	_ = l
 	if m.Network != nil {
@@ -1480,6 +1707,20 @@ func (m *Container_NetworkAttachment) Size() (n int) {
 	if len(m.Addresses) > 0 {
 		for _, s := range m.Addresses {
 			l = len(s)
+			n += 1 + l + sovObjects(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *Container) Size() (n int) {
+	var l int
+	_ = l
+	l = m.Spec.Size()
+	n += 1 + l + sovObjects(uint64(l))
+	if len(m.Volumes) > 0 {
+		for _, e := range m.Volumes {
+			l = e.Size()
 			n += 1 + l + sovObjects(uint64(l))
 		}
 	}
@@ -1632,6 +1873,29 @@ func (this *Service) String() string {
 	}, "")
 	return s
 }
+func (this *Endpoint) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Endpoint{`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "EndpointSpec", "EndpointSpec", 1) + `,`,
+		`ExposedPorts:` + strings.Replace(fmt.Sprintf("%v", this.ExposedPorts), "PortConfig", "PortConfig", 1) + `,`,
+		`Attachments:` + strings.Replace(fmt.Sprintf("%v", this.Attachments), "Endpoint_EndpointAttachment", "Endpoint_EndpointAttachment", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Endpoint_EndpointAttachment) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Endpoint_EndpointAttachment{`,
+		`NetworkID:` + fmt.Sprintf("%v", this.NetworkID) + `,`,
+		`VirtualIP:` + fmt.Sprintf("%v", this.VirtualIP) + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *Task) String() string {
 	if this == nil {
 		return "nil"
@@ -1646,6 +1910,8 @@ func (this *Task) String() string {
 		`Runtime:` + fmt.Sprintf("%v", this.Runtime) + `,`,
 		`Status:` + strings.Replace(strings.Replace(this.Status.String(), "TaskStatus", "TaskStatus", 1), `&`, ``, 1) + `,`,
 		`DesiredState:` + fmt.Sprintf("%v", this.DesiredState) + `,`,
+		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Task_NetworkAttachment", "Task_NetworkAttachment", 1) + `,`,
+		`Endpoint:` + strings.Replace(fmt.Sprintf("%v", this.Endpoint), "Endpoint", "Endpoint", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1660,26 +1926,24 @@ func (this *Task_Container) String() string {
 	}, "")
 	return s
 }
+func (this *Task_NetworkAttachment) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Task_NetworkAttachment{`,
+		`Network:` + strings.Replace(fmt.Sprintf("%v", this.Network), "Network", "Network", 1) + `,`,
+		`Addresses:` + fmt.Sprintf("%v", this.Addresses) + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *Container) String() string {
 	if this == nil {
 		return "nil"
 	}
 	s := strings.Join([]string{`&Container{`,
 		`Spec:` + strings.Replace(strings.Replace(this.Spec.String(), "ContainerSpec", "ContainerSpec", 1), `&`, ``, 1) + `,`,
-		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Container_NetworkAttachment", "Container_NetworkAttachment", 1) + `,`,
-		`Endpoint:` + strings.Replace(fmt.Sprintf("%v", this.Endpoint), "Endpoint", "Endpoint", 1) + `,`,
 		`Volumes:` + strings.Replace(fmt.Sprintf("%v", this.Volumes), "Volume", "Volume", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Container_NetworkAttachment) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Container_NetworkAttachment{`,
-		`Network:` + strings.Replace(fmt.Sprintf("%v", this.Network), "Network", "Network", 1) + `,`,
-		`Addresses:` + fmt.Sprintf("%v", this.Addresses) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2409,6 +2673,259 @@ func (m *Service) Unmarshal(data []byte) error {
 	}
 	return nil
 }
+func (m *Endpoint) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowObjects
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Endpoint: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Endpoint: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowObjects
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthObjects
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Spec == nil {
+				m.Spec = &EndpointSpec{}
+			}
+			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExposedPorts", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowObjects
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthObjects
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ExposedPorts = append(m.ExposedPorts, &PortConfig{})
+			if err := m.ExposedPorts[len(m.ExposedPorts)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Attachments", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowObjects
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthObjects
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Attachments = append(m.Attachments, &Endpoint_EndpointAttachment{})
+			if err := m.Attachments[len(m.Attachments)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipObjects(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthObjects
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Endpoint_EndpointAttachment) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowObjects
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: EndpointAttachment: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: EndpointAttachment: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NetworkID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowObjects
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthObjects
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NetworkID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field VirtualIP", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowObjects
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthObjects
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.VirtualIP = append(m.VirtualIP, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipObjects(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthObjects
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *Task) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
@@ -2685,87 +3202,7 @@ func (m *Task) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipObjects(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthObjects
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *Container) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowObjects
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Container: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Container: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowObjects
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthObjects
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
+		case 10:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Networks", wireType)
 			}
@@ -2791,12 +3228,12 @@ func (m *Container) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Networks = append(m.Networks, &Container_NetworkAttachment{})
+			m.Networks = append(m.Networks, &Task_NetworkAttachment{})
 			if err := m.Networks[len(m.Networks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
-		case 3:
+		case 11:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Endpoint", wireType)
 			}
@@ -2829,37 +3266,6 @@ func (m *Container) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Volumes", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowObjects
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthObjects
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Volumes = append(m.Volumes, &Volume{})
-			if err := m.Volumes[len(m.Volumes)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipObjects(data[iNdEx:])
@@ -2881,7 +3287,7 @@ func (m *Container) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Container_NetworkAttachment) Unmarshal(data []byte) error {
+func (m *Task_NetworkAttachment) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2971,6 +3377,117 @@ func (m *Container_NetworkAttachment) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Addresses = append(m.Addresses, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipObjects(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthObjects
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Container) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowObjects
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Container: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Container: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowObjects
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthObjects
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Volumes", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowObjects
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthObjects
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Volumes = append(m.Volumes, &Volume{})
+			if err := m.Volumes[len(m.Volumes)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3871,62 +4388,68 @@ var (
 )
 
 var fileDescriptorObjects = []byte{
-	// 899 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xbc, 0x56, 0xcd, 0x6e, 0xeb, 0x44,
-	0x14, 0x6e, 0x12, 0xdf, 0x24, 0x3e, 0x49, 0x91, 0x18, 0x01, 0xca, 0x0d, 0x25, 0xbd, 0xf8, 0x6e,
-	0x58, 0x40, 0x2a, 0xdd, 0x0b, 0xa8, 0x08, 0xae, 0x44, 0x92, 0x56, 0xa5, 0x42, 0x29, 0x68, 0x5a,
-	0xb1, 0xad, 0x5c, 0x7b, 0x9a, 0x9a, 0x36, 0xb6, 0x35, 0x33, 0x29, 0x62, 0xc7, 0x13, 0x14, 0xde,
-	0x88, 0x6d, 0xc5, 0x8a, 0x15, 0xb0, 0xaa, 0x68, 0x5f, 0x00, 0x1e, 0x81, 0x33, 0x3f, 0xce, 0x4f,
-	0x63, 0x57, 0x5c, 0x29, 0xea, 0xc2, 0x8a, 0x3d, 0x3e, 0xdf, 0x99, 0xef, 0x7c, 0xe7, 0xf3, 0x99,
-	0xc0, 0x7a, 0x72, 0xf2, 0x3d, 0x0b, 0xa4, 0xe8, 0xa6, 0x3c, 0x91, 0x09, 0x21, 0x61, 0x12, 0x9c,
-	0x33, 0xde, 0x0d, 0x2e, 0x26, 0x42, 0xe2, 0xaf, 0x9f, 0x46, 0xed, 0x86, 0xfc, 0x31, 0x65, 0x36,
-	0xa0, 0xdd, 0x10, 0x29, 0x0b, 0xb2, 0x87, 0xa7, 0x32, 0x1a, 0x33, 0x21, 0xfd, 0x71, 0xba, 0x35,
-	0xbd, 0xb3, 0xaf, 0xde, 0x1a, 0x25, 0xa3, 0x44, 0xdf, 0x6e, 0xa9, 0x3b, 0xb3, 0xea, 0xfd, 0x5a,
-	0x02, 0x67, 0xc8, 0xa4, 0x4f, 0x3e, 0x87, 0xda, 0x25, 0xe3, 0x22, 0x4a, 0xe2, 0x56, 0xe9, 0x59,
-	0xe9, 0x83, 0xc6, 0x8b, 0x77, 0xbb, 0xcb, 0x3b, 0x77, 0xbf, 0x33, 0x21, 0x7d, 0xe7, 0xfa, 0x66,
-	0x73, 0x8d, 0x66, 0x08, 0xf2, 0x05, 0x40, 0xc0, 0x99, 0x2f, 0x59, 0x78, 0xec, 0xcb, 0x56, 0x59,
-	0xe3, 0xdf, 0xcb, 0xc3, 0x1f, 0x65, 0xa4, 0xa8, 0x6b, 0x01, 0x3d, 0xa9, 0xd0, 0x93, 0x34, 0xcc,
-	0xd0, 0x95, 0xff, 0x85, 0xb6, 0x80, 0x9e, 0xf4, 0x7e, 0x2e, 0x83, 0x73, 0x90, 0x84, 0x8c, 0xbc,
-	0x03, 0xe5, 0x28, 0xd4, 0xe4, 0xdd, 0x7e, 0xf5, 0xee, 0x66, 0xb3, 0xbc, 0xbf, 0x43, 0x71, 0x85,
-	0xbc, 0x00, 0x67, 0x8c, 0x15, 0x5a, 0x5a, 0xad, 0xbc, 0xc4, 0x4a, 0x01, 0x5b, 0x93, 0x8e, 0x25,
-	0x9f, 0x82, 0xa3, 0x64, 0xb5, 0x64, 0x36, 0xf2, 0x30, 0x6a, 0xcf, 0x43, 0x8c, 0xc9, 0x70, 0x2a,
-	0x9e, 0xec, 0x42, 0x23, 0x64, 0x22, 0xe0, 0x51, 0x2a, 0x95, 0x92, 0x8e, 0x86, 0x3f, 0x2f, 0x82,
-	0xef, 0xcc, 0x42, 0xe9, 0x3c, 0x0e, 0x15, 0xa9, 0x62, 0x9d, 0x72, 0x22, 0x5a, 0x4f, 0x74, 0x86,
-	0x4e, 0x21, 0x01, 0x1d, 0x65, 0x29, 0x58, 0x8c, 0xf7, 0x4b, 0x09, 0x6a, 0x43, 0x3f, 0xf6, 0x47,
-	0x8c, 0x17, 0x8a, 0xf2, 0xd2, 0x16, 0x68, 0x44, 0xd9, 0xcc, 0x15, 0xc5, 0xa4, 0x50, 0x35, 0xda,
-	0xea, 0xb6, 0xc1, 0xe1, 0xfe, 0x69, 0xd6, 0xa2, 0x5c, 0x52, 0x14, 0xdf, 0x0f, 0xd9, 0xf8, 0x84,
-	0xf1, 0x4c, 0x17, 0x85, 0xf0, 0x7e, 0x43, 0x4a, 0x87, 0x8c, 0x5f, 0x46, 0xc1, 0x6a, 0xfb, 0xf4,
-	0xd9, 0x42, 0x9f, 0x72, 0xcb, 0xb0, 0xdb, 0x2e, 0xb5, 0x6a, 0x1b, 0xea, 0x2c, 0x0e, 0xd3, 0x24,
-	0x8a, 0xa5, 0xed, 0x53, 0x6e, 0x9b, 0x77, 0x6d, 0x0c, 0x9d, 0x46, 0x7b, 0x7f, 0x54, 0xc0, 0x39,
-	0xf2, 0xc5, 0xf9, 0x4a, 0x2b, 0xf9, 0x10, 0x40, 0x18, 0xa6, 0xc7, 0x98, 0xb3, 0xa2, 0x73, 0xae,
-	0x63, 0x4e, 0xd7, 0xf2, 0xc7, 0xd4, 0xae, 0x0d, 0xd8, 0x0f, 0x49, 0x1b, 0xea, 0x51, 0x8c, 0xed,
-	0x8e, 0x03, 0xa6, 0xc9, 0x3b, 0x74, 0xfa, 0x4c, 0x9e, 0x43, 0x2d, 0x46, 0x6b, 0xa8, 0x34, 0x4f,
-	0x74, 0x1a, 0xc0, 0x34, 0x55, 0xe5, 0x16, 0xcc, 0x51, 0x55, 0xaf, 0x30, 0xc1, 0x1e, 0x34, 0xfc,
-	0x38, 0x4e, 0xd0, 0x30, 0xe8, 0x37, 0xd1, 0xaa, 0x16, 0xeb, 0xd7, 0x9b, 0x85, 0x59, 0xc2, 0xf3,
-	0x48, 0xf2, 0x0a, 0xdc, 0x20, 0x89, 0xa5, 0x1f, 0xc5, 0x8c, 0xb7, 0x6a, 0xc5, 0xdf, 0xee, 0x20,
-	0x0b, 0xfa, 0x6a, 0x8d, 0xce, 0x10, 0x73, 0x4e, 0xaf, 0x17, 0x9b, 0x4a, 0x89, 0x9d, 0xe7, 0x74,
-	0xd2, 0x87, 0x75, 0xfc, 0x6c, 0x22, 0x8e, 0x93, 0x43, 0xad, 0xb0, 0x96, 0x8b, 0x49, 0xde, 0x28,
-	0x18, 0x1e, 0x36, 0x09, 0xa3, 0x4d, 0x8b, 0xd1, 0x4f, 0x7d, 0x17, 0x6a, 0x7c, 0x12, 0xab, 0x69,
-	0xe9, 0xfd, 0x53, 0x06, 0x77, 0xca, 0x13, 0x27, 0xa2, 0xf1, 0x96, 0x19, 0x87, 0xef, 0x3f, 0x58,
-	0xd4, 0x92, 0xbb, 0xbe, 0x86, 0x7a, 0xcc, 0xe4, 0x0f, 0x09, 0x3f, 0x17, 0x68, 0x83, 0x0a, 0x26,
-	0xd8, 0x7a, 0x30, 0x41, 0xf7, 0xc0, 0x44, 0xf7, 0xa4, 0xf4, 0x83, 0xb3, 0x31, 0x53, 0x86, 0xcb,
-	0x12, 0x2c, 0x58, 0xb5, 0xf2, 0x3a, 0x56, 0x25, 0x1f, 0xe3, 0x54, 0x4f, 0x2e, 0x26, 0x38, 0x36,
-	0xd1, 0x26, 0x8a, 0x45, 0x3b, 0x77, 0xaa, 0xeb, 0x10, 0x9a, 0x85, 0xb6, 0xcf, 0xe0, 0xcd, 0x25,
-	0x3a, 0xe4, 0x13, 0xb4, 0x95, 0x59, 0x7c, 0xe8, 0x80, 0xb0, 0x38, 0x9a, 0xc5, 0x92, 0x0d, 0x70,
-	0xfd, 0x30, 0xe4, 0x4c, 0x08, 0x66, 0x94, 0x70, 0xe9, 0x6c, 0xc1, 0xbb, 0x2a, 0x41, 0xd5, 0xec,
-	0xbe, 0xd2, 0x8f, 0x69, 0x7b, 0x61, 0x2c, 0x74, 0x8a, 0x6b, 0xbe, 0xdf, 0x37, 0xef, 0xaa, 0x0c,
-	0x35, 0x5b, 0xc3, 0x63, 0x0f, 0x2a, 0xbb, 0xed, 0x92, 0x95, 0x5e, 0x41, 0x33, 0xe4, 0x11, 0x1e,
-	0xb5, 0xd6, 0xe3, 0x66, 0x58, 0xe5, 0x36, 0x72, 0x47, 0xc7, 0xe1, 0x59, 0xa2, 0x7f, 0xb5, 0xbf,
-	0x11, 0xee, 0x44, 0xa9, 0x3f, 0xb6, 0x27, 0x49, 0xee, 0xce, 0xfb, 0xdf, 0xf6, 0x86, 0xdf, 0xa4,
-	0xe6, 0x13, 0xaf, 0x63, 0xa1, 0x8e, 0x5a, 0xa0, 0x1a, 0xe6, 0xfd, 0x59, 0x86, 0xb7, 0x29, 0x1b,
-	0x45, 0x2a, 0x98, 0x85, 0x03, 0xc6, 0x65, 0x74, 0x1a, 0x05, 0x2a, 0xf1, 0x2a, 0xe5, 0xd9, 0x5b,
-	0x90, 0xe7, 0xa3, 0xdc, 0x93, 0x25, 0x8f, 0xc4, 0x92, 0x58, 0x04, 0x8f, 0xa8, 0xe4, 0xc2, 0x88,
-	0xe4, 0x52, 0x7d, 0x4f, 0x9e, 0x42, 0x25, 0x10, 0x5c, 0x0b, 0xd0, 0xec, 0xd7, 0x90, 0x69, 0x65,
-	0x70, 0x48, 0xa9, 0x5a, 0x23, 0x5f, 0x4e, 0xc7, 0x8f, 0x99, 0x80, 0x5e, 0xae, 0x3c, 0x42, 0x4c,
-	0xd4, 0x64, 0xcd, 0x1d, 0x41, 0xcf, 0xa0, 0x11, 0xcc, 0xf8, 0xe8, 0x09, 0xd8, 0xa4, 0xf3, 0x4b,
-	0x4a, 0xa7, 0x20, 0xd6, 0xe3, 0xcd, 0xea, 0x34, 0x38, 0xa0, 0xb8, 0xa2, 0x8f, 0xe9, 0x81, 0xd9,
-	0xe6, 0xb1, 0xad, 0x66, 0xb7, 0xbd, 0xaf, 0x5e, 0x7f, 0xe3, 0xfa, 0xb6, 0xb3, 0xf6, 0x17, 0x5e,
-	0xff, 0xde, 0x76, 0x4a, 0x3f, 0xdd, 0x75, 0x4a, 0xd7, 0x78, 0xfd, 0x8e, 0xd7, 0xdf, 0x78, 0x9d,
-	0x54, 0xf5, 0x5f, 0xc6, 0x97, 0xff, 0x05, 0x00, 0x00, 0xff, 0xff, 0x3f, 0x07, 0x8c, 0xf4, 0xa2,
-	0x0a, 0x00, 0x00,
+	// 1008 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xbc, 0x56, 0x4f, 0x6f, 0x1b, 0x45,
+	0x14, 0x8f, 0xed, 0x8d, 0xed, 0x7d, 0x76, 0x90, 0x18, 0x01, 0x72, 0x4d, 0x70, 0xc2, 0xf6, 0x82,
+	0x10, 0x38, 0x52, 0x5b, 0x50, 0x10, 0x44, 0xc2, 0x76, 0x4a, 0xf1, 0x21, 0x21, 0x4c, 0xaa, 0x5e,
+	0xa3, 0xcd, 0xee, 0xc4, 0x1d, 0x12, 0xef, 0xae, 0x66, 0xc6, 0x01, 0x2e, 0x88, 0x4f, 0x50, 0xf8,
+	0x46, 0x48, 0x9c, 0xa2, 0x9e, 0xb8, 0xc1, 0xa9, 0xa2, 0xfd, 0x04, 0x7c, 0x04, 0xde, 0xcc, 0xce,
+	0xae, 0x9d, 0x7a, 0x37, 0x02, 0xc9, 0xca, 0x61, 0xe5, 0xf5, 0xf3, 0xef, 0xf7, 0xe6, 0xbd, 0xdf,
+	0xfb, 0x33, 0x86, 0x8d, 0xf8, 0xf4, 0x3b, 0x16, 0x28, 0xd9, 0x4f, 0x44, 0xac, 0x62, 0x42, 0xc2,
+	0x38, 0x38, 0x67, 0xa2, 0x1f, 0x5c, 0xcc, 0xa4, 0xc2, 0x4f, 0x3f, 0xe1, 0xdd, 0x96, 0xfa, 0x31,
+	0x61, 0x16, 0xd0, 0x6d, 0xc9, 0x84, 0x05, 0xd9, 0x97, 0x3b, 0x8a, 0x4f, 0x99, 0x54, 0xfe, 0x34,
+	0xd9, 0xc9, 0xdf, 0xec, 0x4f, 0x6f, 0x4d, 0xe2, 0x49, 0x6c, 0x5e, 0x77, 0xf4, 0x5b, 0x6a, 0xf5,
+	0x7e, 0xab, 0x80, 0x73, 0xc0, 0x94, 0x4f, 0x3e, 0x87, 0xc6, 0x25, 0x13, 0x92, 0xc7, 0x51, 0xa7,
+	0xb2, 0x5d, 0xf9, 0xa0, 0x75, 0xef, 0xdd, 0xfe, 0xf2, 0xc9, 0xfd, 0x27, 0x29, 0x64, 0xe8, 0x5c,
+	0xbd, 0xd8, 0x5a, 0xa3, 0x19, 0x83, 0x7c, 0x01, 0x10, 0x08, 0xe6, 0x2b, 0x16, 0x9e, 0xf8, 0xaa,
+	0x53, 0x35, 0xfc, 0xf7, 0x8a, 0xf8, 0x8f, 0xb3, 0xa0, 0xa8, 0x6b, 0x09, 0x03, 0xa5, 0xd9, 0xb3,
+	0x24, 0xcc, 0xd8, 0xb5, 0xff, 0xc4, 0xb6, 0x84, 0x81, 0xf2, 0x7e, 0xa9, 0x82, 0x73, 0x18, 0x87,
+	0x8c, 0xbc, 0x03, 0x55, 0x1e, 0x9a, 0xe0, 0xdd, 0x61, 0xfd, 0xd5, 0x8b, 0xad, 0xea, 0x78, 0x9f,
+	0xa2, 0x85, 0xdc, 0x03, 0x67, 0x8a, 0x19, 0xda, 0xb0, 0x3a, 0x45, 0x8e, 0xb5, 0x02, 0x36, 0x27,
+	0x83, 0x25, 0x9f, 0x82, 0xa3, 0x65, 0xb5, 0xc1, 0x6c, 0x16, 0x71, 0xf4, 0x99, 0xc7, 0x88, 0xc9,
+	0x78, 0x1a, 0x4f, 0x1e, 0x42, 0x2b, 0x64, 0x32, 0x10, 0x3c, 0x51, 0x5a, 0x49, 0xc7, 0xd0, 0xef,
+	0x96, 0xd1, 0xf7, 0xe7, 0x50, 0xba, 0xc8, 0x43, 0x45, 0xea, 0x98, 0xa7, 0x9a, 0xc9, 0xce, 0xba,
+	0xf1, 0xd0, 0x2b, 0x0d, 0xc0, 0xa0, 0x6c, 0x08, 0x96, 0xe3, 0xfd, 0x5a, 0x81, 0xc6, 0x81, 0x1f,
+	0xf9, 0x13, 0x26, 0x4a, 0x45, 0xb9, 0x6f, 0x13, 0x4c, 0x45, 0xd9, 0x2a, 0x14, 0x25, 0x75, 0xa1,
+	0x73, 0xb4, 0xd9, 0xed, 0x82, 0x23, 0xfc, 0xb3, 0xac, 0x44, 0x85, 0x41, 0x51, 0xfc, 0xfd, 0x80,
+	0x4d, 0x4f, 0x99, 0xc8, 0x74, 0xd1, 0x0c, 0xef, 0x39, 0x86, 0x74, 0xcc, 0xc4, 0x25, 0x0f, 0x56,
+	0x5b, 0xa7, 0xcf, 0xae, 0xd5, 0xa9, 0x30, 0x0d, 0x7b, 0xec, 0x52, 0xa9, 0x76, 0xa1, 0xc9, 0xa2,
+	0x30, 0x89, 0x79, 0xa4, 0x6c, 0x9d, 0x0a, 0xcb, 0xfc, 0xd0, 0x62, 0x68, 0x8e, 0xf6, 0x9e, 0x57,
+	0xa1, 0x99, 0x99, 0xc9, 0x03, 0x1b, 0x41, 0x3a, 0x34, 0xdb, 0x37, 0xb9, 0x58, 0x50, 0x72, 0x04,
+	0x1b, 0xec, 0x87, 0x24, 0x96, 0xd8, 0xf2, 0x49, 0x2c, 0x94, 0xc4, 0xa4, 0x6b, 0x65, 0x92, 0x1e,
+	0x21, 0x60, 0x14, 0x47, 0x67, 0x7c, 0x42, 0xdb, 0x96, 0xa4, 0x4d, 0x92, 0x7c, 0x0b, 0x2d, 0x5f,
+	0x29, 0x3f, 0x78, 0x3a, 0x65, 0x11, 0xba, 0xa8, 0x19, 0x17, 0x3b, 0x37, 0x45, 0x90, 0xbf, 0x0c,
+	0x72, 0x1e, 0x5d, 0xf4, 0xd1, 0x4d, 0x80, 0x2c, 0x43, 0xc8, 0x47, 0x00, 0x11, 0x53, 0xdf, 0xc7,
+	0xe2, 0xfc, 0x24, 0xaf, 0xdc, 0x06, 0x56, 0xce, 0x3d, 0x4c, 0xad, 0x58, 0x40, 0xd7, 0x02, 0xc6,
+	0xa1, 0x46, 0x5f, 0x72, 0xa1, 0x66, 0xfe, 0xc5, 0x09, 0x4f, 0x4c, 0x62, 0x16, 0xfd, 0x24, 0xb5,
+	0x8e, 0x8f, 0xa8, 0x6b, 0x01, 0xe3, 0xc4, 0xfb, 0x7d, 0x1d, 0x9c, 0xc7, 0xbe, 0x3c, 0x5f, 0x69,
+	0x5b, 0x60, 0x08, 0x32, 0x2d, 0xbb, 0x0e, 0xb8, 0x36, 0x0f, 0xd8, 0x36, 0x83, 0x0e, 0xd8, 0x02,
+	0x30, 0xe0, 0x2e, 0x34, 0x79, 0x84, 0xb3, 0x13, 0x05, 0xcc, 0x74, 0x82, 0x43, 0xf3, 0xef, 0xe4,
+	0x2e, 0x34, 0x22, 0x9c, 0x33, 0xed, 0x66, 0xdd, 0xb8, 0x01, 0x74, 0x53, 0xd7, 0xa3, 0x87, 0x3e,
+	0xea, 0xfa, 0x27, 0x74, 0xf0, 0x08, 0x0b, 0x11, 0x45, 0x31, 0x4e, 0x1f, 0x0e, 0xaf, 0xec, 0xd4,
+	0xcb, 0x9b, 0x71, 0x30, 0x87, 0xd9, 0x80, 0x17, 0x99, 0x64, 0x0f, 0xdc, 0x20, 0x8e, 0x94, 0xcf,
+	0x23, 0x26, 0x3a, 0x8d, 0xf2, 0x45, 0x38, 0xca, 0x40, 0x5f, 0xaf, 0xd1, 0x39, 0x63, 0x61, 0x6d,
+	0x34, 0xcb, 0x27, 0x54, 0x8b, 0x5d, 0xb4, 0x36, 0xc8, 0x10, 0x36, 0x70, 0x07, 0x71, 0x81, 0x3d,
+	0xa9, 0x2d, 0xac, 0xe3, 0xa2, 0x93, 0x37, 0x4a, 0x36, 0xb1, 0x75, 0xc2, 0x68, 0xdb, 0x72, 0xcc,
+	0x37, 0xf2, 0x15, 0x34, 0x6d, 0x23, 0xc8, 0x0e, 0x98, 0x7e, 0xfc, 0xb0, 0x8c, 0xde, 0xb7, 0xcd,
+	0xb3, 0xd0, 0x8a, 0x39, 0xf7, 0xda, 0x70, 0xb6, 0xfe, 0xcf, 0x70, 0x76, 0x9f, 0xc2, 0x9b, 0x4b,
+	0x8e, 0xc9, 0x27, 0x58, 0xc5, 0xd4, 0x78, 0xd3, 0xe5, 0x66, 0x79, 0x34, 0xc3, 0x92, 0x4d, 0x70,
+	0xfd, 0x30, 0x14, 0x4c, 0x4a, 0x96, 0x4e, 0xa8, 0x4b, 0xe7, 0x86, 0xa1, 0x0b, 0x0d, 0x31, 0x8b,
+	0xf4, 0x35, 0xeb, 0xfd, 0x04, 0x6e, 0x5e, 0x12, 0xbc, 0x49, 0x17, 0x37, 0xc2, 0xfb, 0x37, 0xd6,
+	0x6f, 0x69, 0x2b, 0x3d, 0xc0, 0x6b, 0x38, 0xbe, 0x98, 0xe1, 0x3d, 0x87, 0xad, 0xa8, 0xf5, 0xeb,
+	0x16, 0x5e, 0xc3, 0x06, 0x42, 0x33, 0xa8, 0xf7, 0xac, 0x02, 0xf5, 0xd4, 0xb6, 0xd2, 0x31, 0xda,
+	0xbd, 0xb6, 0x5d, 0x7b, 0xe5, 0x91, 0xbc, 0x9e, 0x86, 0xf7, 0xac, 0x0a, 0x0d, 0x2b, 0xe7, 0x6d,
+	0xef, 0x7b, 0x7b, 0xec, 0x92, 0xb2, 0x7b, 0xd0, 0x0e, 0x05, 0xc7, 0x7f, 0x2c, 0xb6, 0xbb, 0xd3,
+	0x9d, 0x5f, 0x28, 0xef, 0xbe, 0xc1, 0xe1, 0x95, 0x6c, 0x3e, 0xd3, 0xce, 0xde, 0x03, 0x87, 0x27,
+	0xfe, 0xd4, 0x5e, 0xc8, 0x85, 0x27, 0x8f, 0x8f, 0x06, 0x07, 0xdf, 0x24, 0xe9, 0x70, 0x37, 0x31,
+	0x51, 0x47, 0x1b, 0xa8, 0xa1, 0x79, 0x7f, 0x56, 0xe1, 0x6d, 0xca, 0x26, 0x5c, 0x83, 0x59, 0x38,
+	0x62, 0x42, 0xf1, 0x33, 0x1e, 0x68, 0xc7, 0xab, 0x94, 0xe7, 0xd1, 0x35, 0x79, 0x3e, 0x2e, 0xbc,
+	0xa0, 0x8b, 0x82, 0x58, 0x12, 0x8b, 0xe0, 0x4d, 0x1f, 0x5f, 0xa4, 0x22, 0xb9, 0xd4, 0xbc, 0x93,
+	0x3b, 0x50, 0x0b, 0xa4, 0x30, 0x02, 0xb4, 0x87, 0x0d, 0x8c, 0xb4, 0x36, 0x3a, 0xa6, 0x54, 0xdb,
+	0xc8, 0x97, 0xf9, 0xe2, 0x49, 0x77, 0x9f, 0x57, 0x28, 0x8f, 0x94, 0x33, 0xbd, 0x53, 0x0b, 0x97,
+	0xcf, 0x36, 0xb4, 0x82, 0x79, 0x3c, 0x66, 0xf7, 0xb5, 0xe9, 0xa2, 0x49, 0xeb, 0x14, 0x44, 0x66,
+	0xb1, 0x59, 0x9d, 0x46, 0x87, 0x14, 0x2d, 0xe6, 0xdf, 0xce, 0x28, 0x3d, 0xe6, 0xb6, 0x5b, 0xcd,
+	0x1e, 0xfb, 0xba, 0x7a, 0xc3, 0xcd, 0xab, 0x97, 0xbd, 0xb5, 0xbf, 0xf0, 0xf9, 0xe7, 0x65, 0xaf,
+	0xf2, 0xf3, 0xab, 0x5e, 0xe5, 0x0a, 0x9f, 0x3f, 0xf0, 0xf9, 0x1b, 0x9f, 0xd3, 0xba, 0xf9, 0xe7,
+	0x7d, 0xff, 0xdf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x38, 0xb7, 0xa9, 0x18, 0xe9, 0x0b, 0x00, 0x00,
 }

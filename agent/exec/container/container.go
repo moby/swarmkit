@@ -29,7 +29,7 @@ const (
 type containerConfig struct {
 	task *api.Task
 
-	networksAttachments map[string]*api.Container_NetworkAttachment
+	networksAttachments map[string]*api.Task_NetworkAttachment
 }
 
 // newContainerConfig returns a validated container config. No methods should
@@ -50,13 +50,17 @@ func (c *containerConfig) setTask(t *api.Task) error {
 	}
 
 	// index the networks by name
-	c.networksAttachments = make(map[string]*api.Container_NetworkAttachment, len(container.Networks))
-	for _, attachment := range container.Networks {
+	c.networksAttachments = make(map[string]*api.Task_NetworkAttachment, len(t.Networks))
+	for _, attachment := range t.Networks {
 		c.networksAttachments[attachment.Network.Spec.Annotations.Name] = attachment
 	}
 
 	c.task = t
 	return nil
+}
+
+func (c *containerConfig) endpoint() *api.Endpoint {
+	return c.task.Endpoint
 }
 
 func (c *containerConfig) spec() *api.ContainerSpec {
@@ -98,8 +102,8 @@ func (c *containerConfig) config() *enginecontainer.Config {
 
 func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
 	exposedPorts := make(map[nat.Port]struct{})
-	if c.spec().ExposedPorts != nil {
-		for _, portConfig := range c.spec().ExposedPorts {
+	if c.endpoint() != nil && c.endpoint().ExposedPorts != nil {
+		for _, portConfig := range c.endpoint().ExposedPorts {
 			port := nat.Port(fmt.Sprintf("%d/%s", portConfig.Port, strings.ToLower(portConfig.Protocol.String())))
 			exposedPorts[port] = struct{}{}
 		}
@@ -147,15 +151,15 @@ func (c *containerConfig) volumeCreateRequest(vol *api.Volume) *types.VolumeCrea
 
 func (c *containerConfig) portBindings() nat.PortMap {
 	portBindings := nat.PortMap{}
-	if c.spec().ExposedPorts != nil {
-		for _, portConfig := range c.spec().ExposedPorts {
+	if c.endpoint() != nil && c.endpoint().ExposedPorts != nil {
+		for _, portConfig := range c.endpoint().ExposedPorts {
 			port := nat.Port(fmt.Sprintf("%d/%s", portConfig.Port, strings.ToLower(portConfig.Protocol.String())))
 			binding := []nat.PortBinding{
 				{},
 			}
 
-			if portConfig.HostPort != 0 {
-				binding[0].HostPort = strconv.Itoa(int(portConfig.HostPort))
+			if portConfig.NodePort != 0 {
+				binding[0].HostPort = strconv.Itoa(int(portConfig.NodePort))
 			}
 			portBindings[port] = binding
 		}
@@ -190,9 +194,9 @@ func (c *containerConfig) resources() enginecontainer.Resources {
 }
 
 func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
-	var networks []*api.Container_NetworkAttachment
+	var networks []*api.Task_NetworkAttachment
 	if c.task.GetContainer() != nil {
-		networks = c.task.GetContainer().Networks
+		networks = c.task.Networks
 	}
 
 	epConfig := make(map[string]*network.EndpointSettings)

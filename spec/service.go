@@ -53,7 +53,7 @@ type PortConfig struct {
 	Name     string `yaml:"name,omitempty"`
 	Protocol string `yaml:"protocol,omitempty"`
 	Port     uint32 `yaml:"port,omitempty"`
-	HostPort uint32 `yaml:"host_port,omitempty"`
+	NodePort uint32 `yaml:"node_port,omitempty"`
 }
 
 // ServiceConfig is a human representation of the Service
@@ -171,24 +171,26 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 				Name:     portConfig.Name,
 				Protocol: api.PortConfig_Protocol(api.PortConfig_Protocol_value[strings.ToUpper(portConfig.Protocol)]),
 				Port:     portConfig.Port,
-				HostPort: portConfig.HostPort,
+				NodePort: portConfig.NodePort,
 			})
 		}
 
-		spec.GetContainer().ExposedPorts = ports
+		spec.Endpoint = &api.EndpointSpec{
+			ExposedPorts: ports,
+		}
 	}
 
 	if len(s.Networks) != 0 {
-		networks := make([]*api.ContainerSpec_NetworkAttachment, 0, len(s.Networks))
+		networks := make([]*api.ServiceSpec_NetworkAttachment, 0, len(s.Networks))
 		for _, net := range s.Networks {
-			networks = append(networks, &api.ContainerSpec_NetworkAttachment{
-				Reference: &api.ContainerSpec_NetworkAttachment_NetworkID{
+			networks = append(networks, &api.ServiceSpec_NetworkAttachment{
+				Reference: &api.ServiceSpec_NetworkAttachment_NetworkID{
 					NetworkID: net,
 				},
 			})
 		}
 
-		spec.GetContainer().Networks = networks
+		spec.Networks = networks
 	}
 
 	switch s.Mode {
@@ -241,18 +243,18 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	}
 
 	if serviceSpec.Endpoint != nil {
-		for _, port := range serviceSpec.GetContainer().ExposedPorts {
+		for _, port := range serviceSpec.Endpoint.ExposedPorts {
 			s.Ports = append(s.Ports, PortConfig{
 				Name:     port.Name,
 				Protocol: strings.ToLower(port.Protocol.String()),
 				Port:     port.Port,
-				HostPort: port.HostPort,
+				NodePort: port.NodePort,
 			})
 		}
 	}
 
-	if serviceSpec.GetContainer().Networks != nil {
-		for _, net := range serviceSpec.GetContainer().Networks {
+	if serviceSpec.Networks != nil {
+		for _, net := range serviceSpec.Networks {
 			s.Networks = append(s.Networks, net.GetNetworkID())
 		}
 	}

@@ -71,43 +71,6 @@ func (f *ResourceFilter) Check(t *api.Task, n *NodeInfo) bool {
 	return true
 }
 
-// PortFilter checks that the node has the requested network ports available.
-type PortFilter struct {
-}
-
-// Enabled returns true when the filter is enabled for a given task.
-func (f *PortFilter) Enabled(t *api.Task) bool {
-	if t.GetContainer() == nil {
-		return false
-	}
-
-	c := t.GetContainer().Spec
-	if len(c.ExposedPorts) == 0 {
-		return false
-	}
-	return true
-}
-
-// Check returns true if the task can be scheduled into the given node.
-func (f *PortFilter) Check(t *api.Task, n *NodeInfo) bool {
-	if t.GetContainer() == nil {
-		return false
-	}
-
-	container := t.GetContainer().Spec
-
-	for _, ep := range container.ExposedPorts {
-		if ep.HostPort == 0 {
-			continue
-		}
-		if _, found := n.ReservedPorts[ep.HostPort]; found {
-			return false
-		}
-	}
-
-	return true
-}
-
 // PluginFilter checks that the node has a specific volume plugin installed
 type PluginFilter struct {
 }
@@ -115,7 +78,7 @@ type PluginFilter struct {
 // Enabled returns true when the filter is enabled for a given task.
 func (f *PluginFilter) Enabled(t *api.Task) bool {
 	c := t.GetContainer()
-	if c != nil && (len(c.Volumes) > 0 || len(c.Networks) > 0) {
+	if (c != nil && len(c.Volumes) > 0) || len(t.Networks) > 0 {
 		return true
 	}
 
@@ -136,7 +99,7 @@ func (f *PluginFilter) Check(t *api.Task, n *NodeInfo) bool {
 	}
 
 	// Check if all network plugins required by task are installed on node
-	for _, tn := range t.GetContainer().Networks {
+	for _, tn := range t.Networks {
 		if !f.pluginExistsOnNode("Network", tn.Network.Spec.DriverConfiguration.Name, nodePlugins) {
 			return false
 		}
