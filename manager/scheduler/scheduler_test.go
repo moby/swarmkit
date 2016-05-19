@@ -588,7 +588,7 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	err = s.Update(func(tx store.Tx) error {
 		// The task becomes dead
 		updatedTask := store.GetTask(tx, bigTask1.ID)
-		updatedTask.Status.State = api.TaskStateDead
+		updatedTask.Status.State = api.TaskStateShutdown
 		return store.UpdateTask(tx, updatedTask)
 	})
 	assert.NoError(t, err)
@@ -714,7 +714,7 @@ func TestSchedulerPortConstraint(t *testing.T) {
 	// Kill original task
 	err = s.Update(func(tx store.Tx) error {
 		updatedTask := store.GetTask(tx, "dynamic")
-		updatedTask.Status.State = api.TaskStateDead
+		updatedTask.Status.State = api.TaskStateShutdown
 		assert.NoError(t, store.UpdateTask(tx, updatedTask))
 		return nil
 	})
