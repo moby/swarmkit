@@ -8,6 +8,7 @@ var (
 		&ReadyFilter{},
 		&ResourceFilter{},
 		&PortFilter{},
+		&PluginFilter{},
 	}
 )
 
