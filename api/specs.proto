@@ -201,4 +201,7 @@ message ClusterSpec {
 
 	// Orchestration defines cluster-level orchestration settings.
 	OrchestrationConfig orchestration = 3 [(gogoproto.nullable) = false];
+
+	// Raft defines the cluster's raft settings.
+	RaftConfig raft = 4 [(gogoproto.nullable) = false];
 }

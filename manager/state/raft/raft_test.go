@@ -568,7 +568,7 @@ func TestRaftUnreachableNode(t *testing.T) {
 
 	nodes := make(map[uint64]*raftutils.TestNode)
 	var clockSource *fakeclock.FakeClock
-	nodes[1], clockSource = raftutils.NewInitNode(t, securityConfig)
+	nodes[1], clockSource = raftutils.NewInitNode(t, securityConfig, nil)
 
 	ctx := context.Background()
 	// Add a new node, but don't start its server yet
@@ -605,7 +605,7 @@ func TestRaftJoinFollower(t *testing.T) {
 
 	nodes := make(map[uint64]*raftutils.TestNode)
 	var clockSource *fakeclock.FakeClock
-	nodes[1], clockSource = raftutils.NewInitNode(t, securityConfig)
+	nodes[1], clockSource = raftutils.NewInitNode(t, securityConfig, nil)
 	nodes[2] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 

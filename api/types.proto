@@ -413,3 +413,15 @@ message OrchestrationConfig {
 	// node. If negative, never remove completed or failed tasks.
 	int64 task_history_retention_limit = 1;
 }
+
+// RaftConfig defines raft settings for the cluster.
+message RaftConfig {
+	// SnapshotInterval is the number of log entries between snapshots.
+	uint64 snapshot_interval = 1;
+	// KeepOldSnapshots is the number of snapshots to keep beyond the
+	// current snapshot.
+	uint64 keep_old_snapshots = 2;
+	// LogEntriesForSlowFollowers is the number of log entries to keep
+	// around to sync up slow followers after a snapshot is created.
+	uint64 log_entries_for_slow_followers = 3;
+}

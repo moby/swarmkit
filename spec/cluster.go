@@ -8,6 +8,7 @@ import (
 	yaml "github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
+	"github.com/docker/swarm-v2/manager/state/raft"
 	"github.com/pmezard/go-difflib/difflib"
 )
 
@@ -15,6 +16,7 @@ import (
 type ClusterConfig struct {
 	AcceptancePolicy    AcceptancePolicy    `yaml:"acceptancepolicy,omitempty"`
 	OrchestrationConfig OrchestrationConfig `yaml:"orchestration,omitempty"`
+	RaftConfig          RaftConfig          `yaml:"raft,omitempty"`
 
 	Name string `yaml:"name"`
 }
@@ -30,6 +32,18 @@ type OrchestrationConfig struct {
 	// TaskHistoryRetentionLimit is the number of historic task entries to
 	// retain per service instance or node.
 	TaskHistoryRetentionLimit int64 `yaml:"taskhistory"`
+}
+
+// RaftConfig is the yaml representation of the raft settings.
+type RaftConfig struct {
+	// SnapshotInterval is the number of log entries between snapshots.
+	SnapshotInterval uint64 `yaml:"snapshotinterval"`
+	// KeepOldSnapshots is the number of snapshots to keep beyond the
+	// current snapshot.
+	KeepOldSnapshots uint64 `yaml:"keepoldsnapshots"`
+	// LogEntriesForSlowFollowers is the number of log entries to keep
+	// around to sync up slow followers after a snapshot is created.
+	LogEntriesForSlowFollowers uint64 `yaml:"logentriesforslowfollowers"`
 }
 
 // Reset resets the cluster config to its defaults.
@@ -84,6 +98,11 @@ func (c *ClusterConfig) ToProto() *api.ClusterSpec {
 		Orchestration: api.OrchestrationConfig{
 			TaskHistoryRetentionLimit: c.OrchestrationConfig.TaskHistoryRetentionLimit,
 		},
+		Raft: api.RaftConfig{
+			SnapshotInterval:           c.RaftConfig.SnapshotInterval,
+			KeepOldSnapshots:           c.RaftConfig.KeepOldSnapshots,
+			LogEntriesForSlowFollowers: c.RaftConfig.LogEntriesForSlowFollowers,
+		},
 	}
 
 	for _, role := range c.AcceptancePolicy.AutoacceptRoles {
@@ -93,6 +112,15 @@ func (c *ClusterConfig) ToProto() *api.ClusterSpec {
 		case "manager":
 			p.AcceptancePolicy.Autoaccept[ca.ManagerRole] = true
 		}
+	}
+
+	raftDefaults := raft.DefaultRaftConfig()
+
+	if p.Raft.SnapshotInterval == 0 {
+		p.Raft.SnapshotInterval = raftDefaults.SnapshotInterval
+	}
+	if p.Raft.LogEntriesForSlowFollowers == 0 {
+		p.Raft.LogEntriesForSlowFollowers = raftDefaults.LogEntriesForSlowFollowers
 	}
 
 	return p
@@ -108,6 +136,11 @@ func (c *ClusterConfig) FromProto(p *api.ClusterSpec) {
 		Name: p.Annotations.Name,
 		OrchestrationConfig: OrchestrationConfig{
 			TaskHistoryRetentionLimit: p.Orchestration.TaskHistoryRetentionLimit,
+		},
+		RaftConfig: RaftConfig{
+			SnapshotInterval:           p.Raft.SnapshotInterval,
+			KeepOldSnapshots:           p.Raft.KeepOldSnapshots,
+			LogEntriesForSlowFollowers: p.Raft.LogEntriesForSlowFollowers,
 		},
 	}
 

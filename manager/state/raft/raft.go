@@ -95,14 +95,6 @@ type Node struct {
 	// scenario by pointing to an existing or backed up data directory.
 	forceNewCluster bool
 
-	// snapshotInterval is the number of log messages after which a new
-	// snapshot should be generated.
-	snapshotInterval uint64
-
-	// logEntriesForSlowFollowers is the number of log entries to keep
-	// around to sync up slow followers after a snapshot is created.
-	logEntriesForSlowFollowers uint64
-
 	confState     raftpb.ConfState
 	appliedIndex  uint64
 	snapshotIndex uint64
@@ -138,12 +130,6 @@ type NewNodeOptions struct {
 	StateDir string
 	// TickInterval interval is the time interval between raft ticks.
 	TickInterval time.Duration
-	// SnapshotInterval is the number of log entries that triggers a new
-	// snapshot.
-	SnapshotInterval uint64 // optional
-	// LogEntriesForSlowFollowers is the number of recent log entries to
-	// keep when compacting the log.
-	LogEntriesForSlowFollowers *uint64 // optional; pointer because 0 is valid
 	// ClockSource is a Clock interface to use as a time base.
 	// Leave this nil except for tests that are designed not to run in real
 	// time.
@@ -188,9 +174,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 			MaxInflightMsgs: cfg.MaxInflightMsgs,
 			Logger:          cfg.Logger,
 		},
-		forceNewCluster:            opts.ForceNewCluster,
-		snapshotInterval:           1000,
-		logEntriesForSlowFollowers: 500,
+		forceNewCluster:     opts.ForceNewCluster,
 		stopCh:              make(chan struct{}),
 		doneCh:              make(chan struct{}),
 		StateDir:            opts.StateDir,
@@ -200,12 +184,6 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 	}
 	n.memoryStore = store.NewMemoryStore(n)
 
-	if opts.SnapshotInterval != 0 {
-		n.snapshotInterval = opts.SnapshotInterval
-	}
-	if opts.LogEntriesForSlowFollowers != nil {
-		n.logEntriesForSlowFollowers = *opts.LogEntriesForSlowFollowers
-	}
 	if opts.ClockSource == nil {
 		n.ticker = clock.NewClock().NewTicker(opts.TickInterval)
 	} else {
@@ -290,6 +268,15 @@ func DefaultNodeConfig() *raft.Config {
 	}
 }
 
+// DefaultRaftConfig returns a default api.RaftConfig.
+func DefaultRaftConfig() api.RaftConfig {
+	return api.RaftConfig{
+		KeepOldSnapshots:           0,
+		SnapshotInterval:           10000,
+		LogEntriesForSlowFollowers: 500,
+	}
+}
+
 // MemoryStore returns the memory store that is kept in sync with the raft log.
 func (n *Node) MemoryStore() *store.MemoryStore {
 	return n.memoryStore
@@ -311,8 +298,16 @@ func (n *Node) Run(ctx context.Context) error {
 			n.Tick()
 
 		case rd := <-n.Ready():
+			raftConfig := DefaultRaftConfig()
+			n.memoryStore.View(func(readTx store.ReadTx) {
+				clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
+				if err == nil && len(clusters) == 1 {
+					raftConfig = clusters[0].Spec.Raft
+				}
+			})
+
 			// Save entries to storage
-			if err := n.saveToStorage(rd.HardState, rd.Entries, rd.Snapshot); err != nil {
+			if err := n.saveToStorage(&raftConfig, rd.HardState, rd.Entries, rd.Snapshot); err != nil {
 				n.Config.Logger.Error(err)
 			}
 
@@ -342,8 +337,10 @@ func (n *Node) Run(ctx context.Context) error {
 			}
 
 			// Trigger a snapshot every once in awhile
-			if n.snapshotInProgress == nil && n.appliedIndex-n.snapshotIndex >= n.snapshotInterval {
-				n.doSnapshot()
+			if n.snapshotInProgress == nil &&
+				raftConfig.SnapshotInterval > 0 &&
+				n.appliedIndex-n.snapshotIndex >= raftConfig.SnapshotInterval {
+				n.doSnapshot(&raftConfig)
 			}
 
 			// If we cease to be the leader, we must cancel
@@ -694,9 +691,9 @@ func (n *Node) mustStop() bool {
 }
 
 // Saves a log entry to our Store
-func (n *Node) saveToStorage(hardState raftpb.HardState, entries []raftpb.Entry, snapshot raftpb.Snapshot) (err error) {
+func (n *Node) saveToStorage(raftConfig *api.RaftConfig, hardState raftpb.HardState, entries []raftpb.Entry, snapshot raftpb.Snapshot) (err error) {
 	if !raft.IsEmptySnap(snapshot) {
-		if err := n.saveSnapshot(snapshot); err != nil {
+		if err := n.saveSnapshot(snapshot, raftConfig.KeepOldSnapshots); err != nil {
 			return ErrApplySnapshot
 		}
 		if err = n.raftStore.ApplySnapshot(snapshot); err != nil {
