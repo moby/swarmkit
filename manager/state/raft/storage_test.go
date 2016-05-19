@@ -20,8 +20,9 @@ func TestRaftSnapshot(t *testing.T) {
 	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig, raft.NewNodeOptions{SnapshotInterval: 9, LogEntriesForSlowFollowers: &zero})
 	defer raftutils.TeardownCluster(t, nodes)
 
-	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5"}
+	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7", "id8", "id9", "id10", "id11", "id12", "id13"}
 	values := make([]*api.Node, len(nodeIDs))
+	snapshotFilenames := make(map[uint64]string, 4)
 
 	// Propose 4 values
 	var err error
@@ -42,7 +43,7 @@ func TestRaftSnapshot(t *testing.T) {
 	assert.NoError(t, err, "failed to propose value")
 
 	// All nodes should now have a snapshot file
-	for _, node := range nodes {
+	for nodeID, node := range nodes {
 		assert.NoError(t, raftutils.PollFunc(func() error {
 			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap"))
 			if err != nil {
@@ -51,6 +52,7 @@ func TestRaftSnapshot(t *testing.T) {
 			if len(dirents) != 1 {
 				return fmt.Errorf("expected 1 snapshot, found %d", len(dirents))
 			}
+			snapshotFilenames[nodeID] = dirents[0].Name()
 			return nil
 		}))
 	}
@@ -67,6 +69,7 @@ func TestRaftSnapshot(t *testing.T) {
 		if len(dirents) != 1 {
 			return fmt.Errorf("expected 1 snapshot, found %d", len(dirents))
 		}
+		snapshotFilenames[4] = dirents[0].Name()
 		return nil
 	}))
 
@@ -83,6 +86,36 @@ func TestRaftSnapshot(t *testing.T) {
 		return raftNodes
 	}
 	assert.Equal(t, stripMembers(nodes[1].GetMemberlist()), stripMembers(nodes[4].GetMemberlist()))
+
+	// All nodes should have all the data
+	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:5], values)
+
+	// Propose more values to provoke a second snapshot
+	for i := 5; i != len(nodeIDs); i++ {
+		values[i], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[i])
+		assert.NoError(t, err, "failed to propose value")
+	}
+
+	// All nodes except the fourth should have a snapshot under a *different* name
+	for nodeID, node := range nodes {
+		assert.NoError(t, raftutils.PollFunc(func() error {
+			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap"))
+			if err != nil {
+				return err
+			}
+			if len(dirents) != 1 {
+				return fmt.Errorf("expected 1 snapshot, found %d", len(dirents))
+			}
+			if nodeID == 4 {
+				if dirents[0].Name() != snapshotFilenames[nodeID] {
+					return fmt.Errorf("unexpected snapshot change from %s to %s", snapshotFilenames[nodeID], dirents[0].Name())
+				}
+			} else if dirents[0].Name() == snapshotFilenames[nodeID] {
+				return fmt.Errorf("snapshot %s did get replaced", snapshotFilenames[nodeID])
+			}
+			return nil
+		}))
+	}
 
 	// All nodes should have all the data
 	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs, values)
