@@ -2,6 +2,7 @@ package allocator
 
 import (
 	"net"
+	"runtime/debug"
 	"testing"
 	"time"
 
@@ -44,7 +45,7 @@ func TestAllocator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "service1",
 				},
-				Endpoint: &api.Endpoint{},
+				Endpoint: &api.EndpointSpec{},
 			},
 		}
 		assert.NoError(t, store.CreateService(tx, s1))
@@ -54,17 +55,9 @@ func TestAllocator(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
-			Runtime: &api.Task_Container{
-				Container: &api.Container{
-					Spec: api.ContainerSpec{
-						Networks: []*api.ContainerSpec_NetworkAttachment{
-							{
-								Reference: &api.ContainerSpec_NetworkAttachment_NetworkID{
-									NetworkID: "testID1",
-								},
-							},
-						},
-					},
+			Networks: []*api.Task_NetworkAttachment{
+				{
+					Network: n1,
 				},
 			},
 		}
@@ -112,7 +105,14 @@ func TestAllocator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "service2",
 				},
-				Endpoint: &api.Endpoint{},
+				Networks: []*api.ServiceSpec_NetworkAttachment{
+					{
+						Reference: &api.ServiceSpec_NetworkAttachment_NetworkID{
+							NetworkID: "testID2",
+						},
+					},
+				},
+				Endpoint: &api.EndpointSpec{},
 			},
 		}
 		assert.NoError(t, store.CreateService(tx, s2))
@@ -129,19 +129,6 @@ func TestAllocator(t *testing.T) {
 			},
 			ServiceID:    "testServiceID2",
 			DesiredState: api.TaskStateRunning,
-			Runtime: &api.Task_Container{
-				Container: &api.Container{
-					Spec: api.ContainerSpec{
-						Networks: []*api.ContainerSpec_NetworkAttachment{
-							{
-								Reference: &api.ContainerSpec_NetworkAttachment_NetworkID{
-									NetworkID: "testID2",
-								},
-							},
-						},
-					},
-				},
-			},
 		}
 		assert.NoError(t, store.CreateTask(tx, t2))
 		return nil
@@ -150,6 +137,15 @@ func TestAllocator(t *testing.T) {
 	watchTask(t, taskWatch, false, isValidTask)
 
 	// Now try adding a task which depends on a network before adding the network.
+	n3 := &api.Network{
+		ID: "testID3",
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "test3",
+			},
+		},
+	}
+
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		t3 := &api.Task{
 			ID: "testTaskID3",
@@ -157,17 +153,9 @@ func TestAllocator(t *testing.T) {
 				State: api.TaskStateNew,
 			},
 			DesiredState: api.TaskStateRunning,
-			Runtime: &api.Task_Container{
-				Container: &api.Container{
-					Spec: api.ContainerSpec{
-						Networks: []*api.ContainerSpec_NetworkAttachment{
-							{
-								Reference: &api.ContainerSpec_NetworkAttachment_NetworkID{
-									NetworkID: "testID3",
-								},
-							},
-						},
-					},
+			Networks: []*api.Task_NetworkAttachment{
+				{
+					Network: n3,
 				},
 			},
 		}
@@ -181,14 +169,6 @@ func TestAllocator(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		n3 := &api.Network{
-			ID: "testID3",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
-					Name: "test3",
-				},
-			},
-		}
 		assert.NoError(t, store.CreateNetwork(tx, n3))
 		return nil
 	}))
@@ -210,11 +190,6 @@ func TestAllocator(t *testing.T) {
 			},
 			DesiredState: api.TaskStateRunning,
 			ServiceID:    "testServiceID2",
-			Runtime: &api.Task_Container{
-				Container: &api.Container{
-					Spec: api.ContainerSpec{},
-				},
-			},
 		}
 		assert.NoError(t, store.CreateTask(tx, t5))
 		return nil
@@ -242,11 +217,6 @@ func TestAllocator(t *testing.T) {
 				State: api.TaskStateNew,
 			},
 			DesiredState: api.TaskStateRunning,
-			Runtime: &api.Task_Container{
-				Container: &api.Container{
-					Spec: api.ContainerSpec{},
-				},
-			},
 		}
 		assert.NoError(t, store.CreateTask(tx, t4))
 		return nil
@@ -291,9 +261,9 @@ func isValidTask(t assert.TestingT, task *api.Task) bool {
 }
 
 func isValidNetworkAttachment(t assert.TestingT, task *api.Task) bool {
-	if len(task.GetContainer().Spec.Networks) != 0 {
-		return assert.Equal(t, len(task.GetContainer().Networks[0].Addresses), 1) &&
-			isValidSubnet(t, task.GetContainer().Networks[0].Addresses[0])
+	if len(task.Networks) != 0 {
+		return assert.Equal(t, len(task.Networks[0].Addresses), 1) &&
+			isValidSubnet(t, task.Networks[0].Addresses[0])
 	}
 
 	return true
@@ -310,7 +280,7 @@ func isValidEndpoint(t assert.TestingT, task *api.Task) bool {
 			return true
 		}
 
-		return assert.Equal(t, service.Endpoint, task.GetContainer().Endpoint)
+		return assert.Equal(t, service.Endpoint, task.Endpoint)
 
 	}
 
@@ -346,7 +316,6 @@ func watchNetwork(t *testing.T, watch chan events.Event, expectTimeout bool, fn 
 				}
 			}
 
-			//return nil, fmt.Errorf("got event %T when expecting EventUpdateNetwork/EventDeleteNetwork", event)
 		case <-time.After(250 * time.Millisecond):
 			if !expectTimeout {
 				if network != nil && fn != nil {
@@ -419,7 +388,7 @@ func watchTask(t *testing.T, watch chan events.Event, expectTimeout bool, fn fun
 					fn(t, task)
 				}
 
-				t.Fatal("timed out before watchTask found expected task state")
+				t.Fatalf("timed out before watchTask found expected task state %s", debug.Stack())
 			}
 
 			return

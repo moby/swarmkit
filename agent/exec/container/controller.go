@@ -2,14 +2,11 @@ package container
 
 import (
 	"errors"
-	"fmt"
-	"strconv"
 	"strings"
 
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/events"
-	"github.com/docker/go-connections/nat"
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
@@ -315,56 +312,5 @@ func parseContainerStatus(ctnr types.ContainerJSON) (*api.ContainerStatus, error
 		ExitCode:    int32(ctnr.State.ExitCode),
 	}
 
-	if ctnr.NetworkSettings != nil && len(ctnr.NetworkSettings.Ports) > 0 {
-		exposedPorts, err := parsePortMap(ctnr.NetworkSettings.Ports)
-		if err != nil {
-			return nil, err
-		}
-		status.ExposedPorts = exposedPorts
-	}
-
 	return status, nil
-}
-
-func parsePortMap(portMap nat.PortMap) ([]*api.PortConfig, error) {
-	exposedPorts := make([]*api.PortConfig, 0, len(portMap))
-
-	for portProtocol, mapping := range portMap {
-		parts := strings.SplitN(string(portProtocol), "/", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid port mapping: %s", portProtocol)
-		}
-
-		port, err := strconv.ParseUint(parts[0], 10, 32)
-		if err != nil {
-			return nil, err
-		}
-
-		protocol := api.ProtocolTCP
-		switch strings.ToLower(parts[1]) {
-		case "tcp":
-			protocol = api.ProtocolTCP
-		case "udp":
-			protocol = api.ProtocolUDP
-		default:
-			return nil, fmt.Errorf("invalid protocol: %s", parts[1])
-		}
-
-		for _, binding := range mapping {
-			hostPort, err := strconv.ParseUint(binding.HostPort, 10, 32)
-			if err != nil {
-				return nil, err
-			}
-
-			// TODO(aluzzardi): We're loosing the port `name` here since
-			// there's no way to retrieve it back from the Engine.
-			exposedPorts = append(exposedPorts, &api.PortConfig{
-				Protocol: protocol,
-				Port:     uint32(port),
-				HostPort: uint32(hostPort),
-			})
-		}
-	}
-
-	return exposedPorts, nil
 }

@@ -78,9 +78,20 @@ message ServiceSpec {
 	// UpdateConfig controls the rate and policy of updates.
 	UpdateConfig update = 7;
 
+	// NetworkAttachmentSpec describes which networks the target
+	// runtime is attached to.
+	message NetworkAttachment {
+		oneof reference {
+			string name = 1;
+			string network_id = 2 [(gogoproto.customname) = "NetworkID"];
+		}
+	}
+
+	repeated NetworkAttachment networks = 8;
+
 	// Service endpoint specifies the user provided configuration
 	// to properly discover and load balance a service.
-	Endpoint endpoint = 8;
+	EndpointSpec endpoint = 9;
 }
 
 // ReplicatedService set the reconcilation target to certain number of instances.
@@ -118,27 +129,43 @@ message ContainerSpec {
 	// User specifies the user that should be employed to run the container.
 	string user = 6;
 
-	// NetworkAttachmentSpec describes a desired attachment to the named network or
-	// a specific network_id.
-	message NetworkAttachment {
-		oneof reference {
-			string name = 1;
-			string network_id = 2 [(gogoproto.customname) = "NetworkID"];
-		}
-	}
-
-	repeated NetworkAttachment networks = 7;
-
-	repeated PortConfig exposed_ports = 8;
-
-	repeated Mount mounts = 9;
+	repeated Mount mounts = 7;
 
 	// Resource requirements for the container.
-	ResourceRequirements resources = 10;
+	ResourceRequirements resources = 8;
 
 	// StopGracePeriod the grace period for stopping the container before
 	// forcefully killing the container.
-	uint64 stop_grace_period = 11 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
+	uint64 stop_grace_period = 9 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
+}
+
+// EndpointSpec defines the properties that can be configured to
+// access and loadbalance the service.
+message EndpointSpec {
+	// Load balancer strategy to be used by the ingress service to
+	// choose between different strategies available.
+	enum IngressStrategy {
+		option (gogoproto.goproto_enum_prefix) = false;
+
+		// Network loadbalancer strategy is the default
+		// ingress strategy (needs to be of value 0) and it
+		// provides loadbalancing at L3/L4. It uses the node
+		// ports to loadbalance ingress traffic to the right
+		// service.
+		NETWORK = 0 [(gogoproto.enumvalue_customname) = "IngressStrategyNetwork"];
+
+		// If the user chooses to disable ingress strategy,
+		// the system will not provide any out of the box
+		// loadbalancing for ingress traffic. The user may
+		// provide an alternate option.
+		DISABLED = 1 [(gogoproto.enumvalue_customname) = "IngressStrategyExternal"];
+	}
+
+	IngressStrategy strategy = 1;
+
+	// List of exposed ports that this service is accessible from
+	// external to the cluster.
+	repeated PortConfig exposed_ports = 2;
 }
 
 // VolumeSpec defines the properties of a Volume.

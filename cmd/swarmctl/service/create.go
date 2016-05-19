@@ -103,7 +103,7 @@ var (
 
 					ports := []*api.PortConfig{}
 					for _, portConfig := range portConfigs {
-						name, protocol, port, hostPort, err := parsePortConfig(portConfig)
+						name, protocol, port, nodePort, err := parsePortConfig(portConfig)
 						if err != nil {
 							return err
 						}
@@ -112,11 +112,13 @@ var (
 							Name:     name,
 							Protocol: protocol,
 							Port:     port,
-							HostPort: hostPort,
+							NodePort: nodePort,
 						})
 					}
 
-					spec.GetContainer().ExposedPorts = ports
+					spec.Endpoint = &api.EndpointSpec{
+						ExposedPorts: ports,
+					}
 				}
 
 				if flags.Changed("network") {
@@ -130,9 +132,9 @@ var (
 						return err
 					}
 
-					spec.GetContainer().Networks = []*api.ContainerSpec_NetworkAttachment{
+					spec.Networks = []*api.ServiceSpec_NetworkAttachment{
 						{
-							Reference: &api.ContainerSpec_NetworkAttachment_NetworkID{
+							Reference: &api.ServiceSpec_NetworkAttachment_NetworkID{
 								NetworkID: n.ID,
 							},
 						},

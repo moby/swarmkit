@@ -376,31 +376,23 @@ func TestAllocateTaskFree(t *testing.T) {
 	}
 
 	task1 := &api.Task{
-		Runtime: &api.Task_Container{
-			Container: &api.Container{
-				Networks: []*api.Container_NetworkAttachment{
-					{
-						Network: n1,
-					},
-					{
-						Network: n2,
-					},
-				},
+		Networks: []*api.Task_NetworkAttachment{
+			{
+				Network: n1,
+			},
+			{
+				Network: n2,
 			},
 		},
 	}
 
 	task2 := &api.Task{
-		Runtime: &api.Task_Container{
-			Container: &api.Container{
-				Networks: []*api.Container_NetworkAttachment{
-					{
-						Network: n1,
-					},
-					{
-						Network: n2,
-					},
-				},
+		Networks: []*api.Task_NetworkAttachment{
+			{
+				Network: n1,
+			},
+			{
+				Network: n2,
 			},
 		},
 	}
@@ -413,17 +405,17 @@ func TestAllocateTaskFree(t *testing.T) {
 
 	err = na1.AllocateTask(task1)
 	assert.NoError(t, err)
-	assert.Equal(t, len(task1.GetContainer().Networks[0].Addresses), 1)
-	assert.Equal(t, len(task1.GetContainer().Networks[1].Addresses), 1)
+	assert.Equal(t, len(task1.Networks[0].Addresses), 1)
+	assert.Equal(t, len(task1.Networks[1].Addresses), 1)
 
 	_, subnet1, _ := net.ParseCIDR("192.168.1.0/24")
 	_, subnet2, _ := net.ParseCIDR("192.168.2.0/24")
 
 	// variable coding: network/task/allocator
-	ip111, _, err := net.ParseCIDR(task1.GetContainer().Networks[0].Addresses[0])
+	ip111, _, err := net.ParseCIDR(task1.Networks[0].Addresses[0])
 	assert.NoError(t, err)
 
-	ip211, _, err := net.ParseCIDR(task1.GetContainer().Networks[1].Addresses[0])
+	ip211, _, err := net.ParseCIDR(task1.Networks[1].Addresses[0])
 	assert.NoError(t, err)
 
 	assert.Equal(t, subnet1.Contains(ip111), true)
@@ -431,13 +423,13 @@ func TestAllocateTaskFree(t *testing.T) {
 
 	err = na1.AllocateTask(task2)
 	assert.NoError(t, err)
-	assert.Equal(t, len(task2.GetContainer().Networks[0].Addresses), 1)
-	assert.Equal(t, len(task2.GetContainer().Networks[1].Addresses), 1)
+	assert.Equal(t, len(task2.Networks[0].Addresses), 1)
+	assert.Equal(t, len(task2.Networks[1].Addresses), 1)
 
-	ip121, _, err := net.ParseCIDR(task2.GetContainer().Networks[0].Addresses[0])
+	ip121, _, err := net.ParseCIDR(task2.Networks[0].Addresses[0])
 	assert.NoError(t, err)
 
-	ip221, _, err := net.ParseCIDR(task2.GetContainer().Networks[1].Addresses[0])
+	ip221, _, err := net.ParseCIDR(task2.Networks[1].Addresses[0])
 	assert.NoError(t, err)
 
 	assert.Equal(t, subnet1.Contains(ip121), true)
@@ -453,13 +445,13 @@ func TestAllocateTaskFree(t *testing.T) {
 
 	err = na2.AllocateTask(task2)
 	assert.NoError(t, err)
-	assert.Equal(t, len(task2.GetContainer().Networks[0].Addresses), 1)
-	assert.Equal(t, len(task2.GetContainer().Networks[1].Addresses), 1)
+	assert.Equal(t, len(task2.Networks[0].Addresses), 1)
+	assert.Equal(t, len(task2.Networks[1].Addresses), 1)
 
-	ip122, _, err := net.ParseCIDR(task2.GetContainer().Networks[0].Addresses[0])
+	ip122, _, err := net.ParseCIDR(task2.Networks[0].Addresses[0])
 	assert.NoError(t, err)
 
-	ip222, _, err := net.ParseCIDR(task2.GetContainer().Networks[1].Addresses[0])
+	ip222, _, err := net.ParseCIDR(task2.Networks[1].Addresses[0])
 	assert.NoError(t, err)
 
 	assert.Equal(t, subnet1.Contains(ip122), true)
@@ -469,13 +461,13 @@ func TestAllocateTaskFree(t *testing.T) {
 
 	err = na2.AllocateTask(task1)
 	assert.NoError(t, err)
-	assert.Equal(t, len(task1.GetContainer().Networks[0].Addresses), 1)
-	assert.Equal(t, len(task1.GetContainer().Networks[1].Addresses), 1)
+	assert.Equal(t, len(task1.Networks[0].Addresses), 1)
+	assert.Equal(t, len(task1.Networks[1].Addresses), 1)
 
-	ip112, _, err := net.ParseCIDR(task1.GetContainer().Networks[0].Addresses[0])
+	ip112, _, err := net.ParseCIDR(task1.Networks[0].Addresses[0])
 	assert.NoError(t, err)
 
-	ip212, _, err := net.ParseCIDR(task1.GetContainer().Networks[1].Addresses[0])
+	ip212, _, err := net.ParseCIDR(task1.Networks[1].Addresses[0])
 	assert.NoError(t, err)
 
 	assert.Equal(t, subnet1.Contains(ip112), true)
@@ -486,19 +478,19 @@ func TestAllocateTaskFree(t *testing.T) {
 	// Deallocate task
 	err = na1.DeallocateTask(task1)
 	assert.NoError(t, err)
-	assert.Equal(t, len(task1.GetContainer().Networks[0].Addresses), 0)
-	assert.Equal(t, len(task1.GetContainer().Networks[1].Addresses), 0)
+	assert.Equal(t, len(task1.Networks[0].Addresses), 0)
+	assert.Equal(t, len(task1.Networks[1].Addresses), 0)
 
 	// Try allocation after free
 	err = na1.AllocateTask(task1)
 	assert.NoError(t, err)
-	assert.Equal(t, len(task1.GetContainer().Networks[0].Addresses), 1)
-	assert.Equal(t, len(task1.GetContainer().Networks[1].Addresses), 1)
+	assert.Equal(t, len(task1.Networks[0].Addresses), 1)
+	assert.Equal(t, len(task1.Networks[1].Addresses), 1)
 
-	ip111, _, err = net.ParseCIDR(task1.GetContainer().Networks[0].Addresses[0])
+	ip111, _, err = net.ParseCIDR(task1.Networks[0].Addresses[0])
 	assert.NoError(t, err)
 
-	ip211, _, err = net.ParseCIDR(task1.GetContainer().Networks[1].Addresses[0])
+	ip211, _, err = net.ParseCIDR(task1.Networks[1].Addresses[0])
 	assert.NoError(t, err)
 
 	assert.Equal(t, subnet1.Contains(ip111), true)
@@ -506,8 +498,8 @@ func TestAllocateTaskFree(t *testing.T) {
 
 	err = na1.DeallocateTask(task1)
 	assert.NoError(t, err)
-	assert.Equal(t, len(task1.GetContainer().Networks[0].Addresses), 0)
-	assert.Equal(t, len(task1.GetContainer().Networks[1].Addresses), 0)
+	assert.Equal(t, len(task1.Networks[0].Addresses), 0)
+	assert.Equal(t, len(task1.Networks[1].Addresses), 0)
 
 	// Try to free endpoints on an already freed task
 	err = na1.DeallocateTask(task1)
@@ -519,7 +511,7 @@ func TestServiceAllocate(t *testing.T) {
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
-			Endpoint: &api.Endpoint{},
+			Endpoint: &api.EndpointSpec{},
 		},
 	}
 
@@ -551,7 +543,7 @@ func TestServiceUpdate(t *testing.T) {
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
-			Endpoint: &api.Endpoint{},
+			Endpoint: &api.EndpointSpec{},
 		},
 	}
 

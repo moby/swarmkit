@@ -98,16 +98,44 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 				continue
 			}
 
-			// No container or network configured. Not interested.
-			if t.GetContainer() == nil {
-				continue
+			var s *api.Service
+			if t.ServiceID != "" {
+				a.store.View(func(tx store.ReadTx) {
+					s = store.GetService(tx, t.ServiceID)
+				})
 			}
 
-			if len(t.GetContainer().Spec.Networks) == 0 {
-				continue
-			}
+			// Populate network attachments in the task
+			// based on service spec.
+			a.taskCreateNetworkAttachments(t, s)
 
-			if nc.nwkAllocator.IsTaskAllocated(t) {
+			if taskReadyForNetworkVote(t, s, nc) {
+				if t.Status.State >= api.TaskStateAllocated {
+					continue
+				}
+
+				if a.taskAllocateVote(networkVoter, t.ID) {
+					// If the task is not attached to any network, network
+					// allocators job is done. Immediately cast a vote so
+					// that the task can be moved to ALLOCATED state as
+					// soon as possible.
+					if err := batch.Update(func(tx store.Tx) error {
+						storeT := store.GetTask(tx, t.ID)
+						if storeT == nil {
+							return fmt.Errorf("task %s not found while trying to update state", t.ID)
+						}
+
+						updateTaskStatus(storeT, api.TaskStateAllocated, "allocated")
+
+						if err := store.UpdateTask(tx, storeT); err != nil {
+							return fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
+						}
+
+						return nil
+					}); err != nil {
+						log.G(ctx).WithError(err).Error("error updating task network")
+					}
+				}
 				continue
 			}
 
@@ -226,29 +254,49 @@ func taskDead(t *api.Task) bool {
 	return t.DesiredState > api.TaskStateRunning && t.Status.State > api.TaskStateRunning
 }
 
-func taskEnsureContainer(t *api.Task) {
-	if t.GetContainer() == nil {
-		t.Runtime = &api.Task_Container{
-			Container: &api.Container{},
-		}
-	}
+// taskReadyForNetworkVote checks if the task is ready for a network
+// vote to move it to ALLOCATED state.
+func taskReadyForNetworkVote(t *api.Task, s *api.Service, nc *networkContext) bool {
+	// Task is ready for vote if the following is true:
+	//
+	// Task has no network attached or networks attached but all
+	// of them allocated AND Task's service has no endpoint
+	// configured or service endpoints have been allocated.
+	return (len(t.Networks) == 0 || nc.nwkAllocator.IsTaskAllocated(t)) &&
+		(s == nil || s.Spec.Endpoint == nil || nc.nwkAllocator.IsServiceAllocated(s))
 }
 
-func taskUpdateNetworks(t *api.Task, networks []*api.Container_NetworkAttachment) {
-	taskEnsureContainer(t)
-
-	networksCopy := make([]*api.Container_NetworkAttachment, 0, len(networks))
+func taskUpdateNetworks(t *api.Task, networks []*api.Task_NetworkAttachment) {
+	networksCopy := make([]*api.Task_NetworkAttachment, 0, len(networks))
 	for _, n := range networks {
 		networksCopy = append(networksCopy, n.Copy())
 	}
 
-	t.GetContainer().Networks = networksCopy
+	t.Networks = networksCopy
 }
 
 func taskUpdateEndpoint(t *api.Task, endpoint *api.Endpoint) {
-	taskEnsureContainer(t)
+	t.Endpoint = endpoint.Copy()
+}
 
-	t.GetContainer().Endpoint = endpoint.Copy()
+func (a *Allocator) taskCreateNetworkAttachments(t *api.Task, s *api.Service) {
+	// If service is nil or if task network attachments have
+	// already been filled in no need to do anything else.
+	if s == nil || len(t.Networks) != 0 {
+		return
+	}
+
+	var networks []*api.Task_NetworkAttachment
+	a.store.View(func(tx store.ReadTx) {
+		for _, na := range s.Spec.Networks {
+			n := store.GetNetwork(tx, na.GetNetworkID())
+			if n != nil {
+				networks = append(networks, &api.Task_NetworkAttachment{Network: n})
+			}
+		}
+	})
+
+	taskUpdateNetworks(t, networks)
 }
 
 func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev events.Event) {
@@ -285,11 +333,6 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 		return
 	}
 
-	// No container or network configured. Not interested.
-	if t.GetContainer() == nil {
-		return
-	}
-
 	var s *api.Service
 	if t.ServiceID != "" {
 		a.store.View(func(tx store.ReadTx) {
@@ -309,14 +352,13 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 				return
 			}
 		}
+
+		// Populate network attachments in the task
+		// based on service spec.
+		a.taskCreateNetworkAttachments(t, s)
 	}
 
-	// Task has no network attached and it is created for a
-	// service which has no endpoint configuration or the service
-	// is already allocated. Try to immediately move it to
-	// ALLOCATED state.
-	if len(t.GetContainer().Spec.Networks) == 0 &&
-		(s == nil || s.Spec.Endpoint == nil || nc.nwkAllocator.IsServiceAllocated(s)) {
+	if taskReadyForNetworkVote(t, s, nc) {
 		// If we are already in allocated state, there is
 		// absolutely nothing else to do.
 		if t.Status.State >= api.TaskStateAllocated {
@@ -422,25 +464,19 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sto
 			taskUpdateEndpoint(t, s.Endpoint)
 		}
 
-		networks := make([]*api.Container_NetworkAttachment, 0, len(t.GetContainer().Spec.Networks))
-		for _, na := range t.GetContainer().Spec.Networks {
-			n := store.GetNetwork(tx, na.GetNetworkID())
+		for _, na := range t.Networks {
+			n := store.GetNetwork(tx, na.Network.ID)
 			if n == nil {
-				taskUpdateNetworks(t, nil)
-				return nil, fmt.Errorf("failed to retrieve network %s while allocating task %s", na.GetNetworkID(), t.ID)
+				return nil, fmt.Errorf("failed to retrieve network %s while allocating task %s", na.Network.ID, t.ID)
 			}
 
 			if !nc.nwkAllocator.IsAllocated(n) {
-				taskUpdateNetworks(t, nil)
 				return nil, fmt.Errorf("network %s attached to task %s not allocated yet", n.ID, t.ID)
 			}
 
-			networks = append(networks, &api.Container_NetworkAttachment{Network: n})
 		}
-		taskUpdateNetworks(t, networks)
 
 		if err := nc.nwkAllocator.AllocateTask(t); err != nil {
-			t.GetContainer().Networks = t.GetContainer().Networks[:0]
 			return nil, fmt.Errorf("failed during networktask allocation for task %s: %v", t.ID, err)
 		}
 	}
@@ -459,7 +495,7 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sto
 		}
 	}
 
-	taskUpdateNetworks(storeT, t.GetContainer().Networks)
+	taskUpdateNetworks(storeT, t.Networks)
 	if err := store.UpdateTask(tx, storeT); err != nil {
 		return nil, fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
 	}

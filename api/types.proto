@@ -233,8 +233,6 @@ message ContainerStatus {
 
 	int32 pid = 2 [(gogoproto.customname) = "PID"];
 	int32 exit_code = 3;
-
-	repeated PortConfig exposed_ports = 4;
 }
 
 message TaskStatus {
@@ -332,22 +330,12 @@ message PortConfig {
 	// The port which the application is exposing and is bound to.
 	uint32 port = 3;
 
-	// The exposed port on the host.
-	// If undefined, a random port will be chosen.
-	uint32 host_port = 4;
-}
-
-// Endpoint specified all the network parameters required to
-// correctly discover and load balance a service
-message Endpoint {
-	// A virtual IP is used to address this service in IP layer
-	// that the client can use to send requests to this service. A
-	// DNS A/AAAA query on the service name might return this IP
-	// to the client. This is strictly a logical IP and there may
-	// not be any interfaces assigned this IP address or any route
-	// created for this address.  More than one to accomodate for
-	// both IPv4 and IPv6
-	repeated string virtual_ip = 1 [(gogoproto.customname) = "VirtualIP"];
+	// NodePort specifies the port on which the service is
+	// exposed on all nodes on the cluster. If not specified an
+	// arbitrary port in the node port range is allocated by the
+	// system. If specified it should be within the node port
+	// range and it should be available.
+	uint32 node_port = 4;
 }
 
 // Driver is a generic driver type to be used throughout the API. For now, a

@@ -139,12 +139,8 @@ func (na *NetworkAllocator) IsAllocated(n *api.Network) bool {
 
 // IsTaskAllocated returns if the passed task has it's network resources allocated or not.
 func (na *NetworkAllocator) IsTaskAllocated(t *api.Task) bool {
-	if t.GetContainer() == nil {
-		return false
-	}
-
 	// If Networks is empty there is no way this Task is allocated.
-	if len(t.GetContainer().Networks) == 0 {
+	if len(t.Networks) == 0 {
 		return false
 	}
 
@@ -154,18 +150,18 @@ func (na *NetworkAllocator) IsTaskAllocated(t *api.Task) bool {
 	// allocate for every network or we allocate for none.
 
 	// If the network is not allocated, the task cannot be allocated.
-	localNet, ok := na.networks[t.GetContainer().Networks[0].Network.ID]
+	localNet, ok := na.networks[t.Networks[0].Network.ID]
 	if !ok {
 		return false
 	}
 
 	// Addresses empty. Task is not allocated.
-	if len(t.GetContainer().Networks[0].Addresses) == 0 {
+	if len(t.Networks[0].Addresses) == 0 {
 		return false
 	}
 
 	// The allocated IP address not found in local endpoint state. Not allocated.
-	if _, ok := localNet.endpoints[t.GetContainer().Networks[0].Addresses[0]]; !ok {
+	if _, ok := localNet.endpoints[t.Networks[0].Addresses[0]]; !ok {
 		return false
 	}
 
@@ -190,7 +186,7 @@ func (na *NetworkAllocator) IsServiceAllocated(s *api.Service) bool {
 // AllocateTask allocates all the endpoint resources for all the
 // networks that a task is attached to.
 func (na *NetworkAllocator) AllocateTask(t *api.Task) error {
-	for i, nAttach := range t.GetContainer().Networks {
+	for i, nAttach := range t.Networks {
 		ipam, _, err := na.resolveIPAM(nAttach.Network)
 		if err != nil {
 			return fmt.Errorf("failed to resolve IPAM while allocating : %v", err)
@@ -202,7 +198,7 @@ func (na *NetworkAllocator) AllocateTask(t *api.Task) error {
 		}
 
 		if err := na.allocateNetworkIPs(nAttach, ipam, localNet); err != nil {
-			if err := na.releaseEndpoints(t.GetContainer().Networks[:i]); err != nil {
+			if err := na.releaseEndpoints(t.Networks[:i]); err != nil {
 				log.G(context.TODO()).Errorf("Failed to release IP addresses while rolling back allocation for task %s network %s: %v", t.ID, nAttach.Network.ID, err)
 			}
 			return fmt.Errorf("failed to allocate network IP for task %s network %s: %v", t.ID, nAttach.Network.ID, err)
@@ -215,10 +211,10 @@ func (na *NetworkAllocator) AllocateTask(t *api.Task) error {
 // DeallocateTask releases all the endpoint resources for all the
 // networks that a task is attached to.
 func (na *NetworkAllocator) DeallocateTask(t *api.Task) error {
-	return na.releaseEndpoints(t.GetContainer().Networks)
+	return na.releaseEndpoints(t.Networks)
 }
 
-func (na *NetworkAllocator) releaseEndpoints(networks []*api.Container_NetworkAttachment) error {
+func (na *NetworkAllocator) releaseEndpoints(networks []*api.Task_NetworkAttachment) error {
 	for _, nAttach := range networks {
 		ipam, _, err := na.resolveIPAM(nAttach.Network)
 		if err != nil {
@@ -259,7 +255,7 @@ func (na *NetworkAllocator) releaseEndpoints(networks []*api.Container_NetworkAt
 }
 
 // allocate the endpoint IP addresses for a single network attachment of the task.
-func (na *NetworkAllocator) allocateNetworkIPs(nAttach *api.Container_NetworkAttachment, ipam ipamapi.Ipam, localNet *network) error {
+func (na *NetworkAllocator) allocateNetworkIPs(nAttach *api.Task_NetworkAttachment, ipam ipamapi.Ipam, localNet *network) error {
 	var ip *net.IPNet
 
 	addresses := nAttach.Addresses
