@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/manager/state/raft"
 	raftutils "github.com/docker/swarm-v2/manager/state/raft/testutils"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,17 +15,16 @@ func TestRaftSnapshot(t *testing.T) {
 	t.Parallel()
 
 	// Bring up a 3 node cluster
-	var zero uint64
-	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig, raft.NewNodeOptions{SnapshotInterval: 9, LogEntriesForSlowFollowers: &zero})
+	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig, &api.RaftConfig{SnapshotInterval: 9, LogEntriesForSlowFollowers: 0})
 	defer raftutils.TeardownCluster(t, nodes)
 
-	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7", "id8", "id9", "id10", "id11", "id12", "id13"}
+	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7", "id8", "id9", "id10", "id11", "id12"}
 	values := make([]*api.Node, len(nodeIDs))
 	snapshotFilenames := make(map[uint64]string, 4)
 
-	// Propose 4 values
+	// Propose 3 values
 	var err error
-	for i, nodeID := range nodeIDs[:4] {
+	for i, nodeID := range nodeIDs[:3] {
 		values[i], err = raftutils.ProposeValue(t, nodes[1], nodeID)
 		assert.NoError(t, err, "failed to propose value")
 	}
@@ -38,8 +36,8 @@ func TestRaftSnapshot(t *testing.T) {
 		assert.Len(t, dirents, 0)
 	}
 
-	// Propose a 5th value
-	values[4], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[4])
+	// Propose a 4th value
+	values[3], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[3])
 	assert.NoError(t, err, "failed to propose value")
 
 	// All nodes should now have a snapshot file
@@ -88,10 +86,10 @@ func TestRaftSnapshot(t *testing.T) {
 	assert.Equal(t, stripMembers(nodes[1].GetMemberlist()), stripMembers(nodes[4].GetMemberlist()))
 
 	// All nodes should have all the data
-	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:5], values)
+	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:4], values)
 
 	// Propose more values to provoke a second snapshot
-	for i := 5; i != len(nodeIDs); i++ {
+	for i := 4; i != len(nodeIDs); i++ {
 		values[i], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[i])
 		assert.NoError(t, err, "failed to propose value")
 	}
@@ -106,11 +104,7 @@ func TestRaftSnapshot(t *testing.T) {
 			if len(dirents) != 1 {
 				return fmt.Errorf("expected 1 snapshot, found %d", len(dirents))
 			}
-			if nodeID == 4 {
-				if dirents[0].Name() != snapshotFilenames[nodeID] {
-					return fmt.Errorf("unexpected snapshot change from %s to %s", snapshotFilenames[nodeID], dirents[0].Name())
-				}
-			} else if dirents[0].Name() == snapshotFilenames[nodeID] {
+			if dirents[0].Name() == snapshotFilenames[nodeID] {
 				return fmt.Errorf("snapshot %s did get replaced", snapshotFilenames[nodeID])
 			}
 			return nil
@@ -125,16 +119,15 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	t.Parallel()
 
 	// Bring up a 3 node cluster
-	var zero uint64
-	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig, raft.NewNodeOptions{SnapshotInterval: 10, LogEntriesForSlowFollowers: &zero})
+	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig, &api.RaftConfig{SnapshotInterval: 10, LogEntriesForSlowFollowers: 0})
 	defer raftutils.TeardownCluster(t, nodes)
 
-	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7", "id8"}
+	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7"}
 	values := make([]*api.Node, len(nodeIDs))
 
-	// Propose 4 values
+	// Propose 3 values
 	var err error
-	for i, nodeID := range nodeIDs[:4] {
+	for i, nodeID := range nodeIDs[:3] {
 		values[i], err = raftutils.ProposeValue(t, nodes[1], nodeID)
 		assert.NoError(t, err, "failed to propose value")
 	}
@@ -143,8 +136,8 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	nodes[3].Server.Stop()
 	nodes[3].Shutdown()
 
-	// Propose a 5th value before the snapshot
-	values[4], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[4])
+	// Propose a 4th value before the snapshot
+	values[3], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[3])
 	assert.NoError(t, err, "failed to propose value")
 
 	// Remaining nodes shouldn't have snapshot files yet
@@ -172,10 +165,10 @@ func TestRaftSnapshotRestart(t *testing.T) {
 			return nil
 		}))
 	}
-	raftutils.CheckValuesOnNodes(t, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:5], values[:5])
+	raftutils.CheckValuesOnNodes(t, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:4], values[:4])
 
-	// Propose a 6th value
-	values[5], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[5])
+	// Propose a 5th value
+	values[4], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[4])
 
 	// Add another node to the cluster
 	nodes[5] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
@@ -196,7 +189,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].StateDir, "snap"))
 	assert.NoError(t, err)
 	assert.Len(t, dirents, 1)
-	raftutils.CheckValuesOnNodes(t, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:6], values[:6])
+	raftutils.CheckValuesOnNodes(t, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:5], values[:5])
 
 	// It should know about the other nodes, including the one that was just added
 	stripMembers := func(memberList map[uint64]*api.Member) map[uint64]*api.Member {
@@ -222,10 +215,10 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Propose yet another value, to make sure the rejoined node is still
 	// receiving new logs
-	values[6], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[6])
+	values[5], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[5])
 
 	// All nodes should have all the data
-	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:7], values[:7])
+	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:6], values[:6])
 
 	// Restart node 3 again. It should load the snapshot.
 	nodes[3].Server.Stop()
@@ -235,9 +228,9 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	assert.Len(t, nodes[3].GetMemberlist(), 5)
 	assert.Equal(t, stripMembers(nodes[1].GetMemberlist()), stripMembers(nodes[3].GetMemberlist()))
-	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:7], values[:7])
+	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:6], values[:6])
 
 	// Propose again. Just to check consensus after this latest restart.
-	values[7], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[7])
+	values[6], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[6])
 	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs, values)
 }

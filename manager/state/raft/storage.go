@@ -180,7 +180,7 @@ func (n *Node) readWAL(ctx context.Context, snapshot *raftpb.Snapshot, forceNewC
 	return nil
 }
 
-func (n *Node) saveSnapshot(snapshot raftpb.Snapshot) error {
+func (n *Node) saveSnapshot(snapshot raftpb.Snapshot, keepOldSnapshots uint64) error {
 	err := n.wal.SaveSnapshot(walpb.Snapshot{
 		Index: snapshot.Metadata.Index,
 		Term:  snapshot.Metadata.Term,
@@ -225,8 +225,11 @@ func (n *Node) saveSnapshot(snapshot raftpb.Snapshot) error {
 		afterCurSnapshot bool
 		removeErr        error
 	)
-	for _, snapFile := range snapshots {
+	for i, snapFile := range snapshots {
 		if afterCurSnapshot {
+			if uint64(len(snapshots)-i) <= keepOldSnapshots {
+				return removeErr
+			}
 			err := os.Remove(filepath.Join(n.snapDir(), snapFile))
 			if err != nil && removeErr == nil {
 				removeErr = err
@@ -239,7 +242,7 @@ func (n *Node) saveSnapshot(snapshot raftpb.Snapshot) error {
 	return removeErr
 }
 
-func (n *Node) doSnapshot() {
+func (n *Node) doSnapshot(raftConfig *api.RaftConfig) {
 	snapshot := api.Snapshot{Version: api.Snapshot_V0}
 	for _, member := range n.cluster.Members() {
 		snapshot.Membership.Members = append(snapshot.Membership.Members,
@@ -280,14 +283,14 @@ func (n *Node) doSnapshot() {
 		}
 		snap, err := n.raftStore.CreateSnapshot(appliedIndex, &n.confState, d)
 		if err == nil {
-			if err := n.saveSnapshot(snap); err != nil {
+			if err := n.saveSnapshot(snap, raftConfig.KeepOldSnapshots); err != nil {
 				n.Config.Logger.Error(err)
 				return
 			}
 			snapshotIndex = appliedIndex
 
-			if appliedIndex > n.logEntriesForSlowFollowers {
-				err := n.raftStore.Compact(appliedIndex - n.logEntriesForSlowFollowers)
+			if appliedIndex > raftConfig.LogEntriesForSlowFollowers {
+				err := n.raftStore.Compact(appliedIndex - raftConfig.LogEntriesForSlowFollowers)
 				if err != nil && err != raft.ErrCompacted {
 					n.Config.Logger.Error(err)
 				}
