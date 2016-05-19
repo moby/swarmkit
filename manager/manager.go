@@ -198,6 +198,7 @@ func (m *Manager) Run(ctx context.Context) error {
 							Orchestration: api.OrchestrationConfig{
 								TaskHistoryRetentionLimit: defaultTaskHistoryRetentionLimit,
 							},
+							Raft: raft.DefaultRaftConfig(),
 						},
 					})
 					return nil
