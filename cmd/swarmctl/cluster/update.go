@@ -59,6 +59,14 @@ var (
 						}
 					}
 				}
+
+				if flags.Changed("taskhistory") {
+					taskHistory, err := flags.GetInt64("taskhistory")
+					if err != nil {
+						return err
+					}
+					spec.Orchestration.TaskHistoryRetentionLimit = taskHistory
+				}
 			}
 
 			r, err := c.UpdateCluster(common.Context(cmd), &api.UpdateClusterRequest{
@@ -79,4 +87,5 @@ func init() {
 	updateCmd.Flags().StringP("file", "f", "", "Spec to use")
 	// TODO(aaronl): Acceptance policy will change later.
 	updateCmd.Flags().StringSlice("autoaccept", nil, "Roles to automatically issue certificates for")
+	updateCmd.Flags().Int64("taskhistory", 0, "Number of historic task entries to retain per instance or node")
 }
