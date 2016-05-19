@@ -2,7 +2,6 @@ package raft
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
@@ -53,6 +52,8 @@ var (
 	ErrCannotRemoveMember = errors.New("raft: member cannot be removed, because removing it may result in loss of quorum")
 	// ErrMemberRemoved is thrown when a node was removed from the cluster
 	ErrMemberRemoved = errors.New("raft: member was removed from the cluster")
+	// ErrNoClusterLeader is thrown when the cluster has no elected leader
+	ErrNoClusterLeader = errors.New("raft: no elected cluster leader")
 )
 
 // LeadershipState indicates whether the node is a leader or follower.
@@ -591,7 +592,7 @@ func (n *Node) LeaderAddr() (string, error) {
 	ms := n.cluster.Members()
 	l := ms[n.Leader()]
 	if l == nil {
-		return "", fmt.Errorf("incorrect cluster state")
+		return "", ErrNoClusterLeader
 	}
 	return l.Addr, nil
 }
