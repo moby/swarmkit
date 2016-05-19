@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,22 @@ func TestTaskHistory(t *testing.T) {
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	taskReaper := NewTaskReaper(s, 2)
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		store.CreateCluster(tx, &api.Cluster{
+			ID: identity.NewID(),
+			Spec: api.ClusterSpec{
+				Annotations: api.Annotations{
+					Name: store.DefaultClusterName,
+				},
+				Orchestration: api.OrchestrationConfig{
+					TaskHistoryRetentionLimit: 2,
+				},
+			},
+		})
+		return nil
+	}))
+
+	taskReaper := NewTaskReaper(s)
 	defer taskReaper.Stop()
 	orchestrator := New(s)
 	defer orchestrator.Stop()

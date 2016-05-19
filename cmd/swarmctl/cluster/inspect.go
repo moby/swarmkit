@@ -23,6 +23,8 @@ func printClusterSummary(cluster *api.Cluster) {
 		fmt.Fprintf(w, "  Autoaccept agents\t: %v\n", cluster.Spec.AcceptancePolicy.Autoaccept[ca.AgentRole])
 		fmt.Fprintf(w, "  Autoaccept managers\t: %v\n", cluster.Spec.AcceptancePolicy.Autoaccept[ca.ManagerRole])
 	}
+	fmt.Fprintf(w, "Orchestration settings:\n")
+	fmt.Fprintf(w, "  Task history entries: %d\n", cluster.Spec.Orchestration.TaskHistoryRetentionLimit)
 }
 
 var (

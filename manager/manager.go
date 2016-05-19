@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	// defaultTaskHistory is the number of tasks to keep.
-	defaultTaskHistory = 10
+	// defaultTaskHistoryRetentionLimit is the number of tasks to keep.
+	defaultTaskHistoryRetentionLimit = 10
 )
 
 // Config is used to tune the Manager.
@@ -195,6 +195,9 @@ func (m *Manager) Run(ctx context.Context) error {
 								Name: store.DefaultClusterName,
 							},
 							AcceptancePolicy: ca.DefaultAcceptancePolicy(),
+							Orchestration: api.OrchestrationConfig{
+								TaskHistoryRetentionLimit: defaultTaskHistoryRetentionLimit,
+							},
 						},
 					})
 					return nil
@@ -202,7 +205,7 @@ func (m *Manager) Run(ctx context.Context) error {
 
 				m.orchestrator = orchestrator.New(s)
 				m.fillOrchestrator = orchestrator.NewFillOrchestrator(s)
-				m.taskReaper = orchestrator.NewTaskReaper(s, defaultTaskHistory)
+				m.taskReaper = orchestrator.NewTaskReaper(s)
 				m.scheduler = scheduler.New(s)
 
 				// TODO(stevvooe): Allocate a context that can be used to
