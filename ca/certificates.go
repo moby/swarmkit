@@ -109,7 +109,7 @@ func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPa
 		log.Debugf("issued TLS credentials with role: %s.", role)
 	} else {
 		// Get the remote manager to issue a CA signed certificate for this node
-		signedCert, err = getRemoteSignedCertificate(ctx, csr, role, rca.Pool, picker)
+		signedCert, err = GetRemoteSignedCertificate(ctx, csr, role, rca.Pool, picker)
 		if err != nil {
 			return nil, err
 		}
@@ -401,7 +401,9 @@ func generateNewCSR() (csr, key []byte, err error) {
 	return
 }
 
-func getRemoteSignedCertificate(ctx context.Context, csr []byte, role string, rootCAPool *x509.CertPool, picker *picker.Picker) ([]byte, error) {
+// GetRemoteSignedCertificate submits a CSR together with the intended role to a remote CA server address
+// available through a picker, and that is part of a CA identified by a specific certificate pool.
+func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role string, rootCAPool *x509.CertPool, picker *picker.Picker) ([]byte, error) {
 	if rootCAPool == nil {
 		return nil, fmt.Errorf("valid root CA pool required")
 	}

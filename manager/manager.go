@@ -32,7 +32,7 @@ const (
 
 // Config is used to tune the Manager.
 type Config struct {
-	SecurityConfig *ca.ManagerSecurityConfig
+	SecurityConfig *ca.SecurityConfig
 
 	ListenProto string
 	ListenAddr  string

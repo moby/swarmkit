@@ -21,7 +21,7 @@ type Server struct {
 	ctx            context.Context
 	cancel         func()
 	store          *store.MemoryStore
-	securityConfig *ManagerSecurityConfig
+	securityConfig *SecurityConfig
 }
 
 // DefaultAcceptancePolicy returns the default acceptance policy.
@@ -32,7 +32,7 @@ func DefaultAcceptancePolicy() api.AcceptancePolicy {
 }
 
 // NewServer creates a CA API server.
-func NewServer(store *store.MemoryStore, securityConfig *ManagerSecurityConfig) *Server {
+func NewServer(store *store.MemoryStore, securityConfig *SecurityConfig) *Server {
 	return &Server{
 		store:          store,
 		securityConfig: securityConfig,

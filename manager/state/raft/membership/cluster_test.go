@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"testing"
 	"time"
 
@@ -23,14 +22,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var securityConfig *ca.ManagerSecurityConfig
+var securityConfig *ca.SecurityConfig
 
 func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
 	logrus.SetOutput(ioutil.Discard)
-	var tmpDir string
-	_, securityConfig, tmpDir, _ = cautils.GenerateAgentAndManagerSecurityConfig(1)
-	defer os.RemoveAll(tmpDir)
+	tc := cautils.NewTestCA(nil, cautils.AutoAcceptPolicy())
+	defer tc.Stop()
+
+	securityConfig, _ = tc.NewNodeConfig(ca.ManagerRole)
 }
 
 func newTestMember(id uint64) *membership.Member {
