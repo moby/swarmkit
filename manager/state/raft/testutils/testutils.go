@@ -17,6 +17,7 @@ import (
 	etcdraft "github.com/coreos/etcd/raft"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
+	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state/raft"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/pivotal-golang/clock/fakeclock"
@@ -208,10 +209,6 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, securityConfig *ca.
 		panic("more than one optional argument provided")
 	}
 	if len(opts) == 1 {
-		if opts[0].SnapshotInterval != 0 {
-			newNodeOpts.SnapshotInterval = opts[0].SnapshotInterval
-		}
-		newNodeOpts.LogEntriesForSlowFollowers = opts[0].LogEntriesForSlowFollowers
 		newNodeOpts.JoinAddr = opts[0].JoinAddr
 	}
 
@@ -224,12 +221,26 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, securityConfig *ca.
 
 // NewInitNode creates a new raft node initiating the cluster
 // for other members to join
-func NewInitNode(t *testing.T, securityConfig *ca.ManagerSecurityConfig, opts ...raft.NewNodeOptions) (*TestNode, *fakeclock.FakeClock) {
+func NewInitNode(t *testing.T, securityConfig *ca.ManagerSecurityConfig, raftConfig *api.RaftConfig, opts ...raft.NewNodeOptions) (*TestNode, *fakeclock.FakeClock) {
 	ctx := context.Background()
 	clockSource := fakeclock.NewFakeClock(time.Now())
 	n := NewNode(t, clockSource, securityConfig, opts...)
 
 	go n.Run(ctx)
+
+	if raftConfig != nil {
+		assert.NoError(t, n.MemoryStore().Update(func(tx store.Tx) error {
+			return store.CreateCluster(tx, &api.Cluster{
+				ID: identity.NewID(),
+				Spec: api.ClusterSpec{
+					Annotations: api.Annotations{
+						Name: store.DefaultClusterName,
+					},
+					Raft: *raftConfig,
+				},
+			})
+		}))
+	}
 
 	raft.Register(n.Server, n.Node)
 
@@ -295,12 +306,21 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 }
 
 // NewRaftCluster creates a new raft cluster with 3 nodes for testing
-func NewRaftCluster(t *testing.T, securityConfig *ca.ManagerSecurityConfig, opts ...raft.NewNodeOptions) (map[uint64]*TestNode, *fakeclock.FakeClock) {
-	var clockSource *fakeclock.FakeClock
+func NewRaftCluster(t *testing.T, securityConfig *ca.ManagerSecurityConfig, config ...*api.RaftConfig) (map[uint64]*TestNode, *fakeclock.FakeClock) {
+	var (
+		raftConfig  *api.RaftConfig
+		clockSource *fakeclock.FakeClock
+	)
+	if len(config) > 1 {
+		panic("more than one optional argument provided")
+	}
+	if len(config) == 1 {
+		raftConfig = config[0]
+	}
 	nodes := make(map[uint64]*TestNode)
-	nodes[1], clockSource = NewInitNode(t, securityConfig, opts...)
-	AddRaftNode(t, clockSource, nodes, securityConfig, opts...)
-	AddRaftNode(t, clockSource, nodes, securityConfig, opts...)
+	nodes[1], clockSource = NewInitNode(t, securityConfig, raftConfig)
+	AddRaftNode(t, clockSource, nodes, securityConfig)
+	AddRaftNode(t, clockSource, nodes, securityConfig)
 	return nodes, clockSource
 }
 
