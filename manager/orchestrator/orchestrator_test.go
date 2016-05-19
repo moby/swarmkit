@@ -122,11 +122,11 @@ func TestOrchestrator(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	observedDeletion1 := watchDeadTask(t, watch)
+	observedDeletion1 := watchShutdownTask(t, watch)
 	assert.Equal(t, observedDeletion1.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedDeletion1.Annotations.Name, "name2")
 
-	observedDeletion2 := watchDeadTask(t, watch)
+	observedDeletion2 := watchShutdownTask(t, watch)
 	assert.Equal(t, observedDeletion2.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedDeletion2.Annotations.Name, "name2")
 
@@ -256,11 +256,11 @@ func watchTaskUpdate(t *testing.T, watch chan events.Event) *api.Task {
 	}
 }
 
-func watchDeadTask(t *testing.T, watch chan events.Event) *api.Task {
+func watchShutdownTask(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
 		case event := <-watch:
-			if task, ok := event.(state.EventUpdateTask); ok && task.Task.DesiredState == api.TaskStateDead {
+			if task, ok := event.(state.EventUpdateTask); ok && task.Task.DesiredState == api.TaskStateShutdown {
 				return task.Task
 			}
 			if _, ok := event.(state.EventCreateTask); ok {

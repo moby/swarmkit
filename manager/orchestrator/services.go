@@ -148,7 +148,7 @@ func (o *Orchestrator) removeTasks(ctx context.Context, batch *store.Batch, serv
 			// TODO(aaronl): optimistic update?
 			t = store.GetTask(tx, t.ID)
 			if t != nil {
-				t.DesiredState = api.TaskStateDead
+				t.DesiredState = api.TaskStateShutdown
 				return store.UpdateTask(tx, t)
 			}
 			return nil
