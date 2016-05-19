@@ -3,10 +3,13 @@ package raft
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -193,7 +196,47 @@ func (n *Node) saveSnapshot(snapshot raftpb.Snapshot) error {
 	if err != nil {
 		return err
 	}
-	return nil
+
+	// Delete any older snapshots
+	curSnapshot := fmt.Sprintf("%016x-%016x%s", snapshot.Metadata.Term, snapshot.Metadata.Index, ".snap")
+
+	dirents, err := ioutil.ReadDir(n.snapDir())
+	if err != nil {
+		return err
+	}
+
+	var snapshots []string
+	for _, dirent := range dirents {
+		if strings.HasSuffix(dirent.Name(), ".snap") {
+			snapshots = append(snapshots, dirent.Name())
+		}
+	}
+
+	// Sort snapshot filenames in reverse lexical order
+	sort.Sort(sort.Reverse(sort.StringSlice(snapshots)))
+
+	// Ignore any snapshots that are older than the current snapshot.
+	// Delete the others. Rather than doing lexical comparisons, we look
+	// at what exists before/after the current snapshot in the slice.
+	// This means that if the current snapshot doesn't appear in the
+	// directory for some strange reason, we won't delete anything, which
+	// is the safe behavior.
+	var (
+		afterCurSnapshot bool
+		removeErr        error
+	)
+	for _, snapFile := range snapshots {
+		if afterCurSnapshot {
+			err := os.Remove(filepath.Join(n.snapDir(), snapFile))
+			if err != nil && removeErr == nil {
+				removeErr = err
+			}
+		} else if snapFile == curSnapshot {
+			afterCurSnapshot = true
+		}
+	}
+
+	return removeErr
 }
 
 func (n *Node) doSnapshot() {
