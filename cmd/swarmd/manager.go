@@ -61,7 +61,7 @@ var managerCmd = &cobra.Command{
 			p = picker.NewPicker(managerAddr, managers)
 		}
 
-		securityConfig, err := ca.LoadOrCreateManagerSecurityConfig(ctx, certDir, token, p)
+		securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, token, p)
 		if err != nil {
 			return err
 		}

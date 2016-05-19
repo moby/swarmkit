@@ -19,14 +19,11 @@ import (
 )
 
 const (
-	rootCACertFilename     = "swarm-root-ca.crt"
-	rootCAKeyFilename      = "swarm-root-ca.key"
-	managerTLSCertFilename = "swarm-manager.crt"
-	managerTLSKeyFilename  = "swarm-manager.key"
-	managerCSRFilename     = "swarm-manager.csr"
-	agentTLSCertFilename   = "swarm-worker.crt"
-	agentTLSKeyFilename    = "swarm-worker.key"
-	agentCSRFilename       = "swarm-worker.csr"
+	rootCACertFilename  = "swarm-root-ca.crt"
+	rootCAKeyFilename   = "swarm-root-ca.key"
+	nodeTLSCertFilename = "swarm-node.crt"
+	nodeTLSKeyFilename  = "swarm-node.key"
+	nodeCSRFilename     = "swarm-node.csr"
 )
 
 const (
@@ -39,15 +36,9 @@ const (
 	CARole = "swarm-ca"
 )
 
-// AgentSecurityConfig is used to configure the security params of the agents
-type AgentSecurityConfig struct {
-	RootCA
-
-	ClientTLSCreds credentials.TransportAuthenticator
-}
-
-// ManagerSecurityConfig is used to configure the CA stack of the manager
-type ManagerSecurityConfig struct {
+// SecurityConfig is used to represent a node's security configuration. It includes information about
+// the RootCA and ServerTLSCreds/ClientTLSCreds transport authenticators to be used for MTLS
+type SecurityConfig struct {
 	RootCA
 
 	ServerTLSCreds credentials.TransportAuthenticator
@@ -76,45 +67,40 @@ var DefaultPolicy = func() *cfconfig.Signing {
 
 // SecurityConfigPaths is used as a helper to hold all the paths of security relevant files
 type SecurityConfigPaths struct {
-	Agent, Manager, RootCA CertPaths
+	Node, RootCA CertPaths
 }
 
 // NewConfigPaths returns the absolute paths to all of the different types of files
 func NewConfigPaths(baseCertDir string) *SecurityConfigPaths {
 	return &SecurityConfigPaths{
-		Agent: CertPaths{
-			Cert: filepath.Join(baseCertDir, agentTLSCertFilename),
-			Key:  filepath.Join(baseCertDir, agentTLSKeyFilename),
-			CSR:  filepath.Join(baseCertDir, agentCSRFilename)},
-		Manager: CertPaths{
-			Cert: filepath.Join(baseCertDir, managerTLSCertFilename),
-			Key:  filepath.Join(baseCertDir, managerTLSKeyFilename),
-			CSR:  filepath.Join(baseCertDir, managerCSRFilename)},
+		Node: CertPaths{
+			Cert: filepath.Join(baseCertDir, nodeTLSCertFilename),
+			Key:  filepath.Join(baseCertDir, nodeTLSKeyFilename),
+			CSR:  filepath.Join(baseCertDir, nodeCSRFilename)},
 		RootCA: CertPaths{
 			Cert: filepath.Join(baseCertDir, rootCACertFilename),
 			Key:  filepath.Join(baseCertDir, rootCAKeyFilename)},
 	}
 }
 
-// LoadOrCreateAgentSecurityConfig encapsulates the security logic behind starting or joining a cluster
-// as an Agent. Every agent requires at least a set of TLS certificates with which to join
-// the cluster.
-func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash string, picker *picker.Picker) (*AgentSecurityConfig, error) {
+// LoadOrCreateSecurityConfig encapsulates the security logic behind starting or joining a cluster.
+// Every node requires at least a set of TLS certificates with which to join the cluster with.
+// In the case of a manager, these certificates will be used both for client and server credentials.
+func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash string, picker *picker.Picker) (*SecurityConfig, error) {
 	paths := NewConfigPaths(baseCertDir)
 
 	var (
-		rootCA         RootCA
-		clientTLSCreds credentials.TransportAuthenticator
-		err            error
+		rootCA                         RootCA
+		serverTLSCreds, clientTLSCreds credentials.TransportAuthenticator
+		err                            error
 	)
 
-	// Check if we already have a CA certificate on disk. We need a CA to have
-	// a valid SecurityConfig
+	// Check if we already have a CA certificate on disk. We need a CA to have a valid SecurityConfig
 	rootCA, err = GetLocalRootCA(paths.RootCA)
 	if err != nil {
 		log.Debugf("no valid local CA certificate found: %v", err)
 
-		// We were provided with a remote manager. Lets try retreiving the remote CA
+		// Get the remote CA certificate, verify integrity with the hash provided
 		rootCA, err = GetRemoteCA(ctx, caHash, picker)
 		if err != nil {
 			return nil, err
@@ -126,113 +112,42 @@ func LoadOrCreateAgentSecurityConfig(ctx context.Context, baseCertDir, caHash st
 		}
 
 		log.Debugf("downloaded remote CA certificate.")
-	} else {
-		log.Debugf("loaded local CA certificate from: %v", paths.RootCA.Cert)
-	}
-
-	// At this point we either had, or successfully retrieved a CA.
-	// The next step is to try to load our certificates.
-	clientTLSCreds, _, err = loadTLSCreds(rootCA, paths.Agent)
-	if err != nil {
-		log.Debugf("no valid local TLS credentials found: %v", err)
-		// There was an error loading our Credentials, let's get a new certificate reissued
-		// Contact the remote CA, get a new certificate issued and save it to disk
-		tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(ctx, paths.Agent, AgentRole, picker)
-		if err != nil {
-			return nil, err
-		}
-
-		// Create a TLSConfig to be used when this manager connects as a client to another remote manager
-		clientTLSCreds, err = rootCA.NewClientTLSCredentials(tlsKeyPair, ManagerRole)
-		if err != nil {
-			return nil, err
-		}
-
-		log.Debugf("new TLS credentials generated: %s.", paths.Agent.Cert)
-	} else {
-		log.Debugf("loaded local TLS credentials: %v", paths.Agent.Cert)
-	}
-
-	return &AgentSecurityConfig{ClientTLSCreds: clientTLSCreds, RootCA: rootCA}, nil
-}
-
-// LoadOrCreateManagerSecurityConfig encapsulates the security logic behind starting or joining a cluster
-// as a Manager. Every manager requires at least a set of TLS certificates with which to serve
-// the cluster and the dispatcher's server. If no manager addresses are provided, we assume we're
-// creating a new Cluster, and this manager will have to generate its own self-signed CA.
-func LoadOrCreateManagerSecurityConfig(ctx context.Context, baseCertDir, caHash string, picker *picker.Picker) (*ManagerSecurityConfig, error) {
-	paths := NewConfigPaths(baseCertDir)
-
-	var (
-		rootCA                         RootCA
-		serverTLSCreds, clientTLSCreds credentials.TransportAuthenticator
-		err                            error
-	)
-
-	// Check if we already have a CA certificate on disk. We need a CA to have
-	// a valid SecurityConfig
-	rootCA, err = GetLocalRootCA(paths.RootCA)
-	if err != nil {
-		log.Debugf("no valid local CA certificate found: %v", err)
-
-		// We have no CA and no remote managers are being passed in, means we're creating a new cluster
-		// Create our new RootCA and write everything to disk
-		if picker == nil {
-			rootCA, err = CreateAndWriteRootCA(rootCN, paths.RootCA)
-			if err != nil {
-				return nil, err
-			}
-			log.Debugf("generating a new CA with CN=%s, using a %d bit %s key.", rootCN, RootKeySize, RootKeyAlgo)
-		} else {
-			// If we've been passed the address of a remote manager to join, attempt to retrieve the remote
-			// root CA details
-			rootCA, err = GetRemoteCA(ctx, caHash, picker)
-			if err != nil {
-				return nil, err
-			}
-
-			// Save root CA certificate to disk
-			if err = saveRootCA(rootCA, paths.RootCA); err != nil {
-				return nil, err
-			}
-
-			log.Debugf("downloaded remote CA certificate.")
-		}
 
 	} else {
 		log.Debugf("loaded local CA certificate: %s.", paths.RootCA.Cert)
 	}
 
-	// At this point we either fully boostraped the first Manager, or successfully retrieved a CA.
+	// At this point we've successfully loaded the CA details from disk, or successfully
+	// downloaded them remotely.
 	// The next step is to try to load our certificates.
-	clientTLSCreds, serverTLSCreds, err = loadTLSCreds(rootCA, paths.Manager)
+	clientTLSCreds, serverTLSCreds, err = loadTLSCreds(rootCA, paths.Node)
 	if err != nil {
 		log.Debugf("no valid local TLS credentials found: %v", err)
 
-		// There was an error loading our Credentials, let's get a new certificate reissued
-		// Contact the remote CA, get a new certificate issued and save it to disk
-		tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(ctx, paths.Manager, ManagerRole, picker)
+		// There was an error loading our Credentials, let's get a new certificate issued
+		tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(ctx, paths.Node, AgentRole, picker)
 		if err != nil {
 			return nil, err
 		}
 
-		// Create the TLS Credentials for this manager
+		// Create the Server TLS Credentials for this node. These will not be used by agents.
 		serverTLSCreds, err = rootCA.NewServerTLSCredentials(tlsKeyPair)
 		if err != nil {
 			return nil, err
 		}
 
-		// Create a TLSConfig to be used when this manager connects as a client to another remote manager
+		// Create a TLSConfig to be used when this node connects as a client to another remote node.
+		// We're using ManagerRole as remote serverName for TLS host verification
 		clientTLSCreds, err = rootCA.NewClientTLSCredentials(tlsKeyPair, ManagerRole)
 		if err != nil {
 			return nil, err
 		}
-		log.Debugf("new TLS credentials generated: %s.", paths.Manager.Cert)
+		log.Debugf("new TLS credentials generated: %s.", paths.Node.Cert)
 	} else {
-		log.Debugf("loaded local TLS credentials: %s.", paths.Manager.Cert)
+		log.Debugf("loaded local TLS credentials: %s.", paths.Node.Cert)
 	}
 
-	return &ManagerSecurityConfig{RootCA: rootCA, ServerTLSCreds: serverTLSCreds, ClientTLSCreds: clientTLSCreds}, nil
+	return &SecurityConfig{RootCA: rootCA, ServerTLSCreds: serverTLSCreds, ClientTLSCreds: clientTLSCreds}, nil
 }
 
 func loadTLSCreds(rootCA RootCA, paths CertPaths) (credentials.TransportAuthenticator, credentials.TransportAuthenticator, error) {
@@ -275,13 +190,13 @@ func loadTLSCreds(rootCA RootCA, paths CertPaths) (credentials.TransportAuthenti
 		return nil, nil, err
 	}
 
-	// Load the manager Certificates as server credentials
+	// Load the Certificates as server credentials
 	serverTLSCreds, err := rootCA.NewServerTLSCredentials(&keyPair)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Load the manager Certificates also as client credentials.
+	// Load the Certificates also as client credentials.
 	// Both Agents and Managers always connect to remote Managers,
 	// so ServerName is always set to ManagerRole here.
 	clientTLSCreds, err := rootCA.NewClientTLSCredentials(&keyPair, ManagerRole)

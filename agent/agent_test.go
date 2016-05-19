@@ -1,12 +1,12 @@
 package agent
 
 import (
-	"os"
 	"testing"
 	"time"
 
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/picker"
 	"github.com/stretchr/testify/assert"
@@ -50,14 +50,16 @@ func TestAgent(t *testing.T) {
 }
 
 func TestAgentStartStop(t *testing.T) {
-	agentSecurityConfigs, _, tmpDir, err := testutils.GenerateAgentAndManagerSecurityConfig(1)
+	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	defer tc.Stop()
+
+	agentSecurityConfig, err := tc.NewNodeConfig(ca.AgentRole)
 	assert.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
 
 	agent, err := New(&Config{
 		Executor:       &NoopExecutor{},
 		Managers:       picker.NewRemotes("localhost:4949"),
-		SecurityConfig: agentSecurityConfigs[0],
+		SecurityConfig: agentSecurityConfig,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, agent)

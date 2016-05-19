@@ -183,7 +183,7 @@ func recycleWrappedListener(old *wrappedListener) *wrappedListener {
 }
 
 // NewNode creates a new raft node to use for tests
-func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, securityConfig *ca.ManagerSecurityConfig, opts ...raft.NewNodeOptions) *TestNode {
+func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, securityConfig *ca.SecurityConfig, opts ...raft.NewNodeOptions) *TestNode {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "can't bind to raft service port")
 	wrappedListener := newWrappedListener(l)
@@ -221,7 +221,7 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, securityConfig *ca.
 
 // NewInitNode creates a new raft node initiating the cluster
 // for other members to join
-func NewInitNode(t *testing.T, securityConfig *ca.ManagerSecurityConfig, raftConfig *api.RaftConfig, opts ...raft.NewNodeOptions) (*TestNode, *fakeclock.FakeClock) {
+func NewInitNode(t *testing.T, securityConfig *ca.SecurityConfig, raftConfig *api.RaftConfig, opts ...raft.NewNodeOptions) (*TestNode, *fakeclock.FakeClock) {
 	ctx := context.Background()
 	clockSource := fakeclock.NewFakeClock(time.Now())
 	n := NewNode(t, clockSource, securityConfig, opts...)
@@ -253,7 +253,7 @@ func NewInitNode(t *testing.T, securityConfig *ca.ManagerSecurityConfig, raftCon
 }
 
 // NewJoinNode creates a new raft node joining an existing cluster
-func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, securityConfig *ca.ManagerSecurityConfig, opts ...raft.NewNodeOptions) *TestNode {
+func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, securityConfig *ca.SecurityConfig, opts ...raft.NewNodeOptions) *TestNode {
 	var derivedOpts raft.NewNodeOptions
 	if len(opts) == 1 {
 		derivedOpts = opts[0]
@@ -272,7 +272,7 @@ func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, se
 }
 
 // RestartNode restarts a raft test node
-func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNode, securityConfig *ca.ManagerSecurityConfig, forceNewCluster bool) *TestNode {
+func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNode, securityConfig *ca.SecurityConfig, forceNewCluster bool) *TestNode {
 	wrappedListener := recycleWrappedListener(oldNode.Listener)
 	serverOpts := []grpc.ServerOption{grpc.Creds(securityConfig.ServerTLSCreds)}
 	s := grpc.NewServer(serverOpts...)
@@ -306,7 +306,7 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 }
 
 // NewRaftCluster creates a new raft cluster with 3 nodes for testing
-func NewRaftCluster(t *testing.T, securityConfig *ca.ManagerSecurityConfig, config ...*api.RaftConfig) (map[uint64]*TestNode, *fakeclock.FakeClock) {
+func NewRaftCluster(t *testing.T, securityConfig *ca.SecurityConfig, config ...*api.RaftConfig) (map[uint64]*TestNode, *fakeclock.FakeClock) {
 	var (
 		raftConfig  *api.RaftConfig
 		clockSource *fakeclock.FakeClock
@@ -325,7 +325,7 @@ func NewRaftCluster(t *testing.T, securityConfig *ca.ManagerSecurityConfig, conf
 }
 
 // AddRaftNode adds an additional raft test node to an existing cluster
-func AddRaftNode(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*TestNode, securityConfig *ca.ManagerSecurityConfig, opts ...raft.NewNodeOptions) {
+func AddRaftNode(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*TestNode, securityConfig *ca.SecurityConfig, opts ...raft.NewNodeOptions) {
 	n := uint64(len(nodes) + 1)
 	nodes[n] = NewJoinNode(t, clockSource, nodes[1].Address, securityConfig, opts...)
 	WaitForCluster(t, clockSource, nodes)
