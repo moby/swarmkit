@@ -221,13 +221,10 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 				_ = c.Conn.Close()
 			}()
 
-			sid := strconv.FormatUint(n.Config.ID, 16)
-
 			ctx, cancel := context.WithTimeout(n.Ctx, 10*time.Second)
 			defer cancel()
 			resp, err := c.Join(ctx, &api.JoinRequest{
-				Node: &api.Member{
-					ID:     sid,
+				Node: &api.RaftMember{
 					RaftID: n.Config.ID,
 					Addr:   n.Address,
 				},
@@ -456,10 +453,9 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 		}
 	}
 
-	var nodes []*api.Member
+	var nodes []*api.RaftMember
 	for _, node := range n.cluster.Members() {
-		nodes = append(nodes, &api.Member{
-			ID:     node.ID,
+		nodes = append(nodes, &api.RaftMember{
 			RaftID: node.RaftID,
 			Addr:   node.Addr,
 		})
@@ -469,7 +465,7 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 }
 
 // addMember submits a configuration change to add a new member on the raft cluster.
-func (n *Node) addMember(ctx context.Context, node *api.Member) error {
+func (n *Node) addMember(ctx context.Context, node *api.RaftMember) error {
 	meta, err := node.Marshal()
 	if err != nil {
 		return err
@@ -595,7 +591,7 @@ func (n *Node) LeaderAddr() (string, error) {
 }
 
 // registerNode registers a new node on the cluster memberlist
-func (n *Node) registerNode(node *api.Member) error {
+func (n *Node) registerNode(node *api.RaftMember) error {
 	member := &membership.Member{}
 
 	// Avoid opening a connection to the local node
@@ -609,7 +605,7 @@ func (n *Node) registerNode(node *api.Member) error {
 		}
 	}
 
-	member.Member = node
+	member.RaftMember = node
 	err := n.cluster.AddMember(member)
 	if err != nil {
 		if member.Conn != nil {
@@ -621,7 +617,7 @@ func (n *Node) registerNode(node *api.Member) error {
 }
 
 // registerNodes registers a set of nodes in the cluster
-func (n *Node) registerNodes(nodes []*api.Member) error {
+func (n *Node) registerNodes(nodes []*api.RaftMember) error {
 	for _, node := range nodes {
 		if err := n.registerNode(node); err != nil {
 			return err
@@ -648,19 +644,19 @@ func (n *Node) GetVersion() *api.Version {
 }
 
 // GetMemberlist returns the current list of raft members in the cluster.
-func (n *Node) GetMemberlist() map[uint64]*api.Member {
-	memberlist := make(map[uint64]*api.Member)
+func (n *Node) GetMemberlist() map[uint64]*api.RaftMember {
+	memberlist := make(map[uint64]*api.RaftMember)
 	members := n.cluster.Members()
 	leaderID := n.Leader()
 
 	for id, member := range members {
-		status := api.MemberStatus_REACHABLE
+		status := api.RaftMemberStatus_REACHABLE
 		leader := false
 
 		if member.RaftID != n.Config.ID {
 			connState, err := member.Conn.State()
 			if err != nil || connState != grpc.Ready {
-				status = api.MemberStatus_UNREACHABLE
+				status = api.RaftMemberStatus_UNREACHABLE
 			}
 		}
 
@@ -668,13 +664,10 @@ func (n *Node) GetMemberlist() map[uint64]*api.Member {
 			leader = true
 		}
 
-		sid := strconv.FormatUint(member.RaftID, 16)
-
-		memberlist[id] = &api.Member{
-			ID:     sid,
+		memberlist[id] = &api.RaftMember{
 			RaftID: member.RaftID,
 			Addr:   member.Addr,
-			Status: api.MemberStatus{
+			Status: api.RaftMemberStatus{
 				Leader: leader,
 				State:  status,
 			},
@@ -967,7 +960,7 @@ func (n *Node) processConfChange(entry raftpb.Entry) {
 // from a member in the raft cluster, this adds a new
 // node to the existing raft cluster
 func (n *Node) applyAddNode(cc raftpb.ConfChange) error {
-	member := &api.Member{}
+	member := &api.RaftMember{}
 	err := proto.Unmarshal(cc.Context, member)
 	if err != nil {
 		return err
@@ -1065,7 +1058,7 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raf
 		next++
 	}
 	if !found {
-		node := &api.Member{RaftID: self}
+		node := &api.RaftMember{RaftID: self}
 		meta, err := node.Marshal()
 		if err != nil {
 			log.G(context.Background()).Panicf("marshal member should never fail: %v", err)

@@ -43,8 +43,8 @@ type testCluster struct {
 	store *store.MemoryStore
 }
 
-func (t *testCluster) GetMemberlist() map[uint64]*api.Member {
-	return map[uint64]*api.Member{
+func (t *testCluster) GetMemberlist() map[uint64]*api.RaftMember {
+	return map[uint64]*api.RaftMember{
 		1: {
 			Addr: t.addr,
 		},

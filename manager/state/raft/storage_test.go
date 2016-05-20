@@ -72,11 +72,10 @@ func TestRaftSnapshot(t *testing.T) {
 	}))
 
 	// It should know about the other nodes
-	stripMembers := func(memberList map[uint64]*api.Member) map[uint64]*api.Member {
-		raftNodes := make(map[uint64]*api.Member)
+	stripMembers := func(memberList map[uint64]*api.RaftMember) map[uint64]*api.RaftMember {
+		raftNodes := make(map[uint64]*api.RaftMember)
 		for k, v := range memberList {
-			raftNodes[k] = &api.Member{
-				ID:     v.ID,
+			raftNodes[k] = &api.RaftMember{
 				RaftID: v.RaftID,
 				Addr:   v.Addr,
 			}
@@ -192,11 +191,10 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	raftutils.CheckValuesOnNodes(t, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:5], values[:5])
 
 	// It should know about the other nodes, including the one that was just added
-	stripMembers := func(memberList map[uint64]*api.Member) map[uint64]*api.Member {
-		raftNodes := make(map[uint64]*api.Member)
+	stripMembers := func(memberList map[uint64]*api.RaftMember) map[uint64]*api.RaftMember {
+		raftNodes := make(map[uint64]*api.RaftMember)
 		for k, v := range memberList {
-			raftNodes[k] = &api.Member{
-				ID:     v.ID,
+			raftNodes[k] = &api.RaftMember{
 				RaftID: v.RaftID,
 				Addr:   v.Addr,
 			}
