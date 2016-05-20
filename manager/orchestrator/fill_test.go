@@ -105,7 +105,7 @@ func TestDeleteNode(t *testing.T) {
 
 	deleteNode(t, store, node1)
 	// task should be set to dead
-	observedTask := watchDeadTask(t, watch)
+	observedTask := watchShutdownTask(t, watch)
 	assert.Equal(t, observedTask.Annotations.Name, "name1")
 	assert.Equal(t, observedTask.NodeID, "id1")
 }
@@ -128,7 +128,7 @@ func TestNodeAvailability(t *testing.T) {
 	updateNodeAvailability(t, store, node1, api.NodeAvailabilityDrain)
 
 	// task should be set to dead
-	observedTask1 := watchDeadTask(t, watch)
+	observedTask1 := watchShutdownTask(t, watch)
 	assert.Equal(t, observedTask1.Annotations.Name, "name1")
 	assert.Equal(t, observedTask1.NodeID, "id1")
 

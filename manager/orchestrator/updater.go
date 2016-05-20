@@ -179,7 +179,7 @@ func (u *Updater) updateTask(ctx context.Context, original, updated *api.Task) e
 	// Atomically create the updated task and bring down the old one.
 	err := u.store.Update(func(tx store.Tx) error {
 		t := store.GetTask(tx, original.ID)
-		t.DesiredState = api.TaskStateDead
+		t.DesiredState = api.TaskStateShutdown
 		if err := store.UpdateTask(tx, t); err != nil {
 			return err
 		}

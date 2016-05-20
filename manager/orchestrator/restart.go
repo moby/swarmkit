@@ -48,7 +48,7 @@ func NewRestartSupervisor(store *store.MemoryStore) *RestartSupervisor {
 // Restart initiates a new task to replace t if appropriate under the service's
 // restart policy.
 func (r *RestartSupervisor) Restart(ctx context.Context, tx store.Tx, service *api.Service, t api.Task) error {
-	t.DesiredState = api.TaskStateDead
+	t.DesiredState = api.TaskStateShutdown
 	err := store.UpdateTask(tx, &t)
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("failed to set task desired state to dead")

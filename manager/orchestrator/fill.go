@@ -343,12 +343,12 @@ func (f *FillOrchestrator) restartTask(ctx context.Context, taskID string, servi
 }
 
 func (f *FillOrchestrator) removeTask(ctx context.Context, batch *store.Batch, t *api.Task) {
-	// set existing task DesiredState to TaskStateDead
+	// set existing task DesiredState to TaskStateShutdown
 	// TODO(aaronl): optimistic update?
 	err := batch.Update(func(tx store.Tx) error {
 		t = store.GetTask(tx, t.ID)
 		if t != nil {
-			t.DesiredState = api.TaskStateDead
+			t.DesiredState = api.TaskStateShutdown
 			return store.UpdateTask(tx, t)
 		}
 		return nil

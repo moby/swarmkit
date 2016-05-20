@@ -189,9 +189,9 @@ func TestDrain(t *testing.T) {
 	}()
 
 	// id2, id3, and id5 should be killed immediately
-	deletion1 := watchDeadTask(t, watch)
-	deletion2 := watchDeadTask(t, watch)
-	deletion3 := watchDeadTask(t, watch)
+	deletion1 := watchShutdownTask(t, watch)
+	deletion2 := watchShutdownTask(t, watch)
+	deletion3 := watchShutdownTask(t, watch)
 
 	assert.Regexp(t, "id(2|3|5)", deletion1.ID)
 	assert.Regexp(t, "id(2|3|5)", deletion1.NodeID)
@@ -210,7 +210,7 @@ func TestDrain(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	deletion4 := watchDeadTask(t, watch)
+	deletion4 := watchShutdownTask(t, watch)
 	assert.Equal(t, "newtask", deletion4.ID)
 	assert.Equal(t, "id2", deletion4.NodeID)
 
@@ -223,7 +223,7 @@ func TestDrain(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	deletion5 := watchDeadTask(t, watch)
+	deletion5 := watchShutdownTask(t, watch)
 	assert.Equal(t, "id4", deletion5.ID)
 	assert.Equal(t, "id4", deletion5.NodeID)
 
@@ -234,7 +234,7 @@ func TestDrain(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	deletion6 := watchDeadTask(t, watch)
+	deletion6 := watchShutdownTask(t, watch)
 	assert.Equal(t, "id1", deletion6.ID)
 	assert.Equal(t, "id1", deletion6.NodeID)
 }
