@@ -339,6 +339,11 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 		if err := a.removeTask(ctx, task); err != nil {
 			log.G(ctx).WithError(err).Error("removing task failed")
 		}
+
+		delete(a.controllers, id)
+		delete(a.tasks, id)
+		delete(a.shutdown, id)
+		delete(a.remove, id)
 	}
 
 	return nil
@@ -500,12 +505,6 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) (api.
 		api.TaskStateRemove:
 		delete(a.shutdown, report.taskID) // cleanup shutdown entry
 	case api.TaskStateDead:
-		// once a task is dead, we remove all resources associated with it.
-		delete(a.controllers, report.taskID)
-		delete(a.tasks, report.taskID)
-		delete(a.shutdown, report.taskID)
-		delete(a.remove, report.taskID)
-
 		return api.TaskStatus{}, errTaskDead
 	}
 
