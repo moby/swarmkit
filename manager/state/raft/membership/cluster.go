@@ -39,7 +39,7 @@ type Cluster struct {
 
 // Member represents a raft Cluster Member
 type Member struct {
-	*api.Member
+	*api.RaftMember
 
 	api.RaftClient
 	Conn *grpc.ClientConn
@@ -157,7 +157,7 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	default:
 		return ErrConfigChangeInvalid
 	}
-	m := &api.Member{}
+	m := &api.RaftMember{}
 	if err := proto.Unmarshal(cc.Context, m); err != nil {
 		return ErrCannotUnmarshalConfig
 	}

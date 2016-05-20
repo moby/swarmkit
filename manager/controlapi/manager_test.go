@@ -29,10 +29,10 @@ func init() {
 	defer os.RemoveAll(tmpDir)
 }
 
-func getMap(t *testing.T, members []*api.Member) map[uint64]*api.Member {
-	m := make(map[uint64]*api.Member)
-	for _, member := range members {
-		m[member.RaftID] = member
+func getMap(t *testing.T, managers []*api.Manager) map[uint64]*api.Manager {
+	m := make(map[uint64]*api.Manager)
+	for _, manager := range managers {
+		m[manager.Raft.RaftID] = manager
 	}
 	return m
 }
@@ -50,22 +50,22 @@ func TestListManagers(t *testing.T) {
 	r, err := ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
-	members := getMap(t, r.Managers)
+	managers := getMap(t, r.Managers)
 	assert.Equal(t, 3, len(ts.Server.raft.GetMemberlist()))
 	assert.Equal(t, 3, len(r.Managers))
 
 	// Node 1 should be the leader
 	for i := 1; i <= 3; i++ {
 		if i == 1 {
-			assert.True(t, members[nodes[uint64(i)].Config.ID].Status.Leader)
+			assert.True(t, managers[nodes[uint64(i)].Config.ID].Raft.Status.Leader)
 			continue
 		}
-		assert.False(t, members[nodes[uint64(i)].Config.ID].Status.Leader)
+		assert.False(t, managers[nodes[uint64(i)].Config.ID].Raft.Status.Leader)
 	}
 
 	// All nodes should be reachable
 	for i := 1; i <= 3; i++ {
-		assert.Equal(t, api.MemberStatus_REACHABLE, members[nodes[uint64(i)].Config.ID].Status.State)
+		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Raft.Status.State)
 	}
 
 	// Add two more nodes to the cluster
@@ -77,11 +77,11 @@ func TestListManagers(t *testing.T) {
 	r, err = ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
-	members = getMap(t, r.Managers)
+	managers = getMap(t, r.Managers)
 	assert.Equal(t, 5, len(ts.Server.raft.GetMemberlist()))
 	assert.Equal(t, 5, len(r.Managers))
 	for i := 1; i <= 5; i++ {
-		assert.Equal(t, api.MemberStatus_REACHABLE, members[nodes[uint64(i)].Config.ID].Status.State)
+		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Raft.Status.State)
 	}
 
 	// Stops 2 nodes
@@ -97,17 +97,17 @@ func TestListManagers(t *testing.T) {
 			return err
 		}
 
-		members = getMap(t, r.Managers)
+		managers = getMap(t, r.Managers)
 
 		if len(r.Managers) != 5 {
 			return fmt.Errorf("expected 5 nodes, got %d", len(r.Managers))
 		}
 
-		if members[nodes[4].Config.ID].Status.State == api.MemberStatus_REACHABLE {
+		if managers[nodes[4].Config.ID].Raft.Status.State == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 4 to be unreachable")
 		}
 
-		if members[nodes[5].Config.ID].Status.State == api.MemberStatus_REACHABLE {
+		if managers[nodes[5].Config.ID].Raft.Status.State == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 5 to be unreachable")
 		}
 
@@ -123,11 +123,11 @@ func TestListManagers(t *testing.T) {
 	r, err = ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
-	members = getMap(t, r.Managers)
+	managers = getMap(t, r.Managers)
 	assert.Equal(t, 5, len(ts.Server.raft.GetMemberlist()))
 	assert.Equal(t, 5, len(r.Managers))
 	for i := 1; i <= 5; i++ {
-		assert.Equal(t, api.MemberStatus_REACHABLE, members[nodes[uint64(i)].Config.ID].Status.State)
+		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Raft.Status.State)
 	}
 
 	// Switch the raft node used by the server
@@ -154,13 +154,13 @@ func TestListManagers(t *testing.T) {
 			return err
 		}
 
-		members = getMap(t, r.Managers)
+		managers = getMap(t, r.Managers)
 
-		if members[nodes[1].Config.ID].Status.Leader {
+		if managers[nodes[1].Config.ID].Raft.Status.Leader {
 			return fmt.Errorf("expected node 1 not to be the leader")
 		}
 
-		if members[nodes[1].Config.ID].Status.State == api.MemberStatus_REACHABLE {
+		if managers[nodes[1].Config.ID].Raft.Status.State == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 1 to be unreachable")
 		}
 
@@ -173,14 +173,14 @@ func TestListManagers(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Ensure that node 1 is not the leader
-	assert.False(t, members[nodes[uint64(1)].Config.ID].Status.Leader)
+	assert.False(t, managers[nodes[uint64(1)].Config.ID].Raft.Status.Leader)
 
 	// Check that another node got the leader status
 	leader := ""
 	leaderCount := 0
 	for i := 1; i <= 5; i++ {
-		if members[nodes[uint64(i)].Config.ID].Status.Leader {
-			leader = members[nodes[uint64(i)].Config.ID].ID
+		if managers[nodes[uint64(i)].Config.ID].Raft.Status.Leader {
+			leader = managers[nodes[uint64(i)].Config.ID].ID
 			leaderCount++
 		}
 	}
@@ -188,7 +188,7 @@ func TestListManagers(t *testing.T) {
 	// There should be only one leader after node 1 recovery and it
 	// should be different than node 1
 	assert.Equal(t, leaderCount, 1)
-	assert.NotEqual(t, leader, members[nodes[1].Config.ID].ID)
+	assert.NotEqual(t, leader, managers[nodes[1].Config.ID].ID)
 }
 
 func TestRemoveManager(t *testing.T) {
@@ -204,7 +204,7 @@ func TestRemoveManager(t *testing.T) {
 	lsr, err := ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
 	assert.NoError(t, err)
 	assert.NotNil(t, lsr)
-	members := getMap(t, lsr.Managers)
+	managers := getMap(t, lsr.Managers)
 	assert.Equal(t, 3, len(ts.Server.raft.GetMemberlist()))
 	assert.Equal(t, 3, len(lsr.Managers))
 
@@ -235,17 +235,17 @@ func TestRemoveManager(t *testing.T) {
 			return err
 		}
 
-		members = getMap(t, lsr.Managers)
+		managers = getMap(t, lsr.Managers)
 
 		if len(lsr.Managers) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(lsr.Managers))
 		}
 
-		if members[nodes[2].Config.ID].Status.State == api.MemberStatus_REACHABLE {
+		if managers[nodes[2].Config.ID].Raft.Status.State == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 2 to be unreachable")
 		}
 
-		if members[nodes[3].Config.ID].Status.State == api.MemberStatus_REACHABLE {
+		if managers[nodes[3].Config.ID].Raft.Status.State == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 3 to be unreachable")
 		}
 
@@ -255,26 +255,26 @@ func TestRemoveManager(t *testing.T) {
 	// We can't remove neither node 2 or node 3, this would potentially
 	// result in a loss of quorum if one of the 2 nodes recover and
 	// apply the configuration change on restart
-	rmr, err = ts.Client.RemoveManager(context.Background(), &api.RemoveManagerRequest{ManagerID: members[nodes[2].Config.ID].ID})
+	rmr, err = ts.Client.RemoveManager(context.Background(), &api.RemoveManagerRequest{ManagerID: managers[nodes[2].Config.ID].ID})
 	assert.Error(t, err)
 	assert.Nil(t, rmr)
 	mlist = ts.Server.raft.GetMemberlist()
 	assert.Equal(t, 3, len(mlist))
 	assert.NotNil(t, mlist[nodes[2].Config.ID])
 	assert.Equal(t, grpc.ErrorDesc(err), fmt.Sprintf(
-		"cannot remove member %s from the cluster: raft: member cannot be removed, because removing it may result in loss of quorum",
-		mlist[nodes[2].Config.ID].ID),
+		"cannot remove member %x from the cluster: raft: member cannot be removed, because removing it may result in loss of quorum",
+		mlist[nodes[2].Config.ID].RaftID),
 	)
 
-	rmr, err = ts.Client.RemoveManager(context.Background(), &api.RemoveManagerRequest{ManagerID: members[nodes[3].Config.ID].ID})
+	rmr, err = ts.Client.RemoveManager(context.Background(), &api.RemoveManagerRequest{ManagerID: managers[nodes[3].Config.ID].ID})
 	assert.Error(t, err)
 	assert.Nil(t, rmr)
 	mlist = ts.Server.raft.GetMemberlist()
 	assert.Equal(t, 3, len(mlist))
 	assert.NotNil(t, mlist[nodes[3].Config.ID])
 	assert.Equal(t, grpc.ErrorDesc(err), fmt.Sprintf(
-		"cannot remove member %s from the cluster: raft: member cannot be removed, because removing it may result in loss of quorum",
-		mlist[nodes[3].Config.ID].ID),
+		"cannot remove member %x from the cluster: raft: member cannot be removed, because removing it may result in loss of quorum",
+		mlist[nodes[3].Config.ID].RaftID),
 	)
 
 	// Restart node 2 and node 3
@@ -292,13 +292,13 @@ func TestRemoveManager(t *testing.T) {
 			return err
 		}
 
-		members = getMap(t, lsr.Managers)
+		managers = getMap(t, lsr.Managers)
 
 		if len(lsr.Managers) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(lsr.Managers))
 		}
 
-		if members[nodes[3].Config.ID].Status.State == api.MemberStatus_REACHABLE {
+		if managers[nodes[3].Config.ID].Raft.Status.State == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 3 to be unreachable")
 		}
 
@@ -306,7 +306,7 @@ func TestRemoveManager(t *testing.T) {
 	}))
 
 	// Try to remove node 3, this should succeed, we still have an active quorum
-	rmr, err = ts.Client.RemoveManager(context.Background(), &api.RemoveManagerRequest{ManagerID: members[nodes[3].Config.ID].ID})
+	rmr, err = ts.Client.RemoveManager(context.Background(), &api.RemoveManagerRequest{ManagerID: managers[nodes[3].Config.ID].ID})
 	assert.NoError(t, err)
 	assert.NotNil(t, rmr)
 
@@ -345,13 +345,13 @@ func TestRemoveManager(t *testing.T) {
 			return err
 		}
 
-		members = getMap(t, lsr.Managers)
+		managers = getMap(t, lsr.Managers)
 
 		if len(lsr.Managers) != 2 {
 			return fmt.Errorf("expected 2 nodes, got %d", len(lsr.Managers))
 		}
 
-		if members[nodes[2].Config.ID].Status.State == api.MemberStatus_REACHABLE {
+		if managers[nodes[2].Config.ID].Raft.Status.State == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 2 to be unreachable")
 		}
 
@@ -359,14 +359,14 @@ func TestRemoveManager(t *testing.T) {
 	}))
 
 	// Removing node 2 should fail, there is no quorum so the deadline on proposal should apply
-	rmr, err = ts.Client.RemoveManager(context.Background(), &api.RemoveManagerRequest{ManagerID: members[nodes[2].Config.ID].ID})
+	rmr, err = ts.Client.RemoveManager(context.Background(), &api.RemoveManagerRequest{ManagerID: managers[nodes[2].Config.ID].ID})
 	assert.Error(t, err)
 	assert.Nil(t, rmr)
 	mlist = ts.Server.raft.GetMemberlist()
 	assert.Equal(t, 2, len(mlist))
 	assert.NotNil(t, mlist[nodes[2].Config.ID])
 	assert.Equal(t, grpc.ErrorDesc(err), fmt.Sprintf(
-		"cannot remove member %s from the cluster: raft: member cannot be removed, because removing it may result in loss of quorum",
-		mlist[nodes[2].Config.ID].ID),
+		"cannot remove member %x from the cluster: raft: member cannot be removed, because removing it may result in loss of quorum",
+		mlist[nodes[2].Config.ID].RaftID),
 	)
 }

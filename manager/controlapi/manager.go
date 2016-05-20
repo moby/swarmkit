@@ -15,9 +15,11 @@ import (
 func (s *Server) ListManagers(ctx context.Context, request *api.ListManagersRequest) (*api.ListManagersResponse, error) {
 	memberlist := s.raft.GetMemberlist()
 
-	list := make([]*api.Member, 0, len(memberlist))
+	list := make([]*api.Manager, 0, len(memberlist))
 	for _, v := range memberlist {
-		list = append(list, v)
+		// TODO(aaronl): These Manager structs will need to contain
+		// actual node IDs, not stringified versions of the raft ID.
+		list = append(list, &api.Manager{ID: strconv.FormatUint(v.RaftID, 16), Raft: *v})
 	}
 
 	return &api.ListManagersResponse{

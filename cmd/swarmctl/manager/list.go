@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type managersByID []*api.Member
+type managersByID []*api.Manager
 
 func (m managersByID) Len() int {
 	return len(m)
@@ -46,7 +46,7 @@ var (
 				return err
 			}
 
-			var output func(n *api.Member)
+			var output func(n *api.Manager)
 
 			if !quiet {
 				w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
@@ -57,20 +57,20 @@ var (
 
 				// TODO(abronan): include member name and raft cluster it belongs to
 				common.PrintHeader(w, "ID", "Address", "Status", "Leader")
-				output = func(n *api.Member) {
+				output = func(n *api.Manager) {
 					leader := ""
-					if n.Status.Leader {
+					if n.Raft.Status.Leader {
 						leader = "*"
 					}
 					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 						n.ID,
-						n.Addr,
-						n.Status.State,
+						n.Raft.Addr,
+						n.Raft.Status.State,
 						leader,
 					)
 				}
 			} else {
-				output = func(n *api.Member) { fmt.Println(n.ID) }
+				output = func(n *api.Manager) { fmt.Println(n.ID) }
 			}
 
 			sortedManagers := managersByID(r.Managers)

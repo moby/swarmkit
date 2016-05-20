@@ -71,7 +71,7 @@ message NodeDescription {
 	EngineDescription engine = 4;
 }
 
-message MemberStatus {
+message RaftMemberStatus {
 	bool leader = 1;
 
 	enum State {
@@ -424,4 +424,16 @@ message RaftConfig {
 	// LogEntriesForSlowFollowers is the number of log entries to keep
 	// around to sync up slow followers after a snapshot is created.
 	uint64 log_entries_for_slow_followers = 3;
+}
+
+message RaftMember {
+	// RaftID specifies the internal ID used by the manager in a raft context, it can never be modified
+	// and is used only for information purposes
+	uint64 raft_id = 1 [(gogoproto.customname) = "RaftID"];
+
+	// Addr specifies the address of the member
+	string addr = 3;
+
+	// Status provides the current status of the manager from the perspective of another manager.
+	RaftMemberStatus status = 4 [(gogoproto.nullable) = false];
 }

@@ -3,6 +3,7 @@ syntax = "proto3";
 package docker.cluster.api;
 
 import "objects.proto";
+import "types.proto";
 import weak "gogoproto/gogo.proto";
 
 // StoreSnapshot is used to store snapshots of the store.
@@ -24,7 +25,7 @@ message StoreSnapshot {
 
 // ClusterSnapshot stores cluster membership information in snapshots.
 message ClusterSnapshot {
-	repeated Member members = 1;
+	repeated RaftMember members = 1;
 	repeated uint64 removed = 2;
 }
 
