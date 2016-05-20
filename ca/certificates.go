@@ -307,6 +307,22 @@ func CreateAndWriteRootCA(rootCN string, paths CertPaths) (RootCA, error) {
 	return RootCA{Signer: signer, Cert: cert, Pool: pool}, nil
 }
 
+// BootstrapCluster receives a directory and creates both new Root CA key material
+// and a ManagerRole key/certificate pair to be used by the initial cluster manager
+func BootstrapCluster(baseCertDir string) error {
+	paths := NewConfigPaths(baseCertDir)
+
+	rootCA, err := CreateAndWriteRootCA(rootCN, paths.RootCA)
+	if err != nil {
+		return err
+	}
+
+	nodeID := identity.NewID()
+	_, err = GenerateAndSignNewTLSCert(rootCA, nodeID, ManagerRole, paths.Node)
+
+	return err
+}
+
 // GenerateAndSignNewTLSCert creates a new keypair, signs the certificate using signer,
 // and saves the certificate and key to disk. This method is used to bootstrap the first
 // manager TLS certificates.
@@ -370,31 +386,6 @@ func GenerateAndWriteNewCSR(paths CertPaths) (csr, key []byte, err error) {
 		return
 	}
 	if err = ioutil.WriteFile(paths.Key, key, 0600); err != nil {
-		return
-	}
-
-	return
-}
-
-func saveRootCA(rootCA RootCA, paths CertPaths) error {
-	// Make sure the necessary dirs exist and they are writable
-	err := os.MkdirAll(filepath.Dir(paths.Cert), 0755)
-	if err != nil {
-		return err
-	}
-
-	// If the root certificate got returned successfully, save the rootCA to disk.
-	return ioutil.WriteFile(paths.Cert, rootCA.Cert, 0644)
-}
-
-func generateNewCSR() (csr, key []byte, err error) {
-	req := &cfcsr.CertificateRequest{
-		KeyRequest: cfcsr.NewBasicKeyRequest(),
-	}
-
-	csr, key, err = cfcsr.ParseRequest(req)
-	if err != nil {
-		log.Debugf(`failed to generate CSR`)
 		return
 	}
 
@@ -476,4 +467,29 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role string, ro
 		expBackoff.Failure(nil, nil)
 		time.Sleep(expBackoff.Proceed(nil))
 	}
+}
+
+func saveRootCA(rootCA RootCA, paths CertPaths) error {
+	// Make sure the necessary dirs exist and they are writable
+	err := os.MkdirAll(filepath.Dir(paths.Cert), 0755)
+	if err != nil {
+		return err
+	}
+
+	// If the root certificate got returned successfully, save the rootCA to disk.
+	return ioutil.WriteFile(paths.Cert, rootCA.Cert, 0644)
+}
+
+func generateNewCSR() (csr, key []byte, err error) {
+	req := &cfcsr.CertificateRequest{
+		KeyRequest: cfcsr.NewBasicKeyRequest(),
+	}
+
+	csr, key, err = cfcsr.ParseRequest(req)
+	if err != nil {
+		log.Debugf(`failed to generate CSR`)
+		return
+	}
+
+	return
 }

@@ -355,3 +355,32 @@ func TestGetRemoteSignedCertificateBlocked(t *testing.T) {
 	// Make sure GetRemoteSignedCertificate didn't return an error
 	assert.EqualError(t, <-completed, "certificate issuance rejected: ISSUANCE_BLOCKED")
 }
+
+func TestBootstrapCluster(t *testing.T) {
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
+
+	paths := ca.NewConfigPaths(tempBaseDir)
+
+	err = ca.BootstrapCluster(tempBaseDir)
+	assert.NoError(t, err)
+
+	perms, err := permbits.Stat(paths.RootCA.Cert)
+	assert.NoError(t, err)
+	assert.False(t, perms.GroupWrite())
+	assert.False(t, perms.OtherWrite())
+	perms, err = permbits.Stat(paths.RootCA.Key)
+	assert.NoError(t, err)
+	assert.False(t, perms.GroupRead())
+	assert.False(t, perms.OtherRead())
+
+	perms, err = permbits.Stat(paths.Node.Cert)
+	assert.NoError(t, err)
+	assert.False(t, perms.GroupWrite())
+	assert.False(t, perms.OtherWrite())
+	perms, err = permbits.Stat(paths.Node.Key)
+	assert.NoError(t, err)
+	assert.False(t, perms.GroupRead())
+	assert.False(t, perms.OtherRead())
+}
