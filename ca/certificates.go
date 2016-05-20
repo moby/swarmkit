@@ -398,16 +398,17 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role string, ro
 	if rootCAPool == nil {
 		return nil, fmt.Errorf("valid root CA pool required")
 	}
+	if picker == nil {
+		return nil, fmt.Errorf("valid remote address picker required")
+	}
 
 	// This is our only non-MTLS request
 	// We're using CARole as server name, so an external CA doesn't also have to have ManagerRole in the cert SANs
 	creds := credentials.NewTLS(&tls.Config{ServerName: CARole, RootCAs: rootCAPool})
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds),
-		grpc.WithBackoffMaxDelay(10 * time.Second), grpc.WithPicker(picker)}
-
-	if picker == nil {
-		return nil, fmt.Errorf("valid remote address picker required")
-	}
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(creds),
+		grpc.WithBackoffMaxDelay(10 * time.Second),
+		grpc.WithPicker(picker)}
 
 	firstAddr, err := picker.PickAddr()
 	if err != nil {

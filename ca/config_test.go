@@ -16,7 +16,7 @@ func TestLoadOrCreateSecurityConfigEmptyDir(t *testing.T) {
 
 	// Remove all the contents from the temp dir and try again with a new node
 	os.RemoveAll(tc.TempDir)
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", tc.Picker)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -34,7 +34,7 @@ func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
 	// Remove only the node certificates form the directory, and attest that we get
 	// new certificates
 	os.RemoveAll(tc.Paths.Node.Cert)
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", tc.Picker)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -54,7 +54,7 @@ func TestLoadOrCreateSecurityConfigInvalidCACertNoRemote(t *testing.T) {
 some random garbage\n
 -----END CERTIFICATE-----`), 0644)
 
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", nil)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, nil)
 	assert.EqualError(t, err, "valid remote address picker required")
 	assert.Nil(t, nodeConfig)
 }
@@ -65,7 +65,7 @@ func TestLoadOrCreateSecurityConfigInvalidCACert(t *testing.T) {
 
 	// First load the current nodeConfig. We'll verify that after we corrupt
 	// the certificate, another subsquent call with get us new certs
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", tc.Picker)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -82,7 +82,7 @@ some random garbage\n
 -----END CERTIFICATE-----`), 0644)
 
 	// Validate we got a new valid state
-	newNodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", tc.Picker)
+	newNodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -105,7 +105,7 @@ func TestLoadOrCreateSecurityConfigInvalidCAKey(t *testing.T) {
 some random garbage\n
 -----END EC PRIVATE KEY-----`), 0644)
 
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", tc.Picker)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -125,7 +125,7 @@ func TestLoadOrCreateSecurityConfigInvalidCert(t *testing.T) {
 some random garbage\n
 -----END CERTIFICATE-----`), 0644)
 
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", tc.Picker)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -141,10 +141,10 @@ func TestLoadOrCreateSecurityConfigInvalidKey(t *testing.T) {
 
 	// Write some garbage to the Key
 	ioutil.WriteFile(tc.Paths.Node.Key, []byte(`-----BEGIN EC PRIVATE KEY-----\n
-													some random garbage\n
-													-----END EC PRIVATE KEY-----`), 0644)
+some random garbage\n
+-----END EC PRIVATE KEY-----`), 0644)
 
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", tc.Picker)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -161,6 +161,6 @@ func TestLoadOrCreateSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 	// Remove the certificate from the temp dir and try loading with a new manager
 	os.Remove(tc.Paths.Node.Cert)
 	os.Remove(tc.Paths.RootCA.Key)
-	_, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", nil)
+	_, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, nil)
 	assert.EqualError(t, err, "valid remote address picker required")
 }

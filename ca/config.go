@@ -86,7 +86,7 @@ func NewConfigPaths(baseCertDir string) *SecurityConfigPaths {
 // LoadOrCreateSecurityConfig encapsulates the security logic behind starting or joining a cluster.
 // Every node requires at least a set of TLS certificates with which to join the cluster with.
 // In the case of a manager, these certificates will be used both for client and server credentials.
-func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash string, picker *picker.Picker) (*SecurityConfig, error) {
+func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, proposedRole string, picker *picker.Picker) (*SecurityConfig, error) {
 	paths := NewConfigPaths(baseCertDir)
 
 	var (
@@ -125,7 +125,7 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash string,
 		log.Debugf("no valid local TLS credentials found: %v", err)
 
 		// There was an error loading our Credentials, let's get a new certificate issued
-		tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(ctx, paths.Node, AgentRole, picker)
+		tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(ctx, paths.Node, proposedRole, picker)
 		if err != nil {
 			return nil, err
 		}
