@@ -60,7 +60,7 @@ already present, the agent will recover and startup.`,
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
-			securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, token, picker)
+			securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, token, ca.AgentRole, picker)
 			if err != nil {
 				return err
 			}

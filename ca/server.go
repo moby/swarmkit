@@ -113,7 +113,7 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 
 	// If the remote node is an Agent (either forwarded by a manager, or calling directly),
 	// issue an accepted Agent certificate with the correct ID
-	nodeID, err := AuthorizeForwardedRole(ctx, AgentRole)
+	nodeID, err := AuthorizeAgent(ctx)
 	if err == nil {
 		return s.issueAcceptedRegisteredCertificate(ctx, nodeID, AgentRole, token, request.CSR)
 	}

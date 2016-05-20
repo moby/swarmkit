@@ -92,15 +92,20 @@ func AuthorizeRole(ctx context.Context, ou []string) (string, error) {
 	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: remote certificate not part of OU %v", ou)
 }
 
-// AuthorizeForwardedRole takes in a context, a list of roles, and a list of forwarder roles, and returns
-// the Node ID of the node.
-func AuthorizeForwardedRole(ctx context.Context, role string) (string, error) {
-	return authorizeForwardedRole(ctx, role, []string{ManagerRole})
+// AuthorizeNode ensures that the remote peer is either an agent, a manager,
+// or a manager forwarded NodeID.
+func AuthorizeNode(ctx context.Context) (string, error) {
+	return authorizeForwardedRole(ctx, []string{AgentRole, ManagerRole}, []string{ManagerRole})
+}
+
+// AuthorizeAgent ensures that the remote peer is either an agent or a manager forwarding a NodeID
+func AuthorizeAgent(ctx context.Context) (string, error) {
+	return authorizeForwardedRole(ctx, []string{AgentRole}, []string{ManagerRole})
 }
 
 // authorizeForwardedRole checks for proper roles of caller. It can be manager who
 // forward agent request or agent itself. It returns agent id.
-func authorizeForwardedRole(ctx context.Context, forwardedRole string, forwarderRoles []string) (string, error) {
+func authorizeForwardedRole(ctx context.Context, forwardedRoles, forwarderRoles []string) (string, error) {
 	// If the call is being done by one of the forwarded roles, and there is something being forwarded, return
 	// the forwardedID
 	_, err := AuthorizeRole(ctx, forwarderRoles)
@@ -111,12 +116,12 @@ func authorizeForwardedRole(ctx context.Context, forwardedRole string, forwarder
 	}
 
 	// There wasn't any node being forwarded, check if this is a direct call by the expected role
-	nodeID, err := AuthorizeRole(ctx, []string{forwardedRole})
+	nodeID, err := AuthorizeRole(ctx, forwardedRoles)
 	if err == nil {
 		return nodeID, nil
 	}
 
-	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unauthorized peer role, expecting: %s", forwardedRole)
+	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unauthorized peer role, expecting: %v", forwardedRoles)
 }
 
 // intersectArrays returns true when there is at least one element in common
