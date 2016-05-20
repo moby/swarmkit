@@ -37,20 +37,20 @@ func TestUpdater(t *testing.T) {
 	assert.NotNil(t, s)
 
 	// Move tasks to their desired state.
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventCreateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
 	go func() {
 		for {
 			select {
 			case e := <-watch:
-				task := e.(state.EventCreateTask).Task
+				task := e.(state.EventUpdateTask).Task
+				if task.Status.State == task.DesiredState {
+					continue
+				}
 				err := s.Update(func(tx store.Tx) error {
 					task = store.GetTask(tx, task.ID)
-					if task.DesiredState == api.TaskStateRunning {
-						task.Status.State = api.TaskStateRunning
-						return store.UpdateTask(tx, task)
-					}
-					return nil
+					task.Status.State = task.DesiredState
+					return store.UpdateTask(tx, task)
 				})
 				assert.NoError(t, err)
 			}
@@ -68,6 +68,8 @@ func TestUpdater(t *testing.T) {
 					Image: api.Image{
 						Reference: "v:1",
 					},
+					// This won't apply in this test because we set the old tasks to DEAD.
+					StopGracePeriod: time.Hour,
 				},
 			},
 			Instances: 3,
@@ -90,7 +92,7 @@ func TestUpdater(t *testing.T) {
 	}
 
 	service.Spec.GetContainer().Image.Reference = "v:2"
-	updater := NewUpdater(s)
+	updater := NewUpdater(s, NewRestartSupervisor(s))
 	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
 	updatedTasks := getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
@@ -101,7 +103,7 @@ func TestUpdater(t *testing.T) {
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
 	}
-	updater = NewUpdater(s)
+	updater = NewUpdater(s, NewRestartSupervisor(s))
 	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
 	updatedTasks = getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
@@ -113,10 +115,92 @@ func TestUpdater(t *testing.T) {
 		Parallelism: 1,
 		Delay:       10 * time.Millisecond,
 	}
-	updater = NewUpdater(s)
+	updater = NewUpdater(s, NewRestartSupervisor(s))
 	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
 	updatedTasks = getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
 		assert.Equal(t, "v:4", task.GetContainer().Spec.Image.Reference)
+	}
+}
+
+func TestUpdaterStopGracePeriod(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+
+	// Move tasks to their desired state.
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
+	go func() {
+		for {
+			select {
+			case e := <-watch:
+				task := e.(state.EventUpdateTask).Task
+				err := s.Update(func(tx store.Tx) error {
+					task = store.GetTask(tx, task.ID)
+					// Explicitly do not set task state to
+					// DEAD to trigger StopGracePeriod
+					if task.DesiredState == api.TaskStateRunning && task.Status.State != api.TaskStateRunning {
+						task.Status.State = api.TaskStateRunning
+						return store.UpdateTask(tx, task)
+					}
+					return nil
+				})
+				assert.NoError(t, err)
+			}
+		}
+	}()
+
+	service := &api.Service{
+		ID: "id1",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+			RuntimeSpec: &api.ServiceSpec_Container{
+				Container: &api.ContainerSpec{
+					Image: api.Image{
+						Reference: "v:1",
+					},
+					StopGracePeriod: 100 * time.Millisecond,
+				},
+			},
+			Instances: 3,
+			Mode:      api.ServiceModeRunning,
+		},
+	}
+
+	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateService(tx, service))
+		for i := uint64(0); i < service.Spec.Instances; i++ {
+			task := newTask(service, uint64(i))
+			task.Status.State = api.TaskStateRunning
+			assert.NoError(t, store.CreateTask(tx, task))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	originalTasks := getRunnableServiceTasks(t, s, service)
+	for _, task := range originalTasks {
+		assert.Equal(t, "v:1", task.GetContainer().Spec.Image.Reference)
+	}
+
+	before := time.Now()
+
+	service.Spec.GetContainer().Image.Reference = "v:2"
+	updater := NewUpdater(s, NewRestartSupervisor(s))
+	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
+	updatedTasks := getRunnableServiceTasks(t, s, service)
+	for _, task := range updatedTasks {
+		assert.Equal(t, "v:2", task.GetContainer().Spec.Image.Reference)
+	}
+
+	after := time.Now()
+
+	// At least 100 ms should have elapsed. Only check the lower bound,
+	// because the system may be slow and it could have taken longer.
+	if after.Sub(before) < 100*time.Millisecond {
+		t.Fatal("stop timeout should have elapsed")
 	}
 }

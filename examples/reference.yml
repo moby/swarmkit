@@ -21,6 +21,8 @@ services:
             delay: 10s
             attempts: 5
             window: 60s
+        # stop grace period
+        stopgraceperiod: 5s
         # update strategy (rolling updates)
         update:
             parallelism: 1

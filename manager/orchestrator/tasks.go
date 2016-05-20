@@ -35,21 +35,31 @@ func (o *Orchestrator) initTasks(ctx context.Context, readTx store.ReadTx) error
 				o.restartTasks[t.ID] = struct{}{}
 			}
 		}
-		if t.ServiceID != "" {
-			service := store.GetService(readTx, t.ServiceID)
-			if !isRelatedService(service) {
-				o.restartTasks[t.ID] = struct{}{}
-			}
-		}
 	}
 
 	_, err = o.store.Batch(func(batch *store.Batch) error {
 		for _, t := range tasks {
-			if t.ServiceID == "" || t.DesiredState != api.TaskStateReady {
+			if t.ServiceID == "" {
 				continue
 			}
+
 			service := store.GetService(readTx, t.ServiceID)
-			if !isRelatedService(service) {
+			if service == nil {
+				// Service was deleted
+				err := batch.Update(func(tx store.Tx) error {
+					t.DesiredState = api.TaskStateDead
+					err := store.UpdateTask(tx, t)
+					if err != nil {
+						return err
+					}
+					return nil
+				})
+				if err != nil {
+					log.G(ctx).WithError(err).Errorf("failed to set task desired state to dead")
+				}
+				continue
+			}
+			if t.DesiredState != api.TaskStateReady || !isRelatedService(service) {
 				continue
 			}
 			if service.Spec.Restart != nil && service.Spec.Restart.Delay != 0 {
@@ -61,7 +71,14 @@ func (o *Orchestrator) initTasks(ctx context.Context, readTx store.ReadTx) error
 						restartDelay = service.Spec.Restart.Delay
 					}
 					if restartDelay > 0 {
-						o.restarts.DelayStart(ctx, t.ID, restartDelay)
+						_ = batch.Update(func(tx store.Tx) error {
+							t := store.GetTask(tx, t.ID)
+							if t == nil || t.DesiredState != api.TaskStateReady {
+								return nil
+							}
+							o.restarts.DelayStart(ctx, tx, service, nil, t.ID, restartDelay, true)
+							return nil
+						})
 						continue
 					}
 				}
@@ -200,9 +217,8 @@ func (o *Orchestrator) handleTaskChange(ctx context.Context, t *api.Task) {
 		return
 	}
 
-	if t.Status.TerminalState > api.TaskStateNew ||
-		(t.NodeID != "" && invalidNode(n)) ||
-		(t.ServiceID != "" && service == nil) {
+	if t.Status.State > api.TaskStateRunning ||
+		(t.NodeID != "" && invalidNode(n)) {
 		o.restartTasks[t.ID] = struct{}{}
 	}
 }

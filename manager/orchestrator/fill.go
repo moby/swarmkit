@@ -28,14 +28,16 @@ type FillOrchestrator struct {
 
 // NewFillOrchestrator creates a new FillOrchestrator
 func NewFillOrchestrator(store *store.MemoryStore) *FillOrchestrator {
+	restartSupervisor := NewRestartSupervisor(store)
+	updater := NewUpdateSupervisor(store, restartSupervisor)
 	return &FillOrchestrator{
 		store:        store,
 		nodes:        make(map[string]struct{}),
 		fillServices: make(map[string]*api.Service),
 		stopChan:     make(chan struct{}),
 		doneChan:     make(chan struct{}),
-		updater:      NewUpdateSupervisor(store),
-		restarts:     NewRestartSupervisor(store),
+		updater:      updater,
+		restarts:     restartSupervisor,
 	}
 }
 

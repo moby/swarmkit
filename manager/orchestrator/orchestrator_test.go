@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -176,10 +177,26 @@ func watchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
 				return task.Task
 			}
 			if _, ok := event.(state.EventUpdateTask); ok {
-				t.Fatal("got EventUpdateTask when expecting EventCreateTask")
+				assert.FailNow(t, "got EventUpdateTask when expecting EventCreateTask", fmt.Sprint(event))
 			}
 		case <-time.After(time.Second):
-			t.Fatal("no task assignment")
+			assert.FailNow(t, "no task creation")
+		}
+	}
+}
+
+func watchTaskUpdate(t *testing.T, watch chan events.Event) *api.Task {
+	for {
+		select {
+		case event := <-watch:
+			if task, ok := event.(state.EventUpdateTask); ok {
+				return task.Task
+			}
+			if _, ok := event.(state.EventCreateTask); ok {
+				assert.FailNow(t, "got EventCreateTask when expecting EventUpdateTask", fmt.Sprint(event))
+			}
+		case <-time.After(time.Second):
+			assert.FailNow(t, "no task update")
 		}
 	}
 }
@@ -192,7 +209,7 @@ func watchTaskDelete(t *testing.T, watch chan events.Event) *api.Task {
 				return task.Task
 			}
 		case <-time.After(time.Second):
-			t.Fatal("no task deletion")
+			assert.FailNow(t, "no task deletion")
 		}
 	}
 }
@@ -202,11 +219,11 @@ func expectTaskUpdate(t *testing.T, watch chan events.Event) {
 		select {
 		case event := <-watch:
 			if _, ok := event.(state.EventUpdateTask); !ok {
-				t.Fatalf("expected task update event, got %#v", event)
+				assert.FailNow(t, "expected task update event, got", fmt.Sprint(event))
 			}
 			return
 		case <-time.After(time.Second):
-			t.Fatal("no task update event")
+			assert.FailNow(t, "no task update event")
 		}
 	}
 }
@@ -216,11 +233,11 @@ func expectDeleteService(t *testing.T, watch chan events.Event) {
 		select {
 		case event := <-watch:
 			if _, ok := event.(state.EventDeleteService); !ok {
-				t.Fatalf("expected service delete event, got %#v", event)
+				assert.FailNow(t, "expected service delete event, got", fmt.Sprint(event))
 			}
 			return
 		case <-time.After(time.Second):
-			t.Fatal("no service delete event")
+			assert.FailNow(t, "no service delete event")
 		}
 	}
 }
@@ -230,30 +247,14 @@ func expectCommit(t *testing.T, watch chan events.Event) {
 		select {
 		case event := <-watch:
 			if _, ok := event.(state.EventCommit); !ok {
-				t.Fatalf("expected commit event, got %#v", event)
+				assert.FailNow(t, "expected commit event, got", fmt.Sprint(event))
 			}
 			return
 		case <-time.After(time.Second):
-			t.Fatal("no commit event")
+			assert.FailNow(t, "no commit event")
 		}
 	}
 
-}
-
-func watchTaskUpdate(t *testing.T, watch chan events.Event) *api.Task {
-	for {
-		select {
-		case event := <-watch:
-			if task, ok := event.(state.EventUpdateTask); ok {
-				return task.Task
-			}
-			if _, ok := event.(state.EventCreateTask); ok {
-				t.Fatal("got EventCreateTask when expecting EventUpdateTask")
-			}
-		case <-time.After(time.Second):
-			t.Fatal("no task update")
-		}
-	}
 }
 
 func watchShutdownTask(t *testing.T, watch chan events.Event) *api.Task {
@@ -264,10 +265,10 @@ func watchShutdownTask(t *testing.T, watch chan events.Event) *api.Task {
 				return task.Task
 			}
 			if _, ok := event.(state.EventCreateTask); ok {
-				t.Fatal("got EventCreateTask when expecting EventUpdateTask")
+				assert.FailNow(t, "got EventCreateTask when expecting EventUpdateTask", fmt.Sprint(event))
 			}
 		case <-time.After(time.Second):
-			t.Fatal("no task deletion")
+			assert.FailNow(t, "no task deletion")
 		}
 	}
 }

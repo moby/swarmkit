@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/events"
@@ -252,10 +253,13 @@ func TestControllerRemove(t *testing.T) {
 	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
 	defer finish(t)
 
-	client.EXPECT().ContainerRemove(gomock.Any(), config.name(), types.ContainerRemoveOptions{
-		RemoveVolumes: true,
-		Force:         true,
-	})
+	gomock.InOrder(
+		client.EXPECT().ContainerStop(gomock.Any(), config.name(), 10),
+		client.EXPECT().ContainerRemove(gomock.Any(), config.name(), types.ContainerRemoveOptions{
+			RemoveVolumes: true,
+			Force:         true,
+		}),
+	)
 
 	assert.NoError(t, ctlr.Remove(ctx))
 }
@@ -303,6 +307,7 @@ func genTask(t *testing.T) *api.Task {
 					Image: api.Image{
 						Reference: reference,
 					},
+					StopGracePeriod: 10 * time.Second,
 				},
 			},
 		},
