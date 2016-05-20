@@ -7,6 +7,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/docker/swarm-v2/api"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/transport"
@@ -18,10 +19,11 @@ var errRemotesUnavailable = fmt.Errorf("no remote hosts provided")
 // observations.
 type Remotes interface {
 	// Weight returns the remotes with their current weights.
-	Weights() map[string]int
+	Weights() map[api.Peer]int
 
-	// Select a remote from the set of available remotes.
-	Select() (string, error)
+	// Select a remote from the set of available remotes with optionally
+	// excluding ID or address.
+	Select(...string) (api.Peer, error)
 
 	// Observe records an experience with a particular remote. A positive weight
 	// indicates a good experience and a negative weight a bad experience.
@@ -29,41 +31,41 @@ type Remotes interface {
 	// The observation will be used to calculate a moving weight, which is
 	// implementation dependent. This method will be called such that repeated
 	// observations of the same master in each session request are favored.
-	Observe(addr string, weight int)
+	Observe(peer api.Peer, weight int)
 
 	// Remove the remote from the list completely.
-	Remove(addrs ...string)
+	Remove(addrs ...api.Peer)
 }
 
 // NewRemotes returns a Remotes instance with the provided set of addresses.
 // Entries provided are heavily weighted initially.
-func NewRemotes(addrs ...string) Remotes {
+func NewRemotes(peers ...api.Peer) Remotes {
 	mwr := &remotesWeightedRandom{
-		remotes: make(map[string]int),
+		remotes: make(map[api.Peer]int),
 	}
 
-	for _, addr := range addrs {
-		mwr.Observe(addr, 1)
+	for _, peer := range peers {
+		mwr.Observe(peer, 1)
 	}
 
 	return mwr
 }
 
 type remotesWeightedRandom struct {
-	remotes map[string]int
+	remotes map[api.Peer]int
 	mu      sync.Mutex
 
 	// workspace to avoid reallocation. these get lazily allocated when
 	// selecting values.
 	cdf   []float64
-	addrs []string
+	peers []api.Peer
 }
 
-func (mwr *remotesWeightedRandom) Weights() map[string]int {
+func (mwr *remotesWeightedRandom) Weights() map[api.Peer]int {
 	mwr.mu.Lock()
 	defer mwr.mu.Unlock()
 
-	ms := make(map[string]int, len(mwr.remotes))
+	ms := make(map[api.Peer]int, len(mwr.remotes))
 	for addr, weight := range mwr.remotes {
 		ms[addr] = weight
 	}
@@ -71,13 +73,9 @@ func (mwr *remotesWeightedRandom) Weights() map[string]int {
 	return ms
 }
 
-func (mwr *remotesWeightedRandom) Select() (string, error) {
+func (mwr *remotesWeightedRandom) Select(excludes ...string) (api.Peer, error) {
 	mwr.mu.Lock()
 	defer mwr.mu.Unlock()
-
-	if len(mwr.remotes) == 0 {
-		return "", errRemotesUnavailable
-	}
 
 	// NOTE(stevvooe): We then use a weighted random selection algorithm
 	// (http://stackoverflow.com/questions/4463561/weighted-random-selection-from-array)
@@ -98,11 +96,16 @@ func (mwr *remotesWeightedRandom) Select() (string, error) {
 
 	// clear out workspace
 	mwr.cdf = mwr.cdf[:0]
-	mwr.addrs = mwr.addrs[:0]
+	mwr.peers = mwr.peers[:0]
 
 	cum := 0.0
 	// calculate CDF over weights
-	for addr, weight := range mwr.remotes {
+	for peer, weight := range mwr.remotes {
+		for _, exclude := range excludes {
+			if peer.NodeID == exclude || peer.Addr == exclude {
+				continue
+			}
+		}
 		if weight < 0 {
 			// treat these as zero, to keep there selection unlikely.
 			weight = 0
@@ -110,22 +113,26 @@ func (mwr *remotesWeightedRandom) Select() (string, error) {
 
 		cum += float64(weight) + bias
 		mwr.cdf = append(mwr.cdf, cum)
-		mwr.addrs = append(mwr.addrs, addr)
+		mwr.peers = append(mwr.peers, peer)
+	}
+
+	if len(mwr.peers) == 0 {
+		return api.Peer{}, errRemotesUnavailable
 	}
 
 	r := mwr.cdf[len(mwr.cdf)-1] * rand.Float64()
 	i := sort.SearchFloat64s(mwr.cdf, r)
-	return mwr.addrs[i], nil
+	return mwr.peers[i], nil
 }
 
-func (mwr *remotesWeightedRandom) Observe(addr string, weight int) {
+func (mwr *remotesWeightedRandom) Observe(peer api.Peer, weight int) {
 	mwr.mu.Lock()
 	defer mwr.mu.Unlock()
 
-	mwr.observe(addr, float64(weight))
+	mwr.observe(peer, float64(weight))
 }
 
-func (mwr *remotesWeightedRandom) Remove(addrs ...string) {
+func (mwr *remotesWeightedRandom) Remove(addrs ...api.Peer) {
 	mwr.mu.Lock()
 	defer mwr.mu.Unlock()
 
@@ -153,7 +160,7 @@ func clip(x float64) float64 {
 	return math.Max(math.Min(remoteWeightMax, x), -remoteWeightMax)
 }
 
-func (mwr *remotesWeightedRandom) observe(addr string, weight float64) {
+func (mwr *remotesWeightedRandom) observe(peer api.Peer, weight float64) {
 
 	// While we have a decent, ad-hoc approach here to weight subsequent
 	// observerations, we may want to look into applying forward decay:
@@ -164,7 +171,7 @@ func (mwr *remotesWeightedRandom) observe(addr string, weight float64) {
 
 	// makes the math easier to read below
 	var (
-		w0 = float64(mwr.remotes[addr])
+		w0 = float64(mwr.remotes[peer])
 		w1 = clip(weight)
 	)
 	const α = remoteWeightSmoothingFactor
@@ -173,13 +180,13 @@ func (mwr *remotesWeightedRandom) observe(addr string, weight float64) {
 	// value.
 	wn := clip(α*w1 + (1-α)*w0)
 
-	mwr.remotes[addr] = int(math.Ceil(wn))
+	mwr.remotes[peer] = int(math.Ceil(wn))
 }
 
 // Picker implements a grpc Picker
 type Picker struct {
 	r    Remotes
-	addr string // currently selected remote address
+	peer api.Peer // currently selected remote peer
 	conn *grpc.Conn
 	mu   sync.Mutex
 }
@@ -187,17 +194,23 @@ type Picker struct {
 var _ grpc.Picker = &Picker{}
 
 // NewPicker returns a Picker
-func NewPicker(initial string, r Remotes) *Picker {
-	return &Picker{r: r, addr: initial}
+func NewPicker(r Remotes, initial ...string) *Picker {
+	var peer api.Peer
+	if len(initial) == 0 {
+		peer, _ = r.Select() // empty in case of error
+	} else {
+		peer = api.Peer{Addr: initial[0]}
+	}
+	return &Picker{r: r, peer: peer}
 }
 
 // Init does initial processing for the Picker, e.g., initiate some connections.
 func (p *Picker) Init(cc *grpc.ClientConn) error {
 	p.mu.Lock()
-	addr := p.addr
+	peer := p.peer
 	p.mu.Unlock()
 
-	p.r.Observe(addr, 1)
+	p.r.Observe(peer, 1)
 	c, err := grpc.NewConn(cc)
 	if err != nil {
 		return err
@@ -213,12 +226,11 @@ func (p *Picker) Init(cc *grpc.ClientConn) error {
 // or some error happens.
 func (p *Picker) Pick(ctx context.Context) (transport.ClientTransport, error) {
 	p.mu.Lock()
-	addr := p.addr
+	peer := p.peer
 	p.mu.Unlock()
 	transport, err := p.conn.Wait(ctx)
 	if err != nil {
-
-		p.r.Observe(addr, -1)
+		p.r.Observe(peer, -1)
 	}
 
 	return transport, err
@@ -228,21 +240,21 @@ func (p *Picker) Pick(ctx context.Context) (transport.ClientTransport, error) {
 // connecting/reconnecting.
 func (p *Picker) PickAddr() (string, error) {
 	p.mu.Lock()
-	addr := p.addr
+	peer := p.peer
 	p.mu.Unlock()
 
-	p.r.Observe(addr, -1) // downweight the current addr
+	p.r.Observe(peer, -1) // downweight the current addr
 
 	var err error
-	addr, err = p.r.Select()
+	peer, err = p.r.Select("")
 	if err != nil {
 		return "", err
 	}
 
 	p.mu.Lock()
-	p.addr = addr
+	p.peer = peer
 	p.mu.Unlock()
-	return p.addr, err
+	return p.peer.Addr, err
 }
 
 // State returns the connectivity state of the underlying connections.
@@ -255,7 +267,7 @@ func (p *Picker) State() (grpc.ConnectivityState, error) {
 func (p *Picker) WaitForStateChange(ctx context.Context, sourceState grpc.ConnectivityState) (grpc.ConnectivityState, error) {
 	p.mu.Lock()
 	conn := p.conn
-	addr := p.addr
+	peer := p.peer
 	p.mu.Unlock()
 
 	state, err := conn.WaitForStateChange(ctx, sourceState)
@@ -269,15 +281,15 @@ func (p *Picker) WaitForStateChange(ctx context.Context, sourceState grpc.Connec
 	// TODO(stevvooe): This is questionable, but we'll see how it works.
 	switch state {
 	case grpc.Idle:
-		p.r.Observe(addr, 1)
+		p.r.Observe(peer, 1)
 	case grpc.Connecting:
-		p.r.Observe(addr, 1)
+		p.r.Observe(peer, 1)
 	case grpc.Ready:
-		p.r.Observe(addr, 1)
+		p.r.Observe(peer, 1)
 	case grpc.TransientFailure:
-		p.r.Observe(addr, -1)
+		p.r.Observe(peer, -1)
 	case grpc.Shutdown:
-		p.r.Observe(addr, -1)
+		p.r.Observe(peer, -1)
 	}
 
 	return state, err

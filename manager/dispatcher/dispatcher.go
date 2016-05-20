@@ -14,6 +14,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
+	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
@@ -99,35 +100,45 @@ type Dispatcher struct {
 	processTaskUpdatesTrigger chan struct{}
 }
 
-// weightedPeerByAddr is a sort wrapper for []*api.WeightedPeer
-type weightedPeerByAddr []*api.WeightedPeer
+// weightedPeerByNodeID is a sort wrapper for []*api.WeightedPeer
+type weightedPeerByNodeID []*api.WeightedPeer
 
-func (b weightedPeerByAddr) Less(i, j int) bool { return b[i].Addr < b[j].Addr }
+func (b weightedPeerByNodeID) Less(i, j int) bool { return b[i].Peer.NodeID < b[j].Peer.NodeID }
 
-func (b weightedPeerByAddr) Len() int { return len(b) }
+func (b weightedPeerByNodeID) Len() int { return len(b) }
 
-func (b weightedPeerByAddr) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
+func (b weightedPeerByNodeID) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
 
 // New returns Dispatcher with cluster interface(usually raft.Node).
 // NOTE: each handler which does something with raft must add to Dispatcher.wg
 func New(cluster Cluster, c *Config) *Dispatcher {
 	return &Dispatcher{
-		addr:        c.Addr,
-		nodes:       newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier),
-		store:       cluster.MemoryStore(),
-		cluster:     cluster,
-		mgrQueue:    watch.NewQueue(16),
-		keyMgrQueue: watch.NewQueue(16),
-		lastSeenManagers: []*api.WeightedPeer{
-			{
-				Addr:   c.Addr,
-				Weight: 1,
-			},
-		},
+		addr:                      c.Addr,
+		nodes:                     newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier),
+		store:                     cluster.MemoryStore(),
+		cluster:                   cluster,
+		mgrQueue:                  watch.NewQueue(16),
+		keyMgrQueue:               watch.NewQueue(16),
+		lastSeenManagers:          getWeightedPeers(cluster),
 		taskUpdates:               make(map[string]*api.TaskStatus),
 		processTaskUpdatesTrigger: make(chan struct{}, 1),
 		config: c,
 	}
+}
+
+func getWeightedPeers(cluster Cluster) []*api.WeightedPeer {
+	members := cluster.GetMemberlist()
+	var mgrs []*api.WeightedPeer
+	for _, m := range members {
+		mgrs = append(mgrs, &api.WeightedPeer{
+			Peer: &api.Peer{
+				NodeID: identity.FormatNodeID(m.RaftID),
+				Addr:   m.Addr,
+			},
+			Weight: 1,
+		})
+	}
+	return mgrs
 }
 
 // Run runs dispatcher tasks which should be run on leader dispatcher.
@@ -170,17 +181,8 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 	d.mu.Unlock()
 
 	publishManagers := func() {
-		members := d.cluster.GetMemberlist()
-		var mgrs []*api.WeightedPeer
-		for _, m := range members {
-			mgrs = append(mgrs, &api.WeightedPeer{
-				Addr:   m.Addr,
-				Weight: 1,
-			})
-		}
-
-		// sort and check whether member list has changed
-		sort.Sort(weightedPeerByAddr(mgrs))
+		mgrs := getWeightedPeers(d.cluster)
+		sort.Sort(weightedPeerByNodeID(mgrs))
 		d.mu.Lock()
 		if reflect.DeepEqual(mgrs, d.lastSeenManagers) {
 			d.mu.Unlock()
