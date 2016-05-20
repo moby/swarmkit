@@ -160,6 +160,9 @@ message ContainerSpec {
 	// Resource requirements for the container.
 	ResourceRequirements resources = 10;
 
+	// StopGracePeriod the grace period for stopping the container before
+	// forcefully killing the container.
+	uint64 stop_grace_period = 11 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
 }
 
 // VolumeSpec defines the properties of a Volume.
