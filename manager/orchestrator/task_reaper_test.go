@@ -75,11 +75,11 @@ func TestTaskHistory(t *testing.T) {
 
 	// Fail both tasks. They should both get restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status.State = api.TaskStateDead
+	updatedTask1.Status.State = api.TaskStateShutdown
 	updatedTask1.Status.TerminalState = api.TaskStateFailed
 	updatedTask1.Annotations = api.Annotations{Name: "original"}
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status.State = api.TaskStateDead
+	updatedTask2.Status.State = api.TaskStateShutdown
 	updatedTask2.Status.TerminalState = api.TaskStateFailed
 	updatedTask2.Annotations = api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
@@ -106,10 +106,10 @@ func TestTaskHistory(t *testing.T) {
 	// Fail these replacement tasks. Since TaskHistory is set to 2, this
 	// should cause the oldest tasks for each instance to get deleted.
 	updatedTask3 := observedTask3.Copy()
-	updatedTask3.Status.State = api.TaskStateDead
+	updatedTask3.Status.State = api.TaskStateShutdown
 	updatedTask3.Status.TerminalState = api.TaskStateFailed
 	updatedTask4 := observedTask4.Copy()
-	updatedTask4.Status.State = api.TaskStateDead
+	updatedTask4.Status.State = api.TaskStateShutdown
 	updatedTask4.Status.TerminalState = api.TaskStateFailed
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask3))
@@ -120,9 +120,9 @@ func TestTaskHistory(t *testing.T) {
 	deletedTask1 := watchTaskDelete(t, watch)
 	deletedTask2 := watchTaskDelete(t, watch)
 
-	assert.Equal(t, api.TaskStateDead, deletedTask1.Status.State)
+	assert.Equal(t, api.TaskStateShutdown, deletedTask1.Status.State)
 	assert.Equal(t, "original", deletedTask1.Annotations.Name)
-	assert.Equal(t, api.TaskStateDead, deletedTask2.Status.State)
+	assert.Equal(t, api.TaskStateShutdown, deletedTask2.Status.State)
 	assert.Equal(t, "original", deletedTask2.Annotations.Name)
 
 	var foundTasks []*api.Task

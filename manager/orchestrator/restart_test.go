@@ -60,7 +60,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
+	updatedTask1.Status = api.TaskStatus{State: api.TaskStateShutdown, TerminalState: api.TaskStateFailed}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
@@ -77,7 +77,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 
 	// Mark the second task as completed. Confirm that it gets restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
+	updatedTask2.Status = api.TaskStatus{State: api.TaskStateShutdown, TerminalState: api.TaskStateCompleted}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
@@ -143,7 +143,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
 	updatedTask1.Status.TerminalState = api.TaskStateFailed
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
+	updatedTask1.Status = api.TaskStatus{State: api.TaskStateShutdown, TerminalState: api.TaskStateFailed}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
@@ -160,7 +160,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 
 	// Mark the second task as completed. Confirm that it does not get restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
+	updatedTask2.Status = api.TaskStatus{State: api.TaskStateShutdown, TerminalState: api.TaskStateCompleted}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
@@ -229,7 +229,7 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 	// Fail the first task. Confirm that it does not get restarted.
 	updatedTask1 := observedTask1.Copy()
 	updatedTask1.Status.TerminalState = api.TaskStateFailed
-	updatedTask1.Status.State = api.TaskStateDead
+	updatedTask1.Status.State = api.TaskStateShutdown
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
@@ -249,7 +249,7 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 
 	// Mark the second task as completed. Confirm that it does not get restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateCompleted}
+	updatedTask2.Status = api.TaskStatus{State: api.TaskStateShutdown, TerminalState: api.TaskStateCompleted}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
@@ -317,7 +317,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
+	updatedTask1.Status = api.TaskStatus{State: api.TaskStateShutdown, TerminalState: api.TaskStateFailed}
 	before := time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
@@ -399,7 +399,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
+	updatedTask1.Status = api.TaskStatus{State: api.TaskStateShutdown, TerminalState: api.TaskStateFailed}
 	before := time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
@@ -432,7 +432,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 
 	// Fail the second task. Confirm that it gets restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
+	updatedTask2.Status = api.TaskStatus{State: api.TaskStateShutdown, TerminalState: api.TaskStateFailed}
 	before = time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
@@ -458,7 +458,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 
 	// Fail the first instance again. It should not be restarted.
 	updatedTask1 = observedTask3.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
+	updatedTask1.Status = api.TaskStatus{State: api.TaskStateShutdown, TerminalState: api.TaskStateFailed}
 	before = time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
@@ -528,7 +528,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
+	updatedTask1.Status = api.TaskStatus{State: api.TaskStateShutdown, TerminalState: api.TaskStateFailed}
 	before := time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
@@ -561,7 +561,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 
 	// Fail the second task. Confirm that it gets restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
+	updatedTask2.Status = api.TaskStatus{State: api.TaskStateShutdown, TerminalState: api.TaskStateFailed}
 	before = time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
@@ -587,7 +587,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 
 	// Fail the first instance again. It should not be restarted.
 	updatedTask1 = observedTask3.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
+	updatedTask1.Status = api.TaskStatus{State: api.TaskStateShutdown, TerminalState: api.TaskStateFailed}
 	before = time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
@@ -610,7 +610,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	// Fail the second instance again. It should get restarted because
 	// enough time has elapsed since the last restarts.
 	updatedTask2 = observedTask5.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateDead, TerminalState: api.TaskStateFailed}
+	updatedTask2.Status = api.TaskStatus{State: api.TaskStateShutdown, TerminalState: api.TaskStateFailed}
 	before = time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
