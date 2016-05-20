@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	errSessionClosed = errors.New("agent: session closed")
+	errSessionDisconnect = errors.New("agent: session disconnect") // instructed to disconnect
+	errSessionClosed     = errors.New("agent: session closed")
 )
 
 // session encapsulates one round of registration with the manager. session
@@ -25,7 +26,9 @@ var (
 // agent through errs, messages and tasks.
 type session struct {
 	agent     *Agent
+	nodeID    string
 	sessionID string
+	session   api.Dispatcher_SessionClient
 	errs      chan error
 	messages  chan *api.SessionMessage
 	tasks     chan *api.TasksMessage
@@ -87,8 +90,7 @@ func (s *session) initTasksReport(ctx context.Context) error {
 func (s *session) run(ctx context.Context, delay time.Duration) {
 	time.Sleep(delay) // delay before registering.
 
-	sessionID, err := s.register(ctx)
-	if err != nil {
+	if err := s.start(ctx); err != nil {
 		select {
 		case s.errs <- err:
 		case <-s.closed:
@@ -97,8 +99,7 @@ func (s *session) run(ctx context.Context, delay time.Duration) {
 		return
 	}
 
-	ctx = log.WithLogger(ctx, log.G(ctx).WithField("session.id", sessionID))
-	s.sessionID = sessionID
+	ctx = log.WithLogger(ctx, log.G(ctx).WithField("session.id", s.sessionID))
 
 	go runctx(ctx, s.heartbeat, s.closed, s.errs)
 	go runctx(ctx, s.watch, s.closed, s.errs)
@@ -111,8 +112,9 @@ func (s *session) run(ctx context.Context, delay time.Duration) {
 	close(s.registered)
 }
 
-func (s *session) register(ctx context.Context) (string, error) {
-	log.G(ctx).Debugf("(*session).register")
+// start begins the session and returns the first SessionMessage.
+func (s *session) start(ctx context.Context) error {
+	log.G(ctx).Debugf("(*session).start")
 
 	client := api.NewDispatcherClient(s.agent.conn)
 
@@ -120,25 +122,35 @@ func (s *session) register(ctx context.Context) (string, error) {
 	if err != nil {
 		log.G(ctx).WithError(err).WithField("executor", s.agent.config.Executor).
 			Errorf("node description unavailable")
-		return "", err
+		return err
 	}
 	// Override hostname
 	if s.agent.config.Hostname != "" {
 		description.Hostname = s.agent.config.Hostname
 	}
 
-	resp, err := client.Register(ctx, &api.RegisterRequest{
+	stream, err := client.Session(ctx, &api.SessionRequest{
 		Description: description,
 	})
 	if err != nil {
-		if grpc.Code(err) == codes.NotFound {
-			return "", errNodeNotRegistered
-		}
-
-		return "", err
+		return err
 	}
 
-	return resp.SessionID, nil
+	msg, err := stream.Recv()
+	if err != nil {
+		return err
+	}
+
+	if msg.Disconnect {
+		stream.CloseSend()
+		return errSessionDisconnect
+	}
+
+	s.nodeID = msg.NodeID
+	s.sessionID = msg.SessionID
+	s.session = stream
+
+	return nil
 }
 
 func (s *session) heartbeat(ctx context.Context) error {
@@ -177,17 +189,10 @@ func (s *session) heartbeat(ctx context.Context) error {
 }
 
 func (s *session) listen(ctx context.Context) error {
+	defer s.session.CloseSend()
 	log.G(ctx).Debugf("(*session).listen")
-	client := api.NewDispatcherClient(s.agent.conn)
-	session, err := client.Session(ctx, &api.SessionRequest{
-		SessionID: s.sessionID,
-	})
-	if err != nil {
-		return err
-	}
-
 	for {
-		resp, err := session.Recv()
+		resp, err := s.session.Recv()
 		if err != nil {
 			return err
 		}

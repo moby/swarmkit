@@ -262,21 +262,11 @@ func (d *Dispatcher) isRunning() bool {
 	return true
 }
 
-// Register is used for registration of node with particular dispatcher.
-func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
-	agentID, err := ca.AuthorizeNode(ctx)
-	if err != nil {
-		return nil, err
-	}
-	log := log.G(ctx).WithFields(logrus.Fields{
-		"request":  r,
-		"agent.id": agentID,
-		"method":   "Register",
-	})
-
+// register is used for registration of node with particular dispatcher.
+func (d *Dispatcher) register(ctx context.Context, agentID string, description *api.NodeDescription) (nodeID, sessionID string, err error) {
 	// prevent register until we're ready to accept it
 	if err := d.addTask(); err != nil {
-		return nil, err
+		return "", "", err
 	}
 	defer d.doneTask()
 
@@ -287,7 +277,7 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	err = d.store.Update(func(tx store.Tx) error {
 		node = store.GetNode(tx, agentID)
 		if node != nil {
-			node.Description = r.Description
+			node.Description = description
 			node.Status = api.NodeStatus{
 				State: api.NodeStatus_READY,
 			}
@@ -296,7 +286,7 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 
 		node = &api.Node{
 			ID:          agentID,
-			Description: r.Description,
+			Description: description,
 			Status: api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
@@ -304,14 +294,14 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 		return store.CreateNode(tx, node)
 	})
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 
 	expireFunc := func() {
 		nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "heartbeat failure"}
-		log.Debugf("heartbeat expiration")
+		log.G(ctx).Debugf("heartbeat expiration")
 		if err := d.nodeRemove(agentID, nodeStatus); err != nil {
-			log.WithError(err).Errorf("failed deregistering node after heartbeat expiration")
+			log.G(ctx).WithError(err).Errorf("failed deregistering node after heartbeat expiration")
 		}
 	}
 
@@ -326,7 +316,7 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 	// time a node registers, we invalidate the session and issue a new
 	// session, once identity is proven. This will cause misbehaved agents to
 	// be kicked when multiple connections are made.
-	return &api.RegisterResponse{NodeID: rn.Node.ID, SessionID: rn.SessionID}, nil
+	return rn.Node.ID, rn.SessionID, nil
 }
 
 // UpdateTaskStatus updates status of task. Node should send such updates
@@ -575,11 +565,19 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 	})
 	log.Debugf("grpc call")
 
-	if _, err = d.nodes.GetWithSession(agentID, r.SessionID); err != nil {
+	// register the node.
+	nodeID, sessionID, err := d.register(stream.Context(), agentID, r.Description)
+	if err != nil {
+		return err
+	}
+
+	if _, err = d.nodes.GetWithSession(agentID, sessionID); err != nil {
 		return err
 	}
 
 	if err := stream.Send(&api.SessionMessage{
+		NodeID:     nodeID,
+		SessionID:  sessionID,
 		Managers:   d.getManagers(),
 		Disconnect: false,
 	}); err != nil {
@@ -593,7 +591,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		// After each message send, we need to check the nodes sessionID hasn't
 		// changed. If it has, we will the stream and make the node
 		// re-register.
-		node, err := d.nodes.GetWithSession(agentID, r.SessionID)
+		node, err := d.nodes.GetWithSession(agentID, sessionID)
 		if err != nil {
 			return err
 		}
