@@ -61,6 +61,15 @@ var managerCmd = &cobra.Command{
 			p = picker.NewPicker(managerAddr, managers)
 		}
 
+		// If we don't have a valid picker, means that we're bootstraping a new cluster
+		if p == nil {
+			if err := ca.BootstrapCluster(certDir); err != nil {
+				return err
+			}
+		}
+
+		// We either just boostraped our cluster from scratch, or have a valid picker and
+		// are thus joining an existing cluster
 		securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, token, p)
 		if err != nil {
 			return err
