@@ -43,6 +43,7 @@ func init() {
 	mainCmd.AddCommand(
 		agentCmd,
 		managerCmd,
+		nodeCmd,
 		version.Cmd,
 	)
 }

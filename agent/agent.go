@@ -12,10 +12,8 @@ import (
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
-	"github.com/docker/swarm-v2/picker"
 	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -28,8 +26,6 @@ const (
 // tasks assigned to the node.
 type Agent struct {
 	config *Config
-	conn   *grpc.ClientConn
-	picker *picker.Picker
 
 	// The latest node object state from manager
 	// for this node known to the agent.
@@ -47,6 +43,7 @@ type Agent struct {
 	removedq chan string
 
 	started chan struct{}
+	ready   chan struct{}
 	stopped chan struct{} // requests shutdown
 	closed  chan struct{} // only closed in run
 	err     error         // read only after closed is closed
@@ -59,7 +56,7 @@ func New(config *Config) (*Agent, error) {
 		return nil, err
 	}
 
-	return &Agent{
+	ag := &Agent{
 		config:      config,
 		tasks:       make(map[string]*api.Task),
 		assigned:    make(map[string]*api.Task),
@@ -72,9 +69,11 @@ func New(config *Config) (*Agent, error) {
 		removedq: make(chan string),
 
 		started: make(chan struct{}),
+		ready:   make(chan struct{}),
 		stopped: make(chan struct{}),
 		closed:  make(chan struct{}),
-	}, nil
+	}
+	return ag, nil
 }
 
 var (
@@ -147,11 +146,18 @@ func (a *Agent) Stop(ctx context.Context) error {
 
 // Err returns the error that caused the agent to shutdown or nil. Err blocks
 // until the agent is fully shutdown.
-func (a *Agent) Err() error {
+func (a *Agent) Err(ctx context.Context) error {
 	select {
 	case <-a.closed:
 		return a.err
+	case <-ctx.Done():
+		return ctx.Err()
 	}
+}
+
+// Ready returns a channel that will be closed when agent first becomes ready.
+func (a *Agent) Ready() <-chan struct{} {
+	return a.ready
 }
 
 func (a *Agent) run(ctx context.Context) {
@@ -168,16 +174,11 @@ func (a *Agent) run(ctx context.Context) {
 	defer log.G(ctx).Debugf("(*Agent).run exited")
 	defer close(a.closed) // full shutdown.
 
-	if err := a.connect(ctx); err != nil {
-		log.G(ctx).WithError(err).Error("agent: connection failed")
-		a.err = err
-		return
-	}
-
 	var (
 		backoff    time.Duration
 		session    = newSession(ctx, a, backoff) // start the initial session
 		registered = session.registered
+		ready      = a.ready // first session ready
 	)
 
 	// TODO(stevvooe): Read tasks known by executor associated with this node
@@ -203,6 +204,10 @@ func (a *Agent) run(ctx context.Context) {
 				log.G(ctx).WithError(err).Error("session message handler failed")
 			}
 		case <-registered:
+			if ready != nil {
+				close(ready)
+			}
+			ready = nil
 			log.G(ctx).Debugln("agent: registered")
 			registered = nil // we only care about this once per session
 			backoff = 0      // reset backoff
@@ -242,40 +247,17 @@ func (a *Agent) run(ctx context.Context) {
 	}
 }
 
-// connect creates the client connection. This should only be called once per
-// agent.
-func (a *Agent) connect(ctx context.Context) error {
-	log.G(ctx).Debugf("(*Agent).connect")
-
-	manager, err := a.config.Managers.Select()
-	if err != nil {
-		return err
-	}
-
-	creds := a.config.SecurityConfig.ClientTLSCreds
-	a.picker = picker.NewPicker(manager, a.config.Managers)
-	a.conn, err = grpc.Dial(manager,
-		grpc.WithPicker(a.picker),
-		grpc.WithTransportCredentials(creds),
-		grpc.WithBackoffMaxDelay(maxSessionFailureBackoff))
-	if err != nil {
-		return err
-	}
-
-	return err
-}
-
 func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMessage) error {
-	seen := map[string]struct{}{}
+	seen := map[api.Peer]struct{}{}
 	for _, manager := range message.Managers {
-		if manager.Addr == "" {
-			log.G(ctx).WithField("manager.addr", manager.Addr).
+		if manager.Peer.Addr == "" {
+			log.G(ctx).WithField("manager.addr", manager.Peer.Addr).
 				Warnf("skipping bad manager address")
 			continue
 		}
 
-		a.config.Managers.Observe(manager.Addr, int(manager.Weight))
-		seen[manager.Addr] = struct{}{}
+		a.config.Managers.Observe(*manager.Peer, int(manager.Weight))
+		seen[*manager.Peer] = struct{}{}
 	}
 
 	if message.Node != nil {
@@ -287,9 +269,11 @@ func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMe
 		}
 	}
 
-	if message.Disconnect {
-		// TODO(stevvooe): This may actually be fatal if there is a failure.
-		return a.picker.Reset()
+	// prune managers not in list.
+	for peer := range a.config.Managers.Weights() {
+		if _, ok := seen[peer]; !ok {
+			a.config.Managers.Remove(peer)
+		}
 	}
 
 	if message.NetworkBootstrapKeys == nil {
@@ -312,18 +296,6 @@ func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMe
 	}
 
 	return nil
-
-	// TODO(stevvooe): Right now, this deletes all the command line
-	// entered managers, which stinks for working in development.
-
-	// prune managers not in list.
-	// known := a.config.Managers.All()
-	// for _, addr := range known {
-	// 	if _, ok := seen[addr]; !ok {
-	// 		a.config.Managers.Remove(addr)
-	// 	}
-	// }
-
 }
 
 // assign the set of tasks to the agent. Any tasks on the agent currently that

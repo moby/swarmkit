@@ -58,7 +58,7 @@ func (s *session) initTasksReport(ctx context.Context) error {
 		return errSessionClosed
 	default:
 	}
-	client := api.NewDispatcherClient(s.agent.conn)
+	client := api.NewDispatcherClient(s.agent.config.Conn)
 	updates := make([]*api.UpdateTaskStatusRequest_TaskStatusUpdate, 0, batchSize)
 	for _, task := range s.agent.tasks {
 		updates = append(updates, &api.UpdateTaskStatusRequest_TaskStatusUpdate{
@@ -116,7 +116,7 @@ func (s *session) run(ctx context.Context, delay time.Duration) {
 func (s *session) start(ctx context.Context) error {
 	log.G(ctx).Debugf("(*session).start")
 
-	client := api.NewDispatcherClient(s.agent.conn)
+	client := api.NewDispatcherClient(s.agent.config.Conn)
 
 	description, err := s.agent.config.Executor.Describe(ctx)
 	if err != nil {
@@ -154,7 +154,7 @@ func (s *session) start(ctx context.Context) error {
 
 func (s *session) heartbeat(ctx context.Context) error {
 	log.G(ctx).Debugf("(*session).heartbeat")
-	client := api.NewDispatcherClient(s.agent.conn)
+	client := api.NewDispatcherClient(s.agent.config.Conn)
 	heartbeat := time.NewTimer(1) // send out a heartbeat right away
 	defer heartbeat.Stop()
 
@@ -208,7 +208,7 @@ func (s *session) listen(ctx context.Context) error {
 
 func (s *session) watch(ctx context.Context) error {
 	log.G(ctx).Debugf("(*session).watch")
-	client := api.NewDispatcherClient(s.agent.conn)
+	client := api.NewDispatcherClient(s.agent.config.Conn)
 	watch, err := client.Tasks(ctx, &api.TasksRequest{
 		SessionID: s.sessionID})
 	if err != nil {
@@ -246,7 +246,7 @@ func (s *session) sendTaskStatus(ctx context.Context, taskID string, status api.
 		return ctx.Err()
 	}
 
-	client := api.NewDispatcherClient(s.agent.conn)
+	client := api.NewDispatcherClient(s.agent.config.Conn)
 	if _, err := client.UpdateTaskStatus(ctx, &api.UpdateTaskStatusRequest{
 		SessionID: s.sessionID,
 		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{

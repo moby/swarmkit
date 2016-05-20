@@ -366,13 +366,17 @@ message IPAMOptions {
 	repeated IPAMConfig configs = 3;
 }
 
+// Peer should be used anywhere where we are describing a remote peer.
+message Peer {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+	string addr = 2;
+}
+
 // WeightedPeer should be used anywhere where we are describing a remote peer
 // with a weight.
 message WeightedPeer {
-	string addr = 1;
+	Peer peer = 1;
 	int64 weight = 2;
-
-	// TODO(stevvooe): We must consolidate peer representation in the API.
 }
 
 enum IssuanceState {
