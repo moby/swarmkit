@@ -52,7 +52,8 @@ func (tc *TestCA) Stop() {
 
 // NewNodeConfig returns security config for a new node, given a role
 func (tc *TestCA) NewNodeConfig(role string) (*ca.SecurityConfig, error) {
-	nodeCert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Context, tc.Paths.Node, role, nil)
+	nodeID := identity.NewID()
+	nodeCert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, nodeID, role)
 	if err != nil {
 		return nil, err
 	}
