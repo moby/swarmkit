@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/coreos/etcd/raft"
@@ -47,10 +46,7 @@ func (n *Node) loadAndStart(ctx context.Context, forceNewCluster bool) error {
 		// an existing cluster.
 		n.Config.ID = uint64(rand.Int63()) + 1
 
-		sid := strconv.FormatUint(n.Config.ID, 16)
-
-		raftNode := &api.Member{
-			ID:     sid,
+		raftNode := &api.RaftMember{
 			RaftID: n.Config.ID,
 			Addr:   n.Address,
 		}
@@ -63,7 +59,7 @@ func (n *Node) loadAndStart(ctx context.Context, forceNewCluster bool) error {
 			return fmt.Errorf("create wal error: %v", err)
 		}
 
-		n.cluster.AddMember(&membership.Member{Member: raftNode})
+		n.cluster.AddMember(&membership.Member{RaftMember: raftNode})
 		n.startNodePeers = []raft.Peer{{ID: n.Config.ID, Context: metadata}}
 
 		return nil
@@ -135,7 +131,7 @@ func (n *Node) readWAL(ctx context.Context, snapshot *raftpb.Snapshot, forceNewC
 		}
 	}()
 
-	var raftNode api.Member
+	var raftNode api.RaftMember
 	if err := raftNode.Unmarshal(metadata); err != nil {
 		return fmt.Errorf("error unmarshalling wal metadata: %v", err)
 	}
@@ -246,8 +242,7 @@ func (n *Node) doSnapshot(raftConfig *api.RaftConfig) {
 	snapshot := api.Snapshot{Version: api.Snapshot_V0}
 	for _, member := range n.cluster.Members() {
 		snapshot.Membership.Members = append(snapshot.Membership.Members,
-			&api.Member{
-				ID:     member.ID,
+			&api.RaftMember{
 				RaftID: member.RaftID,
 				Addr:   member.Addr,
 			})
@@ -322,7 +317,7 @@ func (n *Node) restoreFromSnapshot(data []byte, forceNewCluster bool) error {
 
 	if !forceNewCluster {
 		for _, member := range snapshot.Membership.Members {
-			if err := n.registerNode(&api.Member{ID: member.ID, RaftID: member.RaftID, Addr: member.Addr}); err != nil {
+			if err := n.registerNode(&api.RaftMember{RaftID: member.RaftID, Addr: member.Addr}); err != nil {
 				return err
 			}
 		}

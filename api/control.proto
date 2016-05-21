@@ -207,7 +207,7 @@ message ListManagersRequest {
 }
 
 message ListManagersResponse {
-	repeated Member managers = 1;
+	repeated Manager managers = 1;
 }
 
 message RemoveManagerRequest {

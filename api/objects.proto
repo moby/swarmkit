@@ -40,28 +40,16 @@ message Node {
 	NodeStatus status = 5 [(gogoproto.nullable) = false];
 }
 
-// Member provides informations about the state of a manager in the cluster.
-// A Member is essentially a Manager but from a Raft membership perspective
-// TODO(abronan): this is probably not an appropriate name for a top level object (specific to raft),
-// we should consider picking a new name
-// TODO(aluzzardi): This should contain Meta.
-message Member {
+// Manager provides informations about the state of a manager in the cluster.
+message Manager {
 	// ID specifies the identity of the manager. This is the ID used for client interaction with the server.
 	string id = 1 [(gogoproto.customname) = "ID"];
 
-	// RaftID specifies the internal ID used by the manager in a raft context, it can never be modified
-	// and is used only for information purposes
-	uint64 raft_id = 2 [(gogoproto.customname) = "RaftID"];
-
-	// Addr specifies the address of the member
-	string addr = 3;
-
-	// MemberSpec declares labels applied to the Manager, for example node name or cluster it
+	// Spec declares labels applied to the Manager, for example node name or cluster it
 	// belongs to in multi region scenarios
-	MemberSpec spec = 4;
+	ManagerSpec spec = 2;
 
-	// Status provides the current status of the manager from the perspective of another manager.
-	MemberStatus status = 5 [(gogoproto.nullable) = false];
+	RaftMember raft = 3 [(gogoproto.nullable) = false];
 }
 
 message Service {

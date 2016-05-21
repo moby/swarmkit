@@ -45,7 +45,7 @@ message NodeSpec {
 	Availability availability = 2;
 }
 
-message MemberSpec {
+message ManagerSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 }
 
