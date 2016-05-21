@@ -45,6 +45,11 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
+	if err := s.addTask(); err != nil {
+		return nil, err
+	}
+	defer s.doneTask()
+
 	var rCertificate *api.RegisteredCertificate
 
 	// We create a watcher before checking the cert so we can be sure we don't miss any events
@@ -107,6 +112,11 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 	if request.CSR == nil || request.Role == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
+
+	if err := s.addTask(); err != nil {
+		return nil, err
+	}
+	defer s.doneTask()
 
 	// TODO(diogo): token's shouldn't be seen by the user, add more bits?
 	token := identity.NewID()
@@ -199,6 +209,10 @@ func (s *Server) issueAcceptedRegisteredCertificate(ctx context.Context, nodeID,
 
 // GetRootCACertificate returns the certificate of the Root CA.
 func (s *Server) GetRootCACertificate(ctx context.Context, request *api.GetRootCACertificateRequest) (*api.GetRootCACertificateResponse, error) {
+	if err := s.addTask(); err != nil {
+		return nil, err
+	}
+	defer s.doneTask()
 
 	log.G(ctx).Debugf("(*Server).GetRootCACertificate called ")
 
@@ -271,10 +285,24 @@ func (s *Server) Stop() error {
 	}
 	s.cancel()
 	s.mu.Unlock()
-	// wait for all handlers to finish their raft deals, because manager will
-	// set raftNode to nil
+	// wait for all handlers to finish their CA deals,
 	s.wg.Wait()
 	return nil
+}
+
+func (s *Server) addTask() error {
+	s.mu.Lock()
+	if !s.isRunning() {
+		s.mu.Unlock()
+		return grpc.Errorf(codes.Aborted, "CA signer is stopped")
+	}
+	s.wg.Add(1)
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *Server) doneTask() {
+	s.wg.Done()
 }
 
 func (s *Server) isRunning() bool {

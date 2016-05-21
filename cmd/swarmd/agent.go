@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"path/filepath"
 
 	engineapi "github.com/docker/engine-api/client"
@@ -64,6 +65,23 @@ already present, the agent will recover and startup.`,
 			if err != nil {
 				return err
 			}
+
+			configs, errors := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker)
+			go func() {
+				for {
+					select {
+					case tlsConfig := <-configs:
+						err := securityConfig.ClientTLSCreds.LoadNewTLSConfig(&tlsConfig)
+						if err != nil {
+							fmt.Printf("failed to load new Client TLS config: %v\n", err)
+						}
+					case err := <-errors:
+						fmt.Printf("Received remote error: %v\n", err)
+					case <-ctx.Done():
+						break
+					}
+				}
+			}()
 
 			client, err := engineapi.NewClient(engineAddr, "", nil, nil)
 			if err != nil {
