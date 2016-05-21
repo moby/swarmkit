@@ -264,7 +264,7 @@ func (d *Dispatcher) isRunning() bool {
 
 // Register is used for registration of node with particular dispatcher.
 func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
-	agentID, err := ca.AuthorizeForwardedRole(ctx, ca.AgentRole)
+	agentID, err := ca.AuthorizeNode(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +332,7 @@ func (d *Dispatcher) Register(ctx context.Context, r *api.RegisterRequest) (*api
 // UpdateTaskStatus updates status of task. Node should send such updates
 // on every status change of its tasks.
 func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStatusRequest) (*api.UpdateTaskStatusResponse, error) {
-	agentID, err := ca.AuthorizeForwardedRole(ctx, ca.AgentRole)
+	agentID, err := ca.AuthorizeNode(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -424,7 +424,7 @@ func (d *Dispatcher) processTaskUpdates() {
 // of tasks which should be run on node, if task is not present in that list,
 // it should be terminated.
 func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
-	agentID, err := ca.AuthorizeForwardedRole(stream.Context(), ca.AgentRole)
+	agentID, err := ca.AuthorizeNode(stream.Context())
 	if err != nil {
 		return err
 	}
@@ -530,7 +530,7 @@ func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
 // Node should send new heartbeat earlier than now + TTL, otherwise it will
 // be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
 func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*api.HeartbeatResponse, error) {
-	agentID, err := ca.AuthorizeForwardedRole(ctx, ca.AgentRole)
+	agentID, err := ca.AuthorizeNode(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -558,7 +558,7 @@ func (d *Dispatcher) getManagers() []*api.WeightedPeer {
 // reconnect to another Manager immediately.
 func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_SessionServer) error {
 	ctx := stream.Context()
-	agentID, err := ca.AuthorizeForwardedRole(ctx, ca.AgentRole)
+	agentID, err := ca.AuthorizeNode(ctx)
 	if err != nil {
 		return err
 	}

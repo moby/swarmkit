@@ -36,7 +36,7 @@ func (tm *testManager) Close() {
 type managersCluster struct {
 	ms     []*testManager
 	agents []*agent.Agent
-	tca    *catestutils.TestCA
+	tc     *catestutils.TestCA
 }
 
 func (mc *managersCluster) Close() {
@@ -47,7 +47,7 @@ func (mc *managersCluster) Close() {
 	for _, a := range mc.agents {
 		a.Stop(ctx)
 	}
-	mc.tca.Close()
+	mc.tc.Stop()
 }
 
 func (mc *managersCluster) AddAgents(count int) error {
@@ -56,7 +56,7 @@ func (mc *managersCluster) AddAgents(count int) error {
 		addrs = append(addrs, m.addr)
 	}
 	for i := 0; i < count; i++ {
-		asConfig, err := mc.tca.AgentConfig()
+		asConfig, err := mc.tc.NewNodeConfig(ca.AgentRole)
 		if err != nil {
 			return err
 		}
@@ -81,7 +81,7 @@ func (mc *managersCluster) AddAgents(count int) error {
 
 func (mc *managersCluster) AddManagers(count int) error {
 	if len(mc.ms) == 0 {
-		msConfig, err := mc.tca.ManagerConfig()
+		msConfig, err := mc.tc.NewNodeConfig(ca.ManagerRole)
 		if err != nil {
 			return err
 		}
@@ -93,7 +93,7 @@ func (mc *managersCluster) AddManagers(count int) error {
 		count--
 	}
 	for i := 0; i < count; i++ {
-		msConfig, err := mc.tca.ManagerConfig()
+		msConfig, err := mc.tc.NewNodeConfig(ca.ManagerRole)
 		if err != nil {
 			return err
 		}
@@ -106,7 +106,7 @@ func (mc *managersCluster) AddManagers(count int) error {
 	return nil
 }
 
-func newManager(joinAddr string, securityConfig *ca.ManagerSecurityConfig) (*testManager, error) {
+func newManager(joinAddr string, securityConfig *ca.SecurityConfig) (*testManager, error) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, err
@@ -135,9 +135,10 @@ func newManager(joinAddr string, securityConfig *ca.ManagerSecurityConfig) (*tes
 }
 
 func createManagersCluster(t *testing.T, managersCount, agentsCount int) *managersCluster {
-	tca, err := catestutils.NewTestCA()
-	require.NoError(t, err)
-	mc := &managersCluster{tca: tca}
+	tc := catestutils.NewTestCA(t, catestutils.AutoAcceptPolicy())
+	defer tc.Stop()
+
+	mc := &managersCluster{tc: tc}
 	require.NoError(t, mc.AddManagers(managersCount))
 	time.Sleep(5 * time.Second)
 	require.NoError(t, mc.AddAgents(agentsCount))

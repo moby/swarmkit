@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"testing"
 
 	"golang.org/x/net/context"
@@ -12,21 +11,23 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
-	cautils "github.com/docker/swarm-v2/ca/testutils"
+	"github.com/docker/swarm-v2/ca/testutils"
 	raftutils "github.com/docker/swarm-v2/manager/state/raft/testutils"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 )
 
-var securityConfig *ca.ManagerSecurityConfig
+var securityConfig *ca.SecurityConfig
 
 func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
 	logrus.SetOutput(ioutil.Discard)
-	var tmpDir string
-	_, securityConfig, tmpDir, _ = cautils.GenerateAgentAndManagerSecurityConfig(1)
-	defer os.RemoveAll(tmpDir)
+
+	tc := testutils.NewTestCA(nil, testutils.AutoAcceptPolicy())
+	defer tc.Stop()
+
+	securityConfig, _ = tc.NewNodeConfig(ca.ManagerRole)
 }
 
 func getMap(t *testing.T, members []*api.Member) map[uint64]*api.Member {

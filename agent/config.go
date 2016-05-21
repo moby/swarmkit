@@ -21,7 +21,7 @@ type Config struct {
 	Executor exec.Executor
 
 	// SecurityConfig specifies the security configuration of the Agent
-	SecurityConfig *ca.AgentSecurityConfig
+	SecurityConfig *ca.SecurityConfig
 }
 
 func (c *Config) validate() error {

@@ -109,7 +109,7 @@ func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPa
 		log.Debugf("issued TLS credentials with role: %s.", role)
 	} else {
 		// Get the remote manager to issue a CA signed certificate for this node
-		signedCert, err = getRemoteSignedCertificate(ctx, csr, role, rca.Pool, picker)
+		signedCert, err = GetRemoteSignedCertificate(ctx, csr, role, rca.Pool, picker)
 		if err != nil {
 			return nil, err
 		}
@@ -307,6 +307,22 @@ func CreateAndWriteRootCA(rootCN string, paths CertPaths) (RootCA, error) {
 	return RootCA{Signer: signer, Cert: cert, Pool: pool}, nil
 }
 
+// BootstrapCluster receives a directory and creates both new Root CA key material
+// and a ManagerRole key/certificate pair to be used by the initial cluster manager
+func BootstrapCluster(baseCertDir string) error {
+	paths := NewConfigPaths(baseCertDir)
+
+	rootCA, err := CreateAndWriteRootCA(rootCN, paths.RootCA)
+	if err != nil {
+		return err
+	}
+
+	nodeID := identity.NewID()
+	_, err = GenerateAndSignNewTLSCert(rootCA, nodeID, ManagerRole, paths.Node)
+
+	return err
+}
+
 // GenerateAndSignNewTLSCert creates a new keypair, signs the certificate using signer,
 // and saves the certificate and key to disk. This method is used to bootstrap the first
 // manager TLS certificates.
@@ -376,45 +392,23 @@ func GenerateAndWriteNewCSR(paths CertPaths) (csr, key []byte, err error) {
 	return
 }
 
-func saveRootCA(rootCA RootCA, paths CertPaths) error {
-	// Make sure the necessary dirs exist and they are writable
-	err := os.MkdirAll(filepath.Dir(paths.Cert), 0755)
-	if err != nil {
-		return err
-	}
-
-	// If the root certificate got returned successfully, save the rootCA to disk.
-	return ioutil.WriteFile(paths.Cert, rootCA.Cert, 0644)
-}
-
-func generateNewCSR() (csr, key []byte, err error) {
-	req := &cfcsr.CertificateRequest{
-		KeyRequest: cfcsr.NewBasicKeyRequest(),
-	}
-
-	csr, key, err = cfcsr.ParseRequest(req)
-	if err != nil {
-		log.Debugf(`failed to generate CSR`)
-		return
-	}
-
-	return
-}
-
-func getRemoteSignedCertificate(ctx context.Context, csr []byte, role string, rootCAPool *x509.CertPool, picker *picker.Picker) ([]byte, error) {
+// GetRemoteSignedCertificate submits a CSR together with the intended role to a remote CA server address
+// available through a picker, and that is part of a CA identified by a specific certificate pool.
+func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role string, rootCAPool *x509.CertPool, picker *picker.Picker) ([]byte, error) {
 	if rootCAPool == nil {
 		return nil, fmt.Errorf("valid root CA pool required")
+	}
+	if picker == nil {
+		return nil, fmt.Errorf("valid remote address picker required")
 	}
 
 	// This is our only non-MTLS request
 	// We're using CARole as server name, so an external CA doesn't also have to have ManagerRole in the cert SANs
 	creds := credentials.NewTLS(&tls.Config{ServerName: CARole, RootCAs: rootCAPool})
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds),
-		grpc.WithBackoffMaxDelay(10 * time.Second), grpc.WithPicker(picker)}
-
-	if picker == nil {
-		return nil, fmt.Errorf("valid remote address picker required")
-	}
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(creds),
+		grpc.WithBackoffMaxDelay(10 * time.Second),
+		grpc.WithPicker(picker)}
 
 	firstAddr, err := picker.PickAddr()
 	if err != nil {
@@ -474,4 +468,29 @@ func getRemoteSignedCertificate(ctx context.Context, csr []byte, role string, ro
 		expBackoff.Failure(nil, nil)
 		time.Sleep(expBackoff.Proceed(nil))
 	}
+}
+
+func saveRootCA(rootCA RootCA, paths CertPaths) error {
+	// Make sure the necessary dirs exist and they are writable
+	err := os.MkdirAll(filepath.Dir(paths.Cert), 0755)
+	if err != nil {
+		return err
+	}
+
+	// If the root certificate got returned successfully, save the rootCA to disk.
+	return ioutil.WriteFile(paths.Cert, rootCA.Cert, 0644)
+}
+
+func generateNewCSR() (csr, key []byte, err error) {
+	req := &cfcsr.CertificateRequest{
+		KeyRequest: cfcsr.NewBasicKeyRequest(),
+	}
+
+	csr, key, err = cfcsr.ParseRequest(req)
+	if err != nil {
+		log.Debugf(`failed to generate CSR`)
+		return
+	}
+
+	return
 }

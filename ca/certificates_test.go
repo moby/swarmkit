@@ -1,11 +1,9 @@
-package ca
+package ca_test
 
 import (
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/hex"
 	"io/ioutil"
-	"net"
 	"os"
 	"testing"
 	"time"
@@ -13,119 +11,23 @@ import (
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/identity"
+	"github.com/docker/swarm-v2/ca"
+	"github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
-	"github.com/docker/swarm-v2/picker"
 	"github.com/phayes/permbits"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
-
-func AutoAcceptPolicy() api.AcceptancePolicy {
-	return api.AcceptancePolicy{
-		Autoaccept: map[string]bool{AgentRole: true, ManagerRole: true},
-	}
-}
-
-type TestCA struct {
-	rootCA   RootCA
-	s        *store.MemoryStore
-	tmpDir   string
-	paths    *SecurityConfigPaths
-	server   grpc.Server
-	caServer *Server
-	ctx      context.Context
-	clients  []api.CAClient
-	conns    []*grpc.ClientConn
-	picker   *picker.Picker
-}
-
-func (tc *TestCA) Stop() {
-	os.RemoveAll(tc.tmpDir)
-	for _, conn := range tc.conns {
-		conn.Close()
-	}
-	tc.caServer.Stop()
-	tc.server.Stop()
-}
-
-func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
-	assert.NoError(t, err)
-
-	paths := NewConfigPaths(tempBaseDir)
-
-	rootCA, err := CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
-	assert.NoError(t, err)
-
-	managerConfig, err := genManagerSecurityConfig(rootCA, tempBaseDir)
-	assert.NoError(t, err)
-
-	agentConfig, err := genAgentSecurityConfig(rootCA, tempBaseDir)
-	assert.NoError(t, err)
-
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(t, err)
-
-	baseOpts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
-	insecureClientOpts := append(baseOpts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})))
-	clientOpts := append(baseOpts, grpc.WithTransportCredentials(agentConfig.ClientTLSCreds))
-	managerOpts := append(baseOpts, grpc.WithTransportCredentials(managerConfig.ClientTLSCreds))
-
-	conn1, err := grpc.Dial(l.Addr().String(), insecureClientOpts...)
-	assert.NoError(t, err)
-
-	conn2, err := grpc.Dial(l.Addr().String(), clientOpts...)
-	assert.NoError(t, err)
-
-	conn3, err := grpc.Dial(l.Addr().String(), managerOpts...)
-	assert.NoError(t, err)
-
-	serverOpts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
-	grpcServer := grpc.NewServer(serverOpts...)
-
-	s := store.NewMemoryStore(nil)
-	createClusterObject(t, s, policy)
-	caServer := NewServer(s, managerConfig)
-	api.RegisterCAServer(grpcServer, caServer)
-
-	go func() {
-		grpcServer.Serve(l)
-	}()
-	go func() {
-		assert.NoError(t, caServer.Run(context.Background()))
-	}()
-
-	remotes := picker.NewRemotes(l.Addr().String())
-	picker := picker.NewPicker(l.Addr().String(), remotes)
-
-	clients := []api.CAClient{api.NewCAClient(conn1), api.NewCAClient(conn2), api.NewCAClient(conn3)}
-	conns := []*grpc.ClientConn{conn1, conn2, conn3}
-
-	return &TestCA{
-		rootCA:   rootCA,
-		s:        s,
-		picker:   picker,
-		tmpDir:   tempBaseDir,
-		paths:    paths,
-		ctx:      context.Background(),
-		clients:  clients,
-		conns:    conns,
-		caServer: caServer,
-	}
-}
 
 func TestCreateAndWriteRootCA(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	paths := NewConfigPaths(tempBaseDir)
+	paths := ca.NewConfigPaths(tempBaseDir)
 
-	_, err = CreateAndWriteRootCA("rootCN", paths.RootCA)
+	_, err = ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
 	perms, err := permbits.Stat(paths.RootCA.Cert)
@@ -143,9 +45,9 @@ func TestCreateAndWriteRootCAExpiry(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	paths := NewConfigPaths(tempBaseDir)
+	paths := ca.NewConfigPaths(tempBaseDir)
 
-	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
 	// Convert the certificate into an object to create a RootCA
@@ -160,12 +62,12 @@ func TestGetLocalRootCA(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	paths := NewConfigPaths(tempBaseDir)
+	paths := ca.NewConfigPaths(tempBaseDir)
 
-	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	rootCA2, err := GetLocalRootCA(paths.RootCA)
+	rootCA2, err := ca.GetLocalRootCA(paths.RootCA)
 	assert.NoError(t, err)
 	assert.Equal(t, rootCA, rootCA2)
 }
@@ -175,19 +77,19 @@ func TestGenerateAndSignNewTLSCert(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	paths := NewConfigPaths(tempBaseDir)
+	paths := ca.NewConfigPaths(tempBaseDir)
 
-	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	_, err = GenerateAndSignNewTLSCert(rootCA, "CN", "OU", paths.Manager)
+	_, err = ca.GenerateAndSignNewTLSCert(rootCA, "CN", "OU", paths.Node)
 	assert.NoError(t, err)
 
-	perms, err := permbits.Stat(paths.Manager.Cert)
+	perms, err := permbits.Stat(paths.Node.Cert)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
-	perms, err = permbits.Stat(paths.Manager.Key)
+	perms, err = permbits.Stat(paths.Node.Key)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
@@ -198,18 +100,18 @@ func TestGenerateAndWriteNewCSR(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	paths := NewConfigPaths(tempBaseDir)
+	paths := ca.NewConfigPaths(tempBaseDir)
 
-	csr, key, err := GenerateAndWriteNewCSR(paths.Manager)
+	csr, key, err := ca.GenerateAndWriteNewCSR(paths.Node)
 	assert.NoError(t, err)
 	assert.NotNil(t, csr)
 	assert.NotNil(t, key)
 
-	perms, err := permbits.Stat(paths.Manager.CSR)
+	perms, err := permbits.Stat(paths.Node.CSR)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
-	perms, err = permbits.Stat(paths.Manager.Key)
+	perms, err = permbits.Stat(paths.Node.Key)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
@@ -223,12 +125,12 @@ func TestParseValidateAndSignCSR(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	paths := NewConfigPaths(tempBaseDir)
+	paths := ca.NewConfigPaths(tempBaseDir)
 
-	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	csr, _, err := generateNewCSR()
+	csr, _, err := ca.GenerateAndWriteNewCSR(paths.Node)
 	assert.NoError(t, err)
 
 	signedCert, err := rootCA.ParseValidateAndSignCSR(csr, "CN", "OU")
@@ -249,9 +151,9 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
-	paths := NewConfigPaths(tempBaseDir)
+	paths := ca.NewConfigPaths(tempBaseDir)
 
-	rootCA, err := CreateAndWriteRootCA("rootCN", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
 	req := &cfcsr.CertificateRequest{
@@ -284,60 +186,60 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 }
 
 func TestGetRemoteCA(t *testing.T) {
-	tc := NewTestCA(t, AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
 	defer tc.Stop()
 
 	shaHash := sha256.New()
-	shaHash.Write(tc.rootCA.Cert)
+	shaHash.Write(tc.RootCA.Cert)
 	md := shaHash.Sum(nil)
 	mdStr := hex.EncodeToString(md)
 
-	cert, err := GetRemoteCA(tc.ctx, mdStr, tc.picker)
+	cert, err := ca.GetRemoteCA(tc.Context, mdStr, tc.Picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 }
 
 func TestCanSign(t *testing.T) {
-	tc := NewTestCA(t, AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
 	defer tc.Stop()
 
-	assert.True(t, tc.rootCA.CanSign())
-	tc.rootCA.Signer = nil
-	assert.False(t, tc.rootCA.CanSign())
+	assert.True(t, tc.RootCA.CanSign())
+	tc.RootCA.Signer = nil
+	assert.False(t, tc.RootCA.CanSign())
 }
 
 func TestGetRemoteCAInvalidHash(t *testing.T) {
-	tc := NewTestCA(t, AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
 	defer tc.Stop()
 
-	_, err := GetRemoteCA(tc.ctx, "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", tc.picker)
+	_, err := ca.GetRemoteCA(tc.Context, "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", tc.Picker)
 	assert.Error(t, err)
 }
 
 func TestIssueAndSaveNewCertificates(t *testing.T) {
-	tc := NewTestCA(t, AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
 	defer tc.Stop()
 
 	// Copy the current RootCA without the signer
-	rca := RootCA{Cert: tc.rootCA.Cert, Pool: tc.rootCA.Pool}
-	cert, err := rca.IssueAndSaveNewCertificates(tc.ctx, tc.paths.Manager, ManagerRole, tc.picker)
+	rca := ca.RootCA{Cert: tc.RootCA.Cert, Pool: tc.RootCA.Pool}
+	cert, err := rca.IssueAndSaveNewCertificates(tc.Context, tc.Paths.Node, ca.ManagerRole, tc.Picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
-	perms, err := permbits.Stat(tc.paths.Manager.Cert)
+	perms, err := permbits.Stat(tc.Paths.Node.Cert)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
 }
 
 func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
-	tc := NewTestCA(t, AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
 	defer tc.Stop()
 
 	// Create a new CSR to be signed
-	csr, _, err := GenerateAndWriteNewCSR(tc.paths.Manager)
+	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	certs, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, tc.rootCA.Pool, tc.picker)
+	certs, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 
@@ -345,33 +247,33 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 2)
 	assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
-	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ManagerRole)
+	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.ManagerRole)
 
-	certs, err = getRemoteSignedCertificate(tc.ctx, csr, AgentRole, tc.rootCA.Pool, tc.picker)
+	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, ca.AgentRole, tc.RootCA.Pool, tc.Picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 2)
 	assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
-	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], AgentRole)
+	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.AgentRole)
 
 }
 
 func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
-	tc := NewTestCA(t, DefaultAcceptancePolicy())
+	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
 	// Create a new CSR to be signed
-	csr, _, err := GenerateAndWriteNewCSR(tc.paths.Manager)
+	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	updates, cancel := state.Watch(tc.s.WatchQueue(), state.EventCreateRegisteredCertificate{})
+	updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), state.EventCreateRegisteredCertificate{})
 	defer cancel()
 
 	completed := make(chan error)
 	go func() {
-		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, tc.rootCA.Pool, tc.picker)
+		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker)
 		completed <- err
 	}()
 
@@ -379,31 +281,31 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	regCert := event.(state.EventCreateRegisteredCertificate).RegisteredCertificate.Copy()
 
 	// Directly update the status of the store
-	err = tc.s.Update(func(tx store.Tx) error {
+	err = tc.MemoryStore.Update(func(tx store.Tx) error {
 		regCert.Status.State = api.IssuanceStateIssued
 
 		return store.UpdateRegisteredCertificate(tx, regCert)
 	})
 	assert.NoError(t, err)
 
-	// Make sure getRemoteSignedCertificate didn't return an error
+	// Make sure GetRemoteSignedCertificate didn't return an error
 	assert.NoError(t, <-completed)
 }
 
 func TestGetRemoteSignedCertificateRejected(t *testing.T) {
-	tc := NewTestCA(t, DefaultAcceptancePolicy())
+	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
 	// Create a new CSR to be signed
-	csr, _, err := GenerateAndWriteNewCSR(tc.paths.Manager)
+	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	updates, cancel := state.Watch(tc.s.WatchQueue(), state.EventCreateRegisteredCertificate{})
+	updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), state.EventCreateRegisteredCertificate{})
 	defer cancel()
 
 	completed := make(chan error)
 	go func() {
-		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, tc.rootCA.Pool, tc.picker)
+		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker)
 		completed <- err
 	}()
 
@@ -411,31 +313,31 @@ func TestGetRemoteSignedCertificateRejected(t *testing.T) {
 	regCert := event.(state.EventCreateRegisteredCertificate).RegisteredCertificate.Copy()
 
 	// Directly update the status of the store
-	err = tc.s.Update(func(tx store.Tx) error {
+	err = tc.MemoryStore.Update(func(tx store.Tx) error {
 		regCert.Status.State = api.IssuanceStateRejected
 
 		return store.UpdateRegisteredCertificate(tx, regCert)
 	})
 	assert.NoError(t, err)
 
-	// Make sure getRemoteSignedCertificate didn't return an error
+	// Make sure GetRemoteSignedCertificate didn't return an error
 	assert.EqualError(t, <-completed, "certificate issuance rejected: ISSUANCE_REJECTED")
 }
 
 func TestGetRemoteSignedCertificateBlocked(t *testing.T) {
-	tc := NewTestCA(t, DefaultAcceptancePolicy())
+	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
 	// Create a new CSR to be signed
-	csr, _, err := GenerateAndWriteNewCSR(tc.paths.Manager)
+	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	updates, cancel := state.Watch(tc.s.WatchQueue(), state.EventCreateRegisteredCertificate{})
+	updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), state.EventCreateRegisteredCertificate{})
 	defer cancel()
 
 	completed := make(chan error)
 	go func() {
-		_, err := getRemoteSignedCertificate(context.Background(), csr, ManagerRole, tc.rootCA.Pool, tc.picker)
+		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker)
 		completed <- err
 	}()
 
@@ -443,76 +345,42 @@ func TestGetRemoteSignedCertificateBlocked(t *testing.T) {
 	regCert := event.(state.EventCreateRegisteredCertificate).RegisteredCertificate.Copy()
 
 	// Directly update the status of the store
-	err = tc.s.Update(func(tx store.Tx) error {
+	err = tc.MemoryStore.Update(func(tx store.Tx) error {
 		regCert.Status.State = api.IssuanceStateBlocked
 
 		return store.UpdateRegisteredCertificate(tx, regCert)
 	})
 	assert.NoError(t, err)
 
-	// Make sure getRemoteSignedCertificate didn't return an error
+	// Make sure GetRemoteSignedCertificate didn't return an error
 	assert.EqualError(t, <-completed, "certificate issuance rejected: ISSUANCE_BLOCKED")
 }
 
-func genManagerSecurityConfig(rootCA RootCA, tempBaseDir string) (*ManagerSecurityConfig, error) {
-	paths := NewConfigPaths(tempBaseDir)
+func TestBootstrapCluster(t *testing.T) {
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
 
-	managerID := identity.NewID()
-	managerCert, err := GenerateAndSignNewTLSCert(rootCA, managerID, ManagerRole, paths.Manager)
-	if err != nil {
-		return nil, err
-	}
+	paths := ca.NewConfigPaths(tempBaseDir)
 
-	managerTLSCreds, err := rootCA.NewServerTLSCredentials(managerCert)
-	if err != nil {
-		return nil, err
-	}
+	err = ca.BootstrapCluster(tempBaseDir)
+	assert.NoError(t, err)
 
-	managerClientTLSCreds, err := rootCA.NewClientTLSCredentials(managerCert, ManagerRole)
-	if err != nil {
-		return nil, err
-	}
+	perms, err := permbits.Stat(paths.RootCA.Cert)
+	assert.NoError(t, err)
+	assert.False(t, perms.GroupWrite())
+	assert.False(t, perms.OtherWrite())
+	perms, err = permbits.Stat(paths.RootCA.Key)
+	assert.NoError(t, err)
+	assert.False(t, perms.GroupRead())
+	assert.False(t, perms.OtherRead())
 
-	ManagerSecurityConfig := &ManagerSecurityConfig{}
-	ManagerSecurityConfig.RootCA = rootCA
-	ManagerSecurityConfig.ServerTLSCreds = managerTLSCreds
-	ManagerSecurityConfig.ClientTLSCreds = managerClientTLSCreds
-
-	return ManagerSecurityConfig, nil
-}
-
-func genAgentSecurityConfig(rootCA RootCA, tempBaseDir string) (*AgentSecurityConfig, error) {
-	paths := NewConfigPaths(tempBaseDir)
-
-	agentID := identity.NewID()
-	agentCert, err := GenerateAndSignNewTLSCert(rootCA, agentID, AgentRole, paths.Agent)
-	if err != nil {
-		return nil, err
-	}
-
-	agentClientTLSCreds, err := rootCA.NewClientTLSCredentials(agentCert, ManagerRole)
-	if err != nil {
-		return nil, err
-	}
-
-	AgentSecurityConfig := &AgentSecurityConfig{}
-	AgentSecurityConfig.RootCA = rootCA
-	AgentSecurityConfig.ClientTLSCreds = agentClientTLSCreds
-
-	return AgentSecurityConfig, nil
-}
-
-func createClusterObject(t *testing.T, s *store.MemoryStore, acceptancePolicy api.AcceptancePolicy) {
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		store.CreateCluster(tx, &api.Cluster{
-			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
-					Name: store.DefaultClusterName,
-				},
-				AcceptancePolicy: acceptancePolicy,
-			},
-		})
-		return nil
-	}))
+	perms, err = permbits.Stat(paths.Node.Cert)
+	assert.NoError(t, err)
+	assert.False(t, perms.GroupWrite())
+	assert.False(t, perms.OtherWrite())
+	perms, err = permbits.Stat(paths.Node.Key)
+	assert.NoError(t, err)
+	assert.False(t, perms.GroupRead())
+	assert.False(t, perms.OtherRead())
 }
