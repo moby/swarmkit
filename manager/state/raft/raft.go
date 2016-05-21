@@ -650,13 +650,13 @@ func (n *Node) GetMemberlist() map[uint64]*api.RaftMember {
 	leaderID := n.Leader()
 
 	for id, member := range members {
-		status := api.RaftMemberStatus_REACHABLE
+		reachability := api.RaftMemberStatus_REACHABLE
 		leader := false
 
 		if member.RaftID != n.Config.ID {
 			connState, err := member.Conn.State()
 			if err != nil || connState != grpc.Ready {
-				status = api.RaftMemberStatus_UNREACHABLE
+				reachability = api.RaftMemberStatus_UNREACHABLE
 			}
 		}
 
@@ -668,8 +668,8 @@ func (n *Node) GetMemberlist() map[uint64]*api.RaftMember {
 			RaftID: member.RaftID,
 			Addr:   member.Addr,
 			Status: api.RaftMemberStatus{
-				Leader: leader,
-				State:  status,
+				Leader:       leader,
+				Reachability: reachability,
 			},
 		}
 	}
