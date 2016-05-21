@@ -10,19 +10,19 @@ import (
 // Mount is a human representation of VolumeSpec & contains volumes to be mounted into the Task
 type Mount struct {
 	// Location for mount inside the container
-	Target string `yaml:"target,omitempty"`
+	Target string `toml:"target,omitempty"`
 
 	// Source directory to be mounted
-	Source string `yaml:"source,omitempty"`
+	Source string `toml:"source,omitempty"`
 
 	// Name of plugin volume
-	VolumeName string `yaml:"name,omitempty"`
+	VolumeName string `toml:"name,omitempty"`
 
 	// Supported types are: bind, ephemeral, volume
-	Type string `yaml:"type,omitempty"`
+	Type string `toml:"type,omitempty"`
 
 	// Supported masks are: RO, RW (case insensitive)
-	Mask string `yaml:"mask,omitempty"`
+	Mask string `toml:"mask,omitempty"`
 }
 
 // Mounts - defined to add To/FromProto methods

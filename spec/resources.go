@@ -20,8 +20,8 @@ func stripTrailingZeros(s string) string {
 
 // Resources represent a set of various resources.
 type Resources struct {
-	CPU    string `yaml:"cpu,omitempty"`
-	Memory string `yaml:"memory,omitempty"`
+	CPU    string `toml:"cpu,omitempty"`
+	Memory string `toml:"memory,omitempty"`
 }
 
 // Validate checks the validity of Resources.
@@ -92,8 +92,8 @@ func (r *Resources) FromProto(p *api.Resources) {
 // Limits: Maximum amount of resources a container can use.
 // Reservations: Reserved amount of resources on the node.
 type ResourceRequirements struct {
-	Limits       *Resources `yaml:"limits,omitempty"`
-	Reservations *Resources `yaml:"reservations,omitempty"`
+	Limits       *Resources `toml:"limits,omitempty"`
+	Reservations *Resources `toml:"reservations,omitempty"`
 }
 
 // Validate checks the validity of the resource requirements.

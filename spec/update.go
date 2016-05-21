@@ -8,8 +8,8 @@ import (
 
 // UpdateConfiguration controls the rate and policy of updates.
 type UpdateConfiguration struct {
-	Parallelism uint64 `yaml:"parallelism,omitempty"`
-	Delay       string `yaml:"delay,omitempty"`
+	Parallelism uint64 `toml:"parallelism,omitempty"`
+	Delay       string `toml:"delay,omitempty"`
 }
 
 // Validate checks the validity of the strategy.

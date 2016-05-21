@@ -11,9 +11,9 @@ import (
 // The reason DriverOpts is an array rather than a map is that it results in a
 // compact representation in YAML
 type VolumeConfig struct {
-	Name       string   `yaml:"name,omitempty"`
-	Driver     string   `yaml:"driver,omitempty"`
-	DriverOpts []string `yaml:"opts,omitempty"`
+	Name       string   `toml:"name,omitempty"`
+	Driver     string   `toml:"driver,omitempty"`
+	DriverOpts []string `toml:"opts,omitempty"`
 }
 
 // Validate checks the validity of a VolumeConfig

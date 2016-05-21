@@ -2,7 +2,6 @@ package spec
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 
 	"github.com/BurntSushi/toml"
@@ -12,10 +11,10 @@ import (
 
 // Spec is a human representation of the API spec.
 type Spec struct {
-	Version   int                       `yaml:"version,omitempty"`
-	Namespace string                    `yaml:"namespace,omitempty"`
-	Services  map[string]*ServiceConfig `yaml:"services,omitempty"`
-	Volumes   map[string]*VolumeConfig  `yaml:"volumes,omitempty"`
+	Version   string                    `toml:"version,omitempty"`
+	Namespace string                    `toml:"namespace,omitempty"`
+	Services  map[string]*ServiceConfig `toml:"services,omitempty"`
+	Volumes   map[string]*VolumeConfig  `toml:"volumes,omitempty"`
 }
 
 // Read reads a Spec from an io.Reader.
@@ -111,7 +110,7 @@ func (s *Spec) Diff(context int, fromFile, toFile string, other *Spec) (string, 
 	other.FromServiceSpecs(other.ServiceSpecs())
 	s.FromServiceSpecs(s.ServiceSpecs())
 
-	from, err := encodeString(other)
+	from, err := encodeString(s)
 	if err != nil {
 		return "", err
 	}
