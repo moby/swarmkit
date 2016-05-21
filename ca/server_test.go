@@ -1,4 +1,4 @@
-package ca
+package ca_test
 
 import (
 	"testing"
@@ -6,83 +6,84 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/identity"
+	"github.com/docker/swarm-v2/ca"
+	"github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetRootCACertificate(t *testing.T) {
-	tc := NewTestCA(t, DefaultAcceptancePolicy())
+	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
-	resp, err := tc.clients[0].GetRootCACertificate(context.Background(), &api.GetRootCACertificateRequest{})
+	resp, err := tc.Clients[0].GetRootCACertificate(context.Background(), &api.GetRootCACertificateRequest{})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp.Certificate)
 }
 
 func TestIssueCertificate(t *testing.T) {
-	tc := NewTestCA(t, DefaultAcceptancePolicy())
+	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
-	csr, _, err := GenerateAndWriteNewCSR(tc.paths.Agent)
+	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	role := AgentRole
+	role := ca.AgentRole
 	issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
-	issueResponse, err := tc.clients[0].IssueCertificate(context.Background(), issueRequest)
+	issueResponse, err := tc.Clients[0].IssueCertificate(context.Background(), issueRequest)
 	assert.NotNil(t, issueResponse.Token)
 
 	statusRequest := &api.CertificateStatusRequest{Token: issueResponse.Token}
-	statusResponse, err := tc.clients[0].CertificateStatus(context.Background(), statusRequest)
+	statusResponse, err := tc.Clients[0].CertificateStatus(context.Background(), statusRequest)
 	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
 	assert.NotNil(t, statusResponse.RegisteredCertificate.Certificate)
 	assert.Equal(t, role, statusResponse.RegisteredCertificate.Role)
 }
 
 func TestIssueCertificateAgentRenewal(t *testing.T) {
-	tc := NewTestCA(t, DefaultAcceptancePolicy())
+	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
-	csr, _, err := GenerateAndWriteNewCSR(tc.paths.Agent)
+	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	role := AgentRole
+	role := ca.AgentRole
 	issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
-	issueResponse, err := tc.clients[1].IssueCertificate(context.Background(), issueRequest)
+	issueResponse, err := tc.Clients[1].IssueCertificate(context.Background(), issueRequest)
 	assert.NotNil(t, issueResponse.Token)
 
 	statusRequest := &api.CertificateStatusRequest{Token: issueResponse.Token}
-	statusResponse, err := tc.clients[1].CertificateStatus(context.Background(), statusRequest)
+	statusResponse, err := tc.Clients[1].CertificateStatus(context.Background(), statusRequest)
 	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
 	assert.NotNil(t, statusResponse.RegisteredCertificate.Certificate)
 	assert.Equal(t, role, statusResponse.RegisteredCertificate.Role)
 }
 
 func TestIssueCertificateManagerRenewal(t *testing.T) {
-	tc := NewTestCA(t, DefaultAcceptancePolicy())
+	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
-	csr, _, err := GenerateAndWriteNewCSR(tc.paths.Manager)
+	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 	assert.NotNil(t, csr)
 
-	role := ManagerRole
+	role := ca.ManagerRole
 	issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
-	issueResponse, err := tc.clients[2].IssueCertificate(context.Background(), issueRequest)
+	issueResponse, err := tc.Clients[2].IssueCertificate(context.Background(), issueRequest)
 	assert.NotNil(t, issueResponse.Token)
 
 	statusRequest := &api.CertificateStatusRequest{Token: issueResponse.Token}
-	statusResponse, err := tc.clients[2].CertificateStatus(context.Background(), statusRequest)
+	statusResponse, err := tc.Clients[2].CertificateStatus(context.Background(), statusRequest)
 	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
 	assert.NotNil(t, statusResponse.RegisteredCertificate.Certificate)
 	assert.Equal(t, role, statusResponse.RegisteredCertificate.Role)
 }
 
 func TestCertificateDesiredStateIssued(t *testing.T) {
-	tc := NewTestCA(t, DefaultAcceptancePolicy())
+	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
-	csr, _, err := GenerateAndWriteNewCSR(tc.paths.Manager)
+	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 
 	testRegisteredCert := &api.RegisteredCertificate{
@@ -95,21 +96,21 @@ func TestCertificateDesiredStateIssued(t *testing.T) {
 		Status: api.IssuanceStatus{State: api.IssuanceStatePending},
 	}
 
-	err = tc.s.Update(func(tx store.Tx) error {
+	err = tc.MemoryStore.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateRegisteredCertificate(tx, testRegisteredCert))
 		return nil
 	})
 	assert.NoError(t, err)
 
 	statusRequest := &api.CertificateStatusRequest{Token: "token"}
-	resp, err := tc.clients[1].CertificateStatus(context.Background(), statusRequest)
+	resp, err := tc.Clients[1].CertificateStatus(context.Background(), statusRequest)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp.RegisteredCertificate)
 	assert.NotEmpty(t, resp.Status)
 	assert.NotNil(t, resp.RegisteredCertificate.Certificate)
 	assert.Equal(t, api.IssuanceStateIssued, resp.Status.State)
 
-	tc.s.View(func(readTx store.ReadTx) {
+	tc.MemoryStore.View(func(readTx store.ReadTx) {
 		storeCerts, err := store.FindRegisteredCertificates(readTx, store.All)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, storeCerts)
@@ -118,10 +119,10 @@ func TestCertificateDesiredStateIssued(t *testing.T) {
 }
 
 func TestCertificateDesiredStateBlocked(t *testing.T) {
-	tc := NewTestCA(t, DefaultAcceptancePolicy())
+	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
-	csr, _, err := GenerateAndWriteNewCSR(tc.paths.Manager)
+	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 
 	testRegisteredCert := &api.RegisteredCertificate{
@@ -134,23 +135,21 @@ func TestCertificateDesiredStateBlocked(t *testing.T) {
 		Status: api.IssuanceStatus{State: api.IssuanceStatePending},
 	}
 
-	err = tc.s.Update(func(tx store.Tx) error {
+	err = tc.MemoryStore.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateRegisteredCertificate(tx, testRegisteredCert))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	tc.caServer.reconcileCertificates(context.Background(), []*api.RegisteredCertificate{testRegisteredCert})
-
 	statusRequest := &api.CertificateStatusRequest{Token: "token"}
-	resp, err := tc.clients[1].CertificateStatus(context.Background(), statusRequest)
+	resp, err := tc.Clients[1].CertificateStatus(context.Background(), statusRequest)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp.RegisteredCertificate)
 	assert.NotEmpty(t, resp.Status)
 	assert.Equal(t, api.IssuanceStateBlocked, resp.Status.State)
 	assert.Nil(t, resp.RegisteredCertificate.Certificate)
 
-	tc.s.View(func(readTx store.ReadTx) {
+	tc.MemoryStore.View(func(readTx store.ReadTx) {
 		storeCerts, err := store.FindRegisteredCertificates(readTx, store.All)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, storeCerts)
@@ -159,10 +158,10 @@ func TestCertificateDesiredStateBlocked(t *testing.T) {
 }
 
 func TestCertificateDesiredStateRejected(t *testing.T) {
-	tc := NewTestCA(t, DefaultAcceptancePolicy())
+	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
-	csr, _, err := GenerateAndWriteNewCSR(tc.paths.Manager)
+	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 
 	testRegisteredCert := &api.RegisteredCertificate{
@@ -175,50 +174,24 @@ func TestCertificateDesiredStateRejected(t *testing.T) {
 		Status: api.IssuanceStatus{State: api.IssuanceStatePending},
 	}
 
-	err = tc.s.Update(func(tx store.Tx) error {
+	err = tc.MemoryStore.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateRegisteredCertificate(tx, testRegisteredCert))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	tc.caServer.reconcileCertificates(context.Background(), []*api.RegisteredCertificate{testRegisteredCert})
-
 	statusRequest := &api.CertificateStatusRequest{Token: "token"}
-	resp, err := tc.clients[1].CertificateStatus(context.Background(), statusRequest)
+	resp, err := tc.Clients[1].CertificateStatus(context.Background(), statusRequest)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp.RegisteredCertificate)
 	assert.NotEmpty(t, resp.Status)
 	assert.Equal(t, api.IssuanceStateRejected, resp.Status.State)
 	assert.Nil(t, resp.RegisteredCertificate.Certificate)
 
-	tc.s.View(func(readTx store.ReadTx) {
+	tc.MemoryStore.View(func(readTx store.ReadTx) {
 		storeCerts, err := store.FindRegisteredCertificates(readTx, store.All)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, storeCerts)
 		assert.Equal(t, api.IssuanceStateRejected, storeCerts[0].Status.State)
-	})
-}
-
-func TestIssueAcceptedRegisteredCertificate(t *testing.T) {
-	tc := NewTestCA(t, DefaultAcceptancePolicy())
-	defer tc.Stop()
-
-	csr, _, err := GenerateAndWriteNewCSR(tc.paths.Manager)
-	assert.NoError(t, err)
-
-	nodeID := identity.NewID()
-	token := identity.NewID()
-	role := ManagerRole
-	resp, err := tc.caServer.issueAcceptedRegisteredCertificate(tc.ctx, nodeID, role, token, csr)
-	assert.NoError(t, err)
-	assert.NotNil(t, resp.Token)
-
-	tc.s.View(func(readTx store.ReadTx) {
-		storeCerts, err := store.FindRegisteredCertificates(readTx, store.All)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, storeCerts)
-		assert.Equal(t, api.IssuanceStateAccepted, storeCerts[0].Status.State)
-		assert.Equal(t, role, storeCerts[0].Role)
-
 	})
 }

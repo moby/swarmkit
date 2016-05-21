@@ -13,6 +13,7 @@ import (
 
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/manager/dispatcher"
 	"github.com/docker/swarm-v2/manager/state/store"
@@ -45,9 +46,13 @@ func TestManager(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(stateDir)
 
-	agentSecurityConfigs, managerSecurityConfig, tmpDir, err := testutils.GenerateAgentAndManagerSecurityConfig(1)
+	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	defer tc.Stop()
+
+	agentSecurityConfig, err := tc.NewNodeConfig(ca.AgentRole)
 	assert.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
+	assert.NoError(t, err)
 
 	m, err := New(&Config{
 		ListenProto:    "unix",
@@ -65,7 +70,7 @@ func TestManager(t *testing.T) {
 	}()
 
 	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
-	opts = append(opts, grpc.WithTransportCredentials(agentSecurityConfigs[0].ClientTLSCreds))
+	opts = append(opts, grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds))
 	opts = append(opts, grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
 		return net.DialTimeout("unix", addr, timeout)
 	}))
