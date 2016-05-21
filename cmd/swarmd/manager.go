@@ -84,6 +84,27 @@ var managerCmd = &cobra.Command{
 			return err
 		}
 
+		configs, errors := ca.RenewTLSConfig(ctx, securityConfig, certDir, p)
+		go func() {
+			for {
+				select {
+				case tlsConfig := <-configs:
+					err := securityConfig.ServerTLSCreds.LoadNewTLSConfig(&tlsConfig)
+					if err != nil {
+						fmt.Printf("failed to load new Server TLS config: %v\n", err)
+					}
+					err = securityConfig.ClientTLSCreds.LoadNewTLSConfig(&tlsConfig)
+					if err != nil {
+						fmt.Printf("failed to load new Client TLS config: %v\n", err)
+					}
+				case err := <-errors:
+					fmt.Printf("Received remote error: %v\n", err)
+				case <-ctx.Done():
+					break
+				}
+			}
+		}()
+
 		m, err := manager.New(&manager.Config{
 			ForceNewCluster: forceNewCluster,
 			ProtoAddr: map[string]string{

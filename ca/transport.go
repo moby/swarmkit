@@ -20,24 +20,14 @@ var (
 	alpnProtoStr = []string{"h2"}
 )
 
-// MutableTransportAuthenticator is an interface that wraps TransportAuthenticator
-// but allows loading new TLS configs on the fly.
-type MutableTransportAuthenticator interface {
-	credentials.TransportAuthenticator
-
-	LoadNewTLSConfig(config *tls.Config) error
-	Role() string
-	NodeID() string
-}
-
 type timeoutError struct{}
 
 func (timeoutError) Error() string   { return "credentials: Dial timed out" }
 func (timeoutError) Timeout() bool   { return true }
 func (timeoutError) Temporary() bool { return true }
 
-// mutableTLSCreds is the credentials required for authenticating a connection using TLS.
-type mutableTLSCreds struct {
+// MutableTLSCreds is the credentials required for authenticating a connection using TLS.
+type MutableTLSCreds struct {
 	// Mutex for the tls config
 	sync.Mutex
 	// TLS configuration
@@ -49,26 +39,28 @@ type mutableTLSCreds struct {
 }
 
 // Info implements the credentials.TransportAuthenticator interface
-func (c *mutableTLSCreds) Info() credentials.ProtocolInfo {
-	return c.tlsCreds.Info()
+func (c *MutableTLSCreds) Info() credentials.ProtocolInfo {
+	return credentials.ProtocolInfo{
+		SecurityProtocol: "tls",
+		SecurityVersion:  "1.2",
+	}
 }
 
 // GetRequestMetadata implements the credentials.TransportAuthenticator interface
-func (c *mutableTLSCreds) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
-	return c.tlsCreds.GetRequestMetadata(ctx, uri...)
+func (c *MutableTLSCreds) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	return nil, nil
 }
 
 // RequireTransportSecurity implements the credentials.TransportAuthenticator interface
-func (c *mutableTLSCreds) RequireTransportSecurity() bool {
-	return c.tlsCreds.RequireTransportSecurity()
+func (c *MutableTLSCreds) RequireTransportSecurity() bool {
+	return true
 }
 
 // ClientHandshake implements the credentials.TransportAuthenticator interface
-func (c *mutableTLSCreds) ClientHandshake(addr string, rawConn net.Conn, timeout time.Duration) (_ net.Conn, _ credentials.AuthInfo, err error) {
+func (c *MutableTLSCreds) ClientHandshake(addr string, rawConn net.Conn, timeout time.Duration) (net.Conn, credentials.AuthInfo, error) {
+	// borrow all the code from the original TLS credentials
 	c.Lock()
 	defer c.Unlock()
-
-	// borrow all the code from the original TLS credentials
 	var errChannel chan error
 	if timeout != 0 {
 		errChannel = make(chan error, 2)
@@ -83,7 +75,12 @@ func (c *mutableTLSCreds) ClientHandshake(addr string, rawConn net.Conn, timeout
 		}
 		c.config.ServerName = addr[:colonPos]
 	}
+
 	conn := tls.Client(rawConn, c.config)
+	// Need to allow conn.Handshake to have access to config,
+	// would create a deadlock otherwise
+	c.Unlock()
+	var err error
 	if timeout == 0 {
 		err = conn.Handshake()
 	} else {
@@ -92,6 +89,7 @@ func (c *mutableTLSCreds) ClientHandshake(addr string, rawConn net.Conn, timeout
 		}()
 		err = <-errChannel
 	}
+	c.Lock()
 	if err != nil {
 		rawConn.Close()
 		return nil, nil, err
@@ -101,11 +99,11 @@ func (c *mutableTLSCreds) ClientHandshake(addr string, rawConn net.Conn, timeout
 }
 
 // ServerHandshake implements the credentials.TransportAuthenticator interface
-func (c *mutableTLSCreds) ServerHandshake(rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
+func (c *MutableTLSCreds) ServerHandshake(rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
 	c.Lock()
 	defer c.Unlock()
-
 	conn := tls.Server(rawConn, c.config)
+
 	if err := conn.Handshake(); err != nil {
 		rawConn.Close()
 		return nil, nil, err
@@ -115,7 +113,7 @@ func (c *mutableTLSCreds) ServerHandshake(rawConn net.Conn) (net.Conn, credentia
 }
 
 // LoadNewTLSConfig replaces the currently loaded TLS config with a new one
-func (c *mutableTLSCreds) LoadNewTLSConfig(newConfig *tls.Config) error {
+func (c *MutableTLSCreds) LoadNewTLSConfig(newConfig *tls.Config) error {
 	c.Lock()
 	defer c.Unlock()
 
@@ -131,7 +129,7 @@ func (c *mutableTLSCreds) LoadNewTLSConfig(newConfig *tls.Config) error {
 }
 
 // Role returns the OU for the certificate encapsulated in this TransportAuthenticator
-func (c *mutableTLSCreds) Role() string {
+func (c *MutableTLSCreds) Role() string {
 	c.Lock()
 	defer c.Unlock()
 
@@ -139,7 +137,7 @@ func (c *mutableTLSCreds) Role() string {
 }
 
 // NodeID returns the CN for the certificate encapsulated in this TransportAuthenticator
-func (c *mutableTLSCreds) NodeID() string {
+func (c *MutableTLSCreds) NodeID() string {
 	c.Lock()
 	defer c.Unlock()
 
@@ -147,7 +145,7 @@ func (c *mutableTLSCreds) NodeID() string {
 }
 
 // NewMutableTLS uses c to construct a mutable TransportAuthenticator based on TLS.
-func NewMutableTLS(c *tls.Config) (MutableTransportAuthenticator, error) {
+func NewMutableTLS(c *tls.Config) (*MutableTLSCreds, error) {
 	originalTC := credentials.NewTLS(c)
 
 	if len(c.Certificates) < 1 {
@@ -159,7 +157,7 @@ func NewMutableTLS(c *tls.Config) (MutableTransportAuthenticator, error) {
 		return nil, err
 	}
 
-	tc := &mutableTLSCreds{config: c, tlsCreds: originalTC, subject: subject}
+	tc := &MutableTLSCreds{config: c, tlsCreds: originalTC, subject: subject}
 	tc.config.NextProtos = alpnProtoStr
 
 	return tc, nil

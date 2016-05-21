@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -90,7 +91,7 @@ func (rca *RootCA) IssueAndSaveNewCertificates(paths CertPaths, cn, ou string) (
 	}
 
 	// Write the chain to disk
-	if err := ioutil.WriteFile(paths.Cert, signedCert, 0644); err != nil {
+	if err := atomicWriteFile(paths.Cert, signedCert, 0644); err != nil {
 		return nil, err
 	}
 
@@ -130,7 +131,7 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, paths Cert
 	}
 
 	// Write the chain to disk
-	if err := ioutil.WriteFile(paths.Cert, signedCert, 0644); err != nil {
+	if err := atomicWriteFile(paths.Cert, signedCert, 0644); err != nil {
 		return nil, err
 	}
 
@@ -300,10 +301,10 @@ func CreateAndWriteRootCA(rootCN string, paths CertPaths) (RootCA, error) {
 	}
 
 	// Write the Private Key and Certificate to disk, using decent permissions
-	if err := ioutil.WriteFile(paths.Cert, cert, 0644); err != nil {
+	if err := atomicWriteFile(paths.Cert, cert, 0644); err != nil {
 		return RootCA{}, err
 	}
-	if err := ioutil.WriteFile(paths.Key, key, 0600); err != nil {
+	if err := atomicWriteFile(paths.Key, key, 0600); err != nil {
 		return RootCA{}, err
 	}
 
@@ -359,10 +360,10 @@ func GenerateAndSignNewTLSCert(rootCA RootCA, cn, ou string, paths CertPaths) (*
 	}
 
 	// Write both the chain and key to disk
-	if err := ioutil.WriteFile(paths.Cert, certChain, 0644); err != nil {
+	if err := atomicWriteFile(paths.Cert, certChain, 0644); err != nil {
 		return nil, err
 	}
-	if err := ioutil.WriteFile(paths.Key, key, 0600); err != nil {
+	if err := atomicWriteFile(paths.Key, key, 0600); err != nil {
 		return nil, err
 	}
 
@@ -391,10 +392,10 @@ func GenerateAndWriteNewCSR(paths CertPaths) (csr, key []byte, err error) {
 	}
 
 	// Write CSR and key to disk
-	if err = ioutil.WriteFile(paths.CSR, csr, 0644); err != nil {
+	if err = atomicWriteFile(paths.CSR, csr, 0644); err != nil {
 		return
 	}
-	if err = ioutil.WriteFile(paths.Key, key, 0600); err != nil {
+	if err = atomicWriteFile(paths.Key, key, 0600); err != nil {
 		return
 	}
 
@@ -512,7 +513,7 @@ func saveRootCA(rootCA RootCA, paths CertPaths) error {
 	}
 
 	// If the root certificate got returned successfully, save the rootCA to disk.
-	return ioutil.WriteFile(paths.Cert, rootCA.Cert, 0644)
+	return atomicWriteFile(paths.Cert, rootCA.Cert, 0644)
 }
 
 func generateNewCSR() (csr, key []byte, err error) {
@@ -527,4 +528,24 @@ func generateNewCSR() (csr, key []byte, err error) {
 	}
 
 	return
+}
+
+func atomicWriteFile(filename string, data []byte, perm os.FileMode) error {
+	f, err := ioutil.TempFile(filepath.Dir(filename), ".tmp-"+filepath.Base(filename))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	n, err := f.Write(data)
+	if err == nil && n < len(data) {
+		return io.ErrShortWrite
+	}
+	if err != nil {
+		return err
+	}
+	err = os.Chmod(f.Name(), perm)
+	if err != nil {
+		return err
+	}
+	return os.Rename(f.Name(), filename)
 }
