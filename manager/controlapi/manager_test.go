@@ -66,7 +66,7 @@ func TestListManagers(t *testing.T) {
 
 	// All nodes should be reachable
 	for i := 1; i <= 3; i++ {
-		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Raft.Status.State)
+		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Raft.Status.Reachability)
 	}
 
 	// Add two more nodes to the cluster
@@ -82,7 +82,7 @@ func TestListManagers(t *testing.T) {
 	assert.Equal(t, 5, len(ts.Server.raft.GetMemberlist()))
 	assert.Equal(t, 5, len(r.Managers))
 	for i := 1; i <= 5; i++ {
-		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Raft.Status.State)
+		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Raft.Status.Reachability)
 	}
 
 	// Stops 2 nodes
@@ -104,11 +104,11 @@ func TestListManagers(t *testing.T) {
 			return fmt.Errorf("expected 5 nodes, got %d", len(r.Managers))
 		}
 
-		if managers[nodes[4].Config.ID].Raft.Status.State == api.RaftMemberStatus_REACHABLE {
+		if managers[nodes[4].Config.ID].Raft.Status.Reachability == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 4 to be unreachable")
 		}
 
-		if managers[nodes[5].Config.ID].Raft.Status.State == api.RaftMemberStatus_REACHABLE {
+		if managers[nodes[5].Config.ID].Raft.Status.Reachability == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 5 to be unreachable")
 		}
 
@@ -128,7 +128,7 @@ func TestListManagers(t *testing.T) {
 	assert.Equal(t, 5, len(ts.Server.raft.GetMemberlist()))
 	assert.Equal(t, 5, len(r.Managers))
 	for i := 1; i <= 5; i++ {
-		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Raft.Status.State)
+		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Raft.Status.Reachability)
 	}
 
 	// Switch the raft node used by the server
@@ -161,7 +161,7 @@ func TestListManagers(t *testing.T) {
 			return fmt.Errorf("expected node 1 not to be the leader")
 		}
 
-		if managers[nodes[1].Config.ID].Raft.Status.State == api.RaftMemberStatus_REACHABLE {
+		if managers[nodes[1].Config.ID].Raft.Status.Reachability == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 1 to be unreachable")
 		}
 
@@ -242,11 +242,11 @@ func TestRemoveManager(t *testing.T) {
 			return fmt.Errorf("expected 3 nodes, got %d", len(lsr.Managers))
 		}
 
-		if managers[nodes[2].Config.ID].Raft.Status.State == api.RaftMemberStatus_REACHABLE {
+		if managers[nodes[2].Config.ID].Raft.Status.Reachability == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 2 to be unreachable")
 		}
 
-		if managers[nodes[3].Config.ID].Raft.Status.State == api.RaftMemberStatus_REACHABLE {
+		if managers[nodes[3].Config.ID].Raft.Status.Reachability == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 3 to be unreachable")
 		}
 
@@ -299,7 +299,7 @@ func TestRemoveManager(t *testing.T) {
 			return fmt.Errorf("expected 3 nodes, got %d", len(lsr.Managers))
 		}
 
-		if managers[nodes[3].Config.ID].Raft.Status.State == api.RaftMemberStatus_REACHABLE {
+		if managers[nodes[3].Config.ID].Raft.Status.Reachability == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 3 to be unreachable")
 		}
 
@@ -352,7 +352,7 @@ func TestRemoveManager(t *testing.T) {
 			return fmt.Errorf("expected 2 nodes, got %d", len(lsr.Managers))
 		}
 
-		if managers[nodes[2].Config.ID].Raft.Status.State == api.RaftMemberStatus_REACHABLE {
+		if managers[nodes[2].Config.ID].Raft.Status.Reachability == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 2 to be unreachable")
 		}
 
