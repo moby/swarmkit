@@ -133,7 +133,6 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 
 	// Generate a random token for this new node
 	for i := 0; ; i++ {
-		token = identity.NewID()
 		nodeID := identity.NewID()
 
 		var certificate *api.RegisteredCertificate
@@ -192,7 +191,7 @@ func (s *Server) issueAcceptedRegisteredCertificate(ctx context.Context, nodeID,
 		return nil, err
 	}
 
-	log.G(ctx).Debugf("(*Server).IssueCertificate: added issue certificate entry for Role=%s with Token=%s", role, token)
+	log.G(ctx).Debugf("(*Server).issueAcceptedRegisteredCertficate: added issue certificate entry for Role=%s with Token=%s", role, token)
 	return &api.IssueCertificateResponse{
 		Token: token,
 	}, nil
@@ -264,7 +263,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 }
 
-// Stop stops dispatcher and closes all grpc streams.
+// Stop stops the CA and closes all grpc streams.
 func (s *Server) Stop() error {
 	s.mu.Lock()
 	if !s.isRunning() {
@@ -276,21 +275,6 @@ func (s *Server) Stop() error {
 	// set raftNode to nil
 	s.wg.Wait()
 	return nil
-}
-
-func (s *Server) addTask() error {
-	s.mu.Lock()
-	if !s.isRunning() {
-		s.mu.Unlock()
-		return grpc.Errorf(codes.Aborted, "CA signer is stopped")
-	}
-	s.wg.Add(1)
-	s.mu.Unlock()
-	return nil
-}
-
-func (s *Server) doneTask() {
-	s.wg.Done()
 }
 
 func (s *Server) isRunning() bool {
