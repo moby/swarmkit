@@ -248,7 +248,7 @@ func TestRaftFollowerLeave(t *testing.T) {
 	assert.NoError(t, err)
 	defer client.Conn.Close()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: &api.Member{RaftID: nodes[5].Config.ID}})
+	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[5].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -289,7 +289,7 @@ func TestRaftLeaderLeave(t *testing.T) {
 	assert.NoError(t, err)
 	defer client.Conn.Close()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: &api.Member{RaftID: nodes[1].Config.ID}})
+	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[1].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 

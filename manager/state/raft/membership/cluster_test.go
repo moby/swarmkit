@@ -35,7 +35,7 @@ func init() {
 
 func newTestMember(id uint64) *membership.Member {
 	return &membership.Member{
-		Member: &api.Member{RaftID: id},
+		RaftMember: &api.RaftMember{RaftID: id},
 	}
 }
 
@@ -71,26 +71,26 @@ func TestClusterMember(t *testing.T) {
 			t.Errorf("#%d: find member = %v, want %v", i, g, tt.match)
 		}
 		if m != nil && m.RaftID != tt.id {
-			t.Errorf("#%d: id = %x, want %x", i, m.ID, tt.id)
+			t.Errorf("#%d: id = %x, want %x", i, m.RaftID, tt.id)
 		}
 	}
 }
 
 func TestMembers(t *testing.T) {
 	w := map[uint64]*membership.Member{
-		1:  {Member: &api.Member{RaftID: 1}},
-		20: {Member: &api.Member{RaftID: 20}},
-		10: {Member: &api.Member{RaftID: 10}},
-		5:  {Member: &api.Member{RaftID: 5}},
-		50: {Member: &api.Member{RaftID: 50}},
+		1:  {RaftMember: &api.RaftMember{RaftID: 1}},
+		20: {RaftMember: &api.RaftMember{RaftID: 20}},
+		10: {RaftMember: &api.RaftMember{RaftID: 10}},
+		5:  {RaftMember: &api.RaftMember{RaftID: 5}},
+		50: {RaftMember: &api.RaftMember{RaftID: 50}},
 	}
 
 	cls := membership.NewCluster()
-	cls.AddMember(&membership.Member{Member: &api.Member{RaftID: 1}})
-	cls.AddMember(&membership.Member{Member: &api.Member{RaftID: 5}})
-	cls.AddMember(&membership.Member{Member: &api.Member{RaftID: 20}})
-	cls.AddMember(&membership.Member{Member: &api.Member{RaftID: 50}})
-	cls.AddMember(&membership.Member{Member: &api.Member{RaftID: 10}})
+	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 1}})
+	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 5}})
+	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 20}})
+	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 50}})
+	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 10}})
 
 	assert.Equal(t, cls.Members(), w)
 }
@@ -125,12 +125,12 @@ func TestClusterAddMember(t *testing.T) {
 	cls := newTestCluster(members, removed)
 
 	// Cannot add a node present in the removed set
-	err := cls.AddMember(&membership.Member{Member: &api.Member{RaftID: 2}})
+	err := cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 2}})
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrIDRemoved)
 	assert.Nil(t, cls.GetMember(2))
 
-	err = cls.AddMember(&membership.Member{Member: &api.Member{RaftID: 3}})
+	err = cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 3}})
 	assert.NoError(t, err)
 	assert.NotNil(t, cls.GetMember(3))
 }
@@ -199,17 +199,17 @@ func TestValidateConfigurationChange(t *testing.T) {
 	}
 	cls := newTestCluster(members, removed)
 
-	m := &api.Member{RaftID: 1}
+	m := &api.RaftMember{RaftID: 1}
 	existingMember, err := m.Marshal()
 	assert.NoError(t, err)
 	assert.NotNil(t, existingMember)
 
-	m = &api.Member{RaftID: 7}
+	m = &api.RaftMember{RaftID: 7}
 	newMember, err := m.Marshal()
 	assert.NoError(t, err)
 	assert.NotNil(t, newMember)
 
-	m = &api.Member{RaftID: 4}
+	m = &api.RaftMember{RaftID: 4}
 	removedMember, err := m.Marshal()
 	assert.NoError(t, err)
 	assert.NotNil(t, removedMember)
@@ -244,7 +244,7 @@ func TestValidateConfigurationChange(t *testing.T) {
 	assert.Equal(t, err, membership.ErrIDNotFound)
 
 	// Any configuration change but can't unmarshal config
-	cc = raftpb.ConfChange{ID: 7, Type: raftpb.ConfChangeAddNode, NodeID: 7, Context: node}
+	cc = raftpb.ConfChange{ID: 7, Type: raftpb.ConfChangeAddNode, NodeID: 7, Context: []byte("abcdef")}
 	err = cls.ValidateConfigurationChange(cc)
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrCannotUnmarshalConfig)
@@ -272,10 +272,10 @@ func TestCanRemoveMember(t *testing.T) {
 		if len(members) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))
 		}
-		if members[nodes[2].Config.ID].Status.State == api.MemberStatus_REACHABLE {
+		if members[nodes[2].Config.ID].Status.State == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 2 to be unreachable")
 		}
-		if members[nodes[3].Config.ID].Status.State == api.MemberStatus_REACHABLE {
+		if members[nodes[3].Config.ID].Status.State == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 3 to be unreachable")
 		}
 		return nil

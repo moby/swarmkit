@@ -69,7 +69,7 @@ func DefaultConfig() *Config {
 // Cluster is interface which represent raft cluster. mananger/state/raft.Node
 // is implenents it. This interface needed only for easier unit-testing.
 type Cluster interface {
-	GetMemberlist() map[uint64]*api.Member
+	GetMemberlist() map[uint64]*api.RaftMember
 	MemoryStore() *store.MemoryStore
 }
 
