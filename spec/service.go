@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	yaml "github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/docker/swarm-v2/api"
 	"github.com/pmezard/go-difflib/difflib"
@@ -126,7 +127,7 @@ func (s *ServiceConfig) Reset() {
 func (s *ServiceConfig) Read(r io.Reader) error {
 	s.Reset()
 
-	if err := yaml.NewDecoder(r).Decode(s); err != nil {
+	if _, err := toml.DecodeReader(r, s); err != nil {
 		return err
 	}
 
@@ -135,7 +136,7 @@ func (s *ServiceConfig) Read(r io.Reader) error {
 
 // Write writes a ServiceConfig to an io.Reader.
 func (s *ServiceConfig) Write(w io.Writer) error {
-	return yaml.NewEncoder(w).Encode(s)
+	return toml.NewEncoder(w).Encode(s)
 }
 
 // ToProto converts a ServiceConfig to a ServiceSpec.

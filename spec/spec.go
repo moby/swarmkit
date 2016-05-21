@@ -1,10 +1,11 @@
 package spec
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 
-	yaml "github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/BurntSushi/toml"
 	"github.com/docker/swarm-v2/api"
 	"github.com/pmezard/go-difflib/difflib"
 )
@@ -20,7 +21,7 @@ type Spec struct {
 // Read reads a Spec from an io.Reader.
 func (s *Spec) Read(r io.Reader) error {
 	s.Reset()
-	if err := yaml.NewDecoder(r).Decode(s); err != nil {
+	if _, err := toml.DecodeReader(r, s); err != nil {
 		return err
 	}
 	if err := s.validate(); err != nil {
@@ -94,18 +95,28 @@ func (s *Spec) FromVolumeSpecs(volumespecs []*api.VolumeSpec) {
 	}
 }
 
+func encodeString(val interface{}) (string, error) {
+	var buf bytes.Buffer
+	enc := toml.NewEncoder(&buf)
+	err := enc.Encode(val)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
 // Diff returns a diff between two Specs.
 func (s *Spec) Diff(context int, fromFile, toFile string, other *Spec) (string, error) {
 	// Force marshal/unmarshal.
 	other.FromServiceSpecs(other.ServiceSpecs())
 	s.FromServiceSpecs(s.ServiceSpecs())
 
-	from, err := yaml.Marshal(other)
+	from, err := encodeString(other)
 	if err != nil {
 		return "", err
 	}
 
-	to, err := yaml.Marshal(s)
+	to, err := encodeString(other)
 	if err != nil {
 		return "", err
 	}
