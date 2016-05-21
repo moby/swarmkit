@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strings"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
@@ -43,14 +42,7 @@ var (
 					return err
 				}
 
-				driver.Options = map[string]string{}
-				for _, opt := range opts {
-					optPair := strings.Split(opt, "=")
-					if len(optPair) != 2 {
-						return fmt.Errorf("Malformed opts: %s", opt)
-					}
-					driver.Options[optPair[0]] = optPair[1]
-				}
+				driver.Options = opts
 			}
 
 			ipamOpts, err := processIPAMOptions(cmd)

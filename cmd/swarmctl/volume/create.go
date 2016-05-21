@@ -3,7 +3,6 @@ package volume
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
@@ -33,22 +32,13 @@ var (
 				return err
 			}
 
-			parsedOptions := map[string]string{}
-			for _, opt := range opts {
-				optPair := strings.Split(opt, "=")
-				if len(optPair) != 2 {
-					return fmt.Errorf("Malformed opts: %s", opt)
-				}
-				parsedOptions[optPair[0]] = optPair[1]
-			}
-
 			spec := &api.VolumeSpec{
 				Annotations: api.Annotations{
 					Name: name,
 				},
 				DriverConfiguration: &api.Driver{
 					Name:    driverName,
-					Options: parsedOptions,
+					Options: opts,
 				},
 			}
 

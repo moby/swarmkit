@@ -59,7 +59,7 @@ func (s *Spec) ServiceSpecs() []*api.ServiceSpec {
 	serviceSpecs := []*api.ServiceSpec{}
 	for _, service := range s.Services {
 		serviceSpec := service.ToProto()
-		serviceSpec.Annotations.Labels["namespace"] = s.Namespace
+		serviceSpec.Annotations.Labels = append(serviceSpec.Annotations.Labels, "namespace="+s.Namespace)
 		serviceSpecs = append(serviceSpecs, serviceSpec)
 	}
 	return serviceSpecs
@@ -79,7 +79,7 @@ func (s *Spec) VolumeSpecs() []*api.VolumeSpec {
 	volumeSpecs := []*api.VolumeSpec{}
 	for _, volume := range s.Volumes {
 		volumeSpec := volume.ToProto()
-		volumeSpec.Annotations.Labels["namespace"] = s.Namespace
+		volumeSpec.Annotations.Labels = append(volumeSpec.Annotations.Labels, "namespace="+s.Namespace)
 		volumeSpecs = append(volumeSpecs, volumeSpec)
 	}
 	return volumeSpecs

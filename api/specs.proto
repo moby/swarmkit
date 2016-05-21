@@ -19,7 +19,11 @@ import "gogoproto/gogo.proto";
 // common to all API specs.
 message Annotations {
 	string name = 1;
-	map<string, string> labels = 2;
+
+	// Labels define zero or more labels associated with the containing
+	// message. By convention, these are usually '=' separated, with the key on
+	// the right and value on the left.
+	repeated string labels = 2;
 }
 
 message NodeSpec {

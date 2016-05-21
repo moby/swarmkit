@@ -22,16 +22,11 @@ func TestFindMin(t *testing.T) {
 		for i := 0; i != numNodes; i++ {
 			n := &api.Node{
 				ID: "id" + strconv.Itoa(i),
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
-						Labels: make(map[string]string),
-					},
-				},
 			}
 
 			// Give every hundredth node a special label
 			if i%100 == 0 {
-				n.Spec.Annotations.Labels["special"] = "true"
+				n.Spec.Annotations.Labels = append(n.Spec.Annotations.Labels, "special=true")
 			}
 			tasks := make(map[string]*api.Task)
 			for i := rand.Intn(25); i > 0; i-- {
@@ -44,7 +39,12 @@ func TestFindMin(t *testing.T) {
 		heap.Init(&nh)
 
 		isSpecial := func(n *NodeInfo) bool {
-			return n.Spec.Annotations.Labels["special"] == "true"
+			for _, label := range n.Spec.Annotations.Labels {
+				if label == "special=true" {
+					return true
+				}
+			}
+			return false
 		}
 
 		bestNode, numTasks := nh.findMin(isSpecial, false)

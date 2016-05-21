@@ -62,8 +62,8 @@ func printNodeSummary(node *api.Node) {
 
 	if len(desc.Engine.Labels) != 0 {
 		fmt.Fprintln(w, "Engine Labels:\t")
-		for k, v := range desc.Engine.Labels {
-			fmt.Fprintf(w, "  %s = %s", k, v)
+		for _, v := range desc.Engine.Labels {
+			fmt.Fprintf(w, "  %s\n", v)
 		}
 	}
 }

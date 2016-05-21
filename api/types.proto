@@ -50,7 +50,7 @@ message EngineDescription {
 	string engine_version = 1;
 
 	// Labels attached to the engine.
-	map<string, string> labels = 2;
+	repeated string labels = 2;
 
 	// Volume, Network, and Auth plugins
 	repeated PluginDescription plugins = 3 [(gogoproto.nullable) = false];
@@ -356,7 +356,11 @@ message Endpoint {
 // have different rules than a volume driver.
 message Driver {
 	string name = 1;
-	map <string, string> options = 2;
+	
+	// options defines zero or more options to pass to the driver. By
+	// convention, these are usually '=' separated, with the key on the right
+	// and value on the left.
+	repeated string options = 2;
 }
 
 message IPAMOptions {

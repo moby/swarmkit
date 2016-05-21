@@ -1,8 +1,6 @@
 package container
 
 import (
-	"strings"
-
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
@@ -41,17 +39,6 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 	addPlugins("Network", info.Plugins.Network)
 	addPlugins("Authorization", info.Plugins.Authorization)
 
-	// parse []string labels into a map[string]string
-	labels := map[string]string{}
-	for _, l := range info.Labels {
-		stringSlice := strings.SplitN(l, "=", 2)
-		// this will take the last value in the list for a given key
-		// ideally, one shouldn't assign multiple values to the same key
-		if len(stringSlice) > 1 {
-			labels[stringSlice[0]] = stringSlice[1]
-		}
-	}
-
 	description := &api.NodeDescription{
 		Hostname: info.Name,
 		Platform: &api.Platform{
@@ -60,7 +47,7 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 		},
 		Engine: &api.EngineDescription{
 			EngineVersion: info.ServerVersion,
-			Labels:        labels,
+			Labels:        info.Labels,
 			Plugins:       plugins,
 		},
 		Resources: &api.Resources{

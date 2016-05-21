@@ -345,10 +345,15 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 		return err
 	}
 
+	dss := make([]string, 0, len(ds))
+	for k, v := range ds {
+		dss = append(dss, k+"="+v)
+	}
+
 	// Update network object with the obtained driver state.
 	n.DriverState = &api.Driver{
 		Name:    dName,
-		Options: ds,
+		Options: dss,
 	}
 
 	return nil

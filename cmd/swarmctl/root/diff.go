@@ -39,8 +39,10 @@ var (
 			servicespecs := []*api.ServiceSpec{}
 
 			for _, j := range r.Services {
-				if j.Spec.Annotations.Labels["namespace"] == localSpec.Namespace {
-					servicespecs = append(servicespecs, &j.Spec)
+				for _, label := range j.Spec.Annotations.Labels {
+					if "namespace="+localSpec.Namespace == label {
+						servicespecs = append(servicespecs, &j.Spec)
+					}
 				}
 			}
 
@@ -53,8 +55,10 @@ var (
 			volumespecs := []*api.VolumeSpec{}
 
 			for _, j := range v.Volumes {
-				if j.Spec.Annotations.Labels["namespace"] == localSpec.Namespace {
-					volumespecs = append(volumespecs, &j.Spec)
+				for _, label := range j.Spec.Annotations.Labels {
+					if "namespace="+localSpec.Namespace == label {
+						volumespecs = append(volumespecs, &j.Spec)
+					}
 				}
 			}
 
