@@ -2,6 +2,7 @@ package spec
 
 import (
 	"bytes"
+	"errors"
 	"io"
 
 	"github.com/BurntSushi/toml"
@@ -27,9 +28,10 @@ func (s *Spec) Read(r io.Reader) error {
 		return err
 	}
 
-	if s.Version == 2 {
-		fmt.Println("WARNING: v2 format is only partially supported, please update to v3")
+	if s.Version != "v1" {
+		return errors.New("invalid version")
 	}
+
 	return nil
 }
 
