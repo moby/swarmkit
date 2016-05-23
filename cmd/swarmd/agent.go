@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"path/filepath"
+	"time"
 
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/swarm-v2/agent"
@@ -66,17 +66,14 @@ already present, the agent will recover and startup.`,
 				return err
 			}
 
-			configs, errors := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker)
+			updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker, 30*time.Second)
 			go func() {
 				for {
 					select {
-					case tlsConfig := <-configs:
-						err := securityConfig.ClientTLSCreds.LoadNewTLSConfig(&tlsConfig)
-						if err != nil {
-							fmt.Printf("failed to load new Client TLS config: %v\n", err)
+					case certUpdate := <-updates:
+						if certUpdate.Err != nil {
+							continue
 						}
-					case err := <-errors:
-						fmt.Printf("Received remote error: %v\n", err)
 					case <-ctx.Done():
 						break
 					}

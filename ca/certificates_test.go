@@ -231,6 +231,20 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	assert.False(t, perms.OtherWrite())
 }
 
+func TestIssueAndSaveNewCertificates(t *testing.T) {
+	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	defer tc.Stop()
+
+	// Copy the current RootCA without the signer
+	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN", ca.ManagerRole)
+	assert.NoError(t, err)
+	assert.NotNil(t, cert)
+	perms, err := permbits.Stat(tc.Paths.Node.Cert)
+	assert.NoError(t, err)
+	assert.False(t, perms.GroupWrite())
+	assert.False(t, perms.OtherWrite())
+}
+
 func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
 	defer tc.Stop()
@@ -246,7 +260,9 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	parsedCerts, err := helpers.ParseCertificatesPEM(certs)
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 2)
-	assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
+	// TODO(diogo): change this back to three months
+	// assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Minute*50).Before(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.ManagerRole)
 
 	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, ca.AgentRole, tc.RootCA.Pool, tc.Picker, nil)
@@ -255,7 +271,9 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 2)
-	assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
+	// TODO(diogo): change this back to three months
+	// assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Minute*50).Before(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.AgentRole)
 
 }
