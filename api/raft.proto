@@ -25,15 +25,17 @@ service Raft {
 }
 
 message JoinRequest {
-	RaftMember node = 1;
+	string addr = 1;
 }
 
 message JoinResponse {
-	repeated RaftMember members = 1;
+	uint64 raft_id = 1 [(gogoproto.customname) = "RaftID"];
+
+	repeated RaftMember members = 2;
 }
 
 message LeaveRequest {
-	RaftMember node = 1;
+	RaftMember node = 1 [(gogoproto.nullable) = false];
 }
 
 message LeaveResponse {}

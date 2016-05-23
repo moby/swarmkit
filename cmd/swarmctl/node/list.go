@@ -39,18 +39,28 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				common.PrintHeader(w, "ID", "Name", "Status", "Availability")
+				common.PrintHeader(w, "ID", "Name", "Status", "Availability", "Manager status", "Leader")
 				output = func(n *api.Node) {
 					spec := &n.Spec
 					name := spec.Annotations.Name
-					if name == "" {
+					if name == "" && n.Description != nil {
 						name = n.Description.Hostname
 					}
-					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+					raftStatus := ""
+					if n.Manager != nil {
+						raftStatus = n.Manager.Raft.Status.State.String()
+					}
+					leader := ""
+					if n.Manager != nil && n.Manager.Raft.Status.Leader {
+						leader = "*"
+					}
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 						n.ID,
 						name,
 						n.Status.State.String(),
 						spec.Availability.String(),
+						raftStatus,
+						leader,
 					)
 				}
 			} else {

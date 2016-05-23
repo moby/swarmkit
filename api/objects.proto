@@ -38,18 +38,10 @@ message Node {
 
 	// Status provides the current status of the node, as seen by the manager.
 	NodeStatus status = 5 [(gogoproto.nullable) = false];
-}
 
-// Manager provides informations about the state of a manager in the cluster.
-message Manager {
-	// ID specifies the identity of the manager. This is the ID used for client interaction with the server.
-	string id = 1 [(gogoproto.customname) = "ID"];
-
-	// Spec declares labels applied to the Manager, for example node name or cluster it
-	// belongs to in multi region scenarios
-	ManagerSpec spec = 2;
-
-	RaftMember raft = 3 [(gogoproto.nullable) = false];
+	// A node may be one of the managers. If it is, Manager is filled in
+	// with manager-specific information.
+	Manager manager = 6;
 }
 
 message Service {

@@ -183,11 +183,7 @@ func recycleWrappedListener(old *wrappedListener) *wrappedListener {
 }
 
 // NewNode creates a new raft node to use for tests
-func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, securityConfig *ca.SecurityConfig, opts ...raft.NewNodeOptions) *TestNode {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err, "can't bind to raft service port")
-	wrappedListener := newWrappedListener(l)
-
+func NewNode(t *testing.T, l *wrappedListener, clockSource *fakeclock.FakeClock, securityConfig *ca.SecurityConfig, opts ...raft.NewNodeOptions) *TestNode {
 	serverOpts := []grpc.ServerOption{grpc.Creds(securityConfig.ServerTLSCreds)}
 	s := grpc.NewServer(serverOpts...)
 
@@ -209,22 +205,26 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, securityConfig *ca.
 		panic("more than one optional argument provided")
 	}
 	if len(opts) == 1 {
-		newNodeOpts.JoinAddr = opts[0].JoinAddr
+		newNodeOpts.JoinCluster = opts[0].JoinCluster
 	}
 
 	n, err := raft.NewNode(context.Background(), newNodeOpts)
 	require.NoError(t, err, "can't create raft node")
 	n.Server = s
 
-	return &TestNode{Node: n, Listener: wrappedListener}
+	return &TestNode{Node: n, Listener: l}
 }
 
 // NewInitNode creates a new raft node initiating the cluster
 // for other members to join
 func NewInitNode(t *testing.T, securityConfig *ca.SecurityConfig, raftConfig *api.RaftConfig, opts ...raft.NewNodeOptions) (*TestNode, *fakeclock.FakeClock) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err, "can't bind to raft service port")
+	wrappedListener := newWrappedListener(l)
+
 	ctx := context.Background()
 	clockSource := fakeclock.NewFakeClock(time.Now())
-	n := NewNode(t, clockSource, securityConfig, opts...)
+	n := NewNode(t, wrappedListener, clockSource, securityConfig, opts...)
 
 	go n.Run(ctx)
 
@@ -253,21 +253,46 @@ func NewInitNode(t *testing.T, securityConfig *ca.SecurityConfig, raftConfig *ap
 }
 
 // NewJoinNode creates a new raft node joining an existing cluster
-func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, securityConfig *ca.SecurityConfig, opts ...raft.NewNodeOptions) *TestNode {
+func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, securityConfig *ca.SecurityConfig, start bool, opts ...raft.NewNodeOptions) *TestNode {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err, "can't bind to raft service port")
+	wrappedListener := newWrappedListener(l)
+
 	var derivedOpts raft.NewNodeOptions
 	if len(opts) == 1 {
 		derivedOpts = opts[0]
 	}
-	derivedOpts.JoinAddr = join
-	n := NewNode(t, clockSource, securityConfig, derivedOpts)
 
-	go n.Run(context.Background())
-	raft.Register(n.Server, n.Node)
+	grpcOptions := []grpc.DialOption{
+		grpc.WithBackoffMaxDelay(2 * time.Second),
+		grpc.WithTransportCredentials(securityConfig.ClientTLSCreds),
+		grpc.WithTimeout(10 * time.Second),
+	}
 
-	go func() {
-		// After stopping, we should receive an error from Serve
-		assert.Error(t, n.Server.Serve(n.Listener))
-	}()
+	conn, err := grpc.Dial(join, grpcOptions...)
+	require.NoError(t, err)
+
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	joinResp, err := api.NewRaftClient(conn).Join(ctx, &api.JoinRequest{
+		Addr: l.Addr().String(),
+	})
+	require.NoError(t, err)
+
+	derivedOpts.JoinCluster = joinResp
+	n := NewNode(t, wrappedListener, clockSource, securityConfig, derivedOpts)
+
+	if start {
+		go n.Run(context.Background())
+		raft.Register(n.Server, n.Node)
+
+		go func() {
+			// After stopping, we should receive an error from Serve
+			assert.Error(t, n.Server.Serve(n.Listener))
+		}()
+	}
 	return n
 }
 
@@ -327,7 +352,7 @@ func NewRaftCluster(t *testing.T, securityConfig *ca.SecurityConfig, config ...*
 // AddRaftNode adds an additional raft test node to an existing cluster
 func AddRaftNode(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*TestNode, securityConfig *ca.SecurityConfig, opts ...raft.NewNodeOptions) {
 	n := uint64(len(nodes) + 1)
-	nodes[n] = NewJoinNode(t, clockSource, nodes[1].Address, securityConfig, opts...)
+	nodes[n] = NewJoinNode(t, clockSource, nodes[1].Address, securityConfig, true, opts...)
 	WaitForCluster(t, clockSource, nodes)
 }
 

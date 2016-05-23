@@ -90,7 +90,7 @@ type Node struct {
 	snapshotter *snap.Snapshotter
 	wasLeader   bool
 	removed     uint32
-	joinAddr    string
+	joinCluster *api.JoinResponse
 
 	// forceNewCluster is a special flag used to recover from disaster
 	// scenario by pointing to an existing or backed up data directory.
@@ -122,9 +122,9 @@ type NewNodeOptions struct {
 	// ForceNewCluster defines if we have to force a new cluster
 	// because we are recovering from a backup data directory.
 	ForceNewCluster bool
-	// JoinAddr is the cluster to join. May be an empty string to create
-	// a standalone cluster.
-	JoinAddr string
+	// JoinCluster contains the set of nodes in the existing cluster to
+	// join. May be nil to create a standalone cluster.
+	JoinCluster *api.JoinResponse
 	// Config is the raft config.
 	Config *raft.Config
 	// StateDir is the directory to store durable state.
@@ -142,7 +142,6 @@ type NewNodeOptions struct {
 }
 
 func init() {
-	// TODO(aaronl): Remove once we're no longer generating random IDs.
 	rand.Seed(time.Now().UnixNano())
 }
 
@@ -179,7 +178,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 		stopCh:              make(chan struct{}),
 		doneCh:              make(chan struct{}),
 		StateDir:            opts.StateDir,
-		joinAddr:            opts.JoinAddr,
+		joinCluster:         opts.JoinCluster,
 		sendTimeout:         2 * time.Second,
 		leadershipBroadcast: events.NewBroadcaster(),
 	}
@@ -212,30 +211,10 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 	n.wait = newWait()
 
 	if n.startNodePeers != nil {
-		if n.joinAddr != "" {
-			c, err := n.ConnectToMember(n.joinAddr, 10*time.Second)
-			if err != nil {
-				return nil, err
-			}
-			defer func() {
-				_ = c.Conn.Close()
-			}()
-
-			ctx, cancel := context.WithTimeout(n.Ctx, 10*time.Second)
-			defer cancel()
-			resp, err := c.Join(ctx, &api.JoinRequest{
-				Node: &api.RaftMember{
-					RaftID: n.Config.ID,
-					Addr:   n.Address,
-				},
-			})
-			if err != nil {
-				return nil, err
-			}
-
+		if n.joinCluster != nil {
 			n.Node = raft.StartNode(n.Config, []raft.Peer{})
 
-			if err := n.registerNodes(resp.Members); err != nil {
+			if err := n.registerNodes(n.joinCluster.Members); err != nil {
 				return nil, err
 			}
 		} else {
@@ -247,7 +226,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 		return n, nil
 	}
 
-	if n.joinAddr != "" {
+	if n.joinCluster != nil {
 		n.Config.Logger.Warning("ignoring request to join cluster, because raft state already exists")
 	}
 	n.Node = raft.RestartNode(n.Config)
@@ -445,12 +424,13 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 		return nil, ErrStopped
 	}
 
-	// We submit a configuration change only if the node was not registered yet
-	if n.cluster.GetMember(req.Node.RaftID) == nil {
-		err = n.addMember(ctx, req.Node)
-		if err != nil {
-			return nil, err
-		}
+	raftID, err := n.AllocateID()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = n.AddMember(ctx, raftID, req.Addr); err != nil {
+		return nil, err
 	}
 
 	var nodes []*api.RaftMember
@@ -461,11 +441,23 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 		})
 	}
 
-	return &api.JoinResponse{Members: nodes}, nil
+	return &api.JoinResponse{RaftID: raftID, Members: nodes}, nil
 }
 
-// addMember submits a configuration change to add a new member on the raft cluster.
-func (n *Node) addMember(ctx context.Context, node *api.RaftMember) error {
+// AddMember submits a configuration change to add a new member on the raft cluster.
+func (n *Node) AddMember(ctx context.Context, raftID uint64, addr string) error {
+	// We submit a configuration change only if the node was not registered yet
+	if n.cluster.GetMember(raftID) != nil {
+		return nil
+	}
+
+	node := api.RaftMember{
+		// FIXME(aaronl): Ensure this ID is unique and can't conflict with
+		// concurent "add node" proposals.
+		RaftID: raftID,
+		Addr:   addr,
+	}
+
 	meta, err := node.Marshal()
 	if err != nil {
 		return err
@@ -480,6 +472,13 @@ func (n *Node) addMember(ctx context.Context, node *api.RaftMember) error {
 	// Wait for a raft round to process the configuration change
 	err = n.configure(ctx, cc)
 	return err
+}
+
+// AllocateID returns an ID for a new node.
+func (n *Node) AllocateID() (uint64, error) {
+	// FIXME(aaronl): Ensure this ID is unique and can't conflict with
+	// concurent "add node" proposals.
+	return uint64(rand.Int63()) + 1, nil
 }
 
 // Leave asks to a member of the raft to remove

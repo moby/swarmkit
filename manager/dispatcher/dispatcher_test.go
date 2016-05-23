@@ -43,6 +43,14 @@ type testCluster struct {
 	store *store.MemoryStore
 }
 
+func (t *testCluster) AllocateID() (uint64, error) {
+	return 0, nil
+}
+
+func (t *testCluster) AddMember(ctx context.Context, raftID uint64, addr string) error {
+	return nil
+}
+
 func (t *testCluster) GetMemberlist() map[uint64]*api.RaftMember {
 	return map[uint64]*api.RaftMember{
 		1: {

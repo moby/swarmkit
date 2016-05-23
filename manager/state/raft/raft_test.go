@@ -248,7 +248,7 @@ func TestRaftFollowerLeave(t *testing.T) {
 	assert.NoError(t, err)
 	defer client.Conn.Close()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[5].Config.ID}})
+	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: api.RaftMember{RaftID: nodes[5].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -289,7 +289,7 @@ func TestRaftLeaderLeave(t *testing.T) {
 	assert.NoError(t, err)
 	defer client.Conn.Close()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[1].Config.ID}})
+	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: api.RaftMember{RaftID: nodes[1].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -515,10 +515,10 @@ func TestRaftForceNewCluster(t *testing.T) {
 	assert.Equal(t, len(nodes[1].GetMemberlist()), 1)
 
 	// Add 2 more members
-	nodes[2] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	nodes[2] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig, true)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
-	nodes[3] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	nodes[3] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig, true)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	newCluster := map[uint64]*raftutils.TestNode{
@@ -573,7 +573,7 @@ func TestRaftUnreachableNode(t *testing.T) {
 
 	ctx := context.Background()
 	// Add a new node, but don't start its server yet
-	n := raftutils.NewNode(t, clockSource, securityConfig, raft.NewNodeOptions{JoinAddr: nodes[1].Address})
+	n := raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig, false)
 	go n.Run(ctx)
 
 	raftutils.AdvanceTicks(clockSource, 5)
@@ -607,11 +607,11 @@ func TestRaftJoinFollower(t *testing.T) {
 	nodes := make(map[uint64]*raftutils.TestNode)
 	var clockSource *fakeclock.FakeClock
 	nodes[1], clockSource = raftutils.NewInitNode(t, securityConfig, nil)
-	nodes[2] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	nodes[2] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig, true)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Point new node at a follower's address, rather than the leader
-	nodes[3] = raftutils.NewJoinNode(t, clockSource, nodes[2].Address, securityConfig)
+	nodes[3] = raftutils.NewJoinNode(t, clockSource, nodes[2].Address, securityConfig, true)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 	defer raftutils.TeardownCluster(t, nodes)
 

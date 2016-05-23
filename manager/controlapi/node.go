@@ -48,11 +48,31 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 			nodes, err = store.FindNodes(tx, store.ByQuery(request.Options.Query))
 		}
 	})
+
+	memberlist := make(map[uint64]*api.RaftMember)
+	if s.raft != nil {
+		memberlist = s.raft.GetMemberlist()
+	}
+
+	list := make([]*api.Node, 0, len(memberlist))
+	for _, n := range nodes {
+		if n.Manager == nil || memberlist[n.Manager.Raft.RaftID] == nil {
+			list = append(list, n)
+		} else {
+
+			managerNode := n.Copy()
+			// Include live raft status information
+			managerNode.Manager.Raft = *memberlist[n.Manager.Raft.RaftID]
+
+			list = append(list, managerNode)
+		}
+	}
+
 	if err != nil {
 		return nil, err
 	}
 	return &api.ListNodesResponse{
-		Nodes: nodes,
+		Nodes: list,
 	}, nil
 }
 

@@ -4,6 +4,7 @@ package docker.cluster.api;
 
 import "types.proto";
 import "objects.proto";
+import "raft.proto";
 import "gogoproto/gogo.proto";
 
 // Dispatcher is the API provided by a manager group for agents to connect to. Agents
@@ -38,6 +39,10 @@ service Dispatcher { // maybe dispatch, al likes this
 	// of tasks which should be run on node, if task is not present in that list,
 	// it should be terminated.
 	rpc Tasks(TasksRequest) returns (stream TasksMessage) {};
+
+	// PromoteManager allows a node with a valid manager certificate to
+	// join the management raft cluster.
+	rpc PromoteManager(PromoteManagerRequest) returns (PromoteManagerResponse) {};
 }
 
 // SessionRequest starts a session.
@@ -128,7 +133,7 @@ message UpdateTaskStatusRequest {
 	repeated TaskStatusUpdate updates = 3;
 }
 
-message  UpdateTaskStatusResponse{
+message UpdateTaskStatusResponse{
 	// void
 }
 
@@ -142,3 +147,12 @@ message TasksMessage {
 	repeated Task tasks = 1;
 }
 
+message PromoteManagerRequest {
+	// JoinRequest is the request to join the raft cluster.
+	JoinRequest join_request = 2 [(gogoproto.nullable) = false];
+}
+
+message PromoteManagerResponse {
+	// JoinResponse contains the result of the raft join.
+	JoinResponse join_response = 2 [(gogoproto.nullable) = false];
+}
