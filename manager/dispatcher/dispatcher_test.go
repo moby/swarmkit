@@ -127,16 +127,23 @@ func TestRegisterTwice(t *testing.T) {
 
 	var expectedSessionID string
 	{
-		resp, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
 		assert.NoError(t, err)
-		assert.NotEmpty(t, resp.SessionID)
-		expectedSessionID = resp.SessionID
+		msg, err := stream.Recv()
+		assert.NoError(t, err)
+		assert.NotEmpty(t, msg.SessionID)
+		expectedSessionID = msg.SessionID
+		stream.CloseSend()
 	}
 	{
-		resp, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+		assert.NoError(t, err)
+		msg, err := stream.Recv()
+
 		assert.NoError(t, err)
 		// session should be different!
-		assert.NotEqual(t, resp.SessionID, expectedSessionID)
+		assert.NotEqual(t, msg.SessionID, expectedSessionID)
+		stream.CloseSend()
 	}
 }
 
@@ -146,7 +153,10 @@ func TestRegisterNoCert(t *testing.T) {
 	defer gd.Close()
 
 	// This client has no certificates, this should fail
-	resp, err := gd.Clients[2].Register(context.Background(), &api.RegisterRequest{})
+	stream, err := gd.Clients[2].Session(context.Background(), &api.SessionRequest{})
+	assert.NoError(t, err)
+	defer stream.CloseSend()
+	resp, err := stream.Recv()
 	assert.Nil(t, resp)
 	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role, expecting: [swarm-worker swarm-manager]")
 }
@@ -161,7 +171,11 @@ func TestHeartbeat(t *testing.T) {
 
 	var expectedSessionID string
 	{
-		resp, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+		assert.NoError(t, err)
+		defer stream.CloseSend()
+
+		resp, err := stream.Recv()
 		assert.NoError(t, err)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
@@ -210,7 +224,9 @@ func TestHeartbeatTimeout(t *testing.T) {
 
 	var expectedSessionID string
 	{
-		resp, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+		assert.NoError(t, err)
+		resp, err := stream.Recv()
 		assert.NoError(t, err)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
@@ -250,7 +266,10 @@ func TestTasks(t *testing.T) {
 	var expectedSessionID string
 	var nodeID string
 	{
-		resp, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+		assert.NoError(t, err)
+		defer stream.CloseSend()
+		resp, err := stream.Recv()
 		assert.NoError(t, err)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
@@ -360,7 +379,10 @@ func TestTaskUpdate(t *testing.T) {
 
 	var expectedSessionID string
 	{
-		resp, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+		assert.NoError(t, err)
+		defer stream.CloseSend()
+		resp, err := stream.Recv()
 		assert.NoError(t, err)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
@@ -453,12 +475,13 @@ func TestSession(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	resp, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
+	stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+	assert.NoError(t, err)
+	stream.CloseSend()
+	resp, err := stream.Recv()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp.SessionID)
-	sid := resp.SessionID
 
-	stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{SessionID: sid})
 	msg, err := stream.Recv()
 	assert.Equal(t, 1, len(msg.Managers))
 	assert.False(t, msg.Disconnect)
@@ -470,7 +493,7 @@ func TestSessionNoCert(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	stream, err := gd.Clients[2].Session(context.Background(), &api.SessionRequest{SessionID: "fakesid"})
+	stream, err := gd.Clients[2].Session(context.Background(), &api.SessionRequest{})
 	msg, err := stream.Recv()
 	assert.Nil(t, msg)
 	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role, expecting: [swarm-worker swarm-manager]")
@@ -485,12 +508,16 @@ func TestNodesCount(t *testing.T) {
 	defer gd.Close()
 
 	{
-		_, err := gd.Clients[0].Register(context.Background(), &api.RegisterRequest{})
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
 		assert.NoError(t, err)
+		defer stream.CloseSend()
+		stream.Recv()
 	}
 	{
-		_, err := gd.Clients[1].Register(context.Background(), &api.RegisterRequest{})
+		stream, err := gd.Clients[1].Session(context.Background(), &api.SessionRequest{})
 		assert.NoError(t, err)
+		defer stream.CloseSend()
+		stream.Recv()
 	}
 	assert.Equal(t, 2, gd.dispatcherServer.NodeCount())
 	time.Sleep(500 * time.Millisecond)

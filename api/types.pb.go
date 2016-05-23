@@ -116,8 +116,6 @@
 		ListClustersResponse
 		UpdateClusterRequest
 		UpdateClusterResponse
-		RegisterRequest
-		RegisterResponse
 		SessionRequest
 		SessionMessage
 		HeartbeatRequest
