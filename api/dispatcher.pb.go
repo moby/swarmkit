@@ -34,15 +34,18 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-type RegisterRequest struct {
+// SessionRequest starts a session.
+type SessionRequest struct {
 	Description *NodeDescription `protobuf:"bytes,1,opt,name=description" json:"description,omitempty"`
 }
 
-func (m *RegisterRequest) Reset()                    { *m = RegisterRequest{} }
-func (*RegisterRequest) ProtoMessage()               {}
-func (*RegisterRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{0} }
+func (m *SessionRequest) Reset()                    { *m = SessionRequest{} }
+func (*SessionRequest) ProtoMessage()               {}
+func (*SessionRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{0} }
 
-type RegisterResponse struct {
+// SessionMessage instructs an agent on various actions as part of the current
+// session. An agent should act immediately on the contents.
+type SessionMessage struct {
 	// NodeID identifies the registering node.
 	NodeID string `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 	// SessionID is allocated after a successful registration. It should be
@@ -89,34 +92,16 @@ type RegisterResponse struct {
 	// critical feature of the protocol, we thought it should be represented
 	// directly in the RPC message set.
 	SessionID string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-}
-
-func (m *RegisterResponse) Reset()                    { *m = RegisterResponse{} }
-func (*RegisterResponse) ProtoMessage()               {}
-func (*RegisterResponse) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{1} }
-
-// SessionRequest starts a session control stream.
-type SessionRequest struct {
-	SessionID string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-}
-
-func (m *SessionRequest) Reset()                    { *m = SessionRequest{} }
-func (*SessionRequest) ProtoMessage()               {}
-func (*SessionRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{2} }
-
-// SessionMessage instructs an agent on various actions as part of the current
-// session. An agent should act immediately on the contents.
-type SessionMessage struct {
 	// Managers provides a weight list of alternative dispatchers
-	Managers []*WeightedPeer `protobuf:"bytes,1,rep,name=managers" json:"managers,omitempty"`
+	Managers []*WeightedPeer `protobuf:"bytes,3,rep,name=managers" json:"managers,omitempty"`
 	// Disconnect instructs the agent to disconnect from the current disptacher
 	// and select a new one.
-	Disconnect bool `protobuf:"varint,2,opt,name=disconnect,proto3" json:"disconnect,omitempty"`
+	Disconnect bool `protobuf:"varint,4,opt,name=disconnect,proto3" json:"disconnect,omitempty"`
 }
 
 func (m *SessionMessage) Reset()                    { *m = SessionMessage{} }
 func (*SessionMessage) ProtoMessage()               {}
-func (*SessionMessage) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{3} }
+func (*SessionMessage) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{1} }
 
 // HeartbeatRequest provides identifying properties for a single heartbeat.
 type HeartbeatRequest struct {
@@ -125,7 +110,7 @@ type HeartbeatRequest struct {
 
 func (m *HeartbeatRequest) Reset()                    { *m = HeartbeatRequest{} }
 func (*HeartbeatRequest) ProtoMessage()               {}
-func (*HeartbeatRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{4} }
+func (*HeartbeatRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{2} }
 
 type HeartbeatResponse struct {
 	// Period is the duration to wait before sending the next heartbeat.
@@ -135,7 +120,7 @@ type HeartbeatResponse struct {
 
 func (m *HeartbeatResponse) Reset()                    { *m = HeartbeatResponse{} }
 func (*HeartbeatResponse) ProtoMessage()               {}
-func (*HeartbeatResponse) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{5} }
+func (*HeartbeatResponse) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{3} }
 
 type UpdateTaskStatusRequest struct {
 	// Tasks should contain all statuses for running tasks. Only the status
@@ -147,7 +132,7 @@ type UpdateTaskStatusRequest struct {
 func (m *UpdateTaskStatusRequest) Reset()      { *m = UpdateTaskStatusRequest{} }
 func (*UpdateTaskStatusRequest) ProtoMessage() {}
 func (*UpdateTaskStatusRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptorDispatcher, []int{6}
+	return fileDescriptorDispatcher, []int{4}
 }
 
 type UpdateTaskStatusRequest_TaskStatusUpdate struct {
@@ -160,7 +145,7 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Reset() {
 }
 func (*UpdateTaskStatusRequest_TaskStatusUpdate) ProtoMessage() {}
 func (*UpdateTaskStatusRequest_TaskStatusUpdate) Descriptor() ([]byte, []int) {
-	return fileDescriptorDispatcher, []int{6, 0}
+	return fileDescriptorDispatcher, []int{4, 0}
 }
 
 type UpdateTaskStatusResponse struct {
@@ -169,7 +154,7 @@ type UpdateTaskStatusResponse struct {
 func (m *UpdateTaskStatusResponse) Reset()      { *m = UpdateTaskStatusResponse{} }
 func (*UpdateTaskStatusResponse) ProtoMessage() {}
 func (*UpdateTaskStatusResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptorDispatcher, []int{7}
+	return fileDescriptorDispatcher, []int{5}
 }
 
 type TasksRequest struct {
@@ -178,7 +163,7 @@ type TasksRequest struct {
 
 func (m *TasksRequest) Reset()                    { *m = TasksRequest{} }
 func (*TasksRequest) ProtoMessage()               {}
-func (*TasksRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{8} }
+func (*TasksRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{6} }
 
 type TasksMessage struct {
 	// Tasks is the set of tasks that should be running on the node.
@@ -188,11 +173,9 @@ type TasksMessage struct {
 
 func (m *TasksMessage) Reset()                    { *m = TasksMessage{} }
 func (*TasksMessage) ProtoMessage()               {}
-func (*TasksMessage) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{9} }
+func (*TasksMessage) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{7} }
 
 func init() {
-	proto.RegisterType((*RegisterRequest)(nil), "docker.cluster.api.RegisterRequest")
-	proto.RegisterType((*RegisterResponse)(nil), "docker.cluster.api.RegisterResponse")
 	proto.RegisterType((*SessionRequest)(nil), "docker.cluster.api.SessionRequest")
 	proto.RegisterType((*SessionMessage)(nil), "docker.cluster.api.SessionMessage")
 	proto.RegisterType((*HeartbeatRequest)(nil), "docker.cluster.api.HeartbeatRequest")
@@ -204,38 +187,13 @@ func init() {
 	proto.RegisterType((*TasksMessage)(nil), "docker.cluster.api.TasksMessage")
 }
 
-func (m *RegisterRequest) Copy() *RegisterRequest {
-	if m == nil {
-		return nil
-	}
-
-	o := &RegisterRequest{
-		Description: m.Description.Copy(),
-	}
-
-	return o
-}
-
-func (m *RegisterResponse) Copy() *RegisterResponse {
-	if m == nil {
-		return nil
-	}
-
-	o := &RegisterResponse{
-		NodeID:    m.NodeID,
-		SessionID: m.SessionID,
-	}
-
-	return o
-}
-
 func (m *SessionRequest) Copy() *SessionRequest {
 	if m == nil {
 		return nil
 	}
 
 	o := &SessionRequest{
-		SessionID: m.SessionID,
+		Description: m.Description.Copy(),
 	}
 
 	return o
@@ -247,6 +205,8 @@ func (m *SessionMessage) Copy() *SessionMessage {
 	}
 
 	o := &SessionMessage{
+		NodeID:     m.NodeID,
+		SessionID:  m.SessionID,
 		Disconnect: m.Disconnect,
 	}
 
@@ -355,36 +315,15 @@ func (m *TasksMessage) Copy() *TasksMessage {
 	return o
 }
 
-func (this *RegisterRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.RegisterRequest{")
-	if this.Description != nil {
-		s = append(s, "Description: "+fmt.Sprintf("%#v", this.Description)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RegisterResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&api.RegisterResponse{")
-	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
-	s = append(s, "SessionID: "+fmt.Sprintf("%#v", this.SessionID)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
 func (this *SessionRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.SessionRequest{")
-	s = append(s, "SessionID: "+fmt.Sprintf("%#v", this.SessionID)+",\n")
+	if this.Description != nil {
+		s = append(s, "Description: "+fmt.Sprintf("%#v", this.Description)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -392,8 +331,10 @@ func (this *SessionMessage) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 8)
 	s = append(s, "&api.SessionMessage{")
+	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
+	s = append(s, "SessionID: "+fmt.Sprintf("%#v", this.SessionID)+",\n")
 	if this.Managers != nil {
 		s = append(s, "Managers: "+fmt.Sprintf("%#v", this.Managers)+",\n")
 	}
@@ -515,11 +456,11 @@ const _ = grpc.SupportPackageIsVersion2
 // Client API for Dispatcher service
 
 type DispatcherClient interface {
-	// Register is used for registration of node with particular dispatcher.
-	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
-	// Session controls an agent with a stream of SessionMessage. Agents should
-	// immediately issue this call after a successful register and listen on
-	// the stream at all times for instruction.
+	// Session starts an agent session with the dispatcher. The session is
+	// started after the first SessionMessage is received.
+	//
+	// Once started, the agent is controlled with a stream of SessionMessage.
+	// Agents should list on the stream at all times for instructions.
 	Session(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (Dispatcher_SessionClient, error)
 	// Heartbeat is heartbeat method for nodes. It returns new TTL in response.
 	// Node should send new heartbeat earlier than now + TTL, otherwise it will
@@ -547,15 +488,6 @@ type dispatcherClient struct {
 
 func NewDispatcherClient(cc *grpc.ClientConn) DispatcherClient {
 	return &dispatcherClient{cc}
-}
-
-func (c *dispatcherClient) Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error) {
-	out := new(RegisterResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Dispatcher/Register", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *dispatcherClient) Session(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (Dispatcher_SessionClient, error) {
@@ -643,11 +575,11 @@ func (x *dispatcherTasksClient) Recv() (*TasksMessage, error) {
 // Server API for Dispatcher service
 
 type DispatcherServer interface {
-	// Register is used for registration of node with particular dispatcher.
-	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
-	// Session controls an agent with a stream of SessionMessage. Agents should
-	// immediately issue this call after a successful register and listen on
-	// the stream at all times for instruction.
+	// Session starts an agent session with the dispatcher. The session is
+	// started after the first SessionMessage is received.
+	//
+	// Once started, the agent is controlled with a stream of SessionMessage.
+	// Agents should list on the stream at all times for instructions.
 	Session(*SessionRequest, Dispatcher_SessionServer) error
 	// Heartbeat is heartbeat method for nodes. It returns new TTL in response.
 	// Node should send new heartbeat earlier than now + TTL, otherwise it will
@@ -671,24 +603,6 @@ type DispatcherServer interface {
 
 func RegisterDispatcherServer(s *grpc.Server, srv DispatcherServer) {
 	s.RegisterService(&_Dispatcher_serviceDesc, srv)
-}
-
-func _Dispatcher_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DispatcherServer).Register(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/docker.cluster.api.Dispatcher/Register",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DispatcherServer).Register(ctx, req.(*RegisterRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _Dispatcher_Session_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -774,10 +688,6 @@ var _Dispatcher_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*DispatcherServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Register",
-			Handler:    _Dispatcher_Register_Handler,
-		},
-		{
 			MethodName: "Heartbeat",
 			Handler:    _Dispatcher_Heartbeat_Handler,
 		},
@@ -800,64 +710,6 @@ var _Dispatcher_serviceDesc = grpc.ServiceDesc{
 	},
 }
 
-func (m *RegisterRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *RegisterRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Description != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintDispatcher(data, i, uint64(m.Description.Size()))
-		n1, err := m.Description.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
-	return i, nil
-}
-
-func (m *RegisterResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *RegisterResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.NodeID) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintDispatcher(data, i, uint64(len(m.NodeID)))
-		i += copy(data[i:], m.NodeID)
-	}
-	if len(m.SessionID) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintDispatcher(data, i, uint64(len(m.SessionID)))
-		i += copy(data[i:], m.SessionID)
-	}
-	return i, nil
-}
-
 func (m *SessionRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -873,11 +725,15 @@ func (m *SessionRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.SessionID) > 0 {
+	if m.Description != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(len(m.SessionID)))
-		i += copy(data[i:], m.SessionID)
+		i = encodeVarintDispatcher(data, i, uint64(m.Description.Size()))
+		n1, err := m.Description.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
 	}
 	return i, nil
 }
@@ -897,9 +753,21 @@ func (m *SessionMessage) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.NodeID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintDispatcher(data, i, uint64(len(m.NodeID)))
+		i += copy(data[i:], m.NodeID)
+	}
+	if len(m.SessionID) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintDispatcher(data, i, uint64(len(m.SessionID)))
+		i += copy(data[i:], m.SessionID)
+	}
 	if len(m.Managers) > 0 {
 		for _, msg := range m.Managers {
-			data[i] = 0xa
+			data[i] = 0x1a
 			i++
 			i = encodeVarintDispatcher(data, i, uint64(msg.Size()))
 			n, err := msg.MarshalTo(data[i:])
@@ -910,7 +778,7 @@ func (m *SessionMessage) MarshalTo(data []byte) (int, error) {
 		}
 	}
 	if m.Disconnect {
-		data[i] = 0x10
+		data[i] = 0x20
 		i++
 		if m.Disconnect {
 			data[i] = 1
@@ -1184,22 +1052,6 @@ func (p *raftProxyDispatcherServer) runCtxMods(ctx context.Context) (context.Con
 	return ctx, nil
 }
 
-func (p *raftProxyDispatcherServer) Register(ctx context.Context, r *RegisterRequest) (*RegisterResponse, error) {
-
-	if p.cluster.IsLeader() {
-		return p.local.Register(ctx, r)
-	}
-	ctx, err := p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return nil, err
-	}
-	return NewDispatcherClient(conn).Register(ctx, r)
-}
-
 func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher_SessionServer) error {
 
 	if p.cluster.IsLeader() {
@@ -1300,7 +1152,7 @@ func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_Tas
 	return nil
 }
 
-func (m *RegisterRequest) Size() (n int) {
+func (m *SessionRequest) Size() (n int) {
 	var l int
 	_ = l
 	if m.Description != nil {
@@ -1310,7 +1162,7 @@ func (m *RegisterRequest) Size() (n int) {
 	return n
 }
 
-func (m *RegisterResponse) Size() (n int) {
+func (m *SessionMessage) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.NodeID)
@@ -1321,22 +1173,6 @@ func (m *RegisterResponse) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovDispatcher(uint64(l))
 	}
-	return n
-}
-
-func (m *SessionRequest) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.SessionID)
-	if l > 0 {
-		n += 1 + l + sovDispatcher(uint64(l))
-	}
-	return n
-}
-
-func (m *SessionMessage) Size() (n int) {
-	var l int
-	_ = l
 	if len(m.Managers) > 0 {
 		for _, e := range m.Managers {
 			l = e.Size()
@@ -1439,33 +1275,12 @@ func sovDispatcher(x uint64) (n int) {
 func sozDispatcher(x uint64) (n int) {
 	return sovDispatcher(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (this *RegisterRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RegisterRequest{`,
-		`Description:` + strings.Replace(fmt.Sprintf("%v", this.Description), "NodeDescription", "NodeDescription", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RegisterResponse) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RegisterResponse{`,
-		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
-		`SessionID:` + fmt.Sprintf("%v", this.SessionID) + `,`,
-		`}`,
-	}, "")
-	return s
-}
 func (this *SessionRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
 	s := strings.Join([]string{`&SessionRequest{`,
-		`SessionID:` + fmt.Sprintf("%v", this.SessionID) + `,`,
+		`Description:` + strings.Replace(fmt.Sprintf("%v", this.Description), "NodeDescription", "NodeDescription", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1475,6 +1290,8 @@ func (this *SessionMessage) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&SessionMessage{`,
+		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
+		`SessionID:` + fmt.Sprintf("%v", this.SessionID) + `,`,
 		`Managers:` + strings.Replace(fmt.Sprintf("%v", this.Managers), "WeightedPeer", "WeightedPeer", 1) + `,`,
 		`Disconnect:` + fmt.Sprintf("%v", this.Disconnect) + `,`,
 		`}`,
@@ -1560,7 +1377,7 @@ func valueToStringDispatcher(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *RegisterRequest) Unmarshal(data []byte) error {
+func (m *SessionRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1583,10 +1400,10 @@ func (m *RegisterRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RegisterRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: SessionRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RegisterRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: SessionRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1643,7 +1460,7 @@ func (m *RegisterRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RegisterResponse) Unmarshal(data []byte) error {
+func (m *SessionMessage) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1666,10 +1483,10 @@ func (m *RegisterResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RegisterResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: SessionMessage: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RegisterResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: SessionMessage: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1730,136 +1547,7 @@ func (m *RegisterResponse) Unmarshal(data []byte) error {
 			}
 			m.SessionID = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthDispatcher
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *SessionRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowDispatcher
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: SessionRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: SessionRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SessionID", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDispatcher
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthDispatcher
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.SessionID = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthDispatcher
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *SessionMessage) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowDispatcher
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: SessionMessage: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: SessionMessage: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Managers", wireType)
 			}
@@ -1890,7 +1578,7 @@ func (m *SessionMessage) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 2:
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Disconnect", wireType)
 			}
@@ -2617,42 +2305,40 @@ var (
 )
 
 var fileDescriptorDispatcher = []byte{
-	// 584 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x9c, 0x54, 0xcd, 0x6e, 0xd3, 0x40,
-	0x10, 0x8e, 0x1b, 0xea, 0x24, 0x13, 0x02, 0x61, 0x05, 0x22, 0xb2, 0x50, 0x12, 0xb9, 0x20, 0x21,
-	0x51, 0x0c, 0x0a, 0x12, 0xa7, 0x08, 0xa1, 0x28, 0x48, 0xe4, 0x00, 0x54, 0x2e, 0xa5, 0x88, 0x0b,
-	0x72, 0xec, 0x55, 0x6a, 0x4a, 0xbd, 0xc6, 0xbb, 0x39, 0x70, 0xe3, 0x11, 0x78, 0xac, 0x1c, 0x39,
-	0xa2, 0x1e, 0x22, 0xda, 0x27, 0xe0, 0x11, 0x98, 0x5d, 0xff, 0x24, 0x75, 0x9d, 0x96, 0xe6, 0xb0,
-	0xf2, 0xee, 0xec, 0xf7, 0xcd, 0x7e, 0xf3, 0x67, 0x68, 0x7a, 0x3e, 0x0f, 0x1d, 0xe1, 0x1e, 0xd0,
-	0xc8, 0x0a, 0x23, 0x26, 0x18, 0x21, 0x1e, 0x73, 0x0f, 0xf1, 0xe4, 0x7e, 0x9d, 0x72, 0x81, 0x5f,
-	0x27, 0xf4, 0x8d, 0xba, 0xf8, 0x1e, 0x52, 0x1e, 0x03, 0x8c, 0x06, 0x1b, 0x7f, 0xa1, 0xae, 0x48,
-	0x8f, 0xb7, 0x27, 0x6c, 0xc2, 0xd4, 0xf6, 0x89, 0xdc, 0xc5, 0x56, 0xf3, 0x23, 0xdc, 0xb4, 0xe9,
-	0xc4, 0x97, 0x1e, 0x6c, 0xfa, 0x6d, 0x4a, 0xb9, 0x20, 0xaf, 0xa0, 0xee, 0x51, 0xee, 0x46, 0x7e,
-	0x28, 0x7c, 0x16, 0xb4, 0xb4, 0xae, 0xf6, 0xb0, 0xde, 0xdb, 0xb2, 0xce, 0x3f, 0x67, 0xbd, 0x65,
-	0x1e, 0x1d, 0x2e, 0xa0, 0xf6, 0x32, 0xcf, 0xa4, 0xd0, 0x5c, 0x78, 0xe6, 0x21, 0x0b, 0x38, 0x25,
-	0x5b, 0x50, 0x09, 0x90, 0xf3, 0xd9, 0xf7, 0x94, 0xdb, 0xda, 0x00, 0x4e, 0xe7, 0x1d, 0x5d, 0xba,
-	0x19, 0x0d, 0x6d, 0x5d, 0x5e, 0x8d, 0x3c, 0xb2, 0x0d, 0xc0, 0x29, 0xe7, 0xe8, 0x43, 0xe2, 0x36,
-	0x14, 0xae, 0x81, 0xb8, 0xda, 0x6e, 0x6c, 0x45, 0x68, 0x2d, 0x01, 0x8c, 0x3c, 0xf3, 0x05, 0xdc,
-	0x48, 0xec, 0xa9, 0xfe, 0xb3, 0x7c, 0xed, 0x12, 0x7e, 0x90, 0xf1, 0xdf, 0xe0, 0xc7, 0x99, 0x50,
-	0xd2, 0x87, 0xea, 0x91, 0x13, 0xe0, 0x2e, 0xe2, 0xc8, 0x2e, 0x63, 0xf0, 0xdd, 0xa2, 0xe0, 0xf7,
-	0xa9, 0x3f, 0x39, 0x10, 0xd4, 0xdb, 0xa1, 0x18, 0x60, 0xc6, 0x20, 0x6d, 0x00, 0x2c, 0x95, 0xcb,
-	0x82, 0x00, 0x73, 0xaf, 0xd4, 0x57, 0xed, 0x25, 0x8b, 0xf9, 0x12, 0x9a, 0xaf, 0xa9, 0x13, 0x89,
-	0x31, 0x75, 0xc4, 0x7a, 0x8a, 0x07, 0x70, 0x6b, 0xc9, 0x43, 0x92, 0xd9, 0xc7, 0xa0, 0xef, 0xd0,
-	0xc8, 0x67, 0x31, 0xfd, 0xda, 0xe0, 0xce, 0x6c, 0xde, 0x29, 0x1d, 0xcf, 0x3b, 0x0d, 0xe1, 0x1f,
-	0x51, 0x6b, 0x38, 0x8d, 0x1c, 0x55, 0x21, 0x3d, 0x54, 0x20, 0xf3, 0xe7, 0x06, 0xdc, 0xdd, 0x0b,
-	0x3d, 0x47, 0xd0, 0xf7, 0x0e, 0x3f, 0xdc, 0x15, 0x8e, 0x98, 0xf2, 0xb5, 0xd4, 0x90, 0x0f, 0x50,
-	0x99, 0x2a, 0x47, 0xbc, 0x55, 0x56, 0xc9, 0xea, 0x17, 0x25, 0x6b, 0xc5, 0x5b, 0xd6, 0xc2, 0x12,
-	0x23, 0xec, 0xd4, 0x99, 0xc1, 0xa0, 0x99, 0xbf, 0x94, 0xed, 0x23, 0xd0, 0x96, 0x6b, 0x1f, 0x09,
-	0x93, 0xed, 0x23, 0xaf, 0x50, 0xd0, 0x73, 0xd0, 0xb9, 0x22, 0xa9, 0xe4, 0xd7, 0x7b, 0xed, 0x22,
-	0x3d, 0x4b, 0x4a, 0x12, 0xb4, 0x69, 0x40, 0xeb, 0xbc, 0xca, 0x38, 0xbb, 0x66, 0x1f, 0xae, 0x4b,
-	0xeb, 0x7a, 0x29, 0xc2, 0x16, 0x8d, 0xd9, 0x69, 0x83, 0x59, 0xb0, 0x29, 0xb5, 0xa6, 0xdd, 0xd5,
-	0x5a, 0x25, 0xd0, 0x8e, 0x61, 0xbd, 0xe3, 0x32, 0xc0, 0x30, 0x1b, 0x7f, 0xb2, 0x0f, 0xd5, 0x74,
-	0xb0, 0x48, 0xe1, 0x58, 0xe6, 0x06, 0xda, 0xb8, 0x7f, 0x31, 0x28, 0x89, 0xb1, 0x44, 0xf6, 0xa0,
-	0x92, 0xe8, 0x27, 0x66, 0x11, 0xe5, 0xec, 0x9c, 0x19, 0x17, 0x61, 0x92, 0x50, 0xcd, 0xd2, 0x53,
-	0x8d, 0x7c, 0x82, 0x5a, 0xd6, 0xaf, 0xa4, 0x50, 0x4b, 0x7e, 0x20, 0x8c, 0x07, 0x97, 0xa0, 0x32,
-	0xc9, 0xd8, 0x25, 0xf9, 0xa2, 0x91, 0x47, 0x57, 0x68, 0x40, 0x63, 0xfb, 0xff, 0xc0, 0xd9, 0x83,
-	0xef, 0x60, 0x53, 0xd5, 0x92, 0x74, 0x57, 0x55, 0x2d, 0x73, 0xbd, 0x1a, 0xb1, 0x94, 0x9d, 0xc1,
-	0xbd, 0xd9, 0x49, 0xbb, 0xf4, 0x1b, 0xd7, 0xdf, 0x93, 0xb6, 0xf6, 0xe3, 0xb4, 0xad, 0xcd, 0x70,
-	0xfd, 0xc2, 0xf5, 0x07, 0xd7, 0x58, 0x57, 0x7f, 0xe9, 0x67, 0xff, 0x02, 0x00, 0x00, 0xff, 0xff,
-	0xaa, 0x05, 0x84, 0xdf, 0xff, 0x05, 0x00, 0x00,
+	// 557 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x9c, 0x54, 0x4d, 0x6f, 0xd3, 0x40,
+	0x10, 0x8d, 0xfb, 0xe1, 0x34, 0x13, 0x82, 0xc2, 0x0a, 0x44, 0x64, 0xa1, 0x24, 0xda, 0x82, 0x84,
+	0x44, 0x31, 0x28, 0x48, 0x9c, 0x22, 0x84, 0xa2, 0x20, 0xd1, 0x03, 0x50, 0xb9, 0x94, 0x4a, 0x5c,
+	0xd0, 0xc6, 0x5e, 0xa5, 0xa6, 0xd4, 0x6b, 0xbc, 0x9b, 0x03, 0x37, 0xf8, 0x07, 0xfc, 0x25, 0x6e,
+	0x39, 0x72, 0x44, 0x1c, 0x22, 0xda, 0x5f, 0xc0, 0x4f, 0x60, 0x76, 0xed, 0xb8, 0x6e, 0xea, 0x14,
+	0xe8, 0x61, 0x65, 0x7b, 0xf6, 0xbd, 0x37, 0x4f, 0x6f, 0x76, 0x0d, 0xcd, 0x20, 0x94, 0x31, 0x53,
+	0xfe, 0x01, 0x4f, 0xdc, 0x38, 0x11, 0x4a, 0x10, 0x12, 0x08, 0xff, 0x10, 0xbf, 0xfc, 0x0f, 0x13,
+	0xa9, 0xf0, 0xc9, 0xe2, 0xd0, 0xa9, 0xab, 0x4f, 0x31, 0x97, 0x29, 0xc0, 0x69, 0x88, 0xd1, 0x7b,
+	0xee, 0xab, 0xf9, 0xe7, 0xf5, 0xb1, 0x18, 0x0b, 0xf3, 0xfa, 0x40, 0xbf, 0xa5, 0x55, 0xba, 0x0f,
+	0x57, 0x77, 0xb9, 0x94, 0xa1, 0x88, 0x3c, 0xfe, 0x71, 0xc2, 0xa5, 0x22, 0xcf, 0xa0, 0x1e, 0x70,
+	0xe9, 0x27, 0x61, 0xac, 0xb0, 0xda, 0xb2, 0xba, 0xd6, 0xdd, 0x7a, 0x6f, 0xd3, 0x3d, 0xdf, 0xcd,
+	0x7d, 0x29, 0x02, 0x3e, 0x3c, 0x85, 0x7a, 0x45, 0x1e, 0xfd, 0x66, 0xe5, 0xca, 0x2f, 0xf0, 0xc1,
+	0xc6, 0x9c, 0x6c, 0x42, 0x35, 0x42, 0xca, 0xbb, 0x30, 0x30, 0xaa, 0xb5, 0x01, 0x9c, 0xcc, 0x3a,
+	0xb6, 0x56, 0xd9, 0x1e, 0x7a, 0xb6, 0xde, 0xda, 0x0e, 0xc8, 0x16, 0x80, 0x4c, 0x69, 0x1a, 0xb7,
+	0x62, 0x70, 0x0d, 0xc4, 0xd5, 0x32, 0x31, 0x84, 0xd6, 0x32, 0x00, 0xa2, 0xfb, 0xb0, 0x71, 0xc4,
+	0x22, 0x14, 0x4f, 0x64, 0x6b, 0xb5, 0xbb, 0x8a, 0x4e, 0xbb, 0x65, 0x4e, 0xf7, 0x79, 0x38, 0x3e,
+	0x50, 0x3c, 0xd8, 0xe1, 0x3c, 0xf1, 0x72, 0x06, 0x69, 0x03, 0x60, 0xac, 0xbe, 0x88, 0x22, 0xcc,
+	0xa9, 0xb5, 0x86, 0xbd, 0x36, 0xbc, 0x42, 0x85, 0x3e, 0x85, 0xe6, 0x73, 0xce, 0x12, 0x35, 0xe2,
+	0x4c, 0xcd, 0xe3, 0x39, 0xeb, 0xcf, 0xba, 0xd8, 0x1f, 0x1d, 0xc0, 0xb5, 0x82, 0x82, 0x8c, 0x45,
+	0x24, 0x39, 0xb9, 0x0f, 0xf6, 0x0e, 0x4f, 0x42, 0x91, 0xd2, 0xd7, 0x06, 0x37, 0xa6, 0xb3, 0x4e,
+	0xe5, 0xe7, 0xac, 0xd3, 0x50, 0xe1, 0x11, 0x77, 0x87, 0x93, 0x84, 0x99, 0x38, 0xed, 0xd8, 0x80,
+	0xe8, 0xd7, 0x15, 0xb8, 0xb9, 0x17, 0x07, 0x4c, 0xf1, 0xd7, 0x4c, 0x1e, 0xee, 0x2a, 0xa6, 0x26,
+	0xf2, 0x52, 0x6e, 0xc8, 0x1b, 0xa8, 0x4e, 0x8c, 0xd0, 0x3c, 0xac, 0x7e, 0x59, 0x58, 0x4b, 0x7a,
+	0xb9, 0xa7, 0x95, 0x14, 0xe1, 0xcd, 0xc5, 0x1c, 0x01, 0xcd, 0xc5, 0x4d, 0x3d, 0x6c, 0x85, 0xb5,
+	0x85, 0x61, 0x6b, 0x98, 0x1e, 0xb6, 0xde, 0x42, 0x43, 0x8f, 0xc1, 0x96, 0x86, 0x64, 0x06, 0x5d,
+	0xef, 0xb5, 0xcb, 0xfc, 0x14, 0x9c, 0x64, 0x68, 0xea, 0x40, 0xeb, 0xbc, 0xcb, 0x34, 0x5d, 0xda,
+	0x87, 0x2b, 0xba, 0x7a, 0xb9, 0x88, 0xe8, 0x93, 0x8c, 0x3d, 0x3f, 0xb3, 0x2e, 0xac, 0x6b, 0xaf,
+	0x12, 0x89, 0x3a, 0xb0, 0xd6, 0x32, 0x83, 0x5e, 0x0a, 0xeb, 0x7d, 0x59, 0x05, 0x18, 0xe6, 0x57,
+	0x95, 0xec, 0x41, 0x35, 0x6b, 0x43, 0x68, 0x19, 0xf5, 0xec, 0xdd, 0x73, 0x2e, 0xc2, 0x64, 0x8e,
+	0x68, 0xe5, 0xa1, 0x45, 0xde, 0x42, 0x2d, 0x3f, 0x56, 0xe4, 0x76, 0x19, 0x69, 0xf1, 0xdc, 0x3a,
+	0x77, 0xfe, 0x82, 0xca, 0xd2, 0xab, 0x10, 0x1c, 0xe6, 0x62, 0xb6, 0xe4, 0xde, 0x7f, 0x9c, 0x13,
+	0x67, 0xeb, 0xdf, 0xc0, 0x79, 0xc3, 0x57, 0xb0, 0x6e, 0x22, 0x27, 0xdd, 0x65, 0xe1, 0xe6, 0xd2,
+	0xcb, 0x11, 0x85, 0x74, 0x06, 0xb7, 0xa6, 0xc7, 0xed, 0xca, 0x0f, 0x5c, 0xbf, 0x8f, 0xdb, 0xd6,
+	0xe7, 0x93, 0xb6, 0x35, 0xc5, 0xf5, 0x1d, 0xd7, 0x2f, 0x5c, 0x23, 0xdb, 0xfc, 0xf8, 0x1e, 0xfd,
+	0x09, 0x00, 0x00, 0xff, 0xff, 0x67, 0x4c, 0x71, 0x94, 0x52, 0x05, 0x00, 0x00,
 }

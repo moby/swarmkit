@@ -11,12 +11,11 @@ import "gogoproto/gogo.proto";
 //
 // API methods on this service are used only by agent nodes.
 service Dispatcher { // maybe dispatch, al likes this
-	// Register is used for registration of node with particular dispatcher.
-	rpc Register(RegisterRequest) returns (RegisterResponse) {};
-
-	// Session controls an agent with a stream of SessionMessage. Agents should
-	// immediately issue this call after a successful register and listen on
-	// the stream at all times for instruction.
+	// Session starts an agent session with the dispatcher. The session is
+	// started after the first SessionMessage is received.
+	//
+	// Once started, the agent is controlled with a stream of SessionMessage.
+	// Agents should list on the stream at all times for instructions.
 	rpc Session(SessionRequest) returns (stream SessionMessage) {}
 
 	// Heartbeat is heartbeat method for nodes. It returns new TTL in response.
@@ -41,11 +40,14 @@ service Dispatcher { // maybe dispatch, al likes this
 	rpc Tasks(TasksRequest) returns (stream TasksMessage) {};
 }
 
-message RegisterRequest {
+// SessionRequest starts a session.
+message SessionRequest {
 	NodeDescription description = 1;
 }
 
-message RegisterResponse {
+// SessionMessage instructs an agent on various actions as part of the current
+// session. An agent should act immediately on the contents.
+message SessionMessage {
 	// NodeID identifies the registering node.
 	string node_id = 1 [(gogoproto.customname) = "NodeID"];
 
@@ -93,22 +95,13 @@ message RegisterResponse {
 	// critical feature of the protocol, we thought it should be represented
 	// directly in the RPC message set.
 	string session_id = 2 [(gogoproto.customname) = "SessionID"];
-}
 
-// SessionRequest starts a session control stream.
-message SessionRequest {
-	string session_id = 1 [(gogoproto.customname) = "SessionID"];
-}
-
-// SessionMessage instructs an agent on various actions as part of the current
-// session. An agent should act immediately on the contents.
-message SessionMessage {
 	// Managers provides a weight list of alternative dispatchers
-	repeated WeightedPeer managers = 1;
+	repeated WeightedPeer managers = 3;
 
 	// Disconnect instructs the agent to disconnect from the current disptacher
 	// and select a new one.
-	bool disconnect = 2;
+	bool disconnect = 4;
 }
 
 // HeartbeatRequest provides identifying properties for a single heartbeat.
