@@ -35,6 +35,11 @@ const (
 	CARole = "swarm-ca"
 )
 
+var (
+	//TODO(diogo): replace this with a sane renewal time
+	defaultRenewalTime = 30 * time.Second
+)
+
 // SecurityConfig is used to represent a node's security configuration. It includes information about
 // the RootCA and ServerTLSCreds/ClientTLSCreds transport authenticators to be used for MTLS
 type SecurityConfig struct {
@@ -50,9 +55,11 @@ var DefaultPolicy = func() *cfconfig.Signing {
 	return &cfconfig.Signing{
 		Default: &cfconfig.SigningProfile{
 			Usage: []string{"signing", "key encipherment", "server auth", "client auth"},
-			// 3 months of expiry
-			ExpiryString: "2160h",
-			Expiry:       2160 * time.Hour,
+			// TODO(diogo): change to 3 months of expiry
+			// ExpiryString: "2160h",
+			// Expiry:       2160 * time.Hour,
+			ExpiryString: "1h",
+			Expiry:       1 * time.Hour,
 			// Only trust the key components from the CSR. Everything else should
 			// come directly from API call params.
 			CSRWhitelist: &cfconfig.CSRWhitelist{
@@ -169,14 +176,15 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, propos
 
 // RenewTLSConfig will continuously monitor for the necessity of renewing the local certificates, either by
 // issuing them locally if key-material is available, or requesting them from a remote CA.
-func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, picker *picker.Picker) (<-chan tls.Config, <-chan error) {
+func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, picker *picker.Picker, retry time.Duration) (<-chan tls.Config, <-chan tls.Config, <-chan error) {
 	paths := NewConfigPaths(baseCertDir)
-	configs := make(chan tls.Config)
+	sConfigs := make(chan tls.Config)
+	cConfigs := make(chan tls.Config)
 	errors := make(chan error)
 	go func() {
 		for {
 			select {
-			case <-time.After(30 * time.Second):
+			case <-time.After(retry):
 				log.Debugf("Checking for certificate expiration...")
 			case <-ctx.Done():
 				break
@@ -189,46 +197,41 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 				continue
 			}
 
-			// Check if the certificate is close to expiration
-			if expMonths > 4 {
+			// Check if the certificate is close to expiration.
+			if expMonths > 1 {
 				continue
 			}
-			log.Debugf("Certificate is valid for less than four months. Trying to get a new one")
 
-			var tlsKeyPair *tls.Certificate
+			log.Debugf("Certificate about to expire. Attempting to get a new one.")
 
-			// Check if we have the local CA available locally
-			if s.RootCA.CanSign() {
-				// We are self-suficient, let's issue our own certs
-				tlsKeyPair, err = s.RootCA.IssueAndSaveNewCertificates(paths.Node, s.ClientTLSCreds.NodeID(), s.ClientTLSCreds.Role())
-				if err != nil {
-					errors <- err
-					continue
-				}
-			} else {
-				// We are dependent on an external node, let's request new certs
-				tlsKeyPair, err = s.RootCA.RequestAndSaveNewCertificates(ctx,
-					paths.Node,
-					s.ClientTLSCreds.Role(),
-					picker,
-					s.ClientTLSCreds)
-				if err != nil {
-					log.Debugf("failed to get a tlsKeyPair: %v", err)
-					errors <- err
-					continue
-				}
+			// We are dependent on an external node, let's request new certs
+			tlsKeyPair, err := s.RootCA.RequestAndSaveNewCertificates(ctx,
+				paths.Node,
+				s.ClientTLSCreds.Role(),
+				picker,
+				s.ClientTLSCreds)
+			if err != nil {
+				log.Debugf("failed to get a tlsKeyPair: %v", err)
+				errors <- err
+				continue
 			}
 
-			tlsConfig, err := NewServerTLSConfig(tlsKeyPair, s.RootCA.Pool)
+			clientTLSConfig, err := NewClientTLSConfig(tlsKeyPair, s.RootCA.Pool, CARole)
+			if err != nil {
+				errors <- err
+				log.Debugf("failed to create a new client TLS config: %v", err)
+			}
+			cConfigs <- *clientTLSConfig
+			serverTLSConfig, err := NewServerTLSConfig(tlsKeyPair, s.RootCA.Pool)
 			if err != nil {
 				errors <- err
 				log.Debugf("failed to create a new server TLS config: %v", err)
 			}
-			configs <- *tlsConfig
+			sConfigs <- *serverTLSConfig
 		}
 	}()
 
-	return configs, errors
+	return cConfigs, sConfigs, errors
 }
 
 func loadTLSCreds(rootCA RootCA, paths CertPaths) (*MutableTLSCreds, *MutableTLSCreds, error) {

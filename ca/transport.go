@@ -117,7 +117,7 @@ func (c *MutableTLSCreds) LoadNewTLSConfig(newConfig *tls.Config) error {
 	c.Lock()
 	defer c.Unlock()
 
-	newSubject, err := getAndValidateCertificateSubject(newConfig.Certificates)
+	newSubject, err := GetAndValidateCertificateSubject(newConfig.Certificates)
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func NewMutableTLS(c *tls.Config) (*MutableTLSCreds, error) {
 		return nil, fmt.Errorf("invalid configuration: needs at least one certificate")
 	}
 
-	subject, err := getAndValidateCertificateSubject(c.Certificates)
+	subject, err := GetAndValidateCertificateSubject(c.Certificates)
 	if err != nil {
 		return nil, err
 	}
@@ -163,9 +163,9 @@ func NewMutableTLS(c *tls.Config) (*MutableTLSCreds, error) {
 	return tc, nil
 }
 
-// getCertificateSubject is a helper method to retrieve and validate the subject
+// GetAndValidateCertificateSubject is a helper method to retrieve and validate the subject
 // from the x509 certificate underlying a tls.Certificate
-func getAndValidateCertificateSubject(certs []tls.Certificate) (pkix.Name, error) {
+func GetAndValidateCertificateSubject(certs []tls.Certificate) (pkix.Name, error) {
 	for i := range certs {
 		cert := &certs[i]
 		x509Cert, err := x509.ParseCertificate(cert.Certificate[0])

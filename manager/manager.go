@@ -312,9 +312,10 @@ func (m *Manager) Run(ctx context.Context) error {
 	localAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode)
 	proxyAPI := api.NewRaftProxyControlServer(localAPI, cs, m.raftNode)
 	proxyDispatcher := api.NewRaftProxyDispatcherServer(m.dispatcher, cs, m.raftNode, ca.WithMetadataForwardCN)
+	proxyCA := api.NewRaftProxyCAServer(m.caserver, cs, m.raftNode, ca.WithMetadataForwardCN)
 
-	api.RegisterCAServer(m.server, m.caserver)
 	api.RegisterRaftServer(m.server, m.raftNode)
+	api.RegisterCAServer(m.server, proxyCA)
 	api.RegisterControlServer(m.server, proxyAPI)
 	api.RegisterDispatcherServer(m.server, proxyDispatcher)
 
