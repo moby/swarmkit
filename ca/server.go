@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
@@ -70,9 +71,14 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 		return nil, grpc.Errorf(codes.NotFound, codes.NotFound.String())
 	}
 
-	log.G(ctx).Debugf("(*Server).CertificateStatus: token %s is in state: %s", request.Token, rCertificate.Status)
+	log.G(ctx).WithFields(logrus.Fields{
+		"request": request,
+		"token":   rCertificate.ID,
+		"status":  rCertificate.Status,
+		"method":  "CertificateStatus",
+	})
 
-	// If this certificate has a final state, return it immediately (both pending and accepted are transition states)
+	// If this certificate has a final state, return it immediately (both pending and renew are transition states)
 	if isFinalState(rCertificate.Status) {
 
 		return &api.CertificateStatusResponse{
@@ -81,7 +87,12 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 		}, nil
 	}
 
-	log.G(ctx).Debugf("(*Server).CertificateStatus: watching for updates on token=%s.", request.Token)
+	log.G(ctx).WithFields(logrus.Fields{
+		"request": request,
+		"token":   rCertificate.ID,
+		"status":  rCertificate.Status,
+		"method":  "CertificateStatus",
+	}).Debugf("started watching for certificate updates")
 
 	// Certificate is Pending or in an Unknown state, let's wait for changes.
 	for {
@@ -101,6 +112,8 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 				}
 			}
 		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-s.ctx.Done():
 			return nil, ctx.Err()
 		}
 	}
@@ -122,17 +135,16 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 	token := identity.NewID()
 
 	// If the remote node is an Agent (either forwarded by a manager, or calling directly),
-	// issue an accepted Agent certificate with the correct ID
+	// issue a renew agent certificate entry with the correct ID
 	nodeID, err := AuthorizeAgent(ctx)
 	if err == nil {
-		return s.issueAcceptedRegisteredCertificate(ctx, nodeID, AgentRole, token, request.CSR)
+		return s.issueRenewRegisteredCertificate(ctx, nodeID, AgentRole, token, request.CSR)
 	}
 
-	// If the remove node is a Manager, issue an accepted Manager certificate with the correct
-	// ID
+	// If the remote node is a Manager, issue a renew certificate entry with the correct ID
 	nodeID, err = AuthorizeRole(ctx, []string{ManagerRole})
 	if err == nil {
-		return s.issueAcceptedRegisteredCertificate(ctx, nodeID, ManagerRole, token, request.CSR)
+		return s.issueRenewRegisteredCertificate(ctx, nodeID, ManagerRole, token, request.CSR)
 	}
 
 	// The remote node didn't successfully present a valid MTLS certificate, let's issue
@@ -167,7 +179,12 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 			return store.CreateRegisteredCertificate(tx, certificate)
 		})
 		if err == nil {
-			log.G(ctx).Debugf("(*Server).IssueCertificate: added issue certificate entry for Role=%s with Token=%s", request.Role, token)
+			log.G(ctx).WithFields(logrus.Fields{
+				"node.id":   nodeID,
+				"node.role": request.Role,
+				"token":     token,
+				"method":    "IssueCertificate",
+			}).Debugf("new certificate entry added")
 			break
 		}
 		if err != store.ErrExist {
@@ -183,7 +200,7 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 	}, nil
 }
 
-func (s *Server) issueAcceptedRegisteredCertificate(ctx context.Context, nodeID, role, token string, csr []byte) (*api.IssueCertificateResponse, error) {
+func (s *Server) issueRenewRegisteredCertificate(ctx context.Context, nodeID, role, token string, csr []byte) (*api.IssueCertificateResponse, error) {
 	var certificate *api.RegisteredCertificate
 	err := s.store.Update(func(tx store.Tx) error {
 		certificate = &api.RegisteredCertificate{
@@ -192,7 +209,7 @@ func (s *Server) issueAcceptedRegisteredCertificate(ctx context.Context, nodeID,
 			CN:   nodeID,
 			Role: role,
 			Status: api.IssuanceStatus{
-				State: api.IssuanceStateAccepted,
+				State: api.IssuanceStateRenew,
 			},
 		}
 		return store.CreateRegisteredCertificate(tx, certificate)
@@ -201,7 +218,12 @@ func (s *Server) issueAcceptedRegisteredCertificate(ctx context.Context, nodeID,
 		return nil, err
 	}
 
-	log.G(ctx).Debugf("(*Server).issueAcceptedRegisteredCertficate: added issue certificate entry for Role=%s with Token=%s", role, token)
+	log.G(ctx).WithFields(logrus.Fields{
+		"node.id":   nodeID,
+		"node.role": role,
+		"token":     token,
+		"method":    "issueRenewRegisteredCertificate",
+	}).Debugf("new certificate entry added")
 	return &api.IssueCertificateResponse{
 		Token: token,
 	}, nil
@@ -214,7 +236,10 @@ func (s *Server) GetRootCACertificate(ctx context.Context, request *api.GetRootC
 	}
 	defer s.doneTask()
 
-	log.G(ctx).Debugf("(*Server).GetRootCACertificate called ")
+	log.G(ctx).WithFields(logrus.Fields{
+		"request": request,
+		"method":  "GetRootCACertificate",
+	})
 
 	return &api.GetRootCACertificateResponse{
 		Certificate: s.securityConfig.RootCA.Cert,
@@ -249,7 +274,9 @@ func (s *Server) Run(ctx context.Context) error {
 		return err
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("snapshot store update failed")
+		log.G(ctx).WithFields(logrus.Fields{
+			"method": "(*Server).Run",
+		}).WithError(err).Errorf("snapshot store update failed")
 		return err
 	}
 	defer cancel()
@@ -257,7 +284,9 @@ func (s *Server) Run(ctx context.Context) error {
 	if err := s.reconcileCertificates(ctx, rCerts); err != nil {
 		// We don't return here because that means the Run loop would
 		// never run. Log an error instead.
-		log.G(ctx).WithError(err).Errorf("error attempting to reconcile certificates")
+		log.G(ctx).WithFields(logrus.Fields{
+			"method": "(*Server).Run",
+		}).WithError(err).Errorf("error attempting to reconcile certificates")
 	}
 
 	// Watch for changes.
@@ -346,20 +375,30 @@ func (s *Server) evaluateAndSignCert(ctx context.Context, rCertificate *api.Regi
 	if rCertificate.Spec.DesiredState == api.IssuanceStateRejected {
 		err := s.setCertState(rCertificate, api.IssuanceStateRejected)
 		if err != nil {
-			log.G(ctx).WithError(err).Errorf("(*Server).evaluateAndSignCert: failed to change certificate state")
+			log.G(ctx).WithFields(logrus.Fields{
+				"token":     rCertificate.ID,
+				"node.id":   rCertificate.CN,
+				"node.role": rCertificate.Role,
+				"method":    "(*Server).evaluateAndSignCert",
+			}).WithError(err).Errorf("failed to change certificate state")
 		}
 		return
 	}
 	if rCertificate.Spec.DesiredState == api.IssuanceStateBlocked {
 		err := s.setCertState(rCertificate, api.IssuanceStateBlocked)
 		if err != nil {
-			log.G(ctx).WithError(err).Errorf("(*Server).evaluateAndSignCert: failed to change certificate state")
+			log.G(ctx).WithFields(logrus.Fields{
+				"token":     rCertificate.ID,
+				"node.id":   rCertificate.CN,
+				"node.role": rCertificate.Role,
+				"method":    "(*Server).evaluateAndSignCert",
+			}).WithError(err).Errorf("failed to change certificate state")
 		}
 		return
 	}
 
-	// If the certificate state is accepted, then it is a server-sided accepted cert (cert renewals)
-	if rCertificate.Status.State == api.IssuanceStateAccepted {
+	// If the certificate state is renew, then it is a server-sided accepted cert (cert renewals)
+	if rCertificate.Status.State == api.IssuanceStateRenew {
 		s.signCert(ctx, rCertificate)
 		return
 	}
@@ -377,7 +416,9 @@ func (s *Server) evaluateAndSignCert(ctx context.Context, rCertificate *api.Regi
 		}
 	})
 	if cluster == nil {
-		log.G(ctx).Error("(*Server).evaluateAndSignCert: failed to retrieve cluster object")
+		log.G(ctx).WithFields(logrus.Fields{
+			"method": "(*Server).evaluateAndSignCert",
+		}).Debugf("failed to retrieve cluster object")
 		return
 	}
 
@@ -395,13 +436,19 @@ func (s *Server) evaluateAndSignCert(ctx context.Context, rCertificate *api.Regi
 func (s *Server) signCert(ctx context.Context, rCertificate *api.RegisteredCertificate) {
 	cert, err := s.securityConfig.RootCA.ParseValidateAndSignCSR(rCertificate.CSR, rCertificate.CN, rCertificate.Role)
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("(*Server).signCert: failed to parse CSR")
+		log.G(ctx).WithFields(logrus.Fields{
+			"token":  rCertificate.ID,
+			"method": "(*Server).signCert",
+		}).WithError(err).Errorf("failed to parse CSR")
 	}
 
 	err = s.store.Update(func(tx store.Tx) error {
 		latestCertificate := store.GetRegisteredCertificate(tx, rCertificate.ID)
 		if latestCertificate == nil {
-			log.G(ctx).Errorf("(*Server).signCert: registered certificate not found in store")
+			log.G(ctx).WithFields(logrus.Fields{
+				"token":  rCertificate.ID,
+				"method": "(*Server).signCert",
+			}).WithError(err).Errorf("registered certificate not found")
 		}
 
 		// Remote users are expecting a full certificate chain, not just a signed certificate
@@ -413,9 +460,17 @@ func (s *Server) signCert(ctx context.Context, rCertificate *api.RegisteredCerti
 		return store.UpdateRegisteredCertificate(tx, latestCertificate)
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("(*Server).signCert: transaction failed")
+		log.G(ctx).WithFields(logrus.Fields{
+			"token":  rCertificate.ID,
+			"method": "(*Server).signCert",
+		}).WithError(err).Errorf("transaction failed")
 	}
-	log.G(ctx).Debugf("(*Server).signCert: issued certificate for Node=%s and Role=%s", rCertificate.CN, rCertificate.Role)
+	log.G(ctx).WithFields(logrus.Fields{
+		"token":     rCertificate.ID,
+		"node.id":   rCertificate.CN,
+		"node.role": rCertificate.Role,
+		"method":    "(*Server).signCert",
+	}).Debugf("certificate issued")
 }
 
 func (s *Server) reconcileCertificates(ctx context.Context, rCerts []*api.RegisteredCertificate) error {
@@ -428,7 +483,7 @@ func (s *Server) reconcileCertificates(ctx context.Context, rCerts []*api.Regist
 
 func isFinalState(status api.IssuanceStatus) bool {
 	if status.State != api.IssuanceStatePending &&
-		status.State != api.IssuanceStateAccepted {
+		status.State != api.IssuanceStateRenew {
 		return true
 	}
 

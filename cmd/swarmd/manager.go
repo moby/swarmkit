@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"time"
 
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/manager"
@@ -75,6 +76,8 @@ var managerCmd = &cobra.Command{
 					return err
 				}
 			}
+			managers := picker.NewRemotes(addr)
+			p = picker.NewPicker(addr, managers)
 		}
 
 		// We either just boostraped our cluster from scratch, or have a valid picker and
@@ -84,21 +87,14 @@ var managerCmd = &cobra.Command{
 			return err
 		}
 
-		configs, errors := ca.RenewTLSConfig(ctx, securityConfig, certDir, p)
+		updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, p, 30*time.Second)
 		go func() {
 			for {
 				select {
-				case tlsConfig := <-configs:
-					err := securityConfig.ServerTLSCreds.LoadNewTLSConfig(&tlsConfig)
-					if err != nil {
-						fmt.Printf("failed to load new Server TLS config: %v\n", err)
+				case certUpdate := <-updates:
+					if certUpdate.Err != nil {
+						continue
 					}
-					err = securityConfig.ClientTLSCreds.LoadNewTLSConfig(&tlsConfig)
-					if err != nil {
-						fmt.Printf("failed to load new Client TLS config: %v\n", err)
-					}
-				case err := <-errors:
-					fmt.Printf("Received remote error: %v\n", err)
 				case <-ctx.Done():
 					break
 				}

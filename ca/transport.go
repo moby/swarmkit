@@ -22,7 +22,7 @@ var (
 
 type timeoutError struct{}
 
-func (timeoutError) Error() string   { return "credentials: Dial timed out" }
+func (timeoutError) Error() string   { return "mutablecredentials: Dial timed out" }
 func (timeoutError) Timeout() bool   { return true }
 func (timeoutError) Temporary() bool { return true }
 
@@ -59,8 +59,6 @@ func (c *MutableTLSCreds) RequireTransportSecurity() bool {
 // ClientHandshake implements the credentials.TransportAuthenticator interface
 func (c *MutableTLSCreds) ClientHandshake(addr string, rawConn net.Conn, timeout time.Duration) (net.Conn, credentials.AuthInfo, error) {
 	// borrow all the code from the original TLS credentials
-	c.Lock()
-	defer c.Unlock()
 	var errChannel chan error
 	if timeout != 0 {
 		errChannel = make(chan error, 2)
@@ -68,6 +66,7 @@ func (c *MutableTLSCreds) ClientHandshake(addr string, rawConn net.Conn, timeout
 			errChannel <- timeoutError{}
 		})
 	}
+	c.Lock()
 	if c.config.ServerName == "" {
 		colonPos := strings.LastIndex(addr, ":")
 		if colonPos == -1 {
@@ -89,7 +88,6 @@ func (c *MutableTLSCreds) ClientHandshake(addr string, rawConn net.Conn, timeout
 		}()
 		err = <-errChannel
 	}
-	c.Lock()
 	if err != nil {
 		rawConn.Close()
 		return nil, nil, err
@@ -101,9 +99,8 @@ func (c *MutableTLSCreds) ClientHandshake(addr string, rawConn net.Conn, timeout
 // ServerHandshake implements the credentials.TransportAuthenticator interface
 func (c *MutableTLSCreds) ServerHandshake(rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
 	c.Lock()
-	defer c.Unlock()
 	conn := tls.Server(rawConn, c.config)
-
+	c.Unlock()
 	if err := conn.Handshake(); err != nil {
 		rawConn.Close()
 		return nil, nil, err
@@ -114,14 +111,13 @@ func (c *MutableTLSCreds) ServerHandshake(rawConn net.Conn) (net.Conn, credentia
 
 // LoadNewTLSConfig replaces the currently loaded TLS config with a new one
 func (c *MutableTLSCreds) LoadNewTLSConfig(newConfig *tls.Config) error {
-	c.Lock()
-	defer c.Unlock()
-
-	newSubject, err := getAndValidateCertificateSubject(newConfig.Certificates)
+	newSubject, err := GetAndValidateCertificateSubject(newConfig.Certificates)
 	if err != nil {
 		return err
 	}
 
+	c.Lock()
+	defer c.Unlock()
 	c.subject = newSubject
 	c.config = newConfig
 
@@ -152,7 +148,7 @@ func NewMutableTLS(c *tls.Config) (*MutableTLSCreds, error) {
 		return nil, fmt.Errorf("invalid configuration: needs at least one certificate")
 	}
 
-	subject, err := getAndValidateCertificateSubject(c.Certificates)
+	subject, err := GetAndValidateCertificateSubject(c.Certificates)
 	if err != nil {
 		return nil, err
 	}
@@ -163,9 +159,9 @@ func NewMutableTLS(c *tls.Config) (*MutableTLSCreds, error) {
 	return tc, nil
 }
 
-// getCertificateSubject is a helper method to retrieve and validate the subject
+// GetAndValidateCertificateSubject is a helper method to retrieve and validate the subject
 // from the x509 certificate underlying a tls.Certificate
-func getAndValidateCertificateSubject(certs []tls.Certificate) (pkix.Name, error) {
+func GetAndValidateCertificateSubject(certs []tls.Certificate) (pkix.Name, error) {
 	for i := range certs {
 		cert := &certs[i]
 		x509Cert, err := x509.ParseCertificate(cert.Certificate[0])

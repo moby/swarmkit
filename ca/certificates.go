@@ -122,7 +122,7 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, paths Cert
 		return nil, err
 	}
 
-	log.Debugf("Downloaded TLS credentials with role: %s.", role)
+	log.Infof("Downloaded new TLS credentials with role: %s.", role)
 
 	// Ensure directory exists
 	err = os.MkdirAll(filepath.Dir(paths.Cert), 0755)
@@ -536,14 +536,14 @@ func atomicWriteFile(filename string, data []byte, perm os.FileMode) error {
 		return err
 	}
 	defer f.Close()
+	err = os.Chmod(f.Name(), perm)
+	if err != nil {
+		return err
+	}
 	n, err := f.Write(data)
 	if err == nil && n < len(data) {
 		return io.ErrShortWrite
 	}
-	if err != nil {
-		return err
-	}
-	err = os.Chmod(f.Name(), perm)
 	if err != nil {
 		return err
 	}
