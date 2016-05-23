@@ -426,10 +426,18 @@ message RaftConfig {
 	uint64 log_entries_for_slow_followers = 3;
 }
 
+// Manager provides informations about the state of a manager in the cluster.
+message Manager {
+	RaftMember raft = 1 [(gogoproto.nullable) = false];
+}
+
 message RaftMember {
 	// RaftID specifies the internal ID used by the manager in a raft context, it can never be modified
 	// and is used only for information purposes
 	uint64 raft_id = 1 [(gogoproto.customname) = "RaftID"];
+
+	// NodeID is the ID attached to the certificate.
+	string node_id = 2 [(gogoproto.customname) = "NodeID"];
 
 	// Addr specifies the address of the member
 	string addr = 3;

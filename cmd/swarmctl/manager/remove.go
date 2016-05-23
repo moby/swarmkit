@@ -22,7 +22,7 @@ var (
 			if err != nil {
 				return err
 			}
-			_, err = c.RemoveManager(common.Context(cmd), &api.RemoveManagerRequest{ManagerID: args[0]})
+			_, err = c.RemoveManager(common.Context(cmd), &api.RemoveManagerRequest{NodeID: args[0]})
 			if err != nil {
 				return err
 			}

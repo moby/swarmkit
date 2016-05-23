@@ -128,7 +128,7 @@ message UpdateTaskStatusRequest {
 	repeated TaskStatusUpdate updates = 3;
 }
 
-message  UpdateTaskStatusResponse{
+message UpdateTaskStatusResponse{
 	// void
 }
 
@@ -141,4 +141,3 @@ message TasksMessage {
 	// Tasks outside of this set running on the node should be terminated.
 	repeated Task tasks = 1;
 }
-

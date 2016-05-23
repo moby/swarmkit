@@ -45,10 +45,6 @@ message NodeSpec {
 	Availability availability = 2;
 }
 
-message ManagerSpec {
-	Annotations annotations = 1 [(gogoproto.nullable) = false];
-}
-
 // ServiceSpec defines the properties of a service.
 //
 // A service instructs the cluster in orchestrating repeated instances of a
