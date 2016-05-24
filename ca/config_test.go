@@ -4,6 +4,9 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
+
+	"golang.org/x/net/context"
 
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/ca/testutils"
@@ -163,4 +166,48 @@ func TestLoadOrCreateSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 	os.Remove(tc.Paths.RootCA.Key)
 	_, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, nil)
 	assert.EqualError(t, err, "valid remote address picker required")
+}
+
+func TestRenewTLSConfig(t *testing.T) {
+	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	defer tc.Stop()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	managerConfig, err := tc.NewNodeConfig(ca.ManagerRole)
+	assert.NoError(t, err)
+
+	var serverSuccess, clientSuccess, timeout bool
+	cConfigs, sConfigs, errs := ca.RenewTLSConfig(ctx, managerConfig, tc.TempDir, tc.Picker, 500*time.Millisecond)
+	for {
+		select {
+		case <-time.After(2 * time.Second):
+			timeout = true
+		case clientTLSConfig := <-cConfigs:
+			assert.NotNil(t, clientTLSConfig)
+			clientSuccess = true
+			err := managerConfig.ClientTLSCreds.LoadNewTLSConfig(&clientTLSConfig)
+			assert.NoError(t, err)
+		case serverTLSConfig := <-sConfigs:
+			serverSuccess = true
+			assert.NotNil(t, serverTLSConfig)
+			err := managerConfig.ServerTLSCreds.LoadNewTLSConfig(&serverTLSConfig)
+			assert.NoError(t, err)
+		case err = <-errs:
+		}
+		if err != nil {
+			assert.Fail(t, err.Error())
+			break
+		}
+		if timeout {
+			assert.Fail(t, "TestRenewTLSConfig timed-out")
+			break
+		}
+		if clientSuccess && serverSuccess {
+			break
+		}
+	}
+	assert.True(t, clientSuccess)
+	assert.True(t, serverSuccess)
 }

@@ -42,12 +42,15 @@ func (n *Node) loadAndStart(ctx context.Context, forceNewCluster bool) error {
 	n.snapshotter = snap.New(snapDir)
 
 	if !wal.Exist(walDir) {
-		// FIXME(aaronl): Generate unique ID on remote side if joining
-		// an existing cluster.
-		n.Config.ID = uint64(rand.Int63()) + 1
+		if n.joinCluster != nil {
+			n.Config.ID = n.joinCluster.RaftID
+		} else {
+			n.Config.ID = uint64(rand.Int63()) + 1
+		}
 
 		raftNode := &api.RaftMember{
 			RaftID: n.Config.ID,
+			NodeID: n.securityConfig.ClientTLSCreds.NodeID(),
 			Addr:   n.Address,
 		}
 		metadata, err := raftNode.Marshal()

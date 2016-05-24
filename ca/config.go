@@ -11,11 +11,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	cfconfig "github.com/cloudflare/cfssl/config"
+	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/picker"
 
 	"golang.org/x/net/context"
-
-	"google.golang.org/grpc/credentials"
 )
 
 const (
@@ -36,13 +35,18 @@ const (
 	CARole = "swarm-ca"
 )
 
+var (
+	//TODO(diogo): replace this with a sane renewal time
+	defaultRenewalTime = 30 * time.Second
+)
+
 // SecurityConfig is used to represent a node's security configuration. It includes information about
 // the RootCA and ServerTLSCreds/ClientTLSCreds transport authenticators to be used for MTLS
 type SecurityConfig struct {
 	RootCA
 
-	ServerTLSCreds credentials.TransportAuthenticator
-	ClientTLSCreds credentials.TransportAuthenticator
+	ServerTLSCreds *MutableTLSCreds
+	ClientTLSCreds *MutableTLSCreds
 }
 
 // DefaultPolicy is the default policy used by the signers to ensure that the only fields
@@ -51,9 +55,11 @@ var DefaultPolicy = func() *cfconfig.Signing {
 	return &cfconfig.Signing{
 		Default: &cfconfig.SigningProfile{
 			Usage: []string{"signing", "key encipherment", "server auth", "client auth"},
-			// 3 months of expiry
-			ExpiryString: "2160h",
-			Expiry:       2160 * time.Hour,
+			// TODO(diogo): change to 3 months of expiry
+			// ExpiryString: "2160h",
+			// Expiry:       2160 * time.Hour,
+			ExpiryString: "1h",
+			Expiry:       1 * time.Hour,
 			// Only trust the key components from the CSR. Everything else should
 			// come directly from API call params.
 			CSRWhitelist: &cfconfig.CSRWhitelist{
@@ -83,7 +89,7 @@ func NewConfigPaths(baseCertDir string) *SecurityConfigPaths {
 	}
 }
 
-// LoadOrCreateSecurityConfig encapsulates the security logic behind starting or joining a cluster.
+// LoadOrCreateSecurityConfig encapsulates the security logic behind joining a cluster.
 // Every node requires at least a set of TLS certificates with which to join the cluster with.
 // In the case of a manager, these certificates will be used both for client and server credentials.
 func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, proposedRole string, picker *picker.Picker) (*SecurityConfig, error) {
@@ -91,7 +97,7 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, propos
 
 	var (
 		rootCA                         RootCA
-		serverTLSCreds, clientTLSCreds credentials.TransportAuthenticator
+		serverTLSCreds, clientTLSCreds *MutableTLSCreds
 		err                            error
 	)
 
@@ -124,12 +130,25 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, propos
 	if err != nil {
 		log.Debugf("no valid local TLS credentials found: %v", err)
 
-		// There was an error loading our Credentials, let's get a new certificate issued
-		tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(ctx, paths.Node, proposedRole, picker)
-		if err != nil {
-			return nil, err
-		}
+		var (
+			tlsKeyPair *tls.Certificate
+			err        error
+		)
 
+		if rootCA.CanSign() {
+			// Create a new random ID for this certificate
+			cn := identity.NewID()
+
+			tlsKeyPair, err = rootCA.IssueAndSaveNewCertificates(paths.Node, cn, proposedRole)
+		} else {
+			// There was an error loading our Credentials, let's get a new certificate issued
+			// Last argument is nil because at this point we don't have any valid TLS creds
+			tlsKeyPair, err = rootCA.RequestAndSaveNewCertificates(ctx, paths.Node, proposedRole, picker, nil)
+			if err != nil {
+				return nil, err
+			}
+
+		}
 		// Create the Server TLS Credentials for this node. These will not be used by agents.
 		serverTLSCreds, err = rootCA.NewServerTLSCredentials(tlsKeyPair)
 		if err != nil {
@@ -147,10 +166,75 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, propos
 		log.Debugf("loaded local TLS credentials: %s.", paths.Node.Cert)
 	}
 
-	return &SecurityConfig{RootCA: rootCA, ServerTLSCreds: serverTLSCreds, ClientTLSCreds: clientTLSCreds}, nil
+	return &SecurityConfig{
+		RootCA: rootCA,
+
+		ServerTLSCreds: serverTLSCreds,
+		ClientTLSCreds: clientTLSCreds,
+	}, nil
 }
 
-func loadTLSCreds(rootCA RootCA, paths CertPaths) (credentials.TransportAuthenticator, credentials.TransportAuthenticator, error) {
+// RenewTLSConfig will continuously monitor for the necessity of renewing the local certificates, either by
+// issuing them locally if key-material is available, or requesting them from a remote CA.
+func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, picker *picker.Picker, retry time.Duration) (<-chan tls.Config, <-chan tls.Config, <-chan error) {
+	paths := NewConfigPaths(baseCertDir)
+	sConfigs := make(chan tls.Config)
+	cConfigs := make(chan tls.Config)
+	errors := make(chan error)
+	go func() {
+		for {
+			select {
+			case <-time.After(retry):
+				log.Debugf("Checking for certificate expiration...")
+			case <-ctx.Done():
+				break
+			}
+
+			// Retrieve the number of months left for the cert to expire
+			expMonths, err := readCertExpiration(paths.Node)
+			if err != nil {
+				errors <- err
+				continue
+			}
+
+			// Check if the certificate is close to expiration.
+			if expMonths > 1 {
+				continue
+			}
+
+			log.Debugf("Certificate about to expire. Attempting to get a new one.")
+
+			// We are dependent on an external node, let's request new certs
+			tlsKeyPair, err := s.RootCA.RequestAndSaveNewCertificates(ctx,
+				paths.Node,
+				s.ClientTLSCreds.Role(),
+				picker,
+				s.ClientTLSCreds)
+			if err != nil {
+				log.Debugf("failed to get a tlsKeyPair: %v", err)
+				errors <- err
+				continue
+			}
+
+			clientTLSConfig, err := NewClientTLSConfig(tlsKeyPair, s.RootCA.Pool, CARole)
+			if err != nil {
+				errors <- err
+				log.Debugf("failed to create a new client TLS config: %v", err)
+			}
+			cConfigs <- *clientTLSConfig
+			serverTLSConfig, err := NewServerTLSConfig(tlsKeyPair, s.RootCA.Pool)
+			if err != nil {
+				errors <- err
+				log.Debugf("failed to create a new server TLS config: %v", err)
+			}
+			sConfigs <- *serverTLSConfig
+		}
+	}()
+
+	return cConfigs, sConfigs, errors
+}
+
+func loadTLSCreds(rootCA RootCA, paths CertPaths) (*MutableTLSCreds, *MutableTLSCreds, error) {
 	// Read both the Cert and Key from disk
 	cert, err := ioutil.ReadFile(paths.Cert)
 	if err != nil {
@@ -207,9 +291,9 @@ func loadTLSCreds(rootCA RootCA, paths CertPaths) (credentials.TransportAuthenti
 	return clientTLSCreds, serverTLSCreds, nil
 }
 
-// newServerTLSConfig returns a tls.Config configured for a TLS Server, given a tls.Certificate
+// NewServerTLSConfig returns a tls.Config configured for a TLS Server, given a tls.Certificate
 // and the PEM-encoded root CA Certificate
-func newServerTLSConfig(cert *tls.Certificate, rootCAPool *x509.CertPool) (*tls.Config, error) {
+func NewServerTLSConfig(cert *tls.Certificate, rootCAPool *x509.CertPool) (*tls.Config, error) {
 	if rootCAPool == nil {
 		return nil, fmt.Errorf("valid root CA pool required")
 	}
@@ -226,9 +310,9 @@ func newServerTLSConfig(cert *tls.Certificate, rootCAPool *x509.CertPool) (*tls.
 	}, nil
 }
 
-// newClientTLSConfig returns a tls.Config configured for a TLS Client, given a tls.Certificate
+// NewClientTLSConfig returns a tls.Config configured for a TLS Client, given a tls.Certificate
 // the PEM-encoded root CA Certificate, and the name of the remote server the client wants to connect to.
-func newClientTLSConfig(cert *tls.Certificate, rootCAPool *x509.CertPool, serverName string) (*tls.Config, error) {
+func NewClientTLSConfig(cert *tls.Certificate, rootCAPool *x509.CertPool, serverName string) (*tls.Config, error) {
 	if rootCAPool == nil {
 		return nil, fmt.Errorf("valid root CA pool required")
 	}
@@ -239,4 +323,30 @@ func newClientTLSConfig(cert *tls.Certificate, rootCAPool *x509.CertPool, server
 		RootCAs:      rootCAPool,
 		MinVersion:   tls.VersionTLS12,
 	}, nil
+}
+
+// NewClientTLSCredentials returns GRPC credentials for a TLS GRPC client, given a tls.Certificate
+// a PEM-Encoded root CA Certificate, and the name of the remote server the client wants to connect to.
+func (rca *RootCA) NewClientTLSCredentials(cert *tls.Certificate, serverName string) (*MutableTLSCreds, error) {
+	tlsConfig, err := NewClientTLSConfig(cert, rca.Pool, serverName)
+	if err != nil {
+		return nil, err
+	}
+
+	mtls, err := NewMutableTLS(tlsConfig)
+
+	return mtls, err
+}
+
+// NewServerTLSCredentials returns GRPC credentials for a TLS GRPC client, given a tls.Certificate
+// a PEM-Encoded root CA Certificate, and the name of the remote server the client wants to connect to.
+func (rca *RootCA) NewServerTLSCredentials(cert *tls.Certificate) (*MutableTLSCreds, error) {
+	tlsConfig, err := NewServerTLSConfig(cert, rca.Pool)
+	if err != nil {
+		return nil, err
+	}
+
+	mtls, err := NewMutableTLS(tlsConfig)
+
+	return mtls, err
 }

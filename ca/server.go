@@ -45,6 +45,11 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
+	if err := s.addTask(); err != nil {
+		return nil, err
+	}
+	defer s.doneTask()
+
 	var rCertificate *api.RegisteredCertificate
 
 	// We create a watcher before checking the cert so we can be sure we don't miss any events
@@ -108,6 +113,11 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
+	if err := s.addTask(); err != nil {
+		return nil, err
+	}
+	defer s.doneTask()
+
 	// TODO(diogo): token's shouldn't be seen by the user, add more bits?
 	token := identity.NewID()
 
@@ -133,7 +143,6 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 
 	// Generate a random token for this new node
 	for i := 0; ; i++ {
-		token = identity.NewID()
 		nodeID := identity.NewID()
 
 		var certificate *api.RegisteredCertificate
@@ -192,7 +201,7 @@ func (s *Server) issueAcceptedRegisteredCertificate(ctx context.Context, nodeID,
 		return nil, err
 	}
 
-	log.G(ctx).Debugf("(*Server).IssueCertificate: added issue certificate entry for Role=%s with Token=%s", role, token)
+	log.G(ctx).Debugf("(*Server).issueAcceptedRegisteredCertficate: added issue certificate entry for Role=%s with Token=%s", role, token)
 	return &api.IssueCertificateResponse{
 		Token: token,
 	}, nil
@@ -200,6 +209,10 @@ func (s *Server) issueAcceptedRegisteredCertificate(ctx context.Context, nodeID,
 
 // GetRootCACertificate returns the certificate of the Root CA.
 func (s *Server) GetRootCACertificate(ctx context.Context, request *api.GetRootCACertificateRequest) (*api.GetRootCACertificateResponse, error) {
+	if err := s.addTask(); err != nil {
+		return nil, err
+	}
+	defer s.doneTask()
 
 	log.G(ctx).Debugf("(*Server).GetRootCACertificate called ")
 
@@ -264,7 +277,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 }
 
-// Stop stops dispatcher and closes all grpc streams.
+// Stop stops the CA and closes all grpc streams.
 func (s *Server) Stop() error {
 	s.mu.Lock()
 	if !s.isRunning() {
@@ -272,8 +285,7 @@ func (s *Server) Stop() error {
 	}
 	s.cancel()
 	s.mu.Unlock()
-	// wait for all handlers to finish their raft deals, because manager will
-	// set raftNode to nil
+	// wait for all handlers to finish their CA deals,
 	s.wg.Wait()
 	return nil
 }

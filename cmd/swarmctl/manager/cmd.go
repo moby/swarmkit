@@ -6,13 +6,12 @@ var (
 	// Cmd exposes the top-level managers command.
 	Cmd = &cobra.Command{
 		Use:   "manager",
-		Short: "Manager membership management and introspection",
+		Short: "Manager membership management",
 	}
 )
 
 func init() {
 	Cmd.AddCommand(
-		listCmd,
 		removeCmd,
 	)
 }

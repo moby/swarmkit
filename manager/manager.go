@@ -137,13 +137,35 @@ func New(config *Config) (*Manager, error) {
 
 	raftCfg := raft.DefaultNodeConfig()
 
+	var joinResponse *api.JoinResponse
+	if config.JoinRaft != "" {
+		c, err := grpc.Dial(config.JoinRaft,
+			grpc.WithTransportCredentials(config.SecurityConfig.ClientTLSCreds),
+			grpc.WithTimeout(10*time.Second))
+
+		if err != nil {
+			return nil, err
+		}
+
+		client := api.NewRaftClient(c)
+
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		joinResponse, err = client.Join(ctx, &api.JoinRequest{Addr: listenAddr})
+		if err != nil {
+			c.Close()
+			return nil, err
+		}
+
+		c.Close()
+	}
+
 	newNodeOpts := raft.NewNodeOptions{
 		Addr:            listenAddr,
-		JoinAddr:        config.JoinRaft,
+		JoinCluster:     joinResponse,
 		Config:          raftCfg,
 		StateDir:        raftStateDir,
 		ForceNewCluster: config.ForceNewCluster,
-		TLSCredentials:  config.SecurityConfig.ClientTLSCreds,
+		SecurityConfig:  config.SecurityConfig,
 	}
 	raftNode, err := raft.NewNode(context.TODO(), newNodeOpts)
 	if err != nil {
@@ -312,9 +334,10 @@ func (m *Manager) Run(ctx context.Context) error {
 	localAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode)
 	proxyAPI := api.NewRaftProxyControlServer(localAPI, cs, m.raftNode)
 	proxyDispatcher := api.NewRaftProxyDispatcherServer(m.dispatcher, cs, m.raftNode, ca.WithMetadataForwardCN)
+	proxyCA := api.NewRaftProxyCAServer(m.caserver, cs, m.raftNode, ca.WithMetadataForwardCN)
 
-	api.RegisterCAServer(m.server, m.caserver)
 	api.RegisterRaftServer(m.server, m.raftNode)
+	api.RegisterCAServer(m.server, proxyCA)
 	api.RegisterControlServer(m.server, proxyAPI)
 	api.RegisterDispatcherServer(m.server, proxyDispatcher)
 

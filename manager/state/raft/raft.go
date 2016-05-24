@@ -11,7 +11,6 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
 
 	"golang.org/x/net/context"
 
@@ -75,7 +74,7 @@ type Node struct {
 	Server         *grpc.Server
 	Ctx            context.Context
 	cancel         func()
-	tlsCredentials credentials.TransportAuthenticator
+	securityConfig *ca.SecurityConfig
 
 	Address  string
 	StateDir string
@@ -90,7 +89,7 @@ type Node struct {
 	snapshotter *snap.Snapshotter
 	wasLeader   bool
 	removed     uint32
-	joinAddr    string
+	joinCluster *api.JoinResponse
 
 	// forceNewCluster is a special flag used to recover from disaster
 	// scenario by pointing to an existing or backed up data directory.
@@ -122,9 +121,9 @@ type NewNodeOptions struct {
 	// ForceNewCluster defines if we have to force a new cluster
 	// because we are recovering from a backup data directory.
 	ForceNewCluster bool
-	// JoinAddr is the cluster to join. May be an empty string to create
-	// a standalone cluster.
-	JoinAddr string
+	// JoinCluster contains the set of nodes in the existing cluster to
+	// join. May be nil to create a standalone cluster.
+	JoinCluster *api.JoinResponse
 	// Config is the raft config.
 	Config *raft.Config
 	// StateDir is the directory to store durable state.
@@ -138,11 +137,10 @@ type NewNodeOptions struct {
 	// SendTimeout is the timeout on the sending messages to other raft
 	// nodes. Leave this as 0 to get the default value.
 	SendTimeout    time.Duration
-	TLSCredentials credentials.TransportAuthenticator
+	SecurityConfig *ca.SecurityConfig
 }
 
 func init() {
-	// TODO(aaronl): Remove once we're no longer generating random IDs.
 	rand.Seed(time.Now().UnixNano())
 }
 
@@ -164,7 +162,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 		Ctx:            ctx,
 		cancel:         cancel,
 		cluster:        membership.NewCluster(),
-		tlsCredentials: opts.TLSCredentials,
+		securityConfig: opts.SecurityConfig,
 		raftStore:      raftStore,
 		Address:        opts.Addr,
 		Config: &raft.Config{
@@ -179,7 +177,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 		stopCh:              make(chan struct{}),
 		doneCh:              make(chan struct{}),
 		StateDir:            opts.StateDir,
-		joinAddr:            opts.JoinAddr,
+		joinCluster:         opts.JoinCluster,
 		sendTimeout:         2 * time.Second,
 		leadershipBroadcast: events.NewBroadcaster(),
 	}
@@ -212,30 +210,10 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 	n.wait = newWait()
 
 	if n.startNodePeers != nil {
-		if n.joinAddr != "" {
-			c, err := n.ConnectToMember(n.joinAddr, 10*time.Second)
-			if err != nil {
-				return nil, err
-			}
-			defer func() {
-				_ = c.Conn.Close()
-			}()
-
-			ctx, cancel := context.WithTimeout(n.Ctx, 10*time.Second)
-			defer cancel()
-			resp, err := c.Join(ctx, &api.JoinRequest{
-				Node: &api.RaftMember{
-					RaftID: n.Config.ID,
-					Addr:   n.Address,
-				},
-			})
-			if err != nil {
-				return nil, err
-			}
-
+		if n.joinCluster != nil {
 			n.Node = raft.StartNode(n.Config, []raft.Peer{})
 
-			if err := n.registerNodes(resp.Members); err != nil {
+			if err := n.registerNodes(n.joinCluster.Members); err != nil {
 				return nil, err
 			}
 		} else {
@@ -247,7 +225,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 		return n, nil
 	}
 
-	if n.joinAddr != "" {
+	if n.joinCluster != nil {
 		n.Config.Logger.Warning("ignoring request to join cluster, because raft state already exists")
 	}
 	n.Node = raft.RestartNode(n.Config)
@@ -431,11 +409,11 @@ func (n *Node) Leader() uint64 {
 // beginning the log replication process. This method
 // is called from an aspiring member to an existing member
 func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinResponse, error) {
-	agentID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
+	nodeID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
 	if err != nil {
 		return nil, err
 	}
-	logrus.Debugf("(*Join). message from node %s", agentID)
+	logrus.Debugf("(*Join). message from node %s", nodeID)
 
 	// can't stop the raft node while an async RPC is in progress
 	n.stopMu.RLock()
@@ -445,23 +423,31 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 		return nil, ErrStopped
 	}
 
-	// We submit a configuration change only if the node was not registered yet
-	if n.cluster.GetMember(req.Node.RaftID) == nil {
-		err = n.addMember(ctx, req.Node)
-		if err != nil {
-			return nil, err
-		}
+	raftID, err := n.AllocateID()
+	if err != nil {
+		return nil, err
+	}
+
+	member := &api.RaftMember{
+		RaftID: raftID,
+		NodeID: nodeID,
+		Addr:   req.Addr,
+	}
+
+	if err = n.addMember(ctx, member); err != nil {
+		return nil, err
 	}
 
 	var nodes []*api.RaftMember
 	for _, node := range n.cluster.Members() {
 		nodes = append(nodes, &api.RaftMember{
 			RaftID: node.RaftID,
+			NodeID: node.NodeID,
 			Addr:   node.Addr,
 		})
 	}
 
-	return &api.JoinResponse{Members: nodes}, nil
+	return &api.JoinResponse{RaftID: raftID, Members: nodes}, nil
 }
 
 // addMember submits a configuration change to add a new member on the raft cluster.
@@ -482,16 +468,23 @@ func (n *Node) addMember(ctx context.Context, node *api.RaftMember) error {
 	return err
 }
 
+// AllocateID returns an ID for a new node.
+func (n *Node) AllocateID() (uint64, error) {
+	// FIXME(aaronl): Ensure this ID is unique and can't conflict with
+	// concurent "add node" proposals.
+	return uint64(rand.Int63()) + 1, nil
+}
+
 // Leave asks to a member of the raft to remove
 // us from the raft cluster. This method is called
 // from a member who is willing to leave its raft
 // membership to an active member of the raft
 func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResponse, error) {
-	agentID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
+	nodeID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
 	if err != nil {
 		return nil, err
 	}
-	logrus.Debugf("(*Leave). message from node %s", agentID)
+	logrus.Debugf("(*Leave). message from node %s", nodeID)
 
 	// can't stop the raft node while an async RPC is in progress
 	n.stopMu.RLock()
@@ -532,11 +525,11 @@ func (n *Node) RemoveMember(ctx context.Context, id uint64) error {
 // raft state machine with the provided message on the
 // receiving node
 func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessageRequest) (*api.ProcessRaftMessageResponse, error) {
-	agentID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
+	nodeID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
 	if err != nil {
 		return nil, err
 	}
-	logrus.Debugf("(*ProcessRaftMessage). message from node %s", agentID)
+	logrus.Debugf("(*ProcessRaftMessage). message from node %s", nodeID)
 
 	// Don't process the message if this comes from
 	// a node in the remove set
@@ -561,11 +554,11 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 
 // ResolveAddress returns the address reaching for a given node ID.
 func (n *Node) ResolveAddress(ctx context.Context, msg *api.ResolveAddressRequest) (*api.ResolveAddressResponse, error) {
-	agentID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
+	nodeID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
 	if err != nil {
 		return nil, err
 	}
-	logrus.Debugf("(*ResolveAddress). message from node %s", agentID)
+	logrus.Debugf("(*ResolveAddress). message from node %s", nodeID)
 
 	member := n.cluster.GetMember(msg.RaftID)
 	if member == nil {
@@ -666,6 +659,7 @@ func (n *Node) GetMemberlist() map[uint64]*api.RaftMember {
 
 		memberlist[id] = &api.RaftMember{
 			RaftID: member.RaftID,
+			NodeID: member.NodeID,
 			Addr:   member.Addr,
 			Status: api.RaftMemberStatus{
 				Leader: leader,
@@ -1001,7 +995,7 @@ func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
 // ConnectToMember returns a member object with an initialized
 // connection to communicate with other raft members
 func (n *Node) ConnectToMember(addr string, timeout time.Duration) (*membership.Member, error) {
-	conn, err := dial(addr, "tcp", n.tlsCredentials, timeout)
+	conn, err := dial(addr, "tcp", n.securityConfig.ClientTLSCreds, timeout)
 	if err != nil {
 		return nil, err
 	}

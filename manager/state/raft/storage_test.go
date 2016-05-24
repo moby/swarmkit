@@ -148,7 +148,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Add a node to the cluster before the snapshot. This is the event
 	// that triggers the snapshot.
-	nodes[4] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	nodes[4] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig, true)
 	raftutils.WaitForCluster(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2], 4: nodes[4]})
 
 	// Remaining nodes should now have a snapshot file
@@ -170,7 +170,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	values[4], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[4])
 
 	// Add another node to the cluster
-	nodes[5] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	nodes[5] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig, true)
 	raftutils.WaitForCluster(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2], 4: nodes[4], 5: nodes[5]})
 
 	// New node should get a copy of the snapshot

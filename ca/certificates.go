@@ -5,7 +5,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
+	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -61,33 +63,9 @@ func (rca *RootCA) CanSign() bool {
 	return true
 }
 
-// NewClientTLSCredentials returns GRPC credentials for a TLS GRPC client, given a tls.Certificate
-// a PEM-Encoded root CA Certificate, and the name of the remote server the client wants to connect to.
-func (rca *RootCA) NewClientTLSCredentials(cert *tls.Certificate, serverName string) (credentials.TransportAuthenticator, error) {
-	tlsConfig, err := newClientTLSConfig(cert, rca.Pool, serverName)
-	if err != nil {
-		return nil, err
-	}
-
-	return credentials.NewTLS(tlsConfig), nil
-}
-
-// NewServerTLSCredentials returns GRPC credentials for a TLS GRPC client, given a tls.Certificate
-// a PEM-Encoded root CA Certificate, and the name of the remote server the client wants to connect to.
-func (rca *RootCA) NewServerTLSCredentials(cert *tls.Certificate) (credentials.TransportAuthenticator, error) {
-	tlsConfig, err := newServerTLSConfig(cert, rca.Pool)
-	if err != nil {
-		return nil, err
-	}
-
-	return credentials.NewTLS(tlsConfig), nil
-}
-
-// IssueAndSaveNewCertificates gets new certificates issued, either by signing them locally if a signer is
-// available, or by requesting them from the remote server at remoteAddr.
-func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPaths, role string, picker *picker.Picker) (*tls.Certificate, error) {
-	// Create a new key/pair and CSR for the new manager
-
+// IssueAndSaveNewCertificates generates a new key-pair, signs it with the local root-ca, and returns a
+// tls certificate
+func (rca *RootCA) IssueAndSaveNewCertificates(paths CertPaths, cn, ou string) (*tls.Certificate, error) {
 	csr, key, err := GenerateAndWriteNewCSR(paths)
 	if err != nil {
 		log.Debugf("error when generating new node certs: %v", err)
@@ -95,26 +73,15 @@ func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPa
 	}
 
 	var signedCert []byte
-	if rca.CanSign() {
-		// Create a new random ID for this certificate
-		cn := identity.NewID()
+	if !rca.CanSign() {
+		return nil, fmt.Errorf("no valid signer found")
+	}
 
-		// Obtain a signed Certificate
-		signedCert, err = rca.ParseValidateAndSignCSR(csr, cn, role)
-		if err != nil {
-			log.Debugf("failed to sign node certificate: %v", err)
-			return nil, err
-		}
-
-		log.Debugf("issued TLS credentials with role: %s.", role)
-	} else {
-		// Get the remote manager to issue a CA signed certificate for this node
-		signedCert, err = GetRemoteSignedCertificate(ctx, csr, role, rca.Pool, picker)
-		if err != nil {
-			return nil, err
-		}
-
-		log.Debugf("Downloaded TLS credentials with role: %s.", role)
+	// Obtain a signed Certificate
+	signedCert, err = rca.ParseValidateAndSignCSR(csr, cn, ou)
+	if err != nil {
+		log.Debugf("failed to sign node certificate: %v", err)
+		return nil, err
 	}
 
 	// Ensure directory exists
@@ -124,7 +91,7 @@ func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPa
 	}
 
 	// Write the chain to disk
-	if err := ioutil.WriteFile(paths.Cert, signedCert, 0644); err != nil {
+	if err := atomicWriteFile(paths.Cert, signedCert, 0644); err != nil {
 		return nil, err
 	}
 
@@ -133,18 +100,59 @@ func (rca *RootCA) IssueAndSaveNewCertificates(ctx context.Context, paths CertPa
 	if err != nil {
 		return nil, err
 	}
+
+	log.Debugf("locally issued new TLS certificate for node ID: %s and role: %s", cn, ou)
+	return &tlsKeyPair, nil
+}
+
+// RequestAndSaveNewCertificates gets new certificates issued, either by signing them locally if a signer is
+// available, or by requesting them from the remote server at remoteAddr.
+func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, paths CertPaths, role string, picker *picker.Picker, transport credentials.TransportAuthenticator) (*tls.Certificate, error) {
+	// Create a new key/pair and CSR for the new manager
+
+	csr, key, err := GenerateAndWriteNewCSR(paths)
+	if err != nil {
+		log.Debugf("error when generating new node certs: %v", err)
+		return nil, err
+	}
+
+	// Get the remote manager to issue a CA signed certificate for this node
+	signedCert, err := GetRemoteSignedCertificate(ctx, csr, role, rca.Pool, picker, transport)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debugf("Downloaded TLS credentials with role: %s.", role)
+
+	// Ensure directory exists
+	err = os.MkdirAll(filepath.Dir(paths.Cert), 0755)
+	if err != nil {
+		return nil, err
+	}
+
+	// Write the chain to disk
+	if err := atomicWriteFile(paths.Cert, signedCert, 0644); err != nil {
+		return nil, err
+	}
+
+	// Create a valid TLSKeyPair out of the PEM encoded private key and certificate
+	tlsKeyPair, err := tls.X509KeyPair(signedCert, key)
+	if err != nil {
+		return nil, err
+	}
+
 	return &tlsKeyPair, nil
 }
 
 // ParseValidateAndSignCSR returns a signed certificate from a particular rootCA and a CSR.
-func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, role string) ([]byte, error) {
+func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, ou string) ([]byte, error) {
 	if !rca.CanSign() {
 		return nil, fmt.Errorf("no valid signer for Root CA found")
 	}
 
 	// All managers get added the subject-alt-name of CA, so they can be used for cert issuance
-	hosts := []string{role}
-	if role == ManagerRole {
+	hosts := []string{ou}
+	if ou == ManagerRole {
 		hosts = append(hosts, CARole)
 	}
 
@@ -152,8 +160,8 @@ func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, role string) ([]
 		Request: string(csrBytes),
 		// OU is used for Authentication of the node type. The CN has the random
 		// node ID.
-		Subject: &signer.Subject{CN: cn, Names: []cfcsr.Name{{OU: role}}},
-		// Adding role as DNS alt name, so clients can connect to ManagerRole and CARole
+		Subject: &signer.Subject{CN: cn, Names: []cfcsr.Name{{OU: ou}}},
+		// Adding ou as DNS alt name, so clients can connect to ManagerRole and CARole
 		Hosts: hosts,
 	})
 	if err != nil {
@@ -293,10 +301,10 @@ func CreateAndWriteRootCA(rootCN string, paths CertPaths) (RootCA, error) {
 	}
 
 	// Write the Private Key and Certificate to disk, using decent permissions
-	if err := ioutil.WriteFile(paths.Cert, cert, 0644); err != nil {
+	if err := atomicWriteFile(paths.Cert, cert, 0644); err != nil {
 		return RootCA{}, err
 	}
-	if err := ioutil.WriteFile(paths.Key, key, 0600); err != nil {
+	if err := atomicWriteFile(paths.Key, key, 0600); err != nil {
 		return RootCA{}, err
 	}
 
@@ -352,10 +360,10 @@ func GenerateAndSignNewTLSCert(rootCA RootCA, cn, ou string, paths CertPaths) (*
 	}
 
 	// Write both the chain and key to disk
-	if err := ioutil.WriteFile(paths.Cert, certChain, 0644); err != nil {
+	if err := atomicWriteFile(paths.Cert, certChain, 0644); err != nil {
 		return nil, err
 	}
-	if err := ioutil.WriteFile(paths.Key, key, 0600); err != nil {
+	if err := atomicWriteFile(paths.Key, key, 0600); err != nil {
 		return nil, err
 	}
 
@@ -384,10 +392,10 @@ func GenerateAndWriteNewCSR(paths CertPaths) (csr, key []byte, err error) {
 	}
 
 	// Write CSR and key to disk
-	if err = ioutil.WriteFile(paths.CSR, csr, 0644); err != nil {
+	if err = atomicWriteFile(paths.CSR, csr, 0644); err != nil {
 		return
 	}
-	if err = ioutil.WriteFile(paths.Key, key, 0600); err != nil {
+	if err = atomicWriteFile(paths.Key, key, 0600); err != nil {
 		return
 	}
 
@@ -396,7 +404,7 @@ func GenerateAndWriteNewCSR(paths CertPaths) (csr, key []byte, err error) {
 
 // GetRemoteSignedCertificate submits a CSR together with the intended role to a remote CA server address
 // available through a picker, and that is part of a CA identified by a specific certificate pool.
-func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role string, rootCAPool *x509.CertPool, picker *picker.Picker) ([]byte, error) {
+func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role string, rootCAPool *x509.CertPool, picker *picker.Picker, creds credentials.TransportAuthenticator) ([]byte, error) {
 	if rootCAPool == nil {
 		return nil, fmt.Errorf("valid root CA pool required")
 	}
@@ -404,9 +412,12 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role string, ro
 		return nil, fmt.Errorf("valid remote address picker required")
 	}
 
-	// This is our only non-MTLS request
-	// We're using CARole as server name, so an external CA doesn't also have to have ManagerRole in the cert SANs
-	creds := credentials.NewTLS(&tls.Config{ServerName: CARole, RootCAs: rootCAPool})
+	if creds == nil {
+		// This is our only non-MTLS request, and it happens when we are boostraping our TLS certs
+		// We're using CARole as server name, so an external CA doesn't also have to have ManagerRole in the cert SANs
+		creds = credentials.NewTLS(&tls.Config{ServerName: CARole, RootCAs: rootCAPool})
+	}
+
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(creds),
 		grpc.WithBackoffMaxDelay(10 * time.Second),
@@ -472,6 +483,28 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role string, ro
 	}
 }
 
+// readCertExpiration returns the number of months left for certificate expiration
+func readCertExpiration(paths CertPaths) (int, error) {
+	// Read the Cert
+	cert, err := ioutil.ReadFile(paths.Cert)
+	if err != nil {
+		log.Debugf("failed to read certificate file: %s", paths.Cert)
+		return 0, err
+	}
+
+	// Create an x509 certificate out of the contents on disk
+	certBlock, _ := pem.Decode([]byte(cert))
+	if certBlock == nil {
+		return 0, fmt.Errorf("failed to decode certificate block")
+	}
+	X509Cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return 0, err
+	}
+
+	return helpers.MonthsValid(X509Cert), nil
+}
+
 func saveRootCA(rootCA RootCA, paths CertPaths) error {
 	// Make sure the necessary dirs exist and they are writable
 	err := os.MkdirAll(filepath.Dir(paths.Cert), 0755)
@@ -480,7 +513,7 @@ func saveRootCA(rootCA RootCA, paths CertPaths) error {
 	}
 
 	// If the root certificate got returned successfully, save the rootCA to disk.
-	return ioutil.WriteFile(paths.Cert, rootCA.Cert, 0644)
+	return atomicWriteFile(paths.Cert, rootCA.Cert, 0644)
 }
 
 func generateNewCSR() (csr, key []byte, err error) {
@@ -495,4 +528,24 @@ func generateNewCSR() (csr, key []byte, err error) {
 	}
 
 	return
+}
+
+func atomicWriteFile(filename string, data []byte, perm os.FileMode) error {
+	f, err := ioutil.TempFile(filepath.Dir(filename), ".tmp-"+filepath.Base(filename))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	n, err := f.Write(data)
+	if err == nil && n < len(data) {
+		return io.ErrShortWrite
+	}
+	if err != nil {
+		return err
+	}
+	err = os.Chmod(f.Name(), perm)
+	if err != nil {
+		return err
+	}
+	return os.Rename(f.Name(), filename)
 }

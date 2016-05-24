@@ -48,11 +48,52 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 			nodes, err = store.FindNodes(tx, store.ByQuery(request.Options.Query))
 		}
 	})
+
+	memberlist := make(map[uint64]*api.RaftMember)
+	if s.raft != nil { // test runs without raft
+		memberlist = s.raft.GetMemberlist()
+	}
+
+	memberlistByNodeID := make(map[string]*api.RaftMember)
+	for _, member := range memberlist {
+		memberlistByNodeID[member.NodeID] = member
+	}
+
+	list := make([]*api.Node, 0, len(memberlist))
+	for _, n := range nodes {
+		if member := memberlistByNodeID[n.ID]; member == nil {
+			list = append(list, n)
+		} else {
+			managerNode := n.Copy()
+			// Include live raft status information
+			managerNode.Manager = &api.Manager{
+				Raft: *member,
+			}
+
+			list = append(list, managerNode)
+
+			delete(memberlistByNodeID, n.ID)
+		}
+	}
+
+	// Add fake node entries for raft members that don't have associated
+	// Nodes.
+	// FIXME(aaronl): This supports the unit tests, but is it worth
+	// keeping?
+	for nodeID, member := range memberlistByNodeID {
+		list = append(list, &api.Node{
+			ID: nodeID,
+			Manager: &api.Manager{
+				Raft: *member,
+			},
+		})
+	}
+
 	if err != nil {
 		return nil, err
 	}
 	return &api.ListNodesResponse{
-		Nodes: nodes,
+		Nodes: list,
 	}, nil
 }
 
