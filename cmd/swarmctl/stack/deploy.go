@@ -1,6 +1,7 @@
-package root
+package stack
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -12,13 +13,18 @@ import (
 
 var (
 	deployCmd = &cobra.Command{
-		Use:   "deploy",
-		Short: "Deploy an app",
+		Use:   "deploy <stack>",
+		Short: "Deploy a stack",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return errors.New("stack name missing")
+			}
+
 			s, err := readSpec(cmd.Flags())
 			if err != nil {
 				return err
 			}
+			s.Name = args[0]
 
 			c, err := common.Dial(cmd)
 			if err != nil {
@@ -33,7 +39,7 @@ var (
 			services := map[string]*api.Service{}
 
 			for _, j := range r.Services {
-				if j.Spec.Annotations.Labels["namespace"] == s.Namespace {
+				if j.Spec.Annotations.Labels["stack"] == args[0] {
 					services[j.Spec.Annotations.Name] = j
 				}
 			}
@@ -85,7 +91,7 @@ var (
 			volumes := map[string]*api.Volume{}
 
 			for _, j := range existingVols.Volumes {
-				if j.Spec.Annotations.Labels["namespace"] == s.Namespace {
+				if j.Spec.Annotations.Labels["stack"] == args[0] {
 					volumes[j.Spec.Annotations.Name] = j
 				}
 			}

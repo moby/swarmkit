@@ -11,10 +11,10 @@ const defaultRestartDelay = 5 * time.Second
 
 // RestartConfiguration controls the rate and policy of restarts.
 type RestartConfiguration struct {
-	On       string `yaml:"on,omitempty"`
-	Delay    string `yaml:"delay,omitempty"`
-	Attempts uint64 `yaml:"attempts,omitempty"`
-	Window   string `yaml:"window,omitempty"`
+	On       string `toml:"on,omitempty"`
+	Delay    string `toml:"delay,omitempty"`
+	Attempts uint64 `toml:"attempts,omitempty"`
+	Window   string `toml:"window,omitempty"`
 }
 
 // Validate checks the validity of the configuration.

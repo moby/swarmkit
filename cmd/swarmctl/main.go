@@ -8,8 +8,8 @@ import (
 	"github.com/docker/swarm-v2/cmd/swarmctl/manager"
 	"github.com/docker/swarm-v2/cmd/swarmctl/network"
 	"github.com/docker/swarm-v2/cmd/swarmctl/node"
-	"github.com/docker/swarm-v2/cmd/swarmctl/root"
 	"github.com/docker/swarm-v2/cmd/swarmctl/service"
+	"github.com/docker/swarm-v2/cmd/swarmctl/stack"
 	"github.com/docker/swarm-v2/cmd/swarmctl/task"
 	"github.com/docker/swarm-v2/cmd/swarmctl/volume"
 	"github.com/docker/swarm-v2/version"
@@ -43,9 +43,8 @@ func init() {
 	mainCmd.PersistentFlags().StringP("host", "H", "127.0.0.1:4242", "Specify the address of the manager to connect to")
 	mainCmd.PersistentFlags().BoolP("no-resolve", "n", false, "Do not try to map IDs to Names when displaying them")
 
-	mainCmd.AddCommand(root.Cmds...)
-
 	mainCmd.AddCommand(
+		stack.Cmd,
 		node.Cmd,
 		service.Cmd,
 		task.Cmd,

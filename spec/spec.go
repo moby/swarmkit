@@ -1,36 +1,42 @@
 package spec
 
 import (
-	"fmt"
+	"bytes"
+	"errors"
 	"io"
 
-	yaml "github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/BurntSushi/toml"
 	"github.com/docker/swarm-v2/api"
 	"github.com/pmezard/go-difflib/difflib"
 )
 
 // Spec is a human representation of the API spec.
 type Spec struct {
-	Version   int                       `yaml:"version,omitempty"`
-	Namespace string                    `yaml:"namespace,omitempty"`
-	Services  map[string]*ServiceConfig `yaml:"services,omitempty"`
-	Volumes   map[string]*VolumeConfig  `yaml:"volumes,omitempty"`
+	Version  string                    `toml:"version,omitempty"`
+	Name     string                    `toml:"name,omitempty"`
+	Services map[string]*ServiceConfig `toml:"services,omitempty"`
+	Volumes  map[string]*VolumeConfig  `toml:"volumes,omitempty"`
 }
 
 // Read reads a Spec from an io.Reader.
 func (s *Spec) Read(r io.Reader) error {
 	s.Reset()
-	if err := yaml.NewDecoder(r).Decode(s); err != nil {
+	if _, err := toml.DecodeReader(r, s); err != nil {
 		return err
 	}
 	if err := s.validate(); err != nil {
 		return err
 	}
 
-	if s.Version == 2 {
-		fmt.Println("WARNING: v2 format is only partially supported, please update to v3")
+	if s.Version != "v1" {
+		return errors.New("invalid version")
 	}
+
 	return nil
+}
+
+func (s *Spec) Write(w io.Writer) error {
+	return toml.NewEncoder(w).Encode(s)
 }
 
 // Reset resets the service config to its defaults.
@@ -59,7 +65,7 @@ func (s *Spec) ServiceSpecs() []*api.ServiceSpec {
 	serviceSpecs := []*api.ServiceSpec{}
 	for _, service := range s.Services {
 		serviceSpec := service.ToProto()
-		serviceSpec.Annotations.Labels["namespace"] = s.Namespace
+		serviceSpec.Annotations.Labels["stack"] = s.Name
 		serviceSpecs = append(serviceSpecs, serviceSpec)
 	}
 	return serviceSpecs
@@ -79,7 +85,7 @@ func (s *Spec) VolumeSpecs() []*api.VolumeSpec {
 	volumeSpecs := []*api.VolumeSpec{}
 	for _, volume := range s.Volumes {
 		volumeSpec := volume.ToProto()
-		volumeSpec.Annotations.Labels["namespace"] = s.Namespace
+		volumeSpec.Annotations.Labels["stack"] = s.Name
 		volumeSpecs = append(volumeSpecs, volumeSpec)
 	}
 	return volumeSpecs
@@ -94,18 +100,28 @@ func (s *Spec) FromVolumeSpecs(volumespecs []*api.VolumeSpec) {
 	}
 }
 
+func encodeString(val interface{}) (string, error) {
+	var buf bytes.Buffer
+	enc := toml.NewEncoder(&buf)
+	err := enc.Encode(val)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
 // Diff returns a diff between two Specs.
 func (s *Spec) Diff(context int, fromFile, toFile string, other *Spec) (string, error) {
 	// Force marshal/unmarshal.
 	other.FromServiceSpecs(other.ServiceSpecs())
 	s.FromServiceSpecs(s.ServiceSpecs())
 
-	from, err := yaml.Marshal(other)
+	from, err := encodeString(s)
 	if err != nil {
 		return "", err
 	}
 
-	to, err := yaml.Marshal(s)
+	to, err := encodeString(other)
 	if err != nil {
 		return "", err
 	}

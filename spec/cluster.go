@@ -5,45 +5,45 @@ import (
 	"io"
 	"sort"
 
-	yaml "github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/BurntSushi/toml"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/manager/state/raft"
 	"github.com/pmezard/go-difflib/difflib"
 )
 
-// ClusterConfig is the yaml representation of a cluster spec.
+// ClusterConfig is the toml representation of a cluster spec.
 type ClusterConfig struct {
-	AcceptancePolicy    AcceptancePolicy    `yaml:"acceptancepolicy,omitempty"`
-	OrchestrationConfig OrchestrationConfig `yaml:"orchestration,omitempty"`
-	RaftConfig          RaftConfig          `yaml:"raft,omitempty"`
+	AcceptancePolicy    AcceptancePolicy    `toml:"acceptancepolicy,omitempty"`
+	OrchestrationConfig OrchestrationConfig `toml:"orchestration,omitempty"`
+	RaftConfig          RaftConfig          `toml:"raft,omitempty"`
 
-	Name string `yaml:"name"`
+	Name string `toml:"name"`
 }
 
-// AcceptancePolicy is the yaml representation of an acceptance policy.
+// AcceptancePolicy is the toml representation of an acceptance policy.
 type AcceptancePolicy struct {
-	AutoacceptRoles []string `yaml:"autoacceptroles,omitempty"`
+	AutoacceptRoles []string `toml:"autoacceptroles,omitempty"`
 }
 
-// OrchestrationConfig is the yaml representation of the cluster-wide
+// OrchestrationConfig is the toml representation of the cluster-wide
 // orchestration settings.
 type OrchestrationConfig struct {
 	// TaskHistoryRetentionLimit is the number of historic task entries to
 	// retain per service instance or node.
-	TaskHistoryRetentionLimit int64 `yaml:"taskhistory"`
+	TaskHistoryRetentionLimit int64 `toml:"taskhistory"`
 }
 
-// RaftConfig is the yaml representation of the raft settings.
+// RaftConfig is the toml representation of the raft settings.
 type RaftConfig struct {
 	// SnapshotInterval is the number of log entries between snapshots.
-	SnapshotInterval uint64 `yaml:"snapshotinterval"`
+	SnapshotInterval uint64 `toml:"snapshotinterval"`
 	// KeepOldSnapshots is the number of snapshots to keep beyond the
 	// current snapshot.
-	KeepOldSnapshots uint64 `yaml:"keepoldsnapshots"`
+	KeepOldSnapshots uint64 `toml:"keepoldsnapshots"`
 	// LogEntriesForSlowFollowers is the number of log entries to keep
 	// around to sync up slow followers after a snapshot is created.
-	LogEntriesForSlowFollowers uint64 `yaml:"logentriesforslowfollowers"`
+	LogEntriesForSlowFollowers uint64 `toml:"logentriesforslowfollowers"`
 }
 
 // Reset resets the cluster config to its defaults.
@@ -55,7 +55,7 @@ func (c *ClusterConfig) Reset() {
 func (c *ClusterConfig) Read(r io.Reader) error {
 	c.Reset()
 
-	if err := yaml.NewDecoder(r).Decode(c); err != nil {
+	if _, err := toml.DecodeReader(r, c); err != nil {
 		return err
 	}
 
@@ -64,7 +64,7 @@ func (c *ClusterConfig) Read(r io.Reader) error {
 
 // Write writes a ClusterConfig to an io.Reader.
 func (c *ClusterConfig) Write(w io.Writer) error {
-	return yaml.NewEncoder(w).Encode(c)
+	return toml.NewEncoder(w).Encode(c)
 }
 
 // Validate checks the validity of the strategy.
@@ -167,12 +167,12 @@ func (c *ClusterConfig) Diff(context int, fromFile, toFile string, other *Cluste
 	to := &ClusterConfig{}
 	to.FromProto(c.ToProto())
 
-	fromYml, err := yaml.Marshal(from)
+	fromYml, err := encodeString(from)
 	if err != nil {
 		return "", err
 	}
 
-	toYml, err := yaml.Marshal(to)
+	toYml, err := encodeString(to)
 	if err != nil {
 		return "", err
 	}

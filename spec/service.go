@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	yaml "github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/BurntSushi/toml"
 	"github.com/docker/swarm-v2/api"
 	"github.com/pmezard/go-difflib/difflib"
 )
@@ -15,57 +15,57 @@ const defaultStopGracePeriod = 60 * time.Second
 
 // ContainerConfig is a human representation of the ContainerSpec
 type ContainerConfig struct {
-	Image string `yaml:"image,omitempty"`
+	Image string `toml:"image,omitempty"`
 
 	// Command to run the the container. The first element is a path to the
 	// executable and the following elements are treated as arguments.
 	//
 	// If command is empty, execution will fall back to the image's entrypoint.
-	Command []string `yaml:"command,omitempty"`
+	Command []string `toml:"command,omitempty"`
 
 	// Args specifies arguments provided to the image's entrypoint.
 	// Ignored if command is specified.
-	Args []string `yaml:"args,omitempty"`
+	Args []string `toml:"args,omitempty"`
 
 	// Env specifies the environment variables for the container in NAME=VALUE
 	// format. These must be compliant with  [IEEE Std
 	// 1003.1-2001](http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html).
-	Env []string `yaml:"env,omitempty"`
+	Env []string `toml:"env,omitempty"`
 
-	Resources *ResourceRequirements `yaml:"resources,omitempty"`
+	Resources *ResourceRequirements `toml:"resources,omitempty"`
 
 	// Networks specifies all the networks that this service is attached to.
-	Networks []string `yaml:"networks,omitempty"`
+	Networks []string `toml:"networks,omitempty"`
 
 	// Ports specifies port mappings.
-	Ports []PortConfig `yaml:"ports,omitempty"`
+	Ports []PortConfig `toml:"ports,omitempty"`
 
 	// Mounts describe how volumes should be mounted in the container
-	Mounts Mounts `yaml:"mounts,omitempty"`
+	Mounts Mounts `toml:"mounts,omitempty"`
 
 	// StopGracePeriod is the amount of time to wait for the container
 	// to terminate before forcefully killing it.
-	StopGracePeriod string `yaml:"stopgraceperiod,omitempty"`
+	StopGracePeriod string `toml:"stopgraceperiod,omitempty"`
 }
 
 // PortConfig is a human representation of the PortConfiguration
 type PortConfig struct {
-	Name     string `yaml:"name,omitempty"`
-	Protocol string `yaml:"protocol,omitempty"`
-	Port     uint32 `yaml:"port,omitempty"`
-	HostPort uint32 `yaml:"host_port,omitempty"`
+	Name     string `toml:"name,omitempty"`
+	Protocol string `toml:"protocol,omitempty"`
+	Port     uint32 `toml:"port,omitempty"`
+	HostPort uint32 `toml:"host_port,omitempty"`
 }
 
 // ServiceConfig is a human representation of the Service
 type ServiceConfig struct {
 	ContainerConfig
 
-	Name      string  `yaml:"name,omitempty"`
-	Instances *uint64 `yaml:"instances,omitempty"`
-	Mode      string  `yaml:"mode,omitempty"`
+	Name      string  `toml:"name,omitempty"`
+	Instances *uint64 `toml:"instances,omitempty"`
+	Mode      string  `toml:"mode,omitempty"`
 
-	Restart *RestartConfiguration `yaml:"restart,omitempty"`
-	Update  *UpdateConfiguration  `yaml:"update,omitempty"`
+	Restart *RestartConfiguration `toml:"restart,omitempty"`
+	Update  *UpdateConfiguration  `toml:"update,omitempty"`
 }
 
 // Validate checks the validity of the ServiceConfig.
@@ -126,7 +126,7 @@ func (s *ServiceConfig) Reset() {
 func (s *ServiceConfig) Read(r io.Reader) error {
 	s.Reset()
 
-	if err := yaml.NewDecoder(r).Decode(s); err != nil {
+	if _, err := toml.DecodeReader(r, s); err != nil {
 		return err
 	}
 
@@ -135,7 +135,7 @@ func (s *ServiceConfig) Read(r io.Reader) error {
 
 // Write writes a ServiceConfig to an io.Reader.
 func (s *ServiceConfig) Write(w io.Writer) error {
-	return yaml.NewEncoder(w).Encode(s)
+	return toml.NewEncoder(w).Encode(s)
 }
 
 // ToProto converts a ServiceConfig to a ServiceSpec.
@@ -284,12 +284,12 @@ func (s *ServiceConfig) Diff(context int, fromFile, toFile string, other *Servic
 	to := &ServiceConfig{}
 	to.FromProto(s.ToProto())
 
-	fromYml, err := yaml.Marshal(from)
+	fromYml, err := encodeString(from)
 	if err != nil {
 		return "", err
 	}
 
-	toYml, err := yaml.Marshal(to)
+	toYml, err := encodeString(to)
 	if err != nil {
 		return "", err
 	}

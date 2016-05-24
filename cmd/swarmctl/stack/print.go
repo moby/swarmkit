@@ -1,7 +1,8 @@
-package root
+package stack
 
 import (
-	"fmt"
+	"errors"
+	"os"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
@@ -10,18 +11,16 @@ import (
 )
 
 var (
-	diffCmd = &cobra.Command{
-		Use:   "diff",
-		Short: "Diff an app",
+	printCmd = &cobra.Command{
+		Use:   "print <stack>",
+		Short: "Print a stack",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c, err := common.Dial(cmd)
-			if err != nil {
-				return err
+			if len(args) == 0 {
+				return errors.New("stack name missing")
 			}
+			stack := args[0]
 
-			flags := cmd.Flags()
-
-			context, err := flags.GetInt("context")
+			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
 			}
@@ -31,15 +30,10 @@ var (
 				return err
 			}
 
-			localSpec, err := readSpec(flags)
-			if err != nil {
-				return err
-			}
-
 			servicespecs := []*api.ServiceSpec{}
 
 			for _, j := range r.Services {
-				if j.Spec.Annotations.Labels["namespace"] == localSpec.Namespace {
+				if j.Spec.Annotations.Labels["stack"] == stack {
 					servicespecs = append(servicespecs, &j.Spec)
 				}
 			}
@@ -53,31 +47,21 @@ var (
 			volumespecs := []*api.VolumeSpec{}
 
 			for _, j := range v.Volumes {
-				if j.Spec.Annotations.Labels["namespace"] == localSpec.Namespace {
+				if j.Spec.Annotations.Labels["stack"] == stack {
 					volumespecs = append(volumespecs, &j.Spec)
 				}
 			}
 
 			remoteSpec := &spec.Spec{
-				Version:   localSpec.Version,
-				Namespace: localSpec.Namespace,
-				Services:  make(map[string]*spec.ServiceConfig),
-				Volumes:   make(map[string]*spec.VolumeConfig),
+				Name:     stack,
+				Services: make(map[string]*spec.ServiceConfig),
+				Volumes:  make(map[string]*spec.VolumeConfig),
 			}
 			remoteSpec.FromServiceSpecs(servicespecs)
 			remoteSpec.FromVolumeSpecs(volumespecs)
 
-			diff, err := localSpec.Diff(context, "remote", "local", remoteSpec)
-			if err != nil {
-				return err
-			}
-			fmt.Print(diff)
+			remoteSpec.Write(os.Stdout)
 			return nil
 		},
 	}
 )
-
-func init() {
-	diffCmd.Flags().StringP("file", "f", "docker.yml", "Spec file to diff")
-	diffCmd.Flags().IntP("context", "c", 3, "lines of copied context (default 3)")
-}

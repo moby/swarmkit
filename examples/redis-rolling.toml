@@ -1,0 +1,10 @@
+version = "v1"
+
+[services]
+	[services.redis]
+		# Try 3.0.6, 3.0.5, etc
+		image = "redis:3.0.4"
+		instances = 6
+		[services.redis.update]
+			parallelism = 2
+			delay = "5s"

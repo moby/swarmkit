@@ -19,13 +19,13 @@ func getTempFile(content string) *os.File {
 func TestRead(t *testing.T) {
 	bads := []string{
 		"",
-		"version:3",
+		"version:v1",
 		`
-version: 3
+version: v1
 services:
 `,
 		`
-version: 3
+version: v1
 services:
   name1:
     instances: 42
@@ -74,8 +74,7 @@ services:
 
 func TestSpecDiff(t *testing.T) {
 	spec := &Spec{
-		Version:   3,
-		Namespace: "namespace",
+		Version: "v1",
 		Services: map[string]*ServiceConfig{
 			"name1": {Name: "name1", ContainerConfig: ContainerConfig{Image: "img1"}},
 			"name2": {Name: "name2", ContainerConfig: ContainerConfig{Image: "img2"}},
@@ -86,8 +85,7 @@ func TestSpecDiff(t *testing.T) {
 	threeInstances := uint64(3)
 	diff, err := spec.Diff(0, "remote", "local",
 		&Spec{
-			Version:   3,
-			Namespace: "namespace",
+			Version: "v1",
 			Services: map[string]*ServiceConfig{
 				"name1": {Name: "name1", Instances: &twoInstances, ContainerConfig: ContainerConfig{Image: "img1"}},
 				"name2": {Name: "name2", Instances: &threeInstances, ContainerConfig: ContainerConfig{Image: "img2"}},
@@ -99,8 +97,7 @@ func TestSpecDiff(t *testing.T) {
 
 	diff, err = spec.Diff(0, "old", "new",
 		&Spec{
-			Version:   3,
-			Namespace: "namespace",
+			Version: "v1",
 			Services: map[string]*ServiceConfig{
 				"name1": {Name: "name1", ContainerConfig: ContainerConfig{Image: "img3"}},
 				"name2": {Name: "name2", ContainerConfig: ContainerConfig{Image: "img2"}},
