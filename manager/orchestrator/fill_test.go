@@ -31,7 +31,9 @@ var (
 				Name: "name1",
 			},
 			RuntimeSpec: &api.ServiceSpec_Container{},
-			Mode:        api.ServiceModeFill,
+			Mode: &api.ServiceSpec_Global{
+				Global: &api.GlobalService{},
+			},
 		},
 	}
 
@@ -42,17 +44,19 @@ var (
 				Name: "name2",
 			},
 			RuntimeSpec: &api.ServiceSpec_Container{},
-			Mode:        api.ServiceModeFill,
+			Mode: &api.ServiceSpec_Global{
+				Global: &api.GlobalService{},
+			},
 		},
 	}
 )
 
 func SetupCluster(t *testing.T, store *store.MemoryStore) {
 	ctx := context.Background()
-	// Start the fill orchestrator.
-	fill := NewFillOrchestrator(store)
+	// Start the global orchestrator.
+	global := NewGlobalOrchestrator(store)
 	go func() {
-		assert.NoError(t, fill.Run(ctx))
+		assert.NoError(t, global.Run(ctx))
 	}()
 
 	addService(t, store, service1)

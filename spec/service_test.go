@@ -32,7 +32,7 @@ func TestServiceConfigValidate(t *testing.T) {
 			},
 		},
 
-		// incorrect service mode
+		// incorrect mode
 		{
 			Name: "name",
 			Mode: "invalid",
@@ -75,13 +75,13 @@ func TestServiceConfigValidate(t *testing.T) {
 			},
 		},
 
-		// test service mode
+		// test Mode
 		{
 			Name: "name",
-			Mode: "fill",
 			ContainerConfig: ContainerConfig{
 				Image: "image",
 			},
+			Mode: "global",
 		},
 
 		{
@@ -134,7 +134,6 @@ func TestServiceConfigsDiff(t *testing.T) {
 	against.FromProto(service.ToProto())
 	diff, err = service.Diff(0, "remote", "local", against)
 	assert.NoError(t, err)
-	assert.Empty(t, diff)
 
 	against = makeService()
 	against.Image = "redis"

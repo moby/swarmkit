@@ -12,9 +12,9 @@ import (
 	"golang.org/x/net/context"
 )
 
-// An Orchestrator runs a reconciliation loop to create and destroy
-// tasks as necessary for the running services.
-type Orchestrator struct {
+// An ReplicatedOrchestrator runs a reconciliation loop to create and destroy
+// tasks as necessary for the replicated services.
+type ReplicatedOrchestrator struct {
 	store *store.MemoryStore
 
 	reconcileServices map[string]*api.Service
@@ -29,11 +29,11 @@ type Orchestrator struct {
 	restarts *RestartSupervisor
 }
 
-// New creates a new orchestrator.
-func New(store *store.MemoryStore) *Orchestrator {
+// New creates a new ReplicatedOrchestrator.
+func New(store *store.MemoryStore) *ReplicatedOrchestrator {
 	restartSupervisor := NewRestartSupervisor(store)
 	updater := NewUpdateSupervisor(store, restartSupervisor)
-	return &Orchestrator{
+	return &ReplicatedOrchestrator{
 		store:             store,
 		stopChan:          make(chan struct{}),
 		doneChan:          make(chan struct{}),
@@ -45,58 +45,58 @@ func New(store *store.MemoryStore) *Orchestrator {
 }
 
 // Run contains the orchestrator event loop. It runs until Stop is called.
-func (o *Orchestrator) Run(ctx context.Context) error {
-	defer close(o.doneChan)
+func (r *ReplicatedOrchestrator) Run(ctx context.Context) error {
+	defer close(r.doneChan)
 
 	// Watch changes to services and tasks
-	queue := o.store.WatchQueue()
+	queue := r.store.WatchQueue()
 	watcher, cancel := queue.Watch()
 	defer cancel()
 
 	// Balance existing services and drain initial tasks attached to invalid
 	// nodes
 	var err error
-	o.store.View(func(readTx store.ReadTx) {
-		if err = o.initTasks(ctx, readTx); err != nil {
+	r.store.View(func(readTx store.ReadTx) {
+		if err = r.initTasks(ctx, readTx); err != nil {
 			return
 		}
-		err = o.initServices(readTx)
+		err = r.initServices(readTx)
 	})
 	if err != nil {
 		return err
 	}
 
-	o.tick(ctx)
+	r.tick(ctx)
 
 	for {
 		select {
 		case event := <-watcher:
 			// TODO(stevvooe): Use ctx to limit running time of operation.
-			o.handleTaskEvent(ctx, event)
-			o.handleServiceEvent(ctx, event)
+			r.handleTaskEvent(ctx, event)
+			r.handleServiceEvent(ctx, event)
 			switch event.(type) {
 			case state.EventCommit:
-				o.tick(ctx)
+				r.tick(ctx)
 			}
-		case <-o.stopChan:
+		case <-r.stopChan:
 			return nil
 		}
 	}
 }
 
 // Stop stops the orchestrator.
-func (o *Orchestrator) Stop() {
-	close(o.stopChan)
-	<-o.doneChan
-	o.updater.CancelAll()
-	o.restarts.CancelAll()
+func (r *ReplicatedOrchestrator) Stop() {
+	close(r.stopChan)
+	<-r.doneChan
+	r.updater.CancelAll()
+	r.restarts.CancelAll()
 }
 
-func (o *Orchestrator) tick(ctx context.Context) {
+func (r *ReplicatedOrchestrator) tick(ctx context.Context) {
 	// tickTasks must be called first, so we respond to task-level changes
 	// before performing service reconcillation.
-	o.tickTasks(ctx)
-	o.tickServices(ctx)
+	r.tickTasks(ctx)
+	r.tickServices(ctx)
 }
 
 func newTask(service *api.Service, instance uint64) *api.Task {
@@ -124,9 +124,15 @@ func newTask(service *api.Service, instance uint64) *api.Task {
 	}
 }
 
-// isRelatedService decides if this service is related to current orchestrator
-func isRelatedService(service *api.Service) bool {
-	return service != nil && service.Spec.Mode == api.ServiceModeRunning
+// isReplicatedService checks if a service is a replicated service
+func isReplicatedService(service *api.Service) bool {
+	// service nil validation is required as there are scenarios
+	// where service is removed from store
+	if service == nil {
+		return false
+	}
+	_, ok := service.Spec.GetMode().(*api.ServiceSpec_Replicated)
+	return ok
 }
 
 func deleteServiceTasks(ctx context.Context, s *store.MemoryStore, service *api.Service) {

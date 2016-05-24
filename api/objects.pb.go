@@ -94,7 +94,7 @@ type Task struct {
 	// should almost always be set.
 	ServiceID string `protobuf:"bytes,3,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
 	// Instance is the instance number for a task. For example, if a
-	// running service has instances = 2, there will be a task with
+	// replicated service has instances = 2, there will be a task with
 	// instance = 1, and another with instance = 2.
 	Instance uint64 `protobuf:"varint,4,opt,name=instance,proto3" json:"instance,omitempty"`
 	// NodeID indicates the node to which the task is assigned. If this field

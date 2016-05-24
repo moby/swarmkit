@@ -16,9 +16,9 @@ const (
 )
 
 type instanceTuple struct {
-	instance  uint64 // unset for fill tasks
+	instance  uint64 // unset for global tasks
 	serviceID string
-	nodeID    string // unset for running tasks
+	nodeID    string // unset for replicated tasks
 }
 
 // A TaskReaper deletes old tasks when more than TaskHistoryRetentionLimit tasks
@@ -113,15 +113,15 @@ func (tr *TaskReaper) tick() {
 
 			var historicTasks []*api.Task
 
-			switch service.Spec.Mode {
-			case api.ServiceModeRunning:
+			switch service.Spec.GetMode().(type) {
+			case *api.ServiceSpec_Replicated:
 				var err error
 				historicTasks, err = store.FindTasks(tx, store.ByInstance(dirty.serviceID, dirty.instance))
 				if err != nil {
 					continue
 				}
 
-			case api.ServiceModeFill:
+			case *api.ServiceSpec_Global:
 				tasksByNode, err := store.FindTasks(tx, store.ByNodeID(dirty.nodeID))
 				if err != nil {
 					continue

@@ -50,8 +50,11 @@ func TestTaskHistory(t *testing.T) {
 					Name: "name1",
 				},
 				RuntimeSpec: &api.ServiceSpec_Container{},
-				Instances:   2,
-				Mode:        api.ServiceModeRunning,
+				Mode: &api.ServiceSpec_Replicated{
+					Replicated: &api.ReplicatedService{
+						Instances: 2,
+					},
+				},
 			},
 		}
 		assert.NoError(t, store.CreateService(tx, j1))

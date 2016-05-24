@@ -55,8 +55,11 @@ func getService(ctx context.Context, c api.ControlClient, input string) (*api.Se
 }
 
 func getServiceInstancesTxt(s *api.Service) string {
-	if s.Spec.Mode == api.ServiceModeFill {
-		return "fill"
+	switch t := s.Spec.GetMode().(type) {
+	case *api.ServiceSpec_Global:
+		return "global"
+	case *api.ServiceSpec_Replicated:
+		return strconv.FormatUint(t.Replicated.Instances, 10)
 	}
-	return strconv.Itoa(int(s.Spec.Instances))
+	return ""
 }
