@@ -60,9 +60,13 @@ var managerCmd = &cobra.Command{
 			managers := picker.NewRemotes(managerAddr)
 			p = picker.NewPicker(managerAddr, managers)
 		} else {
-			// If we are not provided a valid join address, means that we're bootstraping a new cluster
-			if err := ca.BootstrapCluster(certDir); err != nil {
-				return err
+			_, err := ca.GetLocalRootCA(certDir)
+			if err != nil {
+				// If we are not provided a valid join address and there is no local valid Root CA
+				// we should bootstrap a new cluster
+				if err := ca.BootstrapCluster(certDir); err != nil {
+					return err
+				}
 			}
 		}
 
