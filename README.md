@@ -19,7 +19,7 @@ make binaries
 Because this project's code continues to evolve rapidly, you should rebuild from master regularly. Any git tutorial can help you, but in general terms you will:
 
 ```sh
-$ cd $GOCODE/src/github/swarm-v2
+$ cd $GOPATH/src/github.com/docker/swarm-v2
 $ git checkout master
 $ git pull origin master
 $ make binaries
