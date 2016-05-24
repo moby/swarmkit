@@ -272,10 +272,10 @@ func TestCanRemoveMember(t *testing.T) {
 		if len(members) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))
 		}
-		if members[nodes[2].Config.ID].Status.State == api.RaftMemberStatus_REACHABLE {
+		if members[nodes[2].Config.ID].Status.Reachability == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 2 to be unreachable")
 		}
-		if members[nodes[3].Config.ID].Status.State == api.RaftMemberStatus_REACHABLE {
+		if members[nodes[3].Config.ID].Status.Reachability == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 3 to be unreachable")
 		}
 		return nil

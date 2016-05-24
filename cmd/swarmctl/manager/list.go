@@ -65,7 +65,7 @@ var (
 					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 						n.ID,
 						n.Raft.Addr,
-						n.Raft.Status.State,
+						n.Raft.Status.Reachability,
 						leader,
 					)
 				}
