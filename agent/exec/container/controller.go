@@ -156,6 +156,9 @@ func (r *controller) Wait(pctx context.Context) error {
 	// check the initial state and report that.
 	ctnr, err := r.adapter.inspect(ctx)
 	if err != nil {
+		// TODO(stevvooe): Need to handle missing container here. It is likely
+		// that a Wait call with a not found error should result in no waiting
+		// and no error at all.
 		return err
 	}
 
@@ -315,6 +318,28 @@ func (r *controller) checkClosed() error {
 	}
 }
 
+type exitError struct {
+	code            int
+	cause           error
+	containerStatus *api.ContainerStatus
+}
+
+func (e *exitError) Error() string {
+	if e.cause != nil {
+		return fmt.Sprintf("task: non-zero exit (%v): %v", e.code, e.cause)
+	}
+
+	return fmt.Sprintf("task: non-zero exit (%v)", e.code)
+}
+
+func (e *exitError) ExitCode() int {
+	return int(e.containerStatus.ExitCode)
+}
+
+func (e *exitError) Cause() error {
+	return e.cause
+}
+
 func makeExitError(ctnr types.ContainerJSON) error {
 	if ctnr.State.ExitCode != 0 {
 		var cause error
@@ -323,10 +348,10 @@ func makeExitError(ctnr types.ContainerJSON) error {
 		}
 
 		cstatus, _ := parseContainerStatus(ctnr)
-		return &exec.ExitError{
-			Code:            ctnr.State.ExitCode,
-			Cause:           cause,
-			ContainerStatus: cstatus,
+		return &exitError{
+			code:            ctnr.State.ExitCode,
+			cause:           cause,
+			containerStatus: cstatus,
 		}
 	}
 

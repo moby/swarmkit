@@ -3,7 +3,6 @@ package exec
 import (
 	"fmt"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"golang.org/x/net/context"
@@ -48,130 +47,6 @@ type Controller interface {
 	Close() error
 }
 
-// Reporter defines an interface for calling back into the task status
-// reporting infrastructure. Typically, an instance is associated to a specific
-// task.
-//
-// The results of the "Report" are combined with a TaskStatus and sent to the
-// dispatcher.
-type Reporter interface {
-	// Report the state of the task run. If an error is returned, execution
-	// will be stopped.
-	// TODO(aluzzardi): This interface leaks ContainerStatus and needs fixing.
-	Report(ctx context.Context, state api.TaskState, msg string, cstatus *api.ContainerStatus) error
-
-	// TODO(stevvooe): It is very likely we will need to report more
-	// information back from the controller into the agent. We'll likely expand
-	// this interface to do so.
-}
-
-// Run runs a controller, reporting state along the way. Under normal execution,
-// this function blocks until the task is completed.
-func Run(ctx context.Context, ctlr Controller, reporter Reporter) error {
-	if err := report(ctx, reporter, api.TaskStatePreparing, "preparing", nil); err != nil {
-		return err
-	}
-
-	if err := ctlr.Prepare(ctx); err != nil {
-		switch err {
-		case ErrTaskPrepared:
-			log.G(ctx).Warnf("already prepared")
-			return runStart(ctx, ctlr, reporter, "already prepared")
-		case ErrTaskStarted:
-			log.G(ctx).Warnf("already started")
-			return runWait(ctx, ctlr, reporter, "already started")
-		default:
-			return err
-		}
-	}
-
-	if err := report(ctx, reporter, api.TaskStateReady, "prepared", nil); err != nil {
-		return err
-	}
-
-	return runStart(ctx, ctlr, reporter, "starting")
-}
-
-// Shutdown the task using the controller and report on the status.
-func Shutdown(ctx context.Context, ctlr Controller, reporter Reporter) error {
-	if err := ctlr.Shutdown(ctx); err != nil {
-		return err
-	}
-
-	return report(ctx, reporter, api.TaskStateShutdown, "shutdown requested", nil)
-}
-
-// runStart reports that the task is starting, calls Start and hands execution
-// off to `runWait`. It will block until task execution is completed or an
-// error is encountered.
-func runStart(ctx context.Context, ctlr Controller, reporter Reporter, msg string) error {
-	if err := report(ctx, reporter, api.TaskStateStarting, msg, nil); err != nil {
-		return err
-	}
-
-	msg = "started"
-	if err := ctlr.Start(ctx); err != nil {
-		switch err {
-		case ErrTaskStarted:
-			log.G(ctx).Warnf("already started")
-			msg = "already started"
-		default:
-			return err
-		}
-	}
-
-	return runWait(ctx, ctlr, reporter, msg)
-}
-
-// runWait reports that the task is running and calls Wait. When Wait exits,
-// the task will be reported as completed.
-func runWait(ctx context.Context, ctlr Controller, reporter Reporter, msg string) error {
-	getContainerStatus := func() (*api.ContainerStatus, error) {
-		if cs, ok := ctlr.(ContainerController); ok {
-			return cs.ContainerStatus(ctx)
-		}
-		return nil, nil
-	}
-
-	cstatus, err := getContainerStatus()
-	if err != nil {
-		return err
-	}
-
-	if err := report(ctx, reporter, api.TaskStateRunning, msg, cstatus); err != nil {
-		return err
-	}
-
-	if err := ctlr.Wait(ctx); err != nil {
-		// NOTE(stevvooe): We *do not* handle the exit error here,
-		// since we may do something different based on whether we
-		// are in SHUTDOWN or having an unplanned exit,
-		return err
-	}
-
-	cstatus, err = getContainerStatus()
-	if err != nil {
-		return err
-	}
-
-	return report(ctx, reporter, api.TaskStateCompleted, "completed", cstatus)
-}
-
-func report(ctx context.Context, reporter Reporter, state api.TaskState, msg string, cstatus *api.ContainerStatus) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-
-	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(
-		logrus.Fields{
-			"state":      state,
-			"status.msg": msg}))
-	log.G(ctx).Debug("report status")
-	return reporter.Report(ctx, state, msg, cstatus)
-}
-
 // Do progresses the task state using the controller by a single operation
 // on the controller. The return TaskStatus should be marked as the new state
 // of the task.
@@ -183,14 +58,22 @@ func report(ctx context.Context, reporter Reporter, state api.TaskState, msg str
 // Errors from the task controller will reported on the returned status. Any
 // errors coming from this function should not be reported as related to the
 // individual task.
+//
+// If ErrTaskNoop is returned, it means a second call to Do will result in no
+// change. If ErrTaskDead is returned, calls to Do will no longer result in any
+// action.
 func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, error) {
 	status := task.Status.Copy()
 
 	// stay in the current state.
 	noop := func(errs ...error) (*api.TaskStatus, error) {
-		// TODO(stevvooe): May want to return sentinal error here to
-		// communicate that we cannot proceed past the current state.
-		return status, nil
+		return status, ErrTaskNoop
+	}
+
+	retry := func() (*api.TaskStatus, error) {
+		// while we retry on all errors, this allows us to explicitly declare
+		// retry cases.
+		return status, ErrTaskRetry
 	}
 
 	// transition moves the task to the next state.
@@ -216,12 +99,19 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 			panic("err must not be nil when fatal")
 		}
 
-		if err, ok := err.(Temporary); ok && err.Temporary() {
-			return noop()
+		if IsTemporary(err) {
+			switch Cause(err) {
+			case context.DeadlineExceeded, context.Canceled:
+				// no need to set these errors, since these will more common.
+			default:
+				status.Err = err.Error()
+			}
+
+			return retry()
 		}
 
-		if err == context.DeadlineExceeded || err == context.Canceled {
-			return noop()
+		if cause := Cause(err); cause == context.DeadlineExceeded || cause == context.Canceled {
+			return retry()
 		}
 
 		status.Err = err.Error()
@@ -301,14 +191,17 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 			return transition(api.TaskStateRunning, "started")
 		case api.TaskStateRunning:
 			if err := ctlr.Wait(ctx); err != nil {
-				if _, ok := err.(*ExitError); ok {
+				// Wait should only proceed to failed if there is a terminal
+				// error. The only two conditions when this happens are when we
+				// get an exit code or when the container doesn't exist.
+				switch err := err.(type) {
+				case ExitCoder:
 					return transition(api.TaskStateFailed, "failed")
+				default:
+					// pursuant to the above comment, report fatal, but wrap as
+					// temporary.
+					return fatal(MakeTemporary(err))
 				}
-
-				// TODO(stevvooe): In most cases, failures of Wait are actually
-				// not a failure of the task. We account for this in fatal by
-				// checking temporary.
-				return fatal(err)
 			}
 
 			return transition(api.TaskStateCompleted, "finished")

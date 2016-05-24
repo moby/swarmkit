@@ -1,11 +1,6 @@
 package exec
 
-import (
-	"errors"
-	"fmt"
-
-	"github.com/docker/swarm-v2/api"
-)
+import "errors"
 
 var (
 	// ErrRuntimeUnsupported encountered when a task requires a runtime
@@ -21,34 +16,76 @@ var (
 	// Start.
 	ErrTaskStarted = errors.New("exec: task already started")
 
-	// ErrTaskUpdateFailed is returned if a task controller update fails.
-	ErrTaskUpdateFailed = errors.New("exec: task update failed")
+	// ErrTaskUpdateRejected is returned if a task update is rejected by a controller.
+	ErrTaskUpdateRejected = errors.New("exec: task update rejected")
 
 	// ErrControllerClosed returned when a task controller has been closed.
 	ErrControllerClosed = errors.New("exec: controller closed")
+
+	ErrTaskRetry = errors.New("exec: task retry") // retry after failed do
+	ErrTaskNoop  = errors.New("exec: task noop")  // task cannot proceed, without change
+	ErrTaskDead  = errors.New("exec: task dead")  // task will no longer proceed.
 )
+
+type ExitCoder interface {
+	// ExitCode returns the exit code.
+	ExitCode() int
+}
+
+type Causal interface {
+	Cause() error
+}
+
+// Cause returns the cause of the error, recursively.
+func Cause(err error) error {
+	for err != nil {
+		if causal, ok := err.(Causal); ok {
+			err = causal.Cause()
+		} else {
+			break
+		}
+	}
+
+	return err
+}
 
 // Temporary indicates whether or not the error condition is temporary.
 //
 // If this is encountered in the controller, the failing operation will be
 // retried when this returns true. Otherwise, the operation is considered
-// fatal.
+// fatal.t
 type Temporary interface {
 	Temporary() bool
 }
 
-// ExitError is returned by controller methods after encountering an error after a
-// task exits. It should require any data to report on a non-zero exit code.
-type ExitError struct {
-	Code            int
-	Cause           error
-	ContainerStatus *api.ContainerStatus
+// MakeTemporary makes the error temporary.
+func MakeTemporary(err error) error {
+	return &temporary{error: err}
 }
 
-func (e *ExitError) Error() string {
-	if e.Cause != nil {
-		return fmt.Sprintf("task: non-zero exit (%v): %v", e.Code, e.Cause)
+type temporary struct {
+	error
+}
+
+func (t *temporary) Cause() error    { return t.error }
+func (t *temporary) Temporary() bool { return true }
+
+// IsTemporary returns true if the error or a recursive cause returns true for
+// temporary.
+func IsTemporary(err error) bool {
+	for err != nil {
+		if tmp, ok := err.(Temporary); ok {
+			if tmp.Temporary() {
+				return true
+			}
+		}
+
+		if causal, ok := err.(Causal); !ok {
+			break
+		} else {
+			err = causal.Cause()
+		}
 	}
 
-	return fmt.Sprintf("task: non-zero exit (%v)", e.Code)
+	return false
 }
