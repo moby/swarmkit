@@ -6,3 +6,6 @@ services:
       image: alpine
       command: ["sh", "-c", "ping google.com"]
       instances: 2
+      placement:
+          constraints:
+              - node.name!=node-2
