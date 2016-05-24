@@ -1,6 +1,7 @@
-package root
+package stack
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/docker/swarm-v2/api"
@@ -11,9 +12,14 @@ import (
 
 var (
 	diffCmd = &cobra.Command{
-		Use:   "diff",
-		Short: "Diff an app",
+		Use:   "diff <name>",
+		Short: "Diff a stack",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return errors.New("stack name missing")
+			}
+			stack := args[0]
+
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
@@ -39,7 +45,7 @@ var (
 			servicespecs := []*api.ServiceSpec{}
 
 			for _, j := range r.Services {
-				if j.Spec.Annotations.Labels["namespace"] == localSpec.Namespace {
+				if j.Spec.Annotations.Labels["stack"] == stack {
 					servicespecs = append(servicespecs, &j.Spec)
 				}
 			}
@@ -53,16 +59,16 @@ var (
 			volumespecs := []*api.VolumeSpec{}
 
 			for _, j := range v.Volumes {
-				if j.Spec.Annotations.Labels["namespace"] == localSpec.Namespace {
+				if j.Spec.Annotations.Labels["stack"] == stack {
 					volumespecs = append(volumespecs, &j.Spec)
 				}
 			}
 
 			remoteSpec := &spec.Spec{
-				Version:   localSpec.Version,
-				Namespace: localSpec.Namespace,
-				Services:  make(map[string]*spec.ServiceConfig),
-				Volumes:   make(map[string]*spec.VolumeConfig),
+				Version:  localSpec.Version,
+				Name:     stack,
+				Services: make(map[string]*spec.ServiceConfig),
+				Volumes:  make(map[string]*spec.VolumeConfig),
 			}
 			remoteSpec.FromServiceSpecs(servicespecs)
 			remoteSpec.FromVolumeSpecs(volumespecs)

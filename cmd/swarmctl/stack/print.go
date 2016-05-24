@@ -1,4 +1,4 @@
-package root
+package stack
 
 import (
 	"errors"
@@ -12,13 +12,13 @@ import (
 
 var (
 	printCmd = &cobra.Command{
-		Use:   "print <namespace>",
-		Short: "Print an app",
+		Use:   "print <stack>",
+		Short: "Print a stack",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return errors.New("app ID missing")
+				return errors.New("stack name missing")
 			}
-			namespace := args[0]
+			stack := args[0]
 
 			c, err := common.Dial(cmd)
 			if err != nil {
@@ -33,7 +33,7 @@ var (
 			servicespecs := []*api.ServiceSpec{}
 
 			for _, j := range r.Services {
-				if j.Spec.Annotations.Labels["namespace"] == namespace {
+				if j.Spec.Annotations.Labels["stack"] == stack {
 					servicespecs = append(servicespecs, &j.Spec)
 				}
 			}
@@ -47,15 +47,15 @@ var (
 			volumespecs := []*api.VolumeSpec{}
 
 			for _, j := range v.Volumes {
-				if j.Spec.Annotations.Labels["namespace"] == namespace {
+				if j.Spec.Annotations.Labels["stack"] == stack {
 					volumespecs = append(volumespecs, &j.Spec)
 				}
 			}
 
 			remoteSpec := &spec.Spec{
-				Namespace: namespace,
-				Services:  make(map[string]*spec.ServiceConfig),
-				Volumes:   make(map[string]*spec.VolumeConfig),
+				Name:     stack,
+				Services: make(map[string]*spec.ServiceConfig),
+				Volumes:  make(map[string]*spec.VolumeConfig),
 			}
 			remoteSpec.FromServiceSpecs(servicespecs)
 			remoteSpec.FromVolumeSpecs(volumespecs)

@@ -12,10 +12,10 @@ import (
 
 // Spec is a human representation of the API spec.
 type Spec struct {
-	Version   string                    `toml:"version,omitempty"`
-	Namespace string                    `toml:"namespace,omitempty"`
-	Services  map[string]*ServiceConfig `toml:"services,omitempty"`
-	Volumes   map[string]*VolumeConfig  `toml:"volumes,omitempty"`
+	Version  string                    `toml:"version,omitempty"`
+	Name     string                    `toml:"name,omitempty"`
+	Services map[string]*ServiceConfig `toml:"services,omitempty"`
+	Volumes  map[string]*VolumeConfig  `toml:"volumes,omitempty"`
 }
 
 // Read reads a Spec from an io.Reader.
@@ -65,7 +65,7 @@ func (s *Spec) ServiceSpecs() []*api.ServiceSpec {
 	serviceSpecs := []*api.ServiceSpec{}
 	for _, service := range s.Services {
 		serviceSpec := service.ToProto()
-		serviceSpec.Annotations.Labels["namespace"] = s.Namespace
+		serviceSpec.Annotations.Labels["stack"] = s.Name
 		serviceSpecs = append(serviceSpecs, serviceSpec)
 	}
 	return serviceSpecs
@@ -85,7 +85,7 @@ func (s *Spec) VolumeSpecs() []*api.VolumeSpec {
 	volumeSpecs := []*api.VolumeSpec{}
 	for _, volume := range s.Volumes {
 		volumeSpec := volume.ToProto()
-		volumeSpec.Annotations.Labels["namespace"] = s.Namespace
+		volumeSpec.Annotations.Labels["stack"] = s.Name
 		volumeSpecs = append(volumeSpecs, volumeSpec)
 	}
 	return volumeSpecs

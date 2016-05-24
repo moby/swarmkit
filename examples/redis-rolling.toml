@@ -1,5 +1,4 @@
 version = "v1"
-namespace = "update"
 
 [services]
 	[services.redis]
