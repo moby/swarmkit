@@ -90,6 +90,42 @@ func init() {
 	proto.RegisterType((*GetRootCACertificateResponse)(nil), "docker.cluster.api.GetRootCACertificateResponse")
 }
 
+type authenticatedWrapperCAServer struct {
+	local     CAServer
+	authorize func(context.Context) error
+}
+
+func NewAuthenticatedWrapperCAServer(local CAServer, authorize func(context.Context) error) CAServer {
+	return &authenticatedWrapperCAServer{
+		local:     local,
+		authorize: authorize,
+	}
+}
+
+func (p *authenticatedWrapperCAServer) IssueCertificate(ctx context.Context, r *IssueCertificateRequest) (*IssueCertificateResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.IssueCertificate(ctx, r)
+}
+
+func (p *authenticatedWrapperCAServer) CertificateStatus(ctx context.Context, r *CertificateStatusRequest) (*CertificateStatusResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.CertificateStatus(ctx, r)
+}
+
+func (p *authenticatedWrapperCAServer) GetRootCACertificate(ctx context.Context, r *GetRootCACertificateRequest) (*GetRootCACertificateResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.GetRootCACertificate(ctx, r)
+}
+
 func (m *CertificateStatusRequest) Copy() *CertificateStatusRequest {
 	if m == nil {
 		return nil

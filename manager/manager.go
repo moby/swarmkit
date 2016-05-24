@@ -321,13 +321,20 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	cs := raftpicker.NewConnSelector(m.raftNode, proxyOpts...)
 
-	localAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode)
-	proxyAPI := api.NewRaftProxyControlServer(localAPI, cs, m.raftNode)
+	authorizeManager := func(ctx context.Context) error {
+		_, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
+		return err
+	}
+
+	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode)
+	authenticatedControlAPI := api.NewAuthenticatedWrapperControlServer(baseControlAPI, authorizeManager)
+	proxyControlAPI := api.NewRaftProxyControlServer(baseControlAPI, cs, m.raftNode)
 	proxyDispatcher := api.NewRaftProxyDispatcherServer(m.dispatcher, cs, m.raftNode, ca.WithMetadataForwardCN)
 
 	api.RegisterCAServer(m.server, m.caserver)
 	api.RegisterRaftServer(m.server, m.raftNode)
-	api.RegisterControlServer(m.localserver, proxyAPI)
+	api.RegisterControlServer(m.localserver, proxyControlAPI)
+	api.RegisterControlServer(m.server, authenticatedControlAPI)
 	api.RegisterDispatcherServer(m.server, proxyDispatcher)
 
 	errServe := make(chan error, 2)

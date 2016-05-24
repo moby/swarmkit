@@ -433,6 +433,50 @@ func init() {
 	proto.RegisterEnum("docker.cluster.api.StoreActionKind", StoreActionKind_name, StoreActionKind_value)
 }
 
+type authenticatedWrapperRaftServer struct {
+	local     RaftServer
+	authorize func(context.Context) error
+}
+
+func NewAuthenticatedWrapperRaftServer(local RaftServer, authorize func(context.Context) error) RaftServer {
+	return &authenticatedWrapperRaftServer{
+		local:     local,
+		authorize: authorize,
+	}
+}
+
+func (p *authenticatedWrapperRaftServer) Join(ctx context.Context, r *JoinRequest) (*JoinResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.Join(ctx, r)
+}
+
+func (p *authenticatedWrapperRaftServer) Leave(ctx context.Context, r *LeaveRequest) (*LeaveResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.Leave(ctx, r)
+}
+
+func (p *authenticatedWrapperRaftServer) ProcessRaftMessage(ctx context.Context, r *ProcessRaftMessageRequest) (*ProcessRaftMessageResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.ProcessRaftMessage(ctx, r)
+}
+
+func (p *authenticatedWrapperRaftServer) ResolveAddress(ctx context.Context, r *ResolveAddressRequest) (*ResolveAddressResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.ResolveAddress(ctx, r)
+}
+
 func (m *JoinRequest) Copy() *JoinRequest {
 	if m == nil {
 		return nil
