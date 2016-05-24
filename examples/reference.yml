@@ -10,10 +10,10 @@ services:
         args: []
         env:
             - ENVIRONMENT=dev
-        # running stands for "long running service" and is the default.
-        # other modes include "fill".
-        mode: running
-        # number of instances for a running service.
+        # replicated stands for "service replica" and is the default.
+        # other service mode include "global".
+        mode: replicated
+        # number of instances for a replicated service.
         instances: 3
         # restart policy
         restart:

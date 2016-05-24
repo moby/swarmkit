@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func TestOrchestrator(t *testing.T) {
+func TestReplicatedOrchestrator(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -35,8 +35,11 @@ func TestOrchestrator(t *testing.T) {
 					Name: "name1",
 				},
 				RuntimeSpec: &api.ServiceSpec_Container{},
-				Instances:   2,
-				Mode:        api.ServiceModeRunning,
+				Mode: &api.ServiceSpec_Replicated{
+					Replicated: &api.ReplicatedService{
+						Instances: 2,
+					},
+				},
 			},
 		}
 		assert.NoError(t, store.CreateService(tx, s1))
@@ -66,8 +69,11 @@ func TestOrchestrator(t *testing.T) {
 					Name: "name2",
 				},
 				RuntimeSpec: &api.ServiceSpec_Container{},
-				Instances:   1,
-				Mode:        api.ServiceModeRunning,
+				Mode: &api.ServiceSpec_Replicated{
+					Replicated: &api.ReplicatedService{
+						Instances: 1,
+					},
+				},
 			},
 		}
 		assert.NoError(t, store.CreateService(tx, s2))
@@ -88,8 +94,11 @@ func TestOrchestrator(t *testing.T) {
 					Name: "name2",
 				},
 				RuntimeSpec: &api.ServiceSpec_Container{},
-				Instances:   3,
-				Mode:        api.ServiceModeRunning,
+				Mode: &api.ServiceSpec_Replicated{
+					Replicated: &api.ReplicatedService{
+						Instances: 3,
+					},
+				},
 			},
 		}
 		assert.NoError(t, store.UpdateService(tx, s2))
@@ -114,8 +123,11 @@ func TestOrchestrator(t *testing.T) {
 					Name: "name2",
 				},
 				RuntimeSpec: &api.ServiceSpec_Container{},
-				Instances:   1,
-				Mode:        api.ServiceModeRunning,
+				Mode: &api.ServiceSpec_Replicated{
+					Replicated: &api.ReplicatedService{
+						Instances: 1,
+					},
+				},
 			},
 		}
 		assert.NoError(t, store.UpdateService(tx, s2))

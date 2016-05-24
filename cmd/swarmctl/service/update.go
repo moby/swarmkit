@@ -49,7 +49,12 @@ var (
 					if err != nil {
 						return err
 					}
-					spec.Instances = instances
+					switch t := spec.GetMode().(type) {
+					case *api.ServiceSpec_Replicated:
+						t.Replicated.Instances = instances
+					default:
+						return errors.New("instances has no meaning for this mode")
+					}
 				}
 
 				if len(args) > 1 {

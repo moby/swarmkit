@@ -57,6 +57,7 @@ func TestUpdater(t *testing.T) {
 		}
 	}()
 
+	instances := 3
 	service := &api.Service{
 		ID: "id1",
 		Spec: api.ServiceSpec{
@@ -72,14 +73,17 @@ func TestUpdater(t *testing.T) {
 					StopGracePeriod: time.Hour,
 				},
 			},
-			Instances: 3,
-			Mode:      api.ServiceModeRunning,
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Instances: uint64(instances),
+				},
+			},
 		},
 	}
 
 	err := s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateService(tx, service))
-		for i := uint64(0); i < service.Spec.Instances; i++ {
+		for i := 0; i < instances; i++ {
 			assert.NoError(t, store.CreateTask(tx, newTask(service, uint64(i))))
 		}
 		return nil
@@ -151,6 +155,7 @@ func TestUpdaterStopGracePeriod(t *testing.T) {
 		}
 	}()
 
+	var instances uint64 = 3
 	service := &api.Service{
 		ID: "id1",
 		Spec: api.ServiceSpec{
@@ -165,14 +170,17 @@ func TestUpdaterStopGracePeriod(t *testing.T) {
 					StopGracePeriod: 100 * time.Millisecond,
 				},
 			},
-			Instances: 3,
-			Mode:      api.ServiceModeRunning,
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Instances: instances,
+				},
+			},
 		},
 	}
 
 	err := s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateService(tx, service))
-		for i := uint64(0); i < service.Spec.Instances; i++ {
+		for i := uint64(0); i < instances; i++ {
 			task := newTask(service, uint64(i))
 			task.Status.State = api.TaskStateRunning
 			assert.NoError(t, store.CreateTask(tx, task))

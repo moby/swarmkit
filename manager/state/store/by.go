@@ -69,16 +69,6 @@ func ByQuery(query string) By {
 	return byQuery(query)
 }
 
-type byServiceMode api.ServiceSpec_Mode
-
-func (b byServiceMode) isBy() {
-}
-
-// ByServiceMode creates an object to pass to Find to select by service mode.
-func ByServiceMode(mode api.ServiceSpec_Mode) By {
-	return byServiceMode(mode)
-}
-
 type byInstance struct {
 	serviceID string
 	instance  uint64

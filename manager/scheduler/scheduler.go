@@ -101,7 +101,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 
 	// Validate resource for tasks from preassigned tasks
 	// do this before other tasks because preassigned tasks like
-	// fill service should start before other tasks
+	// global service should start before other tasks
 	s.processPreassignedTasks(ctx)
 
 	// Queue all unassigned tasks before processing changes.

@@ -8,14 +8,14 @@ import (
 	"golang.org/x/net/context"
 )
 
-// An FillOrchestrator runs a reconciliation loop to create and destroy
-// tasks as necessary for fill services.
-type FillOrchestrator struct {
+// GlobalOrchestrator runs a reconciliation loop to create and destroy
+// tasks as necessary for global services.
+type GlobalOrchestrator struct {
 	store *store.MemoryStore
 	// nodes contains nodeID of all valid nodes in the cluster
 	nodes map[string]struct{}
-	// fillServices have all the FILL services in the cluster, indexed by ServiceID
-	fillServices map[string]*api.Service
+	// globalServices have all the global services in the cluster, indexed by ServiceID
+	globalServices map[string]*api.Service
 
 	// stopChan signals to the state machine to stop running.
 	stopChan chan struct{}
@@ -26,27 +26,27 @@ type FillOrchestrator struct {
 	restarts *RestartSupervisor
 }
 
-// NewFillOrchestrator creates a new FillOrchestrator
-func NewFillOrchestrator(store *store.MemoryStore) *FillOrchestrator {
+// NewGlobalOrchestrator creates a new GlobalOrchestrator
+func NewGlobalOrchestrator(store *store.MemoryStore) *GlobalOrchestrator {
 	restartSupervisor := NewRestartSupervisor(store)
 	updater := NewUpdateSupervisor(store, restartSupervisor)
-	return &FillOrchestrator{
-		store:        store,
-		nodes:        make(map[string]struct{}),
-		fillServices: make(map[string]*api.Service),
-		stopChan:     make(chan struct{}),
-		doneChan:     make(chan struct{}),
-		updater:      updater,
-		restarts:     restartSupervisor,
+	return &GlobalOrchestrator{
+		store:          store,
+		nodes:          make(map[string]struct{}),
+		globalServices: make(map[string]*api.Service),
+		stopChan:       make(chan struct{}),
+		doneChan:       make(chan struct{}),
+		updater:        updater,
+		restarts:       restartSupervisor,
 	}
 }
 
-// Run contains the FillOrchestrator event loop
-func (f *FillOrchestrator) Run(ctx context.Context) error {
-	defer close(f.doneChan)
+// Run contains the GlobalOrchestrator event loop
+func (g *GlobalOrchestrator) Run(ctx context.Context) error {
+	defer close(g.doneChan)
 
 	// Watch changes to services and tasks
-	queue := f.store.WatchQueue()
+	queue := g.store.WatchQueue()
 	watcher, cancel := queue.Watch()
 	defer cancel()
 
@@ -55,7 +55,7 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 		nodes []*api.Node
 		err   error
 	)
-	f.store.View(func(readTx store.ReadTx) {
+	g.store.View(func(readTx store.ReadTx) {
 		nodes, err = store.FindNodes(readTx, store.All)
 	})
 	if err != nil {
@@ -64,21 +64,23 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 	for _, n := range nodes {
 		// if a node is in drain state, do not add it
 		if isValidNode(n) {
-			f.nodes[n.ID] = struct{}{}
+			g.nodes[n.ID] = struct{}{}
 		}
 	}
 
-	// Lookup existing fill services
+	// Lookup global services
 	var existingServices []*api.Service
-	f.store.View(func(readTx store.ReadTx) {
-		existingServices, err = store.FindServices(readTx, store.ByServiceMode(api.ServiceModeFill))
+	g.store.View(func(readTx store.ReadTx) {
+		existingServices, err = store.FindServices(readTx, store.All)
 	})
 	if err != nil {
 		return err
 	}
 	for _, s := range existingServices {
-		f.fillServices[s.ID] = s
-		f.reconcileOneService(ctx, s)
+		if isGlobalService(s) {
+			g.globalServices[s.ID] = s
+			g.reconcileOneService(ctx, s)
+		}
 	}
 
 	for {
@@ -87,107 +89,107 @@ func (f *FillOrchestrator) Run(ctx context.Context) error {
 			// TODO(stevvooe): Use ctx to limit running time of operation.
 			switch v := event.(type) {
 			case state.EventCreateService:
-				if v.Service.Spec.Mode != api.ServiceModeFill {
+				if !isGlobalService(v.Service) {
 					continue
 				}
-				f.fillServices[v.Service.ID] = v.Service
-				f.reconcileOneService(ctx, v.Service)
+				g.globalServices[v.Service.ID] = v.Service
+				g.reconcileOneService(ctx, v.Service)
 			case state.EventUpdateService:
-				if v.Service.Spec.Mode != api.ServiceModeFill {
+				if !isGlobalService(v.Service) {
 					continue
 				}
-				f.fillServices[v.Service.ID] = v.Service
-				f.reconcileOneService(ctx, v.Service)
+				g.globalServices[v.Service.ID] = v.Service
+				g.reconcileOneService(ctx, v.Service)
 			case state.EventDeleteService:
-				if v.Service.Spec.Mode != api.ServiceModeFill {
+				if !isGlobalService(v.Service) {
 					continue
 				}
-				deleteServiceTasks(ctx, f.store, v.Service)
+				deleteServiceTasks(ctx, g.store, v.Service)
 				// delete the service from service map
-				delete(f.fillServices, v.Service.ID)
-				f.restarts.ClearServiceHistory(v.Service.ID)
+				delete(g.globalServices, v.Service.ID)
+				g.restarts.ClearServiceHistory(v.Service.ID)
 			case state.EventCreateNode:
-				f.reconcileOneNode(ctx, v.Node)
+				g.reconcileOneNode(ctx, v.Node)
 			case state.EventUpdateNode:
 				switch v.Node.Status.State {
 				// NodeStatus_DISCONNECTED is a transient state, no need to make any change
 				case api.NodeStatus_DOWN:
-					f.removeTasksFromNode(ctx, v.Node)
+					g.removeTasksFromNode(ctx, v.Node)
 				case api.NodeStatus_READY:
 					// node could come back to READY from DOWN or DISCONNECT
-					f.reconcileOneNode(ctx, v.Node)
+					g.reconcileOneNode(ctx, v.Node)
 				}
 			case state.EventDeleteNode:
-				f.removeTasksFromNode(ctx, v.Node)
-				delete(f.nodes, v.Node.ID)
+				g.removeTasksFromNode(ctx, v.Node)
+				delete(g.nodes, v.Node.ID)
 			case state.EventUpdateTask:
-				if _, exists := f.fillServices[v.Task.ServiceID]; !exists {
+				if _, exists := g.globalServices[v.Task.ServiceID]; !exists {
 					continue
 				}
-				// fill orchestrator needs to inspect when a task has terminated
+				// global orchestrator needs to inspect when a task has terminated
 				// it should ignore tasks whose DesiredState is past running, which
 				// means the task has been processed
 				if isTaskTerminated(v.Task) {
-					f.restartTask(ctx, v.Task.ID, v.Task.ServiceID)
+					g.restartTask(ctx, v.Task.ID, v.Task.ServiceID)
 				}
 			case state.EventDeleteTask:
 				// CLI allows deleting task
-				if _, exists := f.fillServices[v.Task.ServiceID]; !exists {
+				if _, exists := g.globalServices[v.Task.ServiceID]; !exists {
 					continue
 				}
-				f.reconcileServiceOneNode(ctx, v.Task.ServiceID, v.Task.NodeID)
+				g.reconcileServiceOneNode(ctx, v.Task.ServiceID, v.Task.NodeID)
 			}
-		case <-f.stopChan:
+		case <-g.stopChan:
 			return nil
 		}
 	}
 }
 
 // Stop stops the orchestrator.
-func (f *FillOrchestrator) Stop() {
-	close(f.stopChan)
-	<-f.doneChan
-	f.updater.CancelAll()
-	f.restarts.CancelAll()
+func (g *GlobalOrchestrator) Stop() {
+	close(g.stopChan)
+	<-g.doneChan
+	g.updater.CancelAll()
+	g.restarts.CancelAll()
 }
 
-func (f *FillOrchestrator) removeTasksFromNode(ctx context.Context, node *api.Node) {
+func (g *GlobalOrchestrator) removeTasksFromNode(ctx context.Context, node *api.Node) {
 	var (
 		tasks []*api.Task
 		err   error
 	)
-	f.store.View(func(tx store.ReadTx) {
+	g.store.View(func(tx store.ReadTx) {
 		tasks, err = store.FindTasks(tx, store.ByNodeID(node.ID))
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("fillOrchestrator: removeTasksFromNode failed finding tasks")
+		log.G(ctx).WithError(err).Errorf("global orchestrator: removeTasksFromNode failed finding tasks")
 		return
 	}
 
-	_, err = f.store.Batch(func(batch *store.Batch) error {
+	_, err = g.store.Batch(func(batch *store.Batch) error {
 		for _, t := range tasks {
-			// fillOrchestrator only removes tasks from fillServices
-			if _, exists := f.fillServices[t.ServiceID]; exists {
-				f.removeTask(ctx, batch, t)
+			// GlobalOrchestrator only removes tasks from globalServices
+			if _, exists := g.globalServices[t.ServiceID]; exists {
+				g.removeTask(ctx, batch, t)
 			}
 		}
 		return nil
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("fillOrchestrator: removeTasksFromNode failed")
+		log.G(ctx).WithError(err).Errorf("global orchestrator: removeTasksFromNode failed")
 	}
 }
 
-func (f *FillOrchestrator) reconcileOneService(ctx context.Context, service *api.Service) {
+func (g *GlobalOrchestrator) reconcileOneService(ctx context.Context, service *api.Service) {
 	var (
 		tasks []*api.Task
 		err   error
 	)
-	f.store.View(func(tx store.ReadTx) {
+	g.store.View(func(tx store.ReadTx) {
 		tasks, err = store.FindTasks(tx, store.ByServiceID(service.ID))
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("fillOrchestrator: reconcileOneService failed finding tasks")
+		log.G(ctx).WithError(err).Errorf("global orchestrator: reconcileOneService failed finding tasks")
 		return
 	}
 	restartPolicy := restartCondition(service)
@@ -208,66 +210,66 @@ func (f *FillOrchestrator) reconcileOneService(ctx context.Context, service *api
 		}
 	}
 
-	_, err = f.store.Batch(func(batch *store.Batch) error {
+	_, err = g.store.Batch(func(batch *store.Batch) error {
 		var updateTasks []*api.Task
-		for nodeID := range f.nodes {
+		for nodeID := range g.nodes {
 			ntasks := nodeTasks[nodeID]
 			// if restart policy considers this node has finished its task
 			// it should remove all running tasks
 			if _, exists := nodeCompleted[nodeID]; exists {
-				f.removeTasks(ctx, batch, service, ntasks)
+				g.removeTasks(ctx, batch, service, ntasks)
 				return nil
 			}
 			// this node needs to run 1 copy of the task
 			if len(ntasks) == 0 {
-				f.addTask(ctx, batch, service, nodeID)
+				g.addTask(ctx, batch, service, nodeID)
 			} else {
 				updateTasks = append(updateTasks, ntasks[0])
-				f.removeTasks(ctx, batch, service, ntasks[1:])
+				g.removeTasks(ctx, batch, service, ntasks[1:])
 			}
 		}
 		if len(updateTasks) > 0 {
-			f.updater.Update(ctx, service, updateTasks)
+			g.updater.Update(ctx, service, updateTasks)
 		}
 		return nil
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("FillOrchestrator: reconcileOneService transaction failed")
+		log.G(ctx).WithError(err).Errorf("global orchestrator: reconcileOneService transaction failed")
 	}
 }
 
-// reconcileOneNode checks all fill services on one node
-func (f *FillOrchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
+// reconcileOneNode checks all global services on one node
+func (g *GlobalOrchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
 	switch node.Spec.Availability {
 	case api.NodeAvailabilityDrain:
-		log.G(ctx).Debugf("fillOrchestrator: node %s in drain state, removing tasks from it", node.ID)
-		f.removeTasksFromNode(ctx, node)
-		delete(f.nodes, node.ID)
+		log.G(ctx).Debugf("global orchestrator: node %s in drain state, removing tasks from it", node.ID)
+		g.removeTasksFromNode(ctx, node)
+		delete(g.nodes, node.ID)
 		return
 	case api.NodeAvailabilityActive:
-		if _, exists := f.nodes[node.ID]; !exists {
-			log.G(ctx).Debugf("fillOrchestrator: node %s not in current node list, adding it", node.ID)
-			f.nodes[node.ID] = struct{}{}
+		if _, exists := g.nodes[node.ID]; !exists {
+			log.G(ctx).Debugf("global orchestrator: node %s not in current node list, adding it", node.ID)
+			g.nodes[node.ID] = struct{}{}
 		}
 	default:
-		log.G(ctx).Debugf("fillOrchestrator: node %s in %s state, doing nothing", node.ID, node.Spec.Availability.String())
+		log.G(ctx).Debugf("global orchestrator: node %s in %s state, doing nothing", node.ID, node.Spec.Availability.String())
 		return
 	}
-	// typically there are only a few fill services on a node
+	// typically there are only a few global services on a node
 	// iterate thru all of them one by one. If raft store visits become a concern,
 	// it can be optimized.
-	for _, service := range f.fillServices {
-		f.reconcileServiceOneNode(ctx, service.ID, node.ID)
+	for _, service := range g.globalServices {
+		g.reconcileServiceOneNode(ctx, service.ID, node.ID)
 	}
 }
 
 // reconcileServiceOneNode checks one service on one node
-func (f *FillOrchestrator) reconcileServiceOneNode(ctx context.Context, serviceID string, nodeID string) {
-	_, exists := f.nodes[nodeID]
+func (g *GlobalOrchestrator) reconcileServiceOneNode(ctx context.Context, serviceID string, nodeID string) {
+	_, exists := g.nodes[nodeID]
 	if !exists {
 		return
 	}
-	service, exists := f.fillServices[serviceID]
+	service, exists := g.globalServices[serviceID]
 	if !exists {
 		return
 	}
@@ -279,7 +281,7 @@ func (f *FillOrchestrator) reconcileServiceOneNode(ctx context.Context, serviceI
 		tasks []*api.Task
 		err   error
 	)
-	f.store.View(func(tx store.ReadTx) {
+	g.store.View(func(tx store.ReadTx) {
 		var tasksOnNode []*api.Task
 		tasksOnNode, err = store.FindTasks(tx, store.ByNodeID(nodeID))
 		if err != nil {
@@ -300,35 +302,35 @@ func (f *FillOrchestrator) reconcileServiceOneNode(ctx context.Context, serviceI
 		}
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("fillOrchestrator: reconcile failed finding tasks")
+		log.G(ctx).WithError(err).Errorf("global orchestrator: reconcile failed finding tasks")
 		return
 	}
 
-	_, err = f.store.Batch(func(batch *store.Batch) error {
+	_, err = g.store.Batch(func(batch *store.Batch) error {
 		// if restart policy considers this node has finished its task
 		// it should remove all running tasks
 		if completed {
-			f.removeTasks(ctx, batch, service, tasks)
+			g.removeTasks(ctx, batch, service, tasks)
 			return nil
 		}
 		// this node needs to run 1 copy of the task
 		if len(tasks) == 0 {
-			f.addTask(ctx, batch, service, nodeID)
+			g.addTask(ctx, batch, service, nodeID)
 		} else {
-			f.removeTasks(ctx, batch, service, tasks[1:])
+			g.removeTasks(ctx, batch, service, tasks[1:])
 		}
 		return nil
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("FillOrchestrator: reconcileServiceOneNode batch failed")
+		log.G(ctx).WithError(err).Errorf("global orchestrator: reconcileServiceOneNode batch failed")
 	}
 }
 
 // restartTask calls the restart supervisor's Restart function, which
 // sets a task's desired state to dead and restarts it if the restart
 // policy calls for it to be restarted.
-func (f *FillOrchestrator) restartTask(ctx context.Context, taskID string, serviceID string) {
-	err := f.store.Update(func(tx store.Tx) error {
+func (g *GlobalOrchestrator) restartTask(ctx context.Context, taskID string, serviceID string) {
+	err := g.store.Update(func(tx store.Tx) error {
 		t := store.GetTask(tx, taskID)
 		if t == nil || t.DesiredState > api.TaskStateRunning {
 			return nil
@@ -337,14 +339,14 @@ func (f *FillOrchestrator) restartTask(ctx context.Context, taskID string, servi
 		if service == nil {
 			return nil
 		}
-		return f.restarts.Restart(ctx, tx, service, *t)
+		return g.restarts.Restart(ctx, tx, service, *t)
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("FillOrchestrator: restartTask transaction failed")
+		log.G(ctx).WithError(err).Errorf("global orchestrator: restartTask transaction failed")
 	}
 }
 
-func (f *FillOrchestrator) removeTask(ctx context.Context, batch *store.Batch, t *api.Task) {
+func (g *GlobalOrchestrator) removeTask(ctx context.Context, batch *store.Batch, t *api.Task) {
 	// set existing task DesiredState to TaskStateShutdown
 	// TODO(aaronl): optimistic update?
 	err := batch.Update(func(tx store.Tx) error {
@@ -356,11 +358,11 @@ func (f *FillOrchestrator) removeTask(ctx context.Context, batch *store.Batch, t
 		return nil
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("FillOrchestrator: removeTask failed to remove %s", t.ID)
+		log.G(ctx).WithError(err).Errorf("global orchestrator: removeTask failed to remove %s", t.ID)
 	}
 }
 
-func (f *FillOrchestrator) addTask(ctx context.Context, batch *store.Batch, service *api.Service, nodeID string) {
+func (g *GlobalOrchestrator) addTask(ctx context.Context, batch *store.Batch, service *api.Service, nodeID string) {
 	task := newTask(service, 0)
 	task.NodeID = nodeID
 
@@ -368,13 +370,13 @@ func (f *FillOrchestrator) addTask(ctx context.Context, batch *store.Batch, serv
 		return store.CreateTask(tx, task)
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("FillOrchestrator: failed to create task")
+		log.G(ctx).WithError(err).Errorf("global orchestrator: failed to create task")
 	}
 }
 
-func (f *FillOrchestrator) removeTasks(ctx context.Context, batch *store.Batch, service *api.Service, tasks []*api.Task) {
+func (g *GlobalOrchestrator) removeTasks(ctx context.Context, batch *store.Batch, service *api.Service, tasks []*api.Task) {
 	for _, t := range tasks {
-		f.removeTask(ctx, batch, t)
+		g.removeTask(ctx, batch, t)
 	}
 }
 
@@ -397,4 +399,12 @@ func isTaskCompleted(t *api.Task, restartPolicy api.RestartPolicy_RestartConditi
 
 func isTaskTerminated(t *api.Task) bool {
 	return t != nil && t.Status.TerminalState > api.TaskStateNew
+}
+
+func isGlobalService(service *api.Service) bool {
+	if service == nil {
+		return false
+	}
+	_, ok := service.Spec.GetMode().(*api.ServiceSpec_Global)
+	return ok
 }

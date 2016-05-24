@@ -437,3 +437,18 @@ message RaftMember {
 	// Status provides the current status of the manager from the perspective of another manager.
 	RaftMemberStatus status = 4 [(gogoproto.nullable) = false];
 }
+
+// Placement specifies placement constraints and strategy for scheduling.
+message Placement {
+	// A service can have multiple or no constraints.
+	repeated string constraints = 1;
+
+	enum Strategy {
+		option (gogoproto.goproto_enum_prefix) = false;
+
+		// Spread instances evenly among candidate nodes.
+		PLACEMENT_STRATEGY_SPREAD = 0 [(gogoproto.enumvalue_customname) = "PlacementStrategySpread"];
+	}
+	// Strategy defines scheduler distribution preference.
+	Strategy strategy = 2;
+}

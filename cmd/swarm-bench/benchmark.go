@@ -83,7 +83,11 @@ func (b *Benchmark) spec() *api.ServiceSpec {
 				Command: []string{"nc", b.cfg.IP, strconv.Itoa(b.cfg.Port)},
 			},
 		},
-		Instances: b.cfg.Count,
+		Mode: &api.ServiceSpec_Replicated{
+			Replicated: &api.ReplicatedService{
+				Instances: b.cfg.Count,
+			},
+		},
 	}
 }
 

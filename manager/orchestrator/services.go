@@ -14,64 +14,66 @@ import (
 // specifications. This is different from task-level orchestration, which
 // responds to changes in individual tasks (or nodes which run them).
 
-func (o *Orchestrator) initServices(readTx store.ReadTx) error {
-	runningServices, err := store.FindServices(readTx, store.ByServiceMode(api.ServiceModeRunning))
+func (r *ReplicatedOrchestrator) initServices(readTx store.ReadTx) error {
+	services, err := store.FindServices(readTx, store.All)
 	if err != nil {
 		return err
 	}
-	for _, s := range runningServices {
-		o.reconcileServices[s.ID] = s
+	for _, s := range services {
+		if isReplicatedService(s) {
+			r.reconcileServices[s.ID] = s
+		}
 	}
 	return nil
 }
 
-func (o *Orchestrator) handleServiceEvent(ctx context.Context, event events.Event) {
+func (r *ReplicatedOrchestrator) handleServiceEvent(ctx context.Context, event events.Event) {
 	switch v := event.(type) {
 	case state.EventDeleteService:
-		if !isRelatedService(v.Service) {
+		if !isReplicatedService(v.Service) {
 			return
 		}
-		deleteServiceTasks(ctx, o.store, v.Service)
-		o.restarts.ClearServiceHistory(v.Service.ID)
+		deleteServiceTasks(ctx, r.store, v.Service)
+		r.restarts.ClearServiceHistory(v.Service.ID)
 	case state.EventCreateService:
-		if !isRelatedService(v.Service) {
+		if !isReplicatedService(v.Service) {
 			return
 		}
-		o.reconcileServices[v.Service.ID] = v.Service
+		r.reconcileServices[v.Service.ID] = v.Service
 	case state.EventUpdateService:
-		if !isRelatedService(v.Service) {
+		if !isReplicatedService(v.Service) {
 			return
 		}
-		o.reconcileServices[v.Service.ID] = v.Service
+		r.reconcileServices[v.Service.ID] = v.Service
 	}
 }
 
-func (o *Orchestrator) tickServices(ctx context.Context) {
-	if len(o.reconcileServices) > 0 {
-		for _, s := range o.reconcileServices {
-			o.reconcile(ctx, s)
+func (r *ReplicatedOrchestrator) tickServices(ctx context.Context) {
+	if len(r.reconcileServices) > 0 {
+		for _, s := range r.reconcileServices {
+			r.reconcile(ctx, s)
 		}
-		o.reconcileServices = make(map[string]*api.Service)
+		r.reconcileServices = make(map[string]*api.Service)
 	}
 }
 
-func (o *Orchestrator) resolveService(ctx context.Context, task *api.Task) *api.Service {
+func (r *ReplicatedOrchestrator) resolveService(ctx context.Context, task *api.Task) *api.Service {
 	if task.ServiceID == "" {
 		return nil
 	}
 	var service *api.Service
-	o.store.View(func(tx store.ReadTx) {
+	r.store.View(func(tx store.ReadTx) {
 		service = store.GetService(tx, task.ServiceID)
 	})
 	return service
 }
 
-func (o *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
+func (r *ReplicatedOrchestrator) reconcile(ctx context.Context, service *api.Service) {
 	var (
 		tasks []*api.Task
 		err   error
 	)
-	o.store.View(func(tx store.ReadTx) {
+	r.store.View(func(tx store.ReadTx) {
 		tasks, err = store.FindTasks(tx, store.ByServiceID(service.ID))
 	})
 	if err != nil {
@@ -92,27 +94,28 @@ func (o *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
 	}
 	numTasks := len(runningTasks)
 
-	specifiedInstances := int(service.Spec.Instances)
+	deploy := service.Spec.GetMode().(*api.ServiceSpec_Replicated)
+	specifiedInstances := int(deploy.Replicated.Instances)
 
 	// TODO(aaronl): Add support for restart delays.
 
-	_, err = o.store.Batch(func(batch *store.Batch) error {
+	_, err = r.store.Batch(func(batch *store.Batch) error {
 		switch {
 		case specifiedInstances > numTasks:
 			log.G(ctx).Debugf("Service %s was scaled up from %d to %d instances", service.ID, numTasks, specifiedInstances)
 			// Update all current tasks then add missing tasks
-			o.updater.Update(ctx, service, runningTasks)
-			o.addTasks(ctx, batch, service, runningInstances, specifiedInstances-numTasks)
+			r.updater.Update(ctx, service, runningTasks)
+			r.addTasks(ctx, batch, service, runningInstances, specifiedInstances-numTasks)
 
 		case specifiedInstances < numTasks:
 			// Update up to N tasks then remove the extra
 			log.G(ctx).Debugf("Service %s was scaled down from %d to %d instances", service.ID, numTasks, specifiedInstances)
-			o.updater.Update(ctx, service, runningTasks[:specifiedInstances])
-			o.removeTasks(ctx, batch, service, runningTasks[specifiedInstances:])
+			r.updater.Update(ctx, service, runningTasks[:specifiedInstances])
+			r.removeTasks(ctx, batch, service, runningTasks[specifiedInstances:])
 
 		case specifiedInstances == numTasks:
 			// Simple update, no scaling - update all tasks.
-			o.updater.Update(ctx, service, runningTasks)
+			r.updater.Update(ctx, service, runningTasks)
 		}
 		return nil
 	})
@@ -122,7 +125,7 @@ func (o *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
 	}
 }
 
-func (o *Orchestrator) addTasks(ctx context.Context, batch *store.Batch, service *api.Service, runningInstances map[uint64]struct{}, count int) {
+func (r *ReplicatedOrchestrator) addTasks(ctx context.Context, batch *store.Batch, service *api.Service, runningInstances map[uint64]struct{}, count int) {
 	instance := uint64(0)
 	for i := 0; i < count; i++ {
 		// Find an instance number that is missing a running task
@@ -142,7 +145,7 @@ func (o *Orchestrator) addTasks(ctx context.Context, batch *store.Batch, service
 	}
 }
 
-func (o *Orchestrator) removeTasks(ctx context.Context, batch *store.Batch, service *api.Service, tasks []*api.Task) {
+func (r *ReplicatedOrchestrator) removeTasks(ctx context.Context, batch *store.Batch, service *api.Service, tasks []*api.Task) {
 	for _, t := range tasks {
 		err := batch.Update(func(tx store.Tx) error {
 			// TODO(aaronl): optimistic update?

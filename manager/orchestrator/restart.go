@@ -69,14 +69,13 @@ func (r *RestartSupervisor) Restart(ctx context.Context, tx store.Tx, service *a
 
 	var restartTask *api.Task
 
-	switch service.Spec.Mode {
-	case api.ServiceModeRunning:
+	if isReplicatedService(service) {
 		restartTask = newTask(service, t.Instance)
-	case api.ServiceModeFill:
+	} else if isGlobalService(service) {
 		restartTask = newTask(service, 0)
 		restartTask.NodeID = t.NodeID
-	default:
-		log.G(ctx).Error("service mode not supported by restart supervisor")
+	} else {
+		log.G(ctx).Error("service not supported by restart supervisor")
 		return nil
 	}
 
@@ -126,9 +125,9 @@ func (r *RestartSupervisor) shouldRestart(t *api.Task, service *api.Service) boo
 		serviceID: t.ServiceID,
 	}
 
-	// Instance is not meaningful for "fill" tasks, so they need to be
+	// Instance is not meaningful for "global" tasks, so they need to be
 	// indexed by NodeID.
-	if service.Spec.Mode == api.ServiceModeFill {
+	if isGlobalService(service) {
 		instanceTuple.nodeID = t.NodeID
 	}
 
