@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -143,7 +144,23 @@ func New(config *Config) (*Manager, error) {
 
 		for proto, addr := range config.ProtoAddr {
 			l, err := net.Listen(proto, addr)
-			if err != nil {
+
+			// A unix socket may fail to bind if the file already
+			// exists. Try replacing the file.
+			unwrappedErr := err
+			if op, ok := unwrappedErr.(*net.OpError); ok {
+				unwrappedErr = op.Err
+			}
+			if sys, ok := unwrappedErr.(*os.SyscallError); ok {
+				unwrappedErr = sys.Err
+			}
+			if proto == "unix" && unwrappedErr == syscall.EADDRINUSE {
+				os.Remove(addr)
+				l, err = net.Listen(proto, addr)
+				if err != nil {
+					return nil, err
+				}
+			} else if err != nil {
 				return nil, err
 			}
 			listeners[proto] = l
