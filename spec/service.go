@@ -34,6 +34,9 @@ type ContainerConfig struct {
 
 	Resources *ResourceRequirements `yaml:"resources,omitempty"`
 
+	// PlacementConfig specifies node constraints and placement
+	Placement *PlacementConfig `yaml:"placement,omitempty"`
+
 	// Networks specifies all the networks that this service is attached to.
 	Networks []string `yaml:"networks,omitempty"`
 
@@ -100,6 +103,13 @@ func (s *ServiceConfig) Validate() error {
 			return err
 		}
 	}
+
+	if s.Placement != nil {
+		if err := s.Placement.Validate(); err != nil {
+			return err
+		}
+	}
+
 	if s.Update != nil {
 		if err := s.Update.Validate(); err != nil {
 			return err
@@ -152,6 +162,7 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 				Resources: s.Resources.ToProto(),
 				Mounts:    s.Mounts.ToProto(),
 				Image:     s.Image,
+				Placement: s.Placement.ToProto(),
 
 				Env:     s.Env,
 				Command: s.Command,
@@ -233,6 +244,11 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	if serviceSpec.GetContainer().Resources != nil {
 		s.Resources = &ResourceRequirements{}
 		s.Resources.FromProto(serviceSpec.GetContainer().Resources)
+	}
+
+	if serviceSpec.GetContainer().Placement != nil {
+		s.Placement = &PlacementConfig{}
+		s.Placement.FromProto(serviceSpec.GetContainer().Placement)
 	}
 
 	if serviceSpec.GetContainer().Mounts != nil {

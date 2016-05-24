@@ -93,11 +93,8 @@ message ServiceSpec {
 	// RestartPolicy specifies what to do when a task fails or finishes.
 	RestartPolicy restart = 5;
 
-	// Placement specifies constraints and distribution preference.
-	Placement placement = 6;
-
 	// UpdateConfig controls the rate and policy of updates.
-	UpdateConfig update = 7;
+	UpdateConfig update = 6;
 
 	// NetworkAttachmentSpec describes which networks the target
 	// runtime is attached to.
@@ -108,11 +105,11 @@ message ServiceSpec {
 		}
 	}
 
-	repeated NetworkAttachment networks = 8;
+	repeated NetworkAttachment networks = 7;
 
 	// Service endpoint specifies the user provided configuration
 	// to properly discover and load balance a service.
-	EndpointSpec endpoint = 9;
+	EndpointSpec endpoint = 8;
 }
 
 // ReplicatedService set the reconcilation target to certain number of instances.
@@ -169,9 +166,12 @@ message ContainerSpec {
 	// Resource requirements for the container.
 	ResourceRequirements resources = 9;
 
+	// Placement specifies node selection constraints
+	Placement placement = 10;
+
 	// StopGracePeriod the grace period for stopping the container before
 	// forcefully killing the container.
-	uint64 stop_grace_period = 10 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
+	uint64 stop_grace_period = 11 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
 }
 
 // EndpointSpec defines the properties that can be configured to
