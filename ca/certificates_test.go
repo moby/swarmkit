@@ -67,7 +67,7 @@ func TestGetLocalRootCA(t *testing.T) {
 	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	rootCA2, err := ca.GetLocalRootCA(paths.RootCA)
+	rootCA2, err := ca.GetLocalRootCA(tempBaseDir)
 	assert.NoError(t, err)
 	assert.Equal(t, rootCA, rootCA2)
 }
