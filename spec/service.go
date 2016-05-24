@@ -142,8 +142,7 @@ func (s *ServiceConfig) Write(w io.Writer) error {
 func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 	spec := &api.ServiceSpec{
 		Annotations: api.Annotations{
-			Name:   s.Name,
-			Labels: make(map[string]string),
+			Name: s.Name,
 		},
 
 		RuntimeSpec: &api.ServiceSpec_Container{

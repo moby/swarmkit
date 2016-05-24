@@ -50,8 +50,8 @@ func printNetworkSummary(network *api.Network) {
 	fmt.Fprintln(w, "Spec:\t")
 	if len(spec.Annotations.Labels) > 0 {
 		fmt.Fprintln(w, "  Labels:\t")
-		for k, v := range spec.Annotations.Labels {
-			fmt.Fprintf(w, "    %s = %s\n", k, v)
+		for _, v := range spec.Annotations.Labels {
+			fmt.Fprintf(w, "    %s\n", v)
 		}
 	}
 	fmt.Fprintf(w, "  IPv6Enabled\t: %t\n", spec.Ipv6Enabled)
@@ -63,8 +63,8 @@ func printNetworkSummary(network *api.Network) {
 		common.FprintfIfNotEmpty(w, "  Name\t: %s\n", driver.Name)
 		if len(driver.Options) > 0 {
 			fmt.Fprintln(w, "  Options:\t")
-			for k, v := range driver.Options {
-				fmt.Fprintf(w, "    %s = %s\n", k, v)
+			for _, v := range driver.Options {
+				fmt.Fprintf(w, "    %s\n", v)
 			}
 		}
 	}
@@ -77,8 +77,8 @@ func printNetworkSummary(network *api.Network) {
 			common.FprintfIfNotEmpty(w, "    Name\t: %s\n", ipam.Driver.Name)
 			if len(ipam.Driver.Options) > 0 {
 				fmt.Fprintln(w, "    Options:\t")
-				for k, v := range ipam.Driver.Options {
-					fmt.Fprintf(w, "      %s = %s\n", k, v)
+				for _, v := range ipam.Driver.Options {
+					fmt.Fprintf(w, "      %s\n", v)
 				}
 			}
 		}

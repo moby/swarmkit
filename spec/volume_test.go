@@ -44,15 +44,15 @@ func TestVolumesToProto(t *testing.T) {
 		{
 			from: &VolumeConfig{Name: "foo", Driver: "bar"},
 			to: &api.VolumeSpec{
-				Annotations:         api.Annotations{Name: "foo", Labels: make(map[string]string)},
-				DriverConfiguration: &api.Driver{Name: "bar", Options: map[string]string{}},
+				Annotations:         api.Annotations{Name: "foo"},
+				DriverConfiguration: &api.Driver{Name: "bar"},
 			},
 		},
 		{
 			from: &VolumeConfig{Name: "foo", Driver: "bar", DriverOpts: []string{"o1=v1"}},
 			to: &api.VolumeSpec{
-				Annotations:         api.Annotations{Name: "foo", Labels: make(map[string]string)},
-				DriverConfiguration: &api.Driver{Name: "bar", Options: map[string]string{"o1": "v1"}},
+				Annotations:         api.Annotations{Name: "foo"},
+				DriverConfiguration: &api.Driver{Name: "bar", Options: []string{"o1=v1"}},
 			},
 		},
 	}
@@ -71,15 +71,15 @@ func TestVolumesFromProto(t *testing.T) {
 	set := []*conv{
 		{
 			from: &api.VolumeSpec{
-				Annotations:         api.Annotations{Name: "foo", Labels: make(map[string]string)},
+				Annotations:         api.Annotations{Name: "foo"},
 				DriverConfiguration: &api.Driver{Name: "bar"},
 			},
 			to: &VolumeConfig{Name: "foo", Driver: "bar"},
 		},
 		{
 			from: &api.VolumeSpec{
-				Annotations:         api.Annotations{Name: "foo", Labels: make(map[string]string)},
-				DriverConfiguration: &api.Driver{Name: "bar", Options: map[string]string{"o1": "v1"}},
+				Annotations:         api.Annotations{Name: "foo"},
+				DriverConfiguration: &api.Driver{Name: "bar", Options: []string{"o1=v1"}},
 			},
 			to: &VolumeConfig{Name: "foo", Driver: "bar", DriverOpts: []string{"o1=v1"}},
 		},

@@ -33,8 +33,10 @@ var (
 			services := map[string]*api.Service{}
 
 			for _, j := range r.Services {
-				if j.Spec.Annotations.Labels["namespace"] == s.Namespace {
-					services[j.Spec.Annotations.Name] = j
+				for _, label := range j.Spec.Annotations.Labels {
+					if label == "namespace="+s.Namespace {
+						services[j.Spec.Annotations.Name] = j
+					}
 				}
 			}
 
@@ -85,8 +87,10 @@ var (
 			volumes := map[string]*api.Volume{}
 
 			for _, j := range existingVols.Volumes {
-				if j.Spec.Annotations.Labels["namespace"] == s.Namespace {
-					volumes[j.Spec.Annotations.Name] = j
+				for _, label := range j.Spec.Annotations.Labels {
+					if label == "namespace="+s.Namespace {
+						volumes[j.Spec.Annotations.Name] = j
+					}
 				}
 			}
 

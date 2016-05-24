@@ -326,9 +326,7 @@ func TestStoreService(t *testing.T) {
 	err = s.Update(func(tx Tx) error {
 		// Regular update.
 		update := serviceSet[0].Copy()
-		update.Spec.Annotations.Labels = map[string]string{
-			"foo": "bar",
-		}
+		update.Spec.Annotations.Labels = []string{"foo=bar"}
 
 		assert.NotEqual(t, update, GetService(tx, update.ID))
 		assert.NoError(t, UpdateService(tx, update))
@@ -579,9 +577,7 @@ func TestStoreVolume(t *testing.T) {
 	err = s.Update(func(tx Tx) error {
 		// Regular update.
 		update := volumeSet[0].Copy()
-		update.Spec.Annotations.Labels = map[string]string{
-			"foo": "bar",
-		}
+		update.Spec.Annotations.Labels = []string{"foo=bar"}
 
 		assert.NotEqual(t, update, GetVolume(tx, update.ID))
 		assert.NoError(t, UpdateVolume(tx, update))

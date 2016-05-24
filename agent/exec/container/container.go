@@ -141,7 +141,7 @@ func (c *containerConfig) volumeCreateRequest(vol *api.Volume) *types.VolumeCrea
 	return &types.VolumeCreateRequest{
 		Name:       vol.Spec.Annotations.Name,
 		Driver:     vol.Spec.DriverConfiguration.Name,
-		DriverOpts: vol.Spec.DriverConfiguration.Options,
+		DriverOpts: optsAsMap(vol.Spec.DriverConfiguration.Options),
 	}
 }
 
@@ -256,7 +256,7 @@ func (c *containerConfig) networkCreateOptions(name string) (types.NetworkCreate
 		IPAM: network.IPAM{
 			Driver: na.Network.IPAM.Driver.Name,
 		},
-		Options:        na.Network.DriverState.Options,
+		Options:        optsAsMap(na.Network.DriverState.Options),
 		CheckDuplicate: true,
 	}
 
@@ -277,4 +277,21 @@ func (c containerConfig) eventFilter() filters.Args {
 	filter.Add("type", events.ContainerEventType)
 	filter.Add("name", c.name())
 	return filter
+}
+
+// optsAsMap converts key-value '='-separated to a map. Duplicates take the
+// latest value.
+func optsAsMap(opts []string) map[string]string {
+	m := make(map[string]string, len(opts))
+	for _, opt := range opts {
+		parts := strings.SplitN(opt, "=", 2)
+
+		if len(parts) > 1 {
+			m[parts[0]] = parts[1]
+		} else {
+			m[parts[0]] = ""
+		}
+	}
+
+	return m
 }

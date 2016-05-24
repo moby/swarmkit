@@ -2,7 +2,6 @@ package spec
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/docker/swarm-v2/api"
 )
@@ -27,10 +26,6 @@ func (vc *VolumeConfig) Validate() error {
 		return fmt.Errorf("In a volume specification, the name and driver are required")
 	}
 
-	if _, err := vc.parseDriverOptions(vc.DriverOpts); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -40,15 +35,13 @@ func (vc *VolumeConfig) ToProto() *api.VolumeSpec {
 		return nil
 	}
 
-	opts, _ := vc.parseDriverOptions(vc.DriverOpts)
 	apiVol := api.VolumeSpec{
 		Annotations: api.Annotations{
-			Name:   vc.Name,
-			Labels: make(map[string]string),
+			Name: vc.Name,
 		},
 		DriverConfiguration: &api.Driver{
 			Name:    vc.Driver,
-			Options: opts,
+			Options: vc.DriverOpts,
 		},
 	}
 
@@ -63,26 +56,5 @@ func (vc *VolumeConfig) FromProto(apiVol *api.VolumeSpec) {
 
 	vc.Name = apiVol.Annotations.Name
 	vc.Driver = apiVol.DriverConfiguration.Name
-	vc.DriverOpts = vc.convertDriverOptionsToArray(apiVol.DriverConfiguration.Options)
-}
-
-func (vc *VolumeConfig) parseDriverOptions(opts []string) (map[string]string, error) {
-	parsedOptions := map[string]string{}
-	for _, opt := range opts {
-		optPair := strings.Split(opt, "=")
-		if len(optPair) != 2 {
-			return nil, fmt.Errorf("Malformed opts: %s", opt)
-		}
-		parsedOptions[optPair[0]] = optPair[1]
-	}
-
-	return parsedOptions, nil
-}
-
-func (vc *VolumeConfig) convertDriverOptionsToArray(driverOpts map[string]string) []string {
-	var r []string
-	for k, v := range driverOpts {
-		r = append(r, fmt.Sprintf("%s=%s", k, v))
-	}
-	return r
+	vc.DriverOpts = apiVol.DriverConfiguration.Options
 }
