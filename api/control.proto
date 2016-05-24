@@ -12,6 +12,7 @@ service Control {
 	rpc GetNode(GetNodeRequest) returns (GetNodeResponse) {}
 	rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {}
 	rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse) {}
+	rpc RemoveManager(RemoveManagerRequest) returns (RemoveManagerResponse) {};
 
 	rpc GetTask(GetTaskRequest) returns (GetTaskResponse) {}
 	rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {}
@@ -32,9 +33,6 @@ service Control {
 	rpc ListVolumes(ListVolumesRequest) returns (ListVolumesResponse) {};
 	rpc CreateVolume(CreateVolumeRequest) returns (CreateVolumeResponse) {};
 	rpc RemoveVolume(RemoveVolumeRequest) returns (RemoveVolumeResponse) {};
-
-	rpc ListManagers(ListManagersRequest) returns (ListManagersResponse) {};
-	rpc RemoveManager(RemoveManagerRequest) returns (RemoveManagerResponse) {};
 
 	rpc GetRegisteredCertificate(GetRegisteredCertificateRequest) returns (GetRegisteredCertificateResponse) {}
 	rpc ListRegisteredCertificates(ListRegisteredCertificatesRequest) returns (ListRegisteredCertificatesResponse) {}
@@ -200,14 +198,6 @@ message ListVolumesRequest {}
 
 message ListVolumesResponse {
 	repeated Volume volumes = 1;
-}
-
-message ListManagersRequest {
-	ListOptions options = 1;
-}
-
-message ListManagersResponse {
-	repeated Manager managers = 1;
 }
 
 message RemoveManagerRequest {

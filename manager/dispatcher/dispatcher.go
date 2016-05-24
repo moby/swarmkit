@@ -69,6 +69,8 @@ func DefaultConfig() *Config {
 // Cluster is interface which represent raft cluster. mananger/state/raft.Node
 // is implenents it. This interface needed only for easier unit-testing.
 type Cluster interface {
+	AllocateID() (uint64, error)
+	AddMember(ctx context.Context, raftID uint64, addr string) error
 	GetMemberlist() map[uint64]*api.RaftMember
 	MemoryStore() *store.MemoryStore
 }
@@ -630,6 +632,80 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			return disconnectError
 		}
 	}
+}
+
+// PromoteManager promotes an agent to a manager.
+// FIXME(aaronl): Currently this method also allows an unregistered node
+// to become a manager straightaway. This needs to be removed as part of a
+// transition to creating managers through promotion only.
+func (d *Dispatcher) PromoteManager(ctx context.Context, r *api.PromoteManagerRequest) (*api.PromoteManagerResponse, error) {
+	// The node must already have a manager cert.
+	nodeID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := d.addTask(); err != nil {
+		return nil, err
+	}
+	defer d.doneTask()
+
+	raftID, err := d.cluster.AllocateID()
+	if err != nil {
+		return nil, err
+	}
+
+	manager := &api.Manager{
+		Raft: api.RaftMember{
+			RaftID: raftID,
+			Addr:   r.JoinRequest.Addr,
+			// Status is not filled in the version of this struct
+			// we store in raft. It gets filled in with live data
+			// in Nodes returned by the API.
+		},
+	}
+
+	// create or update node in store
+	var node *api.Node
+	err = d.store.Update(func(tx store.Tx) error {
+		node = store.GetNode(tx, nodeID)
+		if node != nil {
+			node.Manager = manager
+			return store.UpdateNode(tx, node)
+		}
+
+		node = &api.Node{
+			ID: nodeID,
+			Status: api.NodeStatus{
+				State: api.NodeStatus_DOWN,
+			},
+			Spec: api.NodeSpec{
+				Availability: api.NodeAvailabilityDrain,
+			},
+			Manager: manager,
+		}
+		return store.CreateNode(tx, node)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Add this node to the raft cluster.
+	if err = d.cluster.AddMember(ctx, raftID, r.JoinRequest.Addr); err != nil {
+		return nil, err
+	}
+
+	var nodes []*api.RaftMember
+	for _, node := range d.cluster.GetMemberlist() {
+		nodes = append(nodes, node)
+	}
+
+	return &api.PromoteManagerResponse{
+		JoinResponse: api.JoinResponse{
+			RaftID:  raftID,
+			Members: nodes,
+		},
+	}, nil
 }
 
 // NodeCount returns number of nodes which connected to this dispatcher.
