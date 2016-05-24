@@ -96,7 +96,7 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, propos
 	)
 
 	// Check if we already have a CA certificate on disk. We need a CA to have a valid SecurityConfig
-	rootCA, err = GetLocalRootCA(paths.RootCA)
+	rootCA, err = GetLocalRootCA(baseCertDir)
 	if err != nil {
 		log.Debugf("no valid local CA certificate found: %v", err)
 

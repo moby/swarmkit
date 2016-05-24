@@ -166,9 +166,11 @@ func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, role string) ([]
 
 // GetLocalRootCA validates if the contents of the file are a valid self-signed
 // CA certificate, and returns the PEM-encoded Certificate if so
-func GetLocalRootCA(paths CertPaths) (RootCA, error) {
+func GetLocalRootCA(baseDir string) (RootCA, error) {
+	paths := NewConfigPaths(baseDir)
+
 	// Check if we have a Certificate file
-	cert, err := ioutil.ReadFile(paths.Cert)
+	cert, err := ioutil.ReadFile(paths.RootCA.Cert)
 	if err != nil {
 		return RootCA{}, err
 	}
@@ -186,11 +188,11 @@ func GetLocalRootCA(paths CertPaths) (RootCA, error) {
 	}
 
 	// If there is a root CA keypair, we're going to try getting a crypto signer from it
-	signer, err := local.NewSignerFromFile(paths.Cert, paths.Key, DefaultPolicy())
+	signer, err := local.NewSignerFromFile(paths.RootCA.Cert, paths.RootCA.Key, DefaultPolicy())
 	if err != nil {
 		return RootCA{Cert: cert, Pool: pool}, nil
 	}
-	log.Debugf("successfully loaded the signer for the Root CA: %s", paths.Cert)
+	log.Debugf("successfully loaded the signer for the Root CA: %s", paths.RootCA.Cert)
 
 	return RootCA{Signer: signer, Cert: cert, Pool: pool}, nil
 }
