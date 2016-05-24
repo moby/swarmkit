@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "github.com/docker/swarm-v2/protobuf/plugin/authenticatedwrapper"
 	_ "github.com/docker/swarm-v2/protobuf/plugin/deepcopy"
 	_ "github.com/docker/swarm-v2/protobuf/plugin/raftproxy"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
