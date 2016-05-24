@@ -35,6 +35,10 @@ func (s *Spec) Read(r io.Reader) error {
 	return nil
 }
 
+func (s *Spec) Write(w io.Writer) error {
+	return toml.NewEncoder(w).Encode(s)
+}
+
 // Reset resets the service config to its defaults.
 func (s *Spec) Reset() {
 	*s = Spec{}
