@@ -74,7 +74,7 @@ message NodeDescription {
 message RaftMemberStatus {
 	bool leader = 1;
 
-	enum State {
+	enum Reachability {
 		// Unknown indicates that the manager state cannot be resolved
 		UNKNOWN = 0;
 
@@ -87,7 +87,7 @@ message RaftMemberStatus {
 		REACHABLE = 2;
 	}
 
-	State state = 2;
+	Reachability reachability = 2;
 	string message = 3;
 }
 
