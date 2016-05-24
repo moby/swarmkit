@@ -167,14 +167,16 @@ func TestControllerWaitExitError(t *testing.T) {
 	)
 
 	err := ctlr.Wait(ctx)
-	assert.Equal(t, &exec.ExitError{
-		Code: 1,
-		ContainerStatus: &api.ContainerStatus{
-			ContainerID: "cid",
-			PID:         1,
-			ExitCode:    1,
-		},
-	}, err)
+	checkExitError(t, 1, err)
+}
+
+func checkExitError(t *testing.T, expectedCode int, err error) {
+	ec, ok := err.(exec.ExitCoder)
+	if !ok {
+		t.Fatalf("expected an exit error, got: %v", err)
+	}
+
+	assert.Equal(t, expectedCode, ec.ExitCode())
 }
 
 func TestControllerWaitExitedClean(t *testing.T) {
@@ -217,14 +219,7 @@ func TestControllerWaitExitedError(t *testing.T) {
 	)
 
 	err := ctlr.Wait(ctx)
-	assert.Equal(t, &exec.ExitError{
-		Code: 1,
-		ContainerStatus: &api.ContainerStatus{
-			ContainerID: "cid",
-			PID:         1,
-			ExitCode:    1,
-		},
-	}, err)
+	checkExitError(t, 1, err)
 }
 
 func TestControllerShutdown(t *testing.T) {

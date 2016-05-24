@@ -2,6 +2,7 @@ package exec
 
 import (
 	"errors"
+	"fmt"
 	"runtime"
 	"testing"
 
@@ -13,6 +14,41 @@ import (
 )
 
 //go:generate mockgen -package exec -destination controller_test.mock.go -source controller.go Controller Reporter
+
+func TestResolve(t *testing.T) {
+	var (
+		ctx      = context.Background()
+		executor = &mockExecutor{}
+		task     = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
+	)
+
+	_, status, err := Resolve(ctx, task, executor)
+	assert.NoError(t, err)
+	assert.Equal(t, api.TaskStateAccepted, status.State)
+	assert.Equal(t, "accepted", status.Message)
+
+	task.Status = *status
+	// now, we get no status update.
+	_, status, err = Resolve(ctx, task, executor)
+	assert.NoError(t, err)
+	assert.Equal(t, task.Status, *status)
+
+	// now test an error causing rejection
+	executor.err = errors.New("some error")
+	task = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
+	_, status, err = Resolve(ctx, task, executor)
+	assert.Equal(t, executor.err, err)
+	assert.Equal(t, api.TaskStateRejected, status.State)
+
+	// task is now foobared, from a reporting perspective but we can now
+	// resolve the controller for some reason. Ensure the task state isn't
+	// touched.
+	task.Status = *status
+	executor.err = nil
+	_, status, err = Resolve(ctx, task, executor)
+	assert.NoError(t, err)
+	assert.Equal(t, task.Status, *status)
+}
 
 func TestAcceptPrepare(t *testing.T) {
 	var (
@@ -120,6 +156,7 @@ func TestReadyRunning(t *testing.T) {
 
 	gomock.InOrder(
 		ctlr.EXPECT().Start(gomock.Any()),
+		ctlr.EXPECT().Wait(gomock.Any()).Return(context.Canceled),
 		ctlr.EXPECT().Wait(gomock.Any()),
 	)
 
@@ -143,6 +180,14 @@ func TestReadyRunning(t *testing.T) {
 		State:   api.TaskStateRunning,
 		Message: "started",
 	})
+
+	task.Status = *status
+
+	// resume waiting
+	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateRunning,
+		Message: "started",
+	}, ErrTaskRetry)
 
 	task.Status = *status
 	// wait and cancel
@@ -173,9 +218,7 @@ func TestReadyRunningExitFailure(t *testing.T) {
 
 	gomock.InOrder(
 		ctlr.EXPECT().Start(gomock.Any()),
-		ctlr.EXPECT().Wait(gomock.Any()).Return(&ExitError{
-			Code: 1,
-		}),
+		ctlr.EXPECT().Wait(gomock.Any()).Return(newExitError(1)),
 	)
 
 	// Report starting
@@ -193,7 +236,6 @@ func TestReadyRunningExitFailure(t *testing.T) {
 	})
 
 	task.Status = *status
-	// wait and cancel
 	checkDo(t, ctx, task, dctlr, &api.TaskStatus{
 		State: api.TaskStateFailed,
 		RuntimeStatus: &api.TaskStatus_Container{
@@ -222,7 +264,7 @@ func TestAlreadyStarted(t *testing.T) {
 	gomock.InOrder(
 		ctlr.EXPECT().Start(gomock.Any()).Return(ErrTaskStarted),
 		ctlr.EXPECT().Wait(gomock.Any()).Return(context.Canceled),
-		ctlr.EXPECT().Wait(gomock.Any()).Return(&ExitError{Code: 1}),
+		ctlr.EXPECT().Wait(gomock.Any()).Return(newExitError(1)),
 	)
 
 	// Before we can move to running, we have to move to startin.
@@ -244,7 +286,7 @@ func TestAlreadyStarted(t *testing.T) {
 	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateRunning,
 		Message: "started",
-	})
+	}, ErrTaskRetry)
 
 	task.Status = *status
 
@@ -290,9 +332,23 @@ func (dc *decorateController) ContainerStatus(ctx context.Context) (*api.Contain
 	return dc.cstatus, nil
 }
 
-func checkDo(t *testing.T, ctx context.Context, task *api.Task, ctlr Controller, expected *api.TaskStatus) *api.TaskStatus {
+type exitCoder struct {
+	code int
+}
+
+func newExitError(code int) error { return &exitCoder{code} }
+
+func (ec *exitCoder) Error() string { return fmt.Sprintf("test error, exit code=%v", ec.code) }
+func (ec *exitCoder) ExitCode() int { return ec.code }
+
+func checkDo(t *testing.T, ctx context.Context, task *api.Task, ctlr Controller, expected *api.TaskStatus, expectedErr ...error) *api.TaskStatus {
 	status, err := Do(ctx, task, ctlr)
-	assert.NoError(t, err)
+	if len(expectedErr) > 0 {
+		assert.Equal(t, expectedErr[0], err)
+	} else {
+		assert.NoError(t, err)
+	}
+
 	assert.Equal(t, expected, status)
 
 	return status
@@ -328,170 +384,12 @@ func buildTestEnv(t *testing.T, task *api.Task) (context.Context, *MockControlle
 	}
 }
 
-func TestRun(t *testing.T) {
-	ctx, ctlr, reporter, finish := genRunTestEnv(t)
-	defer finish()
+type mockExecutor struct {
+	Executor
 
-	// Slightly contrived but it helps to keep the reporting straight.
-	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing", nil),
-		ctlr.EXPECT().Prepare(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady, "prepared", nil),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting, "starting", nil),
-		ctlr.EXPECT().Start(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "started", nil),
-		ctlr.EXPECT().Wait(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted, "completed", nil),
-	)
-
-	assert.NoError(t, Run(ctx, ctlr, reporter))
+	err error
 }
 
-// TestRunPreparedIdempotence ensures we don't report errors when a task has already
-// been prepared.
-func TestRunPreparedIdempotence(t *testing.T) {
-	ctx, ctlr, reporter, finish := genRunTestEnv(t)
-	defer finish()
-
-	// We return ErrTaskPrepared from Prepare and make sure we have a
-	// successful run. We skip reporting on "READY" and go right to starting
-	// here.
-	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing", nil),
-		ctlr.EXPECT().Prepare(gomock.Any()).Return(ErrTaskPrepared),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting, "already prepared", nil),
-		ctlr.EXPECT().Start(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "started", nil),
-		ctlr.EXPECT().Wait(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted, "completed", nil),
-	)
-
-	assert.NoError(t, Run(ctx, ctlr, reporter))
-}
-
-// TestRunStartedWhenPreparedIdempotence ensures we don't report errors when a task has
-// already been started.
-func TestRunStartedWhenPreparedIdempotence(t *testing.T) {
-	ctx, ctlr, reporter, finish := genRunTestEnv(t)
-	defer finish()
-
-	// First, we return ErrTaskStarted from Prepare and make sure we have a
-	// successful run. We should report that we are running jump right to wait.
-	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing", nil),
-		ctlr.EXPECT().Prepare(gomock.Any()).Return(ErrTaskStarted),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "already started", nil),
-		ctlr.EXPECT().Wait(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted, "completed", nil),
-	)
-
-	assert.NoError(t, Run(ctx, ctlr, reporter))
-}
-
-// TestRunStartedWhenStartedIdempotence
-func TestRunStartedWhenStartedIdempotence(t *testing.T) {
-	ctx, ctlr, reporter, finish := genRunTestEnv(t)
-	defer finish()
-
-	// Do the same thing, but return from Start.
-	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing", nil),
-		ctlr.EXPECT().Prepare(gomock.Any()).Return(ErrTaskStarted),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "already started", nil),
-		ctlr.EXPECT().Wait(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateCompleted, "completed", nil),
-	)
-
-	assert.NoError(t, Run(ctx, ctlr, reporter))
-}
-
-// TestRunReportingError ensures that we stop the controller on errors from the
-// reporter. Obviously, these reports aren't tied to IO or other unreliable
-// information, but this is for stopping out of date tasks transitions.
-func TestRunReportingError(t *testing.T) {
-	ctx, ctlr, reporter, finish := genRunTestEnv(t)
-	defer finish()
-
-	errShouldPropagate := errors.New("test error")
-
-	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing", nil),
-		ctlr.EXPECT().Prepare(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady, "prepared", nil),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting, "starting", nil),
-		ctlr.EXPECT().Start(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateRunning, "started", nil).
-			Return(errShouldPropagate),
-	)
-
-	if err := Run(ctx, ctlr, reporter); err != errShouldPropagate {
-		t.Fatalf("unexpected reporting error: %v", err)
-	}
-}
-
-// TestRunControllerError ensures that we stop the controller on errors from the
-// controller. For now, the behavior is pretty simplistic.
-func TestRunControllerError(t *testing.T) {
-	ctx, ctlr, reporter, finish := genRunTestEnv(t)
-	defer finish()
-
-	errShouldPropagate := errors.New("test error")
-
-	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing", nil),
-		ctlr.EXPECT().Prepare(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady, "prepared", nil),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateStarting, "starting", nil),
-		ctlr.EXPECT().Start(gomock.Any()).Return(errShouldPropagate),
-	)
-
-	if err := Run(ctx, ctlr, reporter); err != errShouldPropagate {
-		t.Fatalf("unexpected reporting error: %v", err)
-	}
-}
-
-func TestRunCancel(t *testing.T) {
-	ctx, ctlr, reporter, finish := genRunTestEnv(t)
-	defer finish()
-
-	ctx, cancel := context.WithCancel(ctx)
-
-	gomock.InOrder(
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStatePreparing, "preparing", nil),
-		ctlr.EXPECT().Prepare(gomock.Any()),
-		reporter.EXPECT().Report(gomock.Any(), api.TaskStateReady, "prepared", nil).Do(
-			func(ctx context.Context, state api.TaskState, msg string, cstatus *api.ContainerStatus) error {
-				// cancelling context ensures next report never happens.
-				cancel()
-				return nil
-			},
-		),
-		// This call should happen, but the context gets cancelled afterwards.
-	)
-
-	if err := Run(ctx, ctlr, reporter); err != context.Canceled {
-		t.Errorf("unexpected error on cancelled run: %v", err)
-	}
-}
-
-func genRunTestEnv(t *testing.T) (context.Context, *MockController, *MockReporter, func()) {
-	var (
-		ctx, cancel = context.WithCancel(context.Background())
-		mocks       = gomock.NewController(t)
-		ctlr        = NewMockController(mocks)
-		reporter    = NewMockReporter(mocks)
-	)
-
-	// Put test name into log messages. Awesome!
-	pc, _, _, ok := runtime.Caller(1)
-	if ok {
-		fn := runtime.FuncForPC(pc)
-		ctx = log.WithLogger(ctx, log.L.WithField("test", fn.Name()))
-	}
-
-	return ctx, ctlr, reporter, func() {
-		cancel()
-		mocks.Finish()
-
-	}
+func (m *mockExecutor) Controller(t *api.Task) (Controller, error) {
+	return nil, m.err
 }
