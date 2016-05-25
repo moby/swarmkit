@@ -376,22 +376,37 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	cs := raftpicker.NewConnSelector(m.raftNode, proxyOpts...)
 
-	authorizeManager := func(ctx context.Context) error {
-		_, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
+	authorize := func(ctx context.Context, roles []string) error {
+		_, err := ca.AuthorizeForwardedRole(ctx, roles, []string{ca.ManagerRole})
 		return err
 	}
 
 	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode)
-	authenticatedControlAPI := api.NewAuthenticatedWrapperControlServer(baseControlAPI, authorizeManager)
-	proxyControlAPI := api.NewRaftProxyControlServer(baseControlAPI, cs, m.raftNode)
-	proxyDispatcher := api.NewRaftProxyDispatcherServer(m.dispatcher, cs, m.raftNode, ca.WithMetadataForwardCN)
-	proxyCA := api.NewRaftProxyCAServer(m.caserver, cs, m.raftNode, ca.WithMetadataForwardCN)
 
-	api.RegisterRaftServer(m.server, m.raftNode)
-	api.RegisterControlServer(m.localserver, proxyControlAPI)
+	authenticatedControlAPI := api.NewAuthenticatedWrapperControlServer(baseControlAPI, authorize)
+	authenticatedDispatcherAPI := api.NewAuthenticatedWrapperDispatcherServer(m.dispatcher, authorize)
+	authenticatedCAAPI := api.NewAuthenticatedWrapperCAServer(m.caserver, authorize)
+	authenticatedRaftAPI := api.NewAuthenticatedWrapperRaftServer(m.raftNode, authorize)
+
+	proxyDispatcherAPI := api.NewRaftProxyDispatcherServer(authenticatedDispatcherAPI, cs, m.raftNode, ca.WithMetadataForwardTLSInfo)
+	proxyCAAPI := api.NewRaftProxyCAServer(authenticatedCAAPI, cs, m.raftNode, ca.WithMetadataForwardTLSInfo)
+
+	// localProxyControlAPI is a special kind of proxy. It is only wired up
+	// to receive requests from a trusted local socket, and these requests
+	// don't use TLS, therefore the requests it handles locally should
+	// bypass authorization. When it proxies, it sends them as requests from
+	// this manager rather than forwarded requests (it has no TLS
+	// information to put in the metadata map).
+	forwardAsOwnRequest := func(ctx context.Context) (context.Context, error) { return ctx, nil }
+	localProxyControlAPI := api.NewRaftProxyControlServer(baseControlAPI, cs, m.raftNode, forwardAsOwnRequest)
+
+	// Everything registered on m.server should be an authenticated
+	// wrapper, or a proxy wrapping an authenticated wrapper!
+	api.RegisterCAServer(m.server, proxyCAAPI)
+	api.RegisterRaftServer(m.server, authenticatedRaftAPI)
+	api.RegisterControlServer(m.localserver, localProxyControlAPI)
 	api.RegisterControlServer(m.server, authenticatedControlAPI)
-	api.RegisterCAServer(m.server, proxyCA)
-	api.RegisterDispatcherServer(m.server, proxyDispatcher)
+	api.RegisterDispatcherServer(m.server, proxyDispatcherAPI)
 
 	errServe := make(chan error, 2)
 	for proto, l := range m.listeners {

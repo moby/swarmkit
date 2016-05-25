@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"crypto/tls"
 	"io/ioutil"
 	"net"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"golang.org/x/net/context"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
@@ -88,6 +90,32 @@ func TestManager(t *testing.T) {
 	client := api.NewDispatcherClient(conn)
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
 	assert.Equal(t, grpc.ErrorDesc(err), dispatcher.ErrNodeNotRegistered.Error())
+
+	// Verify that requests to the various GRPC services running on TCP
+	// are rejected if they don't have certs.
+
+	opts = []grpc.DialOption{
+		grpc.WithTimeout(10 * time.Second),
+		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})),
+	}
+
+	noCertConn, err := grpc.Dial(ltcp.Addr().String(), opts...)
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, noCertConn.Close())
+	}()
+
+	client = api.NewDispatcherClient(noCertConn)
+	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
+	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role, expecting: [swarm-worker swarm-manager]")
+
+	controlClient := api.NewControlClient(noCertConn)
+	_, err = controlClient.ListNodes(context.Background(), &api.ListNodesRequest{})
+	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role, expecting: [swarm-manager]")
+
+	raftClient := api.NewRaftClient(noCertConn)
+	_, err = raftClient.Join(context.Background(), &api.JoinRequest{})
+	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role, expecting: [swarm-manager]")
 
 	m.Stop(ctx)
 

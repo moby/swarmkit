@@ -3,6 +3,8 @@ package authenticatedwrapper
 import (
 	"strings"
 
+	"github.com/docker/swarm-v2/api" // FIXME(aaronl): This is horrible. Any workaround?
+	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
 )
@@ -26,12 +28,12 @@ func (g *authenticatedWrapperGen) Name() string {
 func (g *authenticatedWrapperGen) genAuthenticatedStruct(s *descriptor.ServiceDescriptorProto) {
 	g.gen.P("type " + serviceTypeName(s) + " struct {")
 	g.gen.P("	local " + s.GetName() + "Server")
-	g.gen.P("	authorize func(context.Context) error")
+	g.gen.P("	authorize func(context.Context, []string) error")
 	g.gen.P("}")
 }
 
 func (g *authenticatedWrapperGen) genAuthenticatedConstructor(s *descriptor.ServiceDescriptorProto) {
-	g.gen.P("func NewAuthenticatedWrapper" + s.GetName() + "Server(local " + s.GetName() + "Server, authorize func(context.Context) error)" + s.GetName() + "Server {")
+	g.gen.P("func NewAuthenticatedWrapper" + s.GetName() + "Server(local " + s.GetName() + "Server, authorize func(context.Context, []string) error)" + s.GetName() + "Server {")
 	g.gen.P("return &" + serviceTypeName(s) + `{
 		local: local,
 		authorize: authorize,
@@ -57,10 +59,47 @@ func sigPrefix(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescrip
 	return "func (p *" + serviceTypeName(s) + ") " + m.GetName() + "("
 }
 
+func genRoles(auth *api.TLSAuthorization) string {
+	rolesSlice := "[]string{"
+	first := true
+	for _, role := range auth.Roles {
+		if !first {
+			rolesSlice += ","
+		}
+		first = false
+		rolesSlice += `"` + role + `"`
+	}
+
+	rolesSlice += "}"
+
+	return rolesSlice
+}
+
 func (g *authenticatedWrapperGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "r *" + getInputTypeName(m) + ", stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
+
+	authIntf, err := proto.GetExtension(m.Options, api.E_TlsAuthorization)
+	if err != nil {
+		g.gen.P(`
+	panic("no authorization information in protobuf")`)
+		g.gen.P(`}`)
+		return
+	}
+
+	auth := authIntf.(*api.TLSAuthorization)
+
+	if auth.Insecure {
+		if len(auth.Roles) != 0 {
+			panic("Roles and Insecure cannot both be specified")
+		}
+		g.gen.P(`
+	return p.local.` + m.GetName() + `(r, stream)`)
+		g.gen.P(`}`)
+		return
+	}
+
 	g.gen.P(`
-	if err := p.authorize(stream.Context()); err != nil {
+	if err := p.authorize(stream.Context(),` + genRoles(auth) + `); err != nil {
 		return err
 	}
 	return p.local.` + m.GetName() + `(r, stream)`)
@@ -69,8 +108,29 @@ func (g *authenticatedWrapperGen) genServerStreamingMethod(s *descriptor.Service
 
 func (g *authenticatedWrapperGen) genClientServerStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
+
+	authIntf, err := proto.GetExtension(m.Options, api.E_TlsAuthorization)
+	if err != nil {
+		g.gen.P(`
+	panic("no authorization information in protobuf")`)
+		g.gen.P(`}`)
+		return
+	}
+
+	auth := authIntf.(*api.TLSAuthorization)
+
+	if auth.Insecure {
+		if len(auth.Roles) != 0 {
+			panic("Roles and Insecure cannot both be specified")
+		}
+		g.gen.P(`
+	return p.local.` + m.GetName() + `(stream)`)
+		g.gen.P(`}`)
+		return
+	}
+
 	g.gen.P(`
-	if err := p.authorize(stream.Context()); err != nil {
+	if err := p.authorize(stream.Context(), ` + genRoles(auth) + `); err != nil {
 		return err
 	}
 	return p.local.` + m.GetName() + `(stream)`)
@@ -79,8 +139,29 @@ func (g *authenticatedWrapperGen) genClientServerStreamingMethod(s *descriptor.S
 
 func (g *authenticatedWrapperGen) genSimpleMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "ctx context.Context, r *" + getInputTypeName(m) + ") (*" + getOutputTypeName(m) + ", error) {")
+
+	authIntf, err := proto.GetExtension(m.Options, api.E_TlsAuthorization)
+	if err != nil {
+		g.gen.P(`
+	panic("no authorization information in protobuf")`)
+		g.gen.P(`}`)
+		return
+	}
+
+	auth := authIntf.(*api.TLSAuthorization)
+
+	if auth.Insecure {
+		if len(auth.Roles) != 0 {
+			panic("Roles and Insecure cannot both be specified")
+		}
+		g.gen.P(`
+	return p.local.` + m.GetName() + `(ctx, r)`)
+		g.gen.P(`}`)
+		return
+	}
+
 	g.gen.P(`
-	if err := p.authorize(ctx); err != nil {
+	if err := p.authorize(ctx, ` + genRoles(auth) + `); err != nil {
 		return nil, err
 	}
 	return p.local.` + m.GetName() + `(ctx, r)`)

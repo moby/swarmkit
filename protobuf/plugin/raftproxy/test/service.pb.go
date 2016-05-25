@@ -729,7 +729,7 @@ type raftProxyRouteGuideServer struct {
 	ctxMods      []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyRouteGuideServer(local RouteGuideServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster, ctxMods ...func(context.Context) (context.Context, error)) RouteGuideServer {
+func NewRaftProxyRouteGuideServer(local RouteGuideServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) RouteGuideServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
@@ -747,7 +747,7 @@ func NewRaftProxyRouteGuideServer(local RouteGuideServer, connSelector *raftpick
 		return metadata.NewContext(ctx, md), nil
 	}
 	mods := []func(context.Context) (context.Context, error){redirectChecker}
-	mods = append(mods, ctxMods...)
+	mods = append(mods, ctxMod)
 
 	return &raftProxyRouteGuideServer{
 		local:        local,

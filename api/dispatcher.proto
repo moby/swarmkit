@@ -4,6 +4,7 @@ package docker.cluster.api;
 
 import "types.proto";
 import "objects.proto";
+import "auth.proto";
 import "gogoproto/gogo.proto";
 
 // Dispatcher is the API provided by a manager group for agents to connect to. Agents
@@ -16,12 +17,16 @@ service Dispatcher { // maybe dispatch, al likes this
 	//
 	// Once started, the agent is controlled with a stream of SessionMessage.
 	// Agents should list on the stream at all times for instructions.
-	rpc Session(SessionRequest) returns (stream SessionMessage) {}
+	rpc Session(SessionRequest) returns (stream SessionMessage) {
+		option (tls_authorization) = { roles: "swarm-worker" roles: "swarm-manager" };
+	};
 
 	// Heartbeat is heartbeat method for nodes. It returns new TTL in response.
 	// Node should send new heartbeat earlier than now + TTL, otherwise it will
 	// be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
-	rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse) {};
+	rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse) {
+		option (tls_authorization) = { roles: "swarm-worker" roles: "swarm-manager" };
+	};
 
 	// UpdateTaskStatus updates status of task. Node should send such updates
 	// on every status change of its tasks.
@@ -32,12 +37,16 @@ service Dispatcher { // maybe dispatch, al likes this
 	//
 	// If a task is unknown the dispatcher, the status update should be
 	// accepted regardless.
-	rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse) {};
+	rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse) {
+		option (tls_authorization) = { roles: "swarm-worker" roles: "swarm-manager" };
+	};
 
 	// Tasks is a stream of tasks state for node. Each message contains full list
 	// of tasks which should be run on node, if task is not present in that list,
 	// it should be terminated.
-	rpc Tasks(TasksRequest) returns (stream TasksMessage) {};
+	rpc Tasks(TasksRequest) returns (stream TasksMessage) {
+		option (tls_authorization) = { roles: "swarm-worker" roles: "swarm-manager" };
+	};
 }
 
 // SessionRequest starts a session.

@@ -93,36 +93,40 @@ func AuthorizeRole(ctx context.Context, ou []string) (string, error) {
 	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: remote certificate not part of OU %v", ou)
 }
 
-// AuthorizeNode ensures that the remote peer is either an agent, a manager,
-// or a manager forwarded NodeID.
-func AuthorizeNode(ctx context.Context) (string, error) {
-	return authorizeForwardedRole(ctx, []string{AgentRole, ManagerRole}, []string{ManagerRole})
-}
-
-// AuthorizeAgent ensures that the remote peer is either an agent or a manager forwarding a NodeID
-func AuthorizeAgent(ctx context.Context) (string, error) {
-	return authorizeForwardedRole(ctx, []string{AgentRole}, []string{ManagerRole})
-}
-
-// authorizeForwardedRole checks for proper roles of caller. It can be manager who
-// forward agent request or agent itself. It returns agent id.
-func authorizeForwardedRole(ctx context.Context, forwardedRoles, forwarderRoles []string) (string, error) {
-	// If the call is being done by one of the forwarded roles, and there is something being forwarded, return
-	// the forwardedID
-	_, err := AuthorizeRole(ctx, forwarderRoles)
-	if err == nil {
-		if forwardedID, err := forwardCNFromContext(ctx); err == nil {
-			return forwardedID, nil
+// AuthorizeForwardedRole checks for proper roles of caller. The RPC may have
+// been proxied by a manager, in which case the manager is authenticated and
+// so is the certificate information that it forwarded. It returns the node ID
+// of the original client.
+func AuthorizeForwardedRole(ctx context.Context, authorizedRoles, forwarderRoles []string) (string, error) {
+	if isForwardedRequest(ctx) {
+		_, err := AuthorizeRole(ctx, forwarderRoles)
+		if err != nil {
+			return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unauthorized forwarder role, expecting: %v", forwarderRoles)
 		}
+
+		// This was a forwarded request. Authorize the forwarder, and
+		// check if the forwarded role matches one of the authorized
+		// roles.
+		forwardedID, forwardedOUs := forwardedTLSInfoFromContext(ctx)
+
+		if len(forwardedOUs) == 0 || forwardedID == "" {
+			return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: missing information in forwarded request")
+		}
+
+		if !intersectArrays(forwardedOUs, authorizedRoles) {
+			return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unauthorized forwarded role, expecting: %v", authorizedRoles)
+		}
+
+		return forwardedID, nil
 	}
 
 	// There wasn't any node being forwarded, check if this is a direct call by the expected role
-	nodeID, err := AuthorizeRole(ctx, forwardedRoles)
+	nodeID, err := AuthorizeRole(ctx, authorizedRoles)
 	if err == nil {
 		return nodeID, nil
 	}
 
-	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unauthorized peer role, expecting: %v", forwardedRoles)
+	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unauthorized peer role, expecting: %v", authorizedRoles)
 }
 
 // intersectArrays returns true when there is at least one element in common
@@ -136,4 +140,45 @@ func intersectArrays(orig, tgt []string) bool {
 		}
 	}
 	return false
+}
+
+// RemoteNodeInfo describes a node sending an RPC request.
+type RemoteNodeInfo struct {
+	// Roles is a list of roles contained in the node's certificate
+	// (or forwarded by a trusted node).
+	Roles []string
+
+	// NodeID is the node's ID, from the CN field in its certificate
+	// (or forwarded by a trusted node).
+	NodeID string
+
+	// ForwardedBy contains information for the node that forwarded this
+	// request. It is set to nil if the request was received directly.
+	ForwardedBy *RemoteNodeInfo
+}
+
+// RemoteNode returns the node ID and role from the client's TLS certificate.
+// If the RPC was forwarded, the original client's ID and role is returned, as
+// well as the forwarder's ID. This function does not do authorization checks -
+// it only looks up the node ID.
+func RemoteNode(ctx context.Context) (RemoteNodeInfo, error) {
+	certSubj, err := certSubjectFromContext(ctx)
+	if err != nil {
+		return RemoteNodeInfo{}, err
+	}
+
+	directInfo := RemoteNodeInfo{
+		Roles:  certSubj.OrganizationalUnit,
+		NodeID: certSubj.CommonName,
+	}
+
+	if isForwardedRequest(ctx) {
+		cn, ou := forwardedTLSInfoFromContext(ctx)
+		if len(ou) == 0 || cn == "" {
+			return RemoteNodeInfo{}, grpc.Errorf(codes.PermissionDenied, "Permission denied: missing information in forwarded request")
+		}
+		return RemoteNodeInfo{Roles: ou, NodeID: cn, ForwardedBy: &directInfo}, nil
+	}
+
+	return directInfo, nil
 }
