@@ -25,6 +25,8 @@ func printClusterSummary(cluster *api.Cluster) {
 	}
 	fmt.Fprintf(w, "Orchestration settings:\n")
 	fmt.Fprintf(w, "  Task history entries: %d\n", cluster.Spec.Orchestration.TaskHistoryRetentionLimit)
+	fmt.Fprintf(w, "Dispatcher settings:\n")
+	fmt.Fprintf(w, "  Dispatcher heartbeat period: %d\n", cluster.Spec.Dispatcher.HeartbeatPeriod)
 }
 
 var (

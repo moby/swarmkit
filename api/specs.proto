@@ -210,4 +210,7 @@ message ClusterSpec {
 
 	// Raft defines the cluster's raft settings.
 	RaftConfig raft = 4 [(gogoproto.nullable) = false];
+
+	// Dispatcher defines cluster-level dispatcher settings.
+	DispatcherConfig dispatcher = 5 [(gogoproto.nullable) = false];
 }
