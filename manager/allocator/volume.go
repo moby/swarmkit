@@ -70,12 +70,33 @@ func (a *Allocator) doVolumeInit(ctx context.Context) error {
 				continue
 			}
 
-			// No container or volume configured. Not interested.
-			if t.GetContainer() == nil {
-				continue
-			}
+			// No container or volume configured. Try
+			// voting to move it to allocated state.
+			if t.GetContainer() == nil || len(t.GetContainer().Spec.Mounts) == 0 {
+				if t.Status.State >= api.TaskStateAllocated {
+					continue
+				}
+				// Update the Task
+				if a.taskAllocateVote(volumeVoter, t.ID) {
+					if err := batch.Update(func(tx store.Tx) error {
+						storeT := store.GetTask(tx, t.ID)
+						if storeT == nil {
+							return fmt.Errorf("task %s not found while trying to update state", t.ID)
+						}
 
-			if len(t.GetContainer().Spec.Mounts) == 0 {
+						updateTaskStatus(storeT, api.TaskStateAllocated, "allocated")
+						vc.volAllocator.AllocateTask(t)
+
+						if err := store.UpdateTask(tx, storeT); err != nil {
+							return fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
+						}
+
+						return nil
+					}); err != nil {
+						log.G(ctx).WithError(err).Error("error updating task volume")
+					}
+				}
+
 				continue
 			}
 
@@ -287,15 +308,10 @@ func (a *Allocator) processTaskEvents(ctx context.Context, vc *volumeContext, ev
 		return
 	}
 
-	// No container or volume configured. Not interested.
-	if t.GetContainer() == nil {
-		return
-	}
-
 	// Task has no volume attached and it is created for a
 	// service which has no volume configuration. Move it to
 	// ALLOCATED state.
-	if len(t.GetContainer().Spec.Mounts) == 0 {
+	if t.GetContainer() == nil || len(t.GetContainer().Spec.Mounts) == 0 {
 		// If we are already in allocated state, there is
 		// absolutely nothing else to do.
 		if t.Status.State >= api.TaskStateAllocated {

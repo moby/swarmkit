@@ -49,20 +49,20 @@ func printServiceSummary(service *api.Service) {
 			printResources(w, res.Limits)
 		}
 	}
-	if len(ctr.Networks) > 0 {
+	if len(service.Spec.Networks) > 0 {
 		fmt.Fprintf(w, "  Networks:\t")
-		for _, n := range ctr.Networks {
+		for _, n := range service.Spec.Networks {
 			fmt.Fprintf(w, " %s", n.GetNetworkID())
 		}
 	}
 
-	if ctr.ExposedPorts != nil && len(ctr.ExposedPorts) > 0 {
+	if service.Endpoint != nil && len(service.Endpoint.ExposedPorts) > 0 {
 		fmt.Fprintln(w, "\nPorts:")
-		for _, port := range ctr.ExposedPorts {
+		for _, port := range service.Endpoint.ExposedPorts {
 			fmt.Fprintf(w, "    - Name\t= %s\n", port.Name)
 			fmt.Fprintf(w, "      Protocol\t= %s\n", port.Protocol)
 			fmt.Fprintf(w, "      Port\t= %d\n", port.Port)
-			fmt.Fprintf(w, "      NodePort\t= %d\n", port.HostPort)
+			fmt.Fprintf(w, "      NodePort\t= %d\n", port.NodePort)
 		}
 	}
 
