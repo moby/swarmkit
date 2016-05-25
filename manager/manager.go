@@ -50,6 +50,14 @@ type Config struct {
 	// ForceNewCluster defines if we have to force a new cluster
 	// because we are recovering from a backup data directory.
 	ForceNewCluster bool
+
+	// ElectionTick defines the amount of ticks needed without
+	// leader to trigger a new election
+	ElectionTick int
+
+	// HeartbeatTick defines the amount of ticks between each
+	// heartbeat sent to other members for health-check purposes
+	HeartbeatTick int
 }
 
 // Manager is the cluster manager for Swarm.
@@ -168,6 +176,13 @@ func New(config *Config) (*Manager, error) {
 	}
 
 	raftCfg := raft.DefaultNodeConfig()
+
+	if config.ElectionTick > 0 {
+		raftCfg.ElectionTick = config.ElectionTick
+	}
+	if config.HeartbeatTick > 0 {
+		raftCfg.HeartbeatTick = config.HeartbeatTick
+	}
 
 	newNodeOpts := raft.NewNodeOptions{
 		Addr:            tcpAddr,
