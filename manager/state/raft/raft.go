@@ -432,16 +432,21 @@ func (n *Node) Leader() uint64 {
 // beginning the log replication process. This method
 // is called from an aspiring member to an existing member
 func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinResponse, error) {
-	agentID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
+	nodeInfo, err := ca.RemoteNode(ctx)
 	if err != nil {
 		return nil, err
 	}
-	log := log.G(ctx).WithFields(logrus.Fields{
-		"agent.id": agentID,
-		"method":   "(*Node).Join",
-	})
 
-	raftID, err := identity.ParseNodeID(agentID)
+	fields := logrus.Fields{
+		"node.id": nodeInfo.NodeID,
+		"method":  "(*Node).Join",
+	}
+	if nodeInfo.ForwardedBy != nil {
+		fields["forwarder.id"] = nodeInfo.ForwardedBy.NodeID
+	}
+	log := log.G(ctx).WithFields(fields)
+
+	raftID, err := identity.ParseNodeID(nodeInfo.NodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -504,11 +509,19 @@ func (n *Node) addMember(ctx context.Context, addr string, raftID uint64) error 
 // from a member who is willing to leave its raft
 // membership to an active member of the raft
 func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResponse, error) {
-	agentID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
+	nodeInfo, err := ca.RemoteNode(ctx)
 	if err != nil {
 		return nil, err
 	}
-	logrus.Debugf("(*Leave). message from node %s", agentID)
+
+	fields := logrus.Fields{
+		"node.id": nodeInfo.NodeID,
+		"method":  "(*Node).Leave",
+	}
+	if nodeInfo.ForwardedBy != nil {
+		fields["forwarder.id"] = nodeInfo.ForwardedBy.NodeID
+	}
+	log.G(ctx).WithFields(fields).Debugf("")
 
 	// can't stop the raft node while an async RPC is in progress
 	n.stopMu.RLock()
@@ -549,11 +562,6 @@ func (n *Node) RemoveMember(ctx context.Context, id uint64) error {
 // raft state machine with the provided message on the
 // receiving node
 func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessageRequest) (*api.ProcessRaftMessageResponse, error) {
-	_, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
-	if err != nil {
-		return nil, err
-	}
-
 	// Don't process the message if this comes from
 	// a node in the remove set
 	if n.cluster.IsIDRemoved(msg.Message.From) {
@@ -567,8 +575,7 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 		return nil, ErrStopped
 	}
 
-	err = n.Step(n.Ctx, *msg.Message)
-	if err != nil {
+	if err := n.Step(n.Ctx, *msg.Message); err != nil {
 		return nil, err
 	}
 
@@ -577,11 +584,19 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 
 // ResolveAddress returns the address reaching for a given node ID.
 func (n *Node) ResolveAddress(ctx context.Context, msg *api.ResolveAddressRequest) (*api.ResolveAddressResponse, error) {
-	agentID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
+	nodeInfo, err := ca.RemoteNode(ctx)
 	if err != nil {
 		return nil, err
 	}
-	logrus.Debugf("(*ResolveAddress). message from node %s", agentID)
+
+	fields := logrus.Fields{
+		"node.id": nodeInfo.NodeID,
+		"method":  "(*Node).ResolveAddress",
+	}
+	if nodeInfo.ForwardedBy != nil {
+		fields["forwarder.id"] = nodeInfo.ForwardedBy.NodeID
+	}
+	log.G(ctx).WithFields(fields).Debugf("")
 
 	member := n.cluster.GetMember(msg.RaftID)
 	if member == nil {

@@ -4,14 +4,21 @@ package docker.cluster.api;
 
 import "types.proto";
 import "objects.proto";
+import "auth.proto";
 import "gogoproto/gogo.proto";
 
 // CA defines the RPC methods for requesting certificates from a CA.
 
 service CA {
-	rpc IssueCertificate(IssueCertificateRequest) returns (IssueCertificateResponse) {}
-	rpc CertificateStatus(CertificateStatusRequest) returns (CertificateStatusResponse) {}
-	rpc GetRootCACertificate(GetRootCACertificateRequest) returns (GetRootCACertificateResponse) {}
+	rpc IssueCertificate(IssueCertificateRequest) returns (IssueCertificateResponse) {
+		option (tls_authorization) = { insecure: true };
+	}
+	rpc CertificateStatus(CertificateStatusRequest) returns (CertificateStatusResponse) {
+		option (tls_authorization) = { insecure: true };
+	}
+	rpc GetRootCACertificate(GetRootCACertificateRequest) returns (GetRootCACertificateResponse) {
+		option (tls_authorization) = { insecure: true };
+	}
 }
 
 message CertificateStatusRequest {
