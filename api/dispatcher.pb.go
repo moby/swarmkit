@@ -187,6 +187,50 @@ func init() {
 	proto.RegisterType((*TasksMessage)(nil), "docker.cluster.api.TasksMessage")
 }
 
+type authenticatedWrapperDispatcherServer struct {
+	local     DispatcherServer
+	authorize func(context.Context) error
+}
+
+func NewAuthenticatedWrapperDispatcherServer(local DispatcherServer, authorize func(context.Context) error) DispatcherServer {
+	return &authenticatedWrapperDispatcherServer{
+		local:     local,
+		authorize: authorize,
+	}
+}
+
+func (p *authenticatedWrapperDispatcherServer) Session(r *SessionRequest, stream Dispatcher_SessionServer) error {
+
+	if err := p.authorize(stream.Context()); err != nil {
+		return err
+	}
+	return p.local.Session(r, stream)
+}
+
+func (p *authenticatedWrapperDispatcherServer) Heartbeat(ctx context.Context, r *HeartbeatRequest) (*HeartbeatResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.Heartbeat(ctx, r)
+}
+
+func (p *authenticatedWrapperDispatcherServer) UpdateTaskStatus(ctx context.Context, r *UpdateTaskStatusRequest) (*UpdateTaskStatusResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.UpdateTaskStatus(ctx, r)
+}
+
+func (p *authenticatedWrapperDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_TasksServer) error {
+
+	if err := p.authorize(stream.Context()); err != nil {
+		return err
+	}
+	return p.local.Tasks(r, stream)
+}
+
 func (m *SessionRequest) Copy() *SessionRequest {
 	if m == nil {
 		return nil

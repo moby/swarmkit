@@ -557,6 +557,234 @@ func init() {
 	proto.RegisterType((*UpdateClusterResponse)(nil), "docker.cluster.api.UpdateClusterResponse")
 }
 
+type authenticatedWrapperControlServer struct {
+	local     ControlServer
+	authorize func(context.Context) error
+}
+
+func NewAuthenticatedWrapperControlServer(local ControlServer, authorize func(context.Context) error) ControlServer {
+	return &authenticatedWrapperControlServer{
+		local:     local,
+		authorize: authorize,
+	}
+}
+
+func (p *authenticatedWrapperControlServer) GetNode(ctx context.Context, r *GetNodeRequest) (*GetNodeResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.GetNode(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) ListNodes(ctx context.Context, r *ListNodesRequest) (*ListNodesResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.ListNodes(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) UpdateNode(ctx context.Context, r *UpdateNodeRequest) (*UpdateNodeResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.UpdateNode(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) GetTask(ctx context.Context, r *GetTaskRequest) (*GetTaskResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.GetTask(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) ListTasks(ctx context.Context, r *ListTasksRequest) (*ListTasksResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.ListTasks(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) RemoveTask(ctx context.Context, r *RemoveTaskRequest) (*RemoveTaskResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.RemoveTask(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) GetService(ctx context.Context, r *GetServiceRequest) (*GetServiceResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.GetService(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) ListServices(ctx context.Context, r *ListServicesRequest) (*ListServicesResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.ListServices(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) CreateService(ctx context.Context, r *CreateServiceRequest) (*CreateServiceResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.CreateService(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) UpdateService(ctx context.Context, r *UpdateServiceRequest) (*UpdateServiceResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.UpdateService(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) RemoveService(ctx context.Context, r *RemoveServiceRequest) (*RemoveServiceResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.RemoveService(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) GetNetwork(ctx context.Context, r *GetNetworkRequest) (*GetNetworkResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.GetNetwork(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) ListNetworks(ctx context.Context, r *ListNetworksRequest) (*ListNetworksResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.ListNetworks(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) CreateNetwork(ctx context.Context, r *CreateNetworkRequest) (*CreateNetworkResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.CreateNetwork(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) RemoveNetwork(ctx context.Context, r *RemoveNetworkRequest) (*RemoveNetworkResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.RemoveNetwork(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) GetVolume(ctx context.Context, r *GetVolumeRequest) (*GetVolumeResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.GetVolume(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) ListVolumes(ctx context.Context, r *ListVolumesRequest) (*ListVolumesResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.ListVolumes(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) CreateVolume(ctx context.Context, r *CreateVolumeRequest) (*CreateVolumeResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.CreateVolume(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) RemoveVolume(ctx context.Context, r *RemoveVolumeRequest) (*RemoveVolumeResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.RemoveVolume(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) ListManagers(ctx context.Context, r *ListManagersRequest) (*ListManagersResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.ListManagers(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) RemoveManager(ctx context.Context, r *RemoveManagerRequest) (*RemoveManagerResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.RemoveManager(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) GetRegisteredCertificate(ctx context.Context, r *GetRegisteredCertificateRequest) (*GetRegisteredCertificateResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.GetRegisteredCertificate(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) ListRegisteredCertificates(ctx context.Context, r *ListRegisteredCertificatesRequest) (*ListRegisteredCertificatesResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.ListRegisteredCertificates(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) UpdateRegisteredCertificate(ctx context.Context, r *UpdateRegisteredCertificateRequest) (*UpdateRegisteredCertificateResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.UpdateRegisteredCertificate(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) GetCluster(ctx context.Context, r *GetClusterRequest) (*GetClusterResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.GetCluster(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) ListClusters(ctx context.Context, r *ListClustersRequest) (*ListClustersResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.ListClusters(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) UpdateCluster(ctx context.Context, r *UpdateClusterRequest) (*UpdateClusterResponse, error) {
+
+	if err := p.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return p.local.UpdateCluster(ctx, r)
+}
+
 func (m *ListOptions) Copy() *ListOptions {
 	if m == nil {
 		return nil

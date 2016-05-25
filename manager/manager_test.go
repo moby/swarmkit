@@ -42,6 +42,11 @@ func TestManager(t *testing.T) {
 	assert.NoError(t, temp.Close())
 	assert.NoError(t, os.Remove(temp.Name()))
 
+	lunix, err := net.Listen("unix", temp.Name())
+	assert.NoError(t, err)
+	ltcp, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+
 	stateDir, err := ioutil.TempDir("", "test-raft")
 	assert.NoError(t, err)
 	defer os.RemoveAll(stateDir)
@@ -55,8 +60,7 @@ func TestManager(t *testing.T) {
 	assert.NoError(t, err)
 
 	m, err := New(&Config{
-		ListenProto:    "unix",
-		ListenAddr:     temp.Name(),
+		ProtoListener:  map[string]net.Listener{"unix": lunix, "tcp": ltcp},
 		StateDir:       stateDir,
 		SecurityConfig: managerSecurityConfig,
 	})
@@ -69,13 +73,12 @@ func TestManager(t *testing.T) {
 		done <- m.Run(ctx)
 	}()
 
-	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
-	opts = append(opts, grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds))
-	opts = append(opts, grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-		return net.DialTimeout("unix", addr, timeout)
-	}))
+	opts := []grpc.DialOption{
+		grpc.WithTimeout(10 * time.Second),
+		grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds),
+	}
 
-	conn, err := grpc.Dial(temp.Name(), opts...)
+	conn, err := grpc.Dial(ltcp.Addr().String(), opts...)
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, conn.Close())
@@ -86,7 +89,7 @@ func TestManager(t *testing.T) {
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
 	assert.Equal(t, grpc.ErrorDesc(err), dispatcher.ErrNodeNotRegistered.Error())
 
-	m.Stop()
+	m.Stop(ctx)
 
 	// After stopping we should receive an error from ListenAndServe.
 	assert.Error(t, <-done)
