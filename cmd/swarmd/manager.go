@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
 	"path/filepath"
 
 	"github.com/docker/swarm-v2/ca"
@@ -17,7 +19,7 @@ var managerCmd = &cobra.Command{
 	Short: "Run the swarm manager",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		addr, err := cmd.Flags().GetString("listen-addr")
+		addr, err := cmd.Flags().GetString("listen-remote-api")
 		if err != nil {
 			return err
 		}
@@ -25,8 +27,13 @@ var managerCmd = &cobra.Command{
 		if err == nil {
 			ip := net.ParseIP(addrHost)
 			if ip != nil && (ip.IsUnspecified() || ip.IsLoopback()) {
-				fmt.Println("Warning: Specifying a valid address with --listen-addr may be necessary for other managers to reach this one.")
+				fmt.Println("Warning: Specifying a valid address with --listen-remote-api may be necessary for other managers to reach this one.")
 			}
+		}
+
+		unix, err := cmd.Flags().GetString("listen-control-api")
+		if err != nil {
+			return err
 		}
 
 		managerAddr, err := cmd.Flags().GetString("join-cluster")
@@ -78,22 +85,33 @@ var managerCmd = &cobra.Command{
 		}
 
 		m, err := manager.New(&manager.Config{
-			ListenProto:     "tcp",
-			SecurityConfig:  securityConfig,
-			ListenAddr:      addr,
 			ForceNewCluster: forceNewCluster,
-			JoinRaft:        managerAddr,
-			StateDir:        stateDir,
+			ProtoAddr: map[string]string{
+				"tcp":  addr,
+				"unix": unix,
+			},
+			SecurityConfig: securityConfig,
+			JoinRaft:       managerAddr,
+			StateDir:       stateDir,
 		})
 		if err != nil {
 			return err
 		}
+
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			<-c
+			m.Stop(ctx)
+		}()
+
 		return m.Run(ctx)
 	},
 }
 
 func init() {
-	managerCmd.Flags().String("listen-addr", "0.0.0.0:4242", "Listen address")
+	managerCmd.Flags().String("listen-remote-api", "0.0.0.0:4242", "Listen address for remote API")
+	managerCmd.Flags().String("listen-control-api", "/var/run/docker/cluster/docker-swarmd.sock", "Listen socket for control API")
 	managerCmd.Flags().String("join-cluster", "", "Join cluster with a node at this address")
 	managerCmd.Flags().Bool("force-new-cluster", false, "Force the creation of a new cluster from data directory")
 }

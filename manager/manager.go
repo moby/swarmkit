@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -34,11 +35,10 @@ const (
 type Config struct {
 	SecurityConfig *ca.SecurityConfig
 
-	ListenProto string
-	ListenAddr  string
-	// Listener will be used for grpc serving if it's not nil, ListenProto and
-	// ListenAddr fields will be used otherwise.
-	Listener net.Listener
+	ProtoAddr map[string]string
+	// ProtoListener will be used for grpc serving if it's not nil,
+	// ProtoAddr fields will be used to create listeners otherwise.
+	ProtoListener map[string]net.Listener
 
 	// JoinRaft is an optional address of a node in an existing raft
 	// cluster to join.
@@ -56,8 +56,8 @@ type Config struct {
 // This is the high-level object holding and initializing all the manager
 // subsystems.
 type Manager struct {
-	config   *Config
-	listener net.Listener
+	config    *Config
+	listeners map[string]net.Listener
 
 	caserver               *ca.Server
 	dispatcher             *dispatcher.Dispatcher
@@ -67,6 +67,7 @@ type Manager struct {
 	scheduler              *scheduler.Scheduler
 	allocator              *allocator.Allocator
 	server                 *grpc.Server
+	localserver            *grpc.Server
 	raftNode               *raft.Node
 
 	mu sync.Mutex
@@ -79,13 +80,17 @@ type Manager struct {
 func New(config *Config) (*Manager, error) {
 	dispatcherConfig := dispatcher.DefaultConfig()
 
-	if config.Listener != nil {
-		config.ListenAddr = config.Listener.Addr().String()
+	if config.ProtoAddr == nil {
+		config.ProtoAddr = make(map[string]string)
 	}
 
-	listenAddr := config.ListenAddr
+	if config.ProtoListener != nil && config.ProtoListener["tcp"] != nil {
+		config.ProtoAddr["tcp"] = config.ProtoListener["tcp"].Addr().String()
+	}
 
-	listenHost, listenPort, err := net.SplitHostPort(config.ListenAddr)
+	tcpAddr := config.ProtoAddr["tcp"]
+
+	listenHost, listenPort, err := net.SplitHostPort(tcpAddr)
 	if err == nil {
 		ip := net.ParseIP(listenHost)
 		if ip != nil && ip.IsUnspecified() {
@@ -105,7 +110,7 @@ func New(config *Config) (*Manager, error) {
 				return nil, fmt.Errorf("could not split local IP address: %v", err)
 			}
 
-			listenAddr = net.JoinHostPort(listenHost, listenPort)
+			tcpAddr = net.JoinHostPort(listenHost, listenPort)
 		}
 	}
 
@@ -113,7 +118,12 @@ func New(config *Config) (*Manager, error) {
 	// for now, may want to make this separate. This can be tricky to get right
 	// so we need to make it easy to override. This needs to be the address
 	// through which agent nodes access the manager.
-	dispatcherConfig.Addr = listenAddr
+	dispatcherConfig.Addr = tcpAddr
+
+	err = os.MkdirAll(filepath.Dir(config.ProtoAddr["unix"]), 0700)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create socket directory: %v", err)
+	}
 
 	err = os.MkdirAll(config.StateDir, 0700)
 	if err != nil {
@@ -126,19 +136,41 @@ func New(config *Config) (*Manager, error) {
 		return nil, fmt.Errorf("failed to create raft state directory: %v", err)
 	}
 
-	lis := config.Listener
-	if lis == nil {
-		l, err := net.Listen(config.ListenProto, config.ListenAddr)
-		if err != nil {
-			return nil, err
+	var listeners map[string]net.Listener
+	if len(config.ProtoListener) > 0 {
+		listeners = config.ProtoListener
+	} else {
+		listeners = make(map[string]net.Listener)
+
+		for proto, addr := range config.ProtoAddr {
+			l, err := net.Listen(proto, addr)
+
+			// A unix socket may fail to bind if the file already
+			// exists. Try replacing the file.
+			unwrappedErr := err
+			if op, ok := unwrappedErr.(*net.OpError); ok {
+				unwrappedErr = op.Err
+			}
+			if sys, ok := unwrappedErr.(*os.SyscallError); ok {
+				unwrappedErr = sys.Err
+			}
+			if proto == "unix" && unwrappedErr == syscall.EADDRINUSE {
+				os.Remove(addr)
+				l, err = net.Listen(proto, addr)
+				if err != nil {
+					return nil, err
+				}
+			} else if err != nil {
+				return nil, err
+			}
+			listeners[proto] = l
 		}
-		lis = l
 	}
 
 	raftCfg := raft.DefaultNodeConfig()
 
 	newNodeOpts := raft.NewNodeOptions{
-		Addr:            listenAddr,
+		Addr:            tcpAddr,
 		JoinAddr:        config.JoinRaft,
 		Config:          raftCfg,
 		StateDir:        raftStateDir,
@@ -147,7 +179,9 @@ func New(config *Config) (*Manager, error) {
 	}
 	raftNode, err := raft.NewNode(context.TODO(), newNodeOpts)
 	if err != nil {
-		lis.Close()
+		for _, lis := range listeners {
+			lis.Close()
+		}
 		return nil, fmt.Errorf("can't create raft node: %v", err)
 	}
 
@@ -155,13 +189,14 @@ func New(config *Config) (*Manager, error) {
 		grpc.Creds(config.SecurityConfig.ServerTLSCreds)}
 
 	m := &Manager{
-		config:     config,
-		listener:   lis,
-		caserver:   ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig),
-		dispatcher: dispatcher.New(raftNode, dispatcherConfig),
-		server:     grpc.NewServer(opts...),
-		raftNode:   raftNode,
-		started:    make(chan struct{}),
+		config:      config,
+		listeners:   listeners,
+		caserver:    ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig),
+		dispatcher:  dispatcher.New(raftNode, dispatcherConfig),
+		server:      grpc.NewServer(opts...),
+		localserver: grpc.NewServer(opts...),
+		raftNode:    raftNode,
+		started:     make(chan struct{}),
 	}
 
 	return m, nil
@@ -288,17 +323,11 @@ func (m *Manager) Run(ctx context.Context) error {
 		}
 	}()
 
-	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(
-		logrus.Fields{
-			"proto": m.listener.Addr().Network(),
-			"addr":  m.listener.Addr().String()}))
-	log.G(ctx).Info("listening")
-
 	go func() {
 		err := m.raftNode.Run(ctx)
 		if err != nil {
 			log.G(ctx).Error(err)
-			m.Stop()
+			m.Stop(ctx)
 		}
 	}()
 
@@ -309,19 +338,38 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	cs := raftpicker.NewConnSelector(m.raftNode, proxyOpts...)
 
-	localAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode)
-	proxyAPI := api.NewRaftProxyControlServer(localAPI, cs, m.raftNode)
+	authorizeManager := func(ctx context.Context) error {
+		_, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
+		return err
+	}
+
+	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode)
+	authenticatedControlAPI := api.NewAuthenticatedWrapperControlServer(baseControlAPI, authorizeManager)
+	proxyControlAPI := api.NewRaftProxyControlServer(baseControlAPI, cs, m.raftNode)
 	proxyDispatcher := api.NewRaftProxyDispatcherServer(m.dispatcher, cs, m.raftNode, ca.WithMetadataForwardCN)
 
 	api.RegisterCAServer(m.server, m.caserver)
 	api.RegisterRaftServer(m.server, m.raftNode)
-	api.RegisterControlServer(m.server, proxyAPI)
+	api.RegisterControlServer(m.localserver, proxyControlAPI)
+	api.RegisterControlServer(m.server, authenticatedControlAPI)
 	api.RegisterDispatcherServer(m.server, proxyDispatcher)
 
-	errServe := make(chan error, 1)
-	go func() {
-		errServe <- m.server.Serve(m.listener)
-	}()
+	errServe := make(chan error, 2)
+	for proto, l := range m.listeners {
+		go func(proto string, lis net.Listener) {
+			ctx := log.WithLogger(ctx, log.G(ctx).WithFields(
+				logrus.Fields{
+					"proto": lis.Addr().Network(),
+					"addr":  lis.Addr().String()}))
+			if proto == "unix" {
+				log.G(ctx).Info("Listening for local connections")
+				errServe <- m.localserver.Serve(lis)
+			} else {
+				log.G(ctx).Info("Listening for connections")
+				errServe <- m.server.Serve(lis)
+			}
+		}(proto, l)
+	}
 
 	if err := raft.WaitForLeader(ctx, m.raftNode); err != nil {
 		m.server.Stop()
@@ -333,7 +381,7 @@ func (m *Manager) Run(ctx context.Context) error {
 
 // Stop stops the manager. It immediately closes all open connections and
 // active RPCs as well as stopping the scheduler.
-func (m *Manager) Stop() {
+func (m *Manager) Stop(ctx context.Context) {
 	// Don't shut things down while the manager is still starting up.
 	<-m.started
 
@@ -342,6 +390,8 @@ func (m *Manager) Stop() {
 	if m.stopped {
 		return
 	}
+
+	log.G(ctx).Info("Stopping manager")
 
 	m.dispatcher.Stop()
 	m.caserver.Stop()
@@ -361,7 +411,12 @@ func (m *Manager) Stop() {
 	if m.scheduler != nil {
 		m.scheduler.Stop()
 	}
+
+	for _, l := range m.listeners {
+		l.Close()
+	}
 	m.raftNode.Shutdown()
 	m.server.Stop()
+	m.localserver.Stop()
 	m.stopped = true
 }

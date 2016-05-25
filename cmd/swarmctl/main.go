@@ -39,8 +39,16 @@ var (
 	}
 )
 
+func defaultSocket() string {
+	swarmSocket := os.Getenv("SWARM_SOCKET")
+	if swarmSocket != "" {
+		return swarmSocket
+	}
+	return "/var/run/docker/cluster/docker-swarmd.sock"
+}
+
 func init() {
-	mainCmd.PersistentFlags().StringP("host", "H", "127.0.0.1:4242", "Specify the address of the manager to connect to")
+	mainCmd.PersistentFlags().StringP("socket", "s", defaultSocket(), "Socket to connect to the Swarm manager")
 	mainCmd.PersistentFlags().BoolP("no-resolve", "n", false, "Do not try to map IDs to Names when displaying them")
 
 	mainCmd.AddCommand(root.Cmds...)

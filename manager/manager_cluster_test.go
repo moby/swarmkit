@@ -30,7 +30,7 @@ type testManager struct {
 }
 
 func (tm *testManager) Close() {
-	tm.m.Stop()
+	tm.m.Stop(context.Background())
 }
 
 type managersCluster struct {
@@ -50,7 +50,7 @@ func (mc *managersCluster) Close() {
 	mc.tc.Stop()
 }
 
-func (mc *managersCluster) AddAgents(count int) error {
+func (mc *managersCluster) addAgents(count int) error {
 	var addrs []string
 	for _, m := range mc.ms {
 		addrs = append(addrs, m.addr)
@@ -79,13 +79,13 @@ func (mc *managersCluster) AddAgents(count int) error {
 	return nil
 }
 
-func (mc *managersCluster) AddManagers(count int) error {
+func (mc *managersCluster) addManagers(t *testing.T, count int) error {
 	if len(mc.ms) == 0 {
 		msConfig, err := mc.tc.NewNodeConfig(ca.ManagerRole)
 		if err != nil {
 			return err
 		}
-		initManager, err := newManager("", msConfig)
+		initManager, err := newManager(t, "", msConfig)
 		if err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ func (mc *managersCluster) AddManagers(count int) error {
 		if err != nil {
 			return err
 		}
-		mgr, err := newManager(mc.ms[0].addr, msConfig)
+		mgr, err := newManager(t, mc.ms[0].addr, msConfig)
 		if err != nil {
 			return err
 		}
@@ -106,8 +106,8 @@ func (mc *managersCluster) AddManagers(count int) error {
 	return nil
 }
 
-func newManager(joinAddr string, securityConfig *ca.SecurityConfig) (*testManager, error) {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+func newManager(t *testing.T, joinAddr string, securityConfig *ca.SecurityConfig) (*testManager, error) {
+	ltcp, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func newManager(joinAddr string, securityConfig *ca.SecurityConfig) (*testManage
 	}
 
 	m, err := New(&Config{
-		Listener:       l,
+		ProtoListener:  map[string]net.Listener{"tcp": ltcp},
 		StateDir:       stateDir,
 		JoinRaft:       joinAddr,
 		SecurityConfig: securityConfig,
@@ -130,7 +130,7 @@ func newManager(joinAddr string, securityConfig *ca.SecurityConfig) (*testManage
 	time.Sleep(100 * time.Millisecond)
 	return &testManager{
 		m:    m,
-		addr: l.Addr().String(),
+		addr: ltcp.Addr().String(),
 	}, nil
 }
 
@@ -139,9 +139,9 @@ func createManagersCluster(t *testing.T, managersCount, agentsCount int) *manage
 	defer tc.Stop()
 
 	mc := &managersCluster{tc: tc}
-	require.NoError(t, mc.AddManagers(managersCount))
+	require.NoError(t, mc.addManagers(t, managersCount))
 	time.Sleep(5 * time.Second)
-	require.NoError(t, mc.AddAgents(agentsCount))
+	require.NoError(t, mc.addAgents(agentsCount))
 	time.Sleep(10 * time.Second)
 	return mc
 }
@@ -180,7 +180,7 @@ func (mc *managersCluster) destroyLeader() error {
 	if leader == nil {
 		return fmt.Errorf("leader is not found for destroy")
 	}
-	leader.m.Stop()
+	leader.m.Stop(context.Background())
 	mc.ms = newMs
 	return nil
 }
