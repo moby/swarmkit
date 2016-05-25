@@ -200,7 +200,6 @@ func (s *Server) issueAcceptedRegisteredCertificate(ctx context.Context, nodeID,
 
 // GetRootCACertificate returns the certificate of the Root CA.
 func (s *Server) GetRootCACertificate(ctx context.Context, request *api.GetRootCACertificateRequest) (*api.GetRootCACertificateResponse, error) {
-
 	log.G(ctx).Debugf("(*Server).GetRootCACertificate called ")
 
 	return &api.GetRootCACertificateResponse{
