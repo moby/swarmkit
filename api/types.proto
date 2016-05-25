@@ -447,3 +447,11 @@ message Placement {
 	// Strategy defines scheduler distribution preference.
 	Strategy strategy = 2;
 }
+
+message RootCA {
+	// CAKey is the root CA private key.
+	bytes ca_key = 1 [(gogoproto.customname) = "CAKey"];
+
+	// CACert is the root CA certificate.
+	bytes ca_cert = 2 [(gogoproto.customname) = "CACert"];
+}

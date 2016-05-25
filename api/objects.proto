@@ -215,4 +215,7 @@ message Cluster {
 	Meta meta = 2 [(gogoproto.nullable) = false];
 
 	ClusterSpec spec = 3 [(gogoproto.nullable) = false];
+
+	// RootCA contains key material for the root CA.
+	RootCA root_ca = 4 [(gogoproto.customname) = "RootCA"];
 }
