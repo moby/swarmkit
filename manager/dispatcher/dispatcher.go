@@ -20,7 +20,9 @@ import (
 )
 
 const (
-	defaultHeartBeatPeriod       = 5 * time.Second
+	// DefaultHeartBeatPeriod is used for setting default value in cluster config
+	// and in case if cluster config is missing.
+	DefaultHeartBeatPeriod       = 5 * time.Second
 	defaultHeartBeatEpsilon      = 500 * time.Millisecond
 	defaultGracePeriodMultiplier = 3
 
@@ -60,7 +62,7 @@ type Config struct {
 // DefaultConfig returns default config for Dispatcher.
 func DefaultConfig() *Config {
 	return &Config{
-		HeartbeatPeriod:       defaultHeartBeatPeriod,
+		HeartbeatPeriod:       DefaultHeartBeatPeriod,
 		HeartbeatEpsilon:      defaultHeartBeatEpsilon,
 		GracePeriodMultiplier: defaultGracePeriodMultiplier,
 	}
@@ -93,7 +95,7 @@ type Dispatcher struct {
 	processTaskUpdatesTrigger chan struct{}
 }
 
-// New returns Dispatcher with cluster interface(usually raft.Node) and config.
+// New returns Dispatcher with cluster interface(usually raft.Node).
 // NOTE: each handler which does something with raft must add to Dispatcher.wg
 func New(cluster Cluster, c *Config) *Dispatcher {
 	return &Dispatcher{
@@ -102,7 +104,6 @@ func New(cluster Cluster, c *Config) *Dispatcher {
 		store:    cluster.MemoryStore(),
 		cluster:  cluster,
 		mgrQueue: watch.NewQueue(16),
-		config:   c,
 		lastSeenManagers: []*api.WeightedPeer{
 			{
 				Addr:   c.Addr,
@@ -111,6 +112,7 @@ func New(cluster Cluster, c *Config) *Dispatcher {
 		},
 		taskUpdates:               make(map[string]*api.TaskStatus),
 		processTaskUpdatesTrigger: make(chan struct{}, 1),
+		config: c,
 	}
 }
 
@@ -129,6 +131,12 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 	if err := d.markNodesUnknown(ctx); err != nil {
 		logger.Errorf("failed to mark all nodes unknown: %v", err)
 	}
+	d.store.View(func(readTx store.ReadTx) {
+		clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
+		if err == nil && len(clusters) == 1 {
+			d.config.HeartbeatPeriod = time.Duration(clusters[0].Spec.Dispatcher.HeartbeatPeriod)
+		}
+	})
 	d.ctx, d.cancel = context.WithCancel(ctx)
 	d.mu.Unlock()
 
@@ -146,11 +154,17 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 		d.mu.Unlock()
 		d.mgrQueue.Publish(mgrs)
 	}
+
 	publishManagers()
 	publishTicker := time.NewTicker(1 * time.Second)
 	defer publishTicker.Stop()
+
 	batchTimer := time.NewTimer(maxBatchInterval)
 	defer batchTimer.Stop()
+
+	configWatcher, cancel := state.Watch(d.store.WatchQueue(), state.EventUpdateCluster{})
+	defer cancel()
+
 	for {
 		select {
 		case <-publishTicker.C:
@@ -161,6 +175,12 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 		case <-batchTimer.C:
 			d.processTaskUpdates()
 			batchTimer.Reset(maxBatchInterval)
+		case v := <-configWatcher:
+			cluster := v.(state.EventUpdateCluster)
+			d.mu.Lock()
+			d.config.HeartbeatPeriod = time.Duration(cluster.Cluster.Spec.Dispatcher.HeartbeatPeriod)
+			d.nodes.updatePeriod(d.config.HeartbeatPeriod, d.config.HeartbeatEpsilon, d.config.GracePeriodMultiplier)
+			d.mu.Unlock()
 		case <-d.ctx.Done():
 			return nil
 		}
