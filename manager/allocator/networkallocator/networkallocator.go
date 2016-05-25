@@ -29,6 +29,9 @@ type NetworkAllocator struct {
 	// IPAM and network drivers.
 	drvRegistry *drvregistry.DrvRegistry
 
+	// The port allocator instance for allocating node ports
+	portAllocator *portAllocator
+
 	// Local network state used by NetworkAllocator to do network management.
 	networks map[string]*network
 
@@ -39,7 +42,8 @@ type NetworkAllocator struct {
 
 // Local in-memory state related to netwok that need to be tracked by NetworkAllocator
 type network struct {
-	id string
+	// A local cache of the store object.
+	nw *api.Network
 
 	// pools is used to save the internal poolIDs needed when
 	// releasing the pool.
@@ -69,6 +73,12 @@ func New() (*NetworkAllocator, error) {
 		return nil, err
 	}
 
+	pa, err := newPortAllocator()
+	if err != nil {
+		return nil, err
+	}
+
+	na.portAllocator = pa
 	na.drvRegistry = reg
 	return na, nil
 }
@@ -90,7 +100,7 @@ func (na *NetworkAllocator) Allocate(n *api.Network) error {
 	}
 
 	na.networks[n.ID] = &network{
-		id:        n.ID,
+		nw:        n,
 		pools:     pools,
 		endpoints: make(map[string]string),
 	}
@@ -118,14 +128,47 @@ func (na *NetworkAllocator) Deallocate(n *api.Network) error {
 	return na.freePools(n, localNet.pools)
 }
 
-// ServiceAllocate allocates all the network resources such as IPs.
-func (na *NetworkAllocator) ServiceAllocate(s *api.Service) error {
+// ServiceAllocate allocates all the network resources such as virtual
+// IP and ports needed by the service.
+func (na *NetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
+	if err = na.portAllocator.serviceAllocatePorts(s); err != nil {
+		return
+	}
+	defer func() {
+		if err != nil {
+			na.ServiceDeallocate(s)
+		}
+	}()
+
+	if s.Endpoint == nil {
+		s.Endpoint = &api.Endpoint{}
+	}
+
+	for _, nAttach := range s.Spec.Networks {
+		eAttach := &api.Endpoint_Attachment{NetworkID: nAttach.GetNetworkID()}
+		if err = na.allocateVIP(eAttach); err != nil {
+			return
+		}
+
+		s.Endpoint.Attachments = append(s.Endpoint.Attachments, eAttach)
+	}
+
 	na.services[s.ID] = struct{}{}
-	return nil
+	return
 }
 
-// ServiceDeallocate de-allocates all the network resources such as IPs.
+// ServiceDeallocate de-allocates all the network resources such as
+// virtual IP and ports associated with the service.
 func (na *NetworkAllocator) ServiceDeallocate(s *api.Service) error {
+	if s.Endpoint == nil {
+		return nil
+	}
+
+	for _, eAttach := range s.Endpoint.Attachments {
+		na.deallocateVIP(eAttach)
+	}
+
+	na.portAllocator.serviceDeallocatePorts(s)
 	delete(na.services, s.ID)
 
 	return nil
@@ -170,14 +213,12 @@ func (na *NetworkAllocator) IsTaskAllocated(t *api.Task) bool {
 
 // IsServiceAllocated returns if the passed service has it's network resources allocated or not.
 func (na *NetworkAllocator) IsServiceAllocated(s *api.Service) bool {
-	// If there is no service endpoint configuration there is no
-	// possibility of allocation.
-	if s.Spec.Endpoint == nil {
+	if _, ok := na.services[s.ID]; !ok {
 		return false
 	}
 
-	if _, ok := na.services[s.ID]; !ok {
-		return false
+	if s.Spec.Endpoint != nil {
+		return na.portAllocator.isPortsAllocated(s)
 	}
 
 	return true
@@ -254,7 +295,74 @@ func (na *NetworkAllocator) releaseEndpoints(networks []*api.Task_NetworkAttachm
 	return nil
 }
 
-// allocate the endpoint IP addresses for a single network attachment of the task.
+// allocate virtual IP for a single endpoint attachment of the service.
+func (na *NetworkAllocator) allocateVIP(eAttach *api.Endpoint_Attachment) error {
+	localNet := na.getNetwork(eAttach.NetworkID)
+	if localNet == nil {
+		return fmt.Errorf("networkallocator: could not find local network state")
+	}
+
+	ipam, _, err := na.resolveIPAM(localNet.nw)
+	if err != nil {
+		return fmt.Errorf("failed to resolve IPAM while allocating : %v", err)
+	}
+
+	for _, poolID := range localNet.pools {
+		ip, _, err := ipam.RequestAddress(poolID, nil, nil)
+		if err != nil && err != ipamapi.ErrNoAvailableIPs && err != ipamapi.ErrIPOutOfRange {
+			return fmt.Errorf("could not allocate VIP from IPAM: %v", err)
+		}
+
+		// If we got an address then we are done.
+		if err == nil {
+			ipStr := ip.String()
+			localNet.endpoints[ipStr] = poolID
+			eAttach.VirtualIP = []string{ipStr}
+			return nil
+		}
+	}
+
+	return fmt.Errorf("could not find an available IP while allocating VIP")
+}
+
+func (na *NetworkAllocator) deallocateVIP(eAttach *api.Endpoint_Attachment) error {
+	localNet := na.getNetwork(eAttach.NetworkID)
+	if localNet == nil {
+		return fmt.Errorf("networkallocator: could not find local network state")
+	}
+
+	ipam, _, err := na.resolveIPAM(localNet.nw)
+	if err != nil {
+		return fmt.Errorf("failed to resolve IPAM while allocating : %v", err)
+	}
+
+	// Do not fail and bail out if we fail to release IP
+	// address here. Keep going and try releasing as many
+	// addresses as possible.
+	for _, addr := range eAttach.VirtualIP {
+		// Retrieve the poolID and immediately nuke
+		// out the mapping.
+		poolID := localNet.endpoints[addr]
+		delete(localNet.endpoints, addr)
+
+		ip, _, err := net.ParseCIDR(addr)
+		if err != nil {
+			log.G(context.TODO()).Errorf("Could not parse VIP address %s while releasing", addr)
+			continue
+		}
+
+		if err := ipam.ReleaseAddress(poolID, ip); err != nil {
+			log.G(context.TODO()).Errorf("IPAM failure while releasing VIP address %s: %v", addr, err)
+		}
+
+		eAttach.VirtualIP = nil
+	}
+
+	return nil
+
+}
+
+// allocate the IP addresses for a single network attachment of the task.
 func (na *NetworkAllocator) allocateNetworkIPs(nAttach *api.Task_NetworkAttachment, ipam ipamapi.Ipam, localNet *network) error {
 	var ip *net.IPNet
 
