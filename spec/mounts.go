@@ -112,12 +112,8 @@ func (vm *Mount) ToProto() *api.Mount {
 	apiVM.Target = vm.Target
 	apiVM.Source = vm.Source
 	apiVM.VolumeName = vm.VolumeName
-	switch strings.ToLower(vm.Mask) {
-	case "ro":
-		apiVM.Mask = api.MountMaskReadOnly
-	case "rw":
-		apiVM.Mask = api.MountMaskReadWrite
-	}
+	apiVM.Mask = vm.Mask
+
 	switch strings.ToLower(vm.Type) {
 	case "bind":
 		apiVM.Type = api.MountTypeBind
@@ -137,7 +133,7 @@ func (vms Mounts) FromProto(p []*api.Mount) {
 	}
 
 	for i, apivm := range p {
-		vm := Mount{}
+		vm := Mount{Mask: "ro"} // define default value
 		vm.FromProto(apivm)
 		vms[i] = vm
 	}
@@ -152,12 +148,11 @@ func (vm *Mount) FromProto(apivm *api.Mount) {
 	vm.Target = apivm.Target
 	vm.Source = apivm.Source
 	vm.VolumeName = apivm.VolumeName
-	switch apivm.Mask {
-	case api.MountMaskReadOnly:
-		vm.Mask = "ro"
-	case api.MountMaskReadWrite:
-		vm.Mask = "rw"
+	vm.Mask = apivm.Mask
+	if vm.Mask == "" {
+		vm.Mask = "ro" // apply default
 	}
+
 	switch apivm.Type {
 	case api.MountTypeBind:
 		vm.Type = "bind"

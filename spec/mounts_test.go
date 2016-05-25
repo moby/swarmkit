@@ -68,7 +68,7 @@ func TestMountsToProto(t *testing.T) {
 		},
 		{
 			from: &Mount{Mask: "rw", Type: "bind", Target: "/foo", Source: "/foo"},
-			to:   &api.Mount{Mask: api.MountMaskReadWrite, Type: api.MountTypeBind, Target: "/foo", Source: "/foo"},
+			to:   &api.Mount{Mask: "rw", Type: api.MountTypeBind, Target: "/foo", Source: "/foo"},
 		},
 		{
 			from: &Mount{Type: "ephemeral", Target: "/foo"},
@@ -76,7 +76,7 @@ func TestMountsToProto(t *testing.T) {
 		},
 		{
 			from: &Mount{Mask: "rw", Type: "volume", Target: "/foo", VolumeName: "foo"},
-			to:   &api.Mount{Mask: api.MountMaskReadWrite, Type: api.MountTypeVolume, Target: "/foo", VolumeName: "foo"},
+			to:   &api.Mount{Mask: "rw", Type: api.MountTypeVolume, Target: "/foo", VolumeName: "foo"},
 		},
 	}
 
@@ -93,7 +93,7 @@ func TestMountsFromProto(t *testing.T) {
 
 	set := []*conv{
 		{
-			from: &api.Mount{Mask: api.MountMaskReadWrite, Type: api.MountTypeBind, Target: "/foo", Source: "/foo"},
+			from: &api.Mount{Mask: "rw", Type: api.MountTypeBind, Target: "/foo", Source: "/foo"},
 			to:   &Mount{Mask: "rw", Type: "bind", Target: "/foo", Source: "/foo"},
 		},
 		{
@@ -101,7 +101,7 @@ func TestMountsFromProto(t *testing.T) {
 			to:   &Mount{Type: "ephemeral", Target: "/foo", Mask: "ro"},
 		},
 		{
-			from: &api.Mount{Mask: api.MountMaskReadWrite, Type: api.MountTypeVolume, Target: "/foo", VolumeName: "foo"},
+			from: &api.Mount{Mask: "rw", Type: api.MountTypeVolume, Target: "/foo", VolumeName: "foo"},
 			to:   &Mount{Mask: "rw", Type: "volume", Target: "/foo", VolumeName: "foo"},
 		},
 	}

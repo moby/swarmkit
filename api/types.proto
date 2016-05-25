@@ -126,15 +126,9 @@ message Mount {
 	// Source path to mount
 	string source = 2;
 
-	// Mask
-	enum Mask {
-		option (gogoproto.goproto_enum_prefix) = false;
-		option (gogoproto.enum_customname) = "Mask";
-
-		READ_ONLY = 0 [(gogoproto.enumvalue_customname) = "MountMaskReadOnly"];
-		READ_WRITE = 1 [(gogoproto.enumvalue_customname) = "MountMaskReadWrite"];
-	}
-	Mask mask = 3;
+	// Mask for the mount, typically ro or rw, but may include a mount
+	// propagation flag. Passed directly to docker.
+	string mask = 3;
 
 	enum Type {
 		option (gogoproto.goproto_enum_prefix) = false;

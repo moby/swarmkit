@@ -112,17 +112,14 @@ func (c *containerConfig) bindMounts() []string {
 	var r []string
 
 	for _, val := range c.spec().Mounts {
-		mask := ""
-		switch val.Mask {
-		case api.MountMaskReadOnly:
-			mask = "ro"
-		case api.MountMaskReadWrite:
-			mask = "rw"
-		}
 		if val.Type == api.MountTypeBind {
-			r = append(r, fmt.Sprintf("%s:%s:%s", val.Source, val.Target, mask))
+			r = append(r, fmt.Sprintf("%s:%s", val.Source, val.Target))
 		} else if val.Type == api.MountTypeVolume {
-			r = append(r, fmt.Sprintf("%s:%s:%s", val.VolumeName, val.Target, mask))
+			r = append(r, fmt.Sprintf("%s:%s", val.VolumeName, val.Target))
+		}
+
+		if val.Mask != "" {
+			r[len(r)-1] += ":" + val.Mask
 		}
 	}
 
