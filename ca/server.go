@@ -17,12 +17,13 @@ import (
 
 // Server is the CA API gRPC server.
 type Server struct {
-	mu             sync.Mutex
-	wg             sync.WaitGroup
-	ctx            context.Context
-	cancel         func()
-	store          *store.MemoryStore
-	securityConfig *SecurityConfig
+	mu               sync.Mutex
+	wg               sync.WaitGroup
+	ctx              context.Context
+	cancel           func()
+	store            *store.MemoryStore
+	securityConfig   *SecurityConfig
+	acceptancePolicy *api.AcceptancePolicy
 }
 
 // DefaultAcceptancePolicy returns the default acceptance policy.
@@ -242,17 +243,13 @@ func (s *Server) GetRootCACertificate(ctx context.Context, request *api.GetRootC
 	})
 
 	return &api.GetRootCACertificateResponse{
-		Certificate: s.securityConfig.RootCA.Cert,
+		Certificate: s.securityConfig.RootCA().Cert,
 	}, nil
 }
 
 // Run runs the CA signer main loop.
 // The CA signer can be stopped with cancelling ctx or calling Stop().
 func (s *Server) Run(ctx context.Context) error {
-	if !s.securityConfig.RootCA.CanSign() {
-		return fmt.Errorf("no valid signer for Root CA found")
-	}
-
 	s.mu.Lock()
 	if s.isRunning() {
 		s.mu.Unlock()
@@ -265,11 +262,17 @@ func (s *Server) Run(ctx context.Context) error {
 	s.ctx, s.cancel = context.WithCancel(ctx)
 	s.mu.Unlock()
 
-	var (
-		rCerts []*api.RegisteredCertificate
-		err    error
-	)
+	var rCerts []*api.RegisteredCertificate
 	updates, cancel, err := store.ViewAndWatch(s.store, func(readTx store.ReadTx) error {
+		clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
+		if err != nil {
+			return err
+		}
+		if len(clusters) != 1 {
+			return fmt.Errorf("could not find cluster object")
+		}
+		s.updateCluster(ctx, clusters[0])
+
 		rCerts, err = store.FindRegisteredCertificates(readTx, store.All)
 		return err
 	})
@@ -298,6 +301,8 @@ func (s *Server) Run(ctx context.Context) error {
 				s.evaluateAndSignCert(ctx, v.RegisteredCertificate)
 			case state.EventUpdateRegisteredCertificate:
 				s.evaluateAndSignCert(ctx, v.RegisteredCertificate)
+			case state.EventUpdateCluster:
+				s.updateCluster(ctx, v.Cluster)
 			}
 
 		case <-s.ctx.Done():
@@ -344,6 +349,17 @@ func (s *Server) isRunning() bool {
 	default:
 	}
 	return true
+}
+
+func (s *Server) updateCluster(ctx context.Context, cluster *api.Cluster) {
+	s.acceptancePolicy = cluster.Spec.AcceptancePolicy.Copy()
+	if cluster.RootCA != nil && len(cluster.RootCA.CACert) != 0 && len(cluster.RootCA.CAKey) != 0 {
+		log.G(ctx).Debug("updating root CA object from raft")
+		err := s.securityConfig.UpdateRootCA(cluster.RootCA.CACert, cluster.RootCA.CAKey)
+		if err != nil {
+			log.G(ctx).WithError(err).Error("updating root key failed")
+		}
+	}
 }
 
 func (s *Server) setCertState(rCertificate *api.RegisteredCertificate, state api.IssuanceState) error {
@@ -407,22 +423,7 @@ func (s *Server) evaluateAndSignCert(ctx context.Context, rCertificate *api.Regi
 		return
 	}
 
-	// Get acceptance policy
-	var cluster *api.Cluster
-	s.store.View(func(readTx store.ReadTx) {
-		clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
-		if err == nil && len(clusters) == 1 {
-			cluster = clusters[0]
-		}
-	})
-	if cluster == nil {
-		log.G(ctx).WithFields(logrus.Fields{
-			"method": "(*Server).evaluateAndSignCert",
-		}).Debugf("failed to retrieve cluster object")
-		return
-	}
-
-	if cluster.Spec.AcceptancePolicy.Autoaccept != nil && cluster.Spec.AcceptancePolicy.Autoaccept[rCertificate.Role] {
+	if s.acceptancePolicy.Autoaccept != nil && s.acceptancePolicy.Autoaccept[rCertificate.Role] {
 		s.signCert(ctx, rCertificate)
 		return
 	}
@@ -434,7 +435,12 @@ func (s *Server) evaluateAndSignCert(ctx context.Context, rCertificate *api.Regi
 }
 
 func (s *Server) signCert(ctx context.Context, rCertificate *api.RegisteredCertificate) {
-	cert, err := s.securityConfig.RootCA.ParseValidateAndSignCSR(rCertificate.CSR, rCertificate.CN, rCertificate.Role)
+	if !s.securityConfig.RootCA().CanSign() {
+		log.G(ctx).Error("no valid signer for Root CA found")
+		return
+	}
+
+	cert, err := s.securityConfig.RootCA().ParseValidateAndSignCSR(rCertificate.CSR, rCertificate.CN, rCertificate.Role)
 	if err != nil {
 		log.G(ctx).WithFields(logrus.Fields{
 			"token":  rCertificate.ID,
@@ -452,7 +458,7 @@ func (s *Server) signCert(ctx context.Context, rCertificate *api.RegisteredCerti
 		}
 
 		// Remote users are expecting a full certificate chain, not just a signed certificate
-		latestCertificate.Certificate = append(cert, s.securityConfig.RootCA.Cert...)
+		latestCertificate.Certificate = append(cert, s.securityConfig.RootCA().Cert...)
 		latestCertificate.Status = api.IssuanceStatus{
 			State: api.IssuanceStateIssued,
 		}

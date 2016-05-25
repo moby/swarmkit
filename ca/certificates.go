@@ -18,7 +18,7 @@ import (
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/initca"
 	cflog "github.com/cloudflare/cfssl/log"
-	"github.com/cloudflare/cfssl/signer"
+	cfsigner "github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
@@ -49,9 +49,10 @@ type CertPaths struct {
 // RootCA is the representation of everything we need to sign certificates
 type RootCA struct {
 	Cert []byte
+	Key  []byte
 	Pool *x509.CertPool
 
-	Signer signer.Signer
+	Signer cfsigner.Signer
 }
 
 // CanSign ensures that the signer has all three necessary elements needed to operate
@@ -156,11 +157,11 @@ func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, ou string) ([]by
 		hosts = append(hosts, CARole)
 	}
 
-	cert, err := rca.Signer.Sign(signer.SignRequest{
+	cert, err := rca.Signer.Sign(cfsigner.SignRequest{
 		Request: string(csrBytes),
 		// OU is used for Authentication of the node type. The CN has the random
 		// node ID.
-		Subject: &signer.Subject{CN: cn, Names: []cfcsr.Name{{OU: ou}}},
+		Subject: &cfsigner.Subject{CN: cn, Names: []cfcsr.Name{{OU: ou}}},
 		// Adding ou as DNS alt name, so clients can connect to ManagerRole and CARole
 		Hosts: hosts,
 	})
@@ -170,6 +171,42 @@ func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, ou string) ([]by
 	}
 
 	return cert, nil
+}
+
+// NewRootCA creates a new RootCA object from unparsed cert and key byte
+// slices. key may be nil, and in this case NewRootCA will return a RootCA
+// without a signer.
+func NewRootCA(cert, key []byte) (RootCA, error) {
+	// Check to see if the Certificate file is a valid, self-signed Cert
+	parsedCA, err := helpers.ParseSelfSignedCertificatePEM(cert)
+	if err != nil {
+		return RootCA{}, err
+	}
+
+	// Create a Pool with our RootCACertificate
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(cert) {
+		return RootCA{}, fmt.Errorf("error while adding root CA cert to Cert Pool")
+	}
+
+	strPassword := os.Getenv("SWARM_PK_PASSWORD")
+	password := []byte(strPassword)
+	if strPassword == "" {
+		password = nil
+	}
+
+	priv, err := helpers.ParsePrivateKeyPEMWithPassword(key, password)
+	if err != nil {
+		log.Debug("Malformed private key %v", err)
+		return RootCA{}, err
+	}
+
+	signer, err := local.NewSigner(priv, parsedCA, cfsigner.DefaultSigAlgo(priv), DefaultPolicy())
+	if err != nil {
+		return RootCA{Cert: cert, Pool: pool}, nil
+	}
+
+	return RootCA{Signer: signer, Key: key, Cert: cert, Pool: pool}, nil
 }
 
 // GetLocalRootCA validates if the contents of the file are a valid self-signed
@@ -183,26 +220,19 @@ func GetLocalRootCA(baseDir string) (RootCA, error) {
 		return RootCA{}, err
 	}
 
-	// Check to see if the Certificate file is a valid, self-signed Cert
-	_, err = helpers.ParseSelfSignedCertificatePEM(cert)
+	key, err := ioutil.ReadFile(paths.RootCA.Key)
 	if err != nil {
-		return RootCA{}, err
+		// There may not be a local key. It's okay to pass in a nil
+		// key. We'll get a root CA without a signer.
+		key = nil
 	}
 
-	// Create a Pool with our RootCACertificate
-	pool := x509.NewCertPool()
-	if !pool.AppendCertsFromPEM(cert) {
-		return RootCA{}, fmt.Errorf("error while adding root CA cert to Cert Pool")
+	rootCA, err := NewRootCA(cert, key)
+	if err == nil {
+		log.Debugf("successfully loaded the signer for the Root CA: %s", paths.RootCA.Cert)
 	}
 
-	// If there is a root CA keypair, we're going to try getting a crypto signer from it
-	signer, err := local.NewSignerFromFile(paths.RootCA.Cert, paths.RootCA.Key, DefaultPolicy())
-	if err != nil {
-		return RootCA{Cert: cert, Pool: pool}, nil
-	}
-	log.Debugf("successfully loaded the signer for the Root CA: %s", paths.RootCA.Cert)
-
-	return RootCA{Signer: signer, Cert: cert, Pool: pool}, nil
+	return rootCA, err
 }
 
 // GetRemoteCA returns the remote endpoint's CA certificate
@@ -288,7 +318,7 @@ func CreateAndWriteRootCA(rootCN string, paths CertPaths) (RootCA, error) {
 	}
 
 	// Create a Signer out of the private key
-	signer, err := local.NewSigner(parsedKey, parsedCert, signer.DefaultSigAlgo(parsedKey), DefaultPolicy())
+	signer, err := local.NewSigner(parsedKey, parsedCert, cfsigner.DefaultSigAlgo(parsedKey), DefaultPolicy())
 	if err != nil {
 		log.Errorf("failed to create signer: %v", err)
 		return RootCA{}, err
@@ -314,7 +344,7 @@ func CreateAndWriteRootCA(rootCN string, paths CertPaths) (RootCA, error) {
 		return RootCA{}, fmt.Errorf("failed to append certificate to cert pool")
 	}
 
-	return RootCA{Signer: signer, Cert: cert, Pool: pool}, nil
+	return RootCA{Signer: signer, Key: key, Cert: cert, Pool: pool}, nil
 }
 
 // BootstrapCluster receives a directory and creates both new Root CA key material
