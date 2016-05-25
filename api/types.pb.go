@@ -14,6 +14,7 @@
 		ca.proto
 		snapshot.proto
 		raft.proto
+		proxy.proto
 
 	It has these top-level messages:
 		Version
@@ -146,6 +147,7 @@
 		ResolveAddressResponse
 		InternalRaftRequest
 		StoreAction
+		DontProxy
 */
 package api
 

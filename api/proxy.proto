@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package docker.cluster.api;
+
+import "gogoproto/gogo.proto";
+import "google/protobuf/descriptor.proto";
+
+message DontProxy {
+}
+
+extend google.protobuf.MethodOptions {
+	// DontProxy says this method should always be run by the server
+	// that received it.
+	DontProxy dont_proxy = 73626345;
+}

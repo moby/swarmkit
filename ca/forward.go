@@ -20,11 +20,26 @@ func forwardCNFromContext(ctx context.Context) (string, error) {
 	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: forwarded request without agent info")
 }
 
+// WithMetadataForwardAgentCN reads certificate from context and returns context where
+// ForwardCert is set based on original certificate.
+func WithMetadataForwardAgentCN(ctx context.Context) (context.Context, error) {
+	// only agents can reach this codepath
+	cn, err := AuthorizeRole(ctx, []string{AgentRole})
+	if err != nil {
+		return nil, err
+	}
+	md, ok := metadata.FromContext(ctx)
+	if !ok {
+		md = metadata.MD{}
+	}
+	md[certCNKey] = []string{cn}
+	return metadata.NewContext(ctx, md), nil
+}
+
 // WithMetadataForwardCN reads certificate from context and returns context where
 // ForwardCert is set based on original certificate.
 func WithMetadataForwardCN(ctx context.Context) (context.Context, error) {
-	// only agents can reach this codepath
-	cn, err := AuthorizeRole(ctx, []string{AgentRole})
+	cn, err := AuthorizeRole(ctx, []string{AgentRole, ManagerRole})
 	if err != nil {
 		return nil, err
 	}

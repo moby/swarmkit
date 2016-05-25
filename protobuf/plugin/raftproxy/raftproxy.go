@@ -7,6 +7,8 @@ import (
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
 )
 
+const dontProxy = 73626345
+
 type raftProxyGen struct {
 	gen *generator.Generator
 }
@@ -95,6 +97,15 @@ func sigPrefix(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescrip
 
 func (g *raftProxyGen) genClientStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
+
+	extmap := m.Options.ExtensionMap()
+	if _, ok := extmap[dontProxy]; ok {
+		g.gen.P(`
+	return p.local.` + m.GetName() + `(stream)`)
+		g.gen.P(`}`)
+		return
+	}
+
 	g.gen.P(`
 	if p.cluster.IsLeader() {
 			return p.local.` + m.GetName() + `(stream)
@@ -137,6 +148,15 @@ func (g *raftProxyGen) genClientStreamingMethod(s *descriptor.ServiceDescriptorP
 
 func (g *raftProxyGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "r *" + getInputTypeName(m) + ", stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
+
+	extmap := m.Options.ExtensionMap()
+	if _, ok := extmap[dontProxy]; ok {
+		g.gen.P(`
+	return p.local.` + m.GetName() + `(r, stream)`)
+		g.gen.P(`}`)
+		return
+	}
+
 	g.gen.P(`
 	if p.cluster.IsLeader() {
 			return p.local.` + m.GetName() + `(r, stream)
@@ -173,6 +193,15 @@ func (g *raftProxyGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorP
 
 func (g *raftProxyGen) genClientServerStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
+
+	extmap := m.Options.ExtensionMap()
+	if _, ok := extmap[dontProxy]; ok {
+		g.gen.P(`
+	return p.local.` + m.GetName() + `(stream)`)
+		g.gen.P(`}`)
+		return
+	}
+
 	g.gen.P(`
 	if p.cluster.IsLeader() {
 			return p.local.` + m.GetName() + `(stream)
@@ -226,6 +255,15 @@ func (g *raftProxyGen) genClientServerStreamingMethod(s *descriptor.ServiceDescr
 
 func (g *raftProxyGen) genSimpleMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "ctx context.Context, r *" + getInputTypeName(m) + ") (*" + getOutputTypeName(m) + ", error) {")
+
+	extmap := m.Options.ExtensionMap()
+	if _, ok := extmap[dontProxy]; ok {
+		g.gen.P(`
+	return p.local.` + m.GetName() + `(ctx, r)`)
+		g.gen.P(`}`)
+		return
+	}
+
 	g.gen.P(`
 	if p.cluster.IsLeader() {
 			return p.local.` + m.GetName() + `(ctx, r)
