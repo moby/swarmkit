@@ -74,9 +74,8 @@ var (
 					},
 					RuntimeSpec: &api.ServiceSpec_Container{
 						Container: &api.ContainerSpec{
-							Image: api.Image{
-								Reference: image,
-							},
+							Image: image,
+
 							Command: containerArgs,
 							Args:    args,
 							Env:     env,

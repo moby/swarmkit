@@ -62,7 +62,7 @@ func validateServiceSpecTemplate(spec *api.ServiceSpec) error {
 		return err
 	}
 
-	if container.Image.Reference == "" {
+	if container.Image == "" {
 		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: image reference must be provided")
 	}
 	return nil

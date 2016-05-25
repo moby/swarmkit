@@ -17,9 +17,7 @@ func createSpec(name, image string, instances uint64) *api.ServiceSpec {
 		},
 		RuntimeSpec: &api.ServiceSpec_Container{
 			Container: &api.ContainerSpec{
-				Image: api.Image{
-					Reference: image,
-				},
+				Image: image,
 			},
 		},
 		Mode: &api.ServiceSpec_Replicated{

@@ -45,7 +45,7 @@ func (c *containerConfig) setTask(t *api.Task) error {
 		return exec.ErrRuntimeUnsupported
 	}
 
-	if container.Spec.Image.Reference == "" {
+	if container.Spec.Image == "" {
 		return ErrImageRequired
 	}
 
@@ -73,7 +73,7 @@ func (c *containerConfig) name() string {
 }
 
 func (c *containerConfig) image() string {
-	return c.spec().Image.Reference
+	return c.spec().Image
 }
 
 func (c *containerConfig) ephemeralDirs() map[string]struct{} {
