@@ -220,6 +220,8 @@ func (m *Manager) Run(ctx context.Context) error {
 			if newState == raft.IsLeader {
 				s := m.raftNode.MemoryStore()
 
+				rootCA := m.config.SecurityConfig.RootCA()
+
 				// Add a default cluster object to the store. Don't check the error
 				// because we expect this to fail unless this is a brand new cluster.
 				s.Update(func(tx store.Tx) error {
@@ -237,6 +239,10 @@ func (m *Manager) Run(ctx context.Context) error {
 								HeartbeatPeriod: uint64(dispatcher.DefaultHeartBeatPeriod),
 							},
 							Raft: raft.DefaultRaftConfig(),
+						},
+						RootCA: &api.RootCA{
+							CAKey:  rootCA.Key,
+							CACert: rootCA.Cert,
 						},
 					})
 					return nil

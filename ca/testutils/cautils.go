@@ -68,11 +68,7 @@ func (tc *TestCA) NewNodeConfig(role string) (*ca.SecurityConfig, error) {
 		return nil, err
 	}
 
-	return &ca.SecurityConfig{
-		RootCA:         tc.RootCA,
-		ServerTLSCreds: nodeServerTLSCreds,
-		ClientTLSCreds: nodeClientTLSCreds,
-	}, nil
+	return ca.NewSecurityConfig(&tc.RootCA, nodeClientTLSCreds, nodeServerTLSCreds), nil
 }
 
 // NewTestCA is a helper method that creates a TestCA and a bunch of default
@@ -162,12 +158,7 @@ func genSecurityConfig(rootCA ca.RootCA, tempBaseDir, role string) (*ca.Security
 		return nil, err
 	}
 
-	nodeSecurityConfig := &ca.SecurityConfig{}
-	nodeSecurityConfig.RootCA = rootCA
-	nodeSecurityConfig.ServerTLSCreds = nodeServerTLSCreds
-	nodeSecurityConfig.ClientTLSCreds = nodeClientTLSCreds
-
-	return nodeSecurityConfig, nil
+	return ca.NewSecurityConfig(&rootCA, nodeClientTLSCreds, nodeServerTLSCreds), nil
 }
 
 func createClusterObject(t *testing.T, s *store.MemoryStore, acceptancePolicy api.AcceptancePolicy) {
