@@ -54,6 +54,40 @@ func (x NodeSpec_Availability) String() string {
 }
 func (NodeSpec_Availability) EnumDescriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{1, 0} }
 
+// Load balancer strategy to be used by the ingress service to
+// choose between different strategies available.
+type EndpointSpec_IngressStrategy int32
+
+const (
+	// Network loadbalancer strategy is the default
+	// ingress strategy (needs to be of value 0) and it
+	// provides loadbalancing at L3/L4. It uses the node
+	// ports to loadbalance ingress traffic to the right
+	// service.
+	IngressStrategyNetwork EndpointSpec_IngressStrategy = 0
+	// If the user chooses to disable ingress strategy,
+	// the system will not provide any out of the box
+	// loadbalancing for ingress traffic. The user may
+	// provide an alternate option.
+	IngressStrategyExternal EndpointSpec_IngressStrategy = 1
+)
+
+var EndpointSpec_IngressStrategy_name = map[int32]string{
+	0: "NETWORK",
+	1: "DISABLED",
+}
+var EndpointSpec_IngressStrategy_value = map[string]int32{
+	"NETWORK":  0,
+	"DISABLED": 1,
+}
+
+func (x EndpointSpec_IngressStrategy) String() string {
+	return proto.EnumName(EndpointSpec_IngressStrategy_name, int32(x))
+}
+func (EndpointSpec_IngressStrategy) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptorSpecs, []int{7, 0}
+}
+
 // Annotations provide useful information to identify API objects. They are
 // common to all API specs.
 type Annotations struct {
@@ -107,10 +141,11 @@ type ServiceSpec struct {
 	// Placement specifies constraints and distribution preference.
 	Placement *Placement `protobuf:"bytes,6,opt,name=placement" json:"placement,omitempty"`
 	// UpdateConfig controls the rate and policy of updates.
-	Update *UpdateConfig `protobuf:"bytes,7,opt,name=update" json:"update,omitempty"`
+	Update   *UpdateConfig                    `protobuf:"bytes,7,opt,name=update" json:"update,omitempty"`
+	Networks []*ServiceSpec_NetworkAttachment `protobuf:"bytes,8,rep,name=networks" json:"networks,omitempty"`
 	// Service endpoint specifies the user provided configuration
 	// to properly discover and load balance a service.
-	Endpoint *Endpoint `protobuf:"bytes,8,opt,name=endpoint" json:"endpoint,omitempty"`
+	Endpoint *EndpointSpec `protobuf:"bytes,9,opt,name=endpoint" json:"endpoint,omitempty"`
 }
 
 func (m *ServiceSpec) Reset()                    { *m = ServiceSpec{} }
@@ -281,6 +316,124 @@ func _ServiceSpec_OneofSizer(msg proto.Message) (n int) {
 	return n
 }
 
+// NetworkAttachmentSpec describes which networks the target
+// runtime is attached to.
+type ServiceSpec_NetworkAttachment struct {
+	// Types that are valid to be assigned to Reference:
+	//	*ServiceSpec_NetworkAttachment_Name
+	//	*ServiceSpec_NetworkAttachment_NetworkID
+	Reference isServiceSpec_NetworkAttachment_Reference `protobuf_oneof:"reference"`
+}
+
+func (m *ServiceSpec_NetworkAttachment) Reset()      { *m = ServiceSpec_NetworkAttachment{} }
+func (*ServiceSpec_NetworkAttachment) ProtoMessage() {}
+func (*ServiceSpec_NetworkAttachment) Descriptor() ([]byte, []int) {
+	return fileDescriptorSpecs, []int{3, 0}
+}
+
+type isServiceSpec_NetworkAttachment_Reference interface {
+	isServiceSpec_NetworkAttachment_Reference()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type ServiceSpec_NetworkAttachment_Name struct {
+	Name string `protobuf:"bytes,1,opt,name=name,proto3,oneof"`
+}
+type ServiceSpec_NetworkAttachment_NetworkID struct {
+	NetworkID string `protobuf:"bytes,2,opt,name=network_id,json=networkId,proto3,oneof"`
+}
+
+func (*ServiceSpec_NetworkAttachment_Name) isServiceSpec_NetworkAttachment_Reference()      {}
+func (*ServiceSpec_NetworkAttachment_NetworkID) isServiceSpec_NetworkAttachment_Reference() {}
+
+func (m *ServiceSpec_NetworkAttachment) GetReference() isServiceSpec_NetworkAttachment_Reference {
+	if m != nil {
+		return m.Reference
+	}
+	return nil
+}
+
+func (m *ServiceSpec_NetworkAttachment) GetName() string {
+	if x, ok := m.GetReference().(*ServiceSpec_NetworkAttachment_Name); ok {
+		return x.Name
+	}
+	return ""
+}
+
+func (m *ServiceSpec_NetworkAttachment) GetNetworkID() string {
+	if x, ok := m.GetReference().(*ServiceSpec_NetworkAttachment_NetworkID); ok {
+		return x.NetworkID
+	}
+	return ""
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*ServiceSpec_NetworkAttachment) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _ServiceSpec_NetworkAttachment_OneofMarshaler, _ServiceSpec_NetworkAttachment_OneofUnmarshaler, _ServiceSpec_NetworkAttachment_OneofSizer, []interface{}{
+		(*ServiceSpec_NetworkAttachment_Name)(nil),
+		(*ServiceSpec_NetworkAttachment_NetworkID)(nil),
+	}
+}
+
+func _ServiceSpec_NetworkAttachment_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*ServiceSpec_NetworkAttachment)
+	// reference
+	switch x := m.Reference.(type) {
+	case *ServiceSpec_NetworkAttachment_Name:
+		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
+		_ = b.EncodeStringBytes(x.Name)
+	case *ServiceSpec_NetworkAttachment_NetworkID:
+		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
+		_ = b.EncodeStringBytes(x.NetworkID)
+	case nil:
+	default:
+		return fmt.Errorf("ServiceSpec_NetworkAttachment.Reference has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _ServiceSpec_NetworkAttachment_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*ServiceSpec_NetworkAttachment)
+	switch tag {
+	case 1: // reference.name
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeStringBytes()
+		m.Reference = &ServiceSpec_NetworkAttachment_Name{x}
+		return true, err
+	case 2: // reference.network_id
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeStringBytes()
+		m.Reference = &ServiceSpec_NetworkAttachment_NetworkID{x}
+		return true, err
+	default:
+		return false, nil
+	}
+}
+
+func _ServiceSpec_NetworkAttachment_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*ServiceSpec_NetworkAttachment)
+	// reference
+	switch x := m.Reference.(type) {
+	case *ServiceSpec_NetworkAttachment_Name:
+		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.Name)))
+		n += len(x.Name)
+	case *ServiceSpec_NetworkAttachment_NetworkID:
+		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.NetworkID)))
+		n += len(x.NetworkID)
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 // ReplicatedService set the reconcilation target to certain number of instances.
 type ReplicatedService struct {
 	Instances uint64 `protobuf:"varint,1,opt,name=instances,proto3" json:"instances,omitempty"`
@@ -316,138 +469,31 @@ type ContainerSpec struct {
 	// Dir defines the working directory to set for the container process.
 	Dir string `protobuf:"bytes,5,opt,name=dir,proto3" json:"dir,omitempty"`
 	// User specifies the user that should be employed to run the container.
-	User         string                             `protobuf:"bytes,6,opt,name=user,proto3" json:"user,omitempty"`
-	Networks     []*ContainerSpec_NetworkAttachment `protobuf:"bytes,7,rep,name=networks" json:"networks,omitempty"`
-	ExposedPorts []*PortConfig                      `protobuf:"bytes,8,rep,name=exposed_ports,json=exposedPorts" json:"exposed_ports,omitempty"`
-	Mounts       []*Mount                           `protobuf:"bytes,9,rep,name=mounts" json:"mounts,omitempty"`
+	User   string   `protobuf:"bytes,6,opt,name=user,proto3" json:"user,omitempty"`
+	Mounts []*Mount `protobuf:"bytes,7,rep,name=mounts" json:"mounts,omitempty"`
 	// Resource requirements for the container.
-	Resources *ResourceRequirements `protobuf:"bytes,10,opt,name=resources" json:"resources,omitempty"`
+	Resources *ResourceRequirements `protobuf:"bytes,8,opt,name=resources" json:"resources,omitempty"`
 	// StopGracePeriod the grace period for stopping the container before
 	// forcefully killing the container.
-	StopGracePeriod time.Duration `protobuf:"varint,11,opt,name=stop_grace_period,json=stopGracePeriod,proto3,customtype=time.Duration" json:"stop_grace_period"`
+	StopGracePeriod time.Duration `protobuf:"varint,9,opt,name=stop_grace_period,json=stopGracePeriod,proto3,customtype=time.Duration" json:"stop_grace_period"`
 }
 
 func (m *ContainerSpec) Reset()                    { *m = ContainerSpec{} }
 func (*ContainerSpec) ProtoMessage()               {}
 func (*ContainerSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{6} }
 
-// NetworkAttachmentSpec describes a desired attachment to the named network or
-// a specific network_id.
-type ContainerSpec_NetworkAttachment struct {
-	// Types that are valid to be assigned to Reference:
-	//	*ContainerSpec_NetworkAttachment_Name
-	//	*ContainerSpec_NetworkAttachment_NetworkID
-	Reference isContainerSpec_NetworkAttachment_Reference `protobuf_oneof:"reference"`
+// EndpointSpec defines the properties that can be configured to
+// access and loadbalance the service.
+type EndpointSpec struct {
+	Strategy EndpointSpec_IngressStrategy `protobuf:"varint,1,opt,name=strategy,proto3,enum=docker.cluster.api.EndpointSpec_IngressStrategy" json:"strategy,omitempty"`
+	// List of exposed ports that this service is accessible from
+	// external to the cluster.
+	ExposedPorts []*PortConfig `protobuf:"bytes,2,rep,name=exposed_ports,json=exposedPorts" json:"exposed_ports,omitempty"`
 }
 
-func (m *ContainerSpec_NetworkAttachment) Reset()      { *m = ContainerSpec_NetworkAttachment{} }
-func (*ContainerSpec_NetworkAttachment) ProtoMessage() {}
-func (*ContainerSpec_NetworkAttachment) Descriptor() ([]byte, []int) {
-	return fileDescriptorSpecs, []int{6, 0}
-}
-
-type isContainerSpec_NetworkAttachment_Reference interface {
-	isContainerSpec_NetworkAttachment_Reference()
-	MarshalTo([]byte) (int, error)
-	Size() int
-}
-
-type ContainerSpec_NetworkAttachment_Name struct {
-	Name string `protobuf:"bytes,1,opt,name=name,proto3,oneof"`
-}
-type ContainerSpec_NetworkAttachment_NetworkID struct {
-	NetworkID string `protobuf:"bytes,2,opt,name=network_id,json=networkId,proto3,oneof"`
-}
-
-func (*ContainerSpec_NetworkAttachment_Name) isContainerSpec_NetworkAttachment_Reference()      {}
-func (*ContainerSpec_NetworkAttachment_NetworkID) isContainerSpec_NetworkAttachment_Reference() {}
-
-func (m *ContainerSpec_NetworkAttachment) GetReference() isContainerSpec_NetworkAttachment_Reference {
-	if m != nil {
-		return m.Reference
-	}
-	return nil
-}
-
-func (m *ContainerSpec_NetworkAttachment) GetName() string {
-	if x, ok := m.GetReference().(*ContainerSpec_NetworkAttachment_Name); ok {
-		return x.Name
-	}
-	return ""
-}
-
-func (m *ContainerSpec_NetworkAttachment) GetNetworkID() string {
-	if x, ok := m.GetReference().(*ContainerSpec_NetworkAttachment_NetworkID); ok {
-		return x.NetworkID
-	}
-	return ""
-}
-
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*ContainerSpec_NetworkAttachment) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _ContainerSpec_NetworkAttachment_OneofMarshaler, _ContainerSpec_NetworkAttachment_OneofUnmarshaler, _ContainerSpec_NetworkAttachment_OneofSizer, []interface{}{
-		(*ContainerSpec_NetworkAttachment_Name)(nil),
-		(*ContainerSpec_NetworkAttachment_NetworkID)(nil),
-	}
-}
-
-func _ContainerSpec_NetworkAttachment_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*ContainerSpec_NetworkAttachment)
-	// reference
-	switch x := m.Reference.(type) {
-	case *ContainerSpec_NetworkAttachment_Name:
-		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
-		_ = b.EncodeStringBytes(x.Name)
-	case *ContainerSpec_NetworkAttachment_NetworkID:
-		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
-		_ = b.EncodeStringBytes(x.NetworkID)
-	case nil:
-	default:
-		return fmt.Errorf("ContainerSpec_NetworkAttachment.Reference has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _ContainerSpec_NetworkAttachment_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*ContainerSpec_NetworkAttachment)
-	switch tag {
-	case 1: // reference.name
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.Reference = &ContainerSpec_NetworkAttachment_Name{x}
-		return true, err
-	case 2: // reference.network_id
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.Reference = &ContainerSpec_NetworkAttachment_NetworkID{x}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _ContainerSpec_NetworkAttachment_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*ContainerSpec_NetworkAttachment)
-	// reference
-	switch x := m.Reference.(type) {
-	case *ContainerSpec_NetworkAttachment_Name:
-		n += proto.SizeVarint(1<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(len(x.Name)))
-		n += len(x.Name)
-	case *ContainerSpec_NetworkAttachment_NetworkID:
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(len(x.NetworkID)))
-		n += len(x.NetworkID)
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
-}
+func (m *EndpointSpec) Reset()                    { *m = EndpointSpec{} }
+func (*EndpointSpec) ProtoMessage()               {}
+func (*EndpointSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{7} }
 
 // VolumeSpec defines the properties of a Volume.
 type VolumeSpec struct {
@@ -457,7 +503,7 @@ type VolumeSpec struct {
 
 func (m *VolumeSpec) Reset()                    { *m = VolumeSpec{} }
 func (*VolumeSpec) ProtoMessage()               {}
-func (*VolumeSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{7} }
+func (*VolumeSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{8} }
 
 // NetworkSpec specifies user defined network parameters.
 type NetworkSpec struct {
@@ -474,7 +520,7 @@ type NetworkSpec struct {
 
 func (m *NetworkSpec) Reset()                    { *m = NetworkSpec{} }
 func (*NetworkSpec) ProtoMessage()               {}
-func (*NetworkSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{8} }
+func (*NetworkSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{9} }
 
 // RegisteredCertificateSpec specifies user defined certificate parameters.
 type RegisteredCertificateSpec struct {
@@ -484,7 +530,7 @@ type RegisteredCertificateSpec struct {
 
 func (m *RegisteredCertificateSpec) Reset()                    { *m = RegisteredCertificateSpec{} }
 func (*RegisteredCertificateSpec) ProtoMessage()               {}
-func (*RegisteredCertificateSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{9} }
+func (*RegisteredCertificateSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{10} }
 
 // ClusterSpec specifies global cluster settings.
 type ClusterSpec struct {
@@ -499,22 +545,24 @@ type ClusterSpec struct {
 
 func (m *ClusterSpec) Reset()                    { *m = ClusterSpec{} }
 func (*ClusterSpec) ProtoMessage()               {}
-func (*ClusterSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{10} }
+func (*ClusterSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{11} }
 
 func init() {
 	proto.RegisterType((*Annotations)(nil), "docker.cluster.api.Annotations")
 	proto.RegisterType((*NodeSpec)(nil), "docker.cluster.api.NodeSpec")
 	proto.RegisterType((*ManagerSpec)(nil), "docker.cluster.api.ManagerSpec")
 	proto.RegisterType((*ServiceSpec)(nil), "docker.cluster.api.ServiceSpec")
+	proto.RegisterType((*ServiceSpec_NetworkAttachment)(nil), "docker.cluster.api.ServiceSpec.NetworkAttachment")
 	proto.RegisterType((*ReplicatedService)(nil), "docker.cluster.api.ReplicatedService")
 	proto.RegisterType((*GlobalService)(nil), "docker.cluster.api.GlobalService")
 	proto.RegisterType((*ContainerSpec)(nil), "docker.cluster.api.ContainerSpec")
-	proto.RegisterType((*ContainerSpec_NetworkAttachment)(nil), "docker.cluster.api.ContainerSpec.NetworkAttachment")
+	proto.RegisterType((*EndpointSpec)(nil), "docker.cluster.api.EndpointSpec")
 	proto.RegisterType((*VolumeSpec)(nil), "docker.cluster.api.VolumeSpec")
 	proto.RegisterType((*NetworkSpec)(nil), "docker.cluster.api.NetworkSpec")
 	proto.RegisterType((*RegisteredCertificateSpec)(nil), "docker.cluster.api.RegisteredCertificateSpec")
 	proto.RegisterType((*ClusterSpec)(nil), "docker.cluster.api.ClusterSpec")
 	proto.RegisterEnum("docker.cluster.api.NodeSpec_Availability", NodeSpec_Availability_name, NodeSpec_Availability_value)
+	proto.RegisterEnum("docker.cluster.api.EndpointSpec_IngressStrategy", EndpointSpec_IngressStrategy_name, EndpointSpec_IngressStrategy_value)
 }
 
 func (m *Annotations) Copy() *Annotations {
@@ -574,6 +622,13 @@ func (m *ServiceSpec) Copy() *ServiceSpec {
 		Endpoint:    m.Endpoint.Copy(),
 	}
 
+	if m.Networks != nil {
+		o.Networks = make([]*ServiceSpec_NetworkAttachment, 0, len(m.Networks))
+		for _, v := range m.Networks {
+			o.Networks = append(o.Networks, v.Copy())
+		}
+	}
+
 	switch m.RuntimeSpec.(type) {
 	case *ServiceSpec_Container:
 		i := &ServiceSpec_Container{
@@ -596,6 +651,31 @@ func (m *ServiceSpec) Copy() *ServiceSpec {
 		}
 
 		o.Mode = i
+	}
+
+	return o
+}
+
+func (m *ServiceSpec_NetworkAttachment) Copy() *ServiceSpec_NetworkAttachment {
+	if m == nil {
+		return nil
+	}
+
+	o := &ServiceSpec_NetworkAttachment{}
+
+	switch m.Reference.(type) {
+	case *ServiceSpec_NetworkAttachment_Name:
+		i := &ServiceSpec_NetworkAttachment_Name{
+			Name: m.GetName(),
+		}
+
+		o.Reference = i
+	case *ServiceSpec_NetworkAttachment_NetworkID:
+		i := &ServiceSpec_NetworkAttachment_NetworkID{
+			NetworkID: m.GetNetworkID(),
+		}
+
+		o.Reference = i
 	}
 
 	return o
@@ -657,20 +737,6 @@ func (m *ContainerSpec) Copy() *ContainerSpec {
 		}
 	}
 
-	if m.Networks != nil {
-		o.Networks = make([]*ContainerSpec_NetworkAttachment, 0, len(m.Networks))
-		for _, v := range m.Networks {
-			o.Networks = append(o.Networks, v.Copy())
-		}
-	}
-
-	if m.ExposedPorts != nil {
-		o.ExposedPorts = make([]*PortConfig, 0, len(m.ExposedPorts))
-		for _, v := range m.ExposedPorts {
-			o.ExposedPorts = append(o.ExposedPorts, v.Copy())
-		}
-	}
-
 	if m.Mounts != nil {
 		o.Mounts = make([]*Mount, 0, len(m.Mounts))
 		for _, v := range m.Mounts {
@@ -681,26 +747,20 @@ func (m *ContainerSpec) Copy() *ContainerSpec {
 	return o
 }
 
-func (m *ContainerSpec_NetworkAttachment) Copy() *ContainerSpec_NetworkAttachment {
+func (m *EndpointSpec) Copy() *EndpointSpec {
 	if m == nil {
 		return nil
 	}
 
-	o := &ContainerSpec_NetworkAttachment{}
+	o := &EndpointSpec{
+		Strategy: m.Strategy,
+	}
 
-	switch m.Reference.(type) {
-	case *ContainerSpec_NetworkAttachment_Name:
-		i := &ContainerSpec_NetworkAttachment_Name{
-			Name: m.GetName(),
+	if m.ExposedPorts != nil {
+		o.ExposedPorts = make([]*PortConfig, 0, len(m.ExposedPorts))
+		for _, v := range m.ExposedPorts {
+			o.ExposedPorts = append(o.ExposedPorts, v.Copy())
 		}
-
-		o.Reference = i
-	case *ContainerSpec_NetworkAttachment_NetworkID:
-		i := &ContainerSpec_NetworkAttachment_NetworkID{
-			NetworkID: m.GetNetworkID(),
-		}
-
-		o.Reference = i
 	}
 
 	return o
@@ -811,7 +871,7 @@ func (this *ServiceSpec) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 12)
+	s := make([]string, 0, 13)
 	s = append(s, "&api.ServiceSpec{")
 	s = append(s, "Annotations: "+strings.Replace(this.Annotations.GoString(), `&`, ``, 1)+",\n")
 	if this.RuntimeSpec != nil {
@@ -828,6 +888,9 @@ func (this *ServiceSpec) GoString() string {
 	}
 	if this.Update != nil {
 		s = append(s, "Update: "+fmt.Sprintf("%#v", this.Update)+",\n")
+	}
+	if this.Networks != nil {
+		s = append(s, "Networks: "+fmt.Sprintf("%#v", this.Networks)+",\n")
 	}
 	if this.Endpoint != nil {
 		s = append(s, "Endpoint: "+fmt.Sprintf("%#v", this.Endpoint)+",\n")
@@ -859,6 +922,34 @@ func (this *ServiceSpec_Global) GoString() string {
 		`Global:` + fmt.Sprintf("%#v", this.Global) + `}`}, ", ")
 	return s
 }
+func (this *ServiceSpec_NetworkAttachment) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.ServiceSpec_NetworkAttachment{")
+	if this.Reference != nil {
+		s = append(s, "Reference: "+fmt.Sprintf("%#v", this.Reference)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ServiceSpec_NetworkAttachment_Name) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.ServiceSpec_NetworkAttachment_Name{` +
+		`Name:` + fmt.Sprintf("%#v", this.Name) + `}`}, ", ")
+	return s
+}
+func (this *ServiceSpec_NetworkAttachment_NetworkID) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.ServiceSpec_NetworkAttachment_NetworkID{` +
+		`NetworkID:` + fmt.Sprintf("%#v", this.NetworkID) + `}`}, ", ")
+	return s
+}
 func (this *ReplicatedService) GoString() string {
 	if this == nil {
 		return "nil"
@@ -882,7 +973,7 @@ func (this *ContainerSpec) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 15)
+	s := make([]string, 0, 13)
 	s = append(s, "&api.ContainerSpec{")
 	s = append(s, "Image: "+strings.Replace(this.Image.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "Command: "+fmt.Sprintf("%#v", this.Command)+",\n")
@@ -890,12 +981,6 @@ func (this *ContainerSpec) GoString() string {
 	s = append(s, "Env: "+fmt.Sprintf("%#v", this.Env)+",\n")
 	s = append(s, "Dir: "+fmt.Sprintf("%#v", this.Dir)+",\n")
 	s = append(s, "User: "+fmt.Sprintf("%#v", this.User)+",\n")
-	if this.Networks != nil {
-		s = append(s, "Networks: "+fmt.Sprintf("%#v", this.Networks)+",\n")
-	}
-	if this.ExposedPorts != nil {
-		s = append(s, "ExposedPorts: "+fmt.Sprintf("%#v", this.ExposedPorts)+",\n")
-	}
 	if this.Mounts != nil {
 		s = append(s, "Mounts: "+fmt.Sprintf("%#v", this.Mounts)+",\n")
 	}
@@ -906,33 +991,18 @@ func (this *ContainerSpec) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *ContainerSpec_NetworkAttachment) GoString() string {
+func (this *EndpointSpec) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.ContainerSpec_NetworkAttachment{")
-	if this.Reference != nil {
-		s = append(s, "Reference: "+fmt.Sprintf("%#v", this.Reference)+",\n")
+	s = append(s, "&api.EndpointSpec{")
+	s = append(s, "Strategy: "+fmt.Sprintf("%#v", this.Strategy)+",\n")
+	if this.ExposedPorts != nil {
+		s = append(s, "ExposedPorts: "+fmt.Sprintf("%#v", this.ExposedPorts)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
-}
-func (this *ContainerSpec_NetworkAttachment_Name) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&api.ContainerSpec_NetworkAttachment_Name{` +
-		`Name:` + fmt.Sprintf("%#v", this.Name) + `}`}, ", ")
-	return s
-}
-func (this *ContainerSpec_NetworkAttachment_NetworkID) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&api.ContainerSpec_NetworkAttachment_NetworkID{` +
-		`NetworkID:` + fmt.Sprintf("%#v", this.NetworkID) + `}`}, ", ")
-	return s
 }
 func (this *VolumeSpec) GoString() string {
 	if this == nil {
@@ -1179,8 +1249,20 @@ func (m *ServiceSpec) MarshalTo(data []byte) (int, error) {
 		}
 		i += n8
 	}
+	if len(m.Networks) > 0 {
+		for _, msg := range m.Networks {
+			data[i] = 0x42
+			i++
+			i = encodeVarintSpecs(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
 	if m.Endpoint != nil {
-		data[i] = 0x42
+		data[i] = 0x4a
 		i++
 		i = encodeVarintSpecs(data, i, uint64(m.Endpoint.Size()))
 		n9, err := m.Endpoint.MarshalTo(data[i:])
@@ -1232,6 +1314,47 @@ func (m *ServiceSpec_Global) MarshalTo(data []byte) (int, error) {
 		}
 		i += n12
 	}
+	return i, nil
+}
+func (m *ServiceSpec_NetworkAttachment) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ServiceSpec_NetworkAttachment) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Reference != nil {
+		nn13, err := m.Reference.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += nn13
+	}
+	return i, nil
+}
+
+func (m *ServiceSpec_NetworkAttachment_Name) MarshalTo(data []byte) (int, error) {
+	i := 0
+	data[i] = 0xa
+	i++
+	i = encodeVarintSpecs(data, i, uint64(len(m.Name)))
+	i += copy(data[i:], m.Name)
+	return i, nil
+}
+func (m *ServiceSpec_NetworkAttachment_NetworkID) MarshalTo(data []byte) (int, error) {
+	i := 0
+	data[i] = 0x12
+	i++
+	i = encodeVarintSpecs(data, i, uint64(len(m.NetworkID)))
+	i += copy(data[i:], m.NetworkID)
 	return i, nil
 }
 func (m *ReplicatedService) Marshal() (data []byte, err error) {
@@ -1293,11 +1416,11 @@ func (m *ContainerSpec) MarshalTo(data []byte) (int, error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintSpecs(data, i, uint64(m.Image.Size()))
-	n13, err := m.Image.MarshalTo(data[i:])
+	n14, err := m.Image.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n13
+	i += n14
 	if len(m.Command) > 0 {
 		for _, s := range m.Command {
 			data[i] = 0x12
@@ -1355,8 +1478,8 @@ func (m *ContainerSpec) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintSpecs(data, i, uint64(len(m.User)))
 		i += copy(data[i:], m.User)
 	}
-	if len(m.Networks) > 0 {
-		for _, msg := range m.Networks {
+	if len(m.Mounts) > 0 {
+		for _, msg := range m.Mounts {
 			data[i] = 0x3a
 			i++
 			i = encodeVarintSpecs(data, i, uint64(msg.Size()))
@@ -1367,49 +1490,25 @@ func (m *ContainerSpec) MarshalTo(data []byte) (int, error) {
 			i += n
 		}
 	}
-	if len(m.ExposedPorts) > 0 {
-		for _, msg := range m.ExposedPorts {
-			data[i] = 0x42
-			i++
-			i = encodeVarintSpecs(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	if len(m.Mounts) > 0 {
-		for _, msg := range m.Mounts {
-			data[i] = 0x4a
-			i++
-			i = encodeVarintSpecs(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
 	if m.Resources != nil {
-		data[i] = 0x52
+		data[i] = 0x42
 		i++
 		i = encodeVarintSpecs(data, i, uint64(m.Resources.Size()))
-		n14, err := m.Resources.MarshalTo(data[i:])
+		n15, err := m.Resources.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n14
+		i += n15
 	}
 	if m.StopGracePeriod != 0 {
-		data[i] = 0x58
+		data[i] = 0x48
 		i++
 		i = encodeVarintSpecs(data, i, uint64(m.StopGracePeriod))
 	}
 	return i, nil
 }
 
-func (m *ContainerSpec_NetworkAttachment) Marshal() (data []byte, err error) {
+func (m *EndpointSpec) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1419,37 +1518,31 @@ func (m *ContainerSpec_NetworkAttachment) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *ContainerSpec_NetworkAttachment) MarshalTo(data []byte) (int, error) {
+func (m *EndpointSpec) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.Reference != nil {
-		nn15, err := m.Reference.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
+	if m.Strategy != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintSpecs(data, i, uint64(m.Strategy))
+	}
+	if len(m.ExposedPorts) > 0 {
+		for _, msg := range m.ExposedPorts {
+			data[i] = 0x12
+			i++
+			i = encodeVarintSpecs(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
 		}
-		i += nn15
 	}
 	return i, nil
 }
 
-func (m *ContainerSpec_NetworkAttachment_Name) MarshalTo(data []byte) (int, error) {
-	i := 0
-	data[i] = 0xa
-	i++
-	i = encodeVarintSpecs(data, i, uint64(len(m.Name)))
-	i += copy(data[i:], m.Name)
-	return i, nil
-}
-func (m *ContainerSpec_NetworkAttachment_NetworkID) MarshalTo(data []byte) (int, error) {
-	i := 0
-	data[i] = 0x12
-	i++
-	i = encodeVarintSpecs(data, i, uint64(len(m.NetworkID)))
-	i += copy(data[i:], m.NetworkID)
-	return i, nil
-}
 func (m *VolumeSpec) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -1721,6 +1814,12 @@ func (m *ServiceSpec) Size() (n int) {
 		l = m.Update.Size()
 		n += 1 + l + sovSpecs(uint64(l))
 	}
+	if len(m.Networks) > 0 {
+		for _, e := range m.Networks {
+			l = e.Size()
+			n += 1 + l + sovSpecs(uint64(l))
+		}
+	}
 	if m.Endpoint != nil {
 		l = m.Endpoint.Size()
 		n += 1 + l + sovSpecs(uint64(l))
@@ -1753,6 +1852,29 @@ func (m *ServiceSpec_Global) Size() (n int) {
 		l = m.Global.Size()
 		n += 1 + l + sovSpecs(uint64(l))
 	}
+	return n
+}
+func (m *ServiceSpec_NetworkAttachment) Size() (n int) {
+	var l int
+	_ = l
+	if m.Reference != nil {
+		n += m.Reference.Size()
+	}
+	return n
+}
+
+func (m *ServiceSpec_NetworkAttachment_Name) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Name)
+	n += 1 + l + sovSpecs(uint64(l))
+	return n
+}
+func (m *ServiceSpec_NetworkAttachment_NetworkID) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.NetworkID)
+	n += 1 + l + sovSpecs(uint64(l))
 	return n
 }
 func (m *ReplicatedService) Size() (n int) {
@@ -1801,18 +1923,6 @@ func (m *ContainerSpec) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovSpecs(uint64(l))
 	}
-	if len(m.Networks) > 0 {
-		for _, e := range m.Networks {
-			l = e.Size()
-			n += 1 + l + sovSpecs(uint64(l))
-		}
-	}
-	if len(m.ExposedPorts) > 0 {
-		for _, e := range m.ExposedPorts {
-			l = e.Size()
-			n += 1 + l + sovSpecs(uint64(l))
-		}
-	}
 	if len(m.Mounts) > 0 {
 		for _, e := range m.Mounts {
 			l = e.Size()
@@ -1829,29 +1939,21 @@ func (m *ContainerSpec) Size() (n int) {
 	return n
 }
 
-func (m *ContainerSpec_NetworkAttachment) Size() (n int) {
+func (m *EndpointSpec) Size() (n int) {
 	var l int
 	_ = l
-	if m.Reference != nil {
-		n += m.Reference.Size()
+	if m.Strategy != 0 {
+		n += 1 + sovSpecs(uint64(m.Strategy))
+	}
+	if len(m.ExposedPorts) > 0 {
+		for _, e := range m.ExposedPorts {
+			l = e.Size()
+			n += 1 + l + sovSpecs(uint64(l))
+		}
 	}
 	return n
 }
 
-func (m *ContainerSpec_NetworkAttachment_Name) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.Name)
-	n += 1 + l + sovSpecs(uint64(l))
-	return n
-}
-func (m *ContainerSpec_NetworkAttachment_NetworkID) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.NetworkID)
-	n += 1 + l + sovSpecs(uint64(l))
-	return n
-}
 func (m *VolumeSpec) Size() (n int) {
 	var l int
 	_ = l
@@ -1977,7 +2079,8 @@ func (this *ServiceSpec) String() string {
 		`Restart:` + strings.Replace(fmt.Sprintf("%v", this.Restart), "RestartPolicy", "RestartPolicy", 1) + `,`,
 		`Placement:` + strings.Replace(fmt.Sprintf("%v", this.Placement), "Placement", "Placement", 1) + `,`,
 		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "UpdateConfig", "UpdateConfig", 1) + `,`,
-		`Endpoint:` + strings.Replace(fmt.Sprintf("%v", this.Endpoint), "Endpoint", "Endpoint", 1) + `,`,
+		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "ServiceSpec_NetworkAttachment", "ServiceSpec_NetworkAttachment", 1) + `,`,
+		`Endpoint:` + strings.Replace(fmt.Sprintf("%v", this.Endpoint), "EndpointSpec", "EndpointSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2012,6 +2115,36 @@ func (this *ServiceSpec_Global) String() string {
 	}, "")
 	return s
 }
+func (this *ServiceSpec_NetworkAttachment) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ServiceSpec_NetworkAttachment{`,
+		`Reference:` + fmt.Sprintf("%v", this.Reference) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ServiceSpec_NetworkAttachment_Name) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ServiceSpec_NetworkAttachment_Name{`,
+		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ServiceSpec_NetworkAttachment_NetworkID) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ServiceSpec_NetworkAttachment_NetworkID{`,
+		`NetworkID:` + fmt.Sprintf("%v", this.NetworkID) + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *ReplicatedService) String() string {
 	if this == nil {
 		return "nil"
@@ -2042,8 +2175,6 @@ func (this *ContainerSpec) String() string {
 		`Env:` + fmt.Sprintf("%v", this.Env) + `,`,
 		`Dir:` + fmt.Sprintf("%v", this.Dir) + `,`,
 		`User:` + fmt.Sprintf("%v", this.User) + `,`,
-		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "ContainerSpec_NetworkAttachment", "ContainerSpec_NetworkAttachment", 1) + `,`,
-		`ExposedPorts:` + strings.Replace(fmt.Sprintf("%v", this.ExposedPorts), "PortConfig", "PortConfig", 1) + `,`,
 		`Mounts:` + strings.Replace(fmt.Sprintf("%v", this.Mounts), "Mount", "Mount", 1) + `,`,
 		`Resources:` + strings.Replace(fmt.Sprintf("%v", this.Resources), "ResourceRequirements", "ResourceRequirements", 1) + `,`,
 		`StopGracePeriod:` + fmt.Sprintf("%v", this.StopGracePeriod) + `,`,
@@ -2051,32 +2182,13 @@ func (this *ContainerSpec) String() string {
 	}, "")
 	return s
 }
-func (this *ContainerSpec_NetworkAttachment) String() string {
+func (this *EndpointSpec) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&ContainerSpec_NetworkAttachment{`,
-		`Reference:` + fmt.Sprintf("%v", this.Reference) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ContainerSpec_NetworkAttachment_Name) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ContainerSpec_NetworkAttachment_Name{`,
-		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ContainerSpec_NetworkAttachment_NetworkID) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ContainerSpec_NetworkAttachment_NetworkID{`,
-		`NetworkID:` + fmt.Sprintf("%v", this.NetworkID) + `,`,
+	s := strings.Join([]string{`&EndpointSpec{`,
+		`Strategy:` + fmt.Sprintf("%v", this.Strategy) + `,`,
+		`ExposedPorts:` + strings.Replace(fmt.Sprintf("%v", this.ExposedPorts), "PortConfig", "PortConfig", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2763,6 +2875,37 @@ func (m *ServiceSpec) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 8:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Networks", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSpecs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthSpecs
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Networks = append(m.Networks, &ServiceSpec_NetworkAttachment{})
+			if err := m.Networks[len(m.Networks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 9:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Endpoint", wireType)
 			}
 			var msglen int
@@ -2788,11 +2931,119 @@ func (m *ServiceSpec) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Endpoint == nil {
-				m.Endpoint = &Endpoint{}
+				m.Endpoint = &EndpointSpec{}
 			}
 			if err := m.Endpoint.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipSpecs(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthSpecs
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ServiceSpec_NetworkAttachment) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowSpecs
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: NetworkAttachment: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: NetworkAttachment: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSpecs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthSpecs
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Reference = &ServiceSpec_NetworkAttachment_Name{string(data[iNdEx:postIndex])}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NetworkID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSpecs
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthSpecs
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Reference = &ServiceSpec_NetworkAttachment_NetworkID{string(data[iNdEx:postIndex])}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3140,68 +3391,6 @@ func (m *ContainerSpec) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 7:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Networks", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSpecs
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Networks = append(m.Networks, &ContainerSpec_NetworkAttachment{})
-			if err := m.Networks[len(m.Networks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 8:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ExposedPorts", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSpecs
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ExposedPorts = append(m.ExposedPorts, &PortConfig{})
-			if err := m.ExposedPorts[len(m.ExposedPorts)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 9:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Mounts", wireType)
 			}
 			var msglen int
@@ -3231,7 +3420,7 @@ func (m *ContainerSpec) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 10:
+		case 8:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Resources", wireType)
 			}
@@ -3264,7 +3453,7 @@ func (m *ContainerSpec) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 11:
+		case 9:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field StopGracePeriod", wireType)
 			}
@@ -3304,7 +3493,7 @@ func (m *ContainerSpec) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *ContainerSpec_NetworkAttachment) Unmarshal(data []byte) error {
+func (m *EndpointSpec) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3327,17 +3516,17 @@ func (m *ContainerSpec_NetworkAttachment) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: NetworkAttachment: wiretype end group for non-group")
+			return fmt.Errorf("proto: EndpointSpec: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: NetworkAttachment: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: EndpointSpec: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Strategy", wireType)
 			}
-			var stringLen uint64
+			m.Strategy = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowSpecs
@@ -3347,26 +3536,16 @@ func (m *ContainerSpec_NetworkAttachment) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				m.Strategy |= (EndpointSpec_IngressStrategy(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Reference = &ContainerSpec_NetworkAttachment_Name{string(data[iNdEx:postIndex])}
-			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NetworkID", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ExposedPorts", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowSpecs
@@ -3376,20 +3555,22 @@ func (m *ContainerSpec_NetworkAttachment) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthSpecs
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Reference = &ContainerSpec_NetworkAttachment_NetworkID{string(data[iNdEx:postIndex])}
+			m.ExposedPorts = append(m.ExposedPorts, &PortConfig{})
+			if err := m.ExposedPorts[len(m.ExposedPorts)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -4086,75 +4267,81 @@ var (
 )
 
 var fileDescriptorSpecs = []byte{
-	// 1113 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xcc, 0x56, 0x41, 0x6f, 0x1b, 0x45,
-	0x14, 0x8e, 0x53, 0xc7, 0xb5, 0xdf, 0xda, 0x6d, 0x32, 0xb4, 0xc8, 0xb1, 0x42, 0x92, 0xae, 0x0a,
-	0x04, 0x21, 0x19, 0x35, 0x15, 0xa8, 0x80, 0x38, 0xd8, 0x4e, 0x9a, 0x5a, 0x22, 0x89, 0x35, 0xa1,
-	0xe1, 0x68, 0x4d, 0x76, 0x27, 0xee, 0x28, 0xeb, 0x9d, 0x65, 0x76, 0x6c, 0xc8, 0x8d, 0x63, 0xc5,
-	0x7f, 0xe0, 0x80, 0x0a, 0x37, 0xf8, 0x0b, 0x9c, 0x73, 0xe4, 0x88, 0x38, 0x44, 0xb4, 0x27, 0x8e,
-	0xfc, 0x04, 0xde, 0xcc, 0x4e, 0x62, 0xa7, 0xd9, 0xa8, 0x97, 0x1c, 0x38, 0xac, 0x3c, 0xfb, 0xfc,
-	0x7d, 0x6f, 0xe6, 0xcd, 0xf7, 0xfc, 0x3d, 0x83, 0x97, 0x26, 0x3c, 0x48, 0x9b, 0x89, 0x92, 0x5a,
-	0x12, 0x12, 0xca, 0xe0, 0x88, 0xab, 0x66, 0x10, 0x8d, 0x52, 0x8d, 0x9f, 0x2c, 0x11, 0x0d, 0x4f,
-	0x1f, 0x27, 0xdc, 0x01, 0x1a, 0x77, 0x06, 0x72, 0x20, 0xed, 0xf2, 0x23, 0xb3, 0xca, 0xa2, 0xfe,
-	0x4f, 0x05, 0xf0, 0x5a, 0x71, 0x2c, 0x35, 0xd3, 0x42, 0xc6, 0x29, 0x21, 0x50, 0x8c, 0xd9, 0x90,
-	0xd7, 0x0b, 0xab, 0x85, 0xb5, 0x0a, 0xb5, 0x6b, 0xd2, 0x81, 0x52, 0xc4, 0x0e, 0x78, 0x94, 0xd6,
-	0x67, 0x57, 0x6f, 0xac, 0x79, 0xeb, 0x1f, 0x36, 0x2f, 0xef, 0xd5, 0x9c, 0x4a, 0xd2, 0xfc, 0xd2,
-	0xa2, 0x37, 0x63, 0xad, 0x8e, 0xa9, 0xa3, 0x36, 0x3e, 0x05, 0x6f, 0x2a, 0x4c, 0xe6, 0xe1, 0xc6,
-	0x11, 0x3f, 0x76, 0xdb, 0x98, 0x25, 0xb9, 0x03, 0x73, 0x63, 0x16, 0x8d, 0x38, 0x6e, 0x62, 0x62,
-	0xd9, 0xcb, 0x67, 0xb3, 0x8f, 0x0a, 0xfe, 0x6f, 0xb3, 0x50, 0xde, 0x91, 0x21, 0xdf, 0xc3, 0x72,
-	0xc9, 0x16, 0x78, 0x6c, 0xb2, 0x95, 0x4d, 0xe0, 0xad, 0xaf, 0xbc, 0xe1, 0x44, 0xed, 0xe2, 0xc9,
-	0xe9, 0xca, 0x0c, 0x9d, 0x66, 0x92, 0x6d, 0xa8, 0xb2, 0x31, 0x13, 0x78, 0x3c, 0x11, 0x09, 0x7d,
-	0x6c, 0xb7, 0xbd, 0xb5, 0xfe, 0x41, 0x5e, 0xa6, 0xb3, 0xcd, 0x9b, 0xad, 0x29, 0x02, 0xbd, 0x40,
-	0xf7, 0x9f, 0x17, 0xa0, 0x3a, 0xfd, 0x35, 0x79, 0x0f, 0x4a, 0xad, 0xce, 0x57, 0xdd, 0xfd, 0xcd,
-	0xf9, 0x99, 0x46, 0xe3, 0x87, 0x1f, 0x57, 0xdf, 0x36, 0x59, 0xa6, 0x11, 0xad, 0x40, 0x8b, 0x31,
-	0x27, 0xf7, 0x61, 0xae, 0xd7, 0x7a, 0xba, 0xb7, 0x39, 0x5f, 0x68, 0x2c, 0x22, 0xec, 0xee, 0xeb,
-	0xb0, 0x1e, 0x1b, 0xa5, 0x16, 0xb5, 0x41, 0x5b, 0xdd, 0x9d, 0xf9, 0xd9, 0x7c, 0xd4, 0x86, 0x62,
-	0x22, 0x6e, 0x14, 0x9f, 0xbf, 0x58, 0x9e, 0xf1, 0xf7, 0xc1, 0xdb, 0x66, 0x31, 0x1b, 0x70, 0x75,
-	0xad, 0x37, 0xe6, 0xff, 0x52, 0x04, 0x6f, 0x8f, 0xab, 0xb1, 0x08, 0xae, 0x59, 0x8a, 0x16, 0x54,
-	0x02, 0x19, 0x6b, 0xac, 0x80, 0x2b, 0xab, 0x83, 0xb7, 0x7e, 0x2f, 0x2f, 0x4d, 0xe7, 0x0c, 0x64,
-	0xb6, 0x7f, 0x32, 0x43, 0x27, 0x2c, 0x3c, 0x0b, 0x28, 0x9e, 0x44, 0x22, 0x60, 0x9a, 0x87, 0xf5,
-	0x1b, 0x36, 0xc7, 0xbb, 0x79, 0x39, 0xe8, 0x39, 0xca, 0x95, 0xf2, 0xa4, 0x40, 0xa7, 0xa8, 0xe4,
-	0x73, 0x28, 0x0d, 0x22, 0x79, 0xc0, 0xa2, 0x7a, 0xf1, 0xea, 0x83, 0x6c, 0x59, 0xc4, 0x24, 0x81,
-	0xa3, 0x20, 0xf9, 0xa6, 0xe2, 0xa9, 0x66, 0x4a, 0xd7, 0xe7, 0xae, 0x66, 0xd3, 0x0c, 0xd2, 0x93,
-	0xb8, 0xe7, 0x31, 0x3d, 0x63, 0x20, 0xb9, 0x92, 0x44, 0x2c, 0xe0, 0x43, 0x1e, 0xeb, 0x7a, 0xc9,
-	0xd2, 0xdf, 0xc9, 0xa3, 0xf7, 0xce, 0x40, 0x74, 0x82, 0x27, 0x8f, 0xa0, 0x34, 0x4a, 0x42, 0xac,
-	0xa0, 0x7e, 0xd3, 0x32, 0x57, 0xf3, 0x98, 0x4f, 0x2d, 0x02, 0x6f, 0xf1, 0x50, 0x0c, 0xa8, 0xc3,
-	0x23, 0xb3, 0xcc, 0xe3, 0x30, 0x91, 0x02, 0x77, 0x2d, 0x5b, 0xee, 0x52, 0x1e, 0x77, 0xd3, 0x61,
-	0xe8, 0x39, 0xba, 0x7d, 0x0b, 0xaa, 0x6a, 0x14, 0x6b, 0x31, 0xe4, 0x7d, 0xe3, 0x44, 0xed, 0x12,
-	0x14, 0x87, 0xd8, 0x96, 0xfe, 0x03, 0x58, 0xb8, 0x74, 0xcb, 0x64, 0x09, 0x2a, 0x22, 0xc6, 0x42,
-	0xe3, 0x80, 0x67, 0xad, 0x52, 0xa4, 0x93, 0x80, 0x7f, 0x1b, 0x6a, 0x17, 0xee, 0xd4, 0xff, 0xa7,
-	0x08, 0xb5, 0x0b, 0x72, 0x93, 0x8f, 0x61, 0x4e, 0x0c, 0xb1, 0xa9, 0x5d, 0x9f, 0x2d, 0xe6, 0x1d,
-	0xb2, 0x6b, 0x00, 0xae, 0xc3, 0x32, 0x34, 0xa9, 0xc3, 0xcd, 0x40, 0x0e, 0x87, 0x2c, 0x0e, 0xad,
-	0x7b, 0x55, 0xe8, 0xd9, 0xab, 0xb1, 0x3a, 0xa6, 0x06, 0x29, 0x36, 0x8b, 0x09, 0xdb, 0xb5, 0xb1,
-	0x25, 0x1e, 0x8f, 0x51, 0x7a, 0x13, 0x32, 0x4b, 0x13, 0x09, 0x85, 0xb2, 0x72, 0x62, 0x04, 0x97,
-	0x86, 0x87, 0xbf, 0x48, 0x65, 0x25, 0x42, 0x9e, 0x59, 0x93, 0x5d, 0x28, 0xc7, 0x5c, 0x7f, 0x2b,
-	0xd5, 0x51, 0x8a, 0x02, 0x18, 0x93, 0x7c, 0xf8, 0xc6, 0x06, 0x6e, 0xee, 0x64, 0x8c, 0x96, 0xd6,
-	0x2c, 0x78, 0x66, 0x05, 0x3d, 0x4f, 0x82, 0x9e, 0x5b, 0xe3, 0xdf, 0x25, 0x32, 0xe5, 0x61, 0x3f,
-	0x91, 0x4a, 0xa7, 0x28, 0x8d, 0xc9, 0xba, 0x9c, 0xdb, 0x10, 0x08, 0x70, 0xa2, 0x56, 0x1d, 0xc9,
-	0x84, 0x52, 0xf2, 0x00, 0x4a, 0x43, 0x89, 0x0a, 0xa5, 0xf5, 0x8a, 0x65, 0xe7, 0xde, 0xd9, 0xb6,
-	0x41, 0x50, 0x07, 0x24, 0x8f, 0xa1, 0x82, 0xfd, 0x28, 0x47, 0xca, 0xc8, 0x04, 0xf6, 0xa6, 0xd7,
-	0xae, 0xe8, 0x61, 0x0b, 0xa2, 0xfc, 0x9b, 0x91, 0x50, 0xb6, 0x07, 0x53, 0x3a, 0xa1, 0xe2, 0x4f,
-	0x7a, 0x21, 0xd5, 0x32, 0xe9, 0x0f, 0x14, 0x76, 0x68, 0x3f, 0xe1, 0x4a, 0xc8, 0xb0, 0xee, 0x19,
-	0xd9, 0xdb, 0x77, 0x8d, 0x3c, 0x7f, 0x9d, 0xae, 0xd4, 0x4c, 0xe7, 0x34, 0x37, 0x46, 0xca, 0xba,
-	0x00, 0xbd, 0x6d, 0xf0, 0x5b, 0x06, 0xde, 0xb3, 0xe8, 0xc6, 0x21, 0x2c, 0x5c, 0xba, 0x21, 0x9c,
-	0x12, 0x53, 0xf3, 0x09, 0x2d, 0x20, 0x9b, 0x50, 0x4d, 0x00, 0x77, 0x73, 0x7d, 0x11, 0x66, 0x03,
-	0xa4, 0x5d, 0x7b, 0x75, 0xba, 0x52, 0x71, 0x09, 0xba, 0x1b, 0xc6, 0x2d, 0x1c, 0xa4, 0x1b, 0xb6,
-	0x3d, 0x53, 0xe5, 0x21, 0x57, 0x1c, 0x9b, 0xcf, 0xff, 0xb9, 0x00, 0xb0, 0x2f, 0xa3, 0xd1, 0xf0,
-	0xda, 0x07, 0xcc, 0x9d, 0x50, 0xa1, 0xc3, 0xab, 0x7e, 0x60, 0xc5, 0x71, 0x85, 0x3a, 0x83, 0x6b,
-	0xe4, 0x65, 0xdc, 0xb0, 0x78, 0xfa, 0x56, 0xc6, 0xeb, 0x4c, 0xd3, 0xfc, 0x17, 0xb3, 0xe0, 0xb9,
-	0x72, 0xfe, 0xcf, 0xe7, 0x24, 0xf7, 0xa0, 0x2a, 0x92, 0xf1, 0x27, 0x7d, 0x1e, 0xb3, 0x83, 0xc8,
-	0x79, 0x71, 0x99, 0x7a, 0x26, 0xb6, 0x99, 0x85, 0x48, 0x03, 0xca, 0xe8, 0x1f, 0x5c, 0xc5, 0xce,
-	0x65, 0xcb, 0xf4, 0xfc, 0x9d, 0x7c, 0x01, 0x45, 0x91, 0xb0, 0xa1, 0xf3, 0xcf, 0xdc, 0x7a, 0xba,
-	0xbd, 0xd6, 0xf6, 0x6e, 0x92, 0xd5, 0x53, 0x46, 0x95, 0x8b, 0x26, 0x40, 0x2d, 0xcd, 0xff, 0xb5,
-	0x00, 0x8b, 0x94, 0x0f, 0x84, 0x01, 0xf3, 0xb0, 0xc3, 0x95, 0x16, 0x87, 0xd6, 0x88, 0xae, 0xf7,
-	0xce, 0x1e, 0x43, 0x2d, 0xe4, 0x29, 0x36, 0x7e, 0xd8, 0x47, 0x0b, 0xd3, 0xdc, 0xfd, 0x7b, 0xc8,
-	0xb5, 0xfb, 0x6e, 0x9a, 0x8e, 0x8c, 0xcb, 0xed, 0x19, 0x20, 0xad, 0x3a, 0x9e, 0x7d, 0xf3, 0x7f,
-	0x47, 0x51, 0x3b, 0x19, 0xf6, 0x7a, 0x0f, 0xf8, 0x35, 0x2c, 0xb0, 0x20, 0xe0, 0x89, 0xf5, 0x57,
-	0xb4, 0x10, 0x33, 0x6a, 0x9c, 0xa2, 0xf7, 0x73, 0xd3, 0x9d, 0x83, 0xb3, 0xb1, 0xe4, 0x72, 0xce,
-	0xb3, 0xd7, 0xe2, 0x64, 0x0f, 0x6a, 0x52, 0x05, 0xcf, 0x70, 0x66, 0xb9, 0x36, 0xc9, 0x66, 0xed,
-	0xfb, 0x79, 0x49, 0x77, 0xa7, 0x81, 0x59, 0x97, 0xb8, 0xbc, 0x17, 0x73, 0xe0, 0x0c, 0x2a, 0x2a,
-	0x76, 0xa8, 0xdd, 0xc8, 0xcd, 0x35, 0x39, 0x8a, 0xdf, 0x5f, 0x48, 0x61, 0x19, 0xed, 0xa5, 0x93,
-	0x97, 0xcb, 0x33, 0x7f, 0xe2, 0xf3, 0xef, 0xcb, 0xe5, 0xc2, 0xf7, 0xaf, 0x96, 0x0b, 0x27, 0xf8,
-	0xfc, 0x81, 0xcf, 0xdf, 0xf8, 0x1c, 0x94, 0xec, 0x9f, 0xdc, 0x87, 0xff, 0x05, 0x00, 0x00, 0xff,
-	0xff, 0xb1, 0xc1, 0xc6, 0x1b, 0x2a, 0x0b, 0x00, 0x00,
+	// 1201 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xcc, 0x56, 0x3d, 0x73, 0xdb, 0x46,
+	0x13, 0x16, 0x29, 0x8a, 0x22, 0x17, 0xa4, 0x2d, 0xdd, 0x6b, 0xbf, 0xa1, 0x19, 0x47, 0x92, 0x31,
+	0x4e, 0x2c, 0x4f, 0x66, 0x98, 0x48, 0x99, 0x64, 0x9c, 0xaf, 0x82, 0x5f, 0x96, 0x39, 0xd1, 0x07,
+	0xe7, 0x68, 0xcb, 0x25, 0xe7, 0x04, 0x9c, 0x68, 0x8c, 0x40, 0x00, 0x39, 0x80, 0x8c, 0xd5, 0xa5,
+	0xf4, 0xa4, 0xc8, 0x3f, 0x48, 0x91, 0x71, 0xca, 0xe4, 0x2f, 0xa4, 0x56, 0x99, 0x32, 0x93, 0x42,
+	0x63, 0xbb, 0x4c, 0x95, 0x9f, 0x90, 0xbd, 0xc3, 0x91, 0x84, 0x24, 0x68, 0xdc, 0xa8, 0x48, 0x81,
+	0xe1, 0x61, 0xf9, 0x3c, 0x7b, 0x7b, 0xb7, 0xcf, 0xee, 0x02, 0x8c, 0x30, 0xe0, 0x56, 0x58, 0x0b,
+	0x84, 0x1f, 0xf9, 0x84, 0xd8, 0xbe, 0x75, 0xc4, 0x45, 0xcd, 0x72, 0x47, 0x61, 0x84, 0xbf, 0x2c,
+	0x70, 0xaa, 0x46, 0x74, 0x1c, 0x70, 0x0d, 0xa8, 0xde, 0x18, 0xf8, 0x03, 0x5f, 0x2d, 0x3f, 0x92,
+	0xab, 0xd8, 0x6a, 0xfe, 0x9c, 0x01, 0xa3, 0xee, 0x79, 0x7e, 0xc4, 0x22, 0xc7, 0xf7, 0x42, 0x42,
+	0x20, 0xe7, 0xb1, 0x21, 0xaf, 0x64, 0xd6, 0x32, 0xeb, 0x45, 0xaa, 0xd6, 0xa4, 0x09, 0x79, 0x97,
+	0x1d, 0x70, 0x37, 0xac, 0x64, 0xd7, 0xe6, 0xd7, 0x8d, 0xcd, 0x0f, 0x6b, 0x17, 0xf7, 0xaa, 0x25,
+	0x9c, 0xd4, 0xb6, 0x15, 0xba, 0xed, 0x45, 0xe2, 0x98, 0x6a, 0x6a, 0xf5, 0x73, 0x30, 0x12, 0x66,
+	0xb2, 0x04, 0xf3, 0x47, 0xfc, 0x58, 0x6f, 0x23, 0x97, 0xe4, 0x06, 0x2c, 0x8c, 0x99, 0x3b, 0xe2,
+	0xb8, 0x89, 0xb4, 0xc5, 0x2f, 0x5f, 0x64, 0x1f, 0x64, 0xcc, 0xdf, 0xb2, 0x50, 0xd8, 0xf5, 0x6d,
+	0xde, 0xc3, 0xe3, 0x92, 0x2d, 0x30, 0xd8, 0x6c, 0x2b, 0xe5, 0xc0, 0xd8, 0x5c, 0x7d, 0x4b, 0x44,
+	0x8d, 0xdc, 0xc9, 0xe9, 0xea, 0x1c, 0x4d, 0x32, 0xc9, 0x0e, 0x94, 0xd8, 0x98, 0x39, 0x18, 0x9e,
+	0xe3, 0x3a, 0xd1, 0xb1, 0xda, 0xf6, 0xda, 0xe6, 0xfd, 0x34, 0x4f, 0x93, 0xcd, 0x6b, 0xf5, 0x04,
+	0x81, 0x9e, 0xa1, 0x9b, 0x2f, 0x32, 0x50, 0x4a, 0xfe, 0x4d, 0x3e, 0x80, 0x7c, 0xbd, 0xf9, 0xb8,
+	0xb3, 0xdf, 0x5e, 0x9a, 0xab, 0x56, 0x7f, 0xf8, 0x69, 0xed, 0xff, 0xd2, 0x4b, 0x12, 0x51, 0xb7,
+	0x22, 0x67, 0xcc, 0xc9, 0x5d, 0x58, 0xe8, 0xd6, 0x9f, 0xf4, 0xda, 0x4b, 0x99, 0xea, 0x2d, 0x84,
+	0xdd, 0x3c, 0x0f, 0xeb, 0xb2, 0x51, 0xa8, 0x50, 0x2d, 0x5a, 0xef, 0xec, 0x2e, 0x65, 0xd3, 0x51,
+	0x2d, 0xc1, 0x1c, 0xaf, 0x9a, 0x7b, 0xf1, 0x72, 0x65, 0xce, 0xdc, 0x07, 0x63, 0x87, 0x79, 0x6c,
+	0xc0, 0xc5, 0x95, 0xde, 0x98, 0xf9, 0x6a, 0x01, 0x8c, 0x1e, 0x17, 0x63, 0xc7, 0xba, 0xe2, 0x54,
+	0xd4, 0xa1, 0x68, 0xf9, 0x5e, 0x84, 0x27, 0xe0, 0x42, 0xe5, 0xc1, 0xd8, 0xbc, 0x93, 0xe6, 0xa6,
+	0x39, 0x01, 0xc9, 0xed, 0x1f, 0xcd, 0xd1, 0x19, 0x0b, 0x63, 0x01, 0xc1, 0x03, 0xd7, 0xb1, 0x58,
+	0xc4, 0xed, 0xca, 0xbc, 0xf2, 0xf1, 0x7e, 0x9a, 0x0f, 0x3a, 0x45, 0xe9, 0xa3, 0x3c, 0xca, 0xd0,
+	0x04, 0x95, 0x7c, 0x09, 0xf9, 0x81, 0xeb, 0x1f, 0x30, 0xb7, 0x92, 0xbb, 0x3c, 0x90, 0x2d, 0x85,
+	0x98, 0x39, 0xd0, 0x14, 0x24, 0x2f, 0x0a, 0x1e, 0x46, 0x4c, 0x44, 0x95, 0x85, 0xcb, 0xd9, 0x34,
+	0x86, 0x74, 0x7d, 0xdc, 0xf3, 0x98, 0x4e, 0x18, 0x48, 0x2e, 0x06, 0x2e, 0xb3, 0xf8, 0x90, 0x7b,
+	0x51, 0x25, 0xaf, 0xe8, 0xef, 0xa5, 0xd1, 0xbb, 0x13, 0x10, 0x9d, 0xe1, 0xc9, 0x03, 0xc8, 0x8f,
+	0x02, 0x1b, 0x4f, 0x50, 0x59, 0x54, 0xcc, 0xb5, 0x34, 0xe6, 0x13, 0x85, 0xc0, 0x5b, 0x3c, 0x74,
+	0x06, 0x54, 0xe3, 0xb1, 0x0e, 0x0a, 0x1e, 0x8f, 0xbe, 0xf3, 0xc5, 0x51, 0x58, 0x29, 0xa8, 0xfa,
+	0xde, 0x48, 0xe3, 0x26, 0x12, 0x5f, 0xdb, 0x8d, 0xf1, 0xf5, 0x28, 0x62, 0xd6, 0x33, 0x15, 0xc9,
+	0xd4, 0x05, 0xf9, 0x0a, 0x0a, 0xdc, 0xb3, 0x03, 0xdf, 0xc1, 0x43, 0x14, 0x2f, 0x0f, 0xa5, 0xad,
+	0x31, 0xd2, 0x1f, 0x9d, 0x32, 0xaa, 0x87, 0xb0, 0x7c, 0xc1, 0x39, 0x76, 0x86, 0x44, 0x4f, 0xc2,
+	0xb4, 0xc7, 0x5d, 0xa9, 0x06, 0xa0, 0x37, 0xed, 0x3b, 0x76, 0xdc, 0x34, 0x1a, 0xe5, 0x37, 0xa7,
+	0xab, 0x45, 0xed, 0xa0, 0xd3, 0x92, 0x0a, 0xd1, 0x90, 0x8e, 0xdd, 0x30, 0xa0, 0x28, 0xf8, 0x21,
+	0x17, 0xdc, 0xb3, 0x78, 0xe3, 0x1a, 0x94, 0xc4, 0xc8, 0x8b, 0x9c, 0x21, 0xef, 0xcb, 0x26, 0xda,
+	0xc8, 0x43, 0x6e, 0x88, 0x15, 0x65, 0x6e, 0xc0, 0xf2, 0x05, 0x81, 0x90, 0xdb, 0x50, 0x74, 0x3c,
+	0xcc, 0x11, 0x12, 0x63, 0x95, 0xe7, 0xe8, 0xcc, 0x60, 0x5e, 0x87, 0xf2, 0x19, 0x39, 0x98, 0x7f,
+	0x67, 0xa1, 0x7c, 0x46, 0xa9, 0xe4, 0x53, 0x58, 0x70, 0x86, 0x58, 0x8f, 0xba, 0x44, 0x6e, 0xa5,
+	0x5d, 0x48, 0x47, 0x02, 0x74, 0x71, 0xc4, 0x68, 0x52, 0x81, 0x45, 0xcb, 0x1f, 0x0e, 0x99, 0x67,
+	0xab, 0xc6, 0x5b, 0xa4, 0x93, 0x57, 0xd9, 0xa5, 0x99, 0x18, 0x84, 0xa8, 0x73, 0x69, 0x56, 0x6b,
+	0xd9, 0x51, 0xb9, 0x37, 0x46, 0xd5, 0x4a, 0x93, 0x5c, 0x4a, 0x8b, 0xed, 0x08, 0xa5, 0x44, 0xb4,
+	0xe0, 0x52, 0xf2, 0xb0, 0x99, 0x08, 0xa5, 0x2e, 0xe4, 0xc9, 0x35, 0xd9, 0x80, 0xfc, 0xd0, 0xc7,
+	0xbb, 0x08, 0x51, 0x39, 0xf3, 0x97, 0x45, 0xb7, 0x23, 0x11, 0x54, 0x03, 0xc9, 0x43, 0x79, 0x95,
+	0xa1, 0x3f, 0x12, 0xf2, 0x42, 0x0a, 0xea, 0x4c, 0xeb, 0x97, 0x08, 0x5d, 0x81, 0x28, 0xff, 0x76,
+	0xe4, 0x08, 0x25, 0xd4, 0x90, 0xce, 0xa8, 0x58, 0xf7, 0xcb, 0x61, 0xe4, 0x07, 0xfd, 0x81, 0x40,
+	0x19, 0xf7, 0x03, 0x2e, 0x1c, 0xdf, 0x56, 0xa2, 0xc9, 0x35, 0x6e, 0xca, 0x8b, 0xf8, 0xeb, 0x74,
+	0xb5, 0x2c, 0x73, 0x54, 0x6b, 0x8d, 0x84, 0x6a, 0x15, 0xf4, 0xba, 0xc4, 0x6f, 0x49, 0x78, 0x57,
+	0xa1, 0xcd, 0x1f, 0xb3, 0x50, 0x4a, 0x6a, 0x89, 0x6c, 0x43, 0x21, 0x8c, 0x10, 0xcd, 0x07, 0xf1,
+	0x74, 0xb9, 0xb6, 0xf9, 0xf1, 0xdb, 0xf4, 0x57, 0xeb, 0x78, 0x03, 0x0c, 0x2a, 0xec, 0x69, 0x1e,
+	0x9d, 0x7a, 0xc0, 0xd1, 0x57, 0xe6, 0xcf, 0x03, 0x3f, 0xe4, 0x76, 0x3f, 0xf0, 0x45, 0x34, 0x99,
+	0x80, 0x2b, 0xa9, 0x75, 0x89, 0x00, 0x5d, 0x5b, 0x25, 0x4d, 0x92, 0xa6, 0xd0, 0x3c, 0x82, 0xeb,
+	0xe7, 0x76, 0x20, 0xf7, 0x60, 0x71, 0xb7, 0xfd, 0xf8, 0xe9, 0x1e, 0xfd, 0x66, 0x32, 0x1d, 0xce,
+	0x21, 0xb4, 0x88, 0xc9, 0x7d, 0x28, 0xb4, 0x3a, 0xbd, 0x7a, 0x63, 0xbb, 0xdd, 0xc2, 0x01, 0xf1,
+	0x2e, 0x22, 0xdf, 0x39, 0x87, 0x6c, 0x3f, 0xc7, 0x00, 0x3c, 0xe6, 0xea, 0xe6, 0xff, 0x4b, 0x06,
+	0x60, 0xdf, 0x77, 0x47, 0xc3, 0x2b, 0x1f, 0x97, 0x37, 0x6c, 0x81, 0xf3, 0x4a, 0xf4, 0x2d, 0x75,
+	0x46, 0x9d, 0x11, 0xdd, 0xae, 0xab, 0x69, 0x1e, 0x5b, 0x0a, 0x4f, 0xff, 0x17, 0xf3, 0x9a, 0x49,
+	0x9a, 0xf9, 0x32, 0x0b, 0x86, 0x3e, 0xe3, 0x7f, 0x39, 0x4e, 0x72, 0x07, 0x4a, 0x4e, 0x30, 0xfe,
+	0xac, 0xcf, 0x3d, 0x76, 0xe0, 0xea, 0xc9, 0x52, 0xa0, 0x86, 0xb4, 0xb5, 0x63, 0x13, 0xa9, 0x42,
+	0x01, 0x85, 0xa4, 0x72, 0xa0, 0x66, 0x46, 0x81, 0x4e, 0xdf, 0xc9, 0xd7, 0x90, 0x73, 0x02, 0x36,
+	0xd4, 0xd3, 0x20, 0xf5, 0x3c, 0x9d, 0x6e, 0x7d, 0x67, 0x2f, 0x88, 0xcf, 0x53, 0xc0, 0xfe, 0x95,
+	0x93, 0x06, 0xaa, 0x68, 0xe6, 0xaf, 0x19, 0xb8, 0x45, 0xf9, 0xc0, 0x91, 0x60, 0x6e, 0x37, 0xb9,
+	0x88, 0x9c, 0x43, 0xd5, 0x9b, 0xae, 0xf6, 0xce, 0x1e, 0x42, 0xd9, 0xe6, 0x21, 0x56, 0xa8, 0xdd,
+	0xc7, 0xae, 0x16, 0x71, 0xfd, 0x2d, 0x94, 0x3a, 0xbc, 0x3a, 0x61, 0x38, 0x92, 0x8d, 0xaf, 0x27,
+	0x81, 0xb4, 0xa4, 0x79, 0xea, 0xcd, 0xfc, 0x1d, 0x93, 0xda, 0x8c, 0xb1, 0x57, 0x1b, 0xe0, 0x53,
+	0x58, 0x66, 0x96, 0xc5, 0x03, 0xd5, 0x72, 0xb1, 0x12, 0xe5, 0xe0, 0xd4, 0x19, 0xbd, 0x9b, 0xea,
+	0x6e, 0x0a, 0x8e, 0x87, 0xac, 0xf6, 0xb9, 0xc4, 0xce, 0xd9, 0x49, 0x0f, 0xca, 0xbe, 0xb0, 0x9e,
+	0x71, 0x55, 0xf0, 0x52, 0x26, 0xf1, 0x97, 0xc3, 0xbd, 0x34, 0xa7, 0x7b, 0x49, 0x60, 0xac, 0x12,
+	0xed, 0xf7, 0xac, 0x0f, 0x9c, 0xc5, 0x39, 0xc1, 0x0e, 0x23, 0xfd, 0x01, 0x91, 0xda, 0x2b, 0x28,
+	0xfe, 0x7f, 0xc6, 0x85, 0x62, 0x34, 0x6e, 0x9f, 0xbc, 0x5e, 0x99, 0xfb, 0x13, 0x9f, 0x7f, 0x5e,
+	0xaf, 0x64, 0xbe, 0x7f, 0xb3, 0x92, 0x39, 0xc1, 0xe7, 0x0f, 0x7c, 0x5e, 0xe1, 0x73, 0x90, 0x57,
+	0x9f, 0xec, 0x9f, 0xfc, 0x1b, 0x00, 0x00, 0xff, 0xff, 0xf0, 0x1f, 0x47, 0x3d, 0xf8, 0x0b, 0x00,
+	0x00,
 }

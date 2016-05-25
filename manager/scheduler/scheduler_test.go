@@ -600,132 +600,6 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	assert.Equal(t, "id1", assignment.NodeID)
 }
 
-func TestSchedulerPortConstraint(t *testing.T) {
-	ctx := context.Background()
-	// Create a ready node
-	n1 := &api.Node{
-		ID: "n1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
-				Name: "n1",
-			},
-		},
-		Status: api.NodeStatus{
-			State: api.NodeStatus_READY,
-		},
-	}
-
-	staticPortTask := &api.Task{
-		ID: "static",
-		Runtime: &api.Task_Container{
-			Container: &api.Container{
-				Spec: api.ContainerSpec{
-					ExposedPorts: []*api.PortConfig{
-						{
-							Port:     5000,
-							HostPort: 443,
-						},
-					},
-				},
-			},
-		},
-		Annotations: api.Annotations{
-			Name: "static",
-		},
-		Status: api.TaskStatus{
-			State: api.TaskStateAllocated,
-		},
-	}
-
-	dynamicPortTask := &api.Task{
-		ID: "dynamic",
-		Annotations: api.Annotations{
-			Name: "dynamic",
-		},
-		Status: api.TaskStatus{
-			State: api.TaskStateAllocated,
-		},
-	}
-
-	s := store.NewMemoryStore(nil)
-	assert.NotNil(t, s)
-
-	// Add initial node and task
-	err := s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, dynamicPortTask))
-		assert.NoError(t, store.CreateNode(tx, n1))
-		return nil
-	})
-	assert.NoError(t, err)
-
-	scheduler := New(s)
-
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
-	defer cancel()
-
-	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
-	}()
-	defer scheduler.Stop()
-
-	// Initial task should get assigned.
-	assignment := watchAssignment(t, watch)
-	assert.Equal(t, "n1", assignment.NodeID)
-
-	// Dynamically assign a port to the task.
-	err = s.Update(func(tx store.Tx) error {
-		updatedTask := store.GetTask(tx, "dynamic")
-		updatedTask.Status.RuntimeStatus = &api.TaskStatus_Container{
-			Container: &api.ContainerStatus{
-				ExposedPorts: []*api.PortConfig{
-					{
-						Port:     5000,
-						HostPort: 443,
-					},
-				},
-			},
-		}
-
-		assert.NoError(t, store.UpdateTask(tx, updatedTask))
-		return nil
-	})
-	assert.NoError(t, err)
-
-	assignment = watchAssignment(t, watch)
-	assert.Equal(t, "dynamic", assignment.ID)
-	assert.Equal(t, "n1", assignment.NodeID)
-
-	// Create a task with a conflicting statically assigned port
-	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, staticPortTask))
-		return nil
-	})
-	assert.NoError(t, err)
-
-	// The new task should not get assigned at first.
-	time.Sleep(100 * time.Millisecond)
-	s.View(func(tx store.ReadTx) {
-		staticTask := store.GetTask(tx, "static")
-		if staticTask.Status.State >= api.TaskStateAssigned {
-			t.Fatal("conflicting task should not have been assigned")
-		}
-	})
-
-	// Kill original task
-	err = s.Update(func(tx store.Tx) error {
-		updatedTask := store.GetTask(tx, "dynamic")
-		updatedTask.Status.State = api.TaskStateShutdown
-		assert.NoError(t, store.UpdateTask(tx, updatedTask))
-		return nil
-	})
-	assert.NoError(t, err)
-
-	// Task with static port mapping should not get assigned.
-	assignment = watchAssignment(t, watch)
-	assert.Equal(t, "static", assignment.ID)
-	assert.Equal(t, "n1", assignment.NodeID)
-}
-
 func TestPreassignedTasks(t *testing.T) {
 	ctx := context.Background()
 	initialNodeSet := []*api.Node{
@@ -1019,6 +893,21 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	// Task3: vol plugin1, network plugin1
 	t3 := &api.Task{
 		ID: "task3_ID",
+		Networks: []*api.Task_NetworkAttachment{
+			{
+				Network: &api.Network{
+					ID: "testNwID1",
+					Spec: api.NetworkSpec{
+						Annotations: api.Annotations{
+							Name: "testVol1",
+						},
+						DriverConfiguration: &api.Driver{
+							Name: "plugin1",
+						},
+					},
+				},
+			},
+		},
 		Runtime: &api.Task_Container{
 			Container: &api.Container{
 				Spec: api.ContainerSpec{
@@ -1039,21 +928,6 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 							},
 							DriverConfiguration: &api.Driver{
 								Name: "plugin1",
-							},
-						},
-					},
-				},
-				Networks: []*api.Container_NetworkAttachment{
-					{
-						Network: &api.Network{
-							ID: "testNwID1",
-							Spec: api.NetworkSpec{
-								Annotations: api.Annotations{
-									Name: "testVol1",
-								},
-								DriverConfiguration: &api.Driver{
-									Name: "plugin1",
-								},
 							},
 						},
 					},

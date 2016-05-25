@@ -66,6 +66,37 @@ message Service {
 	Endpoint endpoint = 4;
 }
 
+// Endpoint specified all the network parameters required to
+// correctly discover and load balance a service
+message Endpoint {
+	EndpointSpec spec = 1;
+
+	// Runtime state of the exposed ports which may carry
+	// auto-allocated node ports in addition to the user
+	// configured information.
+	repeated PortConfig exposed_ports = 2;
+
+	// An endpoint attachment specifies the data that the process
+	// of attaching an endpoint to a network creates.
+	message EndpointAttachment {
+		// Network for which this endpoint attachment was
+		// created.
+		string network_id = 1 [(gogoproto.customname) = "NetworkID"];
+
+		// A virtual IP is used to address this service in IP
+		// layer that the client can use to send requests to
+		// this service. A DNS A/AAAA query on the service
+		// name might return this IP to the client. This is
+		// strictly a logical IP and there may not be any
+		// interfaces assigned this IP address or any route
+		// created for this address.  More than one to
+		// accomodate for both IPv4 and IPv6
+		repeated string virtual_ip = 2 [(gogoproto.customname) = "VirtualIP"];
+	}
+
+	repeated EndpointAttachment attachments = 3;
+}
+
 // Task specifies the parameters for implementing a Spec. A task is effectively
 // immutable and idempotent. Once it is dispatched to a node, it will not be
 // dispatched to another node.
@@ -106,12 +137,6 @@ message Task {
 	// TaskStateDead if the manager wants to terminate the task. This field
 	// is only written by the manager.
 	TaskState desired_state = 9;
-}
-
-// Container contains all runtime state of a task which is container runtime specific.
-message Container {
-	// Spec defines the container specific configuration for this container.
-	ContainerSpec spec = 1 [(gogoproto.nullable) = false];
 
 	message NetworkAttachment {
 		// Network state as a whole becomes part of Task so
@@ -124,11 +149,17 @@ message Container {
 		repeated string addresses = 2;
 	}
 
-	repeated NetworkAttachment networks = 2;
+	repeated NetworkAttachment networks = 10;
 
 	// A copy of runtime state of service endpoint from Service
 	// object to be distributed to agents as part of the task.
-	Endpoint endpoint = 3;
+	Endpoint endpoint = 11;
+}
+
+// Container contains all runtime state of a task which is container runtime specific.
+message Container {
+	// Spec defines the container specific configuration for this container.
+	ContainerSpec spec = 1 [(gogoproto.nullable) = false];
 
 	// Volumes enumerates the volume declarations needed to satisfy the mounts which use plugins
 	// used by this container
