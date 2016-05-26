@@ -77,9 +77,8 @@ func (b *Benchmark) spec() *api.ServiceSpec {
 		},
 		RuntimeSpec: &api.ServiceSpec_Container{
 			Container: &api.ContainerSpec{
-				Image: api.Image{
-					Reference: "alpine:latest",
-				},
+				Image: "alpine:latest",
+
 				Command: []string{"nc", b.cfg.IP, strconv.Itoa(b.cfg.Port)},
 			},
 		},

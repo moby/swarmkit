@@ -106,7 +106,14 @@ message GlobalService {
 
 // Container specifies runtime parameters for a container.
 message ContainerSpec {
-	Image image = 1 [(gogoproto.nullable) = false];
+	// image defines the image reference, as specified in the
+	// distribution/reference package. This may include a registry host, name,
+	// tag or digest.
+	//
+	// The field will be directly passed to the engine pulling. Well-behaved
+	// service definitions will used immutable references, either through tags
+	// that don't change or verifiable digests.
+	string image = 1;
 
 	// Command to run the the container. The first element is a path to the
 	// executable and the following elements are treated as arguments.

@@ -54,7 +54,7 @@ func printTaskSummary(task *api.Task, res *common.Resolver) {
 
 	fmt.Fprintln(w, "Spec\t")
 	ctr := task.GetContainer().Spec
-	common.FprintfIfNotEmpty(w, "  Image\t: %s\n", ctr.Image.Reference)
+	common.FprintfIfNotEmpty(w, "  Image\t: %s\n", ctr.Image)
 	common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))
 	common.FprintfIfNotEmpty(w, "  Args\t: [%s]\n", strings.Join(ctr.Args, ", "))
 	common.FprintfIfNotEmpty(w, "  Env\t: [%s]\n", strings.Join(ctr.Env, ", "))
