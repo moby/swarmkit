@@ -188,11 +188,6 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 	case state.EventCreateService:
 		s := v.Service.Copy()
 
-		// No endpoint configuration. No network allocation needed.
-		if s.Spec.Endpoint == nil {
-			break
-		}
-
 		if nc.nwkAllocator.IsServiceAllocated(s) {
 			break
 		}
@@ -206,11 +201,6 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		a.procUnallocatedTasks(ctx, nc)
 	case state.EventUpdateService:
 		s := v.Service.Copy()
-
-		// No endpoint configuration and no endpoint state. Nothing to do.
-		if s.Spec.Endpoint == nil && s.Endpoint == nil {
-			break
-		}
 
 		if nc.nwkAllocator.IsServiceAllocated(s) {
 			break
@@ -260,10 +250,11 @@ func taskReadyForNetworkVote(t *api.Task, s *api.Service, nc *networkContext) bo
 	// Task is ready for vote if the following is true:
 	//
 	// Task has no network attached or networks attached but all
-	// of them allocated AND Task's service has no endpoint
-	// configured or service endpoints have been allocated.
+	// of them allocated AND Task's service has no endpoint or
+	// network configured or service endpoints have been
+	// allocated.
 	return (len(t.Networks) == 0 || nc.nwkAllocator.IsTaskAllocated(t)) &&
-		(s == nil || s.Spec.Endpoint == nil || nc.nwkAllocator.IsServiceAllocated(s))
+		(s == nil || len(s.Spec.Networks) == 0 || nc.nwkAllocator.IsServiceAllocated(s))
 }
 
 func taskUpdateNetworks(t *api.Task, networks []*api.Task_NetworkAttachment) {
@@ -397,7 +388,7 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 	}
 
 	if !nc.nwkAllocator.IsTaskAllocated(t) ||
-		(s != nil && s.Spec.Endpoint != nil && !nc.nwkAllocator.IsServiceAllocated(s)) {
+		(s != nil && len(s.Spec.Networks) != 0 && !nc.nwkAllocator.IsServiceAllocated(s)) {
 
 		nc.unallocatedTasks[t.ID] = t
 	}
@@ -457,7 +448,7 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sto
 				return nil, fmt.Errorf("could not find service %s", t.ServiceID)
 			}
 
-			if s.Spec.Endpoint != nil && !nc.nwkAllocator.IsServiceAllocated(s) {
+			if len(s.Spec.Networks) != 0 && !nc.nwkAllocator.IsServiceAllocated(s) {
 				return nil, fmt.Errorf("service %s to which this task %s belongs has pending allocations", s.ID, t.ID)
 			}
 
@@ -496,6 +487,7 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sto
 	}
 
 	taskUpdateNetworks(storeT, t.Networks)
+	taskUpdateEndpoint(storeT, t.Endpoint)
 	if err := store.UpdateTask(tx, storeT); err != nil {
 		return nil, fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
 	}
