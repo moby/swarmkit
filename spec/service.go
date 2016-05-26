@@ -151,9 +151,8 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 			Container: &api.ContainerSpec{
 				Resources: s.Resources.ToProto(),
 				Mounts:    s.Mounts.ToProto(),
-				Image: api.Image{
-					Reference: s.Image,
-				},
+				Image:     s.Image,
+
 				Env:     s.Env,
 				Command: s.Command,
 				Args:    s.Args,
@@ -225,7 +224,7 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	*s = ServiceConfig{
 		Name: serviceSpec.Annotations.Name,
 		ContainerConfig: ContainerConfig{
-			Image:   serviceSpec.GetContainer().Image.Reference,
+			Image:   serviceSpec.GetContainer().Image,
 			Env:     serviceSpec.GetContainer().Env,
 			Args:    serviceSpec.GetContainer().Args,
 			Command: serviceSpec.GetContainer().Command,

@@ -53,7 +53,7 @@ func Print(tasks []*api.Task, all bool, res *common.Resolver) {
 			t.ID,
 			t.Annotations.Name,
 			t.Instance,
-			c.Image.Reference,
+			c.Image,
 			t.DesiredState.String(),
 			t.Status.State.String(),
 			common.TimestampAgo(t.Status.Timestamp),

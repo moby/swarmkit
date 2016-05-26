@@ -48,9 +48,7 @@ func TestControllerFlowIntegration(t *testing.T) {
 			Container: &api.Container{
 				Spec: api.ContainerSpec{
 					Command: []string{"sh", "-c", "sleep 5"},
-					Image: api.Image{
-						Reference: "alpine",
-					},
+					Image:   "alpine",
 				},
 			},
 		},
