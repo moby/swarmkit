@@ -193,6 +193,26 @@ func (c *containerConfig) resources() enginecontainer.Resources {
 	return resources
 }
 
+func (c *containerConfig) virtualIP(networkID string) string {
+	if c.task.Endpoint == nil {
+		return ""
+	}
+
+	for _, eAttach := range c.task.Endpoint.Attachments {
+		// We only support IPv4 VIPs for now.
+		if eAttach.NetworkID == networkID && len(eAttach.VirtualIP) > 0 {
+			vip, _, err := net.ParseCIDR(eAttach.VirtualIP[0])
+			if err != nil {
+				return ""
+			}
+
+			return vip.String()
+		}
+	}
+
+	return ""
+}
+
 func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
 	var networks []*api.Task_NetworkAttachment
 	if c.task.GetContainer() != nil {
@@ -226,6 +246,7 @@ func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
 			ServiceConfig: &network.EndpointServiceConfig{
 				Name: c.task.Annotations.Name,
 				ID:   c.task.ServiceID,
+				IP:   c.virtualIP(na.Network.ID),
 			},
 		}
 
