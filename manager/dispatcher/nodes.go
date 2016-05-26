@@ -53,6 +53,13 @@ func newNodeStore(hbPeriod, hbEpsilon time.Duration, graceMultiplier int) *nodeS
 	}
 }
 
+func (s *nodeStore) updatePeriod(hbPeriod, hbEpsilon time.Duration, gracePeriodMultiplier int) {
+	s.mu.Lock()
+	s.periodChooser = newPeriodChooser(hbPeriod, hbEpsilon)
+	s.gracePeriodMultiplier = time.Duration(gracePeriodMultiplier)
+	s.mu.Unlock()
+}
+
 func (s *nodeStore) Len() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
