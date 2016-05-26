@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -43,7 +44,9 @@ var (
 // SecurityConfig is used to represent a node's security configuration. It includes information about
 // the RootCA and ServerTLSCreds/ClientTLSCreds transport authenticators to be used for MTLS
 type SecurityConfig struct {
-	RootCA
+	mu sync.Mutex
+
+	rootCA *RootCA
 
 	ServerTLSCreds *MutableTLSCreds
 	ClientTLSCreds *MutableTLSCreds
@@ -54,6 +57,37 @@ type SecurityConfig struct {
 type CertificateUpdate struct {
 	Role string
 	Err  error
+}
+
+// NewSecurityConfig initializes and returns a new SecurityConfig.
+func NewSecurityConfig(rootCA *RootCA, clientTLSCreds, serverTLSCreds *MutableTLSCreds) *SecurityConfig {
+	return &SecurityConfig{
+		rootCA:         rootCA,
+		ClientTLSCreds: clientTLSCreds,
+		ServerTLSCreds: serverTLSCreds,
+	}
+}
+
+// RootCA returns the root CA.
+func (s *SecurityConfig) RootCA() *RootCA {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.rootCA
+}
+
+// UpdateRootCA replaces the root CA with a new root CA based on the specified
+// certificate and key.
+func (s *SecurityConfig) UpdateRootCA(cert, key []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	rootCA, err := NewRootCA(cert, key)
+	if err == nil {
+		s.rootCA = &rootCA
+	}
+
+	return err
 }
 
 // DefaultPolicy is the default policy used by the signers to ensure that the only fields
@@ -174,7 +208,7 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, propos
 	}
 
 	return &SecurityConfig{
-		RootCA: rootCA,
+		rootCA: &rootCA,
 
 		ServerTLSCreds: serverTLSCreds,
 		ClientTLSCreds: clientTLSCreds,
@@ -210,8 +244,10 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 
 			log.Debugf("Renewing TLS Certificates.")
 
+			rootCA := s.RootCA()
+
 			// We are dependent on an external node, let's request new certs
-			tlsKeyPair, err := s.RootCA.RequestAndSaveNewCertificates(ctx,
+			tlsKeyPair, err := rootCA.RequestAndSaveNewCertificates(ctx,
 				paths.Node,
 				s.ClientTLSCreds.Role(),
 				picker,
@@ -222,12 +258,12 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 				continue
 			}
 
-			clientTLSConfig, err := NewClientTLSConfig(tlsKeyPair, s.RootCA.Pool, CARole)
+			clientTLSConfig, err := NewClientTLSConfig(tlsKeyPair, rootCA.Pool, CARole)
 			if err != nil {
 				log.Debugf("failed to create a new client TLS config: %v", err)
 				updates <- CertificateUpdate{Err: err}
 			}
-			serverTLSConfig, err := NewServerTLSConfig(tlsKeyPair, s.RootCA.Pool)
+			serverTLSConfig, err := NewServerTLSConfig(tlsKeyPair, rootCA.Pool)
 			if err != nil {
 				log.Debugf("failed to create a new server TLS config: %v", err)
 				updates <- CertificateUpdate{Err: err}
