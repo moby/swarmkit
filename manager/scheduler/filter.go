@@ -100,7 +100,7 @@ func (f *PluginFilter) Check(t *api.Task, n *NodeInfo) bool {
 
 	// Check if all network plugins required by task are installed on node
 	for _, tn := range t.Networks {
-		if !f.pluginExistsOnNode("Network", tn.Network.Spec.DriverConfiguration.Name, nodePlugins) {
+		if !f.pluginExistsOnNode("Network", tn.Network.DriverState.Name, nodePlugins) {
 			return false
 		}
 	}

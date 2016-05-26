@@ -508,33 +508,157 @@ func TestAllocateTaskFree(t *testing.T) {
 
 func TestServiceAllocate(t *testing.T) {
 	na := newNetworkAllocator(t)
+	n := &api.Network{
+		ID: "testID",
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "test",
+			},
+		},
+	}
+
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{},
+			Networks: []*api.ServiceSpec_NetworkAttachment{
+				{
+					Reference: &api.ServiceSpec_NetworkAttachment_NetworkID{
+						NetworkID: "testID",
+					},
+				},
+			},
+			Endpoint: &api.EndpointSpec{
+				ExposedPorts: []*api.PortConfig{
+					{
+						Name: "http",
+						Port: 80,
+					},
+					{
+						Name: "https",
+						Port: 443,
+					},
+				},
+			},
+		},
+	}
+
+	err := na.Allocate(n)
+	assert.NoError(t, err)
+	assert.NotEqual(t, n.IPAM.Configs, nil)
+	assert.Equal(t, len(n.IPAM.Configs), 1)
+	assert.Equal(t, n.IPAM.Configs[0].Range, "")
+	assert.Equal(t, len(n.IPAM.Configs[0].Reserved), 0)
+
+	_, subnet, err := net.ParseCIDR(n.IPAM.Configs[0].Subnet)
+	assert.NoError(t, err)
+
+	gwip := net.ParseIP(n.IPAM.Configs[0].Gateway)
+	assert.NotEqual(t, gwip, nil)
+
+	err = na.ServiceAllocate(s)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(s.Endpoint.ExposedPorts))
+	assert.True(t, s.Endpoint.ExposedPorts[0].NodePort >= dynamicPortStart &&
+		s.Endpoint.ExposedPorts[0].NodePort <= dynamicPortEnd)
+	assert.True(t, s.Endpoint.ExposedPorts[1].NodePort >= dynamicPortStart &&
+		s.Endpoint.ExposedPorts[1].NodePort <= dynamicPortEnd)
+
+	assert.Equal(t, 1, len(s.Endpoint.Attachments))
+	assert.Equal(t, 1, len(s.Endpoint.Attachments[0].VirtualIP))
+
+	ip, _, err := net.ParseCIDR(s.Endpoint.Attachments[0].VirtualIP[0])
+	assert.NoError(t, err)
+
+	assert.Equal(t, true, subnet.Contains(ip))
+}
+
+func TestServiceAllocateUserDefinedPorts(t *testing.T) {
+	na := newNetworkAllocator(t)
+	s := &api.Service{
+		ID: "testID1",
+		Spec: api.ServiceSpec{
+			Endpoint: &api.EndpointSpec{
+				ExposedPorts: []*api.PortConfig{
+					{
+						Name:     "some_tcp",
+						Port:     1234,
+						NodePort: 1234,
+					},
+					{
+						Name:     "some_udp",
+						Port:     1234,
+						NodePort: 1234,
+						Protocol: api.ProtocolUDP,
+					},
+				},
+			},
 		},
 	}
 
 	err := na.ServiceAllocate(s)
 	assert.NoError(t, err)
+	assert.Equal(t, 2, len(s.Endpoint.ExposedPorts))
+	assert.Equal(t, uint32(1234), s.Endpoint.ExposedPorts[0].NodePort)
+	assert.Equal(t, uint32(1234), s.Endpoint.ExposedPorts[1].NodePort)
+}
+
+func TestServiceAllocateConflictingUserDefinedPorts(t *testing.T) {
+	na := newNetworkAllocator(t)
+	s := &api.Service{
+		ID: "testID1",
+		Spec: api.ServiceSpec{
+			Endpoint: &api.EndpointSpec{
+				ExposedPorts: []*api.PortConfig{
+					{
+						Name:     "some_tcp",
+						Port:     1234,
+						NodePort: 1234,
+					},
+					{
+						Name:     "some_other_tcp",
+						Port:     1234,
+						NodePort: 1234,
+					},
+				},
+			},
+		},
+	}
+
+	err := na.ServiceAllocate(s)
+	assert.Error(t, err)
 }
 
 func TestServiceDeallocateAllocate(t *testing.T) {
 	na := newNetworkAllocator(t)
 	s := &api.Service{
-		ID:   "testID1",
-		Spec: api.ServiceSpec{},
+		ID: "testID1",
+		Spec: api.ServiceSpec{
+			Endpoint: &api.EndpointSpec{
+				ExposedPorts: []*api.PortConfig{
+					{
+						Name:     "some_tcp",
+						Port:     1234,
+						NodePort: 1234,
+					},
+				},
+			},
+		},
 	}
 
 	err := na.ServiceAllocate(s)
 	assert.NoError(t, err)
+	assert.Equal(t, 1, len(s.Endpoint.ExposedPorts))
+	assert.Equal(t, uint32(1234), s.Endpoint.ExposedPorts[0].NodePort)
 
 	err = na.ServiceDeallocate(s)
 	assert.NoError(t, err)
+	assert.Equal(t, 0, len(s.Endpoint.ExposedPorts))
 
 	// Allocate again.
 	err = na.ServiceAllocate(s)
 	assert.NoError(t, err)
+	assert.Equal(t, 1, len(s.Endpoint.ExposedPorts))
+	assert.Equal(t, uint32(1234), s.Endpoint.ExposedPorts[0].NodePort)
 }
 
 func TestServiceUpdate(t *testing.T) {
@@ -543,20 +667,49 @@ func TestServiceUpdate(t *testing.T) {
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{},
+			Endpoint: &api.EndpointSpec{
+				ExposedPorts: []*api.PortConfig{
+					{
+						Name:     "some_tcp",
+						Port:     1234,
+						NodePort: 1234,
+					},
+					{
+						Name:     "some_other_tcp",
+						Port:     1235,
+						NodePort: 0,
+					},
+				},
+			},
 		},
 	}
 
 	err := na1.ServiceAllocate(s)
 	assert.NoError(t, err)
 	assert.Equal(t, true, na1.IsServiceAllocated(s))
+	assert.Equal(t, 2, len(s.Endpoint.ExposedPorts))
+	assert.Equal(t, uint32(1234), s.Endpoint.ExposedPorts[0].NodePort)
+	assert.NotEqual(t, 0, s.Endpoint.ExposedPorts[1].NodePort)
+
+	// Cache the secode node port
+	allocatedPort := s.Endpoint.ExposedPorts[1].NodePort
 
 	// Now allocate the same service in another allocator instance
 	err = na2.ServiceAllocate(s)
 	assert.NoError(t, err)
 	assert.Equal(t, true, na2.IsServiceAllocated(s))
+	assert.Equal(t, 2, len(s.Endpoint.ExposedPorts))
+	assert.Equal(t, uint32(1234), s.Endpoint.ExposedPorts[0].NodePort)
+	// Make sure we got the same port
+	assert.Equal(t, allocatedPort, s.Endpoint.ExposedPorts[1].NodePort)
+
+	s.Spec.Endpoint.ExposedPorts[1].NodePort = 1235
+	assert.Equal(t, false, na1.IsServiceAllocated(s))
 
 	err = na1.ServiceAllocate(s)
 	assert.NoError(t, err)
 	assert.Equal(t, true, na1.IsServiceAllocated(s))
+	assert.Equal(t, 2, len(s.Endpoint.ExposedPorts))
+	assert.Equal(t, uint32(1234), s.Endpoint.ExposedPorts[0].NodePort)
+	assert.Equal(t, uint32(1235), s.Endpoint.ExposedPorts[1].NodePort)
 }
