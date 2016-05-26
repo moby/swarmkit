@@ -38,7 +38,9 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 	}
 
 	addPlugins("Volume", info.Plugins.Volume)
-	addPlugins("Network", info.Plugins.Network)
+	// Add builtin driver "overlay" (the only builtin multi-host driver) to
+	// the plugin list by default.
+	addPlugins("Network", append([]string{"overlay"}, info.Plugins.Network...))
 	addPlugins("Authorization", info.Plugins.Authorization)
 
 	// parse []string labels into a map[string]string
