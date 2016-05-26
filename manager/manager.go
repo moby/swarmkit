@@ -350,11 +350,12 @@ func (m *Manager) Run(ctx context.Context) error {
 	authenticatedControlAPI := api.NewAuthenticatedWrapperControlServer(baseControlAPI, authorizeManager)
 	proxyControlAPI := api.NewRaftProxyControlServer(baseControlAPI, cs, m.raftNode)
 	proxyDispatcher := api.NewRaftProxyDispatcherServer(m.dispatcher, cs, m.raftNode, ca.WithMetadataForwardCN)
+	proxyCA := api.NewRaftProxyCAServer(m.caserver, cs, m.raftNode, ca.WithMetadataForwardCN)
 
-	api.RegisterCAServer(m.server, m.caserver)
 	api.RegisterRaftServer(m.server, m.raftNode)
 	api.RegisterControlServer(m.localserver, proxyControlAPI)
 	api.RegisterControlServer(m.server, authenticatedControlAPI)
+	api.RegisterCAServer(m.server, proxyCA)
 	api.RegisterDispatcherServer(m.server, proxyDispatcher)
 
 	errServe := make(chan error, 2)

@@ -216,13 +216,27 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestIssueAndSaveNewCertificates(t *testing.T) {
+func TestRequestAndSaveNewCertificates(t *testing.T) {
 	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
 	defer tc.Stop()
 
 	// Copy the current RootCA without the signer
 	rca := ca.RootCA{Cert: tc.RootCA.Cert, Pool: tc.RootCA.Pool}
-	cert, err := rca.IssueAndSaveNewCertificates(tc.Context, tc.Paths.Node, ca.ManagerRole, tc.Picker)
+	cert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.Paths.Node, ca.ManagerRole, tc.Picker, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, cert)
+	perms, err := permbits.Stat(tc.Paths.Node.Cert)
+	assert.NoError(t, err)
+	assert.False(t, perms.GroupWrite())
+	assert.False(t, perms.OtherWrite())
+}
+
+func TestIssueAndSaveNewCertificates(t *testing.T) {
+	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	defer tc.Stop()
+
+	// Copy the current RootCA without the signer
+	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN", ca.ManagerRole)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 	perms, err := permbits.Stat(tc.Paths.Node.Cert)
@@ -239,23 +253,27 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	certs, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker)
+	certs, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 
 	parsedCerts, err := helpers.ParseCertificatesPEM(certs)
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 2)
-	assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
+	// TODO(diogo): change this back to three months
+	// assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Minute*50).Before(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.ManagerRole)
 
-	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, ca.AgentRole, tc.RootCA.Pool, tc.Picker)
+	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, ca.AgentRole, tc.RootCA.Pool, tc.Picker, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 2)
-	assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
+	// TODO(diogo): change this back to three months
+	// assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Minute*50).Before(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.AgentRole)
 
 }
@@ -273,7 +291,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker)
+		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker, nil)
 		completed <- err
 	}()
 
@@ -305,7 +323,7 @@ func TestGetRemoteSignedCertificateRejected(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker)
+		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker, nil)
 		completed <- err
 	}()
 
@@ -337,7 +355,7 @@ func TestGetRemoteSignedCertificateBlocked(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker)
+		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker, nil)
 		completed <- err
 	}()
 
