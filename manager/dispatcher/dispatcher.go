@@ -218,7 +218,7 @@ func (d *Dispatcher) doneTask() {
 }
 
 func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
-	log := log.G(ctx).WithField("function", "markNodesUnknown")
+	log := log.G(ctx).WithField("method", "(*Dispatcher).markNodesUnknown")
 	var nodes []*api.Node
 	var err error
 	d.store.View(func(tx store.ReadTx) {
@@ -243,13 +243,13 @@ func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
 					State:   api.NodeStatus_UNKNOWN,
 					Message: "Node marked as unknown due to leadership change in cluster",
 				}
-				agentID := node.ID
+				nodeID := node.ID
 
 				expireFunc := func() {
-					log := log.WithField("node", agentID)
+					log := log.WithField("node", nodeID)
 					nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "heartbeat failure for unknown node"}
 					log.Debugf("heartbeat expiration for unknown node")
-					if err := d.nodeRemove(agentID, nodeStatus); err != nil {
+					if err := d.nodeRemove(nodeID, nodeStatus); err != nil {
 						log.WithError(err).Errorf("failed deregistering node after heartbeat expiration for unknown node")
 					}
 				}
@@ -283,7 +283,7 @@ func (d *Dispatcher) isRunning() bool {
 }
 
 // register is used for registration of node with particular dispatcher.
-func (d *Dispatcher) register(ctx context.Context, agentID string, description *api.NodeDescription) (nodeID, sessionID string, err error) {
+func (d *Dispatcher) register(ctx context.Context, nodeID string, description *api.NodeDescription) (string, string, error) {
 	// prevent register until we're ready to accept it
 	if err := d.addTask(); err != nil {
 		return "", "", err
@@ -294,8 +294,8 @@ func (d *Dispatcher) register(ctx context.Context, agentID string, description *
 	// TODO(stevvooe): Validate node specification.
 	var node *api.Node
 	// TODO(aaronl): Is it worth batching node creations?
-	err = d.store.Update(func(tx store.Tx) error {
-		node = store.GetNode(tx, agentID)
+	err := d.store.Update(func(tx store.Tx) error {
+		node = store.GetNode(tx, nodeID)
 		if node != nil {
 			node.Description = description
 			node.Status = api.NodeStatus{
@@ -305,7 +305,7 @@ func (d *Dispatcher) register(ctx context.Context, agentID string, description *
 		}
 
 		node = &api.Node{
-			ID:          agentID,
+			ID:          nodeID,
 			Description: description,
 			Status: api.NodeStatus{
 				State: api.NodeStatus_READY,
@@ -320,7 +320,7 @@ func (d *Dispatcher) register(ctx context.Context, agentID string, description *
 	expireFunc := func() {
 		nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "heartbeat failure"}
 		log.G(ctx).Debugf("heartbeat expiration")
-		if err := d.nodeRemove(agentID, nodeStatus); err != nil {
+		if err := d.nodeRemove(nodeID, nodeStatus); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed deregistering node after heartbeat expiration")
 		}
 	}
@@ -342,14 +342,14 @@ func (d *Dispatcher) register(ctx context.Context, agentID string, description *
 // UpdateTaskStatus updates status of task. Node should send such updates
 // on every status change of its tasks.
 func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStatusRequest) (*api.UpdateTaskStatusResponse, error) {
-	agentID, err := ca.AuthorizeNode(ctx)
+	nodeID, err := ca.AuthorizeNode(ctx)
 	if err != nil {
 		return nil, err
 	}
 	log := log.G(ctx).WithFields(logrus.Fields{
-		"request":  r,
-		"agent.id": agentID,
-		"method":   "UpdateTaskStatus",
+		"node.id":      nodeID,
+		"node.session": r.SessionID,
+		"method":       "(*Dispatcher).UpdateTaskStatus",
 	})
 
 	if err := d.addTask(); err != nil {
@@ -357,7 +357,7 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 	}
 	defer d.doneTask()
 
-	if _, err := d.nodes.GetWithSession(agentID, r.SessionID); err != nil {
+	if _, err := d.nodes.GetWithSession(nodeID, r.SessionID); err != nil {
 		return nil, err
 	}
 	d.taskUpdatesLock.Lock()
@@ -386,7 +386,7 @@ func (d *Dispatcher) processTaskUpdates() {
 	d.taskUpdatesLock.Unlock()
 
 	log := log.G(d.ctx).WithFields(logrus.Fields{
-		"method": "processTaskUpdates",
+		"method": "(*Dispatcher).processTaskUpdates",
 	})
 
 	_, err := d.store.Batch(func(batch *store.Batch) error {
@@ -434,7 +434,7 @@ func (d *Dispatcher) processTaskUpdates() {
 // of tasks which should be run on node, if task is not present in that list,
 // it should be terminated.
 func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
-	agentID, err := ca.AuthorizeNode(stream.Context())
+	nodeID, err := ca.AuthorizeNode(stream.Context())
 	if err != nil {
 		return err
 	}
@@ -444,30 +444,29 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	}
 	defer d.doneTask()
 
-	log := log.G(stream.Context()).WithFields(logrus.Fields{
-		"request":  r,
-		"agent.id": agentID,
-		"method":   "Tasks",
-	})
-	log.Debugf("grpc call")
+	log.G(stream.Context()).WithFields(logrus.Fields{
+		"node.id":      nodeID,
+		"node.session": r.SessionID,
+		"method":       "(*Dispatcher).Tasks",
+	}).Debugf("")
 
-	if _, err = d.nodes.GetWithSession(agentID, r.SessionID); err != nil {
+	if _, err = d.nodes.GetWithSession(nodeID, r.SessionID); err != nil {
 		return err
 	}
 
 	watchQueue := d.store.WatchQueue()
 	nodeTasks, cancel := state.Watch(watchQueue,
-		state.EventCreateTask{Task: &api.Task{NodeID: agentID},
+		state.EventCreateTask{Task: &api.Task{NodeID: nodeID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
-		state.EventUpdateTask{Task: &api.Task{NodeID: agentID},
+		state.EventUpdateTask{Task: &api.Task{NodeID: nodeID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
-		state.EventDeleteTask{Task: &api.Task{NodeID: agentID},
+		state.EventDeleteTask{Task: &api.Task{NodeID: nodeID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}})
 	defer cancel()
 
 	tasksMap := make(map[string]*api.Task)
 	d.store.View(func(readTx store.ReadTx) {
-		tasks, err := store.FindTasks(readTx, store.ByNodeID(agentID))
+		tasks, err := store.FindTasks(readTx, store.ByNodeID(nodeID))
 		if err != nil {
 			return
 		}
@@ -477,7 +476,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	})
 
 	for {
-		if _, err := d.nodes.GetWithSession(agentID, r.SessionID); err != nil {
+		if _, err := d.nodes.GetWithSession(nodeID, r.SessionID); err != nil {
 			return err
 		}
 
@@ -540,19 +539,18 @@ func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
 // Node should send new heartbeat earlier than now + TTL, otherwise it will
 // be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
 func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*api.HeartbeatResponse, error) {
-	agentID, err := ca.AuthorizeNode(ctx)
+	nodeID, err := ca.AuthorizeNode(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	log := log.G(ctx).WithFields(logrus.Fields{
-		"request":  r,
-		"agent.id": agentID,
-		"method":   "Heartbeat",
-	})
-	log.Debugf("grpc call")
+	log.G(ctx).WithFields(logrus.Fields{
+		"node.id":      nodeID,
+		"node.session": r.SessionID,
+		"method":       "(*Dispatcher).Heartbeat",
+	}).Debugf("")
 
-	period, err := d.nodes.Heartbeat(agentID, r.SessionID)
+	period, err := d.nodes.Heartbeat(nodeID, r.SessionID)
 	return &api.HeartbeatResponse{Period: period}, err
 }
 
@@ -568,7 +566,7 @@ func (d *Dispatcher) getManagers() []*api.WeightedPeer {
 // reconnect to another Manager immediately.
 func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_SessionServer) error {
 	ctx := stream.Context()
-	agentID, err := ca.AuthorizeNode(ctx)
+	nodeID, err := ca.AuthorizeNode(ctx)
 	if err != nil {
 		return err
 	}
@@ -578,20 +576,18 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 	}
 	defer d.doneTask()
 
-	log := log.G(ctx).WithFields(logrus.Fields{
-		"request":  r,
-		"agent.id": agentID,
-		"method":   "Session",
-	})
-	log.Debugf("grpc call")
-
 	// register the node.
-	nodeID, sessionID, err := d.register(stream.Context(), agentID, r.Description)
+	nodeID, sessionID, err := d.register(stream.Context(), nodeID, r.Description)
 	if err != nil {
 		return err
 	}
 
-	if _, err = d.nodes.GetWithSession(agentID, sessionID); err != nil {
+	log := log.G(ctx).WithFields(logrus.Fields{
+		"node.id":      nodeID,
+		"node.session": sessionID,
+		"method":       "(*Dispatcher).Session",
+	})
+	if _, err = d.nodes.GetWithSession(nodeID, sessionID); err != nil {
 		return err
 	}
 
@@ -611,7 +607,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		// After each message send, we need to check the nodes sessionID hasn't
 		// changed. If it has, we will the stream and make the node
 		// re-register.
-		node, err := d.nodes.GetWithSession(agentID, sessionID)
+		node, err := d.nodes.GetWithSession(nodeID, sessionID)
 		if err != nil {
 			return err
 		}
@@ -634,7 +630,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		}
 		if disconnectError != nil {
 			nodeStatus := api.NodeStatus{State: api.NodeStatus_DISCONNECTED, Message: "node is currently trying to find new manager"}
-			if err := d.nodeRemove(agentID, nodeStatus); err != nil {
+			if err := d.nodeRemove(nodeID, nodeStatus); err != nil {
 				log.WithError(err).Error("failed to remove node")
 			}
 		}
