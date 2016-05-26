@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -9,6 +8,7 @@ import (
 	"time"
 
 	"github.com/docker/swarm-v2/ca"
+	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager"
 	"github.com/docker/swarm-v2/picker"
 	"github.com/spf13/cobra"
@@ -28,7 +28,7 @@ var managerCmd = &cobra.Command{
 		if err == nil {
 			ip := net.ParseIP(addrHost)
 			if ip != nil && (ip.IsUnspecified() || ip.IsLoopback()) {
-				fmt.Println("Warning: Specifying a valid address with --listen-remote-api may be necessary for other managers to reach this one.")
+				log.G(ctx).Warn("Specifying a valid address with --listen-remote-api may be necessary for other managers to reach this one.")
 			}
 		}
 
