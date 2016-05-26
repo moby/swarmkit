@@ -89,15 +89,28 @@ func (c *containerConfig) ephemeralDirs() map[string]struct{} {
 }
 
 func (c *containerConfig) config() *enginecontainer.Config {
-	return &enginecontainer.Config{
+	config := &enginecontainer.Config{
 		User:         c.spec().User,
-		Cmd:          c.spec().Command, // TODO(stevvooe): Fall back to entrypoint+args
 		Env:          c.spec().Env,
 		WorkingDir:   c.spec().Dir,
 		Image:        c.image(),
 		ExposedPorts: c.exposedPorts(),
 		Volumes:      c.ephemeralDirs(),
 	}
+
+	if len(c.spec().Command) > 1 {
+		// If Command is provided, we replace the whole invocation with Command
+		// by replacing Entrypoint and specifying Cmd. Args is ignored in this
+		// case.
+		config.Entrypoint = append(config.Entrypoint, c.spec().Command[0])
+		config.Cmd = append(config.Cmd, c.spec().Command[1:]...)
+	} else if len(c.spec().Args) > 0 {
+		// In this case, we assume the image has an Entrypoint and Args
+		// specifies the arguments for that entrypoint.
+		config.Cmd = c.spec().Args
+	}
+
+	return config
 }
 
 func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
