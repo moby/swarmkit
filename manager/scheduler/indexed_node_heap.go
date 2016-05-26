@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"container/heap"
-
 	"github.com/docker/swarm-v2/api"
 )
 
@@ -102,63 +101,48 @@ func (nh *nodeHeap) remove(nodeID string) {
 }
 
 func (nh *nodeHeap) findMin(meetsConstraints func(*NodeInfo) bool, scanAllNodes bool) (*api.Node, int) {
+	if scanAllNodes {
+		return nh.scanAllToFindMin(meetsConstraints)
+	}
+	return nh.searchHeapToFindMin(meetsConstraints, 0)
+}
+
+// Scan All nodes to find the best node which meets the constraints && has lightest workloads
+func (nh *nodeHeap) scanAllToFindMin(meetsConstraints func(*NodeInfo) bool) (*api.Node, int) {
 	var bestNode *api.Node
 	minTasks := int(^uint(0) >> 1) // max int
-	nextStoppingPoint := 0
-	levelSize := 1
 
 	for i := 0; i < len(nh.heap); i++ {
 		heapEntry := &nh.heap[i]
-
 		if meetsConstraints(heapEntry) && len(heapEntry.Tasks) < minTasks {
 			bestNode = heapEntry.Node
 			minTasks = len(heapEntry.Tasks)
-		}
-		if !scanAllNodes {
-			if i == nextStoppingPoint && bestNode != nil {
-				// If there were any nodes in this row with
-				// lower values that did not satisfy the
-				// constraints, check their children
-				// recursively.
-				for j := i - levelSize + 1; j <= i; j++ {
-					heapEntry = &nh.heap[i]
-					if len(heapEntry.Tasks) < minTasks {
-						newBestNode, newMinTasks := nh.findBestChildBelowThreshold(meetsConstraints, i, minTasks)
-						if newBestNode != nil {
-							bestNode, minTasks = newBestNode, newMinTasks
-						}
-					}
-				}
-				break
-			}
-			// Search the whole next level of the heap
-			levelSize *= 2
-			nextStoppingPoint += levelSize
 		}
 	}
 
 	return bestNode, minTasks
 }
 
-func (nh *nodeHeap) findBestChildBelowThreshold(meetsConstraints func(*NodeInfo) bool, index int, threshold int) (*api.Node, int) {
-	var bestNode *api.Node
-
-	for i := index*2 + 1; i <= index*2+2; i++ {
-		if i <= len(nh.heap) {
-			break
-		}
-		heapEntry := &nh.heap[i]
-		if len(heapEntry.Tasks) < threshold {
-			if meetsConstraints(heapEntry) {
-				bestNode, threshold = heapEntry.Node, len(heapEntry.Tasks)
-			} else {
-				newBestNode, newMinTasks := nh.findBestChildBelowThreshold(meetsConstraints, i, threshold)
-				if newBestNode != nil {
-					bestNode, threshold = newBestNode, newMinTasks
-				}
-			}
-		}
+// Search in heap to find the best node which meets the constraints && has lightest workloads
+func (nh *nodeHeap) searchHeapToFindMin(meetsConstraints func(*NodeInfo) bool, index int) (*api.Node, int) {
+	if index >= len(nh.heap) {
+		return nil, int(^uint(0) >> 1) // max int
 	}
 
-	return bestNode, threshold
+	heapEntry := &nh.heap[index]
+	if meetsConstraints(heapEntry) {
+		// Meet the constraints, return directly
+		return heapEntry.Node, len(heapEntry.Tasks)
+	}
+
+	// Search in 2 children
+	leftBestNode, leftMinTasks := nh.searchHeapToFindMin(meetsConstraints, index*2+1)
+	rightBestNode, rightMinTask := nh.searchHeapToFindMin(meetsConstraints, index*2+2)
+
+	// Return the best one
+	if leftMinTasks < rightMinTask {
+		return leftBestNode, leftMinTasks
+	}
+
+	return rightBestNode, rightMinTask
 }
