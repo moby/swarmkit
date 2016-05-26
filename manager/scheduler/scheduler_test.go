@@ -901,9 +901,9 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 						Annotations: api.Annotations{
 							Name: "testVol1",
 						},
-						DriverConfiguration: &api.Driver{
-							Name: "plugin1",
-						},
+					},
+					DriverState: &api.Driver{
+						Name: "plugin1",
 					},
 				},
 			},
