@@ -24,10 +24,10 @@ func TestLoadOrCreateSecurityConfigEmptyDir(t *testing.T) {
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
 	assert.NotNil(t, nodeConfig.ServerTLSCreds)
-	assert.NotNil(t, nodeConfig.RootCA.Pool)
-	assert.NotNil(t, nodeConfig.RootCA.Cert)
-	assert.Nil(t, nodeConfig.RootCA.Signer)
-	assert.False(t, nodeConfig.RootCA.CanSign())
+	assert.NotNil(t, nodeConfig.RootCA().Pool)
+	assert.NotNil(t, nodeConfig.RootCA().Cert)
+	assert.Nil(t, nodeConfig.RootCA().Signer)
+	assert.False(t, nodeConfig.RootCA().CanSign())
 }
 
 func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
@@ -42,10 +42,10 @@ func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
 	assert.NotNil(t, nodeConfig.ServerTLSCreds)
-	assert.NotNil(t, nodeConfig.RootCA.Pool)
-	assert.NotNil(t, nodeConfig.RootCA.Cert)
-	assert.NotNil(t, nodeConfig.RootCA.Signer)
-	assert.True(t, nodeConfig.RootCA.CanSign())
+	assert.NotNil(t, nodeConfig.RootCA().Pool)
+	assert.NotNil(t, nodeConfig.RootCA().Cert)
+	assert.NotNil(t, nodeConfig.RootCA().Signer)
+	assert.True(t, nodeConfig.RootCA().CanSign())
 }
 
 func TestLoadOrCreateSecurityConfigInvalidCACertNoRemote(t *testing.T) {
@@ -73,11 +73,11 @@ func TestLoadOrCreateSecurityConfigInvalidCACert(t *testing.T) {
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
 	assert.NotNil(t, nodeConfig.ServerTLSCreds)
-	assert.NotNil(t, nodeConfig.RootCA.Pool)
-	assert.NotNil(t, nodeConfig.RootCA.Cert)
+	assert.NotNil(t, nodeConfig.RootCA().Pool)
+	assert.NotNil(t, nodeConfig.RootCA().Cert)
 	// We have a valid signer because we bootstrapped with valid root key-material
-	assert.NotNil(t, nodeConfig.RootCA.Signer)
-	assert.True(t, nodeConfig.RootCA.CanSign())
+	assert.NotNil(t, nodeConfig.RootCA().Signer)
+	assert.True(t, nodeConfig.RootCA().CanSign())
 
 	// Write some garbage to the CA cert
 	ioutil.WriteFile(tc.Paths.RootCA.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
@@ -90,13 +90,13 @@ some random garbage\n
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
 	assert.NotNil(t, nodeConfig.ServerTLSCreds)
-	assert.NotNil(t, nodeConfig.RootCA.Pool)
-	assert.NotNil(t, nodeConfig.RootCA.Cert)
-	assert.NotNil(t, nodeConfig.RootCA.Signer)
-	assert.True(t, nodeConfig.RootCA.CanSign())
+	assert.NotNil(t, nodeConfig.RootCA().Pool)
+	assert.NotNil(t, nodeConfig.RootCA().Cert)
+	assert.NotNil(t, nodeConfig.RootCA().Signer)
+	assert.True(t, nodeConfig.RootCA().CanSign())
 
 	// Ensure that we have the same certificate as before
-	assert.Equal(t, nodeConfig.RootCA.Cert, newNodeConfig.RootCA.Cert)
+	assert.Equal(t, nodeConfig.RootCA().Cert, newNodeConfig.RootCA().Cert)
 }
 
 func TestLoadOrCreateSecurityConfigInvalidCAKey(t *testing.T) {
@@ -113,10 +113,10 @@ some random garbage\n
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
 	assert.NotNil(t, nodeConfig.ServerTLSCreds)
-	assert.NotNil(t, nodeConfig.RootCA.Pool)
-	assert.NotNil(t, nodeConfig.RootCA.Cert)
-	assert.Nil(t, nodeConfig.RootCA.Signer)
-	assert.False(t, nodeConfig.RootCA.CanSign())
+	assert.NotNil(t, nodeConfig.RootCA().Pool)
+	assert.NotNil(t, nodeConfig.RootCA().Cert)
+	assert.Nil(t, nodeConfig.RootCA().Signer)
+	assert.False(t, nodeConfig.RootCA().CanSign())
 }
 
 func TestLoadOrCreateSecurityConfigInvalidCert(t *testing.T) {
@@ -133,9 +133,9 @@ some random garbage\n
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
 	assert.NotNil(t, nodeConfig.ServerTLSCreds)
-	assert.NotNil(t, nodeConfig.RootCA.Pool)
-	assert.NotNil(t, nodeConfig.RootCA.Cert)
-	assert.NotNil(t, nodeConfig.RootCA.Signer)
+	assert.NotNil(t, nodeConfig.RootCA().Pool)
+	assert.NotNil(t, nodeConfig.RootCA().Cert)
+	assert.NotNil(t, nodeConfig.RootCA().Signer)
 }
 
 func TestLoadOrCreateSecurityConfigInvalidKey(t *testing.T) {
@@ -152,9 +152,9 @@ some random garbage\n
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
 	assert.NotNil(t, nodeConfig.ServerTLSCreds)
-	assert.NotNil(t, nodeConfig.RootCA.Pool)
-	assert.NotNil(t, nodeConfig.RootCA.Cert)
-	assert.NotNil(t, nodeConfig.RootCA.Signer)
+	assert.NotNil(t, nodeConfig.RootCA().Pool)
+	assert.NotNil(t, nodeConfig.RootCA().Cert)
+	assert.NotNil(t, nodeConfig.RootCA().Signer)
 }
 
 func TestLoadOrCreateSecurityConfigNoCertsAndNoRemote(t *testing.T) {
