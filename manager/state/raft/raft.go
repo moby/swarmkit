@@ -435,13 +435,17 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 	if err != nil {
 		return nil, err
 	}
-	logrus.Debugf("(*Join). message from node %s", agentID)
+	log := log.G(ctx).WithFields(logrus.Fields{
+		"agent.id": agentID,
+		"method":   "(*Node).Join",
+	})
 
 	// can't stop the raft node while an async RPC is in progress
 	n.stopMu.RLock()
 	defer n.stopMu.RUnlock()
 
 	if n.Node == nil {
+		log.WithError(ErrStopped).Errorf(ErrStopped.Error())
 		return nil, ErrStopped
 	}
 
@@ -449,6 +453,7 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 	if n.cluster.GetMember(req.Node.RaftID) == nil {
 		err = n.addMember(ctx, req.Node)
 		if err != nil {
+			log.WithError(err).Errorf("failed to add member")
 			return nil, err
 		}
 	}
@@ -460,6 +465,7 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 			Addr:   node.Addr,
 		})
 	}
+	log.Debugf("node joined")
 
 	return &api.JoinResponse{Members: nodes}, nil
 }
@@ -532,11 +538,10 @@ func (n *Node) RemoveMember(ctx context.Context, id uint64) error {
 // raft state machine with the provided message on the
 // receiving node
 func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessageRequest) (*api.ProcessRaftMessageResponse, error) {
-	agentID, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
+	_, err := ca.AuthorizeRole(ctx, []string{ca.ManagerRole})
 	if err != nil {
 		return nil, err
 	}
-	logrus.Debugf("(*ProcessRaftMessage). message from node %s", agentID)
 
 	// Don't process the message if this comes from
 	// a node in the remove set
