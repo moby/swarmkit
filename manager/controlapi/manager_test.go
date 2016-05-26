@@ -15,6 +15,7 @@ import (
 	raftutils "github.com/docker/swarm-v2/manager/state/raft/testutils"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -36,6 +37,37 @@ func getMap(t *testing.T, managers []*api.Manager) map[uint64]*api.Manager {
 		m[manager.Raft.RaftID] = manager
 	}
 	return m
+}
+
+func TestGetManager(t *testing.T) {
+	ts := newTestServer(t)
+
+	nodes, _ := raftutils.NewRaftCluster(t, securityConfig)
+	defer raftutils.TeardownCluster(t, nodes)
+
+	// Assign one of the raft nodes to the test server
+	ts.Server.raft = nodes[1].Node
+
+	// Retrieve the list of all managers
+	listmanagers, _ := ts.Server.ListManagers(context.Background(), &api.ListManagersRequest{})
+	managerlist := listmanagers.Managers
+
+	// Check that the response seems appropriate for each manager in the cluster
+	for _, manager := range managerlist {
+		r, err := ts.Client.GetManager(context.Background(), &api.GetManagerRequest{ManagerID: manager.ID})
+		assert.NoError(t, err)
+		assert.Equal(t, manager.Raft.RaftID, r.Manager.Raft.RaftID)
+		assert.Equal(t, manager.Raft.Addr, r.Manager.Raft.Addr)
+		assert.Equal(t, api.RaftMemberStatus_REACHABLE, r.Manager.Raft.Status.State)
+	}
+
+	// Check that InvalidArgument error is returned when no argument is provided
+	ts.Client.GetManager(context.Background(), &api.GetManagerRequest{})
+	assert.Error(t, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error()))
+
+	// Check that InvalidArgument error is returned when non-existent ID is provided
+	ts.Client.GetManager(context.Background(), &api.GetManagerRequest{ManagerID: "does_not_exist"})
+	assert.Error(t, grpc.Errorf(codes.NotFound, "manager %s not found", "does_not_exist"))
 }
 
 func TestListManagers(t *testing.T) {
