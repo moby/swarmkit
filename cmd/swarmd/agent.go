@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"time"
 
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/swarm-v2/agent"
@@ -64,6 +65,20 @@ already present, the agent will recover and startup.`,
 			if err != nil {
 				return err
 			}
+
+			updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker, 30*time.Second)
+			go func() {
+				for {
+					select {
+					case certUpdate := <-updates:
+						if certUpdate.Err != nil {
+							continue
+						}
+					case <-ctx.Done():
+						break
+					}
+				}
+			}()
 
 			client, err := engineapi.NewClient(engineAddr, "", nil, nil)
 			if err != nil {

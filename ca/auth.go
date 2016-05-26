@@ -89,6 +89,7 @@ func AuthorizeRole(ctx context.Context, ou []string) (string, error) {
 	if intersectArrays(certSubj.OrganizationalUnit, ou) {
 		return certSubj.CommonName, nil
 	}
+
 	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: remote certificate not part of OU %v", ou)
 }
 
