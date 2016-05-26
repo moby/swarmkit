@@ -67,6 +67,13 @@ var (
 					}
 					spec.Orchestration.TaskHistoryRetentionLimit = taskHistory
 				}
+				if flags.Changed("heartbeatperiod") {
+					hbPeriod, err := flags.GetDuration("heartbeatperiod")
+					if err != nil {
+						return err
+					}
+					spec.Dispatcher.HeartbeatPeriod = uint64(hbPeriod)
+				}
 			}
 
 			r, err := c.UpdateCluster(common.Context(cmd), &api.UpdateClusterRequest{
@@ -88,4 +95,5 @@ func init() {
 	// TODO(aaronl): Acceptance policy will change later.
 	updateCmd.Flags().StringSlice("autoaccept", nil, "Roles to automatically issue certificates for")
 	updateCmd.Flags().Int64("taskhistory", 0, "Number of historic task entries to retain per instance or node")
+	updateCmd.Flags().Duration("heartbeatperiod", 0, "Period when heartbeat is expected to receive from agent")
 }

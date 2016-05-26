@@ -233,6 +233,9 @@ func (m *Manager) Run(ctx context.Context) error {
 							Orchestration: api.OrchestrationConfig{
 								TaskHistoryRetentionLimit: defaultTaskHistoryRetentionLimit,
 							},
+							Dispatcher: api.DispatcherConfig{
+								HeartbeatPeriod: uint64(dispatcher.DefaultHeartBeatPeriod),
+							},
 							Raft: raft.DefaultRaftConfig(),
 						},
 					})

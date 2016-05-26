@@ -402,6 +402,13 @@ message OrchestrationConfig {
 	int64 task_history_retention_limit = 1;
 }
 
+// DispatcherConfig defines cluster-level dispatcher settings.
+message DispatcherConfig {
+	// HeartbeatPeriod defines how often agent should send heartbeats to
+	// dispatcher.
+	uint64 heartbeat_period = 1;
+}
+
 // RaftConfig defines raft settings for the cluster.
 message RaftConfig {
 	// SnapshotInterval is the number of log entries between snapshots.
