@@ -429,7 +429,7 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	close(m.started)
 	// wait for an error in serving.
-	err := <-errServe
+	err = <-errServe
 	select {
 	// check to see if stopped was posted to. if so, we're in the process of
 	// stopping, or done and that's why we got the error. if stopping is
