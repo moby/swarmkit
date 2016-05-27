@@ -186,6 +186,7 @@ func New(config *Config) (*Manager, error) {
 	}
 
 	newNodeOpts := raft.NewNodeOptions{
+		ID:              config.SecurityConfig.ClientTLSCreds.NodeID(),
 		Addr:            tcpAddr,
 		JoinAddr:        config.JoinRaft,
 		Config:          raftCfg,

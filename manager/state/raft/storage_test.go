@@ -15,7 +15,7 @@ func TestRaftSnapshot(t *testing.T) {
 	t.Parallel()
 
 	// Bring up a 3 node cluster
-	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig, &api.RaftConfig{SnapshotInterval: 9, LogEntriesForSlowFollowers: 0})
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc, &api.RaftConfig{SnapshotInterval: 9, LogEntriesForSlowFollowers: 0})
 	defer raftutils.TeardownCluster(t, nodes)
 
 	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7", "id8", "id9", "id10", "id11", "id12"}
@@ -56,7 +56,7 @@ func TestRaftSnapshot(t *testing.T) {
 	}
 
 	// Add a node to the cluster
-	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 
 	// It should get a copy of the snapshot
 	assert.NoError(t, raftutils.PollFunc(func() error {
@@ -118,7 +118,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	t.Parallel()
 
 	// Bring up a 3 node cluster
-	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig, &api.RaftConfig{SnapshotInterval: 10, LogEntriesForSlowFollowers: 0})
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc, &api.RaftConfig{SnapshotInterval: 10, LogEntriesForSlowFollowers: 0})
 	defer raftutils.TeardownCluster(t, nodes)
 
 	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7"}
@@ -148,7 +148,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Add a node to the cluster before the snapshot. This is the event
 	// that triggers the snapshot.
-	nodes[4] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	nodes[4] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, tc)
 	raftutils.WaitForCluster(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2], 4: nodes[4]})
 
 	// Remaining nodes should now have a snapshot file
@@ -170,7 +170,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	values[4], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[4])
 
 	// Add another node to the cluster
-	nodes[5] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	nodes[5] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, tc)
 	raftutils.WaitForCluster(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2], 4: nodes[4], 5: nodes[5]})
 
 	// New node should get a copy of the snapshot
@@ -204,7 +204,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	assert.Equal(t, stripMembers(nodes[1].GetMemberlist()), stripMembers(nodes[4].GetMemberlist()))
 
 	// Restart node 3
-	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig, false)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Node 3 should know about other nodes, including the new one
@@ -221,7 +221,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	// Restart node 3 again. It should load the snapshot.
 	nodes[3].Server.Stop()
 	nodes[3].Shutdown()
-	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig, false)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	assert.Len(t, nodes[3].GetMemberlist(), 5)

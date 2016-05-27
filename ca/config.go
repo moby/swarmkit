@@ -178,7 +178,7 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, propos
 
 		if rootCA.CanSign() {
 			// Create a new random ID for this certificate
-			cn := identity.NewID()
+			cn := identity.NewNodeID()
 
 			tlsKeyPair, err = rootCA.IssueAndSaveNewCertificates(paths.Node, cn, proposedRole)
 		} else {

@@ -14,7 +14,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/ca"
 	cautils "github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/manager/state/raft"
 	"github.com/docker/swarm-v2/manager/state/raft/membership"
@@ -22,15 +21,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var securityConfig *ca.SecurityConfig
+var tc *cautils.TestCA
 
 func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
 	logrus.SetOutput(ioutil.Discard)
-	tc := cautils.NewTestCA(nil, cautils.AutoAcceptPolicy())
-	defer tc.Stop()
-
-	securityConfig, _ = tc.NewNodeConfig(ca.ManagerRole)
+	tc = cautils.NewTestCA(nil, cautils.AutoAcceptPolicy())
 }
 
 func newTestMember(id uint64) *membership.Member {
@@ -257,7 +253,7 @@ func TestValidateConfigurationChange(t *testing.T) {
 }
 
 func TestCanRemoveMember(t *testing.T) {
-	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop node 2 and node 3 (2 nodes out of 3)
@@ -290,8 +286,8 @@ func TestCanRemoveMember(t *testing.T) {
 	assert.Equal(t, len(members), 3)
 
 	// Restart node 2 and node 3
-	nodes[2] = raftutils.RestartNode(t, clockSource, nodes[2], securityConfig, false)
-	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig, false)
+	nodes[2] = raftutils.RestartNode(t, clockSource, nodes[2], false)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Removing node 3 should succeed

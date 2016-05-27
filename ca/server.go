@@ -160,9 +160,9 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 	// Max number of collisions of ID or CN to tolerate before giving up
 	maxRetries := 3
 
-	// Generate a random token for this new node
+	// Generate a random ID for this new node
 	for i := 0; ; i++ {
-		nodeID := identity.NewID()
+		nodeID := identity.NewNodeID()
 
 		var certificate *api.RegisteredCertificate
 		err := s.store.Update(func(tx store.Tx) error {
@@ -200,6 +200,12 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 		if i == maxRetries {
 			return nil, err
 		}
+		log.G(ctx).WithFields(logrus.Fields{
+			"node.id":   nodeID,
+			"node.role": request.Role,
+			"token":     token,
+			"method":    "IssueCertificate",
+		}).Errorf("randomly generated node ID collided with an existing one - retrying")
 	}
 
 	return &api.IssueCertificateResponse{
