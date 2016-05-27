@@ -376,7 +376,7 @@ func TestAllocateTaskFree(t *testing.T) {
 	}
 
 	task1 := &api.Task{
-		Networks: []*api.Task_NetworkAttachment{
+		Networks: []*api.NetworkAttachment{
 			{
 				Network: n1,
 			},
@@ -387,7 +387,7 @@ func TestAllocateTaskFree(t *testing.T) {
 	}
 
 	task2 := &api.Task{
-		Networks: []*api.Task_NetworkAttachment{
+		Networks: []*api.NetworkAttachment{
 			{
 				Network: n1,
 			},

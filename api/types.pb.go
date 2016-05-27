@@ -63,6 +63,7 @@
 		Service
 		Endpoint
 		Task
+		NetworkAttachment
 		Container
 		Volume
 		Network

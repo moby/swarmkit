@@ -38,6 +38,9 @@ message Node {
 
 	// Status provides the current status of the node, as seen by the manager.
 	NodeStatus status = 5 [(gogoproto.nullable) = false];
+
+	// The node attachment to the ingress network.
+	NetworkAttachment network = 6;
 }
 
 // Manager provides informations about the state of a manager in the cluster.
@@ -138,22 +141,25 @@ message Task {
 	// is only written by the manager.
 	TaskState desired_state = 9;
 
-	message NetworkAttachment {
-		// Network state as a whole becomes part of Task so
-		// that it always is available for use in agents so
-		// that agents don't have any other dependency during execution.
-		Network network = 1;
-
-		// List of IPv4/IPv6 addresses that are assigned to the task
-		// as part of getting attached to this network.
-		repeated string addresses = 2;
-	}
-
+	// List of network attachments by the task.
 	repeated NetworkAttachment networks = 10;
 
 	// A copy of runtime state of service endpoint from Service
 	// object to be distributed to agents as part of the task.
 	Endpoint endpoint = 11;
+}
+
+// NetworkAttachment specifies the network parameters of attachment to
+// a single network by an object such as task or node.
+message NetworkAttachment {
+	// Network state as a whole becomes part of the object so that
+	// it always is available for use in agents so that agents
+	// don't have any other dependency during execution.
+	Network network = 1;
+
+	// List of IPv4/IPv6 addresses that are assigned to the object
+	// as part of getting attached to this network.
+	repeated string addresses = 2;
 }
 
 // Container contains all runtime state of a task which is container runtime specific.
