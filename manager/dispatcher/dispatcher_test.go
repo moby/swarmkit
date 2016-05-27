@@ -273,7 +273,7 @@ func TestTasks(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
-		nodeID = resp.NodeID
+		nodeID = resp.Node.ID
 	}
 
 	testTask1 := &api.Task{
