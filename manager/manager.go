@@ -53,11 +53,11 @@ type Config struct {
 
 	// ElectionTick defines the amount of ticks needed without
 	// leader to trigger a new election
-	ElectionTick int
+	ElectionTick uint32
 
 	// HeartbeatTick defines the amount of ticks between each
 	// heartbeat sent to other members for health-check purposes
-	HeartbeatTick int
+	HeartbeatTick uint32
 }
 
 // Manager is the cluster manager for Swarm.
@@ -78,7 +78,8 @@ type Manager struct {
 	localserver            *grpc.Server
 	raftNode               *raft.Node
 
-	mu sync.Mutex
+	mu   sync.Mutex
+	once sync.Once
 
 	started chan struct{}
 	stopped bool
@@ -178,10 +179,10 @@ func New(config *Config) (*Manager, error) {
 	raftCfg := raft.DefaultNodeConfig()
 
 	if config.ElectionTick > 0 {
-		raftCfg.ElectionTick = config.ElectionTick
+		raftCfg.ElectionTick = int(config.ElectionTick)
 	}
 	if config.HeartbeatTick > 0 {
-		raftCfg.HeartbeatTick = config.HeartbeatTick
+		raftCfg.HeartbeatTick = int(config.HeartbeatTick)
 	}
 
 	newNodeOpts := raft.NewNodeOptions{
@@ -237,6 +238,10 @@ func (m *Manager) Run(ctx context.Context) error {
 
 				rootCA := m.config.SecurityConfig.RootCA()
 
+				raftCfg := raft.DefaultRaftConfig()
+				raftCfg.ElectionTick = uint32(m.raftNode.Config.ElectionTick)
+				raftCfg.HeartbeatTick = uint32(m.raftNode.Config.HeartbeatTick)
+
 				// Add a default cluster object to the store. Don't check the error
 				// because we expect this to fail unless this is a brand new cluster.
 				s.Update(func(tx store.Tx) error {
@@ -253,7 +258,7 @@ func (m *Manager) Run(ctx context.Context) error {
 							Dispatcher: api.DispatcherConfig{
 								HeartbeatPeriod: uint64(dispatcher.DefaultHeartBeatPeriod),
 							},
-							Raft: raft.DefaultRaftConfig(),
+							Raft: raftCfg,
 						},
 						RootCA: &api.RootCA{
 							CAKey:  rootCA.Key,
@@ -400,6 +405,21 @@ func (m *Manager) Run(ctx context.Context) error {
 		m.server.Stop()
 		return err
 	}
+
+	c, err := raft.WaitForCluster(ctx, m.raftNode)
+	if err != nil {
+		m.server.Stop()
+		return err
+	}
+	raftConfig := c.Spec.Raft
+
+	if int(raftConfig.ElectionTick) != m.raftNode.Config.ElectionTick {
+		log.G(ctx).Warningf("election tick value (%ds) is different from the one defined in the cluster config (%vs), the cluster may be unstable", m.raftNode.Config.ElectionTick, raftConfig.ElectionTick)
+	}
+	if int(raftConfig.HeartbeatTick) != m.raftNode.Config.HeartbeatTick {
+		log.G(ctx).Warningf("heartbeat tick value (%ds) is different from the one defined in the cluster config (%vs), the cluster may be unstable", m.raftNode.Config.HeartbeatTick, raftConfig.HeartbeatTick)
+	}
+
 	close(m.started)
 	return <-errServe
 }

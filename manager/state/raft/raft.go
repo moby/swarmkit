@@ -272,6 +272,8 @@ func DefaultRaftConfig() api.RaftConfig {
 		KeepOldSnapshots:           0,
 		SnapshotInterval:           10000,
 		LogEntriesForSlowFollowers: 500,
+		ElectionTick:               3,
+		HeartbeatTick:              1,
 	}
 }
 
