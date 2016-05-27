@@ -146,7 +146,6 @@ func (s *session) start(ctx context.Context) error {
 		return errSessionDisconnect
 	}
 
-	s.nodeID = msg.NodeID
 	s.sessionID = msg.SessionID
 	s.session = stream
 
