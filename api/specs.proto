@@ -35,7 +35,7 @@ message NodeSpec {
 	enum Acceptance {
 		option (gogoproto.goproto_enum_prefix) = false;
 
-		UNKNOWN = 0 [(gogoproto.enumvalue_customname) = "NodeAcceptanceUnknown"];
+		PENDING = 0 [(gogoproto.enumvalue_customname) = "NodeAcceptancePending"];
 		ACCEPT = 1 [(gogoproto.enumvalue_customname) = "NodeAcceptanceAccept"];
 		REJECT = 2 [(gogoproto.enumvalue_customname) = "NodeAcceptanceReject"];
 	}
@@ -217,13 +217,6 @@ message NetworkSpec {
 	bool internal = 4;
 
 	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
-}
-
-// RegisteredCertificateSpec specifies user defined certificate parameters.
-message RegisteredCertificateSpec {
-	Annotations annotations = 1 [(gogoproto.nullable) = false];
-
-	IssuanceState desired_state = 2;
 }
 
 // ClusterSpec specifies global cluster settings.

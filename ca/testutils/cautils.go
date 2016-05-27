@@ -28,16 +28,17 @@ func AutoAcceptPolicy() api.AcceptancePolicy {
 
 // TestCA is a structure that encapsulates everything needed to test a CA Server
 type TestCA struct {
-	RootCA      ca.RootCA
-	MemoryStore *store.MemoryStore
-	TempDir     string
-	Paths       *ca.SecurityConfigPaths
-	Server      grpc.Server
-	CAServer    *ca.Server
-	Context     context.Context
-	Clients     []api.CAClient
-	Conns       []*grpc.ClientConn
-	Picker      *picker.Picker
+	RootCA        ca.RootCA
+	MemoryStore   *store.MemoryStore
+	TempDir       string
+	Paths         *ca.SecurityConfigPaths
+	Server        grpc.Server
+	CAServer      *ca.Server
+	Context       context.Context
+	NodeCAClients []api.NodeCAClient
+	CAClients     []api.CAClient
+	Conns         []*grpc.ClientConn
+	Picker        *picker.Picker
 }
 
 // Stop cleansup after TestCA
@@ -112,6 +113,7 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	createClusterObject(t, s, policy)
 	caServer := ca.NewServer(s, managerConfig)
 	api.RegisterCAServer(grpcServer, caServer)
+	api.RegisterNodeCAServer(grpcServer, caServer)
 
 	ctx := context.Background()
 
@@ -125,19 +127,21 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	remotes := picker.NewRemotes(l.Addr().String())
 	picker := picker.NewPicker(l.Addr().String(), remotes)
 
-	clients := []api.CAClient{api.NewCAClient(conn1), api.NewCAClient(conn2), api.NewCAClient(conn3)}
+	caClients := []api.CAClient{api.NewCAClient(conn1), api.NewCAClient(conn2), api.NewCAClient(conn3)}
+	nodeCAClients := []api.NodeCAClient{api.NewNodeCAClient(conn1), api.NewNodeCAClient(conn2), api.NewNodeCAClient(conn3)}
 	conns := []*grpc.ClientConn{conn1, conn2, conn3}
 
 	return &TestCA{
-		RootCA:      rootCA,
-		MemoryStore: s,
-		Picker:      picker,
-		TempDir:     tempBaseDir,
-		Paths:       paths,
-		Context:     ctx,
-		Clients:     clients,
-		Conns:       conns,
-		CAServer:    caServer,
+		RootCA:        rootCA,
+		MemoryStore:   s,
+		Picker:        picker,
+		TempDir:       tempBaseDir,
+		Paths:         paths,
+		Context:       ctx,
+		CAClients:     caClients,
+		NodeCAClients: nodeCAClients,
+		Conns:         conns,
+		CAServer:      caServer,
 	}
 }
 

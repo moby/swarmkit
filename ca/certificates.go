@@ -465,18 +465,18 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role string, ro
 	defer conn.Close()
 
 	// Create a CAClient to retreive a new Certificate
-	caClient := api.NewCAClient(conn)
+	caClient := api.NewNodeCAClient(conn)
 
 	// Send the Request and retrieve the request token
-	issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
-	issueResponse, err := caClient.IssueCertificate(ctx, issueRequest)
+	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	issueResponse, err := caClient.IssueNodeCertificate(ctx, issueRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	token := issueResponse.Token
+	nodeID := issueResponse.NodeID
 
-	statusRequest := &api.CertificateStatusRequest{Token: token}
+	statusRequest := &api.NodeCertificateStatusRequest{NodeID: nodeID}
 	expBackoff := events.NewExponentialBackoff(events.ExponentialBackoffConfig{
 		Base:   time.Second,
 		Factor: time.Second,
@@ -487,23 +487,22 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role string, ro
 	// Exponential backoff with Max of 30 seconds to wait for a new retry
 	for {
 		// Send the Request and retrieve the certificate
-		statusReponse, err := caClient.CertificateStatus(ctx, statusRequest)
+		statusResponse, err := caClient.NodeCertificateStatus(ctx, statusRequest)
 		if err != nil {
 			return nil, err
 		}
 
 		// If the certificate was issued, return
-		if statusReponse.Status.State == api.IssuanceStateIssued {
-			return statusReponse.RegisteredCertificate.Certificate, nil
+		if statusResponse.Status.State == api.IssuanceStateIssued {
+			if statusResponse.Certificate == nil {
+				return nil, fmt.Errorf("no certificate in CertificateStatus response")
+			}
+			return statusResponse.Certificate.Certificate, nil
 		}
 
 		// If the certificate has been rejected or blocked return with an error
-		retryStates := map[api.IssuanceState]bool{
-			api.IssuanceStateRejected: true,
-			api.IssuanceStateBlocked:  true,
-		}
-		if retryStates[statusReponse.Status.State] {
-			return nil, fmt.Errorf("certificate issuance rejected: %v", statusReponse.Status.State)
+		if statusResponse.Status.State == api.IssuanceStateRejected {
+			return nil, fmt.Errorf("certificate issuance rejected: %v", statusResponse.Status.State)
 		}
 
 		// If we're still pending, the issuance failed, or the state is unknown

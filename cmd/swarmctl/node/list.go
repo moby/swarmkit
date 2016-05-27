@@ -39,18 +39,22 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				common.PrintHeader(w, "ID", "Name", "Status", "Availability")
+				common.PrintHeader(w, "ID", "Name", "Status", "Availability/Acceptance")
 				output = func(n *api.Node) {
 					spec := &n.Spec
 					name := spec.Annotations.Name
-					if name == "" {
+					availability := spec.Availability.String()
+					if n.Certificate.Status.State != api.IssuanceStateIssued && n.Certificate.Status.State != api.IssuanceStateRenew {
+						availability = spec.Acceptance.String()
+					}
+					if name == "" && n.Description != nil {
 						name = n.Description.Hostname
 					}
 					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 						n.ID,
 						name,
 						n.Status.State.String(),
-						spec.Availability.String(),
+						availability,
 					)
 				}
 			} else {

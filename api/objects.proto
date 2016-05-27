@@ -41,6 +41,9 @@ message Node {
 
 	// The node attachment to the ingress network.
 	NetworkAttachment network = 6;
+
+	// Certificate is the TLS certificate issued for the node, if any.
+	Certificate certificate = 7 [(gogoproto.nullable) = false];
 }
 
 // Manager provides informations about the state of a manager in the cluster.
@@ -193,25 +196,6 @@ message Network {
 	// Runtime state of IPAM options. This may not reflect the
 	// ipam options from NetworkSpec.
 	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
-}
-
-message RegisteredCertificate {
-	string id = 1 [(gogoproto.customname) = "ID"];
-
-	Meta meta = 2 [(gogoproto.nullable) = false];
-
-	RegisteredCertificateSpec spec = 3 [(gogoproto.nullable) = false];
-
-	string role = 4;
-
-	bytes csr = 5 [(gogoproto.customname) = "CSR"];
-
-	IssuanceStatus status = 6 [(gogoproto.nullable) = false];
-
-	bytes certificate = 7;
-
-	// CN represents the node ID.
-	string cn = 8 [(gogoproto.customname) = "CN"];
 }
 
 // Cluster provides global cluster settings.
