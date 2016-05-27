@@ -55,7 +55,7 @@ func TestAllocator(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
-			Networks: []*api.Task_NetworkAttachment{
+			Networks: []*api.NetworkAttachment{
 				{
 					Network: n1,
 				},
@@ -153,7 +153,7 @@ func TestAllocator(t *testing.T) {
 				State: api.TaskStateNew,
 			},
 			DesiredState: api.TaskStateRunning,
-			Networks: []*api.Task_NetworkAttachment{
+			Networks: []*api.NetworkAttachment{
 				{
 					Network: n3,
 				},

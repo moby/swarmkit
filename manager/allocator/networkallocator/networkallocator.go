@@ -255,7 +255,7 @@ func (na *NetworkAllocator) DeallocateTask(t *api.Task) error {
 	return na.releaseEndpoints(t.Networks)
 }
 
-func (na *NetworkAllocator) releaseEndpoints(networks []*api.Task_NetworkAttachment) error {
+func (na *NetworkAllocator) releaseEndpoints(networks []*api.NetworkAttachment) error {
 	for _, nAttach := range networks {
 		ipam, _, err := na.resolveIPAM(nAttach.Network)
 		if err != nil {
@@ -363,7 +363,7 @@ func (na *NetworkAllocator) deallocateVIP(eAttach *api.Endpoint_Attachment) erro
 }
 
 // allocate the IP addresses for a single network attachment of the task.
-func (na *NetworkAllocator) allocateNetworkIPs(nAttach *api.Task_NetworkAttachment, ipam ipamapi.Ipam, localNet *network) error {
+func (na *NetworkAllocator) allocateNetworkIPs(nAttach *api.NetworkAttachment, ipam ipamapi.Ipam, localNet *network) error {
 	var ip *net.IPNet
 
 	addresses := nAttach.Addresses
