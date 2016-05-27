@@ -600,20 +600,32 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		"node.session": sessionID,
 		"method":       "(*Dispatcher).Session",
 	})
+
+	nodeUpdates, cancel := state.Watch(d.store.WatchQueue(),
+		state.EventUpdateNode{Node: &api.Node{ID: nodeID},
+			Checks: []state.NodeCheckFunc{state.NodeCheckID}},
+	)
+	defer cancel()
+
+	var nodeObj *api.Node
+	d.store.View(func(readTx store.ReadTx) {
+		nodeObj = store.GetNode(readTx, nodeID)
+	})
+
 	if _, err = d.nodes.GetWithSession(nodeID, sessionID); err != nil {
 		return err
 	}
 
 	if err := stream.Send(&api.SessionMessage{
-		NodeID:     nodeID,
 		SessionID:  sessionID,
+		Node:       nodeObj,
 		Managers:   d.getManagers(),
 		Disconnect: false,
 	}); err != nil {
 		return err
 	}
 
-	mgrUpdates, mgrCancel := d.mgrQueue.Watch()
+	managerUpdates, mgrCancel := d.mgrQueue.Watch()
 	defer mgrCancel()
 
 	for {
@@ -629,8 +641,10 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			mgrs            []*api.WeightedPeer
 		)
 		select {
-		case ev := <-mgrUpdates:
+		case ev := <-managerUpdates:
 			mgrs = ev.([]*api.WeightedPeer)
+		case ev := <-nodeUpdates:
+			nodeObj = ev.(state.EventUpdateNode).Node
 		case <-stream.Context().Done():
 			return stream.Context().Err()
 		case <-node.Disconnect:
@@ -649,6 +663,8 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		}
 
 		if err := stream.Send(&api.SessionMessage{
+			SessionID:  sessionID,
+			Node:       nodeObj,
 			Managers:   mgrs,
 			Disconnect: disconnectError != nil,
 		}); err != nil {
