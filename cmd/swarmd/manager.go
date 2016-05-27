@@ -47,12 +47,12 @@ var managerCmd = &cobra.Command{
 			return err
 		}
 
-		hb, err := cmd.Flags().GetInt("heartbeat-tick")
+		hb, err := cmd.Flags().GetUint32("heartbeat-tick")
 		if err != nil {
 			return err
 		}
 
-		election, err := cmd.Flags().GetInt("election-tick")
+		election, err := cmd.Flags().GetUint32("election-tick")
 		if err != nil {
 			return err
 		}
@@ -143,6 +143,6 @@ func init() {
 	managerCmd.Flags().String("listen-control-api", "/var/run/docker/cluster/docker-swarmd.sock", "Listen socket for control API")
 	managerCmd.Flags().String("join-cluster", "", "Join cluster with a node at this address")
 	managerCmd.Flags().Bool("force-new-cluster", false, "Force the creation of a new cluster from data directory")
-	managerCmd.Flags().Int("heartbeat-tick", 1, "Defines the heartbeat interval (in seconds) for raft member health-check")
-	managerCmd.Flags().Int("election-tick", 5, "Defines the amount of ticks (in seconds) needed without a Leader to trigger a new election")
+	managerCmd.Flags().Uint32("heartbeat-tick", 1, "Defines the heartbeat interval (in seconds) for raft member health-check")
+	managerCmd.Flags().Uint32("election-tick", 3, "Defines the amount of ticks (in seconds) needed without a Leader to trigger a new election")
 }

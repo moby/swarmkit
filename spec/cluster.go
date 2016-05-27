@@ -44,6 +44,12 @@ type RaftConfig struct {
 	// LogEntriesForSlowFollowers is the number of log entries to keep
 	// around to sync up slow followers after a snapshot is created.
 	LogEntriesForSlowFollowers uint64 `yaml:"logentriesforslowfollowers"`
+	// ElectionTick defines the amount of ticks needed without
+	// leader to trigger a new election.
+	ElectionTick uint32 `yaml:"electiontick"`
+	// HeartbeatTick defines the amount of ticks between each
+	// heartbeat sent to other members for health-check purposes.
+	HeartbeatTick uint32 `yaml:"heartbeattick"`
 }
 
 // Reset resets the cluster config to its defaults.
@@ -102,6 +108,8 @@ func (c *ClusterConfig) ToProto() *api.ClusterSpec {
 			SnapshotInterval:           c.RaftConfig.SnapshotInterval,
 			KeepOldSnapshots:           c.RaftConfig.KeepOldSnapshots,
 			LogEntriesForSlowFollowers: c.RaftConfig.LogEntriesForSlowFollowers,
+			ElectionTick:               c.RaftConfig.ElectionTick,
+			HeartbeatTick:              c.RaftConfig.HeartbeatTick,
 		},
 	}
 
@@ -122,6 +130,12 @@ func (c *ClusterConfig) ToProto() *api.ClusterSpec {
 	if p.Raft.LogEntriesForSlowFollowers == 0 {
 		p.Raft.LogEntriesForSlowFollowers = raftDefaults.LogEntriesForSlowFollowers
 	}
+	if p.Raft.ElectionTick == 0 {
+		p.Raft.ElectionTick = raftDefaults.ElectionTick
+	}
+	if p.Raft.HeartbeatTick == 0 {
+		p.Raft.HeartbeatTick = raftDefaults.HeartbeatTick
+	}
 
 	return p
 }
@@ -141,6 +155,8 @@ func (c *ClusterConfig) FromProto(p *api.ClusterSpec) {
 			SnapshotInterval:           p.Raft.SnapshotInterval,
 			KeepOldSnapshots:           p.Raft.KeepOldSnapshots,
 			LogEntriesForSlowFollowers: p.Raft.LogEntriesForSlowFollowers,
+			ElectionTick:               p.Raft.ElectionTick,
+			HeartbeatTick:              p.Raft.HeartbeatTick,
 		},
 	}
 
