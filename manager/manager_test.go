@@ -91,6 +91,6 @@ func TestManager(t *testing.T) {
 
 	m.Stop(ctx)
 
-	// After stopping we should receive an error from ListenAndServe.
-	assert.Error(t, <-done)
+	// After stopping we should NOT receive an error from ListenAndServe.
+	assert.NoError(t, <-done)
 }
