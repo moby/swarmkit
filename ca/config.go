@@ -226,7 +226,7 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 			select {
 			case <-time.After(retry):
 			case <-ctx.Done():
-				break
+				return
 			}
 
 			// Retrieve the number of months left for the cert to expire

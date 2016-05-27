@@ -75,7 +75,7 @@ already present, the agent will recover and startup.`,
 							continue
 						}
 					case <-ctx.Done():
-						break
+						return
 					}
 				}
 			}()

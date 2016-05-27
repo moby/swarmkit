@@ -96,7 +96,7 @@ var managerCmd = &cobra.Command{
 						continue
 					}
 				case <-ctx.Done():
-					break
+					return
 				}
 			}
 		}()
