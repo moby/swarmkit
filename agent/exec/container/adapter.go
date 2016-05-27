@@ -99,20 +99,6 @@ func (c *containerAdapter) removeNetworks(ctx context.Context) error {
 	return nil
 }
 
-func isActiveEndpointError(err error) bool {
-	// TODO(mrjana): There is no proper error code for network not
-	// found error in engine-api. Resort to string matching until
-	// engine-api is fixed.
-	return strings.Contains(err.Error(), "has active endpoints")
-}
-
-func isNetworkExistError(err error, name string) bool {
-	// TODO(mrjana): There is no proper error code for network not
-	// found error in engine-api. Resort to string matching until
-	// engine-api is fixed.
-	return strings.Contains(err.Error(), fmt.Sprintf("network with name %s already exists", name))
-}
-
 func (c *containerAdapter) create(ctx context.Context) error {
 	if _, err := c.client.ContainerCreate(ctx,
 		c.container.config(),
@@ -222,4 +208,23 @@ func (c *containerAdapter) createVolumes(ctx context.Context, client engineapi.A
 	}
 
 	return nil
+}
+
+// TODO(mrjana/stevvooe): There is no proper error code for network not found
+// error in engine-api. Resort to string matching until engine-api is fixed.
+
+func isActiveEndpointError(err error) bool {
+	return strings.Contains(err.Error(), "has active endpoints")
+}
+
+func isNetworkExistError(err error, name string) bool {
+	return strings.Contains(err.Error(), fmt.Sprintf("network with name %s already exists", name))
+}
+
+func isContainerCreateNameConflict(err error) bool {
+	return strings.Contains(err.Error(), "Conflict. The name")
+}
+
+func isUnknownContainer(err error) bool {
+	return strings.Contains(err.Error(), "No such container:")
 }

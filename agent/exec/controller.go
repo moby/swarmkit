@@ -11,6 +11,8 @@ import (
 
 // ContainerController controls execution of container tasks.
 type ContainerController interface {
+	// ContainerStatus returns the status of the target container, if
+	// available. When the container is not available, the status will be nil.
 	ContainerStatus(ctx context.Context) (*api.ContainerStatus, error)
 }
 
