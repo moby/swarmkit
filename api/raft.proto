@@ -4,6 +4,7 @@ package docker.cluster.api;
 
 import "objects.proto";
 import "types.proto";
+import "auth.proto";
 import "github.com/coreos/etcd/raft/raftpb/raft.proto";
 import weak "gogoproto/gogo.proto";
 import weak "plugin/plugin.proto";
@@ -11,17 +12,25 @@ import weak "plugin/plugin.proto";
 // Raft defines the RPC communication between raft nodes.
 service Raft {
 	// Join adds a RaftMember to the raft cluster.
-	rpc Join(JoinRequest) returns (JoinResponse) {}
+	rpc Join(JoinRequest) returns (JoinResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
 
 	// Leave removes a RaftMember from the raft cluster.
-	rpc Leave(LeaveRequest) returns (LeaveResponse) {}
+	rpc Leave(LeaveRequest) returns (LeaveResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
 
 	// ProcessRaftMessage sends a raft message to be processed on a raft member, it is
 	// called from the RaftMember willing to send a message to its destination ('To' field)
-	rpc ProcessRaftMessage(ProcessRaftMessageRequest) returns (ProcessRaftMessageResponse) {}
+	rpc ProcessRaftMessage(ProcessRaftMessageRequest) returns (ProcessRaftMessageResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
 
 	// ResolveAddress returns the address where the node with the given ID can be reached.
-	rpc ResolveAddress(ResolveAddressRequest) returns (ResolveAddressResponse) {}
+	rpc ResolveAddress(ResolveAddressRequest) returns (ResolveAddressResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
 }
 
 message JoinRequest {

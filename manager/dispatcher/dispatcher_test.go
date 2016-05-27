@@ -82,7 +82,14 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	s := grpc.NewServer(serverOpts...)
 	tc := &testCluster{addr: l.Addr().String(), store: store.NewMemoryStore(nil)}
 	d := New(tc, c)
-	api.RegisterDispatcherServer(s, d)
+
+	authorize := func(ctx context.Context, roles []string) error {
+		_, err := ca.AuthorizeForwardedRole(ctx, roles, []string{ca.ManagerRole})
+		return err
+	}
+	authenticatedDispatcherAPI := api.NewAuthenticatedWrapperDispatcherServer(d, authorize)
+
+	api.RegisterDispatcherServer(s, authenticatedDispatcherAPI)
 	go func() {
 		// Serve will always return an error (even when properly stopped).
 		// Explicitly ignore it.

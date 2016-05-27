@@ -5,44 +5,99 @@ package docker.cluster.api;
 import "specs.proto";
 import "objects.proto";
 import "types.proto";
+import "auth.proto";
 import "gogoproto/gogo.proto";
 
 // Control defines the RPC methods for controlling a cluster.
 service Control {
-	rpc GetNode(GetNodeRequest) returns (GetNodeResponse) {}
-	rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {}
-	rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse) {}
+	rpc GetNode(GetNodeRequest) returns (GetNodeResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
 
-	rpc GetTask(GetTaskRequest) returns (GetTaskResponse) {}
-	rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {}
-	rpc RemoveTask(RemoveTaskRequest) returns (RemoveTaskResponse) {}
+	rpc GetTask(GetTaskRequest) returns (GetTaskResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc RemoveTask(RemoveTaskRequest) returns (RemoveTaskResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
 
-	rpc GetService(GetServiceRequest) returns (GetServiceResponse) {}
-	rpc ListServices(ListServicesRequest) returns (ListServicesResponse) {}
-	rpc CreateService(CreateServiceRequest) returns (CreateServiceResponse) {}
-	rpc UpdateService(UpdateServiceRequest) returns (UpdateServiceResponse) {}
-	rpc RemoveService(RemoveServiceRequest) returns (RemoveServiceResponse) {}
+	rpc GetService(GetServiceRequest) returns (GetServiceResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc ListServices(ListServicesRequest) returns (ListServicesResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc CreateService(CreateServiceRequest) returns (CreateServiceResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc UpdateService(UpdateServiceRequest) returns (UpdateServiceResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc RemoveService(RemoveServiceRequest) returns (RemoveServiceResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
 
-	rpc GetNetwork(GetNetworkRequest) returns (GetNetworkResponse) {};
-	rpc ListNetworks(ListNetworksRequest) returns (ListNetworksResponse) {};
-	rpc CreateNetwork(CreateNetworkRequest) returns (CreateNetworkResponse) {};
-	rpc RemoveNetwork(RemoveNetworkRequest) returns (RemoveNetworkResponse) {};
+	rpc GetNetwork(GetNetworkRequest) returns (GetNetworkResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc ListNetworks(ListNetworksRequest) returns (ListNetworksResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc CreateNetwork(CreateNetworkRequest) returns (CreateNetworkResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc RemoveNetwork(RemoveNetworkRequest) returns (RemoveNetworkResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
 
-	rpc GetVolume(GetVolumeRequest) returns (GetVolumeResponse) {};
-	rpc ListVolumes(ListVolumesRequest) returns (ListVolumesResponse) {};
-	rpc CreateVolume(CreateVolumeRequest) returns (CreateVolumeResponse) {};
-	rpc RemoveVolume(RemoveVolumeRequest) returns (RemoveVolumeResponse) {};
+	rpc GetVolume(GetVolumeRequest) returns (GetVolumeResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc ListVolumes(ListVolumesRequest) returns (ListVolumesResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc CreateVolume(CreateVolumeRequest) returns (CreateVolumeResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc RemoveVolume(RemoveVolumeRequest) returns (RemoveVolumeResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
 
-	rpc ListManagers(ListManagersRequest) returns (ListManagersResponse) {};
-	rpc RemoveManager(RemoveManagerRequest) returns (RemoveManagerResponse) {};
+	rpc ListManagers(ListManagersRequest) returns (ListManagersResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc RemoveManager(RemoveManagerRequest) returns (RemoveManagerResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
 
-	rpc GetRegisteredCertificate(GetRegisteredCertificateRequest) returns (GetRegisteredCertificateResponse) {}
-	rpc ListRegisteredCertificates(ListRegisteredCertificatesRequest) returns (ListRegisteredCertificatesResponse) {}
-	rpc UpdateRegisteredCertificate(UpdateRegisteredCertificateRequest) returns (UpdateRegisteredCertificateResponse) {}
+	rpc GetRegisteredCertificate(GetRegisteredCertificateRequest) returns (GetRegisteredCertificateResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc ListRegisteredCertificates(ListRegisteredCertificatesRequest) returns (ListRegisteredCertificatesResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc UpdateRegisteredCertificate(UpdateRegisteredCertificateRequest) returns (UpdateRegisteredCertificateResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
 
-	rpc GetCluster(GetClusterRequest) returns (GetClusterResponse) {};
-	rpc ListClusters(ListClustersRequest) returns (ListClustersResponse) {}
-	rpc UpdateCluster(UpdateClusterRequest) returns (UpdateClusterResponse) {}
+	rpc GetCluster(GetClusterRequest) returns (GetClusterResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc ListClusters(ListClustersRequest) returns (ListClustersResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
+	rpc UpdateCluster(UpdateClusterRequest) returns (UpdateClusterResponse) {
+		option (tls_authorization) = { roles: "swarm-manager" };
+	};
 }
 
 message ListOptions {
