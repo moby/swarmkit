@@ -48,9 +48,6 @@ message SessionRequest {
 // SessionMessage instructs an agent on various actions as part of the current
 // session. An agent should act immediately on the contents.
 message SessionMessage {
-	// NodeID identifies the registering node.
-	string node_id = 1 [(gogoproto.customname) = "NodeID"];
-
 	// SessionID is allocated after a successful registration. It should be
 	// used on all RPC calls after registration. A dispatcher may choose to
 	// change the SessionID, at which time an agent must re-register and obtain
@@ -94,14 +91,14 @@ message SessionMessage {
 	// We considered placing this field in a GRPC header. Because this is a
 	// critical feature of the protocol, we thought it should be represented
 	// directly in the RPC message set.
-	string session_id = 2 [(gogoproto.customname) = "SessionID"];
+	string session_id = 1 [(gogoproto.customname) = "SessionID"];
 
 	// Managers provides a weight list of alternative dispatchers
-	repeated WeightedPeer managers = 3;
+	repeated WeightedPeer managers = 2;
 
 	// Disconnect instructs the agent to disconnect from the current disptacher
 	// and select a new one.
-	bool disconnect = 4;
+	bool disconnect = 3;
 }
 
 // HeartbeatRequest provides identifying properties for a single heartbeat.
