@@ -126,15 +126,7 @@ message Mount {
 	// Source path to mount
 	string source = 2;
 
-	// Mask
-	enum Mask {
-		option (gogoproto.goproto_enum_prefix) = false;
-		option (gogoproto.enum_customname) = "Mask";
-
-		READ_ONLY = 0 [(gogoproto.enumvalue_customname) = "MountMaskReadOnly"];
-		READ_WRITE = 1 [(gogoproto.enumvalue_customname) = "MountMaskReadWrite"];
-	}
-	Mask mask = 3;
+	bool writable = 3;
 
 	enum Type {
 		option (gogoproto.goproto_enum_prefix) = false;
@@ -149,6 +141,35 @@ message Mount {
 
 	// Source path to mount
 	string volume_name = 5;
+
+	enum Propagation {
+		option (gogoproto.goproto_enum_prefix) = false;
+		option (gogoproto.enum_customname) = "Propagation";
+
+		RPRIVATE = 0 [(gogoproto.enumvalue_customname) = "MountPropagationRPrivate"];
+		PRIVATE = 1 [(gogoproto.enumvalue_customname) = "MountPropagationPrivate"];
+		RSHARED = 2 [(gogoproto.enumvalue_customname) = "MountPropagationRShared"];
+		SHARED = 3 [(gogoproto.enumvalue_customname) = "MountPropagationShared"];
+		RSLAVE = 4 [(gogoproto.enumvalue_customname) = "MountPropagationRSlave"];
+		SLAVE = 5 [(gogoproto.enumvalue_customname) = "MountPropagationSlave"];
+	}
+
+	// Propagation mode of mount
+	Propagation propagation = 6;
+
+	enum MCSAccessMode {
+		option (gogoproto.goproto_enum_prefix) = false;
+		option (gogoproto.enum_customname) = "MCSAccessMode";
+
+		MCSNONE = 0 [(gogoproto.enumvalue_customname) = "MountMCSAccessModeNone"];
+		MCSPRIVATE = 1 [(gogoproto.enumvalue_customname) = "MountMCSAccessModePrivate"];
+		MCSSHARED = 2 [(gogoproto.enumvalue_customname) = "MountMCSAccessModeShared"];
+	}
+	// Set shared mode for mcs (e.g. selinux)
+	MCSAccessMode mcsaccessmode = 7;
+
+	// populate volume with data from target
+	bool populate = 8;
 }
 
 message RestartPolicy {
