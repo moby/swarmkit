@@ -25,6 +25,21 @@ message Annotations {
 message NodeSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
+	enum Role {
+		option (gogoproto.goproto_enum_prefix) = false;
+
+		WORKER = 0 [(gogoproto.enumvalue_customname) = "NodeRoleWorker"];
+		MANAGER = 1 [(gogoproto.enumvalue_customname) = "NodeRoleManager"];
+	}
+
+	enum Acceptance {
+		option (gogoproto.goproto_enum_prefix) = false;
+
+		UNKNOWN = 0 [(gogoproto.enumvalue_customname) = "NodeAcceptanceUnknown"];
+		ACCEPT = 1 [(gogoproto.enumvalue_customname) = "NodeAcceptanceAccept"];
+		REJECT = 2 [(gogoproto.enumvalue_customname) = "NodeAcceptanceReject"];
+	}
+
 	enum Availability {
 		option (gogoproto.goproto_enum_prefix) = false;
 
@@ -40,9 +55,15 @@ message NodeSpec {
 		DRAIN = 2 [(gogoproto.enumvalue_customname) = "NodeAvailabilityDrain"];
 	}
 
+	// Role defines the role the node should have.
+	Role role = 2;
+
+	// Acceptance controls the admission of the node into the cluster.
+	Acceptance acceptance = 3;
+
 	// Availability allows a user to control the current scheduling status of a
 	// node.
-	Availability availability = 2;
+	Availability availability = 4;
 }
 
 message ManagerSpec {
