@@ -6,6 +6,8 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -47,4 +49,34 @@ func WaitForLeader(ctx context.Context, n *Node) error {
 		l = n.Leader()
 	}
 	return nil
+}
+
+// WaitForCluster waits until node observes that the cluster wide config is
+// committed to raft. This ensures that we can see and serve informations
+// related to the cluster.
+func WaitForCluster(ctx context.Context, n *Node) (cluster *api.Cluster, err error) {
+	watch, cancel := state.Watch(n.MemoryStore().WatchQueue(), state.EventCreateCluster{})
+	defer cancel()
+
+	var clusters []*api.Cluster
+	n.MemoryStore().View(func(readTx store.ReadTx) {
+		clusters, err = store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(clusters) == 1 {
+		cluster = clusters[0]
+	} else {
+		select {
+		case e := <-watch:
+			cluster = e.(state.EventCreateCluster).Cluster
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+
+	return cluster, nil
 }
