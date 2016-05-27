@@ -610,6 +610,11 @@ func (n *Node) ResolveAddress(ctx context.Context, msg *api.ResolveAddressReques
 func (n *Node) LeaderAddr() (string, error) {
 	n.stopMu.RLock()
 	defer n.stopMu.RUnlock()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := WaitForLeader(ctx, n); err != nil {
+		return "", ErrNoClusterLeader
+	}
 	if n.Node == nil {
 		return "", ErrStopped
 	}
