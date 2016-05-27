@@ -14,7 +14,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/ca"
 	cautils "github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/manager/state/raft"
 	raftutils "github.com/docker/swarm-v2/manager/state/raft/testutils"
@@ -24,22 +23,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var securityConfig *ca.SecurityConfig
+var tc *cautils.TestCA
 
 func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
 	logrus.SetOutput(ioutil.Discard)
 
-	tc := cautils.NewTestCA(nil, cautils.AutoAcceptPolicy())
-	defer tc.Stop()
-
-	securityConfig, _ = tc.NewNodeConfig(ca.ManagerRole)
+	tc = cautils.NewTestCA(nil, cautils.AutoAcceptPolicy())
 }
 
 func TestRaftBootstrap(t *testing.T) {
 	t.Parallel()
 
-	nodes, _ := raftutils.NewRaftCluster(t, securityConfig)
+	nodes, _ := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	assert.Equal(t, 3, len(nodes[1].GetMemberlist()))
@@ -50,7 +46,7 @@ func TestRaftBootstrap(t *testing.T) {
 func TestRaftLeader(t *testing.T) {
 	t.Parallel()
 
-	nodes, _ := raftutils.NewRaftCluster(t, securityConfig)
+	nodes, _ := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	assert.True(t, nodes[1].IsLeader(), "error: node 1 is not the Leader")
@@ -64,7 +60,7 @@ func TestRaftLeader(t *testing.T) {
 func TestRaftLeaderDown(t *testing.T) {
 	t.Parallel()
 
-	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop node 1
@@ -117,7 +113,7 @@ func TestRaftLeaderDown(t *testing.T) {
 func TestRaftFollowerDown(t *testing.T) {
 	t.Parallel()
 
-	nodes, _ := raftutils.NewRaftCluster(t, securityConfig)
+	nodes, _ := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop node 3
@@ -142,7 +138,7 @@ func TestRaftFollowerDown(t *testing.T) {
 func TestRaftLogReplication(t *testing.T) {
 	t.Parallel()
 
-	nodes, _ := raftutils.NewRaftCluster(t, securityConfig)
+	nodes, _ := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Propose a value
@@ -157,7 +153,7 @@ func TestRaftLogReplication(t *testing.T) {
 
 func TestRaftLogReplicationWithoutLeader(t *testing.T) {
 	t.Parallel()
-	nodes, _ := raftutils.NewRaftCluster(t, securityConfig)
+	nodes, _ := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop the leader
@@ -176,9 +172,9 @@ func TestRaftQuorumFailure(t *testing.T) {
 	t.Parallel()
 
 	// Bring up a 5 nodes cluster
-	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
-	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
-	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Lose a majority
@@ -200,9 +196,9 @@ func TestRaftQuorumRecovery(t *testing.T) {
 	t.Parallel()
 
 	// Bring up a 5 nodes cluster
-	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
-	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
-	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Lose a majority
@@ -214,7 +210,7 @@ func TestRaftQuorumRecovery(t *testing.T) {
 	raftutils.AdvanceTicks(clockSource, 5)
 
 	// Restore the majority by restarting node 3
-	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig, false)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
 
 	delete(nodes, 1)
 	delete(nodes, 2)
@@ -233,12 +229,12 @@ func TestRaftFollowerLeave(t *testing.T) {
 	t.Parallel()
 
 	// Bring up a 5 nodes cluster
-	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
-	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
-	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
-	nodes, clockSource = raftutils.NewRaftCluster(t, securityConfig)
-	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
-	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc)
+	nodes, clockSource = raftutils.NewRaftCluster(t, tc)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Node 5 leaves the cluster
@@ -277,7 +273,7 @@ func TestRaftFollowerLeave(t *testing.T) {
 func TestRaftLeaderLeave(t *testing.T) {
 	t.Parallel()
 
-	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 
 	// node 1 is the leader
 	assert.Equal(t, nodes[1].Leader(), nodes[1].Config.ID)
@@ -343,7 +339,7 @@ func TestRaftNewNodeGetsData(t *testing.T) {
 	t.Parallel()
 
 	// Bring up a 3 node cluster
-	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Propose a value
@@ -351,7 +347,7 @@ func TestRaftNewNodeGetsData(t *testing.T) {
 	assert.NoError(t, err, "failed to propose value")
 
 	// Add a new node
-	raftutils.AddRaftNode(t, clockSource, nodes, securityConfig)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 
 	time.Sleep(500 * time.Millisecond)
 
@@ -365,7 +361,7 @@ func TestRaftNewNodeGetsData(t *testing.T) {
 func TestRaftRejoin(t *testing.T) {
 	t.Parallel()
 
-	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	ids := []string{"id1", "id2"}
@@ -391,7 +387,7 @@ func TestRaftRejoin(t *testing.T) {
 	// Nodes 1 and 2 should have the new value
 	raftutils.CheckValuesOnNodes(t, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, ids, values)
 
-	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], securityConfig, false)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Node 3 should have all values, including the one proposed while
@@ -400,7 +396,7 @@ func TestRaftRejoin(t *testing.T) {
 }
 
 func testRaftRestartCluster(t *testing.T, stagger bool) {
-	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Propose a value
@@ -423,7 +419,7 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 		if stagger && i != 0 {
 			raftutils.AdvanceTicks(clockSource, 1)
 		}
-		nodes[k] = raftutils.RestartNode(t, clockSource, node, securityConfig, false)
+		nodes[k] = raftutils.RestartNode(t, clockSource, node, false)
 		i++
 	}
 	raftutils.WaitForCluster(t, clockSource, nodes)
@@ -478,7 +474,7 @@ func TestRaftRestartClusterStaggered(t *testing.T) {
 func TestRaftForceNewCluster(t *testing.T) {
 	t.Parallel()
 
-	nodes, clockSource := raftutils.NewRaftCluster(t, securityConfig)
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 
 	// Propose a value
 	values := make([]*api.Node, 2)
@@ -508,17 +504,17 @@ func TestRaftForceNewCluster(t *testing.T) {
 	delete(nodes, 3)
 
 	// Only restart the first node with force-new-cluster option
-	nodes[1] = raftutils.RestartNode(t, clockSource, nodes[1], securityConfig, true)
+	nodes[1] = raftutils.RestartNode(t, clockSource, nodes[1], true)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// The memberlist should contain only one node (self)
 	assert.Equal(t, len(nodes[1].GetMemberlist()), 1)
 
 	// Add 2 more members
-	nodes[2] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	nodes[2] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, tc)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
-	nodes[3] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	nodes[3] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, tc)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	newCluster := map[uint64]*raftutils.TestNode{
@@ -569,11 +565,11 @@ func TestRaftUnreachableNode(t *testing.T) {
 
 	nodes := make(map[uint64]*raftutils.TestNode)
 	var clockSource *fakeclock.FakeClock
-	nodes[1], clockSource = raftutils.NewInitNode(t, securityConfig, nil)
+	nodes[1], clockSource = raftutils.NewInitNode(t, tc, nil)
 
 	ctx := context.Background()
 	// Add a new node, but don't start its server yet
-	n := raftutils.NewNode(t, clockSource, securityConfig, raft.NewNodeOptions{JoinAddr: nodes[1].Address})
+	n := raftutils.NewNode(t, clockSource, tc, raft.NewNodeOptions{JoinAddr: nodes[1].Address})
 	go n.Run(ctx)
 
 	raftutils.AdvanceTicks(clockSource, 5)
@@ -606,12 +602,12 @@ func TestRaftJoinFollower(t *testing.T) {
 
 	nodes := make(map[uint64]*raftutils.TestNode)
 	var clockSource *fakeclock.FakeClock
-	nodes[1], clockSource = raftutils.NewInitNode(t, securityConfig, nil)
-	nodes[2] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, securityConfig)
+	nodes[1], clockSource = raftutils.NewInitNode(t, tc, nil)
+	nodes[2] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, tc)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Point new node at a follower's address, rather than the leader
-	nodes[3] = raftutils.NewJoinNode(t, clockSource, nodes[2].Address, securityConfig)
+	nodes[3] = raftutils.NewJoinNode(t, clockSource, nodes[2].Address, tc)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 	defer raftutils.TeardownCluster(t, nodes)
 

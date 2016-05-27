@@ -25,7 +25,8 @@ service Raft {
 }
 
 message JoinRequest {
-	RaftMember node = 1;
+	// Addr specifies the address of the member
+	string addr = 1;
 }
 
 message JoinResponse {

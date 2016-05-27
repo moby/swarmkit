@@ -52,7 +52,7 @@ func (tc *TestCA) Stop() {
 
 // NewNodeConfig returns security config for a new node, given a role
 func (tc *TestCA) NewNodeConfig(role string) (*ca.SecurityConfig, error) {
-	nodeID := identity.NewID()
+	nodeID := identity.NewNodeID()
 	nodeCert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, nodeID, role)
 	if err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 func genSecurityConfig(rootCA ca.RootCA, tempBaseDir, role string) (*ca.SecurityConfig, error) {
 	paths := ca.NewConfigPaths(tempBaseDir)
 
-	nodeID := identity.NewID()
+	nodeID := identity.NewNodeID()
 	nodeCert, err := ca.GenerateAndSignNewTLSCert(rootCA, nodeID, role, paths.Node)
 	if err != nil {
 		return nil, err

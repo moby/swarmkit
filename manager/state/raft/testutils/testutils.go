@@ -17,6 +17,7 @@ import (
 	etcdraft "github.com/coreos/etcd/raft"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
+	cautils "github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state/raft"
 	"github.com/docker/swarm-v2/manager/state/store"
@@ -28,7 +29,8 @@ import (
 // TestNode represents a raft test node
 type TestNode struct {
 	*raft.Node
-	Listener *wrappedListener
+	Listener       *wrappedListener
+	SecurityConfig *ca.SecurityConfig
 }
 
 // AdvanceTicks advances the raft state machine fake clock
@@ -183,10 +185,13 @@ func recycleWrappedListener(old *wrappedListener) *wrappedListener {
 }
 
 // NewNode creates a new raft node to use for tests
-func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, securityConfig *ca.SecurityConfig, opts ...raft.NewNodeOptions) *TestNode {
+func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA, opts ...raft.NewNodeOptions) *TestNode {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "can't bind to raft service port")
 	wrappedListener := newWrappedListener(l)
+
+	securityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
+	require.NoError(t, err)
 
 	serverOpts := []grpc.ServerOption{grpc.Creds(securityConfig.ServerTLSCreds)}
 	s := grpc.NewServer(serverOpts...)
@@ -197,6 +202,7 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, securityConfig *ca.
 	require.NoError(t, err, "can't create temporary state directory")
 
 	newNodeOpts := raft.NewNodeOptions{
+		ID:             securityConfig.ClientTLSCreds.NodeID(),
 		Addr:           l.Addr().String(),
 		Config:         cfg,
 		StateDir:       stateDir,
@@ -216,15 +222,15 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, securityConfig *ca.
 	require.NoError(t, err, "can't create raft node")
 	n.Server = s
 
-	return &TestNode{Node: n, Listener: wrappedListener}
+	return &TestNode{Node: n, Listener: wrappedListener, SecurityConfig: securityConfig}
 }
 
 // NewInitNode creates a new raft node initiating the cluster
 // for other members to join
-func NewInitNode(t *testing.T, securityConfig *ca.SecurityConfig, raftConfig *api.RaftConfig, opts ...raft.NewNodeOptions) (*TestNode, *fakeclock.FakeClock) {
+func NewInitNode(t *testing.T, tc *cautils.TestCA, raftConfig *api.RaftConfig, opts ...raft.NewNodeOptions) (*TestNode, *fakeclock.FakeClock) {
 	ctx := context.Background()
 	clockSource := fakeclock.NewFakeClock(time.Now())
-	n := NewNode(t, clockSource, securityConfig, opts...)
+	n := NewNode(t, clockSource, tc, opts...)
 
 	go n.Run(ctx)
 
@@ -253,13 +259,13 @@ func NewInitNode(t *testing.T, securityConfig *ca.SecurityConfig, raftConfig *ap
 }
 
 // NewJoinNode creates a new raft node joining an existing cluster
-func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, securityConfig *ca.SecurityConfig, opts ...raft.NewNodeOptions) *TestNode {
+func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, tc *cautils.TestCA, opts ...raft.NewNodeOptions) *TestNode {
 	var derivedOpts raft.NewNodeOptions
 	if len(opts) == 1 {
 		derivedOpts = opts[0]
 	}
 	derivedOpts.JoinAddr = join
-	n := NewNode(t, clockSource, securityConfig, derivedOpts)
+	n := NewNode(t, clockSource, tc, derivedOpts)
 
 	go n.Run(context.Background())
 	raft.Register(n.Server, n.Node)
@@ -272,14 +278,16 @@ func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, se
 }
 
 // RestartNode restarts a raft test node
-func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNode, securityConfig *ca.SecurityConfig, forceNewCluster bool) *TestNode {
+func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNode, forceNewCluster bool) *TestNode {
 	wrappedListener := recycleWrappedListener(oldNode.Listener)
+	securityConfig := oldNode.SecurityConfig
 	serverOpts := []grpc.ServerOption{grpc.Creds(securityConfig.ServerTLSCreds)}
 	s := grpc.NewServer(serverOpts...)
 
 	cfg := raft.DefaultNodeConfig()
 
 	newNodeOpts := raft.NewNodeOptions{
+		ID:              securityConfig.ClientTLSCreds.NodeID(),
 		Addr:            oldNode.Address,
 		Config:          cfg,
 		StateDir:        oldNode.StateDir,
@@ -302,11 +310,11 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 		// After stopping, we should receive an error from Serve
 		assert.Error(t, s.Serve(wrappedListener))
 	}()
-	return &TestNode{Node: n, Listener: wrappedListener}
+	return &TestNode{Node: n, Listener: wrappedListener, SecurityConfig: securityConfig}
 }
 
 // NewRaftCluster creates a new raft cluster with 3 nodes for testing
-func NewRaftCluster(t *testing.T, securityConfig *ca.SecurityConfig, config ...*api.RaftConfig) (map[uint64]*TestNode, *fakeclock.FakeClock) {
+func NewRaftCluster(t *testing.T, tc *cautils.TestCA, config ...*api.RaftConfig) (map[uint64]*TestNode, *fakeclock.FakeClock) {
 	var (
 		raftConfig  *api.RaftConfig
 		clockSource *fakeclock.FakeClock
@@ -318,16 +326,16 @@ func NewRaftCluster(t *testing.T, securityConfig *ca.SecurityConfig, config ...*
 		raftConfig = config[0]
 	}
 	nodes := make(map[uint64]*TestNode)
-	nodes[1], clockSource = NewInitNode(t, securityConfig, raftConfig)
-	AddRaftNode(t, clockSource, nodes, securityConfig)
-	AddRaftNode(t, clockSource, nodes, securityConfig)
+	nodes[1], clockSource = NewInitNode(t, tc, raftConfig)
+	AddRaftNode(t, clockSource, nodes, tc)
+	AddRaftNode(t, clockSource, nodes, tc)
 	return nodes, clockSource
 }
 
 // AddRaftNode adds an additional raft test node to an existing cluster
-func AddRaftNode(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*TestNode, securityConfig *ca.SecurityConfig, opts ...raft.NewNodeOptions) {
+func AddRaftNode(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*TestNode, tc *cautils.TestCA, opts ...raft.NewNodeOptions) {
 	n := uint64(len(nodes) + 1)
-	nodes[n] = NewJoinNode(t, clockSource, nodes[1].Address, securityConfig, opts...)
+	nodes[n] = NewJoinNode(t, clockSource, nodes[1].Address, tc, opts...)
 	WaitForCluster(t, clockSource, nodes)
 }
 

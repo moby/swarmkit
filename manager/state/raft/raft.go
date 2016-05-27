@@ -3,8 +3,6 @@ package raft
 import (
 	"errors"
 	"math"
-	"math/rand"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -24,6 +22,7 @@ import (
 	"github.com/docker/go-events"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
+	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state/raft/membership"
 	"github.com/docker/swarm-v2/manager/state/store"
@@ -117,6 +116,8 @@ type Node struct {
 
 // NewNodeOptions provides arguments for NewNode
 type NewNodeOptions struct {
+	// ID is the node's ID, from its certificate's CN field.
+	ID string
 	// Addr is the address of this node's listener
 	Addr string
 	// ForceNewCluster defines if we have to force a new cluster
@@ -141,11 +142,6 @@ type NewNodeOptions struct {
 	TLSCredentials credentials.TransportAuthenticator
 }
 
-func init() {
-	// TODO(aaronl): Remove once we're no longer generating random IDs.
-	rand.Seed(time.Now().UnixNano())
-}
-
 // NewNode generates a new Raft node
 func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 	cfg := opts.Config
@@ -154,6 +150,11 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 	}
 	if opts.TickInterval == 0 {
 		opts.TickInterval = time.Second
+	}
+
+	raftID, err := identity.ParseNodeID(opts.ID)
+	if err != nil {
+		return nil, err
 	}
 
 	raftStore := raft.NewMemoryStorage()
@@ -174,6 +175,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 			MaxSizePerMsg:   cfg.MaxSizePerMsg,
 			MaxInflightMsgs: cfg.MaxInflightMsgs,
 			Logger:          cfg.Logger,
+			ID:              raftID,
 		},
 		forceNewCluster:     opts.ForceNewCluster,
 		stopCh:              make(chan struct{}),
@@ -224,10 +226,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 			ctx, cancel := context.WithTimeout(n.Ctx, 10*time.Second)
 			defer cancel()
 			resp, err := c.Join(ctx, &api.JoinRequest{
-				Node: &api.RaftMember{
-					RaftID: n.Config.ID,
-					Addr:   n.Address,
-				},
+				Addr: n.Address,
 			})
 			if err != nil {
 				return nil, err
@@ -442,6 +441,11 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 		"method":   "(*Node).Join",
 	})
 
+	raftID, err := identity.ParseNodeID(agentID)
+	if err != nil {
+		return nil, err
+	}
+
 	// can't stop the raft node while an async RPC is in progress
 	n.stopMu.RLock()
 	defer n.stopMu.RUnlock()
@@ -452,8 +456,8 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 	}
 
 	// We submit a configuration change only if the node was not registered yet
-	if n.cluster.GetMember(req.Node.RaftID) == nil {
-		err = n.addMember(ctx, req.Node)
+	if n.cluster.GetMember(raftID) == nil {
+		err = n.addMember(ctx, req.Addr, raftID)
 		if err != nil {
 			log.WithError(err).Errorf("failed to add member")
 			return nil, err
@@ -473,7 +477,12 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 }
 
 // addMember submits a configuration change to add a new member on the raft cluster.
-func (n *Node) addMember(ctx context.Context, node *api.RaftMember) error {
+func (n *Node) addMember(ctx context.Context, addr string, raftID uint64) error {
+	node := api.RaftMember{
+		RaftID: raftID,
+		Addr:   addr,
+	}
+
 	meta, err := node.Marshal()
 	if err != nil {
 		return err
@@ -481,7 +490,7 @@ func (n *Node) addMember(ctx context.Context, node *api.RaftMember) error {
 
 	cc := raftpb.ConfChange{
 		Type:    raftpb.ConfChangeAddNode,
-		NodeID:  node.RaftID,
+		NodeID:  raftID,
 		Context: meta,
 	}
 
@@ -576,7 +585,7 @@ func (n *Node) ResolveAddress(ctx context.Context, msg *api.ResolveAddressReques
 
 	member := n.cluster.GetMember(msg.RaftID)
 	if member == nil {
-		return nil, grpc.Errorf(codes.NotFound, "member %s not found", strconv.FormatUint(msg.RaftID, 16))
+		return nil, grpc.Errorf(codes.NotFound, "member %s not found", identity.FormatNodeID(msg.RaftID))
 	}
 	return &api.ResolveAddressResponse{Addr: member.Addr}, nil
 }
@@ -758,7 +767,7 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 		// If we are being asked to send to a member that's not in
 		// our member list, that could indicate that the current leader
 		// was added while we were offline. Try to resolve its address.
-		n.Config.Logger.Warningf("sending message to an unrecognized member ID %s", strconv.FormatUint(m.To, 16))
+		n.Config.Logger.Warningf("sending message to an unrecognized member ID %s", identity.FormatNodeID(m.To))
 
 		// Choose a random member
 		var (
@@ -778,12 +787,12 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 
 		resp, err := queryMember.ResolveAddress(ctx, &api.ResolveAddressRequest{RaftID: m.To})
 		if err != nil {
-			n.Config.Logger.Errorf("could not resolve address of member ID %s: %v", strconv.FormatUint(m.To, 16), err)
+			n.Config.Logger.Errorf("could not resolve address of member ID %s: %v", identity.FormatNodeID(m.To), err)
 			return
 		}
 		conn, err = n.ConnectToMember(resp.Addr, n.sendTimeout)
 		if err != nil {
-			n.Config.Logger.Errorf("could connect to member ID %s at %s: %v", strconv.FormatUint(m.To, 16), resp.Addr, err)
+			n.Config.Logger.Errorf("could connect to member ID %s at %s: %v", identity.FormatNodeID(m.To), resp.Addr, err)
 			return
 		}
 		// The temporary connection is only used for this message.
