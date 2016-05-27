@@ -131,12 +131,24 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 	if err := d.markNodesUnknown(ctx); err != nil {
 		logger.Errorf("failed to mark all nodes unknown: %v", err)
 	}
-	d.store.View(func(readTx store.ReadTx) {
-		clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
-		if err == nil && len(clusters) == 1 {
-			d.config.HeartbeatPeriod = time.Duration(clusters[0].Spec.Dispatcher.HeartbeatPeriod)
-		}
-	})
+	configWatcher, cancel, err := store.ViewAndWatch(
+		d.store,
+		func(readTx store.ReadTx) error {
+			clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
+			if err != nil {
+				return err
+			}
+			if err == nil && len(clusters) == 1 {
+				d.config.HeartbeatPeriod = time.Duration(clusters[0].Spec.Dispatcher.HeartbeatPeriod)
+			}
+			return nil
+		},
+		state.EventUpdateCluster{},
+	)
+	if err != nil {
+		return err
+	}
+	defer cancel()
 	d.ctx, d.cancel = context.WithCancel(ctx)
 	d.mu.Unlock()
 
@@ -161,9 +173,6 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 
 	batchTimer := time.NewTimer(maxBatchInterval)
 	defer batchTimer.Stop()
-
-	configWatcher, cancel := state.Watch(d.store.WatchQueue(), state.EventUpdateCluster{})
-	defer cancel()
 
 	for {
 		select {
@@ -454,26 +463,30 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 		return err
 	}
 
-	watchQueue := d.store.WatchQueue()
-	nodeTasks, cancel := state.Watch(watchQueue,
+	tasksMap := make(map[string]*api.Task)
+	nodeTasks, cancel, err := store.ViewAndWatch(
+		d.store,
+		func(readTx store.ReadTx) error {
+			tasks, err := store.FindTasks(readTx, store.ByNodeID(nodeID))
+			if err != nil {
+				return err
+			}
+			for _, t := range tasks {
+				tasksMap[t.ID] = t
+			}
+			return nil
+		},
 		state.EventCreateTask{Task: &api.Task{NodeID: nodeID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
 		state.EventUpdateTask{Task: &api.Task{NodeID: nodeID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
 		state.EventDeleteTask{Task: &api.Task{NodeID: nodeID},
-			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}})
+			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
+	)
+	if err != nil {
+		return err
+	}
 	defer cancel()
-
-	tasksMap := make(map[string]*api.Task)
-	d.store.View(func(readTx store.ReadTx) {
-		tasks, err := store.FindTasks(readTx, store.ByNodeID(nodeID))
-		if err != nil {
-			return
-		}
-		for _, t := range tasks {
-			tasksMap[t.ID] = t
-		}
-	})
 
 	for {
 		if _, err := d.nodes.GetWithSession(nodeID, r.SessionID); err != nil {
