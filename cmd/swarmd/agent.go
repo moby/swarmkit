@@ -61,12 +61,10 @@ already present, the agent will recover and startup.`,
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
-			securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, token, ca.AgentRole, picker)
+			securityConfig, updates, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, token, ca.AgentRole, picker)
 			if err != nil {
 				return err
 			}
-
-			updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker, 30*time.Second)
 			go func() {
 				for {
 					select {
@@ -79,6 +77,8 @@ already present, the agent will recover and startup.`,
 					}
 				}
 			}()
+
+			go ca.RenewTLSConfig(ctx, securityConfig, certDir, picker, 30*time.Second)
 
 			client, err := engineapi.NewClient(engineAddr, "", nil, nil)
 			if err != nil {

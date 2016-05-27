@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"time"
 
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/manager"
@@ -82,12 +81,10 @@ var managerCmd = &cobra.Command{
 
 		// We either just boostraped our cluster from scratch, or have a valid picker and
 		// are thus joining an existing cluster
-		securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, token, ca.ManagerRole, p)
+		securityConfig, updates, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, token, ca.ManagerRole, p)
 		if err != nil {
 			return err
 		}
-
-		updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, p, 30*time.Second)
 		go func() {
 			for {
 				select {
