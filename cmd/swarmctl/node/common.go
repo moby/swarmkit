@@ -17,7 +17,7 @@ var (
 
 func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.NodeSpec_Availability) error {
 	if len(args) == 0 {
-		return errors.New("missing Node ID")
+		return errors.New("missing node ID")
 	}
 
 	c, err := common.Dial(cmd)
@@ -35,6 +35,40 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	}
 
 	spec.Availability = availability
+
+	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
+		NodeID:      node.ID,
+		NodeVersion: &node.Meta.Version,
+		Spec:        spec,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func changeNodeAcceptance(cmd *cobra.Command, args []string, acceptance api.NodeSpec_Acceptance) error {
+	if len(args) == 0 {
+		return errors.New("missing node ID")
+	}
+
+	c, err := common.Dial(cmd)
+	if err != nil {
+		return err
+	}
+	node, err := getNode(common.Context(cmd), c, args[0])
+	if err != nil {
+		return err
+	}
+	spec := &node.Spec
+
+	if spec.Acceptance == acceptance {
+		return errNoChange
+	}
+
+	spec.Acceptance = acceptance
 
 	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
 		NodeID:      node.ID,

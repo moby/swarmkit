@@ -32,39 +32,39 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-type CertificateStatusRequest struct {
-	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+type NodeCertificateStatusRequest struct {
+	NodeID string `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 }
 
-func (m *CertificateStatusRequest) Reset()                    { *m = CertificateStatusRequest{} }
-func (*CertificateStatusRequest) ProtoMessage()               {}
-func (*CertificateStatusRequest) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{0} }
+func (m *NodeCertificateStatusRequest) Reset()                    { *m = NodeCertificateStatusRequest{} }
+func (*NodeCertificateStatusRequest) ProtoMessage()               {}
+func (*NodeCertificateStatusRequest) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{0} }
 
-type CertificateStatusResponse struct {
-	Status                *IssuanceStatus        `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
-	RegisteredCertificate *RegisteredCertificate `protobuf:"bytes,2,opt,name=registered_certificate,json=registeredCertificate" json:"registered_certificate,omitempty"`
+type NodeCertificateStatusResponse struct {
+	Status      *IssuanceStatus `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
+	Certificate *Certificate    `protobuf:"bytes,2,opt,name=certificate" json:"certificate,omitempty"`
 }
 
-func (m *CertificateStatusResponse) Reset()                    { *m = CertificateStatusResponse{} }
-func (*CertificateStatusResponse) ProtoMessage()               {}
-func (*CertificateStatusResponse) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{1} }
+func (m *NodeCertificateStatusResponse) Reset()                    { *m = NodeCertificateStatusResponse{} }
+func (*NodeCertificateStatusResponse) ProtoMessage()               {}
+func (*NodeCertificateStatusResponse) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{1} }
 
-type IssueCertificateRequest struct {
+type IssueNodeCertificateRequest struct {
 	Role string `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
 	CSR  []byte `protobuf:"bytes,2,opt,name=csr,proto3" json:"csr,omitempty"`
 }
 
-func (m *IssueCertificateRequest) Reset()                    { *m = IssueCertificateRequest{} }
-func (*IssueCertificateRequest) ProtoMessage()               {}
-func (*IssueCertificateRequest) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{2} }
+func (m *IssueNodeCertificateRequest) Reset()                    { *m = IssueNodeCertificateRequest{} }
+func (*IssueNodeCertificateRequest) ProtoMessage()               {}
+func (*IssueNodeCertificateRequest) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{2} }
 
-type IssueCertificateResponse struct {
-	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+type IssueNodeCertificateResponse struct {
+	NodeID string `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 }
 
-func (m *IssueCertificateResponse) Reset()                    { *m = IssueCertificateResponse{} }
-func (*IssueCertificateResponse) ProtoMessage()               {}
-func (*IssueCertificateResponse) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{3} }
+func (m *IssueNodeCertificateResponse) Reset()                    { *m = IssueNodeCertificateResponse{} }
+func (*IssueNodeCertificateResponse) ProtoMessage()               {}
+func (*IssueNodeCertificateResponse) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{3} }
 
 type GetRootCACertificateRequest struct {
 }
@@ -82,10 +82,10 @@ func (*GetRootCACertificateResponse) ProtoMessage()               {}
 func (*GetRootCACertificateResponse) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{5} }
 
 func init() {
-	proto.RegisterType((*CertificateStatusRequest)(nil), "docker.cluster.api.CertificateStatusRequest")
-	proto.RegisterType((*CertificateStatusResponse)(nil), "docker.cluster.api.CertificateStatusResponse")
-	proto.RegisterType((*IssueCertificateRequest)(nil), "docker.cluster.api.IssueCertificateRequest")
-	proto.RegisterType((*IssueCertificateResponse)(nil), "docker.cluster.api.IssueCertificateResponse")
+	proto.RegisterType((*NodeCertificateStatusRequest)(nil), "docker.cluster.api.NodeCertificateStatusRequest")
+	proto.RegisterType((*NodeCertificateStatusResponse)(nil), "docker.cluster.api.NodeCertificateStatusResponse")
+	proto.RegisterType((*IssueNodeCertificateRequest)(nil), "docker.cluster.api.IssueNodeCertificateRequest")
+	proto.RegisterType((*IssueNodeCertificateResponse)(nil), "docker.cluster.api.IssueNodeCertificateResponse")
 	proto.RegisterType((*GetRootCACertificateRequest)(nil), "docker.cluster.api.GetRootCACertificateRequest")
 	proto.RegisterType((*GetRootCACertificateResponse)(nil), "docker.cluster.api.GetRootCACertificateResponse")
 }
@@ -102,52 +102,64 @@ func NewAuthenticatedWrapperCAServer(local CAServer, authorize func(context.Cont
 	}
 }
 
-func (p *authenticatedWrapperCAServer) IssueCertificate(ctx context.Context, r *IssueCertificateRequest) (*IssueCertificateResponse, error) {
-
-	return p.local.IssueCertificate(ctx, r)
-}
-
-func (p *authenticatedWrapperCAServer) CertificateStatus(ctx context.Context, r *CertificateStatusRequest) (*CertificateStatusResponse, error) {
-
-	return p.local.CertificateStatus(ctx, r)
-}
-
 func (p *authenticatedWrapperCAServer) GetRootCACertificate(ctx context.Context, r *GetRootCACertificateRequest) (*GetRootCACertificateResponse, error) {
 
 	return p.local.GetRootCACertificate(ctx, r)
 }
 
-func (m *CertificateStatusRequest) Copy() *CertificateStatusRequest {
+type authenticatedWrapperNodeCAServer struct {
+	local     NodeCAServer
+	authorize func(context.Context, []string) error
+}
+
+func NewAuthenticatedWrapperNodeCAServer(local NodeCAServer, authorize func(context.Context, []string) error) NodeCAServer {
+	return &authenticatedWrapperNodeCAServer{
+		local:     local,
+		authorize: authorize,
+	}
+}
+
+func (p *authenticatedWrapperNodeCAServer) IssueNodeCertificate(ctx context.Context, r *IssueNodeCertificateRequest) (*IssueNodeCertificateResponse, error) {
+
+	return p.local.IssueNodeCertificate(ctx, r)
+}
+
+func (p *authenticatedWrapperNodeCAServer) NodeCertificateStatus(ctx context.Context, r *NodeCertificateStatusRequest) (*NodeCertificateStatusResponse, error) {
+
+	return p.local.NodeCertificateStatus(ctx, r)
+}
+
+func (m *NodeCertificateStatusRequest) Copy() *NodeCertificateStatusRequest {
 	if m == nil {
 		return nil
 	}
 
-	o := &CertificateStatusRequest{
-		Token: m.Token,
+	o := &NodeCertificateStatusRequest{
+		NodeID: m.NodeID,
 	}
 
 	return o
 }
 
-func (m *CertificateStatusResponse) Copy() *CertificateStatusResponse {
+func (m *NodeCertificateStatusResponse) Copy() *NodeCertificateStatusResponse {
 	if m == nil {
 		return nil
 	}
 
-	o := &CertificateStatusResponse{
-		Status:                m.Status.Copy(),
-		RegisteredCertificate: m.RegisteredCertificate.Copy(),
+	o := &NodeCertificateStatusResponse{
+		Status:      m.Status.Copy(),
+		Certificate: m.Certificate.Copy(),
 	}
 
 	return o
 }
 
-func (m *IssueCertificateRequest) Copy() *IssueCertificateRequest {
+func (m *IssueNodeCertificateRequest) Copy() *IssueNodeCertificateRequest {
 	if m == nil {
 		return nil
 	}
 
-	o := &IssueCertificateRequest{
+	o := &IssueNodeCertificateRequest{
 		Role: m.Role,
 		CSR:  m.CSR,
 	}
@@ -155,13 +167,13 @@ func (m *IssueCertificateRequest) Copy() *IssueCertificateRequest {
 	return o
 }
 
-func (m *IssueCertificateResponse) Copy() *IssueCertificateResponse {
+func (m *IssueNodeCertificateResponse) Copy() *IssueNodeCertificateResponse {
 	if m == nil {
 		return nil
 	}
 
-	o := &IssueCertificateResponse{
-		Token: m.Token,
+	o := &IssueNodeCertificateResponse{
+		NodeID: m.NodeID,
 	}
 
 	return o
@@ -189,49 +201,49 @@ func (m *GetRootCACertificateResponse) Copy() *GetRootCACertificateResponse {
 	return o
 }
 
-func (this *CertificateStatusRequest) GoString() string {
+func (this *NodeCertificateStatusRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.CertificateStatusRequest{")
-	s = append(s, "Token: "+fmt.Sprintf("%#v", this.Token)+",\n")
+	s = append(s, "&api.NodeCertificateStatusRequest{")
+	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *CertificateStatusResponse) GoString() string {
+func (this *NodeCertificateStatusResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.CertificateStatusResponse{")
+	s = append(s, "&api.NodeCertificateStatusResponse{")
 	if this.Status != nil {
 		s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
 	}
-	if this.RegisteredCertificate != nil {
-		s = append(s, "RegisteredCertificate: "+fmt.Sprintf("%#v", this.RegisteredCertificate)+",\n")
+	if this.Certificate != nil {
+		s = append(s, "Certificate: "+fmt.Sprintf("%#v", this.Certificate)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *IssueCertificateRequest) GoString() string {
+func (this *IssueNodeCertificateRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
-	s = append(s, "&api.IssueCertificateRequest{")
+	s = append(s, "&api.IssueNodeCertificateRequest{")
 	s = append(s, "Role: "+fmt.Sprintf("%#v", this.Role)+",\n")
 	s = append(s, "CSR: "+fmt.Sprintf("%#v", this.CSR)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *IssueCertificateResponse) GoString() string {
+func (this *IssueNodeCertificateResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 5)
-	s = append(s, "&api.IssueCertificateResponse{")
-	s = append(s, "Token: "+fmt.Sprintf("%#v", this.Token)+",\n")
+	s = append(s, "&api.IssueNodeCertificateResponse{")
+	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -291,8 +303,6 @@ const _ = grpc.SupportPackageIsVersion2
 // Client API for CA service
 
 type CAClient interface {
-	IssueCertificate(ctx context.Context, in *IssueCertificateRequest, opts ...grpc.CallOption) (*IssueCertificateResponse, error)
-	CertificateStatus(ctx context.Context, in *CertificateStatusRequest, opts ...grpc.CallOption) (*CertificateStatusResponse, error)
 	GetRootCACertificate(ctx context.Context, in *GetRootCACertificateRequest, opts ...grpc.CallOption) (*GetRootCACertificateResponse, error)
 }
 
@@ -302,24 +312,6 @@ type cAClient struct {
 
 func NewCAClient(cc *grpc.ClientConn) CAClient {
 	return &cAClient{cc}
-}
-
-func (c *cAClient) IssueCertificate(ctx context.Context, in *IssueCertificateRequest, opts ...grpc.CallOption) (*IssueCertificateResponse, error) {
-	out := new(IssueCertificateResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.CA/IssueCertificate", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *cAClient) CertificateStatus(ctx context.Context, in *CertificateStatusRequest, opts ...grpc.CallOption) (*CertificateStatusResponse, error) {
-	out := new(CertificateStatusResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.CA/CertificateStatus", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *cAClient) GetRootCACertificate(ctx context.Context, in *GetRootCACertificateRequest, opts ...grpc.CallOption) (*GetRootCACertificateResponse, error) {
@@ -334,49 +326,11 @@ func (c *cAClient) GetRootCACertificate(ctx context.Context, in *GetRootCACertif
 // Server API for CA service
 
 type CAServer interface {
-	IssueCertificate(context.Context, *IssueCertificateRequest) (*IssueCertificateResponse, error)
-	CertificateStatus(context.Context, *CertificateStatusRequest) (*CertificateStatusResponse, error)
 	GetRootCACertificate(context.Context, *GetRootCACertificateRequest) (*GetRootCACertificateResponse, error)
 }
 
 func RegisterCAServer(s *grpc.Server, srv CAServer) {
 	s.RegisterService(&_CA_serviceDesc, srv)
-}
-
-func _CA_IssueCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(IssueCertificateRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CAServer).IssueCertificate(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/docker.cluster.api.CA/IssueCertificate",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CAServer).IssueCertificate(ctx, req.(*IssueCertificateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _CA_CertificateStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CertificateStatusRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CAServer).CertificateStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/docker.cluster.api.CA/CertificateStatus",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CAServer).CertificateStatus(ctx, req.(*CertificateStatusRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _CA_GetRootCACertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -402,14 +356,6 @@ var _CA_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*CAServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "IssueCertificate",
-			Handler:    _CA_IssueCertificate_Handler,
-		},
-		{
-			MethodName: "CertificateStatus",
-			Handler:    _CA_CertificateStatus_Handler,
-		},
-		{
 			MethodName: "GetRootCACertificate",
 			Handler:    _CA_GetRootCACertificate_Handler,
 		},
@@ -417,7 +363,103 @@ var _CA_serviceDesc = grpc.ServiceDesc{
 	Streams: []grpc.StreamDesc{},
 }
 
-func (m *CertificateStatusRequest) Marshal() (data []byte, err error) {
+// Client API for NodeCA service
+
+type NodeCAClient interface {
+	IssueNodeCertificate(ctx context.Context, in *IssueNodeCertificateRequest, opts ...grpc.CallOption) (*IssueNodeCertificateResponse, error)
+	NodeCertificateStatus(ctx context.Context, in *NodeCertificateStatusRequest, opts ...grpc.CallOption) (*NodeCertificateStatusResponse, error)
+}
+
+type nodeCAClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewNodeCAClient(cc *grpc.ClientConn) NodeCAClient {
+	return &nodeCAClient{cc}
+}
+
+func (c *nodeCAClient) IssueNodeCertificate(ctx context.Context, in *IssueNodeCertificateRequest, opts ...grpc.CallOption) (*IssueNodeCertificateResponse, error) {
+	out := new(IssueNodeCertificateResponse)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.NodeCA/IssueNodeCertificate", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nodeCAClient) NodeCertificateStatus(ctx context.Context, in *NodeCertificateStatusRequest, opts ...grpc.CallOption) (*NodeCertificateStatusResponse, error) {
+	out := new(NodeCertificateStatusResponse)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.NodeCA/NodeCertificateStatus", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for NodeCA service
+
+type NodeCAServer interface {
+	IssueNodeCertificate(context.Context, *IssueNodeCertificateRequest) (*IssueNodeCertificateResponse, error)
+	NodeCertificateStatus(context.Context, *NodeCertificateStatusRequest) (*NodeCertificateStatusResponse, error)
+}
+
+func RegisterNodeCAServer(s *grpc.Server, srv NodeCAServer) {
+	s.RegisterService(&_NodeCA_serviceDesc, srv)
+}
+
+func _NodeCA_IssueNodeCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IssueNodeCertificateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeCAServer).IssueNodeCertificate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.NodeCA/IssueNodeCertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeCAServer).IssueNodeCertificate(ctx, req.(*IssueNodeCertificateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NodeCA_NodeCertificateStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NodeCertificateStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeCAServer).NodeCertificateStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.NodeCA/NodeCertificateStatus",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeCAServer).NodeCertificateStatus(ctx, req.(*NodeCertificateStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _NodeCA_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "docker.cluster.api.NodeCA",
+	HandlerType: (*NodeCAServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "IssueNodeCertificate",
+			Handler:    _NodeCA_IssueNodeCertificate_Handler,
+		},
+		{
+			MethodName: "NodeCertificateStatus",
+			Handler:    _NodeCA_NodeCertificateStatus_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{},
+}
+
+func (m *NodeCertificateStatusRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -427,21 +469,21 @@ func (m *CertificateStatusRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *CertificateStatusRequest) MarshalTo(data []byte) (int, error) {
+func (m *NodeCertificateStatusRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.Token) > 0 {
+	if len(m.NodeID) > 0 {
 		data[i] = 0xa
 		i++
-		i = encodeVarintCa(data, i, uint64(len(m.Token)))
-		i += copy(data[i:], m.Token)
+		i = encodeVarintCa(data, i, uint64(len(m.NodeID)))
+		i += copy(data[i:], m.NodeID)
 	}
 	return i, nil
 }
 
-func (m *CertificateStatusResponse) Marshal() (data []byte, err error) {
+func (m *NodeCertificateStatusResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -451,7 +493,7 @@ func (m *CertificateStatusResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *CertificateStatusResponse) MarshalTo(data []byte) (int, error) {
+func (m *NodeCertificateStatusResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -466,11 +508,11 @@ func (m *CertificateStatusResponse) MarshalTo(data []byte) (int, error) {
 		}
 		i += n1
 	}
-	if m.RegisteredCertificate != nil {
+	if m.Certificate != nil {
 		data[i] = 0x12
 		i++
-		i = encodeVarintCa(data, i, uint64(m.RegisteredCertificate.Size()))
-		n2, err := m.RegisteredCertificate.MarshalTo(data[i:])
+		i = encodeVarintCa(data, i, uint64(m.Certificate.Size()))
+		n2, err := m.Certificate.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -479,7 +521,7 @@ func (m *CertificateStatusResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *IssueCertificateRequest) Marshal() (data []byte, err error) {
+func (m *IssueNodeCertificateRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -489,7 +531,7 @@ func (m *IssueCertificateRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *IssueCertificateRequest) MarshalTo(data []byte) (int, error) {
+func (m *IssueNodeCertificateRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -509,7 +551,7 @@ func (m *IssueCertificateRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *IssueCertificateResponse) Marshal() (data []byte, err error) {
+func (m *IssueNodeCertificateResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -519,16 +561,16 @@ func (m *IssueCertificateResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *IssueCertificateResponse) MarshalTo(data []byte) (int, error) {
+func (m *IssueNodeCertificateResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.Token) > 0 {
+	if len(m.NodeID) > 0 {
 		data[i] = 0xa
 		i++
-		i = encodeVarintCa(data, i, uint64(len(m.Token)))
-		i += copy(data[i:], m.Token)
+		i = encodeVarintCa(data, i, uint64(len(m.NodeID)))
+		i += copy(data[i:], m.NodeID)
 	}
 	return i, nil
 }
@@ -648,38 +690,6 @@ func (p *raftProxyCAServer) runCtxMods(ctx context.Context) (context.Context, er
 	return ctx, nil
 }
 
-func (p *raftProxyCAServer) IssueCertificate(ctx context.Context, r *IssueCertificateRequest) (*IssueCertificateResponse, error) {
-
-	if p.cluster.IsLeader() {
-		return p.local.IssueCertificate(ctx, r)
-	}
-	ctx, err := p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return nil, err
-	}
-	return NewCAClient(conn).IssueCertificate(ctx, r)
-}
-
-func (p *raftProxyCAServer) CertificateStatus(ctx context.Context, r *CertificateStatusRequest) (*CertificateStatusResponse, error) {
-
-	if p.cluster.IsLeader() {
-		return p.local.CertificateStatus(ctx, r)
-	}
-	ctx, err := p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return nil, err
-	}
-	return NewCAClient(conn).CertificateStatus(ctx, r)
-}
-
 func (p *raftProxyCAServer) GetRootCACertificate(ctx context.Context, r *GetRootCACertificateRequest) (*GetRootCACertificateResponse, error) {
 
 	if p.cluster.IsLeader() {
@@ -696,31 +706,108 @@ func (p *raftProxyCAServer) GetRootCACertificate(ctx context.Context, r *GetRoot
 	return NewCAClient(conn).GetRootCACertificate(ctx, r)
 }
 
-func (m *CertificateStatusRequest) Size() (n int) {
+type raftProxyNodeCAServer struct {
+	local        NodeCAServer
+	connSelector *raftpicker.ConnSelector
+	cluster      raftpicker.RaftCluster
+	ctxMods      []func(context.Context) (context.Context, error)
+}
+
+func NewRaftProxyNodeCAServer(local NodeCAServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) NodeCAServer {
+	redirectChecker := func(ctx context.Context) (context.Context, error) {
+		s, ok := transport.StreamFromContext(ctx)
+		if !ok {
+			return ctx, grpc.Errorf(codes.InvalidArgument, "remote addr is not found in context")
+		}
+		addr := s.ServerTransport().RemoteAddr().String()
+		md, ok := metadata.FromContext(ctx)
+		if ok && len(md["redirect"]) != 0 {
+			return ctx, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+		}
+		if !ok {
+			md = metadata.New(map[string]string{})
+		}
+		md["redirect"] = append(md["redirect"], addr)
+		return metadata.NewContext(ctx, md), nil
+	}
+	mods := []func(context.Context) (context.Context, error){redirectChecker}
+	mods = append(mods, ctxMod)
+
+	return &raftProxyNodeCAServer{
+		local:        local,
+		cluster:      cluster,
+		connSelector: connSelector,
+		ctxMods:      mods,
+	}
+}
+func (p *raftProxyNodeCAServer) runCtxMods(ctx context.Context) (context.Context, error) {
+	var err error
+	for _, mod := range p.ctxMods {
+		ctx, err = mod(ctx)
+		if err != nil {
+			return ctx, err
+		}
+	}
+	return ctx, nil
+}
+
+func (p *raftProxyNodeCAServer) IssueNodeCertificate(ctx context.Context, r *IssueNodeCertificateRequest) (*IssueNodeCertificateResponse, error) {
+
+	if p.cluster.IsLeader() {
+		return p.local.IssueNodeCertificate(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return NewNodeCAClient(conn).IssueNodeCertificate(ctx, r)
+}
+
+func (p *raftProxyNodeCAServer) NodeCertificateStatus(ctx context.Context, r *NodeCertificateStatusRequest) (*NodeCertificateStatusResponse, error) {
+
+	if p.cluster.IsLeader() {
+		return p.local.NodeCertificateStatus(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return NewNodeCAClient(conn).NodeCertificateStatus(ctx, r)
+}
+
+func (m *NodeCertificateStatusRequest) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.Token)
+	l = len(m.NodeID)
 	if l > 0 {
 		n += 1 + l + sovCa(uint64(l))
 	}
 	return n
 }
 
-func (m *CertificateStatusResponse) Size() (n int) {
+func (m *NodeCertificateStatusResponse) Size() (n int) {
 	var l int
 	_ = l
 	if m.Status != nil {
 		l = m.Status.Size()
 		n += 1 + l + sovCa(uint64(l))
 	}
-	if m.RegisteredCertificate != nil {
-		l = m.RegisteredCertificate.Size()
+	if m.Certificate != nil {
+		l = m.Certificate.Size()
 		n += 1 + l + sovCa(uint64(l))
 	}
 	return n
 }
 
-func (m *IssueCertificateRequest) Size() (n int) {
+func (m *IssueNodeCertificateRequest) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.Role)
@@ -734,10 +821,10 @@ func (m *IssueCertificateRequest) Size() (n int) {
 	return n
 }
 
-func (m *IssueCertificateResponse) Size() (n int) {
+func (m *IssueNodeCertificateResponse) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.Token)
+	l = len(m.NodeID)
 	if l > 0 {
 		n += 1 + l + sovCa(uint64(l))
 	}
@@ -773,44 +860,44 @@ func sovCa(x uint64) (n int) {
 func sozCa(x uint64) (n int) {
 	return sovCa(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (this *CertificateStatusRequest) String() string {
+func (this *NodeCertificateStatusRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&CertificateStatusRequest{`,
-		`Token:` + fmt.Sprintf("%v", this.Token) + `,`,
+	s := strings.Join([]string{`&NodeCertificateStatusRequest{`,
+		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *CertificateStatusResponse) String() string {
+func (this *NodeCertificateStatusResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&CertificateStatusResponse{`,
+	s := strings.Join([]string{`&NodeCertificateStatusResponse{`,
 		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "IssuanceStatus", "IssuanceStatus", 1) + `,`,
-		`RegisteredCertificate:` + strings.Replace(fmt.Sprintf("%v", this.RegisteredCertificate), "RegisteredCertificate", "RegisteredCertificate", 1) + `,`,
+		`Certificate:` + strings.Replace(fmt.Sprintf("%v", this.Certificate), "Certificate", "Certificate", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *IssueCertificateRequest) String() string {
+func (this *IssueNodeCertificateRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&IssueCertificateRequest{`,
+	s := strings.Join([]string{`&IssueNodeCertificateRequest{`,
 		`Role:` + fmt.Sprintf("%v", this.Role) + `,`,
 		`CSR:` + fmt.Sprintf("%v", this.CSR) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *IssueCertificateResponse) String() string {
+func (this *IssueNodeCertificateResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&IssueCertificateResponse{`,
-		`Token:` + fmt.Sprintf("%v", this.Token) + `,`,
+	s := strings.Join([]string{`&IssueNodeCertificateResponse{`,
+		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -842,7 +929,7 @@ func valueToStringCa(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *CertificateStatusRequest) Unmarshal(data []byte) error {
+func (m *NodeCertificateStatusRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -865,15 +952,15 @@ func (m *CertificateStatusRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: CertificateStatusRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: NodeCertificateStatusRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: CertificateStatusRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: NodeCertificateStatusRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Token", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -898,7 +985,7 @@ func (m *CertificateStatusRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Token = string(data[iNdEx:postIndex])
+			m.NodeID = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -921,7 +1008,7 @@ func (m *CertificateStatusRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *CertificateStatusResponse) Unmarshal(data []byte) error {
+func (m *NodeCertificateStatusResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -944,10 +1031,10 @@ func (m *CertificateStatusResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: CertificateStatusResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: NodeCertificateStatusResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: CertificateStatusResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: NodeCertificateStatusResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -985,7 +1072,7 @@ func (m *CertificateStatusResponse) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RegisteredCertificate", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Certificate", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1009,10 +1096,10 @@ func (m *CertificateStatusResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.RegisteredCertificate == nil {
-				m.RegisteredCertificate = &RegisteredCertificate{}
+			if m.Certificate == nil {
+				m.Certificate = &Certificate{}
 			}
-			if err := m.RegisteredCertificate.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Certificate.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1037,7 +1124,7 @@ func (m *CertificateStatusResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *IssueCertificateRequest) Unmarshal(data []byte) error {
+func (m *IssueNodeCertificateRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1060,10 +1147,10 @@ func (m *IssueCertificateRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: IssueCertificateRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: IssueNodeCertificateRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: IssueCertificateRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: IssueNodeCertificateRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1147,7 +1234,7 @@ func (m *IssueCertificateRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *IssueCertificateResponse) Unmarshal(data []byte) error {
+func (m *IssueNodeCertificateResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1170,15 +1257,15 @@ func (m *IssueCertificateResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: IssueCertificateResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: IssueNodeCertificateResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: IssueCertificateResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: IssueNodeCertificateResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Token", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1203,7 +1290,7 @@ func (m *IssueCertificateResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Token = string(data[iNdEx:postIndex])
+			m.NodeID = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -1463,31 +1550,31 @@ var (
 )
 
 var fileDescriptorCa = []byte{
-	// 407 bytes of a gzipped FileDescriptorProto
+	// 406 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x48, 0x4e, 0xd4, 0x2b,
 	0x28, 0xca, 0x2f, 0xc9, 0x17, 0x12, 0x4a, 0xc9, 0x4f, 0xce, 0x4e, 0x2d, 0xd2, 0x4b, 0xce, 0x29,
 	0x2d, 0x2e, 0x01, 0xd2, 0x89, 0x05, 0x99, 0x52, 0xdc, 0x25, 0x95, 0x05, 0xa9, 0xc5, 0x10, 0x05,
-	0x52, 0xbc, 0xf9, 0x49, 0x59, 0xa9, 0xc9, 0x25, 0x30, 0x2e, 0x57, 0x62, 0x69, 0x49, 0x06, 0x94,
-	0x2d, 0x92, 0x9e, 0x9f, 0x9e, 0x0f, 0x66, 0xea, 0x83, 0x58, 0x10, 0x51, 0x25, 0x03, 0x2e, 0x09,
-	0xe7, 0xd4, 0xa2, 0x92, 0xcc, 0xb4, 0xcc, 0xe4, 0xc4, 0x92, 0xd4, 0xe0, 0x92, 0xc4, 0x92, 0xd2,
-	0xe2, 0xa0, 0xd4, 0xc2, 0xd2, 0xd4, 0xe2, 0x12, 0x21, 0x11, 0x2e, 0xd6, 0x92, 0xfc, 0xec, 0xd4,
-	0x3c, 0x09, 0x46, 0x05, 0x46, 0x0d, 0xce, 0x20, 0x08, 0x47, 0x69, 0x27, 0x23, 0x97, 0x24, 0x16,
-	0x2d, 0xc5, 0x05, 0xf9, 0x79, 0xc5, 0xa9, 0x42, 0x56, 0x5c, 0x6c, 0xc5, 0x60, 0x11, 0xb0, 0x26,
-	0x6e, 0x23, 0x25, 0x3d, 0x4c, 0x27, 0xeb, 0x79, 0x16, 0x17, 0x97, 0x26, 0xe6, 0x25, 0xc3, 0xf4,
-	0x42, 0x75, 0x08, 0x25, 0x70, 0x89, 0x15, 0xa5, 0xa6, 0x67, 0x82, 0x94, 0xa5, 0xa6, 0xc4, 0x27,
-	0x23, 0xec, 0x90, 0x60, 0x02, 0x9b, 0xa5, 0x89, 0xcd, 0xac, 0x20, 0xb8, 0x0e, 0x24, 0x47, 0x05,
-	0x89, 0x16, 0x61, 0x13, 0x56, 0xf2, 0xe0, 0x12, 0x07, 0xd9, 0x9d, 0x8a, 0xac, 0x14, 0xea, 0x59,
-	0x21, 0x2e, 0x96, 0xa2, 0xfc, 0x9c, 0x54, 0xa8, 0x5f, 0xc1, 0x6c, 0x21, 0x49, 0x2e, 0xe6, 0xe4,
-	0xe2, 0x22, 0xb0, 0xed, 0x3c, 0x4e, 0xec, 0x8f, 0xee, 0xc9, 0x33, 0x3b, 0x07, 0x07, 0x05, 0x81,
-	0xc4, 0x40, 0xe1, 0x86, 0x69, 0x12, 0x34, 0x0c, 0xb0, 0x87, 0x9b, 0x2c, 0x97, 0xb4, 0x7b, 0x6a,
-	0x49, 0x50, 0x7e, 0x7e, 0x89, 0xb3, 0x23, 0xa6, 0xfd, 0x4a, 0x0e, 0x5c, 0x32, 0xd8, 0xa5, 0xa1,
-	0x86, 0x2a, 0x70, 0x71, 0x23, 0x87, 0x08, 0xc8, 0x68, 0x9e, 0x20, 0x64, 0x21, 0xa3, 0xff, 0x4c,
-	0x5c, 0x4c, 0xce, 0x8e, 0x42, 0xe5, 0x5c, 0x02, 0xe8, 0x2e, 0x13, 0xd2, 0xc6, 0x15, 0x0b, 0x58,
-	0x42, 0x42, 0x4a, 0x87, 0x38, 0xc5, 0x10, 0x77, 0x29, 0x71, 0x9c, 0x5a, 0xf7, 0x6e, 0x06, 0x13,
-	0x93, 0x00, 0xa3, 0x50, 0x15, 0x97, 0x20, 0x46, 0xba, 0x10, 0xc2, 0x6a, 0x18, 0xae, 0x14, 0x27,
-	0xa5, 0x4b, 0xa4, 0x6a, 0x0c, 0xbb, 0x9b, 0x19, 0xb9, 0x44, 0xb0, 0x05, 0x9f, 0x90, 0x3e, 0x36,
-	0x13, 0xf1, 0xc4, 0x83, 0x94, 0x01, 0xf1, 0x1a, 0xd0, 0x5d, 0xe1, 0x24, 0x73, 0xe2, 0xa1, 0x1c,
-	0xc3, 0x0d, 0x20, 0xfe, 0xf0, 0x50, 0x8e, 0xb1, 0xe1, 0x91, 0x1c, 0xe3, 0x09, 0x20, 0xbe, 0x00,
-	0xc4, 0x0f, 0x80, 0x38, 0x89, 0x0d, 0x9c, 0xe3, 0x8c, 0x01, 0x01, 0x00, 0x00, 0xff, 0xff, 0x5f,
-	0x65, 0xb3, 0x1a, 0xcf, 0x03, 0x00, 0x00,
+	0x52, 0x5c, 0x89, 0xa5, 0x25, 0x19, 0x50, 0xb6, 0x48, 0x7a, 0x7e, 0x7a, 0x3e, 0x98, 0xa9, 0x0f,
+	0x62, 0x41, 0x44, 0x95, 0x9c, 0xb9, 0x64, 0xfc, 0xf2, 0x53, 0x52, 0x9d, 0x53, 0x8b, 0x4a, 0x32,
+	0xd3, 0x32, 0x93, 0x13, 0x4b, 0x52, 0x83, 0x4b, 0x12, 0x4b, 0x4a, 0x8b, 0x83, 0x52, 0x0b, 0x4b,
+	0x53, 0x8b, 0x4b, 0x84, 0x94, 0xb9, 0xd8, 0xf3, 0x80, 0xf2, 0xf1, 0x99, 0x29, 0x12, 0x8c, 0x0a,
+	0x8c, 0x1a, 0x9c, 0x4e, 0x5c, 0x8f, 0xee, 0xc9, 0xb3, 0x81, 0xb4, 0x78, 0xba, 0x04, 0xb1, 0x81,
+	0xa4, 0x3c, 0x53, 0x94, 0xe6, 0x31, 0x72, 0xc9, 0xe2, 0x30, 0xa5, 0xb8, 0x20, 0x3f, 0xaf, 0x38,
+	0x55, 0xc8, 0x8a, 0x8b, 0xad, 0x18, 0x2c, 0x02, 0x36, 0x85, 0xdb, 0x48, 0x49, 0x0f, 0xd3, 0xe9,
+	0x7a, 0x9e, 0xc5, 0xc5, 0xa5, 0x89, 0x79, 0xc9, 0x30, 0xbd, 0x50, 0x1d, 0x42, 0x8e, 0x5c, 0xdc,
+	0xc9, 0x08, 0x83, 0x25, 0x98, 0xc0, 0x06, 0xc8, 0x63, 0x33, 0x00, 0xc9, 0xfe, 0x20, 0x64, 0x3d,
+	0x4a, 0x3e, 0x5c, 0xd2, 0x20, 0xc3, 0x53, 0xd1, 0x1c, 0x09, 0xf3, 0xa4, 0x10, 0x17, 0x4b, 0x51,
+	0x7e, 0x4e, 0x2a, 0xc4, 0x87, 0x41, 0x60, 0xb6, 0x90, 0x24, 0x17, 0x73, 0x72, 0x71, 0x11, 0xd8,
+	0x36, 0x1e, 0x27, 0x76, 0xa0, 0xa7, 0x99, 0x9d, 0x83, 0x83, 0x82, 0x40, 0x62, 0xa0, 0x30, 0xc3,
+	0x6e, 0x1a, 0xd4, 0xb3, 0x44, 0x85, 0x99, 0x2c, 0x97, 0xb4, 0x7b, 0x6a, 0x49, 0x50, 0x7e, 0x7e,
+	0x89, 0xb3, 0x23, 0xa6, 0x93, 0x94, 0x1c, 0xb8, 0x64, 0xb0, 0x4b, 0x43, 0xed, 0x50, 0x40, 0x0d,
+	0x14, 0x90, 0x3d, 0x3c, 0x28, 0x7e, 0x36, 0xea, 0x62, 0xe4, 0x62, 0x72, 0x76, 0x14, 0x6a, 0x66,
+	0xe4, 0x12, 0xc1, 0x66, 0x92, 0x90, 0x3e, 0xb6, 0x10, 0xc4, 0xe3, 0x24, 0x29, 0x03, 0xe2, 0x35,
+	0x40, 0x1c, 0xa9, 0xc4, 0x71, 0x6a, 0xdd, 0xbb, 0x19, 0x4c, 0x4c, 0x02, 0x8c, 0x46, 0xd3, 0x99,
+	0xb8, 0xc0, 0x01, 0x00, 0x75, 0x10, 0xb6, 0xe0, 0xc3, 0xee, 0x20, 0x3c, 0xd1, 0x86, 0xdd, 0x41,
+	0xf8, 0x62, 0x06, 0xe1, 0x20, 0xa1, 0x36, 0x46, 0x2e, 0x51, 0xac, 0x49, 0x56, 0x08, 0xab, 0xa9,
+	0xf8, 0xf2, 0x88, 0x94, 0x21, 0x09, 0x3a, 0xd0, 0x1d, 0xe2, 0x24, 0x73, 0xe2, 0xa1, 0x1c, 0xc3,
+	0x0d, 0x20, 0xfe, 0xf0, 0x50, 0x8e, 0xb1, 0xe1, 0x91, 0x1c, 0xe3, 0x09, 0x20, 0xbe, 0x00, 0xc4,
+	0x0f, 0x80, 0x38, 0x89, 0x0d, 0x9c, 0x4b, 0x8d, 0x01, 0x01, 0x00, 0x00, 0xff, 0xff, 0x9d, 0x79,
+	0xd6, 0xb0, 0xf4, 0x03, 0x00, 0x00,
 }

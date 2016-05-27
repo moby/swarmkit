@@ -286,7 +286,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), state.EventCreateRegisteredCertificate{})
+	updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), state.EventCreateNode{})
 	defer cancel()
 
 	completed := make(chan error)
@@ -296,13 +296,13 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	}()
 
 	event := <-updates
-	regCert := event.(state.EventCreateRegisteredCertificate).RegisteredCertificate.Copy()
+	node := event.(state.EventCreateNode).Node.Copy()
 
 	// Directly update the status of the store
 	err = tc.MemoryStore.Update(func(tx store.Tx) error {
-		regCert.Status.State = api.IssuanceStateIssued
+		node.Certificate.Status.State = api.IssuanceStateIssued
 
-		return store.UpdateRegisteredCertificate(tx, regCert)
+		return store.UpdateNode(tx, node)
 	})
 	assert.NoError(t, err)
 
@@ -318,7 +318,7 @@ func TestGetRemoteSignedCertificateRejected(t *testing.T) {
 	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), state.EventCreateRegisteredCertificate{})
+	updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), state.EventCreateNode{})
 	defer cancel()
 
 	completed := make(chan error)
@@ -328,50 +328,18 @@ func TestGetRemoteSignedCertificateRejected(t *testing.T) {
 	}()
 
 	event := <-updates
-	regCert := event.(state.EventCreateRegisteredCertificate).RegisteredCertificate.Copy()
+	node := event.(state.EventCreateNode).Node.Copy()
 
 	// Directly update the status of the store
 	err = tc.MemoryStore.Update(func(tx store.Tx) error {
-		regCert.Status.State = api.IssuanceStateRejected
+		node.Certificate.Status.State = api.IssuanceStateRejected
 
-		return store.UpdateRegisteredCertificate(tx, regCert)
+		return store.UpdateNode(tx, node)
 	})
 	assert.NoError(t, err)
 
 	// Make sure GetRemoteSignedCertificate didn't return an error
 	assert.EqualError(t, <-completed, "certificate issuance rejected: ISSUANCE_REJECTED")
-}
-
-func TestGetRemoteSignedCertificateBlocked(t *testing.T) {
-	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
-	defer tc.Stop()
-
-	// Create a new CSR to be signed
-	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
-	assert.NoError(t, err)
-
-	updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), state.EventCreateRegisteredCertificate{})
-	defer cancel()
-
-	completed := make(chan error)
-	go func() {
-		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker, nil)
-		completed <- err
-	}()
-
-	event := <-updates
-	regCert := event.(state.EventCreateRegisteredCertificate).RegisteredCertificate.Copy()
-
-	// Directly update the status of the store
-	err = tc.MemoryStore.Update(func(tx store.Tx) error {
-		regCert.Status.State = api.IssuanceStateBlocked
-
-		return store.UpdateRegisteredCertificate(tx, regCert)
-	})
-	assert.NoError(t, err)
-
-	// Make sure GetRemoteSignedCertificate didn't return an error
-	assert.EqualError(t, <-completed, "certificate issuance rejected: ISSUANCE_BLOCKED")
 }
 
 func TestBootstrapCluster(t *testing.T) {
