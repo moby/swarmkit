@@ -351,15 +351,20 @@ func (d *Dispatcher) register(ctx context.Context, nodeID string, description *a
 // UpdateTaskStatus updates status of task. Node should send such updates
 // on every status change of its tasks.
 func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStatusRequest) (*api.UpdateTaskStatusResponse, error) {
-	nodeID, err := ca.AuthorizeNode(ctx)
+	nodeInfo, err := ca.RemoteNode(ctx)
 	if err != nil {
 		return nil, err
 	}
-	log := log.G(ctx).WithFields(logrus.Fields{
+	nodeID := nodeInfo.NodeID
+	fields := logrus.Fields{
 		"node.id":      nodeID,
 		"node.session": r.SessionID,
 		"method":       "(*Dispatcher).UpdateTaskStatus",
-	})
+	}
+	if nodeInfo.ForwardedBy != nil {
+		fields["forwarder.id"] = nodeInfo.ForwardedBy.NodeID
+	}
+	log := log.G(ctx).WithFields(fields)
 
 	if err := d.addTask(); err != nil {
 		return nil, err
@@ -443,21 +448,26 @@ func (d *Dispatcher) processTaskUpdates() {
 // of tasks which should be run on node, if task is not present in that list,
 // it should be terminated.
 func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
-	nodeID, err := ca.AuthorizeNode(stream.Context())
+	nodeInfo, err := ca.RemoteNode(stream.Context())
 	if err != nil {
 		return err
 	}
+	nodeID := nodeInfo.NodeID
 
 	if err := d.addTask(); err != nil {
 		return err
 	}
 	defer d.doneTask()
 
-	log.G(stream.Context()).WithFields(logrus.Fields{
+	fields := logrus.Fields{
 		"node.id":      nodeID,
 		"node.session": r.SessionID,
 		"method":       "(*Dispatcher).Tasks",
-	}).Debugf("")
+	}
+	if nodeInfo.ForwardedBy != nil {
+		fields["forwarder.id"] = nodeInfo.ForwardedBy.NodeID
+	}
+	log.G(stream.Context()).WithFields(fields).Debugf("")
 
 	if _, err = d.nodes.GetWithSession(nodeID, r.SessionID); err != nil {
 		return err
@@ -552,16 +562,20 @@ func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
 // Node should send new heartbeat earlier than now + TTL, otherwise it will
 // be deregistered from dispatcher and its status will be updated to NodeStatus_DOWN
 func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*api.HeartbeatResponse, error) {
-	nodeID, err := ca.AuthorizeNode(ctx)
+	nodeInfo, err := ca.RemoteNode(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	log.G(ctx).WithFields(logrus.Fields{
+	nodeID := nodeInfo.NodeID
+	fields := logrus.Fields{
 		"node.id":      nodeID,
 		"node.session": r.SessionID,
 		"method":       "(*Dispatcher).Heartbeat",
-	}).Debugf("")
+	}
+	if nodeInfo.ForwardedBy != nil {
+		fields["forwarder.id"] = nodeInfo.ForwardedBy.NodeID
+	}
+	log.G(ctx).WithFields(fields).Debugf("")
 
 	period, err := d.nodes.Heartbeat(nodeID, r.SessionID)
 	return &api.HeartbeatResponse{Period: period}, err
@@ -579,10 +593,11 @@ func (d *Dispatcher) getManagers() []*api.WeightedPeer {
 // reconnect to another Manager immediately.
 func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_SessionServer) error {
 	ctx := stream.Context()
-	nodeID, err := ca.AuthorizeNode(ctx)
+	nodeInfo, err := ca.RemoteNode(ctx)
 	if err != nil {
 		return err
 	}
+	nodeID := nodeInfo.NodeID
 
 	if err := d.addTask(); err != nil {
 		return err
@@ -595,11 +610,15 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		return err
 	}
 
-	log := log.G(ctx).WithFields(logrus.Fields{
+	fields := logrus.Fields{
 		"node.id":      nodeID,
 		"node.session": sessionID,
 		"method":       "(*Dispatcher).Session",
-	})
+	}
+	if nodeInfo.ForwardedBy != nil {
+		fields["forwarder.id"] = nodeInfo.ForwardedBy.NodeID
+	}
+	log := log.G(ctx).WithFields(fields)
 
 	nodeUpdates, cancel := state.Watch(d.store.WatchQueue(),
 		state.EventUpdateNode{Node: &api.Node{ID: nodeID},

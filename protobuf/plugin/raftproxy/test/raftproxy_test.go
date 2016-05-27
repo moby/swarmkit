@@ -56,7 +56,8 @@ func TestSimpleRedirect(t *testing.T) {
 	cluster := &mockCluster{addr: addr}
 	cs := raftpicker.NewConnSelector(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster)
+	forwardAsOwnRequest := func(ctx context.Context) (context.Context, error) { return ctx, nil }
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster, forwardAsOwnRequest)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -79,7 +80,8 @@ func TestServerStreamRedirect(t *testing.T) {
 	cluster := &mockCluster{addr: addr}
 	cs := raftpicker.NewConnSelector(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster)
+	forwardAsOwnRequest := func(ctx context.Context) (context.Context, error) { return ctx, nil }
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster, forwardAsOwnRequest)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -105,7 +107,8 @@ func TestClientStreamRedirect(t *testing.T) {
 	cluster := &mockCluster{addr: addr}
 	cs := raftpicker.NewConnSelector(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster)
+	forwardAsOwnRequest := func(ctx context.Context) (context.Context, error) { return ctx, nil }
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster, forwardAsOwnRequest)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -133,7 +136,8 @@ func TestClientServerStreamRedirect(t *testing.T) {
 	cluster := &mockCluster{addr: addr}
 	cs := raftpicker.NewConnSelector(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster)
+	forwardAsOwnRequest := func(ctx context.Context) (context.Context, error) { return ctx, nil }
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster, forwardAsOwnRequest)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)

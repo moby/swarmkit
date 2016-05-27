@@ -2,36 +2,57 @@ package ca
 
 import (
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 )
 
 const (
-	certCNKey = "forwarded_cert_cn"
+	certForwardedKey = "forwarded_cert"
+	certCNKey        = "forwarded_cert_cn"
+	certOUKey        = "forwarded_cert_ou"
 )
 
-// forwardCNFromContext obtains ForwardCert from grpc.MD object in context.
-func forwardCNFromContext(ctx context.Context) (string, error) {
+// forwardedTLSInfoFromContext obtains forwarded TLS CN/OU from the grpc.MD
+// object in ctx.
+func forwardedTLSInfoFromContext(ctx context.Context) (string, []string) {
+	var cn string
 	md, _ := metadata.FromContext(ctx)
 	if len(md[certCNKey]) != 0 {
-		return md[certCNKey][0], nil
+		cn = md[certCNKey][0]
 	}
-	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: forwarded request without agent info")
+	return cn, md[certOUKey]
 }
 
-// WithMetadataForwardCN reads certificate from context and returns context where
-// ForwardCert is set based on original certificate.
-func WithMetadataForwardCN(ctx context.Context) (context.Context, error) {
-	// only agents can reach this codepath
-	cn, err := AuthorizeRole(ctx, []string{AgentRole})
-	if err != nil {
-		return nil, err
+func isForwardedRequest(ctx context.Context) bool {
+	md, _ := metadata.FromContext(ctx)
+	if len(md[certForwardedKey]) != 1 {
+		return false
 	}
+	return md[certForwardedKey][0] == "true"
+}
+
+// WithMetadataForwardTLSInfo reads certificate from context and returns context where
+// ForwardCert is set based on original certificate.
+func WithMetadataForwardTLSInfo(ctx context.Context) (context.Context, error) {
 	md, ok := metadata.FromContext(ctx)
 	if !ok {
 		md = metadata.MD{}
 	}
+
+	ous := []string{}
+	cn := ""
+
+	certSubj, err := certSubjectFromContext(ctx)
+	if err == nil {
+		cn = certSubj.CommonName
+		ous = certSubj.OrganizationalUnit
+	}
+	// If there's no TLS cert, forward with blank TLS metadata.
+	// Note that the presence of this blank metadata is extremely
+	// important. Without it, it would look like manager is making
+	// the request directly.
+
+	md[certForwardedKey] = []string{"true"}
 	md[certCNKey] = []string{cn}
+	md[certOUKey] = ous
 	return metadata.NewContext(ctx, md), nil
 }

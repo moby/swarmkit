@@ -33,7 +33,7 @@ func (g *raftProxyGen) genProxyStruct(s *descriptor.ServiceDescriptorProto) {
 }
 
 func (g *raftProxyGen) genProxyConstructor(s *descriptor.ServiceDescriptorProto) {
-	g.gen.P("func NewRaftProxy" + s.GetName() + "Server(local " + s.GetName() + "Server, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster, ctxMods ...func(context.Context)(context.Context, error)) " + s.GetName() + "Server {")
+	g.gen.P("func NewRaftProxy" + s.GetName() + "Server(local " + s.GetName() + "Server, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster, ctxMod func(context.Context)(context.Context, error)) " + s.GetName() + "Server {")
 	g.gen.P(`redirectChecker := func(ctx context.Context)(context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
@@ -51,7 +51,7 @@ func (g *raftProxyGen) genProxyConstructor(s *descriptor.ServiceDescriptorProto)
 		return metadata.NewContext(ctx, md), nil
 	}
 	mods := []func(context.Context)(context.Context, error){redirectChecker}
-	mods = append(mods, ctxMods...)
+	mods = append(mods, ctxMod)
 	`)
 	g.gen.P("return &" + serviceTypeName(s) + `{
 		local: local,

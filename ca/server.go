@@ -143,13 +143,13 @@ func (s *Server) IssueCertificate(ctx context.Context, request *api.IssueCertifi
 
 	// If the remote node is an Agent (either forwarded by a manager, or calling directly),
 	// issue a renew agent certificate entry with the correct ID
-	nodeID, err := AuthorizeAgent(ctx)
+	nodeID, err := AuthorizeForwardedRole(ctx, []string{AgentRole}, []string{ManagerRole})
 	if err == nil {
 		return s.issueRenewRegisteredCertificate(ctx, nodeID, AgentRole, token, request.CSR)
 	}
 
 	// If the remote node is a Manager, issue a renew certificate entry with the correct ID
-	nodeID, err = AuthorizeRole(ctx, []string{ManagerRole})
+	nodeID, err = AuthorizeForwardedRole(ctx, []string{ManagerRole}, []string{ManagerRole})
 	if err == nil {
 		return s.issueRenewRegisteredCertificate(ctx, nodeID, ManagerRole, token, request.CSR)
 	}
@@ -244,11 +244,6 @@ func (s *Server) issueRenewRegisteredCertificate(ctx context.Context, nodeID, ro
 
 // GetRootCACertificate returns the certificate of the Root CA.
 func (s *Server) GetRootCACertificate(ctx context.Context, request *api.GetRootCACertificateRequest) (*api.GetRootCACertificateResponse, error) {
-	if err := s.addTask(); err != nil {
-		return nil, err
-	}
-	defer s.doneTask()
-
 	log.G(ctx).WithFields(logrus.Fields{
 		"request": request,
 		"method":  "GetRootCACertificate",
