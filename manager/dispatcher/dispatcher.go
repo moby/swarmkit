@@ -605,7 +605,6 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 	}
 
 	if err := stream.Send(&api.SessionMessage{
-		NodeID:     nodeID,
 		SessionID:  sessionID,
 		Managers:   d.getManagers(),
 		Disconnect: false,

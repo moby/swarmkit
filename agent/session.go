@@ -26,7 +26,6 @@ var (
 // agent through errs, messages and tasks.
 type session struct {
 	agent     *Agent
-	nodeID    string
 	sessionID string
 	session   api.Dispatcher_SessionClient
 	errs      chan error
@@ -146,7 +145,6 @@ func (s *session) start(ctx context.Context) error {
 		return errSessionDisconnect
 	}
 
-	s.nodeID = msg.NodeID
 	s.sessionID = msg.SessionID
 	s.session = stream
 
