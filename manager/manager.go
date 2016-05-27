@@ -223,9 +223,10 @@ func New(config *Config) (*Manager, error) {
 // address.
 // The call never returns unless an error occurs or `Stop()` is called.
 func (m *Manager) Run(ctx context.Context) error {
+	leadershipCh, cancel := m.raftNode.SubscribeLeadership()
+	defer cancel()
+
 	go func() {
-		leadershipCh, cancel := m.raftNode.SubscribeLeadership()
-		defer cancel()
 		for leadershipEvent := range leadershipCh {
 			// read out and discard all of the messages when we've stopped
 			// don't acquire the mutex yet. if stopped is closed, we don't need
