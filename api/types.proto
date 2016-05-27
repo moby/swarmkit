@@ -419,6 +419,12 @@ message RaftConfig {
 	// LogEntriesForSlowFollowers is the number of log entries to keep
 	// around to sync up slow followers after a snapshot is created.
 	uint64 log_entries_for_slow_followers = 3;
+	// HeartbeatTick defines the amount of ticks (in seconds) between
+	// each heartbeat message sent to other members for health-check.
+	uint32 heartbeat_tick = 4;
+	// ElectionTick defines the amount of ticks (in seconds) needed
+	// without a leader to trigger a new election.
+	uint32 election_tick = 5;
 }
 
 message RaftMember {
