@@ -125,24 +125,30 @@ func (nh *nodeHeap) scanAllToFindMin(meetsConstraints func(*NodeInfo) bool) (*ap
 
 // Search in heap to find the best node which meets the constraints && has lightest workloads
 func (nh *nodeHeap) searchHeapToFindMin(meetsConstraints func(*NodeInfo) bool, index int) (*api.Node, int) {
-	if index >= len(nh.heap) {
-		return nil, int(^uint(0) >> 1) // max int
+	var bestNode *api.Node
+	minTasks := int(^uint(0) >> 1) // max int
+
+	// push root to stack for search
+	stack := []int{0}
+
+	for len(stack) != 0 {
+		// pop an element
+		idx := stack[len(stack)-1]
+		stack = stack[0 : len(stack)-1]
+		if idx >= len(nh.heap) {
+			continue
+		}
+		heapEntry := &nh.heap[idx]
+
+		if meetsConstraints(heapEntry) && len(heapEntry.Tasks) < minTasks {
+			// meet constraints, update results
+			bestNode = heapEntry.Node
+			minTasks = len(heapEntry.Tasks)
+		} else {
+			// otherwise, push 2 children to stack for further search
+			stack = append(stack, 2*idx+1)
+			stack = append(stack, 2*idx+2)
+		}
 	}
-
-	heapEntry := &nh.heap[index]
-	if meetsConstraints(heapEntry) {
-		// Meet the constraints, return directly
-		return heapEntry.Node, len(heapEntry.Tasks)
-	}
-
-	// Search in 2 children
-	leftBestNode, leftMinTasks := nh.searchHeapToFindMin(meetsConstraints, index*2+1)
-	rightBestNode, rightMinTask := nh.searchHeapToFindMin(meetsConstraints, index*2+2)
-
-	// Return the best one
-	if leftMinTasks < rightMinTask {
-		return leftBestNode, leftMinTasks
-	}
-
-	return rightBestNode, rightMinTask
+	return bestNode, minTasks
 }
