@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/ca/testutils"
+	raftutils "github.com/docker/swarm-v2/manager/state/raft/testutils"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
@@ -87,6 +89,16 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 		_ = s.Serve(l)
 	}()
 	go d.Run(context.Background())
+	if err := raftutils.PollFuncWithTimeout(func() error {
+		d.mu.Lock()
+		defer d.mu.Unlock()
+		if !d.isRunning() {
+			return fmt.Errorf("dispatcher is not running")
+		}
+		return nil
+	}, 5*time.Second); err != nil {
+		return nil, err
+	}
 
 	clientOpts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
 	clientOpts1 := append(clientOpts, grpc.WithTransportCredentials(agentSecurityConfig1.ClientTLSCreds))
