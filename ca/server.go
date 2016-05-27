@@ -54,19 +54,25 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 
 	var rCertificate *api.RegisteredCertificate
 
-	// We create a watcher before checking the cert so we can be sure we don't miss any events
 	event := state.EventUpdateRegisteredCertificate{
 		RegisteredCertificate: &api.RegisteredCertificate{ID: request.Token},
 		Checks:                []state.RegisteredCertificateCheckFunc{state.RegisteredCertificateCheckID},
 	}
 
-	updates, cancel := state.Watch(s.store.WatchQueue(), event)
+	// Retrieve the current value of the certificate with this token, and create a watcher
+	updates, cancel, err := store.ViewAndWatch(
+		s.store,
+		func(tx store.ReadTx) error {
+			rCertificate = store.GetRegisteredCertificate(tx, request.Token)
+			return nil
+		},
+		event,
+	)
+	if err != nil {
+		return nil, err
+	}
 	defer cancel()
 
-	// Retrieve the current value of the certificate with this token
-	s.store.View(func(tx store.ReadTx) {
-		rCertificate = store.GetRegisteredCertificate(tx, request.Token)
-	})
 	// This token doesn't exist
 	if rCertificate == nil {
 		return nil, grpc.Errorf(codes.NotFound, codes.NotFound.String())
@@ -263,19 +269,25 @@ func (s *Server) Run(ctx context.Context) error {
 	s.mu.Unlock()
 
 	var rCerts []*api.RegisteredCertificate
-	updates, cancel, err := store.ViewAndWatch(s.store, func(readTx store.ReadTx) error {
-		clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
-		if err != nil {
-			return err
-		}
-		if len(clusters) != 1 {
-			return fmt.Errorf("could not find cluster object")
-		}
-		s.updateCluster(ctx, clusters[0])
+	updates, cancel, err := store.ViewAndWatch(
+		s.store,
+		func(readTx store.ReadTx) error {
+			clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
+			if err != nil {
+				return err
+			}
+			if len(clusters) != 1 {
+				return fmt.Errorf("could not find cluster object")
+			}
+			s.updateCluster(ctx, clusters[0])
 
-		rCerts, err = store.FindRegisteredCertificates(readTx, store.All)
-		return err
-	})
+			rCerts, err = store.FindRegisteredCertificates(readTx, store.All)
+			return err
+		},
+		state.EventCreateRegisteredCertificate{},
+		state.EventUpdateRegisteredCertificate{},
+		state.EventUpdateCluster{},
+	)
 	if err != nil {
 		log.G(ctx).WithFields(logrus.Fields{
 			"method": "(*Server).Run",
