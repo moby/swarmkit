@@ -1,13 +1,13 @@
 package controlapi
 
 import (
-	"strconv"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/identity"
 	"golang.org/x/net/context"
 )
 
@@ -19,7 +19,7 @@ func (s *Server) ListManagers(ctx context.Context, request *api.ListManagersRequ
 	for _, v := range memberlist {
 		// TODO(aaronl): These Manager structs will need to contain
 		// actual node IDs, not stringified versions of the raft ID.
-		list = append(list, &api.Manager{ID: strconv.FormatUint(v.RaftID, 16), Raft: *v})
+		list = append(list, &api.Manager{ID: identity.FormatNodeID(v.RaftID), Raft: *v})
 	}
 
 	return &api.ListManagersResponse{
@@ -31,7 +31,7 @@ func (s *Server) ListManagers(ctx context.Context, request *api.ListManagersRequ
 func (s *Server) RemoveManager(ctx context.Context, request *api.RemoveManagerRequest) (*api.RemoveManagerResponse, error) {
 	memberlist := s.raft.GetMemberlist()
 
-	removeID, err := strconv.ParseUint(request.ManagerID, 16, 64)
+	removeID, err := identity.ParseNodeID(request.ManagerID)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, err.Error())
 	}
