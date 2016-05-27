@@ -50,7 +50,6 @@ services:
             - type: bind
               source: /sys
               target: /sys
-              mask: ro
             # ephemeral volume
             - type: ephemeral
               target: /var/run
@@ -58,7 +57,7 @@ services:
             - type: volume
               name: test-volume
               target: /var/www
-              mask: rw
+              writable: true
 
 # TODO(aluzzardi): Not interpreted by swarmctl right now.
 networks:

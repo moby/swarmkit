@@ -16,6 +16,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/spec"
 )
 
 const (
@@ -129,13 +130,7 @@ func (c *containerConfig) bindMounts() []string {
 	var r []string
 
 	for _, val := range c.spec().Mounts {
-		mask := ""
-		switch val.Mask {
-		case api.MountMaskReadOnly:
-			mask = "ro"
-		case api.MountMaskReadWrite:
-			mask = "rw"
-		}
+		mask := getMountMask(val)
 		if val.Type == api.MountTypeBind {
 			r = append(r, fmt.Sprintf("%s:%s:%s", val.Source, val.Target, mask))
 		} else if val.Type == api.MountTypeVolume {
@@ -144,6 +139,31 @@ func (c *containerConfig) bindMounts() []string {
 	}
 
 	return r
+}
+
+func getMountMask(m *api.Mount) string {
+	maskOpts := []string{"ro"}
+	if m.Writable {
+		maskOpts[0] = "rw"
+	}
+
+	var specM *spec.Mount
+	specM.FromProto(m)
+	if specM.Propagation != "" {
+		maskOpts = append(maskOpts, specM.Propagation)
+	}
+	if !m.Populate {
+		maskOpts = append(maskOpts, "nocopy")
+	}
+
+	switch specM.MCSAccessMode {
+	case "private":
+		maskOpts = append(maskOpts, "Z")
+	case "shared":
+		maskOpts = append(maskOpts, "z")
+	}
+
+	return strings.Join(maskOpts, ",")
 }
 
 func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
