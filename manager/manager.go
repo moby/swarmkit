@@ -73,7 +73,7 @@ type Manager struct {
 	mu sync.Mutex
 
 	started chan struct{}
-	stopped bool
+	stopped chan struct{}
 }
 
 // New creates a Manager which has not started to accept requests yet.
@@ -197,6 +197,7 @@ func New(config *Config) (*Manager, error) {
 		localserver: grpc.NewServer(opts...),
 		raftNode:    raftNode,
 		started:     make(chan struct{}),
+		stopped:     make(chan struct{}),
 	}
 
 	return m, nil
@@ -210,11 +211,17 @@ func (m *Manager) Run(ctx context.Context) error {
 		leadershipCh, cancel := m.raftNode.SubscribeLeadership()
 		defer cancel()
 		for leadershipEvent := range leadershipCh {
-			m.mu.Lock()
-			if m.stopped {
-				m.mu.Unlock()
+			// read out and discard all of the messages when we've stopped
+			// don't acquire the mutex yet. if stopped is closed, we don't need
+			// this stops this loop from starving Run()'s attempt to Lock
+			select {
+			case <-m.stopped:
 				continue
+			default:
+				// do nothing, we're not stopped
 			}
+			// we're not stopping so NOW acquire the mutex
+			m.mu.Lock()
 			newState := leadershipEvent.(raft.LeadershipState)
 
 			if newState == raft.IsLeader {
@@ -386,7 +393,26 @@ func (m *Manager) Run(ctx context.Context) error {
 		return err
 	}
 	close(m.started)
-	return <-errServe
+	// wait for an error in serving.
+	err := <-errServe
+	select {
+	// check to see if stopped was posted to. if so, we're in the process of
+	// stopping, or done and that's why we got the error. if stopping is
+	// deliberate, stopped will ALWAYS be closed before the error is trigger,
+	// so this path will ALWAYS be taken if the stop was deliberate
+	case <-m.stopped:
+		// shutdown was requested, do not return an error
+		// but first, we wait to acquire a mutex to guarantee that stopping is
+		// finished. as long as we acquire the mutex BEFORE we return, we know
+		// that stopping is stopped.
+		m.mu.Lock()
+		m.mu.Unlock()
+		return nil
+	// otherwise, we'll get something from errServe, which indicates that an
+	// error in serving has actually occurred and this isn't a planned shutdown
+	default:
+		return err
+	}
 }
 
 // Stop stops the manager. It immediately closes all open connections and
@@ -395,13 +421,24 @@ func (m *Manager) Stop(ctx context.Context) {
 	// Don't shut things down while the manager is still starting up.
 	<-m.started
 
+	// the mutex stops us from trying to stop while we're alrady stopping, or
+	// from returning before we've finished stopping.
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.stopped {
+	select {
+
+	// check to see that we've already stopped
+	case <-m.stopped:
 		return
+	default:
+		// do nothing, we're stopping for the first time
 	}
 
 	log.G(ctx).Info("Stopping manager")
+	// once we start stopping, send a signal that we're doing so. this tells
+	// Run that we've started stopping, when it gets the error from errServe
+	// it also prevents the loop from processing any more stuff.
+	close(m.stopped)
 
 	m.dispatcher.Stop()
 	m.caserver.Stop()
@@ -422,11 +459,11 @@ func (m *Manager) Stop(ctx context.Context) {
 		m.scheduler.Stop()
 	}
 
-	for _, l := range m.listeners {
-		l.Close()
-	}
 	m.raftNode.Shutdown()
+	// some time after this point, Run will recieve an error from one of these
 	m.server.Stop()
 	m.localserver.Stop()
-	m.stopped = true
+
+	log.G(ctx).Info("Manager shut down")
+	// mutex is released and Run can return now
 }
