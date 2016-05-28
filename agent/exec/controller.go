@@ -101,23 +101,6 @@ func Shutdown(ctx context.Context, ctlr Controller, reporter Reporter) error {
 	return report(ctx, reporter, api.TaskStateShutdown, "shutdown requested", nil)
 }
 
-// Remove the task for the controller and report on the status.
-func Remove(ctx context.Context, ctlr Controller, reporter Reporter) error {
-	if err := report(ctx, reporter, api.TaskStateRemove, "removing", nil); err != nil {
-		return err
-	}
-
-	if err := ctlr.Remove(ctx); err != nil {
-		log.G(ctx).WithError(err).Error("remove failed")
-		if err := report(ctx, reporter, api.TaskStateRemove, "remove failed", nil); err != nil {
-			log.G(ctx).WithError(err).Error("report remove error failed")
-			return err
-		}
-	}
-
-	return report(ctx, reporter, api.TaskStateDead, "finalized", nil)
-}
-
 // runStart reports that the task is starting, calls Start and hands execution
 // off to `runWait`. It will block until task execution is completed or an
 // error is encountered.
@@ -246,7 +229,7 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 		switch {
 		case status.State < api.TaskStateStarting:
 			status.State = api.TaskStateRejected
-		case status.State < api.TaskStateRemove && status.State > api.TaskStateStarting:
+		case status.State > api.TaskStateStarting:
 			status.State = api.TaskStateFailed
 		}
 
@@ -277,10 +260,6 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 	// extract the container status from the container, if supported.
 	defer func() {
 		// only do this if in an active state
-		if status.State >= api.TaskStateRemove {
-			return
-		}
-
 		cctlr, ok := ctlr.(ContainerController)
 		if !ok {
 			return
@@ -305,7 +284,7 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 		api.TaskStatePreparing, api.TaskStateReady,
 		api.TaskStateStarting, api.TaskStateRunning,
 		api.TaskStateCompleted, api.TaskStateFailed,
-		api.TaskStateRejected, api.TaskStateRemove:
+		api.TaskStateRejected:
 
 		if task.DesiredState < status.State {
 			// do not yet proceed. the desired state is less than the current
@@ -357,23 +336,6 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 		}
 
 		return transition(api.TaskStateShutdown, "shutdown")
-	case api.TaskStateDead:
-		if status.State < api.TaskStateRemove {
-			// before proceeding with removal, place the task into the finalize
-			// state and return. Next time this is called, the actual removal
-			// will occur. Doing so notifies others that the task is being
-			// removed.
-			return transition(api.TaskStateRemove, "removing")
-		} else if status.State == api.TaskStateDead {
-			return noop()
-		}
-
-		if err := ctlr.Remove(ctx); err != nil {
-			log.G(ctx).WithError(err).Error("remove failed")
-			return fatal(err)
-		}
-
-		return transition(api.TaskStateDead, "removed")
 	}
 
 	panic("not reachable")
