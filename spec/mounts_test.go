@@ -18,6 +18,7 @@ func TestMountsValidate(t *testing.T) {
 		{Type: "bind", Source: "/foo", Target: "/foo", Propagation: "unknown"},
 		{Type: "bind", Source: "/foo", Target: "/foo", MCSAccessMode: "unknown"},
 		{Type: "bind", Source: "/foo", Target: "/foo", Populate: true},
+		{Type: "bind", Source: "/foo", Target: "/foo", Template: VolumeTemplate{Name: "foo", Driver: "bar"}},
 
 		// Ephemeral => no source
 		{Type: "ephemeral", Source: "/foo"},
@@ -27,6 +28,7 @@ func TestMountsValidate(t *testing.T) {
 		// Can't set MCSMode
 		{Type: "ephemeral", Target: "/foo", MCSAccessMode: "shared"},
 		{Type: "ephemeral", Target: "/foo", Propagation: "shared"},
+		{Type: "ephemeral", Target: "/foo", Template: VolumeTemplate{Name: "foo", Driver: "bar"}},
 
 		// Volume
 		{Type: "volume", Target: "/foo"},
@@ -34,6 +36,8 @@ func TestMountsValidate(t *testing.T) {
 		{Type: "volume", Source: "/foo", Target: "/foo", Propagation: "notempty"},
 		{Type: "volume", Target: "/foo", VolumeName: "foo", MCSAccessMode: "shared"},
 		{Type: "volume", Target: "/foo", VolumeName: "foo", Propagation: "shared"},
+
+		{Type: "volume", Target: "/foo", VolumeName: "foo", Propagation: "shared", Template: VolumeTemplate{Name: "foo", Driver: "bar"}},
 	}
 	good := []*Mount{
 		nil,
@@ -46,6 +50,8 @@ func TestMountsValidate(t *testing.T) {
 		{Type: "ephemeral", Target: "/foo", Populate: true},
 
 		{Type: "volume", Target: "/foo", VolumeName: "foo", Populate: true},
+
+		{Type: "template", Target: "/foo", Populate: true, Template: VolumeTemplate{Name: "foo", Driver: "bar"}},
 	}
 
 	for _, b := range bad {
@@ -70,15 +76,19 @@ func TestMountsToProto(t *testing.T) {
 		},
 		{
 			from: &Mount{Writable: true, Type: "bind", Target: "/foo", Source: "/foo"},
-			to:   &api.Mount{Writable: true, Type: api.MountTypeBind, Target: "/foo", Source: "/foo"},
+			to:   &api.Mount{Writable: true, Type: api.MountTypeBind, Target: "/foo", Source: "/foo", Template: &api.VolumeTemplate{Name: "", DriverConfiguration: &api.Driver{Name: "", Options: map[string]string{}}}},
 		},
 		{
 			from: &Mount{Type: "ephemeral", Target: "/foo", Populate: true},
-			to:   &api.Mount{Type: api.MountTypeEphemeral, Target: "/foo", Populate: true},
+			to:   &api.Mount{Type: api.MountTypeEphemeral, Target: "/foo", Populate: true, Template: &api.VolumeTemplate{Name: "", DriverConfiguration: &api.Driver{Name: "", Options: map[string]string{}}}},
 		},
 		{
 			from: &Mount{Writable: true, Type: "volume", Target: "/foo", VolumeName: "foo", Populate: true},
-			to:   &api.Mount{Writable: true, Type: api.MountTypeVolume, Target: "/foo", VolumeName: "foo", Populate: true},
+			to:   &api.Mount{Writable: true, Type: api.MountTypeVolume, Target: "/foo", VolumeName: "foo", Populate: true, Template: &api.VolumeTemplate{Name: "", DriverConfiguration: &api.Driver{Name: "", Options: map[string]string{}}}},
+		},
+		{
+			from: &Mount{Writable: true, Type: "template", Target: "/foo", Populate: true, Template: VolumeTemplate{Name: "foo", Driver: "bar"}},
+			to:   &api.Mount{Writable: true, Type: api.MountTypeTemplate, Target: "/foo", Populate: true, Template: &api.VolumeTemplate{Name: "foo", DriverConfiguration: &api.Driver{Name: "bar", Options: map[string]string{}}}},
 		},
 	}
 
@@ -95,16 +105,20 @@ func TestMountsFromProto(t *testing.T) {
 
 	set := []*conv{
 		{
-			from: &api.Mount{Writable: true, Type: api.MountTypeBind, Target: "/foo", Source: "/foo", Mcsaccessmode: api.MountMCSAccessModeShared},
+			from: &api.Mount{Writable: true, Type: api.MountTypeBind, Target: "/foo", Source: "/foo", Mcsaccessmode: api.MountMCSAccessModeShared, Template: &api.VolumeTemplate{Name: "", DriverConfiguration: &api.Driver{Name: "", Options: map[string]string{}}}},
 			to:   &Mount{Writable: true, Type: "bind", Target: "/foo", Source: "/foo", Propagation: "rprivate", MCSAccessMode: "shared"},
 		},
 		{
-			from: &api.Mount{Type: api.MountTypeEphemeral, Target: "/foo"},
+			from: &api.Mount{Type: api.MountTypeEphemeral, Target: "/foo", Template: &api.VolumeTemplate{Name: "", DriverConfiguration: &api.Driver{Name: "", Options: map[string]string{}}}},
 			to:   &Mount{Type: "ephemeral", Target: "/foo", Writable: false, Propagation: "rprivate", Populate: false},
 		},
 		{
-			from: &api.Mount{Writable: true, Type: api.MountTypeVolume, Target: "/foo", VolumeName: "foo", Populate: true},
-			to:   &Mount{Writable: true, Type: "volume", Target: "/foo", VolumeName: "foo", Propagation: "rprivate", Populate: true},
+			from: &api.Mount{Writable: true, Type: api.MountTypeVolume, Target: "/foo", VolumeName: "foo", Populate: true, Template: &api.VolumeTemplate{Name: "", DriverConfiguration: &api.Driver{Name: "", Options: map[string]string{}}}},
+			to:   &Mount{Writable: true, Type: "volume", Target: "/foo", VolumeName: "foo", Propagation: "rprivate", Populate: true, Template: VolumeTemplate{Name: "", Driver: ""}},
+		},
+		{
+			from: &api.Mount{Writable: true, Type: api.MountTypeTemplate, Target: "/foo", Populate: true, Template: &api.VolumeTemplate{Name: "foo", DriverConfiguration: &api.Driver{Name: "bar", Options: map[string]string{}}}},
+			to:   &Mount{Writable: true, Type: "template", Target: "/foo", Propagation: "rprivate", Populate: true, Template: VolumeTemplate{Name: "foo", Driver: "bar"}},
 		},
 	}
 

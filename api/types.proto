@@ -118,6 +118,15 @@ message Image {
 	string reference = 1;
 }
 
+message VolumeTemplate {
+	// Template for a plugin based volume mount
+
+	// volume name for a plugin volume
+	string name = 5;
+
+	Driver driver_configuration = 6;
+}
+
 // Mount describes volume mounts for a container
 message Mount {
 	// Target path in container
@@ -135,6 +144,7 @@ message Mount {
 		BIND = 0 [(gogoproto.enumvalue_customname) = "MountTypeBind"]; // Bind mount host dir
 		EPHEMERAL = 1 [(gogoproto.enumvalue_customname) = "MountTypeEphemeral"]; // Scratch dir
 		VOLUME = 2 [(gogoproto.enumvalue_customname) = "MountTypeVolume"];  // Remote storage volumes
+		TEMPLATE = 3 [(gogoproto.enumvalue_customname) = "MountTypeTemplate"];  // Remote storage volumes, embedded in service
 	}
 
 	Type type = 4;
@@ -170,6 +180,8 @@ message Mount {
 
 	// populate volume with data from target
 	bool populate = 8;
+
+	VolumeTemplate template = 9;
 }
 
 message RestartPolicy {
