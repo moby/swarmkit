@@ -12,7 +12,7 @@ import "gogoproto/gogo.proto";
 //
 // Put differently, spec types can be said to represent the desired state of
 // the system. In situations where modifications need to be made to a
-// particular component, API objects will either have a copy of the spec
+// particular component, API objects will either contain a copy of the spec
 // component or a different representation to reflect allocation or resolution.
 
 // Annotations provide useful information to identify API objects. They are

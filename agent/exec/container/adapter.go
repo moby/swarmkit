@@ -207,6 +207,21 @@ func (c *containerAdapter) createVolumes(ctx context.Context, client engineapi.A
 		}
 	}
 
+	// Create plugin volumes that are embedded inside a Mount
+	for _, mount := range c.container.task.GetContainer().Spec.Mounts {
+		if mount.Type == api.MountTypeTemplate {
+			req := c.container.serviceVolumeCreateRequest(mount)
+
+			// Check if this volume exists on the engine
+			if _, err := client.VolumeCreate(ctx, *req); err != nil {
+				// TODO(amitshukla): Today, volume create through the engine api does not return an error
+				// when the named volume with the same parameters already exists.
+				// It returns an error if the driver name is different - that is a valid error
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
