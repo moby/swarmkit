@@ -457,17 +457,20 @@ func CheckValuesOnNodes(t *testing.T, checkNodes map[uint64]*TestNode, ids []str
 				if err != nil {
 					return
 				}
-				if len(allNodes) != len(ids) {
-					err = fmt.Errorf("expected %d nodes, got %d", len(ids), len(allNodes))
-					return
-				}
-
 				for i, id := range ids {
 					n := store.GetNode(tx, id)
+					if n == nil {
+						err = fmt.Errorf("node %s not found", id)
+						return
+					}
 					if !reflect.DeepEqual(values[i], n) {
 						err = fmt.Errorf("node %s did not match expected value", id)
 						return
 					}
+				}
+				if len(allNodes) != len(ids) {
+					err = fmt.Errorf("expected %d nodes, got %d", len(ids), len(allNodes))
+					return
 				}
 			})
 			return err
