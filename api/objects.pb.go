@@ -150,7 +150,7 @@ type Task struct {
 	Status  TaskStatus     `protobuf:"bytes,8,opt,name=status" json:"status"`
 	// DesiredState is the target state for the task. It is set to
 	// TaskStateRunning when a task is first created, and changed to
-	// TaskStateDead if the manager wants to terminate the task. This field
+	// TaskStateShutdown if the manager wants to terminate the task. This field
 	// is only written by the manager.
 	DesiredState TaskState                 `protobuf:"varint,9,opt,name=desired_state,json=desiredState,proto3,enum=docker.cluster.api.TaskState" json:"desired_state,omitempty"`
 	Networks     []*Task_NetworkAttachment `protobuf:"bytes,10,rep,name=networks" json:"networks,omitempty"`
