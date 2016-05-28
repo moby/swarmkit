@@ -281,33 +281,6 @@ func TestShutdown(t *testing.T) {
 	})
 }
 
-// TestRemove ensures that we call remove when a task is in the desired state of dead.
-func TestRemove(t *testing.T) {
-	var (
-		task              = newTestTask(t, api.TaskStateNew, api.TaskStateDead)
-		ctx, ctlr, finish = buildTestEnv(t, task)
-	)
-	defer finish()
-
-	gomock.InOrder(
-		ctlr.EXPECT().Remove(gomock.Any()),
-	)
-
-	// First call proceeds the task into the finalize state.
-	status := checkDo(t, ctx, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateRemove,
-		Message: "removing",
-	})
-
-	task.Status = *status // update the status
-
-	// Second call actually does the removal.
-	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateDead,
-		Message: "removed",
-	})
-}
-
 // decorateController let's us decorate the mock as a ContainerController.
 //
 // Sorry this is here but GoMock is pure garbage.
