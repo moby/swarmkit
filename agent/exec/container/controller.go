@@ -2,7 +2,6 @@ package container
 
 import (
 	"errors"
-	"strings"
 
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
@@ -50,6 +49,10 @@ func (r *controller) Task() (*api.Task, error) {
 func (r *controller) ContainerStatus(ctx context.Context) (*api.ContainerStatus, error) {
 	ctnr, err := r.adapter.inspect(ctx)
 	if err != nil {
+		if isUnknownContainer(err) {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 	return parseContainerStatus(ctnr)
@@ -112,12 +115,6 @@ func (r *controller) Prepare(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func isContainerCreateNameConflict(err error) bool {
-	// TODO(stevvooe): Very fragile error reporting from daemon. Need better
-	// errors in engineapi.
-	return strings.Contains(err.Error(), "Conflict. The name")
 }
 
 // Start the container. An error will be returned if the container is already started.
@@ -244,10 +241,22 @@ func (r *controller) Remove(ctx context.Context) error {
 	// Try removing networks referenced in this task in case this
 	// task is the last one referencing it
 	if err := r.adapter.removeNetworks(ctx); err != nil {
+		if isUnknownContainer(err) {
+			return nil
+		}
+
 		return err
 	}
 
-	return r.adapter.remove(ctx)
+	if err := r.adapter.remove(ctx); err != nil {
+		if isUnknownContainer(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	return nil
 }
 
 // Close the controller and clean up any ephemeral resources.
