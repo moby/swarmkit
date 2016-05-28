@@ -47,12 +47,7 @@ func (r *ReplicatedOrchestrator) initTasks(ctx context.Context, readTx store.Rea
 			if service == nil {
 				// Service was deleted
 				err := batch.Update(func(tx store.Tx) error {
-					t.DesiredState = api.TaskStateDead
-					err := store.UpdateTask(tx, t)
-					if err != nil {
-						return err
-					}
-					return nil
+					return store.DeleteTask(tx, t.ID)
 				})
 				if err != nil {
 					log.G(ctx).WithError(err).Errorf("failed to set task desired state to dead")
