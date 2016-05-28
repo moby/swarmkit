@@ -112,7 +112,7 @@ func (r *RestartSupervisor) shouldRestart(t *api.Task, service *api.Service) boo
 	condition := restartCondition(service)
 
 	if condition != api.RestartOnAny &&
-		(condition != api.RestartOnFailure || t.Status.TerminalState == api.TaskStateCompleted) {
+		(condition != api.RestartOnFailure || t.Status.State == api.TaskStateCompleted) {
 		return false
 	}
 
