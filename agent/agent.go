@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -37,12 +38,14 @@ type Agent struct {
 	shutdown    map[string]struct{}         // control shutdown jobs
 	remove      map[string]struct{}         // control shutdown jobs
 
-	statusq chan taskStatusReport
+	statusq  chan taskStatusReport
+	removedq chan string
 
 	started chan struct{}
 	stopped chan struct{} // requests shutdown
 	closed  chan struct{} // only closed in run
 	err     error         // read only after closed is closed
+	mu      sync.Mutex
 }
 
 // New returns a new agent, ready for task dispatch.
@@ -60,7 +63,8 @@ func New(config *Config) (*Agent, error) {
 		shutdown:    make(map[string]struct{}),
 		remove:      make(map[string]struct{}),
 
-		statusq: make(chan taskStatusReport),
+		statusq:  make(chan taskStatusReport),
+		removedq: make(chan string),
 
 		started: make(chan struct{}),
 		stopped: make(chan struct{}),
@@ -183,6 +187,8 @@ func (a *Agent) run(ctx context.Context) {
 			if err := a.handleTaskStatusReport(ctx, session, report); err != nil {
 				log.G(ctx).WithError(err).Error("task status report handler failed")
 			}
+		case id := <-a.removedq:
+			a.handleTaskRemoved(id)
 		case msg := <-session.tasks:
 			if err := a.handleTaskAssignment(ctx, msg.Tasks); err != nil {
 				log.G(ctx).WithError(err).Error("task assignment failed")
@@ -321,29 +327,17 @@ func (a *Agent) handleTaskAssignment(ctx context.Context, tasks []*api.Task) err
 		if _, ok := assigned[id]; ok {
 			continue
 		}
-		delete(a.assigned, id)
 		if report, ok := a.reports[id]; ok {
 			if report.response != nil {
 				report.response <- errTaskNotAssigned
-				delete(a.reports, id)
 			}
 		}
 
 		ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", id))
 
-		// if the task is already in finalize state, no need to call removeTask.
-		if task.Status.State >= api.TaskStateRemove {
-			continue
-		}
-
 		if err := a.removeTask(ctx, task); err != nil {
 			log.G(ctx).WithError(err).Error("removing task failed")
 		}
-
-		delete(a.controllers, id)
-		delete(a.tasks, id)
-		delete(a.shutdown, id)
-		delete(a.remove, id)
 	}
 
 	return nil
@@ -370,6 +364,15 @@ func (a *Agent) handleTaskStatusReport(ctx context.Context, session *session, re
 		a.reports[report.taskID] = report
 	}
 	return nil
+}
+
+func (a *Agent) handleTaskRemoved(id string) {
+	delete(a.reports, id)
+	delete(a.assigned, id)
+	delete(a.controllers, id)
+	delete(a.tasks, id)
+	delete(a.shutdown, id)
+	delete(a.remove, id)
 }
 
 func (a *Agent) unblockTaskStatusReport(ctx context.Context, session *session, report taskStatusReport) error {
@@ -454,14 +457,8 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) (api.
 			status.TerminalState = api.TaskStateFailed
 			status.Err = report.err.Error()
 		case api.TaskStateCompleted, api.TaskStateShutdown,
-			api.TaskStateFailed, api.TaskStateRejected, api.TaskStateDead:
+			api.TaskStateFailed, api.TaskStateRejected:
 			// noop when we get an error in these states
-		case api.TaskStateRemove:
-			if task.DesiredState >= api.TaskStateDead {
-				if err := a.removeTask(ctx, task.Copy()); err != nil {
-					log.G(ctx).WithError(err).Error("failed removing task")
-				}
-			}
 		}
 	} else {
 		status.State = report.state
@@ -501,11 +498,8 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) (api.
 		api.TaskStatePreparing, api.TaskStateReady,
 		api.TaskStateStarting, api.TaskStateRunning:
 	case api.TaskStateShutdown, api.TaskStateCompleted,
-		api.TaskStateFailed, api.TaskStateRejected,
-		api.TaskStateRemove:
+		api.TaskStateFailed, api.TaskStateRejected:
 		delete(a.shutdown, report.taskID) // cleanup shutdown entry
-	case api.TaskStateDead:
-		return api.TaskStatus{}, errTaskDead
 	}
 
 	task.Status = status // actually write out the task status.
@@ -577,13 +571,7 @@ func (a *Agent) updateTask(ctx context.Context, t *api.Task) error {
 		}()
 	}
 
-	if t.DesiredState == api.TaskStateDead {
-		// Remove tasks that are marked as dead but still in the assignment
-		// set.
-		if err := a.removeTask(ctx, t); err != nil {
-			return err
-		}
-	} else if t.DesiredState > api.TaskStateRunning && t.Status.State < api.TaskStateCompleted {
+	if t.DesiredState > api.TaskStateRunning && t.Status.State < api.TaskStateCompleted {
 		if err := a.shutdownTask(ctx, t); err != nil {
 			return err
 		}
@@ -626,23 +614,37 @@ func (a *Agent) shutdownTask(ctx context.Context, t *api.Task) error {
 func (a *Agent) removeTask(ctx context.Context, t *api.Task) error {
 	log.G(ctx).Debugf("(*Agent).removeTask")
 
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	if _, ok := a.remove[t.ID]; ok {
 		return nil // already removing
 	}
-
 	a.remove[t.ID] = struct{}{}
 
 	t = t.Copy()
 	ctlr := a.controllers[t.ID]
 	go func() {
-		reporter := a.reporter(ctx, t)
-		for {
-			if err := exec.Remove(ctx, ctlr, reporter); err != nil {
+		for i := 0; i < 10; i++ {
+			if err := ctlr.Remove(ctx); err != nil {
 				log.G(ctx).WithError(err).Error("remove failed")
+				time.Sleep(1 * time.Second)
 				continue
 			}
+
+			select {
+			case a.removedq <- t.ID:
+			case <-a.closed:
+				return
+			case <-ctx.Done():
+				return
+			}
+
 			break
 		}
+
+		a.mu.Lock()
+		delete(a.remove, t.ID)
+		a.mu.Unlock()
 	}()
 
 	return nil
