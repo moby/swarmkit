@@ -105,10 +105,9 @@ func TestPrepareFailure(t *testing.T) {
 	task.Status = *status
 
 	checkDo(t, ctx, task, ctlr, &api.TaskStatus{
-		State:         api.TaskStateRejected,
-		TerminalState: api.TaskStateRejected,
-		Message:       "preparing",
-		Err:           "test error",
+		State:   api.TaskStateRejected,
+		Message: "preparing",
+		Err:     "test error",
 	})
 }
 
@@ -148,9 +147,8 @@ func TestReadyRunning(t *testing.T) {
 	task.Status = *status
 	// wait and cancel
 	checkDo(t, ctx, task, dctlr, &api.TaskStatus{
-		State:         api.TaskStateCompleted,
-		TerminalState: api.TaskStateCompleted,
-		Message:       "finished",
+		State:   api.TaskStateCompleted,
+		Message: "finished",
 		RuntimeStatus: &api.TaskStatus_Container{
 			Container: &api.ContainerStatus{
 				ExitCode: 0,
@@ -197,8 +195,7 @@ func TestReadyRunningExitFailure(t *testing.T) {
 	task.Status = *status
 	// wait and cancel
 	checkDo(t, ctx, task, dctlr, &api.TaskStatus{
-		State:         api.TaskStateFailed,
-		TerminalState: api.TaskStateFailed,
+		State: api.TaskStateFailed,
 		RuntimeStatus: &api.TaskStatus_Container{
 			Container: &api.ContainerStatus{
 				ExitCode: 1,
@@ -253,8 +250,7 @@ func TestAlreadyStarted(t *testing.T) {
 
 	// now take the real exit to test wait cancelling.
 	checkDo(t, ctx, task, dctlr, &api.TaskStatus{
-		State:         api.TaskStateFailed,
-		TerminalState: api.TaskStateFailed,
+		State: api.TaskStateFailed,
 		RuntimeStatus: &api.TaskStatus_Container{
 			Container: &api.ContainerStatus{
 				ExitCode: 1,
@@ -275,9 +271,8 @@ func TestShutdown(t *testing.T) {
 	)
 
 	checkDo(t, ctx, task, ctlr, &api.TaskStatus{
-		State:         api.TaskStateShutdown,
-		TerminalState: api.TaskStateShutdown,
-		Message:       "shutdown",
+		State:   api.TaskStateShutdown,
+		Message: "shutdown",
 	})
 }
 

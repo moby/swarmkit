@@ -394,11 +394,11 @@ func isTaskCompleted(t *api.Task, restartPolicy api.RestartPolicy_RestartConditi
 		return false
 	}
 	return restartPolicy == api.RestartOnNone ||
-		(restartPolicy == api.RestartOnFailure && t.Status.TerminalState == api.TaskStateCompleted)
+		(restartPolicy == api.RestartOnFailure && t.Status.State == api.TaskStateCompleted)
 }
 
 func isTaskTerminated(t *api.Task) bool {
-	return t != nil && t.Status.TerminalState > api.TaskStateNew
+	return t != nil && t.Status.State > api.TaskStateRunning
 }
 
 func isGlobalService(service *api.Service) bool {

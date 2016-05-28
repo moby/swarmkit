@@ -244,19 +244,6 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 			Info("state changed")
 	}()
 
-	// handle the case of writing out the terminal state correctly.
-	defer func() {
-		if status.TerminalState != 0 {
-			return // never overwrite.
-		}
-
-		switch status.State {
-		case api.TaskStateCompleted, api.TaskStateFailed,
-			api.TaskStateRejected, api.TaskStateShutdown:
-			status.TerminalState = status.State
-		}
-	}()
-
 	// extract the container status from the container, if supported.
 	defer func() {
 		// only do this if in an active state
