@@ -445,28 +445,14 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) (api.
 		// not, we return rejected. While we don't do much differently for each
 		// error type, it tells us the stage in which an error was encountered.
 		switch status.State {
-		case api.TaskStateNew, api.TaskStateAllocated,
-			api.TaskStateAssigned, api.TaskStateAccepted,
-			api.TaskStatePreparing:
-			status.State = api.TaskStateRejected
-			status.TerminalState = api.TaskStateRejected
-			status.Err = report.err.Error()
-		case api.TaskStateReady, api.TaskStateStarting,
-			api.TaskStateRunning:
-			status.State = api.TaskStateFailed
-			status.TerminalState = api.TaskStateFailed
-			status.Err = report.err.Error()
 		case api.TaskStateCompleted, api.TaskStateShutdown,
 			api.TaskStateFailed, api.TaskStateRejected:
 			// noop when we get an error in these states
+		default:
+			status.Err = report.err.Error()
 		}
 	} else {
 		status.State = report.state
-		switch report.state {
-		case api.TaskStateRejected, api.TaskStateFailed,
-			api.TaskStateShutdown, api.TaskStateCompleted:
-			status.TerminalState = report.state
-		}
 	}
 
 	tsp, err := ptypes.TimestampProto(report.timestamp)
