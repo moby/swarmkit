@@ -893,7 +893,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	// Task3: vol plugin1, network plugin1
 	t3 := &api.Task{
 		ID: "task3_ID",
-		Networks: []*api.Task_NetworkAttachment{
+		Networks: []*api.NetworkAttachment{
 			{
 				Network: &api.Network{
 					ID: "testNwID1",

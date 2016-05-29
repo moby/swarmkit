@@ -257,8 +257,8 @@ func taskReadyForNetworkVote(t *api.Task, s *api.Service, nc *networkContext) bo
 		(s == nil || len(s.Spec.Networks) == 0 || nc.nwkAllocator.IsServiceAllocated(s))
 }
 
-func taskUpdateNetworks(t *api.Task, networks []*api.Task_NetworkAttachment) {
-	networksCopy := make([]*api.Task_NetworkAttachment, 0, len(networks))
+func taskUpdateNetworks(t *api.Task, networks []*api.NetworkAttachment) {
+	networksCopy := make([]*api.NetworkAttachment, 0, len(networks))
 	for _, n := range networks {
 		networksCopy = append(networksCopy, n.Copy())
 	}
@@ -277,12 +277,12 @@ func (a *Allocator) taskCreateNetworkAttachments(t *api.Task, s *api.Service) {
 		return
 	}
 
-	var networks []*api.Task_NetworkAttachment
+	var networks []*api.NetworkAttachment
 	a.store.View(func(tx store.ReadTx) {
 		for _, na := range s.Spec.Networks {
 			n := store.GetNetwork(tx, na.GetNetworkID())
 			if n != nil {
-				networks = append(networks, &api.Task_NetworkAttachment{Network: n})
+				networks = append(networks, &api.NetworkAttachment{Network: n})
 			}
 		}
 	})
