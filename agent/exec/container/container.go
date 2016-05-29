@@ -29,7 +29,7 @@ const (
 type containerConfig struct {
 	task *api.Task
 
-	networksAttachments map[string]*api.Task_NetworkAttachment
+	networksAttachments map[string]*api.NetworkAttachment
 }
 
 // newContainerConfig returns a validated container config. No methods should
@@ -50,7 +50,7 @@ func (c *containerConfig) setTask(t *api.Task) error {
 	}
 
 	// index the networks by name
-	c.networksAttachments = make(map[string]*api.Task_NetworkAttachment, len(t.Networks))
+	c.networksAttachments = make(map[string]*api.NetworkAttachment, len(t.Networks))
 	for _, attachment := range t.Networks {
 		c.networksAttachments[attachment.Network.Spec.Annotations.Name] = attachment
 	}
@@ -227,7 +227,7 @@ func (c *containerConfig) virtualIP(networkID string) string {
 }
 
 func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
-	var networks []*api.Task_NetworkAttachment
+	var networks []*api.NetworkAttachment
 	if c.task.GetContainer() != nil {
 		networks = c.task.Networks
 	}
