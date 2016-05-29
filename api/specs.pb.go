@@ -691,15 +691,6 @@ func (m *ServiceSpec) Copy() *ServiceSpec {
 		}
 	}
 
-	switch m.RuntimeSpec.(type) {
-	case *ServiceSpec_Container:
-		i := &ServiceSpec_Container{
-			Container: m.GetContainer().Copy(),
-		}
-
-		o.RuntimeSpec = i
-	}
-
 	switch m.Mode.(type) {
 	case *ServiceSpec_Replicated:
 		i := &ServiceSpec_Replicated{
@@ -713,6 +704,15 @@ func (m *ServiceSpec) Copy() *ServiceSpec {
 		}
 
 		o.Mode = i
+	}
+
+	switch m.RuntimeSpec.(type) {
+	case *ServiceSpec_Container:
+		i := &ServiceSpec_Container{
+			Container: m.GetContainer().Copy(),
+		}
+
+		o.RuntimeSpec = i
 	}
 
 	return o
