@@ -98,7 +98,7 @@ func (c *containerConfig) config() *enginecontainer.Config {
 		Volumes:      c.ephemeralDirs(),
 	}
 
-	if len(c.spec().Command) > 1 {
+	if len(c.spec().Command) > 0 {
 		// If Command is provided, we replace the whole invocation with Command
 		// by replacing Entrypoint and specifying Cmd. Args is ignored in this
 		// case.
