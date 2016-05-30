@@ -234,6 +234,10 @@ func (r *controller) Remove(ctx context.Context) error {
 
 	// It may be necessary to shut down the task before removing it.
 	if err := r.Shutdown(ctx); err != nil {
+		if isUnknownContainer(err) {
+			return nil
+		}
+
 		// This may fail if the task was already shut down.
 		log.G(ctx).WithError(err).Debug("shutdown failed on removal")
 	}
