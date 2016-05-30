@@ -372,7 +372,6 @@ func (a *Agent) handleTaskRemoved(id string) {
 	delete(a.controllers, id)
 	delete(a.tasks, id)
 	delete(a.shutdown, id)
-	delete(a.remove, id)
 }
 
 func (a *Agent) unblockTaskStatusReport(ctx context.Context, session *session, report taskStatusReport) error {
