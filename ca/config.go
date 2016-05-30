@@ -14,7 +14,7 @@ import (
 	cfconfig "github.com/cloudflare/cfssl/config"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/picker"
-
+	"github.com/fsnotify/fsnotify"
 	"golang.org/x/net/context"
 )
 
@@ -133,8 +133,9 @@ func NewConfigPaths(baseCertDir string) *SecurityConfigPaths {
 // LoadOrCreateSecurityConfig encapsulates the security logic behind joining a cluster.
 // Every node requires at least a set of TLS certificates with which to join the cluster with.
 // In the case of a manager, these certificates will be used both for client and server credentials.
-func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, proposedRole string, picker *picker.Picker) (*SecurityConfig, error) {
+func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, proposedRole string, picker *picker.Picker) (*SecurityConfig, <-chan CertificateUpdate, error) {
 	paths := NewConfigPaths(baseCertDir)
+	updates := make(chan CertificateUpdate)
 
 	var (
 		rootCA                         RootCA
@@ -150,12 +151,12 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, propos
 		// Get the remote CA certificate, verify integrity with the hash provided
 		rootCA, err = GetRemoteCA(ctx, caHash, picker)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		// Save root CA certificate to disk
 		if err = saveRootCA(rootCA, paths.RootCA); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		log.Debugf("downloaded remote CA certificate.")
@@ -186,129 +187,152 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, propos
 			// Last argument is nil because at this point we don't have any valid TLS creds
 			tlsKeyPair, err = rootCA.RequestAndSaveNewCertificates(ctx, paths.Node, proposedRole, picker, nil)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 		}
 		// Create the Server TLS Credentials for this node. These will not be used by agents.
 		serverTLSCreds, err = rootCA.NewServerTLSCredentials(tlsKeyPair)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		// Create a TLSConfig to be used when this node connects as a client to another remote node.
 		// We're using ManagerRole as remote serverName for TLS host verification
 		clientTLSCreds, err = rootCA.NewClientTLSCredentials(tlsKeyPair, ManagerRole)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		log.Debugf("new TLS credentials generated: %s.", paths.Node.Cert)
 	} else {
 		log.Debugf("loaded local TLS credentials: %s.", paths.Node.Cert)
 	}
 
-	return &SecurityConfig{
+	s := &SecurityConfig{
 		rootCA: &rootCA,
 
 		ServerTLSCreds: serverTLSCreds,
 		ClientTLSCreds: clientTLSCreds,
-	}, nil
-}
+	}
 
-// RenewTLSConfig will continuously monitor for the necessity of renewing the local certificates, either by
-// issuing them locally if key-material is available, or requesting them from a remote CA.
-func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, picker *picker.Picker, retry time.Duration) <-chan CertificateUpdate {
-	paths := NewConfigPaths(baseCertDir)
-	updates := make(chan CertificateUpdate)
+	fswatcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := fswatcher.Add(filepath.Dir(paths.Node.Cert)); err != nil {
+		return nil, nil, err
+	}
 	go func() {
 		defer close(updates)
 		for {
 			select {
-			case <-time.After(retry):
 			case <-ctx.Done():
-				break
-			}
-
-			// Retrieve the number of months left for the cert to expire
-			expMonths, err := readCertExpiration(paths.Node)
-			if err != nil {
-				log.Debugf("failed to read expiration of TLS Certificate: %v", err)
-				updates <- CertificateUpdate{Err: err}
-				continue
-			}
-
-			// Check if the certificate is close to expiration.
-			if expMonths > 1 {
-				continue
-			}
-
-			log.Debugf("Renewing TLS Certificates.")
-
-			rootCA := s.RootCA()
-
-			// We are dependent on an external node, let's request new certs
-			tlsKeyPair, err := rootCA.RequestAndSaveNewCertificates(ctx,
-				paths.Node,
-				s.ClientTLSCreds.Role(),
-				picker,
-				s.ClientTLSCreds)
-			if err != nil {
-				log.Debugf("failed to get a tlsKeyPair: %v", err)
-				updates <- CertificateUpdate{Err: err}
-				continue
-			}
-
-			clientTLSConfig, err := NewClientTLSConfig(tlsKeyPair, rootCA.Pool, CARole)
-			if err != nil {
-				log.Debugf("failed to create a new client TLS config: %v", err)
-				updates <- CertificateUpdate{Err: err}
-			}
-			serverTLSConfig, err := NewServerTLSConfig(tlsKeyPair, rootCA.Pool)
-			if err != nil {
-				log.Debugf("failed to create a new server TLS config: %v", err)
+				fswatcher.Close()
+				return
+			case e := <-fswatcher.Events:
+				if e.Name == paths.Node.Cert && e.Op == fsnotify.Create {
+					tlsKeyPair, err := loadTLSKeyPair(rootCA, paths.Node)
+					if err != nil {
+						updates <- CertificateUpdate{Err: err}
+						continue
+					}
+					clientTLSConfig, err := NewClientTLSConfig(&tlsKeyPair, rootCA.Pool, CARole)
+					if err != nil {
+						log.Debugf("failed to create a new client TLS config: %v", err)
+						updates <- CertificateUpdate{Err: err}
+						continue
+					}
+					serverTLSConfig, err := NewServerTLSConfig(&tlsKeyPair, rootCA.Pool)
+					if err != nil {
+						log.Debugf("failed to create a new server TLS config: %v", err)
+						updates <- CertificateUpdate{Err: err}
+						continue
+					}
+					err = s.ClientTLSCreds.LoadNewTLSConfig(clientTLSConfig)
+					if err != nil {
+						log.Debugf("failed to update the client TLS credentials: %v", err)
+						updates <- CertificateUpdate{Err: err}
+						continue
+					}
+					err = s.ServerTLSCreds.LoadNewTLSConfig(serverTLSConfig)
+					if err != nil {
+						log.Debugf("failed to update the server TLS credentials: %v", err)
+						updates <- CertificateUpdate{Err: err}
+						continue
+					}
+					updates <- CertificateUpdate{Role: s.ClientTLSCreds.Role()}
+				}
+			case err := <-fswatcher.Errors:
 				updates <- CertificateUpdate{Err: err}
 			}
-
-			err = s.ClientTLSCreds.LoadNewTLSConfig(clientTLSConfig)
-			if err != nil {
-				log.Debugf("failed to update the client TLS credentials: %v", err)
-				updates <- CertificateUpdate{Err: err}
-			}
-
-			err = s.ServerTLSCreds.LoadNewTLSConfig(serverTLSConfig)
-			if err != nil {
-				log.Debugf("failed to update the server TLS credentials: %v", err)
-				updates <- CertificateUpdate{Err: err}
-			}
-
-			updates <- CertificateUpdate{Role: s.ClientTLSCreds.Role()}
 		}
 	}()
-
-	return updates
+	return s, updates, nil
 }
 
-func loadTLSCreds(rootCA RootCA, paths CertPaths) (*MutableTLSCreds, *MutableTLSCreds, error) {
+// RenewTLSConfig will continuously monitor for the necessity of renewing the local certificates, either by
+// issuing them locally if key-material is available, or requesting them from a remote CA.
+func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, picker *picker.Picker, retry time.Duration) error {
+	paths := NewConfigPaths(baseCertDir)
+	for {
+		select {
+		case <-time.After(retry):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+
+		// Retrieve the number of months left for the cert to expire
+		expMonths, err := readCertExpiration(paths.Node)
+		if err != nil {
+			log.Debugf("failed to read expiration of TLS Certificate: %v", err)
+			continue
+		}
+
+		// Check if the certificate is close to expiration.
+		if expMonths > 1 {
+			continue
+		}
+
+		log.Debugf("Renewing TLS Certificates.")
+
+		rootCA := s.RootCA()
+
+		// let's request new certs
+		_, err = rootCA.RequestAndSaveNewCertificates(ctx,
+			paths.Node,
+			s.ClientTLSCreds.Role(),
+			picker,
+			s.ClientTLSCreds)
+		if err != nil {
+			log.Debugf("failed to get a tlsKeyPair: %v", err)
+			continue
+		}
+
+	}
+}
+
+func loadTLSKeyPair(rootCA RootCA, paths CertPaths) (tls.Certificate, error) {
+	var c tls.Certificate
 	// Read both the Cert and Key from disk
 	cert, err := ioutil.ReadFile(paths.Cert)
 	if err != nil {
-		return nil, nil, err
+		return c, err
 	}
 	key, err := ioutil.ReadFile(paths.Key)
 	if err != nil {
-		return nil, nil, err
+		return c, err
 	}
 
 	// Create an x509 certificate out of the contents on disk
 	certBlock, _ := pem.Decode([]byte(cert))
 	if certBlock == nil {
-		return nil, nil, fmt.Errorf("failed to parse certificate PEM")
+		return c, fmt.Errorf("failed to parse certificate PEM")
 	}
 
 	// Create an X509Cert so we can .Verify()
 	X509Cert, err := x509.ParseCertificate(certBlock.Bytes)
 	if err != nil {
-		return nil, nil, err
+		return c, err
 	}
 
 	// Include our root pool
@@ -318,12 +342,16 @@ func loadTLSCreds(rootCA RootCA, paths CertPaths) (*MutableTLSCreds, *MutableTLS
 
 	// Check to see if this certificate was signed by our CA, and isn't expired
 	if _, err := X509Cert.Verify(opts); err != nil {
-		return nil, nil, err
+		return c, err
 	}
 
 	// Now that we know this certificate is valid, create a TLS Certificate for our
 	// credentials
-	keyPair, err := tls.X509KeyPair(cert, key)
+	return tls.X509KeyPair(cert, key)
+}
+
+func loadTLSCreds(rootCA RootCA, paths CertPaths) (*MutableTLSCreds, *MutableTLSCreds, error) {
+	keyPair, err := loadTLSKeyPair(rootCA, paths)
 	if err != nil {
 		return nil, nil, err
 	}
