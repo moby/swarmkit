@@ -16,16 +16,13 @@ services:
             - type: bind
               source: /
               target: /rootfs
-              mask: ro
             - type: bind
               source: /var/run
               target: /var/run
-              mask: rw
+              writable: true
             - type: bind
               source: /sys
               target: /sys
-              mask: ro
             - type: bind
               source: /var/lib/docker/
               target: /var/lib/docker
-              mask: ro
