@@ -440,8 +440,6 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) (api.
 			}
 		}
 
-		status.Err = report.err.Error()
-
 		// If the task has been started, we return fail on error. If it has
 		// not, we return rejected. While we don't do much differently for each
 		// error type, it tells us the stage in which an error was encountered.
@@ -456,6 +454,8 @@ func (a *Agent) updateStatus(ctx context.Context, report taskStatusReport) (api.
 		case api.TaskStateCompleted, api.TaskStateShutdown,
 			api.TaskStateFailed, api.TaskStateRejected:
 			// noop when we get an error in these states
+		default:
+			status.Err = report.err.Error()
 		}
 	} else {
 		status.State = report.state
