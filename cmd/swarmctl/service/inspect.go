@@ -72,7 +72,7 @@ func printServiceSummary(service *api.Service) {
 			if v.Type == api.MountTypeBind {
 				fmt.Fprintf(w, "    - target = %s\n", v.Target)
 				fmt.Fprintf(w, "      source = %s\n", v.Source)
-				fmt.Fprintf(w, "      mask = %s\n", v.Mask.String())
+				fmt.Fprintf(w, "      writable = %v\n", v.Writable)
 				fmt.Fprintf(w, "      type = bind\n")
 			} else if v.Type == api.MountTypeEphemeral {
 				fmt.Fprintf(w, "    - target = %s\n", v.Target)
@@ -81,7 +81,7 @@ func printServiceSummary(service *api.Service) {
 				fmt.Fprintf(w, "    - target = %s\n", v.Target)
 				fmt.Fprintf(w, "      type = volume\n")
 				fmt.Fprintf(w, "      name = %s\n", v.VolumeName)
-				fmt.Fprintf(w, "      mask = %s\n", v.Mask.String())
+				fmt.Fprintf(w, "      writable = %v\n", v.Writable)
 			}
 		}
 	}

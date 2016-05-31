@@ -8,7 +8,7 @@ services:
             - type: volume
               name: swarm-demo
               target: /data
-              mask: rw
+              writable: true
         ports:
             - name: redis
               protocol: tcp
