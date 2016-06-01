@@ -285,4 +285,36 @@ func TestListServices(t *testing.T) {
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Services))
+
+	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
+		Filters: &api.ListServicesRequest_Filters{
+			Names: []string{"name1"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(r.Services))
+
+	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
+		Filters: &api.ListServicesRequest_Filters{
+			Names: []string{"name1", "name2"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(r.Services))
+
+	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
+		Filters: &api.ListServicesRequest_Filters{
+			Names: []string{"name1", "name2", "name4"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(r.Services))
+
+	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
+		Filters: &api.ListServicesRequest_Filters{
+			Names: []string{"name4"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(r.Services))
 }

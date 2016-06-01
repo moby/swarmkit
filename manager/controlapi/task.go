@@ -56,7 +56,14 @@ func (s *Server) ListTasks(ctx context.Context, request *api.ListTasksRequest) (
 		err   error
 	)
 	s.store.View(func(tx store.ReadTx) {
-		tasks, err = store.FindTasks(tx, store.All)
+		switch {
+		case request.Filters != nil && len(request.Filters.Names) > 0:
+			tasks, err = store.FindTasks(tx, store.ByName(request.Filters.Names...))
+		case request.Filters != nil && len(request.Filters.IDPrefixes) > 0:
+			tasks, err = store.FindTasks(tx, store.ByName(request.Filters.IDPrefixes...))
+		default:
+			tasks, err = store.FindTasks(tx, store.All)
+		}
 	})
 	if err != nil {
 		return nil, err
