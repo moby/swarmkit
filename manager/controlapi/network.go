@@ -164,9 +164,9 @@ func (s *Server) ListNetworks(ctx context.Context, request *api.ListNetworksRequ
 	s.store.View(func(tx store.ReadTx) {
 		switch {
 		case request.Filters != nil && len(request.Filters.Names) > 0:
-			networks, err = store.FindNetworks(tx, store.ByName(request.Filters.Names...))
+			networks, err = store.FindNetworks(tx, buildFilters(store.ByName, request.Filters.Names))
 		case request.Filters != nil && len(request.Filters.IDPrefixes) > 0:
-			networks, err = store.FindNetworks(tx, store.ByName(request.Filters.IDPrefixes...))
+			networks, err = store.FindNetworks(tx, buildFilters(store.ByIDPrefix, request.Filters.IDPrefixes))
 		default:
 			networks, err = store.FindNetworks(tx, store.All)
 		}

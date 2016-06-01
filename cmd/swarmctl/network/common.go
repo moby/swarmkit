@@ -16,11 +16,13 @@ func GetNetwork(ctx context.Context, c api.ControlClient, input string) (*api.Ne
 	rg, err := c.GetNetwork(ctx, &api.GetNetworkRequest{NetworkID: input})
 	if err != nil {
 		// If any error (including NotFound), ListServices to match via ID prefix and full name.
-		rl, err := c.ListNetworks(ctx, &api.ListNetworksRequest{
-			Filters: &api.ListNetworksRequest_Filters{
-				Names: []string{input},
+		rl, err := c.ListNetworks(ctx,
+			&api.ListNetworksRequest{
+				Filters: &api.ListNetworksRequest_Filters{
+					Names: []string{input},
+				},
 			},
-		})
+		)
 		if err != nil {
 			return nil, err
 		}

@@ -79,9 +79,9 @@ func (s *Server) ListClusters(ctx context.Context, request *api.ListClustersRequ
 	s.store.View(func(tx store.ReadTx) {
 		switch {
 		case request.Filters != nil && len(request.Filters.Names) > 0:
-			clusters, err = store.FindClusters(tx, store.ByName(request.Filters.Names...))
+			clusters, err = store.FindClusters(tx, buildFilters(store.ByName, request.Filters.Names))
 		case request.Filters != nil && len(request.Filters.IDPrefixes) > 0:
-			clusters, err = store.FindClusters(tx, store.ByName(request.Filters.IDPrefixes...))
+			clusters, err = store.FindClusters(tx, buildFilters(store.ByIDPrefix, request.Filters.IDPrefixes))
 		default:
 			clusters, err = store.FindClusters(tx, store.All)
 		}

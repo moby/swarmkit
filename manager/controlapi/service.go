@@ -195,9 +195,9 @@ func (s *Server) ListServices(ctx context.Context, request *api.ListServicesRequ
 	s.store.View(func(tx store.ReadTx) {
 		switch {
 		case request.Filters != nil && len(request.Filters.Names) > 0:
-			services, err = store.FindServices(tx, store.ByName(request.Filters.Names...))
+			services, err = store.FindServices(tx, buildFilters(store.ByName, request.Filters.Names))
 		case request.Filters != nil && len(request.Filters.IDPrefixes) > 0:
-			services, err = store.FindServices(tx, store.ByName(request.Filters.IDPrefixes...))
+			services, err = store.FindServices(tx, buildFilters(store.ByIDPrefix, request.Filters.IDPrefixes))
 		default:
 			services, err = store.FindServices(tx, store.All)
 		}

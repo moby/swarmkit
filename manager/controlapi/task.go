@@ -58,9 +58,13 @@ func (s *Server) ListTasks(ctx context.Context, request *api.ListTasksRequest) (
 	s.store.View(func(tx store.ReadTx) {
 		switch {
 		case request.Filters != nil && len(request.Filters.Names) > 0:
-			tasks, err = store.FindTasks(tx, store.ByName(request.Filters.Names...))
+			tasks, err = store.FindTasks(tx, buildFilters(store.ByName, request.Filters.Names))
 		case request.Filters != nil && len(request.Filters.IDPrefixes) > 0:
-			tasks, err = store.FindTasks(tx, store.ByName(request.Filters.IDPrefixes...))
+			tasks, err = store.FindTasks(tx, buildFilters(store.ByIDPrefix, request.Filters.IDPrefixes))
+		case request.Filters != nil && len(request.Filters.ServiceIDs) > 0:
+			tasks, err = store.FindTasks(tx, buildFilters(store.ByServiceID, request.Filters.ServiceIDs))
+		case request.Filters != nil && len(request.Filters.NodeIDs) > 0:
+			tasks, err = store.FindTasks(tx, buildFilters(store.ByNodeID, request.Filters.NodeIDs))
 		default:
 			tasks, err = store.FindTasks(tx, store.All)
 		}
