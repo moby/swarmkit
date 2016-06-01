@@ -162,10 +162,13 @@ func (s *Server) ListNetworks(ctx context.Context, request *api.ListNetworksRequ
 	)
 
 	s.store.View(func(tx store.ReadTx) {
-		if request.Options == nil || request.Options.Query == "" {
+		switch {
+		case request.Filters != nil && len(request.Filters.Names) > 0:
+			networks, err = store.FindNetworks(tx, store.ByName(request.Filters.Names...))
+		case request.Filters != nil && len(request.Filters.IDPrefixes) > 0:
+			networks, err = store.FindNetworks(tx, store.ByName(request.Filters.IDPrefixes...))
+		default:
 			networks, err = store.FindNetworks(tx, store.All)
-		} else {
-			networks, err = store.FindNetworks(tx, store.ByQuery(request.Options.Query))
 		}
 	})
 	if err != nil {

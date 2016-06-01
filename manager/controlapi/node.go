@@ -42,10 +42,13 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 		err   error
 	)
 	s.store.View(func(tx store.ReadTx) {
-		if request.Options == nil || request.Options.Query == "" {
+		switch {
+		case request.Filters != nil && len(request.Filters.Names) > 0:
+			nodes, err = store.FindNodes(tx, store.ByName(request.Filters.Names...))
+		case request.Filters != nil && len(request.Filters.IDPrefixes) > 0:
+			nodes, err = store.FindNodes(tx, store.ByName(request.Filters.IDPrefixes...))
+		default:
 			nodes, err = store.FindNodes(tx, store.All)
-		} else {
-			nodes, err = store.FindNodes(tx, store.ByQuery(request.Options.Query))
 		}
 	})
 	if err != nil {

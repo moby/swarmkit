@@ -90,11 +90,6 @@ service Control {
 	};
 }
 
-message ListOptions {
-	// TODO(vieux): Replace `query` with more powerful selectors.
-	string query = 1;
-}
-
 message GetNodeRequest {
 	string node_id = 1 [(gogoproto.customname) = "NodeID"];
 }
@@ -104,7 +99,12 @@ message GetNodeResponse {
 }
 
 message ListNodesRequest {
-	ListOptions options = 1;
+	message Filters {
+		repeated string names = 1;
+		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
+	}
+
+	Filters filters = 1;
 }
 
 message ListNodesResponse {
@@ -140,6 +140,12 @@ message RemoveTaskResponse {
 }
 
 message ListTasksRequest {
+	message Filters {
+		repeated string names = 1;
+		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
+	}
+
+	Filters filters = 1;
 }
 
 message ListTasksResponse {
@@ -180,7 +186,12 @@ message RemoveServiceResponse {
 }
 
 message ListServicesRequest {
-	ListOptions options = 1;
+	message Filters {
+		repeated string names = 1;
+		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
+	}
+
+	Filters filters = 1;
 }
 
 message ListServicesResponse {
@@ -212,7 +223,12 @@ message RemoveNetworkRequest {
 message RemoveNetworkResponse {}
 
 message ListNetworksRequest {
-	ListOptions options = 1;
+	message Filters {
+		repeated string names = 1;
+		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
+	}
+
+	Filters filters = 1;
 }
 
 message ListNetworksResponse {
@@ -241,14 +257,26 @@ message RemoveVolumeRequest {
 
 message RemoveVolumeResponse {}
 
-message ListVolumesRequest {}
+message ListVolumesRequest {
+	message Filters {
+		repeated string names = 1;
+		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
+	}
+
+	Filters filters = 1;
+}
 
 message ListVolumesResponse {
 	repeated Volume volumes = 1;
 }
 
 message ListManagersRequest {
-	ListOptions options = 1;
+	message Filters {
+		repeated string names = 1;
+		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
+	}
+
+	Filters filters = 1;
 }
 
 message ListManagersResponse {
@@ -270,7 +298,12 @@ message GetClusterResponse {
 }
 
 message ListClustersRequest {
-	ListOptions options = 1;
+	message Filters {
+		repeated string names = 1;
+		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
+	}
+
+	Filters filters = 1;
 }
 
 message ListClustersResponse {
