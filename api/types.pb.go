@@ -14,7 +14,6 @@
 		ca.proto
 		snapshot.proto
 		raft.proto
-		auth.proto
 
 	It has these top-level messages:
 		Version
@@ -144,7 +143,6 @@
 		ResolveAddressResponse
 		InternalRaftRequest
 		StoreAction
-		TLSAuthorization
 */
 package api
 
