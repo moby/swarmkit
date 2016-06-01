@@ -55,11 +55,11 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
@@ -76,13 +76,13 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 
 	observedTask3 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask3.Annotations.Name, "name1")
+	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
 
 	expectCommit(t, watch)
 
 	observedTask4 := watchTaskUpdate(t, watch)
 	assert.Equal(t, observedTask4.DesiredState, api.TaskStateRunning)
-	assert.Equal(t, observedTask4.Annotations.Name, "name1")
+	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name1")
 
 	// Mark the second task as completed. Confirm that it gets restarted.
 	updatedTask2 := observedTask2.Copy()
@@ -99,13 +99,13 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 
 	observedTask5 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask5.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask5.Annotations.Name, "name1")
+	assert.Equal(t, observedTask5.ServiceAnnotations.Name, "name1")
 
 	expectCommit(t, watch)
 
 	observedTask6 := watchTaskUpdate(t, watch)
 	assert.Equal(t, observedTask6.DesiredState, api.TaskStateRunning)
-	assert.Equal(t, observedTask6.Annotations.Name, "name1")
+	assert.Equal(t, observedTask6.ServiceAnnotations.Name, "name1")
 }
 
 func TestOrchestratorRestartOnFailure(t *testing.T) {
@@ -152,11 +152,11 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
@@ -174,13 +174,13 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	observedTask3 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask3.DesiredState, api.TaskStateReady)
-	assert.Equal(t, observedTask3.Annotations.Name, "name1")
+	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
 
 	expectCommit(t, watch)
 
 	observedTask4 := watchTaskUpdate(t, watch)
 	assert.Equal(t, observedTask4.DesiredState, api.TaskStateRunning)
-	assert.Equal(t, observedTask4.Annotations.Name, "name1")
+	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name1")
 
 	// Mark the second task as completed. Confirm that it does not get restarted.
 	updatedTask2 := observedTask2.Copy()
@@ -247,11 +247,11 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
 	// Fail the first task. Confirm that it does not get restarted.
 	updatedTask1 := observedTask1.Copy()
@@ -338,11 +338,11 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
@@ -362,7 +362,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 	expectCommit(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask3.DesiredState, api.TaskStateReady)
-	assert.Equal(t, observedTask3.Annotations.Name, "name1")
+	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
 
 	observedTask4 := watchTaskUpdate(t, watch)
 	after := time.Now()
@@ -375,7 +375,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 
 	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask4.DesiredState, api.TaskStateRunning)
-	assert.Equal(t, observedTask4.Annotations.Name, "name1")
+	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name1")
 }
 
 func TestOrchestratorRestartMaxAttempts(t *testing.T) {
@@ -423,11 +423,11 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
@@ -447,7 +447,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	expectCommit(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask3.DesiredState, api.TaskStateReady)
-	assert.Equal(t, observedTask3.Annotations.Name, "name1")
+	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
 
 	observedTask4 := watchTaskUpdate(t, watch)
 	after := time.Now()
@@ -460,7 +460,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 
 	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask4.DesiredState, api.TaskStateRunning)
-	assert.Equal(t, observedTask4.Annotations.Name, "name1")
+	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name1")
 
 	// Fail the second task. Confirm that it gets restarted.
 	updatedTask2 := observedTask2.Copy()
@@ -480,13 +480,13 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	expectCommit(t, watch)
 	assert.Equal(t, observedTask5.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask5.DesiredState, api.TaskStateReady)
-	assert.Equal(t, observedTask5.Annotations.Name, "name1")
+	assert.Equal(t, observedTask5.ServiceAnnotations.Name, "name1")
 
 	observedTask6 := watchTaskUpdate(t, watch) // task gets started after a delay
 	expectCommit(t, watch)
 	assert.Equal(t, observedTask6.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask6.DesiredState, api.TaskStateRunning)
-	assert.Equal(t, observedTask6.Annotations.Name, "name1")
+	assert.Equal(t, observedTask6.ServiceAnnotations.Name, "name1")
 
 	// Fail the first instance again. It should not be restarted.
 	updatedTask1 = observedTask3.Copy()
@@ -555,11 +555,11 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
@@ -579,7 +579,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	expectCommit(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask3.DesiredState, api.TaskStateReady)
-	assert.Equal(t, observedTask3.Annotations.Name, "name1")
+	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
 
 	observedTask4 := watchTaskUpdate(t, watch)
 	after := time.Now()
@@ -592,7 +592,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 
 	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask4.DesiredState, api.TaskStateRunning)
-	assert.Equal(t, observedTask4.Annotations.Name, "name1")
+	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name1")
 
 	// Fail the second task. Confirm that it gets restarted.
 	updatedTask2 := observedTask2.Copy()
@@ -612,13 +612,13 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	expectCommit(t, watch)
 	assert.Equal(t, observedTask5.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask5.DesiredState, api.TaskStateReady)
-	assert.Equal(t, observedTask5.Annotations.Name, "name1")
+	assert.Equal(t, observedTask5.ServiceAnnotations.Name, "name1")
 
 	observedTask6 := watchTaskUpdate(t, watch) // task gets started after a delay
 	expectCommit(t, watch)
 	assert.Equal(t, observedTask6.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask6.DesiredState, api.TaskStateRunning)
-	assert.Equal(t, observedTask6.Annotations.Name, "name1")
+	assert.Equal(t, observedTask6.ServiceAnnotations.Name, "name1")
 
 	// Fail the first instance again. It should not be restarted.
 	updatedTask1 = observedTask3.Copy()
@@ -660,7 +660,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	expectCommit(t, watch)
 	assert.Equal(t, observedTask7.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask7.DesiredState, api.TaskStateReady)
-	assert.Equal(t, observedTask7.Annotations.Name, "name1")
+	assert.Equal(t, observedTask7.ServiceAnnotations.Name, "name1")
 
 	observedTask8 := watchTaskUpdate(t, watch)
 	after = time.Now()
@@ -673,5 +673,5 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 
 	assert.Equal(t, observedTask8.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask8.DesiredState, api.TaskStateRunning)
-	assert.Equal(t, observedTask8.Annotations.Name, "name1")
+	assert.Equal(t, observedTask8.ServiceAnnotations.Name, "name1")
 }
