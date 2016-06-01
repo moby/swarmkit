@@ -16,4 +16,8 @@ type Executor interface {
 
 	// Controller provides a controller for the given task.
 	Controller(t *api.Task) (Controller, error)
+
+	// SetNetworkBootstrapKeys passes the symmetric keys from the
+	// manager to the executor.
+	SetNetworkBootstrapKeys([]*api.EncryptionKey) error
 }

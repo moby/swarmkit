@@ -87,3 +87,7 @@ func (e *executor) Controller(t *api.Task) (exec.Controller, error) {
 
 	return ctlr, nil
 }
+
+func (e *executor) SetNetworkBootstrapKeys([]*api.EncryptionKey) error {
+	return nil
+}
