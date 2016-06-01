@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/docker/swarm-v2/ca"
@@ -128,7 +129,7 @@ var managerCmd = &cobra.Command{
 		}
 
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 		go func() {
 			<-c
 			m.Stop(ctx)
