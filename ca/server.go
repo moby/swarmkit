@@ -121,7 +121,7 @@ func (s *Server) CertificateStatus(ctx context.Context, request *api.Certificate
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-s.ctx.Done():
-			return nil, ctx.Err()
+			return nil, s.ctx.Err()
 		}
 	}
 }
@@ -318,8 +318,10 @@ func (s *Server) Run(ctx context.Context) error {
 				s.updateCluster(ctx, v.Cluster)
 			}
 
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-s.ctx.Done():
-			return nil
+			return s.ctx.Err()
 		}
 	}
 }
