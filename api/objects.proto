@@ -124,11 +124,12 @@ message Task {
 	// is empty or not set, the task is unassigned.
 	string node_id = 5 [(gogoproto.customname) = "NodeID"];
 
-	// Annotations inherits labels from the ServiceSpec.Annotations associated
-	// with this task. It may include other labels added by the manager. The
-	// name will be a human readable name, calculated based on the
-	// ServiceSpec.Annotations.Name field.
-	Annotations annotations = 6 [(gogoproto.nullable) = false];
+	// ServiceAnnotations is a direct copy of the service name and labels when
+	// this task is created.
+	//
+	// Labels set here will not be propagated to the runtime target, such as a
+	// container. Use labels on the runtime target for that purpose.
+	Annotations service_annotations = 6 [(gogoproto.nullable) = false];
 
 	// Task carries the runtime information which by itself carries the
 	// spec for the runtime. For e.g. Container contains ContainerSpec.
@@ -167,12 +168,23 @@ message NetworkAttachment {
 
 // Container contains all runtime state of a task which is container runtime specific.
 message Container {
+	// Annotations defines the names and labels for the container, as set by
+	// the cluster manager. Any name and labels specified here will supercede
+	// those defined in the spec.
+	//
+	// As backup, if this field has an empty name, the container runtime will
+	// allocate a unique name for the actual container.
+	//
+	// NOTE(stevvooe): The preserves the ability for us to making naming
+	// decisions for tasks in orchestrator, albeit, this is left empty for now.
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
+
 	// Spec defines the container specific configuration for this container.
-	ContainerSpec spec = 1 [(gogoproto.nullable) = false];
+	ContainerSpec spec = 2 [(gogoproto.nullable) = false];
 
 	// Volumes enumerates the volume declarations needed to satisfy the mounts which use plugins
 	// used by this container
-	repeated Volume volumes = 4;
+	repeated Volume volumes = 3;
 }
 
 message Volume {

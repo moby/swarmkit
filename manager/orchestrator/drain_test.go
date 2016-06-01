@@ -99,7 +99,7 @@ func TestDrain(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name0",
 			},
 			ServiceID: "id1",
@@ -110,7 +110,7 @@ func TestDrain(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name1",
 			},
 			ServiceID: "id1",
@@ -121,7 +121,7 @@ func TestDrain(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
 			ServiceID: "id1",
@@ -132,7 +132,7 @@ func TestDrain(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name3",
 			},
 			ServiceID: "id1",
@@ -143,7 +143,7 @@ func TestDrain(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name4",
 			},
 			ServiceID: "id1",
@@ -154,7 +154,7 @@ func TestDrain(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name5",
 			},
 			ServiceID: "id1",
