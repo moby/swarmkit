@@ -113,11 +113,13 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	caServer := ca.NewServer(s, managerConfig)
 	api.RegisterCAServer(grpcServer, caServer)
 
+	ctx := context.Background()
+
 	go func() {
 		grpcServer.Serve(l)
 	}()
 	go func() {
-		assert.NoError(t, caServer.Run(context.Background()))
+		caServer.Run(ctx)
 	}()
 
 	remotes := picker.NewRemotes(l.Addr().String())
@@ -132,7 +134,7 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 		Picker:      picker,
 		TempDir:     tempBaseDir,
 		Paths:       paths,
-		Context:     context.Background(),
+		Context:     ctx,
 		Clients:     clients,
 		Conns:       conns,
 		CAServer:    caServer,
