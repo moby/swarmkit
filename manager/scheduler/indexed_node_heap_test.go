@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"container/heap"
 	"math"
 	"math/rand"
 	"strconv"
@@ -29,6 +28,11 @@ func TestFindMin(t *testing.T) {
 				},
 			}
 
+			// Delete some older nodes at random to make this an
+			if i > 100 && rand.Intn(10) == 0 {
+				nh.remove("id" + strconv.Itoa(i-100))
+			}
+
 			// Give every hundredth node a special label
 			if i%100 == 0 {
 				n.Spec.Annotations.Labels["special"] = "true"
@@ -37,11 +41,8 @@ func TestFindMin(t *testing.T) {
 			for i := rand.Intn(25); i > 0; i-- {
 				tasks[strconv.Itoa(i)] = &api.Task{ID: strconv.Itoa(i)}
 			}
-			nh.heap = append(nh.heap, NodeInfo{Node: n, Tasks: tasks})
-			nh.index[n.ID] = i
+			nh.addOrUpdateNode(NodeInfo{Node: n, Tasks: tasks})
 		}
-
-		heap.Init(&nh)
 
 		isSpecial := func(n *NodeInfo) bool {
 			return n.Spec.Annotations.Labels["special"] == "true"
