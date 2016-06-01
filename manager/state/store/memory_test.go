@@ -70,21 +70,21 @@ var (
 	taskSet = []*api.Task{
 		{
 			ID: "id1",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name1",
 			},
 			NodeID: nodeSet[0].ID,
 		},
 		{
 			ID: "id2",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
 			ServiceID: serviceSet[0].ID,
 		},
 		{
 			ID: "id3",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
 		},
@@ -484,7 +484,7 @@ func TestStoreTask(t *testing.T) {
 	// Update.
 	update := &api.Task{
 		ID: "id3",
-		Annotations: api.Annotations{
+		ServiceAnnotations: api.Annotations{
 			Name: "name3",
 		},
 	}
@@ -828,7 +828,7 @@ func TestStoreSnapshot(t *testing.T) {
 	// Create task
 	createTask := &api.Task{
 		ID: "id4",
-		Annotations: api.Annotations{
+		ServiceAnnotations: api.Annotations{
 			Name: "name4",
 		},
 	}
@@ -849,7 +849,7 @@ func TestStoreSnapshot(t *testing.T) {
 	// Update task
 	updateTask := &api.Task{
 		ID: "id3",
-		Annotations: api.Annotations{
+		ServiceAnnotations: api.Annotations{
 			Name: "name3",
 		},
 	}

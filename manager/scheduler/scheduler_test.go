@@ -59,7 +59,7 @@ func TestScheduler(t *testing.T) {
 	initialTaskSet := []*api.Task{
 		{
 			ID: "id1",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name1",
 			},
 
@@ -70,7 +70,7 @@ func TestScheduler(t *testing.T) {
 		},
 		{
 			ID: "id2",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
 			Status: api.TaskStatus{
@@ -79,7 +79,7 @@ func TestScheduler(t *testing.T) {
 		},
 		{
 			ID: "id3",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
 			Status: api.TaskStatus{
@@ -145,7 +145,7 @@ func TestScheduler(t *testing.T) {
 		// Create a new task. It should get assigned to id1.
 		t4 := &api.Task{
 			ID: "id4",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name4",
 			},
 			Status: api.TaskStatus{
@@ -167,7 +167,7 @@ func TestScheduler(t *testing.T) {
 		// to node id1.
 		t4 := &api.Task{
 			ID: "id4",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name4",
 			},
 			Status: api.TaskStatus{
@@ -203,7 +203,7 @@ func TestScheduler(t *testing.T) {
 		// Create an unassigned task.
 		task := &api.Task{
 			ID: "removednode",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "removednode",
 			},
 			Status: api.TaskStatus{
@@ -238,7 +238,7 @@ func TestScheduler(t *testing.T) {
 		// Create an unassigned task.
 		t5 := &api.Task{
 			ID: "id5",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name5",
 			},
 			Status: api.TaskStatus{
@@ -273,7 +273,7 @@ func TestScheduler(t *testing.T) {
 		// Create an unassigned task.
 		t6 := &api.Task{
 			ID: "id6",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name6",
 			},
 			Status: api.TaskStatus{
@@ -308,7 +308,7 @@ func TestScheduler(t *testing.T) {
 		// now-ready node.
 		t7 := &api.Task{
 			ID: "id7",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name7",
 			},
 			Status: api.TaskStatus{
@@ -345,7 +345,7 @@ func TestScheduler(t *testing.T) {
 		// Create an unassigned task.
 		t8 := &api.Task{
 			ID: "id8",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name8",
 			},
 			Status: api.TaskStatus{
@@ -365,7 +365,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 	ctx := context.Background()
 	initialTask := &api.Task{
 		ID: "id1",
-		Annotations: api.Annotations{
+		ServiceAnnotations: api.Annotations{
 			Name: "name1",
 		},
 		Status: api.TaskStatus{
@@ -452,7 +452,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 				},
 			},
 		},
-		Annotations: api.Annotations{
+		ServiceAnnotations: api.Annotations{
 			Name: "name1",
 		},
 		Status: api.TaskStatus{
@@ -546,7 +546,7 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 				},
 			},
 		},
-		Annotations: api.Annotations{
+		ServiceAnnotations: api.Annotations{
 			Name: "big",
 		},
 		Status: api.TaskStatus{
@@ -644,7 +644,7 @@ func TestPreassignedTasks(t *testing.T) {
 	initialTaskSet := []*api.Task{
 		{
 			ID: "task1",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name1",
 			},
 
@@ -654,7 +654,7 @@ func TestPreassignedTasks(t *testing.T) {
 		},
 		{
 			ID: "task2",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
 			Status: api.TaskStatus{
@@ -664,7 +664,7 @@ func TestPreassignedTasks(t *testing.T) {
 		},
 		{
 			ID: "task3",
-			Annotations: api.Annotations{
+			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
 			Status: api.TaskStatus{
@@ -846,7 +846,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				},
 			},
 		},
-		Annotations: api.Annotations{
+		ServiceAnnotations: api.Annotations{
 			Name: "task1",
 		},
 		Status: api.TaskStatus{
@@ -899,7 +899,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				},
 			},
 		},
-		Annotations: api.Annotations{
+		ServiceAnnotations: api.Annotations{
 			Name: "task2",
 		},
 		Status: api.TaskStatus{
@@ -951,7 +951,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				},
 			},
 		},
-		Annotations: api.Annotations{
+		ServiceAnnotations: api.Annotations{
 			Name: "task2",
 		},
 		Status: api.TaskStatus{
@@ -1121,7 +1121,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 				id := "task" + strconv.Itoa(i)
 				err := store.CreateTask(tx, &api.Task{
 					ID: id,
-					Annotations: api.Annotations{
+					ServiceAnnotations: api.Annotations{
 						Name: id,
 					},
 					Status: api.TaskStatus{

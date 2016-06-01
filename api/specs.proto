@@ -136,35 +136,42 @@ message ContainerSpec {
 	// that don't change or verifiable digests.
 	string image = 1;
 
+	// Labels defines labels to be added to the container at creation time. If
+	// collisions with system labels occur, these labels will be overridden.
+	//
+	// This field *must* remain compatible with the Labels field of
+	// Annotations.
+	map<string, string> labels = 2;
+
 	// Command to run the the container. The first element is a path to the
 	// executable and the following elements are treated as arguments.
 	//
 	// If command is empty, execution will fall back to the image's entrypoint.
-	repeated string command = 2;
+	repeated string command = 3;
 
 	// Args specifies arguments provided to the image's entrypoint.
 	// Ignored if command is specified.
-	repeated string args = 3;
+	repeated string args = 4;
 
 	// Env specifies the environment variables for the container in NAME=VALUE
 	// format. These must be compliant with  [IEEE Std
 	// 1003.1-2001](http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html).
-	repeated string env = 4;
+	repeated string env = 5;
 
 	// Dir defines the working directory to set for the container process.
-	string dir = 5;
+	string dir = 6;
 
 	// User specifies the user that should be employed to run the container.
-	string user = 6;
+	string user = 7;
 
-	repeated Mount mounts = 7;
+	repeated Mount mounts = 8;
 
 	// Resource requirements for the container.
-	ResourceRequirements resources = 8;
+	ResourceRequirements resources = 9;
 
 	// StopGracePeriod the grace period for stopping the container before
 	// forcefully killing the container.
-	uint64 stop_grace_period = 9 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
+	uint64 stop_grace_period = 10 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
 }
 
 // EndpointSpec defines the properties that can be configured to

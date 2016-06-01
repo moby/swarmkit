@@ -23,6 +23,9 @@ const (
 	// Explictly use the kernel's default setting for CPU quota of 100ms.
 	// https://www.kernel.org/doc/Documentation/scheduler/sched-bwc.txt
 	cpuQuotaPeriod = 100 * time.Millisecond
+
+	// systemLabelPrefix represents the reserved namespace for system labels.
+	systemLabelPrefix = "com.docker.swarm"
 )
 
 // containerConfig converts task properties into docker container compatible
@@ -69,8 +72,13 @@ func (c *containerConfig) spec() *api.ContainerSpec {
 }
 
 func (c *containerConfig) name() string {
-	const prefix = "com.docker.cluster.task"
-	return strings.Join([]string{prefix, c.task.NodeID, c.task.ServiceID, c.task.ID}, ".")
+	if container := c.task.GetContainer(); container != nil && container.Annotations.Name != "" {
+		// if set, use the container Annotations.Name field, set in the orchestrator.
+		return container.Annotations.Name
+	}
+
+	// fallback to service.instance.id.
+	return strings.Join([]string{c.task.ServiceAnnotations.Name, fmt.Sprint(c.task.Instance), c.task.ID}, ".")
 }
 
 func (c *containerConfig) image() string {
@@ -91,6 +99,7 @@ func (c *containerConfig) ephemeralDirs() map[string]struct{} {
 
 func (c *containerConfig) config() *enginecontainer.Config {
 	config := &enginecontainer.Config{
+		Labels:       c.labels(),
 		User:         c.spec().User,
 		Env:          c.spec().Env,
 		WorkingDir:   c.spec().Dir,
@@ -112,6 +121,40 @@ func (c *containerConfig) config() *enginecontainer.Config {
 	}
 
 	return config
+}
+
+func (c *containerConfig) labels() map[string]string {
+	var (
+		system = map[string]string{
+			"task":         "", // mark as cluster task
+			"task.id":      c.task.ID,
+			"task.name":    fmt.Sprintf("%v.%v", c.task.ServiceAnnotations.Name, c.task.Instance),
+			"node.id":      c.task.NodeID,
+			"service.id":   c.task.ServiceID,
+			"service.name": c.task.ServiceAnnotations.Name,
+		}
+		labels = make(map[string]string)
+	)
+
+	// base labels are those defined in the spec.
+	for k, v := range c.spec().Labels {
+		labels[k] = v
+	}
+
+	if container := c.task.GetContainer(); container != nil {
+		// we then apply the overrides from container, which may be set via the
+		// orchestrator.
+		for k, v := range container.Annotations.Labels {
+			labels[k] = v
+		}
+	}
+
+	// finally, we apply the system labels, which override all labels.
+	for k, v := range system {
+		labels[strings.Join([]string{systemLabelPrefix, k}, ".")] = v
+	}
+
+	return labels
 }
 
 func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
@@ -277,7 +320,7 @@ func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
 				IPv6Address: ipv6,
 			},
 			ServiceConfig: &network.EndpointServiceConfig{
-				Name: c.task.Annotations.Name,
+				Name: c.task.ServiceAnnotations.Name,
 				ID:   c.task.ServiceID,
 				IP:   c.virtualIP(na.Network.ID),
 			},
@@ -334,5 +377,6 @@ func (c containerConfig) eventFilter() filters.Args {
 	filter := filters.NewArgs()
 	filter.Add("type", events.ContainerEventType)
 	filter.Add("name", c.name())
+	filter.Add("label", fmt.Sprintf("%v.task.id=%v", systemLabelPrefix, c.task.ID))
 	return filter
 }

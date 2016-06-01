@@ -74,7 +74,7 @@ func TestSetup(t *testing.T) {
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask1.NodeID, "id1")
 }
 
@@ -92,7 +92,7 @@ func TestAddNode(t *testing.T) {
 	addNode(t, store, node2)
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask2.NodeID, "id2")
 }
 
@@ -110,7 +110,7 @@ func TestDeleteNode(t *testing.T) {
 	deleteNode(t, store, node1)
 	// task should be set to dead
 	observedTask := watchShutdownTask(t, watch)
-	assert.Equal(t, observedTask.Annotations.Name, "name1")
+	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask.NodeID, "id1")
 }
 
@@ -133,7 +133,7 @@ func TestNodeAvailability(t *testing.T) {
 
 	// task should be set to dead
 	observedTask1 := watchShutdownTask(t, watch)
-	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask1.NodeID, "id1")
 
 	// set node1 to active
@@ -141,7 +141,7 @@ func TestNodeAvailability(t *testing.T) {
 	// task should be added back
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask2.NodeID, "id1")
 }
 
@@ -159,7 +159,7 @@ func TestAddService(t *testing.T) {
 	addService(t, store, service2)
 	observedTask := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Annotations.Name, "name2")
+	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name2")
 	assert.True(t, observedTask.NodeID == "id1")
 }
 
@@ -177,7 +177,7 @@ func TestDeleteService(t *testing.T) {
 	deleteService(t, store, service1)
 	// task should be deleted
 	observedTask := watchTaskDelete(t, watch)
-	assert.Equal(t, observedTask.Annotations.Name, "name1")
+	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask.NodeID, "id1")
 }
 
@@ -193,7 +193,7 @@ func TestRemoveTask(t *testing.T) {
 	// get the task
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask1.NodeID, "id1")
 
 	// delete the task
@@ -202,7 +202,7 @@ func TestRemoveTask(t *testing.T) {
 	// the task should be recreated
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask2.NodeID, "id1")
 }
 
