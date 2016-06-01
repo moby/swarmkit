@@ -3,40 +3,42 @@ syntax = "proto3";
 package docker.cluster.api;
 
 import "types.proto";
-import "objects.proto";
 import "auth.proto";
 import "gogoproto/gogo.proto";
 
 // CA defines the RPC methods for requesting certificates from a CA.
 
 service CA {
-	rpc IssueCertificate(IssueCertificateRequest) returns (IssueCertificateResponse) {
-		option (tls_authorization) = { insecure: true };
-	}
-	rpc CertificateStatus(CertificateStatusRequest) returns (CertificateStatusResponse) {
-		option (tls_authorization) = { insecure: true };
-	}
 	rpc GetRootCACertificate(GetRootCACertificateRequest) returns (GetRootCACertificateResponse) {
 		option (tls_authorization) = { insecure: true };
-	}
+	};
 }
 
-message CertificateStatusRequest {
-	string token = 1;
+service NodeCA {
+	rpc IssueNodeCertificate(IssueNodeCertificateRequest) returns (IssueNodeCertificateResponse) {
+		option (tls_authorization) = { insecure: true };
+	};
+	rpc NodeCertificateStatus(NodeCertificateStatusRequest) returns (NodeCertificateStatusResponse) {
+		option (tls_authorization) = { insecure: true };
+	};
 }
 
-message CertificateStatusResponse {
+message NodeCertificateStatusRequest {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+}
+
+message NodeCertificateStatusResponse {
 	IssuanceStatus status = 1;
-	RegisteredCertificate registered_certificate = 2;
+	Certificate certificate = 2;
 }
 
-message IssueCertificateRequest {
+message IssueNodeCertificateRequest {
 	string role = 1;
 	bytes csr = 2 [(gogoproto.customname) = "CSR"];
 }
 
-message IssueCertificateResponse {
-	string token = 1;
+message IssueNodeCertificateResponse {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
 }
 
 message GetRootCACertificateRequest {}

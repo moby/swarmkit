@@ -386,10 +386,12 @@ func (m *Manager) Run(ctx context.Context) error {
 	authenticatedControlAPI := api.NewAuthenticatedWrapperControlServer(baseControlAPI, authorize)
 	authenticatedDispatcherAPI := api.NewAuthenticatedWrapperDispatcherServer(m.dispatcher, authorize)
 	authenticatedCAAPI := api.NewAuthenticatedWrapperCAServer(m.caserver, authorize)
+	authenticatedNodeCAAPI := api.NewAuthenticatedWrapperNodeCAServer(m.caserver, authorize)
 	authenticatedRaftAPI := api.NewAuthenticatedWrapperRaftServer(m.raftNode, authorize)
 
 	proxyDispatcherAPI := api.NewRaftProxyDispatcherServer(authenticatedDispatcherAPI, cs, m.raftNode, ca.WithMetadataForwardTLSInfo)
 	proxyCAAPI := api.NewRaftProxyCAServer(authenticatedCAAPI, cs, m.raftNode, ca.WithMetadataForwardTLSInfo)
+	proxyNodeCAAPI := api.NewRaftProxyNodeCAServer(authenticatedNodeCAAPI, cs, m.raftNode, ca.WithMetadataForwardTLSInfo)
 
 	// localProxyControlAPI is a special kind of proxy. It is only wired up
 	// to receive requests from a trusted local socket, and these requests
@@ -403,6 +405,7 @@ func (m *Manager) Run(ctx context.Context) error {
 	// Everything registered on m.server should be an authenticated
 	// wrapper, or a proxy wrapping an authenticated wrapper!
 	api.RegisterCAServer(m.server, proxyCAAPI)
+	api.RegisterNodeCAServer(m.server, proxyNodeCAAPI)
 	api.RegisterRaftServer(m.server, authenticatedRaftAPI)
 	api.RegisterControlServer(m.localserver, localProxyControlAPI)
 	api.RegisterControlServer(m.server, authenticatedControlAPI)
