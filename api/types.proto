@@ -383,8 +383,7 @@ enum IssuanceState {
 	ISSUANCE_PENDING = 2 [(gogoproto.enumvalue_customname)="IssuanceStatePending"]; // Certificate is pending acceptance
 	ISSUANCE_ISSUED = 3 [(gogoproto.enumvalue_customname)="IssuanceStateIssued"]; // successful completion certificate issuance
 	ISSUANCE_FAILED = 4 [(gogoproto.enumvalue_customname)="IssuanceStateFailed"]; // Certificate issuance failed
-	ISSUANCE_REJECTED = 5 [(gogoproto.enumvalue_customname)="IssuanceStateRejected"]; // Certificate issuance got rejected
-	ISSUANCE_BLOCKED = 6 [(gogoproto.enumvalue_customname)="IssuanceStateBlocked"]; // Certificate issuance got blocked
+	ISSUANCE_REJECTED = 5 [(gogoproto.enumvalue_customname)="IssuanceStateRejected"]; // Certificate issuance got rejected, or certificate is blocked
 }
 
 message IssuanceStatus {
@@ -474,4 +473,17 @@ message RootCA {
 
 	// CACert is the root CA certificate.
 	bytes ca_cert = 2 [(gogoproto.customname) = "CACert"];
+}
+
+message Certificate {
+	string role = 1;
+
+	bytes csr = 2 [(gogoproto.customname) = "CSR"];
+
+	IssuanceStatus status = 3 [(gogoproto.nullable) = false];
+
+	bytes certificate = 4;
+
+	// CN represents the node ID.
+	string cn = 5 [(gogoproto.customname) = "CN"];
 }

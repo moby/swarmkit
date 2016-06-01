@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 
-	"github.com/docker/swarm-v2/cmd/swarmctl/cert"
 	"github.com/docker/swarm-v2/cmd/swarmctl/cluster"
 	"github.com/docker/swarm-v2/cmd/swarmctl/manager"
 	"github.com/docker/swarm-v2/cmd/swarmctl/network"
@@ -61,7 +60,6 @@ func init() {
 		version.Cmd,
 		network.Cmd,
 		managers.Cmd,
-		cert.Cmd,
 		cluster.Cmd,
 	)
 }

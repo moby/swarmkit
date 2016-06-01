@@ -97,7 +97,6 @@ message StoreAction {
 		Task task = 4;
 		Network network = 5;
 		Volume volume = 6;
-		RegisteredCertificate registered_certificate = 7;
-		Cluster cluster = 8;
+		Cluster cluster = 7;
 	}
 }

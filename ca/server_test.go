@@ -16,12 +16,12 @@ func TestGetRootCACertificate(t *testing.T) {
 	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
-	resp, err := tc.Clients[0].GetRootCACertificate(context.Background(), &api.GetRootCACertificateRequest{})
+	resp, err := tc.CAClients[0].GetRootCACertificate(context.Background(), &api.GetRootCACertificateRequest{})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp.Certificate)
 }
 
-func TestIssueCertificate(t *testing.T) {
+func TestIssueNodeCertificate(t *testing.T) {
 	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
@@ -29,18 +29,18 @@ func TestIssueCertificate(t *testing.T) {
 	assert.NoError(t, err)
 
 	role := ca.AgentRole
-	issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
-	issueResponse, err := tc.Clients[0].IssueCertificate(context.Background(), issueRequest)
-	assert.NotNil(t, issueResponse.Token)
+	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
+	assert.NotNil(t, issueResponse.NodeID)
 
-	statusRequest := &api.CertificateStatusRequest{Token: issueResponse.Token}
-	statusResponse, err := tc.Clients[0].CertificateStatus(context.Background(), statusRequest)
+	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
+	statusResponse, err := tc.NodeCAClients[0].NodeCertificateStatus(context.Background(), statusRequest)
 	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
-	assert.NotNil(t, statusResponse.RegisteredCertificate.Certificate)
-	assert.Equal(t, role, statusResponse.RegisteredCertificate.Role)
+	assert.NotNil(t, statusResponse.Certificate.Certificate)
+	assert.Equal(t, role, statusResponse.Certificate.Role)
 }
 
-func TestIssueCertificateAgentRenewal(t *testing.T) {
+func TestIssueNodeCertificateAgentRenewal(t *testing.T) {
 	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
@@ -48,18 +48,19 @@ func TestIssueCertificateAgentRenewal(t *testing.T) {
 	assert.NoError(t, err)
 
 	role := ca.AgentRole
-	issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
-	issueResponse, err := tc.Clients[1].IssueCertificate(context.Background(), issueRequest)
-	assert.NotNil(t, issueResponse.Token)
+	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	issueResponse, err := tc.NodeCAClients[1].IssueNodeCertificate(context.Background(), issueRequest)
+	assert.NoError(t, err)
+	assert.NotNil(t, issueResponse.NodeID)
 
-	statusRequest := &api.CertificateStatusRequest{Token: issueResponse.Token}
-	statusResponse, err := tc.Clients[1].CertificateStatus(context.Background(), statusRequest)
+	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
+	statusResponse, err := tc.NodeCAClients[1].NodeCertificateStatus(context.Background(), statusRequest)
 	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
-	assert.NotNil(t, statusResponse.RegisteredCertificate.Certificate)
-	assert.Equal(t, role, statusResponse.RegisteredCertificate.Role)
+	assert.NotNil(t, statusResponse.Certificate.Certificate)
+	assert.Equal(t, role, statusResponse.Certificate.Role)
 }
 
-func TestIssueCertificateManagerRenewal(t *testing.T) {
+func TestIssueNodeCertificateManagerRenewal(t *testing.T) {
 	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
@@ -68,130 +69,96 @@ func TestIssueCertificateManagerRenewal(t *testing.T) {
 	assert.NotNil(t, csr)
 
 	role := ca.ManagerRole
-	issueRequest := &api.IssueCertificateRequest{CSR: csr, Role: role}
-	issueResponse, err := tc.Clients[2].IssueCertificate(context.Background(), issueRequest)
-	assert.NotNil(t, issueResponse.Token)
+	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	issueResponse, err := tc.NodeCAClients[2].IssueNodeCertificate(context.Background(), issueRequest)
+	assert.NotNil(t, issueResponse.NodeID)
 
-	statusRequest := &api.CertificateStatusRequest{Token: issueResponse.Token}
-	statusResponse, err := tc.Clients[2].CertificateStatus(context.Background(), statusRequest)
+	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
+	statusResponse, err := tc.NodeCAClients[2].NodeCertificateStatus(context.Background(), statusRequest)
 	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
-	assert.NotNil(t, statusResponse.RegisteredCertificate.Certificate)
-	assert.Equal(t, role, statusResponse.RegisteredCertificate.Role)
+	assert.NotNil(t, statusResponse.Certificate.Certificate)
+	assert.Equal(t, role, statusResponse.Certificate.Role)
 }
 
-func TestCertificateDesiredStateIssued(t *testing.T) {
+func TestNodeCertificateAccept(t *testing.T) {
 	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	testRegisteredCert := &api.RegisteredCertificate{
-		ID:  "token",
-		CN:  "cn",
-		CSR: csr,
-		Spec: api.RegisteredCertificateSpec{
-			DesiredState: api.IssuanceStateIssued,
+	testNode := &api.Node{
+		ID: "nodeID",
+		Spec: api.NodeSpec{
+			Acceptance: api.NodeAcceptanceAccept,
 		},
-		Status: api.IssuanceStatus{State: api.IssuanceStatePending},
+		Certificate: api.Certificate{
+			CN:     "nodeID",
+			CSR:    csr,
+			Status: api.IssuanceStatus{State: api.IssuanceStatePending},
+		},
 	}
 
 	err = tc.MemoryStore.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateRegisteredCertificate(tx, testRegisteredCert))
+		assert.NoError(t, store.CreateNode(tx, testNode))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	statusRequest := &api.CertificateStatusRequest{Token: "token"}
-	resp, err := tc.Clients[1].CertificateStatus(context.Background(), statusRequest)
+	statusRequest := &api.NodeCertificateStatusRequest{NodeID: "nodeID"}
+	resp, err := tc.NodeCAClients[1].NodeCertificateStatus(context.Background(), statusRequest)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, resp.RegisteredCertificate)
+	assert.NotEmpty(t, resp.Certificate)
 	assert.NotEmpty(t, resp.Status)
-	assert.NotNil(t, resp.RegisteredCertificate.Certificate)
+	assert.NotNil(t, resp.Certificate.Certificate)
 	assert.Equal(t, api.IssuanceStateIssued, resp.Status.State)
 
 	tc.MemoryStore.View(func(readTx store.ReadTx) {
-		storeCerts, err := store.FindRegisteredCertificates(readTx, store.All)
+		storeNodes, err := store.FindNodes(readTx, store.All)
 		assert.NoError(t, err)
-		assert.NotEmpty(t, storeCerts)
-		assert.Equal(t, api.IssuanceStateIssued, storeCerts[0].Status.State)
+		assert.NotEmpty(t, storeNodes)
+		assert.Equal(t, api.IssuanceStateIssued, storeNodes[0].Certificate.Status.State)
 	})
 }
 
-func TestCertificateDesiredStateBlocked(t *testing.T) {
+func TestNodeCertificateReject(t *testing.T) {
 	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	testRegisteredCert := &api.RegisteredCertificate{
-		ID:  "token",
-		CN:  "cn",
-		CSR: csr,
-		Spec: api.RegisteredCertificateSpec{
-			DesiredState: api.IssuanceStateBlocked,
+	testNode := &api.Node{
+		ID: "nodeID",
+		Spec: api.NodeSpec{
+			Acceptance: api.NodeAcceptanceReject,
 		},
-		Status: api.IssuanceStatus{State: api.IssuanceStatePending},
+		Certificate: api.Certificate{
+			CN:     "nodeID",
+			CSR:    csr,
+			Status: api.IssuanceStatus{State: api.IssuanceStatePending},
+		},
 	}
 
 	err = tc.MemoryStore.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateRegisteredCertificate(tx, testRegisteredCert))
+		assert.NoError(t, store.CreateNode(tx, testNode))
 		return nil
 	})
 	assert.NoError(t, err)
 
-	statusRequest := &api.CertificateStatusRequest{Token: "token"}
-	resp, err := tc.Clients[1].CertificateStatus(context.Background(), statusRequest)
+	statusRequest := &api.NodeCertificateStatusRequest{NodeID: "nodeID"}
+	resp, err := tc.NodeCAClients[1].NodeCertificateStatus(context.Background(), statusRequest)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, resp.RegisteredCertificate)
+	assert.NotEmpty(t, resp.Certificate)
 	assert.NotEmpty(t, resp.Status)
-	assert.Equal(t, api.IssuanceStateBlocked, resp.Status.State)
-	assert.Nil(t, resp.RegisteredCertificate.Certificate)
-
-	tc.MemoryStore.View(func(readTx store.ReadTx) {
-		storeCerts, err := store.FindRegisteredCertificates(readTx, store.All)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, storeCerts)
-		assert.Equal(t, api.IssuanceStateBlocked, storeCerts[0].Status.State)
-	})
-}
-
-func TestCertificateDesiredStateRejected(t *testing.T) {
-	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
-	defer tc.Stop()
-
-	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
-	assert.NoError(t, err)
-
-	testRegisteredCert := &api.RegisteredCertificate{
-		ID:  "token",
-		CN:  "cn",
-		CSR: csr,
-		Spec: api.RegisteredCertificateSpec{
-			DesiredState: api.IssuanceStateRejected,
-		},
-		Status: api.IssuanceStatus{State: api.IssuanceStatePending},
-	}
-
-	err = tc.MemoryStore.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateRegisteredCertificate(tx, testRegisteredCert))
-		return nil
-	})
-	assert.NoError(t, err)
-
-	statusRequest := &api.CertificateStatusRequest{Token: "token"}
-	resp, err := tc.Clients[1].CertificateStatus(context.Background(), statusRequest)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, resp.RegisteredCertificate)
-	assert.NotEmpty(t, resp.Status)
+	assert.Nil(t, resp.Certificate.Certificate)
 	assert.Equal(t, api.IssuanceStateRejected, resp.Status.State)
-	assert.Nil(t, resp.RegisteredCertificate.Certificate)
 
 	tc.MemoryStore.View(func(readTx store.ReadTx) {
-		storeCerts, err := store.FindRegisteredCertificates(readTx, store.All)
+		storeNodes, err := store.FindNodes(readTx, store.All)
 		assert.NoError(t, err)
-		assert.NotEmpty(t, storeCerts)
-		assert.Equal(t, api.IssuanceStateRejected, storeCerts[0].Status.State)
+		assert.NotEmpty(t, storeNodes)
+		assert.Equal(t, api.IssuanceStateRejected, storeNodes[0].Certificate.Status.State)
 	})
+
 }
