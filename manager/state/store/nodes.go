@@ -154,7 +154,7 @@ func GetNode(tx ReadTx, id string) *api.Node {
 func FindNodes(tx ReadTx, by By) ([]*api.Node, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byQuery:
+		case byName, byIDPrefix:
 			return nil
 		default:
 			return ErrInvalidFindBy

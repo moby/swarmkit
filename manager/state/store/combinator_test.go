@@ -29,19 +29,19 @@ func TestOrCombinator(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 3)
 
-		foundNodes, err = FindNodes(readTx, Or(ByName("name1"), ByQuery("id1")))
+		foundNodes, err = FindNodes(readTx, Or(ByName("name1"), ByIDPrefix("id1")))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 
-		foundNodes, err = FindNodes(readTx, Or(ByName("name1"), ByQuery("id5295")))
+		foundNodes, err = FindNodes(readTx, Or(ByName("name1"), ByIDPrefix("id5295")))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 
-		foundNodes, err = FindNodes(readTx, Or(ByQuery("id1"), ByQuery("id2")))
+		foundNodes, err = FindNodes(readTx, Or(ByIDPrefix("id1"), ByIDPrefix("id2")))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 2)
 
-		foundNodes, err = FindNodes(readTx, Or(ByQuery("id1"), ByQuery("id2"), ByQuery("id3")))
+		foundNodes, err = FindNodes(readTx, Or(ByIDPrefix("id1"), ByIDPrefix("id2"), ByIDPrefix("id3")))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 3)
 	})

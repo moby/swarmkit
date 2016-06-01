@@ -143,6 +143,8 @@ message ListTasksRequest {
 	message Filters {
 		repeated string names = 1;
 		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
+		repeated string service_ids = 3 [(gogoproto.customname) = "ServiceIDs"];
+		repeated string node_ids = 4 [(gogoproto.customname) = "NodeIDs"];
 	}
 
 	Filters filters = 1;

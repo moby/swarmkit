@@ -170,7 +170,7 @@ func GetTask(tx ReadTx, id string) *api.Task {
 func FindTasks(tx ReadTx, by By) ([]*api.Task, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byNode, byService, byInstance:
+		case byName, byIDPrefix, byNode, byService, byInstance:
 			return nil
 		default:
 			return ErrInvalidFindBy

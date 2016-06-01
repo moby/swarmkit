@@ -44,9 +44,9 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 	s.store.View(func(tx store.ReadTx) {
 		switch {
 		case request.Filters != nil && len(request.Filters.Names) > 0:
-			nodes, err = store.FindNodes(tx, store.ByName(request.Filters.Names...))
+			nodes, err = store.FindNodes(tx, buildFilters(store.ByName, request.Filters.Names))
 		case request.Filters != nil && len(request.Filters.IDPrefixes) > 0:
-			nodes, err = store.FindNodes(tx, store.ByName(request.Filters.IDPrefixes...))
+			nodes, err = store.FindNodes(tx, buildFilters(store.ByIDPrefix, request.Filters.IDPrefixes))
 		default:
 			nodes, err = store.FindNodes(tx, store.All)
 		}

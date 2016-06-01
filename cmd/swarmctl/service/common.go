@@ -36,11 +36,13 @@ func getService(ctx context.Context, c api.ControlClient, input string) (*api.Se
 	rg, err := c.GetService(ctx, &api.GetServiceRequest{ServiceID: input})
 	if err != nil {
 		// If any error (including NotFound), ListServices to match via ID prefix and full name.
-		rl, err := c.ListServices(ctx, &api.ListServicesRequest{
-			Filters: &api.ListServicesRequest_Filters{
-				Names: []string{input},
+		rl, err := c.ListServices(ctx,
+			&api.ListServicesRequest{
+				Filters: &api.ListServicesRequest_Filters{
+					Names: []string{input},
+				},
 			},
-		})
+		)
 		if err != nil {
 			return nil, err
 		}
