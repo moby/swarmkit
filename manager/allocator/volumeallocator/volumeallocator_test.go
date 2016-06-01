@@ -78,19 +78,19 @@ func TestClusterVolumesCache(t *testing.T) {
 func TestAllocatedTasksCache(t *testing.T) {
 	t1 := &api.Task{
 		ID: "Task1",
-		Annotations: api.Annotations{
+		ServiceAnnotations: api.Annotations{
 			Name: "annotation",
 		},
 	}
 	t2 := &api.Task{
 		ID: "Task2",
-		Annotations: api.Annotations{
+		ServiceAnnotations: api.Annotations{
 			Name: "annotation",
 		},
 	}
 	t3 := &api.Task{
 		ID: "Task3",
-		Annotations: api.Annotations{
+		ServiceAnnotations: api.Annotations{
 			Name: "annotation",
 		},
 	}

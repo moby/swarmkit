@@ -103,11 +103,15 @@ func newTask(service *api.Service, instance uint64) *api.Task {
 	containerSpec := api.ContainerSpec{}
 	if service.Spec.GetContainer() != nil {
 		containerSpec = *service.Spec.GetContainer().Copy()
+
+		// NOTE(stevvooe): For now, we don't override the container naming and
+		// labeling scheme in the agent. If we decide to do this in the future,
+		// they should be overridden here.
 	}
 
 	return &api.Task{
-		ID:          identity.NewID(),
-		Annotations: service.Spec.Annotations, // TODO(stevvooe): Copy metadata with nice name.
+		ID:                 identity.NewID(),
+		ServiceAnnotations: service.Spec.Annotations,
 		Runtime: &api.Task_Container{
 			Container: &api.Container{
 				Spec: containerSpec,

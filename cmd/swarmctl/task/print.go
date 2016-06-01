@@ -42,16 +42,16 @@ func Print(tasks []*api.Task, all bool, res *common.Resolver) {
 	w := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
 	defer w.Flush()
 
-	common.PrintHeader(w, "Task ID", "Instance", "Image", "Desired State", "Last State", "Node")
+	common.PrintHeader(w, "Task ID", "Service", "Instance", "Image", "Desired State", "Last State", "Node")
 	sort.Stable(tasksByInstance(tasks))
 	for _, t := range tasks {
 		if !all && t.DesiredState > api.TaskStateRunning {
 			continue
 		}
 		c := t.GetContainer().Spec
-		fmt.Fprintf(w, "%s\t%s.%d\t%s\t%s\t%s %s\t%s\n",
+		fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s %s\t%s\n",
 			t.ID,
-			t.Annotations.Name,
+			t.ServiceAnnotations.Name,
 			t.Instance,
 			c.Image,
 			t.DesiredState.String(),

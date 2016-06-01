@@ -70,19 +70,19 @@ func TestTaskHistory(t *testing.T) {
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.Annotations.Name, "name1")
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 
 	observedTask2 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.Annotations.Name, "name1")
+	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
 	// Fail both tasks. They should both get restarted.
 	updatedTask1 := observedTask1.Copy()
 	updatedTask1.Status.State = api.TaskStateFailed
-	updatedTask1.Annotations = api.Annotations{Name: "original"}
+	updatedTask1.ServiceAnnotations = api.Annotations{Name: "original"}
 	updatedTask2 := observedTask2.Copy()
 	updatedTask2.Status.State = api.TaskStateFailed
-	updatedTask2.Annotations = api.Annotations{Name: "original"}
+	updatedTask2.ServiceAnnotations = api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
@@ -97,12 +97,12 @@ func TestTaskHistory(t *testing.T) {
 	expectTaskUpdate(t, watch)
 	observedTask3 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask3.Annotations.Name, "name1")
+	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
 
 	expectTaskUpdate(t, watch)
 	observedTask4 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask4.Annotations.Name, "name1")
+	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name1")
 
 	// Fail these replacement tasks. Since TaskHistory is set to 2, this
 	// should cause the oldest tasks for each instance to get deleted.
@@ -120,9 +120,9 @@ func TestTaskHistory(t *testing.T) {
 	deletedTask2 := watchTaskDelete(t, watch)
 
 	assert.Equal(t, api.TaskStateFailed, deletedTask1.Status.State)
-	assert.Equal(t, "original", deletedTask1.Annotations.Name)
+	assert.Equal(t, "original", deletedTask1.ServiceAnnotations.Name)
 	assert.Equal(t, api.TaskStateFailed, deletedTask2.Status.State)
-	assert.Equal(t, "original", deletedTask2.Annotations.Name)
+	assert.Equal(t, "original", deletedTask2.ServiceAnnotations.Name)
 
 	var foundTasks []*api.Task
 	s.View(func(tx store.ReadTx) {
