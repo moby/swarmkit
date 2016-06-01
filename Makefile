@@ -46,7 +46,8 @@ generate: bin/protoc-gen-gogoswarm ## generate protobuf
 checkprotos: generate ## check if protobufs needs to be generated again
 	@echo "🐳 $@"
 	@test -z "$$(git status --short | grep ".pb.go" | tee /dev/stderr)" || \
-		(echo "👹 please run 'make generate' when making changes to proto files" && false)
+		((git diff | cat) && \
+		(echo "👹 please run 'make generate' when making changes to proto files" && false))
 
 # Depends on binaries because vet will silently fail if it can't load compiled
 # imports
