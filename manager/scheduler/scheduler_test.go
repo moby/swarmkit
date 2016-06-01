@@ -24,7 +24,6 @@ func TestScheduler(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				Acceptance: api.NodeAcceptanceAccept,
 			},
 			Status: api.NodeStatus{
 				State: api.NodeStatus_READY,
@@ -36,7 +35,6 @@ func TestScheduler(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
-				Acceptance: api.NodeAcceptanceAccept,
 			},
 			Status: api.NodeStatus{
 				State: api.NodeStatus_READY,
@@ -48,7 +46,6 @@ func TestScheduler(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
-				Acceptance: api.NodeAcceptanceAccept,
 			},
 			Status: api.NodeStatus{
 				State: api.NodeStatus_READY,
@@ -191,7 +188,6 @@ func TestScheduler(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "removednode",
 				},
-				Acceptance: api.NodeAcceptanceAccept,
 			},
 			Status: api.NodeStatus{
 				State: api.NodeStatus_DOWN,
@@ -227,7 +223,6 @@ func TestScheduler(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name4",
 				},
-				Acceptance: api.NodeAcceptanceAccept,
 			},
 			Status: api.NodeStatus{
 				State: api.NodeStatus_READY,
@@ -262,7 +257,6 @@ func TestScheduler(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name5",
 				},
-				Acceptance: api.NodeAcceptanceAccept,
 			},
 			Status: api.NodeStatus{
 				State: api.NodeStatus_DOWN,
@@ -296,7 +290,6 @@ func TestScheduler(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name5",
 				},
-				Acceptance: api.NodeAcceptanceAccept,
 			},
 			Status: api.NodeStatus{
 				State: api.NodeStatus_READY,
@@ -332,7 +325,6 @@ func TestScheduler(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name6",
 				},
-				Acceptance: api.NodeAcceptanceAccept,
 			},
 			Status: api.NodeStatus{
 				State: api.NodeStatus_READY,
@@ -402,7 +394,6 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "newnode",
 				},
-				Acceptance: api.NodeAcceptanceAccept,
 			},
 			Status: api.NodeStatus{
 				State: api.NodeStatus_READY,
@@ -426,7 +417,6 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "underprovisioned",
 			},
-			Acceptance: api.NodeAcceptanceAccept,
 		},
 		Status: api.NodeStatus{
 			State: api.NodeStatus_READY,
@@ -490,7 +480,6 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "bignode",
 				},
-				Acceptance: api.NodeAcceptanceAccept,
 			},
 			Description: &api.NodeDescription{
 				Resources: &api.Resources{
@@ -520,7 +509,6 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "node",
 			},
-			Acceptance: api.NodeAcceptanceAccept,
 		},
 		Status: api.NodeStatus{
 			State: api.NodeStatus_READY,
@@ -621,7 +609,6 @@ func TestPreassignedTasks(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				Acceptance: api.NodeAcceptanceAccept,
 			},
 			Status: api.NodeStatus{
 				State: api.NodeStatus_READY,
@@ -633,7 +620,6 @@ func TestPreassignedTasks(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
-				Acceptance: api.NodeAcceptanceAccept,
 			},
 			Status: api.NodeStatus{
 				State: api.NodeStatus_READY,
@@ -744,7 +730,6 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "node1",
 			},
-			Acceptance: api.NodeAcceptanceAccept,
 		},
 		Description: &api.NodeDescription{
 			Engine: &api.EngineDescription{
@@ -768,7 +753,6 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "node2",
 			},
-			Acceptance: api.NodeAcceptanceAccept,
 		},
 		Description: &api.NodeDescription{
 			Engine: &api.EngineDescription{
@@ -796,7 +780,6 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "node3",
 			},
-			Acceptance: api.NodeAcceptanceAccept,
 		},
 		Description: &api.NodeDescription{
 			Engine: &api.EngineDescription{
@@ -1107,7 +1090,6 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 						Annotations: api.Annotations{
 							Name: "name" + strconv.Itoa(i),
 						},
-						Acceptance: api.NodeAcceptanceAccept,
 					},
 					Status: api.NodeStatus{
 						State: api.NodeStatus_READY,
