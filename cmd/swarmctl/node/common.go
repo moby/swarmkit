@@ -88,7 +88,13 @@ func getNode(ctx context.Context, c api.ControlClient, input string) (*api.Node,
 	rg, err := c.GetNode(ctx, &api.GetNodeRequest{NodeID: input})
 	if err != nil {
 		// If any error (including NotFound), ListServices to match via ID prefix and full name.
-		rl, err := c.ListNodes(ctx, &api.ListNodesRequest{Options: &api.ListOptions{Query: input}})
+		rl, err := c.ListNodes(ctx,
+			&api.ListNodesRequest{
+				Filters: &api.ListNodesRequest_Filters{
+					Names: []string{input},
+				},
+			},
+		)
 		if err != nil {
 			return nil, err
 		}

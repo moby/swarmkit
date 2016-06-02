@@ -94,7 +94,11 @@ func TestUpdateCluster(t *testing.T) {
 	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{ClusterID: cluster.ID, Spec: &cluster.Spec, ClusterVersion: &cluster.Meta.Version})
 	assert.NoError(t, err)
 
-	r, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{Options: &api.ListOptions{Query: "name"}})
+	r, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{
+		Filters: &api.ListClustersRequest_Filters{
+			Names: []string{"name"},
+		},
+	})
 	assert.NoError(t, err)
 	assert.Len(t, r.Clusters, 1)
 	assert.Equal(t, cluster.Spec.Annotations.Name, r.Clusters[0].Spec.Annotations.Name)
@@ -108,7 +112,11 @@ func TestUpdateCluster(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{Options: &api.ListOptions{Query: "name"}})
+	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{
+		Filters: &api.ListClustersRequest_Filters{
+			Names: []string{"name"},
+		},
+	})
 	assert.NoError(t, err)
 	assert.Len(t, r.Clusters, 1)
 	assert.Equal(t, cluster.Spec.Annotations.Name, r.Clusters[0].Spec.Annotations.Name)

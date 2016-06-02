@@ -165,7 +165,7 @@ func GetService(tx ReadTx, id string) *api.Service {
 func FindServices(tx ReadTx, by By) ([]*api.Service, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byQuery:
+		case byName, byIDPrefix:
 			return nil
 		default:
 			return ErrInvalidFindBy
