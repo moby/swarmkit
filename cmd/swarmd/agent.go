@@ -66,7 +66,8 @@ already present, the agent will recover and startup.`,
 				return err
 			}
 
-			updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker, 30*time.Second)
+			renew := make(chan struct{}, 1)
+			updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker, 30*time.Second, renew)
 			go func() {
 				for {
 					select {

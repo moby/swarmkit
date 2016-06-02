@@ -98,7 +98,8 @@ var managerCmd = &cobra.Command{
 			return err
 		}
 
-		updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, p, 30*time.Second)
+		renew := make(chan struct{}, 1)
+		updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, p, 30*time.Second, renew)
 		go func() {
 			for {
 				select {
