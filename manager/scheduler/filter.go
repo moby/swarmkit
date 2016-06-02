@@ -3,27 +3,31 @@ package scheduler
 import "github.com/docker/swarm-v2/api"
 
 // Filter checks whether the given task can run on the given node.
+// A filter may only operate
 type Filter interface {
-	// Enabled returns true when the filter is enabled for a given task.
-	// For instance, a constraints filter would return `false` if the task doesn't contain any constraints.
-	Enabled(*api.Task) bool
+	// SetTask returns true when the filter is enabled for a given task
+	// and assigns the task to the filter. It returns false if the filter
+	// isn't applicable to this task.  For instance, a constraints filter
+	// would return `false` if the task doesn't contain any constraints.
+	SetTask(*api.Task) bool
 
-	// Check returns true if the task can be scheduled into the given node.
-	// This function should not be called if the the filter is not Enabled.
-	Check(*api.Task, *NodeInfo) bool
+	// Check returns true if the task assigned by SetTask can be scheduled
+	// into the given node. This function should not be called if SetTask
+	// returned false.
+	Check(*NodeInfo) bool
 }
 
 // ReadyFilter checks that the node is ready to schedule tasks.
 type ReadyFilter struct {
 }
 
-// Enabled returns true when the filter is enabled for a given task.
-func (f *ReadyFilter) Enabled(t *api.Task) bool {
+// SetTask returns true when the filter is enabled for a given task.
+func (f *ReadyFilter) SetTask(_ *api.Task) bool {
 	return true
 }
 
 // Check returns true if the task can be scheduled into the given node.
-func (f *ReadyFilter) Check(t *api.Task, n *NodeInfo) bool {
+func (f *ReadyFilter) Check(n *NodeInfo) bool {
 	return n.Status.State == api.NodeStatus_READY &&
 		n.Spec.Availability == api.NodeAvailabilityActive
 }
@@ -31,40 +35,34 @@ func (f *ReadyFilter) Check(t *api.Task, n *NodeInfo) bool {
 // ResourceFilter checks that the node has enough resources available to run
 // the task.
 type ResourceFilter struct {
+	reservations *api.Resources
 }
 
-// Enabled returns true when the filter is enabled for a given task.
-func (f *ResourceFilter) Enabled(t *api.Task) bool {
+// SetTask returns true when the filter is enabled for a given task.
+func (f *ResourceFilter) SetTask(t *api.Task) bool {
 	if t.GetContainer() == nil {
 		return false
 	}
 
-	c := t.GetContainer().Spec
-
-	r := c.Resources
+	containerSpec := &t.GetContainer().Spec
+	r := containerSpec.Resources
 	if r == nil || r.Reservations == nil {
 		return false
 	}
 	if r.Reservations.NanoCPUs == 0 && r.Reservations.MemoryBytes == 0 {
 		return false
 	}
+	f.reservations = r.Reservations
 	return true
 }
 
 // Check returns true if the task can be scheduled into the given node.
-func (f *ResourceFilter) Check(t *api.Task, n *NodeInfo) bool {
-	container := t.GetContainer().Spec
-	if container.Resources == nil || container.Resources.Reservations == nil {
-		return true
-	}
-
-	res := container.Resources.Reservations
-
-	if res.NanoCPUs > n.AvailableResources.NanoCPUs {
+func (f *ResourceFilter) Check(n *NodeInfo) bool {
+	if f.reservations.NanoCPUs > n.AvailableResources.NanoCPUs {
 		return false
 	}
 
-	if res.MemoryBytes > n.AvailableResources.MemoryBytes {
+	if f.reservations.MemoryBytes > n.AvailableResources.MemoryBytes {
 		return false
 	}
 
@@ -73,12 +71,14 @@ func (f *ResourceFilter) Check(t *api.Task, n *NodeInfo) bool {
 
 // PluginFilter checks that the node has a specific volume plugin installed
 type PluginFilter struct {
+	t *api.Task
 }
 
-// Enabled returns true when the filter is enabled for a given task.
-func (f *PluginFilter) Enabled(t *api.Task) bool {
+// SetTask returns true when the filter is enabled for a given task.
+func (f *PluginFilter) SetTask(t *api.Task) bool {
 	c := t.GetContainer()
 	if (c != nil && len(c.Volumes) > 0) || len(t.Networks) > 0 {
+		f.t = t
 		return true
 	}
 
@@ -87,19 +87,22 @@ func (f *PluginFilter) Enabled(t *api.Task) bool {
 
 // Check returns true if the task can be scheduled into the given node.
 // TODO(amitshukla): investigate storing Plugins as a map so it can be easily probed
-func (f *PluginFilter) Check(t *api.Task, n *NodeInfo) bool {
+func (f *PluginFilter) Check(n *NodeInfo) bool {
 	// Get list of plugins on the node
 	nodePlugins := n.Description.Engine.Plugins
 
 	// Check if all volume plugins required by task are installed on node
-	for _, tv := range t.GetContainer().Volumes {
-		if !f.pluginExistsOnNode("Volume", tv.Spec.DriverConfiguration.Name, nodePlugins) {
-			return false
+	container := f.t.GetContainer()
+	if container != nil {
+		for _, tv := range container.Volumes {
+			if !f.pluginExistsOnNode("Volume", tv.Spec.DriverConfiguration.Name, nodePlugins) {
+				return false
+			}
 		}
 	}
 
 	// Check if all network plugins required by task are installed on node
-	for _, tn := range t.Networks {
+	for _, tn := range f.t.Networks {
 		if !f.pluginExistsOnNode("Network", tn.Network.DriverState.Name, nodePlugins) {
 			return false
 		}
