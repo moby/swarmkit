@@ -314,7 +314,7 @@ func (s *Server) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-s.ctx.Done():
-			return s.ctx.Err()
+			return nil
 		}
 	}
 }
