@@ -189,6 +189,11 @@ func NewRootCA(cert, key []byte) (RootCA, error) {
 		return RootCA{}, fmt.Errorf("error while adding root CA cert to Cert Pool")
 	}
 
+	if len(key) == 0 {
+		// This RootCA does not have a signer.
+		return RootCA{Cert: cert, Pool: pool}, nil
+	}
+
 	strPassword := os.Getenv("SWARM_PK_PASSWORD")
 	password := []byte(strPassword)
 	if strPassword == "" {
@@ -203,7 +208,7 @@ func NewRootCA(cert, key []byte) (RootCA, error) {
 
 	signer, err := local.NewSigner(priv, parsedCA, cfsigner.DefaultSigAlgo(priv), DefaultPolicy())
 	if err != nil {
-		return RootCA{Cert: cert, Pool: pool}, nil
+		return RootCA{}, err
 	}
 
 	return RootCA{Signer: signer, Key: key, Cert: cert, Pool: pool}, nil
@@ -222,6 +227,9 @@ func GetLocalRootCA(baseDir string) (RootCA, error) {
 
 	key, err := ioutil.ReadFile(paths.RootCA.Key)
 	if err != nil {
+		if !os.IsNotExist(err) {
+			return RootCA{}, err
+		}
 		// There may not be a local key. It's okay to pass in a nil
 		// key. We'll get a root CA without a signer.
 		key = nil
