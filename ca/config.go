@@ -122,8 +122,7 @@ func NewConfigPaths(baseCertDir string) *SecurityConfigPaths {
 	return &SecurityConfigPaths{
 		Node: CertPaths{
 			Cert: filepath.Join(baseCertDir, nodeTLSCertFilename),
-			Key:  filepath.Join(baseCertDir, nodeTLSKeyFilename),
-			CSR:  filepath.Join(baseCertDir, nodeCSRFilename)},
+			Key:  filepath.Join(baseCertDir, nodeTLSKeyFilename)},
 		RootCA: CertPaths{
 			Cert: filepath.Join(baseCertDir, rootCACertFilename),
 			Key:  filepath.Join(baseCertDir, rootCAKeyFilename)},
@@ -325,9 +324,24 @@ func loadTLSCreds(rootCA RootCA, paths CertPaths) (*MutableTLSCreds, *MutableTLS
 
 	// Now that we know this certificate is valid, create a TLS Certificate for our
 	// credentials
-	keyPair, err := tls.X509KeyPair(cert, key)
+	var (
+		keyPair tls.Certificate
+		newErr  error
+	)
+	keyPair, err = tls.X509KeyPair(cert, key)
 	if err != nil {
-		return nil, nil, err
+		// This current keypair isn't valid. It's possible we crashed before we
+		// overwrote the current key. Let's try loading it from disk.
+		tempPaths := genTempPaths(paths)
+		key, newErr = ioutil.ReadFile(tempPaths.Key)
+		if newErr != nil {
+			return nil, nil, err
+		}
+
+		keyPair, newErr = tls.X509KeyPair(cert, key)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// Load the Certificates as server credentials
@@ -345,6 +359,13 @@ func loadTLSCreds(rootCA RootCA, paths CertPaths) (*MutableTLSCreds, *MutableTLS
 	}
 
 	return clientTLSCreds, serverTLSCreds, nil
+}
+
+func genTempPaths(path CertPaths) CertPaths {
+	return CertPaths{
+		Key:  filepath.Join(filepath.Dir(path.Key), "."+filepath.Base(path.Key)),
+		Cert: filepath.Join(filepath.Dir(path.Cert), "."+filepath.Base(path.Cert)),
+	}
 }
 
 // NewServerTLSConfig returns a tls.Config configured for a TLS Server, given a tls.Certificate

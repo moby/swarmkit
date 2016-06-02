@@ -25,7 +25,7 @@ func TestIssueNodeCertificate(t *testing.T) {
 	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
-	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
+	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 
 	role := ca.AgentRole
@@ -44,7 +44,7 @@ func TestIssueNodeCertificateAgentRenewal(t *testing.T) {
 	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
-	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
+	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 
 	role := ca.AgentRole
@@ -64,7 +64,7 @@ func TestIssueNodeCertificateManagerRenewal(t *testing.T) {
 	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
-	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
+	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 	assert.NotNil(t, csr)
 
@@ -84,7 +84,7 @@ func TestNodeCertificateAccept(t *testing.T) {
 	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
-	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
+	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 
 	testNode := &api.Node{
@@ -125,7 +125,7 @@ func TestNodeCertificateReject(t *testing.T) {
 	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
 
-	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
+	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 
 	testNode := &api.Node{
