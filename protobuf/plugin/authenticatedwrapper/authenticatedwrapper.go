@@ -3,7 +3,7 @@ package authenticatedwrapper
 import (
 	"strings"
 
-	"github.com/docker/swarm-v2/api" // FIXME(aaronl): This is horrible. Any workaround?
+	"github.com/docker/swarm-v2/protobuf/plugin"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
@@ -59,7 +59,7 @@ func sigPrefix(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescrip
 	return "func (p *" + serviceTypeName(s) + ") " + m.GetName() + "("
 }
 
-func genRoles(auth *api.TLSAuthorization) string {
+func genRoles(auth *plugin.TLSAuthorization) string {
 	rolesSlice := "[]string{"
 	first := true
 	for _, role := range auth.Roles {
@@ -78,7 +78,7 @@ func genRoles(auth *api.TLSAuthorization) string {
 func (g *authenticatedWrapperGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "r *" + getInputTypeName(m) + ", stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
 
-	authIntf, err := proto.GetExtension(m.Options, api.E_TlsAuthorization)
+	authIntf, err := proto.GetExtension(m.Options, plugin.E_TlsAuthorization)
 	if err != nil {
 		g.gen.P(`
 	panic("no authorization information in protobuf")`)
@@ -86,9 +86,9 @@ func (g *authenticatedWrapperGen) genServerStreamingMethod(s *descriptor.Service
 		return
 	}
 
-	auth := authIntf.(*api.TLSAuthorization)
+	auth := authIntf.(*plugin.TLSAuthorization)
 
-	if auth.Insecure {
+	if auth.Insecure != nil && *auth.Insecure {
 		if len(auth.Roles) != 0 {
 			panic("Roles and Insecure cannot both be specified")
 		}
@@ -109,7 +109,7 @@ func (g *authenticatedWrapperGen) genServerStreamingMethod(s *descriptor.Service
 func (g *authenticatedWrapperGen) genClientServerStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
 
-	authIntf, err := proto.GetExtension(m.Options, api.E_TlsAuthorization)
+	authIntf, err := proto.GetExtension(m.Options, plugin.E_TlsAuthorization)
 	if err != nil {
 		g.gen.P(`
 	panic("no authorization information in protobuf")`)
@@ -117,9 +117,9 @@ func (g *authenticatedWrapperGen) genClientServerStreamingMethod(s *descriptor.S
 		return
 	}
 
-	auth := authIntf.(*api.TLSAuthorization)
+	auth := authIntf.(*plugin.TLSAuthorization)
 
-	if auth.Insecure {
+	if auth.Insecure != nil && *auth.Insecure {
 		if len(auth.Roles) != 0 {
 			panic("Roles and Insecure cannot both be specified")
 		}
@@ -140,7 +140,7 @@ func (g *authenticatedWrapperGen) genClientServerStreamingMethod(s *descriptor.S
 func (g *authenticatedWrapperGen) genSimpleMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "ctx context.Context, r *" + getInputTypeName(m) + ") (*" + getOutputTypeName(m) + ", error) {")
 
-	authIntf, err := proto.GetExtension(m.Options, api.E_TlsAuthorization)
+	authIntf, err := proto.GetExtension(m.Options, plugin.E_TlsAuthorization)
 	if err != nil {
 		g.gen.P(`
 	panic("no authorization information in protobuf")`)
@@ -148,9 +148,9 @@ func (g *authenticatedWrapperGen) genSimpleMethod(s *descriptor.ServiceDescripto
 		return
 	}
 
-	auth := authIntf.(*api.TLSAuthorization)
+	auth := authIntf.(*plugin.TLSAuthorization)
 
-	if auth.Insecure {
+	if auth.Insecure != nil && *auth.Insecure {
 		if len(auth.Roles) != 0 {
 			panic("Roles and Insecure cannot both be specified")
 		}
