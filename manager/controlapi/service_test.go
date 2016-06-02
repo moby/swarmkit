@@ -275,7 +275,7 @@ func TestListServices(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, r.Services)
 
-	createService(t, ts, "name1", "image", 1)
+	s1 := createService(t, ts, "name1", "image", 1)
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Services))
@@ -315,6 +315,28 @@ func TestListServices(t *testing.T) {
 			Names: []string{"name4"},
 		},
 	})
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(r.Services))
+
+	r, err = ts.Client.ListServices(context.Background(),
+		&api.ListServicesRequest{
+			Filters: &api.ListServicesRequest_Filters{
+				Names:      []string{"name1"},
+				IDPrefixes: []string{s1.ID},
+			},
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(r.Services))
+
+	r, err = ts.Client.ListServices(context.Background(),
+		&api.ListServicesRequest{
+			Filters: &api.ListServicesRequest_Filters{
+				Names:      []string{"name2"},
+				IDPrefixes: []string{s1.ID},
+			},
+		},
+	)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r.Services))
 }
