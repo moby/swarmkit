@@ -19,6 +19,16 @@ func (a byAll) isBy() {
 // set.
 var All byAll
 
+type byIDPrefix string
+
+func (b byIDPrefix) isBy() {
+}
+
+// ByIDPrefix creates an object to pass to Find to select by query.
+func ByIDPrefix(idPrefix string) By {
+	return byIDPrefix(idPrefix)
+}
+
 type byName string
 
 func (b byName) isBy() {
@@ -57,16 +67,6 @@ func (b byNode) isBy() {
 // ByNodeID creates an object to pass to Find to select by node.
 func ByNodeID(nodeID string) By {
 	return byNode(nodeID)
-}
-
-type byQuery string
-
-func (b byQuery) isBy() {
-}
-
-// ByQuery creates an object to pass to Find to select by query.
-func ByQuery(query string) By {
-	return byQuery(query)
 }
 
 type byInstance struct {

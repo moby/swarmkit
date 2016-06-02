@@ -67,7 +67,6 @@
 		Volume
 		Network
 		Cluster
-		ListOptions
 		GetNodeRequest
 		GetNodeResponse
 		ListNodesRequest

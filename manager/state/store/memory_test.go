@@ -206,17 +206,14 @@ func TestStoreNode(t *testing.T) {
 		foundNodes, err = FindNodes(readTx, ByName("name2"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 2)
+		foundNodes, err = FindNodes(readTx, Or(ByName("name1"), ByName("name2")))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 3)
 		foundNodes, err = FindNodes(readTx, ByName("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 0)
 
-		foundNodes, err = FindNodes(readTx, ByQuery("name"))
-		assert.NoError(t, err)
-		assert.Len(t, foundNodes, 0)
-		foundNodes, err = FindNodes(readTx, ByQuery("name1"))
-		assert.NoError(t, err)
-		assert.Len(t, foundNodes, 1)
-		foundNodes, err = FindNodes(readTx, ByQuery("id"))
+		foundNodes, err = FindNodes(readTx, ByIDPrefix("id"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 3)
 	})
@@ -305,11 +302,14 @@ func TestStoreService(t *testing.T) {
 		foundServices, err = FindServices(readTx, ByName("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 0)
-
-		foundServices, err = FindServices(readTx, ByQuery("name"))
+		foundServices, err = FindServices(readTx, Or(ByName("name1"), ByName("name2")))
 		assert.NoError(t, err)
-		assert.Len(t, foundServices, 0)
-		foundServices, err = FindServices(readTx, ByQuery("id"))
+		assert.Len(t, foundServices, 2)
+		foundServices, err = FindServices(readTx, Or(ByName("name1"), ByName("name2"), ByName("name4")))
+		assert.NoError(t, err)
+		assert.Len(t, foundServices, 2)
+
+		foundServices, err = FindServices(readTx, ByIDPrefix("id"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 3)
 	})
@@ -1331,16 +1331,6 @@ func BenchmarkFindNodeByName(b *testing.B) {
 	s.View(func(tx1 ReadTx) {
 		for i := 0; i < b.N; i++ {
 			_, _ = FindNodes(tx1, ByName("name"+strconv.Itoa(i)))
-		}
-	})
-}
-
-func BenchmarkFindNodeByQuery(b *testing.B) {
-	s, _ := setupNodes(b, benchmarkNumNodes)
-	b.ResetTimer()
-	s.View(func(tx1 ReadTx) {
-		for i := 0; i < b.N; i++ {
-			_, _ = FindNodes(tx1, ByQuery("name"+strconv.Itoa(i)))
 		}
 	})
 }

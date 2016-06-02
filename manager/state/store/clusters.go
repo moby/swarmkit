@@ -171,7 +171,7 @@ func GetCluster(tx ReadTx, id string) *api.Cluster {
 func FindClusters(tx ReadTx, by By) ([]*api.Cluster, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byQuery:
+		case byName, byIDPrefix:
 			return nil
 		default:
 			return ErrInvalidFindBy

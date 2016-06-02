@@ -33,22 +33,13 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-type ListOptions struct {
-	// TODO(vieux): Replace `query` with more powerful selectors.
-	Query string `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
-}
-
-func (m *ListOptions) Reset()                    { *m = ListOptions{} }
-func (*ListOptions) ProtoMessage()               {}
-func (*ListOptions) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{0} }
-
 type GetNodeRequest struct {
 	NodeID string `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 }
 
 func (m *GetNodeRequest) Reset()                    { *m = GetNodeRequest{} }
 func (*GetNodeRequest) ProtoMessage()               {}
-func (*GetNodeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{1} }
+func (*GetNodeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{0} }
 
 type GetNodeResponse struct {
 	Node *Node `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
@@ -56,15 +47,26 @@ type GetNodeResponse struct {
 
 func (m *GetNodeResponse) Reset()                    { *m = GetNodeResponse{} }
 func (*GetNodeResponse) ProtoMessage()               {}
-func (*GetNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{2} }
+func (*GetNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{1} }
 
 type ListNodesRequest struct {
-	Options *ListOptions `protobuf:"bytes,1,opt,name=options" json:"options,omitempty"`
+	Filters *ListNodesRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
 }
 
 func (m *ListNodesRequest) Reset()                    { *m = ListNodesRequest{} }
 func (*ListNodesRequest) ProtoMessage()               {}
-func (*ListNodesRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{3} }
+func (*ListNodesRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{2} }
+
+type ListNodesRequest_Filters struct {
+	Names      []string `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
+	IDPrefixes []string `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
+}
+
+func (m *ListNodesRequest_Filters) Reset()      { *m = ListNodesRequest_Filters{} }
+func (*ListNodesRequest_Filters) ProtoMessage() {}
+func (*ListNodesRequest_Filters) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{2, 0}
+}
 
 type ListNodesResponse struct {
 	Nodes []*Node `protobuf:"bytes,1,rep,name=nodes" json:"nodes,omitempty"`
@@ -72,7 +74,7 @@ type ListNodesResponse struct {
 
 func (m *ListNodesResponse) Reset()                    { *m = ListNodesResponse{} }
 func (*ListNodesResponse) ProtoMessage()               {}
-func (*ListNodesResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{4} }
+func (*ListNodesResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{3} }
 
 // UpdateNodeRequest requests an update to the specified node. This may be used
 // to request a new availability for a node, such as PAUSE. Invalid updates
@@ -85,7 +87,7 @@ type UpdateNodeRequest struct {
 
 func (m *UpdateNodeRequest) Reset()                    { *m = UpdateNodeRequest{} }
 func (*UpdateNodeRequest) ProtoMessage()               {}
-func (*UpdateNodeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{5} }
+func (*UpdateNodeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{4} }
 
 type UpdateNodeResponse struct {
 	Node *Node `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
@@ -93,7 +95,7 @@ type UpdateNodeResponse struct {
 
 func (m *UpdateNodeResponse) Reset()                    { *m = UpdateNodeResponse{} }
 func (*UpdateNodeResponse) ProtoMessage()               {}
-func (*UpdateNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{6} }
+func (*UpdateNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{5} }
 
 type GetTaskRequest struct {
 	TaskID string `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
@@ -101,7 +103,7 @@ type GetTaskRequest struct {
 
 func (m *GetTaskRequest) Reset()                    { *m = GetTaskRequest{} }
 func (*GetTaskRequest) ProtoMessage()               {}
-func (*GetTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{7} }
+func (*GetTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{6} }
 
 type GetTaskResponse struct {
 	Task *Task `protobuf:"bytes,1,opt,name=task" json:"task,omitempty"`
@@ -109,7 +111,7 @@ type GetTaskResponse struct {
 
 func (m *GetTaskResponse) Reset()                    { *m = GetTaskResponse{} }
 func (*GetTaskResponse) ProtoMessage()               {}
-func (*GetTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{8} }
+func (*GetTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{7} }
 
 type RemoveTaskRequest struct {
 	TaskID string `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
@@ -117,21 +119,35 @@ type RemoveTaskRequest struct {
 
 func (m *RemoveTaskRequest) Reset()                    { *m = RemoveTaskRequest{} }
 func (*RemoveTaskRequest) ProtoMessage()               {}
-func (*RemoveTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{9} }
+func (*RemoveTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{8} }
 
 type RemoveTaskResponse struct {
 }
 
 func (m *RemoveTaskResponse) Reset()                    { *m = RemoveTaskResponse{} }
 func (*RemoveTaskResponse) ProtoMessage()               {}
-func (*RemoveTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{10} }
+func (*RemoveTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{9} }
 
 type ListTasksRequest struct {
+	Filters *ListTasksRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
 }
 
 func (m *ListTasksRequest) Reset()                    { *m = ListTasksRequest{} }
 func (*ListTasksRequest) ProtoMessage()               {}
-func (*ListTasksRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{11} }
+func (*ListTasksRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{10} }
+
+type ListTasksRequest_Filters struct {
+	Names      []string `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
+	IDPrefixes []string `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
+	ServiceIDs []string `protobuf:"bytes,3,rep,name=service_ids,json=serviceIds" json:"service_ids,omitempty"`
+	NodeIDs    []string `protobuf:"bytes,4,rep,name=node_ids,json=nodeIds" json:"node_ids,omitempty"`
+}
+
+func (m *ListTasksRequest_Filters) Reset()      { *m = ListTasksRequest_Filters{} }
+func (*ListTasksRequest_Filters) ProtoMessage() {}
+func (*ListTasksRequest_Filters) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{10, 0}
+}
 
 type ListTasksResponse struct {
 	Tasks []*Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
@@ -139,7 +155,7 @@ type ListTasksResponse struct {
 
 func (m *ListTasksResponse) Reset()                    { *m = ListTasksResponse{} }
 func (*ListTasksResponse) ProtoMessage()               {}
-func (*ListTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{12} }
+func (*ListTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{11} }
 
 type CreateServiceRequest struct {
 	Spec *ServiceSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
@@ -147,7 +163,7 @@ type CreateServiceRequest struct {
 
 func (m *CreateServiceRequest) Reset()                    { *m = CreateServiceRequest{} }
 func (*CreateServiceRequest) ProtoMessage()               {}
-func (*CreateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{13} }
+func (*CreateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{12} }
 
 type CreateServiceResponse struct {
 	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
@@ -155,7 +171,7 @@ type CreateServiceResponse struct {
 
 func (m *CreateServiceResponse) Reset()                    { *m = CreateServiceResponse{} }
 func (*CreateServiceResponse) ProtoMessage()               {}
-func (*CreateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{14} }
+func (*CreateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{13} }
 
 type GetServiceRequest struct {
 	ServiceID string `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
@@ -163,7 +179,7 @@ type GetServiceRequest struct {
 
 func (m *GetServiceRequest) Reset()                    { *m = GetServiceRequest{} }
 func (*GetServiceRequest) ProtoMessage()               {}
-func (*GetServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{15} }
+func (*GetServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{14} }
 
 type GetServiceResponse struct {
 	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
@@ -171,7 +187,7 @@ type GetServiceResponse struct {
 
 func (m *GetServiceResponse) Reset()                    { *m = GetServiceResponse{} }
 func (*GetServiceResponse) ProtoMessage()               {}
-func (*GetServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{16} }
+func (*GetServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{15} }
 
 type UpdateServiceRequest struct {
 	ServiceID      string       `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
@@ -181,7 +197,7 @@ type UpdateServiceRequest struct {
 
 func (m *UpdateServiceRequest) Reset()                    { *m = UpdateServiceRequest{} }
 func (*UpdateServiceRequest) ProtoMessage()               {}
-func (*UpdateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{17} }
+func (*UpdateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{16} }
 
 type UpdateServiceResponse struct {
 	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
@@ -189,7 +205,7 @@ type UpdateServiceResponse struct {
 
 func (m *UpdateServiceResponse) Reset()                    { *m = UpdateServiceResponse{} }
 func (*UpdateServiceResponse) ProtoMessage()               {}
-func (*UpdateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{18} }
+func (*UpdateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{17} }
 
 type RemoveServiceRequest struct {
 	ServiceID string `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
@@ -197,22 +213,33 @@ type RemoveServiceRequest struct {
 
 func (m *RemoveServiceRequest) Reset()                    { *m = RemoveServiceRequest{} }
 func (*RemoveServiceRequest) ProtoMessage()               {}
-func (*RemoveServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{19} }
+func (*RemoveServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{18} }
 
 type RemoveServiceResponse struct {
 }
 
 func (m *RemoveServiceResponse) Reset()                    { *m = RemoveServiceResponse{} }
 func (*RemoveServiceResponse) ProtoMessage()               {}
-func (*RemoveServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{20} }
+func (*RemoveServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{19} }
 
 type ListServicesRequest struct {
-	Options *ListOptions `protobuf:"bytes,1,opt,name=options" json:"options,omitempty"`
+	Filters *ListServicesRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
 }
 
 func (m *ListServicesRequest) Reset()                    { *m = ListServicesRequest{} }
 func (*ListServicesRequest) ProtoMessage()               {}
-func (*ListServicesRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{21} }
+func (*ListServicesRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{20} }
+
+type ListServicesRequest_Filters struct {
+	Names      []string `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
+	IDPrefixes []string `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
+}
+
+func (m *ListServicesRequest_Filters) Reset()      { *m = ListServicesRequest_Filters{} }
+func (*ListServicesRequest_Filters) ProtoMessage() {}
+func (*ListServicesRequest_Filters) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{20, 0}
+}
 
 type ListServicesResponse struct {
 	Services []*Service `protobuf:"bytes,1,rep,name=services" json:"services,omitempty"`
@@ -220,7 +247,7 @@ type ListServicesResponse struct {
 
 func (m *ListServicesResponse) Reset()                    { *m = ListServicesResponse{} }
 func (*ListServicesResponse) ProtoMessage()               {}
-func (*ListServicesResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{22} }
+func (*ListServicesResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{21} }
 
 type CreateNetworkRequest struct {
 	Spec *NetworkSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
@@ -228,7 +255,7 @@ type CreateNetworkRequest struct {
 
 func (m *CreateNetworkRequest) Reset()                    { *m = CreateNetworkRequest{} }
 func (*CreateNetworkRequest) ProtoMessage()               {}
-func (*CreateNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{23} }
+func (*CreateNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{22} }
 
 type CreateNetworkResponse struct {
 	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
@@ -236,7 +263,7 @@ type CreateNetworkResponse struct {
 
 func (m *CreateNetworkResponse) Reset()                    { *m = CreateNetworkResponse{} }
 func (*CreateNetworkResponse) ProtoMessage()               {}
-func (*CreateNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{24} }
+func (*CreateNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{23} }
 
 type GetNetworkRequest struct {
 	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -245,7 +272,7 @@ type GetNetworkRequest struct {
 
 func (m *GetNetworkRequest) Reset()                    { *m = GetNetworkRequest{} }
 func (*GetNetworkRequest) ProtoMessage()               {}
-func (*GetNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{25} }
+func (*GetNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{24} }
 
 type GetNetworkResponse struct {
 	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
@@ -253,7 +280,7 @@ type GetNetworkResponse struct {
 
 func (m *GetNetworkResponse) Reset()                    { *m = GetNetworkResponse{} }
 func (*GetNetworkResponse) ProtoMessage()               {}
-func (*GetNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{26} }
+func (*GetNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{25} }
 
 type RemoveNetworkRequest struct {
 	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -262,22 +289,33 @@ type RemoveNetworkRequest struct {
 
 func (m *RemoveNetworkRequest) Reset()                    { *m = RemoveNetworkRequest{} }
 func (*RemoveNetworkRequest) ProtoMessage()               {}
-func (*RemoveNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{27} }
+func (*RemoveNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{26} }
 
 type RemoveNetworkResponse struct {
 }
 
 func (m *RemoveNetworkResponse) Reset()                    { *m = RemoveNetworkResponse{} }
 func (*RemoveNetworkResponse) ProtoMessage()               {}
-func (*RemoveNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{28} }
+func (*RemoveNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{27} }
 
 type ListNetworksRequest struct {
-	Options *ListOptions `protobuf:"bytes,1,opt,name=options" json:"options,omitempty"`
+	Filters *ListNetworksRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
 }
 
 func (m *ListNetworksRequest) Reset()                    { *m = ListNetworksRequest{} }
 func (*ListNetworksRequest) ProtoMessage()               {}
-func (*ListNetworksRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{29} }
+func (*ListNetworksRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{28} }
+
+type ListNetworksRequest_Filters struct {
+	Names      []string `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
+	IDPrefixes []string `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
+}
+
+func (m *ListNetworksRequest_Filters) Reset()      { *m = ListNetworksRequest_Filters{} }
+func (*ListNetworksRequest_Filters) ProtoMessage() {}
+func (*ListNetworksRequest_Filters) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{28, 0}
+}
 
 type ListNetworksResponse struct {
 	Networks []*Network `protobuf:"bytes,1,rep,name=networks" json:"networks,omitempty"`
@@ -285,7 +323,7 @@ type ListNetworksResponse struct {
 
 func (m *ListNetworksResponse) Reset()                    { *m = ListNetworksResponse{} }
 func (*ListNetworksResponse) ProtoMessage()               {}
-func (*ListNetworksResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{30} }
+func (*ListNetworksResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{29} }
 
 type CreateVolumeRequest struct {
 	Spec *VolumeSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
@@ -293,7 +331,7 @@ type CreateVolumeRequest struct {
 
 func (m *CreateVolumeRequest) Reset()                    { *m = CreateVolumeRequest{} }
 func (*CreateVolumeRequest) ProtoMessage()               {}
-func (*CreateVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{31} }
+func (*CreateVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{30} }
 
 type CreateVolumeResponse struct {
 	Volume *Volume `protobuf:"bytes,1,opt,name=volume" json:"volume,omitempty"`
@@ -301,7 +339,7 @@ type CreateVolumeResponse struct {
 
 func (m *CreateVolumeResponse) Reset()                    { *m = CreateVolumeResponse{} }
 func (*CreateVolumeResponse) ProtoMessage()               {}
-func (*CreateVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{32} }
+func (*CreateVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{31} }
 
 type GetVolumeRequest struct {
 	VolumeID string `protobuf:"bytes,1,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
@@ -309,7 +347,7 @@ type GetVolumeRequest struct {
 
 func (m *GetVolumeRequest) Reset()                    { *m = GetVolumeRequest{} }
 func (*GetVolumeRequest) ProtoMessage()               {}
-func (*GetVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{33} }
+func (*GetVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{32} }
 
 type GetVolumeResponse struct {
 	Volume *Volume `protobuf:"bytes,1,opt,name=volume" json:"volume,omitempty"`
@@ -317,7 +355,7 @@ type GetVolumeResponse struct {
 
 func (m *GetVolumeResponse) Reset()                    { *m = GetVolumeResponse{} }
 func (*GetVolumeResponse) ProtoMessage()               {}
-func (*GetVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{34} }
+func (*GetVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{33} }
 
 type RemoveVolumeRequest struct {
 	VolumeID string `protobuf:"bytes,1,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
@@ -325,21 +363,33 @@ type RemoveVolumeRequest struct {
 
 func (m *RemoveVolumeRequest) Reset()                    { *m = RemoveVolumeRequest{} }
 func (*RemoveVolumeRequest) ProtoMessage()               {}
-func (*RemoveVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{35} }
+func (*RemoveVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{34} }
 
 type RemoveVolumeResponse struct {
 }
 
 func (m *RemoveVolumeResponse) Reset()                    { *m = RemoveVolumeResponse{} }
 func (*RemoveVolumeResponse) ProtoMessage()               {}
-func (*RemoveVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{36} }
+func (*RemoveVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{35} }
 
 type ListVolumesRequest struct {
+	Filters *ListVolumesRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
 }
 
 func (m *ListVolumesRequest) Reset()                    { *m = ListVolumesRequest{} }
 func (*ListVolumesRequest) ProtoMessage()               {}
-func (*ListVolumesRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{37} }
+func (*ListVolumesRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{36} }
+
+type ListVolumesRequest_Filters struct {
+	Names      []string `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
+	IDPrefixes []string `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
+}
+
+func (m *ListVolumesRequest_Filters) Reset()      { *m = ListVolumesRequest_Filters{} }
+func (*ListVolumesRequest_Filters) ProtoMessage() {}
+func (*ListVolumesRequest_Filters) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{36, 0}
+}
 
 type ListVolumesResponse struct {
 	Volumes []*Volume `protobuf:"bytes,1,rep,name=volumes" json:"volumes,omitempty"`
@@ -347,15 +397,26 @@ type ListVolumesResponse struct {
 
 func (m *ListVolumesResponse) Reset()                    { *m = ListVolumesResponse{} }
 func (*ListVolumesResponse) ProtoMessage()               {}
-func (*ListVolumesResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{38} }
+func (*ListVolumesResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{37} }
 
 type ListManagersRequest struct {
-	Options *ListOptions `protobuf:"bytes,1,opt,name=options" json:"options,omitempty"`
+	Filters *ListManagersRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
 }
 
 func (m *ListManagersRequest) Reset()                    { *m = ListManagersRequest{} }
 func (*ListManagersRequest) ProtoMessage()               {}
-func (*ListManagersRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{39} }
+func (*ListManagersRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{38} }
+
+type ListManagersRequest_Filters struct {
+	Names      []string `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
+	IDPrefixes []string `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
+}
+
+func (m *ListManagersRequest_Filters) Reset()      { *m = ListManagersRequest_Filters{} }
+func (*ListManagersRequest_Filters) ProtoMessage() {}
+func (*ListManagersRequest_Filters) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{38, 0}
+}
 
 type ListManagersResponse struct {
 	Managers []*Manager `protobuf:"bytes,1,rep,name=managers" json:"managers,omitempty"`
@@ -363,7 +424,7 @@ type ListManagersResponse struct {
 
 func (m *ListManagersResponse) Reset()                    { *m = ListManagersResponse{} }
 func (*ListManagersResponse) ProtoMessage()               {}
-func (*ListManagersResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{40} }
+func (*ListManagersResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{39} }
 
 type RemoveManagerRequest struct {
 	ManagerID string `protobuf:"bytes,1,opt,name=manager_id,json=managerId,proto3" json:"manager_id,omitempty"`
@@ -371,14 +432,14 @@ type RemoveManagerRequest struct {
 
 func (m *RemoveManagerRequest) Reset()                    { *m = RemoveManagerRequest{} }
 func (*RemoveManagerRequest) ProtoMessage()               {}
-func (*RemoveManagerRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{41} }
+func (*RemoveManagerRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{40} }
 
 type RemoveManagerResponse struct {
 }
 
 func (m *RemoveManagerResponse) Reset()                    { *m = RemoveManagerResponse{} }
 func (*RemoveManagerResponse) ProtoMessage()               {}
-func (*RemoveManagerResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{42} }
+func (*RemoveManagerResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{41} }
 
 type GetClusterRequest struct {
 	ClusterID string `protobuf:"bytes,1,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
@@ -386,7 +447,7 @@ type GetClusterRequest struct {
 
 func (m *GetClusterRequest) Reset()                    { *m = GetClusterRequest{} }
 func (*GetClusterRequest) ProtoMessage()               {}
-func (*GetClusterRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{43} }
+func (*GetClusterRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{42} }
 
 type GetClusterResponse struct {
 	Cluster *Cluster `protobuf:"bytes,1,opt,name=cluster" json:"cluster,omitempty"`
@@ -394,15 +455,26 @@ type GetClusterResponse struct {
 
 func (m *GetClusterResponse) Reset()                    { *m = GetClusterResponse{} }
 func (*GetClusterResponse) ProtoMessage()               {}
-func (*GetClusterResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{44} }
+func (*GetClusterResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{43} }
 
 type ListClustersRequest struct {
-	Options *ListOptions `protobuf:"bytes,1,opt,name=options" json:"options,omitempty"`
+	Filters *ListClustersRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
 }
 
 func (m *ListClustersRequest) Reset()                    { *m = ListClustersRequest{} }
 func (*ListClustersRequest) ProtoMessage()               {}
-func (*ListClustersRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{45} }
+func (*ListClustersRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{44} }
+
+type ListClustersRequest_Filters struct {
+	Names      []string `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
+	IDPrefixes []string `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
+}
+
+func (m *ListClustersRequest_Filters) Reset()      { *m = ListClustersRequest_Filters{} }
+func (*ListClustersRequest_Filters) ProtoMessage() {}
+func (*ListClustersRequest_Filters) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{44, 0}
+}
 
 type ListClustersResponse struct {
 	Clusters []*Cluster `protobuf:"bytes,1,rep,name=clusters" json:"clusters,omitempty"`
@@ -410,7 +482,7 @@ type ListClustersResponse struct {
 
 func (m *ListClustersResponse) Reset()                    { *m = ListClustersResponse{} }
 func (*ListClustersResponse) ProtoMessage()               {}
-func (*ListClustersResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{46} }
+func (*ListClustersResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{45} }
 
 type UpdateClusterRequest struct {
 	// ClusterID is the cluster ID to update.
@@ -423,7 +495,7 @@ type UpdateClusterRequest struct {
 
 func (m *UpdateClusterRequest) Reset()                    { *m = UpdateClusterRequest{} }
 func (*UpdateClusterRequest) ProtoMessage()               {}
-func (*UpdateClusterRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{47} }
+func (*UpdateClusterRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{46} }
 
 type UpdateClusterResponse struct {
 	Cluster *Cluster `protobuf:"bytes,1,opt,name=cluster" json:"cluster,omitempty"`
@@ -431,13 +503,13 @@ type UpdateClusterResponse struct {
 
 func (m *UpdateClusterResponse) Reset()                    { *m = UpdateClusterResponse{} }
 func (*UpdateClusterResponse) ProtoMessage()               {}
-func (*UpdateClusterResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{48} }
+func (*UpdateClusterResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{47} }
 
 func init() {
-	proto.RegisterType((*ListOptions)(nil), "docker.cluster.api.ListOptions")
 	proto.RegisterType((*GetNodeRequest)(nil), "docker.cluster.api.GetNodeRequest")
 	proto.RegisterType((*GetNodeResponse)(nil), "docker.cluster.api.GetNodeResponse")
 	proto.RegisterType((*ListNodesRequest)(nil), "docker.cluster.api.ListNodesRequest")
+	proto.RegisterType((*ListNodesRequest_Filters)(nil), "docker.cluster.api.ListNodesRequest.Filters")
 	proto.RegisterType((*ListNodesResponse)(nil), "docker.cluster.api.ListNodesResponse")
 	proto.RegisterType((*UpdateNodeRequest)(nil), "docker.cluster.api.UpdateNodeRequest")
 	proto.RegisterType((*UpdateNodeResponse)(nil), "docker.cluster.api.UpdateNodeResponse")
@@ -446,6 +518,7 @@ func init() {
 	proto.RegisterType((*RemoveTaskRequest)(nil), "docker.cluster.api.RemoveTaskRequest")
 	proto.RegisterType((*RemoveTaskResponse)(nil), "docker.cluster.api.RemoveTaskResponse")
 	proto.RegisterType((*ListTasksRequest)(nil), "docker.cluster.api.ListTasksRequest")
+	proto.RegisterType((*ListTasksRequest_Filters)(nil), "docker.cluster.api.ListTasksRequest.Filters")
 	proto.RegisterType((*ListTasksResponse)(nil), "docker.cluster.api.ListTasksResponse")
 	proto.RegisterType((*CreateServiceRequest)(nil), "docker.cluster.api.CreateServiceRequest")
 	proto.RegisterType((*CreateServiceResponse)(nil), "docker.cluster.api.CreateServiceResponse")
@@ -456,6 +529,7 @@ func init() {
 	proto.RegisterType((*RemoveServiceRequest)(nil), "docker.cluster.api.RemoveServiceRequest")
 	proto.RegisterType((*RemoveServiceResponse)(nil), "docker.cluster.api.RemoveServiceResponse")
 	proto.RegisterType((*ListServicesRequest)(nil), "docker.cluster.api.ListServicesRequest")
+	proto.RegisterType((*ListServicesRequest_Filters)(nil), "docker.cluster.api.ListServicesRequest.Filters")
 	proto.RegisterType((*ListServicesResponse)(nil), "docker.cluster.api.ListServicesResponse")
 	proto.RegisterType((*CreateNetworkRequest)(nil), "docker.cluster.api.CreateNetworkRequest")
 	proto.RegisterType((*CreateNetworkResponse)(nil), "docker.cluster.api.CreateNetworkResponse")
@@ -464,6 +538,7 @@ func init() {
 	proto.RegisterType((*RemoveNetworkRequest)(nil), "docker.cluster.api.RemoveNetworkRequest")
 	proto.RegisterType((*RemoveNetworkResponse)(nil), "docker.cluster.api.RemoveNetworkResponse")
 	proto.RegisterType((*ListNetworksRequest)(nil), "docker.cluster.api.ListNetworksRequest")
+	proto.RegisterType((*ListNetworksRequest_Filters)(nil), "docker.cluster.api.ListNetworksRequest.Filters")
 	proto.RegisterType((*ListNetworksResponse)(nil), "docker.cluster.api.ListNetworksResponse")
 	proto.RegisterType((*CreateVolumeRequest)(nil), "docker.cluster.api.CreateVolumeRequest")
 	proto.RegisterType((*CreateVolumeResponse)(nil), "docker.cluster.api.CreateVolumeResponse")
@@ -472,14 +547,17 @@ func init() {
 	proto.RegisterType((*RemoveVolumeRequest)(nil), "docker.cluster.api.RemoveVolumeRequest")
 	proto.RegisterType((*RemoveVolumeResponse)(nil), "docker.cluster.api.RemoveVolumeResponse")
 	proto.RegisterType((*ListVolumesRequest)(nil), "docker.cluster.api.ListVolumesRequest")
+	proto.RegisterType((*ListVolumesRequest_Filters)(nil), "docker.cluster.api.ListVolumesRequest.Filters")
 	proto.RegisterType((*ListVolumesResponse)(nil), "docker.cluster.api.ListVolumesResponse")
 	proto.RegisterType((*ListManagersRequest)(nil), "docker.cluster.api.ListManagersRequest")
+	proto.RegisterType((*ListManagersRequest_Filters)(nil), "docker.cluster.api.ListManagersRequest.Filters")
 	proto.RegisterType((*ListManagersResponse)(nil), "docker.cluster.api.ListManagersResponse")
 	proto.RegisterType((*RemoveManagerRequest)(nil), "docker.cluster.api.RemoveManagerRequest")
 	proto.RegisterType((*RemoveManagerResponse)(nil), "docker.cluster.api.RemoveManagerResponse")
 	proto.RegisterType((*GetClusterRequest)(nil), "docker.cluster.api.GetClusterRequest")
 	proto.RegisterType((*GetClusterResponse)(nil), "docker.cluster.api.GetClusterResponse")
 	proto.RegisterType((*ListClustersRequest)(nil), "docker.cluster.api.ListClustersRequest")
+	proto.RegisterType((*ListClustersRequest_Filters)(nil), "docker.cluster.api.ListClustersRequest.Filters")
 	proto.RegisterType((*ListClustersResponse)(nil), "docker.cluster.api.ListClustersResponse")
 	proto.RegisterType((*UpdateClusterRequest)(nil), "docker.cluster.api.UpdateClusterRequest")
 	proto.RegisterType((*UpdateClusterResponse)(nil), "docker.cluster.api.UpdateClusterResponse")
@@ -689,18 +767,6 @@ func (p *authenticatedWrapperControlServer) UpdateCluster(ctx context.Context, r
 	return p.local.UpdateCluster(ctx, r)
 }
 
-func (m *ListOptions) Copy() *ListOptions {
-	if m == nil {
-		return nil
-	}
-
-	o := &ListOptions{
-		Query: m.Query,
-	}
-
-	return o
-}
-
 func (m *GetNodeRequest) Copy() *GetNodeRequest {
 	if m == nil {
 		return nil
@@ -731,7 +797,31 @@ func (m *ListNodesRequest) Copy() *ListNodesRequest {
 	}
 
 	o := &ListNodesRequest{
-		Options: m.Options.Copy(),
+		Filters: m.Filters.Copy(),
+	}
+
+	return o
+}
+
+func (m *ListNodesRequest_Filters) Copy() *ListNodesRequest_Filters {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListNodesRequest_Filters{}
+
+	if m.Names != nil {
+		o.Names = make([]string, 0, len(m.Names))
+		for _, v := range m.Names {
+			o.Names = append(o.Names, v)
+		}
+	}
+
+	if m.IDPrefixes != nil {
+		o.IDPrefixes = make([]string, 0, len(m.IDPrefixes))
+		for _, v := range m.IDPrefixes {
+			o.IDPrefixes = append(o.IDPrefixes, v)
+		}
 	}
 
 	return o
@@ -831,7 +921,47 @@ func (m *ListTasksRequest) Copy() *ListTasksRequest {
 		return nil
 	}
 
-	o := &ListTasksRequest{}
+	o := &ListTasksRequest{
+		Filters: m.Filters.Copy(),
+	}
+
+	return o
+}
+
+func (m *ListTasksRequest_Filters) Copy() *ListTasksRequest_Filters {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListTasksRequest_Filters{}
+
+	if m.Names != nil {
+		o.Names = make([]string, 0, len(m.Names))
+		for _, v := range m.Names {
+			o.Names = append(o.Names, v)
+		}
+	}
+
+	if m.IDPrefixes != nil {
+		o.IDPrefixes = make([]string, 0, len(m.IDPrefixes))
+		for _, v := range m.IDPrefixes {
+			o.IDPrefixes = append(o.IDPrefixes, v)
+		}
+	}
+
+	if m.ServiceIDs != nil {
+		o.ServiceIDs = make([]string, 0, len(m.ServiceIDs))
+		for _, v := range m.ServiceIDs {
+			o.ServiceIDs = append(o.ServiceIDs, v)
+		}
+	}
+
+	if m.NodeIDs != nil {
+		o.NodeIDs = make([]string, 0, len(m.NodeIDs))
+		for _, v := range m.NodeIDs {
+			o.NodeIDs = append(o.NodeIDs, v)
+		}
+	}
 
 	return o
 }
@@ -955,7 +1085,31 @@ func (m *ListServicesRequest) Copy() *ListServicesRequest {
 	}
 
 	o := &ListServicesRequest{
-		Options: m.Options.Copy(),
+		Filters: m.Filters.Copy(),
+	}
+
+	return o
+}
+
+func (m *ListServicesRequest_Filters) Copy() *ListServicesRequest_Filters {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListServicesRequest_Filters{}
+
+	if m.Names != nil {
+		o.Names = make([]string, 0, len(m.Names))
+		for _, v := range m.Names {
+			o.Names = append(o.Names, v)
+		}
+	}
+
+	if m.IDPrefixes != nil {
+		o.IDPrefixes = make([]string, 0, len(m.IDPrefixes))
+		for _, v := range m.IDPrefixes {
+			o.IDPrefixes = append(o.IDPrefixes, v)
+		}
 	}
 
 	return o
@@ -1056,7 +1210,31 @@ func (m *ListNetworksRequest) Copy() *ListNetworksRequest {
 	}
 
 	o := &ListNetworksRequest{
-		Options: m.Options.Copy(),
+		Filters: m.Filters.Copy(),
+	}
+
+	return o
+}
+
+func (m *ListNetworksRequest_Filters) Copy() *ListNetworksRequest_Filters {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListNetworksRequest_Filters{}
+
+	if m.Names != nil {
+		o.Names = make([]string, 0, len(m.Names))
+		for _, v := range m.Names {
+			o.Names = append(o.Names, v)
+		}
+	}
+
+	if m.IDPrefixes != nil {
+		o.IDPrefixes = make([]string, 0, len(m.IDPrefixes))
+		for _, v := range m.IDPrefixes {
+			o.IDPrefixes = append(o.IDPrefixes, v)
+		}
 	}
 
 	return o
@@ -1154,7 +1332,33 @@ func (m *ListVolumesRequest) Copy() *ListVolumesRequest {
 		return nil
 	}
 
-	o := &ListVolumesRequest{}
+	o := &ListVolumesRequest{
+		Filters: m.Filters.Copy(),
+	}
+
+	return o
+}
+
+func (m *ListVolumesRequest_Filters) Copy() *ListVolumesRequest_Filters {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListVolumesRequest_Filters{}
+
+	if m.Names != nil {
+		o.Names = make([]string, 0, len(m.Names))
+		for _, v := range m.Names {
+			o.Names = append(o.Names, v)
+		}
+	}
+
+	if m.IDPrefixes != nil {
+		o.IDPrefixes = make([]string, 0, len(m.IDPrefixes))
+		for _, v := range m.IDPrefixes {
+			o.IDPrefixes = append(o.IDPrefixes, v)
+		}
+	}
 
 	return o
 }
@@ -1182,7 +1386,31 @@ func (m *ListManagersRequest) Copy() *ListManagersRequest {
 	}
 
 	o := &ListManagersRequest{
-		Options: m.Options.Copy(),
+		Filters: m.Filters.Copy(),
+	}
+
+	return o
+}
+
+func (m *ListManagersRequest_Filters) Copy() *ListManagersRequest_Filters {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListManagersRequest_Filters{}
+
+	if m.Names != nil {
+		o.Names = make([]string, 0, len(m.Names))
+		for _, v := range m.Names {
+			o.Names = append(o.Names, v)
+		}
+	}
+
+	if m.IDPrefixes != nil {
+		o.IDPrefixes = make([]string, 0, len(m.IDPrefixes))
+		for _, v := range m.IDPrefixes {
+			o.IDPrefixes = append(o.IDPrefixes, v)
+		}
 	}
 
 	return o
@@ -1257,7 +1485,31 @@ func (m *ListClustersRequest) Copy() *ListClustersRequest {
 	}
 
 	o := &ListClustersRequest{
-		Options: m.Options.Copy(),
+		Filters: m.Filters.Copy(),
+	}
+
+	return o
+}
+
+func (m *ListClustersRequest_Filters) Copy() *ListClustersRequest_Filters {
+	if m == nil {
+		return nil
+	}
+
+	o := &ListClustersRequest_Filters{}
+
+	if m.Names != nil {
+		o.Names = make([]string, 0, len(m.Names))
+		for _, v := range m.Names {
+			o.Names = append(o.Names, v)
+		}
+	}
+
+	if m.IDPrefixes != nil {
+		o.IDPrefixes = make([]string, 0, len(m.IDPrefixes))
+		for _, v := range m.IDPrefixes {
+			o.IDPrefixes = append(o.IDPrefixes, v)
+		}
 	}
 
 	return o
@@ -1306,16 +1558,6 @@ func (m *UpdateClusterResponse) Copy() *UpdateClusterResponse {
 	return o
 }
 
-func (this *ListOptions) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.ListOptions{")
-	s = append(s, "Query: "+fmt.Sprintf("%#v", this.Query)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
 func (this *GetNodeRequest) GoString() string {
 	if this == nil {
 		return "nil"
@@ -1344,9 +1586,20 @@ func (this *ListNodesRequest) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.ListNodesRequest{")
-	if this.Options != nil {
-		s = append(s, "Options: "+fmt.Sprintf("%#v", this.Options)+",\n")
+	if this.Filters != nil {
+		s = append(s, "Filters: "+fmt.Sprintf("%#v", this.Filters)+",\n")
 	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ListNodesRequest_Filters) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.ListNodesRequest_Filters{")
+	s = append(s, "Names: "+fmt.Sprintf("%#v", this.Names)+",\n")
+	s = append(s, "IDPrefixes: "+fmt.Sprintf("%#v", this.IDPrefixes)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1435,8 +1688,24 @@ func (this *ListTasksRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 4)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.ListTasksRequest{")
+	if this.Filters != nil {
+		s = append(s, "Filters: "+fmt.Sprintf("%#v", this.Filters)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ListTasksRequest_Filters) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 8)
+	s = append(s, "&api.ListTasksRequest_Filters{")
+	s = append(s, "Names: "+fmt.Sprintf("%#v", this.Names)+",\n")
+	s = append(s, "IDPrefixes: "+fmt.Sprintf("%#v", this.IDPrefixes)+",\n")
+	s = append(s, "ServiceIDs: "+fmt.Sprintf("%#v", this.ServiceIDs)+",\n")
+	s = append(s, "NodeIDs: "+fmt.Sprintf("%#v", this.NodeIDs)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1551,9 +1820,20 @@ func (this *ListServicesRequest) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.ListServicesRequest{")
-	if this.Options != nil {
-		s = append(s, "Options: "+fmt.Sprintf("%#v", this.Options)+",\n")
+	if this.Filters != nil {
+		s = append(s, "Filters: "+fmt.Sprintf("%#v", this.Filters)+",\n")
 	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ListServicesRequest_Filters) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.ListServicesRequest_Filters{")
+	s = append(s, "Names: "+fmt.Sprintf("%#v", this.Names)+",\n")
+	s = append(s, "IDPrefixes: "+fmt.Sprintf("%#v", this.IDPrefixes)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1642,9 +1922,20 @@ func (this *ListNetworksRequest) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.ListNetworksRequest{")
-	if this.Options != nil {
-		s = append(s, "Options: "+fmt.Sprintf("%#v", this.Options)+",\n")
+	if this.Filters != nil {
+		s = append(s, "Filters: "+fmt.Sprintf("%#v", this.Filters)+",\n")
 	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ListNetworksRequest_Filters) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.ListNetworksRequest_Filters{")
+	s = append(s, "Names: "+fmt.Sprintf("%#v", this.Names)+",\n")
+	s = append(s, "IDPrefixes: "+fmt.Sprintf("%#v", this.IDPrefixes)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1729,8 +2020,22 @@ func (this *ListVolumesRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 4)
+	s := make([]string, 0, 5)
 	s = append(s, "&api.ListVolumesRequest{")
+	if this.Filters != nil {
+		s = append(s, "Filters: "+fmt.Sprintf("%#v", this.Filters)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ListVolumesRequest_Filters) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.ListVolumesRequest_Filters{")
+	s = append(s, "Names: "+fmt.Sprintf("%#v", this.Names)+",\n")
+	s = append(s, "IDPrefixes: "+fmt.Sprintf("%#v", this.IDPrefixes)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1752,9 +2057,20 @@ func (this *ListManagersRequest) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.ListManagersRequest{")
-	if this.Options != nil {
-		s = append(s, "Options: "+fmt.Sprintf("%#v", this.Options)+",\n")
+	if this.Filters != nil {
+		s = append(s, "Filters: "+fmt.Sprintf("%#v", this.Filters)+",\n")
 	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ListManagersRequest_Filters) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.ListManagersRequest_Filters{")
+	s = append(s, "Names: "+fmt.Sprintf("%#v", this.Names)+",\n")
+	s = append(s, "IDPrefixes: "+fmt.Sprintf("%#v", this.IDPrefixes)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1817,9 +2133,20 @@ func (this *ListClustersRequest) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.ListClustersRequest{")
-	if this.Options != nil {
-		s = append(s, "Options: "+fmt.Sprintf("%#v", this.Options)+",\n")
+	if this.Filters != nil {
+		s = append(s, "Filters: "+fmt.Sprintf("%#v", this.Filters)+",\n")
 	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ListClustersRequest_Filters) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.ListClustersRequest_Filters{")
+	s = append(s, "Names: "+fmt.Sprintf("%#v", this.Names)+",\n")
+	s = append(s, "IDPrefixes: "+fmt.Sprintf("%#v", this.IDPrefixes)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -2719,30 +3046,6 @@ var _Control_serviceDesc = grpc.ServiceDesc{
 	Streams: []grpc.StreamDesc{},
 }
 
-func (m *ListOptions) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *ListOptions) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Query) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintControl(data, i, uint64(len(m.Query)))
-		i += copy(data[i:], m.Query)
-	}
-	return i, nil
-}
-
 func (m *GetNodeRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -2810,15 +3113,63 @@ func (m *ListNodesRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Options != nil {
+	if m.Filters != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintControl(data, i, uint64(m.Options.Size()))
-		n2, err := m.Options.MarshalTo(data[i:])
+		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
+		n2, err := m.Filters.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n2
+	}
+	return i, nil
+}
+
+func (m *ListNodesRequest_Filters) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ListNodesRequest_Filters) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			data[i] = 0xa
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			data[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
 	}
 	return i, nil
 }
@@ -3034,6 +3385,94 @@ func (m *ListTasksRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.Filters != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
+		n7, err := m.Filters.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n7
+	}
+	return i, nil
+}
+
+func (m *ListTasksRequest_Filters) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ListTasksRequest_Filters) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			data[i] = 0xa
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			data[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
+	if len(m.ServiceIDs) > 0 {
+		for _, s := range m.ServiceIDs {
+			data[i] = 0x1a
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
+	if len(m.NodeIDs) > 0 {
+		for _, s := range m.NodeIDs {
+			data[i] = 0x22
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
 	return i, nil
 }
 
@@ -3086,11 +3525,11 @@ func (m *CreateServiceRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Spec.Size()))
-		n7, err := m.Spec.MarshalTo(data[i:])
+		n8, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n7
+		i += n8
 	}
 	return i, nil
 }
@@ -3114,11 +3553,11 @@ func (m *CreateServiceResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Service.Size()))
-		n8, err := m.Service.MarshalTo(data[i:])
+		n9, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n8
+		i += n9
 	}
 	return i, nil
 }
@@ -3166,11 +3605,11 @@ func (m *GetServiceResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Service.Size()))
-		n9, err := m.Service.MarshalTo(data[i:])
+		n10, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n9
+		i += n10
 	}
 	return i, nil
 }
@@ -3200,21 +3639,21 @@ func (m *UpdateServiceRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintControl(data, i, uint64(m.ServiceVersion.Size()))
-		n10, err := m.ServiceVersion.MarshalTo(data[i:])
+		n11, err := m.ServiceVersion.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n10
+		i += n11
 	}
 	if m.Spec != nil {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Spec.Size()))
-		n11, err := m.Spec.MarshalTo(data[i:])
+		n12, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n11
+		i += n12
 	}
 	return i, nil
 }
@@ -3238,11 +3677,11 @@ func (m *UpdateServiceResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Service.Size()))
-		n12, err := m.Service.MarshalTo(data[i:])
+		n13, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n12
+		i += n13
 	}
 	return i, nil
 }
@@ -3304,15 +3743,63 @@ func (m *ListServicesRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Options != nil {
+	if m.Filters != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintControl(data, i, uint64(m.Options.Size()))
-		n13, err := m.Options.MarshalTo(data[i:])
+		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
+		n14, err := m.Filters.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n13
+		i += n14
+	}
+	return i, nil
+}
+
+func (m *ListServicesRequest_Filters) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ListServicesRequest_Filters) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			data[i] = 0xa
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			data[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
 	}
 	return i, nil
 }
@@ -3366,11 +3853,11 @@ func (m *CreateNetworkRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Spec.Size()))
-		n14, err := m.Spec.MarshalTo(data[i:])
+		n15, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n14
+		i += n15
 	}
 	return i, nil
 }
@@ -3394,11 +3881,11 @@ func (m *CreateNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Network.Size()))
-		n15, err := m.Network.MarshalTo(data[i:])
+		n16, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n15
+		i += n16
 	}
 	return i, nil
 }
@@ -3452,11 +3939,11 @@ func (m *GetNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Network.Size()))
-		n16, err := m.Network.MarshalTo(data[i:])
+		n17, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n16
+		i += n17
 	}
 	return i, nil
 }
@@ -3524,15 +4011,63 @@ func (m *ListNetworksRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Options != nil {
+	if m.Filters != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintControl(data, i, uint64(m.Options.Size()))
-		n17, err := m.Options.MarshalTo(data[i:])
+		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
+		n18, err := m.Filters.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n17
+		i += n18
+	}
+	return i, nil
+}
+
+func (m *ListNetworksRequest_Filters) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ListNetworksRequest_Filters) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			data[i] = 0xa
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			data[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
 	}
 	return i, nil
 }
@@ -3586,11 +4121,11 @@ func (m *CreateVolumeRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Spec.Size()))
-		n18, err := m.Spec.MarshalTo(data[i:])
+		n19, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n18
+		i += n19
 	}
 	return i, nil
 }
@@ -3614,11 +4149,11 @@ func (m *CreateVolumeResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Volume.Size()))
-		n19, err := m.Volume.MarshalTo(data[i:])
+		n20, err := m.Volume.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n19
+		i += n20
 	}
 	return i, nil
 }
@@ -3666,11 +4201,11 @@ func (m *GetVolumeResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Volume.Size()))
-		n20, err := m.Volume.MarshalTo(data[i:])
+		n21, err := m.Volume.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n20
+		i += n21
 	}
 	return i, nil
 }
@@ -3732,6 +4267,64 @@ func (m *ListVolumesRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.Filters != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
+		n22, err := m.Filters.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n22
+	}
+	return i, nil
+}
+
+func (m *ListVolumesRequest_Filters) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ListVolumesRequest_Filters) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			data[i] = 0xa
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			data[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
 	return i, nil
 }
 
@@ -3780,15 +4373,63 @@ func (m *ListManagersRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Options != nil {
+	if m.Filters != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintControl(data, i, uint64(m.Options.Size()))
-		n21, err := m.Options.MarshalTo(data[i:])
+		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
+		n23, err := m.Filters.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n21
+		i += n23
+	}
+	return i, nil
+}
+
+func (m *ListManagersRequest_Filters) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ListManagersRequest_Filters) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			data[i] = 0xa
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			data[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
 	}
 	return i, nil
 }
@@ -3908,11 +4549,11 @@ func (m *GetClusterResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Cluster.Size()))
-		n22, err := m.Cluster.MarshalTo(data[i:])
+		n24, err := m.Cluster.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n22
+		i += n24
 	}
 	return i, nil
 }
@@ -3932,15 +4573,63 @@ func (m *ListClustersRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Options != nil {
+	if m.Filters != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintControl(data, i, uint64(m.Options.Size()))
-		n23, err := m.Options.MarshalTo(data[i:])
+		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
+		n25, err := m.Filters.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n23
+		i += n25
+	}
+	return i, nil
+}
+
+func (m *ListClustersRequest_Filters) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ListClustersRequest_Filters) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			data[i] = 0xa
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			data[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
 	}
 	return i, nil
 }
@@ -4000,21 +4689,21 @@ func (m *UpdateClusterRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintControl(data, i, uint64(m.ClusterVersion.Size()))
-		n24, err := m.ClusterVersion.MarshalTo(data[i:])
+		n26, err := m.ClusterVersion.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n24
+		i += n26
 	}
 	if m.Spec != nil {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Spec.Size()))
-		n25, err := m.Spec.MarshalTo(data[i:])
+		n27, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n25
+		i += n27
 	}
 	return i, nil
 }
@@ -4038,11 +4727,11 @@ func (m *UpdateClusterResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Cluster.Size()))
-		n26, err := m.Cluster.MarshalTo(data[i:])
+		n28, err := m.Cluster.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n26
+		i += n28
 	}
 	return i, nil
 }
@@ -4504,16 +5193,6 @@ func (p *raftProxyControlServer) UpdateCluster(ctx context.Context, r *UpdateClu
 	return NewControlClient(conn).UpdateCluster(ctx, r)
 }
 
-func (m *ListOptions) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.Query)
-	if l > 0 {
-		n += 1 + l + sovControl(uint64(l))
-	}
-	return n
-}
-
 func (m *GetNodeRequest) Size() (n int) {
 	var l int
 	_ = l
@@ -4537,9 +5216,27 @@ func (m *GetNodeResponse) Size() (n int) {
 func (m *ListNodesRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Options != nil {
-		l = m.Options.Size()
+	if m.Filters != nil {
+		l = m.Filters.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *ListNodesRequest_Filters) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
 	}
 	return n
 }
@@ -4623,6 +5320,40 @@ func (m *RemoveTaskResponse) Size() (n int) {
 func (m *ListTasksRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.Filters != nil {
+		l = m.Filters.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *ListTasksRequest_Filters) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	if len(m.ServiceIDs) > 0 {
+		for _, s := range m.ServiceIDs {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	if len(m.NodeIDs) > 0 {
+		for _, s := range m.NodeIDs {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
 	return n
 }
 
@@ -4725,9 +5456,27 @@ func (m *RemoveServiceResponse) Size() (n int) {
 func (m *ListServicesRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Options != nil {
-		l = m.Options.Size()
+	if m.Filters != nil {
+		l = m.Filters.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *ListServicesRequest_Filters) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
 	}
 	return n
 }
@@ -4811,9 +5560,27 @@ func (m *RemoveNetworkResponse) Size() (n int) {
 func (m *ListNetworksRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Options != nil {
-		l = m.Options.Size()
+	if m.Filters != nil {
+		l = m.Filters.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *ListNetworksRequest_Filters) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
 	}
 	return n
 }
@@ -4889,6 +5656,28 @@ func (m *RemoveVolumeResponse) Size() (n int) {
 func (m *ListVolumesRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.Filters != nil {
+		l = m.Filters.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *ListVolumesRequest_Filters) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
 	return n
 }
 
@@ -4907,9 +5696,27 @@ func (m *ListVolumesResponse) Size() (n int) {
 func (m *ListManagersRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Options != nil {
-		l = m.Options.Size()
+	if m.Filters != nil {
+		l = m.Filters.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *ListManagersRequest_Filters) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
 	}
 	return n
 }
@@ -4965,9 +5772,27 @@ func (m *GetClusterResponse) Size() (n int) {
 func (m *ListClustersRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Options != nil {
-		l = m.Options.Size()
+	if m.Filters != nil {
+		l = m.Filters.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *ListClustersRequest_Filters) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
 	}
 	return n
 }
@@ -5025,16 +5850,6 @@ func sovControl(x uint64) (n int) {
 func sozControl(x uint64) (n int) {
 	return sovControl(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (this *ListOptions) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ListOptions{`,
-		`Query:` + fmt.Sprintf("%v", this.Query) + `,`,
-		`}`,
-	}, "")
-	return s
-}
 func (this *GetNodeRequest) String() string {
 	if this == nil {
 		return "nil"
@@ -5060,7 +5875,18 @@ func (this *ListNodesRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ListNodesRequest{`,
-		`Options:` + strings.Replace(fmt.Sprintf("%v", this.Options), "ListOptions", "ListOptions", 1) + `,`,
+		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListNodesRequest_Filters", "ListNodesRequest_Filters", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListNodesRequest_Filters) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListNodesRequest_Filters{`,
+		`Names:` + fmt.Sprintf("%v", this.Names) + `,`,
+		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5141,6 +5967,20 @@ func (this *ListTasksRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ListTasksRequest{`,
+		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListTasksRequest_Filters", "ListTasksRequest_Filters", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListTasksRequest_Filters) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListTasksRequest_Filters{`,
+		`Names:` + fmt.Sprintf("%v", this.Names) + `,`,
+		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
+		`ServiceIDs:` + fmt.Sprintf("%v", this.ServiceIDs) + `,`,
+		`NodeIDs:` + fmt.Sprintf("%v", this.NodeIDs) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5241,7 +6081,18 @@ func (this *ListServicesRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ListServicesRequest{`,
-		`Options:` + strings.Replace(fmt.Sprintf("%v", this.Options), "ListOptions", "ListOptions", 1) + `,`,
+		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListServicesRequest_Filters", "ListServicesRequest_Filters", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListServicesRequest_Filters) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListServicesRequest_Filters{`,
+		`Names:` + fmt.Sprintf("%v", this.Names) + `,`,
+		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5322,7 +6173,18 @@ func (this *ListNetworksRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ListNetworksRequest{`,
-		`Options:` + strings.Replace(fmt.Sprintf("%v", this.Options), "ListOptions", "ListOptions", 1) + `,`,
+		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListNetworksRequest_Filters", "ListNetworksRequest_Filters", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListNetworksRequest_Filters) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListNetworksRequest_Filters{`,
+		`Names:` + fmt.Sprintf("%v", this.Names) + `,`,
+		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5401,6 +6263,18 @@ func (this *ListVolumesRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ListVolumesRequest{`,
+		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListVolumesRequest_Filters", "ListVolumesRequest_Filters", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListVolumesRequest_Filters) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListVolumesRequest_Filters{`,
+		`Names:` + fmt.Sprintf("%v", this.Names) + `,`,
+		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5420,7 +6294,18 @@ func (this *ListManagersRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ListManagersRequest{`,
-		`Options:` + strings.Replace(fmt.Sprintf("%v", this.Options), "ListOptions", "ListOptions", 1) + `,`,
+		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListManagersRequest_Filters", "ListManagersRequest_Filters", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListManagersRequest_Filters) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListManagersRequest_Filters{`,
+		`Names:` + fmt.Sprintf("%v", this.Names) + `,`,
+		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5479,7 +6364,18 @@ func (this *ListClustersRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ListClustersRequest{`,
-		`Options:` + strings.Replace(fmt.Sprintf("%v", this.Options), "ListOptions", "ListOptions", 1) + `,`,
+		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListClustersRequest_Filters", "ListClustersRequest_Filters", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListClustersRequest_Filters) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListClustersRequest_Filters{`,
+		`Names:` + fmt.Sprintf("%v", this.Names) + `,`,
+		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5523,85 +6419,6 @@ func valueToStringControl(v interface{}) string {
 	}
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
-}
-func (m *ListOptions) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowControl
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: ListOptions: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ListOptions: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Query", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthControl
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Query = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipControl(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthControl
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
 }
 func (m *GetNodeRequest) Unmarshal(data []byte) error {
 	l := len(data)
@@ -5796,7 +6613,7 @@ func (m *ListNodesRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Options", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Filters", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -5820,12 +6637,120 @@ func (m *ListNodesRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Options == nil {
-				m.Options = &ListOptions{}
+			if m.Filters == nil {
+				m.Filters = &ListNodesRequest_Filters{}
 			}
-			if err := m.Options.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Filters.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListNodesRequest_Filters) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Filters: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Filters: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Names", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Names = append(m.Names, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IDPrefixes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.IDPrefixes = append(m.IDPrefixes, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -6477,6 +7402,205 @@ func (m *ListTasksRequest) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: ListTasksRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Filters", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Filters == nil {
+				m.Filters = &ListTasksRequest_Filters{}
+			}
+			if err := m.Filters.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListTasksRequest_Filters) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Filters: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Filters: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Names", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Names = append(m.Names, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IDPrefixes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.IDPrefixes = append(m.IDPrefixes, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ServiceIDs", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ServiceIDs = append(m.ServiceIDs, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeIDs", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NodeIDs = append(m.NodeIDs, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipControl(data[iNdEx:])
@@ -7295,7 +8419,7 @@ func (m *ListServicesRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Options", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Filters", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -7319,12 +8443,120 @@ func (m *ListServicesRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Options == nil {
-				m.Options = &ListOptions{}
+			if m.Filters == nil {
+				m.Filters = &ListServicesRequest_Filters{}
 			}
-			if err := m.Options.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Filters.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListServicesRequest_Filters) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Filters: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Filters: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Names", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Names = append(m.Names, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IDPrefixes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.IDPrefixes = append(m.IDPrefixes, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -7974,7 +9206,7 @@ func (m *ListNetworksRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Options", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Filters", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -7998,12 +9230,120 @@ func (m *ListNetworksRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Options == nil {
-				m.Options = &ListOptions{}
+			if m.Filters == nil {
+				m.Filters = &ListNetworksRequest_Filters{}
 			}
-			if err := m.Options.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Filters.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListNetworksRequest_Filters) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Filters: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Filters: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Names", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Names = append(m.Names, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IDPrefixes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.IDPrefixes = append(m.IDPrefixes, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -8593,6 +9933,147 @@ func (m *ListVolumesRequest) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: ListVolumesRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Filters", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Filters == nil {
+				m.Filters = &ListVolumesRequest_Filters{}
+			}
+			if err := m.Filters.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListVolumesRequest_Filters) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Filters: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Filters: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Names", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Names = append(m.Names, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IDPrefixes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.IDPrefixes = append(m.IDPrefixes, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipControl(data[iNdEx:])
@@ -8726,7 +10207,7 @@ func (m *ListManagersRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Options", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Filters", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -8750,12 +10231,120 @@ func (m *ListManagersRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Options == nil {
-				m.Options = &ListOptions{}
+			if m.Filters == nil {
+				m.Filters = &ListManagersRequest_Filters{}
 			}
-			if err := m.Options.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Filters.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListManagersRequest_Filters) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Filters: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Filters: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Names", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Names = append(m.Names, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IDPrefixes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.IDPrefixes = append(m.IDPrefixes, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -9181,7 +10770,7 @@ func (m *ListClustersRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Options", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Filters", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -9205,12 +10794,120 @@ func (m *ListClustersRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Options == nil {
-				m.Options = &ListOptions{}
+			if m.Filters == nil {
+				m.Filters = &ListClustersRequest_Filters{}
 			}
-			if err := m.Options.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Filters.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListClustersRequest_Filters) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Filters: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Filters: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Names", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Names = append(m.Names, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IDPrefixes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.IDPrefixes = append(m.IDPrefixes, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -9648,88 +11345,96 @@ var (
 )
 
 var fileDescriptorControl = []byte{
-	// 1318 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xac, 0x59, 0x4f, 0x6f, 0x1b, 0x45,
-	0x14, 0xc7, 0x69, 0x1b, 0x27, 0xcf, 0x71, 0xd3, 0x4c, 0x9c, 0x12, 0x6d, 0xab, 0x14, 0x6d, 0x68,
-	0x9b, 0x48, 0xc5, 0x45, 0x09, 0x15, 0x70, 0xe0, 0x5f, 0x12, 0xa9, 0x0a, 0xa1, 0x29, 0xda, 0xd2,
-	0x8a, 0x1b, 0x72, 0xed, 0x55, 0x64, 0x12, 0x7b, 0xcd, 0xee, 0x3a, 0xa5, 0xe2, 0xc2, 0xc7, 0xe0,
-	0x33, 0x70, 0xe0, 0xc4, 0x9d, 0x6b, 0xc5, 0x89, 0x23, 0x27, 0x44, 0xfb, 0x01, 0x10, 0x1f, 0xa1,
-	0x33, 0x3b, 0x6f, 0x66, 0x76, 0xc7, 0x33, 0xb3, 0x76, 0xed, 0x83, 0x15, 0x7b, 0xf6, 0xf7, 0xfe,
-	0xcc, 0x7b, 0xbf, 0x99, 0x7d, 0xbf, 0x16, 0xea, 0xed, 0xa8, 0x9f, 0xc6, 0xd1, 0x59, 0x73, 0x10,
-	0x47, 0x69, 0x44, 0x48, 0x27, 0x6a, 0x9f, 0x86, 0x71, 0xb3, 0x7d, 0x36, 0x4c, 0x52, 0xfa, 0xb7,
-	0x35, 0xe8, 0x7a, 0xb5, 0x64, 0x10, 0xb6, 0x13, 0x0e, 0xf0, 0xea, 0xd1, 0xd3, 0xef, 0xc3, 0x76,
-	0x2a, 0x7e, 0xd6, 0xd2, 0xe7, 0x83, 0x50, 0xfc, 0x68, 0x9c, 0x44, 0x27, 0x51, 0xf6, 0xf5, 0x2e,
-	0xfb, 0x86, 0xab, 0xab, 0x83, 0xb3, 0xe1, 0x49, 0xb7, 0x7f, 0x97, 0xff, 0xe1, 0x8b, 0xfe, 0x26,
-	0xd4, 0xbe, 0xea, 0x26, 0xe9, 0xc3, 0x41, 0xda, 0x8d, 0xfa, 0x09, 0x69, 0xc0, 0xa5, 0x1f, 0x86,
-	0x61, 0xfc, 0x7c, 0xbd, 0xf2, 0x4e, 0x65, 0x6b, 0x31, 0xe0, 0x3f, 0xfc, 0x7b, 0x70, 0xf9, 0x7e,
-	0x98, 0x1e, 0x47, 0x9d, 0x30, 0x08, 0xe9, 0x4a, 0x92, 0x92, 0x4d, 0xa8, 0xf6, 0xe9, 0xcf, 0xef,
-	0xba, 0x1d, 0x8e, 0xdc, 0x83, 0x57, 0xff, 0xdc, 0x98, 0x67, 0x88, 0xc3, 0x83, 0x60, 0x9e, 0x3d,
-	0x3a, 0xec, 0xf8, 0x9f, 0xc1, 0xb2, 0x34, 0x4b, 0x06, 0xd4, 0x7d, 0x48, 0xee, 0xc0, 0x45, 0xf6,
-	0x30, 0x33, 0xaa, 0xed, 0xac, 0x37, 0x47, 0x77, 0xd9, 0xcc, 0xf0, 0x19, 0xca, 0x7f, 0x00, 0x57,
-	0x58, 0x72, 0x6c, 0x25, 0x11, 0x91, 0x3f, 0x86, 0x6a, 0xc4, 0x93, 0x45, 0x27, 0x37, 0x4c, 0x4e,
-	0x72, 0x7b, 0x0a, 0x04, 0xde, 0xdf, 0x87, 0x95, 0x9c, 0x3b, 0xcc, 0xa8, 0x09, 0x97, 0x58, 0x2c,
-	0xe6, 0xed, 0x82, 0x33, 0x25, 0x0e, 0xf3, 0x7f, 0xad, 0xc0, 0xca, 0xe3, 0x41, 0xa7, 0x95, 0x86,
-	0x93, 0xd6, 0x83, 0x7c, 0x0a, 0x4b, 0x19, 0xe8, 0x3c, 0x8c, 0x13, 0x9a, 0xd0, 0xfa, 0x5c, 0x96,
-	0xff, 0x35, 0x53, 0xc4, 0x27, 0x1c, 0x12, 0xd4, 0x98, 0x01, 0xfe, 0x20, 0xef, 0xc3, 0x45, 0xc6,
-	0x80, 0xf5, 0x0b, 0x99, 0xdd, 0x75, 0x5b, 0xa6, 0x8f, 0x28, 0x26, 0xc8, 0x90, 0xfe, 0x1e, 0x90,
-	0x7c, 0xae, 0x6f, 0xd4, 0x04, 0xde, 0xfc, 0x6f, 0x5a, 0xc9, 0x69, 0x6e, 0xb3, 0x29, 0xfd, 0xa9,
-	0x6d, 0x96, 0x21, 0xd8, 0x66, 0xd9, 0x23, 0xd9, 0x7c, 0x6e, 0xa6, 0xe2, 0xb2, 0x87, 0xae, 0xb8,
-	0x19, 0x3e, 0x43, 0xf9, 0x1f, 0xc1, 0x4a, 0x10, 0xf6, 0xa2, 0xf3, 0x70, 0xe2, 0xd0, 0x0d, 0x20,
-	0x79, 0x4b, 0x1e, 0xdd, 0x27, 0x9c, 0x4c, 0x6c, 0x4d, 0x90, 0x49, 0x30, 0x02, 0xd7, 0x14, 0x23,
-	0x98, 0x23, 0x27, 0x23, 0x32, 0xcf, 0x1c, 0xe6, 0x1f, 0x41, 0x63, 0x3f, 0x0e, 0x69, 0x91, 0x1f,
-	0x85, 0xf1, 0x79, 0xb7, 0x2d, 0x39, 0xb1, 0x8b, 0xed, 0x72, 0xd0, 0x14, 0x2d, 0x72, 0x1d, 0x3b,
-	0x86, 0x35, 0xcd, 0x19, 0x66, 0x75, 0x0f, 0xaa, 0x09, 0x5f, 0x42, 0x87, 0xd7, 0x1c, 0x0e, 0x03,
-	0x81, 0xf5, 0xbf, 0x80, 0x15, 0xda, 0x06, 0x2d, 0xb3, 0x3b, 0x00, 0xf8, 0x5c, 0x15, 0xb2, 0x4e,
-	0x0b, 0xb9, 0x88, 0x38, 0x5a, 0xcb, 0x45, 0x04, 0xd0, 0x72, 0x1e, 0x01, 0xc9, 0xbb, 0x98, 0x2e,
-	0x9f, 0x3f, 0x2a, 0xd0, 0xe0, 0x94, 0x9c, 0x26, 0x27, 0x72, 0x00, 0xcb, 0x02, 0x3d, 0xc1, 0x69,
-	0xba, 0x8c, 0x36, 0xe2, 0x40, 0xed, 0x16, 0x0e, 0xd4, 0xf8, 0x1d, 0xd2, 0x36, 0x30, 0x5d, 0x45,
-	0x0e, 0xa0, 0xc1, 0xd9, 0x3a, 0x55, 0x93, 0xde, 0x86, 0x35, 0xcd, 0x0b, 0xd2, 0xfe, 0x6b, 0x58,
-	0x65, 0x14, 0xc7, 0xe5, 0x59, 0x5c, 0xa3, 0x0f, 0xa1, 0x51, 0xf4, 0x88, 0xfb, 0xff, 0x10, 0x16,
-	0x30, 0x1f, 0x71, 0x74, 0x9c, 0x05, 0x90, 0x60, 0x75, 0x80, 0x8e, 0xc3, 0xf4, 0x59, 0x14, 0x9f,
-	0x4e, 0x70, 0x80, 0xd0, 0xc2, 0x74, 0x80, 0xa4, 0x33, 0xd5, 0x9e, 0x3e, 0x5f, 0x72, 0xb5, 0x47,
-	0x58, 0x09, 0xac, 0xff, 0x38, 0x3b, 0x40, 0x5a, 0x66, 0x84, 0xde, 0xa0, 0xad, 0x5e, 0x88, 0x6f,
-	0xc9, 0xec, 0x3b, 0xeb, 0x17, 0xda, 0xb0, 0x7e, 0xcd, 0xa9, 0x7e, 0xa1, 0x2d, 0xeb, 0x17, 0x02,
-	0xe4, 0xa1, 0x9a, 0x51, 0x8e, 0xdf, 0x0a, 0x0a, 0xcd, 0x3c, 0x4d, 0x49, 0x2b, 0x2d, 0x53, 0x41,
-	0x2b, 0x5c, 0x9e, 0x21, 0xad, 0x94, 0x47, 0x45, 0x2b, 0xcc, 0xc7, 0x49, 0x2b, 0x91, 0xa0, 0x04,
-	0xfb, 0x87, 0xb0, 0xca, 0x99, 0xf0, 0x24, 0x3a, 0x1b, 0xf6, 0xe4, 0xb9, 0xda, 0x29, 0xb0, 0x6a,
-	0xc3, 0x78, 0x5f, 0x64, 0x06, 0x39, 0x52, 0x7d, 0x29, 0x18, 0x2a, 0x5c, 0x61, 0x6e, 0x3b, 0x30,
-	0x7f, 0x9e, 0xad, 0xa0, 0x37, 0xcf, 0xee, 0x2d, 0x40, 0xa4, 0xff, 0x09, 0x5c, 0xa1, 0x9d, 0x2f,
-	0xe6, 0xb4, 0x0d, 0x8b, 0xfc, 0xa9, 0x3a, 0xea, 0x4b, 0xb4, 0x27, 0x0b, 0x1c, 0x45, 0x5b, 0xb2,
-	0xc0, 0x1f, 0xd3, 0x8e, 0xdc, 0xcf, 0xf8, 0x38, 0x83, 0x3c, 0x3e, 0x87, 0x55, 0xde, 0xda, 0x37,
-	0x4e, 0xe5, 0xaa, 0xa0, 0x5d, 0x31, 0x1b, 0xf6, 0xfe, 0x65, 0x9d, 0xe4, 0xab, 0xf2, 0x5d, 0x7b,
-	0xc4, 0x19, 0x23, 0x57, 0x31, 0xf5, 0x0f, 0xa0, 0xca, 0x1d, 0x8a, 0xee, 0xba, 0x72, 0x17, 0x50,
-	0x41, 0xbf, 0x07, 0xad, 0x7e, 0xeb, 0x84, 0x5e, 0xe6, 0xb3, 0xa3, 0x9f, 0xf2, 0xa8, 0xe8, 0xd7,
-	0xc3, 0x35, 0x17, 0xfd, 0xd0, 0x2e, 0x90, 0x60, 0x75, 0xaf, 0x8b, 0x47, 0xea, 0x5e, 0x47, 0x8c,
-	0x76, 0xaf, 0x23, 0x8e, 0x1d, 0x40, 0x04, 0xe4, 0x0f, 0xa0, 0xf4, 0x82, 0x45, 0xe6, 0x2f, 0xf6,
-	0x7d, 0x9e, 0x42, 0xce, 0x37, 0x26, 0xa5, 0xf9, 0x46, 0x1c, 0xf3, 0x8d, 0x00, 0x79, 0x07, 0x49,
-	0x17, 0xea, 0x0e, 0x42, 0x88, 0xeb, 0x0e, 0x12, 0x56, 0x02, 0x2b, 0x3a, 0x82, 0xeb, 0x33, 0xec,
-	0x88, 0xf2, 0xa8, 0x3a, 0x82, 0xb6, 0xce, 0x8e, 0x88, 0x0c, 0x25, 0x38, 0x37, 0x7b, 0x4c, 0x53,
-	0x36, 0x36, 0x7b, 0x08, 0xf4, 0x24, 0xb3, 0x07, 0x2e, 0x4e, 0x30, 0x7b, 0x60, 0x74, 0xd3, 0xec,
-	0x31, 0x9b, 0xa6, 0xed, 0xfc, 0x7e, 0x15, 0xaa, 0xfb, 0x5c, 0x77, 0x92, 0x2e, 0x54, 0x51, 0xad,
-	0x11, 0xdf, 0x64, 0x5c, 0x54, 0x80, 0xde, 0xa6, 0x13, 0x83, 0x24, 0x5d, 0xfb, 0xf3, 0xb7, 0xff,
-	0x7e, 0x99, 0x5b, 0x86, 0x7a, 0xf2, 0xac, 0x15, 0xf7, 0xde, 0x43, 0x5a, 0x93, 0x08, 0x16, 0xa5,
-	0x10, 0x23, 0xef, 0xda, 0x08, 0x91, 0x97, 0x7d, 0xde, 0xcd, 0x12, 0x94, 0x3b, 0x60, 0x0c, 0xa0,
-	0x74, 0x10, 0x31, 0xfa, 0x1a, 0xd1, 0x74, 0xde, 0xad, 0x32, 0x98, 0x3b, 0x26, 0xaf, 0x27, 0x13,
-	0x0a, 0xd6, 0x7a, 0xe6, 0x94, 0x8d, 0xb5, 0x9e, 0x05, 0x0d, 0xe3, 0xae, 0x67, 0x26, 0x63, 0xec,
-	0xf5, 0xcc, 0x2b, 0x1f, 0x7b, 0x3d, 0x0b, 0x5a, 0xc8, 0x51, 0x4f, 0xa5, 0xb0, 0xcc, 0xf5, 0x1c,
-	0xd1, 0x6e, 0xe6, 0x7a, 0x1a, 0x84, 0x9a, 0x3d, 0xa6, 0x92, 0x21, 0xe6, 0x98, 0x23, 0x4a, 0xc7,
-	0x1c, 0x73, 0x54, 0xcd, 0xd8, 0x62, 0xfe, 0x08, 0x4b, 0xf9, 0x51, 0x97, 0xdc, 0xb6, 0x55, 0x4d,
-	0x1b, 0xaf, 0xbd, 0xad, 0x72, 0xa0, 0x3b, 0xf2, 0x4f, 0x50, 0x2f, 0xe8, 0x40, 0x62, 0xf4, 0x68,
-	0xd2, 0x9d, 0xde, 0xf6, 0x18, 0xc8, 0xd2, 0xe0, 0x05, 0x89, 0x63, 0x0e, 0x6e, 0x92, 0x71, 0xe6,
-	0xe0, 0x46, 0xbd, 0xe4, 0x08, 0x5e, 0x50, 0x32, 0xe6, 0xe0, 0x26, 0xc9, 0x64, 0x0e, 0x6e, 0x96,
-	0x45, 0x4e, 0x92, 0xe1, 0x2c, 0x69, 0x25, 0x59, 0x71, 0xcc, 0xb6, 0x92, 0x4c, 0x9f, 0x99, 0xdd,
-	0x24, 0x13, 0x83, 0xaf, 0x9d, 0x64, 0xda, 0xb0, 0x6d, 0x27, 0x99, 0x3e, 0x43, 0x97, 0x92, 0x4c,
-	0x6c, 0xd8, 0x41, 0x32, 0x6d, 0xcf, 0xdb, 0x63, 0x20, 0xc7, 0xec, 0xb3, 0x33, 0xb8, 0x49, 0xd7,
-	0xb8, 0xfa, 0x3c, 0x66, 0x70, 0x7a, 0x63, 0xca, 0x29, 0xda, 0x7c, 0x63, 0xea, 0x33, 0xba, 0x77,
-	0xb3, 0x04, 0xe5, 0x0e, 0x38, 0xe4, 0xff, 0xce, 0x8a, 0xd3, 0x2f, 0xb9, 0x65, 0x6b, 0x5d, 0x71,
-	0x68, 0xf6, 0x6e, 0x97, 0xe2, 0x4a, 0xb9, 0x95, 0x17, 0x2e, 0x66, 0x6e, 0x19, 0x54, 0x92, 0xb7,
-	0x55, 0x0e, 0x2c, 0x8d, 0x9c, 0x17, 0x07, 0xe6, 0xc8, 0x06, 0x01, 0xe2, 0x6d, 0x95, 0x03, 0xc7,
-	0x3a, 0x4f, 0x62, 0x92, 0xb7, 0x9f, 0x27, 0x4d, 0x3d, 0xd8, 0xcf, 0x93, 0x2e, 0x0a, 0x4a, 0x29,
-	0x8d, 0x06, 0x2e, 0x4a, 0x17, 0x55, 0x81, 0x8b, 0xd2, 0xfa, 0xe4, 0xef, 0xbc, 0xba, 0x70, 0xc4,
-	0xb3, 0x5e, 0x5d, 0xc5, 0xc9, 0xd7, 0x7a, 0x75, 0x69, 0xf3, 0x65, 0x49, 0xa9, 0xc5, 0x88, 0x6e,
-	0x2f, 0xb5, 0x26, 0x0b, 0xec, 0xa5, 0xd6, 0xa7, 0xfd, 0xd2, 0x57, 0x94, 0xd8, 0xb0, 0xe3, 0x15,
-	0xa5, 0xed, 0x79, 0x7b, 0x0c, 0xa4, 0x33, 0xf8, 0xde, 0xf5, 0x17, 0x2f, 0x37, 0xde, 0xfa, 0x9b,
-	0x7e, 0xfe, 0x7f, 0xb9, 0x51, 0xf9, 0xf9, 0xd5, 0x46, 0xe5, 0x05, 0xfd, 0xfc, 0x45, 0x3f, 0xff,
-	0xd2, 0xcf, 0xd3, 0xf9, 0xec, 0x7f, 0x56, 0x76, 0x5f, 0x07, 0x00, 0x00, 0xff, 0xff, 0x27, 0x86,
-	0x69, 0xe7, 0xd2, 0x19, 0x00, 0x00,
+	// 1445 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xbc, 0x59, 0x4d, 0x6f, 0x1b, 0x45,
+	0x18, 0xc6, 0x69, 0x88, 0xe3, 0xd7, 0xf9, 0x68, 0x26, 0x4e, 0x89, 0xb6, 0x55, 0x8a, 0xb6, 0x34,
+	0x4d, 0xa4, 0xe0, 0xa0, 0x84, 0x0a, 0x2e, 0x7c, 0x25, 0x51, 0x8b, 0x29, 0x84, 0x6a, 0x4b, 0x2b,
+	0x6e, 0x95, 0x6b, 0x6f, 0xa3, 0x25, 0x89, 0xd7, 0x78, 0x9d, 0xb4, 0x88, 0x0b, 0x27, 0x7e, 0x03,
+	0x7f, 0x01, 0x84, 0x10, 0x42, 0xdc, 0xb9, 0x56, 0x9c, 0x38, 0x72, 0x42, 0xb4, 0x3f, 0x00, 0xf1,
+	0x13, 0x3a, 0x1f, 0xef, 0xcc, 0xee, 0x8e, 0x67, 0x66, 0xed, 0x24, 0xca, 0xc1, 0xca, 0xee, 0xcc,
+	0xf3, 0x7e, 0xce, 0xf3, 0xce, 0xce, 0x3b, 0x81, 0xe9, 0x56, 0xdc, 0xe9, 0xf7, 0xe2, 0x83, 0x7a,
+	0xb7, 0x17, 0xf7, 0x63, 0x42, 0xda, 0x71, 0x6b, 0x3f, 0xec, 0xd5, 0x5b, 0x07, 0x47, 0x49, 0x9f,
+	0xfe, 0x6d, 0x76, 0x23, 0xaf, 0x9a, 0x74, 0xc3, 0x56, 0x22, 0x00, 0xde, 0x74, 0xfc, 0xe8, 0xab,
+	0xb0, 0xd5, 0x97, 0xaf, 0xd5, 0xfe, 0x37, 0xdd, 0x50, 0xbe, 0xd4, 0xf6, 0xe2, 0xbd, 0x98, 0x3f,
+	0xae, 0xb3, 0x27, 0x1c, 0x9d, 0xef, 0x1e, 0x1c, 0xed, 0x45, 0x9d, 0x75, 0xf1, 0x47, 0x0c, 0xfa,
+	0x37, 0x61, 0xe6, 0x76, 0xd8, 0xdf, 0x8d, 0xdb, 0x61, 0x10, 0x7e, 0x7d, 0x14, 0x26, 0x7d, 0x72,
+	0x0d, 0xca, 0x1d, 0xfa, 0xfa, 0x30, 0x6a, 0x2f, 0x96, 0x5e, 0x2f, 0xad, 0x54, 0xb6, 0xe0, 0xc5,
+	0x3f, 0x57, 0x27, 0x18, 0xa2, 0xb1, 0x13, 0x4c, 0xb0, 0xa9, 0x46, 0xdb, 0xff, 0x00, 0x66, 0x95,
+	0x58, 0xd2, 0x8d, 0x3b, 0x49, 0x48, 0xd6, 0x60, 0x9c, 0x4d, 0x72, 0xa1, 0xea, 0xc6, 0x62, 0x7d,
+	0x30, 0x80, 0x3a, 0xc7, 0x73, 0x94, 0xff, 0x73, 0x09, 0x2e, 0x7e, 0x1a, 0x25, 0x5c, 0x45, 0x22,
+	0x4d, 0xdf, 0x82, 0xf2, 0xe3, 0xe8, 0x80, 0xa2, 0x13, 0xd4, 0xb2, 0x66, 0xd2, 0xa2, 0x8b, 0xd5,
+	0x6f, 0x09, 0x99, 0x40, 0x0a, 0x7b, 0x77, 0xa1, 0x8c, 0x63, 0xa4, 0x06, 0xaf, 0x76, 0x9a, 0x87,
+	0x21, 0x53, 0x78, 0x61, 0xa5, 0x12, 0x88, 0x17, 0xb2, 0x0e, 0xd5, 0xa8, 0xfd, 0xb0, 0xdb, 0x0b,
+	0x1f, 0x47, 0x4f, 0xe9, 0xdc, 0x18, 0x9b, 0xdb, 0x9a, 0xa1, 0x71, 0x42, 0x63, 0xe7, 0x2e, 0x8e,
+	0x06, 0x10, 0xb5, 0xe5, 0xb3, 0xbf, 0x0d, 0x73, 0x19, 0xb3, 0x18, 0x71, 0x9d, 0xea, 0x66, 0x03,
+	0x5c, 0xb7, 0x2b, 0x64, 0x01, 0xf3, 0x7f, 0x2a, 0xc1, 0xdc, 0xfd, 0x6e, 0xbb, 0xd9, 0x0f, 0x47,
+	0xcd, 0x37, 0x79, 0x1f, 0xa6, 0x38, 0xe8, 0x98, 0xc6, 0x14, 0xc5, 0x1d, 0xea, 0x31, 0x4b, 0xcf,
+	0x65, 0x93, 0xc5, 0x07, 0x02, 0x12, 0x54, 0x99, 0x00, 0xbe, 0x90, 0xb7, 0x60, 0x9c, 0x91, 0x67,
+	0xf1, 0x02, 0x97, 0xbb, 0x62, 0xf3, 0xf4, 0x1e, 0xc5, 0x04, 0x1c, 0xe9, 0x6f, 0x01, 0xc9, 0xfa,
+	0x7a, 0xa2, 0x45, 0x16, 0xe4, 0xfa, 0xa2, 0x99, 0xec, 0x67, 0x82, 0xed, 0xd3, 0x57, 0x2d, 0x58,
+	0x86, 0x60, 0xc1, 0xb2, 0x29, 0x45, 0x2e, 0x21, 0x96, 0xda, 0x65, 0x93, 0x2e, 0xbb, 0x1c, 0xcf,
+	0x51, 0xfe, 0xbb, 0x30, 0x17, 0x84, 0x87, 0xf1, 0x71, 0x38, 0xb2, 0xe9, 0x1a, 0x90, 0xac, 0xa4,
+	0xb0, 0xee, 0x7f, 0x3f, 0x26, 0xc8, 0xca, 0x06, 0x4f, 0x40, 0xd6, 0xac, 0xd8, 0x20, 0x59, 0x7f,
+	0x2c, 0x9d, 0x35, 0x5b, 0x99, 0x40, 0x12, 0xf6, 0x8e, 0xa3, 0x16, 0x63, 0x55, 0x42, 0x17, 0x5d,
+	0x09, 0xdc, 0x13, 0xc3, 0x8d, 0x1d, 0x2a, 0x80, 0x90, 0x46, 0x3b, 0x21, 0xcb, 0x30, 0x89, 0x1c,
+	0x4c, 0x16, 0xc7, 0x39, 0xba, 0x4a, 0xd1, 0x65, 0x41, 0x42, 0xea, 0xab, 0x60, 0xa1, 0x2a, 0x03,
+	0x0c, 0x28, 0x2d, 0x03, 0x96, 0x3d, 0x67, 0x19, 0xf0, 0x74, 0x0a, 0x98, 0x7f, 0x07, 0x6a, 0xdb,
+	0xbd, 0x90, 0x32, 0x0b, 0x9d, 0x91, 0x09, 0xdd, 0x44, 0x8e, 0x8a, 0x6c, 0x5e, 0x35, 0xa9, 0x41,
+	0x89, 0x0c, 0x4d, 0x77, 0x61, 0x41, 0x53, 0x86, 0x5e, 0xdd, 0x84, 0x32, 0x06, 0x88, 0x0a, 0x2f,
+	0x3b, 0x14, 0x06, 0x12, 0xeb, 0x7f, 0x04, 0x73, 0x94, 0x7b, 0x9a, 0x67, 0x6b, 0x00, 0x69, 0x3e,
+	0x91, 0x3d, 0xd3, 0x34, 0x41, 0x15, 0x95, 0xce, 0xa0, 0xa2, 0xb2, 0x49, 0xe3, 0x23, 0x59, 0x15,
+	0xa7, 0xf3, 0xe7, 0x8f, 0x12, 0xd4, 0x44, 0x1d, 0x9e, 0xc6, 0x27, 0xb2, 0x03, 0xb3, 0x12, 0x3d,
+	0xc2, 0x16, 0x32, 0x83, 0x32, 0x72, 0x17, 0xd9, 0xcc, 0xed, 0x22, 0xc3, 0xaf, 0x90, 0x16, 0xc0,
+	0xe9, 0x32, 0xb2, 0x03, 0x35, 0x51, 0xa2, 0xa7, 0x5a, 0xa4, 0xd7, 0x60, 0x41, 0xd3, 0x82, 0xb5,
+	0xfe, 0x5b, 0x09, 0xe6, 0x19, 0xc7, 0x71, 0x5c, 0x95, 0x7b, 0x43, 0x2f, 0xf7, 0x75, 0x5b, 0xb9,
+	0x6b, 0x92, 0xe7, 0xf1, 0x79, 0xfa, 0x1c, 0x6a, 0x79, 0xcb, 0x98, 0xe2, 0x77, 0x60, 0x12, 0x43,
+	0x96, 0xd5, 0xe9, 0xcc, 0xb1, 0x02, 0xa7, 0x35, 0xba, 0x1b, 0xf6, 0x9f, 0xc4, 0xbd, 0xfd, 0x11,
+	0x6a, 0x14, 0x25, 0x4c, 0x35, 0xaa, 0x94, 0xa5, 0x0c, 0xe8, 0x88, 0x21, 0x17, 0x03, 0xa4, 0x94,
+	0xc4, 0xfa, 0xf7, 0x79, 0x8d, 0x6a, 0x9e, 0x11, 0xfa, 0x65, 0xa2, 0xc9, 0x13, 0x0b, 0x1f, 0xf0,
+	0x67, 0x46, 0x09, 0x94, 0x61, 0x94, 0x18, 0x4b, 0x29, 0x81, 0xb2, 0x8c, 0x12, 0x08, 0x50, 0x75,
+	0x7b, 0x46, 0x3e, 0x7e, 0x29, 0x59, 0x7a, 0xe6, 0x6e, 0x2a, 0xe6, 0x6a, 0x9e, 0x2a, 0xe6, 0xe2,
+	0xf8, 0x09, 0x98, 0xab, 0x49, 0x9e, 0x23, 0x73, 0x53, 0xcb, 0x29, 0x73, 0x31, 0x64, 0x27, 0x73,
+	0x65, 0x0e, 0x14, 0xd8, 0x6f, 0xc0, 0xbc, 0x20, 0xdb, 0x83, 0xf8, 0xe0, 0xe8, 0x50, 0xed, 0x0e,
+	0x1b, 0x39, 0xe2, 0x2e, 0x19, 0x77, 0x3d, 0x2e, 0x90, 0xe1, 0xed, 0x27, 0xb2, 0x08, 0xa4, 0x2a,
+	0xf4, 0x6d, 0x03, 0x26, 0x8e, 0xf9, 0x08, 0x6a, 0xf3, 0xec, 0xda, 0x02, 0x44, 0xfa, 0xef, 0xc1,
+	0x45, 0x4a, 0xae, 0xbc, 0x4f, 0xab, 0x50, 0x11, 0xb3, 0xe9, 0x86, 0x35, 0x45, 0x53, 0x35, 0x29,
+	0x50, 0x74, 0xd5, 0x27, 0xc5, 0x34, 0x5d, 0xf4, 0xdb, 0x9c, 0xf2, 0x67, 0xe0, 0xc7, 0x87, 0x30,
+	0x2f, 0xd8, 0x73, 0x62, 0x57, 0x2e, 0x49, 0x66, 0xe7, 0xbd, 0xf1, 0x7f, 0x2d, 0x01, 0x61, 0x4b,
+	0x29, 0x86, 0x15, 0xfb, 0x3e, 0xd6, 0xd9, 0x57, 0xb7, 0xb1, 0x2f, 0x2f, 0x78, 0x1e, 0xe4, 0xbb,
+	0x23, 0x0a, 0x46, 0x19, 0xc6, 0xbc, 0xbe, 0x0d, 0x65, 0x11, 0xad, 0xa4, 0x9e, 0x2b, 0xb1, 0x12,
+	0xaa, 0xca, 0xef, 0xb3, 0x66, 0xa7, 0xb9, 0xc7, 0x1c, 0x1f, 0xb9, 0xfc, 0x34, 0xc9, 0x73, 0x2c,
+	0xbf, 0xd4, 0x72, 0x5a, 0x7e, 0x87, 0x38, 0xe6, 0x2a, 0x3f, 0x94, 0x0b, 0x14, 0x38, 0xfd, 0x3a,
+	0xcb, 0xa9, 0xf4, 0xeb, 0x8c, 0x18, 0xed, 0xeb, 0x8c, 0x38, 0xb6, 0xc7, 0x21, 0x20, 0xbb, 0xc7,
+	0x29, 0x2d, 0x48, 0x32, 0x71, 0x3c, 0xdb, 0x16, 0x2e, 0x64, 0x74, 0xa3, 0x53, 0x9a, 0x6e, 0xc4,
+	0x31, 0xdd, 0x08, 0x50, 0xdb, 0xbc, 0x52, 0x91, 0x6e, 0xf3, 0x08, 0x71, 0x6d, 0xf3, 0x52, 0x4a,
+	0x62, 0xd5, 0xa2, 0xe3, 0xc4, 0x09, 0x16, 0x5d, 0x93, 0x3c, 0xc7, 0x45, 0x4f, 0x2d, 0xa7, 0x8b,
+	0x8e, 0xde, 0x39, 0x17, 0x5d, 0x26, 0x41, 0x81, 0x33, 0x87, 0xd4, 0xd3, 0xac, 0x0c, 0x3b, 0xa4,
+	0x4a, 0xf4, 0x28, 0x87, 0x54, 0x1c, 0x1c, 0xe1, 0x90, 0x8a, 0xd6, 0x4d, 0x87, 0xd4, 0xb3, 0xe1,
+	0xc5, 0xc6, 0xef, 0x97, 0xa0, 0xbc, 0x2d, 0x2e, 0x74, 0x48, 0x04, 0x65, 0xbc, 0x2b, 0x21, 0xbe,
+	0x49, 0x38, 0x7f, 0xff, 0xe2, 0x5d, 0x73, 0x62, 0xb0, 0x0e, 0x16, 0xfe, 0xfc, 0xe5, 0xbf, 0x1f,
+	0xc6, 0x66, 0x61, 0x3a, 0x79, 0xd2, 0xec, 0x1d, 0xbe, 0x89, 0x95, 0x43, 0x62, 0xa8, 0xa8, 0x6b,
+	0x0a, 0xf2, 0xc6, 0x30, 0x97, 0x27, 0xde, 0xf5, 0x02, 0x94, 0xdb, 0x60, 0x0f, 0x20, 0xbd, 0x25,
+	0x20, 0x46, 0x5d, 0x03, 0x37, 0x1e, 0xde, 0x72, 0x11, 0xcc, 0x6d, 0x53, 0xe4, 0x93, 0x75, 0x94,
+	0xd6, 0x7c, 0x66, 0xfa, 0x7e, 0x6b, 0x3e, 0x73, 0x1d, 0xbe, 0x3b, 0x9f, 0xbc, 0xdf, 0xb5, 0xe7,
+	0x33, 0xdb, 0xdf, 0xdb, 0xf3, 0x99, 0x6b, 0x9a, 0x1d, 0xf9, 0x4c, 0xef, 0x1f, 0xcc, 0xf9, 0x1c,
+	0xb8, 0xd9, 0x30, 0xe7, 0xd3, 0x70, 0x8d, 0x61, 0xb7, 0x99, 0xf6, 0xab, 0x66, 0x9b, 0x03, 0x2d,
+	0xb1, 0xd9, 0xe6, 0x60, 0xdb, 0x6b, 0xb3, 0xf9, 0x14, 0xa6, 0xb2, 0x0d, 0x0b, 0xb9, 0x31, 0x64,
+	0x33, 0xe5, 0xad, 0x14, 0x03, 0xdd, 0x96, 0xbf, 0x85, 0xe9, 0xdc, 0x85, 0x01, 0x31, 0x6a, 0x34,
+	0x5d, 0x50, 0x78, 0xab, 0x43, 0x20, 0x0b, 0x8d, 0xe7, 0x7a, 0x61, 0xb3, 0x71, 0x53, 0xbf, 0x6f,
+	0x36, 0x6e, 0x6c, 0xac, 0x1d, 0xc6, 0x73, 0x2d, 0xaf, 0xd9, 0xb8, 0xa9, 0xb7, 0x36, 0x1b, 0x37,
+	0xf7, 0xcf, 0x4e, 0x92, 0xe1, 0x71, 0xdd, 0x4a, 0xb2, 0x7c, 0xb3, 0x64, 0x25, 0x99, 0xde, 0xf9,
+	0xb8, 0x49, 0x26, 0x7b, 0x0b, 0x3b, 0xc9, 0xb4, 0xbe, 0xc7, 0x4e, 0x32, 0xbd, 0x4d, 0x29, 0x24,
+	0x99, 0x0c, 0xd8, 0x41, 0x32, 0x2d, 0xe6, 0xd5, 0x21, 0x90, 0x43, 0xae, 0xb3, 0xd3, 0xb8, 0xa9,
+	0x3b, 0x75, 0xad, 0xf3, 0x90, 0xc6, 0xe9, 0x8e, 0xa9, 0x1a, 0x15, 0xf3, 0x8e, 0xa9, 0xb7, 0x41,
+	0xde, 0xf5, 0x02, 0x94, 0xdb, 0xe0, 0x11, 0x54, 0x33, 0x67, 0x78, 0xb2, 0x3c, 0x5c, 0x77, 0xe1,
+	0xdd, 0x28, 0xc4, 0x15, 0x72, 0x2b, 0xdb, 0x1b, 0x9a, 0xb9, 0x65, 0x68, 0x44, 0xbd, 0x95, 0x62,
+	0x60, 0xa1, 0xe5, 0x6c, 0xff, 0x65, 0xb6, 0x6c, 0xe8, 0xf1, 0xbc, 0x95, 0x62, 0xe0, 0x50, 0xf5,
+	0x24, 0x9b, 0x05, 0x7b, 0x3d, 0x69, 0x8d, 0x8c, 0xbd, 0x9e, 0xf4, 0xbe, 0xa3, 0x90, 0xd2, 0x28,
+	0xe0, 0xa2, 0x74, 0xbe, 0xf1, 0x70, 0x51, 0x5a, 0x6f, 0x2e, 0x9c, 0x5b, 0x17, 0x1e, 0xf1, 0xac,
+	0x5b, 0x57, 0xfe, 0xe4, 0x6b, 0xdd, 0xba, 0xb4, 0xf3, 0x65, 0x41, 0xaa, 0xe5, 0x11, 0xdd, 0x9e,
+	0x6a, 0xad, 0x7d, 0xb0, 0xa7, 0x5a, 0x3f, 0xed, 0x17, 0x7e, 0xa2, 0x64, 0xc0, 0x8e, 0x4f, 0x94,
+	0x16, 0xf3, 0xea, 0x10, 0x48, 0xa7, 0xf1, 0xad, 0x2b, 0xcf, 0x9e, 0x2f, 0xbd, 0xf2, 0x37, 0xfd,
+	0xfd, 0xff, 0x7c, 0xa9, 0xf4, 0xdd, 0x8b, 0xa5, 0xd2, 0x33, 0xfa, 0xfb, 0x8b, 0xfe, 0xfe, 0xa5,
+	0xbf, 0x47, 0x13, 0xfc, 0x5f, 0x96, 0x9b, 0x2f, 0x03, 0x00, 0x00, 0xff, 0xff, 0x15, 0x58, 0x52,
+	0x4e, 0x2b, 0x1d, 0x00, 0x00,
 }

@@ -31,7 +31,17 @@ func readClusterConfig(flags *flag.FlagSet) (*spec.ClusterConfig, error) {
 }
 
 func getCluster(ctx context.Context, c api.ControlClient, input string) (*api.Cluster, error) {
-	rl, err := c.ListClusters(ctx, &api.ListClustersRequest{Options: &api.ListOptions{Query: input}})
+	rg, err := c.GetCluster(ctx, &api.GetClusterRequest{ClusterID: input})
+	if err == nil {
+		return rg.Cluster, nil
+	}
+	rl, err := c.ListClusters(ctx,
+		&api.ListClustersRequest{
+			Filters: &api.ListClustersRequest_Filters{
+				Names: []string{input},
+			},
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
