@@ -49,8 +49,7 @@ func (va *VolumeAllocator) RemoveVolumeFromCache(name string) {
 
 // AllocateTask marks a task as allocated
 func (va *VolumeAllocator) AllocateTask(t *api.Task) {
-	var a struct{}
-	va.allocatedTasks[t.ID] = a
+	va.allocatedTasks[t.ID] = struct{}{}
 }
 
 // DeallocateTask releases all the resources for all the

@@ -244,9 +244,6 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			log.G(ctx).Errorf("Failed allocation for network %s: %v", n.ID, err)
 			break
 		}
-
-		// We successfully allocated a network. Time to revisit unallocated tasks.
-		a.procUnallocatedTasks(ctx, nc)
 	case state.EventDeleteNetwork:
 		n := v.Network.Copy()
 
@@ -268,9 +265,6 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			log.G(ctx).Errorf("Failed allocation for service %s: %v", s.ID, err)
 			break
 		}
-
-		// We successfully allocated a service. Time to revisit unallocated tasks.
-		a.procUnallocatedTasks(ctx, nc)
 	case state.EventUpdateService:
 		s := v.Service.Copy()
 
@@ -282,9 +276,6 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			log.G(ctx).Errorf("Failed allocation during update of service %s: %v", s.ID, err)
 			break
 		}
-
-		// We successfully allocated a service. Time to revisit unallocated tasks.
-		a.procUnallocatedTasks(ctx, nc)
 	case state.EventDeleteService:
 		s := v.Service.Copy()
 
@@ -302,8 +293,11 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		}
 	case state.EventCreateNode, state.EventUpdateNode, state.EventDeleteNode:
 		a.doNodeAlloc(ctx, nc, ev)
-	case state.EventCreateTask, state.EventUpdateTask, state.EventDeleteTask, state.EventCommit:
+	case state.EventCreateTask, state.EventUpdateTask, state.EventDeleteTask:
 		a.doTaskAlloc(ctx, nc, ev)
+	case state.EventCommit:
+		a.procUnallocatedTasksNetwork(ctx, nc)
+		return
 	}
 }
 
@@ -423,9 +417,6 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 	case state.EventDeleteTask:
 		isDelete = true
 		t = v.Task.Copy()
-	case state.EventCommit:
-		a.procUnallocatedTasks(ctx, nc)
-		return
 	}
 
 	// If the task has stopped running or it's being deleted then
@@ -439,6 +430,13 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 		}
 
 		// Cleanup any task references that might exist in unallocatedTasks
+		delete(nc.unallocatedTasks, t.ID)
+		return
+	}
+
+	// If we are already in allocated state, there is
+	// absolutely nothing else to do.
+	if t.Status.State >= api.TaskStateAllocated {
 		delete(nc.unallocatedTasks, t.ID)
 		return
 	}
@@ -468,49 +466,7 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, nc *networkContext, ev even
 		a.taskCreateNetworkAttachments(t, s)
 	}
 
-	if taskReadyForNetworkVote(t, s, nc) {
-		// If we are already in allocated state, there is
-		// absolutely nothing else to do.
-		if t.Status.State >= api.TaskStateAllocated {
-			return
-		}
-
-		if a.taskAllocateVote(networkVoter, t.ID) {
-			// If the task is not attached to any network, network
-			// allocators job is done. Immediately cast a vote so
-			// that the task can be moved to ALLOCATED state as
-			// soon as possible.
-			if err := a.store.Update(func(tx store.Tx) error {
-				storeT := store.GetTask(tx, t.ID)
-				if storeT == nil {
-					return fmt.Errorf("task %s not found while trying to update state", t.ID)
-				}
-
-				// Make sure to save the endpoint in task
-				// since we know by now that the service is
-				// allocated.
-				if s != nil {
-					taskUpdateEndpoint(storeT, s.Endpoint)
-				}
-				updateTaskStatus(storeT, api.TaskStateAllocated, "allocated")
-
-				if err := store.UpdateTask(tx, storeT); err != nil {
-					return fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
-				}
-
-				return nil
-			}); err != nil {
-				log.G(ctx).WithError(err).Error("error updating task network")
-			}
-		}
-		return
-	}
-
-	if !nc.nwkAllocator.IsTaskAllocated(t) ||
-		(s != nil && len(s.Spec.Networks) != 0 && !nc.nwkAllocator.IsServiceAllocated(s)) {
-
-		nc.unallocatedTasks[t.ID] = t
-	}
+	nc.unallocatedTasks[t.ID] = t
 }
 
 func (a *Allocator) allocateNode(ctx context.Context, nc *networkContext, node *api.Node) error {
@@ -564,8 +520,21 @@ func (a *Allocator) allocateService(ctx context.Context, nc *networkContext, s *
 	}
 
 	if err := a.store.Update(func(tx store.Tx) error {
-		if err := store.UpdateService(tx, s); err != nil {
-			return fmt.Errorf("failed updating state in store transaction for service %s: %v", s.ID, err)
+		for {
+			err := store.UpdateService(tx, s)
+
+			if err != nil && err != store.ErrSequenceConflict {
+				return fmt.Errorf("failed updating state in store transaction for service %s: %v", s.ID, err)
+			}
+
+			if err == store.ErrSequenceConflict {
+				storeService := store.GetService(tx, s.ID)
+				storeService.Endpoint = s.Endpoint
+				s = storeService
+				continue
+			}
+
+			break
 		}
 		return nil
 	}); err != nil {
@@ -601,6 +570,14 @@ func (a *Allocator) allocateNetwork(ctx context.Context, nc *networkContext, n *
 }
 
 func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx store.Tx, t *api.Task) (*api.Task, error) {
+	taskUpdated := false
+
+	// Get the latest task state from the store before updating.
+	storeT := store.GetTask(tx, t.ID)
+	if storeT == nil {
+		return nil, fmt.Errorf("could not find task %s while trying to update network allocation", t.ID)
+	}
+
 	// We might be here even if a task allocation has already
 	// happened but wasn't successfully committed to store. In such
 	// cases skip allocation and go straight ahead to updating the
@@ -628,18 +605,16 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sto
 			if !nc.nwkAllocator.IsAllocated(n) {
 				return nil, fmt.Errorf("network %s attached to task %s not allocated yet", n.ID, t.ID)
 			}
-
 		}
 
 		if err := nc.nwkAllocator.AllocateTask(t); err != nil {
 			return nil, fmt.Errorf("failed during networktask allocation for task %s: %v", t.ID, err)
 		}
-	}
-
-	// Get the latest task state from the store before updating.
-	storeT := store.GetTask(tx, t.ID)
-	if storeT == nil {
-		return nil, fmt.Errorf("could not find task %s while trying to update network allocation", t.ID)
+		if nc.nwkAllocator.IsTaskAllocated(t) {
+			taskUpdateNetworks(storeT, t.Networks)
+			taskUpdateEndpoint(storeT, t.Endpoint)
+			taskUpdated = true
+		}
 	}
 
 	// Update the network allocations and moving to
@@ -647,19 +622,20 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sto
 	if a.taskAllocateVote(networkVoter, t.ID) {
 		if storeT.Status.State < api.TaskStateAllocated {
 			updateTaskStatus(storeT, api.TaskStateAllocated, "allocated")
+			taskUpdated = true
 		}
 	}
 
-	taskUpdateNetworks(storeT, t.Networks)
-	taskUpdateEndpoint(storeT, t.Endpoint)
-	if err := store.UpdateTask(tx, storeT); err != nil {
-		return nil, fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
+	if taskUpdated {
+		if err := store.UpdateTask(tx, storeT); err != nil {
+			return nil, fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
+		}
 	}
 
 	return storeT, nil
 }
 
-func (a *Allocator) procUnallocatedTasks(ctx context.Context, nc *networkContext) {
+func (a *Allocator) procUnallocatedTasksNetwork(ctx context.Context, nc *networkContext) {
 	tasks := make([]*api.Task, 0, len(nc.unallocatedTasks))
 
 	committed, err := a.store.Batch(func(batch *store.Batch) error {
