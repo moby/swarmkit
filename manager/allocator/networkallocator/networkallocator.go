@@ -144,6 +144,13 @@ func (na *NetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
 		s.Endpoint = &api.Endpoint{}
 	}
 
+	// First allocate VIPs for all the pre-populated endpoint attachments
+	for _, eAttach := range s.Endpoint.Attachments {
+		if err = na.allocateVIP(eAttach); err != nil {
+			return
+		}
+	}
+
 	for _, nAttach := range s.Spec.Networks {
 		eAttach := &api.Endpoint_Attachment{NetworkID: nAttach.GetNetworkID()}
 		if err = na.allocateVIP(eAttach); err != nil {
@@ -224,21 +231,49 @@ func (na *NetworkAllocator) IsServiceAllocated(s *api.Service) bool {
 	return true
 }
 
+// IsNodeAllocated returns if the passed node has its network resources allocated or not.
+func (na *NetworkAllocator) IsNodeAllocated(node *api.Node) bool {
+	// If no attachment, not allocated.
+	if node.Attachment == nil {
+		return false
+	}
+
+	// If the network is not allocated, the node cannot be allocated.
+	localNet, ok := na.networks[node.Attachment.Network.ID]
+	if !ok {
+		return false
+	}
+
+	// Addresses empty, not allocated.
+	if len(node.Attachment.Addresses) == 0 {
+		return false
+	}
+
+	// The allocated IP address not found in local endpoint state. Not allocated.
+	if _, ok := localNet.endpoints[node.Attachment.Addresses[0]]; !ok {
+		return false
+	}
+
+	return true
+}
+
+// AllocateNode allocates the IP addresses for the network to which
+// the node is attached.
+func (na *NetworkAllocator) AllocateNode(node *api.Node) error {
+	return na.allocateNetworkIPs(node.Attachment)
+}
+
+// DeallocateNode deallocates the IP addresses for the network to
+// which the node is attached.
+func (na *NetworkAllocator) DeallocateNode(node *api.Node) error {
+	return na.releaseEndpoints([]*api.NetworkAttachment{node.Attachment})
+}
+
 // AllocateTask allocates all the endpoint resources for all the
 // networks that a task is attached to.
 func (na *NetworkAllocator) AllocateTask(t *api.Task) error {
 	for i, nAttach := range t.Networks {
-		ipam, _, err := na.resolveIPAM(nAttach.Network)
-		if err != nil {
-			return fmt.Errorf("failed to resolve IPAM while allocating : %v", err)
-		}
-
-		localNet := na.getNetwork(nAttach.Network.ID)
-		if localNet == nil {
-			return fmt.Errorf("could not find networker state")
-		}
-
-		if err := na.allocateNetworkIPs(nAttach, ipam, localNet); err != nil {
+		if err := na.allocateNetworkIPs(nAttach); err != nil {
 			if err := na.releaseEndpoints(t.Networks[:i]); err != nil {
 				log.G(context.TODO()).Errorf("Failed to release IP addresses while rolling back allocation for task %s network %s: %v", t.ID, nAttach.Network.ID, err)
 			}
@@ -264,7 +299,7 @@ func (na *NetworkAllocator) releaseEndpoints(networks []*api.NetworkAttachment) 
 
 		localNet := na.getNetwork(nAttach.Network.ID)
 		if localNet == nil {
-			return fmt.Errorf("could not find networker state")
+			return fmt.Errorf("could not find network allocater state for network %s", nAttach.Network.ID)
 		}
 
 		// Do not fail and bail out if we fail to release IP
@@ -363,8 +398,18 @@ func (na *NetworkAllocator) deallocateVIP(eAttach *api.Endpoint_Attachment) erro
 }
 
 // allocate the IP addresses for a single network attachment of the task.
-func (na *NetworkAllocator) allocateNetworkIPs(nAttach *api.NetworkAttachment, ipam ipamapi.Ipam, localNet *network) error {
+func (na *NetworkAllocator) allocateNetworkIPs(nAttach *api.NetworkAttachment) error {
 	var ip *net.IPNet
+
+	ipam, _, err := na.resolveIPAM(nAttach.Network)
+	if err != nil {
+		return fmt.Errorf("failed to resolve IPAM while allocating : %v", err)
+	}
+
+	localNet := na.getNetwork(nAttach.Network.ID)
+	if localNet == nil {
+		return fmt.Errorf("could not find network allocator state for network %s", nAttach.Network.ID)
+	}
 
 	addresses := nAttach.Addresses
 	if addresses == nil {

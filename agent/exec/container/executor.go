@@ -74,6 +74,10 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 	return description, nil
 }
 
+func (e *executor) Configure(ctx context.Context, node *api.Node) error {
+	return nil
+}
+
 // Controller returns a docker container controller.
 func (e *executor) Controller(t *api.Task) (exec.Controller, error) {
 	ctlr, err := newController(e.client, t)
