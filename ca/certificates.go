@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -35,6 +36,10 @@ const (
 	// RootKeyAlgo defines the default algorithm for the root CA Key
 	RootKeyAlgo = "ecdsa"
 )
+
+// ErrNoLocalRootCA is an error type used to indicate that the local root CA
+// certificate file does not exist.
+var ErrNoLocalRootCA = errors.New("local root CA certificate does not exist")
 
 func init() {
 	cflog.Level = 5
@@ -222,6 +227,10 @@ func GetLocalRootCA(baseDir string) (RootCA, error) {
 	// Check if we have a Certificate file
 	cert, err := ioutil.ReadFile(paths.RootCA.Cert)
 	if err != nil {
+		if os.IsNotExist(err) {
+			err = ErrNoLocalRootCA
+		}
+
 		return RootCA{}, err
 	}
 

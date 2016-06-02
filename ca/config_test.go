@@ -48,14 +48,13 @@ func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
 	assert.True(t, nodeConfig.RootCA().CanSign())
 }
 
-func TestLoadOrCreateSecurityConfigInvalidCACertNoRemote(t *testing.T) {
+func TestLoadOrCreateSecurityConfigNoLocalCACertNoRemote(t *testing.T) {
 	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
 	defer tc.Stop()
 
-	// Write some garbage to the cert
-	ioutil.WriteFile(tc.Paths.RootCA.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
-some random garbage\n
------END CERTIFICATE-----`), 0644)
+	// Delete the root CA file so that LoadOrCreateSecurityConfig falls
+	// back to using the remote.
+	assert.Nil(t, os.Remove(tc.Paths.RootCA.Cert))
 
 	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, nil)
 	assert.EqualError(t, err, "valid remote address picker required")
@@ -84,6 +83,14 @@ func TestLoadOrCreateSecurityConfigInvalidCACert(t *testing.T) {
 some random garbage\n
 -----END CERTIFICATE-----`), 0644)
 
+	// We should get an error when the CA cert is invalid.
+	_, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker)
+	assert.Error(t, err)
+
+	// Not having a local cert should cause us to fallback to using the
+	// picker to get a remote.
+	assert.Nil(t, os.Remove(tc.Paths.RootCA.Cert))
+
 	// Validate we got a new valid state
 	newNodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker)
 	assert.NoError(t, err)
@@ -108,15 +115,9 @@ func TestLoadOrCreateSecurityConfigInvalidCAKey(t *testing.T) {
 some random garbage\n
 -----END EC PRIVATE KEY-----`), 0644)
 
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker)
-	assert.NoError(t, err)
-	assert.NotNil(t, nodeConfig)
-	assert.NotNil(t, nodeConfig.ClientTLSCreds)
-	assert.NotNil(t, nodeConfig.ServerTLSCreds)
-	assert.NotNil(t, nodeConfig.RootCA().Pool)
-	assert.NotNil(t, nodeConfig.RootCA().Cert)
-	assert.Nil(t, nodeConfig.RootCA().Signer)
-	assert.False(t, nodeConfig.RootCA().CanSign())
+	// We should get an error when the local ca private key is invalid.
+	_, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker)
+	assert.Error(t, err)
 }
 
 func TestLoadOrCreateSecurityConfigInvalidCert(t *testing.T) {
