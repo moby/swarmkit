@@ -64,6 +64,11 @@ func TestGetLocalRootCA(t *testing.T) {
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 
+	// First, try to load the local Root CA with the certificate missing.
+	_, err = ca.GetLocalRootCA(tempBaseDir)
+	assert.Equal(t, ca.ErrNoLocalRootCA, err)
+
+	// Create the local Root CA to ensure that we can reload it correctly.
 	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.True(t, rootCA.CanSign())
 	assert.NoError(t, err)
