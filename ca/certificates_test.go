@@ -65,11 +65,21 @@ func TestGetLocalRootCA(t *testing.T) {
 	paths := ca.NewConfigPaths(tempBaseDir)
 
 	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
+	assert.True(t, rootCA.CanSign())
 	assert.NoError(t, err)
 
 	rootCA2, err := ca.GetLocalRootCA(tempBaseDir)
 	assert.NoError(t, err)
+	assert.True(t, rootCA2.CanSign())
 	assert.Equal(t, rootCA, rootCA2)
+
+	// Try again, this time without a private key.
+	assert.NoError(t, os.Remove(paths.RootCA.Key))
+
+	rootCA3, err := ca.GetLocalRootCA(tempBaseDir)
+	assert.NoError(t, err)
+	assert.False(t, rootCA3.CanSign())
+	assert.Equal(t, rootCA.Cert, rootCA3.Cert)
 }
 
 func TestGenerateAndSignNewTLSCert(t *testing.T) {
