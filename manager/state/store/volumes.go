@@ -163,16 +163,21 @@ func GetVolume(tx ReadTx, id string) *api.Volume {
 
 // FindVolumes selects a set of volumes and returns them.
 func FindVolumes(tx ReadTx, by By) ([]*api.Volume, error) {
-	switch by.(type) {
-	case byAll, byName:
-	default:
-		return nil, ErrInvalidFindBy
+	checkType := func(by By) error {
+		switch by.(type) {
+		case byName:
+			return nil
+		default:
+			return ErrInvalidFindBy
+		}
 	}
 
 	volumeList := []*api.Volume{}
-	err := tx.find(tableVolume, by, func(o Object) {
+	appendResult := func(o Object) {
 		volumeList = append(volumeList, o.(volumeEntry).Volume)
-	})
+	}
+
+	err := tx.find(tableVolume, by, checkType, appendResult)
 	return volumeList, err
 }
 
