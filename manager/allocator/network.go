@@ -69,7 +69,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 	// it before reading all network objects for allocation.
 	var networks []*api.Network
 	a.store.View(func(tx store.ReadTx) {
-		networks, err = store.FindNetworks(tx, store.ByQuery(ingressNetworkName))
+		networks, err = store.FindNetworks(tx, store.ByName(ingressNetworkName))
 		if len(networks) > 0 {
 			ingressNetwork = networks[0]
 		}
@@ -93,7 +93,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 		}
 
 		a.store.View(func(tx store.ReadTx) {
-			networks, err = store.FindNetworks(tx, store.ByQuery(ingressNetworkName))
+			networks, err = store.FindNetworks(tx, store.ByName(ingressNetworkName))
 			if len(networks) > 0 {
 				ingressNetwork = networks[0]
 			}
