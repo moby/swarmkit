@@ -67,6 +67,8 @@ func TestManager(t *testing.T) {
 
 	agentSecurityConfig, err := tc.NewNodeConfig(ca.AgentRole)
 	assert.NoError(t, err)
+	agentDiffOrgSecurityConfig, err := tc.NewNodeConfigOrg(ca.AgentRole, "another-org")
+	assert.NoError(t, err)
 	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
 	assert.NoError(t, err)
 
@@ -98,11 +100,27 @@ func TestManager(t *testing.T) {
 	// We have to send a dummy request to verify if the connection is actually up.
 	client := api.NewDispatcherClient(conn)
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
-	assert.Equal(t, grpc.ErrorDesc(err), dispatcher.ErrNodeNotRegistered.Error())
+	assert.Equal(t, dispatcher.ErrNodeNotRegistered.Error(), grpc.ErrorDesc(err))
+
+	// Try to have a client in a different org access this manager
+	opts = []grpc.DialOption{
+		grpc.WithTimeout(10 * time.Second),
+		grpc.WithTransportCredentials(agentDiffOrgSecurityConfig.ClientTLSCreds),
+	}
+
+	conn2, err := grpc.Dial(ltcp.Addr().String(), opts...)
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, conn2.Close())
+	}()
+
+	// We have to send a dummy request to verify if the connection is actually up.
+	client = api.NewDispatcherClient(conn2)
+	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
+	assert.Contains(t, grpc.ErrorDesc(err), "Permission denied: unauthorized peer role: rpc error: code = 7 desc = Permission denied: remote certificate not part of organization")
 
 	// Verify that requests to the various GRPC services running on TCP
 	// are rejected if they don't have certs.
-
 	opts = []grpc.DialOption{
 		grpc.WithTimeout(10 * time.Second),
 		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})),
@@ -116,15 +134,15 @@ func TestManager(t *testing.T) {
 
 	client = api.NewDispatcherClient(noCertConn)
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
-	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role, expecting: [swarm-worker swarm-manager]")
+	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
 
 	controlClient := api.NewControlClient(noCertConn)
 	_, err = controlClient.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role, expecting: [swarm-manager]")
+	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
 
 	raftClient := api.NewRaftClient(noCertConn)
 	_, err = raftClient.Join(context.Background(), &api.JoinRequest{})
-	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role, expecting: [swarm-manager]")
+	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
 
 	m.Stop(ctx)
 

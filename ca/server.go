@@ -139,13 +139,13 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 
 	// If the remote node is an Agent (either forwarded by a manager, or calling directly),
 	// issue a renew agent certificate entry with the correct ID
-	nodeID, err := AuthorizeForwardedRole(ctx, []string{AgentRole}, []string{ManagerRole})
+	nodeID, err := AuthorizeForwardedRoleAndOrg(ctx, []string{AgentRole}, []string{ManagerRole}, s.securityConfig.ClientTLSCreds.Organization())
 	if err == nil {
 		return s.issueRenewCertificate(ctx, nodeID, AgentRole, request.CSR)
 	}
 
 	// If the remote node is a Manager, issue a renew certificate entry with the correct ID
-	nodeID, err = AuthorizeForwardedRole(ctx, []string{ManagerRole}, []string{ManagerRole})
+	nodeID, err = AuthorizeForwardedRoleAndOrg(ctx, []string{ManagerRole}, []string{ManagerRole}, s.securityConfig.ClientTLSCreds.Organization())
 	if err == nil {
 		return s.issueRenewCertificate(ctx, nodeID, ManagerRole, request.CSR)
 	}
@@ -441,7 +441,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 	nodeID := node.ID
 
 	for {
-		cert, err := s.securityConfig.RootCA().ParseValidateAndSignCSR(node.Certificate.CSR, node.Certificate.CN, node.Certificate.Role)
+		cert, err := s.securityConfig.RootCA().ParseValidateAndSignCSR(node.Certificate.CSR, node.Certificate.CN, node.Certificate.Role, s.securityConfig.ClientTLSCreds.Organization())
 		if err != nil {
 			log.G(ctx).WithFields(logrus.Fields{
 				"node.id": node.ID,

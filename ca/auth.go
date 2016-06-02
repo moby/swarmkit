@@ -77,9 +77,9 @@ func certSubjectFromContext(ctx context.Context) (pkix.Name, error) {
 	return getCertificateSubject(connState)
 }
 
-// AuthorizeRole takes in a context and a list of roles, and returns
+// AuthorizeOrgAndRole takes in a context and a list of roles, and returns
 // the Node ID of the node.
-func AuthorizeRole(ctx context.Context, ou []string) (string, error) {
+func AuthorizeOrgAndRole(ctx context.Context, org string, ou ...string) (string, error) {
 	certSubj, err := certSubjectFromContext(ctx)
 	if err != nil {
 		return "", err
@@ -87,29 +87,44 @@ func AuthorizeRole(ctx context.Context, ou []string) (string, error) {
 	// Check if the current certificate has an OU that authorizes
 	// access to this method
 	if intersectArrays(certSubj.OrganizationalUnit, ou) {
+		return authorizeOrg(ctx, org)
+	}
+
+	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: remote certificate not part of OUs: %v", ou)
+}
+
+// authorizeOrg takes in a context and an organization, and returns
+// the Node ID of the node.
+func authorizeOrg(ctx context.Context, org string) (string, error) {
+	certSubj, err := certSubjectFromContext(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	if len(certSubj.Organization) > 0 && certSubj.Organization[0] == org {
 		return certSubj.CommonName, nil
 	}
 
-	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: remote certificate not part of OU %v", ou)
+	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: remote certificate not part of organization: %s", org)
 }
 
-// AuthorizeForwardedRole checks for proper roles of caller. The RPC may have
+// AuthorizeForwardedRoleAndOrg checks for proper roles and organization of caller. The RPC may have
 // been proxied by a manager, in which case the manager is authenticated and
 // so is the certificate information that it forwarded. It returns the node ID
 // of the original client.
-func AuthorizeForwardedRole(ctx context.Context, authorizedRoles, forwarderRoles []string) (string, error) {
+func AuthorizeForwardedRoleAndOrg(ctx context.Context, authorizedRoles, forwarderRoles []string, org string) (string, error) {
 	if isForwardedRequest(ctx) {
-		_, err := AuthorizeRole(ctx, forwarderRoles)
+		_, err := AuthorizeOrgAndRole(ctx, org, forwarderRoles...)
 		if err != nil {
-			return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unauthorized forwarder role, expecting: %v", forwarderRoles)
+			return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unauthorized forwarder role: %v", err)
 		}
 
 		// This was a forwarded request. Authorize the forwarder, and
 		// check if the forwarded role matches one of the authorized
 		// roles.
-		forwardedID, forwardedOUs := forwardedTLSInfoFromContext(ctx)
+		forwardedID, forwardedOrg, forwardedOUs := forwardedTLSInfoFromContext(ctx)
 
-		if len(forwardedOUs) == 0 || forwardedID == "" {
+		if len(forwardedOUs) == 0 || forwardedID == "" || forwardedOrg == "" {
 			return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: missing information in forwarded request")
 		}
 
@@ -117,16 +132,20 @@ func AuthorizeForwardedRole(ctx context.Context, authorizedRoles, forwarderRoles
 			return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unauthorized forwarded role, expecting: %v", authorizedRoles)
 		}
 
+		if forwardedOrg != org {
+			return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: organization mismatch, expecting: %s", org)
+		}
+
 		return forwardedID, nil
 	}
 
 	// There wasn't any node being forwarded, check if this is a direct call by the expected role
-	nodeID, err := AuthorizeRole(ctx, authorizedRoles)
+	nodeID, err := AuthorizeOrgAndRole(ctx, org, authorizedRoles...)
 	if err == nil {
 		return nodeID, nil
 	}
 
-	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unauthorized peer role, expecting: %v", authorizedRoles)
+	return "", grpc.Errorf(codes.PermissionDenied, "Permission denied: unauthorized peer role: %v", err)
 }
 
 // intersectArrays returns true when there is at least one element in common
@@ -148,6 +167,10 @@ type RemoteNodeInfo struct {
 	// (or forwarded by a trusted node).
 	Roles []string
 
+	// Organization is the organization contained in the node's certificate
+	// (or forwarded by a trusted node).
+	Organization string
+
 	// NodeID is the node's ID, from the CN field in its certificate
 	// (or forwarded by a trusted node).
 	NodeID string
@@ -167,17 +190,23 @@ func RemoteNode(ctx context.Context) (RemoteNodeInfo, error) {
 		return RemoteNodeInfo{}, err
 	}
 
+	org := ""
+	if len(certSubj.Organization) > 0 {
+		org = certSubj.Organization[0]
+	}
+
 	directInfo := RemoteNodeInfo{
-		Roles:  certSubj.OrganizationalUnit,
-		NodeID: certSubj.CommonName,
+		Roles:        certSubj.OrganizationalUnit,
+		NodeID:       certSubj.CommonName,
+		Organization: org,
 	}
 
 	if isForwardedRequest(ctx) {
-		cn, ou := forwardedTLSInfoFromContext(ctx)
-		if len(ou) == 0 || cn == "" {
+		cn, org, ous := forwardedTLSInfoFromContext(ctx)
+		if len(ous) == 0 || cn == "" || org == "" {
 			return RemoteNodeInfo{}, grpc.Errorf(codes.PermissionDenied, "Permission denied: missing information in forwarded request")
 		}
-		return RemoteNodeInfo{Roles: ou, NodeID: cn, ForwardedBy: &directInfo}, nil
+		return RemoteNodeInfo{Roles: ous, NodeID: cn, Organization: org, ForwardedBy: &directInfo}, nil
 	}
 
 	return directInfo, nil
