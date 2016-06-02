@@ -31,6 +31,10 @@ type Agent struct {
 	conn   *grpc.ClientConn
 	picker *picker.Picker
 
+	// The latest node object state from manager
+	// for this node known to the agent.
+	node *api.Node
+
 	tasks       map[string]*api.Task        // contains all managed tasks
 	assigned    map[string]*api.Task        // contains current assignment set
 	controllers map[string]exec.Controller  // contains all controllers
@@ -271,6 +275,15 @@ func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMe
 
 		a.config.Managers.Observe(manager.Addr, int(manager.Weight))
 		seen[manager.Addr] = struct{}{}
+	}
+
+	if message.Node != nil {
+		if a.node == nil || !nodesEqual(a.node, message.Node) {
+			a.node = message.Node.Copy()
+			if err := a.config.Executor.Configure(ctx, a.node); err != nil {
+				log.G(ctx).WithError(err).Error("node configure failed")
+			}
+		}
 	}
 
 	if message.Disconnect {
@@ -702,6 +715,19 @@ func tasksEqual(a, b *api.Task) bool {
 	a, b = a.Copy(), b.Copy()
 
 	a.Status, b.Status = api.TaskStatus{}, api.TaskStatus{}
+	a.Meta, b.Meta = api.Meta{}, api.Meta{}
+
+	return reflect.DeepEqual(a, b)
+}
+
+// nodesEqual returns true if the node states are functionaly equal, ignoring status,
+// version and other superfluous fields.
+//
+// This used to decide whether or not to propagate a node update to executor.
+func nodesEqual(a, b *api.Node) bool {
+	a, b = a.Copy(), b.Copy()
+
+	a.Status, b.Status = api.NodeStatus{}, api.NodeStatus{}
 	a.Meta, b.Meta = api.Meta{}, api.Meta{}
 
 	return reflect.DeepEqual(a, b)

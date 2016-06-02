@@ -105,6 +105,9 @@ func (a *Allocator) Run(ctx context.Context) error {
 		state.EventCreateTask{},
 		state.EventUpdateTask{},
 		state.EventDeleteTask{},
+		state.EventCreateNode{},
+		state.EventUpdateNode{},
+		state.EventDeleteNode{},
 		state.EventCommit{},
 	)
 	watchVolume, watchVolumeCancel := state.Watch(a.store.WatchQueue(),
