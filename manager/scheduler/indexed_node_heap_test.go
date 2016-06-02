@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFindMin(t *testing.T) {
+func findMin(t *testing.T, scanAllNodes bool) {
 	var nh nodeHeap
 
 	for reps := 0; reps < 10; reps++ {
@@ -48,7 +48,7 @@ func TestFindMin(t *testing.T) {
 			return n.Spec.Annotations.Labels["special"] == "true"
 		}
 
-		bestNode, numTasks := nh.findMin(isSpecial, false)
+		bestNode, numTasks := nh.findMin(isSpecial, scanAllNodes)
 		assert.NotNil(t, bestNode)
 
 		// Verify with manual search
@@ -71,4 +71,14 @@ func TestFindMin(t *testing.T) {
 		assert.Equal(t, bestNode, manualBestNode)
 		assert.Equal(t, numTasks, int(manualBestTasks))
 	}
+}
+
+// Test scan all nodes to find min
+func TestFindMinScan(t *testing.T) {
+	findMin(t, true)
+}
+
+// Test search in heap to find min
+func TestFindMinHeap(t *testing.T) {
+	findMin(t, false)
 }
