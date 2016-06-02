@@ -1,6 +1,8 @@
 package deepcopy
 
 import (
+	"sort"
+
 	"github.com/docker/swarm-v2/protobuf/plugin"
 	"github.com/gogo/protobuf/gogoproto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
@@ -89,7 +91,16 @@ func (d *deepCopyGen) genMsgDeepCopy(m *generator.Descriptor) {
 		fn()
 	}
 
-	for _, oneOfNameFuncs := range oneOfFuncs {
+	// Sort map keys from oneOfFuncs so that generated code has consistent
+	// ordering.
+	oneOfKeys := make([]string, 0, len(oneOfFuncs))
+	for key := range oneOfFuncs {
+		oneOfKeys = append(oneOfKeys, key)
+	}
+	sort.Strings(oneOfKeys)
+
+	for _, key := range oneOfKeys {
+		oneOfNameFuncs := oneOfFuncs[key]
 		for _, oneOfFunc := range oneOfNameFuncs {
 			oneOfFunc()
 		}
