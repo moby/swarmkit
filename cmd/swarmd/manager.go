@@ -80,13 +80,17 @@ var managerCmd = &cobra.Command{
 			p = picker.NewPicker(managerAddr, managers)
 		} else {
 			_, err := ca.GetLocalRootCA(certDir)
-			if err != nil {
-				// If we are not provided a valid join address and there is no local valid Root CA
-				// we should bootstrap a new cluster
-				if err := ca.BootstrapCluster(certDir); err != nil {
-					return err
-				}
+			if err == ca.ErrNoLocalRootCA {
+				// If we are not provided a valid join address
+				// and there is no local Root CA we should
+				// bootstrap a new cluster.
+				err = ca.BootstrapCluster(certDir)
 			}
+
+			if err != nil {
+				return err
+			}
+
 			managers := picker.NewRemotes(addr)
 			p = picker.NewPicker(addr, managers)
 		}
