@@ -133,7 +133,7 @@ func prefixFromArgs(args ...interface{}) ([]byte, error) {
 type ReadTx interface {
 	lookup(table, index, id string) Object
 	get(table, id string) Object
-	find(table string, by By, cb func(Object)) error
+	find(table string, by By, checkType func(By) error, appendResult func(Object)) error
 }
 
 type readTx struct {
@@ -529,18 +529,87 @@ func (tx readTx) get(table, id string) Object {
 	return o.Copy()
 }
 
-// find selects a set of objects calls a callback for each matching object.
-func (tx readTx) find(table string, by By, cb func(Object)) error {
-	fromResultIterator := func(it memdb.ResultIterator) {
-		for {
-			obj := it.Next()
-			if obj == nil {
-				break
-			}
-			cb(obj.(Object).Copy())
+// findIterators returns a slice of iterators. The union of items from these
+// iterators provides the result of the query.
+func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([]memdb.ResultIterator, error) {
+	switch by.(type) {
+	case byAll, orCombinator: // generic types
+	default: // all other types
+		if err := checkType(by); err != nil {
+			return nil, err
 		}
 	}
 
+	switch v := by.(type) {
+	case byAll:
+		it, err := tx.memDBTx.Get(table, indexID)
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case orCombinator:
+		var iters []memdb.ResultIterator
+		for _, subBy := range v.bys {
+			it, err := tx.findIterators(table, subBy, checkType)
+			if err != nil {
+				return nil, err
+			}
+			iters = append(iters, it...)
+		}
+		return iters, nil
+	case byName:
+		it, err := tx.memDBTx.Get(table, indexName, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byCN:
+		it, err := tx.memDBTx.Get(table, indexCN, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byQuery:
+		itID, err := tx.memDBTx.Get(table, indexID+prefix, string(v))
+		if err != nil {
+			return nil, err
+		}
+		itName, err := tx.memDBTx.Get(table, indexName, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{itID, itName}, nil
+	case byNode:
+		it, err := tx.memDBTx.Get(table, indexNodeID, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byService:
+		it, err := tx.memDBTx.Get(table, indexServiceID, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byInstance:
+		it, err := tx.memDBTx.Get(table, indexInstance, v.serviceID+"\x00"+strconv.FormatUint(uint64(v.instance), 10))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byIssuanceState:
+		it, err := tx.memDBTx.Get(table, indexIssuanceState, strconv.FormatInt(int64(v), 10))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	default:
+		return nil, ErrInvalidFindBy
+	}
+}
+
+// find selects a set of objects calls a callback for each matching object.
+func (tx readTx) find(table string, by By, checkType func(By) error, appendResult func(Object)) error {
 	fromResultIterators := func(its ...memdb.ResultIterator) {
 		ids := make(map[string]struct{})
 		for _, it := range its {
@@ -552,69 +621,20 @@ func (tx readTx) find(table string, by By, cb func(Object)) error {
 				o := obj.(Object)
 				id := o.ID()
 				if _, exists := ids[id]; !exists {
-					cb(o.Copy())
+					appendResult(o.Copy())
 					ids[id] = struct{}{}
 				}
 			}
 		}
 	}
 
-	switch v := by.(type) {
-	case byAll:
-		it, err := tx.memDBTx.Get(table, indexID)
-		if err != nil {
-			return err
-		}
-		fromResultIterator(it)
-	case byName:
-		it, err := tx.memDBTx.Get(table, indexName, string(v))
-		if err != nil {
-			return err
-		}
-		fromResultIterator(it)
-	case byCN:
-		it, err := tx.memDBTx.Get(table, indexCN, string(v))
-		if err != nil {
-			return err
-		}
-		fromResultIterator(it)
-	case byQuery:
-		itID, err := tx.memDBTx.Get(table, indexID+prefix, string(v))
-		if err != nil {
-			return err
-		}
-		itName, err := tx.memDBTx.Get(table, indexName, string(v))
-		if err != nil {
-			return err
-		}
-		fromResultIterators(itID, itName)
-	case byNode:
-		it, err := tx.memDBTx.Get(table, indexNodeID, string(v))
-		if err != nil {
-			return err
-		}
-		fromResultIterator(it)
-	case byService:
-		it, err := tx.memDBTx.Get(table, indexServiceID, string(v))
-		if err != nil {
-			return err
-		}
-		fromResultIterator(it)
-	case byInstance:
-		it, err := tx.memDBTx.Get(table, indexInstance, v.serviceID+"\x00"+strconv.FormatUint(uint64(v.instance), 10))
-		if err != nil {
-			return err
-		}
-		fromResultIterator(it)
-	case byIssuanceState:
-		it, err := tx.memDBTx.Get(table, indexIssuanceState, strconv.FormatInt(int64(v), 10))
-		if err != nil {
-			return err
-		}
-		fromResultIterator(it)
-	default:
-		return ErrInvalidFindBy
+	iters, err := tx.findIterators(table, by, checkType)
+	if err != nil {
+		return err
 	}
+
+	fromResultIterators(iters...)
+
 	return nil
 }
 
