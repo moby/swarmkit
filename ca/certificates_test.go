@@ -116,7 +116,7 @@ func TestGenerateAndSignNewTLSCert(t *testing.T) {
 	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	_, err = ca.GenerateAndSignNewTLSCert(rootCA, "CN", "OU", paths.Node)
+	_, err = ca.GenerateAndSignNewTLSCert(rootCA, "CN", "OU", "ORG", paths.Node)
 	assert.NoError(t, err)
 
 	perms, err := permbits.Stat(paths.Node.Cert)
@@ -163,7 +163,7 @@ func TestParseValidateAndSignCSR(t *testing.T) {
 	csr, _, err := ca.GenerateAndWriteNewKey(paths.Node)
 	assert.NoError(t, err)
 
-	signedCert, err := rootCA.ParseValidateAndSignCSR(csr, "CN", "OU")
+	signedCert, err := rootCA.ParseValidateAndSignCSR(csr, "CN", "OU", "ORG")
 	assert.NoError(t, err)
 	assert.NotNil(t, signedCert)
 
@@ -173,7 +173,8 @@ func TestParseValidateAndSignCSR(t *testing.T) {
 	assert.Equal(t, "CN", parsedCert[0].Subject.CommonName)
 	assert.Equal(t, 1, len(parsedCert[0].Subject.OrganizationalUnit))
 	assert.Equal(t, "OU", parsedCert[0].Subject.OrganizationalUnit[0])
-	assert.Equal(t, 2, len(parsedCert[0].Subject.Names))
+	assert.Equal(t, 3, len(parsedCert[0].Subject.Names))
+	assert.Equal(t, "ORG", parsedCert[0].Subject.Organization[0])
 }
 
 func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
@@ -190,7 +191,8 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 		Names: []cfcsr.Name{
 			{
 				O:  "maliciousOrg",
-				OU: "maliciousOu",
+				OU: "maliciousOU",
+				L:  "maliciousLocality",
 			},
 		},
 		CN:         "maliciousCN",
@@ -201,7 +203,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 	csr, _, err := cfcsr.ParseRequest(req)
 	assert.NoError(t, err)
 
-	signedCert, err := rootCA.ParseValidateAndSignCSR(csr, "CN", "OU")
+	signedCert, err := rootCA.ParseValidateAndSignCSR(csr, "CN", "OU", "ORG")
 	assert.NoError(t, err)
 	assert.NotNil(t, signedCert)
 
@@ -211,8 +213,9 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 	assert.Equal(t, "CN", parsedCert[0].Subject.CommonName)
 	assert.Equal(t, 1, len(parsedCert[0].Subject.OrganizationalUnit))
 	assert.Equal(t, "OU", parsedCert[0].Subject.OrganizationalUnit[0])
-	assert.Equal(t, 2, len(parsedCert[0].Subject.Names))
-	assert.Empty(t, "", parsedCert[0].Subject.Organization)
+	assert.Equal(t, 3, len(parsedCert[0].Subject.Names))
+	assert.Empty(t, parsedCert[0].Subject.Locality)
+	assert.Equal(t, "ORG", parsedCert[0].Subject.Organization[0])
 }
 
 func TestGetRemoteCA(t *testing.T) {
@@ -266,7 +269,7 @@ func TestIssueAndSaveNewCertificates(t *testing.T) {
 	defer tc.Stop()
 
 	// Copy the current RootCA without the signer
-	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN", ca.ManagerRole)
+	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN", ca.ManagerRole, tc.Organization)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 	perms, err := permbits.Stat(tc.Paths.Node.Cert)

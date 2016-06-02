@@ -205,7 +205,7 @@ func TestRenewTLSConfig(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	managerConfig, err := tc.NewNodeConfig(ca.ManagerRole)
+	managerConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
 	assert.NoError(t, err)
 
 	var success, timeout bool
