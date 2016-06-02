@@ -3,23 +3,23 @@ syntax = "proto3";
 package docker.cluster.api;
 
 import "types.proto";
-import "auth.proto";
 import "gogoproto/gogo.proto";
+import "plugin/plugin.proto";
 
 // CA defines the RPC methods for requesting certificates from a CA.
 
 service CA {
 	rpc GetRootCACertificate(GetRootCACertificateRequest) returns (GetRootCACertificateResponse) {
-		option (tls_authorization) = { insecure: true };
+		option (docker.protobuf.plugin.tls_authorization) = { insecure: true };
 	};
 }
 
 service NodeCA {
 	rpc IssueNodeCertificate(IssueNodeCertificateRequest) returns (IssueNodeCertificateResponse) {
-		option (tls_authorization) = { insecure: true };
+		option (docker.protobuf.plugin.tls_authorization) = { insecure: true };
 	};
 	rpc NodeCertificateStatus(NodeCertificateStatusRequest) returns (NodeCertificateStatusResponse) {
-		option (tls_authorization) = { insecure: true };
+		option (docker.protobuf.plugin.tls_authorization) = { insecure: true };
 	};
 }
 
