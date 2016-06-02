@@ -105,23 +105,19 @@ func TestGenerateAndSignNewTLSCert(t *testing.T) {
 	assert.False(t, perms.OtherRead())
 }
 
-func TestGenerateAndWriteNewCSR(t *testing.T) {
+func TestGenerateAndWriteNewKey(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 
-	csr, key, err := ca.GenerateAndWriteNewCSR(paths.Node)
+	csr, key, err := ca.GenerateAndWriteNewKey(paths.Node)
 	assert.NoError(t, err)
 	assert.NotNil(t, csr)
 	assert.NotNil(t, key)
 
-	perms, err := permbits.Stat(paths.Node.CSR)
-	assert.NoError(t, err)
-	assert.False(t, perms.GroupWrite())
-	assert.False(t, perms.OtherWrite())
-	perms, err = permbits.Stat(paths.Node.Key)
+	perms, err := permbits.Stat(paths.Node.Key)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
@@ -140,7 +136,7 @@ func TestParseValidateAndSignCSR(t *testing.T) {
 	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	csr, _, err := ca.GenerateAndWriteNewCSR(paths.Node)
+	csr, _, err := ca.GenerateAndWriteNewKey(paths.Node)
 	assert.NoError(t, err)
 
 	signedCert, err := rootCA.ParseValidateAndSignCSR(csr, "CN", "OU")
@@ -260,7 +256,7 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	defer tc.Stop()
 
 	// Create a new CSR to be signed
-	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
+	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 
 	certs, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker, nil)
@@ -293,7 +289,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	defer tc.Stop()
 
 	// Create a new CSR to be signed
-	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
+	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 
 	updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), state.EventCreateNode{})
@@ -325,7 +321,7 @@ func TestGetRemoteSignedCertificateRejected(t *testing.T) {
 	defer tc.Stop()
 
 	// Create a new CSR to be signed
-	csr, _, err := ca.GenerateAndWriteNewCSR(tc.Paths.Node)
+	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 
 	updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), state.EventCreateNode{})

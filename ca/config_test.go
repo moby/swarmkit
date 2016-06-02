@@ -3,6 +3,7 @@ package ca_test
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -148,6 +149,34 @@ some random garbage\n
 -----END EC PRIVATE KEY-----`), 0644)
 
 	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker)
+	assert.NoError(t, err)
+	assert.NotNil(t, nodeConfig)
+	assert.NotNil(t, nodeConfig.ClientTLSCreds)
+	assert.NotNil(t, nodeConfig.ServerTLSCreds)
+	assert.NotNil(t, nodeConfig.RootCA().Pool)
+	assert.NotNil(t, nodeConfig.RootCA().Cert)
+	assert.NotNil(t, nodeConfig.RootCA().Signer)
+}
+
+func TestLoadOrCreateSecurityConfigInvalidKeyWithValidTempKey(t *testing.T) {
+	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	defer tc.Stop()
+
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker)
+	assert.NoError(t, err)
+	assert.NotNil(t, nodeConfig)
+	assert.NotNil(t, nodeConfig.ClientTLSCreds)
+	assert.NotNil(t, nodeConfig.ServerTLSCreds)
+	assert.NotNil(t, nodeConfig.RootCA().Pool)
+	assert.NotNil(t, nodeConfig.RootCA().Cert)
+	assert.NotNil(t, nodeConfig.RootCA().Signer)
+
+	// Write some garbage to the Key
+	assert.NoError(t, os.Rename(tc.Paths.Node.Key, filepath.Dir(tc.Paths.Node.Key)+"."+filepath.Base(tc.Paths.Node.Key)))
+	ioutil.WriteFile(tc.Paths.Node.Key, []byte(`-----BEGIN EC PRIVATE KEY-----\n
+some random garbage\n
+-----END EC PRIVATE KEY-----`), 0644)
+	nodeConfig, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
