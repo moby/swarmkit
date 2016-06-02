@@ -168,16 +168,21 @@ func GetTask(tx ReadTx, id string) *api.Task {
 
 // FindTasks selects a set of tasks and returns them.
 func FindTasks(tx ReadTx, by By) ([]*api.Task, error) {
-	switch by.(type) {
-	case byAll, byName, byNode, byService, byInstance:
-	default:
-		return nil, ErrInvalidFindBy
+	checkType := func(by By) error {
+		switch by.(type) {
+		case byName, byNode, byService, byInstance:
+			return nil
+		default:
+			return ErrInvalidFindBy
+		}
 	}
 
 	taskList := []*api.Task{}
-	err := tx.find(tableTask, by, func(o Object) {
+	appendResult := func(o Object) {
 		taskList = append(taskList, o.(taskEntry).Task)
-	})
+	}
+
+	err := tx.find(tableTask, by, checkType, appendResult)
 	return taskList, err
 }
 

@@ -163,16 +163,21 @@ func GetService(tx ReadTx, id string) *api.Service {
 
 // FindServices selects a set of services and returns them.
 func FindServices(tx ReadTx, by By) ([]*api.Service, error) {
-	switch by.(type) {
-	case byAll, byName, byQuery:
-	default:
-		return nil, ErrInvalidFindBy
+	checkType := func(by By) error {
+		switch by.(type) {
+		case byName, byQuery:
+			return nil
+		default:
+			return ErrInvalidFindBy
+		}
 	}
 
 	serviceList := []*api.Service{}
-	err := tx.find(tableService, by, func(o Object) {
+	appendResult := func(o Object) {
 		serviceList = append(serviceList, o.(serviceEntry).Service)
-	})
+	}
+
+	err := tx.find(tableService, by, checkType, appendResult)
 	return serviceList, err
 }
 

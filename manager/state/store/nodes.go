@@ -152,16 +152,21 @@ func GetNode(tx ReadTx, id string) *api.Node {
 
 // FindNodes selects a set of nodes and returns them.
 func FindNodes(tx ReadTx, by By) ([]*api.Node, error) {
-	switch by.(type) {
-	case byAll, byName, byQuery:
-	default:
-		return nil, ErrInvalidFindBy
+	checkType := func(by By) error {
+		switch by.(type) {
+		case byName, byQuery:
+			return nil
+		default:
+			return ErrInvalidFindBy
+		}
 	}
 
 	nodeList := []*api.Node{}
-	err := tx.find(tableNode, by, func(o Object) {
+	appendResult := func(o Object) {
 		nodeList = append(nodeList, o.(nodeEntry).Node)
-	})
+	}
+
+	err := tx.find(tableNode, by, checkType, appendResult)
 	return nodeList, err
 }
 

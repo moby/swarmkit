@@ -169,16 +169,21 @@ func GetCluster(tx ReadTx, id string) *api.Cluster {
 
 // FindClusters selects a set of clusters and returns them.
 func FindClusters(tx ReadTx, by By) ([]*api.Cluster, error) {
-	switch by.(type) {
-	case byAll, byName, byQuery:
-	default:
-		return nil, ErrInvalidFindBy
+	checkType := func(by By) error {
+		switch by.(type) {
+		case byName, byQuery:
+			return nil
+		default:
+			return ErrInvalidFindBy
+		}
 	}
 
 	clusterList := []*api.Cluster{}
-	err := tx.find(tableCluster, by, func(o Object) {
+	appendResult := func(o Object) {
 		clusterList = append(clusterList, o.(clusterEntry).Cluster)
-	})
+	}
+
+	err := tx.find(tableCluster, by, checkType, appendResult)
 	return clusterList, err
 }
 

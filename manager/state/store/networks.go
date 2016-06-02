@@ -163,16 +163,21 @@ func GetNetwork(tx ReadTx, id string) *api.Network {
 
 // FindNetworks selects a set of networks and returns them.
 func FindNetworks(tx ReadTx, by By) ([]*api.Network, error) {
-	switch by.(type) {
-	case byAll, byName, byQuery:
-	default:
-		return nil, ErrInvalidFindBy
+	checkType := func(by By) error {
+		switch by.(type) {
+		case byName, byQuery:
+			return nil
+		default:
+			return ErrInvalidFindBy
+		}
 	}
 
 	networkList := []*api.Network{}
-	err := tx.find(tableNetwork, by, func(o Object) {
+	appendResult := func(o Object) {
 		networkList = append(networkList, o.(networkEntry).Network)
-	})
+	}
+
+	err := tx.find(tableNetwork, by, checkType, appendResult)
 	return networkList, err
 }
 
