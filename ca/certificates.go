@@ -1,6 +1,8 @@
 package ca
 
 import (
+	"crypto"
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
@@ -217,12 +219,31 @@ func NewRootCA(cert, key []byte) (RootCA, error) {
 		return RootCA{}, err
 	}
 
+	if err := ensureCertKeyMatch(parsedCA, priv.Public()); err != nil {
+		return RootCA{}, err
+	}
+
 	signer, err := local.NewSigner(priv, parsedCA, cfsigner.DefaultSigAlgo(priv), DefaultPolicy())
 	if err != nil {
 		return RootCA{}, err
 	}
 
 	return RootCA{Signer: signer, Key: key, Cert: cert, Pool: pool}, nil
+}
+
+func ensureCertKeyMatch(cert *x509.Certificate, key crypto.PublicKey) error {
+	switch certPub := cert.PublicKey.(type) {
+	// TODO: Handle RSA keys.
+	case *ecdsa.PublicKey:
+		ecKey, ok := key.(*ecdsa.PublicKey)
+		if ok && certPub.X.Cmp(ecKey.X) == 0 && certPub.Y.Cmp(ecKey.Y) == 0 {
+			return nil
+		}
+	default:
+		return fmt.Errorf("unknown or unsupported certificate public key algorithm")
+	}
+
+	return fmt.Errorf("certificate key mismatch")
 }
 
 // GetLocalRootCA validates if the contents of the file are a valid self-signed
