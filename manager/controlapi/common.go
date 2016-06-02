@@ -1,6 +1,8 @@
 package controlapi
 
 import (
+	"strings"
+
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"google.golang.org/grpc"
@@ -13,6 +15,30 @@ func buildFilters(by func(string) store.By, values []string) store.By {
 		filters = append(filters, by(v))
 	}
 	return store.Or(filters...)
+}
+
+func filterContains(match string, candidates []string) bool {
+	if len(candidates) == 0 {
+		return true
+	}
+	for _, c := range candidates {
+		if c == match {
+			return true
+		}
+	}
+	return false
+}
+
+func filterContainsPrefix(match string, candidates []string) bool {
+	if len(candidates) == 0 {
+		return true
+	}
+	for _, c := range candidates {
+		if strings.HasPrefix(c, match) {
+			return true
+		}
+	}
+	return false
 }
 
 func validateAnnotations(m api.Annotations) error {

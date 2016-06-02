@@ -49,6 +49,25 @@ func (s *Server) RemoveTask(ctx context.Context, request *api.RemoveTaskRequest)
 	return &api.RemoveTaskResponse{}, nil
 }
 
+func filterTasks(candidates []*api.Task, filters ...func(*api.Task) bool) []*api.Task {
+	result := []*api.Task{}
+
+	for _, c := range candidates {
+		match := true
+		for _, f := range filters {
+			if !f(c) {
+				match = false
+				break
+			}
+		}
+		if match {
+			result = append(result, c)
+		}
+	}
+
+	return result
+}
+
 // ListTasks returns a list of all tasks.
 func (s *Server) ListTasks(ctx context.Context, request *api.ListTasksRequest) (*api.ListTasksResponse, error) {
 	var (
@@ -72,6 +91,24 @@ func (s *Server) ListTasks(ctx context.Context, request *api.ListTasksRequest) (
 	if err != nil {
 		return nil, err
 	}
+
+	if request.Filters != nil {
+		tasks = filterTasks(tasks,
+			func(e *api.Task) bool {
+				return filterContains(e.ServiceAnnotations.Name, request.Filters.Names)
+			},
+			func(e *api.Task) bool {
+				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)
+			},
+			func(e *api.Task) bool {
+				return filterContains(e.ServiceID, request.Filters.ServiceIDs)
+			},
+			func(e *api.Task) bool {
+				return filterContains(e.NodeID, request.Filters.NodeIDs)
+			},
+		)
+	}
+
 	return &api.ListTasksResponse{
 		Tasks: tasks,
 	}, nil

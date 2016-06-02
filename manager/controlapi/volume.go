@@ -92,6 +92,25 @@ func (s *Server) RemoveVolume(ctx context.Context, request *api.RemoveVolumeRequ
 	return &api.RemoveVolumeResponse{}, nil
 }
 
+func filterVolumes(candidates []*api.Volume, filters ...func(*api.Volume) bool) []*api.Volume {
+	result := []*api.Volume{}
+
+	for _, c := range candidates {
+		match := true
+		for _, f := range filters {
+			if !f(c) {
+				match = false
+				break
+			}
+		}
+		if match {
+			result = append(result, c)
+		}
+	}
+
+	return result
+}
+
 // ListVolumes returns a list of all volumes.
 func (s *Server) ListVolumes(ctx context.Context, request *api.ListVolumesRequest) (*api.ListVolumesResponse, error) {
 	var (
@@ -111,6 +130,18 @@ func (s *Server) ListVolumes(ctx context.Context, request *api.ListVolumesReques
 	if err != nil {
 		return nil, err
 	}
+
+	if request.Filters != nil {
+		volumes = filterVolumes(volumes,
+			func(e *api.Volume) bool {
+				return filterContains(e.Spec.Annotations.Name, request.Filters.Names)
+			},
+			func(e *api.Volume) bool {
+				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)
+			},
+		)
+	}
+
 	return &api.ListVolumesResponse{
 		Volumes: volumes,
 	}, nil
