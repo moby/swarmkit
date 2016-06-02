@@ -48,7 +48,7 @@ func init() {
 // CertPaths is a helper struct that keeps track of the paths of a
 // [CSR, Cert, Key] group
 type CertPaths struct {
-	CSR, Cert, Key string
+	Cert, Key string
 }
 
 // RootCA is the representation of everything we need to sign certificates
@@ -72,7 +72,7 @@ func (rca *RootCA) CanSign() bool {
 // IssueAndSaveNewCertificates generates a new key-pair, signs it with the local root-ca, and returns a
 // tls certificate
 func (rca *RootCA) IssueAndSaveNewCertificates(paths CertPaths, cn, ou string) (*tls.Certificate, error) {
-	csr, key, err := GenerateAndWriteNewCSR(paths)
+	csr, key, err := GenerateAndWriteNewKey(paths)
 	if err != nil {
 		log.Debugf("error when generating new node certs: %v", err)
 		return nil, err
@@ -115,8 +115,9 @@ func (rca *RootCA) IssueAndSaveNewCertificates(paths CertPaths, cn, ou string) (
 // available, or by requesting them from the remote server at remoteAddr.
 func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, paths CertPaths, role string, picker *picker.Picker, transport credentials.TransportAuthenticator) (*tls.Certificate, error) {
 	// Create a new key/pair and CSR for the new manager
-
-	csr, key, err := GenerateAndWriteNewCSR(paths)
+	// Write the new CSR and the new key to a temporary location so we can survive crashes on rotation
+	tempPaths := genTempPaths(paths)
+	csr, key, err := GenerateAndWriteNewKey(tempPaths)
 	if err != nil {
 		log.Debugf("error when generating new node certs: %v", err)
 		return nil, err
@@ -138,6 +139,11 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, paths Cert
 
 	// Write the chain to disk
 	if err := atomicWriteFile(paths.Cert, signedCert, 0644); err != nil {
+		return nil, err
+	}
+
+	// Move the new key to the final location
+	if err := os.Rename(tempPaths.Key, paths.Key); err != nil {
 		return nil, err
 	}
 
@@ -423,9 +429,9 @@ func GenerateAndSignNewTLSCert(rootCA RootCA, cn, ou string, paths CertPaths) (*
 	return &serverCert, nil
 }
 
-// GenerateAndWriteNewCSR generates a new pub/priv key pair, writes it to disk
+// GenerateAndWriteNewKey generates a new pub/priv key pair, writes it to disk
 // and returns the CSR and the private key material
-func GenerateAndWriteNewCSR(paths CertPaths) (csr, key []byte, err error) {
+func GenerateAndWriteNewKey(paths CertPaths) (csr, key []byte, err error) {
 	// Generate a new key pair
 	csr, key, err = generateNewCSR()
 	if err != nil {
@@ -433,15 +439,11 @@ func GenerateAndWriteNewCSR(paths CertPaths) (csr, key []byte, err error) {
 	}
 
 	// Ensure directory exists
-	err = os.MkdirAll(filepath.Dir(paths.CSR), 0755)
+	err = os.MkdirAll(filepath.Dir(paths.Key), 0755)
 	if err != nil {
 		return
 	}
 
-	// Write CSR and key to disk
-	if err = atomicWriteFile(paths.CSR, csr, 0644); err != nil {
-		return
-	}
 	if err = atomicWriteFile(paths.Key, key, 0600); err != nil {
 		return
 	}
