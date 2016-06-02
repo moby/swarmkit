@@ -75,6 +75,12 @@ var nodeCmd = &cobra.Command{
 			return err
 		}
 
+		// todo: temporary to bypass promotion not working yet
+		ismanager, err := cmd.Flags().GetBool("manager")
+		if err != nil {
+			return err
+		}
+
 		// Create a context for our GRPC call
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -97,6 +103,7 @@ var nodeCmd = &cobra.Command{
 			Executor:         executor,
 			HeartbeatTick:    hb,
 			ElectionTick:     election,
+			IsManager:        ismanager,
 		})
 		if err != nil {
 			return err
@@ -133,4 +140,5 @@ func init() {
 	nodeCmd.Flags().Bool("force-new-cluster", false, "Force the creation of a new cluster from data directory")
 	nodeCmd.Flags().Uint32("heartbeat-tick", 1, "Defines the heartbeat interval (in seconds) for raft member health-check")
 	nodeCmd.Flags().Uint32("election-tick", 3, "Defines the amount of ticks (in seconds) needed without a Leader to trigger a new election")
+	nodeCmd.Flags().Bool("manager", false, "Request initial CSR in a manager role")
 }

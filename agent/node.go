@@ -61,6 +61,9 @@ type NodeConfig struct {
 	// HeartbeatTick defines the amount of ticks between each
 	// heartbeat sent to other members for health-check purposes
 	HeartbeatTick uint32
+
+	// todo: temporary to bypass promotion not working yet
+	IsManager bool
 }
 
 // Node implements the primary node functionality for a member of a swarm
@@ -167,8 +170,13 @@ func (n *Node) run(ctx context.Context) (err error) {
 		n.remotes = newPersistentRemotes(filepath.Join(n.config.StateDir, stateFilename), api.Peer{Addr: n.config.JoinAddr})
 	}
 
+	csrRole := n.role
+	if n.config.IsManager { // todo: temporary
+		csrRole = ca.ManagerRole
+	}
+
 	certDir := filepath.Join(n.config.StateDir, "certificates")
-	securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, n.config.Token, n.role, picker.NewPicker(n.remotes))
+	securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, n.config.Token, csrRole, picker.NewPicker(n.remotes))
 	if err != nil {
 		return err
 	}
