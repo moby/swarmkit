@@ -26,6 +26,7 @@ type Scheduler struct {
 	preassignedTasks map[string]*api.Task
 	nodeHeap         nodeHeap
 	allTasks         map[string]*api.Task
+	pipeline         *Pipeline
 
 	// stopChan signals to the state machine to stop running
 	stopChan chan struct{}
@@ -47,6 +48,7 @@ func New(store *store.MemoryStore) *Scheduler {
 		allTasks:         make(map[string]*api.Task),
 		stopChan:         make(chan struct{}),
 		doneChan:         make(chan struct{}),
+		pipeline:         NewPipeline(),
 	}
 }
 
@@ -361,8 +363,8 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 // taskFitNode checks if a node has enough resource to accommodate a task
 func (s *Scheduler) taskFitNode(ctx context.Context, t *api.Task, nodeID string) *api.Task {
 	nodeInfo := s.nodeHeap.nodeInfo(nodeID)
-	pipeline := NewPipeline(t)
-	if !pipeline.Process(&nodeInfo) {
+	s.pipeline.SetTask(t)
+	if !s.pipeline.Process(&nodeInfo) {
 		// this node cannot accommodate this task
 		return nil
 	}
@@ -382,8 +384,8 @@ func (s *Scheduler) taskFitNode(ctx context.Context, t *api.Task, nodeID string)
 
 // scheduleTask schedules a single task.
 func (s *Scheduler) scheduleTask(ctx context.Context, t *api.Task) *api.Task {
-	pipeline := NewPipeline(t)
-	n, _ := s.nodeHeap.findMin(pipeline.Process, s.scanAllNodes)
+	s.pipeline.SetTask(t)
+	n, _ := s.nodeHeap.findMin(s.pipeline.Process, s.scanAllNodes)
 	if n == nil {
 		log.G(ctx).WithField("task.id", t.ID).Debug("No suitable node available for task")
 		return nil

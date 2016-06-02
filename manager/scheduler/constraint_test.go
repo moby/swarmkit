@@ -5,9 +5,10 @@ import (
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestEnabled(t *testing.T) {
+func TestConstraintSetTask(t *testing.T) {
 	task1 := &api.Task{
 		ID: "id1",
 		ServiceAnnotations: api.Annotations{
@@ -28,18 +29,16 @@ func TestEnabled(t *testing.T) {
 		},
 	}
 	f := ConstraintFilter{}
-	enable := f.Enabled(task1)
-	assert.False(t, enable)
+	assert.False(t, f.SetTask(task1))
 
 	ctr := task1.GetContainer()
 	ctr.Spec.Placement = &api.Placement{
 		Constraints: []string{"node.name == node-2", "node.labels.operatingsystem != ubuntu"},
 	}
-	enable = f.Enabled(task1)
-	assert.True(t, enable)
+	assert.True(t, f.SetTask(task1))
 }
 
-func TestCheck(t *testing.T) {
+func TestConstraintCheck(t *testing.T) {
 	task1 := &api.Task{
 		ID: "id1",
 		ServiceAnnotations: api.Annotations{
@@ -74,49 +73,44 @@ func TestCheck(t *testing.T) {
 		Tasks: make(map[string]*api.Task),
 	}
 	f := ConstraintFilter{}
+	require.True(t, f.SetTask(task1))
 
 	// the node without hostname meets node.name noteq constraint
-	matched := f.Check(task1, ni)
-	assert.True(t, matched)
+	assert.True(t, f.Check(ni))
 
 	// add hostname to node
 	ni.Node.Description = &api.NodeDescription{
 		Hostname: "node-1",
 	}
 	// hostname constraint fails
-	matched = f.Check(task1, ni)
-	assert.False(t, matched)
+	assert.False(t, f.Check(ni))
 
 	// set node.name eq constraint to task
 	ctr := task1.GetContainer()
 	ctr.Spec.Placement = &api.Placement{
 		Constraints: []string{"node.name == node-1"},
 	}
+	require.True(t, f.SetTask(task1))
 	// the node meets node.name constraint
-	matched = f.Check(task1, ni)
-	assert.True(t, matched)
+	assert.True(t, f.Check(ni))
 
 	// add a label requirement to node
 	ctr.Spec.Placement = &api.Placement{
 		Constraints: []string{"node.name == node-1", "node.labels.operatingsystem != CoreOS 1010.3.0"},
 	}
+	require.True(t, f.SetTask(task1))
 	// the node meets node.name eq and label noteq constraints
-	matched = f.Check(task1, ni)
-	assert.True(t, matched)
+	assert.True(t, f.Check(ni))
 
 	// set node operating system
 	ni.Spec.Annotations.Labels["operatingsystem"] = "CoreOS 1010.3.0"
-	matched = f.Check(task1, ni)
-	assert.False(t, matched)
+	assert.False(t, f.Check(ni))
 
 	// case matters
 	ni.Spec.Annotations.Labels["operatingsystem"] = "coreOS 1010.3.0"
-	matched = f.Check(task1, ni)
-	assert.True(t, matched)
+	assert.True(t, f.Check(ni))
 
 	// extra labels doesn't matter
 	ni.Spec.Annotations.Labels["disk"] = "ssd"
-	matched = f.Check(task1, ni)
-	assert.True(t, matched)
-
+	assert.True(t, f.Check(ni))
 }

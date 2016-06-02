@@ -7,30 +7,30 @@ import (
 	"github.com/docker/swarm-v2/spec"
 )
 
-// ConstraintFilter selects only nodes that mach certain labels.
+// ConstraintFilter selects only nodes that match certain labels.
 type ConstraintFilter struct {
+	constraints []spec.Expr
 }
 
-// Enabled returns true when the filter is enable for a given task.
-func (f *ConstraintFilter) Enabled(t *api.Task) bool {
+// SetTask returns true when the filter is enable for a given task.
+func (f *ConstraintFilter) SetTask(t *api.Task) bool {
 	container := t.GetContainer()
 	if container == nil {
 		return false
 	}
-	return container.Spec.Placement != nil && len(container.Spec.Placement.Constraints) > 0
+	if container.Spec.Placement != nil && len(container.Spec.Placement.Constraints) > 0 {
+		constraints, err := spec.ParseExprs(container.Spec.Placement.Constraints)
+		if err == nil {
+			f.constraints = constraints
+			return true
+		}
+	}
+	return false
 }
 
 // Check returns true if the task's constraint is supported by the given node.
-func (f *ConstraintFilter) Check(t *api.Task, n *NodeInfo) bool {
-	containerSpec := t.GetContainer().Spec
-	// containerSpec.Placement is not nil because it's checked in Enabled()
-	constraints, err := spec.ParseExprs(containerSpec.Placement.Constraints)
-	// constraints are validated at service spec validation
-	if err != nil {
-		return true
-	}
-
-	for _, constraint := range constraints {
+func (f *ConstraintFilter) Check(n *NodeInfo) bool {
+	for _, constraint := range f.constraints {
 		switch constraint.Key {
 		case "node.id":
 			if !constraint.Match(n.ID) {
