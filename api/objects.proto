@@ -40,7 +40,7 @@ message Node {
 	NodeStatus status = 5 [(gogoproto.nullable) = false];
 
 	// The node attachment to the ingress network.
-	NetworkAttachment network = 6;
+	NetworkAttachment attachment = 6;
 
 	// Certificate is the TLS certificate issued for the node, if any.
 	Certificate certificate = 7 [(gogoproto.nullable) = false];

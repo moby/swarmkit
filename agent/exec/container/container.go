@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/docker/engine-api/types/events"
 	"github.com/docker/engine-api/types/filters"
 	"github.com/docker/engine-api/types/network"
-	"github.com/docker/go-connections/nat"
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/spec"
@@ -99,13 +97,12 @@ func (c *containerConfig) ephemeralDirs() map[string]struct{} {
 
 func (c *containerConfig) config() *enginecontainer.Config {
 	config := &enginecontainer.Config{
-		Labels:       c.labels(),
-		User:         c.spec().User,
-		Env:          c.spec().Env,
-		WorkingDir:   c.spec().Dir,
-		Image:        c.image(),
-		ExposedPorts: c.exposedPorts(),
-		Volumes:      c.ephemeralDirs(),
+		Labels:     c.labels(),
+		User:       c.spec().User,
+		Env:        c.spec().Env,
+		WorkingDir: c.spec().Dir,
+		Image:      c.image(),
+		Volumes:    c.ephemeralDirs(),
 	}
 
 	if len(c.spec().Command) > 0 {
@@ -157,18 +154,6 @@ func (c *containerConfig) labels() map[string]string {
 	return labels
 }
 
-func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
-	exposedPorts := make(map[nat.Port]struct{})
-	if c.endpoint() != nil && c.endpoint().ExposedPorts != nil {
-		for _, portConfig := range c.endpoint().ExposedPorts {
-			port := nat.Port(fmt.Sprintf("%d/%s", portConfig.Port, strings.ToLower(portConfig.Protocol.String())))
-			exposedPorts[port] = struct{}{}
-		}
-	}
-
-	return exposedPorts
-}
-
 func (c *containerConfig) bindMounts() []string {
 	var r []string
 
@@ -211,9 +196,8 @@ func getMountMask(m *api.Mount) string {
 
 func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 	return &enginecontainer.HostConfig{
-		Resources:    c.resources(),
-		Binds:        c.bindMounts(),
-		PortBindings: c.portBindings(),
+		Resources: c.resources(),
+		Binds:     c.bindMounts(),
 	}
 }
 
@@ -223,25 +207,6 @@ func (c *containerConfig) volumeCreateRequest(vol *api.Volume) *types.VolumeCrea
 		Driver:     vol.Spec.DriverConfiguration.Name,
 		DriverOpts: vol.Spec.DriverConfiguration.Options,
 	}
-}
-
-func (c *containerConfig) portBindings() nat.PortMap {
-	portBindings := nat.PortMap{}
-	if c.endpoint() != nil && c.endpoint().ExposedPorts != nil {
-		for _, portConfig := range c.endpoint().ExposedPorts {
-			port := nat.Port(fmt.Sprintf("%d/%s", portConfig.Port, strings.ToLower(portConfig.Protocol.String())))
-			binding := []nat.PortBinding{
-				{},
-			}
-
-			if portConfig.NodePort != 0 {
-				binding[0].HostPort = strconv.Itoa(int(portConfig.NodePort))
-			}
-			portBindings[port] = binding
-		}
-	}
-
-	return portBindings
 }
 
 func (c *containerConfig) resources() enginecontainer.Resources {
