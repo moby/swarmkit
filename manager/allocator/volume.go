@@ -225,9 +225,26 @@ func (a *Allocator) allocateTaskVolumes(ctx context.Context, vc *volumeContext, 
 		return t, nil
 	}
 
+	// Get the latest task state from the store before updating.
+	storeT := store.GetTask(tx, t.ID)
+	if storeT == nil {
+		return nil, fmt.Errorf("could not find task %s while trying to update volume allocation", t.ID)
+	}
+
+	container := storeT.GetContainer()
+	if container == nil || len(container.Spec.Mounts) == 0 {
+		if a.taskAllocateVote(volumeVoter, t.ID) {
+			updateTaskStatus(storeT, api.TaskStateAllocated, "allocated")
+			if err := store.UpdateTask(tx, storeT); err != nil {
+				return nil, fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
+			}
+		}
+		return t, nil
+	}
+
 	vols := map[string]*api.Volume{}
 	hasUnboundVolumes := false
-	for _, m := range t.GetContainer().Spec.Mounts {
+	for _, m := range container.Spec.Mounts {
 		if m.Type != api.MountTypeVolume {
 			continue
 		}
@@ -243,7 +260,7 @@ func (a *Allocator) allocateTaskVolumes(ctx context.Context, vc *volumeContext, 
 
 	// Now remove those volumes from tv.vols that have already have an entry in PluginVolumes
 	// PluginVolumes is part of the "bound" runtime state for volumes
-	for _, alloc := range t.GetContainer().Volumes {
+	for _, alloc := range container.Volumes {
 		if _, exists := vols[alloc.Spec.DriverConfiguration.Name]; exists {
 			delete(vols, alloc.Spec.DriverConfiguration.Name)
 		}
@@ -256,24 +273,29 @@ func (a *Allocator) allocateTaskVolumes(ctx context.Context, vc *volumeContext, 
 		pluginVols = append(pluginVols, pv)
 	}
 
-	// Get the latest task state from the store before updating.
-	storeT := store.GetTask(tx, t.ID)
-	if storeT == nil {
-		return nil, fmt.Errorf("could not find task %s while trying to update volume allocation", t.ID)
-	}
-
 	// Update the volume allocations and moving to
 	// ALLOCATED state on top of the latest store state.
 
+	taskUpdated := false
+
 	// Don't move task to allocated state if there are still unbound volumes
-	if !hasUnboundVolumes && a.taskAllocateVote(volumeVoter, t.ID) {
-		updateTaskStatus(storeT, api.TaskStateAllocated, "allocated")
+	if !hasUnboundVolumes {
+		if a.taskAllocateVote(volumeVoter, t.ID) {
+			updateTaskStatus(storeT, api.TaskStateAllocated, "allocated")
+			taskUpdated = true
+		}
+
+		// Append the new PluginVolumes to the existing array of PluginVolumes
+		if len(pluginVols) != 0 {
+			container.Volumes = append(container.Volumes, pluginVols...)
+			taskUpdated = true
+		}
 	}
 
-	// Append the new PluginVolumes to the existing array of PluginVolumes
-	storeT.GetContainer().Volumes = append(storeT.GetContainer().Volumes, pluginVols...)
-	if err := store.UpdateTask(tx, storeT); err != nil {
-		return nil, fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
+	if taskUpdated {
+		if err := store.UpdateTask(tx, storeT); err != nil {
+			return nil, fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
+		}
 	}
 
 	if hasUnboundVolumes {
@@ -308,40 +330,12 @@ func (a *Allocator) processTaskEvents(ctx context.Context, vc *volumeContext, ev
 		return
 	}
 
-	// Task has no volume attached and it is created for a
-	// service which has no volume configuration. Move it to
-	// ALLOCATED state.
-	if t.GetContainer() == nil || len(t.GetContainer().Spec.Mounts) == 0 {
-		// If we are already in allocated state, there is
-		// absolutely nothing else to do.
-		if t.Status.State >= api.TaskStateAllocated {
-			return
-		}
-
-		// Update the Task
-		if a.taskAllocateVote(volumeVoter, t.ID) {
-			if err := a.store.Update(func(tx store.Tx) error {
-				storeT := store.GetTask(tx, t.ID)
-				if storeT == nil {
-					return fmt.Errorf("task %s not found while trying to update state", t.ID)
-				}
-
-				updateTaskStatus(storeT, api.TaskStateAllocated, "allocated")
-				vc.volAllocator.AllocateTask(t)
-
-				if err := store.UpdateTask(tx, storeT); err != nil {
-					return fmt.Errorf("failed updating state in store transaction for task %s: %v", storeT.ID, err)
-				}
-
-				return nil
-			}); err != nil {
-				log.G(ctx).WithError(err).Error("error updating task volume")
-			}
-		}
+	// If we are already in allocated state, there is
+	// absolutely nothing else to do.
+	if t.Status.State >= api.TaskStateAllocated {
+		delete(vc.unallocatedTasks, t.ID)
 		return
 	}
 
-	if !vc.volAllocator.IsTaskAllocated(t) {
-		vc.unallocatedTasks[t.ID] = t
-	}
+	vc.unallocatedTasks[t.ID] = t
 }
