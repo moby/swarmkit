@@ -14,6 +14,7 @@ import (
 )
 
 const defaultOldTaskTimeout = time.Minute
+const defaultRestartDelay = 5 * time.Second
 
 type restartedInstance struct {
 	timestamp time.Time
@@ -81,12 +82,16 @@ func (r *RestartSupervisor) Restart(ctx context.Context, tx store.Tx, service *a
 
 	n := store.GetNode(tx, t.NodeID)
 
-	restartTask.DesiredState = api.TaskStateReady
+	restartTask.DesiredState = api.TaskStateAccepted
 
 	var restartDelay time.Duration
 	// Restart delay does not applied to drained nodes
-	if service.Spec.Restart != nil && service.Spec.Restart.Delay != 0 && (n == nil || n.Spec.Availability != api.NodeAvailabilityDrain) {
-		restartDelay = service.Spec.Restart.Delay
+	if n == nil || n.Spec.Availability != api.NodeAvailabilityDrain {
+		if service.Spec.Restart != nil && service.Spec.Restart.Delay != 0 {
+			restartDelay = service.Spec.Restart.Delay
+		} else {
+			restartDelay = defaultRestartDelay
+		}
 	}
 
 	waitStop := true
