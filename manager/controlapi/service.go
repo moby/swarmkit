@@ -186,12 +186,32 @@ func (s *Server) RemoveService(ctx context.Context, request *api.RemoveServiceRe
 	return &api.RemoveServiceResponse{}, nil
 }
 
+func filterServices(candidates []*api.Service, filters ...func(*api.Service) bool) []*api.Service {
+	result := []*api.Service{}
+
+	for _, c := range candidates {
+		match := true
+		for _, f := range filters {
+			if !f(c) {
+				match = false
+				break
+			}
+		}
+		if match {
+			result = append(result, c)
+		}
+	}
+
+	return result
+}
+
 // ListServices returns a list of all services.
 func (s *Server) ListServices(ctx context.Context, request *api.ListServicesRequest) (*api.ListServicesResponse, error) {
 	var (
 		services []*api.Service
 		err      error
 	)
+
 	s.store.View(func(tx store.ReadTx) {
 		switch {
 		case request.Filters != nil && len(request.Filters.Names) > 0:
@@ -205,6 +225,18 @@ func (s *Server) ListServices(ctx context.Context, request *api.ListServicesRequ
 	if err != nil {
 		return nil, err
 	}
+
+	if request.Filters != nil {
+		services = filterServices(services,
+			func(e *api.Service) bool {
+				return filterContains(e.Spec.Annotations.Name, request.Filters.Names)
+			},
+			func(e *api.Service) bool {
+				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)
+			},
+		)
+	}
+
 	return &api.ListServicesResponse{
 		Services: services,
 	}, nil

@@ -70,6 +70,25 @@ func (s *Server) UpdateCluster(ctx context.Context, request *api.UpdateClusterRe
 	}, nil
 }
 
+func filterClusters(candidates []*api.Cluster, filters ...func(*api.Cluster) bool) []*api.Cluster {
+	result := []*api.Cluster{}
+
+	for _, c := range candidates {
+		match := true
+		for _, f := range filters {
+			if !f(c) {
+				match = false
+				break
+			}
+		}
+		if match {
+			result = append(result, c)
+		}
+	}
+
+	return result
+}
+
 // ListClusters returns a list of all clusters.
 func (s *Server) ListClusters(ctx context.Context, request *api.ListClustersRequest) (*api.ListClustersResponse, error) {
 	var (
@@ -89,6 +108,18 @@ func (s *Server) ListClusters(ctx context.Context, request *api.ListClustersRequ
 	if err != nil {
 		return nil, err
 	}
+
+	if request.Filters != nil {
+		clusters = filterClusters(clusters,
+			func(e *api.Cluster) bool {
+				return filterContains(e.Spec.Annotations.Name, request.Filters.Names)
+			},
+			func(e *api.Cluster) bool {
+				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)
+			},
+		)
+	}
+
 	return &api.ListClustersResponse{
 		Clusters: clusters,
 	}, nil
