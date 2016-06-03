@@ -387,18 +387,18 @@ func (s *Server) setNodeCertState(node *api.Node, state api.IssuanceState) error
 }
 
 func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) {
-	// If the desired acceptance and actual state are in sync, there's
+	// If the desired membership and actual state are in sync, there's
 	// nothing to do.
-	if node.Spec.Acceptance == api.NodeAcceptanceAccept && node.Certificate.Status.State == api.IssuanceStateIssued {
+	if node.Spec.Membership == api.NodeMembershipAccepted && node.Certificate.Status.State == api.IssuanceStateIssued {
 		return
 	}
-	if node.Spec.Acceptance == api.NodeAcceptanceReject && node.Certificate.Status.State == api.IssuanceStateRejected {
+	if node.Spec.Membership == api.NodeMembershipRejected && node.Certificate.Status.State == api.IssuanceStateRejected {
 		return
 	}
 
-	// If the desired acceptance was set to rejected, we should
+	// If the desired membership was set to rejected, we should
 	// act on that right away, and that is all that should be done.
-	if node.Spec.Acceptance == api.NodeAcceptanceReject {
+	if node.Spec.Membership == api.NodeMembershipRejected {
 		err := s.setNodeCertState(node, api.IssuanceStateRejected)
 		if err != nil {
 			log.G(ctx).WithFields(logrus.Fields{
@@ -425,7 +425,7 @@ func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) {
 		return
 	}
 
-	if node.Spec.Acceptance == api.NodeAcceptanceAccept {
+	if node.Spec.Membership == api.NodeMembershipAccepted {
 		// Cert was approved by admin
 		s.signNodeCert(ctx, node)
 	}

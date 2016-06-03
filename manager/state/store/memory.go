@@ -28,7 +28,7 @@ const (
 	indexCN           = "cn"
 	indexDesiredState = "desiredstate"
 	indexRole         = "role"
-	indexAcceptance   = "acceptance"
+	indexMembership   = "membership"
 
 	prefix = "_prefix"
 
@@ -607,8 +607,8 @@ func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([
 			return nil, err
 		}
 		return []memdb.ResultIterator{it}, nil
-	case byAcceptance:
-		it, err := tx.memDBTx.Get(table, indexAcceptance, strconv.FormatInt(int64(v), 10))
+	case byMembership:
+		it, err := tx.memDBTx.Get(table, indexMembership, strconv.FormatInt(int64(v), 10))
 		if err != nil {
 			return nil, err
 		}

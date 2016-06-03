@@ -82,10 +82,10 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 				filters = append(filters, store.ByRole(v))
 			}
 			nodes, err = store.FindNodes(tx, store.Or(filters...))
-		case request.Filters != nil && len(request.Filters.Acceptances) > 0:
-			filters := make([]store.By, 0, len(request.Filters.Acceptances))
-			for _, v := range request.Filters.Acceptances {
-				filters = append(filters, store.ByAcceptance(v))
+		case request.Filters != nil && len(request.Filters.Memberships) > 0:
+			filters := make([]store.By, 0, len(request.Filters.Memberships))
+			for _, v := range request.Filters.Memberships {
+				filters = append(filters, store.ByMembership(v))
 			}
 			nodes, err = store.FindNodes(tx, store.Or(filters...))
 		default:
@@ -131,11 +131,11 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 				return false
 			},
 			func(e *api.Node) bool {
-				if len(request.Filters.Acceptances) == 0 {
+				if len(request.Filters.Memberships) == 0 {
 					return true
 				}
-				for _, c := range request.Filters.Acceptances {
-					if c == e.Spec.Acceptance {
+				for _, c := range request.Filters.Memberships {
+					if c == e.Spec.Membership {
 						return true
 					}
 				}

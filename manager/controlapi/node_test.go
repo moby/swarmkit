@@ -18,12 +18,12 @@ import (
 	"google.golang.org/grpc/grpclog"
 )
 
-func createNode(t *testing.T, ts *testServer, id string, role api.NodeSpec_Role, acceptance api.NodeSpec_Acceptance) *api.Node {
+func createNode(t *testing.T, ts *testServer, id string, role api.NodeSpec_Role, membership api.NodeSpec_Membership) *api.Node {
 	node := &api.Node{
 		ID: id,
 		Spec: api.NodeSpec{
 			Role:       role,
-			Acceptance: acceptance,
+			Membership: membership,
 		},
 	}
 	err := ts.Store.Update(func(tx store.Tx) error {
@@ -44,7 +44,7 @@ func TestGetNode(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpc.Code(err))
 
-	node := createNode(t, ts, "id", api.NodeRoleManager, api.NodeAcceptanceAccept)
+	node := createNode(t, ts, "id", api.NodeRoleManager, api.NodeMembershipAccepted)
 	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: node.ID})
 	assert.NoError(t, err)
 	assert.Equal(t, node.ID, r.Node.ID)
@@ -56,13 +56,13 @@ func TestListNodes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, r.Nodes)
 
-	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeAcceptanceAccept)
+	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Nodes))
 
-	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeAcceptanceAccept)
-	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeAcceptanceReject)
+	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted)
+	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipRejected)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Nodes))
@@ -96,11 +96,11 @@ func TestListNodes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Nodes))
 
-	// List by acceptance.
+	// List by membership.
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Acceptances: []api.NodeSpec_Acceptance{api.NodeAcceptanceAccept},
+				Memberships: []api.NodeSpec_Membership{api.NodeMembershipAccepted},
 			},
 		},
 	)
@@ -109,7 +109,7 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Acceptances: []api.NodeSpec_Acceptance{api.NodeAcceptanceReject},
+				Memberships: []api.NodeSpec_Membership{api.NodeMembershipRejected},
 			},
 		},
 	)
@@ -118,7 +118,7 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Acceptances: []api.NodeSpec_Acceptance{api.NodeAcceptanceAccept, api.NodeAcceptanceReject},
+				Memberships: []api.NodeSpec_Membership{api.NodeMembershipAccepted, api.NodeMembershipRejected},
 			},
 		},
 	)
@@ -128,7 +128,7 @@ func TestListNodes(t *testing.T) {
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
 				Roles:       []api.NodeSpec_Role{api.NodeRoleWorker},
-				Acceptances: []api.NodeSpec_Acceptance{api.NodeAcceptanceReject},
+				Memberships: []api.NodeSpec_Membership{api.NodeMembershipRejected},
 			},
 		},
 	)
@@ -343,7 +343,7 @@ func TestUpdateNode(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpc.Code(err))
 
-	createNode(t, ts, "id", api.NodeRoleManager, api.NodeAcceptanceAccept)
+	createNode(t, ts, "id", api.NodeRoleManager, api.NodeMembershipAccepted)
 	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: "id"})
 	assert.NoError(t, err)
 	assert.NotNil(t, r.Node)
