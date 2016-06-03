@@ -29,6 +29,10 @@ func (e *NoopExecutor) Controller(t *api.Task) (exec.Controller, error) {
 	return nil, exec.ErrRuntimeUnsupported
 }
 
+func (e *NoopExecutor) SetNetworkBootstrapKeys([]*api.EncryptionKey) error {
+	return nil
+}
+
 func TestAgent(t *testing.T) {
 	// TODO(stevvooe): The current agent is fairly monolithic, making it hard
 	// to test without implementing or mocking an entire master. We'd like to

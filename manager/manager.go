@@ -17,6 +17,7 @@ import (
 	"github.com/docker/swarm-v2/manager/allocator"
 	"github.com/docker/swarm-v2/manager/controlapi"
 	"github.com/docker/swarm-v2/manager/dispatcher"
+	"github.com/docker/swarm-v2/manager/keymanager"
 	"github.com/docker/swarm-v2/manager/orchestrator"
 	"github.com/docker/swarm-v2/manager/raftpicker"
 	"github.com/docker/swarm-v2/manager/scheduler"
@@ -74,6 +75,7 @@ type Manager struct {
 	taskReaper             *orchestrator.TaskReaper
 	scheduler              *scheduler.Scheduler
 	allocator              *allocator.Allocator
+	keyManager             *keymanager.KeyManager
 	server                 *grpc.Server
 	localserver            *grpc.Server
 	raftNode               *raft.Node
@@ -210,6 +212,7 @@ func New(config *Config) (*Manager, error) {
 		listeners:   listeners,
 		caserver:    ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig),
 		dispatcher:  dispatcher.New(raftNode, dispatcherConfig),
+		keyManager:  keymanager.New(raftNode.MemoryStore(), keymanager.DefaultConfig()),
 		server:      grpc.NewServer(opts...),
 		localserver: grpc.NewServer(opts...),
 		raftNode:    raftNode,
@@ -294,6 +297,12 @@ func (m *Manager) Run(ctx context.Context) error {
 					// creating the allocator but then use it anyways.
 				}
 
+				go func(keyManager *keymanager.KeyManager) {
+					if err := keyManager.Run(ctx); err != nil {
+						log.G(ctx).WithError(err).Error("keymanager failed with an error")
+					}
+				}(m.keyManager)
+
 				go func(d *dispatcher.Dispatcher) {
 					if err := d.Run(ctx); err != nil {
 						log.G(ctx).WithError(err).Error("dispatcher exited with an error")
@@ -336,6 +345,7 @@ func (m *Manager) Run(ctx context.Context) error {
 						log.G(ctx).WithError(err).Error("global orchestrator exited with an error")
 					}
 				}(m.globalOrchestrator)
+
 			} else if newState == raft.IsFollower {
 				m.dispatcher.Stop()
 				m.caserver.Stop()
@@ -356,6 +366,9 @@ func (m *Manager) Run(ctx context.Context) error {
 
 				m.scheduler.Stop()
 				m.scheduler = nil
+
+				m.keyManager.Stop()
+				m.keyManager = nil
 			}
 			m.mu.Unlock()
 		}

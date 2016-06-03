@@ -34,6 +34,10 @@ func (e *NoopExecutor) Configure(ctx context.Context, node *api.Node) error {
 	return nil
 }
 
+func (e *NoopExecutor) SetNetworkBootstrapKeys([]*api.EncryptionKey) error {
+	return nil
+}
+
 func (e *NoopExecutor) Controller(t *api.Task) (exec.Controller, error) {
 	return nil, exec.ErrRuntimeUnsupported
 }

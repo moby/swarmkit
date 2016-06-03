@@ -77,17 +77,19 @@ type Cluster interface {
 
 // Dispatcher is responsible for dispatching tasks and tracking agent health.
 type Dispatcher struct {
-	mu               sync.Mutex
-	addr             string
-	nodes            *nodeStore
-	store            *store.MemoryStore
-	mgrQueue         *watch.Queue
-	lastSeenManagers []*api.WeightedPeer
-	config           *Config
-	cluster          Cluster
-	ctx              context.Context
-	cancel           context.CancelFunc
-	wg               sync.WaitGroup
+	mu                   sync.Mutex
+	addr                 string
+	nodes                *nodeStore
+	store                *store.MemoryStore
+	mgrQueue             *watch.Queue
+	lastSeenManagers     []*api.WeightedPeer
+	networkBootstrapKeys []*api.EncryptionKey
+	keyMgrQueue          *watch.Queue
+	config               *Config
+	cluster              Cluster
+	ctx                  context.Context
+	cancel               context.CancelFunc
+	wg                   sync.WaitGroup
 
 	taskUpdates     map[string]*api.TaskStatus // indexed by task ID
 	taskUpdatesLock sync.Mutex
@@ -99,11 +101,12 @@ type Dispatcher struct {
 // NOTE: each handler which does something with raft must add to Dispatcher.wg
 func New(cluster Cluster, c *Config) *Dispatcher {
 	return &Dispatcher{
-		addr:     c.Addr,
-		nodes:    newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier),
-		store:    cluster.MemoryStore(),
-		cluster:  cluster,
-		mgrQueue: watch.NewQueue(16),
+		addr:        c.Addr,
+		nodes:       newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier),
+		store:       cluster.MemoryStore(),
+		cluster:     cluster,
+		mgrQueue:    watch.NewQueue(16),
+		keyMgrQueue: watch.NewQueue(16),
 		lastSeenManagers: []*api.WeightedPeer{
 			{
 				Addr:   c.Addr,
@@ -140,6 +143,9 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			}
 			if err == nil && len(clusters) == 1 {
 				d.config.HeartbeatPeriod = time.Duration(clusters[0].Spec.Dispatcher.HeartbeatPeriod)
+				if clusters[0].NetworkBootstrapKeys != nil {
+					d.networkBootstrapKeys = clusters[0].NetworkBootstrapKeys
+				}
 			}
 			return nil
 		},
@@ -189,7 +195,9 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			d.mu.Lock()
 			d.config.HeartbeatPeriod = time.Duration(cluster.Cluster.Spec.Dispatcher.HeartbeatPeriod)
 			d.nodes.updatePeriod(d.config.HeartbeatPeriod, d.config.HeartbeatEpsilon, d.config.GracePeriodMultiplier)
+			d.networkBootstrapKeys = cluster.Cluster.NetworkBootstrapKeys
 			d.mu.Unlock()
+			d.keyMgrQueue.Publish(struct{}{})
 		case <-d.ctx.Done():
 			return nil
 		}
@@ -636,16 +644,19 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 	}
 
 	if err := stream.Send(&api.SessionMessage{
-		SessionID:  sessionID,
-		Node:       nodeObj,
-		Managers:   d.getManagers(),
-		Disconnect: false,
+		SessionID:            sessionID,
+		Node:                 nodeObj,
+		Managers:             d.getManagers(),
+		Disconnect:           false,
+		NetworkBootstrapKeys: d.networkBootstrapKeys,
 	}); err != nil {
 		return err
 	}
 
 	managerUpdates, mgrCancel := d.mgrQueue.Watch()
 	defer mgrCancel()
+	keyMgrUpdates, keyMgrCancel := d.keyMgrQueue.Watch()
+	defer keyMgrCancel()
 
 	for {
 		// After each message send, we need to check the nodes sessionID hasn't
@@ -670,6 +681,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			disconnectError = grpc.Errorf(codes.Aborted, "node must disconnect")
 		case <-d.ctx.Done():
 			disconnectError = grpc.Errorf(codes.Aborted, "dispatcher stopped")
+		case <-keyMgrUpdates:
 		}
 		if mgrs == nil {
 			mgrs = d.getManagers()
@@ -682,10 +694,11 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		}
 
 		if err := stream.Send(&api.SessionMessage{
-			SessionID:  sessionID,
-			Node:       nodeObj,
-			Managers:   mgrs,
-			Disconnect: disconnectError != nil,
+			SessionID:            sessionID,
+			Node:                 nodeObj,
+			Managers:             mgrs,
+			Disconnect:           disconnectError != nil,
+			NetworkBootstrapKeys: d.networkBootstrapKeys,
 		}); err != nil {
 			return err
 		}

@@ -487,3 +487,26 @@ message Certificate {
 	// CN represents the node ID.
 	string cn = 5 [(gogoproto.customname) = "CN"];
 }
+
+
+// Symmetric keys to encrypt inter-agent communication.
+message EncryptionKey {
+	// Agent subsystem the key is intended for. Example:
+	// networking:gossip
+	string subsystem = 1;
+
+	// Encryption algorithm that can implemented using this key
+	enum Algorithm {
+		option (gogoproto.goproto_enum_prefix) = false;
+
+		AES_128_GCM = 0;
+	}
+
+	Algorithm algorithm = 2;
+
+	bytes key = 3;
+
+	// Time stamp from the lamport clock of the key allocator to
+	// identify the relative age of the key.
+	uint64 lamport_time = 4;
+}

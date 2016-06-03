@@ -220,4 +220,13 @@ message Cluster {
 
 	// RootCA contains key material for the root CA.
 	RootCA root_ca = 4 [(gogoproto.customname) = "RootCA"];
+
+	// Symmetric encryption key distributed by the lead manager. Used by agents
+	// for securing network bootstrapping and communication. 
+	repeated EncryptionKey network_bootstrap_keys = 5;
+
+	// Logical clock used to timestamp every key.  It allows other managers
+	// and agents to unambiguously identify the older key to be deleted when
+	// a new key is allocated on key rotation.
+	uint64 encryption_key_lamport_clock = 6;
 }
