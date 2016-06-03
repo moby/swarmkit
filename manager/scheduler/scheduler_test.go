@@ -1025,47 +1025,64 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 }
 
 func BenchmarkScheduler1kNodes1kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e3, false)
+	benchScheduler(b, 1e3, 1e3, false, false)
 }
 
 func BenchmarkScheduler1kNodes10kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e4, false)
+	benchScheduler(b, 1e3, 1e4, false, false)
 }
 
 func BenchmarkScheduler1kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e5, false)
+	benchScheduler(b, 1e3, 1e5, false, false)
 }
 
 func BenchmarkScheduler100kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e5, 1e5, false)
+	benchScheduler(b, 1e5, 1e5, false, false)
 }
 
 func BenchmarkScheduler100kNodes1MTasks(b *testing.B) {
-	benchScheduler(b, 1e5, 1e6, false)
+	benchScheduler(b, 1e5, 1e6, false, false)
+}
+
+func BenchmarkSchedulerConstraints1kNodes1kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e3, true, false)
+}
+
+func BenchmarkSchedulerConstraints1kNodes10kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e4, true, false)
+}
+
+func BenchmarkSchedulerConstraints1kNodes100kTasks(b *testing.B) {
+	benchScheduler(b, 1e3, 1e5, true, false)
+}
+
+func BenchmarkSchedulerConstraints5kNodes100kTasks(b *testing.B) {
+	benchScheduler(b, 5e3, 1e5, true, false)
 }
 
 func BenchmarkSchedulerWorstCase1kNodes1kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e3, true)
+	benchScheduler(b, 1e3, 1e3, false, true)
 }
 
 func BenchmarkSchedulerWorstCase1kNodes10kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e4, true)
+	benchScheduler(b, 1e3, 1e4, false, true)
 }
 
 func BenchmarkSchedulerWorstCase1kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e5, true)
+	benchScheduler(b, 1e3, 1e5, false, true)
 }
 
 func BenchmarkSchedulerWorstCase100kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e5, 1e5, true)
+	benchScheduler(b, 1e5, 1e5, false, true)
 }
 
 func BenchmarkSchedulerWorstCase100kNodes1MTasks(b *testing.B) {
-	benchScheduler(b, 1e5, 1e6, true)
+	benchScheduler(b, 1e5, 1e6, false, true)
 }
 
-func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
+func benchScheduler(b *testing.B, nodes, tasks int, constraints, worstCase bool) {
 	ctx := context.Background()
+
 	for iters := 0; iters < b.N; iters++ {
 		b.StopTimer()
 		s := store.NewMemoryStore(nil)
@@ -1084,24 +1101,39 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 		_ = s.Update(func(tx store.Tx) error {
 			// Create initial nodes and tasks
 			for i := 0; i < nodes; i++ {
-				err := store.CreateNode(tx, &api.Node{
+				n := &api.Node{
 					ID: identity.NewID(),
 					Spec: api.NodeSpec{
 						Annotations: api.Annotations{
-							Name: "name" + strconv.Itoa(i),
+							Name:   "name" + strconv.Itoa(i),
+							Labels: make(map[string]string),
 						},
 					},
 					Status: api.NodeStatus{
 						State: api.NodeStatus_READY,
 					},
-				})
+					Description: &api.NodeDescription{
+						Engine: &api.EngineDescription{},
+					},
+				}
+				// Give every hundredth node a special network
+				if i%100 == 0 {
+					n.Description.Engine.Plugins = []api.PluginDescription{
+						{
+							Name: "network",
+							Type: "Network",
+						},
+					}
+
+				}
+				err := store.CreateNode(tx, n)
 				if err != nil {
 					panic(err)
 				}
 			}
 			for i := 0; i < tasks; i++ {
 				id := "task" + strconv.Itoa(i)
-				err := store.CreateTask(tx, &api.Task{
+				t := &api.Task{
 					ID: id,
 					ServiceAnnotations: api.Annotations{
 						Name: id,
@@ -1109,7 +1141,19 @@ func benchScheduler(b *testing.B, nodes, tasks int, worstCase bool) {
 					Status: api.TaskStatus{
 						State: api.TaskStateAllocated,
 					},
-				})
+				}
+				if constraints {
+					t.Networks = []*api.NetworkAttachment{
+						{
+							Network: &api.Network{
+								DriverState: &api.Driver{
+									Name: "network",
+								},
+							},
+						},
+					}
+				}
+				err := store.CreateTask(tx, t)
 				if err != nil {
 					panic(err)
 				}

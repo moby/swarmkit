@@ -92,9 +92,12 @@ func (f *PluginFilter) Check(t *api.Task, n *NodeInfo) bool {
 	nodePlugins := n.Description.Engine.Plugins
 
 	// Check if all volume plugins required by task are installed on node
-	for _, tv := range t.GetContainer().Volumes {
-		if !f.pluginExistsOnNode("Volume", tv.Spec.DriverConfiguration.Name, nodePlugins) {
-			return false
+	container := t.GetContainer()
+	if container != nil {
+		for _, tv := range container.Volumes {
+			if !f.pluginExistsOnNode("Volume", tv.Spec.DriverConfiguration.Name, nodePlugins) {
+				return false
+			}
 		}
 	}
 
