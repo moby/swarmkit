@@ -39,23 +39,13 @@ message Node {
 	// Status provides the current status of the node, as seen by the manager.
 	NodeStatus status = 5 [(gogoproto.nullable) = false];
 
+	Manager manager = 6;
+
 	// The node attachment to the ingress network.
-	NetworkAttachment attachment = 6;
+	NetworkAttachment attachment = 7;
 
 	// Certificate is the TLS certificate issued for the node, if any.
-	Certificate certificate = 7 [(gogoproto.nullable) = false];
-}
-
-// Manager provides informations about the state of a manager in the cluster.
-message Manager {
-	// ID specifies the identity of the manager. This is the ID used for client interaction with the server.
-	string id = 1 [(gogoproto.customname) = "ID"];
-
-	// Spec declares labels applied to the Manager, for example node name or cluster it
-	// belongs to in multi region scenarios
-	ManagerSpec spec = 2;
-
-	RaftMember raft = 3 [(gogoproto.nullable) = false];
+	Certificate certificate = 8 [(gogoproto.nullable) = false];
 }
 
 message Service {

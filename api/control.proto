@@ -72,13 +72,6 @@ service Control {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	};
 
-	rpc ListManagers(ListManagersRequest) returns (ListManagersResponse) {
-		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
-	};
-	rpc RemoveManager(RemoveManagerRequest) returns (RemoveManagerResponse) {
-		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
-	};
-
 	rpc GetCluster(GetClusterRequest) returns (GetClusterResponse) {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	};
