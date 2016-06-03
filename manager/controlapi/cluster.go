@@ -117,6 +117,9 @@ func (s *Server) ListClusters(ctx context.Context, request *api.ListClustersRequ
 			func(e *api.Cluster) bool {
 				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)
 			},
+			func(e *api.Cluster) bool {
+				return filterMatchLabels(e.Spec.Annotations.Labels, request.Filters.Labels)
+			},
 		)
 	}
 

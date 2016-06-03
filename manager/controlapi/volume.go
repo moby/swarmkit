@@ -139,6 +139,9 @@ func (s *Server) ListVolumes(ctx context.Context, request *api.ListVolumesReques
 			func(e *api.Volume) bool {
 				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)
 			},
+			func(e *api.Volume) bool {
+				return filterMatchLabels(e.Spec.Annotations.Labels, request.Filters.Labels)
+			},
 		)
 	}
 
