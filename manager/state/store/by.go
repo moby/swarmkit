@@ -82,16 +82,6 @@ func ByInstance(serviceID string, instance uint64) By {
 	return byInstance{serviceID: serviceID, instance: instance}
 }
 
-type byIssuanceState api.IssuanceState
-
-func (b byIssuanceState) isBy() {
-}
-
-// ByIssuanceState creates an object to pass to Find to select by instance number.
-func ByIssuanceState(state api.IssuanceState) By {
-	return byIssuanceState(state)
-}
-
 type byDesiredState api.TaskState
 
 func (b byDesiredState) isBy() {
@@ -100,4 +90,24 @@ func (b byDesiredState) isBy() {
 // ByDesiredState creates an object to pass to Find to select by desired state.
 func ByDesiredState(state api.TaskState) By {
 	return byDesiredState(state)
+}
+
+type byRole api.NodeSpec_Role
+
+func (b byRole) isBy() {
+}
+
+// ByRole creates an object to pass to Find to select by role.
+func ByRole(role api.NodeSpec_Role) By {
+	return byRole(role)
+}
+
+type byAcceptance api.NodeSpec_Acceptance
+
+func (b byAcceptance) isBy() {
+}
+
+// ByAcceptance creates an object to pass to Find to select by acceptance.
+func ByAcceptance(acceptance api.NodeSpec_Acceptance) By {
+	return byAcceptance(acceptance)
 }
