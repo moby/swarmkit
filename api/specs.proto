@@ -32,12 +32,12 @@ message NodeSpec {
 		MANAGER = 1 [(gogoproto.enumvalue_customname) = "NodeRoleManager"];
 	}
 
-	enum Acceptance {
+	enum Membership {
 		option (gogoproto.goproto_enum_prefix) = false;
 
-		PENDING = 0 [(gogoproto.enumvalue_customname) = "NodeAcceptancePending"];
-		ACCEPT = 1 [(gogoproto.enumvalue_customname) = "NodeAcceptanceAccept"];
-		REJECT = 2 [(gogoproto.enumvalue_customname) = "NodeAcceptanceReject"];
+		PENDING = 0 [(gogoproto.enumvalue_customname) = "NodeMembershipPending"];
+		ACCEPTED = 1 [(gogoproto.enumvalue_customname) = "NodeMembershipAccepted"];
+		REJECTED = 2 [(gogoproto.enumvalue_customname) = "NodeMembershipRejected"];
 	}
 
 	enum Availability {
@@ -58,8 +58,8 @@ message NodeSpec {
 	// Role defines the role the node should have.
 	Role role = 2;
 
-	// Acceptance controls the admission of the node into the cluster.
-	Acceptance acceptance = 3;
+	// Membership controls the admission of the node into the cluster.
+	Membership membership = 3;
 
 	// Availability allows a user to control the current scheduling status of a
 	// node.

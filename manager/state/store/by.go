@@ -102,12 +102,12 @@ func ByRole(role api.NodeSpec_Role) By {
 	return byRole(role)
 }
 
-type byAcceptance api.NodeSpec_Acceptance
+type byMembership api.NodeSpec_Membership
 
-func (b byAcceptance) isBy() {
+func (b byMembership) isBy() {
 }
 
-// ByAcceptance creates an object to pass to Find to select by acceptance.
-func ByAcceptance(acceptance api.NodeSpec_Acceptance) By {
-	return byAcceptance(acceptance)
+// ByMembership creates an object to pass to Find to select by Membership.
+func ByMembership(membership api.NodeSpec_Membership) By {
+	return byMembership(membership)
 }

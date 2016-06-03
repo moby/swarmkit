@@ -31,9 +31,9 @@ func init() {
 					Name:    indexRole,
 					Indexer: nodeIndexerByRole{},
 				},
-				indexAcceptance: {
-					Name:    indexAcceptance,
-					Indexer: nodeIndexerByAcceptance{},
+				indexMembership: {
+					Name:    indexMembership,
+					Indexer: nodeIndexerByMembership{},
 				},
 			},
 		},
@@ -164,7 +164,7 @@ func GetNode(tx ReadTx, id string) *api.Node {
 func FindNodes(tx ReadTx, by By) ([]*api.Node, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byIDPrefix, byRole, byAcceptance:
+		case byName, byIDPrefix, byRole, byMembership:
 			return nil
 		default:
 			return ErrInvalidFindBy
@@ -236,18 +236,18 @@ func (ni nodeIndexerByRole) FromObject(obj interface{}) (bool, []byte, error) {
 	return true, []byte(strconv.FormatInt(int64(n.Spec.Role), 10) + "\x00"), nil
 }
 
-type nodeIndexerByAcceptance struct{}
+type nodeIndexerByMembership struct{}
 
-func (ni nodeIndexerByAcceptance) FromArgs(args ...interface{}) ([]byte, error) {
+func (ni nodeIndexerByMembership) FromArgs(args ...interface{}) ([]byte, error) {
 	return fromArgs(args...)
 }
 
-func (ni nodeIndexerByAcceptance) FromObject(obj interface{}) (bool, []byte, error) {
+func (ni nodeIndexerByMembership) FromObject(obj interface{}) (bool, []byte, error) {
 	n, ok := obj.(nodeEntry)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
 
 	// Add the null character as a terminator
-	return true, []byte(strconv.FormatInt(int64(n.Spec.Acceptance), 10) + "\x00"), nil
+	return true, []byte(strconv.FormatInt(int64(n.Spec.Membership), 10) + "\x00"), nil
 }
