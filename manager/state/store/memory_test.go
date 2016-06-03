@@ -73,20 +73,23 @@ var (
 			ServiceAnnotations: api.Annotations{
 				Name: "name1",
 			},
-			NodeID: nodeSet[0].ID,
+			DesiredState: api.TaskStateRunning,
+			NodeID:       nodeSet[0].ID,
 		},
 		{
 			ID: "id2",
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
-			ServiceID: serviceSet[0].ID,
+			DesiredState: api.TaskStateRunning,
+			ServiceID:    serviceSet[0].ID,
 		},
 		{
 			ID: "id3",
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
+			DesiredState: api.TaskStateShutdown,
 		},
 	}
 
@@ -477,6 +480,19 @@ func TestStoreTask(t *testing.T) {
 		assert.Len(t, foundTasks, 1)
 		assert.Equal(t, foundTasks[0], taskSet[1])
 		foundTasks, err = FindTasks(readTx, ByServiceID("invalid"))
+		assert.NoError(t, err)
+		assert.Len(t, foundTasks, 0)
+
+		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskStateRunning))
+		assert.NoError(t, err)
+		assert.Len(t, foundTasks, 2)
+		assert.Equal(t, foundTasks[0].DesiredState, api.TaskStateRunning)
+		assert.Equal(t, foundTasks[0].DesiredState, api.TaskStateRunning)
+		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskStateShutdown))
+		assert.NoError(t, err)
+		assert.Len(t, foundTasks, 1)
+		assert.Equal(t, foundTasks[0], taskSet[2])
+		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskStatePending))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 0)
 	})

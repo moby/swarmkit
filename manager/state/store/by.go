@@ -91,3 +91,13 @@ func (b byIssuanceState) isBy() {
 func ByIssuanceState(state api.IssuanceState) By {
 	return byIssuanceState(state)
 }
+
+type byDesiredState api.TaskState
+
+func (b byDesiredState) isBy() {
+}
+
+// ByDesiredState creates an object to pass to Find to select by desired state.
+func ByDesiredState(state api.TaskState) By {
+	return byDesiredState(state)
+}
