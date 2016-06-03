@@ -96,6 +96,8 @@ message ListNodesRequest {
 		repeated string names = 1;
 		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
 		map<string, string> labels = 3;
+		repeated NodeSpec.Role roles = 4;
+		repeated NodeSpec.Acceptance acceptances = 5;
 	}
 
 	Filters filters = 1;
@@ -140,6 +142,7 @@ message ListTasksRequest {
 		map<string, string> labels = 3;
 		repeated string service_ids = 4 [(gogoproto.customname) = "ServiceIDs"];
 		repeated string node_ids = 5 [(gogoproto.customname) = "NodeIDs"];
+		repeated api.TaskState desired_states = 6;
 	}
 
 	Filters filters = 1;

@@ -19,14 +19,16 @@ import (
 )
 
 const (
-	indexID            = "id"
-	indexName          = "name"
-	indexServiceID     = "serviceid"
-	indexServiceMode   = "servicemode"
-	indexNodeID        = "nodeid"
-	indexInstance      = "instance"
-	indexCN            = "cn"
-	indexIssuanceState = "issuancestate"
+	indexID           = "id"
+	indexName         = "name"
+	indexServiceID    = "serviceid"
+	indexServiceMode  = "servicemode"
+	indexNodeID       = "nodeid"
+	indexInstance     = "instance"
+	indexCN           = "cn"
+	indexDesiredState = "desiredstate"
+	indexRole         = "role"
+	indexAcceptance   = "acceptance"
 
 	prefix = "_prefix"
 
@@ -593,8 +595,20 @@ func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([
 			return nil, err
 		}
 		return []memdb.ResultIterator{it}, nil
-	case byIssuanceState:
-		it, err := tx.memDBTx.Get(table, indexIssuanceState, strconv.FormatInt(int64(v), 10))
+	case byDesiredState:
+		it, err := tx.memDBTx.Get(table, indexDesiredState, strconv.FormatInt(int64(v), 10))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byRole:
+		it, err := tx.memDBTx.Get(table, indexRole, strconv.FormatInt(int64(v), 10))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byAcceptance:
+		it, err := tx.memDBTx.Get(table, indexAcceptance, strconv.FormatInt(int64(v), 10))
 		if err != nil {
 			return nil, err
 		}

@@ -18,18 +18,30 @@ var (
 	nodeSet = []*api.Node{
 		{
 			ID: "id1",
+			Spec: api.NodeSpec{
+				Role:       api.NodeRoleManager,
+				Acceptance: api.NodeAcceptanceReject,
+			},
 			Description: &api.NodeDescription{
 				Hostname: "name1",
 			},
 		},
 		{
 			ID: "id2",
+			Spec: api.NodeSpec{
+				Role:       api.NodeRoleWorker,
+				Acceptance: api.NodeAcceptanceAccept,
+			},
 			Description: &api.NodeDescription{
 				Hostname: "name2",
 			},
 		},
 		{
 			ID: "id3",
+			Spec: api.NodeSpec{
+				Role:       api.NodeRoleWorker,
+				Acceptance: api.NodeAcceptanceAccept,
+			},
 			Description: &api.NodeDescription{
 				// intentionally conflicting hostname
 				Hostname: "name2",
@@ -73,20 +85,23 @@ var (
 			ServiceAnnotations: api.Annotations{
 				Name: "name1",
 			},
-			NodeID: nodeSet[0].ID,
+			DesiredState: api.TaskStateRunning,
+			NodeID:       nodeSet[0].ID,
 		},
 		{
 			ID: "id2",
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
-			ServiceID: serviceSet[0].ID,
+			DesiredState: api.TaskStateRunning,
+			ServiceID:    serviceSet[0].ID,
 		},
 		{
 			ID: "id3",
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
+			DesiredState: api.TaskStateShutdown,
 		},
 	}
 
@@ -216,6 +231,22 @@ func TestStoreNode(t *testing.T) {
 		foundNodes, err = FindNodes(readTx, ByIDPrefix("id"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 3)
+
+		foundNodes, err = FindNodes(readTx, ByRole(api.NodeRoleManager))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 1)
+
+		foundNodes, err = FindNodes(readTx, ByRole(api.NodeRoleWorker))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 2)
+
+		foundNodes, err = FindNodes(readTx, ByAcceptance(api.NodeAcceptanceReject))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 1)
+
+		foundNodes, err = FindNodes(readTx, ByAcceptance(api.NodeAcceptanceAccept))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 2)
 	})
 
 	// Update.
@@ -477,6 +508,19 @@ func TestStoreTask(t *testing.T) {
 		assert.Len(t, foundTasks, 1)
 		assert.Equal(t, foundTasks[0], taskSet[1])
 		foundTasks, err = FindTasks(readTx, ByServiceID("invalid"))
+		assert.NoError(t, err)
+		assert.Len(t, foundTasks, 0)
+
+		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskStateRunning))
+		assert.NoError(t, err)
+		assert.Len(t, foundTasks, 2)
+		assert.Equal(t, foundTasks[0].DesiredState, api.TaskStateRunning)
+		assert.Equal(t, foundTasks[0].DesiredState, api.TaskStateRunning)
+		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskStateShutdown))
+		assert.NoError(t, err)
+		assert.Len(t, foundTasks, 1)
+		assert.Equal(t, foundTasks[0], taskSet[2])
+		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskStatePending))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 0)
 	})
