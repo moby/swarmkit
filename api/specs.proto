@@ -174,30 +174,57 @@ message ContainerSpec {
 // EndpointSpec defines the properties that can be configured to
 // access and loadbalance the service.
 message EndpointSpec {
-	// Load balancer strategy to be used by the ingress service to
-	// choose between different strategies available.
-	enum IngressStrategy {
+	// ResolutionMode specifies the mode of resolution to use for
+	// internal loadbalancing between tasks which are all within
+	// the cluster. This is sometimes calles east-west data path.
+	enum ResolutionMode {
 		option (gogoproto.goproto_enum_prefix) = false;
 
-		// Network loadbalancer strategy is the default
-		// ingress strategy (needs to be of value 0) and it
-		// provides loadbalancing at L3/L4. It uses the node
-		// ports to loadbalance ingress traffic to the right
-		// service.
-		NETWORK = 0 [(gogoproto.enumvalue_customname) = "IngressStrategyNetwork"];
+		// VIP resolution mode specifies that the
+		// service resolves to a logical IP and the requests
+		// are sent to that logical IP. Packets hitting that
+		// logical IP are load balanced to a chosen backend.
+		VIP = 0 [(gogoproto.enumvalue_customname) = "ResolutionModeVirtualIP"];
 
-		// If the user chooses to disable ingress strategy,
-		// the system will not provide any out of the box
-		// loadbalancing for ingress traffic. The user may
-		// provide an alternate option.
-		DISABLED = 1 [(gogoproto.enumvalue_customname) = "IngressStrategyExternal"];
+		// DNSRR resolution mode specifies that the
+		// service directly gets resolved to one of the
+		// backend IP and the client directly initiates a
+		// request towards the actual backend. This requires
+		// that the client does not cache the DNS responses
+		// when the DNS response TTL is 0.
+		DNSRR = 1 [(gogoproto.enumvalue_customname) = "ResolutionModeDNSRoundRobin"];
 	}
 
-	IngressStrategy strategy = 1;
+	ResolutionMode mode = 1;
+
+	// IngressRouting specifies the method to use for
+	// loadbalancing requests coming from outside the
+	// cluster. This is sometimes called north-south datapath.
+	enum IngressRouting {
+		option (gogoproto.goproto_enum_prefix) = false;
+
+		// NodePort routing is the default ingress routing
+		// method (needs to be of value 0) and it provides
+		// loadbalancing at L3/L4. It uses the node ports to
+		// loadbalance ingress traffic to the right service.
+		NODEPORT = 0 [(gogoproto.enumvalue_customname) = "IngressRoutingNodePort"];
+
+		// If the user chooses to disable ingress routing(but
+		// still expose ports), the system will not provide
+		// any out of the box loadbalancing for ingress
+		// traffic. But if the service has exposed ports it
+		// will still auto-attach the service to the ingress
+		// network. The user may then provide an alternate
+		// option for ingress load balancing which is
+		// transparent to swarm.
+		DISABLED = 1 [(gogoproto.enumvalue_customname) = "IngressRoutingDisabled"];
+	}
+
+	IngressRouting ingress = 2;
 
 	// List of exposed ports that this service is accessible from
 	// external to the cluster.
-	repeated PortConfig exposed_ports = 2;
+	repeated PortConfig exposed_ports = 3;
 }
 
 // VolumeSpec defines the properties of a Volume.
