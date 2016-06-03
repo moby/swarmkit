@@ -69,7 +69,7 @@ type Manager struct {
 	listeners map[string]net.Listener
 
 	caserver               *ca.Server
-	dispatcher             *dispatcher.Dispatcher
+	Dispatcher             *dispatcher.Dispatcher
 	replicatedOrchestrator *orchestrator.ReplicatedOrchestrator
 	globalOrchestrator     *orchestrator.GlobalOrchestrator
 	taskReaper             *orchestrator.TaskReaper
@@ -78,7 +78,7 @@ type Manager struct {
 	keyManager             *keymanager.KeyManager
 	server                 *grpc.Server
 	localserver            *grpc.Server
-	raftNode               *raft.Node
+	RaftNode               *raft.Node
 
 	mu   sync.Mutex
 	once sync.Once
@@ -196,7 +196,7 @@ func New(config *Config) (*Manager, error) {
 		ForceNewCluster: config.ForceNewCluster,
 		TLSCredentials:  config.SecurityConfig.ClientTLSCreds,
 	}
-	raftNode, err := raft.NewNode(context.TODO(), newNodeOpts)
+	RaftNode, err := raft.NewNode(context.TODO(), newNodeOpts)
 	if err != nil {
 		for _, lis := range listeners {
 			lis.Close()
@@ -210,12 +210,12 @@ func New(config *Config) (*Manager, error) {
 	m := &Manager{
 		config:      config,
 		listeners:   listeners,
-		caserver:    ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig),
-		dispatcher:  dispatcher.New(raftNode, dispatcherConfig),
-		keyManager:  keymanager.New(raftNode.MemoryStore(), keymanager.DefaultConfig()),
+		caserver:    ca.NewServer(RaftNode.MemoryStore(), config.SecurityConfig),
+		Dispatcher:  dispatcher.New(RaftNode, dispatcherConfig),
+		keyManager:  keymanager.New(RaftNode.MemoryStore(), keymanager.DefaultConfig()),
 		server:      grpc.NewServer(opts...),
 		localserver: grpc.NewServer(opts...),
-		raftNode:    raftNode,
+		RaftNode:    RaftNode,
 		started:     make(chan struct{}),
 		stopped:     make(chan struct{}),
 	}
@@ -227,7 +227,7 @@ func New(config *Config) (*Manager, error) {
 // address.
 // The call never returns unless an error occurs or `Stop()` is called.
 func (m *Manager) Run(ctx context.Context) error {
-	leadershipCh, cancel := m.raftNode.SubscribeLeadership()
+	leadershipCh, cancel := m.RaftNode.SubscribeLeadership()
 	defer cancel()
 
 	go func() {
@@ -246,14 +246,14 @@ func (m *Manager) Run(ctx context.Context) error {
 			newState := leadershipEvent.(raft.LeadershipState)
 
 			if newState == raft.IsLeader {
-				s := m.raftNode.MemoryStore()
+				s := m.RaftNode.MemoryStore()
 
 				rootCA := m.config.SecurityConfig.RootCA()
 				nodeID := m.config.SecurityConfig.ClientTLSCreds.NodeID()
 
 				raftCfg := raft.DefaultRaftConfig()
-				raftCfg.ElectionTick = uint32(m.raftNode.Config.ElectionTick)
-				raftCfg.HeartbeatTick = uint32(m.raftNode.Config.HeartbeatTick)
+				raftCfg.ElectionTick = uint32(m.RaftNode.Config.ElectionTick)
+				raftCfg.HeartbeatTick = uint32(m.RaftNode.Config.HeartbeatTick)
 
 				s.Update(func(tx store.Tx) error {
 					// Add a default cluster object to the
@@ -320,9 +320,9 @@ func (m *Manager) Run(ctx context.Context) error {
 
 				go func(d *dispatcher.Dispatcher) {
 					if err := d.Run(ctx); err != nil {
-						log.G(ctx).WithError(err).Error("dispatcher exited with an error")
+						log.G(ctx).WithError(err).Error("Dispatcher exited with an error")
 					}
-				}(m.dispatcher)
+				}(m.Dispatcher)
 
 				go func(server *ca.Server) {
 					if err := server.Run(ctx); err != nil {
@@ -362,7 +362,7 @@ func (m *Manager) Run(ctx context.Context) error {
 				}(m.globalOrchestrator)
 
 			} else if newState == raft.IsFollower {
-				m.dispatcher.Stop()
+				m.Dispatcher.Stop()
 				m.caserver.Stop()
 
 				if m.allocator != nil {
@@ -390,7 +390,7 @@ func (m *Manager) Run(ctx context.Context) error {
 	}()
 
 	go func() {
-		err := m.raftNode.Run(ctx)
+		err := m.RaftNode.Run(ctx)
 		if err != nil {
 			log.G(ctx).Error(err)
 			m.Stop(ctx)
@@ -402,24 +402,24 @@ func (m *Manager) Run(ctx context.Context) error {
 		grpc.WithTransportCredentials(m.config.SecurityConfig.ClientTLSCreds),
 	}
 
-	cs := raftpicker.NewConnSelector(m.raftNode, proxyOpts...)
+	cs := raftpicker.NewConnSelector(m.RaftNode, proxyOpts...)
 
 	authorize := func(ctx context.Context, roles []string) error {
 		_, err := ca.AuthorizeForwardedRole(ctx, roles, []string{ca.ManagerRole})
 		return err
 	}
 
-	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode)
+	baseControlAPI := controlapi.NewServer(m.RaftNode.MemoryStore(), m.RaftNode)
 
 	authenticatedControlAPI := api.NewAuthenticatedWrapperControlServer(baseControlAPI, authorize)
-	authenticatedDispatcherAPI := api.NewAuthenticatedWrapperDispatcherServer(m.dispatcher, authorize)
+	authenticatedDispatcherAPI := api.NewAuthenticatedWrapperDispatcherServer(m.Dispatcher, authorize)
 	authenticatedCAAPI := api.NewAuthenticatedWrapperCAServer(m.caserver, authorize)
 	authenticatedNodeCAAPI := api.NewAuthenticatedWrapperNodeCAServer(m.caserver, authorize)
-	authenticatedRaftAPI := api.NewAuthenticatedWrapperRaftServer(m.raftNode, authorize)
+	authenticatedRaftAPI := api.NewAuthenticatedWrapperRaftServer(m.RaftNode, authorize)
 
-	proxyDispatcherAPI := api.NewRaftProxyDispatcherServer(authenticatedDispatcherAPI, cs, m.raftNode, ca.WithMetadataForwardTLSInfo)
-	proxyCAAPI := api.NewRaftProxyCAServer(authenticatedCAAPI, cs, m.raftNode, ca.WithMetadataForwardTLSInfo)
-	proxyNodeCAAPI := api.NewRaftProxyNodeCAServer(authenticatedNodeCAAPI, cs, m.raftNode, ca.WithMetadataForwardTLSInfo)
+	proxyDispatcherAPI := api.NewRaftProxyDispatcherServer(authenticatedDispatcherAPI, cs, m.RaftNode, ca.WithMetadataForwardTLSInfo)
+	proxyCAAPI := api.NewRaftProxyCAServer(authenticatedCAAPI, cs, m.RaftNode, ca.WithMetadataForwardTLSInfo)
+	proxyNodeCAAPI := api.NewRaftProxyNodeCAServer(authenticatedNodeCAAPI, cs, m.RaftNode, ca.WithMetadataForwardTLSInfo)
 
 	// localProxyControlAPI is a special kind of proxy. It is only wired up
 	// to receive requests from a trusted local socket, and these requests
@@ -428,7 +428,7 @@ func (m *Manager) Run(ctx context.Context) error {
 	// this manager rather than forwarded requests (it has no TLS
 	// information to put in the metadata map).
 	forwardAsOwnRequest := func(ctx context.Context) (context.Context, error) { return ctx, nil }
-	localProxyControlAPI := api.NewRaftProxyControlServer(baseControlAPI, cs, m.raftNode, forwardAsOwnRequest)
+	localProxyControlAPI := api.NewRaftProxyControlServer(baseControlAPI, cs, m.RaftNode, forwardAsOwnRequest)
 
 	// Everything registered on m.server should be an authenticated
 	// wrapper, or a proxy wrapping an authenticated wrapper!
@@ -456,23 +456,23 @@ func (m *Manager) Run(ctx context.Context) error {
 		}(proto, l)
 	}
 
-	if err := raft.WaitForLeader(ctx, m.raftNode); err != nil {
+	if err := raft.WaitForLeader(ctx, m.RaftNode); err != nil {
 		m.server.Stop()
 		return err
 	}
 
-	c, err := raft.WaitForCluster(ctx, m.raftNode)
+	c, err := raft.WaitForCluster(ctx, m.RaftNode)
 	if err != nil {
 		m.server.Stop()
 		return err
 	}
 	raftConfig := c.Spec.Raft
 
-	if int(raftConfig.ElectionTick) != m.raftNode.Config.ElectionTick {
-		log.G(ctx).Warningf("election tick value (%ds) is different from the one defined in the cluster config (%vs), the cluster may be unstable", m.raftNode.Config.ElectionTick, raftConfig.ElectionTick)
+	if int(raftConfig.ElectionTick) != m.RaftNode.Config.ElectionTick {
+		log.G(ctx).Warningf("election tick value (%ds) is different from the one defined in the cluster config (%vs), the cluster may be unstable", m.RaftNode.Config.ElectionTick, raftConfig.ElectionTick)
 	}
-	if int(raftConfig.HeartbeatTick) != m.raftNode.Config.HeartbeatTick {
-		log.G(ctx).Warningf("heartbeat tick value (%ds) is different from the one defined in the cluster config (%vs), the cluster may be unstable", m.raftNode.Config.HeartbeatTick, raftConfig.HeartbeatTick)
+	if int(raftConfig.HeartbeatTick) != m.RaftNode.Config.HeartbeatTick {
+		log.G(ctx).Warningf("heartbeat tick value (%ds) is different from the one defined in the cluster config (%vs), the cluster may be unstable", m.RaftNode.Config.HeartbeatTick, raftConfig.HeartbeatTick)
 	}
 
 	close(m.started)
@@ -523,7 +523,7 @@ func (m *Manager) Stop(ctx context.Context) {
 	// it also prevents the loop from processing any more stuff.
 	close(m.stopped)
 
-	m.dispatcher.Stop()
+	m.Dispatcher.Stop()
 	m.caserver.Stop()
 
 	if m.allocator != nil {
@@ -542,7 +542,7 @@ func (m *Manager) Stop(ctx context.Context) {
 		m.scheduler.Stop()
 	}
 
-	m.raftNode.Shutdown()
+	m.RaftNode.Shutdown()
 	// some time after this point, Run will recieve an error from one of these
 	m.server.Stop()
 	m.localserver.Stop()

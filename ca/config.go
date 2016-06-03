@@ -168,7 +168,7 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, propos
 	// At this point we've successfully loaded the CA details from disk, or successfully
 	// downloaded them remotely.
 	// The next step is to try to load our certificates.
-	clientTLSCreds, serverTLSCreds, err = loadTLSCreds(rootCA, paths.Node)
+	clientTLSCreds, serverTLSCreds, err = LoadTLSCreds(rootCA, paths.Node)
 	if err != nil {
 		log.Debugf("no valid local TLS credentials found: %v", err)
 
@@ -290,7 +290,9 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 	return updates
 }
 
-func loadTLSCreds(rootCA RootCA, paths CertPaths) (*MutableTLSCreds, *MutableTLSCreds, error) {
+// LoadTLSCreds loads tls credentials from the specified path and verifies that
+// thay are valid for the RootCA.
+func LoadTLSCreds(rootCA RootCA, paths CertPaths) (*MutableTLSCreds, *MutableTLSCreds, error) {
 	// Read both the Cert and Key from disk
 	cert, err := ioutil.ReadFile(paths.Cert)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/manager"
 	"github.com/docker/swarm-v2/picker"
@@ -76,8 +77,7 @@ var managerCmd = &cobra.Command{
 
 		var p *picker.Picker
 		if managerAddr != "" {
-			managers := picker.NewRemotes(managerAddr)
-			p = picker.NewPicker(managerAddr, managers)
+			p = picker.NewPicker(picker.NewRemotes(api.Peer{Addr: managerAddr}))
 		} else {
 			_, err := ca.GetLocalRootCA(certDir)
 			if err == ca.ErrNoLocalRootCA {
@@ -90,9 +90,7 @@ var managerCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-
-			managers := picker.NewRemotes(addr)
-			p = picker.NewPicker(addr, managers)
+			p = picker.NewPicker(picker.NewRemotes(api.Peer{Addr: addr}))
 		}
 
 		// We either just boostraped our cluster from scratch, or have a valid picker and

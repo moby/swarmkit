@@ -7,6 +7,7 @@ import (
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/swarm-v2/agent"
 	"github.com/docker/swarm-v2/agent/exec/container"
+	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/picker"
@@ -51,12 +52,13 @@ already present, the agent will recover and startup.`,
 				return err
 			}
 
-			managers := picker.NewRemotes(managerAddrs...)
-			managerAddr, err := managers.Select()
-			if err != nil {
-				return err
+			peers := make([]api.Peer, 0, len(managerAddrs))
+			for _, a := range managerAddrs {
+				peers = append(peers, api.Peer{Addr: a})
 			}
-			picker := picker.NewPicker(managerAddr, managers)
+
+			managers := picker.NewRemotes(peers...)
+			picker := picker.NewPicker(managers)
 
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
@@ -89,10 +91,9 @@ already present, the agent will recover and startup.`,
 			executor := container.NewExecutor(client)
 
 			ag, err := agent.New(&agent.Config{
-				Hostname:       hostname,
-				Managers:       managers,
-				Executor:       executor,
-				SecurityConfig: securityConfig,
+				Hostname: hostname,
+				Managers: managers,
+				Executor: executor,
 			})
 			if err != nil {
 				log.G(ctx).Fatalln(err)
@@ -104,7 +105,7 @@ already present, the agent will recover and startup.`,
 
 			// TODO(stevvooe): Register signal to gracefully shutdown agent.
 
-			return ag.Err()
+			return ag.Err(context.Background())
 		},
 	}
 )

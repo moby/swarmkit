@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/docker/swarm-v2/agent/exec"
-	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/picker"
+	"google.golang.org/grpc"
 )
 
 // Config provides values for an Agent.
@@ -20,13 +20,13 @@ type Config struct {
 	// Executor specifies the executor to use for the agent.
 	Executor exec.Executor
 
-	// SecurityConfig specifies the security configuration of the Agent
-	SecurityConfig *ca.SecurityConfig
+	// Conn specifies the client connection Agent will use
+	Conn *grpc.ClientConn
 }
 
 func (c *Config) validate() error {
-	if c.SecurityConfig == nil {
-		return fmt.Errorf("config: SecurityConfig required")
+	if c.Conn == nil {
+		return fmt.Errorf("config: Connection is required")
 	}
 
 	return nil
