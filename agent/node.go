@@ -421,6 +421,16 @@ func (n *Node) Agent() *Agent {
 	return n.agent
 }
 
+// Remotes returns a list of known peers known to node.
+func (n *Node) Remotes() []api.Peer {
+	weights := n.remotes.Weights()
+	remotes := make([]api.Peer, 0, len(weights))
+	for p := range weights {
+		remotes = append(remotes, p)
+	}
+	return remotes
+}
+
 func (n *Node) loadCertificates() error {
 	certDir := filepath.Join(n.config.StateDir, "certificates")
 	rootCA, err := ca.GetLocalRootCA(certDir)
