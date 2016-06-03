@@ -209,8 +209,42 @@ func TestRenewTLSConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	var success, timeout bool
-	updates := ca.RenewTLSConfig(ctx, managerConfig, tc.TempDir, tc.Picker, 500*time.Millisecond)
+	renew := make(chan struct{})
+	updates := ca.RenewTLSConfig(ctx, managerConfig, tc.TempDir, tc.Picker, 500*time.Millisecond, renew)
 	for {
+		select {
+		case <-time.After(2 * time.Second):
+			timeout = true
+		case certUpdate := <-updates:
+			assert.NoError(t, certUpdate.Err)
+			assert.NotNil(t, certUpdate)
+			success = true
+		}
+		if timeout {
+			assert.Fail(t, "TestRenewTLSConfig timed-out")
+			break
+		}
+		if success {
+			break
+		}
+	}
+}
+
+func TestForceRenewTLSConfig(t *testing.T) {
+	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	defer tc.Stop()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	managerConfig, err := tc.NewNodeConfig(ca.ManagerRole)
+	assert.NoError(t, err)
+
+	var success, timeout bool
+	renew := make(chan struct{}, 1)
+	updates := ca.RenewTLSConfig(ctx, managerConfig, tc.TempDir, tc.Picker, 500*time.Hour, renew)
+	for {
+		renew <- struct{}{}
 		select {
 		case <-time.After(2 * time.Second):
 			timeout = true
