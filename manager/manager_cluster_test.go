@@ -226,7 +226,7 @@ func TestCluster(t *testing.T) {
 	}
 	c := createManagersCluster(t, 5, 15)
 	defer c.Close()
-	assert.NoError(t, testutils.PollFunc(c.pollRegister))
+	assert.NoError(t, testutils.PollFunc(nil, c.pollRegister))
 	m := c.ms[0]
 	nCount := m.m.dispatcher.NodeCount()
 	assert.Equal(t, 15, nCount)
@@ -238,13 +238,13 @@ func TestClusterReelection(t *testing.T) {
 	}
 	mCount, aCount := 5, 15
 	c := createManagersCluster(t, mCount, aCount)
-	require.NoError(t, testutils.PollFunc(c.pollRegister))
+	require.NoError(t, testutils.PollFunc(nil, c.pollRegister))
 
 	require.NoError(t, c.destroyLeader())
 	// let's down some managers in the meantime
 	require.NoError(t, c.destroyAgents(5))
 	// ensure that cluster will converge to expected number of agents, we need big timeout because of heartbeat times
-	require.NoError(t, testutils.PollFuncWithTimeout(c.pollRegister, 30*time.Second))
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, c.pollRegister, 30*time.Second))
 
 	leader, err := c.leader()
 	assert.NoError(t, err)

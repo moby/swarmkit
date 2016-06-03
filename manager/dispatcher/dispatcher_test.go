@@ -96,7 +96,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 		_ = s.Serve(l)
 	}()
 	go d.Run(context.Background())
-	if err := raftutils.PollFuncWithTimeout(func() error {
+	if err := raftutils.PollFuncWithTimeout(nil, func() error {
 		d.mu.Lock()
 		defer d.mu.Unlock()
 		if !d.isRunning() {
