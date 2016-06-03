@@ -4,6 +4,7 @@ package docker.cluster.api;
 
 import "types.proto";
 import "gogoproto/gogo.proto";
+import "duration/duration.proto"; // TODO(stevvooe): use our own until we fix gogoproto/deepcopy
 
 // Specs are container objects for user provided input. All creations and
 // updates are done through spec types. As a convention, user input from a spec
@@ -167,7 +168,7 @@ message ContainerSpec {
 
 	// StopGracePeriod the grace period for stopping the container before
 	// forcefully killing the container.
-	uint64 stop_grace_period = 11 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
+	Duration stop_grace_period = 11 [(gogoproto.nullable) = false];
 }
 
 // EndpointSpec defines the properties that can be configured to
