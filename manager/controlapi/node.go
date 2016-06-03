@@ -2,6 +2,7 @@ package controlapi
 
 import (
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -30,6 +31,15 @@ func (s *Server) GetNode(ctx context.Context, request *api.GetNodeRequest) (*api
 	if node == nil {
 		return nil, grpc.Errorf(codes.NotFound, "node %s not found", request.NodeID)
 	}
+
+	if s.raft != nil {
+		memberlist := s.raft.GetMemberlist()
+		raftID, err := identity.ParseNodeID(request.NodeID)
+		if err == nil && memberlist[raftID] != nil {
+			node.Manager = &api.Manager{Raft: *memberlist[raftID]}
+		}
+	}
+
 	return &api.GetNodeResponse{
 		Node: node,
 	}, nil
@@ -88,6 +98,18 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 		)
 	}
 
+	// Add in manager information on nodes that are managers
+	if s.raft != nil {
+		memberlist := s.raft.GetMemberlist()
+
+		for _, n := range nodes {
+			raftID, err := identity.ParseNodeID(n.ID)
+			if err == nil && memberlist[raftID] != nil {
+				n.Manager = &api.Manager{Raft: *memberlist[raftID]}
+			}
+		}
+	}
+
 	return &api.ListNodesResponse{
 		Nodes: nodes,
 	}, nil
@@ -125,3 +147,9 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 		Node: node,
 	}, nil
 }
+
+// TODO(aaronl): There is no RemoveNode handler yet. This will be implemented
+// as part of #388. When it is implemented, it should refuse to remove any node
+// that's present in the raft member list. The user should be told to demote
+// the node (which will call s.raft.RemoveMember) before removing it from the
+// cluster.
