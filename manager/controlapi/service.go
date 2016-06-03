@@ -234,6 +234,9 @@ func (s *Server) ListServices(ctx context.Context, request *api.ListServicesRequ
 			func(e *api.Service) bool {
 				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)
 			},
+			func(e *api.Service) bool {
+				return filterMatchLabels(e.Spec.Annotations.Labels, request.Filters.Labels)
+			},
 		)
 	}
 

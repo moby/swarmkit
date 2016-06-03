@@ -102,6 +102,7 @@ message ListNodesRequest {
 	message Filters {
 		repeated string names = 1;
 		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
+		map<string, string> labels = 3;
 	}
 
 	Filters filters = 1;
@@ -143,8 +144,9 @@ message ListTasksRequest {
 	message Filters {
 		repeated string names = 1;
 		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
-		repeated string service_ids = 3 [(gogoproto.customname) = "ServiceIDs"];
-		repeated string node_ids = 4 [(gogoproto.customname) = "NodeIDs"];
+		map<string, string> labels = 3;
+		repeated string service_ids = 4 [(gogoproto.customname) = "ServiceIDs"];
+		repeated string node_ids = 5 [(gogoproto.customname) = "NodeIDs"];
 	}
 
 	Filters filters = 1;
@@ -191,6 +193,7 @@ message ListServicesRequest {
 	message Filters {
 		repeated string names = 1;
 		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
+		map<string, string> labels = 3;
 	}
 
 	Filters filters = 1;
@@ -228,6 +231,7 @@ message ListNetworksRequest {
 	message Filters {
 		repeated string names = 1;
 		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
+		map<string, string> labels = 3;
 	}
 
 	Filters filters = 1;
@@ -263,6 +267,7 @@ message ListVolumesRequest {
 	message Filters {
 		repeated string names = 1;
 		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
+		map<string, string> labels = 3;
 	}
 
 	Filters filters = 1;
@@ -276,6 +281,7 @@ message ListManagersRequest {
 	message Filters {
 		repeated string names = 1;
 		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
+		map<string, string> labels = 3;
 	}
 
 	Filters filters = 1;
@@ -303,6 +309,7 @@ message ListClustersRequest {
 	message Filters {
 		repeated string names = 1;
 		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
+		map<string, string> labels = 3;
 	}
 
 	Filters filters = 1;

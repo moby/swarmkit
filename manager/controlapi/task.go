@@ -101,6 +101,9 @@ func (s *Server) ListTasks(ctx context.Context, request *api.ListTasksRequest) (
 				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)
 			},
 			func(e *api.Task) bool {
+				return filterMatchLabels(e.ServiceAnnotations.Labels, request.Filters.Labels)
+			},
+			func(e *api.Task) bool {
 				return filterContains(e.ServiceID, request.Filters.ServiceIDs)
 			},
 			func(e *api.Task) bool {
