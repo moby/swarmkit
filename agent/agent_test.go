@@ -11,6 +11,7 @@ import (
 	"github.com/docker/swarm-v2/picker"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 // NoopExecutor is a dummy executor that implements enough to get the agent started.
@@ -64,10 +65,18 @@ func TestAgentStartStop(t *testing.T) {
 	agentSecurityConfig, err := tc.NewNodeConfig(ca.AgentRole)
 	assert.NoError(t, err)
 
+	addr := "localhost:4949"
+	remotes := picker.NewRemotes(api.Peer{Addr: addr})
+
+	conn, err := grpc.Dial(addr,
+		grpc.WithPicker(picker.NewPicker(remotes, addr)),
+		grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds))
+	assert.NoError(t, err)
+
 	agent, err := New(&Config{
-		Executor:       &NoopExecutor{},
-		Managers:       picker.NewRemotes("localhost:4949"),
-		SecurityConfig: agentSecurityConfig,
+		Executor: &NoopExecutor{},
+		Managers: remotes,
+		Conn:     conn,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, agent)

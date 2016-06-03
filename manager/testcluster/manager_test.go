@@ -1,4 +1,4 @@
-package manager
+package testcluster
 
 import (
 	"crypto/tls"
@@ -17,6 +17,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/ca/testutils"
+	"github.com/docker/swarm-v2/manager"
 	"github.com/docker/swarm-v2/manager/dispatcher"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
@@ -69,7 +70,7 @@ func TestManager(t *testing.T) {
 	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
 	assert.NoError(t, err)
 
-	m, err := New(&Config{
+	m, err := manager.New(&manager.Config{
 		ProtoListener:  map[string]net.Listener{"unix": lunix, "tcp": ltcp},
 		StateDir:       stateDir,
 		SecurityConfig: managerSecurityConfig,
