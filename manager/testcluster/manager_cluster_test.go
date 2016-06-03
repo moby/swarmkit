@@ -272,9 +272,14 @@ func TestClusterReelection(t *testing.T) {
 	// check nodes in store
 	var nodes []*api.Node
 	leader.m.RaftNode.MemoryStore().View(func(tx store.ReadTx) {
-		nodes, err = store.FindNodes(tx, store.All)
+		ns, err := store.FindNodes(tx, store.All)
+		assert.NoError(t, err)
+		for _, n := range ns {
+			if n.Spec.Role == api.NodeRoleWorker {
+				nodes = append(nodes, n)
+			}
+		}
 	})
-	assert.NoError(t, err)
 	assert.Len(t, nodes, aCount, "there should be all nodes in store")
 	var downAgentsCount int
 	for _, node := range nodes {
