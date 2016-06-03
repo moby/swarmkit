@@ -41,7 +41,7 @@ func TestRaftSnapshot(t *testing.T) {
 	// propose will arrive as a separate message to the raft state machine,
 	// and it is guaranteed to have the right cluster settings when
 	// deciding whether to create a new snapshot.
-	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:3], values)
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:3], values)
 
 	// Propose a 4th value
 	values[3], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[3])
@@ -49,7 +49,7 @@ func TestRaftSnapshot(t *testing.T) {
 
 	// All nodes should now have a snapshot file
 	for nodeID, node := range nodes {
-		assert.NoError(t, raftutils.PollFunc(func() error {
+		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap"))
 			if err != nil {
 				return err
@@ -66,7 +66,7 @@ func TestRaftSnapshot(t *testing.T) {
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 
 	// It should get a copy of the snapshot
-	assert.NoError(t, raftutils.PollFunc(func() error {
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 		dirents, err := ioutil.ReadDir(filepath.Join(nodes[4].StateDir, "snap"))
 		if err != nil {
 			return err
@@ -92,7 +92,7 @@ func TestRaftSnapshot(t *testing.T) {
 	assert.Equal(t, stripMembers(nodes[1].GetMemberlist()), stripMembers(nodes[4].GetMemberlist()))
 
 	// All nodes should have all the data
-	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:4], values)
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:4], values)
 
 	// Propose more values to provoke a second snapshot
 	for i := 4; i != len(nodeIDs); i++ {
@@ -102,7 +102,7 @@ func TestRaftSnapshot(t *testing.T) {
 
 	// All nodes should have a snapshot under a *different* name
 	for nodeID, node := range nodes {
-		assert.NoError(t, raftutils.PollFunc(func() error {
+		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap"))
 			if err != nil {
 				return err
@@ -118,7 +118,7 @@ func TestRaftSnapshot(t *testing.T) {
 	}
 
 	// All nodes should have all the data
-	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs, values)
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 }
 
 func TestRaftSnapshotRestart(t *testing.T) {
@@ -160,7 +160,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Remaining nodes should now have a snapshot file
 	for nodeIdx, node := range []*raftutils.TestNode{nodes[1], nodes[2]} {
-		assert.NoError(t, raftutils.PollFunc(func() error {
+		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap"))
 			if err != nil {
 				return err
@@ -171,7 +171,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 			return nil
 		}))
 	}
-	raftutils.CheckValuesOnNodes(t, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:4], values[:4])
+	raftutils.CheckValuesOnNodes(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:4], values[:4])
 
 	// Propose a 5th value
 	values[4], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[4])
@@ -181,7 +181,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2], 4: nodes[4], 5: nodes[5]})
 
 	// New node should get a copy of the snapshot
-	assert.NoError(t, raftutils.PollFunc(func() error {
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 		dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].StateDir, "snap"))
 		if err != nil {
 			return err
@@ -195,7 +195,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].StateDir, "snap"))
 	assert.NoError(t, err)
 	assert.Len(t, dirents, 1)
-	raftutils.CheckValuesOnNodes(t, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:5], values[:5])
+	raftutils.CheckValuesOnNodes(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:5], values[:5])
 
 	// It should know about the other nodes, including the one that was just added
 	stripMembers := func(memberList map[uint64]*api.RaftMember) map[uint64]*api.RaftMember {
@@ -223,7 +223,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	values[5], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[5])
 
 	// All nodes should have all the data
-	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:6], values[:6])
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:6], values[:6])
 
 	// Restart node 3 again. It should load the snapshot.
 	nodes[3].Server.Stop()
@@ -233,9 +233,9 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	assert.Len(t, nodes[3].GetMemberlist(), 5)
 	assert.Equal(t, stripMembers(nodes[1].GetMemberlist()), stripMembers(nodes[3].GetMemberlist()))
-	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs[:6], values[:6])
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:6], values[:6])
 
 	// Propose again. Just to check consensus after this latest restart.
 	values[6], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[6])
-	raftutils.CheckValuesOnNodes(t, nodes, nodeIDs, values)
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 }

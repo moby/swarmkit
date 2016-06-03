@@ -44,12 +44,15 @@ func AdvanceTicks(clockSource *fakeclock.FakeClock, ticks int) {
 
 // PollFuncWithTimeout is used to periodically execute a check function, it
 // returns error after timeout.
-func PollFuncWithTimeout(f func() error, timeout time.Duration) error {
+func PollFuncWithTimeout(clockSource *fakeclock.FakeClock, f func() error, timeout time.Duration) error {
 	if f() == nil {
 		return nil
 	}
 	timer := time.After(timeout)
 	for {
+		if clockSource != nil {
+			clockSource.Increment(time.Second)
+		}
 		err := f()
 		if err == nil {
 			return nil
@@ -63,14 +66,13 @@ func PollFuncWithTimeout(f func() error, timeout time.Duration) error {
 }
 
 // PollFunc is like PollFuncWithTimeout with timeout=10s.
-func PollFunc(f func() error) error {
-	return PollFuncWithTimeout(f, 10*time.Second)
+func PollFunc(clockSource *fakeclock.FakeClock, f func() error) error {
+	return PollFuncWithTimeout(clockSource, f, 10*time.Second)
 }
 
 // WaitForCluster waits until leader will be one of specified nodes
 func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*TestNode) {
-	err := PollFunc(func() error {
-		clockSource.Increment(time.Second)
+	err := PollFunc(clockSource, func() error {
 		var prev *etcdraft.Status
 	nodeLoop:
 		for _, n := range nodes {
@@ -103,8 +105,7 @@ func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[ui
 
 // WaitForPeerNumber waits until peers in cluster converge to specified number
 func WaitForPeerNumber(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*TestNode, count int) {
-	assert.NoError(t, PollFunc(func() error {
-		clockSource.Increment(time.Second)
+	assert.NoError(t, PollFunc(clockSource, func() error {
 		for _, n := range nodes {
 			if len(n.GetMemberlist()) != count {
 				return errors.New("unexpected number of members")
@@ -404,8 +405,8 @@ func ProposeValue(t *testing.T, raftNode *TestNode, nodeID ...string) (*api.Node
 }
 
 // CheckValue checks that the value has been propagated between raft members
-func CheckValue(t *testing.T, raftNode *TestNode, createdNode *api.Node) {
-	assert.NoError(t, PollFunc(func() error {
+func CheckValue(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *TestNode, createdNode *api.Node) {
+	assert.NoError(t, PollFunc(clockSource, func() error {
 		var err error
 		raftNode.MemoryStore().View(func(tx store.ReadTx) {
 			var allNodes []*api.Node
@@ -427,8 +428,8 @@ func CheckValue(t *testing.T, raftNode *TestNode, createdNode *api.Node) {
 
 // CheckNoValue checks that there is no value replicated on nodes, generally
 // used to test the absence of a leader
-func CheckNoValue(t *testing.T, raftNode *TestNode) {
-	assert.NoError(t, PollFunc(func() error {
+func CheckNoValue(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *TestNode) {
+	assert.NoError(t, PollFunc(clockSource, func() error {
 		var err error
 		raftNode.MemoryStore().View(func(tx store.ReadTx) {
 			var allNodes []*api.Node
@@ -447,9 +448,10 @@ func CheckNoValue(t *testing.T, raftNode *TestNode) {
 // CheckValuesOnNodes checks that all the nodes in the cluster have the same
 // replicated data, generally used to check if a node can catch up with the logs
 // correctly
-func CheckValuesOnNodes(t *testing.T, checkNodes map[uint64]*TestNode, ids []string, values []*api.Node) {
-	for _, node := range checkNodes {
-		assert.NoError(t, PollFunc(func() error {
+func CheckValuesOnNodes(t *testing.T, clockSource *fakeclock.FakeClock, checkNodes map[uint64]*TestNode, ids []string, values []*api.Node) {
+	iteration := 0
+	for checkNodeID, node := range checkNodes {
+		assert.NoError(t, PollFunc(clockSource, func() error {
 			var err error
 			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node
@@ -460,20 +462,21 @@ func CheckValuesOnNodes(t *testing.T, checkNodes map[uint64]*TestNode, ids []str
 				for i, id := range ids {
 					n := store.GetNode(tx, id)
 					if n == nil {
-						err = fmt.Errorf("node %s not found", id)
+						err = fmt.Errorf("node %s not found on %d (iteration %d)", id, checkNodeID, iteration)
 						return
 					}
 					if !reflect.DeepEqual(values[i], n) {
-						err = fmt.Errorf("node %s did not match expected value", id)
+						err = fmt.Errorf("node %s did not match expected value on %d (iteration %d)", id, checkNodeID, iteration)
 						return
 					}
 				}
 				if len(allNodes) != len(ids) {
-					err = fmt.Errorf("expected %d nodes, got %d", len(ids), len(allNodes))
+					err = fmt.Errorf("expected %d nodes, got %d (iteration %d)", len(ids), len(allNodes), iteration)
 					return
 				}
 			})
 			return err
 		}))
+		iteration++
 	}
 }
