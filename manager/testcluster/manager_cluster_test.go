@@ -1,4 +1,4 @@
-package manager
+package testcluster
 
 import (
 	"flag"
@@ -17,15 +17,17 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	catestutils "github.com/docker/swarm-v2/ca/testutils"
+	"github.com/docker/swarm-v2/manager"
 	"github.com/docker/swarm-v2/manager/state/raft/testutils"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/docker/swarm-v2/picker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 )
 
 type testManager struct {
-	m    *Manager
+	m    *manager.Manager
 	addr string
 }
 
@@ -51,22 +53,34 @@ func (mc *managersCluster) Close() {
 }
 
 func (mc *managersCluster) addAgents(count int) error {
-	var addrs []string
+	var addrs []api.Peer
 	for _, m := range mc.ms {
-		addrs = append(addrs, m.addr)
+		addrs = append(addrs, api.Peer{Addr: m.addr})
 	}
 	for i := 0; i < count; i++ {
 		asConfig, err := mc.tc.NewNodeConfig(ca.AgentRole)
 		if err != nil {
 			return err
 		}
+
 		managers := picker.NewRemotes(addrs...)
+		peer, err := managers.Select()
+		if err != nil {
+			return err
+		}
+		conn, err := grpc.Dial(peer.Addr,
+			grpc.WithPicker(picker.NewPicker(managers)),
+			grpc.WithTransportCredentials(asConfig.ClientTLSCreds))
+		if err != nil {
+			return err
+		}
+
 		id := strconv.Itoa(rand.Int())
 		a, err := agent.New(&agent.Config{
-			Hostname:       "hostname_" + id,
-			Managers:       managers,
-			Executor:       &NoopExecutor{},
-			SecurityConfig: asConfig,
+			Hostname: "hostname_" + id,
+			Managers: managers,
+			Executor: &NoopExecutor{},
+			Conn:     conn,
 		})
 		if err != nil {
 			return err
@@ -117,7 +131,7 @@ func newManager(t *testing.T, joinAddr string, securityConfig *ca.SecurityConfig
 		return nil, err
 	}
 
-	m, err := New(&Config{
+	m, err := manager.New(&manager.Config{
 		ProtoListener:  map[string]net.Listener{"tcp": ltcp},
 		StateDir:       stateDir,
 		JoinRaft:       joinAddr,
@@ -152,7 +166,7 @@ func (mc *managersCluster) pollRegister() error {
 	var leaderFound bool
 	var nodesFound int
 	for _, m := range mc.ms {
-		nCount := m.m.dispatcher.NodeCount()
+		nCount := m.m.Dispatcher.NodeCount()
 		if nCount != 0 {
 			nodesFound = nCount
 		}
@@ -171,7 +185,7 @@ func (mc *managersCluster) destroyLeader() error {
 	var leader *testManager
 	var newMs []*testManager
 	for _, m := range mc.ms {
-		if m.m.raftNode.IsLeader() {
+		if m.m.RaftNode.IsLeader() {
 			leader = m
 			continue
 		}
@@ -213,7 +227,7 @@ func (mc *managersCluster) destroyAgents(count int) error {
 
 func (mc *managersCluster) leader() (*testManager, error) {
 	for _, m := range mc.ms {
-		if m.m.raftNode.IsLeader() {
+		if m.m.RaftNode.IsLeader() {
 			return m, nil
 		}
 	}
@@ -228,7 +242,7 @@ func TestCluster(t *testing.T) {
 	defer c.Close()
 	assert.NoError(t, testutils.PollFunc(nil, c.pollRegister))
 	m := c.ms[0]
-	nCount := m.m.dispatcher.NodeCount()
+	nCount := m.m.Dispatcher.NodeCount()
 	assert.Equal(t, 15, nCount)
 }
 
@@ -251,7 +265,7 @@ func TestClusterReelection(t *testing.T) {
 
 	// check nodes in store
 	var nodes []*api.Node
-	leader.m.raftNode.MemoryStore().View(func(tx store.ReadTx) {
+	leader.m.RaftNode.MemoryStore().View(func(tx store.ReadTx) {
 		nodes, err = store.FindNodes(tx, store.All)
 	})
 	assert.NoError(t, err)
