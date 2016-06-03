@@ -249,14 +249,17 @@ func (m *Manager) Run(ctx context.Context) error {
 				s := m.raftNode.MemoryStore()
 
 				rootCA := m.config.SecurityConfig.RootCA()
+				nodeID := m.config.SecurityConfig.ClientTLSCreds.NodeID()
 
 				raftCfg := raft.DefaultRaftConfig()
 				raftCfg.ElectionTick = uint32(m.raftNode.Config.ElectionTick)
 				raftCfg.HeartbeatTick = uint32(m.raftNode.Config.HeartbeatTick)
 
-				// Add a default cluster object to the store. Don't check the error
-				// because we expect this to fail unless this is a brand new cluster.
 				s.Update(func(tx store.Tx) error {
+					// Add a default cluster object to the
+					// store. Don't check the error because
+					// we expect this to fail unless this
+					// is a brand new cluster.
 					store.CreateCluster(tx, &api.Cluster{
 						ID: identity.NewID(),
 						Spec: api.ClusterSpec{
@@ -275,6 +278,18 @@ func (m *Manager) Run(ctx context.Context) error {
 						RootCA: &api.RootCA{
 							CAKey:  rootCA.Key,
 							CACert: rootCA.Cert,
+						},
+					})
+					// Add Node entry for ourself, if one
+					// doesn't exist already.
+					store.CreateNode(tx, &api.Node{
+						ID: nodeID,
+						Certificate: api.Certificate{
+							CN:   nodeID,
+							Role: m.config.SecurityConfig.ClientTLSCreds.Role(),
+							Status: api.IssuanceStatus{
+								State: api.IssuanceStateIssued,
+							},
 						},
 					})
 					return nil

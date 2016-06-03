@@ -501,3 +501,8 @@ message EncryptionKey {
 	// identify the relative age of the key.
 	uint64 lamport_time = 4;
 }
+
+// Manager provides informations about the state of a manager in the cluster.
+message Manager {
+	RaftMember raft = 1 [(gogoproto.nullable) = false];
+}

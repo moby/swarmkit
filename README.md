@@ -262,19 +262,20 @@ $ swarmd manager --state-dir /tmp/manager3 --listen-remote-api 0.0.0.0:4244 --li
 ```
 
 To add a new manager, first start a new manager process. The manager will request a certificate, and this request must be approved
-before the manager can join the Raft cluster. Use `swarmctl cert ls` to view pending requests:
+before the manager can join the Raft cluster. Use `swarmctl node ls` to view pending requests:
 
 ```
-$ swarmctl cert ls
-ID                         CN                         Role           Status
---                         --                         ----           ------
-643nz8xh4gwelv16x8262wumq  b9jbgg4mzhbepi7kxcb2gnitg  swarm-manager  ISSUANCE_PENDING
+$ ./bin/swarmctl node ls
+ID             Name  Status   Availability/Acceptance  Manager status  Leader
+--             ----  ------   -----------------------  --------------  ------
+0p3eo7lofff7x        UNKNOWN  ACTIVE                   REACHABLE       *
+1uzpviqbrc2x0        UNKNOWN  PENDING
 ```
 
 Then, accept the new manager using:
 
 ```
-$ swarmctl cert accept 643nz8xh4gwelv16x8262wumq
+$ swarmctl cert accept 1uzpviqbrc2x0
 ```
 
 You can bypass the need for manual certificate approval by turning on automatic certificate issuance using this command:
