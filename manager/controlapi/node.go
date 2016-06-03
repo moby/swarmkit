@@ -35,6 +35,25 @@ func (s *Server) GetNode(ctx context.Context, request *api.GetNodeRequest) (*api
 	}, nil
 }
 
+func filterNodes(candidates []*api.Node, filters ...func(*api.Node) bool) []*api.Node {
+	result := []*api.Node{}
+
+	for _, c := range candidates {
+		match := true
+		for _, f := range filters {
+			if !f(c) {
+				match = false
+				break
+			}
+		}
+		if match {
+			result = append(result, c)
+		}
+	}
+
+	return result
+}
+
 // ListNodes returns a list of all nodes.
 func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (*api.ListNodesResponse, error) {
 	var (
@@ -54,6 +73,18 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 	if err != nil {
 		return nil, err
 	}
+
+	if request.Filters != nil {
+		nodes = filterNodes(nodes,
+			func(e *api.Node) bool {
+				return filterContains(e.Spec.Annotations.Name, request.Filters.Names)
+			},
+			func(e *api.Node) bool {
+				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)
+			},
+		)
+	}
+
 	return &api.ListNodesResponse{
 		Nodes: nodes,
 	}, nil
