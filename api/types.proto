@@ -352,6 +352,21 @@ message PortConfig {
 	uint32 node_port = 4;
 }
 
+// NodePortRangeConfig specifies the range from which node ports have
+// to be allocated for exposed ports in services.
+message NodePortRangeConfig {
+	// PortRange specifies the range interval. Both start and end
+	// are inclusive.
+	message PortRange {
+		uint32 start = 1;
+		uint32 end = 2;
+	}
+
+	// Port range for protocol UDP
+	PortRange udp_range = 1;
+	PortRange tcp_range = 2;
+}
+
 // Driver is a generic driver type to be used throughout the API. For now, a
 // driver is simply a name and set of options. The field contents depend on the
 // target use case and driver application. For example, a network driver may

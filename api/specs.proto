@@ -241,4 +241,10 @@ message ClusterSpec {
 
 	// Dispatcher defines cluster-level dispatcher settings.
 	DispatcherConfig dispatcher = 5 [(gogoproto.nullable) = false];
+
+	// Ingress network spec override by the user.
+	NetworkSpec ingress_network = 6;
+
+	// Node port ranges override by the user.
+	NodePortRangeConfig ranges = 7;
 }
