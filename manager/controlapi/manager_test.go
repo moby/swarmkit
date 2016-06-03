@@ -89,7 +89,7 @@ func TestListManagers(t *testing.T) {
 	nodes[5].Shutdown()
 
 	// Node 4 and Node 5 should be listed as Unreachable
-	assert.NoError(t, raftutils.PollFunc(func() error {
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 		r, err = ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
 		if err != nil {
 			return err
@@ -146,7 +146,7 @@ func TestListManagers(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, newCluster)
 
 	// Node 1 should not be the leader anymore
-	assert.NoError(t, raftutils.PollFunc(func() error {
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 		r, err = ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
 		if err != nil {
 			return err
@@ -224,7 +224,7 @@ func TestRemoveManager(t *testing.T) {
 	nodes[3].Shutdown()
 
 	// Node 2 and Node 3 should be listed as Unreachable
-	assert.NoError(t, raftutils.PollFunc(func() error {
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 		lsr, err = ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
 		if err != nil {
 			return err
@@ -284,7 +284,7 @@ func TestRemoveManager(t *testing.T) {
 	nodes[3].Server.Stop()
 
 	// Node 3 should be listed as Unreachable
-	assert.NoError(t, raftutils.PollFunc(func() error {
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 		lsr, err = ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
 		if err != nil {
 			return err
@@ -309,7 +309,7 @@ func TestRemoveManager(t *testing.T) {
 	assert.NotNil(t, rmr)
 
 	// Memberlist from both nodes should not list node 3
-	assert.NoError(t, raftutils.PollFunc(func() error {
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 		mlist = ts.Server.raft.GetMemberlist()
 		if len(mlist) != 2 {
 			return fmt.Errorf("expected 2 nodes, got %d", len(mlist))
@@ -337,7 +337,7 @@ func TestRemoveManager(t *testing.T) {
 	nodes[2].Server.Stop()
 
 	// Node 2 should be listed as Unreachable
-	assert.NoError(t, raftutils.PollFunc(func() error {
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 		lsr, err = ts.Client.ListManagers(context.Background(), &api.ListManagersRequest{})
 		if err != nil {
 			return err

@@ -103,17 +103,17 @@ func TestRaftLeaderDown(t *testing.T) {
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
-	raftutils.CheckValue(t, leaderNode, value)
+	raftutils.CheckValue(t, clockSource, leaderNode, value)
 	assert.Equal(t, len(leaderNode.GetMemberlist()), 3)
 
-	raftutils.CheckValue(t, followerNode, value)
+	raftutils.CheckValue(t, clockSource, followerNode, value)
 	assert.Equal(t, len(followerNode.GetMemberlist()), 3)
 }
 
 func TestRaftFollowerDown(t *testing.T) {
 	t.Parallel()
 
-	nodes, _ := raftutils.NewRaftCluster(t, tc)
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop node 3
@@ -128,17 +128,17 @@ func TestRaftFollowerDown(t *testing.T) {
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
-	raftutils.CheckValue(t, nodes[1], value)
+	raftutils.CheckValue(t, clockSource, nodes[1], value)
 	assert.Equal(t, len(nodes[1].GetMemberlist()), 3)
 
-	raftutils.CheckValue(t, nodes[2], value)
+	raftutils.CheckValue(t, clockSource, nodes[2], value)
 	assert.Equal(t, len(nodes[2].GetMemberlist()), 3)
 }
 
 func TestRaftLogReplication(t *testing.T) {
 	t.Parallel()
 
-	nodes, _ := raftutils.NewRaftCluster(t, tc)
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Propose a value
@@ -146,14 +146,14 @@ func TestRaftLogReplication(t *testing.T) {
 	assert.NoError(t, err, "failed to propose value")
 
 	// All nodes should have the value in the physical store
-	raftutils.CheckValue(t, nodes[1], value)
-	raftutils.CheckValue(t, nodes[2], value)
-	raftutils.CheckValue(t, nodes[3], value)
+	raftutils.CheckValue(t, clockSource, nodes[1], value)
+	raftutils.CheckValue(t, clockSource, nodes[2], value)
+	raftutils.CheckValue(t, clockSource, nodes[3], value)
 }
 
 func TestRaftLogReplicationWithoutLeader(t *testing.T) {
 	t.Parallel()
-	nodes, _ := raftutils.NewRaftCluster(t, tc)
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop the leader
@@ -164,8 +164,8 @@ func TestRaftLogReplicationWithoutLeader(t *testing.T) {
 	assert.Error(t, err)
 
 	// No value should be replicated in the store in the absence of the leader
-	raftutils.CheckNoValue(t, nodes[2])
-	raftutils.CheckNoValue(t, nodes[3])
+	raftutils.CheckNoValue(t, clockSource, nodes[2])
+	raftutils.CheckNoValue(t, clockSource, nodes[3])
 }
 
 func TestRaftQuorumFailure(t *testing.T) {
@@ -188,8 +188,8 @@ func TestRaftQuorumFailure(t *testing.T) {
 	assert.Error(t, err)
 
 	// The value should not be replicated, we have no majority
-	raftutils.CheckNoValue(t, nodes[2])
-	raftutils.CheckNoValue(t, nodes[1])
+	raftutils.CheckNoValue(t, clockSource, nodes[2])
+	raftutils.CheckNoValue(t, clockSource, nodes[1])
 }
 
 func TestRaftQuorumRecovery(t *testing.T) {
@@ -221,7 +221,7 @@ func TestRaftQuorumRecovery(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, node := range nodes {
-		raftutils.CheckValue(t, node, value)
+		raftutils.CheckValue(t, clockSource, node, value)
 	}
 }
 
@@ -257,16 +257,16 @@ func TestRaftFollowerLeave(t *testing.T) {
 	assert.NoError(t, err, "failed to propose value")
 
 	// Value should be replicated on every node
-	raftutils.CheckValue(t, nodes[1], value)
+	raftutils.CheckValue(t, clockSource, nodes[1], value)
 	assert.Equal(t, len(nodes[1].GetMemberlist()), 4)
 
-	raftutils.CheckValue(t, nodes[2], value)
+	raftutils.CheckValue(t, clockSource, nodes[2], value)
 	assert.Equal(t, len(nodes[2].GetMemberlist()), 4)
 
-	raftutils.CheckValue(t, nodes[3], value)
+	raftutils.CheckValue(t, clockSource, nodes[3], value)
 	assert.Equal(t, len(nodes[3].GetMemberlist()), 4)
 
-	raftutils.CheckValue(t, nodes[4], value)
+	raftutils.CheckValue(t, clockSource, nodes[4], value)
 	assert.Equal(t, len(nodes[4].GetMemberlist()), 4)
 }
 
@@ -326,10 +326,10 @@ func TestRaftLeaderLeave(t *testing.T) {
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
-	raftutils.CheckValue(t, leaderNode, value)
+	raftutils.CheckValue(t, clockSource, leaderNode, value)
 	assert.Equal(t, len(leaderNode.GetMemberlist()), 2)
 
-	raftutils.CheckValue(t, followerNode, value)
+	raftutils.CheckValue(t, clockSource, followerNode, value)
 	assert.Equal(t, len(followerNode.GetMemberlist()), 2)
 
 	raftutils.TeardownCluster(t, newCluster)
@@ -353,7 +353,7 @@ func TestRaftNewNodeGetsData(t *testing.T) {
 
 	// Value should be replicated on every node
 	for _, node := range nodes {
-		raftutils.CheckValue(t, node, value)
+		raftutils.CheckValue(t, clockSource, node, value)
 		assert.Equal(t, len(node.GetMemberlist()), 4)
 	}
 }
@@ -373,7 +373,7 @@ func TestRaftRejoin(t *testing.T) {
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on node 3
-	raftutils.CheckValue(t, nodes[3], values[0])
+	raftutils.CheckValue(t, clockSource, nodes[3], values[0])
 	assert.Equal(t, len(nodes[3].GetMemberlist()), 3)
 
 	// Stop node 3
@@ -385,14 +385,14 @@ func TestRaftRejoin(t *testing.T) {
 	assert.NoError(t, err, "failed to propose value")
 
 	// Nodes 1 and 2 should have the new value
-	raftutils.CheckValuesOnNodes(t, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, ids, values)
+	raftutils.CheckValuesOnNodes(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, ids, values)
 
 	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Node 3 should have all values, including the one proposed while
 	// it was unavailable.
-	raftutils.CheckValuesOnNodes(t, nodes, ids, values)
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, ids, values)
 }
 
 func testRaftRestartCluster(t *testing.T, stagger bool) {
@@ -429,7 +429,7 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 	assert.NoError(t, err, "failed to propose value")
 
 	for _, node := range nodes {
-		assert.NoError(t, raftutils.PollFunc(func() error {
+		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 			var err error
 			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node
@@ -534,7 +534,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 	assert.NoError(t, err, "failed to propose value")
 
 	for _, node := range nodes {
-		assert.NoError(t, raftutils.PollFunc(func() error {
+		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 			var err error
 			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node
@@ -593,8 +593,8 @@ func TestRaftUnreachableNode(t *testing.T) {
 	assert.NoError(t, err, "failed to propose value")
 
 	// All nodes should have the value in the physical store
-	raftutils.CheckValue(t, nodes[1], value)
-	raftutils.CheckValue(t, nodes[2], value)
+	raftutils.CheckValue(t, clockSource, nodes[1], value)
+	raftutils.CheckValue(t, clockSource, nodes[2], value)
 }
 
 func TestRaftJoinFollower(t *testing.T) {
@@ -616,7 +616,7 @@ func TestRaftJoinFollower(t *testing.T) {
 	assert.NoError(t, err, "failed to propose value")
 
 	// All nodes should have the value in the physical store
-	raftutils.CheckValue(t, nodes[1], value)
-	raftutils.CheckValue(t, nodes[2], value)
-	raftutils.CheckValue(t, nodes[3], value)
+	raftutils.CheckValue(t, clockSource, nodes[1], value)
+	raftutils.CheckValue(t, clockSource, nodes[2], value)
+	raftutils.CheckValue(t, clockSource, nodes[3], value)
 }

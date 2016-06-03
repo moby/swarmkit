@@ -263,7 +263,7 @@ func TestCanRemoveMember(t *testing.T) {
 	nodes[3].Shutdown()
 
 	// Node 2 and Node 3 should be listed as Unreachable
-	assert.NoError(t, raftutils.PollFunc(func() error {
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 		members := nodes[1].GetMemberlist()
 		if len(members) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))
