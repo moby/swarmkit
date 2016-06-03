@@ -50,20 +50,29 @@ func (r *ReplicatedOrchestrator) initTasks(ctx context.Context, readTx store.Rea
 					return store.DeleteTask(tx, t.ID)
 				})
 				if err != nil {
-					log.G(ctx).WithError(err).Errorf("failed to set task desired state to dead")
+					log.G(ctx).WithError(err).Error("failed to set task desired state to dead")
 				}
 				continue
 			}
 			if t.DesiredState != api.TaskStateReady || !isReplicatedService(service) {
 				continue
 			}
-			if service.Spec.Restart != nil && service.Spec.Restart.Delay != 0 {
+			restartDelay := defaultRestartDelay
+			if service.Spec.Restart != nil && service.Spec.Restart.Delay != nil {
+				var err error
+				restartDelay, err = ptypes.Duration(service.Spec.Restart.Delay)
+				if err != nil {
+					log.G(ctx).WithError(err).Error("invalid restart delay")
+					restartDelay = defaultRestartDelay
+				}
+			}
+			if restartDelay != 0 {
 				timestamp, err := ptypes.Timestamp(t.Status.Timestamp)
 				if err == nil {
-					restartTime := timestamp.Add(service.Spec.Restart.Delay)
-					restartDelay := restartTime.Sub(time.Now())
-					if restartDelay > service.Spec.Restart.Delay {
-						restartDelay = service.Spec.Restart.Delay
+					restartTime := timestamp.Add(restartDelay)
+					calculatedRestartDelay := restartTime.Sub(time.Now())
+					if calculatedRestartDelay < restartDelay {
+						restartDelay = calculatedRestartDelay
 					}
 					if restartDelay > 0 {
 						_ = batch.Update(func(tx store.Tx) error {
@@ -76,6 +85,8 @@ func (r *ReplicatedOrchestrator) initTasks(ctx context.Context, readTx store.Rea
 						})
 						continue
 					}
+				} else {
+					log.G(ctx).WithError(err).Error("invalid status timestamp")
 				}
 			}
 

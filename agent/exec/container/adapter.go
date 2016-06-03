@@ -180,7 +180,7 @@ func (c *containerAdapter) events(ctx context.Context) (<-chan events.Message, <
 }
 
 func (c *containerAdapter) shutdown(ctx context.Context) error {
-	return c.client.ContainerStop(ctx, c.container.name(), int(c.container.spec().StopGracePeriod.Seconds()))
+	return c.client.ContainerStop(ctx, c.container.name(), int(c.container.spec().StopGracePeriod.Seconds))
 }
 
 func (c *containerAdapter) terminate(ctx context.Context) error {

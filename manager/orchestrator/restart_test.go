@@ -7,6 +7,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -40,7 +41,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
-					Delay:     1,
+					Delay:     ptypes.DurationProto(0),
 				},
 			},
 		}
@@ -138,7 +139,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnFailure,
-					Delay:     1,
+					Delay:     ptypes.DurationProto(0),
 				},
 			},
 		}
@@ -324,7 +325,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
-					Delay:     100 * time.Millisecond,
+					Delay:     ptypes.DurationProto(100 * time.Millisecond),
 				},
 			},
 		}
@@ -408,7 +409,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 				},
 				Restart: &api.RestartPolicy{
 					Condition:   api.RestartOnAny,
-					Delay:       100 * time.Millisecond,
+					Delay:       ptypes.DurationProto(100 * time.Millisecond),
 					MaxAttempts: 1,
 				},
 			},
@@ -538,9 +539,9 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 				},
 				Restart: &api.RestartPolicy{
 					Condition:   api.RestartOnAny,
-					Delay:       100 * time.Millisecond,
+					Delay:       ptypes.DurationProto(100 * time.Millisecond),
 					MaxAttempts: 1,
-					Window:      500 * time.Millisecond,
+					Window:      ptypes.DurationProto(500 * time.Millisecond),
 				},
 			},
 		}

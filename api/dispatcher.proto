@@ -6,6 +6,7 @@ import "types.proto";
 import "objects.proto";
 import "gogoproto/gogo.proto";
 import "plugin/plugin.proto";
+import "duration/duration.proto"; // TODO(stevvooe): use our own until we fix gogoproto/deepcopy
 
 // Dispatcher is the API provided by a manager group for agents to connect to. Agents
 // connect to this service to receive task assignments and report status.
@@ -125,7 +126,7 @@ message HeartbeatRequest {
 message HeartbeatResponse {
 	// Period is the duration to wait before sending the next heartbeat.
 	// Well-behaved agents should update this on every heartbeat round trip.
-	uint64 Period = 1 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
+	Duration period = 1 [(gogoproto.nullable) = false];
 }
 
 message UpdateTaskStatusRequest {

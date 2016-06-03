@@ -8,6 +8,7 @@ import (
 
 	yaml "github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"github.com/pmezard/go-difflib/difflib"
 )
 
@@ -222,9 +223,10 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 	}
 
 	if s.StopGracePeriod == "" {
-		spec.GetContainer().StopGracePeriod = defaultStopGracePeriod
+		spec.GetContainer().StopGracePeriod = *ptypes.DurationProto(defaultStopGracePeriod)
 	} else {
-		spec.GetContainer().StopGracePeriod, _ = time.ParseDuration(s.StopGracePeriod)
+		gracePeriod, _ := time.ParseDuration(s.StopGracePeriod)
+		spec.GetContainer().StopGracePeriod = *ptypes.DurationProto(gracePeriod)
 	}
 
 	return spec
@@ -282,7 +284,8 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 		s.Mode = "global"
 	}
 
-	s.StopGracePeriod = serviceSpec.GetContainer().StopGracePeriod.String()
+	stopGracePeriod, _ := ptypes.Duration(&serviceSpec.GetContainer().StopGracePeriod)
+	s.StopGracePeriod = stopGracePeriod.String()
 
 	if serviceSpec.Update != nil {
 		s.Update = &UpdateConfiguration{}

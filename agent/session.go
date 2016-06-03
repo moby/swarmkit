@@ -7,6 +7,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -173,10 +174,15 @@ func (s *session) heartbeat(ctx context.Context) error {
 				return err
 			}
 
-			heartbeat.Reset(resp.Period)
+			period, err := ptypes.Duration(&resp.Period)
+			if err != nil {
+				return err
+			}
+
+			heartbeat.Reset(period)
 			log.G(ctx).WithFields(
 				logrus.Fields{
-					"period":        resp.Period,
+					"period":        period,
 					"grpc.duration": time.Since(start),
 				}).Debugf("heartbeat")
 		case <-s.closed:

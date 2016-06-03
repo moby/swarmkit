@@ -16,6 +16,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -304,9 +305,8 @@ func genTask(t *testing.T) *api.Task {
 		Runtime: &api.Task_Container{
 			Container: &api.Container{
 				Spec: api.ContainerSpec{
-					Image: reference,
-
-					StopGracePeriod: 10 * time.Second,
+					Image:           reference,
+					StopGracePeriod: *ptypes.DurationProto(10 * time.Second),
 				},
 			},
 		},
