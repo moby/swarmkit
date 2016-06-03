@@ -27,6 +27,7 @@ const (
 	indexInstance      = "instance"
 	indexCN            = "cn"
 	indexIssuanceState = "issuancestate"
+	indexDesiredState  = "desiredstate"
 
 	prefix = "_prefix"
 
@@ -595,6 +596,12 @@ func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([
 		return []memdb.ResultIterator{it}, nil
 	case byIssuanceState:
 		it, err := tx.memDBTx.Get(table, indexIssuanceState, strconv.FormatInt(int64(v), 10))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byDesiredState:
+		it, err := tx.memDBTx.Get(table, indexDesiredState, strconv.FormatInt(int64(v), 10))
 		if err != nil {
 			return nil, err
 		}
