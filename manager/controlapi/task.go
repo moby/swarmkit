@@ -74,6 +74,7 @@ func (s *Server) ListTasks(ctx context.Context, request *api.ListTasksRequest) (
 		tasks []*api.Task
 		err   error
 	)
+
 	s.store.View(func(tx store.ReadTx) {
 		switch {
 		case request.Filters != nil && len(request.Filters.Names) > 0:
@@ -84,6 +85,12 @@ func (s *Server) ListTasks(ctx context.Context, request *api.ListTasksRequest) (
 			tasks, err = store.FindTasks(tx, buildFilters(store.ByServiceID, request.Filters.ServiceIDs))
 		case request.Filters != nil && len(request.Filters.NodeIDs) > 0:
 			tasks, err = store.FindTasks(tx, buildFilters(store.ByNodeID, request.Filters.NodeIDs))
+		case request.Filters != nil && len(request.Filters.DesiredStates) > 0:
+			filters := make([]store.By, 0, len(request.Filters.DesiredStates))
+			for _, v := range request.Filters.DesiredStates {
+				filters = append(filters, store.ByDesiredState(v))
+			}
+			tasks, err = store.FindTasks(tx, store.Or(filters...))
 		default:
 			tasks, err = store.FindTasks(tx, store.All)
 		}
@@ -108,6 +115,17 @@ func (s *Server) ListTasks(ctx context.Context, request *api.ListTasksRequest) (
 			},
 			func(e *api.Task) bool {
 				return filterContains(e.NodeID, request.Filters.NodeIDs)
+			},
+			func(e *api.Task) bool {
+				if len(request.Filters.DesiredStates) == 0 {
+					return true
+				}
+				for _, c := range request.Filters.DesiredStates {
+					if c == e.DesiredState {
+						return true
+					}
+				}
+				return false
 			},
 		)
 	}

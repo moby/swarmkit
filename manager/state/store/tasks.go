@@ -41,6 +41,10 @@ func init() {
 					AllowMissing: true,
 					Indexer:      taskIndexerByInstance{},
 				},
+				indexDesiredState: {
+					Name:    indexDesiredState,
+					Indexer: taskIndexerByDesiredState{},
+				},
 			},
 		},
 		Save: func(tx ReadTx, snapshot *api.StoreSnapshot) error {
@@ -170,7 +174,7 @@ func GetTask(tx ReadTx, id string) *api.Task {
 func FindTasks(tx ReadTx, by By) ([]*api.Task, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byIDPrefix, byNode, byService, byInstance:
+		case byName, byIDPrefix, byDesiredState, byNode, byService, byInstance:
 			return nil
 		default:
 			return ErrInvalidFindBy
@@ -268,4 +272,20 @@ func (ti taskIndexerByInstance) FromObject(obj interface{}) (bool, []byte, error
 	// Add the null character as a terminator
 	val := t.ServiceID + "\x00" + strconv.FormatUint(t.Instance, 10) + "\x00"
 	return true, []byte(val), nil
+}
+
+type taskIndexerByDesiredState struct{}
+
+func (ni taskIndexerByDesiredState) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (ni taskIndexerByDesiredState) FromObject(obj interface{}) (bool, []byte, error) {
+	n, ok := obj.(taskEntry)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	// Add the null character as a terminator
+	return true, []byte(strconv.FormatInt(int64(n.DesiredState), 10) + "\x00"), nil
 }
