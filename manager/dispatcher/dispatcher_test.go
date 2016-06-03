@@ -396,7 +396,10 @@ func TestTaskUpdate(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	var expectedSessionID string
+	var (
+		expectedSessionID string
+		nodeID            string
+	)
 	{
 		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
 		assert.NoError(t, err)
@@ -405,22 +408,32 @@ func TestTaskUpdate(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEmpty(t, resp.SessionID)
 		expectedSessionID = resp.SessionID
+		nodeID = resp.Node.ID
+
 	}
 	testTask1 := &api.Task{
-		ID: "testTask1",
+		ID:     "testTask1",
+		NodeID: nodeID,
 	}
 	testTask2 := &api.Task{
-		ID: "testTask2",
+		ID:     "testTask2",
+		NodeID: nodeID,
+	}
+	testTask3 := &api.Task{
+		ID:     "testTask3",
+		NodeID: "differentnode",
 	}
 	err = gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateTask(tx, testTask1))
 		assert.NoError(t, store.CreateTask(tx, testTask2))
+		assert.NoError(t, store.CreateTask(tx, testTask3))
 		return nil
 	})
 	assert.NoError(t, err)
 
 	testTask1.Status = api.TaskStatus{State: api.TaskStateAssigned}
 	testTask2.Status = api.TaskStatus{State: api.TaskStateAssigned}
+	testTask3.Status = api.TaskStatus{State: api.TaskStateAssigned}
 	updReq := &api.UpdateTaskStatusRequest{
 		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
 			{
@@ -433,6 +446,7 @@ func TestTaskUpdate(t *testing.T) {
 			},
 		},
 	}
+
 	{
 		// without correct SessionID should fail
 		resp, err := gd.Clients[0].UpdateTaskStatus(context.Background(), updReq)
@@ -444,6 +458,22 @@ func TestTaskUpdate(t *testing.T) {
 	updReq.SessionID = expectedSessionID
 	_, err = gd.Clients[0].UpdateTaskStatus(context.Background(), updReq)
 	assert.NoError(t, err)
+
+	{
+		// updating a task not assigned to us should fail
+		updReq.Updates = []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
+			{
+				TaskID: testTask3.ID,
+				Status: &testTask3.Status,
+			},
+		}
+
+		resp, err := gd.Clients[0].UpdateTaskStatus(context.Background(), updReq)
+		assert.Nil(t, resp)
+		assert.Error(t, err)
+		assert.Equal(t, grpc.Code(err), codes.PermissionDenied)
+	}
+
 	gd.dispatcherServer.processTaskUpdates()
 
 	gd.Store.View(func(readTx store.ReadTx) {
@@ -455,7 +485,14 @@ func TestTaskUpdate(t *testing.T) {
 		assert.NotNil(t, storeTask2.Status)
 		assert.Equal(t, storeTask1.Status.State, api.TaskStateAssigned)
 		assert.Equal(t, storeTask2.Status.State, api.TaskStateAssigned)
+
+		storeTask3 := store.GetTask(readTx, testTask3.ID)
+		assert.NotNil(t, storeTask3)
+		assert.NotNil(t, storeTask3.Status)
+		assert.Equal(t, storeTask3.Status.State, api.TaskStateNew)
+
 	})
+
 }
 
 func TestTaskUpdateNoCert(t *testing.T) {

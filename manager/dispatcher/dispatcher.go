@@ -400,18 +400,45 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 	if _, err := d.nodes.GetWithSession(nodeID, r.SessionID); err != nil {
 		return nil, err
 	}
-	d.taskUpdatesLock.Lock()
+
+	// Validate task updates
 	for _, u := range r.Updates {
 		if u.Status == nil {
-			log.WithField("task.id", u.TaskID).Warnf("task report has nil status")
+			log.WithField("task.id", u.TaskID).Warn("task report has nil status")
+			continue
+		}
+
+		var t *api.Task
+		d.store.View(func(tx store.ReadTx) {
+			t = store.GetTask(tx, u.TaskID)
+		})
+		if t == nil {
+			log.WithField("task.id", u.TaskID).Warn("cannot find target task in store")
+			continue
+		}
+
+		if t.NodeID != nodeID {
+			err := grpc.Errorf(codes.PermissionDenied, "cannot update a task not assigned this node")
+			log.WithField("task.id", u.TaskID).Error(err)
+			return nil, err
+		}
+	}
+
+	d.taskUpdatesLock.Lock()
+	// Enqueue task updates
+	for _, u := range r.Updates {
+		if u.Status == nil {
 			continue
 		}
 		d.taskUpdates[u.TaskID] = u.Status
 	}
-	if len(d.taskUpdates) >= maxBatchItems {
+
+	numUpdates := len(d.taskUpdates)
+	d.taskUpdatesLock.Unlock()
+
+	if numUpdates >= maxBatchItems {
 		d.processTaskUpdatesTrigger <- struct{}{}
 	}
-	d.taskUpdatesLock.Unlock()
 	return nil, nil
 }
 
