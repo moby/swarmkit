@@ -35,36 +35,58 @@ func printNodeSummary(node *api.Node) {
 	common.FprintfIfNotEmpty(w, "  Message\t: %s\n", node.Status.Message)
 	common.FprintfIfNotEmpty(w, "  Availability\t: %s\n", spec.Availability.String())
 
-	fmt.Fprintln(w, "Platform:\t")
-	common.FprintfIfNotEmpty(w, "  Operating System\t: %s\n", desc.Platform.OS)
-	common.FprintfIfNotEmpty(w, "  Architecture\t: %s\n", desc.Platform.Architecture)
-
-	fmt.Fprintln(w, "Resources:\t")
-	fmt.Fprintf(w, "  CPUs\t: %d\n", desc.Resources.NanoCPUs/1e9)
-	fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(desc.Resources.MemoryBytes)))
-
-	fmt.Fprintln(w, "Plugins:\t")
-	var pluginTypes []string
-	pluginNamesByType := map[string][]string{}
-	for _, p := range desc.Engine.Plugins {
-		// append to pluginTypes only if not done previously
-		if _, ok := pluginNamesByType[p.Type]; !ok {
-			pluginTypes = append(pluginTypes, p.Type)
+	if node.Manager != nil {
+		fmt.Fprintln(w, "Manager:\t")
+		common.FprintfIfNotEmpty(w, "  Address\t: %s\n", node.Manager.Raft.Addr)
+		common.FprintfIfNotEmpty(w, "  Raft status\t: %s\n", node.Manager.Raft.Status.Reachability.String())
+		leader := "no"
+		if node.Manager.Raft.Status.Leader {
+			leader = "yes"
 		}
-		pluginNamesByType[p.Type] = append(pluginNamesByType[p.Type], p.Name)
+		common.FprintfIfNotEmpty(w, "  Leader\t: %s\n", leader)
 	}
 
-	sort.Strings(pluginTypes) // ensure stable output
-	for _, pluginType := range pluginTypes {
-		fmt.Fprintf(w, "  %s\t: %v\n", pluginType, pluginNamesByType[pluginType])
+	if desc.Platform != nil {
+		fmt.Fprintln(w, "Platform:\t")
+		common.FprintfIfNotEmpty(w, "  Operating System\t: %s\n", desc.Platform.OS)
+		common.FprintfIfNotEmpty(w, "  Architecture\t: %s\n", desc.Platform.Architecture)
 	}
 
-	common.FprintfIfNotEmpty(w, "Engine Version\t: %s\n", desc.Engine.EngineVersion)
+	if desc.Resources != nil {
+		fmt.Fprintln(w, "Resources:\t")
+		fmt.Fprintf(w, "  CPUs\t: %d\n", desc.Resources.NanoCPUs/1e9)
+		fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(desc.Resources.MemoryBytes)))
+		if node.Description != nil {
+			common.FprintfIfNotEmpty(w, "Hostname\t: %s\n", node.Description.Hostname)
+		}
+	}
 
-	if len(desc.Engine.Labels) != 0 {
-		fmt.Fprintln(w, "Engine Labels:\t")
-		for k, v := range desc.Engine.Labels {
-			fmt.Fprintf(w, "  %s = %s", k, v)
+	if desc.Engine != nil {
+		fmt.Fprintln(w, "Plugins:\t")
+		var pluginTypes []string
+		pluginNamesByType := map[string][]string{}
+		for _, p := range desc.Engine.Plugins {
+			// append to pluginTypes only if not done previously
+			if _, ok := pluginNamesByType[p.Type]; !ok {
+				pluginTypes = append(pluginTypes, p.Type)
+			}
+			pluginNamesByType[p.Type] = append(pluginNamesByType[p.Type], p.Name)
+		}
+
+		sort.Strings(pluginTypes) // ensure stable output
+		for _, pluginType := range pluginTypes {
+			fmt.Fprintf(w, "  %s\t: %v\n", pluginType, pluginNamesByType[pluginType])
+		}
+	}
+
+	if desc.Engine != nil {
+		common.FprintfIfNotEmpty(w, "Engine Version\t: %s\n", desc.Engine.EngineVersion)
+
+		if len(desc.Engine.Labels) != 0 {
+			fmt.Fprintln(w, "Engine Labels:\t")
+			for k, v := range desc.Engine.Labels {
+				fmt.Fprintf(w, "  %s = %s", k, v)
+			}
 		}
 	}
 }
