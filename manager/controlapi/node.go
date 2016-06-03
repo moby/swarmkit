@@ -77,10 +77,13 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 	if request.Filters != nil {
 		nodes = filterNodes(nodes,
 			func(e *api.Node) bool {
-				return filterContains(e.Spec.Annotations.Name, request.Filters.Names)
+				return filterContains(e.Description.Hostname, request.Filters.Names)
 			},
 			func(e *api.Node) bool {
 				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)
+			},
+			func(e *api.Node) bool {
+				return filterMatchLabels(e.Description.Engine.Labels, request.Filters.Labels)
 			},
 		)
 	}

@@ -41,6 +41,23 @@ func filterContainsPrefix(match string, candidates []string) bool {
 	return false
 }
 
+func filterMatchLabels(match map[string]string, candidates map[string]string) bool {
+	if len(candidates) == 0 {
+		return true
+	}
+
+	for k, v := range candidates {
+		c, ok := match[k]
+		if !ok {
+			return false
+		}
+		if v != "" && v != c {
+			return false
+		}
+	}
+	return true
+}
+
 func validateAnnotations(m api.Annotations) error {
 	if m.Name == "" {
 		return grpc.Errorf(codes.InvalidArgument, "meta: name must be provided")
