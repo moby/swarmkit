@@ -41,6 +41,7 @@ type Agent struct {
 	reports     map[string]taskStatusReport // pending reports, indexed by task ID
 	shutdown    map[string]struct{}         // control shutdown jobs
 	remove      map[string]struct{}         // control shutdown jobs
+	keys        []*api.EncryptionKey
 
 	statusq  chan taskStatusReport
 	removedq chan string
@@ -289,6 +290,25 @@ func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMe
 	if message.Disconnect {
 		// TODO(stevvooe): This may actually be fatal if there is a failure.
 		return a.picker.Reset()
+	}
+
+	if message.NetworkBootstrapKeys == nil {
+		return nil
+	}
+
+	for _, key := range message.NetworkBootstrapKeys {
+		same := false
+		for _, agentKey := range a.keys {
+			if agentKey.LamportTime == key.LamportTime {
+				same = true
+			}
+		}
+		if !same {
+			a.keys = message.NetworkBootstrapKeys
+			if err := a.config.Executor.SetNetworkBootstrapKeys(a.keys); err != nil {
+				panic(fmt.Errorf("configuring network key failed"))
+			}
+		}
 	}
 
 	return nil

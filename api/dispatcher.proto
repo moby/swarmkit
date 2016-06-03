@@ -111,6 +111,10 @@ message SessionMessage {
 	// Disconnect instructs the agent to disconnect from the current disptacher
 	// and select a new one.
 	bool disconnect = 4;
+
+	// Symmetric encryption key distributed by the lead manager. Used by agents
+	// for securing network bootstrapping and communication. 
+	repeated EncryptionKey network_bootstrap_keys = 5;
 }
 
 // HeartbeatRequest provides identifying properties for a single heartbeat.
