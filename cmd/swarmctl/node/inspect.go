@@ -27,8 +27,9 @@ func printNodeSummary(node *api.Node) {
 	}
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", node.ID)
 	common.FprintfIfNotEmpty(w, "Name\t: %s\n", spec.Annotations.Name)
-	common.FprintfIfNotEmpty(w, "Hostname\t: %s\n", node.Description.Hostname)
-
+	if node.Description != nil {
+		common.FprintfIfNotEmpty(w, "Hostname\t: %s\n", node.Description.Hostname)
+	}
 	fmt.Fprintln(w, "Status:\t")
 	common.FprintfIfNotEmpty(w, "  State\t: %s\n", node.Status.State.String())
 	common.FprintfIfNotEmpty(w, "  Message\t: %s\n", node.Status.Message)

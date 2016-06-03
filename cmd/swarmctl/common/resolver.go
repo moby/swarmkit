@@ -34,6 +34,9 @@ func (r *Resolver) get(t interface{}, id string) string {
 		if res.Node.Spec.Annotations.Name != "" {
 			return res.Node.Spec.Annotations.Name
 		}
+		if res.Node.Description == nil {
+			return id
+		}
 		return res.Node.Description.Hostname
 	case api.Service:
 		res, err := r.c.GetService(r.ctx, &api.GetServiceRequest{ServiceID: id})
