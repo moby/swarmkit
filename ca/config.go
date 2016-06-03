@@ -218,7 +218,7 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, propos
 
 // RenewTLSConfig will continuously monitor for the necessity of renewing the local certificates, either by
 // issuing them locally if key-material is available, or requesting them from a remote CA.
-func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, picker *picker.Picker, retry time.Duration) <-chan CertificateUpdate {
+func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, picker *picker.Picker, retry time.Duration, renew <-chan struct{}) <-chan CertificateUpdate {
 	paths := NewConfigPaths(baseCertDir)
 	updates := make(chan CertificateUpdate)
 	go func() {
@@ -226,8 +226,9 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 		for {
 			select {
 			case <-time.After(retry):
+			case <-renew:
 			case <-ctx.Done():
-				break
+				return
 			}
 
 			// Retrieve the number of months left for the cert to expire
