@@ -35,6 +35,10 @@ services:
             limits:
                 cpu: 1.5
                 memory: 512Mi
+        placement:
+            constraints:
+              - node.name!=node-2
+              - node.labels.region==us-west
         # network settings
         networks:
             - mynetwork

@@ -452,19 +452,10 @@ message RaftMember {
 	RaftMemberStatus status = 4 [(gogoproto.nullable) = false];
 }
 
-// Placement specifies placement constraints and strategy for scheduling.
+// Placement specifies task distribution constraints.
 message Placement {
-	// A service can have multiple or no constraints.
+	// constraints specifies a set of requirements a node should meet for a task.
 	repeated string constraints = 1;
-
-	enum Strategy {
-		option (gogoproto.goproto_enum_prefix) = false;
-
-		// Spread instances evenly among candidate nodes.
-		PLACEMENT_STRATEGY_SPREAD = 0 [(gogoproto.enumvalue_customname) = "PlacementStrategySpread"];
-	}
-	// Strategy defines scheduler distribution preference.
-	Strategy strategy = 2;
 }
 
 message RootCA {

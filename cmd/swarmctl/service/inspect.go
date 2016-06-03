@@ -29,6 +29,10 @@ func printServiceSummary(service *api.Service) {
 	common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))
 	common.FprintfIfNotEmpty(w, "  Args\t: [%s]\n", strings.Join(ctr.Args, ", "))
 	common.FprintfIfNotEmpty(w, "  Env\t: [%s]\n", strings.Join(ctr.Env, ", "))
+	if ctr.Placement != nil {
+		common.FprintfIfNotEmpty(w, "  Constraints\t: %s\n", strings.Join(ctr.Placement.Constraints, ", "))
+	}
+
 	if ctr.Resources != nil {
 		res := ctr.Resources
 		fmt.Fprintln(w, "  Resources\t")
