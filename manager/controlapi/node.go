@@ -76,6 +76,18 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 			nodes, err = store.FindNodes(tx, buildFilters(store.ByName, request.Filters.Names))
 		case request.Filters != nil && len(request.Filters.IDPrefixes) > 0:
 			nodes, err = store.FindNodes(tx, buildFilters(store.ByIDPrefix, request.Filters.IDPrefixes))
+		case request.Filters != nil && len(request.Filters.Roles) > 0:
+			filters := make([]store.By, 0, len(request.Filters.Roles))
+			for _, v := range request.Filters.Roles {
+				filters = append(filters, store.ByRole(v))
+			}
+			nodes, err = store.FindNodes(tx, store.Or(filters...))
+		case request.Filters != nil && len(request.Filters.Acceptances) > 0:
+			filters := make([]store.By, 0, len(request.Filters.Acceptances))
+			for _, v := range request.Filters.Acceptances {
+				filters = append(filters, store.ByAcceptance(v))
+			}
+			nodes, err = store.FindNodes(tx, store.Or(filters...))
 		default:
 			nodes, err = store.FindNodes(tx, store.All)
 		}
@@ -87,13 +99,47 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 	if request.Filters != nil {
 		nodes = filterNodes(nodes,
 			func(e *api.Node) bool {
+				if len(request.Filters.Names) == 0 {
+					return true
+				}
+				if e.Description == nil {
+					return false
+				}
 				return filterContains(e.Description.Hostname, request.Filters.Names)
 			},
 			func(e *api.Node) bool {
 				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)
 			},
 			func(e *api.Node) bool {
+				if len(request.Filters.Labels) == 0 {
+					return true
+				}
+				if e.Description == nil {
+					return false
+				}
 				return filterMatchLabels(e.Description.Engine.Labels, request.Filters.Labels)
+			},
+			func(e *api.Node) bool {
+				if len(request.Filters.Roles) == 0 {
+					return true
+				}
+				for _, c := range request.Filters.Roles {
+					if c == e.Spec.Role {
+						return true
+					}
+				}
+				return false
+			},
+			func(e *api.Node) bool {
+				if len(request.Filters.Acceptances) == 0 {
+					return true
+				}
+				for _, c := range request.Filters.Acceptances {
+					if c == e.Spec.Acceptance {
+						return true
+					}
+				}
+				return false
 			},
 		)
 	}

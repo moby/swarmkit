@@ -18,18 +18,30 @@ var (
 	nodeSet = []*api.Node{
 		{
 			ID: "id1",
+			Spec: api.NodeSpec{
+				Role:       api.NodeRoleManager,
+				Acceptance: api.NodeAcceptanceReject,
+			},
 			Description: &api.NodeDescription{
 				Hostname: "name1",
 			},
 		},
 		{
 			ID: "id2",
+			Spec: api.NodeSpec{
+				Role:       api.NodeRoleWorker,
+				Acceptance: api.NodeAcceptanceAccept,
+			},
 			Description: &api.NodeDescription{
 				Hostname: "name2",
 			},
 		},
 		{
 			ID: "id3",
+			Spec: api.NodeSpec{
+				Role:       api.NodeRoleWorker,
+				Acceptance: api.NodeAcceptanceAccept,
+			},
 			Description: &api.NodeDescription{
 				// intentionally conflicting hostname
 				Hostname: "name2",
@@ -219,6 +231,22 @@ func TestStoreNode(t *testing.T) {
 		foundNodes, err = FindNodes(readTx, ByIDPrefix("id"))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 3)
+
+		foundNodes, err = FindNodes(readTx, ByRole(api.NodeRoleManager))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 1)
+
+		foundNodes, err = FindNodes(readTx, ByRole(api.NodeRoleWorker))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 2)
+
+		foundNodes, err = FindNodes(readTx, ByAcceptance(api.NodeAcceptanceReject))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 1)
+
+		foundNodes, err = FindNodes(readTx, ByAcceptance(api.NodeAcceptanceAccept))
+		assert.NoError(t, err)
+		assert.Len(t, foundNodes, 2)
 	})
 
 	// Update.
