@@ -14,6 +14,10 @@ func createSpec(name, image string, instances uint64) *api.ServiceSpec {
 	return &api.ServiceSpec{
 		Annotations: api.Annotations{
 			Name: name,
+			Labels: map[string]string{
+				"common": "yes",
+				"unique": name,
+			},
 		},
 		RuntimeSpec: &api.ServiceSpec_Container{
 			Container: &api.ContainerSpec{
@@ -282,10 +286,13 @@ func TestListServices(t *testing.T) {
 
 	createService(t, ts, "name2", "image", 1)
 	createService(t, ts, "name3", "image", 1)
+
+	// List all.
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Services))
 
+	// List with simple filter.
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
 		Filters: &api.ListServicesRequest_Filters{
 			Names: []string{"name1"},
@@ -294,6 +301,7 @@ func TestListServices(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Services))
 
+	// List with union filter.
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
 		Filters: &api.ListServicesRequest_Filters{
 			Names: []string{"name1", "name2"},
@@ -318,6 +326,7 @@ func TestListServices(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r.Services))
 
+	// List with filter intersection.
 	r, err = ts.Client.ListServices(context.Background(),
 		&api.ListServicesRequest{
 			Filters: &api.ListServicesRequest_Filters{
@@ -334,6 +343,59 @@ func TestListServices(t *testing.T) {
 			Filters: &api.ListServicesRequest_Filters{
 				Names:      []string{"name2"},
 				IDPrefixes: []string{s1.ID},
+			},
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(r.Services))
+
+	// List filter by label.
+	r, err = ts.Client.ListServices(context.Background(),
+		&api.ListServicesRequest{
+			Filters: &api.ListServicesRequest_Filters{
+				Labels: map[string]string{
+					"common": "yes",
+				},
+			},
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(r.Services))
+
+	// Value-less label.
+	r, err = ts.Client.ListServices(context.Background(),
+		&api.ListServicesRequest{
+			Filters: &api.ListServicesRequest_Filters{
+				Labels: map[string]string{
+					"common": "",
+				},
+			},
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(r.Services))
+
+	// Label intersection.
+	r, err = ts.Client.ListServices(context.Background(),
+		&api.ListServicesRequest{
+			Filters: &api.ListServicesRequest_Filters{
+				Labels: map[string]string{
+					"common": "",
+					"unique": "name1",
+				},
+			},
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(r.Services))
+
+	r, err = ts.Client.ListServices(context.Background(),
+		&api.ListServicesRequest{
+			Filters: &api.ListServicesRequest_Filters{
+				Labels: map[string]string{
+					"common": "",
+					"unique": "error",
+				},
 			},
 		},
 	)

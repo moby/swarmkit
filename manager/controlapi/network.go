@@ -202,6 +202,9 @@ func (s *Server) ListNetworks(ctx context.Context, request *api.ListNetworksRequ
 			func(e *api.Network) bool {
 				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)
 			},
+			func(e *api.Network) bool {
+				return filterMatchLabels(e.Spec.Annotations.Labels, request.Filters.Labels)
+			},
 		)
 	}
 
