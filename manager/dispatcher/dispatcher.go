@@ -3,6 +3,8 @@ package dispatcher
 import (
 	"errors"
 	"fmt"
+	"reflect"
+	"sort"
 	"sync"
 	"time"
 
@@ -97,6 +99,15 @@ type Dispatcher struct {
 	processTaskUpdatesTrigger chan struct{}
 }
 
+// weightedPeerByAddr is a sort wrapper for []*api.WeightedPeer
+type weightedPeerByAddr []*api.WeightedPeer
+
+func (b weightedPeerByAddr) Less(i, j int) bool { return b[i].Addr < b[j].Addr }
+
+func (b weightedPeerByAddr) Len() int { return len(b) }
+
+func (b weightedPeerByAddr) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
+
 // New returns Dispatcher with cluster interface(usually raft.Node).
 // NOTE: each handler which does something with raft must add to Dispatcher.wg
 func New(cluster Cluster, c *Config) *Dispatcher {
@@ -167,7 +178,14 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 				Weight: 1,
 			})
 		}
+
+		// sort and check whether member list has changed
+		sort.Sort(weightedPeerByAddr(mgrs))
 		d.mu.Lock()
+		if reflect.DeepEqual(mgrs, d.lastSeenManagers) {
+			d.mu.Unlock()
+			return
+		}
 		d.lastSeenManagers = mgrs
 		d.mu.Unlock()
 		d.mgrQueue.Publish(mgrs)
