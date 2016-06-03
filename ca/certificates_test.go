@@ -1,8 +1,13 @@
 package ca_test
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/pem"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -85,6 +90,20 @@ func TestGetLocalRootCA(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, rootCA3.CanSign())
 	assert.Equal(t, rootCA.Cert, rootCA3.Cert)
+
+	// Try with a private key that does not match the CA cert public key.
+	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	assert.NoError(t, err)
+	privKeyBytes, err := x509.MarshalECPrivateKey(privKey)
+	assert.NoError(t, err)
+	privKeyPem := pem.EncodeToMemory(&pem.Block{
+		Type:  "EC PRIVATE KEY",
+		Bytes: privKeyBytes,
+	})
+	assert.NoError(t, ioutil.WriteFile(paths.RootCA.Key, privKeyPem, os.FileMode(0600)))
+
+	_, err = ca.GetLocalRootCA(tempBaseDir)
+	assert.EqualError(t, err, "certificate key mismatch")
 }
 
 func TestGenerateAndSignNewTLSCert(t *testing.T) {
