@@ -22,6 +22,10 @@ func printClusterSummary(cluster *api.Cluster) {
 		fmt.Fprintf(w, "Acceptance strategy:\n")
 		fmt.Fprintf(w, "  Autoaccept agents\t: %v\n", cluster.Spec.AcceptancePolicy.Autoaccept[ca.AgentRole])
 		fmt.Fprintf(w, "  Autoaccept managers\t: %v\n", cluster.Spec.AcceptancePolicy.Autoaccept[ca.ManagerRole])
+		// This will never contain a real secret. It will either be empty, or say [REDACTED]
+		if cluster.Spec.AcceptancePolicy.Secret != "" {
+			fmt.Fprintf(w, "  Secret\t: %v\n", cluster.Spec.AcceptancePolicy.Secret)
+		}
 	}
 	fmt.Fprintf(w, "Orchestration settings:\n")
 	fmt.Fprintf(w, "  Task history entries: %d\n", cluster.Spec.Orchestration.TaskHistoryRetentionLimit)

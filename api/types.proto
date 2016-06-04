@@ -417,13 +417,17 @@ message IssuanceStatus {
 }
 
 message AcceptancePolicy {
-	// FIXME(aaronl): This is not what the actual acceptance policy
+	// FIXME(diogo): This is not what the actual acceptance policy
 	// will look like. This simplistic version is for getting things
 	// working before we add the actual acceptance policies later on.
+	// This will probably turn into a single bool once we have promotion
 
 	// Autoaccept controls which roles' certificates are automatically
 	// issued without administrator intervention.
 	map<string, bool> autoaccept = 1;
+	// Secret represents a user-provided string that is necessary for new
+	// nodes to join the cluster
+	string secret = 2;
 }
 
 // OrchestrationConfig defines cluster-level orchestration settings.

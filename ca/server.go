@@ -1,6 +1,7 @@
 package ca
 
 import (
+	"crypto/subtle"
 	"fmt"
 	"sync"
 
@@ -152,6 +153,19 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 
 	// The remote node didn't successfully present a valid MTLS certificate, let's issue
 	// a pending certificate with a new ID
+
+	// If there is a secret configured, the client has to have supplied it to be able to propose itself
+	// for the first certificate issuance
+
+	s.mu.Lock()
+	if s.acceptancePolicy.Secret != "" {
+		if request.Secret == "" ||
+			subtle.ConstantTimeCompare([]byte(request.Secret), []byte(s.acceptancePolicy.Secret)) != 1 {
+			s.mu.Unlock()
+			return nil, fmt.Errorf("A valid secret token is necessary to join this cluster")
+		}
+	}
+	s.mu.Unlock()
 
 	// Max number of collisions of ID or CN to tolerate before giving up
 	maxRetries := 3
@@ -360,7 +374,9 @@ func (s *Server) isRunning() bool {
 }
 
 func (s *Server) updateCluster(ctx context.Context, cluster *api.Cluster) {
+	s.mu.Lock()
 	s.acceptancePolicy = cluster.Spec.AcceptancePolicy.Copy()
+	s.mu.Unlock()
 	if cluster.RootCA != nil && len(cluster.RootCA.CACert) != 0 && len(cluster.RootCA.CAKey) != 0 {
 		log.G(ctx).Debug("updating root CA object from raft")
 		err := s.securityConfig.UpdateRootCA(cluster.RootCA.CACert, cluster.RootCA.CAKey)
@@ -416,15 +432,21 @@ func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) {
 		return
 	}
 
+	// If the certificate state is not pending at this point, we are in an unknown state, return
 	if node.Certificate.Status.State != api.IssuanceStatePending {
 		return
 	}
 
+	// Check to see if our autoacceptance policy allows this node to be issued without manual intervention
+	s.mu.Lock()
 	if s.acceptancePolicy.Autoaccept != nil && s.acceptancePolicy.Autoaccept[node.Certificate.Role] {
+		s.mu.Unlock()
 		s.signNodeCert(ctx, node)
 		return
 	}
+	s.mu.Unlock()
 
+	// Only issue this node if the admin explicitly changed it to Accepted
 	if node.Spec.Membership == api.NodeMembershipAccepted {
 		// Cert was approved by admin
 		s.signNodeCert(ctx, node)
