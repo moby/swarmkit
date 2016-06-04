@@ -285,10 +285,14 @@ func (m *Manager) Run(ctx context.Context) error {
 						ID: nodeID,
 						Certificate: api.Certificate{
 							CN:   nodeID,
-							Role: m.config.SecurityConfig.ClientTLSCreds.Role(),
+							Role: ca.ManagerRole,
 							Status: api.IssuanceStatus{
 								State: api.IssuanceStateIssued,
 							},
+						},
+						Spec: api.NodeSpec{
+							Role:       api.NodeRoleManager,
+							Membership: api.NodeMembershipAccepted,
 						},
 					})
 					return nil
