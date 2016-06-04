@@ -375,15 +375,17 @@ func (n *Node) ListenControlSocket(ctx context.Context) <-chan *grpc.ClientConn 
 	n.RLock()
 	conn := n.conn
 	c <- conn
+	done := make(chan struct{})
 	go func() {
 		select {
 		case <-ctx.Done():
 			n.connCond.Broadcast()
-		case <-c:
+		case <-done:
 		}
 	}()
 	go func() {
 		defer close(c)
+		defer close(done)
 		defer n.RUnlock()
 		for {
 			if ctx.Err() != nil {
@@ -613,16 +615,18 @@ func (s *persistentRemotes) save() error {
 func (s *persistentRemotes) WaitSelect(ctx context.Context) <-chan api.Peer {
 	c := make(chan api.Peer, 1)
 	s.RLock()
+	done := make(chan struct{})
 	go func() {
 		select {
 		case <-ctx.Done():
 			s.c.Broadcast()
-		case <-c:
+		case <-done:
 		}
 	}()
 	go func() {
 		defer s.RUnlock()
 		defer close(c)
+		defer close(done)
 		for {
 			if ctx.Err() != nil {
 				return
