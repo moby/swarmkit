@@ -33,8 +33,13 @@ import (
 )
 
 const (
+	// Security Strength Equivalence followed
+	//| Key-type |  ECC  |  DH/DSA/RSA
+	//|   Node   |  256  |     3072
+	//|   Root   |  384  |     7680
+
 	// RootKeySize is the default size of the root CA key
-	RootKeySize = 256
+	RootKeySize = 384
 	// RootKeyAlgo defines the default algorithm for the root CA Key
 	RootKeyAlgo = "ecdsa"
 )
@@ -55,10 +60,13 @@ type CertPaths struct {
 
 // RootCA is the representation of everything we need to sign certificates
 type RootCA struct {
-	Cert []byte
+	// Key will only be used by the original manager to put the private
+	// key-material in raft, no signing operations depend on it.
 	Key  []byte
+	Cert []byte
 	Pool *x509.CertPool
 
+	// This signer will be nil if the node doesn't have the appropriate key material
 	Signer cfsigner.Signer
 }
 
@@ -343,7 +351,7 @@ func CreateAndWriteRootCA(rootCN string, paths CertPaths) (RootCA, error) {
 	// Create a simple CSR for the CA using the default CA validator and policy
 	req := cfcsr.CertificateRequest{
 		CN:         rootCN,
-		KeyRequest: cfcsr.NewBasicKeyRequest(),
+		KeyRequest: &cfcsr.BasicKeyRequest{A: RootKeyAlgo, S: RootKeySize},
 		// Expiration for the root is 20 years
 		CA: &cfcsr.CAConfig{Expiry: "630720000s"},
 	}
