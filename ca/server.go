@@ -488,6 +488,11 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 			return err
 		})
 		if err == nil {
+			log.G(ctx).WithFields(logrus.Fields{
+				"node.id":   node.ID,
+				"node.role": node.Certificate.Role,
+				"method":    "(*Server).signNodeCert",
+			}).Debugf("certificate issued")
 			break
 		}
 		if err == store.ErrSequenceConflict {
@@ -501,11 +506,6 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 		return
 	}
 
-	log.G(ctx).WithFields(logrus.Fields{
-		"node.id":   node.ID,
-		"node.role": node.Certificate.Role,
-		"method":    "(*Server).signNodeCert",
-	}).Debugf("certificate issued")
 }
 
 func (s *Server) reconcileNodeCertificates(ctx context.Context, nodes []*api.Node) error {
