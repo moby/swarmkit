@@ -1,6 +1,7 @@
 package controlapi
 
 import (
+	"strings"
 	"testing"
 
 	"golang.org/x/net/context"
@@ -8,13 +9,14 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
 
-func createTask(t *testing.T, ts *testServer, id string, desiredState api.TaskState) *api.Task {
+func createTask(t *testing.T, ts *testServer, desiredState api.TaskState) *api.Task {
 	task := &api.Task{
-		ID:           id,
+		ID:           identity.NewID(),
 		DesiredState: desiredState,
 	}
 	err := ts.Store.Update(func(tx store.Tx) error {
@@ -35,7 +37,7 @@ func TestGetTask(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpc.Code(err))
 
-	task := createTask(t, ts, "id", api.TaskStateRunning)
+	task := createTask(t, ts, api.TaskStateRunning)
 	r, err := ts.Client.GetTask(context.Background(), &api.GetTaskRequest{TaskID: task.ID})
 	assert.NoError(t, err)
 	assert.Equal(t, task.ID, r.Task.ID)
@@ -51,16 +53,28 @@ func TestListTasks(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, r.Tasks)
 
-	createTask(t, ts, "id1", api.TaskStateRunning)
+	t1 := createTask(t, ts, api.TaskStateRunning)
 	r, err = ts.Client.ListTasks(context.Background(), &api.ListTasksRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Tasks))
 
-	createTask(t, ts, "id2", api.TaskStateRunning)
-	createTask(t, ts, "id3", api.TaskStateShutdown)
+	createTask(t, ts, api.TaskStateRunning)
+	createTask(t, ts, api.TaskStateShutdown)
 	r, err = ts.Client.ListTasks(context.Background(), &api.ListTasksRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Tasks))
+
+	// List with an ID prefix.
+	r, err = ts.Client.ListTasks(context.Background(), &api.ListTasksRequest{
+		Filters: &api.ListTasksRequest_Filters{
+			IDPrefixes: []string{t1.ID[0:4]},
+		},
+	})
+	assert.NoError(t, err)
+	assert.NotEmpty(t, r.Tasks)
+	for _, task := range r.Tasks {
+		assert.True(t, strings.HasPrefix(task.ID, t1.ID[0:4]))
+	}
 
 	// List by desired state.
 	r, err = ts.Client.ListTasks(context.Background(),
