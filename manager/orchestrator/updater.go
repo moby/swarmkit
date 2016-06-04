@@ -102,12 +102,7 @@ func (u *Updater) Run(ctx context.Context, service *api.Service, tasks []*api.Ta
 
 	dirtyTasks := []*api.Task{}
 	for _, t := range tasks {
-		if service.Spec.GetContainer() == nil ||
-			reflect.DeepEqual(t.GetContainer().Spec, api.ContainerSpec{}) {
-			continue
-		}
-
-		if !reflect.DeepEqual(service.Spec.GetContainer(), &(t.GetContainer().Spec)) {
+		if !reflect.DeepEqual(service.Spec.Task, t.Spec) {
 			dirtyTasks = append(dirtyTasks, t)
 		}
 	}
@@ -202,7 +197,7 @@ func (u *Updater) updateTask(ctx context.Context, service *api.Service, original
 
 		// Wait for the old task to stop or time out, and then set the new one
 		// to RUNNING.
-		delayStartCh = u.restarts.DelayStart(ctx, tx, service, original, updated.ID, 0, true)
+		delayStartCh = u.restarts.DelayStart(ctx, tx, original, updated.ID, 0, true)
 
 		return nil
 

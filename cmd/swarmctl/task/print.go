@@ -48,7 +48,7 @@ func Print(tasks []*api.Task, all bool, res *common.Resolver) {
 		if !all && t.DesiredState > api.TaskStateRunning {
 			continue
 		}
-		c := t.GetContainer().Spec
+		c := t.Spec.GetContainer()
 		fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s %s\t%s\n",
 			t.ID,
 			t.ServiceAnnotations.Name,

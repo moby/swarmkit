@@ -100,25 +100,15 @@ func (r *ReplicatedOrchestrator) tick(ctx context.Context) {
 }
 
 func newTask(service *api.Service, instance uint64) *api.Task {
-	containerSpec := api.ContainerSpec{}
-	if service.Spec.GetContainer() != nil {
-		containerSpec = *service.Spec.GetContainer().Copy()
-
-		// NOTE(stevvooe): For now, we don't override the container naming and
-		// labeling scheme in the agent. If we decide to do this in the future,
-		// they should be overridden here.
-	}
-
+	// NOTE(stevvooe): For now, we don't override the container naming and
+	// labeling scheme in the agent. If we decide to do this in the future,
+	// they should be overridden here.
 	return &api.Task{
 		ID:                 identity.NewID(),
 		ServiceAnnotations: service.Spec.Annotations,
-		Runtime: &api.Task_Container{
-			Container: &api.Container{
-				Spec: containerSpec,
-			},
-		},
-		ServiceID: service.ID,
-		Instance:  instance,
+		Spec:               service.Spec.Task,
+		ServiceID:          service.ID,
+		Instance:           instance,
 		Status: api.TaskStatus{
 			State:     api.TaskStateNew,
 			Timestamp: ptypes.MustTimestampProto(time.Now()),
@@ -171,10 +161,10 @@ func deleteServiceTasks(ctx context.Context, s *store.MemoryStore, service *api.
 	}
 }
 
-func restartCondition(service *api.Service) api.RestartPolicy_RestartCondition {
+func restartCondition(task *api.Task) api.RestartPolicy_RestartCondition {
 	restartCondition := api.RestartOnAny
-	if service.Spec.Restart != nil {
-		restartCondition = service.Spec.Restart.Condition
+	if task.Spec.Restart != nil {
+		restartCondition = task.Spec.Restart.Condition
 	}
 	return restartCondition
 }

@@ -19,22 +19,23 @@ func printServiceSummary(service *api.Service) {
 	w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
 	defer w.Flush()
 
+	task := service.Spec.Task
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", service.ID)
 	common.FprintfIfNotEmpty(w, "Name\t: %s\n", service.Spec.Annotations.Name)
 	common.FprintfIfNotEmpty(w, "Instances\t: %s\n", getServiceInstancesTxt(service))
 	fmt.Fprintln(w, "Template\t")
 	fmt.Fprintln(w, " Container\t")
-	ctr := service.Spec.GetContainer()
+	ctr := service.Spec.Task.GetContainer()
 	common.FprintfIfNotEmpty(w, "  Image\t: %s\n", ctr.Image)
 	common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))
 	common.FprintfIfNotEmpty(w, "  Args\t: [%s]\n", strings.Join(ctr.Args, ", "))
 	common.FprintfIfNotEmpty(w, "  Env\t: [%s]\n", strings.Join(ctr.Env, ", "))
-	if ctr.Placement != nil {
-		common.FprintfIfNotEmpty(w, "  Constraints\t: %s\n", strings.Join(ctr.Placement.Constraints, ", "))
+	if task.Placement != nil {
+		common.FprintfIfNotEmpty(w, "  Constraints\t: %s\n", strings.Join(task.Placement.Constraints, ", "))
 	}
 
-	if ctr.Resources != nil {
-		res := ctr.Resources
+	if task.Resources != nil {
+		res := task.Resources
 		fmt.Fprintln(w, "  Resources\t")
 		printResources := func(w io.Writer, r *api.Resources) {
 			if r.NanoCPUs != 0 {

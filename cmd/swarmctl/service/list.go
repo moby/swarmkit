@@ -44,10 +44,8 @@ var (
 					spec := s.Spec
 					var reference string
 
-					if spec.RuntimeSpec != nil {
-						if spec.GetContainer() != nil {
-							reference = spec.GetContainer().Image
-						}
+					if spec.Task.GetContainer() != nil {
+						reference = spec.Task.GetContainer().Image
 					}
 
 					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",

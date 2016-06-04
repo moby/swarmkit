@@ -196,7 +196,7 @@ func (c *containerAdapter) remove(ctx context.Context) error {
 
 func (c *containerAdapter) createVolumes(ctx context.Context, client engineapi.APIClient) error {
 	// Create plugin volumes that are embedded inside a Mount
-	for _, mount := range c.container.task.GetContainer().Spec.Mounts {
+	for _, mount := range c.container.task.Spec.GetContainer().Mounts {
 		if mount.Template != nil {
 			req := c.container.volumeCreateRequest(mount)
 

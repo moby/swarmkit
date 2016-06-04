@@ -33,16 +33,8 @@ type ContainerConfig struct {
 	// 1003.1-2001](http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html).
 	Env []string `yaml:"env,omitempty"`
 
-	Resources *ResourceRequirements `yaml:"resources,omitempty"`
-
-	// PlacementConfig specifies node constraints and placement
-	Placement *PlacementConfig `yaml:"placement,omitempty"`
-
 	// Networks specifies all the networks that this service is attached to.
 	Networks []string `yaml:"networks,omitempty"`
-
-	// Ports specifies port mappings.
-	Ports []PortConfig `yaml:"ports,omitempty"`
 
 	// Mounts describe how volumes should be mounted in the container
 	Mounts Mounts `yaml:"mounts,omitempty"`
@@ -68,8 +60,15 @@ type ServiceConfig struct {
 	Mode      string  `yaml:"mode,omitempty"`
 	Instances *uint64 `yaml:"instances,omitempty"`
 
-	Restart *RestartConfiguration `yaml:"restart,omitempty"`
-	Update  *UpdateConfiguration  `yaml:"update,omitempty"`
+	Restart   *RestartConfiguration `yaml:"restart,omitempty"`
+	Update    *UpdateConfiguration  `yaml:"update,omitempty"`
+	Resources *ResourceRequirements `yaml:"resources,omitempty"`
+
+	// PlacementConfig specifies node constraints and placement
+	Placement *PlacementConfig `yaml:"placement,omitempty"`
+
+	// Ports specifies port mappings.
+	Ports []PortConfig `yaml:"ports,omitempty"`
 }
 
 // Validate checks the validity of the ServiceConfig.
@@ -158,21 +157,24 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 			Labels: make(map[string]string),
 		},
 
-		RuntimeSpec: &api.ServiceSpec_Container{
-			Container: &api.ContainerSpec{
-				Resources: s.Resources.ToProto(),
-				Mounts:    s.Mounts.ToProto(),
-				Image:     s.Image,
-				Placement: s.Placement.ToProto(),
+		Task: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Mounts: s.Mounts.ToProto(),
+					Image:  s.Image,
 
-				Env:     s.Env,
-				Command: s.Command,
-				Args:    s.Args,
+					Env:     s.Env,
+					Command: s.Command,
+					Args:    s.Args,
+				},
 			},
+
+			Placement: s.Placement.ToProto(),
+			Resources: s.Resources.ToProto(),
+			Restart:   s.Restart.ToProto(),
 		},
 
-		Update:  s.Update.ToProto(),
-		Restart: s.Restart.ToProto(),
+		Update: s.Update.ToProto(),
 	}
 
 	if len(s.Ports) != 0 {
@@ -223,10 +225,10 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 	}
 
 	if s.StopGracePeriod == "" {
-		spec.GetContainer().StopGracePeriod = *ptypes.DurationProto(defaultStopGracePeriod)
+		spec.Task.GetContainer().StopGracePeriod = *ptypes.DurationProto(defaultStopGracePeriod)
 	} else {
 		gracePeriod, _ := time.ParseDuration(s.StopGracePeriod)
-		spec.GetContainer().StopGracePeriod = *ptypes.DurationProto(gracePeriod)
+		spec.Task.GetContainer().StopGracePeriod = *ptypes.DurationProto(gracePeriod)
 	}
 
 	return spec
@@ -237,24 +239,24 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	*s = ServiceConfig{
 		Name: serviceSpec.Annotations.Name,
 		ContainerConfig: ContainerConfig{
-			Image:   serviceSpec.GetContainer().Image,
-			Env:     serviceSpec.GetContainer().Env,
-			Args:    serviceSpec.GetContainer().Args,
-			Command: serviceSpec.GetContainer().Command,
+			Image:   serviceSpec.Task.GetContainer().Image,
+			Env:     serviceSpec.Task.GetContainer().Env,
+			Args:    serviceSpec.Task.GetContainer().Args,
+			Command: serviceSpec.Task.GetContainer().Command,
 		},
 	}
-	if serviceSpec.GetContainer().Resources != nil {
+	if serviceSpec.Task.Resources != nil {
 		s.Resources = &ResourceRequirements{}
-		s.Resources.FromProto(serviceSpec.GetContainer().Resources)
+		s.Resources.FromProto(serviceSpec.Task.Resources)
 	}
 
-	if serviceSpec.GetContainer().Placement != nil {
+	if serviceSpec.Task.Placement != nil {
 		s.Placement = &PlacementConfig{}
-		s.Placement.FromProto(serviceSpec.GetContainer().Placement)
+		s.Placement.FromProto(serviceSpec.Task.Placement)
 	}
 
-	if serviceSpec.GetContainer().Mounts != nil {
-		apiMounts := serviceSpec.GetContainer().Mounts
+	if serviceSpec.Task.GetContainer().Mounts != nil {
+		apiMounts := serviceSpec.Task.GetContainer().Mounts
 		s.Mounts = make(Mounts, len(apiMounts))
 		s.Mounts.FromProto(apiMounts)
 	}
@@ -284,7 +286,7 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 		s.Mode = "global"
 	}
 
-	stopGracePeriod, _ := ptypes.Duration(&serviceSpec.GetContainer().StopGracePeriod)
+	stopGracePeriod, _ := ptypes.Duration(&serviceSpec.Task.GetContainer().StopGracePeriod)
 	s.StopGracePeriod = stopGracePeriod.String()
 
 	if serviceSpec.Update != nil {
@@ -292,9 +294,9 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 		s.Update.FromProto(serviceSpec.Update)
 	}
 
-	if serviceSpec.Restart != nil {
+	if serviceSpec.Task.Restart != nil {
 		s.Restart = &RestartConfiguration{}
-		s.Restart.FromProto(serviceSpec.Restart)
+		s.Restart.FromProto(serviceSpec.Task.Restart)
 	}
 }
 

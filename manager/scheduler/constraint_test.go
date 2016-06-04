@@ -15,9 +15,9 @@ func TestConstraintSetTask(t *testing.T) {
 			Name: "name1",
 		},
 
-		Runtime: &api.Task_Container{
-			Container: &api.Container{
-				Spec: api.ContainerSpec{
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
 					Command: []string{"sh", "-c", "sleep 5"},
 					Image:   "alpine",
 				},
@@ -31,8 +31,7 @@ func TestConstraintSetTask(t *testing.T) {
 	f := ConstraintFilter{}
 	assert.False(t, f.SetTask(task1))
 
-	ctr := task1.GetContainer()
-	ctr.Spec.Placement = &api.Placement{
+	task1.Spec.Placement = &api.Placement{
 		Constraints: []string{"node.name == node-2", "node.labels.operatingsystem != ubuntu"},
 	}
 	assert.True(t, f.SetTask(task1))
@@ -45,15 +44,15 @@ func TestConstraintCheck(t *testing.T) {
 			Name: "name1",
 		},
 
-		Runtime: &api.Task_Container{
-			Container: &api.Container{
-				Spec: api.ContainerSpec{
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
 					Command: []string{"sh", "-c", "sleep 5"},
 					Image:   "alpine",
-					Placement: &api.Placement{
-						Constraints: []string{"node.name != node-1"},
-					},
 				},
+			},
+			Placement: &api.Placement{
+				Constraints: []string{"node.name != node-1"},
 			},
 		},
 
@@ -86,8 +85,7 @@ func TestConstraintCheck(t *testing.T) {
 	assert.False(t, f.Check(ni))
 
 	// set node.name eq constraint to task
-	ctr := task1.GetContainer()
-	ctr.Spec.Placement = &api.Placement{
+	task1.Spec.Placement = &api.Placement{
 		Constraints: []string{"node.name == node-1"},
 	}
 	require.True(t, f.SetTask(task1))
@@ -95,7 +93,7 @@ func TestConstraintCheck(t *testing.T) {
 	assert.True(t, f.Check(ni))
 
 	// add a label requirement to node
-	ctr.Spec.Placement = &api.Placement{
+	task1.Spec.Placement = &api.Placement{
 		Constraints: []string{"node.name == node-1", "node.labels.operatingsystem != CoreOS 1010.3.0"},
 	}
 	require.True(t, f.SetTask(task1))

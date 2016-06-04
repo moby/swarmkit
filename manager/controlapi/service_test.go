@@ -19,9 +19,11 @@ func createSpec(name, image string, instances uint64) *api.ServiceSpec {
 				"unique": name,
 			},
 		},
-		RuntimeSpec: &api.ServiceSpec_Container{
-			Container: &api.ContainerSpec{
-				Image: image,
+		Task: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Image: image,
+				},
 			},
 		},
 		Mode: &api.ServiceSpec_Replicated{
@@ -89,13 +91,11 @@ func TestValidateServiceSpecTemplate(t *testing.T) {
 
 	for _, bad := range []badSource{
 		{
-			s: &api.ServiceSpec{RuntimeSpec: nil},
-			c: codes.InvalidArgument,
-		},
-		{
 			s: &api.ServiceSpec{
-				RuntimeSpec: &api.ServiceSpec_Container{
-					Container: nil,
+				Task: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: nil,
+					},
 				},
 			},
 			c: codes.InvalidArgument,
@@ -158,7 +158,7 @@ func TestValidateServiceSpec(t *testing.T) {
 	} {
 		err := validateServiceSpec(bad.spec)
 		assert.Error(t, err)
-		assert.Equal(t, bad.c, grpc.Code(err))
+		assert.Equal(t, bad.c, grpc.Code(err), grpc.ErrorDesc(err))
 	}
 
 	for _, good := range []*api.ServiceSpec{
