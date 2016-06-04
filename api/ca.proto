@@ -35,6 +35,9 @@ message NodeCertificateStatusResponse {
 message IssueNodeCertificateRequest {
 	string role = 1;
 	bytes csr = 2 [(gogoproto.customname) = "CSR"];
+	// Secret represents a user-provided string that is necessary for new
+	// nodes to join the cluster
+	string secret = 3;
 }
 
 message IssueNodeCertificateResponse {

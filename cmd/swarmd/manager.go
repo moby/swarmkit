@@ -66,7 +66,12 @@ var managerCmd = &cobra.Command{
 
 		certDir := filepath.Join(stateDir, "certificates")
 
-		token, err := cmd.Flags().GetString("token")
+		token, err := cmd.Flags().GetString("ca-hash")
+		if err != nil {
+			return err
+		}
+
+		secret, err := cmd.Flags().GetString("secret")
 		if err != nil {
 			return err
 		}
@@ -95,7 +100,7 @@ var managerCmd = &cobra.Command{
 
 		// We either just boostraped our cluster from scratch, or have a valid picker and
 		// are thus joining an existing cluster
-		securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, token, ca.ManagerRole, p)
+		securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, token, secret, ca.ManagerRole, p)
 		if err != nil {
 			return err
 		}

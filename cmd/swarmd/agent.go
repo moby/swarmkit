@@ -47,7 +47,12 @@ already present, the agent will recover and startup.`,
 
 			certDir := filepath.Join(stateDir, "certificates")
 
-			token, err := cmd.Flags().GetString("token")
+			token, err := cmd.Flags().GetString("ca-hash")
+			if err != nil {
+				return err
+			}
+
+			secret, err := cmd.Flags().GetString("secret")
 			if err != nil {
 				return err
 			}
@@ -63,7 +68,7 @@ already present, the agent will recover and startup.`,
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
-			securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, token, ca.AgentRole, picker)
+			securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, token, secret, ca.AgentRole, picker)
 			if err != nil {
 				return err
 			}
