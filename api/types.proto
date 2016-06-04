@@ -125,7 +125,8 @@ message VolumeTemplate {
 	// volume name for a plugin volume
 	string name = 5;
 
-	Driver driver_configuration = 6;
+	// DriverConfig declares the driver to be used to create the volume.
+	Driver driver_config = 6;
 }
 
 // Mount describes volume mounts for a container

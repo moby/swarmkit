@@ -27,7 +27,7 @@ func TestAllocateInvalidIPAM(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{},
+			DriverConfig: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{
 					Name: "invalidipam,",
@@ -47,7 +47,7 @@ func TestAllocateInvalidDriver(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{
+			DriverConfig: &api.Driver{
 				Name: "invaliddriver",
 			},
 		},
@@ -161,7 +161,7 @@ func TestAllocateWithOneSubnet(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{},
+			DriverConfig: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
 				Configs: []*api.IPAMConfig{
@@ -192,7 +192,7 @@ func TestAllocateWithOneSubnetGateway(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{},
+			DriverConfig: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
 				Configs: []*api.IPAMConfig{
@@ -222,7 +222,7 @@ func TestAllocateWithOneSubnetInvalidGateway(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{},
+			DriverConfig: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
 				Configs: []*api.IPAMConfig{
@@ -247,7 +247,7 @@ func TestAllocateWithInvalidSubnet(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{},
+			DriverConfig: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
 				Configs: []*api.IPAMConfig{
@@ -271,7 +271,7 @@ func TestAllocateWithTwoSubnetsNoGateway(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{},
+			DriverConfig: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
 				Configs: []*api.IPAMConfig{
@@ -310,7 +310,7 @@ func TestFree(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			DriverConfiguration: &api.Driver{},
+			DriverConfig: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
 				Configs: []*api.IPAMConfig{
@@ -343,7 +343,7 @@ func TestAllocateTaskFree(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test1",
 			},
-			DriverConfiguration: &api.Driver{},
+			DriverConfig: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
 				Configs: []*api.IPAMConfig{
@@ -362,7 +362,7 @@ func TestAllocateTaskFree(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test2",
 			},
-			DriverConfiguration: &api.Driver{},
+			DriverConfig: &api.Driver{},
 			IPAM: &api.IPAMOptions{
 				Driver: &api.Driver{},
 				Configs: []*api.IPAMConfig{

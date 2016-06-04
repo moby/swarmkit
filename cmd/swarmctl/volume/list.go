@@ -37,8 +37,8 @@ var (
 			for _, v := range r.Volumes {
 				spec := &v.Spec
 				name := spec.Annotations.Name
-				driverName := spec.DriverConfiguration.Name
-				driverOptions := spec.DriverConfiguration.Options
+				driverName := spec.DriverConfig.Name
+				driverOptions := spec.DriverConfig.Options
 
 				// TODO(amitshukla): Right now we only implement the happy path
 				// and don't have any proper error handling whatsover.

@@ -76,19 +76,19 @@ func TestMountsToProto(t *testing.T) {
 		},
 		{
 			from: &Mount{Writable: true, Type: "bind", Target: "/foo", Source: "/foo"},
-			to:   &api.Mount{Writable: true, Type: api.MountTypeBind, Target: "/foo", Source: "/foo", Template: &api.VolumeTemplate{Name: "", DriverConfiguration: &api.Driver{Name: "", Options: map[string]string{}}}},
+			to:   &api.Mount{Writable: true, Type: api.MountTypeBind, Target: "/foo", Source: "/foo", Template: &api.VolumeTemplate{Name: "", DriverConfig: &api.Driver{Name: "", Options: map[string]string{}}}},
 		},
 		{
 			from: &Mount{Type: "ephemeral", Target: "/foo", Populate: true},
-			to:   &api.Mount{Type: api.MountTypeEphemeral, Target: "/foo", Populate: true, Template: &api.VolumeTemplate{Name: "", DriverConfiguration: &api.Driver{Name: "", Options: map[string]string{}}}},
+			to:   &api.Mount{Type: api.MountTypeEphemeral, Target: "/foo", Populate: true, Template: &api.VolumeTemplate{Name: "", DriverConfig: &api.Driver{Name: "", Options: map[string]string{}}}},
 		},
 		{
 			from: &Mount{Writable: true, Type: "volume", Target: "/foo", VolumeName: "foo", Populate: true},
-			to:   &api.Mount{Writable: true, Type: api.MountTypeVolume, Target: "/foo", VolumeName: "foo", Populate: true, Template: &api.VolumeTemplate{Name: "", DriverConfiguration: &api.Driver{Name: "", Options: map[string]string{}}}},
+			to:   &api.Mount{Writable: true, Type: api.MountTypeVolume, Target: "/foo", VolumeName: "foo", Populate: true, Template: &api.VolumeTemplate{Name: "", DriverConfig: &api.Driver{Name: "", Options: map[string]string{}}}},
 		},
 		{
 			from: &Mount{Writable: true, Type: "template", Target: "/foo", Populate: true, Template: VolumeTemplate{Name: "foo", Driver: "bar"}},
-			to:   &api.Mount{Writable: true, Type: api.MountTypeTemplate, Target: "/foo", Populate: true, Template: &api.VolumeTemplate{Name: "foo", DriverConfiguration: &api.Driver{Name: "bar", Options: map[string]string{}}}},
+			to:   &api.Mount{Writable: true, Type: api.MountTypeTemplate, Target: "/foo", Populate: true, Template: &api.VolumeTemplate{Name: "foo", DriverConfig: &api.Driver{Name: "bar", Options: map[string]string{}}}},
 		},
 	}
 
@@ -105,19 +105,19 @@ func TestMountsFromProto(t *testing.T) {
 
 	set := []*conv{
 		{
-			from: &api.Mount{Writable: true, Type: api.MountTypeBind, Target: "/foo", Source: "/foo", Mcsaccessmode: api.MountMCSAccessModeShared, Template: &api.VolumeTemplate{Name: "", DriverConfiguration: &api.Driver{Name: "", Options: map[string]string{}}}},
+			from: &api.Mount{Writable: true, Type: api.MountTypeBind, Target: "/foo", Source: "/foo", Mcsaccessmode: api.MountMCSAccessModeShared, Template: &api.VolumeTemplate{Name: "", DriverConfig: &api.Driver{Name: "", Options: map[string]string{}}}},
 			to:   &Mount{Writable: true, Type: "bind", Target: "/foo", Source: "/foo", Propagation: "rprivate", MCSAccessMode: "shared"},
 		},
 		{
-			from: &api.Mount{Type: api.MountTypeEphemeral, Target: "/foo", Template: &api.VolumeTemplate{Name: "", DriverConfiguration: &api.Driver{Name: "", Options: map[string]string{}}}},
+			from: &api.Mount{Type: api.MountTypeEphemeral, Target: "/foo", Template: &api.VolumeTemplate{Name: "", DriverConfig: &api.Driver{Name: "", Options: map[string]string{}}}},
 			to:   &Mount{Type: "ephemeral", Target: "/foo", Writable: false, Propagation: "rprivate", Populate: false},
 		},
 		{
-			from: &api.Mount{Writable: true, Type: api.MountTypeVolume, Target: "/foo", VolumeName: "foo", Populate: true, Template: &api.VolumeTemplate{Name: "", DriverConfiguration: &api.Driver{Name: "", Options: map[string]string{}}}},
+			from: &api.Mount{Writable: true, Type: api.MountTypeVolume, Target: "/foo", VolumeName: "foo", Populate: true, Template: &api.VolumeTemplate{Name: "", DriverConfig: &api.Driver{Name: "", Options: map[string]string{}}}},
 			to:   &Mount{Writable: true, Type: "volume", Target: "/foo", VolumeName: "foo", Propagation: "rprivate", Populate: true, Template: VolumeTemplate{Name: "", Driver: ""}},
 		},
 		{
-			from: &api.Mount{Writable: true, Type: api.MountTypeTemplate, Target: "/foo", Populate: true, Template: &api.VolumeTemplate{Name: "foo", DriverConfiguration: &api.Driver{Name: "bar", Options: map[string]string{}}}},
+			from: &api.Mount{Writable: true, Type: api.MountTypeTemplate, Target: "/foo", Populate: true, Template: &api.VolumeTemplate{Name: "foo", DriverConfig: &api.Driver{Name: "bar", Options: map[string]string{}}}},
 			to:   &Mount{Writable: true, Type: "template", Target: "/foo", Propagation: "rprivate", Populate: true, Template: VolumeTemplate{Name: "foo", Driver: "bar"}},
 		},
 	}

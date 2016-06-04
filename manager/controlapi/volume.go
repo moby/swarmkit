@@ -14,7 +14,7 @@ func validateVolumeSpec(spec *api.VolumeSpec) error {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	if spec.DriverConfiguration.Name == "" || spec.Annotations.Name == "" {
+	if spec.DriverConfig.Name == "" || spec.Annotations.Name == "" {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 

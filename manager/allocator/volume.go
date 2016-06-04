@@ -244,8 +244,8 @@ func (a *Allocator) allocateTaskVolumes(ctx context.Context, vc *volumeContext, 
 	// Now remove those volumes from tv.vols that have already have an entry in PluginVolumes
 	// PluginVolumes is part of the "bound" runtime state for volumes
 	for _, alloc := range t.GetContainer().Volumes {
-		if _, exists := vols[alloc.Spec.DriverConfiguration.Name]; exists {
-			delete(vols, alloc.Spec.DriverConfiguration.Name)
+		if _, exists := vols[alloc.Spec.DriverConfig.Name]; exists {
+			delete(vols, alloc.Spec.DriverConfig.Name)
 		}
 	}
 

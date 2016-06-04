@@ -29,7 +29,7 @@ func TestClusterVolumesCache(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "Vol1",
 			},
-			DriverConfiguration: &api.Driver{
+			DriverConfig: &api.Driver{
 				Name: "driver1",
 			},
 		},
@@ -40,7 +40,7 @@ func TestClusterVolumesCache(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "Vol2",
 			},
-			DriverConfiguration: &api.Driver{
+			DriverConfig: &api.Driver{
 				Name: "driver1",
 			},
 		},
@@ -51,7 +51,7 @@ func TestClusterVolumesCache(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "Vol3",
 			},
-			DriverConfiguration: &api.Driver{
+			DriverConfig: &api.Driver{
 				Name: "driver1",
 			},
 		},

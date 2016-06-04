@@ -506,8 +506,8 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 // Resolve network driver
 func (na *NetworkAllocator) resolveDriver(n *api.Network) (driverapi.Driver, string, error) {
 	dName := defaultDriver
-	if n.Spec.DriverConfiguration != nil && n.Spec.DriverConfiguration.Name != "" {
-		dName = n.Spec.DriverConfiguration.Name
+	if n.Spec.DriverConfig != nil && n.Spec.DriverConfig.Name != "" {
+		dName = n.Spec.DriverConfig.Name
 	}
 
 	d, _ := na.drvRegistry.Driver(dName)
