@@ -90,8 +90,14 @@ func validateNetworkSpec(spec *api.NetworkSpec) error {
 // - Returns `InvalidArgument` if the NetworkSpec is malformed.
 // - Returns an error if the creation fails.
 func (s *Server) CreateNetwork(ctx context.Context, request *api.CreateNetworkRequest) (*api.CreateNetworkResponse, error) {
+	// if you change this function, you have to change createInternalNetwork in
+	// the tests to match it (except the part where we check the label).
 	if err := validateNetworkSpec(request.Spec); err != nil {
 		return nil, err
+	}
+
+	if _, ok := request.Spec.Annotations.Labels["com.docker.swarm.internal"]; ok {
+		return nil, grpc.Errorf(codes.PermissionDenied, "label com.docker.swarm.internal is for predefined internal networks and cannot be applied by users")
 	}
 
 	// TODO(mrjana): Consider using `Name` as a primary key to handle
@@ -143,6 +149,10 @@ func (s *Server) RemoveNetwork(ctx context.Context, request *api.RemoveNetworkRe
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {
+		nw := store.GetNetwork(tx, request.NetworkID)
+		if _, ok := nw.Spec.Annotations.Labels["com.docker.swarm.internal"]; ok {
+			return grpc.Errorf(codes.PermissionDenied, "%s is a pre-defined network and cannot be removed", request.NetworkID)
+		}
 		return store.DeleteNetwork(tx, request.NetworkID)
 	})
 	if err != nil {
