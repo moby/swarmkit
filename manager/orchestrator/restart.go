@@ -10,6 +10,7 @@ import (
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
 
@@ -64,7 +65,7 @@ func (r *RestartSupervisor) Restart(ctx context.Context, tx store.Tx, service *a
 		return err
 	}
 
-	if !r.shouldRestart(&t, service) {
+	if !r.shouldRestart(ctx, &t, service) {
 		return nil
 	}
 
@@ -87,8 +88,13 @@ func (r *RestartSupervisor) Restart(ctx context.Context, tx store.Tx, service *a
 	var restartDelay time.Duration
 	// Restart delay does not applied to drained nodes
 	if n == nil || n.Spec.Availability != api.NodeAvailabilityDrain {
-		if service.Spec.Restart != nil && service.Spec.Restart.Delay != 0 {
-			restartDelay = service.Spec.Restart.Delay
+		if service.Spec.Restart != nil && service.Spec.Restart.Delay != nil {
+			var err error
+			restartDelay, err = ptypes.Duration(service.Spec.Restart.Delay)
+			if err != nil {
+				log.G(ctx).WithError(err).Error("invalid restart delay; using default")
+				restartDelay = defaultRestartDelay
+			}
 		} else {
 			restartDelay = defaultRestartDelay
 		}
@@ -113,7 +119,7 @@ func (r *RestartSupervisor) Restart(ctx context.Context, tx store.Tx, service *a
 	return nil
 }
 
-func (r *RestartSupervisor) shouldRestart(t *api.Task, service *api.Service) bool {
+func (r *RestartSupervisor) shouldRestart(ctx context.Context, t *api.Task, service *api.Service) bool {
 	condition := restartCondition(service)
 
 	if condition != api.RestartOnAny &&
@@ -144,7 +150,7 @@ func (r *RestartSupervisor) shouldRestart(t *api.Task, service *api.Service) boo
 		return true
 	}
 
-	if service.Spec.Restart.Window == 0 {
+	if service.Spec.Restart.Window == nil || (service.Spec.Restart.Window.Seconds == 0 && service.Spec.Restart.Window.Nanos == 0) {
 		return restartInfo.totalRestarts < service.Spec.Restart.MaxAttempts
 	}
 
@@ -152,7 +158,12 @@ func (r *RestartSupervisor) shouldRestart(t *api.Task, service *api.Service) boo
 		return true
 	}
 
-	lookback := time.Now().Add(-service.Spec.Restart.Window)
+	window, err := ptypes.Duration(service.Spec.Restart.Window)
+	if err != nil {
+		log.G(ctx).WithError(err).Error("invalid restart lookback window")
+		return restartInfo.totalRestarts < service.Spec.Restart.MaxAttempts
+	}
+	lookback := time.Now().Add(-window)
 
 	var next *list.Element
 	for e := restartInfo.restartedInstances.Front(); e != nil; e = next {
@@ -199,7 +210,7 @@ func (r *RestartSupervisor) recordRestartHistory(restartTask *api.Task, service 
 	}
 	r.historyByService[restartTask.ServiceID][tuple] = struct{}{}
 
-	if service.Spec.Restart.Window != 0 {
+	if service.Spec.Restart.Window != nil && (service.Spec.Restart.Window.Seconds != 0 || service.Spec.Restart.Window.Nanos != 0) {
 		if restartInfo.restartedInstances == nil {
 			restartInfo.restartedInstances = list.New()
 		}
@@ -275,10 +286,16 @@ func (r *RestartSupervisor) DelayStart(ctx context.Context, _ store.Tx, service 
 		if watch != nil {
 			container := service.Spec.GetContainer()
 			if container != nil {
-				// Add a little time to the grace period
-				// because there may be latency between
-				// the agent and us.
-				oldTaskTimeout = time.After(container.StopGracePeriod + 5*time.Second)
+				gracePeriod, err := ptypes.Duration(&container.StopGracePeriod)
+				if err != nil {
+					log.G(ctx).WithError(err).Error("invalid stop grace period")
+					oldTaskTimeout = time.After(defaultOldTaskTimeout)
+				} else {
+					// Add a little time to the grace period
+					// because there may be latency between
+					// the agent and us.
+					oldTaskTimeout = time.After(gracePeriod + 5*time.Second)
+				}
 			} else {
 				oldTaskTimeout = time.After(defaultOldTaskTimeout)
 			}

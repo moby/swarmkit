@@ -53,13 +53,13 @@ checkprotos: generate ## check if protobufs needs to be generated again
 # imports
 vet: binaries ## run go vet
 	@echo "🐳 $@"
-	@test -z "$$(go vet ${PACKAGES} 2>&1 | grep -v 'constant [0-9]* not a string in call to Errorf' | grep -v 'timestamp_test.go' | grep -v 'exit status 1' | tee /dev/stderr)"
+	@test -z "$$(go vet ${PACKAGES} 2>&1 | grep -v 'constant [0-9]* not a string in call to Errorf' | egrep -v '(timestamp_test.go|duration_test.go|exit status 1)' | tee /dev/stderr)"
 
 fmt: ## run go fmt
 	@echo "🐳 $@"
 	@test -z "$$(gofmt -s -l . | grep -v vendor/ | grep -v ".pb.go$$" | tee /dev/stderr)" || \
 		(echo "👹 please format Go code with 'gofmt -s'" && false)
-	@test -z "$$(find . -path ./vendor -prune -o ! -name timestamp.proto -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
+	@test -z "$$(find . -path ./vendor -prune -o ! -name timestamp.proto ! -name duration.proto -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
 		(echo "👹 please indent proto files with tabs only" && false)
 	@test -z "$$(find . -path ./vendor -prune -o -name '*.proto' -type f -exec grep -Hn "id = " {} \; | grep -v gogoproto.customname | tee /dev/stderr)" || \
 		(echo "👹 id fields in proto files must have a gogoproto.customname set" && false)

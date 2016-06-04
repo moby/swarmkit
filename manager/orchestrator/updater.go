@@ -12,6 +12,7 @@ import (
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/docker/swarm-v2/manager/state/watch"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 )
 
 // UpdateSupervisor supervises a set of updates. It's responsible for keeping track of updates,
@@ -162,9 +163,14 @@ func (u *Updater) worker(ctx context.Context, service *api.Service, queue <-chan
 			log.G(ctx).WithError(err).WithField("task.id", t.ID).Error("update failed")
 		}
 
-		if service.Spec.Update != nil && service.Spec.Update.Delay != 0 {
+		if service.Spec.Update != nil && (service.Spec.Update.Delay.Seconds != 0 || service.Spec.Update.Delay.Nanos != 0) {
+			delay, err := ptypes.Duration(&service.Spec.Update.Delay)
+			if err != nil {
+				log.G(ctx).WithError(err).Error("invalid update delay")
+				continue
+			}
 			select {
-			case <-time.After(service.Spec.Update.Delay):
+			case <-time.After(delay):
 			case <-u.stopChan:
 				return
 			}
