@@ -408,21 +408,21 @@ func (n *Node) ListenControlSocket(ctx context.Context) <-chan *grpc.ClientConn 
 // NodeID returns current node's ID. May be empty if not set.
 func (n *Node) NodeID() string {
 	n.RLock()
-	defer n.RLock()
+	defer n.RUnlock()
 	return n.nodeID
 }
 
 // Manager return manager instance started by node. May be nil.
 func (n *Node) Manager() *manager.Manager {
 	n.RLock()
-	defer n.RLock()
+	defer n.RUnlock()
 	return n.manager
 }
 
 // Agent returns agent instance started by node. May be nil.
 func (n *Node) Agent() *Agent {
 	n.RLock()
-	defer n.RLock()
+	defer n.RUnlock()
 	return n.agent
 }
 
@@ -457,7 +457,7 @@ func (n *Node) loadCertificates() error {
 	n.role = clientTLSCreds.Role()
 	n.nodeID = clientTLSCreds.NodeID()
 	n.roleCond.Broadcast()
-	defer n.Unlock()
+	n.Unlock()
 
 	return nil
 }
