@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -19,8 +20,9 @@ func createClusterSpec(name string) *api.ClusterSpec {
 	}
 }
 
-func createCluster(t *testing.T, ts *testServer, id, name string) *api.Cluster {
+func createCluster(t *testing.T, ts *testServer, id, name string, policy api.AcceptancePolicy) *api.Cluster {
 	spec := createClusterSpec(name)
+	spec.AcceptancePolicy = policy
 
 	cluster := &api.Cluster{
 		ID:   id,
@@ -67,16 +69,37 @@ func TestGetCluster(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpc.Code(err))
 
-	cluster := createCluster(t, ts, "name", "name")
+	cluster := createCluster(t, ts, "name", "name", testutils.AutoAcceptPolicy())
 	r, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: cluster.ID})
 	assert.NoError(t, err)
 	cluster.Meta.Version = r.Cluster.Meta.Version
 	assert.Equal(t, cluster, r.Cluster)
 }
 
+func TestGetClusterWithSecret(t *testing.T) {
+	ts := newTestServer(t)
+	_, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	_, err = ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: "invalid"})
+	assert.Error(t, err)
+	assert.Equal(t, codes.NotFound, grpc.Code(err))
+
+	policy := testutils.AutoAcceptPolicy()
+	policy.Secret = "secret"
+	cluster := createCluster(t, ts, "name", "name", policy)
+	r, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: cluster.ID})
+	assert.NoError(t, err)
+	cluster.Meta.Version = r.Cluster.Meta.Version
+	assert.NotEqual(t, cluster, r.Cluster)
+	assert.Contains(t, r.Cluster.String(), "[REDACTED]")
+	assert.Contains(t, cluster.String(), "secret")
+}
+
 func TestUpdateCluster(t *testing.T) {
 	ts := newTestServer(t)
-	cluster := createCluster(t, ts, "name", "name")
+	cluster := createCluster(t, ts, "name", "name", api.AcceptancePolicy{})
 
 	_, err := ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{})
 	assert.Error(t, err)
@@ -122,9 +145,19 @@ func TestUpdateCluster(t *testing.T) {
 	assert.Equal(t, cluster.Spec.Annotations.Name, r.Clusters[0].Spec.Annotations.Name)
 	assert.Len(t, r.Clusters[0].Spec.AcceptancePolicy.Autoaccept, 1)
 
+	r.Clusters[0].Spec.AcceptancePolicy.Secret = "secret"
+	returnedCluster, err := ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
+		ClusterID:      cluster.ID,
+		Spec:           &r.Clusters[0].Spec,
+		ClusterVersion: &r.Clusters[0].Meta.Version,
+	})
+	assert.NoError(t, err)
+	assert.NotContains(t, returnedCluster.String(), "secret")
+	assert.Contains(t, returnedCluster.String(), "[REDACTED]")
+
 	// Versioning.
 	assert.NoError(t, err)
-	version := &r.Clusters[0].Meta.Version
+	version := &returnedCluster.Cluster.Meta.Version
 
 	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
 		ClusterID:      cluster.ID,
@@ -148,14 +181,39 @@ func TestListClusters(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, r.Clusters)
 
-	createCluster(t, ts, "id1", "name1")
+	createCluster(t, ts, "id1", "name1", testutils.AutoAcceptPolicy())
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Clusters))
 
-	createCluster(t, ts, "id2", "name2")
-	createCluster(t, ts, "id3", "name3")
+	createCluster(t, ts, "id2", "name2", testutils.AutoAcceptPolicy())
+	createCluster(t, ts, "id3", "name3", testutils.AutoAcceptPolicy())
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Clusters))
+}
+
+func TestListClustersWithSecrets(t *testing.T) {
+	ts := newTestServer(t)
+	r, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
+	assert.NoError(t, err)
+	assert.Empty(t, r.Clusters)
+
+	policy := testutils.AutoAcceptPolicy()
+	policy.Secret = "secret"
+
+	createCluster(t, ts, "id1", "name1", policy)
+	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(r.Clusters))
+
+	createCluster(t, ts, "id2", "name2", policy)
+	createCluster(t, ts, "id3", "name3", policy)
+	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(r.Clusters))
+	for _, cluster := range r.Clusters {
+		assert.NotContains(t, cluster.String(), policy.Secret)
+		assert.Contains(t, cluster.String(), "[REDACTED]")
+	}
 }
