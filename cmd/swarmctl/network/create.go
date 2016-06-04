@@ -62,8 +62,8 @@ var (
 				Annotations: api.Annotations{
 					Name: name,
 				},
-				DriverConfiguration: driver,
-				IPAM:                ipamOpts,
+				DriverConfig: driver,
+				IPAM:         ipamOpts,
 			}
 
 			c, err := common.Dial(cmd)

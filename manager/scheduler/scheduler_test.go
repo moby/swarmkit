@@ -821,7 +821,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 							Annotations: api.Annotations{
 								Name: "testVol1",
 							},
-							DriverConfiguration: &api.Driver{
+							DriverConfig: &api.Driver{
 								Name: "plugin1",
 							},
 						},
@@ -863,7 +863,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 							Annotations: api.Annotations{
 								Name: "testVol1",
 							},
-							DriverConfiguration: &api.Driver{
+							DriverConfig: &api.Driver{
 								Name: "plugin1",
 							},
 						},
@@ -874,7 +874,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 							Annotations: api.Annotations{
 								Name: "testVol2",
 							},
-							DriverConfiguration: &api.Driver{
+							DriverConfig: &api.Driver{
 								Name: "plugin2",
 							},
 						},
@@ -926,7 +926,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 							Annotations: api.Annotations{
 								Name: "testVol1",
 							},
-							DriverConfiguration: &api.Driver{
+							DriverConfig: &api.Driver{
 								Name: "plugin1",
 							},
 						},

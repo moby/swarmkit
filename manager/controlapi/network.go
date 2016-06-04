@@ -75,7 +75,7 @@ func validateNetworkSpec(spec *api.NetworkSpec) error {
 		return err
 	}
 
-	if err := validateDriver(spec.DriverConfiguration); err != nil {
+	if err := validateDriver(spec.DriverConfig); err != nil {
 		return err
 	}
 
