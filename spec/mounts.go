@@ -7,11 +7,20 @@ import (
 	"github.com/docker/swarm-v2/api"
 )
 
+// Driver defines the structure of a driver definitions, used with volume
+// templates and networks.
+type Driver struct {
+	Name string   `yaml:"name,omitempty"`
+	Opts []string `yaml:"opts,omitempty"`
+}
+
 // VolumeTemplate is a human representation of plugin volumes mounted into the Task
 type VolumeTemplate struct {
-	Name       string   `yaml:"name,omitempty"`
-	Driver     string   `yaml:"driver,omitempty"`
-	DriverOpts []string `yaml:"opts,omitempty"`
+	Name string `yaml:"name,omitempty"`
+
+	Driver Driver `yaml:"driver,omitempty"`
+
+	// TODO(stevvooe): Allow specification of labels with yaml format.
 }
 
 // Mount is a human representation of VolumeSpec & contains volumes to be mounted into the Task
@@ -21,9 +30,6 @@ type Mount struct {
 
 	// Source directory to be mounted
 	Source string `yaml:"source,omitempty"`
-
-	// Name of plugin volume
-	VolumeName string `yaml:"name,omitempty"`
 
 	// Supported types are: bind, ephemeral, volume
 	Type string `yaml:"type,omitempty"`
@@ -43,7 +49,7 @@ type Mount struct {
 	Populate bool `yaml:"populate,omitempty"`
 
 	// VolumeTemplate describes how plugin volumes are mounted in the container
-	Template VolumeTemplate `yaml:"template,omitempty"`
+	Template *VolumeTemplate `yaml:"template,omitempty"`
 }
 
 // Mounts - defined to add To/FromProto methods
@@ -78,28 +84,12 @@ func (vm *Mount) Validate() error {
 		if vm.Populate {
 			return fmt.Errorf("for volume mount type 'bind', populate must not be set")
 		}
-		if vm.Template.Name != "" || vm.Template.Driver != "" {
+		if vm.Template != nil {
 			return fmt.Errorf("for volume mount type 'bind', template cannot be specified")
-		}
-	case "ephemeral":
-		if vm.Source != "" {
-			return fmt.Errorf("for volume mount type 'ephemeral', source cannot be specified")
-		}
-		if vm.Propagation != "" {
-			return fmt.Errorf("for volume mount type 'ephemeral', propagation cannot be specified")
-		}
-		if vm.MCSAccessMode != "" {
-			return fmt.Errorf("for volume mount type 'ephemeral', mcsaccessshared cannot be specified")
-		}
-		if vm.Template.Name != "" || vm.Template.Driver != "" {
-			return fmt.Errorf("for volume mount type 'ephemeral', template cannot be specified")
 		}
 	case "volume":
 		if vm.Source != "" {
 			return fmt.Errorf("for volume mount type 'volume', source cannot be specified")
-		}
-		if vm.VolumeName == "" {
-			return fmt.Errorf("for volume mount type 'volume', name is required")
 		}
 		if vm.Propagation != "" {
 			return fmt.Errorf("for volume mount type 'volume', propagation cannot be specified")
@@ -107,24 +97,10 @@ func (vm *Mount) Validate() error {
 		if vm.MCSAccessMode != "" {
 			return fmt.Errorf("for volume mount type 'volume', mcsaccessshared cannot be specified")
 		}
-		if vm.Template.Name != "" || vm.Template.Driver != "" {
-			return fmt.Errorf("for volume mount type 'volume', template cannot be specified")
-		}
-	case "template":
-		if vm.Source != "" {
-			return fmt.Errorf("for volume mount type 'template', source cannot be specified")
-		}
-		if vm.Propagation != "" {
-			return fmt.Errorf("for volume mount type 'template', propagation cannot be specified")
-		}
-		if vm.MCSAccessMode != "" {
-			return fmt.Errorf("for volume mount type 'template', mcsaccessshared cannot be specified")
-		}
-		if vm.VolumeName != "" {
-			return fmt.Errorf("for volume mount type 'template', name cannot be specified")
-		}
-		if vm.Template.Name == "" || vm.Template.Driver == "" {
-			return fmt.Errorf("for volume mount type 'template', a template must be specified")
+		if vm.Template != nil { // template is not required
+			if vm.Template.Name == "" {
+				return fmt.Errorf("for volume mount type 'volume', template requires a name")
+			}
 		}
 	default:
 		return fmt.Errorf("invalid volume mount type: %s", vm.Type)
@@ -173,7 +149,6 @@ func (vm *Mount) ToProto() *api.Mount {
 	apiVM := &api.Mount{}
 	apiVM.Target = vm.Target
 	apiVM.Source = vm.Source
-	apiVM.VolumeName = vm.VolumeName
 	apiVM.Writable = vm.Writable
 	apiVM.Populate = vm.Populate
 	switch strings.ToLower(vm.Propagation) {
@@ -203,21 +178,29 @@ func (vm *Mount) ToProto() *api.Mount {
 	switch strings.ToLower(vm.Type) {
 	case "bind":
 		apiVM.Type = api.MountTypeBind
-	case "ephemeral":
-		apiVM.Type = api.MountTypeEphemeral
 	case "volume":
 		apiVM.Type = api.MountTypeVolume
-	case "template":
-		apiVM.Type = api.MountTypeTemplate
 	}
 
-	opts, _ := vm.parseDriverOptions(vm.Template.DriverOpts)
-	apiVM.Template = &api.VolumeTemplate{
-		Name: vm.Template.Name,
-		DriverConfig: &api.Driver{
-			Name:    vm.Template.Driver,
-			Options: opts,
-		},
+	if vm.Template != nil {
+
+		var driver *api.Driver
+		if vm.Template.Driver.Name != "" {
+			opts, _ := vm.parseDriverOptions(vm.Template.Driver.Opts)
+			driver = &api.Driver{
+				Name:    vm.Template.Driver.Name,
+				Options: opts,
+			}
+		}
+
+		apiVM.Template = &api.VolumeTemplate{
+			Annotations: api.Annotations{
+				Name: vm.Template.Name,
+				// TODO(stevvooe): Add labels support in yaml format.
+				// Labels: vm.Template.Labels,
+			},
+			DriverConfig: driver,
+		}
 	}
 
 	return apiVM
@@ -244,7 +227,6 @@ func (vm *Mount) FromProto(apivm *api.Mount) {
 
 	vm.Target = apivm.Target
 	vm.Source = apivm.Source
-	vm.VolumeName = apivm.VolumeName
 	vm.Writable = apivm.Writable
 	vm.Populate = apivm.Populate
 
@@ -273,23 +255,25 @@ func (vm *Mount) FromProto(apivm *api.Mount) {
 	switch apivm.Type {
 	case api.MountTypeBind:
 		vm.Type = "bind"
-	case api.MountTypeEphemeral:
-		vm.Type = "ephemeral"
 	case api.MountTypeVolume:
 		vm.Type = "volume"
-	case api.MountTypeTemplate:
-		vm.Type = "template"
 	}
 
-	opts := vm.convertDriverOptionsToArray(apivm.Template.DriverConfig.Options)
-	vm.Template = VolumeTemplate{
-		Name:       apivm.Template.Name,
-		Driver:     apivm.Template.DriverConfig.Name,
-		DriverOpts: opts,
+	if apivm.Template != nil { // only send it if defined.
+		opts := vm.convertDriverOptionsToArray(apivm.Template.DriverConfig.Options)
+
+		vm.Template = new(VolumeTemplate)
+		vm.Template.Name = apivm.Template.Annotations.Name
+		vm.Template.Driver.Name = apivm.Template.DriverConfig.Name
+		vm.Template.Driver.Opts = opts
 	}
 }
 
 func (vm *Mount) parseDriverOptions(opts []string) (map[string]string, error) {
+	if len(opts) == 0 {
+		return nil, nil
+	}
+
 	parsedOptions := map[string]string{}
 	for _, opt := range opts {
 		optPair := strings.Split(opt, "=")

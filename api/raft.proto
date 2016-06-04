@@ -95,7 +95,6 @@ message StoreAction {
 		Service service = 3;
 		Task task = 4;
 		Network network = 5;
-		Volume volume = 6;
-		Cluster cluster = 7;
+		Cluster cluster = 6;
 	}
 }

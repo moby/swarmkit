@@ -23,9 +23,6 @@ type Allocator struct {
 	// network allocator.
 	netCtx *networkContext
 
-	// context for the volume allocator
-	volCtx *volumeContext
-
 	// stopChan signals to the allocator to stop running.
 	stopChan chan struct{}
 	// doneChan is closed when the allocator is finished running.
@@ -110,14 +107,6 @@ func (a *Allocator) Run(ctx context.Context) error {
 		state.EventDeleteNode{},
 		state.EventCommit{},
 	)
-	watchVolume, watchVolumeCancel := state.Watch(a.store.WatchQueue(),
-		state.EventCreateVolume{},
-		state.EventDeleteVolume{},
-		state.EventCreateTask{},
-		state.EventUpdateTask{},
-		state.EventDeleteTask{},
-		state.EventCommit{},
-	)
 
 	for _, aa := range []allocActor{
 		{
@@ -126,13 +115,6 @@ func (a *Allocator) Run(ctx context.Context) error {
 			taskVoter: networkVoter,
 			init:      a.doNetworkInit,
 			action:    a.doNetworkAlloc,
-		},
-		{
-			ch:        watchVolume,
-			cancel:    watchVolumeCancel,
-			taskVoter: volumeVoter,
-			init:      a.doVolumeInit,
-			action:    a.doVolumeAlloc,
 		},
 	} {
 		if aa.taskVoter != "" {
