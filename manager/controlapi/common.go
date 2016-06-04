@@ -34,7 +34,7 @@ func filterContainsPrefix(match string, candidates []string) bool {
 		return true
 	}
 	for _, c := range candidates {
-		if strings.HasPrefix(c, match) {
+		if strings.HasPrefix(match, c) {
 			return true
 		}
 	}
