@@ -132,6 +132,14 @@ func (c *MutableTLSCreds) Role() string {
 	return c.subject.OrganizationalUnit[0]
 }
 
+// Organization returns the O for the certificate encapsulated in this TransportAuthenticator
+func (c *MutableTLSCreds) Organization() string {
+	c.Lock()
+	defer c.Unlock()
+
+	return c.subject.Organization[0]
+}
+
 // NodeID returns the CN for the certificate encapsulated in this TransportAuthenticator
 func (c *MutableTLSCreds) NodeID() string {
 	c.Lock()
@@ -168,11 +176,19 @@ func GetAndValidateCertificateSubject(certs []tls.Certificate) (pkix.Name, error
 		if err != nil {
 			continue
 		}
-		if len(x509Cert.Subject.OrganizationalUnit) > 0 &&
-			x509Cert.Subject.CommonName != "" {
-			return x509Cert.Subject, nil
+		if len(x509Cert.Subject.OrganizationalUnit) < 1 {
+			return pkix.Name{}, fmt.Errorf("no OU found in certificate subject")
 		}
+
+		if len(x509Cert.Subject.Organization) < 1 {
+			return pkix.Name{}, fmt.Errorf("no organization found in certificate subject")
+		}
+		if x509Cert.Subject.CommonName == "" {
+			return pkix.Name{}, fmt.Errorf("no valid subject names found for TLS configuration")
+		}
+
+		return x509Cert.Subject, nil
 	}
 
-	return pkix.Name{}, fmt.Errorf("no valid subject names found for TLS configuration")
+	return pkix.Name{}, fmt.Errorf("no valid certificates found for TLS configuration")
 }

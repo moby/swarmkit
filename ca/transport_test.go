@@ -13,7 +13,7 @@ func TestNewMutableTLS(t *testing.T) {
 	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
 	defer tc.Stop()
 
-	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN", ca.ManagerRole)
+	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN", ca.ManagerRole, tc.Organization)
 	assert.NoError(t, err)
 
 	tlsConfig, err := ca.NewServerTLSConfig(cert, tc.RootCA.Pool)
@@ -28,7 +28,7 @@ func TestGetAndValidateCertificateSubject(t *testing.T) {
 	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
 	defer tc.Stop()
 
-	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN", ca.ManagerRole)
+	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN", ca.ManagerRole, tc.Organization)
 	assert.NoError(t, err)
 
 	name, err := ca.GetAndValidateCertificateSubject([]tls.Certificate{*cert})
@@ -43,9 +43,9 @@ func TestLoadNewTLSConfig(t *testing.T) {
 	defer tc.Stop()
 
 	// Create two different certs and two different TLS configs
-	cert1, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN1", ca.ManagerRole)
+	cert1, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN1", ca.ManagerRole, tc.Organization)
 	assert.NoError(t, err)
-	cert2, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN2", ca.AgentRole)
+	cert2, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN2", ca.AgentRole, tc.Organization)
 	assert.NoError(t, err)
 	tlsConfig1, err := ca.NewServerTLSConfig(cert1, tc.RootCA.Pool)
 	assert.NoError(t, err)

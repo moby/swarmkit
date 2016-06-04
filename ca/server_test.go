@@ -80,6 +80,30 @@ func TestIssueNodeCertificateManagerRenewal(t *testing.T) {
 	assert.Equal(t, role, statusResponse.Certificate.Role)
 }
 
+func TestIssueNodeCertificateAgentFromDifferentOrgRenewal(t *testing.T) {
+	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
+	defer tc.Stop()
+
+	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	assert.NoError(t, err)
+
+	// Since we're using a client that has a different Organization, this request will be treated
+	// as a new certificate request, not allowing auto-renewal
+	role := ca.ManagerRole
+	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	issueResponse, err := tc.NodeCAClients[3].IssueNodeCertificate(context.Background(), issueRequest)
+	assert.NoError(t, err)
+	assert.NotNil(t, issueResponse.NodeID)
+
+	tc.MemoryStore.View(func(readTx store.ReadTx) {
+		storeNodes, err := store.FindNodes(readTx, store.All)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, storeNodes)
+		assert.Equal(t, api.IssuanceStatePending, storeNodes[0].Certificate.Status.State)
+	})
+
+}
+
 func TestNodeCertificateAccept(t *testing.T) {
 	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
