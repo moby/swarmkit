@@ -142,15 +142,10 @@ func (s *session) start(ctx context.Context) error {
 		return err
 	}
 
-	if msg.Disconnect {
-		stream.CloseSend()
-		return errSessionDisconnect
-	}
-
 	s.sessionID = msg.SessionID
 	s.session = stream
 
-	return nil
+	return s.handleSessionMessage(ctx, msg)
 }
 
 func (s *session) heartbeat(ctx context.Context) error {
@@ -197,18 +192,25 @@ func (s *session) listen(ctx context.Context) error {
 	defer s.session.CloseSend()
 	log.G(ctx).Debugf("(*session).listen")
 	for {
-		resp, err := s.session.Recv()
+		msg, err := s.session.Recv()
 		if err != nil {
 			return err
 		}
 
-		select {
-		case s.messages <- resp:
-		case <-s.closed:
-			return errSessionClosed
-		case <-ctx.Done():
-			return ctx.Err()
+		if err := s.handleSessionMessage(ctx, msg); err != nil {
+			return err
 		}
+	}
+}
+
+func (s *session) handleSessionMessage(ctx context.Context, msg *api.SessionMessage) error {
+	select {
+	case s.messages <- msg:
+		return nil
+	case <-s.closed:
+		return errSessionClosed
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
