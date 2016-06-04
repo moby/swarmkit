@@ -31,7 +31,7 @@ var ingressNetwork = &api.Network{
 				"com.docker.swarm.internal": "true",
 			},
 		},
-		DriverConfiguration: &api.Driver{},
+		DriverConfig: &api.Driver{},
 		IPAM: &api.IPAMOptions{
 			Driver: &api.Driver{},
 			Configs: []*api.IPAMConfig{

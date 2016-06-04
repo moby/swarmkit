@@ -95,7 +95,7 @@ func (f *PluginFilter) Check(n *NodeInfo) bool {
 	container := f.t.GetContainer()
 	if container != nil {
 		for _, tv := range container.Volumes {
-			if !f.pluginExistsOnNode("Volume", tv.Spec.DriverConfiguration.Name, nodePlugins) {
+			if !f.pluginExistsOnNode("Volume", tv.Spec.DriverConfig.Name, nodePlugins) {
 				return false
 			}
 		}

@@ -46,7 +46,7 @@ var (
 				Annotations: api.Annotations{
 					Name: name,
 				},
-				DriverConfiguration: &api.Driver{
+				DriverConfig: &api.Driver{
 					Name:    driverName,
 					Options: parsedOptions,
 				},

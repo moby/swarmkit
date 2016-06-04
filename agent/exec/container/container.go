@@ -206,8 +206,8 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 func (c *containerConfig) volumeCreateRequest(vol *api.Volume) *types.VolumeCreateRequest {
 	return &types.VolumeCreateRequest{
 		Name:       vol.Spec.Annotations.Name,
-		Driver:     vol.Spec.DriverConfiguration.Name,
-		DriverOpts: vol.Spec.DriverConfiguration.Options,
+		Driver:     vol.Spec.DriverConfig.Name,
+		DriverOpts: vol.Spec.DriverConfig.Options,
 	}
 }
 
@@ -215,8 +215,8 @@ func (c *containerConfig) volumeCreateRequest(vol *api.Volume) *types.VolumeCrea
 func (c *containerConfig) serviceVolumeCreateRequest(mount *api.Mount) *types.VolumeCreateRequest {
 	return &types.VolumeCreateRequest{
 		Name:       mount.Template.Name,
-		Driver:     mount.Template.DriverConfiguration.Name,
-		DriverOpts: mount.Template.DriverConfiguration.Options,
+		Driver:     mount.Template.DriverConfig.Name,
+		DriverOpts: mount.Template.DriverConfig.Options,
 	}
 }
 

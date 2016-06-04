@@ -15,7 +15,7 @@ func createVolumeSpec(name string, driverName string) *api.VolumeSpec {
 		Annotations: api.Annotations{
 			Name: name,
 		},
-		DriverConfiguration: &api.Driver{
+		DriverConfig: &api.Driver{
 			Name: driverName,
 		},
 	}

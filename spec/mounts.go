@@ -214,7 +214,7 @@ func (vm *Mount) ToProto() *api.Mount {
 	opts, _ := vm.parseDriverOptions(vm.Template.DriverOpts)
 	apiVM.Template = &api.VolumeTemplate{
 		Name: vm.Template.Name,
-		DriverConfiguration: &api.Driver{
+		DriverConfig: &api.Driver{
 			Name:    vm.Template.Driver,
 			Options: opts,
 		},
@@ -281,10 +281,10 @@ func (vm *Mount) FromProto(apivm *api.Mount) {
 		vm.Type = "template"
 	}
 
-	opts := vm.convertDriverOptionsToArray(apivm.Template.DriverConfiguration.Options)
+	opts := vm.convertDriverOptionsToArray(apivm.Template.DriverConfig.Options)
 	vm.Template = VolumeTemplate{
 		Name:       apivm.Template.Name,
-		Driver:     apivm.Template.DriverConfiguration.Name,
+		Driver:     apivm.Template.DriverConfig.Name,
 		DriverOpts: opts,
 	}
 }
