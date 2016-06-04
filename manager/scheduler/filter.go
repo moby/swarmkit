@@ -77,7 +77,17 @@ type PluginFilter struct {
 // SetTask returns true when the filter is enabled for a given task.
 func (f *PluginFilter) SetTask(t *api.Task) bool {
 	c := t.GetContainer()
-	if (c != nil && len(c.Volumes) > 0) || len(t.Networks) > 0 {
+
+	var volumeTemplates bool
+	if c != nil {
+		for _, mount := range c.Spec.Mounts {
+			if mount.Template != nil && mount.Template.DriverConfig != nil {
+				volumeTemplates = true
+			}
+		}
+	}
+
+	if (c != nil && volumeTemplates) || len(t.Networks) > 0 {
 		f.t = t
 		return true
 	}
@@ -94,9 +104,11 @@ func (f *PluginFilter) Check(n *NodeInfo) bool {
 	// Check if all volume plugins required by task are installed on node
 	container := f.t.GetContainer()
 	if container != nil {
-		for _, tv := range container.Volumes {
-			if !f.pluginExistsOnNode("Volume", tv.Spec.DriverConfig.Name, nodePlugins) {
-				return false
+		for _, mount := range container.Spec.Mounts {
+			if mount.Template != nil {
+				if !f.pluginExistsOnNode("Volume", mount.Template.DriverConfig.Name, nodePlugins) {
+					return false
+				}
 			}
 		}
 	}

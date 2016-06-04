@@ -44,28 +44,12 @@ var (
 				}
 			}
 
-			// Volumes
-			v, err := c.ListVolumes(common.Context(cmd), &api.ListVolumesRequest{})
-			if err != nil {
-				return err
-			}
-
-			volumespecs := []*api.VolumeSpec{}
-
-			for _, j := range v.Volumes {
-				if j.Spec.Annotations.Labels["namespace"] == localSpec.Namespace {
-					volumespecs = append(volumespecs, &j.Spec)
-				}
-			}
-
 			remoteSpec := &spec.Spec{
 				Version:   localSpec.Version,
 				Namespace: localSpec.Namespace,
 				Services:  make(map[string]*spec.ServiceConfig),
-				Volumes:   make(map[string]*spec.VolumeConfig),
 			}
 			remoteSpec.FromServiceSpecs(servicespecs)
-			remoteSpec.FromVolumeSpecs(volumespecs)
 
 			diff, err := localSpec.Diff(context, "remote", "local", remoteSpec)
 			if err != nil {
