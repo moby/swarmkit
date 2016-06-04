@@ -2,17 +2,25 @@ package testutils
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	cfcsr "github.com/cloudflare/cfssl/csr"
+	"github.com/cloudflare/cfssl/helpers"
+	"github.com/cloudflare/cfssl/initca"
+	"github.com/cloudflare/cfssl/log"
 	cfsigner "github.com/cloudflare/cfssl/signer"
+	"github.com/cloudflare/cfssl/signer/local"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/identity"
+	"github.com/docker/swarm-v2/ioutils"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/docker/swarm-v2/picker"
 	"github.com/stretchr/testify/assert"
@@ -84,7 +92,7 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	paths := ca.NewConfigPaths(tempBaseDir)
 	organization := identity.NewID()
 
-	rootCA, err := ca.CreateAndWriteRootCA("swarm-test-CA", paths.RootCA)
+	rootCA, err := createAndWriteRootCA("swarm-test-CA", paths.RootCA)
 	assert.NoError(t, err)
 
 	managerConfig, err := genSecurityConfig(rootCA, ca.ManagerRole, organization, "")
@@ -233,4 +241,64 @@ func createClusterObject(t *testing.T, s *store.MemoryStore, acceptancePolicy ap
 		})
 		return nil
 	}))
+}
+
+// createAndWriteca.RootCA creates a Certificate authority for a new Swarm Cluster.
+// We're copying CreateAndWriteca.RootCA, so we can have smaller key-sizes for tests
+func createAndWriteRootCA(rootCN string, paths ca.CertPaths) (ca.RootCA, error) {
+	// Create a simple CSR for the CA using the default CA validator and policy
+	req := cfcsr.CertificateRequest{
+		CN:         rootCN,
+		KeyRequest: cfcsr.NewBasicKeyRequest(),
+		// Expiration for the root is 20 years
+		CA: &cfcsr.CAConfig{Expiry: "630720000s"},
+	}
+
+	// Generate the CA and get the certificate and private key
+	cert, _, key, err := initca.New(&req)
+	if err != nil {
+		return ca.RootCA{}, err
+	}
+
+	// Convert the key given by initca to an object to create a ca.RootCA
+	parsedKey, err := helpers.ParsePrivateKeyPEM(key)
+	if err != nil {
+		log.Errorf("failed to parse private key: %v", err)
+		return ca.RootCA{}, err
+	}
+
+	// Convert the certificate into an object to create a ca.RootCA
+	parsedCert, err := helpers.ParseCertificatePEM(cert)
+	if err != nil {
+		return ca.RootCA{}, err
+	}
+
+	// Create a Signer out of the private key
+	signer, err := local.NewSigner(parsedKey, parsedCert, cfsigner.DefaultSigAlgo(parsedKey), ca.DefaultPolicy())
+	if err != nil {
+		log.Errorf("failed to create signer: %v", err)
+		return ca.RootCA{}, err
+	}
+
+	// Ensure directory exists
+	err = os.MkdirAll(filepath.Dir(paths.Cert), 0755)
+	if err != nil {
+		return ca.RootCA{}, err
+	}
+
+	// Write the Private Key and Certificate to disk, using decent permissions
+	if err := ioutils.AtomicWriteFile(paths.Cert, cert, 0644); err != nil {
+		return ca.RootCA{}, err
+	}
+	if err := ioutils.AtomicWriteFile(paths.Key, key, 0600); err != nil {
+		return ca.RootCA{}, err
+	}
+
+	// Create a Pool with our Root CA Certificate
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(cert) {
+		return ca.RootCA{}, fmt.Errorf("failed to append certificate to cert pool")
+	}
+
+	return ca.RootCA{Signer: signer, Key: key, Cert: cert, Pool: pool}, nil
 }
