@@ -8,6 +8,7 @@ import (
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
 	"github.com/docker/swarm-v2/cmd/swarmctl/network"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -25,7 +26,18 @@ var (
 				return err
 			}
 
-			r, err := c.ListServices(common.Context(cmd), &api.ListServicesRequest{})
+			// retrieve base64 auth token
+			encodedAuth, err := cmd.Flags().GetString("registry-auth")
+			if err != nil {
+				return err
+			}
+
+			md := metadata.Pairs(
+				"x-registry-auth", encodedAuth,
+			)
+			ctx := metadata.NewContext(common.Context(cmd), md)
+
+			r, err := c.ListServices(ctx, &api.ListServicesRequest{})
 			if err != nil {
 				return err
 			}
@@ -39,11 +51,12 @@ var (
 			}
 
 			for _, serviceSpec := range s.ServiceSpecs() {
-				if err := network.ResolveServiceNetworks(common.Context(cmd), c, serviceSpec); err != nil {
+				if err := network.ResolveServiceNetworks(ctx, c, serviceSpec); err != nil {
 					return err
 				}
+
 				if service, ok := services[serviceSpec.Annotations.Name]; ok && !reflect.DeepEqual(service.Spec, serviceSpec) {
-					r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
+					r, err := c.UpdateService(ctx, &api.UpdateServiceRequest{
 						ServiceID:      service.ID,
 						ServiceVersion: &service.Meta.Version,
 						Spec:           serviceSpec,
@@ -55,7 +68,7 @@ var (
 					fmt.Printf("%s: %s - UPDATED\n", serviceSpec.Annotations.Name, r.Service.ID)
 					delete(services, serviceSpec.Annotations.Name)
 				} else if !ok {
-					r, err := c.CreateService(common.Context(cmd), &api.CreateServiceRequest{Spec: serviceSpec})
+					r, err := c.CreateService(ctx, &api.CreateServiceRequest{Spec: serviceSpec})
 					if err != nil {
 						fmt.Printf("%s: %v\n", serviceSpec.Annotations.Name, err)
 						continue
@@ -68,7 +81,7 @@ var (
 			}
 
 			for _, service := range services {
-				_, err := c.RemoveService(common.Context(cmd), &api.RemoveServiceRequest{ServiceID: service.ID})
+				_, err := c.RemoveService(ctx, &api.RemoveServiceRequest{ServiceID: service.ID})
 				if err != nil {
 
 					return err
@@ -83,4 +96,5 @@ var (
 
 func init() {
 	deployCmd.Flags().StringP("file", "f", "docker.yml", "Spec file to deploy")
+	deployCmd.Flags().String("registry-auth", "", "Auth token to use for registry login")
 }
