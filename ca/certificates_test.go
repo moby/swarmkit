@@ -252,7 +252,7 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 
 	// Copy the current RootCA without the signer
 	rca := ca.RootCA{Cert: tc.RootCA.Cert, Pool: tc.RootCA.Pool}
-	cert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.Paths.Node, ca.ManagerRole, tc.Picker, nil)
+	cert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.Paths.Node, ca.ManagerRole, "", tc.Picker, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 	perms, err := permbits.Stat(tc.Paths.Node.Cert)
@@ -283,7 +283,7 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	certs, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker, nil)
+	certs, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, "", tc.RootCA.Pool, tc.Picker, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 
@@ -295,7 +295,7 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	assert.True(t, time.Now().Add(time.Minute*50).Before(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.ManagerRole)
 
-	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, ca.AgentRole, tc.RootCA.Pool, tc.Picker, nil)
+	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, ca.AgentRole, "", tc.RootCA.Pool, tc.Picker, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
@@ -321,7 +321,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker, nil)
+		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, "", tc.RootCA.Pool, tc.Picker, nil)
 		completed <- err
 	}()
 
@@ -353,7 +353,7 @@ func TestGetRemoteSignedCertificateRejected(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, tc.RootCA.Pool, tc.Picker, nil)
+		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, "", tc.RootCA.Pool, tc.Picker, nil)
 		completed <- err
 	}()
 
