@@ -292,6 +292,16 @@ func TestListServices(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Services))
 
+	// List with an ID prefix.
+	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
+		Filters: &api.ListServicesRequest_Filters{
+			IDPrefixes: []string{s1.ID[0:4]},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(r.Services))
+	assert.Equal(t, s1.ID, r.Services[0].ID)
+
 	// List with simple filter.
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
 		Filters: &api.ListServicesRequest_Filters{
