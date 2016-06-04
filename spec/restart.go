@@ -5,9 +5,8 @@ import (
 	"time"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 )
-
-const defaultRestartDelay = 5 * time.Second
 
 // RestartConfiguration controls the rate and policy of restarts.
 type RestartConfiguration struct {
@@ -61,13 +60,15 @@ func (u *RestartConfiguration) ToProto() *api.RestartPolicy {
 		p.Condition = api.RestartOnAny
 	}
 
-	if u.Delay == "" {
-		p.Delay = defaultRestartDelay
-	} else {
-		p.Delay, _ = time.ParseDuration(u.Delay)
+	if u.Delay != "" {
+		delay, _ := time.ParseDuration(u.Delay)
+		p.Delay = ptypes.DurationProto(delay)
 	}
 
-	p.Window, _ = time.ParseDuration(u.Window)
+	if u.Window != "" {
+		window, _ := time.ParseDuration(u.Window)
+		p.Window = ptypes.DurationProto(window)
+	}
 
 	return p
 }
@@ -79,9 +80,17 @@ func (u *RestartConfiguration) FromProto(p *api.RestartPolicy) {
 	}
 
 	*u = RestartConfiguration{
-		Delay:    p.Delay.String(),
 		Attempts: p.MaxAttempts,
-		Window:   p.Window.String(),
+	}
+
+	if p.Delay != nil {
+		delay, _ := ptypes.Duration(p.Delay)
+		u.Delay = delay.String()
+	}
+
+	if p.Window != nil {
+		window, _ := ptypes.Duration(p.Window)
+		u.Window = window.String()
 	}
 
 	switch p.Condition {

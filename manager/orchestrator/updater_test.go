@@ -7,6 +7,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -67,9 +68,8 @@ func TestUpdater(t *testing.T) {
 			RuntimeSpec: &api.ServiceSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: "v:1",
-
 					// This won't apply in this test because we set the old tasks to DEAD.
-					StopGracePeriod: time.Hour,
+					StopGracePeriod: *ptypes.DurationProto(time.Hour),
 				},
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -116,7 +116,7 @@ func TestUpdater(t *testing.T) {
 	service.Spec.GetContainer().Image = "v:4"
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
-		Delay:       10 * time.Millisecond,
+		Delay:       *ptypes.DurationProto(10 * time.Millisecond),
 	}
 	updater = NewUpdater(s, NewRestartSupervisor(s))
 	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
@@ -163,9 +163,8 @@ func TestUpdaterStopGracePeriod(t *testing.T) {
 			},
 			RuntimeSpec: &api.ServiceSpec_Container{
 				Container: &api.ContainerSpec{
-					Image: "v:1",
-
-					StopGracePeriod: 100 * time.Millisecond,
+					Image:           "v:1",
+					StopGracePeriod: *ptypes.DurationProto(100 * time.Millisecond),
 				},
 			},
 			Mode: &api.ServiceSpec_Replicated{

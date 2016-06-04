@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 )
 
 // UpdateConfiguration controls the rate and policy of updates.
@@ -34,7 +35,8 @@ func (u *UpdateConfiguration) ToProto() *api.UpdateConfig {
 		Parallelism: u.Parallelism,
 	}
 	if u.Delay != "" {
-		p.Delay, _ = time.ParseDuration(u.Delay)
+		delay, _ := time.ParseDuration(u.Delay)
+		p.Delay = *ptypes.DurationProto(delay)
 	}
 	return p
 }
@@ -45,8 +47,10 @@ func (u *UpdateConfiguration) FromProto(p *api.UpdateConfig) {
 		return
 	}
 
+	delay, _ := ptypes.Duration(&p.Delay)
+
 	*u = UpdateConfiguration{
 		Parallelism: p.Parallelism,
-		Delay:       p.Delay.String(),
+		Delay:       delay.String(),
 	}
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/docker/swarm-v2/manager/state/watch"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
 
@@ -633,7 +634,7 @@ func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*a
 	log.G(ctx).WithFields(fields).Debugf("")
 
 	period, err := d.nodes.Heartbeat(nodeID, r.SessionID)
-	return &api.HeartbeatResponse{Period: period}, err
+	return &api.HeartbeatResponse{Period: *ptypes.DurationProto(period)}, err
 }
 
 func (d *Dispatcher) getManagers() []*api.WeightedPeer {

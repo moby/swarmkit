@@ -3,6 +3,7 @@ syntax = "proto3";
 package docker.cluster.api;
 
 import "timestamp/timestamp.proto"; // TODO(stevvooe): use our own until we fix gogoproto/deepcopy
+import "duration/duration.proto"; // TODO(stevvooe): use our own until we fix gogoproto/deepcopy
 import "gogoproto/gogo.proto";
 
 // This file contains types that are common to objects and spec or that are not
@@ -196,7 +197,7 @@ message RestartPolicy {
 	RestartCondition condition = 1;
 
 	// Delay between restart attempts
-	uint64 delay = 2 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
+	Duration delay = 2;
 
 	// MaxAttempts is the maximum number of restarts to attempt on an
 	// instance before giving up. Ignored if 0.
@@ -204,7 +205,7 @@ message RestartPolicy {
 
 	// Window is the time window used to evaluate the restart policy.
 	// The time window is unbounded if this is 0.
-	uint64 window = 4 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
+	Duration window = 4;
 }
 
 // UpdateConfig specifies the rate and policy of updates.
@@ -215,7 +216,7 @@ message UpdateConfig {
 	uint64 parallelism = 1;
 
 	// Amount of time between updates.
-	uint64 delay = 2 [(gogoproto.customtype) = "time.Duration", (gogoproto.nullable) = false];
+	Duration delay = 2 [(gogoproto.nullable) = false];
 }
 
 // TaskState enumerates the states that a task progresses through within an
