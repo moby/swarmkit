@@ -676,16 +676,20 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 	}
 	log := log.G(ctx).WithFields(fields)
 
-	nodeUpdates, cancel := state.Watch(d.store.WatchQueue(),
-		state.EventUpdateNode{Node: &api.Node{ID: nodeID},
-			Checks: []state.NodeCheckFunc{state.NodeCheckID}},
-	)
-	defer cancel()
-
 	var nodeObj *api.Node
-	d.store.View(func(readTx store.ReadTx) {
+	nodeUpdates, cancel, err := store.ViewAndWatch(d.store, func(readTx store.ReadTx) error {
 		nodeObj = store.GetNode(readTx, nodeID)
-	})
+		return nil
+	}, state.EventUpdateNode{Node: &api.Node{ID: nodeID},
+		Checks: []state.NodeCheckFunc{state.NodeCheckID}},
+	)
+	if cancel != nil {
+		defer cancel()
+	}
+
+	if err != nil {
+		log.WithError(err).Error("ViewAndWatch Node failed")
+	}
 
 	if _, err = d.nodes.GetWithSession(nodeID, sessionID); err != nil {
 		return err
