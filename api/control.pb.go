@@ -333,88 +333,13 @@ func (m *ListNetworksResponse) Reset()                    { *m = ListNetworksRes
 func (*ListNetworksResponse) ProtoMessage()               {}
 func (*ListNetworksResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{29} }
 
-type CreateVolumeRequest struct {
-	Spec *VolumeSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
-}
-
-func (m *CreateVolumeRequest) Reset()                    { *m = CreateVolumeRequest{} }
-func (*CreateVolumeRequest) ProtoMessage()               {}
-func (*CreateVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{30} }
-
-type CreateVolumeResponse struct {
-	Volume *Volume `protobuf:"bytes,1,opt,name=volume" json:"volume,omitempty"`
-}
-
-func (m *CreateVolumeResponse) Reset()                    { *m = CreateVolumeResponse{} }
-func (*CreateVolumeResponse) ProtoMessage()               {}
-func (*CreateVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{31} }
-
-type GetVolumeRequest struct {
-	VolumeID string `protobuf:"bytes,1,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
-}
-
-func (m *GetVolumeRequest) Reset()                    { *m = GetVolumeRequest{} }
-func (*GetVolumeRequest) ProtoMessage()               {}
-func (*GetVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{32} }
-
-type GetVolumeResponse struct {
-	Volume *Volume `protobuf:"bytes,1,opt,name=volume" json:"volume,omitempty"`
-}
-
-func (m *GetVolumeResponse) Reset()                    { *m = GetVolumeResponse{} }
-func (*GetVolumeResponse) ProtoMessage()               {}
-func (*GetVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{33} }
-
-type RemoveVolumeRequest struct {
-	VolumeID string `protobuf:"bytes,1,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
-}
-
-func (m *RemoveVolumeRequest) Reset()                    { *m = RemoveVolumeRequest{} }
-func (*RemoveVolumeRequest) ProtoMessage()               {}
-func (*RemoveVolumeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{34} }
-
-type RemoveVolumeResponse struct {
-}
-
-func (m *RemoveVolumeResponse) Reset()                    { *m = RemoveVolumeResponse{} }
-func (*RemoveVolumeResponse) ProtoMessage()               {}
-func (*RemoveVolumeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{35} }
-
-type ListVolumesRequest struct {
-	Filters *ListVolumesRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
-}
-
-func (m *ListVolumesRequest) Reset()                    { *m = ListVolumesRequest{} }
-func (*ListVolumesRequest) ProtoMessage()               {}
-func (*ListVolumesRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{36} }
-
-type ListVolumesRequest_Filters struct {
-	Names      []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
-	IDPrefixes []string          `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
-	Labels     map[string]string `protobuf:"bytes,3,rep,name=labels" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-}
-
-func (m *ListVolumesRequest_Filters) Reset()      { *m = ListVolumesRequest_Filters{} }
-func (*ListVolumesRequest_Filters) ProtoMessage() {}
-func (*ListVolumesRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{36, 0}
-}
-
-type ListVolumesResponse struct {
-	Volumes []*Volume `protobuf:"bytes,1,rep,name=volumes" json:"volumes,omitempty"`
-}
-
-func (m *ListVolumesResponse) Reset()                    { *m = ListVolumesResponse{} }
-func (*ListVolumesResponse) ProtoMessage()               {}
-func (*ListVolumesResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{37} }
-
 type ListManagersRequest struct {
 	Filters *ListManagersRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
 }
 
 func (m *ListManagersRequest) Reset()                    { *m = ListManagersRequest{} }
 func (*ListManagersRequest) ProtoMessage()               {}
-func (*ListManagersRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{38} }
+func (*ListManagersRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{30} }
 
 type ListManagersRequest_Filters struct {
 	Names      []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
@@ -425,7 +350,7 @@ type ListManagersRequest_Filters struct {
 func (m *ListManagersRequest_Filters) Reset()      { *m = ListManagersRequest_Filters{} }
 func (*ListManagersRequest_Filters) ProtoMessage() {}
 func (*ListManagersRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{38, 0}
+	return fileDescriptorControl, []int{30, 0}
 }
 
 type ListManagersResponse struct {
@@ -434,7 +359,7 @@ type ListManagersResponse struct {
 
 func (m *ListManagersResponse) Reset()                    { *m = ListManagersResponse{} }
 func (*ListManagersResponse) ProtoMessage()               {}
-func (*ListManagersResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{39} }
+func (*ListManagersResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{31} }
 
 type RemoveManagerRequest struct {
 	ManagerID string `protobuf:"bytes,1,opt,name=manager_id,json=managerId,proto3" json:"manager_id,omitempty"`
@@ -442,14 +367,14 @@ type RemoveManagerRequest struct {
 
 func (m *RemoveManagerRequest) Reset()                    { *m = RemoveManagerRequest{} }
 func (*RemoveManagerRequest) ProtoMessage()               {}
-func (*RemoveManagerRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{40} }
+func (*RemoveManagerRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{32} }
 
 type RemoveManagerResponse struct {
 }
 
 func (m *RemoveManagerResponse) Reset()                    { *m = RemoveManagerResponse{} }
 func (*RemoveManagerResponse) ProtoMessage()               {}
-func (*RemoveManagerResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{41} }
+func (*RemoveManagerResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{33} }
 
 type GetClusterRequest struct {
 	ClusterID string `protobuf:"bytes,1,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
@@ -457,7 +382,7 @@ type GetClusterRequest struct {
 
 func (m *GetClusterRequest) Reset()                    { *m = GetClusterRequest{} }
 func (*GetClusterRequest) ProtoMessage()               {}
-func (*GetClusterRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{42} }
+func (*GetClusterRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{34} }
 
 type GetClusterResponse struct {
 	Cluster *Cluster `protobuf:"bytes,1,opt,name=cluster" json:"cluster,omitempty"`
@@ -465,7 +390,7 @@ type GetClusterResponse struct {
 
 func (m *GetClusterResponse) Reset()                    { *m = GetClusterResponse{} }
 func (*GetClusterResponse) ProtoMessage()               {}
-func (*GetClusterResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{43} }
+func (*GetClusterResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{35} }
 
 type ListClustersRequest struct {
 	Filters *ListClustersRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
@@ -473,7 +398,7 @@ type ListClustersRequest struct {
 
 func (m *ListClustersRequest) Reset()                    { *m = ListClustersRequest{} }
 func (*ListClustersRequest) ProtoMessage()               {}
-func (*ListClustersRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{44} }
+func (*ListClustersRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{36} }
 
 type ListClustersRequest_Filters struct {
 	Names      []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
@@ -484,7 +409,7 @@ type ListClustersRequest_Filters struct {
 func (m *ListClustersRequest_Filters) Reset()      { *m = ListClustersRequest_Filters{} }
 func (*ListClustersRequest_Filters) ProtoMessage() {}
 func (*ListClustersRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{44, 0}
+	return fileDescriptorControl, []int{36, 0}
 }
 
 type ListClustersResponse struct {
@@ -493,7 +418,7 @@ type ListClustersResponse struct {
 
 func (m *ListClustersResponse) Reset()                    { *m = ListClustersResponse{} }
 func (*ListClustersResponse) ProtoMessage()               {}
-func (*ListClustersResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{45} }
+func (*ListClustersResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{37} }
 
 type UpdateClusterRequest struct {
 	// ClusterID is the cluster ID to update.
@@ -506,7 +431,7 @@ type UpdateClusterRequest struct {
 
 func (m *UpdateClusterRequest) Reset()                    { *m = UpdateClusterRequest{} }
 func (*UpdateClusterRequest) ProtoMessage()               {}
-func (*UpdateClusterRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{46} }
+func (*UpdateClusterRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{38} }
 
 type UpdateClusterResponse struct {
 	Cluster *Cluster `protobuf:"bytes,1,opt,name=cluster" json:"cluster,omitempty"`
@@ -514,7 +439,7 @@ type UpdateClusterResponse struct {
 
 func (m *UpdateClusterResponse) Reset()                    { *m = UpdateClusterResponse{} }
 func (*UpdateClusterResponse) ProtoMessage()               {}
-func (*UpdateClusterResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{47} }
+func (*UpdateClusterResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{39} }
 
 func init() {
 	proto.RegisterType((*GetNodeRequest)(nil), "docker.cluster.api.GetNodeRequest")
@@ -551,15 +476,6 @@ func init() {
 	proto.RegisterType((*ListNetworksRequest)(nil), "docker.cluster.api.ListNetworksRequest")
 	proto.RegisterType((*ListNetworksRequest_Filters)(nil), "docker.cluster.api.ListNetworksRequest.Filters")
 	proto.RegisterType((*ListNetworksResponse)(nil), "docker.cluster.api.ListNetworksResponse")
-	proto.RegisterType((*CreateVolumeRequest)(nil), "docker.cluster.api.CreateVolumeRequest")
-	proto.RegisterType((*CreateVolumeResponse)(nil), "docker.cluster.api.CreateVolumeResponse")
-	proto.RegisterType((*GetVolumeRequest)(nil), "docker.cluster.api.GetVolumeRequest")
-	proto.RegisterType((*GetVolumeResponse)(nil), "docker.cluster.api.GetVolumeResponse")
-	proto.RegisterType((*RemoveVolumeRequest)(nil), "docker.cluster.api.RemoveVolumeRequest")
-	proto.RegisterType((*RemoveVolumeResponse)(nil), "docker.cluster.api.RemoveVolumeResponse")
-	proto.RegisterType((*ListVolumesRequest)(nil), "docker.cluster.api.ListVolumesRequest")
-	proto.RegisterType((*ListVolumesRequest_Filters)(nil), "docker.cluster.api.ListVolumesRequest.Filters")
-	proto.RegisterType((*ListVolumesResponse)(nil), "docker.cluster.api.ListVolumesResponse")
 	proto.RegisterType((*ListManagersRequest)(nil), "docker.cluster.api.ListManagersRequest")
 	proto.RegisterType((*ListManagersRequest_Filters)(nil), "docker.cluster.api.ListManagersRequest.Filters")
 	proto.RegisterType((*ListManagersResponse)(nil), "docker.cluster.api.ListManagersResponse")
@@ -704,38 +620,6 @@ func (p *authenticatedWrapperControlServer) RemoveNetwork(ctx context.Context, r
 		return nil, err
 	}
 	return p.local.RemoveNetwork(ctx, r)
-}
-
-func (p *authenticatedWrapperControlServer) GetVolume(ctx context.Context, r *GetVolumeRequest) (*GetVolumeResponse, error) {
-
-	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
-		return nil, err
-	}
-	return p.local.GetVolume(ctx, r)
-}
-
-func (p *authenticatedWrapperControlServer) ListVolumes(ctx context.Context, r *ListVolumesRequest) (*ListVolumesResponse, error) {
-
-	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
-		return nil, err
-	}
-	return p.local.ListVolumes(ctx, r)
-}
-
-func (p *authenticatedWrapperControlServer) CreateVolume(ctx context.Context, r *CreateVolumeRequest) (*CreateVolumeResponse, error) {
-
-	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
-		return nil, err
-	}
-	return p.local.CreateVolume(ctx, r)
-}
-
-func (p *authenticatedWrapperControlServer) RemoveVolume(ctx context.Context, r *RemoveVolumeRequest) (*RemoveVolumeResponse, error) {
-
-	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
-		return nil, err
-	}
-	return p.local.RemoveVolume(ctx, r)
 }
 
 func (p *authenticatedWrapperControlServer) GetCluster(ctx context.Context, r *GetClusterRequest) (*GetClusterResponse, error) {
@@ -1295,136 +1179,6 @@ func (m *ListNetworksResponse) Copy() *ListNetworksResponse {
 		o.Networks = make([]*Network, 0, len(m.Networks))
 		for _, v := range m.Networks {
 			o.Networks = append(o.Networks, v.Copy())
-		}
-	}
-
-	return o
-}
-
-func (m *CreateVolumeRequest) Copy() *CreateVolumeRequest {
-	if m == nil {
-		return nil
-	}
-
-	o := &CreateVolumeRequest{
-		Spec: m.Spec.Copy(),
-	}
-
-	return o
-}
-
-func (m *CreateVolumeResponse) Copy() *CreateVolumeResponse {
-	if m == nil {
-		return nil
-	}
-
-	o := &CreateVolumeResponse{
-		Volume: m.Volume.Copy(),
-	}
-
-	return o
-}
-
-func (m *GetVolumeRequest) Copy() *GetVolumeRequest {
-	if m == nil {
-		return nil
-	}
-
-	o := &GetVolumeRequest{
-		VolumeID: m.VolumeID,
-	}
-
-	return o
-}
-
-func (m *GetVolumeResponse) Copy() *GetVolumeResponse {
-	if m == nil {
-		return nil
-	}
-
-	o := &GetVolumeResponse{
-		Volume: m.Volume.Copy(),
-	}
-
-	return o
-}
-
-func (m *RemoveVolumeRequest) Copy() *RemoveVolumeRequest {
-	if m == nil {
-		return nil
-	}
-
-	o := &RemoveVolumeRequest{
-		VolumeID: m.VolumeID,
-	}
-
-	return o
-}
-
-func (m *RemoveVolumeResponse) Copy() *RemoveVolumeResponse {
-	if m == nil {
-		return nil
-	}
-
-	o := &RemoveVolumeResponse{}
-
-	return o
-}
-
-func (m *ListVolumesRequest) Copy() *ListVolumesRequest {
-	if m == nil {
-		return nil
-	}
-
-	o := &ListVolumesRequest{
-		Filters: m.Filters.Copy(),
-	}
-
-	return o
-}
-
-func (m *ListVolumesRequest_Filters) Copy() *ListVolumesRequest_Filters {
-	if m == nil {
-		return nil
-	}
-
-	o := &ListVolumesRequest_Filters{}
-
-	if m.Names != nil {
-		o.Names = make([]string, 0, len(m.Names))
-		for _, v := range m.Names {
-			o.Names = append(o.Names, v)
-		}
-	}
-
-	if m.IDPrefixes != nil {
-		o.IDPrefixes = make([]string, 0, len(m.IDPrefixes))
-		for _, v := range m.IDPrefixes {
-			o.IDPrefixes = append(o.IDPrefixes, v)
-		}
-	}
-
-	if m.Labels != nil {
-		o.Labels = make(map[string]string)
-		for k, v := range m.Labels {
-			o.Labels[k] = v
-		}
-	}
-
-	return o
-}
-
-func (m *ListVolumesResponse) Copy() *ListVolumesResponse {
-	if m == nil {
-		return nil
-	}
-
-	o := &ListVolumesResponse{}
-
-	if m.Volumes != nil {
-		o.Volumes = make([]*Volume, 0, len(m.Volumes))
-		for _, v := range m.Volumes {
-			o.Volumes = append(o.Volumes, v.Copy())
 		}
 	}
 
@@ -2071,119 +1825,6 @@ func (this *ListNetworksResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *CreateVolumeRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.CreateVolumeRequest{")
-	if this.Spec != nil {
-		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *CreateVolumeResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.CreateVolumeResponse{")
-	if this.Volume != nil {
-		s = append(s, "Volume: "+fmt.Sprintf("%#v", this.Volume)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *GetVolumeRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.GetVolumeRequest{")
-	s = append(s, "VolumeID: "+fmt.Sprintf("%#v", this.VolumeID)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *GetVolumeResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.GetVolumeResponse{")
-	if this.Volume != nil {
-		s = append(s, "Volume: "+fmt.Sprintf("%#v", this.Volume)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RemoveVolumeRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.RemoveVolumeRequest{")
-	s = append(s, "VolumeID: "+fmt.Sprintf("%#v", this.VolumeID)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *RemoveVolumeResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&api.RemoveVolumeResponse{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ListVolumesRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.ListVolumesRequest{")
-	if this.Filters != nil {
-		s = append(s, "Filters: "+fmt.Sprintf("%#v", this.Filters)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ListVolumesRequest_Filters) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&api.ListVolumesRequest_Filters{")
-	s = append(s, "Names: "+fmt.Sprintf("%#v", this.Names)+",\n")
-	s = append(s, "IDPrefixes: "+fmt.Sprintf("%#v", this.IDPrefixes)+",\n")
-	keysForLabels := make([]string, 0, len(this.Labels))
-	for k, _ := range this.Labels {
-		keysForLabels = append(keysForLabels, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
-	mapStringForLabels := "map[string]string{"
-	for _, k := range keysForLabels {
-		mapStringForLabels += fmt.Sprintf("%#v: %#v,", k, this.Labels[k])
-	}
-	mapStringForLabels += "}"
-	if this.Labels != nil {
-		s = append(s, "Labels: "+mapStringForLabels+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *ListVolumesResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.ListVolumesResponse{")
-	if this.Volumes != nil {
-		s = append(s, "Volumes: "+fmt.Sprintf("%#v", this.Volumes)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
 func (this *ListManagersRequest) GoString() string {
 	if this == nil {
 		return "nil"
@@ -2401,10 +2042,6 @@ type ControlClient interface {
 	ListNetworks(ctx context.Context, in *ListNetworksRequest, opts ...grpc.CallOption) (*ListNetworksResponse, error)
 	CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CreateNetworkResponse, error)
 	RemoveNetwork(ctx context.Context, in *RemoveNetworkRequest, opts ...grpc.CallOption) (*RemoveNetworkResponse, error)
-	GetVolume(ctx context.Context, in *GetVolumeRequest, opts ...grpc.CallOption) (*GetVolumeResponse, error)
-	ListVolumes(ctx context.Context, in *ListVolumesRequest, opts ...grpc.CallOption) (*ListVolumesResponse, error)
-	CreateVolume(ctx context.Context, in *CreateVolumeRequest, opts ...grpc.CallOption) (*CreateVolumeResponse, error)
-	RemoveVolume(ctx context.Context, in *RemoveVolumeRequest, opts ...grpc.CallOption) (*RemoveVolumeResponse, error)
 	GetCluster(ctx context.Context, in *GetClusterRequest, opts ...grpc.CallOption) (*GetClusterResponse, error)
 	ListClusters(ctx context.Context, in *ListClustersRequest, opts ...grpc.CallOption) (*ListClustersResponse, error)
 	UpdateCluster(ctx context.Context, in *UpdateClusterRequest, opts ...grpc.CallOption) (*UpdateClusterResponse, error)
@@ -2553,42 +2190,6 @@ func (c *controlClient) RemoveNetwork(ctx context.Context, in *RemoveNetworkRequ
 	return out, nil
 }
 
-func (c *controlClient) GetVolume(ctx context.Context, in *GetVolumeRequest, opts ...grpc.CallOption) (*GetVolumeResponse, error) {
-	out := new(GetVolumeResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Control/GetVolume", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *controlClient) ListVolumes(ctx context.Context, in *ListVolumesRequest, opts ...grpc.CallOption) (*ListVolumesResponse, error) {
-	out := new(ListVolumesResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Control/ListVolumes", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *controlClient) CreateVolume(ctx context.Context, in *CreateVolumeRequest, opts ...grpc.CallOption) (*CreateVolumeResponse, error) {
-	out := new(CreateVolumeResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Control/CreateVolume", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *controlClient) RemoveVolume(ctx context.Context, in *RemoveVolumeRequest, opts ...grpc.CallOption) (*RemoveVolumeResponse, error) {
-	out := new(RemoveVolumeResponse)
-	err := grpc.Invoke(ctx, "/docker.cluster.api.Control/RemoveVolume", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *controlClient) GetCluster(ctx context.Context, in *GetClusterRequest, opts ...grpc.CallOption) (*GetClusterResponse, error) {
 	out := new(GetClusterResponse)
 	err := grpc.Invoke(ctx, "/docker.cluster.api.Control/GetCluster", in, out, c.cc, opts...)
@@ -2634,10 +2235,6 @@ type ControlServer interface {
 	ListNetworks(context.Context, *ListNetworksRequest) (*ListNetworksResponse, error)
 	CreateNetwork(context.Context, *CreateNetworkRequest) (*CreateNetworkResponse, error)
 	RemoveNetwork(context.Context, *RemoveNetworkRequest) (*RemoveNetworkResponse, error)
-	GetVolume(context.Context, *GetVolumeRequest) (*GetVolumeResponse, error)
-	ListVolumes(context.Context, *ListVolumesRequest) (*ListVolumesResponse, error)
-	CreateVolume(context.Context, *CreateVolumeRequest) (*CreateVolumeResponse, error)
-	RemoveVolume(context.Context, *RemoveVolumeRequest) (*RemoveVolumeResponse, error)
 	GetCluster(context.Context, *GetClusterRequest) (*GetClusterResponse, error)
 	ListClusters(context.Context, *ListClustersRequest) (*ListClustersResponse, error)
 	UpdateCluster(context.Context, *UpdateClusterRequest) (*UpdateClusterResponse, error)
@@ -2917,78 +2514,6 @@ func _Control_RemoveNetwork_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Control_GetVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetVolumeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ControlServer).GetVolume(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/docker.cluster.api.Control/GetVolume",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ControlServer).GetVolume(ctx, req.(*GetVolumeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Control_ListVolumes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListVolumesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ControlServer).ListVolumes(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/docker.cluster.api.Control/ListVolumes",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ControlServer).ListVolumes(ctx, req.(*ListVolumesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Control_CreateVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateVolumeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ControlServer).CreateVolume(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/docker.cluster.api.Control/CreateVolume",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ControlServer).CreateVolume(ctx, req.(*CreateVolumeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Control_RemoveVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveVolumeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ControlServer).RemoveVolume(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/docker.cluster.api.Control/RemoveVolume",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ControlServer).RemoveVolume(ctx, req.(*RemoveVolumeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Control_GetCluster_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetClusterRequest)
 	if err := dec(in); err != nil {
@@ -3106,22 +2631,6 @@ var _Control_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveNetwork",
 			Handler:    _Control_RemoveNetwork_Handler,
-		},
-		{
-			MethodName: "GetVolume",
-			Handler:    _Control_GetVolume_Handler,
-		},
-		{
-			MethodName: "ListVolumes",
-			Handler:    _Control_ListVolumes_Handler,
-		},
-		{
-			MethodName: "CreateVolume",
-			Handler:    _Control_CreateVolume_Handler,
-		},
-		{
-			MethodName: "RemoveVolume",
-			Handler:    _Control_RemoveVolume_Handler,
 		},
 		{
 			MethodName: "GetCluster",
@@ -4284,279 +3793,6 @@ func (m *ListNetworksResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *CreateVolumeRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *CreateVolumeRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Spec != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintControl(data, i, uint64(m.Spec.Size()))
-		n19, err := m.Spec.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n19
-	}
-	return i, nil
-}
-
-func (m *CreateVolumeResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *CreateVolumeResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Volume != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintControl(data, i, uint64(m.Volume.Size()))
-		n20, err := m.Volume.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n20
-	}
-	return i, nil
-}
-
-func (m *GetVolumeRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *GetVolumeRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.VolumeID) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintControl(data, i, uint64(len(m.VolumeID)))
-		i += copy(data[i:], m.VolumeID)
-	}
-	return i, nil
-}
-
-func (m *GetVolumeResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *GetVolumeResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Volume != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintControl(data, i, uint64(m.Volume.Size()))
-		n21, err := m.Volume.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n21
-	}
-	return i, nil
-}
-
-func (m *RemoveVolumeRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *RemoveVolumeRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.VolumeID) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintControl(data, i, uint64(len(m.VolumeID)))
-		i += copy(data[i:], m.VolumeID)
-	}
-	return i, nil
-}
-
-func (m *RemoveVolumeResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *RemoveVolumeResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func (m *ListVolumesRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *ListVolumesRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Filters != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
-		n22, err := m.Filters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n22
-	}
-	return i, nil
-}
-
-func (m *ListVolumesRequest_Filters) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *ListVolumesRequest_Filters) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Names) > 0 {
-		for _, s := range m.Names {
-			data[i] = 0xa
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
-	}
-	if len(m.IDPrefixes) > 0 {
-		for _, s := range m.IDPrefixes {
-			data[i] = 0x12
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
-	}
-	if len(m.Labels) > 0 {
-		for k, _ := range m.Labels {
-			data[i] = 0x1a
-			i++
-			v := m.Labels[k]
-			mapSize := 1 + len(k) + sovControl(uint64(len(k))) + 1 + len(v) + sovControl(uint64(len(v)))
-			i = encodeVarintControl(data, i, uint64(mapSize))
-			data[i] = 0xa
-			i++
-			i = encodeVarintControl(data, i, uint64(len(k)))
-			i += copy(data[i:], k)
-			data[i] = 0x12
-			i++
-			i = encodeVarintControl(data, i, uint64(len(v)))
-			i += copy(data[i:], v)
-		}
-	}
-	return i, nil
-}
-
-func (m *ListVolumesResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *ListVolumesResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Volumes) > 0 {
-		for _, msg := range m.Volumes {
-			data[i] = 0xa
-			i++
-			i = encodeVarintControl(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	return i, nil
-}
-
 func (m *ListManagersRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -4576,11 +3812,11 @@ func (m *ListManagersRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
-		n23, err := m.Filters.MarshalTo(data[i:])
+		n19, err := m.Filters.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n23
+		i += n19
 	}
 	return i, nil
 }
@@ -4765,11 +4001,11 @@ func (m *GetClusterResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Cluster.Size()))
-		n24, err := m.Cluster.MarshalTo(data[i:])
+		n20, err := m.Cluster.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n24
+		i += n20
 	}
 	return i, nil
 }
@@ -4793,11 +4029,11 @@ func (m *ListClustersRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
-		n25, err := m.Filters.MarshalTo(data[i:])
+		n21, err := m.Filters.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n25
+		i += n21
 	}
 	return i, nil
 }
@@ -4922,21 +4158,21 @@ func (m *UpdateClusterRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintControl(data, i, uint64(m.ClusterVersion.Size()))
-		n26, err := m.ClusterVersion.MarshalTo(data[i:])
+		n22, err := m.ClusterVersion.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n26
+		i += n22
 	}
 	if m.Spec != nil {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Spec.Size()))
-		n27, err := m.Spec.MarshalTo(data[i:])
+		n23, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n27
+		i += n23
 	}
 	return i, nil
 }
@@ -4960,11 +4196,11 @@ func (m *UpdateClusterResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Cluster.Size()))
-		n28, err := m.Cluster.MarshalTo(data[i:])
+		n24, err := m.Cluster.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n28
+		i += n24
 	}
 	return i, nil
 }
@@ -5280,70 +4516,6 @@ func (p *raftProxyControlServer) RemoveNetwork(ctx context.Context, r *RemoveNet
 		return nil, err
 	}
 	return NewControlClient(conn).RemoveNetwork(ctx, r)
-}
-
-func (p *raftProxyControlServer) GetVolume(ctx context.Context, r *GetVolumeRequest) (*GetVolumeResponse, error) {
-
-	if p.cluster.IsLeader() {
-		return p.local.GetVolume(ctx, r)
-	}
-	ctx, err := p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return nil, err
-	}
-	return NewControlClient(conn).GetVolume(ctx, r)
-}
-
-func (p *raftProxyControlServer) ListVolumes(ctx context.Context, r *ListVolumesRequest) (*ListVolumesResponse, error) {
-
-	if p.cluster.IsLeader() {
-		return p.local.ListVolumes(ctx, r)
-	}
-	ctx, err := p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return nil, err
-	}
-	return NewControlClient(conn).ListVolumes(ctx, r)
-}
-
-func (p *raftProxyControlServer) CreateVolume(ctx context.Context, r *CreateVolumeRequest) (*CreateVolumeResponse, error) {
-
-	if p.cluster.IsLeader() {
-		return p.local.CreateVolume(ctx, r)
-	}
-	ctx, err := p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return nil, err
-	}
-	return NewControlClient(conn).CreateVolume(ctx, r)
-}
-
-func (p *raftProxyControlServer) RemoveVolume(ctx context.Context, r *RemoveVolumeRequest) (*RemoveVolumeResponse, error) {
-
-	if p.cluster.IsLeader() {
-		return p.local.RemoveVolume(ctx, r)
-	}
-	ctx, err := p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return nil, err
-	}
-	return NewControlClient(conn).RemoveVolume(ctx, r)
 }
 
 func (p *raftProxyControlServer) GetCluster(ctx context.Context, r *GetClusterRequest) (*GetClusterResponse, error) {
@@ -5838,110 +5010,6 @@ func (m *ListNetworksResponse) Size() (n int) {
 	_ = l
 	if len(m.Networks) > 0 {
 		for _, e := range m.Networks {
-			l = e.Size()
-			n += 1 + l + sovControl(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *CreateVolumeRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Spec != nil {
-		l = m.Spec.Size()
-		n += 1 + l + sovControl(uint64(l))
-	}
-	return n
-}
-
-func (m *CreateVolumeResponse) Size() (n int) {
-	var l int
-	_ = l
-	if m.Volume != nil {
-		l = m.Volume.Size()
-		n += 1 + l + sovControl(uint64(l))
-	}
-	return n
-}
-
-func (m *GetVolumeRequest) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.VolumeID)
-	if l > 0 {
-		n += 1 + l + sovControl(uint64(l))
-	}
-	return n
-}
-
-func (m *GetVolumeResponse) Size() (n int) {
-	var l int
-	_ = l
-	if m.Volume != nil {
-		l = m.Volume.Size()
-		n += 1 + l + sovControl(uint64(l))
-	}
-	return n
-}
-
-func (m *RemoveVolumeRequest) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.VolumeID)
-	if l > 0 {
-		n += 1 + l + sovControl(uint64(l))
-	}
-	return n
-}
-
-func (m *RemoveVolumeResponse) Size() (n int) {
-	var l int
-	_ = l
-	return n
-}
-
-func (m *ListVolumesRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Filters != nil {
-		l = m.Filters.Size()
-		n += 1 + l + sovControl(uint64(l))
-	}
-	return n
-}
-
-func (m *ListVolumesRequest_Filters) Size() (n int) {
-	var l int
-	_ = l
-	if len(m.Names) > 0 {
-		for _, s := range m.Names {
-			l = len(s)
-			n += 1 + l + sovControl(uint64(l))
-		}
-	}
-	if len(m.IDPrefixes) > 0 {
-		for _, s := range m.IDPrefixes {
-			l = len(s)
-			n += 1 + l + sovControl(uint64(l))
-		}
-	}
-	if len(m.Labels) > 0 {
-		for k, v := range m.Labels {
-			_ = k
-			_ = v
-			mapEntrySize := 1 + len(k) + sovControl(uint64(len(k))) + 1 + len(v) + sovControl(uint64(len(v)))
-			n += mapEntrySize + 1 + sovControl(uint64(mapEntrySize))
-		}
-	}
-	return n
-}
-
-func (m *ListVolumesResponse) Size() (n int) {
-	var l int
-	_ = l
-	if len(m.Volumes) > 0 {
-		for _, e := range m.Volumes {
 			l = e.Size()
 			n += 1 + l + sovControl(uint64(l))
 		}
@@ -6514,107 +5582,6 @@ func (this *ListNetworksResponse) String() string {
 	}
 	s := strings.Join([]string{`&ListNetworksResponse{`,
 		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Network", "Network", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *CreateVolumeRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&CreateVolumeRequest{`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "VolumeSpec", "VolumeSpec", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *CreateVolumeResponse) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&CreateVolumeResponse{`,
-		`Volume:` + strings.Replace(fmt.Sprintf("%v", this.Volume), "Volume", "Volume", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *GetVolumeRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&GetVolumeRequest{`,
-		`VolumeID:` + fmt.Sprintf("%v", this.VolumeID) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *GetVolumeResponse) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&GetVolumeResponse{`,
-		`Volume:` + strings.Replace(fmt.Sprintf("%v", this.Volume), "Volume", "Volume", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RemoveVolumeRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RemoveVolumeRequest{`,
-		`VolumeID:` + fmt.Sprintf("%v", this.VolumeID) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RemoveVolumeResponse) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&RemoveVolumeResponse{`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ListVolumesRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ListVolumesRequest{`,
-		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListVolumesRequest_Filters", "ListVolumesRequest_Filters", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ListVolumesRequest_Filters) String() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForLabels := make([]string, 0, len(this.Labels))
-	for k, _ := range this.Labels {
-		keysForLabels = append(keysForLabels, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
-	mapStringForLabels := "map[string]string{"
-	for _, k := range keysForLabels {
-		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
-	}
-	mapStringForLabels += "}"
-	s := strings.Join([]string{`&ListVolumesRequest_Filters{`,
-		`Names:` + fmt.Sprintf("%v", this.Names) + `,`,
-		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
-		`Labels:` + mapStringForLabels + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ListVolumesResponse) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ListVolumesResponse{`,
-		`Volumes:` + strings.Replace(fmt.Sprintf("%v", this.Volumes), "Volume", "Volume", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -10303,846 +9270,6 @@ func (m *ListNetworksResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *CreateVolumeRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowControl
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: CreateVolumeRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: CreateVolumeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthControl
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Spec == nil {
-				m.Spec = &VolumeSpec{}
-			}
-			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipControl(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthControl
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *CreateVolumeResponse) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowControl
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: CreateVolumeResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: CreateVolumeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Volume", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthControl
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Volume == nil {
-				m.Volume = &Volume{}
-			}
-			if err := m.Volume.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipControl(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthControl
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *GetVolumeRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowControl
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: GetVolumeRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: GetVolumeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field VolumeID", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthControl
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.VolumeID = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipControl(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthControl
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *GetVolumeResponse) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowControl
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: GetVolumeResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: GetVolumeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Volume", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthControl
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Volume == nil {
-				m.Volume = &Volume{}
-			}
-			if err := m.Volume.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipControl(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthControl
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RemoveVolumeRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowControl
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: RemoveVolumeRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RemoveVolumeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field VolumeID", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthControl
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.VolumeID = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipControl(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthControl
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RemoveVolumeResponse) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowControl
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: RemoveVolumeResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RemoveVolumeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipControl(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthControl
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *ListVolumesRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowControl
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: ListVolumesRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ListVolumesRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Filters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthControl
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Filters == nil {
-				m.Filters = &ListVolumesRequest_Filters{}
-			}
-			if err := m.Filters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipControl(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthControl
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *ListVolumesRequest_Filters) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowControl
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Filters: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Filters: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Names", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthControl
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Names = append(m.Names, string(data[iNdEx:postIndex]))
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field IDPrefixes", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthControl
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.IDPrefixes = append(m.IDPrefixes, string(data[iNdEx:postIndex]))
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Labels", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthControl
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			var keykey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				keykey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var stringLenmapkey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLenmapkey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLenmapkey := int(stringLenmapkey)
-			if intStringLenmapkey < 0 {
-				return ErrInvalidLengthControl
-			}
-			postStringIndexmapkey := iNdEx + intStringLenmapkey
-			if postStringIndexmapkey > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapkey := string(data[iNdEx:postStringIndexmapkey])
-			iNdEx = postStringIndexmapkey
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var stringLenmapvalue uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLenmapvalue |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLenmapvalue := int(stringLenmapvalue)
-			if intStringLenmapvalue < 0 {
-				return ErrInvalidLengthControl
-			}
-			postStringIndexmapvalue := iNdEx + intStringLenmapvalue
-			if postStringIndexmapvalue > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := string(data[iNdEx:postStringIndexmapvalue])
-			iNdEx = postStringIndexmapvalue
-			if m.Labels == nil {
-				m.Labels = make(map[string]string)
-			}
-			m.Labels[mapkey] = mapvalue
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipControl(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthControl
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *ListVolumesResponse) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowControl
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: ListVolumesResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ListVolumesResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Volumes", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthControl
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Volumes = append(m.Volumes, &Volume{})
-			if err := m.Volumes[len(m.Volumes)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipControl(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthControl
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
 func (m *ListManagersRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
@@ -12534,107 +10661,94 @@ var (
 )
 
 var fileDescriptorControl = []byte{
-	// 1621 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xcc, 0x5a, 0xdd, 0x72, 0xdb, 0xc4,
-	0x17, 0xff, 0xdb, 0x69, 0xe3, 0xf8, 0xb8, 0x49, 0x9b, 0x8d, 0xfb, 0x27, 0xa3, 0x96, 0x14, 0x54,
-	0xda, 0x26, 0x33, 0xc5, 0x61, 0x5c, 0x3a, 0x2d, 0x65, 0xf8, 0x4a, 0x42, 0x8b, 0xe9, 0x07, 0x1d,
-	0x85, 0x76, 0xb8, 0xeb, 0x38, 0xb6, 0x1a, 0x44, 0x6c, 0xcb, 0x58, 0x76, 0xda, 0x0e, 0x37, 0x3c,
-	0x06, 0xcf, 0xc0, 0x05, 0x6f, 0xc0, 0xc7, 0x0c, 0x37, 0x1d, 0xae, 0xb8, 0x84, 0x1b, 0x68, 0xfb,
-	0x00, 0x0c, 0x0f, 0xc0, 0x05, 0xbb, 0xda, 0xb3, 0x2b, 0x69, 0xbd, 0x5a, 0xd9, 0xb1, 0x3b, 0xf4,
-	0xc2, 0x13, 0x69, 0xf5, 0x3b, 0x1f, 0x7b, 0xce, 0xf9, 0x1d, 0x69, 0xcf, 0x04, 0xe6, 0x1b, 0x7e,
-	0xa7, 0xdf, 0xf3, 0x5b, 0x95, 0x6e, 0xcf, 0xef, 0xfb, 0x84, 0x34, 0xfd, 0xc6, 0x9e, 0xdb, 0xab,
-	0x34, 0x5a, 0x83, 0xa0, 0x4f, 0xff, 0xd6, 0xbb, 0x9e, 0x55, 0x0a, 0xba, 0x6e, 0x23, 0xe0, 0x00,
-	0x6b, 0xde, 0xdf, 0xf9, 0xc2, 0x6d, 0xf4, 0xc5, 0x6d, 0xa9, 0xff, 0xa8, 0xeb, 0x8a, 0x9b, 0xf2,
-	0xae, 0xbf, 0xeb, 0x87, 0x97, 0xeb, 0xec, 0x0a, 0x57, 0x97, 0xba, 0xad, 0xc1, 0xae, 0xd7, 0x59,
-	0xe7, 0x7f, 0xf8, 0xa2, 0x7d, 0x11, 0x16, 0xae, 0xb9, 0xfd, 0x5b, 0x7e, 0xd3, 0x75, 0xdc, 0x2f,
-	0x07, 0x6e, 0xd0, 0x27, 0xa7, 0xa1, 0xd0, 0xa1, 0xb7, 0xf7, 0xbc, 0xe6, 0x72, 0xee, 0x95, 0xdc,
-	0x6a, 0x71, 0x03, 0x9e, 0xfd, 0x71, 0x6a, 0x96, 0x21, 0x6a, 0x5b, 0xce, 0x2c, 0x7b, 0x54, 0x6b,
-	0xda, 0xef, 0xc1, 0x51, 0x29, 0x16, 0x74, 0xfd, 0x4e, 0xe0, 0x92, 0xf3, 0x70, 0x88, 0x3d, 0x0c,
-	0x85, 0x4a, 0xd5, 0xe5, 0xca, 0xf0, 0x06, 0x2a, 0x21, 0x3e, 0x44, 0xd9, 0x3f, 0xcc, 0xc0, 0xb1,
-	0x1b, 0x5e, 0x10, 0xaa, 0x08, 0x84, 0xe9, 0xab, 0x50, 0xb8, 0xef, 0xb5, 0x28, 0x3a, 0x40, 0x2d,
-	0xe7, 0x75, 0x5a, 0x54, 0xb1, 0xca, 0x55, 0x2e, 0xe3, 0x08, 0x61, 0xeb, 0x69, 0x1e, 0x0a, 0xb8,
-	0x48, 0xca, 0x70, 0xb8, 0x53, 0x6f, 0xbb, 0x4c, 0xe3, 0xcc, 0x6a, 0xd1, 0xe1, 0x37, 0x64, 0x1d,
-	0x4a, 0x5e, 0xf3, 0x5e, 0xb7, 0xe7, 0xde, 0xf7, 0x1e, 0xd2, 0x67, 0x79, 0xf6, 0x6c, 0x63, 0x81,
-	0x6e, 0x14, 0x6a, 0x5b, 0xb7, 0x71, 0xd5, 0x01, 0xaf, 0x29, 0xae, 0xc9, 0x6d, 0x98, 0x6d, 0xd5,
-	0x77, 0xdc, 0x56, 0xb0, 0x3c, 0x43, 0xb1, 0xa5, 0xea, 0xe5, 0x71, 0x3c, 0xab, 0xdc, 0x08, 0x45,
-	0x3f, 0xa4, 0x09, 0x7e, 0xe4, 0xa0, 0x1e, 0x52, 0x83, 0x52, 0xdb, 0x6d, 0xef, 0xd0, 0xc7, 0x9f,
-	0x7b, 0xdd, 0x60, 0xf9, 0x10, 0x55, 0xbb, 0x50, 0x3d, 0x97, 0x16, 0xb6, 0x6d, 0x9a, 0xfa, 0xca,
-	0x4d, 0x89, 0x77, 0xe2, 0xb2, 0xe4, 0x12, 0x1c, 0xa6, 0x95, 0x43, 0xf7, 0x71, 0x38, 0x54, 0xf2,
-	0xaa, 0x51, 0x89, 0x43, 0x91, 0x0e, 0xc7, 0x5b, 0x6f, 0x41, 0x29, 0xe6, 0x1a, 0x39, 0x06, 0x33,
-	0x7b, 0xee, 0x23, 0x9e, 0x76, 0x87, 0x5d, 0xb2, 0xe8, 0xed, 0xd7, 0x5b, 0x03, 0x97, 0x46, 0x88,
-	0xad, 0xf1, 0x9b, 0x2b, 0xf9, 0xcb, 0x39, 0x7b, 0x13, 0x16, 0x63, 0xdb, 0xc5, 0x1a, 0xa8, 0xd0,
-	0x60, 0xb3, 0x85, 0x30, 0xd8, 0xa6, 0x22, 0xe0, 0x30, 0xfb, 0xdb, 0x1c, 0x2c, 0xde, 0xe9, 0x36,
-	0xeb, 0x7d, 0x77, 0xdc, 0x0a, 0x24, 0xef, 0xc2, 0x91, 0x10, 0xb4, 0x4f, 0x83, 0xe0, 0xf9, 0x9d,
-	0xd0, 0xc1, 0x52, 0xf5, 0x84, 0xce, 0xe2, 0x5d, 0x0e, 0x71, 0x4a, 0x4c, 0x00, 0x6f, 0xc8, 0x1b,
-	0x70, 0x88, 0xd1, 0x89, 0xa6, 0x93, 0xc9, 0x9d, 0x34, 0x85, 0xcc, 0x09, 0x91, 0xf6, 0x06, 0x90,
-	0xb8, 0xaf, 0x07, 0x2a, 0x7b, 0x4e, 0xb7, 0x4f, 0xeb, 0xc1, 0x5e, 0x6c, 0xb3, 0x7d, 0x7a, 0xab,
-	0x6c, 0x96, 0x21, 0xd8, 0x66, 0xd9, 0x23, 0x49, 0x37, 0x2e, 0x16, 0xd9, 0x65, 0x0f, 0x4d, 0x76,
-	0x43, 0x7c, 0x88, 0xb2, 0x2f, 0xc3, 0xa2, 0xe3, 0xb6, 0xfd, 0x7d, 0x77, 0x6c, 0xd3, 0x65, 0x20,
-	0x71, 0x49, 0x6e, 0xdd, 0xfe, 0x1d, 0xe9, 0xcb, 0x16, 0x0f, 0x40, 0xdf, 0xb8, 0xd8, 0x30, 0x7d,
-	0xff, 0xf9, 0x0f, 0xe9, 0xab, 0xf3, 0x4c, 0x4b, 0x5f, 0xea, 0x42, 0xe0, 0xf6, 0xf6, 0xbd, 0x06,
-	0xab, 0x53, 0x4e, 0x5f, 0x74, 0x61, 0x9b, 0x2f, 0xd7, 0xb6, 0xa8, 0x0b, 0x08, 0xa9, 0x35, 0x03,
-	0x72, 0x16, 0xe6, 0xb0, 0xaa, 0x39, 0x4f, 0x8b, 0x1b, 0x25, 0x8a, 0x2e, 0xf0, 0xb2, 0xa6, 0xbb,
-	0xe7, 0x75, 0x1d, 0x90, 0x2d, 0x58, 0xa0, 0xd4, 0xf0, 0x7a, 0x6e, 0xf3, 0x5e, 0xd0, 0xa7, 0xd5,
-	0x16, 0x2c, 0xcf, 0x86, 0xac, 0x7e, 0x39, 0x2d, 0xc5, 0xdb, 0x0c, 0xe5, 0xcc, 0xa3, 0x50, 0x78,
-	0x37, 0x0d, 0x66, 0x63, 0x24, 0x22, 0x66, 0xb3, 0x82, 0x30, 0x32, 0x3b, 0xac, 0x10, 0x0e, 0xb3,
-	0xaf, 0x43, 0x79, 0xb3, 0xe7, 0x52, 0x57, 0x30, 0x1a, 0xa2, 0x46, 0x2e, 0x20, 0xed, 0x78, 0x81,
-	0x9c, 0xd2, 0xa9, 0x41, 0x89, 0x18, 0xf3, 0x6e, 0xc1, 0x71, 0x45, 0x19, 0x7a, 0x75, 0x11, 0x0a,
-	0x18, 0x61, 0x54, 0x78, 0xc2, 0xa0, 0xd0, 0x11, 0x58, 0xfb, 0x03, 0x58, 0xa4, 0x74, 0x52, 0x3c,
-	0x3b, 0x0f, 0x10, 0x25, 0x14, 0x09, 0x31, 0x4f, 0x33, 0x54, 0x94, 0xf9, 0x74, 0x8a, 0x32, 0x9d,
-	0x74, 0x7f, 0x24, 0xae, 0x62, 0x32, 0x7f, 0x7e, 0xcc, 0x41, 0x99, 0xb7, 0x96, 0x49, 0x7c, 0xa2,
-	0x95, 0x73, 0x54, 0xa0, 0xc7, 0xe8, 0x8a, 0x0b, 0x28, 0x23, 0x1a, 0xe3, 0x85, 0x44, 0x63, 0x1c,
-	0x3d, 0x43, 0xca, 0x06, 0x26, 0x8b, 0xc8, 0x16, 0x94, 0x79, 0xd7, 0x99, 0x28, 0x49, 0x2f, 0xc1,
-	0x71, 0x45, 0x0b, 0xb6, 0xaf, 0x9f, 0xf3, 0xb0, 0xc4, 0x6a, 0x1c, 0xd7, 0x65, 0x07, 0xab, 0xa9,
-	0x1d, 0x6c, 0x3d, 0xad, 0x4f, 0x28, 0x92, 0xc3, 0x4d, 0xec, 0x49, 0x6e, 0xea, 0x4d, 0x6c, 0x5b,
-	0x69, 0x62, 0x6f, 0x8f, 0xe9, 0x9c, 0xae, 0x8f, 0x4d, 0xd2, 0x28, 0x3e, 0x81, 0x72, 0xd2, 0x1a,
-	0xe6, 0xfc, 0x12, 0xcc, 0x61, 0x0e, 0x44, 0xbb, 0x30, 0x26, 0x5d, 0x82, 0xa3, 0xa6, 0x71, 0xcb,
-	0xed, 0x3f, 0xf0, 0x7b, 0x7b, 0x63, 0x34, 0x0d, 0x94, 0xd0, 0x35, 0x0d, 0xa9, 0x2c, 0x2a, 0xc9,
-	0x0e, 0x5f, 0x32, 0x95, 0xa4, 0x90, 0x12, 0x58, 0xfb, 0x4e, 0xd8, 0x34, 0x14, 0xcf, 0x08, 0x7d,
-	0xfb, 0xd3, 0x64, 0x62, 0xbc, 0xc2, 0x6b, 0x56, 0xa3, 0x28, 0xc3, 0x6a, 0x34, 0x1f, 0xd5, 0x28,
-	0xca, 0xb2, 0x1a, 0x45, 0x80, 0x6c, 0x24, 0x53, 0xf2, 0xf1, 0x33, 0x41, 0x9b, 0xa9, 0xbb, 0x29,
-	0xa9, 0xa4, 0x78, 0x2a, 0xa9, 0x84, 0xeb, 0x07, 0xa0, 0x92, 0x22, 0xf9, 0x62, 0x51, 0x29, 0xc5,
-	0xb9, 0xe7, 0x44, 0xa5, 0xc8, 0x5a, 0x44, 0x25, 0xcc, 0x81, 0x91, 0x4a, 0x22, 0x29, 0x12, 0x6c,
-	0xd7, 0x60, 0x89, 0x57, 0xff, 0x5d, 0xbf, 0x35, 0x68, 0xcb, 0xfe, 0x59, 0x4d, 0x30, 0x69, 0x45,
-	0xfb, 0x5e, 0x08, 0x05, 0x62, 0x44, 0xfa, 0x58, 0xb0, 0x52, 0xa8, 0x42, 0xdf, 0xaa, 0x30, 0xbb,
-	0x1f, 0xae, 0xa0, 0x36, 0x2b, 0x5d, 0x9b, 0x83, 0x48, 0xfb, 0x1d, 0x38, 0x46, 0xab, 0x3d, 0xe9,
-	0xd3, 0x1a, 0x14, 0xf9, 0xd3, 0xa8, 0xa5, 0x1f, 0xa1, 0xa9, 0x9b, 0xe3, 0x28, 0x5a, 0x86, 0x73,
-	0xfc, 0x31, 0xad, 0xc2, 0x6b, 0x21, 0x07, 0xa7, 0xe0, 0xc7, 0xfb, 0xb0, 0xc4, 0xcb, 0xf9, 0xc0,
-	0xae, 0xfc, 0x5f, 0x50, 0x2d, 0xe9, 0x8d, 0xfd, 0x53, 0x1e, 0x08, 0x4b, 0x25, 0x5f, 0x96, 0x74,
-	0xf8, 0x48, 0xa5, 0x43, 0x25, 0xad, 0xe2, 0x92, 0x82, 0xc3, 0x6c, 0xf8, 0x73, 0xfa, 0x6c, 0x70,
-	0x14, 0x36, 0x5c, 0x19, 0xcf, 0xb7, 0x69, 0x93, 0xe1, 0x3a, 0xef, 0x28, 0xd2, 0x18, 0xe6, 0xf9,
-	0x4d, 0x28, 0xf0, 0xe8, 0x0b, 0x2a, 0x98, 0x12, 0x2d, 0xa0, 0xb2, 0x3f, 0xdd, 0xac, 0x77, 0xea,
-	0xbb, 0x2c, 0x90, 0x63, 0xf7, 0x27, 0x45, 0xf2, 0xc5, 0xea, 0x4f, 0x29, 0xce, 0x3d, 0xa7, 0xfe,
-	0x14, 0x59, 0x8b, 0xfa, 0x53, 0x1b, 0xd7, 0x4c, 0xfd, 0x09, 0xe5, 0x1c, 0x09, 0x8e, 0x3e, 0xf0,
-	0xc4, 0xa3, 0xe8, 0x03, 0x0f, 0x31, 0xca, 0x07, 0x1e, 0xe2, 0xd8, 0x5b, 0x09, 0x01, 0xf1, 0xb7,
-	0x92, 0xd4, 0x82, 0x2c, 0xe4, 0x5f, 0xf8, 0x9b, 0xdc, 0x85, 0x98, 0x6e, 0x74, 0x4a, 0xd1, 0x8d,
-	0x38, 0xa6, 0x1b, 0x01, 0xf2, 0xc5, 0x2c, 0x55, 0x44, 0x2f, 0x66, 0x84, 0x98, 0x5e, 0xcc, 0x42,
-	0x4a, 0x60, 0x65, 0x15, 0xe2, 0x83, 0x03, 0x54, 0xa1, 0x22, 0xf9, 0x62, 0x55, 0x61, 0x8a, 0x73,
-	0xcf, 0xa9, 0x0a, 0x23, 0x6b, 0x51, 0x15, 0xa2, 0x47, 0xc6, 0x2a, 0x14, 0x59, 0x91, 0xe0, 0xd8,
-	0xc1, 0x6b, 0x92, 0x52, 0x61, 0x07, 0x2f, 0x81, 0x1e, 0xe7, 0xe0, 0x85, 0x8b, 0x63, 0x1c, 0xbc,
-	0xd0, 0xba, 0xee, 0xe0, 0x35, 0x9d, 0x42, 0xad, 0x7e, 0x5f, 0x86, 0xc2, 0x26, 0x9f, 0x44, 0x13,
-	0x0f, 0x0a, 0x38, 0xe4, 0x25, 0xb6, 0x4e, 0x38, 0x39, 0x38, 0xb6, 0x4e, 0x1b, 0x31, 0x48, 0xcc,
-	0xe3, 0xbf, 0x7c, 0xf7, 0xd7, 0x37, 0xf9, 0xa3, 0x30, 0x1f, 0x3c, 0xa8, 0xf7, 0xda, 0xaf, 0x23,
-	0x95, 0x89, 0x0f, 0x45, 0x39, 0x4d, 0x24, 0xaf, 0x8d, 0x32, 0x5b, 0xb5, 0xce, 0x64, 0xa0, 0xcc,
-	0x06, 0x7b, 0x00, 0xd1, 0x30, 0x8f, 0x68, 0x75, 0x0d, 0x0d, 0x26, 0xad, 0xb3, 0x59, 0x30, 0xb3,
-	0x4d, 0x1e, 0x4f, 0x36, 0x25, 0x49, 0x8d, 0x67, 0x6c, 0x3c, 0x97, 0x1a, 0xcf, 0xc4, 0x20, 0xce,
-	0x1c, 0xcf, 0x70, 0x86, 0x93, 0x1e, 0xcf, 0xf8, 0xb0, 0x2b, 0x3d, 0x9e, 0x89, 0x41, 0x90, 0x21,
-	0x9e, 0xd1, 0x98, 0x50, 0x1f, 0xcf, 0xa1, 0x01, 0xa4, 0x3e, 0x9e, 0x9a, 0x69, 0x63, 0xba, 0xcd,
-	0x68, 0x06, 0xa3, 0xb7, 0x39, 0x34, 0xe6, 0xd1, 0xdb, 0x1c, 0x1e, 0xe5, 0xa4, 0xd9, 0x7c, 0x08,
-	0x47, 0xe2, 0x67, 0x5e, 0x72, 0x6e, 0xc4, 0x33, 0xb8, 0xb5, 0x9a, 0x0d, 0x34, 0x5b, 0xfe, 0x0a,
-	0xe6, 0x13, 0x43, 0x30, 0xa2, 0xd5, 0xa8, 0x1b, 0xba, 0x59, 0x6b, 0x23, 0x20, 0x33, 0x8d, 0x27,
-	0xe6, 0x3b, 0x7a, 0xe3, 0xba, 0x19, 0x96, 0xde, 0xb8, 0x76, 0x58, 0x64, 0x30, 0x9e, 0x18, 0xe3,
-	0xe8, 0x8d, 0xeb, 0xe6, 0x45, 0x7a, 0xe3, 0xfa, 0x99, 0x90, 0xb1, 0xc8, 0xf0, 0x80, 0x95, 0x5a,
-	0x64, 0xc9, 0xf3, 0x76, 0x6a, 0x91, 0xa9, 0x87, 0x67, 0x73, 0x91, 0x89, 0xd3, 0x60, 0x7a, 0x91,
-	0x29, 0xa7, 0xd3, 0xf4, 0x22, 0x53, 0x0f, 0x96, 0x99, 0x45, 0x26, 0x36, 0x6c, 0x28, 0x32, 0x65,
-	0xcf, 0x6b, 0x23, 0x20, 0x47, 0xcc, 0xb3, 0xd1, 0xb8, 0x6e, 0xc0, 0x61, 0xca, 0xf3, 0x88, 0xc6,
-	0x69, 0xc7, 0x94, 0x47, 0x4b, 0x7d, 0xc7, 0x54, 0x0f, 0xae, 0xd6, 0x99, 0x0c, 0x94, 0xd9, 0xe0,
-	0x80, 0x7e, 0x07, 0x45, 0xa7, 0x1c, 0x72, 0x76, 0xb4, 0x33, 0x97, 0x75, 0x2e, 0x13, 0x97, 0x59,
-	0x5b, 0xf1, 0xd3, 0xbc, 0xbe, 0xb6, 0x34, 0xa3, 0x03, 0x6b, 0x35, 0x1b, 0x98, 0x69, 0x39, 0x7e,
-	0x62, 0xd6, 0x5b, 0xd6, 0x9c, 0xca, 0xad, 0xd5, 0x6c, 0xe0, 0x28, 0x1c, 0xc6, 0x6f, 0x9d, 0x54,
-	0x0e, 0x27, 0x3f, 0x01, 0x53, 0x39, 0xac, 0x7c, 0x68, 0x65, 0x70, 0x58, 0x7c, 0xab, 0xa6, 0x73,
-	0x58, 0xf9, 0x76, 0x4e, 0xe7, 0xb0, 0xfa, 0xd9, 0x9b, 0xd9, 0xab, 0xc5, 0x86, 0x0d, 0xbd, 0x5a,
-	0xd9, 0xf3, 0xda, 0x08, 0x48, 0xa3, 0xf1, 0x8d, 0x93, 0x8f, 0x9f, 0xae, 0xfc, 0xef, 0x37, 0xfa,
-	0xfb, 0xfb, 0xe9, 0x4a, 0xee, 0xeb, 0x67, 0x2b, 0xb9, 0xc7, 0xf4, 0xf7, 0x2b, 0xfd, 0x3d, 0xa1,
-	0xbf, 0x9d, 0xd9, 0xf0, 0x9f, 0x0e, 0x2e, 0xfc, 0x1b, 0x00, 0x00, 0xff, 0xff, 0x91, 0x86, 0x6a,
-	0xde, 0xed, 0x20, 0x00, 0x00,
+	// 1413 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xcc, 0x59, 0xdd, 0x6e, 0x1b, 0x45,
+	0x14, 0xc6, 0xce, 0x8f, 0xeb, 0xe3, 0x3a, 0x3f, 0x53, 0x47, 0x44, 0x6e, 0x49, 0x61, 0x0b, 0x6d,
+	0x22, 0x05, 0x07, 0x25, 0xaa, 0x1a, 0x40, 0x02, 0x91, 0x84, 0x22, 0x8b, 0x36, 0x54, 0x1b, 0x8a,
+	0xb8, 0x8b, 0x1c, 0x7b, 0x1a, 0x96, 0xd8, 0x5e, 0xe3, 0xdd, 0xa4, 0x8d, 0xb8, 0xe1, 0x31, 0x78,
+	0x06, 0x2e, 0x78, 0x04, 0xb8, 0xe0, 0xa6, 0xe2, 0x8a, 0x4b, 0xb8, 0x41, 0x4d, 0x1f, 0x00, 0xf1,
+	0x00, 0x5c, 0x30, 0xb3, 0x73, 0x66, 0x7f, 0xc6, 0xb3, 0x63, 0x3b, 0x76, 0xd4, 0x5c, 0x58, 0xd9,
+	0x9d, 0xf9, 0xce, 0xcf, 0x9c, 0xf3, 0x9d, 0xb3, 0x33, 0x13, 0x28, 0xd6, 0xdd, 0xb6, 0xdf, 0x75,
+	0x9b, 0x95, 0x4e, 0xd7, 0xf5, 0x5d, 0x42, 0x1a, 0x6e, 0xfd, 0x88, 0x76, 0x2b, 0xf5, 0xe6, 0xb1,
+	0xe7, 0xb3, 0xbf, 0xb5, 0x8e, 0x53, 0x2e, 0x78, 0x1d, 0x5a, 0xf7, 0x04, 0xa0, 0x5c, 0x74, 0x0f,
+	0xbe, 0xa5, 0x75, 0x5f, 0xbe, 0x16, 0xfc, 0xd3, 0x0e, 0x95, 0x2f, 0xa5, 0x43, 0xf7, 0xd0, 0x0d,
+	0x1e, 0xd7, 0xf8, 0x13, 0x8e, 0x5e, 0xeb, 0x34, 0x8f, 0x0f, 0x9d, 0xf6, 0x9a, 0xf8, 0x23, 0x06,
+	0xad, 0xbb, 0x30, 0xf3, 0x19, 0xf5, 0x77, 0xdd, 0x06, 0xb5, 0xe9, 0x77, 0xc7, 0xd4, 0xf3, 0xc9,
+	0x2d, 0xc8, 0xb5, 0xd9, 0xeb, 0xbe, 0xd3, 0x58, 0xcc, 0xbc, 0x99, 0x59, 0xce, 0x6f, 0xc1, 0xcb,
+	0xbf, 0x6f, 0x4e, 0x73, 0x44, 0x75, 0xc7, 0x9e, 0xe6, 0x53, 0xd5, 0x86, 0xf5, 0x31, 0xcc, 0x86,
+	0x62, 0x5e, 0xc7, 0x6d, 0x7b, 0x94, 0xac, 0xc2, 0x24, 0x9f, 0x0c, 0x84, 0x0a, 0xeb, 0x8b, 0x95,
+	0xde, 0x05, 0x54, 0x02, 0x7c, 0x80, 0xb2, 0x7e, 0x99, 0x80, 0xb9, 0x07, 0x8e, 0x17, 0xa8, 0xf0,
+	0xa4, 0xe9, 0xfb, 0x90, 0x7b, 0xe2, 0x34, 0x19, 0xda, 0x43, 0x2d, 0xab, 0x3a, 0x2d, 0xaa, 0x58,
+	0xe5, 0xbe, 0x90, 0xb1, 0xa5, 0x70, 0xf9, 0x2c, 0x0b, 0x39, 0x1c, 0x24, 0x25, 0x98, 0x6a, 0xd7,
+	0x5a, 0x94, 0x6b, 0x9c, 0x58, 0xce, 0xdb, 0xe2, 0x85, 0xac, 0x41, 0xc1, 0x69, 0xec, 0x77, 0xba,
+	0xf4, 0x89, 0xf3, 0x8c, 0xcd, 0x65, 0xf9, 0xdc, 0xd6, 0x0c, 0x5b, 0x28, 0x54, 0x77, 0x1e, 0xe1,
+	0xa8, 0x0d, 0x4e, 0x43, 0x3e, 0x93, 0x47, 0x30, 0xdd, 0xac, 0x1d, 0xd0, 0xa6, 0xb7, 0x38, 0xc1,
+	0xb0, 0x85, 0xf5, 0xcd, 0x61, 0x3c, 0xab, 0x3c, 0x08, 0x44, 0x3f, 0x65, 0x09, 0x3e, 0xb5, 0x51,
+	0x0f, 0xa9, 0x42, 0xa1, 0x45, 0x5b, 0x07, 0x6c, 0xfa, 0x1b, 0xa7, 0xe3, 0x2d, 0x4e, 0x32, 0xb5,
+	0x33, 0xeb, 0x77, 0xd2, 0xc2, 0xb6, 0xc7, 0x52, 0x5f, 0x79, 0x18, 0xe2, 0xed, 0xb8, 0x2c, 0xb9,
+	0x07, 0x53, 0x8c, 0x39, 0x6c, 0x1d, 0x53, 0x81, 0x92, 0xb7, 0x8c, 0x4a, 0x6c, 0x86, 0xb4, 0x05,
+	0xbe, 0xfc, 0x3e, 0x14, 0x62, 0xae, 0x91, 0x39, 0x98, 0x38, 0xa2, 0xa7, 0x22, 0xed, 0x36, 0x7f,
+	0xe4, 0xd1, 0x3b, 0xa9, 0x35, 0x8f, 0x29, 0x8b, 0x10, 0x1f, 0x13, 0x2f, 0x1f, 0x64, 0x37, 0x33,
+	0xd6, 0x36, 0xcc, 0xc7, 0x96, 0x8b, 0x1c, 0xa8, 0xb0, 0x60, 0xf3, 0x81, 0x20, 0xd8, 0x26, 0x12,
+	0x08, 0x98, 0xf5, 0x53, 0x06, 0xe6, 0x1f, 0x77, 0x1a, 0x35, 0x9f, 0x0e, 0xcb, 0x40, 0xf2, 0x11,
+	0x5c, 0x0d, 0x40, 0x27, 0x2c, 0x08, 0x8e, 0xdb, 0x0e, 0x1c, 0x2c, 0xac, 0x5f, 0xd7, 0x59, 0xfc,
+	0x4a, 0x40, 0xec, 0x02, 0x17, 0xc0, 0x17, 0xf2, 0x1e, 0x4c, 0xf2, 0x72, 0x62, 0xe9, 0xe4, 0x72,
+	0x37, 0x4c, 0x21, 0xb3, 0x03, 0xa4, 0xb5, 0x05, 0x24, 0xee, 0xeb, 0xb9, 0x68, 0x2f, 0xca, 0xed,
+	0xcb, 0x9a, 0x77, 0x14, 0x5b, 0xac, 0xcf, 0x5e, 0x95, 0xc5, 0x72, 0x04, 0x5f, 0x2c, 0x9f, 0x0a,
+	0xcb, 0x4d, 0x88, 0x45, 0x76, 0xf9, 0xa4, 0xc9, 0x6e, 0x80, 0x0f, 0x50, 0xd6, 0x26, 0xcc, 0xdb,
+	0xb4, 0xe5, 0x9e, 0xd0, 0xa1, 0x4d, 0x97, 0x80, 0xc4, 0x25, 0x85, 0x75, 0xeb, 0x2f, 0x2c, 0x5f,
+	0x3e, 0x78, 0x8e, 0xf2, 0x8d, 0x8b, 0xf5, 0x96, 0xef, 0x7f, 0xaf, 0xb0, 0x7c, 0x75, 0x9e, 0x69,
+	0xcb, 0x97, 0xb9, 0xe0, 0xd1, 0xee, 0x89, 0x53, 0xe7, 0x3c, 0x15, 0xe5, 0x8b, 0x2e, 0xec, 0x89,
+	0xe1, 0xea, 0x0e, 0x73, 0x01, 0x21, 0xd5, 0x86, 0x47, 0x6e, 0xc3, 0x15, 0x64, 0xb5, 0xa8, 0xd3,
+	0xfc, 0x56, 0x81, 0xa1, 0x73, 0x82, 0xd6, 0x6c, 0xf5, 0x82, 0xd7, 0x1e, 0xd9, 0x81, 0x19, 0x56,
+	0x1a, 0x4e, 0x97, 0x36, 0xf6, 0x3d, 0x9f, 0xb1, 0xcd, 0x5b, 0x9c, 0x0e, 0xaa, 0xfa, 0x8d, 0xb4,
+	0x14, 0xef, 0x71, 0x94, 0x5d, 0x44, 0xa1, 0xe0, 0x6d, 0x1c, 0x95, 0x8d, 0x91, 0x88, 0x2a, 0x9b,
+	0x13, 0xc2, 0x58, 0xd9, 0x01, 0x43, 0x04, 0xcc, 0xfa, 0x1c, 0x4a, 0xdb, 0x5d, 0xca, 0x5c, 0xc1,
+	0x68, 0x48, 0x8e, 0x6c, 0x60, 0xd9, 0x09, 0x82, 0xdc, 0xd4, 0xa9, 0x41, 0x89, 0x58, 0xe5, 0xed,
+	0xc2, 0x82, 0xa2, 0x0c, 0xbd, 0xba, 0x0b, 0x39, 0x8c, 0x30, 0x2a, 0xbc, 0x6e, 0x50, 0x68, 0x4b,
+	0xac, 0xf5, 0x09, 0xcc, 0xb3, 0x72, 0x52, 0x3c, 0x5b, 0x05, 0x88, 0x12, 0x8a, 0x05, 0x51, 0x64,
+	0x19, 0xca, 0x87, 0xf9, 0xb4, 0xf3, 0x61, 0x3a, 0xd9, 0xfa, 0x48, 0x5c, 0xc5, 0x68, 0xfe, 0xfc,
+	0x9a, 0x81, 0x92, 0x68, 0x2d, 0xa3, 0xf8, 0xc4, 0x98, 0x33, 0x2b, 0xd1, 0x43, 0x74, 0xc5, 0x19,
+	0x94, 0x91, 0x8d, 0x71, 0x23, 0xd1, 0x18, 0x07, 0xcf, 0x90, 0xb2, 0x80, 0xd1, 0x22, 0xb2, 0x03,
+	0x25, 0xd1, 0x75, 0x46, 0x4a, 0xd2, 0xeb, 0xb0, 0xa0, 0x68, 0xc1, 0xf6, 0xf5, 0x5b, 0x16, 0xae,
+	0x71, 0x8e, 0xe3, 0x78, 0xd8, 0xc1, 0xaa, 0x6a, 0x07, 0x5b, 0x4b, 0xeb, 0x13, 0x8a, 0x64, 0x6f,
+	0x13, 0x7b, 0x91, 0x19, 0x7b, 0x13, 0xdb, 0x53, 0x9a, 0xd8, 0x87, 0x43, 0x3a, 0xa7, 0xeb, 0x63,
+	0xa3, 0x34, 0x8a, 0x2f, 0xa0, 0x94, 0xb4, 0x86, 0x39, 0xbf, 0x07, 0x57, 0x30, 0x07, 0xb2, 0x5d,
+	0x18, 0x93, 0x1e, 0x82, 0xa3, 0xa6, 0xb1, 0x4b, 0xfd, 0xa7, 0x6e, 0xf7, 0x68, 0x88, 0xa6, 0x81,
+	0x12, 0xba, 0xa6, 0x11, 0x2a, 0x8b, 0x28, 0xd9, 0x16, 0x43, 0x26, 0x4a, 0x4a, 0x29, 0x89, 0xb5,
+	0x1e, 0x07, 0x4d, 0x43, 0xf1, 0x8c, 0xb0, 0xaf, 0x3f, 0x4b, 0x26, 0xc6, 0x2b, 0x78, 0xe6, 0x1c,
+	0x45, 0x19, 0xce, 0xd1, 0x6c, 0xc4, 0x51, 0x94, 0xe5, 0x1c, 0x45, 0x40, 0xd8, 0x48, 0xc6, 0xe4,
+	0xe3, 0xd7, 0xb2, 0x6c, 0xc6, 0xee, 0x66, 0x58, 0x4a, 0x8a, 0xa7, 0x61, 0x29, 0xe1, 0xf8, 0x39,
+	0x4a, 0x49, 0x91, 0xbc, 0x5c, 0xa5, 0x94, 0xe2, 0xdc, 0x05, 0x95, 0x52, 0x64, 0x2d, 0x2a, 0x25,
+	0xcc, 0x81, 0xb1, 0x94, 0x64, 0x52, 0x42, 0x70, 0x98, 0x96, 0x87, 0xb5, 0x76, 0xed, 0x90, 0x47,
+	0x73, 0xe8, 0xb4, 0x28, 0x92, 0x97, 0x2b, 0x2d, 0x29, 0xce, 0x5d, 0x50, 0x5a, 0x22, 0x6b, 0x51,
+	0x5a, 0x5a, 0x38, 0x66, 0x4a, 0x0b, 0xca, 0xd9, 0x21, 0x38, 0xfa, 0xae, 0xc9, 0xa9, 0xe8, 0xbb,
+	0x86, 0x18, 0xe5, 0xbb, 0x86, 0x38, 0x5e, 0x8c, 0x08, 0x88, 0x17, 0x63, 0xa8, 0x05, 0x8b, 0x51,
+	0x6c, 0x6c, 0xb6, 0x85, 0x0b, 0x31, 0xdd, 0xe8, 0x94, 0xa2, 0x1b, 0x71, 0x5c, 0x37, 0x02, 0xc2,
+	0x7e, 0x14, 0xaa, 0x88, 0xfa, 0x11, 0x42, 0x4c, 0xfd, 0x48, 0x4a, 0x49, 0x6c, 0xc8, 0x42, 0x9c,
+	0x38, 0x07, 0x0b, 0x15, 0xc9, 0xcb, 0xc5, 0xc2, 0x14, 0xe7, 0x2e, 0x88, 0x85, 0x91, 0xb5, 0x88,
+	0x85, 0xe8, 0x91, 0x91, 0x85, 0x32, 0x2b, 0x21, 0x38, 0xb6, 0xdf, 0x1c, 0x85, 0x2a, 0x7c, 0xbf,
+	0x29, 0xd1, 0xc3, 0xec, 0x37, 0x71, 0x70, 0x88, 0xfd, 0x26, 0x5a, 0xd7, 0xed, 0x37, 0xc7, 0x43,
+	0xd4, 0xf5, 0xb3, 0x39, 0xc8, 0x6d, 0x8b, 0x0b, 0x38, 0xe2, 0x40, 0x0e, 0xef, 0xb6, 0x88, 0xa5,
+	0x13, 0x4e, 0xde, 0x97, 0x95, 0x6f, 0x19, 0x31, 0x58, 0x98, 0x0b, 0xbf, 0xff, 0xfc, 0xcf, 0x8f,
+	0xd9, 0x59, 0x28, 0x7a, 0x4f, 0x6b, 0xdd, 0xd6, 0xbb, 0x58, 0xca, 0xc4, 0x85, 0x7c, 0x78, 0x89,
+	0x42, 0xde, 0x1e, 0xe4, 0x4a, 0xa9, 0xfc, 0x4e, 0x1f, 0x94, 0xd9, 0x60, 0x17, 0x20, 0xba, 0xc3,
+	0x20, 0x5a, 0x5d, 0x3d, 0xf7, 0x31, 0xe5, 0xdb, 0xfd, 0x60, 0x66, 0x9b, 0x22, 0x9e, 0xfc, 0x70,
+	0x98, 0x1a, 0xcf, 0xd8, 0xad, 0x44, 0x6a, 0x3c, 0x13, 0xf7, 0x0f, 0xe6, 0x78, 0x06, 0x47, 0xd7,
+	0xf4, 0x78, 0xc6, 0xcf, 0xf8, 0xe9, 0xf1, 0x4c, 0x9c, 0x7f, 0x0d, 0xf1, 0x8c, 0x6e, 0x47, 0xf4,
+	0xf1, 0xec, 0xb9, 0x77, 0xd1, 0xc7, 0x53, 0x73, 0xc9, 0x92, 0x6e, 0x33, 0x3a, 0x7a, 0xea, 0x6d,
+	0xf6, 0x9c, 0x6e, 0xf5, 0x36, 0x7b, 0x4f, 0xb0, 0x69, 0x36, 0x9f, 0xc1, 0xd5, 0xf8, 0x56, 0x9f,
+	0xdc, 0x19, 0xf0, 0xe8, 0x51, 0x5e, 0xee, 0x0f, 0x34, 0x5b, 0xfe, 0x1e, 0x8a, 0x89, 0xb3, 0x3f,
+	0xd1, 0x6a, 0xd4, 0xdd, 0x35, 0x94, 0x57, 0x06, 0x40, 0xf6, 0x35, 0x9e, 0x38, 0xd6, 0xea, 0x8d,
+	0xeb, 0x8e, 0xee, 0x7a, 0xe3, 0xda, 0x33, 0xb2, 0xc1, 0x78, 0xe2, 0xf4, 0xaa, 0x37, 0xae, 0x3b,
+	0x26, 0xeb, 0x8d, 0xeb, 0x8f, 0xc2, 0x46, 0x92, 0xe1, 0xbe, 0x32, 0x95, 0x64, 0xc9, 0x63, 0x46,
+	0x2a, 0xc9, 0xd4, 0x33, 0x83, 0x99, 0x64, 0x72, 0x13, 0x9c, 0x4e, 0x32, 0x65, 0x53, 0x9e, 0x4e,
+	0x32, 0x75, 0x3f, 0xdd, 0x97, 0x64, 0x72, 0xc1, 0x06, 0x92, 0x29, 0x6b, 0x5e, 0x19, 0x00, 0x39,
+	0x60, 0x9e, 0x8d, 0xc6, 0x75, 0xe7, 0x3a, 0x53, 0x9e, 0x07, 0x34, 0x2e, 0xf2, 0x8c, 0xdf, 0xc3,
+	0xd4, 0x3c, 0x27, 0xb7, 0x09, 0xa9, 0x79, 0x56, 0x3e, 0xc6, 0x7d, 0xf2, 0x2c, 0xf7, 0x33, 0xe9,
+	0x79, 0x56, 0xf6, 0x57, 0xe9, 0x79, 0x56, 0xb7, 0x46, 0x7d, 0xeb, 0x59, 0x2e, 0xd8, 0x50, 0xcf,
+	0xca, 0x9a, 0x57, 0x06, 0x40, 0x1a, 0x8d, 0x6f, 0xdd, 0x78, 0x7e, 0xb6, 0xf4, 0xda, 0x9f, 0xec,
+	0xf7, 0xef, 0xd9, 0x52, 0xe6, 0x87, 0x97, 0x4b, 0x99, 0xe7, 0xec, 0xf7, 0x07, 0xfb, 0xbd, 0x60,
+	0xbf, 0x83, 0xe9, 0xe0, 0xff, 0x71, 0x1b, 0xff, 0x07, 0x00, 0x00, 0xff, 0xff, 0x18, 0xc7, 0x65,
+	0x0f, 0x08, 0x1c, 0x00, 0x00,
 }

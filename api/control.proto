@@ -59,19 +59,6 @@ service Control {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	};
 
-	rpc GetVolume(GetVolumeRequest) returns (GetVolumeResponse) {
-		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
-	};
-	rpc ListVolumes(ListVolumesRequest) returns (ListVolumesResponse) {
-		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
-	};
-	rpc CreateVolume(CreateVolumeRequest) returns (CreateVolumeResponse) {
-		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
-	};
-	rpc RemoveVolume(RemoveVolumeRequest) returns (RemoveVolumeResponse) {
-		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
-	};
-
 	rpc GetCluster(GetClusterRequest) returns (GetClusterResponse) {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	};
@@ -235,42 +222,6 @@ message ListNetworksRequest {
 
 message ListNetworksResponse {
 	repeated Network networks = 1;
-}
-
-message CreateVolumeRequest {
-	VolumeSpec spec = 1;
-}
-
-message CreateVolumeResponse {
-	Volume volume = 1;
-}
-
-message GetVolumeRequest {
-	string volume_id = 1 [(gogoproto.customname) = "VolumeID"];
-}
-
-message GetVolumeResponse {
-	Volume volume = 1;
-}
-
-message RemoveVolumeRequest {
-	string volume_id = 1 [(gogoproto.customname) = "VolumeID"];
-}
-
-message RemoveVolumeResponse {}
-
-message ListVolumesRequest {
-	message Filters {
-		repeated string names = 1;
-		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
-		map<string, string> labels = 3;
-	}
-
-	Filters filters = 1;
-}
-
-message ListVolumesResponse {
-	repeated Volume volumes = 1;
 }
 
 message ListManagersRequest {

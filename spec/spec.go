@@ -14,7 +14,6 @@ type Spec struct {
 	Version   int                       `yaml:"version,omitempty"`
 	Namespace string                    `yaml:"namespace,omitempty"`
 	Services  map[string]*ServiceConfig `yaml:"services,omitempty"`
-	Volumes   map[string]*VolumeConfig  `yaml:"volumes,omitempty"`
 }
 
 // Read reads a Spec from an io.Reader.
@@ -45,12 +44,7 @@ func (s *Spec) validate() error {
 			return err
 		}
 	}
-	for name, volume := range s.Volumes {
-		volume.Name = name
-		if err := volume.Validate(); err != nil {
-			return err
-		}
-	}
+
 	return nil
 }
 
@@ -71,26 +65,6 @@ func (s *Spec) FromServiceSpecs(servicespecs []*api.ServiceSpec) {
 		service := &ServiceConfig{}
 		service.FromProto(j)
 		s.Services[j.Annotations.Name] = service
-	}
-}
-
-// VolumeSpecs returns all the VolumeSpecs in the Spec.
-func (s *Spec) VolumeSpecs() []*api.VolumeSpec {
-	volumeSpecs := []*api.VolumeSpec{}
-	for _, volume := range s.Volumes {
-		volumeSpec := volume.ToProto()
-		volumeSpec.Annotations.Labels["namespace"] = s.Namespace
-		volumeSpecs = append(volumeSpecs, volumeSpec)
-	}
-	return volumeSpecs
-}
-
-// FromVolumeSpecs converts Volumes to a Spec.
-func (s *Spec) FromVolumeSpecs(volumespecs []*api.VolumeSpec) {
-	for _, j := range volumespecs {
-		volume := &VolumeConfig{}
-		volume.FromProto(j)
-		s.Volumes[j.Annotations.Name] = volume
 	}
 }
 

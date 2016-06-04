@@ -171,18 +171,6 @@ message Container {
 
 	// Spec defines the container specific configuration for this container.
 	ContainerSpec spec = 2 [(gogoproto.nullable) = false];
-
-	// Volumes enumerates the volume declarations needed to satisfy the mounts which use plugins
-	// used by this container
-	repeated Volume volumes = 3;
-}
-
-message Volume {
-	string id = 1 [(gogoproto.customname) = "ID"];
-
-	Meta meta = 2 [(gogoproto.nullable) = false];
-
-	VolumeSpec spec = 3 [(gogoproto.nullable) = false];
 }
 
 message Network {

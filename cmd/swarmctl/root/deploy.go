@@ -76,48 +76,6 @@ var (
 				fmt.Printf("%s: %s - REMOVED\n", service.Spec.Annotations.Name, service.ID)
 			}
 
-			// Process Volumes
-			existingVols, err := c.ListVolumes(common.Context(cmd), &api.ListVolumesRequest{})
-			if err != nil {
-				return err
-			}
-
-			volumes := map[string]*api.Volume{}
-
-			for _, j := range existingVols.Volumes {
-				if j.Spec.Annotations.Labels["namespace"] == s.Namespace {
-					volumes[j.Spec.Annotations.Name] = j
-				}
-			}
-
-			for _, volumeSpec := range s.VolumeSpecs() {
-				if volume, ok := volumes[volumeSpec.Annotations.Name]; ok && !reflect.DeepEqual(volume.Spec, volumeSpec) {
-					fmt.Printf("Update Volume not supported: %s\n", volumeSpec.Annotations.Name)
-					delete(volumes, volumeSpec.Annotations.Name)
-					continue
-					// TODO(amitshukla): should we error out here?
-				} else if !ok {
-					r, err := c.CreateVolume(common.Context(cmd), &api.CreateVolumeRequest{Spec: volumeSpec})
-					if err != nil {
-						fmt.Printf("%s: %v\n", volumeSpec.Annotations.Name, err)
-						continue
-					}
-					fmt.Printf("%s: %s - CREATED\n", volumeSpec.Annotations.Name, r.Volume.ID)
-				} else {
-					// nothing to update
-					delete(volumes, volumeSpec.Annotations.Name)
-				}
-			}
-
-			for _, volume := range volumes {
-				_, err := c.RemoveVolume(common.Context(cmd), &api.RemoveVolumeRequest{VolumeID: volume.ID})
-				if err != nil {
-
-					return err
-				}
-				fmt.Printf("%s: %s - REMOVED\n", volume.Spec.Annotations.Name, volume.ID)
-			}
-
 			return nil
 		},
 	}

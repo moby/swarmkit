@@ -40,12 +40,6 @@ func Apply(store *MemoryStore, item events.Event) (err error) {
 		case state.EventDeleteNode:
 			return DeleteNode(tx, v.Node.ID)
 
-		case state.EventCreateVolume:
-			return CreateVolume(tx, v.Volume)
-		case state.EventUpdateVolume:
-			return UpdateVolume(tx, v.Volume)
-		case state.EventDeleteVolume:
-			return DeleteVolume(tx, v.Volume.ID)
 		case state.EventCommit:
 			return nil
 		}

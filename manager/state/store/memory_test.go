@@ -131,33 +131,6 @@ var (
 			},
 		},
 	}
-
-	volumeSet = []*api.Volume{
-		{
-			ID: "id1",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
-					Name: "name1",
-				},
-			},
-		},
-		{
-			ID: "id2",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
-					Name: "name2",
-				},
-			},
-		},
-		{
-			ID: "id3",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
-					Name: "name3",
-				},
-			},
-		},
-	}
 )
 
 func setupTestStore(t *testing.T, s *MemoryStore) {
@@ -179,10 +152,7 @@ func setupTestStore(t *testing.T, s *MemoryStore) {
 		for _, n := range networkSet {
 			assert.NoError(t, CreateNetwork(tx, n))
 		}
-		// Prepopulate volumes
-		for _, v := range volumeSet {
-			assert.NoError(t, CreateVolume(tx, v))
-		}
+
 		return nil
 	})
 	assert.NoError(t, err)
@@ -562,114 +532,6 @@ func TestStoreTask(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestStoreVolume(t *testing.T) {
-	s := NewMemoryStore(nil)
-	assert.NotNil(t, s)
-
-	s.View(func(readTx ReadTx) {
-		allVolumes, err := FindVolumes(readTx, All)
-		assert.NoError(t, err)
-		assert.Empty(t, allVolumes)
-	})
-
-	setupTestStore(t, s)
-
-	err := s.Update(func(tx Tx) error {
-		assert.Equal(t,
-			CreateVolume(tx, &api.Volume{
-				ID: "id1",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
-						Name: "name4",
-					},
-				},
-			}), ErrExist, "duplicate IDs must be rejected")
-
-		assert.Equal(t,
-			CreateVolume(tx, &api.Volume{
-				ID: "id4",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
-						Name: "name1",
-					},
-				},
-			}), ErrNameConflict, "duplicate names must be rejected")
-		return nil
-	})
-	assert.NoError(t, err)
-
-	s.View(func(readTx ReadTx) {
-		assert.Equal(t, volumeSet[0], GetVolume(readTx, "id1"))
-		assert.Equal(t, volumeSet[1], GetVolume(readTx, "id2"))
-		assert.Equal(t, volumeSet[2], GetVolume(readTx, "id3"))
-
-		foundVolumes, err := FindVolumes(readTx, ByName("name1"))
-		assert.NoError(t, err)
-		assert.Len(t, foundVolumes, 1)
-		foundVolumes, err = FindVolumes(readTx, ByName("invalid"))
-		assert.NoError(t, err)
-		assert.Len(t, foundVolumes, 0)
-	})
-
-	// Update.
-	err = s.Update(func(tx Tx) error {
-		// Regular update.
-		update := volumeSet[0].Copy()
-		update.Spec.Annotations.Labels = map[string]string{
-			"foo": "bar",
-		}
-
-		assert.NotEqual(t, update, GetVolume(tx, update.ID))
-		assert.NoError(t, UpdateVolume(tx, update))
-		assert.Equal(t, update, GetVolume(tx, update.ID))
-
-		// Name conflict.
-		update = GetVolume(tx, update.ID)
-		update.Spec.Annotations.Name = "name2"
-		assert.Equal(t, UpdateVolume(tx, update), ErrNameConflict, "duplicate names should be rejected")
-
-		// Name change.
-		update = GetVolume(tx, update.ID)
-		foundVolumes, err := FindVolumes(tx, ByName("name1"))
-		assert.NoError(t, err)
-		assert.Len(t, foundVolumes, 1)
-		foundVolumes, err = FindVolumes(tx, ByName("name4"))
-		assert.NoError(t, err)
-		assert.Empty(t, foundVolumes)
-
-		update.Spec.Annotations.Name = "name4"
-		assert.NoError(t, UpdateVolume(tx, update))
-		foundVolumes, err = FindVolumes(tx, ByName("name1"))
-		assert.NoError(t, err)
-		assert.Empty(t, foundVolumes)
-		foundVolumes, err = FindVolumes(tx, ByName("name4"))
-		assert.NoError(t, err)
-		assert.Len(t, foundVolumes, 1)
-
-		// Invalid update.
-		invalidUpdate := volumeSet[0].Copy()
-		invalidUpdate.ID = "invalid"
-		assert.Error(t, UpdateVolume(tx, invalidUpdate), "invalid IDs should be rejected")
-
-		return nil
-	})
-	assert.NoError(t, err)
-
-	// Delete
-	err = s.Update(func(tx Tx) error {
-		assert.NotNil(t, GetVolume(tx, "id1"))
-		assert.NoError(t, DeleteVolume(tx, "id1"))
-		assert.Nil(t, GetVolume(tx, "id1"))
-		foundVolumes, err := FindVolumes(tx, ByName("name1"))
-		assert.NoError(t, err)
-		assert.Empty(t, foundVolumes)
-
-		assert.Equal(t, DeleteVolume(tx, "nonexistent"), ErrNotExist)
-		return nil
-	})
-	assert.NoError(t, err)
-}
-
 func TestStoreSnapshot(t *testing.T) {
 	s1 := NewMemoryStore(nil)
 	assert.NotNil(t, s1)
@@ -718,16 +580,6 @@ func TestStoreSnapshot(t *testing.T) {
 			}
 			for _, n := range networks {
 				if err := CreateNetwork(tx, n); err != nil {
-					return err
-				}
-			}
-
-			volumes, err := FindVolumes(readTx, All)
-			if err != nil {
-				return err
-			}
-			for _, v := range volumes {
-				if err := CreateVolume(tx, v); err != nil {
 					return err
 				}
 			}

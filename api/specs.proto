@@ -16,13 +16,6 @@ import "duration/duration.proto"; // TODO(stevvooe): use our own until we fix go
 // particular component, API objects will either contain a copy of the spec
 // component or a different representation to reflect allocation or resolution.
 
-// Annotations provide useful information to identify API objects. They are
-// common to all API specs.
-message Annotations {
-	string name = 1;
-	map<string, string> labels = 2;
-}
-
 message NodeSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
@@ -225,12 +218,6 @@ message EndpointSpec {
 	// List of exposed ports that this service is accessible from
 	// external to the cluster.
 	repeated PortConfig exposed_ports = 3;
-}
-
-// VolumeSpec defines the properties of a Volume.
-message VolumeSpec {
-	Annotations annotations = 1 [(gogoproto.nullable) = false];
-	Driver driver_config = 2;
 }
 
 // NetworkSpec specifies user defined network parameters.

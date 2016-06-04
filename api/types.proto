@@ -14,6 +14,13 @@ message Version {
 	uint64 index = 1;
 }
 
+// Annotations provide useful information to identify API objects. They are
+// common to all API specs.
+message Annotations {
+	string name = 1;
+	map<string, string> labels = 2;
+}
+
 message Resources {
 	// Amount of CPUs (e.g. 2000000000 = 2 CPU cores)
 	int64 nano_cpus = 1 [(gogoproto.customname) = "NanoCPUs"];
@@ -119,11 +126,10 @@ message Image {
 	string reference = 1;
 }
 
+// VolumeTemplate describes how to create a volume when a volume is not found.
 message VolumeTemplate {
-	// Template for a plugin based volume mount
-
-	// volume name for a plugin volume
-	string name = 5;
+	// Annotations will be used to name and label the volume.
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
 	// DriverConfig declares the driver to be used to create the volume.
 	Driver driver_config = 6;
@@ -141,22 +147,18 @@ message Mount {
 
 	enum Type {
 		option (gogoproto.goproto_enum_prefix) = false;
-		option (gogoproto.enum_customname) = "Type";
+		option (gogoproto.enum_customname) = "MountType";
 
 		BIND = 0 [(gogoproto.enumvalue_customname) = "MountTypeBind"]; // Bind mount host dir
-		EPHEMERAL = 1 [(gogoproto.enumvalue_customname) = "MountTypeEphemeral"]; // Scratch dir
 		VOLUME = 2 [(gogoproto.enumvalue_customname) = "MountTypeVolume"];  // Remote storage volumes
-		TEMPLATE = 3 [(gogoproto.enumvalue_customname) = "MountTypeTemplate"];  // Remote storage volumes, embedded in service
 	}
 
+	// Type defines the nature of the mount.
 	Type type = 4;
-
-	// Source path to mount
-	string volume_name = 5;
 
 	enum Propagation {
 		option (gogoproto.goproto_enum_prefix) = false;
-		option (gogoproto.enum_customname) = "Propagation";
+		option (gogoproto.enum_customname) = "MountPropagation";
 
 		RPRIVATE = 0 [(gogoproto.enumvalue_customname) = "MountPropagationRPrivate"];
 		PRIVATE = 1 [(gogoproto.enumvalue_customname) = "MountPropagationPrivate"];
@@ -167,23 +169,23 @@ message Mount {
 	}
 
 	// Propagation mode of mount
-	Propagation propagation = 6;
+	Propagation propagation = 5;
 
 	enum MCSAccessMode {
 		option (gogoproto.goproto_enum_prefix) = false;
-		option (gogoproto.enum_customname) = "MCSAccessMode";
+		option (gogoproto.enum_customname) = "MountMCSAccessMode";
 
 		MCSNONE = 0 [(gogoproto.enumvalue_customname) = "MountMCSAccessModeNone"];
 		MCSPRIVATE = 1 [(gogoproto.enumvalue_customname) = "MountMCSAccessModePrivate"];
 		MCSSHARED = 2 [(gogoproto.enumvalue_customname) = "MountMCSAccessModeShared"];
 	}
 	// Set shared mode for mcs (e.g. selinux)
-	MCSAccessMode mcsaccessmode = 7;
+	MCSAccessMode mcsaccessmode = 6;
 
 	// populate volume with data from target
-	bool populate = 8;
+	bool populate = 7;
 
-	VolumeTemplate template = 9;
+	VolumeTemplate template = 8;
 }
 
 message RestartPolicy {
