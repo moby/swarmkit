@@ -69,6 +69,10 @@ func (s *Server) UpdateCluster(ctx context.Context, request *api.UpdateClusterRe
 	if cluster == nil {
 		return nil, grpc.Errorf(codes.NotFound, "cluster %s not found", request.ClusterID)
 	}
+
+	if cluster.Spec.AcceptancePolicy.Secret != "" {
+		cluster.Spec.AcceptancePolicy.Secret = "[REDACTED]"
+	}
 	return &api.UpdateClusterResponse{
 		Cluster: cluster,
 	}, nil
@@ -125,6 +129,13 @@ func (s *Server) ListClusters(ctx context.Context, request *api.ListClustersRequ
 				return filterMatchLabels(e.Spec.Annotations.Labels, request.Filters.Labels)
 			},
 		)
+	}
+
+	// Filter the secrets out of all the returned clusters
+	for _, cluster := range clusters {
+		if cluster.Spec.AcceptancePolicy.Secret != "" {
+			cluster.Spec.AcceptancePolicy.Secret = "[REDACTED]"
+		}
 	}
 
 	return &api.ListClustersResponse{
