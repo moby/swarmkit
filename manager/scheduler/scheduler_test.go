@@ -800,6 +800,17 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 		},
 	}
 
+	volumeTemplate := func(name, driver string) *api.VolumeTemplate {
+		return &api.VolumeTemplate{
+			Annotations: api.Annotations{
+				Name: name,
+			},
+			DriverConfig: &api.Driver{
+				Name: driver,
+			},
+		}
+	}
+
 	// Task1: vol plugin1
 	t1 := &api.Task{
 		ID: "task1_ID",
@@ -808,22 +819,9 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				Spec: api.ContainerSpec{
 					Mounts: []*api.Mount{
 						{
-							Target:     "/foo",
-							Type:       api.MountTypeVolume,
-							VolumeName: "testVol1",
-						},
-					},
-				},
-				Volumes: []*api.Volume{
-					{
-						ID: "testVolID1",
-						Spec: api.VolumeSpec{
-							Annotations: api.Annotations{
-								Name: "testVol1",
-							},
-							DriverConfig: &api.Driver{
-								Name: "plugin1",
-							},
+							Target:   "/foo",
+							Type:     api.MountTypeVolume,
+							Template: volumeTemplate("testVol1", "plugin1"),
 						},
 					},
 				},
@@ -845,38 +843,14 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				Spec: api.ContainerSpec{
 					Mounts: []*api.Mount{
 						{
-							Target:     "/foo",
-							Type:       api.MountTypeVolume,
-							VolumeName: "testVol1",
+							Target:   "/foo",
+							Type:     api.MountTypeVolume,
+							Template: volumeTemplate("testVol1", "plugin1"),
 						},
 						{
-							Target:     "/foo",
-							Type:       api.MountTypeVolume,
-							VolumeName: "testVol2",
-						},
-					},
-				},
-				Volumes: []*api.Volume{
-					{
-						ID: "testVolID1",
-						Spec: api.VolumeSpec{
-							Annotations: api.Annotations{
-								Name: "testVol1",
-							},
-							DriverConfig: &api.Driver{
-								Name: "plugin1",
-							},
-						},
-					},
-					{
-						ID: "testVolID2",
-						Spec: api.VolumeSpec{
-							Annotations: api.Annotations{
-								Name: "testVol2",
-							},
-							DriverConfig: &api.Driver{
-								Name: "plugin2",
-							},
+							Target:   "/foo",
+							Type:     api.MountTypeVolume,
+							Template: volumeTemplate("testVol2", "plugin2"),
 						},
 					},
 				},
@@ -913,22 +887,9 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				Spec: api.ContainerSpec{
 					Mounts: []*api.Mount{
 						{
-							Target:     "/foo",
-							Type:       api.MountTypeVolume,
-							VolumeName: "testVol1",
-						},
-					},
-				},
-				Volumes: []*api.Volume{
-					{
-						ID: "testVolID1",
-						Spec: api.VolumeSpec{
-							Annotations: api.Annotations{
-								Name: "testVol1",
-							},
-							DriverConfig: &api.Driver{
-								Name: "plugin1",
-							},
+							Target:   "/foo",
+							Type:     api.MountTypeVolume,
+							Template: volumeTemplate("testVol1", "plugin1"),
 						},
 					},
 				},

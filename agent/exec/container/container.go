@@ -83,15 +83,31 @@ func (c *containerConfig) image() string {
 	return c.spec().Image
 }
 
-func (c *containerConfig) ephemeralDirs() map[string]struct{} {
-	mounts := c.spec().Mounts
+func (c *containerConfig) volumes() map[string]struct{} {
 	r := make(map[string]struct{})
-	var x struct{}
-	for _, val := range mounts {
-		if val.Type == api.MountTypeEphemeral {
-			r[val.Target] = x
+
+	for _, mount := range c.spec().Mounts {
+		// pick off all the volume mounts.
+		if mount.Type != api.MountTypeVolume {
+			continue
+		}
+
+		var (
+			name string
+			mask = getMountMask(mount)
+		)
+
+		if mount.Template != nil {
+			name = mount.Template.Annotations.Name
+		}
+
+		if name != "" {
+			r[fmt.Sprintf("%s:%s:%s", name, mount.Target, mask)] = struct{}{}
+		} else {
+			r[fmt.Sprintf("%s:%s", mount.Target, mask)] = struct{}{}
 		}
 	}
+
 	return r
 }
 
@@ -102,7 +118,7 @@ func (c *containerConfig) config() *enginecontainer.Config {
 		Env:        c.spec().Env,
 		WorkingDir: c.spec().Dir,
 		Image:      c.image(),
-		Volumes:    c.ephemeralDirs(),
+		Volumes:    c.volumes(),
 	}
 
 	if len(c.spec().Command) > 0 {
@@ -161,8 +177,6 @@ func (c *containerConfig) bindMounts() []string {
 		mask := getMountMask(val)
 		if val.Type == api.MountTypeBind {
 			r = append(r, fmt.Sprintf("%s:%s:%s", val.Source, val.Target, mask))
-		} else if val.Type == api.MountTypeVolume {
-			r = append(r, fmt.Sprintf("%s:%s:%s", val.VolumeName, val.Target, mask))
 		}
 	}
 
@@ -202,19 +216,10 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 	}
 }
 
-// This handles the case of a cluster level volume definition
-func (c *containerConfig) volumeCreateRequest(vol *api.Volume) *types.VolumeCreateRequest {
-	return &types.VolumeCreateRequest{
-		Name:       vol.Spec.Annotations.Name,
-		Driver:     vol.Spec.DriverConfig.Name,
-		DriverOpts: vol.Spec.DriverConfig.Options,
-	}
-}
-
 // This handles the case of volumes that are defined inside a service Mount
-func (c *containerConfig) serviceVolumeCreateRequest(mount *api.Mount) *types.VolumeCreateRequest {
+func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *types.VolumeCreateRequest {
 	return &types.VolumeCreateRequest{
-		Name:       mount.Template.Name,
+		Name:       mount.Template.Annotations.Name,
 		Driver:     mount.Template.DriverConfig.Name,
 		DriverOpts: mount.Template.DriverConfig.Options,
 	}
