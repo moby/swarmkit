@@ -12,7 +12,7 @@ var (
 		Use:   "accept <node ID>",
 		Short: "Accept a node into the cluster",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := changeNodeAcceptance(cmd, args, api.NodeAcceptanceAccept); err != nil {
+			if err := changeNodeMembership(cmd, args, api.NodeMembershipAccepted); err != nil {
 				if err == errNoChange {
 					return fmt.Errorf("Node %s was already accepted", args[0])
 				}

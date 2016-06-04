@@ -90,7 +90,7 @@ func TestNodeCertificateAccept(t *testing.T) {
 	testNode := &api.Node{
 		ID: "nodeID",
 		Spec: api.NodeSpec{
-			Acceptance: api.NodeAcceptanceAccept,
+			Membership: api.NodeMembershipAccepted,
 		},
 		Certificate: api.Certificate{
 			CN:     "nodeID",
@@ -131,7 +131,7 @@ func TestNodeCertificateReject(t *testing.T) {
 	testNode := &api.Node{
 		ID: "nodeID",
 		Spec: api.NodeSpec{
-			Acceptance: api.NodeAcceptanceReject,
+			Membership: api.NodeMembershipRejected,
 		},
 		Certificate: api.Certificate{
 			CN:     "nodeID",
