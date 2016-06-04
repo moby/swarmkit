@@ -207,6 +207,10 @@ func (ti taskIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
 	return true, []byte(val), nil
 }
 
+func (ti taskIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
+}
+
 type taskIndexerByName struct{}
 
 func (ti taskIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
