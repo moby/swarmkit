@@ -35,6 +35,7 @@ message NodeCertificateStatusResponse {
 message IssueNodeCertificateRequest {
 	string role = 1;
 	bytes csr = 2 [(gogoproto.customname) = "CSR"];
+	string secret = 3;
 }
 
 message IssueNodeCertificateResponse {
