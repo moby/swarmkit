@@ -51,8 +51,10 @@ func (*NodeCertificateStatusResponse) ProtoMessage()               {}
 func (*NodeCertificateStatusResponse) Descriptor() ([]byte, []int) { return fileDescriptorCa, []int{1} }
 
 type IssueNodeCertificateRequest struct {
-	Role   string `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
-	CSR    []byte `protobuf:"bytes,2,opt,name=csr,proto3" json:"csr,omitempty"`
+	Role string `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	CSR  []byte `protobuf:"bytes,2,opt,name=csr,proto3" json:"csr,omitempty"`
+	// Secret represents a user-provided string that is necessary for new
+	// nodes to join the cluster
 	Secret string `protobuf:"bytes,3,opt,name=secret,proto3" json:"secret,omitempty"`
 }
 

@@ -60,6 +60,13 @@ var (
 					}
 				}
 
+				if flags.Changed("secret") {
+					secret, err := flags.GetStringSlice("secret")
+					if err != nil || secret == nil || len(secret) < 1 {
+						return err
+					}
+					spec.AcceptancePolicy.Secret = secret[0]
+				}
 				if flags.Changed("taskhistory") {
 					taskHistory, err := flags.GetInt64("taskhistory")
 					if err != nil {
@@ -94,6 +101,7 @@ func init() {
 	updateCmd.Flags().StringP("file", "f", "", "Spec to use")
 	// TODO(aaronl): Acceptance policy will change later.
 	updateCmd.Flags().StringSlice("autoaccept", nil, "Roles to automatically issue certificates for")
+	updateCmd.Flags().StringSlice("secret", nil, "Secret required to join the cluster")
 	updateCmd.Flags().Int64("taskhistory", 0, "Number of historic task entries to retain per instance or node")
 	updateCmd.Flags().Duration("heartbeatperiod", 0, "Period when heartbeat is expected to receive from agent")
 }

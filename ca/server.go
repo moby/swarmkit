@@ -154,12 +154,11 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 	// The remote node didn't successfully present a valid MTLS certificate, let's issue
 	// a pending certificate with a new ID
 
-	// If there is a secret configured, the client has to have suplied it to be able to propose itself
+	// If there is a secret configured, the client has to have supplied it to be able to propose itself
 	// for the first certificate issuance
 
 	s.mu.Lock()
 	if s.acceptancePolicy.Secret != "" {
-		fmt.Printf("Policy is not empty: %s\n", s.acceptancePolicy.Secret)
 		if request.Secret == "" ||
 			subtle.ConstantTimeCompare([]byte(request.Secret), []byte(s.acceptancePolicy.Secret)) != 1 {
 			s.mu.Unlock()
@@ -440,11 +439,12 @@ func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) {
 
 	// Check to see if our autoacceptance policy allows this node to be issued without manual intervention
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.acceptancePolicy.Autoaccept != nil && s.acceptancePolicy.Autoaccept[node.Certificate.Role] {
+		s.mu.Unlock()
 		s.signNodeCert(ctx, node)
 		return
 	}
+	s.mu.Unlock()
 
 	// Only issue this node if the admin explicitly changed it to Accepted
 	if node.Spec.Membership == api.NodeMembershipAccepted {
