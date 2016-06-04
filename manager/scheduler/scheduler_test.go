@@ -431,14 +431,13 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 
 	initialTask := &api.Task{
 		ID: "id1",
-		Runtime: &api.Task_Container{
-			Container: &api.Container{
-				Spec: api.ContainerSpec{
-					Resources: &api.ResourceRequirements{
-						Reservations: &api.Resources{
-							MemoryBytes: 2e9,
-						},
-					},
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{},
+			},
+			Resources: &api.ResourceRequirements{
+				Reservations: &api.Resources{
+					MemoryBytes: 2e9,
 				},
 			},
 		},
@@ -523,14 +522,10 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 
 	bigTask1 := &api.Task{
 		ID: "id1",
-		Runtime: &api.Task_Container{
-			Container: &api.Container{
-				Spec: api.ContainerSpec{
-					Resources: &api.ResourceRequirements{
-						Reservations: &api.Resources{
-							MemoryBytes: 8e8,
-						},
-					},
+		Spec: api.TaskSpec{
+			Resources: &api.ResourceRequirements{
+				Reservations: &api.Resources{
+					MemoryBytes: 8e8,
 				},
 			},
 		},
@@ -814,9 +809,9 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	// Task1: vol plugin1
 	t1 := &api.Task{
 		ID: "task1_ID",
-		Runtime: &api.Task_Container{
-			Container: &api.Container{
-				Spec: api.ContainerSpec{
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
 					Mounts: []*api.Mount{
 						{
 							Target:   "/foo",
@@ -838,9 +833,9 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	// Task2: vol plugin1, vol plugin2
 	t2 := &api.Task{
 		ID: "task2_ID",
-		Runtime: &api.Task_Container{
-			Container: &api.Container{
-				Spec: api.ContainerSpec{
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
 					Mounts: []*api.Mount{
 						{
 							Target:   "/foo",
@@ -882,9 +877,9 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				},
 			},
 		},
-		Runtime: &api.Task_Container{
-			Container: &api.Container{
-				Spec: api.ContainerSpec{
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
 					Mounts: []*api.Mount{
 						{
 							Target:   "/foo",

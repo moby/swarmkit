@@ -38,28 +38,22 @@ func validateResourceRequirements(r *api.ResourceRequirements) error {
 }
 
 func validateServiceSpecTemplate(spec *api.ServiceSpec) error {
-	rSpec := spec.RuntimeSpec
-
-	if rSpec == nil {
-		return grpc.Errorf(codes.InvalidArgument, "missing runtime spec in service spec")
+	if err := validateResourceRequirements(spec.Task.Resources); err != nil {
+		return err
 	}
 
-	if spec.GetRuntimeSpec() == nil {
-		return grpc.Errorf(codes.InvalidArgument, "runtime spec required in service spec")
+	if spec.Task.GetRuntime() == nil {
+		return grpc.Errorf(codes.InvalidArgument, "TaskSpec: missing runtime")
 	}
 
-	ssContainer, ok := spec.GetRuntimeSpec().(*api.ServiceSpec_Container)
+	_, ok := spec.Task.GetRuntime().(*api.TaskSpec_Container)
 	if !ok {
 		return grpc.Errorf(codes.Unimplemented, "RuntimeSpec: unimplemented runtime in service spec")
 	}
 
-	container := ssContainer.Container
+	container := spec.Task.GetContainer()
 	if container == nil {
 		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: missing in service spec")
-	}
-
-	if err := validateResourceRequirements(container.Resources); err != nil {
-		return err
 	}
 
 	if container.Image == "" {

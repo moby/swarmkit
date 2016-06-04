@@ -43,6 +43,7 @@ func (r *ReplicatedOrchestrator) initTasks(ctx context.Context, readTx store.Rea
 				continue
 			}
 
+			// TODO(aluzzardi): We should NOT retrieve the service here.
 			service := store.GetService(readTx, t.ServiceID)
 			if service == nil {
 				// Service was deleted
@@ -58,9 +59,9 @@ func (r *ReplicatedOrchestrator) initTasks(ctx context.Context, readTx store.Rea
 				continue
 			}
 			restartDelay := defaultRestartDelay
-			if service.Spec.Restart != nil && service.Spec.Restart.Delay != nil {
+			if t.Spec.Restart != nil && t.Spec.Restart.Delay != nil {
 				var err error
-				restartDelay, err = ptypes.Duration(service.Spec.Restart.Delay)
+				restartDelay, err = ptypes.Duration(t.Spec.Restart.Delay)
 				if err != nil {
 					log.G(ctx).WithError(err).Error("invalid restart delay")
 					restartDelay = defaultRestartDelay
@@ -80,7 +81,7 @@ func (r *ReplicatedOrchestrator) initTasks(ctx context.Context, readTx store.Rea
 							if t == nil || t.DesiredState != api.TaskStateReady {
 								return nil
 							}
-							r.restarts.DelayStart(ctx, tx, service, nil, t.ID, restartDelay, true)
+							r.restarts.DelayStart(ctx, tx, nil, t.ID, restartDelay, true)
 							return nil
 						})
 						continue

@@ -192,7 +192,6 @@ func (g *GlobalOrchestrator) reconcileOneService(ctx context.Context, service *a
 		log.G(ctx).WithError(err).Errorf("global orchestrator: reconcileOneService failed finding tasks")
 		return
 	}
-	restartPolicy := restartCondition(service)
 	// a node may have completed this service
 	nodeCompleted := make(map[string]struct{})
 	// nodeID -> task list
@@ -204,7 +203,7 @@ func (g *GlobalOrchestrator) reconcileOneService(ctx context.Context, service *a
 			nodeTasks[t.NodeID] = append(nodeTasks[t.NodeID], t)
 		} else {
 			// for finished tasks, check restartPolicy
-			if isTaskCompleted(t, restartPolicy) {
+			if isTaskCompleted(t, restartCondition(t)) {
 				nodeCompleted[t.NodeID] = struct{}{}
 			}
 		}
@@ -273,7 +272,6 @@ func (g *GlobalOrchestrator) reconcileServiceOneNode(ctx context.Context, servic
 	if !exists {
 		return
 	}
-	restartPolicy := restartCondition(service)
 	// the node has completed this servie
 	completed := false
 	// tasks for this node and service
@@ -295,7 +293,7 @@ func (g *GlobalOrchestrator) reconcileServiceOneNode(ctx context.Context, servic
 			if isTaskRunning(t) {
 				tasks = append(tasks, t)
 			} else {
-				if isTaskCompleted(t, restartPolicy) {
+				if isTaskCompleted(t, restartCondition(t)) {
 					completed = true
 				}
 			}

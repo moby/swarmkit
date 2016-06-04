@@ -69,32 +69,25 @@ message NodeSpec {
 message ServiceSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
-	// RuntimeSpec defines the base runtime specific configuration
-	// for tasks created for this service.
-	oneof runtime_spec {
-		ContainerSpec container = 2;
-	}
+	// Task defines the task template this service will spawn.
+	TaskSpec task = 2 [(gogoproto.nullable) = false];
 
 	oneof mode {
 		ReplicatedService replicated = 3;
 		GlobalService global = 4;
 	}
 
-	// RestartPolicy specifies what to do when a task fails or finishes.
-	RestartPolicy restart = 5;
-
 	// UpdateConfig controls the rate and policy of updates.
 	UpdateConfig update = 6;
 
-	// NetworkAttachmentSpec describes which networks the target
-	// runtime is attached to.
+	// NetworkAttachmentSpec describes which networks the task
+	// is attached to.
 	message NetworkAttachment {
 		oneof reference {
 			string name = 1;
 			string network_id = 2 [(gogoproto.customname) = "NetworkID"];
 		}
 	}
-
 	repeated NetworkAttachment networks = 7;
 
 	// Service endpoint specifies the user provided configuration
@@ -110,6 +103,21 @@ message ReplicatedService {
 // GlobalService represent global service.
 message GlobalService {
 	// Empty message for now.
+}
+
+message TaskSpec {
+	oneof runtime {
+		ContainerSpec container = 1;
+	}
+
+	// Resource requirements for the container.
+	ResourceRequirements resources = 2;
+
+	// RestartPolicy specifies what to do when a task fails or finishes.
+	RestartPolicy restart = 4;
+
+	// Placement specifies node selection constraints
+	Placement placement = 5;
 }
 
 // Container specifies runtime parameters for a container.
@@ -153,15 +161,9 @@ message ContainerSpec {
 
 	repeated Mount mounts = 8;
 
-	// Resource requirements for the container.
-	ResourceRequirements resources = 9;
-
-	// Placement specifies node selection constraints
-	Placement placement = 10;
-
 	// StopGracePeriod the grace period for stopping the container before
 	// forcefully killing the container.
-	Duration stop_grace_period = 11 [(gogoproto.nullable) = false];
+	Duration stop_grace_period = 9 [(gogoproto.nullable) = false];
 }
 
 // EndpointSpec defines the properties that can be configured to

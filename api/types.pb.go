@@ -54,6 +54,7 @@
 		ServiceSpec
 		ReplicatedService
 		GlobalService
+		TaskSpec
 		ContainerSpec
 		EndpointSpec
 		NetworkSpec
@@ -64,7 +65,6 @@
 		Endpoint
 		Task
 		NetworkAttachment
-		Container
 		Network
 		Cluster
 		GetNodeRequest

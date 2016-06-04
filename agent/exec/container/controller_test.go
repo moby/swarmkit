@@ -302,9 +302,9 @@ func genTask(t *testing.T) *api.Task {
 		ID:        identity.NewID(),
 		ServiceID: serviceID,
 		NodeID:    nodeID,
-		Runtime: &api.Task_Container{
-			Container: &api.Container{
-				Spec: api.ContainerSpec{
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
 					Image:           reference,
 					StopGracePeriod: *ptypes.DurationProto(10 * time.Second),
 				},

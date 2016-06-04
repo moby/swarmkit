@@ -33,15 +33,19 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				RuntimeSpec: &api.ServiceSpec_Container{},
+				Task: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{},
+					},
+					Restart: &api.RestartPolicy{
+						Condition: api.RestartOnAny,
+						Delay:     ptypes.DurationProto(0),
+					},
+				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
 						Instances: 2,
 					},
-				},
-				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnAny,
-					Delay:     ptypes.DurationProto(0),
 				},
 			},
 		}
@@ -131,15 +135,19 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				RuntimeSpec: &api.ServiceSpec_Container{},
+				Task: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{},
+					},
+					Restart: &api.RestartPolicy{
+						Condition: api.RestartOnFailure,
+						Delay:     ptypes.DurationProto(0),
+					},
+				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
 						Instances: 2,
 					},
-				},
-				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnFailure,
-					Delay:     ptypes.DurationProto(0),
 				},
 			},
 		}
@@ -227,14 +235,18 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				RuntimeSpec: &api.ServiceSpec_Container{},
+				Task: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{},
+					},
+					Restart: &api.RestartPolicy{
+						Condition: api.RestartOnNone,
+					},
+				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
 						Instances: 2,
 					},
-				},
-				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnNone,
 				},
 			},
 		}
@@ -317,15 +329,19 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				RuntimeSpec: &api.ServiceSpec_Container{},
+				Task: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{},
+					},
+					Restart: &api.RestartPolicy{
+						Condition: api.RestartOnAny,
+						Delay:     ptypes.DurationProto(100 * time.Millisecond),
+					},
+				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
 						Instances: 2,
 					},
-				},
-				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnAny,
-					Delay:     ptypes.DurationProto(100 * time.Millisecond),
 				},
 			},
 		}
@@ -407,10 +423,15 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 						Instances: 2,
 					},
 				},
-				Restart: &api.RestartPolicy{
-					Condition:   api.RestartOnAny,
-					Delay:       ptypes.DurationProto(100 * time.Millisecond),
-					MaxAttempts: 1,
+				Task: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{},
+					},
+					Restart: &api.RestartPolicy{
+						Condition:   api.RestartOnAny,
+						Delay:       ptypes.DurationProto(100 * time.Millisecond),
+						MaxAttempts: 1,
+					},
 				},
 			},
 		}
@@ -537,11 +558,13 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 						Instances: 2,
 					},
 				},
-				Restart: &api.RestartPolicy{
-					Condition:   api.RestartOnAny,
-					Delay:       ptypes.DurationProto(100 * time.Millisecond),
-					MaxAttempts: 1,
-					Window:      ptypes.DurationProto(500 * time.Millisecond),
+				Task: api.TaskSpec{
+					Restart: &api.RestartPolicy{
+						Condition:   api.RestartOnAny,
+						Delay:       ptypes.DurationProto(100 * time.Millisecond),
+						MaxAttempts: 1,
+						Window:      ptypes.DurationProto(500 * time.Millisecond),
+					},
 				},
 			},
 		}

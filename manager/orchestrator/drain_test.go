@@ -18,14 +18,18 @@ func TestDrain(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
-			RuntimeSpec: &api.ServiceSpec_Container{},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartOnNone,
+				},
+			},
 			Mode: &api.ServiceSpec_Replicated{
 				Replicated: &api.ReplicatedService{
 					Instances: 1,
 				},
-			},
-			Restart: &api.RestartPolicy{
-				Condition: api.RestartOnNone,
 			},
 		},
 	}

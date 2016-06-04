@@ -69,7 +69,7 @@ services:
 		for _, serviceSpec := range s.ServiceSpecs() {
 			replicated := serviceSpec.GetMode().(*api.ServiceSpec_Replicated)
 			assert.Equal(t, fmt.Sprintf("name%d", replicated.Replicated.Instances), serviceSpec.Annotations.Name)
-			assert.Equal(t, fmt.Sprintf("image%d", replicated.Replicated.Instances), serviceSpec.GetContainer().Image)
+			assert.Equal(t, fmt.Sprintf("image%d", replicated.Replicated.Instances), serviceSpec.Task.GetContainer().Image)
 		}
 	}
 }
