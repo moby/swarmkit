@@ -180,8 +180,9 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, secret
 		if rootCA.CanSign() {
 			// Create a new random ID for this certificate
 			cn := identity.NewNodeID()
+			org := identity.NewID()
 
-			tlsKeyPair, err = rootCA.IssueAndSaveNewCertificates(paths.Node, cn, proposedRole)
+			tlsKeyPair, err = rootCA.IssueAndSaveNewCertificates(paths.Node, cn, proposedRole, org)
 		} else {
 			// There was an error loading our Credentials, let's get a new certificate issued
 			// Last argument is nil because at this point we don't have any valid TLS creds

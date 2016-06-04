@@ -12,7 +12,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
-	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/allocator"
 	"github.com/docker/swarm-v2/manager/controlapi"
@@ -261,7 +260,7 @@ func (m *Manager) Run(ctx context.Context) error {
 					// we expect this to fail unless this
 					// is a brand new cluster.
 					store.CreateCluster(tx, &api.Cluster{
-						ID: identity.NewID(),
+						ID: m.config.SecurityConfig.ClientTLSCreds.Organization(),
 						Spec: api.ClusterSpec{
 							Annotations: api.Annotations{
 								Name: store.DefaultClusterName,
@@ -405,7 +404,8 @@ func (m *Manager) Run(ctx context.Context) error {
 	cs := raftpicker.NewConnSelector(m.RaftNode, proxyOpts...)
 
 	authorize := func(ctx context.Context, roles []string) error {
-		_, err := ca.AuthorizeForwardedRole(ctx, roles, []string{ca.ManagerRole})
+		// Authorize the remote roles, ensure they can only be forwarded by managers
+		_, err := ca.AuthorizeForwardedRoleAndOrg(ctx, roles, []string{ca.ManagerRole}, m.config.SecurityConfig.ClientTLSCreds.Organization())
 		return err
 	}
 

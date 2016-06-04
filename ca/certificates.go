@@ -73,7 +73,7 @@ func (rca *RootCA) CanSign() bool {
 
 // IssueAndSaveNewCertificates generates a new key-pair, signs it with the local root-ca, and returns a
 // tls certificate
-func (rca *RootCA) IssueAndSaveNewCertificates(paths CertPaths, cn, ou string) (*tls.Certificate, error) {
+func (rca *RootCA) IssueAndSaveNewCertificates(paths CertPaths, cn, ou, org string) (*tls.Certificate, error) {
 	csr, key, err := GenerateAndWriteNewKey(paths)
 	if err != nil {
 		log.Debugf("error when generating new node certs: %v", err)
@@ -86,7 +86,7 @@ func (rca *RootCA) IssueAndSaveNewCertificates(paths CertPaths, cn, ou string) (
 	}
 
 	// Obtain a signed Certificate
-	signedCert, err = rca.ParseValidateAndSignCSR(csr, cn, ou)
+	signedCert, err = rca.ParseValidateAndSignCSR(csr, cn, ou, org)
 	if err != nil {
 		log.Debugf("failed to sign node certificate: %v", err)
 		return nil, err
@@ -159,7 +159,7 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, paths Cert
 }
 
 // ParseValidateAndSignCSR returns a signed certificate from a particular rootCA and a CSR.
-func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, ou string) ([]byte, error) {
+func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, ou, org string) ([]byte, error) {
 	if !rca.CanSign() {
 		return nil, fmt.Errorf("no valid signer for Root CA found")
 	}
@@ -174,7 +174,7 @@ func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, ou string) ([]by
 		Request: string(csrBytes),
 		// OU is used for Authentication of the node type. The CN has the random
 		// node ID.
-		Subject: &cfsigner.Subject{CN: cn, Names: []cfcsr.Name{{OU: ou}}},
+		Subject: &cfsigner.Subject{CN: cn, Names: []cfcsr.Name{{OU: ou, O: org}}},
 		// Adding ou as DNS alt name, so clients can connect to ManagerRole and CARole
 		Hosts: hosts,
 	})
@@ -322,6 +322,12 @@ func GetRemoteCA(ctx context.Context, hashStr string, picker *picker.Picker) (Ro
 		}
 	}
 
+	// Check the validity of the remote Cert
+	_, err = helpers.ParseCertificatePEM(response.Certificate)
+	if err != nil {
+		return RootCA{}, err
+	}
+
 	// Create a Pool with our RootCACertificate
 	pool := x509.NewCertPool()
 	if !pool.AppendCertsFromPEM(response.Certificate) {
@@ -402,7 +408,8 @@ func BootstrapCluster(baseCertDir string) error {
 	}
 
 	nodeID := identity.NewNodeID()
-	_, err = GenerateAndSignNewTLSCert(rootCA, nodeID, ManagerRole, paths.Node)
+	newOrg := identity.NewID()
+	_, err = GenerateAndSignNewTLSCert(rootCA, nodeID, ManagerRole, newOrg, paths.Node)
 
 	return err
 }
@@ -410,7 +417,7 @@ func BootstrapCluster(baseCertDir string) error {
 // GenerateAndSignNewTLSCert creates a new keypair, signs the certificate using signer,
 // and saves the certificate and key to disk. This method is used to bootstrap the first
 // manager TLS certificates.
-func GenerateAndSignNewTLSCert(rootCA RootCA, cn, ou string, paths CertPaths) (*tls.Certificate, error) {
+func GenerateAndSignNewTLSCert(rootCA RootCA, cn, ou, org string, paths CertPaths) (*tls.Certificate, error) {
 	// Generate and new keypair and CSR
 	csr, key, err := generateNewCSR()
 	if err != nil {
@@ -418,7 +425,7 @@ func GenerateAndSignNewTLSCert(rootCA RootCA, cn, ou string, paths CertPaths) (*
 	}
 
 	// Obtain a signed Certificate
-	cert, err := rootCA.ParseValidateAndSignCSR(csr, cn, ou)
+	cert, err := rootCA.ParseValidateAndSignCSR(csr, cn, ou, org)
 	if err != nil {
 		log.Debugf("failed to sign node certificate: %v", err)
 		return nil, err
