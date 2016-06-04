@@ -13,6 +13,7 @@ import (
 	"github.com/docker/swarm-v2/picker"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -63,18 +64,21 @@ already present, the agent will recover and startup.`,
 			}
 
 			managers := picker.NewRemotes(peers...)
-			picker := picker.NewPicker(managers)
+			manager, err := managers.Select()
+			if err != nil {
+				return err
+			}
 
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
-			securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, token, secret, ca.AgentRole, picker)
+			securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, token, secret, ca.AgentRole, picker.NewPicker(managers))
 			if err != nil {
 				return err
 			}
 
 			renew := make(chan struct{}, 1)
-			updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker, 30*time.Second, renew)
+			updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker.NewPicker(managers), 30*time.Second, renew)
 			go func() {
 				for {
 					select {
@@ -93,12 +97,21 @@ already present, the agent will recover and startup.`,
 				return err
 			}
 
+			conn, err := grpc.Dial(manager.Addr,
+				grpc.WithPicker(picker.NewPicker(managers)),
+				grpc.WithTransportCredentials(securityConfig.ClientTLSCreds),
+				grpc.WithBackoffMaxDelay(8*time.Second))
+			if err != nil {
+				return err
+			}
+
 			executor := container.NewExecutor(client)
 
 			ag, err := agent.New(&agent.Config{
 				Hostname: hostname,
 				Managers: managers,
 				Executor: executor,
+				Conn:     conn,
 			})
 			if err != nil {
 				log.G(ctx).Fatalln(err)
