@@ -46,7 +46,7 @@ func (vc *VolumeConfig) ToProto() *api.VolumeSpec {
 			Name:   vc.Name,
 			Labels: make(map[string]string),
 		},
-		DriverConfiguration: &api.Driver{
+		DriverConfig: &api.Driver{
 			Name:    vc.Driver,
 			Options: opts,
 		},
@@ -62,8 +62,8 @@ func (vc *VolumeConfig) FromProto(apiVol *api.VolumeSpec) {
 	}
 
 	vc.Name = apiVol.Annotations.Name
-	vc.Driver = apiVol.DriverConfiguration.Name
-	vc.DriverOpts = vc.convertDriverOptionsToArray(apiVol.DriverConfiguration.Options)
+	vc.Driver = apiVol.DriverConfig.Name
+	vc.DriverOpts = vc.convertDriverOptionsToArray(apiVol.DriverConfig.Options)
 }
 
 func (vc *VolumeConfig) parseDriverOptions(opts []string) (map[string]string, error) {

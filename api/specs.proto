@@ -203,15 +203,15 @@ message EndpointSpec {
 // VolumeSpec defines the properties of a Volume.
 message VolumeSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
-	Driver driver_configuration = 2;
+	Driver driver_config = 2;
 }
 
 // NetworkSpec specifies user defined network parameters.
 message NetworkSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
-	// Driver specific configuration consumed by the network driver.
-	Driver driver_configuration = 2;
+	// DriverConfig specific configuration consumed by the network driver.
+	Driver driver_config = 2;
 
 	// IPv6Enabled enables support for IPv6 on the network.
 	bool ipv6_enabled = 3;
