@@ -31,6 +31,10 @@ func (s *Server) GetCluster(ctx context.Context, request *api.GetClusterRequest)
 		return nil, grpc.Errorf(codes.NotFound, "cluster %s not found", request.ClusterID)
 	}
 
+	if cluster.Spec.AcceptancePolicy.Secret != "" {
+		cluster.Spec.AcceptancePolicy.Secret = "[REDACTED]"
+	}
+
 	return &api.GetClusterResponse{
 		Cluster: cluster,
 	}, nil

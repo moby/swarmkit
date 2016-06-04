@@ -38,8 +38,11 @@ type NodeConfig struct {
 	// remote managers and certificates.
 	StateDir string
 
-	// Token to be used on the first certificate request.
-	Token string
+	// CAHash to be used on the first certificate request.
+	CAHash string
+
+	// Secret to be used on the first certificate request.
+	Secret string
 
 	// ForceNewCluster creates a new cluster from current raft state.
 	ForceNewCluster bool
@@ -176,7 +179,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 	}
 
 	certDir := filepath.Join(n.config.StateDir, "certificates")
-	securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, n.config.Token, csrRole, picker.NewPicker(n.remotes))
+	securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, n.config.CAHash, n.config.Secret, csrRole, picker.NewPicker(n.remotes))
 	if err != nil {
 		return err
 	}

@@ -65,7 +65,12 @@ var nodeCmd = &cobra.Command{
 			return err
 		}
 
-		token, err := cmd.Flags().GetString("token")
+		caHash, err := cmd.Flags().GetString("ca-hash")
+		if err != nil {
+			return err
+		}
+
+		secret, err := cmd.Flags().GetString("secret")
 		if err != nil {
 			return err
 		}
@@ -99,7 +104,8 @@ var nodeCmd = &cobra.Command{
 			ListenRemoteAPI:  addr,
 			JoinAddr:         managerAddr,
 			StateDir:         stateDir,
-			Token:            token,
+			CAHash:           caHash,
+			Secret:           secret,
 			Executor:         executor,
 			HeartbeatTick:    hb,
 			ElectionTick:     election,

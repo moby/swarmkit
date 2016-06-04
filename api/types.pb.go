@@ -916,7 +916,9 @@ type AcceptancePolicy struct {
 	// Autoaccept controls which roles' certificates are automatically
 	// issued without administrator intervention.
 	Autoaccept map[string]bool `protobuf:"bytes,1,rep,name=autoaccept" json:"autoaccept,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
-	Secret     string          `protobuf:"bytes,2,opt,name=secret,proto3" json:"secret,omitempty"`
+	// Secret represents a user-provided string that is necessary for new
+	// nodes to join the cluster
+	Secret string `protobuf:"bytes,2,opt,name=secret,proto3" json:"secret,omitempty"`
 }
 
 func (m *AcceptancePolicy) Reset()                    { *m = AcceptancePolicy{} }
