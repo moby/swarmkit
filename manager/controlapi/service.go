@@ -7,6 +7,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 )
 
 func validateResources(r *api.Resources) error {
@@ -91,6 +92,17 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 		return nil, err
 	}
 
+	md, ok := metadata.FromContext(ctx)
+	if ok {
+		// retrieve registry auth from the metadata and update if non-empty
+		registryAuth, exists := md["x-registry-auth"]
+		// TODO(nishanttotla): We don't want to modify the spec. This is a temporary fix
+		// and should go away eventually
+		if exists {
+			request.Spec.Annotations.Labels["com.docker.swarm.registryauth"] = registryAuth[0]
+		}
+	}
+
 	// TODO(aluzzardi): Consider using `Name` as a primary key to handle
 	// duplicate creations. See #65
 	service := &api.Service{
@@ -142,6 +154,17 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 	}
 	if err := validateServiceSpec(request.Spec); err != nil {
 		return nil, err
+	}
+
+	md, ok := metadata.FromContext(ctx)
+	if ok {
+		// retrieve registry auth from the metadata and update if non-empty
+		registryAuth, exists := md["x-registry-auth"]
+		// TODO(nishanttotla): We don't want to modify the spec. This is a temporary fix
+		// and should go away eventually
+		if exists {
+			request.Spec.Annotations.Labels["com.docker.swarm.registryauth"] = registryAuth[0]
+		}
 	}
 
 	var service *api.Service
