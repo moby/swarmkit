@@ -7,6 +7,13 @@ import (
 	"github.com/docker/swarm-v2/api"
 )
 
+// VolumeTemplate is a human representation of plugin volumes mounted into the Task
+type VolumeTemplate struct {
+	Name       string   `yaml:"name,omitempty"`
+	Driver     string   `yaml:"driver,omitempty"`
+	DriverOpts []string `yaml:"opts,omitempty"`
+}
+
 // Mount is a human representation of VolumeSpec & contains volumes to be mounted into the Task
 type Mount struct {
 	// Location for mount inside the container
@@ -34,6 +41,9 @@ type Mount struct {
 
 	// Populate volume with data from the target
 	Populate bool `yaml:"populate,omitempty"`
+
+	// VolumeTemplate describes how plugin volumes are mounted in the container
+	Template VolumeTemplate `yaml:"template,omitempty"`
 }
 
 // Mounts - defined to add To/FromProto methods
@@ -68,6 +78,9 @@ func (vm *Mount) Validate() error {
 		if vm.Populate {
 			return fmt.Errorf("for volume mount type 'bind', populate must not be set")
 		}
+		if vm.Template.Name != "" || vm.Template.Driver != "" {
+			return fmt.Errorf("for volume mount type 'bind', template cannot be specified")
+		}
 	case "ephemeral":
 		if vm.Source != "" {
 			return fmt.Errorf("for volume mount type 'ephemeral', source cannot be specified")
@@ -78,6 +91,9 @@ func (vm *Mount) Validate() error {
 		if vm.MCSAccessMode != "" {
 			return fmt.Errorf("for volume mount type 'ephemeral', mcsaccessshared cannot be specified")
 		}
+		if vm.Template.Name != "" || vm.Template.Driver != "" {
+			return fmt.Errorf("for volume mount type 'ephemeral', template cannot be specified")
+		}
 	case "volume":
 		if vm.Source != "" {
 			return fmt.Errorf("for volume mount type 'volume', source cannot be specified")
@@ -86,10 +102,29 @@ func (vm *Mount) Validate() error {
 			return fmt.Errorf("for volume mount type 'volume', name is required")
 		}
 		if vm.Propagation != "" {
-			return fmt.Errorf("for volume mount type 'ephemeral', propagation cannot be specified")
+			return fmt.Errorf("for volume mount type 'volume', propagation cannot be specified")
 		}
 		if vm.MCSAccessMode != "" {
-			return fmt.Errorf("for volume mount type 'ephemeral', mcsaccessshared cannot be specified")
+			return fmt.Errorf("for volume mount type 'volume', mcsaccessshared cannot be specified")
+		}
+		if vm.Template.Name != "" || vm.Template.Driver != "" {
+			return fmt.Errorf("for volume mount type 'volume', template cannot be specified")
+		}
+	case "template":
+		if vm.Source != "" {
+			return fmt.Errorf("for volume mount type 'template', source cannot be specified")
+		}
+		if vm.Propagation != "" {
+			return fmt.Errorf("for volume mount type 'template', propagation cannot be specified")
+		}
+		if vm.MCSAccessMode != "" {
+			return fmt.Errorf("for volume mount type 'template', mcsaccessshared cannot be specified")
+		}
+		if vm.VolumeName != "" {
+			return fmt.Errorf("for volume mount type 'template', name cannot be specified")
+		}
+		if vm.Template.Name == "" || vm.Template.Driver == "" {
+			return fmt.Errorf("for volume mount type 'template', a template must be specified")
 		}
 	default:
 		return fmt.Errorf("invalid volume mount type: %s", vm.Type)
@@ -172,6 +207,17 @@ func (vm *Mount) ToProto() *api.Mount {
 		apiVM.Type = api.MountTypeEphemeral
 	case "volume":
 		apiVM.Type = api.MountTypeVolume
+	case "template":
+		apiVM.Type = api.MountTypeTemplate
+	}
+
+	opts, _ := vm.parseDriverOptions(vm.Template.DriverOpts)
+	apiVM.Template = &api.VolumeTemplate{
+		Name: vm.Template.Name,
+		DriverConfiguration: &api.Driver{
+			Name:    vm.Template.Driver,
+			Options: opts,
+		},
 	}
 
 	return apiVM
@@ -231,5 +277,35 @@ func (vm *Mount) FromProto(apivm *api.Mount) {
 		vm.Type = "ephemeral"
 	case api.MountTypeVolume:
 		vm.Type = "volume"
+	case api.MountTypeTemplate:
+		vm.Type = "template"
 	}
+
+	opts := vm.convertDriverOptionsToArray(apivm.Template.DriverConfiguration.Options)
+	vm.Template = VolumeTemplate{
+		Name:       apivm.Template.Name,
+		Driver:     apivm.Template.DriverConfiguration.Name,
+		DriverOpts: opts,
+	}
+}
+
+func (vm *Mount) parseDriverOptions(opts []string) (map[string]string, error) {
+	parsedOptions := map[string]string{}
+	for _, opt := range opts {
+		optPair := strings.Split(opt, "=")
+		if len(optPair) != 2 {
+			return nil, fmt.Errorf("Malformed opts: %s", opt)
+		}
+		parsedOptions[optPair[0]] = optPair[1]
+	}
+
+	return parsedOptions, nil
+}
+
+func (vm *Mount) convertDriverOptionsToArray(driverOpts map[string]string) []string {
+	var r []string
+	for k, v := range driverOpts {
+		r = append(r, fmt.Sprintf("%s=%s", k, v))
+	}
+	return r
 }

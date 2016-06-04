@@ -175,7 +175,8 @@ func getMountMask(m *api.Mount) string {
 		maskOpts[0] = "rw"
 	}
 
-	var specM *spec.Mount
+	specM := spec.Mount{}
+
 	specM.FromProto(m)
 	if specM.Propagation != "" {
 		maskOpts = append(maskOpts, specM.Propagation)
@@ -201,11 +202,21 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 	}
 }
 
+// This handles the case of a cluster level volume definition
 func (c *containerConfig) volumeCreateRequest(vol *api.Volume) *types.VolumeCreateRequest {
 	return &types.VolumeCreateRequest{
 		Name:       vol.Spec.Annotations.Name,
 		Driver:     vol.Spec.DriverConfiguration.Name,
 		DriverOpts: vol.Spec.DriverConfiguration.Options,
+	}
+}
+
+// This handles the case of volumes that are defined inside a service Mount
+func (c *containerConfig) serviceVolumeCreateRequest(mount *api.Mount) *types.VolumeCreateRequest {
+	return &types.VolumeCreateRequest{
+		Name:       mount.Template.Name,
+		Driver:     mount.Template.DriverConfiguration.Name,
+		DriverOpts: mount.Template.DriverConfiguration.Options,
 	}
 }
 
