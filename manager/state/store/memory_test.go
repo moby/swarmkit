@@ -20,7 +20,7 @@ var (
 			ID: "id1",
 			Spec: api.NodeSpec{
 				Role:       api.NodeRoleManager,
-				Acceptance: api.NodeAcceptanceReject,
+				Membership: api.NodeMembershipRejected,
 			},
 			Description: &api.NodeDescription{
 				Hostname: "name1",
@@ -30,7 +30,7 @@ var (
 			ID: "id2",
 			Spec: api.NodeSpec{
 				Role:       api.NodeRoleWorker,
-				Acceptance: api.NodeAcceptanceAccept,
+				Membership: api.NodeMembershipAccepted,
 			},
 			Description: &api.NodeDescription{
 				Hostname: "name2",
@@ -40,7 +40,7 @@ var (
 			ID: "id3",
 			Spec: api.NodeSpec{
 				Role:       api.NodeRoleWorker,
-				Acceptance: api.NodeAcceptanceAccept,
+				Membership: api.NodeMembershipAccepted,
 			},
 			Description: &api.NodeDescription{
 				// intentionally conflicting hostname
@@ -240,11 +240,11 @@ func TestStoreNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 2)
 
-		foundNodes, err = FindNodes(readTx, ByAcceptance(api.NodeAcceptanceReject))
+		foundNodes, err = FindNodes(readTx, ByMembership(api.NodeMembershipRejected))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 
-		foundNodes, err = FindNodes(readTx, ByAcceptance(api.NodeAcceptanceAccept))
+		foundNodes, err = FindNodes(readTx, ByMembership(api.NodeMembershipAccepted))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 2)
 	})

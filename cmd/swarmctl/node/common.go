@@ -49,7 +49,7 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	return nil
 }
 
-func changeNodeAcceptance(cmd *cobra.Command, args []string, acceptance api.NodeSpec_Acceptance) error {
+func changeNodeMembership(cmd *cobra.Command, args []string, membership api.NodeSpec_Membership) error {
 	if len(args) == 0 {
 		return errors.New("missing node ID")
 	}
@@ -64,11 +64,11 @@ func changeNodeAcceptance(cmd *cobra.Command, args []string, acceptance api.Node
 	}
 	spec := &node.Spec
 
-	if spec.Acceptance == acceptance {
+	if spec.Membership == membership {
 		return errNoChange
 	}
 
-	spec.Acceptance = acceptance
+	spec.Membership = membership
 
 	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
 		NodeID:      node.ID,

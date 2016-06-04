@@ -96,8 +96,8 @@ message ListNodesRequest {
 		repeated string names = 1;
 		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
 		map<string, string> labels = 3;
-		repeated NodeSpec.Role roles = 4;
-		repeated NodeSpec.Acceptance acceptances = 5;
+		repeated NodeSpec.Membership memberships = 4;
+		repeated NodeSpec.Role roles = 5;
 	}
 
 	Filters filters = 1;
