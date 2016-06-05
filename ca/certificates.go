@@ -38,13 +38,13 @@ const (
 	RootKeySize = 256
 	// RootKeyAlgo defines the default algorithm for the root CA Key
 	RootKeyAlgo = "ecdsa"
-	// PassphraseEnvVar defines the environment variable to look for the
+	// PassphraseENVVar defines the environment variable to look for the
 	// root CA private key material encryption key
-	PassphraseENVVar = "SWARM_PK_PASSWORD"
-	// PassphraseEnvVarPrev defines the alternate environment variable to look for the
+	PassphraseENVVar = "SWARM_ROOT_CA_PASSPHRASE"
+	// PassphraseENVVarPrev defines the alternate environment variable to look for the
 	// root CA private key material encryption key. It can be used for seamless
 	// KEK rotations.
-	PassphraseENVVarPrev = "SWARM_PK_PASSWORD_PREV"
+	PassphraseENVVarPrev = "SWARM_ROOT_CA_PASSPHRASE_PREV"
 )
 
 // ErrNoLocalRootCA is an error type used to indicate that the local root CA
@@ -216,25 +216,24 @@ func NewRootCA(cert, key []byte) (RootCA, error) {
 	}
 
 	var (
-		password, passwordPrev []byte
-		priv                   crypto.Signer
+		passphraseStr              string
+		passphrase, passphrasePrev []byte
+		priv                       crypto.Signer
 	)
 
-	// Attempt two distinct passwords, so we can do a hitless password rotation
-	strPassword := os.Getenv(PassphraseENVVar)
-	strPasswordPrev := os.Getenv(PassphraseENVVarPrev)
-	password = []byte(strPassword)
-	passwordPrev = []byte(strPasswordPrev)
-	if strPassword == "" {
-		password = nil
-	}
-	if strPasswordPrev == "" {
-		passwordPrev = nil
+	// Attempt two distinct passphrases, so we can do a hitless passphrase rotation
+	if passphraseStr = os.Getenv(PassphraseENVVar); passphraseStr != "" {
+		passphrase = []byte(passphraseStr)
 	}
 
-	priv, err = helpers.ParsePrivateKeyPEMWithPassword(key, password)
+	if p := os.Getenv(PassphraseENVVarPrev); p != "" {
+		passphrasePrev = []byte(p)
+	}
+
+	// Attempt to decrypt the current private-key with the passphrases provided
+	priv, err = helpers.ParsePrivateKeyPEMWithPassword(key, passphrase)
 	if err != nil {
-		priv, err = helpers.ParsePrivateKeyPEMWithPassword(key, passwordPrev)
+		priv, err = helpers.ParsePrivateKeyPEMWithPassword(key, passphrasePrev)
 		if err != nil {
 			log.Debug("Malformed private key %v", err)
 			return RootCA{}, err
@@ -257,8 +256,8 @@ func NewRootCA(cert, key []byte) (RootCA, error) {
 		// This RootCA does not have a valid signer.
 		return RootCA{Cert: cert, Pool: pool}, nil
 	}
-	if strPassword != "" && !x509.IsEncryptedPEMBlock(keyBlock) {
-		key, err = EncryptECPrivateKey(key, strPassword)
+	if passphraseStr != "" && !x509.IsEncryptedPEMBlock(keyBlock) {
+		key, err = EncryptECPrivateKey(key, passphraseStr)
 		if err != nil {
 			return RootCA{}, err
 		}
@@ -645,8 +644,8 @@ func generateNewCSR() (csr, key []byte, err error) {
 // EncryptECPrivateKey receives a PEM encoded private key and returns an encrypted
 // AES256 version using a passphrase
 // TODO: Make this method generic to handle RSA keys
-func EncryptECPrivateKey(key []byte, passphrase string) ([]byte, error) {
-	password := []byte(passphrase)
+func EncryptECPrivateKey(key []byte, passphraseStr string) ([]byte, error) {
+	passphrase := []byte(passphraseStr)
 	cipherType := x509.PEMCipherAES256
 
 	keyBlock, _ := pem.Decode(key)
@@ -658,7 +657,7 @@ func EncryptECPrivateKey(key []byte, passphrase string) ([]byte, error) {
 	encryptedPEMBlock, err := x509.EncryptPEMBlock(rand.Reader,
 		"EC PRIVATE KEY",
 		keyBlock.Bytes,
-		password,
+		passphrase,
 		cipherType)
 	if err != nil {
 		return nil, err
