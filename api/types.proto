@@ -487,6 +487,9 @@ message RootCA {
 
 	// CACert is the root CA certificate.
 	bytes ca_cert = 2 [(gogoproto.customname) = "CACert"];
+
+	// NodeCertExpiry is the number of hours node certificates should be issued for
+	Duration node_cert_expiry = 3;
 }
 
 message Certificate {
