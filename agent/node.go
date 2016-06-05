@@ -195,7 +195,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 					continue
 				}
 			case <-ctx.Done():
-				break
+				return
 			}
 		}
 	}()
