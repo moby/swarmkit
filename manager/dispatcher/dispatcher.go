@@ -678,19 +678,29 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 	log := log.G(ctx).WithFields(fields)
 
 	var nodeObj *api.Node
-	nodeUpdates, cancel, err := store.ViewAndWatch(d.store, func(readTx store.ReadTx) error {
-		nodeObj = store.GetNode(readTx, nodeID)
-		return nil
-	}, state.EventUpdateNode{Node: &api.Node{ID: nodeID},
-		Checks: []state.NodeCheckFunc{state.NodeCheckID}},
-	)
-	if cancel != nil {
-		defer cancel()
-	}
 
+	nodeUpdates, nodeUpdatesCancel, err := store.ViewAndWatch(
+		d.store,
+		func(readTx store.ReadTx) error {
+			nodeObj = store.GetNode(readTx, nodeID)
+			if nodeObj == nil {
+				return grpc.Errorf(codes.NotFound, "node was removed from store")
+			}
+			return nil
+		},
+		state.EventUpdateNode{
+			Node:   &api.Node{ID: nodeID},
+			Checks: []state.NodeCheckFunc{state.NodeCheckID},
+		},
+		state.EventDeleteNode{
+			Node:   &api.Node{ID: nodeID},
+			Checks: []state.NodeCheckFunc{state.NodeCheckID},
+		},
+	)
 	if err != nil {
-		log.WithError(err).Error("ViewAndWatch Node failed")
+		return err
 	}
+	defer nodeUpdatesCancel()
 
 	if _, err = d.nodes.GetWithSession(nodeID, sessionID); err != nil {
 		return err
@@ -739,13 +749,23 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			return err
 		}
 
-		var mgrs []*api.WeightedPeer
+		var (
+			stopError error
+			mgrs      []*api.WeightedPeer
+		)
 
 		select {
 		case ev := <-managerUpdates:
 			mgrs = ev.([]*api.WeightedPeer)
-		case ev := <-nodeUpdates:
-			nodeObj = ev.(state.EventUpdateNode).Node
+		case evt := <-nodeUpdates:
+			switch ev := evt.(type) {
+			default:
+				panic(fmt.Sprintf("unexpected event type: %T", evt))
+			case state.EventUpdateNode:
+				nodeObj = ev.Node
+			case state.EventDeleteNode:
+				stopError = grpc.Errorf(codes.Aborted, "node must stop")
+			}
 		case <-stream.Context().Done():
 			return stream.Context().Err()
 		case <-node.Disconnect:
@@ -758,13 +778,24 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			mgrs = d.getManagers()
 		}
 
+		// in case of stopErr node already removed from store
+		if stopError != nil {
+			d.nodes.Delete(nodeID)
+		}
+
 		if err := stream.Send(&api.SessionMessage{
 			SessionID:            sessionID,
 			Node:                 nodeObj,
 			Managers:             mgrs,
+			Stop:                 stopError != nil,
 			NetworkBootstrapKeys: d.networkBootstrapKeys,
 		}); err != nil {
 			return err
+		}
+
+		if stopError != nil {
+			log.WithError(stopError).Error("session end")
+			return stopError
 		}
 	}
 }

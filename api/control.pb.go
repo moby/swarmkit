@@ -101,13 +101,30 @@ func (m *UpdateNodeResponse) Reset()                    { *m = UpdateNodeRespons
 func (*UpdateNodeResponse) ProtoMessage()               {}
 func (*UpdateNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{5} }
 
+// RemoveNodeRequest requests to delete the specified node from store.
+type RemoveNodeRequest struct {
+	NodeID      string   `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	NodeVersion *Version `protobuf:"bytes,2,opt,name=node_version,json=nodeVersion" json:"node_version,omitempty"`
+}
+
+func (m *RemoveNodeRequest) Reset()                    { *m = RemoveNodeRequest{} }
+func (*RemoveNodeRequest) ProtoMessage()               {}
+func (*RemoveNodeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{6} }
+
+type RemoveNodeResponse struct {
+}
+
+func (m *RemoveNodeResponse) Reset()                    { *m = RemoveNodeResponse{} }
+func (*RemoveNodeResponse) ProtoMessage()               {}
+func (*RemoveNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{7} }
+
 type GetTaskRequest struct {
 	TaskID string `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
 }
 
 func (m *GetTaskRequest) Reset()                    { *m = GetTaskRequest{} }
 func (*GetTaskRequest) ProtoMessage()               {}
-func (*GetTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{6} }
+func (*GetTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{8} }
 
 type GetTaskResponse struct {
 	Task *Task `protobuf:"bytes,1,opt,name=task" json:"task,omitempty"`
@@ -115,7 +132,7 @@ type GetTaskResponse struct {
 
 func (m *GetTaskResponse) Reset()                    { *m = GetTaskResponse{} }
 func (*GetTaskResponse) ProtoMessage()               {}
-func (*GetTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{7} }
+func (*GetTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{9} }
 
 type RemoveTaskRequest struct {
 	TaskID string `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
@@ -123,14 +140,14 @@ type RemoveTaskRequest struct {
 
 func (m *RemoveTaskRequest) Reset()                    { *m = RemoveTaskRequest{} }
 func (*RemoveTaskRequest) ProtoMessage()               {}
-func (*RemoveTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{8} }
+func (*RemoveTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{10} }
 
 type RemoveTaskResponse struct {
 }
 
 func (m *RemoveTaskResponse) Reset()                    { *m = RemoveTaskResponse{} }
 func (*RemoveTaskResponse) ProtoMessage()               {}
-func (*RemoveTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{9} }
+func (*RemoveTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{11} }
 
 type ListTasksRequest struct {
 	Filters *ListTasksRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
@@ -138,7 +155,7 @@ type ListTasksRequest struct {
 
 func (m *ListTasksRequest) Reset()                    { *m = ListTasksRequest{} }
 func (*ListTasksRequest) ProtoMessage()               {}
-func (*ListTasksRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{10} }
+func (*ListTasksRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{12} }
 
 type ListTasksRequest_Filters struct {
 	Names         []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
@@ -152,7 +169,7 @@ type ListTasksRequest_Filters struct {
 func (m *ListTasksRequest_Filters) Reset()      { *m = ListTasksRequest_Filters{} }
 func (*ListTasksRequest_Filters) ProtoMessage() {}
 func (*ListTasksRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{10, 0}
+	return fileDescriptorControl, []int{12, 0}
 }
 
 type ListTasksResponse struct {
@@ -161,7 +178,7 @@ type ListTasksResponse struct {
 
 func (m *ListTasksResponse) Reset()                    { *m = ListTasksResponse{} }
 func (*ListTasksResponse) ProtoMessage()               {}
-func (*ListTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{11} }
+func (*ListTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{13} }
 
 type CreateServiceRequest struct {
 	Spec *ServiceSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
@@ -169,7 +186,7 @@ type CreateServiceRequest struct {
 
 func (m *CreateServiceRequest) Reset()                    { *m = CreateServiceRequest{} }
 func (*CreateServiceRequest) ProtoMessage()               {}
-func (*CreateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{12} }
+func (*CreateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{14} }
 
 type CreateServiceResponse struct {
 	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
@@ -177,7 +194,7 @@ type CreateServiceResponse struct {
 
 func (m *CreateServiceResponse) Reset()                    { *m = CreateServiceResponse{} }
 func (*CreateServiceResponse) ProtoMessage()               {}
-func (*CreateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{13} }
+func (*CreateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{15} }
 
 type GetServiceRequest struct {
 	ServiceID string `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
@@ -185,7 +202,7 @@ type GetServiceRequest struct {
 
 func (m *GetServiceRequest) Reset()                    { *m = GetServiceRequest{} }
 func (*GetServiceRequest) ProtoMessage()               {}
-func (*GetServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{14} }
+func (*GetServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{16} }
 
 type GetServiceResponse struct {
 	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
@@ -193,7 +210,7 @@ type GetServiceResponse struct {
 
 func (m *GetServiceResponse) Reset()                    { *m = GetServiceResponse{} }
 func (*GetServiceResponse) ProtoMessage()               {}
-func (*GetServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{15} }
+func (*GetServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{17} }
 
 type UpdateServiceRequest struct {
 	ServiceID      string       `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
@@ -203,7 +220,7 @@ type UpdateServiceRequest struct {
 
 func (m *UpdateServiceRequest) Reset()                    { *m = UpdateServiceRequest{} }
 func (*UpdateServiceRequest) ProtoMessage()               {}
-func (*UpdateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{16} }
+func (*UpdateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{18} }
 
 type UpdateServiceResponse struct {
 	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
@@ -211,7 +228,7 @@ type UpdateServiceResponse struct {
 
 func (m *UpdateServiceResponse) Reset()                    { *m = UpdateServiceResponse{} }
 func (*UpdateServiceResponse) ProtoMessage()               {}
-func (*UpdateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{17} }
+func (*UpdateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{19} }
 
 type RemoveServiceRequest struct {
 	ServiceID string `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
@@ -219,14 +236,14 @@ type RemoveServiceRequest struct {
 
 func (m *RemoveServiceRequest) Reset()                    { *m = RemoveServiceRequest{} }
 func (*RemoveServiceRequest) ProtoMessage()               {}
-func (*RemoveServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{18} }
+func (*RemoveServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{20} }
 
 type RemoveServiceResponse struct {
 }
 
 func (m *RemoveServiceResponse) Reset()                    { *m = RemoveServiceResponse{} }
 func (*RemoveServiceResponse) ProtoMessage()               {}
-func (*RemoveServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{19} }
+func (*RemoveServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{21} }
 
 type ListServicesRequest struct {
 	Filters *ListServicesRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
@@ -234,7 +251,7 @@ type ListServicesRequest struct {
 
 func (m *ListServicesRequest) Reset()                    { *m = ListServicesRequest{} }
 func (*ListServicesRequest) ProtoMessage()               {}
-func (*ListServicesRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{20} }
+func (*ListServicesRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{22} }
 
 type ListServicesRequest_Filters struct {
 	Names      []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
@@ -245,7 +262,7 @@ type ListServicesRequest_Filters struct {
 func (m *ListServicesRequest_Filters) Reset()      { *m = ListServicesRequest_Filters{} }
 func (*ListServicesRequest_Filters) ProtoMessage() {}
 func (*ListServicesRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{20, 0}
+	return fileDescriptorControl, []int{22, 0}
 }
 
 type ListServicesResponse struct {
@@ -254,7 +271,7 @@ type ListServicesResponse struct {
 
 func (m *ListServicesResponse) Reset()                    { *m = ListServicesResponse{} }
 func (*ListServicesResponse) ProtoMessage()               {}
-func (*ListServicesResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{21} }
+func (*ListServicesResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{23} }
 
 type CreateNetworkRequest struct {
 	Spec *NetworkSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
@@ -262,7 +279,7 @@ type CreateNetworkRequest struct {
 
 func (m *CreateNetworkRequest) Reset()                    { *m = CreateNetworkRequest{} }
 func (*CreateNetworkRequest) ProtoMessage()               {}
-func (*CreateNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{22} }
+func (*CreateNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{24} }
 
 type CreateNetworkResponse struct {
 	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
@@ -270,7 +287,7 @@ type CreateNetworkResponse struct {
 
 func (m *CreateNetworkResponse) Reset()                    { *m = CreateNetworkResponse{} }
 func (*CreateNetworkResponse) ProtoMessage()               {}
-func (*CreateNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{23} }
+func (*CreateNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{25} }
 
 type GetNetworkRequest struct {
 	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -279,7 +296,7 @@ type GetNetworkRequest struct {
 
 func (m *GetNetworkRequest) Reset()                    { *m = GetNetworkRequest{} }
 func (*GetNetworkRequest) ProtoMessage()               {}
-func (*GetNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{24} }
+func (*GetNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{26} }
 
 type GetNetworkResponse struct {
 	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
@@ -287,7 +304,7 @@ type GetNetworkResponse struct {
 
 func (m *GetNetworkResponse) Reset()                    { *m = GetNetworkResponse{} }
 func (*GetNetworkResponse) ProtoMessage()               {}
-func (*GetNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{25} }
+func (*GetNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{27} }
 
 type RemoveNetworkRequest struct {
 	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -296,14 +313,14 @@ type RemoveNetworkRequest struct {
 
 func (m *RemoveNetworkRequest) Reset()                    { *m = RemoveNetworkRequest{} }
 func (*RemoveNetworkRequest) ProtoMessage()               {}
-func (*RemoveNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{26} }
+func (*RemoveNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{28} }
 
 type RemoveNetworkResponse struct {
 }
 
 func (m *RemoveNetworkResponse) Reset()                    { *m = RemoveNetworkResponse{} }
 func (*RemoveNetworkResponse) ProtoMessage()               {}
-func (*RemoveNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{27} }
+func (*RemoveNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{29} }
 
 type ListNetworksRequest struct {
 	Filters *ListNetworksRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
@@ -311,7 +328,7 @@ type ListNetworksRequest struct {
 
 func (m *ListNetworksRequest) Reset()                    { *m = ListNetworksRequest{} }
 func (*ListNetworksRequest) ProtoMessage()               {}
-func (*ListNetworksRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{28} }
+func (*ListNetworksRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{30} }
 
 type ListNetworksRequest_Filters struct {
 	Names      []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
@@ -322,7 +339,7 @@ type ListNetworksRequest_Filters struct {
 func (m *ListNetworksRequest_Filters) Reset()      { *m = ListNetworksRequest_Filters{} }
 func (*ListNetworksRequest_Filters) ProtoMessage() {}
 func (*ListNetworksRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{28, 0}
+	return fileDescriptorControl, []int{30, 0}
 }
 
 type ListNetworksResponse struct {
@@ -331,7 +348,7 @@ type ListNetworksResponse struct {
 
 func (m *ListNetworksResponse) Reset()                    { *m = ListNetworksResponse{} }
 func (*ListNetworksResponse) ProtoMessage()               {}
-func (*ListNetworksResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{29} }
+func (*ListNetworksResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{31} }
 
 type ListManagersRequest struct {
 	Filters *ListManagersRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
@@ -339,7 +356,7 @@ type ListManagersRequest struct {
 
 func (m *ListManagersRequest) Reset()                    { *m = ListManagersRequest{} }
 func (*ListManagersRequest) ProtoMessage()               {}
-func (*ListManagersRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{30} }
+func (*ListManagersRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{32} }
 
 type ListManagersRequest_Filters struct {
 	Names      []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
@@ -350,7 +367,7 @@ type ListManagersRequest_Filters struct {
 func (m *ListManagersRequest_Filters) Reset()      { *m = ListManagersRequest_Filters{} }
 func (*ListManagersRequest_Filters) ProtoMessage() {}
 func (*ListManagersRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{30, 0}
+	return fileDescriptorControl, []int{32, 0}
 }
 
 type ListManagersResponse struct {
@@ -359,7 +376,7 @@ type ListManagersResponse struct {
 
 func (m *ListManagersResponse) Reset()                    { *m = ListManagersResponse{} }
 func (*ListManagersResponse) ProtoMessage()               {}
-func (*ListManagersResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{31} }
+func (*ListManagersResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{33} }
 
 type RemoveManagerRequest struct {
 	ManagerID string `protobuf:"bytes,1,opt,name=manager_id,json=managerId,proto3" json:"manager_id,omitempty"`
@@ -367,14 +384,14 @@ type RemoveManagerRequest struct {
 
 func (m *RemoveManagerRequest) Reset()                    { *m = RemoveManagerRequest{} }
 func (*RemoveManagerRequest) ProtoMessage()               {}
-func (*RemoveManagerRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{32} }
+func (*RemoveManagerRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{34} }
 
 type RemoveManagerResponse struct {
 }
 
 func (m *RemoveManagerResponse) Reset()                    { *m = RemoveManagerResponse{} }
 func (*RemoveManagerResponse) ProtoMessage()               {}
-func (*RemoveManagerResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{33} }
+func (*RemoveManagerResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{35} }
 
 type GetClusterRequest struct {
 	ClusterID string `protobuf:"bytes,1,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
@@ -382,7 +399,7 @@ type GetClusterRequest struct {
 
 func (m *GetClusterRequest) Reset()                    { *m = GetClusterRequest{} }
 func (*GetClusterRequest) ProtoMessage()               {}
-func (*GetClusterRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{34} }
+func (*GetClusterRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{36} }
 
 type GetClusterResponse struct {
 	Cluster *Cluster `protobuf:"bytes,1,opt,name=cluster" json:"cluster,omitempty"`
@@ -390,7 +407,7 @@ type GetClusterResponse struct {
 
 func (m *GetClusterResponse) Reset()                    { *m = GetClusterResponse{} }
 func (*GetClusterResponse) ProtoMessage()               {}
-func (*GetClusterResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{35} }
+func (*GetClusterResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{37} }
 
 type ListClustersRequest struct {
 	Filters *ListClustersRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
@@ -398,7 +415,7 @@ type ListClustersRequest struct {
 
 func (m *ListClustersRequest) Reset()                    { *m = ListClustersRequest{} }
 func (*ListClustersRequest) ProtoMessage()               {}
-func (*ListClustersRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{36} }
+func (*ListClustersRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{38} }
 
 type ListClustersRequest_Filters struct {
 	Names      []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
@@ -409,7 +426,7 @@ type ListClustersRequest_Filters struct {
 func (m *ListClustersRequest_Filters) Reset()      { *m = ListClustersRequest_Filters{} }
 func (*ListClustersRequest_Filters) ProtoMessage() {}
 func (*ListClustersRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{36, 0}
+	return fileDescriptorControl, []int{38, 0}
 }
 
 type ListClustersResponse struct {
@@ -418,7 +435,7 @@ type ListClustersResponse struct {
 
 func (m *ListClustersResponse) Reset()                    { *m = ListClustersResponse{} }
 func (*ListClustersResponse) ProtoMessage()               {}
-func (*ListClustersResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{37} }
+func (*ListClustersResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{39} }
 
 type UpdateClusterRequest struct {
 	// ClusterID is the cluster ID to update.
@@ -431,7 +448,7 @@ type UpdateClusterRequest struct {
 
 func (m *UpdateClusterRequest) Reset()                    { *m = UpdateClusterRequest{} }
 func (*UpdateClusterRequest) ProtoMessage()               {}
-func (*UpdateClusterRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{38} }
+func (*UpdateClusterRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{40} }
 
 type UpdateClusterResponse struct {
 	Cluster *Cluster `protobuf:"bytes,1,opt,name=cluster" json:"cluster,omitempty"`
@@ -439,7 +456,7 @@ type UpdateClusterResponse struct {
 
 func (m *UpdateClusterResponse) Reset()                    { *m = UpdateClusterResponse{} }
 func (*UpdateClusterResponse) ProtoMessage()               {}
-func (*UpdateClusterResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{39} }
+func (*UpdateClusterResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{41} }
 
 func init() {
 	proto.RegisterType((*GetNodeRequest)(nil), "docker.cluster.api.GetNodeRequest")
@@ -449,6 +466,8 @@ func init() {
 	proto.RegisterType((*ListNodesResponse)(nil), "docker.cluster.api.ListNodesResponse")
 	proto.RegisterType((*UpdateNodeRequest)(nil), "docker.cluster.api.UpdateNodeRequest")
 	proto.RegisterType((*UpdateNodeResponse)(nil), "docker.cluster.api.UpdateNodeResponse")
+	proto.RegisterType((*RemoveNodeRequest)(nil), "docker.cluster.api.RemoveNodeRequest")
+	proto.RegisterType((*RemoveNodeResponse)(nil), "docker.cluster.api.RemoveNodeResponse")
 	proto.RegisterType((*GetTaskRequest)(nil), "docker.cluster.api.GetTaskRequest")
 	proto.RegisterType((*GetTaskResponse)(nil), "docker.cluster.api.GetTaskResponse")
 	proto.RegisterType((*RemoveTaskRequest)(nil), "docker.cluster.api.RemoveTaskRequest")
@@ -524,6 +543,14 @@ func (p *authenticatedWrapperControlServer) UpdateNode(ctx context.Context, r *U
 		return nil, err
 	}
 	return p.local.UpdateNode(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) RemoveNode(ctx context.Context, r *RemoveNodeRequest) (*RemoveNodeResponse, error) {
+
+	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
+		return nil, err
+	}
+	return p.local.RemoveNode(ctx, r)
 }
 
 func (p *authenticatedWrapperControlServer) GetTask(ctx context.Context, r *GetTaskRequest) (*GetTaskResponse, error) {
@@ -766,6 +793,29 @@ func (m *UpdateNodeResponse) Copy() *UpdateNodeResponse {
 	o := &UpdateNodeResponse{
 		Node: m.Node.Copy(),
 	}
+
+	return o
+}
+
+func (m *RemoveNodeRequest) Copy() *RemoveNodeRequest {
+	if m == nil {
+		return nil
+	}
+
+	o := &RemoveNodeRequest{
+		NodeID:      m.NodeID,
+		NodeVersion: m.NodeVersion.Copy(),
+	}
+
+	return o
+}
+
+func (m *RemoveNodeResponse) Copy() *RemoveNodeResponse {
+	if m == nil {
+		return nil
+	}
+
+	o := &RemoveNodeResponse{}
 
 	return o
 }
@@ -1477,6 +1527,28 @@ func (this *UpdateNodeResponse) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
+func (this *RemoveNodeRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.RemoveNodeRequest{")
+	s = append(s, "NodeID: "+fmt.Sprintf("%#v", this.NodeID)+",\n")
+	if this.NodeVersion != nil {
+		s = append(s, "NodeVersion: "+fmt.Sprintf("%#v", this.NodeVersion)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *RemoveNodeResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&api.RemoveNodeResponse{")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func (this *GetTaskRequest) GoString() string {
 	if this == nil {
 		return "nil"
@@ -2030,6 +2102,7 @@ type ControlClient interface {
 	GetNode(ctx context.Context, in *GetNodeRequest, opts ...grpc.CallOption) (*GetNodeResponse, error)
 	ListNodes(ctx context.Context, in *ListNodesRequest, opts ...grpc.CallOption) (*ListNodesResponse, error)
 	UpdateNode(ctx context.Context, in *UpdateNodeRequest, opts ...grpc.CallOption) (*UpdateNodeResponse, error)
+	RemoveNode(ctx context.Context, in *RemoveNodeRequest, opts ...grpc.CallOption) (*RemoveNodeResponse, error)
 	GetTask(ctx context.Context, in *GetTaskRequest, opts ...grpc.CallOption) (*GetTaskResponse, error)
 	ListTasks(ctx context.Context, in *ListTasksRequest, opts ...grpc.CallOption) (*ListTasksResponse, error)
 	RemoveTask(ctx context.Context, in *RemoveTaskRequest, opts ...grpc.CallOption) (*RemoveTaskResponse, error)
@@ -2076,6 +2149,15 @@ func (c *controlClient) ListNodes(ctx context.Context, in *ListNodesRequest, opt
 func (c *controlClient) UpdateNode(ctx context.Context, in *UpdateNodeRequest, opts ...grpc.CallOption) (*UpdateNodeResponse, error) {
 	out := new(UpdateNodeResponse)
 	err := grpc.Invoke(ctx, "/docker.cluster.api.Control/UpdateNode", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlClient) RemoveNode(ctx context.Context, in *RemoveNodeRequest, opts ...grpc.CallOption) (*RemoveNodeResponse, error) {
+	out := new(RemoveNodeResponse)
+	err := grpc.Invoke(ctx, "/docker.cluster.api.Control/RemoveNode", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2223,6 +2305,7 @@ type ControlServer interface {
 	GetNode(context.Context, *GetNodeRequest) (*GetNodeResponse, error)
 	ListNodes(context.Context, *ListNodesRequest) (*ListNodesResponse, error)
 	UpdateNode(context.Context, *UpdateNodeRequest) (*UpdateNodeResponse, error)
+	RemoveNode(context.Context, *RemoveNodeRequest) (*RemoveNodeResponse, error)
 	GetTask(context.Context, *GetTaskRequest) (*GetTaskResponse, error)
 	ListTasks(context.Context, *ListTasksRequest) (*ListTasksResponse, error)
 	RemoveTask(context.Context, *RemoveTaskRequest) (*RemoveTaskResponse, error)
@@ -2294,6 +2377,24 @@ func _Control_UpdateNode_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControlServer).UpdateNode(ctx, req.(*UpdateNodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Control_RemoveNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveNodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).RemoveNode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.cluster.api.Control/RemoveNode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).RemoveNode(ctx, req.(*RemoveNodeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2583,6 +2684,10 @@ var _Control_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateNode",
 			Handler:    _Control_UpdateNode_Handler,
+		},
+		{
+			MethodName: "RemoveNode",
+			Handler:    _Control_RemoveNode_Handler,
 		},
 		{
 			MethodName: "GetTask",
@@ -2909,6 +3014,58 @@ func (m *UpdateNodeResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *RemoveNodeRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *RemoveNodeRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.NodeID) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintControl(data, i, uint64(len(m.NodeID)))
+		i += copy(data[i:], m.NodeID)
+	}
+	if m.NodeVersion != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintControl(data, i, uint64(m.NodeVersion.Size()))
+		n6, err := m.NodeVersion.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n6
+	}
+	return i, nil
+}
+
+func (m *RemoveNodeResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *RemoveNodeResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
 func (m *GetTaskRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -2952,11 +3109,11 @@ func (m *GetTaskResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Task.Size()))
-		n6, err := m.Task.MarshalTo(data[i:])
+		n7, err := m.Task.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n6
+		i += n7
 	}
 	return i, nil
 }
@@ -3022,11 +3179,11 @@ func (m *ListTasksRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
-		n7, err := m.Filters.MarshalTo(data[i:])
+		n8, err := m.Filters.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n7
+		i += n8
 	}
 	return i, nil
 }
@@ -3182,11 +3339,11 @@ func (m *CreateServiceRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Spec.Size()))
-		n8, err := m.Spec.MarshalTo(data[i:])
+		n9, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n8
+		i += n9
 	}
 	return i, nil
 }
@@ -3210,11 +3367,11 @@ func (m *CreateServiceResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Service.Size()))
-		n9, err := m.Service.MarshalTo(data[i:])
+		n10, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n9
+		i += n10
 	}
 	return i, nil
 }
@@ -3262,11 +3419,11 @@ func (m *GetServiceResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Service.Size()))
-		n10, err := m.Service.MarshalTo(data[i:])
+		n11, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n10
+		i += n11
 	}
 	return i, nil
 }
@@ -3296,21 +3453,21 @@ func (m *UpdateServiceRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintControl(data, i, uint64(m.ServiceVersion.Size()))
-		n11, err := m.ServiceVersion.MarshalTo(data[i:])
+		n12, err := m.ServiceVersion.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n11
+		i += n12
 	}
 	if m.Spec != nil {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Spec.Size()))
-		n12, err := m.Spec.MarshalTo(data[i:])
+		n13, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n12
+		i += n13
 	}
 	return i, nil
 }
@@ -3334,11 +3491,11 @@ func (m *UpdateServiceResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Service.Size()))
-		n13, err := m.Service.MarshalTo(data[i:])
+		n14, err := m.Service.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n13
+		i += n14
 	}
 	return i, nil
 }
@@ -3404,11 +3561,11 @@ func (m *ListServicesRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
-		n14, err := m.Filters.MarshalTo(data[i:])
+		n15, err := m.Filters.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n14
+		i += n15
 	}
 	return i, nil
 }
@@ -3527,11 +3684,11 @@ func (m *CreateNetworkRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Spec.Size()))
-		n15, err := m.Spec.MarshalTo(data[i:])
+		n16, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n15
+		i += n16
 	}
 	return i, nil
 }
@@ -3555,11 +3712,11 @@ func (m *CreateNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Network.Size()))
-		n16, err := m.Network.MarshalTo(data[i:])
+		n17, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n16
+		i += n17
 	}
 	return i, nil
 }
@@ -3613,11 +3770,11 @@ func (m *GetNetworkResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Network.Size()))
-		n17, err := m.Network.MarshalTo(data[i:])
+		n18, err := m.Network.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n17
+		i += n18
 	}
 	return i, nil
 }
@@ -3689,11 +3846,11 @@ func (m *ListNetworksRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
-		n18, err := m.Filters.MarshalTo(data[i:])
+		n19, err := m.Filters.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n18
+		i += n19
 	}
 	return i, nil
 }
@@ -3812,11 +3969,11 @@ func (m *ListManagersRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
-		n19, err := m.Filters.MarshalTo(data[i:])
+		n20, err := m.Filters.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n19
+		i += n20
 	}
 	return i, nil
 }
@@ -4001,11 +4158,11 @@ func (m *GetClusterResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Cluster.Size()))
-		n20, err := m.Cluster.MarshalTo(data[i:])
+		n21, err := m.Cluster.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n20
+		i += n21
 	}
 	return i, nil
 }
@@ -4029,11 +4186,11 @@ func (m *ListClustersRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Filters.Size()))
-		n21, err := m.Filters.MarshalTo(data[i:])
+		n22, err := m.Filters.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n21
+		i += n22
 	}
 	return i, nil
 }
@@ -4158,21 +4315,21 @@ func (m *UpdateClusterRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintControl(data, i, uint64(m.ClusterVersion.Size()))
-		n22, err := m.ClusterVersion.MarshalTo(data[i:])
+		n23, err := m.ClusterVersion.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n22
+		i += n23
 	}
 	if m.Spec != nil {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Spec.Size()))
-		n23, err := m.Spec.MarshalTo(data[i:])
+		n24, err := m.Spec.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n23
+		i += n24
 	}
 	return i, nil
 }
@@ -4196,11 +4353,11 @@ func (m *UpdateClusterResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintControl(data, i, uint64(m.Cluster.Size()))
-		n24, err := m.Cluster.MarshalTo(data[i:])
+		n25, err := m.Cluster.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n24
+		i += n25
 	}
 	return i, nil
 }
@@ -4324,6 +4481,22 @@ func (p *raftProxyControlServer) UpdateNode(ctx context.Context, r *UpdateNodeRe
 		return nil, err
 	}
 	return NewControlClient(conn).UpdateNode(ctx, r)
+}
+
+func (p *raftProxyControlServer) RemoveNode(ctx context.Context, r *RemoveNodeRequest) (*RemoveNodeResponse, error) {
+
+	if p.cluster.IsLeader() {
+		return p.local.RemoveNode(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return NewControlClient(conn).RemoveNode(ctx, r)
 }
 
 func (p *raftProxyControlServer) GetTask(ctx context.Context, r *GetTaskRequest) (*GetTaskResponse, error) {
@@ -4669,6 +4842,26 @@ func (m *UpdateNodeResponse) Size() (n int) {
 		l = m.Node.Size()
 		n += 1 + l + sovControl(uint64(l))
 	}
+	return n
+}
+
+func (m *RemoveNodeRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.NodeID)
+	if l > 0 {
+		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.NodeVersion != nil {
+		l = m.NodeVersion.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *RemoveNodeResponse) Size() (n int) {
+	var l int
+	_ = l
 	return n
 }
 
@@ -5272,6 +5465,26 @@ func (this *UpdateNodeResponse) String() string {
 	}
 	s := strings.Join([]string{`&UpdateNodeResponse{`,
 		`Node:` + strings.Replace(fmt.Sprintf("%v", this.Node), "Node", "Node", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RemoveNodeRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RemoveNodeRequest{`,
+		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
+		`NodeVersion:` + strings.Replace(fmt.Sprintf("%v", this.NodeVersion), "Version", "Version", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RemoveNodeResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RemoveNodeResponse{`,
 		`}`,
 	}, "")
 	return s
@@ -6531,6 +6744,168 @@ func (m *UpdateNodeResponse) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RemoveNodeRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemoveNodeRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemoveNodeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NodeID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeVersion", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.NodeVersion == nil {
+				m.NodeVersion = &Version{}
+			}
+			if err := m.NodeVersion.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RemoveNodeResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemoveNodeResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemoveNodeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
 		default:
 			iNdEx = preIndex
 			skippy, err := skipControl(data[iNdEx:])
@@ -10661,94 +11036,95 @@ var (
 )
 
 var fileDescriptorControl = []byte{
-	// 1413 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xcc, 0x59, 0xdd, 0x6e, 0x1b, 0x45,
-	0x14, 0xc6, 0xce, 0x8f, 0xeb, 0xe3, 0x3a, 0x3f, 0x53, 0x47, 0x44, 0x6e, 0x49, 0x61, 0x0b, 0x6d,
-	0x22, 0x05, 0x07, 0x25, 0xaa, 0x1a, 0x40, 0x02, 0x91, 0x84, 0x22, 0x8b, 0x36, 0x54, 0x1b, 0x8a,
-	0xb8, 0x8b, 0x1c, 0x7b, 0x1a, 0x96, 0xd8, 0x5e, 0xe3, 0xdd, 0xa4, 0x8d, 0xb8, 0xe1, 0x31, 0x78,
-	0x06, 0x2e, 0x78, 0x04, 0xb8, 0xe0, 0xa6, 0xe2, 0x8a, 0x4b, 0xb8, 0x41, 0x4d, 0x1f, 0x00, 0xf1,
-	0x00, 0x5c, 0x30, 0xb3, 0x73, 0x66, 0x7f, 0xc6, 0xb3, 0x63, 0x3b, 0x76, 0xd4, 0x5c, 0x58, 0xd9,
-	0x9d, 0xf9, 0xce, 0xcf, 0x9c, 0xf3, 0x9d, 0xb3, 0x33, 0x13, 0x28, 0xd6, 0xdd, 0xb6, 0xdf, 0x75,
-	0x9b, 0x95, 0x4e, 0xd7, 0xf5, 0x5d, 0x42, 0x1a, 0x6e, 0xfd, 0x88, 0x76, 0x2b, 0xf5, 0xe6, 0xb1,
-	0xe7, 0xb3, 0xbf, 0xb5, 0x8e, 0x53, 0x2e, 0x78, 0x1d, 0x5a, 0xf7, 0x04, 0xa0, 0x5c, 0x74, 0x0f,
-	0xbe, 0xa5, 0x75, 0x5f, 0xbe, 0x16, 0xfc, 0xd3, 0x0e, 0x95, 0x2f, 0xa5, 0x43, 0xf7, 0xd0, 0x0d,
-	0x1e, 0xd7, 0xf8, 0x13, 0x8e, 0x5e, 0xeb, 0x34, 0x8f, 0x0f, 0x9d, 0xf6, 0x9a, 0xf8, 0x23, 0x06,
-	0xad, 0xbb, 0x30, 0xf3, 0x19, 0xf5, 0x77, 0xdd, 0x06, 0xb5, 0xe9, 0x77, 0xc7, 0xd4, 0xf3, 0xc9,
-	0x2d, 0xc8, 0xb5, 0xd9, 0xeb, 0xbe, 0xd3, 0x58, 0xcc, 0xbc, 0x99, 0x59, 0xce, 0x6f, 0xc1, 0xcb,
-	0xbf, 0x6f, 0x4e, 0x73, 0x44, 0x75, 0xc7, 0x9e, 0xe6, 0x53, 0xd5, 0x86, 0xf5, 0x31, 0xcc, 0x86,
-	0x62, 0x5e, 0xc7, 0x6d, 0x7b, 0x94, 0xac, 0xc2, 0x24, 0x9f, 0x0c, 0x84, 0x0a, 0xeb, 0x8b, 0x95,
-	0xde, 0x05, 0x54, 0x02, 0x7c, 0x80, 0xb2, 0x7e, 0x99, 0x80, 0xb9, 0x07, 0x8e, 0x17, 0xa8, 0xf0,
-	0xa4, 0xe9, 0xfb, 0x90, 0x7b, 0xe2, 0x34, 0x19, 0xda, 0x43, 0x2d, 0xab, 0x3a, 0x2d, 0xaa, 0x58,
-	0xe5, 0xbe, 0x90, 0xb1, 0xa5, 0x70, 0xf9, 0x2c, 0x0b, 0x39, 0x1c, 0x24, 0x25, 0x98, 0x6a, 0xd7,
-	0x5a, 0x94, 0x6b, 0x9c, 0x58, 0xce, 0xdb, 0xe2, 0x85, 0xac, 0x41, 0xc1, 0x69, 0xec, 0x77, 0xba,
-	0xf4, 0x89, 0xf3, 0x8c, 0xcd, 0x65, 0xf9, 0xdc, 0xd6, 0x0c, 0x5b, 0x28, 0x54, 0x77, 0x1e, 0xe1,
-	0xa8, 0x0d, 0x4e, 0x43, 0x3e, 0x93, 0x47, 0x30, 0xdd, 0xac, 0x1d, 0xd0, 0xa6, 0xb7, 0x38, 0xc1,
-	0xb0, 0x85, 0xf5, 0xcd, 0x61, 0x3c, 0xab, 0x3c, 0x08, 0x44, 0x3f, 0x65, 0x09, 0x3e, 0xb5, 0x51,
-	0x0f, 0xa9, 0x42, 0xa1, 0x45, 0x5b, 0x07, 0x6c, 0xfa, 0x1b, 0xa7, 0xe3, 0x2d, 0x4e, 0x32, 0xb5,
-	0x33, 0xeb, 0x77, 0xd2, 0xc2, 0xb6, 0xc7, 0x52, 0x5f, 0x79, 0x18, 0xe2, 0xed, 0xb8, 0x2c, 0xb9,
-	0x07, 0x53, 0x8c, 0x39, 0x6c, 0x1d, 0x53, 0x81, 0x92, 0xb7, 0x8c, 0x4a, 0x6c, 0x86, 0xb4, 0x05,
-	0xbe, 0xfc, 0x3e, 0x14, 0x62, 0xae, 0x91, 0x39, 0x98, 0x38, 0xa2, 0xa7, 0x22, 0xed, 0x36, 0x7f,
-	0xe4, 0xd1, 0x3b, 0xa9, 0x35, 0x8f, 0x29, 0x8b, 0x10, 0x1f, 0x13, 0x2f, 0x1f, 0x64, 0x37, 0x33,
-	0xd6, 0x36, 0xcc, 0xc7, 0x96, 0x8b, 0x1c, 0xa8, 0xb0, 0x60, 0xf3, 0x81, 0x20, 0xd8, 0x26, 0x12,
-	0x08, 0x98, 0xf5, 0x53, 0x06, 0xe6, 0x1f, 0x77, 0x1a, 0x35, 0x9f, 0x0e, 0xcb, 0x40, 0xf2, 0x11,
-	0x5c, 0x0d, 0x40, 0x27, 0x2c, 0x08, 0x8e, 0xdb, 0x0e, 0x1c, 0x2c, 0xac, 0x5f, 0xd7, 0x59, 0xfc,
-	0x4a, 0x40, 0xec, 0x02, 0x17, 0xc0, 0x17, 0xf2, 0x1e, 0x4c, 0xf2, 0x72, 0x62, 0xe9, 0xe4, 0x72,
-	0x37, 0x4c, 0x21, 0xb3, 0x03, 0xa4, 0xb5, 0x05, 0x24, 0xee, 0xeb, 0xb9, 0x68, 0x2f, 0xca, 0xed,
-	0xcb, 0x9a, 0x77, 0x14, 0x5b, 0xac, 0xcf, 0x5e, 0x95, 0xc5, 0x72, 0x04, 0x5f, 0x2c, 0x9f, 0x0a,
-	0xcb, 0x4d, 0x88, 0x45, 0x76, 0xf9, 0xa4, 0xc9, 0x6e, 0x80, 0x0f, 0x50, 0xd6, 0x26, 0xcc, 0xdb,
-	0xb4, 0xe5, 0x9e, 0xd0, 0xa1, 0x4d, 0x97, 0x80, 0xc4, 0x25, 0x85, 0x75, 0xeb, 0x2f, 0x2c, 0x5f,
-	0x3e, 0x78, 0x8e, 0xf2, 0x8d, 0x8b, 0xf5, 0x96, 0xef, 0x7f, 0xaf, 0xb0, 0x7c, 0x75, 0x9e, 0x69,
-	0xcb, 0x97, 0xb9, 0xe0, 0xd1, 0xee, 0x89, 0x53, 0xe7, 0x3c, 0x15, 0xe5, 0x8b, 0x2e, 0xec, 0x89,
-	0xe1, 0xea, 0x0e, 0x73, 0x01, 0x21, 0xd5, 0x86, 0x47, 0x6e, 0xc3, 0x15, 0x64, 0xb5, 0xa8, 0xd3,
-	0xfc, 0x56, 0x81, 0xa1, 0x73, 0x82, 0xd6, 0x6c, 0xf5, 0x82, 0xd7, 0x1e, 0xd9, 0x81, 0x19, 0x56,
-	0x1a, 0x4e, 0x97, 0x36, 0xf6, 0x3d, 0x9f, 0xb1, 0xcd, 0x5b, 0x9c, 0x0e, 0xaa, 0xfa, 0x8d, 0xb4,
-	0x14, 0xef, 0x71, 0x94, 0x5d, 0x44, 0xa1, 0xe0, 0x6d, 0x1c, 0x95, 0x8d, 0x91, 0x88, 0x2a, 0x9b,
-	0x13, 0xc2, 0x58, 0xd9, 0x01, 0x43, 0x04, 0xcc, 0xfa, 0x1c, 0x4a, 0xdb, 0x5d, 0xca, 0x5c, 0xc1,
-	0x68, 0x48, 0x8e, 0x6c, 0x60, 0xd9, 0x09, 0x82, 0xdc, 0xd4, 0xa9, 0x41, 0x89, 0x58, 0xe5, 0xed,
-	0xc2, 0x82, 0xa2, 0x0c, 0xbd, 0xba, 0x0b, 0x39, 0x8c, 0x30, 0x2a, 0xbc, 0x6e, 0x50, 0x68, 0x4b,
-	0xac, 0xf5, 0x09, 0xcc, 0xb3, 0x72, 0x52, 0x3c, 0x5b, 0x05, 0x88, 0x12, 0x8a, 0x05, 0x51, 0x64,
-	0x19, 0xca, 0x87, 0xf9, 0xb4, 0xf3, 0x61, 0x3a, 0xd9, 0xfa, 0x48, 0x5c, 0xc5, 0x68, 0xfe, 0xfc,
-	0x9a, 0x81, 0x92, 0x68, 0x2d, 0xa3, 0xf8, 0xc4, 0x98, 0x33, 0x2b, 0xd1, 0x43, 0x74, 0xc5, 0x19,
-	0x94, 0x91, 0x8d, 0x71, 0x23, 0xd1, 0x18, 0x07, 0xcf, 0x90, 0xb2, 0x80, 0xd1, 0x22, 0xb2, 0x03,
-	0x25, 0xd1, 0x75, 0x46, 0x4a, 0xd2, 0xeb, 0xb0, 0xa0, 0x68, 0xc1, 0xf6, 0xf5, 0x5b, 0x16, 0xae,
-	0x71, 0x8e, 0xe3, 0x78, 0xd8, 0xc1, 0xaa, 0x6a, 0x07, 0x5b, 0x4b, 0xeb, 0x13, 0x8a, 0x64, 0x6f,
-	0x13, 0x7b, 0x91, 0x19, 0x7b, 0x13, 0xdb, 0x53, 0x9a, 0xd8, 0x87, 0x43, 0x3a, 0xa7, 0xeb, 0x63,
-	0xa3, 0x34, 0x8a, 0x2f, 0xa0, 0x94, 0xb4, 0x86, 0x39, 0xbf, 0x07, 0x57, 0x30, 0x07, 0xb2, 0x5d,
-	0x18, 0x93, 0x1e, 0x82, 0xa3, 0xa6, 0xb1, 0x4b, 0xfd, 0xa7, 0x6e, 0xf7, 0x68, 0x88, 0xa6, 0x81,
-	0x12, 0xba, 0xa6, 0x11, 0x2a, 0x8b, 0x28, 0xd9, 0x16, 0x43, 0x26, 0x4a, 0x4a, 0x29, 0x89, 0xb5,
-	0x1e, 0x07, 0x4d, 0x43, 0xf1, 0x8c, 0xb0, 0xaf, 0x3f, 0x4b, 0x26, 0xc6, 0x2b, 0x78, 0xe6, 0x1c,
-	0x45, 0x19, 0xce, 0xd1, 0x6c, 0xc4, 0x51, 0x94, 0xe5, 0x1c, 0x45, 0x40, 0xd8, 0x48, 0xc6, 0xe4,
-	0xe3, 0xd7, 0xb2, 0x6c, 0xc6, 0xee, 0x66, 0x58, 0x4a, 0x8a, 0xa7, 0x61, 0x29, 0xe1, 0xf8, 0x39,
-	0x4a, 0x49, 0x91, 0xbc, 0x5c, 0xa5, 0x94, 0xe2, 0xdc, 0x05, 0x95, 0x52, 0x64, 0x2d, 0x2a, 0x25,
-	0xcc, 0x81, 0xb1, 0x94, 0x64, 0x52, 0x42, 0x70, 0x98, 0x96, 0x87, 0xb5, 0x76, 0xed, 0x90, 0x47,
-	0x73, 0xe8, 0xb4, 0x28, 0x92, 0x97, 0x2b, 0x2d, 0x29, 0xce, 0x5d, 0x50, 0x5a, 0x22, 0x6b, 0x51,
-	0x5a, 0x5a, 0x38, 0x66, 0x4a, 0x0b, 0xca, 0xd9, 0x21, 0x38, 0xfa, 0xae, 0xc9, 0xa9, 0xe8, 0xbb,
-	0x86, 0x18, 0xe5, 0xbb, 0x86, 0x38, 0x5e, 0x8c, 0x08, 0x88, 0x17, 0x63, 0xa8, 0x05, 0x8b, 0x51,
-	0x6c, 0x6c, 0xb6, 0x85, 0x0b, 0x31, 0xdd, 0xe8, 0x94, 0xa2, 0x1b, 0x71, 0x5c, 0x37, 0x02, 0xc2,
-	0x7e, 0x14, 0xaa, 0x88, 0xfa, 0x11, 0x42, 0x4c, 0xfd, 0x48, 0x4a, 0x49, 0x6c, 0xc8, 0x42, 0x9c,
-	0x38, 0x07, 0x0b, 0x15, 0xc9, 0xcb, 0xc5, 0xc2, 0x14, 0xe7, 0x2e, 0x88, 0x85, 0x91, 0xb5, 0x88,
-	0x85, 0xe8, 0x91, 0x91, 0x85, 0x32, 0x2b, 0x21, 0x38, 0xb6, 0xdf, 0x1c, 0x85, 0x2a, 0x7c, 0xbf,
-	0x29, 0xd1, 0xc3, 0xec, 0x37, 0x71, 0x70, 0x88, 0xfd, 0x26, 0x5a, 0xd7, 0xed, 0x37, 0xc7, 0x43,
-	0xd4, 0xf5, 0xb3, 0x39, 0xc8, 0x6d, 0x8b, 0x0b, 0x38, 0xe2, 0x40, 0x0e, 0xef, 0xb6, 0x88, 0xa5,
-	0x13, 0x4e, 0xde, 0x97, 0x95, 0x6f, 0x19, 0x31, 0x58, 0x98, 0x0b, 0xbf, 0xff, 0xfc, 0xcf, 0x8f,
-	0xd9, 0x59, 0x28, 0x7a, 0x4f, 0x6b, 0xdd, 0xd6, 0xbb, 0x58, 0xca, 0xc4, 0x85, 0x7c, 0x78, 0x89,
-	0x42, 0xde, 0x1e, 0xe4, 0x4a, 0xa9, 0xfc, 0x4e, 0x1f, 0x94, 0xd9, 0x60, 0x17, 0x20, 0xba, 0xc3,
-	0x20, 0x5a, 0x5d, 0x3d, 0xf7, 0x31, 0xe5, 0xdb, 0xfd, 0x60, 0x66, 0x9b, 0x22, 0x9e, 0xfc, 0x70,
-	0x98, 0x1a, 0xcf, 0xd8, 0xad, 0x44, 0x6a, 0x3c, 0x13, 0xf7, 0x0f, 0xe6, 0x78, 0x06, 0x47, 0xd7,
-	0xf4, 0x78, 0xc6, 0xcf, 0xf8, 0xe9, 0xf1, 0x4c, 0x9c, 0x7f, 0x0d, 0xf1, 0x8c, 0x6e, 0x47, 0xf4,
-	0xf1, 0xec, 0xb9, 0x77, 0xd1, 0xc7, 0x53, 0x73, 0xc9, 0x92, 0x6e, 0x33, 0x3a, 0x7a, 0xea, 0x6d,
-	0xf6, 0x9c, 0x6e, 0xf5, 0x36, 0x7b, 0x4f, 0xb0, 0x69, 0x36, 0x9f, 0xc1, 0xd5, 0xf8, 0x56, 0x9f,
-	0xdc, 0x19, 0xf0, 0xe8, 0x51, 0x5e, 0xee, 0x0f, 0x34, 0x5b, 0xfe, 0x1e, 0x8a, 0x89, 0xb3, 0x3f,
-	0xd1, 0x6a, 0xd4, 0xdd, 0x35, 0x94, 0x57, 0x06, 0x40, 0xf6, 0x35, 0x9e, 0x38, 0xd6, 0xea, 0x8d,
-	0xeb, 0x8e, 0xee, 0x7a, 0xe3, 0xda, 0x33, 0xb2, 0xc1, 0x78, 0xe2, 0xf4, 0xaa, 0x37, 0xae, 0x3b,
-	0x26, 0xeb, 0x8d, 0xeb, 0x8f, 0xc2, 0x46, 0x92, 0xe1, 0xbe, 0x32, 0x95, 0x64, 0xc9, 0x63, 0x46,
-	0x2a, 0xc9, 0xd4, 0x33, 0x83, 0x99, 0x64, 0x72, 0x13, 0x9c, 0x4e, 0x32, 0x65, 0x53, 0x9e, 0x4e,
-	0x32, 0x75, 0x3f, 0xdd, 0x97, 0x64, 0x72, 0xc1, 0x06, 0x92, 0x29, 0x6b, 0x5e, 0x19, 0x00, 0x39,
-	0x60, 0x9e, 0x8d, 0xc6, 0x75, 0xe7, 0x3a, 0x53, 0x9e, 0x07, 0x34, 0x2e, 0xf2, 0x8c, 0xdf, 0xc3,
-	0xd4, 0x3c, 0x27, 0xb7, 0x09, 0xa9, 0x79, 0x56, 0x3e, 0xc6, 0x7d, 0xf2, 0x2c, 0xf7, 0x33, 0xe9,
-	0x79, 0x56, 0xf6, 0x57, 0xe9, 0x79, 0x56, 0xb7, 0x46, 0x7d, 0xeb, 0x59, 0x2e, 0xd8, 0x50, 0xcf,
-	0xca, 0x9a, 0x57, 0x06, 0x40, 0x1a, 0x8d, 0x6f, 0xdd, 0x78, 0x7e, 0xb6, 0xf4, 0xda, 0x9f, 0xec,
-	0xf7, 0xef, 0xd9, 0x52, 0xe6, 0x87, 0x97, 0x4b, 0x99, 0xe7, 0xec, 0xf7, 0x07, 0xfb, 0xbd, 0x60,
-	0xbf, 0x83, 0xe9, 0xe0, 0xff, 0x71, 0x1b, 0xff, 0x07, 0x00, 0x00, 0xff, 0xff, 0x18, 0xc7, 0x65,
-	0x0f, 0x08, 0x1c, 0x00, 0x00,
+	// 1439 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xcc, 0x59, 0xcf, 0x6e, 0x1b, 0x45,
+	0x18, 0xc7, 0xce, 0x1f, 0xd7, 0x9f, 0xeb, 0xa4, 0x99, 0x3a, 0x22, 0x72, 0x4b, 0x0a, 0x5b, 0x48,
+	0x13, 0x29, 0x38, 0x28, 0x51, 0xd5, 0x00, 0x12, 0x88, 0x24, 0x14, 0x59, 0xb4, 0xa1, 0xda, 0x50,
+	0xc4, 0x2d, 0x72, 0xec, 0x6d, 0x58, 0x62, 0x7b, 0x8d, 0x77, 0x93, 0x26, 0xe2, 0xc2, 0x63, 0xf0,
+	0x0c, 0x1c, 0x78, 0x04, 0x38, 0x70, 0xa9, 0x38, 0x71, 0x41, 0x82, 0x0b, 0x6a, 0xfa, 0x00, 0x88,
+	0x07, 0xe0, 0xc0, 0xcc, 0xce, 0x37, 0xb3, 0xeb, 0xf1, 0xec, 0xac, 0x1d, 0x27, 0x34, 0x07, 0x2b,
+	0xde, 0xd9, 0xdf, 0xf7, 0x67, 0xe6, 0xf7, 0xfb, 0x3e, 0xcf, 0x4c, 0xa0, 0x58, 0xf7, 0xda, 0x41,
+	0xd7, 0x6b, 0x56, 0x3a, 0x5d, 0x2f, 0xf0, 0x08, 0x69, 0x78, 0xf5, 0x03, 0xa7, 0x5b, 0xa9, 0x37,
+	0x0f, 0xfd, 0x80, 0xfe, 0xad, 0x75, 0xdc, 0x72, 0xc1, 0xef, 0x38, 0x75, 0x9f, 0x03, 0xca, 0x45,
+	0x6f, 0xef, 0x6b, 0xa7, 0x1e, 0x88, 0xc7, 0x42, 0x70, 0xd2, 0x71, 0xc4, 0x43, 0x69, 0xdf, 0xdb,
+	0xf7, 0xc2, 0xaf, 0x2b, 0xec, 0x1b, 0x8e, 0x5e, 0xef, 0x34, 0x0f, 0xf7, 0xdd, 0xf6, 0x0a, 0xff,
+	0xc3, 0x07, 0xad, 0xbb, 0x30, 0xf5, 0x89, 0x13, 0x6c, 0x7b, 0x0d, 0xc7, 0x76, 0xbe, 0x39, 0x74,
+	0xfc, 0x80, 0xdc, 0x86, 0x5c, 0x9b, 0x3e, 0xee, 0xba, 0x8d, 0xb9, 0xcc, 0xeb, 0x99, 0xc5, 0xfc,
+	0x06, 0xbc, 0xf8, 0xeb, 0xd6, 0x24, 0x43, 0x54, 0xb7, 0xec, 0x49, 0xf6, 0xaa, 0xda, 0xb0, 0x3e,
+	0x84, 0x69, 0x69, 0xe6, 0x77, 0xbc, 0xb6, 0xef, 0x90, 0x65, 0x18, 0x67, 0x2f, 0x43, 0xa3, 0xc2,
+	0xea, 0x5c, 0xa5, 0x7f, 0x02, 0x95, 0x10, 0x1f, 0xa2, 0xac, 0x9f, 0xc6, 0xe0, 0xda, 0x03, 0xd7,
+	0x0f, 0x5d, 0xf8, 0x22, 0xf4, 0x7d, 0xc8, 0x3d, 0x71, 0x9b, 0x14, 0xed, 0xa3, 0x97, 0x65, 0x9d,
+	0x17, 0xd5, 0xac, 0x72, 0x9f, 0xdb, 0xd8, 0xc2, 0xb8, 0x7c, 0x9a, 0x85, 0x1c, 0x0e, 0x92, 0x12,
+	0x4c, 0xb4, 0x6b, 0x2d, 0x87, 0x79, 0x1c, 0x5b, 0xcc, 0xdb, 0xfc, 0x81, 0xac, 0x40, 0xc1, 0x6d,
+	0xec, 0x76, 0xba, 0xce, 0x13, 0xf7, 0x98, 0xbe, 0xcb, 0xb2, 0x77, 0x1b, 0x53, 0x74, 0xa2, 0x50,
+	0xdd, 0x7a, 0x84, 0xa3, 0x36, 0xb8, 0x0d, 0xf1, 0x9d, 0x3c, 0x82, 0xc9, 0x66, 0x6d, 0xcf, 0x69,
+	0xfa, 0x73, 0x63, 0x14, 0x5b, 0x58, 0x5d, 0x1f, 0x26, 0xb3, 0xca, 0x83, 0xd0, 0xf4, 0x63, 0x4a,
+	0xf0, 0x89, 0x8d, 0x7e, 0x48, 0x15, 0x0a, 0x2d, 0xa7, 0xb5, 0x47, 0x5f, 0x7f, 0xe5, 0x76, 0xfc,
+	0xb9, 0x71, 0xea, 0x76, 0x6a, 0xf5, 0x4e, 0xd2, 0xb2, 0xed, 0x50, 0xea, 0x2b, 0x0f, 0x25, 0xde,
+	0x8e, 0xdb, 0x92, 0x7b, 0x30, 0x41, 0x95, 0x43, 0xe7, 0x31, 0x11, 0x3a, 0x79, 0xc3, 0xe8, 0xc4,
+	0xa6, 0x48, 0x9b, 0xe3, 0xcb, 0xef, 0x42, 0x21, 0x96, 0x1a, 0xb9, 0x06, 0x63, 0x07, 0xce, 0x09,
+	0xa7, 0xdd, 0x66, 0x5f, 0xd9, 0xea, 0x1d, 0xd5, 0x9a, 0x87, 0x0e, 0x5d, 0x21, 0x36, 0xc6, 0x1f,
+	0xde, 0xcb, 0xae, 0x67, 0xac, 0x4d, 0x98, 0x89, 0x4d, 0x17, 0x35, 0x50, 0xa1, 0x8b, 0xcd, 0x06,
+	0xc2, 0xc5, 0x36, 0x89, 0x80, 0xc3, 0xac, 0x1f, 0x32, 0x30, 0xf3, 0xb8, 0xd3, 0xa8, 0x05, 0xce,
+	0xb0, 0x0a, 0x24, 0x1f, 0xc0, 0xd5, 0x10, 0x74, 0x44, 0x17, 0xc1, 0xf5, 0xda, 0x61, 0x82, 0x85,
+	0xd5, 0x1b, 0xba, 0x88, 0x5f, 0x70, 0x88, 0x5d, 0x60, 0x06, 0xf8, 0x40, 0xde, 0x81, 0x71, 0x56,
+	0x4e, 0x94, 0x4e, 0x66, 0x77, 0xd3, 0xb4, 0x64, 0x76, 0x88, 0xb4, 0x36, 0x80, 0xc4, 0x73, 0x3d,
+	0x93, 0xec, 0x8f, 0x61, 0xc6, 0x76, 0x5a, 0xde, 0xd1, 0xff, 0x3e, 0x5f, 0xab, 0x04, 0x24, 0x1e,
+	0x99, 0x67, 0x8f, 0xe5, 0xff, 0x79, 0xcd, 0x3f, 0x88, 0x25, 0x13, 0xd0, 0x47, 0x25, 0x19, 0x86,
+	0x60, 0xc9, 0xb0, 0x57, 0xb2, 0xfc, 0xb9, 0x59, 0xb4, 0x0e, 0xec, 0xa5, 0x69, 0x1d, 0x42, 0x7c,
+	0x88, 0xb2, 0xd6, 0xc5, 0x3a, 0x0c, 0x1d, 0x5a, 0xce, 0x23, 0x1e, 0xdd, 0xfa, 0x13, 0xdb, 0x09,
+	0x1b, 0x3c, 0x43, 0x3b, 0x89, 0x9b, 0xf5, 0xb7, 0x93, 0x7f, 0x5f, 0x62, 0x3b, 0xd1, 0x65, 0xa6,
+	0x6d, 0x27, 0x34, 0x05, 0xdf, 0xe9, 0x1e, 0xb9, 0x75, 0xa6, 0x23, 0xde, 0x4e, 0x30, 0x85, 0x1d,
+	0x3e, 0x5c, 0xdd, 0xa2, 0x29, 0x20, 0xa4, 0xda, 0xf0, 0xc9, 0x02, 0x5c, 0x41, 0xd5, 0xf1, 0xbe,
+	0x91, 0xdf, 0x28, 0x50, 0x74, 0x8e, 0xcb, 0x8e, 0xce, 0x9e, 0xeb, 0xce, 0x27, 0x5b, 0x30, 0x45,
+	0x4b, 0xd5, 0xed, 0x3a, 0x8d, 0x5d, 0x3f, 0xa0, 0xea, 0xf7, 0xe7, 0x26, 0xc3, 0x2e, 0xf3, 0x5a,
+	0x12, 0xc5, 0x3b, 0x0c, 0x65, 0x17, 0xd1, 0x28, 0x7c, 0x3a, 0x8f, 0x4e, 0x83, 0x2b, 0x11, 0x75,
+	0x1a, 0x26, 0x08, 0x63, 0xa7, 0x09, 0x15, 0xc2, 0x61, 0xd6, 0xa7, 0x50, 0xda, 0xec, 0x3a, 0x34,
+	0x15, 0x5c, 0x0d, 0xa1, 0x91, 0x35, 0x6c, 0x03, 0x5c, 0x20, 0xb7, 0x74, 0x6e, 0xd0, 0x22, 0xd6,
+	0x09, 0xb6, 0x61, 0x56, 0x71, 0x86, 0x59, 0xdd, 0x85, 0x1c, 0xae, 0x30, 0x3a, 0xbc, 0x61, 0x70,
+	0x68, 0x0b, 0xac, 0xf5, 0x11, 0xcc, 0xd0, 0x72, 0x52, 0x32, 0x5b, 0x06, 0x88, 0x08, 0xc5, 0x82,
+	0x28, 0x52, 0x86, 0xf2, 0x92, 0x4f, 0x3b, 0x2f, 0xe9, 0xa4, 0xf3, 0x23, 0x71, 0x17, 0xa3, 0xe5,
+	0xf3, 0x73, 0x06, 0x4a, 0xbc, 0xd5, 0x8d, 0x92, 0x13, 0x55, 0xce, 0xb4, 0x40, 0x0f, 0xd1, 0xb5,
+	0xa6, 0xd0, 0x46, 0x34, 0xea, 0xb5, 0x9e, 0x46, 0x3d, 0x38, 0x43, 0xca, 0x04, 0x46, 0x5b, 0x91,
+	0x2d, 0x28, 0xf1, 0xae, 0x33, 0x12, 0x49, 0xaf, 0xc2, 0xac, 0xe2, 0x05, 0xdb, 0xd7, 0x2f, 0x59,
+	0xb8, 0xce, 0x34, 0x8e, 0xe3, 0xb2, 0x83, 0x55, 0xd5, 0x0e, 0xb6, 0x92, 0xd4, 0x27, 0x14, 0xcb,
+	0xfe, 0x26, 0xf6, 0x3c, 0x73, 0xee, 0x4d, 0x6c, 0x47, 0x69, 0x62, 0xef, 0x0f, 0x99, 0x9c, 0xae,
+	0x8f, 0x8d, 0xd2, 0x28, 0x3e, 0x83, 0x52, 0x6f, 0x34, 0xe4, 0xfc, 0x1e, 0x5c, 0x41, 0x0e, 0x44,
+	0xbb, 0x30, 0x92, 0x2e, 0xc1, 0x51, 0xd3, 0xd8, 0x76, 0x82, 0xa7, 0x5e, 0xf7, 0x60, 0x88, 0xa6,
+	0x81, 0x16, 0xba, 0xa6, 0x21, 0x9d, 0x45, 0x92, 0x6c, 0xf3, 0x21, 0x93, 0x24, 0x85, 0x95, 0xc0,
+	0x5a, 0x8f, 0xc3, 0xa6, 0xa1, 0x64, 0x46, 0xe8, 0x6e, 0x84, 0x92, 0x89, 0xeb, 0x15, 0x7e, 0x67,
+	0x1a, 0x45, 0x1b, 0xa6, 0xd1, 0x6c, 0xa4, 0x51, 0xb4, 0x65, 0x1a, 0x45, 0x80, 0x6c, 0x24, 0xe7,
+	0x94, 0xe3, 0x97, 0xa2, 0x6c, 0xce, 0x3d, 0x4d, 0x59, 0x4a, 0x4a, 0xa6, 0xb2, 0x94, 0x70, 0xfc,
+	0x0c, 0xa5, 0xa4, 0x58, 0x5e, 0xae, 0x52, 0x4a, 0x48, 0xee, 0x82, 0x4a, 0x29, 0x8a, 0x16, 0x95,
+	0x12, 0x72, 0x60, 0x2c, 0x25, 0x41, 0x8a, 0x04, 0x4b, 0x5a, 0x1e, 0xd6, 0xda, 0xb5, 0x7d, 0xb6,
+	0x9a, 0x43, 0xd3, 0xa2, 0x58, 0x5e, 0x2e, 0x5a, 0x12, 0x92, 0xbb, 0x20, 0x5a, 0xa2, 0x68, 0x11,
+	0x2d, 0x2d, 0x1c, 0x33, 0xd1, 0x82, 0x76, 0xb6, 0x04, 0x47, 0xbf, 0x6b, 0xe2, 0x55, 0xf4, 0xbb,
+	0x86, 0x18, 0xe5, 0x77, 0x0d, 0x71, 0xac, 0x18, 0x11, 0x10, 0x2f, 0x46, 0xe9, 0x05, 0x8b, 0x91,
+	0x6f, 0x6c, 0x36, 0x79, 0x0a, 0x31, 0xdf, 0x98, 0x94, 0xe2, 0x1b, 0x71, 0xcc, 0x37, 0x02, 0x64,
+	0x3f, 0x92, 0x2e, 0xa2, 0x7e, 0x84, 0x10, 0x53, 0x3f, 0x12, 0x56, 0x02, 0x2b, 0x55, 0x88, 0x2f,
+	0xce, 0xa0, 0x42, 0xc5, 0xf2, 0x72, 0xa9, 0x30, 0x21, 0xb9, 0x0b, 0x52, 0x61, 0x14, 0x2d, 0x52,
+	0x21, 0x66, 0x64, 0x54, 0xa1, 0x60, 0x45, 0x82, 0x63, 0xfb, 0xcd, 0x51, 0xa4, 0xc2, 0xf6, 0x9b,
+	0x02, 0x3d, 0xcc, 0x7e, 0x13, 0x07, 0x87, 0xd8, 0x6f, 0x62, 0x74, 0xdd, 0x7e, 0xf3, 0x7c, 0x84,
+	0xba, 0xfa, 0xfb, 0x0c, 0xe4, 0x36, 0xf9, 0x85, 0x20, 0x71, 0x21, 0x87, 0x77, 0x6d, 0xc4, 0xd2,
+	0x19, 0xf7, 0xde, 0xdf, 0x95, 0x6f, 0x1b, 0x31, 0x58, 0x98, 0xb3, 0xbf, 0xfe, 0xf8, 0xf7, 0xf7,
+	0xd9, 0x69, 0x28, 0xfa, 0x4f, 0x6b, 0xdd, 0xd6, 0xdb, 0x58, 0xca, 0xc4, 0x83, 0xbc, 0xbc, 0xd4,
+	0x21, 0x6f, 0x0e, 0x72, 0xc5, 0x55, 0x7e, 0x2b, 0x05, 0x65, 0x0e, 0xd8, 0x05, 0x88, 0xee, 0x54,
+	0x88, 0xd6, 0x57, 0xdf, 0xfd, 0x50, 0x79, 0x21, 0x0d, 0x96, 0x1a, 0x33, 0xba, 0x09, 0xd1, 0xc7,
+	0xec, 0xbb, 0xa3, 0xd1, 0xc7, 0xd4, 0x5c, 0xa8, 0x24, 0xc4, 0xe4, 0x1c, 0xb2, 0x03, 0x69, 0x22,
+	0x87, 0xb1, 0x9b, 0x90, 0x44, 0x0e, 0x7b, 0xee, 0x3c, 0xcc, 0x1c, 0x86, 0xc7, 0xe5, 0x64, 0x0e,
+	0xe3, 0xf7, 0x0a, 0xc9, 0x1c, 0xf6, 0x9c, 0xb9, 0x53, 0xd7, 0x33, 0x9c, 0x9e, 0x61, 0x3d, 0xe3,
+	0x33, 0x5c, 0x48, 0x83, 0xa5, 0xc6, 0x8c, 0x8e, 0xbb, 0xfa, 0x98, 0x7d, 0x27, 0x6a, 0x7d, 0xcc,
+	0xfe, 0x53, 0x73, 0x52, 0xcc, 0x63, 0xb8, 0x1a, 0x3f, 0x5e, 0x90, 0x3b, 0x03, 0x1e, 0x77, 0xca,
+	0x8b, 0xe9, 0x40, 0x73, 0xe4, 0x6f, 0xa1, 0xd8, 0x73, 0xdf, 0x40, 0xb4, 0x1e, 0x75, 0xf7, 0x1b,
+	0xe5, 0xa5, 0x01, 0x90, 0xa9, 0xc1, 0x7b, 0x8e, 0xd2, 0xfa, 0xe0, 0xba, 0xeb, 0x02, 0x7d, 0x70,
+	0xed, 0xb9, 0xdc, 0x10, 0xbc, 0xe7, 0xc4, 0xac, 0x0f, 0xae, 0x3b, 0x9a, 0xeb, 0x83, 0xeb, 0x8f,
+	0xdf, 0x46, 0x91, 0xe1, 0x5e, 0x36, 0x51, 0x64, 0xbd, 0x47, 0x9b, 0x44, 0x91, 0xa9, 0xe7, 0x14,
+	0xb3, 0xc8, 0xc4, 0xc6, 0x3b, 0x59, 0x64, 0xca, 0x41, 0x20, 0x59, 0x64, 0xea, 0x1e, 0x3e, 0x55,
+	0x64, 0x62, 0xc2, 0x06, 0x91, 0x29, 0x73, 0x5e, 0x1a, 0x00, 0x39, 0x20, 0xcf, 0xc6, 0xe0, 0xba,
+	0xb3, 0xa4, 0x89, 0xe7, 0x01, 0x83, 0x73, 0x9e, 0xf1, 0x37, 0x38, 0x91, 0xe7, 0xde, 0xad, 0x49,
+	0x22, 0xcf, 0xca, 0x06, 0x20, 0x85, 0x67, 0xb1, 0x87, 0x4a, 0xe6, 0x59, 0xd9, 0xd3, 0x25, 0xf3,
+	0xac, 0x6e, 0xc7, 0x52, 0xeb, 0x59, 0x4c, 0xd8, 0x50, 0xcf, 0xca, 0x9c, 0x97, 0x06, 0x40, 0x1a,
+	0x83, 0x6f, 0xdc, 0x7c, 0x76, 0x3a, 0xff, 0xca, 0x1f, 0xf4, 0xf3, 0xcf, 0xe9, 0x7c, 0xe6, 0xbb,
+	0x17, 0xf3, 0x99, 0x67, 0xf4, 0xf3, 0x1b, 0xfd, 0x3c, 0xa7, 0x9f, 0xbd, 0xc9, 0xf0, 0x7f, 0x92,
+	0x6b, 0xff, 0x05, 0x00, 0x00, 0xff, 0xff, 0xb3, 0x01, 0xd1, 0x0e, 0x0c, 0x1d, 0x00, 0x00,
 }

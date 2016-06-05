@@ -194,8 +194,32 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 	}, nil
 }
 
-// TODO(aaronl): There is no RemoveNode handler yet. This will be implemented
-// as part of #388. When it is implemented, it should refuse to remove any node
-// that's present in the raft member list. The user should be told to demote
-// the node (which will call s.raft.RemoveMember) before removing it from the
-// cluster.
+// RemoveNode updates a Node referenced by NodeID with the given NodeSpec.
+// - Returns NotFound if the Node is not found.
+// - Returns FailedPrecondition if the Node has manager role.
+// - Returns InvalidArgument if NodeID or NodeVersion is not valid.
+// - Returns an error if the delete fails.
+func (s *Server) RemoveNode(ctx context.Context, request *api.RemoveNodeRequest) (*api.RemoveNodeResponse, error) {
+	if request.NodeID == "" || request.NodeVersion == nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+	}
+	if s.raft != nil {
+		memberlist := s.raft.GetMemberlist()
+		raftID, err := identity.ParseNodeID(request.NodeID)
+		if err == nil && memberlist[raftID] != nil {
+			return nil, grpc.Errorf(codes.FailedPrecondition, "node %s is member of cluster, it should be demoted before removal", request.NodeID)
+		}
+	}
+
+	err := s.store.Update(func(tx store.Tx) error {
+		node := store.GetNode(tx, request.NodeID)
+		if node == nil {
+			return grpc.Errorf(codes.NotFound, "node %s not found", request.NodeID)
+		}
+		return store.DeleteNode(tx, request.NodeID)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &api.RemoveNodeResponse{}, nil
+}
