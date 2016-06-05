@@ -248,6 +248,16 @@ func (a *Agent) run(ctx context.Context) {
 }
 
 func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMessage) error {
+	if message.Stop {
+		a.err = fmt.Errorf("stopping agent by request from session message")
+		log.G(ctx).Warnf("stopping agent by request from session message")
+		go func() {
+			if err := a.Stop(ctx); err != nil {
+				log.G(ctx).WithError(err).Warnf("failed to stop agent")
+			}
+		}()
+		return nil
+	}
 	seen := map[api.Peer]struct{}{}
 	for _, manager := range message.Managers {
 		if manager.Peer.Addr == "" {
