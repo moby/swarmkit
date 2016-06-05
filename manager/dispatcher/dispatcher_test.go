@@ -540,7 +540,6 @@ func TestSession(t *testing.T) {
 
 	msg, err := stream.Recv()
 	assert.Equal(t, 1, len(msg.Managers))
-	assert.False(t, msg.Disconnect)
 }
 
 func TestSessionNoCert(t *testing.T) {

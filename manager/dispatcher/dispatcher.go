@@ -10,6 +10,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/transport"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
@@ -699,7 +700,6 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		SessionID:            sessionID,
 		Node:                 nodeObj,
 		Managers:             d.getManagers(),
-		Disconnect:           false,
 		NetworkBootstrapKeys: d.networkBootstrapKeys,
 	}); err != nil {
 		return err
@@ -710,6 +710,26 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 	keyMgrUpdates, keyMgrCancel := d.keyMgrQueue.Watch()
 	defer keyMgrCancel()
 
+	// disconnect is a helper forcibly shutdown connection
+	disconnect := func() error {
+		// force disconnect by shutting down the stream.
+		transportStream, ok := transport.StreamFromContext(stream.Context())
+		if ok {
+			// if we have the transport stream, we can signal a disconnect
+			// in the client.
+			if err := transportStream.ServerTransport().Close(); err != nil {
+				log.WithError(err).Error("session end")
+			}
+		}
+
+		nodeStatus := api.NodeStatus{State: api.NodeStatus_DISCONNECTED, Message: "node is currently trying to find new manager"}
+		if err := d.nodeRemove(nodeID, nodeStatus); err != nil {
+			log.WithError(err).Error("failed to remove node")
+		}
+		// still return an abort if the transport closure was ineffective.
+		return grpc.Errorf(codes.Aborted, "node must disconnect")
+	}
+
 	for {
 		// After each message send, we need to check the nodes sessionID hasn't
 		// changed. If it has, we will the stream and make the node
@@ -718,10 +738,9 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		if err != nil {
 			return err
 		}
-		var (
-			disconnectError error
-			mgrs            []*api.WeightedPeer
-		)
+
+		var mgrs []*api.WeightedPeer
+
 		select {
 		case ev := <-managerUpdates:
 			mgrs = ev.([]*api.WeightedPeer)
@@ -730,33 +749,22 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		case <-stream.Context().Done():
 			return stream.Context().Err()
 		case <-node.Disconnect:
-			disconnectError = grpc.Errorf(codes.Aborted, "node must disconnect")
+			return disconnect()
 		case <-d.ctx.Done():
-			disconnectError = grpc.Errorf(codes.Aborted, "dispatcher stopped")
+			return disconnect()
 		case <-keyMgrUpdates:
 		}
 		if mgrs == nil {
 			mgrs = d.getManagers()
-		}
-		if disconnectError != nil {
-			nodeStatus := api.NodeStatus{State: api.NodeStatus_DISCONNECTED, Message: "node is currently trying to find new manager"}
-			if err := d.nodeRemove(nodeID, nodeStatus); err != nil {
-				log.WithError(err).Error("failed to remove node")
-			}
 		}
 
 		if err := stream.Send(&api.SessionMessage{
 			SessionID:            sessionID,
 			Node:                 nodeObj,
 			Managers:             mgrs,
-			Disconnect:           disconnectError != nil,
 			NetworkBootstrapKeys: d.networkBootstrapKeys,
 		}); err != nil {
 			return err
-		}
-		if disconnectError != nil {
-			log.WithError(disconnectError).Error("session end")
-			return disconnectError
 		}
 	}
 }
