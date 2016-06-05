@@ -318,9 +318,8 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	parsedCerts, err := helpers.ParseCertificatesPEM(certs)
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 2)
-	// TODO(diogo): change this back to three months
-	// assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
-	assert.True(t, time.Now().Add(time.Minute*50).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Hour*24*29).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Hour*24*31).After(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.ManagerRole)
 
 	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, ca.AgentRole, "", tc.RootCA.Pool, tc.Picker, nil, nil)
@@ -329,9 +328,8 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 2)
-	// TODO(diogo): change this back to three months
-	// assert.True(t, time.Now().Add(time.Hour*24*29*3).Before(parsedCerts[0].NotAfter))
-	assert.True(t, time.Now().Add(time.Minute*50).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Hour*24*29).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Hour*24*31).After(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.AgentRole)
 
 }
@@ -454,9 +452,49 @@ func TestNewRootCA(t *testing.T) {
 	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Key)
+	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Key, ca.DefaultNodeCertExpiration)
 	assert.NoError(t, err)
 	assert.Equal(t, rootCA, newRootCA)
+}
+
+func TestNewRootCANonDefaultExpiry(t *testing.T) {
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
+
+	paths := ca.NewConfigPaths(tempBaseDir)
+
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
+	assert.NoError(t, err)
+
+	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Key, 1*time.Hour)
+	assert.NoError(t, err)
+
+	// Create and sign a new CSR
+	csr, _, err := ca.GenerateAndWriteNewKey(paths.Node)
+	assert.NoError(t, err)
+	cert, err := newRootCA.ParseValidateAndSignCSR(csr, "CN", ca.ManagerRole, "ORG")
+	assert.NoError(t, err)
+
+	parsedCerts, err := helpers.ParseCertificatesPEM(cert)
+	assert.NoError(t, err)
+	assert.Len(t, parsedCerts, 1)
+	assert.True(t, time.Now().Add(time.Minute*50).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Hour).After(parsedCerts[0].NotAfter))
+
+	// Sign the same CSR again, this time with a 14 Minute expiration RootCA (under the 15 minute minimum).
+	// This should use the default of 1 month
+	newRootCA, err = ca.NewRootCA(rootCA.Cert, rootCA.Key, 14*time.Minute)
+	assert.NoError(t, err)
+
+	cert, err = newRootCA.ParseValidateAndSignCSR(csr, "CN", ca.ManagerRole, "ORG")
+	assert.NoError(t, err)
+
+	parsedCerts, err = helpers.ParseCertificatesPEM(cert)
+	assert.NoError(t, err)
+	assert.Len(t, parsedCerts, 1)
+	assert.True(t, time.Now().Add(time.Hour*24*29).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Hour*24*31).After(parsedCerts[0].NotAfter))
 }
 
 func TestNewRootCAWithPassphrase(t *testing.T) {
@@ -474,15 +512,16 @@ func TestNewRootCAWithPassphrase(t *testing.T) {
 	// Ensure that we're encrypting the Key bytes out of NewRoot if there
 	// is a passphrase set as an env Var
 	os.Setenv(ca.PassphraseENVVar, "password1")
-	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Key)
+	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Key, ca.DefaultNodeCertExpiration)
 	assert.NoError(t, err)
-	assert.NotEqual(t, rootCA, newRootCA)
+	assert.NotEqual(t, rootCA.Key, newRootCA.Key)
+	assert.Equal(t, rootCA.Cert, newRootCA.Cert)
 	assert.NotContains(t, string(rootCA.Key), string(newRootCA.Key))
 	assert.Contains(t, string(newRootCA.Key), "Proc-Type: 4,ENCRYPTED")
 
 	// Ensure that we're decrypting the Key bytes out of NewRoot if there
 	// is a passphrase set as an env Var
-	anotherNewRootCA, err := ca.NewRootCA(newRootCA.Cert, newRootCA.Key)
+	anotherNewRootCA, err := ca.NewRootCA(newRootCA.Cert, newRootCA.Key, ca.DefaultNodeCertExpiration)
 	assert.NoError(t, err)
 	assert.Equal(t, newRootCA, anotherNewRootCA)
 	assert.NotContains(t, string(rootCA.Key), string(anotherNewRootCA.Key))
@@ -491,19 +530,19 @@ func TestNewRootCAWithPassphrase(t *testing.T) {
 	// Ensure that we cant decrypt the Key bytes out of NewRoot if there
 	// is a wrong passphrase set as an env Var
 	os.Setenv(ca.PassphraseENVVar, "password2")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key)
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key, ca.DefaultNodeCertExpiration)
 	assert.Error(t, err)
 
 	// Ensure that we cant decrypt the Key bytes out of NewRoot if there
 	// is a wrong passphrase set as an env Var
 	os.Setenv(ca.PassphraseENVVarPrev, "password2")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key)
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key, ca.DefaultNodeCertExpiration)
 	assert.Error(t, err)
 
 	// Ensure that we can decrypt the Key bytes out of NewRoot if there
 	// is a wrong passphrase set as an env Var, but a valid as Prev
 	os.Setenv(ca.PassphraseENVVarPrev, "password1")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key)
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key, ca.DefaultNodeCertExpiration)
 	assert.NoError(t, err)
 	assert.Equal(t, newRootCA, anotherNewRootCA)
 	assert.NotContains(t, string(rootCA.Key), string(anotherNewRootCA.Key))
