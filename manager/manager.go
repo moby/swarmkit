@@ -1,6 +1,8 @@
 package manager
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"net"
 	"os"
@@ -254,13 +256,14 @@ func (m *Manager) Run(ctx context.Context) error {
 				raftCfg.ElectionTick = uint32(m.RaftNode.Config.ElectionTick)
 				raftCfg.HeartbeatTick = uint32(m.RaftNode.Config.HeartbeatTick)
 
+				clusterID := m.config.SecurityConfig.ClientTLSCreds.Organization()
 				s.Update(func(tx store.Tx) error {
 					// Add a default cluster object to the
 					// store. Don't check the error because
 					// we expect this to fail unless this
 					// is a brand new cluster.
 					store.CreateCluster(tx, &api.Cluster{
-						ID: m.config.SecurityConfig.ClientTLSCreds.Organization(),
+						ID: clusterID,
 						Spec: api.ClusterSpec{
 							Annotations: api.Annotations{
 								Name: store.DefaultClusterName,
@@ -298,6 +301,11 @@ func (m *Manager) Run(ctx context.Context) error {
 					return nil
 				})
 
+				err := rotateRootCAKEK(ctx, s, clusterID)
+				if err != nil {
+					log.G(ctx).WithError(err).Error("root key-encrypting-key rotation failed with an error")
+				}
+
 				m.replicatedOrchestrator = orchestrator.New(s)
 				m.globalOrchestrator = orchestrator.NewGlobalOrchestrator(s)
 				m.taskReaper = orchestrator.NewTaskReaper(s)
@@ -307,7 +315,6 @@ func (m *Manager) Run(ctx context.Context) error {
 				// shutdown underlying manager processes when leadership is
 				// lost.
 
-				var err error
 				m.allocator, err = allocator.New(s)
 				if err != nil {
 					log.G(ctx).WithError(err).Error("failed to create allocator")
@@ -553,4 +560,92 @@ func (m *Manager) Stop(ctx context.Context) {
 
 	log.G(ctx).Info("Manager shut down")
 	// mutex is released and Run can return now
+}
+
+func rotateRootCAKEK(ctx context.Context, s *store.MemoryStore, clusterID string) error {
+	// If we don't have a KEK, we won't ever be rotating anything
+	strPassword := os.Getenv(ca.PassphraseENVVar)
+	if strPassword == "" {
+		return nil
+	}
+	strPasswordPrev := os.Getenv(ca.PassphraseENVVarPrev)
+	password := []byte(strPassword)
+	passwordPrev := []byte(strPasswordPrev)
+
+	var (
+		clusters []*api.Cluster
+		err      error
+		finalKey []byte
+	)
+	// Retrieve the cluster identified by ClusterID
+	s.View(func(readTx store.ReadTx) {
+		clusters, err = store.FindClusters(readTx, store.ByIDPrefix(clusterID))
+	})
+	if err != nil {
+		return err
+	}
+	if len(clusters) < 1 {
+		return fmt.Errorf("cluster not found: %s", clusterID)
+	}
+	cluster := clusters[0]
+
+	// Try to get the private key from the cluster
+	privKeyPEM := cluster.RootCA.CAKey
+	if privKeyPEM == nil || len(privKeyPEM) == 0 {
+		// We have no PEM root private key in this cluster.
+		log.G(ctx).Debugf("cluster %s does not have private key material", clusterID)
+		return nil
+	}
+
+	// Decode the PEM private key
+	keyBlock, _ := pem.Decode(privKeyPEM)
+	if keyBlock == nil {
+		return fmt.Errorf("invalid PEM-encoded private key inside of cluster %s", clusterID)
+	}
+	// If this key is not encrypted, then we have to encrypt it
+	if !x509.IsEncryptedPEMBlock(keyBlock) {
+		finalKey, err = ca.EncryptECPrivateKey(privKeyPEM, strPassword)
+		if err != nil {
+			return err
+		}
+	} else {
+		// This key is already encrypted, let's try to decrypt with the current main passphrase
+		_, err = x509.DecryptPEMBlock(keyBlock, []byte(password))
+		if err == nil {
+			// The main key is the correct KEK, nothing to do here
+			return nil
+		}
+		// This key is already encrypted, but failed with current main passphrase.
+		// Let's try to decrypt with the previous passphrase
+		unencryptedKey, err := x509.DecryptPEMBlock(keyBlock, []byte(passwordPrev))
+		if err != nil {
+			// We were not able to decrypt either with the main or backup passphrase, error
+			return err
+		}
+		unencryptedKeyBlock := &pem.Block{
+			Type:    keyBlock.Type,
+			Bytes:   unencryptedKey,
+			Headers: keyBlock.Headers,
+		}
+
+		// We were able to decrypt the key, but with the previous passphrase. Let's encrypt
+		// with the new one and store it in raft
+		finalKey, err = ca.EncryptECPrivateKey(pem.EncodeToMemory(unencryptedKeyBlock), strPassword)
+		if err != nil {
+			log.G(ctx).Debugf("failed to rotate the key-encrypting-key for the root key material of cluster %s", clusterID)
+			return err
+		}
+	}
+
+	log.G(ctx).Debugf("Re-encrypting the root key material of cluster %s", clusterID)
+	// Let's update the key in the cluster object
+	return s.Update(func(tx store.Tx) error {
+		cluster = store.GetCluster(tx, clusterID)
+		if cluster == nil {
+			return fmt.Errorf("cluster not found")
+		}
+		cluster.RootCA.CAKey = finalKey
+		return store.UpdateCluster(tx, cluster)
+	})
+
 }
