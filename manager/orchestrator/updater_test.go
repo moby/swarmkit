@@ -65,16 +65,18 @@ func TestUpdater(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
-			RuntimeSpec: &api.ServiceSpec_Container{
-				Container: &api.ContainerSpec{
-					Image: "v:1",
-					// This won't apply in this test because we set the old tasks to DEAD.
-					StopGracePeriod: *ptypes.DurationProto(time.Hour),
-				},
-			},
 			Mode: &api.ServiceSpec_Replicated{
 				Replicated: &api.ReplicatedService{
 					Instances: uint64(instances),
+				},
+			},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{
+						Image: "v:1",
+						// This won't apply in this test because we set the old tasks to DEAD.
+						StopGracePeriod: *ptypes.DurationProto(time.Hour),
+					},
 				},
 			},
 		},
@@ -91,18 +93,18 @@ func TestUpdater(t *testing.T) {
 
 	originalTasks := getRunnableServiceTasks(t, s, service)
 	for _, task := range originalTasks {
-		assert.Equal(t, "v:1", task.GetContainer().Spec.Image)
+		assert.Equal(t, "v:1", task.Spec.GetContainer().Image)
 	}
 
-	service.Spec.GetContainer().Image = "v:2"
+	service.Spec.Task.GetContainer().Image = "v:2"
 	updater := NewUpdater(s, NewRestartSupervisor(s))
 	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
 	updatedTasks := getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
-		assert.Equal(t, "v:2", task.GetContainer().Spec.Image)
+		assert.Equal(t, "v:2", task.Spec.GetContainer().Image)
 	}
 
-	service.Spec.GetContainer().Image = "v:3"
+	service.Spec.Task.GetContainer().Image = "v:3"
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
 	}
@@ -110,10 +112,10 @@ func TestUpdater(t *testing.T) {
 	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
 	updatedTasks = getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
-		assert.Equal(t, "v:3", task.GetContainer().Spec.Image)
+		assert.Equal(t, "v:3", task.Spec.GetContainer().Image)
 	}
 
-	service.Spec.GetContainer().Image = "v:4"
+	service.Spec.Task.GetContainer().Image = "v:4"
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
 		Delay:       *ptypes.DurationProto(10 * time.Millisecond),
@@ -122,7 +124,7 @@ func TestUpdater(t *testing.T) {
 	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
 	updatedTasks = getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
-		assert.Equal(t, "v:4", task.GetContainer().Spec.Image)
+		assert.Equal(t, "v:4", task.Spec.GetContainer().Image)
 	}
 }
 
@@ -161,10 +163,12 @@ func TestUpdaterStopGracePeriod(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
-			RuntimeSpec: &api.ServiceSpec_Container{
-				Container: &api.ContainerSpec{
-					Image:           "v:1",
-					StopGracePeriod: *ptypes.DurationProto(100 * time.Millisecond),
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{
+						Image:           "v:1",
+						StopGracePeriod: *ptypes.DurationProto(100 * time.Millisecond),
+					},
 				},
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -188,17 +192,19 @@ func TestUpdaterStopGracePeriod(t *testing.T) {
 
 	originalTasks := getRunnableServiceTasks(t, s, service)
 	for _, task := range originalTasks {
-		assert.Equal(t, "v:1", task.GetContainer().Spec.Image)
+		assert.Equal(t, "v:1", task.Spec.GetContainer().Image)
 	}
 
 	before := time.Now()
 
-	service.Spec.GetContainer().Image = "v:2"
+	service.Spec.Task.GetContainer().Image = "v:2"
 	updater := NewUpdater(s, NewRestartSupervisor(s))
+	// Override the default (1 minute) to speed up the test.
+	updater.restarts.taskTimeout = 100 * time.Millisecond
 	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
 	updatedTasks := getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
-		assert.Equal(t, "v:2", task.GetContainer().Spec.Image)
+		assert.Equal(t, "v:2", task.Spec.GetContainer().Image)
 	}
 
 	after := time.Now()

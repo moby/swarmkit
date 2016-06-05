@@ -34,7 +34,11 @@ func TestReplicatedOrchestrator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				RuntimeSpec: &api.ServiceSpec_Container{},
+				Task: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{},
+					},
+				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
 						Instances: 2,
@@ -68,7 +72,11 @@ func TestReplicatedOrchestrator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
-				RuntimeSpec: &api.ServiceSpec_Container{},
+				Task: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{},
+					},
+				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
 						Instances: 1,
@@ -93,7 +101,11 @@ func TestReplicatedOrchestrator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
-				RuntimeSpec: &api.ServiceSpec_Container{},
+				Task: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{},
+					},
+				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
 						Instances: 3,
@@ -122,7 +134,11 @@ func TestReplicatedOrchestrator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name2",
 				},
-				RuntimeSpec: &api.ServiceSpec_Container{},
+				Task: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{},
+					},
+				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
 						Instances: 1,

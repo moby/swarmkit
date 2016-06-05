@@ -49,7 +49,6 @@ func TestTaskHistory(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				RuntimeSpec: &api.ServiceSpec_Container{},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
 						Instances: 2,
