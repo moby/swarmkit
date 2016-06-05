@@ -38,8 +38,12 @@ func newContainerAdapter(client engineapi.APIClient, task *api.Task) (*container
 func noopPrivilegeFn() (string, error) { return "", nil }
 
 func (c *containerAdapter) pullImage(ctx context.Context) error {
+	// if the image needs to be pulled, the auth config will be retrieved and updated
+	encodedConfig := c.container.task.ServiceAnnotations.Labels[fmt.Sprintf("%v.registryauth", systemLabelPrefix)]
+
 	rc, err := c.client.ImagePull(ctx, c.container.image(),
 		types.ImagePullOptions{
+			RegistryAuth:  encodedConfig,
 			PrivilegeFunc: noopPrivilegeFn,
 		})
 	if err != nil {
