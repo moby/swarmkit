@@ -455,7 +455,7 @@ func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) {
 
 func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 	if !s.securityConfig.RootCA().CanSign() {
-		log.G(ctx).Error("no valid signer for Root CA found")
+		log.G(ctx).Error("no valid signer found")
 		return
 	}
 

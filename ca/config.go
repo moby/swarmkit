@@ -132,7 +132,7 @@ func NewConfigPaths(baseCertDir string) *SecurityConfigPaths {
 // LoadOrCreateSecurityConfig encapsulates the security logic behind joining a cluster.
 // Every node requires at least a set of TLS certificates with which to join the cluster with.
 // In the case of a manager, these certificates will be used both for client and server credentials.
-func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, secret, proposedRole string, picker *picker.Picker) (*SecurityConfig, error) {
+func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, secret, proposedRole string, picker *picker.Picker, nodeInfo chan<- string) (*SecurityConfig, error) {
 	paths := NewConfigPaths(baseCertDir)
 
 	var (
@@ -182,11 +182,14 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, secret
 			cn := identity.NewNodeID()
 			org := identity.NewID()
 
+			if nodeInfo != nil {
+				nodeInfo <- cn
+			}
 			tlsKeyPair, err = rootCA.IssueAndSaveNewCertificates(paths.Node, cn, proposedRole, org)
 		} else {
 			// There was an error loading our Credentials, let's get a new certificate issued
 			// Last argument is nil because at this point we don't have any valid TLS creds
-			tlsKeyPair, err = rootCA.RequestAndSaveNewCertificates(ctx, paths.Node, proposedRole, secret, picker, nil)
+			tlsKeyPair, err = rootCA.RequestAndSaveNewCertificates(ctx, paths.Node, proposedRole, secret, picker, nil, nodeInfo)
 			if err != nil {
 				return nil, err
 			}
@@ -206,6 +209,9 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, secret
 		}
 		log.Debugf("new TLS credentials generated: %s.", paths.Node.Cert)
 	} else {
+		if nodeInfo != nil {
+			nodeInfo <- clientTLSCreds.NodeID()
+		}
 		log.Debugf("loaded local TLS credentials: %s.", paths.Node.Cert)
 	}
 
@@ -255,7 +261,8 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 				s.ClientTLSCreds.Role(),
 				"",
 				picker,
-				s.ClientTLSCreds)
+				s.ClientTLSCreds,
+				nil)
 			if err != nil {
 				log.Debugf("failed to get a tlsKeyPair: %v", err)
 				updates <- CertificateUpdate{Err: err}
