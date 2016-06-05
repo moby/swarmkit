@@ -121,6 +121,7 @@ func TestReadyRunning(t *testing.T) {
 
 	gomock.InOrder(
 		ctlr.EXPECT().Start(gomock.Any()),
+		ctlr.EXPECT().Wait(gomock.Any()).Return(context.Canceled),
 		ctlr.EXPECT().Wait(gomock.Any()),
 	)
 
@@ -144,6 +145,14 @@ func TestReadyRunning(t *testing.T) {
 		State:   api.TaskStateRunning,
 		Message: "started",
 	})
+
+	task.Status = *status
+
+	// resume waiting
+	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateRunning,
+		Message: "started",
+	}, ErrTaskRetry)
 
 	task.Status = *status
 	// wait and cancel
@@ -192,7 +201,6 @@ func TestReadyRunningExitFailure(t *testing.T) {
 	})
 
 	task.Status = *status
-	// wait and cancel
 	checkDo(t, ctx, task, dctlr, &api.TaskStatus{
 		State: api.TaskStateFailed,
 		RuntimeStatus: &api.TaskStatus_Container{

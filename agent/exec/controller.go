@@ -47,9 +47,9 @@ type Controller interface {
 	Close() error
 }
 
-// Do progresses the task state using the controller by a single operation
-// on the controller. The return TaskStatus should be marked as the new state
-// of the task.
+// Do progresses the task state using the controller performing a single
+// operation on the controller. The return TaskStatus should be marked as the
+// new state of the task.
 //
 // The returned status should be reported and placed back on to task
 // before the next call. The operation can be cancelled by creating a
@@ -137,6 +137,10 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 	// extract the container status from the container, if supported.
 	defer func() {
 		// only do this if in an active state
+		if status.State < api.TaskStateStarting {
+			return
+		}
+
 		cctlr, ok := ctlr.(ContainerController)
 		if !ok {
 			return
@@ -205,6 +209,8 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 			}
 
 			return transition(api.TaskStateCompleted, "finished")
+		default: // terminal states
+			return noop()
 		}
 	case api.TaskStateShutdown:
 		if status.State >= api.TaskStateShutdown {

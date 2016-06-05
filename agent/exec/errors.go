@@ -24,7 +24,6 @@ var (
 
 	ErrTaskRetry = errors.New("exec: task retry") // retry after failed do
 	ErrTaskNoop  = errors.New("exec: task noop")  // task cannot proceed, without change
-	ErrTaskDead  = errors.New("exec: task dead")  // task will no longer proceed.
 )
 
 type ExitCoder interface {

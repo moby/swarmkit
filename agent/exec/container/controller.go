@@ -2,6 +2,7 @@ package container
 
 import (
 	"errors"
+	"fmt"
 
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
