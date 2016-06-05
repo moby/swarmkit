@@ -131,7 +131,7 @@ func (rca *RootCA) IssueAndSaveNewCertificates(paths CertPaths, cn, ou, org stri
 
 // RequestAndSaveNewCertificates gets new certificates issued, either by signing them locally if a signer is
 // available, or by requesting them from the remote server at remoteAddr.
-func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, paths CertPaths, role, secret string, picker *picker.Picker, transport credentials.TransportAuthenticator) (*tls.Certificate, error) {
+func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, paths CertPaths, role, secret string, picker *picker.Picker, transport credentials.TransportAuthenticator, nodeInfo chan<- string) (*tls.Certificate, error) {
 	// Create a new key/pair and CSR for the new manager
 	// Write the new CSR and the new key to a temporary location so we can survive crashes on rotation
 	tempPaths := genTempPaths(paths)
@@ -142,7 +142,7 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, paths Cert
 	}
 
 	// Get the remote manager to issue a CA signed certificate for this node
-	signedCert, err := GetRemoteSignedCertificate(ctx, csr, role, secret, rca.Pool, picker, transport)
+	signedCert, err := GetRemoteSignedCertificate(ctx, csr, role, secret, rca.Pool, picker, transport, nodeInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -524,7 +524,7 @@ func GenerateAndWriteNewKey(paths CertPaths) (csr, key []byte, err error) {
 
 // GetRemoteSignedCertificate submits a CSR together with the intended role to a remote CA server address
 // available through a picker, and that is part of a CA identified by a specific certificate pool.
-func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role, secret string, rootCAPool *x509.CertPool, picker *picker.Picker, creds credentials.TransportAuthenticator) ([]byte, error) {
+func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role, secret string, rootCAPool *x509.CertPool, picker *picker.Picker, creds credentials.TransportAuthenticator, nodeInfo chan<- string) ([]byte, error) {
 	if rootCAPool == nil {
 		return nil, fmt.Errorf("valid root CA pool required")
 	}
@@ -565,6 +565,10 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role, secret st
 	}
 
 	nodeID := issueResponse.NodeID
+	// Send back the NodeID on the nodeInfo, so the caller can know what ID was assigned by the CA
+	if nodeInfo != nil {
+		nodeInfo <- nodeID
+	}
 
 	statusRequest := &api.NodeCertificateStatusRequest{NodeID: nodeID}
 	expBackoff := events.NewExponentialBackoff(events.ExponentialBackoffConfig{

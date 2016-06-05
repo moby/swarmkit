@@ -180,18 +180,41 @@ func (n *Node) run(ctx context.Context) (err error) {
 		csrRole = ca.ManagerRole
 	}
 
+	// Obtain new certs and setup TLS certificates renewal for this node:
+	// - We call LoadOrCreateSecurityConfig which blocks until a valid certificate has been issued
+	// - We retrieve the nodeID from LoadOrCreateSecurityConfig through the info channel. This allows
+	// us to display the ID before the certificate gets issued (for potential approval).
+	// - We wait for LoadOrCreateSecurityConfig to finish since we need a certificate to operate.
+	// - Given a valid certificate, spin a renewal go-routine that will ensure that certificates stay
+	// up to date.
+	nodeIDChan := make(chan string, 1)
+	caLoadDone := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+		case <-caLoadDone:
+		case nodeID := <-nodeIDChan:
+			logrus.Debugf("Requesting certificate for NodeID: %v", nodeID)
+			n.Lock()
+			n.nodeID = nodeID
+			n.Unlock()
+		}
+	}()
+
 	certDir := filepath.Join(n.config.StateDir, "certificates")
-	securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, n.config.CAHash, n.config.Secret, csrRole, picker.NewPicker(n.remotes))
+	securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, n.config.CAHash, n.config.Secret, csrRole, picker.NewPicker(n.remotes), nodeIDChan)
+	close(caLoadDone)
 	if err != nil {
 		return err
 	}
 
-	updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker.NewPicker(n.remotes), 30*time.Second, nil)
+	updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker.NewPicker(n.remotes), 5*time.Minute, nil)
 	go func() {
 		for {
 			select {
 			case certUpdate := <-updates:
 				if certUpdate.Err != nil {
+					logrus.Warnf("error renewing TLS certificate: %v", certUpdate.Err)
 					continue
 				}
 			case <-ctx.Done():
@@ -206,11 +229,11 @@ func (n *Node) run(ctx context.Context) (err error) {
 
 	role := n.role
 
-	var wg sync.WaitGroup
 	managerReady := make(chan struct{})
 	agentReady := make(chan struct{})
 	var managerErr error
 	var agentErr error
+	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
 		managerErr = n.runManager(ctx, securityConfig, managerReady) // store err and loop
