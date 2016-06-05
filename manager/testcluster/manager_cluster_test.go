@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net"
+	"os"
 	"strconv"
 	"sync"
 	"testing"
@@ -25,6 +26,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
+
+func init() {
+	os.Setenv(ca.PassphraseENVVar, "")
+	os.Setenv(ca.PassphraseENVVarPrev, "")
+}
 
 type testManager struct {
 	m    *manager.Manager
@@ -279,4 +285,134 @@ func TestClusterReelection(t *testing.T) {
 		assert.Equal(t, api.NodeStatus_READY, node.Status.State, "there should be only down and ready nodes at this point")
 	}
 	assert.Equal(t, 5, downAgentsCount, "unexpected number of down agents")
+}
+
+func TestClusterStoreAddPasshphraseForRootCA(t *testing.T) {
+	if !*integrationTests {
+		t.Skip("integration test")
+	}
+	defer os.Setenv(ca.PassphraseENVVar, "")
+	defer os.Setenv(ca.PassphraseENVVarPrev, "")
+
+	mCount, aCount := 5, 15
+	c := createManagersCluster(t, mCount, aCount)
+	require.NoError(t, testutils.PollFunc(nil, c.pollRegister))
+
+	// Get the leader
+	leader, err := c.leader()
+	assert.NoError(t, err)
+
+	// check key material in store
+	var clusters []*api.Cluster
+	leader.m.RaftNode.MemoryStore().View(func(tx store.ReadTx) {
+		clusters, err = store.FindClusters(tx, store.All)
+	})
+	assert.NoError(t, err)
+	assert.Len(t, clusters, 1, "there should be one cluster")
+	assert.NotNil(t, clusters[0].RootCA.CACert)
+	assert.NotNil(t, clusters[0].RootCA.CAKey)
+	assert.NotContains(t, string(clusters[0].RootCA.CAKey), "ENCRYPTED")
+
+	// Set an ENV passphrase and kill the current leader
+	os.Setenv(ca.PassphraseENVVar, "password1")
+	require.NoError(t, c.destroyLeader())
+
+	// ensure that cluster will converge to expected number of agents, we need big timeout because of heartbeat times
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, c.pollRegister, 30*time.Second))
+
+	// Get the new leader
+	leader, err = c.leader()
+	assert.NoError(t, err)
+	// check key material in store
+	leader.m.RaftNode.MemoryStore().View(func(tx store.ReadTx) {
+		clusters, err = store.FindClusters(tx, store.All)
+	})
+	assert.NoError(t, err)
+	assert.Len(t, clusters, 1, "there should be one cluster")
+	assert.NotNil(t, clusters[0].RootCA.CACert)
+	assert.NotNil(t, clusters[0].RootCA.CAKey)
+	assert.Contains(t, string(clusters[0].RootCA.CAKey), "Proc-Type: 4,ENCRYPTED")
+
+}
+
+func TestClusterStoreWithPasshphraseForRootCA(t *testing.T) {
+	if !*integrationTests {
+		t.Skip("integration test")
+	}
+	// Start with a passphrase from moment 0
+	os.Setenv(ca.PassphraseENVVar, "password1")
+	defer os.Setenv(ca.PassphraseENVVar, "")
+	defer os.Setenv(ca.PassphraseENVVarPrev, "")
+
+	mCount, aCount := 5, 15
+	c := createManagersCluster(t, mCount, aCount)
+	require.NoError(t, testutils.PollFunc(nil, c.pollRegister))
+
+	// Get the leader
+	leader, err := c.leader()
+	assert.NoError(t, err)
+
+	// check key material in store
+	var clusters []*api.Cluster
+	leader.m.RaftNode.MemoryStore().View(func(tx store.ReadTx) {
+		clusters, err = store.FindClusters(tx, store.All)
+	})
+	assert.NoError(t, err)
+	assert.Len(t, clusters, 1, "there should be one cluster")
+	assert.NotNil(t, clusters[0].RootCA.CACert)
+	assert.NotNil(t, clusters[0].RootCA.CAKey)
+	assert.Contains(t, string(clusters[0].RootCA.CAKey), "Proc-Type: 4,ENCRYPTED")
+}
+
+func TestClusterStorePasshphraseRotationForRootCA(t *testing.T) {
+	if !*integrationTests {
+		t.Skip("integration test")
+	}
+	os.Setenv(ca.PassphraseENVVar, "password1")
+	defer os.Setenv(ca.PassphraseENVVar, "")
+	defer os.Setenv(ca.PassphraseENVVarPrev, "")
+
+	mCount, aCount := 5, 15
+	c := createManagersCluster(t, mCount, aCount)
+	require.NoError(t, testutils.PollFunc(nil, c.pollRegister))
+
+	// Get the leader
+	leader, err := c.leader()
+	assert.NoError(t, err)
+
+	// check key material in store
+	var clusters []*api.Cluster
+	leader.m.RaftNode.MemoryStore().View(func(tx store.ReadTx) {
+		clusters, err = store.FindClusters(tx, store.All)
+	})
+	assert.NoError(t, err)
+	assert.Len(t, clusters, 1, "there should be one cluster")
+	assert.NotNil(t, clusters[0].RootCA.CACert)
+	assert.NotNil(t, clusters[0].RootCA.CAKey)
+	assert.Contains(t, string(clusters[0].RootCA.CAKey), "Proc-Type: 4,ENCRYPTED")
+
+	firstEncryptedKey := clusters[0].RootCA.CAKey
+
+	// Set an ENV passphrase and kill the current leader
+	os.Setenv(ca.PassphraseENVVarPrev, "password1")
+	os.Setenv(ca.PassphraseENVVar, "password2")
+	require.NoError(t, c.destroyLeader())
+
+	// ensure that cluster will converge to expected number of agents, we need big timeout because of heartbeat times
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, c.pollRegister, 30*time.Second))
+
+	// Get the new leader
+	leader, err = c.leader()
+	assert.NoError(t, err)
+	// check key material in store
+	leader.m.RaftNode.MemoryStore().View(func(tx store.ReadTx) {
+		clusters, err = store.FindClusters(tx, store.All)
+	})
+	assert.NoError(t, err)
+	assert.Len(t, clusters, 1, "there should be one cluster")
+	assert.NotNil(t, clusters[0].RootCA.CACert)
+	assert.NotNil(t, clusters[0].RootCA.CAKey)
+	assert.Contains(t, string(clusters[0].RootCA.CAKey), "Proc-Type: 4,ENCRYPTED")
+	assert.NotEqual(t, firstEncryptedKey, clusters[0].RootCA.CAKey)
+
 }
