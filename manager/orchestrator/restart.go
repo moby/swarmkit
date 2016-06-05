@@ -43,6 +43,7 @@ type RestartSupervisor struct {
 	delays           map[string]delayedStart
 	history          map[instanceTuple]*instanceRestartInfo
 	historyByService map[string]map[instanceTuple]struct{}
+	taskTimeout      time.Duration
 }
 
 // NewRestartSupervisor creates a new RestartSupervisor.
@@ -52,12 +53,15 @@ func NewRestartSupervisor(store *store.MemoryStore) *RestartSupervisor {
 		delays:           make(map[string]delayedStart),
 		history:          make(map[instanceTuple]*instanceRestartInfo),
 		historyByService: make(map[string]map[instanceTuple]struct{}),
+		taskTimeout:      defaultOldTaskTimeout,
 	}
 }
 
 // Restart initiates a new task to replace t if appropriate under the service's
 // restart policy.
 func (r *RestartSupervisor) Restart(ctx context.Context, tx store.Tx, service *api.Service, t api.Task) error {
+	// TODO(aluzzardi): This function should not depend on `service`.
+
 	t.DesiredState = api.TaskStateShutdown
 	err := store.UpdateTask(tx, &t)
 	if err != nil {
@@ -88,9 +92,9 @@ func (r *RestartSupervisor) Restart(ctx context.Context, tx store.Tx, service *a
 	var restartDelay time.Duration
 	// Restart delay does not applied to drained nodes
 	if n == nil || n.Spec.Availability != api.NodeAvailabilityDrain {
-		if service.Spec.Restart != nil && service.Spec.Restart.Delay != nil {
+		if t.Spec.Restart != nil && t.Spec.Restart.Delay != nil {
 			var err error
-			restartDelay, err = ptypes.Duration(service.Spec.Restart.Delay)
+			restartDelay, err = ptypes.Duration(t.Spec.Restart.Delay)
 			if err != nil {
 				log.G(ctx).WithError(err).Error("invalid restart delay; using default")
 				restartDelay = defaultRestartDelay
@@ -113,21 +117,23 @@ func (r *RestartSupervisor) Restart(ctx context.Context, tx store.Tx, service *a
 		return err
 	}
 
-	r.recordRestartHistory(restartTask, service)
+	r.recordRestartHistory(restartTask)
 
-	r.DelayStart(ctx, tx, service, &t, restartTask.ID, restartDelay, waitStop)
+	r.DelayStart(ctx, tx, &t, restartTask.ID, restartDelay, waitStop)
 	return nil
 }
 
 func (r *RestartSupervisor) shouldRestart(ctx context.Context, t *api.Task, service *api.Service) bool {
-	condition := restartCondition(service)
+	// TODO(aluzzardi): This function should not depend on `service`.
+
+	condition := restartCondition(t)
 
 	if condition != api.RestartOnAny &&
 		(condition != api.RestartOnFailure || t.Status.State == api.TaskStateCompleted) {
 		return false
 	}
 
-	if service.Spec.Restart == nil || service.Spec.Restart.MaxAttempts == 0 {
+	if t.Spec.Restart == nil || t.Spec.Restart.MaxAttempts == 0 {
 		return true
 	}
 
@@ -150,18 +156,18 @@ func (r *RestartSupervisor) shouldRestart(ctx context.Context, t *api.Task, serv
 		return true
 	}
 
-	if service.Spec.Restart.Window == nil || (service.Spec.Restart.Window.Seconds == 0 && service.Spec.Restart.Window.Nanos == 0) {
-		return restartInfo.totalRestarts < service.Spec.Restart.MaxAttempts
+	if t.Spec.Restart.Window == nil || (t.Spec.Restart.Window.Seconds == 0 && t.Spec.Restart.Window.Nanos == 0) {
+		return restartInfo.totalRestarts < t.Spec.Restart.MaxAttempts
 	}
 
 	if restartInfo.restartedInstances == nil {
 		return true
 	}
 
-	window, err := ptypes.Duration(service.Spec.Restart.Window)
+	window, err := ptypes.Duration(t.Spec.Restart.Window)
 	if err != nil {
 		log.G(ctx).WithError(err).Error("invalid restart lookback window")
-		return restartInfo.totalRestarts < service.Spec.Restart.MaxAttempts
+		return restartInfo.totalRestarts < t.Spec.Restart.MaxAttempts
 	}
 	lookback := time.Now().Add(-window)
 
@@ -181,11 +187,11 @@ func (r *RestartSupervisor) shouldRestart(ctx context.Context, t *api.Task, serv
 		restartInfo.restartedInstances = nil
 	}
 
-	return numRestarts < service.Spec.Restart.MaxAttempts
+	return numRestarts < t.Spec.Restart.MaxAttempts
 }
 
-func (r *RestartSupervisor) recordRestartHistory(restartTask *api.Task, service *api.Service) {
-	if service.Spec.Restart == nil || service.Spec.Restart.MaxAttempts == 0 {
+func (r *RestartSupervisor) recordRestartHistory(restartTask *api.Task) {
+	if restartTask.Spec.Restart == nil || restartTask.Spec.Restart.MaxAttempts == 0 {
 		// No limit on the number of restarts, so no need to record
 		// history.
 		return
@@ -202,6 +208,7 @@ func (r *RestartSupervisor) recordRestartHistory(restartTask *api.Task, service 
 	if r.history[tuple] == nil {
 		r.history[tuple] = &instanceRestartInfo{}
 	}
+
 	restartInfo := r.history[tuple]
 	restartInfo.totalRestarts++
 
@@ -210,7 +217,7 @@ func (r *RestartSupervisor) recordRestartHistory(restartTask *api.Task, service 
 	}
 	r.historyByService[restartTask.ServiceID][tuple] = struct{}{}
 
-	if service.Spec.Restart.Window != nil && (service.Spec.Restart.Window.Seconds != 0 || service.Spec.Restart.Window.Nanos != 0) {
+	if restartTask.Spec.Restart.Window != nil && (restartTask.Spec.Restart.Window.Seconds != 0 || restartTask.Spec.Restart.Window.Nanos != 0) {
 		if restartInfo.restartedInstances == nil {
 			restartInfo.restartedInstances = list.New()
 		}
@@ -229,7 +236,7 @@ func (r *RestartSupervisor) recordRestartHistory(restartTask *api.Task, service 
 // It must be called during an Update transaction to ensure that it does not
 // miss events. The purpose of the store.Tx argument is to avoid accidental
 // calls outside an Update transaction.
-func (r *RestartSupervisor) DelayStart(ctx context.Context, _ store.Tx, service *api.Service, oldTask *api.Task, newTaskID string, delay time.Duration, waitStop bool) <-chan struct{} {
+func (r *RestartSupervisor) DelayStart(ctx context.Context, _ store.Tx, oldTask *api.Task, newTaskID string, delay time.Duration, waitStop bool) <-chan struct{} {
 	ctx, cancel := context.WithCancel(context.Background())
 	doneCh := make(chan struct{})
 
@@ -282,24 +289,7 @@ func (r *RestartSupervisor) DelayStart(ctx context.Context, _ store.Tx, service 
 			close(doneCh)
 		}()
 
-		var oldTaskTimeout <-chan time.Time
-		if watch != nil {
-			container := service.Spec.GetContainer()
-			if container != nil {
-				gracePeriod, err := ptypes.Duration(&container.StopGracePeriod)
-				if err != nil {
-					log.G(ctx).WithError(err).Error("invalid stop grace period")
-					oldTaskTimeout = time.After(defaultOldTaskTimeout)
-				} else {
-					// Add a little time to the grace period
-					// because there may be latency between
-					// the agent and us.
-					oldTaskTimeout = time.After(gracePeriod + 5*time.Second)
-				}
-			} else {
-				oldTaskTimeout = time.After(defaultOldTaskTimeout)
-			}
-		}
+		oldTaskTimeout := time.After(r.taskTimeout)
 
 		// Wait for the delay to elapse, if one is specified.
 		if delay != 0 {

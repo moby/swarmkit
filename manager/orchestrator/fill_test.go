@@ -30,7 +30,11 @@ var (
 			Annotations: api.Annotations{
 				Name: "name1",
 			},
-			RuntimeSpec: &api.ServiceSpec_Container{},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+			},
 			Mode: &api.ServiceSpec_Global{
 				Global: &api.GlobalService{},
 			},
@@ -43,7 +47,11 @@ var (
 			Annotations: api.Annotations{
 				Name: "name2",
 			},
-			RuntimeSpec: &api.ServiceSpec_Container{},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+			},
 			Mode: &api.ServiceSpec_Global{
 				Global: &api.GlobalService{},
 			},

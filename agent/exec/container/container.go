@@ -42,12 +42,12 @@ func newContainerConfig(t *api.Task) (*containerConfig, error) {
 }
 
 func (c *containerConfig) setTask(t *api.Task) error {
-	container := t.GetContainer()
+	container := t.Spec.GetContainer()
 	if container == nil {
 		return exec.ErrRuntimeUnsupported
 	}
 
-	if container.Spec.Image == "" {
+	if container.Image == "" {
 		return ErrImageRequired
 	}
 
@@ -66,13 +66,13 @@ func (c *containerConfig) endpoint() *api.Endpoint {
 }
 
 func (c *containerConfig) spec() *api.ContainerSpec {
-	return &c.task.GetContainer().Spec
+	return c.task.Spec.GetContainer()
 }
 
 func (c *containerConfig) name() string {
-	if container := c.task.GetContainer(); container != nil && container.Annotations.Name != "" {
+	if c.task.Annotations.Name != "" {
 		// if set, use the container Annotations.Name field, set in the orchestrator.
-		return container.Annotations.Name
+		return c.task.Annotations.Name
 	}
 
 	// fallback to service.instance.id.
@@ -154,12 +154,10 @@ func (c *containerConfig) labels() map[string]string {
 		labels[k] = v
 	}
 
-	if container := c.task.GetContainer(); container != nil {
-		// we then apply the overrides from container, which may be set via the
-		// orchestrator.
-		for k, v := range container.Annotations.Labels {
-			labels[k] = v
-		}
+	// we then apply the overrides from the task, which may be set via the
+	// orchestrator.
+	for k, v := range c.task.Annotations.Labels {
+		labels[k] = v
 	}
 
 	// finally, we apply the system labels, which override all labels.
@@ -232,7 +230,7 @@ func (c *containerConfig) resources() enginecontainer.Resources {
 	//
 	// TODO(aluzzardi): We might want to set some limits anyway otherwise
 	// "unlimited" tasks will step over the reservation of other tasks.
-	r := c.spec().Resources
+	r := c.task.Spec.Resources
 	if r == nil || r.Limits == nil {
 		return resources
 	}
@@ -271,13 +269,8 @@ func (c *containerConfig) virtualIP(networkID string) string {
 }
 
 func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
-	var networks []*api.NetworkAttachment
-	if c.task.GetContainer() != nil {
-		networks = c.task.Networks
-	}
-
 	epConfig := make(map[string]*network.EndpointSettings)
-	for _, na := range networks {
+	for _, na := range c.task.Networks {
 		var ipv4, ipv6 string
 		for _, addr := range na.Addresses {
 			ip, _, err := net.ParseCIDR(addr)

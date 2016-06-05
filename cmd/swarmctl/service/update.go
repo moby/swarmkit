@@ -58,21 +58,21 @@ var (
 				}
 
 				if len(args) > 1 {
-					spec.GetContainer().Command = args[1:]
+					spec.Task.GetContainer().Command = args[1:]
 				}
 				if flags.Changed("args") {
 					containerArgs, err := flags.GetStringSlice("args")
 					if err != nil {
 						return err
 					}
-					spec.GetContainer().Args = containerArgs
+					spec.Task.GetContainer().Args = containerArgs
 				}
 				if flags.Changed("env") {
 					env, err := flags.GetStringSlice("env")
 					if err != nil {
 						return err
 					}
-					spec.GetContainer().Env = env
+					spec.Task.GetContainer().Env = env
 				}
 			}
 

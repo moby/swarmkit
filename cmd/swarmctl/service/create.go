@@ -72,13 +72,14 @@ var (
 					Annotations: api.Annotations{
 						Name: name,
 					},
-					RuntimeSpec: &api.ServiceSpec_Container{
-						Container: &api.ContainerSpec{
-							Image: image,
-
-							Command: containerArgs,
-							Args:    args,
-							Env:     env,
+					Task: api.TaskSpec{
+						Runtime: &api.TaskSpec_Container{
+							Container: &api.ContainerSpec{
+								Image:   image,
+								Command: containerArgs,
+								Args:    args,
+								Env:     env,
+							},
 						},
 					},
 				}

@@ -44,13 +44,13 @@ func TestServiceConfigValidate(t *testing.T) {
 		// Invalid memory limit
 		{
 			Name: "name",
+			Resources: &ResourceRequirements{
+				Limits: &Resources{
+					Memory: "invalid",
+				},
+			},
 			ContainerConfig: ContainerConfig{
 				Image: "image",
-				Resources: &ResourceRequirements{
-					Limits: &Resources{
-						Memory: "invalid",
-					},
-				},
 			},
 		},
 	}
@@ -67,10 +67,10 @@ func TestServiceConfigValidate(t *testing.T) {
 			Name: "name",
 			ContainerConfig: ContainerConfig{
 				Image: "image",
-				Resources: &ResourceRequirements{
-					Limits: &Resources{
-						Memory: "1024",
-					},
+			},
+			Resources: &ResourceRequirements{
+				Limits: &Resources{
+					Memory: "1024",
 				},
 			},
 		},
@@ -88,10 +88,10 @@ func TestServiceConfigValidate(t *testing.T) {
 			Name: "name",
 			ContainerConfig: ContainerConfig{
 				Image: "image",
-				Resources: &ResourceRequirements{
-					Limits: &Resources{
-						Memory: "1KiB",
-					},
+			},
+			Resources: &ResourceRequirements{
+				Limits: &Resources{
+					Memory: "1KiB",
 				},
 			},
 		},
@@ -112,11 +112,10 @@ func TestServiceConfigsDiff(t *testing.T) {
 			Name: "name",
 			ContainerConfig: ContainerConfig{
 				Image: "nginx",
-
-				Resources: &ResourceRequirements{
-					Limits: &Resources{
-						Memory: "1GiB",
-					},
+			},
+			Resources: &ResourceRequirements{
+				Limits: &Resources{
+					Memory: "1GiB",
 				},
 			},
 		}

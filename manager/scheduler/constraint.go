@@ -14,12 +14,8 @@ type ConstraintFilter struct {
 
 // SetTask returns true when the filter is enable for a given task.
 func (f *ConstraintFilter) SetTask(t *api.Task) bool {
-	container := t.GetContainer()
-	if container == nil {
-		return false
-	}
-	if container.Spec.Placement != nil && len(container.Spec.Placement.Constraints) > 0 {
-		constraints, err := spec.ParseExprs(container.Spec.Placement.Constraints)
+	if t.Spec.Placement != nil && len(t.Spec.Placement.Constraints) > 0 {
+		constraints, err := spec.ParseExprs(t.Spec.Placement.Constraints)
 		if err == nil {
 			f.constraints = constraints
 			return true
