@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/docker/swarm-v2/agent/exec"
+	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/picker"
 	"google.golang.org/grpc"
 )
@@ -22,6 +23,9 @@ type Config struct {
 
 	// Conn specifies the client connection Agent will use
 	Conn *grpc.ClientConn
+
+	// NotifyRoleChange channel receives new roles from session messages.
+	NotifyRoleChange chan<- api.NodeSpec_Role
 }
 
 func (c *Config) validate() error {
