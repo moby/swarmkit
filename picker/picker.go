@@ -33,6 +33,10 @@ type Remotes interface {
 	// observations of the same master in each session request are favored.
 	Observe(peer api.Peer, weight int)
 
+	// ObserveIfExists records an experience with a particular remote if when a
+	// remote exists.
+	ObserveIfExists(peer api.Peer, weight int)
+
 	// Remove the remote from the list completely.
 	Remove(addrs ...api.Peer)
 }
@@ -132,6 +136,17 @@ func (mwr *remotesWeightedRandom) Observe(peer api.Peer, weight int) {
 	mwr.observe(peer, float64(weight))
 }
 
+func (mwr *remotesWeightedRandom) ObserveIfExists(peer api.Peer, weight int) {
+	mwr.mu.Lock()
+	defer mwr.mu.Unlock()
+
+	if _, ok := mwr.remotes[peer]; !ok {
+		return
+	}
+
+	mwr.observe(peer, float64(weight))
+}
+
 func (mwr *remotesWeightedRandom) Remove(addrs ...api.Peer) {
 	mwr.mu.Lock()
 	defer mwr.mu.Unlock()
@@ -210,7 +225,7 @@ func (p *Picker) Init(cc *grpc.ClientConn) error {
 	peer := p.peer
 	p.mu.Unlock()
 
-	p.r.Observe(peer, 1)
+	p.r.ObserveIfExists(peer, 1)
 	c, err := grpc.NewConn(cc)
 	if err != nil {
 		return err
@@ -230,7 +245,7 @@ func (p *Picker) Pick(ctx context.Context) (transport.ClientTransport, error) {
 	p.mu.Unlock()
 	transport, err := p.conn.Wait(ctx)
 	if err != nil {
-		p.r.Observe(peer, -1)
+		p.r.ObserveIfExists(peer, -1)
 	}
 
 	return transport, err
@@ -243,7 +258,7 @@ func (p *Picker) PickAddr() (string, error) {
 	peer := p.peer
 	p.mu.Unlock()
 
-	p.r.Observe(peer, -1) // downweight the current addr
+	p.r.ObserveIfExists(peer, -1) // downweight the current addr
 
 	var err error
 	peer, err = p.r.Select("")
@@ -281,15 +296,15 @@ func (p *Picker) WaitForStateChange(ctx context.Context, sourceState grpc.Connec
 	// TODO(stevvooe): This is questionable, but we'll see how it works.
 	switch state {
 	case grpc.Idle:
-		p.r.Observe(peer, 1)
+		p.r.ObserveIfExists(peer, 1)
 	case grpc.Connecting:
-		p.r.Observe(peer, 1)
+		p.r.ObserveIfExists(peer, 1)
 	case grpc.Ready:
-		p.r.Observe(peer, 1)
+		p.r.ObserveIfExists(peer, 1)
 	case grpc.TransientFailure:
-		p.r.Observe(peer, -1)
+		p.r.ObserveIfExists(peer, -1)
 	case grpc.Shutdown:
-		p.r.Observe(peer, -1)
+		p.r.ObserveIfExists(peer, -1)
 	}
 
 	return state, err
