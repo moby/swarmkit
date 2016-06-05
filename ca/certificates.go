@@ -40,6 +40,7 @@ const (
 	//|   Node   |  256  |     3072     |
 	//|   Root   |  384  |     7680     |
 	//-----------------------------------
+
 	// RootKeySize is the default size of the root CA key
 	RootKeySize = 384
 	// RootKeyAlgo defines the default algorithm for the root CA Key
