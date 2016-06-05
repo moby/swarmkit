@@ -214,7 +214,15 @@ func (r *controller) Shutdown(ctx context.Context) error {
 		return err
 	}
 
-	return r.adapter.shutdown(ctx)
+	if err := r.adapter.shutdown(ctx); err != nil {
+		if isUnknownContainer(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	return nil
 }
 
 // Terminate the container, with force.
@@ -223,7 +231,15 @@ func (r *controller) Terminate(ctx context.Context) error {
 		return err
 	}
 
-	return r.adapter.terminate(ctx)
+	if err := r.adapter.terminate(ctx); err != nil {
+		if isUnknownContainer(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	return nil
 }
 
 // Remove the container and its resources.
