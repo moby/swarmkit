@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
@@ -379,7 +380,13 @@ func (s *Server) updateCluster(ctx context.Context, cluster *api.Cluster) {
 	s.mu.Unlock()
 	if cluster.RootCA != nil && len(cluster.RootCA.CACert) != 0 && len(cluster.RootCA.CAKey) != 0 {
 		log.G(ctx).Debug("updating root CA object from raft")
-		err := s.securityConfig.UpdateRootCA(cluster.RootCA.CACert, cluster.RootCA.CAKey)
+		rCA := cluster.RootCA
+		expiry, err := time.ParseDuration(rCA.NodeCertExpiry.String())
+		if err != nil {
+			log.G(ctx).WithError(err).Errorf("failed to parse node certificate expiration: %s", rCA.NodeCertExpiry.String())
+			expiry = DefaultNodeCertExpiration
+		}
+		err = s.securityConfig.UpdateRootCA(rCA.CACert, rCA.CAKey, expiry)
 		if err != nil {
 			log.G(ctx).WithError(err).Error("updating root key failed")
 		}
@@ -472,7 +479,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 		}
 
 		err = s.store.Update(func(tx store.Tx) error {
-			// Remote users are expecting a full certificate chain, not just a signed certificate
+			// Remote nodes are expecting a full certificate chain, not just a signed certificate
 			node.Certificate.Certificate = append(cert, s.securityConfig.RootCA().Cert...)
 			node.Certificate.Status = api.IssuanceStatus{
 				State: api.IssuanceStateIssued,

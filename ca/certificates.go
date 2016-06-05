@@ -34,11 +34,12 @@ import (
 )
 
 const (
-	// Security Strength Equivalence followed
-	//| Key-type |  ECC  |  DH/DSA/RSA
-	//|   Node   |  256  |     3072
-	//|   Root   |  384  |     7680
-
+	// Security Strength Equivalence
+	//-----------------------------------
+	//| Key-type |  ECC  |  DH/DSA/RSA  |
+	//|   Node   |  256  |     3072     |
+	//|   Root   |  384  |     7680     |
+	//-----------------------------------
 	// RootKeySize is the default size of the root CA key
 	RootKeySize = 384
 	// RootKeyAlgo defines the default algorithm for the root CA Key
@@ -50,6 +51,10 @@ const (
 	// root CA private key material encryption key. It can be used for seamless
 	// KEK rotations.
 	PassphraseENVVarPrev = "SWARM_ROOT_CA_PASSPHRASE_PREV"
+	// RootCAExpiration represents the expiration for the root CA in seconds (20 years)
+	RootCAExpiration = "630720000s"
+	// DefaultNodeCertExpiration represents the default expiration for node certificates (1 month)
+	DefaultNodeCertExpiration = 720 * time.Hour
 )
 
 // ErrNoLocalRootCA is an error type used to indicate that the local root CA
@@ -205,7 +210,7 @@ func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, ou, org string) 
 // NewRootCA creates a new RootCA object from unparsed cert and key byte
 // slices. key may be nil, and in this case NewRootCA will return a RootCA
 // without a signer.
-func NewRootCA(cert, key []byte) (RootCA, error) {
+func NewRootCA(cert, key []byte, certExpiry time.Duration) (RootCA, error) {
 	// Check to see if the Certificate file is a valid, self-signed Cert
 	parsedCA, err := helpers.ParseSelfSignedCertificatePEM(cert)
 	if err != nil {
@@ -252,7 +257,7 @@ func NewRootCA(cert, key []byte) (RootCA, error) {
 		return RootCA{}, err
 	}
 
-	signer, err := local.NewSigner(priv, parsedCA, cfsigner.DefaultSigAlgo(priv), DefaultPolicy())
+	signer, err := local.NewSigner(priv, parsedCA, cfsigner.DefaultSigAlgo(priv), SigningPolicy(certExpiry))
 	if err != nil {
 		return RootCA{}, err
 	}
@@ -314,7 +319,7 @@ func GetLocalRootCA(baseDir string) (RootCA, error) {
 		key = nil
 	}
 
-	rootCA, err := NewRootCA(cert, key)
+	rootCA, err := NewRootCA(cert, key, DefaultNodeCertExpiration)
 	if err == nil {
 		log.Debugf("successfully loaded the signer for the Root CA: %s", paths.RootCA.Cert)
 	}
@@ -387,8 +392,7 @@ func CreateAndWriteRootCA(rootCN string, paths CertPaths) (RootCA, error) {
 	req := cfcsr.CertificateRequest{
 		CN:         rootCN,
 		KeyRequest: &cfcsr.BasicKeyRequest{A: RootKeyAlgo, S: RootKeySize},
-		// Expiration for the root is 20 years
-		CA: &cfcsr.CAConfig{Expiry: "630720000s"},
+		CA:         &cfcsr.CAConfig{Expiry: RootCAExpiration},
 	}
 
 	// Generate the CA and get the certificate and private key

@@ -36,11 +36,6 @@ const (
 	CARole = "swarm-ca"
 )
 
-var (
-	//TODO(diogo): replace this with a sane renewal time
-	defaultRenewalTime = 30 * time.Second
-)
-
 // SecurityConfig is used to represent a node's security configuration. It includes information about
 // the RootCA and ServerTLSCreds/ClientTLSCreds transport authenticators to be used for MTLS
 type SecurityConfig struct {
@@ -77,12 +72,12 @@ func (s *SecurityConfig) RootCA() *RootCA {
 }
 
 // UpdateRootCA replaces the root CA with a new root CA based on the specified
-// certificate and key.
-func (s *SecurityConfig) UpdateRootCA(cert, key []byte) error {
+// certificate, key, and the number of hours the certificates issue should last.
+func (s *SecurityConfig) UpdateRootCA(cert, key []byte, certExpiry time.Duration) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	rootCA, err := NewRootCA(cert, key)
+	rootCA, err := NewRootCA(cert, key, certExpiry)
 	if err == nil {
 		s.rootCA = &rootCA
 	}
@@ -93,14 +88,22 @@ func (s *SecurityConfig) UpdateRootCA(cert, key []byte) error {
 // DefaultPolicy is the default policy used by the signers to ensure that the only fields
 // from the remote CSRs we trust are: PublicKey, PublicKeyAlgorithm and SignatureAlgorithm.
 var DefaultPolicy = func() *cfconfig.Signing {
+	return SigningPolicy(DefaultNodeCertExpiration)
+}
+
+// SigningPolicy creates a policy used by the signer to ensure that the only fields
+// from the remote CSRs we trust are: PublicKey, PublicKeyAlgorithm and SignatureAlgorithm.
+// It receives the duration a certificate will be valid for
+var SigningPolicy = func(certExpiry time.Duration) *cfconfig.Signing {
+	// Force the minimum Certificate expiration to be fifteen minutes
+	if certExpiry.Minutes() < 15 {
+		certExpiry = DefaultNodeCertExpiration
+	}
+
 	return &cfconfig.Signing{
 		Default: &cfconfig.SigningProfile{
-			Usage: []string{"signing", "key encipherment", "server auth", "client auth"},
-			// TODO(diogo): change to 3 months of expiry
-			// ExpiryString: "2160h",
-			// Expiry:       2160 * time.Hour,
-			ExpiryString: "1h",
-			Expiry:       1 * time.Hour,
+			Usage:  []string{"signing", "key encipherment", "server auth", "client auth"},
+			Expiry: certExpiry,
 			// Only trust the key components from the CSR. Everything else should
 			// come directly from API call params.
 			CSRWhitelist: &cfconfig.CSRWhitelist{
