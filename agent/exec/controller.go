@@ -130,8 +130,10 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 	// is completed.
 
 	defer func() {
-		log.G(ctx).WithField("state.transition", fmt.Sprintf("%v->%v", task.Status.State, status.State)).
-			Info("state changed")
+		if task.Status.State != status.State {
+			log.G(ctx).WithField("state.transition", fmt.Sprintf("%v->%v", task.Status.State, status.State)).
+				Info("state changed")
+		}
 	}()
 
 	// extract the container status from the container, if supported.

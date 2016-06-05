@@ -2,207 +2,228 @@ package agent
 
 import (
 	"reflect"
-	"sync"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"golang.org/x/net/context"
 )
 
-// StatusReporter receives updates to task status. Method may be called
-// concurrently, so implementations should be goroutine-safe.
-type StatusReporter interface {
-	UpdateTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error
+type TaskManager interface {
+	Update(ctx context.Context, task *api.Task) error
+	Close() error
+}
+
+type TaskManagerFactory interface {
+	TaskManager(ctx context.Context, task *api.Task, reporter StatusReporter) TaskManager
+}
+
+type taskManagerFactoryFn func(ctx context.Context, task *api.Task, reporter StatusReporter) TaskManager
+
+func (fn taskManagerFactoryFn) TaskManager(ctx context.Context, task *api.Task, reporter StatusReporter) TaskManager {
+	return fn(ctx, task, reporter)
+}
+
+func newExecutorTaskManagerFactory(executor exec.Executor) TaskManagerFactory {
+	return taskManagerFactoryFn(func(ctx context.Context, task *api.Task, reporter StatusReporter) TaskManager {
+		ctlr, err := executor.Controller(task.Copy())
+		if err != nil {
+			log.G(ctx).WithError(err).Error("controller resolution failed")
+			// log this, status is reported via nil controller below.
+		}
+
+		return newTaskManager(ctx, task, ctlr, reporter)
+	})
 }
 
 // taskManager manages all aspects of task execution and reporting for an agent
 // through state management.
 type taskManager struct {
+	task     *api.Task
 	ctlr     exec.Controller
 	reporter StatusReporter
-	requestq chan modificationRequest
-	wg       sync.WaitGroup
 
-	// protected defines fields that should only be access in run loop or a modify function.
-	protected struct {
-		task *api.Task
-	}
+	updateq chan *api.Task
 
-	removed chan struct{}
-	closed  chan struct{}
+	shutdown chan struct{}
+	closed   chan struct{}
 }
 
 func newTaskManager(ctx context.Context, task *api.Task, ctlr exec.Controller, reporter StatusReporter) *taskManager {
 	t := &taskManager{
+		task:     task.Copy(),
 		ctlr:     ctlr,
 		reporter: reporter,
-		requestq: make(chan modificationRequest),
-		removed:  make(chan struct{}),
+		updateq:  make(chan *api.Task),
+		shutdown: make(chan struct{}),
 		closed:   make(chan struct{}),
 	}
-	t.protected.task = task
 	go t.run(ctx)
 	return t
 }
 
-// Update the task data. Blocks until the update is accepted.
+// Update the task data.
 func (tm *taskManager) Update(ctx context.Context, task *api.Task) error {
-	return modify(ctx, tm.requestq, tm.closed, ErrClosed, func(ctx context.Context) (deferred func(), err error) {
-		if tasksEqual(tm.protected.task, task) {
-			return nil, nil // ignore the update
-		}
-
-		if task.ID != tm.protected.task.ID {
-			return nil, errTaskInvalid
-		}
-
-		task = task.Copy()
-		task.Status = tm.protected.task.Status // overwrite our status, as it is canonical.
-
-		// protect against reversing desired state
-		if tm.protected.task.DesiredState > task.DesiredState {
-			task.DesiredState = tm.protected.task.DesiredState
-		}
-
-		tm.protected.task = task
-
-		return func() {
-			// propagate the update to the controller, synchronously.
-			if err := tm.ctlr.Update(ctx, task); err != nil {
-				log.G(ctx).WithError(err).Error("failed task update")
-			}
-		}, nil
-	})
-}
-
-// Remove marks the task manager to remove the task resources.
-//
-// Does not block on operation. May be called multiple task is fully removed.
-// Once this function returns nil, the task has been completely removed.
-func (tm *taskManager) Remove(ctx context.Context) error {
-	log.G(ctx).Debug("(*taskManager).Remove")
-	return modify(ctx, tm.requestq, tm.removed, nil, func(ctx context.Context) (func(), error) {
-		log.G(ctx).Debug("(*taskManager).Remove", "modify")
-		if tm.protected.task.DesiredState != api.TaskStateDead {
-			tm.protected.task.DesiredState = api.TaskStateDead
-		}
-
-		return nil, ErrRemoving
-	})
-}
-
-func (tm *taskManager) Close() error {
-	log.L.Debug("(*taskManager).Close")
 	select {
+	case tm.updateq <- task:
+		return nil
 	case <-tm.closed:
 		return ErrClosed
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// Close shuts down the task manager, blocking until it is stopped.
+func (tm *taskManager) Close() error {
+	log.L.Debug("(*taskManager).Close")
+
+	select {
+	case <-tm.closed:
+		return nil
+	case <-tm.shutdown:
 	default:
-		close(tm.closed)
+		close(tm.shutdown)
+	}
+
+	select {
+	case <-tm.closed:
 		return nil
 	}
 }
 
-// dispatch does an operation on for the task. Typically, this called one at a
-// time by setting taskManager.protected.op.
-//
-// Only call this from within a protected section.
-func (tm *taskManager) dispatch(ctx context.Context) {
-	task := tm.protected.task.Copy()
-	tm.wg.Add(1)
-	go func() {
-		status, err := exec.Do(ctx, task, tm.ctlr)
-		if err != nil {
-			switch err {
-			case exec.ErrTaskNoop:
-			case exec.ErrTaskDead:
-				// if we made a transition from remove to dead, we never
-				// want to call Do again. We close the remove channel to
-				// signal this condition.
-				close(tm.removed)
-			default:
-				log.G(ctx).WithError(err).Error("exec.Do failed")
-			}
-		}
-		tm.wg.Done()
-
-		log.G(ctx).WithError(err).WithField("task.status.next", status).Debug("exec.Do succeeded")
-		if err := modify(ctx, tm.requestq, tm.closed, ErrClosed, func(ctx context.Context) (deferred func(), err error) {
-			tm.protected.task.Status = *status
-			return nil, err // propagates error from exec.Do
-		}); err != nil {
-			if err != ErrClosed && err != context.Canceled && err != context.DeadlineExceeded {
-				log.G(ctx).WithError(err).Error("failed to update task status")
-			}
-		}
-	}()
-}
-
 func (tm *taskManager) run(ctx context.Context) {
+	ctx, cancelAll := context.WithCancel(ctx)
+	defer cancelAll() // cancel all child operations on exit.
+
+	var (
+		opctx    context.Context
+		cancel   context.CancelFunc
+		run      = make(chan struct{}, 1)
+		statusq  = make(chan *api.TaskStatus)
+		errs     = make(chan error)
+		shutdown = tm.shutdown
+		updated  bool // true if the task was updated.
+	)
+
+	log.G(ctx).Debug("(*taskManager).run")
+
 	defer func() {
-		if ctx.Err() != nil {
-			log.G(ctx).WithError(ctx.Err()).Error("task manager exiting")
-		} else {
-			log.G(ctx).Debug("task manager exiting")
-		}
-	}()
-
-	// pump the requestq.
-	go func() {
-		if err := modify(ctx, tm.requestq, tm.closed, ErrClosed, func(ctx context.Context) (func(), error) {
-			return nil, nil
-		}); err != nil {
-			log.G(ctx).WithError(err).Error("failed to start taskManager loop")
-			return
-		}
-	}()
-
-	opctx, cancel := context.WithCancel(ctx)
-	defer func() {
-		cancel() // closure let's us pick up current value of cancel.
-	}()
-
-	status := tm.protected.task.Status // keep track of last sent status
-	for {
-		if status != tm.protected.task.Status {
-			// always try to report status on each cycle.
-			if err := tm.reporter.UpdateTaskStatus(ctx, tm.protected.task.ID, tm.protected.task.Status.Copy()); err != nil {
-				log.G(ctx).WithError(err).Error("failed reporting status to agent")
-				continue // keep retrying the report.
-			}
-
-			status = tm.protected.task.Status
-		}
-
-		select {
-		case request := <-tm.requestq:
-			deferred, err := request.fn(ctx)
-			request.response <- err
-
-			// always cancel outstanding operation
+		// closure  picks up current value of cancel.
+		if cancel != nil {
 			cancel()
+		}
+	}()
 
-			if deferred != nil {
-				deferred()
+	run <- struct{}{} // prime the pump
+	for {
+		select {
+		case <-run:
+			// always check for shutdown before running.
+			select {
+			case <-shutdown:
+				continue // ignore run request and handle shutdown
+			case <-tm.closed:
+				continue
+			default:
 			}
 
-			// before doing anything else, we wait on the cancelled operation to return.
-			tm.wg.Wait()
+			opctx, cancel = context.WithCancel(ctx)
+			opcancel := cancel // fork for the closure
+			go runctx(ctx, tm.closed, errs, func(ctx context.Context) error {
+				defer opcancel()
 
-			// after a request, we always dispatch, unless we have ErrTaskNoop.
-			if err != exec.ErrTaskNoop && err != exec.ErrTaskDead {
-				opctx, cancel = context.WithCancel(ctx)
-				opctx = log.WithLogger(opctx, log.G(ctx).WithFields(
-					logrus.Fields{
-						"task.state":         tm.protected.task.Status.State,
-						"task.state.desired": tm.protected.task.DesiredState,
-					}))
+				if updated {
+					// before we do anything, update the task for the controller.
+					// always update the controller before running.
+					if err := tm.ctlr.Update(opctx, tm.task.Copy()); err != nil {
+						log.G(ctx).WithError(err).Error("updating task controller failed")
+						return err
+					}
+					updated = false
+				}
 
-				tm.dispatch(opctx)
+				status, err := exec.Do(opctx, tm.task, tm.ctlr)
+				if err != nil {
+					return err
+				}
+
+				select {
+				case statusq <- status:
+				case <-ctx.Done(): // not opctx, since that may have been cancelled.
+				}
+
+				return nil
+			})
+		case task := <-tm.updateq:
+			if tasksEqual(task, tm.task) {
+				log.G(ctx).Debug("task update ignored")
+				continue // ignore the update
+			}
+
+			if task.ID != tm.task.ID {
+				log.G(ctx).WithField("task.update.id", task.ID).Error("received update for incorrect task")
+				continue
+			}
+
+			if task.DesiredState < tm.task.DesiredState {
+				log.G(ctx).WithField("task.update.desiredstate", task.DesiredState).
+					Error("ignoring task update with invalid desired state")
+				continue
+			}
+
+			// log.G(ctx).WithField("task.update", task).Debug("update accepted")
+
+			task = task.Copy()
+			task.Status = tm.task.Status // overwrite our status, as it is canonical.
+			tm.task = task
+			updated = true
+
+			// we have accepted the task update
+			if cancel != nil {
+				cancel() // cancel outstanding if necessary.
 			} else {
-				log.G(ctx).Debug("suspending task after noop")
+				// no outstanding operation, pump run queue
+				run <- struct{}{}
 			}
+		case status := <-statusq:
+			cancel = nil
+
+			tm.task.Status = *status
+			if err := tm.reporter.UpdateTaskStatus(ctx, tm.task.ID, tm.task.Status.Copy()); err != nil {
+				log.G(ctx).WithError(err).Error("failed reporting status to agent")
+			}
+
+			run <- struct{}{} // pump the run queue!
+		case err := <-errs:
+			cancel = nil
+
+			switch err {
+			case nil:
+				continue // success, status, will be hit
+			case exec.ErrTaskNoop:
+				continue // wait till getting pumped via update.
+			case context.Canceled, context.DeadlineExceeded:
+			default:
+				log.G(ctx).WithError(err).Error("task operation failed")
+			}
+
+			run <- struct{}{}
+		case <-shutdown:
+			if cancel != nil {
+				// cancel outstanding operation.
+				cancel()
+
+				// This ensures we wait for the last operation to complete.
+				// errs or status will be pumped but not requeue an operation.
+				continue
+			}
+
+			// disable everything, and prepare for closing.
+			statusq = nil
+			errs = nil
+			shutdown = nil
+			close(tm.closed)
 		case <-tm.closed:
 			return
 		case <-ctx.Done():

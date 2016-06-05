@@ -15,22 +15,43 @@ func init() {
 	logrus.SetLevel(logrus.DebugLevel)
 }
 
-func TestOperation(t *testing.T) {
+func TestTaskManager(t *testing.T) {
 	ctx := context.Background()
 	task := &api.Task{
 		Status:       api.TaskStatus{},
-		DesiredState: api.TaskStateRunning,
+		DesiredState: api.TaskStateReady,
 	}
-	remove := make(chan struct{})
+	ready := make(chan struct{})
 	shutdown := make(chan struct{})
+	ctlr := &controllerStub{t: t, calls: map[string]int{}}
 
-	tm := newTaskManager(ctx, task, &controllerStub{t: t}, statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
-		t.Log("status", status, status.State == api.TaskStateCompleted)
-		if status.State == api.TaskStateCompleted {
-			close(remove)
-		} else if status.State == api.TaskStateDead {
-			close(shutdown)
+	tm := newTaskManager(ctx, task, ctlr, statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
+		switch status.State {
+		case api.TaskStateAccepted, api.TaskStatePreparing:
+			// noop
+		case api.TaskStateReady:
+			select {
+			case <-ready:
+			default:
+				close(ready)
+			}
+		case api.TaskStateStarting:
+		case api.TaskStateRunning:
+			select {
+			case <-ready:
+			default:
+				t.Fatalf("should be running before ready")
+			}
+		case api.TaskStateCompleted:
+			select {
+			case <-shutdown:
+			default:
+				close(shutdown)
+			}
+		default:
+			t.Fatalf("unexpected state encountered: %v", status.State)
 		}
+
 		return nil
 	}))
 
@@ -39,23 +60,27 @@ func TestOperation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
+	shutdownWait := shutdown
+	readyWait := ready
 	for {
 		select {
-		case <-remove:
-			err := tm.Remove(ctx)
-
-			if err != ErrRemoving {
-				t.Fatal(err) // should be removing
-			}
-			// call it again, we should be removing.
-
-			assert.Equal(t, ErrRemoving, tm.Remove(ctx))
-
-			remove = nil // don't retry
-		case <-shutdown:
+		case <-readyWait:
+			time.Sleep(time.Second)
+			task.DesiredState = api.TaskStateRunning // proceed to running.
+			assert.NoError(t, tm.Update(ctx, task))
+			readyWait = nil
+		case <-shutdownWait:
 			assert.NoError(t, tm.Close())
-			shutdown = nil
-		case <-tm.closed:
+			select {
+			case <-tm.closed:
+			default:
+				t.Fatalf("not actually closed")
+			}
+
+			assert.NoError(t, tm.Close()) // hit a second time to make sure it behaves
+			assert.Equal(t, tm.Update(ctx, task), ErrClosed)
+
+			assert.Equal(t, map[string]int{"start": 1, "wait": 1, "prepare": 1, "update": 1}, ctlr.calls)
 			return
 		case <-ctx.Done():
 			t.Fatal(ctx.Err())
@@ -66,30 +91,30 @@ func TestOperation(t *testing.T) {
 type controllerStub struct {
 	t *testing.T
 	exec.Controller
+
+	calls map[string]int
 }
 
 func (cs *controllerStub) Prepare(ctx context.Context) error {
+	cs.calls["prepare"]++
 	cs.t.Log("(*controllerStub).Prepare")
 	return nil
 }
 
 func (cs *controllerStub) Start(ctx context.Context) error {
+	cs.calls["start"]++
 	cs.t.Log("(*controllerStub).Start")
 	return nil
 }
 
 func (cs *controllerStub) Wait(ctx context.Context) error {
+	cs.calls["wait"]++
 	cs.t.Log("(*controllerStub).Wait")
 	return nil
 }
 
-func (cs *controllerStub) Remove(ctx context.Context) error {
-	cs.t.Log("(*controllerStub).Remove")
+func (cs *controllerStub) Update(ctx context.Context, task *api.Task) error {
+	cs.calls["update"]++
+	cs.t.Log("(*controllerStub).Update")
 	return nil
-}
-
-type statusReporterFunc func(ctx context.Context, taskID string, status *api.TaskStatus) error
-
-func (fn statusReporterFunc) UpdateTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error {
-	return fn(ctx, taskID, status)
 }
