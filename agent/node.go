@@ -7,6 +7,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"sync"
 	"time"
 
@@ -568,8 +570,9 @@ type persistentRemotes struct {
 	sync.RWMutex
 	c *sync.Cond
 	picker.Remotes
-	storePath string
-	ch        []chan api.Peer
+	storePath      string
+	ch             []chan api.Peer
+	lastSavedState []api.Peer
 }
 
 func newPersistentRemotes(f string, remotes ...api.Peer) *persistentRemotes {
@@ -585,11 +588,12 @@ func (s *persistentRemotes) Observe(peer api.Peer, weight int) {
 	s.Lock()
 	s.Remotes.Observe(peer, weight)
 	s.c.Broadcast()
-	s.Unlock()
 	if err := s.save(); err != nil {
 		logrus.Errorf("error writing cluster state file: %v", err)
+		s.Unlock()
 		return
 	}
+	s.Unlock()
 	return
 }
 func (s *persistentRemotes) Remove(peers ...api.Peer) {
@@ -607,10 +611,15 @@ func (s *persistentRemotes) save() error {
 	for r := range weights {
 		remotes = append(remotes, r)
 	}
+	sort.Sort(sortablePeers(remotes))
+	if reflect.DeepEqual(remotes, s.lastSavedState) {
+		return nil
+	}
 	dt, err := json.Marshal(remotes)
 	if err != nil {
 		return err
 	}
+	s.lastSavedState = remotes
 	return ioutils.AtomicWriteFile(s.storePath, dt, 0600)
 }
 
@@ -644,3 +653,12 @@ func (s *persistentRemotes) WaitSelect(ctx context.Context) <-chan api.Peer {
 	}()
 	return c
 }
+
+// sortablePeers is a sort wrapper for []api.Peer
+type sortablePeers []api.Peer
+
+func (sp sortablePeers) Less(i, j int) bool { return sp[i].NodeID < sp[j].NodeID }
+
+func (sp sortablePeers) Len() int { return len(sp) }
+
+func (sp sortablePeers) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
