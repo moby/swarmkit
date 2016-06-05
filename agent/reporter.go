@@ -15,6 +15,12 @@ type StatusReporter interface {
 	UpdateTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error
 }
 
+type statusReporterFunc func(ctx context.Context, taskID string, status *api.TaskStatus) error
+
+func (fn statusReporterFunc) UpdateTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error {
+	return fn(ctx, taskID, status)
+}
+
 // statusReporter creates a reliable StatusReporter that will always succeed.
 // It handles several tasks at once, ensuring all statuses are reported.
 //

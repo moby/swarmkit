@@ -2,7 +2,6 @@ package agent
 
 import (
 	"bytes"
-	"errors"
 
 	"github.com/boltdb/bolt"
 	"github.com/docker/swarm-v2/api"
@@ -54,10 +53,10 @@ func GetTask(tx *bolt.Tx, id string) (*api.Task, error) {
 	return &t, nil
 }
 
-func GetTasks(tx *bolt.Tx) ([]*api.Task, error) {
+func GetTasks(tx *bolt.Tx) []*api.Task {
 	bkt := getTasksBucket(tx)
 	if bkt == nil {
-		return nil, errors.New("agent/db: tasks bucket missing")
+		return nil
 	}
 
 	var tasks []*api.Task
@@ -74,10 +73,10 @@ func GetTasks(tx *bolt.Tx) ([]*api.Task, error) {
 
 		return nil
 	}); err != nil {
-		return nil, err
+		log.L.WithError(err).Errorf("error in GetTasks ForEach")
 	}
 
-	return tasks, nil
+	return tasks
 }
 
 func TaskAssigned(tx *bolt.Tx, id string) bool {
@@ -176,7 +175,7 @@ func withCreateTaskBucketIfNotExists(tx *bolt.Tx, id string, fn func(bkt *bolt.B
 func withTaskBucket(tx *bolt.Tx, id string, fn func(bkt *bolt.Bucket) error) error {
 	bkt := getTaskBucket(tx, id)
 	if bkt == nil {
-		return errors.New("agent/db: task bucket not found")
+		return errTaskUnknown
 	}
 
 	return fn(bkt)

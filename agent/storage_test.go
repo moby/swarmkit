@@ -146,9 +146,9 @@ func genTask() *api.Task {
 		ID:        identity.NewID(),
 		ServiceID: identity.NewID(),
 		Status:    *genTaskStatus(),
-		Runtime: &api.Task_Container{
-			Container: &api.Container{
-				Spec: api.ContainerSpec{
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
 					Image:   "foo",
 					Command: []string{"this", "-w", "works"},
 				},
