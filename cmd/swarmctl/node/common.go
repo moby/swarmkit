@@ -83,6 +83,40 @@ func changeNodeMembership(cmd *cobra.Command, args []string, membership api.Node
 	return nil
 }
 
+func changeNodeRole(cmd *cobra.Command, args []string, role api.NodeSpec_Role) error {
+	if len(args) == 0 {
+		return errors.New("missing node ID")
+	}
+
+	c, err := common.Dial(cmd)
+	if err != nil {
+		return err
+	}
+	node, err := getNode(common.Context(cmd), c, args[0])
+	if err != nil {
+		return err
+	}
+	spec := &node.Spec
+
+	if spec.Role == role {
+		return errNoChange
+	}
+
+	spec.Role = role
+
+	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
+		NodeID:      node.ID,
+		NodeVersion: &node.Meta.Version,
+		Spec:        spec,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func getNode(ctx context.Context, c api.ControlClient, input string) (*api.Node, error) {
 	// GetNode to match via full ID.
 	rg, err := c.GetNode(ctx, &api.GetNodeRequest{NodeID: input})

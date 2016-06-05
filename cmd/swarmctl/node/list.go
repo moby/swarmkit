@@ -58,6 +58,9 @@ var (
 					if n.Manager != nil {
 						reachability = n.Manager.Raft.Status.Reachability.String()
 					}
+					if reachability == "" && spec.Role == api.NodeRoleManager {
+						reachability = "UNKNOWN"
+					}
 
 					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 						n.ID,

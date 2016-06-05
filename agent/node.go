@@ -75,20 +75,21 @@ type NodeConfig struct {
 // cluster. Node handles workloads and may also run as a manager.
 type Node struct {
 	sync.RWMutex
-	config   *NodeConfig
-	remotes  *persistentRemotes
-	role     string
-	roleCond *sync.Cond
-	conn     *grpc.ClientConn
-	connCond *sync.Cond
-	nodeID   string
-	started  chan struct{}
-	stopped  chan struct{}
-	ready    chan struct{}
-	closed   chan struct{}
-	err      error
-	agent    *Agent
-	manager  *manager.Manager
+	config        *NodeConfig
+	remotes       *persistentRemotes
+	role          string
+	roleCond      *sync.Cond
+	conn          *grpc.ClientConn
+	connCond      *sync.Cond
+	nodeID        string
+	started       chan struct{}
+	stopped       chan struct{}
+	ready         chan struct{}
+	closed        chan struct{}
+	err           error
+	agent         *Agent
+	manager       *manager.Manager
+	roleChangeReq chan api.NodeSpec_Role
 }
 
 // NewNode returns new Node instance.
@@ -109,13 +110,14 @@ func NewNode(c *NodeConfig) (*Node, error) {
 	}
 
 	n := &Node{
-		remotes: newPersistentRemotes(stateFile, p...),
-		role:    ca.AgentRole,
-		config:  c,
-		started: make(chan struct{}),
-		stopped: make(chan struct{}),
-		closed:  make(chan struct{}),
-		ready:   make(chan struct{}),
+		remotes:       newPersistentRemotes(stateFile, p...),
+		role:          ca.AgentRole,
+		config:        c,
+		started:       make(chan struct{}),
+		stopped:       make(chan struct{}),
+		closed:        make(chan struct{}),
+		ready:         make(chan struct{}),
+		roleChangeReq: make(chan api.NodeSpec_Role, 1),
 	}
 	n.roleCond = sync.NewCond(n.RLocker())
 	n.connCond = sync.NewCond(n.RLocker())
@@ -208,24 +210,53 @@ func (n *Node) run(ctx context.Context) (err error) {
 		return err
 	}
 
-	updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker.NewPicker(n.remotes), 5*time.Minute, nil)
+	if err := n.loadCertificates(); err != nil {
+		return err
+	}
+
+	forceCertRenewal := make(chan struct{})
+	go func() {
+		n.RLock()
+		lastRole := n.role
+		n.RUnlock()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case apirole := <-n.roleChangeReq:
+				role := ca.AgentRole
+				if apirole == api.NodeRoleManager {
+					role = ca.ManagerRole
+				}
+				if lastRole != role {
+					forceCertRenewal <- struct{}{}
+				}
+				lastRole = role
+			}
+		}
+	}()
+
+	updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker.NewPicker(n.remotes), 5*time.Minute, forceCertRenewal)
 	go func() {
 		for {
 			select {
 			case certUpdate := <-updates:
+				if ctx.Err() != nil {
+					return
+				}
 				if certUpdate.Err != nil {
 					logrus.Warnf("error renewing TLS certificate: %v", certUpdate.Err)
 					continue
 				}
+				n.Lock()
+				n.role = certUpdate.Role
+				n.roleCond.Broadcast()
+				n.Unlock()
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
-
-	if err := n.loadCertificates(); err != nil {
-		return err
-	}
 
 	role := n.role
 
@@ -321,10 +352,11 @@ func (n *Node) runAgent(ctx context.Context, creds credentials.TransportAuthenti
 	}
 
 	agent, err := New(&Config{
-		Hostname: n.config.Hostname,
-		Managers: n.remotes,
-		Executor: n.config.Executor,
-		Conn:     conn,
+		Hostname:         n.config.Hostname,
+		Managers:         n.remotes,
+		Executor:         n.config.Executor,
+		Conn:             conn,
+		NotifyRoleChange: n.roleChangeReq,
 	})
 	if err != nil {
 		return err
