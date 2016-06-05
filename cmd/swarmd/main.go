@@ -2,11 +2,8 @@ package main
 
 import (
 	_ "expvar"
-	"fmt"
-	"net"
 	"net/http"
 	_ "net/http/pprof"
-
 	"os"
 	"os/signal"
 
@@ -58,19 +55,17 @@ var (
 			if err != nil {
 				return err
 			}
-			addr, err := cmd.Flags().GetString("listen-remote-api")
+			addr, err := cmd.Flags().GetString("listen-addr")
 			if err != nil {
 				return err
 			}
-			addrHost, _, err := net.SplitHostPort(addr)
-			if err == nil {
-				ip := net.ParseIP(addrHost)
-				if ip != nil && (ip.IsUnspecified() || ip.IsLoopback()) {
-					fmt.Println("Warning: Specifying a valid address with --listen-remote-api may be necessary for other managers to reach this one.")
-				}
+
+			advertise, err := cmd.Flags().GetString("advertise-addr")
+			if err != nil {
+				return err
 			}
 
-			unix, err := cmd.Flags().GetString("listen-control-api")
+			unix, err := cmd.Flags().GetString("control-socket")
 			if err != nil {
 				return err
 			}
@@ -80,7 +75,7 @@ var (
 				return err
 			}
 
-			managerAddr, err := cmd.Flags().GetString("join-addr")
+			managerAddr, err := cmd.Flags().GetString("join")
 			if err != nil {
 				return err
 			}
@@ -147,18 +142,19 @@ var (
 			}
 
 			n, err := agent.NewNode(&agent.NodeConfig{
-				Hostname:         hostname,
-				ForceNewCluster:  forceNewCluster,
-				ListenControlAPI: unix,
-				ListenRemoteAPI:  addr,
-				JoinAddr:         managerAddr,
-				StateDir:         stateDir,
-				CAHash:           caHash,
-				Secret:           secret,
-				Executor:         executor,
-				HeartbeatTick:    hb,
-				ElectionTick:     election,
-				IsManager:        ismanager,
+				Hostname:          hostname,
+				ForceNewCluster:   forceNewCluster,
+				ControlSocketPath: unix,
+				ListenAddr:        addr,
+				AdvertiseAddr:     advertise,
+				JoinAddr:          managerAddr,
+				StateDir:          stateDir,
+				CAHash:            caHash,
+				Secret:            secret,
+				Executor:          executor,
+				HeartbeatTick:     hb,
+				ElectionTick:      election,
+				IsManager:         ismanager,
 			})
 			if err != nil {
 				return err
@@ -188,17 +184,19 @@ var (
 )
 
 func init() {
-	mainCmd.Flags().BoolP("version", "v", false, "Display the version and exit")
-	mainCmd.Flags().StringP("log-level", "l", "info", "Log level (options \"debug\", \"info\", \"warn\", \"error\", \"fatal\", \"panic\")")
-	mainCmd.Flags().StringP("state-dir", "d", "/var/lib/docker/cluster", "State directory")
-	mainCmd.Flags().StringP("ca-hash", "c", "", "Specifies the remote CA root certificate hash, necessary to join the cluster securely")
-	mainCmd.Flags().StringP("secret", "s", "", "Specifies the secret token required to join the cluster")
+	mainCmd.Flags().BoolP("version", "V", false, "Display the version and exit")
+	mainCmd.Flags().StringP("log-level", "L", "info", "Log level (options \"debug\", \"info\", \"warn\", \"error\", \"fatal\", \"panic\")")
+	mainCmd.Flags().StringP("state-dir", "d", "/var/lib/docker/swarm", "State directory")
+	mainCmd.Flags().String("ca-hash", "", "Specifies the remote CA root certificate hash, necessary to join the cluster securely")
+	mainCmd.Flags().String("secret", "", "Specifies the secret token required to join the cluster")
 	mainCmd.Flags().String("engine-addr", "unix:///var/run/docker.sock", "Address of engine instance of agent.")
 	mainCmd.Flags().String("hostname", "", "Override reported agent hostname")
-	mainCmd.Flags().String("listen-remote-api", "0.0.0.0:4242", "Listen address for remote API")
-	mainCmd.Flags().String("listen-control-api", "/var/run/docker/cluster/docker-swarmd.sock", "Listen socket for control API")
-	mainCmd.Flags().String("listen-debug", "", "Bind the Go debug server on the provided address")
 	mainCmd.Flags().String("join-addr", "", "Join cluster with a node at this address")
+	mainCmd.Flags().StringP("listen-addr", "l", "0.0.0.0:4242", "Listen address for peer nodes")
+	mainCmd.Flags().StringP("advertise-addr", "a", "", "Address for this node to advertise to other peers")
+	mainCmd.Flags().String("listen-debug", "", "Bind the Go debug server on the provided address")
+	mainCmd.Flags().StringP("control-socket", "c", "/var/run/docker/swarm/docker-swarmd.sock", "Listen socket for control API")
+	mainCmd.Flags().String("join", "", "Join cluster with a node at this address")
 	mainCmd.Flags().Bool("force-new-cluster", false, "Force the creation of a new cluster from data directory")
 	mainCmd.Flags().Uint32("heartbeat-tick", 1, "Defines the heartbeat interval (in seconds) for raft member health-check")
 	mainCmd.Flags().Uint32("election-tick", 3, "Defines the amount of ticks (in seconds) needed without a Leader to trigger a new election")
