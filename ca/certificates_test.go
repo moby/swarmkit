@@ -25,6 +25,11 @@ import (
 	"golang.org/x/net/context"
 )
 
+func init() {
+	os.Setenv(ca.PassphraseENVVar, "")
+	os.Setenv(ca.PassphraseENVVarPrev, "")
+}
+
 func TestCreateAndWriteRootCA(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
@@ -148,6 +153,24 @@ func TestGenerateAndWriteNewKey(t *testing.T) {
 
 	_, err = helpers.ParseCSRPEM(csr)
 	assert.NoError(t, err)
+}
+
+func TestEncryptECPrivateKey(t *testing.T) {
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
+
+	paths := ca.NewConfigPaths(tempBaseDir)
+
+	_, key, err := ca.GenerateAndWriteNewKey(paths.Node)
+	assert.NoError(t, err)
+	encryptedKey, err := ca.EncryptECPrivateKey(key, "passphrase")
+	assert.NoError(t, err)
+
+	keyBlock, _ := pem.Decode(encryptedKey)
+	assert.NotNil(t, keyBlock)
+	assert.Equal(t, keyBlock.Headers["Proc-Type"], "4,ENCRYPTED")
+	assert.Contains(t, keyBlock.Headers["DEK-Info"], "AES-256-CBC")
 }
 
 func TestParseValidateAndSignCSR(t *testing.T) {
@@ -402,4 +425,71 @@ func TestBootstrapCluster(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
+}
+
+func TestNewRootCA(t *testing.T) {
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
+
+	paths := ca.NewConfigPaths(tempBaseDir)
+
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
+	assert.NoError(t, err)
+
+	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Key)
+	assert.NoError(t, err)
+	assert.Equal(t, rootCA, newRootCA)
+}
+
+func TestNewRootCAWithPassphrase(t *testing.T) {
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
+	defer os.Setenv(ca.PassphraseENVVar, "")
+	defer os.Setenv(ca.PassphraseENVVarPrev, "")
+
+	paths := ca.NewConfigPaths(tempBaseDir)
+
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
+	assert.NoError(t, err)
+
+	// Ensure that we're encrypting the Key bytes out of NewRoot if there
+	// is a passphrase set as an env Var
+	os.Setenv(ca.PassphraseENVVar, "password1")
+	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Key)
+	assert.NoError(t, err)
+	assert.NotEqual(t, rootCA, newRootCA)
+	assert.NotContains(t, string(rootCA.Key), string(newRootCA.Key))
+	assert.Contains(t, string(newRootCA.Key), "Proc-Type: 4,ENCRYPTED")
+
+	// Ensure that we're decrypting the Key bytes out of NewRoot if there
+	// is a passphrase set as an env Var
+	anotherNewRootCA, err := ca.NewRootCA(newRootCA.Cert, newRootCA.Key)
+	assert.NoError(t, err)
+	assert.Equal(t, newRootCA, anotherNewRootCA)
+	assert.NotContains(t, string(rootCA.Key), string(anotherNewRootCA.Key))
+	assert.Contains(t, string(anotherNewRootCA.Key), "Proc-Type: 4,ENCRYPTED")
+
+	// Ensure that we cant decrypt the Key bytes out of NewRoot if there
+	// is a wrong passphrase set as an env Var
+	os.Setenv(ca.PassphraseENVVar, "password2")
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key)
+	assert.Error(t, err)
+
+	// Ensure that we cant decrypt the Key bytes out of NewRoot if there
+	// is a wrong passphrase set as an env Var
+	os.Setenv(ca.PassphraseENVVarPrev, "password2")
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key)
+	assert.Error(t, err)
+
+	// Ensure that we can decrypt the Key bytes out of NewRoot if there
+	// is a wrong passphrase set as an env Var, but a valid as Prev
+	os.Setenv(ca.PassphraseENVVarPrev, "password1")
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key)
+	assert.NoError(t, err)
+	assert.Equal(t, newRootCA, anotherNewRootCA)
+	assert.NotContains(t, string(rootCA.Key), string(anotherNewRootCA.Key))
+	assert.Contains(t, string(anotherNewRootCA.Key), "Proc-Type: 4,ENCRYPTED")
+
 }

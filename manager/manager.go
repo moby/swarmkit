@@ -301,9 +301,10 @@ func (m *Manager) Run(ctx context.Context) error {
 					return nil
 				})
 
-				err := rotateRootCAKEK(ctx, s, clusterID)
+				// Attempt to rotate the key-encrypting-key of the root CA key-material
+				err := m.rotateRootCAKEK(ctx, clusterID)
 				if err != nil {
-					log.G(ctx).WithError(err).Error("root key-encrypting-key rotation failed with an error")
+					log.G(ctx).WithError(err).Error("root key-encrypting-key rotation failed")
 				}
 
 				m.replicatedOrchestrator = orchestrator.New(s)
@@ -562,38 +563,41 @@ func (m *Manager) Stop(ctx context.Context) {
 	// mutex is released and Run can return now
 }
 
-func rotateRootCAKEK(ctx context.Context, s *store.MemoryStore, clusterID string) error {
+// rotateRootCAKEK will attempt to rotate the key-encryption-key for root CA key-material in raft.
+// If there is no passphrase set in ENV, it returns.
+// If there is plain-text root key-material, and a passphrase set, it encrypts it.
+// If there is encrypted root key-material and it is using the current passphrase, it returns.
+// If there is encrypted root key-material, and it is using the previous passphrase, it
+// re-encrypts it with the current passphrase.
+func (m *Manager) rotateRootCAKEK(ctx context.Context, clusterID string) error {
 	// If we don't have a KEK, we won't ever be rotating anything
-	strPassword := os.Getenv(ca.PassphraseENVVar)
-	if strPassword == "" {
+	strPassphrase := os.Getenv(ca.PassphraseENVVar)
+	if strPassphrase == "" {
 		return nil
 	}
-	strPasswordPrev := os.Getenv(ca.PassphraseENVVarPrev)
-	password := []byte(strPassword)
-	passwordPrev := []byte(strPasswordPrev)
+	strPassphrasePrev := os.Getenv(ca.PassphraseENVVarPrev)
+	passphrase := []byte(strPassphrase)
+	passphrasePrev := []byte(strPassphrasePrev)
 
+	s := m.RaftNode.MemoryStore()
 	var (
-		clusters []*api.Cluster
+		cluster  *api.Cluster
 		err      error
 		finalKey []byte
 	)
 	// Retrieve the cluster identified by ClusterID
 	s.View(func(readTx store.ReadTx) {
-		clusters, err = store.FindClusters(readTx, store.ByIDPrefix(clusterID))
+		cluster = store.GetCluster(readTx, clusterID)
 	})
-	if err != nil {
-		return err
-	}
-	if len(clusters) < 1 {
+	if cluster == nil {
 		return fmt.Errorf("cluster not found: %s", clusterID)
 	}
-	cluster := clusters[0]
 
 	// Try to get the private key from the cluster
 	privKeyPEM := cluster.RootCA.CAKey
 	if privKeyPEM == nil || len(privKeyPEM) == 0 {
 		// We have no PEM root private key in this cluster.
-		log.G(ctx).Debugf("cluster %s does not have private key material", clusterID)
+		log.G(ctx).Warnf("cluster %s does not have private key material", clusterID)
 		return nil
 	}
 
@@ -604,20 +608,20 @@ func rotateRootCAKEK(ctx context.Context, s *store.MemoryStore, clusterID string
 	}
 	// If this key is not encrypted, then we have to encrypt it
 	if !x509.IsEncryptedPEMBlock(keyBlock) {
-		finalKey, err = ca.EncryptECPrivateKey(privKeyPEM, strPassword)
+		finalKey, err = ca.EncryptECPrivateKey(privKeyPEM, strPassphrase)
 		if err != nil {
 			return err
 		}
 	} else {
 		// This key is already encrypted, let's try to decrypt with the current main passphrase
-		_, err = x509.DecryptPEMBlock(keyBlock, []byte(password))
+		_, err = x509.DecryptPEMBlock(keyBlock, []byte(passphrase))
 		if err == nil {
 			// The main key is the correct KEK, nothing to do here
 			return nil
 		}
 		// This key is already encrypted, but failed with current main passphrase.
 		// Let's try to decrypt with the previous passphrase
-		unencryptedKey, err := x509.DecryptPEMBlock(keyBlock, []byte(passwordPrev))
+		unencryptedKey, err := x509.DecryptPEMBlock(keyBlock, []byte(passphrasePrev))
 		if err != nil {
 			// We were not able to decrypt either with the main or backup passphrase, error
 			return err
@@ -630,14 +634,14 @@ func rotateRootCAKEK(ctx context.Context, s *store.MemoryStore, clusterID string
 
 		// We were able to decrypt the key, but with the previous passphrase. Let's encrypt
 		// with the new one and store it in raft
-		finalKey, err = ca.EncryptECPrivateKey(pem.EncodeToMemory(unencryptedKeyBlock), strPassword)
+		finalKey, err = ca.EncryptECPrivateKey(pem.EncodeToMemory(unencryptedKeyBlock), strPassphrase)
 		if err != nil {
 			log.G(ctx).Debugf("failed to rotate the key-encrypting-key for the root key material of cluster %s", clusterID)
 			return err
 		}
 	}
 
-	log.G(ctx).Debugf("Re-encrypting the root key material of cluster %s", clusterID)
+	log.G(ctx).Infof("Re-encrypting the root key material of cluster %s", clusterID)
 	// Let's update the key in the cluster object
 	return s.Update(func(tx store.Tx) error {
 		cluster = store.GetCluster(tx, clusterID)
