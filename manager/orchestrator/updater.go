@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"fmt"
 	"reflect"
 	"sync"
 	"time"
@@ -186,6 +187,9 @@ func (u *Updater) updateTask(ctx context.Context, service *api.Service, original
 	// Atomically create the updated task and bring down the old one.
 	err := u.store.Update(func(tx store.Tx) error {
 		t := store.GetTask(tx, original.ID)
+		if t == nil {
+			return fmt.Errorf("task %s not found while trying to update it", original.ID)
+		}
 		t.DesiredState = api.TaskStateShutdown
 		if err := store.UpdateTask(tx, t); err != nil {
 			return err
