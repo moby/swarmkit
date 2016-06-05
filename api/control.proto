@@ -19,6 +19,9 @@ service Control {
 	rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse) {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	};
+	rpc RemoveNode(RemoveNodeRequest) returns (RemoveNodeResponse) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	};
 
 	rpc GetTask(GetTaskRequest) returns (GetTaskResponse) {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
@@ -105,6 +108,15 @@ message UpdateNodeRequest {
 
 message UpdateNodeResponse {
 	Node node = 1;
+}
+
+// RemoveNodeRequest requests to delete the specified node from store.
+message RemoveNodeRequest {
+	string node_id = 1 [(gogoproto.customname) = "NodeID"];
+	Version node_version = 2;
+}
+
+message RemoveNodeResponse {
 }
 
 message GetTaskRequest {
