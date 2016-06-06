@@ -111,3 +111,25 @@ func getNode(ctx context.Context, c api.ControlClient, input string) (*api.Node,
 	}
 	return rg.Node, nil
 }
+
+func removeNode(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return errors.New("missing node ID")
+	}
+
+	c, err := common.Dial(cmd)
+	if err != nil {
+		return err
+	}
+	node, err := getNode(common.Context(cmd), c, args[0])
+	if err != nil {
+		return err
+	}
+
+	_, err = c.RemoveNode(common.Context(cmd), &api.RemoveNodeRequest{
+		NodeID:      node.ID,
+		NodeVersion: &node.Meta.Version,
+	})
+
+	return err
+}
