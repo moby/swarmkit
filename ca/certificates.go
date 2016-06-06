@@ -54,8 +54,8 @@ const (
 	PassphraseENVVarPrev = "SWARM_ROOT_CA_PASSPHRASE_PREV"
 	// RootCAExpiration represents the expiration for the root CA in seconds (20 years)
 	RootCAExpiration = "630720000s"
-	// DefaultNodeCertExpiration represents the default expiration for node certificates (1 month)
-	DefaultNodeCertExpiration = 720 * time.Hour
+	// DefaultNodeCertExpiration represents the default expiration for node certificates (3 months)
+	DefaultNodeCertExpiration = 2160 * time.Hour
 )
 
 // ErrNoLocalRootCA is an error type used to indicate that the local root CA
@@ -76,9 +76,10 @@ type CertPaths struct {
 type RootCA struct {
 	// Key will only be used by the original manager to put the private
 	// key-material in raft, no signing operations depend on it.
-	Key  []byte
-	Cert []byte
-	Pool *x509.CertPool
+	Key            []byte
+	Cert           []byte
+	Pool           *x509.CertPool
+	NodeCertExpiry time.Duration
 
 	// This signer will be nil if the node doesn't have the appropriate key material
 	Signer cfsigner.Signer
@@ -612,25 +613,26 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role, secret st
 }
 
 // readCertExpiration returns the number of months left for certificate expiration
-func readCertExpiration(paths CertPaths) (int, error) {
+func readCertExpiration(paths CertPaths) (time.Duration, error) {
 	// Read the Cert
 	cert, err := ioutil.ReadFile(paths.Cert)
 	if err != nil {
 		log.Debugf("failed to read certificate file: %s", paths.Cert)
-		return 0, err
+		return time.Hour, err
 	}
 
 	// Create an x509 certificate out of the contents on disk
 	certBlock, _ := pem.Decode([]byte(cert))
 	if certBlock == nil {
-		return 0, fmt.Errorf("failed to decode certificate block")
+		return time.Hour, fmt.Errorf("failed to decode certificate block")
 	}
 	X509Cert, err := x509.ParseCertificate(certBlock.Bytes)
 	if err != nil {
-		return 0, err
+		return time.Hour, err
 	}
 
-	return helpers.MonthsValid(X509Cert), nil
+	return X509Cert.NotAfter.Sub(time.Now()), nil
+
 }
 
 func saveRootCA(rootCA RootCA, paths CertPaths) error {

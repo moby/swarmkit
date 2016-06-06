@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"path/filepath"
 	"sync"
 	"time"
@@ -228,37 +229,43 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, secret
 
 // RenewTLSConfig will continuously monitor for the necessity of renewing the local certificates, either by
 // issuing them locally if key-material is available, or requesting them from a remote CA.
-func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, picker *picker.Picker, retry time.Duration, renew <-chan struct{}) <-chan CertificateUpdate {
+func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, picker *picker.Picker, renew <-chan struct{}) <-chan CertificateUpdate {
 	paths := NewConfigPaths(baseCertDir)
 	updates := make(chan CertificateUpdate)
+
 	go func() {
+		var retry time.Duration
 		defer close(updates)
 		for {
+			// Since the expiration of the certificate is managed remotely we should update our
+			// retry timer on every iteration of this loop.
+			// Retrieve the time until the certificate expires.
+			expiresIn, err := readCertExpiration(paths.Node)
+			if err != nil {
+				// We failed to read the expiration, let's check back in a short amount of time
+				log.Errorf("failed to read the expiration of the TLS certificate in: %s", paths.Node.Cert)
+				retry = 5 * time.Minute
+			} else {
+				// If we have an expired certificate, we shouldn't continue trying to renew.
+				if expiresIn.Minutes() < 0 {
+					log.Debugf("failed to create a new client TLS config: %v", err)
+					updates <- CertificateUpdate{Err: fmt.Errorf("TLS Certificate is expired")}
+					return
+				}
+				// Calculate a random retry time between 50% and 80% of the total time to expiration
+				retry = calculateRandomExpiry(expiresIn)
+			}
+
 			select {
 			case <-time.After(retry):
 			case <-renew:
 			case <-ctx.Done():
 				return
 			}
+			log.Infof("Renewing TLS Certificate.")
 
-			// Retrieve the number of months left for the cert to expire
-			expMonths, err := readCertExpiration(paths.Node)
-			if err != nil {
-				log.Debugf("failed to read expiration of TLS Certificate: %v", err)
-				updates <- CertificateUpdate{Err: err}
-				continue
-			}
-
-			// Check if the certificate is close to expiration.
-			if expMonths > 1 {
-				continue
-			}
-
-			log.Debugf("Renewing TLS Certificates.")
-
+			// Let's request new certs. Renewals don't require a secret.
 			rootCA := s.RootCA()
-
-			// We are dependent on an external node, let's request new certs
 			tlsKeyPair, err := rootCA.RequestAndSaveNewCertificates(ctx,
 				paths.Node,
 				s.ClientTLSCreds.Role(),
@@ -267,7 +274,7 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 				s.ClientTLSCreds,
 				nil)
 			if err != nil {
-				log.Debugf("failed to get a tlsKeyPair: %v", err)
+				log.Debugf("failed to renew the TLS Certificate: %v", err)
 				updates <- CertificateUpdate{Err: err}
 				continue
 			}
@@ -300,6 +307,29 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 	}()
 
 	return updates
+}
+
+// calculateRandomExpiry returns a random duration between 50% and 80% of the original
+// duration
+func calculateRandomExpiry(expiresIn time.Duration) time.Duration {
+	if expiresIn.Minutes() < 1 {
+		return time.Second
+	}
+
+	var randomExpiry int
+	// Our lower bound of renewal will be half of the total expiration time
+	minValidity := int(expiresIn.Minutes() * 0.5)
+	// Our upper bound of renewal will be 80% of the total expiration time
+	maxValidity := int(expiresIn.Minutes() * 0.8)
+	// Let's select a random number of minutes between min and max, and set our retry for that
+	// Using randomly selected rotation allows us to avoid certificate thundering herds.
+	if maxValidity-minValidity < 1 {
+		randomExpiry = minValidity
+	} else {
+		randomExpiry = rand.Intn(maxValidity-minValidity) + int(minValidity)
+	}
+
+	return time.Duration(randomExpiry) * time.Minute
 }
 
 // LoadTLSCreds loads tls credentials from the specified path and verifies that

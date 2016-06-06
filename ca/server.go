@@ -12,6 +12,7 @@ import (
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -35,6 +36,13 @@ type Server struct {
 func DefaultAcceptancePolicy() api.AcceptancePolicy {
 	return api.AcceptancePolicy{
 		Autoaccept: map[string]bool{AgentRole: true},
+	}
+}
+
+// DefaultCAConfig returns the default CA Config, with a default expiration.
+func DefaultCAConfig() api.CAConfig {
+	return api.CAConfig{
+		NodeCertExpiry: ptypes.DurationProto(DefaultNodeCertExpiration),
 	}
 }
 
@@ -378,14 +386,21 @@ func (s *Server) updateCluster(ctx context.Context, cluster *api.Cluster) {
 	s.mu.Lock()
 	s.acceptancePolicy = cluster.Spec.AcceptancePolicy.Copy()
 	s.mu.Unlock()
+	var err error
+	// If the cluster has a RootCA, let's try to update our SecurityConfig to reflect the latest values
 	if cluster.RootCA != nil && len(cluster.RootCA.CACert) != 0 && len(cluster.RootCA.CAKey) != 0 {
 		log.G(ctx).Debug("updating root CA object from raft")
-		rCA := cluster.RootCA
-		expiry, err := time.ParseDuration(rCA.NodeCertExpiry.String())
-		if err != nil {
-			log.G(ctx).WithError(err).Errorf("failed to parse node certificate expiration: %s", rCA.NodeCertExpiry.String())
-			expiry = DefaultNodeCertExpiration
+		expiry := DefaultNodeCertExpiration
+		if cluster.Spec.CAConfig.NodeCertExpiry != nil {
+			clusterExpiry, err := time.ParseDuration(cluster.Spec.CAConfig.NodeCertExpiry.String())
+			if err == nil {
+				expiry = clusterExpiry
+			} else {
+				log.G(ctx).WithError(err).Warn("failed to retrieve certificate expiration, using default")
+			}
 		}
+
+		rCA := cluster.RootCA
 		err = s.securityConfig.UpdateRootCA(rCA.CACert, rCA.CAKey, expiry)
 		if err != nil {
 			log.G(ctx).WithError(err).Error("updating root key failed")
