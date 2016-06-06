@@ -53,14 +53,13 @@ func GetTask(tx *bolt.Tx, id string) (*api.Task, error) {
 	return &t, nil
 }
 
-func GetTasks(tx *bolt.Tx) []*api.Task {
+func WalkTasks(tx *bolt.Tx, fn func(task *api.Task) error) error {
 	bkt := getTasksBucket(tx)
 	if bkt == nil {
 		return nil
 	}
 
-	var tasks []*api.Task
-	if err := bkt.ForEach(func(k, v []byte) error {
+	return bkt.ForEach(func(k, v []byte) error {
 		tbkt := bkt.Bucket(k)
 
 		p := tbkt.Get(bucketKeyData)
@@ -69,14 +68,8 @@ func GetTasks(tx *bolt.Tx) []*api.Task {
 			return err
 		}
 
-		tasks = append(tasks, &t)
-
-		return nil
-	}); err != nil {
-		log.L.WithError(err).Errorf("error in GetTasks ForEach")
-	}
-
-	return tasks
+		return fn(&t)
+	})
 }
 
 func TaskAssigned(tx *bolt.Tx, id string) bool {
@@ -102,6 +95,25 @@ func GetTaskStatus(tx *bolt.Tx, id string) (*api.TaskStatus, error) {
 	}
 
 	return &ts, nil
+}
+
+func WalkTaskStatus(tx *bolt.Tx, fn func(id string, status *api.TaskStatus) error) error {
+	bkt := getTasksBucket(tx)
+	if bkt == nil {
+		return nil
+	}
+
+	return bkt.ForEach(func(k, v []byte) error {
+		tbkt := bkt.Bucket(k)
+
+		p := tbkt.Get(bucketKeyStatus)
+		var ts api.TaskStatus
+		if err := proto.Unmarshal(p, &ts); err != nil {
+			return err
+		}
+
+		return fn(string(k), &ts)
+	})
 }
 
 func PutTask(tx *bolt.Tx, task *api.Task) error {
