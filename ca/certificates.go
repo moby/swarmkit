@@ -62,12 +62,12 @@ const (
 	// CertUpperRotationRange represents the maximum fraction of time that we will wait when randomly
 	// choosing our next certificate rotation
 	CertUpperRotationRange = 0.8
+	// MinNodeCertExpiration represents the minimum expiration for node certificates (25 + 5 minutes)
+	// X - 5 > CertUpperRotationRange * X <=> X < 5/(1 - CertUpperRotationRange)
 	// Since we're issuing certificates 5 minutes in the past to get around clock drifts, and
 	// we're selecting a random rotation distribution range from CertLowerRotationRange to
 	// CertUpperRotationRange, we need to ensure that we don't accept an expiration time that will
 	// make a node able to randomly choose the next rotation after the expiration of the certificate.
-	// MinNodeCertExpiration represents the minimum expiration for node certificates (25 + 5 minutes)
-	// X - 5 > CertUpperRotationRange * X <=> X < 5/(1 - CertUpperRotationRange)
 	MinNodeCertExpiration = 30 * time.Minute
 )
 
