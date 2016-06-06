@@ -3,8 +3,10 @@ package agent
 import (
 	"fmt"
 
+	"github.com/boltdb/bolt"
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/picker"
 	"google.golang.org/grpc"
 )
@@ -26,11 +28,23 @@ type Config struct {
 
 	// NotifyRoleChange channel receives new roles from session messages.
 	NotifyRoleChange chan<- api.NodeSpec_Role
+	// SecurityConfig specifies the security configuration of the Agent
+	SecurityConfig *ca.SecurityConfig
+
+	DB *bolt.DB
 }
 
 func (c *Config) validate() error {
 	if c.Conn == nil {
 		return fmt.Errorf("config: Connection is required")
+	}
+
+	if c.SecurityConfig == nil {
+		return fmt.Errorf("agent: SecurityConfig required")
+	}
+
+	if c.DB == nil {
+		return fmt.Errorf("agent: database required")
 	}
 
 	return nil

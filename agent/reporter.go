@@ -33,7 +33,7 @@ type statusReporter struct {
 	closed   bool
 }
 
-func newStatusReporter(ctx context.Context, upstream StatusReporter) StatusReporter {
+func newStatusReporter(ctx context.Context, upstream StatusReporter) *statusReporter {
 	r := &statusReporter{
 		reporter: upstream,
 		statuses: make(map[string]*api.TaskStatus),

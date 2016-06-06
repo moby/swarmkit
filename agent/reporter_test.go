@@ -3,7 +3,6 @@ package agent
 import (
 	"errors"
 	"fmt"
-	"io"
 	"math/rand"
 	"sync"
 	"testing"
@@ -83,7 +82,7 @@ func TestReporter(t *testing.T) {
 	}
 
 	wg.Wait() // wait for the propagation
-	assert.NoError(t, reporter.(io.Closer).Close())
+	assert.NoError(t, reporter.Close())
 	mu.Lock()
 	defer mu.Unlock()
 
