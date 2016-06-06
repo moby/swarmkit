@@ -194,9 +194,9 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 	}
 
 	if len(s.Networks) != 0 {
-		networks := make([]*api.ServiceSpec_NetworkAttachment, 0, len(s.Networks))
+		networks := make([]*api.ServiceSpec_NetworkAttachmentConfig, 0, len(s.Networks))
 		for _, net := range s.Networks {
-			networks = append(networks, &api.ServiceSpec_NetworkAttachment{
+			networks = append(networks, &api.ServiceSpec_NetworkAttachmentConfig{
 				Target: net,
 			})
 		}

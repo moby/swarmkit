@@ -80,11 +80,17 @@ message ServiceSpec {
 	// UpdateConfig controls the rate and policy of updates.
 	UpdateConfig update = 6;
 
-	// NetworkAttachment specifies which networks this service will be attached to.
-	message NetworkAttachment {
+	// NetworkAttachmentConfig specifies how a service should be attached to a particular network.
+	//
+	// For now, this is a single field, but this can include future information
+	// instructing Swarm on how this service should work on the particular
+	// network.
+	message NetworkAttachmentConfig {
+		// Target specifies the target network for attachement. This value may be a
+		// network name or identifier. Only identifiers are supported at this time.
 		string target = 1;
 	}
-	repeated NetworkAttachment networks = 7;
+	repeated NetworkAttachmentConfig networks = 7;
 
 	// Service endpoint specifies the user provided configuration
 	// to properly discover and load balance a service.
