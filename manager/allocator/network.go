@@ -399,7 +399,7 @@ func (a *Allocator) taskCreateNetworkAttachments(t *api.Task, s *api.Service) {
 
 	a.store.View(func(tx store.ReadTx) {
 		for _, na := range s.Spec.Networks {
-			n := store.GetNetwork(tx, na.GetNetworkID())
+			n := store.GetNetwork(tx, na.Target)
 			if n != nil {
 				networks = append(networks, &api.NetworkAttachment{Network: n})
 			}
