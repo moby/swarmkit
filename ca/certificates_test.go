@@ -315,21 +315,23 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 
+	// Test the expiration for a manager certificate
 	parsedCerts, err := helpers.ParseCertificatesPEM(certs)
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 2)
-	assert.True(t, time.Now().Add(time.Hour*24*29).Before(parsedCerts[0].NotAfter))
-	assert.True(t, time.Now().Add(time.Hour*24*31).After(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Hour*24*89).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Hour*24*91).After(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.ManagerRole)
 
+	// Test the expiration for an agent certificate
 	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, ca.AgentRole, "", tc.RootCA.Pool, tc.Picker, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 2)
-	assert.True(t, time.Now().Add(time.Hour*24*29).Before(parsedCerts[0].NotAfter))
-	assert.True(t, time.Now().Add(time.Hour*24*31).After(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Hour*24*89).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Hour*24*91).After(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.AgentRole)
 
 }
@@ -493,8 +495,8 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 	parsedCerts, err = helpers.ParseCertificatesPEM(cert)
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 1)
-	assert.True(t, time.Now().Add(time.Hour*24*29).Before(parsedCerts[0].NotAfter))
-	assert.True(t, time.Now().Add(time.Hour*24*31).After(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Hour*24*89).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Hour*24*91).After(parsedCerts[0].NotAfter))
 }
 
 func TestNewRootCAWithPassphrase(t *testing.T) {
