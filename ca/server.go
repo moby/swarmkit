@@ -425,7 +425,7 @@ func (s *Server) updateCluster(ctx context.Context, cluster *api.Cluster) {
 	}
 }
 
-func (s *Server) setNodeCertState(node *api.Node, state api.IssuanceState) error {
+func (s *Server) setNodeCertState(node *api.Node, state api.IssuanceStatus_State) error {
 	return s.store.Update(func(tx store.Tx) error {
 		latestNode := store.GetNode(tx, node.ID)
 		if latestNode == nil {
