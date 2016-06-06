@@ -56,8 +56,19 @@ const (
 	RootCAExpiration = "630720000s"
 	// DefaultNodeCertExpiration represents the default expiration for node certificates (3 months)
 	DefaultNodeCertExpiration = 2160 * time.Hour
-	// MinNodeCertExpiration represents the minimum expiration for node certificates (15 minutes)
-	MinNodeCertExpiration = 15 * time.Minute
+	// CertLowerRotationRange represents the minimum fraction of time that we will wait when randomly
+	// choosing our next certificate rotation
+	CertLowerRotationRange = 0.5
+	// CertUpperRotationRange represents the maximum fraction of time that we will wait when randomly
+	// choosing our next certificate rotation
+	CertUpperRotationRange = 0.8
+	// MinNodeCertExpiration represents the minimum expiration for node certificates (25 + 5 minutes)
+	// X - 5 > CertUpperRotationRange * X <=> X < 5/(1 - CertUpperRotationRange)
+	// Since we're issuing certificates 5 minutes in the past to get around clock drifts, and
+	// we're selecting a random rotation distribution range from CertLowerRotationRange to
+	// CertUpperRotationRange, we need to ensure that we don't accept an expiration time that will
+	// make a node able to randomly choose the next rotation after the expiration of the certificate.
+	MinNodeCertExpiration = 30 * time.Minute
 )
 
 // ErrNoLocalRootCA is an error type used to indicate that the local root CA

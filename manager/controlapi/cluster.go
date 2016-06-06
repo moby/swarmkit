@@ -1,8 +1,6 @@
 package controlapi
 
 import (
-	"fmt"
-
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/manager/state/store"
@@ -18,10 +16,10 @@ func validateClusterSpec(spec *api.ClusterSpec) error {
 	}
 	expiry, err := ptypes.Duration(spec.CAConfig.NodeCertExpiry)
 	if err != nil {
-		return err
+		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 	if expiry < ca.MinNodeCertExpiration {
-		return fmt.Errorf("minimum certificate expiry time is: %s", ca.MinNodeCertExpiration)
+		return grpc.Errorf(codes.InvalidArgument, "minimum certificate expiry time is: %s", ca.MinNodeCertExpiration)
 	}
 
 	return nil

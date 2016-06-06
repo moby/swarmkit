@@ -63,7 +63,9 @@ func TestCreateAndWriteRootCAExpiry(t *testing.T) {
 	// Convert the certificate into an object to create a RootCA
 	parsedCert, err := helpers.ParseCertificatePEM(rootCA.Cert)
 	assert.NoError(t, err)
-	assert.True(t, time.Now().Add(time.Hour*24*364*20).Before(parsedCert.NotAfter))
+	duration, err := time.ParseDuration(ca.RootCAExpiration)
+	assert.NoError(t, err)
+	assert.True(t, time.Now().Add(duration).AddDate(0, -1, 0).Before(parsedCert.NotAfter))
 
 }
 
@@ -319,8 +321,8 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	parsedCerts, err := helpers.ParseCertificatesPEM(certs)
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 2)
-	assert.True(t, time.Now().Add(time.Hour*24*89).Before(parsedCerts[0].NotAfter))
-	assert.True(t, time.Now().Add(time.Hour*24*91).After(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, -1).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, 1).After(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.ManagerRole)
 
 	// Test the expiration for an agent certificate
@@ -330,8 +332,8 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 2)
-	assert.True(t, time.Now().Add(time.Hour*24*89).Before(parsedCerts[0].NotAfter))
-	assert.True(t, time.Now().Add(time.Hour*24*91).After(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, -1).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, 1).After(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.AgentRole)
 
 }
@@ -484,9 +486,9 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 	assert.True(t, time.Now().Add(time.Minute*50).Before(parsedCerts[0].NotAfter))
 	assert.True(t, time.Now().Add(time.Hour).After(parsedCerts[0].NotAfter))
 
-	// Sign the same CSR again, this time with a 14 Minute expiration RootCA (under the 15 minute minimum).
-	// This should use the default of 1 month
-	newRootCA, err = ca.NewRootCA(rootCA.Cert, rootCA.Key, 14*time.Minute)
+	// Sign the same CSR again, this time with a 29 Minute expiration RootCA (under the 30 minute minimum).
+	// This should use the default of 3 months
+	newRootCA, err = ca.NewRootCA(rootCA.Cert, rootCA.Key, 29*time.Minute)
 	assert.NoError(t, err)
 
 	cert, err = newRootCA.ParseValidateAndSignCSR(csr, "CN", ca.ManagerRole, "ORG")
@@ -495,8 +497,8 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 	parsedCerts, err = helpers.ParseCertificatesPEM(cert)
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 1)
-	assert.True(t, time.Now().Add(time.Hour*24*89).Before(parsedCerts[0].NotAfter))
-	assert.True(t, time.Now().Add(time.Hour*24*91).After(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, -1).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, 1).After(parsedCerts[0].NotAfter))
 }
 
 func TestNewRootCAWithPassphrase(t *testing.T) {
