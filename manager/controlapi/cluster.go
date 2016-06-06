@@ -1,8 +1,12 @@
 package controlapi
 
 import (
+	"fmt"
+
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -12,6 +16,14 @@ func validateClusterSpec(spec *api.ClusterSpec) error {
 	if spec == nil {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
+	expiry, err := ptypes.Duration(spec.CAConfig.NodeCertExpiry)
+	if err != nil {
+		return err
+	}
+	if expiry < ca.MinNodeCertExpiration {
+		return fmt.Errorf("minimum certificate expiry time is: %s", ca.MinNodeCertExpiration)
+	}
+
 	return nil
 }
 
@@ -31,9 +43,7 @@ func (s *Server) GetCluster(ctx context.Context, request *api.GetClusterRequest)
 		return nil, grpc.Errorf(codes.NotFound, "cluster %s not found", request.ClusterID)
 	}
 
-	if cluster.Spec.AcceptancePolicy.Secret != "" {
-		cluster.Spec.AcceptancePolicy.Secret = "[REDACTED]"
-	}
+	redactCluster([]*api.Cluster{cluster})
 
 	return &api.GetClusterResponse{
 		Cluster: cluster,
@@ -70,9 +80,8 @@ func (s *Server) UpdateCluster(ctx context.Context, request *api.UpdateClusterRe
 		return nil, grpc.Errorf(codes.NotFound, "cluster %s not found", request.ClusterID)
 	}
 
-	if cluster.Spec.AcceptancePolicy.Secret != "" {
-		cluster.Spec.AcceptancePolicy.Secret = "[REDACTED]"
-	}
+	redactCluster([]*api.Cluster{cluster})
+
 	return &api.UpdateClusterResponse{
 		Cluster: cluster,
 	}, nil
@@ -131,14 +140,23 @@ func (s *Server) ListClusters(ctx context.Context, request *api.ListClustersRequ
 		)
 	}
 
-	// Filter the secrets out of all the returned clusters
-	for _, cluster := range clusters {
-		if cluster.Spec.AcceptancePolicy.Secret != "" {
-			cluster.Spec.AcceptancePolicy.Secret = "[REDACTED]"
-		}
-	}
+	redactCluster(clusters)
 
 	return &api.ListClustersResponse{
 		Clusters: clusters,
 	}, nil
+}
+
+func redactCluster(clusters []*api.Cluster) {
+	// Filter the secrets out of all the returned clusters
+	for _, cluster := range clusters {
+		// Remove the private key from being returned
+		if cluster.RootCA != nil {
+			cluster.RootCA.CAKey = nil
+		}
+		// Remove the acceptance policy secret from being returned
+		if cluster.Spec.AcceptancePolicy.Secret != "" {
+			cluster.Spec.AcceptancePolicy.Secret = "[REDACTED]"
+		}
+	}
 }

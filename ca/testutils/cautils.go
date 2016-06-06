@@ -92,7 +92,7 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	paths := ca.NewConfigPaths(tempBaseDir)
 	organization := identity.NewID()
 
-	rootCA, err := createAndWriteRootCA("swarm-test-CA", paths.RootCA)
+	rootCA, err := createAndWriteRootCA("swarm-test-CA", paths.RootCA, ca.DefaultNodeCertExpiration)
 	assert.NoError(t, err)
 
 	managerConfig, err := genSecurityConfig(rootCA, ca.ManagerRole, organization, "")
@@ -245,13 +245,12 @@ func createClusterObject(t *testing.T, s *store.MemoryStore, acceptancePolicy ap
 
 // createAndWriteca.RootCA creates a Certificate authority for a new Swarm Cluster.
 // We're copying CreateAndWriteca.RootCA, so we can have smaller key-sizes for tests
-func createAndWriteRootCA(rootCN string, paths ca.CertPaths) (ca.RootCA, error) {
+func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duration) (ca.RootCA, error) {
 	// Create a simple CSR for the CA using the default CA validator and policy
 	req := cfcsr.CertificateRequest{
 		CN:         rootCN,
 		KeyRequest: cfcsr.NewBasicKeyRequest(),
-		// Expiration for the root is 20 years
-		CA: &cfcsr.CAConfig{Expiry: "630720000s"},
+		CA:         &cfcsr.CAConfig{Expiry: ca.RootCAExpiration},
 	}
 
 	// Generate the CA and get the certificate and private key
@@ -274,7 +273,7 @@ func createAndWriteRootCA(rootCN string, paths ca.CertPaths) (ca.RootCA, error) 
 	}
 
 	// Create a Signer out of the private key
-	signer, err := local.NewSigner(parsedKey, parsedCert, cfsigner.DefaultSigAlgo(parsedKey), ca.DefaultPolicy())
+	signer, err := local.NewSigner(parsedKey, parsedCert, cfsigner.DefaultSigAlgo(parsedKey), ca.SigningPolicy(ca.DefaultNodeCertExpiration))
 	if err != nil {
 		log.Errorf("failed to create signer: %v", err)
 		return ca.RootCA{}, err

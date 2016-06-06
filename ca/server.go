@@ -11,6 +11,7 @@ import (
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/manager/state"
 	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -34,6 +35,13 @@ type Server struct {
 func DefaultAcceptancePolicy() api.AcceptancePolicy {
 	return api.AcceptancePolicy{
 		Autoaccept: map[string]bool{AgentRole: true},
+	}
+}
+
+// DefaultCAConfig returns the default CA Config, with a default expiration.
+func DefaultCAConfig() api.CAConfig {
+	return api.CAConfig{
+		NodeCertExpiry: ptypes.DurationProto(DefaultNodeCertExpiration),
 	}
 }
 
@@ -377,11 +385,42 @@ func (s *Server) updateCluster(ctx context.Context, cluster *api.Cluster) {
 	s.mu.Lock()
 	s.acceptancePolicy = cluster.Spec.AcceptancePolicy.Copy()
 	s.mu.Unlock()
+	var err error
+	// If the cluster has a RootCA, let's try to update our SecurityConfig to reflect the latest values
 	if cluster.RootCA != nil && len(cluster.RootCA.CACert) != 0 && len(cluster.RootCA.CAKey) != 0 {
-		log.G(ctx).Debug("updating root CA object from raft")
-		err := s.securityConfig.UpdateRootCA(cluster.RootCA.CACert, cluster.RootCA.CAKey)
+		expiry := DefaultNodeCertExpiration
+		if cluster.Spec.CAConfig.NodeCertExpiry != nil {
+			// NodeCertExpiry exists, let's try to parse the duration out of it
+			clusterExpiry, err := ptypes.Duration(cluster.Spec.CAConfig.NodeCertExpiry)
+			if err != nil {
+				log.G(ctx).WithFields(logrus.Fields{
+					"cluster.id": cluster.ID,
+					"method":     "(*Server).updateCluster",
+				}).WithError(err).Warn("failed to parse certificate expiration, using default")
+			} else {
+				// We were able to successfully parse the expiration out of the cluster.
+				expiry = clusterExpiry
+			}
+		} else {
+			// NodeCertExpiry seems to be nil
+			log.G(ctx).WithFields(logrus.Fields{
+				"cluster.id": cluster.ID,
+				"method":     "(*Server).updateCluster",
+			}).WithError(err).Warn("failed to parse certificate expiration, using default")
+
+		}
+		rCA := cluster.RootCA
+		err = s.securityConfig.UpdateRootCA(rCA.CACert, rCA.CAKey, expiry)
 		if err != nil {
-			log.G(ctx).WithError(err).Error("updating root key failed")
+			log.G(ctx).WithFields(logrus.Fields{
+				"cluster.id": cluster.ID,
+				"method":     "(*Server).updateCluster",
+			}).WithError(err).Error("updating root key failed")
+		} else {
+			log.G(ctx).WithFields(logrus.Fields{
+				"cluster.id": cluster.ID,
+				"method":     "(*Server).updateCluster",
+			}).Debugf("root CA updated successfully")
 		}
 	}
 }
@@ -472,7 +511,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 		}
 
 		err = s.store.Update(func(tx store.Tx) error {
-			// Remote users are expecting a full certificate chain, not just a signed certificate
+			// Remote nodes are expecting a full certificate chain, not just a signed certificate
 			node.Certificate.Certificate = append(cert, s.securityConfig.RootCA().Cert...)
 			node.Certificate.Status = api.IssuanceStatus{
 				State: api.IssuanceStateIssued,

@@ -9,6 +9,7 @@ import (
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"github.com/spf13/cobra"
 )
 
@@ -31,6 +32,15 @@ func printClusterSummary(cluster *api.Cluster) {
 	fmt.Fprintf(w, "  Task history entries: %d\n", cluster.Spec.Orchestration.TaskHistoryRetentionLimit)
 	fmt.Fprintf(w, "Dispatcher settings:\n")
 	fmt.Fprintf(w, "  Dispatcher heartbeat period: %d\n", cluster.Spec.Dispatcher.HeartbeatPeriod)
+	if cluster.Spec.CAConfig.NodeCertExpiry != nil {
+		fmt.Fprintf(w, "Certificate Authority settings:\n")
+		clusterDuration, err := ptypes.Duration(cluster.Spec.CAConfig.NodeCertExpiry)
+		if err != nil {
+			fmt.Fprintf(w, "  Certificate Validity Duration: [ERROR PARSING DURATION]\n")
+		} else {
+			fmt.Fprintf(w, "  Certificate Validity Duration: %s\n", clusterDuration.String())
+		}
+	}
 }
 
 var (

@@ -236,7 +236,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 		}
 	}()
 
-	updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker.NewPicker(n.remotes), 5*time.Minute, forceCertRenewal)
+	updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker.NewPicker(n.remotes), forceCertRenewal)
 	go func() {
 		for {
 			select {
