@@ -4,8 +4,10 @@ import (
 	"testing"
 
 	"github.com/docker/swarm-v2/api"
+	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/ca/testutils"
 	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -16,6 +18,9 @@ func createClusterSpec(name string) *api.ClusterSpec {
 	return &api.ClusterSpec{
 		Annotations: api.Annotations{
 			Name: name,
+		},
+		CAConfig: api.CAConfig{
+			NodeCertExpiry: ptypes.DurationProto(ca.DefaultNodeCertExpiration),
 		},
 	}
 }

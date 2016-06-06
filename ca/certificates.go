@@ -56,6 +56,8 @@ const (
 	RootCAExpiration = "630720000s"
 	// DefaultNodeCertExpiration represents the default expiration for node certificates (3 months)
 	DefaultNodeCertExpiration = 2160 * time.Hour
+	// MinNodeCertExpiration represents the minimum expiration for node certificates (15 minutes)
+	MinNodeCertExpiration = 15 * time.Minute
 )
 
 // ErrNoLocalRootCA is an error type used to indicate that the local root CA

@@ -4,7 +4,6 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
@@ -389,21 +388,39 @@ func (s *Server) updateCluster(ctx context.Context, cluster *api.Cluster) {
 	var err error
 	// If the cluster has a RootCA, let's try to update our SecurityConfig to reflect the latest values
 	if cluster.RootCA != nil && len(cluster.RootCA.CACert) != 0 && len(cluster.RootCA.CAKey) != 0 {
-		log.G(ctx).Debug("updating root CA object from raft")
 		expiry := DefaultNodeCertExpiration
 		if cluster.Spec.CAConfig.NodeCertExpiry != nil {
-			clusterExpiry, err := time.ParseDuration(cluster.Spec.CAConfig.NodeCertExpiry.String())
-			if err == nil {
-				expiry = clusterExpiry
+			// NodeCertExpiry exists, let's try to parse the duration out of it
+			clusterExpiry, err := ptypes.Duration(cluster.Spec.CAConfig.NodeCertExpiry)
+			if err != nil {
+				log.G(ctx).WithFields(logrus.Fields{
+					"cluster.id": cluster.ID,
+					"method":     "(*Server).updateCluster",
+				}).WithError(err).Warn("failed to parse certificate expiration, using default")
 			} else {
-				log.G(ctx).WithError(err).Warn("failed to retrieve certificate expiration, using default")
+				// We were able to successfully parse the expiration out of the cluster.
+				expiry = clusterExpiry
 			}
-		}
+		} else {
+			// NodeCertExpiry seems to be nil
+			log.G(ctx).WithFields(logrus.Fields{
+				"cluster.id": cluster.ID,
+				"method":     "(*Server).updateCluster",
+			}).WithError(err).Warn("failed to parse certificate expiration, using default")
 
+		}
 		rCA := cluster.RootCA
 		err = s.securityConfig.UpdateRootCA(rCA.CACert, rCA.CAKey, expiry)
 		if err != nil {
-			log.G(ctx).WithError(err).Error("updating root key failed")
+			log.G(ctx).WithFields(logrus.Fields{
+				"cluster.id": cluster.ID,
+				"method":     "(*Server).updateCluster",
+			}).WithError(err).Error("updating root key failed")
+		} else {
+			log.G(ctx).WithFields(logrus.Fields{
+				"cluster.id": cluster.ID,
+				"method":     "(*Server).updateCluster",
+			}).Debugf("root CA updated successfully")
 		}
 	}
 }
