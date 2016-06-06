@@ -431,6 +431,11 @@ message AcceptancePolicy {
 	string secret = 2;
 }
 
+message CAConfig {
+	// NodeCertExpiry is the number of hours node certificates should be issued for
+	Duration node_cert_expiry = 1;
+}
+
 // OrchestrationConfig defines cluster-level orchestration settings.
 message OrchestrationConfig {
 	// TaskHistoryRetentionLimit is the number of historic tasks to keep per instance or

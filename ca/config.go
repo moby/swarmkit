@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"path/filepath"
 	"sync"
 	"time"
@@ -34,11 +35,6 @@ const (
 	AgentRole = "swarm-worker"
 	// CARole represents the CA node type, and is used for clients attempting to get new certificates issued
 	CARole = "swarm-ca"
-)
-
-var (
-	//TODO(diogo): replace this with a sane renewal time
-	defaultRenewalTime = 30 * time.Second
 )
 
 // SecurityConfig is used to represent a node's security configuration. It includes information about
@@ -77,12 +73,12 @@ func (s *SecurityConfig) RootCA() *RootCA {
 }
 
 // UpdateRootCA replaces the root CA with a new root CA based on the specified
-// certificate and key.
-func (s *SecurityConfig) UpdateRootCA(cert, key []byte) error {
+// certificate, key, and the number of hours the certificates issue should last.
+func (s *SecurityConfig) UpdateRootCA(cert, key []byte, certExpiry time.Duration) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	rootCA, err := NewRootCA(cert, key)
+	rootCA, err := NewRootCA(cert, key, certExpiry)
 	if err == nil {
 		s.rootCA = &rootCA
 	}
@@ -93,14 +89,22 @@ func (s *SecurityConfig) UpdateRootCA(cert, key []byte) error {
 // DefaultPolicy is the default policy used by the signers to ensure that the only fields
 // from the remote CSRs we trust are: PublicKey, PublicKeyAlgorithm and SignatureAlgorithm.
 var DefaultPolicy = func() *cfconfig.Signing {
+	return SigningPolicy(DefaultNodeCertExpiration)
+}
+
+// SigningPolicy creates a policy used by the signer to ensure that the only fields
+// from the remote CSRs we trust are: PublicKey, PublicKeyAlgorithm and SignatureAlgorithm.
+// It receives the duration a certificate will be valid for
+var SigningPolicy = func(certExpiry time.Duration) *cfconfig.Signing {
+	// Force the minimum Certificate expiration to be fifteen minutes
+	if certExpiry < MinNodeCertExpiration {
+		certExpiry = DefaultNodeCertExpiration
+	}
+
 	return &cfconfig.Signing{
 		Default: &cfconfig.SigningProfile{
-			Usage: []string{"signing", "key encipherment", "server auth", "client auth"},
-			// TODO(diogo): change to 3 months of expiry
-			// ExpiryString: "2160h",
-			// Expiry:       2160 * time.Hour,
-			ExpiryString: "1h",
-			Expiry:       1 * time.Hour,
+			Usage:  []string{"signing", "key encipherment", "server auth", "client auth"},
+			Expiry: certExpiry,
 			// Only trust the key components from the CSR. Everything else should
 			// come directly from API call params.
 			CSRWhitelist: &cfconfig.CSRWhitelist{
@@ -225,37 +229,47 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, secret
 
 // RenewTLSConfig will continuously monitor for the necessity of renewing the local certificates, either by
 // issuing them locally if key-material is available, or requesting them from a remote CA.
-func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, picker *picker.Picker, retry time.Duration, renew <-chan struct{}) <-chan CertificateUpdate {
+func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, picker *picker.Picker, renew <-chan struct{}) <-chan CertificateUpdate {
 	paths := NewConfigPaths(baseCertDir)
 	updates := make(chan CertificateUpdate)
+
 	go func() {
+		var retry time.Duration
 		defer close(updates)
 		for {
+			// Our starting default will be 5 minutes
+			retry = 5 * time.Minute
+
+			// Since the expiration of the certificate is managed remotely we should update our
+			// retry timer on every iteration of this loop.
+			// Retrieve the time until the certificate expires.
+			expiresIn, err := readCertExpiration(paths.Node)
+			if err != nil {
+				// We failed to read the expiration, let's stick with the starting default
+				log.Errorf("failed to read the expiration of the TLS certificate in: %s", paths.Node.Cert)
+				updates <- CertificateUpdate{Err: fmt.Errorf("failed to read certificate expiration")}
+			} else {
+				// If we have an expired certificate, we let's stick with the starting default in
+				// the hope that this is a temporary clock skew.
+				if expiresIn.Minutes() < 0 {
+					log.Debugf("failed to create a new client TLS config: %v", err)
+					updates <- CertificateUpdate{Err: fmt.Errorf("TLS Certificate is expired")}
+				} else {
+					// Random retry time between 50% and 80% of the total time to expiration
+					retry = calculateRandomExpiry(expiresIn)
+				}
+			}
+
 			select {
 			case <-time.After(retry):
 			case <-renew:
 			case <-ctx.Done():
 				return
 			}
+			log.Infof("Renewing TLS Certificate.")
 
-			// Retrieve the number of months left for the cert to expire
-			expMonths, err := readCertExpiration(paths.Node)
-			if err != nil {
-				log.Debugf("failed to read expiration of TLS Certificate: %v", err)
-				updates <- CertificateUpdate{Err: err}
-				continue
-			}
-
-			// Check if the certificate is close to expiration.
-			if expMonths > 1 {
-				continue
-			}
-
-			log.Debugf("Renewing TLS Certificates.")
-
+			// Let's request new certs. Renewals don't require a secret.
 			rootCA := s.RootCA()
-
-			// We are dependent on an external node, let's request new certs
 			tlsKeyPair, err := rootCA.RequestAndSaveNewCertificates(ctx,
 				paths.Node,
 				s.ClientTLSCreds.Role(),
@@ -264,7 +278,7 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 				s.ClientTLSCreds,
 				nil)
 			if err != nil {
-				log.Debugf("failed to get a tlsKeyPair: %v", err)
+				log.Debugf("failed to renew the TLS Certificate: %v", err)
 				updates <- CertificateUpdate{Err: err}
 				continue
 			}
@@ -297,6 +311,29 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 	}()
 
 	return updates
+}
+
+// calculateRandomExpiry returns a random duration between 50% and 80% of the original
+// duration
+func calculateRandomExpiry(expiresIn time.Duration) time.Duration {
+	if expiresIn.Minutes() < 1 {
+		return time.Second
+	}
+
+	var randomExpiry int
+	// Our lower bound of renewal will be half of the total expiration time
+	minValidity := int(expiresIn.Minutes() * 0.5)
+	// Our upper bound of renewal will be 80% of the total expiration time
+	maxValidity := int(expiresIn.Minutes() * 0.8)
+	// Let's select a random number of minutes between min and max, and set our retry for that
+	// Using randomly selected rotation allows us to avoid certificate thundering herds.
+	if maxValidity-minValidity < 1 {
+		randomExpiry = minValidity
+	} else {
+		randomExpiry = rand.Intn(maxValidity-minValidity) + int(minValidity)
+	}
+
+	return time.Duration(randomExpiry) * time.Minute
 }
 
 // LoadTLSCreds loads tls credentials from the specified path and verifies that

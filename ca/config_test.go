@@ -9,6 +9,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	cfconfig "github.com/cloudflare/cfssl/config"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/ca/testutils"
 	"github.com/stretchr/testify/assert"
@@ -223,12 +224,20 @@ func TestRenewTLSConfig(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	tc.RootCA.Signer.SetPolicy(&cfconfig.Signing{
+		Default: &cfconfig.SigningProfile{
+			Usage:  []string{"signing", "key encipherment", "server auth", "client auth"},
+			Expiry: 6 * time.Minute,
+		},
+	})
+
+	// Get a new managerConfig with a TLS cert that has 15 minutes to live
 	managerConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
 	assert.NoError(t, err)
 
 	var success, timeout bool
 	renew := make(chan struct{})
-	updates := ca.RenewTLSConfig(ctx, managerConfig, tc.TempDir, tc.Picker, 500*time.Millisecond, renew)
+	updates := ca.RenewTLSConfig(ctx, managerConfig, tc.TempDir, tc.Picker, renew)
 	for {
 		select {
 		case <-time.After(2 * time.Second):
@@ -236,6 +245,7 @@ func TestRenewTLSConfig(t *testing.T) {
 		case certUpdate := <-updates:
 			assert.NoError(t, certUpdate.Err)
 			assert.NotNil(t, certUpdate)
+			assert.Equal(t, certUpdate.Role, ca.ManagerRole)
 			success = true
 		}
 		if timeout {
@@ -255,12 +265,18 @@ func TestForceRenewTLSConfig(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	managerConfig, err := tc.NewNodeConfig(ca.ManagerRole)
+	// Replace the RootCA with one with a signer that signs certs with 15 minute expiration
+	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Key, 15*time.Minute)
+	assert.NoError(t, err)
+	tc.RootCA = newRootCA
+
+	// Get a new managerConfig with a TLS cert that has 15 minutes to live
+	managerConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
 	assert.NoError(t, err)
 
 	var success, timeout bool
 	renew := make(chan struct{}, 1)
-	updates := ca.RenewTLSConfig(ctx, managerConfig, tc.TempDir, tc.Picker, 500*time.Hour, renew)
+	updates := ca.RenewTLSConfig(ctx, managerConfig, tc.TempDir, tc.Picker, renew)
 	for {
 		renew <- struct{}{}
 		select {
@@ -269,10 +285,11 @@ func TestForceRenewTLSConfig(t *testing.T) {
 		case certUpdate := <-updates:
 			assert.NoError(t, certUpdate.Err)
 			assert.NotNil(t, certUpdate)
+			assert.Equal(t, certUpdate.Role, ca.ManagerRole)
 			success = true
 		}
 		if timeout {
-			assert.Fail(t, "TestRenewTLSConfig timed-out")
+			assert.Fail(t, "TestForceRenewTLSConfig timed-out")
 			break
 		}
 		if success {

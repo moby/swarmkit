@@ -288,7 +288,8 @@ func (m *Manager) Run(parent context.Context) error {
 							Dispatcher: api.DispatcherConfig{
 								HeartbeatPeriod: uint64(dispatcher.DefaultHeartBeatPeriod),
 							},
-							Raft: raftCfg,
+							Raft:     raftCfg,
+							CAConfig: ca.DefaultCAConfig(),
 						},
 						RootCA: &api.RootCA{
 							CAKey:  rootCA.Key,

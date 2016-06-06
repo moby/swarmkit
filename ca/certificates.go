@@ -34,10 +34,12 @@ import (
 )
 
 const (
-	// Security Strength Equivalence followed
-	//| Key-type |  ECC  |  DH/DSA/RSA
-	//|   Node   |  256  |     3072
-	//|   Root   |  384  |     7680
+	// Security Strength Equivalence
+	//-----------------------------------
+	//| Key-type |  ECC  |  DH/DSA/RSA  |
+	//|   Node   |  256  |     3072     |
+	//|   Root   |  384  |     7680     |
+	//-----------------------------------
 
 	// RootKeySize is the default size of the root CA key
 	RootKeySize = 384
@@ -50,6 +52,12 @@ const (
 	// root CA private key material encryption key. It can be used for seamless
 	// KEK rotations.
 	PassphraseENVVarPrev = "SWARM_ROOT_CA_PASSPHRASE_PREV"
+	// RootCAExpiration represents the expiration for the root CA in seconds (20 years)
+	RootCAExpiration = "630720000s"
+	// DefaultNodeCertExpiration represents the default expiration for node certificates (3 months)
+	DefaultNodeCertExpiration = 2160 * time.Hour
+	// MinNodeCertExpiration represents the minimum expiration for node certificates (15 minutes)
+	MinNodeCertExpiration = 15 * time.Minute
 )
 
 // ErrNoLocalRootCA is an error type used to indicate that the local root CA
@@ -70,9 +78,10 @@ type CertPaths struct {
 type RootCA struct {
 	// Key will only be used by the original manager to put the private
 	// key-material in raft, no signing operations depend on it.
-	Key  []byte
-	Cert []byte
-	Pool *x509.CertPool
+	Key            []byte
+	Cert           []byte
+	Pool           *x509.CertPool
+	NodeCertExpiry time.Duration
 
 	// This signer will be nil if the node doesn't have the appropriate key material
 	Signer cfsigner.Signer
@@ -205,7 +214,7 @@ func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, ou, org string) 
 // NewRootCA creates a new RootCA object from unparsed cert and key byte
 // slices. key may be nil, and in this case NewRootCA will return a RootCA
 // without a signer.
-func NewRootCA(cert, key []byte) (RootCA, error) {
+func NewRootCA(cert, key []byte, certExpiry time.Duration) (RootCA, error) {
 	// Check to see if the Certificate file is a valid, self-signed Cert
 	parsedCA, err := helpers.ParseSelfSignedCertificatePEM(cert)
 	if err != nil {
@@ -252,7 +261,7 @@ func NewRootCA(cert, key []byte) (RootCA, error) {
 		return RootCA{}, err
 	}
 
-	signer, err := local.NewSigner(priv, parsedCA, cfsigner.DefaultSigAlgo(priv), DefaultPolicy())
+	signer, err := local.NewSigner(priv, parsedCA, cfsigner.DefaultSigAlgo(priv), SigningPolicy(certExpiry))
 	if err != nil {
 		return RootCA{}, err
 	}
@@ -314,7 +323,7 @@ func GetLocalRootCA(baseDir string) (RootCA, error) {
 		key = nil
 	}
 
-	rootCA, err := NewRootCA(cert, key)
+	rootCA, err := NewRootCA(cert, key, DefaultNodeCertExpiration)
 	if err == nil {
 		log.Debugf("successfully loaded the signer for the Root CA: %s", paths.RootCA.Cert)
 	}
@@ -387,8 +396,7 @@ func CreateAndWriteRootCA(rootCN string, paths CertPaths) (RootCA, error) {
 	req := cfcsr.CertificateRequest{
 		CN:         rootCN,
 		KeyRequest: &cfcsr.BasicKeyRequest{A: RootKeyAlgo, S: RootKeySize},
-		// Expiration for the root is 20 years
-		CA: &cfcsr.CAConfig{Expiry: "630720000s"},
+		CA:         &cfcsr.CAConfig{Expiry: RootCAExpiration},
 	}
 
 	// Generate the CA and get the certificate and private key
@@ -607,25 +615,26 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role, secret st
 }
 
 // readCertExpiration returns the number of months left for certificate expiration
-func readCertExpiration(paths CertPaths) (int, error) {
+func readCertExpiration(paths CertPaths) (time.Duration, error) {
 	// Read the Cert
 	cert, err := ioutil.ReadFile(paths.Cert)
 	if err != nil {
 		log.Debugf("failed to read certificate file: %s", paths.Cert)
-		return 0, err
+		return time.Hour, err
 	}
 
 	// Create an x509 certificate out of the contents on disk
 	certBlock, _ := pem.Decode([]byte(cert))
 	if certBlock == nil {
-		return 0, fmt.Errorf("failed to decode certificate block")
+		return time.Hour, fmt.Errorf("failed to decode certificate block")
 	}
 	X509Cert, err := x509.ParseCertificate(certBlock.Bytes)
 	if err != nil {
-		return 0, err
+		return time.Hour, err
 	}
 
-	return helpers.MonthsValid(X509Cert), nil
+	return X509Cert.NotAfter.Sub(time.Now()), nil
+
 }
 
 func saveRootCA(rootCA RootCA, paths CertPaths) error {
