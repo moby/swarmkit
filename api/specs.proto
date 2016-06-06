@@ -251,5 +251,5 @@ message ClusterSpec {
 	DispatcherConfig dispatcher = 5 [(gogoproto.nullable) = false];
 
 	// CAConfig defines cluster-level certificate authority settings.
-	CAConfig ca_config= 6 [(gogoproto.nullable) = false, (gogoproto.customname) = "CAConfig"];
+	CAConfig ca_config = 6 [(gogoproto.nullable) = false, (gogoproto.customname) = "CAConfig"];
 }

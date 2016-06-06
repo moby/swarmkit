@@ -97,7 +97,7 @@ var DefaultPolicy = func() *cfconfig.Signing {
 // It receives the duration a certificate will be valid for
 var SigningPolicy = func(certExpiry time.Duration) *cfconfig.Signing {
 	// Force the minimum Certificate expiration to be fifteen minutes
-	if certExpiry.Minutes() < 15 {
+	if certExpiry < MinNodeCertExpiration {
 		certExpiry = DefaultNodeCertExpiration
 	}
 
@@ -237,23 +237,27 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 		var retry time.Duration
 		defer close(updates)
 		for {
+			// Our starting default will be 5 minutes
+			retry = 5 * time.Minute
+
 			// Since the expiration of the certificate is managed remotely we should update our
 			// retry timer on every iteration of this loop.
 			// Retrieve the time until the certificate expires.
 			expiresIn, err := readCertExpiration(paths.Node)
 			if err != nil {
-				// We failed to read the expiration, let's check back in a short amount of time
+				// We failed to read the expiration, let's stick with the starting default
 				log.Errorf("failed to read the expiration of the TLS certificate in: %s", paths.Node.Cert)
-				retry = 5 * time.Minute
+				updates <- CertificateUpdate{Err: fmt.Errorf("failed to read certificate expiration")}
 			} else {
-				// If we have an expired certificate, we shouldn't continue trying to renew.
+				// If we have an expired certificate, we let's stick with the starting default in
+				// the hope that this is a temporary clock skew.
 				if expiresIn.Minutes() < 0 {
 					log.Debugf("failed to create a new client TLS config: %v", err)
 					updates <- CertificateUpdate{Err: fmt.Errorf("TLS Certificate is expired")}
-					return
+				} else {
+					// Random retry time between 50% and 80% of the total time to expiration
+					retry = calculateRandomExpiry(expiresIn)
 				}
-				// Calculate a random retry time between 50% and 80% of the total time to expiration
-				retry = calculateRandomExpiry(expiresIn)
 			}
 
 			select {
