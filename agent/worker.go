@@ -4,38 +4,63 @@ import (
 	"sync"
 
 	"github.com/boltdb/bolt"
+	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"golang.org/x/net/context"
 )
 
+// Worker implements the core task management logic and persistence. It
+// coordinates the set of assignments with the executor.
 type Worker interface {
+	// Init prepares the worker for task assignment.
+	Init(ctx context.Context) error
+
+	// Assign the set of tasks to the worker. Tasks outside of this set will be
+	// removed.
 	Assign(ctx context.Context, tasks []*api.Task) error
+
+	// Listen to updates about tasks controlled by the worker. When first
+	// called, the reporter will receive all updates for all tasks controlled
+	// by the worker.
+	//
+	// The listener will be removed if the context is cancelled.
+	Listen(ctx context.Context, reporter StatusReporter)
+}
+
+// statusReporterKey protects removal map from panic.
+type statusReporterKey struct {
+	StatusReporter
 }
 
 type worker struct {
-	db       *bolt.DB
-	factory  TaskManagerFactory
-	reporter StatusReporter
-	tasks    map[string]TaskManager
-	mu       sync.RWMutex
+	db        *bolt.DB
+	executor  exec.Executor
+	listeners map[*statusReporterKey]struct{}
+
+	taskManagers map[string]*taskManager
+	mu           sync.RWMutex
 }
 
-func newWorker(ctx context.Context, db *bolt.DB, factory TaskManagerFactory, reporter StatusReporter) *worker {
-	reporter = statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
-		if err := db.Update(func(tx *bolt.Tx) error {
-			return PutTaskStatus(tx, taskID, status)
-		}); err != nil {
-			log.G(ctx).WithError(err).Error("failed writing status to disk")
-		}
+func newWorker(db *bolt.DB, executor exec.Executor) *worker {
+	return &worker{
+		db:           db,
+		executor:     executor,
+		listeners:    make(map[*statusReporterKey]struct{}),
+		taskManagers: make(map[string]*taskManager),
+	}
+}
 
-		return reporter.UpdateTaskStatus(ctx, taskID, status)
-	})
+// Init prepares the worker for assignments.
+func (w *worker) Init(ctx context.Context) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 
-	taskManagers := make(map[string]TaskManager)
+	// TODO(stevvooe): Start task cleanup process.
+
 	// read the tasks from the database and start any task managers that may be needed.
-	if err := db.Update(func(tx *bolt.Tx) error {
-		for _, task := range GetTasks(tx) {
+	return w.db.Update(func(tx *bolt.Tx) error {
+		return WalkTasks(tx, func(task *api.Task) error {
 			if !TaskAssigned(tx, task.ID) {
 				// NOTE(stevvooe): If tasks can survive worker restart, we need
 				// to startup the controller and ensure they are removed. For
@@ -43,32 +68,19 @@ func newWorker(ctx context.Context, db *bolt.DB, factory TaskManagerFactory, rep
 				if err := DeleteTask(tx, task.ID); err != nil {
 					log.G(ctx).WithError(err).Errorf("error removing task %v", task.ID)
 				}
-				continue
+				return nil
 			}
 
 			status, err := GetTaskStatus(tx, task.ID)
 			if err != nil {
 				log.G(ctx).WithError(err).Error("unable to read tasks status")
-				continue
+				return nil
 			}
 
 			task.Status = *status // merges the status into the task, ensuring we start at the right point.
-			taskManagers[task.ID] = factory.TaskManager(ctx, task, reporter)
-		}
-
-		return nil
-	}); err != nil {
-		log.G(ctx).WithError(err).Errorf("error resolving tasks on startup")
-	}
-
-	// TODO(stevvooe): Start task cleanup process.
-
-	return &worker{
-		db:       db,
-		factory:  factory,
-		reporter: reporter,
-		tasks:    taskManagers,
-	}
+			return w.startTask(ctx, tx, task)
+		})
+	})
 }
 
 // Assign the set of tasks to the worker. Any tasks not previously known will
@@ -97,7 +109,7 @@ func (w *worker) Assign(ctx context.Context, tasks []*api.Task) error {
 			return err
 		}
 
-		if mgr, ok := w.tasks[task.ID]; ok {
+		if mgr, ok := w.taskManagers[task.ID]; ok {
 			if err := mgr.Update(ctx, task); err != nil {
 				log.G(ctx).WithError(err).Error("failed updating assigned task")
 			}
@@ -120,14 +132,13 @@ func (w *worker) Assign(ctx context.Context, tasks []*api.Task) error {
 				task.Status = *status // overwrite the stale manager status with ours.
 			}
 
-			ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", task.ID))
-			w.tasks[task.ID] = w.factory.TaskManager(ctx, task, w.reporter)
+			w.startTask(ctx, tx, task)
 		}
 
 		assigned[task.ID] = struct{}{}
 	}
 
-	for id, task := range w.tasks {
+	for id, task := range w.taskManagers {
 		if _, ok := assigned[id]; ok {
 			continue
 		}
@@ -140,8 +151,94 @@ func (w *worker) Assign(ctx context.Context, tasks []*api.Task) error {
 			log.G(ctx).WithError(err).Error("error closing task manager")
 		}
 
-		delete(w.tasks, id)
+		delete(w.taskManagers, id)
 	}
 
 	return tx.Commit()
+}
+
+func (w *worker) Listen(ctx context.Context, reporter StatusReporter) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	key := &statusReporterKey{reporter}
+	w.listeners[key] = struct{}{}
+
+	go func() {
+		<-ctx.Done()
+		w.mu.Lock()
+		defer w.mu.Lock()
+		delete(w.listeners, key) // remove the listener if the context is closed.
+	}()
+
+	// report the current statuses to the new listener
+	if err := w.db.View(func(tx *bolt.Tx) error {
+		return WalkTaskStatus(tx, func(id string, status *api.TaskStatus) error {
+			return reporter.UpdateTaskStatus(ctx, id, status)
+		})
+	}); err != nil {
+		log.G(ctx).WithError(err).Errorf("failed reporting initial statuses to registered listener %v", reporter)
+	}
+}
+
+func (w *worker) startTask(ctx context.Context, tx *bolt.Tx, task *api.Task) error {
+	_, err := w.taskManager(ctx, tx, task) // side-effect taskManager creation.
+
+	if err != nil {
+		log.G(ctx).WithError(err).Error("failed to start taskManager")
+	}
+
+	// TODO(stevvooe): Add start method for taskmanager
+	return nil
+}
+
+func (w *worker) taskManager(ctx context.Context, tx *bolt.Tx, task *api.Task) (*taskManager, error) {
+	if tm, ok := w.taskManagers[task.ID]; ok {
+		return tm, nil
+	}
+
+	tm, err := w.newTaskManager(ctx, tx, task)
+	if err != nil {
+		return nil, err
+	}
+	w.taskManagers[task.ID] = tm
+	return tm, nil
+}
+
+func (w *worker) newTaskManager(ctx context.Context, tx *bolt.Tx, task *api.Task) (*taskManager, error) {
+	ctx = log.WithLogger(ctx, log.G(ctx).WithField("task.id", task.ID))
+
+	ctlr, status, err := exec.Resolve(ctx, task, w.executor)
+	if err := w.updateTaskStatus(ctx, tx, task.ID, status); err != nil {
+		log.G(ctx).WithError(err).Error("error updating task status after controller resolution")
+	}
+
+	if err != nil {
+		log.G(ctx).Error("controller resolution failed")
+		return nil, err
+	}
+
+	return newTaskManager(ctx, task, ctlr, statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
+		w.mu.RLock()
+		defer w.mu.RUnlock()
+
+		return w.updateTaskStatus(ctx, tx, taskID, status)
+	})), nil
+}
+
+// updateTaskStatus reports statuses to listeners, read lock must be held.
+func (w *worker) updateTaskStatus(ctx context.Context, tx *bolt.Tx, taskID string, status *api.TaskStatus) error {
+	if err := PutTaskStatus(tx, taskID, status); err != nil {
+		log.G(ctx).WithError(err).Error("failed writing status to disk")
+		return err
+	}
+
+	// broadcast the task status out.
+	for key := range w.listeners {
+		if err := key.StatusReporter.UpdateTaskStatus(ctx, taskID, status); err != nil {
+			log.G(ctx).WithError(err).Errorf("failed updating status for reporter %v", key.StatusReporter)
+		}
+	}
+
+	return nil
 }

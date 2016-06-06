@@ -15,13 +15,16 @@ import (
 func TestWorker(t *testing.T) {
 	db, cleanup := storageTestEnv(t)
 	defer cleanup()
-	ctx := context.Background()
-	factory := &mockTaskManagerFactory{}
 
-	worker := newWorker(context.Background(), db, factory, statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
+	ctx := context.Background()
+	executor := &mockExecutor{}
+	worker := newWorker(db, executor)
+	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
 		return nil
-	}))
+	})
+
+	worker.Listen(ctx, reporter)
 
 	for _, testcase := range []struct {
 		taskSet          []*api.Task
@@ -50,21 +53,22 @@ func TestWorker(t *testing.T) {
 	} {
 		assert.NoError(t, worker.Assign(ctx, testcase.taskSet))
 
+		var (
+			tasks    []*api.Task
+			assigned []*api.Task
+		)
 		assert.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
-			tasks := GetTasks(tx)
-			assert.Equal(t, testcase.expectedTasks, tasks)
-
-			var assigned []*api.Task
-			for _, task := range tasks {
+			return WalkTasks(tx, func(task *api.Task) error {
+				tasks = append(tasks, task)
 				if TaskAssigned(tx, task.ID) {
 					assigned = append(assigned, task)
 				}
-			}
-
-			assert.Equal(t, testcase.expectedAssigned, assigned)
-
-			return nil
+				return nil
+			})
 		}))
+
+		assert.Equal(t, testcase.expectedTasks, tasks)
+		assert.Equal(t, testcase.expectedAssigned, assigned)
 	}
 }
 
@@ -72,10 +76,6 @@ type mockTaskController struct {
 	exec.Controller
 }
 
-type mockTaskManagerFactory struct {
-	TaskManagerFactory
-}
-
-func (*mockTaskManagerFactory) TaskManager(ctx context.Context, task *api.Task, reporter StatusReporter) TaskManager {
-	return newTaskManager(ctx, task, &mockTaskController{}, reporter)
+type mockExecutor struct {
+	exec.Executor
 }
