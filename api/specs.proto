@@ -198,11 +198,10 @@ message EndpointSpec {
 	enum IngressRouting {
 		option (gogoproto.goproto_enum_prefix) = false;
 
-		// NodePort routing is the default ingress routing
-		// method (needs to be of value 0) and it provides
-		// loadbalancing at L3/L4. It uses the node ports to
-		// loadbalance ingress traffic to the right service.
-		NODEPORT = 0 [(gogoproto.enumvalue_customname) = "IngressRoutingNodePort"];
+		// SwarmPort routing provides Layer 3 and 4 ingress load balancing.
+		// Each of the exposed ports will be assign to this service across the
+		// nodes in the Swarm cluster.
+		SWARMPORT = 0 [(gogoproto.enumvalue_customname) = "IngressRoutingSwarmPort"];
 
 		// If the user chooses to disable ingress routing(but
 		// still expose ports), the system will not provide
