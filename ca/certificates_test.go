@@ -412,7 +412,7 @@ func TestGetRemoteSignedCertificateRejected(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Make sure GetRemoteSignedCertificate didn't return an error
-	assert.EqualError(t, <-completed, "certificate issuance rejected: ISSUANCE_REJECTED")
+	assert.EqualError(t, <-completed, "certificate issuance rejected: REJECTED")
 }
 
 func TestBootstrapCluster(t *testing.T) {
