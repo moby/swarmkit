@@ -2,6 +2,7 @@ package controlapi
 
 import (
 	"testing"
+	"time"
 
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
@@ -49,6 +50,17 @@ func TestValidateClusterSpec(t *testing.T) {
 		{
 			spec: nil,
 			c:    codes.InvalidArgument,
+		},
+		{
+			spec: &api.ClusterSpec{
+				Annotations: api.Annotations{
+					Name: "name",
+				},
+				CAConfig: api.CAConfig{
+					NodeCertExpiry: ptypes.DurationProto(29 * time.Minute),
+				},
+			},
+			c: codes.InvalidArgument,
 		},
 	} {
 		err := validateClusterSpec(bad.spec)
