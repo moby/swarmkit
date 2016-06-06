@@ -10,7 +10,7 @@ import (
 var (
 	demoteCmd = &cobra.Command{
 		Use:   "demote <node ID>",
-		Short: "Demote a node to a manager",
+		Short: "Demote a node from a manager to a worker",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := changeNodeRole(cmd, args, api.NodeRoleWorker); err != nil {
 				if err == errNoChange {
