@@ -150,13 +150,13 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 	// issue a renew agent certificate entry with the correct ID
 	nodeID, err := AuthorizeForwardedRoleAndOrg(ctx, []string{AgentRole}, []string{ManagerRole}, s.securityConfig.ClientTLSCreds.Organization())
 	if err == nil {
-		return s.issueRenewCertificate(ctx, nodeID, AgentRole, request.CSR)
+		return s.issueRenewCertificate(ctx, nodeID, request.CSR)
 	}
 
 	// If the remote node is a Manager, issue a renew certificate entry with the correct ID
 	nodeID, err = AuthorizeForwardedRoleAndOrg(ctx, []string{ManagerRole}, []string{ManagerRole}, s.securityConfig.ClientTLSCreds.Organization())
 	if err == nil {
-		return s.issueRenewCertificate(ctx, nodeID, ManagerRole, request.CSR)
+		return s.issueRenewCertificate(ctx, nodeID, request.CSR)
 	}
 
 	// The remote node didn't successfully present a valid MTLS certificate, let's issue
@@ -222,23 +222,27 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 	}, nil
 }
 
-func (s *Server) issueRenewCertificate(ctx context.Context, nodeID, role string, csr []byte) (*api.IssueNodeCertificateResponse, error) {
+func (s *Server) issueRenewCertificate(ctx context.Context, nodeID string, csr []byte) (*api.IssueNodeCertificateResponse, error) {
+	var cert api.Certificate
 	err := s.store.Update(func(tx store.Tx) error {
-		cert := api.Certificate{
-			CSR:  csr,
-			CN:   nodeID,
-			Role: role,
-			Status: api.IssuanceStatus{
-				State: api.IssuanceStateRenew,
-			},
-		}
 
 		node := store.GetNode(tx, nodeID)
 		if node == nil {
-			return store.CreateNode(tx, &api.Node{
-				ID:          nodeID,
-				Certificate: cert,
-			})
+			log.G(ctx).WithFields(logrus.Fields{
+				"node.id": nodeID,
+				"method":  "issueRenewCertificate",
+			}).Warnf("node does not exist")
+			// If this node doesn't exist, we shouldn't be renewing a certificate for it
+			return grpc.Errorf(codes.NotFound, "node %s not found when attempting to renew certificate", nodeID)
+		}
+		// Create a new Certificate entry for this node with the new CSR and a RENEW state
+		cert = api.Certificate{
+			CSR:  csr,
+			CN:   node.ID,
+			Role: node.Spec.Role.String(),
+			Status: api.IssuanceStatus{
+				State: api.IssuanceStateRenew,
+			},
 		}
 
 		node.Certificate = cert
@@ -249,8 +253,8 @@ func (s *Server) issueRenewCertificate(ctx context.Context, nodeID, role string,
 	}
 
 	log.G(ctx).WithFields(logrus.Fields{
-		"node.id":   nodeID,
-		"node.role": role,
+		"cert.cn":   cert.CN,
+		"cert.role": cert.Role,
 		"method":    "issueRenewCertificate",
 	}).Debugf("node certificate updated")
 	return &api.IssueNodeCertificateResponse{
