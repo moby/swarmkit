@@ -39,24 +39,22 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				common.PrintHeader(w, "ID", "Name", "Status", "Availability/Membership", "Manager status", "Leader")
+				common.PrintHeader(w, "ID", "Name", "Membership", "Status", "Availability", "Manager status")
 				output = func(n *api.Node) {
 					spec := &n.Spec
 					name := spec.Annotations.Name
-					membership := spec.Availability.String()
-					if n.Certificate.Status.State != api.IssuanceStateIssued && n.Certificate.Status.State != api.IssuanceStateRenew {
-						membership = spec.Membership.String()
-					}
+					availability := spec.Availability.String()
+					membership := spec.Membership.String()
+
 					if name == "" && n.Description != nil {
 						name = n.Description.Hostname
-					}
-					leader := ""
-					if n.Manager != nil && n.Manager.Raft.Status.Leader {
-						leader = "*"
 					}
 					reachability := ""
 					if n.Manager != nil {
 						reachability = n.Manager.Raft.Status.Reachability.String()
+						if n.Manager.Raft.Status.Leader {
+							reachability = reachability + " *"
+						}
 					}
 					if reachability == "" && spec.Role == api.NodeRoleManager {
 						reachability = "UNKNOWN"
@@ -65,10 +63,10 @@ var (
 					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 						n.ID,
 						name,
-						n.Status.State.String(),
 						membership,
+						n.Status.State.String(),
+						availability,
 						reachability,
-						leader,
 					)
 				}
 			} else {
