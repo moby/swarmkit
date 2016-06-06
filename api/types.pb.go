@@ -73,6 +73,8 @@
 		ListNodesResponse
 		UpdateNodeRequest
 		UpdateNodeResponse
+		RemoveNodeRequest
+		RemoveNodeResponse
 		GetTaskRequest
 		GetTaskResponse
 		RemoveTaskRequest
