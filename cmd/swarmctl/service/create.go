@@ -103,16 +103,16 @@ var (
 
 					ports := []*api.PortConfig{}
 					for _, portConfig := range portConfigs {
-						name, protocol, port, nodePort, err := parsePortConfig(portConfig)
+						name, protocol, port, swarmPort, err := parsePortConfig(portConfig)
 						if err != nil {
 							return err
 						}
 
 						ports = append(ports, &api.PortConfig{
-							Name:     name,
-							Protocol: protocol,
-							Port:     port,
-							NodePort: nodePort,
+							Name:      name,
+							Protocol:  protocol,
+							Port:      port,
+							SwarmPort: swarmPort,
 						})
 					}
 
@@ -171,7 +171,7 @@ func parsePortConfig(portConfig string) (string, api.PortConfig_Protocol, uint32
 		var err error
 
 		portSpec := parts[2]
-		nodeProtocol, nodePort, err := parsePortSpec(portSpec)
+		nodeProtocol, swarmPort, err := parsePortSpec(portSpec)
 		if err != nil {
 			return "", protocol, 0, 0, fmt.Errorf("failed to parse node port: %v", err)
 		}
@@ -180,7 +180,7 @@ func parsePortConfig(portConfig string) (string, api.PortConfig_Protocol, uint32
 			return "", protocol, 0, 0, fmt.Errorf("protocol mismatch")
 		}
 
-		return name, protocol, port, nodePort, nil
+		return name, protocol, port, swarmPort, nil
 	}
 
 	return name, protocol, port, 0, nil
