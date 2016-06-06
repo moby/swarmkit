@@ -19,5 +19,7 @@ func init() {
 		activateCmd,
 		pauseCmd,
 		drainCmd,
+		promoteCmd,
+		demoteCmd,
 	)
 }
