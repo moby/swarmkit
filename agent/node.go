@@ -399,11 +399,9 @@ func (n *Node) waitRole(ctx context.Context, role string) <-chan struct{} {
 		n.roleCond.L.Unlock()
 		return c
 	}
-	var err error
 	go func() {
 		select {
 		case <-ctx.Done():
-			err = ctx.Err()
 			n.roleCond.Broadcast()
 		case <-c:
 		}
@@ -413,7 +411,7 @@ func (n *Node) waitRole(ctx context.Context, role string) <-chan struct{} {
 		defer close(c)
 		for role != n.role {
 			n.roleCond.Wait()
-			if err != nil {
+			if ctx.Err() != nil {
 				return
 			}
 		}
