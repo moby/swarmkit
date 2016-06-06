@@ -9,33 +9,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-type TaskManager interface {
-	Update(ctx context.Context, task *api.Task) error
-	Close() error
-}
-
-type TaskManagerFactory interface {
-	TaskManager(ctx context.Context, task *api.Task, reporter StatusReporter) TaskManager
-}
-
-type taskManagerFactoryFn func(ctx context.Context, task *api.Task, reporter StatusReporter) TaskManager
-
-func (fn taskManagerFactoryFn) TaskManager(ctx context.Context, task *api.Task, reporter StatusReporter) TaskManager {
-	return fn(ctx, task, reporter)
-}
-
-func newExecutorTaskManagerFactory(executor exec.Executor) TaskManagerFactory {
-	return taskManagerFactoryFn(func(ctx context.Context, task *api.Task, reporter StatusReporter) TaskManager {
-		ctlr, err := executor.Controller(task.Copy())
-		if err != nil {
-			log.G(ctx).WithError(err).Error("controller resolution failed")
-			// log this, status is reported via nil controller below.
-		}
-
-		return newTaskManager(ctx, task, ctlr, reporter)
-	})
-}
-
 // taskManager manages all aspects of task execution and reporting for an agent
 // through state management.
 type taskManager struct {
@@ -129,21 +102,22 @@ func (tm *taskManager) run(ctx context.Context) {
 			}
 
 			opctx, cancel = context.WithCancel(ctx)
-			opcancel := cancel // fork for the closure
+			opcancel := cancel        // fork for the closure
+			running := tm.task.Copy() // clone the task before dispatch
 			go runctx(ctx, tm.closed, errs, func(ctx context.Context) error {
 				defer opcancel()
 
 				if updated {
 					// before we do anything, update the task for the controller.
 					// always update the controller before running.
-					if err := tm.ctlr.Update(opctx, tm.task.Copy()); err != nil {
+					if err := tm.ctlr.Update(opctx, running); err != nil {
 						log.G(ctx).WithError(err).Error("updating task controller failed")
 						return err
 					}
 					updated = false
 				}
 
-				status, err := exec.Do(opctx, tm.task, tm.ctlr)
+				status, err := exec.Do(opctx, running, tm.ctlr)
 				if err != nil {
 					return err
 				}
