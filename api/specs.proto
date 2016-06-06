@@ -80,13 +80,9 @@ message ServiceSpec {
 	// UpdateConfig controls the rate and policy of updates.
 	UpdateConfig update = 6;
 
-	// NetworkAttachmentSpec describes which networks the task
-	// is attached to.
+	// NetworkAttachment specifies which networks this service will be attached to.
 	message NetworkAttachment {
-		oneof reference {
-			string name = 1;
-			string network_id = 2 [(gogoproto.customname) = "NetworkID"];
-		}
+		string target = 1;
 	}
 	repeated NetworkAttachment networks = 7;
 

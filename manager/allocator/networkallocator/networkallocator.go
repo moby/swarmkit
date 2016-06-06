@@ -152,7 +152,7 @@ func (na *NetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
 	}
 
 	for _, nAttach := range s.Spec.Networks {
-		eAttach := &api.Endpoint_Attachment{NetworkID: nAttach.GetNetworkID()}
+		eAttach := &api.Endpoint_Attachment{NetworkID: nAttach.Target}
 		if err = na.allocateVIP(eAttach); err != nil {
 			return
 		}

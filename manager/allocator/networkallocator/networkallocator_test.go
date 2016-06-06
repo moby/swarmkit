@@ -522,9 +522,7 @@ func TestServiceAllocate(t *testing.T) {
 		Spec: api.ServiceSpec{
 			Networks: []*api.ServiceSpec_NetworkAttachment{
 				{
-					Reference: &api.ServiceSpec_NetworkAttachment_NetworkID{
-						NetworkID: "testID",
-					},
+					Target: "testID",
 				},
 			},
 			Endpoint: &api.EndpointSpec{
