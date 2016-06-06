@@ -52,7 +52,7 @@ func Cause(err error) error {
 //
 // If this is encountered in the controller, the failing operation will be
 // retried when this returns true. Otherwise, the operation is considered
-// fatal.t
+// fatal.
 type Temporary interface {
 	Temporary() bool
 }

@@ -15,6 +15,41 @@ import (
 
 //go:generate mockgen -package exec -destination controller_test.mock.go -source controller.go Controller Reporter
 
+func TestResolve(t *testing.T) {
+	var (
+		ctx      = context.Background()
+		executor = &mockExecutor{}
+		task     = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
+	)
+
+	_, status, err := Resolve(ctx, task, executor)
+	assert.NoError(t, err)
+	assert.Equal(t, api.TaskStateAccepted, status.State)
+	assert.Equal(t, "accepted", status.Message)
+
+	task.Status = *status
+	// now, we get no status update.
+	_, status, err = Resolve(ctx, task, executor)
+	assert.NoError(t, err)
+	assert.Equal(t, task.Status, *status)
+
+	// now test an error causing rejection
+	executor.err = errors.New("some error")
+	task = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
+	_, status, err = Resolve(ctx, task, executor)
+	assert.Equal(t, executor.err, err)
+	assert.Equal(t, api.TaskStateRejected, status.State)
+
+	// task is now foobared, from a reporting perspective but we can now
+	// resolve the controller for some reason. Ensure the task state isn't
+	// touched.
+	task.Status = *status
+	executor.err = nil
+	_, status, err = Resolve(ctx, task, executor)
+	assert.NoError(t, err)
+	assert.Equal(t, task.Status, *status)
+}
+
 func TestAcceptPrepare(t *testing.T) {
 	var (
 		task              = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
@@ -347,4 +382,14 @@ func buildTestEnv(t *testing.T, task *api.Task) (context.Context, *MockControlle
 		cancel()
 		mocks.Finish()
 	}
+}
+
+type mockExecutor struct {
+	Executor
+
+	err error
+}
+
+func (me *mockExecutor) Controller(t *api.Task) (Controller, error) {
+	return nil, me.err
 }

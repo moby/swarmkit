@@ -47,6 +47,41 @@ type Controller interface {
 	Close() error
 }
 
+// Resolve attempts to get a controller from the executor and reports the
+// correct status depending on the tasks current state according to the result.
+//
+// Unlike Do, if an error is returned, the status should still be reported. The
+// error merely reports the
+func Resolve(ctx context.Context, task *api.Task, executor Executor) (Controller, *api.TaskStatus, error) {
+	status := task.Status.Copy()
+
+	defer func() {
+		if task.Status.State != status.State {
+			log.G(ctx).WithField("state.transition", fmt.Sprintf("%v->%v", task.Status.State, status.State)).
+				Info("state changed")
+		}
+	}()
+
+	ctlr, err := executor.Controller(task)
+
+	// depending on the tasks state, a failed controller resolution has varying
+	// impact. The following expresses that impact.
+	if task.Status.State < api.TaskStateStarting {
+		if err != nil {
+			// before the task has been started, we consider it a rejection.
+			status.Message = "resolving controller failed"
+			status.Err = err.Error()
+			status.State = api.TaskStateRejected
+		} else if task.Status.State < api.TaskStateAccepted {
+			// we always want to proceed to accepted when we resolve the contoller
+			status.Message = "accepted"
+			status.State = api.TaskStateAccepted
+		}
+	}
+
+	return ctlr, status, err
+}
+
 // Do progresses the task state using the controller performing a single
 // operation on the controller. The return TaskStatus should be marked as the
 // new state of the task.
