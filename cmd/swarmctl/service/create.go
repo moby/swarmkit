@@ -134,9 +134,7 @@ var (
 
 					spec.Networks = []*api.ServiceSpec_NetworkAttachment{
 						{
-							Reference: &api.ServiceSpec_NetworkAttachment_NetworkID{
-								NetworkID: n.ID,
-							},
+							Target: n.ID,
 						},
 					}
 				}

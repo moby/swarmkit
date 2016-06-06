@@ -197,9 +197,7 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 		networks := make([]*api.ServiceSpec_NetworkAttachment, 0, len(s.Networks))
 		for _, net := range s.Networks {
 			networks = append(networks, &api.ServiceSpec_NetworkAttachment{
-				Reference: &api.ServiceSpec_NetworkAttachment_NetworkID{
-					NetworkID: net,
-				},
+				Target: net,
 			})
 		}
 
@@ -274,7 +272,7 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 
 	if serviceSpec.Networks != nil {
 		for _, net := range serviceSpec.Networks {
-			s.Networks = append(s.Networks, net.GetNetworkID())
+			s.Networks = append(s.Networks, net.Target)
 		}
 	}
 
