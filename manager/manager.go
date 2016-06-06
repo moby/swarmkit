@@ -84,7 +84,6 @@ type Manager struct {
 	mu   sync.Mutex
 	once sync.Once
 
-	started chan struct{}
 	stopped chan struct{}
 }
 
@@ -217,7 +216,6 @@ func New(config *Config) (*Manager, error) {
 		server:      grpc.NewServer(opts...),
 		localserver: grpc.NewServer(opts...),
 		RaftNode:    RaftNode,
-		started:     make(chan struct{}),
 		stopped:     make(chan struct{}),
 	}
 
@@ -227,7 +225,22 @@ func New(config *Config) (*Manager, error) {
 // Run starts all manager sub-systems and the gRPC server at the configured
 // address.
 // The call never returns unless an error occurs or `Stop()` is called.
-func (m *Manager) Run(ctx context.Context) error {
+//
+// TODO(aluzzardi): /!\ This function is *way* too complex. /!\
+// It needs to be split into smaller manageable functions.
+func (m *Manager) Run(parent context.Context) error {
+	ctx, ctxCancel := context.WithCancel(parent)
+	defer ctxCancel()
+
+	// Harakiri.
+	go func() {
+		select {
+		case <-ctx.Done():
+		case <-m.stopped:
+			ctxCancel()
+		}
+	}()
+
 	leadershipCh, cancel := m.RaftNode.SubscribeLeadership()
 	defer cancel()
 
@@ -487,7 +500,6 @@ func (m *Manager) Run(ctx context.Context) error {
 		log.G(ctx).Warningf("heartbeat tick value (%ds) is different from the one defined in the cluster config (%vs), the cluster may be unstable", m.RaftNode.Config.HeartbeatTick, raftConfig.HeartbeatTick)
 	}
 
-	close(m.started)
 	// wait for an error in serving.
 	err = <-errServe
 	select {
@@ -513,8 +525,7 @@ func (m *Manager) Run(ctx context.Context) error {
 // Stop stops the manager. It immediately closes all open connections and
 // active RPCs as well as stopping the scheduler.
 func (m *Manager) Stop(ctx context.Context) {
-	// Don't shut things down while the manager is still starting up.
-	<-m.started
+	log.G(ctx).Info("Stopping manager")
 
 	// the mutex stops us from trying to stop while we're alrady stopping, or
 	// from returning before we've finished stopping.
@@ -529,7 +540,6 @@ func (m *Manager) Stop(ctx context.Context) {
 		// do nothing, we're stopping for the first time
 	}
 
-	log.G(ctx).Info("Stopping manager")
 	// once we start stopping, send a signal that we're doing so. this tells
 	// Run that we've started stopping, when it gets the error from errServe
 	// it also prevents the loop from processing any more stuff.
