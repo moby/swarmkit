@@ -107,9 +107,7 @@ func TestAllocator(t *testing.T) {
 				},
 				Networks: []*api.ServiceSpec_NetworkAttachment{
 					{
-						Reference: &api.ServiceSpec_NetworkAttachment_NetworkID{
-							NetworkID: "testID2",
-						},
+						Target: "testID2",
 					},
 				},
 				Endpoint: &api.EndpointSpec{},
