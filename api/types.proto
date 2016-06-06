@@ -360,12 +360,11 @@ message PortConfig {
 	// The port which the application is exposing and is bound to.
 	uint32 port = 3;
 
-	// NodePort specifies the port on which the service is
-	// exposed on all nodes on the cluster. If not specified an
-	// arbitrary port in the node port range is allocated by the
-	// system. If specified it should be within the node port
-	// range and it should be available.
-	uint32 node_port = 4;
+	// SwarmPort specifies the port on which the service is
+	// exposed on all nodes on the cluster. If specified, the port must be
+	// within the SwarmPort range and available. If not specified, an available
+	// port is assigned.
+	uint32 swarm_port = 4;
 }
 
 // Driver is a generic driver type to be used throughout the API. For now, a

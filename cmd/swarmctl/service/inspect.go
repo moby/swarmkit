@@ -67,7 +67,7 @@ func printServiceSummary(service *api.Service) {
 			fmt.Fprintf(w, "    - Name\t= %s\n", port.Name)
 			fmt.Fprintf(w, "      Protocol\t= %s\n", port.Protocol)
 			fmt.Fprintf(w, "      Port\t= %d\n", port.Port)
-			fmt.Fprintf(w, "      NodePort\t= %d\n", port.NodePort)
+			fmt.Fprintf(w, "      SwarmPort\t= %d\n", port.SwarmPort)
 		}
 	}
 
