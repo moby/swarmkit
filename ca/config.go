@@ -322,9 +322,9 @@ func calculateRandomExpiry(expiresIn time.Duration) time.Duration {
 
 	var randomExpiry int
 	// Our lower bound of renewal will be half of the total expiration time
-	minValidity := int(expiresIn.Minutes() * 0.5)
+	minValidity := int(expiresIn.Minutes() * CertLowerRotationRange)
 	// Our upper bound of renewal will be 80% of the total expiration time
-	maxValidity := int(expiresIn.Minutes() * 0.8)
+	maxValidity := int(expiresIn.Minutes() * CertUpperRotationRange)
 	// Let's select a random number of minutes between min and max, and set our retry for that
 	// Using randomly selected rotation allows us to avoid certificate thundering herds.
 	if maxValidity-minValidity < 1 {
