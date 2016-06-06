@@ -46,10 +46,10 @@ type ContainerConfig struct {
 
 // PortConfig is a human representation of the PortConfiguration
 type PortConfig struct {
-	Name     string `yaml:"name,omitempty"`
-	Protocol string `yaml:"protocol,omitempty"`
-	Port     uint32 `yaml:"port,omitempty"`
-	NodePort uint32 `yaml:"node_port,omitempty"`
+	Name      string `yaml:"name,omitempty"`
+	Protocol  string `yaml:"protocol,omitempty"`
+	Port      uint32 `yaml:"port,omitempty"`
+	SwarmPort uint32 `yaml:"swarm_port,omitempty"`
 }
 
 // ServiceConfig is a human representation of the Service
@@ -181,10 +181,10 @@ func (s *ServiceConfig) ToProto() *api.ServiceSpec {
 		ports := []*api.PortConfig{}
 		for _, portConfig := range s.Ports {
 			ports = append(ports, &api.PortConfig{
-				Name:     portConfig.Name,
-				Protocol: api.PortConfig_Protocol(api.PortConfig_Protocol_value[strings.ToUpper(portConfig.Protocol)]),
-				Port:     portConfig.Port,
-				NodePort: portConfig.NodePort,
+				Name:      portConfig.Name,
+				Protocol:  api.PortConfig_Protocol(api.PortConfig_Protocol_value[strings.ToUpper(portConfig.Protocol)]),
+				Port:      portConfig.Port,
+				SwarmPort: portConfig.SwarmPort,
 			})
 		}
 
@@ -264,10 +264,10 @@ func (s *ServiceConfig) FromProto(serviceSpec *api.ServiceSpec) {
 	if serviceSpec.Endpoint != nil {
 		for _, port := range serviceSpec.Endpoint.ExposedPorts {
 			s.Ports = append(s.Ports, PortConfig{
-				Name:     port.Name,
-				Protocol: strings.ToLower(port.Protocol.String()),
-				Port:     port.Port,
-				NodePort: port.NodePort,
+				Name:      port.Name,
+				Protocol:  strings.ToLower(port.Protocol.String()),
+				Port:      port.Port,
+				SwarmPort: port.SwarmPort,
 			})
 		}
 	}

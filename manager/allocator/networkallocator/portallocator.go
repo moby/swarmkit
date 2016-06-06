@@ -85,13 +85,13 @@ func reconcilePortConfigs(s *api.Service) []*api.PortConfig {
 		portState := s.Endpoint.ExposedPorts[i]
 
 		// If the portConfig is exactly the same as portState
-		// except if NodePort is not user-define then prefer
+		// except if SwarmPort is not user-define then prefer
 		// portState to ensure sticky allocation of the same
 		// port that was allocated before.
 		if portConfig.Name == portState.Name &&
 			portConfig.Port == portState.Port &&
 			portConfig.Protocol == portState.Protocol &&
-			portConfig.NodePort == 0 {
+			portConfig.SwarmPort == 0 {
 			portConfigs = append(portConfigs, portState)
 			continue
 		}
@@ -178,17 +178,17 @@ func (pa *portAllocator) isPortsAllocated(s *api.Service) bool {
 			return false
 		}
 
-		// If NodePort was user defined but the port state
-		// NodePort doesn't match we are not allocated.
-		if portConfig.NodePort != portState.NodePort &&
-			portConfig.NodePort != 0 {
+		// If SwarmPort was user defined but the port state
+		// SwarmPort doesn't match we are not allocated.
+		if portConfig.SwarmPort != portState.SwarmPort &&
+			portConfig.SwarmPort != 0 {
 			return false
 		}
 
-		// If NodePort was not defined by user and port state
-		// is not initialized with a valid NodePort value then
+		// If SwarmPort was not defined by user and port state
+		// is not initialized with a valid SwarmPort value then
 		// we are not allocated.
-		if portConfig.NodePort == 0 && portState.NodePort == 0 {
+		if portConfig.SwarmPort == 0 && portState.SwarmPort == 0 {
 			return false
 		}
 	}
@@ -197,48 +197,48 @@ func (pa *portAllocator) isPortsAllocated(s *api.Service) bool {
 }
 
 func (ps *portSpace) allocate(p *api.PortConfig) (err error) {
-	if p.NodePort != 0 {
+	if p.SwarmPort != 0 {
 		// If it falls in the dynamic port range check out
 		// from dynamic port space first.
-		if p.NodePort >= dynamicPortStart && p.NodePort <= dynamicPortEnd {
-			if err = ps.dynamicPortSpace.GetSpecificID(uint64(p.NodePort)); err != nil {
+		if p.SwarmPort >= dynamicPortStart && p.SwarmPort <= dynamicPortEnd {
+			if err = ps.dynamicPortSpace.GetSpecificID(uint64(p.SwarmPort)); err != nil {
 				return err
 			}
 
 			defer func() {
 				if err != nil {
-					ps.dynamicPortSpace.Release(uint64(p.NodePort))
+					ps.dynamicPortSpace.Release(uint64(p.SwarmPort))
 				}
 			}()
 		}
 
-		return ps.masterPortSpace.GetSpecificID(uint64(p.NodePort))
+		return ps.masterPortSpace.GetSpecificID(uint64(p.SwarmPort))
 	}
 
 	// Check out an arbitrary port from dynamic port space.
-	nodePort, err := ps.dynamicPortSpace.GetID()
+	swarmPort, err := ps.dynamicPortSpace.GetID()
 	if err != nil {
 		return
 	}
 	defer func() {
 		if err != nil {
-			ps.dynamicPortSpace.Release(uint64(nodePort))
+			ps.dynamicPortSpace.Release(uint64(swarmPort))
 		}
 	}()
 
 	// Make sure we allocate the same port from the master space.
-	if err = ps.masterPortSpace.GetSpecificID(uint64(nodePort)); err != nil {
+	if err = ps.masterPortSpace.GetSpecificID(uint64(swarmPort)); err != nil {
 		return
 	}
 
-	p.NodePort = uint32(nodePort)
+	p.SwarmPort = uint32(swarmPort)
 	return nil
 }
 
 func (ps *portSpace) free(p *api.PortConfig) {
-	if p.NodePort >= dynamicPortStart && p.NodePort <= dynamicPortEnd {
-		ps.dynamicPortSpace.Release(uint64(p.NodePort))
+	if p.SwarmPort >= dynamicPortStart && p.SwarmPort <= dynamicPortEnd {
+		ps.dynamicPortSpace.Release(uint64(p.SwarmPort))
 	}
 
-	ps.masterPortSpace.Release(uint64(p.NodePort))
+	ps.masterPortSpace.Release(uint64(p.SwarmPort))
 }
