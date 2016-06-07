@@ -302,7 +302,7 @@ func (m *Manager) Run(parent context.Context) error {
 						ID: nodeID,
 						Certificate: api.Certificate{
 							CN:   nodeID,
-							Role: ca.ManagerRole,
+							Role: api.NodeRoleManager,
 							Status: api.IssuanceStatus{
 								State: api.IssuanceStateIssued,
 							},

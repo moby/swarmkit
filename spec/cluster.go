@@ -3,7 +3,6 @@ package spec
 import (
 	"fmt"
 	"io"
-	"sort"
 
 	yaml "github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/docker/swarm-v2/api"
@@ -23,7 +22,14 @@ type ClusterConfig struct {
 
 // AcceptancePolicy is the yaml representation of an acceptance policy.
 type AcceptancePolicy struct {
-	AutoacceptRoles []string `yaml:"autoacceptroles,omitempty"`
+	Policies []*RoleAdmissionPolicy
+}
+
+// RoleAdmissionPolicy is the yaml representation of a RoleAdmissionPolicy.
+type RoleAdmissionPolicy struct {
+	Role       string `yaml:"role"`
+	Autoaccept bool   `yaml:"autoaccept"`
+	Secret     string `yaml:"secret,omitempty"`
 }
 
 // OrchestrationConfig is the yaml representation of the cluster-wide
@@ -81,9 +87,9 @@ func (c *ClusterConfig) Validate() error {
 	if c.Name == "" {
 		return fmt.Errorf("name is mandatory")
 	}
-	for _, r := range c.AcceptancePolicy.AutoacceptRoles {
-		if r != "agent" && r != "manager" {
-			return fmt.Errorf("unrecognized role %s", r)
+	for _, p := range c.AcceptancePolicy.Policies {
+		if p.Role != "agent" && p.Role != "manager" {
+			return fmt.Errorf("unrecognized role %s", p.Role)
 		}
 	}
 	return nil
@@ -99,7 +105,14 @@ func (c *ClusterConfig) ToProto() *api.ClusterSpec {
 			Name: c.Name,
 		},
 		AcceptancePolicy: api.AcceptancePolicy{
-			Autoaccept: make(map[string]bool),
+			Policies: []*api.RoleAdmissionPolicy{
+				{
+					Role: api.NodeRoleWorker,
+				},
+				{
+					Role: api.NodeRoleWorker,
+				},
+			},
 		},
 		Orchestration: api.OrchestrationConfig{
 			TaskHistoryRetentionLimit: c.OrchestrationConfig.TaskHistoryRetentionLimit,
@@ -113,13 +126,17 @@ func (c *ClusterConfig) ToProto() *api.ClusterSpec {
 		},
 	}
 
-	for _, role := range c.AcceptancePolicy.AutoacceptRoles {
-		switch role {
-		case "agent":
-			p.AcceptancePolicy.Autoaccept[ca.AgentRole] = true
-		case "manager":
-			p.AcceptancePolicy.Autoaccept[ca.ManagerRole] = true
+	for _, policy := range c.AcceptancePolicy.Policies {
+		apiRole, err := ca.FormatRole(policy.Role)
+		if err != nil {
+			continue
 		}
+		newPolicy := &api.RoleAdmissionPolicy{
+			Role:       apiRole,
+			Autoaccept: policy.Autoaccept,
+			Secret:     policy.Secret,
+		}
+		p.AcceptancePolicy.Policies = append(p.AcceptancePolicy.Policies, newPolicy)
 	}
 
 	raftDefaults := raft.DefaultRaftConfig()
@@ -160,18 +177,19 @@ func (c *ClusterConfig) FromProto(p *api.ClusterSpec) {
 		},
 	}
 
-	for role, auto := range p.AcceptancePolicy.Autoaccept {
-		if auto {
-			switch role {
-			case ca.AgentRole:
-				c.AcceptancePolicy.AutoacceptRoles = append(c.AcceptancePolicy.AutoacceptRoles, "agent")
-			case ca.ManagerRole:
-				c.AcceptancePolicy.AutoacceptRoles = append(c.AcceptancePolicy.AutoacceptRoles, "manager")
-			}
+	for _, policy := range p.AcceptancePolicy.Policies {
+		role, err := ca.ParseRole(policy.Role)
+		if err != nil {
+			continue
 		}
+		newPolicy := &RoleAdmissionPolicy{
+			Role:       role,
+			Autoaccept: policy.Autoaccept,
+			Secret:     policy.Secret,
+		}
+		c.AcceptancePolicy.Policies = append(c.AcceptancePolicy.Policies, newPolicy)
 	}
 
-	sort.Strings(c.AcceptancePolicy.AutoacceptRoles)
 }
 
 // Diff returns a diff between two ClusterConfigs.

@@ -83,7 +83,7 @@ func changeNodeMembership(cmd *cobra.Command, args []string, membership api.Node
 	return nil
 }
 
-func changeNodeRole(cmd *cobra.Command, args []string, role api.NodeSpec_Role) error {
+func changeNodeRole(cmd *cobra.Command, args []string, role api.NodeRole) error {
 	if len(args) == 0 {
 		return errors.New("missing node ID")
 	}

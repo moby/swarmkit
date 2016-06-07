@@ -432,7 +432,7 @@ message RoleAdmissionPolicy {
 }
 
 message CAConfig {
-	// NodeCertExpiry is the number of hours node certificates should be issued for
+	// NodeCertExpiry is the duration certificates should be issued for
 	Duration node_cert_expiry = 1;
 }
 

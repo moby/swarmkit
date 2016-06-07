@@ -7,7 +7,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/cmd/swarmctl/common"
 	"github.com/docker/swarm-v2/protobuf/ptypes"
 	"github.com/spf13/cobra"
@@ -19,13 +18,15 @@ func printClusterSummary(cluster *api.Cluster) {
 
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", cluster.ID)
 	common.FprintfIfNotEmpty(w, "Name\t: %s\n", cluster.Spec.Annotations.Name)
-	if cluster.Spec.AcceptancePolicy.Autoaccept != nil {
-		fmt.Fprintf(w, "Acceptance strategy:\n")
-		fmt.Fprintf(w, "  Autoaccept agents\t: %v\n", cluster.Spec.AcceptancePolicy.Autoaccept[ca.AgentRole])
-		fmt.Fprintf(w, "  Autoaccept managers\t: %v\n", cluster.Spec.AcceptancePolicy.Autoaccept[ca.ManagerRole])
-		// This will never contain a real secret. It will either be empty, or say [REDACTED]
-		if cluster.Spec.AcceptancePolicy.Secret != "" {
-			fmt.Fprintf(w, "  Secret\t: %v\n", cluster.Spec.AcceptancePolicy.Secret)
+	if len(cluster.Spec.AcceptancePolicy.Policies) > 0 {
+		fmt.Fprintf(w, "Acceptance Policies:\n")
+		for _, policy := range cluster.Spec.AcceptancePolicy.Policies {
+			fmt.Fprintf(w, "  Role\t: %v\n", policy.Role)
+			fmt.Fprintf(w, "    Autoaccept\t: %v\n", policy.Autoaccept)
+			// This will never contain a real secret. It will either be empty, or say [REDACTED]
+			if policy.Secret != "" {
+				fmt.Fprintf(w, "    Secret\t: %v\n", policy.Secret)
+			}
 		}
 	}
 	fmt.Fprintf(w, "Orchestration settings:\n")
