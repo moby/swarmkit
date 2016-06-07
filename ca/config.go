@@ -90,14 +90,14 @@ func (s *SecurityConfig) UpdateRootCA(cert, key []byte, certExpiry time.Duration
 
 // DefaultPolicy is the default policy used by the signers to ensure that the only fields
 // from the remote CSRs we trust are: PublicKey, PublicKeyAlgorithm and SignatureAlgorithm.
-var DefaultPolicy = func() *cfconfig.Signing {
+func DefaultPolicy() *cfconfig.Signing {
 	return SigningPolicy(DefaultNodeCertExpiration)
 }
 
 // SigningPolicy creates a policy used by the signer to ensure that the only fields
 // from the remote CSRs we trust are: PublicKey, PublicKeyAlgorithm and SignatureAlgorithm.
 // It receives the duration a certificate will be valid for
-var SigningPolicy = func(certExpiry time.Duration) *cfconfig.Signing {
+func SigningPolicy(certExpiry time.Duration) *cfconfig.Signing {
 	// Force the minimum Certificate expiration to be fifteen minutes
 	if certExpiry < MinNodeCertExpiration {
 		certExpiry = DefaultNodeCertExpiration
