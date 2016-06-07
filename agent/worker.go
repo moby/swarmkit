@@ -138,20 +138,25 @@ func (w *worker) Assign(ctx context.Context, tasks []*api.Task) error {
 		assigned[task.ID] = struct{}{}
 	}
 
-	for id, task := range w.taskManagers {
+	for id, tm := range w.taskManagers {
 		if _, ok := assigned[id]; ok {
 			continue
 		}
 
-		ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", id))
-
-		// when a task is no longer assigned, we shutdown the task manager for
-		// it and leave cleanup to the sweeper.
-		if err := task.Close(); err != nil {
-			log.G(ctx).WithError(err).Error("error closing task manager")
+		if err := SetTaskAssignment(tx, id, false); err != nil {
+			return err
 		}
 
+		ctx := log.WithLogger(ctx, log.G(ctx).WithField("task.id", id))
 		delete(w.taskManagers, id)
+
+		go func() {
+			// when a task is no longer assigned, we shutdown the task manager for
+			// it and leave cleanup to the sweeper.
+			if err := tm.Close(); err != nil {
+				log.G(ctx).WithError(err).Error("error closing task manager")
+			}
+		}()
 	}
 
 	return tx.Commit()
@@ -222,7 +227,9 @@ func (w *worker) newTaskManager(ctx context.Context, tx *bolt.Tx, task *api.Task
 		w.mu.RLock()
 		defer w.mu.RUnlock()
 
-		return w.updateTaskStatus(ctx, tx, taskID, status)
+		return w.db.Update(func(tx *bolt.Tx) error {
+			return w.updateTaskStatus(ctx, tx, taskID, status)
+		})
 	})), nil
 }
 

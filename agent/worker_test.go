@@ -74,8 +74,13 @@ func TestWorker(t *testing.T) {
 
 type mockTaskController struct {
 	exec.Controller
+	task *api.Task
 }
 
 type mockExecutor struct {
 	exec.Executor
+}
+
+func (*mockExecutor) Controller(task *api.Task) (exec.Controller, error) {
+	return &mockTaskController{task: task}, nil
 }

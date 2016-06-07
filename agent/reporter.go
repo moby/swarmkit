@@ -76,9 +76,16 @@ func (sr *statusReporter) Close() error {
 }
 
 func (sr *statusReporter) run(ctx context.Context) {
+	done := make(chan struct{})
+	defer close(done)
+
 	go func() {
-		<-ctx.Done()
-		sr.Close()
+		select {
+		case <-ctx.Done():
+			sr.Close()
+		case <-done:
+			return
+		}
 	}()
 
 	sr.mu.Lock() // released during wait, below.
