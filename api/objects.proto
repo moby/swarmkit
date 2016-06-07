@@ -68,15 +68,17 @@ message Endpoint {
 	EndpointSpec spec = 1;
 
 	// Runtime state of the exposed ports which may carry
-	// auto-allocated node ports in addition to the user
+	// auto-allocated swarm ports in addition to the user
 	// configured information.
 	repeated PortConfig exposed_ports = 2;
 
 	// An endpoint attachment specifies the data that the process
 	// of attaching an endpoint to a network creates.
-	message Attachment {
-		// Network for which this endpoint attachment was
-		// created.
+
+	// VirtualIP specifies a set of networks this endpoint will be attached to
+	// and the IP addresses the target service will be made available under.
+	message VirtualIP {
+		// NetworkID for which this endpoint attachment was created.
 		string network_id = 1 [(gogoproto.customname) = "NetworkID"];
 
 		// A virtual IP is used to address this service in IP
@@ -87,10 +89,12 @@ message Endpoint {
 		// interfaces assigned this IP address or any route
 		// created for this address.  More than one to
 		// accomodate for both IPv4 and IPv6
-		repeated string virtual_ip = 2 [(gogoproto.customname) = "VirtualIP"];
+		string addr = 2;
 	}
-
-	repeated Attachment attachments = 3;
+	
+	// VirtualIPs specifies the IP addresses under which this endpoint will be
+	// made available.
+	repeated VirtualIP virtual_ips = 3 [(gogoproto.customname) = "VirtualIPs"];
 }
 
 // Task specifies the parameters for implementing a Spec. A task is effectively
