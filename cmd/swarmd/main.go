@@ -1,12 +1,14 @@
 package main
 
 import (
+	_ "expvar"
 	"fmt"
 	"net"
+	"net/http"
+	_ "net/http/pprof"
+
 	"os"
 	"os/signal"
-
-	"golang.org/x/net/context"
 
 	"github.com/Sirupsen/logrus"
 	engineapi "github.com/docker/engine-api/client"
@@ -15,6 +17,7 @@ import (
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/version"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
 )
 
 func main() {
@@ -68,6 +71,11 @@ var (
 			}
 
 			unix, err := cmd.Flags().GetString("listen-control-api")
+			if err != nil {
+				return err
+			}
+
+			debugAddr, err := cmd.Flags().GetString("listen-debug")
 			if err != nil {
 				return err
 			}
@@ -129,6 +137,15 @@ var (
 
 			executor := container.NewExecutor(client)
 
+			if debugAddr != "" {
+				go func() {
+					// setup listening to give access to pprof, expvar, etc.
+					if err := http.ListenAndServe(debugAddr, nil); err != nil {
+						panic(err)
+					}
+				}()
+			}
+
 			n, err := agent.NewNode(&agent.NodeConfig{
 				Hostname:         hostname,
 				ForceNewCluster:  forceNewCluster,
@@ -180,6 +197,7 @@ func init() {
 	mainCmd.Flags().String("hostname", "", "Override reported agent hostname")
 	mainCmd.Flags().String("listen-remote-api", "0.0.0.0:4242", "Listen address for remote API")
 	mainCmd.Flags().String("listen-control-api", "/var/run/docker/cluster/docker-swarmd.sock", "Listen socket for control API")
+	mainCmd.Flags().String("listen-debug", "", "Bind the Go debug server on the provided address")
 	mainCmd.Flags().String("join-addr", "", "Join cluster with a node at this address")
 	mainCmd.Flags().Bool("force-new-cluster", false, "Force the creation of a new cluster from data directory")
 	mainCmd.Flags().Uint32("heartbeat-tick", 1, "Defines the heartbeat interval (in seconds) for raft member health-check")
