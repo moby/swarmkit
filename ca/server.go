@@ -34,7 +34,16 @@ type Server struct {
 // DefaultAcceptancePolicy returns the default acceptance policy.
 func DefaultAcceptancePolicy() api.AcceptancePolicy {
 	return api.AcceptancePolicy{
-		Autoaccept: map[string]bool{AgentRole: true},
+		Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{
+			{
+				Role:       api.NodeRoleWorker,
+				Autoaccept: true,
+			},
+			{
+				Role:       api.NodeRoleManager,
+				Autoaccept: false,
+			},
+		},
 	}
 }
 
@@ -137,7 +146,8 @@ func (s *Server) NodeCertificateStatus(ctx context.Context, request *api.NodeCer
 // IssueNodeCertificate receives requests from a remote client indicating a node type and a CSR,
 // returning a certificate chain signed by the local CA, if available.
 func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNodeCertificateRequest) (*api.IssueNodeCertificateResponse, error) {
-	if request.CSR == nil || request.Role == "" {
+	// First, let's see if the remote node is proposing to be added as a valid node, and with a valid CSR
+	if len(request.CSR) == 0 || (request.Role != api.NodeRoleWorker && request.Role != api.NodeRoleManager) {
 		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
@@ -150,34 +160,35 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 	// issue a renew agent certificate entry with the correct ID
 	nodeID, err := AuthorizeForwardedRoleAndOrg(ctx, []string{AgentRole}, []string{ManagerRole}, s.securityConfig.ClientTLSCreds.Organization())
 	if err == nil {
-		return s.issueRenewCertificate(ctx, nodeID, AgentRole, request.CSR)
+		return s.issueRenewCertificate(ctx, nodeID, request.CSR)
 	}
 
 	// If the remote node is a Manager, issue a renew certificate entry with the correct ID
 	nodeID, err = AuthorizeForwardedRoleAndOrg(ctx, []string{ManagerRole}, []string{ManagerRole}, s.securityConfig.ClientTLSCreds.Organization())
 	if err == nil {
-		return s.issueRenewCertificate(ctx, nodeID, ManagerRole, request.CSR)
+		return s.issueRenewCertificate(ctx, nodeID, request.CSR)
 	}
 
 	// The remote node didn't successfully present a valid MTLS certificate, let's issue
 	// a pending certificate with a new ID
-
-	// If there is a secret configured, the client has to have supplied it to be able to propose itself
-	// for the first certificate issuance
-
-	s.mu.Lock()
-	if s.acceptancePolicy.Secret != "" {
-		if request.Secret == "" ||
-			subtle.ConstantTimeCompare([]byte(request.Secret), []byte(s.acceptancePolicy.Secret)) != 1 {
-			s.mu.Unlock()
-			return nil, fmt.Errorf("A valid secret token is necessary to join this cluster")
+	// By default all nodes start out as PENDING
+	nodeMembership := api.NodeMembershipPending
+	// Attempt to retrieve a policy for the role
+	policy := s.getRolePolicy(request.Role)
+	if policy != nil {
+		// If we have a secret configured, constant time compare!
+		if policy.Secret != "" &&
+			subtle.ConstantTimeCompare([]byte(request.Secret), []byte(policy.Secret)) != 1 {
+			return nil, grpc.Errorf(codes.InvalidArgument, "A valid secret token is necessary to join this cluster")
+		}
+		// Check to see if our autoacceptance policy allows this node to be issued without manual intervention
+		if policy.Autoaccept {
+			nodeMembership = api.NodeMembershipAccepted
 		}
 	}
-	s.mu.Unlock()
 
 	// Max number of collisions of ID or CN to tolerate before giving up
 	maxRetries := 3
-
 	// Generate a random ID for this new node
 	for i := 0; ; i++ {
 		nodeID = identity.NewNodeID()
@@ -193,7 +204,12 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 						State: api.IssuanceStatePending,
 					},
 				},
+				Spec: api.NodeSpec{
+					Role:       request.Role,
+					Membership: nodeMembership,
+				},
 			}
+
 			return store.CreateNode(tx, node)
 		})
 		if err == nil {
@@ -222,23 +238,44 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 	}, nil
 }
 
-func (s *Server) issueRenewCertificate(ctx context.Context, nodeID, role string, csr []byte) (*api.IssueNodeCertificateResponse, error) {
-	err := s.store.Update(func(tx store.Tx) error {
-		cert := api.Certificate{
-			CSR:  csr,
-			CN:   nodeID,
-			Role: role,
-			Status: api.IssuanceStatus{
-				State: api.IssuanceStateRenew,
-			},
+func (s *Server) getRolePolicy(role api.NodeRole) *api.AcceptancePolicy_RoleAdmissionPolicy {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if len(s.acceptancePolicy.Policies) > 0 {
+		// Let's go through all the configured policies and try to find one for this role
+		for _, p := range s.acceptancePolicy.Policies {
+			if role == p.Role {
+				return p
+			}
 		}
+	}
+
+	return nil
+}
+
+func (s *Server) issueRenewCertificate(ctx context.Context, nodeID string, csr []byte) (*api.IssueNodeCertificateResponse, error) {
+	var cert api.Certificate
+	err := s.store.Update(func(tx store.Tx) error {
 
 		node := store.GetNode(tx, nodeID)
 		if node == nil {
-			return store.CreateNode(tx, &api.Node{
-				ID:          nodeID,
-				Certificate: cert,
-			})
+			log.G(ctx).WithFields(logrus.Fields{
+				"node.id": nodeID,
+				"method":  "issueRenewCertificate",
+			}).Warnf("node does not exist")
+			// If this node doesn't exist, we shouldn't be renewing a certificate for it
+			return grpc.Errorf(codes.NotFound, "node %s not found when attempting to renew certificate", nodeID)
+		}
+
+		// Create a new Certificate entry for this node with the new CSR and a RENEW state
+		cert = api.Certificate{
+			CSR:  csr,
+			CN:   node.ID,
+			Role: node.Spec.Role,
+			Status: api.IssuanceStatus{
+				State: api.IssuanceStateRenew,
+			},
 		}
 
 		node.Certificate = cert
@@ -249,8 +286,8 @@ func (s *Server) issueRenewCertificate(ctx context.Context, nodeID, role string,
 	}
 
 	log.G(ctx).WithFields(logrus.Fields{
-		"node.id":   nodeID,
-		"node.role": role,
+		"cert.cn":   cert.CN,
+		"cert.role": cert.Role,
 		"method":    "issueRenewCertificate",
 	}).Debugf("node certificate updated")
 	return &api.IssueNodeCertificateResponse{
@@ -476,15 +513,6 @@ func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) {
 		return
 	}
 
-	// Check to see if our autoacceptance policy allows this node to be issued without manual intervention
-	s.mu.Lock()
-	if s.acceptancePolicy.Autoaccept != nil && s.acceptancePolicy.Autoaccept[node.Certificate.Role] {
-		s.mu.Unlock()
-		s.signNodeCert(ctx, node)
-		return
-	}
-	s.mu.Unlock()
-
 	// Only issue this node if the admin explicitly changed it to Accepted
 	if node.Spec.Membership == api.NodeMembershipAccepted {
 		// Cert was approved by admin
@@ -500,16 +528,27 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 
 	node = node.Copy()
 	nodeID := node.ID
+	// Convert the role from proto format
+	role, err := ParseRole(node.Certificate.Role)
+	if err != nil {
+		log.G(ctx).WithFields(logrus.Fields{
+			"node.id": node.ID,
+			"method":  "(*Server).signNodeCert",
+		}).WithError(err).Errorf("failed to parse role")
+		return
+	}
+	// Attempt to sign the CSR
+	cert, err := s.securityConfig.RootCA().ParseValidateAndSignCSR(node.Certificate.CSR, node.Certificate.CN, role, s.securityConfig.ClientTLSCreds.Organization())
+	if err != nil {
+		log.G(ctx).WithFields(logrus.Fields{
+			"node.id": node.ID,
+			"method":  "(*Server).signNodeCert",
+		}).WithError(err).Errorf("failed to parse CSR")
+		return
+	}
 
+	// We were able to successfully sign the new CSR. Let's try to update the nodeStore
 	for {
-		cert, err := s.securityConfig.RootCA().ParseValidateAndSignCSR(node.Certificate.CSR, node.Certificate.CN, node.Certificate.Role, s.securityConfig.ClientTLSCreds.Organization())
-		if err != nil {
-			log.G(ctx).WithFields(logrus.Fields{
-				"node.id": node.ID,
-				"method":  "(*Server).signNodeCert",
-			}).WithError(err).Errorf("failed to parse CSR")
-		}
-
 		err = s.store.Update(func(tx store.Tx) error {
 			// Remote nodes are expecting a full certificate chain, not just a signed certificate
 			node.Certificate.Certificate = append(cert, s.securityConfig.RootCA().Cert...)
@@ -539,7 +578,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 		}
 
 		log.G(ctx).WithFields(logrus.Fields{
-			"node.id": node.ID,
+			"node.id": nodeID,
 			"method":  "(*Server).signNodeCert",
 		}).WithError(err).Errorf("transaction failed")
 		return

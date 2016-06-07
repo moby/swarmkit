@@ -576,8 +576,14 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role, secret st
 	// Create a CAClient to retreive a new Certificate
 	caClient := api.NewNodeCAClient(conn)
 
+	// Convert our internal string roles into an API role
+	apiRole, err := FormatRole(role)
+	if err != nil {
+		return nil, err
+	}
+
 	// Send the Request and retrieve the request token
-	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Secret: secret}
+	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: apiRole, Secret: secret}
 	issueResponse, err := caClient.IssueNodeCertificate(ctx, issueRequest)
 	if err != nil {
 		return nil, err

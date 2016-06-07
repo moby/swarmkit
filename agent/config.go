@@ -25,7 +25,7 @@ type Config struct {
 	Conn *grpc.ClientConn
 
 	// NotifyRoleChange channel receives new roles from session messages.
-	NotifyRoleChange chan<- api.NodeSpec_Role
+	NotifyRoleChange chan<- api.NodeRole
 }
 
 func (c *Config) validate() error {

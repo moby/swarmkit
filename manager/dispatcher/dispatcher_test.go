@@ -63,7 +63,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 		return nil, err
 	}
 
-	tca := testutils.NewTestCA(nil, testutils.AutoAcceptPolicy())
+	tca := testutils.NewTestCA(nil, testutils.AcceptancePolicy(true, true, ""))
 	agentSecurityConfig1, err := tca.NewNodeConfig(ca.AgentRole)
 	if err != nil {
 		return nil, err

@@ -14,12 +14,14 @@ func validateClusterSpec(spec *api.ClusterSpec) error {
 	if spec == nil {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
-	expiry, err := ptypes.Duration(spec.CAConfig.NodeCertExpiry)
-	if err != nil {
-		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
-	}
-	if expiry < ca.MinNodeCertExpiration {
-		return grpc.Errorf(codes.InvalidArgument, "minimum certificate expiry time is: %s", ca.MinNodeCertExpiration)
+	if spec.CAConfig.NodeCertExpiry != nil {
+		expiry, err := ptypes.Duration(spec.CAConfig.NodeCertExpiry)
+		if err != nil {
+			return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		}
+		if expiry < ca.MinNodeCertExpiration {
+			return grpc.Errorf(codes.InvalidArgument, "minimum certificate expiry time is: %s", ca.MinNodeCertExpiration)
+		}
 	}
 
 	return nil
@@ -153,8 +155,12 @@ func redactCluster(clusters []*api.Cluster) {
 			cluster.RootCA.CAKey = nil
 		}
 		// Remove the acceptance policy secret from being returned
-		if cluster.Spec.AcceptancePolicy.Secret != "" {
-			cluster.Spec.AcceptancePolicy.Secret = "[REDACTED]"
+		if len(cluster.Spec.AcceptancePolicy.Policies) > 0 {
+			for _, policy := range cluster.Spec.AcceptancePolicy.Policies {
+				if policy.Secret != "" {
+					policy.Secret = "[REDACTED]"
+				}
+			}
 		}
 	}
 }
