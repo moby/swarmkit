@@ -34,7 +34,7 @@ type Server struct {
 // DefaultAcceptancePolicy returns the default acceptance policy.
 func DefaultAcceptancePolicy() api.AcceptancePolicy {
 	return api.AcceptancePolicy{
-		Policies: []*api.RoleAdmissionPolicy{
+		Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{
 			{
 				Role:       api.NodeRoleWorker,
 				Autoaccept: true,
@@ -171,29 +171,24 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 
 	// The remote node didn't successfully present a valid MTLS certificate, let's issue
 	// a pending certificate with a new ID
-
-	// If there is a secret configured for the role, the client has to have supplied it
-	// to be able to propose itself for the first certificate issuance
-	s.mu.Lock()
-	if len(s.acceptancePolicy.Policies) > 0 {
-		// Let's go through all the configured policies and try to find one for this role
-		for _, policy := range s.acceptancePolicy.Policies {
-			// If this policy doesn't affect this role, or has no secret configured, continue
-			if request.Role != policy.Role || policy.Secret == "" {
-				continue
-			}
-			// Policy matches the node, and we have a secret configured. Constant time compare!
-			if subtle.ConstantTimeCompare([]byte(request.Secret), []byte(policy.Secret)) != 1 {
-				s.mu.Unlock()
-				return nil, grpc.Errorf(codes.InvalidArgument, "A valid secret token is necessary to join this cluster")
-			}
+	// By default all nodes start out as PENDING
+	nodeMembership := api.NodeMembershipPending
+	// Attempt to retrieve a policy for the role
+	policy := s.getRolePolicy(request.Role)
+	if policy != nil {
+		// If we have a secret configured, constant time compare!
+		if policy.Secret != "" &&
+			subtle.ConstantTimeCompare([]byte(request.Secret), []byte(policy.Secret)) != 1 {
+			return nil, grpc.Errorf(codes.InvalidArgument, "A valid secret token is necessary to join this cluster")
+		}
+		// Check to see if our autoacceptance policy allows this node to be issued without manual intervention
+		if policy.Autoaccept {
+			nodeMembership = api.NodeMembershipAccepted
 		}
 	}
-	s.mu.Unlock()
 
 	// Max number of collisions of ID or CN to tolerate before giving up
 	maxRetries := 3
-
 	// Generate a random ID for this new node
 	for i := 0; ; i++ {
 		nodeID = identity.NewNodeID()
@@ -210,7 +205,8 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 					},
 				},
 				Spec: api.NodeSpec{
-					Role: request.Role,
+					Role:       request.Role,
+					Membership: nodeMembership,
 				},
 			}
 
@@ -240,6 +236,22 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 	return &api.IssueNodeCertificateResponse{
 		NodeID: nodeID,
 	}, nil
+}
+
+func (s *Server) getRolePolicy(role api.NodeRole) *api.AcceptancePolicy_RoleAdmissionPolicy {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if len(s.acceptancePolicy.Policies) > 0 {
+		// Let's go through all the configured policies and try to find one for this role
+		for _, p := range s.acceptancePolicy.Policies {
+			if role == p.Role {
+				return p
+			}
+		}
+	}
+
+	return nil
 }
 
 func (s *Server) issueRenewCertificate(ctx context.Context, nodeID string, csr []byte) (*api.IssueNodeCertificateResponse, error) {
@@ -500,24 +512,6 @@ func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) {
 	if node.Certificate.Status.State != api.IssuanceStatePending {
 		return
 	}
-
-	// Check to see if our autoacceptance policy allows this node to be issued without manual intervention
-	s.mu.Lock()
-	if len(s.acceptancePolicy.Policies) > 0 {
-		// Let's go through all the configured policies and try to find one for this role
-		for _, policy := range s.acceptancePolicy.Policies {
-			// If this policy doesn't affect this role, continue
-			if node.Certificate.Role != policy.Role {
-				continue
-			}
-			if policy.Autoaccept {
-				s.mu.Unlock()
-				s.signNodeCert(ctx, node)
-				return
-			}
-		}
-	}
-	s.mu.Unlock()
 
 	// Only issue this node if the admin explicitly changed it to Accepted
 	if node.Spec.Membership == api.NodeMembershipAccepted {

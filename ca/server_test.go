@@ -162,7 +162,7 @@ func TestNodeCertificateAccept(t *testing.T) {
 
 func TestNodeCertificateWithEmptyPolicies(t *testing.T) {
 	policy := api.AcceptancePolicy{
-		Policies: []*api.RoleAdmissionPolicy{},
+		Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{},
 	}
 	tc := testutils.NewTestCA(t, policy)
 	defer tc.Stop()
@@ -254,7 +254,7 @@ func TestNodeCertificateReject(t *testing.T) {
 
 func TestNodeCertificateRenewalsDoNotRequireSecret(t *testing.T) {
 	policy := api.AcceptancePolicy{
-		Policies: []*api.RoleAdmissionPolicy{
+		Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{
 			{
 				Role:       api.NodeRoleWorker,
 				Autoaccept: true,
@@ -299,7 +299,7 @@ func TestNodeCertificateRenewalsDoNotRequireSecret(t *testing.T) {
 
 func TestNewNodeCertificateRequiresSecret(t *testing.T) {
 	policy := api.AcceptancePolicy{
-		Policies: []*api.RoleAdmissionPolicy{
+		Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{
 			{
 				Role:       api.NodeRoleWorker,
 				Autoaccept: true,

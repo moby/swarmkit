@@ -74,7 +74,7 @@ var (
 						}
 						// We didn't find this policy, create it
 						if !found {
-							newPolicy := &api.RoleAdmissionPolicy{
+							newPolicy := &api.AcceptancePolicy_RoleAdmissionPolicy{
 								Role:       apiRole,
 								Autoaccept: true,
 							}

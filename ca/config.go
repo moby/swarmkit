@@ -481,25 +481,24 @@ func (rca *RootCA) NewServerTLSCredentials(cert *tls.Certificate) (*MutableTLSCr
 
 // ParseRole parses an apiRole into an internal role string
 func ParseRole(apiRole api.NodeRole) (string, error) {
-	if apiRole == api.NodeRoleManager {
+	switch apiRole {
+	case api.NodeRoleManager:
 		return ManagerRole, nil
-	}
-	if apiRole == api.NodeRoleWorker {
+	case api.NodeRoleWorker:
 		return AgentRole, nil
+	default:
+		return "", fmt.Errorf("failed to parse api role: %v", apiRole)
 	}
-
-	return "", fmt.Errorf("failed to parse api role: %v", apiRole)
 }
 
 // FormatRole parses an internal role string into an apiRole
 func FormatRole(role string) (api.NodeRole, error) {
-	if strings.ToLower(role) == strings.ToLower(ManagerRole) {
+	switch strings.ToLower(role) {
+	case strings.ToLower(ManagerRole):
 		return api.NodeRoleManager, nil
-	}
-
-	if strings.ToLower(role) == strings.ToLower(AgentRole) {
+	case strings.ToLower(AgentRole):
 		return api.NodeRoleWorker, nil
+	default:
+		return 0, fmt.Errorf("failed to parse role: %s", role)
 	}
-
-	return 0, fmt.Errorf("failed to parse role: %s", role)
 }
