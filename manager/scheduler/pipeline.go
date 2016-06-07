@@ -1,6 +1,6 @@
 package scheduler
 
-import "github.com/docker/libswarm/api"
+import "github.com/docker/swarmkit/api"
 
 var (
 	defaultFilters = []Filter{

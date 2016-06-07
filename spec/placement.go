@@ -1,6 +1,6 @@
 package spec
 
-import "github.com/docker/libswarm/api"
+import "github.com/docker/swarmkit/api"
 
 // PlacementConfig represents task placement configs
 type PlacementConfig struct {

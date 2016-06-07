@@ -3,8 +3,8 @@ package scheduler
 import (
 	"strings"
 
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/spec"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/spec"
 )
 
 // ConstraintFilter selects only nodes that match certain labels.

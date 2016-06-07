@@ -7,8 +7,8 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/spec"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/spec"
 	flag "github.com/spf13/pflag"
 )
 

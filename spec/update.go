@@ -3,8 +3,8 @@ package spec
 import (
 	"time"
 
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/protobuf/ptypes"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 )
 
 // UpdateConfiguration controls the rate and policy of updates.

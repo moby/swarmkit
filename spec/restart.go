@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/protobuf/ptypes"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 )
 
 // RestartConfiguration controls the rate and policy of restarts.

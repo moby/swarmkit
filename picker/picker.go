@@ -7,7 +7,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/docker/libswarm/api"
+	"github.com/docker/swarmkit/api"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/transport"

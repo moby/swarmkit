@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/log"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"

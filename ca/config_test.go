@@ -10,10 +10,10 @@ import (
 	"golang.org/x/net/context"
 
 	cfconfig "github.com/cloudflare/cfssl/config"
-	"github.com/docker/libswarm/ca"
-	"github.com/docker/libswarm/ca/testutils"
-	"github.com/docker/libswarm/ioutils"
-	"github.com/docker/libswarm/manager/state/store"
+	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/ioutils"
+	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
 

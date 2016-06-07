@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/docker/libswarm/api"
+	"github.com/docker/swarmkit/api"
 	"github.com/dustin/go-humanize"
 )
 

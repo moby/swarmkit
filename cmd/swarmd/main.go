@@ -12,10 +12,10 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	engineapi "github.com/docker/engine-api/client"
-	"github.com/docker/libswarm/agent"
-	"github.com/docker/libswarm/agent/exec/container"
-	"github.com/docker/libswarm/log"
-	"github.com/docker/libswarm/version"
+	"github.com/docker/swarmkit/agent"
+	"github.com/docker/swarmkit/agent/exec/container"
+	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/version"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )

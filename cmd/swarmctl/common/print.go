@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
-	tspb "github.com/docker/libswarm/api/timestamp"
-	"github.com/docker/libswarm/protobuf/ptypes"
+	tspb "github.com/docker/swarmkit/api/timestamp"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/dustin/go-humanize"
 )
 

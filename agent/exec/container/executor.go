@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	engineapi "github.com/docker/engine-api/client"
-	"github.com/docker/libswarm/agent/exec"
-	"github.com/docker/libswarm/api"
+	"github.com/docker/swarmkit/agent/exec"
+	"github.com/docker/swarmkit/api"
 	"golang.org/x/net/context"
 )
 

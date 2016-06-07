@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/log"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
 	"golang.org/x/net/context"
 )
 
