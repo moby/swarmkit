@@ -24,10 +24,8 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.StringSlice("ports", nil, "ports")
 	flags.String("network", "", "network name")
 
-	flags.String("memory-reservation", "", "amount of reserved memory (e.g. 512m)")
-	flags.String("memory-limit", "", "memory limit (e.g. 512m)")
-	flags.String("cpu-reservation", "", "number of CPU cores reserved (e.g. 0.5)")
-	flags.String("cpu-limit", "", "CPU cores limit (e.g. 0.5)")
+	flags.StringSlice("reservation", nil, "amount of reserved resources (key=value e.g. --reservation memory=512m --reservation cpu=0.5)")
+	flags.StringSlice("limit", nil, "resources limit (key=value e.g. --limit memory=512m --limit cpu=0.5)")
 
 	flags.Uint64("update-parallelism", 0, "task update parallelism (0 = all at once)")
 	flags.String("update-delay", "0s", "delay between task updates (0s = none)")

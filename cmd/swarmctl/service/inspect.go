@@ -44,11 +44,14 @@ func printServiceSummary(service *api.Service) {
 		res := task.Resources
 		fmt.Fprintln(w, "  Resources\t")
 		printResources := func(w io.Writer, r *api.Resources) {
-			if r.NanoCPUs != 0 {
-				fmt.Fprintf(w, "      CPU\t: %g\n", float64(r.NanoCPUs)/1e9)
-			}
-			if r.MemoryBytes != 0 {
-				fmt.Fprintf(w, "      Memory\t: %s\n", humanize.IBytes(uint64(r.MemoryBytes)))
+			for k, v := range r.ScalarResources {
+				if k == api.NanoCPUs.String() && v != 0 {
+					fmt.Fprintf(w, "      CPU\t: %g\n", v/1e9)
+				} else if k == api.MemoryBytes.String() && v != 0 {
+					fmt.Fprintf(w, "      Memory\t: %s\n", humanize.IBytes(uint64(v)))
+				} else {
+					fmt.Fprintf(w, "      %s\t: %g\n", k, v)
+				}
 			}
 		}
 		if res.Reservations != nil {

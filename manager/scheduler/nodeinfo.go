@@ -32,8 +32,9 @@ func (nodeInfo *NodeInfo) removeTask(t *api.Task) bool {
 
 	delete(nodeInfo.Tasks, t.ID)
 	reservations := taskReservations(t.Spec)
-	nodeInfo.AvailableResources.MemoryBytes += reservations.MemoryBytes
-	nodeInfo.AvailableResources.NanoCPUs += reservations.NanoCPUs
+	for k, v := range reservations.ScalarResources {
+		nodeInfo.AvailableResources.ScalarResources[k] += v
+	}
 
 	return true
 }
@@ -48,8 +49,9 @@ func (nodeInfo *NodeInfo) addTask(t *api.Task) bool {
 	if _, ok := nodeInfo.Tasks[t.ID]; !ok {
 		nodeInfo.Tasks[t.ID] = t
 		reservations := taskReservations(t.Spec)
-		nodeInfo.AvailableResources.MemoryBytes -= reservations.MemoryBytes
-		nodeInfo.AvailableResources.NanoCPUs -= reservations.NanoCPUs
+		for k, v := range reservations.ScalarResources {
+			nodeInfo.AvailableResources.ScalarResources[k] -= v
+		}
 		return true
 	}
 

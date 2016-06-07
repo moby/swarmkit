@@ -130,6 +130,20 @@ func (s *session) start(ctx context.Context) error {
 		description.Hostname = s.agent.config.Hostname
 	}
 
+	// apply resources
+	if s.agent.config.Resources != nil {
+		if description.Resources == nil {
+			description.Resources = &api.Resources{ScalarResources: map[string]float64{}}
+		}
+		for k, v := range s.agent.config.Resources.ScalarResources {
+			if _, ok := description.Resources.ScalarResources[k]; !ok {
+				// if user-defined resources conflict with auto-detected resources
+				// auto-detected are used
+				description.Resources.ScalarResources[k] = v
+			}
+		}
+	}
+
 	stream, err := client.Session(ctx, &api.SessionRequest{
 		Description: description,
 	})
