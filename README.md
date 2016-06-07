@@ -51,7 +51,13 @@ Some of *SwarmKit*'s main features are:
 - **Scheduling**
   - **Resource Awareness**: *SwarmKit* is aware of resources available on nodes and will place tasks accordingly.
   - **Constraints**: Operators can limit the set of nodes where a task can be scheduled by defining constraint expressions.
-    Constraints can match various node attributes such as IDs, names and labels (e.g. `node.labels.foo!=bar1`).
+    Multiple constraints find nodes that satisfy every expression. Constraint can match node attributes including:
+    - **node.id** matches node's ID, e.g. `node.id == 2ivku8v2gvtg4`.
+    - **node.hostname** matches node's hostname, e.g. `node.hostname != node-2`.
+    - **node.role** matches node's manager or worker role, e.g. `node.role == manager`.
+    - **node.labels** matches node's labels which are added by cluster admins to tag nodes, e.g. `node.labels.security == high`.
+    - **engine.labels** matches Docker Engine's labels, e.g. `node.labels.operatingsystem == ubuntu 14.04`.
+      `engine.labels` are collected from Docker Engine and there is no overlapping with `node.labels`.
   - **Strategies**: The project currently ships with a *spread strategy* which will attempt to schedule tasks on the least loaded
     nodes, provided they meet the constraints and resource requirements.
 - **Cluster Management**
