@@ -200,7 +200,7 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 // - Returns InvalidArgument if NodeID or NodeVersion is not valid.
 // - Returns an error if the delete fails.
 func (s *Server) RemoveNode(ctx context.Context, request *api.RemoveNodeRequest) (*api.RemoveNodeResponse, error) {
-	if request.NodeID == "" || request.NodeVersion == nil {
+	if request.NodeID == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 	if s.raft != nil {

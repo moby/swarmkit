@@ -28,8 +28,7 @@ var (
 			}
 
 			_, err = c.RemoveNode(common.Context(cmd), &api.RemoveNodeRequest{
-				NodeID:      node.ID,
-				NodeVersion: &node.Meta.Version,
+				NodeID: node.ID,
 			})
 
 			return err
