@@ -306,7 +306,7 @@ func genTask(t *testing.T) *api.Task {
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image:           reference,
-					StopGracePeriod: *ptypes.DurationProto(10 * time.Second),
+					StopGracePeriod: ptypes.DurationProto(10 * time.Second),
 				},
 			},
 		},
