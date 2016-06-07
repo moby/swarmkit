@@ -29,7 +29,7 @@ func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
 	logrus.SetOutput(ioutil.Discard)
 
-	tc = cautils.NewTestCA(nil, cautils.AutoAcceptPolicy())
+	tc = cautils.NewTestCA(nil, cautils.AcceptancePolicy(true, true, ""))
 }
 
 func TestRaftBootstrap(t *testing.T) {

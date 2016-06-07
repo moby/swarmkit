@@ -155,7 +155,7 @@ func newManager(t *testing.T, joinAddr string, securityConfig *ca.SecurityConfig
 }
 
 func createManagersCluster(t *testing.T, managersCount, agentsCount int) *managersCluster {
-	tc := catestutils.NewTestCA(t, catestutils.AutoAcceptPolicy())
+	tc := catestutils.NewTestCA(t, catestutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	mc := &managersCluster{tc: tc}

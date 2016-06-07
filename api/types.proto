@@ -418,21 +418,22 @@ message IssuanceStatus {
 }
 
 message AcceptancePolicy {
-	// FIXME(diogo): This is not what the actual acceptance policy
-	// will look like. This simplistic version is for getting things
-	// working before we add the actual acceptance policies later on.
-	// This will probably turn into a single bool once we have promotion
+	message RoleAdmissionPolicy {
+		NodeRole role = 1;
+		// Autoaccept controls which roles' certificates are automatically
+		// issued without administrator intervention.
+		bool autoaccept = 2;
+		// Secret represents a user-provided string that is necessary for new
+		// nodes to join the cluster
+		string secret = 3;
+	}
 
-	// Autoaccept controls which roles' certificates are automatically
-	// issued without administrator intervention.
-	map<string, bool> autoaccept = 1;
-	// Secret represents a user-provided string that is necessary for new
-	// nodes to join the cluster
-	string secret = 2;
+	repeated RoleAdmissionPolicy policies = 1;
 }
 
+
 message CAConfig {
-	// NodeCertExpiry is the number of hours node certificates should be issued for
+	// NodeCertExpiry is the duration certificates should be issued for
 	Duration node_cert_expiry = 1;
 }
 
@@ -494,8 +495,17 @@ message RootCA {
 	bytes ca_cert = 2 [(gogoproto.customname) = "CACert"];
 }
 
+
+enum NodeRole {
+	option (gogoproto.enum_customname) = "NodeRole";
+	option (gogoproto.goproto_enum_prefix) = false;
+
+	WORKER = 0 [(gogoproto.enumvalue_customname) = "NodeRoleWorker"];
+	MANAGER = 1 [(gogoproto.enumvalue_customname) = "NodeRoleManager"];
+}
+
 message Certificate {
-	string role = 1;
+	NodeRole role = 1;
 
 	bytes csr = 2 [(gogoproto.customname) = "CSR"];
 

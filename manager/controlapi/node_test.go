@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/grpclog"
 )
 
-func createNode(t *testing.T, ts *testServer, id string, role api.NodeSpec_Role, membership api.NodeSpec_Membership) *api.Node {
+func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, membership api.NodeSpec_Membership) *api.Node {
 	node := &api.Node{
 		ID: id,
 		Spec: api.NodeSpec{
@@ -71,7 +71,7 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Roles: []api.NodeSpec_Role{api.NodeRoleManager},
+				Roles: []api.NodeRole{api.NodeRoleManager},
 			},
 		},
 	)
@@ -80,7 +80,7 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Roles: []api.NodeSpec_Role{api.NodeRoleWorker},
+				Roles: []api.NodeRole{api.NodeRoleWorker},
 			},
 		},
 	)
@@ -89,7 +89,7 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Roles: []api.NodeSpec_Role{api.NodeRoleManager, api.NodeRoleWorker},
+				Roles: []api.NodeRole{api.NodeRoleManager, api.NodeRoleWorker},
 			},
 		},
 	)
@@ -127,7 +127,7 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Roles:       []api.NodeSpec_Role{api.NodeRoleWorker},
+				Roles:       []api.NodeRole{api.NodeRoleWorker},
 				Memberships: []api.NodeSpec_Membership{api.NodeMembershipRejected},
 			},
 		},
@@ -152,7 +152,7 @@ func getMap(t *testing.T, nodes []*api.Node) map[uint64]*api.Manager {
 }
 
 func TestListManagerNodes(t *testing.T) {
-	tc := cautils.NewTestCA(nil, cautils.AutoAcceptPolicy())
+	tc := cautils.NewTestCA(nil, cautils.AcceptancePolicy(true, true, ""))
 	ts := newTestServer(t)
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)

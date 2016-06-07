@@ -62,7 +62,7 @@ func TestManager(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(stateDir)
 
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	agentSecurityConfig, err := tc.NewNodeConfig(ca.AgentRole)

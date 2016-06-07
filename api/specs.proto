@@ -19,13 +19,6 @@ import "duration/duration.proto"; // TODO(stevvooe): use our own until we fix go
 message NodeSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
-	enum Role {
-		option (gogoproto.goproto_enum_prefix) = false;
-
-		WORKER = 0 [(gogoproto.enumvalue_customname) = "NodeRoleWorker"];
-		MANAGER = 1 [(gogoproto.enumvalue_customname) = "NodeRoleManager"];
-	}
-
 	enum Membership {
 		option (gogoproto.goproto_enum_prefix) = false;
 
@@ -50,7 +43,7 @@ message NodeSpec {
 	}
 
 	// Role defines the role the node should have.
-	Role role = 2;
+	NodeRole role = 2;
 
 	// Membership controls the admission of the node into the cluster.
 	Membership membership = 3;
