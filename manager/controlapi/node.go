@@ -207,7 +207,7 @@ func (s *Server) RemoveNode(ctx context.Context, request *api.RemoveNodeRequest)
 		memberlist := s.raft.GetMemberlist()
 		raftID, err := identity.ParseNodeID(request.NodeID)
 		if err == nil && memberlist[raftID] != nil {
-			return nil, grpc.Errorf(codes.FailedPrecondition, "node %s is a cluster manager, it should be demoted to worker before removal", request.NodeID)
+			return nil, grpc.Errorf(codes.FailedPrecondition, "node %s is a cluster manager and is part of the quorum. It must be demoted to worker before removal", request.NodeID)
 		}
 	}
 
@@ -217,10 +217,10 @@ func (s *Server) RemoveNode(ctx context.Context, request *api.RemoveNodeRequest)
 			return grpc.Errorf(codes.NotFound, "node %s not found", request.NodeID)
 		}
 		if node.Spec.Role == api.NodeRoleManager {
-			return grpc.Errorf(codes.FailedPrecondition, "node %s is a cluster manager, it should be demoted to worker before removal", request.NodeID)
+			return grpc.Errorf(codes.FailedPrecondition, "node %s role is set to manager. It should be demoted to worker for safe removal", request.NodeID)
 		}
-		if node.Status.State != api.NodeStatus_DOWN {
-			return grpc.Errorf(codes.FailedPrecondition, "node %s is not down and can't be removed")
+		if node.Status.State == api.NodeStatus_READY {
+			return grpc.Errorf(codes.FailedPrecondition, "node %s is not down and can't be removed", request.NodeID)
 		}
 		return store.DeleteNode(tx, request.NodeID)
 	})
