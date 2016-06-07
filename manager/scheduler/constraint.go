@@ -6,6 +6,11 @@ import (
 	"github.com/docker/swarmkit/api"
 )
 
+const (
+	nodeLabelPrefix   = "node.labels."
+	engineLabelPrefix = "engine.labels."
+)
+
 // ConstraintFilter selects only nodes that match certain labels.
 type ConstraintFilter struct {
 	constraints []Expr
@@ -31,7 +36,7 @@ func (f *ConstraintFilter) Check(n *NodeInfo) bool {
 			if !constraint.Match(n.ID) {
 				return false
 			}
-		case "node.name":
+		case "node.hostname":
 			// if this node doesn't have hostname
 			// it's equivalent to match an empty hostname
 			// where '==' would fail, '!=' matches
@@ -44,29 +49,45 @@ func (f *ConstraintFilter) Check(n *NodeInfo) bool {
 			if !constraint.Match(n.Description.Hostname) {
 				return false
 			}
-		default:
-			// default is node label in form like 'node.labels.key==value'
-			// if it is not well formed, always fails it
-			if !strings.HasPrefix(constraint.Key, "node.labels.") {
+		case "node.role":
+			if !constraint.Match(n.Spec.Role.String()) {
 				return false
 			}
-			// if the node doesn't have any label,
-			// it's equivalent to match an empty value.
-			// that is, 'node.labels.key!=value' should pass and
-			// 'node.labels.key==value' should fail
-			if n.Spec.Annotations.Labels == nil {
-				if !constraint.Match("") {
+		default:
+			// default is label constraint in form like 'node.labels.key==value'
+			// or 'engine.labels.key!=value'
+			if strings.HasPrefix(constraint.Key, nodeLabelPrefix) {
+				if n.Spec.Annotations.Labels == nil {
+					if !constraint.Match("") {
+						return false
+					}
+					continue
+				}
+				label := constraint.Key[len(nodeLabelPrefix):]
+				val := n.Spec.Annotations.Labels[label]
+				if !constraint.Match(val) {
 					return false
 				}
 				continue
 			}
-			label := constraint.Key[len("node.labels."):]
-			// if the node doesn't have this specific label,
-			// val is an empty string
-			val := n.Spec.Annotations.Labels[label]
-			if !constraint.Match(val) {
-				return false
+
+			if strings.HasPrefix(constraint.Key, engineLabelPrefix) {
+				if n.Description == nil || n.Description.Engine == nil || n.Description.Engine.Labels == nil {
+					if !constraint.Match("") {
+						return false
+					}
+					continue
+				}
+				label := constraint.Key[len(engineLabelPrefix):]
+				val := n.Description.Engine.Labels[label]
+				if !constraint.Match(val) {
+					return false
+				}
+				continue
 			}
+
+			// key doesn't match predefined syntax
+			return false
 		}
 	}
 
