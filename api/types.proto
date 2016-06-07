@@ -192,9 +192,9 @@ message RestartPolicy {
 	enum RestartCondition {
 		option (gogoproto.goproto_enum_prefix) = false;
 		option (gogoproto.enum_customname) = "RestartCondition";
-		RESTART_ON_NONE = 0 [(gogoproto.enumvalue_customname) = "RestartOnNone"];
-		RESTART_ON_FAILURE = 1 [(gogoproto.enumvalue_customname) = "RestartOnFailure"];
-		RESTART_ON_ANY = 2 [(gogoproto.enumvalue_customname) = "RestartOnAny"];
+		NONE = 0 [(gogoproto.enumvalue_customname) = "RestartOnNone"];
+		ON_FAILURE = 1 [(gogoproto.enumvalue_customname) = "RestartOnFailure"];
+		ANY = 2 [(gogoproto.enumvalue_customname) = "RestartOnAny"];
 	}
 
 	RestartCondition condition = 1;
