@@ -6,7 +6,6 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/picker"
 	"google.golang.org/grpc"
 )
@@ -20,27 +19,26 @@ type Config struct {
 	// updated with managers weights as observed by the agent.
 	Managers picker.Remotes
 
-	// Executor specifies the executor to use for the agent.
-	Executor exec.Executor
-
 	// Conn specifies the client connection Agent will use
 	Conn *grpc.ClientConn
 
+	// Executor specifies the executor to use for the agent.
+	Executor exec.Executor
+
+	// DB used for task storage. Must be open for the lifetime of the agent.
+	DB *bolt.DB
+
 	// NotifyRoleChange channel receives new roles from session messages.
 	NotifyRoleChange chan<- api.NodeSpec_Role
-	// SecurityConfig specifies the security configuration of the Agent
-	SecurityConfig *ca.SecurityConfig
-
-	DB *bolt.DB
 }
 
 func (c *Config) validate() error {
 	if c.Conn == nil {
-		return fmt.Errorf("config: Connection is required")
+		return fmt.Errorf("agent: Connection is required")
 	}
 
-	if c.SecurityConfig == nil {
-		return fmt.Errorf("agent: SecurityConfig required")
+	if c.Executor == nil {
+		return fmt.Errorf("agent: executor required")
 	}
 
 	if c.DB == nil {

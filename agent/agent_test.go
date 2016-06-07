@@ -77,11 +77,10 @@ func TestAgentStartStop(t *testing.T) {
 	defer cleanup()
 
 	agent, err := New(&Config{
-		Executor:       &NoopExecutor{},
-		Managers:       remotes,
-		Conn:           conn,
-		SecurityConfig: agentSecurityConfig,
-		DB:             db,
+		Executor: &NoopExecutor{},
+		Managers: remotes,
+		Conn:     conn,
+		DB:       db,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, agent)
