@@ -239,6 +239,16 @@
 			"Rev": "f9021838b61f17b2de6c42e459a732652ee2d207"
 		},
 		{
+			"ImportPath": "github.com/docker/docker/pkg/random",
+			"Comment": "v1.4.1-12594-gf902183",
+			"Rev": "f9021838b61f17b2de6c42e459a732652ee2d207"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/stringid",
+			"Comment": "v1.4.1-12594-gf902183",
+			"Rev": "f9021838b61f17b2de6c42e459a732652ee2d207"
+		},
+		{
 			"ImportPath": "github.com/docker/docker/pkg/tarsum",
 			"Comment": "v1.4.1-12594-gf902183",
 			"Rev": "f9021838b61f17b2de6c42e459a732652ee2d207"
