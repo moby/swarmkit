@@ -8,8 +8,8 @@ import (
 	"github.com/docker/libnetwork/drivers/overlay/ovmanager"
 	"github.com/docker/libnetwork/drvregistry"
 	"github.com/docker/libnetwork/ipamapi"
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/log"
+	"github.com/docker/libswarm/api"
+	"github.com/docker/libswarm/log"
 	"golang.org/x/net/context"
 )
 

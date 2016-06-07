@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/docker/swarm-v2/agent/exec"
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/log"
-	"github.com/docker/swarm-v2/protobuf/ptypes"
+	"github.com/docker/libswarm/agent/exec"
+	"github.com/docker/libswarm/api"
+	"github.com/docker/libswarm/log"
+	"github.com/docker/libswarm/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
 

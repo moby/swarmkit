@@ -39,7 +39,7 @@ import (
 	"fmt"
 	"time"
 
-	durpb "github.com/docker/swarm-v2/api/duration"
+	durpb "github.com/docker/libswarm/api/duration"
 )
 
 const (

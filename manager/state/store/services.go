@@ -1,8 +1,8 @@
 package store
 
 import (
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/libswarm/api"
+	"github.com/docker/libswarm/manager/state"
 	memdb "github.com/hashicorp/go-memdb"
 )
 

@@ -5,9 +5,9 @@ import (
 	"io"
 
 	yaml "github.com/cloudfoundry-incubator/candiedyaml"
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/ca"
-	"github.com/docker/swarm-v2/manager/state/raft"
+	"github.com/docker/libswarm/api"
+	"github.com/docker/libswarm/ca"
+	"github.com/docker/libswarm/manager/state/raft"
 	"github.com/pmezard/go-difflib/difflib"
 )
 

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/cmd/swarmctl/common"
-	"github.com/docker/swarm-v2/protobuf/ptypes"
+	"github.com/docker/libswarm/api"
+	"github.com/docker/libswarm/cmd/swarmctl/common"
+	"github.com/docker/libswarm/protobuf/ptypes"
 	"github.com/spf13/cobra"
 )
 

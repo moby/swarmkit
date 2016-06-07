@@ -3,7 +3,7 @@ package controlapi
 import (
 	"testing"
 
-	"github.com/docker/swarm-v2/api"
+	"github.com/docker/libswarm/api"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

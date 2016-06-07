@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/docker/swarm-v2/api"
+	"github.com/docker/libswarm/api"
 )
 
 var (
