@@ -183,8 +183,16 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 		nodeID = identity.NewNodeID()
 
 		err := s.store.Update(func(tx store.Tx) error {
+			membership := api.NodeMembershipPending
+			if s.acceptancePolicy.Autoaccept != nil && s.acceptancePolicy.Autoaccept[request.Role] {
+				membership = api.NodeMembershipAccepted
+			}
+
 			node := &api.Node{
 				ID: nodeID,
+				Spec: api.NodeSpec{
+					Membership: membership,
+				},
 				Certificate: api.Certificate{
 					CSR:  request.CSR,
 					CN:   nodeID,
@@ -475,15 +483,6 @@ func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) {
 	if node.Certificate.Status.State != api.IssuanceStatePending {
 		return
 	}
-
-	// Check to see if our autoacceptance policy allows this node to be issued without manual intervention
-	s.mu.Lock()
-	if s.acceptancePolicy.Autoaccept != nil && s.acceptancePolicy.Autoaccept[node.Certificate.Role] {
-		s.mu.Unlock()
-		s.signNodeCert(ctx, node)
-		return
-	}
-	s.mu.Unlock()
 
 	// Only issue this node if the admin explicitly changed it to Accepted
 	if node.Spec.Membership == api.NodeMembershipAccepted {
