@@ -244,7 +244,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 }
 
 func TestGetRemoteCA(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	shaHash := sha256.New()
@@ -258,7 +258,7 @@ func TestGetRemoteCA(t *testing.T) {
 }
 
 func TestCanSign(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	assert.True(t, tc.RootCA.CanSign())
@@ -267,7 +267,7 @@ func TestCanSign(t *testing.T) {
 }
 
 func TestGetRemoteCAInvalidHash(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	_, err := ca.GetRemoteCA(tc.Context, "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", tc.Picker)
@@ -275,7 +275,7 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 }
 
 func TestRequestAndSaveNewCertificates(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	info := make(chan string, 1)
@@ -292,7 +292,7 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 }
 
 func TestIssueAndSaveNewCertificates(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	// Copy the current RootCA without the signer
@@ -306,7 +306,7 @@ func TestIssueAndSaveNewCertificates(t *testing.T) {
 }
 
 func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	// Create a new CSR to be signed
@@ -339,7 +339,7 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 }
 
 func TestGetRemoteSignedCertificateNodeInfo(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	// Create a new CSR to be signed

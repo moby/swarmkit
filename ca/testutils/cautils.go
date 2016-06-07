@@ -29,10 +29,21 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// AutoAcceptPolicy is a policy that autoaccepts both Managers and Agents
-func AutoAcceptPolicy() api.AcceptancePolicy {
+// AcceptancePolicy is a policy that returns a valid Acceptance policy
+func AcceptancePolicy(worker, manager bool, secret string) api.AcceptancePolicy {
 	return api.AcceptancePolicy{
-		Autoaccept: map[string]bool{ca.AgentRole: true, ca.ManagerRole: true},
+		Policies: []*api.RoleAdmissionPolicy{
+			{
+				Role:       api.NodeRoleWorker,
+				Autoaccept: worker,
+				Secret:     secret,
+			},
+			{
+				Role:       api.NodeRoleManager,
+				Autoaccept: manager,
+				Secret:     secret,
+			},
+		},
 	}
 }
 
@@ -63,24 +74,24 @@ func (tc *TestCA) Stop() {
 
 // NewNodeConfig returns security config for a new node, given a role
 func (tc *TestCA) NewNodeConfig(role string) (*ca.SecurityConfig, error) {
-	return genSecurityConfig(tc.RootCA, role, tc.Organization, tc.TempDir)
+	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, tc.Organization, tc.TempDir)
 }
 
 // WriteNewNodeConfig returns security config for a new node, given a role
 // saving the generated key and certificates to disk
 func (tc *TestCA) WriteNewNodeConfig(role string) (*ca.SecurityConfig, error) {
-	return genSecurityConfig(tc.RootCA, role, tc.Organization, tc.TempDir)
+	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, tc.Organization, tc.TempDir)
 }
 
 // NewNodeConfigOrg returns security config for a new node, given a role and an org
 func (tc *TestCA) NewNodeConfigOrg(role, org string) (*ca.SecurityConfig, error) {
-	return genSecurityConfig(tc.RootCA, role, org, tc.TempDir)
+	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, org, tc.TempDir)
 }
 
 // WriteNewNodeConfigOrg returns security config for a new node, given a role and an org
 // saving the generated key and certificates to disk
 func (tc *TestCA) WriteNewNodeConfigOrg(role, org string) (*ca.SecurityConfig, error) {
-	return genSecurityConfig(tc.RootCA, role, org, tc.TempDir)
+	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, org, tc.TempDir)
 }
 
 // NewTestCA is a helper method that creates a TestCA and a bunch of default
@@ -89,19 +100,21 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 
+	s := store.NewMemoryStore(nil)
+
 	paths := ca.NewConfigPaths(tempBaseDir)
 	organization := identity.NewID()
 
 	rootCA, err := createAndWriteRootCA("swarm-test-CA", paths.RootCA, ca.DefaultNodeCertExpiration)
 	assert.NoError(t, err)
 
-	managerConfig, err := genSecurityConfig(rootCA, ca.ManagerRole, organization, "")
+	managerConfig, err := genSecurityConfig(s, rootCA, ca.ManagerRole, organization, "")
 	assert.NoError(t, err)
 
-	managerDiffOrgConfig, err := genSecurityConfig(rootCA, ca.ManagerRole, "swarm-test-org-2", "")
+	managerDiffOrgConfig, err := genSecurityConfig(s, rootCA, ca.ManagerRole, "swarm-test-org-2", "")
 	assert.NoError(t, err)
 
-	agentConfig, err := genSecurityConfig(rootCA, ca.AgentRole, organization, "")
+	agentConfig, err := genSecurityConfig(s, rootCA, ca.AgentRole, organization, "")
 	assert.NoError(t, err)
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -128,7 +141,6 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	serverOpts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(serverOpts...)
 
-	s := store.NewMemoryStore(nil)
 	createClusterObject(t, s, policy)
 	caServer := ca.NewServer(s, managerConfig)
 	api.RegisterCAServer(grpcServer, caServer)
@@ -165,7 +177,32 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	}
 }
 
-func genSecurityConfig(rootCA ca.RootCA, role, org, tmpDir string) (*ca.SecurityConfig, error) {
+func createNode(s *store.MemoryStore, nodeID, role string, csr []byte) error {
+	apiRole, _ := ca.FormatRole(role)
+
+	err := s.Update(func(tx store.Tx) error {
+		node := &api.Node{
+			ID: nodeID,
+			Certificate: api.Certificate{
+				CSR:  csr,
+				CN:   nodeID,
+				Role: apiRole,
+				Status: api.IssuanceStatus{
+					State: api.IssuanceStatePending,
+				},
+			},
+			Spec: api.NodeSpec{
+				Role: apiRole,
+			},
+		}
+
+		return store.CreateNode(tx, node)
+	})
+
+	return err
+}
+
+func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, role, org, tmpDir string) (*ca.SecurityConfig, error) {
 	req := &cfcsr.CertificateRequest{
 		KeyRequest: cfcsr.NewBasicKeyRequest(),
 	}
@@ -221,6 +258,11 @@ func genSecurityConfig(rootCA ca.RootCA, role, org, tmpDir string) (*ca.Security
 	}
 
 	nodeClientTLSCreds, err := rootCA.NewClientTLSCredentials(&nodeCert, ca.ManagerRole)
+	if err != nil {
+		return nil, err
+	}
+
+	err = createNode(s, nodeID, role, csr)
 	if err != nil {
 		return nil, err
 	}

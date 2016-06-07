@@ -59,7 +59,7 @@ func TestAgent(t *testing.T) {
 }
 
 func TestAgentStartStop(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	agentSecurityConfig, err := tc.NewNodeConfig(ca.AgentRole)
