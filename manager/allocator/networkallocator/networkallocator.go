@@ -145,19 +145,19 @@ func (na *NetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
 	}
 
 	// First allocate VIPs for all the pre-populated endpoint attachments
-	for _, eAttach := range s.Endpoint.Attachments {
+	for _, eAttach := range s.Endpoint.VirtualIPs {
 		if err = na.allocateVIP(eAttach); err != nil {
 			return
 		}
 	}
 
 	for _, nAttach := range s.Spec.Networks {
-		eAttach := &api.Endpoint_Attachment{NetworkID: nAttach.Target}
-		if err = na.allocateVIP(eAttach); err != nil {
+		vip := &api.Endpoint_VirtualIP{NetworkID: nAttach.Target}
+		if err = na.allocateVIP(vip); err != nil {
 			return
 		}
 
-		s.Endpoint.Attachments = append(s.Endpoint.Attachments, eAttach)
+		s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs, vip)
 	}
 
 	na.services[s.ID] = struct{}{}
@@ -171,8 +171,13 @@ func (na *NetworkAllocator) ServiceDeallocate(s *api.Service) error {
 		return nil
 	}
 
-	for _, eAttach := range s.Endpoint.Attachments {
-		na.deallocateVIP(eAttach)
+	for _, vip := range s.Endpoint.VirtualIPs {
+		if err := na.deallocateVIP(vip); err != nil {
+			// don't bail here, deallocate as many as possible.
+			log.L.WithError(err).
+				WithField("vip.network", vip.NetworkID).
+				WithField("vip.addr", vip.Addr).Error("error deallocating vip")
+		}
 	}
 
 	na.portAllocator.serviceDeallocatePorts(s)
@@ -331,8 +336,8 @@ func (na *NetworkAllocator) releaseEndpoints(networks []*api.NetworkAttachment) 
 }
 
 // allocate virtual IP for a single endpoint attachment of the service.
-func (na *NetworkAllocator) allocateVIP(eAttach *api.Endpoint_Attachment) error {
-	localNet := na.getNetwork(eAttach.NetworkID)
+func (na *NetworkAllocator) allocateVIP(vip *api.Endpoint_VirtualIP) error {
+	localNet := na.getNetwork(vip.NetworkID)
 	if localNet == nil {
 		return fmt.Errorf("networkallocator: could not find local network state")
 	}
@@ -352,7 +357,7 @@ func (na *NetworkAllocator) allocateVIP(eAttach *api.Endpoint_Attachment) error 
 		if err == nil {
 			ipStr := ip.String()
 			localNet.endpoints[ipStr] = poolID
-			eAttach.VirtualIP = []string{ipStr}
+			vip.Addr = ipStr
 			return nil
 		}
 	}
@@ -360,8 +365,8 @@ func (na *NetworkAllocator) allocateVIP(eAttach *api.Endpoint_Attachment) error 
 	return fmt.Errorf("could not find an available IP while allocating VIP")
 }
 
-func (na *NetworkAllocator) deallocateVIP(eAttach *api.Endpoint_Attachment) error {
-	localNet := na.getNetwork(eAttach.NetworkID)
+func (na *NetworkAllocator) deallocateVIP(vip *api.Endpoint_VirtualIP) error {
+	localNet := na.getNetwork(vip.NetworkID)
 	if localNet == nil {
 		return fmt.Errorf("networkallocator: could not find local network state")
 	}
@@ -371,30 +376,23 @@ func (na *NetworkAllocator) deallocateVIP(eAttach *api.Endpoint_Attachment) erro
 		return fmt.Errorf("failed to resolve IPAM while allocating : %v", err)
 	}
 
-	// Do not fail and bail out if we fail to release IP
-	// address here. Keep going and try releasing as many
-	// addresses as possible.
-	for _, addr := range eAttach.VirtualIP {
-		// Retrieve the poolID and immediately nuke
-		// out the mapping.
-		poolID := localNet.endpoints[addr]
-		delete(localNet.endpoints, addr)
+	// Retrieve the poolID and immediately nuke
+	// out the mapping.
+	poolID := localNet.endpoints[vip.Addr]
+	delete(localNet.endpoints, vip.Addr)
 
-		ip, _, err := net.ParseCIDR(addr)
-		if err != nil {
-			log.G(context.TODO()).Errorf("Could not parse VIP address %s while releasing", addr)
-			continue
-		}
+	ip, _, err := net.ParseCIDR(vip.Addr)
+	if err != nil {
+		log.G(context.TODO()).Errorf("Could not parse VIP address %s while releasing", vip.Addr)
+		return err
+	}
 
-		if err := ipam.ReleaseAddress(poolID, ip); err != nil {
-			log.G(context.TODO()).Errorf("IPAM failure while releasing VIP address %s: %v", addr, err)
-		}
-
-		eAttach.VirtualIP = nil
+	if err := ipam.ReleaseAddress(poolID, ip); err != nil {
+		log.G(context.TODO()).Errorf("IPAM failure while releasing VIP address %s: %v", vip.Addr, err)
+		return err
 	}
 
 	return nil
-
 }
 
 // allocate the IP addresses for a single network attachment of the task.

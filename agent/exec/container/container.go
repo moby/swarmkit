@@ -253,10 +253,10 @@ func (c *containerConfig) virtualIP(networkID string) string {
 		return ""
 	}
 
-	for _, eAttach := range c.task.Endpoint.Attachments {
+	for _, vip := range c.task.Endpoint.VirtualIPs {
 		// We only support IPv4 VIPs for now.
-		if eAttach.NetworkID == networkID && len(eAttach.VirtualIP) > 0 {
-			vip, _, err := net.ParseCIDR(eAttach.VirtualIP[0])
+		if vip.NetworkID == networkID {
+			vip, _, err := net.ParseCIDR(vip.Addr)
 			if err != nil {
 				return ""
 			}

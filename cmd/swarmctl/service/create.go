@@ -132,7 +132,7 @@ var (
 						return err
 					}
 
-					spec.Networks = []*api.ServiceSpec_NetworkAttachment{
+					spec.Networks = []*api.ServiceSpec_NetworkAttachmentConfig{
 						{
 							Target: n.ID,
 						},

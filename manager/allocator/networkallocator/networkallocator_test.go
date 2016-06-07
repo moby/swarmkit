@@ -520,7 +520,7 @@ func TestServiceAllocate(t *testing.T) {
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
-			Networks: []*api.ServiceSpec_NetworkAttachment{
+			Networks: []*api.ServiceSpec_NetworkAttachmentConfig{
 				{
 					Target: "testID",
 				},
@@ -561,10 +561,9 @@ func TestServiceAllocate(t *testing.T) {
 	assert.True(t, s.Endpoint.ExposedPorts[1].SwarmPort >= dynamicPortStart &&
 		s.Endpoint.ExposedPorts[1].SwarmPort <= dynamicPortEnd)
 
-	assert.Equal(t, 1, len(s.Endpoint.Attachments))
-	assert.Equal(t, 1, len(s.Endpoint.Attachments[0].VirtualIP))
+	assert.Equal(t, 1, len(s.Endpoint.VirtualIPs))
 
-	ip, _, err := net.ParseCIDR(s.Endpoint.Attachments[0].VirtualIP[0])
+	ip, _, err := net.ParseCIDR(s.Endpoint.VirtualIPs[0].Addr)
 	assert.NoError(t, err)
 
 	assert.Equal(t, true, subnet.Contains(ip))

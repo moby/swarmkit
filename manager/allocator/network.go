@@ -511,8 +511,8 @@ func (a *Allocator) allocateService(ctx context.Context, nc *networkContext, s *
 			s.Endpoint = &api.Endpoint{}
 		}
 
-		s.Endpoint.Attachments = append(s.Endpoint.Attachments,
-			&api.Endpoint_Attachment{NetworkID: ingressNetwork.ID})
+		s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs,
+			&api.Endpoint_VirtualIP{NetworkID: ingressNetwork.ID})
 	}
 
 	if err := nc.nwkAllocator.ServiceAllocate(s); err != nil {
