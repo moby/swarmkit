@@ -3,7 +3,7 @@ package scheduler
 import (
 	"container/heap"
 
-	"github.com/docker/swarm-v2/api"
+	"github.com/docker/libswarm/api"
 )
 
 // A nodeHeap implements heap.Interface for nodes. It also includes an index

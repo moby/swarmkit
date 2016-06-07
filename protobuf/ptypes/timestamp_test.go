@@ -36,7 +36,7 @@ import (
 	"testing"
 	"time"
 
-	tspb "github.com/docker/swarm-v2/api/timestamp"
+	tspb "github.com/docker/libswarm/api/timestamp"
 	"github.com/golang/protobuf/proto"
 )
 

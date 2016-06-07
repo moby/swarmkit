@@ -4,7 +4,7 @@
 package exec
 
 import (
-	api "github.com/docker/swarm-v2/api"
+	api "github.com/docker/libswarm/api"
 	gomock "github.com/golang/mock/gomock"
 	context "golang.org/x/net/context"
 )

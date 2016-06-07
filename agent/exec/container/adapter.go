@@ -10,8 +10,8 @@ import (
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/events"
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/log"
+	"github.com/docker/libswarm/api"
+	"github.com/docker/libswarm/log"
 	"golang.org/x/net/context"
 )
 

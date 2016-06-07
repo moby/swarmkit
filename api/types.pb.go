@@ -143,8 +143,8 @@ package api
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import docker_cluster_api "github.com/docker/swarm-v2/api/timestamp"
-import docker_cluster_api1 "github.com/docker/swarm-v2/api/duration"
+import docker_cluster_api "github.com/docker/libswarm/api/timestamp"
+import docker_cluster_api1 "github.com/docker/libswarm/api/duration"
 import _ "github.com/gogo/protobuf/gogoproto"
 
 import strings "strings"

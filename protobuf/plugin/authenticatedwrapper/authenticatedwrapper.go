@@ -3,7 +3,7 @@ package authenticatedwrapper
 import (
 	"strings"
 
-	"github.com/docker/swarm-v2/protobuf/plugin"
+	"github.com/docker/libswarm/protobuf/plugin"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"

@@ -10,7 +10,7 @@ import math "math"
 import raftpb "github.com/coreos/etcd/raft/raftpb"
 
 // skipping weak import gogoproto "github.com/gogo/protobuf/gogoproto"
-// skipping weak import docker_protobuf_plugin "github.com/docker/swarm-v2/protobuf/plugin"
+// skipping weak import docker_protobuf_plugin "github.com/docker/libswarm/protobuf/plugin"
 
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
@@ -23,7 +23,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-import raftpicker "github.com/docker/swarm-v2/manager/raftpicker"
+import raftpicker "github.com/docker/libswarm/manager/raftpicker"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"

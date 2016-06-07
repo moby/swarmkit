@@ -1,6 +1,6 @@
 package store
 
-import "github.com/docker/swarm-v2/api"
+import "github.com/docker/libswarm/api"
 
 // By is an interface type passed to Find methods. Implementations must be
 // defined in this package.

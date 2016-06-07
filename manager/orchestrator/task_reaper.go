@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/libswarm/api"
+	"github.com/docker/libswarm/manager/state"
+	"github.com/docker/libswarm/manager/state/store"
 )
 
 const (

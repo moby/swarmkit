@@ -1,6 +1,6 @@
 package scheduler
 
-import "github.com/docker/swarm-v2/api"
+import "github.com/docker/libswarm/api"
 
 // NodeInfo contains a node and some additional metadata.
 type NodeInfo struct {

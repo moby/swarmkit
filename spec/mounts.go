@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/docker/swarm-v2/api"
+	"github.com/docker/libswarm/api"
 )
 
 // Driver defines the structure of a driver definitions, used with volume
