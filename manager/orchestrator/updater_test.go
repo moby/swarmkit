@@ -75,7 +75,7 @@ func TestUpdater(t *testing.T) {
 					Container: &api.ContainerSpec{
 						Image: "v:1",
 						// This won't apply in this test because we set the old tasks to DEAD.
-						StopGracePeriod: *ptypes.DurationProto(time.Hour),
+						StopGracePeriod: ptypes.DurationProto(time.Hour),
 					},
 				},
 			},
