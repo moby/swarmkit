@@ -92,13 +92,13 @@ func ByDesiredState(state api.TaskState) By {
 	return byDesiredState(state)
 }
 
-type byRole api.NodeSpec_Role
+type byRole api.NodeRole
 
 func (b byRole) isBy() {
 }
 
 // ByRole creates an object to pass to Find to select by role.
-func ByRole(role api.NodeSpec_Role) By {
+func ByRole(role api.NodeRole) By {
 	return byRole(role)
 }
 

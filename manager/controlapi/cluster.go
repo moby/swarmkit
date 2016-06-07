@@ -153,8 +153,12 @@ func redactCluster(clusters []*api.Cluster) {
 			cluster.RootCA.CAKey = nil
 		}
 		// Remove the acceptance policy secret from being returned
-		if cluster.Spec.AcceptancePolicy.Secret != "" {
-			cluster.Spec.AcceptancePolicy.Secret = "[REDACTED]"
+		if len(cluster.Spec.AcceptancePolicy.Policies) > 0 {
+			for _, policy := range cluster.Spec.AcceptancePolicy.Policies {
+				if policy.Secret != "" {
+					policy.Secret = "[REDACTED]"
+				}
+			}
 		}
 	}
 }

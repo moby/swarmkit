@@ -8,11 +8,13 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	cfconfig "github.com/cloudflare/cfssl/config"
+	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/identity"
 	"github.com/docker/swarm-v2/picker"
 
@@ -475,4 +477,29 @@ func (rca *RootCA) NewServerTLSCredentials(cert *tls.Certificate) (*MutableTLSCr
 	mtls, err := NewMutableTLS(tlsConfig)
 
 	return mtls, err
+}
+
+// ParseRole parses an apiRole into an internal role string
+func ParseRole(apiRole api.NodeRole) (string, error) {
+	if apiRole == api.NodeRoleManager {
+		return ManagerRole, nil
+	}
+	if apiRole == api.NodeRoleWorker {
+		return AgentRole, nil
+	}
+
+	return "", fmt.Errorf("failed to parse api role: %v", apiRole)
+}
+
+// FormatRole parses an internal role string into an apiRole
+func FormatRole(role string) (api.NodeRole, error) {
+	if strings.ToLower(role) == strings.ToLower(ManagerRole) {
+		return api.NodeRoleManager, nil
+	}
+
+	if strings.ToLower(role) == strings.ToLower(AgentRole) {
+		return api.NodeRoleWorker, nil
+	}
+
+	return 0, fmt.Errorf("failed to parse role: %s", role)
 }

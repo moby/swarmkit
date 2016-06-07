@@ -958,7 +958,7 @@ func (*RoleAdmissionPolicy) ProtoMessage()               {}
 func (*RoleAdmissionPolicy) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []int{25} }
 
 type CAConfig struct {
-	// NodeCertExpiry is the number of hours node certificates should be issued for
+	// NodeCertExpiry is the duration certificates should be issued for
 	NodeCertExpiry *docker_cluster_api1.Duration `protobuf:"bytes,1,opt,name=node_cert_expiry,json=nodeCertExpiry" json:"node_cert_expiry,omitempty"`
 }
 

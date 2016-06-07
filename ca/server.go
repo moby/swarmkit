@@ -34,7 +34,16 @@ type Server struct {
 // DefaultAcceptancePolicy returns the default acceptance policy.
 func DefaultAcceptancePolicy() api.AcceptancePolicy {
 	return api.AcceptancePolicy{
-		Autoaccept: map[string]bool{AgentRole: true},
+		Policies: []*api.RoleAdmissionPolicy{
+			{
+				Role:       api.NodeRoleWorker,
+				Autoaccept: true,
+			},
+			{
+				Role:       api.NodeRoleManager,
+				Autoaccept: false,
+			},
+		},
 	}
 }
 
@@ -137,7 +146,8 @@ func (s *Server) NodeCertificateStatus(ctx context.Context, request *api.NodeCer
 // IssueNodeCertificate receives requests from a remote client indicating a node type and a CSR,
 // returning a certificate chain signed by the local CA, if available.
 func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNodeCertificateRequest) (*api.IssueNodeCertificateResponse, error) {
-	if request.CSR == nil || request.Role == "" {
+	// First, let's see if the remote node is proposing to be added as a valid node, and with a valid CSR
+	if len(request.CSR) == 0 || (request.Role != api.NodeRoleWorker && request.Role != api.NodeRoleManager) {
 		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
@@ -162,15 +172,21 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 	// The remote node didn't successfully present a valid MTLS certificate, let's issue
 	// a pending certificate with a new ID
 
-	// If there is a secret configured, the client has to have supplied it to be able to propose itself
-	// for the first certificate issuance
-
+	// If there is a secret configured for the role, the client has to have supplied it
+	// to be able to propose itself for the first certificate issuance
 	s.mu.Lock()
-	if s.acceptancePolicy.Secret != "" {
-		if request.Secret == "" ||
-			subtle.ConstantTimeCompare([]byte(request.Secret), []byte(s.acceptancePolicy.Secret)) != 1 {
-			s.mu.Unlock()
-			return nil, fmt.Errorf("A valid secret token is necessary to join this cluster")
+	if len(s.acceptancePolicy.Policies) > 0 {
+		// Let's go through all the configured policies and try to find one for this role
+		for _, policy := range s.acceptancePolicy.Policies {
+			// If this policy doesn't affect this role, or has no secret configured, continue
+			if request.Role != policy.Role || policy.Secret == "" {
+				continue
+			}
+			// Policy matches the node, and we have a secret configured. Constant time compare!
+			if subtle.ConstantTimeCompare([]byte(request.Secret), []byte(policy.Secret)) != 1 {
+				s.mu.Unlock()
+				return nil, grpc.Errorf(codes.InvalidArgument, "A valid secret token is necessary to join this cluster")
+			}
 		}
 	}
 	s.mu.Unlock()
@@ -193,7 +209,11 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 						State: api.IssuanceStatePending,
 					},
 				},
+				Spec: api.NodeSpec{
+					Role: request.Role,
+				},
 			}
+
 			return store.CreateNode(tx, node)
 		})
 		if err == nil {
@@ -235,11 +255,12 @@ func (s *Server) issueRenewCertificate(ctx context.Context, nodeID string, csr [
 			// If this node doesn't exist, we shouldn't be renewing a certificate for it
 			return grpc.Errorf(codes.NotFound, "node %s not found when attempting to renew certificate", nodeID)
 		}
+
 		// Create a new Certificate entry for this node with the new CSR and a RENEW state
 		cert = api.Certificate{
 			CSR:  csr,
 			CN:   node.ID,
-			Role: node.Spec.Role.String(),
+			Role: node.Spec.Role,
 			Status: api.IssuanceStatus{
 				State: api.IssuanceStateRenew,
 			},
@@ -482,10 +503,19 @@ func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) {
 
 	// Check to see if our autoacceptance policy allows this node to be issued without manual intervention
 	s.mu.Lock()
-	if s.acceptancePolicy.Autoaccept != nil && s.acceptancePolicy.Autoaccept[node.Certificate.Role] {
-		s.mu.Unlock()
-		s.signNodeCert(ctx, node)
-		return
+	if len(s.acceptancePolicy.Policies) > 0 {
+		// Let's go through all the configured policies and try to find one for this role
+		for _, policy := range s.acceptancePolicy.Policies {
+			// If this policy doesn't affect this role, continue
+			if node.Certificate.Role != policy.Role {
+				continue
+			}
+			if policy.Autoaccept {
+				s.mu.Unlock()
+				s.signNodeCert(ctx, node)
+				return
+			}
+		}
 	}
 	s.mu.Unlock()
 
@@ -504,16 +534,27 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 
 	node = node.Copy()
 	nodeID := node.ID
+	// Convert the role from proto format
+	role, err := ParseRole(node.Certificate.Role)
+	if err != nil {
+		log.G(ctx).WithFields(logrus.Fields{
+			"node.id": node.ID,
+			"method":  "(*Server).signNodeCert",
+		}).WithError(err).Errorf("failed to parse role")
+		return
+	}
+	// Attempt to sign the CSR
+	cert, err := s.securityConfig.RootCA().ParseValidateAndSignCSR(node.Certificate.CSR, node.Certificate.CN, role, s.securityConfig.ClientTLSCreds.Organization())
+	if err != nil {
+		log.G(ctx).WithFields(logrus.Fields{
+			"node.id": node.ID,
+			"method":  "(*Server).signNodeCert",
+		}).WithError(err).Errorf("failed to parse CSR")
+		return
+	}
 
+	// We were able to successfully sign the new CSR. Let's try to update the nodeStore
 	for {
-		cert, err := s.securityConfig.RootCA().ParseValidateAndSignCSR(node.Certificate.CSR, node.Certificate.CN, node.Certificate.Role, s.securityConfig.ClientTLSCreds.Organization())
-		if err != nil {
-			log.G(ctx).WithFields(logrus.Fields{
-				"node.id": node.ID,
-				"method":  "(*Server).signNodeCert",
-			}).WithError(err).Errorf("failed to parse CSR")
-		}
-
 		err = s.store.Update(func(tx store.Tx) error {
 			// Remote nodes are expecting a full certificate chain, not just a signed certificate
 			node.Certificate.Certificate = append(cert, s.securityConfig.RootCA().Cert...)
@@ -543,7 +584,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 		}
 
 		log.G(ctx).WithFields(logrus.Fields{
-			"node.id": node.ID,
+			"node.id": nodeID,
 			"method":  "(*Server).signNodeCert",
 		}).WithError(err).Errorf("transaction failed")
 		return

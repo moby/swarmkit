@@ -103,7 +103,7 @@ func TestIssueNodeCertificateAgentFromDifferentOrgRenewal(t *testing.T) {
 		for _, node := range storeNodes {
 			if node.ID == issueResponse.NodeID {
 				found = true
-				assert.Equal(t, api.IssuanceStatePending, storeNodes[0].Certificate.Status.State)
+				assert.Equal(t, api.IssuanceStatePending, node.Certificate.Status.State)
 			}
 		}
 		assert.True(t, found)
@@ -303,12 +303,12 @@ func TestNewNodeCertificateRequiresSecret(t *testing.T) {
 			{
 				Role:       api.NodeRoleWorker,
 				Autoaccept: true,
-				Secret:     "secret-data",
+				Secret:     "secret-data-worker",
 			},
 			{
 				Role:       api.NodeRoleManager,
 				Autoaccept: true,
-				Secret:     "secret-data",
+				Secret:     "secret-data-manager",
 			},
 		},
 	}
@@ -323,32 +323,42 @@ func TestNewNodeCertificateRequiresSecret(t *testing.T) {
 	role := api.NodeRoleManager
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
-	assert.EqualError(t, err, "rpc error: code = 2 desc = A valid secret token is necessary to join this cluster")
+	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid secret token is necessary to join this cluster")
 
 	role = api.NodeRoleWorker
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
-	assert.EqualError(t, err, "rpc error: code = 2 desc = A valid secret token is necessary to join this cluster")
+	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid secret token is necessary to join this cluster")
 
 	// Issuance fails if wrong secret is provided
 	role = api.NodeRoleManager
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Secret: "data-secret"}
+	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Secret: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
-	assert.EqualError(t, err, "rpc error: code = 2 desc = A valid secret token is necessary to join this cluster")
+	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid secret token is necessary to join this cluster")
 
 	role = api.NodeRoleWorker
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Secret: "data-secret"}
+	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Secret: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
-	assert.EqualError(t, err, "rpc error: code = 2 desc = A valid secret token is necessary to join this cluster")
+	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid secret token is necessary to join this cluster")
 
+	// Issuance fails if secret for the other role is provided
+	role = api.NodeRoleManager
+	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Secret: "secret-data-worker"}
+	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
+	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid secret token is necessary to join this cluster")
+
+	role = api.NodeRoleWorker
+	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Secret: "secret-data-manager"}
+	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
+	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid secret token is necessary to join this cluster")
 	// Issuance succeeds if correct secret is provided
 	role = api.NodeRoleManager
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Secret: "secret-data"}
+	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Secret: "secret-data-manager"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
 	assert.NoError(t, err)
 
 	role = api.NodeRoleWorker
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Secret: "secret-data"}
+	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Secret: "secret-data-worker"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
 	assert.NoError(t, err)
 }

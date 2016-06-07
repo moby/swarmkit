@@ -48,18 +48,40 @@ var (
 					if err != nil {
 						return err
 					}
-					spec.AcceptancePolicy.Autoaccept = make(map[string]bool)
 
+					// We are getting a whitelist, so make all of the autoaccepts false
+					for _, policy := range spec.AcceptancePolicy.Policies {
+						policy.Autoaccept = false
+
+					}
+
+					// For each of the roles handed to us by the client, make them true
 					for _, role := range autoaccept {
-						switch role {
-						case "agent":
-							spec.AcceptancePolicy.Autoaccept[ca.AgentRole] = true
-						case "manager":
-							spec.AcceptancePolicy.Autoaccept[ca.ManagerRole] = true
-						default:
+						// Convert the role into a proto role
+						apiRole, err := ca.FormatRole("swarm-" + role)
+						if err != nil {
 							return fmt.Errorf("unrecognized role %s", role)
 						}
+						// Attempt to find this role inside of the current policies
+						found := false
+						for _, policy := range spec.AcceptancePolicy.Policies {
+							if policy.Role == apiRole {
+								// We found a matching policy, let's update it
+								policy.Autoaccept = true
+								found = true
+							}
+
+						}
+						// We didn't find this policy, create it
+						if !found {
+							newPolicy := &api.RoleAdmissionPolicy{
+								Role:       apiRole,
+								Autoaccept: true,
+							}
+							spec.AcceptancePolicy.Policies = append(spec.AcceptancePolicy.Policies, newPolicy)
+						}
 					}
+
 				}
 
 				if flags.Changed("secret") {
@@ -67,7 +89,9 @@ var (
 					if err != nil || secret == nil || len(secret) < 1 {
 						return err
 					}
-					spec.AcceptancePolicy.Secret = secret[0]
+					for _, policy := range spec.AcceptancePolicy.Policies {
+						policy.Secret = secret[0]
+					}
 				}
 				if flags.Changed("certexpiry") {
 					cePeriod, err := flags.GetDuration("certexpiry")

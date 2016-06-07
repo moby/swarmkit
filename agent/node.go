@@ -89,7 +89,7 @@ type Node struct {
 	err           error
 	agent         *Agent
 	manager       *manager.Manager
-	roleChangeReq chan api.NodeSpec_Role
+	roleChangeReq chan api.NodeRole
 }
 
 // NewNode returns new Node instance.
@@ -117,7 +117,7 @@ func NewNode(c *NodeConfig) (*Node, error) {
 		stopped:       make(chan struct{}),
 		closed:        make(chan struct{}),
 		ready:         make(chan struct{}),
-		roleChangeReq: make(chan api.NodeSpec_Role, 1),
+		roleChangeReq: make(chan api.NodeRole, 1),
 	}
 	n.roleCond = sync.NewCond(n.RLocker())
 	n.connCond = sync.NewCond(n.RLocker())
