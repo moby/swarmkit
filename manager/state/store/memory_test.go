@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/identity"
-	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/libswarm/api"
+	"github.com/docker/libswarm/identity"
+	"github.com/docker/libswarm/manager/state"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )

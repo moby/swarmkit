@@ -1,6 +1,6 @@
 package scheduler
 
-import "github.com/docker/swarm-v2/api"
+import "github.com/docker/libswarm/api"
 
 // Filter checks whether the given task can run on the given node.
 // A filter may only operate

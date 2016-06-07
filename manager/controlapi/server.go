@@ -3,8 +3,8 @@ package controlapi
 import (
 	"errors"
 
-	"github.com/docker/swarm-v2/manager/state/raft"
-	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/libswarm/manager/state/raft"
+	"github.com/docker/libswarm/manager/state/store"
 )
 
 var (

@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/docker/swarm-v2",
+	"ImportPath": "github.com/docker/libswarm",
 	"GoVersion": "go1.6",
 	"Packages": [
 		"./..."

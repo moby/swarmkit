@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/cmd/swarmctl/common"
-	"github.com/docker/swarm-v2/cmd/swarmctl/network"
+	"github.com/docker/libswarm/api"
+	"github.com/docker/libswarm/cmd/swarmctl/common"
+	"github.com/docker/libswarm/cmd/swarmctl/network"
 	"github.com/spf13/cobra"
 )
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/docker/go-events"
-	"github.com/docker/swarm-v2/manager/state"
+	"github.com/docker/libswarm/manager/state"
 )
 
 // Apply takes an item from the event stream of one Store and applies it to

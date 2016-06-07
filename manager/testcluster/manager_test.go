@@ -13,13 +13,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/docker/swarm-v2/agent/exec"
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/ca"
-	"github.com/docker/swarm-v2/ca/testutils"
-	"github.com/docker/swarm-v2/manager"
-	"github.com/docker/swarm-v2/manager/dispatcher"
-	"github.com/docker/swarm-v2/manager/state/store"
+	"github.com/docker/libswarm/agent/exec"
+	"github.com/docker/libswarm/api"
+	"github.com/docker/libswarm/ca"
+	"github.com/docker/libswarm/ca/testutils"
+	"github.com/docker/libswarm/manager"
+	"github.com/docker/libswarm/manager/dispatcher"
+	"github.com/docker/libswarm/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
 

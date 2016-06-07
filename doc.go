@@ -1,2 +1,2 @@
-// Package swarm is the root package for the new version of swarm.
-package swarm
+// Package libswarm implements a framework for task orchestration.
+package libswarm

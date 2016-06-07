@@ -274,7 +274,7 @@ func (g *raftProxyGen) GenerateImports(file *generator.FileDescriptor) {
 	if len(file.Service) == 0 {
 		return
 	}
-	g.gen.P("import raftpicker \"github.com/docker/swarm-v2/manager/raftpicker\"")
+	g.gen.P("import raftpicker \"github.com/docker/libswarm/manager/raftpicker\"")
 	g.gen.P("import codes \"google.golang.org/grpc/codes\"")
 	g.gen.P("import metadata \"google.golang.org/grpc/metadata\"")
 	g.gen.P("import transport \"google.golang.org/grpc/transport\"")

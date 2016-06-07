@@ -32,7 +32,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-import raftpicker "github.com/docker/swarm-v2/manager/raftpicker"
+import raftpicker "github.com/docker/libswarm/manager/raftpicker"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"

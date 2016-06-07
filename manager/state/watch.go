@@ -2,8 +2,8 @@ package state
 
 import (
 	"github.com/docker/go-events"
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/manager/state/watch"
+	"github.com/docker/libswarm/api"
+	"github.com/docker/libswarm/manager/state/watch"
 )
 
 // Event is the type used for events passed over watcher channels, and also
