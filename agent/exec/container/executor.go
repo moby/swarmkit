@@ -66,8 +66,10 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 			Plugins:       plugins,
 		},
 		Resources: &api.Resources{
-			NanoCPUs:    int64(info.NCPU) * 1e9,
-			MemoryBytes: info.MemTotal,
+			ScalarResources: map[string]float64{
+				api.NanoCPUs.String():    float64(info.NCPU) * 1e9,
+				api.MemoryBytes.String(): float64(info.MemTotal),
+			},
 		},
 	}
 

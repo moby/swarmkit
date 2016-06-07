@@ -235,14 +235,13 @@ func (c *containerConfig) resources() enginecontainer.Resources {
 		return resources
 	}
 
-	if r.Limits.MemoryBytes > 0 {
-		resources.Memory = r.Limits.MemoryBytes
+	if v, ok := r.Limits.ScalarResources[api.MemoryBytes.String()]; ok {
+		resources.Memory = int64(v)
 	}
 
-	if r.Limits.NanoCPUs > 0 {
-		// CPU Period must be set in microseconds.
+	if v, ok := r.Limits.ScalarResources[api.NanoCPUs.String()]; ok {
 		resources.CPUPeriod = int64(cpuQuotaPeriod / time.Microsecond)
-		resources.CPUQuota = r.Limits.NanoCPUs * resources.CPUPeriod / 1e9
+		resources.CPUQuota = int64(v) * resources.CPUPeriod / 1e9
 	}
 
 	return resources

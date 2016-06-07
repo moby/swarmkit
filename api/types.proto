@@ -21,12 +21,22 @@ message Annotations {
 	map<string, string> labels = 2;
 }
 
-message Resources {
-	// Amount of CPUs (e.g. 2000000000 = 2 CPU cores)
-	int64 nano_cpus = 1 [(gogoproto.customname) = "NanoCPUs"];
+enum PredefinedResources {
+	option (gogoproto.goproto_enum_prefix) = false;
+	option (gogoproto.enum_customname) = "PredefinedResources";
 
-	// Amount of memory in bytes.
-	int64 memory_bytes = 2;
+	// Amount of CPU cores
+	cpu = 0 [(gogoproto.enumvalue_customname) = "CPUs"];
+	// Amount of NanoCPUs (e.g. 2000000000 = 2 CPU cores)
+	nanocpu = 1 [(gogoproto.enumvalue_customname) = "NanoCPUs"];
+	// Memory in mb
+	memory = 2 [(gogoproto.enumvalue_customname) = "Memory"];
+	// Memory in bytes
+	memorybytes = 3 [(gogoproto.enumvalue_customname) = "MemoryBytes"];
+}
+
+message Resources {
+	map<string, double> ScalarResources = 1 [(gogoproto.customname) = "ScalarResources"];
 }
 
 message ResourceRequirements {

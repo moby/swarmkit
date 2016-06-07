@@ -14,6 +14,8 @@ import (
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/swarmkit/agent"
 	"github.com/docker/swarmkit/agent/exec/container"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/cmd/swarmctl/service/flagparser"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/version"
 	"github.com/spf13/cobra"
@@ -126,6 +128,12 @@ var (
 				return err
 			}
 
+			resources := &api.Resources{ScalarResources: map[string]float64{}}
+			err = flagparser.ParseUserDefinedResources(cmd.Flags(), resources, "resources", false)
+			if err != nil {
+				return err
+			}
+
 			// Create a context for our GRPC call
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -159,6 +167,7 @@ var (
 				HeartbeatTick:    hb,
 				ElectionTick:     election,
 				IsManager:        ismanager,
+				Resources:        resources,
 			})
 			if err != nil {
 				return err
@@ -203,4 +212,5 @@ func init() {
 	mainCmd.Flags().Uint32("heartbeat-tick", 1, "Defines the heartbeat interval (in seconds) for raft member health-check")
 	mainCmd.Flags().Uint32("election-tick", 3, "Defines the amount of ticks (in seconds) needed without a Leader to trigger a new election")
 	mainCmd.Flags().Bool("manager", false, "Request initial CSR in a manager role")
+	mainCmd.Flags().StringSlice("resources", nil, "Specify resources node will offer, (key=value e.g. disk=512)")
 }

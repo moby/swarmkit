@@ -70,6 +70,9 @@ type NodeConfig struct {
 
 	// todo: temporary to bypass promotion not working yet
 	IsManager bool
+
+	// Resources this node offered
+	Resources *api.Resources
 }
 
 // Node implements the primary node functionality for a member of a swarm
@@ -358,6 +361,7 @@ func (n *Node) runAgent(ctx context.Context, creds credentials.TransportAuthenti
 		Executor:         n.config.Executor,
 		Conn:             conn,
 		NotifyRoleChange: n.roleChangeReq,
+		Resources:        n.config.Resources,
 	})
 	if err != nil {
 		return err

@@ -130,6 +130,23 @@ func (s *session) start(ctx context.Context) error {
 		description.Hostname = s.agent.config.Hostname
 	}
 
+	// apply resources
+	if s.agent.config.Resources != nil {
+		if description.Resources == nil {
+			description.Resources = &api.Resources{ScalarResources: map[string]float64{}}
+		}
+		for k, v := range s.agent.config.Resources.ScalarResources {
+			_, ok := description.Resources.ScalarResources[k]
+			// if user-defined resources conflict with auto-detected resources
+			// auto-detected are used
+			if !ok {
+				description.Resources.ScalarResources[k] = v
+			} else {
+				log.G(ctx).Warnf("user defined resources %s is overwritten by engine", k)
+			}
+		}
+	}
+
 	stream, err := client.Session(ctx, &api.SessionRequest{
 		Description: description,
 	})
