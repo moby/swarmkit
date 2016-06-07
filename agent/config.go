@@ -3,9 +3,9 @@ package agent
 import (
 	"fmt"
 
-	"github.com/docker/libswarm/agent/exec"
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/picker"
+	"github.com/docker/swarmkit/agent/exec"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/picker"
 	"google.golang.org/grpc"
 )
 

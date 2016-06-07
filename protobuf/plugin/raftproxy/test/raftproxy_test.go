@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/libswarm/manager/raftpicker"
+	"github.com/docker/swarmkit/manager/raftpicker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

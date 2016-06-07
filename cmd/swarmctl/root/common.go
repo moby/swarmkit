@@ -3,7 +3,7 @@ package root
 import (
 	"os"
 
-	"github.com/docker/libswarm/spec"
+	"github.com/docker/swarmkit/spec"
 	flag "github.com/spf13/pflag"
 )
 

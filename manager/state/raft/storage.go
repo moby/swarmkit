@@ -14,10 +14,10 @@ import (
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/log"
-	"github.com/docker/libswarm/manager/state/raft/membership"
-	"github.com/docker/libswarm/manager/state/store"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/manager/state/raft/membership"
+	"github.com/docker/swarmkit/manager/state/store"
 	"golang.org/x/net/context"
 )
 

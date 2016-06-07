@@ -1,10 +1,10 @@
 package orchestrator
 
 import (
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/log"
-	"github.com/docker/libswarm/manager/state"
-	"github.com/docker/libswarm/manager/state/store"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/manager/state"
+	"github.com/docker/swarmkit/manager/state/store"
 	"golang.org/x/net/context"
 )
 

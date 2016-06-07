@@ -38,7 +38,7 @@ import (
 	"fmt"
 	"time"
 
-	tspb "github.com/docker/libswarm/api/timestamp"
+	tspb "github.com/docker/swarmkit/api/timestamp"
 )
 
 const (

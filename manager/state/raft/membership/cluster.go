@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/docker/libswarm/api"
+	"github.com/docker/swarmkit/api"
 	"github.com/gogo/protobuf/proto"
 )
 

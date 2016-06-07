@@ -1,7 +1,7 @@
 package state
 
 import (
-	"github.com/docker/libswarm/api"
+	"github.com/docker/swarmkit/api"
 	"golang.org/x/net/context"
 )
 

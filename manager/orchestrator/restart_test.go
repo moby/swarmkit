@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/manager/state"
-	"github.com/docker/libswarm/manager/state/store"
-	"github.com/docker/libswarm/protobuf/ptypes"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/state"
+	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )

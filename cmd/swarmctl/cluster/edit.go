@@ -8,9 +8,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/cmd/swarmctl/common"
-	"github.com/docker/libswarm/spec"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/cmd/swarmctl/common"
+	"github.com/docker/swarmkit/spec"
 	"github.com/spf13/cobra"
 )
 
