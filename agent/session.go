@@ -4,7 +4,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/log"
 	"github.com/docker/swarm-v2/protobuf/ptypes"
@@ -117,7 +116,6 @@ func (s *session) heartbeat(ctx context.Context) error {
 	for {
 		select {
 		case <-heartbeat.C:
-			start := time.Now()
 			resp, err := client.Heartbeat(ctx, &api.HeartbeatRequest{
 				SessionID: s.sessionID,
 			})
@@ -135,11 +133,6 @@ func (s *session) heartbeat(ctx context.Context) error {
 			}
 
 			heartbeat.Reset(period)
-			log.G(ctx).WithFields(
-				logrus.Fields{
-					"period":        period,
-					"grpc.duration": time.Since(start),
-				}).Debugf("heartbeat")
 		case <-s.closed:
 			return errSessionClosed
 		case <-ctx.Done():

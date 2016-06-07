@@ -131,7 +131,6 @@ func (tm *taskManager) run(ctx context.Context) {
 			})
 		case task := <-tm.updateq:
 			if tasksEqual(task, tm.task) {
-				log.G(ctx).Debug("task update ignored")
 				continue // ignore the update
 			}
 

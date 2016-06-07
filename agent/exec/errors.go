@@ -22,23 +22,29 @@ var (
 	// ErrControllerClosed returned when a task controller has been closed.
 	ErrControllerClosed = errors.New("exec: controller closed")
 
-	ErrTaskRetry = errors.New("exec: task retry") // retry after failed do
-	ErrTaskNoop  = errors.New("exec: task noop")  // task cannot proceed, without change
+	// ErrTaskRetry is returned by Do when an operation failed by should be
+	// retried. The status should still be reported in this case.
+	ErrTaskRetry = errors.New("exec: task retry")
+
+	// ErrTaskNoop returns when the a subsequent call to Do will not result in
+	// advancing the task. Callers should avoid calling Do until the task has been updated.
+	ErrTaskNoop = errors.New("exec: task noop")
 )
 
+// ExitCoder is implemented by errors that have an exit code.
 type ExitCoder interface {
 	// ExitCode returns the exit code.
 	ExitCode() int
 }
 
-type Causal interface {
+type causal interface {
 	Cause() error
 }
 
 // Cause returns the cause of the error, recursively.
 func Cause(err error) error {
 	for err != nil {
-		if causal, ok := err.(Causal); ok {
+		if causal, ok := err.(causal); ok {
 			err = causal.Cause()
 		} else {
 			break
@@ -79,7 +85,7 @@ func IsTemporary(err error) bool {
 			}
 		}
 
-		if causal, ok := err.(Causal); !ok {
+		if causal, ok := err.(causal); !ok {
 			break
 		} else {
 			err = causal.Cause()

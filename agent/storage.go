@@ -5,7 +5,6 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/log"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -29,6 +28,9 @@ func (bk bucketKeyPath) String() string {
 	return string(bytes.Join([][]byte(bk), []byte("/")))
 }
 
+// InitDB prepares a database for writing task data.
+//
+// Proper buckets will be created if they don't already exist.
 func InitDB(db *bolt.DB) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		_, err := createBucketIfNotExists(tx, bucketKeyStorageVersion, bucketKeyTasks)
@@ -36,6 +38,7 @@ func InitDB(db *bolt.DB) error {
 	})
 }
 
+// GetTask retrieves the task with id from the datastore.
 func GetTask(tx *bolt.Tx, id string) (*api.Task, error) {
 	var t api.Task
 
@@ -53,6 +56,7 @@ func GetTask(tx *bolt.Tx, id string) (*api.Task, error) {
 	return &t, nil
 }
 
+// WalkTasks walks all tasks in the datastore.
 func WalkTasks(tx *bolt.Tx, fn func(task *api.Task) error) error {
 	bkt := getTasksBucket(tx)
 	if bkt == nil {
@@ -72,6 +76,7 @@ func WalkTasks(tx *bolt.Tx, fn func(task *api.Task) error) error {
 	})
 }
 
+// TaskAssigned returns true if the task is assigned to the node.
 func TaskAssigned(tx *bolt.Tx, id string) bool {
 	bkt := getTaskBucket(tx, id)
 	if bkt == nil {
@@ -81,6 +86,7 @@ func TaskAssigned(tx *bolt.Tx, id string) bool {
 	return len(bkt.Get(bucketKeyAssigned)) > 0
 }
 
+// GetTaskStatus returns the current status for the task.
 func GetTaskStatus(tx *bolt.Tx, id string) (*api.TaskStatus, error) {
 	var ts api.TaskStatus
 	if err := withTaskBucket(tx, id, func(bkt *bolt.Bucket) error {
@@ -97,6 +103,7 @@ func GetTaskStatus(tx *bolt.Tx, id string) (*api.TaskStatus, error) {
 	return &ts, nil
 }
 
+// WalkTaskStatus calls fn for the status of each task.
 func WalkTaskStatus(tx *bolt.Tx, fn func(id string, status *api.TaskStatus) error) error {
 	bkt := getTasksBucket(tx)
 	if bkt == nil {
@@ -116,6 +123,7 @@ func WalkTaskStatus(tx *bolt.Tx, fn func(id string, status *api.TaskStatus) erro
 	})
 }
 
+// PutTask places the task into the database.
 func PutTask(tx *bolt.Tx, task *api.Task) error {
 	return withCreateTaskBucketIfNotExists(tx, task.ID, func(bkt *bolt.Bucket) error {
 		task = task.Copy()
@@ -129,6 +137,7 @@ func PutTask(tx *bolt.Tx, task *api.Task) error {
 	})
 }
 
+// PutTaskStatus updates the status for the task with id.
 func PutTaskStatus(tx *bolt.Tx, id string, status *api.TaskStatus) error {
 	return withCreateTaskBucketIfNotExists(tx, id, func(bkt *bolt.Bucket) error {
 		p, err := proto.Marshal(status)
@@ -139,6 +148,7 @@ func PutTaskStatus(tx *bolt.Tx, id string, status *api.TaskStatus) error {
 	})
 }
 
+// DeleteTask completely removes the task from the database.
 func DeleteTask(tx *bolt.Tx, id string) error {
 	bkt := getTasksBucket(tx)
 	if bkt == nil {
@@ -148,18 +158,17 @@ func DeleteTask(tx *bolt.Tx, id string) error {
 	return bkt.DeleteBucket([]byte(id))
 }
 
+// SetTaskAssignment sets the current assignment state.
 func SetTaskAssignment(tx *bolt.Tx, id string, assigned bool) error {
 	return withTaskBucket(tx, id, func(bkt *bolt.Bucket) error {
 		if assigned {
 			return bkt.Put([]byte("assigned"), []byte{0xFF})
-		} else {
-			return bkt.Delete([]byte("assigned"))
 		}
+		return bkt.Delete([]byte("assigned"))
 	})
 }
 
 func createBucketIfNotExists(tx *bolt.Tx, keys ...[]byte) (*bolt.Bucket, error) {
-	log.L.Errorf("create %v", bucketKeyPath(keys))
 	bkt, err := tx.CreateBucketIfNotExists(keys[0])
 	if err != nil {
 		return nil, err
@@ -202,13 +211,10 @@ func getTasksBucket(tx *bolt.Tx) *bolt.Bucket {
 }
 
 func getBucket(tx *bolt.Tx, keys ...[]byte) *bolt.Bucket {
-	log.L.Debugf("getBucket %v", bucketKeyPath(keys))
 	bkt := tx.Bucket(keys[0])
 
 	for _, key := range keys[1:] {
 		if bkt == nil {
-
-			log.L.Debugf("getBucket %v, missing at %v", bucketKeyPath(keys), string(key))
 			break
 		}
 		bkt = bkt.Bucket(key)

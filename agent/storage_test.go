@@ -95,7 +95,7 @@ func TestStoragePutGetStatusAssigned(t *testing.T) {
 	// set evens to unassigned and updates all states plus one
 	assert.NoError(t, db.Update(func(tx *bolt.Tx) error {
 		for i, task := range tasks {
-			task.Status.State += 1
+			task.Status.State++
 			assert.NoError(t, PutTaskStatus(tx, task.ID, &task.Status))
 
 			if i%2 == 0 {

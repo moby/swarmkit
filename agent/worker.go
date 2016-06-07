@@ -3,6 +3,7 @@ package agent
 import (
 	"sync"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/boltdb/bolt"
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
@@ -98,9 +99,13 @@ func (w *worker) Assign(ctx context.Context, tasks []*api.Task) error {
 	}
 	defer tx.Rollback()
 
+	log.G(ctx).WithField("len(tasks)", len(tasks)).Debug("(*worker).Assign")
 	assigned := map[string]struct{}{}
 	for _, task := range tasks {
-		log.G(ctx).WithField("task.id", task.ID).Debug("assigned")
+		log.G(ctx).WithFields(
+			logrus.Fields{
+				"task.id":           task.ID,
+				"task.desiredstate": task.DesiredState}).Debug("assigned")
 		if err := PutTask(tx, task); err != nil {
 			return err
 		}

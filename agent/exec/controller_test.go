@@ -390,6 +390,6 @@ type mockExecutor struct {
 	err error
 }
 
-func (me *mockExecutor) Controller(t *api.Task) (Controller, error) {
-	return nil, me.err
+func (m *mockExecutor) Controller(t *api.Task) (Controller, error) {
+	return nil, m.err
 }

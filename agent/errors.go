@@ -18,10 +18,7 @@ var (
 	errTaskNoContoller          = errors.New("agent: no task controller")
 	errTaskNotAssigned          = errors.New("agent: task not assigned")
 	errTaskStatusUpdateNoChange = errors.New("agent: no change in task status")
-	errTaskDead                 = errors.New("agent: task dead")
 	errTaskUnknown              = errors.New("agent: task unknown")
-
-	ErrRemoving = errors.New("task: removing")
 
 	errTaskInvalid = errors.New("task: invalid")
 )
