@@ -14,9 +14,9 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	cfconfig "github.com/cloudflare/cfssl/config"
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/identity"
-	"github.com/docker/swarm-v2/picker"
+	"github.com/docker/libswarm/api"
+	"github.com/docker/libswarm/identity"
+	"github.com/docker/libswarm/picker"
 
 	"golang.org/x/net/context"
 )

@@ -1,8 +1,8 @@
 # Swarm: Cluster orchestration for Docker
 
-[![GoDoc](https://godoc.org/github.com/docker/swarm-v2?status.png)](https://godoc.org/github.com/docker/swarm-v2)
-[![Circle CI](https://circleci.com/gh/docker/swarm-v2.svg?style=shield&circle-token=a7bf494e28963703a59de71cf19b73ad546058a7)](https://circleci.com/gh/docker/swarm-v2)
-[![codecov.io](https://codecov.io/github/docker/swarm-v2/coverage.svg?branch=master&token=LqD1dzTjsN)](https://codecov.io/github/docker/swarm-v2?branch=master)
+[![GoDoc](https://godoc.org/github.com/docker/libswarm?status.png)](https://godoc.org/github.com/docker/libswarm)
+[![Circle CI](https://circleci.com/gh/docker/libswarm.svg?style=shield&circle-token=a7bf494e28963703a59de71cf19b73ad546058a7)](https://circleci.com/gh/docker/libswarm)
+[![codecov.io](https://codecov.io/github/docker/libswarm/coverage.svg?branch=master&token=LqD1dzTjsN)](https://codecov.io/github/docker/libswarm?branch=master)
 
 ## Build
 
@@ -19,7 +19,7 @@ make binaries
 Because this project's code continues to evolve rapidly, you should rebuild from master regularly. Any git tutorial can help you, but in general terms you will:
 
 ```sh
-$ cd $GOPATH/src/github.com/docker/swarm-v2
+$ cd $GOPATH/src/github.com/docker/libswarm
 $ git checkout master
 $ git pull origin master
 $ make binaries

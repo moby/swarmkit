@@ -1,7 +1,7 @@
 package exec
 
 import (
-	"github.com/docker/swarm-v2/api"
+	"github.com/docker/libswarm/api"
 	"golang.org/x/net/context"
 )
 

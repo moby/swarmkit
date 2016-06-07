@@ -12,9 +12,9 @@ import (
 	"github.com/docker/engine-api/types/events"
 	"github.com/docker/engine-api/types/filters"
 	"github.com/docker/engine-api/types/network"
-	"github.com/docker/swarm-v2/agent/exec"
-	"github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/spec"
+	"github.com/docker/libswarm/agent/exec"
+	"github.com/docker/libswarm/api"
+	"github.com/docker/libswarm/spec"
 )
 
 const (

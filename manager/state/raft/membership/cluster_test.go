@@ -13,11 +13,11 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/docker/swarm-v2/api"
-	cautils "github.com/docker/swarm-v2/ca/testutils"
-	"github.com/docker/swarm-v2/manager/state/raft"
-	"github.com/docker/swarm-v2/manager/state/raft/membership"
-	raftutils "github.com/docker/swarm-v2/manager/state/raft/testutils"
+	"github.com/docker/libswarm/api"
+	cautils "github.com/docker/libswarm/ca/testutils"
+	"github.com/docker/libswarm/manager/state/raft"
+	"github.com/docker/libswarm/manager/state/raft/membership"
+	raftutils "github.com/docker/libswarm/manager/state/raft/testutils"
 	"github.com/stretchr/testify/assert"
 )
 

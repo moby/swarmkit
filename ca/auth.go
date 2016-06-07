@@ -7,7 +7,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 
-	"github.com/docker/swarm-v2/log"
+	"github.com/docker/libswarm/log"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

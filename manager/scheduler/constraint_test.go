@@ -3,7 +3,7 @@ package scheduler
 import (
 	"testing"
 
-	"github.com/docker/swarm-v2/api"
+	"github.com/docker/libswarm/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

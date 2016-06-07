@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	"github.com/docker/swarm-v2/api"
-	pb "github.com/docker/swarm-v2/api"
-	"github.com/docker/swarm-v2/manager/state"
-	"github.com/docker/swarm-v2/manager/state/watch"
-	"github.com/docker/swarm-v2/protobuf/ptypes"
+	"github.com/docker/libswarm/api"
+	pb "github.com/docker/libswarm/api"
+	"github.com/docker/libswarm/manager/state"
+	"github.com/docker/libswarm/manager/state/watch"
+	"github.com/docker/libswarm/protobuf/ptypes"
 	memdb "github.com/hashicorp/go-memdb"
 	"golang.org/x/net/context"
 )

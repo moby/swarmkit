@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	engineapi "github.com/docker/engine-api/client"
-	"github.com/docker/swarm-v2/agent/exec"
-	"github.com/docker/swarm-v2/api"
+	"github.com/docker/libswarm/agent/exec"
+	"github.com/docker/libswarm/api"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
