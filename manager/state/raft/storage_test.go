@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/docker/libswarm/api"
-	raftutils "github.com/docker/libswarm/manager/state/raft/testutils"
+	"github.com/docker/swarmkit/api"
+	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/stretchr/testify/assert"
 )
 

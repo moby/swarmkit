@@ -36,7 +36,7 @@ import (
 	"testing"
 	"time"
 
-	durpb "github.com/docker/libswarm/api/duration"
+	durpb "github.com/docker/swarmkit/api/duration"
 	"github.com/golang/protobuf/proto"
 )
 

@@ -3,9 +3,9 @@ package orchestrator
 import (
 	"testing"
 
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/manager/state"
-	"github.com/docker/libswarm/manager/state/store"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/state"
+	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )

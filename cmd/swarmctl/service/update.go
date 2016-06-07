@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/cmd/swarmctl/common"
-	"github.com/docker/libswarm/cmd/swarmctl/network"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/cmd/swarmctl/common"
+	"github.com/docker/swarmkit/cmd/swarmctl/network"
 	"github.com/spf13/cobra"
 )
 

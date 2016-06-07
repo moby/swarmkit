@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/docker/libnetwork/idm"
-	"github.com/docker/libswarm/api"
+	"github.com/docker/swarmkit/api"
 )
 
 const (

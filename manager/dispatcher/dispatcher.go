@@ -13,14 +13,14 @@ import (
 	"google.golang.org/grpc/transport"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/ca"
-	"github.com/docker/libswarm/identity"
-	"github.com/docker/libswarm/log"
-	"github.com/docker/libswarm/manager/state"
-	"github.com/docker/libswarm/manager/state/store"
-	"github.com/docker/libswarm/manager/state/watch"
-	"github.com/docker/libswarm/protobuf/ptypes"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/identity"
+	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/manager/state"
+	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/manager/state/watch"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
 

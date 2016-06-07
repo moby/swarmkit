@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/docker/libswarm/log"
+	"github.com/docker/swarmkit/log"
 	"github.com/rcrowley/go-metrics"
 	"golang.org/x/net/context"
 )

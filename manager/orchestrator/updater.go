@@ -8,12 +8,12 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/log"
-	"github.com/docker/libswarm/manager/state"
-	"github.com/docker/libswarm/manager/state/store"
-	"github.com/docker/libswarm/manager/state/watch"
-	"github.com/docker/libswarm/protobuf/ptypes"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/manager/state"
+	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/manager/state/watch"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 )
 
 // UpdateSupervisor supervises a set of updates. It's responsible for keeping track of updates,
