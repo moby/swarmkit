@@ -257,7 +257,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 	case state.EventCreateService:
 		s := v.Service.Copy()
 
-		if nc.nwkAllocator.IsServiceAllocated(s) {
+		if !serviceAllocationNeeded(s, nc) {
 			break
 		}
 
@@ -268,7 +268,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 	case state.EventUpdateService:
 		s := v.Service.Copy()
 
-		if nc.nwkAllocator.IsServiceAllocated(s) {
+		if !serviceAllocationNeeded(s, nc) {
 			break
 		}
 
@@ -279,12 +279,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 	case state.EventDeleteService:
 		s := v.Service.Copy()
 
-		// No endpoint configuration. No network allocation needed.
-		if s.Spec.Endpoint == nil {
-			break
-		}
-
-		if !nc.nwkAllocator.IsServiceAllocated(s) {
+		if serviceAllocationNeeded(s, nc) {
 			break
 		}
 
@@ -338,6 +333,24 @@ func (a *Allocator) doNodeAlloc(ctx context.Context, nc *networkContext, ev even
 	}
 }
 
+// serviceAllocationNeeded returns if a service needs allocation or not.
+func serviceAllocationNeeded(s *api.Service, nc *networkContext) bool {
+	// Service needs allocation if:
+	// Spec has network attachments and endpoint resolution mode is VIP OR
+	// Spec has non-zero number of exposed ports and ingress routing is SwarmPort
+	if (len(s.Spec.Networks) != 0 &&
+		(s.Spec.Endpoint == nil ||
+			(s.Spec.Endpoint != nil &&
+				s.Spec.Endpoint.Mode == api.ResolutionModeVirtualIP))) ||
+		(s.Spec.Endpoint != nil &&
+			s.Spec.Endpoint.Ingress == api.IngressRoutingSwarmPort &&
+			len(s.Spec.Endpoint.ExposedPorts) != 0) {
+		return !nc.nwkAllocator.IsServiceAllocated(s)
+	}
+
+	return false
+}
+
 // taskRunning checks whether a task is either actively running, or in the
 // process of starting up.
 func taskRunning(t *api.Task) bool {
@@ -359,7 +372,7 @@ func taskReadyForNetworkVote(t *api.Task, s *api.Service, nc *networkContext) bo
 	// network configured or service endpoints have been
 	// allocated.
 	return (len(t.Networks) == 0 || nc.nwkAllocator.IsTaskAllocated(t)) &&
-		(s == nil || len(s.Spec.Networks) == 0 || nc.nwkAllocator.IsServiceAllocated(s))
+		(s == nil || !serviceAllocationNeeded(s, nc))
 }
 
 func taskUpdateNetworks(t *api.Task, networks []*api.NetworkAttachment) {
@@ -589,7 +602,7 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sto
 				return nil, fmt.Errorf("could not find service %s", t.ServiceID)
 			}
 
-			if len(s.Spec.Networks) != 0 && !nc.nwkAllocator.IsServiceAllocated(s) {
+			if serviceAllocationNeeded(s, nc) {
 				return nil, fmt.Errorf("service %s to which this task %s belongs has pending allocations", s.ID, t.ID)
 			}
 
