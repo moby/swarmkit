@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/boltdb/bolt"
 	"github.com/docker/swarm-v2/agent/exec"
 	"github.com/docker/swarm-v2/api"
 	"github.com/docker/swarm-v2/ca"
@@ -210,6 +211,12 @@ func (n *Node) run(ctx context.Context) (err error) {
 		return err
 	}
 
+	taskDBPath := filepath.Join(n.config.StateDir, "worker/tasks.db")
+	db, err := bolt.Open(taskDBPath, 0666, nil)
+	if err != nil {
+		return err
+	}
+
 	if err := n.loadCertificates(); err != nil {
 		return err
 	}
@@ -272,7 +279,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 		cancel()
 	}()
 	go func() {
-		agentErr = n.runAgent(ctx, securityConfig.ClientTLSCreds, agentReady)
+		agentErr = n.runAgent(ctx, db, securityConfig.ClientTLSCreds, agentReady)
 		wg.Done()
 		cancel()
 	}()
@@ -334,7 +341,7 @@ func (n *Node) Err(ctx context.Context) error {
 	}
 }
 
-func (n *Node) runAgent(ctx context.Context, creds credentials.TransportAuthenticator, ready chan<- struct{}) error {
+func (n *Node) runAgent(ctx context.Context, db *bolt.DB, creds credentials.TransportAuthenticator, ready chan<- struct{}) error {
 	var manager api.Peer
 	select {
 	case <-ctx.Done():
@@ -355,6 +362,7 @@ func (n *Node) runAgent(ctx context.Context, creds credentials.TransportAuthenti
 		Hostname:         n.config.Hostname,
 		Managers:         n.remotes,
 		Executor:         n.config.Executor,
+		DB:               db,
 		Conn:             conn,
 		NotifyRoleChange: n.roleChangeReq,
 	})
