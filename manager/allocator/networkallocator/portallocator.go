@@ -104,7 +104,7 @@ func reconcilePortConfigs(s *api.Service) []*api.PortConfig {
 }
 
 func (pa *portAllocator) serviceAllocatePorts(s *api.Service) (err error) {
-	if s.Spec.Endpoint == nil {
+	if s.Spec.Endpoint == nil || s.Spec.Endpoint.Ingress != api.IngressRoutingSwarmPort {
 		return nil
 	}
 
@@ -143,7 +143,7 @@ func (pa *portAllocator) serviceAllocatePorts(s *api.Service) (err error) {
 }
 
 func (pa *portAllocator) serviceDeallocatePorts(s *api.Service) {
-	if s.Endpoint == nil {
+	if s.Endpoint == nil || s.Spec.Endpoint.Ingress != api.IngressRoutingSwarmPort {
 		return
 	}
 
