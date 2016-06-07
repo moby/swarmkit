@@ -140,6 +140,11 @@ func (na *NetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
 		}
 	}()
 
+	// If ResolutionMode is DNSRR do not try allocating VIPs.
+	if s.Spec.Endpoint != nil && s.Spec.Endpoint.Mode == api.ResolutionModeDNSRoundRobin {
+		return
+	}
+
 	if s.Endpoint == nil {
 		s.Endpoint = &api.Endpoint{}
 	}
