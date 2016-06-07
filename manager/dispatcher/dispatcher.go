@@ -52,6 +52,8 @@ var (
 	// ErrSessionInvalid returned when the session in use is no longer valid.
 	// The node should re-register and start a new session.
 	ErrSessionInvalid = errors.New("session invalid")
+	// ErrNodeNotFound returned when the Node doesn't exists in raft.
+	ErrNodeNotFound = errors.New("node not found")
 )
 
 // Config is configuration for Dispatcher. For default you should use
@@ -332,25 +334,18 @@ func (d *Dispatcher) register(ctx context.Context, nodeID string, description *a
 	// create or update node in store
 	// TODO(stevvooe): Validate node specification.
 	var node *api.Node
-	// TODO(aaronl): Is it worth batching node creations?
 	err := d.store.Update(func(tx store.Tx) error {
 		node = store.GetNode(tx, nodeID)
-		if node != nil {
-			node.Description = description
-			node.Status = api.NodeStatus{
-				State: api.NodeStatus_READY,
-			}
-			return store.UpdateNode(tx, node)
+		if node == nil {
+			return ErrNodeNotFound
 		}
 
-		node = &api.Node{
-			ID:          nodeID,
-			Description: description,
-			Status: api.NodeStatus{
-				State: api.NodeStatus_READY,
-			},
+		node.Description = description
+		node.Status = api.NodeStatus{
+			State: api.NodeStatus_READY,
 		}
-		return store.CreateNode(tx, node)
+		return store.UpdateNode(tx, node)
+
 	})
 	if err != nil {
 		return "", "", err
