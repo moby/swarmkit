@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/docker/libswarm/api"
+	"github.com/docker/swarmkit/api"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"

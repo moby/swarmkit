@@ -7,8 +7,8 @@ import (
 	"time"
 
 	yaml "github.com/cloudfoundry-incubator/candiedyaml"
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/protobuf/ptypes"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/pmezard/go-difflib/difflib"
 )
 

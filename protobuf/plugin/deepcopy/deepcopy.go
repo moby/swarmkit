@@ -3,7 +3,7 @@ package deepcopy
 import (
 	"sort"
 
-	"github.com/docker/libswarm/protobuf/plugin"
+	"github.com/docker/swarmkit/protobuf/plugin"
 	"github.com/gogo/protobuf/gogoproto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"

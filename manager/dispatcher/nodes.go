@@ -7,9 +7,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/identity"
-	"github.com/docker/libswarm/manager/dispatcher/heartbeat"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/identity"
+	"github.com/docker/swarmkit/manager/dispatcher/heartbeat"
 )
 
 type registeredNode struct {

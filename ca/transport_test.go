@@ -4,8 +4,8 @@ import (
 	"crypto/tls"
 	"testing"
 
-	"github.com/docker/libswarm/ca"
-	"github.com/docker/libswarm/ca/testutils"
+	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/stretchr/testify/assert"
 )
 

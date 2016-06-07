@@ -6,9 +6,9 @@ import (
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/events"
-	"github.com/docker/libswarm/agent/exec"
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/log"
+	"github.com/docker/swarmkit/agent/exec"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
 	"golang.org/x/net/context"
 )
 

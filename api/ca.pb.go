@@ -8,7 +8,7 @@ import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
-import _ "github.com/docker/libswarm/protobuf/plugin"
+import _ "github.com/docker/swarmkit/protobuf/plugin"
 
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
@@ -21,7 +21,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-import raftpicker "github.com/docker/libswarm/manager/raftpicker"
+import raftpicker "github.com/docker/swarmkit/manager/raftpicker"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"

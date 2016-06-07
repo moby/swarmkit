@@ -1,10 +1,10 @@
 package controlapi
 
 import (
-	"github.com/docker/libswarm/api"
-	"github.com/docker/libswarm/ca"
-	"github.com/docker/libswarm/manager/state/store"
-	"github.com/docker/libswarm/protobuf/ptypes"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
