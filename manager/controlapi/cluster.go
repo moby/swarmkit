@@ -14,12 +14,14 @@ func validateClusterSpec(spec *api.ClusterSpec) error {
 	if spec == nil {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
-	expiry, err := ptypes.Duration(spec.CAConfig.NodeCertExpiry)
-	if err != nil {
-		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
-	}
-	if expiry < ca.MinNodeCertExpiration {
-		return grpc.Errorf(codes.InvalidArgument, "minimum certificate expiry time is: %s", ca.MinNodeCertExpiration)
+	if spec.CAConfig.NodeCertExpiry != nil {
+		expiry, err := ptypes.Duration(spec.CAConfig.NodeCertExpiry)
+		if err != nil {
+			return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		}
+		if expiry < ca.MinNodeCertExpiration {
+			return grpc.Errorf(codes.InvalidArgument, "minimum certificate expiry time is: %s", ca.MinNodeCertExpiration)
+		}
 	}
 
 	return nil

@@ -418,18 +418,19 @@ message IssuanceStatus {
 }
 
 message AcceptancePolicy {
-	repeated RoleAdmissionPolicy policies =1;
+	message RoleAdmissionPolicy {
+		NodeRole role = 1;
+		// Autoaccept controls which roles' certificates are automatically
+		// issued without administrator intervention.
+		bool autoaccept = 2;
+		// Secret represents a user-provided string that is necessary for new
+		// nodes to join the cluster
+		string secret = 3;
+	}
+
+	repeated RoleAdmissionPolicy policies = 1;
 }
 
-message RoleAdmissionPolicy {
-	NodeRole role = 1;
-	// Autoaccept controls which roles' certificates are automatically
-	// issued without administrator intervention.
-	bool autoaccept = 2;
-	// Secret represents a user-provided string that is necessary for new
-	// nodes to join the cluster
-	string secret = 3;
-}
 
 message CAConfig {
 	// NodeCertExpiry is the duration certificates should be issued for

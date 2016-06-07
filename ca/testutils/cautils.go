@@ -32,7 +32,7 @@ import (
 // AcceptancePolicy is a policy that returns a valid Acceptance policy
 func AcceptancePolicy(worker, manager bool, secret string) api.AcceptancePolicy {
 	return api.AcceptancePolicy{
-		Policies: []*api.RoleAdmissionPolicy{
+		Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{
 			{
 				Role:       api.NodeRoleWorker,
 				Autoaccept: worker,

@@ -105,7 +105,7 @@ func (c *ClusterConfig) ToProto() *api.ClusterSpec {
 			Name: c.Name,
 		},
 		AcceptancePolicy: api.AcceptancePolicy{
-			Policies: []*api.RoleAdmissionPolicy{
+			Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{
 				{
 					Role: api.NodeRoleWorker,
 				},
@@ -131,7 +131,7 @@ func (c *ClusterConfig) ToProto() *api.ClusterSpec {
 		if err != nil {
 			continue
 		}
-		newPolicy := &api.RoleAdmissionPolicy{
+		newPolicy := &api.AcceptancePolicy_RoleAdmissionPolicy{
 			Role:       apiRole,
 			Autoaccept: policy.Autoaccept,
 			Secret:     policy.Secret,
