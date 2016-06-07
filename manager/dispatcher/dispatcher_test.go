@@ -23,6 +23,7 @@ import (
 
 type grpcDispatcher struct {
 	Clients          []api.DispatcherClient
+	SecurityConfigs  []*ca.SecurityConfig
 	Store            *store.MemoryStore
 	grpcServer       *grpc.Server
 	dispatcherServer *Dispatcher
@@ -80,7 +81,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	serverOpts := []grpc.ServerOption{grpc.Creds(managerSecurityConfig.ServerTLSCreds)}
 
 	s := grpc.NewServer(serverOpts...)
-	tc := &testCluster{addr: l.Addr().String(), store: store.NewMemoryStore(nil)}
+	tc := &testCluster{addr: l.Addr().String(), store: tca.MemoryStore}
 	d := New(tc, c)
 
 	authorize := func(ctx context.Context, roles []string) error {
@@ -128,9 +129,11 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	}
 
 	clients := []api.DispatcherClient{api.NewDispatcherClient(conn1), api.NewDispatcherClient(conn2), api.NewDispatcherClient(conn3)}
+	securityConfigs := []*ca.SecurityConfig{agentSecurityConfig1, agentSecurityConfig2, managerSecurityConfig}
 	conns := []*grpc.ClientConn{conn1, conn2, conn3}
 	return &grpcDispatcher{
 		Clients:          clients,
+		SecurityConfigs:  securityConfigs,
 		Store:            tc.MemoryStore(),
 		dispatcherServer: d,
 		conns:            conns,
@@ -218,7 +221,14 @@ func TestHeartbeat(t *testing.T) {
 		storeNodes, err := store.FindNodes(readTx, store.All)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, storeNodes)
-		assert.Equal(t, storeNodes[0].Status.State, api.NodeStatus_READY)
+		found := false
+		for _, node := range storeNodes {
+			if node.ID == gd.SecurityConfigs[0].ClientTLSCreds.NodeID() {
+				found = true
+				assert.Equal(t, api.NodeStatus_READY, node.Status.State)
+			}
+		}
+		assert.True(t, found)
 	})
 }
 
@@ -274,7 +284,7 @@ func TestHeartbeatUnregistered(t *testing.T) {
 	resp, err := gd.Clients[0].Heartbeat(context.Background(), &api.HeartbeatRequest{})
 	assert.Nil(t, resp)
 	assert.Error(t, err)
-	assert.Equal(t, grpc.ErrorDesc(err), ErrNodeNotRegistered.Error())
+	assert.Equal(t, ErrSessionInvalid.Error(), grpc.ErrorDesc(err))
 }
 
 func TestTasks(t *testing.T) {
@@ -574,7 +584,7 @@ func TestNodesCount(t *testing.T) {
 		defer stream.CloseSend()
 		stream.Recv()
 	}
-	assert.Equal(t, 2, gd.dispatcherServer.NodeCount())
+	assert.Equal(t, 6, gd.dispatcherServer.NodeCount())
 	time.Sleep(500 * time.Millisecond)
 	assert.Equal(t, 0, gd.dispatcherServer.NodeCount())
 }

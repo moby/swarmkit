@@ -31,7 +31,7 @@ func (rn *registeredNode) checkSessionID(sessionID string) error {
 	// Before each message send, we need to check the nodes sessionID hasn't
 	// changed. If it has, we will the stream and make the node
 	// re-register.
-	if rn.SessionID != sessionID {
+	if sessionID == "" || rn.SessionID != sessionID {
 		return grpc.Errorf(codes.InvalidArgument, ErrSessionInvalid.Error())
 	}
 
