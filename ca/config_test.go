@@ -12,11 +12,13 @@ import (
 	cfconfig "github.com/cloudflare/cfssl/config"
 	"github.com/docker/swarm-v2/ca"
 	"github.com/docker/swarm-v2/ca/testutils"
+	"github.com/docker/swarm-v2/ioutils"
+	"github.com/docker/swarm-v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLoadOrCreateSecurityConfigEmptyDir(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	info := make(chan string, 1)
@@ -35,7 +37,7 @@ func TestLoadOrCreateSecurityConfigEmptyDir(t *testing.T) {
 }
 
 func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	// Remove only the node certificates form the directory, and attest that we get
@@ -69,7 +71,7 @@ func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
 }
 
 func TestLoadOrCreateSecurityConfigNoLocalCACertNoRemote(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	// Delete the root CA file so that LoadOrCreateSecurityConfig falls
@@ -82,7 +84,7 @@ func TestLoadOrCreateSecurityConfigNoLocalCACertNoRemote(t *testing.T) {
 }
 
 func TestLoadOrCreateSecurityConfigInvalidCACert(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	// First load the current nodeConfig. We'll verify that after we corrupt
@@ -127,7 +129,7 @@ some random garbage\n
 }
 
 func TestLoadOrCreateSecurityConfigInvalidCAKey(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	// Write some garbage to the root key
@@ -141,7 +143,7 @@ some random garbage\n
 }
 
 func TestLoadOrCreateSecurityConfigInvalidCert(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	// Write some garbage to the cert
@@ -160,7 +162,7 @@ some random garbage\n
 }
 
 func TestLoadOrCreateSecurityConfigInvalidKey(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	// Write some garbage to the Key
@@ -179,7 +181,7 @@ some random garbage\n
 }
 
 func TestLoadOrCreateSecurityConfigInvalidKeyWithValidTempKey(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, tc.Picker, nil)
@@ -207,7 +209,7 @@ some random garbage\n
 }
 
 func TestLoadOrCreateSecurityConfigNoCertsAndNoRemote(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	// Remove the certificate from the temp dir and try loading with a new manager
@@ -217,27 +219,44 @@ func TestLoadOrCreateSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 	assert.EqualError(t, err, "valid remote address picker required")
 }
 
-func TestRenewTLSConfig(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+func TestRenewTLSConfigAgent(t *testing.T) {
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tc.RootCA.Signer.SetPolicy(&cfconfig.Signing{
+	// Get a new nodeConfig with a TLS cert that has the default Cert duration
+	nodeConfig, err := tc.WriteNewNodeConfig(ca.AgentRole)
+	assert.NoError(t, err)
+
+	// Create a new RootCA, and change the policy to issue 6 minute certificates
+	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Key, ca.DefaultNodeCertExpiration)
+	assert.NoError(t, err)
+	newRootCA.Signer.SetPolicy(&cfconfig.Signing{
 		Default: &cfconfig.SigningProfile{
 			Usage:  []string{"signing", "key encipherment", "server auth", "client auth"},
 			Expiry: 6 * time.Minute,
 		},
 	})
 
-	// Get a new managerConfig with a TLS cert that has 15 minutes to live
-	managerConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
+	// Create a new CSR and overwrite the key on disk
+	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	assert.NoError(t, err)
+
+	// Issue a new certificate with the same details as the current config, but with 6 min expiration time
+	c := nodeConfig.ClientTLSCreds
+	signedCert, err := newRootCA.ParseValidateAndSignCSR(csr, c.NodeID(), c.Role(), c.Organization())
+	assert.NoError(t, err)
+	assert.NotNil(t, signedCert)
+
+	// Overwrite the certificate on disk with one that expires in 1 minute
+	err = ioutils.AtomicWriteFile(tc.Paths.Node.Cert, signedCert, 0644)
 	assert.NoError(t, err)
 
 	var success, timeout bool
 	renew := make(chan struct{})
-	updates := ca.RenewTLSConfig(ctx, managerConfig, tc.TempDir, tc.Picker, renew)
+	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.TempDir, tc.Picker, renew)
 	for {
 		select {
 		case <-time.After(2 * time.Second):
@@ -245,7 +264,132 @@ func TestRenewTLSConfig(t *testing.T) {
 		case certUpdate := <-updates:
 			assert.NoError(t, certUpdate.Err)
 			assert.NotNil(t, certUpdate)
-			assert.Equal(t, certUpdate.Role, ca.ManagerRole)
+			assert.Equal(t, ca.AgentRole, certUpdate.Role)
+			success = true
+		}
+		if timeout {
+			assert.Fail(t, "TestRenewTLSConfig timed-out")
+			break
+		}
+		if success {
+			break
+		}
+	}
+}
+
+func TestRenewTLSConfigManager(t *testing.T) {
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	defer tc.Stop()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Get a new nodeConfig with a TLS cert that has the default Cert duration
+	nodeConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
+	assert.NoError(t, err)
+
+	// Create a new RootCA, and change the policy to issue 6 minute certificates
+	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Key, ca.DefaultNodeCertExpiration)
+	assert.NoError(t, err)
+	newRootCA.Signer.SetPolicy(&cfconfig.Signing{
+		Default: &cfconfig.SigningProfile{
+			Usage:  []string{"signing", "key encipherment", "server auth", "client auth"},
+			Expiry: 6 * time.Minute,
+		},
+	})
+
+	// Create a new CSR and overwrite the key on disk
+	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	assert.NoError(t, err)
+
+	// Issue a new certificate with the same details as the current config, but with 6 min expiration time
+	c := nodeConfig.ClientTLSCreds
+	signedCert, err := newRootCA.ParseValidateAndSignCSR(csr, c.NodeID(), c.Role(), c.Organization())
+	assert.NoError(t, err)
+	assert.NotNil(t, signedCert)
+
+	// Overwrite the certificate on disk with one that expires in 1 minute
+	err = ioutils.AtomicWriteFile(tc.Paths.Node.Cert, signedCert, 0644)
+	assert.NoError(t, err)
+
+	// Get a new nodeConfig with a TLS cert that has 6 minutes to live
+	var success, timeout bool
+	renew := make(chan struct{})
+
+	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.TempDir, tc.Picker, renew)
+	for {
+		select {
+		case <-time.After(2 * time.Second):
+			timeout = true
+		case certUpdate := <-updates:
+			assert.NoError(t, certUpdate.Err)
+			assert.NotNil(t, certUpdate)
+			assert.Equal(t, ca.ManagerRole, certUpdate.Role)
+			success = true
+		}
+		if timeout {
+			assert.Fail(t, "TestRenewTLSConfig timed-out")
+			break
+		}
+		if success {
+			break
+		}
+	}
+}
+
+func TestRenewTLSConfigWithNoNode(t *testing.T) {
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	defer tc.Stop()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Get a new nodeConfig with a TLS cert that has the default Cert duration
+	nodeConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
+	assert.NoError(t, err)
+
+	// Create a new RootCA, and change the policy to issue 6 minute certificates
+	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Key, ca.DefaultNodeCertExpiration)
+	assert.NoError(t, err)
+	newRootCA.Signer.SetPolicy(&cfconfig.Signing{
+		Default: &cfconfig.SigningProfile{
+			Usage:  []string{"signing", "key encipherment", "server auth", "client auth"},
+			Expiry: 6 * time.Minute,
+		},
+	})
+
+	// Create a new CSR and overwrite the key on disk
+	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	assert.NoError(t, err)
+
+	// Issue a new certificate with the same details as the current config, but with 6 min expiration time
+	c := nodeConfig.ClientTLSCreds
+	signedCert, err := newRootCA.ParseValidateAndSignCSR(csr, c.NodeID(), c.Role(), c.Organization())
+	assert.NoError(t, err)
+	assert.NotNil(t, signedCert)
+
+	// Overwrite the certificate on disk with one that expires in 1 minute
+	err = ioutils.AtomicWriteFile(tc.Paths.Node.Cert, signedCert, 0644)
+	assert.NoError(t, err)
+
+	// Delete the node from the backend store
+	err = tc.MemoryStore.Update(func(tx store.Tx) error {
+		node := store.GetNode(tx, nodeConfig.ClientTLSCreds.NodeID())
+		assert.NotNil(t, node)
+		return store.DeleteNode(tx, nodeConfig.ClientTLSCreds.NodeID())
+	})
+	assert.NoError(t, err)
+
+	var success, timeout bool
+	renew := make(chan struct{})
+	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.TempDir, tc.Picker, renew)
+	for {
+		select {
+		case <-time.After(2 * time.Second):
+			timeout = true
+		case certUpdate := <-updates:
+			assert.Error(t, certUpdate.Err)
+			assert.Contains(t, certUpdate.Err.Error(), "not found when attempting to renew certificate")
 			success = true
 		}
 		if timeout {
@@ -259,24 +403,19 @@ func TestRenewTLSConfig(t *testing.T) {
 }
 
 func TestForceRenewTLSConfig(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AutoAcceptPolicy())
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Replace the RootCA with one with a signer that signs certs with 15 minute expiration
-	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Key, 15*time.Minute)
-	assert.NoError(t, err)
-	tc.RootCA = newRootCA
-
 	// Get a new managerConfig with a TLS cert that has 15 minutes to live
-	managerConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
+	nodeConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
 	assert.NoError(t, err)
 
 	var success, timeout bool
 	renew := make(chan struct{}, 1)
-	updates := ca.RenewTLSConfig(ctx, managerConfig, tc.TempDir, tc.Picker, renew)
+	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.TempDir, tc.Picker, renew)
 	for {
 		renew <- struct{}{}
 		select {

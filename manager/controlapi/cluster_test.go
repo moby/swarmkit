@@ -86,7 +86,7 @@ func TestGetCluster(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpc.Code(err))
 
-	cluster := createCluster(t, ts, "name", "name", testutils.AutoAcceptPolicy())
+	cluster := createCluster(t, ts, "name", "name", testutils.AcceptancePolicy(true, true, ""))
 	r, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: cluster.ID})
 	assert.NoError(t, err)
 	cluster.Meta.Version = r.Cluster.Meta.Version
@@ -103,8 +103,7 @@ func TestGetClusterWithSecret(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpc.Code(err))
 
-	policy := testutils.AutoAcceptPolicy()
-	policy.Secret = "secret"
+	policy := testutils.AcceptancePolicy(true, true, "secret")
 	cluster := createCluster(t, ts, "name", "name", policy)
 	r, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: cluster.ID})
 	assert.NoError(t, err)
@@ -117,7 +116,7 @@ func TestGetClusterWithSecret(t *testing.T) {
 func TestGetClusterRedactsPrivateKeys(t *testing.T) {
 	ts := newTestServer(t)
 
-	cluster := createCluster(t, ts, "name", "name", testutils.AutoAcceptPolicy())
+	cluster := createCluster(t, ts, "name", "name", testutils.AcceptancePolicy(true, true, ""))
 	r, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: cluster.ID})
 	assert.NoError(t, err)
 	assert.NotContains(t, r.Cluster.String(), "PRIVATE")
@@ -151,9 +150,9 @@ func TestUpdateCluster(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, r.Clusters, 1)
 	assert.Equal(t, cluster.Spec.Annotations.Name, r.Clusters[0].Spec.Annotations.Name)
-	assert.Len(t, r.Clusters[0].Spec.AcceptancePolicy.Autoaccept, 0)
+	assert.Len(t, r.Clusters[0].Spec.AcceptancePolicy.Policies, 0)
 
-	r.Clusters[0].Spec.AcceptancePolicy.Autoaccept = map[string]bool{"manager": true}
+	r.Clusters[0].Spec.AcceptancePolicy = testutils.AcceptancePolicy(false, true, "")
 	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
 		ClusterID:      cluster.ID,
 		Spec:           &r.Clusters[0].Spec,
@@ -169,9 +168,9 @@ func TestUpdateCluster(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, r.Clusters, 1)
 	assert.Equal(t, cluster.Spec.Annotations.Name, r.Clusters[0].Spec.Annotations.Name)
-	assert.Len(t, r.Clusters[0].Spec.AcceptancePolicy.Autoaccept, 1)
+	assert.Len(t, r.Clusters[0].Spec.AcceptancePolicy.Policies, 2)
 
-	r.Clusters[0].Spec.AcceptancePolicy.Secret = "secret"
+	r.Clusters[0].Spec.AcceptancePolicy = testutils.AcceptancePolicy(true, true, "secret")
 	returnedCluster, err := ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
 		ClusterID:      cluster.ID,
 		Spec:           &r.Clusters[0].Spec,
@@ -207,13 +206,14 @@ func TestListClusters(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, r.Clusters)
 
-	createCluster(t, ts, "id1", "name1", testutils.AutoAcceptPolicy())
+	policy := testutils.AcceptancePolicy(true, true, "")
+	createCluster(t, ts, "id1", "name1", policy)
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Clusters))
 
-	createCluster(t, ts, "id2", "name2", testutils.AutoAcceptPolicy())
-	createCluster(t, ts, "id3", "name3", testutils.AutoAcceptPolicy())
+	createCluster(t, ts, "id2", "name2", policy)
+	createCluster(t, ts, "id3", "name3", policy)
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Clusters))
@@ -225,8 +225,7 @@ func TestListClustersWithSecrets(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, r.Clusters)
 
-	policy := testutils.AutoAcceptPolicy()
-	policy.Secret = "secret"
+	policy := testutils.AcceptancePolicy(true, true, "secret")
 
 	createCluster(t, ts, "id1", "name1", policy)
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
@@ -239,7 +238,7 @@ func TestListClustersWithSecrets(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Clusters))
 	for _, cluster := range r.Clusters {
-		assert.NotContains(t, cluster.String(), policy.Secret)
+		assert.NotContains(t, cluster.String(), policy.Policies[0].Secret)
 		assert.Contains(t, cluster.String(), "[REDACTED]")
 	}
 }
@@ -250,13 +249,15 @@ func TestListClustersRedactsPrivateKey(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, r.Clusters)
 
-	createCluster(t, ts, "id1", "name1", testutils.AutoAcceptPolicy())
+	policy := testutils.AcceptancePolicy(true, true, "")
+
+	createCluster(t, ts, "id1", "name1", policy)
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Clusters))
 
-	createCluster(t, ts, "id2", "name2", testutils.AutoAcceptPolicy())
-	createCluster(t, ts, "id3", "name3", testutils.AutoAcceptPolicy())
+	createCluster(t, ts, "id2", "name2", policy)
+	createCluster(t, ts, "id3", "name3", policy)
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Clusters))
