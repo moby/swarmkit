@@ -32,89 +32,79 @@ var (
 			}
 
 			flags := cmd.Flags()
-			var spec *api.ClusterSpec
+			spec := &cluster.Spec
 
-			if flags.Changed("file") {
-				cluster, err := readClusterConfig(flags)
+			if flags.Changed("autoaccept") {
+				autoaccept, err := flags.GetStringSlice("autoaccept")
 				if err != nil {
 					return err
 				}
-				spec = cluster.ToProto()
-			} else { // TODO(vieux): support or error on both file.
-				spec = &cluster.Spec
 
-				if flags.Changed("autoaccept") {
-					autoaccept, err := flags.GetStringSlice("autoaccept")
+				// We are getting a whitelist, so make all of the autoaccepts false
+				for _, policy := range spec.AcceptancePolicy.Policies {
+					policy.Autoaccept = false
+
+				}
+
+				// For each of the roles handed to us by the client, make them true
+				for _, role := range autoaccept {
+					// Convert the role into a proto role
+					apiRole, err := ca.FormatRole("swarm-" + role)
 					if err != nil {
-						return err
+						return fmt.Errorf("unrecognized role %s", role)
 					}
-
-					// We are getting a whitelist, so make all of the autoaccepts false
+					// Attempt to find this role inside of the current policies
+					found := false
 					for _, policy := range spec.AcceptancePolicy.Policies {
-						policy.Autoaccept = false
-
-					}
-
-					// For each of the roles handed to us by the client, make them true
-					for _, role := range autoaccept {
-						// Convert the role into a proto role
-						apiRole, err := ca.FormatRole("swarm-" + role)
-						if err != nil {
-							return fmt.Errorf("unrecognized role %s", role)
+						if policy.Role == apiRole {
+							// We found a matching policy, let's update it
+							policy.Autoaccept = true
+							found = true
 						}
-						// Attempt to find this role inside of the current policies
-						found := false
-						for _, policy := range spec.AcceptancePolicy.Policies {
-							if policy.Role == apiRole {
-								// We found a matching policy, let's update it
-								policy.Autoaccept = true
-								found = true
-							}
 
+					}
+					// We didn't find this policy, create it
+					if !found {
+						newPolicy := &api.AcceptancePolicy_RoleAdmissionPolicy{
+							Role:       apiRole,
+							Autoaccept: true,
 						}
-						// We didn't find this policy, create it
-						if !found {
-							newPolicy := &api.AcceptancePolicy_RoleAdmissionPolicy{
-								Role:       apiRole,
-								Autoaccept: true,
-							}
-							spec.AcceptancePolicy.Policies = append(spec.AcceptancePolicy.Policies, newPolicy)
-						}
+						spec.AcceptancePolicy.Policies = append(spec.AcceptancePolicy.Policies, newPolicy)
 					}
-
 				}
 
-				if flags.Changed("secret") {
-					secret, err := flags.GetStringSlice("secret")
-					if err != nil || secret == nil || len(secret) < 1 {
-						return err
-					}
-					for _, policy := range spec.AcceptancePolicy.Policies {
-						policy.Secret = secret[0]
-					}
+			}
+
+			if flags.Changed("secret") {
+				secret, err := flags.GetStringSlice("secret")
+				if err != nil || secret == nil || len(secret) < 1 {
+					return err
 				}
-				if flags.Changed("certexpiry") {
-					cePeriod, err := flags.GetDuration("certexpiry")
-					if err != nil {
-						return err
-					}
-					ceProtoPeriod := ptypes.DurationProto(cePeriod)
-					spec.CAConfig.NodeCertExpiry = ceProtoPeriod
+				for _, policy := range spec.AcceptancePolicy.Policies {
+					policy.Secret = secret[0]
 				}
-				if flags.Changed("taskhistory") {
-					taskHistory, err := flags.GetInt64("taskhistory")
-					if err != nil {
-						return err
-					}
-					spec.Orchestration.TaskHistoryRetentionLimit = taskHistory
+			}
+			if flags.Changed("certexpiry") {
+				cePeriod, err := flags.GetDuration("certexpiry")
+				if err != nil {
+					return err
 				}
-				if flags.Changed("heartbeatperiod") {
-					hbPeriod, err := flags.GetDuration("heartbeatperiod")
-					if err != nil {
-						return err
-					}
-					spec.Dispatcher.HeartbeatPeriod = uint64(hbPeriod)
+				ceProtoPeriod := ptypes.DurationProto(cePeriod)
+				spec.CAConfig.NodeCertExpiry = ceProtoPeriod
+			}
+			if flags.Changed("taskhistory") {
+				taskHistory, err := flags.GetInt64("taskhistory")
+				if err != nil {
+					return err
 				}
+				spec.Orchestration.TaskHistoryRetentionLimit = taskHistory
+			}
+			if flags.Changed("heartbeatperiod") {
+				hbPeriod, err := flags.GetDuration("heartbeatperiod")
+				if err != nil {
+					return err
+				}
+				spec.Dispatcher.HeartbeatPeriod = uint64(hbPeriod)
 			}
 
 			r, err := c.UpdateCluster(common.Context(cmd), &api.UpdateClusterRequest{
