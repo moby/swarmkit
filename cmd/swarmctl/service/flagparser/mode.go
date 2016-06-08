@@ -40,4 +40,6 @@ func parseMode(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		}
 		spec.GetReplicated().Instances = instances
 	}
+
+	return nil
 }
