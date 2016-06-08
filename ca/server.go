@@ -242,7 +242,7 @@ func (s *Server) getRolePolicy(role api.NodeRole) *api.AcceptancePolicy_RoleAdmi
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if len(s.acceptancePolicy.Policies) > 0 {
+	if s.acceptancePolicy != nil && len(s.acceptancePolicy.Policies) > 0 {
 		// Let's go through all the configured policies and try to find one for this role
 		for _, p := range s.acceptancePolicy.Policies {
 			if role == p.Role {
