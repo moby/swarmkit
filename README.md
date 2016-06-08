@@ -60,7 +60,7 @@ These instructions assume that `swarmd` and `swarmctl` are in your PATH.
 Initialize the first node:
 
 ```sh
-$ swarmd -d /tmp/node-1 --listen-control-api /tmp/node-1/control.sock --hostname node-1
+$ swarmd -d /tmp/node-1 --listen-control-api /tmp/manager1/swarm.sock --hostname node-1
 ```
 
 In two additional terminals, join two nodes (note: replace `127.0.0.1:4242` with the address of the first node)
@@ -97,6 +97,7 @@ $ swarmctl service create --name redis --image redis
 List the running services:
 
 ```
+$ swarmctl service ls
 ID                         Name   Image  Instances
 --                         ----   -----  ---------
 enf3gkwlnmasgurdyebp555ja  redis  redis  1
@@ -105,7 +106,7 @@ enf3gkwlnmasgurdyebp555ja  redis  redis  1
 Inspect the service:
 
 ```
-$ swarmctl service inspect ping
+$ swarmctl service inspect redis
 ID                : enf3gkwlnmasgurdyebp555ja
 Name              : redis
 Instances         : 1
@@ -124,7 +125,7 @@ Now change the instance count:
 $ swarmctl service update redis --instances 4
 enf3gkwlnmasgurdyebp555ja
 $
-$ swarmctl service inspect ping
+$ swarmctl service inspect redis
 ID                : enf3gkwlnmasgurdyebp555ja
 Name              : redis
 Instances         : 4
