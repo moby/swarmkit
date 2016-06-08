@@ -184,7 +184,13 @@ func (c *containerAdapter) events(ctx context.Context) (<-chan events.Message, <
 }
 
 func (c *containerAdapter) shutdown(ctx context.Context) error {
-	return c.client.ContainerStop(ctx, c.container.name(), int(c.container.spec().StopGracePeriod.Seconds))
+	// Default stop grace period to 10s.
+	stopgrace := 10
+	spec := c.container.spec()
+	if spec.StopGracePeriod != nil {
+		stopgrace = int(spec.StopGracePeriod.Seconds)
+	}
+	return c.client.ContainerStop(ctx, c.container.name(), stopgrace)
 }
 
 func (c *containerAdapter) terminate(ctx context.Context) error {
