@@ -493,6 +493,9 @@ message RootCA {
 
 	// CACert is the root CA certificate.
 	bytes ca_cert = 2 [(gogoproto.customname) = "CACert"];
+
+	// CACertHash is the digest of the CA Certificate.
+	string ca_cert_hash = 3 [(gogoproto.customname) = "CACertHash"];
 }
 
 

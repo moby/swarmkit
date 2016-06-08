@@ -292,8 +292,9 @@ func (m *Manager) Run(parent context.Context) error {
 							CAConfig: ca.DefaultCAConfig(),
 						},
 						RootCA: &api.RootCA{
-							CAKey:  rootCA.Key,
-							CACert: rootCA.Cert,
+							CAKey:      rootCA.Key,
+							CACert:     rootCA.Cert,
+							CACertHash: rootCA.Digest.String(),
 						},
 					})
 					// Add Node entry for ourself, if one
