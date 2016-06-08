@@ -1,4 +1,4 @@
-package spec
+package scheduler
 
 import (
 	"fmt"

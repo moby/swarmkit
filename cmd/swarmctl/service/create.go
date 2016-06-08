@@ -25,118 +25,107 @@ var (
 				return err
 			}
 
-			if flags.Changed("file") {
-				service, err := readServiceConfig(flags)
-				if err != nil {
-					return err
-				}
-				spec = service.ToProto()
-				if err := network.ResolveServiceNetworks(common.Context(cmd), c, spec); err != nil {
-					return nil
-				}
-			} else { // TODO(vieux): support or error on both file.
-				if !flags.Changed("name") || !flags.Changed("image") {
-					return errors.New("--name and --image are mandatory")
-				}
-				name, err := flags.GetString("name")
-				if err != nil {
-					return err
-				}
+			if !flags.Changed("name") || !flags.Changed("image") {
+				return errors.New("--name and --image are mandatory")
+			}
+			name, err := flags.GetString("name")
+			if err != nil {
+				return err
+			}
 
-				image, err := flags.GetString("image")
-				if err != nil {
-					return err
-				}
+			image, err := flags.GetString("image")
+			if err != nil {
+				return err
+			}
 
-				mode, err := flags.GetString("mode")
-				if err != nil {
-					return err
-				}
+			mode, err := flags.GetString("mode")
+			if err != nil {
+				return err
+			}
 
-				instances, err := flags.GetUint64("instances")
-				if err != nil {
-					return err
-				}
+			instances, err := flags.GetUint64("instances")
+			if err != nil {
+				return err
+			}
 
-				containerArgs, err := flags.GetStringSlice("args")
-				if err != nil {
-					return err
-				}
+			containerArgs, err := flags.GetStringSlice("args")
+			if err != nil {
+				return err
+			}
 
-				env, err := flags.GetStringSlice("env")
-				if err != nil {
-					return err
-				}
+			env, err := flags.GetStringSlice("env")
+			if err != nil {
+				return err
+			}
 
-				spec = &api.ServiceSpec{
-					Annotations: api.Annotations{
-						Name: name,
-					},
-					Task: api.TaskSpec{
-						Runtime: &api.TaskSpec_Container{
-							Container: &api.ContainerSpec{
-								Image:   image,
-								Command: containerArgs,
-								Args:    args,
-								Env:     env,
-							},
+			spec = &api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: name,
+				},
+				Task: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{
+							Image:   image,
+							Command: containerArgs,
+							Args:    args,
+							Env:     env,
 						},
 					},
+				},
+			}
+
+			switch mode {
+			case "global":
+				spec.Mode = &api.ServiceSpec_Global{}
+			case "replicated":
+				spec.Mode = &api.ServiceSpec_Replicated{
+					Replicated: &api.ReplicatedService{
+						Instances: instances,
+					},
+				}
+			}
+
+			if flags.Changed("ports") {
+				portConfigs, err := flags.GetStringSlice("ports")
+				if err != nil {
+					return err
 				}
 
-				switch mode {
-				case "global":
-					spec.Mode = &api.ServiceSpec_Global{}
-				case "replicated":
-					spec.Mode = &api.ServiceSpec_Replicated{
-						Replicated: &api.ReplicatedService{
-							Instances: instances,
-						},
-					}
-				}
-
-				if flags.Changed("ports") {
-					portConfigs, err := flags.GetStringSlice("ports")
+				ports := []*api.PortConfig{}
+				for _, portConfig := range portConfigs {
+					name, protocol, port, swarmPort, err := parsePortConfig(portConfig)
 					if err != nil {
 						return err
 					}
 
-					ports := []*api.PortConfig{}
-					for _, portConfig := range portConfigs {
-						name, protocol, port, swarmPort, err := parsePortConfig(portConfig)
-						if err != nil {
-							return err
-						}
-
-						ports = append(ports, &api.PortConfig{
-							Name:      name,
-							Protocol:  protocol,
-							Port:      port,
-							SwarmPort: swarmPort,
-						})
-					}
-
-					spec.Endpoint = &api.EndpointSpec{
-						ExposedPorts: ports,
-					}
+					ports = append(ports, &api.PortConfig{
+						Name:      name,
+						Protocol:  protocol,
+						Port:      port,
+						SwarmPort: swarmPort,
+					})
 				}
 
-				if flags.Changed("network") {
-					input, err := flags.GetString("network")
-					if err != nil {
-						return err
-					}
+				spec.Endpoint = &api.EndpointSpec{
+					ExposedPorts: ports,
+				}
+			}
 
-					n, err := network.GetNetwork(common.Context(cmd), c, input)
-					if err != nil {
-						return err
-					}
+			if flags.Changed("network") {
+				input, err := flags.GetString("network")
+				if err != nil {
+					return err
+				}
 
-					spec.Networks = []*api.ServiceSpec_NetworkAttachmentConfig{
-						{
-							Target: n.ID,
-						},
-					}
+				n, err := network.GetNetwork(common.Context(cmd), c, input)
+				if err != nil {
+					return err
+				}
+
+				spec.Networks = []*api.ServiceSpec_NetworkAttachmentConfig{
+					{
+						Target: n.ID,
+					},
 				}
 			}
 

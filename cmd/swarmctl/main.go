@@ -6,7 +6,6 @@ import (
 	"github.com/docker/swarmkit/cmd/swarmctl/cluster"
 	"github.com/docker/swarmkit/cmd/swarmctl/network"
 	"github.com/docker/swarmkit/cmd/swarmctl/node"
-	"github.com/docker/swarmkit/cmd/swarmctl/root"
 	"github.com/docker/swarmkit/cmd/swarmctl/service"
 	"github.com/docker/swarmkit/cmd/swarmctl/task"
 	"github.com/docker/swarmkit/version"
@@ -47,8 +46,6 @@ func defaultSocket() string {
 func init() {
 	mainCmd.PersistentFlags().StringP("socket", "s", defaultSocket(), "Socket to connect to the Swarm manager")
 	mainCmd.PersistentFlags().BoolP("no-resolve", "n", false, "Do not try to map IDs to Names when displaying them")
-
-	mainCmd.AddCommand(root.Cmds...)
 
 	mainCmd.AddCommand(
 		node.Cmd,
