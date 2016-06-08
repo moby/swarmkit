@@ -2,34 +2,12 @@ package service
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 
 	"golang.org/x/net/context"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/spec"
-	flag "github.com/spf13/pflag"
 )
-
-func readServiceConfig(flags *flag.FlagSet) (*spec.ServiceConfig, error) {
-	path, err := flags.GetString("file")
-	if err != nil {
-		return nil, err
-	}
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	service := &spec.ServiceConfig{}
-	if err := service.Read(file); err != nil {
-		return nil, err
-	}
-
-	return service, nil
-}
 
 func getService(ctx context.Context, c api.ControlClient, input string) (*api.Service, error) {
 	// GetService to match via full ID.

@@ -2,33 +2,11 @@ package cluster
 
 import (
 	"fmt"
-	"os"
 
 	"golang.org/x/net/context"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/spec"
-	flag "github.com/spf13/pflag"
 )
-
-func readClusterConfig(flags *flag.FlagSet) (*spec.ClusterConfig, error) {
-	path, err := flags.GetString("file")
-	if err != nil {
-		return nil, err
-	}
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	cluster := &spec.ClusterConfig{}
-	if err := cluster.Read(file); err != nil {
-		return nil, err
-	}
-
-	return cluster, nil
-}
 
 func getCluster(ctx context.Context, c api.ControlClient, input string) (*api.Cluster, error) {
 	rg, err := c.GetCluster(ctx, &api.GetClusterRequest{ClusterID: input})
