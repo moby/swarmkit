@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// Merge merges a flagset into a service spec.
 func parsePorts(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 	if !flags.Changed("ports") {
 		return nil
