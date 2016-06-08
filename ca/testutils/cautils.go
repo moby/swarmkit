@@ -315,7 +315,7 @@ func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duratio
 	}
 
 	// Create a Signer out of the private key
-	signer, err := local.NewSigner(parsedKey, parsedCert, cfsigner.DefaultSigAlgo(parsedKey), ca.SigningPolicy(ca.DefaultNodeCertExpiration))
+	signer, err := local.NewSigner(parsedKey, parsedCert, cfsigner.DefaultSigAlgo(parsedKey), ca.SigningPolicy(expiry))
 	if err != nil {
 		log.Errorf("failed to create signer: %v", err)
 		return ca.RootCA{}, err
