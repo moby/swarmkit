@@ -1,37 +1,39 @@
-# Swarm: Cluster orchestration for Docker
+# [SwarmKit](https://github.com/docker/swarmkit)
 
 [![GoDoc](https://godoc.org/github.com/docker/swarmkit?status.png)](https://godoc.org/github.com/docker/swarmkit)
 [![Circle CI](https://circleci.com/gh/docker/swarmkit.svg?style=shield&circle-token=a7bf494e28963703a59de71cf19b73ad546058a7)](https://circleci.com/gh/docker/swarmkit)
 [![codecov.io](https://codecov.io/github/docker/swarmkit/coverage.svg?branch=master&token=LqD1dzTjsN)](https://codecov.io/github/docker/swarmkit?branch=master)
 
+*SwarmKit* is a toolkit for embedding orchestration and cluster management capabilities in your application.
+
+Its main benefits are:
+
+- **Distributed**: *SwarmKit* implements the [Raft Consensus Algorithm](https://raft.github.io/) in order to coordinate and does not rely on a single point of failure to perform decisions.
+- **Secure**: Node communication and membership within a *Swarm* are secure out of the box. *SwarmKit* uses mutual TLS for node *authentication*, *role authorization* and *transport encryption*, automating both certificate issuance and rotation.
+- **Simple**: *SwarmKit* is operationally simple and minimizes infrastructure dependendecies. It does not need an external database to operate.
+
+## Overview
+
+Machines running *SwarmKit* can be grouped together in other to form a *Swarm*, coordinating tasks with each other. Once a machine joins, it becomes a *Swarm Node*. Nodes can either be *Worker Nodes* or *Manager Nodes*.
+
+- **Worker Nodes** are responsible for running Tasks using an *Executor*. *SwarmKit* comes with a default *Docker Container Executor* that can be easily swapped out.
+- **Manager Nodes** on the other hand accept specifications from the user and are responsible for reconciling the desired state with the actual cluster state.
+
+An operator can dynamically update a Node's role by promoting a Worker to Manager or demoting a Manager to Worker.
+
+*Tasks* are organized in *Services*. A service is a higher level abstraction that allows the user to declare the desired state of a group of tasks.  Services define what type of task should be created as well as how to execute them (e.g. run this many instances at all times) and how to update them (e.g. rolling updates).
+
 ## Build
 
 Requirements:
 
-- go 1.6
+- go 1.6 or higher
 - A [working golang](https://golang.org/doc/code.html) environment
 
 From the project root directory, run:
 ```
 make binaries
 ```
-
-Because this project's code continues to evolve rapidly, you should rebuild from master regularly. Any git tutorial can help you, but in general terms you will:
-
-```sh
-$ cd $GOPATH/src/github.com/docker/swarmkit
-$ git checkout master
-$ git pull origin master
-$ make binaries
-```
-
-## Install
-
-```sh
-$ sudo -E PATH=$PATH make install
-```
-
-This will install `/usr/local/bin/swarmd` (the manager and agent) and `/usr/local/bin/swarmctl` (the command line tool).
 
 ## Test
 
@@ -49,23 +51,23 @@ $ make all
 
 ## Usage Examples
 
-**1 manager + 2 agent cluster on a single host**
+### 3 Nodes Cluster
 
 These instructions assume that `swarmd` and `swarmctl` are in your PATH.
 
-(Before starting, make sure `/tmp/managerN` and `/tmp/agentN` don't exist for any N.)
+(Before starting, make sure `/tmp/node-N` don't exist)
 
-Start the manager:
+Initialize the first node:
 
 ```sh
-$ swarmd manager -l info --state-dir /tmp/manager1 --listen-control-api /tmp/manager1/swarm.sock
+$ swarmd -d /tmp/node-1 --listen-control-api /tmp/node-1/control.sock --hostname node-1
 ```
 
-In two additional terminals, start two agents:
+In two additional terminals, join two nodes (note: replace `127.0.0.1:4242` with the address of the first node)
 
 ```sh
-$ swarmd agent -l info --hostname node-1 -d /tmp/agent1
-$ swarmd agent -l info --hostname node-2 -d /tmp/agent2
+$ swarmd -d /tmp/node-2 --hostname node-2 --join-addr 127.0.0.1:4242
+$ swarmd -d /tmp/node-3 --hostname node-3 --join-addr 127.0.0.1:4242
 ```
 
 In a fourth terminal, use `swarmctl` to explore and control the cluster. Before
@@ -81,205 +83,59 @@ $ swarmctl node ls
 ID                         Name      Status  Availability
 87pn3pug404xs4x86b5nwlwbr  node-1    READY   ACTIVE
 by2ihzjyg9m674j3cjdit3reo  node-2    READY   ACTIVE
-```
-
-**Create and manage an application**
-
-Start with the `hello-world` application in `examples/hello-world.yml`. `hello-world` consists of 1 service: `ping`.
+87pn3pug404xs4x86b5nwlwbr  node-3    READY   ACTIVE
 
 ```
-$ cd examples/
-$ cat hello-world.yml
-version: '3'
-namespace: hello-world
 
-services:
-  ping:
-      image: alpine
-      command: ["sh", "-c", "ping $HOST"]
-      env:
-          - HOST=google.com
-      instances: 2
+**Create and manage a service**
+
+Start a 'redis' service:
 ```
-
-Start 'hello-world':
-
-```
-$ swarmctl deploy -f hello-world.yml
-ping: dazkblnyzh46hziagcrffgkkz - CREATED
+$ swarmctl service create --name redis --image redis
 ```
 
 List the running services:
 
 ```
-$ swarmctl service ls
-ID                         Name  Image   Instances
-chlkcf9v19kxbccspmiyuttgz  ping  alpine  2
+ID                         Name   Image  Instances
+--                         ----   -----  ---------
+enf3gkwlnmasgurdyebp555ja  redis  redis  1
 ```
 
 Inspect the service:
 
 ```
 $ swarmctl service inspect ping
-ID                : 3ud29r25fop28v6ryznhwv0j6
-Name              : ping
-Instances         : 5
-Strategy          : SERVICE_STRATEGY_SPREAD
+ID                : enf3gkwlnmasgurdyebp555ja
+Name              : redis
+Instances         : 1
 Template
  Container
-  Image           : alpine
-  Command         : "sh -c ping $HOST"
-  Env             : [HOST=google.com]
+  Image           : redis
 
-Task ID                      Instance    Image     Desired State    Last State                Node
--------                      --------    -----     -------------    ----------                ----
-50lq7imo6h5q1pxur5odm2n7j    ping.1      alpine    RUNNING          RUNNING 20 seconds ago    node-1
-7mveed4qn5iqtx44jyfabk5os    ping.2      alpine    RUNNING          RUNNING 20 seconds ago    node-2
+Task ID                      Service    Instance    Image    Desired State    Last State              Node
+-------                      -------    --------    -----    -------------    ----------              ----
+8oobrcr5u9lofmcbg7goaluyw    redis      1           redis    RUNNING          RUNNING 1 minute ago    node-1
 ```
 
-Now change instance count in the YAML file:
+Now change the instance count:
 
 ```
-$ vi hello-world.yml
-[change instances to 3 and save]
-```
-
-Let's look at the delta:
-
-```sh
-$ swarmctl diff -f hello-world.yml
---- remote
-+++ local
-@@ -10,7 +10,7 @@
-     env:
-     - HOST=google.com
-     name: ping
--    instances: 2
-+    instances: 3
-     mode: replicated
-     restart: always
-     restartdelay: "0"
-```
-
-Redeploy the service with the modified manifest and see the result:
-
-```sh
-$ swarmctl deploy -f hello-world.yml
-ping: d73nsz5tzhflxlu9v23pfb5si - UPDATED
-$
-$ swarmctl service ls
-ID                         Name  Image   Instances
-chlkcf9v19kxbccspmiyuttgz  ping  alpine  3
-```
-
-You can also update instance count on the command line with `--instances`:
-
-```
-$ swarmctl service update ping --instances 4
-chlkcf9v19kxbccspmiyuttgz
+$ swarmctl service update redis --instances 4
+enf3gkwlnmasgurdyebp555ja
 $
 $ swarmctl service inspect ping
-ID                : 3ud29r25fop28v6ryznhwv0j6
-Name              : ping
-Instances         : 5
-Strategy          : SERVICE_STRATEGY_SPREAD
+ID                : enf3gkwlnmasgurdyebp555ja
+Name              : redis
+Instances         : 4
 Template
  Container
-  Image           : alpine
-  Command         : "sh -c ping $HOST"
-  Env             : [HOST=google.com]
+  Image           : redis
 
-Task ID                      Instance    Image     Desired State    Last State                Node
--------                      --------    -----     -------------    ----------                ----
-50lq7imo6h5q1pxur5odm2n7j    ping.1      alpine    RUNNING          RUNNING 8 minutes ago     node-1
-7mveed4qn5iqtx44jyfabk5os    ping.2      alpine    RUNNING          RUNNING 8 minutes ago     node-2
-9aiegisquaggywa0o3w1syksb    ping.3      alpine    RUNNING          RUNNING 6 minutes ago     node-2
-erly2j4b8hygo2ag8sevm2zop    ping.4      alpine    RUNNING          RUNNING 26 seconds ago    node-1
-```
-
-You can also live edit the state file on the manager:
-
-```
-$ EDITOR=nano swarmctl service edit ping
-[change instances to 5, Ctrl+o to save, Ctrl+x to exit]
---- old
-+++ new
-@@ -6,7 +6,7 @@
- env:
- - HOST=google.com
- name: ping
--instances: 4
-+instances: 5
- mode: replicated
- restart: always
- restartdelay: "0"
-Apply changes? [N/y]
-
-Apply changes? [N/y] y
-chlkcf9v19kxbccspmiyuttgz
-```
-
-Now check the result:
-
-```sh
-$ swarmctl service ls
-ID                         Name  Image   Instances
-chlkcf9v19kxbccspmiyuttgz  ping  alpine  5
-$ swarmctl service inspect ping
-ID                : 3ud29r25fop28v6ryznhwv0j6
-Name              : ping
-Instances         : 5
-Strategy          : SERVICE_STRATEGY_SPREAD
-Template
- Container
-  Image           : alpine
-  Command         : "sh -c ping $HOST"
-  Env             : [HOST=google.com]
-
-Task ID                      Instance    Image     Desired State    Last State                Node
--------                      --------    -----     -------------    ----------                ----
-50lq7imo6h5q1pxur5odm2n7j    ping.1      alpine    RUNNING          RUNNING 10 minutes ago    node-1
-7mveed4qn5iqtx44jyfabk5os    ping.2      alpine    RUNNING          RUNNING 10 minutes ago    node-2
-9aiegisquaggywa0o3w1syksb    ping.3      alpine    RUNNING          RUNNING 8 minutes ago     node-2
-erly2j4b8hygo2ag8sevm2zop    ping.4      alpine    RUNNING          RUNNING 2 minutes ago     node-1
-3f4peh8qiykhxrbswildn2qlr    ping.5      alpine    RUNNING          RUNNING 31 seconds ago    node-1
-```
-
-## Multiple Managers
-
-You can setup multiple managers. To initiate the first manager:
-
-```
-$ swarmd manager --state-dir /tmp/manager1 --listen-remote-api "0.0.0.0:4242" --listen-control-api /tmp/manager1/swarm.sock
-```
-
-To start additional managers:
-
-```
-$ swarmd manager --state-dir /tmp/manager2 --listen-remote-api 0.0.0.0:4243 --listen-control-api /tmp/manager2/swarm.sock --join-cluster 0.0.0.0:4242
-$ swarmd manager --state-dir /tmp/manager3 --listen-remote-api 0.0.0.0:4244 --listen-control-api /tmp/manager3/swarm.sock --join-cluster 0.0.0.0:4242
-[...]
-```
-
-To add a new manager, first start a new manager process. The manager will request a certificate, and this request must be approved
-before the manager can join the Raft cluster. Use `swarmctl node ls` to view pending requests:
-
-```
-$ ./bin/swarmctl node ls
-ID             Name  Status   Availability/Acceptance  Manager status  Leader
---             ----  ------   -----------------------  --------------  ------
-0p3eo7lofff7x        UNKNOWN  ACTIVE                   REACHABLE       *
-1uzpviqbrc2x0        UNKNOWN  PENDING
-```
-
-Then, accept the new manager using:
-
-```
-$ swarmctl cert accept 1uzpviqbrc2x0
-```
-
-You can bypass the need for manual certificate approval by turning on automatic certificate issuance using this command:
-
-```
-$ swarmctl cluster update default --autoaccept agent,manager
+Task ID                      Service    Instance    Image    Desired State    Last State               Node
+-------                      -------    --------    -----    -------------    ----------               ----
+8oobrcr5u9lofmcbg7goaluyw    redis      1           redis    RUNNING          RUNNING 2 minutes ago    node-1
+cdv2oca2zc5upft24494orn1v    redis      2           redis    RUNNING          RUNNING 6 seconds ago    node-2
+0x7e6a1d74nrwgcbbk9c12cqo    redis      3           redis    RUNNING          RUNNING 6 seconds ago    node-2
+1c8zxfj0eifhbdxrgforqz4dp    redis      4           redis    RUNNING          RUNNING 6 seconds ago    node-1
 ```
