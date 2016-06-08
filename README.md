@@ -10,7 +10,7 @@ Its main benefits are:
 
 - **Distributed**: *SwarmKit* implements the [Raft Consensus Algorithm](https://raft.github.io/) in order to coordinate and does not rely on a single point of failure to perform decisions.
 - **Secure**: Node communication and membership within a *Swarm* are secure out of the box. *SwarmKit* uses mutual TLS for node *authentication*, *role authorization* and *transport encryption*, automating both certificate issuance and rotation.
-- **Simple**: *SwarmKit* is operationally simple and minimizes infrastructure dependendecies. It does not need an external database to operate.
+- **Simple**: *SwarmKit* is operationally simple and minimizes infrastructure dependencies. It does not need an external database to operate.
 
 ## Overview
 
