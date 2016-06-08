@@ -15,6 +15,7 @@ import (
 
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
+	"github.com/docker/distribution/digest"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
@@ -252,7 +253,10 @@ func TestGetRemoteCA(t *testing.T) {
 	md := shaHash.Sum(nil)
 	mdStr := hex.EncodeToString(md)
 
-	cert, err := ca.GetRemoteCA(tc.Context, mdStr, tc.Picker)
+	d, err := digest.ParseDigest("sha256:" + mdStr)
+	assert.NoError(t, err)
+
+	cert, err := ca.GetRemoteCA(tc.Context, d, tc.Picker)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 }
@@ -270,7 +274,7 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
-	_, err := ca.GetRemoteCA(tc.Context, "2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", tc.Picker)
+	_, err := ca.GetRemoteCA(tc.Context, "sha256:2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", tc.Picker)
 	assert.Error(t, err)
 }
 

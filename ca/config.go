@@ -14,6 +14,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	cfconfig "github.com/cloudflare/cfssl/config"
+	"github.com/docker/distribution/digest"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/picker"
@@ -155,8 +156,16 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, secret
 	case ErrNoLocalRootCA:
 		log.Debugf("no valid local CA certificate found: %v", err)
 
+		// Get a digest for the optional CA hash string that we've been provided
+		// If we were provided a non-empty string, and it is an invalid hash, return
+		// otherwise, allow the invalid digest through.
+		d, err := digest.ParseDigest(caHash)
+		if err != nil && caHash != "" {
+			return nil, err
+		}
+
 		// Get the remote CA certificate, verify integrity with the hash provided
-		rootCA, err = GetRemoteCA(ctx, caHash, picker)
+		rootCA, err = GetRemoteCA(ctx, d, picker)
 		if err != nil {
 			return nil, err
 		}
