@@ -22,6 +22,12 @@ func printServiceSummary(service *api.Service) {
 	task := service.Spec.Task
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", service.ID)
 	common.FprintfIfNotEmpty(w, "Name\t: %s\n", service.Spec.Annotations.Name)
+	if len(service.Spec.Annotations.Labels) > 0 {
+		fmt.Fprintln(w, "Labels\t")
+		for k, v := range service.Spec.Annotations.Labels {
+			fmt.Fprintf(w, "  %s\t: %s\n", k, v)
+		}
+	}
 	common.FprintfIfNotEmpty(w, "Instances\t: %s\n", getServiceInstancesTxt(service))
 	fmt.Fprintln(w, "Template\t")
 	fmt.Fprintln(w, " Container\t")
