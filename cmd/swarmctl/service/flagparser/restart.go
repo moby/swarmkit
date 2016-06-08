@@ -1,0 +1,82 @@
+package flagparser
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/protobuf/ptypes"
+	"github.com/spf13/pflag"
+)
+
+func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
+	if flags.Changed("restart-condition") {
+		condition, err := flags.GetString("restart-condition")
+		if err != nil {
+			return err
+		}
+
+		if spec.Task.Restart == nil {
+			spec.Task.Restart = &api.RestartPolicy{}
+		}
+
+		switch condition {
+		case "none":
+			spec.Task.Restart.Condition = api.RestartOnNone
+		case "failure":
+			spec.Task.Restart.Condition = api.RestartOnFailure
+		case "any":
+			spec.Task.Restart.Condition = api.RestartOnAny
+		default:
+			return fmt.Errorf("invalid restart condition: %s", condition)
+		}
+	}
+
+	if flags.Changed("restart-delay") {
+		delay, err := flags.GetString("restart-delay")
+		if err != nil {
+			return err
+		}
+
+		delayDuration, err := time.ParseDuration(delay)
+		if err != nil {
+			return err
+		}
+
+		if spec.Task.Restart == nil {
+			spec.Task.Restart = &api.RestartPolicy{}
+		}
+		spec.Task.Restart.Delay = ptypes.DurationProto(delayDuration)
+	}
+
+	if flags.Changed("restart-max-attempts") {
+		attempts, err := flags.GetUint64("restart-max-attempts")
+		if err != nil {
+			return err
+		}
+
+		if spec.Task.Restart == nil {
+			spec.Task.Restart = &api.RestartPolicy{}
+		}
+		spec.Task.Restart.MaxAttempts = attempts
+	}
+
+	if flags.Changed("restart-window") {
+		window, err := flags.GetString("restart-window")
+		if err != nil {
+			return err
+		}
+
+		windowDelay, err := time.ParseDuration(window)
+		if err != nil {
+			return err
+		}
+
+		if spec.Task.Restart == nil {
+			spec.Task.Restart = &api.RestartPolicy{}
+		}
+		spec.Task.Restart.Window = ptypes.DurationProto(windowDelay)
+	}
+
+	return nil
+}

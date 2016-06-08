@@ -3,9 +3,11 @@ package service
 import (
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
+	"github.com/docker/swarmkit/cmd/swarmctl/service/flagparser"
 	"github.com/spf13/cobra"
 )
 
@@ -28,40 +30,14 @@ var (
 				return err
 			}
 
-			flags := cmd.Flags()
-			var spec *api.ServiceSpec
+			spec := service.Spec.Copy()
 
-			spec = &service.Spec
-
-			if flags.Changed("instances") {
-				instances, err := flags.GetUint64("instances")
-				if err != nil {
-					return err
-				}
-				switch t := spec.GetMode().(type) {
-				case *api.ServiceSpec_Replicated:
-					t.Replicated.Instances = instances
-				default:
-					return errors.New("instances has no meaning for this mode")
-				}
+			if err := flagparser.Merge(cmd, spec, c); err != nil {
+				return err
 			}
 
-			if len(args) > 1 {
-				spec.Task.GetContainer().Command = args[1:]
-			}
-			if flags.Changed("args") {
-				containerArgs, err := flags.GetStringSlice("args")
-				if err != nil {
-					return err
-				}
-				spec.Task.GetContainer().Args = containerArgs
-			}
-			if flags.Changed("env") {
-				env, err := flags.GetStringSlice("env")
-				if err != nil {
-					return err
-				}
-				spec.Task.GetContainer().Env = env
+			if reflect.DeepEqual(spec, &service.Spec) {
+				return errors.New("no changes detected")
 			}
 
 			r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
@@ -79,12 +55,5 @@ var (
 )
 
 func init() {
-	updateCmd.Flags().StringSlice("args", nil, "Args")
-	updateCmd.Flags().StringSlice("env", nil, "Env")
-	updateCmd.Flags().StringP("file", "f", "", "Spec to use")
-	// TODO(aluzzardi): This should be called `service-instances` so that every
-	// orchestrator can have its own flag namespace.
-	updateCmd.Flags().Uint64("instances", 0, "Number of instances for the service")
-	// TODO(vieux): This could probably be done in one step
-	updateCmd.Flags().Lookup("instances").DefValue = ""
+	flagparser.AddServiceFlags(updateCmd.Flags())
 }
