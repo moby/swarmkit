@@ -1,0 +1,16 @@
+version: "2"
+
+services:
+  manager:
+    build: .
+    command: swarmd manager
+    ports:
+      - "4242:4242"
+
+  agent:
+    build: .
+    command: swarmd agent -m manager:4242
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - manager
