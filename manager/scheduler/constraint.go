@@ -4,18 +4,17 @@ import (
 	"strings"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/spec"
 )
 
 // ConstraintFilter selects only nodes that match certain labels.
 type ConstraintFilter struct {
-	constraints []spec.Expr
+	constraints []Expr
 }
 
 // SetTask returns true when the filter is enable for a given task.
 func (f *ConstraintFilter) SetTask(t *api.Task) bool {
 	if t.Spec.Placement != nil && len(t.Spec.Placement.Constraints) > 0 {
-		constraints, err := spec.ParseExprs(t.Spec.Placement.Constraints)
+		constraints, err := ParseExprs(t.Spec.Placement.Constraints)
 		if err == nil {
 			f.constraints = constraints
 			return true

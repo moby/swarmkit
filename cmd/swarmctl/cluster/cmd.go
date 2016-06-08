@@ -15,8 +15,5 @@ func init() {
 		inspectCmd,
 		listCmd,
 		updateCmd,
-
-		diffCmd,
-		editCmd,
 	)
 }

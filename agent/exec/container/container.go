@@ -14,7 +14,6 @@ import (
 	"github.com/docker/engine-api/types/network"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/spec"
 )
 
 const (
@@ -187,21 +186,30 @@ func getMountMask(m *api.Mount) string {
 		maskOpts[0] = "rw"
 	}
 
-	specM := spec.Mount{}
-
-	specM.FromProto(m)
-	if specM.Propagation != "" {
-		maskOpts = append(maskOpts, specM.Propagation)
+	switch m.Propagation {
+	case api.MountPropagationPrivate:
+		maskOpts = append(maskOpts, "private")
+	case api.MountPropagationRPrivate:
+		maskOpts = append(maskOpts, "rprivate")
+	case api.MountPropagationShared:
+		maskOpts = append(maskOpts, "shared")
+	case api.MountPropagationRShared:
+		maskOpts = append(maskOpts, "rshared")
+	case api.MountPropagationSlave:
+		maskOpts = append(maskOpts, "slave")
+	case api.MountPropagationRSlave:
+		maskOpts = append(maskOpts, "rslave")
 	}
+
 	if !m.Populate {
 		maskOpts = append(maskOpts, "nocopy")
 	}
 
-	switch specM.MCSAccessMode {
-	case "private":
-		maskOpts = append(maskOpts, "Z")
-	case "shared":
+	switch m.Mcsaccessmode {
+	case api.MountMCSAccessModeShared:
 		maskOpts = append(maskOpts, "z")
+	case api.MountMCSAccessModePrivate:
+		maskOpts = append(maskOpts, "Z")
 	}
 
 	return strings.Join(maskOpts, ",")

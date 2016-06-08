@@ -6,7 +6,6 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
-	"github.com/docker/swarmkit/cmd/swarmctl/network"
 	"github.com/spf13/cobra"
 )
 
@@ -32,48 +31,37 @@ var (
 			flags := cmd.Flags()
 			var spec *api.ServiceSpec
 
-			if flags.Changed("file") {
-				service, err := readServiceConfig(flags)
+			spec = &service.Spec
+
+			if flags.Changed("instances") {
+				instances, err := flags.GetUint64("instances")
 				if err != nil {
 					return err
 				}
-				spec = service.ToProto()
-				if err := network.ResolveServiceNetworks(common.Context(cmd), c, spec); err != nil {
+				switch t := spec.GetMode().(type) {
+				case *api.ServiceSpec_Replicated:
+					t.Replicated.Instances = instances
+				default:
+					return errors.New("instances has no meaning for this mode")
+				}
+			}
+
+			if len(args) > 1 {
+				spec.Task.GetContainer().Command = args[1:]
+			}
+			if flags.Changed("args") {
+				containerArgs, err := flags.GetStringSlice("args")
+				if err != nil {
 					return err
 				}
-			} else { // TODO(vieux): support or error on both file.
-				spec = &service.Spec
-
-				if flags.Changed("instances") {
-					instances, err := flags.GetUint64("instances")
-					if err != nil {
-						return err
-					}
-					switch t := spec.GetMode().(type) {
-					case *api.ServiceSpec_Replicated:
-						t.Replicated.Instances = instances
-					default:
-						return errors.New("instances has no meaning for this mode")
-					}
+				spec.Task.GetContainer().Args = containerArgs
+			}
+			if flags.Changed("env") {
+				env, err := flags.GetStringSlice("env")
+				if err != nil {
+					return err
 				}
-
-				if len(args) > 1 {
-					spec.Task.GetContainer().Command = args[1:]
-				}
-				if flags.Changed("args") {
-					containerArgs, err := flags.GetStringSlice("args")
-					if err != nil {
-						return err
-					}
-					spec.Task.GetContainer().Args = containerArgs
-				}
-				if flags.Changed("env") {
-					env, err := flags.GetStringSlice("env")
-					if err != nil {
-						return err
-					}
-					spec.Task.GetContainer().Env = env
-				}
+				spec.Task.GetContainer().Env = env
 			}
 
 			r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
