@@ -14,7 +14,7 @@ Its main benefits are:
 
 ## Overview
 
-Machines running *SwarmKit* can be grouped together in other to form a *Swarm*, coordinating tasks with each other. Once a machine joins, it becomes a *Swarm Node*. Nodes can either be *Worker Nodes* or *Manager Nodes*.
+Machines running *SwarmKit* can be grouped together in order to form a *Swarm*, coordinating tasks with each other. Once a machine joins, it becomes a *Swarm Node*. Nodes can either be *Worker Nodes* or *Manager Nodes*.
 
 - **Worker Nodes** are responsible for running Tasks using an *Executor*. *SwarmKit* comes with a default *Docker Container Executor* that can be easily swapped out.
 - **Manager Nodes** on the other hand accept specifications from the user and are responsible for reconciling the desired state with the actual cluster state.
