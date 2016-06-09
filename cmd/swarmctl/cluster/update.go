@@ -132,7 +132,6 @@ var (
 )
 
 func init() {
-	updateCmd.Flags().StringP("file", "f", "", "Spec to use")
 	// TODO(aaronl): Acceptance policy will change later.
 	updateCmd.Flags().StringSlice("autoaccept", nil, "Roles to automatically issue certificates for")
 	updateCmd.Flags().StringSlice("secret", nil, "Secret required to join the cluster")
