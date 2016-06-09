@@ -245,12 +245,12 @@ func checkSecretValidity(policy *api.AcceptancePolicy_RoleAdmissionPolicy, secre
 		return fmt.Errorf("invalid policy or secret")
 	}
 
-	switch strings.ToLower(policy.Secret.Type) {
+	switch strings.ToLower(policy.Secret.Alg) {
 	case "bcrypt":
 		return bcrypt.CompareHashAndPassword(policy.Secret.Data, []byte(secret))
 	}
 
-	return fmt.Errorf("hash type not supported: %s", policy.Secret.Type)
+	return fmt.Errorf("hash algorithm not supported: %s", policy.Secret.Alg)
 }
 func (s *Server) getRolePolicy(role api.NodeRole) *api.AcceptancePolicy_RoleAdmissionPolicy {
 	s.mu.Lock()
