@@ -56,9 +56,6 @@ func printNodeSummary(node *api.Node) {
 		fmt.Fprintln(w, "Resources:\t")
 		fmt.Fprintf(w, "  CPUs\t: %d\n", desc.Resources.NanoCPUs/1e9)
 		fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(desc.Resources.MemoryBytes)))
-		if node.Description != nil {
-			common.FprintfIfNotEmpty(w, "Hostname\t: %s\n", node.Description.Hostname)
-		}
 	}
 
 	if desc.Engine != nil {
