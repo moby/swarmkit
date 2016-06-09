@@ -30,9 +30,13 @@ Requirements:
 
 - go 1.6 or higher
 - A [working golang](https://golang.org/doc/code.html) environment
+- A [properly configured](https://golang.org/doc/code.html#Organization) Go workspace
 
-From the project root directory, run:
+In your terminal, run:
 ```
+cd $GOPATH
+git clone https://github.com/docker/swarmkit src/github.com/docker/swarmkit
+cd src/github.com/docker/swarmkit
 make binaries
 ```
 
