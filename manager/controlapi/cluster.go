@@ -1,6 +1,8 @@
 package controlapi
 
 import (
+	"strings"
+
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -14,6 +16,8 @@ func validateClusterSpec(spec *api.ClusterSpec) error {
 	if spec == nil {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
+
+	// Validate that duration being provided is valid, and over our minimum
 	if spec.CAConfig.NodeCertExpiry != nil {
 		expiry, err := ptypes.Duration(spec.CAConfig.NodeCertExpiry)
 		if err != nil {
@@ -21,6 +25,16 @@ func validateClusterSpec(spec *api.ClusterSpec) error {
 		}
 		if expiry < ca.MinNodeCertExpiration {
 			return grpc.Errorf(codes.InvalidArgument, "minimum certificate expiry time is: %s", ca.MinNodeCertExpiration)
+		}
+	}
+
+	// Validate that AcceptancePolicies only include Secrets that are bcrypted
+	// TODO(diogo): Add a global list of acceptace algorithms. We only support bcrypt for now.
+	if len(spec.AcceptancePolicy.Policies) > 0 {
+		for _, policy := range spec.AcceptancePolicy.Policies {
+			if policy.Secret != nil && strings.ToLower(policy.Secret.Alg) != "bcrypt" {
+				return grpc.Errorf(codes.InvalidArgument, "hashing algorithm is not supported: %s", policy.Secret.Alg)
+			}
 		}
 	}
 
@@ -173,8 +187,8 @@ func redactClusters(clusters []*api.Cluster) []*api.Cluster {
 			for _, policy := range newCluster.Spec.AcceptancePolicy.Policies {
 				// Adding [REDACTED] to the api client so they know there is a
 				// a secret configured, but without telling them what it is.
-				if policy.Secret != "" {
-					policy.Secret = "[REDACTED]"
+				if policy.Secret != nil {
+					policy.Secret.Data = []byte("[REDACTED]")
 				}
 
 			}

@@ -408,13 +408,20 @@ message IssuanceStatus {
 
 message AcceptancePolicy {
 	message RoleAdmissionPolicy {
+		message HashedSecret {
+			// The actual hashed content
+			bytes data = 1;
+			// The type of hash we are using
+			string alg = 2;
+		}
+
 		NodeRole role = 1;
 		// Autoaccept controls which roles' certificates are automatically
 		// issued without administrator intervention.
 		bool autoaccept = 2;
 		// Secret represents a user-provided string that is necessary for new
 		// nodes to join the cluster
-		string secret = 3;
+		HashedSecret secret = 3;
 	}
 
 	repeated RoleAdmissionPolicy policies = 1;

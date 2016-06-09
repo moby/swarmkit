@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
@@ -80,8 +82,16 @@ var (
 				if err != nil || secret == nil || len(secret) < 1 {
 					return err
 				}
+				// Using the defaut bcrypt cost
+				hashedSecret, err := bcrypt.GenerateFromPassword([]byte(secret[0]), 0)
+				if err != nil {
+					return err
+				}
 				for _, policy := range spec.AcceptancePolicy.Policies {
-					policy.Secret = secret[0]
+					policy.Secret = &api.AcceptancePolicy_RoleAdmissionPolicy_HashedSecret{
+						Data: hashedSecret,
+						Alg:  "bcrypt",
+					}
 				}
 			}
 			if flags.Changed("certexpiry") {
