@@ -1,6 +1,7 @@
 {
 	"ImportPath": "github.com/docker/swarmkit",
 	"GoVersion": "go1.6",
+	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
 	],
@@ -785,6 +786,14 @@
 			"ImportPath": "github.com/stretchr/testify/require",
 			"Comment": "v1.1.3-2-g9f9027f",
 			"Rev": "9f9027faeb0dad515336ed2f28317f9f8f527ab4"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/bcrypt",
+			"Rev": "3fbbcd23f1cb824e69491a5930cfeff09b12f4d2"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/blowfish",
+			"Rev": "3fbbcd23f1cb824e69491a5930cfeff09b12f4d2"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/pkcs12",

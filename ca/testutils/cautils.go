@@ -37,7 +37,7 @@ func AcceptancePolicy(worker, manager bool, secret string) api.AcceptancePolicy 
 		hashPwd, _ := bcrypt.GenerateFromPassword([]byte(secret), 0)
 		apiSecret = &api.AcceptancePolicy_RoleAdmissionPolicy_HashedSecret{
 			Data: hashPwd,
-			Type: "bcrypt",
+			Alg:  "bcrypt",
 		}
 	}
 

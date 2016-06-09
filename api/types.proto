@@ -412,7 +412,7 @@ message AcceptancePolicy {
 			// The actual hashed content
 			bytes data = 1;
 			// The type of hash we are using
-			string type = 2;
+			string alg = 2;
 		}
 
 		NodeRole role = 1;

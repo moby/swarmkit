@@ -90,7 +90,7 @@ var (
 				for _, policy := range spec.AcceptancePolicy.Policies {
 					policy.Secret = &api.AcceptancePolicy_RoleAdmissionPolicy_HashedSecret{
 						Data: hashedSecret,
-						Type: "bcrypt",
+						Alg:  "bcrypt",
 					}
 				}
 			}

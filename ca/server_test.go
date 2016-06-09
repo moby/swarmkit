@@ -263,7 +263,7 @@ func TestNodeCertificateRenewalsDoNotRequireSecret(t *testing.T) {
 				Autoaccept: true,
 				Secret: &api.AcceptancePolicy_RoleAdmissionPolicy_HashedSecret{
 					Data: hashPwd,
-					Type: "bcrypt",
+					Alg:  "bcrypt",
 				},
 			},
 			{
@@ -271,7 +271,7 @@ func TestNodeCertificateRenewalsDoNotRequireSecret(t *testing.T) {
 				Autoaccept: true,
 				Secret: &api.AcceptancePolicy_RoleAdmissionPolicy_HashedSecret{
 					Data: hashPwd,
-					Type: "bcrypt",
+					Alg:  "bcrypt",
 				},
 			},
 		},
@@ -312,11 +312,11 @@ func TestNewNodeCertificateRequiresSecret(t *testing.T) {
 
 	agentSecret := &api.AcceptancePolicy_RoleAdmissionPolicy_HashedSecret{
 		Data: agentHashPwd,
-		Type: "bcrypt",
+		Alg:  "bcrypt",
 	}
 	managerSecret := &api.AcceptancePolicy_RoleAdmissionPolicy_HashedSecret{
 		Data: managerHashPwd,
-		Type: "bcrypt",
+		Alg:  "bcrypt",
 	}
 
 	policy := api.AcceptancePolicy{
@@ -388,7 +388,7 @@ func TestNewNodeCertificateBadSecret(t *testing.T) {
 
 	badSecret := &api.AcceptancePolicy_RoleAdmissionPolicy_HashedSecret{
 		Data: managerHashPwd,
-		Type: "sha1",
+		Alg:  "sha1",
 	}
 	policy := api.AcceptancePolicy{
 		Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{
@@ -415,10 +415,10 @@ func TestNewNodeCertificateBadSecret(t *testing.T) {
 	role := api.NodeRoleManager
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Secret: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
-	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid secret token is necessary to join this cluster: hash type not supported: sha1")
+	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid secret token is necessary to join this cluster: hash algorithm not supported: sha1")
 
 	role = api.NodeRoleWorker
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Secret: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
-	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid secret token is necessary to join this cluster: hash type not supported: sha1")
+	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid secret token is necessary to join this cluster: hash algorithm not supported: sha1")
 }
