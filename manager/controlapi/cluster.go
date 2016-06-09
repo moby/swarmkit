@@ -43,10 +43,11 @@ func (s *Server) GetCluster(ctx context.Context, request *api.GetClusterRequest)
 		return nil, grpc.Errorf(codes.NotFound, "cluster %s not found", request.ClusterID)
 	}
 
-	redactCluster([]*api.Cluster{cluster})
+	redactedClusters := redactClusters([]*api.Cluster{cluster})
 
+	// WARN: we should never return cluster here. We need to redact the private fields first.
 	return &api.GetClusterResponse{
-		Cluster: cluster,
+		Cluster: redactedClusters[0],
 	}, nil
 }
 
@@ -80,10 +81,11 @@ func (s *Server) UpdateCluster(ctx context.Context, request *api.UpdateClusterRe
 		return nil, grpc.Errorf(codes.NotFound, "cluster %s not found", request.ClusterID)
 	}
 
-	redactCluster([]*api.Cluster{cluster})
+	redactedClusters := redactClusters([]*api.Cluster{cluster})
 
+	// WARN: we should never return cluster here. We need to redact the private fields first.
 	return &api.UpdateClusterResponse{
-		Cluster: cluster,
+		Cluster: redactedClusters[0],
 	}, nil
 }
 
@@ -140,27 +142,45 @@ func (s *Server) ListClusters(ctx context.Context, request *api.ListClustersRequ
 		)
 	}
 
-	redactCluster(clusters)
-
+	// WARN: we should never return cluster here. We need to redact the private fields first.
 	return &api.ListClustersResponse{
-		Clusters: clusters,
+		Clusters: redactClusters(clusters),
 	}, nil
 }
 
-func redactCluster(clusters []*api.Cluster) {
-	// Filter the secrets out of all the returned clusters
+// redactClusters is a method that enforces a whitelist of fields that are ok to be
+// returned in the Cluster object. It should filter out all senstive information.
+func redactClusters(clusters []*api.Cluster) []*api.Cluster {
+	var redactedClusters []*api.Cluster
+	// Only add public fields to the new clusters
 	for _, cluster := range clusters {
-		// Remove the private key from being returned
-		if cluster.RootCA != nil {
-			cluster.RootCA.CAKey = nil
+		// Copy all the mandatory fields
+		newCluster := &api.Cluster{
+			ID:   cluster.ID,
+			Meta: cluster.Meta,
+			Spec: cluster.Spec,
 		}
-		// Remove the acceptance policy secret from being returned
-		if len(cluster.Spec.AcceptancePolicy.Policies) > 0 {
-			for _, policy := range cluster.Spec.AcceptancePolicy.Policies {
+		// If cluster has a RootCA, copy only the public fields
+		if cluster.RootCA != nil {
+			newCluster.RootCA = &api.RootCA{
+				CACert:     cluster.RootCA.CACert,
+				CACertHash: cluster.RootCA.CACertHash,
+			}
+		}
+
+		// Redact the acceptance policy secrets
+		if len(newCluster.Spec.AcceptancePolicy.Policies) > 0 {
+			for _, policy := range newCluster.Spec.AcceptancePolicy.Policies {
+				// Adding [REDACTED] to the api client so they know there is a
+				// a secret configured, but without telling them what it is.
 				if policy.Secret != "" {
 					policy.Secret = "[REDACTED]"
 				}
+
 			}
 		}
+		redactedClusters = append(redactedClusters, newCluster)
 	}
+
+	return redactedClusters
 }

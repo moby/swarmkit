@@ -33,6 +33,11 @@ func createCluster(t *testing.T, ts *testServer, id, name string, policy api.Acc
 	cluster := &api.Cluster{
 		ID:   id,
 		Spec: *spec,
+		RootCA: &api.RootCA{
+			CACert:     []byte("-----BEGIN CERTIFICATE-----AwEHoUQDQgAEZ4vGYkSt/kjoHbUjDx9eyO1xBVJEH2F+AwM9lACIZ414cD1qYy8u-----BEGIN CERTIFICATE-----"),
+			CAKey:      []byte("-----BEGIN EC PRIVATE KEY-----AwEHoUQDQgAEZ4vGYkSt/kjoHbUjDx9eyO1xBVJEH2F+AwM9lACIZ414cD1qYy8u-----END EC PRIVATE KEY-----"),
+			CACertHash: "hash",
+		},
 	}
 	assert.NoError(t, ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateCluster(tx, cluster)
@@ -90,7 +95,15 @@ func TestGetCluster(t *testing.T) {
 	r, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: cluster.ID})
 	assert.NoError(t, err)
 	cluster.Meta.Version = r.Cluster.Meta.Version
-	assert.Equal(t, cluster, r.Cluster)
+	// Only public fields should be available
+	assert.Equal(t, cluster.ID, r.Cluster.ID)
+	assert.Equal(t, cluster.Meta, r.Cluster.Meta)
+	assert.Equal(t, cluster.Spec, r.Cluster.Spec)
+	assert.Equal(t, cluster.RootCA.CACert, r.Cluster.RootCA.CACert)
+	assert.Equal(t, cluster.RootCA.CACertHash, r.Cluster.RootCA.CACertHash)
+	// CAKey and network keys should be nil
+	assert.Nil(t, r.Cluster.RootCA.CAKey)
+	assert.Nil(t, r.Cluster.NetworkBootstrapKeys)
 }
 
 func TestGetClusterWithSecret(t *testing.T) {
@@ -109,17 +122,9 @@ func TestGetClusterWithSecret(t *testing.T) {
 	assert.NoError(t, err)
 	cluster.Meta.Version = r.Cluster.Meta.Version
 	assert.NotEqual(t, cluster, r.Cluster)
-	assert.Contains(t, r.Cluster.String(), "[REDACTED]")
-	assert.Contains(t, cluster.String(), "secret")
-}
-
-func TestGetClusterRedactsPrivateKeys(t *testing.T) {
-	ts := newTestServer(t)
-
-	cluster := createCluster(t, ts, "name", "name", testutils.AcceptancePolicy(true, true, ""))
-	r, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: cluster.ID})
-	assert.NoError(t, err)
+	assert.NotContains(t, r.Cluster.String(), "secret")
 	assert.NotContains(t, r.Cluster.String(), "PRIVATE")
+	assert.Contains(t, r.Cluster.String(), "[REDACTED]")
 }
 
 func TestUpdateCluster(t *testing.T) {
@@ -178,6 +183,7 @@ func TestUpdateCluster(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NotContains(t, returnedCluster.String(), "secret")
+	assert.NotContains(t, returnedCluster.String(), "PRIVATE")
 	assert.Contains(t, returnedCluster.String(), "[REDACTED]")
 
 	// Versioning.
@@ -239,29 +245,7 @@ func TestListClustersWithSecrets(t *testing.T) {
 	assert.Equal(t, 3, len(r.Clusters))
 	for _, cluster := range r.Clusters {
 		assert.NotContains(t, cluster.String(), policy.Policies[0].Secret)
-		assert.Contains(t, cluster.String(), "[REDACTED]")
-	}
-}
-
-func TestListClustersRedactsPrivateKey(t *testing.T) {
-	ts := newTestServer(t)
-	r, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
-	assert.NoError(t, err)
-	assert.Empty(t, r.Clusters)
-
-	policy := testutils.AcceptancePolicy(true, true, "")
-
-	createCluster(t, ts, "id1", "name1", policy)
-	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Clusters))
-
-	createCluster(t, ts, "id2", "name2", policy)
-	createCluster(t, ts, "id3", "name3", policy)
-	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(r.Clusters))
-	for _, cluster := range r.Clusters {
 		assert.NotContains(t, cluster.String(), "PRIVATE")
+		assert.Contains(t, cluster.String(), "[REDACTED]")
 	}
 }
