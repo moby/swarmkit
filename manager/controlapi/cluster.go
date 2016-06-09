@@ -173,8 +173,8 @@ func redactClusters(clusters []*api.Cluster) []*api.Cluster {
 			for _, policy := range newCluster.Spec.AcceptancePolicy.Policies {
 				// Adding [REDACTED] to the api client so they know there is a
 				// a secret configured, but without telling them what it is.
-				if policy.Secret != "" {
-					policy.Secret = "[REDACTED]"
+				if policy.Secret != nil {
+					policy.Secret.Data = []byte("[REDACTED]")
 				}
 
 			}
