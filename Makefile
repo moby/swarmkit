@@ -86,6 +86,8 @@ FORCE:
 
 # Build a binary from a cmd.
 bin/%: cmd/% FORCE
+	@test $$(go list) = "github.com/docker/swarmkit" || \
+		(echo "👹 Please correctly set up your Go build environment. This project must be located at <GOPATH>/src/github.com/docker/swarmkit" && false)
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./$<
 
