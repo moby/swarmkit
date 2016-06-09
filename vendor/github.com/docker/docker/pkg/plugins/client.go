@@ -101,6 +101,7 @@ func (c *Client) SendFile(serviceMethod string, data io.Reader, ret interface{})
 	if err != nil {
 		return err
 	}
+	defer body.Close()
 	if err := json.NewDecoder(body).Decode(&ret); err != nil {
 		logrus.Errorf("%s: error reading plugin resp: %v", serviceMethod, err)
 		return err
@@ -129,7 +130,7 @@ func (c *Client) callWithRetry(serviceMethod string, data io.Reader, retry bool)
 				return nil, err
 			}
 			retries++
-			logrus.Warnf("Unable to connect to plugin: %s, retrying in %v", req.URL, timeOff)
+			logrus.Warnf("Unable to connect to plugin: %s:%s, retrying in %v", req.URL.Host, req.URL.Path, timeOff)
 			time.Sleep(timeOff)
 			continue
 		}

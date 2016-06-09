@@ -3,6 +3,7 @@ package scheduler
 import (
 	"strings"
 
+	"github.com/docker/docker/pkg/stringid"
 	"github.com/docker/swarmkit/api"
 )
 
@@ -28,7 +29,8 @@ func (f *ConstraintFilter) Check(n *NodeInfo) bool {
 	for _, constraint := range f.constraints {
 		switch constraint.Key {
 		case "node.id":
-			if !constraint.Match(n.ID) {
+			// it could be full ID or TruncateID
+			if !constraint.Match(n.ID) && !constraint.Match(stringid.TruncateID(n.ID)) {
 				return false
 			}
 		case "node.name":
@@ -50,20 +52,26 @@ func (f *ConstraintFilter) Check(n *NodeInfo) bool {
 			if !strings.HasPrefix(constraint.Key, "node.labels.") {
 				return false
 			}
-			// if the node doesn't have any label,
-			// it's equivalent to match an empty value.
-			// that is, 'node.labels.key!=value' should pass and
-			// 'node.labels.key==value' should fail
-			if n.Spec.Annotations.Labels == nil {
-				if !constraint.Match("") {
-					return false
+
+			// node has labels from node.Spec.Annotations.Labels and node.Description.Engine.Labels
+			// if a label exists on both, node.Spec.Annotations.Labels has precedence
+			combinedLabels := make(map[string]string)
+			if n.Description != nil && n.Description.Engine != nil && n.Description.Engine.Labels != nil {
+				for k, v := range n.Description.Engine.Labels {
+					combinedLabels[k] = v
 				}
-				continue
 			}
+			if n.Spec.Annotations.Labels != nil {
+				for k, v := range n.Spec.Annotations.Labels {
+					combinedLabels[k] = v
+				}
+			}
+
 			label := constraint.Key[len("node.labels."):]
-			// if the node doesn't have this specific label,
-			// val is an empty string
-			val := n.Spec.Annotations.Labels[label]
+			// if the node doesn't have a specific label, val is an empty string
+			// 'node.labels.key!=value' passes and
+			// 'node.labels.key==value' fails
+			val := combinedLabels[label]
 			if !constraint.Match(val) {
 				return false
 			}
