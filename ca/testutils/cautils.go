@@ -24,6 +24,7 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/picker"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -31,17 +32,26 @@ import (
 
 // AcceptancePolicy is a policy that returns a valid Acceptance policy
 func AcceptancePolicy(worker, manager bool, secret string) api.AcceptancePolicy {
+	var apiSecret *api.AcceptancePolicy_RoleAdmissionPolicy_HashedSecret
+	if secret != "" {
+		hashPwd, _ := bcrypt.GenerateFromPassword([]byte(secret), 0)
+		apiSecret = &api.AcceptancePolicy_RoleAdmissionPolicy_HashedSecret{
+			Data: hashPwd,
+			Type: "bcrypt",
+		}
+	}
+
 	return api.AcceptancePolicy{
 		Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{
 			{
 				Role:       api.NodeRoleWorker,
 				Autoaccept: worker,
-				Secret:     secret,
+				Secret:     apiSecret,
 			},
 			{
 				Role:       api.NodeRoleManager,
 				Autoaccept: manager,
-				Secret:     secret,
+				Secret:     apiSecret,
 			},
 		},
 	}
