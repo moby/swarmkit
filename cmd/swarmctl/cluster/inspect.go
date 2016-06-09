@@ -24,8 +24,8 @@ func printClusterSummary(cluster *api.Cluster) {
 			fmt.Fprintf(w, "  Role\t: %v\n", policy.Role)
 			fmt.Fprintf(w, "    Autoaccept\t: %v\n", policy.Autoaccept)
 			// This will never contain a real secret. It will either be empty, or say [REDACTED]
-			if policy.Secret != "" {
-				fmt.Fprintf(w, "    Secret\t: %v\n", policy.Secret)
+			if policy.Secret != nil {
+				fmt.Fprintf(w, "    Secret\t: %v\n", string(policy.Secret.Data))
 			}
 		}
 	}
