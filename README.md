@@ -40,6 +40,13 @@ cd src/github.com/docker/swarmkit
 make binaries
 ```
 
+In Windows, run:
+```
+cd %GOPATH%
+git clone https://github.com/docker/swarmkit src\github.com\docker\swarmkit
+cd src\github.com\docker\swarmkit
+make binaries
+```
 ## Test
 
 Before running tests for the first time, setup the tooling:
