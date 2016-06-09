@@ -124,7 +124,7 @@ func TestGetClusterWithSecret(t *testing.T) {
 	assert.NotEqual(t, cluster, r.Cluster)
 	assert.NotContains(t, r.Cluster.String(), "secret")
 	assert.NotContains(t, r.Cluster.String(), "PRIVATE")
-	assert.Contains(t, r.Cluster.String(), "[REDACTED]")
+	assert.Equal(t, string(r.Cluster.Spec.AcceptancePolicy.Policies[0].Secret.Data), "[REDACTED]")
 }
 
 func TestUpdateCluster(t *testing.T) {
@@ -184,7 +184,7 @@ func TestUpdateCluster(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotContains(t, returnedCluster.String(), "secret")
 	assert.NotContains(t, returnedCluster.String(), "PRIVATE")
-	assert.Contains(t, returnedCluster.String(), "[REDACTED]")
+	assert.Equal(t, string(returnedCluster.Cluster.Spec.AcceptancePolicy.Policies[0].Secret.Data), "[REDACTED]")
 
 	// Versioning.
 	assert.NoError(t, err)
@@ -246,6 +246,6 @@ func TestListClustersWithSecrets(t *testing.T) {
 	for _, cluster := range r.Clusters {
 		assert.NotContains(t, cluster.String(), policy.Policies[0].Secret)
 		assert.NotContains(t, cluster.String(), "PRIVATE")
-		assert.Contains(t, cluster.String(), "[REDACTED]")
+		assert.Equal(t, string(cluster.Spec.AcceptancePolicy.Policies[0].Secret.Data), "[REDACTED]")
 	}
 }
