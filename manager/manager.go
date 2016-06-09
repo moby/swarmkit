@@ -547,6 +547,7 @@ func (m *Manager) Stop(ctx context.Context) {
 	// it also prevents the loop from processing any more stuff.
 	close(m.stopped)
 
+	m.RaftNode.Shutdown()
 	m.Dispatcher.Stop()
 	m.caserver.Stop()
 
@@ -569,7 +570,6 @@ func (m *Manager) Stop(ctx context.Context) {
 		m.keyManager.Stop()
 	}
 
-	m.RaftNode.Shutdown()
 	// some time after this point, Run will recieve an error from one of these
 	m.server.Stop()
 	m.localserver.Stop()
