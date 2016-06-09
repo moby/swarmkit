@@ -31,7 +31,13 @@ Requirements:
 - go 1.6 or higher
 - A [working golang](https://golang.org/doc/code.html) environment
 
-From the project root directory, run:
+*SwarmKit* is built in Go and leverages a standard project structure to work well with Go tooling.
+If you are new to Go, please see [BUILDING.md](BUILDING.md) for a more detailed guide.
+
+Once you have *SwarmKit* checked out in your `$GOPATH`, the `Makefile` can be used for common tasks.
+
+From the project root directory, run the following to build `swarmd` and `swarmctl`:
+
 ```
 make binaries
 ```
