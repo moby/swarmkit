@@ -15,6 +15,11 @@ import (
 	"golang.org/x/net/context"
 )
 
+var (
+	nanoCPUs    = api.NanoCPUs.String()
+	memoryBytes = api.MemoryBytes.String()
+)
+
 func TestScheduler(t *testing.T) {
 	ctx := context.Background()
 	initialNodeSet := []*api.Node{
@@ -423,8 +428,10 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 		},
 		Description: &api.NodeDescription{
 			Resources: &api.Resources{
-				NanoCPUs:    1e9,
-				MemoryBytes: 1e9,
+				ScalarResources: map[string]float64{
+					nanoCPUs:    1e9,
+					memoryBytes: 1e9,
+				},
 			},
 		},
 	}
@@ -437,7 +444,9 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 			},
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
-					MemoryBytes: 2e9,
+					ScalarResources: map[string]float64{
+						memoryBytes: 2e9,
+					},
 				},
 			},
 		},
@@ -482,8 +491,10 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 			},
 			Description: &api.NodeDescription{
 				Resources: &api.Resources{
-					NanoCPUs:    4e9,
-					MemoryBytes: 8e9,
+					ScalarResources: map[string]float64{
+						nanoCPUs:    4e9,
+						memoryBytes: 8e9,
+					},
 				},
 			},
 			Status: api.NodeStatus{
@@ -514,8 +525,10 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 		},
 		Description: &api.NodeDescription{
 			Resources: &api.Resources{
-				NanoCPUs:    1e9,
-				MemoryBytes: 1e9,
+				ScalarResources: map[string]float64{
+					nanoCPUs:    1e9,
+					memoryBytes: 1e9,
+				},
 			},
 		},
 	}
@@ -525,7 +538,9 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 		Spec: api.TaskSpec{
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
-					MemoryBytes: 8e8,
+					ScalarResources: map[string]float64{
+						memoryBytes: 8e8,
+					},
 				},
 			},
 		},

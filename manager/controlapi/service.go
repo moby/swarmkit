@@ -14,13 +14,16 @@ func validateResources(r *api.Resources) error {
 		return nil
 	}
 
-	if r.NanoCPUs != 0 && r.NanoCPUs < 1e6 {
-		return grpc.Errorf(codes.InvalidArgument, "invalid cpu value %d: Must be at least %d", r.NanoCPUs, 1e6)
+	nanoCPUs, ok := r.ScalarResources[api.NanoCPUs.String()]
+	if ok && nanoCPUs < 1e6 {
+		return grpc.Errorf(codes.InvalidArgument, "invalid cpu value %g: Must be at least %d", nanoCPUs, 1e6)
 	}
 
-	if r.MemoryBytes != 0 && r.MemoryBytes < 4*1024*1024 {
-		return grpc.Errorf(codes.InvalidArgument, "invalid memory value %d: Must be at least 4MiB", r.MemoryBytes)
+	memoryBytes, ok := r.ScalarResources[api.MemoryBytes.String()]
+	if ok && memoryBytes < 4*1024*1024 {
+		return grpc.Errorf(codes.InvalidArgument, "invalid memory value %g: Must be at least 4MiB", memoryBytes)
 	}
+
 	return nil
 }
 

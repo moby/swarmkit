@@ -44,7 +44,7 @@ func (f *ResourceFilter) SetTask(t *api.Task) bool {
 	if r == nil || r.Reservations == nil {
 		return false
 	}
-	if r.Reservations.NanoCPUs == 0 && r.Reservations.MemoryBytes == 0 {
+	if r.Reservations == nil || len(r.Reservations.ScalarResources) == 0 {
 		return false
 	}
 	f.reservations = r.Reservations
@@ -53,12 +53,10 @@ func (f *ResourceFilter) SetTask(t *api.Task) bool {
 
 // Check returns true if the task can be scheduled into the given node.
 func (f *ResourceFilter) Check(n *NodeInfo) bool {
-	if f.reservations.NanoCPUs > n.AvailableResources.NanoCPUs {
-		return false
-	}
-
-	if f.reservations.MemoryBytes > n.AvailableResources.MemoryBytes {
-		return false
+	for askName, askValue := range f.reservations.ScalarResources {
+		if offerValue, ok := n.AvailableResources.ScalarResources[askName]; !ok || offerValue < askValue {
+			return false
+		}
 	}
 
 	return true

@@ -52,12 +52,16 @@ func printNodeSummary(node *api.Node) {
 		common.FprintfIfNotEmpty(w, "  Architecture\t: %s\n", desc.Platform.Architecture)
 	}
 
-	if desc.Resources != nil {
+	if desc.Resources != nil && len(desc.Resources.ScalarResources) > 0 {
 		fmt.Fprintln(w, "Resources:\t")
-		fmt.Fprintf(w, "  CPUs\t: %d\n", desc.Resources.NanoCPUs/1e9)
-		fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(desc.Resources.MemoryBytes)))
-		if node.Description != nil {
-			common.FprintfIfNotEmpty(w, "Hostname\t: %s\n", node.Description.Hostname)
+		for k, v := range desc.Resources.ScalarResources {
+			if k == api.NanoCPUs.String() {
+				fmt.Fprintf(w, "  CPUs\t: %g\n", v/1e9)
+			} else if k == api.MemoryBytes.String() {
+				fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(v)))
+			} else {
+				fmt.Fprintf(w, "  %s\t: %g\n", k, v)
+			}
 		}
 	}
 

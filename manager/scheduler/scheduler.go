@@ -244,7 +244,10 @@ func (s *Scheduler) deleteTask(ctx context.Context, t *api.Task) {
 func (s *Scheduler) createOrUpdateNode(n *api.Node) {
 	var resources api.Resources
 	if n.Description != nil && n.Description.Resources != nil {
-		resources = *n.Description.Resources
+		resources = api.Resources{ScalarResources: map[string]float64{}}
+		for k, v := range n.Description.Resources.ScalarResources {
+			resources.ScalarResources[k] = v
+		}
 	}
 	nodeInfo := s.nodeHeap.nodeInfo(n.ID)
 	nodeInfo.Node = n

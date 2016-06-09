@@ -10,6 +10,11 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+var (
+	MemoryBytes = api.MemoryBytes.String()
+	NanoCPUs    = api.NanoCPUs.String()
+)
+
 func createSpec(name, image string, instances uint64) *api.ServiceSpec {
 	return &api.ServiceSpec{
 		Annotations: api.Annotations{
@@ -43,13 +48,13 @@ func createService(t *testing.T, ts *testServer, name, image string, instances u
 
 func TestValidateResources(t *testing.T) {
 	bad := []*api.Resources{
-		{MemoryBytes: 1},
-		{NanoCPUs: 42},
+		{ScalarResources: map[string]float64{MemoryBytes: 1}},
+		{ScalarResources: map[string]float64{NanoCPUs: 42}},
 	}
 
 	good := []*api.Resources{
-		{MemoryBytes: 4096 * 1024 * 1024},
-		{NanoCPUs: 1e9},
+		{ScalarResources: map[string]float64{MemoryBytes: 4096 * 1024 * 1024}},
+		{ScalarResources: map[string]float64{NanoCPUs: 1e9}},
 	}
 
 	for _, b := range bad {
@@ -65,12 +70,12 @@ func TestValidateResources(t *testing.T) {
 
 func TestValidateResourceRequirements(t *testing.T) {
 	bad := []*api.ResourceRequirements{
-		{Limits: &api.Resources{MemoryBytes: 1}},
-		{Reservations: &api.Resources{MemoryBytes: 1}},
+		{Limits: &api.Resources{ScalarResources: map[string]float64{MemoryBytes: 1}}},
+		{Reservations: &api.Resources{ScalarResources: map[string]float64{MemoryBytes: 1}}},
 	}
 	good := []*api.ResourceRequirements{
-		{Limits: &api.Resources{NanoCPUs: 1e9}},
-		{Reservations: &api.Resources{NanoCPUs: 1e9}},
+		{Limits: &api.Resources{ScalarResources: map[string]float64{NanoCPUs: 1e9}}},
+		{Reservations: &api.Resources{ScalarResources: map[string]float64{NanoCPUs: 1e9}}},
 	}
 	for _, b := range bad {
 		err := validateResourceRequirements(b)
