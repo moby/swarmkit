@@ -114,6 +114,10 @@ func TestValidateServiceSpecTemplate(t *testing.T) {
 			s: createSpec("", "", 0),
 			c: codes.InvalidArgument,
 		},
+		{
+			s: createSpec("", "busybox###", 0),
+			c: codes.InvalidArgument,
+		},
 	} {
 		err := validateServiceSpecTemplate(bad.s)
 		assert.Error(t, err)
