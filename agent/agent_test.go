@@ -73,10 +73,14 @@ func TestAgentStartStop(t *testing.T) {
 		grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds))
 	assert.NoError(t, err)
 
+	db, cleanup := storageTestEnv(t)
+	defer cleanup()
+
 	agent, err := New(&Config{
 		Executor: &NoopExecutor{},
 		Managers: remotes,
 		Conn:     conn,
+		DB:       db,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, agent)
