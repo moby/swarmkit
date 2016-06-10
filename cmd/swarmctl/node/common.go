@@ -138,7 +138,7 @@ func getNode(ctx context.Context, c api.ControlClient, input string) (*api.Node,
 		}
 
 		if l := len(rl.Nodes); l > 1 {
-			return nil, fmt.Errorf("node %s is ambigious (%d matches found)", input, l)
+			return nil, fmt.Errorf("node %s is ambiguous (%d matches found)", input, l)
 		}
 
 		return rl.Nodes[0], nil
