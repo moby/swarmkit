@@ -75,7 +75,7 @@ func TestControllerStart(t *testing.T) {
 					},
 				},
 			}, nil),
-		client.EXPECT().ContainerStart(ctx, config.name()).
+		client.EXPECT().ContainerStart(ctx, config.name(), types.ContainerStartOptions{}).
 			Return(nil),
 	)
 
@@ -228,7 +228,7 @@ func TestControllerShutdown(t *testing.T) {
 	defer finish(t)
 
 	gomock.InOrder(
-		client.EXPECT().ContainerStop(gomock.Any(), config.name(), 10),
+		client.EXPECT().ContainerStop(gomock.Any(), config.name(), 10*time.Second),
 	)
 
 	assert.NoError(t, ctlr.Shutdown(ctx))
@@ -250,7 +250,7 @@ func TestControllerRemove(t *testing.T) {
 	defer finish(t)
 
 	gomock.InOrder(
-		client.EXPECT().ContainerStop(gomock.Any(), config.name(), 10),
+		client.EXPECT().ContainerStop(gomock.Any(), config.name(), 10*time.Second),
 		client.EXPECT().ContainerRemove(gomock.Any(), config.name(), types.ContainerRemoveOptions{
 			RemoveVolumes: true,
 			Force:         true,

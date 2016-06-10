@@ -4,15 +4,15 @@
 package container
 
 import (
-	io "io"
-
-	"github.com/docker/engine-api/types"
-	"github.com/docker/engine-api/types/container"
-	"github.com/docker/engine-api/types/filters"
-	"github.com/docker/engine-api/types/network"
-	"github.com/docker/engine-api/types/registry"
+	types "github.com/docker/engine-api/types"
+	container "github.com/docker/engine-api/types/container"
+	filters "github.com/docker/engine-api/types/filters"
+	network "github.com/docker/engine-api/types/network"
+	registry "github.com/docker/engine-api/types/registry"
 	gomock "github.com/golang/mock/gomock"
-	"golang.org/x/net/context"
+	context "golang.org/x/net/context"
+	io "io"
+	time "time"
 )
 
 // Mock of APIClient interface
@@ -34,6 +34,37 @@ func NewMockAPIClient(ctrl *gomock.Controller) *MockAPIClient {
 
 func (_m *MockAPIClient) EXPECT() *_MockAPIClientRecorder {
 	return _m.recorder
+}
+
+func (_m *MockAPIClient) CheckpointCreate(_param0 context.Context, _param1 string, _param2 types.CheckpointCreateOptions) error {
+	ret := _m.ctrl.Call(_m, "CheckpointCreate", _param0, _param1, _param2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockAPIClientRecorder) CheckpointCreate(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "CheckpointCreate", arg0, arg1, arg2)
+}
+
+func (_m *MockAPIClient) CheckpointDelete(_param0 context.Context, _param1 string, _param2 string) error {
+	ret := _m.ctrl.Call(_m, "CheckpointDelete", _param0, _param1, _param2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockAPIClientRecorder) CheckpointDelete(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "CheckpointDelete", arg0, arg1, arg2)
+}
+
+func (_m *MockAPIClient) CheckpointList(_param0 context.Context, _param1 string) ([]types.Checkpoint, error) {
+	ret := _m.ctrl.Call(_m, "CheckpointList", _param0, _param1)
+	ret0, _ := ret[0].([]types.Checkpoint)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockAPIClientRecorder) CheckpointList(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "CheckpointList", arg0, arg1)
 }
 
 func (_m *MockAPIClient) ClientVersion() string {
@@ -249,7 +280,7 @@ func (_mr *_MockAPIClientRecorder) ContainerResize(arg0, arg1, arg2 interface{})
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerResize", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ContainerRestart(_param0 context.Context, _param1 string, _param2 int) error {
+func (_m *MockAPIClient) ContainerRestart(_param0 context.Context, _param1 string, _param2 time.Duration) error {
 	ret := _m.ctrl.Call(_m, "ContainerRestart", _param0, _param1, _param2)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -259,14 +290,14 @@ func (_mr *_MockAPIClientRecorder) ContainerRestart(arg0, arg1, arg2 interface{}
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerRestart", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ContainerStart(_param0 context.Context, _param1 string) error {
-	ret := _m.ctrl.Call(_m, "ContainerStart", _param0, _param1)
+func (_m *MockAPIClient) ContainerStart(_param0 context.Context, _param1 string, _param2 types.ContainerStartOptions) error {
+	ret := _m.ctrl.Call(_m, "ContainerStart", _param0, _param1, _param2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockAPIClientRecorder) ContainerStart(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerStart", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) ContainerStart(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerStart", arg0, arg1, arg2)
 }
 
 func (_m *MockAPIClient) ContainerStatPath(_param0 context.Context, _param1 string, _param2 string) (types.ContainerPathStat, error) {
@@ -291,7 +322,7 @@ func (_mr *_MockAPIClientRecorder) ContainerStats(arg0, arg1, arg2 interface{}) 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerStats", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ContainerStop(_param0 context.Context, _param1 string, _param2 int) error {
+func (_m *MockAPIClient) ContainerStop(_param0 context.Context, _param1 string, _param2 time.Duration) error {
 	ret := _m.ctrl.Call(_m, "ContainerStop", _param0, _param1, _param2)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -509,14 +540,14 @@ func (_mr *_MockAPIClientRecorder) ImageSearch(arg0, arg1, arg2 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageSearch", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ImageTag(_param0 context.Context, _param1 string, _param2 string, _param3 types.ImageTagOptions) error {
-	ret := _m.ctrl.Call(_m, "ImageTag", _param0, _param1, _param2, _param3)
+func (_m *MockAPIClient) ImageTag(_param0 context.Context, _param1 string, _param2 string) error {
+	ret := _m.ctrl.Call(_m, "ImageTag", _param0, _param1, _param2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockAPIClientRecorder) ImageTag(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageTag", arg0, arg1, arg2, arg3)
+func (_mr *_MockAPIClientRecorder) ImageTag(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageTag", arg0, arg1, arg2)
 }
 
 func (_m *MockAPIClient) Info(_param0 context.Context) (types.Info, error) {
@@ -570,6 +601,18 @@ func (_m *MockAPIClient) NetworkInspect(_param0 context.Context, _param1 string)
 
 func (_mr *_MockAPIClientRecorder) NetworkInspect(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "NetworkInspect", arg0, arg1)
+}
+
+func (_m *MockAPIClient) NetworkInspectWithRaw(_param0 context.Context, _param1 string) (types.NetworkResource, []byte, error) {
+	ret := _m.ctrl.Call(_m, "NetworkInspectWithRaw", _param0, _param1)
+	ret0, _ := ret[0].(types.NetworkResource)
+	ret1, _ := ret[1].([]byte)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+func (_mr *_MockAPIClientRecorder) NetworkInspectWithRaw(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "NetworkInspectWithRaw", arg0, arg1)
 }
 
 func (_m *MockAPIClient) NetworkList(_param0 context.Context, _param1 types.NetworkListOptions) ([]types.NetworkResource, error) {
@@ -643,6 +686,18 @@ func (_m *MockAPIClient) VolumeInspect(_param0 context.Context, _param1 string) 
 
 func (_mr *_MockAPIClientRecorder) VolumeInspect(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "VolumeInspect", arg0, arg1)
+}
+
+func (_m *MockAPIClient) VolumeInspectWithRaw(_param0 context.Context, _param1 string) (types.Volume, []byte, error) {
+	ret := _m.ctrl.Call(_m, "VolumeInspectWithRaw", _param0, _param1)
+	ret0, _ := ret[0].(types.Volume)
+	ret1, _ := ret[1].([]byte)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+func (_mr *_MockAPIClientRecorder) VolumeInspectWithRaw(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "VolumeInspectWithRaw", arg0, arg1)
 }
 
 func (_m *MockAPIClient) VolumeList(_param0 context.Context, _param1 filters.Args) (types.VolumesListResponse, error) {
