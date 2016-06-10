@@ -53,6 +53,7 @@ func New(config *Config) (*Agent, error) {
 		started:  make(chan struct{}),
 		stopped:  make(chan struct{}),
 		closed:   make(chan struct{}),
+		ready:    make(chan struct{}),
 	}
 
 	return a, nil
