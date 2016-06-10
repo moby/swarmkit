@@ -12,6 +12,7 @@ import (
 	"github.com/docker/engine-api/types/events"
 	"github.com/docker/engine-api/types/filters"
 	"github.com/docker/engine-api/types/network"
+	"github.com/docker/go-connections/nat"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 )
@@ -120,6 +121,21 @@ func (c *containerConfig) config() *enginecontainer.Config {
 		Volumes:    c.volumes(),
 	}
 
+	if c.endpoint() != nil {
+		// If there are ports to expose in the task, add them to the config
+		ports := make(map[nat.Port]struct{})
+		for _, exposedPort := range c.endpoint().ExposedPorts {
+			protocol := "tcp"
+			if exposedPort.Protocol == api.ProtocolUDP {
+				protocol = "udp"
+			}
+			port := nat.Port(fmt.Sprintf("%d/%s", exposedPort.Port, protocol))
+			ports[port] = struct{}{}
+		}
+
+		config.ExposedPorts = ports
+	}
+
 	if len(c.spec().Command) > 0 {
 		// If Command is provided, we replace the whole invocation with Command
 		// by replacing Entrypoint and specifying Cmd. Args is ignored in this
@@ -208,10 +224,32 @@ func getMountMask(m *api.Mount) string {
 }
 
 func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
-	return &enginecontainer.HostConfig{
+	hostConfig := &enginecontainer.HostConfig{
 		Resources: c.resources(),
 		Binds:     c.bindMounts(),
 	}
+
+	if c.endpoint() != nil {
+		// If there are ports to expose in the task, add them to the config
+		portBindings := make(nat.PortMap)
+		for _, exposedPort := range c.endpoint().ExposedPorts {
+			protocol := "tcp"
+			if exposedPort.Protocol == api.ProtocolUDP {
+				protocol = "udp"
+			}
+			containerPort := nat.Port(fmt.Sprintf("%d/%s", exposedPort.Port, protocol))
+
+			hostPorts := make([]nat.PortBinding, 1, 1)
+			hostPorts[0] = nat.PortBinding{
+				HostPort: fmt.Sprintf("%d", exposedPort.SwarmPort),
+			}
+			portBindings[containerPort] = hostPorts
+		}
+
+		hostConfig.PortBindings = portBindings
+	}
+
+	return hostConfig
 }
 
 // This handles the case of volumes that are defined inside a service Mount
