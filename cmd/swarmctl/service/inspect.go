@@ -67,13 +67,13 @@ func printServiceSummary(service *api.Service) {
 		}
 	}
 
-	if service.Endpoint != nil && len(service.Endpoint.ExposedPorts) > 0 {
+	if service.Endpoint != nil && len(service.Endpoint.Ports) > 0 {
 		fmt.Fprintln(w, "\nPorts:")
-		for _, port := range service.Endpoint.ExposedPorts {
+		for _, port := range service.Endpoint.Ports {
 			fmt.Fprintf(w, "    - Name\t= %s\n", port.Name)
 			fmt.Fprintf(w, "      Protocol\t= %s\n", port.Protocol)
-			fmt.Fprintf(w, "      Port\t= %d\n", port.Port)
-			fmt.Fprintf(w, "      SwarmPort\t= %d\n", port.SwarmPort)
+			fmt.Fprintf(w, "      Port\t= %d\n", port.TargetPort)
+			fmt.Fprintf(w, "      SwarmPort\t= %d\n", port.PublishedPort)
 		}
 	}
 
