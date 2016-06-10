@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	engineapi "github.com/docker/engine-api/client"
@@ -116,7 +117,8 @@ func (c *containerAdapter) create(ctx context.Context) error {
 }
 
 func (c *containerAdapter) start(ctx context.Context) error {
-	return c.client.ContainerStart(ctx, c.container.name())
+	// TODO(nishanttotla): Consider adding checkpoint handling later
+	return c.client.ContainerStart(ctx, c.container.name(), types.ContainerStartOptions{})
 }
 
 func (c *containerAdapter) inspect(ctx context.Context) (types.ContainerJSON, error) {
@@ -185,10 +187,10 @@ func (c *containerAdapter) events(ctx context.Context) (<-chan events.Message, <
 
 func (c *containerAdapter) shutdown(ctx context.Context) error {
 	// Default stop grace period to 10s.
-	stopgrace := 10
+	stopgrace := 10 * time.Second
 	spec := c.container.spec()
 	if spec.StopGracePeriod != nil {
-		stopgrace = int(spec.StopGracePeriod.Seconds)
+		stopgrace = time.Duration(spec.StopGracePeriod.Seconds) * time.Second
 	}
 	return c.client.ContainerStop(ctx, c.container.name(), stopgrace)
 }

@@ -27,19 +27,12 @@ type EndpointIPAMConfig struct {
 	IPv6Address string `json:",omitempty"`
 }
 
-type EndpointServiceConfig struct {
-	ID   string `json:"Id"`
-	Name string
-	IP   string `json:",omitempty"`
-}
-
 // EndpointSettings stores the network endpoint details
 type EndpointSettings struct {
 	// Configurations
-	IPAMConfig    *EndpointIPAMConfig
-	Links         []string
-	Aliases       []string
-	ServiceConfig *EndpointServiceConfig
+	IPAMConfig *EndpointIPAMConfig
+	Links      []string
+	Aliases    []string
 	// Operational data
 	NetworkID           string
 	EndpointID          string

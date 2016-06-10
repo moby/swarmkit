@@ -2,6 +2,7 @@ package client
 
 import (
 	"io"
+	"time"
 
 	"golang.org/x/net/context"
 
@@ -15,6 +16,9 @@ import (
 // APIClient is an interface that clients that talk with a docker server must implement.
 type APIClient interface {
 	ClientVersion() string
+	CheckpointCreate(ctx context.Context, container string, options types.CheckpointCreateOptions) error
+	CheckpointDelete(ctx context.Context, container string, checkpointID string) error
+	CheckpointList(ctx context.Context, container string) ([]types.Checkpoint, error)
 	ContainerAttach(ctx context.Context, container string, options types.ContainerAttachOptions) (types.HijackedResponse, error)
 	ContainerCommit(ctx context.Context, container string, options types.ContainerCommitOptions) (types.ContainerCommitResponse, error)
 	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (types.ContainerCreateResponse, error)
@@ -34,11 +38,11 @@ type APIClient interface {
 	ContainerRemove(ctx context.Context, container string, options types.ContainerRemoveOptions) error
 	ContainerRename(ctx context.Context, container, newContainerName string) error
 	ContainerResize(ctx context.Context, container string, options types.ResizeOptions) error
-	ContainerRestart(ctx context.Context, container string, timeout int) error
+	ContainerRestart(ctx context.Context, container string, timeout time.Duration) error
 	ContainerStatPath(ctx context.Context, container, path string) (types.ContainerPathStat, error)
 	ContainerStats(ctx context.Context, container string, stream bool) (io.ReadCloser, error)
-	ContainerStart(ctx context.Context, container string) error
-	ContainerStop(ctx context.Context, container string, timeout int) error
+	ContainerStart(ctx context.Context, container string, options types.ContainerStartOptions) error
+	ContainerStop(ctx context.Context, container string, timeout time.Duration) error
 	ContainerTop(ctx context.Context, container string, arguments []string) (types.ContainerProcessList, error)
 	ContainerUnpause(ctx context.Context, container string) error
 	ContainerUpdate(ctx context.Context, container string, updateConfig container.UpdateConfig) error
@@ -58,12 +62,13 @@ type APIClient interface {
 	ImageRemove(ctx context.Context, image string, options types.ImageRemoveOptions) ([]types.ImageDelete, error)
 	ImageSearch(ctx context.Context, term string, options types.ImageSearchOptions) ([]registry.SearchResult, error)
 	ImageSave(ctx context.Context, images []string) (io.ReadCloser, error)
-	ImageTag(ctx context.Context, image, ref string, options types.ImageTagOptions) error
+	ImageTag(ctx context.Context, image, ref string) error
 	Info(ctx context.Context) (types.Info, error)
 	NetworkConnect(ctx context.Context, networkID, container string, config *network.EndpointSettings) error
 	NetworkCreate(ctx context.Context, name string, options types.NetworkCreate) (types.NetworkCreateResponse, error)
 	NetworkDisconnect(ctx context.Context, networkID, container string, force bool) error
 	NetworkInspect(ctx context.Context, networkID string) (types.NetworkResource, error)
+	NetworkInspectWithRaw(ctx context.Context, networkID string) (types.NetworkResource, []byte, error)
 	NetworkList(ctx context.Context, options types.NetworkListOptions) ([]types.NetworkResource, error)
 	NetworkRemove(ctx context.Context, networkID string) error
 	RegistryLogin(ctx context.Context, auth types.AuthConfig) (types.AuthResponse, error)
@@ -71,6 +76,7 @@ type APIClient interface {
 	UpdateClientVersion(v string)
 	VolumeCreate(ctx context.Context, options types.VolumeCreateRequest) (types.Volume, error)
 	VolumeInspect(ctx context.Context, volumeID string) (types.Volume, error)
+	VolumeInspectWithRaw(ctx context.Context, volumeID string) (types.Volume, []byte, error)
 	VolumeList(ctx context.Context, filter filters.Args) (types.VolumesListResponse, error)
 	VolumeRemove(ctx context.Context, volumeID string) error
 }

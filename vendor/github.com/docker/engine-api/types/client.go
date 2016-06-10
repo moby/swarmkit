@@ -10,6 +10,12 @@ import (
 	"github.com/docker/go-units"
 )
 
+// CheckpointCreateOptions holds parameters to create a checkpoint from a container
+type CheckpointCreateOptions struct {
+	CheckpointID string
+	Exit         bool
+}
+
 // ContainerAttachOptions holds parameters to attach to a container.
 type ContainerAttachOptions struct {
 	Stream     bool
@@ -65,6 +71,11 @@ type ContainerRemoveOptions struct {
 	RemoveVolumes bool
 	RemoveLinks   bool
 	Force         bool
+}
+
+// ContainerStartOptions holds parameters to start containers.
+type ContainerStartOptions struct {
+	CheckpointID string
 }
 
 // CopyToContainerOptions holds information
@@ -207,11 +218,7 @@ type ImageSearchOptions struct {
 	RegistryAuth  string
 	PrivilegeFunc RequestPrivilegeFunc
 	Filters       filters.Args
-}
-
-// ImageTagOptions holds parameters to tag an image
-type ImageTagOptions struct {
-	Force bool
+	Limit         int
 }
 
 // ResizeOptions holds parameters to resize a tty.
