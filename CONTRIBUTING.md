@@ -106,7 +106,7 @@ use for simple changes](https://docs.docker.com/opensource/workflow/make-a-contr
     <td>
       The <a href="https://groups.google.com/forum/#!forum/docker-dev" target="_blank">docker-dev</a>
       group is for contributors and other people contributing to the Docker project.
-      You can join them without an google account by sending an email to 
+      You can join them without a google account by sending an email to 
       <a href="mailto:docker-dev+subscribe@googlegroups.com">docker-dev+subscribe@googlegroups.com</a>.
       After receiving the join-request message, you can simply reply to that to confirm the subscribtion.
     </td>
