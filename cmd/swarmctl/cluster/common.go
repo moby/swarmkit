@@ -29,7 +29,7 @@ func getCluster(ctx context.Context, c api.ControlClient, input string) (*api.Cl
 	}
 
 	if l := len(rl.Clusters); l > 1 {
-		return nil, fmt.Errorf("cluster %s is ambigious (%d matches found)", input, l)
+		return nil, fmt.Errorf("cluster %s is ambiguous (%d matches found)", input, l)
 	}
 
 	return rl.Clusters[0], nil
