@@ -597,7 +597,10 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			go n.initManagerConnection(ctx, ready)
 
 			go func() {
-				<-ready
+				select {
+				case <-ready:
+				case <-ctx.Done():
+				}
 				if ctx.Err() == nil {
 					n.remotes.Observe(api.Peer{NodeID: n.nodeID, Addr: n.config.ListenRemoteAPI}, 5)
 				}
@@ -611,6 +614,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			m.Stop(context.Background()) // todo: this should be sync like other components
 			<-done
 
+			ready = nil // ready event happens once, even on multiple starts
 			n.Lock()
 			n.manager = nil
 			n.Unlock()
