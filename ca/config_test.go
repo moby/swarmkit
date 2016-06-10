@@ -12,7 +12,6 @@ import (
 	cfconfig "github.com/cloudflare/cfssl/config"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
-	"github.com/docker/swarmkit/ioutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
@@ -220,6 +219,15 @@ func TestLoadOrCreateSecurityConfigNoCertsAndNoRemote(t *testing.T) {
 }
 
 func TestRenewTLSConfigAgent(t *testing.T) {
+	ca.SigningPolicy = func(certExpiry time.Duration) *cfconfig.Signing {
+		return &cfconfig.Signing{
+			Default: &cfconfig.SigningProfile{
+				Usage:  []string{"signing", "key encipherment", "server auth", "client auth"},
+				Expiry: 6 * time.Minute,
+			},
+		}
+	}
+
 	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
@@ -228,30 +236,6 @@ func TestRenewTLSConfigAgent(t *testing.T) {
 
 	// Get a new nodeConfig with a TLS cert that has the default Cert duration
 	nodeConfig, err := tc.WriteNewNodeConfig(ca.AgentRole)
-	assert.NoError(t, err)
-
-	// Create a new RootCA, and change the policy to issue 6 minute certificates
-	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Key, ca.DefaultNodeCertExpiration)
-	assert.NoError(t, err)
-	newRootCA.Signer.SetPolicy(&cfconfig.Signing{
-		Default: &cfconfig.SigningProfile{
-			Usage:  []string{"signing", "key encipherment", "server auth", "client auth"},
-			Expiry: 6 * time.Minute,
-		},
-	})
-
-	// Create a new CSR and overwrite the key on disk
-	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
-	assert.NoError(t, err)
-
-	// Issue a new certificate with the same details as the current config, but with 6 min expiration time
-	c := nodeConfig.ClientTLSCreds
-	signedCert, err := newRootCA.ParseValidateAndSignCSR(csr, c.NodeID(), c.Role(), c.Organization())
-	assert.NoError(t, err)
-	assert.NotNil(t, signedCert)
-
-	// Overwrite the certificate on disk with one that expires in 1 minute
-	err = ioutils.AtomicWriteFile(tc.Paths.Node.Cert, signedCert, 0644)
 	assert.NoError(t, err)
 
 	var success, timeout bool
@@ -278,6 +262,15 @@ func TestRenewTLSConfigAgent(t *testing.T) {
 }
 
 func TestRenewTLSConfigManager(t *testing.T) {
+	ca.SigningPolicy = func(certExpiry time.Duration) *cfconfig.Signing {
+		return &cfconfig.Signing{
+			Default: &cfconfig.SigningProfile{
+				Usage:  []string{"signing", "key encipherment", "server auth", "client auth"},
+				Expiry: 6 * time.Minute,
+			},
+		}
+	}
+
 	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
@@ -286,30 +279,6 @@ func TestRenewTLSConfigManager(t *testing.T) {
 
 	// Get a new nodeConfig with a TLS cert that has the default Cert duration
 	nodeConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
-	assert.NoError(t, err)
-
-	// Create a new RootCA, and change the policy to issue 6 minute certificates
-	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Key, ca.DefaultNodeCertExpiration)
-	assert.NoError(t, err)
-	newRootCA.Signer.SetPolicy(&cfconfig.Signing{
-		Default: &cfconfig.SigningProfile{
-			Usage:  []string{"signing", "key encipherment", "server auth", "client auth"},
-			Expiry: 6 * time.Minute,
-		},
-	})
-
-	// Create a new CSR and overwrite the key on disk
-	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
-	assert.NoError(t, err)
-
-	// Issue a new certificate with the same details as the current config, but with 6 min expiration time
-	c := nodeConfig.ClientTLSCreds
-	signedCert, err := newRootCA.ParseValidateAndSignCSR(csr, c.NodeID(), c.Role(), c.Organization())
-	assert.NoError(t, err)
-	assert.NotNil(t, signedCert)
-
-	// Overwrite the certificate on disk with one that expires in 1 minute
-	err = ioutils.AtomicWriteFile(tc.Paths.Node.Cert, signedCert, 0644)
 	assert.NoError(t, err)
 
 	// Get a new nodeConfig with a TLS cert that has 6 minutes to live
@@ -338,6 +307,15 @@ func TestRenewTLSConfigManager(t *testing.T) {
 }
 
 func TestRenewTLSConfigWithNoNode(t *testing.T) {
+	ca.SigningPolicy = func(certExpiry time.Duration) *cfconfig.Signing {
+		return &cfconfig.Signing{
+			Default: &cfconfig.SigningProfile{
+				Usage:  []string{"signing", "key encipherment", "server auth", "client auth"},
+				Expiry: 6 * time.Minute,
+			},
+		}
+	}
+
 	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
@@ -346,30 +324,6 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 
 	// Get a new nodeConfig with a TLS cert that has the default Cert duration
 	nodeConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
-	assert.NoError(t, err)
-
-	// Create a new RootCA, and change the policy to issue 6 minute certificates
-	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Key, ca.DefaultNodeCertExpiration)
-	assert.NoError(t, err)
-	newRootCA.Signer.SetPolicy(&cfconfig.Signing{
-		Default: &cfconfig.SigningProfile{
-			Usage:  []string{"signing", "key encipherment", "server auth", "client auth"},
-			Expiry: 6 * time.Minute,
-		},
-	})
-
-	// Create a new CSR and overwrite the key on disk
-	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
-	assert.NoError(t, err)
-
-	// Issue a new certificate with the same details as the current config, but with 6 min expiration time
-	c := nodeConfig.ClientTLSCreds
-	signedCert, err := newRootCA.ParseValidateAndSignCSR(csr, c.NodeID(), c.Role(), c.Organization())
-	assert.NoError(t, err)
-	assert.NotNil(t, signedCert)
-
-	// Overwrite the certificate on disk with one that expires in 1 minute
-	err = ioutils.AtomicWriteFile(tc.Paths.Node.Cert, signedCert, 0644)
 	assert.NoError(t, err)
 
 	// Delete the node from the backend store
