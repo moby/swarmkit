@@ -1,6 +1,7 @@
 package controlapi
 
 import (
+	"github.com/docker/engine-api/types/reference"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -58,6 +59,10 @@ func validateServiceSpecTemplate(spec *api.ServiceSpec) error {
 
 	if container.Image == "" {
 		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: image reference must be provided")
+	}
+
+	if _, _, err := reference.Parse(container.Image); err != nil {
+		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: %q is not a valid repository/tag", container.Image)
 	}
 	return nil
 }
