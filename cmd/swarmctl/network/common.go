@@ -32,7 +32,7 @@ func GetNetwork(ctx context.Context, c api.ControlClient, input string) (*api.Ne
 		}
 
 		if l := len(rl.Networks); l > 1 {
-			return nil, fmt.Errorf("network %s is ambigious (%d matches found)", input, l)
+			return nil, fmt.Errorf("network %s is ambiguous (%d matches found)", input, l)
 		}
 
 		return rl.Networks[0], nil
