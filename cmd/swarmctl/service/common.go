@@ -30,7 +30,7 @@ func getService(ctx context.Context, c api.ControlClient, input string) (*api.Se
 		}
 
 		if l := len(rl.Services); l > 1 {
-			return nil, fmt.Errorf("service %s is ambigious (%d matches found)", input, l)
+			return nil, fmt.Errorf("service %s is ambiguous (%d matches found)", input, l)
 		}
 
 		return rl.Services[0], nil
