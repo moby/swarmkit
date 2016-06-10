@@ -196,8 +196,16 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 		nodeID = identity.NewNodeID()
 
 		err := s.store.Update(func(tx store.Tx) error {
+			membership := api.NodeMembershipPending
+			if s.acceptancePolicy.Autoaccept != nil && s.acceptancePolicy.Autoaccept[request.Role] {
+				membership = api.NodeMembershipAccepted
+			}
+
 			node := &api.Node{
 				ID: nodeID,
+				Spec: api.NodeSpec{
+					Membership: membership,
+				},
 				Certificate: api.Certificate{
 					CSR:  request.CSR,
 					CN:   nodeID,
