@@ -70,7 +70,7 @@ message Endpoint {
 	// Runtime state of the exposed ports which may carry
 	// auto-allocated swarm ports in addition to the user
 	// configured information.
-	repeated PortConfig exposed_ports = 2;
+	repeated PortConfig ports = 2;
 
 	// An endpoint attachment specifies the data that the process
 	// of attaching an endpoint to a network creates.

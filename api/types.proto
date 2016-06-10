@@ -347,13 +347,13 @@ message PortConfig {
 	Protocol protocol = 2;
 
 	// The port which the application is exposing and is bound to.
-	uint32 port = 3;
+	uint32 target_port = 3;
 
-	// SwarmPort specifies the port on which the service is
-	// exposed on all nodes on the cluster. If specified, the port must be
-	// within the SwarmPort range and available. If not specified, an available
-	// port is assigned.
-	uint32 swarm_port = 4;
+	// PublishedPort specifies the port on which the service is
+	// exposed. If specified, the port must be
+	// within the available range. If not specified, an available
+	// port is automatically assigned.
+	uint32 published_port = 4;
 }
 
 // Driver is a generic driver type to be used throughout the API. For now, a
