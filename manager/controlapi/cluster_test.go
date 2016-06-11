@@ -33,7 +33,7 @@ func createCluster(t *testing.T, ts *testServer, id, name string, policy api.Acc
 	cluster := &api.Cluster{
 		ID:   id,
 		Spec: *spec,
-		RootCA: &api.RootCA{
+		RootCA: api.RootCA{
 			CACert:     []byte("-----BEGIN CERTIFICATE-----AwEHoUQDQgAEZ4vGYkSt/kjoHbUjDx9eyO1xBVJEH2F+AwM9lACIZ414cD1qYy8u-----BEGIN CERTIFICATE-----"),
 			CAKey:      []byte("-----BEGIN EC PRIVATE KEY-----AwEHoUQDQgAEZ4vGYkSt/kjoHbUjDx9eyO1xBVJEH2F+AwM9lACIZ414cD1qYy8u-----END EC PRIVATE KEY-----"),
 			CACertHash: "hash",
