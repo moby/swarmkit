@@ -21,7 +21,7 @@ correct subdirectory of the `GOPATH`: `$GOPATH/src/github.com/docker/swarmkit`.
 ### Repeatable Builds
 
 For the full development experience, one should `cd` into
-`$GOPATH/src/github.com/docker/swarmkit. From there, the regular `go`
+`$GOPATH/src/github.com/docker/swarmkit`. From there, the regular `go`
 commands, such as `go test`, should work per package (please see
 [Developing](#developing) if they don't work).
 
