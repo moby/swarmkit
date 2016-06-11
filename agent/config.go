@@ -30,6 +30,9 @@ type Config struct {
 
 	// NotifyRoleChange channel receives new roles from session messages.
 	NotifyRoleChange chan<- api.NodeRole
+
+	// Resources this node offered
+	Resources *api.Resources
 }
 
 func (c *Config) validate() error {

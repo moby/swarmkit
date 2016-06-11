@@ -540,6 +540,7 @@ func (m *Manager) Stop(ctx context.Context) {
 		return
 	default:
 		// do nothing, we're stopping for the first time
+
 	}
 
 	// once we start stopping, send a signal that we're doing so. this tells
