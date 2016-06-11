@@ -1,9 +1,6 @@
 package agent
 
 import (
-	"testing"
-	"time"
-
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
@@ -12,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"testing"
+	"time"
 )
 
 // NoopExecutor is a dummy executor that implements enough to get the agent started.
@@ -95,4 +94,87 @@ func TestAgentStartStop(t *testing.T) {
 	}
 
 	assert.NoError(t, agent.Stop(ctx))
+	ready := agent.Ready()
+
+	if ready != nil {
+		t.Fatalf("ready cannot return nil channel")
+	}
+	agent.Start(ctx)
+
+	ready = agent.Ready()
+	if ready != nil {
+		t.Fatalf("ready cannot be nil")
+	}
+
+}
+
+func TestHandleSessionMessage(t *testing.T) {
+	// TODO(rajdeepd): The current agent is fairly monolithic, hence we
+	// have to test message handling this way. Needs to be refactored
+	ctx, _ := context.WithTimeout(context.Background(), 5000*time.Millisecond)
+	agent, cleanup := agentTestEnv(t)
+
+	defer cleanup()
+
+	var messages = []*api.SessionMessage{
+		{SessionID: "sm1", Node: &api.Node{},
+			Managers: []*api.WeightedPeer{
+				{&api.Peer{NodeID: "node1", Addr: "10.0.0.1"}, 1.0}},
+			NetworkBootstrapKeys: []*api.EncryptionKey{{}}},
+		{SessionID: "sm1", Node: &api.Node{},
+			Managers: []*api.WeightedPeer{
+				{&api.Peer{NodeID: "node1", Addr: ""}, 1.0}},
+			NetworkBootstrapKeys: []*api.EncryptionKey{{}}},
+		{SessionID: "sm1", Node: &api.Node{},
+			Managers: []*api.WeightedPeer{
+				{&api.Peer{NodeID: "node1", Addr: "10.0.0.1"}, 1.0}},
+			NetworkBootstrapKeys: nil},
+		{SessionID: "sm1", Node: &api.Node{},
+			Managers: []*api.WeightedPeer{
+				{&api.Peer{NodeID: "", Addr: "10.0.0.1"}, 1.0}},
+			NetworkBootstrapKeys: []*api.EncryptionKey{{}}},
+		{SessionID: "sm1", Node: &api.Node{},
+			Managers: []*api.WeightedPeer{
+				{&api.Peer{NodeID: "node1", Addr: "10.0.0.1"}, 0.0}},
+			NetworkBootstrapKeys: []*api.EncryptionKey{{}}},
+	}
+
+	for _, m := range messages {
+		err := agent.handleSessionMessage(ctx, m)
+		if err != nil {
+			t.Fatalf("err should be nil")
+		}
+	}
+}
+
+func agentTestEnv(t *testing.T) (*Agent, func()) {
+	var cleanup []func()
+	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	cleanup = append(cleanup, func() { tc.Stop() })
+
+	agentSecurityConfig, err := tc.NewNodeConfig(ca.AgentRole)
+	assert.NoError(t, err)
+
+	addr := "localhost:4949"
+	remotes := picker.NewRemotes(api.Peer{Addr: addr})
+
+	conn, err := grpc.Dial(addr,
+		grpc.WithPicker(picker.NewPicker(remotes, addr)),
+		grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds))
+	assert.NoError(t, err)
+
+	db, cleanupStorage := storageTestEnv(t)
+	cleanup = append(cleanup, func() { cleanupStorage() })
+
+	agent, err := New(&Config{
+		Executor: &NoopExecutor{},
+		Managers: remotes,
+		Conn:     conn,
+		DB:       db,
+	})
+	return agent, func() {
+		for i := len(cleanup) - 1; i > 0; i-- {
+			cleanup[i]()
+		}
+	}
 }
