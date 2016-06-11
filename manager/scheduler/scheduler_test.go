@@ -795,11 +795,8 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 		},
 	}
 
-	volumeTemplate := func(name, driver string) *api.VolumeTemplate {
-		return &api.VolumeTemplate{
-			Annotations: api.Annotations{
-				Name: name,
-			},
+	volumeOptionsDriver := func(driver string) *api.Mount_VolumeOptions {
+		return &api.Mount_VolumeOptions{
 			DriverConfig: &api.Driver{
 				Name: driver,
 			},
@@ -812,11 +809,12 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
-					Mounts: []*api.Mount{
+					Mounts: []api.Mount{
 						{
-							Target:   "/foo",
-							Type:     api.MountTypeVolume,
-							Template: volumeTemplate("testVol1", "plugin1"),
+							Source:        "testVol1",
+							Target:        "/foo",
+							Type:          api.MountTypeVolume,
+							VolumeOptions: volumeOptionsDriver("plugin1"),
 						},
 					},
 				},
@@ -836,16 +834,18 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
-					Mounts: []*api.Mount{
+					Mounts: []api.Mount{
 						{
-							Target:   "/foo",
-							Type:     api.MountTypeVolume,
-							Template: volumeTemplate("testVol1", "plugin1"),
+							Source:        "testVol1",
+							Target:        "/foo",
+							Type:          api.MountTypeVolume,
+							VolumeOptions: volumeOptionsDriver("plugin1"),
 						},
 						{
-							Target:   "/foo",
-							Type:     api.MountTypeVolume,
-							Template: volumeTemplate("testVol2", "plugin2"),
+							Source:        "testVol2",
+							Target:        "/foo",
+							Type:          api.MountTypeVolume,
+							VolumeOptions: volumeOptionsDriver("plugin2"),
 						},
 					},
 				},
@@ -880,11 +880,12 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
-					Mounts: []*api.Mount{
+					Mounts: []api.Mount{
 						{
-							Target:   "/foo",
-							Type:     api.MountTypeVolume,
-							Template: volumeTemplate("testVol1", "plugin1"),
+							Source:        "testVol1",
+							Target:        "/foo",
+							Type:          api.MountTypeVolume,
+							VolumeOptions: volumeOptionsDriver("plugin1"),
 						},
 					},
 				},
@@ -935,7 +936,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	s.View(func(tx store.ReadTx) {
 		task := store.GetTask(tx, "task2_ID")
 		if task.Status.State >= api.TaskStateAssigned {
-			t.Fatal("task 'task2_ID' should not have been assigned")
+			t.Fatalf("task 'task2_ID' should not have been assigned to node %v", task.NodeID)
 		}
 	})
 
