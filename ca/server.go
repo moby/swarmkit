@@ -393,7 +393,8 @@ func (s *Server) Run(ctx context.Context) error {
 		}).WithError(err).Errorf("error attempting to reconcile certificates")
 	}
 
-	// Watch for changes in the cluster membership state.
+	// Watch for new nodes being created, new nodes being updated, and changes
+	// to the cluster
 	for {
 		select {
 		case event := <-updates:
@@ -520,8 +521,9 @@ func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) {
 		return
 	}
 
-	// Only issue this node if a user explicitly changed it to Accepted
-	if node.Spec.Membership == api.NodeMembershipAccepted {
+	// Sign this certificate if a user explicitly changed it to Accepted, and
+	// the certificate is in pending state
+	if node.Spec.Membership == api.NodeMembershipAccepted && node.Certificate.Status.State == api.IssuanceStatePending {
 		s.signNodeCert(ctx, node)
 	}
 }
@@ -529,7 +531,10 @@ func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) {
 // signNodeCert does the bulk of the work for signing a certificate
 func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 	if !s.securityConfig.RootCA().CanSign() {
-		log.G(ctx).Error("no valid signer found")
+		log.G(ctx).WithFields(logrus.Fields{
+			"node.id": node.ID,
+			"method":  "(*Server).signNodeCert",
+		}).Errorf("no valid signer found")
 		return
 	}
 
@@ -563,22 +568,26 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 			return
 		}
 		// We failed to sign this CSR, change the state to FAILED
-		for {
-			err = s.store.Update(func(tx store.Tx) error {
-				node.Certificate.Status = api.IssuanceStatus{
-					State: api.IssuanceStateFailed,
-					Err:   err.Error(),
-				}
+		err = s.store.Update(func(tx store.Tx) error {
+			node := store.GetNode(tx, nodeID)
+			if node == nil {
+				return fmt.Errorf("node %s not found", nodeID)
+			}
 
-				return store.UpdateNode(tx, node)
-			})
-			if err == nil {
-				return
+			node.Certificate.Status = api.IssuanceStatus{
+				State: api.IssuanceStateFailed,
+				Err:   err.Error(),
 			}
-			if err == store.ErrSequenceConflict {
-				continue
-			}
+
+			return store.UpdateNode(tx, node)
+		})
+		if err != nil {
+			log.G(ctx).WithFields(logrus.Fields{
+				"node.id": nodeID,
+				"method":  "(*Server).signNodeCert",
+			}).WithError(err).Errorf("transaction failed when setting state to FAILED")
 		}
+		return
 	}
 
 	// We were able to successfully sign the new CSR. Let's try to update the nodeStore
