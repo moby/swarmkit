@@ -24,7 +24,6 @@ message NodeSpec {
 
 		PENDING = 0 [(gogoproto.enumvalue_customname) = "NodeMembershipPending"];
 		ACCEPTED = 1 [(gogoproto.enumvalue_customname) = "NodeMembershipAccepted"];
-		REJECTED = 2 [(gogoproto.enumvalue_customname) = "NodeMembershipRejected"];
 	}
 
 	enum Availability {
