@@ -163,11 +163,9 @@ func (a *Agent) run(ctx context.Context) {
 		case operation := <-sessionq:
 			operation.response <- operation.fn(session)
 		case msg := <-session.tasks:
-			go func() {
-				if err := a.worker.Assign(ctx, msg.Tasks); err != nil {
-					log.G(ctx).WithError(err).Error("task assignment failed")
-				}
-			}()
+			if err := a.worker.Assign(ctx, msg.Tasks); err != nil {
+				log.G(ctx).WithError(err).Error("task assignment failed")
+			}
 		case msg := <-session.messages:
 			if err := a.handleSessionMessage(ctx, msg); err != nil {
 				log.G(ctx).WithError(err).Error("session message handler failed")
