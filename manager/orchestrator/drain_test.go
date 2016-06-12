@@ -28,7 +28,7 @@ func TestDrain(t *testing.T) {
 			},
 			Mode: &api.ServiceSpec_Replicated{
 				Replicated: &api.ReplicatedService{
-					Instances: 1,
+					Instances: 6,
 				},
 			},
 		},
@@ -185,11 +185,11 @@ func TestDrain(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	orchestrator := New(s)
-	defer orchestrator.Stop()
-
 	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
+
+	orchestrator := New(s)
+	defer orchestrator.Stop()
 
 	go func() {
 		assert.NoError(t, orchestrator.Run(ctx))
