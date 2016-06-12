@@ -61,11 +61,6 @@ func TestTaskManager(t *testing.T) {
 		return nil
 	}))
 
-	// let's timeout this test, as any delay represents a problem with
-	// progressing the state machine.
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
-
 	acceptedWait := accepted
 	readyWait := ready
 	shutdownWait := shutdown
