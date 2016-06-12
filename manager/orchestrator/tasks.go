@@ -19,7 +19,7 @@ import (
 
 func invalidNode(n *api.Node) bool {
 	return n == nil ||
-		n.Status.State != api.NodeStatus_READY ||
+		n.Status.State == api.NodeStatus_DOWN ||
 		n.Spec.Availability == api.NodeAvailabilityDrain
 }
 
