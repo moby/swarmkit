@@ -103,7 +103,7 @@ var (
 				spec.CAConfig.NodeCertExpiry = ceProtoPeriod
 			}
 			if flags.Changed("taskhistory") {
-				taskHistory, err := flags.GetInt64("taskhistory")
+				taskHistory, err := flags.GetUint64("taskhistory")
 				if err != nil {
 					return err
 				}
@@ -135,7 +135,7 @@ func init() {
 	// TODO(aaronl): Acceptance policy will change later.
 	updateCmd.Flags().StringSlice("autoaccept", nil, "Roles to automatically issue certificates for")
 	updateCmd.Flags().StringSlice("secret", nil, "Secret required to join the cluster")
-	updateCmd.Flags().Int64("taskhistory", 0, "Number of historic task entries to retain per instance or node")
+	updateCmd.Flags().Uint64("taskhistory", 0, "Number of historic task entries to retain per instance or node")
 	updateCmd.Flags().Duration("certexpiry", 24*30*3*time.Hour, "Duration node certificates will be valid for")
 	updateCmd.Flags().Duration("heartbeatperiod", 0, "Period when heartbeat is expected to receive from agent")
 }

@@ -952,7 +952,7 @@ func (*CAConfig) Descriptor() ([]byte, []int) { return fileDescriptorTypes, []in
 type OrchestrationConfig struct {
 	// TaskHistoryRetentionLimit is the number of historic tasks to keep per instance or
 	// node. If negative, never remove completed or failed tasks.
-	TaskHistoryRetentionLimit int64 `protobuf:"varint,1,opt,name=task_history_retention_limit,json=taskHistoryRetentionLimit,proto3" json:"task_history_retention_limit,omitempty"`
+	TaskHistoryRetentionLimit uint64 `protobuf:"varint,1,opt,name=task_history_retention_limit,json=taskHistoryRetentionLimit,proto3" json:"task_history_retention_limit,omitempty"`
 }
 
 func (m *OrchestrationConfig) Reset()                    { *m = OrchestrationConfig{} }
@@ -8455,7 +8455,7 @@ func (m *OrchestrationConfig) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.TaskHistoryRetentionLimit |= (int64(b) & 0x7F) << shift
+				m.TaskHistoryRetentionLimit |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}

@@ -26,7 +26,7 @@ type instanceTuple struct {
 type TaskReaper struct {
 	store *store.MemoryStore
 	// taskHistory is the number of tasks to keep
-	taskHistory int64
+	taskHistory uint64
 	dirty       map[instanceTuple]struct{}
 	watcher     chan events.Event
 	cancelWatch func()
@@ -134,7 +134,7 @@ func (tr *TaskReaper) tick() {
 				}
 			}
 
-			if int64(len(historicTasks)) <= taskHistory {
+			if uint64(len(historicTasks)) <= taskHistory {
 				continue
 			}
 
@@ -151,7 +151,7 @@ func (tr *TaskReaper) tick() {
 				deleteTasks = append(deleteTasks, t.ID)
 
 				taskHistory++
-				if int64(len(historicTasks)) <= taskHistory {
+				if uint64(len(historicTasks)) <= taskHistory {
 					break
 				}
 			}
