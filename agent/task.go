@@ -2,6 +2,7 @@ package agent
 
 import (
 	"reflect"
+	"time"
 
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
@@ -144,8 +145,16 @@ func (tm *taskManager) run(ctx context.Context) {
 				if !updated {
 					continue // wait till getting pumped via update.
 				}
-			case nil:
-			case context.Canceled, context.DeadlineExceeded:
+			case exec.ErrTaskRetry:
+				// TODO(stevvooe): Add exponential backoff with random jitter
+				// here. For now, this backoff is enough to keep the task
+				// manager from running away with the CPU.
+				time.AfterFunc(time.Second, func() {
+					errs <- nil // repump this branch, with no err
+				})
+				continue
+			case nil, context.Canceled, context.DeadlineExceeded:
+				// no log in this case
 			default:
 				log.G(ctx).WithError(err).Error("task operation failed")
 			}
