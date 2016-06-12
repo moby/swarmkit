@@ -159,7 +159,10 @@ func (tm *taskManager) run(ctx context.Context) {
 				log.G(ctx).WithError(err).Error("task operation failed")
 			}
 
-			run <- struct{}{}
+			select {
+			case run <- struct{}{}:
+			default:
+			}
 		case status := <-statusq:
 			tm.task.Status = *status
 		case task := <-tm.updateq:
@@ -187,8 +190,12 @@ func (tm *taskManager) run(ctx context.Context) {
 			if cancel != nil {
 				cancel() // cancel outstanding if necessary.
 			} else {
-				// no outstanding operation, pump run queue
-				run <- struct{}{}
+				// If this channel op fails, it means there is already a
+				// message un the run queue.
+				select {
+				case run <- struct{}{}:
+				default:
+				}
 			}
 		case <-shutdown:
 			if cancel != nil {
