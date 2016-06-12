@@ -58,6 +58,7 @@ func TestDrain(t *testing.T) {
 				State: api.NodeStatus_DOWN,
 			},
 		},
+		// We should NOT kick out tasks on UNKNOWN nodes.
 		{
 			ID: "id3",
 			Spec: api.NodeSpec{
@@ -67,7 +68,7 @@ func TestDrain(t *testing.T) {
 				Availability: api.NodeAvailabilityActive,
 			},
 			Status: api.NodeStatus{
-				State: api.NodeStatus_DISCONNECTED,
+				State: api.NodeStatus_UNKNOWN,
 			},
 		},
 		{
@@ -195,17 +196,14 @@ func TestDrain(t *testing.T) {
 		assert.NoError(t, orchestrator.Run(ctx))
 	}()
 
-	// id2, id3, and id5 should be killed immediately
+	// id2 and id5 should be killed immediately
 	deletion1 := watchShutdownTask(t, watch)
 	deletion2 := watchShutdownTask(t, watch)
-	deletion3 := watchShutdownTask(t, watch)
 
-	assert.Regexp(t, "id(2|3|5)", deletion1.ID)
-	assert.Regexp(t, "id(2|3|5)", deletion1.NodeID)
-	assert.Regexp(t, "id(2|3|5)", deletion2.ID)
-	assert.Regexp(t, "id(2|3|5)", deletion2.NodeID)
-	assert.Regexp(t, "id(2|3|5)", deletion3.ID)
-	assert.Regexp(t, "id(2|3|5)", deletion3.NodeID)
+	assert.Regexp(t, "id(2|5)", deletion1.ID)
+	assert.Regexp(t, "id(2|5)", deletion1.NodeID)
+	assert.Regexp(t, "id(2|5)", deletion2.ID)
+	assert.Regexp(t, "id(2|5)", deletion2.NodeID)
 
 	// Create a new task, assigned to node id2
 	err = s.Update(func(tx store.Tx) error {
@@ -217,9 +215,9 @@ func TestDrain(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	deletion4 := watchShutdownTask(t, watch)
-	assert.Equal(t, "newtask", deletion4.ID)
-	assert.Equal(t, "id2", deletion4.NodeID)
+	deletion3 := watchShutdownTask(t, watch)
+	assert.Equal(t, "newtask", deletion3.ID)
+	assert.Equal(t, "id2", deletion3.NodeID)
 
 	// Set node id4 to the DRAINED state
 	err = s.Update(func(tx store.Tx) error {
@@ -230,9 +228,9 @@ func TestDrain(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	deletion5 := watchShutdownTask(t, watch)
-	assert.Equal(t, "id4", deletion5.ID)
-	assert.Equal(t, "id4", deletion5.NodeID)
+	deletion4 := watchShutdownTask(t, watch)
+	assert.Equal(t, "id4", deletion4.ID)
+	assert.Equal(t, "id4", deletion4.NodeID)
 
 	// Delete node id1
 	err = s.Update(func(tx store.Tx) error {
@@ -241,7 +239,7 @@ func TestDrain(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	deletion6 := watchShutdownTask(t, watch)
-	assert.Equal(t, "id1", deletion6.ID)
-	assert.Equal(t, "id1", deletion6.NodeID)
+	deletion5 := watchShutdownTask(t, watch)
+	assert.Equal(t, "id1", deletion5.ID)
+	assert.Equal(t, "id1", deletion5.NodeID)
 }
