@@ -44,7 +44,7 @@ func parsePortConfig(portConfig string) (string, api.PortConfig_Protocol, uint32
 	protocol := api.ProtocolTCP
 	parts := strings.Split(portConfig, ":")
 	if len(parts) < 2 {
-		return "", protocol, 0, 0, fmt.Errorf("insuffient parameters in port configuration")
+		return "", protocol, 0, 0, fmt.Errorf("insufficient parameters in port configuration")
 	}
 
 	name := parts[0]
