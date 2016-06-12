@@ -20,7 +20,7 @@ var (
 			ID: "id1",
 			Spec: api.NodeSpec{
 				Role:       api.NodeRoleManager,
-				Membership: api.NodeMembershipRejected,
+				Membership: api.NodeMembershipPending,
 			},
 			Description: &api.NodeDescription{
 				Hostname: "name1",
@@ -210,7 +210,7 @@ func TestStoreNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 2)
 
-		foundNodes, err = FindNodes(readTx, ByMembership(api.NodeMembershipRejected))
+		foundNodes, err = FindNodes(readTx, ByMembership(api.NodeMembershipPending))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 

@@ -389,38 +389,6 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	assert.NoError(t, <-completed)
 }
 
-func TestGetRemoteSignedCertificateRejected(t *testing.T) {
-	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
-	defer tc.Stop()
-
-	// Create a new CSR to be signed
-	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
-	assert.NoError(t, err)
-
-	updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), state.EventCreateNode{})
-	defer cancel()
-
-	completed := make(chan error)
-	go func() {
-		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, "", tc.RootCA.Pool, tc.Picker, nil, nil)
-		completed <- err
-	}()
-
-	event := <-updates
-	node := event.(state.EventCreateNode).Node.Copy()
-
-	// Directly update the status of the store
-	err = tc.MemoryStore.Update(func(tx store.Tx) error {
-		node.Certificate.Status.State = api.IssuanceStateRejected
-
-		return store.UpdateNode(tx, node)
-	})
-	assert.NoError(t, err)
-
-	// Make sure GetRemoteSignedCertificate didn't return an error
-	assert.EqualError(t, <-completed, "certificate issuance rejected: REJECTED")
-}
-
 func TestBootstrapCluster(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)

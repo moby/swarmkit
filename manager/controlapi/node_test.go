@@ -62,7 +62,7 @@ func TestListNodes(t *testing.T) {
 	assert.Equal(t, 1, len(r.Nodes))
 
 	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted)
-	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipRejected)
+	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipPending)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Nodes))
@@ -109,7 +109,7 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Memberships: []api.NodeSpec_Membership{api.NodeMembershipRejected},
+				Memberships: []api.NodeSpec_Membership{api.NodeMembershipPending},
 			},
 		},
 	)
@@ -118,7 +118,7 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Memberships: []api.NodeSpec_Membership{api.NodeMembershipAccepted, api.NodeMembershipRejected},
+				Memberships: []api.NodeSpec_Membership{api.NodeMembershipAccepted, api.NodeMembershipPending},
 			},
 		},
 	)
@@ -128,7 +128,7 @@ func TestListNodes(t *testing.T) {
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
 				Roles:       []api.NodeRole{api.NodeRoleWorker},
-				Memberships: []api.NodeSpec_Membership{api.NodeMembershipRejected},
+				Memberships: []api.NodeSpec_Membership{api.NodeMembershipPending},
 			},
 		},
 	)
