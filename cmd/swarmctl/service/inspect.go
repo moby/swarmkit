@@ -80,19 +80,10 @@ func printServiceSummary(service *api.Service) {
 	if len(ctr.Mounts) > 0 {
 		fmt.Fprintln(w, "  Mounts:")
 		for _, v := range ctr.Mounts {
-			if v.Type == api.MountTypeBind {
-				fmt.Fprintf(w, "    - target = %s\n", v.Target)
-				fmt.Fprintf(w, "      source = %s\n", v.Source)
-				fmt.Fprintf(w, "      writable = %v\n", v.Writable)
-				fmt.Fprintf(w, "      type = bind\n")
-			} else if v.Type == api.MountTypeVolume {
-				fmt.Fprintf(w, "    - target = %s\n", v.Target)
-				fmt.Fprintf(w, "      type = volume\n")
-				fmt.Fprintf(w, "      writable = %v\n", v.Writable)
-				if v.Template != nil {
-					fmt.Fprintf(w, "      name = %v\n", v.Template.Annotations.Name)
-				}
-			}
+			fmt.Fprintf(w, "    - target = %s\n", v.Target)
+			fmt.Fprintf(w, "      source = %s\n", v.Source)
+			fmt.Fprintf(w, "      writable = %v\n", v.Writable)
+			fmt.Fprintf(w, "      type = %v\n", strings.ToLower(v.Type.String()))
 		}
 	}
 }

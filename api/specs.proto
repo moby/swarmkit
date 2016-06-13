@@ -153,7 +153,7 @@ message ContainerSpec {
 	// User specifies the user that should be employed to run the container.
 	string user = 7;
 
-	repeated Mount mounts = 8;
+	repeated Mount mounts = 8 [(gogoproto.nullable) = false];
 
 	// StopGracePeriod the grace period for stopping the container before
 	// forcefully killing the container.

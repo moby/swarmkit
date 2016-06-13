@@ -82,34 +82,6 @@ func (c *containerConfig) image() string {
 	return c.spec().Image
 }
 
-func (c *containerConfig) volumes() map[string]struct{} {
-	r := make(map[string]struct{})
-
-	for _, mount := range c.spec().Mounts {
-		// pick off all the volume mounts.
-		if mount.Type != api.MountTypeVolume {
-			continue
-		}
-
-		var (
-			name string
-			mask = getMountMask(mount)
-		)
-
-		if mount.Template != nil {
-			name = mount.Template.Annotations.Name
-		}
-
-		if name != "" {
-			r[fmt.Sprintf("%s:%s:%s", name, mount.Target, mask)] = struct{}{}
-		} else {
-			r[fmt.Sprintf("%s:%s", mount.Target, mask)] = struct{}{}
-		}
-	}
-
-	return r
-}
-
 func (c *containerConfig) config() *enginecontainer.Config {
 	config := &enginecontainer.Config{
 		Labels:     c.labels(),
@@ -167,59 +139,121 @@ func (c *containerConfig) labels() map[string]string {
 	return labels
 }
 
-func (c *containerConfig) bindMounts() []string {
-	var r []string
+// volumes gets placed into the Volumes field on the containerConfig.
+func (c *containerConfig) volumes() map[string]struct{} {
+	r := make(map[string]struct{})
+	// Volumes *only* creates anonymous volumes. The rest is mixed in with
+	// binds, which aren't actually fucking binds. Basically, any volume that
+	// results in a single component must be added here.
+	//
+	// This is reversed engineered from the behavior of the engine API.
 
-	for _, val := range c.spec().Mounts {
-		mask := getMountMask(val)
-		if val.Type == api.MountTypeBind {
-			r = append(r, fmt.Sprintf("%s:%s:%s", val.Source, val.Target, mask))
+	for _, spec := range c.bindsAndVolumes() {
+		if len(spec) == 1 {
+			r[strings.Join(spec, ":")] = struct{}{}
 		}
 	}
 
 	return r
 }
 
+func (c *containerConfig) binds() []string {
+	var r []string
+
+	for _, spec := range c.bindsAndVolumes() {
+		if len(spec) > 1 {
+			r = append(r, strings.Join(spec, ":"))
+		}
+	}
+
+	return r
+}
+
+// bindsAndVolumes uses the list of mounts to create candidates for the Binds
+// and Volumes. Effectively, we only use annonymous volumes in the volumes API
+// and the rest becomes binds.`
+func (c *containerConfig) bindsAndVolumes() [][]string {
+	var specs [][]string
+	for _, mount := range c.spec().Mounts {
+		var spec []string
+		if mount.Source != "" {
+			spec = append(spec, mount.Source)
+		}
+
+		spec = append(spec, mount.Target)
+
+		mask := getMountMask(&mount)
+		if mask != "" {
+			spec = append(spec, mask)
+		}
+
+		specs = append(specs, spec)
+	}
+
+	return specs
+}
+
 func getMountMask(m *api.Mount) string {
-	maskOpts := []string{"ro"}
-	if m.Writable {
-		maskOpts[0] = "rw"
+	var maskOpts []string
+	if !m.Writable {
+		maskOpts = append(maskOpts, "ro")
 	}
 
-	switch m.Propagation {
-	case api.MountPropagationPrivate:
-		maskOpts = append(maskOpts, "private")
-	case api.MountPropagationRPrivate:
-		maskOpts = append(maskOpts, "rprivate")
-	case api.MountPropagationShared:
-		maskOpts = append(maskOpts, "shared")
-	case api.MountPropagationRShared:
-		maskOpts = append(maskOpts, "rshared")
-	case api.MountPropagationSlave:
-		maskOpts = append(maskOpts, "slave")
-	case api.MountPropagationRSlave:
-		maskOpts = append(maskOpts, "rslave")
+	switch m.Type {
+	case api.MountTypeVolume:
+		if m.VolumeOptions != nil && !m.VolumeOptions.Populate {
+			maskOpts = append(maskOpts, "nocopy")
+		}
+	case api.MountTypeBind:
+		if m.BindOptions == nil {
+			break
+		}
+
+		switch m.BindOptions.Propagation {
+		case api.MountPropagationPrivate:
+			maskOpts = append(maskOpts, "private")
+		case api.MountPropagationRPrivate:
+			maskOpts = append(maskOpts, "rprivate")
+		case api.MountPropagationShared:
+			maskOpts = append(maskOpts, "shared")
+		case api.MountPropagationRShared:
+			maskOpts = append(maskOpts, "rshared")
+		case api.MountPropagationSlave:
+			maskOpts = append(maskOpts, "slave")
+		case api.MountPropagationRSlave:
+			maskOpts = append(maskOpts, "rslave")
+		}
 	}
 
-	if !m.Populate {
-		maskOpts = append(maskOpts, "nocopy")
-	}
 	return strings.Join(maskOpts, ",")
 }
 
 func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 	return &enginecontainer.HostConfig{
 		Resources: c.resources(),
-		Binds:     c.bindMounts(),
+		Binds:     c.binds(),
 	}
 }
 
 // This handles the case of volumes that are defined inside a service Mount
 func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *types.VolumeCreateRequest {
+	var (
+		driverName string
+		driverOpts map[string]string
+		labels     map[string]string
+	)
+
+	if mount.VolumeOptions != nil && mount.VolumeOptions.DriverConfig != nil {
+		driverName = mount.VolumeOptions.DriverConfig.Name
+		driverOpts = mount.VolumeOptions.DriverConfig.Options
+		labels = mount.VolumeOptions.Labels
+	}
+
 	return &types.VolumeCreateRequest{
-		Name:       mount.Template.Annotations.Name,
-		Driver:     mount.Template.DriverConfig.Name,
-		DriverOpts: mount.Template.DriverConfig.Options,
+		Name:       mount.Source,
+		Driver:     driverName,
+		DriverOpts: driverOpts,
+		Labels:     labels,
 	}
 }
 

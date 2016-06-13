@@ -38,6 +38,10 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.String("restart-window", "0s", "time window to evaluate restart attempts (0 = unbound)")
 
 	flags.StringSlice("constraint", nil, "Placement constraint (node.labels.key==value)")
+
+	// TODO(stevvooe): Replace these with a more interesting mount flag.
+	flags.StringSlice("bind", nil, "define a bind mount")
+	flags.StringSlice("volume", nil, "define a volume mount")
 }
 
 // Merge merges a flagset into a service spec.
@@ -96,6 +100,14 @@ func Merge(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClient) error
 	}
 
 	if err := parsePlacement(flags, spec); err != nil {
+		return err
+	}
+
+	if err := parseBind(flags, spec); err != nil {
+		return err
+	}
+
+	if err := parseVolume(flags, spec); err != nil {
 		return err
 	}
 
