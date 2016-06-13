@@ -26,15 +26,15 @@ func parsePorts(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		}
 
 		ports = append(ports, &api.PortConfig{
-			Name:      name,
-			Protocol:  protocol,
-			Port:      port,
-			SwarmPort: swarmPort,
+			Name:          name,
+			Protocol:      protocol,
+			TargetPort:    port,
+			PublishedPort: swarmPort,
 		})
 	}
 
 	spec.Endpoint = &api.EndpointSpec{
-		ExposedPorts: ports,
+		Ports: ports,
 	}
 
 	return nil
