@@ -140,7 +140,7 @@ func TestManager(t *testing.T) {
 	_, err = controlClient.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
 
-	raftClient := api.NewRaftClient(noCertConn)
+	raftClient := api.NewRaftMembershipClient(noCertConn)
 	_, err = raftClient.Join(context.Background(), &api.JoinRequest{})
 	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
 

@@ -223,7 +223,7 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, role, org, tmpDir
 	}
 
 	// Obtain a signed Certificate
-	nodeID := identity.NewNodeID()
+	nodeID := identity.NewID()
 	// All managers get added the subject-alt-name of CA, so they can be used for cert issuance
 	hosts := []string{role}
 	if role == ca.ManagerRole {
