@@ -39,7 +39,7 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				common.PrintHeader(w, "ID", "Name", "Membership", "Status", "Availability", "Manager status")
+				common.PrintHeader(w, "ID", "Name", "Membership", "Status", "Availability", "Manager Status")
 				output = func(n *api.Node) {
 					spec := &n.Spec
 					name := spec.Annotations.Name
@@ -50,9 +50,9 @@ var (
 						name = n.Description.Hostname
 					}
 					reachability := ""
-					if n.Manager != nil {
-						reachability = n.Manager.Raft.Status.Reachability.String()
-						if n.Manager.Raft.Status.Leader {
+					if n.ManagerStatus != nil {
+						reachability = n.ManagerStatus.Raft.Status.Reachability.String()
+						if n.ManagerStatus.Raft.Status.Leader {
 							reachability = reachability + " *"
 						}
 					}
