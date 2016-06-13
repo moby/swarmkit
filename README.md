@@ -131,10 +131,12 @@ To list nodes:
 ```
 $ export SWARM_SOCKET=/tmp/manager1/swarm.sock
 $ swarmctl node ls
-ID                         Name      Status  Availability
-87pn3pug404xs4x86b5nwlwbr  node-1    READY   ACTIVE
-by2ihzjyg9m674j3cjdit3reo  node-2    READY   ACTIVE
-87pn3pug404xs4x86b5nwlwbr  node-3    READY   ACTIVE
+ID             Name    Membership  Status  Availability  Manager status
+--             ----    ----------  ------  ------------  --------------
+15jkw04qb4yze  node-1  ACCEPTED    READY   ACTIVE        REACHABLE *
+1zbwraf2v8hpx  node-3  ACCEPTED    READY   ACTIVE        
+3vj01av6782qn  node-2  ACCEPTED    READY   ACTIVE        
+
 
 ```
 
