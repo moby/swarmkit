@@ -47,7 +47,7 @@ func printTaskSummary(task *api.Task, res *common.Resolver) {
 	defer w.Flush()
 
 	fmt.Fprintf(w, "ID\t: %s\n", task.ID)
-	fmt.Fprintf(w, "Instance\t: %d\n", task.Instance)
+	fmt.Fprintf(w, "Slot\t: %d\n", task.Slot)
 	fmt.Fprintf(w, "Service\t: %s\n", res.Resolve(api.Service{}, task.ServiceID))
 	printTaskStatus(w, task)
 	fmt.Fprintf(w, "Node\t: %s\n", res.Resolve(api.Node{}, task.NodeID))
@@ -86,7 +86,7 @@ var (
 			}
 			previous := []*api.Task{}
 			for _, t := range r.Tasks {
-				if t.ServiceID == task.ServiceID && t.Instance == task.Instance {
+				if t.ServiceID == task.ServiceID && t.Slot == task.Slot {
 					previous = append(previous, t)
 				}
 			}
@@ -95,7 +95,7 @@ var (
 
 			printTaskSummary(task, res)
 			if len(previous) > 0 {
-				fmt.Printf("\n===> Instance History\n")
+				fmt.Printf("\n===> Task Parents\n")
 				Print(previous, true, res)
 			}
 
