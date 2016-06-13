@@ -141,11 +141,11 @@ func init() {
 	logrus.SetOutput(ioutil.Discard)
 }
 
-func getMap(t *testing.T, nodes []*api.Node) map[uint64]*api.Manager {
-	m := make(map[uint64]*api.Manager)
+func getMap(t *testing.T, nodes []*api.Node) map[uint64]*api.ManagerStatus {
+	m := make(map[uint64]*api.ManagerStatus)
 	for _, n := range nodes {
-		if n.Manager != nil {
-			m[n.Manager.Raft.RaftID] = n.Manager
+		if n.ManagerStatus != nil {
+			m[n.ManagerStatus.Raft.RaftID] = n.ManagerStatus
 		}
 	}
 	return m
