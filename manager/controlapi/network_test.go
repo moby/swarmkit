@@ -48,6 +48,42 @@ func (s *Server) createInternalNetwork(ctx context.Context, request *api.CreateN
 	}, nil
 }
 
+func createServiceInNetworkSpec(name, image string, nwid string, instances uint64) *api.ServiceSpec {
+	return &api.ServiceSpec{
+		Annotations: api.Annotations{
+			Name: name,
+			Labels: map[string]string{
+				"common": "yes",
+				"unique": name,
+			},
+		},
+		Task: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Image: image,
+				},
+			},
+		},
+		Mode: &api.ServiceSpec_Replicated{
+			Replicated: &api.ReplicatedService{
+				Replicas: instances,
+			},
+		},
+		Networks: []*api.ServiceSpec_NetworkAttachmentConfig{
+			{
+				Target: nwid,
+			},
+		},
+	}
+}
+
+func createServiceInNetwork(t *testing.T, ts *testServer, name, image string, nwid string, instances uint64) *api.Service {
+	spec := createServiceInNetworkSpec(name, image, nwid, instances)
+	r, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.NoError(t, err)
+	return r.Service
+}
+
 func TestValidateDriver(t *testing.T) {
 	assert.NoError(t, validateDriver(nil))
 
@@ -163,6 +199,19 @@ func TestRemoveNetwork(t *testing.T) {
 
 	_, err = ts.Client.RemoveNetwork(context.Background(), &api.RemoveNetworkRequest{NetworkID: nr.Network.ID})
 	assert.NoError(t, err)
+}
+
+func TestRemoveNetworkWithAttachedService(t *testing.T) {
+	ts := newTestServer(t)
+	nr, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
+		Spec: createNetworkSpec("testnet4"),
+	})
+	assert.NoError(t, err)
+	assert.NotEqual(t, nr.Network, nil)
+	assert.NotEqual(t, nr.Network.ID, "")
+	createServiceInNetwork(t, ts, "name", "image", nr.Network.ID, 1)
+	_, err = ts.Client.RemoveNetwork(context.Background(), &api.RemoveNetworkRequest{NetworkID: nr.Network.ID})
+	assert.Error(t, err)
 }
 
 func TestRemoveInternalNetwork(t *testing.T) {
