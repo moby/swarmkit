@@ -51,7 +51,7 @@ func TestTaskHistory(t *testing.T) {
 				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
-						Instances: 2,
+						Replicas: 2,
 					},
 				},
 			},

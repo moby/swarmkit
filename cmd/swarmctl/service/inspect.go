@@ -28,7 +28,7 @@ func printServiceSummary(service *api.Service) {
 			fmt.Fprintf(w, "  %s\t: %s\n", k, v)
 		}
 	}
-	common.FprintfIfNotEmpty(w, "Instances\t: %s\n", getServiceInstancesTxt(service))
+	common.FprintfIfNotEmpty(w, "Replicas\t: %s\n", getServiceReplicasTxt(service))
 	fmt.Fprintln(w, "Template\t")
 	fmt.Fprintln(w, " Container\t")
 	ctr := service.Spec.Task.GetContainer()

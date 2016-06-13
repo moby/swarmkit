@@ -114,7 +114,7 @@ message Task {
 	string service_id = 4 [(gogoproto.customname) = "ServiceID"];
 
 	// Instance is the instance number for a task. For example, if a
-	// replicated service has instances = 2, there will be a task with
+	// replicated service has replicas = 2, there will be a task with
 	// instance = 1, and another with instance = 2.
 	uint64 instance = 5;
 

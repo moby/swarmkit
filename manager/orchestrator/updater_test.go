@@ -67,7 +67,7 @@ func TestUpdater(t *testing.T) {
 			},
 			Mode: &api.ServiceSpec_Replicated{
 				Replicated: &api.ReplicatedService{
-					Instances: uint64(instances),
+					Replicas: uint64(instances),
 				},
 			},
 			Task: api.TaskSpec{
@@ -173,7 +173,7 @@ func TestUpdaterStopGracePeriod(t *testing.T) {
 			},
 			Mode: &api.ServiceSpec_Replicated{
 				Replicated: &api.ReplicatedService{
-					Instances: instances,
+					Replicas: instances,
 				},
 			},
 		},

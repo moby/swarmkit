@@ -89,9 +89,9 @@ message ServiceSpec {
 	EndpointSpec endpoint = 8;
 }
 
-// ReplicatedService set the reconcilation target to certain number of instances.
+// ReplicatedService set the reconcilation target to certain number of replicas.
 message ReplicatedService {
-	uint64 instances = 1;
+	uint64 replicas = 1;
 }
 
 // GlobalService represent global service.
