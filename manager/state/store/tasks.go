@@ -2,6 +2,7 @@ package store
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state"
@@ -224,7 +225,7 @@ func (ti taskIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 	}
 
 	// Add the null character as a terminator
-	return true, []byte(t.ServiceAnnotations.Name + "\x00"), nil
+	return true, []byte(strings.ToLower(t.ServiceAnnotations.Name) + "\x00"), nil
 }
 
 type taskIndexerByServiceID struct{}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -560,7 +561,7 @@ func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([
 		}
 		return iters, nil
 	case byName:
-		it, err := tx.memDBTx.Get(table, indexName, string(v))
+		it, err := tx.memDBTx.Get(table, indexName, strings.ToLower(string(v)))
 		if err != nil {
 			return nil, err
 		}
