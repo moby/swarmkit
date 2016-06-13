@@ -39,7 +39,9 @@ message Node {
 	// Status provides the current status of the node, as seen by the manager.
 	NodeStatus status = 5 [(gogoproto.nullable) = false];
 
-	Manager manager = 6;
+	// Status of the manager. If the node is not a manager, this field will not
+	// be set.
+	ManagerStatus manager_status = 6;
 
 	// The node attachment to the ingress network.
 	NetworkAttachment attachment = 7;
