@@ -50,7 +50,7 @@ var (
 					fmt.Fprintf(w, "%s\t%s.%d\t%s\t%s %s\t%s\n",
 						t.ID,
 						res.Resolve(api.Service{}, t.ServiceID),
-						t.Instance,
+						t.Slot,
 						t.DesiredState.String(),
 						t.Status.State.String(),
 						common.TimestampAgo(t.Status.Timestamp),
