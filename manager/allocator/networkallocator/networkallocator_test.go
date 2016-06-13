@@ -526,14 +526,14 @@ func TestServiceAllocate(t *testing.T) {
 				},
 			},
 			Endpoint: &api.EndpointSpec{
-				ExposedPorts: []*api.PortConfig{
+				Ports: []*api.PortConfig{
 					{
-						Name: "http",
-						Port: 80,
+						Name:       "http",
+						TargetPort: 80,
 					},
 					{
-						Name: "https",
-						Port: 443,
+						Name:       "https",
+						TargetPort: 443,
 					},
 				},
 			},
@@ -555,11 +555,11 @@ func TestServiceAllocate(t *testing.T) {
 
 	err = na.ServiceAllocate(s)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(s.Endpoint.ExposedPorts))
-	assert.True(t, s.Endpoint.ExposedPorts[0].SwarmPort >= dynamicPortStart &&
-		s.Endpoint.ExposedPorts[0].SwarmPort <= dynamicPortEnd)
-	assert.True(t, s.Endpoint.ExposedPorts[1].SwarmPort >= dynamicPortStart &&
-		s.Endpoint.ExposedPorts[1].SwarmPort <= dynamicPortEnd)
+	assert.Equal(t, 2, len(s.Endpoint.Ports))
+	assert.True(t, s.Endpoint.Ports[0].PublishedPort >= dynamicPortStart &&
+		s.Endpoint.Ports[0].PublishedPort <= dynamicPortEnd)
+	assert.True(t, s.Endpoint.Ports[1].PublishedPort >= dynamicPortStart &&
+		s.Endpoint.Ports[1].PublishedPort <= dynamicPortEnd)
 
 	assert.Equal(t, 1, len(s.Endpoint.VirtualIPs))
 
@@ -575,17 +575,17 @@ func TestServiceAllocateUserDefinedPorts(t *testing.T) {
 		ID: "testID1",
 		Spec: api.ServiceSpec{
 			Endpoint: &api.EndpointSpec{
-				ExposedPorts: []*api.PortConfig{
+				Ports: []*api.PortConfig{
 					{
-						Name:      "some_tcp",
-						Port:      1234,
-						SwarmPort: 1234,
+						Name:          "some_tcp",
+						TargetPort:    1234,
+						PublishedPort: 1234,
 					},
 					{
-						Name:      "some_udp",
-						Port:      1234,
-						SwarmPort: 1234,
-						Protocol:  api.ProtocolUDP,
+						Name:          "some_udp",
+						TargetPort:    1234,
+						PublishedPort: 1234,
+						Protocol:      api.ProtocolUDP,
 					},
 				},
 			},
@@ -594,9 +594,9 @@ func TestServiceAllocateUserDefinedPorts(t *testing.T) {
 
 	err := na.ServiceAllocate(s)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(s.Endpoint.ExposedPorts))
-	assert.Equal(t, uint32(1234), s.Endpoint.ExposedPorts[0].SwarmPort)
-	assert.Equal(t, uint32(1234), s.Endpoint.ExposedPorts[1].SwarmPort)
+	assert.Equal(t, 2, len(s.Endpoint.Ports))
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[1].PublishedPort)
 }
 
 func TestServiceAllocateConflictingUserDefinedPorts(t *testing.T) {
@@ -605,16 +605,16 @@ func TestServiceAllocateConflictingUserDefinedPorts(t *testing.T) {
 		ID: "testID1",
 		Spec: api.ServiceSpec{
 			Endpoint: &api.EndpointSpec{
-				ExposedPorts: []*api.PortConfig{
+				Ports: []*api.PortConfig{
 					{
-						Name:      "some_tcp",
-						Port:      1234,
-						SwarmPort: 1234,
+						Name:          "some_tcp",
+						TargetPort:    1234,
+						PublishedPort: 1234,
 					},
 					{
-						Name:      "some_other_tcp",
-						Port:      1234,
-						SwarmPort: 1234,
+						Name:          "some_other_tcp",
+						TargetPort:    1234,
+						PublishedPort: 1234,
 					},
 				},
 			},
@@ -631,11 +631,11 @@ func TestServiceDeallocateAllocate(t *testing.T) {
 		ID: "testID1",
 		Spec: api.ServiceSpec{
 			Endpoint: &api.EndpointSpec{
-				ExposedPorts: []*api.PortConfig{
+				Ports: []*api.PortConfig{
 					{
-						Name:      "some_tcp",
-						Port:      1234,
-						SwarmPort: 1234,
+						Name:          "some_tcp",
+						TargetPort:    1234,
+						PublishedPort: 1234,
 					},
 				},
 			},
@@ -644,18 +644,18 @@ func TestServiceDeallocateAllocate(t *testing.T) {
 
 	err := na.ServiceAllocate(s)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(s.Endpoint.ExposedPorts))
-	assert.Equal(t, uint32(1234), s.Endpoint.ExposedPorts[0].SwarmPort)
+	assert.Equal(t, 1, len(s.Endpoint.Ports))
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 
 	err = na.ServiceDeallocate(s)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(s.Endpoint.ExposedPorts))
+	assert.Equal(t, 0, len(s.Endpoint.Ports))
 
 	// Allocate again.
 	err = na.ServiceAllocate(s)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(s.Endpoint.ExposedPorts))
-	assert.Equal(t, uint32(1234), s.Endpoint.ExposedPorts[0].SwarmPort)
+	assert.Equal(t, 1, len(s.Endpoint.Ports))
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 }
 
 func TestServiceUpdate(t *testing.T) {
@@ -665,16 +665,16 @@ func TestServiceUpdate(t *testing.T) {
 		ID: "testID1",
 		Spec: api.ServiceSpec{
 			Endpoint: &api.EndpointSpec{
-				ExposedPorts: []*api.PortConfig{
+				Ports: []*api.PortConfig{
 					{
-						Name:      "some_tcp",
-						Port:      1234,
-						SwarmPort: 1234,
+						Name:          "some_tcp",
+						TargetPort:    1234,
+						PublishedPort: 1234,
 					},
 					{
-						Name:      "some_other_tcp",
-						Port:      1235,
-						SwarmPort: 0,
+						Name:          "some_other_tcp",
+						TargetPort:    1235,
+						PublishedPort: 0,
 					},
 				},
 			},
@@ -684,29 +684,29 @@ func TestServiceUpdate(t *testing.T) {
 	err := na1.ServiceAllocate(s)
 	assert.NoError(t, err)
 	assert.Equal(t, true, na1.IsServiceAllocated(s))
-	assert.Equal(t, 2, len(s.Endpoint.ExposedPorts))
-	assert.Equal(t, uint32(1234), s.Endpoint.ExposedPorts[0].SwarmPort)
-	assert.NotEqual(t, 0, s.Endpoint.ExposedPorts[1].SwarmPort)
+	assert.Equal(t, 2, len(s.Endpoint.Ports))
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
+	assert.NotEqual(t, 0, s.Endpoint.Ports[1].PublishedPort)
 
 	// Cache the secode node port
-	allocatedPort := s.Endpoint.ExposedPorts[1].SwarmPort
+	allocatedPort := s.Endpoint.Ports[1].PublishedPort
 
 	// Now allocate the same service in another allocator instance
 	err = na2.ServiceAllocate(s)
 	assert.NoError(t, err)
 	assert.Equal(t, true, na2.IsServiceAllocated(s))
-	assert.Equal(t, 2, len(s.Endpoint.ExposedPorts))
-	assert.Equal(t, uint32(1234), s.Endpoint.ExposedPorts[0].SwarmPort)
+	assert.Equal(t, 2, len(s.Endpoint.Ports))
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 	// Make sure we got the same port
-	assert.Equal(t, allocatedPort, s.Endpoint.ExposedPorts[1].SwarmPort)
+	assert.Equal(t, allocatedPort, s.Endpoint.Ports[1].PublishedPort)
 
-	s.Spec.Endpoint.ExposedPorts[1].SwarmPort = 1235
+	s.Spec.Endpoint.Ports[1].PublishedPort = 1235
 	assert.Equal(t, false, na1.IsServiceAllocated(s))
 
 	err = na1.ServiceAllocate(s)
 	assert.NoError(t, err)
 	assert.Equal(t, true, na1.IsServiceAllocated(s))
-	assert.Equal(t, 2, len(s.Endpoint.ExposedPorts))
-	assert.Equal(t, uint32(1234), s.Endpoint.ExposedPorts[0].SwarmPort)
-	assert.Equal(t, uint32(1235), s.Endpoint.ExposedPorts[1].SwarmPort)
+	assert.Equal(t, 2, len(s.Endpoint.Ports))
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
+	assert.Equal(t, uint32(1235), s.Endpoint.Ports[1].PublishedPort)
 }
