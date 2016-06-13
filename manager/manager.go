@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"github.com/docker/swarmkit/manager/scheduler"
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/xnet"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -95,13 +97,13 @@ func New(config *Config) (*Manager, error) {
 		config.ProtoAddr = make(map[string]string)
 	}
 
-	if config.ProtoListener != nil && config.ProtoListener["tcp"] != nil {
-		config.ProtoAddr["tcp"] = config.ProtoListener["tcp"].Addr().String()
+	if config.ProtoListener != nil && config.ProtoListener["remote"] != nil {
+		config.ProtoAddr["remote"] = config.ProtoListener["remote"].Addr().String()
 	}
 
-	tcpAddr := config.ProtoAddr["tcp"]
+	remoteAddr := config.ProtoAddr["remote"]
 
-	listenHost, listenPort, err := net.SplitHostPort(tcpAddr)
+	listenHost, listenPort, err := net.SplitHostPort(remoteAddr)
 	if err == nil {
 		ip := net.ParseIP(listenHost)
 		if ip != nil && ip.IsUnspecified() {
@@ -121,7 +123,7 @@ func New(config *Config) (*Manager, error) {
 				return nil, fmt.Errorf("could not split local IP address: %v", err)
 			}
 
-			tcpAddr = net.JoinHostPort(listenHost, listenPort)
+			remoteAddr = net.JoinHostPort(listenHost, listenPort)
 		}
 	}
 
@@ -129,11 +131,14 @@ func New(config *Config) (*Manager, error) {
 	// for now, may want to make this separate. This can be tricky to get right
 	// so we need to make it easy to override. This needs to be the address
 	// through which agent nodes access the manager.
-	dispatcherConfig.Addr = tcpAddr
+	dispatcherConfig.Addr = remoteAddr
 
-	err = os.MkdirAll(filepath.Dir(config.ProtoAddr["unix"]), 0700)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create socket directory: %v", err)
+	socket := config.ProtoAddr["control"]
+	if strings.HasPrefix(socket, "npipe") == false {
+		err = os.MkdirAll(filepath.Dir(config.ProtoAddr["control"]), 0700)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create socket directory: %v", err)
+		}
 	}
 
 	err = os.MkdirAll(config.StateDir, 0700)
@@ -152,9 +157,14 @@ func New(config *Config) (*Manager, error) {
 		listeners = config.ProtoListener
 	} else {
 		listeners = make(map[string]net.Listener)
+		for _, addr := range config.ProtoAddr {
 
-		for proto, addr := range config.ProtoAddr {
-			l, err := net.Listen(proto, addr)
+			proto, addr, err := xnet.ParseProtoAddr(addr)
+			if err != nil {
+				return nil, err
+			}
+
+			l, err := xnet.Listen(proto, addr)
 
 			// A unix socket may fail to bind if the file already
 			// exists. Try replacing the file.
@@ -189,7 +199,7 @@ func New(config *Config) (*Manager, error) {
 
 	newNodeOpts := raft.NewNodeOptions{
 		ID:              config.SecurityConfig.ClientTLSCreds.NodeID(),
-		Addr:            tcpAddr,
+		Addr:            remoteAddr,
 		JoinAddr:        config.JoinRaft,
 		Config:          raftCfg,
 		StateDir:        raftStateDir,
@@ -473,7 +483,7 @@ func (m *Manager) Run(parent context.Context) error {
 				logrus.Fields{
 					"proto": lis.Addr().Network(),
 					"addr":  lis.Addr().String()}))
-			if proto == "unix" {
+			if proto == "unix" || proto == "npipe" {
 				log.G(ctx).Info("Listening for local connections")
 				errServe <- m.localserver.Serve(lis)
 			} else {

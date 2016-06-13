@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/xnet"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -25,7 +26,11 @@ func Dial(cmd *cobra.Command) (api.ControlClient, error) {
 	opts = append(opts, grpc.WithTransportCredentials(insecureCreds))
 	opts = append(opts, grpc.WithDialer(
 		func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("unix", addr, timeout)
+			proto, addr, err := xnet.ParseProtoAddr(addr)
+			if err != nil {
+				return nil, err
+			}
+			return xnet.DialTimeout(proto, addr, timeout)
 		}))
 	conn, err := grpc.Dial(addr, opts...)
 	if err != nil {
