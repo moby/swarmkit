@@ -206,17 +206,26 @@ func (c *containerAdapter) remove(ctx context.Context) error {
 
 func (c *containerAdapter) createVolumes(ctx context.Context, client engineapi.APIClient) error {
 	// Create plugin volumes that are embedded inside a Mount
-	for _, mount := range c.container.task.Spec.GetContainer().Mounts {
-		if mount.Template != nil {
-			req := c.container.volumeCreateRequest(mount)
+	for _, mount := range c.container.spec().Mounts {
+		if mount.Type != api.MountTypeVolume {
+			continue
+		}
 
-			// Check if this volume exists on the engine
-			if _, err := client.VolumeCreate(ctx, *req); err != nil {
-				// TODO(amitshukla): Today, volume create through the engine api does not return an error
-				// when the named volume with the same parameters already exists.
-				// It returns an error if the driver name is different - that is a valid error
-				return err
-			}
+		// we create volumes when there is a volume driver available volume options
+		if mount.VolumeOptions == nil {
+			continue
+		}
+
+		if mount.VolumeOptions.DriverConfig == nil {
+			continue
+		}
+
+		req := c.container.volumeCreateRequest(&mount)
+		if _, err := client.VolumeCreate(ctx, *req); err != nil {
+			// TODO(amitshukla): Today, volume create through the engine api does not return an error
+			// when the named volume with the same parameters already exists.
+			// It returns an error if the driver name is different - that is a valid error
+			return err
 		}
 	}
 
