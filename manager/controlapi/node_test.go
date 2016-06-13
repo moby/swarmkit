@@ -352,20 +352,18 @@ func TestUpdateNode(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
+	spec := r.Node.Spec.Copy()
+	spec.Availability = api.NodeAvailabilityDrain
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID: "id",
-		Spec: &api.NodeSpec{
-			Availability: api.NodeAvailabilityDrain,
-		},
+		Spec:   spec,
 	})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID: "id",
-		Spec: &api.NodeSpec{
-			Availability: api.NodeAvailabilityDrain,
-		},
+		NodeID:      "id",
+		Spec:        spec,
 		NodeVersion: &r.Node.Meta.Version,
 	})
 	assert.NoError(t, err)
@@ -382,4 +380,18 @@ func TestUpdateNode(t *testing.T) {
 	// Perform an update with the "old" version.
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: "id", Spec: &r.Node.Spec, NodeVersion: version})
 	assert.Error(t, err)
+
+	// Make sure we can't demote the last manager.
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: "id"})
+	assert.NoError(t, err)
+	spec = r.Node.Spec.Copy()
+	spec.Role = api.NodeRoleWorker
+	version = &r.Node.Meta.Version
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
+		NodeID:      "id",
+		Spec:        spec,
+		NodeVersion: version,
+	})
+	assert.Error(t, err)
+	assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
 }
