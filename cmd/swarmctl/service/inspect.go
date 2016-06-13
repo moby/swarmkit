@@ -104,11 +104,6 @@ var (
 				return err
 			}
 
-			instance, err := flags.GetUint64("instance")
-			if err != nil {
-				return err
-			}
-
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
@@ -128,9 +123,6 @@ var (
 			}
 			tasks := []*api.Task{}
 			for _, t := range r.Tasks {
-				if instance != 0 && t.Instance != instance {
-					continue
-				}
 				if t.ServiceID != service.ID {
 					continue
 				}
@@ -140,7 +132,7 @@ var (
 			printServiceSummary(service)
 			if len(tasks) > 0 {
 				fmt.Printf("\n")
-				task.Print(tasks, all || instance != 0, res)
+				task.Print(tasks, all, res)
 			}
 
 			return nil
@@ -150,5 +142,4 @@ var (
 
 func init() {
 	inspectCmd.Flags().BoolP("all", "a", false, "Show all tasks (default shows just running)")
-	inspectCmd.Flags().Uint64P("instance", "i", 0, "Show tasks with a specific instance number")
 }
