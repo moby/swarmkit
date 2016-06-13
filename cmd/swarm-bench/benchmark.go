@@ -85,7 +85,7 @@ func (b *Benchmark) spec() *api.ServiceSpec {
 		},
 		Mode: &api.ServiceSpec_Replicated{
 			Replicated: &api.ReplicatedService{
-				Instances: b.cfg.Count,
+				Replicas: b.cfg.Count,
 			},
 		},
 	}
