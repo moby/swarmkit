@@ -288,6 +288,16 @@ func TestStoreService(t *testing.T) {
 					},
 				},
 			}), ErrNameConflict, "duplicate names must be rejected")
+
+		assert.Equal(t,
+			CreateService(tx, &api.Service{
+				ID: "id4",
+				Spec: api.ServiceSpec{
+					Annotations: api.Annotations{
+						Name: "NAME1",
+					},
+				},
+			}), ErrNameConflict, "duplicate check should be case insensitive")
 		return nil
 	})
 	assert.NoError(t, err)
@@ -298,6 +308,9 @@ func TestStoreService(t *testing.T) {
 		assert.Equal(t, serviceSet[2], GetService(readTx, "id3"))
 
 		foundServices, err := FindServices(readTx, ByName("name1"))
+		assert.NoError(t, err)
+		assert.Len(t, foundServices, 1)
+		foundServices, err = FindServices(readTx, ByName("NAME1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 1)
 		foundServices, err = FindServices(readTx, ByName("invalid"))
@@ -331,6 +344,9 @@ func TestStoreService(t *testing.T) {
 		update = GetService(tx, update.ID)
 		update.Spec.Annotations.Name = "name2"
 		assert.Equal(t, UpdateService(tx, update), ErrNameConflict, "duplicate names should be rejected")
+		update = GetService(tx, update.ID)
+		update.Spec.Annotations.Name = "NAME2"
+		assert.Equal(t, UpdateService(tx, update), ErrNameConflict, "duplicate check should be case insensitive")
 
 		// Name change.
 		update = GetService(tx, update.ID)
