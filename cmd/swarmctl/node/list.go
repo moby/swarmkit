@@ -39,16 +39,22 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				common.PrintHeader(w, "ID", "Name", "Membership", "Status", "Availability", "Manager status")
+				common.PrintHeader(w, "ID", "Name", "Membership", "Status", "Manager status")
 				output = func(n *api.Node) {
 					spec := &n.Spec
 					name := spec.Annotations.Name
-					availability := spec.Availability.String()
 					membership := spec.Membership.String()
 
 					if name == "" && n.Description != nil {
 						name = n.Description.Hostname
 					}
+
+					nodeStatus := n.Status.State.String()
+					// node Active is default. Only show other state, like drain, pause.
+					if spec.Availability != api.NodeAvailabilityActive {
+						nodeStatus = nodeStatus + "(" + spec.Availability.String() + ")"
+					}
+
 					reachability := ""
 					if n.Manager != nil {
 						reachability = n.Manager.Raft.Status.Reachability.String()
@@ -60,12 +66,11 @@ var (
 						reachability = "UNKNOWN"
 					}
 
-					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 						n.ID,
 						name,
 						membership,
-						n.Status.State.String(),
-						availability,
+						nodeStatus,
 						reachability,
 					)
 				}
