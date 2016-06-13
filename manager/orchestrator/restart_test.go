@@ -44,7 +44,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
-						Instances: 2,
+						Replicas: 2,
 					},
 				},
 			},
@@ -146,7 +146,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
-						Instances: 2,
+						Replicas: 2,
 					},
 				},
 			},
@@ -245,7 +245,7 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
-						Instances: 2,
+						Replicas: 2,
 					},
 				},
 			},
@@ -340,7 +340,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
-						Instances: 2,
+						Replicas: 2,
 					},
 				},
 			},
@@ -420,7 +420,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
-						Instances: 2,
+						Replicas: 2,
 					},
 				},
 				Task: api.TaskSpec{
@@ -555,7 +555,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
-						Instances: 2,
+						Replicas: 2,
 					},
 				},
 				Task: api.TaskSpec{

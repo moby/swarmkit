@@ -24,7 +24,7 @@ Once a machine joins, it becomes a *Swarm Node*. Nodes can either be *worker* no
 An operator can dynamically update a Node's role by promoting a Worker to Manager or demoting a Manager to Worker.
 
 *Tasks* are organized in *Services*. A service is a higher level abstraction that allows the user to declare the desired state of a group of tasks.
-Services define what type of task should be created as well as how to execute them (e.g. run this many instances at all times) and how to update them (e.g. rolling updates).
+Services define what type of task should be created as well as how to execute them (e.g. run this many replicas at all times) and how to update them (e.g. rolling updates).
 
 ## Features
 
@@ -151,7 +151,7 @@ List the running services:
 
 ```
 $ swarmctl service ls
-ID                         Name   Image        Instances
+ID                         Name   Image        Replicas
 --                         ----   -----        ---------
 89831rq7oplzp6oqcqoswquf2  redis  redis:3.0.5  1
 ```
@@ -162,7 +162,7 @@ Inspect the service:
 $ swarmctl service inspect redis
 ID                : 89831rq7oplzp6oqcqoswquf2
 Name              : redis
-Instances         : 1
+Replicass         : 1
 Template
  Container
   Image           : redis:3.0.5
@@ -179,13 +179,13 @@ You can update any attribute of a service.
 For example, you can scale the service by changing the instance count:
 
 ```
-$ swarmctl service update redis --instances 6
+$ swarmctl service update redis --replicas 6
 89831rq7oplzp6oqcqoswquf2
 
 $ swarmctl service inspect redis
 ID                : 89831rq7oplzp6oqcqoswquf2
 Name              : redis
-Instances         : 6
+Replicas          : 6
 Template
  Container
   Image           : redis:3.0.5
@@ -200,7 +200,7 @@ ceuwhcffcavur7k9q57vqw0zg    redis      4           redis:3.0.5    RUNNING      
 385utv15nalm2pyupao6jtu12    redis      6           redis:3.0.5    RUNNING          RUNNING 3 seconds ago    node-3
 ```
 
-Changing *instances* from *1* to *6* forced *SwarmKit* to create *5* additional Tasks in order to
+Changing *replicas* from *1* to *6* forced *SwarmKit* to create *5* additional Tasks in order to
 comply with the desired state.
 
 Every other field can be changed as well, such as image, args, env, ...
@@ -214,7 +214,7 @@ $ swarmctl service update redis --image redis:3.0.6
 $ swarmctl service inspect redis
 ID                : 89831rq7oplzp6oqcqoswquf2
 Name              : redis
-Instances         : 6
+Replicas          : 6
 Template
  Container
   Image           : redis:3.0.6
@@ -265,7 +265,7 @@ ID             Name    Membership  Status  Availability  Manager status
 $ swarmctl service inspect redis
 ID                : 89831rq7oplzp6oqcqoswquf2
 Name              : redis
-Instances         : 6
+Replicas          : 6
 Template
  Container
   Image           : redis:3.0.7
