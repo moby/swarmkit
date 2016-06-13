@@ -13,6 +13,7 @@ import (
 	"github.com/docker/engine-api/types/events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
 
@@ -190,7 +191,7 @@ func (c *containerAdapter) shutdown(ctx context.Context) error {
 	stopgrace := 10 * time.Second
 	spec := c.container.spec()
 	if spec.StopGracePeriod != nil {
-		stopgrace = time.Duration(spec.StopGracePeriod.Seconds) * time.Second
+		stopgrace, _ = ptypes.Duration(spec.StopGracePeriod)
 	}
 	return c.client.ContainerStop(ctx, c.container.name(), stopgrace)
 }
