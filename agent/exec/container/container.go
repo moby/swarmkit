@@ -327,11 +327,6 @@ func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
 				IPv4Address: ipv4,
 				IPv6Address: ipv6,
 			},
-			ServiceConfig: &network.EndpointServiceConfig{
-				Name: c.task.ServiceAnnotations.Name,
-				ID:   c.task.ServiceID,
-				IP:   c.virtualIP(na.Network.ID),
-			},
 		}
 
 		epConfig[na.Network.Spec.Annotations.Name] = epSettings
@@ -360,7 +355,6 @@ func (c *containerConfig) networkCreateOptions(name string) (types.NetworkCreate
 	}
 
 	options := types.NetworkCreate{
-		ID:     na.Network.ID,
 		Driver: na.Network.DriverState.Name,
 		IPAM: network.IPAM{
 			Driver: na.Network.IPAM.Driver.Name,
