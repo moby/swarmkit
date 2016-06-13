@@ -39,7 +39,7 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				common.PrintHeader(w, "ID", "Name", "Image", "Instances")
+				common.PrintHeader(w, "ID", "Name", "Image", "Replicas")
 				output = func(s *api.Service) {
 					spec := s.Spec
 					var reference string
@@ -52,7 +52,7 @@ var (
 						s.ID,
 						spec.Annotations.Name,
 						reference,
-						getServiceInstancesTxt(s),
+						getServiceReplicasTxt(s),
 					)
 				}
 

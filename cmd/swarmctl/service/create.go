@@ -27,7 +27,7 @@ var (
 			spec := &api.ServiceSpec{
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
-						Instances: 1,
+						Replicas: 1,
 					},
 				},
 				Task: api.TaskSpec{

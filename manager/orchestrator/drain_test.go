@@ -28,7 +28,7 @@ func TestDrain(t *testing.T) {
 			},
 			Mode: &api.ServiceSpec_Replicated{
 				Replicated: &api.ReplicatedService{
-					Instances: 6,
+					Replicas: 6,
 				},
 			},
 		},

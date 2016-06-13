@@ -30,15 +30,15 @@ func parseMode(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		}
 	}
 
-	if flags.Changed("instances") {
+	if flags.Changed("replicas") {
 		if spec.GetReplicated() == nil {
-			return fmt.Errorf("--instances can only be specified in --mode replicated")
+			return fmt.Errorf("--replicas can only be specified in --mode replicated")
 		}
-		instances, err := flags.GetUint64("instances")
+		replicas, err := flags.GetUint64("replicas")
 		if err != nil {
 			return err
 		}
-		spec.GetReplicated().Instances = instances
+		spec.GetReplicated().Replicas = replicas
 	}
 
 	return nil

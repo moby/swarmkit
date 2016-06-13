@@ -41,7 +41,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
-						Instances: 2,
+						Replicas: 2,
 					},
 				},
 			},
@@ -79,7 +79,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
-						Instances: 1,
+						Replicas: 1,
 					},
 				},
 			},
@@ -108,7 +108,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
-						Instances: 3,
+						Replicas: 3,
 					},
 				},
 			},
@@ -141,7 +141,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 				},
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
-						Instances: 1,
+						Replicas: 1,
 					},
 				},
 			},
