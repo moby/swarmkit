@@ -91,6 +91,10 @@ type Node struct {
 	removed     uint32
 	joinAddr    string
 
+	// waitProp waits for all the proposals to be terminated before
+	// shutting down the node.
+	waitProp sync.WaitGroup
+
 	// forceNewCluster is a special flag used to recover from disaster
 	// scenario by pointing to an existing or backed up data directory.
 	forceNewCluster bool
@@ -399,6 +403,7 @@ func (n *Node) stop() {
 	defer n.stopMu.Unlock()
 
 	n.cancel()
+	n.waitProp.Wait()
 	n.asyncTasks.Wait()
 
 	members := n.cluster.Members()
@@ -720,6 +725,17 @@ func (n *Node) mustStop() bool {
 	return atomic.LoadUint32(&n.removed) == 1
 }
 
+// canSubmitProposal defines if any more proposals
+// could be submitted and processed.
+func (n *Node) canSubmitProposal() bool {
+	select {
+	case <-n.Ctx.Done():
+		return false
+	default:
+		return true
+	}
+}
+
 // Saves a log entry to our Store
 func (n *Node) saveToStorage(raftConfig *api.RaftConfig, hardState raftpb.HardState, entries []raftpb.Entry, snapshot raftpb.Snapshot) (err error) {
 	if !raft.IsEmptySnap(snapshot) {
@@ -843,10 +859,19 @@ type applyResult struct {
 	err  error
 }
 
-// processInternalRaftRequest sends a message through consensus
-// and then waits for it to be applies to the server. It will
-// block until the change is performed or there is an error
+// processInternalRaftRequest sends a message to nodes participating
+// in the raft to apply a log entry and then waits for it to be applied
+// on the server. It will block until the update is performed, there is
+// an error or until the raft node finalizes all the proposals on node
+// shutdown.
 func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRaftRequest, cb func()) (proto.Message, error) {
+	n.waitProp.Add(1)
+	defer n.waitProp.Done()
+
+	if !n.canSubmitProposal() {
+		return nil, ErrStopped
+	}
+
 	r.ID = n.reqIDGen.Next()
 
 	ch := n.wait.register(r.ID, cb)
@@ -881,7 +906,7 @@ func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRa
 			return res.resp, res.err
 		}
 		return nil, ErrLostLeadership
-	case <-n.stopCh:
+	case <-n.Ctx.Done():
 		n.wait.cancel(r.ID)
 		return nil, ErrStopped
 	case <-ctx.Done():
@@ -914,7 +939,7 @@ func (n *Node) configure(ctx context.Context, cc raftpb.ConfChange) error {
 	case <-ctx.Done():
 		n.wait.trigger(cc.ID, nil)
 		return ctx.Err()
-	case <-n.stopCh:
+	case <-n.Ctx.Done():
 		return ErrStopped
 	}
 }
