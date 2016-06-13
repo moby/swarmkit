@@ -9,6 +9,7 @@ import (
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -362,7 +363,35 @@ func parseContainerStatus(ctnr types.ContainerJSON) (*api.ContainerStatus, error
 		ContainerID: ctnr.ID,
 		PID:         int32(ctnr.State.Pid),
 		ExitCode:    int32(ctnr.State.ExitCode),
+		Health:      parseHealthStatus(ctnr.State.Health),
 	}
 
 	return status, nil
+}
+
+func parseHealthStatus(health *types.Health) *api.HealthStatus {
+	if health == nil {
+		return nil
+	}
+	healthStatus := &api.HealthStatus{
+		Status:        health.Status,
+		FailingStreak: int32(health.FailingStreak),
+	}
+	// now parse the HealthcheckResult log
+	if health.Log != nil {
+		log := []*api.HealthcheckResult{}
+		for _, result := range health.Log {
+			startProto, _ := ptypes.TimestampProto(result.Start)
+			endProto, _ := ptypes.TimestampProto(result.End)
+			newResult := &api.HealthcheckResult{
+				Start:    startProto,
+				End:      endProto,
+				ExitCode: int32(result.ExitCode),
+				Output:   result.Output,
+			}
+			log = append(log, newResult)
+		}
+		healthStatus.Log = log
+	}
+	return healthStatus
 }

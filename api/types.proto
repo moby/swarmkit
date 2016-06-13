@@ -280,6 +280,23 @@ message ContainerStatus {
 
 	int32 pid = 2 [(gogoproto.customname) = "PID"];
 	int32 exit_code = 3;
+
+	HealthStatus health = 4;
+}
+
+// HealthStatus stores information about the container's healthcheck results.
+message HealthStatus {
+	string status = 1;
+	int32 failing_streak = 2;
+	repeated HealthcheckResult log = 3;
+}
+
+// HealthcheckResult stores information about a single run of a healthcheck probe.
+message HealthcheckResult {
+	Timestamp start = 1;
+	Timestamp end = 2;
+	int32 exit_code = 3;
+	string output = 4;
 }
 
 message TaskStatus {
