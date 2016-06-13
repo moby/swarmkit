@@ -37,10 +37,10 @@ func init() {
 					AllowMissing: true,
 					Indexer:      taskIndexerByNodeID{},
 				},
-				indexInstance: {
-					Name:         indexInstance,
+				indexSlot: {
+					Name:         indexSlot,
 					AllowMissing: true,
-					Indexer:      taskIndexerByInstance{},
+					Indexer:      taskIndexerBySlot{},
 				},
 				indexDesiredState: {
 					Name:    indexDesiredState,
@@ -175,7 +175,7 @@ func GetTask(tx ReadTx, id string) *api.Task {
 func FindTasks(tx ReadTx, by By) ([]*api.Task, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byIDPrefix, byDesiredState, byNode, byService, byInstance:
+		case byName, byIDPrefix, byDesiredState, byNode, byService, bySlot:
 			return nil
 		default:
 			return ErrInvalidFindBy
@@ -262,20 +262,20 @@ func (ti taskIndexerByNodeID) FromObject(obj interface{}) (bool, []byte, error) 
 	return true, []byte(val), nil
 }
 
-type taskIndexerByInstance struct{}
+type taskIndexerBySlot struct{}
 
-func (ti taskIndexerByInstance) FromArgs(args ...interface{}) ([]byte, error) {
+func (ti taskIndexerBySlot) FromArgs(args ...interface{}) ([]byte, error) {
 	return fromArgs(args...)
 }
 
-func (ti taskIndexerByInstance) FromObject(obj interface{}) (bool, []byte, error) {
+func (ti taskIndexerBySlot) FromObject(obj interface{}) (bool, []byte, error) {
 	t, ok := obj.(taskEntry)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
 
 	// Add the null character as a terminator
-	val := t.ServiceID + "\x00" + strconv.FormatUint(t.Instance, 10) + "\x00"
+	val := t.ServiceID + "\x00" + strconv.FormatUint(t.Slot, 10) + "\x00"
 	return true, []byte(val), nil
 }
 

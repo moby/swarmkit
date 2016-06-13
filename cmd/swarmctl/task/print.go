@@ -11,21 +11,21 @@ import (
 	"github.com/docker/swarmkit/protobuf/ptypes"
 )
 
-type tasksByInstance []*api.Task
+type tasksBySlot []*api.Task
 
-func (t tasksByInstance) Len() int {
+func (t tasksBySlot) Len() int {
 	return len(t)
 }
-func (t tasksByInstance) Swap(i, j int) {
+func (t tasksBySlot) Swap(i, j int) {
 	t[i], t[j] = t[j], t[i]
 }
-func (t tasksByInstance) Less(i, j int) bool {
-	// Sort by instance.
-	if t[i].Instance != t[j].Instance {
-		return t[i].Instance < t[j].Instance
+func (t tasksBySlot) Less(i, j int) bool {
+	// Sort by slot.
+	if t[i].Slot != t[j].Slot {
+		return t[i].Slot < t[j].Slot
 	}
 
-	// If same instance, sort by most recent.
+	// If same slot, sort by most recent.
 	it, err := ptypes.Timestamp(t[i].Meta.CreatedAt)
 	if err != nil {
 		panic(err)
@@ -42,8 +42,8 @@ func Print(tasks []*api.Task, all bool, res *common.Resolver) {
 	w := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
 	defer w.Flush()
 
-	common.PrintHeader(w, "Task ID", "Service", "Instance", "Image", "Desired State", "Last State", "Node")
-	sort.Stable(tasksByInstance(tasks))
+	common.PrintHeader(w, "Task ID", "Service", "Slot", "Image", "Desired State", "Last State", "Node")
+	sort.Stable(tasksBySlot(tasks))
 	for _, t := range tasks {
 		if !all && t.DesiredState > api.TaskStateRunning {
 			continue
@@ -52,7 +52,7 @@ func Print(tasks []*api.Task, all bool, res *common.Resolver) {
 		fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s %s\t%s\n",
 			t.ID,
 			t.ServiceAnnotations.Name,
-			t.Instance,
+			t.Slot,
 			c.Image,
 			t.DesiredState.String(),
 			t.Status.State.String(),

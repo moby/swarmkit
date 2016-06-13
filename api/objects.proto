@@ -115,10 +115,10 @@ message Task {
 	// should almost always be set.
 	string service_id = 4 [(gogoproto.customname) = "ServiceID"];
 
-	// Instance is the instance number for a task. For example, if a
-	// replicated service has replicas = 2, there will be a task with
-	// instance = 1, and another with instance = 2.
-	uint64 instance = 5;
+	// Slot is the service slot number for a task.
+	// For example, if a replicated service has replicas = 2, there will be a
+	// task with slot = 1, and another with slot = 2.
+	uint64 slot = 5;
 
 	// NodeID indicates the node to which the task is assigned. If this field
 	// is empty or not set, the task is unassigned.
