@@ -232,9 +232,6 @@ func TestRaftFollowerLeave(t *testing.T) {
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
-	nodes, clockSource = raftutils.NewRaftCluster(t, tc)
-	raftutils.AddRaftNode(t, clockSource, nodes, tc)
-	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Node 5 leaves the cluster
