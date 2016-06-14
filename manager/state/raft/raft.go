@@ -109,6 +109,8 @@ type Node struct {
 
 	// used to coordinate shutdown
 	stopMu sync.RWMutex
+	// used for membership management checks
+	membershipLock sync.Mutex
 
 	snapshotInProgress chan uint64
 	asyncTasks         sync.WaitGroup
@@ -539,10 +541,12 @@ func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResp
 	return &api.LeaveResponse{}, nil
 }
 
-// RemoveMember submits a configuration change to remove a member from the raft cluster.
+// RemoveMember submits a configuration change to remove a member from the
+// raft cluster. Removes are processed one at a time on the Leader.
 func (n *Node) RemoveMember(ctx context.Context, id uint64) error {
-	// TODO(abronan): this can race if multiple removes are processed, we should
-	// send all the requests to the Leader and track pending removals.
+	n.membershipLock.Lock()
+	defer n.membershipLock.Unlock()
+
 	if n.cluster.CanRemoveMember(n.Config.ID, id) {
 		cc := raftpb.ConfChange{
 			ID:      id,
