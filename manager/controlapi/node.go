@@ -1,8 +1,11 @@
 package controlapi
 
 import (
+	"time"
+
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
+	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state/store"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -212,19 +215,13 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 // - Returns InvalidArgument if NodeID or NodeVersion is not valid.
 // - Returns an error if the delete fails.
 func (s *Server) RemoveNode(ctx context.Context, request *api.RemoveNodeRequest) (*api.RemoveNodeResponse, error) {
+	var err error
+
 	if request.NodeID == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
-	if s.raft != nil {
-		memberlist := s.raft.GetMemberlist()
-		raftID, err := identity.ParseNodeID(request.NodeID)
-		if err == nil && memberlist[raftID] != nil {
-			return nil, grpc.Errorf(codes.FailedPrecondition, "node %s is a cluster manager and is part of the quorum. It must be demoted to worker before removal", request.NodeID)
-		}
-	}
 
-	err := s.store.Update(func(tx store.Tx) error {
-		node := store.GetNode(tx, request.NodeID)
+	sanityChecks := func(node *api.Node) error {
 		if node == nil {
 			return grpc.Errorf(codes.NotFound, "node %s not found", request.NodeID)
 		}
@@ -233,6 +230,43 @@ func (s *Server) RemoveNode(ctx context.Context, request *api.RemoveNodeRequest)
 		}
 		if node.Status.State == api.NodeStatus_READY {
 			return grpc.Errorf(codes.FailedPrecondition, "node %s is not down and can't be removed", request.NodeID)
+		}
+		return nil
+	}
+
+	// Perform first round of sanity checks.
+	s.store.View(func(tx store.ReadTx) {
+		err = sanityChecks(store.GetNode(tx, request.NodeID))
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// If we're removing a node member of raft, remove the member.
+	if s.raft != nil {
+		removeID, err := identity.ParseNodeID(request.NodeID)
+		if err != nil {
+			return nil, grpc.Errorf(codes.Internal, err.Error())
+		}
+
+		memberlist := s.raft.GetMemberlist()
+		if _, exists := memberlist[removeID]; exists {
+			ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+
+			err = s.raft.RemoveMember(ctx, removeID)
+			if err != nil {
+				return nil, grpc.Errorf(codes.Internal, "cannot remove member %s from the raft quorum: %s", request.NodeID, err)
+			}
+			log.G(ctx).Infof("removed %s from the raft quorum", request.NodeID)
+		}
+	}
+
+	// Now actually remove the node. Perform sanity checks again - the state might have changed since the first round.
+	err = s.store.Update(func(tx store.Tx) error {
+		node := store.GetNode(tx, request.NodeID)
+		if err := sanityChecks(node); err != nil {
+			return err
 		}
 		return store.DeleteNode(tx, request.NodeID)
 	})
