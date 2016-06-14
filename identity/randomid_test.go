@@ -31,21 +31,3 @@ func TestGenerateGUID(t *testing.T) {
 		}
 	}
 }
-
-func TestGenerateNodeID(t *testing.T) {
-	idReader = rand.New(rand.NewSource(0))
-
-	for i := 0; i < 1000; i++ {
-		guid := NewNodeID()
-
-		var i big.Int
-		_, ok := i.SetString(guid, randomIDBase)
-		if !ok {
-			t.Fatal("id should be base 36", i, guid)
-		}
-
-		if len(guid) != maxRandomNodeIDLength {
-			t.Fatalf("len(%s) != %v", guid, maxRandomNodeIDLength)
-		}
-	}
-}

@@ -145,7 +145,7 @@ func getMap(t *testing.T, nodes []*api.Node) map[uint64]*api.ManagerStatus {
 	m := make(map[uint64]*api.ManagerStatus)
 	for _, n := range nodes {
 		if n.ManagerStatus != nil {
-			m[n.ManagerStatus.Raft.RaftID] = n.ManagerStatus
+			m[n.ManagerStatus.RaftID] = n.ManagerStatus
 		}
 	}
 	return m
@@ -181,15 +181,15 @@ func TestListManagerNodes(t *testing.T) {
 	// Node 1 should be the leader
 	for i := 1; i <= 3; i++ {
 		if i == 1 {
-			assert.True(t, managers[nodes[uint64(i)].Config.ID].Raft.Status.Leader)
+			assert.True(t, managers[nodes[uint64(i)].Config.ID].Leader)
 			continue
 		}
-		assert.False(t, managers[nodes[uint64(i)].Config.ID].Raft.Status.Leader)
+		assert.False(t, managers[nodes[uint64(i)].Config.ID].Leader)
 	}
 
 	// All nodes should be reachable
 	for i := 1; i <= 3; i++ {
-		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Raft.Status.Reachability)
+		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Reachability)
 	}
 
 	// Add two more nodes to the cluster
@@ -212,7 +212,7 @@ func TestListManagerNodes(t *testing.T) {
 	assert.Len(t, ts.Server.raft.GetMemberlist(), 5)
 	assert.Len(t, r.Nodes, 5)
 	for i := 1; i <= 5; i++ {
-		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Raft.Status.Reachability)
+		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Reachability)
 	}
 
 	// Stops 2 nodes
@@ -234,11 +234,11 @@ func TestListManagerNodes(t *testing.T) {
 			return fmt.Errorf("expected 5 nodes, got %d", len(r.Nodes))
 		}
 
-		if managers[nodes[4].Config.ID].Raft.Status.Reachability == api.RaftMemberStatus_REACHABLE {
+		if managers[nodes[4].Config.ID].Reachability == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 4 to be unreachable")
 		}
 
-		if managers[nodes[5].Config.ID].Raft.Status.Reachability == api.RaftMemberStatus_REACHABLE {
+		if managers[nodes[5].Config.ID].Reachability == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 5 to be unreachable")
 		}
 
@@ -258,7 +258,7 @@ func TestListManagerNodes(t *testing.T) {
 	assert.Len(t, ts.Server.raft.GetMemberlist(), 5)
 	assert.Len(t, r.Nodes, 5)
 	for i := 1; i <= 5; i++ {
-		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Raft.Status.Reachability)
+		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Reachability)
 	}
 
 	// Switch the raft node used by the server
@@ -287,11 +287,11 @@ func TestListManagerNodes(t *testing.T) {
 
 		managers = getMap(t, r.Nodes)
 
-		if managers[nodes[1].Config.ID].Raft.Status.Leader {
+		if managers[nodes[1].Config.ID].Leader {
 			return fmt.Errorf("expected node 1 not to be the leader")
 		}
 
-		if managers[nodes[1].Config.ID].Raft.Status.Reachability == api.RaftMemberStatus_REACHABLE {
+		if managers[nodes[1].Config.ID].Reachability == api.RaftMemberStatus_REACHABLE {
 			return fmt.Errorf("expected node 1 to be unreachable")
 		}
 
@@ -304,13 +304,13 @@ func TestListManagerNodes(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Ensure that node 1 is not the leader
-	assert.False(t, managers[nodes[uint64(1)].Config.ID].Raft.Status.Leader)
+	assert.False(t, managers[nodes[uint64(1)].Config.ID].Leader)
 
 	// Check that another node got the leader status
 	var leader uint64
 	leaderCount := 0
 	for i := 1; i <= 5; i++ {
-		if managers[nodes[uint64(i)].Config.ID].Raft.Status.Leader {
+		if managers[nodes[uint64(i)].Config.ID].Leader {
 			leader = nodes[uint64(i)].Config.ID
 			leaderCount++
 		}
