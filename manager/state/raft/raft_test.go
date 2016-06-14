@@ -239,9 +239,10 @@ func TestRaftFollowerLeave(t *testing.T) {
 	// authorization check.
 	client, err := nodes[1].ConnectToMember(nodes[1].Address, 10*time.Second)
 	assert.NoError(t, err)
+	raftClient := api.NewRaftMembershipClient(client.Conn)
 	defer client.Conn.Close()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[5].Config.ID}})
+	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[5].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -281,8 +282,9 @@ func TestRaftLeaderLeave(t *testing.T) {
 	client, err := nodes[1].ConnectToMember(nodes[1].Address, 10*time.Second)
 	assert.NoError(t, err)
 	defer client.Conn.Close()
+	raftClient := api.NewRaftMembershipClient(client.Conn)
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	resp, err := client.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[1].Config.ID}})
+	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[1].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -592,28 +594,4 @@ func TestRaftUnreachableNode(t *testing.T) {
 	// All nodes should have the value in the physical store
 	raftutils.CheckValue(t, clockSource, nodes[1], value)
 	raftutils.CheckValue(t, clockSource, nodes[2], value)
-}
-
-func TestRaftJoinFollower(t *testing.T) {
-	t.Parallel()
-
-	nodes := make(map[uint64]*raftutils.TestNode)
-	var clockSource *fakeclock.FakeClock
-	nodes[1], clockSource = raftutils.NewInitNode(t, tc, nil)
-	nodes[2] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, tc)
-	raftutils.WaitForCluster(t, clockSource, nodes)
-
-	// Point new node at a follower's address, rather than the leader
-	nodes[3] = raftutils.NewJoinNode(t, clockSource, nodes[2].Address, tc)
-	raftutils.WaitForCluster(t, clockSource, nodes)
-	defer raftutils.TeardownCluster(t, nodes)
-
-	// Propose a value
-	value, err := raftutils.ProposeValue(t, nodes[1])
-	assert.NoError(t, err, "failed to propose value")
-
-	// All nodes should have the value in the physical store
-	raftutils.CheckValue(t, clockSource, nodes[1], value)
-	raftutils.CheckValue(t, clockSource, nodes[2], value)
-	raftutils.CheckValue(t, clockSource, nodes[3], value)
 }

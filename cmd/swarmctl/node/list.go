@@ -51,8 +51,8 @@ var (
 					}
 					reachability := ""
 					if n.ManagerStatus != nil {
-						reachability = n.ManagerStatus.Raft.Status.Reachability.String()
-						if n.ManagerStatus.Raft.Status.Leader {
+						reachability = n.ManagerStatus.Reachability.String()
+						if n.ManagerStatus.Leader {
 							reachability = reachability + " *"
 						}
 					}

@@ -205,7 +205,7 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 	maxRetries := 3
 	// Generate a random ID for this new node
 	for i := 0; ; i++ {
-		nodeID = identity.NewNodeID()
+		nodeID = identity.NewID()
 
 		// Create a new node
 		err := s.store.Update(func(tx store.Tx) error {
