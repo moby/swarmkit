@@ -41,7 +41,7 @@ func noopPrivilegeFn() (string, error) { return "", nil }
 
 func (c *containerAdapter) pullImage(ctx context.Context) error {
 	// if the image needs to be pulled, the auth config will be retrieved and updated
-	encodedConfig := c.container.task.ServiceAnnotations.Labels[fmt.Sprintf("%v.registryauth", systemLabelPrefix)]
+	encodedConfig := c.container.spec().RegistryAuth
 
 	rc, err := c.client.ImagePull(ctx, c.container.image(),
 		types.ImagePullOptions{
