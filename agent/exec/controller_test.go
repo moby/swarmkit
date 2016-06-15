@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-//go:generate mockgen -package exec -destination controller_test.mock.go -source controller.go Controller Reporter
+//go:generate mockgen -package exec -destination controller_test.mock.go -source controller.go Controller StatusReporter
 
 func TestResolve(t *testing.T) {
 	var (
@@ -243,7 +243,8 @@ func TestReadyRunningExitFailure(t *testing.T) {
 				ExitCode: 1,
 			},
 		},
-		Message: "failed",
+		Message: "started",
+		Err:     "test error, exit code=1",
 	})
 }
 
@@ -298,7 +299,8 @@ func TestAlreadyStarted(t *testing.T) {
 				ExitCode: 1,
 			},
 		},
-		Message: "failed",
+		Message: "started",
+		Err:     "test error, exit code=1",
 	})
 
 }
