@@ -194,11 +194,9 @@ func (n *Node) run(ctx context.Context) (err error) {
 	// - Given a valid certificate, spin a renewal go-routine that will ensure that certificates stay
 	// up to date.
 	nodeIDChan := make(chan string, 1)
-	caLoadDone := make(chan struct{})
 	go func() {
 		select {
 		case <-ctx.Done():
-		case <-caLoadDone:
 		case nodeID := <-nodeIDChan:
 			logrus.Debugf("Requesting certificate for NodeID: %v", nodeID)
 			n.Lock()
@@ -209,7 +207,6 @@ func (n *Node) run(ctx context.Context) (err error) {
 
 	certDir := filepath.Join(n.config.StateDir, "certificates")
 	securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, n.config.CAHash, n.config.Secret, csrRole, picker.NewPicker(n.remotes), nodeIDChan)
-	close(caLoadDone)
 	if err != nil {
 		return err
 	}
