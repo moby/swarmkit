@@ -438,7 +438,7 @@ func (na *NetworkAllocator) allocateNetworkIPs(nAttach *api.NetworkAttachment) e
 			}
 
 			// If we got an address then we are done.
-			if err == nil {
+			if err == nil && ip != nil {
 				ipStr := ip.String()
 				localNet.endpoints[ipStr] = poolID
 				addresses[i] = ipStr

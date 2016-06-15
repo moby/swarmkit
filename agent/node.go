@@ -22,6 +22,7 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager"
 	"github.com/docker/swarmkit/picker"
+	"github.com/docker/swarmkit/xnet"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -548,7 +549,11 @@ func (n *Node) initManagerConnection(ctx context.Context, ready chan<- struct{})
 	addr := n.config.ListenControlAPI
 	opts = append(opts, grpc.WithDialer(
 		func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("unix", addr, timeout)
+			proto, addr, err := xnet.ParseProtoAddr(addr)
+			if err != nil {
+				return nil, err
+			}
+			return xnet.DialTimeout(proto, addr, timeout)
 		}))
 	conn, err := grpc.Dial(addr, opts...)
 	if err != nil {
@@ -586,8 +591,8 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			m, err := manager.New(&manager.Config{
 				ForceNewCluster: n.config.ForceNewCluster,
 				ProtoAddr: map[string]string{
-					"tcp":  n.config.ListenRemoteAPI,
-					"unix": n.config.ListenControlAPI,
+					"remote":  n.config.ListenRemoteAPI,
+					"control": n.config.ListenControlAPI,
 				},
 				SecurityConfig: securityConfig,
 				JoinRaft:       remoteAddr.Addr,

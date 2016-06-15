@@ -68,8 +68,9 @@ var (
 					fmt.Println("Warning: Specifying a valid address with --listen-remote-api may be necessary for other managers to reach this one.")
 				}
 			}
+			addr = "tcp://" + addr
 
-			unix, err := cmd.Flags().GetString("listen-control-api")
+			controlAddr, err := cmd.Flags().GetString("listen-control-api")
 			if err != nil {
 				return err
 			}
@@ -148,7 +149,7 @@ var (
 			n, err := agent.NewNode(&agent.NodeConfig{
 				Hostname:         hostname,
 				ForceNewCluster:  forceNewCluster,
-				ListenControlAPI: unix,
+				ListenControlAPI: controlAddr,
 				ListenRemoteAPI:  addr,
 				JoinAddr:         managerAddr,
 				StateDir:         stateDir,
@@ -195,7 +196,7 @@ func init() {
 	mainCmd.Flags().String("engine-addr", "unix:///var/run/docker.sock", "Address of engine instance of agent.")
 	mainCmd.Flags().String("hostname", "", "Override reported agent hostname")
 	mainCmd.Flags().String("listen-remote-api", "0.0.0.0:4242", "Listen address for remote API")
-	mainCmd.Flags().String("listen-control-api", "/var/run/docker/cluster/docker-swarmd.sock", "Listen socket for control API")
+	mainCmd.Flags().String("listen-control-api", "unix:///var/run/docker/cluster/docker-swarmd.sock", "Listen socket for control API")
 	mainCmd.Flags().String("listen-debug", "", "Bind the Go debug server on the provided address")
 	mainCmd.Flags().String("join-addr", "", "Join cluster with a node at this address")
 	mainCmd.Flags().Bool("force-new-cluster", false, "Force the creation of a new cluster from data directory")
