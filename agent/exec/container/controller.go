@@ -1,7 +1,6 @@
 package container
 
 import (
-	"errors"
 	"fmt"
 
 	engineapi "github.com/docker/engine-api/client"
@@ -10,6 +9,7 @@ import (
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -139,7 +139,7 @@ func (r *controller) Start(ctx context.Context) error {
 	}
 
 	if err := r.adapter.start(ctx); err != nil {
-		return err
+		return errors.Wrap(err, "starting container failed")
 	}
 
 	return nil
@@ -157,10 +157,7 @@ func (r *controller) Wait(pctx context.Context) error {
 	// check the initial state and report that.
 	ctnr, err := r.adapter.inspect(ctx)
 	if err != nil {
-		// TODO(stevvooe): Need to handle missing container here. It is likely
-		// that a Wait call with a not found error should result in no waiting
-		// and no error at all.
-		return err
+		return errors.Wrap(err, "inspecting container failed")
 	}
 
 	switch ctnr.State.Status {
@@ -189,7 +186,7 @@ func (r *controller) Wait(pctx context.Context) error {
 			case "die": // exit on terminal events
 				ctnr, err := r.adapter.inspect(ctx)
 				if err != nil {
-					return err
+					return errors.Wrap(err, "die event received")
 				}
 
 				return makeExitError(ctnr)
