@@ -842,7 +842,7 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 			}
 		}
 
-		if queryMember == nil {
+		if queryMember == nil || queryMember.RaftID == n.Config.ID {
 			n.Config.Logger.Error("could not find cluster member to query for leader address")
 			return
 		}
