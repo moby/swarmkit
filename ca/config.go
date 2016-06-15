@@ -201,6 +201,9 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, secret
 				nodeInfo <- cn
 			}
 			tlsKeyPair, err = rootCA.IssueAndSaveNewCertificates(paths.Node, cn, proposedRole, org)
+			if err != nil {
+				return nil, err
+			}
 		} else {
 			// There was an error loading our Credentials, let's get a new certificate issued
 			// Last argument is nil because at this point we don't have any valid TLS creds
