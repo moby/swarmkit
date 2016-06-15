@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-//go:generate mockgen -package exec -destination controller_test.mock.go -source controller.go Controller Reporter
+//go:generate mockgen -package exec -destination controller_test.mock.go -source controller.go Controller StatusReporter
 
 func TestResolve(t *testing.T) {
 	var (
