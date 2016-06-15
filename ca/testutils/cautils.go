@@ -204,7 +204,8 @@ func createNode(s *store.MemoryStore, nodeID, role string, csr []byte) error {
 				},
 			},
 			Spec: api.NodeSpec{
-				Role: apiRole,
+				Role:       apiRole,
+				Membership: api.NodeMembershipAccepted,
 			},
 		}
 
