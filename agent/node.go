@@ -171,14 +171,17 @@ func (n *Node) run(ctx context.Context) (err error) {
 		}
 	}()
 
-	if (n.config.JoinAddr == "" && n.nodeID == "") || n.config.ForceNewCluster {
+	if n.config.JoinAddr == "" && n.nodeID == "" {
 		if err := n.bootstrapCA(); err != nil {
 			return err
 		}
 	}
 
 	if n.config.JoinAddr != "" || n.config.ForceNewCluster {
-		n.remotes = newPersistentRemotes(filepath.Join(n.config.StateDir, stateFilename), api.Peer{Addr: n.config.JoinAddr})
+		n.remotes = newPersistentRemotes(filepath.Join(n.config.StateDir, stateFilename))
+		if n.config.JoinAddr != "" {
+			n.remotes.Observe(api.Peer{Addr: n.config.JoinAddr}, 1)
+		}
 	}
 
 	csrRole := n.role
