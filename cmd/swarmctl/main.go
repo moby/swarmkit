@@ -40,7 +40,7 @@ func defaultSocket() string {
 	if swarmSocket != "" {
 		return swarmSocket
 	}
-	return "/var/run/docker/cluster/docker-swarmd.sock"
+	return "./swarmkitstate/swarmd.sock"
 }
 
 func init() {
