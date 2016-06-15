@@ -135,6 +135,16 @@ func TestGenerateAndSignNewTLSCert(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupRead())
 	assert.False(t, perms.OtherRead())
+
+	certBytes, err := ioutil.ReadFile(paths.Node.Cert)
+	assert.NoError(t, err)
+	certs, err := helpers.ParseCertificatesPEM(certBytes)
+	assert.NoError(t, err)
+	assert.Len(t, certs, 2)
+	assert.Equal(t, "CN", certs[0].Subject.CommonName)
+	assert.Equal(t, "OU", certs[0].Subject.OrganizationalUnit[0])
+	assert.Equal(t, "ORG", certs[0].Subject.Organization[0])
+	assert.Equal(t, "rootCN", certs[1].Subject.CommonName)
 }
 
 func TestGenerateAndWriteNewKey(t *testing.T) {
@@ -195,12 +205,13 @@ func TestParseValidateAndSignCSR(t *testing.T) {
 
 	parsedCert, err := helpers.ParseCertificatesPEM(signedCert)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(parsedCert))
+	assert.Equal(t, 2, len(parsedCert))
 	assert.Equal(t, "CN", parsedCert[0].Subject.CommonName)
 	assert.Equal(t, 1, len(parsedCert[0].Subject.OrganizationalUnit))
 	assert.Equal(t, "OU", parsedCert[0].Subject.OrganizationalUnit[0])
 	assert.Equal(t, 3, len(parsedCert[0].Subject.Names))
 	assert.Equal(t, "ORG", parsedCert[0].Subject.Organization[0])
+	assert.Equal(t, "rootCN", parsedCert[1].Subject.CommonName)
 }
 
 func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
@@ -235,13 +246,14 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 
 	parsedCert, err := helpers.ParseCertificatesPEM(signedCert)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(parsedCert))
+	assert.Equal(t, 2, len(parsedCert))
 	assert.Equal(t, "CN", parsedCert[0].Subject.CommonName)
 	assert.Equal(t, 1, len(parsedCert[0].Subject.OrganizationalUnit))
 	assert.Equal(t, "OU", parsedCert[0].Subject.OrganizationalUnit[0])
 	assert.Equal(t, 3, len(parsedCert[0].Subject.Names))
 	assert.Empty(t, parsedCert[0].Subject.Locality)
 	assert.Equal(t, "ORG", parsedCert[0].Subject.Organization[0])
+	assert.Equal(t, "rootCN", parsedCert[1].Subject.CommonName)
 }
 
 func TestGetRemoteCA(t *testing.T) {
@@ -307,6 +319,16 @@ func TestIssueAndSaveNewCertificates(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
+
+	certBytes, err := ioutil.ReadFile(tc.Paths.Node.Cert)
+	assert.NoError(t, err)
+	certs, err := helpers.ParseCertificatesPEM(certBytes)
+	assert.NoError(t, err)
+	assert.Len(t, certs, 2)
+	assert.Equal(t, "CN", certs[0].Subject.CommonName)
+	assert.Equal(t, ca.ManagerRole, certs[0].Subject.OrganizationalUnit[0])
+	assert.Equal(t, tc.Organization, certs[0].Subject.Organization[0])
+	assert.Equal(t, "swarm-test-CA", certs[1].Subject.CommonName)
 }
 
 func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
@@ -433,6 +455,53 @@ func TestNewRootCA(t *testing.T) {
 	assert.Equal(t, rootCA, newRootCA)
 }
 
+func TestNewRootCABundle(t *testing.T) {
+	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempBaseDir)
+
+	paths := ca.NewConfigPaths(tempBaseDir)
+
+	// Write one root CA to disk, keep the bytes
+	secondRootCA, err := ca.CreateAndWriteRootCA("rootCN2", paths.RootCA)
+	assert.NoError(t, err)
+
+	// Overwrite the first root CA on disk
+	firstRootCA, err := ca.CreateAndWriteRootCA("rootCN1", paths.RootCA)
+	assert.NoError(t, err)
+
+	// Overwrite the bytes of the second Root CA with the bundle, creating a valid 2 cert bundle
+	bundle := append(firstRootCA.Cert, secondRootCA.Cert...)
+	err = ioutil.WriteFile(paths.RootCA.Cert, bundle, 0644)
+	assert.NoError(t, err)
+
+	newRootCA, err := ca.NewRootCA(bundle, firstRootCA.Key, ca.DefaultNodeCertExpiration)
+	assert.NoError(t, err)
+	assert.Equal(t, bundle, newRootCA.Cert)
+	assert.Equal(t, 2, len(newRootCA.Pool.Subjects()))
+
+	// Now load the bundle from disk
+	diskRootCA, err := ca.GetLocalRootCA(tempBaseDir)
+	assert.NoError(t, err)
+	assert.Equal(t, bundle, diskRootCA.Cert)
+	assert.Equal(t, 2, len(diskRootCA.Pool.Subjects()))
+
+	// If I use GenerateAndSignNewTLSCert to sign certs, I'll get the correct CA in the chain
+	_, err = ca.GenerateAndSignNewTLSCert(diskRootCA, "CN", "OU", "ORG", paths.Node)
+	assert.NoError(t, err)
+
+	certBytes, err := ioutil.ReadFile(paths.Node.Cert)
+	assert.NoError(t, err)
+	certs, err := helpers.ParseCertificatesPEM(certBytes)
+	assert.NoError(t, err)
+	assert.Len(t, certs, 2)
+	assert.Equal(t, "CN", certs[0].Subject.CommonName)
+	assert.Equal(t, "OU", certs[0].Subject.OrganizationalUnit[0])
+	assert.Equal(t, "ORG", certs[0].Subject.Organization[0])
+	assert.Equal(t, "rootCN1", certs[1].Subject.CommonName)
+
+}
+
 func TestNewRootCANonDefaultExpiry(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
@@ -454,7 +523,7 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 
 	parsedCerts, err := helpers.ParseCertificatesPEM(cert)
 	assert.NoError(t, err)
-	assert.Len(t, parsedCerts, 1)
+	assert.Len(t, parsedCerts, 2)
 	assert.True(t, time.Now().Add(time.Minute*50).Before(parsedCerts[0].NotAfter))
 	assert.True(t, time.Now().Add(time.Hour).After(parsedCerts[0].NotAfter))
 
@@ -468,7 +537,7 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 
 	parsedCerts, err = helpers.ParseCertificatesPEM(cert)
 	assert.NoError(t, err)
-	assert.Len(t, parsedCerts, 1)
+	assert.Len(t, parsedCerts, 2)
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, -1).Before(parsedCerts[0].NotAfter))
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, 1).After(parsedCerts[0].NotAfter))
 }
