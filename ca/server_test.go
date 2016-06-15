@@ -34,6 +34,7 @@ func TestIssueNodeCertificate(t *testing.T) {
 	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
 	assert.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
+	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
 	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
 	statusResponse, err := tc.NodeCAClients[0].NodeCertificateStatus(context.Background(), statusRequest)
@@ -51,6 +52,7 @@ func TestIssueNodeCertificateWithInvalidCSR(t *testing.T) {
 	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
 	assert.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
+	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
 	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
 	statusResponse, err := tc.NodeCAClients[0].NodeCertificateStatus(context.Background(), statusRequest)
@@ -71,6 +73,7 @@ func TestIssueNodeCertificateAgentRenewal(t *testing.T) {
 	issueResponse, err := tc.NodeCAClients[1].IssueNodeCertificate(context.Background(), issueRequest)
 	assert.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
+	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
 	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
 	statusResponse, err := tc.NodeCAClients[1].NodeCertificateStatus(context.Background(), statusRequest)
@@ -91,6 +94,7 @@ func TestIssueNodeCertificateManagerRenewal(t *testing.T) {
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	issueResponse, err := tc.NodeCAClients[2].IssueNodeCertificate(context.Background(), issueRequest)
 	assert.NotNil(t, issueResponse.NodeID)
+	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
 	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
 	statusResponse, err := tc.NodeCAClients[2].NodeCertificateStatus(context.Background(), statusRequest)
@@ -113,6 +117,7 @@ func TestIssueNodeCertificateAgentFromDifferentOrgRenewal(t *testing.T) {
 	issueResponse, err := tc.NodeCAClients[3].IssueNodeCertificate(context.Background(), issueRequest)
 	assert.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
+	assert.Equal(t, api.NodeMembershipPending, issueResponse.NodeMembership)
 
 	tc.MemoryStore.View(func(readTx store.ReadTx) {
 		storeNodes, err := store.FindNodes(readTx, store.All)
@@ -177,6 +182,20 @@ func TestNodeCertificateAccept(t *testing.T) {
 		}
 		assert.True(t, found)
 	})
+
+	// Try it one more time for Worker, this time end-to-end
+	role := api.NodeRoleWorker
+	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
+	assert.NotNil(t, issueResponse.NodeID)
+	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
+
+	// Try it one more time for Worker, this time end-to-end with manager
+	role = api.NodeRoleManager
+	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	issueResponse, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
+	assert.NotNil(t, issueResponse.NodeID)
+	assert.Equal(t, api.NodeMembershipPending, issueResponse.NodeMembership)
 }
 
 func TestNodeCertificateWithEmptyPolicies(t *testing.T) {
@@ -188,39 +207,19 @@ func TestNodeCertificateWithEmptyPolicies(t *testing.T) {
 
 	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
+	assert.NotNil(t, csr)
 
-	testNode := &api.Node{
-		ID: "nodeID",
-		Spec: api.NodeSpec{
-			Membership: api.NodeMembershipAccepted,
-		},
-		Certificate: api.Certificate{
-			CN:     "nodeID",
-			CSR:    csr,
-			Status: api.IssuanceStatus{State: api.IssuanceStatePending},
-		},
-	}
+	role := api.NodeRoleWorker
+	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
+	assert.NotNil(t, issueResponse.NodeID)
+	assert.Equal(t, api.NodeMembershipPending, issueResponse.NodeMembership)
 
-	err = tc.MemoryStore.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNode(tx, testNode))
-		return nil
-	})
-	assert.NoError(t, err)
-
-	statusRequest := &api.NodeCertificateStatusRequest{NodeID: "nodeID"}
-	resp, err := tc.NodeCAClients[1].NodeCertificateStatus(context.Background(), statusRequest)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, resp.Certificate)
-	assert.NotEmpty(t, resp.Status)
-	assert.NotNil(t, resp.Certificate.Certificate)
-	assert.Equal(t, api.IssuanceStateIssued, resp.Status.State)
-
-	tc.MemoryStore.View(func(readTx store.ReadTx) {
-		storeNodes, err := store.FindNodes(readTx, store.All)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, storeNodes)
-		assert.Equal(t, api.IssuanceStatePending, storeNodes[0].Certificate.Status.State)
-	})
+	role = api.NodeRoleManager
+	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	issueResponse, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
+	assert.NotNil(t, issueResponse.NodeID)
+	assert.Equal(t, api.NodeMembershipPending, issueResponse.NodeMembership)
 }
 
 func TestNodeCertificateRenewalsDoNotRequireSecret(t *testing.T) {
@@ -257,6 +256,7 @@ func TestNodeCertificateRenewalsDoNotRequireSecret(t *testing.T) {
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	issueResponse, err := tc.NodeCAClients[2].IssueNodeCertificate(context.Background(), issueRequest)
 	assert.NotNil(t, issueResponse.NodeID)
+	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
 	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
 	statusResponse, err := tc.NodeCAClients[2].NodeCertificateStatus(context.Background(), statusRequest)
@@ -268,6 +268,7 @@ func TestNodeCertificateRenewalsDoNotRequireSecret(t *testing.T) {
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	issueResponse, err = tc.NodeCAClients[1].IssueNodeCertificate(context.Background(), issueRequest)
 	assert.NotNil(t, issueResponse.NodeID)
+	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
 	statusRequest = &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
 	statusResponse, err = tc.NodeCAClients[2].NodeCertificateStatus(context.Background(), statusRequest)
