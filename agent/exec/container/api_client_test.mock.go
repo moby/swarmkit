@@ -4,15 +4,17 @@
 package container
 
 import (
+	io "io"
+	time "time"
+
 	types "github.com/docker/engine-api/types"
 	container "github.com/docker/engine-api/types/container"
 	filters "github.com/docker/engine-api/types/filters"
 	network "github.com/docker/engine-api/types/network"
 	registry "github.com/docker/engine-api/types/registry"
+	swarm "github.com/docker/engine-api/types/swarm"
 	gomock "github.com/golang/mock/gomock"
 	context "golang.org/x/net/context"
-	io "io"
-	time "time"
 )
 
 // Mock of APIClient interface
@@ -34,37 +36,6 @@ func NewMockAPIClient(ctrl *gomock.Controller) *MockAPIClient {
 
 func (_m *MockAPIClient) EXPECT() *_MockAPIClientRecorder {
 	return _m.recorder
-}
-
-func (_m *MockAPIClient) CheckpointCreate(_param0 context.Context, _param1 string, _param2 types.CheckpointCreateOptions) error {
-	ret := _m.ctrl.Call(_m, "CheckpointCreate", _param0, _param1, _param2)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockAPIClientRecorder) CheckpointCreate(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "CheckpointCreate", arg0, arg1, arg2)
-}
-
-func (_m *MockAPIClient) CheckpointDelete(_param0 context.Context, _param1 string, _param2 string) error {
-	ret := _m.ctrl.Call(_m, "CheckpointDelete", _param0, _param1, _param2)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockAPIClientRecorder) CheckpointDelete(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "CheckpointDelete", arg0, arg1, arg2)
-}
-
-func (_m *MockAPIClient) CheckpointList(_param0 context.Context, _param1 string) ([]types.Checkpoint, error) {
-	ret := _m.ctrl.Call(_m, "CheckpointList", _param0, _param1)
-	ret0, _ := ret[0].([]types.Checkpoint)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockAPIClientRecorder) CheckpointList(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "CheckpointList", arg0, arg1)
 }
 
 func (_m *MockAPIClient) ClientVersion() string {
@@ -636,6 +607,48 @@ func (_mr *_MockAPIClientRecorder) NetworkRemove(arg0, arg1 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "NetworkRemove", arg0, arg1)
 }
 
+func (_m *MockAPIClient) NodeInspect(_param0 context.Context, _param1 string) (swarm.Node, error) {
+	ret := _m.ctrl.Call(_m, "NodeInspect", _param0, _param1)
+	ret0, _ := ret[0].(swarm.Node)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockAPIClientRecorder) NodeInspect(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "NodeInspect", arg0, arg1)
+}
+
+func (_m *MockAPIClient) NodeList(_param0 context.Context, _param1 types.NodeListOptions) ([]swarm.Node, error) {
+	ret := _m.ctrl.Call(_m, "NodeList", _param0, _param1)
+	ret0, _ := ret[0].([]swarm.Node)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockAPIClientRecorder) NodeList(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "NodeList", arg0, arg1)
+}
+
+func (_m *MockAPIClient) NodeRemove(_param0 context.Context, _param1 string) error {
+	ret := _m.ctrl.Call(_m, "NodeRemove", _param0, _param1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockAPIClientRecorder) NodeRemove(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "NodeRemove", arg0, arg1)
+}
+
+func (_m *MockAPIClient) NodeUpdate(_param0 context.Context, _param1 string, _param2 swarm.Version, _param3 swarm.NodeSpec) error {
+	ret := _m.ctrl.Call(_m, "NodeUpdate", _param0, _param1, _param2, _param3)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockAPIClientRecorder) NodeUpdate(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "NodeUpdate", arg0, arg1, arg2, arg3)
+}
+
 func (_m *MockAPIClient) RegistryLogin(_param0 context.Context, _param1 types.AuthConfig) (types.AuthResponse, error) {
 	ret := _m.ctrl.Call(_m, "RegistryLogin", _param0, _param1)
 	ret0, _ := ret[0].(types.AuthResponse)
@@ -656,6 +669,134 @@ func (_m *MockAPIClient) ServerVersion(_param0 context.Context) (types.Version, 
 
 func (_mr *_MockAPIClientRecorder) ServerVersion(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ServerVersion", arg0)
+}
+
+func (_m *MockAPIClient) ServiceCreate(_param0 context.Context, _param1 swarm.ServiceSpec) (types.ServiceCreateResponse, error) {
+	ret := _m.ctrl.Call(_m, "ServiceCreate", _param0, _param1)
+	ret0, _ := ret[0].(types.ServiceCreateResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockAPIClientRecorder) ServiceCreate(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ServiceCreate", arg0, arg1)
+}
+
+func (_m *MockAPIClient) ServiceInspect(_param0 context.Context, _param1 string) (swarm.Service, error) {
+	ret := _m.ctrl.Call(_m, "ServiceInspect", _param0, _param1)
+	ret0, _ := ret[0].(swarm.Service)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockAPIClientRecorder) ServiceInspect(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ServiceInspect", arg0, arg1)
+}
+
+func (_m *MockAPIClient) ServiceList(_param0 context.Context, _param1 types.ServiceListOptions) ([]swarm.Service, error) {
+	ret := _m.ctrl.Call(_m, "ServiceList", _param0, _param1)
+	ret0, _ := ret[0].([]swarm.Service)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockAPIClientRecorder) ServiceList(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ServiceList", arg0, arg1)
+}
+
+func (_m *MockAPIClient) ServiceRemove(_param0 context.Context, _param1 string) error {
+	ret := _m.ctrl.Call(_m, "ServiceRemove", _param0, _param1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockAPIClientRecorder) ServiceRemove(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ServiceRemove", arg0, arg1)
+}
+
+func (_m *MockAPIClient) ServiceUpdate(_param0 context.Context, _param1 string, _param2 swarm.Version, _param3 swarm.ServiceSpec) error {
+	ret := _m.ctrl.Call(_m, "ServiceUpdate", _param0, _param1, _param2, _param3)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockAPIClientRecorder) ServiceUpdate(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ServiceUpdate", arg0, arg1, arg2, arg3)
+}
+
+func (_m *MockAPIClient) SwarmInit(_param0 context.Context, _param1 swarm.InitRequest) (string, error) {
+	ret := _m.ctrl.Call(_m, "SwarmInit", _param0, _param1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockAPIClientRecorder) SwarmInit(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SwarmInit", arg0, arg1)
+}
+
+func (_m *MockAPIClient) SwarmInspect(_param0 context.Context) (swarm.Swarm, error) {
+	ret := _m.ctrl.Call(_m, "SwarmInspect", _param0)
+	ret0, _ := ret[0].(swarm.Swarm)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockAPIClientRecorder) SwarmInspect(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SwarmInspect", arg0)
+}
+
+func (_m *MockAPIClient) SwarmJoin(_param0 context.Context, _param1 swarm.JoinRequest) error {
+	ret := _m.ctrl.Call(_m, "SwarmJoin", _param0, _param1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockAPIClientRecorder) SwarmJoin(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SwarmJoin", arg0, arg1)
+}
+
+func (_m *MockAPIClient) SwarmLeave(_param0 context.Context, _param1 bool) error {
+	ret := _m.ctrl.Call(_m, "SwarmLeave", _param0, _param1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockAPIClientRecorder) SwarmLeave(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SwarmLeave", arg0, arg1)
+}
+
+func (_m *MockAPIClient) SwarmUpdate(_param0 context.Context, _param1 swarm.Version, _param2 swarm.Spec) error {
+	ret := _m.ctrl.Call(_m, "SwarmUpdate", _param0, _param1, _param2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockAPIClientRecorder) SwarmUpdate(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SwarmUpdate", arg0, arg1, arg2)
+}
+
+func (_m *MockAPIClient) TaskInspectWithRaw(_param0 context.Context, _param1 string) (swarm.Task, []byte, error) {
+	ret := _m.ctrl.Call(_m, "TaskInspectWithRaw", _param0, _param1)
+	ret0, _ := ret[0].(swarm.Task)
+	ret1, _ := ret[1].([]byte)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+func (_mr *_MockAPIClientRecorder) TaskInspectWithRaw(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "TaskInspectWithRaw", arg0, arg1)
+}
+
+func (_m *MockAPIClient) TaskList(_param0 context.Context, _param1 types.TaskListOptions) ([]swarm.Task, error) {
+	ret := _m.ctrl.Call(_m, "TaskList", _param0, _param1)
+	ret0, _ := ret[0].([]swarm.Task)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockAPIClientRecorder) TaskList(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "TaskList", arg0, arg1)
 }
 
 func (_m *MockAPIClient) UpdateClientVersion(_param0 string) {
