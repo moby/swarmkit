@@ -249,7 +249,8 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 	}
 
 	return &api.IssueNodeCertificateResponse{
-		NodeID: nodeID,
+		NodeID:         nodeID,
+		NodeMembership: nodeMembership,
 	}, nil
 }
 
@@ -289,11 +290,14 @@ func (s *Server) getRolePolicy(role api.NodeRole) *api.AcceptancePolicy_RoleAdmi
 // issueRenewCertificate receives a nodeID and a CSR and modifies the node's certificate entry with the new CSR
 // and changes the state to RENEW, so it can be picked up and signed by the signing reconciliation loop
 func (s *Server) issueRenewCertificate(ctx context.Context, nodeID string, csr []byte) (*api.IssueNodeCertificateResponse, error) {
-	var cert api.Certificate
+	var (
+		cert api.Certificate
+		node *api.Node
+	)
 	err := s.store.Update(func(tx store.Tx) error {
 
 		// Attempt to retrieve the node with nodeID
-		node := store.GetNode(tx, nodeID)
+		node = store.GetNode(tx, nodeID)
 		if node == nil {
 			log.G(ctx).WithFields(logrus.Fields{
 				"node.id": nodeID,
@@ -325,8 +329,10 @@ func (s *Server) issueRenewCertificate(ctx context.Context, nodeID string, csr [
 		"cert.role": cert.Role,
 		"method":    "issueRenewCertificate",
 	}).Debugf("node certificate updated")
+
 	return &api.IssueNodeCertificateResponse{
-		NodeID: nodeID,
+		NodeID:         nodeID,
+		NodeMembership: node.Spec.Membership,
 	}, nil
 }
 
