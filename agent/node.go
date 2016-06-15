@@ -52,12 +52,15 @@ type NodeConfig struct {
 	// ForceNewCluster creates a new cluster from current raft state.
 	ForceNewCluster bool
 
-	// ListenControlAPI specifies address the control API should listen on.
-	ListenControlAPI string
+	// ControlSocketPath specifies address the control API should listen on.
+	ControlSocketPath string
 
-	// ListenRemoteAPI specifies the address for the remote API that agents
+	// ListenAddr specifies the address for the remote API that agents
 	// and raft members connect to.
-	ListenRemoteAPI string
+	ListenAddr string
+
+	// AdvertiseAddr specifies the address for this node to advertise to other peers
+	AdvertiseAddr string
 
 	// Executor specifies the executor to use for the agent.
 	Executor exec.Executor
@@ -545,7 +548,7 @@ func (n *Node) initManagerConnection(ctx context.Context, ready chan<- struct{})
 	opts := []grpc.DialOption{}
 	insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
 	opts = append(opts, grpc.WithTransportCredentials(insecureCreds))
-	addr := n.config.ListenControlAPI
+	addr := n.config.ControlSocketPath
 	opts = append(opts, grpc.WithDialer(
 		func(addr string, timeout time.Duration) (net.Conn, error) {
 			return net.DialTimeout("unix", addr, timeout)
@@ -586,9 +589,10 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			m, err := manager.New(&manager.Config{
 				ForceNewCluster: n.config.ForceNewCluster,
 				ProtoAddr: map[string]string{
-					"tcp":  n.config.ListenRemoteAPI,
-					"unix": n.config.ListenControlAPI,
+					"tcp":  n.config.ListenAddr,
+					"unix": n.config.ControlSocketPath,
 				},
+				AdvertiseAddr:  n.config.AdvertiseAddr,
 				SecurityConfig: securityConfig,
 				JoinRaft:       remoteAddr.Addr,
 				StateDir:       n.config.StateDir,
@@ -616,7 +620,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 				case <-ctx.Done():
 				}
 				if ctx.Err() == nil {
-					n.remotes.Observe(api.Peer{NodeID: n.nodeID, Addr: n.config.ListenRemoteAPI}, 5)
+					n.remotes.Observe(api.Peer{NodeID: n.nodeID, Addr: n.config.AdvertiseAddr}, 5)
 				}
 			}()
 

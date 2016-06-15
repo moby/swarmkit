@@ -40,11 +40,11 @@ func defaultSocket() string {
 	if swarmSocket != "" {
 		return swarmSocket
 	}
-	return "/var/run/docker/cluster/docker-swarmd.sock"
+	return "/var/run/docker/swarm/docker-swarmd.sock"
 }
 
 func init() {
-	mainCmd.PersistentFlags().StringP("socket", "s", defaultSocket(), "Socket to connect to the Swarm manager")
+	mainCmd.PersistentFlags().StringP("control-socket", "c", defaultSocket(), "Socket to connect to the Swarm manager")
 	mainCmd.PersistentFlags().BoolP("no-resolve", "n", false, "Do not try to map IDs to Names when displaying them")
 
 	mainCmd.AddCommand(

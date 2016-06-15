@@ -42,6 +42,9 @@ type Config struct {
 	// ProtoAddr fields will be used to create listeners otherwise.
 	ProtoListener map[string]net.Listener
 
+	// AdvertiseAddr specifies the address for this node to advertise to other peers
+	AdvertiseAddr string
+
 	// JoinRaft is an optional address of a node in an existing raft
 	// cluster to join.
 	JoinRaft string
@@ -87,6 +90,52 @@ type Manager struct {
 	stopped chan struct{}
 }
 
+func resolveAdvertiseAddr(config *Config) (string, error) {
+	if config.AdvertiseAddr != "" {
+		if _, _, err := net.SplitHostPort(config.AdvertiseAddr); err != nil {
+			return "", fmt.Errorf("invalid advertise addr: %s", config.AdvertiseAddr)
+		}
+
+		return config.AdvertiseAddr, nil
+	}
+
+	// Advertise address was not explicitly passed. Try to come up with something.
+	listenHost, listenPort, err := net.SplitHostPort(config.ProtoAddr["tcp"])
+	if err != nil {
+		return "", err
+	}
+
+	// If the listen address contains a valid IP, use it.
+	ip := net.ParseIP(listenHost)
+	if ip != nil && !ip.IsUnspecified() {
+		log.G(context.Background()).Warningf("Advertise address not specified, using listen address: %s", config.ProtoAddr["tcp"])
+		return config.ProtoAddr["tcp"], nil
+	}
+
+	// Lat resort:
+	// Find our local IP address associated with the default route.
+	// This may not be the appropriate address to use for internal
+	// cluster communications, but it seems like the best default.
+	// The admin should override this address.
+	conn, err := net.Dial("udp", "8.8.8.8:53")
+	if err != nil {
+		return "", fmt.Errorf("advertise address not provided. could not determine local IP address: %v", err)
+	}
+
+	localAddr := conn.LocalAddr().String()
+	conn.Close()
+
+	localHost, _, err := net.SplitHostPort(localAddr)
+	if err != nil {
+		return "", fmt.Errorf("could not split local IP address: %v", err)
+	}
+
+	advertise := net.JoinHostPort(localHost, listenPort)
+
+	log.G(context.Background()).Warningf("Advertise address not specified, falling back to auto-detection: %v", advertise)
+	return advertise, nil
+}
+
 // New creates a Manager which has not started to accept requests yet.
 func New(config *Config) (*Manager, error) {
 	dispatcherConfig := dispatcher.DefaultConfig()
@@ -99,37 +148,12 @@ func New(config *Config) (*Manager, error) {
 		config.ProtoAddr["tcp"] = config.ProtoListener["tcp"].Addr().String()
 	}
 
-	tcpAddr := config.ProtoAddr["tcp"]
-
-	listenHost, listenPort, err := net.SplitHostPort(tcpAddr)
-	if err == nil {
-		ip := net.ParseIP(listenHost)
-		if ip != nil && ip.IsUnspecified() {
-			// Find our local IP address associated with the default route.
-			// This may not be the appropriate address to use for internal
-			// cluster communications, but it seems like the best default.
-			// The admin can override this address if necessary.
-			conn, err := net.Dial("udp", "8.8.8.8:53")
-			if err != nil {
-				return nil, fmt.Errorf("could not determine local IP address: %v", err)
-			}
-			localAddr := conn.LocalAddr().String()
-			conn.Close()
-
-			listenHost, _, err = net.SplitHostPort(localAddr)
-			if err != nil {
-				return nil, fmt.Errorf("could not split local IP address: %v", err)
-			}
-
-			tcpAddr = net.JoinHostPort(listenHost, listenPort)
-		}
+	advertise, err := resolveAdvertiseAddr(config)
+	if err != nil {
+		return nil, err
 	}
 
-	// TODO(stevvooe): Reported address of manager is plumbed to listen addr
-	// for now, may want to make this separate. This can be tricky to get right
-	// so we need to make it easy to override. This needs to be the address
-	// through which agent nodes access the manager.
-	dispatcherConfig.Addr = tcpAddr
+	dispatcherConfig.Addr = advertise
 
 	err = os.MkdirAll(filepath.Dir(config.ProtoAddr["unix"]), 0700)
 	if err != nil {
@@ -189,7 +213,7 @@ func New(config *Config) (*Manager, error) {
 
 	newNodeOpts := raft.NewNodeOptions{
 		ID:              config.SecurityConfig.ClientTLSCreds.NodeID(),
-		Addr:            tcpAddr,
+		Addr:            advertise,
 		JoinAddr:        config.JoinRaft,
 		Config:          raftCfg,
 		StateDir:        raftStateDir,
