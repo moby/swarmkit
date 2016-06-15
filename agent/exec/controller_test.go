@@ -243,7 +243,8 @@ func TestReadyRunningExitFailure(t *testing.T) {
 				ExitCode: 1,
 			},
 		},
-		Message: "failed",
+		Message: "started",
+		Err:     "test error, exit code=1",
 	})
 }
 
@@ -298,7 +299,8 @@ func TestAlreadyStarted(t *testing.T) {
 				ExitCode: 1,
 			},
 		},
-		Message: "failed",
+		Message: "started",
+		Err:     "test error, exit code=1",
 	})
 
 }
