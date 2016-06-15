@@ -34,6 +34,18 @@ var (
 			var output func(j *api.Service)
 
 			if !quiet {
+				tr, err := c.ListTasks(common.Context(cmd), &api.ListTasksRequest{})
+				if err != nil {
+					return err
+				}
+
+				running := map[string]int{}
+				for _, task := range tr.Tasks {
+					if task.Status.State == api.TaskStateRunning {
+						running[task.ServiceID]++
+					}
+				}
+
 				w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
 				defer func() {
 					// Ignore flushing errors - there's nothing we can do.
@@ -52,7 +64,7 @@ var (
 						s.ID,
 						spec.Annotations.Name,
 						reference,
-						getServiceReplicasTxt(s),
+						getServiceReplicasTxt(s, running[s.ID]),
 					)
 				}
 
