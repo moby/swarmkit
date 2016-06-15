@@ -214,9 +214,91 @@ func TestRemoveTask(t *testing.T) {
 	assert.Equal(t, observedTask2.NodeID, "id1")
 }
 
+func TestModeChange(t *testing.T) {
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+
+	SetupCluster(t, s)
+
+	// start replicated orchestrator
+	replicated := New(s)
+	go func() {
+		assert.NoError(t, replicated.Run(context.Background()))
+	}()
+
+	watch, cancel := state.Watch(s.WatchQueue())
+	defer cancel()
+
+	skipEvents(t, watch)
+
+	var service *api.Service
+	s.View(func(tx store.ReadTx) {
+		service = store.GetService(tx, "id1")
+	})
+	assert.NotNil(t, service)
+
+	// change mode to replicated
+	service.Spec.Mode = &api.ServiceSpec_Replicated{
+		Replicated: &api.ReplicatedService{
+			Replicas: 1,
+		},
+	}
+	updateService(t, s, service)
+
+	observedTask := watchShutdownTask(t, watch)
+	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, observedTask.NodeID, "id1")
+	assert.True(t, observedTask.Slot == 0)
+	assert.Equal(t, observedTask.DesiredState, api.TaskStateShutdown)
+
+	observedTask = watchTaskCreate(t, watch)
+	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name1")
+	assert.True(t, observedTask.Slot == 1)
+
+	// change from replicated to global
+	s.View(func(tx store.ReadTx) {
+		service = store.GetService(tx, "id1")
+	})
+	assert.NotNil(t, service)
+
+	service.Spec.Mode = &api.ServiceSpec_Global{
+		Global: &api.GlobalService{},
+	}
+	updateService(t, s, service)
+
+	observedTask = watchTaskCreateOnly(t, watch)
+	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, observedTask.ServiceID, "id1")
+	assert.Equal(t, observedTask.NodeID, "id1")
+
+	// it should be the only task belong to global service
+	liveTaskCount := 0
+	s.View(func(readTx store.ReadTx) {
+		tasks, err := store.FindTasks(readTx, store.ByServiceID("id1"))
+		assert.NoError(t, err)
+		for _, task := range tasks {
+			if task.DesiredState == api.TaskStateRunning {
+				assert.True(t, task.Slot == 0)
+				assert.Equal(t, task.ServiceAnnotations.Name, "name1")
+				assert.Equal(t, task.ServiceID, "id1")
+				liveTaskCount++
+			}
+		}
+	})
+	assert.Equal(t, liveTaskCount, 1)
+}
+
 func addService(t *testing.T, s *store.MemoryStore, service *api.Service) {
 	s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateService(tx, service))
+		return nil
+	})
+}
+
+func updateService(t *testing.T, s *store.MemoryStore, service *api.Service) {
+	s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateService(tx, service))
 		return nil
 	})
 }

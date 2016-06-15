@@ -192,6 +192,8 @@ func (g *GlobalOrchestrator) reconcileOneService(ctx context.Context, service *a
 		log.G(ctx).WithError(err).Errorf("global orchestrator: reconcileOneService failed finding tasks")
 		return
 	}
+	// indicator if service mode was changed to global
+	modeChanged := false
 	// a node may have completed this service
 	nodeCompleted := make(map[string]struct{})
 	// nodeID -> task list
@@ -199,6 +201,11 @@ func (g *GlobalOrchestrator) reconcileOneService(ctx context.Context, service *a
 
 	for _, t := range tasks {
 		if isTaskRunning(t) {
+			// tasks from global service has Slot number 0
+			if t.Slot != 0 {
+				modeChanged = true
+				break
+			}
 			// Collect all running instances of this service
 			nodeTasks[t.NodeID] = append(nodeTasks[t.NodeID], t)
 		} else {
@@ -207,6 +214,21 @@ func (g *GlobalOrchestrator) reconcileOneService(ctx context.Context, service *a
 				nodeCompleted[t.NodeID] = struct{}{}
 			}
 		}
+	}
+
+	// if service mode was changed, tasks should be reset
+	if modeChanged {
+		// remove all tasks
+		_, err = g.store.Batch(func(batch *store.Batch) error {
+			g.removeTasks(ctx, batch, service, tasks)
+			return nil
+		})
+		if err != nil {
+			log.G(ctx).WithError(err).Errorf("global orchestrator: reconcileOneService transaction failed")
+		}
+		// reset nodes
+		nodeCompleted = make(map[string]struct{})
+		nodeTasks = make(map[string][]*api.Task)
 	}
 
 	_, err = g.store.Batch(func(batch *store.Batch) error {

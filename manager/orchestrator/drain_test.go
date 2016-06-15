@@ -108,6 +108,7 @@ func TestDrain(t *testing.T) {
 				Name: "name0",
 			},
 			ServiceID: "id1",
+			Slot:      1,
 		},
 		// Tasks assigned to the nodes defined above
 		{
@@ -119,6 +120,7 @@ func TestDrain(t *testing.T) {
 				Name: "name1",
 			},
 			ServiceID: "id1",
+			Slot:      2,
 			NodeID:    "id1",
 		},
 		{
@@ -130,6 +132,7 @@ func TestDrain(t *testing.T) {
 				Name: "name2",
 			},
 			ServiceID: "id1",
+			Slot:      3,
 			NodeID:    "id2",
 		},
 		{
@@ -141,6 +144,7 @@ func TestDrain(t *testing.T) {
 				Name: "name3",
 			},
 			ServiceID: "id1",
+			Slot:      4,
 			NodeID:    "id3",
 		},
 		{
@@ -152,6 +156,7 @@ func TestDrain(t *testing.T) {
 				Name: "name4",
 			},
 			ServiceID: "id1",
+			Slot:      5,
 			NodeID:    "id4",
 		},
 		{
@@ -163,6 +168,7 @@ func TestDrain(t *testing.T) {
 				Name: "name5",
 			},
 			ServiceID: "id1",
+			Slot:      6,
 			NodeID:    "id5",
 		},
 	}

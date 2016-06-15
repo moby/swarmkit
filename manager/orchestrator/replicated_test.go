@@ -229,6 +229,19 @@ func watchTaskUpdate(t *testing.T, watch chan events.Event) *api.Task {
 	}
 }
 
+func watchTaskCreateOnly(t *testing.T, watch chan events.Event) *api.Task {
+	for {
+		select {
+		case event := <-watch:
+			if task, ok := event.(state.EventCreateTask); ok {
+				return task.Task
+			}
+		case <-time.After(time.Second):
+			assert.FailNow(t, "no task create event")
+		}
+	}
+}
+
 func watchTaskDelete(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
