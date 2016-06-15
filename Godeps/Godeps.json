@@ -1,7 +1,6 @@
 {
 	"ImportPath": "github.com/docker/swarmkit",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
 	],
@@ -245,73 +244,78 @@
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/client",
-			"Comment": "v0.3.1-153-g8c2141e",
-			"Rev": "8c2141e14bb9e7540938d155976b3ef0661e4814"
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/client/transport",
-			"Comment": "v0.3.1-153-g8c2141e",
-			"Rev": "8c2141e14bb9e7540938d155976b3ef0661e4814"
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/client/transport/cancellable",
-			"Comment": "v0.3.1-153-g8c2141e",
-			"Rev": "8c2141e14bb9e7540938d155976b3ef0661e4814"
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/types",
-			"Comment": "v0.3.1-153-g8c2141e",
-			"Rev": "8c2141e14bb9e7540938d155976b3ef0661e4814"
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/types/blkiodev",
-			"Comment": "v0.3.1-153-g8c2141e",
-			"Rev": "8c2141e14bb9e7540938d155976b3ef0661e4814"
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/types/container",
-			"Comment": "v0.3.1-153-g8c2141e",
-			"Rev": "8c2141e14bb9e7540938d155976b3ef0661e4814"
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/types/events",
-			"Comment": "v0.3.1-153-g8c2141e",
-			"Rev": "8c2141e14bb9e7540938d155976b3ef0661e4814"
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/types/filters",
-			"Comment": "v0.3.1-153-g8c2141e",
-			"Rev": "8c2141e14bb9e7540938d155976b3ef0661e4814"
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/types/network",
-			"Comment": "v0.3.1-153-g8c2141e",
-			"Rev": "8c2141e14bb9e7540938d155976b3ef0661e4814"
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/types/reference",
-			"Comment": "v0.3.1-153-g8c2141e",
-			"Rev": "8c2141e14bb9e7540938d155976b3ef0661e4814"
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/types/registry",
-			"Comment": "v0.3.1-153-g8c2141e",
-			"Rev": "8c2141e14bb9e7540938d155976b3ef0661e4814"
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/types/strslice",
-			"Comment": "v0.3.1-153-g8c2141e",
-			"Rev": "8c2141e14bb9e7540938d155976b3ef0661e4814"
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
+		},
+		{
+			"ImportPath": "github.com/docker/engine-api/types/swarm",
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/types/time",
-			"Comment": "v0.3.1-153-g8c2141e",
-			"Rev": "8c2141e14bb9e7540938d155976b3ef0661e4814"
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
 		},
 		{
 			"ImportPath": "github.com/docker/engine-api/types/versions",
-			"Comment": "v0.3.1-153-g8c2141e",
-			"Rev": "8c2141e14bb9e7540938d155976b3ef0661e4814"
+			"Comment": "v0.3.1-188-gde0bc7e",
+			"Rev": "de0bc7ec1a2b90b7191e63d3d6f06833188bbd85"
 		},
 		{
 			"ImportPath": "github.com/docker/go-connections/nat",
@@ -765,6 +769,11 @@
 		{
 			"ImportPath": "github.com/pivotal-golang/clock/fakeclock",
 			"Rev": "3fd3c1944c59d9742e1cd333672181cd1a6f9fa0"
+		},
+		{
+			"ImportPath": "github.com/pkg/errors",
+			"Comment": "v0.7.0",
+			"Rev": "01fa4104b9c248c8945d14d9f128454d5b28d595"
 		},
 		{
 			"ImportPath": "github.com/pmezard/go-difflib/difflib",
