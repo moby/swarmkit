@@ -35,7 +35,9 @@ func TestControllerPrepare(t *testing.T) {
 	defer finish(t)
 
 	gomock.InOrder(
-		client.EXPECT().ContainerCreate(ctx, config.config(), config.hostConfig(), config.networkingConfig(), config.name()).
+		client.EXPECT().ImagePull(gomock.Any(), config.image(), gomock.Any()).
+			Return(ioutil.NopCloser(bytes.NewBuffer([]byte{})), nil),
+		client.EXPECT().ContainerCreate(gomock.Any(), config.config(), config.hostConfig(), config.networkingConfig(), config.name()).
 			Return(types.ContainerCreateResponse{ID: "contianer-id-" + task.ID}, nil),
 	)
 
@@ -48,6 +50,8 @@ func TestControllerPrepareAlreadyPrepared(t *testing.T) {
 	defer finish(t)
 
 	gomock.InOrder(
+		client.EXPECT().ImagePull(gomock.Any(), config.image(), gomock.Any()).
+			Return(ioutil.NopCloser(bytes.NewBuffer([]byte{})), nil),
 		client.EXPECT().ContainerCreate(
 			ctx, config.config(), config.hostConfig(), config.networkingConfig(), config.name()).
 			Return(types.ContainerCreateResponse{}, fmt.Errorf("Conflict. The name")),
