@@ -114,22 +114,20 @@ var (
 				return err
 			}
 
-			// TODO(aluzzardi): This should be implemented as a ListOptions filter.
-			r, err := c.ListTasks(common.Context(cmd), &api.ListTasksRequest{})
+			r, err := c.ListTasks(common.Context(cmd),
+				&api.ListTasksRequest{
+					Filters: &api.ListTasksRequest_Filters{
+						NodeIDs: []string{node.ID},
+					},
+				})
 			if err != nil {
 				return err
 			}
-			tasks := []*api.Task{}
-			for _, t := range r.Tasks {
-				if t.NodeID == node.ID {
-					tasks = append(tasks, t)
-				}
-			}
 
 			printNodeSummary(node)
-			if len(tasks) > 0 {
+			if len(r.Tasks) > 0 {
 				fmt.Printf("\n")
-				task.Print(tasks, all, common.NewResolver(cmd, c))
+				task.Print(r.Tasks, all, common.NewResolver(cmd, c))
 			}
 
 			return nil
