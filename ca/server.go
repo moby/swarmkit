@@ -618,8 +618,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 	// We were able to successfully sign the new CSR. Let's try to update the nodeStore
 	for {
 		err = s.store.Update(func(tx store.Tx) error {
-			// Remote nodes are expecting a full certificate chain, not just a signed certificate
-			node.Certificate.Certificate = append(cert, s.securityConfig.RootCA().Cert...)
+			node.Certificate.Certificate = cert
 			node.Certificate.Status = api.IssuanceStatus{
 				State: api.IssuanceStateIssued,
 			}
