@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func printServiceSummary(service *api.Service) {
+func printServiceSummary(service *api.Service, running int) {
 	w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
 	defer w.Flush()
 
@@ -28,7 +28,7 @@ func printServiceSummary(service *api.Service) {
 			fmt.Fprintf(w, "  %s\t: %s\n", k, v)
 		}
 	}
-	common.FprintfIfNotEmpty(w, "Replicas\t: %s\n", getServiceReplicasTxt(service))
+	common.FprintfIfNotEmpty(w, "Replicas\t: %s\n", getServiceReplicasTxt(service, running))
 	fmt.Fprintln(w, "Template\t")
 	fmt.Fprintln(w, " Container\t")
 	ctr := service.Spec.Task.GetContainer()
@@ -122,14 +122,19 @@ var (
 				return err
 			}
 			tasks := []*api.Task{}
+			var running int
 			for _, t := range r.Tasks {
 				if t.ServiceID != service.ID {
 					continue
 				}
 				tasks = append(tasks, t)
+
+				if t.Status.State == api.TaskStateRunning {
+					running++
+				}
 			}
 
-			printServiceSummary(service)
+			printServiceSummary(service, running)
 			if len(tasks) > 0 {
 				fmt.Printf("\n")
 				task.Print(tasks, all, res)
