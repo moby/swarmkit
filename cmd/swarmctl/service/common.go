@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"strconv"
 
 	"golang.org/x/net/context"
 
@@ -38,12 +37,12 @@ func getService(ctx context.Context, c api.ControlClient, input string) (*api.Se
 	return rg.Service, nil
 }
 
-func getServiceReplicasTxt(s *api.Service) string {
+func getServiceReplicasTxt(s *api.Service, running int) string {
 	switch t := s.Spec.GetMode().(type) {
 	case *api.ServiceSpec_Global:
 		return "global"
 	case *api.ServiceSpec_Replicated:
-		return strconv.FormatUint(t.Replicated.Replicas, 10)
+		return fmt.Sprintf("%d/%d", running, t.Replicated.Replicas)
 	}
 	return ""
 }
