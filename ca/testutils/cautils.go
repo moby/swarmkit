@@ -165,7 +165,8 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 		caServer.Run(ctx)
 	}()
 
-	<-caServer.Started
+	// Wait for caServer to be ready to serve
+	<-caServer.Ready()
 
 	remotes := picker.NewRemotes(api.Peer{Addr: l.Addr().String()})
 	picker := picker.NewPicker(remotes, l.Addr().String())
