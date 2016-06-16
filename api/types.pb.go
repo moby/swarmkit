@@ -57,6 +57,7 @@
 		GlobalService
 		TaskSpec
 		ContainerSpec
+		HealthConfig
 		EndpointSpec
 		NetworkSpec
 		ClusterSpec

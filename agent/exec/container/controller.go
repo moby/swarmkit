@@ -195,6 +195,12 @@ func (r *controller) Wait(pctx context.Context) error {
 				// If we get here, something has gone wrong but we want to exit
 				// and report anyways.
 				return ErrContainerDestroyed
+			case "health_status: unhealthy":
+				// in this case, we stop the container and report unhealthy status
+				if err := r.Shutdown(ctx); err != nil {
+					return errors.Wrap(err, "unhealthy container")
+				}
+				return ErrContainerUnhealthy
 			}
 		case <-closed:
 			// restart!

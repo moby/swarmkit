@@ -42,6 +42,11 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	// TODO(stevvooe): Replace these with a more interesting mount flag.
 	flags.StringSlice("bind", nil, "define a bind mount")
 	flags.StringSlice("volume", nil, "define a volume mount")
+	flags.Bool("no-healthcheck", false, "Disable any container-specified HEALTHCHECK")
+	flags.String("health-cmd", "", "Command to run to check health")
+	flags.Duration("health-interval", 0, "Time between running the check")
+	flags.Duration("health-timeout", 0, "Maximum time to allow one check to run")
+	flags.Int("health-retries", 0, "Consecutive failures needed to report unhealthy")
 }
 
 // Merge merges a flagset into a service spec.
@@ -111,5 +116,8 @@ func Merge(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClient) error
 		return err
 	}
 
+	if err := parseHealthCheck(flags, spec); err != nil {
+		return err
+	}
 	return nil
 }

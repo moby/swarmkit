@@ -135,6 +135,30 @@ func TestControllerWait(t *testing.T) {
 	assert.NoError(t, ctlr.Wait(ctx))
 }
 
+func TestControllerWaitUnhealthy(t *testing.T) {
+	task := genTask(t)
+	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
+	defer finish(t)
+
+	gomock.InOrder(
+		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
+			Return(types.ContainerJSON{
+				ContainerJSONBase: &types.ContainerJSONBase{
+					State: &types.ContainerState{
+						Status: "running",
+					},
+				},
+			}, nil),
+		client.EXPECT().Events(gomock.Any(), types.EventsOptions{
+			Since:   "0",
+			Filters: config.eventFilter(),
+		}).Return(makeEvents(t, config, "create", "health_status: unhealthy"), nil),
+		client.EXPECT().ContainerStop(gomock.Any(), config.name(), 10*time.Second),
+	)
+
+	assert.Equal(t, ctlr.Wait(ctx), ErrContainerUnhealthy)
+}
+
 func TestControllerWaitExitError(t *testing.T) {
 	task := genTask(t)
 	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
