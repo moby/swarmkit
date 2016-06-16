@@ -65,6 +65,42 @@ func TestRemotesEmpty(t *testing.T) {
 
 }
 
+func TestRemotesExclude(t *testing.T) {
+	peers := []api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
+	excludes := []string{"one", "two", "three"}
+	remotes := NewRemotes(peers...)
+
+	// exclude all
+	_, err := remotes.Select(excludes...)
+	if err != errRemotesUnavailable {
+		t.Fatal("select an excluded peer")
+	}
+
+	// exclude one peer
+	for i := 0; i < len(peers)*10; i++ {
+		next, err := remotes.Select(excludes[0])
+		if err != nil {
+			t.Fatalf("error selecting remote: %v", err)
+		}
+
+		if next == peers[0] {
+			t.Fatal("select an excluded peer")
+		}
+	}
+
+	// exclude 2 peers
+	for i := 0; i < len(peers)*10; i++ {
+		next, err := remotes.Select(excludes[1:]...)
+		if err != nil {
+			t.Fatalf("error selecting remote: %v", err)
+		}
+
+		if next != peers[0] {
+			t.Fatalf("select an excluded peer: %v", next)
+		}
+	}
+}
+
 // TestRemotesConvergence ensures that as we get positive observations,
 // the actual weight increases or converges to a value higher than the initial
 // value.
