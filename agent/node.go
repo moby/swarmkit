@@ -623,10 +623,10 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			select {
 			case <-ctx.Done():
 				m.Stop(context.Background()) // todo: this should be sync like other components
-			case <-n.waitRole(ctx, ca.AgentRole):
+				<-done
+			// in case of demotion manager will stop itself
+			case <-done:
 			}
-
-			<-done
 
 			ready = nil // ready event happens once, even on multiple starts
 			n.Lock()
