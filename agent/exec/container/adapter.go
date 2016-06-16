@@ -40,9 +40,15 @@ func newContainerAdapter(client engineapi.APIClient, task *api.Task) (*container
 func noopPrivilegeFn() (string, error) { return "", nil }
 
 func (c *containerConfig) imagePullOptions() types.ImagePullOptions {
+	var registryAuth string
+
+	if c.spec().PullOptions != nil {
+		registryAuth = c.spec().PullOptions.RegistryAuth
+	}
+
 	return types.ImagePullOptions{
 		// if the image needs to be pulled, the auth config will be retrieved and updated
-		RegistryAuth:  c.spec().RegistryAuth,
+		RegistryAuth:  registryAuth,
 		PrivilegeFunc: noopPrivilegeFn,
 	}
 }
