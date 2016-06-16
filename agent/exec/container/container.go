@@ -14,6 +14,7 @@ import (
 	"github.com/docker/engine-api/types/network"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 )
 
 const (
@@ -102,6 +103,18 @@ func (c *containerConfig) config() *enginecontainer.Config {
 		// In this case, we assume the image has an Entrypoint and Args
 		// specifies the arguments for that entrypoint.
 		config.Cmd = c.spec().Args
+	}
+
+	healthCheck := c.spec().HealthCheck
+	if healthCheck != nil {
+		interval, _ := ptypes.Duration(healthCheck.Interval)
+		timeout, _ := ptypes.Duration(healthCheck.Timeout)
+		config.Healthcheck = &enginecontainer.HealthConfig{
+			Test:     healthCheck.Test,
+			Interval: interval,
+			Timeout:  timeout,
+			Retries:  int(healthCheck.Retries),
+		}
 	}
 
 	return config
