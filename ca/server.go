@@ -33,7 +33,7 @@ type Server struct {
 
 	// Started is a channel which gets closed once the server is running
 	// and able to service RPCs.
-	Started chan struct{}
+	started chan struct{}
 }
 
 // DefaultAcceptancePolicy returns the default acceptance policy.
@@ -64,7 +64,7 @@ func NewServer(store *store.MemoryStore, securityConfig *SecurityConfig) *Server
 	return &Server{
 		store:          store,
 		securityConfig: securityConfig,
-		Started:        make(chan struct{}),
+		started:        make(chan struct{}),
 	}
 }
 
@@ -364,7 +364,14 @@ func (s *Server) Run(ctx context.Context) error {
 	s.ctx, s.cancel = context.WithCancel(ctx)
 	s.mu.Unlock()
 
-	close(s.Started)
+	// Run() should never be called twice, but just in case, we're
+	// attempting to close the started channel in a safe way
+	select {
+	case <-s.started:
+		return fmt.Errorf("CA server cannot be started more than once")
+	default:
+		close(s.started)
+	}
 
 	// Retrieve the channels to keep track of changes in the cluster
 	// Retrieve all the currently registered nodes
@@ -443,6 +450,11 @@ func (s *Server) Stop() error {
 	// wait for all handlers to finish their CA deals,
 	s.wg.Wait()
 	return nil
+}
+
+// Ready waits on the ready channel and returns when the server is ready to serve.
+func (s *Server) Ready() <-chan struct{} {
+	return s.started
 }
 
 func (s *Server) addTask() error {
