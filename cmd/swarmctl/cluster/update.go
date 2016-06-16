@@ -132,7 +132,6 @@ var (
 )
 
 func init() {
-	// TODO(aaronl): Acceptance policy will change later.
 	updateCmd.Flags().StringSlice("autoaccept", nil, "Roles to automatically issue certificates for")
 	updateCmd.Flags().StringSlice("secret", nil, "Secret required to join the cluster")
 	updateCmd.Flags().Int64("taskhistory", 0, "Number of historic task entries to retain per slot or node")
