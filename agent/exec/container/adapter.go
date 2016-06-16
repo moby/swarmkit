@@ -39,15 +39,16 @@ func newContainerAdapter(client engineapi.APIClient, task *api.Task) (*container
 
 func noopPrivilegeFn() (string, error) { return "", nil }
 
-func (c *containerAdapter) pullImage(ctx context.Context) error {
-	// if the image needs to be pulled, the auth config will be retrieved and updated
-	encodedConfig := c.container.spec().RegistryAuth
+func (c *containerConfig) imagePullOptions() types.ImagePullOptions {
+	return types.ImagePullOptions{
+		// if the image needs to be pulled, the auth config will be retrieved and updated
+		RegistryAuth:  c.spec().RegistryAuth,
+		PrivilegeFunc: noopPrivilegeFn,
+	}
+}
 
-	rc, err := c.client.ImagePull(ctx, c.container.image(),
-		types.ImagePullOptions{
-			RegistryAuth:  encodedConfig,
-			PrivilegeFunc: noopPrivilegeFn,
-		})
+func (c *containerAdapter) pullImage(ctx context.Context) error {
+	rc, err := c.client.ImagePull(ctx, c.container.image(), c.container.imagePullOptions())
 	if err != nil {
 		return err
 	}
