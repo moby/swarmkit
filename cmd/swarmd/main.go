@@ -175,7 +175,10 @@ var (
 			}()
 
 			go func() {
-				<-n.Ready(ctx)
+				select {
+				case <-n.Ready():
+				case <-ctx.Done():
+				}
 				if ctx.Err() == nil {
 					logrus.Info("node is ready")
 				}
