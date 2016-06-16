@@ -282,7 +282,7 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
-	info := make(chan string, 1)
+	info := make(chan api.IssueNodeCertificateResponse, 1)
 	// Copy the current RootCA without the signer
 	rca := ca.RootCA{Cert: tc.RootCA.Cert, Pool: tc.RootCA.Pool}
 	cert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.Paths.Node, ca.ManagerRole, "", tc.Picker, nil, info)
@@ -350,7 +350,7 @@ func TestGetRemoteSignedCertificateNodeInfo(t *testing.T) {
 	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	info := make(chan string, 1)
+	info := make(chan api.IssueNodeCertificateResponse, 1)
 	cert, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, "", tc.RootCA.Pool, tc.Picker, nil, info)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)

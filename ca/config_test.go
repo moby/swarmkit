@@ -10,6 +10,7 @@ import (
 	"golang.org/x/net/context"
 
 	cfconfig "github.com/cloudflare/cfssl/config"
+	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/ioutils"
@@ -21,7 +22,7 @@ func TestLoadOrCreateSecurityConfigEmptyDir(t *testing.T) {
 	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
 	defer tc.Stop()
 
-	info := make(chan string, 1)
+	info := make(chan api.IssueNodeCertificateResponse, 1)
 	// Remove all the contents from the temp dir and try again with a new node
 	os.RemoveAll(tc.TempDir)
 	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, tc.Picker, info)
@@ -53,7 +54,7 @@ func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
 	assert.NotNil(t, nodeConfig.RootCA().Signer)
 	assert.True(t, nodeConfig.RootCA().CanSign())
 
-	info := make(chan string, 1)
+	info := make(chan api.IssueNodeCertificateResponse, 1)
 	// Remove only the node certificates form the directory, and attest that we get
 	// new certificates that are issued by the remote CA
 	os.RemoveAll(tc.Paths.RootCA.Key)
