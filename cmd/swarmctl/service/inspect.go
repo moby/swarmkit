@@ -116,28 +116,26 @@ var (
 				return err
 			}
 
-			// TODO(aluzzardi): This should be implemented as a ListOptions filter.
-			r, err := c.ListTasks(common.Context(cmd), &api.ListTasksRequest{})
+			r, err := c.ListTasks(common.Context(cmd),
+				&api.ListTasksRequest{
+					Filters: &api.ListTasksRequest_Filters{
+						ServiceIDs: []string{service.ID},
+					},
+				})
 			if err != nil {
 				return err
 			}
-			tasks := []*api.Task{}
 			var running int
 			for _, t := range r.Tasks {
-				if t.ServiceID != service.ID {
-					continue
-				}
-				tasks = append(tasks, t)
-
 				if t.Status.State == api.TaskStateRunning {
 					running++
 				}
 			}
 
 			printServiceSummary(service, running)
-			if len(tasks) > 0 {
+			if len(r.Tasks) > 0 {
 				fmt.Printf("\n")
-				task.Print(tasks, all, res)
+				task.Print(r.Tasks, all, res)
 			}
 
 			return nil
