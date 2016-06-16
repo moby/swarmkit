@@ -105,10 +105,15 @@ func (mwr *remotesWeightedRandom) Select(excludes ...string) (api.Peer, error) {
 	cum := 0.0
 	// calculate CDF over weights
 	for peer, weight := range mwr.remotes {
+		find:=false
 		for _, exclude := range excludes {
 			if peer.NodeID == exclude || peer.Addr == exclude {
-				continue
+				find=true
+				break
 			}
+		}
+		if !find{
+			continue
 		}
 		if weight < 0 {
 			// treat these as zero, to keep there selection unlikely.
