@@ -154,7 +154,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 	logger := log.G(ctx).WithField("module", "dispatcher")
 	ctx = log.WithLogger(ctx, logger)
 	if err := d.markNodesUnknown(ctx); err != nil {
-		logger.Errorf("failed to mark all nodes unknown: %v", err)
+		logger.Errorf(`failed to move all nodes to "unknown" state: %v`, err)
 	}
 	configWatcher, cancel, err := store.ViewAndWatch(
 		d.store,
@@ -270,20 +270,20 @@ func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
 				}
 				node.Status = api.NodeStatus{
 					State:   api.NodeStatus_UNKNOWN,
-					Message: "Node marked as unknown due to leadership change in cluster",
+					Message: `Node moved to "unknown" state due to leadership change in cluster`,
 				}
 				nodeID := node.ID
 
 				expireFunc := func() {
 					log := log.WithField("node", nodeID)
-					nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "heartbeat failure for unknown node"}
+					nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: `heartbeat failure for node in "unknown" state`}
 					log.Debugf("heartbeat expiration for unknown node")
 					if err := d.nodeRemove(nodeID, nodeStatus); err != nil {
-						log.WithError(err).Errorf("failed deregistering node after heartbeat expiration for unknown node")
+						log.WithError(err).Errorf(`failed deregistering node after heartbeat expiration for node in "unknown" state`)
 					}
 				}
 				if err := d.nodes.AddUnknown(node, expireFunc); err != nil {
-					return fmt.Errorf("add unknown node failed: %v", err)
+					return fmt.Errorf(`adding node in "unknown" state to node store failed: %v`, err)
 				}
 				if err := store.UpdateNode(tx, node); err != nil {
 					return fmt.Errorf("update failed %v", err)
@@ -291,7 +291,7 @@ func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
 				return nil
 			})
 			if err != nil {
-				log.WithField("node", n.ID).WithError(err).Errorf("failed to mark node as unknown")
+				log.WithField("node", n.ID).WithError(err).Errorf(`failed to move node to "unknown" state`)
 			}
 		}
 		return nil
