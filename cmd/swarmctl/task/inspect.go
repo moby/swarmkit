@@ -79,14 +79,18 @@ var (
 			}
 			task := t.Task
 
-			// TODO(aluzzardi): This should be implemented as a ListOptions filter.
-			r, err := c.ListTasks(common.Context(cmd), &api.ListTasksRequest{})
+			r, err := c.ListTasks(common.Context(cmd),
+				&api.ListTasksRequest{
+					Filters: &api.ListTasksRequest_Filters{
+						ServiceIDs: []string{task.ServiceID},
+					},
+				})
 			if err != nil {
 				return err
 			}
 			previous := []*api.Task{}
 			for _, t := range r.Tasks {
-				if t.ServiceID == task.ServiceID && t.Slot == task.Slot {
+				if t.Slot == task.Slot {
 					previous = append(previous, t)
 				}
 			}
