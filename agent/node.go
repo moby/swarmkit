@@ -223,6 +223,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 
 	if err := n.loadCertificates(); err != nil {
 		return err
