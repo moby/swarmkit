@@ -67,6 +67,17 @@ func TestValidateClusterSpec(t *testing.T) {
 			},
 			c: codes.InvalidArgument,
 		},
+		{
+			spec: &api.ClusterSpec{
+				Annotations: api.Annotations{
+					Name: "name",
+				},
+				Dispatcher: api.DispatcherConfig{
+					HeartbeatPeriod: ptypes.DurationProto(-29 * time.Minute),
+				},
+			},
+			c: codes.InvalidArgument,
+		},
 	} {
 		err := validateClusterSpec(bad.spec)
 		assert.Error(t, err)
