@@ -164,8 +164,18 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, caHash, secret
 			return nil, err
 		}
 
-		// Get the remote CA certificate, verify integrity with the hash provided
-		rootCA, err = GetRemoteCA(ctx, d, picker)
+		// Get the remote CA certificate, verify integrity with the
+		// hash provided. Retry up to 5 times, in case the manager we
+		// first try to contact is not responding properly (it may have
+		// just been demoted, for example).
+
+		for i := 0; i != 5; i++ {
+			rootCA, err = GetRemoteCA(ctx, d, picker)
+			if err == nil {
+				break
+			}
+			log.Warningf("failed to retrieve remote root CA certificate: %v", err)
+		}
 		if err != nil {
 			return nil, err
 		}
