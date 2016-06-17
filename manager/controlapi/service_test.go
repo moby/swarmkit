@@ -1,7 +1,6 @@
 package controlapi
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -298,6 +297,20 @@ func TestUpdateService(t *testing.T) {
 	assert.Equal(t, ok, true)
 	assert.True(t, mode.Replicated.Replicas == 42)
 
+	// mode change not allowed
+	r, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
+	assert.NoError(t, err)
+	r.Service.Spec.Mode = &api.ServiceSpec_Global{
+		Global: &api.GlobalService{},
+	}
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:      service.ID,
+		Spec:           &r.Service.Spec,
+		ServiceVersion: &r.Service.Meta.Version,
+	})
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), errModeChangeNotAllowed.Error()))
+
 	// Versioning.
 	r, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
 	assert.NoError(t, err)
@@ -344,7 +357,6 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 		ServiceVersion: &service.Meta.Version,
 	})
 	assert.Error(t, err)
-	fmt.Println("error = ", err.Error())
 	assert.True(t, strings.Contains(err.Error(), errNetworkUpdateNotSupported.Error()))
 }
 

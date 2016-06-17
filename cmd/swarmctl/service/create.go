@@ -52,5 +52,7 @@ var (
 )
 
 func init() {
-	flagparser.AddServiceFlags(createCmd.Flags())
+	flags := createCmd.Flags()
+	flagparser.AddServiceFlags(flags)
+	flags.String("mode", "replicated", "one of replicated, global")
 }
