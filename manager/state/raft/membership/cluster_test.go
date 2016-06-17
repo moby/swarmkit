@@ -140,10 +140,9 @@ func TestClusterRemoveMember(t *testing.T) {
 	}
 	cls := newTestCluster(members, removed)
 
-	// Cannot remove a node whose ID is not found in the memberlist
+	// Can remove a node whose ID is not yet in the member list
 	err := cls.RemoveMember(3)
-	assert.Error(t, err)
-	assert.Equal(t, err, membership.ErrIDNotFound)
+	assert.NoError(t, err)
 	assert.Nil(t, cls.GetMember(3))
 
 	err = cls.RemoveMember(1)
