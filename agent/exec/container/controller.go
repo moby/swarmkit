@@ -196,11 +196,17 @@ func (r *controller) Wait(pctx context.Context) error {
 
 			case "health_status: unhealthy":
 				// in this case, we stop the container and report unhealthy status
+				ctnr, err := r.adapter.inspect(ctx)
+				if err != nil {
+					return errors.Wrap(err, "unhealthy container")
+				}
+				latestResult := latestHealthcheckResult(ctnr)
+
 				// TODO(runshenzhu): double check if it can cause a dead lock issue here
 				if err := r.Shutdown(ctx); err != nil {
 					return errors.Wrap(err, "unhealthy container")
 				}
-				return ErrContainerUnhealthy
+				return errors.Wrap(ErrContainerUnhealthy, latestResult)
 			}
 		case <-closed:
 			// restart!
@@ -372,4 +378,19 @@ func parseContainerStatus(ctnr types.ContainerJSON) (*api.ContainerStatus, error
 	}
 
 	return status, nil
+}
+
+// latestHealthcheckResult returns the latest result of a healthcheck operation
+// if no relevant information exists, "" is returned
+func latestHealthcheckResult(ctnr types.ContainerJSON) string {
+	if ctnr.State.Health == nil {
+		return ""
+	}
+	log := ctnr.State.Health.Log
+	if log != nil {
+		latestResult := log[len(log)-1]
+		return latestResult.Output
+	}
+
+	return ""
 }
