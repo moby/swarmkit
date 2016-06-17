@@ -644,7 +644,15 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role, secret st
 			if statusResponse.Certificate == nil {
 				return nil, fmt.Errorf("no certificate in CertificateStatus response")
 			}
-			return statusResponse.Certificate.Certificate, nil
+
+			// The certificate in the response must match the CSR
+			// we submitted. If we are getting a response for a
+			// certificate that was previously issued, we need to
+			// retry until the certificate gets updated per our
+			// current request.
+			if bytes.Equal(statusResponse.Certificate.CSR, csr) {
+				return statusResponse.Certificate.Certificate, nil
+			}
 		}
 
 		// If we're still pending, the issuance failed, or the state is unknown
