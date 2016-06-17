@@ -198,7 +198,7 @@ func (r *controller) Wait(pctx context.Context) error {
 				// in this case, we stop the container and report unhealthy status
 				// TODO(runshenzhu): double check if it can cause a dead lock issue here
 				if err := r.Shutdown(ctx); err != nil {
-					return errors.Wrap(err, "unhealthy container")
+					return errors.Wrap(err, "unhealthy container shutdown failed")
 				}
 				return ErrContainerUnhealthy
 			}
