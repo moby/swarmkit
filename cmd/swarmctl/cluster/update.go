@@ -114,7 +114,7 @@ var (
 				if err != nil {
 					return err
 				}
-				spec.Dispatcher.HeartbeatPeriod = uint64(hbPeriod)
+				spec.Dispatcher.HeartbeatPeriod = ptypes.DurationProto(hbPeriod)
 			}
 
 			r, err := c.UpdateCluster(common.Context(cmd), &api.UpdateClusterRequest{
