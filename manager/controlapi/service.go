@@ -16,6 +16,7 @@ import (
 
 var (
 	errNetworkUpdateNotSupported = errors.New("changing network in service is not supported")
+	errModeChangeNotAllowed      = errors.New("service mode change is not allowed")
 )
 
 func validateResources(r *api.Resources) error {
@@ -232,6 +233,12 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 			return errNetworkUpdateNotSupported
 		}
 
+		// orchestrator is designed to be stateless, so it should not deal
+		// with service mode change (comparing current config with previous config).
+		// proper way to change service mode is to delete and re-add.
+		if request.Spec != nil && reflect.TypeOf(service.Spec.Mode) != reflect.TypeOf(request.Spec.Mode) {
+			return errModeChangeNotAllowed
+		}
 		service.Meta.Version = *request.ServiceVersion
 		service.Spec = *request.Spec.Copy()
 		return store.UpdateService(tx, service)
