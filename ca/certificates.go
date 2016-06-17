@@ -167,7 +167,16 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, paths Cert
 	}
 
 	// Get the remote manager to issue a CA signed certificate for this node
-	signedCert, err := GetRemoteSignedCertificate(ctx, csr, role, secret, rca.Pool, picker, transport, nodeInfo)
+	// Retry up to 5 times in case the manager we first try to contact isn't
+	// responding properly (for example, it may have just been demoted).
+	var signedCert []byte
+	for i := 0; i != 5; i++ {
+		signedCert, err = GetRemoteSignedCertificate(ctx, csr, role, secret, rca.Pool, picker, transport, nodeInfo)
+		if err == nil {
+			break
+		}
+		log.Warningf("error fetching signed node certificate: %v", err)
+	}
 	if err != nil {
 		return nil, err
 	}
