@@ -81,7 +81,6 @@ type Node struct {
 	config               *NodeConfig
 	remotes              *persistentRemotes
 	role                 string
-	roleCond             *sync.Cond
 	conn                 *grpc.ClientConn
 	connCond             *sync.Cond
 	nodeID               string
@@ -95,6 +94,7 @@ type Node struct {
 	agent                *Agent
 	manager              *manager.Manager
 	roleChangeReq        chan api.NodeRole // used to send role updates from the dispatcher api on promotion/demotion
+	managerRoleCh        chan struct{}
 }
 
 // NewNode returns new Node instance.
@@ -124,8 +124,8 @@ func NewNode(c *NodeConfig) (*Node, error) {
 		ready:                make(chan struct{}),
 		certificateRequested: make(chan struct{}),
 		roleChangeReq:        make(chan api.NodeRole, 1),
+		managerRoleCh:        make(chan struct{}, 32), // 32 just for the case
 	}
-	n.roleCond = sync.NewCond(n.RLocker())
 	n.connCond = sync.NewCond(n.RLocker())
 	if err := n.loadCertificates(); err != nil {
 		return nil, err
@@ -269,8 +269,12 @@ func (n *Node) run(ctx context.Context) (err error) {
 					continue
 				}
 				n.Lock()
-				n.role = certUpdate.Role
-				n.roleCond.Broadcast()
+				if n.role != certUpdate.Role {
+					n.role = certUpdate.Role
+					if n.role == ca.ManagerRole {
+						n.managerRoleCh <- struct{}{}
+					}
+				}
 				n.Unlock()
 			case <-ctx.Done():
 				return
@@ -419,34 +423,6 @@ func (n *Node) CertificateRequested() <-chan struct{} {
 	return n.certificateRequested
 }
 
-func (n *Node) waitRole(ctx context.Context, role string) <-chan struct{} {
-	c := make(chan struct{})
-	n.roleCond.L.Lock()
-	if role == n.role {
-		close(c)
-		n.roleCond.L.Unlock()
-		return c
-	}
-	go func() {
-		select {
-		case <-ctx.Done():
-			n.roleCond.Broadcast()
-		case <-c:
-		}
-	}()
-	go func() {
-		defer n.roleCond.L.Unlock()
-		defer close(c)
-		for role != n.role {
-			n.roleCond.Wait()
-			if ctx.Err() != nil {
-				return
-			}
-		}
-	}()
-	return c
-}
-
 func (n *Node) setControlSocket(conn *grpc.ClientConn) {
 	n.Lock()
 	n.conn = conn
@@ -546,10 +522,14 @@ func (n *Node) loadCertificates() error {
 	}
 	// todo: try csr if no cert or store nodeID/role in some other way
 	n.Lock()
-	n.role = clientTLSCreds.Role()
+	if n.role != clientTLSCreds.Role() {
+		n.role = clientTLSCreds.Role()
+		if n.role == ca.ManagerRole {
+			n.managerRoleCh <- struct{}{}
+		}
+	}
 	n.nodeID = clientTLSCreds.NodeID()
 	n.nodeMembership = api.NodeMembershipAccepted
-	n.roleCond.Broadcast()
 	n.Unlock()
 
 	return nil
@@ -599,10 +579,17 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-n.waitRole(ctx, ca.ManagerRole):
+		case <-n.managerRoleCh:
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
+			n.Lock()
+			// in case if we missed some notifications
+			if n.role != ca.ManagerRole {
+				n.Unlock()
+				continue
+			}
+			n.Unlock()
 			remoteAddr, _ := n.remotes.Select(n.nodeID)
 			m, err := manager.New(&manager.Config{
 				ForceNewCluster: n.config.ForceNewCluster,
