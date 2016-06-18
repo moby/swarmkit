@@ -81,6 +81,8 @@ func (r *ReplicatedOrchestrator) reconcile(ctx context.Context, service *api.Ser
 		return
 	}
 
+	// indicator of service mode change
+	modeChanged := false
 	runningTasks := make([]*api.Task, 0, len(tasks))
 	runningInstances := make(map[uint64]struct{}) // this could be a bitfield...
 	for _, t := range tasks {
@@ -88,9 +90,27 @@ func (r *ReplicatedOrchestrator) reconcile(ctx context.Context, service *api.Ser
 		// t.DesiredState <= api.TaskStateRunning, but ignoring tasks
 		// with DesiredState == NEW simplifies the drainer unit tests.
 		if t.DesiredState > api.TaskStateNew && t.DesiredState <= api.TaskStateRunning {
+			if t.Slot == 0 {
+				modeChanged = true
+				break
+			}
 			runningTasks = append(runningTasks, t)
 			runningInstances[t.Slot] = struct{}{}
 		}
+	}
+
+	// if service mode is changed, clean up existing tasks because slots need to renumber
+	if modeChanged {
+		_, err = r.store.Batch(func(batch *store.Batch) error {
+			r.removeTasks(ctx, batch, service, tasks)
+			return nil
+		})
+		if err != nil {
+			log.G(ctx).WithError(err).Errorf("reconcile batch failed")
+		}
+		// reset running tasks
+		runningInstances = make(map[uint64]struct{})
+		runningTasks = nil
 	}
 	numTasks := len(runningTasks)
 
