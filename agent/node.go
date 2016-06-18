@@ -31,10 +31,10 @@ const stateFilename = "state.json"
 
 // NodeConfig provides values for a Node.
 type NodeConfig struct {
-	// Hostname the name of host for agent instance.
+	// Hostname is the name of host for agent instance.
 	Hostname string
 
-	// JoinAddrs specifies node that should be used for the initial connection to
+	// JoinAddr specifies node that should be used for the initial connection to
 	// other manager in cluster. This should be only one address and optional,
 	// the actual remotes come from the stored state.
 	JoinAddr string
@@ -478,7 +478,7 @@ func (n *Node) NodeMembership() api.NodeSpec_Membership {
 	return n.nodeMembership
 }
 
-// Manager return manager instance started by node. May be nil.
+// Manager returns manager instance started by node. May be nil.
 func (n *Node) Manager() *manager.Manager {
 	n.RLock()
 	defer n.RUnlock()
