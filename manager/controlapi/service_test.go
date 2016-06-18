@@ -277,6 +277,50 @@ func TestRemoveService(t *testing.T) {
 	assert.NotNil(t, r)
 }
 
+func TestServiceEndpointSpecUpdate(t *testing.T) {
+	ts := newTestServer(t)
+	spec := &api.ServiceSpec{
+		Annotations: api.Annotations{
+			Name: "name",
+		},
+		Task: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Image: "image",
+				},
+			},
+		},
+		Mode: &api.ServiceSpec_Replicated{
+			Replicated: &api.ReplicatedService{
+				Replicas: 1,
+			},
+		},
+		Endpoint: &api.EndpointSpec{
+			Ports: []*api.PortConfig{
+				{
+					Name:       "http",
+					TargetPort: 80,
+				},
+			},
+		},
+	}
+
+	r, err := ts.Client.CreateService(context.Background(),
+		&api.CreateServiceRequest{Spec: spec})
+	assert.NoError(t, err)
+	assert.NotNil(t, r)
+
+	// Update the service with duplicate ports
+	spec.Endpoint.Ports = append(spec.Endpoint.Ports, &api.PortConfig{
+		Name:       "fakehttp",
+		TargetPort: 80,
+	})
+	_, err = ts.Client.UpdateService(context.Background(),
+		&api.UpdateServiceRequest{Spec: spec})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+}
+
 func TestListServices(t *testing.T) {
 	ts := newTestServer(t)
 	r, err := ts.Client.ListServices(context.Background(), &api.ListServicesRequest{})
