@@ -18,6 +18,7 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/golang/mock/gomock"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -157,10 +158,29 @@ func TestControllerWaitUnhealthy(t *testing.T) {
 			Since:   "0",
 			Filters: config.eventFilter(),
 		}).Return(makeEvents(t, config, "create", "health_status: unhealthy"), nil),
+		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
+			Return(types.ContainerJSON{
+				ContainerJSONBase: &types.ContainerJSONBase{
+					State: &types.ContainerState{
+						Health: &types.Health{
+							Log: []*types.HealthcheckResult{
+								{
+									Output: "healthcheck passed",
+								},
+								{
+									Output: "deadlock",
+								},
+							},
+						},
+					},
+				},
+			}, nil),
 		client.EXPECT().ContainerStop(gomock.Any(), config.name(), 10*time.Second),
 	)
 
-	assert.Equal(t, ctlr.Wait(ctx), ErrContainerUnhealthy)
+	err := ctlr.Wait(ctx)
+	unhealthyErr := errors.Wrap(ErrContainerUnhealthy, "deadlock")
+	assert.Equal(t, err.Error(), unhealthyErr.Error())
 }
 
 func TestControllerWaitExitError(t *testing.T) {
