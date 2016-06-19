@@ -21,6 +21,9 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.StringSlice("args", nil, "container args")
 	flags.StringSlice("env", nil, "container env")
 
+	flags.String("log-driver", "", "log driver for container")
+	flags.StringSlice("log-opt", nil, "log driver options")
+
 	flags.StringSlice("ports", nil, "ports")
 	flags.String("network", "", "network name")
 
@@ -76,6 +79,10 @@ func Merge(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClient) error
 	}
 
 	if err := parseContainer(flags, spec); err != nil {
+		return err
+	}
+
+	if err := parseHostConfig(flags, spec); err != nil {
 		return err
 	}
 
