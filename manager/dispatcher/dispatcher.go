@@ -238,6 +238,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 func (d *Dispatcher) Stop() error {
 	d.mu.Lock()
 	if !d.isRunning() {
+		d.mu.Unlock()
 		return fmt.Errorf("dispatcher is already stopped")
 	}
 	d.cancel()
