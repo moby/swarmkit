@@ -43,8 +43,7 @@ func TestKeyManagerDefaultSubsystem(t *testing.T) {
 	go k.Run(ctx)
 	time.Sleep(250 * time.Millisecond)
 
-	// verify the first key has been allocated and updated in the
-	// store
+	// verify the number of keys allocated matches the keyring size.
 	var (
 		clusters []*api.Cluster
 		err      error
@@ -54,16 +53,14 @@ func TestKeyManagerDefaultSubsystem(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
-	assert.Equal(t, len(clusters[0].NetworkBootstrapKeys), 1)
+	assert.Equal(t, len(clusters[0].NetworkBootstrapKeys), keyringSize)
 
 	key1 := clusters[0].NetworkBootstrapKeys[0].Key
 
 	k.rotateKey(ctx)
-	k.rotateKey(ctx)
 
-	// verify that after two rotations keyring has two keys and the very
-	// first key allocated has been removed
-	assert.Equal(t, len(k.keyRing.keys), 2)
+	// verify that after a rotation oldest key has been removed from the keyring
+	assert.Equal(t, len(k.keyRing.keys), keyringSize)
 	for _, key := range k.keyRing.keys {
 		match := bytes.Equal(key.Key, key1)
 		assert.False(t, match)
@@ -87,8 +84,7 @@ func TestKeyManagerCustomSubsystem(t *testing.T) {
 	go k.Run(ctx)
 	time.Sleep(250 * time.Millisecond)
 
-	// verify the first key has been allocated and updated in the
-	// store
+	// verify the number of keys allocated matches the keyring size.
 	var (
 		clusters []*api.Cluster
 		err      error
@@ -98,19 +94,20 @@ func TestKeyManagerCustomSubsystem(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
-	assert.Equal(t, len(clusters[0].NetworkBootstrapKeys), 1)
+	assert.Equal(t, len(clusters[0].NetworkBootstrapKeys), keyringSize)
 
 	key1 := clusters[0].NetworkBootstrapKeys[0].Key
 
 	k.rotateKey(ctx)
-	k.rotateKey(ctx)
 
-	// verify that after two rotations keyring has two keys and the very
-	// first key allocated has been removed
-	assert.Equal(t, len(k.keyRing.keys), 2)
+	// verify that after a rotation oldest key has been removed from the keyring
+	// also verify that all keys are for the right subsystem
+	assert.Equal(t, len(k.keyRing.keys), keyringSize)
 	for _, key := range k.keyRing.keys {
 		match := bytes.Equal(key.Key, key1)
 		assert.False(t, match)
+		match = key.Subsystem == SubsystemIPSec
+		assert.True(t, match)
 	}
 }
 
