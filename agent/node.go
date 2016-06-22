@@ -234,6 +234,10 @@ func (n *Node) run(ctx context.Context) (err error) {
 		return err
 	}
 
+	if n.role == ca.ManagerRole {
+		n.managerRoleCh <- struct{}{}
+	}
+
 	forceCertRenewal := make(chan struct{})
 	go func() {
 		n.RLock()
@@ -269,11 +273,9 @@ func (n *Node) run(ctx context.Context) (err error) {
 					continue
 				}
 				n.Lock()
-				if n.role != certUpdate.Role {
-					n.role = certUpdate.Role
-					if n.role == ca.ManagerRole {
-						n.managerRoleCh <- struct{}{}
-					}
+				n.role = certUpdate.Role
+				if n.role == ca.ManagerRole {
+					n.managerRoleCh <- struct{}{}
 				}
 				n.Unlock()
 			case <-ctx.Done():
@@ -522,12 +524,7 @@ func (n *Node) loadCertificates() error {
 	}
 	// todo: try csr if no cert or store nodeID/role in some other way
 	n.Lock()
-	if n.role != clientTLSCreds.Role() {
-		n.role = clientTLSCreds.Role()
-		if n.role == ca.ManagerRole {
-			n.managerRoleCh <- struct{}{}
-		}
-	}
+	n.role = clientTLSCreds.Role()
 	n.nodeID = clientTLSCreds.NodeID()
 	n.nodeMembership = api.NodeMembershipAccepted
 	n.Unlock()
