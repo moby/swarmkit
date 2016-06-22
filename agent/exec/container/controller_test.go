@@ -73,12 +73,12 @@ func TestControllerStart(t *testing.T) {
 	gomock.InOrder(
 		client.EXPECT().ContainerInspect(ctx, config.name()).
 			Return(types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					State: &types.ContainerState{
-						Status: "created",
-					},
+			ContainerJSONBase: &types.ContainerJSONBase{
+				State: &types.ContainerState{
+					Status: "created",
 				},
-			}, nil),
+			},
+		}, nil),
 		client.EXPECT().ContainerStart(ctx, config.name(), types.ContainerStartOptions{}).
 			Return(nil),
 	)
@@ -94,12 +94,12 @@ func TestControllerStartAlreadyStarted(t *testing.T) {
 	gomock.InOrder(
 		client.EXPECT().ContainerInspect(ctx, config.name()).
 			Return(types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					State: &types.ContainerState{
-						Status: "notcreated", // can be anything but created
-					},
+			ContainerJSONBase: &types.ContainerJSONBase{
+				State: &types.ContainerState{
+					Status: "notcreated", // can be anything but created
 				},
-			}, nil),
+			},
+		}, nil),
 	)
 
 	// ensure idempotence
@@ -116,24 +116,24 @@ func TestControllerWait(t *testing.T) {
 	gomock.InOrder(
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					State: &types.ContainerState{
-						Status: "running",
-					},
+			ContainerJSONBase: &types.ContainerJSONBase{
+				State: &types.ContainerState{
+					Status: "running",
 				},
-			}, nil),
+			},
+		}, nil),
 		client.EXPECT().Events(gomock.Any(), types.EventsOptions{
 			Since:   "0",
 			Filters: config.eventFilter(),
 		}).Return(makeEvents(t, config, "create", "die"), nil),
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					State: &types.ContainerState{
-						Status: "stopped", // can be anything but created
-					},
+			ContainerJSONBase: &types.ContainerJSONBase{
+				State: &types.ContainerState{
+					Status: "stopped", // can be anything but created
 				},
-			}, nil),
+			},
+		}, nil),
 	)
 
 	assert.NoError(t, ctlr.Wait(ctx))
@@ -147,12 +147,12 @@ func TestControllerWaitUnhealthy(t *testing.T) {
 	gomock.InOrder(
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					State: &types.ContainerState{
-						Status: "running",
-					},
+			ContainerJSONBase: &types.ContainerJSONBase{
+				State: &types.ContainerState{
+					Status: "running",
 				},
-			}, nil),
+			},
+		}, nil),
 		client.EXPECT().Events(gomock.Any(), types.EventsOptions{
 			Since:   "0",
 			Filters: config.eventFilter(),
@@ -171,27 +171,27 @@ func TestControllerWaitExitError(t *testing.T) {
 	gomock.InOrder(
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					State: &types.ContainerState{
-						Status: "running",
-					},
+			ContainerJSONBase: &types.ContainerJSONBase{
+				State: &types.ContainerState{
+					Status: "running",
 				},
-			}, nil),
+			},
+		}, nil),
 		client.EXPECT().Events(gomock.Any(), types.EventsOptions{
 			Since:   "0",
 			Filters: config.eventFilter(),
 		}).Return(makeEvents(t, config, "create", "die"), nil),
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					ID: "cid",
-					State: &types.ContainerState{
-						Status:   "exited", // can be anything but created
-						ExitCode: 1,
-						Pid:      1,
-					},
+			ContainerJSONBase: &types.ContainerJSONBase{
+				ID: "cid",
+				State: &types.ContainerState{
+					Status:   "exited", // can be anything but created
+					ExitCode: 1,
+					Pid:      1,
 				},
-			}, nil),
+			},
+		}, nil),
 	)
 
 	err := ctlr.Wait(ctx)
@@ -215,12 +215,12 @@ func TestControllerWaitExitedClean(t *testing.T) {
 	gomock.InOrder(
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					State: &types.ContainerState{
-						Status: "exited",
-					},
+			ContainerJSONBase: &types.ContainerJSONBase{
+				State: &types.ContainerState{
+					Status: "exited",
 				},
-			}, nil),
+			},
+		}, nil),
 	)
 
 	err := ctlr.Wait(ctx)
@@ -235,15 +235,15 @@ func TestControllerWaitExitedError(t *testing.T) {
 	gomock.InOrder(
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					ID: "cid",
-					State: &types.ContainerState{
-						Status:   "exited",
-						ExitCode: 1,
-						Pid:      1,
-					},
+			ContainerJSONBase: &types.ContainerJSONBase{
+				ID: "cid",
+				State: &types.ContainerState{
+					Status:   "exited",
+					ExitCode: 1,
+					Pid:      1,
 				},
-			}, nil),
+			},
+		}, nil),
 	)
 
 	err := ctlr.Wait(ctx)
