@@ -82,3 +82,42 @@ func TestFindMinScan(t *testing.T) {
 func TestFindMinHeap(t *testing.T) {
 	findMin(t, false)
 }
+
+func TestRemove(t *testing.T) {
+	var nh nodeHeap
+
+	for reps := 0; reps < 10; reps++ {
+		// Create a bunch of nodes with random numbers of tasks
+		numNodes := 100
+		nh.alloc(numNodes)
+
+		for i := 0; i != numNodes; i++ {
+			n := &api.Node{ID: strconv.Itoa(i)}
+			tasks := make(map[string]*api.Task)
+			for j := 0; j < rand.Intn(10); j++ {
+				tasks[strconv.Itoa(j)] = &api.Task{ID: strconv.Itoa(j)}
+			}
+			nh.addOrUpdateNode(NodeInfo{Node: n, Tasks: tasks})
+		}
+
+		// delete 10 nodes in random
+		for i := 0; i < 10; i++ {
+			nodeID := nh.heap[rand.Intn(len(nh.heap))].ID
+
+			for _, ok := nh.index[nodeID]; !ok; {
+				// if this node is already deleted, re-try
+				nodeID = nh.heap[rand.Intn(len(nh.heap))].ID
+			}
+			nh.remove(nodeID)
+			for _, entry := range nh.heap {
+				if entry.ID == nodeID {
+					t.Fatalf("fail to remove node %v\n", nodeID)
+				}
+			}
+
+			if _, ok := nh.index[nodeID]; ok {
+				t.Fatalf("fail to remove node %v\n", nodeID)
+			}
+		}
+	}
+}
