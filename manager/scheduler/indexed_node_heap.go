@@ -95,9 +95,7 @@ func (nh *nodeHeap) updateNode(n NodeInfo) {
 func (nh *nodeHeap) remove(nodeID string) {
 	index, ok := nh.index[nodeID]
 	if ok {
-		nh.heap[index].Tasks = nil
-		heap.Fix(nh, index)
-		heap.Pop(nh)
+		heap.Remove(nh, index)
 	}
 }
 
