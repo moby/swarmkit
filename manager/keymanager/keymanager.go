@@ -59,7 +59,6 @@ type KeyManager struct {
 	config  *Config
 	store   *store.MemoryStore
 	keyRing *keyRing
-	ticker  *time.Ticker
 	ctx     context.Context
 	cancel  context.CancelFunc
 

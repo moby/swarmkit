@@ -155,6 +155,9 @@ func validateServiceSpec(spec *api.ServiceSpec) error {
 	if err := validateUpdate(spec.Update); err != nil {
 		return err
 	}
+	if err := validateEndpointSpec(spec.Endpoint); err != nil {
+		return err
+	}
 	return nil
 }
 

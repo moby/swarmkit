@@ -109,8 +109,6 @@ type Node struct {
 	doneCh              chan struct{}
 	leadershipBroadcast *events.Broadcaster
 
-	startNodePeers []raft.Peer
-
 	// used to coordinate shutdown
 	stopMu sync.RWMutex
 	// used for membership management checks

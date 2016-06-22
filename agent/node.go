@@ -656,7 +656,6 @@ type persistentRemotes struct {
 	c *sync.Cond
 	picker.Remotes
 	storePath      string
-	ch             []chan api.Peer
 	lastSavedState []api.Peer
 }
 
