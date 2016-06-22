@@ -39,6 +39,10 @@ const (
 type Config struct {
 	SecurityConfig *ca.SecurityConfig
 
+	// ExternalCAURLs is a list of initial URLs to which a manager node
+	// will make certificate signing requests for node certificates.
+	ExternalCAURLs []string
+
 	ProtoAddr map[string]string
 	// ProtoListener will be used for grpc serving if it's not nil,
 	// ProtoAddr fields will be used to create listeners otherwise.
@@ -275,6 +279,10 @@ func (m *Manager) Run(parent context.Context) error {
 				raftCfg.HeartbeatTick = uint32(m.RaftNode.Config.HeartbeatTick)
 
 				clusterID := m.config.SecurityConfig.ClientTLSCreds.Organization()
+
+				initialCAConfig := ca.DefaultCAConfig()
+				initialCAConfig.ExternalCAURLs = m.config.ExternalCAURLs
+
 				s.Update(func(tx store.Tx) error {
 					// Add a default cluster object to the
 					// store. Don't check the error because
@@ -294,7 +302,7 @@ func (m *Manager) Run(parent context.Context) error {
 								HeartbeatPeriod: ptypes.DurationProto(dispatcher.DefaultHeartBeatPeriod),
 							},
 							Raft:     raftCfg,
-							CAConfig: ca.DefaultCAConfig(),
+							CAConfig: initialCAConfig,
 						},
 						RootCA: api.RootCA{
 							CAKey:      rootCA.Key,

@@ -31,6 +31,17 @@ func init() {
 	os.Setenv(ca.PassphraseENVVarPrev, "")
 }
 
+// TestMain runs every test in this file twice - once with a local CA and
+// again with an external CA server.
+func TestMain(m *testing.M) {
+	if status := m.Run(); status != 0 {
+		os.Exit(status)
+	}
+
+	testutils.External = true
+	os.Exit(m.Run())
+}
+
 func TestCreateAndWriteRootCA(t *testing.T) {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
