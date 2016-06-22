@@ -9,6 +9,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRaftSnapshot(t *testing.T) {
@@ -175,6 +176,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Propose a 5th value
 	values[4], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[4])
+	require.NoError(t, err)
 
 	// Add another node to the cluster
 	nodes[5] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, tc)
@@ -221,6 +223,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	// Propose yet another value, to make sure the rejoined node is still
 	// receiving new logs
 	values[5], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[5])
+	require.NoError(t, err)
 
 	// All nodes should have all the data
 	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:6], values[:6])
@@ -237,5 +240,6 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Propose again. Just to check consensus after this latest restart.
 	values[6], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[6])
+	require.NoError(t, err)
 	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 }
