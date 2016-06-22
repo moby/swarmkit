@@ -83,8 +83,7 @@ type Manager struct {
 	localserver            *grpc.Server
 	RaftNode               *raft.Node
 
-	mu   sync.Mutex
-	once sync.Once
+	mu sync.Mutex
 
 	stopped chan struct{}
 }

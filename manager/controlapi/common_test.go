@@ -10,11 +10,6 @@ import (
 )
 
 func TestValidateAnnotations(t *testing.T) {
-	type BadAnnotations struct {
-		m api.Annotations
-		c codes.Code
-	}
-
 	err := validateAnnotations(api.Annotations{})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
