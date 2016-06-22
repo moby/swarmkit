@@ -11,6 +11,7 @@ import (
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetRootCACertificate(t *testing.T) {
@@ -38,6 +39,7 @@ func TestIssueNodeCertificate(t *testing.T) {
 
 	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
 	statusResponse, err := tc.NodeCAClients[0].NodeCertificateStatus(context.Background(), statusRequest)
+	require.NoError(t, err)
 	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
 	assert.NotNil(t, statusResponse.Certificate.Certificate)
 	assert.Equal(t, role, statusResponse.Certificate.Role)
@@ -56,6 +58,7 @@ func TestIssueNodeCertificateWithInvalidCSR(t *testing.T) {
 
 	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
 	statusResponse, err := tc.NodeCAClients[0].NodeCertificateStatus(context.Background(), statusRequest)
+	require.NoError(t, err)
 	assert.Equal(t, api.IssuanceStateFailed, statusResponse.Status.State)
 	assert.Contains(t, statusResponse.Status.Err, "CSR Decode failed")
 	assert.Nil(t, statusResponse.Certificate.Certificate)
@@ -77,6 +80,7 @@ func TestIssueNodeCertificateAgentRenewal(t *testing.T) {
 
 	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
 	statusResponse, err := tc.NodeCAClients[1].NodeCertificateStatus(context.Background(), statusRequest)
+	require.NoError(t, err)
 	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
 	assert.NotNil(t, statusResponse.Certificate.Certificate)
 	assert.Equal(t, role, statusResponse.Certificate.Role)
@@ -93,11 +97,13 @@ func TestIssueNodeCertificateManagerRenewal(t *testing.T) {
 	role := api.NodeRoleManager
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	issueResponse, err := tc.NodeCAClients[2].IssueNodeCertificate(context.Background(), issueRequest)
+	require.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
 	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
 	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
 	statusResponse, err := tc.NodeCAClients[2].NodeCertificateStatus(context.Background(), statusRequest)
+	require.NoError(t, err)
 	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
 	assert.NotNil(t, statusResponse.Certificate.Certificate)
 	assert.Equal(t, role, statusResponse.Certificate.Role)
@@ -187,6 +193,7 @@ func TestNodeCertificateAccept(t *testing.T) {
 	role := api.NodeRoleWorker
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
+	require.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
 	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
@@ -194,6 +201,7 @@ func TestNodeCertificateAccept(t *testing.T) {
 	role = api.NodeRoleManager
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	issueResponse, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
+	require.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
 	assert.Equal(t, api.NodeMembershipPending, issueResponse.NodeMembership)
 }
@@ -212,12 +220,14 @@ func TestNodeCertificateWithEmptyPolicies(t *testing.T) {
 	role := api.NodeRoleWorker
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
+	require.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
 	assert.Equal(t, api.NodeMembershipPending, issueResponse.NodeMembership)
 
 	role = api.NodeRoleManager
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	issueResponse, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
+	require.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
 	assert.Equal(t, api.NodeMembershipPending, issueResponse.NodeMembership)
 }
@@ -267,11 +277,13 @@ func TestNodeCertificateRenewalsDoNotRequireSecret(t *testing.T) {
 	role = api.NodeRoleWorker
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	issueResponse, err = tc.NodeCAClients[1].IssueNodeCertificate(context.Background(), issueRequest)
+	require.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
 	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
 	statusRequest = &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
 	statusResponse, err = tc.NodeCAClients[2].NodeCertificateStatus(context.Background(), statusRequest)
+	require.NoError(t, err)
 	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
 	assert.NotNil(t, statusResponse.Certificate.Certificate)
 	assert.Equal(t, role, statusResponse.Certificate.Role)
