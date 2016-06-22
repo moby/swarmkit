@@ -415,7 +415,7 @@ func LoadTLSCreds(rootCA RootCA, paths CertPaths) (*MutableTLSCreds, *MutableTLS
 		}
 
 		keyPair, newErr = tls.X509KeyPair(cert, key)
-		if err != nil {
+		if newErr != nil {
 			return nil, nil, err
 		}
 	}
