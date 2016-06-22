@@ -613,17 +613,21 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			n.manager = m
 			n.Unlock()
 
-			go n.initManagerConnection(ctx, ready)
+			connCtx, connCancel := context.WithCancel(ctx)
+			go n.initManagerConnection(connCtx, ready)
 
-			go func() {
-				select {
-				case <-ready:
-				case <-ctx.Done():
-				}
-				if ctx.Err() == nil {
-					n.remotes.Observe(api.Peer{NodeID: n.nodeID, Addr: n.config.ListenRemoteAPI}, 5)
-				}
-			}()
+			// this happens only on initial start
+			if ready != nil {
+				go func(ready chan struct{}) {
+					select {
+					case <-ready:
+						n.remotes.Observe(api.Peer{NodeID: n.nodeID, Addr: n.config.ListenRemoteAPI}, 5)
+					case <-connCtx.Done():
+					}
+				}(ready)
+			}
+
+			ready = nil
 
 			select {
 			case <-ctx.Done():
@@ -632,8 +636,8 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			// in case of demotion manager will stop itself
 			case <-done:
 			}
+			connCancel()
 
-			ready = nil // ready event happens once, even on multiple starts
 			n.Lock()
 			n.manager = nil
 			if n.conn != nil {
