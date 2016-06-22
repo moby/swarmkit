@@ -443,6 +443,7 @@ func (s *Server) Run(ctx context.Context) error {
 func (s *Server) Stop() error {
 	s.mu.Lock()
 	if !s.isRunning() {
+		s.mu.Unlock()
 		return fmt.Errorf("CA signer is already stopped")
 	}
 	s.cancel()
