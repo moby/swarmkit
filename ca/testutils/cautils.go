@@ -60,6 +60,7 @@ func AcceptancePolicy(worker, manager bool, secret string) api.AcceptancePolicy 
 // TestCA is a structure that encapsulates everything needed to test a CA Server
 type TestCA struct {
 	RootCA                ca.RootCA
+	ExternalSigningServer *ExternalSigningServer
 	MemoryStore           *store.MemoryStore
 	TempDir, Organization string
 	Paths                 *ca.SecurityConfigPaths
@@ -78,34 +79,45 @@ func (tc *TestCA) Stop() {
 	for _, conn := range tc.Conns {
 		conn.Close()
 	}
+	if tc.ExternalSigningServer != nil {
+		tc.ExternalSigningServer.Stop()
+	}
 	tc.CAServer.Stop()
 	tc.Server.Stop()
 }
 
 // NewNodeConfig returns security config for a new node, given a role
 func (tc *TestCA) NewNodeConfig(role string) (*ca.SecurityConfig, error) {
-	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, tc.Organization, tc.TempDir)
+	withNonSigningRoot := tc.ExternalSigningServer != nil
+	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, tc.Organization, tc.TempDir, withNonSigningRoot)
 }
 
 // WriteNewNodeConfig returns security config for a new node, given a role
 // saving the generated key and certificates to disk
 func (tc *TestCA) WriteNewNodeConfig(role string) (*ca.SecurityConfig, error) {
-	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, tc.Organization, tc.TempDir)
+	withNonSigningRoot := tc.ExternalSigningServer != nil
+	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, tc.Organization, tc.TempDir, withNonSigningRoot)
 }
 
 // NewNodeConfigOrg returns security config for a new node, given a role and an org
 func (tc *TestCA) NewNodeConfigOrg(role, org string) (*ca.SecurityConfig, error) {
-	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, org, tc.TempDir)
+	withNonSigningRoot := tc.ExternalSigningServer != nil
+	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, org, tc.TempDir, withNonSigningRoot)
 }
 
 // WriteNewNodeConfigOrg returns security config for a new node, given a role and an org
 // saving the generated key and certificates to disk
 func (tc *TestCA) WriteNewNodeConfigOrg(role, org string) (*ca.SecurityConfig, error) {
-	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, org, tc.TempDir)
+	withNonSigningRoot := tc.ExternalSigningServer != nil
+	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, org, tc.TempDir, withNonSigningRoot)
 }
 
+// External controls whether or not NewTestCA() will create a TestCA server
+// configured to use an external signer or not.
+var External bool
+
 // NewTestCA is a helper method that creates a TestCA and a bunch of default
-// connections and security configs
+// connections and security configs.
 func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
@@ -118,13 +130,25 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	rootCA, err := createAndWriteRootCA("swarm-test-CA", paths.RootCA, ca.DefaultNodeCertExpiration)
 	assert.NoError(t, err)
 
-	managerConfig, err := genSecurityConfig(s, rootCA, ca.ManagerRole, organization, "")
+	var (
+		externalSigningServer *ExternalSigningServer
+		externalSigningURLs   []string
+	)
+
+	if External {
+		// Start the CA API server.
+		externalSigningServer, err = NewExternalSigningServer(rootCA, tempBaseDir)
+		assert.NoError(t, err)
+		externalSigningURLs = []string{externalSigningServer.URL}
+	}
+
+	managerConfig, err := genSecurityConfig(s, rootCA, ca.ManagerRole, organization, "", External)
 	assert.NoError(t, err)
 
-	managerDiffOrgConfig, err := genSecurityConfig(s, rootCA, ca.ManagerRole, "swarm-test-org-2", "")
+	managerDiffOrgConfig, err := genSecurityConfig(s, rootCA, ca.ManagerRole, "swarm-test-org-2", "", External)
 	assert.NoError(t, err)
 
-	agentConfig, err := genSecurityConfig(s, rootCA, ca.AgentRole, organization, "")
+	agentConfig, err := genSecurityConfig(s, rootCA, ca.AgentRole, organization, "", External)
 	assert.NoError(t, err)
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -151,7 +175,7 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	serverOpts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(serverOpts...)
 
-	createClusterObject(t, s, policy)
+	createClusterObject(t, s, organization, policy, externalSigningURLs...)
 	caServer := ca.NewServer(s, managerConfig)
 	api.RegisterCAServer(grpcServer, caServer)
 	api.RegisterNodeCAServer(grpcServer, caServer)
@@ -176,21 +200,22 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	conns := []*grpc.ClientConn{conn1, conn2, conn3, conn4}
 
 	return &TestCA{
-		RootCA:        rootCA,
-		MemoryStore:   s,
-		Picker:        picker,
-		TempDir:       tempBaseDir,
-		Organization:  organization,
-		Paths:         paths,
-		Context:       ctx,
-		CAClients:     caClients,
-		NodeCAClients: nodeCAClients,
-		Conns:         conns,
-		CAServer:      caServer,
+		RootCA:                rootCA,
+		ExternalSigningServer: externalSigningServer,
+		MemoryStore:           s,
+		Picker:                picker,
+		TempDir:               tempBaseDir,
+		Organization:          organization,
+		Paths:                 paths,
+		Context:               ctx,
+		CAClients:             caClients,
+		NodeCAClients:         nodeCAClients,
+		Conns:                 conns,
+		CAServer:              caServer,
 	}
 }
 
-func createNode(s *store.MemoryStore, nodeID, role string, csr []byte) error {
+func createNode(s *store.MemoryStore, nodeID, role string, csr, cert []byte) error {
 	apiRole, _ := ca.FormatRole(role)
 
 	err := s.Update(func(tx store.Tx) error {
@@ -201,8 +226,9 @@ func createNode(s *store.MemoryStore, nodeID, role string, csr []byte) error {
 				CN:   nodeID,
 				Role: apiRole,
 				Status: api.IssuanceStatus{
-					State: api.IssuanceStatePending,
+					State: api.IssuanceStateIssued,
 				},
+				Certificate: cert,
 			},
 			Spec: api.NodeSpec{
 				Role:       apiRole,
@@ -216,7 +242,7 @@ func createNode(s *store.MemoryStore, nodeID, role string, csr []byte) error {
 	return err
 }
 
-func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, role, org, tmpDir string) (*ca.SecurityConfig, error) {
+func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, role, org, tmpDir string, nonSigningRoot bool) (*ca.SecurityConfig, error) {
 	req := &cfcsr.CertificateRequest{
 		KeyRequest: cfcsr.NewBasicKeyRequest(),
 	}
@@ -276,23 +302,34 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, role, org, tmpDir
 		return nil, err
 	}
 
-	err = createNode(s, nodeID, role, csr)
+	err = createNode(s, nodeID, role, csr, cert)
 	if err != nil {
 		return nil, err
+	}
+
+	if nonSigningRoot {
+		rootCA = ca.RootCA{
+			Cert:   rootCA.Cert,
+			Digest: rootCA.Digest,
+			Pool:   rootCA.Pool,
+		}
 	}
 
 	return ca.NewSecurityConfig(&rootCA, nodeClientTLSCreds, nodeServerTLSCreds), nil
 }
 
-func createClusterObject(t *testing.T, s *store.MemoryStore, acceptancePolicy api.AcceptancePolicy) {
+func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, acceptancePolicy api.AcceptancePolicy, externalCAURLS ...string) {
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
-			ID: identity.NewID(),
+			ID: clusterID,
 			Spec: api.ClusterSpec{
 				Annotations: api.Annotations{
 					Name: store.DefaultClusterName,
 				},
 				AcceptancePolicy: acceptancePolicy,
+				CAConfig: api.CAConfig{
+					ExternalCAURLs: externalCAURLS,
+				},
 			},
 		})
 		return nil
