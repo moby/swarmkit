@@ -19,6 +19,7 @@ import (
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type grpcDispatcher struct {
@@ -549,6 +550,7 @@ func TestSession(t *testing.T) {
 	assert.NotEmpty(t, resp.SessionID)
 
 	msg, err := stream.Recv()
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(msg.Managers))
 }
 
