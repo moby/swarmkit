@@ -6,22 +6,6 @@ import (
 )
 
 func parseContainer(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
-	if flags.Changed("image") {
-		image, err := flags.GetString("image")
-		if err != nil {
-			return err
-		}
-		spec.Task.GetContainer().Image = image
-	}
-
-	if flags.Changed("args") {
-		args, err := flags.GetStringSlice("args")
-		if err != nil {
-			return err
-		}
-		spec.Task.GetContainer().Args = args
-	}
-
 	if flags.Changed("env") {
 		env, err := flags.GetStringSlice("env")
 		if err != nil {

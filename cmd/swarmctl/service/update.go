@@ -13,7 +13,7 @@ import (
 
 var (
 	updateCmd = &cobra.Command{
-		Use:   "update <service ID>",
+		Use:   "update [OPTIONS] SERVICE [IMAGE] [ARGS...]",
 		Short: "Update a service",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -34,6 +34,16 @@ var (
 
 			if err := flagparser.Merge(cmd, spec, c); err != nil {
 				return err
+			}
+
+			// change the image if that positional arg is present
+			if len(args) > 1 {
+				spec.Task.GetContainer().Image = args[1]
+			}
+
+			// change the args too, if those positional args are present
+			if len(args) > 2 {
+				spec.Task.GetContainer().Args = args[2:]
 			}
 
 			if reflect.DeepEqual(spec, &service.Spec) {
