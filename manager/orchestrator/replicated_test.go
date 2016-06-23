@@ -18,7 +18,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	orchestrator := New(s)
+	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
@@ -195,6 +195,217 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	deletedTask := watchTaskDelete(t, watch)
 	assert.Equal(t, deletedTask.Status.State, api.TaskStateNew)
 	assert.Equal(t, deletedTask.ServiceAnnotations.Name, "name2")
+}
+
+func TestReplicatedScaleDown(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+
+	orchestrator := NewReplicatedOrchestrator(s)
+	defer orchestrator.Stop()
+
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
+
+	s1 := &api.Service{
+		ID: "id1",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Replicas: 6,
+				},
+			},
+		},
+	}
+
+	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateService(tx, s1))
+
+		nodes := []*api.Node{
+			{
+				ID: "node1",
+				Spec: api.NodeSpec{
+					Annotations: api.Annotations{
+						Name: "name1",
+					},
+					Availability: api.NodeAvailabilityActive,
+				},
+				Status: api.NodeStatus{
+					State: api.NodeStatus_READY,
+				},
+			},
+			{
+				ID: "node2",
+				Spec: api.NodeSpec{
+					Annotations: api.Annotations{
+						Name: "name2",
+					},
+					Availability: api.NodeAvailabilityActive,
+				},
+				Status: api.NodeStatus{
+					State: api.NodeStatus_READY,
+				},
+			},
+			{
+				ID: "node3",
+				Spec: api.NodeSpec{
+					Annotations: api.Annotations{
+						Name: "name3",
+					},
+					Availability: api.NodeAvailabilityActive,
+				},
+				Status: api.NodeStatus{
+					State: api.NodeStatus_READY,
+				},
+			},
+		}
+		for _, node := range nodes {
+			assert.NoError(t, store.CreateNode(tx, node))
+		}
+
+		// task1 is assigned to node1
+		// task2 - task3 are assigned to node2
+		// task4 - task6 are assigned to node3
+		// task7 is unassigned
+
+		tasks := []*api.Task{
+			{
+				ID:           "task1",
+				DesiredState: api.TaskStateRunning,
+				Status: api.TaskStatus{
+					State: api.TaskStateRunning,
+				},
+				ServiceAnnotations: api.Annotations{
+					Name: "task1",
+				},
+				ServiceID: "id1",
+				NodeID:    "node1",
+			},
+			{
+				ID:           "task2",
+				DesiredState: api.TaskStateRunning,
+				Status: api.TaskStatus{
+					State: api.TaskStateRunning,
+				},
+				ServiceAnnotations: api.Annotations{
+					Name: "task2",
+				},
+				ServiceID: "id1",
+				NodeID:    "node2",
+			},
+			{
+				ID:           "task3",
+				DesiredState: api.TaskStateRunning,
+				Status: api.TaskStatus{
+					State: api.TaskStateRunning,
+				},
+				ServiceAnnotations: api.Annotations{
+					Name: "task3",
+				},
+				ServiceID: "id1",
+				NodeID:    "node2",
+			},
+			{
+				ID:           "task4",
+				DesiredState: api.TaskStateRunning,
+				Status: api.TaskStatus{
+					State: api.TaskStateRunning,
+				},
+				ServiceAnnotations: api.Annotations{
+					Name: "task4",
+				},
+				ServiceID: "id1",
+				NodeID:    "node3",
+			},
+			{
+				ID:           "task5",
+				DesiredState: api.TaskStateRunning,
+				Status: api.TaskStatus{
+					State: api.TaskStateRunning,
+				},
+				ServiceAnnotations: api.Annotations{
+					Name: "task5",
+				},
+				ServiceID: "id1",
+				NodeID:    "node3",
+			},
+			{
+				ID:           "task6",
+				DesiredState: api.TaskStateRunning,
+				Status: api.TaskStatus{
+					State: api.TaskStateRunning,
+				},
+				ServiceAnnotations: api.Annotations{
+					Name: "task6",
+				},
+				ServiceID: "id1",
+				NodeID:    "node3",
+			},
+			{
+				ID:           "task7",
+				DesiredState: api.TaskStateRunning,
+				Status: api.TaskStatus{
+					State: api.TaskStateNew,
+				},
+				ServiceAnnotations: api.Annotations{
+					Name: "task7",
+				},
+				ServiceID: "id1",
+			},
+		}
+		for _, task := range tasks {
+			assert.NoError(t, store.CreateTask(tx, task))
+		}
+
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Start the orchestrator.
+	go func() {
+		assert.NoError(t, orchestrator.Run(ctx))
+	}()
+
+	// Replicas was set to 6, but we started with 7 tasks. task7 should
+	// be the one the orchestrator chose to shut down because it was not
+	// assigned yet.
+
+	observedShutdown := watchShutdownTask(t, watch)
+	assert.Equal(t, "task7", observedShutdown.ID)
+
+	// Now scale down to 3 instances.
+	err = s.Update(func(tx store.Tx) error {
+		s1.Spec.Mode = &api.ServiceSpec_Replicated{
+			Replicated: &api.ReplicatedService{
+				Replicas: 3,
+			},
+		}
+		assert.NoError(t, store.UpdateService(tx, s1))
+		return nil
+	})
+
+	// Tasks should be shut down in a way that balances the remaining tasks.
+
+	shutdowns := make(map[string]int)
+	for i := 0; i != 3; i++ {
+		observedShutdown := watchShutdownTask(t, watch)
+		shutdowns[observedShutdown.NodeID]++
+	}
+
+	assert.Equal(t, 0, shutdowns["node1"])
+	assert.Equal(t, 1, shutdowns["node2"])
+	assert.Equal(t, 2, shutdowns["node3"])
+
+	// There should be one remaining task for each node
+	s.View(func(readTx store.ReadTx) {
+		tasks, err := store.FindTasks(readTx, store.ByDesiredState(api.TaskStateRunning))
+		assert.NoError(t, err)
+		assert.Len(t, tasks, 3)
+	})
 }
 
 func watchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {

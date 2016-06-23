@@ -326,7 +326,7 @@ func (m *Manager) Run(parent context.Context) error {
 					log.G(ctx).WithError(err).Error("root key-encrypting-key rotation failed")
 				}
 
-				m.replicatedOrchestrator = orchestrator.New(s)
+				m.replicatedOrchestrator = orchestrator.NewReplicatedOrchestrator(s)
 				m.globalOrchestrator = orchestrator.NewGlobalOrchestrator(s)
 				m.taskReaper = orchestrator.NewTaskReaper(s)
 				m.scheduler = scheduler.New(s)
