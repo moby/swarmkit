@@ -238,6 +238,10 @@ func NewNode(ctx context.Context, opts NewNodeOptions) (*Node, error) {
 				return nil, err
 			}
 
+			for _, removed := range resp.RemovedMembers {
+				n.cluster.RemoveMember(removed)
+			}
+
 			n.Config.ID = resp.RaftID
 
 			if _, err := n.createWAL(opts.ID); err != nil {
@@ -513,7 +517,11 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 	}
 	log.Debugf("node joined")
 
-	return &api.JoinResponse{Members: nodes, RaftID: raftID}, nil
+	return &api.JoinResponse{
+		Members:        nodes,
+		RaftID:         raftID,
+		RemovedMembers: n.cluster.Removed(),
+	}, nil
 }
 
 // addMember submits a configuration change to add a new member on the raft cluster.
@@ -671,7 +679,7 @@ func (n *Node) LeaderAddr() (string, error) {
 func (n *Node) registerNode(node *api.RaftMember) error {
 	member := &membership.Member{}
 
-	if n.cluster.GetMember(node.RaftID) != nil {
+	if n.cluster.GetMember(node.RaftID) != nil || n.cluster.IsIDRemoved(node.RaftID) {
 		// member already exists
 		return nil
 	}
