@@ -158,12 +158,8 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 
 	ctx := context.Background()
 
-	go func() {
-		grpcServer.Serve(l)
-	}()
-	go func() {
-		caServer.Run(ctx)
-	}()
+	go grpcServer.Serve(l)
+	go caServer.Run(ctx)
 
 	// Wait for caServer to be ready to serve
 	<-caServer.Ready()
