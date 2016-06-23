@@ -149,7 +149,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 	d.mu.Lock()
 	if d.isRunning() {
 		d.mu.Unlock()
-		return fmt.Errorf("dispatcher is stopped")
+		return fmt.Errorf("dispatcher is already running")
 	}
 	logger := log.G(ctx).WithField("module", "dispatcher")
 	ctx = log.WithLogger(ctx, logger)
@@ -177,6 +177,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 		state.EventUpdateCluster{},
 	)
 	if err != nil {
+		d.mu.Unlock()
 		return err
 	}
 	defer cancel()
