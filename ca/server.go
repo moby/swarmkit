@@ -450,6 +450,7 @@ func (s *Server) Stop() error {
 	s.mu.Unlock()
 	// wait for all handlers to finish their CA deals,
 	s.wg.Wait()
+	s.started = make(chan struct{})
 	return nil
 }
 

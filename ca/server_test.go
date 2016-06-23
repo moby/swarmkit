@@ -23,6 +23,22 @@ func TestGetRootCACertificate(t *testing.T) {
 	assert.NotEmpty(t, resp.Certificate)
 }
 
+func TestRestartRootCA(t *testing.T) {
+	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
+	defer tc.Stop()
+
+	resp1, err := tc.CAClients[0].GetRootCACertificate(context.Background(), &api.GetRootCACertificateRequest{})
+	assert.NoError(t, err)
+	assert.NotEmpty(t, resp1.Certificate)
+
+	tc.CAServer.Stop()
+	go tc.CAServer.Run(context.Background())
+
+	resp2, err := tc.CAClients[0].GetRootCACertificate(context.Background(), &api.GetRootCACertificateRequest{})
+	assert.NoError(t, err)
+	assert.Equal(t, resp1.Certificate, resp2.Certificate)
+}
+
 func TestIssueNodeCertificate(t *testing.T) {
 	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
 	defer tc.Stop()
