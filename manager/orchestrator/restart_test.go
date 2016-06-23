@@ -17,7 +17,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	orchestrator := New(s)
+	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
@@ -119,7 +119,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	orchestrator := New(s)
+	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
@@ -219,7 +219,7 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	orchestrator := New(s)
+	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
@@ -313,7 +313,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	orchestrator := New(s)
+	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
@@ -402,7 +402,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	orchestrator := New(s)
+	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
@@ -537,7 +537,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
 
-	orchestrator := New(s)
+	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
