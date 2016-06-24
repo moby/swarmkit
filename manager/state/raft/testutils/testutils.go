@@ -19,6 +19,7 @@ import (
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/identity"
+	"github.com/docker/swarmkit/manager/ping"
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/pivotal-golang/clock/fakeclock"
@@ -29,7 +30,7 @@ import (
 // TestNode represents a raft test node
 type TestNode struct {
 	*raft.Node
-	Listener       *wrappedListener
+	Listener       *WrappedListener
 	SecurityConfig *ca.SecurityConfig
 }
 
@@ -115,17 +116,18 @@ func WaitForPeerNumber(t *testing.T, clockSource *fakeclock.FakeClock, nodes map
 	}))
 }
 
-// wrappedListener disables the Close method to make it possible to reuse a
+// WrappedListener disables the Close method to make it possible to reuse a
 // socket. close must be called to release the socket.
-type wrappedListener struct {
+type WrappedListener struct {
 	net.Listener
 	acceptConn chan net.Conn
 	acceptErr  chan error
 	closed     chan struct{}
 }
 
-func newWrappedListener(l net.Listener) *wrappedListener {
-	wrappedListener := wrappedListener{
+// NewWrappedListener creates a new wrapped listener to register the raft server
+func NewWrappedListener(l net.Listener) *WrappedListener {
+	wrappedListener := WrappedListener{
 		Listener:   l,
 		acceptConn: make(chan net.Conn),
 		acceptErr:  make(chan error, 1),
@@ -146,8 +148,9 @@ func newWrappedListener(l net.Listener) *wrappedListener {
 	return &wrappedListener
 }
 
-func (l *wrappedListener) Accept() (net.Conn, error) {
-	// closure must take precendence over taking a connection
+// Accept accepts new connections on a wrapped listener
+func (l *WrappedListener) Accept() (net.Conn, error) {
+	// closure must take precedence over taking a connection
 	// from the channel
 	select {
 	case <-l.closed:
@@ -165,19 +168,21 @@ func (l *wrappedListener) Accept() (net.Conn, error) {
 	}
 }
 
-func (l *wrappedListener) Close() error {
+// Close notifies that the listener can't accept any more connections
+func (l *WrappedListener) Close() error {
 	l.closed <- struct{}{}
 	return nil
 }
 
-func (l *wrappedListener) close() error {
+// CloseListener closes the listener
+func (l *WrappedListener) CloseListener() error {
 	return l.Listener.Close()
 }
 
 // recycleWrappedListener creates a new wrappedListener that uses the same
 // listening socket as the supplied wrappedListener.
-func recycleWrappedListener(old *wrappedListener) *wrappedListener {
-	return &wrappedListener{
+func recycleWrappedListener(old *WrappedListener) *WrappedListener {
+	return &WrappedListener{
 		Listener:   old.Listener,
 		acceptConn: old.acceptConn,
 		acceptErr:  old.acceptErr,
@@ -189,7 +194,7 @@ func recycleWrappedListener(old *wrappedListener) *wrappedListener {
 func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA, opts ...raft.NewNodeOptions) *TestNode {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "can't bind to raft service port")
-	wrappedListener := newWrappedListener(l)
+	wrappedListener := NewWrappedListener(l)
 
 	securityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
 	require.NoError(t, err)
@@ -217,11 +222,21 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA,
 	}
 	if len(opts) == 1 {
 		newNodeOpts.JoinAddr = opts[0].JoinAddr
+		if opts[0].Addr != "" {
+			newNodeOpts.Addr = opts[0].Addr
+		}
 	}
 
-	n, err := raft.NewNode(context.Background(), newNodeOpts)
-	require.NoError(t, err, "can't create raft node")
+	n := raft.NewNode(context.Background(), newNodeOpts)
 	n.Server = s
+
+	ping.Register(s, &ping.Ping{})
+	raft.Register(s, n)
+
+	go func() {
+		// After stopping, we should receive an error from Serve
+		assert.Error(t, s.Serve(wrappedListener))
+	}()
 
 	return &TestNode{Node: n, Listener: wrappedListener, SecurityConfig: securityConfig}
 }
@@ -232,6 +247,9 @@ func NewInitNode(t *testing.T, tc *cautils.TestCA, raftConfig *api.RaftConfig, o
 	ctx := context.Background()
 	clockSource := fakeclock.NewFakeClock(time.Now())
 	n := NewNode(t, clockSource, tc, opts...)
+
+	err := n.Node.JoinAndStart()
+	require.NoError(t, err, "can't join cluster")
 
 	go n.Run(ctx)
 
@@ -249,13 +267,6 @@ func NewInitNode(t *testing.T, tc *cautils.TestCA, raftConfig *api.RaftConfig, o
 		}))
 	}
 
-	raft.Register(n.Server, n.Node)
-
-	go func() {
-		// After stopping, we should receive an error from Serve
-		assert.Error(t, n.Server.Serve(n.Listener))
-	}()
-
 	return n, clockSource
 }
 
@@ -268,13 +279,11 @@ func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, tc
 	derivedOpts.JoinAddr = join
 	n := NewNode(t, clockSource, tc, derivedOpts)
 
-	go n.Run(context.Background())
-	raft.Register(n.Server, n.Node)
+	err := n.Node.JoinAndStart()
+	require.NoError(t, err, "can't join cluster")
 
-	go func() {
-		// After stopping, we should receive an error from Serve
-		assert.Error(t, n.Server.Serve(n.Listener))
-	}()
+	go n.Run(context.Background())
+
 	return n
 }
 
@@ -299,18 +308,22 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 	}
 
 	ctx := context.Background()
-	n, err := raft.NewNode(ctx, newNodeOpts)
-	require.NoError(t, err, "can't create raft node")
+	n := raft.NewNode(ctx, newNodeOpts)
 	n.Server = s
 
-	go n.Run(ctx)
-
+	ping.Register(s, &ping.Ping{})
 	raft.Register(s, n)
 
 	go func() {
 		// After stopping, we should receive an error from Serve
 		assert.Error(t, s.Serve(wrappedListener))
 	}()
+
+	err := n.JoinAndStart()
+	require.NoError(t, err, "can't join cluster")
+
+	go n.Run(ctx)
+
 	return &TestNode{Node: n, Listener: wrappedListener, SecurityConfig: securityConfig}
 }
 
@@ -344,7 +357,7 @@ func AddRaftNode(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint6
 func TeardownCluster(t *testing.T, nodes map[uint64]*TestNode) {
 	for _, node := range nodes {
 		ShutdownNode(node)
-		node.Listener.close()
+		node.Listener.CloseListener()
 	}
 }
 

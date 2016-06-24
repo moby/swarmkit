@@ -4,16 +4,19 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"reflect"
 	"testing"
 	"time"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 
 	"golang.org/x/net/context"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state/raft"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
@@ -568,23 +571,39 @@ func TestRaftUnreachableNode(t *testing.T) {
 
 	ctx := context.Background()
 	// Add a new node, but don't start its server yet
-	n := raftutils.NewNode(t, clockSource, tc, raft.NewNodeOptions{JoinAddr: nodes[1].Address})
-	go n.Run(ctx)
+	nodes[2] = raftutils.NewNode(t, clockSource, tc, raft.NewNodeOptions{JoinAddr: nodes[1].Address})
+
+	err := nodes[2].JoinAndStart()
+	require.NoError(t, err, "can't join cluster")
+
+	go nodes[2].Run(ctx)
+
+	// Stop the Raft server of second node on purpose after joining
+	nodes[2].Server.Stop()
+	nodes[2].Listener.CloseListener()
 
 	raftutils.AdvanceTicks(clockSource, 5)
 	time.Sleep(100 * time.Millisecond)
 
-	raft.Register(n.Server, n.Node)
+	l, err := net.Listen("tcp", nodes[2].Address)
+	require.NoError(t, err, "can't bind to raft service port")
+	wrappedListener := raftutils.NewWrappedListener(l)
 
-	// Now start the new node's server
+	securityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
+	require.NoError(t, err)
+
+	serverOpts := []grpc.ServerOption{grpc.Creds(securityConfig.ServerTLSCreds)}
+	s := grpc.NewServer(serverOpts...)
+
+	nodes[2].Server = s
+	raft.Register(s, nodes[2].Node)
+
 	go func() {
 		// After stopping, we should receive an error from Serve
-		assert.Error(t, n.Server.Serve(n.Listener))
+		assert.Error(t, s.Serve(wrappedListener))
 	}()
 
-	nodes[2] = n
 	raftutils.WaitForCluster(t, clockSource, nodes)
-
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Propose a value
@@ -594,4 +613,22 @@ func TestRaftUnreachableNode(t *testing.T) {
 	// All nodes should have the value in the physical store
 	raftutils.CheckValue(t, clockSource, nodes[1], value)
 	raftutils.CheckValue(t, clockSource, nodes[2], value)
+}
+
+func TestRaftJoinWithIncorrectAddress(t *testing.T) {
+	t.Parallel()
+
+	nodes := make(map[uint64]*raftutils.TestNode)
+	var clockSource *fakeclock.FakeClock
+	nodes[1], clockSource = raftutils.NewInitNode(t, tc, nil)
+
+	// Try joining a new node with an incorrect address
+	n := raftutils.NewNode(t, clockSource, tc, raft.NewNodeOptions{JoinAddr: nodes[1].Address, Addr: "1.2.3.4:1234"})
+
+	err := n.JoinAndStart()
+	assert.NotNil(t, err)
+	assert.Equal(t, grpc.ErrorDesc(err), raft.ErrPingFailure.Error())
+
+	// Check if first node still has only itself registered in the memberlist
+	assert.Equal(t, len(nodes[1].GetMemberlist()), 1)
 }
