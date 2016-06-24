@@ -252,7 +252,7 @@ Update options can be set at service creation and updated later on. If an update
 
 An operator can manually define the *Availability* of a node and can *Pause* and *Drain* nodes.
 
-Let's put `node-1` into maintanance mode:
+Let's put `node-1` into maintenance mode:
 
 ```
 $ swarmctl node drain node-1

@@ -268,7 +268,7 @@ func _ServiceSpec_OneofSizer(msg proto.Message) (n int) {
 // instructing Swarm on how this service should work on the particular
 // network.
 type ServiceSpec_NetworkAttachmentConfig struct {
-	// Target specifies the target network for attachement. This value may be a
+	// Target specifies the target network for attachment. This value may be a
 	// network name or identifier. Only identifiers are supported at this time.
 	Target string `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
 	// Aliases specifies a list of discoverable alternate names for the service on this Target.
