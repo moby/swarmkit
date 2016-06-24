@@ -121,7 +121,6 @@ func New(cluster Cluster, c *Config) *Dispatcher {
 		cluster:                   cluster,
 		mgrQueue:                  watch.NewQueue(16),
 		keyMgrQueue:               watch.NewQueue(16),
-		lastSeenManagers:          getWeightedPeers(cluster),
 		taskUpdates:               make(map[string]*api.TaskStatus),
 		processTaskUpdatesTrigger: make(chan struct{}, 1),
 		config: c,

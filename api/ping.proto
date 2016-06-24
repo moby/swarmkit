@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package docker.swarmkit.v1;
+
+import "gogoproto/gogo.proto";
+import "plugin/plugin.proto";
+
+// Ping is the API provided by managers in the cluster to prove reachability over their
+// advertised address.
+service Ping {
+	// Ping sends a message to a node and expects a response back.
+	rpc Ping(PingRequest) returns (PingResponse) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	};
+}
+
+message PingRequest {}
+message PingResponse {}
