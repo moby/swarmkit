@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/events"
@@ -68,8 +67,11 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 			}
 			return err
 		}
-		// TOOD(stevvooe): Report this status somewhere.
-		logrus.Debugln("pull progress", m)
+		// TODO(stevvooe): Report this status somewhere.
+		// TODO(dperny): commented out, this spams the logs too hard. should
+		// still report errors if they occur, but won't report generic pull
+		// progress.
+		// logrus.Debugln("pull progress", m)
 	}
 	// if the final stream object contained an error, return it
 	if errMsg, ok := m["error"]; ok {
