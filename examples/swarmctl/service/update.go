@@ -6,8 +6,8 @@ import (
 	"reflect"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/cmd/swarmctl/common"
-	"github.com/docker/swarmkit/cmd/swarmctl/service/flagparser"
+	"github.com/docker/swarmkit/examples/swarmctl/common"
+	"github.com/docker/swarmkit/examples/swarmctl/service/flagparser"
 	"github.com/spf13/cobra"
 )
 

@@ -1,33 +1,29 @@
-package network
+package task
 
 import (
 	"errors"
 	"fmt"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/cmd/swarmctl/common"
+	"github.com/docker/swarmkit/examples/swarmctl/common"
 	"github.com/spf13/cobra"
 )
 
 var (
 	removeCmd = &cobra.Command{
-		Use:     "remove <network ID>",
-		Short:   "Remove a network",
+		Use:     "remove <task ID>",
+		Short:   "Remove a task",
 		Aliases: []string{"rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return errors.New("network ID missing")
+				return errors.New("task ID missing")
 			}
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
 			}
 
-			network, err := GetNetwork(common.Context(cmd), c, args[0])
-			if err != nil {
-				return err
-			}
-			_, err = c.RemoveNetwork(common.Context(cmd), &api.RemoveNetworkRequest{NetworkID: network.ID})
+			_, err = c.RemoveTask(common.Context(cmd), &api.RemoveTaskRequest{TaskID: args[0]})
 			if err != nil {
 				return err
 			}

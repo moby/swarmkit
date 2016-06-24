@@ -1,4 +1,4 @@
-package cluster
+package network
 
 import (
 	"fmt"
@@ -6,14 +6,14 @@ import (
 	"text/tabwriter"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/cmd/swarmctl/common"
+	"github.com/docker/swarmkit/examples/swarmctl/common"
 	"github.com/spf13/cobra"
 )
 
 var (
 	listCmd = &cobra.Command{
 		Use:   "ls",
-		Short: "List clusters",
+		Short: "List networks",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			flags := cmd.Flags()
 
@@ -26,12 +26,12 @@ var (
 			if err != nil {
 				return err
 			}
-			r, err := c.ListClusters(common.Context(cmd), &api.ListClustersRequest{})
+			r, err := c.ListNetworks(common.Context(cmd), &api.ListNetworksRequest{})
 			if err != nil {
 				return err
 			}
 
-			var output func(j *api.Cluster)
+			var output func(*api.Network)
 
 			if !quiet {
 				w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
@@ -39,21 +39,21 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				common.PrintHeader(w, "ID", "Name")
-				output = func(s *api.Cluster) {
-					spec := s.Spec
-
-					fmt.Fprintf(w, "%s\t%s\n",
-						s.ID,
+				common.PrintHeader(w, "ID", "Name", "Driver")
+				output = func(n *api.Network) {
+					spec := n.Spec
+					fmt.Fprintf(w, "%s\t%s\t%s\n",
+						n.ID,
 						spec.Annotations.Name,
+						n.DriverState.Name,
 					)
 				}
 
 			} else {
-				output = func(j *api.Cluster) { fmt.Println(j.ID) }
+				output = func(n *api.Network) { fmt.Println(n.ID) }
 			}
 
-			for _, j := range r.Clusters {
+			for _, j := range r.Networks {
 				output(j)
 			}
 			return nil

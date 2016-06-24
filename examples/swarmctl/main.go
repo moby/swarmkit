@@ -3,11 +3,11 @@ package main
 import (
 	"os"
 
-	"github.com/docker/swarmkit/cmd/swarmctl/cluster"
-	"github.com/docker/swarmkit/cmd/swarmctl/network"
-	"github.com/docker/swarmkit/cmd/swarmctl/node"
-	"github.com/docker/swarmkit/cmd/swarmctl/service"
-	"github.com/docker/swarmkit/cmd/swarmctl/task"
+	"github.com/docker/swarmkit/examples/swarmctl/cluster"
+	"github.com/docker/swarmkit/examples/swarmctl/network"
+	"github.com/docker/swarmkit/examples/swarmctl/node"
+	"github.com/docker/swarmkit/examples/swarmctl/service"
+	"github.com/docker/swarmkit/examples/swarmctl/task"
 	"github.com/docker/swarmkit/version"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
