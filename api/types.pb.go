@@ -14,7 +14,7 @@
 		ca.proto
 		snapshot.proto
 		raft.proto
-		ping.proto
+		health.proto
 
 	It has these top-level messages:
 		Version
@@ -133,8 +133,8 @@
 		ResolveAddressResponse
 		InternalRaftRequest
 		StoreAction
-		PingRequest
-		PingResponse
+		HealthCheckRequest
+		HealthCheckResponse
 */
 package api
 

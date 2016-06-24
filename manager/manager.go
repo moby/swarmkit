@@ -19,9 +19,9 @@ import (
 	"github.com/docker/swarmkit/manager/allocator"
 	"github.com/docker/swarmkit/manager/controlapi"
 	"github.com/docker/swarmkit/manager/dispatcher"
+	"github.com/docker/swarmkit/manager/health"
 	"github.com/docker/swarmkit/manager/keymanager"
 	"github.com/docker/swarmkit/manager/orchestrator"
-	"github.com/docker/swarmkit/manager/ping"
 	"github.com/docker/swarmkit/manager/raftpicker"
 	"github.com/docker/swarmkit/manager/scheduler"
 	"github.com/docker/swarmkit/manager/state/raft"
@@ -429,13 +429,14 @@ func (m *Manager) Run(parent context.Context) error {
 	}
 
 	baseControlAPI := controlapi.NewServer(m.RaftNode.MemoryStore(), m.RaftNode)
+	healthServer := health.NewHealthServer()
 
 	authenticatedControlAPI := api.NewAuthenticatedWrapperControlServer(baseControlAPI, authorize)
 	authenticatedDispatcherAPI := api.NewAuthenticatedWrapperDispatcherServer(m.Dispatcher, authorize)
 	authenticatedCAAPI := api.NewAuthenticatedWrapperCAServer(m.caserver, authorize)
 	authenticatedNodeCAAPI := api.NewAuthenticatedWrapperNodeCAServer(m.caserver, authorize)
 	authenticatedRaftAPI := api.NewAuthenticatedWrapperRaftServer(m.RaftNode, authorize)
-	authenticatedPingAPI := api.NewAuthenticatedWrapperPingServer(&ping.Ping{}, authorize)
+	authenticatedHealthAPI := api.NewAuthenticatedWrapperHealthServer(healthServer, authorize)
 	authenticatedRaftMembershipAPI := api.NewAuthenticatedWrapperRaftMembershipServer(m.RaftNode, authorize)
 
 	proxyDispatcherAPI := api.NewRaftProxyDispatcherServer(authenticatedDispatcherAPI, cs, m.RaftNode, ca.WithMetadataForwardTLSInfo)
@@ -457,7 +458,7 @@ func (m *Manager) Run(parent context.Context) error {
 	api.RegisterCAServer(m.server, proxyCAAPI)
 	api.RegisterNodeCAServer(m.server, proxyNodeCAAPI)
 	api.RegisterRaftServer(m.server, authenticatedRaftAPI)
-	api.RegisterPingServer(m.server, authenticatedPingAPI)
+	api.RegisterHealthServer(m.server, authenticatedHealthAPI)
 	api.RegisterRaftMembershipServer(m.server, proxyRaftMembershipAPI)
 	api.RegisterControlServer(m.localserver, localProxyControlAPI)
 	api.RegisterControlServer(m.server, authenticatedControlAPI)
@@ -479,6 +480,9 @@ func (m *Manager) Run(parent context.Context) error {
 			}
 		}(proto, l)
 	}
+
+	// Set the raft server as serving for the health server
+	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
 
 	if err := m.RaftNode.JoinAndStart(); err != nil {
 		for _, lis := range m.listeners {

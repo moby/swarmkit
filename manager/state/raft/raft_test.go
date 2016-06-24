@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"reflect"
 	"testing"
 	"time"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state/raft"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
@@ -570,7 +568,7 @@ func TestRaftUnreachableNode(t *testing.T) {
 	nodes[1], clockSource = raftutils.NewInitNode(t, tc, nil)
 
 	ctx := context.Background()
-	// Add a new node, but don't start its server yet
+	// Add a new node
 	nodes[2] = raftutils.NewNode(t, clockSource, tc, raft.NewNodeOptions{JoinAddr: nodes[1].Address})
 
 	err := nodes[2].JoinAndStart()
@@ -580,18 +578,13 @@ func TestRaftUnreachableNode(t *testing.T) {
 
 	// Stop the Raft server of second node on purpose after joining
 	nodes[2].Server.Stop()
-	nodes[2].Listener.CloseListener()
+	nodes[2].Listener.Close()
 
 	raftutils.AdvanceTicks(clockSource, 5)
 	time.Sleep(100 * time.Millisecond)
 
-	l, err := net.Listen("tcp", nodes[2].Address)
-	require.NoError(t, err, "can't bind to raft service port")
-	wrappedListener := raftutils.NewWrappedListener(l)
-
-	securityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
-	require.NoError(t, err)
-
+	wrappedListener := raftutils.RecycleWrappedListener(nodes[2].Listener)
+	securityConfig := nodes[2].SecurityConfig
 	serverOpts := []grpc.ServerOption{grpc.Creds(securityConfig.ServerTLSCreds)}
 	s := grpc.NewServer(serverOpts...)
 
@@ -627,7 +620,7 @@ func TestRaftJoinWithIncorrectAddress(t *testing.T) {
 
 	err := n.JoinAndStart()
 	assert.NotNil(t, err)
-	assert.Equal(t, grpc.ErrorDesc(err), raft.ErrPingFailure.Error())
+	assert.Equal(t, grpc.ErrorDesc(err), raft.ErrHealthCheckFailure.Error())
 
 	// Check if first node still has only itself registered in the memberlist
 	assert.Equal(t, len(nodes[1].GetMemberlist()), 1)
