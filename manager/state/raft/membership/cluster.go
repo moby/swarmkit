@@ -166,12 +166,12 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 // of quorum, this check is needed before submitting a configuration change
 // that might block or harm the Cluster on Member recovery
 func (c *Cluster) CanRemoveMember(from uint64, id uint64) bool {
-	members := c.Members()
-
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	nmembers := 0
 	nreachable := 0
 
-	for _, m := range members {
+	for _, m := range c.members {
 		// Skip the node that is going to be deleted
 		if m.RaftID == id {
 			continue
@@ -193,7 +193,7 @@ func (c *Cluster) CanRemoveMember(from uint64, id uint64) bool {
 	}
 
 	// Special case of 2 managers
-	if nreachable == 1 && len(members) <= 2 {
+	if nreachable == 1 && len(c.members) <= 2 {
 		return false
 	}
 
