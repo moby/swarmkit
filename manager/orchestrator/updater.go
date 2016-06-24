@@ -191,6 +191,9 @@ func (u *Updater) updateTask(ctx context.Context, service *api.Service, original
 		if t == nil {
 			return fmt.Errorf("task %s not found while trying to update it", original.ID)
 		}
+		if t.DesiredState > api.TaskStateRunning {
+			return fmt.Errorf("task %s was already shut down when reached by updater", original.ID)
+		}
 		t.DesiredState = api.TaskStateShutdown
 		if err := store.UpdateTask(tx, t); err != nil {
 			return err
