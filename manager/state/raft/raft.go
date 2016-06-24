@@ -31,9 +31,9 @@ import (
 )
 
 var (
-	// ErrPingFailure is returned when there is an issue with the initial handshake which means
+	// ErrHealthCheckFailure is returned when there is an issue with the initial handshake which means
 	// that the address provided must be invalid or there is ongoing connectivity issues at join time.
-	ErrPingFailure = errors.New("raft: could not connect to prospective new cluster member using its advertised address")
+	ErrHealthCheckFailure = errors.New("raft: could not connect to prospective new cluster member using its advertised address")
 	// ErrNoRaftMember is thrown when the node is not yet part of a raft cluster
 	ErrNoRaftMember = errors.New("raft: node is not yet part of a raft cluster")
 	// ErrConfChangeRefused is returned when there is an issue with the configuration change
@@ -519,7 +519,7 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 
 	// We do not bother submitting a configuration change for the
 	// new member if we can't contact it back using its address
-	if err := n.ping(ctx, req.Addr, 5*time.Second); err != nil {
+	if err := n.checkHealth(ctx, req.Addr, 5*time.Second); err != nil {
 		return nil, err
 	}
 
@@ -542,19 +542,23 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 	return &api.JoinResponse{Members: nodes, RaftID: raftID}, nil
 }
 
-// ping tries to contact an aspiring member through its advertised address
-func (n *Node) ping(ctx context.Context, addr string, timeout time.Duration) error {
+// checkHealth tries to contact an aspiring member through its advertised address
+// and checks its raft server is running.
+func (n *Node) checkHealth(ctx context.Context, addr string, timeout time.Duration) error {
 	conn, err := dial(addr, "tcp", n.tlsCredentials, timeout)
 	if err != nil {
 		return err
 	}
 
-	client := api.NewPingClient(conn)
+	client := api.NewHealthClient(conn)
 	defer conn.Close()
 
-	_, err = client.Ping(ctx, &api.PingRequest{})
+	resp, err := client.Check(ctx, &api.HealthCheckRequest{Service: "Raft"})
 	if err != nil {
-		return ErrPingFailure
+		return ErrHealthCheckFailure
+	}
+	if resp != nil && resp.Status != api.HealthCheckResponse_SERVING {
+		return ErrHealthCheckFailure
 	}
 
 	return nil
@@ -1006,7 +1010,9 @@ func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRa
 		return nil, ErrRequestTooLarge
 	}
 
-	err = n.Propose(ctx, data)
+	// This must use the context which is cancelled by stop() to avoid a
+	// deadlock on shutdown.
+	err = n.Propose(n.Ctx, data)
 	if err != nil {
 		n.wait.cancel(r.ID)
 		return nil, err

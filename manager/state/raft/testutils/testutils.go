@@ -19,7 +19,7 @@ import (
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/ping"
+	"github.com/docker/swarmkit/manager/health"
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/pivotal-golang/clock/fakeclock"
@@ -175,13 +175,13 @@ func (l *WrappedListener) Close() error {
 }
 
 // CloseListener closes the listener
-func (l *WrappedListener) CloseListener() error {
+func (l *WrappedListener) close() error {
 	return l.Listener.Close()
 }
 
-// recycleWrappedListener creates a new wrappedListener that uses the same
+// RecycleWrappedListener creates a new wrappedListener that uses the same
 // listening socket as the supplied wrappedListener.
-func recycleWrappedListener(old *WrappedListener) *WrappedListener {
+func RecycleWrappedListener(old *WrappedListener) *WrappedListener {
 	return &WrappedListener{
 		Listener:   old.Listener,
 		acceptConn: old.acceptConn,
@@ -230,13 +230,16 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA,
 	n := raft.NewNode(context.Background(), newNodeOpts)
 	n.Server = s
 
-	ping.Register(s, &ping.Ping{})
+	healthServer := health.NewHealthServer()
+	api.RegisterHealthServer(s, healthServer)
 	raft.Register(s, n)
 
 	go func() {
 		// After stopping, we should receive an error from Serve
 		assert.Error(t, s.Serve(wrappedListener))
 	}()
+
+	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
 
 	return &TestNode{Node: n, Listener: wrappedListener, SecurityConfig: securityConfig}
 }
@@ -289,7 +292,7 @@ func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, tc
 
 // RestartNode restarts a raft test node
 func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNode, forceNewCluster bool) *TestNode {
-	wrappedListener := recycleWrappedListener(oldNode.Listener)
+	wrappedListener := RecycleWrappedListener(oldNode.Listener)
 	securityConfig := oldNode.SecurityConfig
 	serverOpts := []grpc.ServerOption{grpc.Creds(securityConfig.ServerTLSCreds)}
 	s := grpc.NewServer(serverOpts...)
@@ -311,13 +314,16 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 	n := raft.NewNode(ctx, newNodeOpts)
 	n.Server = s
 
-	ping.Register(s, &ping.Ping{})
+	healthServer := health.NewHealthServer()
+	api.RegisterHealthServer(s, healthServer)
 	raft.Register(s, n)
 
 	go func() {
 		// After stopping, we should receive an error from Serve
 		assert.Error(t, s.Serve(wrappedListener))
 	}()
+
+	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
 
 	err := n.JoinAndStart()
 	require.NoError(t, err, "can't join cluster")
@@ -357,7 +363,7 @@ func AddRaftNode(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint6
 func TeardownCluster(t *testing.T, nodes map[uint64]*TestNode) {
 	for _, node := range nodes {
 		ShutdownNode(node)
-		node.Listener.CloseListener()
+		node.Listener.close()
 	}
 }
 
