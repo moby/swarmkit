@@ -458,6 +458,10 @@ func (n *Node) stop() {
 
 // IsLeader checks if we are the leader or not
 func (n *Node) IsLeader() bool {
+	if !n.IsMember() {
+		return false
+	}
+
 	if n.Node.Status().Lead == n.Config.ID {
 		return true
 	}
@@ -466,6 +470,9 @@ func (n *Node) IsLeader() bool {
 
 // Leader returns the id of the leader
 func (n *Node) Leader() uint64 {
+	if !n.IsMember() {
+		return 0
+	}
 	return n.Node.Status().Lead
 }
 
@@ -543,7 +550,7 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 }
 
 // checkHealth tries to contact an aspiring member through its advertised address
-// and checks its raft server is running.
+// and checks if its raft server is running.
 func (n *Node) checkHealth(ctx context.Context, addr string, timeout time.Duration) error {
 	conn, err := dial(addr, "tcp", n.tlsCredentials, timeout)
 	if err != nil {
