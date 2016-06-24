@@ -14,7 +14,6 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.String("name", "", "service name")
 	flags.StringSlice("label", nil, "service label (key=value)")
 
-	flags.String("mode", "replicated", "one of replicated, global")
 	flags.Uint64("replicas", 1, "number of replicas for the service (only works in replicated service mode)")
 
 	flags.String("image", "", "container image")
