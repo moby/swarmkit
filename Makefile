@@ -11,8 +11,11 @@ VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
 PACKAGES=$(shell go list ./... | grep -v /vendor/)
 
 # Project binaries.
-COMMANDS=swarmd swarmctl swarm-bench protoc-gen-gogoswarm
-BINARIES=$(addprefix bin/,$(COMMANDS))
+COMMANDS=protoc-gen-gogoswarm swarm-bench
+COMMAND_BIN=$(addprefix bin/,$(COMMANDS))
+EXAMPLES=swarmd swarmctl
+EXAMPLE_BIN=$(addprefix bin/,$(EXAMPLES))
+BINARIES=$(COMMAND_BIN) $(EXAMPLE_BIN)
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
@@ -84,14 +87,21 @@ test: ## run test
 
 FORCE:
 
-# Build a binary from a cmd.
-bin/%: cmd/% FORCE
+# Build a binary from tools.
+$(COMMAND_BIN): bin/%: tools/% FORCE
 	@test $$(go list) = "github.com/docker/swarmkit" || \
 		(echo "👹 Please correctly set up your Go build environment. This project must be located at <GOPATH>/src/github.com/docker/swarmkit" && false)
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./$<
 
-binaries: $(BINARIES) ## build binaries
+# Build a binary from an example
+$(EXAMPLE_BIN): bin/%: examples/% FORCE
+	@test $$(go list) = "github.com/docker/swarmkit" || \
+		(echo "👹 Please correctly set up your Go build environment. This project must be located at <GOPATH>/src/github.com/docker/swarmkit" && false)
+	@echo "🐳 $@"
+	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./$<
+
+binaries: $(EXAMPLE_BIN) $(COMMAND_BIN) ## build binaries
 	@echo "🐳 $@"
 
 clean: ## clean up binaries

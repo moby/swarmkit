@@ -9,8 +9,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/cmd/swarmctl/common"
-	"github.com/docker/swarmkit/cmd/swarmctl/task"
+	"github.com/docker/swarmkit/examples/swarmctl/common"
+	"github.com/docker/swarmkit/examples/swarmctl/task"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )

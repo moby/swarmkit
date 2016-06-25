@@ -7,7 +7,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/cmd/swarmctl/common"
+	"github.com/docker/swarmkit/examples/swarmctl/common"
 	"github.com/spf13/cobra"
 )
 
