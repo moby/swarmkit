@@ -14,6 +14,7 @@
 		ca.proto
 		snapshot.proto
 		raft.proto
+		health.proto
 
 	It has these top-level messages:
 		Version
@@ -132,6 +133,8 @@
 		ResolveAddressResponse
 		InternalRaftRequest
 		StoreAction
+		HealthCheckRequest
+		HealthCheckResponse
 */
 package api
 
