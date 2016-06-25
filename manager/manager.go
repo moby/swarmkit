@@ -19,6 +19,7 @@ import (
 	"github.com/docker/swarmkit/manager/allocator"
 	"github.com/docker/swarmkit/manager/controlapi"
 	"github.com/docker/swarmkit/manager/dispatcher"
+	"github.com/docker/swarmkit/manager/health"
 	"github.com/docker/swarmkit/manager/keymanager"
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/raftpicker"
@@ -201,13 +202,7 @@ func New(config *Config) (*Manager, error) {
 		ForceNewCluster: config.ForceNewCluster,
 		TLSCredentials:  config.SecurityConfig.ClientTLSCreds,
 	}
-	RaftNode, err := raft.NewNode(context.TODO(), newNodeOpts)
-	if err != nil {
-		for _, lis := range listeners {
-			lis.Close()
-		}
-		return nil, fmt.Errorf("can't create raft node: %v", err)
-	}
+	RaftNode := raft.NewNode(context.TODO(), newNodeOpts)
 
 	opts := []grpc.ServerOption{
 		grpc.Creds(config.SecurityConfig.ServerTLSCreds)}
@@ -420,14 +415,6 @@ func (m *Manager) Run(parent context.Context) error {
 		}
 	}()
 
-	go func() {
-		err := m.RaftNode.Run(ctx)
-		if err != nil {
-			log.G(ctx).Error(err)
-			m.Stop(ctx)
-		}
-	}()
-
 	proxyOpts := []grpc.DialOption{
 		grpc.WithBackoffMaxDelay(2 * time.Second),
 		grpc.WithTransportCredentials(m.config.SecurityConfig.ClientTLSCreds),
@@ -442,12 +429,14 @@ func (m *Manager) Run(parent context.Context) error {
 	}
 
 	baseControlAPI := controlapi.NewServer(m.RaftNode.MemoryStore(), m.RaftNode)
+	healthServer := health.NewHealthServer()
 
 	authenticatedControlAPI := api.NewAuthenticatedWrapperControlServer(baseControlAPI, authorize)
 	authenticatedDispatcherAPI := api.NewAuthenticatedWrapperDispatcherServer(m.Dispatcher, authorize)
 	authenticatedCAAPI := api.NewAuthenticatedWrapperCAServer(m.caserver, authorize)
 	authenticatedNodeCAAPI := api.NewAuthenticatedWrapperNodeCAServer(m.caserver, authorize)
 	authenticatedRaftAPI := api.NewAuthenticatedWrapperRaftServer(m.RaftNode, authorize)
+	authenticatedHealthAPI := api.NewAuthenticatedWrapperHealthServer(healthServer, authorize)
 	authenticatedRaftMembershipAPI := api.NewAuthenticatedWrapperRaftMembershipServer(m.RaftNode, authorize)
 
 	proxyDispatcherAPI := api.NewRaftProxyDispatcherServer(authenticatedDispatcherAPI, cs, m.RaftNode, ca.WithMetadataForwardTLSInfo)
@@ -469,6 +458,7 @@ func (m *Manager) Run(parent context.Context) error {
 	api.RegisterCAServer(m.server, proxyCAAPI)
 	api.RegisterNodeCAServer(m.server, proxyNodeCAAPI)
 	api.RegisterRaftServer(m.server, authenticatedRaftAPI)
+	api.RegisterHealthServer(m.server, authenticatedHealthAPI)
 	api.RegisterRaftMembershipServer(m.server, proxyRaftMembershipAPI)
 	api.RegisterControlServer(m.localserver, localProxyControlAPI)
 	api.RegisterControlServer(m.server, authenticatedControlAPI)
@@ -490,6 +480,24 @@ func (m *Manager) Run(parent context.Context) error {
 			}
 		}(proto, l)
 	}
+
+	// Set the raft server as serving for the health server
+	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
+
+	if err := m.RaftNode.JoinAndStart(); err != nil {
+		for _, lis := range m.listeners {
+			lis.Close()
+		}
+		return fmt.Errorf("can't initialize raft node: %v", err)
+	}
+
+	go func() {
+		err := m.RaftNode.Run(ctx)
+		if err != nil {
+			log.G(ctx).Error(err)
+			m.Stop(ctx)
+		}
+	}()
 
 	if err := raft.WaitForLeader(ctx, m.RaftNode); err != nil {
 		m.server.Stop()
