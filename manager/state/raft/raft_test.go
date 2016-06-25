@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -624,4 +627,125 @@ func TestRaftJoinWithIncorrectAddress(t *testing.T) {
 
 	// Check if first node still has only itself registered in the memberlist
 	assert.Equal(t, len(nodes[1].GetMemberlist()), 1)
+}
+
+func TestStress(t *testing.T) {
+	t.Parallel()
+
+	// Bring up a 5 nodes cluster
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc)
+	defer raftutils.TeardownCluster(t, nodes)
+
+	// number of nodes that are running
+	nup := len(nodes)
+	// record of nodes that are down
+	idleNodes := map[int]struct{}{}
+	// record of ids that proposed successfully or time-out
+	pIDs := []string{}
+
+	leader := -1
+	for iters := 0; iters < 1000; iters++ {
+		// keep proposing new values and killing leader
+		for i := 1; i <= 5; i++ {
+			if nodes[uint64(i)] != nil {
+				id := strconv.Itoa(iters)
+				_, err := raftutils.ProposeValue(t, nodes[uint64(i)], id)
+
+				if err == nil {
+					pIDs = append(pIDs, id)
+					// if propose successfully, at least there are 3 running nodes
+					assert.True(t, nup >= 3)
+					// only leader can propose value
+					assert.True(t, leader == i || leader == -1)
+					// update leader
+					leader = i
+					break
+				} else if strings.Contains(err.Error(), "context deadline exceeded") {
+					// though it's timing out, we still record this value
+					// for it may be proposed successfully and stored in Raft some time later
+					pIDs = append(pIDs, id)
+				}
+			}
+		}
+
+		if rand.Intn(100) < 10 {
+			// increase clock to make potential election finish quickly
+			clockSource.Increment(200 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
+		} else {
+			ms := rand.Intn(10)
+			clockSource.Increment(time.Duration(ms) * time.Millisecond)
+		}
+
+		if leader != -1 {
+			// if propose successfully, try to kill a node in random
+			s := rand.Intn(5) + 1
+			if _, ok := idleNodes[s]; !ok {
+				id := uint64(s)
+				nodes[id].Server.Stop()
+				nodes[id].Shutdown()
+				idleNodes[s] = struct{}{}
+				nup -= 1
+				if s == leader {
+					// leader is killed
+					leader = -1
+				}
+			}
+		}
+
+		if nup < 3 {
+			// if quorum is lost, try to bring back a node
+			s := rand.Intn(5) + 1
+			if _, ok := idleNodes[s]; ok {
+				id := uint64(s)
+				nodes[id] = raftutils.RestartNode(t, clockSource, nodes[id], false)
+				delete(idleNodes, s)
+				nup++
+			}
+		}
+	}
+
+	// bring back all nodes and propose the final value
+	for i := range idleNodes {
+		id := uint64(i)
+		nodes[id] = raftutils.RestartNode(t, clockSource, nodes[id], false)
+	}
+	raftutils.WaitForCluster(t, clockSource, nodes)
+	id := strconv.Itoa(1000)
+	val, err := raftutils.ProposeValue(t, raftutils.Leader(nodes), id)
+	assert.NoError(t, err, "failed to propose value")
+	pIDs = append(pIDs, id)
+
+	// increase clock to make cluster stable
+	time.Sleep(500 * time.Millisecond)
+	clockSource.Increment(500 * time.Millisecond)
+
+	ids, values := raftutils.GetAllValuesOnNode(t, clockSource, nodes[1])
+
+	// since cluster is stable, final value must be in the raft store
+	find := false
+	for _, value := range values {
+		if reflect.DeepEqual(value, val) {
+			find = true
+			break
+		}
+	}
+	assert.True(t, find)
+
+	// all nodes must have the same value
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, ids, values)
+
+	// ids should be a subset of pIDs
+	for _, id := range ids {
+		find = false
+		for _, pid := range pIDs {
+			if id == pid {
+				find = true
+				break
+			}
+		}
+		assert.True(t, find)
+	}
 }
