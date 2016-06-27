@@ -355,7 +355,7 @@ func (s *Server) Run(ctx context.Context) error {
 	s.mu.Lock()
 	if s.isRunning() {
 		s.mu.Unlock()
-		return fmt.Errorf("CA signer is stopped")
+		return fmt.Errorf("CA signer is already running")
 	}
 	s.wg.Add(1)
 	defer s.wg.Done()
