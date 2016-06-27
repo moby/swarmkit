@@ -27,8 +27,6 @@ var (
 // Cluster represents a set of active
 // raft Members
 type Cluster struct {
-	id uint64
-
 	mu      sync.RWMutex
 	members map[uint64]*Member
 

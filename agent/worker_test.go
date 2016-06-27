@@ -29,7 +29,6 @@ func TestWorker(t *testing.T) {
 	for _, testcase := range []struct {
 		taskSet          []*api.Task
 		expectedTasks    []*api.Task
-		expectedStatuses []*api.TaskStatus
 		expectedAssigned []*api.Task
 	}{
 		{}, // handle nil case.

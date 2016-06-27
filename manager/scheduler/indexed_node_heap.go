@@ -48,13 +48,6 @@ func (nh *nodeHeap) alloc(n int) {
 	nh.index = make(map[string]int, n)
 }
 
-func (nh *nodeHeap) peek() *NodeInfo {
-	if len(nh.heap) == 0 {
-		return nil
-	}
-	return &nh.heap[0]
-}
-
 // nodeInfo returns the NodeInfo struct for a given node identified by its ID.
 func (nh *nodeHeap) nodeInfo(nodeID string) NodeInfo {
 	index, ok := nh.index[nodeID]
