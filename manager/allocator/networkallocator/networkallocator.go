@@ -14,7 +14,10 @@ import (
 )
 
 const (
-	defaultDriver = "overlay"
+	// DefaultDriver defines the name of the driver to be used by
+	// default if a network without any driver name specified is
+	// created.
+	DefaultDriver = "overlay"
 )
 
 var (
@@ -69,7 +72,7 @@ func New() (*NetworkAllocator, error) {
 	}
 
 	// Add the manager component of overlay driver to the registry.
-	if err := reg.AddDriver(defaultDriver, defaultDriverInitFunc, nil); err != nil {
+	if err := reg.AddDriver(DefaultDriver, defaultDriverInitFunc, nil); err != nil {
 		return nil, err
 	}
 
@@ -520,7 +523,7 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 
 // Resolve network driver
 func (na *NetworkAllocator) resolveDriver(n *api.Network) (driverapi.Driver, string, error) {
-	dName := defaultDriver
+	dName := DefaultDriver
 	if n.Spec.DriverConfig != nil && n.Spec.DriverConfig.Name != "" {
 		dName = n.Spec.DriverConfig.Name
 	}
