@@ -10,26 +10,25 @@ import (
 )
 
 func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
-	if flags.Changed("restart-condition") {
-		condition, err := flags.GetString("restart-condition")
-		if err != nil {
-			return err
-		}
+	// parse restart-condition
+	condition, err := flags.GetString("restart-condition")
+	if err != nil {
+		return err
+	}
 
-		if spec.Task.Restart == nil {
-			spec.Task.Restart = &api.RestartPolicy{}
-		}
+	if spec.Task.Restart == nil {
+		spec.Task.Restart = &api.RestartPolicy{}
+	}
 
-		switch condition {
-		case "none":
-			spec.Task.Restart.Condition = api.RestartOnNone
-		case "failure":
-			spec.Task.Restart.Condition = api.RestartOnFailure
-		case "any":
-			spec.Task.Restart.Condition = api.RestartOnAny
-		default:
-			return fmt.Errorf("invalid restart condition: %s", condition)
-		}
+	switch condition {
+	case "none":
+		spec.Task.Restart.Condition = api.RestartOnNone
+	case "failure":
+		spec.Task.Restart.Condition = api.RestartOnFailure
+	case "any":
+		spec.Task.Restart.Condition = api.RestartOnAny
+	default:
+		return fmt.Errorf("invalid restart condition: %s", condition)
 	}
 
 	if flags.Changed("restart-delay") {
@@ -43,9 +42,6 @@ func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			return err
 		}
 
-		if spec.Task.Restart == nil {
-			spec.Task.Restart = &api.RestartPolicy{}
-		}
 		spec.Task.Restart.Delay = ptypes.DurationProto(delayDuration)
 	}
 
@@ -55,9 +51,6 @@ func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			return err
 		}
 
-		if spec.Task.Restart == nil {
-			spec.Task.Restart = &api.RestartPolicy{}
-		}
 		spec.Task.Restart.MaxAttempts = attempts
 	}
 
@@ -72,9 +65,6 @@ func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			return err
 		}
 
-		if spec.Task.Restart == nil {
-			spec.Task.Restart = &api.RestartPolicy{}
-		}
 		spec.Task.Restart.Window = ptypes.DurationProto(windowDelay)
 	}
 
