@@ -94,7 +94,6 @@ type Node struct {
 	wal         *wal.WAL
 	snapshotter *snap.Snapshotter
 	wasLeader   bool
-	removed     uint32
 	isMember    uint32
 	joinAddr    string
 
@@ -110,10 +109,13 @@ type Node struct {
 	appliedIndex  uint64
 	snapshotIndex uint64
 
-	ticker              clock.Ticker
-	sendTimeout         time.Duration
-	stopCh              chan struct{}
-	doneCh              chan struct{}
+	ticker      clock.Ticker
+	sendTimeout time.Duration
+	stopCh      chan struct{}
+	doneCh      chan struct{}
+	// removeRaftCh notifies about node deletion from raft cluster
+	removeRaftCh        chan struct{}
+	removeRaftOnce      sync.Once
 	leadershipBroadcast *events.Broadcaster
 
 	// used to coordinate shutdown
@@ -190,6 +192,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) *Node {
 		forceNewCluster:     opts.ForceNewCluster,
 		stopCh:              make(chan struct{}),
 		doneCh:              make(chan struct{}),
+		removeRaftCh:        make(chan struct{}),
 		StateDir:            opts.StateDir,
 		joinAddr:            opts.JoinAddr,
 		sendTimeout:         2 * time.Second,
@@ -391,21 +394,6 @@ func (n *Node) Run(ctx context.Context) error {
 				}
 			}
 
-			// If the node was removed from other members,
-			// send back an error to the caller to start
-			// the shutdown process.
-			if n.mustStop() {
-				n.stop()
-
-				// Move WAL and snapshot out of the way, since
-				// they are no longer usable.
-				if err := n.moveWALAndSnap(); err != nil {
-					n.Config.Logger.Error(err)
-				}
-
-				return ErrMemberRemoved
-			}
-
 			// Advance the state machine
 			n.Advance()
 
@@ -414,6 +402,19 @@ func (n *Node) Run(ctx context.Context) error {
 				n.snapshotIndex = snapshotIndex
 			}
 			n.snapshotInProgress = nil
+		case <-n.removeRaftCh:
+			// If the node was removed from other members,
+			// send back an error to the caller to start
+			// the shutdown process.
+			n.stop()
+
+			// Move WAL and snapshot out of the way, since
+			// they are no longer usable.
+			if err := n.moveWALAndSnap(); err != nil {
+				n.Config.Logger.Error(err)
+			}
+
+			return ErrMemberRemoved
 		case <-n.stopCh:
 			n.stop()
 			return nil
@@ -826,13 +827,6 @@ func (n *Node) GetMemberlist() map[uint64]*api.RaftMember {
 	return memberlist
 }
 
-// mustStop checks if the raft node must be stopped
-// because it was removed from the cluster from
-// other members
-func (n *Node) mustStop() bool {
-	return atomic.LoadUint32(&n.removed) == 1
-}
-
 // IsMember checks if the raft node has effectively joined
 // a cluster of existing members.
 func (n *Node) IsMember() bool {
@@ -962,7 +956,9 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 	_, err := conn.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: &m})
 	if err != nil {
 		if grpc.ErrorDesc(err) == ErrMemberRemoved.Error() {
-			atomic.StoreUint32(&n.removed, 1)
+			n.removeRaftOnce.Do(func() {
+				close(n.removeRaftCh)
+			})
 		}
 		if m.Type == raftpb.MsgSnap {
 			n.ReportSnapshot(m.To, raft.SnapshotFailure)
