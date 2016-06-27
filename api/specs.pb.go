@@ -281,7 +281,7 @@ func (*ServiceSpec_NetworkAttachmentConfig) Descriptor() ([]byte, []int) {
 	return fileDescriptorSpecs, []int{1, 0}
 }
 
-// ReplicatedService set the reconcilation target to certain number of replicas.
+// ReplicatedService sets the reconciliation target to certain number of replicas.
 type ReplicatedService struct {
 	Replicas uint64 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
 }
@@ -290,7 +290,7 @@ func (m *ReplicatedService) Reset()                    { *m = ReplicatedService{
 func (*ReplicatedService) ProtoMessage()               {}
 func (*ReplicatedService) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{2} }
 
-// GlobalService represent global service.
+// GlobalService represents global service.
 type GlobalService struct {
 }
 

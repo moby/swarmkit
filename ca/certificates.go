@@ -611,7 +611,7 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, role, secret st
 	}
 	defer conn.Close()
 
-	// Create a CAClient to retreive a new Certificate
+	// Create a CAClient to retrieve a new Certificate
 	caClient := api.NewNodeCAClient(conn)
 
 	// Convert our internal string roles into an API role
