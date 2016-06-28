@@ -96,6 +96,7 @@ func (na *NetworkAllocator) Allocate(n *api.Network) error {
 	}
 
 	if err := na.allocateDriverState(n); err != nil {
+		na.freePools(n, pools)
 		return fmt.Errorf("failed while allocating driver state for network %s: %v", n.ID, err)
 	}
 
