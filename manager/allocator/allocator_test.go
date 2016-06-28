@@ -240,6 +240,123 @@ func TestAllocator(t *testing.T) {
 	watchTask(t, taskWatch, false, isValidTask)
 	watchTask(t, taskWatch, true, nil)
 
+	// Try adding networks with conflicting network resources and
+	// add task which attaches to a network which gets allocated
+	// later and verify if task reconciles and moves to ALLOCATED.
+	n4 := &api.Network{
+		ID: "testID4",
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "test4",
+			},
+			DriverConfig: &api.Driver{
+				Name: "overlay",
+				Options: map[string]string{
+					"com.docker.network.driver.overlay.vxlanid_list": "328",
+				},
+			},
+		},
+	}
+
+	n5 := n4.Copy()
+	n5.ID = "testID5"
+	n5.Spec.Annotations.Name = "test5"
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateNetwork(tx, n4))
+		return nil
+	}))
+	watchNetwork(t, netWatch, false, isValidNetwork)
+
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateNetwork(tx, n5))
+		return nil
+	}))
+	watchNetwork(t, netWatch, true, nil)
+
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		t6 := &api.Task{
+			ID: "testTaskID6",
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
+			DesiredState: api.TaskStateRunning,
+			Networks: []*api.NetworkAttachment{
+				{
+					Network: n5,
+				},
+			},
+		}
+		assert.NoError(t, store.CreateTask(tx, t6))
+		return nil
+	}))
+	watchTask(t, taskWatch, true, nil)
+
+	// Now remove the conflicting network.
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteNetwork(tx, n4.ID))
+		return nil
+	}))
+	watchNetwork(t, netWatch, false, isValidNetwork)
+	watchTask(t, taskWatch, false, isValidTask)
+
+	// Try adding services with conflicting port configs and add
+	// task which is part of the service whose allocation hasn't
+	// happened and when that happens later and verify if task
+	// reconciles and moves to ALLOCATED.
+	s3 := &api.Service{
+		ID: "testServiceID3",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "service3",
+			},
+			Endpoint: &api.EndpointSpec{
+				Ports: []*api.PortConfig{
+					{
+						Name:          "http",
+						TargetPort:    80,
+						PublishedPort: 8080,
+					},
+				},
+			},
+		},
+	}
+
+	s4 := s3.Copy()
+	s4.ID = "testServiceID4"
+	s4.Spec.Annotations.Name = "service4"
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateService(tx, s3))
+		return nil
+	}))
+	watchService(t, serviceWatch, false, nil)
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateService(tx, s4))
+		return nil
+	}))
+	watchService(t, serviceWatch, true, nil)
+
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		t7 := &api.Task{
+			ID: "testTaskID7",
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
+			ServiceID:    "testServiceID4",
+			DesiredState: api.TaskStateRunning,
+		}
+		assert.NoError(t, store.CreateTask(tx, t7))
+		return nil
+	}))
+	watchTask(t, taskWatch, true, nil)
+
+	// Now remove the conflicting service.
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteService(tx, s3.ID))
+		return nil
+	}))
+	watchService(t, serviceWatch, false, nil)
+	watchTask(t, taskWatch, false, isValidTask)
+
 	a.Stop()
 }
 
