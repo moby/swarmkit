@@ -134,8 +134,8 @@ $ swarmctl node ls
 ID             Name    Membership  Status  Availability  Manager status
 --             ----    ----------  ------  ------------  --------------
 15jkw04qb4yze  node-1  ACCEPTED    READY   ACTIVE        REACHABLE *
-1zbwraf2v8hpx  node-3  ACCEPTED    READY   ACTIVE        
-3vj01av6782qn  node-2  ACCEPTED    READY   ACTIVE        
+1zbwraf2v8hpx  node-3  ACCEPTED    READY   ACTIVE
+3vj01av6782qn  node-2  ACCEPTED    READY   ACTIVE
 
 
 ```
@@ -282,4 +282,4 @@ az8ias15auf6w11jndsk7bc2o    redis      2           redis:3.0.7    RUNNING      
 70eln8ibd8aku6jvmu8xz3hbc    redis      6           redis:3.0.7    RUNNING          RUNNING 4 seconds ago    node-3
 ```
 
-As you can see, every Task running on `node-1` was rebalanced to either `node-2` or `node-3` by the reconcilation loop.
+As you can see, every Task running on `node-1` was rebalanced to either `node-2` or `node-3` by the reconciliation loop.
