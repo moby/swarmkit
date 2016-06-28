@@ -144,7 +144,9 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 }
 
 func TestRegisterTwice(t *testing.T) {
-	gd, err := startDispatcher(DefaultConfig())
+	cfg := DefaultConfig()
+	cfg.RateLimitPeriod = 0
+	gd, err := startDispatcher(cfg)
 	assert.NoError(t, err)
 	defer gd.Close()
 
@@ -167,6 +169,29 @@ func TestRegisterTwice(t *testing.T) {
 		// session should be different!
 		assert.NotEqual(t, msg.SessionID, expectedSessionID)
 		stream.CloseSend()
+	}
+}
+
+func TestRegisterTwiceRateLimit(t *testing.T) {
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	{
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+		assert.NoError(t, err)
+		msg, err := stream.Recv()
+		assert.NoError(t, err)
+		assert.NotEmpty(t, msg.SessionID)
+		stream.CloseSend()
+	}
+	{
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+		defer stream.CloseSend()
+		assert.NoError(t, err)
+		_, err = stream.Recv()
+		assert.Error(t, err)
+		assert.Equal(t, codes.Unavailable, grpc.Code(err))
 	}
 }
 

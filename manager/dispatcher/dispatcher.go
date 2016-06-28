@@ -29,6 +29,7 @@ const (
 	DefaultHeartBeatPeriod       = 5 * time.Second
 	defaultHeartBeatEpsilon      = 500 * time.Millisecond
 	defaultGracePeriodMultiplier = 3
+	defaultRateLimitPeriod       = 16 * time.Second
 
 	// maxBatchItems is the threshold of queued writes that should
 	// trigger an actual transaction to commit them to the shared store.
@@ -59,9 +60,12 @@ var (
 // DefautConfig.
 type Config struct {
 	// Addr configures the address the dispatcher reports to agents.
-	Addr                  string
-	HeartbeatPeriod       time.Duration
-	HeartbeatEpsilon      time.Duration
+	Addr             string
+	HeartbeatPeriod  time.Duration
+	HeartbeatEpsilon time.Duration
+	// RateLimitPeriod specifies how often node with same ID can try to register
+	// new session.
+	RateLimitPeriod       time.Duration
 	GracePeriodMultiplier int
 }
 
@@ -70,6 +74,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		HeartbeatPeriod:       DefaultHeartBeatPeriod,
 		HeartbeatEpsilon:      defaultHeartBeatEpsilon,
+		RateLimitPeriod:       defaultRateLimitPeriod,
 		GracePeriodMultiplier: defaultGracePeriodMultiplier,
 	}
 }
@@ -116,7 +121,7 @@ func (b weightedPeerByNodeID) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
 func New(cluster Cluster, c *Config) *Dispatcher {
 	return &Dispatcher{
 		addr:                      c.Addr,
-		nodes:                     newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier),
+		nodes:                     newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier, c.RateLimitPeriod),
 		store:                     cluster.MemoryStore(),
 		cluster:                   cluster,
 		mgrQueue:                  watch.NewQueue(16),
@@ -326,6 +331,10 @@ func (d *Dispatcher) isRunning() bool {
 func (d *Dispatcher) register(ctx context.Context, nodeID string, description *api.NodeDescription) (string, string, error) {
 	// prevent register until we're ready to accept it
 	if err := d.isRunningLocked(); err != nil {
+		return "", "", err
+	}
+
+	if err := d.nodes.CheckRateLimit(nodeID); err != nil {
 		return "", "", err
 	}
 
