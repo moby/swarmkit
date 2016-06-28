@@ -145,10 +145,28 @@ func TestValidateIPAMConfiguration(t *testing.T) {
 
 func TestValidateIPAM(t *testing.T) {
 	assert.NoError(t, validateIPAM(nil))
+	ipam := &api.IPAMOptions{
+		Driver: &api.Driver{
+			Name: "external",
+		},
+	}
+
+	err := validateIPAM(ipam)
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 }
 
 func TestValidateNetworkSpec(t *testing.T) {
 	err := validateNetworkSpec(nil)
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	spec := createNetworkSpec("invalid_driver")
+	spec.DriverConfig = &api.Driver{
+		Name: "external",
+	}
+
+	err = validateNetworkSpec(spec)
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 }
