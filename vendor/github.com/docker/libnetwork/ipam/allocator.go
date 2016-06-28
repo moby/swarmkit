@@ -3,6 +3,7 @@ package ipam
 import (
 	"fmt"
 	"net"
+	"sort"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -146,9 +147,11 @@ func (a *Allocator) initializeAddressSpace(as string, ds datastore.DataStore) er
 	}
 
 	a.Lock()
-	if _, ok := a.addrSpaces[as]; ok {
-		a.Unlock()
-		return types.ForbiddenErrorf("tried to add an axisting address space: %s", as)
+	if currAS, ok := a.addrSpaces[as]; ok {
+		if currAS.ds != nil {
+			a.Unlock()
+			return types.ForbiddenErrorf("a datastore is already configured for the address space %s", as)
+		}
 	}
 	a.addrSpaces[as] = &addrSpace{
 		subnets: map[SubnetKey]*PoolData{},
@@ -554,13 +557,18 @@ func (a *Allocator) getAddress(nw *net.IPNet, bitmask *bitseq.Handle, prefAddres
 func (a *Allocator) DumpDatabase() string {
 	a.Lock()
 	aspaces := make(map[string]*addrSpace, len(a.addrSpaces))
+	orderedAS := make([]string, 0, len(a.addrSpaces))
 	for as, aSpace := range a.addrSpaces {
+		orderedAS = append(orderedAS, as)
 		aspaces[as] = aSpace
 	}
 	a.Unlock()
 
+	sort.Strings(orderedAS)
+
 	var s string
-	for as, aSpace := range aspaces {
+	for _, as := range orderedAS {
+		aSpace := aspaces[as]
 		s = fmt.Sprintf("\n\n%s Config", as)
 		aSpace.Lock()
 		for k, config := range aSpace.subnets {
