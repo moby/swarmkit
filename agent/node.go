@@ -22,6 +22,7 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager"
 	"github.com/docker/swarmkit/remotes"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -108,11 +109,16 @@ func NewNode(c *NodeConfig) (*Node, error) {
 	}
 	stateFile := filepath.Join(c.StateDir, stateFilename)
 	dt, err := ioutil.ReadFile(stateFile)
-	var p []api.Peer
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = errors.Wrap(err, "local state file does not exist")
+		}
 		return nil, err
 	}
-	if err == nil {
+
+	var p []api.Peer
+
+	if len(dt) > 0 {
 		if err := json.Unmarshal(dt, &p); err != nil {
 			return nil, err
 		}
