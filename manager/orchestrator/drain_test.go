@@ -189,7 +189,7 @@ func TestDrain(t *testing.T) {
 	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
 
-	orchestrator := New(s)
+	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
 	go func() {
