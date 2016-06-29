@@ -449,6 +449,7 @@ func (n *Node) stop() {
 		}
 	}
 	n.Stop()
+	n.ticker.Stop()
 	if err := n.wal.Close(); err != nil {
 		n.Config.Logger.Errorf("raft: error closing WAL: %v", err)
 	}
