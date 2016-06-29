@@ -138,10 +138,13 @@ message ContainerSpec {
 	// executable and the following elements are treated as arguments.
 	//
 	// If command is empty, execution will fall back to the image's entrypoint.
+	//
+	// Command should only be used when overriding entrypoint.
 	repeated string command = 3;
 
 	// Args specifies arguments provided to the image's entrypoint.
-	// Ignored if command is specified.
+	//
+	// If Command and Args are provided, Args will be appended to Command.
 	repeated string args = 4;
 
 	// Env specifies the environment variables for the container in NAME=VALUE
