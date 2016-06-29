@@ -73,7 +73,7 @@ func DefaultConfig() *Config {
 		ClusterName:      store.DefaultClusterName,
 		Keylen:           DefaultKeyLen,
 		RotationInterval: DefaultKeyRotationInterval,
-		Subsystems:       []string{DefaultSubsystem},
+		Subsystems:       []string{SubsystemGossip, SubsystemIPSec},
 	}
 }
 

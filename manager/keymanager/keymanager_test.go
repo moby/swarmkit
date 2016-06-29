@@ -32,7 +32,7 @@ func createCluster(t *testing.T, s *store.MemoryStore, id, name string) *api.Clu
 	return cluster
 }
 
-// Verify the key generation and rotation for default gossip subsystem
+// Verify the key generation and rotation for default subsystems
 func TestKeyManagerDefaultSubsystem(t *testing.T) {
 	st := store.NewMemoryStore(nil)
 	createCluster(t, st, "default", "default")
@@ -53,14 +53,14 @@ func TestKeyManagerDefaultSubsystem(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
-	assert.Equal(t, len(clusters[0].NetworkBootstrapKeys), keyringSize)
+	assert.Equal(t, len(clusters[0].NetworkBootstrapKeys), len(k.config.Subsystems)*keyringSize)
 
 	key1 := clusters[0].NetworkBootstrapKeys[0].Key
 
 	k.rotateKey(ctx)
 
 	// verify that after a rotation oldest key has been removed from the keyring
-	assert.Equal(t, len(k.keyRing.keys), keyringSize)
+	assert.Equal(t, len(k.keyRing.keys), len(k.config.Subsystems)*keyringSize)
 	for _, key := range k.keyRing.keys {
 		match := bytes.Equal(key.Key, key1)
 		assert.False(t, match)
