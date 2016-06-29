@@ -17,6 +17,7 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.Uint64("replicas", 1, "number of replicas for the service (only works in replicated service mode)")
 
 	flags.String("image", "", "container image")
+	flags.StringSlice("command", nil, "override entrypoint")
 	flags.StringSlice("args", nil, "container args")
 	flags.StringSlice("env", nil, "container env")
 

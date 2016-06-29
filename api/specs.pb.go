@@ -415,9 +415,12 @@ type ContainerSpec struct {
 	// executable and the following elements are treated as arguments.
 	//
 	// If command is empty, execution will fall back to the image's entrypoint.
+	//
+	// Command should only be used when overriding entrypoint.
 	Command []string `protobuf:"bytes,3,rep,name=command" json:"command,omitempty"`
 	// Args specifies arguments provided to the image's entrypoint.
-	// Ignored if command is specified.
+	//
+	// If Command and Args are provided, Args will be appended to Command.
 	Args []string `protobuf:"bytes,4,rep,name=args" json:"args,omitempty"`
 	// Env specifies the environment variables for the container in NAME=VALUE
 	// format. These must be compliant with  [IEEE Std
