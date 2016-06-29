@@ -554,25 +554,29 @@ func (a *Allocator) allocateNode(ctx context.Context, nc *networkContext, node *
 }
 
 func (a *Allocator) allocateService(ctx context.Context, nc *networkContext, s *api.Service) error {
-	// The service is trying to expose ports to the external
-	// world. Automatically attach the service to the ingress
-	// network only if it is not already done.
-	if s.Spec.Endpoint != nil && len(s.Spec.Endpoint.Ports) != 0 {
+	if s.Spec.Endpoint != nil {
 		if s.Endpoint == nil {
-			s.Endpoint = &api.Endpoint{}
-		}
-
-		var found bool
-		for _, vip := range s.Endpoint.VirtualIPs {
-			if vip.NetworkID == ingressNetwork.ID {
-				found = true
-				break
+			s.Endpoint = &api.Endpoint{
+				Spec: s.Spec.Endpoint.Copy(),
 			}
 		}
 
-		if !found {
-			s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs,
-				&api.Endpoint_VirtualIP{NetworkID: ingressNetwork.ID})
+		// The service is trying to expose ports to the external
+		// world. Automatically attach the service to the ingress
+		// network only if it is not already done.
+		if len(s.Spec.Endpoint.Ports) != 0 {
+			var found bool
+			for _, vip := range s.Endpoint.VirtualIPs {
+				if vip.NetworkID == ingressNetwork.ID {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs,
+					&api.Endpoint_VirtualIP{NetworkID: ingressNetwork.ID})
+			}
 		}
 	}
 

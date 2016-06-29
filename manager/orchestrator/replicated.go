@@ -114,6 +114,9 @@ func newTask(service *api.Service, instance uint64) *api.Task {
 			Timestamp: ptypes.MustTimestampProto(time.Now()),
 			Message:   "created",
 		},
+		Endpoint: &api.Endpoint{
+			Spec: service.Spec.Endpoint.Copy(),
+		},
 		DesiredState: api.TaskStateRunning,
 	}
 }
