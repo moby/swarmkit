@@ -122,8 +122,8 @@ $ swarmd -d /tmp/node-3 --hostname node-3 --join-addr 127.0.0.1:4242
 ```
 
 In a fourth terminal, use `swarmctl` to explore and control the cluster. Before
-running swarmctl, set the `SWARM_SOCKET` environment variable to the path to the
-manager socket that was specified to `--listen-control-api` when starting the
+running swarmctl, set the `SWARM_SOCKET` environment variable to the path of the
+manager socket that was specified in `--listen-control-api` when starting the
 manager.
 
 To list nodes:
