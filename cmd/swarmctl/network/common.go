@@ -14,31 +14,66 @@ import (
 func GetNetwork(ctx context.Context, c api.ControlClient, input string) (*api.Network, error) {
 	// GetService to match via full ID.
 	rg, err := c.GetNetwork(ctx, &api.GetNetworkRequest{NetworkID: input})
+
 	if err != nil {
-		// If any error (including NotFound), ListServices to match via ID prefix and full name.
-		rl, err := c.ListNetworks(ctx,
-			&api.ListNetworksRequest{
-				Filters: &api.ListNetworksRequest_Filters{
-					NamePrefixes: []string{input},
-				},
-			},
-		)
+		rl, err := getNetworkByPrefixedID(ctx, c, input)
 		if err != nil {
-			return nil, err
+			rl, e1 := getNetworkByName(ctx, c, input)
+			if e1 == nil {
+				return rl, nil
+			}
+		} else {
+			return rl, nil
 		}
-
-		if len(rl.Networks) == 0 {
-			return nil, fmt.Errorf("network %s not found", input)
-		}
-
-		if l := len(rl.Networks); l > 1 {
-			return nil, fmt.Errorf("network %s is ambiguous (%d matches found)", input, l)
-		}
-
-		return rl.Networks[0], nil
 	}
 
 	return rg.Network, nil
+}
+
+func getNetworkByPrefixedID(ctx context.Context, c api.ControlClient, input string) (*api.Network, error) {
+	rl, err := c.ListNetworks(ctx,
+		&api.ListNetworksRequest{
+			Filters: &api.ListNetworksRequest_Filters{
+				IDPrefixes: []string{input},
+			},
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rl.Networks) == 0 {
+		return nil, fmt.Errorf("network %s not found", input)
+	}
+
+	if l := len(rl.Networks); l > 1 {
+		return nil, fmt.Errorf("network %s is ambiguous (%d matches found)", input, l)
+	}
+
+	return rl.Networks[0], nil
+}
+
+func getNetworkByName(ctx context.Context, c api.ControlClient, input string) (*api.Network, error) {
+	rl, err := c.ListNetworks(ctx,
+		&api.ListNetworksRequest{
+			Filters: &api.ListNetworksRequest_Filters{
+				NamePrefixes: []string{input},
+			},
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rl.Networks) == 0 {
+		return nil, fmt.Errorf("network %s not found", input)
+	}
+
+	if l := len(rl.Networks); l > 1 {
+		return nil, fmt.Errorf("network %s is ambiguous (%d matches found)", input, l)
+	}
+
+	return rl.Networks[0], nil
 }
 
 // ResolveServiceNetworks takes a service spec and resolves network names to network IDs.
