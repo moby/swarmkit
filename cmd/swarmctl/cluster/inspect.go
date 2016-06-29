@@ -30,8 +30,13 @@ func printClusterSummary(cluster *api.Cluster) {
 	}
 	fmt.Fprintf(w, "Orchestration settings:\n")
 	fmt.Fprintf(w, "  Task history entries: %d\n", cluster.Spec.Orchestration.TaskHistoryRetentionLimit)
-	fmt.Fprintf(w, "Dispatcher settings:\n")
-	fmt.Fprintf(w, "  Dispatcher heartbeat period: %d\n", cluster.Spec.Dispatcher.HeartbeatPeriod)
+
+	heartbeatPeriod, err := ptypes.Duration(cluster.Spec.Dispatcher.HeartbeatPeriod)
+	if err == nil {
+		fmt.Fprintf(w, "Dispatcher settings:\n")
+		fmt.Fprintf(w, "  Dispatcher heartbeat period: %s\n", heartbeatPeriod.String())
+	}
+
 	if cluster.Spec.CAConfig.NodeCertExpiry != nil {
 		fmt.Fprintf(w, "Certificate Authority settings:\n")
 		clusterDuration, err := ptypes.Duration(cluster.Spec.CAConfig.NodeCertExpiry)
