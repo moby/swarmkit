@@ -535,7 +535,12 @@ func (s *Server) updateCluster(ctx context.Context, cluster *api.Cluster) {
 
 	// Update our security config with the list of External CA URLs
 	// from the new cluster state.
-	s.securityConfig.externalCA.UpdateURLs(cluster.Spec.CAConfig.ExternalCAURLs...)
+	err = s.securityConfig.UpdateExternalCAURLs(cluster.Spec.CAConfig.ExternalCAURLs)
+	log.G(ctx).WithFields(logrus.Fields{
+		"cluster.id": cluster.ID,
+		"method":     "(*Server).updateCluster",
+	}).WithError(err).Error("updating external CA URLs failed")
+
 }
 
 // evaluateAndSignNodeCert implements the logic of which certificates to sign
@@ -562,7 +567,6 @@ func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) {
 // signNodeCert does the bulk of the work for signing a certificate
 func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 	rootCA := s.securityConfig.RootCA()
-	externalCA := s.securityConfig.externalCA
 
 	node = node.Copy()
 	nodeID := node.ID
@@ -584,10 +588,17 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) {
 		org    = s.securityConfig.ClientTLSCreds.Organization()
 	)
 
-	// Try using the external CA first.
-	cert, err := externalCA.Sign(PrepareCSR(rawCSR, cn, ou, org))
-	if err == ErrNoExternalCAURLs {
-		// No external CA servers configured. Try using the local CA.
+	var cert []byte
+	// Try using external CAs first.
+	if len(s.securityConfig.externalCAs) > 0 {
+		for _, externalCA := range s.securityConfig.externalCAs {
+			cert, err = externalCA.Sign(PrepareCSR(rawCSR, cn, ou, org))
+			if err == nil && cert != nil {
+				break
+			}
+		}
+	} else {
+		// No external CA servers; try using the local CA.
 		cert, err = rootCA.ParseValidateAndSignCSR(rawCSR, cn, ou, org)
 	}
 

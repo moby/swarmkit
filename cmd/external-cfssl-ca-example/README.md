@@ -10,7 +10,7 @@ Now, run `external-ca-example`:
 
 ```
 $ external-ca-example
-INFO[0000] Now run: swarmd --manager -d . --listen-control-api ./swarmd.sock --external-ca-url https://localhost:58631/sign
+INFO[0000] Now run: swarmd --manager -d . --listen-control-api ./swarmd.sock --external-ca-url cfssl:https://localhost:58631/sign
 ```
 
 This command initializes a new root CA along with the node certificate for the

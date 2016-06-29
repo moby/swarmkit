@@ -17,14 +17,14 @@ import (
 	"github.com/docker/swarmkit/ca"
 )
 
-// NewExternalSigningServer creates and runs a new ExternalSigningServer which
+// NewExternalCFSSLSigningServer creates and runs a new ExternalCFSSLSigningServer which
 // uses the given rootCA to sign node certificates. A server key and cert are
 // generated and saved into the given basedir and then a TLS listener is
 // started on a random available port. On success, an HTTPS server will be
 // running in a separate goroutine. The URL of the singing endpoint is
 // available in the returned *ExternalSignerServer value. Calling the Close()
 // method will stop the server.
-func NewExternalSigningServer(rootCA ca.RootCA, basedir string) (*ExternalSigningServer, error) {
+func NewExternalCFSSLSigningServer(rootCA ca.RootCA, basedir string) (*ExternalCFSSLSigningServer, error) {
 	serverCN := "external-ca-example-server"
 	serverOU := "localhost" // Make a valid server cert for localhost.
 
@@ -57,9 +57,9 @@ func NewExternalSigningServer(rootCA ca.RootCA, basedir string) (*ExternalSignin
 		Path:   "/sign",
 	}
 
-	ess := &ExternalSigningServer{
+	ess := &ExternalCFSSLSigningServer{
 		listener: tlsListener,
-		URL:      signURL.String(),
+		URL:      "cfssl:" + signURL.String(),
 	}
 
 	mux := http.NewServeMux()
@@ -78,16 +78,16 @@ func NewExternalSigningServer(rootCA ca.RootCA, basedir string) (*ExternalSignin
 	return ess, nil
 }
 
-// ExternalSigningServer runs an HTTPS server with an endpoint at a specified
+// ExternalCFSSLSigningServer runs an HTTPS server with an endpoint at a specified
 // URL which signs node certificate requests from a swarm manager client.
-type ExternalSigningServer struct {
+type ExternalCFSSLSigningServer struct {
 	listener  net.Listener
 	NumIssued uint64
 	URL       string
 }
 
 // Stop stops this signing server by closing the underlying TCP/TLS listener.
-func (ess *ExternalSigningServer) Stop() error {
+func (ess *ExternalCFSSLSigningServer) Stop() error {
 	return ess.listener.Close()
 }
 

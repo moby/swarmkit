@@ -59,18 +59,18 @@ func AcceptancePolicy(worker, manager bool, secret string) api.AcceptancePolicy 
 
 // TestCA is a structure that encapsulates everything needed to test a CA Server
 type TestCA struct {
-	RootCA                ca.RootCA
-	ExternalSigningServer *ExternalSigningServer
-	MemoryStore           *store.MemoryStore
-	TempDir, Organization string
-	Paths                 *ca.SecurityConfigPaths
-	Server                grpc.Server
-	CAServer              *ca.Server
-	Context               context.Context
-	NodeCAClients         []api.NodeCAClient
-	CAClients             []api.CAClient
-	Conns                 []*grpc.ClientConn
-	Picker                *picker.Picker
+	RootCA                     ca.RootCA
+	ExternalCFSSLSigningServer *ExternalCFSSLSigningServer
+	MemoryStore                *store.MemoryStore
+	TempDir, Organization      string
+	Paths                      *ca.SecurityConfigPaths
+	Server                     grpc.Server
+	CAServer                   *ca.Server
+	Context                    context.Context
+	NodeCAClients              []api.NodeCAClient
+	CAClients                  []api.CAClient
+	Conns                      []*grpc.ClientConn
+	Picker                     *picker.Picker
 }
 
 // Stop cleansup after TestCA
@@ -79,8 +79,8 @@ func (tc *TestCA) Stop() {
 	for _, conn := range tc.Conns {
 		conn.Close()
 	}
-	if tc.ExternalSigningServer != nil {
-		tc.ExternalSigningServer.Stop()
+	if tc.ExternalCFSSLSigningServer != nil {
+		tc.ExternalCFSSLSigningServer.Stop()
 	}
 	tc.CAServer.Stop()
 	tc.Server.Stop()
@@ -88,27 +88,27 @@ func (tc *TestCA) Stop() {
 
 // NewNodeConfig returns security config for a new node, given a role
 func (tc *TestCA) NewNodeConfig(role string) (*ca.SecurityConfig, error) {
-	withNonSigningRoot := tc.ExternalSigningServer != nil
+	withNonSigningRoot := tc.ExternalCFSSLSigningServer != nil
 	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, tc.Organization, tc.TempDir, withNonSigningRoot)
 }
 
 // WriteNewNodeConfig returns security config for a new node, given a role
 // saving the generated key and certificates to disk
 func (tc *TestCA) WriteNewNodeConfig(role string) (*ca.SecurityConfig, error) {
-	withNonSigningRoot := tc.ExternalSigningServer != nil
+	withNonSigningRoot := tc.ExternalCFSSLSigningServer != nil
 	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, tc.Organization, tc.TempDir, withNonSigningRoot)
 }
 
 // NewNodeConfigOrg returns security config for a new node, given a role and an org
 func (tc *TestCA) NewNodeConfigOrg(role, org string) (*ca.SecurityConfig, error) {
-	withNonSigningRoot := tc.ExternalSigningServer != nil
+	withNonSigningRoot := tc.ExternalCFSSLSigningServer != nil
 	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, org, tc.TempDir, withNonSigningRoot)
 }
 
 // WriteNewNodeConfigOrg returns security config for a new node, given a role and an org
 // saving the generated key and certificates to disk
 func (tc *TestCA) WriteNewNodeConfigOrg(role, org string) (*ca.SecurityConfig, error) {
-	withNonSigningRoot := tc.ExternalSigningServer != nil
+	withNonSigningRoot := tc.ExternalCFSSLSigningServer != nil
 	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, org, tc.TempDir, withNonSigningRoot)
 }
 
@@ -131,13 +131,13 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	assert.NoError(t, err)
 
 	var (
-		externalSigningServer *ExternalSigningServer
+		externalSigningServer *ExternalCFSSLSigningServer
 		externalSigningURLs   []string
 	)
 
 	if External {
 		// Start the CA API server.
-		externalSigningServer, err = NewExternalSigningServer(rootCA, tempBaseDir)
+		externalSigningServer, err = NewExternalCFSSLSigningServer(rootCA, tempBaseDir)
 		assert.NoError(t, err)
 		externalSigningURLs = []string{externalSigningServer.URL}
 	}
@@ -196,18 +196,18 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	conns := []*grpc.ClientConn{conn1, conn2, conn3, conn4}
 
 	return &TestCA{
-		RootCA:                rootCA,
-		ExternalSigningServer: externalSigningServer,
-		MemoryStore:           s,
-		Picker:                picker,
-		TempDir:               tempBaseDir,
-		Organization:          organization,
-		Paths:                 paths,
-		Context:               ctx,
-		CAClients:             caClients,
-		NodeCAClients:         nodeCAClients,
-		Conns:                 conns,
-		CAServer:              caServer,
+		RootCA: rootCA,
+		ExternalCFSSLSigningServer: externalSigningServer,
+		MemoryStore:                s,
+		Picker:                     picker,
+		TempDir:                    tempBaseDir,
+		Organization:               organization,
+		Paths:                      paths,
+		Context:                    ctx,
+		CAClients:                  caClients,
+		NodeCAClients:              nodeCAClients,
+		Conns:                      conns,
+		CAServer:                   caServer,
 	}
 }
 
