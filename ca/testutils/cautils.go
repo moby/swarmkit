@@ -132,14 +132,19 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 
 	var (
 		externalSigningServer *ExternalSigningServer
-		externalSigningURLs   []string
+		externalCAs           []*api.ExternalCA
 	)
 
 	if External {
 		// Start the CA API server.
 		externalSigningServer, err = NewExternalSigningServer(rootCA, tempBaseDir)
 		assert.NoError(t, err)
-		externalSigningURLs = []string{externalSigningServer.URL}
+		externalCAs = []*api.ExternalCA{
+			{
+				Protocol: api.ExternalCA_CAProtocolCFSSL,
+				URL:      externalSigningServer.URL,
+			},
+		}
 	}
 
 	managerConfig, err := genSecurityConfig(s, rootCA, ca.ManagerRole, organization, "", External)
@@ -175,7 +180,7 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	serverOpts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(serverOpts...)
 
-	createClusterObject(t, s, organization, policy, externalSigningURLs...)
+	createClusterObject(t, s, organization, policy, externalCAs...)
 	caServer := ca.NewServer(s, managerConfig)
 	api.RegisterCAServer(grpcServer, caServer)
 	api.RegisterNodeCAServer(grpcServer, caServer)
@@ -314,7 +319,7 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, role, org, tmpDir
 	return ca.NewSecurityConfig(&rootCA, nodeClientTLSCreds, nodeServerTLSCreds), nil
 }
 
-func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, acceptancePolicy api.AcceptancePolicy, externalCAURLS ...string) {
+func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, acceptancePolicy api.AcceptancePolicy, externalCAs ...*api.ExternalCA) {
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
 			ID: clusterID,
@@ -324,7 +329,7 @@ func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, a
 				},
 				AcceptancePolicy: acceptancePolicy,
 				CAConfig: api.CAConfig{
-					ExternalCAURLs: externalCAURLS,
+					ExternalCAs: externalCAs,
 				},
 			},
 		})
