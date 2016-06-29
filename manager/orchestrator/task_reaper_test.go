@@ -33,7 +33,7 @@ func TestTaskHistory(t *testing.T) {
 
 	taskReaper := NewTaskReaper(s)
 	defer taskReaper.Stop()
-	orchestrator := New(s)
+	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
