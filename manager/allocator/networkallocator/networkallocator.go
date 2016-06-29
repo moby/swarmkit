@@ -149,7 +149,9 @@ func (na *NetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
 	}
 
 	if s.Endpoint == nil {
-		s.Endpoint = &api.Endpoint{}
+		s.Endpoint = &api.Endpoint{
+			Spec: s.Spec.Endpoint.Copy(),
+		}
 	}
 
 	// First allocate VIPs for all the pre-populated endpoint attachments
