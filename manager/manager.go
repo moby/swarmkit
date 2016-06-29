@@ -40,9 +40,9 @@ const (
 type Config struct {
 	SecurityConfig *ca.SecurityConfig
 
-	// ExternalCAURLs is a list of initial URLs to which a manager node
+	// ExternalCAs is a list of initial CAs to which a manager node
 	// will make certificate signing requests for node certificates.
-	ExternalCAURLs []string
+	ExternalCAs []*api.ExternalCA
 
 	ProtoAddr map[string]string
 	// ProtoListener will be used for grpc serving if it's not nil,
@@ -275,7 +275,7 @@ func (m *Manager) Run(parent context.Context) error {
 				clusterID := m.config.SecurityConfig.ClientTLSCreds.Organization()
 
 				initialCAConfig := ca.DefaultCAConfig()
-				initialCAConfig.ExternalCAURLs = m.config.ExternalCAURLs
+				initialCAConfig.ExternalCAs = m.config.ExternalCAs
 
 				s.Update(func(tx store.Tx) error {
 					// Add a default cluster object to the

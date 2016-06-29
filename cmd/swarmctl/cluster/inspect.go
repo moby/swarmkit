@@ -37,15 +37,20 @@ func printClusterSummary(cluster *api.Cluster) {
 		fmt.Fprintf(w, "  Dispatcher heartbeat period: %s\n", heartbeatPeriod.String())
 	}
 
+	fmt.Fprintf(w, "Certificate Authority settings:\n")
 	if cluster.Spec.CAConfig.NodeCertExpiry != nil {
-		fmt.Fprintf(w, "Certificate Authority settings:\n")
 		clusterDuration, err := ptypes.Duration(cluster.Spec.CAConfig.NodeCertExpiry)
 		if err != nil {
 			fmt.Fprintf(w, "  Certificate Validity Duration: [ERROR PARSING DURATION]\n")
 		} else {
 			fmt.Fprintf(w, "  Certificate Validity Duration: %s\n", clusterDuration.String())
 		}
-		fmt.Fprintf(w, "  External CA URLs: %s\n", cluster.Spec.CAConfig.ExternalCAURLs)
+	}
+	if len(cluster.Spec.CAConfig.ExternalCAs) > 0 {
+		fmt.Fprintf(w, "  External CAs:\n")
+		for _, ca := range cluster.Spec.CAConfig.ExternalCAs {
+			fmt.Fprintf(w, "    %s: %s\n", ca.Protocol, ca.URL)
+		}
 	}
 }
 

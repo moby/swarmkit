@@ -535,7 +535,18 @@ func (s *Server) updateCluster(ctx context.Context, cluster *api.Cluster) {
 
 	// Update our security config with the list of External CA URLs
 	// from the new cluster state.
-	s.securityConfig.externalCA.UpdateURLs(cluster.Spec.CAConfig.ExternalCAURLs...)
+
+	// TODO(aaronl): In the future, this will be abstracted with an
+	// ExternalCA interface that has different implementations for
+	// different CA types. At the moment, only CFSSL is supported.
+	var cfsslURLs []string
+	for _, ca := range cluster.Spec.CAConfig.ExternalCAs {
+		if ca.Protocol == api.ExternalCA_CAProtocolCFSSL {
+			cfsslURLs = append(cfsslURLs, ca.URL)
+		}
+	}
+
+	s.securityConfig.externalCA.UpdateURLs(cfsslURLs...)
 }
 
 // evaluateAndSignNodeCert implements the logic of which certificates to sign
