@@ -52,6 +52,16 @@ type networkContext struct {
 	// A table of unallocated tasks which will be revisited if any thing
 	// changes in system state that might help task allocation.
 	unallocatedTasks map[string]*api.Task
+
+	// A table of unallocated services which will be revisited if
+	// any thing changes in system state that might help service
+	// allocation.
+	unallocatedServices map[string]*api.Service
+
+	// A table of unallocated networks which will be revisited if
+	// any thing changes in system state that might help network
+	// allocation.
+	unallocatedNetworks map[string]*api.Network
 }
 
 func (a *Allocator) doNetworkInit(ctx context.Context) error {
@@ -61,8 +71,10 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 	}
 
 	nc := &networkContext{
-		nwkAllocator:     na,
-		unallocatedTasks: make(map[string]*api.Task),
+		nwkAllocator:        na,
+		unallocatedTasks:    make(map[string]*api.Task),
+		unallocatedServices: make(map[string]*api.Service),
+		unallocatedNetworks: make(map[string]*api.Network),
 	}
 
 	// Check if we have the ingress network. If not found create
@@ -326,6 +338,8 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 	case state.EventCreateTask, state.EventUpdateTask, state.EventDeleteTask:
 		a.doTaskAlloc(ctx, nc, ev)
 	case state.EventCommit:
+		a.procUnallocatedNetworks(ctx, nc)
+		a.procUnallocatedServices(ctx, nc)
 		a.procUnallocatedTasksNetwork(ctx, nc)
 		return
 	}
@@ -581,6 +595,7 @@ func (a *Allocator) allocateService(ctx context.Context, nc *networkContext, s *
 	}
 
 	if err := nc.nwkAllocator.ServiceAllocate(s); err != nil {
+		nc.unallocatedServices[s.ID] = s
 		return err
 	}
 
@@ -615,6 +630,7 @@ func (a *Allocator) allocateService(ctx context.Context, nc *networkContext, s *
 
 func (a *Allocator) allocateNetwork(ctx context.Context, nc *networkContext, n *api.Network) error {
 	if err := nc.nwkAllocator.Allocate(n); err != nil {
+		nc.unallocatedNetworks[n.ID] = n
 		return fmt.Errorf("failed during network allocation for network %s: %v", n.ID, err)
 	}
 
@@ -670,6 +686,8 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sto
 			if !nc.nwkAllocator.IsAllocated(n) {
 				return nil, fmt.Errorf("network %s attached to task %s not allocated yet", n.ID, t.ID)
 			}
+
+			na.Network = n
 		}
 
 		if err := nc.nwkAllocator.AllocateTask(t); err != nil {
@@ -698,6 +716,32 @@ func (a *Allocator) allocateTask(ctx context.Context, nc *networkContext, tx sto
 	}
 
 	return storeT, nil
+}
+
+func (a *Allocator) procUnallocatedNetworks(ctx context.Context, nc *networkContext) {
+	for _, n := range nc.unallocatedNetworks {
+		if !nc.nwkAllocator.IsAllocated(n) {
+			if err := a.allocateNetwork(ctx, nc, n); err != nil {
+				log.G(ctx).Debugf("Failed allocation of unallocated network %s: %v", n.ID, err)
+				continue
+			}
+		}
+
+		delete(nc.unallocatedNetworks, n.ID)
+	}
+}
+
+func (a *Allocator) procUnallocatedServices(ctx context.Context, nc *networkContext) {
+	for _, s := range nc.unallocatedServices {
+		if serviceAllocationNeeded(s, nc) {
+			if err := a.allocateService(ctx, nc, s); err != nil {
+				log.G(ctx).Debugf("Failed allocation of unallocated service %s: %v", s.ID, err)
+				continue
+			}
+		}
+
+		delete(nc.unallocatedServices, s.ID)
+	}
 }
 
 func (a *Allocator) procUnallocatedTasksNetwork(ctx context.Context, nc *networkContext) {
