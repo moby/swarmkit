@@ -201,6 +201,12 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, paths Cert
 		return nil, err
 	}
 
+	// Create a valid TLSKeyPair out of the PEM encoded private key and certificate
+	tlsKeyPair, err := tls.X509KeyPair(signedCert, key)
+	if err != nil {
+		return nil, err
+	}
+
 	log.Infof("Downloaded new TLS credentials with role: %s.", role)
 
 	// Ensure directory exists
@@ -219,13 +225,27 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, paths Cert
 		return nil, err
 	}
 
-	// Create a valid TLSKeyPair out of the PEM encoded private key and certificate
-	tlsKeyPair, err := tls.X509KeyPair(signedCert, key)
-	if err != nil {
-		return nil, err
+	return &tlsKeyPair, nil
+}
+
+// PrepareCSR creates a CFSSL Sign Request based on the given raw CSR and
+// overrides the Subject and Hosts with the given extra args.
+func PrepareCSR(csrBytes []byte, cn, ou, org string) cfsigner.SignRequest {
+	// All managers get added the subject-alt-name of CA, so they can be
+	// used for cert issuance.
+	hosts := []string{ou}
+	if ou == ManagerRole {
+		hosts = append(hosts, CARole)
 	}
 
-	return &tlsKeyPair, nil
+	return cfsigner.SignRequest{
+		Request: string(csrBytes),
+		// OU is used for Authentication of the node type. The CN has the random
+		// node ID.
+		Subject: &cfsigner.Subject{CN: cn, Names: []cfcsr.Name{{OU: ou, O: org}}},
+		// Adding ou as DNS alt name, so clients can connect to ManagerRole and CARole
+		Hosts: hosts,
+	}
 }
 
 // ParseValidateAndSignCSR returns a signed certificate from a particular rootCA and a CSR.
@@ -234,25 +254,21 @@ func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, ou, org string) 
 		return nil, ErrNoValidSigner
 	}
 
-	// All managers get added the subject-alt-name of CA, so they can be used for cert issuance
-	hosts := []string{ou}
-	if ou == ManagerRole {
-		hosts = append(hosts, CARole)
-	}
+	signRequest := PrepareCSR(csrBytes, cn, ou, org)
 
-	cert, err := rca.Signer.Sign(cfsigner.SignRequest{
-		Request: string(csrBytes),
-		// OU is used for Authentication of the node type. The CN has the random
-		// node ID.
-		Subject: &cfsigner.Subject{CN: cn, Names: []cfcsr.Name{{OU: ou, O: org}}},
-		// Adding ou as DNS alt name, so clients can connect to ManagerRole and CARole
-		Hosts: hosts,
-	})
+	cert, err := rca.Signer.Sign(signRequest)
 	if err != nil {
 		log.Debugf("failed to sign node certificate: %v", err)
 		return nil, err
 	}
 
+	return rca.AppendFirstRootPEM(cert)
+}
+
+// AppendFirstRootPEM appends the first certificate from this RootCA's cert
+// bundle to the given cert bundle (which should already be encoded as a series
+// of PEM-encoded certificate blocks).
+func (rca *RootCA) AppendFirstRootPEM(cert []byte) ([]byte, error) {
 	// Append the first root CA Cert to the certificate, to create a valid chain
 	// Get the first Root CA Cert on the bundle
 	firstRootCA, _, err := helpers.ParseOneCertificateFromPEM(rca.Cert)
@@ -399,7 +415,7 @@ func GetLocalRootCA(baseDir string) (RootCA, error) {
 
 	rootCA, err := NewRootCA(cert, key, DefaultNodeCertExpiration)
 	if err == nil {
-		log.Debugf("successfully loaded the signer for the Root CA: %s", paths.RootCA.Cert)
+		log.Debugf("successfully loaded the Root CA: %s", paths.RootCA.Cert)
 	}
 
 	return rootCA, err

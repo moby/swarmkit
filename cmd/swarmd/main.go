@@ -114,6 +114,11 @@ var (
 				return err
 			}
 
+			externalCAURLs, err := cmd.Flags().GetStringSlice("external-ca-url")
+			if err != nil {
+				return err
+			}
+
 			engineAddr, err := cmd.Flags().GetString("engine-addr")
 			if err != nil {
 				return err
@@ -154,6 +159,7 @@ var (
 				StateDir:         stateDir,
 				CAHash:           caHash,
 				Secret:           secret,
+				ExternalCAURLs:   externalCAURLs,
 				Executor:         executor,
 				HeartbeatTick:    hb,
 				ElectionTick:     election,
@@ -205,4 +211,5 @@ func init() {
 	mainCmd.Flags().Uint32("heartbeat-tick", 1, "Defines the heartbeat interval (in seconds) for raft member health-check")
 	mainCmd.Flags().Uint32("election-tick", 3, "Defines the amount of ticks (in seconds) needed without a Leader to trigger a new election")
 	mainCmd.Flags().Bool("manager", false, "Request initial CSR in a manager role")
+	mainCmd.Flags().StringSlice("external-ca-url", nil, "URL to one or more CFSSL CA certificate signing endpoints")
 }

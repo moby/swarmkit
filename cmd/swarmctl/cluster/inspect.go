@@ -40,6 +40,7 @@ func printClusterSummary(cluster *api.Cluster) {
 		} else {
 			fmt.Fprintf(w, "  Certificate Validity Duration: %s\n", clusterDuration.String())
 		}
+		fmt.Fprintf(w, "  External CA URLs: %s\n", cluster.Spec.CAConfig.ExternalCAURLs)
 	}
 }
 

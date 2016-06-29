@@ -102,6 +102,13 @@ var (
 				ceProtoPeriod := ptypes.DurationProto(cePeriod)
 				spec.CAConfig.NodeCertExpiry = ceProtoPeriod
 			}
+			if flags.Changed("external-ca-url") {
+				externalCAURLs, err := flags.GetStringSlice("external-ca-url")
+				if err != nil {
+					return err
+				}
+				spec.CAConfig.ExternalCAURLs = externalCAURLs
+			}
 			if flags.Changed("taskhistory") {
 				taskHistory, err := flags.GetInt64("taskhistory")
 				if err != nil {
@@ -136,5 +143,6 @@ func init() {
 	updateCmd.Flags().StringSlice("secret", nil, "Secret required to join the cluster")
 	updateCmd.Flags().Int64("taskhistory", 0, "Number of historic task entries to retain per slot or node")
 	updateCmd.Flags().Duration("certexpiry", 24*30*3*time.Hour, "Duration node certificates will be valid for")
+	updateCmd.Flags().StringSlice("external-ca-url", nil, "URL to one or more CFSSL CA certificate signing endpoints")
 	updateCmd.Flags().Duration("heartbeatperiod", 0, "Period when heartbeat is expected to receive from agent")
 }

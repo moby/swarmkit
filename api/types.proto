@@ -450,6 +450,10 @@ message AcceptancePolicy {
 message CAConfig {
 	// NodeCertExpiry is the duration certificates should be issued for
 	Duration node_cert_expiry = 1;
+
+	// ExternalCAURLs is a list of URLs to which a manager node will make
+	// certificate signing requests for node certificates.
+	repeated string external_ca_urls = 2 [(gogoproto.customname) = "ExternalCAURLs"];
 }
 
 // OrchestrationConfig defines cluster-level orchestration settings.
