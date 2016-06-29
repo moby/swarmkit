@@ -499,3 +499,26 @@ func CheckValuesOnNodes(t *testing.T, clockSource *fakeclock.FakeClock, checkNod
 		iteration++
 	}
 }
+
+// GetAllValuesOnNode returns all values on this node
+func GetAllValuesOnNode(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *TestNode) ([]string, []*api.Node) {
+	ids := []string{}
+	values := []*api.Node{}
+	assert.NoError(t, PollFunc(clockSource, func() error {
+		var err error
+		raftNode.MemoryStore().View(func(tx store.ReadTx) {
+			var allNodes []*api.Node
+			allNodes, err = store.FindNodes(tx, store.All)
+			if err != nil {
+				return
+			}
+			for _, node := range allNodes {
+				ids = append(ids, node.ID)
+				values = append(values, node)
+			}
+		})
+		return err
+	}))
+
+	return ids, values
+}
