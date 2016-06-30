@@ -46,7 +46,7 @@ func (m *ExternalCAOpt) Value() []*api.ExternalCA {
 }
 
 // parseExternalCA parses an external CA specification from the command line,
-// such as type=cfssl,url=https://example.com.
+// such as protocol=cfssl,url=https://example.com.
 func parseExternalCA(caSpec string) (*api.ExternalCA, error) {
 	csvReader := csv.NewReader(strings.NewReader(caSpec))
 	fields, err := csvReader.Read()
@@ -73,12 +73,12 @@ func parseExternalCA(caSpec string) (*api.ExternalCA, error) {
 		key, value := parts[0], parts[1]
 
 		switch strings.ToLower(key) {
-		case "type":
+		case "protocol":
 			hasProtocol = true
 			if strings.ToLower(value) == "cfssl" {
 				externalCA.Protocol = api.ExternalCA_CAProtocolCFSSL
 			} else {
-				return nil, fmt.Errorf("unrecognized external CA type %s", value)
+				return nil, fmt.Errorf("unrecognized external CA protocol %s", value)
 			}
 		case "url":
 			hasURL = true
@@ -89,7 +89,7 @@ func parseExternalCA(caSpec string) (*api.ExternalCA, error) {
 	}
 
 	if !hasProtocol {
-		return nil, errors.New("the external-ca option needs a type= parameter")
+		return nil, errors.New("the external-ca option needs a protocol= parameter")
 	}
 	if !hasURL {
 		return nil, errors.New("the external-ca option needs a url= parameter")
