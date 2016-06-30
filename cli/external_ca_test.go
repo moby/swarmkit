@@ -12,12 +12,12 @@ func TestParseExternalCA(t *testing.T) {
 		"",
 		"asdf",
 		"asdf=",
-		"type",
-		"type=foo",
-		"type=cfssl",
+		"protocol",
+		"protocol=foo",
+		"protocol=cfssl",
 		"url",
 		"url=https://xyz",
-		"url,type",
+		"url,protocol",
 	}
 
 	for _, spec := range invalidSpecs {
@@ -30,7 +30,7 @@ func TestParseExternalCA(t *testing.T) {
 		expected *api.ExternalCA
 	}{
 		{
-			input: "type=cfssl,url=https://example.com",
+			input: "protocol=cfssl,url=https://example.com",
 			expected: &api.ExternalCA{
 				Protocol: api.ExternalCA_CAProtocolCFSSL,
 				URL:      "https://example.com",
