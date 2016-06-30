@@ -39,7 +39,7 @@ func main() {
 	// CA.
 	ioutil.WriteFile(nodeConfigPaths.RootCA.Cert, rootCA.Cert, os.FileMode(0644))
 
-	server, err := testutils.NewExternalSigningServer(rootCA, "ca")
+	server, err := testutils.NewExternalCFSSLSigningServer(rootCA, "ca")
 	if err != nil {
 		log.Fatalf("unable to start server: %s", err)
 	}

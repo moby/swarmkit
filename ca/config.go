@@ -45,8 +45,8 @@ const (
 type SecurityConfig struct {
 	mu sync.Mutex
 
-	rootCA     *RootCA
-	externalCA *ExternalCA
+	rootCA      *RootCA
+	externalCAs map[string]ExternalCA
 
 	ServerTLSCreds *MutableTLSCreds
 	ClientTLSCreds *MutableTLSCreds
@@ -61,9 +61,20 @@ type CertificateUpdate struct {
 
 // NewSecurityConfig initializes and returns a new SecurityConfig.
 func NewSecurityConfig(rootCA *RootCA, clientTLSCreds, serverTLSCreds *MutableTLSCreds) *SecurityConfig {
+	return &SecurityConfig{
+		rootCA:         rootCA,
+		externalCAs:    make(map[string]ExternalCA),
+		ClientTLSCreds: clientTLSCreds,
+		ServerTLSCreds: serverTLSCreds,
+	}
+}
+
+// UpdateExternalCAURLs parses the given URLs and creates external signing
+// implementors
+func (s *SecurityConfig) UpdateExternalCAURLs(urls []string) error {
 	// Make a new TLS config for the external CA client without a
 	// ServerName value set.
-	clientTLSConfig := clientTLSCreds.Config()
+	clientTLSConfig := s.ClientTLSCreds.Config()
 
 	externalCATLSConfig := &tls.Config{
 		Certificates: clientTLSConfig.Certificates,
@@ -71,12 +82,40 @@ func NewSecurityConfig(rootCA *RootCA, clientTLSCreds, serverTLSCreds *MutableTL
 		MinVersion:   tls.VersionTLS12,
 	}
 
-	return &SecurityConfig{
-		rootCA:         rootCA,
-		externalCA:     NewExternalCA(rootCA, externalCATLSConfig),
-		ClientTLSCreds: clientTLSCreds,
-		ServerTLSCreds: serverTLSCreds,
+	// Make a set of existing url keys
+	existingURLs := make(map[string]struct{}, len(s.externalCAs))
+	for k := range s.externalCAs {
+		existingURLs[k] = struct{}{}
 	}
+
+	for _, url := range urls {
+		// Make sure we don't prune this
+		delete(existingURLs, url)
+
+		// Don't recreate existing CA clients
+		if _, ok := s.externalCAs[url]; ok {
+			continue
+		}
+
+		urlSplit := strings.SplitN(url, ":", 2)
+		if len(urlSplit) != 2 {
+			return fmt.Errorf("type and URL of external CA could not be parsed successfully")
+		}
+
+		switch urlSplit[0] {
+		case "cfssl":
+			s.externalCAs[url] = NewExternalCFSSLCA(s.rootCA, externalCATLSConfig, urlSplit[1])
+		default:
+			return fmt.Errorf("unknown external CA type '%s'", urlSplit[0])
+		}
+	}
+
+	// Prune out any URLs no longer in use
+	for k := range existingURLs {
+		delete(s.externalCAs, k)
+	}
+
+	return nil
 }
 
 // RootCA returns the root CA.
@@ -338,11 +377,13 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 
 			// Update the external CA to use the new client TLS
 			// config using a copy without a serverName specified.
-			s.externalCA.UpdateTLSConfig(&tls.Config{
-				Certificates: clientTLSConfig.Certificates,
-				RootCAs:      clientTLSConfig.RootCAs,
-				MinVersion:   tls.VersionTLS12,
-			})
+			for _, externalCA := range s.externalCAs {
+				externalCA.UpdateTLSConfig(&tls.Config{
+					Certificates: clientTLSConfig.Certificates,
+					RootCAs:      clientTLSConfig.RootCAs,
+					MinVersion:   tls.VersionTLS12,
+				})
+			}
 
 			err = s.ServerTLSCreds.LoadNewTLSConfig(serverTLSConfig)
 			if err != nil {
