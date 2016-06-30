@@ -42,6 +42,7 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	// TODO(stevvooe): Replace these with a more interesting mount flag.
 	flags.StringSlice("bind", nil, "define a bind mount")
 	flags.StringSlice("volume", nil, "define a volume mount")
+	flags.StringSlice("tmpfs", nil, "define a tmpfs mount")
 }
 
 // Merge merges a flagset into a service spec.
@@ -108,6 +109,10 @@ func Merge(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClient) error
 	}
 
 	if err := parseVolume(flags, spec); err != nil {
+		return err
+	}
+
+	if err := parseTmpfs(flags, spec); err != nil {
 		return err
 	}
 

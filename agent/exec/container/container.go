@@ -169,12 +169,30 @@ func (c *containerConfig) binds() []string {
 	return r
 }
 
+func (c *containerConfig) tmpfs() map[string]string {
+	r := make(map[string]string)
+
+	for _, spec := range c.spec().Mounts {
+		if spec.Type != api.MountTypeTmpfs {
+			continue
+		}
+
+		r[spec.Target] = getMountMask(&spec)
+	}
+
+	return r
+}
+
 // bindsAndVolumes uses the list of mounts to create candidates for the Binds
 // and Volumes. Effectively, we only use annonymous volumes in the volumes API
 // and the rest becomes binds.`
 func (c *containerConfig) bindsAndVolumes() [][]string {
 	var specs [][]string
 	for _, mount := range c.spec().Mounts {
+		if mount.Type != api.MountTypeBind && mount.Type != api.MountTypeVolume {
+			continue // skip tmpfs
+		}
+
 		var spec []string
 		if mount.Source != "" {
 			spec = append(spec, mount.Source)
@@ -223,6 +241,46 @@ func getMountMask(m *api.Mount) string {
 		case api.MountPropagationRSlave:
 			maskOpts = append(maskOpts, "rslave")
 		}
+	case api.MountTypeTmpfs:
+		if m.TmpfsOptions == nil {
+			break
+		}
+
+		if m.TmpfsOptions.Mode != 0 {
+			maskOpts = append(maskOpts, fmt.Sprintf("mode=%o", m.TmpfsOptions.Mode))
+		}
+
+		if m.TmpfsOptions.SizeBytes != 0 {
+			// calculate suffix here, making this linux specific, but that is
+			// okay, since API is that way anyways.
+
+			// we do this by finding the suffix that divides evenly into the
+			// value, returing the value itself, with no suffix, if it fails.
+			//
+			// For the most part, we don't enforce any semantic to this values.
+			// The operating system will usually align this and enforce minimum
+			// and maximums.
+			var (
+				size   = m.TmpfsOptions.SizeBytes
+				suffix string
+			)
+			for _, r := range []struct {
+				suffix  string
+				divisor int64
+			}{
+				{"g", 1 << 30},
+				{"m", 1 << 20},
+				{"k", 1 << 10},
+			} {
+				if size%r.divisor == 0 {
+					size = size / r.divisor
+					suffix = r.suffix
+					break
+				}
+			}
+
+			maskOpts = append(maskOpts, fmt.Sprintf("size=%d%s", size, suffix))
+		}
 	}
 
 	return strings.Join(maskOpts, ",")
@@ -232,6 +290,7 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 	return &enginecontainer.HostConfig{
 		Resources: c.resources(),
 		Binds:     c.binds(),
+		Tmpfs:     c.tmpfs(),
 	}
 }
 
