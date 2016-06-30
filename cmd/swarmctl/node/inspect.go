@@ -26,9 +26,21 @@ func printNodeSummary(node *api.Node) {
 		desc = &api.NodeDescription{}
 	}
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", node.ID)
-	common.FprintfIfNotEmpty(w, "Name\t: %s\n", spec.Annotations.Name)
 	if node.Description != nil {
 		common.FprintfIfNotEmpty(w, "Hostname\t: %s\n", node.Description.Hostname)
+	}
+	if len(spec.Annotations.Labels) != 0 {
+		fmt.Fprintf(w, "Node Labels\t:")
+		// sort label output for readability
+		var keys []string
+		for k := range spec.Annotations.Labels {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			fmt.Fprintf(w, " %s=%s", k, spec.Annotations.Labels[k])
+		}
+		fmt.Fprintln(w)
 	}
 	fmt.Fprintln(w, "Status:\t")
 	common.FprintfIfNotEmpty(w, "  State\t: %s\n", node.Status.State.String())
@@ -80,10 +92,16 @@ func printNodeSummary(node *api.Node) {
 		common.FprintfIfNotEmpty(w, "Engine Version\t: %s\n", desc.Engine.EngineVersion)
 
 		if len(desc.Engine.Labels) != 0 {
-			fmt.Fprintln(w, "Engine Labels:\t")
-			for k, v := range desc.Engine.Labels {
-				fmt.Fprintf(w, "  %s = %s", k, v)
+			fmt.Fprintf(w, "Engine Labels\t:")
+			var keys []string
+			for k := range desc.Engine.Labels {
+				keys = append(keys, k)
 			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				fmt.Fprintf(w, " %s=%s", k, desc.Engine.Labels[k])
+			}
+			fmt.Fprintln(w)
 		}
 	}
 }

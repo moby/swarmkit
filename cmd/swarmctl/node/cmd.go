@@ -12,13 +12,14 @@ var (
 
 func init() {
 	Cmd.AddCommand(
-		removeCmd,
+		activateCmd,
+		demoteCmd,
+		drainCmd,
 		inspectCmd,
 		listCmd,
-		activateCmd,
 		pauseCmd,
-		drainCmd,
 		promoteCmd,
-		demoteCmd,
+		removeCmd,
+		updateCmd,
 	)
 }
