@@ -49,9 +49,9 @@ type NodeConfig struct {
 	// Secret to be used on the first certificate request.
 	Secret string
 
-	// ExternalCAURLs is a list of initial URLs to which a manager node
+	// ExternalCAs is a list of CAs to which a manager node
 	// will make certificate signing requests for node certificates.
-	ExternalCAURLs []string
+	ExternalCAs []*api.ExternalCA
 
 	// ForceNewCluster creates a new cluster from current raft state.
 	ForceNewCluster bool
@@ -601,7 +601,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 					"unix": n.config.ListenControlAPI,
 				},
 				SecurityConfig: securityConfig,
-				ExternalCAURLs: n.config.ExternalCAURLs,
+				ExternalCAs:    n.config.ExternalCAs,
 				JoinRaft:       remoteAddr.Addr,
 				StateDir:       n.config.StateDir,
 				HeartbeatTick:  n.config.HeartbeatTick,

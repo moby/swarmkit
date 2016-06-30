@@ -9,12 +9,15 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/cli"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/spf13/cobra"
 )
 
 var (
+	externalCAOpt cli.ExternalCAOpt
+
 	updateCmd = &cobra.Command{
 		Use:   "update <cluster name>",
 		Short: "Update a cluster",
@@ -102,12 +105,8 @@ var (
 				ceProtoPeriod := ptypes.DurationProto(cePeriod)
 				spec.CAConfig.NodeCertExpiry = ceProtoPeriod
 			}
-			if flags.Changed("external-ca-url") {
-				externalCAURLs, err := flags.GetStringSlice("external-ca-url")
-				if err != nil {
-					return err
-				}
-				spec.CAConfig.ExternalCAURLs = externalCAURLs
+			if flags.Changed("external-ca") {
+				spec.CAConfig.ExternalCAs = externalCAOpt.Value()
 			}
 			if flags.Changed("taskhistory") {
 				taskHistory, err := flags.GetInt64("taskhistory")
@@ -143,6 +142,6 @@ func init() {
 	updateCmd.Flags().StringSlice("secret", nil, "Secret required to join the cluster")
 	updateCmd.Flags().Int64("taskhistory", 0, "Number of historic task entries to retain per slot or node")
 	updateCmd.Flags().Duration("certexpiry", 24*30*3*time.Hour, "Duration node certificates will be valid for")
-	updateCmd.Flags().StringSlice("external-ca-url", nil, "URL to one or more CFSSL CA certificate signing endpoints")
+	updateCmd.Flags().Var(&externalCAOpt, "external-ca", "Specifications of one or more certificate signing endpoints")
 	updateCmd.Flags().Duration("heartbeatperiod", 0, "Period when heartbeat is expected to receive from agent")
 }
