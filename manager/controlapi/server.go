@@ -2,6 +2,7 @@ package controlapi
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -14,8 +15,9 @@ var (
 
 // Server is the Cluster API gRPC server.
 type Server struct {
-	store *store.MemoryStore
-	raft  *raft.Node
+	store      *store.MemoryStore
+	raft       *raft.Node
+	updateLock sync.Mutex
 }
 
 // NewServer creates a Cluster API server.

@@ -323,18 +323,21 @@ func TestListManagerNodes(t *testing.T) {
 }
 
 func TestUpdateNode(t *testing.T) {
+	tc := cautils.NewTestCA(nil, cautils.AcceptancePolicy(true, true, ""))
 	ts := newTestServer(t)
 
-	_, err := ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{})
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	nodes := make(map[uint64]*raftutils.TestNode)
+	nodes[1], _ = raftutils.NewInitNode(t, tc, nil)
+	defer raftutils.TeardownCluster(t, nodes)
 
-	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: "invalid", Spec: &api.NodeSpec{}, NodeVersion: &api.Version{}})
-	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err))
+	nodeID := nodes[1].SecurityConfig.ClientTLSCreds.NodeID()
 
-	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID: "id",
+	// Assign one of the raft node to the test server
+	ts.Server.raft = nodes[1].Node
+	ts.Server.store = nodes[1].MemoryStore()
+
+	_, err := ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
+		NodeID: nodeID,
 		Spec: &api.NodeSpec{
 			Availability: api.NodeAvailabilityDrain,
 		},
@@ -343,52 +346,77 @@ func TestUpdateNode(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpc.Code(err))
 
-	createNode(t, ts, "id", api.NodeRoleManager, api.NodeMembershipAccepted)
-	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: "id"})
+	// Create a node object for the manager
+	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateNode(tx, &api.Node{
+			ID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID(),
+			Spec: api.NodeSpec{
+				Role:       api.NodeRoleManager,
+				Membership: api.NodeMembershipAccepted,
+			},
+		}))
+		return nil
+	}))
+
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: "invalid", Spec: &api.NodeSpec{}, NodeVersion: &api.Version{}})
+	assert.Error(t, err)
+	assert.Equal(t, codes.NotFound, grpc.Code(err))
+
+	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodeID})
 	assert.NoError(t, err)
+	if !assert.NotNil(t, r) {
+		assert.FailNow(t, "got unexpected nil response from GetNode")
+	}
 	assert.NotNil(t, r.Node)
 
-	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: "id"})
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
 	spec := r.Node.Spec.Copy()
 	spec.Availability = api.NodeAvailabilityDrain
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID: "id",
+		NodeID: nodeID,
 		Spec:   spec,
 	})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID:      "id",
+		NodeID:      nodeID,
 		Spec:        spec,
 		NodeVersion: &r.Node.Meta.Version,
 	})
 	assert.NoError(t, err)
 
-	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: "id"})
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodeID})
 	assert.NoError(t, err)
+	if !assert.NotNil(t, r) {
+		assert.FailNow(t, "got unexpected nil response from GetNode")
+	}
 	assert.NotNil(t, r.Node)
 	assert.NotNil(t, r.Node.Spec)
 	assert.Equal(t, api.NodeAvailabilityDrain, r.Node.Spec.Availability)
 
 	version := &r.Node.Meta.Version
-	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: "id", Spec: &r.Node.Spec, NodeVersion: version})
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
 	assert.NoError(t, err)
 	// Perform an update with the "old" version.
-	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: "id", Spec: &r.Node.Spec, NodeVersion: version})
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
 	assert.Error(t, err)
 
 	// Make sure we can't demote the last manager.
-	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: "id"})
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodeID})
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
 	spec.Role = api.NodeRoleWorker
 	version = &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID:      "id",
+		NodeID:      nodeID,
 		Spec:        spec,
 		NodeVersion: version,
 	})

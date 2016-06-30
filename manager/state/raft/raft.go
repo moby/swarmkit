@@ -638,7 +638,14 @@ func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResp
 	return &api.LeaveResponse{}, nil
 }
 
-// RemoveMember submits a configuration change to remove a member from the raft cluster.
+// CanRemoveMember checks if a member can be removed from
+// the context of the current node.
+func (n *Node) CanRemoveMember(id uint64) bool {
+	return n.cluster.CanRemoveMember(n.Config.ID, id)
+}
+
+// RemoveMember submits a configuration change to remove a member from the raft cluster
+// after checking if the operation would not result in a loss of quorum.
 func (n *Node) RemoveMember(ctx context.Context, id uint64) error {
 	n.membershipLock.Lock()
 	defer n.membershipLock.Unlock()
@@ -826,6 +833,18 @@ func (n *Node) GetMemberlist() map[uint64]*api.RaftMember {
 	}
 
 	return memberlist
+}
+
+// GetMemberByNodeID returns member information based
+// on its generic Node ID.
+func (n *Node) GetMemberByNodeID(nodeID string) *membership.Member {
+	members := n.cluster.Members()
+	for _, member := range members {
+		if member.NodeID == nodeID {
+			return member
+		}
+	}
+	return nil
 }
 
 // IsMember checks if the raft node has effectively joined
@@ -1170,11 +1189,6 @@ func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
 		if err = n.Campaign(n.Ctx); err != nil {
 			return err
 		}
-	}
-
-	// Do not unregister yourself
-	if n.Config.ID == cc.NodeID {
-		return nil
 	}
 
 	return n.cluster.RemoveMember(cc.NodeID)
