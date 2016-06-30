@@ -3,6 +3,8 @@ package node
 import (
 	"errors"
 	"fmt"
+	"reflect"
+	"strings"
 
 	"golang.org/x/net/context"
 
@@ -12,7 +14,8 @@ import (
 )
 
 var (
-	errNoChange = errors.New("availability was already set to the requested value")
+	errNoChange = errors.New("node attribute was already set to the requested value")
+	flagLabel   = "label"
 )
 
 func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.NodeSpec_Availability) error {
@@ -144,4 +147,53 @@ func getNode(ctx context.Context, c api.ControlClient, input string) (*api.Node,
 		return rl.Nodes[0], nil
 	}
 	return rg.Node, nil
+}
+
+func updateNode(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return errors.New("node ID missing")
+	}
+	c, err := common.Dial(cmd)
+	if err != nil {
+		return err
+	}
+
+	node, err := getNode(common.Context(cmd), c, args[0])
+	if err != nil {
+		return err
+	}
+	spec := node.Spec.Copy()
+
+	flags := cmd.Flags()
+	if flags.Changed(flagLabel) {
+		labels, err := flags.GetStringSlice(flagLabel)
+		if err != nil {
+			return err
+		}
+		// overwrite existing labels
+		spec.Annotations.Labels = map[string]string{}
+		for _, l := range labels {
+			parts := strings.SplitN(l, "=", 2)
+			if len(parts) != 2 {
+				return fmt.Errorf("malformed label for node %s", l)
+			}
+			spec.Annotations.Labels[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+		}
+	}
+
+	if reflect.DeepEqual(spec, &node.Spec) {
+		return errNoChange
+	}
+
+	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
+		NodeID:      node.ID,
+		NodeVersion: &node.Meta.Version,
+		Spec:        spec,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
