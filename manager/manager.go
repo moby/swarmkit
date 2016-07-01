@@ -22,6 +22,7 @@ import (
 	"github.com/docker/swarmkit/manager/keymanager"
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/raftpicker"
+	"github.com/docker/swarmkit/manager/resourceapi"
 	"github.com/docker/swarmkit/manager/scheduler"
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -69,6 +70,10 @@ type Config struct {
 	// HeartbeatTick defines the amount of ticks between each
 	// heartbeat sent to other members for health-check purposes
 	HeartbeatTick uint32
+
+	// AllowUserTasks specifies wheter worker nodes are allowed
+	// to allocate tasks on swarm networks
+	AllowUserTasks bool
 }
 
 // Manager is the cluster manager for Swarm.
@@ -86,6 +91,7 @@ type Manager struct {
 	scheduler              *scheduler.Scheduler
 	allocator              *allocator.Allocator
 	keyManager             *keymanager.KeyManager
+	resourceAllocator      *resourceapi.ResourceAllocator
 	server                 *grpc.Server
 	localserver            *grpc.Server
 	RaftNode               *raft.Node
@@ -212,15 +218,16 @@ func New(config *Config) (*Manager, error) {
 		grpc.Creds(config.SecurityConfig.ServerTLSCreds)}
 
 	m := &Manager{
-		config:      config,
-		listeners:   listeners,
-		caserver:    ca.NewServer(RaftNode.MemoryStore(), config.SecurityConfig),
-		Dispatcher:  dispatcher.New(RaftNode, dispatcherConfig),
-		server:      grpc.NewServer(opts...),
-		localserver: grpc.NewServer(opts...),
-		RaftNode:    RaftNode,
-		started:     make(chan struct{}),
-		stopped:     make(chan struct{}),
+		config:            config,
+		listeners:         listeners,
+		caserver:          ca.NewServer(RaftNode.MemoryStore(), config.SecurityConfig),
+		Dispatcher:        dispatcher.New(RaftNode, dispatcherConfig),
+		resourceAllocator: resourceapi.New(RaftNode.MemoryStore()),
+		server:            grpc.NewServer(opts...),
+		localserver:       grpc.NewServer(opts...),
+		RaftNode:          RaftNode,
+		started:           make(chan struct{}),
+		stopped:           make(chan struct{}),
 	}
 
 	return m, nil
@@ -457,6 +464,8 @@ func (m *Manager) Run(parent context.Context) error {
 	proxyNodeCAAPI := api.NewRaftProxyNodeCAServer(authenticatedNodeCAAPI, cs, m.RaftNode, ca.WithMetadataForwardTLSInfo)
 	proxyRaftMembershipAPI := api.NewRaftProxyRaftMembershipServer(authenticatedRaftMembershipAPI, cs, m.RaftNode, ca.WithMetadataForwardTLSInfo)
 
+	authenticatedResourceAllocatorAPI := api.NewAuthenticatedWrapperResourceAllocatorServer(m.resourceAllocator, authorize)
+
 	// localProxyControlAPI is a special kind of proxy. It is only wired up
 	// to receive requests from a trusted local socket, and these requests
 	// don't use TLS, therefore the requests it handles locally should
@@ -476,6 +485,9 @@ func (m *Manager) Run(parent context.Context) error {
 	api.RegisterControlServer(m.localserver, localProxyControlAPI)
 	api.RegisterControlServer(m.server, authenticatedControlAPI)
 	api.RegisterDispatcherServer(m.server, proxyDispatcherAPI)
+	if m.config.AllowUserTasks {
+		api.RegisterResourceAllocatorServer(m.server, authenticatedResourceAllocatorAPI)
+	}
 
 	errServe := make(chan error, 2)
 	for proto, l := range m.listeners {

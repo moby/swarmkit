@@ -804,3 +804,89 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 func (d *Dispatcher) NodeCount() int {
 	return d.nodes.Len()
 }
+
+// NetworkAttachments is a stream of container attachment resources
+// allocated for the node.
+func (d *Dispatcher) NetworkAttachments(r *api.NetworkAttachmentsRequest, stream api.Dispatcher_NetworkAttachmentsServer) error {
+	nodeInfo, err := ca.RemoteNode(stream.Context())
+	if err != nil {
+		return err
+	}
+	nodeID := nodeInfo.NodeID
+
+	if err := d.isRunningLocked(); err != nil {
+		return err
+	}
+
+	fields := logrus.Fields{
+		"node.id":      nodeID,
+		"node.session": r.SessionID,
+		"method":       "(*Dispatcher).NetworkAttachments",
+	}
+	if nodeInfo.ForwardedBy != nil {
+		fields["forwarder.id"] = nodeInfo.ForwardedBy.NodeID
+	}
+	log.G(stream.Context()).WithFields(fields).Debugf("")
+
+	if _, err = d.nodes.GetWithSession(nodeID, r.SessionID); err != nil {
+		return err
+	}
+
+	attachmentMap := make(map[string]*api.NetworkAttachment)
+	nodeAttachments, cancel, err := store.ViewAndWatch(
+		d.store,
+		func(readTx store.ReadTx) error {
+			attachments, err := store.FindAttachments(readTx, store.ByNodeID(nodeID))
+			if err != nil {
+				return err
+			}
+			for _, a := range attachments {
+				attachmentMap[a.ID] = a
+			}
+			return nil
+		},
+		state.EventCreateAttachment{Attachment: &api.NetworkAttachment{NodeID: nodeID},
+			Checks: []state.AttachmentCheckFunc{state.AttachmentCheckNodeID}},
+		state.EventUpdateAttachment{Attachment: &api.NetworkAttachment{NodeID: nodeID},
+			Checks: []state.AttachmentCheckFunc{state.AttachmentCheckNodeID}},
+		state.EventDeleteAttachment{Attachment: &api.NetworkAttachment{NodeID: nodeID},
+			Checks: []state.AttachmentCheckFunc{state.AttachmentCheckNodeID}},
+	)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	for {
+		if _, err := d.nodes.GetWithSession(nodeID, r.SessionID); err != nil {
+			return err
+		}
+
+		var attachments []*api.NetworkAttachment
+		for _, a := range attachmentMap {
+			if a.Status.State >= api.AttachmentStateAllocated {
+				attachments = append(attachments, a)
+			}
+		}
+
+		if err := stream.Send(&api.NetworkAttachmentMessage{Attachments: attachments}); err != nil {
+			return err
+		}
+
+		select {
+		case event := <-nodeAttachments:
+			switch v := event.(type) {
+			case state.EventCreateAttachment:
+				attachmentMap[v.Attachment.ID] = v.Attachment
+			case state.EventUpdateAttachment:
+				attachmentMap[v.Attachment.ID] = v.Attachment
+			case state.EventDeleteAttachment:
+				delete(attachmentMap, v.Attachment.ID)
+			}
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		case <-d.ctx.Done():
+			return d.ctx.Err()
+		}
+	}
+}
