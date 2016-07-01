@@ -807,6 +807,18 @@
 			"Rev": "9f9027faeb0dad515336ed2f28317f9f8f527ab4"
 		},
 		{
+			"ImportPath": "github.com/vishvananda/netlink",
+			"Rev": "734d02c3e202f682c74b71314b2c61eec0170fd4"
+		},
+		{
+			"ImportPath": "github.com/vishvananda/netlink/nl",
+			"Rev": "734d02c3e202f682c74b71314b2c61eec0170fd4"
+		},
+		{
+			"ImportPath": "github.com/vishvananda/netns",
+			"Rev": "604eaf189ee867d8c147fafc28def2394e878d25"
+		},
+		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
 			"Rev": "3fbbcd23f1cb824e69491a5930cfeff09b12f4d2"
 		},

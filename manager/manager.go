@@ -115,22 +115,10 @@ func New(config *Config) (*Manager, error) {
 	if err == nil {
 		ip := net.ParseIP(listenHost)
 		if ip != nil && ip.IsUnspecified() {
-			// Find our local IP address associated with the default route.
-			// This may not be the appropriate address to use for internal
-			// cluster communications, but it seems like the best default.
-			// The admin can override this address if necessary.
-			conn, err := net.Dial("udp", "8.8.8.8:53")
+			listenHost, err = getDefaultListenIP()
 			if err != nil {
 				return nil, fmt.Errorf("could not determine local IP address: %v", err)
 			}
-			localAddr := conn.LocalAddr().String()
-			conn.Close()
-
-			listenHost, _, err = net.SplitHostPort(localAddr)
-			if err != nil {
-				return nil, fmt.Errorf("could not split local IP address: %v", err)
-			}
-
 			tcpAddr = net.JoinHostPort(listenHost, listenPort)
 		}
 	}
