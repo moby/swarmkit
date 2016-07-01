@@ -201,7 +201,7 @@ func getMountMask(m *api.Mount) string {
 
 	switch m.Type {
 	case api.MountTypeVolume:
-		if m.VolumeOptions != nil && !m.VolumeOptions.Populate {
+		if m.VolumeOptions != nil && m.VolumeOptions.NoCopy {
 			maskOpts = append(maskOpts, "nocopy")
 		}
 	case api.MountTypeBind:
