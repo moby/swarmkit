@@ -7,7 +7,7 @@ var (
 	// the correct version of swarm.
 	Cmd = &cobra.Command{
 		Use:   "version",
-		Short: "Print version number of swarm.",
+		Short: "Print version number of swarm",
 		Run: func(cmd *cobra.Command, args []string) {
 			PrintVersion()
 		},
