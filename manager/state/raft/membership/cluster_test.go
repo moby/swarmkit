@@ -276,18 +276,78 @@ func TestCanRemoveMember(t *testing.T) {
 		return nil
 	}))
 
-	// Removing node 3 should fail
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	err := nodes[1].RemoveMember(ctx, 3)
-	assert.Error(t, err)
-	assert.Equal(t, err, raft.ErrCannotRemoveMember)
-	members := nodes[1].GetMemberlist()
-	assert.Equal(t, len(members), 3)
+	// Removing all nodes should fail
+	for i := 1; i <= 3; i++ {
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		err := nodes[1].RemoveMember(ctx, uint64(i))
+		assert.Error(t, err)
+		assert.Equal(t, err, raft.ErrCannotRemoveMember)
+		members := nodes[1].GetMemberlist()
+		assert.Equal(t, len(members), 3)
+	}
 
 	// Restart node 2 and node 3
 	nodes[2] = raftutils.RestartNode(t, clockSource, nodes[2], false)
 	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
+
+	// Node 2 and Node 3 should be listed as Reachable
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		members := nodes[1].GetMemberlist()
+		if len(members) != 3 {
+			return fmt.Errorf("expected 3 nodes, got %d", len(members))
+		}
+		if members[nodes[2].Config.ID].Status.Reachability == api.RaftMemberStatus_UNREACHABLE {
+			return fmt.Errorf("expected node 2 to be reachable")
+		}
+		if members[nodes[3].Config.ID].Status.Reachability == api.RaftMemberStatus_UNREACHABLE {
+			return fmt.Errorf("expected node 3 to be reachable")
+		}
+		return nil
+	}))
+
+	// Stop Node 3 (1 node out of 3)
+	nodes[3].Server.Stop()
+	nodes[3].Shutdown()
+
+	// Node 3 should be listed as Unreachable
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		members := nodes[1].GetMemberlist()
+		if len(members) != 3 {
+			return fmt.Errorf("expected 3 nodes, got %d", len(members))
+		}
+		if members[nodes[3].Config.ID].Status.Reachability == api.RaftMemberStatus_REACHABLE {
+			return fmt.Errorf("expected node 3 to be unreachable")
+		}
+		return nil
+	}))
+
+	// Removing node 2 should fail (this would break the quorum)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	err := nodes[1].RemoveMember(ctx, nodes[2].Config.ID)
+	assert.Error(t, err)
+	assert.Equal(t, err, raft.ErrCannotRemoveMember)
+	members := nodes[1].GetMemberlist()
+	assert.Equal(t, len(members), 3)
+
+	// Restart node 3
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
+	raftutils.WaitForCluster(t, clockSource, nodes)
+
+	// Node 2 and Node 3 should be listed as Reachable
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		members := nodes[1].GetMemberlist()
+		if len(members) != 3 {
+			return fmt.Errorf("expected 3 nodes, got %d", len(members))
+		}
+		if members[nodes[2].Config.ID].Status.Reachability == api.RaftMemberStatus_UNREACHABLE {
+			return fmt.Errorf("expected node 2 to be reachable")
+		}
+		if members[nodes[3].Config.ID].Status.Reachability == api.RaftMemberStatus_UNREACHABLE {
+			return fmt.Errorf("expected node 3 to be reachable")
+		}
+		return nil
+	}))
 
 	// Removing node 3 should succeed
 	ctx, _ = context.WithTimeout(context.Background(), 10*time.Second)
@@ -297,10 +357,11 @@ func TestCanRemoveMember(t *testing.T) {
 	assert.Nil(t, members[nodes[3].Config.ID])
 	assert.Equal(t, len(members), 2)
 
-	// Removing node 2 should fail
+	// Removing node 2 should succeed
 	ctx, _ = context.WithTimeout(context.Background(), 10*time.Second)
 	err = nodes[1].RemoveMember(ctx, nodes[2].Config.ID)
-	assert.Error(t, err)
-	assert.Equal(t, err, raft.ErrCannotRemoveMember)
-	assert.Equal(t, len(members), 2)
+	assert.NoError(t, err)
+	members = nodes[1].GetMemberlist()
+	assert.Nil(t, members[nodes[2].Config.ID])
+	assert.Equal(t, len(members), 1)
 }
