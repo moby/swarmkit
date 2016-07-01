@@ -82,7 +82,7 @@ func printServiceSummary(service *api.Service, running int) {
 		for _, v := range ctr.Mounts {
 			fmt.Fprintf(w, "    - target = %s\n", v.Target)
 			fmt.Fprintf(w, "      source = %s\n", v.Source)
-			fmt.Fprintf(w, "      writable = %v\n", v.Writable)
+			fmt.Fprintf(w, "      readonly = %v\n", v.ReadOnly)
 			fmt.Fprintf(w, "      type = %v\n", strings.ToLower(v.Type.String()))
 		}
 	}
