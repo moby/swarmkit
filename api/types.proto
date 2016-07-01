@@ -173,8 +173,8 @@ message Mount {
 
 	// VolumeOptions contains parameters for mounting the volume.
 	message VolumeOptions {
-		// populate volume with data from target
-		bool populate = 1;
+		// nocopy prevents automatic copying of data to the volume with data from target
+		bool nocopy = 1 [(gogoproto.customname) = "NoCopy"];
 
 		// labels to apply to the volume if creating
 		map<string, string> labels = 2;
