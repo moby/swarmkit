@@ -88,7 +88,7 @@ func TestMatch(t *testing.T) {
 	e = exprs[0]
 	assert.False(t, e.Match("fo"))
 	assert.True(t, e.Match("f*o"))
-	assert.False(t, e.Match("F*o"))
+	assert.True(t, e.Match("F*o"))
 	assert.False(t, e.Match("foo", "fo", "bar"))
 	assert.True(t, e.Match("foo", "f*o", "bar"))
 	assert.False(t, e.Match("foo"))
