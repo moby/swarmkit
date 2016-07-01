@@ -4,15 +4,12 @@ To build Swarmkit, you must set up a Go development environment.
 [How to Write Go Code](https://golang.org/doc/code.html) contains full instructions.
 When setup correctly, you should have a GOROOT and GOPATH set in the environment.
 
-After you set up the Go development environment, use `go get` to install `swarmkit`:
+After you set up the Go development environment, use `go get` to check out
+`swarmkit`:
 
-	go get github.com/docker/swarmkit/...
+	go get -d github.com/docker/swarmkit
 
-This command installs the source repository into the `GOPATH` and builds the
-binaries into `$GOPATH/bin`. Alternatively run the following to download just
-the source:
-
-	go get -d github.com/docker/swarmkit/...
+This command installs the source repository into the `GOPATH`.
 
 It is not mandatory to use `go get` to checkout the SwarmKit project. However,
 for these instructions to work, you need to check out the project to the
