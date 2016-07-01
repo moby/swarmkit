@@ -16,15 +16,14 @@ func GetNetwork(ctx context.Context, c api.ControlClient, input string) (*api.Ne
 	rg, err := c.GetNetwork(ctx, &api.GetNetworkRequest{NetworkID: input})
 
 	if err != nil {
-		rl, err := getNetworkByPrefixedID(ctx, c, input)
+		net, err := getNetworkByName(ctx, c, input)
 		if err != nil {
-			rl, e1 := getNetworkByName(ctx, c, input)
-			if e1 == nil {
-				return rl, nil
+			net, err = getNetworkByPrefixedID(ctx, c, input)
+			if err != nil {
+				return nil, err
 			}
-		} else {
-			return rl, nil
 		}
+		return net, nil
 	}
 
 	return rg.Network, nil
@@ -57,7 +56,7 @@ func getNetworkByName(ctx context.Context, c api.ControlClient, input string) (*
 	rl, err := c.ListNetworks(ctx,
 		&api.ListNetworksRequest{
 			Filters: &api.ListNetworksRequest_Filters{
-				NamePrefixes: []string{input},
+				Names: []string{input},
 			},
 		},
 	)
