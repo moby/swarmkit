@@ -405,18 +405,160 @@ func TestUpdateNode(t *testing.T) {
 	version := &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
 	assert.NoError(t, err)
+
 	// Perform an update with the "old" version.
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
 	assert.Error(t, err)
+}
 
-	// Make sure we can't demote the last manager.
-	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodeID})
+func TestUpdateNodeDemote(t *testing.T) {
+	tc := cautils.NewTestCA(nil, cautils.AcceptancePolicy(true, true, ""))
+	ts := newTestServer(t)
+
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
+	defer raftutils.TeardownCluster(t, nodes)
+
+	// Assign one of the raft node to the test server
+	ts.Server.raft = nodes[1].Node
+	ts.Server.store = nodes[1].MemoryStore()
+
+	// Create a node object for each of the managers
+	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateNode(tx, &api.Node{
+			ID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID(),
+			Spec: api.NodeSpec{
+				Role:       api.NodeRoleManager,
+				Membership: api.NodeMembershipAccepted,
+			},
+		}))
+		assert.NoError(t, store.CreateNode(tx, &api.Node{
+			ID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID(),
+			Spec: api.NodeSpec{
+				Role:       api.NodeRoleManager,
+				Membership: api.NodeMembershipAccepted,
+			},
+		}))
+		assert.NoError(t, store.CreateNode(tx, &api.Node{
+			ID: nodes[3].SecurityConfig.ClientTLSCreds.NodeID(),
+			Spec: api.NodeSpec{
+				Role:       api.NodeRoleManager,
+				Membership: api.NodeMembershipAccepted,
+			},
+		}))
+		return nil
+	}))
+
+	// Stop Node 3 (1 node out of 3)
+	nodes[3].Server.Stop()
+	nodes[3].Shutdown()
+
+	// Node 3 should be listed as Unreachable
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		members := nodes[1].GetMemberlist()
+		if len(members) != 3 {
+			return fmt.Errorf("expected 3 nodes, got %d", len(members))
+		}
+		if members[nodes[3].Config.ID].Status.Reachability == api.RaftMemberStatus_REACHABLE {
+			return fmt.Errorf("expected node 3 to be unreachable")
+		}
+		return nil
+	}))
+
+	// Try to demote Node 2, this should fail because of the quorum safeguard
+	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID()})
+	assert.NoError(t, err)
+	spec := r.Node.Spec.Copy()
+	spec.Role = api.NodeRoleWorker
+	version := &r.Node.Meta.Version
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
+		NodeID:      nodes[2].SecurityConfig.ClientTLSCreds.NodeID(),
+		Spec:        spec,
+		NodeVersion: version,
+	})
+	assert.Error(t, err)
+	assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
+
+	// Restart Node 3
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
+	raftutils.WaitForCluster(t, clockSource, nodes)
+
+	// Node 3 should be listed as Reachable
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		members := nodes[1].GetMemberlist()
+		if len(members) != 3 {
+			return fmt.Errorf("expected 3 nodes, got %d", len(members))
+		}
+		if members[nodes[3].Config.ID].Status.Reachability == api.RaftMemberStatus_UNREACHABLE {
+			return fmt.Errorf("expected node 3 to be reachable")
+		}
+		return nil
+	}))
+
+	// Try to demote Node 3, this should succeed
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[3].SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
 	spec.Role = api.NodeRoleWorker
 	version = &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID:      nodeID,
+		NodeID:      nodes[3].SecurityConfig.ClientTLSCreds.NodeID(),
+		Spec:        spec,
+		NodeVersion: version,
+	})
+	assert.NoError(t, err)
+
+	newCluster := map[uint64]*raftutils.TestNode{
+		1: nodes[1],
+		2: nodes[2],
+	}
+
+	raftutils.WaitForCluster(t, clockSource, newCluster)
+
+	// Server should list 2 members
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		members := nodes[1].GetMemberlist()
+		if len(members) != 2 {
+			return fmt.Errorf("expected 2 nodes, got %d", len(members))
+		}
+		return nil
+	}))
+
+	// Try to demote Node 2
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID()})
+	assert.NoError(t, err)
+	spec = r.Node.Spec.Copy()
+	spec.Role = api.NodeRoleWorker
+	version = &r.Node.Meta.Version
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
+		NodeID:      nodes[2].SecurityConfig.ClientTLSCreds.NodeID(),
+		Spec:        spec,
+		NodeVersion: version,
+	})
+	assert.NoError(t, err)
+
+	newCluster = map[uint64]*raftutils.TestNode{
+		1: nodes[1],
+	}
+
+	raftutils.WaitForCluster(t, clockSource, newCluster)
+
+	// New server should list 1 member
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		members := nodes[1].GetMemberlist()
+		if len(members) != 1 {
+			return fmt.Errorf("expected 1 node, got %d", len(members))
+		}
+		return nil
+	}))
+
+	// Make sure we can't demote the last manager.
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID()})
+	assert.NoError(t, err)
+	spec = r.Node.Spec.Copy()
+	spec.Role = api.NodeRoleWorker
+	version = &r.Node.Meta.Version
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
+		NodeID:      nodes[1].SecurityConfig.ClientTLSCreds.NodeID(),
 		Spec:        spec,
 		NodeVersion: version,
 	})
