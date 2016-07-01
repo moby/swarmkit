@@ -10,6 +10,7 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
 
@@ -277,7 +278,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 				ID:           "task1",
 				DesiredState: api.TaskStateRunning,
 				Status: api.TaskStatus{
-					State: api.TaskStateRunning,
+					State: api.TaskStateStarting,
 				},
 				ServiceAnnotations: api.Annotations{
 					Name: "task1",
@@ -377,11 +378,11 @@ func TestReplicatedScaleDown(t *testing.T) {
 	observedShutdown := watchShutdownTask(t, watch)
 	assert.Equal(t, "task7", observedShutdown.ID)
 
-	// Now scale down to 3 instances.
+	// Now scale down to 2 instances.
 	err = s.Update(func(tx store.Tx) error {
 		s1.Spec.Mode = &api.ServiceSpec_Replicated{
 			Replicated: &api.ReplicatedService{
-				Replicas: 3,
+				Replicas: 2,
 			},
 		}
 		assert.NoError(t, store.UpdateService(tx, s1))
@@ -389,22 +390,30 @@ func TestReplicatedScaleDown(t *testing.T) {
 	})
 
 	// Tasks should be shut down in a way that balances the remaining tasks.
+	// node2 and node3 should be preferred over node1 because node1's task
+	// is not running yet.
 
 	shutdowns := make(map[string]int)
-	for i := 0; i != 3; i++ {
+	for i := 0; i != 4; i++ {
 		observedShutdown := watchShutdownTask(t, watch)
 		shutdowns[observedShutdown.NodeID]++
 	}
 
-	assert.Equal(t, 0, shutdowns["node1"])
+	assert.Equal(t, 1, shutdowns["node1"])
 	assert.Equal(t, 1, shutdowns["node2"])
 	assert.Equal(t, 2, shutdowns["node3"])
 
-	// There should be one remaining task for each node
+	// There should be remaining tasks on node2 and node3.
 	s.View(func(readTx store.ReadTx) {
 		tasks, err := store.FindTasks(readTx, store.ByDesiredState(api.TaskStateRunning))
-		assert.NoError(t, err)
-		assert.Len(t, tasks, 3)
+		require.NoError(t, err)
+		require.Len(t, tasks, 2)
+		if tasks[0].NodeID == "node2" {
+			assert.Equal(t, "node3", tasks[1].NodeID)
+		} else {
+			assert.Equal(t, "node3", tasks[0].NodeID)
+			assert.Equal(t, "node2", tasks[1].NodeID)
+		}
 	})
 }
 
