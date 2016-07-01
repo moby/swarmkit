@@ -195,7 +195,7 @@ func (c *containerConfig) bindsAndVolumes() [][]string {
 
 func getMountMask(m *api.Mount) string {
 	var maskOpts []string
-	if !m.Writable {
+	if m.ReadOnly {
 		maskOpts = append(maskOpts, "ro")
 	}
 

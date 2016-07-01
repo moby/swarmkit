@@ -26,10 +26,9 @@ func parseBind(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 				return fmt.Errorf("bind format %q not supported", bind)
 			}
 			container.Mounts = append(container.Mounts, api.Mount{
-				Type:     api.MountTypeBind,
-				Source:   parts[0],
-				Target:   parts[1],
-				Writable: true,
+				Type:   api.MountTypeBind,
+				Source: parts[0],
+				Target: parts[1],
 			})
 		}
 	}
