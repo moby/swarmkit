@@ -141,7 +141,73 @@ func (r *controller) Start(ctx context.Context) error {
 		return errors.Wrap(err, "starting container failed")
 	}
 
-	return nil
+	// no health check
+	if ctnr.Config == nil || ctnr.Config.Healthcheck == nil {
+		return nil
+	}
+
+	healthCmd := ctnr.Config.Healthcheck.Test
+
+	if len(healthCmd) == 0 {
+		// this field should be filled, even if inherited from image
+		// if it's empty, health check will always be at starting status
+		// so treat it as no health check, and return directly
+		return nil
+	}
+
+	// health check is disabled
+	if healthCmd[0] == "NONE" {
+		return nil
+	}
+
+	// wait for container to be healthy
+	eventq, closed, err := r.adapter.events(ctx)
+	if err != nil {
+		return err
+	}
+	for {
+		select {
+		case event := <-eventq:
+			if !r.matchevent(event) {
+				continue
+			}
+
+			switch event.Action {
+			case "die": // exit on terminal events
+				ctnr, err := r.adapter.inspect(ctx)
+				if err != nil {
+					return errors.Wrap(err, "die event received")
+				}
+
+				return makeExitError(ctnr)
+			case "destroy":
+				// If we get here, something has gone wrong but we want to exit
+				// and report anyways.
+				return ErrContainerDestroyed
+
+			case "health_status: unhealthy":
+				// in this case, we stop the container and report unhealthy status
+				// TODO(runshenzhu): double check if it can cause a dead lock issue here
+				if err := r.Shutdown(ctx); err != nil {
+					return errors.Wrap(err, "unhealthy container shutdown failed")
+				}
+				return ErrContainerUnhealthy
+
+			case "health_status: healthy":
+				return nil
+			}
+		case <-closed:
+			// restart!
+			eventq, closed, err = r.adapter.events(ctx)
+			if err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-r.closed:
+			return r.err
+		}
+	}
 }
 
 // Wait on the container to exit.
