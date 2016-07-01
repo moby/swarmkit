@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"text/tabwriter"
 
 	"github.com/docker/swarmkit/api"
@@ -52,6 +53,28 @@ func printClusterSummary(cluster *api.Cluster) {
 		fmt.Fprintf(w, "  External CAs:\n")
 		for _, ca := range cluster.Spec.CAConfig.ExternalCAs {
 			fmt.Fprintf(w, "    %s: %s\n", ca.Protocol, ca.URL)
+		}
+	}
+
+	if cluster.Spec.DefaultLogDriver != nil {
+		fmt.Fprintf(w, "DefaultLogDriver\t: %s\n", cluster.Spec.DefaultLogDriver.Name)
+		var keys []string
+
+		if len(cluster.Spec.DefaultLogDriver.Options) != 0 {
+			for k := range cluster.Spec.DefaultLogDriver.Options {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+
+			for _, k := range keys {
+				v := cluster.Spec.DefaultLogDriver.Options[k]
+				if v != "" {
+					fmt.Fprintf(w, "  %s\t: %s\n", k, v)
+				} else {
+					fmt.Fprintf(w, "  %s\t\n", k)
+
+				}
+			}
 		}
 	}
 }

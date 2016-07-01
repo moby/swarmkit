@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/cmd/swarmctl/common"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -43,6 +44,9 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.StringSlice("bind", nil, "define a bind mount")
 	flags.StringSlice("volume", nil, "define a volume mount")
 	flags.StringSlice("tmpfs", nil, "define a tmpfs mount")
+
+	flags.String("log-driver", "", "specify a log driver")
+	flags.StringSlice("log-opt", nil, "log driver options, as key value pairs")
 }
 
 // Merge merges a flagset into a service spec.
@@ -115,6 +119,12 @@ func Merge(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClient) error
 	if err := parseTmpfs(flags, spec); err != nil {
 		return err
 	}
+
+	driver, err := common.ParseLogDriverFlags(flags)
+	if err != nil {
+		return err
+	}
+	spec.Task.LogDriver = driver
 
 	return nil
 }

@@ -123,6 +123,12 @@ var (
 				spec.Dispatcher.HeartbeatPeriod = ptypes.DurationProto(hbPeriod)
 			}
 
+			driver, err := common.ParseLogDriverFlags(flags)
+			if err != nil {
+				return err
+			}
+			spec.DefaultLogDriver = driver
+
 			r, err := c.UpdateCluster(common.Context(cmd), &api.UpdateClusterRequest{
 				ClusterID:      cluster.ID,
 				ClusterVersion: &cluster.Meta.Version,
@@ -144,4 +150,7 @@ func init() {
 	updateCmd.Flags().Duration("certexpiry", 24*30*3*time.Hour, "Duration node certificates will be valid for")
 	updateCmd.Flags().Var(&externalCAOpt, "external-ca", "Specifications of one or more certificate signing endpoints")
 	updateCmd.Flags().Duration("heartbeatperiod", 0, "Period when heartbeat is expected to receive from agent")
+
+	updateCmd.Flags().String("log-driver", "", "Set default log driver for cluster")
+	updateCmd.Flags().StringSlice("log-opt", nil, "Set options for default log driver")
 }

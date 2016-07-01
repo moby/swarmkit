@@ -107,6 +107,23 @@ func (c *containerConfig) config() *enginecontainer.Config {
 	return config
 }
 
+func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
+	hc := &enginecontainer.HostConfig{
+		Resources: c.resources(),
+		Binds:     c.binds(),
+		Tmpfs:     c.tmpfs(),
+	}
+
+	if c.task.LogDriver != nil {
+		hc.LogConfig = enginecontainer.LogConfig{
+			Type:   c.task.LogDriver.Name,
+			Config: c.task.LogDriver.Options,
+		}
+	}
+
+	return hc
+}
+
 func (c *containerConfig) labels() map[string]string {
 	var (
 		system = map[string]string{
@@ -284,14 +301,6 @@ func getMountMask(m *api.Mount) string {
 	}
 
 	return strings.Join(maskOpts, ",")
-}
-
-func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
-	return &enginecontainer.HostConfig{
-		Resources: c.resources(),
-		Binds:     c.binds(),
-		Tmpfs:     c.tmpfs(),
-	}
 }
 
 // This handles the case of volumes that are defined inside a service Mount
