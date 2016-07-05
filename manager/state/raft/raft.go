@@ -94,6 +94,7 @@ type Node struct {
 	wal         *wal.WAL
 	snapshotter *snap.Snapshotter
 	wasLeader   bool
+	restored    bool
 	isMember    uint32
 	joinAddr    string
 
@@ -392,6 +393,18 @@ func (n *Node) Run(ctx context.Context) error {
 					n.wasLeader = true
 					n.leadershipBroadcast.Write(IsLeader)
 				}
+			}
+
+			// If we are the only registered member after
+			// restoring from the state, campaign to be the
+			// leader.
+			if !n.restored {
+				if len(n.cluster.Members()) <= 1 {
+					if err := n.Campaign(n.Ctx); err != nil {
+						panic("raft: cannot campaign to be the leader on node restore")
+					}
+				}
+				n.restored = true
 			}
 
 			// Advance the state machine
