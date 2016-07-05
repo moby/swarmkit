@@ -164,6 +164,8 @@ func (na *NetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
 		s.Endpoint = &api.Endpoint{
 			Spec: s.Spec.Endpoint.Copy(),
 		}
+	} else {
+		s.Endpoint.Spec = s.Spec.Endpoint.Copy()
 	}
 
 	// First allocate VIPs for all the pre-populated endpoint attachments
