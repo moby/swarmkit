@@ -24,7 +24,9 @@ func printClusterSummary(cluster *api.Cluster) {
 			fmt.Fprintf(w, "  Role\t: %v\n", policy.Role)
 			fmt.Fprintf(w, "    Autoaccept\t: %v\n", policy.Autoaccept)
 			if policy.Secret != nil {
-				fmt.Fprintf(w, "    Secret\t: %v\n", string(policy.Secret.Data))
+				fmt.Fprintln(w, "    Secret\t: yes")
+			} else {
+				fmt.Fprintln(w, "    Secret\t: no")
 			}
 		}
 	}
