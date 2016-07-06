@@ -358,88 +358,88 @@
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/bitseq",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/datastore",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/discoverapi",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/driverapi",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/drivers/overlay/ovmanager",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/drvregistry",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/idm",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipam",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipamapi",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipams/builtin",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipams/null",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipams/remote",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipams/remote/api",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipams/windowsipam",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/ipamutils",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/netlabel",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/docker/libnetwork/types",
-			"Comment": "v0.8.0-dev.2-189-g8b04235",
-			"Rev": "8b042357ca814a0c611b21147c1b6c1d1969ba10"
+			"Comment": "v0.8.0-dev.2-201-g2205999",
+			"Rev": "2205999d8d40edf92cff7e9b5ef509ce818a3bcf"
 		},
 		{
 			"ImportPath": "github.com/dustin/go-humanize",
