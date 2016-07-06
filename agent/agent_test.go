@@ -94,18 +94,6 @@ func TestAgentStartStop(t *testing.T) {
 	}
 
 	assert.NoError(t, agent.Stop(ctx))
-	ready := agent.Ready()
-
-	if ready != nil {
-		t.Fatalf("ready cannot return nil channel")
-	}
-	agent.Start(ctx)
-
-	ready = agent.Ready()
-	if ready != nil {
-		t.Fatalf("ready cannot be nil")
-	}
-
 }
 
 func TestHandleSessionMessage(t *testing.T) {
