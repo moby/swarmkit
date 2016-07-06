@@ -12,6 +12,8 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+const dispatcherRPCTimeout = 5 * time.Second
+
 var (
 	errSessionDisconnect = errors.New("agent: session disconnect") // instructed to disconnect
 	errSessionClosed     = errors.New("agent: session closed")
@@ -88,9 +90,11 @@ func (s *session) start(ctx context.Context) error {
 		description.Hostname = s.agent.config.Hostname
 	}
 
-	stream, err := client.Session(ctx, &api.SessionRequest{
+	sessionCtx, cancel := context.WithTimeout(ctx, dispatcherRPCTimeout)
+	stream, err := client.Session(sessionCtx, &api.SessionRequest{
 		Description: description,
 	})
+	cancel()
 	if err != nil {
 		return err
 	}
@@ -115,9 +119,11 @@ func (s *session) heartbeat(ctx context.Context) error {
 	for {
 		select {
 		case <-heartbeat.C:
-			resp, err := client.Heartbeat(ctx, &api.HeartbeatRequest{
+			heartbeatCtx, cancel := context.WithTimeout(ctx, dispatcherRPCTimeout)
+			resp, err := client.Heartbeat(heartbeatCtx, &api.HeartbeatRequest{
 				SessionID: s.sessionID,
 			})
+			cancel()
 			if err != nil {
 				if grpc.Code(err) == codes.NotFound {
 					err = errNodeNotRegistered
