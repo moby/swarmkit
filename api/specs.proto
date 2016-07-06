@@ -106,8 +106,11 @@ message TaskSpec {
 		ContainerSpec container = 1;
 	}
 
+	// ContainerHostConfigSpec specifies hostconfig for container.
+	ContainerHostConfigSpec hostconfig = 2;
+
 	// Resource requirements for the container.
-	ResourceRequirements resources = 2;
+	ResourceRequirements resources = 3;
 
 	// RestartPolicy specifies what to do when a task fails or finishes.
 	RestartPolicy restart = 4;
@@ -175,6 +178,21 @@ message ContainerSpec {
 
 	// PullOptions parameterize the behavior of image pulls.
 	PullOptions pull_options = 10;
+}
+
+// ContainerHostConfigSpec specifies hostconfig for container.
+message ContainerHostConfigSpec {
+	// LogConfig log driver for container
+	message LogConfig {
+		// driver type
+		string type = 1;
+
+		// options for the log driver
+		map<string, string> config = 2;
+	}
+
+	// LogConfig specifies the log driver for container
+	LogConfig logconfig = 1;
 }
 
 // EndpointSpec defines the properties that can be configured to

@@ -57,6 +57,7 @@
 		GlobalService
 		TaskSpec
 		ContainerSpec
+		ContainerHostConfigSpec
 		EndpointSpec
 		NetworkSpec
 		ClusterSpec

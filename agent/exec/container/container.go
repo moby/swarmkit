@@ -229,10 +229,21 @@ func getMountMask(m *api.Mount) string {
 }
 
 func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
-	return &enginecontainer.HostConfig{
+	config := &enginecontainer.HostConfig{
 		Resources: c.resources(),
 		Binds:     c.binds(),
 	}
+
+	// set log config
+	if c.task.Spec.Hostconfig != nil && c.task.Spec.Hostconfig.Logconfig != nil {
+		logconfig := c.task.Spec.Hostconfig.Logconfig
+		config.LogConfig = enginecontainer.LogConfig{
+			Type:   logconfig.Type,
+			Config: logconfig.Config,
+		}
+	}
+
+	return config
 }
 
 // This handles the case of volumes that are defined inside a service Mount

@@ -34,6 +34,7 @@ var (
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
+					Hostconfig: &api.ContainerHostConfigSpec{},
 				},
 			}
 
