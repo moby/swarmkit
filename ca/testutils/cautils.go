@@ -32,10 +32,10 @@ import (
 
 // AcceptancePolicy is a policy that returns a valid Acceptance policy
 func AcceptancePolicy(worker, manager bool, secret string) api.AcceptancePolicy {
-	var apiSecret *api.AcceptancePolicy_RoleAdmissionPolicy_HashedSecret
+	var apiSecret *api.AcceptancePolicy_RoleAdmissionPolicy_Secret
 	if secret != "" {
 		hashPwd, _ := bcrypt.GenerateFromPassword([]byte(secret), 0)
-		apiSecret = &api.AcceptancePolicy_RoleAdmissionPolicy_HashedSecret{
+		apiSecret = &api.AcceptancePolicy_RoleAdmissionPolicy_Secret{
 			Data: hashPwd,
 			Alg:  "bcrypt",
 		}

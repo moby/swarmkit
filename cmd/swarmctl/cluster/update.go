@@ -91,7 +91,7 @@ var (
 					return err
 				}
 				for _, policy := range spec.AcceptancePolicy.Policies {
-					policy.Secret = &api.AcceptancePolicy_RoleAdmissionPolicy_HashedSecret{
+					policy.Secret = &api.AcceptancePolicy_RoleAdmissionPolicy_Secret{
 						Data: hashedSecret,
 						Alg:  "bcrypt",
 					}
