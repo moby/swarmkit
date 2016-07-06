@@ -90,18 +90,39 @@ func (s *session) start(ctx context.Context) error {
 		description.Hostname = s.agent.config.Hostname
 	}
 
-	sessionCtx, cancel := context.WithTimeout(ctx, dispatcherRPCTimeout)
-	stream, err := client.Session(sessionCtx, &api.SessionRequest{
-		Description: description,
-	})
-	cancel()
-	if err != nil {
-		return err
-	}
+	errChan := make(chan error, 1)
+	var (
+		msg    *api.SessionMessage
+		stream api.Dispatcher_SessionClient
+	)
+	// Note: we don't defer cancellation of this context, because the
+	// streaming RPC is used after this function returned. We only cancel
+	// it in the timeout case to make sure the goroutine completes.
+	sessionCtx, cancelSession := context.WithCancel(ctx)
 
-	msg, err := stream.Recv()
-	if err != nil {
-		return err
+	// Need to run Session in a goroutine since there's no way to set a
+	// timeout for an individual Recv call in a stream.
+	go func() {
+		stream, err = client.Session(sessionCtx, &api.SessionRequest{
+			Description: description,
+		})
+		if err != nil {
+			errChan <- err
+			return
+		}
+
+		msg, err = stream.Recv()
+		errChan <- err
+	}()
+
+	select {
+	case err := <-errChan:
+		if err != nil {
+			return err
+		}
+	case <-time.After(dispatcherRPCTimeout):
+		cancelSession()
+		return errors.New("session initiation timed out")
 	}
 
 	s.sessionID = msg.SessionID
