@@ -113,6 +113,24 @@ func (c *Cluster) RemoveMember(id uint64) error {
 	return nil
 }
 
+// ReplaceMemberConnection replaces the member's GRPC connection and GRPC
+// client.
+func (c *Cluster) ReplaceMemberConnection(id uint64, member *Member) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	oldMember, ok := c.members[id]
+	if !ok {
+		return ErrIDNotFound
+	}
+
+	oldMember.Conn.Close()
+
+	oldMember.Conn = member.Conn
+	oldMember.RaftClient = member.RaftClient
+	return nil
+}
+
 // IsIDRemoved checks if a Member is in the remove set.
 func (c *Cluster) IsIDRemoved(id uint64) bool {
 	c.mu.RLock()
