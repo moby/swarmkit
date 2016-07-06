@@ -7,8 +7,23 @@ import (
 )
 
 func TestParseExprs(t *testing.T) {
+	// empty string
+	_, err := ParseExprs([]string{""})
+	assert.Error(t, err)
+
+	_, err = ParseExprs([]string{" "})
+	assert.Error(t, err)
+
+	// no operator
+	_, err = ParseExprs([]string{"nodeabc"})
+	assert.Error(t, err)
+
+	// incorrect operator
+	_, err = ParseExprs([]string{"node ~ abc"})
+	assert.Error(t, err)
+
 	// Cannot use the leading digit for Key
-	_, err := ParseExprs([]string{"1node==a2"})
+	_, err = ParseExprs([]string{"1node==a2"})
 	assert.Error(t, err)
 
 	// leading and trailing white space are ignored
