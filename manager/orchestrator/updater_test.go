@@ -59,6 +59,15 @@ func TestUpdater(t *testing.T) {
 	}()
 
 	instances := 3
+	cluster := &api.Cluster{
+		// test cluster configuration propagation to task creation.
+		Spec: api.ClusterSpec{
+			Annotations: api.Annotations{
+				Name: "default",
+			},
+		},
+	}
+
 	service := &api.Service{
 		ID: "id1",
 		Spec: api.ServiceSpec{
@@ -83,9 +92,10 @@ func TestUpdater(t *testing.T) {
 	}
 
 	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateCluster(tx, cluster))
 		assert.NoError(t, store.CreateService(tx, service))
 		for i := 0; i < instances; i++ {
-			assert.NoError(t, store.CreateTask(tx, newTask(service, uint64(i))))
+			assert.NoError(t, store.CreateTask(tx, newTask(cluster, service, uint64(i))))
 		}
 		return nil
 	})
@@ -94,37 +104,44 @@ func TestUpdater(t *testing.T) {
 	originalTasks := getRunnableServiceTasks(t, s, service)
 	for _, task := range originalTasks {
 		assert.Equal(t, "v:1", task.Spec.GetContainer().Image)
+		assert.Nil(t, task.LogDriver) // should be left alone
 	}
 
 	service.Spec.Task.GetContainer().Image = "v:2"
+	service.Spec.Task.LogDriver = &api.Driver{Name: "tasklogdriver"}
 	updater := NewUpdater(s, NewRestartSupervisor(s))
-	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
+	updater.Run(ctx, cluster, service, getRunnableServiceTasks(t, s, service))
 	updatedTasks := getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
 		assert.Equal(t, "v:2", task.Spec.GetContainer().Image)
+		assert.Equal(t, service.Spec.Task.LogDriver, task.LogDriver) // pick up from task
 	}
 
 	service.Spec.Task.GetContainer().Image = "v:3"
+	cluster.Spec.DefaultLogDriver = &api.Driver{Name: "clusterlogdriver"} // make cluster default logdriver.
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
 	}
 	updater = NewUpdater(s, NewRestartSupervisor(s))
-	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
+	updater.Run(ctx, cluster, service, getRunnableServiceTasks(t, s, service))
 	updatedTasks = getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
 		assert.Equal(t, "v:3", task.Spec.GetContainer().Image)
+		assert.Equal(t, service.Spec.Task.LogDriver, task.LogDriver) // still pick up from task
 	}
 
 	service.Spec.Task.GetContainer().Image = "v:4"
+	service.Spec.Task.LogDriver = nil // use cluster default now.
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
 		Delay:       *ptypes.DurationProto(10 * time.Millisecond),
 	}
 	updater = NewUpdater(s, NewRestartSupervisor(s))
-	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
+	updater.Run(ctx, cluster, service, getRunnableServiceTasks(t, s, service))
 	updatedTasks = getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
 		assert.Equal(t, "v:4", task.Spec.GetContainer().Image)
+		assert.Equal(t, cluster.Spec.DefaultLogDriver, task.LogDriver) // pick up from cluster
 	}
 }
 
@@ -182,7 +199,7 @@ func TestUpdaterStopGracePeriod(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateService(tx, service))
 		for i := uint64(0); i < instances; i++ {
-			task := newTask(service, uint64(i))
+			task := newTask(nil, service, uint64(i))
 			task.Status.State = api.TaskStateRunning
 			assert.NoError(t, store.CreateTask(tx, task))
 		}
@@ -201,7 +218,7 @@ func TestUpdaterStopGracePeriod(t *testing.T) {
 	updater := NewUpdater(s, NewRestartSupervisor(s))
 	// Override the default (1 minute) to speed up the test.
 	updater.restarts.taskTimeout = 100 * time.Millisecond
-	updater.Run(ctx, service, getRunnableServiceTasks(t, s, service))
+	updater.Run(ctx, nil, service, getRunnableServiceTasks(t, s, service))
 	updatedTasks := getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
 		assert.Equal(t, "v:2", task.Spec.GetContainer().Image)
