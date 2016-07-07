@@ -150,6 +150,18 @@ func (c *Cluster) Clear() {
 	c.mu.Unlock()
 }
 
+// MemberIsValid checks if a registered member is using the
+// same address than the one specified at cluster join time.
+func (c *Cluster) MemberIsValid(id uint64, addr string) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	m := c.members[id]
+	if m != nil && m.Addr != addr {
+		return false
+	}
+	return true
+}
+
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is valid.
 func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {

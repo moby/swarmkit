@@ -36,6 +36,8 @@ var (
 	ErrHealthCheckFailure = errors.New("raft: could not connect to prospective new cluster member using its advertised address")
 	// ErrNoRaftMember is thrown when the node is not yet part of a raft cluster
 	ErrNoRaftMember = errors.New("raft: node is not yet part of a raft cluster")
+	// ErrIncorrectConfiguration is thrown when a node is sending a message with an ID that is still registered in the memberlist but with an incorrect address.
+	ErrIncorrectConfiguration = errors.New("raft: node ID is using a different address than the one registered in the memberlist, rejecting message")
 	// ErrConfChangeRefused is returned when there is an issue with the configuration change
 	ErrConfChangeRefused = errors.New("raft: propose configuration change refused")
 	// ErrApplyNotSpecified is returned during the creation of a raft node when no apply method was provided
@@ -696,6 +698,12 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 		return nil, ErrNoRaftMember
 	}
 
+	// Reject the message if remote member is using a different
+	// address than the one used at join time.
+	if !n.cluster.MemberIsValid(msg.Message.From, msg.Addr) {
+		return nil, ErrIncorrectConfiguration
+	}
+
 	if n.IsStopped() {
 		return nil, ErrStopped
 	}
@@ -986,12 +994,15 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 		defer conn.Conn.Close()
 	}
 
-	_, err := conn.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: &m})
+	_, err := conn.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: &m, Addr: n.Address})
 	if err != nil {
 		if grpc.ErrorDesc(err) == ErrMemberRemoved.Error() {
 			n.removeRaftOnce.Do(func() {
 				close(n.removeRaftCh)
 			})
+		}
+		if grpc.ErrorDesc(err) == ErrIncorrectConfiguration.Error() {
+			n.Config.Logger.Errorf("cannot send message to other members: %v", err)
 		}
 		if m.Type == raftpb.MsgSnap {
 			n.ReportSnapshot(m.To, raft.SnapshotFailure)

@@ -78,6 +78,7 @@ message LeaveResponse {}
 message ProcessRaftMessageRequest {
 	option (docker.protobuf.plugin.deepcopy) = false;
 	raftpb.Message message = 1;
+	string addr = 2;
 }
 
 message ProcessRaftMessageResponse {}
