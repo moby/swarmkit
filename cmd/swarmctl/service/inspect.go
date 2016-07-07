@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"text/tabwriter"
 
@@ -84,6 +85,28 @@ func printServiceSummary(service *api.Service, running int) {
 			fmt.Fprintf(w, "      source = %s\n", v.Source)
 			fmt.Fprintf(w, "      readonly = %v\n", v.ReadOnly)
 			fmt.Fprintf(w, "      type = %v\n", strings.ToLower(v.Type.String()))
+		}
+	}
+
+	if task.LogDriver != nil {
+		fmt.Fprintf(w, "  LogDriver\t: %s\n", task.LogDriver.Name)
+		var keys []string
+
+		if task.LogDriver.Options != nil {
+			for k := range task.LogDriver.Options {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+
+			for _, k := range keys {
+				v := task.LogDriver.Options[k]
+				if v != "" {
+					fmt.Fprintf(w, "    %s\t: %s\n", k, v)
+				} else {
+					fmt.Fprintf(w, "    %s\t\n", k)
+
+				}
+			}
 		}
 	}
 }

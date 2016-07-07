@@ -3,10 +3,12 @@ package common
 import (
 	"crypto/tls"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -40,4 +42,43 @@ func Dial(cmd *cobra.Command) (api.ControlClient, error) {
 func Context(cmd *cobra.Command) context.Context {
 	// TODO(aluzzardi): Actually create a context.
 	return context.TODO()
+}
+
+// ParseLogDriverFlags parses a silly string format for log driver and options.
+// Fully baked log driver config should be returned.
+//
+// If no log driver is available, nil, nil will be returned.
+func ParseLogDriverFlags(flags *pflag.FlagSet) (*api.Driver, error) {
+	if !flags.Changed("log-driver") {
+		return nil, nil
+	}
+
+	name, err := flags.GetString("log-driver")
+	if err != nil {
+		return nil, err
+	}
+
+	var opts map[string]string
+	if flags.Changed("log-opt") {
+		rawOpts, err := flags.GetStringSlice("log-opt")
+		if err != nil {
+			return nil, err
+		}
+
+		opts = make(map[string]string, len(rawOpts))
+		for _, rawOpt := range rawOpts {
+			parts := strings.SplitN(rawOpt, "=", 2)
+			if len(parts) == 1 {
+				opts[parts[0]] = ""
+				continue
+			}
+
+			opts[parts[0]] = parts[1]
+		}
+	}
+
+	return &api.Driver{
+		Name:    name,
+		Options: opts,
+	}, nil
 }
