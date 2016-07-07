@@ -115,7 +115,7 @@ func (c *Cluster) RemoveMember(id uint64) error {
 
 // ReplaceMemberConnection replaces the member's GRPC connection and GRPC
 // client.
-func (c *Cluster) ReplaceMemberConnection(id uint64, member *Member) error {
+func (c *Cluster) ReplaceMemberConnection(id uint64, newConn *Member) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -126,8 +126,12 @@ func (c *Cluster) ReplaceMemberConnection(id uint64, member *Member) error {
 
 	oldMember.Conn.Close()
 
-	oldMember.Conn = member.Conn
-	oldMember.RaftClient = member.RaftClient
+	newMember := *oldMember
+	newMember.Conn = newConn.Conn
+	newMember.RaftClient = newConn.RaftClient
+
+	c.members[id] = &newMember
+
 	return nil
 }
 
