@@ -277,6 +277,9 @@ message UpdateConfig {
 
 	// Amount of time between updates.
 	Duration delay = 2 [(gogoproto.nullable) = false];
+
+	// Preallocate tasks before shutting old ones down, not waiting for old to die
+	bool preAllocate = 3;
 }
 
 // TaskState enumerates the states that a task progresses through within an

@@ -185,28 +185,26 @@ func (u *Updater) updateTask(ctx context.Context, service *api.Service, original
 	})
 	defer cancel()
 
+	preAllocate := service.Spec.Update != nil && service.Spec.Update.PreAllocate
 	var delayStartCh <-chan struct{}
 	// Atomically create the updated task and bring down the old one.
 	err := u.store.Update(func(tx store.Tx) error {
-		t := store.GetTask(tx, original.ID)
-		if t == nil {
-			return fmt.Errorf("task %s not found while trying to update it", original.ID)
-		}
-		if t.DesiredState > api.TaskStateRunning {
-			return fmt.Errorf("task %s was already shut down when reached by updater", original.ID)
-		}
-		t.DesiredState = api.TaskStateShutdown
-		if err := store.UpdateTask(tx, t); err != nil {
-			return err
-		}
-
 		if err := store.CreateTask(tx, updated); err != nil {
 			return err
 		}
 
-		// Wait for the old task to stop or time out, and then set the new one
-		// to RUNNING.
-		delayStartCh = u.restarts.DelayStart(ctx, tx, original, updated.ID, 0, true)
+		// wait for the task to stop before starting if not preallocating tasks
+		if preAllocate {
+			// start new task without stopping the old
+			delayStartCh = u.restarts.DelayStart(ctx, tx, nil, updated.ID, 0, false)
+		} else {
+			if err := u.stopOldTask(tx, original); err != nil {
+				return err
+			}
+			// Wait for the old task to stop or time out, and then set the new one
+			// to RUNNING.
+			delayStartCh = u.restarts.DelayStart(ctx, tx, original, updated.ID, 0, true)
+		}
 
 		return nil
 
@@ -224,10 +222,32 @@ func (u *Updater) updateTask(ctx context.Context, service *api.Service, original
 		case e := <-taskUpdates:
 			updated = e.(state.EventUpdateTask).Task
 			if updated.Status.State >= api.TaskStateRunning {
+				if preAllocate {
+					return u.store.Update(func(tx store.Tx) error {
+						// stop the old task without waiting for it to finish
+						return u.stopOldTask(tx, original)
+					})
+				}
 				return nil
 			}
 		case <-u.stopChan:
 			return nil
 		}
 	}
+}
+
+func (u *Updater) stopOldTask(tx store.Tx, oldTask *api.Task) error {
+	// mark the given task to shutdown
+	t := store.GetTask(tx, oldTask.ID)
+	if t == nil {
+		return fmt.Errorf("task %s not found while trying to update it", oldTask.ID)
+	}
+	if t.DesiredState > api.TaskStateRunning {
+		return fmt.Errorf("task %s was already shut down when reached by updater", oldTask.ID)
+	}
+	t.DesiredState = api.TaskStateShutdown
+	if err := store.UpdateTask(tx, t); err != nil {
+		return err
+	}
+	return nil
 }
