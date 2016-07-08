@@ -53,10 +53,7 @@ func (g *GlobalOrchestrator) Run(ctx context.Context) error {
 	defer cancel()
 
 	// lookup the cluster
-	var (
-		cluster *api.Cluster
-		err     error
-	)
+	var err error
 	g.store.View(func(readTx store.ReadTx) {
 		var clusters []*api.Cluster
 		clusters, err = store.FindClusters(readTx, store.ByName("default"))
@@ -64,7 +61,7 @@ func (g *GlobalOrchestrator) Run(ctx context.Context) error {
 		if len(clusters) != 1 {
 			return // just pick up the cluster when it is created.
 		}
-		cluster = clusters[0]
+		g.cluster = clusters[0]
 	})
 	if err != nil {
 		return err
