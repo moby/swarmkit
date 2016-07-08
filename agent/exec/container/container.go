@@ -164,25 +164,11 @@ func (c *containerConfig) volumes() map[string]struct{} {
 	// results in a single component must be added here.
 	//
 	// This is reversed engineered from the behavior of the engine API.
-
-	for _, spec := range c.bindsAndVolumes() {
-		if len(spec) == 1 {
-			r[strings.Join(spec, ":")] = struct{}{}
+	for _, mount := range c.spec().Mounts {
+		if mount.Type == api.MountTypeVolume && mount.Source == "" {
+			r[mount.Target] = struct{}{}
 		}
 	}
-
-	return r
-}
-
-func (c *containerConfig) binds() []string {
-	var r []string
-
-	for _, spec := range c.bindsAndVolumes() {
-		if len(spec) > 1 {
-			r = append(r, strings.Join(spec, ":"))
-		}
-	}
-
 	return r
 }
 
@@ -200,32 +186,19 @@ func (c *containerConfig) tmpfs() map[string]string {
 	return r
 }
 
-// bindsAndVolumes uses the list of mounts to create candidates for the Binds
-// and Volumes. Effectively, we only use annonymous volumes in the volumes API
-// and the rest becomes binds.`
-func (c *containerConfig) bindsAndVolumes() [][]string {
-	var specs [][]string
+func (c *containerConfig) binds() []string {
+	var r []string
 	for _, mount := range c.spec().Mounts {
-		if mount.Type != api.MountTypeBind && mount.Type != api.MountTypeVolume {
-			continue // skip tmpfs
+		if mount.Type == api.MountTypeBind || (mount.Type == api.MountTypeVolume && mount.Source != "") {
+			spec := fmt.Sprintf("%s:%s", mount.Source, mount.Target)
+			mask := getMountMask(&mount)
+			if mask != "" {
+				spec = fmt.Sprintf("%s:%s", spec, mask)
+			}
+			r = append(r, spec)
 		}
-
-		var spec []string
-		if mount.Source != "" {
-			spec = append(spec, mount.Source)
-		}
-
-		spec = append(spec, mount.Target)
-
-		mask := getMountMask(&mount)
-		if mask != "" {
-			spec = append(spec, mask)
-		}
-
-		specs = append(specs, spec)
 	}
-
-	return specs
+	return r
 }
 
 func getMountMask(m *api.Mount) string {
