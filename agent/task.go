@@ -200,10 +200,6 @@ func (tm *taskManager) run(ctx context.Context) {
 				}
 			}
 		case <-shutdown:
-			if cancel != nil {
-				// cancel outstanding operation.
-				cancel()
-			}
 
 			// TODO(stevvooe): This should be left for the repear.
 
@@ -211,6 +207,11 @@ func (tm *taskManager) run(ctx context.Context) {
 			// retried by the reaper later.
 			if err := tm.ctlr.Remove(ctx); err != nil {
 				log.G(ctx).WithError(err).WithField("task.id", tm.task.ID).Error("remove task failed")
+			}
+
+			if cancel != nil {
+				// cancel outstanding operation.
+				cancel()
 			}
 
 			if err := tm.ctlr.Close(); err != nil {

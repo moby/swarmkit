@@ -2,6 +2,7 @@ package container
 
 import (
 	"fmt"
+	"sync"
 
 	engineapi "github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
@@ -11,6 +12,14 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
+)
+
+type controllerState int
+
+const (
+	stateNew controllerState = iota
+	stateCreated
+	stateRemoved
 )
 
 // controller implements agent.Controller against docker's API.
@@ -23,6 +32,8 @@ type controller struct {
 	adapter *containerAdapter
 	closed  chan struct{}
 	err     error
+	state   controllerState
+	mtx     sync.Mutex
 }
 
 var _ exec.Controller = &controller{}
@@ -39,6 +50,7 @@ func newController(client engineapi.APIClient, task *api.Task) (exec.Controller,
 		task:    task,
 		adapter: adapter,
 		closed:  make(chan struct{}),
+		state:   stateNew,
 	}, nil
 }
 
@@ -76,16 +88,6 @@ func (r *controller) Prepare(ctx context.Context) error {
 		return err
 	}
 
-	// Make sure all the networks that the task needs are created.
-	if err := r.adapter.createNetworks(ctx); err != nil {
-		return err
-	}
-
-	// Make sure all the volumes that the task needs are created.
-	if err := r.adapter.createVolumes(ctx, r.client); err != nil {
-		return err
-	}
-
 	if err := r.adapter.pullImage(ctx); err != nil {
 		// NOTE(stevvooe): We always try to pull the image to make sure we have
 		// the most up to date version. This will return an error, but we only
@@ -99,6 +101,27 @@ func (r *controller) Prepare(ctx context.Context) error {
 		// If you don't want this behavior, lock down your image to an
 		// immutable tag or digest.
 		log.G(ctx).WithError(err).Error("pulling image failed")
+	}
+
+	// Make sure the controller has not been removed. Because we
+	// might lost race to a remover.
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+
+	if r.checkState(stateRemoved) {
+		return exec.ErrControllerRemoved
+	}
+
+	r.updateState(stateCreated)
+
+	// Make sure all the networks that the task needs are created.
+	if err := r.adapter.createNetworks(ctx); err != nil {
+		return err
+	}
+
+	// Make sure all the volumes that the task needs are created.
+	if err := r.adapter.createVolumes(ctx, r.client); err != nil {
+		return err
 	}
 
 	if err := r.adapter.create(ctx); err != nil {
@@ -322,6 +345,16 @@ func (r *controller) Remove(ctx context.Context) error {
 		return err
 	}
 
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+
+	if !r.checkState(stateCreated) {
+		return nil //nothing to remove
+	}
+
+	//Transition to removed state no matter it will succeed or fail.
+	r.updateState(stateRemoved)
+
 	// It may be necessary to shut down the task before removing it.
 	if err := r.Shutdown(ctx); err != nil {
 		if isUnknownContainer(err) {
@@ -387,6 +420,16 @@ func (r *controller) checkClosed() error {
 	default:
 		return nil
 	}
+}
+
+//Caller should lock if necessary
+func (r *controller) checkState(desiredState controllerState) bool {
+	return r.state == desiredState
+}
+
+//Caller should lock if necessary
+func (r *controller) updateState(newState controllerState) {
+	r.state = newState
 }
 
 type exitError struct {
