@@ -179,6 +179,9 @@ message ContainerSpec {
 
 	// PullOptions parameterize the behavior of image pulls.
 	PullOptions pull_options = 10;
+
+	// Privileged give extended privileges to the container
+	bool privileged = 11;
 }
 
 // EndpointSpec defines the properties that can be configured to

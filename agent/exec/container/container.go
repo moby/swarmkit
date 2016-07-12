@@ -109,9 +109,10 @@ func (c *containerConfig) config() *enginecontainer.Config {
 
 func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 	hc := &enginecontainer.HostConfig{
-		Resources: c.resources(),
-		Binds:     c.binds(),
-		Tmpfs:     c.tmpfs(),
+		Resources:  c.resources(),
+		Binds:      c.binds(),
+		Privileged: c.spec().Privileged,
+		Tmpfs:      c.tmpfs(),
 	}
 
 	if c.task.LogDriver != nil {
