@@ -629,9 +629,20 @@ func TestRaftJoinWithIncorrectAddress(t *testing.T) {
 	assert.Equal(t, len(nodes[1].GetMemberlist()), 1)
 }
 
-func TestStress(t *testing.T) {
-	t.Parallel()
-
+// workflow:
+//	create a cluster with 5 nodes
+//
+//	for propose value proposalNum times
+//		increase clock from time to time
+//
+//		if propose successfully
+//			try to kill a node (stop or leave)
+//		if active nodes are too few
+//			bring one node back (restart or create and join)
+//
+//	check that stored values are among proposed values
+//	check successfully proposed values are among stored values
+func testStressUtils(t *testing.T, proposalNum int, restart bool) {
 	// Bring up a 5 nodes cluster
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
@@ -642,50 +653,73 @@ func TestStress(t *testing.T) {
 	nup := len(nodes)
 	// record of nodes that are down
 	idleNodes := map[int]struct{}{}
-	// record of ids that proposed successfully or time-out
+
+	// record of successfully proposed ids
+	sIDs := []string{}
+	// record of successfully proposed id + time-out ids
 	pIDs := []string{}
 
 	leader := -1
-	for iters := 0; iters < 1000; iters++ {
-		// keep proposing new values and killing leader
-		for i := 1; i <= 5; i++ {
-			if nodes[uint64(i)] != nil {
-				id := strconv.Itoa(iters)
-				_, err := raftutils.ProposeValue(t, nodes[uint64(i)], id)
-
-				if err == nil {
-					pIDs = append(pIDs, id)
-					// if propose successfully, at least there are 3 running nodes
-					assert.True(t, nup >= 3)
-					// only leader can propose value
-					assert.True(t, leader == i || leader == -1)
-					// update leader
-					leader = i
-					break
-				} else if strings.Contains(err.Error(), "context deadline exceeded") {
-					// though it's timing out, we still record this value
-					// for it may be proposed successfully and stored in Raft some time later
-					pIDs = append(pIDs, id)
-				}
+	for iters := 0; iters < proposalNum; iters++ {
+		if rand.Intn(100) < 20 {
+			// form a cluster from time to time
+			if restart {
+				clockSource.IncrementBySeconds(1)
+			} else {
+				raftutils.WaitForCluster(t, clockSource, nodes)
 			}
-		}
-
-		if rand.Intn(100) < 10 {
-			// increase clock to make potential election finish quickly
-			clockSource.Increment(200 * time.Millisecond)
-			time.Sleep(10 * time.Millisecond)
 		} else {
-			ms := rand.Intn(10)
+			ms := rand.Intn(100)
 			clockSource.Increment(time.Duration(ms) * time.Millisecond)
 		}
 
-		if leader != -1 {
+		// keep proposing new values
+		for nodeID, node := range nodes {
+			if _, ok := idleNodes[int(nodeID)]; ok {
+				continue
+			}
+			keyID := strconv.Itoa(iters)
+			_, err := raftutils.ProposeValue(t, node, keyID)
+			if err == nil {
+				pIDs = append(pIDs, keyID)
+				sIDs = append(sIDs, keyID)
+				// only leader can propose value
+				assert.True(t, leader == int(nodeID) || leader == -1)
+				// update leader
+				leader = int(nodeID)
+				break
+			} else if strings.Contains(err.Error(), "context deadline exceeded") {
+				// though it's timing out, we still record this value
+				// for it may be proposed successfully and stored in Raft some time later
+				pIDs = append(pIDs, keyID)
+			}
+		}
+
+		if leader != -1 && len(idleNodes) <= 3 {
 			// if propose successfully, try to kill a node in random
 			s := rand.Intn(5) + 1
 			if _, ok := idleNodes[s]; !ok {
 				id := uint64(s)
-				nodes[id].Server.Stop()
-				nodes[id].Shutdown()
+				if restart {
+					// stop the node
+					nodes[id].Server.Stop()
+					nodes[id].Shutdown()
+				} else {
+					// first leave cluster
+					leaderID := uint64(leader)
+					client, err := nodes[leaderID].ConnectToMember(nodes[leaderID].Address, 10*time.Second)
+					assert.NoError(t, err)
+					raftClient := api.NewRaftMembershipClient(client.Conn)
+					ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+					resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[id].Config.ID}})
+					assert.NoError(t, err, "error sending message to leave the raft")
+					assert.NotNil(t, resp, "leave response message is nil")
+
+					// then remove this node completely
+					raftutils.TeardownCluster(t, map[uint64]*raftutils.TestNode{id: nodes[id]})
+					delete(nodes, id)
+					client.Conn.Close()
+				}
 				idleNodes[s] = struct{}{}
 				nup -= 1
 				if s == leader {
@@ -700,20 +734,45 @@ func TestStress(t *testing.T) {
 			s := rand.Intn(5) + 1
 			if _, ok := idleNodes[s]; ok {
 				id := uint64(s)
-				nodes[id] = raftutils.RestartNode(t, clockSource, nodes[id], false)
-				delete(idleNodes, s)
-				nup++
+				if restart {
+					// restart the existing node
+					nodes[id] = raftutils.RestartNode(t, clockSource, nodes[id], false)
+					delete(idleNodes, s)
+					nup++
+				} else if leader != -1 {
+					// create a new node and join the cluster
+					nodes[id] = raftutils.NewNode(t, clockSource, tc, raft.NewNodeOptions{
+						JoinAddr: nodes[uint64(leader)].Address})
+					err := nodes[id].JoinAndStart()
+					assert.NoError(t, err, "can't join cluster")
+					go nodes[id].Run(context.Background())
+					delete(idleNodes, s)
+					nup++
+				}
 			}
 		}
 	}
 
 	// bring back all nodes and propose the final value
+	if !restart {
+		raftutils.WaitForCluster(t, clockSource, nodes)
+	}
 	for i := range idleNodes {
 		id := uint64(i)
-		nodes[id] = raftutils.RestartNode(t, clockSource, nodes[id], false)
+		if restart {
+			nodes[id] = raftutils.RestartNode(t, clockSource, nodes[id], false)
+		} else {
+			nodes[id] = raftutils.NewNode(t, clockSource, tc, raft.NewNodeOptions{
+				JoinAddr: raftutils.Leader(nodes).Address})
+			err := nodes[id].JoinAndStart()
+			assert.NoError(t, err, "can't join cluster")
+			go nodes[id].Run(context.Background())
+		}
 	}
+	assert.Equal(t, len(nodes), 5)
+
 	raftutils.WaitForCluster(t, clockSource, nodes)
-	id := strconv.Itoa(1000)
+	id := strconv.Itoa(proposalNum)
 	val, err := raftutils.ProposeValue(t, raftutils.Leader(nodes), id)
 	assert.NoError(t, err, "failed to propose value")
 	pIDs = append(pIDs, id)
@@ -723,7 +782,6 @@ func TestStress(t *testing.T) {
 	clockSource.Increment(500 * time.Millisecond)
 
 	ids, values := raftutils.GetAllValuesOnNode(t, clockSource, nodes[1])
-
 	// since cluster is stable, final value must be in the raft store
 	find := false
 	for _, value := range values {
@@ -748,4 +806,26 @@ func TestStress(t *testing.T) {
 		}
 		assert.True(t, find)
 	}
+
+	// all successfully proposed id should be found in ids
+	for _, sid := range sIDs {
+		find = false
+		for _, id := range ids {
+			if id == sid {
+				find = true
+				break
+			}
+		}
+		assert.True(t, find)
+	}
+}
+
+func TestStressLeaveJoin(t *testing.T) {
+	t.Parallel()
+	testStressUtils(t, 150, false)
+}
+
+func TestStressRestart(t *testing.T) {
+	t.Parallel()
+	testStressUtils(t, 500, true)
 }
