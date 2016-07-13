@@ -563,6 +563,8 @@ func TestServiceAllocate(t *testing.T) {
 
 	assert.Equal(t, 1, len(s.Endpoint.VirtualIPs))
 
+	assert.Equal(t, s.Endpoint.Spec, s.Spec.Endpoint)
+
 	ip, _, err := net.ParseCIDR(s.Endpoint.VirtualIPs[0].Addr)
 	assert.NoError(t, err)
 
