@@ -38,7 +38,7 @@ type session struct {
 	closed     chan struct{}
 }
 
-func newSession(ctx context.Context, agent *Agent, delay time.Duration) *session {
+func newSession(ctx context.Context, agent *Agent, delay time.Duration, description *api.NodeDescription) *session {
 	s := &session{
 		agent:      agent,
 		errs:       make(chan error),
@@ -48,14 +48,14 @@ func newSession(ctx context.Context, agent *Agent, delay time.Duration) *session
 		closed:     make(chan struct{}),
 	}
 
-	go s.run(ctx, delay)
+	go s.run(ctx, delay, description)
 	return s
 }
 
-func (s *session) run(ctx context.Context, delay time.Duration) {
+func (s *session) run(ctx context.Context, delay time.Duration, description *api.NodeDescription) {
 	time.Sleep(delay) // delay before registering.
 
-	if err := s.start(ctx); err != nil {
+	if err := s.start(ctx, description); err != nil {
 		select {
 		case s.errs <- err:
 		case <-s.closed:
@@ -74,26 +74,16 @@ func (s *session) run(ctx context.Context, delay time.Duration) {
 }
 
 // start begins the session and returns the first SessionMessage.
-func (s *session) start(ctx context.Context) error {
+func (s *session) start(ctx context.Context, description *api.NodeDescription) error {
 	log.G(ctx).Debugf("(*session).start")
 
 	client := api.NewDispatcherClient(s.agent.config.Conn)
-
-	description, err := s.agent.config.Executor.Describe(ctx)
-	if err != nil {
-		log.G(ctx).WithError(err).WithField("executor", s.agent.config.Executor).
-			Errorf("node description unavailable")
-		return err
-	}
-	// Override hostname
-	if s.agent.config.Hostname != "" {
-		description.Hostname = s.agent.config.Hostname
-	}
 
 	errChan := make(chan error, 1)
 	var (
 		msg    *api.SessionMessage
 		stream api.Dispatcher_SessionClient
+		err    error
 	)
 	// Note: we don't defer cancellation of this context, because the
 	// streaming RPC is used after this function returned. We only cancel
