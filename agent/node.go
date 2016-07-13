@@ -571,8 +571,8 @@ func (n *Node) initManagerConnection(ctx context.Context, ready chan<- struct{})
 			n.setControlSocket(conn)
 			if ready != nil {
 				close(ready)
+				ready = nil
 			}
-			ready = nil
 		} else if state == grpc.Shutdown {
 			n.setControlSocket(nil)
 		}
@@ -635,9 +635,8 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 					case <-connCtx.Done():
 					}
 				}(ready)
+				ready = nil
 			}
-
-			ready = nil
 
 			select {
 			case <-ctx.Done():
