@@ -36,5 +36,17 @@ func parseUpdate(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		}
 		spec.Update.Delay = *ptypes.DurationProto(delayDuration)
 	}
+
+	if flags.Changed("update-pre-allocate") {
+		preAllocate, err := flags.GetBool("update-pre-allocate")
+		if err != nil {
+			return err
+		}
+
+		if spec.Update == nil {
+			spec.Update = &api.UpdateConfig{}
+		}
+		spec.Update.PreAllocate = preAllocate
+	}
 	return nil
 }
