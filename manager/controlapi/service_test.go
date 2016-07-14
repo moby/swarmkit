@@ -448,7 +448,7 @@ func TestListServices(t *testing.T) {
 	// List with simple filter.
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
 		Filters: &api.ListServicesRequest_Filters{
-			Names: []string{"name1"},
+			NamePrefixes: []string{"name1"},
 		},
 	})
 	assert.NoError(t, err)
@@ -457,7 +457,7 @@ func TestListServices(t *testing.T) {
 	// List with union filter.
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
 		Filters: &api.ListServicesRequest_Filters{
-			Names: []string{"name1", "name2"},
+			NamePrefixes: []string{"name1", "name2"},
 		},
 	})
 	assert.NoError(t, err)
@@ -465,7 +465,7 @@ func TestListServices(t *testing.T) {
 
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
 		Filters: &api.ListServicesRequest_Filters{
-			Names: []string{"name1", "name2", "name4"},
+			NamePrefixes: []string{"name1", "name2", "name4"},
 		},
 	})
 	assert.NoError(t, err)
@@ -473,7 +473,7 @@ func TestListServices(t *testing.T) {
 
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
 		Filters: &api.ListServicesRequest_Filters{
-			Names: []string{"name4"},
+			NamePrefixes: []string{"name4"},
 		},
 	})
 	assert.NoError(t, err)
@@ -483,8 +483,8 @@ func TestListServices(t *testing.T) {
 	r, err = ts.Client.ListServices(context.Background(),
 		&api.ListServicesRequest{
 			Filters: &api.ListServicesRequest_Filters{
-				Names:      []string{"name1"},
-				IDPrefixes: []string{s1.ID},
+				NamePrefixes: []string{"name1"},
+				IDPrefixes:   []string{s1.ID},
 			},
 		},
 	)
@@ -494,8 +494,8 @@ func TestListServices(t *testing.T) {
 	r, err = ts.Client.ListServices(context.Background(),
 		&api.ListServicesRequest{
 			Filters: &api.ListServicesRequest_Filters{
-				Names:      []string{"name2"},
-				IDPrefixes: []string{s1.ID},
+				NamePrefixes: []string{"name2"},
+				IDPrefixes:   []string{s1.ID},
 			},
 		},
 	)

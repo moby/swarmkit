@@ -188,6 +188,7 @@ message ListServicesRequest {
 		repeated string names = 1;
 		repeated string id_prefixes = 2 [(gogoproto.customname) = "IDPrefixes"];
 		map<string, string> labels = 3;
+		repeated string name_prefixes = 4 [(gogoproto.customname) = "NamePrefixes"];
 	}
 
 	Filters filters = 1;
