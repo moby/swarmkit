@@ -199,6 +199,10 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 			return nil
 		}
 
+		if node.Certificate.Role != node.Spec.Role {
+			return grpc.Errorf(codes.FailedPrecondition, "demote/promote in progress")
+		}
+
 		// Demotion sanity checks.
 		if node.Spec.Role == api.NodeRoleManager && request.Spec.Role == api.NodeRoleWorker {
 			demote = true
