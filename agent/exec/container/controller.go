@@ -31,7 +31,7 @@ type controller struct {
 
 var _ exec.Controller = &controller{}
 
-// newController returns a dockerexec controller for the provided task.
+// newController returns a docker exec controller for the provided task.
 func newController(client engineapi.APIClient, task *api.Task) (exec.Controller, error) {
 	adapter, err := newContainerAdapter(client, task)
 	if err != nil {

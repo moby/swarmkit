@@ -1288,7 +1288,7 @@ func (n *Node) ConnectToMember(addr string, timeout time.Duration) (*membership.
 
 // SubscribeLeadership returns channel to which events about leadership change
 // will be sent in form of raft.LeadershipState. Also cancel func is returned -
-// it should be called when listener is not longer interested in events.
+// it should be called when listener is no longer interested in events.
 func (n *Node) SubscribeLeadership() (q chan events.Event, cancel func()) {
 	ch := events.NewChannel(0)
 	sink := events.Sink(events.NewQueue(ch))
