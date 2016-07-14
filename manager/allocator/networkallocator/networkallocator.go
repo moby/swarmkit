@@ -188,6 +188,7 @@ outer:
 
 		s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs, vip)
 	}
+	s.Endpoint.Spec = s.Spec.Endpoint.Copy()
 
 	na.services[s.ID] = struct{}{}
 	return
