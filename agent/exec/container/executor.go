@@ -1,6 +1,7 @@
 package container
 
 import (
+	"sort"
 	"strings"
 
 	engineapi "github.com/docker/engine-api/client"
@@ -47,6 +48,7 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 	for k := range plugins {
 		pluginFields = append(pluginFields, k)
 	}
+	sort.Sort(sortedPlugins(pluginFields))
 
 	// parse []string labels into a map[string]string
 	labels := map[string]string{}
@@ -95,4 +97,17 @@ func (e *executor) Controller(t *api.Task) (exec.Controller, error) {
 
 func (e *executor) SetNetworkBootstrapKeys([]*api.EncryptionKey) error {
 	return nil
+}
+
+type sortedPlugins []api.PluginDescription
+
+func (sp sortedPlugins) Len() int { return len(sp) }
+
+func (sp sortedPlugins) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
+
+func (sp sortedPlugins) Less(i, j int) bool {
+	if sp[i].Type != sp[j].Type {
+		return sp[i].Type < sp[j].Type
+	}
+	return sp[i].Name < sp[j].Name
 }
