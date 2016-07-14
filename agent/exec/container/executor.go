@@ -27,13 +27,13 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 		return nil, err
 	}
 
-	var plugins []api.PluginDescription
+	plugins := map[api.PluginDescription]struct{}{}
 	addPlugins := func(typ string, names []string) {
 		for _, name := range names {
-			plugins = append(plugins, api.PluginDescription{
+			plugins[api.PluginDescription{
 				Type: typ,
 				Name: name,
-			})
+			}] = struct{}{}
 		}
 	}
 
@@ -42,6 +42,11 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 	// the plugin list by default.
 	addPlugins("Network", append([]string{"overlay"}, info.Plugins.Network...))
 	addPlugins("Authorization", info.Plugins.Authorization)
+
+	pluginFields := make([]api.PluginDescription, 0, len(plugins))
+	for k := range plugins {
+		pluginFields = append(pluginFields, k)
+	}
 
 	// parse []string labels into a map[string]string
 	labels := map[string]string{}
@@ -63,7 +68,7 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 		Engine: &api.EngineDescription{
 			EngineVersion: info.ServerVersion,
 			Labels:        labels,
-			Plugins:       plugins,
+			Plugins:       pluginFields,
 		},
 		Resources: &api.Resources{
 			NanoCPUs:    int64(info.NCPU) * 1e9,
