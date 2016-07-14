@@ -307,19 +307,19 @@ func TestStoreService(t *testing.T) {
 		assert.Equal(t, serviceSet[1], GetService(readTx, "id2"))
 		assert.Equal(t, serviceSet[2], GetService(readTx, "id3"))
 
-		foundServices, err := FindServices(readTx, ByName("name1"))
+		foundServices, err := FindServices(readTx, ByNamePrefix("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 1)
-		foundServices, err = FindServices(readTx, ByName("NAME1"))
+		foundServices, err = FindServices(readTx, ByNamePrefix("NAME1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 1)
-		foundServices, err = FindServices(readTx, ByName("invalid"))
+		foundServices, err = FindServices(readTx, ByNamePrefix("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 0)
-		foundServices, err = FindServices(readTx, Or(ByName("name1"), ByName("name2")))
+		foundServices, err = FindServices(readTx, Or(ByNamePrefix("name1"), ByNamePrefix("name2")))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 2)
-		foundServices, err = FindServices(readTx, Or(ByName("name1"), ByName("name2"), ByName("name4")))
+		foundServices, err = FindServices(readTx, Or(ByNamePrefix("name1"), ByNamePrefix("name2"), ByNamePrefix("name4")))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 2)
 
@@ -350,19 +350,19 @@ func TestStoreService(t *testing.T) {
 
 		// Name change.
 		update = GetService(tx, update.ID)
-		foundServices, err := FindServices(tx, ByName("name1"))
+		foundServices, err := FindServices(tx, ByNamePrefix("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 1)
-		foundServices, err = FindServices(tx, ByName("name4"))
+		foundServices, err = FindServices(tx, ByNamePrefix("name4"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundServices)
 
 		update.Spec.Annotations.Name = "name4"
 		assert.NoError(t, UpdateService(tx, update))
-		foundServices, err = FindServices(tx, ByName("name1"))
+		foundServices, err = FindServices(tx, ByNamePrefix("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundServices)
-		foundServices, err = FindServices(tx, ByName("name4"))
+		foundServices, err = FindServices(tx, ByNamePrefix("name4"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 1)
 
@@ -380,7 +380,7 @@ func TestStoreService(t *testing.T) {
 		assert.NotNil(t, GetService(tx, "id1"))
 		assert.NoError(t, DeleteService(tx, "id1"))
 		assert.Nil(t, GetService(tx, "id1"))
-		foundServices, err := FindServices(tx, ByName("name1"))
+		foundServices, err := FindServices(tx, ByNamePrefix("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundServices)
 
