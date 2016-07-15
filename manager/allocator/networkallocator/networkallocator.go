@@ -376,8 +376,18 @@ func (na *NetworkAllocator) allocateVIP(vip *api.Endpoint_VirtualIP) error {
 		return fmt.Errorf("failed to resolve IPAM while allocating : %v", err)
 	}
 
+	var addr net.IP
+	if vip.Addr != "" {
+		var err error
+
+		addr, _, err = net.ParseCIDR(vip.Addr)
+		if err != nil {
+			return err
+		}
+	}
+
 	for _, poolID := range localNet.pools {
-		ip, _, err := ipam.RequestAddress(poolID, nil, nil)
+		ip, _, err := ipam.RequestAddress(poolID, addr, nil)
 		if err != nil && err != ipamapi.ErrNoAvailableIPs && err != ipamapi.ErrIPOutOfRange {
 			return fmt.Errorf("could not allocate VIP from IPAM: %v", err)
 		}

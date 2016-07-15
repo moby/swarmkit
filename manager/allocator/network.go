@@ -193,11 +193,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 	}
 
 	for _, s := range services {
-		if s.Spec.Endpoint == nil {
-			continue
-		}
-
-		if na.IsServiceAllocated(s) {
+		if !serviceAllocationNeeded(s, nc) {
 			continue
 		}
 
@@ -379,7 +375,7 @@ func (a *Allocator) doNodeAlloc(ctx context.Context, nc *networkContext, ev even
 			node.Attachment = &api.NetworkAttachment{}
 		}
 
-		node.Attachment.Network = a.netCtx.ingressNetwork.Copy()
+		node.Attachment.Network = nc.ingressNetwork.Copy()
 		if err := a.allocateNode(ctx, nc, node); err != nil {
 			log.G(ctx).Errorf("Fauled to allocate network resources for node %s: %v", node.ID, err)
 		}
@@ -585,7 +581,7 @@ func (a *Allocator) allocateService(ctx context.Context, nc *networkContext, s *
 		if len(s.Spec.Endpoint.Ports) != 0 {
 			var found bool
 			for _, vip := range s.Endpoint.VirtualIPs {
-				if vip.NetworkID == a.netCtx.ingressNetwork.ID {
+				if vip.NetworkID == nc.ingressNetwork.ID {
 					found = true
 					break
 				}
@@ -593,7 +589,7 @@ func (a *Allocator) allocateService(ctx context.Context, nc *networkContext, s *
 
 			if !found {
 				s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs,
-					&api.Endpoint_VirtualIP{NetworkID: a.netCtx.ingressNetwork.ID})
+					&api.Endpoint_VirtualIP{NetworkID: nc.ingressNetwork.ID})
 			}
 		}
 	}
