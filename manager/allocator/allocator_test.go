@@ -45,6 +45,11 @@ func TestAllocator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "service1",
 				},
+				Networks: []*api.ServiceSpec_NetworkAttachmentConfig{
+					{
+						Target: "testID1",
+					},
+				},
 				Endpoint: &api.EndpointSpec{},
 			},
 		}

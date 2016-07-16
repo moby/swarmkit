@@ -43,6 +43,14 @@ type NetworkAllocator struct {
 	// Allocator state to indicate if allocation has been
 	// successfully completed for this service.
 	services map[string]struct{}
+
+	// Allocator state to indicate if allocation has been
+	// successfully completed for this task.
+	tasks map[string]struct{}
+
+	// Allocator state to indicate if allocation has been
+	// successfully completed for this node.
+	nodes map[string]struct{}
 }
 
 // Local in-memory state related to netwok that need to be tracked by NetworkAllocator
@@ -64,6 +72,8 @@ func New() (*NetworkAllocator, error) {
 	na := &NetworkAllocator{
 		networks: make(map[string]*network),
 		services: make(map[string]struct{}),
+		tasks:    make(map[string]struct{}),
+		nodes:    make(map[string]struct{}),
 	}
 
 	// There are no driver configurations and notification
@@ -224,6 +234,12 @@ func (na *NetworkAllocator) IsAllocated(n *api.Network) bool {
 
 // IsTaskAllocated returns if the passed task has it's network resources allocated or not.
 func (na *NetworkAllocator) IsTaskAllocated(t *api.Task) bool {
+	// If the task is not found in the allocated set, then it is
+	// not allocated.
+	if _, ok := na.tasks[t.ID]; !ok {
+		return false
+	}
+
 	// If Networks is empty there is no way this Task is allocated.
 	if len(t.Networks) == 0 {
 		return false
@@ -268,6 +284,12 @@ func (na *NetworkAllocator) IsServiceAllocated(s *api.Service) bool {
 
 // IsNodeAllocated returns if the passed node has its network resources allocated or not.
 func (na *NetworkAllocator) IsNodeAllocated(node *api.Node) bool {
+	// If the node is not found in the allocated set, then it is
+	// not allocated.
+	if _, ok := na.nodes[node.ID]; !ok {
+		return false
+	}
+
 	// If no attachment, not allocated.
 	if node.Attachment == nil {
 		return false
@@ -295,12 +317,18 @@ func (na *NetworkAllocator) IsNodeAllocated(node *api.Node) bool {
 // AllocateNode allocates the IP addresses for the network to which
 // the node is attached.
 func (na *NetworkAllocator) AllocateNode(node *api.Node) error {
-	return na.allocateNetworkIPs(node.Attachment)
+	if err := na.allocateNetworkIPs(node.Attachment); err != nil {
+		return err
+	}
+
+	na.nodes[node.ID] = struct{}{}
+	return nil
 }
 
 // DeallocateNode deallocates the IP addresses for the network to
 // which the node is attached.
 func (na *NetworkAllocator) DeallocateNode(node *api.Node) error {
+	delete(na.nodes, node.ID)
 	return na.releaseEndpoints([]*api.NetworkAttachment{node.Attachment})
 }
 
@@ -316,12 +344,15 @@ func (na *NetworkAllocator) AllocateTask(t *api.Task) error {
 		}
 	}
 
+	na.tasks[t.ID] = struct{}{}
+
 	return nil
 }
 
 // DeallocateTask releases all the endpoint resources for all the
 // networks that a task is attached to.
 func (na *NetworkAllocator) DeallocateTask(t *api.Task) error {
+	delete(na.tasks, t.ID)
 	return na.releaseEndpoints(t.Networks)
 }
 
@@ -377,8 +408,18 @@ func (na *NetworkAllocator) allocateVIP(vip *api.Endpoint_VirtualIP) error {
 		return fmt.Errorf("failed to resolve IPAM while allocating : %v", err)
 	}
 
+	var addr net.IP
+	if vip.Addr != "" {
+		var err error
+
+		addr, _, err = net.ParseCIDR(vip.Addr)
+		if err != nil {
+			return err
+		}
+	}
+
 	for _, poolID := range localNet.pools {
-		ip, _, err := ipam.RequestAddress(poolID, nil, nil)
+		ip, _, err := ipam.RequestAddress(poolID, addr, nil)
 		if err != nil && err != ipamapi.ErrNoAvailableIPs && err != ipamapi.ErrIPOutOfRange {
 			return fmt.Errorf("could not allocate VIP from IPAM: %v", err)
 		}
