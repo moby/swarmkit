@@ -248,10 +248,6 @@ message ClusterSpec {
 	// CAConfig defines cluster-level certificate authority settings.
 	CAConfig ca_config = 6 [(gogoproto.nullable) = false, (gogoproto.customname) = "CAConfig"];
 
-	// DefaultLogDriver specifies the log driver to use for the cluster if not
-	// specified for each task.
-	//
-	// If this is changed, only new tasks will pick up the new log driver.
-	// Existing tasks will continue to use the previous default until rescheduled.
-	Driver default_log_driver = 7;
+	// TaskDefaults specifies the default values to use for task creation.
+	TaskDefaults task_defaults = 7 [(gogoproto.nullable) = false];
 }
