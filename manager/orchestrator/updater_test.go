@@ -118,7 +118,7 @@ func TestUpdater(t *testing.T) {
 	}
 
 	service.Spec.Task.GetContainer().Image = "v:3"
-	cluster.Spec.DefaultLogDriver = &api.Driver{Name: "clusterlogdriver"} // make cluster default logdriver.
+	cluster.Spec.TaskDefaults.LogDriver = &api.Driver{Name: "clusterlogdriver"} // make cluster default logdriver.
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
 	}
@@ -141,7 +141,7 @@ func TestUpdater(t *testing.T) {
 	updatedTasks = getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
 		assert.Equal(t, "v:4", task.Spec.GetContainer().Image)
-		assert.Equal(t, cluster.Spec.DefaultLogDriver, task.LogDriver) // pick up from cluster
+		assert.Equal(t, cluster.Spec.TaskDefaults.LogDriver, task.LogDriver) // pick up from cluster
 	}
 }
 
