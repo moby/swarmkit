@@ -16,7 +16,7 @@ func getCluster(ctx context.Context, c api.ControlClient, input string) (*api.Cl
 	rl, err := c.ListClusters(ctx,
 		&api.ListClustersRequest{
 			Filters: &api.ListClustersRequest_Filters{
-				Names: []string{input},
+				NamePrefixes: []string{input},
 			},
 		},
 	)
