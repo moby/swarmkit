@@ -403,6 +403,12 @@ func (na *NetworkAllocator) allocateVIP(vip *api.Endpoint_VirtualIP) error {
 		return fmt.Errorf("networkallocator: could not find local network state")
 	}
 
+	// If this IP is already allocated in memory we don't need to
+	// do anything.
+	if _, ok := localNet.endpoints[vip.Addr]; ok {
+		return nil
+	}
+
 	ipam, _, err := na.resolveIPAM(localNet.nw)
 	if err != nil {
 		return fmt.Errorf("failed to resolve IPAM while allocating : %v", err)
