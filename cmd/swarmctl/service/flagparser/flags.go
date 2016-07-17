@@ -21,6 +21,7 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.StringSlice("command", nil, "override entrypoint")
 	flags.StringSlice("args", nil, "container args")
 	flags.StringSlice("env", nil, "container env")
+	flags.BoolP("privileged", "", false, "give extended privileges to container (default false)")
 
 	flags.StringSlice("ports", nil, "ports")
 	flags.String("network", "", "network name")
