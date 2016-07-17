@@ -336,7 +336,7 @@ func (s *Server) ListServices(ctx context.Context, request *api.ListServicesRequ
 	if request.Filters != nil {
 		services = filterServices(services,
 			func(e *api.Service) bool {
-				return filterContainsPrefix(e.Spec.Annotations.Name, request.Filters.Names)
+				return filterContains(e.Spec.Annotations.Name, request.Filters.Names)
 			},
 			func(e *api.Service) bool {
 				return filterContainsPrefix(e.Spec.Annotations.Name, request.Filters.NamePrefixes)
