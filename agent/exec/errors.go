@@ -22,6 +22,9 @@ var (
 	// ErrControllerClosed returned when a task controller has been closed.
 	ErrControllerClosed = errors.New("exec: controller closed")
 
+	// ErrControllerRemoved returned when a task controller has been removed.
+	ErrControllerRemoved = errors.New("exec: controller removed")
+
 	// ErrTaskRetry is returned by Do when an operation failed by should be
 	// retried. The status should still be reported in this case.
 	ErrTaskRetry = errors.New("exec: task retry")
