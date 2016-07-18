@@ -411,7 +411,7 @@ func TestUpdateNode(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestUpdateNodeDemote(t *testing.T) {
+func testUpdateNodeDemote(leader bool, t *testing.T) {
 	tc := cautils.NewTestCA(nil, cautils.AcceptancePolicy(true, true, ""))
 	ts := newTestServer(t)
 
@@ -523,28 +523,40 @@ func TestUpdateNodeDemote(t *testing.T) {
 		return nil
 	}))
 
-	// Try to demote Node 2
-	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID()})
+	var demoteNode, lastNode *raftutils.TestNode
+	if leader {
+		demoteNode = nodes[1]
+		lastNode = nodes[2]
+	} else {
+		demoteNode = nodes[2]
+		lastNode = nodes[1]
+	}
+
+	// Try to demote a Node and scale down to 1
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: demoteNode.SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
 	spec.Role = api.NodeRoleWorker
 	version = &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID:      nodes[2].SecurityConfig.ClientTLSCreds.NodeID(),
+		NodeID:      demoteNode.SecurityConfig.ClientTLSCreds.NodeID(),
 		Spec:        spec,
 		NodeVersion: version,
 	})
 	assert.NoError(t, err)
 
+	// Update the server
+	ts.Server.raft = lastNode.Node
+	ts.Server.store = lastNode.MemoryStore()
+
 	newCluster = map[uint64]*raftutils.TestNode{
-		1: nodes[1],
+		1: lastNode,
 	}
 
 	raftutils.WaitForCluster(t, clockSource, newCluster)
 
-	// New server should list 1 member
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-		members := nodes[1].GetMemberlist()
+		members := lastNode.GetMemberlist()
 		if len(members) != 1 {
 			return fmt.Errorf("expected 1 node, got %d", len(members))
 		}
@@ -552,16 +564,43 @@ func TestUpdateNodeDemote(t *testing.T) {
 	}))
 
 	// Make sure we can't demote the last manager.
-	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID()})
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
 	spec.Role = api.NodeRoleWorker
 	version = &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID:      nodes[1].SecurityConfig.ClientTLSCreds.NodeID(),
+		NodeID:      lastNode.SecurityConfig.ClientTLSCreds.NodeID(),
 		Spec:        spec,
 		NodeVersion: version,
 	})
 	assert.Error(t, err)
 	assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
+
+	// Propose a change in the spec and check if the remaining node can still process updates
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
+	assert.NoError(t, err)
+	spec = r.Node.Spec.Copy()
+	spec.Availability = api.NodeAvailabilityDrain
+	version = &r.Node.Meta.Version
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
+		NodeID:      lastNode.SecurityConfig.ClientTLSCreds.NodeID(),
+		Spec:        spec,
+		NodeVersion: version,
+	})
+	assert.NoError(t, err)
+
+	// Get node information and check that the availability is set to drain
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
+	assert.NoError(t, err)
+	assert.Equal(t, r.Node.Spec.Availability, api.NodeAvailabilityDrain)
+
+}
+
+func TestUpdateNodeDemote(t *testing.T) {
+	testUpdateNodeDemote(false, t)
+}
+
+func TestUpdateNodeDemoteLeader(t *testing.T) {
+	testUpdateNodeDemote(true, t)
 }
