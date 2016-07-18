@@ -576,6 +576,25 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 	})
 	assert.Error(t, err)
 	assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
+
+	// Propose a change in the spec and check if the remaining node can still process updates
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
+	assert.NoError(t, err)
+	spec = r.Node.Spec.Copy()
+	spec.Availability = api.NodeAvailabilityDrain
+	version = &r.Node.Meta.Version
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
+		NodeID:      lastNode.SecurityConfig.ClientTLSCreds.NodeID(),
+		Spec:        spec,
+		NodeVersion: version,
+	})
+	assert.NoError(t, err)
+
+	// Get node information and check that the availability is set to drain
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
+	assert.NoError(t, err)
+	assert.Equal(t, r.Node.Spec.Availability, api.NodeAvailabilityDrain)
+
 }
 
 func TestUpdateNodeDemote(t *testing.T) {
