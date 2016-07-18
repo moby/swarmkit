@@ -249,23 +249,14 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 	}, nil
 }
 
-// RemoveNode updates a Node referenced by NodeID with the given NodeSpec.
+// RemoveNode removes a Node referenced by NodeID with the given NodeSpec.
 // - Returns NotFound if the Node is not found.
-// - Returns FailedPrecondition if the Node has manager role or not shut down.
+// - Returns FailedPrecondition if the Node has manager role (and is part of the memberlist) or is not shut down.
 // - Returns InvalidArgument if NodeID or NodeVersion is not valid.
 // - Returns an error if the delete fails.
 func (s *Server) RemoveNode(ctx context.Context, request *api.RemoveNodeRequest) (*api.RemoveNodeResponse, error) {
 	if request.NodeID == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
-	}
-	if s.raft != nil {
-		memberlist := s.raft.GetMemberlist()
-
-		for _, member := range memberlist {
-			if member.NodeID == request.NodeID {
-				return nil, grpc.Errorf(codes.FailedPrecondition, "node %s is a cluster manager and is part of the quorum. It must be demoted to worker before removal", request.NodeID)
-			}
-		}
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {
@@ -274,7 +265,12 @@ func (s *Server) RemoveNode(ctx context.Context, request *api.RemoveNodeRequest)
 			return grpc.Errorf(codes.NotFound, "node %s not found", request.NodeID)
 		}
 		if node.Spec.Role == api.NodeRoleManager {
-			return grpc.Errorf(codes.FailedPrecondition, "node %s role is set to manager. It should be demoted to worker for safe removal", request.NodeID)
+			if s.raft == nil {
+				return grpc.Errorf(codes.FailedPrecondition, "node %s is a manager but cannot access node information from the raft memberlist", request.NodeID)
+			}
+			if member := s.raft.GetMemberByNodeID(request.NodeID); member != nil {
+				return grpc.Errorf(codes.FailedPrecondition, "node %s is a cluster manager and is a member of the raft cluster. It must be demoted to worker before removal", request.NodeID)
+			}
 		}
 		if node.Status.State == api.NodeStatus_READY {
 			return grpc.Errorf(codes.FailedPrecondition, "node %s is not down and can't be removed", request.NodeID)
