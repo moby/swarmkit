@@ -107,23 +107,12 @@ var (
 				return err
 			}
 
-			caHash, err := cmd.Flags().GetString("ca-hash")
-			if err != nil {
-				return err
-			}
-
-			secret, err := cmd.Flags().GetString("secret")
+			joinToken, err := cmd.Flags().GetString("join-token")
 			if err != nil {
 				return err
 			}
 
 			engineAddr, err := cmd.Flags().GetString("engine-addr")
-			if err != nil {
-				return err
-			}
-
-			// todo: temporary to bypass promotion not working yet
-			ismanager, err := cmd.Flags().GetBool("manager")
 			if err != nil {
 				return err
 			}
@@ -155,13 +144,11 @@ var (
 				ListenRemoteAPI:  addr,
 				JoinAddr:         managerAddr,
 				StateDir:         stateDir,
-				CAHash:           caHash,
-				Secret:           secret,
+				JoinToken:        joinToken,
 				ExternalCAs:      externalCAOpt.Value(),
 				Executor:         executor,
 				HeartbeatTick:    hb,
 				ElectionTick:     election,
-				IsManager:        ismanager,
 			})
 			if err != nil {
 				return err
@@ -197,8 +184,7 @@ func init() {
 	mainCmd.Flags().BoolP("version", "v", false, "Display the version and exit")
 	mainCmd.Flags().StringP("log-level", "l", "info", "Log level (options \"debug\", \"info\", \"warn\", \"error\", \"fatal\", \"panic\")")
 	mainCmd.Flags().StringP("state-dir", "d", "./swarmkitstate", "State directory")
-	mainCmd.Flags().StringP("ca-hash", "c", "", "Specifies the remote CA root certificate hash, necessary to join the cluster securely")
-	mainCmd.Flags().StringP("secret", "s", "", "Specifies the secret token required to join the cluster")
+	mainCmd.Flags().StringP("join-token", "", "", "Specifies the secret token required to join the cluster")
 	mainCmd.Flags().String("engine-addr", "unix:///var/run/docker.sock", "Address of engine instance of agent.")
 	mainCmd.Flags().String("hostname", "", "Override reported agent hostname")
 	mainCmd.Flags().String("listen-remote-api", "0.0.0.0:4242", "Listen address for remote API")
@@ -208,6 +194,5 @@ func init() {
 	mainCmd.Flags().Bool("force-new-cluster", false, "Force the creation of a new cluster from data directory")
 	mainCmd.Flags().Uint32("heartbeat-tick", 1, "Defines the heartbeat interval (in seconds) for raft member health-check")
 	mainCmd.Flags().Uint32("election-tick", 3, "Defines the amount of ticks (in seconds) needed without a Leader to trigger a new election")
-	mainCmd.Flags().Bool("manager", false, "Request initial CSR in a manager role")
 	mainCmd.Flags().Var(&externalCAOpt, "external-ca", "Specifications of one or more certificate signing endpoints")
 }

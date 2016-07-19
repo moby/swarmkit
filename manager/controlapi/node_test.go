@@ -152,7 +152,8 @@ func getMap(t *testing.T, nodes []*api.Node) map[uint64]*api.ManagerStatus {
 }
 
 func TestListManagerNodes(t *testing.T) {
-	tc := cautils.NewTestCA(nil, cautils.AcceptancePolicy(true, true, ""))
+	tc := cautils.NewTestCA(nil)
+	defer tc.Stop()
 	ts := newTestServer(t)
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
@@ -323,7 +324,8 @@ func TestListManagerNodes(t *testing.T) {
 }
 
 func TestUpdateNode(t *testing.T) {
-	tc := cautils.NewTestCA(nil, cautils.AcceptancePolicy(true, true, ""))
+	tc := cautils.NewTestCA(nil)
+	defer tc.Stop()
 	ts := newTestServer(t)
 
 	nodes := make(map[uint64]*raftutils.TestNode)
@@ -412,7 +414,8 @@ func TestUpdateNode(t *testing.T) {
 }
 
 func testUpdateNodeDemote(leader bool, t *testing.T) {
-	tc := cautils.NewTestCA(nil, cautils.AcceptancePolicy(true, true, ""))
+	tc := cautils.NewTestCA(nil)
+	defer tc.Stop()
 	ts := newTestServer(t)
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)

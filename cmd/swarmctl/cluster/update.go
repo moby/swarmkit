@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
-
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/cli"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
 	"github.com/docker/swarmkit/protobuf/ptypes"
@@ -38,65 +35,8 @@ var (
 
 			flags := cmd.Flags()
 			spec := &cluster.Spec
+			var rotation api.JoinTokenRotation
 
-			if flags.Changed("autoaccept") {
-				autoaccept, err := flags.GetStringSlice("autoaccept")
-				if err != nil {
-					return err
-				}
-
-				// We are getting a whitelist, so make all of the autoaccepts false
-				for _, policy := range spec.AcceptancePolicy.Policies {
-					policy.Autoaccept = false
-
-				}
-
-				// For each of the roles handed to us by the client, make them true
-				for _, role := range autoaccept {
-					// Convert the role into a proto role
-					apiRole, err := ca.FormatRole("swarm-" + role)
-					if err != nil {
-						return fmt.Errorf("unrecognized role %s", role)
-					}
-					// Attempt to find this role inside of the current policies
-					found := false
-					for _, policy := range spec.AcceptancePolicy.Policies {
-						if policy.Role == apiRole {
-							// We found a matching policy, let's update it
-							policy.Autoaccept = true
-							found = true
-						}
-
-					}
-					// We didn't find this policy, create it
-					if !found {
-						newPolicy := &api.AcceptancePolicy_RoleAdmissionPolicy{
-							Role:       apiRole,
-							Autoaccept: true,
-						}
-						spec.AcceptancePolicy.Policies = append(spec.AcceptancePolicy.Policies, newPolicy)
-					}
-				}
-
-			}
-
-			if flags.Changed("secret") {
-				secret, err := flags.GetStringSlice("secret")
-				if err != nil || secret == nil || len(secret) < 1 {
-					return err
-				}
-				// Using the defaut bcrypt cost
-				hashedSecret, err := bcrypt.GenerateFromPassword([]byte(secret[0]), 0)
-				if err != nil {
-					return err
-				}
-				for _, policy := range spec.AcceptancePolicy.Policies {
-					policy.Secret = &api.AcceptancePolicy_RoleAdmissionPolicy_Secret{
-						Data: hashedSecret,
-						Alg:  "bcrypt",
-					}
-				}
-			}
 			if flags.Changed("certexpiry") {
 				cePeriod, err := flags.GetDuration("certexpiry")
 				if err != nil {
@@ -122,6 +62,21 @@ var (
 				}
 				spec.Dispatcher.HeartbeatPeriod = ptypes.DurationProto(hbPeriod)
 			}
+			if flags.Changed("rotate-join-token") {
+				rotateJoinToken, err := flags.GetString("rotate-join-token")
+				if err != nil {
+					return err
+				}
+
+				switch rotateJoinToken {
+				case "worker":
+					rotation.RotateWorkerToken = true
+				case "manager":
+					rotation.RotateManagerToken = true
+				default:
+					return errors.New("--rotate-join-token flag must be followed by worker or manager")
+				}
+			}
 
 			driver, err := common.ParseLogDriverFlags(flags)
 			if err != nil {
@@ -133,6 +88,7 @@ var (
 				ClusterID:      cluster.ID,
 				ClusterVersion: &cluster.Meta.Version,
 				Spec:           spec,
+				Rotation:       rotation,
 			})
 			if err != nil {
 				return err
@@ -144,8 +100,6 @@ var (
 )
 
 func init() {
-	updateCmd.Flags().StringSlice("autoaccept", nil, "Roles to automatically issue certificates for")
-	updateCmd.Flags().StringSlice("secret", nil, "Secret required to join the cluster")
 	updateCmd.Flags().Int64("taskhistory", 0, "Number of historic task entries to retain per slot or node")
 	updateCmd.Flags().Duration("certexpiry", 24*30*3*time.Hour, "Duration node certificates will be valid for")
 	updateCmd.Flags().Var(&externalCAOpt, "external-ca", "Specifications of one or more certificate signing endpoints")
@@ -153,4 +107,5 @@ func init() {
 
 	updateCmd.Flags().String("log-driver", "", "Set default log driver for cluster")
 	updateCmd.Flags().StringSlice("log-opt", nil, "Set options for default log driver")
+	updateCmd.Flags().String("rotate-join-token", "", "Rotate join token for worker or manager")
 }
