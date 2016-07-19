@@ -268,7 +268,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 }
 
 func TestGetRemoteCA(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	shaHash := sha256.New()
@@ -285,7 +285,7 @@ func TestGetRemoteCA(t *testing.T) {
 }
 
 func TestCanSign(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	assert.True(t, tc.RootCA.CanSign())
@@ -294,7 +294,7 @@ func TestCanSign(t *testing.T) {
 }
 
 func TestGetRemoteCAInvalidHash(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	_, err := ca.GetRemoteCA(tc.Context, "sha256:2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", tc.Picker)
@@ -302,13 +302,13 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 }
 
 func TestRequestAndSaveNewCertificates(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	info := make(chan api.IssueNodeCertificateResponse, 1)
 	// Copy the current RootCA without the signer
 	rca := ca.RootCA{Cert: tc.RootCA.Cert, Pool: tc.RootCA.Pool}
-	cert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.Paths.Node, ca.ManagerRole, "", tc.Picker, nil, info)
+	cert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.Paths.Node, tc.WorkerToken, tc.Picker, nil, info)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 	perms, err := permbits.Stat(tc.Paths.Node.Cert)
@@ -319,7 +319,7 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 }
 
 func TestIssueAndSaveNewCertificates(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Copy the current RootCA without the signer
@@ -342,15 +342,15 @@ func TestIssueAndSaveNewCertificates(t *testing.T) {
 	assert.Equal(t, "swarm-test-CA", certs[1].Subject.CommonName)
 }
 
-func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+func TestGetRemoteSignedCertificate(t *testing.T) {
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Create a new CSR to be signed
 	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	certs, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, "", tc.RootCA.Pool, tc.Picker, nil, nil)
+	certs, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.ManagerToken, tc.RootCA.Pool, tc.Picker, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 
@@ -363,7 +363,7 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.ManagerRole)
 
 	// Test the expiration for an agent certificate
-	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, ca.AgentRole, "", tc.RootCA.Pool, tc.Picker, nil, nil)
+	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, tc.WorkerToken, tc.RootCA.Pool, tc.Picker, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
@@ -372,11 +372,10 @@ func TestGetRemoteSignedCertificateAutoAccept(t *testing.T) {
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, -1).Before(parsedCerts[0].NotAfter))
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, 1).After(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.AgentRole)
-
 }
 
 func TestGetRemoteSignedCertificateNodeInfo(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Create a new CSR to be signed
@@ -384,14 +383,14 @@ func TestGetRemoteSignedCertificateNodeInfo(t *testing.T) {
 	assert.NoError(t, err)
 
 	info := make(chan api.IssueNodeCertificateResponse, 1)
-	cert, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, "", tc.RootCA.Pool, tc.Picker, nil, info)
+	cert, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.WorkerToken, tc.RootCA.Pool, tc.Picker, nil, info)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 	assert.NotEmpty(t, <-info)
 }
 
 func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
-	tc := testutils.NewTestCA(t, ca.DefaultAcceptancePolicy())
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Create a new CSR to be signed
@@ -403,7 +402,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, ca.ManagerRole, "", tc.RootCA.Pool, tc.Picker, nil, nil)
+		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.WorkerToken, tc.RootCA.Pool, tc.Picker, nil, nil)
 		completed <- err
 	}()
 

@@ -233,8 +233,10 @@ message NetworkSpec {
 message ClusterSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
-	// AcceptancePolicy defines the certificate issuance policy.
-	AcceptancePolicy acceptance_policy = 2 [(gogoproto.nullable) = false];
+	// DEPRECATED: AcceptancePolicy defines the certificate issuance policy.
+	// Acceptance policy is no longer customizable, and secrets have been
+	// replaced with join tokens.
+	AcceptancePolicy acceptance_policy = 2 [deprecated=true, (gogoproto.nullable) = false];
 
 	// Orchestration defines cluster-level orchestration settings.
 	OrchestrationConfig orchestration = 3 [(gogoproto.nullable) = false];

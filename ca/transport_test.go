@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewMutableTLS(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN", ca.ManagerRole, tc.Organization)
@@ -25,7 +25,7 @@ func TestNewMutableTLS(t *testing.T) {
 }
 
 func TestGetAndValidateCertificateSubject(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN", ca.ManagerRole, tc.Organization)
@@ -39,7 +39,7 @@ func TestGetAndValidateCertificateSubject(t *testing.T) {
 }
 
 func TestLoadNewTLSConfig(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Create two different certs and two different TLS configs

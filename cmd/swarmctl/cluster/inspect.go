@@ -19,18 +19,6 @@ func printClusterSummary(cluster *api.Cluster) {
 
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", cluster.ID)
 	common.FprintfIfNotEmpty(w, "Name\t: %s\n", cluster.Spec.Annotations.Name)
-	if len(cluster.Spec.AcceptancePolicy.Policies) > 0 {
-		fmt.Fprintf(w, "Acceptance Policies:\n")
-		for _, policy := range cluster.Spec.AcceptancePolicy.Policies {
-			fmt.Fprintf(w, "  Role\t: %v\n", policy.Role)
-			fmt.Fprintf(w, "    Autoaccept\t: %v\n", policy.Autoaccept)
-			if policy.Secret != nil {
-				fmt.Fprintln(w, "    Secret\t: yes")
-			} else {
-				fmt.Fprintln(w, "    Secret\t: no")
-			}
-		}
-	}
 	fmt.Fprintf(w, "Orchestration settings:\n")
 	fmt.Fprintf(w, "  Task history entries: %d\n", cluster.Spec.Orchestration.TaskHistoryRetentionLimit)
 
@@ -56,8 +44,12 @@ func printClusterSummary(cluster *api.Cluster) {
 		}
 	}
 
+	fmt.Fprintln(w, "  Join Tokens:")
+	fmt.Fprintln(w, "    Worker:", cluster.RootCA.JoinTokens.Worker)
+	fmt.Fprintln(w, "    Manager:", cluster.RootCA.JoinTokens.Manager)
+
 	if cluster.Spec.TaskDefaults.LogDriver != nil {
-		fmt.Fprintf(w, "DefaultLogDriver\t: %s\n", cluster.Spec.TaskDefaults.LogDriver.Name)
+		fmt.Fprintf(w, "Default Log Driver\t: %s\n", cluster.Spec.TaskDefaults.LogDriver.Name)
 		var keys []string
 
 		if len(cluster.Spec.TaskDefaults.LogDriver.Options) != 0 {
