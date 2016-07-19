@@ -521,6 +521,17 @@ message OrchestrationConfig {
 	// TaskHistoryRetentionLimit is the number of historic tasks to keep per instance or
 	// node. If negative, never remove completed or failed tasks.
 	int64 task_history_retention_limit = 1;
+
+}
+
+// TaskDefaults specifies default values for task creation.
+message TaskDefaults {
+	// LogDriver specifies the log driver to use for the cluster if not
+	// specified for each task.
+	//
+	// If this is changed, only new tasks will pick up the new log driver.
+	// Existing tasks will continue to use the previous default until rescheduled.
+	Driver log_driver = 1;
 }
 
 // DispatcherConfig defines cluster-level dispatcher settings.
