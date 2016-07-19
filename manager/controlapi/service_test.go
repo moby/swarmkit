@@ -236,6 +236,38 @@ func TestCreateService(t *testing.T) {
 	r, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, r.Service.ID)
+
+	// test port conflicts
+	spec = createSpec("name2", "image", 1)
+	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+	}}
+	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.NoError(t, err)
+	assert.NotEmpty(t, r.Service.ID)
+
+	spec2 := createSpec("name3", "image", 1)
+	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+	}}
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	// test no port conflicts when no publish port is specified
+	spec3 := createSpec("name4", "image", 1)
+	spec3.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+	}}
+	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec3})
+	assert.NoError(t, err)
+	assert.NotEmpty(t, r.Service.ID)
+	spec4 := createSpec("name5", "image", 1)
+	spec4.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{TargetPort: uint32(9001), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+	}}
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec4})
+	assert.NoError(t, err)
 }
 
 func TestGetService(t *testing.T) {
@@ -330,6 +362,38 @@ func TestUpdateService(t *testing.T) {
 		ServiceVersion: version,
 	})
 	assert.Error(t, err)
+
+	// test port conflicts
+	spec2 := createSpec("name2", "image", 1)
+	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+	}}
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
+	assert.NoError(t, err)
+
+	spec3 := createSpec("name3", "image", 1)
+	rs, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec3})
+	assert.NoError(t, err)
+
+	spec3.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+	}}
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:      rs.Service.ID,
+		Spec:           spec3,
+		ServiceVersion: &rs.Service.Meta.Version,
+	})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	spec3.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{PublishedPort: uint32(9001), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+	}}
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:      rs.Service.ID,
+		Spec:           spec3,
+		ServiceVersion: &rs.Service.Meta.Version,
+	})
+	assert.NoError(t, err)
 }
 
 // TODO(dongluochen): Network update is not supported yet and it's blocked
