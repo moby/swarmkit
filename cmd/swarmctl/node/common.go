@@ -125,7 +125,7 @@ func getNode(ctx context.Context, c api.ControlClient, input string) (*api.Node,
 		rl, err := c.ListNodes(ctx,
 			&api.ListNodesRequest{
 				Filters: &api.ListNodesRequest_Filters{
-					Names: []string{input},
+					NamePrefixes: []string{input},
 				},
 			},
 		)

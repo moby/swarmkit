@@ -19,7 +19,7 @@ func GetNetwork(ctx context.Context, c api.ControlClient, input string) (*api.Ne
 		rl, err := c.ListNetworks(ctx,
 			&api.ListNetworksRequest{
 				Filters: &api.ListNetworksRequest_Filters{
-					Names: []string{input},
+					NamePrefixes: []string{input},
 				},
 			},
 		)
