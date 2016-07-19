@@ -81,6 +81,8 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 		switch {
 		case request.Filters != nil && len(request.Filters.Names) > 0:
 			nodes, err = store.FindNodes(tx, buildFilters(store.ByName, request.Filters.Names))
+		case request.Filters != nil && len(request.Filters.NamePrefixes) > 0:
+			nodes, err = store.FindNodes(tx, buildFilters(store.ByNamePrefix, request.Filters.NamePrefixes))
 		case request.Filters != nil && len(request.Filters.IDPrefixes) > 0:
 			nodes, err = store.FindNodes(tx, buildFilters(store.ByIDPrefix, request.Filters.IDPrefixes))
 		case request.Filters != nil && len(request.Filters.Roles) > 0:
@@ -113,6 +115,15 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 					return false
 				}
 				return filterContains(e.Description.Hostname, request.Filters.Names)
+			},
+			func(e *api.Node) bool {
+				if len(request.Filters.NamePrefixes) == 0 {
+					return true
+				}
+				if e.Description == nil {
+					return false
+				}
+				return filterContainsPrefix(e.Description.Hostname, request.Filters.NamePrefixes)
 			},
 			func(e *api.Node) bool {
 				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)

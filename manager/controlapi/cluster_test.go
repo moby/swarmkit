@@ -160,7 +160,7 @@ func TestUpdateCluster(t *testing.T) {
 
 	r, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{
 		Filters: &api.ListClustersRequest_Filters{
-			Names: []string{"name"},
+			NamePrefixes: []string{"name"},
 		},
 	})
 	assert.NoError(t, err)
@@ -178,7 +178,7 @@ func TestUpdateCluster(t *testing.T) {
 
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{
 		Filters: &api.ListClustersRequest_Filters{
-			Names: []string{"name"},
+			NamePrefixes: []string{"name"},
 		},
 	})
 	assert.NoError(t, err)
