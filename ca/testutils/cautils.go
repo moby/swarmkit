@@ -17,6 +17,7 @@ import (
 	"github.com/cloudflare/cfssl/log"
 	cfsigner "github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
+	"github.com/docker/distribution/digest"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/identity"
@@ -24,38 +25,10 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/picker"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
-
-// AcceptancePolicy is a policy that returns a valid Acceptance policy
-func AcceptancePolicy(worker, manager bool, secret string) api.AcceptancePolicy {
-	var apiSecret *api.AcceptancePolicy_RoleAdmissionPolicy_Secret
-	if secret != "" {
-		hashPwd, _ := bcrypt.GenerateFromPassword([]byte(secret), 0)
-		apiSecret = &api.AcceptancePolicy_RoleAdmissionPolicy_Secret{
-			Data: hashPwd,
-			Alg:  "bcrypt",
-		}
-	}
-
-	return api.AcceptancePolicy{
-		Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{
-			{
-				Role:       api.NodeRoleWorker,
-				Autoaccept: worker,
-				Secret:     apiSecret,
-			},
-			{
-				Role:       api.NodeRoleManager,
-				Autoaccept: manager,
-				Secret:     apiSecret,
-			},
-		},
-	}
-}
 
 // TestCA is a structure that encapsulates everything needed to test a CA Server
 type TestCA struct {
@@ -71,6 +44,8 @@ type TestCA struct {
 	CAClients             []api.CAClient
 	Conns                 []*grpc.ClientConn
 	Picker                *picker.Picker
+	WorkerToken           string
+	ManagerToken          string
 }
 
 // Stop cleansup after TestCA
@@ -118,7 +93,7 @@ var External bool
 
 // NewTestCA is a helper method that creates a TestCA and a bunch of default
 // connections and security configs.
-func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
+func NewTestCA(t *testing.T) *TestCA {
 	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
 	assert.NoError(t, err)
 
@@ -180,7 +155,10 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 	serverOpts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(serverOpts...)
 
-	createClusterObject(t, s, organization, policy, externalCAs...)
+	managerToken := ca.GenerateJoinToken(&rootCA)
+	workerToken := ca.GenerateJoinToken(&rootCA)
+
+	createClusterObject(t, s, organization, workerToken, managerToken, externalCAs...)
 	caServer := ca.NewServer(s, managerConfig)
 	api.RegisterCAServer(grpcServer, caServer)
 	api.RegisterNodeCAServer(grpcServer, caServer)
@@ -213,6 +191,8 @@ func NewTestCA(t *testing.T, policy api.AcceptancePolicy) *TestCA {
 		NodeCAClients:         nodeCAClients,
 		Conns:                 conns,
 		CAServer:              caServer,
+		WorkerToken:           workerToken,
+		ManagerToken:          managerToken,
 	}
 }
 
@@ -319,7 +299,7 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, role, org, tmpDir
 	return ca.NewSecurityConfig(&rootCA, nodeClientTLSCreds, nodeServerTLSCreds), nil
 }
 
-func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, acceptancePolicy api.AcceptancePolicy, externalCAs ...*api.ExternalCA) {
+func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID, workerToken, managerToken string, externalCAs ...*api.ExternalCA) {
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
 			ID: clusterID,
@@ -327,9 +307,14 @@ func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, a
 				Annotations: api.Annotations{
 					Name: store.DefaultClusterName,
 				},
-				AcceptancePolicy: acceptancePolicy,
 				CAConfig: api.CAConfig{
 					ExternalCAs: externalCAs,
+				},
+			},
+			RootCA: api.RootCA{
+				JoinTokens: api.JoinTokens{
+					Worker:  workerToken,
+					Manager: managerToken,
 				},
 			},
 		})
@@ -337,8 +322,8 @@ func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, a
 	}))
 }
 
-// createAndWriteca.RootCA creates a Certificate authority for a new Swarm Cluster.
-// We're copying CreateAndWriteca.RootCA, so we can have smaller key-sizes for tests
+// createAndWriteRootCA creates a Certificate authority for a new Swarm Cluster.
+// We're copying ca.CreateAndWriteRootCA, so we can have smaller key-sizes for tests
 func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duration) (ca.RootCA, error) {
 	// Create a simple CSR for the CA using the default CA validator and policy
 	req := cfcsr.CertificateRequest{
@@ -393,5 +378,11 @@ func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duratio
 		return ca.RootCA{}, fmt.Errorf("failed to append certificate to cert pool")
 	}
 
-	return ca.RootCA{Signer: signer, Key: key, Cert: cert, Pool: pool}, nil
+	return ca.RootCA{
+		Signer: signer,
+		Key:    key,
+		Cert:   cert,
+		Pool:   pool,
+		Digest: digest.FromBytes(cert),
+	}, nil
 }
