@@ -82,6 +82,9 @@ var (
 	taskSet = []*api.Task{
 		{
 			ID: "id1",
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
 			ServiceAnnotations: api.Annotations{
 				Name: "name1",
 			},
@@ -90,6 +93,9 @@ var (
 		},
 		{
 			ID: "id2",
+			Annotations: api.Annotations{
+				Name: "name2.1",
+			},
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
@@ -98,6 +104,9 @@ var (
 		},
 		{
 			ID: "id3",
+			Annotations: api.Annotations{
+				Name: "name2.2",
+			},
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
@@ -471,13 +480,13 @@ func TestStoreTask(t *testing.T) {
 		assert.Equal(t, taskSet[1], GetTask(readTx, "id2"))
 		assert.Equal(t, taskSet[2], GetTask(readTx, "id3"))
 
-		foundTasks, err := FindTasks(readTx, ByName("name1"))
+		foundTasks, err := FindTasks(readTx, ByNamePrefix("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
-		foundTasks, err = FindTasks(readTx, ByName("name2"))
+		foundTasks, err = FindTasks(readTx, ByNamePrefix("name2"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 2)
-		foundTasks, err = FindTasks(readTx, ByName("invalid"))
+		foundTasks, err = FindTasks(readTx, ByNamePrefix("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 0)
 
@@ -514,6 +523,9 @@ func TestStoreTask(t *testing.T) {
 	// Update.
 	update := &api.Task{
 		ID: "id3",
+		Annotations: api.Annotations{
+			Name: "name3",
+		},
 		ServiceAnnotations: api.Annotations{
 			Name: "name3",
 		},
@@ -523,10 +535,10 @@ func TestStoreTask(t *testing.T) {
 		assert.NoError(t, UpdateTask(tx, update))
 		assert.Equal(t, update, GetTask(tx, "id3"))
 
-		foundTasks, err := FindTasks(tx, ByName("name2"))
+		foundTasks, err := FindTasks(tx, ByNamePrefix("name2"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
-		foundTasks, err = FindTasks(tx, ByName("name3"))
+		foundTasks, err = FindTasks(tx, ByNamePrefix("name3"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
 
@@ -538,7 +550,7 @@ func TestStoreTask(t *testing.T) {
 		assert.NotNil(t, GetTask(tx, "id1"))
 		assert.NoError(t, DeleteTask(tx, "id1"))
 		assert.Nil(t, GetTask(tx, "id1"))
-		foundTasks, err = FindTasks(tx, ByName("name1"))
+		foundTasks, err = FindTasks(tx, ByNamePrefix("name1"))
 		assert.NoError(t, err)
 		assert.Empty(t, foundTasks)
 
