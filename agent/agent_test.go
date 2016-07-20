@@ -58,7 +58,7 @@ func TestAgent(t *testing.T) {
 }
 
 func TestAgentStartStop(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	agentSecurityConfig, err := tc.NewNodeConfig(ca.AgentRole)
@@ -137,7 +137,7 @@ func TestHandleSessionMessage(t *testing.T) {
 
 func agentTestEnv(t *testing.T) (*Agent, func()) {
 	var cleanup []func()
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	cleanup = append(cleanup, func() { tc.Stop() })
 
 	agentSecurityConfig, err := tc.NewNodeConfig(ca.AgentRole)

@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,13 +20,13 @@ import (
 )
 
 func TestLoadOrCreateSecurityConfigEmptyDir(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	info := make(chan api.IssueNodeCertificateResponse, 1)
 	// Remove all the contents from the temp dir and try again with a new node
 	os.RemoveAll(tc.TempDir)
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, tc.Picker, info)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, tc.WorkerToken, ca.AgentRole, tc.Picker, info)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -38,13 +39,13 @@ func TestLoadOrCreateSecurityConfigEmptyDir(t *testing.T) {
 }
 
 func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Remove only the node certificates form the directory, and attest that we get
 	// new certificates that are locally signed
 	os.RemoveAll(tc.Paths.Node.Cert)
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, tc.Picker, nil)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, tc.WorkerToken, ca.AgentRole, tc.Picker, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -59,7 +60,7 @@ func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
 	// new certificates that are issued by the remote CA
 	os.RemoveAll(tc.Paths.RootCA.Key)
 	os.RemoveAll(tc.Paths.Node.Cert)
-	nodeConfig, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, tc.Picker, info)
+	nodeConfig, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, tc.WorkerToken, ca.AgentRole, tc.Picker, info)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -71,26 +72,45 @@ func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
 	assert.NotEmpty(t, <-info)
 }
 
+func TestLoadOrCreateSecurityConfigWrongCAHash(t *testing.T) {
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+
+	splitToken := strings.Split(tc.ManagerToken, "-")
+	splitToken[2] = "1kxftv4ofnc6mt30lmgipg6ngf9luhwqopfk1tz6bdmnkubg0e"
+	replacementToken := strings.Join(splitToken, "-")
+
+	info := make(chan api.IssueNodeCertificateResponse, 1)
+	// Remove only the node certificates form the directory, and attest that we get
+	// new certificates that are issued by the remote CA
+	os.RemoveAll(tc.Paths.RootCA.Key)
+	os.RemoveAll(tc.Paths.RootCA.Cert)
+	os.RemoveAll(tc.Paths.Node.Cert)
+	_, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, replacementToken, ca.AgentRole, tc.Picker, info)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "remote CA does not match fingerprint.")
+}
+
 func TestLoadOrCreateSecurityConfigNoLocalCACertNoRemote(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Delete the root CA file so that LoadOrCreateSecurityConfig falls
 	// back to using the remote.
 	assert.Nil(t, os.Remove(tc.Paths.RootCA.Cert))
 
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, nil, nil)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, nil, nil)
 	assert.EqualError(t, err, "valid remote address picker required")
 	assert.Nil(t, nodeConfig)
 }
 
 func TestLoadOrCreateSecurityConfigInvalidCACert(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	// First load the current nodeConfig. We'll verify that after we corrupt
 	// the certificate, another subsquent call with get us new certs
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, tc.Picker, nil)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -107,7 +127,7 @@ some random garbage\n
 -----END CERTIFICATE-----`), 0644)
 
 	// We should get an error when the CA cert is invalid.
-	_, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, tc.Picker, nil)
+	_, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker, nil)
 	assert.Error(t, err)
 
 	// Not having a local cert should cause us to fallback to using the
@@ -115,7 +135,7 @@ some random garbage\n
 	assert.Nil(t, os.Remove(tc.Paths.RootCA.Cert))
 
 	// Validate we got a new valid state
-	newNodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, tc.Picker, nil)
+	newNodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -130,7 +150,7 @@ some random garbage\n
 }
 
 func TestLoadOrCreateSecurityConfigInvalidCAKey(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Write some garbage to the root key
@@ -139,12 +159,12 @@ some random garbage\n
 -----END EC PRIVATE KEY-----`), 0644)
 
 	// We should get an error when the local ca private key is invalid.
-	_, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, tc.Picker, nil)
+	_, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker, nil)
 	assert.Error(t, err)
 }
 
 func TestLoadOrCreateSecurityConfigInvalidCert(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Write some garbage to the cert
@@ -152,7 +172,7 @@ func TestLoadOrCreateSecurityConfigInvalidCert(t *testing.T) {
 some random garbage\n
 -----END CERTIFICATE-----`), 0644)
 
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, tc.Picker, nil)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -163,7 +183,7 @@ some random garbage\n
 }
 
 func TestLoadOrCreateSecurityConfigInvalidKey(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Write some garbage to the Key
@@ -171,7 +191,7 @@ func TestLoadOrCreateSecurityConfigInvalidKey(t *testing.T) {
 some random garbage\n
 -----END EC PRIVATE KEY-----`), 0644)
 
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, tc.Picker, nil)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -182,10 +202,10 @@ some random garbage\n
 }
 
 func TestLoadOrCreateSecurityConfigInvalidKeyWithValidTempKey(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, tc.Picker, nil)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -199,7 +219,7 @@ func TestLoadOrCreateSecurityConfigInvalidKeyWithValidTempKey(t *testing.T) {
 	ioutil.WriteFile(tc.Paths.Node.Key, []byte(`-----BEGIN EC PRIVATE KEY-----\n
 some random garbage\n
 -----END EC PRIVATE KEY-----`), 0644)
-	nodeConfig, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, nil, nil)
+	nodeConfig, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -210,18 +230,18 @@ some random garbage\n
 }
 
 func TestLoadOrCreateSecurityConfigNoCertsAndNoRemote(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Remove the certificate from the temp dir and try loading with a new manager
 	os.Remove(tc.Paths.Node.Cert)
 	os.Remove(tc.Paths.RootCA.Key)
-	_, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", "", ca.AgentRole, nil, nil)
+	_, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, tc.WorkerToken, ca.AgentRole, nil, nil)
 	assert.EqualError(t, err, "valid remote address picker required")
 }
 
 func TestRenewTLSConfigAgent(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -279,7 +299,7 @@ func TestRenewTLSConfigAgent(t *testing.T) {
 }
 
 func TestRenewTLSConfigManager(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -339,7 +359,7 @@ func TestRenewTLSConfigManager(t *testing.T) {
 }
 
 func TestRenewTLSConfigWithNoNode(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -404,7 +424,7 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 }
 
 func TestForceRenewTLSConfig(t *testing.T) {
-	tc := testutils.NewTestCA(t, testutils.AcceptancePolicy(true, true, ""))
+	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	ctx, cancel := context.WithCancel(context.Background())

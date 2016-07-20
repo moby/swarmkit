@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/docker/swarmkit/api"
+	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
@@ -49,9 +50,13 @@ func (ts *testServer) Stop() {
 func newTestServer(t *testing.T) *testServer {
 	ts := &testServer{}
 
+	// Create a testCA just to get a usable RootCA object
+	tc := cautils.NewTestCA(nil)
+	tc.Stop()
+
 	ts.Store = store.NewMemoryStore(&mockProposer{})
 	assert.NotNil(t, ts.Store)
-	ts.Server = NewServer(ts.Store, nil)
+	ts.Server = NewServer(ts.Store, nil, &tc.RootCA)
 	assert.NotNil(t, ts.Server)
 
 	temp, err := ioutil.TempFile("", "test-socket")
