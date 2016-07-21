@@ -359,7 +359,7 @@ func (m *Manager) Run(parent context.Context) error {
 				if err != nil {
 					log.G(ctx).WithError(err).Error("failed to create allocator")
 					// TODO(stevvooe): It doesn't seem correct here to fail
-					// creating the allocator but then use it anyways.
+					// creating the allocator but then use it anyway.
 				}
 
 				go func(keyManager *keymanager.KeyManager) {
