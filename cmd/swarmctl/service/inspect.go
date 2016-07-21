@@ -12,6 +12,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
 	"github.com/docker/swarmkit/cmd/swarmctl/task"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
@@ -30,6 +31,17 @@ func printServiceSummary(service *api.Service, running int) {
 		}
 	}
 	common.FprintfIfNotEmpty(w, "Replicas\t: %s\n", getServiceReplicasTxt(service, running))
+
+	if service.UpdateStatus != nil || service.UpdateStatus.State > api.UpdateStatus_NEW {
+		fmt.Fprintln(w, "Update Status\t")
+		fmt.Fprintln(w, " State\t:", service.UpdateStatus.State)
+		started, err := ptypes.Timestamp(service.UpdateStatus.Started)
+		if err == nil {
+			fmt.Fprintln(w, " Start time\t:", humanize.Time(started))
+		}
+		fmt.Fprintln(w, " Message\t:", service.UpdateStatus.Message)
+	}
+
 	fmt.Fprintln(w, "Template\t")
 	fmt.Fprintln(w, " Container\t")
 	ctr := service.Spec.Task.GetContainer()

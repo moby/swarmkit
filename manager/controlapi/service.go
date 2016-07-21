@@ -257,6 +257,10 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		}
 		service.Meta.Version = *request.ServiceVersion
 		service.Spec = *request.Spec.Copy()
+
+		// Reset update status
+		service.UpdateStatus = nil
+
 		return store.UpdateService(tx, service)
 	})
 	if err != nil {
