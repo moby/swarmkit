@@ -145,6 +145,155 @@ func TestUpdater(t *testing.T) {
 	}
 }
 
+func TestUpdaterFailureAction(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+
+	// Fail new tasks the updater tries to run
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
+	go func() {
+		for {
+			select {
+			case e := <-watch:
+				task := e.(state.EventUpdateTask).Task
+				if task.DesiredState == api.TaskStateRunning && task.Status.State != api.TaskStateFailed {
+					err := s.Update(func(tx store.Tx) error {
+						task = store.GetTask(tx, task.ID)
+						task.Status.State = api.TaskStateFailed
+						return store.UpdateTask(tx, task)
+					})
+					assert.NoError(t, err)
+				} else if task.DesiredState > api.TaskStateRunning {
+					err := s.Update(func(tx store.Tx) error {
+						task = store.GetTask(tx, task.ID)
+						task.Status.State = task.DesiredState
+						return store.UpdateTask(tx, task)
+					})
+					assert.NoError(t, err)
+				}
+			}
+		}
+	}()
+
+	instances := 3
+	cluster := &api.Cluster{
+		Spec: api.ClusterSpec{
+			Annotations: api.Annotations{
+				Name: "default",
+			},
+		},
+	}
+
+	service := &api.Service{
+		ID: "id1",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Replicas: uint64(instances),
+				},
+			},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{
+						Image: "v:1",
+						// This won't apply in this test because we set the old tasks to DEAD.
+						StopGracePeriod: ptypes.DurationProto(time.Hour),
+					},
+				},
+			},
+			Update: &api.UpdateConfig{
+				FailureAction: api.UpdateConfig_PAUSE,
+				Parallelism:   1,
+			},
+		},
+	}
+
+	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateCluster(tx, cluster))
+		assert.NoError(t, store.CreateService(tx, service))
+		for i := 0; i < instances; i++ {
+			assert.NoError(t, store.CreateTask(tx, newTask(cluster, service, uint64(i))))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	originalTasks := getRunnableServiceTasks(t, s, service)
+	for _, task := range originalTasks {
+		assert.Equal(t, "v:1", task.Spec.GetContainer().Image)
+	}
+
+	service.Spec.Task.GetContainer().Image = "v:2"
+	updater := NewUpdater(s, NewRestartSupervisor(s))
+	updater.Run(ctx, cluster, service, getRunnableServiceTasks(t, s, service))
+	updatedTasks := getRunnableServiceTasks(t, s, service)
+	v1Counter := 0
+	v2Counter := 0
+	for _, task := range updatedTasks {
+		if task.Spec.GetContainer().Image == "v:1" {
+			v1Counter++
+		} else if task.Spec.GetContainer().Image == "v:2" {
+			v2Counter++
+		}
+	}
+	assert.Equal(t, instances-1, v1Counter)
+	assert.Equal(t, 1, v2Counter)
+
+	s.View(func(tx store.ReadTx) {
+		service = store.GetService(tx, service.ID)
+	})
+	assert.Equal(t, api.UpdateStatus_PAUSED, service.UpdateStatus.State)
+
+	// Updating again should do nothing while the update is PAUSED
+	updater = NewUpdater(s, NewRestartSupervisor(s))
+	updater.Run(ctx, cluster, service, getRunnableServiceTasks(t, s, service))
+	updatedTasks = getRunnableServiceTasks(t, s, service)
+	v1Counter = 0
+	v2Counter = 0
+	for _, task := range updatedTasks {
+		if task.Spec.GetContainer().Image == "v:1" {
+			v1Counter++
+		} else if task.Spec.GetContainer().Image == "v:2" {
+			v2Counter++
+		}
+	}
+	assert.Equal(t, instances-1, v1Counter)
+	assert.Equal(t, 1, v2Counter)
+
+	// Switch to a service with FailureAction: CONTINUE
+	err = s.Update(func(tx store.Tx) error {
+		service = store.GetService(tx, service.ID)
+		service.Spec.Update.FailureAction = api.UpdateConfig_CONTINUE
+		service.UpdateStatus = nil
+		assert.NoError(t, store.UpdateService(tx, service))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	service.Spec.Task.GetContainer().Image = "v:3"
+	updater = NewUpdater(s, NewRestartSupervisor(s))
+	updater.Run(ctx, cluster, service, getRunnableServiceTasks(t, s, service))
+	updatedTasks = getRunnableServiceTasks(t, s, service)
+	v2Counter = 0
+	v3Counter := 0
+	for _, task := range updatedTasks {
+		if task.Spec.GetContainer().Image == "v:2" {
+			v2Counter++
+		} else if task.Spec.GetContainer().Image == "v:3" {
+			v3Counter++
+		}
+	}
+
+	assert.Equal(t, 0, v2Counter)
+	assert.Equal(t, instances, v3Counter)
+
+}
+
 func TestUpdaterStopGracePeriod(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)

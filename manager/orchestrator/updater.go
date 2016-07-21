@@ -8,6 +8,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state"
@@ -101,6 +102,11 @@ func (u *Updater) Cancel() {
 func (u *Updater) Run(ctx context.Context, cluster *api.Cluster, service *api.Service, tasks []*api.Task) {
 	defer close(u.doneChan)
 
+	// If the update is in a PAUSED state, we should not do anything.
+	if service.UpdateStatus != nil && service.UpdateStatus.State == api.UpdateStatus_PAUSED {
+		return
+	}
+
 	dirtyTasks := []*api.Task{}
 	for _, t := range tasks {
 		if !reflect.DeepEqual(service.Spec.Task, t.Spec) ||
@@ -111,7 +117,15 @@ func (u *Updater) Run(ctx context.Context, cluster *api.Cluster, service *api.Se
 	}
 	// Abort immediately if all tasks are clean.
 	if len(dirtyTasks) == 0 {
+		if service.UpdateStatus != nil && service.UpdateStatus.State == api.UpdateStatus_UPDATING {
+			u.completeUpdate(ctx, service.ID)
+		}
 		return
+	}
+
+	// If there's no update in progress, we are starting one.
+	if service.UpdateStatus == nil || service.UpdateStatus.State == api.UpdateStatus_NEW {
+		u.startUpdate(ctx, service.ID)
 	}
 
 	parallelism := 0
@@ -135,18 +149,56 @@ func (u *Updater) Run(ctx context.Context, cluster *api.Cluster, service *api.Se
 		}()
 	}
 
-	for _, t := range dirtyTasks {
-		// Wait for a worker to pick up the task or abort the update, whichever comes first.
-		select {
-		case <-u.stopChan:
-			break
+	var failedTaskWatch chan events.Event
 
-		case taskQueue <- t:
+	if service.Spec.Update == nil || service.Spec.Update.FailureAction == api.UpdateConfig_PAUSE {
+		var cancelWatch func()
+		failedTaskWatch, cancelWatch = state.Watch(
+			u.store.WatchQueue(),
+			state.EventUpdateTask{
+				Task:   &api.Task{ServiceID: service.ID, Status: api.TaskStatus{State: api.TaskStateRunning}},
+				Checks: []state.TaskCheckFunc{state.TaskCheckServiceID, state.TaskCheckStateGreaterThan},
+			},
+		)
+		defer cancelWatch()
+	}
+
+	stopped := false
+
+taskLoop:
+	for _, t := range dirtyTasks {
+	retryLoop:
+		for {
+			// Wait for a worker to pick up the task or abort the update, whichever comes first.
+			select {
+			case <-u.stopChan:
+				stopped = true
+				break taskLoop
+			case ev := <-failedTaskWatch:
+				failedTask := ev.(state.EventUpdateTask).Task
+
+				// If this failed/completed task has a spec matching
+				// the one we're updating to, we should pause the
+				// update.
+				if reflect.DeepEqual(service.Spec.Task, failedTask.Spec) &&
+					(failedTask.Endpoint == nil || reflect.DeepEqual(service.Spec.Endpoint, failedTask.Endpoint.Spec)) {
+					stopped = true
+					message := fmt.Sprintf("update paused due to failure or early termination of task %s", failedTask.ID)
+					u.pauseUpdate(ctx, service.ID, message)
+					break taskLoop
+				}
+			case taskQueue <- t:
+				break retryLoop
+			}
 		}
 	}
 
 	close(taskQueue)
 	wg.Wait()
+
+	if !stopped {
+		u.completeUpdate(ctx, service.ID)
+	}
 }
 
 func (u *Updater) worker(ctx context.Context, cluster *api.Cluster, service *api.Service, queue <-chan *api.Task) {
@@ -229,5 +281,77 @@ func (u *Updater) updateTask(ctx context.Context, service *api.Service, original
 		case <-u.stopChan:
 			return nil
 		}
+	}
+}
+
+func (u *Updater) startUpdate(ctx context.Context, serviceID string) {
+	err := u.store.Update(func(tx store.Tx) error {
+		service := store.GetService(tx, serviceID)
+		if service == nil {
+			return nil
+		}
+		if service.UpdateStatus != nil && service.UpdateStatus.State != api.UpdateStatus_NEW {
+			return nil
+		}
+
+		service.UpdateStatus = &api.UpdateStatus{
+			State:   api.UpdateStatus_UPDATING,
+			Message: "update in progress",
+			Started: ptypes.MustTimestampProto(time.Now()),
+		}
+
+		return store.UpdateService(tx, service)
+	})
+
+	if err != nil {
+		log.G(ctx).WithError(err).Errorf("failed to mark update of service %s in progress", serviceID)
+	}
+}
+
+func (u *Updater) pauseUpdate(ctx context.Context, serviceID, message string) {
+	log.G(ctx).Debugf("pausing update of service %s", serviceID)
+
+	err := u.store.Update(func(tx store.Tx) error {
+		service := store.GetService(tx, serviceID)
+		if service == nil {
+			return nil
+		}
+		if service.UpdateStatus == nil || service.UpdateStatus.State == api.UpdateStatus_NEW {
+			// The service was updated since we started this update
+			return nil
+		}
+
+		service.UpdateStatus.State = api.UpdateStatus_PAUSED
+		service.UpdateStatus.Message = message
+
+		return store.UpdateService(tx, service)
+	})
+
+	if err != nil {
+		log.G(ctx).WithError(err).Errorf("failed to pause update of service %s", serviceID)
+	}
+}
+
+func (u *Updater) completeUpdate(ctx context.Context, serviceID string) {
+	log.G(ctx).Debugf("update of service %s complete", serviceID)
+
+	err := u.store.Update(func(tx store.Tx) error {
+		service := store.GetService(tx, serviceID)
+		if service == nil {
+			return nil
+		}
+		if service.UpdateStatus == nil || service.UpdateStatus.State == api.UpdateStatus_NEW {
+			// The service was changed since we started this update
+			return nil
+		}
+
+		service.UpdateStatus.State = api.UpdateStatus_COMPLETED
+		service.UpdateStatus.Message = "update completed"
+
+		return store.UpdateService(tx, service)
+	})
+
+	if err != nil {
+		log.G(ctx).WithError(err).Errorf("failed to mark update of service %s complete", serviceID)
 	}
 }
