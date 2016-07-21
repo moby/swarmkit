@@ -7,6 +7,7 @@ import (
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -52,6 +53,12 @@ func TestTaskHistory(t *testing.T) {
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
 						Replicas: 2,
+					},
+				},
+				Task: api.TaskSpec{
+					Restart: &api.RestartPolicy{
+						Condition: api.RestartOnAny,
+						Delay:     ptypes.DurationProto(0),
 					},
 				},
 			},
