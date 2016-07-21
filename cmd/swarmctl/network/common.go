@@ -43,21 +43,21 @@ func GetNetwork(ctx context.Context, c api.ControlClient, input string) (*api.Ne
 
 // ResolveServiceNetworks takes a service spec and resolves network names to network IDs.
 func ResolveServiceNetworks(ctx context.Context, c api.ControlClient, spec *api.ServiceSpec) error {
-	if len(spec.Networks) == 0 {
+	if len(spec.Task.Networks) == 0 {
 		return nil
 	}
-	networks := make([]*api.ServiceSpec_NetworkAttachmentConfig, 0, len(spec.Networks))
-	for _, na := range spec.Networks {
+	networks := make([]*api.TaskSpec_NetworkAttachmentConfig, 0, len(spec.Task.Networks))
+	for _, na := range spec.Task.Networks {
 		n, err := GetNetwork(ctx, c, na.Target)
 		if err != nil {
 			return err
 		}
 
-		networks = append(networks, &api.ServiceSpec_NetworkAttachmentConfig{
+		networks = append(networks, &api.TaskSpec_NetworkAttachmentConfig{
 			Target: n.ID,
 		})
 	}
 
-	spec.Networks = networks
+	spec.Task.Networks = networks
 	return nil
 }

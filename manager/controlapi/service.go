@@ -245,7 +245,7 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 			return nil
 		}
 		// temporary disable network update
-		if request.Spec != nil && !reflect.DeepEqual(request.Spec.Networks, service.Spec.Networks) {
+		if request.Spec != nil && !reflect.DeepEqual(request.Spec.Task.Networks, service.Spec.Task.Networks) {
 			return errNetworkUpdateNotSupported
 		}
 

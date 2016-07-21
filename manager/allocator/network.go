@@ -387,7 +387,7 @@ func serviceAllocationNeeded(s *api.Service, nc *networkContext) bool {
 	// Service needs allocation if:
 	// Spec has network attachments and endpoint resolution mode is VIP OR
 	// Spec has non-zero number of exposed ports and ingress routing is SwarmPort
-	if (len(s.Spec.Networks) != 0 &&
+	if (len(s.Spec.Task.Networks) != 0 &&
 		(s.Spec.Endpoint == nil ||
 			(s.Spec.Endpoint != nil &&
 				s.Spec.Endpoint.Mode == api.ResolutionModeVirtualIP))) ||
@@ -453,7 +453,7 @@ func (a *Allocator) taskCreateNetworkAttachments(t *api.Task, s *api.Service) {
 	}
 
 	a.store.View(func(tx store.ReadTx) {
-		for _, na := range s.Spec.Networks {
+		for _, na := range s.Spec.Task.Networks {
 			n := store.GetNetwork(tx, na.Target)
 			if n != nil {
 				var aliases []string

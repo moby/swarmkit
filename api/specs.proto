@@ -72,19 +72,8 @@ message ServiceSpec {
 	// UpdateConfig controls the rate and policy of updates.
 	UpdateConfig update = 6;
 
-	// NetworkAttachmentConfig specifies how a service should be attached to a particular network.
-	//
-	// For now, this is a simple struct, but this can include future information
-	// instructing Swarm on how this service should work on the particular
-	// network.
-	message NetworkAttachmentConfig {
-		// Target specifies the target network for attachment. This value may be a
-		// network name or identifier. Only identifiers are supported at this time.
-		string target = 1;
-		// Aliases specifies a list of discoverable alternate names for the service on this Target.
-		repeated string aliases = 2;
-	}
-	repeated NetworkAttachmentConfig networks = 7;
+	// Here used to live NetworkAttachmentConfig before it was migrated to TaskSpec.
+	reserved 7;
 
 	// Service endpoint specifies the user provided configuration
 	// to properly discover and load balance a service.
@@ -118,6 +107,20 @@ message TaskSpec {
 	// LogDriver specifies the log driver to use for the task. Any runtime will
 	// direct logs into the specified driver for the duration of the task.
 	Driver log_driver = 6;
+
+	// NetworkAttachmentConfig specifies how a task should be attached to a particular network.
+	//
+	// For now, this is a simple struct, but this can include future information
+	// instructing Swarm on how this service should work on the particular
+	// network.
+	message NetworkAttachmentConfig {
+		// Target specifies the target network for attachment. This value may be a
+		// network name or identifier. Only identifiers are supported at this time.
+		string target = 1;
+		// Aliases specifies a list of discoverable alternate names for the service on this Target.
+		repeated string aliases = 2;
+	}
+	repeated NetworkAttachmentConfig networks = 7;
 }
 
 // Container specifies runtime parameters for a container.
