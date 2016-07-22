@@ -32,12 +32,18 @@ func printServiceSummary(service *api.Service, running int) {
 	}
 	common.FprintfIfNotEmpty(w, "Replicas\t: %s\n", getServiceReplicasTxt(service, running))
 
-	if service.UpdateStatus != nil || service.UpdateStatus.State > api.UpdateStatus_NEW {
+	if service.UpdateStatus != nil {
 		fmt.Fprintln(w, "Update Status\t")
 		fmt.Fprintln(w, " State\t:", service.UpdateStatus.State)
-		started, err := ptypes.Timestamp(service.UpdateStatus.Started)
+		started, err := ptypes.Timestamp(service.UpdateStatus.StartedAt)
 		if err == nil {
-			fmt.Fprintln(w, " Start time\t:", humanize.Time(started))
+			fmt.Fprintln(w, " Started\t:", humanize.Time(started))
+		}
+		if service.UpdateStatus.State == api.UpdateStatus_COMPLETED {
+			completed, err := ptypes.Timestamp(service.UpdateStatus.CompletedAt)
+			if err == nil {
+				fmt.Fprintln(w, " Completed\t:", humanize.Time(completed))
+			}
 		}
 		fmt.Fprintln(w, " Message\t:", service.UpdateStatus.Message)
 	}
