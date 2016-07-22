@@ -133,7 +133,7 @@ func (u *Updater) Run(ctx context.Context, tasks []*api.Task) {
 	}
 
 	// If there's no update in progress, we are starting one.
-	if service.UpdateStatus == nil || service.UpdateStatus.State == api.UpdateStatus_NEW {
+	if service.UpdateStatus == nil {
 		u.startUpdate(ctx, service.ID)
 	}
 
@@ -308,14 +308,14 @@ func (u *Updater) startUpdate(ctx context.Context, serviceID string) {
 		if service == nil {
 			return nil
 		}
-		if service.UpdateStatus != nil && service.UpdateStatus.State != api.UpdateStatus_NEW {
+		if service.UpdateStatus != nil {
 			return nil
 		}
 
 		service.UpdateStatus = &api.UpdateStatus{
-			State:   api.UpdateStatus_UPDATING,
-			Message: "update in progress",
-			Started: ptypes.MustTimestampProto(time.Now()),
+			State:     api.UpdateStatus_UPDATING,
+			Message:   "update in progress",
+			StartedAt: ptypes.MustTimestampProto(time.Now()),
 		}
 
 		return store.UpdateService(tx, service)
@@ -334,7 +334,7 @@ func (u *Updater) pauseUpdate(ctx context.Context, serviceID, message string) {
 		if service == nil {
 			return nil
 		}
-		if service.UpdateStatus == nil || service.UpdateStatus.State == api.UpdateStatus_NEW {
+		if service.UpdateStatus == nil {
 			// The service was updated since we started this update
 			return nil
 		}
@@ -358,13 +358,14 @@ func (u *Updater) completeUpdate(ctx context.Context, serviceID string) {
 		if service == nil {
 			return nil
 		}
-		if service.UpdateStatus == nil || service.UpdateStatus.State == api.UpdateStatus_NEW {
+		if service.UpdateStatus == nil {
 			// The service was changed since we started this update
 			return nil
 		}
 
 		service.UpdateStatus.State = api.UpdateStatus_COMPLETED
 		service.UpdateStatus.Message = "update completed"
+		service.UpdateStatus.CompletedAt = ptypes.MustTimestampProto(time.Now())
 
 		return store.UpdateService(tx, service)
 	})
