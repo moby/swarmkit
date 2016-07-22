@@ -436,6 +436,19 @@ func TestRemoveService(t *testing.T) {
 	assert.NotNil(t, r)
 }
 
+func TestValidateEndpointSpec(t *testing.T) {
+	err := validateEndpointSpec(&api.EndpointSpec{
+		Mode: api.ResolutionModeDNSRoundRobin,
+		Ports: []*api.PortConfig{
+			{
+				Name: "http", TargetPort: 80,
+			},
+		},
+	})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+}
+
 func TestServiceEndpointSpecUpdate(t *testing.T) {
 	ts := newTestServer(t)
 	spec := &api.ServiceSpec{
