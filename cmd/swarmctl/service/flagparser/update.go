@@ -1,6 +1,7 @@
 package flagparser
 
 import (
+	"errors"
 	"time"
 
 	"github.com/docker/swarmkit/api"
@@ -35,6 +36,25 @@ func parseUpdate(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			spec.Update = &api.UpdateConfig{}
 		}
 		spec.Update.Delay = *ptypes.DurationProto(delayDuration)
+	}
+
+	if flags.Changed("update-on-failure") {
+		if spec.Update == nil {
+			spec.Update = &api.UpdateConfig{}
+		}
+
+		action, err := flags.GetString("update-on-failure")
+		if err != nil {
+			return err
+		}
+		switch action {
+		case "pause":
+			spec.Update.FailureAction = api.UpdateConfig_PAUSE
+		case "continue":
+			spec.Update.FailureAction = api.UpdateConfig_CONTINUE
+		default:
+			return errors.New("--update-on-failure value must be pause or continue")
+		}
 	}
 	return nil
 }
