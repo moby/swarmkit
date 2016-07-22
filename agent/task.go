@@ -188,17 +188,25 @@ func (tm *taskManager) run(ctx context.Context) {
 			tm.task = task
 			updated = true
 
+			// TODO(stevvooe): At this time, we aren't really using updates in
+			// the controller, so we aren't going to call cancel. Several
+			// problems occur when cancelling the task operation when it is not
+			// really necessary.
+			//
+			// Update will still be called on the next run through. This just
+			// disables interruptive updates.
+
 			// we have accepted the task update
-			if cancel != nil {
-				cancel() // cancel outstanding if necessary.
-			} else {
-				// If this channel op fails, it means there is already a
-				// message un the run queue.
-				select {
-				case run <- struct{}{}:
-				default:
-				}
-			}
+			// if cancel != nil {
+			// 	cancel() // cancel outstanding if necessary.
+			// } else {
+			// 	// If this channel op fails, it means there is already a
+			// 	// message un the run queue.
+			// 	select {
+			// 	case run <- struct{}{}:
+			// 	default:
+			// 	}
+			// }
 		case <-shutdown:
 			if cancel != nil {
 				// cancel outstanding operation.
