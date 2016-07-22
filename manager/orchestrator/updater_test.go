@@ -109,8 +109,8 @@ func TestUpdater(t *testing.T) {
 
 	service.Spec.Task.GetContainer().Image = "v:2"
 	service.Spec.Task.LogDriver = &api.Driver{Name: "tasklogdriver"}
-	updater := NewUpdater(s, NewRestartSupervisor(s))
-	updater.Run(ctx, cluster, service, getRunnableServiceTasks(t, s, service))
+	updater := NewUpdater(s, NewRestartSupervisor(s), cluster, service)
+	updater.Run(ctx, getRunnableServiceTasks(t, s, service))
 	updatedTasks := getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
 		assert.Equal(t, "v:2", task.Spec.GetContainer().Image)
@@ -122,8 +122,8 @@ func TestUpdater(t *testing.T) {
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
 	}
-	updater = NewUpdater(s, NewRestartSupervisor(s))
-	updater.Run(ctx, cluster, service, getRunnableServiceTasks(t, s, service))
+	updater = NewUpdater(s, NewRestartSupervisor(s), cluster, service)
+	updater.Run(ctx, getRunnableServiceTasks(t, s, service))
 	updatedTasks = getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
 		assert.Equal(t, "v:3", task.Spec.GetContainer().Image)
@@ -136,8 +136,8 @@ func TestUpdater(t *testing.T) {
 		Parallelism: 1,
 		Delay:       *ptypes.DurationProto(10 * time.Millisecond),
 	}
-	updater = NewUpdater(s, NewRestartSupervisor(s))
-	updater.Run(ctx, cluster, service, getRunnableServiceTasks(t, s, service))
+	updater = NewUpdater(s, NewRestartSupervisor(s), cluster, service)
+	updater.Run(ctx, getRunnableServiceTasks(t, s, service))
 	updatedTasks = getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
 		assert.Equal(t, "v:4", task.Spec.GetContainer().Image)
@@ -229,8 +229,8 @@ func TestUpdaterFailureAction(t *testing.T) {
 	}
 
 	service.Spec.Task.GetContainer().Image = "v:2"
-	updater := NewUpdater(s, NewRestartSupervisor(s))
-	updater.Run(ctx, cluster, service, getRunnableServiceTasks(t, s, service))
+	updater := NewUpdater(s, NewRestartSupervisor(s), cluster, service)
+	updater.Run(ctx, getRunnableServiceTasks(t, s, service))
 	updatedTasks := getRunnableServiceTasks(t, s, service)
 	v1Counter := 0
 	v2Counter := 0
@@ -250,8 +250,8 @@ func TestUpdaterFailureAction(t *testing.T) {
 	assert.Equal(t, api.UpdateStatus_PAUSED, service.UpdateStatus.State)
 
 	// Updating again should do nothing while the update is PAUSED
-	updater = NewUpdater(s, NewRestartSupervisor(s))
-	updater.Run(ctx, cluster, service, getRunnableServiceTasks(t, s, service))
+	updater = NewUpdater(s, NewRestartSupervisor(s), cluster, service)
+	updater.Run(ctx, getRunnableServiceTasks(t, s, service))
 	updatedTasks = getRunnableServiceTasks(t, s, service)
 	v1Counter = 0
 	v2Counter = 0
@@ -276,8 +276,8 @@ func TestUpdaterFailureAction(t *testing.T) {
 	assert.NoError(t, err)
 
 	service.Spec.Task.GetContainer().Image = "v:3"
-	updater = NewUpdater(s, NewRestartSupervisor(s))
-	updater.Run(ctx, cluster, service, getRunnableServiceTasks(t, s, service))
+	updater = NewUpdater(s, NewRestartSupervisor(s), cluster, service)
+	updater.Run(ctx, getRunnableServiceTasks(t, s, service))
 	updatedTasks = getRunnableServiceTasks(t, s, service)
 	v2Counter = 0
 	v3Counter := 0
@@ -364,10 +364,10 @@ func TestUpdaterStopGracePeriod(t *testing.T) {
 	before := time.Now()
 
 	service.Spec.Task.GetContainer().Image = "v:2"
-	updater := NewUpdater(s, NewRestartSupervisor(s))
+	updater := NewUpdater(s, NewRestartSupervisor(s), nil, service)
 	// Override the default (1 minute) to speed up the test.
 	updater.restarts.taskTimeout = 100 * time.Millisecond
-	updater.Run(ctx, nil, service, getRunnableServiceTasks(t, s, service))
+	updater.Run(ctx, getRunnableServiceTasks(t, s, service))
 	updatedTasks := getRunnableServiceTasks(t, s, service)
 	for _, task := range updatedTasks {
 		assert.Equal(t, "v:2", task.Spec.GetContainer().Image)
