@@ -425,6 +425,9 @@ func (n *Node) CertificateRequested() <-chan struct{} {
 
 func (n *Node) setControlSocket(conn *grpc.ClientConn) {
 	n.Lock()
+	if n.conn != nil {
+		n.conn.Close()
+	}
 	n.conn = conn
 	n.connCond.Broadcast()
 	n.Unlock()
@@ -571,11 +574,11 @@ func (n *Node) initManagerConnection(ctx context.Context, ready chan<- struct{})
 	}
 }
 
-func (n *Node) waitRole(ctx context.Context, role string) error {
+func (n *Node) waitRole(ctx context.Context, role string) {
 	n.roleCond.L.Lock()
 	if role == n.role {
 		n.roleCond.L.Unlock()
-		return nil
+		return
 	}
 	finishCh := make(chan struct{})
 	defer close(finishCh)
@@ -591,17 +594,14 @@ func (n *Node) waitRole(ctx context.Context, role string) error {
 	for role != n.role {
 		n.roleCond.Wait()
 		if ctx.Err() != nil {
-			return ctx.Err()
+			return
 		}
 	}
-	return nil
 }
 
 func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig, ready chan struct{}) error {
 	for {
-		if err := n.waitRole(ctx, ca.ManagerRole); err != nil {
-			return err
-		}
+		n.waitRole(ctx, ca.ManagerRole)
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
@@ -647,25 +647,24 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			ready = nil
 		}
 
-		if err := n.waitRole(ctx, ca.AgentRole); err != nil {
-			m.Stop(context.Background())
-		}
+		n.waitRole(ctx, ca.AgentRole)
+
+		n.Lock()
+		n.manager = nil
+		n.Unlock()
 
 		select {
 		case <-done:
 		case <-ctx.Done():
+			err = ctx.Err()
 			m.Stop(context.Background())
-			return ctx.Err()
+			<-done
 		}
-
 		connCancel()
 
-		n.Lock()
-		n.manager = nil
-		if n.conn != nil {
-			n.conn.Close()
+		if err != nil {
+			return err
 		}
-		n.Unlock()
 	}
 }
 
