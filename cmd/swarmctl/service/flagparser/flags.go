@@ -32,6 +32,7 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 
 	flags.Uint64("update-parallelism", 0, "task update parallelism (0 = all at once)")
 	flags.String("update-delay", "0s", "delay between task updates (0s = none)")
+	flags.String("update-on-failure", "pause", "action on failure during update (pause|continue)")
 
 	flags.String("restart-condition", "any", "condition to restart the task (any, failure, none)")
 	flags.String("restart-delay", "5s", "delay between task restarts")
