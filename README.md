@@ -40,7 +40,7 @@ Some of *SwarmKit*'s main features are:
     After you make the update, *SwarmKit* reconciles the desired state by ensuring all tasks are using the desired settings.
     By default, it performs a lockstep update - that is, update all tasks at the same time. This can be configured through
     different knobs:
-    - **Parallelism** defines how many updates can be performed at the same time
+    - **Parallelism** defines how many updates can be performed at the same time.
     - **Delay** sets the minimum delay between updates. *SwarmKit* will start by shutting down the previous task, bring up a new one,
       wait for it to transition to the *RUNNING* state *then* wait for the additional configured delay.
       Finally, it will move onto other tasks.
