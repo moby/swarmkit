@@ -145,6 +145,10 @@ func validateEndpointSpec(epSpec *api.EndpointSpec) error {
 		return nil
 	}
 
+	if len(epSpec.Ports) > 0 && epSpec.Mode == api.ResolutionModeDNSRoundRobin {
+		return grpc.Errorf(codes.InvalidArgument, "EndpointSpec: ports can't be used with dnsrr mode")
+	}
+
 	portSet := make(map[api.PortConfig]struct{})
 	for _, port := range epSpec.Ports {
 		if _, ok := portSet[*port]; ok {
