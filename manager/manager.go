@@ -49,6 +49,9 @@ type Config struct {
 	// ProtoAddr fields will be used to create listeners otherwise.
 	ProtoListener map[string]net.Listener
 
+	// AdvertiseAddr is a map of addresses to advertise, by protocol.
+	AdvertiseAddr string
+
 	// JoinRaft is an optional address of a node in an existing raft
 	// cluster to join.
 	JoinRaft string
@@ -120,14 +123,14 @@ func New(config *Config) (*Manager, error) {
 
 	tcpAddr := config.ProtoAddr["tcp"]
 
+	if config.AdvertiseAddr != "" {
+		tcpAddr = config.AdvertiseAddr
+	}
+
 	if tcpAddr == "" {
 		return nil, errors.New("no tcp listen address or listener provided")
 	}
 
-	// TODO(stevvooe): Reported address of manager is plumbed to listen addr
-	// for now, may want to make this separate. This can be tricky to get right
-	// so we need to make it easy to override. This needs to be the address
-	// through which agent nodes access the manager.
 	dispatcherConfig.Addr = tcpAddr
 
 	err := os.MkdirAll(filepath.Dir(config.ProtoAddr["unix"]), 0700)
