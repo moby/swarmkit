@@ -60,6 +60,10 @@ type NodeConfig struct {
 	// and raft members connect to.
 	ListenRemoteAPI string
 
+	// AdvertiseRemoteAPI specifies the address that should be advertised
+	// for connections to the remote API (including the raft service).
+	AdvertiseRemoteAPI string
+
 	// Executor specifies the executor to use for the agent.
 	Executor exec.Executor
 
@@ -545,6 +549,8 @@ func (n *Node) initManagerConnection(ctx context.Context, ready chan<- struct{})
 	opts := []grpc.DialOption{}
 	insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
 	opts = append(opts, grpc.WithTransportCredentials(insecureCreds))
+	// Using listen address instead of advertised address because this is a
+	// local connection.
 	addr := n.config.ListenControlAPI
 	opts = append(opts, grpc.WithDialer(
 		func(addr string, timeout time.Duration) (net.Conn, error) {
@@ -612,6 +618,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 				"tcp":  n.config.ListenRemoteAPI,
 				"unix": n.config.ListenControlAPI,
 			},
+			AdvertiseAddr:  n.config.AdvertiseRemoteAPI,
 			SecurityConfig: securityConfig,
 			ExternalCAs:    n.config.ExternalCAs,
 			JoinRaft:       remoteAddr.Addr,
