@@ -232,7 +232,7 @@ func (na *NetworkAllocator) IsAllocated(n *api.Network) bool {
 	return ok
 }
 
-// IsTaskAllocated returns if the passed task has it's network resources allocated or not.
+// IsTaskAllocated returns if the passed task has its network resources allocated or not.
 func (na *NetworkAllocator) IsTaskAllocated(t *api.Task) bool {
 	// If the task is not found in the allocated set, then it is
 	// not allocated.
@@ -245,7 +245,7 @@ func (na *NetworkAllocator) IsTaskAllocated(t *api.Task) bool {
 		return false
 	}
 
-	// To determine whether the task has it's resources allocated,
+	// To determine whether the task has its resources allocated,
 	// we just need to look at one network(in case of
 	// multi-network attachment).  This is because we make sure we
 	// allocate for every network or we allocate for none.
@@ -269,7 +269,7 @@ func (na *NetworkAllocator) IsTaskAllocated(t *api.Task) bool {
 	return true
 }
 
-// IsServiceAllocated returns if the passed service has it's network resources allocated or not.
+// IsServiceAllocated returns if the passed service has its network resources allocated or not.
 func (na *NetworkAllocator) IsServiceAllocated(s *api.Service) bool {
 	if _, ok := na.services[s.ID]; !ok {
 		return false
