@@ -96,11 +96,12 @@ func (r *ReplicatedOrchestrator) Run(ctx context.Context) error {
 }
 
 // Stop stops the orchestrator.
-func (r *ReplicatedOrchestrator) Stop() {
+func (r *ReplicatedOrchestrator) Stop() error {
 	close(r.stopChan)
 	<-r.doneChan
 	r.updater.CancelAll()
 	r.restarts.CancelAll()
+	return nil
 }
 
 func (r *ReplicatedOrchestrator) tick(ctx context.Context) {

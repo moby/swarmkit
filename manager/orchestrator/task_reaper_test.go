@@ -72,7 +72,7 @@ func TestTaskHistory(t *testing.T) {
 	go func() {
 		assert.NoError(t, orchestrator.Run(ctx))
 	}()
-	go taskReaper.Run()
+	go taskReaper.Run(ctx)
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
