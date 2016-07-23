@@ -33,7 +33,7 @@ import (
 
 const (
 	// defaultTaskHistoryRetentionLimit is the number of tasks to keep.
-	defaultTaskHistoryRetentionLimit = 10
+	defaultTaskHistoryRetentionLimit = 5
 )
 
 // Config is used to tune the Manager.
