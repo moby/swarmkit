@@ -572,20 +572,37 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 			return err
 		}
 
-		select {
-		case event := <-nodeTasks:
-			switch v := event.(type) {
-			case state.EventCreateTask:
-				tasksMap[v.Task.ID] = v.Task
-			case state.EventUpdateTask:
-				tasksMap[v.Task.ID] = v.Task
-			case state.EventDeleteTask:
-				delete(tasksMap, v.Task.ID)
+		// bursty events should be processed in batches and sent out snapshot
+		const eventBatchLimit = 200
+		const eventPausedGap = 50 * time.Millisecond
+		var eventCnt int
+		// eventPaused is true when there are events
+		// but next event has not arrived within eventPausedGap
+		eventPaused := false
+
+		for eventCnt < eventBatchLimit && !eventPaused {
+			select {
+			case event := <-nodeTasks:
+				switch v := event.(type) {
+				case state.EventCreateTask:
+					tasksMap[v.Task.ID] = v.Task
+					eventCnt++
+				case state.EventUpdateTask:
+					tasksMap[v.Task.ID] = v.Task
+					eventCnt++
+				case state.EventDeleteTask:
+					delete(tasksMap, v.Task.ID)
+					eventCnt++
+				}
+			case <-time.After(eventPausedGap):
+				if eventCnt > 0 {
+					eventPaused = true
+				}
+			case <-stream.Context().Done():
+				return stream.Context().Err()
+			case <-d.ctx.Done():
+				return d.ctx.Err()
 			}
-		case <-stream.Context().Done():
-			return stream.Context().Err()
-		case <-d.ctx.Done():
-			return d.ctx.Err()
 		}
 	}
 }
