@@ -588,6 +588,14 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 					tasksMap[v.Task.ID] = v.Task
 					eventCnt++
 				case state.EventUpdateTask:
+					if oldTask, exists := tasksMap[v.Task.ID]; exists {
+						if TasksEqual(oldTask, v.Task) {
+							// task spec has not changed
+							// this update would not trigger action at agent
+							tasksMap[v.Task.ID] = v.Task
+							continue
+						}
+					}
 					tasksMap[v.Task.ID] = v.Task
 					eventCnt++
 				case state.EventDeleteTask:
@@ -782,4 +790,18 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 // NodeCount returns number of nodes which connected to this dispatcher.
 func (d *Dispatcher) NodeCount() int {
 	return d.nodes.Len()
+}
+
+// TasksEqual returns true if the tasks are functionaly equal, ignoring status,
+// version and other superfluous fields.
+//
+// This used to decide whether or not to propagate a task update to a controller.
+func TasksEqual(a, b *api.Task) bool {
+	// shallow copy
+	copyA, copyB := *a, *b
+
+	copyA.Status, copyB.Status = api.TaskStatus{}, api.TaskStatus{}
+	copyA.Meta, copyB.Meta = api.Meta{}, api.Meta{}
+
+	return reflect.DeepEqual(&copyA, &copyB)
 }
