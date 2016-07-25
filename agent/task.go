@@ -5,8 +5,8 @@ import (
 
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/equality"
 	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/dispatcher"
 	"golang.org/x/net/context"
 )
 
@@ -175,7 +175,7 @@ func (tm *taskManager) run(ctx context.Context) {
 		case status := <-statusq:
 			tm.task.Status = *status
 		case task := <-tm.updateq:
-			if dispatcher.TasksEqual(task, tm.task) {
+			if equality.TasksEqualStable(task, tm.task) {
 				continue // ignore the update
 			}
 
