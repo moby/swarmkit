@@ -14,6 +14,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/equality"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state"
@@ -573,37 +574,36 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 		}
 
 		// bursty events should be processed in batches and sent out snapshot
-		const eventBatchLimit = 200
+		const modificationBatchLimit = 200
 		const eventPausedGap = 50 * time.Millisecond
-		var eventCnt int
-		// eventPaused is true when there are events
+		var modificationCnt int
+		// eventPaused is true when there have been modifications
 		// but next event has not arrived within eventPausedGap
 		eventPaused := false
 
-		for eventCnt < eventBatchLimit && !eventPaused {
+		for modificationCnt < modificationBatchLimit && !eventPaused {
 			select {
 			case event := <-nodeTasks:
 				switch v := event.(type) {
 				case state.EventCreateTask:
 					tasksMap[v.Task.ID] = v.Task
-					eventCnt++
+					modificationCnt++
 				case state.EventUpdateTask:
 					if oldTask, exists := tasksMap[v.Task.ID]; exists {
-						if TasksEqual(oldTask, v.Task) {
-							// task spec has not changed
-							// this update would not trigger action at agent
+						if equality.TasksEqualStable(oldTask, v.Task) {
+							// this update should not trigger action at agent
 							tasksMap[v.Task.ID] = v.Task
 							continue
 						}
 					}
 					tasksMap[v.Task.ID] = v.Task
-					eventCnt++
+					modificationCnt++
 				case state.EventDeleteTask:
 					delete(tasksMap, v.Task.ID)
-					eventCnt++
+					modificationCnt++
 				}
 			case <-time.After(eventPausedGap):
-				if eventCnt > 0 {
+				if modificationCnt > 0 {
 					eventPaused = true
 				}
 			case <-stream.Context().Done():
@@ -790,18 +790,4 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 // NodeCount returns number of nodes which connected to this dispatcher.
 func (d *Dispatcher) NodeCount() int {
 	return d.nodes.Len()
-}
-
-// TasksEqual returns true if the tasks are functionaly equal, ignoring status,
-// version and other superfluous fields.
-//
-// This used to decide whether or not to propagate a task update to a controller.
-func TasksEqual(a, b *api.Task) bool {
-	// shallow copy
-	copyA, copyB := *a, *b
-
-	copyA.Status, copyB.Status = api.TaskStatus{}, api.TaskStatus{}
-	copyA.Meta, copyB.Meta = api.Meta{}, api.Meta{}
-
-	return reflect.DeepEqual(&copyA, &copyB)
 }
