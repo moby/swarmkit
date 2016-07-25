@@ -209,6 +209,7 @@ func TestUpdaterFailureAction(t *testing.T) {
 			Update: &api.UpdateConfig{
 				FailureAction: api.UpdateConfig_PAUSE,
 				Parallelism:   1,
+				Delay:         *ptypes.DurationProto(500 * time.Millisecond),
 			},
 		},
 	}
