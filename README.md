@@ -84,7 +84,7 @@ For example, some nodes have security compliant labels to run tasks with complia
 
 Requirements:
 
-- go 1.6 or higher
+- Go 1.6 or higher
 - A [working golang](https://golang.org/doc/code.html) environment
 
 *SwarmKit* is built in Go and leverages a standard project structure to work well with Go tooling.
