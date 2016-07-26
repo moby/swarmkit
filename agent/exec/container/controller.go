@@ -23,6 +23,10 @@ type controller struct {
 	adapter *containerAdapter
 	closed  chan struct{}
 	err     error
+
+	pulled     chan struct{} // closed after pull
+	cancelPull func()        // cancels pull context if not nil
+	pullErr    error         // pull error, protected by close of pulled
 }
 
 var _ exec.Controller = &controller{}
@@ -86,19 +90,40 @@ func (r *controller) Prepare(ctx context.Context) error {
 		return err
 	}
 
-	if err := r.adapter.pullImage(ctx); err != nil {
-		// NOTE(stevvooe): We always try to pull the image to make sure we have
-		// the most up to date version. This will return an error, but we only
-		// log it. If the image truly doesn't exist, the create below will
-		// error out.
-		//
-		// This gives us some nice behavior where we use up to date versions of
-		// mutable tags, but will still run if the old image is available but a
-		// registry is down.
-		//
-		// If you don't want this behavior, lock down your image to an
-		// immutable tag or digest.
-		log.G(ctx).WithError(err).Error("pulling image failed")
+	if r.pulled == nil {
+		// Launches a re-entrant pull operation associated with controller,
+		// dissociating the context from the caller's context. Allows pull
+		// operation to be re-entrant on calls to prepare, resuming from the
+		// same point after cancellation.
+		var pctx context.Context
+
+		r.pulled = make(chan struct{})
+		pctx, r.cancelPull = context.WithCancel(context.Background()) // TODO(stevvooe): Bind a context to the entire controller.
+
+		go func() {
+			defer close(r.pulled)
+			r.pullErr = r.adapter.pullImage(pctx)
+		}()
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-r.pulled:
+		if r.pullErr != nil {
+			// NOTE(stevvooe): We always try to pull the image to make sure we have
+			// the most up to date version. This will return an error, but we only
+			// log it. If the image truly doesn't exist, the create below will
+			// error out.
+			//
+			// This gives us some nice behavior where we use up to date versions of
+			// mutable tags, but will still run if the old image is available but a
+			// registry is down.
+			//
+			// If you don't want this behavior, lock down your image to an
+			// immutable tag or digest.
+			log.G(ctx).WithError(r.pullErr).Error("pulling image failed")
+		}
 	}
 
 	if err := r.adapter.create(ctx); err != nil {
@@ -288,6 +313,10 @@ func (r *controller) Shutdown(ctx context.Context) error {
 		return err
 	}
 
+	if r.cancelPull != nil {
+		r.cancelPull()
+	}
+
 	if err := r.adapter.shutdown(ctx); err != nil {
 		if isUnknownContainer(err) || isStoppedContainer(err) {
 			return nil
@@ -305,6 +334,10 @@ func (r *controller) Terminate(ctx context.Context) error {
 		return err
 	}
 
+	if r.cancelPull != nil {
+		r.cancelPull()
+	}
+
 	if err := r.adapter.terminate(ctx); err != nil {
 		if isUnknownContainer(err) {
 			return nil
@@ -320,6 +353,10 @@ func (r *controller) Terminate(ctx context.Context) error {
 func (r *controller) Remove(ctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
 		return err
+	}
+
+	if r.cancelPull != nil {
+		r.cancelPull()
 	}
 
 	// It may be necessary to shut down the task before removing it.
@@ -359,6 +396,10 @@ func (r *controller) Close() error {
 	case <-r.closed:
 		return r.err
 	default:
+		if r.cancelPull != nil {
+			r.cancelPull()
+		}
+
 		r.err = exec.ErrControllerClosed
 		close(r.closed)
 	}
