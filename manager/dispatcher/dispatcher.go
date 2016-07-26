@@ -60,8 +60,6 @@ var (
 // Config is configuration for Dispatcher. For default you should use
 // DefautConfig.
 type Config struct {
-	// Addr configures the address the dispatcher reports to agents.
-	Addr             string
 	HeartbeatPeriod  time.Duration
 	HeartbeatEpsilon time.Duration
 	// RateLimitPeriod specifies how often node with same ID can try to register
@@ -90,7 +88,6 @@ type Cluster interface {
 // Dispatcher is responsible for dispatching tasks and tracking agent health.
 type Dispatcher struct {
 	mu                   sync.Mutex
-	addr                 string
 	nodes                *nodeStore
 	store                *store.MemoryStore
 	mgrQueue             *watch.Queue
@@ -121,7 +118,6 @@ func (b weightedPeerByNodeID) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
 // NOTE: each handler which does something with raft must add to Dispatcher.wg
 func New(cluster Cluster, c *Config) *Dispatcher {
 	return &Dispatcher{
-		addr:                      c.Addr,
 		nodes:                     newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier, c.RateLimitPeriod),
 		store:                     cluster.MemoryStore(),
 		cluster:                   cluster,
