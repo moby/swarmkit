@@ -172,12 +172,12 @@ func TestRegisterTwice(t *testing.T) {
 	}
 }
 
-func TestRegisterTwiceRateLimit(t *testing.T) {
+func TestRegisterExceedRateLimit(t *testing.T) {
 	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	{
+	for i := 0; i < 3; i++ {
 		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
 		assert.NoError(t, err)
 		msg, err := stream.Recv()
