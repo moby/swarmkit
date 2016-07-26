@@ -58,7 +58,7 @@ vet: binaries ## run go vet
 fmt: ## run go fmt
 	@echo "🐳 $@"
 	@test -z "$$(gofmt -s -l . | grep -v vendor/ | grep -v ".pb.go$$" | tee /dev/stderr)" || \
-		(echo "👹 please format Go code with 'gofmt -s'" && false)
+		(echo "👹 please format Go code with 'gofmt -s -w'" && false)
 	@test -z "$$(find . -path ./vendor -prune -o ! -name timestamp.proto ! -name duration.proto -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
 		(echo "👹 please indent proto files with tabs only" && false)
 	@test -z "$$(find . -path ./vendor -prune -o -name '*.proto' -type f -exec grep -Hn "id = " {} \; | grep -v gogoproto.customname | tee /dev/stderr)" || \
