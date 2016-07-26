@@ -124,10 +124,16 @@ func SigningPolicy(certExpiry time.Duration) *cfconfig.Signing {
 		certExpiry = DefaultNodeCertExpiration
 	}
 
+	now := time.Now()
+	notBefore := now.Round(time.Minute).Add(CertBackdate).UTC()
+	notAfter := now.Round(time.Minute).Add(certExpiry).UTC()
+
 	return &cfconfig.Signing{
 		Default: &cfconfig.SigningProfile{
-			Usage:  []string{"signing", "key encipherment", "server auth", "client auth"},
-			Expiry: certExpiry,
+			Usage:     []string{"signing", "key encipherment", "server auth", "client auth"},
+			Expiry:    certExpiry,
+			NotBefore: notBefore,
+			NotAfter:  notAfter,
 			// Only trust the key components from the CSR. Everything else should
 			// come directly from API call params.
 			CSRWhitelist: &cfconfig.CSRWhitelist{
