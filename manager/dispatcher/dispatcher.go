@@ -116,6 +116,17 @@ func (b weightedPeerByNodeID) Len() int { return len(b) }
 
 func (b weightedPeerByNodeID) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
 
+// tasksEqual returns true if the tasks are functionaly equal, ignoring status,
+// version and other superfluous fields.
+func tasksEqual(a, b *api.Task) bool {
+	a, b = a.Copy(), b.Copy()
+
+	a.Status, b.Status = api.TaskStatus{}, api.TaskStatus{}
+	a.Meta, b.Meta = api.Meta{}, api.Meta{}
+
+	return reflect.DeepEqual(a, b)
+}
+
 // New returns Dispatcher with cluster interface(usually raft.Node).
 // NOTE: each handler which does something with raft must add to Dispatcher.wg
 func New(cluster Cluster, c *Config) *Dispatcher {
@@ -555,29 +566,38 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	}
 	defer cancel()
 
+	tasksChanged := true
 	for {
 		if _, err := d.nodes.GetWithSession(nodeID, r.SessionID); err != nil {
 			return err
 		}
 
-		var tasks []*api.Task
-		for _, t := range tasksMap {
-			// dispatcher only sends tasks that have been assigned to a node
-			if t != nil && t.Status.State >= api.TaskStateAssigned {
-				tasks = append(tasks, t)
+		if tasksChanged {
+			var tasks []*api.Task
+			for _, t := range tasksMap {
+				// dispatcher only sends tasks that have been assigned to a node
+				if t != nil && t.Status.State >= api.TaskStateAssigned {
+					tasks = append(tasks, t)
+				}
+			}
+
+			if err := stream.Send(&api.TasksMessage{Tasks: tasks}); err != nil {
+				return err
 			}
 		}
 
-		if err := stream.Send(&api.TasksMessage{Tasks: tasks}); err != nil {
-			return err
-		}
-
+		tasksChanged = true
 		select {
 		case event := <-nodeTasks:
 			switch v := event.(type) {
 			case state.EventCreateTask:
 				tasksMap[v.Task.ID] = v.Task
 			case state.EventUpdateTask:
+				if t, ok := tasksMap[v.Task.ID]; ok {
+					if tasksEqual(t, v.Task) {
+						tasksChanged = false
+					}
+				}
 				tasksMap[v.Task.ID] = v.Task
 			case state.EventDeleteTask:
 				delete(tasksMap, v.Task.ID)
