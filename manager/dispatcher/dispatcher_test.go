@@ -273,7 +273,6 @@ func TestHeartbeatTimeout(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.HeartbeatPeriod = 100 * time.Millisecond
 	cfg.HeartbeatEpsilon = 0
-	cfg.StartupGracePeriod = 100 * time.Millisecond
 	gd, err := startDispatcher(cfg)
 	assert.NoError(t, err)
 	defer gd.Close()
@@ -738,7 +737,6 @@ func TestNodesCount(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.HeartbeatPeriod = 100 * time.Millisecond
 	cfg.HeartbeatEpsilon = 0
-	cfg.StartupGracePeriod = 100 * time.Millisecond
 	gd, err := startDispatcher(cfg)
 	assert.NoError(t, err)
 	defer gd.Close()

@@ -31,7 +31,6 @@ const (
 	defaultHeartBeatEpsilon      = 500 * time.Millisecond
 	defaultGracePeriodMultiplier = 3
 	defaultRateLimitPeriod       = 8 * time.Second
-	defaultStartupGracePeriod    = 2 * time.Minute
 
 	// maxBatchItems is the threshold of queued writes that should
 	// trigger an actual transaction to commit them to the shared store.
@@ -62,10 +61,9 @@ var (
 // DefautConfig.
 type Config struct {
 	// Addr configures the address the dispatcher reports to agents.
-	Addr               string
-	HeartbeatPeriod    time.Duration
-	HeartbeatEpsilon   time.Duration
-	StartupGracePeriod time.Duration
+	Addr             string
+	HeartbeatPeriod  time.Duration
+	HeartbeatEpsilon time.Duration
 	// RateLimitPeriod specifies how often node with same ID can try to register
 	// new session.
 	RateLimitPeriod       time.Duration
@@ -77,7 +75,6 @@ func DefaultConfig() *Config {
 	return &Config{
 		HeartbeatPeriod:       DefaultHeartBeatPeriod,
 		HeartbeatEpsilon:      defaultHeartBeatEpsilon,
-		StartupGracePeriod:    defaultStartupGracePeriod,
 		RateLimitPeriod:       defaultRateLimitPeriod,
 		GracePeriodMultiplier: defaultGracePeriodMultiplier,
 	}
@@ -125,7 +122,7 @@ func (b weightedPeerByNodeID) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
 func New(cluster Cluster, c *Config) *Dispatcher {
 	return &Dispatcher{
 		addr:                      c.Addr,
-		nodes:                     newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier, c.StartupGracePeriod, c.RateLimitPeriod),
+		nodes:                     newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier, c.RateLimitPeriod),
 		store:                     cluster.MemoryStore(),
 		cluster:                   cluster,
 		mgrQueue:                  watch.NewQueue(16),
