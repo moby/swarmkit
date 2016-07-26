@@ -12,9 +12,7 @@ import (
 	"github.com/docker/swarmkit/manager/dispatcher/heartbeat"
 )
 
-const (
-	rateLimitCount = 3
-)
+const rateLimitCount = 3
 
 type registeredNode struct {
 	SessionID  string
@@ -47,18 +45,16 @@ func (rn *registeredNode) checkSessionID(sessionID string) error {
 type nodeStore struct {
 	periodChooser         *periodChooser
 	gracePeriodMultiplier time.Duration
-	startupGracePeriod    time.Duration
 	rateLimitPeriod       time.Duration
 	nodes                 map[string]*registeredNode
 	mu                    sync.RWMutex
 }
 
-func newNodeStore(hbPeriod, hbEpsilon time.Duration, graceMultiplier int, startupGracePeriod, rateLimitPeriod time.Duration) *nodeStore {
+func newNodeStore(hbPeriod, hbEpsilon time.Duration, graceMultiplier int, rateLimitPeriod time.Duration) *nodeStore {
 	return &nodeStore{
 		nodes:                 make(map[string]*registeredNode),
 		periodChooser:         newPeriodChooser(hbPeriod, hbEpsilon),
 		gracePeriodMultiplier: time.Duration(graceMultiplier),
-		startupGracePeriod:    startupGracePeriod,
 		rateLimitPeriod:       rateLimitPeriod,
 	}
 }
@@ -83,8 +79,7 @@ func (s *nodeStore) AddUnknown(n *api.Node, expireFunc func()) error {
 		Node: n,
 	}
 	s.nodes[n.ID] = rn
-	hb := s.periodChooser.Choose()*s.gracePeriodMultiplier + s.startupGracePeriod
-	rn.Heartbeat = heartbeat.New(hb, expireFunc)
+	rn.Heartbeat = heartbeat.New(s.periodChooser.Choose()*s.gracePeriodMultiplier, expireFunc)
 	return nil
 }
 
