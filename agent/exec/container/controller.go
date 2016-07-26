@@ -87,6 +87,10 @@ func (r *controller) Prepare(ctx context.Context) error {
 	}
 
 	if err := r.adapter.pullImage(ctx); err != nil {
+		if err == context.Canceled || err == context.DeadlineExceeded {
+			return err
+		}
+
 		// NOTE(stevvooe): We always try to pull the image to make sure we have
 		// the most up to date version. This will return an error, but we only
 		// log it. If the image truly doesn't exist, the create below will
