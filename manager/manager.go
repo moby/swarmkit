@@ -139,9 +139,6 @@ func New(config *Config) (*Manager, error) {
 		tcpAddr = net.JoinHostPort("0.0.0.0", tcpAddrPort)
 	}
 
-	// FIXME(aaronl): Remove this. It appears to be unused.
-	dispatcherConfig.Addr = tcpAddr
-
 	err := os.MkdirAll(filepath.Dir(config.ProtoAddr["unix"]), 0700)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create socket directory: %v", err)
