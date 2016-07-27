@@ -290,7 +290,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	gd.Store.View(func(readTx store.ReadTx) {
-		storeNodes, err := store.FindNodes(readTx, store.All)
+		storeNodes, err := store.FindNodes(readTx, store.ByIDPrefix(gd.SecurityConfigs[0].ClientTLSCreds.NodeID()))
 		assert.NoError(t, err)
 		assert.NotEmpty(t, storeNodes)
 		assert.Equal(t, api.NodeStatus_DOWN, storeNodes[0].Status.State)
@@ -754,6 +754,6 @@ func TestNodesCount(t *testing.T) {
 		stream.Recv()
 	}
 	assert.Equal(t, 6, gd.dispatcherServer.NodeCount())
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(700 * time.Millisecond)
 	assert.Equal(t, 0, gd.dispatcherServer.NodeCount())
 }
