@@ -31,6 +31,17 @@ var (
 				return err
 			}
 
+			nr, err := c.ListNodes(common.Context(cmd), &api.ListNodesRequest{})
+			if err != nil {
+				return err
+			}
+			readyNodes := make(map[string]struct{})
+			for _, n := range nr.Nodes {
+				if n.Status.State == api.NodeStatus_READY {
+					readyNodes[n.ID] = struct{}{}
+				}
+			}
+
 			var output func(j *api.Service)
 
 			if !quiet {
@@ -41,7 +52,8 @@ var (
 
 				running := map[string]int{}
 				for _, task := range tr.Tasks {
-					if task.Status.State == api.TaskStateRunning {
+					if _, nodeReady := readyNodes[task.NodeID]; nodeReady &&
+						task.Status.State == api.TaskStateRunning {
 						running[task.ServiceID]++
 					}
 				}
