@@ -2,6 +2,7 @@ package raftpicker
 
 import (
 	"sync"
+	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -14,46 +15,24 @@ type picker struct {
 	addr string
 	raft AddrSelector
 	conn *grpc.Conn
-	cc   *grpc.ClientConn
 }
 
 // Init does initial processing for the Picker, e.g., initiate some connections.
 func (p *picker) Init(cc *grpc.ClientConn) error {
-	p.cc = cc
-	return nil
-}
-
-func (p *picker) initConn() error {
-	if p.conn == nil {
-		conn, err := grpc.NewConn(p.cc)
-		if err != nil {
-			return err
-		}
-		p.conn = conn
+	conn, err := grpc.NewConn(cc)
+	if err != nil {
+		return err
 	}
+	p.conn = conn
 	return nil
 }
 
 // Pick blocks until either a transport.ClientTransport is ready for the upcoming RPC
 // or some error happens.
 func (p *picker) Pick(ctx context.Context) (transport.ClientTransport, error) {
-	p.mu.Lock()
-	if err := p.initConn(); err != nil {
-		p.mu.Unlock()
+	if err := p.updateConn(); err != nil {
 		return nil, err
 	}
-	p.mu.Unlock()
-
-	addr, err := p.raft.LeaderAddr()
-	if err != nil {
-		return nil, err
-	}
-	p.mu.Lock()
-	if p.addr != addr {
-		p.addr = addr
-		p.conn.NotifyReset()
-	}
-	p.mu.Unlock()
 	return p.conn.Wait(ctx)
 }
 
@@ -92,12 +71,40 @@ func (p *picker) Close() error {
 	return p.conn.Close()
 }
 
+func (p *picker) updateConn() error {
+	addr, err := p.raft.LeaderAddr()
+	if err != nil {
+		return err
+	}
+	p.mu.Lock()
+	if p.addr != addr {
+		p.addr = addr
+		p.conn.NotifyReset()
+	}
+	p.mu.Unlock()
+	return nil
+}
+
+func (p *picker) updateLoop(stop chan struct{}) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			p.updateConn()
+		case <-stop:
+			return
+		}
+	}
+}
+
 // ConnSelector is struct for obtaining connection with raftpicker.
 type ConnSelector struct {
 	mu      sync.Mutex
 	cc      *grpc.ClientConn
 	cluster RaftCluster
 	opts    []grpc.DialOption
+	stop    chan struct{}
 }
 
 // NewConnSelector returns new ConnSelector with cluster and grpc.DialOpts which
@@ -106,6 +113,7 @@ func NewConnSelector(cluster RaftCluster, opts ...grpc.DialOption) *ConnSelector
 	return &ConnSelector{
 		cluster: cluster,
 		opts:    opts,
+		stop:    make(chan struct{}),
 	}
 }
 
@@ -123,6 +131,7 @@ func (c *ConnSelector) Conn() (*grpc.ClientConn, error) {
 		return nil, err
 	}
 	picker := &picker{raft: c.cluster, addr: addr}
+	go picker.updateLoop(c.stop)
 	opts := append(c.opts, grpc.WithPicker(picker))
 	cc, err := grpc.Dial(addr, opts...)
 	if err != nil {
@@ -130,4 +139,9 @@ func (c *ConnSelector) Conn() (*grpc.ClientConn, error) {
 	}
 	c.cc = cc
 	return c.cc, nil
+}
+
+// Stop cancels tracking loop for raftpicker.
+func (c *ConnSelector) Stop() {
+	close(c.stop)
 }
