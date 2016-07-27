@@ -89,6 +89,7 @@ type Manager struct {
 	server                 *grpc.Server
 	localserver            *grpc.Server
 	RaftNode               *raft.Node
+	connSelector           *raftpicker.ConnSelector
 
 	mu sync.Mutex
 
@@ -433,6 +434,9 @@ func (m *Manager) Run(parent context.Context) error {
 	}
 
 	cs := raftpicker.NewConnSelector(m.RaftNode, proxyOpts...)
+	m.mu.Lock()
+	m.connSelector = cs
+	m.mu.Unlock()
 
 	authorize := func(ctx context.Context, roles []string) error {
 		// Authorize the remote roles, ensure they can only be forwarded by managers
@@ -600,6 +604,9 @@ func (m *Manager) Stop(ctx context.Context) {
 		m.keyManager.Stop()
 	}
 
+	if m.connSelector != nil {
+		m.connSelector.Stop()
+	}
 	m.RaftNode.Shutdown()
 	// some time after this point, Run will receive an error from one of these
 	m.server.Stop()
