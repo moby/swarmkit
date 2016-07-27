@@ -126,11 +126,11 @@ Initialize the first node:
 $ swarmd -d /tmp/node-1 --listen-control-api /tmp/manager1/swarm.sock --hostname node-1
 ```
 
-In two additional terminals, join two nodes (note: replace `127.0.0.1:4242` with the address of the first node)
+In two additional terminals, join two nodes (note: replace `127.0.0.1:4242` with the address of the first node). The join token can be fetched by inspecting the cluster of the nodes (e.g. swarmctl cluster inspect default).
 
 ```sh
-$ swarmd -d /tmp/node-2 --hostname node-2 --join-addr 127.0.0.1:4242
-$ swarmd -d /tmp/node-3 --hostname node-3 --join-addr 127.0.0.1:4242
+$ swarmd -d /tmp/node-2 --hostname node-2 --join-addr 127.0.0.1:4242 --join-token <TOKEN>
+$ swarmd -d /tmp/node-3 --hostname node-3 --join-addr 127.0.0.1:4242 --join-token <TOKEN>
 ```
 
 In a fourth terminal, use `swarmctl` to explore and control the cluster. Before
