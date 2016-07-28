@@ -41,7 +41,8 @@ var (
 
 				running := map[string]int{}
 				for _, task := range tr.Tasks {
-					if task.Status.State == api.TaskStateRunning {
+					if task.Status.State == api.TaskStateRunning &&
+						task.DesiredState == api.TaskStateRunning {
 						running[task.ServiceID]++
 					}
 				}
