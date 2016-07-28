@@ -30,12 +30,12 @@ func (c *Collector) Listen(port int) error {
 }
 
 // Collect blocks until `count` tasks phoned home.
-func (c *Collector) Collect(count uint64) {
+func (c *Collector) Collect(ctx context.Context, count uint64) {
 	start := time.Now()
 	for i := uint64(0); i < count; i++ {
 		conn, err := c.ln.Accept()
 		if err != nil {
-			log.G(context.Background()).WithError(err).Error("failure accepting connection")
+			log.G(ctx).WithError(err).Error("failure accepting connection")
 			continue
 		}
 		c.t.UpdateSince(start)

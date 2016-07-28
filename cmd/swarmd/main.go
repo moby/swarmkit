@@ -117,8 +117,8 @@ var (
 				return err
 			}
 
-			// Create a context for our GRPC call
-			ctx, cancel := context.WithCancel(context.Background())
+			// Create a cancellable context for our GRPC call
+			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
 			client, err := engineapi.NewClient(engineAddr, "", nil, nil)
@@ -175,7 +175,7 @@ var (
 				}
 			}()
 
-			return n.Err(context.Background())
+			return n.Err(ctx)
 		},
 	}
 )

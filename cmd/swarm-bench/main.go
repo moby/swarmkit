@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
 )
 
 var (
@@ -13,6 +14,7 @@ var (
 		Use:   os.Args[0],
 		Short: "Benchmark swarm",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := context.Background()
 			count, err := cmd.Flags().GetUint64("count")
 			if err != nil {
 				return err
@@ -40,7 +42,7 @@ var (
 				Port:    port,
 				Unit:    time.Second,
 			})
-			return b.Run()
+			return b.Run(ctx)
 		},
 	}
 )
