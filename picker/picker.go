@@ -96,7 +96,7 @@ func (mwr *remotesWeightedRandom) Select(excludes ...string) (api.Peer, error) {
 
 	// bias to zero-weighted remotes have same probability. otherwise, we
 	// always select first entry when all are zero.
-	const bias = 0.1
+	const bias = 0.001
 
 	// clear out workspace
 	mwr.cdf = mwr.cdf[:0]

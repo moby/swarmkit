@@ -228,6 +228,40 @@ func TestRemotesLargeRanges(t *testing.T) {
 	}
 }
 
+func TestRemotesDownweight(t *testing.T) {
+	peers := []api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
+	index := make(map[api.Peer]struct{}, len(peers))
+	remotes := NewRemotes(peers...)
+
+	for _, peer := range peers {
+		index[peer] = struct{}{}
+	}
+
+	for _, p := range peers {
+		remotes.Observe(p, 1)
+	}
+
+	remotes.Observe(peers[0], -1)
+
+	samples := 100000
+	choosen := 0
+
+	for i := 0; i < samples; i++ {
+		p, err := remotes.Select()
+		if err != nil {
+			t.Fatalf("error selecting remote: %v", err)
+		}
+		if p == peers[0] {
+			choosen++
+		}
+	}
+	ratio := float32(choosen) / float32(samples)
+	t.Logf("ratio: %f", ratio)
+	if ratio > 0.001 {
+		t.Fatalf("downweighted peer is choosen too often, ratio: %f", ratio)
+	}
+}
+
 var peers = []api.Peer{
 	{Addr: "one"}, {Addr: "two"}, {Addr: "three"},
 	{Addr: "four"}, {Addr: "five"}, {Addr: "six"},
