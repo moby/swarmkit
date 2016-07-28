@@ -15,6 +15,19 @@ type picker struct {
 	addr string
 	raft AddrSelector
 	conn *grpc.Conn
+
+	stop chan struct{}
+	done chan struct{}
+}
+
+func newPicker(raft AddrSelector, addr string) *picker {
+	return &picker{
+		raft: raft,
+		addr: addr,
+
+		stop: make(chan struct{}),
+		done: make(chan struct{}),
+	}
 }
 
 // Init does initial processing for the Picker, e.g., initiate some connections.
@@ -68,6 +81,8 @@ func (p *picker) Reset() error {
 
 // Close closes all the Conn's owned by this Picker.
 func (p *picker) Close() error {
+	close(p.stop)
+	<-p.done
 	return p.conn.Close()
 }
 
@@ -79,20 +94,21 @@ func (p *picker) updateConn() error {
 	p.mu.Lock()
 	if p.addr != addr {
 		p.addr = addr
-		p.conn.NotifyReset()
+		p.Reset()
 	}
 	p.mu.Unlock()
 	return nil
 }
 
-func (p *picker) updateLoop(stop chan struct{}) {
+func (p *picker) updateLoop() {
+	defer close(p.done)
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
 			p.updateConn()
-		case <-stop:
+		case <-p.stop:
 			return
 		}
 	}
@@ -104,7 +120,7 @@ type ConnSelector struct {
 	cc      *grpc.ClientConn
 	cluster RaftCluster
 	opts    []grpc.DialOption
-	stop    chan struct{}
+	picker  *picker
 }
 
 // NewConnSelector returns new ConnSelector with cluster and grpc.DialOpts which
@@ -113,7 +129,6 @@ func NewConnSelector(cluster RaftCluster, opts ...grpc.DialOption) *ConnSelector
 	return &ConnSelector{
 		cluster: cluster,
 		opts:    opts,
-		stop:    make(chan struct{}),
 	}
 }
 
@@ -130,9 +145,9 @@ func (c *ConnSelector) Conn() (*grpc.ClientConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	picker := &picker{raft: c.cluster, addr: addr}
-	go picker.updateLoop(c.stop)
-	opts := append(c.opts, grpc.WithPicker(picker))
+	c.picker = newPicker(c.cluster, addr)
+	go c.picker.updateLoop()
+	opts := append(c.opts, grpc.WithPicker(c.picker))
 	cc, err := grpc.Dial(addr, opts...)
 	if err != nil {
 		return nil, err
@@ -141,7 +156,12 @@ func (c *ConnSelector) Conn() (*grpc.ClientConn, error) {
 	return c.cc, nil
 }
 
-// Stop cancels tracking loop for raftpicker.
+// Stop cancels tracking loop for raftpicker and closes it.
 func (c *ConnSelector) Stop() {
-	close(c.stop)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.picker == nil {
+		return
+	}
+	c.picker.Close()
 }
