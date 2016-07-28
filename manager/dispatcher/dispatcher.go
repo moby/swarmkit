@@ -20,6 +20,7 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/manager/state/watch"
+	"github.com/docker/swarmkit/picker"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
@@ -142,7 +143,11 @@ func getWeightedPeers(cluster Cluster) []*api.WeightedPeer {
 				NodeID: m.NodeID,
 				Addr:   m.Addr,
 			},
-			Weight: 1,
+
+			// TODO(stevvooe): Calculate weight of manager selection based on
+			// cluster-level observations, such as number of connections and
+			// load.
+			Weight: picker.DefaultObservationWeight,
 		})
 	}
 	return mgrs
