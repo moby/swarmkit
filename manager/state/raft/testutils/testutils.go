@@ -387,7 +387,7 @@ func Leader(nodes map[uint64]*TestNode) *TestNode {
 }
 
 // ProposeValue proposes a value to a raft test cluster
-func ProposeValue(t *testing.T, raftNode *TestNode, nodeID ...string) (*api.Node, error) {
+func ProposeValue(t *testing.T, raftNode *TestNode, time time.Duration, nodeID ...string) (*api.Node, error) {
 	nodeIDStr := "id1"
 	if len(nodeID) != 0 {
 		nodeIDStr = nodeID[0]
@@ -410,7 +410,7 @@ func ProposeValue(t *testing.T, raftNode *TestNode, nodeID ...string) (*api.Node
 		},
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), time)
 
 	err := raftNode.ProposeValue(ctx, storeActions, func() {
 		err := raftNode.MemoryStore().ApplyStoreActions(storeActions)

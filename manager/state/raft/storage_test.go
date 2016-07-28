@@ -26,7 +26,7 @@ func TestRaftSnapshot(t *testing.T) {
 	// Propose 3 values
 	var err error
 	for i, nodeID := range nodeIDs[:3] {
-		values[i], err = raftutils.ProposeValue(t, nodes[1], nodeID)
+		values[i], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeID)
 		assert.NoError(t, err, "failed to propose value")
 	}
 
@@ -45,7 +45,7 @@ func TestRaftSnapshot(t *testing.T) {
 	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:3], values)
 
 	// Propose a 4th value
-	values[3], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[3])
+	values[3], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[3])
 	assert.NoError(t, err, "failed to propose value")
 
 	// All nodes should now have a snapshot file
@@ -97,7 +97,7 @@ func TestRaftSnapshot(t *testing.T) {
 
 	// Propose more values to provoke a second snapshot
 	for i := 4; i != len(nodeIDs); i++ {
-		values[i], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[i])
+		values[i], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[i])
 		assert.NoError(t, err, "failed to propose value")
 	}
 
@@ -135,7 +135,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	// Propose 3 values
 	var err error
 	for i, nodeID := range nodeIDs[:3] {
-		values[i], err = raftutils.ProposeValue(t, nodes[1], nodeID)
+		values[i], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeID)
 		assert.NoError(t, err, "failed to propose value")
 	}
 
@@ -144,7 +144,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	nodes[3].Shutdown()
 
 	// Propose a 4th value before the snapshot
-	values[3], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[3])
+	values[3], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[3])
 	assert.NoError(t, err, "failed to propose value")
 
 	// Remaining nodes shouldn't have snapshot files yet
@@ -175,7 +175,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	raftutils.CheckValuesOnNodes(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:4], values[:4])
 
 	// Propose a 5th value
-	values[4], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[4])
+	values[4], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[4])
 	require.NoError(t, err)
 
 	// Add another node to the cluster
@@ -222,7 +222,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Propose yet another value, to make sure the rejoined node is still
 	// receiving new logs
-	values[5], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[5])
+	values[5], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[5])
 	require.NoError(t, err)
 
 	// All nodes should have all the data
@@ -239,7 +239,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:6], values[:6])
 
 	// Propose again. Just to check consensus after this latest restart.
-	values[6], err = raftutils.ProposeValue(t, nodes[1], nodeIDs[6])
+	values[6], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[6])
 	require.NoError(t, err)
 	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 }
