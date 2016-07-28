@@ -690,8 +690,13 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 	nodeUpdates, cancel, err := store.ViewAndWatch(d.store, func(readTx store.ReadTx) error {
 		nodeObj = store.GetNode(readTx, nodeID)
 		return nil
-	}, state.EventUpdateNode{Node: &api.Node{ID: nodeID},
-		Checks: []state.NodeCheckFunc{state.NodeCheckID}},
+	},
+		state.EventUpdateNode{Node: &api.Node{ID: nodeID},
+			Checks: []state.NodeCheckFunc{state.NodeCheckID},
+		},
+		state.EventDeleteNode{Node: &api.Node{ID: nodeID},
+			Checks: []state.NodeCheckFunc{state.NodeCheckID},
+		},
 	)
 	if cancel != nil {
 		defer cancel()
@@ -751,12 +756,19 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		var mgrs []*api.WeightedPeer
 
 		var disconnect bool
+		var stop bool
 
 		select {
 		case ev := <-managerUpdates:
 			mgrs = ev.([]*api.WeightedPeer)
 		case ev := <-nodeUpdates:
-			nodeObj = ev.(state.EventUpdateNode).Node
+			switch ev := ev.(type) {
+			case state.EventUpdateNode:
+				nodeObj = ev.Node
+			case state.EventDeleteNode:
+				nodeObj = ev.Node
+				stop = true
+			}
 		case <-stream.Context().Done():
 			return stream.Context().Err()
 		case <-node.Disconnect:
@@ -774,10 +786,11 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			Node:                 nodeObj,
 			Managers:             mgrs,
 			NetworkBootstrapKeys: d.networkBootstrapKeys,
+			Stop:                 stop,
 		}); err != nil {
 			return err
 		}
-		if disconnect {
+		if disconnect || stop {
 			return disconnectNode()
 		}
 	}
