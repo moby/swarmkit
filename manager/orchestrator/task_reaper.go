@@ -8,6 +8,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -49,7 +50,7 @@ func NewTaskReaper(store *store.MemoryStore) *TaskReaper {
 }
 
 // Run is the TaskReaper's main loop.
-func (tr *TaskReaper) Run() {
+func (tr *TaskReaper) Run(ctx context.Context) error {
 	defer close(tr.doneChan)
 
 	tr.store.View(func(readTx store.ReadTx) {
@@ -82,7 +83,7 @@ func (tr *TaskReaper) Run() {
 		case <-ticker.C:
 			tr.tick()
 		case <-tr.stopChan:
-			return
+			return nil
 		}
 	}
 }
@@ -172,10 +173,11 @@ func (tr *TaskReaper) tick() {
 }
 
 // Stop stops the TaskReaper and waits for the main loop to exit.
-func (tr *TaskReaper) Stop() {
+func (tr *TaskReaper) Stop() error {
 	tr.cancelWatch()
 	close(tr.stopChan)
 	<-tr.doneChan
+	return nil
 }
 
 type tasksByTimestamp []*api.Task

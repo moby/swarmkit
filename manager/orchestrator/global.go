@@ -162,11 +162,12 @@ func (g *GlobalOrchestrator) Run(ctx context.Context) error {
 }
 
 // Stop stops the orchestrator.
-func (g *GlobalOrchestrator) Stop() {
+func (g *GlobalOrchestrator) Stop() error {
 	close(g.stopChan)
 	<-g.doneChan
 	g.updater.CancelAll()
 	g.restarts.CancelAll()
+	return nil
 }
 
 func (g *GlobalOrchestrator) removeTasksFromNode(ctx context.Context, node *api.Node) {

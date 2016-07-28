@@ -67,7 +67,7 @@ type allocActor struct {
 
 // New returns a new instance of Allocator for use during allocation
 // stage of the manager.
-func New(store *store.MemoryStore) (*Allocator, error) {
+func New(store *store.MemoryStore) *Allocator {
 	a := &Allocator{
 		store: store,
 		taskBallot: &taskBallot{
@@ -77,7 +77,7 @@ func New(store *store.MemoryStore) (*Allocator, error) {
 		doneChan: make(chan struct{}),
 	}
 
-	return a, nil
+	return a
 }
 
 // Run starts all allocator go-routines and waits for Stop to be called.
@@ -158,10 +158,11 @@ func (a *Allocator) Run(ctx context.Context) error {
 }
 
 // Stop stops the allocator
-func (a *Allocator) Stop() {
+func (a *Allocator) Stop() error {
 	close(a.stopChan)
 	// Wait for all allocator goroutines to truly exit
 	<-a.doneChan
+	return nil
 }
 
 func (a *Allocator) run(ctx context.Context, aa allocActor) {

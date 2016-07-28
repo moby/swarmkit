@@ -23,8 +23,7 @@ var (
 func TestAllocator(t *testing.T) {
 	assert.NotNil(t, s)
 
-	a, err := New(s)
-	assert.NoError(t, err)
+	a := New(s)
 	assert.NotNil(t, a)
 
 	// Try adding some objects to store before allocator is started

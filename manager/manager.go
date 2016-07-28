@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"syscall"
 	"time"
@@ -94,6 +95,15 @@ type Manager struct {
 	mu sync.Mutex
 
 	stopped chan struct{}
+}
+
+// SubSystem used by manager
+type SubSystem interface {
+	// Run sub-system
+	Run(ctx context.Context) error
+
+	// Stop sub-system
+	Stop() error
 }
 
 type closeOnceListener struct {
@@ -211,14 +221,20 @@ func New(config *Config) (*Manager, error) {
 		grpc.Creds(config.SecurityConfig.ServerTLSCreds)}
 
 	m := &Manager{
-		config:      config,
-		listeners:   listeners,
-		caserver:    ca.NewServer(RaftNode.MemoryStore(), config.SecurityConfig),
-		Dispatcher:  dispatcher.New(RaftNode, dispatcherConfig),
-		server:      grpc.NewServer(opts...),
-		localserver: grpc.NewServer(opts...),
-		RaftNode:    RaftNode,
-		stopped:     make(chan struct{}),
+		config:                 config,
+		listeners:              listeners,
+		caserver:               ca.NewServer(RaftNode.MemoryStore(), config.SecurityConfig),
+		Dispatcher:             dispatcher.New(RaftNode, dispatcherConfig),
+		replicatedOrchestrator: orchestrator.NewReplicatedOrchestrator(RaftNode.MemoryStore()),
+		globalOrchestrator:     orchestrator.NewGlobalOrchestrator(RaftNode.MemoryStore()),
+		taskReaper:             orchestrator.NewTaskReaper(RaftNode.MemoryStore()),
+		scheduler:              scheduler.New(RaftNode.MemoryStore()),
+		keyManager:             keymanager.New(RaftNode.MemoryStore(), keymanager.DefaultConfig()),
+		allocator:              allocator.New(RaftNode.MemoryStore()),
+		server:                 grpc.NewServer(opts...),
+		localserver:            grpc.NewServer(opts...),
+		RaftNode:               RaftNode,
+		stopped:                make(chan struct{}),
 	}
 
 	return m, nil
@@ -331,95 +347,17 @@ func (m *Manager) Run(parent context.Context) error {
 					log.G(ctx).WithError(err).Error("root key-encrypting-key rotation failed")
 				}
 
-				m.replicatedOrchestrator = orchestrator.NewReplicatedOrchestrator(s)
-				m.globalOrchestrator = orchestrator.NewGlobalOrchestrator(s)
-				m.taskReaper = orchestrator.NewTaskReaper(s)
-				m.scheduler = scheduler.New(s)
-				m.keyManager = keymanager.New(m.RaftNode.MemoryStore(), keymanager.DefaultConfig())
-
 				// TODO(stevvooe): Allocate a context that can be used to
 				// shutdown underlying manager processes when leadership is
 				// lost.
 
-				m.allocator, err = allocator.New(s)
-				if err != nil {
-					log.G(ctx).WithError(err).Error("failed to create allocator")
-					// TODO(stevvooe): It doesn't seem correct here to fail
-					// creating the allocator but then use it anyway.
-				}
-
-				go func(keyManager *keymanager.KeyManager) {
-					if err := keyManager.Run(ctx); err != nil {
-						log.G(ctx).WithError(err).Error("keymanager failed with an error")
-					}
-				}(m.keyManager)
-
-				go func(d *dispatcher.Dispatcher) {
-					if err := d.Run(ctx); err != nil {
-						log.G(ctx).WithError(err).Error("Dispatcher exited with an error")
-					}
-				}(m.Dispatcher)
-
-				go func(server *ca.Server) {
-					if err := server.Run(ctx); err != nil {
-						log.G(ctx).WithError(err).Error("CA signer exited with an error")
-					}
-				}(m.caserver)
-
 				// Start all sub-components in separate goroutines.
 				// TODO(aluzzardi): This should have some kind of error handling so that
 				// any component that goes down would bring the entire manager down.
-
-				if m.allocator != nil {
-					go func(allocator *allocator.Allocator) {
-						if err := allocator.Run(ctx); err != nil {
-							log.G(ctx).WithError(err).Error("allocator exited with an error")
-						}
-					}(m.allocator)
-				}
-
-				go func(scheduler *scheduler.Scheduler) {
-					if err := scheduler.Run(ctx); err != nil {
-						log.G(ctx).WithError(err).Error("scheduler exited with an error")
-					}
-				}(m.scheduler)
-				go func(taskReaper *orchestrator.TaskReaper) {
-					taskReaper.Run()
-				}(m.taskReaper)
-				go func(orchestrator *orchestrator.ReplicatedOrchestrator) {
-					if err := orchestrator.Run(ctx); err != nil {
-						log.G(ctx).WithError(err).Error("replicated orchestrator exited with an error")
-					}
-				}(m.replicatedOrchestrator)
-				go func(globalOrchestrator *orchestrator.GlobalOrchestrator) {
-					if err := globalOrchestrator.Run(ctx); err != nil {
-						log.G(ctx).WithError(err).Error("global orchestrator exited with an error")
-					}
-				}(m.globalOrchestrator)
+				m.runSubSystems(ctx)
 
 			} else if newState == raft.IsFollower {
-				m.Dispatcher.Stop()
-				m.caserver.Stop()
-
-				if m.allocator != nil {
-					m.allocator.Stop()
-					m.allocator = nil
-				}
-
-				m.replicatedOrchestrator.Stop()
-				m.replicatedOrchestrator = nil
-
-				m.globalOrchestrator.Stop()
-				m.globalOrchestrator = nil
-
-				m.taskReaper.Stop()
-				m.taskReaper = nil
-
-				m.scheduler.Stop()
-				m.scheduler = nil
-
-				m.keyManager.Stop()
-				m.keyManager = nil
+				m.stopSubSystems()
 			}
 			m.mu.Unlock()
 		}
@@ -579,27 +517,7 @@ func (m *Manager) Stop(ctx context.Context) {
 	// it also prevents the loop from processing any more stuff.
 	close(m.stopped)
 
-	m.Dispatcher.Stop()
-	m.caserver.Stop()
-
-	if m.allocator != nil {
-		m.allocator.Stop()
-	}
-	if m.replicatedOrchestrator != nil {
-		m.replicatedOrchestrator.Stop()
-	}
-	if m.globalOrchestrator != nil {
-		m.globalOrchestrator.Stop()
-	}
-	if m.taskReaper != nil {
-		m.taskReaper.Stop()
-	}
-	if m.scheduler != nil {
-		m.scheduler.Stop()
-	}
-	if m.keyManager != nil {
-		m.keyManager.Stop()
-	}
+	m.stopSubSystems()
 
 	if m.connSelector != nil {
 		m.connSelector.Stop()
@@ -611,6 +529,46 @@ func (m *Manager) Stop(ctx context.Context) {
 
 	log.G(ctx).Info("Manager shut down")
 	// mutex is released and Run can return now
+}
+
+// getSubSystems get sub-systems
+func (m *Manager) getSubSystems() []SubSystem {
+	subsystems := []SubSystem{
+		m.allocator,
+		m.Dispatcher,
+		m.caserver,
+		m.replicatedOrchestrator,
+		m.globalOrchestrator,
+		m.taskReaper,
+		m.scheduler,
+		m.keyManager,
+	}
+	return subsystems
+}
+
+// runSubSystems run sub-systems
+func (m *Manager) runSubSystems(ctx context.Context) {
+	subsystems := m.getSubSystems()
+	for _, subsystem := range subsystems {
+		if subsystem != nil {
+			go func(system SubSystem) {
+				if err := system.Run(ctx); err != nil {
+					log.G(ctx).WithError(err).Errorf("%s exited with an error", reflect.TypeOf(system))
+				}
+			}(subsystem)
+		}
+
+	}
+}
+
+// stopSubSystems stop sub-systems
+func (m *Manager) stopSubSystems() {
+	subsystems := m.getSubSystems()
+	for _, subsystem := range subsystems {
+		if subsystem != nil {
+			subsystem.Stop()
+		}
+	}
 }
 
 // rotateRootCAKEK will attempt to rotate the key-encryption-key for root CA key-material in raft.

@@ -147,9 +147,10 @@ func (s *Scheduler) Run(ctx context.Context) error {
 }
 
 // Stop causes the scheduler event loop to stop running.
-func (s *Scheduler) Stop() {
+func (s *Scheduler) Stop() error {
 	close(s.stopChan)
 	<-s.doneChan
+	return nil
 }
 
 // enqueue queues a task for scheduling.
