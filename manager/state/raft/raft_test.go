@@ -27,6 +27,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	DefaultProposalTime = 10 * time.Second
+	ShortProposalTime   = 1 * time.Second
+)
+
 var tc *cautils.TestCA
 
 func init() {
@@ -103,7 +108,7 @@ func TestRaftLeaderDown(t *testing.T) {
 	require.NotNil(t, followerNode)
 
 	// Propose a value
-	value, err := raftutils.ProposeValue(t, leaderNode)
+	value, err := raftutils.ProposeValue(t, leaderNode, DefaultProposalTime)
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
@@ -128,7 +133,7 @@ func TestRaftFollowerDown(t *testing.T) {
 	assert.Equal(t, nodes[2].Leader(), nodes[1].Config.ID)
 
 	// Propose a value
-	value, err := raftutils.ProposeValue(t, nodes[1])
+	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
@@ -146,7 +151,7 @@ func TestRaftLogReplication(t *testing.T) {
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Propose a value
-	value, err := raftutils.ProposeValue(t, nodes[1])
+	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
 	assert.NoError(t, err, "failed to propose value")
 
 	// All nodes should have the value in the physical store
@@ -164,7 +169,7 @@ func TestRaftLogReplicationWithoutLeader(t *testing.T) {
 	nodes[1].Stop()
 
 	// Propose a value
-	_, err := raftutils.ProposeValue(t, nodes[2])
+	_, err := raftutils.ProposeValue(t, nodes[2], DefaultProposalTime)
 	assert.Error(t, err)
 
 	// No value should be replicated in the store in the absence of the leader
@@ -188,7 +193,7 @@ func TestRaftQuorumFailure(t *testing.T) {
 	}
 
 	// Propose a value
-	_, err := raftutils.ProposeValue(t, nodes[1])
+	_, err := raftutils.ProposeValue(t, nodes[1], ShortProposalTime)
 	assert.Error(t, err)
 
 	// The value should not be replicated, we have no majority
@@ -221,7 +226,7 @@ func TestRaftQuorumRecovery(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Propose a value
-	value, err := raftutils.ProposeValue(t, raftutils.Leader(nodes))
+	value, err := raftutils.ProposeValue(t, raftutils.Leader(nodes), DefaultProposalTime)
 	assert.NoError(t, err)
 
 	for _, node := range nodes {
@@ -255,7 +260,7 @@ func TestRaftFollowerLeave(t *testing.T) {
 	raftutils.WaitForPeerNumber(t, clockSource, nodes, 4)
 
 	// Propose a value
-	value, err := raftutils.ProposeValue(t, nodes[1])
+	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
 	assert.NoError(t, err, "failed to propose value")
 
 	// Value should be replicated on every node
@@ -325,7 +330,7 @@ func TestRaftLeaderLeave(t *testing.T) {
 	require.NotNil(t, followerNode)
 
 	// Propose a value
-	value, err := raftutils.ProposeValue(t, leaderNode)
+	value, err := raftutils.ProposeValue(t, leaderNode, DefaultProposalTime)
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
@@ -346,7 +351,7 @@ func TestRaftNewNodeGetsData(t *testing.T) {
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Propose a value
-	value, err := raftutils.ProposeValue(t, nodes[1])
+	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
 	assert.NoError(t, err, "failed to propose value")
 
 	// Add a new node
@@ -372,7 +377,7 @@ func TestRaftRejoin(t *testing.T) {
 	// Propose a value
 	values := make([]*api.Node, 2)
 	var err error
-	values[0], err = raftutils.ProposeValue(t, nodes[1], ids[0])
+	values[0], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, ids[0])
 	assert.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on node 3
@@ -384,7 +389,7 @@ func TestRaftRejoin(t *testing.T) {
 	nodes[3].Shutdown()
 
 	// Propose another value
-	values[1], err = raftutils.ProposeValue(t, nodes[1], ids[1])
+	values[1], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, ids[1])
 	assert.NoError(t, err, "failed to propose value")
 
 	// Nodes 1 and 2 should have the new value
@@ -405,7 +410,7 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 	// Propose a value
 	values := make([]*api.Node, 2)
 	var err error
-	values[0], err = raftutils.ProposeValue(t, nodes[1], "id1")
+	values[0], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, "id1")
 	assert.NoError(t, err, "failed to propose value")
 
 	// Stop all nodes
@@ -428,7 +433,7 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Propose another value
-	values[1], err = raftutils.ProposeValue(t, raftutils.Leader(nodes), "id2")
+	values[1], err = raftutils.ProposeValue(t, raftutils.Leader(nodes), DefaultProposalTime, "id2")
 	assert.NoError(t, err, "failed to propose value")
 
 	for _, node := range nodes {
@@ -482,7 +487,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 	// Propose a value
 	values := make([]*api.Node, 2)
 	var err error
-	values[0], err = raftutils.ProposeValue(t, nodes[1], "id1")
+	values[0], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, "id1")
 	assert.NoError(t, err, "failed to propose value")
 
 	// The memberlist should contain 3 members on each node
@@ -533,7 +538,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 	}
 
 	// Propose another value
-	values[1], err = raftutils.ProposeValue(t, raftutils.Leader(nodes), "id2")
+	values[1], err = raftutils.ProposeValue(t, raftutils.Leader(nodes), DefaultProposalTime, "id2")
 	assert.NoError(t, err, "failed to propose value")
 
 	for _, node := range nodes {
@@ -603,7 +608,7 @@ func TestRaftUnreachableNode(t *testing.T) {
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Propose a value
-	value, err := raftutils.ProposeValue(t, nodes[1])
+	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
 	assert.NoError(t, err, "failed to propose value")
 
 	// All nodes should have the value in the physical store
@@ -651,7 +656,7 @@ func TestStress(t *testing.T) {
 		for i := 1; i <= 5; i++ {
 			if nodes[uint64(i)] != nil {
 				id := strconv.Itoa(iters)
-				_, err := raftutils.ProposeValue(t, nodes[uint64(i)], id)
+				_, err := raftutils.ProposeValue(t, nodes[uint64(i)], ShortProposalTime, id)
 
 				if err == nil {
 					pIDs = append(pIDs, id)
@@ -714,7 +719,7 @@ func TestStress(t *testing.T) {
 	}
 	raftutils.WaitForCluster(t, clockSource, nodes)
 	id := strconv.Itoa(1000)
-	val, err := raftutils.ProposeValue(t, raftutils.Leader(nodes), id)
+	val, err := raftutils.ProposeValue(t, raftutils.Leader(nodes), DefaultProposalTime, id)
 	assert.NoError(t, err, "failed to propose value")
 	pIDs = append(pIDs, id)
 
