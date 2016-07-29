@@ -88,8 +88,9 @@ type Node struct {
 	connCond             *sync.Cond
 	nodeID               string
 	nodeMembership       api.NodeSpec_Membership
-	started              chan struct{}
+	startOnce            sync.Once
 	stopped              chan struct{}
+	stopOnce             sync.Once
 	ready                chan struct{} // closed when agent has completed registration and manager(if enabled) is ready to receive control requests
 	certificateRequested chan struct{} // closed when certificate issue request has been sent by node
 	closed               chan struct{}
@@ -120,7 +121,6 @@ func NewNode(c *NodeConfig) (*Node, error) {
 		remotes:              newPersistentRemotes(stateFile, p...),
 		role:                 ca.AgentRole,
 		config:               c,
-		started:              make(chan struct{}),
 		stopped:              make(chan struct{}),
 		closed:               make(chan struct{}),
 		ready:                make(chan struct{}),
@@ -137,26 +137,14 @@ func NewNode(c *NodeConfig) (*Node, error) {
 
 // Start starts a node instance.
 func (n *Node) Start(ctx context.Context) error {
-	select {
-	case <-n.started:
-		select {
-		case <-n.closed:
-			return n.err
-		case <-n.stopped:
-			return errAgentStopped
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			return errAgentStarted
-		}
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
+	err := errAgentStarted
 
-	close(n.started)
-	go n.run(ctx)
-	return nil
+	n.startOnce.Do(func() {
+		go n.run(ctx)
+		err = nil // clear error above, only once.
+	})
+
+	return err
 }
 
 func (n *Node) run(ctx context.Context) (err error) {
@@ -323,29 +311,15 @@ func (n *Node) run(ctx context.Context) (err error) {
 
 // Stop stops node execution
 func (n *Node) Stop(ctx context.Context) error {
+	n.stopOnce.Do(func() {
+		close(n.stopped)
+	})
+
 	select {
-	case <-n.started:
-		select {
-		case <-n.closed:
-			return n.err
-		case <-n.stopped:
-			select {
-			case <-n.closed:
-				return n.err
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			close(n.stopped)
-			// recurse and wait for closure
-			return n.Stop(ctx)
-		}
+	case <-n.closed:
+		return nil
 	case <-ctx.Done():
 		return ctx.Err()
-	default:
-		return errAgentNotStarted
 	}
 }
 
