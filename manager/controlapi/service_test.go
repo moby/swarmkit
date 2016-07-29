@@ -401,7 +401,7 @@ func TestUpdateService(t *testing.T) {
 func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 	ts := newTestServer(t)
 	spec := createSpec("name", "image", 1)
-	spec.Networks = []*api.ServiceSpec_NetworkAttachmentConfig{
+	spec.Task.Networks = []*api.TaskSpec_NetworkAttachmentConfig{
 		{
 			Target: "net20",
 		},
@@ -413,7 +413,7 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 	assert.NoError(t, err)
 	service := ur.Service
 
-	service.Spec.Networks[0].Target = "net30"
+	service.Spec.Task.Networks[0].Target = "net30"
 
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      service.ID,

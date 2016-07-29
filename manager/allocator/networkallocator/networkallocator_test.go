@@ -520,9 +520,11 @@ func TestServiceAllocate(t *testing.T) {
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
-			Networks: []*api.ServiceSpec_NetworkAttachmentConfig{
-				{
-					Target: "testID",
+			Task: api.TaskSpec{
+				Networks: []*api.TaskSpec_NetworkAttachmentConfig{
+					{
+						Target: "testID",
+					},
 				},
 			},
 			Endpoint: &api.EndpointSpec{

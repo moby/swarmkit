@@ -79,9 +79,9 @@ func printServiceSummary(service *api.Service, running int) {
 			printResources(w, res.Limits)
 		}
 	}
-	if len(service.Spec.Networks) > 0 {
+	if len(service.Spec.Task.Networks) > 0 {
 		fmt.Fprintf(w, "  Networks:\t")
-		for _, n := range service.Spec.Networks {
+		for _, n := range service.Spec.Task.Networks {
 			fmt.Fprintf(w, " %s", n.Target)
 		}
 	}
