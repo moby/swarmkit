@@ -106,7 +106,7 @@ func TestRemotesExclude(t *testing.T) {
 // value.
 func TestRemotesConvergence(t *testing.T) {
 	remotes := NewRemotes()
-	remotes.Observe(api.Peer{Addr: "one"}, 1)
+	remotes.Observe(api.Peer{Addr: "one"}, DefaultObservationWeight)
 
 	// zero weighted against 1
 	if float64(remotes.Weights()[api.Peer{Addr: "one"}]) < remoteWeightSmoothingFactor {
@@ -115,7 +115,7 @@ func TestRemotesConvergence(t *testing.T) {
 
 	// crank it up
 	for i := 0; i < 10; i++ {
-		remotes.Observe(api.Peer{Addr: "one"}, 1)
+		remotes.Observe(api.Peer{Addr: "one"}, DefaultObservationWeight)
 	}
 
 	if float64(remotes.Weights()[api.Peer{Addr: "one"}]) < remoteWeightSmoothingFactor {
@@ -127,7 +127,7 @@ func TestRemotesConvergence(t *testing.T) {
 	}
 
 	// provided a poor review
-	remotes.Observe(api.Peer{Addr: "one"}, -1)
+	remotes.Observe(api.Peer{Addr: "one"}, -DefaultObservationWeight)
 
 	if remotes.Weights()[api.Peer{Addr: "one"}] > 0 {
 		t.Fatalf("should be below zero: %v", remotes.Weights()[api.Peer{Addr: "one"}])
@@ -149,7 +149,7 @@ func TestRemotesZeroWeights(t *testing.T) {
 	}
 
 	seen := map[api.Peer]struct{}{}
-	for i := 0; i < 25; i++ {
+	for i := 0; i < 1000; i++ {
 		peer, err := remotes.Select()
 		if err != nil {
 			t.Fatalf("unexpected error from Select: %v", err)
@@ -165,7 +165,7 @@ func TestRemotesZeroWeights(t *testing.T) {
 	}
 
 	// Pump up number 3!
-	remotes.Observe(api.Peer{Addr: "three"}, 10)
+	remotes.Observe(api.Peer{Addr: "three"}, DefaultObservationWeight)
 
 	count := map[api.Peer]int{}
 	for i := 0; i < 100; i++ {
@@ -178,7 +178,7 @@ func TestRemotesZeroWeights(t *testing.T) {
 		count[peer]++
 
 		// keep observing three
-		remotes.Observe(api.Peer{Addr: "three"}, 10)
+		remotes.Observe(api.Peer{Addr: "three"}, DefaultObservationWeight)
 	}
 
 	// here, we ensure that three is at least three times more likely to be
@@ -238,10 +238,10 @@ func TestRemotesDownweight(t *testing.T) {
 	}
 
 	for _, p := range peers {
-		remotes.Observe(p, 1)
+		remotes.Observe(p, DefaultObservationWeight)
 	}
 
-	remotes.Observe(peers[0], -1)
+	remotes.Observe(peers[0], -DefaultObservationWeight)
 
 	samples := 100000
 	choosen := 0
@@ -259,6 +259,67 @@ func TestRemotesDownweight(t *testing.T) {
 	t.Logf("ratio: %f", ratio)
 	if ratio > 0.001 {
 		t.Fatalf("downweighted peer is choosen too often, ratio: %f", ratio)
+	}
+}
+
+// TestRemotesPractical ensures that under a single poor observation, such as
+// an error, the likelihood of selecting the node dramatically decreases.
+func TestRemotesPractical(t *testing.T) {
+	peers := []api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
+	remotes := NewRemotes(peers...)
+	seen := map[api.Peer]int{}
+	selections := 1000
+	tolerance := 0.20 // allow 20% delta to reduce test failure probability
+
+	// set a baseline, where selections should be even
+	for i := 0; i < selections; i++ {
+		peer, err := remotes.Select()
+		if err != nil {
+			t.Fatalf("error selecting peer: %v", err)
+		}
+
+		remotes.Observe(peer, DefaultObservationWeight)
+		seen[peer]++
+	}
+
+	expected, delta := selections/len(peers), int(tolerance*float64(selections))
+	low, high := expected-delta, expected+delta
+	for peer, count := range seen {
+		if !(count >= low && count <= high) {
+			t.Fatalf("weighted selection not balanced: %v selected %v/%v, expected range %v, %v", peer, count, selections, low, high)
+		}
+	}
+
+	// one bad observation should mark the node as bad
+	remotes.Observe(peers[0], -DefaultObservationWeight)
+
+	seen = map[api.Peer]int{} // resut
+	for i := 0; i < selections; i++ {
+		peer, err := remotes.Select()
+		if err != nil {
+			t.Fatalf("error selecting peer: %v", err)
+		}
+
+		seen[peer]++
+	}
+
+	tolerance = 0.10 // switch to 10% tolerance for two peers
+	// same check as above, with only 2 peers, the bad peer should be unseen
+	expected, delta = selections/(len(peers)-1), int(tolerance*float64(selections))
+	low, high = expected-delta, expected+delta
+	for peer, count := range seen {
+		if peer == peers[0] {
+			// we have an *extremely* low probability of selecting this node
+			// (like 0.005%) once. Selecting this more than a few times will
+			// fail the test.
+			if count > 3 {
+				t.Fatalf("downweighted peer should not be selected, selected %v times", count)
+			}
+		}
+
+		if !(count >= low && count <= high) {
+			t.Fatalf("weighted selection not balanced: %v selected %v/%v, expected range %v, %v", peer, count, selections, low, high)
+		}
 	}
 }
 
@@ -320,6 +381,6 @@ func benchmarkRemotesObserve(b *testing.B, peers ...api.Peer) {
 	remotes := NewRemotes(peers...)
 
 	for i := 0; i < b.N; i++ {
-		remotes.Observe(peers[i%len(peers)], 1.0)
+		remotes.Observe(peers[i%len(peers)], DefaultObservationWeight)
 	}
 }
