@@ -451,6 +451,17 @@ func (n *Node) Shutdown() {
 	}
 }
 
+// isShutdown indicates if node was shut down.
+// This method should be called under n.stopMu to avoid races with n.stop().
+func (n *Node) isShutdown() bool {
+	select {
+	case <-n.Ctx.Done():
+		return true
+	default:
+		return false
+	}
+}
+
 func (n *Node) stop() {
 	n.stopMu.Lock()
 	defer n.stopMu.Unlock()
@@ -763,7 +774,10 @@ func (n *Node) ResolveAddress(ctx context.Context, msg *api.ResolveAddressReques
 func (n *Node) LeaderAddr() (string, error) {
 	n.stopMu.RLock()
 	defer n.stopMu.RUnlock()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	if n.isShutdown() {
+		return "", fmt.Errorf("raft node is shut down")
+	}
+	ctx, cancel := context.WithTimeout(n.Ctx, 10*time.Second)
 	defer cancel()
 	if err := WaitForLeader(ctx, n); err != nil {
 		return "", ErrNoClusterLeader
