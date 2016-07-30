@@ -377,6 +377,7 @@ func (n *Node) runAgent(ctx context.Context, db *bolt.DB, creds credentials.Tran
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	agent, err := New(&Config{
 		Hostname:         n.config.Hostname,
