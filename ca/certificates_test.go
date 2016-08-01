@@ -534,12 +534,12 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 	parsedCerts, err := helpers.ParseCertificatesPEM(cert)
 	assert.NoError(t, err)
 	assert.Len(t, parsedCerts, 2)
-	assert.True(t, time.Now().Add(time.Minute*50).Before(parsedCerts[0].NotAfter))
-	assert.True(t, time.Now().Add(time.Hour).After(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Minute*59).Before(parsedCerts[0].NotAfter))
+	assert.True(t, time.Now().Add(time.Hour).Add(time.Minute).After(parsedCerts[0].NotAfter))
 
-	// Sign the same CSR again, this time with a 29 Minute expiration RootCA (under the 30 minute minimum).
+	// Sign the same CSR again, this time with a 59 Minute expiration RootCA (under the 60 minute minimum).
 	// This should use the default of 3 months
-	newRootCA, err = ca.NewRootCA(rootCA.Cert, rootCA.Key, 29*time.Minute)
+	newRootCA, err = ca.NewRootCA(rootCA.Cert, rootCA.Key, 59*time.Minute)
 	assert.NoError(t, err)
 
 	cert, err = newRootCA.ParseValidateAndSignCSR(csr, "CN", ca.ManagerRole, "ORG")
