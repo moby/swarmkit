@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	initialSessionFailureBackoff = time.Second
+	initialSessionFailureBackoff = 100 * time.Millisecond
 	maxSessionFailureBackoff     = 8 * time.Second
 )
 
