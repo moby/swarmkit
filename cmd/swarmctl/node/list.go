@@ -47,11 +47,11 @@ var (
 				common.PrintHeader(w, "ID", "Name", "Membership", "Status", "Availability", "Manager Status")
 				output = func(n *api.Node) {
 					spec := &n.Spec
-					name := spec.Annotations.Name
+					name := ""
 					availability := spec.Availability.String()
 					membership := spec.Membership.String()
 
-					if name == "" && n.Description != nil {
+					if n.Description != nil {
 						name = n.Description.Hostname
 					}
 					reachability := ""
