@@ -579,6 +579,7 @@ func (n *Node) waitRole(ctx context.Context, role string) {
 }
 
 func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig, ready chan struct{}) error {
+	initialRole := n.role
 	for {
 		n.waitRole(ctx, ca.ManagerRole)
 		if ctx.Err() != nil {
@@ -600,7 +601,26 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			ElectionTick:   n.config.ElectionTick,
 		})
 		if err != nil {
-			return err
+			logrus.Errorf("failed to starting manager: %v", err)
+			// Something went wrong, but it might be fixed later on
+			// by user based on the error log. So rather than quit,
+			// we keep waiting for my role to be changed back if
+			// promotion failed. In the meantime, the agent part still
+			// work. The only exception is that the node is being started as
+			// manager role and caller is waiting for manager part ready.
+
+			// TODO(jinuxstyle): change role back to agent if promotion
+			// failed in a self-healing way.
+
+			if initialRole == ca.ManagerRole && ready != nil {
+				return err
+			}
+
+			n.waitRole(ctx, ca.AgentRole)
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			continue
 		}
 		done := make(chan struct{})
 		go func() {
