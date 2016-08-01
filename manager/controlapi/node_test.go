@@ -18,12 +18,15 @@ import (
 	"google.golang.org/grpc/grpclog"
 )
 
-func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, membership api.NodeSpec_Membership) *api.Node {
+func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, membership api.NodeSpec_Membership, state api.NodeStatus_State) *api.Node {
 	node := &api.Node{
 		ID: id,
 		Spec: api.NodeSpec{
 			Role:       role,
 			Membership: membership,
+		},
+		Status: api.NodeStatus{
+			State: state,
 		},
 	}
 	err := ts.Store.Update(func(tx store.Tx) error {
@@ -44,7 +47,7 @@ func TestGetNode(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpc.Code(err))
 
-	node := createNode(t, ts, "id", api.NodeRoleManager, api.NodeMembershipAccepted)
+	node := createNode(t, ts, "id", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: node.ID})
 	assert.NoError(t, err)
 	assert.Equal(t, node.ID, r.Node.ID)
@@ -56,13 +59,13 @@ func TestListNodes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, r.Nodes)
 
-	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted)
+	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Nodes))
 
-	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted)
-	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipPending)
+	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipPending, api.NodeStatus_READY)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Nodes))
@@ -129,6 +132,81 @@ func TestListNodes(t *testing.T) {
 			Filters: &api.ListNodesRequest_Filters{
 				Roles:       []api.NodeRole{api.NodeRoleWorker},
 				Memberships: []api.NodeSpec_Membership{api.NodeMembershipPending},
+			},
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(r.Nodes))
+}
+
+func TestRemoveNodes(t *testing.T) {
+	ts := newTestServer(t)
+	r, err := ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
+	assert.NoError(t, err)
+	assert.Empty(t, r.Nodes)
+
+	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(r.Nodes))
+
+	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipPending, api.NodeStatus_UNKNOWN)
+	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(r.Nodes))
+
+	// Attempt to remove a ready node without force
+	_, err = ts.Client.RemoveNode(context.Background(),
+		&api.RemoveNodeRequest{
+			NodeID: "id2",
+			Force:  false,
+		},
+	)
+	assert.Error(t, err)
+
+	r, err = ts.Client.ListNodes(context.Background(),
+		&api.ListNodesRequest{
+			Filters: &api.ListNodesRequest_Filters{
+				Roles: []api.NodeRole{api.NodeRoleManager, api.NodeRoleWorker},
+			},
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(r.Nodes))
+
+	// Attempt to remove a ready node with force
+	_, err = ts.Client.RemoveNode(context.Background(),
+		&api.RemoveNodeRequest{
+			NodeID: "id2",
+			Force:  true,
+		},
+	)
+	assert.NoError(t, err)
+
+	r, err = ts.Client.ListNodes(context.Background(),
+		&api.ListNodesRequest{
+			Filters: &api.ListNodesRequest_Filters{
+				Roles: []api.NodeRole{api.NodeRoleManager, api.NodeRoleWorker},
+			},
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(r.Nodes))
+
+	// Attempt to remove a non-ready node without force
+	_, err = ts.Client.RemoveNode(context.Background(),
+		&api.RemoveNodeRequest{
+			NodeID: "id3",
+			Force:  false,
+		},
+	)
+	assert.NoError(t, err)
+
+	r, err = ts.Client.ListNodes(context.Background(),
+		&api.ListNodesRequest{
+			Filters: &api.ListNodesRequest_Filters{
+				Roles: []api.NodeRole{api.NodeRoleManager, api.NodeRoleWorker},
 			},
 		},
 	)
