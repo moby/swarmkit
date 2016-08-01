@@ -575,14 +575,18 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 		}
 
 		// bursty events should be processed in batches and sent out snapshot
-		const modificationBatchLimit = 200
-		const eventPausedGap = 50 * time.Millisecond
-		var modificationCnt int
-		// eventPaused is true when there have been modifications
-		// but next event has not arrived within eventPausedGap
-		eventPaused := false
+		const (
+			modificationBatchLimit = 200
+			eventPausedGap         = 50 * time.Millisecond
+		)
+		var (
+			modificationCnt    int
+			eventPausedTimer   *time.Timer
+			eventPausedTimeout <-chan time.Time
+		)
 
-		for modificationCnt < modificationBatchLimit && !eventPaused {
+	batchingLoop:
+		for modificationCnt < modificationBatchLimit {
 			select {
 			case event := <-nodeTasks:
 				switch v := event.(type) {
@@ -603,15 +607,23 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 					delete(tasksMap, v.Task.ID)
 					modificationCnt++
 				}
-			case <-time.After(eventPausedGap):
-				if modificationCnt > 0 {
-					eventPaused = true
+				if eventPausedTimer != nil {
+					eventPausedTimer.Reset(eventPausedGap)
+				} else {
+					eventPausedTimer = time.NewTimer(eventPausedGap)
+					eventPausedTimeout = eventPausedTimer.C
 				}
+			case <-eventPausedTimeout:
+				break batchingLoop
 			case <-stream.Context().Done():
 				return stream.Context().Err()
 			case <-d.ctx.Done():
 				return d.ctx.Err()
 			}
+		}
+
+		if eventPausedTimer != nil {
+			eventPausedTimer.Stop()
 		}
 	}
 }
