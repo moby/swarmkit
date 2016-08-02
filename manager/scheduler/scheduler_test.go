@@ -595,6 +595,82 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	assert.Equal(t, "id1", assignment.NodeID)
 }
 
+func TestSchedulerPreexistingDeadTask(t *testing.T) {
+	ctx := context.Background()
+	// Create a ready node without enough memory to run two tasks at once.
+	node := &api.Node{
+		ID: "id1",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+		Description: &api.NodeDescription{
+			Resources: &api.Resources{
+				NanoCPUs:    1e9,
+				MemoryBytes: 1e9,
+			},
+		},
+	}
+
+	deadTask := &api.Task{
+		ID:     "id1",
+		NodeID: "id1",
+		Spec: api.TaskSpec{
+			Resources: &api.ResourceRequirements{
+				Reservations: &api.Resources{
+					MemoryBytes: 8e8,
+				},
+			},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "big",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStateShutdown,
+		},
+	}
+
+	bigTask2 := deadTask.Copy()
+	bigTask2.ID = "id2"
+	bigTask2.Status.State = api.TaskStateAllocated
+
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+
+	err := s.Update(func(tx store.Tx) error {
+		// Add initial node and task
+		assert.NoError(t, store.CreateNode(tx, node))
+		assert.NoError(t, store.CreateTask(tx, deadTask))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(s)
+
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+	defer scheduler.Stop()
+
+	err = s.Update(func(tx store.Tx) error {
+		// Add a second task. It should get assigned because the task
+		// using the resources is past the running state.
+		return store.CreateTask(tx, bigTask2)
+	})
+	assert.NoError(t, err)
+
+	assignment := watchAssignment(t, watch)
+	assert.Equal(t, "id2", assignment.ID)
+	assert.Equal(t, "id1", assignment.NodeID)
+}
+
 func TestPreassignedTasks(t *testing.T) {
 	ctx := context.Background()
 	initialNodeSet := []*api.Node{
