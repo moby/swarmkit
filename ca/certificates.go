@@ -59,7 +59,7 @@ const (
 	DefaultNodeCertExpiration = 2160 * time.Hour
 	// CertBackdate represents the amount of time each certificate is backdated to try to avoid
 	// clock drift issues.
-	CertBackdate = -1 * time.Hour
+	CertBackdate = 1 * time.Hour
 	// CertLowerRotationRange represents the minimum fraction of time that we will wait when randomly
 	// choosing our next certificate rotation
 	CertLowerRotationRange = 0.5
