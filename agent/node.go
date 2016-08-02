@@ -626,6 +626,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			StateDir:       n.config.StateDir,
 			HeartbeatTick:  n.config.HeartbeatTick,
 			ElectionTick:   n.config.ElectionTick,
+			AllowUserTasks: true, // true for now
 		})
 		if err != nil {
 			return err
@@ -674,6 +675,11 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			return err
 		}
 	}
+}
+
+// NetworkAttachmentManager returns the network attachment management point.
+func (n *Node) NetworkAttachmentManager() NetworkAttachmentManager {
+	return n.agent.attMgr
 }
 
 type persistentRemotes struct {
