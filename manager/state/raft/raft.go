@@ -348,9 +348,11 @@ func (n *Node) Run(ctx context.Context) error {
 				n.Config.Logger.Error(err)
 			}
 
-			// Send raft messages to peers
-			if err := n.send(rd.Messages); err != nil {
-				n.Config.Logger.Error(err)
+			if len(rd.Messages) != 0 {
+				// Send raft messages to peers
+				if err := n.send(rd.Messages); err != nil {
+					n.Config.Logger.Error(err)
+				}
 			}
 
 			// Apply snapshot to memory store. The snapshot
