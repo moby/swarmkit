@@ -18,6 +18,13 @@ var (
 				return errors.New("missing node ID")
 			}
 
+			flags := cmd.Flags()
+
+			force, err := flags.GetBool("force")
+			if err != nil {
+				return err
+			}
+
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
@@ -29,9 +36,14 @@ var (
 
 			_, err = c.RemoveNode(common.Context(cmd), &api.RemoveNodeRequest{
 				NodeID: node.ID,
+				Force:  force,
 			})
 
 			return err
 		},
 	}
 )
+
+func init() {
+	removeCmd.Flags().BoolP("force", "f", false, "Force the removal of a node")
+}
