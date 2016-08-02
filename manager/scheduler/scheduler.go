@@ -61,8 +61,8 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 	tasksByNode := make(map[string]map[string]*api.Task)
 	for _, t := range tasks {
 		// Ignore all tasks that have not reached ALLOCATED
-		// state.
-		if t.Status.State < api.TaskStateAllocated {
+		// state and tasks that no longer consume resources.
+		if t.Status.State < api.TaskStateAllocated || t.Status.State > api.TaskStateRunning {
 			continue
 		}
 
