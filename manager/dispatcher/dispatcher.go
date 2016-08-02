@@ -595,7 +595,10 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 					modificationCnt++
 				case state.EventUpdateTask:
 					if oldTask, exists := tasksMap[v.Task.ID]; exists {
-						if equality.TasksEqualStable(oldTask, v.Task) {
+						// States ASSIGNED and below are set by the orchestrator/scheduler,
+						// not the agent, so tasks in these states need to be sent to the
+						// agent even if nothing else has changed.
+						if equality.TasksEqualStable(oldTask, v.Task) && v.Task.Status.State > api.TaskStateAssigned {
 							// this update should not trigger action at agent
 							tasksMap[v.Task.ID] = v.Task
 							continue
