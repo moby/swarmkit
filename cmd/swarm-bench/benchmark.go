@@ -35,12 +35,12 @@ func NewBenchmark(cfg *Config) *Benchmark {
 }
 
 // Run starts the benchmark session and waits for it to be completed.
-func (b *Benchmark) Run() error {
+func (b *Benchmark) Run(ctx context.Context) error {
 	fmt.Printf("Listening for incoming connections at %s:%d\n", b.cfg.IP, b.cfg.Port)
 	if err := b.collector.Listen(b.cfg.Port); err != nil {
 		return err
 	}
-	j, err := b.launch()
+	j, err := b.launch(ctx)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (b *Benchmark) Run() error {
 	}()
 
 	fmt.Println("Collecting metrics...")
-	b.collector.Collect(b.cfg.Count)
+	b.collector.Collect(ctx, b.cfg.Count)
 	doneCh <- struct{}{}
 
 	fmt.Printf("\n%s: Benchmark completed\n", time.Now())
@@ -91,13 +91,13 @@ func (b *Benchmark) spec() *api.ServiceSpec {
 	}
 }
 
-func (b *Benchmark) launch() (*api.Service, error) {
+func (b *Benchmark) launch(ctx context.Context) (*api.Service, error) {
 	conn, err := grpc.Dial(b.cfg.Manager, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
 	client := api.NewControlClient(conn)
-	r, err := client.CreateService(context.Background(), &api.CreateServiceRequest{
+	r, err := client.CreateService(ctx, &api.CreateServiceRequest{
 		Spec: b.spec(),
 	})
 	if err != nil {
