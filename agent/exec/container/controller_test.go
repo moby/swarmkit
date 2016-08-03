@@ -25,7 +25,7 @@ import (
 // TODO(stevvooe): Generation of mocks against circle ci is broken. If you need
 // to regenerate the mock, remove the "+" below and run `go generate`. Sorry.
 // UPDATE(stevvooe): Gomock is still broken garbage. Sigh. This time, had to
-// generate, then manually "unvendor" imports. Futher cements the
+// generate, then manually "unvendor" imports. Further cements the
 // realization that mocks are a garbage way to build tests.
 //+go:generate mockgen -package container -destination api_client_test.mock.go github.com/docker/engine-api/client APIClient
 

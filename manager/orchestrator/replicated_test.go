@@ -388,6 +388,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 		assert.NoError(t, store.UpdateService(tx, s1))
 		return nil
 	})
+	assert.NoError(t, err)
 
 	// Tasks should be shut down in a way that balances the remaining tasks.
 	// node2 and node3 should be preferred over node1 because node1's task
