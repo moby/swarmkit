@@ -68,7 +68,7 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 			}
 			return err
 		}
-		// TOOD(stevvooe): Report this status somewhere.
+		// TODO(stevvooe): Report this status somewhere.
 		logrus.Debugln("pull progress", m)
 	}
 	// if the final stream object contained an error, return it
