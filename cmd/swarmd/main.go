@@ -55,6 +55,7 @@ var (
 			}
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := context.Background()
 			hostname, err := cmd.Flags().GetString("hostname")
 			if err != nil {
 				return err
