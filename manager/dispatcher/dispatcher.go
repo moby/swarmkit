@@ -234,10 +234,10 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 		case <-publishTicker.C:
 			publishManagers()
 		case <-d.processUpdatesTrigger:
-			d.processTaskAndNodeUpdates()
+			d.processUpdates()
 			batchTimer.Reset(maxBatchInterval)
 		case <-batchTimer.C:
-			d.processTaskAndNodeUpdates()
+			d.processUpdates()
 			batchTimer.Reset(maxBatchInterval)
 		case v := <-configWatcher:
 			cluster := v.(state.EventUpdateCluster)
@@ -492,7 +492,7 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 	return nil, nil
 }
 
-func (d *Dispatcher) processTaskAndNodeUpdates() {
+func (d *Dispatcher) processUpdates() {
 	var (
 		taskUpdates map[string]*api.TaskStatus
 		nodeUpdates map[string]nodeUpdate
@@ -516,7 +516,7 @@ func (d *Dispatcher) processTaskAndNodeUpdates() {
 	}
 
 	log := log.G(d.ctx).WithFields(logrus.Fields{
-		"method": "(*Dispatcher).processTaskAndNodeUpdates",
+		"method": "(*Dispatcher).processUpdates",
 	})
 
 	_, err := d.store.Batch(func(batch *store.Batch) error {
