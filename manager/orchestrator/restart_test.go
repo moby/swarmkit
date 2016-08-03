@@ -489,7 +489,6 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	// Fail the second task. Confirm that it gets restarted.
 	updatedTask2 := observedTask2.Copy()
 	updatedTask2.Status = api.TaskStatus{State: api.TaskStateFailed}
-	before = time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil

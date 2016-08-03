@@ -109,7 +109,7 @@ func TestLoadOrCreateSecurityConfigInvalidCACert(t *testing.T) {
 	defer tc.Stop()
 
 	// First load the current nodeConfig. We'll verify that after we corrupt
-	// the certificate, another subsquent call with get us new certs
+	// the certificate, another subsequent call with get us new certs
 	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Picker, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
