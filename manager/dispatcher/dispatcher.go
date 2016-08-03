@@ -114,6 +114,10 @@ type Dispatcher struct {
 	nodeUpdatesLock sync.Mutex
 
 	processUpdatesTrigger chan struct{}
+
+	// for waiting for the next task/node batch update
+	processUpdatesLock sync.Mutex
+	processUpdatesCond *sync.Cond
 }
 
 // weightedPeerByNodeID is a sort wrapper for []*api.WeightedPeer
@@ -128,7 +132,7 @@ func (b weightedPeerByNodeID) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
 // New returns Dispatcher with cluster interface(usually raft.Node).
 // NOTE: each handler which does something with raft must add to Dispatcher.wg
 func New(cluster Cluster, c *Config) *Dispatcher {
-	return &Dispatcher{
+	d := &Dispatcher{
 		nodes:                 newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier, c.RateLimitPeriod),
 		store:                 cluster.MemoryStore(),
 		cluster:               cluster,
@@ -139,6 +143,10 @@ func New(cluster Cluster, c *Config) *Dispatcher {
 		processUpdatesTrigger: make(chan struct{}, 1),
 		config:                c,
 	}
+
+	d.processUpdatesCond = sync.NewCond(&d.processUpdatesLock)
+
+	return d
 }
 
 func getWeightedPeers(cluster Cluster) []*api.WeightedPeer {
@@ -262,6 +270,14 @@ func (d *Dispatcher) Stop() error {
 	d.cancel()
 	d.mu.Unlock()
 	d.nodes.Clean()
+
+	d.processUpdatesLock.Lock()
+	// In case there are any waiters. There is no chance of any starting
+	// after this point, because they check if the context is canceled
+	// before waiting.
+	d.processUpdatesCond.Broadcast()
+	d.processUpdatesLock.Unlock()
+
 	return nil
 }
 
@@ -366,8 +382,23 @@ func (d *Dispatcher) register(ctx context.Context, nodeID string, description *a
 	d.nodeUpdatesLock.Unlock()
 
 	if numUpdates >= maxBatchItems {
-		d.processUpdatesTrigger <- struct{}{}
+		select {
+		case d.processUpdatesTrigger <- struct{}{}:
+		case <-d.ctx.Done():
+			return "", d.ctx.Err()
+		}
+
 	}
+
+	// Wait until the node update batch happens before unblocking register.
+	d.processUpdatesLock.Lock()
+	select {
+	case <-d.ctx.Done():
+		return "", d.ctx.Err()
+	default:
+	}
+	d.processUpdatesCond.Wait()
+	d.processUpdatesLock.Unlock()
 
 	expireFunc := func() {
 		nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "heartbeat failure"}
@@ -453,7 +484,10 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 	d.taskUpdatesLock.Unlock()
 
 	if numUpdates >= maxBatchItems {
-		d.processUpdatesTrigger <- struct{}{}
+		select {
+		case d.processUpdatesTrigger <- struct{}{}:
+		case <-d.ctx.Done():
+		}
 	}
 	return nil, nil
 }
@@ -553,6 +587,8 @@ func (d *Dispatcher) processTaskAndNodeUpdates() {
 	if err != nil {
 		log.WithError(err).Error("dispatcher batch failed")
 	}
+
+	d.processUpdatesCond.Broadcast()
 }
 
 // Tasks is a stream of tasks state for node. Each message contains full list
@@ -690,7 +726,10 @@ func (d *Dispatcher) nodeRemove(id string, status api.NodeStatus) error {
 	d.nodeUpdatesLock.Unlock()
 
 	if numUpdates >= maxBatchItems {
-		d.processUpdatesTrigger <- struct{}{}
+		select {
+		case d.processUpdatesTrigger <- struct{}{}:
+		case <-d.ctx.Done():
+		}
 	}
 
 	if rn := d.nodes.Delete(id); rn == nil {
