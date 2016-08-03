@@ -157,10 +157,9 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 		d.mu.Unlock()
 		return fmt.Errorf("dispatcher is already running")
 	}
-	logger := log.G(ctx).WithField("module", "dispatcher")
-	ctx = log.WithLogger(ctx, logger)
+	ctx = log.WithModule(ctx, "dispatcher")
 	if err := d.markNodesUnknown(ctx); err != nil {
-		logger.Errorf(`failed to move all nodes to "unknown" state: %v`, err)
+		log.G(ctx).Errorf(`failed to move all nodes to "unknown" state: %v`, err)
 	}
 	configWatcher, cancel, err := store.ViewAndWatch(
 		d.store,
