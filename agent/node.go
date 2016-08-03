@@ -166,7 +166,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 	}()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	ctx = log.WithLogger(ctx, log.G(ctx).WithField("module", "node"))
+	ctx = log.WithModule(ctx, "node")
 
 	go func() {
 		select {
