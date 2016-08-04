@@ -743,10 +743,22 @@ func (n *Node) RemoveMember(ctx context.Context, id uint64) error {
 // raft state machine with the provided message on the
 // receiving node
 func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessageRequest) (*api.ProcessRaftMessageResponse, error) {
+	if msg == nil || msg.Message == nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, "no message provided")
+	}
+
 	// Don't process the message if this comes from
 	// a node in the remove set
 	if n.cluster.IsIDRemoved(msg.Message.From) {
 		return nil, ErrMemberRemoved
+	}
+
+	if msg.Message.Type == raftpb.MsgProp {
+		// We don't accepted forwarded proposals. Our
+		// current architecture depends on only the leader
+		// making proposals, so in-flight proposals can be
+		// guaranteed not to conflict.
+		return nil, grpc.Errorf(codes.InvalidArgument, "proposals not accepted")
 	}
 
 	// can't stop the raft node while an async RPC is in progress
@@ -1003,6 +1015,14 @@ func (n *Node) send(messages []raftpb.Message) error {
 			if err := n.Step(n.Ctx, m); err != nil {
 				return err
 			}
+			continue
+		}
+
+		if m.Type == raftpb.MsgProp {
+			// We don't forward proposals to the leader. Our
+			// current architecture depends on only the leader
+			// making proposals, so in-flight proposals can be
+			// guaranteed not to conflict.
 			continue
 		}
 
