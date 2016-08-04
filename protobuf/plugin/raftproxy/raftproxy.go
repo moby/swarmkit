@@ -7,6 +7,18 @@ import (
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
 )
 
+const connErrorHandle = `
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+`
+
 type raftProxyGen struct {
 	gen *generator.Generator
 }
@@ -107,6 +119,7 @@ func (g *raftProxyGen) genClientStreamingMethod(s *descriptor.ServiceDescriptorP
 	if err != nil {
 		return err
 	}`)
+	g.gen.P(connErrorHandle)
 	g.gen.P("clientStream, err := New" + s.GetName() + "Client(conn)." + m.GetName() + "(ctx)")
 	g.gen.P(`
 	if err != nil {
@@ -149,6 +162,7 @@ func (g *raftProxyGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorP
 	if err != nil {
 		return err
 	}`)
+	g.gen.P(connErrorHandle)
 	g.gen.P("clientStream, err := New" + s.GetName() + "Client(conn)." + m.GetName() + "(ctx, r)")
 	g.gen.P(`
 	if err != nil {
@@ -185,6 +199,7 @@ func (g *raftProxyGen) genClientServerStreamingMethod(s *descriptor.ServiceDescr
 	if err != nil {
 		return err
 	}`)
+	g.gen.P(connErrorHandle)
 	g.gen.P("clientStream, err := New" + s.GetName() + "Client(conn)." + m.GetName() + "(ctx)")
 	g.gen.P(`
 	if err != nil {
@@ -238,6 +253,7 @@ func (g *raftProxyGen) genSimpleMethod(s *descriptor.ServiceDescriptorProto, m *
 	if err != nil {
 		return nil, err
 	}`)
+	g.gen.P(connErrorHandle)
 	g.gen.P("return New" + s.GetName() + "Client(conn)." + m.GetName() + "(ctx, r)")
 	g.gen.P("}")
 }
