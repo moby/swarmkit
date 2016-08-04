@@ -94,6 +94,9 @@ func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[ui
 					if cur.Lead != prev.Lead || cur.Term != prev.Term || cur.Applied != prev.Applied {
 						return errors.New("state does not match on all nodes")
 					}
+					if !n2.ReadyForProposals() {
+						return errors.New("leader not ready")
+					}
 					continue nodeLoop
 				}
 			}
@@ -254,7 +257,13 @@ func NewInitNode(t *testing.T, tc *cautils.TestCA, raftConfig *api.RaftConfig, o
 	err := n.Node.JoinAndStart()
 	require.NoError(t, err, "can't join cluster")
 
+	leadershipCh, cancel := n.SubscribeLeadership()
+	defer cancel()
+
 	go n.Run(ctx)
+
+	// Wait for the node to become the leader.
+	<-leadershipCh
 
 	if raftConfig != nil {
 		assert.NoError(t, n.MemoryStore().Update(func(tx store.Tx) error {
