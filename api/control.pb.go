@@ -4295,6 +4295,17 @@ func (p *raftProxyControlServer) GetNode(ctx context.Context, r *GetNodeRequest)
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).GetNode(ctx, r)
 }
 
@@ -4311,6 +4322,17 @@ func (p *raftProxyControlServer) ListNodes(ctx context.Context, r *ListNodesRequ
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).ListNodes(ctx, r)
 }
 
@@ -4327,6 +4349,17 @@ func (p *raftProxyControlServer) UpdateNode(ctx context.Context, r *UpdateNodeRe
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).UpdateNode(ctx, r)
 }
 
@@ -4343,6 +4376,17 @@ func (p *raftProxyControlServer) RemoveNode(ctx context.Context, r *RemoveNodeRe
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).RemoveNode(ctx, r)
 }
 
@@ -4359,6 +4403,17 @@ func (p *raftProxyControlServer) GetTask(ctx context.Context, r *GetTaskRequest)
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).GetTask(ctx, r)
 }
 
@@ -4375,6 +4430,17 @@ func (p *raftProxyControlServer) ListTasks(ctx context.Context, r *ListTasksRequ
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).ListTasks(ctx, r)
 }
 
@@ -4391,6 +4457,17 @@ func (p *raftProxyControlServer) RemoveTask(ctx context.Context, r *RemoveTaskRe
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).RemoveTask(ctx, r)
 }
 
@@ -4407,6 +4484,17 @@ func (p *raftProxyControlServer) GetService(ctx context.Context, r *GetServiceRe
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).GetService(ctx, r)
 }
 
@@ -4423,6 +4511,17 @@ func (p *raftProxyControlServer) ListServices(ctx context.Context, r *ListServic
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).ListServices(ctx, r)
 }
 
@@ -4439,6 +4538,17 @@ func (p *raftProxyControlServer) CreateService(ctx context.Context, r *CreateSer
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).CreateService(ctx, r)
 }
 
@@ -4455,6 +4565,17 @@ func (p *raftProxyControlServer) UpdateService(ctx context.Context, r *UpdateSer
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).UpdateService(ctx, r)
 }
 
@@ -4471,6 +4592,17 @@ func (p *raftProxyControlServer) RemoveService(ctx context.Context, r *RemoveSer
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).RemoveService(ctx, r)
 }
 
@@ -4487,6 +4619,17 @@ func (p *raftProxyControlServer) GetNetwork(ctx context.Context, r *GetNetworkRe
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).GetNetwork(ctx, r)
 }
 
@@ -4503,6 +4646,17 @@ func (p *raftProxyControlServer) ListNetworks(ctx context.Context, r *ListNetwor
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).ListNetworks(ctx, r)
 }
 
@@ -4519,6 +4673,17 @@ func (p *raftProxyControlServer) CreateNetwork(ctx context.Context, r *CreateNet
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).CreateNetwork(ctx, r)
 }
 
@@ -4535,6 +4700,17 @@ func (p *raftProxyControlServer) RemoveNetwork(ctx context.Context, r *RemoveNet
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).RemoveNetwork(ctx, r)
 }
 
@@ -4551,6 +4727,17 @@ func (p *raftProxyControlServer) GetCluster(ctx context.Context, r *GetClusterRe
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).GetCluster(ctx, r)
 }
 
@@ -4567,6 +4754,17 @@ func (p *raftProxyControlServer) ListClusters(ctx context.Context, r *ListCluste
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).ListClusters(ctx, r)
 }
 
@@ -4583,6 +4781,17 @@ func (p *raftProxyControlServer) UpdateCluster(ctx context.Context, r *UpdateClu
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewControlClient(conn).UpdateCluster(ctx, r)
 }
 

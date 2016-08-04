@@ -724,6 +724,17 @@ func (p *raftProxyCAServer) GetRootCACertificate(ctx context.Context, r *GetRoot
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewCAClient(conn).GetRootCACertificate(ctx, r)
 }
 
@@ -785,6 +796,17 @@ func (p *raftProxyNodeCAServer) IssueNodeCertificate(ctx context.Context, r *Iss
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewNodeCAClient(conn).IssueNodeCertificate(ctx, r)
 }
 
@@ -801,6 +823,17 @@ func (p *raftProxyNodeCAServer) NodeCertificateStatus(ctx context.Context, r *No
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewNodeCAClient(conn).NodeCertificateStatus(ctx, r)
 }
 

@@ -780,6 +780,17 @@ func (p *raftProxyRouteGuideServer) GetFeature(ctx context.Context, r *Point) (*
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewRouteGuideClient(conn).GetFeature(ctx, r)
 }
 
@@ -796,6 +807,17 @@ func (p *raftProxyRouteGuideServer) ListFeatures(r *Rectangle, stream RouteGuide
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	clientStream, err := NewRouteGuideClient(conn).ListFeatures(ctx, r)
 
 	if err != nil {
@@ -830,6 +852,17 @@ func (p *raftProxyRouteGuideServer) RecordRoute(stream RouteGuide_RecordRouteSer
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	clientStream, err := NewRouteGuideClient(conn).RecordRoute(ctx)
 
 	if err != nil {
@@ -870,6 +903,17 @@ func (p *raftProxyRouteGuideServer) RouteChat(stream RouteGuide_RouteChatServer)
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	clientStream, err := NewRouteGuideClient(conn).RouteChat(ctx)
 
 	if err != nil {
