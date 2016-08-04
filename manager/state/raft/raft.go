@@ -87,18 +87,18 @@ type Node struct {
 	StateDir string
 	Error    error
 
-	raftStore   *raft.MemoryStorage
-	memoryStore *store.MemoryStore
-	Config      *raft.Config
-	opts        NewNodeOptions
-	reqIDGen    *idutil.Generator
-	wait        *wait
-	wal         *wal.WAL
-	snapshotter *snap.Snapshotter
-	wasLeader   bool
-	restored    bool
-	isMember    uint32
-	joinAddr    string
+	raftStore           *raft.MemoryStorage
+	memoryStore         *store.MemoryStore
+	Config              *raft.Config
+	opts                NewNodeOptions
+	reqIDGen            *idutil.Generator
+	wait                *wait
+	wal                 *wal.WAL
+	snapshotter         *snap.Snapshotter
+	restored            bool
+	signalledLeadership uint32
+	isMember            uint32
+	joinAddr            string
 
 	// waitProp waits for all the proposals to be terminated before
 	// shutting down the node.
@@ -329,6 +329,8 @@ func (n *Node) Run(ctx context.Context) error {
 		close(n.doneCh)
 	}()
 
+	wasLeader := false
+
 	for {
 		select {
 		case <-n.ticker.C():
@@ -389,12 +391,23 @@ func (n *Node) Run(ctx context.Context) error {
 			// if that happens we will apply them as any
 			// follower would.
 			if rd.SoftState != nil {
-				if n.wasLeader && rd.SoftState.RaftState != raft.StateLeader {
-					n.wasLeader = false
+				if wasLeader && rd.SoftState.RaftState != raft.StateLeader {
+					wasLeader = false
 					n.wait.cancelAll()
-					n.leadershipBroadcast.Write(IsFollower)
-				} else if !n.wasLeader && rd.SoftState.RaftState == raft.StateLeader {
-					n.wasLeader = true
+					if atomic.LoadUint32(&n.signalledLeadership) == 1 {
+						atomic.StoreUint32(&n.signalledLeadership, 0)
+						n.leadershipBroadcast.Write(IsFollower)
+					}
+				} else if !wasLeader && rd.SoftState.RaftState == raft.StateLeader {
+					wasLeader = true
+				}
+			}
+
+			if wasLeader && atomic.LoadUint32(&n.signalledLeadership) != 1 {
+				// If all the entries in the log have become
+				// committed, broadcast our leadership status.
+				if n.caughtUp() {
+					atomic.StoreUint32(&n.signalledLeadership, 1)
 					n.leadershipBroadcast.Write(IsLeader)
 				}
 			}
@@ -504,6 +517,19 @@ func (n *Node) Leader() uint64 {
 		return 0
 	}
 	return n.Node.Status().Lead
+}
+
+// ReadyForProposals returns true if the node has broadcasted a message
+// saying that it has become the leader. This means it is ready to accept
+// proposals.
+func (n *Node) ReadyForProposals() bool {
+	return atomic.LoadUint32(&n.signalledLeadership) == 1
+}
+
+func (n *Node) caughtUp() bool {
+	// obnoxious function that always returns a nil error
+	lastIndex, _ := n.raftStore.LastIndex()
+	return n.appliedIndex >= lastIndex
 }
 
 // Join asks to a member of the raft to propose
@@ -719,10 +745,22 @@ func (n *Node) RemoveMember(ctx context.Context, id uint64) error {
 // raft state machine with the provided message on the
 // receiving node
 func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessageRequest) (*api.ProcessRaftMessageResponse, error) {
+	if msg == nil || msg.Message == nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, "no message provided")
+	}
+
 	// Don't process the message if this comes from
 	// a node in the remove set
 	if n.cluster.IsIDRemoved(msg.Message.From) {
 		return nil, ErrMemberRemoved
+	}
+
+	if msg.Message.Type == raftpb.MsgProp {
+		// We don't accepted forwarded proposals. Our
+		// current architecture depends on only the leader
+		// making proposals, so in-flight proposals can be
+		// guaranteed not to conflict.
+		return nil, grpc.Errorf(codes.InvalidArgument, "proposals not accepted")
 	}
 
 	// can't stop the raft node while an async RPC is in progress
@@ -982,6 +1020,14 @@ func (n *Node) send(messages []raftpb.Message) error {
 			continue
 		}
 
+		if m.Type == raftpb.MsgProp {
+			// We don't forward proposals to the leader. Our
+			// current architecture depends on only the leader
+			// making proposals, so in-flight proposals can be
+			// guaranteed not to conflict.
+			continue
+		}
+
 		n.asyncTasks.Add(1)
 		go n.sendToMember(members, m)
 	}
@@ -1093,7 +1139,7 @@ func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRa
 	ch := n.wait.register(r.ID, cb)
 
 	// Do this check after calling register to avoid a race.
-	if !n.IsLeader() {
+	if atomic.LoadUint32(&n.signalledLeadership) != 1 {
 		n.wait.cancel(r.ID)
 		return nil, ErrLostLeadership
 	}
