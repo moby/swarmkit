@@ -1,6 +1,9 @@
 package agent
 
 import (
+	"testing"
+	"time"
+
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
@@ -8,9 +11,6 @@ import (
 	"github.com/docker/swarmkit/picker"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"testing"
-	"time"
 )
 
 // NoopExecutor is a dummy executor that implements enough to get the agent started.
@@ -67,19 +67,14 @@ func TestAgentStartStop(t *testing.T) {
 	addr := "localhost:4949"
 	remotes := picker.NewRemotes(api.Peer{Addr: addr})
 
-	conn, err := grpc.Dial(addr,
-		grpc.WithPicker(picker.NewPicker(remotes, addr)),
-		grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds))
-	assert.NoError(t, err)
-
 	db, cleanup := storageTestEnv(t)
 	defer cleanup()
 
 	agent, err := New(&Config{
-		Executor: &NoopExecutor{},
-		Managers: remotes,
-		Conn:     conn,
-		DB:       db,
+		Executor:    &NoopExecutor{},
+		Managers:    remotes,
+		Credentials: agentSecurityConfig.ClientTLSCreds,
+		DB:          db,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, agent)
@@ -146,19 +141,14 @@ func agentTestEnv(t *testing.T) (*Agent, func()) {
 	addr := "localhost:4949"
 	remotes := picker.NewRemotes(api.Peer{Addr: addr})
 
-	conn, err := grpc.Dial(addr,
-		grpc.WithPicker(picker.NewPicker(remotes, addr)),
-		grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds))
-	assert.NoError(t, err)
-
 	db, cleanupStorage := storageTestEnv(t)
 	cleanup = append(cleanup, func() { cleanupStorage() })
 
 	agent, err := New(&Config{
-		Executor: &NoopExecutor{},
-		Managers: remotes,
-		Conn:     conn,
-		DB:       db,
+		Executor:    &NoopExecutor{},
+		Managers:    remotes,
+		Credentials: agentSecurityConfig.ClientTLSCreds,
+		DB:          db,
 	})
 	return agent, func() {
 		for i := len(cleanup) - 1; i > 0; i-- {
