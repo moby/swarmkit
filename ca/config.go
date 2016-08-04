@@ -15,11 +15,12 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	cfconfig "github.com/cloudflare/cfssl/config"
 	"github.com/docker/distribution/digest"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
+	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/remotes"
 
 	"golang.org/x/net/context"
@@ -184,6 +185,7 @@ func getCAHashFromToken(token string) (digest.Digest, error) {
 // Every node requires at least a set of TLS certificates with which to join the cluster with.
 // In the case of a manager, these certificates will be used both for client and server credentials.
 func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, token, proposedRole string, remotes remotes.Remotes, nodeInfo chan<- api.IssueNodeCertificateResponse) (*SecurityConfig, error) {
+	ctx = log.WithModule(ctx, "tls")
 	paths := NewConfigPaths(baseCertDir)
 
 	var (
@@ -196,9 +198,9 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, token, propose
 	rootCA, err = GetLocalRootCA(baseCertDir)
 	switch err {
 	case nil:
-		log.Debugf("loaded local CA certificate: %s.", paths.RootCA.Cert)
+		log.G(ctx).Debug("loaded CA certificate")
 	case ErrNoLocalRootCA:
-		log.Debugf("no valid local CA certificate found: %v", err)
+		log.G(ctx).WithError(err).Debugf("failed to load local CA certificate")
 
 		// Get a digest for the optional CA hash string that we've been provided
 		// If we were provided a non-empty string, and it is an invalid hash, return
@@ -221,7 +223,7 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, token, propose
 			if err == nil {
 				break
 			}
-			log.Warningf("failed to retrieve remote root CA certificate: %v", err)
+			log.G(ctx).WithError(err).Errorf("failed to retrieve remote root CA certificate")
 		}
 		if err != nil {
 			return nil, err
@@ -232,7 +234,7 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, token, propose
 			return nil, err
 		}
 
-		log.Debugf("downloaded remote CA certificate.")
+		log.G(ctx).Debugf("retrieved remote CA certificate: %s", paths.RootCA.Cert)
 	default:
 		return nil, err
 	}
@@ -242,7 +244,7 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, token, propose
 	// load our certificates.
 	clientTLSCreds, serverTLSCreds, err = LoadTLSCreds(rootCA, paths.Node)
 	if err != nil {
-		log.Debugf("no valid local TLS credentials found: %v", err)
+		log.G(ctx).WithError(err).Debugf("no node credentials found in: %s", paths.Node.Cert)
 
 		var (
 			tlsKeyPair *tls.Certificate
@@ -262,13 +264,23 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, token, propose
 			}
 			tlsKeyPair, err = rootCA.IssueAndSaveNewCertificates(paths.Node, cn, proposedRole, org)
 			if err != nil {
+				log.G(ctx).WithFields(logrus.Fields{
+					"node.id":   cn,
+					"node.role": proposedRole,
+				}).WithError(err).Errorf("failed to issue and save new certificate")
 				return nil, err
 			}
+
+			log.G(ctx).WithFields(logrus.Fields{
+				"node.id":   cn,
+				"node.role": proposedRole,
+			}).Debug("issued new TLS certificate")
 		} else {
 			// There was an error loading our Credentials, let's get a new certificate issued
 			// Last argument is nil because at this point we don't have any valid TLS creds
 			tlsKeyPair, err = rootCA.RequestAndSaveNewCertificates(ctx, paths.Node, token, remotes, nil, nodeInfo)
 			if err != nil {
+				log.G(ctx).WithError(err).Error("failed to request save new certificate")
 				return nil, err
 			}
 		}
@@ -284,7 +296,10 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, token, propose
 		if err != nil {
 			return nil, err
 		}
-		log.Debugf("new TLS credentials generated: %s.", paths.Node.Cert)
+		log.G(ctx).WithFields(logrus.Fields{
+			"node.id":   clientTLSCreds.NodeID(),
+			"node.role": clientTLSCreds.Role(),
+		}).Debugf("new node credentials generated: %s", paths.Node.Cert)
 	} else {
 		if nodeInfo != nil {
 			nodeInfo <- api.IssueNodeCertificateResponse{
@@ -292,7 +307,10 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, token, propose
 				NodeMembership: api.NodeMembershipAccepted,
 			}
 		}
-		log.Debugf("loaded local TLS credentials: %s.", paths.Node.Cert)
+		log.G(ctx).WithFields(logrus.Fields{
+			"node.id":   clientTLSCreds.NodeID(),
+			"node.role": clientTLSCreds.Role(),
+		}).Debug("loaded node credentials")
 	}
 
 	return NewSecurityConfig(&rootCA, clientTLSCreds, serverTLSCreds), nil
@@ -308,6 +326,11 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 		var retry time.Duration
 		defer close(updates)
 		for {
+			ctx = log.WithModule(ctx, "tls")
+			log := log.G(ctx).WithFields(logrus.Fields{
+				"node.id":   s.ClientTLSCreds.NodeID(),
+				"node.role": s.ClientTLSCreds.Role(),
+			})
 			// Our starting default will be 5 minutes
 			retry = 5 * time.Minute
 
@@ -323,21 +346,27 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 				// If we have an expired certificate, we let's stick with the starting default in
 				// the hope that this is a temporary clock skew.
 				if expiresIn.Minutes() < 0 {
-					log.Debugf("failed to create a new client TLS config: %v", err)
-					updates <- CertificateUpdate{Err: fmt.Errorf("TLS Certificate is expired")}
+					log.WithError(err).Errorf("failed to create a new client TLS config")
+					updates <- CertificateUpdate{Err: fmt.Errorf("TLS certificate is expired")}
 				} else {
 					// Random retry time between 50% and 80% of the total time to expiration
 					retry = calculateRandomExpiry(expiresIn)
 				}
 			}
 
+			log.WithFields(logrus.Fields{
+				"time": time.Now().Add(retry),
+			}).Debugf("next certificate renewal scheduled")
+
 			select {
 			case <-time.After(retry):
+				log.Infof("renewing certificate")
 			case <-renew:
+				log.Infof("forced certificate renewal")
 			case <-ctx.Done():
+				log.Infof("shuting down certificate renewal routine")
 				return
 			}
-			log.Infof("Renewing TLS Certificate.")
 
 			// Let's request new certs. Renewals don't require a token.
 			rootCA := s.RootCA()
@@ -348,25 +377,25 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 				s.ClientTLSCreds,
 				nil)
 			if err != nil {
-				log.Debugf("failed to renew the TLS Certificate: %v", err)
+				log.WithError(err).Errorf("failed to renew the certificate")
 				updates <- CertificateUpdate{Err: err}
 				continue
 			}
 
 			clientTLSConfig, err := NewClientTLSConfig(tlsKeyPair, rootCA.Pool, CARole)
 			if err != nil {
-				log.Debugf("failed to create a new client TLS config: %v", err)
+				log.WithError(err).Errorf("failed to create a new client config")
 				updates <- CertificateUpdate{Err: err}
 			}
 			serverTLSConfig, err := NewServerTLSConfig(tlsKeyPair, rootCA.Pool)
 			if err != nil {
-				log.Debugf("failed to create a new server TLS config: %v", err)
+				log.WithError(err).Errorf("failed to create a new server config")
 				updates <- CertificateUpdate{Err: err}
 			}
 
 			err = s.ClientTLSCreds.LoadNewTLSConfig(clientTLSConfig)
 			if err != nil {
-				log.Debugf("failed to update the client TLS credentials: %v", err)
+				log.WithError(err).Errorf("failed to update the client credentials")
 				updates <- CertificateUpdate{Err: err}
 			}
 
@@ -380,7 +409,7 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 
 			err = s.ServerTLSCreds.LoadNewTLSConfig(serverTLSConfig)
 			if err != nil {
-				log.Debugf("failed to update the server TLS credentials: %v", err)
+				log.WithError(err).Errorf("failed to update the server TLS credentials")
 				updates <- CertificateUpdate{Err: err}
 			}
 
