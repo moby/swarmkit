@@ -361,32 +361,21 @@ func (n *Node) Err(ctx context.Context) error {
 }
 
 func (n *Node) runAgent(ctx context.Context, db *bolt.DB, creds credentials.TransportAuthenticator, ready chan<- struct{}) error {
-	var manager api.Peer
 	select {
 	case <-ctx.Done():
-	case manager = <-n.remotes.WaitSelect(ctx):
+	case <-n.remotes.WaitSelect(ctx):
 	}
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	picker := picker.NewPicker(n.remotes, manager.Addr)
-	conn, err := grpc.Dial(manager.Addr,
-		grpc.WithPicker(picker),
-		grpc.WithTransportCredentials(creds),
-		grpc.WithBackoffMaxDelay(maxSessionFailureBackoff))
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
 
 	agent, err := New(&Config{
 		Hostname:         n.config.Hostname,
 		Managers:         n.remotes,
 		Executor:         n.config.Executor,
 		DB:               db,
-		Conn:             conn,
-		Picker:           picker,
 		NotifyRoleChange: n.roleChangeReq,
+		Credentials:      creds,
 	})
 	if err != nil {
 		return err
