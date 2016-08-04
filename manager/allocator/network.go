@@ -386,13 +386,17 @@ func (a *Allocator) doNodeAlloc(ctx context.Context, nc *networkContext, ev even
 func serviceAllocationNeeded(s *api.Service, nc *networkContext) bool {
 	// Service needs allocation if:
 	// Spec has network attachments and endpoint resolution mode is VIP OR
-	// Spec has non-zero number of exposed ports and ingress routing is SwarmPort
-	if (len(s.Spec.Networks) != 0 &&
-		(s.Spec.Endpoint == nil ||
-			(s.Spec.Endpoint != nil &&
-				s.Spec.Endpoint.Mode == api.ResolutionModeVirtualIP))) ||
-		(s.Spec.Endpoint != nil &&
-			len(s.Spec.Endpoint.Ports) != 0) {
+	// Spec has non-zero number of exposed ports and ingress routing is SwarmPort OR
+	// Spec has zero exposed ports and service has some
+	hasEndpoint := s.Spec.Endpoint != nil
+	hasAttachments := len(s.Spec.Networks) != 0
+	hasVIP := !hasEndpoint || s.Spec.Endpoint.Mode == api.ResolutionModeVirtualIP
+	hasExposedPorts := hasEndpoint && len(s.Spec.Endpoint.Ports) != 0
+	hasExposedPortsOnObj := s.Endpoint != nil && len(s.Endpoint.Ports) != 0
+
+	if (hasAttachments && hasVIP) ||
+		hasExposedPorts ||
+		(hasExposedPortsOnObj && !hasExposedPorts) {
 		return !nc.nwkAllocator.IsServiceAllocated(s)
 	}
 
