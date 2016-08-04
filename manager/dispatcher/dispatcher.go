@@ -59,7 +59,7 @@ var (
 )
 
 // Config is configuration for Dispatcher. For default you should use
-// DefautConfig.
+// DefaultConfig.
 type Config struct {
 	HeartbeatPeriod  time.Duration
 	HeartbeatEpsilon time.Duration
@@ -79,8 +79,8 @@ func DefaultConfig() *Config {
 	}
 }
 
-// Cluster is interface which represent raft cluster. mananger/state/raft.Node
-// is implenents it. This interface needed only for easier unit-testing.
+// Cluster is interface which represent raft cluster. manager/state/raft.Node
+// is implements it. This interface needed only for easier unit-testing.
 type Cluster interface {
 	GetMemberlist() map[uint64]*api.RaftMember
 	MemoryStore() *store.MemoryStore
