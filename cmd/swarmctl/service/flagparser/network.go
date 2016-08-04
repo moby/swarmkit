@@ -23,7 +23,7 @@ func parseNetworks(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClien
 		return err
 	}
 
-	spec.Networks = []*api.ServiceSpec_NetworkAttachmentConfig{
+	spec.Networks = []*api.NetworkAttachmentConfig{
 		{
 			Target: n.ID,
 		},

@@ -87,11 +87,21 @@ func (e *executor) Configure(ctx context.Context, node *api.Node) error {
 
 // Controller returns a docker container controller.
 func (e *executor) Controller(t *api.Task) (exec.Controller, error) {
-	ctlr, err := newController(e.client, t)
+	var (
+		ctlr exec.Controller
+		err  error
+	)
+
+	switch t.Spec.Runtime.(type) {
+	case *api.TaskSpec_Container:
+		ctlr, err = newController(e.client, t)
+	case *api.TaskSpec_Noop:
+		// TODO: This is a libnetwork attachment.
+	}
+
 	if err != nil {
 		return nil, err
 	}
-
 	return ctlr, nil
 }
 

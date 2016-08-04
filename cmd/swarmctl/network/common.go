@@ -46,14 +46,14 @@ func ResolveServiceNetworks(ctx context.Context, c api.ControlClient, spec *api.
 	if len(spec.Networks) == 0 {
 		return nil
 	}
-	networks := make([]*api.ServiceSpec_NetworkAttachmentConfig, 0, len(spec.Networks))
+	networks := make([]*api.NetworkAttachmentConfig, 0, len(spec.Networks))
 	for _, na := range spec.Networks {
 		n, err := GetNetwork(ctx, c, na.Target)
 		if err != nil {
 			return err
 		}
 
-		networks = append(networks, &api.ServiceSpec_NetworkAttachmentConfig{
+		networks = append(networks, &api.NetworkAttachmentConfig{
 			Target: n.ID,
 		})
 	}
