@@ -375,6 +375,17 @@ func (p *raftProxyHealthServer) Check(ctx context.Context, r *HealthCheckRequest
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewHealthClient(conn).Check(ctx, r)
 }
 

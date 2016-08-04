@@ -431,7 +431,7 @@ func (m *Manager) Run(parent context.Context) error {
 	}()
 
 	proxyOpts := []grpc.DialOption{
-		grpc.WithBackoffMaxDelay(time.Second),
+		grpc.WithTimeout(5 * time.Second),
 		grpc.WithTransportCredentials(m.config.SecurityConfig.ClientTLSCreds),
 	}
 
