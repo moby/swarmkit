@@ -1128,6 +1128,17 @@ func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	clientStream, err := NewDispatcherClient(conn).Session(ctx, r)
 
 	if err != nil {
@@ -1162,6 +1173,17 @@ func (p *raftProxyDispatcherServer) Heartbeat(ctx context.Context, r *HeartbeatR
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewDispatcherClient(conn).Heartbeat(ctx, r)
 }
 
@@ -1178,6 +1200,17 @@ func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *Upd
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewDispatcherClient(conn).UpdateTaskStatus(ctx, r)
 }
 
@@ -1194,6 +1227,17 @@ func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_Tas
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	clientStream, err := NewDispatcherClient(conn).Tasks(ctx, r)
 
 	if err != nil {
