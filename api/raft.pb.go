@@ -1494,6 +1494,17 @@ func (p *raftProxyRaftServer) ProcessRaftMessage(ctx context.Context, r *Process
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewRaftClient(conn).ProcessRaftMessage(ctx, r)
 }
 
@@ -1510,6 +1521,17 @@ func (p *raftProxyRaftServer) ResolveAddress(ctx context.Context, r *ResolveAddr
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewRaftClient(conn).ResolveAddress(ctx, r)
 }
 
@@ -1571,6 +1593,17 @@ func (p *raftProxyRaftMembershipServer) Join(ctx context.Context, r *JoinRequest
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewRaftMembershipClient(conn).Join(ctx, r)
 }
 
@@ -1587,6 +1620,17 @@ func (p *raftProxyRaftMembershipServer) Leave(ctx context.Context, r *LeaveReque
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if connErr, ok := err.(transport.ConnectionError); ok {
+				if connErr == transport.ErrConnClosing {
+					p.connSelector.Reset()
+				}
+			}
+		}
+	}()
+
 	return NewRaftMembershipClient(conn).Leave(ctx, r)
 }
 
