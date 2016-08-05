@@ -458,7 +458,7 @@ type ContainerSpec struct {
 	//
 	// If Command and Args are provided, Args will be appended to Command.
 	Args []string `protobuf:"bytes,4,rep,name=args" json:"args,omitempty"`
-	// Hostname specifies the hostname that will be set on containers.
+	// Hostname specifies the hostname that will be set on containers created by docker swarm.
 	// All containers for a given service will have the same hostname
 	Hostname string `protobuf:"bytes,13,opt,name=hostname,proto3" json:"hostname,omitempty"`
 	// Env specifies the environment variables for the container in NAME=VALUE
