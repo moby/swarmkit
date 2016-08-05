@@ -104,10 +104,6 @@ type Node struct {
 	// shutting down the node.
 	waitProp sync.WaitGroup
 
-	// forceNewCluster is a special flag used to recover from disaster
-	// scenario by pointing to an existing or backed up data directory.
-	forceNewCluster bool
-
 	confState     raftpb.ConfState
 	appliedIndex  uint64
 	snapshotIndex uint64
@@ -192,7 +188,6 @@ func NewNode(ctx context.Context, opts NewNodeOptions) *Node {
 			MaxInflightMsgs: cfg.MaxInflightMsgs,
 			Logger:          cfg.Logger,
 		},
-		forceNewCluster:     opts.ForceNewCluster,
 		stopCh:              make(chan struct{}),
 		doneCh:              make(chan struct{}),
 		removeRaftCh:        make(chan struct{}),
@@ -362,7 +357,7 @@ func (n *Node) Run(ctx context.Context) error {
 			// saveToStorage.
 			if !raft.IsEmptySnap(rd.Snapshot) {
 				// Load the snapshot data into the store
-				if err := n.restoreFromSnapshot(rd.Snapshot.Data, n.forceNewCluster); err != nil {
+				if err := n.restoreFromSnapshot(rd.Snapshot.Data, false); err != nil {
 					n.Config.Logger.Error(err)
 				}
 				n.appliedIndex = rd.Snapshot.Metadata.Index
