@@ -607,8 +607,9 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			return err
 		}
 		done := make(chan struct{})
+		var runErr error
 		go func() {
-			m.Run(context.Background()) // todo: store error
+			runErr = m.Run(context.Background())
 			close(done)
 		}()
 
@@ -631,7 +632,24 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			ready = nil
 		}
 
-		err = n.waitRole(ctx, ca.AgentRole)
+		roleChanged := make(chan error)
+		waitCtx, waitCancel := context.WithCancel(ctx)
+		go func() {
+			err := n.waitRole(waitCtx, ca.AgentRole)
+			roleChanged <- err
+		}()
+
+		select {
+		case <-done:
+			// Fail out if m.Run() returns error, otherwise wait for
+			// role change.
+			if runErr != nil {
+				err = runErr
+			} else {
+				err = <-roleChanged
+			}
+		case err = <-roleChanged:
+		}
 
 		n.Lock()
 		n.manager = nil
@@ -646,6 +664,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 		}
 		connCancel()
 		n.setControlSocket(nil)
+		waitCancel()
 
 		if err != nil {
 			return err
