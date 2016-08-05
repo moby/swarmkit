@@ -394,7 +394,7 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, baseCertDir string, 
 // calculateRandomExpiry returns a random duration between 50% and 80% of the original
 // duration
 func calculateRandomExpiry(expiresIn time.Duration) time.Duration {
-	if expiresIn.Minutes() < 1 {
+	if expiresIn.Minutes() <= 1 {
 		return time.Second
 	}
 

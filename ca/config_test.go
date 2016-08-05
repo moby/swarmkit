@@ -252,6 +252,8 @@ func TestRenewTLSConfigAgent(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create a new RootCA, and change the policy to issue 6 minute certificates
+	// Because of the default backdate of 5 minutes, this issues certificates
+	// valid for 1 minute.
 	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Key, ca.DefaultNodeCertExpiration)
 	assert.NoError(t, err)
 	newRootCA.Signer.SetPolicy(&cfconfig.Signing{
@@ -265,7 +267,7 @@ func TestRenewTLSConfigAgent(t *testing.T) {
 	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	// Issue a new certificate with the same details as the current config, but with 6 min expiration time
+	// Issue a new certificate with the same details as the current config, but with 1 min expiration time
 	c := nodeConfig.ClientTLSCreds
 	signedCert, err := newRootCA.ParseValidateAndSignCSR(csr, c.NodeID(), c.Role(), c.Organization())
 	assert.NoError(t, err)
@@ -275,26 +277,15 @@ func TestRenewTLSConfigAgent(t *testing.T) {
 	err = ioutils.AtomicWriteFile(tc.Paths.Node.Cert, signedCert, 0644)
 	assert.NoError(t, err)
 
-	var success, timeout bool
 	renew := make(chan struct{})
 	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.TempDir, tc.Picker, renew)
-	for {
-		select {
-		case <-time.After(2 * time.Second):
-			timeout = true
-		case certUpdate := <-updates:
-			assert.NoError(t, certUpdate.Err)
-			assert.NotNil(t, certUpdate)
-			assert.Equal(t, ca.AgentRole, certUpdate.Role)
-			success = true
-		}
-		if timeout {
-			assert.Fail(t, "TestRenewTLSConfig timed-out")
-			break
-		}
-		if success {
-			break
-		}
+	select {
+	case <-time.After(2 * time.Second):
+		assert.Fail(t, "TestRenewTLSConfig timed-out")
+	case certUpdate := <-updates:
+		assert.NoError(t, certUpdate.Err)
+		assert.NotNil(t, certUpdate)
+		assert.Equal(t, ca.AgentRole, certUpdate.Role)
 	}
 }
 
@@ -310,6 +301,8 @@ func TestRenewTLSConfigManager(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create a new RootCA, and change the policy to issue 6 minute certificates
+	// Because of the default backdate of 5 minutes, this issues certificates
+	// valid for 1 minute.
 	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Key, ca.DefaultNodeCertExpiration)
 	assert.NoError(t, err)
 	newRootCA.Signer.SetPolicy(&cfconfig.Signing{
@@ -323,7 +316,7 @@ func TestRenewTLSConfigManager(t *testing.T) {
 	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	// Issue a new certificate with the same details as the current config, but with 6 min expiration time
+	// Issue a new certificate with the same details as the current config, but with 1 min expiration time
 	c := nodeConfig.ClientTLSCreds
 	signedCert, err := newRootCA.ParseValidateAndSignCSR(csr, c.NodeID(), c.Role(), c.Organization())
 	assert.NoError(t, err)
@@ -333,28 +326,17 @@ func TestRenewTLSConfigManager(t *testing.T) {
 	err = ioutils.AtomicWriteFile(tc.Paths.Node.Cert, signedCert, 0644)
 	assert.NoError(t, err)
 
-	// Get a new nodeConfig with a TLS cert that has 6 minutes to live
-	var success, timeout bool
+	// Get a new nodeConfig with a TLS cert that has 1 minute to live
 	renew := make(chan struct{})
 
 	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.TempDir, tc.Picker, renew)
-	for {
-		select {
-		case <-time.After(2 * time.Second):
-			timeout = true
-		case certUpdate := <-updates:
-			assert.NoError(t, certUpdate.Err)
-			assert.NotNil(t, certUpdate)
-			assert.Equal(t, ca.ManagerRole, certUpdate.Role)
-			success = true
-		}
-		if timeout {
-			assert.Fail(t, "TestRenewTLSConfig timed-out")
-			break
-		}
-		if success {
-			break
-		}
+	select {
+	case <-time.After(2 * time.Second):
+		assert.Fail(t, "TestRenewTLSConfig timed-out")
+	case certUpdate := <-updates:
+		assert.NoError(t, certUpdate.Err)
+		assert.NotNil(t, certUpdate)
+		assert.Equal(t, ca.ManagerRole, certUpdate.Role)
 	}
 }
 
@@ -369,7 +351,9 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 	nodeConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
 	assert.NoError(t, err)
 
-	// Create a new RootCA, and change the policy to issue 6 minute certificates
+	// Create a new RootCA, and change the policy to issue 6 minute certificates.
+	// Because of the default backdate of 5 minutes, this issues certificates
+	// valid for 1 minute.
 	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Key, ca.DefaultNodeCertExpiration)
 	assert.NoError(t, err)
 	newRootCA.Signer.SetPolicy(&cfconfig.Signing{
@@ -383,7 +367,7 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	// Issue a new certificate with the same details as the current config, but with 6 min expiration time
+	// Issue a new certificate with the same details as the current config, but with 1 min expiration time
 	c := nodeConfig.ClientTLSCreds
 	signedCert, err := newRootCA.ParseValidateAndSignCSR(csr, c.NodeID(), c.Role(), c.Organization())
 	assert.NoError(t, err)
@@ -401,25 +385,14 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	var success, timeout bool
 	renew := make(chan struct{})
 	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.TempDir, tc.Picker, renew)
-	for {
-		select {
-		case <-time.After(2 * time.Second):
-			timeout = true
-		case certUpdate := <-updates:
-			assert.Error(t, certUpdate.Err)
-			assert.Contains(t, certUpdate.Err.Error(), "not found when attempting to renew certificate")
-			success = true
-		}
-		if timeout {
-			assert.Fail(t, "TestRenewTLSConfig timed-out")
-			break
-		}
-		if success {
-			break
-		}
+	select {
+	case <-time.After(2 * time.Second):
+		assert.Fail(t, "TestRenewTLSConfig timed-out")
+	case certUpdate := <-updates:
+		assert.Error(t, certUpdate.Err)
+		assert.Contains(t, certUpdate.Err.Error(), "not found when attempting to renew certificate")
 	}
 }
 
@@ -434,26 +407,15 @@ func TestForceRenewTLSConfig(t *testing.T) {
 	nodeConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
 	assert.NoError(t, err)
 
-	var success, timeout bool
 	renew := make(chan struct{}, 1)
 	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.TempDir, tc.Picker, renew)
-	for {
-		renew <- struct{}{}
-		select {
-		case <-time.After(2 * time.Second):
-			timeout = true
-		case certUpdate := <-updates:
-			assert.NoError(t, certUpdate.Err)
-			assert.NotNil(t, certUpdate)
-			assert.Equal(t, certUpdate.Role, ca.ManagerRole)
-			success = true
-		}
-		if timeout {
-			assert.Fail(t, "TestForceRenewTLSConfig timed-out")
-			break
-		}
-		if success {
-			break
-		}
+	renew <- struct{}{}
+	select {
+	case <-time.After(2 * time.Second):
+		assert.Fail(t, "TestForceRenewTLSConfig timed-out")
+	case certUpdate := <-updates:
+		assert.NoError(t, certUpdate.Err)
+		assert.NotNil(t, certUpdate)
+		assert.Equal(t, certUpdate.Role, ca.ManagerRole)
 	}
 }
