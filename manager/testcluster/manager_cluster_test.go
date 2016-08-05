@@ -24,7 +24,6 @@ import (
 	"github.com/docker/swarmkit/picker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 )
 
 func init() {
@@ -70,23 +69,12 @@ func (mc *managersCluster) addAgents(count int) error {
 		}
 
 		managers := picker.NewRemotes(addrs...)
-		peer, err := managers.Select()
-		if err != nil {
-			return err
-		}
-		conn, err := grpc.Dial(peer.Addr,
-			grpc.WithPicker(picker.NewPicker(managers)),
-			grpc.WithTransportCredentials(asConfig.ClientTLSCreds))
-		if err != nil {
-			return err
-		}
-
 		id := strconv.Itoa(rand.Int())
 		a, err := agent.New(&agent.Config{
-			Hostname: "hostname_" + id,
-			Managers: managers,
-			Executor: &NoopExecutor{},
-			Conn:     conn,
+			Hostname:    "hostname_" + id,
+			Managers:    managers,
+			Executor:    &NoopExecutor{},
+			Credentials: asConfig.ClientTLSCreds,
 		})
 		if err != nil {
 			return err
