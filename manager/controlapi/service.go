@@ -218,14 +218,14 @@ func (s *Server) checkPortConflicts(spec *api.ServiceSpec) error {
 		if service.Spec.Endpoint != nil {
 			for _, pc := range service.Spec.Endpoint.Ports {
 				if reqPorts[pcToString(pc)] {
-					return grpc.Errorf(codes.InvalidArgument, "port '%d' is already in use by service %s", pc.PublishedPort, service.ID)
+					return grpc.Errorf(codes.InvalidArgument, "port '%d' is already in use by service '%s' (%s)", pc.PublishedPort, service.Spec.Annotations.Name, service.ID)
 				}
 			}
 		}
 		if service.Endpoint != nil {
 			for _, pc := range service.Endpoint.Ports {
 				if reqPorts[pcToString(pc)] {
-					return grpc.Errorf(codes.InvalidArgument, "port '%d' is already in use by service %s", pc.PublishedPort, service.ID)
+					return grpc.Errorf(codes.InvalidArgument, "port '%d' is already in use by service '%s' (%s)", pc.PublishedPort, service.Spec.Annotations.Name, service.ID)
 				}
 			}
 		}
