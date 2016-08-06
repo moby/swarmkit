@@ -81,11 +81,11 @@ func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[ui
 				prev = new(etcdraft.Status)
 				*prev = n.Status()
 				for _, n2 := range nodes {
-					if n2.Config.ID == prev.Lead {
+					if n2.Config.ID == prev.Lead && n2.ReadyForProposals() {
 						continue nodeLoop
 					}
 				}
-				return errors.New("did not find leader in member list")
+				return errors.New("did not find a ready leader in member list")
 			}
 			cur := n.Status()
 
@@ -93,9 +93,6 @@ func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[ui
 				if n2.Config.ID == cur.Lead {
 					if cur.Lead != prev.Lead || cur.Term != prev.Term || cur.Applied != prev.Applied {
 						return errors.New("state does not match on all nodes")
-					}
-					if !n2.ReadyForProposals() {
-						return errors.New("leader not ready")
 					}
 					continue nodeLoop
 				}
