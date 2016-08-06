@@ -222,7 +222,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Propose yet another value, to make sure the rejoined node is still
 	// receiving new logs
-	values[5], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[5])
+	values[5], err = raftutils.ProposeValue(t, raftutils.Leader(nodes), DefaultProposalTime, nodeIDs[5])
 	require.NoError(t, err)
 
 	// All nodes should have all the data
@@ -239,7 +239,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:6], values[:6])
 
 	// Propose again. Just to check consensus after this latest restart.
-	values[6], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[6])
+	values[6], err = raftutils.ProposeValue(t, raftutils.Leader(nodes), DefaultProposalTime, nodeIDs[6])
 	require.NoError(t, err)
 	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 }
