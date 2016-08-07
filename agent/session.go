@@ -262,43 +262,6 @@ func (s *session) sendTaskStatus(ctx context.Context, taskID string, status *api
 	return nil
 }
 
-func (s *session) sendTaskStatuses(ctx context.Context, updates ...*api.UpdateTaskStatusRequest_TaskStatusUpdate) ([]*api.UpdateTaskStatusRequest_TaskStatusUpdate, error) {
-	if len(updates) < 1 {
-		return nil, nil
-	}
-
-	const batchSize = 1024
-	select {
-	case <-s.registered:
-		select {
-		case <-s.closed:
-			return updates, ErrClosed
-		default:
-		}
-	case <-s.closed:
-		return updates, ErrClosed
-	case <-ctx.Done():
-		return updates, ctx.Err()
-	}
-
-	client := api.NewDispatcherClient(s.conn)
-	n := batchSize
-
-	if len(updates) < n {
-		n = len(updates)
-	}
-
-	if _, err := client.UpdateTaskStatus(ctx, &api.UpdateTaskStatusRequest{
-		SessionID: s.sessionID,
-		Updates:   updates[:n],
-	}); err != nil {
-		log.G(ctx).WithError(err).Errorf("failed sending task status batch size of %d", len(updates[:n]))
-		return updates, err
-	}
-
-	return updates[n:], nil
-}
-
 func (s *session) close() error {
 	select {
 	case <-s.closed:
