@@ -1497,10 +1497,8 @@ func (p *raftProxyRaftServer) ProcessRaftMessage(ctx context.Context, r *Process
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -1524,10 +1522,8 @@ func (p *raftProxyRaftServer) ResolveAddress(ctx context.Context, r *ResolveAddr
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -1596,10 +1592,8 @@ func (p *raftProxyRaftMembershipServer) Join(ctx context.Context, r *JoinRequest
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -1623,10 +1617,8 @@ func (p *raftProxyRaftMembershipServer) Leave(ctx context.Context, r *LeaveReque
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
