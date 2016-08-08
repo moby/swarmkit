@@ -10,10 +10,8 @@ import (
 const connErrorHandle = `
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()

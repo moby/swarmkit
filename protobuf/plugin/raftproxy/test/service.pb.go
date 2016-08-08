@@ -783,10 +783,8 @@ func (p *raftProxyRouteGuideServer) GetFeature(ctx context.Context, r *Point) (*
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -810,10 +808,8 @@ func (p *raftProxyRouteGuideServer) ListFeatures(r *Rectangle, stream RouteGuide
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -855,10 +851,8 @@ func (p *raftProxyRouteGuideServer) RecordRoute(stream RouteGuide_RecordRouteSer
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -906,10 +900,8 @@ func (p *raftProxyRouteGuideServer) RouteChat(stream RouteGuide_RouteChatServer)
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
