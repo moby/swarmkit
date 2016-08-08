@@ -9,17 +9,17 @@
 
 Its main benefits are:
 
-- **Distributed**: *SwarmKit* uses the [Raft Consensus Algorithm](https://raft.github.io/) in order to coordinate and does not rely on a single point of failure to perform decisions.
-- **Secure**: Node communication and membership within a *Swarm* are secure out of the box. *SwarmKit* uses mutual TLS for node *authentication*, *role authorization* and *transport encryption*, automating both certificate issuance and rotation.
-- **Simple**: *SwarmKit* is operationally simple and minimizes infrastructure dependencies. It does not need an external database to operate.
+-   **Distributed**: *SwarmKit* uses the [Raft Consensus Algorithm](https://raft.github.io/) in order to coordinate and does not rely on a single point of failure to perform decisions.
+-   **Secure**: Node communication and membership within a *Swarm* are secure out of the box. *SwarmKit* uses mutual TLS for node *authentication*, *role authorization* and *transport encryption*, automating both certificate issuance and rotation.
+-   **Simple**: *SwarmKit* is operationally simple and minimizes infrastructure dependencies. It does not need an external database to operate.
 
 ## Overview
 
 Machines running *SwarmKit* can be grouped together in order to form a *Swarm*, coordinating tasks with each other.
 Once a machine joins, it becomes a *Swarm Node*. Nodes can either be *worker* nodes or *manager* nodes.
 
-- **Worker Nodes** are responsible for running Tasks using an *Executor*. *SwarmKit* comes with a default *Docker Container Executor* that can be easily swapped out.
-- **Manager Nodes** on the other hand accept specifications from the user and are responsible for reconciling the desired state with the actual cluster state.
+-   **Worker Nodes** are responsible for running Tasks using an *Executor*. *SwarmKit* comes with a default *Docker Container Executor* that can be easily swapped out.
+-   **Manager Nodes** on the other hand accept specifications from the user and are responsible for reconciling the desired state with the actual cluster state.
 
 An operator can dynamically update a Node's role by promoting a Worker to Manager or demoting a Manager to Worker.
 
@@ -30,62 +30,56 @@ Services define what type of task should be created as well as how to execute th
 
 Some of *SwarmKit*'s main features are:
 
-- **Orchestration**
-  - **Desired State Reconciliation**: *SwarmKit* constantly compares the desired state against the current cluster state
-    and reconciles the two if necessary. For instance, if a node fails, *SwarmKit* reschedules its tasks onto a different node.
-  - **Service Types**: There are different types of services. The project currently ships with two of them out of the box:
-    - **Replicated Services** are scaled to the desired number of replicas.
-    - **Global Services** run one task on every available node in the cluster.
-  - **Configurable Updates**: At any time, you can change the value of one or more fields for a service.
-    After you make the update, *SwarmKit* reconciles the desired state by ensuring all tasks are using the desired settings.
-    By default, it performs a lockstep update - that is, update all tasks at the same time. This can be configured through
-    different knobs:
-    - **Parallelism** defines how many updates can be performed at the same time.
-    - **Delay** sets the minimum delay between updates. *SwarmKit* will start by shutting down the previous task, bring up a new one,
-      wait for it to transition to the *RUNNING* state *then* wait for the additional configured delay.
-      Finally, it will move onto other tasks.
-  - **Restart Policies**: The orchestration layer monitors tasks and reacts to failures based on the specified policy.
-    The operator can define restart conditions, delays and limits (maximum number of attempts in a given time window).
-    *SwarmKit* can decide to restart a task on a different machine. This means that faulty nodes will gradually be drained of their
-    tasks.
-- **Scheduling**
-  - **Resource Awareness**: *SwarmKit* is aware of resources available on nodes and will place tasks accordingly.
-  - **Constraints**: Operators can limit the set of nodes where a task can be scheduled by defining constraint expressions.
-    Multiple constraints find nodes that satisfy every expression, i.e., an `AND` match. Constraints can match node attributes in the following table.
-		Note that `engine.labels` are collected from Docker Engine with information like operating system,
- drivers, etc. `node.labels` are added by cluster administrators for operational purpose.
-For example, some nodes have security compliant labels to run tasks with compliant requirements.
+-   **Orchestration**
 
-| node attribute | matches | example |
-|:------------- |:-------------| :-------------|
-| node.id | node's ID | `node.id == 2ivku8v2gvtg4`|
-| node.hostname | node's hostname | `node.hostname != node-2`|
-| node.role |  node's manager or worker role | `node.role == manager`|
-| node.labels | node's labels added by cluster admins | `node.labels.security == high`|
-| engine.labels | Docker Engine's labels | `engine.labels.operatingsystem == ubuntu 14.04`|
+    -   **Desired State Reconciliation**: *SwarmKit* constantly compares the desired state against the current cluster state and reconciles the two if necessary. For instance, if a node fails, *SwarmKit* reschedules its tasks onto a different node.
 
-  - **Strategies**: The project currently ships with a *spread strategy* which will attempt to schedule tasks on the least loaded
+    -   **Service Types**: There are different types of services. The project currently ships with two of them out of the box
+
+        -   **Replicated Services** are scaled to the desired number of replicas.
+        -   **Global Services** run one task on every available node in the cluster.
+
+    -   **Configurable Updates**: At any time, you can change the value of one or more fields for a service. After you make the update, *SwarmKit* reconciles the desired state by ensuring all tasks are using the desired settings. By default, it performs a lockstep update - that is, update all tasks at the same time. This can be configured through different knobs:
+
+        -   **Parallelism** defines how many updates can be performed at the same time.
+        -   **Delay** sets the minimum delay between updates. *SwarmKit* will start by shutting down the previous task, bring up a new one, wait for it to transition to the *RUNNING* state *then* wait for the additional configured delay. Finally, it will move onto other tasks.
+
+    -   **Restart Policies**: The orchestration layer monitors tasks and reacts to failures based on the specified policy. The operator can define restart conditions, delays and limits (maximum number of attempts in a given time window). *SwarmKit* can decide to restart a task on a different machine. This means that faulty nodes will gradually be drained of their tasks.
+
+-   **Scheduling**
+
+    -   **Resource Awareness**: *SwarmKit* is aware of resources available on nodes and will place tasks accordingly.
+    -   **Constraints**: Operators can limit the set of nodes where a task can be scheduled by defining constraint expressions. Multiple constraints find nodes that satisfy every expression, i.e., an `AND` match. Constraints can match node attributes in the following table. Note that `engine.labels` are collected from Docker Engine with information like operating system, drivers, etc. `node.labels` are added by cluster administrators for operational purpose. For example, some nodes have security compliant labels to run tasks with compliant requirements.
+
+        | node attribute | matches | example |
+        |:------------- |:-------------| :-------------|
+        | node.id | node's ID | `node.id == 2ivku8v2gvtg4`|
+        | node.hostname | node's hostname | `node.hostname != node-2`|
+        | node.role |  node's manager or worker role | `node.role == manager`|
+        | node.labels | node's labels added by cluster admins | `node.labels.security == high`|
+        | engine.labels | Docker Engine's labels | `engine.labels.operatingsystem == ubuntu 14.04`|
+
+    -   **Strategies**: The project currently ships with a *spread strategy* which will attempt to schedule tasks on the least loaded
     nodes, provided they meet the constraints and resource requirements.
-- **Cluster Management**
-  - **State Store**: Manager nodes maintain a strongly consistent, replicated (Raft based) and extremely fast (in-memory reads)
-    view of the cluster which allows them to make quick scheduling decisions while tolerating failures.
-  - **Topology Management**: Node roles (*Worker* / *Manager*) can be dynamically changed through API/CLI calls.
-  - **Node Management**: An operator can alter the desired availability of a node: Setting it to *Paused* will prevent any further
-    tasks from being scheduled to it while *Drained* will have the same effect while also re-scheduling its tasks somewhere else
-    (mostly for maintenance scenarios).
-- **Security**
-  - **Mutual TLS**: All nodes communicate with each other using mutual *TLS*. Swarm managers act as a *Root Certificate Authority*,
-    issuing certificates to new nodes.
-  - **Acceptance Policy**: Policies can be put in place to auto accept, manually accept, or require a secret to join the cluster.
-  - **Certificate Rotation**: TLS Certificates are rotated and reloaded transparently on every node, allowing a user to set how
-    frequently rotation should happen (the current default is 3 months, the minimum is 30 minutes).
+
+-   **Cluster Management**
+
+    -   **State Store**: Manager nodes maintain a strongly consistent, replicated (Raft based) and extremely fast (in-memory reads) view of the cluster which allows them to make quick scheduling decisions while tolerating failures.
+    -   **Topology Management**: Node roles (*Worker* / *Manager*) can be dynamically changed through API/CLI calls.
+    -   **Node Management**: An operator can alter the desired availability of a node: Setting it to *Paused* will prevent any further tasks from being scheduled to it while *Drained* will have the same effect while also re-scheduling its tasks somewhere else (mostly for maintenance scenarios).
+
+-   **Security**
+
+    -   **Mutual TLS**: All nodes communicate with each other using mutual *TLS*. Swarm managers act as a *Root Certificate Authority*, issuing certificates to new nodes.
+    -   **Acceptance Policy**: Policies can be put in place to auto accept, manually accept, or require a secret to join the cluster.
+    -   **Certificate Rotation**: TLS Certificates are rotated and reloaded transparently on every node, allowing a user to set how frequently rotation should happen (the current default is 3 months, the minimum is 30 minutes).
 
 ## Build
 
 Requirements:
 
-- Go 1.6 or higher
-- A [working golang](https://golang.org/doc/code.html) environment
+-   Go 1.6 or higher
+-   A [working golang](https://golang.org/doc/code.html) environment
 
 *SwarmKit* is built in Go and leverages a standard project structure to work well with Go tooling.
 If you are new to Go, please see [BUILDING.md](BUILDING.md) for a more detailed guide.
