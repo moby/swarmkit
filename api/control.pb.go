@@ -4298,10 +4298,8 @@ func (p *raftProxyControlServer) GetNode(ctx context.Context, r *GetNodeRequest)
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4325,10 +4323,8 @@ func (p *raftProxyControlServer) ListNodes(ctx context.Context, r *ListNodesRequ
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4352,10 +4348,8 @@ func (p *raftProxyControlServer) UpdateNode(ctx context.Context, r *UpdateNodeRe
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4379,10 +4373,8 @@ func (p *raftProxyControlServer) RemoveNode(ctx context.Context, r *RemoveNodeRe
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4406,10 +4398,8 @@ func (p *raftProxyControlServer) GetTask(ctx context.Context, r *GetTaskRequest)
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4433,10 +4423,8 @@ func (p *raftProxyControlServer) ListTasks(ctx context.Context, r *ListTasksRequ
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4460,10 +4448,8 @@ func (p *raftProxyControlServer) RemoveTask(ctx context.Context, r *RemoveTaskRe
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4487,10 +4473,8 @@ func (p *raftProxyControlServer) GetService(ctx context.Context, r *GetServiceRe
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4514,10 +4498,8 @@ func (p *raftProxyControlServer) ListServices(ctx context.Context, r *ListServic
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4541,10 +4523,8 @@ func (p *raftProxyControlServer) CreateService(ctx context.Context, r *CreateSer
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4568,10 +4548,8 @@ func (p *raftProxyControlServer) UpdateService(ctx context.Context, r *UpdateSer
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4595,10 +4573,8 @@ func (p *raftProxyControlServer) RemoveService(ctx context.Context, r *RemoveSer
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4622,10 +4598,8 @@ func (p *raftProxyControlServer) GetNetwork(ctx context.Context, r *GetNetworkRe
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4649,10 +4623,8 @@ func (p *raftProxyControlServer) ListNetworks(ctx context.Context, r *ListNetwor
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4676,10 +4648,8 @@ func (p *raftProxyControlServer) CreateNetwork(ctx context.Context, r *CreateNet
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4703,10 +4673,8 @@ func (p *raftProxyControlServer) RemoveNetwork(ctx context.Context, r *RemoveNet
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4730,10 +4698,8 @@ func (p *raftProxyControlServer) GetCluster(ctx context.Context, r *GetClusterRe
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4757,10 +4723,8 @@ func (p *raftProxyControlServer) ListClusters(ctx context.Context, r *ListCluste
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
@@ -4784,10 +4748,8 @@ func (p *raftProxyControlServer) UpdateCluster(ctx context.Context, r *UpdateClu
 
 	defer func() {
 		if err != nil {
-			if connErr, ok := err.(transport.ConnectionError); ok {
-				if connErr == transport.ErrConnClosing {
-					p.connSelector.Reset()
-				}
+			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+				p.connSelector.Reset()
 			}
 		}
 	}()
