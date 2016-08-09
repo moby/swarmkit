@@ -50,8 +50,8 @@ func PollFuncWithTimeout(clockSource *fakeclock.FakeClock, f func() error, timeo
 		return nil
 	}
 	timer := time.After(timeout)
-	for {
-		if clockSource != nil {
+	for i := 0; ; i++ {
+		if i%5 == 0 && clockSource != nil {
 			clockSource.Increment(time.Second)
 		}
 		err := f()
