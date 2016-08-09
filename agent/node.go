@@ -89,7 +89,9 @@ type Node struct {
 	nodeID               string
 	nodeMembership       api.NodeSpec_Membership
 	started              chan struct{}
+	startOnce            sync.Once
 	stopped              chan struct{}
+	stopOnce             sync.Once
 	ready                chan struct{} // closed when agent has completed registration and manager(if enabled) is ready to receive control requests
 	certificateRequested chan struct{} // closed when certificate issue request has been sent by node
 	closed               chan struct{}
@@ -137,26 +139,15 @@ func NewNode(c *NodeConfig) (*Node, error) {
 
 // Start starts a node instance.
 func (n *Node) Start(ctx context.Context) error {
-	select {
-	case <-n.started:
-		select {
-		case <-n.closed:
-			return n.err
-		case <-n.stopped:
-			return errAgentStopped
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			return errAgentStarted
-		}
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
+	err := errNodeStarted
 
-	close(n.started)
-	go n.run(ctx)
-	return nil
+	n.startOnce.Do(func() {
+		close(n.started)
+		go n.run(ctx)
+		err = nil // clear error above, only once.
+	})
+
+	return err
 }
 
 func (n *Node) run(ctx context.Context) (err error) {
@@ -325,27 +316,19 @@ func (n *Node) run(ctx context.Context) (err error) {
 func (n *Node) Stop(ctx context.Context) error {
 	select {
 	case <-n.started:
-		select {
-		case <-n.closed:
-			return n.err
-		case <-n.stopped:
-			select {
-			case <-n.closed:
-				return n.err
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			close(n.stopped)
-			// recurse and wait for closure
-			return n.Stop(ctx)
-		}
+	default:
+		return errNodeNotStarted
+	}
+
+	n.stopOnce.Do(func() {
+		close(n.stopped)
+	})
+
+	select {
+	case <-n.closed:
+		return nil
 	case <-ctx.Done():
 		return ctx.Err()
-	default:
-		return errAgentNotStarted
 	}
 }
 
