@@ -17,6 +17,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/coreos/etcd/wal"
 	"github.com/docker/swarmkit/api"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state/raft"
@@ -39,6 +40,10 @@ func init() {
 	logrus.SetOutput(ioutil.Discard)
 
 	tc = cautils.NewTestCA(nil)
+
+	// Set a smaller segment size so we don't incur cost preallocating
+	// space on old filesystems like HFS+.
+	wal.SegmentSizeBytes = 64 * 1024
 }
 
 func TestRaftBootstrap(t *testing.T) {

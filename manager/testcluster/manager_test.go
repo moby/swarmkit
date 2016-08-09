@@ -146,6 +146,8 @@ func TestManager(t *testing.T) {
 
 	m.Stop(ctx)
 
-	// After stopping we should NOT receive an error from ListenAndServe.
-	assert.NoError(t, <-done)
+	// After stopping we should MAY receive an error from ListenAndServe if
+	// all this happened before WaitForLeader completed, so don't check the
+	// error.
+	<-done
 }
