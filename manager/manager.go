@@ -350,11 +350,13 @@ func (m *Manager) Run(parent context.Context) error {
 					// creating the allocator but then use it anyway.
 				}
 
-				go func(keyManager *keymanager.KeyManager) {
-					if err := keyManager.Run(ctx); err != nil {
-						log.G(ctx).WithError(err).Error("keymanager failed with an error")
-					}
-				}(m.keyManager)
+				if m.keyManager != nil {
+					go func(keyManager *keymanager.KeyManager) {
+						if err := keyManager.Run(ctx); err != nil {
+							log.G(ctx).WithError(err).Error("keymanager failed with an error")
+						}
+					}(m.keyManager)
+				}
 
 				go func(d *dispatcher.Dispatcher) {
 					if err := d.Run(ctx); err != nil {
@@ -385,14 +387,17 @@ func (m *Manager) Run(parent context.Context) error {
 						log.G(ctx).WithError(err).Error("scheduler exited with an error")
 					}
 				}(m.scheduler)
+
 				go func(taskReaper *orchestrator.TaskReaper) {
 					taskReaper.Run()
 				}(m.taskReaper)
+
 				go func(orchestrator *orchestrator.ReplicatedOrchestrator) {
 					if err := orchestrator.Run(ctx); err != nil {
 						log.G(ctx).WithError(err).Error("replicated orchestrator exited with an error")
 					}
 				}(m.replicatedOrchestrator)
+
 				go func(globalOrchestrator *orchestrator.GlobalOrchestrator) {
 					if err := globalOrchestrator.Run(ctx); err != nil {
 						log.G(ctx).WithError(err).Error("global orchestrator exited with an error")
@@ -420,8 +425,10 @@ func (m *Manager) Run(parent context.Context) error {
 				m.scheduler.Stop()
 				m.scheduler = nil
 
-				m.keyManager.Stop()
-				m.keyManager = nil
+				if m.keyManager != nil {
+					m.keyManager.Stop()
+					m.keyManager = nil
+				}
 			}
 			m.mu.Unlock()
 		}
