@@ -19,16 +19,16 @@ func printClusterSummary(cluster *api.Cluster) {
 
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", cluster.ID)
 	common.FprintfIfNotEmpty(w, "Name\t: %s\n", cluster.Spec.Annotations.Name)
-	fmt.Fprintf(w, "Orchestration settings:\n")
-	fmt.Fprintf(w, "  Task history entries: %d\n", cluster.Spec.Orchestration.TaskHistoryRetentionLimit)
+	fmt.Fprintf(w, "Orchestration Settings:\n")
+	fmt.Fprintf(w, "  Task History Entries: %d\n", cluster.Spec.Orchestration.TaskHistoryRetentionLimit)
 
 	heartbeatPeriod, err := ptypes.Duration(cluster.Spec.Dispatcher.HeartbeatPeriod)
 	if err == nil {
-		fmt.Fprintf(w, "Dispatcher settings:\n")
-		fmt.Fprintf(w, "  Dispatcher heartbeat period: %s\n", heartbeatPeriod.String())
+		fmt.Fprintf(w, "Dispatcher Settings:\n")
+		fmt.Fprintf(w, "  Dispatcher Heartbeat Period: %s\n", heartbeatPeriod.String())
 	}
 
-	fmt.Fprintf(w, "Certificate Authority settings:\n")
+	fmt.Fprintf(w, "Certificate Authority Settings:\n")
 	if cluster.Spec.CAConfig.NodeCertExpiry != nil {
 		clusterDuration, err := ptypes.Duration(cluster.Spec.CAConfig.NodeCertExpiry)
 		if err != nil {

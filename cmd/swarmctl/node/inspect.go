@@ -36,9 +36,9 @@ func printNodeSummary(node *api.Node) {
 	common.FprintfIfNotEmpty(w, "  Availability\t: %s\n", spec.Availability.String())
 
 	if node.ManagerStatus != nil {
-		fmt.Fprintln(w, "Manager status:\t")
+		fmt.Fprintln(w, "Manager Status:\t")
 		common.FprintfIfNotEmpty(w, "  Address\t: %s\n", node.ManagerStatus.Addr)
-		common.FprintfIfNotEmpty(w, "  Raft status\t: %s\n", node.ManagerStatus.Reachability.String())
+		common.FprintfIfNotEmpty(w, "  Raft Status\t: %s\n", node.ManagerStatus.Reachability.String())
 		leader := "no"
 		if node.ManagerStatus.Leader {
 			leader = "yes"

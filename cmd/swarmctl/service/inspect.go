@@ -64,7 +64,7 @@ func printServiceSummary(service *api.Service, running int) {
 		fmt.Fprintln(w, "  Resources\t")
 		printResources := func(w io.Writer, r *api.Resources) {
 			if r.NanoCPUs != 0 {
-				fmt.Fprintf(w, "      CPU\t: %g\n", float64(r.NanoCPUs)/1e9)
+				fmt.Fprintf(w, "      CPUs\t: %g\n", float64(r.NanoCPUs)/1e9)
 			}
 			if r.MemoryBytes != 0 {
 				fmt.Fprintf(w, "      Memory\t: %s\n", humanize.IBytes(uint64(r.MemoryBytes)))
@@ -99,10 +99,10 @@ func printServiceSummary(service *api.Service, running int) {
 	if len(ctr.Mounts) > 0 {
 		fmt.Fprintln(w, "  Mounts:")
 		for _, v := range ctr.Mounts {
-			fmt.Fprintf(w, "    - target = %s\n", v.Target)
-			fmt.Fprintf(w, "      source = %s\n", v.Source)
-			fmt.Fprintf(w, "      readonly = %v\n", v.ReadOnly)
-			fmt.Fprintf(w, "      type = %v\n", strings.ToLower(v.Type.String()))
+			fmt.Fprintf(w, "    - Target = %s\n", v.Target)
+			fmt.Fprintf(w, "      Source = %s\n", v.Source)
+			fmt.Fprintf(w, "      Readonly = %v\n", v.ReadOnly)
+			fmt.Fprintf(w, "      Type = %v\n", strings.ToLower(v.Type.String()))
 		}
 	}
 
