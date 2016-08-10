@@ -724,12 +724,12 @@ func encodeVarintService(data []byte, offset int, v uint64) int {
 
 type raftProxyRouteGuideServer struct {
 	local        RouteGuideServer
-	connSelector *raftpicker.ConnSelector
+	connSelector raftpicker.Interface
 	cluster      raftpicker.RaftCluster
 	ctxMods      []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyRouteGuideServer(local RouteGuideServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) RouteGuideServer {
+func NewRaftProxyRouteGuideServer(local RouteGuideServer, connSelector raftpicker.Interface, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) RouteGuideServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {

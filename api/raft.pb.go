@@ -1438,12 +1438,12 @@ func encodeVarintRaft(data []byte, offset int, v uint64) int {
 
 type raftProxyRaftServer struct {
 	local        RaftServer
-	connSelector *raftpicker.ConnSelector
+	connSelector raftpicker.Interface
 	cluster      raftpicker.RaftCluster
 	ctxMods      []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyRaftServer(local RaftServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) RaftServer {
+func NewRaftProxyRaftServer(local RaftServer, connSelector raftpicker.Interface, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) RaftServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
@@ -1541,12 +1541,12 @@ func (p *raftProxyRaftServer) ResolveAddress(ctx context.Context, r *ResolveAddr
 
 type raftProxyRaftMembershipServer struct {
 	local        RaftMembershipServer
-	connSelector *raftpicker.ConnSelector
+	connSelector raftpicker.Interface
 	cluster      raftpicker.RaftCluster
 	ctxMods      []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyRaftMembershipServer(local RaftMembershipServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) RaftMembershipServer {
+func NewRaftProxyRaftMembershipServer(local RaftMembershipServer, connSelector raftpicker.Interface, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) RaftMembershipServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {

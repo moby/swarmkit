@@ -668,12 +668,12 @@ func encodeVarintCa(data []byte, offset int, v uint64) int {
 
 type raftProxyCAServer struct {
 	local        CAServer
-	connSelector *raftpicker.ConnSelector
+	connSelector raftpicker.Interface
 	cluster      raftpicker.RaftCluster
 	ctxMods      []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyCAServer(local CAServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) CAServer {
+func NewRaftProxyCAServer(local CAServer, connSelector raftpicker.Interface, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) CAServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
@@ -742,12 +742,12 @@ func (p *raftProxyCAServer) GetRootCACertificate(ctx context.Context, r *GetRoot
 
 type raftProxyNodeCAServer struct {
 	local        NodeCAServer
-	connSelector *raftpicker.ConnSelector
+	connSelector raftpicker.Interface
 	cluster      raftpicker.RaftCluster
 	ctxMods      []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyNodeCAServer(local NodeCAServer, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) NodeCAServer {
+func NewRaftProxyNodeCAServer(local NodeCAServer, connSelector raftpicker.Interface, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) NodeCAServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {

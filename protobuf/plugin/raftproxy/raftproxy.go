@@ -40,14 +40,14 @@ func (g *raftProxyGen) Name() string {
 func (g *raftProxyGen) genProxyStruct(s *descriptor.ServiceDescriptorProto) {
 	g.gen.P("type " + serviceTypeName(s) + " struct {")
 	g.gen.P("\tlocal " + s.GetName() + "Server")
-	g.gen.P("\tconnSelector *raftpicker.ConnSelector")
+	g.gen.P("\tconnSelector raftpicker.Interface")
 	g.gen.P("\tcluster raftpicker.RaftCluster")
 	g.gen.P("\tctxMods []func(context.Context)(context.Context, error)")
 	g.gen.P("}")
 }
 
 func (g *raftProxyGen) genProxyConstructor(s *descriptor.ServiceDescriptorProto) {
-	g.gen.P("func NewRaftProxy" + s.GetName() + "Server(local " + s.GetName() + "Server, connSelector *raftpicker.ConnSelector, cluster raftpicker.RaftCluster, ctxMod func(context.Context)(context.Context, error)) " + s.GetName() + "Server {")
+	g.gen.P("func NewRaftProxy" + s.GetName() + "Server(local " + s.GetName() + "Server, connSelector raftpicker.Interface, cluster raftpicker.RaftCluster, ctxMod func(context.Context)(context.Context, error)) " + s.GetName() + "Server {")
 	g.gen.P(`redirectChecker := func(ctx context.Context)(context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
