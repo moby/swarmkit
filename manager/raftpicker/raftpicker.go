@@ -9,6 +9,13 @@ import (
 	"google.golang.org/grpc"
 )
 
+// Interface is interface to replace implementation with controlapi/hackpicker.
+// TODO: it should be done cooler.
+type Interface interface {
+	Conn() (*grpc.ClientConn, error)
+	Reset() error
+}
+
 // ConnSelector is struct for obtaining connection connected to cluster leader.
 type ConnSelector struct {
 	mu      sync.Mutex

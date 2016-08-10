@@ -17,6 +17,7 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/allocator"
 	"github.com/docker/swarmkit/manager/controlapi"
+	"github.com/docker/swarmkit/manager/controlapi/hackpicker"
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/health"
 	"github.com/docker/swarmkit/manager/keymanager"
@@ -438,6 +439,17 @@ func (m *Manager) Run(parent context.Context) error {
 	cs := raftpicker.NewConnSelector(m.RaftNode, proxyOpts...)
 	m.connSelector = cs
 
+	// We need special connSelector for controlapi because it provides automatic
+	// leader tracking.
+	// Other APIs are using connSelector which errors out on leader change, but
+	// allows to react quickly to reelections.
+	controlAPIProxyOpts := []grpc.DialOption{
+		grpc.WithBackoffMaxDelay(time.Second),
+		grpc.WithTransportCredentials(m.config.SecurityConfig.ClientTLSCreds),
+	}
+
+	controlAPIConnSelector := hackpicker.NewConnSelector(m.RaftNode, controlAPIProxyOpts...)
+
 	authorize := func(ctx context.Context, roles []string) error {
 		// Authorize the remote roles, ensure they can only be forwarded by managers
 		_, err := ca.AuthorizeForwardedRoleAndOrg(ctx, roles, []string{ca.ManagerRole}, m.config.SecurityConfig.ClientTLSCreds.Organization())
@@ -467,7 +479,7 @@ func (m *Manager) Run(parent context.Context) error {
 	// this manager rather than forwarded requests (it has no TLS
 	// information to put in the metadata map).
 	forwardAsOwnRequest := func(ctx context.Context) (context.Context, error) { return ctx, nil }
-	localProxyControlAPI := api.NewRaftProxyControlServer(baseControlAPI, cs, m.RaftNode, forwardAsOwnRequest)
+	localProxyControlAPI := api.NewRaftProxyControlServer(baseControlAPI, controlAPIConnSelector, m.RaftNode, forwardAsOwnRequest)
 
 	// Everything registered on m.server should be an authenticated
 	// wrapper, or a proxy wrapping an authenticated wrapper!
