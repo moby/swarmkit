@@ -110,7 +110,7 @@ func (r *ReplicatedOrchestrator) tick(ctx context.Context) {
 	r.tickServices(ctx)
 }
 
-func newTask(cluster *api.Cluster, service *api.Service, instance uint64) *api.Task {
+func newTask(cluster *api.Cluster, service *api.Service, slot uint64) *api.Task {
 	var logDriver *api.Driver
 	if service.Spec.Task.LogDriver != nil {
 		// use the log driver specific to the task, if we have it.
@@ -128,7 +128,7 @@ func newTask(cluster *api.Cluster, service *api.Service, instance uint64) *api.T
 		ServiceAnnotations: service.Spec.Annotations,
 		Spec:               service.Spec.Task,
 		ServiceID:          service.ID,
-		Slot:               instance,
+		Slot:               slot,
 		Status: api.TaskStatus{
 			State:     api.TaskStateNew,
 			Timestamp: ptypes.MustTimestampProto(time.Now()),
