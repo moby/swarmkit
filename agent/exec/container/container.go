@@ -302,6 +302,15 @@ func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *types.VolumeCre
 func (c *containerConfig) resources() enginecontainer.Resources {
 	resources := enginecontainer.Resources{}
 
+	for _, device := range c.spec().Devices {
+		d := enginecontainer.DeviceMapping{
+			PathOnHost:        device.Source,
+			PathInContainer:   device.Target,
+			CgroupPermissions: device.Permissions,
+		}
+		resources.Devices = append(resources.Devices, d)
+	}
+
 	// If no limits are specified let the engine use its defaults.
 	//
 	// TODO(aluzzardi): We might want to set some limits anyway otherwise

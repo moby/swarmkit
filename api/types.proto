@@ -696,3 +696,9 @@ message ManagerStatus {
 	// Reachability specifies whether this node is reachable.
 	RaftMemberStatus.Reachability reachability = 4;
 }
+
+message Device {
+	string source = 1;
+	string target = 2;
+	string permissions = 3;
+}

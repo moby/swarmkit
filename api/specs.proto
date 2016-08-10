@@ -171,6 +171,9 @@ message ContainerSpec {
 
 	repeated Mount mounts = 8 [(gogoproto.nullable) = false];
 
+	// Device files from the host.
+	repeated Device devices = 12;
+
 	// StopGracePeriod the grace period for stopping the container before
 	// forcefully killing the container.
 	Duration stop_grace_period = 9;
