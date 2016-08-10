@@ -1,6 +1,7 @@
 package network
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -15,6 +16,10 @@ var (
 		Use:   "ls",
 		Short: "List networks",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 0 {
+				return errors.New("ls command takes no arguments")
+			}
+
 			flags := cmd.Flags()
 
 			quiet, err := flags.GetBool("quiet")

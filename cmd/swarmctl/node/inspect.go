@@ -97,6 +97,10 @@ var (
 				return errors.New("node ID missing")
 			}
 
+			if len(args) > 1 {
+				return errors.New("inspect command takes exactly 1 argument")
+			}
+
 			flags := cmd.Flags()
 
 			all, err := flags.GetBool("all")

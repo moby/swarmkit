@@ -18,6 +18,11 @@ var (
 			if len(args) == 0 {
 				return errors.New("task ID missing")
 			}
+
+			if len(args) > 1 {
+				return errors.New("remove command takes exactly 1 argument")
+			}
+
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
