@@ -5,11 +5,14 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/docker/swarmkit/api"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
+	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
 )
 
 func TestRaftSnapshot(t *testing.T) {
@@ -242,4 +245,181 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	values[6], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[6])
 	require.NoError(t, err)
 	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
+}
+
+func TestGCWAL(t *testing.T) {
+	if testing.Short() {
+		t.Skip("TestGCWAL skipped with -short because it's resource-intensive")
+	}
+	t.Parallel()
+
+	// Additional log entries from cluster setup, leader election
+	extraLogEntries := 5
+	// Number of large entries to propose
+	proposals := 47
+
+	// Bring up a 3 node cluster
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc, &api.RaftConfig{SnapshotInterval: uint64(proposals + extraLogEntries), LogEntriesForSlowFollowers: 0})
+
+	for i := 0; i != proposals; i++ {
+		_, err := proposeHugeValue(t, nodes[1], DefaultProposalTime, fmt.Sprintf("id%d", i))
+		assert.NoError(t, err, "failed to propose value")
+	}
+
+	time.Sleep(250 * time.Millisecond)
+
+	// Snapshot should have been triggered just before the WAL rotated, so
+	// both WAL files should be preserved
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		dirents, err := ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "snap"))
+		if err != nil {
+			return err
+		}
+		if len(dirents) != 1 {
+			return fmt.Errorf("expected 1 snapshot, found %d", len(dirents))
+		}
+
+		dirents, err = ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "wal"))
+		if err != nil {
+			return err
+		}
+		if len(dirents) != 2 {
+			return fmt.Errorf("expected 2 WAL files, found %d", len(dirents))
+		}
+		return nil
+	}))
+
+	raftutils.TeardownCluster(t, nodes)
+
+	// Repeat this test, but trigger the snapshot after the WAL has rotated
+	proposals++
+	nodes, clockSource = raftutils.NewRaftCluster(t, tc, &api.RaftConfig{SnapshotInterval: uint64(proposals + extraLogEntries), LogEntriesForSlowFollowers: 0})
+	defer raftutils.TeardownCluster(t, nodes)
+
+	for i := 0; i != proposals; i++ {
+		_, err := proposeHugeValue(t, nodes[1], DefaultProposalTime, fmt.Sprintf("id%d", i))
+		assert.NoError(t, err, "failed to propose value")
+	}
+
+	time.Sleep(250 * time.Millisecond)
+
+	// This time only one WAL file should be saved.
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		dirents, err := ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "snap"))
+		if err != nil {
+			return err
+		}
+		if len(dirents) != 1 {
+			return fmt.Errorf("expected 1 snapshot, found %d", len(dirents))
+		}
+
+		dirents, err = ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "wal"))
+		if err != nil {
+			return err
+		}
+		if len(dirents) != 1 {
+			return fmt.Errorf("expected 1 WAL file, found %d", len(dirents))
+		}
+		return nil
+	}))
+
+	// Restart the whole cluster
+	for _, node := range nodes {
+		node.Server.Stop()
+		node.Shutdown()
+	}
+
+	raftutils.AdvanceTicks(clockSource, 5)
+
+	i := 0
+	for k, node := range nodes {
+		nodes[k] = raftutils.RestartNode(t, clockSource, node, false)
+		i++
+	}
+	raftutils.WaitForCluster(t, clockSource, nodes)
+
+	// Is the data intact after restart?
+	for _, node := range nodes {
+		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+			var err error
+			node.MemoryStore().View(func(tx store.ReadTx) {
+				var allNodes []*api.Node
+				allNodes, err = store.FindNodes(tx, store.All)
+				if err != nil {
+					return
+				}
+				if len(allNodes) != proposals {
+					err = fmt.Errorf("expected %d nodes, got %d", proposals, len(allNodes))
+					return
+				}
+			})
+			return err
+		}))
+	}
+
+	// It should still be possible to propose values
+	_, err := raftutils.ProposeValue(t, raftutils.Leader(nodes), DefaultProposalTime, "newnode")
+	assert.NoError(t, err, "failed to propose value")
+
+	for _, node := range nodes {
+		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+			var err error
+			node.MemoryStore().View(func(tx store.ReadTx) {
+				var allNodes []*api.Node
+				allNodes, err = store.FindNodes(tx, store.All)
+				if err != nil {
+					return
+				}
+				if len(allNodes) != proposals+1 {
+					err = fmt.Errorf("expected %d nodes, got %d", proposals, len(allNodes))
+					return
+				}
+			})
+			return err
+		}))
+	}
+}
+
+// proposeHugeValue proposes a 1.4MB value to a raft test cluster
+func proposeHugeValue(t *testing.T, raftNode *raftutils.TestNode, time time.Duration, nodeID ...string) (*api.Node, error) {
+	nodeIDStr := "id1"
+	if len(nodeID) != 0 {
+		nodeIDStr = nodeID[0]
+	}
+	a := make([]byte, 1400000)
+	for i := 0; i != len(a); i++ {
+		a[i] = 'a'
+	}
+	node := &api.Node{
+		ID: nodeIDStr,
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: nodeIDStr,
+				Labels: map[string]string{
+					"largestring": string(a),
+				},
+			},
+		},
+	}
+
+	storeActions := []*api.StoreAction{
+		{
+			Action: api.StoreActionKindCreate,
+			Target: &api.StoreAction_Node{
+				Node: node,
+			},
+		},
+	}
+
+	ctx, _ := context.WithTimeout(context.Background(), time)
+
+	err := raftNode.ProposeValue(ctx, storeActions, func() {
+		err := raftNode.MemoryStore().ApplyStoreActions(storeActions)
+		assert.NoError(t, err, "error applying actions")
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return node, nil
 }
