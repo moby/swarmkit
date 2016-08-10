@@ -10,7 +10,11 @@ import (
 const connErrorHandle = `
 	defer func() {
 		if err != nil {
-			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+			strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+			strings.Contains(errStr, "connection error") ||
+			grpc.Code(err) == codes.Internal {
 				p.connSelector.Reset()
 			}
 		}
