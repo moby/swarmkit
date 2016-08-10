@@ -18,6 +18,10 @@ var (
 				return errors.New("missing node ID")
 			}
 
+			if len(args) > 1 {
+				return errors.New("remove command takes exactly 1 argument")
+			}
+
 			flags := cmd.Flags()
 
 			force, err := flags.GetBool("force")
