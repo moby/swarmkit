@@ -727,7 +727,11 @@ func (p *raftProxyCAServer) GetRootCACertificate(ctx context.Context, r *GetRoot
 
 	defer func() {
 		if err != nil {
-			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
 				p.connSelector.Reset()
 			}
 		}
@@ -797,7 +801,11 @@ func (p *raftProxyNodeCAServer) IssueNodeCertificate(ctx context.Context, r *Iss
 
 	defer func() {
 		if err != nil {
-			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
 				p.connSelector.Reset()
 			}
 		}
@@ -822,7 +830,11 @@ func (p *raftProxyNodeCAServer) NodeCertificateStatus(ctx context.Context, r *No
 
 	defer func() {
 		if err != nil {
-			if _, ok := err.(transport.ConnectionError); ok || err == grpc.ErrClientConnClosing || err == grpc.ErrClientConnTimeout {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
 				p.connSelector.Reset()
 			}
 		}
