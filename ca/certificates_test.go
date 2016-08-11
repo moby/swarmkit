@@ -322,7 +322,7 @@ func TestIssueAndSaveNewCertificates(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	// Copy the current RootCA without the signer
+	// Test the creation of a manager certificate
 	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN", ca.ManagerRole, tc.Organization)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
@@ -340,6 +340,31 @@ func TestIssueAndSaveNewCertificates(t *testing.T) {
 	assert.Equal(t, ca.ManagerRole, certs[0].Subject.OrganizationalUnit[0])
 	assert.Equal(t, tc.Organization, certs[0].Subject.Organization[0])
 	assert.Equal(t, "swarm-test-CA", certs[1].Subject.CommonName)
+	assert.Contains(t, certs[0].DNSNames, "CN")
+	assert.Contains(t, certs[0].DNSNames, "swarm-ca")
+	assert.Contains(t, certs[0].DNSNames, "swarm-manager")
+
+	// Test the creation of a worker node cert
+	cert, err = tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN", ca.AgentRole, tc.Organization)
+	assert.NoError(t, err)
+	assert.NotNil(t, cert)
+	perms, err = permbits.Stat(tc.Paths.Node.Cert)
+	assert.NoError(t, err)
+	assert.False(t, perms.GroupWrite())
+	assert.False(t, perms.OtherWrite())
+
+	certBytes, err = ioutil.ReadFile(tc.Paths.Node.Cert)
+	assert.NoError(t, err)
+	certs, err = helpers.ParseCertificatesPEM(certBytes)
+	assert.NoError(t, err)
+	assert.Len(t, certs, 2)
+	assert.Equal(t, "CN", certs[0].Subject.CommonName)
+	assert.Equal(t, ca.AgentRole, certs[0].Subject.OrganizationalUnit[0])
+	assert.Equal(t, tc.Organization, certs[0].Subject.Organization[0])
+	assert.Equal(t, "swarm-test-CA", certs[1].Subject.CommonName)
+	assert.Contains(t, certs[0].DNSNames, "CN")
+	assert.Contains(t, certs[0].DNSNames, "swarm-worker")
+
 }
 
 func TestGetRemoteSignedCertificate(t *testing.T) {
