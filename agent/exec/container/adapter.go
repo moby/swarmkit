@@ -15,6 +15,7 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 	"golang.org/x/net/context"
+	"golang.org/x/time/rate"
 )
 
 // containerController conducts remote operations for a container. All calls
@@ -60,7 +61,11 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 	}
 
 	dec := json.NewDecoder(rc)
+	dec.UseNumber()
 	m := map[string]interface{}{}
+	spamLimiter := rate.NewLimiter(rate.Every(1000*time.Millisecond), 1)
+
+	lastStatus := ""
 	for {
 		if err := dec.Decode(&m); err != nil {
 			if err == io.EOF {
@@ -68,8 +73,30 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 			}
 			return err
 		}
-		// TODO(stevvooe): Report this status somewhere.
-		logrus.Debugln("pull progress", m)
+		l := log.G(ctx)
+		// limit pull progress logs unless the status changes
+		if spamLimiter.Allow() || lastStatus != m["status"] {
+			// if we have progress details, we have everything we need
+			if progress, ok := m["progressDetail"].(map[string]interface{}); ok {
+				// first, log the image and status
+				l = l.WithFields(logrus.Fields{
+					"image":  c.container.image(),
+					"status": m["status"],
+				})
+				// then, if we have progress, log the progress
+				if progress["current"] != nil && progress["total"] != nil {
+					l = l.WithFields(logrus.Fields{
+						"current": progress["current"],
+						"total":   progress["total"],
+					})
+				}
+			}
+			l.Debug("pull in progress")
+		}
+		// sometimes, we get no useful information at all, and add no fields
+		if status, ok := m["status"].(string); ok {
+			lastStatus = status
+		}
 	}
 	// if the final stream object contained an error, return it
 	if errMsg, ok := m["error"]; ok {
