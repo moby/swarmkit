@@ -112,6 +112,9 @@ message SessionMessage {
 	// Symmetric encryption key distributed by the lead manager. Used by agents
 	// for securing network bootstrapping and communication. 
 	repeated EncryptionKey network_bootstrap_keys = 4;
+
+	// Stop is used for notifying node that it should stop operating.
+	bool Stop = 5;
 }
 
 // HeartbeatRequest provides identifying properties for a single heartbeat.

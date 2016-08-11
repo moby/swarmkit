@@ -217,6 +217,9 @@ func (a *Agent) run(ctx context.Context) {
 }
 
 func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMessage) error {
+	if message.Stop {
+		return a.Stop(context.Background())
+	}
 	seen := map[api.Peer]struct{}{}
 	for _, manager := range message.Managers {
 		if manager.Peer.Addr == "" {
