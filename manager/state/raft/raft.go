@@ -1100,7 +1100,7 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 		if err != nil {
 			n.Config.Logger.Errorf("could connect to member ID %x at %s: %v", m.To, conn.Addr, err)
 		} else {
-			n.cluster.ReplaceMemberConnection(m.To, newConn)
+			n.cluster.ReplaceMemberConnection(m.To, conn, newConn)
 		}
 	} else if m.Type == raftpb.MsgSnap {
 		n.ReportSnapshot(m.To, raft.SnapshotFinish)
