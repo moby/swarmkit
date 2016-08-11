@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -248,27 +249,24 @@ func TestRaftSnapshotRestart(t *testing.T) {
 }
 
 func TestGCWAL(t *testing.T) {
-	if testing.Short() {
-		t.Skip("TestGCWAL skipped with -short because it's resource-intensive")
-	}
 	t.Parallel()
 
 	// Additional log entries from cluster setup, leader election
 	extraLogEntries := 5
 	// Number of large entries to propose
-	proposals := 47
+	proposals := 8
 
 	// Bring up a 3 node cluster
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc, &api.RaftConfig{SnapshotInterval: uint64(proposals + extraLogEntries), LogEntriesForSlowFollowers: 0})
 
 	for i := 0; i != proposals; i++ {
-		_, err := proposeHugeValue(t, nodes[1], DefaultProposalTime, fmt.Sprintf("id%d", i))
+		_, err := proposeLargeValue(t, nodes[1], DefaultProposalTime, fmt.Sprintf("id%d", i))
 		assert.NoError(t, err, "failed to propose value")
 	}
 
 	time.Sleep(250 * time.Millisecond)
 
-	// Snapshot should have been triggered just before the WAL rotated, so
+	// Snapshot should have been triggered just as the WAL rotated, so
 	// both WAL files should be preserved
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
 		dirents, err := ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "snap"))
@@ -283,8 +281,14 @@ func TestGCWAL(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if len(dirents) != 2 {
-			return fmt.Errorf("expected 2 WAL files, found %d", len(dirents))
+		var walCount int
+		for _, f := range dirents {
+			if strings.HasSuffix(f.Name(), ".wal") {
+				walCount++
+			}
+		}
+		if walCount != 2 {
+			return fmt.Errorf("expected 2 WAL files, found %d", walCount)
 		}
 		return nil
 	}))
@@ -297,7 +301,7 @@ func TestGCWAL(t *testing.T) {
 	defer raftutils.TeardownCluster(t, nodes)
 
 	for i := 0; i != proposals; i++ {
-		_, err := proposeHugeValue(t, nodes[1], DefaultProposalTime, fmt.Sprintf("id%d", i))
+		_, err := proposeLargeValue(t, nodes[1], DefaultProposalTime, fmt.Sprintf("id%d", i))
 		assert.NoError(t, err, "failed to propose value")
 	}
 
@@ -309,6 +313,7 @@ func TestGCWAL(t *testing.T) {
 		if err != nil {
 			return err
 		}
+
 		if len(dirents) != 1 {
 			return fmt.Errorf("expected 1 snapshot, found %d", len(dirents))
 		}
@@ -317,8 +322,14 @@ func TestGCWAL(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if len(dirents) != 1 {
-			return fmt.Errorf("expected 1 WAL file, found %d", len(dirents))
+		var walCount int
+		for _, f := range dirents {
+			if strings.HasSuffix(f.Name(), ".wal") {
+				walCount++
+			}
+		}
+		if walCount != 1 {
+			return fmt.Errorf("expected 1 WAL file, found %d", walCount)
 		}
 		return nil
 	}))
@@ -380,13 +391,13 @@ func TestGCWAL(t *testing.T) {
 	}
 }
 
-// proposeHugeValue proposes a 1.4MB value to a raft test cluster
-func proposeHugeValue(t *testing.T, raftNode *raftutils.TestNode, time time.Duration, nodeID ...string) (*api.Node, error) {
+// proposeLargeValue proposes a 10kb value to a raft test cluster
+func proposeLargeValue(t *testing.T, raftNode *raftutils.TestNode, time time.Duration, nodeID ...string) (*api.Node, error) {
 	nodeIDStr := "id1"
 	if len(nodeID) != 0 {
 		nodeIDStr = nodeID[0]
 	}
-	a := make([]byte, 1400000)
+	a := make([]byte, 10000)
 	for i := 0; i != len(a); i++ {
 		a[i] = 'a'
 	}
