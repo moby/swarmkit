@@ -15,6 +15,10 @@ var (
 		Use:   "create",
 		Short: "Create a service",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 0 {
+				return errors.New("create command takes no arguments")
+			}
+
 			if !cmd.Flags().Changed("name") || !cmd.Flags().Changed("image") {
 				return errors.New("--name and --image are mandatory")
 			}

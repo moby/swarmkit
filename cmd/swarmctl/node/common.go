@@ -20,6 +20,10 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 		return errors.New("missing node ID")
 	}
 
+	if len(args) > 1 {
+		return errors.New("command takes exactly 1 argument")
+	}
+
 	c, err := common.Dial(cmd)
 	if err != nil {
 		return err
@@ -54,6 +58,10 @@ func changeNodeMembership(cmd *cobra.Command, args []string, membership api.Node
 		return errors.New("missing node ID")
 	}
 
+	if len(args) > 1 {
+		return errors.New("command takes exactly 1 argument")
+	}
+
 	c, err := common.Dial(cmd)
 	if err != nil {
 		return err
@@ -86,6 +94,10 @@ func changeNodeMembership(cmd *cobra.Command, args []string, membership api.Node
 func changeNodeRole(cmd *cobra.Command, args []string, role api.NodeRole) error {
 	if len(args) == 0 {
 		return errors.New("missing node ID")
+	}
+
+	if len(args) > 1 {
+		return errors.New("command takes exactly 1 argument")
 	}
 
 	c, err := common.Dial(cmd)

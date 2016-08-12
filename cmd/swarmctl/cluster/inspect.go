@@ -64,7 +64,6 @@ func printClusterSummary(cluster *api.Cluster) {
 					fmt.Fprintf(w, "  %s\t: %s\n", k, v)
 				} else {
 					fmt.Fprintf(w, "  %s\t\n", k)
-
 				}
 			}
 		}
@@ -78,6 +77,10 @@ var (
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errors.New("cluster name missing")
+			}
+
+			if len(args) > 1 {
+				return errors.New("inspect command takes exactly 1 argument")
 			}
 
 			c, err := common.Dial(cmd)
