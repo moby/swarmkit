@@ -776,10 +776,15 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		return err
 	}
 
-	// register the node.
-	sessionID, err := d.register(stream.Context(), nodeID, r.Description)
-	if err != nil {
-		return err
+	var sessionID string
+	if _, err := d.nodes.GetWithSession(nodeID, r.SessionID); err != nil {
+		// register the node.
+		sessionID, err = d.register(stream.Context(), nodeID, r.Description)
+		if err != nil {
+			return err
+		}
+	} else {
+		sessionID = r.SessionID
 	}
 
 	fields := logrus.Fields{
