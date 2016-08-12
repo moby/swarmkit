@@ -191,7 +191,7 @@ func TestRegisterExceedRateLimit(t *testing.T) {
 		assert.NoError(t, err)
 		_, err = stream.Recv()
 		assert.Error(t, err)
-		assert.Equal(t, codes.Unavailable, grpc.Code(err))
+		assert.Equal(t, codes.Unavailable, grpc.Code(err), err.Error())
 	}
 }
 
