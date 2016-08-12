@@ -88,6 +88,7 @@ func (c *containerConfig) config() *enginecontainer.Config {
 		User:       c.spec().User,
 		Env:        c.spec().Env,
 		WorkingDir: c.spec().Dir,
+		Tty:        c.spec().TTY,
 		Image:      c.image(),
 		Volumes:    c.volumes(),
 	}
