@@ -16,6 +16,10 @@ var (
 		Use:   "create",
 		Short: "Create a network",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 0 {
+				return errors.New("create command takes no arguments")
+			}
+
 			flags := cmd.Flags()
 			if !flags.Changed("name") {
 				return errors.New("--name is required")

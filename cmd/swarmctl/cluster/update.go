@@ -23,6 +23,10 @@ var (
 				return errors.New("cluster name missing")
 			}
 
+			if len(args) > 1 {
+				return errors.New("update command takes exactly 1 argument")
+			}
+
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
