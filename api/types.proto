@@ -747,3 +747,27 @@ message ManagerStatus {
 	// Reachability specifies whether this node is reachable.
 	RaftMemberStatus.Reachability reachability = 4;
 }
+
+// SecretType provides information about what kind of secret this is
+enum SecretType {
+	CONTAINER = 0 [(gogoproto.enumvalue_customname) = "ContainerSecret"];
+	NODE = 1 [(gogoproto.enumvalue_customname) = "NodeSecret"];
+}
+
+// SecretReference is the linkage between a service and a secret that it uses.
+message SecretReference {
+	// Name is the name of the secret that this reference.
+	string name = 1;
+
+	// Mode specifies how this secret should be exposed inside the task.
+	enum Mode {
+		FILE = 0;
+		ENV = 1;
+	}
+
+	// Mode is one or more ways the secret should be presented.
+	repeated Mode mode = 2;
+
+	// Target is the name by which the image accesses the secret.
+	string target = 3;
+}
