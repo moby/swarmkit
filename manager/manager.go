@@ -527,7 +527,7 @@ func (m *Manager) rotateRootCAKEK(ctx context.Context, clusterID string) error {
 
 }
 
-// handleLeadershipEvents read out and discard all of the messages when the manager is stopped,
+// handleLeadershipEvents reads out and discards all of the messages when the manager is stopped,
 // otherwise it handles the is leader event or is follower event.
 func (m *Manager) handleLeadershipEvents(ctx context.Context, leadershipCh chan events.Event) {
 	for leadershipEvent := range leadershipCh {
@@ -734,7 +734,7 @@ func defaultClusterObject(clusterID string, initialCAConfig api.CAConfig, raftCf
 	}
 }
 
-// managerNode create a new node with NodeRoleManager role.
+// managerNode creates a new node with NodeRoleManager role.
 func managerNode(nodeID string) *api.Node {
 	return &api.Node{
 		ID: nodeID,

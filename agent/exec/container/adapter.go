@@ -18,7 +18,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// containerController conducts remote operations for a container. All calls
+// containerAdapter conducts remote operations for a container. All calls
 // are mostly naked calls to the client API, seeded with information from
 // containerConfig.
 type containerAdapter struct {
@@ -241,7 +241,7 @@ func (c *containerAdapter) remove(ctx context.Context) error {
 	})
 }
 
-func (c *containerAdapter) createVolumes(ctx context.Context, client engineapi.APIClient) error {
+func (c *containerAdapter) createVolumes(ctx context.Context) error {
 	// Create plugin volumes that are embedded inside a Mount
 	for _, mount := range c.container.spec().Mounts {
 		if mount.Type != api.MountTypeVolume {
@@ -258,7 +258,7 @@ func (c *containerAdapter) createVolumes(ctx context.Context, client engineapi.A
 		}
 
 		req := c.container.volumeCreateRequest(&mount)
-		if _, err := client.VolumeCreate(ctx, *req); err != nil {
+		if _, err := c.client.VolumeCreate(ctx, *req); err != nil {
 			// TODO(amitshukla): Today, volume create through the engine api does not return an error
 			// when the named volume with the same parameters already exists.
 			// It returns an error if the driver name is different - that is a valid error
