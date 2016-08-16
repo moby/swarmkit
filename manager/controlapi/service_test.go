@@ -404,8 +404,8 @@ func TestUpdateService(t *testing.T) {
 func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
-	spec := createSpec("name", "image", 1)
-	spec.Networks = []*api.ServiceSpec_NetworkAttachmentConfig{
+	spec := createSpec("name1", "image", 1)
+	spec.Networks = []*api.NetworkAttachmentConfig{
 		{
 			Target: "net20",
 		},
@@ -426,6 +426,54 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 	})
 	assert.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), errNetworkUpdateNotSupported.Error()))
+
+	// Use TaskSpec.Networks
+	spec = createSpec("name2", "image", 1)
+	spec.Task.Networks = []*api.NetworkAttachmentConfig{
+		{
+			Target: "net20",
+		},
+	}
+	cr, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.NoError(t, err)
+
+	ur, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: cr.Service.ID})
+	assert.NoError(t, err)
+	service = ur.Service
+
+	service.Spec.Task.Networks[0].Target = "net30"
+
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:      service.ID,
+		Spec:           &service.Spec,
+		ServiceVersion: &service.Meta.Version,
+	})
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), errNetworkUpdateNotSupported.Error()))
+
+	// Migrate networks from ServiceSpec.Networks to TaskSpec.Networks
+	spec = createSpec("name3", "image", 1)
+	spec.Networks = []*api.NetworkAttachmentConfig{
+		{
+			Target: "net20",
+		},
+	}
+	cr, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.NoError(t, err)
+
+	ur, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: cr.Service.ID})
+	assert.NoError(t, err)
+	service = ur.Service
+
+	service.Spec.Task.Networks = spec.Networks
+	service.Spec.Networks = nil
+
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:      service.ID,
+		Spec:           &service.Spec,
+		ServiceVersion: &service.Meta.Version,
+	})
+	assert.NoError(t, err)
 }
 
 func TestRemoveService(t *testing.T) {
