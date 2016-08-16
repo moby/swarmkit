@@ -39,7 +39,7 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.Uint64("restart-max-attempts", 0, "maximum number of restart attempts (0 = unlimited)")
 	flags.String("restart-window", "0s", "time window to evaluate restart attempts (0 = unbound)")
 
-	flags.StringSlice("constraint", nil, "Placement constraint (node.labels.key==value)")
+	flags.StringSlice("constraint", nil, "Placement constraint (e.g. node.labels.key==value)")
 
 	// TODO(stevvooe): Replace these with a more interesting mount flag.
 	flags.StringSlice("bind", nil, "define a bind mount")
