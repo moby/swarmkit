@@ -43,9 +43,11 @@ func TestAllocator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "service1",
 				},
-				Networks: []*api.ServiceSpec_NetworkAttachmentConfig{
-					{
-						Target: "testID1",
+				Task: api.TaskSpec{
+					Networks: []*api.NetworkAttachmentConfig{
+						{
+							Target: "testID1",
+						},
 					},
 				},
 				Endpoint: &api.EndpointSpec{},
@@ -108,7 +110,7 @@ func TestAllocator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "service2",
 				},
-				Networks: []*api.ServiceSpec_NetworkAttachmentConfig{
+				Networks: []*api.NetworkAttachmentConfig{
 					{
 						Target: "testID2",
 					},
@@ -186,6 +188,13 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		t5 := &api.Task{
 			ID: "testTaskID5",
+			Spec: api.TaskSpec{
+				Networks: []*api.NetworkAttachmentConfig{
+					{
+						Target: "testID2",
+					},
+				},
+			},
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
@@ -473,7 +482,7 @@ func watchService(t *testing.T, watch chan events.Event, expectTimeout bool, fn 
 					fn(t, service)
 				}
 
-				t.Fatal("timed out before watchService found expected service state")
+				t.Fatalf("timed out before watchService found expected service state\n stack = %s", string(debug.Stack()))
 			}
 
 			return

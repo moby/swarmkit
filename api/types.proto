@@ -418,6 +418,10 @@ message NetworkAttachmentConfig {
 	string target = 1;
 	// Aliases specifies a list of discoverable alternate names for the service on this Target.
 	repeated string aliases = 2;
+	// Addresses specifies a list of ipv4 and ipv6 addresses
+	// preferred. If these addresses are not available then the
+	// attachment might fail.
+	repeated string addresses = 3;
 }
 
 // IPAMConfig specifies parameters for IP Address Management.
