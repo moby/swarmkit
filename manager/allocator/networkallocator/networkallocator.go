@@ -198,7 +198,7 @@ func (na *NetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
 	}
 
 outer:
-	for _, nAttach := range s.Spec.Networks {
+	for _, nAttach := range s.Spec.Task.Networks {
 		for _, vip := range s.Endpoint.VirtualIPs {
 			if vip.NetworkID == nAttach.Target {
 				continue outer
@@ -286,7 +286,7 @@ func (na *NetworkAllocator) IsTaskAllocated(t *api.Task) bool {
 func (na *NetworkAllocator) IsServiceAllocated(s *api.Service) bool {
 	// If endpoint mode is VIP and allocator does not have the
 	// service in VIP allocated set then it is not allocated.
-	if len(s.Spec.Networks) != 0 &&
+	if len(s.Spec.Task.Networks) != 0 &&
 		(s.Spec.Endpoint == nil ||
 			s.Spec.Endpoint.Mode == api.ResolutionModeVirtualIP) {
 		if _, ok := na.services[s.ID]; !ok {

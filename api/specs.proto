@@ -77,14 +77,14 @@ message ServiceSpec {
 	// For now, this is a simple struct, but this can include future information
 	// instructing Swarm on how this service should work on the particular
 	// network.
-	message NetworkAttachmentConfig {
+	message DeprecatedNetworkAttachmentConfig {
 		// Target specifies the target network for attachment. This value may be a
 		// network name or identifier. Only identifiers are supported at this time.
 		string target = 1;
 		// Aliases specifies a list of discoverable alternate names for the service on this Target.
 		repeated string aliases = 2;
 	}
-	repeated NetworkAttachmentConfig networks = 7;
+	repeated DeprecatedNetworkAttachmentConfig deprecated_networks = 7;
 
 	// Service endpoint specifies the user provided configuration
 	// to properly discover and load balance a service.
@@ -118,6 +118,11 @@ message TaskSpec {
 	// LogDriver specifies the log driver to use for the task. Any runtime will
 	// direct logs into the specified driver for the duration of the task.
 	Driver log_driver = 6;
+
+	// Networks specifies the list of network attachment
+	// configurations (which specify the network and per-network
+	// aliases) that this task spec is bound to.
+	repeated NetworkAttachmentConfig networks = 7;
 }
 
 // Container specifies runtime parameters for a container.
