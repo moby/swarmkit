@@ -436,7 +436,7 @@ func (a *Allocator) taskCreateNetworkAttachments(t *api.Task, s *api.Service) {
 	}
 
 	a.store.View(func(tx store.ReadTx) {
-		for _, na := range s.Spec.Networks {
+		for _, na := range s.Spec.Task.Networks {
 			n := store.GetNetwork(tx, na.Target)
 			if n != nil {
 				var aliases []string
