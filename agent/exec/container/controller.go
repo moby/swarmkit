@@ -18,7 +18,6 @@ import (
 // Most operations against docker's API are done through the container name,
 // which is unique to the task.
 type controller struct {
-	client  engineapi.APIClient
 	task    *api.Task
 	adapter *containerAdapter
 	closed  chan struct{}
@@ -39,7 +38,6 @@ func newController(client engineapi.APIClient, task *api.Task) (exec.Controller,
 	}
 
 	return &controller{
-		client:  client,
 		task:    task,
 		adapter: adapter,
 		closed:  make(chan struct{}),
@@ -86,7 +84,7 @@ func (r *controller) Prepare(ctx context.Context) error {
 	}
 
 	// Make sure all the volumes that the task needs are created.
-	if err := r.adapter.createVolumes(ctx, r.client); err != nil {
+	if err := r.adapter.createVolumes(ctx); err != nil {
 		return err
 	}
 
