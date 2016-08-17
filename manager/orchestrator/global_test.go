@@ -63,9 +63,8 @@ func SetupCluster(t *testing.T, store *store.MemoryStore) {
 	ctx := context.Background()
 	// Start the global orchestrator.
 	global := NewGlobalOrchestrator(store)
-	go func() {
-		assert.NoError(t, global.Run(ctx))
-	}()
+
+	assert.NoError(t, global.Start(ctx))
 
 	addService(t, store, service1)
 	addNode(t, store, node1)

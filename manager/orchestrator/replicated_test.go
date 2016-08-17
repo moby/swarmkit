@@ -20,7 +20,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	assert.NotNil(t, s)
 
 	orchestrator := NewReplicatedOrchestrator(s)
-	defer orchestrator.Stop()
+	defer orchestrator.Stop(ctx)
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
@@ -53,9 +53,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the orchestrator.
-	go func() {
-		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	assert.NoError(t, orchestrator.Start(ctx))
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
@@ -204,7 +202,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 	assert.NotNil(t, s)
 
 	orchestrator := NewReplicatedOrchestrator(s)
-	defer orchestrator.Stop()
+	defer orchestrator.Stop(ctx)
 
 	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
@@ -367,9 +365,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the orchestrator.
-	go func() {
-		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	assert.NoError(t, orchestrator.Start(ctx))
 
 	// Replicas was set to 6, but we started with 7 tasks. task7 should
 	// be the one the orchestrator chose to shut down because it was not
