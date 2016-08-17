@@ -814,6 +814,8 @@ func (n *Node) LeaderAddr() (string, error) {
 	if err := WaitForLeader(ctx, n); err != nil {
 		return "", ErrNoClusterLeader
 	}
+	n.stopMu.RLock()
+	defer n.stopMu.RUnlock()
 	if !n.IsMember() {
 		return "", ErrNoRaftMember
 	}
