@@ -372,9 +372,9 @@ func TestUpdateService(t *testing.T) {
 	// Versioning.
 	r, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
 	assert.NoError(t, err)
-	version := &r.Service.Meta.Version
+	version := r.Service.Meta.Version.Copy()
 
-	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+	returnedService, err := ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      service.ID,
 		Spec:           &r.Service.Spec,
 		ServiceVersion: version,
@@ -386,6 +386,22 @@ func TestUpdateService(t *testing.T) {
 		ServiceID:      service.ID,
 		Spec:           &r.Service.Spec,
 		ServiceVersion: version,
+	})
+	assert.Error(t, err)
+
+	// Perform an update with the spec version.
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:   service.ID,
+		Spec:        &r.Service.Spec,
+		SpecVersion: returnedService.Service.Meta.SpecVersion.Copy(),
+	})
+	assert.NoError(t, err)
+
+	// Perform an update with the "old" spec version.
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:   service.ID,
+		Spec:        &r.Service.Spec,
+		SpecVersion: returnedService.Service.Meta.SpecVersion.Copy(),
 	})
 	assert.Error(t, err)
 

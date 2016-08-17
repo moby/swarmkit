@@ -494,12 +494,19 @@ func TestUpdateNode(t *testing.T) {
 	assert.NotNil(t, r.Node.Spec)
 	assert.Equal(t, api.NodeAvailabilityDrain, r.Node.Spec.Availability)
 
-	version := &r.Node.Meta.Version
-	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
+	version := r.Node.Meta.Version.Copy()
+	returnedNode, err := ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
 	assert.NoError(t, err)
 
-	// Perform an update with the "old" version.
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
+	assert.Error(t, err)
+
+	// Perform an update with the spec version.
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, SpecVersion: returnedNode.Node.Meta.SpecVersion.Copy()})
+	assert.NoError(t, err)
+
+	// Perform an update with the "old" spec version.
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, SpecVersion: returnedNode.Node.Meta.SpecVersion.Copy()})
 	assert.Error(t, err)
 }
 

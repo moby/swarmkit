@@ -309,7 +309,7 @@ func (s *Server) GetService(ctx context.Context, request *api.GetServiceRequest)
 // - Returns `Unimplemented` if the ServiceSpec references unimplemented features.
 // - Returns an error if the update fails.
 func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRequest) (*api.UpdateServiceResponse, error) {
-	if request.ServiceID == "" || request.ServiceVersion == nil {
+	if request.ServiceID == "" || (request.ServiceVersion == nil && request.SpecVersion == nil) {
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 	if err := validateServiceSpec(request.Spec); err != nil {
@@ -335,6 +335,9 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		if service == nil {
 			return nil
 		}
+		if request.SpecVersion != nil && *request.SpecVersion != service.Meta.SpecVersion {
+			return grpc.Errorf(codes.InvalidArgument, "service spec version out of sequence")
+		}
 		// temporary disable network update
 		if request.Spec != nil {
 			requestSpecNetworks := request.Spec.Task.Networks
@@ -358,9 +361,12 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		if request.Spec != nil && reflect.TypeOf(service.Spec.Mode) != reflect.TypeOf(request.Spec.Mode) {
 			return errModeChangeNotAllowed
 		}
-		service.Meta.Version = *request.ServiceVersion
+		if request.ServiceVersion != nil {
+			service.Meta.Version = *request.ServiceVersion
+		}
 		service.PreviousSpec = service.Spec.Copy()
 		service.Spec = *request.Spec.Copy()
+		service.Meta.SpecVersion.Index++
 
 		// Reset update status
 		service.UpdateStatus = nil

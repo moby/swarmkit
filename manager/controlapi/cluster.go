@@ -82,7 +82,7 @@ func (s *Server) GetCluster(ctx context.Context, request *api.GetClusterRequest)
 // - Returns `Unimplemented` if the ClusterSpec references unimplemented features.
 // - Returns an error if the update fails.
 func (s *Server) UpdateCluster(ctx context.Context, request *api.UpdateClusterRequest) (*api.UpdateClusterResponse, error) {
-	if request.ClusterID == "" || request.ClusterVersion == nil {
+	if request.ClusterID == "" || (request.ClusterVersion == nil && request.SpecVersion == nil) {
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 	if err := validateClusterSpec(request.Spec); err != nil {
@@ -95,7 +95,14 @@ func (s *Server) UpdateCluster(ctx context.Context, request *api.UpdateClusterRe
 		if cluster == nil {
 			return nil
 		}
-		cluster.Meta.Version = *request.ClusterVersion
+		if request.SpecVersion != nil && *request.SpecVersion != cluster.Meta.SpecVersion {
+			return grpc.Errorf(codes.InvalidArgument, "cluster spec version out of sequence")
+		}
+		if request.ClusterVersion != nil {
+			cluster.Meta.Version = *request.ClusterVersion
+		}
+		cluster.Meta.SpecVersion.Index++
+
 		cluster.Spec = *request.Spec.Copy()
 
 		if request.Rotation.RotateWorkerToken {
