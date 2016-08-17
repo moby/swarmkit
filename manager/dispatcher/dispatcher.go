@@ -252,7 +252,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			}
 			d.networkBootstrapKeys = cluster.Cluster.NetworkBootstrapKeys
 			d.mu.Unlock()
-			d.keyMgrQueue.Publish(struct{}{})
+			d.keyMgrQueue.Publish(cluster.Cluster.NetworkBootstrapKeys)
 		case <-d.ctx.Done():
 			return nil
 		}
@@ -760,6 +760,12 @@ func (d *Dispatcher) getManagers() []*api.WeightedPeer {
 	return d.lastSeenManagers
 }
 
+func (d *Dispatcher) getNetworkBootstrapKeys() []*api.EncryptionKey {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.networkBootstrapKeys
+}
+
 // Session is a stream which controls agent connection.
 // Each message contains list of backup Managers with weights. Also there is
 // a special boolean field Disconnect which if true indicates that node should
@@ -820,7 +826,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		SessionID:            sessionID,
 		Node:                 nodeObj,
 		Managers:             d.getManagers(),
-		NetworkBootstrapKeys: d.networkBootstrapKeys,
+		NetworkBootstrapKeys: d.getNetworkBootstrapKeys(),
 	}); err != nil {
 		return err
 	}
@@ -859,9 +865,11 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			return err
 		}
 
-		var mgrs []*api.WeightedPeer
-
-		var disconnect bool
+		var (
+			disconnect bool
+			mgrs       []*api.WeightedPeer
+			netKeys    []*api.EncryptionKey
+		)
 
 		select {
 		case ev := <-managerUpdates:
@@ -874,17 +882,21 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			disconnect = true
 		case <-d.ctx.Done():
 			disconnect = true
-		case <-keyMgrUpdates:
+		case ev := <-keyMgrUpdates:
+			netKeys = ev.([]*api.EncryptionKey)
 		}
 		if mgrs == nil {
 			mgrs = d.getManagers()
+		}
+		if netKeys == nil {
+			netKeys = d.getNetworkBootstrapKeys()
 		}
 
 		if err := stream.Send(&api.SessionMessage{
 			SessionID:            sessionID,
 			Node:                 nodeObj,
 			Managers:             mgrs,
-			NetworkBootstrapKeys: d.networkBootstrapKeys,
+			NetworkBootstrapKeys: netKeys,
 		}); err != nil {
 			return err
 		}
