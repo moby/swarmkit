@@ -280,7 +280,7 @@ func TestRenewTLSConfigAgent(t *testing.T) {
 	renew := make(chan struct{})
 	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.TempDir, tc.Picker, renew)
 	select {
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
 	case certUpdate := <-updates:
 		assert.NoError(t, certUpdate.Err)
@@ -331,7 +331,7 @@ func TestRenewTLSConfigManager(t *testing.T) {
 
 	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.TempDir, tc.Picker, renew)
 	select {
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
 	case certUpdate := <-updates:
 		assert.NoError(t, certUpdate.Err)
@@ -388,7 +388,7 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 	renew := make(chan struct{})
 	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.TempDir, tc.Picker, renew)
 	select {
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
 	case certUpdate := <-updates:
 		assert.Error(t, certUpdate.Err)
@@ -411,7 +411,7 @@ func TestForceRenewTLSConfig(t *testing.T) {
 	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.TempDir, tc.Picker, renew)
 	renew <- struct{}{}
 	select {
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestForceRenewTLSConfig timed-out")
 	case certUpdate := <-updates:
 		assert.NoError(t, certUpdate.Err)
