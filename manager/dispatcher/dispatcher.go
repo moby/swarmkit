@@ -3,8 +3,6 @@ package dispatcher
 import (
 	"errors"
 	"fmt"
-	"reflect"
-	"sort"
 	"sync"
 	"time"
 
@@ -13,6 +11,7 @@ import (
 	"google.golang.org/grpc/transport"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/equality"
 	"github.com/docker/swarmkit/ca"
@@ -83,6 +82,7 @@ func DefaultConfig() *Config {
 // is implements it. This interface needed only for easier unit-testing.
 type Cluster interface {
 	GetMemberlist() map[uint64]*api.RaftMember
+	SubscribePeers() (chan events.Event, func())
 	MemoryStore() *store.MemoryStore
 }
 
@@ -119,15 +119,6 @@ type Dispatcher struct {
 	processUpdatesLock sync.Mutex
 	processUpdatesCond *sync.Cond
 }
-
-// weightedPeerByNodeID is a sort wrapper for []*api.WeightedPeer
-type weightedPeerByNodeID []*api.WeightedPeer
-
-func (b weightedPeerByNodeID) Less(i, j int) bool { return b[i].Peer.NodeID < b[j].Peer.NodeID }
-
-func (b weightedPeerByNodeID) Len() int { return len(b) }
-
-func (b weightedPeerByNodeID) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
 
 // New returns Dispatcher with cluster interface(usually raft.Node).
 // NOTE: each handler which does something with raft must add to Dispatcher.wg
@@ -204,34 +195,36 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 		d.mu.Unlock()
 		return err
 	}
+
+	peerWatcher, peerCancel := d.cluster.SubscribePeers()
+	defer peerCancel()
+	d.lastSeenManagers = getWeightedPeers(d.cluster)
+
 	defer cancel()
 	d.ctx, d.cancel = context.WithCancel(ctx)
 	d.mu.Unlock()
 
-	publishManagers := func() {
-		mgrs := getWeightedPeers(d.cluster)
-		sort.Sort(weightedPeerByNodeID(mgrs))
-		d.mu.Lock()
-		if reflect.DeepEqual(mgrs, d.lastSeenManagers) {
-			d.mu.Unlock()
-			return
+	publishManagers := func(peers []*api.Peer) {
+		var mgrs []*api.WeightedPeer
+		for _, p := range peers {
+			mgrs = append(mgrs, &api.WeightedPeer{
+				Peer:   p,
+				Weight: picker.DefaultObservationWeight,
+			})
 		}
+		d.mu.Lock()
 		d.lastSeenManagers = mgrs
 		d.mu.Unlock()
 		d.mgrQueue.Publish(mgrs)
 	}
-
-	publishManagers()
-	publishTicker := time.NewTicker(1 * time.Second)
-	defer publishTicker.Stop()
 
 	batchTimer := time.NewTimer(maxBatchInterval)
 	defer batchTimer.Stop()
 
 	for {
 		select {
-		case <-publishTicker.C:
-			publishManagers()
+		case ev := <-peerWatcher:
+			publishManagers(ev.([]*api.Peer))
 		case <-d.processUpdatesTrigger:
 			d.processUpdates()
 			batchTimer.Reset(maxBatchInterval)

@@ -907,6 +907,19 @@ func (n *Node) GetVersion() *api.Version {
 	return &api.Version{Index: status.Commit}
 }
 
+// SubscribePeers subscribes to peer updates in cluster. It sends always full
+// list of peers.
+func (n *Node) SubscribePeers() (q chan events.Event, cancel func()) {
+	ch := events.NewChannel(0)
+	sink := events.Sink(events.NewQueue(ch))
+	n.cluster.PeersBroadcast.Add(sink)
+	return ch.C, func() {
+		n.cluster.PeersBroadcast.Remove(sink)
+		ch.Close()
+		sink.Close()
+	}
+}
+
 // GetMemberlist returns the current list of raft members in the cluster.
 func (n *Node) GetMemberlist() map[uint64]*api.RaftMember {
 	memberlist := make(map[uint64]*api.RaftMember)
