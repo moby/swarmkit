@@ -598,6 +598,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			StateDir:       n.config.StateDir,
 			HeartbeatTick:  n.config.HeartbeatTick,
 			ElectionTick:   n.config.ElectionTick,
+			Peers:          n.remotes,
 		})
 		if err != nil {
 			return err

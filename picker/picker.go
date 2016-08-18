@@ -59,6 +59,28 @@ func NewRemotes(peers ...api.Peer) Remotes {
 	return mwr
 }
 
+// ObserveOnly observes all passed peers and removes all other peers from r.
+func ObserveOnly(r Remotes, peers ...*api.WeightedPeer) {
+	seen := map[api.Peer]struct{}{}
+	for _, wp := range peers {
+		if wp.Peer.Addr == "" {
+			continue
+		}
+
+		r.Observe(*wp.Peer, int(wp.Weight))
+		seen[*wp.Peer] = struct{}{}
+	}
+	if len(seen) == 0 {
+		return
+	}
+	// prune managers not in list.
+	for peer := range r.Weights() {
+		if _, ok := seen[peer]; !ok {
+			r.Remove(peer)
+		}
+	}
+}
+
 type remotesWeightedRandom struct {
 	remotes map[api.Peer]int
 	mu      sync.Mutex

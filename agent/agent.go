@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/picker"
 	"golang.org/x/net/context"
 )
 
@@ -217,18 +218,6 @@ func (a *Agent) run(ctx context.Context) {
 }
 
 func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMessage) error {
-	seen := map[api.Peer]struct{}{}
-	for _, manager := range message.Managers {
-		if manager.Peer.Addr == "" {
-			log.G(ctx).WithField("manager.addr", manager.Peer.Addr).
-				Warnf("skipping bad manager address")
-			continue
-		}
-
-		a.config.Managers.Observe(*manager.Peer, int(manager.Weight))
-		seen[*manager.Peer] = struct{}{}
-	}
-
 	if message.Node != nil {
 		if a.node == nil || !nodesEqual(a.node, message.Node) {
 			if a.config.NotifyRoleChange != nil {
@@ -241,12 +230,7 @@ func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMe
 		}
 	}
 
-	// prune managers not in list.
-	for peer := range a.config.Managers.Weights() {
-		if _, ok := seen[peer]; !ok {
-			a.config.Managers.Remove(peer)
-		}
-	}
+	picker.ObserveOnly(a.config.Managers, message.Managers...)
 
 	if message.NetworkBootstrapKeys == nil {
 		return nil

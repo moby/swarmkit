@@ -27,6 +27,7 @@ import (
 	"github.com/docker/swarmkit/manager/scheduler"
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/picker"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -71,6 +72,9 @@ type Config struct {
 	// HeartbeatTick defines the amount of ticks between each
 	// heartbeat sent to other members for health-check purposes
 	HeartbeatTick uint32
+
+	// Peers should be using for updating list of known remote peers.
+	Peers picker.Remotes
 }
 
 // Manager is the cluster manager for Swarm.
@@ -317,6 +321,28 @@ func (m *Manager) Run(parent context.Context) error {
 
 	// Set the raft server as serving for the health server
 	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
+
+	if m.config.Peers != nil {
+		peerWatcher, peerCancel := m.RaftNode.SubscribePeers()
+		defer peerCancel()
+		go func() {
+			for {
+				select {
+				case ev := <-peerWatcher:
+					var wpeers []*api.WeightedPeer
+					for _, p := range ev.([]*api.Peer) {
+						wpeers = append(wpeers, &api.WeightedPeer{
+							Peer:   p,
+							Weight: picker.DefaultObservationWeight,
+						})
+					}
+					picker.ObserveOnly(m.config.Peers, wpeers...)
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+	}
 
 	if err := m.RaftNode.JoinAndStart(); err != nil {
 		for _, lis := range m.listeners {
