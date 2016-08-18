@@ -74,6 +74,7 @@ func SetupCluster(t *testing.T, store *store.MemoryStore) {
 func TestSetup(t *testing.T) {
 	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
+	defer store.Close()
 
 	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
@@ -89,6 +90,7 @@ func TestSetup(t *testing.T) {
 func TestAddNode(t *testing.T) {
 	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
+	defer store.Close()
 
 	SetupCluster(t, store)
 
@@ -107,6 +109,7 @@ func TestAddNode(t *testing.T) {
 func TestDeleteNode(t *testing.T) {
 	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
+	defer store.Close()
 
 	SetupCluster(t, store)
 
@@ -125,6 +128,7 @@ func TestDeleteNode(t *testing.T) {
 func TestNodeAvailability(t *testing.T) {
 	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
+	defer store.Close()
 
 	SetupCluster(t, store)
 
@@ -156,6 +160,7 @@ func TestNodeAvailability(t *testing.T) {
 func TestAddService(t *testing.T) {
 	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
+	defer store.Close()
 
 	SetupCluster(t, store)
 
@@ -174,6 +179,7 @@ func TestAddService(t *testing.T) {
 func TestDeleteService(t *testing.T) {
 	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
+	defer store.Close()
 
 	SetupCluster(t, store)
 
@@ -192,6 +198,7 @@ func TestDeleteService(t *testing.T) {
 func TestRemoveTask(t *testing.T) {
 	store := store.NewMemoryStore(nil)
 	assert.NotNil(t, store)
+	defer store.Close()
 
 	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()

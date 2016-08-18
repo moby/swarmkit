@@ -169,6 +169,7 @@ func TestDrain(t *testing.T) {
 
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	err := s.Update(func(tx store.Tx) error {
 		// Prepopulate service

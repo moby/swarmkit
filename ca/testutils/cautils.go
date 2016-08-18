@@ -59,6 +59,7 @@ func (tc *TestCA) Stop() {
 	}
 	tc.CAServer.Stop()
 	tc.Server.Stop()
+	tc.MemoryStore.Close()
 }
 
 // NewNodeConfig returns security config for a new node, given a role

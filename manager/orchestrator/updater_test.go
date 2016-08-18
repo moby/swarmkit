@@ -36,6 +36,7 @@ func TestUpdater(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	// Move tasks to their desired state.
 	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
@@ -149,6 +150,7 @@ func TestUpdaterFailureAction(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	// Fail new tasks the updater tries to run
 	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
@@ -299,6 +301,7 @@ func TestUpdaterStopGracePeriod(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	// Move tasks to their desired state.
 	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
