@@ -45,6 +45,7 @@ type testServer struct {
 func (ts *testServer) Stop() {
 	_ = ts.clientConn.Close()
 	ts.grpcServer.Stop()
+	ts.Store.Close()
 }
 
 func newTestServer(t *testing.T) *testServer {

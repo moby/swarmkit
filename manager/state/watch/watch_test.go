@@ -9,7 +9,7 @@ import (
 
 func TestWatch(t *testing.T) {
 	// Create a queue
-	q := NewQueue(0)
+	q := NewQueue()
 
 	type testEvent struct {
 		tags []string
@@ -149,7 +149,7 @@ func BenchmarkWatch1000Listeners64Publishers(b *testing.B) {
 }
 
 func benchmarkWatch(b *testing.B, nlisteners, npublishers int, waitForWatchers bool) {
-	q := NewQueue(0)
+	q := NewQueue()
 	var (
 		watchersAttached  sync.WaitGroup
 		watchersRunning   sync.WaitGroup

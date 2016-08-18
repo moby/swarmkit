@@ -16,6 +16,7 @@ func TestTaskHistory(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{

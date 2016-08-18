@@ -18,6 +18,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
@@ -202,6 +203,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
