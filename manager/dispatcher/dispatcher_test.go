@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 
+	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
@@ -50,8 +51,22 @@ type testCluster struct {
 func (t *testCluster) GetMemberlist() map[uint64]*api.RaftMember {
 	return map[uint64]*api.RaftMember{
 		1: {
-			Addr: t.addr,
+			NodeID: "1",
+			Addr:   t.addr,
 		},
+	}
+}
+
+func (t *testCluster) SubscribePeers() (chan events.Event, func()) {
+	ch := make(chan events.Event, 1)
+	ch <- []*api.Peer{
+		{
+			Addr:   t.addr,
+			NodeID: "1",
+		},
+	}
+	return ch, func() {
+		close(ch)
 	}
 }
 
