@@ -31,12 +31,12 @@ type session struct {
 	conn *grpc.ClientConn
 	addr string
 
-	agent     *Agent
-	sessionID string
-	session   api.Dispatcher_SessionClient
-	errs      chan error
-	messages  chan *api.SessionMessage
-	tasks     chan *api.TasksMessage
+	agent       *Agent
+	sessionID   string
+	session     api.Dispatcher_SessionClient
+	errs        chan error
+	messages    chan *api.SessionMessage
+	assignments chan *api.AssignmentsMessage
 
 	registered chan struct{} // closed registration
 	closed     chan struct{}
@@ -44,13 +44,13 @@ type session struct {
 
 func newSession(ctx context.Context, agent *Agent, delay time.Duration, sessionID string, description *api.NodeDescription) *session {
 	s := &session{
-		agent:      agent,
-		sessionID:  sessionID,
-		errs:       make(chan error, 1),
-		messages:   make(chan *api.SessionMessage),
-		tasks:      make(chan *api.TasksMessage),
-		registered: make(chan struct{}),
-		closed:     make(chan struct{}),
+		agent:       agent,
+		sessionID:   sessionID,
+		errs:        make(chan error, 1),
+		messages:    make(chan *api.SessionMessage),
+		assignments: make(chan *api.AssignmentsMessage),
+		registered:  make(chan struct{}),
+		closed:      make(chan struct{}),
 	}
 	peer, err := agent.config.Managers.Select()
 	if err != nil {
@@ -207,7 +207,7 @@ func (s *session) handleSessionMessage(ctx context.Context, msg *api.SessionMess
 func (s *session) watch(ctx context.Context) error {
 	log.G(ctx).Debugf("(*session).watch")
 	client := api.NewDispatcherClient(s.conn)
-	watch, err := client.Tasks(ctx, &api.TasksRequest{
+	watch, err := client.Assignments(ctx, &api.AssignmentsRequest{
 		SessionID: s.sessionID})
 	if err != nil {
 		return err
@@ -220,7 +220,7 @@ func (s *session) watch(ctx context.Context) error {
 		}
 
 		select {
-		case s.tasks <- resp:
+		case s.assignments <- resp:
 		case <-s.closed:
 			return errSessionClosed
 		case <-ctx.Done():
