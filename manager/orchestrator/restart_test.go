@@ -16,6 +16,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
@@ -118,6 +119,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
@@ -218,6 +220,7 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
@@ -312,6 +315,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
@@ -401,6 +405,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
@@ -534,6 +539,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()

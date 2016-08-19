@@ -127,8 +127,8 @@ func New(cluster Cluster, c *Config) *Dispatcher {
 		nodes:                 newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier, c.RateLimitPeriod),
 		store:                 cluster.MemoryStore(),
 		cluster:               cluster,
-		mgrQueue:              watch.NewQueue(16),
-		keyMgrQueue:           watch.NewQueue(16),
+		mgrQueue:              watch.NewQueue(),
+		keyMgrQueue:           watch.NewQueue(),
 		taskUpdates:           make(map[string]*api.TaskStatus),
 		nodeUpdates:           make(map[string]nodeUpdate),
 		processUpdatesTrigger: make(chan struct{}, 1),
@@ -269,6 +269,9 @@ func (d *Dispatcher) Stop() error {
 	// before waiting.
 	d.processUpdatesCond.Broadcast()
 	d.processUpdatesLock.Unlock()
+
+	d.mgrQueue.Close()
+	d.keyMgrQueue.Close()
 
 	return nil
 }

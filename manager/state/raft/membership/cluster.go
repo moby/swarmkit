@@ -7,8 +7,8 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/coreos/etcd/raft/raftpb"
-	events "github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/state/watch"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -35,7 +35,7 @@ type Cluster struct {
 	// those ids cannot be reused
 	removed map[uint64]bool
 
-	PeersBroadcast *events.Broadcaster
+	PeersBroadcast *watch.Queue
 }
 
 // Member represents a raft Cluster Member
@@ -54,7 +54,7 @@ func NewCluster() *Cluster {
 	return &Cluster{
 		members:        make(map[uint64]*Member),
 		removed:        make(map[uint64]bool),
-		PeersBroadcast: events.NewBroadcaster(),
+		PeersBroadcast: watch.NewQueue(),
 	}
 }
 
@@ -95,7 +95,7 @@ func (c *Cluster) broadcastUpdate() {
 			Addr:   m.Addr,
 		})
 	}
-	c.PeersBroadcast.Write(peers)
+	c.PeersBroadcast.Publish(peers)
 }
 
 // AddMember adds a node to the Cluster Memberlist.

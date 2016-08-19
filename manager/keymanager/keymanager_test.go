@@ -35,6 +35,7 @@ func createCluster(t *testing.T, s *store.MemoryStore, id, name string) *api.Clu
 // Verify the key generation and rotation for default subsystems
 func TestKeyManagerDefaultSubsystem(t *testing.T) {
 	st := store.NewMemoryStore(nil)
+	defer st.Close()
 	createCluster(t, st, "default", "default")
 
 	k := New(st, DefaultConfig())
@@ -70,6 +71,7 @@ func TestKeyManagerDefaultSubsystem(t *testing.T) {
 // Verify the key generation and rotation for IPsec subsystem
 func TestKeyManagerCustomSubsystem(t *testing.T) {
 	st := store.NewMemoryStore(nil)
+	defer st.Close()
 	createCluster(t, st, "default", "default")
 
 	config := &Config{
@@ -115,6 +117,7 @@ func TestKeyManagerCustomSubsystem(t *testing.T) {
 // passed
 func TestKeyManagerInvalidSubsystem(t *testing.T) {
 	st := store.NewMemoryStore(nil)
+	defer st.Close()
 	createCluster(t, st, "default", "default")
 
 	config := &Config{
