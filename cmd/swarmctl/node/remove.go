@@ -15,7 +15,7 @@ var (
 		Aliases: []string{"rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return errors.New("missing node ID")
+				return errors.New("node ID missing")
 			}
 
 			if len(args) > 1 {

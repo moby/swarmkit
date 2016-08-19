@@ -137,7 +137,7 @@ To list nodes:
 ```
 $ export SWARM_SOCKET=/tmp/manager1/swarm.sock
 $ swarmctl node ls
-ID             Name    Membership  Status  Availability  Manager status
+ID             Name    Membership  Status  Availability  Manager Status
 --             ----    ----------  ------  ------------  --------------
 15jkw04qb4yze  node-1  ACCEPTED    READY   ACTIVE        REACHABLE *
 1zbwraf2v8hpx  node-3  ACCEPTED    READY   ACTIVE
@@ -264,7 +264,7 @@ Let's put `node-1` into maintenance mode:
 $ swarmctl node drain node-1
 
 $ swarmctl node ls
-ID             Name    Membership  Status  Availability  Manager status
+ID             Name    Membership  Status  Availability  Manager Status
 --             ----    ----------  ------  ------------  --------------
 2o8evbttw2sjj  node-1  ACCEPTED    READY   DRAIN         REACHABLE
 2p7w0q83jargg  node-2  ACCEPTED    READY   ACTIVE        REACHABLE *
