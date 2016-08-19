@@ -21,7 +21,7 @@ import (
 	"github.com/docker/swarmkit/ioutils"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager"
-	"github.com/docker/swarmkit/picker"
+	"github.com/docker/swarmkit/remotes"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -178,7 +178,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 	if n.config.JoinAddr != "" || n.config.ForceNewCluster {
 		n.remotes = newPersistentRemotes(filepath.Join(n.config.StateDir, stateFilename))
 		if n.config.JoinAddr != "" {
-			n.remotes.Observe(api.Peer{Addr: n.config.JoinAddr}, picker.DefaultObservationWeight)
+			n.remotes.Observe(api.Peer{Addr: n.config.JoinAddr}, remotes.DefaultObservationWeight)
 		}
 	}
 
@@ -204,7 +204,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 	}()
 
 	certDir := filepath.Join(n.config.StateDir, "certificates")
-	securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, n.config.JoinToken, ca.ManagerRole, picker.NewPicker(n.remotes), issueResponseChan)
+	securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, n.config.JoinToken, ca.ManagerRole, n.remotes, issueResponseChan)
 	if err != nil {
 		return err
 	}
@@ -256,7 +256,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 		}
 	}()
 
-	updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, picker.NewPicker(n.remotes), forceCertRenewal)
+	updates := ca.RenewTLSConfig(ctx, securityConfig, certDir, n.remotes, forceCertRenewal)
 	go func() {
 		for {
 			select {
@@ -620,7 +620,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			go func(ready chan struct{}) {
 				select {
 				case <-ready:
-					n.remotes.Observe(api.Peer{NodeID: n.nodeID, Addr: n.config.ListenRemoteAPI}, picker.DefaultObservationWeight)
+					n.remotes.Observe(api.Peer{NodeID: n.nodeID, Addr: n.config.ListenRemoteAPI}, remotes.DefaultObservationWeight)
 				case <-connCtx.Done():
 				}
 			}(ready)
@@ -651,15 +651,15 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 type persistentRemotes struct {
 	sync.RWMutex
 	c *sync.Cond
-	picker.Remotes
+	remotes.Remotes
 	storePath      string
 	lastSavedState []api.Peer
 }
 
-func newPersistentRemotes(f string, remotes ...api.Peer) *persistentRemotes {
+func newPersistentRemotes(f string, peers ...api.Peer) *persistentRemotes {
 	pr := &persistentRemotes{
 		storePath: f,
-		Remotes:   picker.NewRemotes(remotes...),
+		Remotes:   remotes.NewRemotes(peers...),
 	}
 	pr.c = sync.NewCond(pr.RLocker())
 	return pr

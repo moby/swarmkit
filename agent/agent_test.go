@@ -8,7 +8,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
-	"github.com/docker/swarmkit/picker"
+	"github.com/docker/swarmkit/remotes"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -43,7 +43,7 @@ func TestAgent(t *testing.T) {
 	//
 	// 	Connection: Manages the RPC connection and the available managers. Must
 	// 	follow lazy grpc style but also expose primitives to force reset, which
-	// 	is currently exposed through picker.
+	// 	is currently exposed through remotes.
 	//
 	//	Session: Manages the lifecycle of an agent from Register to a failure.
 	//	Currently, this is implemented as Agent.session but we'd prefer to
@@ -65,7 +65,7 @@ func TestAgentStartStop(t *testing.T) {
 	assert.NoError(t, err)
 
 	addr := "localhost:4949"
-	remotes := picker.NewRemotes(api.Peer{Addr: addr})
+	remotes := remotes.NewRemotes(api.Peer{Addr: addr})
 
 	db, cleanup := storageTestEnv(t)
 	defer cleanup()
@@ -139,7 +139,7 @@ func agentTestEnv(t *testing.T) (*Agent, func()) {
 	assert.NoError(t, err)
 
 	addr := "localhost:4949"
-	remotes := picker.NewRemotes(api.Peer{Addr: addr})
+	remotes := remotes.NewRemotes(api.Peer{Addr: addr})
 
 	db, cleanupStorage := storageTestEnv(t)
 	cleanup = append(cleanup, func() { cleanupStorage() })
