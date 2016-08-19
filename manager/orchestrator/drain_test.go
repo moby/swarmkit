@@ -104,6 +104,7 @@ func TestDrain(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
+			Slot: 1,
 			ServiceAnnotations: api.Annotations{
 				Name: "name0",
 			},
@@ -115,6 +116,7 @@ func TestDrain(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
+			Slot: 2,
 			ServiceAnnotations: api.Annotations{
 				Name: "name1",
 			},
@@ -126,6 +128,7 @@ func TestDrain(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
+			Slot: 3,
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
@@ -137,6 +140,7 @@ func TestDrain(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
+			Slot: 4,
 			ServiceAnnotations: api.Annotations{
 				Name: "name3",
 			},
@@ -148,6 +152,7 @@ func TestDrain(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
+			Slot: 5,
 			ServiceAnnotations: api.Annotations{
 				Name: "name4",
 			},
@@ -159,6 +164,7 @@ func TestDrain(t *testing.T) {
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
+			Slot: 6,
 			ServiceAnnotations: api.Annotations{
 				Name: "name5",
 			},

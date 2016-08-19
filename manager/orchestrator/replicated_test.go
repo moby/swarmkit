@@ -276,6 +276,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 		tasks := []*api.Task{
 			{
 				ID:           "task1",
+				Slot:         1,
 				DesiredState: api.TaskStateRunning,
 				Status: api.TaskStatus{
 					State: api.TaskStateStarting,
@@ -288,6 +289,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 			},
 			{
 				ID:           "task2",
+				Slot:         2,
 				DesiredState: api.TaskStateRunning,
 				Status: api.TaskStatus{
 					State: api.TaskStateRunning,
@@ -300,6 +302,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 			},
 			{
 				ID:           "task3",
+				Slot:         3,
 				DesiredState: api.TaskStateRunning,
 				Status: api.TaskStatus{
 					State: api.TaskStateRunning,
@@ -312,6 +315,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 			},
 			{
 				ID:           "task4",
+				Slot:         4,
 				DesiredState: api.TaskStateRunning,
 				Status: api.TaskStatus{
 					State: api.TaskStateRunning,
@@ -324,6 +328,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 			},
 			{
 				ID:           "task5",
+				Slot:         5,
 				DesiredState: api.TaskStateRunning,
 				Status: api.TaskStatus{
 					State: api.TaskStateRunning,
@@ -336,6 +341,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 			},
 			{
 				ID:           "task6",
+				Slot:         6,
 				DesiredState: api.TaskStateRunning,
 				Status: api.TaskStatus{
 					State: api.TaskStateRunning,
@@ -348,6 +354,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 			},
 			{
 				ID:           "task7",
+				Slot:         7,
 				DesiredState: api.TaskStateRunning,
 				Status: api.TaskStatus{
 					State: api.TaskStateNew,
