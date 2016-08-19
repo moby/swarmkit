@@ -16,7 +16,7 @@ BINARIES=$(addprefix bin/,$(COMMANDS))
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
-.PHONY: clean all fmt vet lint build binaries test setup checkprotos coverage ci check help
+.PHONY: clean all AUTHORS fmt vet lint build binaries test setup generate checkprotos coverage ci check help install uninstall
 .DEFAULT: default
 
 all: check build binaries test ## run fmt, vet, lint, build the binaries and run the tests
