@@ -2,12 +2,14 @@ package orchestrator
 
 import (
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -30,6 +32,9 @@ type TaskReaper struct {
 	dirty       map[instanceTuple]struct{}
 	watcher     chan events.Event
 	cancelWatch func()
+	started     chan struct{}
+	startOnce   sync.Once // start only once
+	stopOnce    sync.Once // only allow stop to be called once
 	stopChan    chan struct{}
 	doneChan    chan struct{}
 }
@@ -40,6 +45,7 @@ func NewTaskReaper(store *store.MemoryStore) *TaskReaper {
 
 	return &TaskReaper{
 		store:       store,
+		started:     make(chan struct{}),
 		watcher:     watcher,
 		cancelWatch: cancel,
 		dirty:       make(map[instanceTuple]struct{}),
@@ -48,8 +54,21 @@ func NewTaskReaper(store *store.MemoryStore) *TaskReaper {
 	}
 }
 
-// Run is the TaskReaper's main loop.
-func (tr *TaskReaper) Run() {
+// Start starts TaskReaper
+func (tr *TaskReaper) Start(ctx context.Context) error {
+	err := errTaskReaperStarted
+
+	tr.startOnce.Do(func() {
+		close(tr.started)
+		go tr.run(ctx)
+		err = nil
+	})
+
+	return err
+}
+
+// run is the TaskReaper's main loop.
+func (tr *TaskReaper) run(ctx context.Context) error {
 	defer close(tr.doneChan)
 
 	tr.store.View(func(readTx store.ReadTx) {
@@ -81,8 +100,10 @@ func (tr *TaskReaper) Run() {
 			}
 		case <-ticker.C:
 			tr.tick()
+		case <-ctx.Done():
+			return nil
 		case <-tr.stopChan:
-			return
+			return nil
 		}
 	}
 }
@@ -171,8 +192,28 @@ func (tr *TaskReaper) tick() {
 	}
 }
 
-// Stop stops the TaskReaper and waits for the main loop to exit.
-func (tr *TaskReaper) Stop() {
+// Stop stops the TaskReaper
+func (tr *TaskReaper) Stop(ctx context.Context) error {
+	select {
+	case <-tr.started:
+	default:
+		return errTaskReaperNotStarted
+	}
+
+	tr.stopOnce.Do(func() {
+		tr.stop()
+	})
+
+	select {
+	case <-tr.doneChan:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// stop stops the TaskReaper and waits for the main loop to exit.
+func (tr *TaskReaper) stop() {
 	tr.cancelWatch()
 	close(tr.stopChan)
 	<-tr.doneChan

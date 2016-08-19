@@ -190,11 +190,9 @@ func TestDrain(t *testing.T) {
 	defer cancel()
 
 	orchestrator := NewReplicatedOrchestrator(s)
-	defer orchestrator.Stop()
+	defer orchestrator.Stop(ctx)
 
-	go func() {
-		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	assert.NoError(t, orchestrator.Start(ctx))
 
 	// id2 and id5 should be killed immediately
 	deletion1 := watchShutdownTask(t, watch)

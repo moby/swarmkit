@@ -22,7 +22,6 @@ import (
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/health"
 	"github.com/docker/swarmkit/manager/keymanager"
-	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/raftpicker"
 	"github.com/docker/swarmkit/manager/scheduler"
 	"github.com/docker/swarmkit/manager/state/raft"
@@ -80,18 +79,17 @@ type Manager struct {
 	config    *Config
 	listeners map[string]net.Listener
 
-	caserver               *ca.Server
-	Dispatcher             *dispatcher.Dispatcher
-	replicatedOrchestrator *orchestrator.ReplicatedOrchestrator
-	globalOrchestrator     *orchestrator.GlobalOrchestrator
-	taskReaper             *orchestrator.TaskReaper
-	scheduler              *scheduler.Scheduler
-	allocator              *allocator.Allocator
-	keyManager             *keymanager.KeyManager
-	server                 *grpc.Server
-	localserver            *grpc.Server
-	RaftNode               *raft.Node
-	connSelector           *raftpicker.ConnSelector
+	caserver     *ca.Server
+	Dispatcher   *dispatcher.Dispatcher
+	scheduler    *scheduler.Scheduler
+	allocator    *allocator.Allocator
+	keyManager   *keymanager.KeyManager
+	server       *grpc.Server
+	localserver  *grpc.Server
+	RaftNode     *raft.Node
+	connSelector *raftpicker.ConnSelector
+
+	leader *Leader
 
 	mu sync.Mutex
 
@@ -408,15 +406,11 @@ func (m *Manager) Stop(ctx context.Context) {
 	if m.allocator != nil {
 		m.allocator.Stop()
 	}
-	if m.replicatedOrchestrator != nil {
-		m.replicatedOrchestrator.Stop()
+
+	if m.leader != nil {
+		m.leader.Stop(ctx)
 	}
-	if m.globalOrchestrator != nil {
-		m.globalOrchestrator.Stop()
-	}
-	if m.taskReaper != nil {
-		m.taskReaper.Stop()
-	}
+
 	if m.scheduler != nil {
 		m.scheduler.Stop()
 	}
@@ -547,7 +541,7 @@ func (m *Manager) handleLeadershipEvents(ctx context.Context, leadershipCh chan 
 		if newState == raft.IsLeader {
 			m.becomeLeader(ctx)
 		} else if newState == raft.IsFollower {
-			m.becomeFollower()
+			m.becomeFollower(ctx)
 		}
 		m.mu.Unlock()
 	}
@@ -604,10 +598,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	if err != nil {
 		log.G(ctx).WithError(err).Error("root key-encrypting-key rotation failed")
 	}
-
-	m.replicatedOrchestrator = orchestrator.NewReplicatedOrchestrator(s)
-	m.globalOrchestrator = orchestrator.NewGlobalOrchestrator(s)
-	m.taskReaper = orchestrator.NewTaskReaper(s)
+	m.leader = NewLeader(m.RaftNode)
 	m.scheduler = scheduler.New(s)
 	m.keyManager = keymanager.New(m.RaftNode.MemoryStore(), keymanager.DefaultConfig())
 
@@ -659,26 +650,11 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		}
 	}(m.scheduler)
 
-	go func(taskReaper *orchestrator.TaskReaper) {
-		taskReaper.Run()
-	}(m.taskReaper)
-
-	go func(orchestrator *orchestrator.ReplicatedOrchestrator) {
-		if err := orchestrator.Run(ctx); err != nil {
-			log.G(ctx).WithError(err).Error("replicated orchestrator exited with an error")
-		}
-	}(m.replicatedOrchestrator)
-
-	go func(globalOrchestrator *orchestrator.GlobalOrchestrator) {
-		if err := globalOrchestrator.Run(ctx); err != nil {
-			log.G(ctx).WithError(err).Error("global orchestrator exited with an error")
-		}
-	}(m.globalOrchestrator)
-
+	m.leader.Start(ctx)
 }
 
 // becomeFollower shuts down the subsystems that are only run by the leader.
-func (m *Manager) becomeFollower() {
+func (m *Manager) becomeFollower(ctx context.Context) {
 	m.Dispatcher.Stop()
 	m.caserver.Stop()
 
@@ -687,14 +663,7 @@ func (m *Manager) becomeFollower() {
 		m.allocator = nil
 	}
 
-	m.replicatedOrchestrator.Stop()
-	m.replicatedOrchestrator = nil
-
-	m.globalOrchestrator.Stop()
-	m.globalOrchestrator = nil
-
-	m.taskReaper.Stop()
-	m.taskReaper = nil
+	m.leader.Stop(ctx)
 
 	m.scheduler.Stop()
 	m.scheduler = nil

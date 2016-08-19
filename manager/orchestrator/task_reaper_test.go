@@ -33,9 +33,9 @@ func TestTaskHistory(t *testing.T) {
 	}))
 
 	taskReaper := NewTaskReaper(s)
-	defer taskReaper.Stop()
+	defer taskReaper.Stop(ctx)
 	orchestrator := NewReplicatedOrchestrator(s)
-	defer orchestrator.Stop()
+	defer orchestrator.Stop(ctx)
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
@@ -69,10 +69,8 @@ func TestTaskHistory(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the orchestrator.
-	go func() {
-		assert.NoError(t, orchestrator.Run(ctx))
-	}()
-	go taskReaper.Run()
+	assert.NoError(t, orchestrator.Start(ctx))
+	assert.NoError(t, taskReaper.Start(ctx))
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)

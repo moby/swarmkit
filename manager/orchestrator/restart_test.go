@@ -18,7 +18,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 	assert.NotNil(t, s)
 
 	orchestrator := NewReplicatedOrchestrator(s)
-	defer orchestrator.Stop()
+	defer orchestrator.Stop(ctx)
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
@@ -55,9 +55,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the orchestrator.
-	go func() {
-		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	assert.NoError(t, orchestrator.Start(ctx))
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
@@ -120,7 +118,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	assert.NotNil(t, s)
 
 	orchestrator := NewReplicatedOrchestrator(s)
-	defer orchestrator.Stop()
+	defer orchestrator.Stop(ctx)
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
@@ -157,9 +155,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the orchestrator.
-	go func() {
-		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	assert.NoError(t, orchestrator.Start(ctx))
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
@@ -220,7 +216,7 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 	assert.NotNil(t, s)
 
 	orchestrator := NewReplicatedOrchestrator(s)
-	defer orchestrator.Stop()
+	defer orchestrator.Stop(ctx)
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
@@ -256,9 +252,7 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the orchestrator.
-	go func() {
-		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	assert.NoError(t, orchestrator.Start(ctx))
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
@@ -314,7 +308,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 	assert.NotNil(t, s)
 
 	orchestrator := NewReplicatedOrchestrator(s)
-	defer orchestrator.Stop()
+	defer orchestrator.Stop(ctx)
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
@@ -351,9 +345,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the orchestrator.
-	go func() {
-		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	assert.NoError(t, orchestrator.Start(ctx))
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
@@ -403,7 +395,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	assert.NotNil(t, s)
 
 	orchestrator := NewReplicatedOrchestrator(s)
-	defer orchestrator.Stop()
+	defer orchestrator.Stop(ctx)
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
@@ -441,9 +433,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the orchestrator.
-	go func() {
-		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	assert.NoError(t, orchestrator.Start(ctx))
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
@@ -536,7 +526,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	assert.NotNil(t, s)
 
 	orchestrator := NewReplicatedOrchestrator(s)
-	defer orchestrator.Stop()
+	defer orchestrator.Stop(ctx)
 
 	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
@@ -571,10 +561,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Start the orchestrator.
-	go func() {
-		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	assert.NoError(t, orchestrator.Start(ctx))
 
 	observedTask1 := watchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)

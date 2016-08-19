@@ -6,6 +6,7 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"golang.org/x/net/context"
+	"sync"
 )
 
 // GlobalOrchestrator runs a reconciliation loop to create and destroy
@@ -16,6 +17,10 @@ type GlobalOrchestrator struct {
 	nodes map[string]struct{}
 	// globalServices have all the global services in the cluster, indexed by ServiceID
 	globalServices map[string]*api.Service
+
+	started   chan struct{}
+	startOnce sync.Once // start only once
+	stopOnce  sync.Once // only allow stop to be called once
 
 	// stopChan signals to the state machine to stop running.
 	stopChan chan struct{}
@@ -34,6 +39,7 @@ func NewGlobalOrchestrator(store *store.MemoryStore) *GlobalOrchestrator {
 	updater := NewUpdateSupervisor(store, restartSupervisor)
 	return &GlobalOrchestrator{
 		store:          store,
+		started:        make(chan struct{}),
 		nodes:          make(map[string]struct{}),
 		globalServices: make(map[string]*api.Service),
 		stopChan:       make(chan struct{}),
@@ -43,8 +49,21 @@ func NewGlobalOrchestrator(store *store.MemoryStore) *GlobalOrchestrator {
 	}
 }
 
-// Run contains the GlobalOrchestrator event loop
-func (g *GlobalOrchestrator) Run(ctx context.Context) error {
+// Start starts GlobalOrchestrator
+func (g *GlobalOrchestrator) Start(ctx context.Context) error {
+	err := errGlobalOrchestratorStarted
+
+	g.startOnce.Do(func() {
+		close(g.started)
+		go g.run(ctx)
+		err = nil
+	})
+
+	return err
+}
+
+// run contains the GlobalOrchestrator event loop
+func (g *GlobalOrchestrator) run(ctx context.Context) error {
 	defer close(g.doneChan)
 
 	// Watch changes to services and tasks
@@ -155,14 +174,36 @@ func (g *GlobalOrchestrator) Run(ctx context.Context) error {
 				}
 				g.reconcileServiceOneNode(ctx, v.Task.ServiceID, v.Task.NodeID)
 			}
+		case <-ctx.Done():
+			return nil
 		case <-g.stopChan:
 			return nil
 		}
 	}
 }
 
-// Stop stops the orchestrator.
-func (g *GlobalOrchestrator) Stop() {
+// Stop stops the GlobalOrchestrator
+func (g *GlobalOrchestrator) Stop(ctx context.Context) error {
+	select {
+	case <-g.started:
+	default:
+		return errGlobalOrchestratorNotStarted
+	}
+
+	g.stopOnce.Do(func() {
+		g.stop()
+	})
+
+	select {
+	case <-g.doneChan:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// stop stops the orchestrator.
+func (g *GlobalOrchestrator) stop() {
 	close(g.stopChan)
 	<-g.doneChan
 	g.updater.CancelAll()
