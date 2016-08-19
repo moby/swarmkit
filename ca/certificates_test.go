@@ -279,7 +279,7 @@ func TestGetRemoteCA(t *testing.T) {
 	d, err := digest.ParseDigest("sha256:" + mdStr)
 	assert.NoError(t, err)
 
-	cert, err := ca.GetRemoteCA(tc.Context, d, tc.Picker)
+	cert, err := ca.GetRemoteCA(tc.Context, d, tc.Remotes)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 }
@@ -297,7 +297,7 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	_, err := ca.GetRemoteCA(tc.Context, "sha256:2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", tc.Picker)
+	_, err := ca.GetRemoteCA(tc.Context, "sha256:2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", tc.Remotes)
 	assert.Error(t, err)
 }
 
@@ -308,7 +308,7 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	info := make(chan api.IssueNodeCertificateResponse, 1)
 	// Copy the current RootCA without the signer
 	rca := ca.RootCA{Cert: tc.RootCA.Cert, Pool: tc.RootCA.Pool}
-	cert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.Paths.Node, tc.WorkerToken, tc.Picker, nil, info)
+	cert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.Paths.Node, tc.WorkerToken, tc.Remotes, nil, info)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 	perms, err := permbits.Stat(tc.Paths.Node.Cert)
@@ -375,7 +375,7 @@ func TestGetRemoteSignedCertificate(t *testing.T) {
 	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
 	assert.NoError(t, err)
 
-	certs, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.ManagerToken, tc.RootCA.Pool, tc.Picker, nil, nil)
+	certs, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.ManagerToken, tc.RootCA.Pool, tc.Remotes, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 
@@ -388,7 +388,7 @@ func TestGetRemoteSignedCertificate(t *testing.T) {
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.ManagerRole)
 
 	// Test the expiration for an agent certificate
-	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, tc.WorkerToken, tc.RootCA.Pool, tc.Picker, nil, nil)
+	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, tc.WorkerToken, tc.RootCA.Pool, tc.Remotes, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
@@ -408,7 +408,7 @@ func TestGetRemoteSignedCertificateNodeInfo(t *testing.T) {
 	assert.NoError(t, err)
 
 	info := make(chan api.IssueNodeCertificateResponse, 1)
-	cert, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.WorkerToken, tc.RootCA.Pool, tc.Picker, nil, info)
+	cert, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.WorkerToken, tc.RootCA.Pool, tc.Remotes, nil, info)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 	assert.NotEmpty(t, <-info)
@@ -427,7 +427,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.WorkerToken, tc.RootCA.Pool, tc.Picker, nil, nil)
+		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.WorkerToken, tc.RootCA.Pool, tc.Remotes, nil, nil)
 		completed <- err
 	}()
 
