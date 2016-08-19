@@ -87,6 +87,7 @@ func TestScheduler(t *testing.T) {
 
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	err := s.Update(func(tx store.Tx) error {
 		// Prepoulate nodes
@@ -367,6 +368,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial task
@@ -451,6 +453,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial node and task
@@ -542,6 +545,7 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial node and task
@@ -640,6 +644,7 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial node and task
@@ -733,6 +738,7 @@ func TestPreassignedTasks(t *testing.T) {
 
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	err := s.Update(func(tx store.Tx) error {
 		// Prepoulate nodes
@@ -978,6 +984,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
+	defer s.Close()
 
 	// Add initial node and task
 	err := s.Update(func(tx store.Tx) error {
@@ -1202,5 +1209,6 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints, worstCas
 
 		scheduler.Stop()
 		cancel()
+		s.Close()
 	}
 }
