@@ -71,7 +71,7 @@ Some of *SwarmKit*'s main features are:
 -   **Security**
 
     -   **Mutual TLS**: All nodes communicate with each other using mutual *TLS*. Swarm managers act as a *Root Certificate Authority*, issuing certificates to new nodes.
-    -   **Acceptance Policy**: Policies can be put in place to auto accept, manually accept, or require a secret to join the cluster.
+    -   **Token-based Join**: All nodes require a cryptographic token to join the swarm, which defines that node's role. Tokens can be rotated as often as desired without affecting already-joined nodes.
     -   **Certificate Rotation**: TLS Certificates are rotated and reloaded transparently on every node, allowing a user to set how frequently rotation should happen (the current default is 3 months, the minimum is 30 minutes).
 
 ## Build
