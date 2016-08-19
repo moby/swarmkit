@@ -124,7 +124,7 @@ func newTask(cluster *api.Cluster, service *api.Service, slot uint64) *api.Task 
 	taskID := identity.NewID()
 	// We use the following scheme to assign Task names to Annotations:
 	// Annotations.Name := <ServiceAnnotations.Name>.<Slot>.<TaskID>
-	name := fmt.Sprintf("%v.%v.%v", service.Spec.Annotations.Name, instance, taskID)
+	name := fmt.Sprintf("%v.%v.%v", service.Spec.Annotations.Name, slot, taskID)
 
 	return &api.Task{
 		ID:                 taskID,
