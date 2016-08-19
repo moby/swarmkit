@@ -184,7 +184,11 @@ func (w *worker) Update(ctx context.Context, added []*api.Task, removed []string
 	}
 	defer tx.Rollback()
 
-	log.G(ctx).WithField("len(added)", len(added)).WithField("len(removed)", len(removed)).Debug("(*worker).Update")
+	log.G(ctx).WithFields(logrus.Fields{
+		"len(added)":   len(added),
+		"len(removed)": len(removed),
+		"mode":         mode.String(),
+	}).Debug("(*worker).Update")
 	assigned := map[string]struct{}{}
 
 	for _, task := range added {

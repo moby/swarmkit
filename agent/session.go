@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/picker"
@@ -215,18 +216,38 @@ func (s *session) handleSessionMessage(ctx context.Context, msg *api.SessionMess
 }
 
 func (s *session) watch(ctx context.Context) error {
-	log.G(ctx).Debugf("(*session).watch")
+	log := log.G(ctx).WithFields(logrus.Fields{"method": "(*session).watch"})
+	log.Debugf("")
+	var (
+		tasksWatch api.Dispatcher_TasksClient
+		resp       *api.AssignmentsMessage
+	)
 	client := api.NewDispatcherClient(s.conn)
-	watch, err := client.Assignments(ctx, &api.AssignmentsRequest{
-		SessionID: s.sessionID})
+	assignmentWatch, err := client.Assignments(ctx, &api.AssignmentsRequest{SessionID: s.sessionID})
 	if err != nil {
 		return err
 	}
 
 	for {
-		resp, err := watch.Recv()
-		if err != nil {
-			return err
+		if assignmentWatch != nil {
+			resp, err = assignmentWatch.Recv()
+			// If we get a code = 12 desc = unknown method Assignments, try to use tasks
+			if err != nil && grpc.Code(err) == codes.Unimplemented {
+				log.WithError(err).Errorf("falling back to Tasks")
+				assignmentWatch = nil
+				tasksWatch, err = client.Tasks(ctx, &api.TasksRequest{SessionID: s.sessionID})
+			}
+			if err != nil {
+				return err
+			}
+		}
+		if tasksWatch != nil {
+			var taskResp *api.TasksMessage
+			taskResp, err = tasksWatch.Recv()
+			if err != nil {
+				return err
+			}
+			resp = &api.AssignmentsMessage{Type: api.AssignmentsMessage_COMPLETE, UpdateTasks: taskResp.Tasks}
 		}
 
 		select {
