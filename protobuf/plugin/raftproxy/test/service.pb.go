@@ -32,7 +32,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-import raftpicker "github.com/docker/swarmkit/manager/raftpicker"
+import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
@@ -724,12 +724,11 @@ func encodeVarintService(data []byte, offset int, v uint64) int {
 
 type raftProxyRouteGuideServer struct {
 	local        RouteGuideServer
-	connSelector raftpicker.Interface
-	cluster      raftpicker.RaftCluster
+	connSelector raftselector.ConnProvider
 	ctxMods      []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyRouteGuideServer(local RouteGuideServer, connSelector raftpicker.Interface, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) RouteGuideServer {
+func NewRaftProxyRouteGuideServer(local RouteGuideServer, connSelector raftselector.ConnProvider, ctxMod func(context.Context) (context.Context, error)) RouteGuideServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
@@ -751,7 +750,6 @@ func NewRaftProxyRouteGuideServer(local RouteGuideServer, connSelector raftpicke
 
 	return &raftProxyRouteGuideServer{
 		local:        local,
-		cluster:      cluster,
 		connSelector: connSelector,
 		ctxMods:      mods,
 	}
@@ -769,59 +767,34 @@ func (p *raftProxyRouteGuideServer) runCtxMods(ctx context.Context) (context.Con
 
 func (p *raftProxyRouteGuideServer) GetFeature(ctx context.Context, r *Point) (*Feature, error) {
 
-	if p.cluster.IsLeader() {
-		return p.local.GetFeature(ctx, r)
-	}
-	ctx, err := p.runCtxMods(ctx)
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		return nil, err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
-				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
-				strings.Contains(errStr, "connection error") ||
-				grpc.Code(err) == codes.Internal {
-				p.connSelector.Reset()
-			}
+		if err == raftselector.ErrIsLeader {
+			return p.local.GetFeature(ctx, r)
 		}
-	}()
-
+		return nil, err
+	}
+	ctx, err = p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return NewRouteGuideClient(conn).GetFeature(ctx, r)
 }
 
 func (p *raftProxyRouteGuideServer) ListFeatures(r *Rectangle, stream RouteGuide_ListFeaturesServer) error {
 
-	if p.cluster.IsLeader() {
-		return p.local.ListFeatures(r, stream)
-	}
-	ctx, err := p.runCtxMods(stream.Context())
+	ctx := stream.Context()
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		return err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
-				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
-				strings.Contains(errStr, "connection error") ||
-				grpc.Code(err) == codes.Internal {
-				p.connSelector.Reset()
-			}
+		if err == raftselector.ErrIsLeader {
+			return p.local.ListFeatures(r, stream)
 		}
-	}()
-
+		return err
+	}
+	ctx, err = p.runCtxMods(ctx)
+	if err != nil {
+		return err
+	}
 	clientStream, err := NewRouteGuideClient(conn).ListFeatures(ctx, r)
 
 	if err != nil {
@@ -845,30 +818,18 @@ func (p *raftProxyRouteGuideServer) ListFeatures(r *Rectangle, stream RouteGuide
 
 func (p *raftProxyRouteGuideServer) RecordRoute(stream RouteGuide_RecordRouteServer) error {
 
-	if p.cluster.IsLeader() {
-		return p.local.RecordRoute(stream)
-	}
-	ctx, err := p.runCtxMods(stream.Context())
+	ctx := stream.Context()
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		return err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
-				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
-				strings.Contains(errStr, "connection error") ||
-				grpc.Code(err) == codes.Internal {
-				p.connSelector.Reset()
-			}
+		if err == raftselector.ErrIsLeader {
+			return p.local.RecordRoute(stream)
 		}
-	}()
-
+		return err
+	}
+	ctx, err = p.runCtxMods(ctx)
+	if err != nil {
+		return err
+	}
 	clientStream, err := NewRouteGuideClient(conn).RecordRoute(ctx)
 
 	if err != nil {
@@ -898,30 +859,18 @@ func (p *raftProxyRouteGuideServer) RecordRoute(stream RouteGuide_RecordRouteSer
 
 func (p *raftProxyRouteGuideServer) RouteChat(stream RouteGuide_RouteChatServer) error {
 
-	if p.cluster.IsLeader() {
-		return p.local.RouteChat(stream)
-	}
-	ctx, err := p.runCtxMods(stream.Context())
+	ctx := stream.Context()
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		return err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
-				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
-				strings.Contains(errStr, "connection error") ||
-				grpc.Code(err) == codes.Internal {
-				p.connSelector.Reset()
-			}
+		if err == raftselector.ErrIsLeader {
+			return p.local.RouteChat(stream)
 		}
-	}()
-
+		return err
+	}
+	ctx, err = p.runCtxMods(ctx)
+	if err != nil {
+		return err
+	}
 	clientStream, err := NewRouteGuideClient(conn).RouteChat(ctx)
 
 	if err != nil {
