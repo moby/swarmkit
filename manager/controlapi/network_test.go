@@ -173,6 +173,7 @@ func TestValidateNetworkSpec(t *testing.T) {
 
 func TestCreateNetwork(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	nr, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
 		Spec: createNetworkSpec("testnet1"),
 	})
@@ -183,6 +184,7 @@ func TestCreateNetwork(t *testing.T) {
 
 func TestCreateInternalNetwork(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	spec := createNetworkSpec("testnetint")
 	spec.Annotations.Labels = map[string]string{"com.docker.swarm.internal": "true"}
 	nr, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
@@ -195,6 +197,7 @@ func TestCreateInternalNetwork(t *testing.T) {
 
 func TestGetNetwork(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	nr, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
 		Spec: createNetworkSpec("testnet2"),
 	})
@@ -208,6 +211,7 @@ func TestGetNetwork(t *testing.T) {
 
 func TestRemoveNetwork(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	nr, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
 		Spec: createNetworkSpec("testnet2"),
 	})
@@ -221,6 +225,7 @@ func TestRemoveNetwork(t *testing.T) {
 
 func TestRemoveNetworkWithAttachedService(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	nr, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
 		Spec: createNetworkSpec("testnet4"),
 	})
@@ -234,6 +239,7 @@ func TestRemoveNetworkWithAttachedService(t *testing.T) {
 
 func TestRemoveInternalNetwork(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	spec := createNetworkSpec("testnet3")
 	// add label denoting internal network
 	spec.Annotations.Labels = map[string]string{"com.docker.swarm.internal": "true"}
@@ -258,6 +264,7 @@ func TestRemoveInternalNetwork(t *testing.T) {
 
 func TestListNetworks(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 
 	nr1, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
 		Spec: createNetworkSpec("listtestnet1"),

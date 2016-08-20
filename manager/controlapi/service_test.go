@@ -228,6 +228,7 @@ func TestValidateUpdate(t *testing.T) {
 
 func TestCreateService(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	_, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
@@ -272,6 +273,7 @@ func TestCreateService(t *testing.T) {
 
 func TestGetService(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	_, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
@@ -289,6 +291,7 @@ func TestGetService(t *testing.T) {
 
 func TestUpdateService(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	service := createService(t, ts, "name", "image", 1)
 
 	_, err := ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{})
@@ -400,6 +403,7 @@ func TestUpdateService(t *testing.T) {
 // from controlapi. This test should be removed once network update is supported.
 func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	spec := createSpec("name", "image", 1)
 	spec.Networks = []*api.ServiceSpec_NetworkAttachmentConfig{
 		{
@@ -426,6 +430,7 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 
 func TestRemoveService(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	_, err := ts.Client.RemoveService(context.Background(), &api.RemoveServiceRequest{})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
@@ -451,6 +456,7 @@ func TestValidateEndpointSpec(t *testing.T) {
 
 func TestServiceEndpointSpecUpdate(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	spec := &api.ServiceSpec{
 		Annotations: api.Annotations{
 			Name: "name",
@@ -495,6 +501,7 @@ func TestServiceEndpointSpecUpdate(t *testing.T) {
 
 func TestListServices(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	r, err := ts.Client.ListServices(context.Background(), &api.ListServicesRequest{})
 	assert.NoError(t, err)
 	assert.Empty(t, r.Services)
