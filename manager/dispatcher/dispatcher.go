@@ -759,11 +759,13 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 		return nil
 	}
 
-	addSecretsForTask := func(readTx store.ReadTx, t *api.Task, msg *api.AssignmentsMessage) {
+	// returns a slice of new secrets to send down
+	addSecretsForTask := func(readTx store.ReadTx, t *api.Task) []*api.Secret {
 		container := t.Spec.GetContainer()
 		if container == nil {
-			return
+			return nil
 		}
+		var newSecrets []*api.Secret
 		for _, secretRef := range container.Secrets {
 			secretName := secretRef.Name
 			if tasksUsingSecret[secretName] == nil {
@@ -783,10 +785,12 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 				// (there should never be more than one because of the
 				// uniqueness constraint), add this secret to our
 				// initial set that we send down.
-				msg.UpdateSecrets = append(msg.UpdateSecrets, secrets[0])
+				newSecrets = append(newSecrets, secrets[0])
 			}
 			tasksUsingSecret[secretName][t.ID] = struct{}{}
 		}
+
+		return newSecrets
 	}
 
 	// TODO(aaronl): Also send node secrets that should be exposed to
@@ -811,7 +815,8 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 
 				tasksMap[t.ID] = t
 				initial.UpdateTasks = append(initial.UpdateTasks, t)
-				addSecretsForTask(readTx, t, &initial)
+				newSecrets := addSecretsForTask(readTx, t)
+				initial.UpdateSecrets = append(initial.UpdateSecrets, newSecrets...)
 			}
 			return nil
 		},
@@ -837,13 +842,16 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 			return err
 		}
 
-		var update api.AssignmentsMessage
-
 		// bursty events should be processed in batches and sent out together
 		var (
+			update          api.AssignmentsMessage
 			modificationCnt int
 			batchingTimer   *time.Timer
 			batchingTimeout <-chan time.Time
+			updateTasks     = make(map[string]*api.Task)
+			updateSecrets   = make(map[string]*api.Secret)
+			removeTasks     = make(map[string]struct{})
+			removeSecrets   = make(map[string]struct{})
 		)
 
 		oneModification := func() {
@@ -878,8 +886,6 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 						continue
 					}
 
-					update.UpdateTasks = append(update.UpdateTasks, v.Task)
-
 					if oldTask, exists := tasksMap[v.Task.ID]; exists {
 						// States ASSIGNED and below are set by the orchestrator/scheduler,
 						// not the agent, so tasks in these states need to be sent to the
@@ -893,11 +899,16 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 						// If this task wasn't part of the assignment set before,
 						// add the secrets it references to the secrets assignment
 						// set.
+						var newSecrets []*api.Secret
 						d.store.View(func(readTx store.ReadTx) {
-							addSecretsForTask(readTx, v.Task, &update)
+							newSecrets = addSecretsForTask(readTx, v.Task)
 						})
+						for _, secret := range newSecrets {
+							updateSecrets[secret.ID] = secret
+						}
 					}
 					tasksMap[v.Task.ID] = v.Task
+					updateTasks[v.Task.ID] = v.Task
 
 					oneModification()
 				case state.EventDeleteTask:
@@ -905,7 +916,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 						continue
 					}
 
-					update.RemoveTasks = append(update.RemoveTasks, v.Task.ID)
+					removeTasks[v.Task.ID] = struct{}{}
 
 					delete(tasksMap, v.Task.ID)
 
@@ -924,7 +935,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 						if len(tasksUsingSecret[secretName]) == 0 {
 							// No tasks are using the secret anymore
 							delete(tasksUsingSecret, secretName)
-							update.RemoveSecrets = append(update.RemoveSecrets, secretName)
+							removeSecrets[secretName] = struct{}{}
 						}
 					}
 
@@ -936,7 +947,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 						continue
 					}
 
-					update.UpdateSecrets = append(update.UpdateSecrets, v.Secret)
+					updateSecrets[v.Secret.ID] = v.Secret
 
 					oneModification()
 				case state.EventDeleteSecret:
@@ -946,7 +957,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 
 					delete(tasksUsingSecret, v.Secret.Spec.Annotations.Name)
 
-					update.RemoveSecrets = append(update.RemoveSecrets, v.Secret.Spec.Annotations.Name)
+					removeSecrets[v.Secret.ID] = struct{}{}
 
 					oneModification()
 				}
@@ -964,6 +975,23 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 		}
 
 		if modificationCnt > 0 {
+			for id, task := range updateTasks {
+				if _, ok := removeTasks[id]; !ok {
+					update.UpdateTasks = append(update.UpdateTasks, task)
+				}
+			}
+			for id, secret := range updateSecrets {
+				if _, ok := removeSecrets[id]; !ok {
+					update.UpdateSecrets = append(update.UpdateSecrets, secret)
+				}
+			}
+			for id := range removeTasks {
+				update.RemoveTasks = append(update.RemoveTasks, id)
+			}
+			for id := range removeSecrets {
+				update.RemoveSecrets = append(update.RemoveSecrets, id)
+			}
+
 			if err := sendMessage(update, api.AssignmentsMessage_INCREMENTAL); err != nil {
 				return err
 			}
