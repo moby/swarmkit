@@ -97,6 +97,7 @@ func TestValidateClusterSpec(t *testing.T) {
 
 func TestGetCluster(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	_, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
@@ -122,6 +123,7 @@ func TestGetCluster(t *testing.T) {
 
 func TestGetClusterWithSecret(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	_, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
@@ -143,6 +145,7 @@ func TestGetClusterWithSecret(t *testing.T) {
 
 func TestUpdateCluster(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	cluster := createCluster(t, ts, "name", "name", api.AcceptancePolicy{}, ts.Server.rootCA)
 
 	_, err := ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{})
@@ -222,6 +225,7 @@ func TestUpdateCluster(t *testing.T) {
 
 func TestUpdateClusterRotateToken(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	cluster := createCluster(t, ts, "name", "name", api.AcceptancePolicy{}, ts.Server.rootCA)
 
 	r, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{
@@ -304,6 +308,7 @@ func TestUpdateClusterRotateToken(t *testing.T) {
 
 func TestListClusters(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	r, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
 	assert.NoError(t, err)
 	assert.Empty(t, r.Clusters)
@@ -322,6 +327,7 @@ func TestListClusters(t *testing.T) {
 
 func TestListClustersWithSecrets(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	r, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
 	assert.NoError(t, err)
 	assert.Empty(t, r.Clusters)

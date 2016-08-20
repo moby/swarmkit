@@ -28,6 +28,7 @@ func createTask(t *testing.T, ts *testServer, desiredState api.TaskState) *api.T
 
 func TestGetTask(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 
 	_, err := ts.Client.GetTask(context.Background(), &api.GetTaskRequest{})
 	assert.Error(t, err)
@@ -49,6 +50,7 @@ func TestRemoveTask(t *testing.T) {
 
 func TestListTasks(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	r, err := ts.Client.ListTasks(context.Background(), &api.ListTasksRequest{})
 	assert.NoError(t, err)
 	assert.Empty(t, r.Tasks)

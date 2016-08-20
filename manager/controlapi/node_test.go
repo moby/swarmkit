@@ -38,6 +38,7 @@ func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, memb
 
 func TestGetNode(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 
 	_, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{})
 	assert.Error(t, err)
@@ -55,6 +56,7 @@ func TestGetNode(t *testing.T) {
 
 func TestListNodes(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	r, err := ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Empty(t, r.Nodes)
@@ -141,6 +143,7 @@ func TestListNodes(t *testing.T) {
 
 func TestRemoveNodes(t *testing.T) {
 	ts := newTestServer(t)
+	defer ts.Stop()
 	r, err := ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Empty(t, r.Nodes)
@@ -233,6 +236,7 @@ func TestListManagerNodes(t *testing.T) {
 	tc := cautils.NewTestCA(nil)
 	defer tc.Stop()
 	ts := newTestServer(t)
+	defer ts.Stop()
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
@@ -405,6 +409,7 @@ func TestUpdateNode(t *testing.T) {
 	tc := cautils.NewTestCA(nil)
 	defer tc.Stop()
 	ts := newTestServer(t)
+	defer ts.Stop()
 
 	nodes := make(map[uint64]*raftutils.TestNode)
 	nodes[1], _ = raftutils.NewInitNode(t, tc, nil)
@@ -495,6 +500,7 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 	tc := cautils.NewTestCA(nil)
 	defer tc.Stop()
 	ts := newTestServer(t)
+	defer ts.Stop()
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
