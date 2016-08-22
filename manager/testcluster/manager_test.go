@@ -53,6 +53,8 @@ func TestManager(t *testing.T) {
 	assert.NoError(t, temp.Close())
 	assert.NoError(t, os.Remove(temp.Name()))
 
+	defer os.RemoveAll(temp.Name())
+
 	lunix, err := net.Listen("unix", temp.Name())
 	assert.NoError(t, err)
 	ltcp, err := net.Listen("tcp", "127.0.0.1:0")

@@ -40,12 +40,15 @@ type testServer struct {
 
 	grpcServer *grpc.Server
 	clientConn *grpc.ClientConn
+
+	tempUnixSocket string
 }
 
 func (ts *testServer) Stop() {
-	_ = ts.clientConn.Close()
+	ts.clientConn.Close()
 	ts.grpcServer.Stop()
 	ts.Store.Close()
+	os.RemoveAll(ts.tempUnixSocket)
 }
 
 func newTestServer(t *testing.T) *testServer {
@@ -65,6 +68,8 @@ func newTestServer(t *testing.T) *testServer {
 	assert.NoError(t, temp.Close())
 	assert.NoError(t, os.Remove(temp.Name()))
 
+	ts.tempUnixSocket = temp.Name()
+
 	lis, err := net.Listen("unix", temp.Name())
 	assert.NoError(t, err)
 
@@ -81,6 +86,7 @@ func newTestServer(t *testing.T) *testServer {
 			return net.DialTimeout("unix", addr, timeout)
 		}))
 	assert.NoError(t, err)
+	ts.clientConn = conn
 
 	ts.Client = api.NewControlClient(conn)
 
