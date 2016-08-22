@@ -37,7 +37,7 @@ type TestCA struct {
 	MemoryStore           *store.MemoryStore
 	TempDir, Organization string
 	Paths                 *ca.SecurityConfigPaths
-	Server                grpc.Server
+	Server                *grpc.Server
 	CAServer              *ca.Server
 	Context               context.Context
 	NodeCAClients         []api.NodeCAClient
@@ -191,6 +191,7 @@ func NewTestCA(t *testing.T) *TestCA {
 		CAClients:             caClients,
 		NodeCAClients:         nodeCAClients,
 		Conns:                 conns,
+		Server:                grpcServer,
 		CAServer:              caServer,
 		WorkerToken:           workerToken,
 		ManagerToken:          managerToken,
