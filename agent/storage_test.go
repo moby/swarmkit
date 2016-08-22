@@ -190,7 +190,7 @@ func storageTestEnv(t *testing.T) (*bolt.DB, func()) {
 	assert.NoError(t, InitDB(db))
 	return db, func() {
 		// iterate in reverse so it works like defer
-		for i := len(cleanup) - 1; i > 0; i-- {
+		for i := len(cleanup) - 1; i >= 0; i-- {
 			cleanup[i]()
 		}
 	}
