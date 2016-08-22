@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -226,7 +227,9 @@ func TestRaftQuorumRecovery(t *testing.T) {
 	// Restore the majority by restarting node 3
 	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
 
+	raftutils.ShutdownNode(nodes[1])
 	delete(nodes, 1)
+	raftutils.ShutdownNode(nodes[2])
 	delete(nodes, 2)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
@@ -260,6 +263,7 @@ func TestRaftFollowerLeave(t *testing.T) {
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
+	raftutils.ShutdownNode(nodes[5])
 	delete(nodes, 5)
 
 	raftutils.WaitForPeerNumber(t, clockSource, nodes, 4)
@@ -286,6 +290,7 @@ func TestRaftLeaderLeave(t *testing.T) {
 	t.Parallel()
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	// node 1 is the leader
 	assert.Equal(t, nodes[1].Leader(), nodes[1].Config.ID)
@@ -488,6 +493,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 	t.Parallel()
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
+	defer raftutils.TeardownCluster(t, nodes)
 
 	// Propose a value
 	values := make([]*api.Node, 2)
@@ -627,9 +633,11 @@ func TestRaftJoinWithIncorrectAddress(t *testing.T) {
 	nodes := make(map[uint64]*raftutils.TestNode)
 	var clockSource *fakeclock.FakeClock
 	nodes[1], clockSource = raftutils.NewInitNode(t, tc, nil)
+	defer raftutils.ShutdownNode(nodes[1])
 
 	// Try joining a new node with an incorrect address
 	n := raftutils.NewNode(t, clockSource, tc, raft.NewNodeOptions{JoinAddr: nodes[1].Address, Addr: "1.2.3.4:1234"})
+	defer os.RemoveAll(n.StateDir)
 
 	err := n.JoinAndStart()
 	assert.NotNil(t, err)
