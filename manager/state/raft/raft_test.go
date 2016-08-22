@@ -36,15 +36,19 @@ const (
 
 var tc *cautils.TestCA
 
-func init() {
+func TestMain(m *testing.M) {
+	tc = cautils.NewTestCA(nil)
+
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
 	logrus.SetOutput(ioutil.Discard)
-
-	tc = cautils.NewTestCA(nil)
 
 	// Set a smaller segment size so we don't incur cost preallocating
 	// space on old filesystems like HFS+.
 	wal.SegmentSizeBytes = 64 * 1024
+
+	res := m.Run()
+	tc.Stop()
+	os.Exit(res)
 }
 
 func TestRaftBootstrap(t *testing.T) {

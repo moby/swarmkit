@@ -151,7 +151,7 @@ func agentTestEnv(t *testing.T) (*Agent, func()) {
 		DB:          db,
 	})
 	return agent, func() {
-		for i := len(cleanup) - 1; i > 0; i-- {
+		for i := len(cleanup) - 1; i >= 0; i-- {
 			cleanup[i]()
 		}
 	}
