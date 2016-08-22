@@ -18,6 +18,7 @@ type RetryingSink struct {
 	sink     Sink
 	strategy RetryStrategy
 	closed   chan struct{}
+	once     sync.Once
 }
 
 // NewRetryingSink returns a sink that will retry writes to a sink, backing
@@ -81,13 +82,11 @@ retry:
 
 // Close closes the sink and the underlying sink.
 func (rs *RetryingSink) Close() error {
-	select {
-	case <-rs.closed:
-		return ErrSinkClosed
-	default:
+	rs.once.Do(func() {
 		close(rs.closed)
-		return rs.sink.Close()
-	}
+	})
+
+	return nil
 }
 
 // RetryStrategy defines a strategy for retrying event sink writes.
