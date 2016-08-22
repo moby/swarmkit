@@ -3,7 +3,6 @@ package ca_test
 import (
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -215,7 +214,6 @@ func TestLoadOrCreateSecurityConfigInvalidKeyWithValidTempKey(t *testing.T) {
 	assert.NotNil(t, nodeConfig.RootCA().Signer)
 
 	// Write some garbage to the Key
-	assert.NoError(t, os.Rename(tc.Paths.Node.Key, filepath.Dir(tc.Paths.Node.Key)+"."+filepath.Base(tc.Paths.Node.Key)))
 	ioutil.WriteFile(tc.Paths.Node.Key, []byte(`-----BEGIN EC PRIVATE KEY-----\n
 some random garbage\n
 -----END EC PRIVATE KEY-----`), 0644)
