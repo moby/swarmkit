@@ -163,7 +163,7 @@ func (c *containerAdapter) inspect(ctx context.Context) (types.ContainerJSON, er
 // events issues a call to the events API and returns a channel with all
 // events. The stream of events can be shutdown by cancelling the context.
 //
-// A chan struct{} is returned that will be closed if the event procressing
+// A chan struct{} is returned that will be closed if the event processing
 // fails and needs to be restarted.
 func (c *containerAdapter) events(ctx context.Context) (<-chan events.Message, <-chan struct{}, error) {
 	// TODO(stevvooe): Move this to a single, global event dispatch. For
