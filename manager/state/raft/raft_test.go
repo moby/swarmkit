@@ -641,7 +641,7 @@ func TestRaftJoinWithIncorrectAddress(t *testing.T) {
 
 	// Try joining a new node with an incorrect address
 	n := raftutils.NewNode(t, clockSource, tc, raft.NewNodeOptions{JoinAddr: nodes[1].Address, Addr: "1.2.3.4:1234"})
-	defer os.RemoveAll(n.StateDir)
+	defer raftutils.CleanupNonRunningNode(n)
 
 	err := n.JoinAndStart()
 	assert.NotNil(t, err)

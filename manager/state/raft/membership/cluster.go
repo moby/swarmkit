@@ -168,6 +168,12 @@ func (c *Cluster) IsIDRemoved(id uint64) bool {
 // Clear resets the list of active Members and removed Members.
 func (c *Cluster) Clear() {
 	c.mu.Lock()
+	for _, member := range c.members {
+		if member.Conn != nil {
+			member.Conn.Close()
+		}
+	}
+
 	c.members = make(map[uint64]*Member)
 	c.removed = make(map[uint64]bool)
 	c.mu.Unlock()

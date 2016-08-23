@@ -224,10 +224,15 @@ func NewNode(ctx context.Context, opts NewNodeOptions) *Node {
 }
 
 // JoinAndStart joins and starts the raft server
-func (n *Node) JoinAndStart() error {
+func (n *Node) JoinAndStart() (err error) {
+	defer func() {
+		if err != nil {
+			n.done()
+		}
+	}()
+
 	loadAndStartErr := n.loadAndStart(n.Ctx, n.opts.ForceNewCluster)
 	if loadAndStartErr != nil && loadAndStartErr != errNoWAL {
-		n.ticker.Stop()
 		return loadAndStartErr
 	}
 
@@ -270,6 +275,9 @@ func (n *Node) JoinAndStart() error {
 			n.Node = raft.StartNode(n.Config, []raft.Peer{})
 
 			if err := n.registerNodes(resp.Members); err != nil {
+				if walErr := n.wal.Close(); err != nil {
+					n.Config.Logger.Errorf("raft: error closing WAL: %v", walErr)
+				}
 				return err
 			}
 		} else {
@@ -281,6 +289,9 @@ func (n *Node) JoinAndStart() error {
 			}
 			n.Node = raft.StartNode(n.Config, []raft.Peer{peer})
 			if err := n.Campaign(n.Ctx); err != nil {
+				if walErr := n.wal.Close(); err != nil {
+					n.Config.Logger.Errorf("raft: error closing WAL: %v", walErr)
+				}
 				return err
 			}
 		}
@@ -324,15 +335,24 @@ func (n *Node) MemoryStore() *store.MemoryStore {
 	return n.memoryStore
 }
 
+func (n *Node) done() {
+	n.cluster.Clear()
+
+	n.ticker.Stop()
+	n.leadershipBroadcast.Close()
+	n.cluster.PeersBroadcast.Close()
+	n.memoryStore.Close()
+
+	close(n.doneCh)
+}
+
 // Run is the main loop for a Raft node, it goes along the state machine,
 // acting on the messages received from other Raft nodes in the cluster.
 //
 // Before running the main loop, it first starts the raft node based on saved
 // cluster state. If no saved state exists, it starts a single-node cluster.
 func (n *Node) Run(ctx context.Context) error {
-	defer func() {
-		close(n.doneCh)
-	}()
+	defer n.done()
 
 	wasLeader := false
 
@@ -453,9 +473,6 @@ func (n *Node) Run(ctx context.Context) error {
 			return ErrMemberRemoved
 		case <-n.stopCh:
 			n.stop()
-			n.leadershipBroadcast.Close()
-			n.cluster.PeersBroadcast.Close()
-			n.memoryStore.Close()
 			return nil
 		}
 	}
@@ -480,13 +497,6 @@ func (n *Node) stop() {
 	n.cancel()
 	n.waitProp.Wait()
 	n.asyncTasks.Wait()
-
-	members := n.cluster.Members()
-	for _, member := range members {
-		if member.Conn != nil {
-			_ = member.Conn.Close()
-		}
-	}
 
 	n.Stop()
 	n.ticker.Stop()
@@ -1111,7 +1121,10 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 		if err != nil {
 			n.Config.Logger.Errorf("could connect to member ID %x at %s: %v", m.To, conn.Addr, err)
 		} else {
-			n.cluster.ReplaceMemberConnection(m.To, conn, newConn)
+			err = n.cluster.ReplaceMemberConnection(m.To, conn, newConn)
+			if err != nil {
+				newConn.Conn.Close()
+			}
 		}
 	} else if m.Type == raftpb.MsgSnap {
 		n.ReportSnapshot(m.To, raft.SnapshotFinish)
