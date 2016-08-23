@@ -351,6 +351,37 @@ func (d *Dispatcher) isRunning() bool {
 	return true
 }
 
+// updateNode updates the description of a node and sets status to READY
+// this is used during registration when a new node description is provided
+// and during node updates when the node description changes
+func (d *Dispatcher) updateNode(nodeID string, description *api.NodeDescription) error {
+	d.nodeUpdatesLock.Lock()
+	d.nodeUpdates[nodeID] = nodeUpdate{status: &api.NodeStatus{State: api.NodeStatus_READY}, description: description}
+	numUpdates := len(d.nodeUpdates)
+	d.nodeUpdatesLock.Unlock()
+
+	if numUpdates >= maxBatchItems {
+		select {
+		case d.processUpdatesTrigger <- struct{}{}:
+		case <-d.ctx.Done():
+			return d.ctx.Err()
+		}
+
+	}
+
+	// Wait until the node update batch happens before unblocking register.
+	d.processUpdatesLock.Lock()
+	select {
+	case <-d.ctx.Done():
+		return d.ctx.Err()
+	default:
+	}
+	d.processUpdatesCond.Wait()
+	d.processUpdatesLock.Unlock()
+
+	return nil
+}
+
 // register is used for registration of node with particular dispatcher.
 func (d *Dispatcher) register(ctx context.Context, nodeID string, description *api.NodeDescription) (string, error) {
 	// prevent register until we're ready to accept it
@@ -371,29 +402,9 @@ func (d *Dispatcher) register(ctx context.Context, nodeID string, description *a
 		return "", ErrNodeNotFound
 	}
 
-	d.nodeUpdatesLock.Lock()
-	d.nodeUpdates[nodeID] = nodeUpdate{status: &api.NodeStatus{State: api.NodeStatus_READY}, description: description}
-	numUpdates := len(d.nodeUpdates)
-	d.nodeUpdatesLock.Unlock()
-
-	if numUpdates >= maxBatchItems {
-		select {
-		case d.processUpdatesTrigger <- struct{}{}:
-		case <-d.ctx.Done():
-			return "", d.ctx.Err()
-		}
-
+	if err := d.updateNode(nodeID, description); err != nil {
+		return "", err
 	}
-
-	// Wait until the node update batch happens before unblocking register.
-	d.processUpdatesLock.Lock()
-	select {
-	case <-d.ctx.Done():
-		return "", d.ctx.Err()
-	default:
-	}
-	d.processUpdatesCond.Wait()
-	d.processUpdatesLock.Unlock()
 
 	expireFunc := func() {
 		nodeStatus := api.NodeStatus{State: api.NodeStatus_DOWN, Message: "heartbeat failure"}
@@ -787,6 +798,10 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		}
 	} else {
 		sessionID = r.SessionID
+		// update the node description
+		if err := d.updateNode(nodeID, r.Description); err != nil {
+			return err
+		}
 	}
 
 	fields := logrus.Fields{

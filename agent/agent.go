@@ -238,6 +238,7 @@ func (a *Agent) run(ctx context.Context) {
 			if !reflect.DeepEqual(nodeDescription, newNodeDescription) {
 				nodeDescription = newNodeDescription
 				// close the session
+				log.G(ctx).Info("agent: found node update")
 				if err := session.close(); err != nil {
 					log.G(ctx).WithError(err).Error("agent: closing session for node update failed")
 				}
