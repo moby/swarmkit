@@ -69,7 +69,7 @@ func createServiceInNetworkSpec(name, image string, nwid string, instances uint6
 				Replicas: instances,
 			},
 		},
-		Networks: []*api.ServiceSpec_NetworkAttachmentConfig{
+		Networks: []*api.NetworkAttachmentConfig{
 			{
 				Target: nwid,
 			},
