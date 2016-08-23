@@ -81,6 +81,10 @@ func TestUpdater(t *testing.T) {
 					},
 				},
 			},
+			Update: &api.UpdateConfig{
+				// avoid having Run block for a long time to watch for failures
+				MonitoringPeriod: ptypes.DurationProto(50 * time.Millisecond),
+			},
 		},
 	}
 
@@ -117,7 +121,8 @@ func TestUpdater(t *testing.T) {
 	service.Spec.Task.GetContainer().Image = "v:3"
 	cluster.Spec.TaskDefaults.LogDriver = &api.Driver{Name: "clusterlogdriver"} // make cluster default logdriver.
 	service.Spec.Update = &api.UpdateConfig{
-		Parallelism: 1,
+		Parallelism:      1,
+		MonitoringPeriod: ptypes.DurationProto(50 * time.Millisecond),
 	}
 	updater = NewUpdater(s, NewRestartSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
@@ -132,8 +137,9 @@ func TestUpdater(t *testing.T) {
 	service.Spec.Task.GetContainer().Image = "v:4"
 	service.Spec.Task.LogDriver = nil // use cluster default now.
 	service.Spec.Update = &api.UpdateConfig{
-		Parallelism: 1,
-		Delay:       *ptypes.DurationProto(10 * time.Millisecond),
+		Parallelism:      1,
+		Delay:            *ptypes.DurationProto(10 * time.Millisecond),
+		MonitoringPeriod: ptypes.DurationProto(50 * time.Millisecond),
 	}
 	updater = NewUpdater(s, NewRestartSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
@@ -209,9 +215,10 @@ func TestUpdaterFailureAction(t *testing.T) {
 				},
 			},
 			Update: &api.UpdateConfig{
-				FailureAction: api.UpdateConfig_PAUSE,
-				Parallelism:   1,
-				Delay:         *ptypes.DurationProto(500 * time.Millisecond),
+				FailureAction:    api.UpdateConfig_PAUSE,
+				Parallelism:      1,
+				Delay:            *ptypes.DurationProto(500 * time.Millisecond),
+				MonitoringPeriod: ptypes.DurationProto(500 * time.Millisecond),
 			},
 		},
 	}
@@ -353,6 +360,10 @@ func TestUpdaterStopGracePeriod(t *testing.T) {
 				Replicated: &api.ReplicatedService{
 					Replicas: instances,
 				},
+			},
+			Update: &api.UpdateConfig{
+				// avoid having Run block for a long time to watch for failures
+				MonitoringPeriod: ptypes.DurationProto(50 * time.Millisecond),
 			},
 		},
 	}
