@@ -787,6 +787,11 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		}
 	} else {
 		sessionID = r.SessionID
+		// we're not creating a new session, but update the description
+		err := d.nodes.SetDescriptionWithSession(nodeID, r.SessionID, r.Description)
+		if err != nil {
+			return err
+		}
 	}
 
 	fields := logrus.Fields{
