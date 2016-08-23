@@ -345,6 +345,7 @@ func TestCanRemoveMember(t *testing.T) {
 	assert.Equal(t, len(members), 2)
 
 	// Add back node 3
+	raftutils.ShutdownNode(nodes[3])
 	delete(nodes, 3)
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 
