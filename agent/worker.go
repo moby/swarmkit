@@ -181,7 +181,7 @@ func (w *worker) Listen(ctx context.Context, reporter StatusReporter) {
 	go func() {
 		<-ctx.Done()
 		w.mu.Lock()
-		defer w.mu.Lock()
+		defer w.mu.Unlock()
 		delete(w.listeners, key) // remove the listener if the context is closed.
 	}()
 
