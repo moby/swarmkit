@@ -114,9 +114,12 @@ func TestValidateResources(t *testing.T) {
 	}
 
 	for _, b := range bad {
-		err := validateResources(b)
-		assert.Error(t, err)
-		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+		multiErr := validateResources(b)
+		assert.Error(t, multiErr)
+
+		for _, singleErr := range multiErr {
+			assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+		}
 	}
 
 	for _, g := range good {
@@ -134,9 +137,11 @@ func TestValidateResourceRequirements(t *testing.T) {
 		{Reservations: &api.Resources{NanoCPUs: 1e9}},
 	}
 	for _, b := range bad {
-		err := validateResourceRequirements(b)
-		assert.Error(t, err)
-		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+		multiErr := validateResourceRequirements(b)
+		assert.Error(t, multiErr)
+		for _, singleErr := range multiErr {
+			assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+		}
 	}
 
 	for _, g := range good {
@@ -210,9 +215,11 @@ func TestValidateTask(t *testing.T) {
 			c: codes.InvalidArgument,
 		},
 	} {
-		err := validateTask(bad.s)
-		assert.Error(t, err)
-		assert.Equal(t, bad.c, grpc.Code(err))
+		multiErr := validateTask(bad.s)
+		assert.Error(t, multiErr)
+		for _, singleErr := range multiErr {
+			assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+		}
 	}
 
 	for _, good := range []api.TaskSpec{
@@ -258,7 +265,6 @@ func TestValidateServiceSpec(t *testing.T) {
 	} {
 		err := validateServiceSpec(bad.spec)
 		assert.Error(t, err)
-		assert.Equal(t, bad.c, grpc.Code(err), grpc.ErrorDesc(err))
 	}
 
 	for _, good := range []*api.ServiceSpec{
@@ -289,9 +295,11 @@ func TestValidateRestartPolicy(t *testing.T) {
 	}
 
 	for _, b := range bad {
-		err := validateRestartPolicy(b)
-		assert.Error(t, err)
-		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+		multiErr := validateRestartPolicy(b)
+		assert.Error(t, multiErr)
+		for _, singleErr := range multiErr {
+			assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+		}
 	}
 
 	for _, g := range good {
@@ -310,9 +318,11 @@ func TestValidateUpdate(t *testing.T) {
 	}
 
 	for _, b := range bad {
-		err := validateUpdate(b)
-		assert.Error(t, err)
-		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+		multiErr := validateUpdate(b)
+		assert.Error(t, multiErr)
+		for _, singleErr := range multiErr {
+			assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+		}
 	}
 
 	for _, g := range good {
@@ -325,7 +335,11 @@ func TestCreateService(t *testing.T) {
 	defer ts.Stop()
 	_, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	if multiErr, ok := err.(MultiError); ok {
+		for _, singleErr := range multiErr {
+			assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+		}
+	}
 
 	spec := createSpec("name", "image", 1)
 	r, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
@@ -347,7 +361,11 @@ func TestCreateService(t *testing.T) {
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	if multiErr, ok := err.(MultiError); ok {
+		for _, singleErr := range multiErr {
+			assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+		}
+	}
 
 	// test no port conflicts when no publish port is specified
 	spec3 := createSpec("name4", "image", 1)
@@ -489,7 +507,11 @@ func TestUpdateService(t *testing.T) {
 
 	_, err := ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	if multiErr, ok := err.(MultiError); ok {
+		for _, singleErr := range multiErr {
+			assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+		}
+	}
 
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: "invalid", Spec: &service.Spec, ServiceVersion: &api.Version{}})
 	assert.Error(t, err)
@@ -498,7 +520,11 @@ func TestUpdateService(t *testing.T) {
 	// No update options.
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: &service.Spec})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	if multiErr, ok := err.(MultiError); ok {
+		for _, singleErr := range multiErr {
+			assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+		}
+	}
 
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: &service.Spec, ServiceVersion: &service.Meta.Version})
 	assert.NoError(t, err)
@@ -727,6 +753,7 @@ func TestValidateEndpointSpec(t *testing.T) {
 		},
 	}
 
+<<<<<<< HEAD
 	// duplicated published port but different protocols, valid
 	endPointSpec4 := &api.EndpointSpec{
 		Mode: api.ResolutionModeVirtualIP,
@@ -771,10 +798,18 @@ func TestValidateEndpointSpec(t *testing.T) {
 	err := validateEndpointSpec(endPointSpec1)
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+=======
+	multiErr := validateEndpointSpec(endPointSpec1)
+	assert.Error(t, multiErr)
+	for _, singleErr := range multiErr {
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+	}
+>>>>>>> return all validation error in spec
 
-	err = validateEndpointSpec(endPointSpec2)
-	assert.NoError(t, err)
+	multiErr = validateEndpointSpec(endPointSpec2)
+	assert.NoError(t, multiErr)
 
+<<<<<<< HEAD
 	err = validateEndpointSpec(endPointSpec3)
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
@@ -784,6 +819,13 @@ func TestValidateEndpointSpec(t *testing.T) {
 
 	err = validateEndpointSpec(endPointSpec5)
 	assert.NoError(t, err)
+=======
+	multiErr = validateEndpointSpec(endPointSpec3)
+	assert.Error(t, multiErr)
+	for _, singleErr := range multiErr {
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+	}
+>>>>>>> return all validation error in spec
 }
 
 func TestServiceEndpointSpecUpdate(t *testing.T) {

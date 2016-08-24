@@ -15,79 +15,116 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func validateIPAMConfiguration(ipamConf *api.IPAMConfig) error {
+func validateIPAMConfiguration(ipamConf *api.IPAMConfig) (me MultiError) {
 	if ipamConf == nil {
-		return grpc.Errorf(codes.InvalidArgument, "ipam configuration: cannot be empty")
+		err := grpc.Errorf(codes.InvalidArgument, "ipam configuration: cannot be empty")
+		me = append(me, err)
+		return
 	}
 
 	_, subnet, err := net.ParseCIDR(ipamConf.Subnet)
 	if err != nil {
-		return grpc.Errorf(codes.InvalidArgument, "ipam configuration: invalid subnet %s", ipamConf.Subnet)
+		err = grpc.Errorf(codes.InvalidArgument, "ipam configuration: invalid subnet %s", ipamConf.Subnet)
+		me = append(me, err)
 	}
 
 	if ipamConf.Range != "" {
 		ip, _, err := net.ParseCIDR(ipamConf.Range)
 		if err != nil {
-			return grpc.Errorf(codes.InvalidArgument, "ipam configuration: invalid range %s", ipamConf.Range)
-		}
-
-		if !subnet.Contains(ip) {
-			return grpc.Errorf(codes.InvalidArgument, "ipam configuration: subnet %s does not contain range %s", ipamConf.Subnet, ipamConf.Range)
+			err = grpc.Errorf(codes.InvalidArgument, "ipam configuration: invalid range %s", ipamConf.Range)
+			me = append(me, err)
+		} else if !subnet.Contains(ip) {
+			err = grpc.Errorf(codes.InvalidArgument, "ipam configuration: subnet %s does not contain range %s", ipamConf.Subnet, ipamConf.Range)
+			me = append(me, err)
 		}
 	}
 
 	if ipamConf.Gateway != "" {
 		ip := net.ParseIP(ipamConf.Gateway)
 		if ip == nil {
-			return grpc.Errorf(codes.InvalidArgument, "ipam configuration: invalid gateway %s", ipamConf.Gateway)
-		}
-
-		if !subnet.Contains(ip) {
-			return grpc.Errorf(codes.InvalidArgument, "ipam configuration: subnet %s does not contain gateway %s", ipamConf.Subnet, ipamConf.Gateway)
+			err = grpc.Errorf(codes.InvalidArgument, "ipam configuration: invalid gateway %s", ipamConf.Gateway)
+			me = append(me, err)
+		} else if !subnet.Contains(ip) {
+			err = grpc.Errorf(codes.InvalidArgument, "ipam configuration: subnet %s does not contain gateway %s", ipamConf.Subnet, ipamConf.Gateway)
+			me = append(me, err)
 		}
 	}
 
-	return nil
+	return
 }
 
+<<<<<<< HEAD
 func validateIPAM(ipam *api.IPAMOptions, pg plugingetter.PluginGetter) error {
+=======
+func validateIPAM(ipam *api.IPAMOptions) (me MultiError) {
+>>>>>>> return all validation error in spec
 	if ipam == nil {
 		// It is ok to not specify any IPAM configurations. We
 		// will choose good defaults.
 		return nil
 	}
 
+<<<<<<< HEAD
 	if err := validateDriver(ipam.Driver, pg, ipamapi.PluginEndpointType); err != nil {
 		return err
+=======
+	if err := validateDriver(ipam.Driver); err != nil {
+		me = append(me, err)
+	}
+
+	if ipam.Driver != nil && ipam.Driver.Name != ipamapi.DefaultIPAM {
+		err := grpc.Errorf(codes.InvalidArgument, "invalid IPAM specified")
+		me = append(me, err)
+>>>>>>> return all validation error in spec
 	}
 
 	for _, ipamConf := range ipam.Configs {
 		if err := validateIPAMConfiguration(ipamConf); err != nil {
-			return err
+			me = append(me, err)
 		}
 	}
 
-	return nil
+	return
 }
 
+<<<<<<< HEAD
 func validateNetworkSpec(spec *api.NetworkSpec, pg plugingetter.PluginGetter) error {
+=======
+func validateNetworkSpec(spec *api.NetworkSpec) (me MultiError) {
+>>>>>>> return all validation error in spec
 	if spec == nil {
-		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		err := grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		me = append(me, err)
+		return
 	}
 
 	if err := validateAnnotations(spec.Annotations); err != nil {
-		return err
+		me = append(me, err)
 	}
 
+<<<<<<< HEAD
 	if err := validateDriver(spec.DriverConfig, pg, driverapi.NetworkPluginEndpointType); err != nil {
 		return err
 	}
 
 	if err := validateIPAM(spec.IPAM, pg); err != nil {
 		return err
+=======
+	if err := validateDriver(spec.DriverConfig); err != nil {
+		me = append(me, err)
 	}
 
-	return nil
+	if spec.DriverConfig != nil && spec.DriverConfig.Name != networkallocator.DefaultDriver {
+		err := grpc.Errorf(codes.InvalidArgument, "invalid driver specified")
+		me = append(me, err)
+	}
+
+	if err := validateIPAM(spec.IPAM); err != nil {
+		me = append(me, err)
+>>>>>>> return all validation error in spec
+	}
+
+	return
 }
 
 // CreateNetwork creates and returns a Network based on the provided NetworkSpec.

@@ -13,11 +13,30 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func validateNodeSpec(spec *api.NodeSpec) error {
+func validateNodeSpec(spec *api.NodeSpec) (me MultiError) {
 	if spec == nil {
-		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		err := grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		me = append(me, err)
+		return
 	}
-	return nil
+
+	if err := validateAnnotations(spec.Annotations); err != nil {
+		me = append(me, err)
+	}
+
+	if spec.Membership != api.NodeMembershipPending && spec.Membership != api.NodeMembershipAccepted {
+		err := grpc.Errorf(codes.InvalidArgument, "NodeSpec: unimplemented membership in node spec")
+		me = append(me, err)
+	}
+
+	if spec.Availability != api.NodeAvailabilityActive &&
+		spec.Availability != api.NodeAvailabilityPause &&
+		spec.Availability != api.NodeAvailabilityDrain {
+		err := grpc.Errorf(codes.InvalidArgument, "NodeSpec: unimplemented availability in node spec")
+		me = append(me, err)
+	}
+
+	return
 }
 
 // GetNode returns a Node given a NodeID.

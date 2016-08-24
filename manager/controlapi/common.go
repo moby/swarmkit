@@ -13,6 +13,9 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+// MultiError is a list of errors.
+type MultiError []error
+
 var isValidName = regexp.MustCompile(`^[a-zA-Z0-9](?:[-_]*[A-Za-z0-9]+)*$`)
 
 func buildFilters(by func(string) store.By, values []string) store.By {
@@ -104,4 +107,17 @@ func validateDriver(driver *api.Driver, pg plugingetter.PluginGetter, pluginType
 	}
 
 	return nil
+}
+
+// Error combines multi errors into a single one string.
+func (errList MultiError) Error() string {
+	if len(errList) < 1 {
+		return ""
+	}
+
+	out := make([]string, len(errList))
+	for i := range errList {
+		out[i] = errList[i].Error()
+	}
+	return strings.Join(out, ", ")
 }
