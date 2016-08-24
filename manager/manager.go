@@ -532,29 +532,31 @@ func (m *Manager) rotateRootCAKEK(ctx context.Context, clusterID string) error {
 
 }
 
-// handleLeadershipEvents reads out and discards all of the messages when the manager is stopped,
-// otherwise it handles the is leader event or is follower event.
+// handleLeadershipEvents handles the is leader event or is follower event.
 func (m *Manager) handleLeadershipEvents(ctx context.Context, leadershipCh chan events.Event) {
-	for leadershipEvent := range leadershipCh {
-		// read out and discard all of the messages when we've stopped
-		// don't acquire the mutex yet. if stopped is closed, we don't need
-		// this stops this loop from starving Run()'s attempt to Lock
+	for {
 		select {
-		case <-m.stopped:
-			continue
-		default:
-			// do nothing, we're not stopped
-		}
-		// we're not stopping so NOW acquire the mutex
-		m.mu.Lock()
-		newState := leadershipEvent.(raft.LeadershipState)
+		case leadershipEvent := <-leadershipCh:
+			m.mu.Lock()
+			select {
+			case <-m.stopped:
+				m.mu.Unlock()
+				return
+			default:
+			}
+			newState := leadershipEvent.(raft.LeadershipState)
 
-		if newState == raft.IsLeader {
-			m.becomeLeader(ctx)
-		} else if newState == raft.IsFollower {
-			m.becomeFollower()
+			if newState == raft.IsLeader {
+				m.becomeLeader(ctx)
+			} else if newState == raft.IsFollower {
+				m.becomeFollower()
+			}
+			m.mu.Unlock()
+		case <-m.stopped:
+			return
+		case <-ctx.Done():
+			return
 		}
-		m.mu.Unlock()
 	}
 }
 
