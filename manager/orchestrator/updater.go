@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
@@ -17,7 +18,7 @@ import (
 	"github.com/docker/swarmkit/protobuf/ptypes"
 )
 
-const defaultMonitoringPeriod = 30 * time.Second
+const defaultMonitor = 30 * time.Second
 
 // UpdateSupervisor supervises a set of updates. It's responsible for keeping track of updates,
 // shutting them down and replacing them.
@@ -125,7 +126,9 @@ func (u *Updater) Run(ctx context.Context, slots []slot) {
 	service := u.newService
 
 	// If the update is in a PAUSED state, we should not do anything.
-	if service.UpdateStatus != nil && service.UpdateStatus.State == api.UpdateStatus_PAUSED {
+	if service.UpdateStatus != nil &&
+		(service.UpdateStatus.State == api.UpdateStatus_PAUSED ||
+			service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_PAUSED) {
 		return
 	}
 
@@ -137,7 +140,9 @@ func (u *Updater) Run(ctx context.Context, slots []slot) {
 	}
 	// Abort immediately if all tasks are clean.
 	if len(dirtySlots) == 0 {
-		if service.UpdateStatus != nil && service.UpdateStatus.State == api.UpdateStatus_UPDATING {
+		if service.UpdateStatus != nil &&
+			(service.UpdateStatus.State == api.UpdateStatus_UPDATING ||
+				service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_STARTED) {
 			u.completeUpdate(ctx, service.ID)
 		}
 		return
@@ -171,17 +176,17 @@ func (u *Updater) Run(ctx context.Context, slots []slot) {
 
 	failureAction := api.UpdateConfig_PAUSE
 	allowedFailureFraction := float32(0)
-	monitoringPeriod := defaultMonitoringPeriod
+	monitoringPeriod := defaultMonitor
 
 	if service.Spec.Update != nil {
 		failureAction = service.Spec.Update.FailureAction
 		allowedFailureFraction = service.Spec.Update.AllowedFailureFraction
 
-		if service.Spec.Update.MonitoringPeriod != nil {
+		if service.Spec.Update.Monitor != nil {
 			var err error
-			monitoringPeriod, err = ptypes.Duration(service.Spec.Update.MonitoringPeriod)
+			monitoringPeriod, err = ptypes.Duration(service.Spec.Update.Monitor)
 			if err != nil {
-				monitoringPeriod = defaultMonitoringPeriod
+				monitoringPeriod = defaultMonitor
 			}
 		}
 	}
@@ -227,6 +232,17 @@ func (u *Updater) Run(ctx context.Context, slots []slot) {
 					message := fmt.Sprintf("update paused due to failure or early termination of task %s", failedTask.ID)
 					u.pauseUpdate(ctx, service.ID, message)
 					return true
+				case api.UpdateConfig_ROLLBACK:
+					// Never roll back a rollback
+					if service.UpdateStatus != nil && service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_STARTED {
+						message := fmt.Sprintf("rollback paused due to failure or early termination of task %s", failedTask.ID)
+						u.pauseUpdate(ctx, service.ID, message)
+						return true
+					}
+					stopped = true
+					message := fmt.Sprintf("update rolled back due to failure or early termination of task %s", failedTask.ID)
+					u.rollbackUpdate(ctx, service.ID, message)
+					return true
 				}
 			}
 		}
@@ -256,23 +272,28 @@ slotsLoop:
 	close(slotQueue)
 	wg.Wait()
 
-	// Keep watching for task failures for one more monitoringPeriod,
-	// before declaring the update complete.
-	doneMonitoring := time.After(monitoringPeriod)
-monitorLoop:
-	for {
-		select {
-		case <-u.stopChan:
-			stopped = true
-			break monitorLoop
-		case <-doneMonitoring:
-			break monitorLoop
-		case ev := <-failedTaskWatch:
-			if failureTriggersAction(ev.(state.EventUpdateTask).Task) {
+	if !stopped {
+		// Keep watching for task failures for one more monitoringPeriod,
+		// before declaring the update complete.
+		doneMonitoring := time.After(monitoringPeriod)
+	monitorLoop:
+		for {
+			select {
+			case <-u.stopChan:
+				stopped = true
 				break monitorLoop
+			case <-doneMonitoring:
+				break monitorLoop
+			case ev := <-failedTaskWatch:
+				if failureTriggersAction(ev.(state.EventUpdateTask).Task) {
+					break monitorLoop
+				}
 			}
 		}
 	}
+
+	// TODO(aaronl): Potentially roll back the service if not enough tasks
+	// have reached RUNNING by this point.
 
 	if !stopped {
 		u.completeUpdate(ctx, service.ID)
@@ -496,7 +517,11 @@ func (u *Updater) pauseUpdate(ctx context.Context, serviceID, message string) {
 			return nil
 		}
 
-		service.UpdateStatus.State = api.UpdateStatus_PAUSED
+		if service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_STARTED {
+			service.UpdateStatus.State = api.UpdateStatus_ROLLBACK_PAUSED
+		} else {
+			service.UpdateStatus.State = api.UpdateStatus_PAUSED
+		}
 		service.UpdateStatus.Message = message
 
 		return store.UpdateService(tx, service)
@@ -504,6 +529,38 @@ func (u *Updater) pauseUpdate(ctx context.Context, serviceID, message string) {
 
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("failed to pause update of service %s", serviceID)
+	}
+}
+
+func (u *Updater) rollbackUpdate(ctx context.Context, serviceID, message string) {
+	log.G(ctx).Debugf("starting rollback of service %s", serviceID)
+
+	var service *api.Service
+	err := u.store.Update(func(tx store.Tx) error {
+		service = store.GetService(tx, serviceID)
+		if service == nil {
+			return nil
+		}
+		if service.UpdateStatus == nil {
+			// The service was updated since we started this update
+			return nil
+		}
+
+		service.UpdateStatus.State = api.UpdateStatus_ROLLBACK_STARTED
+		service.UpdateStatus.Message = message
+
+		if service.PreviousSpec == nil {
+			return errors.New("cannot roll back service because no previous spec is available")
+		}
+		service.Spec = *service.PreviousSpec
+		service.PreviousSpec = nil
+
+		return store.UpdateService(tx, service)
+	})
+
+	if err != nil {
+		log.G(ctx).WithError(err).Errorf("failed to start rollback of service %s", serviceID)
+		return
 	}
 }
 
@@ -519,9 +576,13 @@ func (u *Updater) completeUpdate(ctx context.Context, serviceID string) {
 			// The service was changed since we started this update
 			return nil
 		}
-
-		service.UpdateStatus.State = api.UpdateStatus_COMPLETED
-		service.UpdateStatus.Message = "update completed"
+		if service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_STARTED {
+			service.UpdateStatus.State = api.UpdateStatus_ROLLBACK_COMPLETED
+			service.UpdateStatus.Message = "rollback completed"
+		} else {
+			service.UpdateStatus.State = api.UpdateStatus_COMPLETED
+			service.UpdateStatus.Message = "update completed"
+		}
 		service.UpdateStatus.CompletedAt = ptypes.MustTimestampProto(time.Now())
 
 		return store.UpdateService(tx, service)
