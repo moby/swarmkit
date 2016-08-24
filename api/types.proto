@@ -281,26 +281,32 @@ message UpdateConfig {
 	enum FailureAction {
 		PAUSE = 0;
 		CONTINUE = 1;
+		// NOTE: Automated rollback triggered as a failure action is an
+		// experimental feature that is not yet exposed to the end
+		// user. Currently, rollbacks must be initiated manually
+		// through the API by setting Spec to PreviousSpec. We may
+		// decide to expose automatic rollback in the future based on
+		// user feedback, or remove this feature otherwise.
 		ROLLBACK = 2;
 	}
 
 	// FailureAction is the action to take when an update failures.
 	FailureAction failure_action = 3;
 
-	// MonitoringPeriod indicates how long to monitor a task for failure
-	// after it is created. If the task fails by ending up in one of the
-	// states REJECTED, COMPLETED, or FAILED, within MonitoringPeriod
-	// from its creation, this counts as a failure. If it fails after
-	// MonitoringPeriod, it does not count as a failure. If
-	// MonitoringPeriod is unspecified, a default value will be used.
-	Duration monitoring_period = 4;
+	// Monitor indicates how long to monitor a task for failure after it is
+	// created. If the task fails by ending up in one of the states
+	// REJECTED, COMPLETED, or FAILED, within Monitor from its creation,
+	// this counts as a failure. If it fails after Monitor, it does not
+	// count as a failure. If Monitor is unspecified, a default value will
+	// be used.
+	Duration monitor = 4;
 
 	// AllowedFailureFraction is the fraction of tasks that may fail during
 	// an update before the failure action is invoked. Any task created by
 	// the current update which ends up in one of the states REJECTED,
-	// COMPLETED or FAILED within MonitoringPeriod from its creation counts
-	// as a failure. The number of failures is divided by the number of
-	// tasks being updated, and if this fraction is greater than
+	// COMPLETED or FAILED within Monitor from its creation counts as a
+	// failure. The number of failures is divided by the number of tasks
+	// being updated, and if this fraction is greater than
 	// AllowedFailureFraction, the failure action is invoked.
 	//
 	// If the failure action is CONTINUE, there is no effect.
@@ -340,10 +346,6 @@ message UpdateStatus {
 	// CompletedAt is the time at which the update completed successfully,
 	// paused, or finished rolling back.
 	Timestamp completed_at = 3;
-
-	// RollbackStartedAt is the time at which the update started rolling
-	// back to the previous version.
-	Timestamp rollback_started_at = 5;
 
 	// TODO(aaronl): Consider adding a timestamp showing when the most
 	// recent task update took place. Currently, this is nontrivial
