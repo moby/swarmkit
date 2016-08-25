@@ -165,7 +165,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) error {
 		nodes, err = store.FindNodes(tx, store.All)
 	})
 	if err != nil {
-		return fmt.Errorf("error listing all services in store while trying to allocate during init: %v", err)
+		return fmt.Errorf("error listing all nodes in store while trying to allocate during init: %v", err)
 	}
 
 	for _, node := range nodes {
