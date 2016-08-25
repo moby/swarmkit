@@ -553,11 +553,11 @@ func (n *Node) initManagerConnection(ctx context.Context, ready chan<- struct{})
 	}
 }
 
-func (n *Node) waitRole(ctx context.Context, role string) {
+func (n *Node) waitRole(ctx context.Context, role string) error {
 	n.roleCond.L.Lock()
 	if role == n.role {
 		n.roleCond.L.Unlock()
-		return
+		return nil
 	}
 	finishCh := make(chan struct{})
 	defer close(finishCh)
@@ -572,18 +572,24 @@ func (n *Node) waitRole(ctx context.Context, role string) {
 	defer n.roleCond.L.Unlock()
 	for role != n.role {
 		n.roleCond.Wait()
-		if ctx.Err() != nil {
-			return
+		select {
+		case <-ctx.Done():
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+		default:
 		}
 	}
+
+	return nil
 }
 
 func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig, ready chan struct{}) error {
 	for {
-		n.waitRole(ctx, ca.ManagerRole)
-		if ctx.Err() != nil {
-			return ctx.Err()
+		if err := n.waitRole(ctx, ca.ManagerRole); err != nil {
+			return err
 		}
+
 		remoteAddr, _ := n.remotes.Select(n.nodeID)
 		m, err := manager.New(&manager.Config{
 			ForceNewCluster: n.config.ForceNewCluster,
@@ -627,7 +633,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			ready = nil
 		}
 
-		n.waitRole(ctx, ca.AgentRole)
+		err = n.waitRole(ctx, ca.AgentRole)
 
 		n.Lock()
 		n.manager = nil
