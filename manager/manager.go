@@ -614,7 +614,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	m.globalOrchestrator = orchestrator.NewGlobalOrchestrator(s)
 	m.taskReaper = orchestrator.NewTaskReaper(s)
 	m.scheduler = scheduler.New(s)
-	m.keyManager = keymanager.New(m.RaftNode.MemoryStore(), keymanager.DefaultConfig())
+	m.keyManager = keymanager.New(s, keymanager.DefaultConfig())
 
 	// TODO(stevvooe): Allocate a context that can be used to
 	// shutdown underlying manager processes when leadership is
