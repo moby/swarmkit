@@ -8,7 +8,6 @@
 
 		people = [
 			"aaronlehmann",
-			"abronan",
 			"aluzzardi",
 			"amitshukla",
 			"diogomonica",
@@ -56,11 +55,6 @@
 	Name = "Aaron Lehmann"
 	Email = "aaron.lehmann@docker.com"
 	GitHub = "aaronlehmann"
-
-	[people.abronan]
-	Name = "Alexandre Beslic"
-	Email = "abronan@docker.com"
-	GitHub = "abronan"
 
 	[people.aluzzardi]
 	Name = "Andrea Luzzardi"
