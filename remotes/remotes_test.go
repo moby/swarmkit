@@ -1,4 +1,4 @@
-package picker
+package remotes
 
 import (
 	"math"

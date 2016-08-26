@@ -21,7 +21,7 @@ import (
 	"github.com/docker/swarmkit/manager"
 	"github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/picker"
+	"github.com/docker/swarmkit/remotes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -68,7 +68,7 @@ func (mc *managersCluster) addAgents(count int) error {
 			return err
 		}
 
-		managers := picker.NewRemotes(addrs...)
+		managers := remotes.NewRemotes(addrs...)
 		id := strconv.Itoa(rand.Int())
 		a, err := agent.New(&agent.Config{
 			Hostname:    "hostname_" + id,

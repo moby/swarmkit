@@ -23,7 +23,7 @@ import (
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/ioutils"
 	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/picker"
+	"github.com/docker/swarmkit/remotes"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -43,9 +43,9 @@ type TestCA struct {
 	NodeCAClients         []api.NodeCAClient
 	CAClients             []api.CAClient
 	Conns                 []*grpc.ClientConn
-	Picker                *picker.Picker
 	WorkerToken           string
 	ManagerToken          string
+	Remotes               remotes.Remotes
 }
 
 // Stop cleansup after TestCA
@@ -171,9 +171,7 @@ func NewTestCA(t *testing.T) *TestCA {
 
 	// Wait for caServer to be ready to serve
 	<-caServer.Ready()
-
-	remotes := picker.NewRemotes(api.Peer{Addr: l.Addr().String()})
-	picker := picker.NewPicker(remotes, l.Addr().String())
+	remotes := remotes.NewRemotes(api.Peer{Addr: l.Addr().String()})
 
 	caClients := []api.CAClient{api.NewCAClient(conn1), api.NewCAClient(conn2), api.NewCAClient(conn3)}
 	nodeCAClients := []api.NodeCAClient{api.NewNodeCAClient(conn1), api.NewNodeCAClient(conn2), api.NewNodeCAClient(conn3), api.NewNodeCAClient(conn4)}
@@ -183,7 +181,6 @@ func NewTestCA(t *testing.T) *TestCA {
 		RootCA:                rootCA,
 		ExternalSigningServer: externalSigningServer,
 		MemoryStore:           s,
-		Picker:                picker,
 		TempDir:               tempBaseDir,
 		Organization:          organization,
 		Paths:                 paths,
@@ -195,6 +192,7 @@ func NewTestCA(t *testing.T) *TestCA {
 		CAServer:              caServer,
 		WorkerToken:           workerToken,
 		ManagerToken:          managerToken,
+		Remotes:               remotes,
 	}
 }
 
