@@ -1,6 +1,9 @@
 package events
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 // Channel provides a sink that can be listened on. The writer and channel
 // listener must operate in separate goroutines.
@@ -45,4 +48,14 @@ func (ch *Channel) Close() error {
 	})
 
 	return nil
+}
+
+func (ch Channel) String() string {
+	// Serialize a copy of the Channel that doesn't contain the sync.Once,
+	// to avoid a data race.
+	ch2 := map[string]interface{}{
+		"C":      ch.C,
+		"closed": ch.closed,
+	}
+	return fmt.Sprint(ch2)
 }
