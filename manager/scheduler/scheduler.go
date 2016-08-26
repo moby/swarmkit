@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"container/heap"
 	"container/list"
 	"time"
 
@@ -24,7 +23,7 @@ type Scheduler struct {
 	unassignedTasks *list.List
 	// preassignedTasks already have NodeID, need resource validation
 	preassignedTasks map[string]*api.Task
-	nodeHeap         nodeHeap
+	nodeSet          nodeSet
 	allTasks         map[string]*api.Task
 	pipeline         *Pipeline
 
@@ -32,11 +31,6 @@ type Scheduler struct {
 	stopChan chan struct{}
 	// doneChan is closed when the state machine terminates
 	doneChan chan struct{}
-
-	// This currently exists only for benchmarking. It tells the scheduler
-	// scan the whole heap instead of taking the minimum-valued node
-	// blindly.
-	scanAllNodes bool
 }
 
 // New creates a new scheduler.
@@ -83,7 +77,7 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 		tasksByNode[t.NodeID][t.ID] = t
 	}
 
-	if err := s.buildNodeHeap(tx, tasksByNode); err != nil {
+	if err := s.buildNodeSet(tx, tasksByNode); err != nil {
 		return err
 	}
 
@@ -152,7 +146,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 				s.createOrUpdateNode(v.Node)
 				pendingChanges++
 			case state.EventDeleteNode:
-				s.nodeHeap.remove(v.Node.ID)
+				s.nodeSet.remove(v.Node.ID)
 			case state.EventCommit:
 				if commitDebounceTimer != nil {
 					if time.Since(debouncingStarted) > maxLatency {
@@ -210,9 +204,9 @@ func (s *Scheduler) createTask(ctx context.Context, t *api.Task) int {
 		return 0
 	}
 
-	nodeInfo, err := s.nodeHeap.nodeInfo(t.NodeID)
+	nodeInfo, err := s.nodeSet.nodeInfo(t.NodeID)
 	if err == nil && nodeInfo.addTask(t) {
-		s.nodeHeap.updateNode(nodeInfo)
+		s.nodeSet.updateNode(nodeInfo)
 	}
 
 	return 0
@@ -257,9 +251,9 @@ func (s *Scheduler) updateTask(ctx context.Context, t *api.Task) int {
 	}
 
 	s.allTasks[t.ID] = t
-	nodeInfo, err := s.nodeHeap.nodeInfo(t.NodeID)
+	nodeInfo, err := s.nodeSet.nodeInfo(t.NodeID)
 	if err == nil && nodeInfo.addTask(t) {
-		s.nodeHeap.updateNode(nodeInfo)
+		s.nodeSet.updateNode(nodeInfo)
 	}
 
 	return 0
@@ -268,27 +262,29 @@ func (s *Scheduler) updateTask(ctx context.Context, t *api.Task) int {
 func (s *Scheduler) deleteTask(ctx context.Context, t *api.Task) {
 	delete(s.allTasks, t.ID)
 	delete(s.preassignedTasks, t.ID)
-	nodeInfo, err := s.nodeHeap.nodeInfo(t.NodeID)
+	nodeInfo, err := s.nodeSet.nodeInfo(t.NodeID)
 	if err == nil && nodeInfo.removeTask(t) {
-		s.nodeHeap.updateNode(nodeInfo)
+		s.nodeSet.updateNode(nodeInfo)
 	}
 }
 
 func (s *Scheduler) createOrUpdateNode(n *api.Node) {
-	nodeInfo, _ := s.nodeHeap.nodeInfo(n.ID)
+	nodeInfo, _ := s.nodeSet.nodeInfo(n.ID)
 	var resources api.Resources
 	if n.Description != nil && n.Description.Resources != nil {
 		resources = *n.Description.Resources
 		// reconcile resources by looping over all tasks in this node
-		for _, task := range nodeInfo.Tasks {
-			reservations := taskReservations(task.Spec)
-			resources.MemoryBytes -= reservations.MemoryBytes
-			resources.NanoCPUs -= reservations.NanoCPUs
+		for _, tasksMap := range nodeInfo.TasksByService {
+			for _, task := range tasksMap {
+				reservations := taskReservations(task.Spec)
+				resources.MemoryBytes -= reservations.MemoryBytes
+				resources.NanoCPUs -= reservations.NanoCPUs
+			}
 		}
 	}
 	nodeInfo.Node = n
 	nodeInfo.AvailableResources = resources
-	s.nodeHeap.addOrUpdateNode(nodeInfo)
+	s.nodeSet.addOrUpdateNode(nodeInfo)
 }
 
 func (s *Scheduler) processPreassignedTasks(ctx context.Context) {
@@ -308,9 +304,9 @@ func (s *Scheduler) processPreassignedTasks(ctx context.Context) {
 	}
 	for _, decision := range failed {
 		s.allTasks[decision.old.ID] = decision.old
-		nodeInfo, err := s.nodeHeap.nodeInfo(decision.new.NodeID)
+		nodeInfo, err := s.nodeSet.nodeInfo(decision.new.NodeID)
 		if err == nil && nodeInfo.removeTask(decision.new) {
-			s.nodeHeap.updateNode(nodeInfo)
+			s.nodeSet.updateNode(nodeInfo)
 		}
 	}
 }
@@ -359,9 +355,9 @@ func (s *Scheduler) tick(ctx context.Context) {
 	for _, decision := range failed {
 		s.allTasks[decision.old.ID] = decision.old
 
-		nodeInfo, err := s.nodeHeap.nodeInfo(decision.new.NodeID)
+		nodeInfo, err := s.nodeSet.nodeInfo(decision.new.NodeID)
 		if err == nil && nodeInfo.removeTask(decision.new) {
-			s.nodeHeap.updateNode(nodeInfo)
+			s.nodeSet.updateNode(nodeInfo)
 		}
 
 		// enqueue task for next scheduling attempt
@@ -419,9 +415,9 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 
 // taskFitNode checks if a node has enough resources to accommodate a task.
 func (s *Scheduler) taskFitNode(ctx context.Context, t *api.Task, nodeID string) *api.Task {
-	nodeInfo, err := s.nodeHeap.nodeInfo(nodeID)
+	nodeInfo, err := s.nodeSet.nodeInfo(nodeID)
 	if err != nil {
-		// node does not exist in heap (it may have been deleted)
+		// node does not exist in set (it may have been deleted)
 		return nil
 	}
 	s.pipeline.SetTask(t)
@@ -438,7 +434,7 @@ func (s *Scheduler) taskFitNode(ctx context.Context, t *api.Task, nodeID string)
 	s.allTasks[t.ID] = &newT
 
 	if nodeInfo.addTask(&newT) {
-		s.nodeHeap.updateNode(nodeInfo)
+		s.nodeSet.updateNode(nodeInfo)
 	}
 	return &newT
 }
@@ -458,32 +454,38 @@ func (s *Scheduler) scheduleTaskGroup(ctx context.Context, taskGroup map[string]
 	s.pipeline.SetTask(t)
 
 	nodeLess := func(a *NodeInfo, b *NodeInfo) bool {
-		sameServiceTasksOnA := 0
-		sameServiceTasksOnB := 0
-
-		for _, aTask := range a.Tasks {
-			if aTask.ServiceID == t.ServiceID {
-				sameServiceTasksOnA++
-			}
+		tasksByServiceA := 0
+		tasksByServiceB := 0
+		if a.TasksByService != nil {
+			tasksByServiceA = len(a.TasksByService[t.ServiceID])
 		}
-		for _, bTask := range b.Tasks {
-			if bTask.ServiceID == t.ServiceID {
-				sameServiceTasksOnB++
-			}
+		if b.TasksByService != nil {
+			tasksByServiceB = len(b.TasksByService[t.ServiceID])
 		}
-
-		if sameServiceTasksOnA < sameServiceTasksOnB {
+		if tasksByServiceA < tasksByServiceB {
 			return true
 		}
-		if sameServiceTasksOnB > sameServiceTasksOnA {
+		if tasksByServiceA > tasksByServiceB {
 			return false
 		}
 
 		// Total number of tasks breaks ties.
-		return len(a.Tasks) < len(b.Tasks)
+		totalTasksOnA := 0
+		totalTasksOnB := 0
+		for _, taskMap := range a.TasksByService {
+			totalTasksOnA += len(taskMap)
+		}
+		for _, taskMap := range b.TasksByService {
+			totalTasksOnB += len(taskMap)
+			if totalTasksOnB > totalTasksOnA {
+				return true
+			}
+		}
+
+		return totalTasksOnA < totalTasksOnB
 	}
 
-	nodes := s.nodeHeap.findBestNodes(len(taskGroup), s.pipeline.Process, nodeLess)
+	nodes := s.nodeSet.findBestNodes(len(taskGroup), s.pipeline.Process, nodeLess)
 	if len(nodes) == 0 {
 		for _, t := range taskGroup {
 			log.G(ctx).WithField("task.id", t.ID).Debug("no suitable node available for task")
@@ -495,7 +497,7 @@ func (s *Scheduler) scheduleTaskGroup(ctx context.Context, taskGroup map[string]
 	failedConstraints := make(map[int]bool) // key is index in nodes slice
 	nodeIter := 0
 	for taskID, t := range taskGroup {
-		n := nodes[nodeIter%len(nodes)]
+		n := &nodes[nodeIter%len(nodes)]
 
 		log.G(ctx).WithField("task.id", t.ID).Debugf("assigning to node %s", n.ID)
 		newT := *t
@@ -507,10 +509,10 @@ func (s *Scheduler) scheduleTaskGroup(ctx context.Context, taskGroup map[string]
 		}
 		s.allTasks[t.ID] = &newT
 
-		nodeInfo, err := s.nodeHeap.nodeInfo(n.ID)
+		nodeInfo, err := s.nodeSet.nodeInfo(n.ID)
 		if err == nil && nodeInfo.addTask(&newT) {
-			s.nodeHeap.updateNode(nodeInfo)
-			nodes[nodeIter%len(nodes)] = &nodeInfo
+			s.nodeSet.updateNode(nodeInfo)
+			nodes[nodeIter%len(nodes)] = nodeInfo
 		}
 
 		schedulingDecisions[taskID] = schedulingDecision{old: t, new: &newT}
@@ -520,7 +522,7 @@ func (s *Scheduler) scheduleTaskGroup(ctx context.Context, taskGroup map[string]
 			// First pass fills the nodes until they have the same
 			// number of tasks from this service.
 			nextNode := nodes[(nodeIter+1)%len(nodes)]
-			if nodeLess(nextNode, &nodeInfo) || !s.pipeline.Process(&nodeInfo) {
+			if nodeLess(&nextNode, &nodeInfo) {
 				nodeIter++
 				continue
 			}
@@ -531,7 +533,7 @@ func (s *Scheduler) scheduleTaskGroup(ctx context.Context, taskGroup map[string]
 		}
 
 		origNodeIter := nodeIter
-		for failedConstraints[nodeIter%len(nodes)] || !s.pipeline.Process(nodes[nodeIter%len(nodes)]) {
+		for failedConstraints[nodeIter%len(nodes)] || !s.pipeline.Process(&nodes[nodeIter%len(nodes)]) {
 			failedConstraints[nodeIter%len(nodes)] = true
 			nodeIter++
 			if nodeIter-origNodeIter == len(nodes) {
@@ -546,26 +548,21 @@ func (s *Scheduler) scheduleTaskGroup(ctx context.Context, taskGroup map[string]
 	}
 }
 
-func (s *Scheduler) buildNodeHeap(tx store.ReadTx, tasksByNode map[string]map[string]*api.Task) error {
+func (s *Scheduler) buildNodeSet(tx store.ReadTx, tasksByNode map[string]map[string]*api.Task) error {
 	nodes, err := store.FindNodes(tx, store.All)
 	if err != nil {
 		return err
 	}
 
-	s.nodeHeap.alloc(len(nodes))
+	s.nodeSet.alloc(len(nodes))
 
-	i := 0
 	for _, n := range nodes {
 		var resources api.Resources
 		if n.Description != nil && n.Description.Resources != nil {
 			resources = *n.Description.Resources
 		}
-		s.nodeHeap.heap = append(s.nodeHeap.heap, newNodeInfo(n, tasksByNode[n.ID], resources))
-		s.nodeHeap.index[n.ID] = i
-		i++
+		s.nodeSet.addOrUpdateNode(newNodeInfo(n, tasksByNode[n.ID], resources))
 	}
-
-	heap.Init(&s.nodeHeap)
 
 	return nil
 }
