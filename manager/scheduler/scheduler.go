@@ -317,26 +317,42 @@ func (s *Scheduler) processPreassignedTasks(ctx context.Context) {
 
 // tick attempts to schedule the queue.
 func (s *Scheduler) tick(ctx context.Context) {
+	tasksByCommonSpec := make(map[string]map[string]*api.Task)
 	schedulingDecisions := make(map[string]schedulingDecision, s.unassignedTasks.Len())
 
 	var next *list.Element
 	for e := s.unassignedTasks.Front(); e != nil; e = next {
 		next = e.Next()
-		id := e.Value.(*api.Task).ID
-		if _, ok := schedulingDecisions[id]; ok {
-			s.unassignedTasks.Remove(e)
-			continue
-		}
 		t := s.allTasks[e.Value.(*api.Task).ID]
 		if t == nil || t.NodeID != "" {
 			// task deleted or already assigned
 			s.unassignedTasks.Remove(e)
 			continue
 		}
-		if newT := s.scheduleTask(ctx, t); newT != nil {
-			schedulingDecisions[id] = schedulingDecision{old: t, new: newT}
-			s.unassignedTasks.Remove(e)
+
+		// Group common tasks with common specs by marshalling the spec
+		// into taskKey and using it as a map key.
+		// TODO(aaronl): Once specs are versioned, this will allow a
+		// much more efficient fast path.
+		fieldsToMarshal := api.Task{
+			ServiceID: t.ServiceID,
+			Spec:      t.Spec,
 		}
+		marshalled, err := fieldsToMarshal.Marshal()
+		if err != nil {
+			panic(err)
+		}
+		taskGroupKey := string(marshalled)
+
+		if tasksByCommonSpec[taskGroupKey] == nil {
+			tasksByCommonSpec[taskGroupKey] = make(map[string]*api.Task)
+		}
+		tasksByCommonSpec[taskGroupKey][t.ID] = t
+		s.unassignedTasks.Remove(e)
+	}
+
+	for _, taskGroup := range tasksByCommonSpec {
+		s.scheduleTaskGroup(ctx, taskGroup, schedulingDecisions)
 	}
 
 	_, failed := s.applySchedulingDecisions(ctx, schedulingDecisions)
@@ -401,7 +417,7 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 	return
 }
 
-// taskFitNode checks if a node has enough resource to accommodate a task
+// taskFitNode checks if a node has enough resources to accommodate a task.
 func (s *Scheduler) taskFitNode(ctx context.Context, t *api.Task, nodeID string) *api.Task {
 	nodeInfo, err := s.nodeHeap.nodeInfo(nodeID)
 	if err != nil {
@@ -427,30 +443,107 @@ func (s *Scheduler) taskFitNode(ctx context.Context, t *api.Task, nodeID string)
 	return &newT
 }
 
-// scheduleTask schedules a single task.
-func (s *Scheduler) scheduleTask(ctx context.Context, t *api.Task) *api.Task {
+// scheduleTaskGroup schedules a batch of tasks that are part of the same
+// service and share the same version of the spec.
+func (s *Scheduler) scheduleTaskGroup(ctx context.Context, taskGroup map[string]*api.Task, schedulingDecisions map[string]schedulingDecision) {
+	// Pick at task at random from taskGroup to use for constraint
+	// evaluation. It doesn't matter which one we pick because all the
+	// tasks in the group are equal in terms of the fields the constraint
+	// filters consider.
+	var t *api.Task
+	for _, t = range taskGroup {
+		break
+	}
+
 	s.pipeline.SetTask(t)
-	n, _ := s.nodeHeap.findMin(s.pipeline.Process, s.scanAllNodes)
-	if n == nil {
-		log.G(ctx).WithField("task.id", t.ID).Debug("No suitable node available for task")
-		return nil
+
+	nodeLess := func(a *NodeInfo, b *NodeInfo) bool {
+		sameServiceTasksOnA := 0
+		sameServiceTasksOnB := 0
+
+		for _, aTask := range a.Tasks {
+			if aTask.ServiceID == t.ServiceID {
+				sameServiceTasksOnA++
+			}
+		}
+		for _, bTask := range b.Tasks {
+			if bTask.ServiceID == t.ServiceID {
+				sameServiceTasksOnB++
+			}
+		}
+
+		if sameServiceTasksOnA < sameServiceTasksOnB {
+			return true
+		}
+		if sameServiceTasksOnB > sameServiceTasksOnA {
+			return false
+		}
+
+		// Total number of tasks breaks ties.
+		return len(a.Tasks) < len(b.Tasks)
 	}
 
-	log.G(ctx).WithField("task.id", t.ID).Debugf("Assigning to node %s", n.ID)
-	newT := *t
-	newT.NodeID = n.ID
-	newT.Status = api.TaskStatus{
-		State:     api.TaskStateAssigned,
-		Timestamp: ptypes.MustTimestampProto(time.Now()),
-		Message:   "scheduler assigned task to node",
+	nodes := s.nodeHeap.findBestNodes(len(taskGroup), s.pipeline.Process, nodeLess)
+	if len(nodes) == 0 {
+		for _, t := range taskGroup {
+			log.G(ctx).WithField("task.id", t.ID).Debug("no suitable node available for task")
+			s.enqueue(t)
+		}
+		return
 	}
-	s.allTasks[t.ID] = &newT
 
-	nodeInfo, err := s.nodeHeap.nodeInfo(n.ID)
-	if err == nil && nodeInfo.addTask(&newT) {
-		s.nodeHeap.updateNode(nodeInfo)
+	failedConstraints := make(map[int]bool) // key is index in nodes slice
+	nodeIter := 0
+	for taskID, t := range taskGroup {
+		n := nodes[nodeIter%len(nodes)]
+
+		log.G(ctx).WithField("task.id", t.ID).Debugf("assigning to node %s", n.ID)
+		newT := *t
+		newT.NodeID = n.ID
+		newT.Status = api.TaskStatus{
+			State:     api.TaskStateAssigned,
+			Timestamp: ptypes.MustTimestampProto(time.Now()),
+			Message:   "scheduler assigned task to node",
+		}
+		s.allTasks[t.ID] = &newT
+
+		nodeInfo, err := s.nodeHeap.nodeInfo(n.ID)
+		if err == nil && nodeInfo.addTask(&newT) {
+			s.nodeHeap.updateNode(nodeInfo)
+			nodes[nodeIter%len(nodes)] = &nodeInfo
+		}
+
+		schedulingDecisions[taskID] = schedulingDecision{old: t, new: &newT}
+		delete(taskGroup, taskID)
+
+		if nodeIter+1 < len(nodes) {
+			// First pass fills the nodes until they have the same
+			// number of tasks from this service.
+			nextNode := nodes[(nodeIter+1)%len(nodes)]
+			if nodeLess(nextNode, &nodeInfo) || !s.pipeline.Process(&nodeInfo) {
+				nodeIter++
+				continue
+			}
+		} else {
+			// In later passes, we just assign one task at a time
+			// to each node that still meets the constraints.
+			nodeIter++
+		}
+
+		origNodeIter := nodeIter
+		for failedConstraints[nodeIter%len(nodes)] || !s.pipeline.Process(nodes[nodeIter%len(nodes)]) {
+			failedConstraints[nodeIter%len(nodes)] = true
+			nodeIter++
+			if nodeIter-origNodeIter == len(nodes) {
+				// None of the nodes meet the constraints anymore.
+				for _, t := range taskGroup {
+					log.G(ctx).WithField("task.id", t.ID).Debug("no suitable node available for task")
+					s.enqueue(t)
+				}
+				return
+			}
+		}
 	}
-	return &newT
 }
 
 func (s *Scheduler) buildNodeHeap(tx store.ReadTx, tasksByNode map[string]map[string]*api.Task) error {

@@ -3,6 +3,7 @@ package scheduler
 import (
 	"container/heap"
 	"errors"
+	"sort"
 
 	"github.com/docker/swarmkit/api"
 )
@@ -11,6 +12,8 @@ var errNodeNotFound = errors.New("node not found in scheduler heap")
 
 // A nodeHeap implements heap.Interface for nodes. It also includes an index
 // by node id.
+// TODO(aaronl): Change this to a flat list and rename. The heap property is
+// no longer useful.
 type nodeHeap struct {
 	heap  []NodeInfo
 	index map[string]int // map from node id to heap index
@@ -94,6 +97,47 @@ func (nh *nodeHeap) findMin(meetsConstraints func(*NodeInfo) bool, scanAllNodes 
 		return nh.scanAllToFindMin(meetsConstraints)
 	}
 	return nh.searchHeapToFindMin(meetsConstraints)
+}
+
+type sorter struct {
+	nodes    []*NodeInfo
+	lessFunc func(*NodeInfo, *NodeInfo) bool
+}
+
+func (s sorter) Len() int {
+	return len(s.nodes)
+}
+
+func (s sorter) Swap(i, j int) {
+	s.nodes[i], s.nodes[j] = s.nodes[j], s.nodes[i]
+}
+
+func (s sorter) Less(i, j int) bool {
+	return s.lessFunc(s.nodes[i], s.nodes[j])
+}
+
+// findBestNodes returns n nodes (or < n if fewer nodes are available) that
+// rank best (lowest) according to the sorting function.
+func (nh *nodeHeap) findBestNodes(n int, meetsConstraints func(*NodeInfo) bool, nodeLess func(*NodeInfo, *NodeInfo) bool) []*NodeInfo {
+	var nodes []*NodeInfo
+	for i := 0; i < len(nh.heap); i++ {
+		if meetsConstraints(&nh.heap[i]) {
+			nodes = append(nodes, &nh.heap[i])
+		}
+	}
+
+	// TODO(aaronl): Use quickselect instead of sorting. Also, once we
+	// switch to quickselect, avoid checking constraints on every node, and
+	// instead do it lazily as part of the quickselect process (treat any
+	// node that doesn't meet the constraints as greater than all nodes that
+	// do, and cache the result of the constraint evaluation).
+	sort.Sort(sorter{nodes: nodes, lessFunc: nodeLess})
+
+	if len(nodes) < n {
+		return nodes
+	}
+
+	return nodes[:n]
 }
 
 // Scan All nodes to find the best node which meets the constraints && has lightest workloads
