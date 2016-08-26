@@ -3,6 +3,8 @@ package scheduler
 import (
 	"errors"
 	"sort"
+
+	"github.com/wangjohn/quickselect"
 )
 
 var errNodeNotFound = errors.New("node not found in scheduler dataset")
@@ -43,20 +45,20 @@ func (ns *nodeSet) remove(nodeID string) {
 	delete(ns.nodes, nodeID)
 }
 
-type sorter struct {
+type nodeSorter struct {
 	nodes    []NodeInfo
 	lessFunc func(*NodeInfo, *NodeInfo) bool
 }
 
-func (s sorter) Len() int {
+func (s nodeSorter) Len() int {
 	return len(s.nodes)
 }
 
-func (s sorter) Swap(i, j int) {
+func (s nodeSorter) Swap(i, j int) {
 	s.nodes[i], s.nodes[j] = s.nodes[j], s.nodes[i]
 }
 
-func (s sorter) Less(i, j int) bool {
+func (s nodeSorter) Less(i, j int) bool {
 	return s.lessFunc(&s.nodes[i], &s.nodes[j])
 }
 
@@ -64,22 +66,21 @@ func (s sorter) Less(i, j int) bool {
 // rank best (lowest) according to the sorting function.
 func (ns *nodeSet) findBestNodes(n int, meetsConstraints func(*NodeInfo) bool, nodeLess func(*NodeInfo, *NodeInfo) bool) []NodeInfo {
 	var nodes []NodeInfo
+	// TODO(aaronl): Is is possible to avoid checking constraints on every
+	// node? Perhaps we should quickselect n*2 nodes that weren't
+	// prescreened, and repeat the quickselect if there weren't enough
+	// nodes meeting the constraints.
 	for _, node := range ns.nodes {
 		if meetsConstraints(&node) {
 			nodes = append(nodes, node)
 		}
 	}
 
-	// TODO(aaronl): Use quickselect instead of sorting. Also, once we
-	// switch to quickselect, avoid checking constraints on every node, and
-	// instead do it lazily as part of the quickselect process (treat any
-	// node that doesn't meet the constraints as greater than all nodes that
-	// do, and cache the result of the constraint evaluation).
-	sort.Sort(sorter{nodes: nodes, lessFunc: nodeLess})
-
-	if len(nodes) < n {
-		return nodes
+	if len(nodes) > n {
+		quickselect.QuickSelect(nodeSorter{nodes: nodes, lessFunc: nodeLess}, n)
+		nodes = nodes[:n]
 	}
 
-	return nodes[:n]
+	sort.Sort(nodeSorter{nodes: nodes, lessFunc: nodeLess})
+	return nodes
 }
