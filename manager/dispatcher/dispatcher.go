@@ -854,7 +854,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 
 	for {
 		// After each message send, we need to check the nodes sessionID hasn't
-		// changed. If it has, we will the stream and make the node
+		// changed. If it has, we will shut down the stream and make the node
 		// re-register.
 		node, err := d.nodes.GetWithSession(nodeID, sessionID)
 		if err != nil {
