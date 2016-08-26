@@ -1,6 +1,7 @@
 package events
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
@@ -157,4 +158,21 @@ func (b *Broadcaster) run() {
 			return
 		}
 	}
+}
+
+func (b Broadcaster) String() string {
+	// Serialize copy of this broadcaster without the sync.Once, to avoid
+	// a data race.
+
+	b2 := map[string]interface{}{
+		"sinks":   b.sinks,
+		"events":  b.events,
+		"adds":    b.adds,
+		"removes": b.removes,
+
+		"shutdown": b.shutdown,
+		"closed":   b.closed,
+	}
+
+	return fmt.Sprint(b2)
 }

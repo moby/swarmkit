@@ -1,6 +1,7 @@
 package events
 
 import (
+	"fmt"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -87,6 +88,17 @@ func (rs *RetryingSink) Close() error {
 	})
 
 	return nil
+}
+
+func (rs RetryingSink) String() string {
+	// Serialize a copy of the RetryingSink without the sync.Once, to avoid
+	// a data race.
+	rs2 := map[string]interface{}{
+		"sink":     rs.sink,
+		"strategy": rs.strategy,
+		"closed":   rs.closed,
+	}
+	return fmt.Sprint(rs2)
 }
 
 // RetryStrategy defines a strategy for retrying event sink writes.
