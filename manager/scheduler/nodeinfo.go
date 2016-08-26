@@ -5,14 +5,14 @@ import "github.com/docker/swarmkit/api"
 // NodeInfo contains a node and some additional metadata.
 type NodeInfo struct {
 	*api.Node
-	Tasks              map[string]*api.Task
+	TasksByService     map[string]map[string]*api.Task
 	AvailableResources api.Resources
 }
 
 func newNodeInfo(n *api.Node, tasks map[string]*api.Task, availableResources api.Resources) NodeInfo {
 	nodeInfo := NodeInfo{
 		Node:               n,
-		Tasks:              make(map[string]*api.Task),
+		TasksByService:     make(map[string]map[string]*api.Task),
 		AvailableResources: availableResources,
 	}
 
@@ -23,14 +23,22 @@ func newNodeInfo(n *api.Node, tasks map[string]*api.Task, availableResources api
 }
 
 func (nodeInfo *NodeInfo) removeTask(t *api.Task) bool {
-	if nodeInfo.Tasks == nil {
+	if nodeInfo.TasksByService == nil {
 		return false
 	}
-	if _, ok := nodeInfo.Tasks[t.ID]; !ok {
+	taskMap, ok := nodeInfo.TasksByService[t.ServiceID]
+	if !ok {
+		return false
+	}
+	if _, ok := taskMap[t.ID]; !ok {
 		return false
 	}
 
-	delete(nodeInfo.Tasks, t.ID)
+	delete(taskMap, t.ID)
+	if len(taskMap) == 0 {
+		delete(nodeInfo.TasksByService, t.ServiceID)
+	}
+
 	reservations := taskReservations(t.Spec)
 	nodeInfo.AvailableResources.MemoryBytes += reservations.MemoryBytes
 	nodeInfo.AvailableResources.NanoCPUs += reservations.NanoCPUs
@@ -39,11 +47,16 @@ func (nodeInfo *NodeInfo) removeTask(t *api.Task) bool {
 }
 
 func (nodeInfo *NodeInfo) addTask(t *api.Task) bool {
-	if nodeInfo.Tasks == nil {
-		nodeInfo.Tasks = make(map[string]*api.Task)
+	if nodeInfo.TasksByService == nil {
+		nodeInfo.TasksByService = make(map[string]map[string]*api.Task)
 	}
-	if _, ok := nodeInfo.Tasks[t.ID]; !ok {
-		nodeInfo.Tasks[t.ID] = t
+	tasksMap, ok := nodeInfo.TasksByService[t.ServiceID]
+	if !ok {
+		tasksMap = make(map[string]*api.Task)
+		nodeInfo.TasksByService[t.ServiceID] = tasksMap
+	}
+	if _, ok := tasksMap[t.ID]; !ok {
+		tasksMap[t.ID] = t
 		reservations := taskReservations(t.Spec)
 		nodeInfo.AvailableResources.MemoryBytes -= reservations.MemoryBytes
 		nodeInfo.AvailableResources.NanoCPUs -= reservations.NanoCPUs

@@ -1066,69 +1066,48 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 }
 
 func BenchmarkScheduler1kNodes1kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e3, false, false)
+	benchScheduler(b, 1e3, 1e3, false)
 }
 
 func BenchmarkScheduler1kNodes10kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e4, false, false)
+	benchScheduler(b, 1e3, 1e4, false)
 }
 
 func BenchmarkScheduler1kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e5, false, false)
+	benchScheduler(b, 1e3, 1e5, false)
 }
 
 func BenchmarkScheduler100kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e5, 1e5, false, false)
+	benchScheduler(b, 1e5, 1e5, false)
 }
 
 func BenchmarkScheduler100kNodes1MTasks(b *testing.B) {
-	benchScheduler(b, 1e5, 1e6, false, false)
+	benchScheduler(b, 1e5, 1e6, false)
 }
 
 func BenchmarkSchedulerConstraints1kNodes1kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e3, true, false)
+	benchScheduler(b, 1e3, 1e3, true)
 }
 
 func BenchmarkSchedulerConstraints1kNodes10kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e4, true, false)
+	benchScheduler(b, 1e3, 1e4, true)
 }
 
 func BenchmarkSchedulerConstraints1kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e5, true, false)
+	benchScheduler(b, 1e3, 1e5, true)
 }
 
 func BenchmarkSchedulerConstraints5kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 5e3, 1e5, true, false)
+	benchScheduler(b, 5e3, 1e5, true)
 }
 
-func BenchmarkSchedulerWorstCase1kNodes1kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e3, false, true)
-}
-
-func BenchmarkSchedulerWorstCase1kNodes10kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e4, false, true)
-}
-
-func BenchmarkSchedulerWorstCase1kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e5, false, true)
-}
-
-func BenchmarkSchedulerWorstCase100kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e5, 1e5, false, true)
-}
-
-func BenchmarkSchedulerWorstCase100kNodes1MTasks(b *testing.B) {
-	benchScheduler(b, 1e5, 1e6, false, true)
-}
-
-func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints, worstCase bool) {
+func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 	ctx := context.Background()
 
 	for iters := 0; iters < b.N; iters++ {
 		b.StopTimer()
 		s := store.NewMemoryStore(nil)
 		scheduler := New(s)
-		scheduler.scanAllNodes = worstCase
 
 		watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 

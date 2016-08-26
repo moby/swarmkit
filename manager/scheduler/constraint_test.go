@@ -49,7 +49,7 @@ func setupEnv() {
 				},
 			},
 		},
-		Tasks: make(map[string]*api.Task),
+		TasksByService: make(map[string]map[string]*api.Task),
 	}
 }
 
