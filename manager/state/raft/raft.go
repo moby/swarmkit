@@ -86,7 +86,6 @@ type Node struct {
 
 	Address  string
 	StateDir string
-	Error    error
 
 	raftStore           *raft.MemoryStorage
 	memoryStore         *store.MemoryStore
