@@ -7,20 +7,6 @@ import (
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
 )
 
-const connErrorHandle = `
-	defer func() {
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
-			strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
-			strings.Contains(errStr, "connection error") ||
-			grpc.Code(err) == codes.Internal {
-				p.connSelector.Reset()
-			}
-		}
-	}()
-`
-
 type raftProxyGen struct {
 	gen *generator.Generator
 }
@@ -40,14 +26,13 @@ func (g *raftProxyGen) Name() string {
 func (g *raftProxyGen) genProxyStruct(s *descriptor.ServiceDescriptorProto) {
 	g.gen.P("type " + serviceTypeName(s) + " struct {")
 	g.gen.P("\tlocal " + s.GetName() + "Server")
-	g.gen.P("\tconnSelector raftpicker.Interface")
-	g.gen.P("\tcluster raftpicker.RaftCluster")
+	g.gen.P("\tconnSelector raftselector.ConnProvider")
 	g.gen.P("\tctxMods []func(context.Context)(context.Context, error)")
 	g.gen.P("}")
 }
 
 func (g *raftProxyGen) genProxyConstructor(s *descriptor.ServiceDescriptorProto) {
-	g.gen.P("func NewRaftProxy" + s.GetName() + "Server(local " + s.GetName() + "Server, connSelector raftpicker.Interface, cluster raftpicker.RaftCluster, ctxMod func(context.Context)(context.Context, error)) " + s.GetName() + "Server {")
+	g.gen.P("func NewRaftProxy" + s.GetName() + "Server(local " + s.GetName() + "Server, connSelector raftselector.ConnProvider, ctxMod func(context.Context)(context.Context, error)) " + s.GetName() + "Server {")
 	g.gen.P(`redirectChecker := func(ctx context.Context)(context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
@@ -69,7 +54,6 @@ func (g *raftProxyGen) genProxyConstructor(s *descriptor.ServiceDescriptorProto)
 	`)
 	g.gen.P("return &" + serviceTypeName(s) + `{
 		local: local,
-		cluster: cluster,
 		connSelector: connSelector,
 		ctxMods: mods,
 	}`)
@@ -110,18 +94,18 @@ func sigPrefix(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescrip
 func (g *raftProxyGen) genClientStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
 	g.gen.P(`
-	if p.cluster.IsLeader() {
-			return p.local.` + m.GetName() + `(stream)
-	}
-	ctx, err := p.runCtxMods(stream.Context())
+	ctx := stream.Context()
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			return p.local.` + m.GetName() + `(stream)
+		}
 		return err
 	}
-	conn, err := p.connSelector.Conn()
+	ctx, err = p.runCtxMods(ctx)
 	if err != nil {
 		return err
 	}`)
-	g.gen.P(connErrorHandle)
 	g.gen.P("clientStream, err := New" + s.GetName() + "Client(conn)." + m.GetName() + "(ctx)")
 	g.gen.P(`
 	if err != nil {
@@ -153,18 +137,18 @@ func (g *raftProxyGen) genClientStreamingMethod(s *descriptor.ServiceDescriptorP
 func (g *raftProxyGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "r *" + getInputTypeName(m) + ", stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
 	g.gen.P(`
-	if p.cluster.IsLeader() {
-			return p.local.` + m.GetName() + `(r, stream)
-	}
-	ctx, err := p.runCtxMods(stream.Context())
+	ctx := stream.Context()
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			return p.local.` + m.GetName() + `(r, stream)
+		}
 		return err
 	}
-	conn, err := p.connSelector.Conn()
+	ctx, err = p.runCtxMods(ctx)
 	if err != nil {
 		return err
 	}`)
-	g.gen.P(connErrorHandle)
 	g.gen.P("clientStream, err := New" + s.GetName() + "Client(conn)." + m.GetName() + "(ctx, r)")
 	g.gen.P(`
 	if err != nil {
@@ -190,18 +174,18 @@ func (g *raftProxyGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorP
 func (g *raftProxyGen) genClientServerStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
 	g.gen.P(`
-	if p.cluster.IsLeader() {
-			return p.local.` + m.GetName() + `(stream)
-	}
-	ctx, err := p.runCtxMods(stream.Context())
+	ctx := stream.Context()
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			return p.local.` + m.GetName() + `(stream)
+		}
 		return err
 	}
-	conn, err := p.connSelector.Conn()
+	ctx, err = p.runCtxMods(ctx)
 	if err != nil {
 		return err
 	}`)
-	g.gen.P(connErrorHandle)
 	g.gen.P("clientStream, err := New" + s.GetName() + "Client(conn)." + m.GetName() + "(ctx)")
 	g.gen.P(`
 	if err != nil {
@@ -244,18 +228,17 @@ func (g *raftProxyGen) genClientServerStreamingMethod(s *descriptor.ServiceDescr
 func (g *raftProxyGen) genSimpleMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P(sigPrefix(s, m) + "ctx context.Context, r *" + getInputTypeName(m) + ") (*" + getOutputTypeName(m) + ", error) {")
 	g.gen.P(`
-	if p.cluster.IsLeader() {
-			return p.local.` + m.GetName() + `(ctx, r)
-	}
-	ctx, err := p.runCtxMods(ctx)
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			return p.local.` + m.GetName() + `(ctx, r)
+		}
 		return nil, err
 	}
-	conn, err := p.connSelector.Conn()
+	ctx, err = p.runCtxMods(ctx)
 	if err != nil {
 		return nil, err
 	}`)
-	g.gen.P(connErrorHandle)
 	g.gen.P("return New" + s.GetName() + "Client(conn)." + m.GetName() + "(ctx, r)")
 	g.gen.P("}")
 }
@@ -292,7 +275,7 @@ func (g *raftProxyGen) GenerateImports(file *generator.FileDescriptor) {
 	if len(file.Service) == 0 {
 		return
 	}
-	g.gen.P("import raftpicker \"github.com/docker/swarmkit/manager/raftpicker\"")
+	g.gen.P("import raftselector \"github.com/docker/swarmkit/manager/raftselector\"")
 	g.gen.P("import codes \"google.golang.org/grpc/codes\"")
 	g.gen.P("import metadata \"google.golang.org/grpc/metadata\"")
 	g.gen.P("import transport \"google.golang.org/grpc/transport\"")
