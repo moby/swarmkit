@@ -193,7 +193,7 @@ func (s *Scheduler) enqueue(t *api.Task) {
 func (s *Scheduler) createTask(ctx context.Context, t *api.Task) int {
 	// Ignore all tasks that have not reached ALLOCATED
 	// state, and tasks that no longer consume resources.
-	if t.Status.State < api.TaskStateAllocated || t.Status.State > api.TaskStateRunning {
+	if t.Status.State < api.TaskStateAllocated || t.Status.State > api.TaskStateRunning || t.DesiredState > api.TaskStateRunning {
 		return 0
 	}
 
@@ -229,7 +229,7 @@ func (s *Scheduler) updateTask(ctx context.Context, t *api.Task) int {
 
 	// Ignore all tasks that have not reached ALLOCATED
 	// state, and tasks that no longer consume resources.
-	if t.Status.State > api.TaskStateRunning {
+	if t.Status.State > api.TaskStateRunning || t.DesiredState > api.TaskStateRunning {
 		if oldTask != nil {
 			s.deleteTask(ctx, oldTask)
 		}
