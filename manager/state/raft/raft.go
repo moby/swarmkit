@@ -821,7 +821,14 @@ func (n *Node) ResolveAddress(ctx context.Context, msg *api.ResolveAddressReques
 }
 
 func (n *Node) getLeaderConn() (*grpc.ClientConn, error) {
-	leader := n.Leader()
+	n.stopMu.Lock()
+	if !n.IsMember() {
+		n.stopMu.Unlock()
+		return nil, ErrNoRaftMember
+	}
+
+	leader := n.Node.Status().Lead
+	n.stopMu.Unlock()
 
 	if leader == n.Config.ID {
 		return nil, raftselector.ErrIsLeader
