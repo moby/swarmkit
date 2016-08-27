@@ -274,12 +274,10 @@ func (s *Scheduler) createOrUpdateNode(n *api.Node) {
 	if n.Description != nil && n.Description.Resources != nil {
 		resources = *n.Description.Resources
 		// reconcile resources by looping over all tasks in this node
-		for _, tasksMap := range nodeInfo.TasksByService {
-			for _, task := range tasksMap {
-				reservations := taskReservations(task.Spec)
-				resources.MemoryBytes -= reservations.MemoryBytes
-				resources.NanoCPUs -= reservations.NanoCPUs
-			}
+		for _, task := range nodeInfo.Tasks {
+			reservations := taskReservations(task.Spec)
+			resources.MemoryBytes -= reservations.MemoryBytes
+			resources.NanoCPUs -= reservations.NanoCPUs
 		}
 	}
 	nodeInfo.Node = n
@@ -454,14 +452,9 @@ func (s *Scheduler) scheduleTaskGroup(ctx context.Context, taskGroup map[string]
 	s.pipeline.SetTask(t)
 
 	nodeLess := func(a *NodeInfo, b *NodeInfo) bool {
-		tasksByServiceA := 0
-		tasksByServiceB := 0
-		if a.TasksByService != nil {
-			tasksByServiceA = len(a.TasksByService[t.ServiceID])
-		}
-		if b.TasksByService != nil {
-			tasksByServiceB = len(b.TasksByService[t.ServiceID])
-		}
+		tasksByServiceA := a.DesiredRunningTasksCountByService[t.ServiceID]
+		tasksByServiceB := b.DesiredRunningTasksCountByService[t.ServiceID]
+
 		if tasksByServiceA < tasksByServiceB {
 			return true
 		}
@@ -470,19 +463,7 @@ func (s *Scheduler) scheduleTaskGroup(ctx context.Context, taskGroup map[string]
 		}
 
 		// Total number of tasks breaks ties.
-		totalTasksOnA := 0
-		totalTasksOnB := 0
-		for _, taskMap := range a.TasksByService {
-			totalTasksOnA += len(taskMap)
-		}
-		for _, taskMap := range b.TasksByService {
-			totalTasksOnB += len(taskMap)
-			if totalTasksOnB > totalTasksOnA {
-				return true
-			}
-		}
-
-		return totalTasksOnA < totalTasksOnB
+		return a.DesiredRunningTasksCount < b.DesiredRunningTasksCount
 	}
 
 	nodes := s.nodeSet.findBestNodes(len(taskGroup), s.pipeline.Process, nodeLess)
