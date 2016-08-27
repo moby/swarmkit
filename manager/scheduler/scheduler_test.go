@@ -57,7 +57,8 @@ func TestScheduler(t *testing.T) {
 
 	initialTaskSet := []*api.Task{
 		{
-			ID: "id1",
+			ID:           "id1",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name1",
 			},
@@ -68,7 +69,8 @@ func TestScheduler(t *testing.T) {
 			NodeID: initialNodeSet[0].ID,
 		},
 		{
-			ID: "id2",
+			ID:           "id2",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
@@ -77,7 +79,8 @@ func TestScheduler(t *testing.T) {
 			},
 		},
 		{
-			ID: "id3",
+			ID:           "id3",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
@@ -144,7 +147,8 @@ func TestScheduler(t *testing.T) {
 
 		// Create a new task. It should get assigned to id1.
 		t4 := &api.Task{
-			ID: "id4",
+			ID:           "id4",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name4",
 			},
@@ -166,7 +170,8 @@ func TestScheduler(t *testing.T) {
 		// Remove assignment from task id4. It should get assigned
 		// to node id1.
 		t4 := &api.Task{
-			ID: "id4",
+			ID:           "id4",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name4",
 			},
@@ -201,7 +206,8 @@ func TestScheduler(t *testing.T) {
 
 		// Create an unassigned task.
 		task := &api.Task{
-			ID: "removednode",
+			ID:           "removednode",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "removednode",
 			},
@@ -235,7 +241,8 @@ func TestScheduler(t *testing.T) {
 
 		// Create an unassigned task.
 		t5 := &api.Task{
-			ID: "id5",
+			ID:           "id5",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name5",
 			},
@@ -269,7 +276,8 @@ func TestScheduler(t *testing.T) {
 
 		// Create an unassigned task.
 		t6 := &api.Task{
-			ID: "id6",
+			ID:           "id6",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name6",
 			},
@@ -303,7 +311,8 @@ func TestScheduler(t *testing.T) {
 		// Create an unassigned task. Should be assigned to the
 		// now-ready node.
 		t7 := &api.Task{
-			ID: "id7",
+			ID:           "id7",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name7",
 			},
@@ -339,7 +348,8 @@ func TestScheduler(t *testing.T) {
 
 		// Create an unassigned task.
 		t8 := &api.Task{
-			ID: "id8",
+			ID:           "id8",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name8",
 			},
@@ -392,7 +402,8 @@ func TestHA(t *testing.T) {
 	}
 
 	taskTemplate1 := &api.Task{
-		ServiceID: "service1",
+		DesiredState: api.TaskStateRunning,
+		ServiceID:    "service1",
 		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
@@ -406,7 +417,8 @@ func TestHA(t *testing.T) {
 	}
 
 	taskTemplate2 := &api.Task{
-		ServiceID: "service2",
+		DesiredState: api.TaskStateRunning,
+		ServiceID:    "service2",
 		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
@@ -631,7 +643,8 @@ func TestHA(t *testing.T) {
 func TestSchedulerNoReadyNodes(t *testing.T) {
 	ctx := context.Background()
 	initialTask := &api.Task{
-		ID: "id1",
+		ID:           "id1",
+		DesiredState: api.TaskStateRunning,
 		ServiceAnnotations: api.Annotations{
 			Name: "name1",
 		},
@@ -706,7 +719,8 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 	}
 
 	initialTask := &api.Task{
-		ID: "id1",
+		ID:           "id1",
+		DesiredState: api.TaskStateRunning,
 		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
@@ -798,7 +812,8 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	}
 
 	bigTask1 := &api.Task{
-		ID: "id1",
+		DesiredState: api.TaskStateRunning,
+		ID:           "id1",
 		Spec: api.TaskSpec{
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
@@ -895,8 +910,9 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 	}
 
 	deadTask := &api.Task{
-		ID:     "id1",
-		NodeID: "id1",
+		DesiredState: api.TaskStateRunning,
+		ID:           "id1",
+		NodeID:       "id1",
 		Spec: api.TaskSpec{
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
@@ -979,7 +995,8 @@ func TestPreassignedTasks(t *testing.T) {
 
 	initialTaskSet := []*api.Task{
 		{
-			ID: "task1",
+			ID:           "task1",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name1",
 			},
@@ -989,7 +1006,8 @@ func TestPreassignedTasks(t *testing.T) {
 			},
 		},
 		{
-			ID: "task2",
+			ID:           "task2",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
@@ -999,7 +1017,8 @@ func TestPreassignedTasks(t *testing.T) {
 			NodeID: initialNodeSet[0].ID,
 		},
 		{
-			ID: "task3",
+			ID:           "task3",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
@@ -1162,7 +1181,8 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 
 	// Task1: vol plugin1
 	t1 := &api.Task{
-		ID: "task1_ID",
+		ID:           "task1_ID",
+		DesiredState: api.TaskStateRunning,
 		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
@@ -1187,7 +1207,8 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 
 	// Task2: vol plugin1, vol plugin2
 	t2 := &api.Task{
-		ID: "task2_ID",
+		ID:           "task2_ID",
+		DesiredState: api.TaskStateRunning,
 		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
@@ -1218,7 +1239,8 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 
 	// Task3: vol plugin1, network plugin1
 	t3 := &api.Task{
-		ID: "task3_ID",
+		ID:           "task3_ID",
+		DesiredState: api.TaskStateRunning,
 		Networks: []*api.NetworkAttachment{
 			{
 				Network: &api.Network{
@@ -1428,7 +1450,8 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 			for i := 0; i < tasks; i++ {
 				id := "task" + strconv.Itoa(i)
 				t := &api.Task{
-					ID: id,
+					ID:           id,
+					DesiredState: api.TaskStateRunning,
 					ServiceAnnotations: api.Annotations{
 						Name: id,
 					},
