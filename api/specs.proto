@@ -237,14 +237,14 @@ message NetworkSpec {
 
 	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
 
-	// ManuallyAttachable allows external(to swarm) entities to
-	// manually attach to this network. With this flag enabled,
-	// external entities such as containers running in an worker
-	// node in the cluster can manually attach to this network and
-	// access the services attached to this network. If this flag
-	// is not enabled(default case) no manual attachment to this
-	// network can happen.
-	bool manually_attachable = 6;
+	// Attachable allows external(to swarm) entities to manually
+	// attach to this network. With this flag enabled, external
+	// entities such as containers running in an worker node in
+	// the cluster can manually attach to this network and access
+	// the services attached to this network. If this flag is not
+	// enabled(default case) no manual attachment to this network
+	// can happen.
+	bool attachable = 6;
 }
 
 // ClusterSpec specifies global cluster settings.
