@@ -129,7 +129,7 @@ type WrappedListener struct {
 func NewWrappedListener(l net.Listener) *WrappedListener {
 	wrappedListener := WrappedListener{
 		Listener:   l,
-		acceptConn: make(chan net.Conn),
+		acceptConn: make(chan net.Conn, 10),
 		acceptErr:  make(chan error, 1),
 		closed:     make(chan struct{}, 10), // grpc closes multiple times
 	}
@@ -369,7 +369,6 @@ func AddRaftNode(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint6
 func TeardownCluster(t *testing.T, nodes map[uint64]*TestNode) {
 	for _, node := range nodes {
 		ShutdownNode(node)
-		node.Listener.close()
 	}
 }
 
@@ -379,6 +378,15 @@ func ShutdownNode(node *TestNode) {
 	node.Server.Stop()
 	node.Shutdown()
 	os.RemoveAll(node.StateDir)
+	node.Listener.close()
+}
+
+// CleanupNonRunningNode frees resources associated with a node which is not
+// running.
+func CleanupNonRunningNode(node *TestNode) {
+	node.Server.Stop()
+	os.RemoveAll(node.StateDir)
+	node.Listener.close()
 }
 
 // Leader determines who is the leader amongst a set of raft nodes
