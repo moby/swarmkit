@@ -169,8 +169,15 @@ func (a *Agent) run(ctx context.Context) {
 		case operation := <-sessionq:
 			operation.response <- operation.fn(session)
 		case msg := <-session.assignments:
-			if err := a.worker.Update(ctx, msg.UpdateTasks, msg.RemoveTasks, msg.Type); err != nil {
-				log.G(ctx).WithError(err).Error("failed to update worker assignments")
+			switch msg.Type {
+			case api.AssignmentsMessage_COMPLETE:
+				if err := a.worker.Assign(ctx, msg.UpdateTasks); err != nil {
+					log.G(ctx).WithError(err).Error("failed to assign worker assignments")
+				}
+			case api.AssignmentsMessage_INCREMENTAL:
+				if err := a.worker.Update(ctx, msg.UpdateTasks, msg.RemoveTasks); err != nil {
+					log.G(ctx).WithError(err).Error("failed to update worker assignments")
+				}
 			}
 		case msg := <-session.messages:
 			if err := a.handleSessionMessage(ctx, msg); err != nil {
