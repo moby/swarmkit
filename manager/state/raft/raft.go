@@ -1166,12 +1166,14 @@ type applyResult struct {
 // an error or until the raft node finalizes all the proposals on node
 // shutdown.
 func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRaftRequest, cb func()) (proto.Message, error) {
-	n.waitProp.Add(1)
-	defer n.waitProp.Done()
-
+	n.stopMu.Lock()
 	if !n.canSubmitProposal() {
+		n.stopMu.Unlock()
 		return nil, ErrStopped
 	}
+	n.waitProp.Add(1)
+	defer n.waitProp.Done()
+	n.stopMu.Unlock()
 
 	r.ID = n.reqIDGen.Next()
 
