@@ -283,9 +283,6 @@ message SecretSpec {
 	// Type distinguishes the different kinds of secrets in the system.
 	SecretType type = 2;
 
-	// Tags group secrets.
-	repeated string tags = 3;
-
 	// Secret payload.
-	bytes data = 4;
+	repeated SecretData data = 4;
 }
