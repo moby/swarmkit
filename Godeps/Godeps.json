@@ -270,7 +270,7 @@
 		},
 		{
 			"ImportPath": "github.com/docker/go-events",
-			"Rev": "18b43f1bc85d9cdd42c05a6cd2d444c7a200a894"
+			"Rev": "37d35add5005832485c0225ec870121b78fcff1c"
 		},
 		{
 			"ImportPath": "github.com/docker/go-units",
