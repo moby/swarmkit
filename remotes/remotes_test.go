@@ -198,8 +198,8 @@ func TestRemotesLargeRanges(t *testing.T) {
 	}
 
 	remotes.Observe(peers[0], 0)
-	remotes.Observe(peers[1], math.MaxInt64)
-	remotes.Observe(peers[2], math.MinInt64)
+	remotes.Observe(peers[1], math.MaxInt32)
+	remotes.Observe(peers[2], math.MinInt32)
 	remotes.Observe(peers[2], remoteWeightMax) // three bounces back!
 
 	seen := make(map[api.Peer]int)
