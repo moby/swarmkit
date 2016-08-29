@@ -9,6 +9,7 @@ VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
 
 # Project packages.
 PACKAGES=$(shell go list ./... | grep -v /vendor/)
+COVERPKG=$(shell echo "${PACKAGES}" | tr ' ' ,)
 
 # Project binaries.
 COMMANDS=swarmd swarmctl swarm-bench protoc-gen-gogoswarm
@@ -110,8 +111,8 @@ uninstall:
 coverage: ## generate coverprofiles from the tests
 	@echo "🐳 $@"
 	@( for pkg in ${PACKAGES}; do \
-		go test -i -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
-		go test -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
+		go test -i -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic -coverpkg "${COVERPKG}" $$pkg || exit; \
+		go test -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic -coverpkg "${COVERPKG}" $$pkg || exit; \
 	done )
 
 help: ## this help
