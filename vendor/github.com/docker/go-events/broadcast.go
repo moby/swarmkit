@@ -160,7 +160,7 @@ func (b *Broadcaster) run() {
 	}
 }
 
-func (b Broadcaster) String() string {
+func (b *Broadcaster) String() string {
 	// Serialize copy of this broadcaster without the sync.Once, to avoid
 	// a data race.
 
