@@ -112,7 +112,8 @@ func (c *Cluster) AddMember(member *Member) error {
 	return nil
 }
 
-// RemoveMember removes a node from the Cluster Memberlist.
+// RemoveMember removes a node from the Cluster Memberlist, and adds it to
+// the removed list.
 func (c *Cluster) RemoveMember(id uint64) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -126,6 +127,24 @@ func (c *Cluster) RemoveMember(id uint64) error {
 	}
 
 	c.removed[id] = true
+	c.broadcastUpdate()
+	return nil
+}
+
+// ClearMember removes a node from the Cluster Memberlist, but does NOT add it
+// to the removed list.
+func (c *Cluster) ClearMember(id uint64) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.members[id] != nil {
+		conn := c.members[id].Conn
+		if conn != nil {
+			_ = conn.Close()
+		}
+		delete(c.members, id)
+	}
+
 	c.broadcastUpdate()
 	return nil
 }
