@@ -9,7 +9,6 @@ VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
 
 # Project packages.
 PACKAGES=$(shell go list ./... | grep -v /vendor/)
-COVERPKG=$(shell echo "${PACKAGES}" | tr ' ' ,)
 
 # Project binaries.
 COMMANDS=swarmd swarmctl swarm-bench protoc-gen-gogoswarm
@@ -95,9 +94,10 @@ bin/%: cmd/% FORCE
 binaries: $(BINARIES) ## build binaries
 	@echo "🐳 $@"
 
-clean: ## clean up binaries
+clean: ## clean up binaries and coverage files
 	@echo "🐳 $@"
 	@rm -f $(BINARIES)
+	@find . -name coverage.txt -delete
 
 install: $(BINARIES) ## install binaries
 	@echo "🐳 $@"
@@ -110,10 +110,7 @@ uninstall:
 
 coverage: ## generate coverprofiles from the tests
 	@echo "🐳 $@"
-	@( for pkg in ${PACKAGES}; do \
-		go test -i -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic -coverpkg "${COVERPKG}" $$pkg || exit; \
-		go test -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic -coverpkg "${COVERPKG}" $$pkg || exit; \
-	done )
+	@(./covertest.sh ${PACKAGES})
 
 help: ## this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort

@@ -8,6 +8,6 @@ coverage:
         enabled: yes
         target: 0
     changes: false
-  ignore:  # ignore the api package for coverage since it's all generated'
-    - "api/*.pb.go"
+  ignore:  # ignore all protobuf-generated code
+    - "*.pb.go"
     - "vendor/*"
