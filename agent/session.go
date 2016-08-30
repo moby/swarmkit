@@ -209,24 +209,39 @@ func (s *session) watch(ctx context.Context) error {
 	log := log.G(ctx).WithFields(logrus.Fields{"method": "(*session).watch"})
 	log.Debugf("")
 	var (
-		tasksWatch api.Dispatcher_TasksClient
-		resp       *api.AssignmentsMessage
+		resp            *api.AssignmentsMessage
+		assignmentWatch api.Dispatcher_AssignmentsClient
+		tasksWatch      api.Dispatcher_TasksClient
+		streamReference string
+		tasksFallback   bool
+		err             error
 	)
-	client := api.NewDispatcherClient(s.conn)
-	assignmentWatch, err := client.Assignments(ctx, &api.AssignmentsRequest{SessionID: s.sessionID})
-	if err != nil {
-		return err
-	}
 
+	client := api.NewDispatcherClient(s.conn)
 	for {
-		if assignmentWatch != nil {
-			resp, err = assignmentWatch.Recv()
-			// If we get a code = 12 desc = unknown method Assignments, try to use tasks
-			if err != nil && grpc.Code(err) == codes.Unimplemented {
-				log.WithError(err).Errorf("falling back to Tasks")
-				assignmentWatch = nil
-				tasksWatch, err = client.Tasks(ctx, &api.TasksRequest{SessionID: s.sessionID})
+		// If this is the first time we're running the loop, or there was a reference mismatch
+		// attempt to get the assignmentWatch
+		if assignmentWatch == nil && !tasksFallback {
+			assignmentWatch, err = client.Assignments(ctx, &api.AssignmentsRequest{SessionID: s.sessionID})
+			if err != nil {
+				return err
 			}
+		}
+		// We have an assignmentWatch, let's try to receive an AssignmentMessage
+		if assignmentWatch != nil {
+			// If we get a code = 12 desc = unknown method Assignments, try to use tasks
+			resp, err = assignmentWatch.Recv()
+			if err != nil && grpc.Code(err) == codes.Unimplemented {
+				tasksFallback = true
+				assignmentWatch = nil
+				log.WithError(err).Errorf("falling back to Tasks")
+			}
+		}
+
+		// This code is here for backwards compatibility (so that newer clients can use the
+		// older method Tasks)
+		if tasksWatch == nil && tasksFallback {
+			tasksWatch, err = client.Tasks(ctx, &api.TasksRequest{SessionID: s.sessionID})
 			if err != nil {
 				return err
 			}
@@ -238,6 +253,14 @@ func (s *session) watch(ctx context.Context) error {
 				return err
 			}
 			resp = &api.AssignmentsMessage{Type: api.AssignmentsMessage_COMPLETE, UpdateTasks: taskResp.Tasks}
+		}
+
+		// If there seems to be a gap in the stream, let's break out of the inner for and
+		// re-sync (by calling Assignments again).
+		if streamReference != "" && streamReference != resp.AppliesTo {
+			assignmentWatch = nil
+		} else {
+			streamReference = resp.ResultsIn
 		}
 
 		select {

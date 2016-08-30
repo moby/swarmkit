@@ -360,7 +360,7 @@ func TestTasks(t *testing.T) {
 
 	{
 		// without correct SessionID should fail
-		stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{})
+		stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{})
 		assert.NoError(t, err)
 		assert.NotNil(t, stream)
 		resp, err := stream.Recv()
@@ -369,7 +369,7 @@ func TestTasks(t *testing.T) {
 		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
 	}
 
-	stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{SessionID: expectedSessionID})
+	stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{SessionID: expectedSessionID})
 	assert.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond)
@@ -377,19 +377,26 @@ func TestTasks(t *testing.T) {
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
 	// initially no tasks
-	assert.Equal(t, 0, len(resp.Tasks))
+	assert.Equal(t, 0, len(resp.UpdateTasks))
 
+	// Creating the tasks will not create an event for assignments
 	err = gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateTask(tx, testTask1))
 		assert.NoError(t, store.CreateTask(tx, testTask2))
 		return nil
 	})
 	assert.NoError(t, err)
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, testTask1))
+		assert.NoError(t, store.UpdateTask(tx, testTask2))
+		return nil
+	})
+	assert.NoError(t, err)
 
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, len(resp.Tasks), 2)
-	assert.True(t, resp.Tasks[0].ID == "testTask1" && resp.Tasks[1].ID == "testTask2" || resp.Tasks[0].ID == "testTask2" && resp.Tasks[1].ID == "testTask1")
+	assert.Equal(t, len(resp.UpdateTasks), 2)
+	assert.True(t, resp.UpdateTasks[0].ID == "testTask1" && resp.UpdateTasks[1].ID == "testTask2" || resp.UpdateTasks[0].ID == "testTask2" && resp.UpdateTasks[1].ID == "testTask1")
 
 	err = gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, &api.Task{
@@ -404,8 +411,8 @@ func TestTasks(t *testing.T) {
 
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, len(resp.Tasks), 2)
-	for _, task := range resp.Tasks {
+	assert.Equal(t, 1, len(resp.UpdateTasks))
+	for _, task := range resp.UpdateTasks {
 		if task.ID == "testTask1" {
 			assert.Equal(t, task.DesiredState, api.TaskStateRunning)
 		}
@@ -420,7 +427,7 @@ func TestTasks(t *testing.T) {
 
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, len(resp.Tasks), 0)
+	assert.Equal(t, len(resp.UpdateTasks), 0)
 }
 
 func TestTasksStatusChange(t *testing.T) {
@@ -456,7 +463,7 @@ func TestTasksStatusChange(t *testing.T) {
 
 	{
 		// without correct SessionID should fail
-		stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{})
+		stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{})
 		assert.NoError(t, err)
 		assert.NotNil(t, stream)
 		resp, err := stream.Recv()
@@ -465,7 +472,7 @@ func TestTasksStatusChange(t *testing.T) {
 		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
 	}
 
-	stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{SessionID: expectedSessionID})
+	stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{SessionID: expectedSessionID})
 	assert.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond)
@@ -473,19 +480,26 @@ func TestTasksStatusChange(t *testing.T) {
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
 	// initially no tasks
-	assert.Equal(t, 0, len(resp.Tasks))
+	assert.Equal(t, 0, len(resp.UpdateTasks))
 
+	// Creating the tasks will not create an event for assignments
 	err = gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateTask(tx, testTask1))
 		assert.NoError(t, store.CreateTask(tx, testTask2))
 		return nil
 	})
 	assert.NoError(t, err)
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, testTask1))
+		assert.NoError(t, store.UpdateTask(tx, testTask2))
+		return nil
+	})
+	assert.NoError(t, err)
 
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, len(resp.Tasks), 2)
-	assert.True(t, resp.Tasks[0].ID == "testTask1" && resp.Tasks[1].ID == "testTask2" || resp.Tasks[0].ID == "testTask2" && resp.Tasks[1].ID == "testTask1")
+	assert.Equal(t, len(resp.UpdateTasks), 2)
+	assert.True(t, resp.UpdateTasks[0].ID == "testTask1" && resp.UpdateTasks[1].ID == "testTask2" || resp.UpdateTasks[0].ID == "testTask2" && resp.UpdateTasks[1].ID == "testTask1")
 
 	err = gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, &api.Task{
@@ -542,17 +556,24 @@ func TestTasksBatch(t *testing.T) {
 		Status: api.TaskStatus{State: api.TaskStateAssigned},
 	}
 
-	stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{SessionID: expectedSessionID})
+	stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{SessionID: expectedSessionID})
 	assert.NoError(t, err)
 
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
 	// initially no tasks
-	assert.Equal(t, 0, len(resp.Tasks))
+	assert.Equal(t, 0, len(resp.UpdateTasks))
 
+	// Create, Update and Delete tasks.
 	err = gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateTask(tx, testTask1))
 		assert.NoError(t, store.CreateTask(tx, testTask2))
+		return nil
+	})
+	assert.NoError(t, err)
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, testTask1))
+		assert.NoError(t, store.UpdateTask(tx, testTask2))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -567,7 +588,8 @@ func TestTasksBatch(t *testing.T) {
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
 	// all tasks have been deleted
-	assert.Equal(t, len(resp.Tasks), 0)
+	assert.Equal(t, len(resp.UpdateTasks), 0)
+	assert.Equal(t, len(resp.RemoveTasks), 2)
 }
 
 func TestTasksNoCert(t *testing.T) {
@@ -575,7 +597,7 @@ func TestTasksNoCert(t *testing.T) {
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	stream, err := gd.Clients[2].Tasks(context.Background(), &api.TasksRequest{})
+	stream, err := gd.Clients[2].Assignments(context.Background(), &api.AssignmentsRequest{})
 	assert.NoError(t, err)
 	assert.NotNil(t, stream)
 	resp, err := stream.Recv()

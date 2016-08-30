@@ -43,8 +43,8 @@ const (
 	// right.
 	maxBatchInterval = 100 * time.Millisecond
 
-	modificationBatchLimit = 200
-	batchingWaitTime       = 50 * time.Millisecond
+	modificationBatchLimit = 100
+	batchingWaitTime       = 100 * time.Millisecond
 )
 
 var (
@@ -874,6 +874,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 
 					oneModification()
 				case state.EventDeleteTask:
+
 					if _, exists := tasksMap[v.Task.ID]; !exists {
 						continue
 					}
