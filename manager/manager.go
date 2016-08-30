@@ -300,10 +300,12 @@ func (m *Manager) Run(parent context.Context) error {
 	// Set the raft server as serving for the health server
 	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
 
+	defer func() {
+		m.server.Stop()
+		m.localserver.Stop()
+	}()
+
 	if err := m.RaftNode.JoinAndStart(); err != nil {
-		for _, lis := range m.listeners {
-			lis.Close()
-		}
 		return fmt.Errorf("can't initialize raft node: %v", err)
 	}
 
@@ -318,13 +320,11 @@ func (m *Manager) Run(parent context.Context) error {
 	}()
 
 	if err := raft.WaitForLeader(ctx, m.RaftNode); err != nil {
-		m.server.Stop()
 		return err
 	}
 
 	c, err := raft.WaitForCluster(ctx, m.RaftNode)
 	if err != nil {
-		m.server.Stop()
 		return err
 	}
 	raftConfig := c.Spec.Raft
