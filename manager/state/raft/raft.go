@@ -527,20 +527,26 @@ func (n *Node) IsLeader() bool {
 	return n.isLeader()
 }
 
-// leader returns the id of the leader, without the protection of lock
+// leader returns the id of the leader, without the protection of lock and
+// membership check, so it's caller task.
 func (n *Node) leader() uint64 {
-	if !n.IsMember() {
-		return 0
-	}
 	return n.Node.Status().Lead
 }
 
 // Leader returns the id of the leader, with the protection of lock
-func (n *Node) Leader() uint64 {
+func (n *Node) Leader() (uint64, error) {
 	n.stopMu.RLock()
 	defer n.stopMu.RUnlock()
 
-	return n.leader()
+	if !n.IsMember() {
+		return 0, ErrNoRaftMember
+	}
+	leader := n.leader()
+	if leader == 0 {
+		return 0, ErrNoClusterLeader
+	}
+
+	return leader, nil
 }
 
 // ReadyForProposals returns true if the node has broadcasted a message
@@ -821,7 +827,10 @@ func (n *Node) ResolveAddress(ctx context.Context, msg *api.ResolveAddressReques
 }
 
 func (n *Node) getLeaderConn() (*grpc.ClientConn, error) {
-	leader := n.Leader()
+	leader, err := n.Leader()
+	if err != nil {
+		return nil, err
+	}
 
 	if leader == n.Config.ID {
 		return nil, raftselector.ErrIsLeader
@@ -957,7 +966,10 @@ func (n *Node) SubscribePeers() (q chan events.Event, cancel func()) {
 func (n *Node) GetMemberlist() map[uint64]*api.RaftMember {
 	memberlist := make(map[uint64]*api.RaftMember)
 	members := n.cluster.Members()
-	leaderID := n.Leader()
+	leaderID, err := n.Leader()
+	if err != nil {
+		leaderID = 0
+	}
 
 	for id, member := range members {
 		reachability := api.RaftMemberStatus_REACHABLE

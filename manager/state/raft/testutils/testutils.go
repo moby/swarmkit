@@ -34,6 +34,13 @@ type TestNode struct {
 	SecurityConfig *ca.SecurityConfig
 }
 
+// Leader is wrapper around real Leader method to suppress error.
+// TODO: tests should use Leader method directly.
+func (n *TestNode) Leader() uint64 {
+	id, _ := n.Node.Leader()
+	return id
+}
+
 // AdvanceTicks advances the raft state machine fake clock
 func AdvanceTicks(clockSource *fakeclock.FakeClock, ticks int) {
 	// A FakeClock timer won't fire multiple times if time is advanced
