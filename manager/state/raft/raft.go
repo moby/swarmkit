@@ -177,7 +177,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) *Node {
 	n := &Node{
 		Ctx:            ctx,
 		cancel:         cancel,
-		cluster:        membership.NewCluster(),
+		cluster:        membership.NewCluster(cfg.ElectionTick),
 		tlsCredentials: opts.TLSCredentials,
 		raftStore:      raftStore,
 		Address:        opts.Addr,
@@ -361,7 +361,7 @@ func (n *Node) Run(ctx context.Context) error {
 		select {
 		case <-n.ticker.C():
 			n.Tick()
-
+			n.cluster.Tick()
 		case rd := <-n.Ready():
 			raftConfig := DefaultRaftConfig()
 			n.memoryStore.View(func(readTx store.ReadTx) {
@@ -777,6 +777,8 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 		return nil, ErrMemberRemoved
 	}
 
+	n.cluster.ReportActive(msg.Message.From)
+
 	if msg.Message.Type == raftpb.MsgProp {
 		// We don't accepted forwarded proposals. Our
 		// current architecture depends on only the leader
@@ -977,8 +979,7 @@ func (n *Node) GetMemberlist() map[uint64]*api.RaftMember {
 		leader := false
 
 		if member.RaftID != n.Config.ID {
-			connState, err := member.Conn.State()
-			if err != nil || connState != grpc.Ready {
+			if !n.cluster.Active(member.RaftID) {
 				reachability = api.RaftMemberStatus_UNREACHABLE
 			}
 		}
