@@ -233,10 +233,13 @@ message Secret {
 
 	Meta meta = 2 [(gogoproto.nullable) = false];
 
-	repeated SecretData secret_data = 3;
+	map<string, SecretData> secret_data = 3;
 
-	// Name of the secret
+	// Name of the secret, so that we can use it easily for lookups
 	string name = 4;
+
+	// ID of the latest version, so that we can easily use it for lookups
+	string latest = 5 [(gogoproto.customname) = "LatestVersion"];
 }
 
 // SecretData is represents a specific version of a secret, and is immutable
@@ -245,9 +248,12 @@ message SecretData {
 
 	Meta meta = 2 [(gogoproto.nullable) = false];
 
-	SecretSpec  spec = 3  [(gogoproto.nullable) = false];
+	SecretSpec spec = 3  [(gogoproto.nullable) = false];
 
 	// Digest represents the cryptographic digest of the secret data
 	string digest = 4;
+
+	// Size represents the size of the secret
+	int32 size = 5 [(gogoproto.customname) = "SecretSize"];
 }
 
