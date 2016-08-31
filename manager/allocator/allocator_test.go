@@ -424,6 +424,19 @@ type mockTester struct{}
 func (m mockTester) Errorf(format string, args ...interface{}) {
 }
 
+// Returns a timeout given whether we should expect a timeout:  In the case where we do expect a timeout,
+// the timeout should be short, because it's not very useful to wait long amounts of time just in case
+// an unexpected event comes in - a short timeout should catch an incorrect event at least often enough
+// to make the test flaky and alert us to the problem. But in the cases where we don't expect a timeout,
+// the timeout should be on the order of serveral seconds, so the test doesn't fail just because it's run
+// on a relatively slow system, or there's a load spike.
+func getWatchTimeout(expectTimeout bool) time.Duration {
+	if expectTimeout {
+		return 350 * time.Millisecond
+	}
+	return 5 * time.Second
+}
+
 func watchNetwork(t *testing.T, watch chan events.Event, expectTimeout bool, fn func(t assert.TestingT, n *api.Network) bool) {
 	for {
 		var network *api.Network
@@ -443,7 +456,7 @@ func watchNetwork(t *testing.T, watch chan events.Event, expectTimeout bool, fn 
 				}
 			}
 
-		case <-time.After(250 * time.Millisecond):
+		case <-time.After(getWatchTimeout(expectTimeout)):
 			if !expectTimeout {
 				if network != nil && fn != nil {
 					fn(t, network)
@@ -476,7 +489,7 @@ func watchService(t *testing.T, watch chan events.Event, expectTimeout bool, fn 
 				}
 			}
 
-		case <-time.After(250 * time.Millisecond):
+		case <-time.After(getWatchTimeout(expectTimeout)):
 			if !expectTimeout {
 				if service != nil && fn != nil {
 					fn(t, service)
@@ -509,7 +522,7 @@ func watchTask(t *testing.T, s *store.MemoryStore, watch chan events.Event, expe
 				}
 			}
 
-		case <-time.After(250 * time.Millisecond):
+		case <-time.After(getWatchTimeout(expectTimeout)):
 			if !expectTimeout {
 				if task != nil && fn != nil {
 					fn(t, s, task)
