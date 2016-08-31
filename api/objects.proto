@@ -233,8 +233,21 @@ message Secret {
 
 	Meta meta = 2 [(gogoproto.nullable) = false];
 
-	SecretSpec spec = 3 [(gogoproto.nullable) = false];
+	repeated SecretData secret_data = 3;
 
-	// Version is a hash of the secret.
-	string version = 4;
+	// Name of the secret
+	string name = 4;
 }
+
+// SecretData is represents a specific version of a secret, and is immutable
+message SecretData {
+	string id = 1 [(gogoproto.customname) = "ID"];
+
+	Meta meta = 2 [(gogoproto.nullable) = false];
+
+	SecretSpec  spec = 3  [(gogoproto.nullable) = false];
+
+	// Digest represents the cryptographic digest of the secret data
+	string digest = 4;
+}
+

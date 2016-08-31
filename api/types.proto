@@ -759,10 +759,10 @@ message SecretReference {
 	// Name is the name of the secret that this reference.
 	string name = 1;
 
-	// DataID represents the specific Secret version that we're referencing to.
+	// SecretDataID represents the specific Secret version that we're referencing to.
 	// This identifier exists so that SecretReferences don't leak any information
 	// about the secret contents.
-	string	data_id= 2;
+	string secret_data_id = 2 [(gogoproto.customname) = "SecretDataID"];
 
 	// Mode specifies how this secret should be exposed inside the task.
 	enum Mode {
@@ -777,18 +777,3 @@ message SecretReference {
 	string target = 4;
 }
 
-// SecretData is represents a specific version of a secret, and is immutable
-message SecretData {
-	// DataID is an opaque, randomly generated identifier to link a SecretReference
-	// to a specific SecretData.
-	string data_id = 1 [(gogoproto.customname) = "DataID"];
-
-	// Data contains the secret bytes.
-	bytes data = 2;
-
-	// Digest is a digest of the data bytes.
-	string digest = 3;
-
-	// CreatedAt is the time at which this secret data was created.
-	Timestamp created_at = 4;
-}
