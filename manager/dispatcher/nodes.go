@@ -42,6 +42,14 @@ func (rn *registeredNode) checkSessionID(sessionID string) error {
 	return nil
 }
 
+func (rn *registeredNode) updateDescription(description *api.NodeDescription) {
+	rn.mu.Lock()
+	defer rn.mu.Unlock()
+	if description != nil {
+		rn.Node.Description = description
+	}
+}
+
 type nodeStore struct {
 	periodChooser                *periodChooser
 	gracePeriodMultiplierNormal  time.Duration
@@ -149,6 +157,24 @@ func (s *nodeStore) GetWithSession(id, sid string) (*registeredNode, error) {
 		return nil, grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
 	}
 	return rn, rn.checkSessionID(sid)
+}
+
+// SetDescriptionWithSession updates the node description for a node
+func (s *nodeStore) SetDescriptionWithSession(id, sid string, description *api.NodeDescription) error {
+	// if description is nil, don't do anything
+	if description == nil {
+		return nil
+	}
+	// find the node
+	s.mu.RLock()
+	rn, ok := s.nodes[id]
+	s.mu.RUnlock()
+	if !ok {
+		return grpc.Errorf(codes.NotFound, ErrNodeNotRegistered.Error())
+	}
+	// now update the description
+	rn.updateDescription(description)
+	return nil
 }
 
 func (s *nodeStore) Heartbeat(id, sid string) (time.Duration, error) {
