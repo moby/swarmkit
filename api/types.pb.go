@@ -16,6 +16,7 @@
 		raft.proto
 		health.proto
 		resource.proto
+		secrets.proto
 
 	It has these top-level messages:
 		Version
@@ -161,6 +162,16 @@
 		AttachNetworkResponse
 		DetachNetworkRequest
 		DetachNetworkResponse
+		GetSecretRequest
+		GetSecretResponse
+		ListSecretsRequest
+		ListSecretsResponse
+		CreateSecretRequest
+		CreateSecretResponse
+		UpdateSecretRequest
+		UpdateSecretResponse
+		RemoveSecretRequest
+		RemoveSecretResponse
 */
 package api
 

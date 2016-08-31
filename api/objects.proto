@@ -259,9 +259,12 @@ message SecretData {
 
 	Meta meta = 2 [(gogoproto.nullable) = false];
 
-	SecretSpec  spec = 3  [(gogoproto.nullable) = false];
+	SecretSpec spec = 3  [(gogoproto.nullable) = false];
 
 	// Digest represents the cryptographic digest of the secret data
 	string digest = 4;
+
+	// Size represents the size of the secret
+	int32 size = 5 [(gogoproto.customname) = "SecretSize"];
 }
 
