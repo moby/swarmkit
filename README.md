@@ -88,21 +88,21 @@ Once you have *SwarmKit* checked out in your `$GOPATH`, the `Makefile` can be us
 
 From the project root directory, run the following to build `swarmd` and `swarmctl`:
 
-```
-make binaries
+```sh
+$ make binaries
 ```
 
 ## Test
 
 Before running tests for the first time, setup the tooling:
 
-```bash
+```sh
 $ make setup
 ```
 
 Then run:
 
-```bash
+```sh
 $ make all
 ```
 
@@ -117,31 +117,49 @@ These instructions assume that `swarmd` and `swarmctl` are in your PATH.
 Initialize the first node:
 
 ```sh
-$ swarmd -d /tmp/node-1 --listen-control-api /tmp/manager1/swarm.sock --hostname node-1
+$ swarmd -d /tmp/node-1 --listen-control-api /tmp/node-1/swarm.sock --hostname node-1
 ```
 
-In two additional terminals, join two nodes (note: replace `127.0.0.1:4242` with the address of the first node). The join token can be fetched by inspecting the cluster of the nodes (e.g. swarmctl cluster inspect default).
+Before joining cluster, the token should be fetched:
+
+```  
+$ export SWARM_SOCKET=/tmp/node-1/swarm.sock  
+$ swarmctl cluster inspect default  
+ID          : 87d2ecpg12dfonxp3g562fru1
+Name        : default
+Orchestration settings:
+  Task history entries: 5
+Dispatcher settings:
+  Dispatcher heartbeat period: 5s
+Certificate Authority settings:
+  Certificate Validity Duration: 2160h0m0s
+  Join Tokens:
+    Worker: SWMTKN-1-3vi7ajem0jed8guusgvyl98nfg18ibg4pclify6wzac6ucrhg3-0117z3s2ytr6egmmnlr6gd37n
+    Manager: SWMTKN-1-3vi7ajem0jed8guusgvyl98nfg18ibg4pclify6wzac6ucrhg3-d1ohk84br3ph0njyexw0wdagx
+```
+
+In two additional terminals, join two nodes (note: replace `127.0.0.1:4242` with the address of the first node, and use the `<Worker Token>` acquired above. In this example, the `<Worker Token>` is `SWMTKN-1-3vi7ajem0jed8guusgvyl98nfg18ibg4pclify6wzac6ucrhg3-0117z3s2ytr6egmmnlr6gd37n`):   
 
 ```sh
-$ swarmd -d /tmp/node-2 --hostname node-2 --join-addr 127.0.0.1:4242 --join-token <TOKEN>
-$ swarmd -d /tmp/node-3 --hostname node-3 --join-addr 127.0.0.1:4242 --join-token <TOKEN>
+$ swarmd -d /tmp/node-2 --hostname node-2 --join-addr 127.0.0.1:4242 --join-token <Worker Token>
+$ swarmd -d /tmp/node-3 --hostname node-3 --join-addr 127.0.0.1:4242 --join-token <Worker Token>
 ```
 
 In a fourth terminal, use `swarmctl` to explore and control the cluster. Before
-running swarmctl, set the `SWARM_SOCKET` environment variable to the path of the
+running `swarmctl`, set the `SWARM_SOCKET` environment variable to the path of the
 manager socket that was specified in `--listen-control-api` when starting the
 manager.
 
 To list nodes:
 
 ```
-$ export SWARM_SOCKET=/tmp/manager1/swarm.sock
+$ export SWARM_SOCKET=/tmp/node-1/swarm.sock
 $ swarmctl node ls
-ID             Name    Membership  Status  Availability  Manager status
---             ----    ----------  ------  ------------  --------------
-15jkw04qb4yze  node-1  ACCEPTED    READY   ACTIVE        REACHABLE *
-1zbwraf2v8hpx  node-3  ACCEPTED    READY   ACTIVE
-3vj01av6782qn  node-2  ACCEPTED    READY   ACTIVE
+ID                         Name    Membership  Status  Availability  Manager Status
+--                         ----    ----------  ------  ------------  --------------
+3x12fpoi36eujbdkgdnbvbi6r  node-2  ACCEPTED    READY   ACTIVE
+4spl3tyipofoa2iwqgabsdcve  node-1  ACCEPTED    READY   ACTIVE        REACHABLE *
+dknwk1uqxhnyyujq66ho0h54t  node-3  ACCEPTED    READY   ACTIVE
 
 
 ```
@@ -152,7 +170,7 @@ Start a *redis* service:
 
 ```
 $ swarmctl service create --name redis --image redis:3.0.5
-89831rq7oplzp6oqcqoswquf2
+08ecg7vc7cbf9k57qs722n2le
 ```
 
 List the running services:
@@ -160,24 +178,24 @@ List the running services:
 ```
 $ swarmctl service ls
 ID                         Name   Image        Replicas
---                         ----   -----        ---------
-89831rq7oplzp6oqcqoswquf2  redis  redis:3.0.5  1
+--                         ----   -----        --------
+08ecg7vc7cbf9k57qs722n2le  redis  redis:3.0.5  1/1
 ```
 
 Inspect the service:
 
 ```
 $ swarmctl service inspect redis
-ID                : 89831rq7oplzp6oqcqoswquf2
+ID                : 08ecg7vc7cbf9k57qs722n2le
 Name              : redis
-Replicass         : 1
+Replicas          : 1/1
 Template
  Container
   Image           : redis:3.0.5
 
-Task ID                      Service    Instance    Image          Desired State    Last State               Node
--------                      -------    --------    -----          -------------    ----------               ----
-0dsiq9za9at3cqk4qx07n6v8j    redis      1           redis:3.0.5    RUNNING          RUNNING 2 seconds ago    node-1
+Task ID                      Service    Slot    Image          Desired State    Last State                Node
+-------                      -------    ----    -----          -------------    ----------                ----
+0xk1ir8wr85lbs8sqg0ug03vr    redis      1       redis:3.0.5    RUNNING          RUNNING 1 minutes ago    node-1
 ```
 
 ### Updating Services
@@ -188,24 +206,24 @@ For example, you can scale the service by changing the instance count:
 
 ```
 $ swarmctl service update redis --replicas 6
-89831rq7oplzp6oqcqoswquf2
+08ecg7vc7cbf9k57qs722n2le
 
 $ swarmctl service inspect redis
-ID                : 89831rq7oplzp6oqcqoswquf2
+ID                : 08ecg7vc7cbf9k57qs722n2le
 Name              : redis
-Replicas          : 6
+Replicas          : 6/6
 Template
  Container
   Image           : redis:3.0.5
 
-Task ID                      Service    Instance    Image          Desired State    Last State               Node
--------                      -------    --------    -----          -------------    ----------               ----
-0dsiq9za9at3cqk4qx07n6v8j    redis      1           redis:3.0.5    RUNNING          RUNNING 1 minute ago     node-1
-9fvobwddp5ve3k0f4al1mhuhn    redis      2           redis:3.0.5    RUNNING          RUNNING 3 seconds ago    node-2
-e7pxax9mhjd4zamohobefqpy0    redis      3           redis:3.0.5    RUNNING          RUNNING 3 seconds ago    node-2
-ceuwhcffcavur7k9q57vqw0zg    redis      4           redis:3.0.5    RUNNING          RUNNING 3 seconds ago    node-1
-8vqmbo95l6obbtb7fpmvz522f    redis      5           redis:3.0.5    RUNNING          RUNNING 3 seconds ago    node-3
-385utv15nalm2pyupao6jtu12    redis      6           redis:3.0.5    RUNNING          RUNNING 3 seconds ago    node-3
+Task ID                      Service    Slot    Image          Desired State    Last State                Node
+-------                      -------    ----    -----          -------------    ----------                ----
+0xk1ir8wr85lbs8sqg0ug03vr    redis      1       redis:3.0.5    RUNNING          RUNNING 3 minutes ago    node-1
+25m48y9fevrnh77til1d09vqq    redis      2       redis:3.0.5    RUNNING          RUNNING 28 seconds ago    node-3
+42vwc8z93c884anjgpkiatnx6    redis      3       redis:3.0.5    RUNNING          RUNNING 28 seconds ago    node-2
+d41f3wnf9dex3mk6jfqp4tdjw    redis      4       redis:3.0.5    RUNNING          RUNNING 28 seconds ago    node-2
+66lefnooz63met6yfrsk6myvg    redis      5       redis:3.0.5    RUNNING          RUNNING 28 seconds ago    node-1
+3a2sawtoyk19wqhmtuiq7z9pt    redis      6       redis:3.0.5    RUNNING          RUNNING 28 seconds ago    node-3
 ```
 
 Changing *replicas* from *1* to *6* forced *SwarmKit* to create *5* additional Tasks in order to
@@ -217,24 +235,29 @@ Let's change the image from *redis:3.0.5* to *redis:3.0.6* (e.g. upgrade):
 
 ```
 $ swarmctl service update redis --image redis:3.0.6
-89831rq7oplzp6oqcqoswquf2
+08ecg7vc7cbf9k57qs722n2le
 
 $ swarmctl service inspect redis
-ID                : 89831rq7oplzp6oqcqoswquf2
-Name              : redis
-Replicas          : 6
+ID                   : 08ecg7vc7cbf9k57qs722n2le
+Name                 : redis
+Replicas             : 6/6
+Update Status
+ State               : COMPLETED
+ Started             : 3 minutes ago
+ Completed           : 1 minute ago
+ Message             : update completed
 Template
  Container
-  Image           : redis:3.0.6
+  Image              : redis:3.0.6
 
-Task ID                      Service    Instance    Image          Desired State    Last State                Node
--------                      -------    --------    -----          -------------    ----------                ----
-7947mlunwz2dmlet3c7h84ln3    redis      1           redis:3.0.6    RUNNING          RUNNING 34 seconds ago    node-3
-56rcujrassh7tlljp3k76etyw    redis      2           redis:3.0.6    RUNNING          RUNNING 34 seconds ago    node-1
-8l7bwrduq80pkq9tu4bsd95p4    redis      3           redis:3.0.6    RUNNING          RUNNING 36 seconds ago    node-2
-3xb1jxytdo07mqccadt06rgi0    redis      4           redis:3.0.6    RUNNING          RUNNING 34 seconds ago    node-1
-16aate5akcimsye9cp5xis1ih    redis      5           redis:3.0.6    RUNNING          RUNNING 34 seconds ago    node-2
-dws408a3gz0zx0bygq3aj0ztk    redis      6           redis:3.0.6    RUNNING          RUNNING 34 seconds ago    node-3
+Task ID                      Service    Slot    Image          Desired State    Last State              Node
+-------                      -------    ----    -----          -------------    ----------              ----
+0udsjss61lmwz52pke5hd107g    redis      1       redis:3.0.6    RUNNING          RUNNING 1 minute ago    node-3
+b8o394v840thk10tamfqlwztb    redis      2       redis:3.0.6    RUNNING          RUNNING 1 minute ago    node-1
+efw7j66xqpoj3cn3zjkdrwff7    redis      3       redis:3.0.6    RUNNING          RUNNING 1 minute ago    node-3
+8ajeipzvxucs3776e4z8gemey    redis      4       redis:3.0.6    RUNNING          RUNNING 1 minute ago    node-2
+f05f2lbqzk9fh4kstwpulygvu    redis      5       redis:3.0.6    RUNNING          RUNNING 1 minute ago    node-2
+7sbpoy82deq7hu3q9cnucfin6    redis      6       redis:3.0.6    RUNNING          RUNNING 1 minute ago    node-1
 ```
 
 By default, all tasks are updated at the same time.
@@ -264,28 +287,33 @@ Let's put `node-1` into maintenance mode:
 $ swarmctl node drain node-1
 
 $ swarmctl node ls
-ID             Name    Membership  Status  Availability  Manager status
---             ----    ----------  ------  ------------  --------------
-2o8evbttw2sjj  node-1  ACCEPTED    READY   DRAIN         REACHABLE
-2p7w0q83jargg  node-2  ACCEPTED    READY   ACTIVE        REACHABLE *
-3ieflj99g4wh8  node-3  ACCEPTED    READY   ACTIVE        REACHABLE
+ID                         Name    Membership  Status  Availability  Manager Status
+--                         ----    ----------  ------  ------------  --------------
+3x12fpoi36eujbdkgdnbvbi6r  node-2  ACCEPTED    READY   ACTIVE
+4spl3tyipofoa2iwqgabsdcve  node-1  ACCEPTED    READY   DRAIN         REACHABLE *
+dknwk1uqxhnyyujq66ho0h54t  node-3  ACCEPTED    READY   ACTIVE
 
 $ swarmctl service inspect redis
-ID                : 89831rq7oplzp6oqcqoswquf2
-Name              : redis
-Replicas          : 6
+ID                   : 08ecg7vc7cbf9k57qs722n2le
+Name                 : redis
+Replicas             : 6/6
+Update Status
+ State               : COMPLETED
+ Started             : 2 minutes ago
+ Completed           : 1 minute ago
+ Message             : update completed
 Template
  Container
-  Image           : redis:3.0.7
+  Image              : redis:3.0.7
 
-Task ID                      Service    Instance    Image          Desired State    Last State               Node
--------                      -------    --------    -----          -------------    ----------               ----
-2pbjiykmaltiujokm0r8hmpz4    redis      1           redis:3.0.7    RUNNING          RUNNING 1 minute ago     node-2
-az8ias15auf6w11jndsk7bc2o    redis      2           redis:3.0.7    RUNNING          RUNNING 1 minute ago     node-3
-5gsogy426bnqxdfynheqcqdls    redis      3           redis:3.0.7    RUNNING          RUNNING 4 seconds ago    node-2
-6vfzoshzb4jhyvp59yuf4dtnj    redis      4           redis:3.0.7    RUNNING          RUNNING 5 seconds ago    node-3
-18p0ei3a43xermxsnvvv0v1vd    redis      5           redis:3.0.7    RUNNING          RUNNING 2 minutes ago    node-2
-70eln8ibd8aku6jvmu8xz3hbc    redis      6           redis:3.0.7    RUNNING          RUNNING 4 seconds ago    node-3
+Task ID                      Service    Slot    Image          Desired State    Last State                Node
+-------                      -------    ----    -----          -------------    ----------                ----
+8uy2fy8dqbwmlvw5iya802tj0    redis      1       redis:3.0.7    RUNNING          RUNNING 23 seconds ago    node-2
+7h9lgvidypcr7q1k3lfgohb42    redis      2       redis:3.0.7    RUNNING          RUNNING 2 minutes ago     node-3
+ae4dl0chk3gtwm1100t5yeged    redis      3       redis:3.0.7    RUNNING          RUNNING 23 seconds ago    node-3
+9fz7fxbg0igypstwliyameobs    redis      4       redis:3.0.7    RUNNING          RUNNING 2 minutes ago     node-3
+drzndxnjz3c8iujdewzaplgr6    redis      5       redis:3.0.7    RUNNING          RUNNING 23 seconds ago    node-2
+7rcgciqhs4239quraw7evttyf    redis      6       redis:3.0.7    RUNNING          RUNNING 2 minutes ago     node-2
 ```
 
 As you can see, every Task running on `node-1` was rebalanced to either `node-2` or `node-3` by the reconciliation loop.
