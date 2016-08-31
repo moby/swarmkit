@@ -284,5 +284,5 @@ message SecretSpec {
 	SecretType type = 2;
 
 	// Secret payload.
-	repeated SecretData data = 4;
+	bytes data = 3;
 }
