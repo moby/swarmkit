@@ -77,6 +77,7 @@
 		Network
 		Cluster
 		Secret
+		SecretData
 		GetNodeRequest
 		GetNodeResponse
 		ListNodesRequest
