@@ -119,6 +119,7 @@ type Node struct {
 	leadershipBroadcast *watch.Queue
 
 	// used to coordinate shutdown
+	// Lock should be used only in stop(), all other functions should use RLock.
 	stopMu sync.RWMutex
 	// used for membership management checks
 	membershipLock sync.Mutex
@@ -1178,14 +1179,14 @@ type applyResult struct {
 // an error or until the raft node finalizes all the proposals on node
 // shutdown.
 func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRaftRequest, cb func()) (proto.Message, error) {
-	n.stopMu.Lock()
+	n.stopMu.RLock()
 	if !n.canSubmitProposal() {
-		n.stopMu.Unlock()
+		n.stopMu.RUnlock()
 		return nil, ErrStopped
 	}
 	n.waitProp.Add(1)
 	defer n.waitProp.Done()
-	n.stopMu.Unlock()
+	n.stopMu.RUnlock()
 
 	r.ID = n.reqIDGen.Next()
 
