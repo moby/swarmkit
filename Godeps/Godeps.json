@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/docker/swarmkit",
-	"GoVersion": "go1.6",
+	"GoVersion": "go1.7",
 	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
@@ -26,78 +26,78 @@
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/api",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/auth",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/certdb",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/config",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/crypto/pkcs7",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/csr",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/errors",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/helpers",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/helpers/derhelpers",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/info",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/initca",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/log",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/ocsp/config",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/signer",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/signer/local",
-			"Comment": "1.2.0-59-gb895b05",
-			"Rev": "b895b0549c0ff676f92cf09ba971ae02bb41367b"
+			"Comment": "1.2.0-89-g7fb22c8",
+			"Rev": "7fb22c8cba7ecaf98e4082d22d65800cf45e042a"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/crc",
@@ -161,7 +161,7 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/capnslog",
-			"Comment": "v2-12-g3ac0863",
+			"Comment": "v3",
 			"Rev": "3ac0863d7acf3bc44daf49afef8919af12f704ef"
 		},
 		{
@@ -506,23 +506,23 @@
 		},
 		{
 			"ImportPath": "github.com/google/certificate-transparency/go",
-			"Rev": "025a5cab06f6a819c455d9fdc9e2a1b6d0982284"
+			"Rev": "0f6e3d1d1ba4d03fdaab7cd716f36255c2e48341"
 		},
 		{
 			"ImportPath": "github.com/google/certificate-transparency/go/asn1",
-			"Rev": "025a5cab06f6a819c455d9fdc9e2a1b6d0982284"
+			"Rev": "0f6e3d1d1ba4d03fdaab7cd716f36255c2e48341"
 		},
 		{
 			"ImportPath": "github.com/google/certificate-transparency/go/client",
-			"Rev": "025a5cab06f6a819c455d9fdc9e2a1b6d0982284"
+			"Rev": "0f6e3d1d1ba4d03fdaab7cd716f36255c2e48341"
 		},
 		{
 			"ImportPath": "github.com/google/certificate-transparency/go/x509",
-			"Rev": "025a5cab06f6a819c455d9fdc9e2a1b6d0982284"
+			"Rev": "0f6e3d1d1ba4d03fdaab7cd716f36255c2e48341"
 		},
 		{
 			"ImportPath": "github.com/google/certificate-transparency/go/x509/pkix",
-			"Rev": "025a5cab06f6a819c455d9fdc9e2a1b6d0982284"
+			"Rev": "0f6e3d1d1ba4d03fdaab7cd716f36255c2e48341"
 		},
 		{
 			"ImportPath": "github.com/hashicorp/go-immutable-radix",
