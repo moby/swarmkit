@@ -333,16 +333,21 @@ func TestListManagerNodes(t *testing.T) {
 	nodes[5] = raftutils.RestartNode(t, clockSource, nodes[5], false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
-	// All the nodes should be reachable again
-	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.NoError(t, err)
-	assert.NotNil(t, r)
-	managers = getMap(t, r.Nodes)
 	assert.Len(t, ts.Server.raft.GetMemberlist(), 5)
-	assert.Len(t, r.Nodes, 5)
-	for i := 1; i <= 5; i++ {
-		assert.Equal(t, api.RaftMemberStatus_REACHABLE, managers[nodes[uint64(i)].Config.ID].Reachability)
-	}
+	// All the nodes should be reachable again
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
+		if err != nil {
+			return err
+		}
+		managers = getMap(t, r.Nodes)
+		for i := 1; i <= 5; i++ {
+			if managers[nodes[uint64(i)].Config.ID].Reachability != api.RaftMemberStatus_REACHABLE {
+				return fmt.Errorf("node %x is unreachable", nodes[uint64(i)].Config.ID)
+			}
+		}
+		return nil
+	}))
 
 	// Switch the raft node used by the server
 	ts.Server.raft = nodes[2].Node
