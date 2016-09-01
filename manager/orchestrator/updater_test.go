@@ -147,6 +147,8 @@ func TestUpdater(t *testing.T) {
 }
 
 func TestUpdaterFailureAction(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)

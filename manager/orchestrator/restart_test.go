@@ -402,6 +402,8 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 }
 
 func TestOrchestratorRestartMaxAttempts(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -536,6 +538,8 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 }
 
 func TestOrchestratorRestartWindow(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
