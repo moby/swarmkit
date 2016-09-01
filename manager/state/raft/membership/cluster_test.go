@@ -42,7 +42,7 @@ func newTestMember(id uint64) *membership.Member {
 }
 
 func newTestCluster(members []*membership.Member, removed []*membership.Member) *membership.Cluster {
-	c := membership.NewCluster()
+	c := membership.NewCluster(3)
 	for _, m := range members {
 		c.AddMember(m)
 	}
@@ -79,22 +79,15 @@ func TestClusterMember(t *testing.T) {
 }
 
 func TestMembers(t *testing.T) {
-	w := map[uint64]*membership.Member{
-		1:  {RaftMember: &api.RaftMember{RaftID: 1}},
-		20: {RaftMember: &api.RaftMember{RaftID: 20}},
-		10: {RaftMember: &api.RaftMember{RaftID: 10}},
-		5:  {RaftMember: &api.RaftMember{RaftID: 5}},
-		50: {RaftMember: &api.RaftMember{RaftID: 50}},
-	}
-
-	cls := membership.NewCluster()
+	cls := membership.NewCluster(1)
+	defer cls.Clear()
 	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 1}})
 	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 5}})
 	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 20}})
 	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 50}})
 	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 10}})
 
-	assert.Equal(t, cls.Members(), w)
+	assert.Len(t, cls.Members(), 5)
 }
 
 func TestGetMember(t *testing.T) {
