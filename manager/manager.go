@@ -255,6 +255,7 @@ func (m *Manager) Run(parent context.Context) error {
 	baseControlAPI := controlapi.NewServer(m.RaftNode.MemoryStore(), m.RaftNode, m.config.SecurityConfig.RootCA())
 	baseResourceAPI := resourceapi.New(m.RaftNode.MemoryStore())
 	healthServer := health.NewHealthServer()
+	localHealthServer := health.NewHealthServer()
 
 	authenticatedControlAPI := api.NewAuthenticatedWrapperControlServer(baseControlAPI, authorize)
 	authenticatedResourceAPI := api.NewAuthenticatedWrapperResourceAllocatorServer(baseResourceAPI, authorize)
@@ -287,10 +288,12 @@ func (m *Manager) Run(parent context.Context) error {
 	api.RegisterRaftServer(m.server, authenticatedRaftAPI)
 	api.RegisterHealthServer(m.server, authenticatedHealthAPI)
 	api.RegisterRaftMembershipServer(m.server, proxyRaftMembershipAPI)
-	api.RegisterControlServer(m.localserver, localProxyControlAPI)
 	api.RegisterControlServer(m.server, authenticatedControlAPI)
 	api.RegisterResourceAllocatorServer(m.server, proxyResourceAPI)
 	api.RegisterDispatcherServer(m.server, proxyDispatcherAPI)
+
+	api.RegisterControlServer(m.localserver, localProxyControlAPI)
+	api.RegisterHealthServer(m.localserver, localHealthServer)
 
 	errServe := make(chan error, 2)
 	for proto, l := range m.listeners {
@@ -299,6 +302,7 @@ func (m *Manager) Run(parent context.Context) error {
 
 	// Set the raft server as serving for the health server
 	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
+	localHealthServer.SetServingStatus("ControlAPI", api.HealthCheckResponse_SERVING)
 
 	defer func() {
 		m.server.Stop()
