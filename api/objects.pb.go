@@ -247,7 +247,7 @@ type Secret struct {
 	// the form "<algorithm>:<digest>": for example "sha256:DEADBEEF...".  It
 	// is calculated from the data contained in `Secret.Spec.data`.
 	Digest string `protobuf:"bytes,4,opt,name=digest,proto3" json:"digest,omitempty"`
-	// Size represents the size (number of bytes) of the secret data, and is
+	// SecretSize represents the size (number of bytes) of the secret data, and is
 	// calculated from the data contained in `Secret.Spec.data`..
 	SecretSize uint32 `protobuf:"varint,5,opt,name=size,proto3" json:"size,omitempty"`
 	// Whether the secret is an internal secret (not set by a user) or not.
