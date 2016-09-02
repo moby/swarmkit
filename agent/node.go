@@ -533,24 +533,22 @@ func (n *Node) initManagerConnection(ctx context.Context, ready chan<- struct{})
 	if err != nil {
 		return err
 	}
-	state := grpc.Idle
+	client := api.NewHealthClient(conn)
 	for {
-		s, err := conn.WaitForStateChange(ctx, state)
+		resp, err := client.Check(ctx, &api.HealthCheckRequest{Service: "ControlAPI"})
 		if err != nil {
-			n.setControlSocket(nil)
 			return err
 		}
-		if s == grpc.Ready {
-			n.setControlSocket(conn)
-			if ready != nil {
-				close(ready)
-				ready = nil
-			}
-		} else if state == grpc.Shutdown {
-			n.setControlSocket(nil)
+		if resp.Status == api.HealthCheckResponse_SERVING {
+			break
 		}
-		state = s
+		time.Sleep(500 * time.Millisecond)
 	}
+	n.setControlSocket(conn)
+	if ready != nil {
+		close(ready)
+	}
+	return nil
 }
 
 func (n *Node) waitRole(ctx context.Context, role string) error {
@@ -647,6 +645,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			<-done
 		}
 		connCancel()
+		n.setControlSocket(nil)
 
 		if err != nil {
 			return err
