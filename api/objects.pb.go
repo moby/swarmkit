@@ -596,11 +596,12 @@ func valueToGoStringObjects(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringObjects(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+func extensionToGoStringObjects(m github_com_gogo_protobuf_proto.Message) string {
+	e := github_com_gogo_protobuf_proto.GetUnsafeExtensionsMap(m)
 	if e == nil {
 		return "nil"
 	}
-	s := "map[int32]proto.Extension{"
+	s := "proto.NewUnsafeXXX_InternalExtensions(map[int32]proto.Extension{"
 	keys := make([]int, 0, len(e))
 	for k := range e {
 		keys = append(keys, int(k))
@@ -610,7 +611,7 @@ func extensionToGoStringObjects(e map[int32]github_com_gogo_protobuf_proto.Exten
 	for _, k := range keys {
 		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
 	}
-	s += strings.Join(ss, ",") + "}"
+	s += strings.Join(ss, ",") + "})"
 	return s
 }
 func (m *Meta) Marshal() (data []byte, err error) {
@@ -3580,6 +3581,8 @@ var (
 	ErrInvalidLengthObjects = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowObjects   = fmt.Errorf("proto: integer overflow")
 )
+
+func init() { proto.RegisterFile("objects.proto", fileDescriptorObjects) }
 
 var fileDescriptorObjects = []byte{
 	// 1009 bytes of a gzipped FileDescriptorProto

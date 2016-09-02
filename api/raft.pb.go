@@ -798,11 +798,12 @@ func valueToGoStringRaft(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringRaft(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+func extensionToGoStringRaft(m github_com_gogo_protobuf_proto.Message) string {
+	e := github_com_gogo_protobuf_proto.GetUnsafeExtensionsMap(m)
 	if e == nil {
 		return "nil"
 	}
-	s := "map[int32]proto.Extension{"
+	s := "proto.NewUnsafeXXX_InternalExtensions(map[int32]proto.Extension{"
 	keys := make([]int, 0, len(e))
 	for k := range e {
 		keys = append(keys, int(k))
@@ -812,7 +813,7 @@ func extensionToGoStringRaft(e map[int32]github_com_gogo_protobuf_proto.Extensio
 	for _, k := range keys {
 		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
 	}
-	s += strings.Join(ss, ",") + "}"
+	s += strings.Join(ss, ",") + "})"
 	return s
 }
 
@@ -822,7 +823,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion2
+const _ = grpc.SupportPackageIsVersion3
 
 // Client API for Raft service
 
@@ -923,7 +924,8 @@ var _Raft_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Raft_ResolveAddress_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptorRaft,
 }
 
 // Client API for RaftMembership service
@@ -1023,7 +1025,8 @@ var _RaftMembership_serviceDesc = grpc.ServiceDesc{
 			Handler:    _RaftMembership_Leave_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptorRaft,
 }
 
 func (m *RaftMember) Marshal() (data []byte, err error) {
@@ -1519,7 +1522,7 @@ func (p *raftProxyRaftServer) ProcessRaftMessage(ctx context.Context, r *Process
 
 	resp, err := NewRaftClient(conn).ProcessRaftMessage(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -1550,7 +1553,7 @@ func (p *raftProxyRaftServer) ResolveAddress(ctx context.Context, r *ResolveAddr
 
 	resp, err := NewRaftClient(conn).ResolveAddress(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -1647,7 +1650,7 @@ func (p *raftProxyRaftMembershipServer) Join(ctx context.Context, r *JoinRequest
 
 	resp, err := NewRaftMembershipClient(conn).Join(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -1678,7 +1681,7 @@ func (p *raftProxyRaftMembershipServer) Leave(ctx context.Context, r *LeaveReque
 
 	resp, err := NewRaftMembershipClient(conn).Leave(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -3255,6 +3258,8 @@ var (
 	ErrInvalidLengthRaft = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowRaft   = fmt.Errorf("proto: integer overflow")
 )
+
+func init() { proto.RegisterFile("raft.proto", fileDescriptorRaft) }
 
 var fileDescriptorRaft = []byte{
 	// 868 bytes of a gzipped FileDescriptorProto

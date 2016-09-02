@@ -83,7 +83,7 @@ type Node struct {
 	Server         *grpc.Server
 	Ctx            context.Context
 	cancel         func()
-	tlsCredentials credentials.TransportAuthenticator
+	tlsCredentials credentials.TransportCredentials
 
 	Address  string
 	StateDir string
@@ -153,7 +153,7 @@ type NewNodeOptions struct {
 	// SendTimeout is the timeout on the sending messages to other raft
 	// nodes. Leave this as 0 to get the default value.
 	SendTimeout    time.Duration
-	TLSCredentials credentials.TransportAuthenticator
+	TLSCredentials credentials.TransportCredentials
 }
 
 func init() {

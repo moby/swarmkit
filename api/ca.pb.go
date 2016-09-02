@@ -286,11 +286,12 @@ func valueToGoStringCa(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringCa(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+func extensionToGoStringCa(m github_com_gogo_protobuf_proto.Message) string {
+	e := github_com_gogo_protobuf_proto.GetUnsafeExtensionsMap(m)
 	if e == nil {
 		return "nil"
 	}
-	s := "map[int32]proto.Extension{"
+	s := "proto.NewUnsafeXXX_InternalExtensions(map[int32]proto.Extension{"
 	keys := make([]int, 0, len(e))
 	for k := range e {
 		keys = append(keys, int(k))
@@ -300,7 +301,7 @@ func extensionToGoStringCa(e map[int32]github_com_gogo_protobuf_proto.Extension)
 	for _, k := range keys {
 		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
 	}
-	s += strings.Join(ss, ",") + "}"
+	s += strings.Join(ss, ",") + "})"
 	return s
 }
 
@@ -310,7 +311,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion2
+const _ = grpc.SupportPackageIsVersion3
 
 // Client API for CA service
 
@@ -372,7 +373,8 @@ var _CA_serviceDesc = grpc.ServiceDesc{
 			Handler:    _CA_GetRootCACertificate_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptorCa,
 }
 
 // Client API for NodeCA service
@@ -468,7 +470,8 @@ var _NodeCA_serviceDesc = grpc.ServiceDesc{
 			Handler:    _NodeCA_NodeCertificateStatus_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptorCa,
 }
 
 func (m *NodeCertificateStatusRequest) Marshal() (data []byte, err error) {
@@ -749,7 +752,7 @@ func (p *raftProxyCAServer) GetRootCACertificate(ctx context.Context, r *GetRoot
 
 	resp, err := NewCAClient(conn).GetRootCACertificate(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -846,7 +849,7 @@ func (p *raftProxyNodeCAServer) IssueNodeCertificate(ctx context.Context, r *Iss
 
 	resp, err := NewNodeCAClient(conn).IssueNodeCertificate(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -877,7 +880,7 @@ func (p *raftProxyNodeCAServer) NodeCertificateStatus(ctx context.Context, r *No
 
 	resp, err := NewNodeCAClient(conn).NodeCertificateStatus(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -1703,6 +1706,8 @@ var (
 	ErrInvalidLengthCa = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowCa   = fmt.Errorf("proto: integer overflow")
 )
+
+func init() { proto.RegisterFile("ca.proto", fileDescriptorCa) }
 
 var fileDescriptorCa = []byte{
 	// 493 bytes of a gzipped FileDescriptorProto

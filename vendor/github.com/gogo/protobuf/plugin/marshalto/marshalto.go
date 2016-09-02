@@ -1,4 +1,6 @@
-// Copyright (c) 2013, Vastech SA (PTY) LTD. All rights reserved.
+// Protocol Buffers for Go with Gadgets
+//
+// Copyright (c) 2013, The GoGo Authors. All rights reserved.
 // http://github.com/gogo/protobuf
 //
 // Redistribution and use in source and binary forms, with or without
@@ -826,7 +828,7 @@ func (p *marshalto) generateField(proto3 bool, numGen NumGen, file *generator.Fi
 	case descriptor.FieldDescriptorProto_TYPE_GROUP:
 		panic(fmt.Errorf("marshaler does not support group %v", fieldname))
 	case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
-		if generator.IsMap(file.FileDescriptorProto, field) {
+		if p.IsMap(field) {
 			m := p.GoMapType(nil, field)
 			keygoTyp, keywire := p.GoType(nil, m.KeyField)
 			keygoAliasTyp, _ := p.GoType(nil, m.KeyAliasField)
@@ -885,38 +887,47 @@ func (p *marshalto) generateField(proto3 bool, numGen NumGen, file *generator.Fi
 				p.P(`v := m.`, fieldname, `[k]`)
 			}
 			accessor := `v`
-			sum = append(sum, strconv.Itoa(valueKeySize))
 			switch m.ValueField.GetType() {
 			case descriptor.FieldDescriptorProto_TYPE_DOUBLE,
 				descriptor.FieldDescriptorProto_TYPE_FIXED64,
 				descriptor.FieldDescriptorProto_TYPE_SFIXED64:
+				sum = append(sum, strconv.Itoa(valueKeySize))
 				sum = append(sum, strconv.Itoa(8))
 			case descriptor.FieldDescriptorProto_TYPE_FLOAT,
 				descriptor.FieldDescriptorProto_TYPE_FIXED32,
 				descriptor.FieldDescriptorProto_TYPE_SFIXED32:
+				sum = append(sum, strconv.Itoa(valueKeySize))
 				sum = append(sum, strconv.Itoa(4))
 			case descriptor.FieldDescriptorProto_TYPE_INT64,
 				descriptor.FieldDescriptorProto_TYPE_UINT64,
 				descriptor.FieldDescriptorProto_TYPE_UINT32,
 				descriptor.FieldDescriptorProto_TYPE_ENUM,
 				descriptor.FieldDescriptorProto_TYPE_INT32:
+				sum = append(sum, strconv.Itoa(valueKeySize))
 				sum = append(sum, `sov`+p.localName+`(uint64(v))`)
 			case descriptor.FieldDescriptorProto_TYPE_BOOL:
+				sum = append(sum, strconv.Itoa(valueKeySize))
 				sum = append(sum, `1`)
-			case descriptor.FieldDescriptorProto_TYPE_STRING,
-				descriptor.FieldDescriptorProto_TYPE_BYTES:
+			case descriptor.FieldDescriptorProto_TYPE_STRING:
+				sum = append(sum, strconv.Itoa(valueKeySize))
 				sum = append(sum, `len(v)+sov`+p.localName+`(uint64(len(v)))`)
+			case descriptor.FieldDescriptorProto_TYPE_BYTES:
+				p.P(`byteSize := 0`)
+				if proto3 {
+					p.P(`if len(v) > 0 {`)
+				} else {
+					p.P(`if v != nil {`)
+				}
+				p.In()
+				p.P(`byteSize = `, strconv.Itoa(valueKeySize), ` + len(v)+sov`+p.localName+`(uint64(len(v)))`)
+				p.Out()
+				p.P(`}`)
+				sum = append(sum, `byteSize`)
 			case descriptor.FieldDescriptorProto_TYPE_SINT32,
 				descriptor.FieldDescriptorProto_TYPE_SINT64:
+				sum = append(sum, strconv.Itoa(valueKeySize))
 				sum = append(sum, `soz`+p.localName+`(uint64(v))`)
 			case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
-				if nullable {
-					p.P(`if v == nil {`)
-					p.In()
-					p.P(`return 0, `, p.errorsPkg.Use(), `.New("proto: map has nil element")`)
-					p.Out()
-					p.P(`}`)
-				}
 				if valuegoTyp != valuegoAliasTyp {
 					if nullable {
 						// cast back to the type that has the generated methods on it
@@ -927,19 +938,42 @@ func (p *marshalto) generateField(proto3 bool, numGen NumGen, file *generator.Fi
 				} else if !nullable {
 					accessor = `(&v)`
 				}
+				p.P(`msgSize := 0`)
+				p.P(`if `, accessor, ` != nil {`)
+				p.In()
 				if protoSizer {
-					p.P(`msgSize := `, accessor, `.ProtoSize()`)
+					p.P(`msgSize = `, accessor, `.ProtoSize()`)
 				} else {
-					p.P(`msgSize := `, accessor, `.Size()`)
+					p.P(`msgSize = `, accessor, `.Size()`)
 				}
-				sum = append(sum, `msgSize + sov`+p.localName+`(uint64(msgSize))`)
+				p.Out()
+				p.P(`msgSize += `, strconv.Itoa(valueKeySize), ` + sov`+p.localName+`(uint64(msgSize))`)
+				p.P(`}`)
+				sum = append(sum, `msgSize`)
 			}
 			p.P(`mapSize := `, strings.Join(sum, " + "))
 			p.callVarint("mapSize")
 			p.encodeKey(1, wireToType(keywire))
 			p.mapField(numGen, m.KeyField.GetType(), "k", protoSizer)
+			nullableMsg := m.ValueField.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE && nullable
+			if nullableMsg {
+				p.P(`if `, accessor, ` != nil {`)
+				p.In()
+			}
+			if m.ValueField.IsBytes() {
+				if proto3 {
+					p.P(`if len(`, accessor, `) > 0 {`)
+				} else {
+					p.P(`if `, accessor, ` != nil {`)
+				}
+				p.In()
+			}
 			p.encodeKey(2, wireToType(valuewire))
 			p.mapField(numGen, m.ValueField.GetType(), accessor, protoSizer)
+			if nullableMsg || m.ValueField.IsBytes() {
+				p.Out()
+				p.P(`}`)
+			}
 			p.Out()
 			p.P(`}`)
 		} else if repeated {
@@ -1224,17 +1258,13 @@ func (p *marshalto) Generate(file *generator.FileDescriptor) {
 		}
 		if message.DescriptorProto.HasExtension() {
 			if gogoproto.HasExtensionsMap(file.FileDescriptorProto, message.DescriptorProto) {
-				p.P(`if len(m.XXX_extensions) > 0 {`)
-				p.In()
-				p.P(`n, err := `, p.protoPkg.Use(), `.EncodeExtensionMap(m.XXX_extensions, data[i:])`)
+				p.P(`n, err := `, p.protoPkg.Use(), `.EncodeInternalExtension(m, data[i:])`)
 				p.P(`if err != nil {`)
 				p.In()
 				p.P(`return 0, err`)
 				p.Out()
 				p.P(`}`)
 				p.P(`i+=n`)
-				p.Out()
-				p.P(`}`)
 			} else {
 				p.P(`if m.XXX_extensions != nil {`)
 				p.In()

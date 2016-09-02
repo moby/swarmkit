@@ -154,11 +154,12 @@ func valueToGoStringHealth(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringHealth(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+func extensionToGoStringHealth(m github_com_gogo_protobuf_proto.Message) string {
+	e := github_com_gogo_protobuf_proto.GetUnsafeExtensionsMap(m)
 	if e == nil {
 		return "nil"
 	}
-	s := "map[int32]proto.Extension{"
+	s := "proto.NewUnsafeXXX_InternalExtensions(map[int32]proto.Extension{"
 	keys := make([]int, 0, len(e))
 	for k := range e {
 		keys = append(keys, int(k))
@@ -168,7 +169,7 @@ func extensionToGoStringHealth(e map[int32]github_com_gogo_protobuf_proto.Extens
 	for _, k := range keys {
 		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
 	}
-	s += strings.Join(ss, ",") + "}"
+	s += strings.Join(ss, ",") + "})"
 	return s
 }
 
@@ -178,7 +179,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion2
+const _ = grpc.SupportPackageIsVersion3
 
 // Client API for Health service
 
@@ -240,7 +241,8 @@ var _Health_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Health_Check_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptorHealth,
 }
 
 func (m *HealthCheckRequest) Marshal() (data []byte, err error) {
@@ -400,7 +402,7 @@ func (p *raftProxyHealthServer) Check(ctx context.Context, r *HealthCheckRequest
 
 	resp, err := NewHealthClient(conn).Check(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -727,6 +729,8 @@ var (
 	ErrInvalidLengthHealth = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowHealth   = fmt.Errorf("proto: integer overflow")
 )
+
+func init() { proto.RegisterFile("health.proto", fileDescriptorHealth) }
 
 var fileDescriptorHealth = []byte{
 	// 291 bytes of a gzipped FileDescriptorProto
