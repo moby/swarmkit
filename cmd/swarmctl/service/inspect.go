@@ -106,6 +106,13 @@ func printServiceSummary(service *api.Service, running int) {
 		}
 	}
 
+	if len(ctr.Secrets) > 0 {
+		fmt.Fprintln(w, "  Secrets:")
+		for _, sr := range ctr.Secrets {
+			fmt.Fprintf(w, "    [%s] %s@%s:%s\n", sr.Mode, sr.SecretName, sr.SecretID, sr.Target)
+		}
+	}
+
 	if task.LogDriver != nil {
 		fmt.Fprintf(w, "  LogDriver\t: %s\n", task.LogDriver.Name)
 		var keys []string

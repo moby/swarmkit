@@ -252,6 +252,7 @@ func (s *session) watch(ctx context.Context) error {
 			}
 		}
 		if tasksWatch != nil {
+			// When falling back to Tasks because of an old managers, we wrap the tasks in assignments.
 			var taskResp *api.TasksMessage
 			var assignmentChanges []*api.AssignmentChange
 			taskResp, err = tasksWatch.Recv()
