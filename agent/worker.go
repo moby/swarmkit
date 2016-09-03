@@ -42,7 +42,7 @@ type worker struct {
 	db        *bolt.DB
 	executor  exec.Executor
 	listeners map[*statusReporterKey]struct{}
-	secrets   secrets
+	secrets   *secrets
 
 	taskManagers map[string]*taskManager
 	mu           sync.RWMutex
@@ -153,6 +153,11 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 
 	}
 
+	log.G(ctx).WithFields(logrus.Fields{
+		"len(updatedTasks)": len(updatedTasks),
+		"len(removedTasks)": len(removedTasks),
+	}).Debug("(*worker).reconcileTaskState")
+
 	tx, err := w.db.Begin(true)
 	if err != nil {
 		log.G(ctx).WithError(err).Error("failed starting transaction against task database")
@@ -253,28 +258,33 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 
 func reconcileSecrets(ctx context.Context, w *worker, assignments []*api.AssignmentChange, fullSnapshot bool) error {
 	var (
-		updatedSecrets []*api.Secret
-		removedSecrets []*api.Secret
+		updatedSecrets []api.Secret
+		removedSecrets []string
 	)
 	for _, a := range assignments {
 		if s, ok := a.Assignment.GetItem().(*api.Assignment_Secret); ok {
 			switch a.Action {
 			case api.AssignmentChange_AssignmentActionUpdate:
-				updatedSecrets = append(updatedSecrets, s.Secret)
+				updatedSecrets = append(updatedSecrets, *s.Secret)
 			case api.AssignmentChange_AssignmentActionRemove:
-				removedSecrets = append(removedSecrets, s.Secret)
+				removedSecrets = append(removedSecrets, s.Secret.ID)
 			}
 
 		}
 	}
 
+	log.G(ctx).WithFields(logrus.Fields{
+		"len(updatedSecrets)": len(updatedSecrets),
+		"len(removedSecrets)": len(removedSecrets),
+	}).Debug("(*worker).reconcileSecrets")
+
 	// If this was a complete set of secrets, we're going to clear the secrets map and add all of them
 	if fullSnapshot {
 		w.secrets.Reset()
 	} else {
-		w.secrets.RemoveSecret(removedSecrets)
+		w.secrets.Remove(removedSecrets)
 	}
-	w.secrets.AddSecret(updatedSecrets...)
+	w.secrets.Add(updatedSecrets...)
 
 	return nil
 }

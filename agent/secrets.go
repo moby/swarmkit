@@ -10,24 +10,24 @@ import (
 // mapped by secret ID
 type secrets struct {
 	mu sync.RWMutex
-	m  map[string]*api.Secret
+	m  map[string]api.Secret
 }
 
-func newSecrets() secrets {
-	return secrets{
-		m: make(map[string]*api.Secret),
+func newSecrets() *secrets {
+	return &secrets{
+		m: make(map[string]api.Secret),
 	}
 }
 
-// GetSecret returns a secret by ID.  If the secret doesn't exist, returns nil.
-func (s *secrets) GetSecret(secretID string) *api.Secret {
+// Get returns a secret by ID.  If the secret doesn't exist, returns nil.
+func (s *secrets) Get(secretID string) api.Secret {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.m[secretID]
 }
 
-// AddSecret adds one or more secrets to the secret map
-func (s *secrets) AddSecret(secrets ...*api.Secret) {
+// Add adds one or more secrets to the secret map
+func (s *secrets) Add(secrets ...api.Secret) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, secret := range secrets {
@@ -35,13 +35,13 @@ func (s *secrets) AddSecret(secrets ...*api.Secret) {
 	}
 }
 
-// RemoveSecret removes one or more secrets by ID from the secret map.  Succeeds
+// Remove removes one or more secrets by ID from the secret map.  Succeeds
 // whether or not the given IDs are in the map.
-func (s *secrets) RemoveSecret(secrets []*api.Secret) {
+func (s *secrets) Remove(secrets []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, secret := range secrets {
-		delete(s.m, secret.ID)
+		delete(s.m, secret)
 	}
 }
 
@@ -49,5 +49,5 @@ func (s *secrets) RemoveSecret(secrets []*api.Secret) {
 func (s *secrets) Reset() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.m = make(map[string]*api.Secret)
+	s.m = make(map[string]api.Secret)
 }

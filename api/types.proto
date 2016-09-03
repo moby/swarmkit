@@ -658,7 +658,6 @@ message RaftConfig {
 	uint32 election_tick = 5;
 }
 
-
 // Placement specifies task distribution constraints.
 message Placement {
 	// constraints specifies a set of requirements a node should meet for a task.

@@ -58,6 +58,12 @@ func printTaskSummary(task *api.Task, res *common.Resolver) {
 	common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))
 	common.FprintfIfNotEmpty(w, "  Args\t: [%s]\n", strings.Join(ctr.Args, ", "))
 	common.FprintfIfNotEmpty(w, "  Env\t: [%s]\n", strings.Join(ctr.Env, ", "))
+	if len(ctr.Secrets) > 0 {
+		fmt.Fprintln(w, "  Secrets:")
+		for _, sr := range ctr.Secrets {
+			fmt.Fprintf(w, "    [%s] %s@%s:%s\n", sr.Mode, sr.SecretName, sr.SecretID, sr.Target)
+		}
+	}
 }
 
 var (
