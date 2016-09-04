@@ -490,14 +490,57 @@ func TestRemoveService(t *testing.T) {
 }
 
 func TestValidateEndpointSpec(t *testing.T) {
-	err := validateEndpointSpec(&api.EndpointSpec{
+	endPointSpec1 := &api.EndpointSpec{
 		Mode: api.ResolutionModeDNSRoundRobin,
 		Ports: []*api.PortConfig{
 			{
-				Name: "http", TargetPort: 80,
+				Name:       "http",
+				TargetPort: 80,
 			},
 		},
-	})
+	}
+
+	endPointSpec2 := &api.EndpointSpec{
+		Mode: api.ResolutionModeVirtualIP,
+		Ports: []*api.PortConfig{
+			{
+				Name:          "http",
+				TargetPort:    81,
+				PublishedPort: 8001,
+			},
+			{
+				Name:          "http",
+				TargetPort:    80,
+				PublishedPort: 8000,
+			},
+		},
+	}
+
+	// has duplicated published port, invalid
+	endPointSpec3 := &api.EndpointSpec{
+		Mode: api.ResolutionModeVirtualIP,
+		Ports: []*api.PortConfig{
+			{
+				Name:          "http",
+				TargetPort:    81,
+				PublishedPort: 8001,
+			},
+			{
+				Name:          "http",
+				TargetPort:    80,
+				PublishedPort: 8001,
+			},
+		},
+	}
+
+	err := validateEndpointSpec(endPointSpec1)
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	err = validateEndpointSpec(endPointSpec2)
+	assert.NoError(t, err)
+
+	err = validateEndpointSpec(endPointSpec3)
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 }
