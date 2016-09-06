@@ -21,7 +21,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-import raftselector "github.com/docker/swarmkit/manager/raftselector"
+import raftpicker "github.com/docker/swarmkit/manager/raftpicker"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
@@ -449,11 +449,12 @@ func encodeVarintResource(data []byte, offset int, v uint64) int {
 
 type raftProxyResourceAllocatorServer struct {
 	local        ResourceAllocatorServer
-	connSelector raftselector.ConnProvider
+	connSelector raftpicker.Interface
+	cluster      raftpicker.RaftCluster
 	ctxMods      []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyResourceAllocatorServer(local ResourceAllocatorServer, connSelector raftselector.ConnProvider, ctxMod func(context.Context) (context.Context, error)) ResourceAllocatorServer {
+func NewRaftProxyResourceAllocatorServer(local ResourceAllocatorServer, connSelector raftpicker.Interface, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) ResourceAllocatorServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
@@ -475,6 +476,7 @@ func NewRaftProxyResourceAllocatorServer(local ResourceAllocatorServer, connSele
 
 	return &raftProxyResourceAllocatorServer{
 		local:        local,
+		cluster:      cluster,
 		connSelector: connSelector,
 		ctxMods:      mods,
 	}
@@ -492,33 +494,59 @@ func (p *raftProxyResourceAllocatorServer) runCtxMods(ctx context.Context) (cont
 
 func (p *raftProxyResourceAllocatorServer) AttachNetwork(ctx context.Context, r *AttachNetworkRequest) (*AttachNetworkResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.AttachNetwork(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.AttachNetwork(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewResourceAllocatorClient(conn).AttachNetwork(ctx, r)
 }
 
 func (p *raftProxyResourceAllocatorServer) DetachNetwork(ctx context.Context, r *DetachNetworkRequest) (*DetachNetworkResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.DetachNetwork(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.DetachNetwork(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewResourceAllocatorClient(conn).DetachNetwork(ctx, r)
 }
 
