@@ -134,8 +134,6 @@ func (w *worker) Assign(ctx context.Context, tasks []*api.Task) error {
 				if err := PutTaskStatus(tx, task.ID, &task.Status); err != nil {
 					return err
 				}
-
-				status = &task.Status
 			} else {
 				task.Status = *status // overwrite the stale manager status with ours.
 			}
