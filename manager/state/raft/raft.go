@@ -26,7 +26,6 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/raftselector"
 	"github.com/docker/swarmkit/manager/state/raft/membership"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/manager/state/watch"
@@ -829,52 +828,25 @@ func (n *Node) ResolveAddress(ctx context.Context, msg *api.ResolveAddressReques
 	return &api.ResolveAddressResponse{Addr: member.Addr}, nil
 }
 
-func (n *Node) getLeaderConn() (*grpc.ClientConn, error) {
-	leader, err := n.Leader()
-	if err != nil {
-		return nil, err
+// LeaderAddr returns address of current cluster leader.
+// With this method Node satisfies raftpicker.AddrSelector interface.
+func (n *Node) LeaderAddr() (string, error) {
+	ctx, cancel := context.WithTimeout(n.Ctx, 10*time.Second)
+	defer cancel()
+	if err := WaitForLeader(ctx, n); err != nil {
+		return "", ErrNoClusterLeader
 	}
-
-	if leader == n.Config.ID {
-		return nil, raftselector.ErrIsLeader
+	n.stopMu.RLock()
+	defer n.stopMu.RUnlock()
+	if !n.IsMember() {
+		return "", ErrNoRaftMember
 	}
-	l := n.cluster.Members()[leader]
+	ms := n.cluster.Members()
+	l := ms[n.leader()]
 	if l == nil {
-		return nil, fmt.Errorf("no leader found")
+		return "", ErrNoClusterLeader
 	}
-	if l.Conn == nil {
-		return nil, fmt.Errorf("no connection to leader in member list")
-	}
-	return l.Conn, nil
-}
-
-// LeaderConn returns current connection to cluster leader or raftselector.ErrIsLeader
-// if current machine is leader.
-func (n *Node) LeaderConn(ctx context.Context) (*grpc.ClientConn, error) {
-	cc, err := n.getLeaderConn()
-	if err == nil {
-		return cc, nil
-	}
-	if err == raftselector.ErrIsLeader {
-		return nil, err
-	}
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			cc, err := n.getLeaderConn()
-			if err == nil {
-				return cc, nil
-			}
-			if err == raftselector.ErrIsLeader {
-				return nil, err
-			}
-		case <-ctx.Done():
-			logrus.Errorf("context cancelled")
-			return nil, ctx.Err()
-		}
-	}
+	return l.Addr, nil
 }
 
 // registerNode registers a new node on the cluster memberlist
