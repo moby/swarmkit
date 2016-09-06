@@ -49,7 +49,7 @@ func (u *UpdateSupervisor) Update(ctx context.Context, cluster *api.Cluster, ser
 	id := service.ID
 
 	if update, ok := u.updates[id]; ok {
-		if !update.isServiceDirty(service) {
+		if reflect.DeepEqual(service.Spec, update.newService.Spec) {
 			// There's already an update working towards this goal.
 			return
 		}
@@ -373,11 +373,6 @@ func (u *Updater) removeOldTasks(ctx context.Context, batch *store.Batch, remove
 func (u *Updater) isTaskDirty(t *api.Task) bool {
 	return !reflect.DeepEqual(u.newService.Spec.Task, t.Spec) ||
 		(t.Endpoint != nil && !reflect.DeepEqual(u.newService.Spec.Endpoint, t.Endpoint.Spec))
-}
-
-func (u *Updater) isServiceDirty(service *api.Service) bool {
-	return !reflect.DeepEqual(u.newService.Spec.Task, service.Spec.Task) ||
-		!reflect.DeepEqual(u.newService.Spec.Endpoint, service.Spec.Endpoint)
 }
 
 func (u *Updater) isSlotDirty(slot slot) bool {
