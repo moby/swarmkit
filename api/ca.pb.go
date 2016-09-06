@@ -21,7 +21,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-import raftpicker "github.com/docker/swarmkit/manager/raftpicker"
+import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
@@ -668,12 +668,11 @@ func encodeVarintCa(data []byte, offset int, v uint64) int {
 
 type raftProxyCAServer struct {
 	local        CAServer
-	connSelector raftpicker.Interface
-	cluster      raftpicker.RaftCluster
+	connSelector raftselector.ConnProvider
 	ctxMods      []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyCAServer(local CAServer, connSelector raftpicker.Interface, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) CAServer {
+func NewRaftProxyCAServer(local CAServer, connSelector raftselector.ConnProvider, ctxMod func(context.Context) (context.Context, error)) CAServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
@@ -695,7 +694,6 @@ func NewRaftProxyCAServer(local CAServer, connSelector raftpicker.Interface, clu
 
 	return &raftProxyCAServer{
 		local:        local,
-		cluster:      cluster,
 		connSelector: connSelector,
 		ctxMods:      mods,
 	}
@@ -713,41 +711,27 @@ func (p *raftProxyCAServer) runCtxMods(ctx context.Context) (context.Context, er
 
 func (p *raftProxyCAServer) GetRootCACertificate(ctx context.Context, r *GetRootCACertificateRequest) (*GetRootCACertificateResponse, error) {
 
-	if p.cluster.IsLeader() {
-		return p.local.GetRootCACertificate(ctx, r)
-	}
-	ctx, err := p.runCtxMods(ctx)
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		return nil, err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
-				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
-				strings.Contains(errStr, "connection error") ||
-				grpc.Code(err) == codes.Internal {
-				p.connSelector.Reset()
-			}
+		if err == raftselector.ErrIsLeader {
+			return p.local.GetRootCACertificate(ctx, r)
 		}
-	}()
-
+		return nil, err
+	}
+	ctx, err = p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return NewCAClient(conn).GetRootCACertificate(ctx, r)
 }
 
 type raftProxyNodeCAServer struct {
 	local        NodeCAServer
-	connSelector raftpicker.Interface
-	cluster      raftpicker.RaftCluster
+	connSelector raftselector.ConnProvider
 	ctxMods      []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyNodeCAServer(local NodeCAServer, connSelector raftpicker.Interface, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) NodeCAServer {
+func NewRaftProxyNodeCAServer(local NodeCAServer, connSelector raftselector.ConnProvider, ctxMod func(context.Context) (context.Context, error)) NodeCAServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
@@ -769,7 +753,6 @@ func NewRaftProxyNodeCAServer(local NodeCAServer, connSelector raftpicker.Interf
 
 	return &raftProxyNodeCAServer{
 		local:        local,
-		cluster:      cluster,
 		connSelector: connSelector,
 		ctxMods:      mods,
 	}
@@ -787,59 +770,33 @@ func (p *raftProxyNodeCAServer) runCtxMods(ctx context.Context) (context.Context
 
 func (p *raftProxyNodeCAServer) IssueNodeCertificate(ctx context.Context, r *IssueNodeCertificateRequest) (*IssueNodeCertificateResponse, error) {
 
-	if p.cluster.IsLeader() {
-		return p.local.IssueNodeCertificate(ctx, r)
-	}
-	ctx, err := p.runCtxMods(ctx)
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		return nil, err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
-				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
-				strings.Contains(errStr, "connection error") ||
-				grpc.Code(err) == codes.Internal {
-				p.connSelector.Reset()
-			}
+		if err == raftselector.ErrIsLeader {
+			return p.local.IssueNodeCertificate(ctx, r)
 		}
-	}()
-
+		return nil, err
+	}
+	ctx, err = p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return NewNodeCAClient(conn).IssueNodeCertificate(ctx, r)
 }
 
 func (p *raftProxyNodeCAServer) NodeCertificateStatus(ctx context.Context, r *NodeCertificateStatusRequest) (*NodeCertificateStatusResponse, error) {
 
-	if p.cluster.IsLeader() {
-		return p.local.NodeCertificateStatus(ctx, r)
-	}
-	ctx, err := p.runCtxMods(ctx)
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		return nil, err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
-				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
-				strings.Contains(errStr, "connection error") ||
-				grpc.Code(err) == codes.Internal {
-				p.connSelector.Reset()
-			}
+		if err == raftselector.ErrIsLeader {
+			return p.local.NodeCertificateStatus(ctx, r)
 		}
-	}()
-
+		return nil, err
+	}
+	ctx, err = p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return NewNodeCAClient(conn).NodeCertificateStatus(ctx, r)
 }
 
