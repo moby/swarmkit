@@ -22,7 +22,7 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-import raftselector "github.com/docker/swarmkit/manager/raftselector"
+import raftpicker "github.com/docker/swarmkit/manager/raftpicker"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
@@ -4239,11 +4239,12 @@ func encodeVarintControl(data []byte, offset int, v uint64) int {
 
 type raftProxyControlServer struct {
 	local        ControlServer
-	connSelector raftselector.ConnProvider
+	connSelector raftpicker.Interface
+	cluster      raftpicker.RaftCluster
 	ctxMods      []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyControlServer(local ControlServer, connSelector raftselector.ConnProvider, ctxMod func(context.Context) (context.Context, error)) ControlServer {
+func NewRaftProxyControlServer(local ControlServer, connSelector raftpicker.Interface, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) ControlServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
@@ -4265,6 +4266,7 @@ func NewRaftProxyControlServer(local ControlServer, connSelector raftselector.Co
 
 	return &raftProxyControlServer{
 		local:        local,
+		cluster:      cluster,
 		connSelector: connSelector,
 		ctxMods:      mods,
 	}
@@ -4282,305 +4284,552 @@ func (p *raftProxyControlServer) runCtxMods(ctx context.Context) (context.Contex
 
 func (p *raftProxyControlServer) GetNode(ctx context.Context, r *GetNodeRequest) (*GetNodeResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.GetNode(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.GetNode(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).GetNode(ctx, r)
 }
 
 func (p *raftProxyControlServer) ListNodes(ctx context.Context, r *ListNodesRequest) (*ListNodesResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.ListNodes(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.ListNodes(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).ListNodes(ctx, r)
 }
 
 func (p *raftProxyControlServer) UpdateNode(ctx context.Context, r *UpdateNodeRequest) (*UpdateNodeResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.UpdateNode(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.UpdateNode(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).UpdateNode(ctx, r)
 }
 
 func (p *raftProxyControlServer) RemoveNode(ctx context.Context, r *RemoveNodeRequest) (*RemoveNodeResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.RemoveNode(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.RemoveNode(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).RemoveNode(ctx, r)
 }
 
 func (p *raftProxyControlServer) GetTask(ctx context.Context, r *GetTaskRequest) (*GetTaskResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.GetTask(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.GetTask(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).GetTask(ctx, r)
 }
 
 func (p *raftProxyControlServer) ListTasks(ctx context.Context, r *ListTasksRequest) (*ListTasksResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.ListTasks(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.ListTasks(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).ListTasks(ctx, r)
 }
 
 func (p *raftProxyControlServer) RemoveTask(ctx context.Context, r *RemoveTaskRequest) (*RemoveTaskResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.RemoveTask(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.RemoveTask(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).RemoveTask(ctx, r)
 }
 
 func (p *raftProxyControlServer) GetService(ctx context.Context, r *GetServiceRequest) (*GetServiceResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.GetService(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.GetService(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).GetService(ctx, r)
 }
 
 func (p *raftProxyControlServer) ListServices(ctx context.Context, r *ListServicesRequest) (*ListServicesResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.ListServices(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.ListServices(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).ListServices(ctx, r)
 }
 
 func (p *raftProxyControlServer) CreateService(ctx context.Context, r *CreateServiceRequest) (*CreateServiceResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.CreateService(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.CreateService(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).CreateService(ctx, r)
 }
 
 func (p *raftProxyControlServer) UpdateService(ctx context.Context, r *UpdateServiceRequest) (*UpdateServiceResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.UpdateService(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.UpdateService(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).UpdateService(ctx, r)
 }
 
 func (p *raftProxyControlServer) RemoveService(ctx context.Context, r *RemoveServiceRequest) (*RemoveServiceResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.RemoveService(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.RemoveService(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).RemoveService(ctx, r)
 }
 
 func (p *raftProxyControlServer) GetNetwork(ctx context.Context, r *GetNetworkRequest) (*GetNetworkResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.GetNetwork(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.GetNetwork(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).GetNetwork(ctx, r)
 }
 
 func (p *raftProxyControlServer) ListNetworks(ctx context.Context, r *ListNetworksRequest) (*ListNetworksResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.ListNetworks(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.ListNetworks(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).ListNetworks(ctx, r)
 }
 
 func (p *raftProxyControlServer) CreateNetwork(ctx context.Context, r *CreateNetworkRequest) (*CreateNetworkResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.CreateNetwork(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.CreateNetwork(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).CreateNetwork(ctx, r)
 }
 
 func (p *raftProxyControlServer) RemoveNetwork(ctx context.Context, r *RemoveNetworkRequest) (*RemoveNetworkResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.RemoveNetwork(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.RemoveNetwork(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).RemoveNetwork(ctx, r)
 }
 
 func (p *raftProxyControlServer) GetCluster(ctx context.Context, r *GetClusterRequest) (*GetClusterResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.GetCluster(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.GetCluster(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).GetCluster(ctx, r)
 }
 
 func (p *raftProxyControlServer) ListClusters(ctx context.Context, r *ListClustersRequest) (*ListClustersResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.ListClusters(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.ListClusters(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).ListClusters(ctx, r)
 }
 
 func (p *raftProxyControlServer) UpdateCluster(ctx context.Context, r *UpdateClusterRequest) (*UpdateClusterResponse, error) {
 
-	conn, err := p.connSelector.LeaderConn(ctx)
+	if p.cluster.IsLeader() {
+		return p.local.UpdateCluster(ctx, r)
+	}
+	ctx, err := p.runCtxMods(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.UpdateCluster(ctx, r)
+		return nil, err
+	}
+	conn, err := p.connSelector.Conn()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
+				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
+				strings.Contains(errStr, "connection error") ||
+				grpc.Code(err) == codes.Internal {
+				p.connSelector.Reset()
+			}
 		}
-		return nil, err
-	}
-	ctx, err = p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
+	}()
+
 	return NewControlClient(conn).UpdateCluster(ctx, r)
 }
 
