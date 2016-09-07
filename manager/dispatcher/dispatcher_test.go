@@ -603,6 +603,7 @@ func TestTaskUpdate(t *testing.T) {
 		nodeID = resp.Node.ID
 
 	}
+	// testTask1 and testTask2 are advanced from NEW to ASSIGNED.
 	testTask1 := &api.Task{
 		ID:     "testTask1",
 		NodeID: nodeID,
@@ -611,14 +612,26 @@ func TestTaskUpdate(t *testing.T) {
 		ID:     "testTask2",
 		NodeID: nodeID,
 	}
+	// testTask3 is used to confirm that status updates for a task not
+	// assigned to the node sending the update are rejected.
 	testTask3 := &api.Task{
 		ID:     "testTask3",
 		NodeID: "differentnode",
+	}
+	// testTask4 is used to confirm that a task's state is not allowed to
+	// move backwards.
+	testTask4 := &api.Task{
+		ID:     "testTask4",
+		NodeID: nodeID,
+		Status: api.TaskStatus{
+			State: api.TaskStateShutdown,
+		},
 	}
 	err = gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateTask(tx, testTask1))
 		assert.NoError(t, store.CreateTask(tx, testTask2))
 		assert.NoError(t, store.CreateTask(tx, testTask3))
+		assert.NoError(t, store.CreateTask(tx, testTask4))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -626,6 +639,7 @@ func TestTaskUpdate(t *testing.T) {
 	testTask1.Status = api.TaskStatus{State: api.TaskStateAssigned}
 	testTask2.Status = api.TaskStatus{State: api.TaskStateAssigned}
 	testTask3.Status = api.TaskStatus{State: api.TaskStateAssigned}
+	testTask4.Status = api.TaskStatus{State: api.TaskStateRunning}
 	updReq := &api.UpdateTaskStatusRequest{
 		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
 			{
@@ -635,6 +649,10 @@ func TestTaskUpdate(t *testing.T) {
 			{
 				TaskID: testTask2.ID,
 				Status: &testTask2.Status,
+			},
+			{
+				TaskID: testTask4.ID,
+				Status: &testTask4.Status,
 			},
 		},
 	}
@@ -671,18 +689,20 @@ func TestTaskUpdate(t *testing.T) {
 	gd.Store.View(func(readTx store.ReadTx) {
 		storeTask1 := store.GetTask(readTx, testTask1.ID)
 		assert.NotNil(t, storeTask1)
-		assert.NotNil(t, storeTask1.Status)
 		storeTask2 := store.GetTask(readTx, testTask2.ID)
 		assert.NotNil(t, storeTask2)
-		assert.NotNil(t, storeTask2.Status)
 		assert.Equal(t, storeTask1.Status.State, api.TaskStateAssigned)
 		assert.Equal(t, storeTask2.Status.State, api.TaskStateAssigned)
 
 		storeTask3 := store.GetTask(readTx, testTask3.ID)
 		assert.NotNil(t, storeTask3)
-		assert.NotNil(t, storeTask3.Status)
 		assert.Equal(t, storeTask3.Status.State, api.TaskStateNew)
 
+		// The update to task4's state should be ignored because it
+		// would have moved backwards.
+		storeTask4 := store.GetTask(readTx, testTask4.ID)
+		assert.NotNil(t, storeTask4)
+		assert.Equal(t, storeTask4.Status.State, api.TaskStateShutdown)
 	})
 
 }
