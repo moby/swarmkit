@@ -237,9 +237,13 @@ func (u *Updater) worker(ctx context.Context, queue <-chan slot) {
 			}
 		}
 		if runningTask != nil {
-			u.useExistingTask(ctx, slot, runningTask)
+			if err := u.useExistingTask(ctx, slot, runningTask); err != nil {
+				log.G(ctx).WithError(err).Error("update failed")
+			}
 		} else if cleanTask != nil {
-			u.useExistingTask(ctx, slot, cleanTask)
+			if err := u.useExistingTask(ctx, slot, cleanTask); err != nil {
+				log.G(ctx).WithError(err).Error("update failed")
+			}
 		} else {
 			updated := newTask(u.cluster, u.newService, slot[0].Slot)
 			updated.DesiredState = api.TaskStateReady
@@ -278,7 +282,12 @@ func (u *Updater) updateTask(ctx context.Context, slot slot, updated *api.Task) 
 	var delayStartCh <-chan struct{}
 	// Atomically create the updated task and bring down the old one.
 	_, err := u.store.Batch(func(batch *store.Batch) error {
-		err := batch.Update(func(tx store.Tx) error {
+		oldTask, err := u.removeOldTasks(ctx, batch, slot)
+		if err != nil {
+			return err
+		}
+
+		err = batch.Update(func(tx store.Tx) error {
 			if err := store.CreateTask(tx, updated); err != nil {
 				return err
 			}
@@ -288,7 +297,6 @@ func (u *Updater) updateTask(ctx context.Context, slot slot, updated *api.Task) 
 			return err
 		}
 
-		oldTask := u.removeOldTasks(ctx, batch, slot)
 		delayStartCh = u.restarts.DelayStart(ctx, nil, oldTask, updated.ID, 0, true)
 
 		return nil
@@ -317,7 +325,7 @@ func (u *Updater) updateTask(ctx context.Context, slot slot, updated *api.Task) 
 	}
 }
 
-func (u *Updater) useExistingTask(ctx context.Context, slot slot, existing *api.Task) {
+func (u *Updater) useExistingTask(ctx context.Context, slot slot, existing *api.Task) error {
 	var removeTasks []*api.Task
 	for _, t := range slot {
 		if t != existing {
@@ -327,7 +335,14 @@ func (u *Updater) useExistingTask(ctx context.Context, slot slot, existing *api.
 	if len(removeTasks) != 0 || existing.DesiredState != api.TaskStateRunning {
 		var delayStartCh <-chan struct{}
 		_, err := u.store.Batch(func(batch *store.Batch) error {
-			oldTask := u.removeOldTasks(ctx, batch, removeTasks)
+			var oldTask *api.Task
+			if len(removeTasks) != 0 {
+				var err error
+				oldTask, err = u.removeOldTasks(ctx, batch, removeTasks)
+				if err != nil {
+					return err
+				}
+			}
 
 			if existing.DesiredState != api.TaskStateRunning {
 				delayStartCh = u.restarts.DelayStart(ctx, nil, oldTask, existing.ID, 0, true)
@@ -335,19 +350,24 @@ func (u *Updater) useExistingTask(ctx context.Context, slot slot, existing *api.
 			return nil
 		})
 		if err != nil {
-			log.G(ctx).WithError(err).Error("updater batch transaction failed")
+			return err
 		}
 
 		if delayStartCh != nil {
 			<-delayStartCh
 		}
 	}
+
+	return nil
 }
 
 // removeOldTasks shuts down the given tasks and returns one of the tasks that
-// was shut down, or nil.
-func (u *Updater) removeOldTasks(ctx context.Context, batch *store.Batch, removeTasks []*api.Task) *api.Task {
-	var removedTask *api.Task
+// was shut down, or an error.
+func (u *Updater) removeOldTasks(ctx context.Context, batch *store.Batch, removeTasks []*api.Task) (*api.Task, error) {
+	var (
+		lastErr     error
+		removedTask *api.Task
+	)
 	for _, original := range removeTasks {
 		err := batch.Update(func(tx store.Tx) error {
 			t := store.GetTask(tx, original.ID)
@@ -361,13 +381,16 @@ func (u *Updater) removeOldTasks(ctx context.Context, batch *store.Batch, remove
 			return store.UpdateTask(tx, t)
 		})
 		if err != nil {
-			log.G(ctx).WithError(err).Errorf("shutting down stale task %s failed", original.ID)
+			lastErr = err
 		} else {
 			removedTask = original
 		}
 	}
 
-	return removedTask
+	if removedTask == nil {
+		return nil, lastErr
+	}
+	return removedTask, nil
 }
 
 func (u *Updater) isTaskDirty(t *api.Task) bool {
