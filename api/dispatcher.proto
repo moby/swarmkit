@@ -47,6 +47,7 @@ service Dispatcher { // maybe dispatch, al likes this
 	// it should be terminated.
 	rpc Tasks(TasksRequest) returns (stream TasksMessage) {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-worker" roles: "swarm-manager" };
+		option deprecated = true;
 	};
 
 	// Assignments is a stream of assignments such as tasks and secrets for node.
