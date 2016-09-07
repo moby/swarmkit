@@ -874,7 +874,6 @@ func (n *Node) LeaderConn(ctx context.Context) (*grpc.ClientConn, error) {
 				return nil, err
 			}
 		case <-ctx.Done():
-			logrus.Errorf("context cancelled")
 			return nil, ctx.Err()
 		}
 	}

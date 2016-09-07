@@ -26,6 +26,7 @@ import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
+import time "time"
 
 import io "io"
 
@@ -1125,6 +1126,25 @@ func (p *raftProxyDispatcherServer) runCtxMods(ctx context.Context) (context.Con
 	}
 	return ctx, nil
 }
+func (p *raftProxyDispatcherServer) pollNewLeaderConn(ctx context.Context, oldConn *grpc.ClientConn) (*grpc.ClientConn, error) {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			conn, err := p.connSelector.LeaderConn(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if conn == oldConn {
+				continue
+			}
+			return conn, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+}
 
 func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher_SessionServer) error {
 
@@ -1170,11 +1190,26 @@ func (p *raftProxyDispatcherServer) Heartbeat(ctx context.Context, r *HeartbeatR
 		}
 		return nil, err
 	}
-	ctx, err = p.runCtxMods(ctx)
+	modCtx, err := p.runCtxMods(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return NewDispatcherClient(conn).Heartbeat(ctx, r)
+
+	resp, err := NewDispatcherClient(conn).Heartbeat(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx, conn)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.Heartbeat(ctx, r)
+			}
+			return nil, err
+		}
+		return NewDispatcherClient(conn).Heartbeat(modCtx, r)
+	}
+	return resp, err
 }
 
 func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *UpdateTaskStatusRequest) (*UpdateTaskStatusResponse, error) {
@@ -1186,11 +1221,26 @@ func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *Upd
 		}
 		return nil, err
 	}
-	ctx, err = p.runCtxMods(ctx)
+	modCtx, err := p.runCtxMods(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return NewDispatcherClient(conn).UpdateTaskStatus(ctx, r)
+
+	resp, err := NewDispatcherClient(conn).UpdateTaskStatus(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx, conn)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.UpdateTaskStatus(ctx, r)
+			}
+			return nil, err
+		}
+		return NewDispatcherClient(conn).UpdateTaskStatus(modCtx, r)
+	}
+	return resp, err
 }
 
 func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_TasksServer) error {

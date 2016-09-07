@@ -25,6 +25,7 @@ import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
+import time "time"
 
 import io "io"
 
@@ -359,6 +360,25 @@ func (p *raftProxyHealthServer) runCtxMods(ctx context.Context) (context.Context
 	}
 	return ctx, nil
 }
+func (p *raftProxyHealthServer) pollNewLeaderConn(ctx context.Context, oldConn *grpc.ClientConn) (*grpc.ClientConn, error) {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			conn, err := p.connSelector.LeaderConn(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if conn == oldConn {
+				continue
+			}
+			return conn, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+}
 
 func (p *raftProxyHealthServer) Check(ctx context.Context, r *HealthCheckRequest) (*HealthCheckResponse, error) {
 
@@ -369,11 +389,26 @@ func (p *raftProxyHealthServer) Check(ctx context.Context, r *HealthCheckRequest
 		}
 		return nil, err
 	}
-	ctx, err = p.runCtxMods(ctx)
+	modCtx, err := p.runCtxMods(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return NewHealthClient(conn).Check(ctx, r)
+
+	resp, err := NewHealthClient(conn).Check(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx, conn)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.Check(ctx, r)
+			}
+			return nil, err
+		}
+		return NewHealthClient(conn).Check(modCtx, r)
+	}
+	return resp, err
 }
 
 func (m *HealthCheckRequest) Size() (n int) {

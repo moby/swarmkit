@@ -25,6 +25,7 @@ import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
+import time "time"
 
 import io "io"
 
@@ -708,6 +709,25 @@ func (p *raftProxyCAServer) runCtxMods(ctx context.Context) (context.Context, er
 	}
 	return ctx, nil
 }
+func (p *raftProxyCAServer) pollNewLeaderConn(ctx context.Context, oldConn *grpc.ClientConn) (*grpc.ClientConn, error) {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			conn, err := p.connSelector.LeaderConn(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if conn == oldConn {
+				continue
+			}
+			return conn, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+}
 
 func (p *raftProxyCAServer) GetRootCACertificate(ctx context.Context, r *GetRootCACertificateRequest) (*GetRootCACertificateResponse, error) {
 
@@ -718,11 +738,26 @@ func (p *raftProxyCAServer) GetRootCACertificate(ctx context.Context, r *GetRoot
 		}
 		return nil, err
 	}
-	ctx, err = p.runCtxMods(ctx)
+	modCtx, err := p.runCtxMods(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return NewCAClient(conn).GetRootCACertificate(ctx, r)
+
+	resp, err := NewCAClient(conn).GetRootCACertificate(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx, conn)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.GetRootCACertificate(ctx, r)
+			}
+			return nil, err
+		}
+		return NewCAClient(conn).GetRootCACertificate(modCtx, r)
+	}
+	return resp, err
 }
 
 type raftProxyNodeCAServer struct {
@@ -767,6 +802,25 @@ func (p *raftProxyNodeCAServer) runCtxMods(ctx context.Context) (context.Context
 	}
 	return ctx, nil
 }
+func (p *raftProxyNodeCAServer) pollNewLeaderConn(ctx context.Context, oldConn *grpc.ClientConn) (*grpc.ClientConn, error) {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			conn, err := p.connSelector.LeaderConn(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if conn == oldConn {
+				continue
+			}
+			return conn, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+}
 
 func (p *raftProxyNodeCAServer) IssueNodeCertificate(ctx context.Context, r *IssueNodeCertificateRequest) (*IssueNodeCertificateResponse, error) {
 
@@ -777,11 +831,26 @@ func (p *raftProxyNodeCAServer) IssueNodeCertificate(ctx context.Context, r *Iss
 		}
 		return nil, err
 	}
-	ctx, err = p.runCtxMods(ctx)
+	modCtx, err := p.runCtxMods(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return NewNodeCAClient(conn).IssueNodeCertificate(ctx, r)
+
+	resp, err := NewNodeCAClient(conn).IssueNodeCertificate(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx, conn)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.IssueNodeCertificate(ctx, r)
+			}
+			return nil, err
+		}
+		return NewNodeCAClient(conn).IssueNodeCertificate(modCtx, r)
+	}
+	return resp, err
 }
 
 func (p *raftProxyNodeCAServer) NodeCertificateStatus(ctx context.Context, r *NodeCertificateStatusRequest) (*NodeCertificateStatusResponse, error) {
@@ -793,11 +862,26 @@ func (p *raftProxyNodeCAServer) NodeCertificateStatus(ctx context.Context, r *No
 		}
 		return nil, err
 	}
-	ctx, err = p.runCtxMods(ctx)
+	modCtx, err := p.runCtxMods(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return NewNodeCAClient(conn).NodeCertificateStatus(ctx, r)
+
+	resp, err := NewNodeCAClient(conn).NodeCertificateStatus(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx, conn)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.NodeCertificateStatus(ctx, r)
+			}
+			return nil, err
+		}
+		return NewNodeCAClient(conn).NodeCertificateStatus(modCtx, r)
+	}
+	return resp, err
 }
 
 func (m *NodeCertificateStatusRequest) Size() (n int) {
