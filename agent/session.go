@@ -231,7 +231,10 @@ func (s *session) watch(ctx context.Context) error {
 		if assignmentWatch != nil {
 			// If we get a code = 12 desc = unknown method Assignments, try to use tasks
 			resp, err = assignmentWatch.Recv()
-			if err != nil && grpc.Code(err) == codes.Unimplemented {
+			if err != nil {
+				if grpc.Code(err) != codes.Unimplemented {
+					return err
+				}
 				tasksFallback = true
 				assignmentWatch = nil
 				log.WithError(err).Errorf("falling back to Tasks")
@@ -275,7 +278,6 @@ func (s *session) watch(ctx context.Context) error {
 
 // sendTaskStatus uses the current session to send the status of a single task.
 func (s *session) sendTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error {
-
 	client := api.NewDispatcherClient(s.conn)
 	if _, err := client.UpdateTaskStatus(ctx, &api.UpdateTaskStatusRequest{
 		SessionID: s.sessionID,

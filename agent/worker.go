@@ -17,13 +17,13 @@ type Worker interface {
 	// Init prepares the worker for task assignment.
 	Init(ctx context.Context) error
 
-	// Assign a complete set of tasks to a worker. Any task not included in
+	// AssignTasks assigns a complete set of tasks to a worker. Any task not included in
 	// this set will be removed.
-	Assign(ctx context.Context, tasks []*api.Task) error
+	AssignTasks(ctx context.Context, tasks []*api.Task) error
 
-	// Update an incremental set of tasks to the worker. Any task not included
+	// UpdateTasks updates an incremental set of tasks to the worker. Any task not included
 	// either in added or removed will remain untouched.
-	Update(ctx context.Context, added []*api.Task, removed []string) error
+	UpdateTasks(ctx context.Context, added []*api.Task, removed []string) error
 
 	// Listen to updates about tasks controlled by the worker. When first
 	// called, the reporter will receive all updates for all tasks controlled
@@ -90,37 +90,37 @@ func (w *worker) Init(ctx context.Context) error {
 	})
 }
 
-// Assign the set of tasks to the worker. Any tasks not previously known will
+// AssignTasks assigns  the set of tasks to the worker. Any tasks not previously known will
 // be started. Any tasks that are in the task set and already running will be
 // updated, if possible. Any tasks currently running on the
 // worker outside the task set will be terminated.
-func (w *worker) Assign(ctx context.Context, tasks []*api.Task) error {
+func (w *worker) AssignTasks(ctx context.Context, tasks []*api.Task) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	log.G(ctx).WithFields(logrus.Fields{
 		"len(tasks)": len(tasks),
-	}).Debug("(*worker).Assign")
+	}).Debug("(*worker).AssignTasks")
 
 	return reconcileTaskState(ctx, w, tasks, nil, true)
 }
 
-// Update the set of tasks to the worker.
+// UpdateTasks the set of tasks to the worker.
 // Tasks in the added set will be added to the worker, and tasks in the removed set
 // will be removed from the worker
-func (w *worker) Update(ctx context.Context, added []*api.Task, removed []string) error {
+func (w *worker) UpdateTasks(ctx context.Context, added []*api.Task, removed []string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	log.G(ctx).WithFields(logrus.Fields{
 		"len(added)":   len(added),
 		"len(removed)": len(removed),
-	}).Debug("(*worker).Update")
+	}).Debug("(*worker).UpdateTasks")
 
 	return reconcileTaskState(ctx, w, added, removed, false)
 }
 
-func reconcileTaskState(ctx context.Context, w *worker, added []*api.Task, removed []string, full_snapshot bool) error {
+func reconcileTaskState(ctx context.Context, w *worker, added []*api.Task, removed []string, fullSnapshot bool) error {
 	tx, err := w.db.Begin(true)
 	if err != nil {
 		log.G(ctx).WithError(err).Error("failed starting transaction against task database")
@@ -187,7 +187,7 @@ func reconcileTaskState(ctx context.Context, w *worker, added []*api.Task, remov
 
 	// If this was a complete set of assignments, we're going to remove all the remaining
 	// tasks.
-	if full_snapshot {
+	if fullSnapshot {
 		for id, tm := range w.taskManagers {
 			if _, ok := assigned[id]; ok {
 				continue
