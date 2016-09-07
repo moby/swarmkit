@@ -53,7 +53,7 @@ func TestWorker(t *testing.T) {
 		// TODO(stevvooe): There are a few more states here we need to get
 		// covered to ensure correct during code changes.
 	} {
-		assert.NoError(t, worker.Assign(ctx, testcase.taskSet))
+		assert.NoError(t, worker.AssignTasks(ctx, testcase.taskSet))
 
 		var (
 			tasks    []*api.Task

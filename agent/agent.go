@@ -171,11 +171,11 @@ func (a *Agent) run(ctx context.Context) {
 		case msg := <-session.assignments:
 			switch msg.Type {
 			case api.AssignmentsMessage_COMPLETE:
-				if err := a.worker.Assign(ctx, msg.UpdateTasks); err != nil {
+				if err := a.worker.AssignTasks(ctx, msg.UpdateTasks); err != nil {
 					log.G(ctx).WithError(err).Error("failed to assign worker assignments")
 				}
 			case api.AssignmentsMessage_INCREMENTAL:
-				if err := a.worker.Update(ctx, msg.UpdateTasks, msg.RemoveTasks); err != nil {
+				if err := a.worker.UpdateTasks(ctx, msg.UpdateTasks, msg.RemoveTasks); err != nil {
 					log.G(ctx).WithError(err).Error("failed to update worker assignments")
 				}
 			}
