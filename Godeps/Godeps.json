@@ -16,8 +16,8 @@
 		},
 		{
 			"ImportPath": "github.com/boltdb/bolt",
-			"Comment": "v1.1.0-67-g2f846c3",
-			"Rev": "2f846c3551b76d7710f159be840d66c3d064abbe"
+			"Comment": "v1.3.0-13-ge72f08d",
+			"Rev": "e72f08ddb5a52992c0a44c7dda9316c7333938b2"
 		},
 		{
 			"ImportPath": "github.com/cloudflare/cfssl/api",
