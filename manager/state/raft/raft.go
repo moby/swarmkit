@@ -177,7 +177,7 @@ func NewNode(ctx context.Context, opts NewNodeOptions) *Node {
 	n := &Node{
 		Ctx:            ctx,
 		cancel:         cancel,
-		cluster:        membership.NewCluster(cfg.ElectionTick),
+		cluster:        membership.NewCluster(2 * cfg.ElectionTick),
 		tlsCredentials: opts.TLSCredentials,
 		raftStore:      raftStore,
 		Address:        opts.Addr,
