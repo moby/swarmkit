@@ -235,11 +235,26 @@ func (g *raftProxyGen) genSimpleMethod(s *descriptor.ServiceDescriptorProto, m *
 		}
 		return nil, err
 	}
-	ctx, err = p.runCtxMods(ctx)
+	modCtx, err := p.runCtxMods(ctx)
 	if err != nil {
 		return nil, err
 	}`)
-	g.gen.P("return New" + s.GetName() + "Client(conn)." + m.GetName() + "(ctx, r)")
+	g.gen.P(`
+	resp, err := New` + s.GetName() + `Client(conn).` + m.GetName() + `(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx, conn)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.` + m.GetName() + `(ctx, r)
+			}
+			return nil, err
+		}
+		return New` + s.GetName() + `Client(conn).` + m.GetName() + `(modCtx, r)
+	}`)
+	g.gen.P("return resp, err")
 	g.gen.P("}")
 }
 
@@ -258,12 +273,35 @@ func (g *raftProxyGen) genProxyMethod(s *descriptor.ServiceDescriptorProto, m *d
 	g.gen.P()
 }
 
+func (g *raftProxyGen) genPollNewLeaderConn(s *descriptor.ServiceDescriptorProto) {
+	g.gen.P(`func (p *` + serviceTypeName(s) + `) pollNewLeaderConn(ctx context.Context, oldConn *grpc.ClientConn) (*grpc.ClientConn, error) {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				conn, err := p.connSelector.LeaderConn(ctx)
+				if err != nil {
+					return nil, err
+				}
+				if conn == oldConn {
+					continue
+				}
+				return conn, nil
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+	}`)
+}
+
 func (g *raftProxyGen) Generate(file *generator.FileDescriptor) {
 	g.gen.P()
 	for _, s := range file.Service {
 		g.genProxyStruct(s)
 		g.genProxyConstructor(s)
 		g.genRunCtxMods(s)
+		g.genPollNewLeaderConn(s)
 		for _, m := range s.Method {
 			g.genProxyMethod(s, m)
 		}
@@ -279,4 +317,5 @@ func (g *raftProxyGen) GenerateImports(file *generator.FileDescriptor) {
 	g.gen.P("import codes \"google.golang.org/grpc/codes\"")
 	g.gen.P("import metadata \"google.golang.org/grpc/metadata\"")
 	g.gen.P("import transport \"google.golang.org/grpc/transport\"")
+	g.gen.P("import time \"time\"")
 }
