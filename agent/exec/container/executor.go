@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	engineapi "github.com/docker/engine-api/client"
+	engineapi "github.com/docker/docker/client"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"golang.org/x/net/context"
