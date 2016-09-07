@@ -172,12 +172,12 @@ message AssignmentsRequest {
 message AssignmentsMessage {
 	// AssignmentType specifies whether this assignment message carries
 	// the full state, or is an update to an existing state.
-	enum AssignmentType {
+	enum Type {
 		COMPLETE = 0;
 		INCREMENTAL = 1;
 	}
 
-	AssignmentType type = 1;
+	Type type = 1;
 
 	// AppliesTo references the previous ResultsIn value, to chain
 	// incremental updates together. For the first update in a stream,
