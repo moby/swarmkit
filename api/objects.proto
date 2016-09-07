@@ -222,15 +222,3 @@ message Cluster {
 	// a new key is allocated on key rotation.
 	uint64 encryption_key_lamport_clock = 6;
 }
-
-// Secret
-message Secret {
-	string id = 1 [(gogoproto.customname) = "ID"];
-
-	Meta meta = 2 [(gogoproto.nullable) = false];
-
-	SecretSpec spec = 3 [(gogoproto.nullable) = false];
-
-	// Version is a hash of the secret.
-	string version = 4;
-}
