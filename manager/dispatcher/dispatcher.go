@@ -758,7 +758,6 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 		initial   api.AssignmentsMessage
 	)
 	tasksMap := make(map[string]*api.Task)
-	tasksUsingSecret := make(map[string]map[string]struct{})
 
 	sendMessage := func(msg api.AssignmentsMessage, assignmentType api.AssignmentsMessage_AssignmentType) error {
 		sequence++
@@ -771,36 +770,6 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 			return err
 		}
 		return nil
-	}
-
-	addSecretsForTask := func(readTx store.ReadTx, t *api.Task, msg *api.AssignmentsMessage) {
-		container := t.Spec.GetContainer()
-		if container == nil {
-			return
-		}
-		for _, secretRef := range container.Secrets {
-			secretName := secretRef.Name
-			if tasksUsingSecret[secretName] == nil {
-				tasksUsingSecret[secretName] = make(map[string]struct{})
-
-				secrets, err := store.FindSecrets(readTx, store.ByName(secretName))
-				if err != nil {
-					log.WithError(err).Errorf("error retrieving secret %s", secretName)
-					continue
-				}
-				if len(secrets) != 1 {
-					log.Debugf("secret not found: %s", secretName)
-					continue
-				}
-
-				// If the secret was found and there was one result
-				// (there should never be more than one because of the
-				// uniqueness constraint), add this secret to our
-				// initial set that we send down.
-				msg.UpdateSecrets = append(msg.UpdateSecrets, secrets[0])
-			}
-			tasksUsingSecret[secretName][t.ID] = struct{}{}
-		}
 	}
 
 	// TODO(aaronl): Also send node secrets that should be exposed to
@@ -825,7 +794,6 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 
 				tasksMap[t.ID] = t
 				initial.UpdateTasks = append(initial.UpdateTasks, t)
-				addSecretsForTask(readTx, t, &initial)
 			}
 			return nil
 		},
@@ -833,8 +801,6 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
 		state.EventDeleteTask{Task: &api.Task{NodeID: nodeID},
 			Checks: []state.TaskCheckFunc{state.TaskCheckNodeID}},
-		state.EventUpdateSecret{},
-		state.EventDeleteSecret{},
 	)
 	if err != nil {
 		return err
@@ -903,13 +869,6 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 							tasksMap[v.Task.ID] = v.Task
 							continue
 						}
-					} else {
-						// If this task wasn't part of the assignment set before,
-						// add the secrets it references to the secrets assignment
-						// set.
-						d.store.View(func(readTx store.ReadTx) {
-							addSecretsForTask(readTx, v.Task, &update)
-						})
 					}
 					tasksMap[v.Task.ID] = v.Task
 
@@ -922,45 +881,6 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 					update.RemoveTasks = append(update.RemoveTasks, v.Task.ID)
 
 					delete(tasksMap, v.Task.ID)
-
-					// Release the secrets references from this task
-
-					container := v.Task.Spec.GetContainer()
-					if container == nil {
-						continue
-					}
-					for _, secretRef := range container.Secrets {
-						secretName := secretRef.Name
-						if tasksUsingSecret[secretName] == nil {
-							continue
-						}
-						delete(tasksUsingSecret[secretName], v.Task.ID)
-						if len(tasksUsingSecret[secretName]) == 0 {
-							// No tasks are using the secret anymore
-							delete(tasksUsingSecret, secretName)
-							update.RemoveSecrets = append(update.RemoveSecrets, secretName)
-						}
-					}
-
-					oneModification()
-				// TODO(aaronl): For node secrets, we'll need to handle
-				// EventCreateSecret.
-				case state.EventUpdateSecret:
-					if _, exists := tasksUsingSecret[v.Secret.Spec.Annotations.Name]; !exists {
-						continue
-					}
-
-					update.UpdateSecrets = append(update.UpdateSecrets, v.Secret)
-
-					oneModification()
-				case state.EventDeleteSecret:
-					if _, exists := tasksUsingSecret[v.Secret.Spec.Annotations.Name]; !exists {
-						continue
-					}
-
-					delete(tasksUsingSecret, v.Secret.Spec.Annotations.Name)
-
-					update.RemoveSecrets = append(update.RemoveSecrets, v.Secret.Spec.Annotations.Name)
 
 					oneModification()
 				}
