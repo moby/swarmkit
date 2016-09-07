@@ -838,9 +838,12 @@ func (n *Node) getLeaderConn() (*grpc.ClientConn, error) {
 	if leader == n.Config.ID {
 		return nil, raftselector.ErrIsLeader
 	}
-	l := n.cluster.Members()[leader]
+	l := n.cluster.GetMember(leader)
 	if l == nil {
 		return nil, fmt.Errorf("no leader found")
+	}
+	if !n.cluster.Active(leader) {
+		return nil, fmt.Errorf("leader marked as inactive")
 	}
 	if l.Conn == nil {
 		return nil, fmt.Errorf("no connection to leader in member list")
