@@ -817,13 +817,14 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 			return err
 		}
 
-		var update api.AssignmentsMessage
-
 		// bursty events should be processed in batches and sent out together
 		var (
+			update          api.AssignmentsMessage
 			modificationCnt int
 			batchingTimer   *time.Timer
 			batchingTimeout <-chan time.Time
+			updateTasks     = make(map[string]*api.Task)
+			removeTasks     = make(map[string]struct{})
 		)
 
 		oneModification := func() {
@@ -858,8 +859,6 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 						continue
 					}
 
-					update.UpdateTasks = append(update.UpdateTasks, v.Task)
-
 					if oldTask, exists := tasksMap[v.Task.ID]; exists {
 						// States ASSIGNED and below are set by the orchestrator/scheduler,
 						// not the agent, so tasks in these states need to be sent to the
@@ -871,6 +870,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 						}
 					}
 					tasksMap[v.Task.ID] = v.Task
+					updateTasks[v.Task.ID] = v.Task
 
 					oneModification()
 				case state.EventDeleteTask:
@@ -878,7 +878,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 						continue
 					}
 
-					update.RemoveTasks = append(update.RemoveTasks, v.Task.ID)
+					removeTasks[v.Task.ID] = struct{}{}
 
 					delete(tasksMap, v.Task.ID)
 
@@ -898,6 +898,14 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 		}
 
 		if modificationCnt > 0 {
+			for id, task := range updateTasks {
+				if _, ok := removeTasks[id]; !ok {
+					update.UpdateTasks = append(update.UpdateTasks, task)
+				}
+			}
+			for id := range removeTasks {
+				update.RemoveTasks = append(update.RemoveTasks, id)
+			}
 			if err := sendMessage(update, api.AssignmentsMessage_INCREMENTAL); err != nil {
 				return err
 			}
