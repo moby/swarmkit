@@ -3,9 +3,9 @@ package container
 import (
 	"fmt"
 
-	engineapi "github.com/docker/engine-api/client"
-	"github.com/docker/engine-api/types"
-	"github.com/docker/engine-api/types/events"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/events"
+	engineapi "github.com/docker/docker/client"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"

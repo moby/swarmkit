@@ -10,7 +10,7 @@ import (
 	"os/signal"
 
 	"github.com/Sirupsen/logrus"
-	engineapi "github.com/docker/engine-api/client"
+	engineapi "github.com/docker/docker/client"
 	"github.com/docker/swarmkit/agent"
 	"github.com/docker/swarmkit/agent/exec/container"
 	"github.com/docker/swarmkit/cli"

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/engine-api/types"
-	"github.com/docker/engine-api/types/events"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/events"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
@@ -22,12 +22,14 @@ import (
 	"golang.org/x/net/context"
 )
 
+var tenSecond = 10 * time.Second
+
 // TODO(stevvooe): Generation of mocks against circle ci is broken. If you need
 // to regenerate the mock, remove the "+" below and run `go generate`. Sorry.
 // UPDATE(stevvooe): Gomock is still broken garbage. Sigh. This time, had to
 // generate, then manually "unvendor" imports. Further cements the
 // realization that mocks are a garbage way to build tests.
-//+go:generate mockgen -package container -destination api_client_test.mock.go github.com/docker/engine-api/client APIClient
+//+go:generate mockgen -package container -destination api_client_test.mock.go github.com/docker/docker/client APIClient
 
 func TestControllerPrepare(t *testing.T) {
 	task := genTask(t)
@@ -157,7 +159,7 @@ func TestControllerWaitUnhealthy(t *testing.T) {
 			Since:   "0",
 			Filters: config.eventFilter(),
 		}).Return(makeEvents(t, config, "create", "health_status: unhealthy"), nil),
-		client.EXPECT().ContainerStop(gomock.Any(), config.name(), 10*time.Second),
+		client.EXPECT().ContainerStop(gomock.Any(), config.name(), &tenSecond),
 	)
 
 	assert.Equal(t, ctlr.Wait(ctx), ErrContainerUnhealthy)
@@ -256,7 +258,7 @@ func TestControllerShutdown(t *testing.T) {
 	defer finish(t)
 
 	gomock.InOrder(
-		client.EXPECT().ContainerStop(gomock.Any(), config.name(), 10*time.Second),
+		client.EXPECT().ContainerStop(gomock.Any(), config.name(), &tenSecond),
 	)
 
 	assert.NoError(t, ctlr.Shutdown(ctx))
@@ -278,7 +280,7 @@ func TestControllerRemove(t *testing.T) {
 	defer finish(t)
 
 	gomock.InOrder(
-		client.EXPECT().ContainerStop(gomock.Any(), config.name(), 10*time.Second),
+		client.EXPECT().ContainerStop(gomock.Any(), config.name(), &tenSecond),
 		client.EXPECT().ContainerRemove(gomock.Any(), config.name(), types.ContainerRemoveOptions{
 			RemoveVolumes: true,
 			Force:         true,
