@@ -252,7 +252,7 @@ func (w *worker) UpdateSecrets(ctx context.Context, added []*api.Secret, removed
 	log.G(ctx).WithFields(logrus.Fields{
 		"len(added)":   len(added),
 		"len(removed)": len(removed),
-	}).Debug("(*worker).UpdateTasks")
+	}).Debug("(*worker).UpdateSecrets")
 
 	return reconcileSecrets(ctx, w, added, removed, false)
 }

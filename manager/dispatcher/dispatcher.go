@@ -830,8 +830,11 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 
 				tasksMap[t.ID] = t
 				initial.UpdateTasks = append(initial.UpdateTasks, t)
-				newSecrets := addSecretsForTask(readTx, t)
-				initial.UpdateSecrets = append(initial.UpdateSecrets, newSecrets...)
+				// Only send secrets down if these tasks are in < RUNNING
+				if t.Status.State <= api.TaskStateRunning {
+					newSecrets := addSecretsForTask(readTx, t)
+					initial.UpdateSecrets = append(initial.UpdateSecrets, newSecrets...)
+				}
 			}
 			return nil
 		},
@@ -880,6 +883,33 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 			}
 		}
 
+		// Release the secrets references from this task
+		releaseSecretsForTask := func(t *api.Task) bool {
+			var modified bool
+			container := t.Spec.GetContainer()
+			if container == nil {
+				return modified
+			}
+
+			for _, secretRef := range container.Secrets {
+				secretName := secretRef.Name
+				if tasksUsingSecret[secretName] == nil {
+					removeSecrets[secretName] = struct{}{}
+					modified = true
+					continue
+				}
+				delete(tasksUsingSecret[secretName], t.ID)
+				if len(tasksUsingSecret[secretName]) == 0 {
+					// No tasks are using the secret anymore
+					delete(tasksUsingSecret, secretName)
+					removeSecrets[secretName] = struct{}{}
+					modified = true
+				}
+			}
+
+			return modified
+		}
+
 		// The batching loop waits for 50 ms after the most recent
 		// change, or until modificationBatchLimit is reached. The
 		// worst case latency is modificationBatchLimit * batchingWaitTime,
@@ -908,12 +938,20 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 						if equality.TasksEqualStable(oldTask, v.Task) && v.Task.Status.State > api.TaskStateAssigned {
 							// this update should not trigger a task change for the agent
 							tasksMap[v.Task.ID] = v.Task
+							// If this task go updated to a final state, lets release
+							// the secrets that are being used by the task
+							if v.Task.Status.State > api.TaskStateRunning {
+								// If releasing the secrets caused a secret to be
+								// removed from an agent, mark one modification
+								if releaseSecretsForTask(v.Task) {
+									oneModification()
+								}
+							}
 							continue
 						}
 					} else {
 						// If this task wasn't part of the assignment set before,
 						// add the secrets it references to the secrets assignment
-						// set.
 						var newSecrets []*api.Secret
 						d.store.View(func(readTx store.ReadTx) {
 							newSecrets = addSecretsForTask(readTx, v.Task)
@@ -935,26 +973,11 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 
 					delete(tasksMap, v.Task.ID)
 
-					// Release the secrets references from this task
-
-					container := v.Task.Spec.GetContainer()
-					if container == nil {
-						continue
-					}
-					for _, secretRef := range container.Secrets {
-						secretName := secretRef.Name
-
-						if tasksUsingSecret[secretName] == nil {
-							removeSecrets[secretName] = struct{}{}
-							continue
-						}
-						delete(tasksUsingSecret[secretName], v.Task.ID)
-						if len(tasksUsingSecret[secretName]) == 0 {
-							// No tasks are using the secret anymore
-							delete(tasksUsingSecret, secretName)
-							removeSecrets[secretName] = struct{}{}
-						}
-					}
+					// Release the secrets being used by this task
+					// Ignoring the return here. We will always mark
+					// this as a modification, since a task is being
+					// removed.
+					releaseSecretsForTask(v.Task)
 
 					oneModification()
 				// TODO(aaronl): For node secrets, we'll need to handle
