@@ -759,7 +759,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 	)
 	tasksMap := make(map[string]*api.Task)
 
-	sendMessage := func(msg api.AssignmentsMessage, assignmentType api.AssignmentsMessage_AssignmentType) error {
+	sendMessage := func(msg api.AssignmentsMessage, assignmentType api.AssignmentsMessage_Type) error {
 		sequence++
 		msg.AppliesTo = appliesTo
 		msg.ResultsIn = strconv.FormatInt(sequence, 10)
@@ -864,7 +864,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 						// not the agent, so tasks in these states need to be sent to the
 						// agent even if nothing else has changed.
 						if equality.TasksEqualStable(oldTask, v.Task) && v.Task.Status.State > api.TaskStateAssigned {
-							// this update should not trigger action at agent
+							// this update should not trigger a task change for the agent
 							tasksMap[v.Task.ID] = v.Task
 							continue
 						}
