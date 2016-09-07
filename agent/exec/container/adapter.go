@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	engineapi "github.com/docker/engine-api/client"
-	"github.com/docker/engine-api/types"
-	"github.com/docker/engine-api/types/events"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/events"
+	engineapi "github.com/docker/docker/client"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/protobuf/ptypes"
@@ -227,7 +227,7 @@ func (c *containerAdapter) shutdown(ctx context.Context) error {
 	if spec.StopGracePeriod != nil {
 		stopgrace, _ = ptypes.Duration(spec.StopGracePeriod)
 	}
-	return c.client.ContainerStop(ctx, c.container.name(), stopgrace)
+	return c.client.ContainerStop(ctx, c.container.name(), &stopgrace)
 }
 
 func (c *containerAdapter) terminate(ctx context.Context) error {
