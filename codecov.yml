@@ -11,3 +11,4 @@ coverage:
   ignore:  # ignore all protobuf-generated code
     - "*.pb.go"
     - "vendor/*"
+    - "*/testutils/*"
