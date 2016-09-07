@@ -759,7 +759,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 	)
 	tasksMap := make(map[string]*api.Task)
 
-	sendMessage := func(msg api.AssignmentsMessage, assignmentType api.AssignmentsMessage_AssignmentType) error {
+	sendMessage := func(msg api.AssignmentsMessage, assignmentType api.AssignmentsMessage_Type) error {
 		sequence++
 		msg.AppliesTo = appliesTo
 		msg.ResultsIn = strconv.FormatInt(sequence, 10)
