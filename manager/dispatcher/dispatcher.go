@@ -127,8 +127,6 @@ func New(cluster Cluster, c *Config) *Dispatcher {
 		nodes:                 newNodeStore(c.HeartbeatPeriod, c.HeartbeatEpsilon, c.GracePeriodMultiplier, c.RateLimitPeriod),
 		store:                 cluster.MemoryStore(),
 		cluster:               cluster,
-		mgrQueue:              watch.NewQueue(),
-		keyMgrQueue:           watch.NewQueue(),
 		taskUpdates:           make(map[string]*api.TaskStatus),
 		nodeUpdates:           make(map[string]nodeUpdate),
 		processUpdatesTrigger: make(chan struct{}, 1),
@@ -195,6 +193,9 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 		d.mu.Unlock()
 		return err
 	}
+	// set queues here to guarantee that Close will close them
+	d.mgrQueue = watch.NewQueue()
+	d.keyMgrQueue = watch.NewQueue()
 
 	peerWatcher, peerCancel := d.cluster.SubscribePeers()
 	defer peerCancel()
