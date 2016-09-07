@@ -237,7 +237,7 @@ func (s *session) watch(ctx context.Context) error {
 				}
 				tasksFallback = true
 				assignmentWatch = nil
-				log.WithError(err).Errorf("falling back to Tasks")
+				log.WithError(err).Infof("falling back to Tasks")
 			}
 		}
 

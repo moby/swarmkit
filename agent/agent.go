@@ -172,7 +172,7 @@ func (a *Agent) run(ctx context.Context) {
 			switch msg.Type {
 			case api.AssignmentsMessage_COMPLETE:
 				if err := a.worker.AssignTasks(ctx, msg.UpdateTasks); err != nil {
-					log.G(ctx).WithError(err).Error("failed to assign worker assignments")
+					log.G(ctx).WithError(err).Error("failed to synchronize worker assignments")
 				}
 			case api.AssignmentsMessage_INCREMENTAL:
 				if err := a.worker.UpdateTasks(ctx, msg.UpdateTasks, msg.RemoveTasks); err != nil {
