@@ -506,10 +506,6 @@
 			"Rev": "bd3c8e81be01eef76d4b503f5e687d2d1354d2d9"
 		},
 		{
-			"ImportPath": "github.com/golang/protobuf/proto",
-			"Rev": "3c84672111d91bb5ac31719e112f9f7126a0e26e"
-		},
-		{
 			"ImportPath": "github.com/google/certificate-transparency/go",
 			"Rev": "0f6e3d1d1ba4d03fdaab7cd716f36255c2e48341"
 		},
