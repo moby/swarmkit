@@ -172,6 +172,8 @@ func TestNodeCertificateRenewalsDoNotRequireToken(t *testing.T) {
 }
 
 func TestNewNodeCertificateRequiresToken(t *testing.T) {
+	t.Parallel()
+
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 

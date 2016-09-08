@@ -415,6 +415,8 @@ func TestGetRemoteSignedCertificateNodeInfo(t *testing.T) {
 }
 
 func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
+	t.Parallel()
+
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 

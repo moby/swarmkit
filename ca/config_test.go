@@ -215,6 +215,8 @@ some random garbage\n
 }
 
 func TestRenewTLSConfigAgent(t *testing.T) {
+	t.Parallel()
+
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
@@ -264,6 +266,8 @@ func TestRenewTLSConfigAgent(t *testing.T) {
 }
 
 func TestRenewTLSConfigManager(t *testing.T) {
+	t.Parallel()
+
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
@@ -315,6 +319,8 @@ func TestRenewTLSConfigManager(t *testing.T) {
 }
 
 func TestRenewTLSConfigWithNoNode(t *testing.T) {
+	t.Parallel()
+
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
@@ -371,6 +377,8 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 }
 
 func TestForceRenewTLSConfig(t *testing.T) {
+	t.Parallel()
+
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 

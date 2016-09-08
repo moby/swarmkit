@@ -187,6 +187,8 @@ func TestRegisterTwice(t *testing.T) {
 }
 
 func TestRegisterExceedRateLimit(t *testing.T) {
+	t.Parallel()
+
 	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
@@ -284,6 +286,8 @@ func TestHeartbeatNoCert(t *testing.T) {
 }
 
 func TestHeartbeatTimeout(t *testing.T) {
+	t.Parallel()
+
 	cfg := DefaultConfig()
 	cfg.HeartbeatPeriod = 100 * time.Millisecond
 	cfg.HeartbeatEpsilon = 0
@@ -328,6 +332,8 @@ func TestHeartbeatUnregistered(t *testing.T) {
 }
 
 func TestTasks(t *testing.T) {
+	t.Parallel()
+
 	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
@@ -424,6 +430,8 @@ func TestTasks(t *testing.T) {
 }
 
 func TestTasksStatusChange(t *testing.T) {
+	t.Parallel()
+
 	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
@@ -765,6 +773,8 @@ func TestSessionNoCert(t *testing.T) {
 }
 
 func TestNodesCount(t *testing.T) {
+	t.Parallel()
+
 	cfg := DefaultConfig()
 	cfg.HeartbeatPeriod = 100 * time.Millisecond
 	cfg.HeartbeatEpsilon = 0
