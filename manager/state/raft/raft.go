@@ -658,6 +658,12 @@ func (n *Node) checkHealth(ctx context.Context, addr string, timeout time.Durati
 		return err
 	}
 
+	if timeout != 0 {
+		tctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+		ctx = tctx
+	}
+
 	client := api.NewHealthClient(conn)
 	defer conn.Close()
 
