@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/swarmkit/manager/raftpicker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -34,15 +33,11 @@ func (testRouteGuide) RouteChat(RouteGuide_RouteChatServer) error {
 }
 
 type mockCluster struct {
-	addr string
+	conn *grpc.ClientConn
 }
 
-func (m *mockCluster) LeaderAddr() (string, error) {
-	return m.addr, nil
-}
-
-func (m *mockCluster) IsLeader() bool {
-	return false
+func (m *mockCluster) LeaderConn(ctx context.Context) (*grpc.ClientConn, error) {
+	return m.conn, nil
 }
 
 func TestSimpleRedirect(t *testing.T) {
@@ -53,11 +48,10 @@ func TestSimpleRedirect(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	cluster := &mockCluster{addr: addr}
-	cs := raftpicker.NewConnSelector(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	cluster := &mockCluster{conn: conn}
 
 	forwardAsOwnRequest := func(ctx context.Context) (context.Context, error) { return ctx, nil }
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster, forwardAsOwnRequest)
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cluster, forwardAsOwnRequest)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -77,11 +71,10 @@ func TestServerStreamRedirect(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	cluster := &mockCluster{addr: addr}
-	cs := raftpicker.NewConnSelector(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	cluster := &mockCluster{conn: conn}
 
 	forwardAsOwnRequest := func(ctx context.Context) (context.Context, error) { return ctx, nil }
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster, forwardAsOwnRequest)
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cluster, forwardAsOwnRequest)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -104,11 +97,10 @@ func TestClientStreamRedirect(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	cluster := &mockCluster{addr: addr}
-	cs := raftpicker.NewConnSelector(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	cluster := &mockCluster{conn: conn}
 
 	forwardAsOwnRequest := func(ctx context.Context) (context.Context, error) { return ctx, nil }
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster, forwardAsOwnRequest)
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cluster, forwardAsOwnRequest)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)
@@ -133,11 +125,10 @@ func TestClientServerStreamRedirect(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	cluster := &mockCluster{addr: addr}
-	cs := raftpicker.NewConnSelector(cluster, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	cluster := &mockCluster{conn: conn}
 
 	forwardAsOwnRequest := func(ctx context.Context) (context.Context, error) { return ctx, nil }
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cs, cluster, forwardAsOwnRequest)
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cluster, forwardAsOwnRequest)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)

@@ -22,10 +22,11 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-import raftpicker "github.com/docker/swarmkit/manager/raftpicker"
+import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
+import time "time"
 
 import io "io"
 
@@ -1085,12 +1086,11 @@ func encodeVarintDispatcher(data []byte, offset int, v uint64) int {
 
 type raftProxyDispatcherServer struct {
 	local        DispatcherServer
-	connSelector raftpicker.Interface
-	cluster      raftpicker.RaftCluster
+	connSelector raftselector.ConnProvider
 	ctxMods      []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyDispatcherServer(local DispatcherServer, connSelector raftpicker.Interface, cluster raftpicker.RaftCluster, ctxMod func(context.Context) (context.Context, error)) DispatcherServer {
+func NewRaftProxyDispatcherServer(local DispatcherServer, connSelector raftselector.ConnProvider, ctxMod func(context.Context) (context.Context, error)) DispatcherServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
@@ -1112,7 +1112,6 @@ func NewRaftProxyDispatcherServer(local DispatcherServer, connSelector raftpicke
 
 	return &raftProxyDispatcherServer{
 		local:        local,
-		cluster:      cluster,
 		connSelector: connSelector,
 		ctxMods:      mods,
 	}
@@ -1127,33 +1126,40 @@ func (p *raftProxyDispatcherServer) runCtxMods(ctx context.Context) (context.Con
 	}
 	return ctx, nil
 }
+func (p *raftProxyDispatcherServer) pollNewLeaderConn(ctx context.Context, oldConn *grpc.ClientConn) (*grpc.ClientConn, error) {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			conn, err := p.connSelector.LeaderConn(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if conn == oldConn {
+				continue
+			}
+			return conn, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+}
 
 func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher_SessionServer) error {
 
-	if p.cluster.IsLeader() {
-		return p.local.Session(r, stream)
-	}
-	ctx, err := p.runCtxMods(stream.Context())
+	ctx := stream.Context()
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		return err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
-				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
-				strings.Contains(errStr, "connection error") ||
-				grpc.Code(err) == codes.Internal {
-				p.connSelector.Reset()
-			}
+		if err == raftselector.ErrIsLeader {
+			return p.local.Session(r, stream)
 		}
-	}()
-
+		return err
+	}
+	ctx, err = p.runCtxMods(ctx)
+	if err != nil {
+		return err
+	}
 	clientStream, err := NewDispatcherClient(conn).Session(ctx, r)
 
 	if err != nil {
@@ -1177,88 +1183,80 @@ func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher
 
 func (p *raftProxyDispatcherServer) Heartbeat(ctx context.Context, r *HeartbeatRequest) (*HeartbeatResponse, error) {
 
-	if p.cluster.IsLeader() {
-		return p.local.Heartbeat(ctx, r)
-	}
-	ctx, err := p.runCtxMods(ctx)
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		return nil, err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
-				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
-				strings.Contains(errStr, "connection error") ||
-				grpc.Code(err) == codes.Internal {
-				p.connSelector.Reset()
-			}
+		if err == raftselector.ErrIsLeader {
+			return p.local.Heartbeat(ctx, r)
 		}
-	}()
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	return NewDispatcherClient(conn).Heartbeat(ctx, r)
+	resp, err := NewDispatcherClient(conn).Heartbeat(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx, conn)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.Heartbeat(ctx, r)
+			}
+			return nil, err
+		}
+		return NewDispatcherClient(conn).Heartbeat(modCtx, r)
+	}
+	return resp, err
 }
 
 func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *UpdateTaskStatusRequest) (*UpdateTaskStatusResponse, error) {
 
-	if p.cluster.IsLeader() {
-		return p.local.UpdateTaskStatus(ctx, r)
-	}
-	ctx, err := p.runCtxMods(ctx)
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		return nil, err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
-				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
-				strings.Contains(errStr, "connection error") ||
-				grpc.Code(err) == codes.Internal {
-				p.connSelector.Reset()
-			}
+		if err == raftselector.ErrIsLeader {
+			return p.local.UpdateTaskStatus(ctx, r)
 		}
-	}()
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	return NewDispatcherClient(conn).UpdateTaskStatus(ctx, r)
+	resp, err := NewDispatcherClient(conn).UpdateTaskStatus(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx, conn)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.UpdateTaskStatus(ctx, r)
+			}
+			return nil, err
+		}
+		return NewDispatcherClient(conn).UpdateTaskStatus(modCtx, r)
+	}
+	return resp, err
 }
 
 func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_TasksServer) error {
 
-	if p.cluster.IsLeader() {
-		return p.local.Tasks(r, stream)
-	}
-	ctx, err := p.runCtxMods(stream.Context())
+	ctx := stream.Context()
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		return err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
-				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
-				strings.Contains(errStr, "connection error") ||
-				grpc.Code(err) == codes.Internal {
-				p.connSelector.Reset()
-			}
+		if err == raftselector.ErrIsLeader {
+			return p.local.Tasks(r, stream)
 		}
-	}()
-
+		return err
+	}
+	ctx, err = p.runCtxMods(ctx)
+	if err != nil {
+		return err
+	}
 	clientStream, err := NewDispatcherClient(conn).Tasks(ctx, r)
 
 	if err != nil {
