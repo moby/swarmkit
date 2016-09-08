@@ -588,7 +588,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			return err
 		}
 
-		remoteAddr, _ := n.remotes.Select(n.nodeID)
+		remoteAddr, _ := n.remotes.Select(n.NodeID())
 		m, err := manager.New(&manager.Config{
 			ForceNewCluster: n.config.ForceNewCluster,
 			ProtoAddr: map[string]string{
@@ -625,7 +625,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 			go func(ready chan struct{}) {
 				select {
 				case <-ready:
-					n.remotes.Observe(api.Peer{NodeID: n.nodeID, Addr: n.config.ListenRemoteAPI}, remotes.DefaultObservationWeight)
+					n.remotes.Observe(api.Peer{NodeID: n.NodeID(), Addr: n.config.ListenRemoteAPI}, remotes.DefaultObservationWeight)
 				case <-connCtx.Done():
 				}
 			}(ready)
