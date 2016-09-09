@@ -1479,8 +1479,8 @@ func (p *raftProxyRaftServer) runCtxMods(ctx context.Context) (context.Context, 
 	}
 	return ctx, nil
 }
-func (p *raftProxyRaftServer) pollNewLeaderConn(ctx context.Context, oldConn *grpc.ClientConn) (*grpc.ClientConn, error) {
-	ticker := time.NewTicker(100 * time.Millisecond)
+func (p *raftProxyRaftServer) pollNewLeaderConn(ctx context.Context) (*grpc.ClientConn, error) {
+	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		select {
@@ -1489,7 +1489,11 @@ func (p *raftProxyRaftServer) pollNewLeaderConn(ctx context.Context, oldConn *gr
 			if err != nil {
 				return nil, err
 			}
-			if conn == oldConn {
+
+			client := NewHealthClient(conn)
+
+			resp, err := client.Check(ctx, &HealthCheckRequest{Service: "Raft"})
+			if err != nil || resp.Status != HealthCheckResponse_SERVING {
 				continue
 			}
 			return conn, nil
@@ -1518,7 +1522,7 @@ func (p *raftProxyRaftServer) ProcessRaftMessage(ctx context.Context, r *Process
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.ProcessRaftMessage(ctx, r)
@@ -1549,7 +1553,7 @@ func (p *raftProxyRaftServer) ResolveAddress(ctx context.Context, r *ResolveAddr
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.ResolveAddress(ctx, r)
@@ -1603,8 +1607,8 @@ func (p *raftProxyRaftMembershipServer) runCtxMods(ctx context.Context) (context
 	}
 	return ctx, nil
 }
-func (p *raftProxyRaftMembershipServer) pollNewLeaderConn(ctx context.Context, oldConn *grpc.ClientConn) (*grpc.ClientConn, error) {
-	ticker := time.NewTicker(100 * time.Millisecond)
+func (p *raftProxyRaftMembershipServer) pollNewLeaderConn(ctx context.Context) (*grpc.ClientConn, error) {
+	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		select {
@@ -1613,7 +1617,11 @@ func (p *raftProxyRaftMembershipServer) pollNewLeaderConn(ctx context.Context, o
 			if err != nil {
 				return nil, err
 			}
-			if conn == oldConn {
+
+			client := NewHealthClient(conn)
+
+			resp, err := client.Check(ctx, &HealthCheckRequest{Service: "Raft"})
+			if err != nil || resp.Status != HealthCheckResponse_SERVING {
 				continue
 			}
 			return conn, nil
@@ -1642,7 +1650,7 @@ func (p *raftProxyRaftMembershipServer) Join(ctx context.Context, r *JoinRequest
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.Join(ctx, r)
@@ -1673,7 +1681,7 @@ func (p *raftProxyRaftMembershipServer) Leave(ctx context.Context, r *LeaveReque
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.Leave(ctx, r)

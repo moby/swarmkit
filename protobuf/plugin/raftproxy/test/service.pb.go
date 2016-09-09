@@ -14,6 +14,8 @@
 		Feature
 		RouteNote
 		RouteSummary
+		HealthCheckRequest
+		HealthCheckResponse
 */
 package test
 
@@ -48,6 +50,32 @@ var _ = math.Inf
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
 const _ = proto.GoGoProtoPackageIsVersion1
+
+type HealthCheckResponse_ServingStatus int32
+
+const (
+	HealthCheckResponse_UNKNOWN     HealthCheckResponse_ServingStatus = 0
+	HealthCheckResponse_SERVING     HealthCheckResponse_ServingStatus = 1
+	HealthCheckResponse_NOT_SERVING HealthCheckResponse_ServingStatus = 2
+)
+
+var HealthCheckResponse_ServingStatus_name = map[int32]string{
+	0: "UNKNOWN",
+	1: "SERVING",
+	2: "NOT_SERVING",
+}
+var HealthCheckResponse_ServingStatus_value = map[string]int32{
+	"UNKNOWN":     0,
+	"SERVING":     1,
+	"NOT_SERVING": 2,
+}
+
+func (x HealthCheckResponse_ServingStatus) String() string {
+	return proto.EnumName(HealthCheckResponse_ServingStatus_name, int32(x))
+}
+func (HealthCheckResponse_ServingStatus) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptorService, []int{6, 0}
+}
 
 // Points are represented as latitude-longitude pairs in the E7 representation
 // (degrees multiplied by 10**7 and rounded to the nearest integer).
@@ -121,12 +149,31 @@ func (m *RouteSummary) Reset()                    { *m = RouteSummary{} }
 func (*RouteSummary) ProtoMessage()               {}
 func (*RouteSummary) Descriptor() ([]byte, []int) { return fileDescriptorService, []int{4} }
 
+type HealthCheckRequest struct {
+	Service string `protobuf:"bytes,1,opt,name=service,proto3" json:"service,omitempty"`
+}
+
+func (m *HealthCheckRequest) Reset()                    { *m = HealthCheckRequest{} }
+func (*HealthCheckRequest) ProtoMessage()               {}
+func (*HealthCheckRequest) Descriptor() ([]byte, []int) { return fileDescriptorService, []int{5} }
+
+type HealthCheckResponse struct {
+	Status HealthCheckResponse_ServingStatus `protobuf:"varint,1,opt,name=status,proto3,enum=routeguide.HealthCheckResponse_ServingStatus" json:"status,omitempty"`
+}
+
+func (m *HealthCheckResponse) Reset()                    { *m = HealthCheckResponse{} }
+func (*HealthCheckResponse) ProtoMessage()               {}
+func (*HealthCheckResponse) Descriptor() ([]byte, []int) { return fileDescriptorService, []int{6} }
+
 func init() {
 	proto.RegisterType((*Point)(nil), "routeguide.Point")
 	proto.RegisterType((*Rectangle)(nil), "routeguide.Rectangle")
 	proto.RegisterType((*Feature)(nil), "routeguide.Feature")
 	proto.RegisterType((*RouteNote)(nil), "routeguide.RouteNote")
 	proto.RegisterType((*RouteSummary)(nil), "routeguide.RouteSummary")
+	proto.RegisterType((*HealthCheckRequest)(nil), "routeguide.HealthCheckRequest")
+	proto.RegisterType((*HealthCheckResponse)(nil), "routeguide.HealthCheckResponse")
+	proto.RegisterEnum("routeguide.HealthCheckResponse_ServingStatus", HealthCheckResponse_ServingStatus_name, HealthCheckResponse_ServingStatus_value)
 }
 func (this *Point) GoString() string {
 	if this == nil {
@@ -190,6 +237,26 @@ func (this *RouteSummary) GoString() string {
 	s = append(s, "FeatureCount: "+fmt.Sprintf("%#v", this.FeatureCount)+",\n")
 	s = append(s, "Distance: "+fmt.Sprintf("%#v", this.Distance)+",\n")
 	s = append(s, "ElapsedTime: "+fmt.Sprintf("%#v", this.ElapsedTime)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *HealthCheckRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&test.HealthCheckRequest{")
+	s = append(s, "Service: "+fmt.Sprintf("%#v", this.Service)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *HealthCheckResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&test.HealthCheckResponse{")
+	s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -523,6 +590,69 @@ var _RouteGuide_serviceDesc = grpc.ServiceDesc{
 	},
 }
 
+// Client API for Health service
+
+type HealthClient interface {
+	Check(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error)
+}
+
+type healthClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewHealthClient(cc *grpc.ClientConn) HealthClient {
+	return &healthClient{cc}
+}
+
+func (c *healthClient) Check(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error) {
+	out := new(HealthCheckResponse)
+	err := grpc.Invoke(ctx, "/routeguide.Health/Check", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for Health service
+
+type HealthServer interface {
+	Check(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error)
+}
+
+func RegisterHealthServer(s *grpc.Server, srv HealthServer) {
+	s.RegisterService(&_Health_serviceDesc, srv)
+}
+
+func _Health_Check_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HealthCheckRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HealthServer).Check(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/routeguide.Health/Check",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HealthServer).Check(ctx, req.(*HealthCheckRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _Health_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "routeguide.Health",
+	HandlerType: (*HealthServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Check",
+			Handler:    _Health_Check_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{},
+}
+
 func (m *Point) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -695,6 +825,53 @@ func (m *RouteSummary) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *HealthCheckRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *HealthCheckRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Service) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintService(data, i, uint64(len(m.Service)))
+		i += copy(data[i:], m.Service)
+	}
+	return i, nil
+}
+
+func (m *HealthCheckResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *HealthCheckResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Status != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintService(data, i, uint64(m.Status))
+	}
+	return i, nil
+}
+
 func encodeFixed64Service(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	data[offset+1] = uint8(v >> 8)
@@ -765,8 +942,8 @@ func (p *raftProxyRouteGuideServer) runCtxMods(ctx context.Context) (context.Con
 	}
 	return ctx, nil
 }
-func (p *raftProxyRouteGuideServer) pollNewLeaderConn(ctx context.Context, oldConn *grpc.ClientConn) (*grpc.ClientConn, error) {
-	ticker := time.NewTicker(100 * time.Millisecond)
+func (p *raftProxyRouteGuideServer) pollNewLeaderConn(ctx context.Context) (*grpc.ClientConn, error) {
+	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		select {
@@ -775,7 +952,11 @@ func (p *raftProxyRouteGuideServer) pollNewLeaderConn(ctx context.Context, oldCo
 			if err != nil {
 				return nil, err
 			}
-			if conn == oldConn {
+
+			client := NewHealthClient(conn)
+
+			resp, err := client.Check(ctx, &HealthCheckRequest{Service: "Raft"})
+			if err != nil || resp.Status != HealthCheckResponse_SERVING {
 				continue
 			}
 			return conn, nil
@@ -804,7 +985,7 @@ func (p *raftProxyRouteGuideServer) GetFeature(ctx context.Context, r *Point) (*
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.GetFeature(ctx, r)
@@ -944,6 +1125,103 @@ func (p *raftProxyRouteGuideServer) RouteChat(stream RouteGuide_RouteChatServer)
 	return <-errc
 }
 
+type raftProxyHealthServer struct {
+	local        HealthServer
+	connSelector raftselector.ConnProvider
+	ctxMods      []func(context.Context) (context.Context, error)
+}
+
+func NewRaftProxyHealthServer(local HealthServer, connSelector raftselector.ConnProvider, ctxMod func(context.Context) (context.Context, error)) HealthServer {
+	redirectChecker := func(ctx context.Context) (context.Context, error) {
+		s, ok := transport.StreamFromContext(ctx)
+		if !ok {
+			return ctx, grpc.Errorf(codes.InvalidArgument, "remote addr is not found in context")
+		}
+		addr := s.ServerTransport().RemoteAddr().String()
+		md, ok := metadata.FromContext(ctx)
+		if ok && len(md["redirect"]) != 0 {
+			return ctx, grpc.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
+		}
+		if !ok {
+			md = metadata.New(map[string]string{})
+		}
+		md["redirect"] = append(md["redirect"], addr)
+		return metadata.NewContext(ctx, md), nil
+	}
+	mods := []func(context.Context) (context.Context, error){redirectChecker}
+	mods = append(mods, ctxMod)
+
+	return &raftProxyHealthServer{
+		local:        local,
+		connSelector: connSelector,
+		ctxMods:      mods,
+	}
+}
+func (p *raftProxyHealthServer) runCtxMods(ctx context.Context) (context.Context, error) {
+	var err error
+	for _, mod := range p.ctxMods {
+		ctx, err = mod(ctx)
+		if err != nil {
+			return ctx, err
+		}
+	}
+	return ctx, nil
+}
+func (p *raftProxyHealthServer) pollNewLeaderConn(ctx context.Context) (*grpc.ClientConn, error) {
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			conn, err := p.connSelector.LeaderConn(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			client := NewHealthClient(conn)
+
+			resp, err := client.Check(ctx, &HealthCheckRequest{Service: "Raft"})
+			if err != nil || resp.Status != HealthCheckResponse_SERVING {
+				continue
+			}
+			return conn, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+}
+
+func (p *raftProxyHealthServer) Check(ctx context.Context, r *HealthCheckRequest) (*HealthCheckResponse, error) {
+
+	conn, err := p.connSelector.LeaderConn(ctx)
+	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			return p.local.Check(ctx, r)
+		}
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := NewHealthClient(conn).Check(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.Check(ctx, r)
+			}
+			return nil, err
+		}
+		return NewHealthClient(conn).Check(modCtx, r)
+	}
+	return resp, err
+}
+
 func (m *Point) Size() (n int) {
 	var l int
 	_ = l
@@ -1016,6 +1294,25 @@ func (m *RouteSummary) Size() (n int) {
 	return n
 }
 
+func (m *HealthCheckRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Service)
+	if l > 0 {
+		n += 1 + l + sovService(uint64(l))
+	}
+	return n
+}
+
+func (m *HealthCheckResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.Status != 0 {
+		n += 1 + sovService(uint64(m.Status))
+	}
+	return n
+}
+
 func sovService(x uint64) (n int) {
 	for {
 		n++
@@ -1082,6 +1379,26 @@ func (this *RouteSummary) String() string {
 		`FeatureCount:` + fmt.Sprintf("%v", this.FeatureCount) + `,`,
 		`Distance:` + fmt.Sprintf("%v", this.Distance) + `,`,
 		`ElapsedTime:` + fmt.Sprintf("%v", this.ElapsedTime) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *HealthCheckRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&HealthCheckRequest{`,
+		`Service:` + fmt.Sprintf("%v", this.Service) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *HealthCheckResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&HealthCheckResponse{`,
+		`Status:` + fmt.Sprintf("%v", this.Status) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1648,6 +1965,154 @@ func (m *RouteSummary) Unmarshal(data []byte) error {
 	}
 	return nil
 }
+func (m *HealthCheckRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowService
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: HealthCheckRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: HealthCheckRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Service", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthService
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Service = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipService(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthService
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *HealthCheckResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowService
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: HealthCheckResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: HealthCheckResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			m.Status = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Status |= (HealthCheckResponse_ServingStatus(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipService(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthService
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func skipService(data []byte) (n int, err error) {
 	l := len(data)
 	iNdEx := 0
@@ -1754,34 +2219,41 @@ var (
 )
 
 var fileDescriptorService = []byte{
-	// 449 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x53, 0xcd, 0x6e, 0xd3, 0x40,
-	0x10, 0xce, 0xba, 0x2d, 0x8d, 0x27, 0xa9, 0x10, 0x83, 0x90, 0xac, 0x80, 0x0c, 0x35, 0x97, 0x5e,
-	0xb0, 0xaa, 0x22, 0x71, 0x2c, 0xa2, 0x95, 0xc8, 0xa5, 0x42, 0x61, 0xc9, 0xbd, 0x5a, 0xec, 0xc1,
-	0x59, 0xc9, 0xf6, 0x5a, 0xde, 0x35, 0x82, 0x1b, 0x17, 0x9e, 0x80, 0x37, 0xe0, 0x69, 0x7a, 0xe4,
-	0xc8, 0x91, 0xe4, 0x09, 0x78, 0x04, 0xe4, 0xb5, 0x9d, 0xb8, 0x90, 0x88, 0xdb, 0xce, 0x37, 0xdf,
-	0xf7, 0xcd, 0x9f, 0x16, 0x8e, 0x34, 0x95, 0x1f, 0x65, 0x44, 0x61, 0x51, 0x2a, 0xa3, 0x10, 0x4a,
-	0x55, 0x19, 0x4a, 0x2a, 0x19, 0x53, 0xf0, 0x0a, 0x0e, 0x66, 0x4a, 0xe6, 0x06, 0x27, 0x30, 0x4c,
-	0x85, 0x91, 0xa6, 0x8a, 0xc9, 0x63, 0x4f, 0xd8, 0xc9, 0x01, 0x5f, 0xc7, 0xf8, 0x08, 0xdc, 0x54,
-	0xe5, 0x49, 0x93, 0x74, 0x6c, 0x72, 0x03, 0x04, 0x6f, 0xc1, 0xe5, 0x14, 0x19, 0x91, 0x27, 0x29,
-	0xe1, 0x31, 0x38, 0xa9, 0xb2, 0x06, 0xa3, 0xb3, 0x7b, 0xe1, 0xa6, 0x50, 0x68, 0xab, 0x70, 0x27,
-	0x55, 0x35, 0x65, 0x21, 0xad, 0xcd, 0x76, 0xca, 0x42, 0x06, 0x57, 0x70, 0xf8, 0x9a, 0x84, 0xa9,
-	0x4a, 0x42, 0x84, 0xfd, 0x5c, 0x64, 0x4d, 0x4f, 0x2e, 0xb7, 0x6f, 0x7c, 0x06, 0xc3, 0x54, 0x45,
-	0xc2, 0x48, 0x95, 0xef, 0xf6, 0x59, 0x53, 0x82, 0x39, 0xb8, 0xbc, 0xce, 0xbe, 0x51, 0xe6, 0xb6,
-	0x96, 0xfd, 0x57, 0x8b, 0x1e, 0x1c, 0x66, 0xa4, 0xb5, 0x48, 0x9a, 0xc1, 0x5d, 0xde, 0x85, 0xc1,
-	0x37, 0x06, 0x63, 0x6b, 0xfb, 0xae, 0xca, 0x32, 0x51, 0x7e, 0xc6, 0xc7, 0x30, 0x2a, 0x6a, 0xf5,
-	0x75, 0xa4, 0xaa, 0xdc, 0xb4, 0x4b, 0x04, 0x0b, 0x5d, 0xd6, 0x08, 0x3e, 0x85, 0xa3, 0x0f, 0xcd,
-	0x54, 0x2d, 0xa5, 0x59, 0xe5, 0xb8, 0x05, 0x1b, 0xd2, 0x04, 0x86, 0xb1, 0xd4, 0x46, 0xe4, 0x11,
-	0x79, 0x7b, 0xcd, 0x1d, 0xba, 0x18, 0x8f, 0x61, 0x4c, 0xa9, 0x28, 0x34, 0xc5, 0xd7, 0x46, 0x66,
-	0xe4, 0xed, 0xdb, 0xfc, 0xa8, 0xc5, 0xe6, 0x32, 0xa3, 0xb3, 0xaf, 0x0e, 0x80, 0xed, 0x6a, 0x5a,
-	0x8f, 0x83, 0x2f, 0x00, 0xa6, 0x64, 0xba, 0x5d, 0xfe, 0x3b, 0xe9, 0xe4, 0x7e, 0x1f, 0x6a, 0x79,
-	0xc1, 0x00, 0xcf, 0x61, 0x7c, 0x25, 0x75, 0x27, 0xd4, 0xf8, 0xa0, 0x4f, 0x5b, 0x5f, 0x7b, 0x87,
-	0xfa, 0x94, 0xe1, 0x39, 0x8c, 0x38, 0x45, 0xaa, 0x8c, 0x6d, 0x2f, 0xdb, 0x0a, 0x7b, 0xb7, 0x1c,
-	0x7b, 0x7b, 0x0c, 0x06, 0x27, 0x0c, 0x5f, 0xb6, 0x27, 0xbb, 0x5c, 0x08, 0xf3, 0x57, 0xf1, 0xee,
-	0x92, 0x93, 0xed, 0x70, 0x2d, 0x3f, 0x65, 0x17, 0xfc, 0x66, 0xe9, 0x0f, 0x7e, 0x2e, 0xfd, 0xc1,
-	0xef, 0xa5, 0xcf, 0xbe, 0xac, 0x7c, 0x76, 0xb3, 0xf2, 0xd9, 0x8f, 0x95, 0xcf, 0x7e, 0xad, 0x7c,
-	0x06, 0x0f, 0xa5, 0x0a, 0x93, 0xb2, 0x88, 0x42, 0xfa, 0x24, 0xb2, 0x22, 0x25, 0xdd, 0xb3, 0xba,
-	0xb8, 0xbb, 0xd9, 0xdf, 0xac, 0xfe, 0x2f, 0x33, 0xf6, 0xdd, 0xd9, 0xe3, 0xf3, 0xe9, 0xfb, 0x3b,
-	0xf6, 0xfb, 0x3c, 0xff, 0x13, 0x00, 0x00, 0xff, 0xff, 0x21, 0xa8, 0xfe, 0x16, 0x4f, 0x03, 0x00,
-	0x00,
+	// 575 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x54, 0xcd, 0x6e, 0xd3, 0x40,
+	0x10, 0xce, 0xba, 0xbf, 0x19, 0xa7, 0xb4, 0x6c, 0x85, 0x14, 0x05, 0xe4, 0x52, 0x73, 0xe9, 0xa5,
+	0x56, 0x15, 0x24, 0x0e, 0x1c, 0x8a, 0x68, 0x55, 0xc2, 0x4f, 0xe5, 0x96, 0x4d, 0x80, 0x63, 0xb5,
+	0x38, 0x83, 0xb3, 0xc2, 0xf6, 0x1a, 0xef, 0x1a, 0xc1, 0x8d, 0x0b, 0x4f, 0xc0, 0x85, 0x33, 0x4f,
+	0xd3, 0x23, 0x47, 0x8e, 0x34, 0x4f, 0xc0, 0x23, 0x20, 0xaf, 0xed, 0x36, 0x81, 0x44, 0xbd, 0x79,
+	0xbe, 0x99, 0xef, 0x1b, 0xcf, 0x37, 0xa3, 0x85, 0x35, 0x85, 0xd9, 0x47, 0x11, 0xa0, 0x97, 0x66,
+	0x52, 0x4b, 0x0a, 0x99, 0xcc, 0x35, 0x86, 0xb9, 0x18, 0xa2, 0xfb, 0x18, 0x96, 0x4e, 0xa5, 0x48,
+	0x34, 0xed, 0xc0, 0x6a, 0xc4, 0xb5, 0xd0, 0xf9, 0x10, 0xdb, 0xe4, 0x2e, 0xd9, 0x59, 0x62, 0x97,
+	0x31, 0xbd, 0x03, 0xcd, 0x48, 0x26, 0x61, 0x99, 0xb4, 0x4c, 0xf2, 0x0a, 0x70, 0x5f, 0x42, 0x93,
+	0x61, 0xa0, 0x79, 0x12, 0x46, 0x48, 0xb7, 0xc1, 0x8a, 0xa4, 0x11, 0xb0, 0xbb, 0x37, 0xbd, 0xab,
+	0x46, 0x9e, 0xe9, 0xc2, 0xac, 0x48, 0x16, 0x25, 0x23, 0x61, 0x64, 0x66, 0x97, 0x8c, 0x84, 0x7b,
+	0x0c, 0x2b, 0x4f, 0x90, 0xeb, 0x3c, 0x43, 0x4a, 0x61, 0x31, 0xe1, 0x71, 0xf9, 0x4f, 0x4d, 0x66,
+	0xbe, 0xe9, 0x2e, 0xac, 0x46, 0x32, 0xe0, 0x5a, 0xc8, 0x64, 0xbe, 0xce, 0x65, 0x89, 0x3b, 0x80,
+	0x26, 0x2b, 0xb2, 0xbe, 0xd4, 0xd3, 0x5c, 0x72, 0x2d, 0x97, 0xb6, 0x61, 0x25, 0x46, 0xa5, 0x78,
+	0x58, 0x0e, 0xde, 0x64, 0x75, 0xe8, 0x7e, 0x23, 0xd0, 0x32, 0xb2, 0xfd, 0x3c, 0x8e, 0x79, 0xf6,
+	0x99, 0x6e, 0x81, 0x9d, 0x16, 0xec, 0xb3, 0x40, 0xe6, 0x89, 0xae, 0x4c, 0x04, 0x03, 0x1d, 0x16,
+	0x08, 0xbd, 0x07, 0x6b, 0xef, 0xca, 0xa9, 0xaa, 0x92, 0xd2, 0xca, 0x56, 0x05, 0x96, 0x45, 0x1d,
+	0x58, 0x1d, 0x0a, 0xa5, 0x79, 0x12, 0x60, 0x7b, 0xa1, 0xdc, 0x43, 0x1d, 0xd3, 0x6d, 0x68, 0x61,
+	0xc4, 0x53, 0x85, 0xc3, 0x33, 0x2d, 0x62, 0x6c, 0x2f, 0x9a, 0xbc, 0x5d, 0x61, 0x03, 0x11, 0xa3,
+	0xeb, 0x01, 0x7d, 0x8a, 0x3c, 0xd2, 0xa3, 0xc3, 0x11, 0x06, 0xef, 0x19, 0x7e, 0xc8, 0x51, 0xe9,
+	0x62, 0x8a, 0xea, 0x04, 0x2a, 0x1f, 0xeb, 0xd0, 0xfd, 0x4e, 0x60, 0x73, 0x8a, 0xa0, 0x52, 0x99,
+	0x28, 0xa4, 0x47, 0xb0, 0xac, 0x34, 0xd7, 0xb9, 0x32, 0x84, 0x1b, 0xdd, 0xdd, 0x49, 0x93, 0x66,
+	0x10, 0xbc, 0x7e, 0x21, 0x98, 0x84, 0x7d, 0x43, 0x62, 0x15, 0xd9, 0x7d, 0x08, 0x6b, 0x53, 0x09,
+	0x6a, 0xc3, 0xca, 0x2b, 0xff, 0x85, 0x7f, 0xf2, 0xc6, 0xdf, 0x68, 0x14, 0x41, 0xff, 0x88, 0xbd,
+	0x7e, 0xe6, 0xf7, 0x36, 0x08, 0x5d, 0x07, 0xdb, 0x3f, 0x19, 0x9c, 0xd5, 0x80, 0xd5, 0xfd, 0x6a,
+	0x01, 0x18, 0x83, 0x7b, 0x45, 0x53, 0xfa, 0x00, 0xa0, 0x87, 0xba, 0x3e, 0x8b, 0xff, 0x97, 0xd6,
+	0xd9, 0x9c, 0x84, 0xaa, 0x3a, 0xb7, 0x41, 0xf7, 0xa1, 0x75, 0x2c, 0x54, 0x4d, 0x54, 0xf4, 0xd6,
+	0x64, 0xd9, 0xe5, 0xe1, 0xce, 0x61, 0xef, 0x11, 0xba, 0x0f, 0x36, 0xc3, 0x40, 0x66, 0x43, 0xf3,
+	0x2f, 0xb3, 0x1a, 0xb7, 0xa7, 0x14, 0x27, 0x4e, 0xc2, 0x6d, 0xec, 0x10, 0xfa, 0xa8, 0xba, 0xbe,
+	0xc3, 0x11, 0xd7, 0xff, 0x34, 0xaf, 0x8f, 0xb2, 0x33, 0x1b, 0x2e, 0xe8, 0x7b, 0xa4, 0x3b, 0x80,
+	0xe5, 0xd2, 0x70, 0xfa, 0x1c, 0x96, 0x8c, 0xe9, 0xd4, 0x99, 0xbb, 0x0d, 0xb3, 0xef, 0xce, 0xd6,
+	0x35, 0xdb, 0x72, 0x1b, 0x07, 0xec, 0xfc, 0xc2, 0x69, 0xfc, 0xba, 0x70, 0x1a, 0x7f, 0x2e, 0x1c,
+	0xf2, 0x65, 0xec, 0x90, 0xf3, 0xb1, 0x43, 0x7e, 0x8e, 0x1d, 0xf2, 0x7b, 0xec, 0x10, 0xb8, 0x2d,
+	0xa4, 0x17, 0x66, 0x69, 0xe0, 0xe1, 0x27, 0x1e, 0xa7, 0x11, 0xaa, 0x09, 0xc1, 0x83, 0xf5, 0xab,
+	0xad, 0x9c, 0x16, 0x0f, 0xca, 0x29, 0xf9, 0x61, 0x2d, 0xb0, 0x41, 0xef, 0xed, 0xb2, 0x79, 0x5f,
+	0xee, 0xff, 0x0d, 0x00, 0x00, 0xff, 0xff, 0xc8, 0x2d, 0xb7, 0x36, 0x70, 0x04, 0x00, 0x00,
 }

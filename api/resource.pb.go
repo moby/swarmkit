@@ -490,8 +490,8 @@ func (p *raftProxyResourceAllocatorServer) runCtxMods(ctx context.Context) (cont
 	}
 	return ctx, nil
 }
-func (p *raftProxyResourceAllocatorServer) pollNewLeaderConn(ctx context.Context, oldConn *grpc.ClientConn) (*grpc.ClientConn, error) {
-	ticker := time.NewTicker(100 * time.Millisecond)
+func (p *raftProxyResourceAllocatorServer) pollNewLeaderConn(ctx context.Context) (*grpc.ClientConn, error) {
+	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		select {
@@ -500,7 +500,11 @@ func (p *raftProxyResourceAllocatorServer) pollNewLeaderConn(ctx context.Context
 			if err != nil {
 				return nil, err
 			}
-			if conn == oldConn {
+
+			client := NewHealthClient(conn)
+
+			resp, err := client.Check(ctx, &HealthCheckRequest{Service: "Raft"})
+			if err != nil || resp.Status != HealthCheckResponse_SERVING {
 				continue
 			}
 			return conn, nil
@@ -529,7 +533,7 @@ func (p *raftProxyResourceAllocatorServer) AttachNetwork(ctx context.Context, r 
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.AttachNetwork(ctx, r)
@@ -560,7 +564,7 @@ func (p *raftProxyResourceAllocatorServer) DetachNetwork(ctx context.Context, r 
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.DetachNetwork(ctx, r)
