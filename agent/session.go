@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/protobuf/ptypes"
@@ -31,12 +32,12 @@ type session struct {
 	conn *grpc.ClientConn
 	addr string
 
-	agent     *Agent
-	sessionID string
-	session   api.Dispatcher_SessionClient
-	errs      chan error
-	messages  chan *api.SessionMessage
-	tasks     chan *api.TasksMessage
+	agent       *Agent
+	sessionID   string
+	session     api.Dispatcher_SessionClient
+	errs        chan error
+	messages    chan *api.SessionMessage
+	assignments chan *api.AssignmentsMessage
 
 	registered chan struct{} // closed registration
 	closed     chan struct{}
@@ -44,13 +45,13 @@ type session struct {
 
 func newSession(ctx context.Context, agent *Agent, delay time.Duration, sessionID string, description *api.NodeDescription) *session {
 	s := &session{
-		agent:      agent,
-		sessionID:  sessionID,
-		errs:       make(chan error, 1),
-		messages:   make(chan *api.SessionMessage),
-		tasks:      make(chan *api.TasksMessage),
-		registered: make(chan struct{}),
-		closed:     make(chan struct{}),
+		agent:       agent,
+		sessionID:   sessionID,
+		errs:        make(chan error, 1),
+		messages:    make(chan *api.SessionMessage),
+		assignments: make(chan *api.AssignmentsMessage),
+		registered:  make(chan struct{}),
+		closed:      make(chan struct{}),
 	}
 	peer, err := agent.config.Managers.Select()
 	if err != nil {
@@ -205,22 +206,68 @@ func (s *session) handleSessionMessage(ctx context.Context, msg *api.SessionMess
 }
 
 func (s *session) watch(ctx context.Context) error {
-	log.G(ctx).Debugf("(*session).watch")
-	client := api.NewDispatcherClient(s.conn)
-	watch, err := client.Tasks(ctx, &api.TasksRequest{
-		SessionID: s.sessionID})
-	if err != nil {
-		return err
-	}
+	log := log.G(ctx).WithFields(logrus.Fields{"method": "(*session).watch"})
+	log.Debugf("")
+	var (
+		resp            *api.AssignmentsMessage
+		assignmentWatch api.Dispatcher_AssignmentsClient
+		tasksWatch      api.Dispatcher_TasksClient
+		streamReference string
+		tasksFallback   bool
+		err             error
+	)
 
+	client := api.NewDispatcherClient(s.conn)
 	for {
-		resp, err := watch.Recv()
-		if err != nil {
-			return err
+		// If this is the first time we're running the loop, or there was a reference mismatch
+		// attempt to get the assignmentWatch
+		if assignmentWatch == nil && !tasksFallback {
+			assignmentWatch, err = client.Assignments(ctx, &api.AssignmentsRequest{SessionID: s.sessionID})
+			if err != nil {
+				return err
+			}
+		}
+		// We have an assignmentWatch, let's try to receive an AssignmentMessage
+		if assignmentWatch != nil {
+			// If we get a code = 12 desc = unknown method Assignments, try to use tasks
+			resp, err = assignmentWatch.Recv()
+			if err != nil {
+				if grpc.Code(err) != codes.Unimplemented {
+					return err
+				}
+				tasksFallback = true
+				assignmentWatch = nil
+				log.WithError(err).Infof("falling back to Tasks")
+			}
+		}
+
+		// This code is here for backwards compatibility (so that newer clients can use the
+		// older method Tasks)
+		if tasksWatch == nil && tasksFallback {
+			tasksWatch, err = client.Tasks(ctx, &api.TasksRequest{SessionID: s.sessionID})
+			if err != nil {
+				return err
+			}
+		}
+		if tasksWatch != nil {
+			var taskResp *api.TasksMessage
+			taskResp, err = tasksWatch.Recv()
+			if err != nil {
+				return err
+			}
+			resp = &api.AssignmentsMessage{Type: api.AssignmentsMessage_COMPLETE, UpdateTasks: taskResp.Tasks}
+		}
+
+		// If there seems to be a gap in the stream, let's break out of the inner for and
+		// re-sync (by calling Assignments again).
+		if streamReference != "" && streamReference != resp.AppliesTo {
+			assignmentWatch = nil
+		} else {
+			streamReference = resp.ResultsIn
 		}
 
 		select {
-		case s.tasks <- resp:
+		case s.assignments <- resp:
 		case <-s.closed:
 			return errSessionClosed
 		case <-ctx.Done():
@@ -231,7 +278,6 @@ func (s *session) watch(ctx context.Context) error {
 
 // sendTaskStatus uses the current session to send the status of a single task.
 func (s *session) sendTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error {
-
 	client := api.NewDispatcherClient(s.conn)
 	if _, err := client.UpdateTaskStatus(ctx, &api.UpdateTaskStatusRequest{
 		SessionID: s.sessionID,

@@ -164,7 +164,7 @@ func (m *InternalRaftRequest) Reset()                    { *m = InternalRaftRequ
 func (*InternalRaftRequest) ProtoMessage()               {}
 func (*InternalRaftRequest) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{9} }
 
-// StoreAction defines a taret and operation to apply on the storage system.
+// StoreAction defines a target and operation to apply on the storage system.
 type StoreAction struct {
 	Action StoreActionKind `protobuf:"varint,1,opt,name=action,proto3,enum=docker.swarmkit.v1.StoreActionKind" json:"action,omitempty"`
 	// Types that are valid to be assigned to Target:
