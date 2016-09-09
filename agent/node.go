@@ -194,7 +194,9 @@ func (n *Node) run(ctx context.Context) (err error) {
 		select {
 		case <-ctx.Done():
 		case resp := <-issueResponseChan:
-			logrus.Debugf("Requesting certificate for NodeID: %v", resp.NodeID)
+			log.G(log.WithModule(ctx, "tls")).WithFields(logrus.Fields{
+				"node.id": resp.NodeID,
+			}).Debugf("requesting certificate")
 			n.Lock()
 			n.nodeID = resp.NodeID
 			n.nodeMembership = resp.NodeMembership
