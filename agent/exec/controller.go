@@ -59,14 +59,14 @@ type ContainerStatuser interface {
 //
 // Unlike Do, if an error is returned, the status should still be reported. The
 // error merely reports the failure at getting the controller.
-func Resolve(ctx context.Context, task *api.Task, executor Executor) (Controller, *api.TaskStatus, error) {
+func Resolve(ctx context.Context, task *api.Task, secrets map[string]*api.Secret, executor Executor) (Controller, *api.TaskStatus, error) {
 	status := task.Status.Copy()
 
 	defer func() {
 		logStateChange(ctx, task.DesiredState, task.Status.State, status.State)
 	}()
 
-	ctlr, err := executor.Controller(task)
+	ctlr, err := executor.Controller(task, secrets)
 
 	// depending on the tasks state, a failed controller resolution has varying
 	// impact. The following expresses that impact.

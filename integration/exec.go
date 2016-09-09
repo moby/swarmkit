@@ -26,7 +26,7 @@ func (e *TestExecutor) SetNetworkBootstrapKeys([]*api.EncryptionKey) error {
 }
 
 // Controller returns TestController.
-func (e *TestExecutor) Controller(t *api.Task) (exec.Controller, error) {
+func (e *TestExecutor) Controller(t *api.Task, secrets map[string]*api.Secret) (exec.Controller, error) {
 	return &TestController{
 		ch: make(chan struct{}),
 	}, nil
