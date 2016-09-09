@@ -45,7 +45,7 @@ func TestLoadNewTLSConfig(t *testing.T) {
 	// Create two different certs and two different TLS configs
 	cert1, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN1", ca.ManagerRole, tc.Organization)
 	assert.NoError(t, err)
-	cert2, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN2", ca.AgentRole, tc.Organization)
+	cert2, err := tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN2", ca.WorkerRole, tc.Organization)
 	assert.NoError(t, err)
 	tlsConfig1, err := ca.NewServerTLSConfig(cert1, tc.RootCA.Pool)
 	assert.NoError(t, err)
@@ -61,6 +61,6 @@ func TestLoadNewTLSConfig(t *testing.T) {
 	// Load the new Config and assert it changed
 	err = creds.LoadNewTLSConfig(tlsConfig2)
 	assert.NoError(t, err)
-	assert.Equal(t, ca.AgentRole, creds.Role())
+	assert.Equal(t, ca.WorkerRole, creds.Role())
 	assert.Equal(t, "CN2", creds.NodeID())
 }

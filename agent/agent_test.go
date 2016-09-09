@@ -61,7 +61,7 @@ func TestAgentStartStop(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	agentSecurityConfig, err := tc.NewNodeConfig(ca.AgentRole)
+	agentSecurityConfig, err := tc.NewNodeConfig(ca.WorkerRole)
 	assert.NoError(t, err)
 
 	addr := "localhost:4949"
@@ -135,7 +135,7 @@ func agentTestEnv(t *testing.T) (*Agent, func()) {
 	tc := testutils.NewTestCA(t)
 	cleanup = append(cleanup, func() { tc.Stop() })
 
-	agentSecurityConfig, err := tc.NewNodeConfig(ca.AgentRole)
+	agentSecurityConfig, err := tc.NewNodeConfig(ca.WorkerRole)
 	assert.NoError(t, err)
 
 	addr := "localhost:4949"
