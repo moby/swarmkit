@@ -200,12 +200,15 @@ func (c *containerAdapter) events(ctx context.Context) (<-chan events.Message, <
 		for {
 			var event events.Message
 			if err := dec.Decode(&event); err != nil {
-				// TODO(stevvooe): This error handling isn't quite right.
-				if err == io.EOF {
+				// TODO(stevvooe): This error handling isn't quite right. We
+				// can refactor this to use
+				// https://github.com/docker/docker/pull/25853 and this will a
+				// lot more simplified.
+				if err == io.EOF || strings.Contains(err.Error(), "request canceled") {
 					return
 				}
 
-				log.G(ctx).Errorf("error decoding event: %v", err)
+				log.G(ctx).WithError(err).Errorf("error decoding event")
 				return
 			}
 
