@@ -120,7 +120,7 @@ func NewNode(c *NodeConfig) (*Node, error) {
 
 	n := &Node{
 		remotes:              newPersistentRemotes(stateFile, p...),
-		role:                 ca.AgentRole,
+		role:                 ca.WorkerRole,
 		config:               c,
 		started:              make(chan struct{}),
 		stopped:              make(chan struct{}),
@@ -233,7 +233,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 			case apirole := <-n.roleChangeReq:
 				n.Lock()
 				lastRole := n.role
-				role := ca.AgentRole
+				role := ca.WorkerRole
 				if apirole == api.NodeRoleManager {
 					role = ca.ManagerRole
 				}
@@ -242,7 +242,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 					continue
 				}
 				// switch role to agent immediately to shutdown manager early
-				if role == ca.AgentRole {
+				if role == ca.WorkerRole {
 					n.role = role
 					n.roleCond.Broadcast()
 				}
@@ -635,7 +635,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 		roleChanged := make(chan error)
 		waitCtx, waitCancel := context.WithCancel(ctx)
 		go func() {
-			err := n.waitRole(waitCtx, ca.AgentRole)
+			err := n.waitRole(waitCtx, ca.WorkerRole)
 			roleChanged <- err
 		}()
 

@@ -129,7 +129,7 @@ func NewTestCA(t *testing.T) *TestCA {
 	managerDiffOrgConfig, err := genSecurityConfig(s, rootCA, ca.ManagerRole, "swarm-test-org-2", "", External)
 	assert.NoError(t, err)
 
-	agentConfig, err := genSecurityConfig(s, rootCA, ca.AgentRole, organization, "", External)
+	workerConfig, err := genSecurityConfig(s, rootCA, ca.WorkerRole, organization, "", External)
 	assert.NoError(t, err)
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -137,7 +137,7 @@ func NewTestCA(t *testing.T) *TestCA {
 
 	baseOpts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
 	insecureClientOpts := append(baseOpts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})))
-	clientOpts := append(baseOpts, grpc.WithTransportCredentials(agentConfig.ClientTLSCreds))
+	clientOpts := append(baseOpts, grpc.WithTransportCredentials(workerConfig.ClientTLSCreds))
 	managerOpts := append(baseOpts, grpc.WithTransportCredentials(managerConfig.ClientTLSCreds))
 	managerDiffOrgOpts := append(baseOpts, grpc.WithTransportCredentials(managerDiffOrgConfig.ClientTLSCreds))
 

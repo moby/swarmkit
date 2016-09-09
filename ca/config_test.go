@@ -25,7 +25,7 @@ func TestLoadOrCreateSecurityConfigEmptyDir(t *testing.T) {
 	info := make(chan api.IssueNodeCertificateResponse, 1)
 	// Remove all the contents from the temp dir and try again with a new node
 	os.RemoveAll(tc.TempDir)
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, tc.WorkerToken, ca.AgentRole, tc.Remotes, info)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, tc.WorkerToken, ca.WorkerRole, tc.Remotes, info)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -44,7 +44,7 @@ func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
 	// Remove only the node certificates form the directory, and attest that we get
 	// new certificates that are locally signed
 	os.RemoveAll(tc.Paths.Node.Cert)
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, tc.WorkerToken, ca.AgentRole, tc.Remotes, nil)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, tc.WorkerToken, ca.WorkerRole, tc.Remotes, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -59,7 +59,7 @@ func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
 	// new certificates that are issued by the remote CA
 	os.RemoveAll(tc.Paths.RootCA.Key)
 	os.RemoveAll(tc.Paths.Node.Cert)
-	nodeConfig, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, tc.WorkerToken, ca.AgentRole, tc.Remotes, info)
+	nodeConfig, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, tc.WorkerToken, ca.WorkerRole, tc.Remotes, info)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -85,7 +85,7 @@ func TestLoadOrCreateSecurityConfigWrongCAHash(t *testing.T) {
 	os.RemoveAll(tc.Paths.RootCA.Key)
 	os.RemoveAll(tc.Paths.RootCA.Cert)
 	os.RemoveAll(tc.Paths.Node.Cert)
-	_, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, replacementToken, ca.AgentRole, tc.Remotes, info)
+	_, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, replacementToken, ca.WorkerRole, tc.Remotes, info)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "remote CA does not match fingerprint.")
 }
@@ -96,7 +96,7 @@ func TestLoadOrCreateSecurityConfigInvalidCACert(t *testing.T) {
 
 	// First load the current nodeConfig. We'll verify that after we corrupt
 	// the certificate, another subsequent call with get us new certs
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Remotes, nil)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.WorkerRole, tc.Remotes, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -113,7 +113,7 @@ some random garbage\n
 -----END CERTIFICATE-----`), 0644)
 
 	// We should get an error when the CA cert is invalid.
-	_, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Remotes, nil)
+	_, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.WorkerRole, tc.Remotes, nil)
 	assert.Error(t, err)
 
 	// Not having a local cert should cause us to fallback to using the
@@ -121,7 +121,7 @@ some random garbage\n
 	assert.Nil(t, os.Remove(tc.Paths.RootCA.Cert))
 
 	// Validate we got a new valid state
-	newNodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Remotes, nil)
+	newNodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.WorkerRole, tc.Remotes, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -145,7 +145,7 @@ some random garbage\n
 -----END EC PRIVATE KEY-----`), 0644)
 
 	// We should get an error when the local ca private key is invalid.
-	_, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Remotes, nil)
+	_, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.WorkerRole, tc.Remotes, nil)
 	assert.Error(t, err)
 }
 
@@ -158,7 +158,7 @@ func TestLoadOrCreateSecurityConfigInvalidCert(t *testing.T) {
 some random garbage\n
 -----END CERTIFICATE-----`), 0644)
 
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Remotes, nil)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.WorkerRole, tc.Remotes, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -177,7 +177,7 @@ func TestLoadOrCreateSecurityConfigInvalidKey(t *testing.T) {
 some random garbage\n
 -----END EC PRIVATE KEY-----`), 0644)
 
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Remotes, nil)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.WorkerRole, tc.Remotes, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -191,7 +191,7 @@ func TestLoadOrCreateSecurityConfigInvalidKeyWithValidTempKey(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, tc.Remotes, nil)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.WorkerRole, tc.Remotes, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -204,7 +204,7 @@ func TestLoadOrCreateSecurityConfigInvalidKeyWithValidTempKey(t *testing.T) {
 	ioutil.WriteFile(tc.Paths.Node.Key, []byte(`-----BEGIN EC PRIVATE KEY-----\n
 some random garbage\n
 -----END EC PRIVATE KEY-----`), 0644)
-	nodeConfig, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.AgentRole, nil, nil)
+	nodeConfig, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.TempDir, "", ca.WorkerRole, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -214,7 +214,7 @@ some random garbage\n
 	assert.NotNil(t, nodeConfig.RootCA().Signer)
 }
 
-func TestRenewTLSConfigAgent(t *testing.T) {
+func TestRenewTLSConfigWorker(t *testing.T) {
 	t.Parallel()
 
 	tc := testutils.NewTestCA(t)
@@ -224,7 +224,7 @@ func TestRenewTLSConfigAgent(t *testing.T) {
 	defer cancel()
 
 	// Get a new nodeConfig with a TLS cert that has the default Cert duration
-	nodeConfig, err := tc.WriteNewNodeConfig(ca.AgentRole)
+	nodeConfig, err := tc.WriteNewNodeConfig(ca.WorkerRole)
 	assert.NoError(t, err)
 
 	// Create a new RootCA, and change the policy to issue 6 minute certificates
@@ -261,7 +261,7 @@ func TestRenewTLSConfigAgent(t *testing.T) {
 	case certUpdate := <-updates:
 		assert.NoError(t, certUpdate.Err)
 		assert.NotNil(t, certUpdate)
-		assert.Equal(t, ca.AgentRole, certUpdate.Role)
+		assert.Equal(t, ca.WorkerRole, certUpdate.Role)
 	}
 }
 

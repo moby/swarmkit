@@ -78,7 +78,7 @@ func TestIssueNodeCertificateWithInvalidCSR(t *testing.T) {
 	assert.Nil(t, statusResponse.Certificate.Certificate)
 }
 
-func TestIssueNodeCertificateAgentRenewal(t *testing.T) {
+func TestIssueNodeCertificateWorkerRenewal(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
@@ -123,7 +123,7 @@ func TestIssueNodeCertificateManagerRenewal(t *testing.T) {
 	assert.Equal(t, role, statusResponse.Certificate.Role)
 }
 
-func TestIssueNodeCertificateAgentFromDifferentOrgRenewal(t *testing.T) {
+func TestIssueNodeCertificateWorkerFromDifferentOrgRenewal(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 

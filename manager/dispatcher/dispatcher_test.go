@@ -80,11 +80,11 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	}
 
 	tca := testutils.NewTestCA(nil)
-	agentSecurityConfig1, err := tca.NewNodeConfig(ca.AgentRole)
+	agentSecurityConfig1, err := tca.NewNodeConfig(ca.WorkerRole)
 	if err != nil {
 		return nil, err
 	}
-	agentSecurityConfig2, err := tca.NewNodeConfig(ca.AgentRole)
+	agentSecurityConfig2, err := tca.NewNodeConfig(ca.WorkerRole)
 	if err != nil {
 		return nil, err
 	}

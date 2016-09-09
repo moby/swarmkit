@@ -67,9 +67,9 @@ func TestManager(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	agentSecurityConfig, err := tc.NewNodeConfig(ca.AgentRole)
+	agentSecurityConfig, err := tc.NewNodeConfig(ca.WorkerRole)
 	assert.NoError(t, err)
-	agentDiffOrgSecurityConfig, err := tc.NewNodeConfigOrg(ca.AgentRole, "another-org")
+	agentDiffOrgSecurityConfig, err := tc.NewNodeConfigOrg(ca.WorkerRole, "another-org")
 	assert.NoError(t, err)
 	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
 	assert.NoError(t, err)
