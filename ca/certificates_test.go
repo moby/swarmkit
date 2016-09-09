@@ -345,7 +345,7 @@ func TestIssueAndSaveNewCertificates(t *testing.T) {
 	assert.Contains(t, certs[0].DNSNames, "swarm-manager")
 
 	// Test the creation of a worker node cert
-	cert, err = tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN", ca.AgentRole, tc.Organization)
+	cert, err = tc.RootCA.IssueAndSaveNewCertificates(tc.Paths.Node, "CN", ca.WorkerRole, tc.Organization)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 	perms, err = permbits.Stat(tc.Paths.Node.Cert)
@@ -359,7 +359,7 @@ func TestIssueAndSaveNewCertificates(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, certs, 2)
 	assert.Equal(t, "CN", certs[0].Subject.CommonName)
-	assert.Equal(t, ca.AgentRole, certs[0].Subject.OrganizationalUnit[0])
+	assert.Equal(t, ca.WorkerRole, certs[0].Subject.OrganizationalUnit[0])
 	assert.Equal(t, tc.Organization, certs[0].Subject.Organization[0])
 	assert.Equal(t, "swarm-test-CA", certs[1].Subject.CommonName)
 	assert.Contains(t, certs[0].DNSNames, "CN")
@@ -387,7 +387,7 @@ func TestGetRemoteSignedCertificate(t *testing.T) {
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, 1).After(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.ManagerRole)
 
-	// Test the expiration for an agent certificate
+	// Test the expiration for an worker certificate
 	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, tc.WorkerToken, tc.RootCA.Pool, tc.Remotes, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
@@ -396,7 +396,7 @@ func TestGetRemoteSignedCertificate(t *testing.T) {
 	assert.Len(t, parsedCerts, 2)
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, -1).Before(parsedCerts[0].NotAfter))
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, 1).After(parsedCerts[0].NotAfter))
-	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.AgentRole)
+	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.WorkerRole)
 }
 
 func TestGetRemoteSignedCertificateNodeInfo(t *testing.T) {

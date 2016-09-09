@@ -35,8 +35,8 @@ const (
 	rootCN = "swarm-ca"
 	// ManagerRole represents the Manager node type, and is used for authorization to endpoints
 	ManagerRole = "swarm-manager"
-	// AgentRole represents the Agent node type, and is used for authorization to endpoints
-	AgentRole = "swarm-worker"
+	// WorkerRole represents the Worker node type, and is used for authorization to endpoints
+	WorkerRole = "swarm-worker"
 	// CARole represents the CA node type, and is used for clients attempting to get new certificates issued
 	CARole = "swarm-ca"
 
@@ -272,7 +272,7 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, token, propose
 				return nil, err
 			}
 		}
-		// Create the Server TLS Credentials for this node. These will not be used by agents.
+		// Create the Server TLS Credentials for this node. These will not be used by workers.
 		serverTLSCreds, err = rootCA.NewServerTLSCredentials(tlsKeyPair)
 		if err != nil {
 			return nil, err
@@ -478,7 +478,7 @@ func LoadTLSCreds(rootCA RootCA, paths CertPaths) (*MutableTLSCreds, *MutableTLS
 	}
 
 	// Load the Certificates also as client credentials.
-	// Both Agents and Managers always connect to remote Managers,
+	// Both workers and managers always connect to remote managers,
 	// so ServerName is always set to ManagerRole here.
 	clientTLSCreds, err := rootCA.NewClientTLSCredentials(&keyPair, ManagerRole)
 	if err != nil {
@@ -561,7 +561,7 @@ func ParseRole(apiRole api.NodeRole) (string, error) {
 	case api.NodeRoleManager:
 		return ManagerRole, nil
 	case api.NodeRoleWorker:
-		return AgentRole, nil
+		return WorkerRole, nil
 	default:
 		return "", fmt.Errorf("failed to parse api role: %v", apiRole)
 	}
@@ -572,7 +572,7 @@ func FormatRole(role string) (api.NodeRole, error) {
 	switch strings.ToLower(role) {
 	case strings.ToLower(ManagerRole):
 		return api.NodeRoleManager, nil
-	case strings.ToLower(AgentRole):
+	case strings.ToLower(WorkerRole):
 		return api.NodeRoleWorker, nil
 	default:
 		return 0, fmt.Errorf("failed to parse role: %s", role)
