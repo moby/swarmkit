@@ -27,6 +27,8 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// WARNING: This file should be used only in raftproxy tests.
+
 syntax = "proto3";
 
 option java_multiple_files = true;
@@ -123,4 +125,21 @@ message RouteSummary {
 
 	// The duration of the traversal in seconds.
 	int32 elapsed_time = 4;
+}
+
+service Health {
+	rpc Check(HealthCheckRequest) returns (HealthCheckResponse) {};
+}
+
+message HealthCheckRequest {
+	string service = 1;
+}
+
+message HealthCheckResponse {
+	enum ServingStatus {
+		UNKNOWN = 0;
+		SERVING = 1;
+		NOT_SERVING = 2;
+	}
+	ServingStatus status = 1;
 }

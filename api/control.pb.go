@@ -4280,8 +4280,8 @@ func (p *raftProxyControlServer) runCtxMods(ctx context.Context) (context.Contex
 	}
 	return ctx, nil
 }
-func (p *raftProxyControlServer) pollNewLeaderConn(ctx context.Context, oldConn *grpc.ClientConn) (*grpc.ClientConn, error) {
-	ticker := time.NewTicker(100 * time.Millisecond)
+func (p *raftProxyControlServer) pollNewLeaderConn(ctx context.Context) (*grpc.ClientConn, error) {
+	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		select {
@@ -4290,7 +4290,11 @@ func (p *raftProxyControlServer) pollNewLeaderConn(ctx context.Context, oldConn 
 			if err != nil {
 				return nil, err
 			}
-			if conn == oldConn {
+
+			client := NewHealthClient(conn)
+
+			resp, err := client.Check(ctx, &HealthCheckRequest{Service: "Raft"})
+			if err != nil || resp.Status != HealthCheckResponse_SERVING {
 				continue
 			}
 			return conn, nil
@@ -4319,7 +4323,7 @@ func (p *raftProxyControlServer) GetNode(ctx context.Context, r *GetNodeRequest)
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.GetNode(ctx, r)
@@ -4350,7 +4354,7 @@ func (p *raftProxyControlServer) ListNodes(ctx context.Context, r *ListNodesRequ
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.ListNodes(ctx, r)
@@ -4381,7 +4385,7 @@ func (p *raftProxyControlServer) UpdateNode(ctx context.Context, r *UpdateNodeRe
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.UpdateNode(ctx, r)
@@ -4412,7 +4416,7 @@ func (p *raftProxyControlServer) RemoveNode(ctx context.Context, r *RemoveNodeRe
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.RemoveNode(ctx, r)
@@ -4443,7 +4447,7 @@ func (p *raftProxyControlServer) GetTask(ctx context.Context, r *GetTaskRequest)
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.GetTask(ctx, r)
@@ -4474,7 +4478,7 @@ func (p *raftProxyControlServer) ListTasks(ctx context.Context, r *ListTasksRequ
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.ListTasks(ctx, r)
@@ -4505,7 +4509,7 @@ func (p *raftProxyControlServer) RemoveTask(ctx context.Context, r *RemoveTaskRe
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.RemoveTask(ctx, r)
@@ -4536,7 +4540,7 @@ func (p *raftProxyControlServer) GetService(ctx context.Context, r *GetServiceRe
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.GetService(ctx, r)
@@ -4567,7 +4571,7 @@ func (p *raftProxyControlServer) ListServices(ctx context.Context, r *ListServic
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.ListServices(ctx, r)
@@ -4598,7 +4602,7 @@ func (p *raftProxyControlServer) CreateService(ctx context.Context, r *CreateSer
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.CreateService(ctx, r)
@@ -4629,7 +4633,7 @@ func (p *raftProxyControlServer) UpdateService(ctx context.Context, r *UpdateSer
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.UpdateService(ctx, r)
@@ -4660,7 +4664,7 @@ func (p *raftProxyControlServer) RemoveService(ctx context.Context, r *RemoveSer
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.RemoveService(ctx, r)
@@ -4691,7 +4695,7 @@ func (p *raftProxyControlServer) GetNetwork(ctx context.Context, r *GetNetworkRe
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.GetNetwork(ctx, r)
@@ -4722,7 +4726,7 @@ func (p *raftProxyControlServer) ListNetworks(ctx context.Context, r *ListNetwor
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.ListNetworks(ctx, r)
@@ -4753,7 +4757,7 @@ func (p *raftProxyControlServer) CreateNetwork(ctx context.Context, r *CreateNet
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.CreateNetwork(ctx, r)
@@ -4784,7 +4788,7 @@ func (p *raftProxyControlServer) RemoveNetwork(ctx context.Context, r *RemoveNet
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.RemoveNetwork(ctx, r)
@@ -4815,7 +4819,7 @@ func (p *raftProxyControlServer) GetCluster(ctx context.Context, r *GetClusterRe
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.GetCluster(ctx, r)
@@ -4846,7 +4850,7 @@ func (p *raftProxyControlServer) ListClusters(ctx context.Context, r *ListCluste
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.ListClusters(ctx, r)
@@ -4877,7 +4881,7 @@ func (p *raftProxyControlServer) UpdateCluster(ctx context.Context, r *UpdateClu
 		if !strings.Contains(err.Error(), "is closing") {
 			return resp, err
 		}
-		conn, err := p.pollNewLeaderConn(ctx, conn)
+		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
 			if err == raftselector.ErrIsLeader {
 				return p.local.UpdateCluster(ctx, r)
