@@ -48,9 +48,11 @@ func New(config *Config) (*Agent, error) {
 		return nil, err
 	}
 
+	worker := newWorker(config.DB, config.Executor)
+
 	a := &Agent{
 		config:   config,
-		worker:   newWorker(config.DB, config.Executor),
+		worker:   worker,
 		sessionq: make(chan sessionOperation),
 		started:  make(chan struct{}),
 		stopped:  make(chan struct{}),

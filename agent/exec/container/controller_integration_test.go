@@ -54,7 +54,9 @@ func TestControllerFlowIntegration(t *testing.T) {
 		},
 	}
 
-	ctlr, err := newController(client, task)
+	var secrets map[string]*api.Secret
+
+	ctlr, err := newController(client, task, secrets)
 	assert.NoError(t, err)
 	assert.NotNil(t, ctlr)
 	assert.NoError(t, ctlr.Prepare(ctx))

@@ -25,9 +25,10 @@ import (
 type containerAdapter struct {
 	client    engineapi.APIClient
 	container *containerConfig
+	secrets   map[string]*api.Secret
 }
 
-func newContainerAdapter(client engineapi.APIClient, task *api.Task) (*containerAdapter, error) {
+func newContainerAdapter(client engineapi.APIClient, task *api.Task, secrets map[string]*api.Secret) (*containerAdapter, error) {
 	ctnr, err := newContainerConfig(task)
 	if err != nil {
 		return nil, err
@@ -36,6 +37,7 @@ func newContainerAdapter(client engineapi.APIClient, task *api.Task) (*container
 	return &containerAdapter{
 		client:    client,
 		container: ctnr,
+		secrets:   secrets,
 	}, nil
 }
 
