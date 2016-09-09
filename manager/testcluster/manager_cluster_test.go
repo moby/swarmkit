@@ -63,7 +63,7 @@ func (mc *managersCluster) addAgents(count int) error {
 		addrs = append(addrs, api.Peer{Addr: m.addr})
 	}
 	for i := 0; i < count; i++ {
-		asConfig, err := mc.tc.NewNodeConfig(ca.AgentRole)
+		asConfig, err := mc.tc.NewNodeConfig(ca.WorkerRole)
 		if err != nil {
 			return err
 		}
