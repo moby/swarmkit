@@ -121,6 +121,8 @@
 		UpdateTaskStatusResponse
 		TasksRequest
 		TasksMessage
+		AssignmentsRequest
+		AssignmentsMessage
 		NodeCertificateStatusRequest
 		NodeCertificateStatusResponse
 		IssueNodeCertificateRequest
