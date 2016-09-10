@@ -658,6 +658,20 @@ message RaftConfig {
 	uint32 election_tick = 5;
 }
 
+
+// SecretsConfig specifies cluster-level secrets settings.
+message SecretsConfig {
+	// MaxSecrets specifies how many user-specified secrets there can be.  A value
+	// of 0 will be interpreted as the default maximum value.
+	uint32 max_secrets = 1;
+
+	// MaxSecretRevisions specifies how many revisions of a secret there can be.  A
+	// value of 0 will be interpreted as the default maximum value.
+	// If this value is decreased, there will be no change to existing secrets
+	// until the next update, after which extra revisions will be culled.
+	uint32 max_secret_revisions = 2;
+}
+
 // Placement specifies task distribution constraints.
 message Placement {
 	// constraints specifies a set of requirements a node should meet for a task.
@@ -748,13 +762,6 @@ message ManagerStatus {
 	RaftMemberStatus.Reachability reachability = 4;
 }
 
-// SecretType provides information about what kind of secret this is
-enum SecretType {
-	// CONTAINER secrets are user-specified secrets that should be injected
-	// into the container as an environment variable or file.
-	CONTAINER = 0 [(gogoproto.enumvalue_customname) = "ContainerSecret"];
-}
-
 // SecretReference is the linkage between a service and a secret that it uses.
 message SecretReference {
 	// Name is the name of the secret that this references.
@@ -765,10 +772,15 @@ message SecretReference {
 	// any information about the secret contents.
 	string secret_value_id = 2 [(gogoproto.customname) = "SecretValueID"];
 
-	// Mode specifies how this secret should be exposed inside the task.
+	// Mode specifies how this secret should be exposed to the task.
 	enum Mode {
-		FILE = 0;
-		ENV = 1;
+		// SYSTEM means that it is not exposed inside to a task at all, but
+		// only available via direct access, usually at the agent-level
+		SYSTEM = 0;
+		// FILE means that it will be exposed to the task as a file
+		FILE = 1;
+		// ENV means that it will be exposed to the task as an environment variable
+		ENV = 2;
 	}
 
 	// Mode is the way the secret should be presented.
@@ -777,4 +789,3 @@ message SecretReference {
 	// Target is the name by which the image accesses the secret.
 	string target = 4;
 }
-
