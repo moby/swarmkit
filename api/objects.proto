@@ -267,4 +267,3 @@ message SecretData {
 	// Size represents the size of the secret
 	int32 size = 5 [(gogoproto.customname) = "SecretSize"];
 }
-
