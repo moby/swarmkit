@@ -275,18 +275,19 @@ message ClusterSpec {
 
 	// TaskDefaults specifies the default values to use for task creation.
 	TaskDefaults task_defaults = 7 [(gogoproto.nullable) = false];
+
+	// SecretConfig specifies cluster-level secret configuration settings, such as
+	// maximum number of secrets.
+	SecretsConfig secrets = 8 [(gogoproto.nullable) = false];
 }
 
 // SecretValueSpec specifies a user-provided secret.
 message SecretValueSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
-	// Type distinguishes the different kinds of secrets in the system (such as container vs node vs swarm-specific)
-	SecretType type = 2;
-
 	// Secret payload.
-	bytes data = 3;
+	bytes data = 2;
 
 	// When this secret-spec should expire and no longer be available
-	Timestamp expiry = 4;
+	Timestamp expiry = 3;
 }

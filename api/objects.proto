@@ -243,6 +243,9 @@ message Secret {
 	// Name of the secret, so that we can use it easily for lookups.  This is
 	// just a copy of the data in `SecretValue.Spec.Annotations.Name`.
 	string name = 4;
+
+	// Whether the secret is an internal secret (not set by a user) or not.
+	bool internal = 5;
 }
 
 // SecretValue is represents a specific version of a secret, and is immutable;
@@ -269,4 +272,3 @@ message SecretValue {
 	// calculated from the data contained in `SecretValue.Spec.data`..
 	uint32 size = 5 [(gogoproto.customname) = "SecretSize"];
 }
-
