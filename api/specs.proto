@@ -5,7 +5,6 @@ package docker.swarmkit.v1;
 import "types.proto";
 import "gogoproto/gogo.proto";
 import "duration/duration.proto"; // TODO(stevvooe): use our own until we fix gogoproto/deepcopy
-import "timestamp/timestamp.proto"; // TODO(stevvooe): use our own until we fix gogoproto/deepcopy
 
 // Specs are container objects for user provided input. All creations and
 // updates are done through spec types. As a convention, user input from a spec
@@ -275,6 +274,10 @@ message ClusterSpec {
 
 	// TaskDefaults specifies the default values to use for task creation.
 	TaskDefaults task_defaults = 7 [(gogoproto.nullable) = false];
+
+	// SecretConfig specifies cluster-level secret configuration settings, such as
+	// maximum number of secrets.
+	SecretsConfig secrets = 8 [(gogoproto.nullable) = false];
 }
 
 // SecretSpec specifies a user-provided secret.
