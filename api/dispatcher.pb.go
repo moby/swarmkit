@@ -1571,30 +1571,18 @@ func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_Tas
 
 func (p *raftProxyDispatcherServer) Assignments(r *AssignmentsRequest, stream Dispatcher_AssignmentsServer) error {
 
-	if p.cluster.IsLeader() {
-		return p.local.Assignments(r, stream)
-	}
-	ctx, err := p.runCtxMods(stream.Context())
+	ctx := stream.Context()
+	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		return err
-	}
-	conn, err := p.connSelector.Conn()
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, grpc.ErrClientConnClosing.Error()) ||
-				strings.Contains(errStr, grpc.ErrClientConnTimeout.Error()) ||
-				strings.Contains(errStr, "connection error") ||
-				grpc.Code(err) == codes.Internal {
-				p.connSelector.Reset()
-			}
+		if err == raftselector.ErrIsLeader {
+			return p.local.Assignments(r, stream)
 		}
-	}()
-
+		return err
+	}
+	ctx, err = p.runCtxMods(ctx)
+	if err != nil {
+		return err
+	}
 	clientStream, err := NewDispatcherClient(conn).Assignments(ctx, r)
 
 	if err != nil {
