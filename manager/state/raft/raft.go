@@ -540,11 +540,11 @@ func (n *Node) Leader() (uint64, error) {
 	defer n.stopMu.RUnlock()
 
 	if !n.IsMember() {
-		return 0, ErrNoRaftMember
+		return raft.None, ErrNoRaftMember
 	}
 	leader := n.leader()
-	if leader == 0 {
-		return 0, ErrNoClusterLeader
+	if leader == raft.None {
+		return raft.None, ErrNoClusterLeader
 	}
 
 	return leader, nil
@@ -979,7 +979,7 @@ func (n *Node) GetMemberlist() map[uint64]*api.RaftMember {
 	members := n.cluster.Members()
 	leaderID, err := n.Leader()
 	if err != nil {
-		leaderID = 0
+		leaderID = raft.None
 	}
 
 	for id, member := range members {
