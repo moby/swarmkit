@@ -2,6 +2,8 @@ package controlapi
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 
@@ -129,14 +131,66 @@ func validateTask(taskSpec api.TaskSpec) error {
 		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: missing in service spec")
 	}
 
-	if container.Image == "" {
+	if err := validateContainerSpec(container); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateContainerSpec(containerSpec *api.ContainerSpec) error {
+	if containerSpec == nil {
+		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: can not be empty")
+	}
+
+	if containerSpec.Image == "" {
 		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: image reference must be provided")
 	}
 
-	if _, err := reference.ParseNamed(container.Image); err != nil {
-		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: %q is not a valid repository/tag", container.Image)
+	if _, err := reference.ParseNamed(containerSpec.Image); err != nil {
+		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: %q is not a valid repository/tag", containerSpec.Image)
 	}
+
+	for _, mount := range containerSpec.Mounts {
+		if err := validateMounts(containerSpec.Mounts); err != nil {
+			return err
+		}
+	}
+
 	return nil
+
+}
+
+func validateMounts(mount api.Mount) error {
+	// Target must always be absolute
+	if !filepath.IsAbs(mount.Target) {
+		return grpc.Errorf(codes.InvalidArgument, "Mount: target %s must be an absolute path: %s", mount.Target)
+	}
+
+	switch mount.Type {
+	// The checks on abs paths are required due to the container API confusing
+	// volume mounts as bind mounts when the source is absolute (and vice-versa)
+	case api.MountTypeBind:
+		if !filepath.IsAbs(mount.Source) {
+			return grpc.Errorf(codes.InvalidArgument, "Mount: source %s must be an absolute path", mount.Source)
+		}
+		if _, err := os.Stat(mount.Source); os.IsNotExist(err) {
+			return grpc.Errorf(codes.InvalidArgument, "Mount: source %s path not found", mount.Source)
+		}
+	case api.MountTypeVolume:
+		if filepath.IsAbs(mount.Source) {
+			return grpc.Errorf(codes.InvalidArgument, "Mount: source %s must not be an absolute path", mount.Source)
+		}
+	case api.MountTypeTmpfs:
+		if mount.Source != "" {
+			return grpc.Errorf(codes.InvalidArgument, "Mount: invalid tmpfs source, source must be empty")
+		}
+	default:
+		return grpc.Errorf(codes.InvalidArgument, "Mount: mount type %s not supported", mount.Type)
+	}
+
+	return nil
+
 }
 
 func validateEndpointSpec(epSpec *api.EndpointSpec) error {
