@@ -782,17 +782,22 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 		}
 		var newSecrets []*api.Secret
 		for _, secretRef := range container.Secrets {
-			secretName := secretRef.Name
-			if tasksUsingSecret[secretName] == nil {
-				tasksUsingSecret[secretName] = make(map[string]struct{})
+			secretID := secretRef.SecretID
+			log := log.WithFields(logrus.Fields{
+				"secret.id":   secretID,
+				"secret.name": secretRef.Name,
+			})
 
-				secrets, err := store.FindSecrets(readTx, store.ByName(secretName))
+			if tasksUsingSecret[secretID] == nil {
+				tasksUsingSecret[secretID] = make(map[string]struct{})
+
+				secrets, err := store.FindSecrets(readTx, store.ByIDPrefix(secretID))
 				if err != nil {
-					log.WithError(err).Errorf("error retrieving secret %s", secretName)
+					log.WithError(err).Errorf("error retrieving secret")
 					continue
 				}
 				if len(secrets) != 1 {
-					log.Debugf("secret not found: %s", secretName)
+					log.Debugf("secret not found")
 					continue
 				}
 
@@ -802,7 +807,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 				// initial set that we send down.
 				newSecrets = append(newSecrets, secrets[0])
 			}
-			tasksUsingSecret[secretName][t.ID] = struct{}{}
+			tasksUsingSecret[secretID][t.ID] = struct{}{}
 		}
 
 		return newSecrets
@@ -892,17 +897,17 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 			}
 
 			for _, secretRef := range container.Secrets {
-				secretName := secretRef.Name
-				if tasksUsingSecret[secretName] == nil {
-					removeSecrets[secretName] = struct{}{}
+				secretID := secretRef.SecretID
+				if tasksUsingSecret[secretID] == nil {
+					removeSecrets[secretID] = struct{}{}
 					modified = true
 					continue
 				}
-				delete(tasksUsingSecret[secretName], t.ID)
-				if len(tasksUsingSecret[secretName]) == 0 {
+				delete(tasksUsingSecret[secretID], t.ID)
+				if len(tasksUsingSecret[secretID]) == 0 {
 					// No tasks are using the secret anymore
-					delete(tasksUsingSecret, secretName)
-					removeSecrets[secretName] = struct{}{}
+					delete(tasksUsingSecret, secretID)
+					removeSecrets[secretID] = struct{}{}
 					modified = true
 				}
 			}

@@ -269,11 +269,11 @@ func reconcileSecrets(ctx context.Context, w *worker, added []*api.Secret, remov
 	} else {
 		// If this was an incremental set of secrets, we're going to remove only the tasks
 		// in the removed set
-		for _, secret := range added {
-			w.secrets.m[secret.Spec.Annotations.Name] = secret
-		}
 		for _, name := range removed {
 			delete(w.secrets.m, name)
+		}
+		for _, secret := range added {
+			w.secrets.m[secret.Spec.Annotations.Name] = secret
 		}
 	}
 
