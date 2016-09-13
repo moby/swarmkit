@@ -50,7 +50,17 @@ func TestAllocator(t *testing.T) {
 						},
 					},
 				},
-				Endpoint: &api.EndpointSpec{},
+				Endpoint: &api.EndpointSpec{
+					Mode: api.ResolutionModeVirtualIP,
+					Ports: []*api.PortConfig{
+						{
+							Name:          "portName",
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    8000,
+							PublishedPort: 8001,
+						},
+					},
+				},
 			},
 		}
 		assert.NoError(t, store.CreateService(tx, s1))
@@ -241,6 +251,16 @@ func TestAllocator(t *testing.T) {
 	}))
 	watchNetwork(t, netWatch, false, isValidNetwork)
 	watchNetwork(t, netWatch, true, nil)
+
+	// Try updating service which is already allocated with no endpointSpec
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		s := store.GetService(tx, "testServiceID1")
+		s.Spec.Endpoint = nil
+
+		assert.NoError(t, store.UpdateService(tx, s))
+		return nil
+	}))
+	watchService(t, serviceWatch, false, nil)
 
 	// Try updating task which is already allocated
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
