@@ -49,7 +49,9 @@ var _ = math.Inf
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
-const _ = proto.GoGoProtoPackageIsVersion1
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type HealthCheckResponse_ServingStatus int32
 
@@ -268,11 +270,12 @@ func valueToGoStringService(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringService(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+func extensionToGoStringService(m github_com_gogo_protobuf_proto.Message) string {
+	e := github_com_gogo_protobuf_proto.GetUnsafeExtensionsMap(m)
 	if e == nil {
 		return "nil"
 	}
-	s := "map[int32]proto.Extension{"
+	s := "proto.NewUnsafeXXX_InternalExtensions(map[int32]proto.Extension{"
 	keys := make([]int, 0, len(e))
 	for k := range e {
 		keys = append(keys, int(k))
@@ -282,7 +285,7 @@ func extensionToGoStringService(e map[int32]github_com_gogo_protobuf_proto.Exten
 	for _, k := range keys {
 		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
 	}
-	s += strings.Join(ss, ",") + "}"
+	s += strings.Join(ss, ",") + "})"
 	return s
 }
 
@@ -292,7 +295,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion2
+const _ = grpc.SupportPackageIsVersion3
 
 // Client API for RouteGuide service
 
@@ -588,6 +591,7 @@ var _RouteGuide_serviceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
+	Metadata: fileDescriptorService,
 }
 
 // Client API for Health service
@@ -650,7 +654,8 @@ var _Health_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Health_Check_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptorService,
 }
 
 func (m *Point) Marshal() (data []byte, err error) {
@@ -982,7 +987,7 @@ func (p *raftProxyRouteGuideServer) GetFeature(ctx context.Context, r *Point) (*
 
 	resp, err := NewRouteGuideClient(conn).GetFeature(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -1207,7 +1212,7 @@ func (p *raftProxyHealthServer) Check(ctx context.Context, r *HealthCheckRequest
 
 	resp, err := NewHealthClient(conn).Check(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -2217,6 +2222,8 @@ var (
 	ErrInvalidLengthService = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowService   = fmt.Errorf("proto: integer overflow")
 )
+
+func init() { proto.RegisterFile("service.proto", fileDescriptorService) }
 
 var fileDescriptorService = []byte{
 	// 575 bytes of a gzipped FileDescriptorProto
