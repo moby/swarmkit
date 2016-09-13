@@ -1962,11 +1962,12 @@ func valueToGoStringControl(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringControl(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+func extensionToGoStringControl(m github_com_gogo_protobuf_proto.Message) string {
+	e := github_com_gogo_protobuf_proto.GetUnsafeExtensionsMap(m)
 	if e == nil {
 		return "nil"
 	}
-	s := "map[int32]proto.Extension{"
+	s := "proto.NewUnsafeXXX_InternalExtensions(map[int32]proto.Extension{"
 	keys := make([]int, 0, len(e))
 	for k := range e {
 		keys = append(keys, int(k))
@@ -1976,7 +1977,7 @@ func extensionToGoStringControl(e map[int32]github_com_gogo_protobuf_proto.Exten
 	for _, k := range keys {
 		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
 	}
-	s += strings.Join(ss, ",") + "}"
+	s += strings.Join(ss, ",") + "})"
 	return s
 }
 
@@ -1986,7 +1987,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion2
+const _ = grpc.SupportPackageIsVersion3
 
 // Client API for Control service
 
@@ -2642,7 +2643,8 @@ var _Control_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Control_UpdateCluster_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptorControl,
 }
 
 func (m *GetNodeRequest) Marshal() (data []byte, err error) {
@@ -4320,7 +4322,7 @@ func (p *raftProxyControlServer) GetNode(ctx context.Context, r *GetNodeRequest)
 
 	resp, err := NewControlClient(conn).GetNode(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4351,7 +4353,7 @@ func (p *raftProxyControlServer) ListNodes(ctx context.Context, r *ListNodesRequ
 
 	resp, err := NewControlClient(conn).ListNodes(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4382,7 +4384,7 @@ func (p *raftProxyControlServer) UpdateNode(ctx context.Context, r *UpdateNodeRe
 
 	resp, err := NewControlClient(conn).UpdateNode(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4413,7 +4415,7 @@ func (p *raftProxyControlServer) RemoveNode(ctx context.Context, r *RemoveNodeRe
 
 	resp, err := NewControlClient(conn).RemoveNode(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4444,7 +4446,7 @@ func (p *raftProxyControlServer) GetTask(ctx context.Context, r *GetTaskRequest)
 
 	resp, err := NewControlClient(conn).GetTask(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4475,7 +4477,7 @@ func (p *raftProxyControlServer) ListTasks(ctx context.Context, r *ListTasksRequ
 
 	resp, err := NewControlClient(conn).ListTasks(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4506,7 +4508,7 @@ func (p *raftProxyControlServer) RemoveTask(ctx context.Context, r *RemoveTaskRe
 
 	resp, err := NewControlClient(conn).RemoveTask(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4537,7 +4539,7 @@ func (p *raftProxyControlServer) GetService(ctx context.Context, r *GetServiceRe
 
 	resp, err := NewControlClient(conn).GetService(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4568,7 +4570,7 @@ func (p *raftProxyControlServer) ListServices(ctx context.Context, r *ListServic
 
 	resp, err := NewControlClient(conn).ListServices(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4599,7 +4601,7 @@ func (p *raftProxyControlServer) CreateService(ctx context.Context, r *CreateSer
 
 	resp, err := NewControlClient(conn).CreateService(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4630,7 +4632,7 @@ func (p *raftProxyControlServer) UpdateService(ctx context.Context, r *UpdateSer
 
 	resp, err := NewControlClient(conn).UpdateService(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4661,7 +4663,7 @@ func (p *raftProxyControlServer) RemoveService(ctx context.Context, r *RemoveSer
 
 	resp, err := NewControlClient(conn).RemoveService(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4692,7 +4694,7 @@ func (p *raftProxyControlServer) GetNetwork(ctx context.Context, r *GetNetworkRe
 
 	resp, err := NewControlClient(conn).GetNetwork(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4723,7 +4725,7 @@ func (p *raftProxyControlServer) ListNetworks(ctx context.Context, r *ListNetwor
 
 	resp, err := NewControlClient(conn).ListNetworks(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4754,7 +4756,7 @@ func (p *raftProxyControlServer) CreateNetwork(ctx context.Context, r *CreateNet
 
 	resp, err := NewControlClient(conn).CreateNetwork(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4785,7 +4787,7 @@ func (p *raftProxyControlServer) RemoveNetwork(ctx context.Context, r *RemoveNet
 
 	resp, err := NewControlClient(conn).RemoveNetwork(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4816,7 +4818,7 @@ func (p *raftProxyControlServer) GetCluster(ctx context.Context, r *GetClusterRe
 
 	resp, err := NewControlClient(conn).GetCluster(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4847,7 +4849,7 @@ func (p *raftProxyControlServer) ListClusters(ctx context.Context, r *ListCluste
 
 	resp, err := NewControlClient(conn).ListClusters(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4878,7 +4880,7 @@ func (p *raftProxyControlServer) UpdateCluster(ctx context.Context, r *UpdateClu
 
 	resp, err := NewControlClient(conn).UpdateCluster(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -6439,50 +6441,55 @@ func (m *ListNodesRequest_Filters) Unmarshal(data []byte) error {
 			}
 			mapkey := string(data[iNdEx:postStringIndexmapkey])
 			iNdEx = postStringIndexmapkey
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var stringLenmapvalue uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLenmapvalue |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLenmapvalue := int(stringLenmapvalue)
-			if intStringLenmapvalue < 0 {
-				return ErrInvalidLengthControl
-			}
-			postStringIndexmapvalue := iNdEx + intStringLenmapvalue
-			if postStringIndexmapvalue > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := string(data[iNdEx:postStringIndexmapvalue])
-			iNdEx = postStringIndexmapvalue
 			if m.Labels == nil {
 				m.Labels = make(map[string]string)
 			}
-			m.Labels[mapkey] = mapvalue
+			if iNdEx < postIndex {
+				var valuekey uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowControl
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					valuekey |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				var stringLenmapvalue uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowControl
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLenmapvalue := int(stringLenmapvalue)
+				if intStringLenmapvalue < 0 {
+					return ErrInvalidLengthControl
+				}
+				postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+				if postStringIndexmapvalue > l {
+					return io.ErrUnexpectedEOF
+				}
+				mapvalue := string(data[iNdEx:postStringIndexmapvalue])
+				iNdEx = postStringIndexmapvalue
+				m.Labels[mapkey] = mapvalue
+			} else {
+				var mapvalue string
+				m.Labels[mapkey] = mapvalue
+			}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 0 {
@@ -7559,50 +7566,55 @@ func (m *ListTasksRequest_Filters) Unmarshal(data []byte) error {
 			}
 			mapkey := string(data[iNdEx:postStringIndexmapkey])
 			iNdEx = postStringIndexmapkey
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var stringLenmapvalue uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLenmapvalue |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLenmapvalue := int(stringLenmapvalue)
-			if intStringLenmapvalue < 0 {
-				return ErrInvalidLengthControl
-			}
-			postStringIndexmapvalue := iNdEx + intStringLenmapvalue
-			if postStringIndexmapvalue > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := string(data[iNdEx:postStringIndexmapvalue])
-			iNdEx = postStringIndexmapvalue
 			if m.Labels == nil {
 				m.Labels = make(map[string]string)
 			}
-			m.Labels[mapkey] = mapvalue
+			if iNdEx < postIndex {
+				var valuekey uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowControl
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					valuekey |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				var stringLenmapvalue uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowControl
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLenmapvalue := int(stringLenmapvalue)
+				if intStringLenmapvalue < 0 {
+					return ErrInvalidLengthControl
+				}
+				postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+				if postStringIndexmapvalue > l {
+					return io.ErrUnexpectedEOF
+				}
+				mapvalue := string(data[iNdEx:postStringIndexmapvalue])
+				iNdEx = postStringIndexmapvalue
+				m.Labels[mapkey] = mapvalue
+			} else {
+				var mapvalue string
+				m.Labels[mapkey] = mapvalue
+			}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -8734,50 +8746,55 @@ func (m *ListServicesRequest_Filters) Unmarshal(data []byte) error {
 			}
 			mapkey := string(data[iNdEx:postStringIndexmapkey])
 			iNdEx = postStringIndexmapkey
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var stringLenmapvalue uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLenmapvalue |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLenmapvalue := int(stringLenmapvalue)
-			if intStringLenmapvalue < 0 {
-				return ErrInvalidLengthControl
-			}
-			postStringIndexmapvalue := iNdEx + intStringLenmapvalue
-			if postStringIndexmapvalue > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := string(data[iNdEx:postStringIndexmapvalue])
-			iNdEx = postStringIndexmapvalue
 			if m.Labels == nil {
 				m.Labels = make(map[string]string)
 			}
-			m.Labels[mapkey] = mapvalue
+			if iNdEx < postIndex {
+				var valuekey uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowControl
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					valuekey |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				var stringLenmapvalue uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowControl
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLenmapvalue := int(stringLenmapvalue)
+				if intStringLenmapvalue < 0 {
+					return ErrInvalidLengthControl
+				}
+				postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+				if postStringIndexmapvalue > l {
+					return io.ErrUnexpectedEOF
+				}
+				mapvalue := string(data[iNdEx:postStringIndexmapvalue])
+				iNdEx = postStringIndexmapvalue
+				m.Labels[mapkey] = mapvalue
+			} else {
+				var mapvalue string
+				m.Labels[mapkey] = mapvalue
+			}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -9661,50 +9678,55 @@ func (m *ListNetworksRequest_Filters) Unmarshal(data []byte) error {
 			}
 			mapkey := string(data[iNdEx:postStringIndexmapkey])
 			iNdEx = postStringIndexmapkey
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var stringLenmapvalue uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLenmapvalue |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLenmapvalue := int(stringLenmapvalue)
-			if intStringLenmapvalue < 0 {
-				return ErrInvalidLengthControl
-			}
-			postStringIndexmapvalue := iNdEx + intStringLenmapvalue
-			if postStringIndexmapvalue > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := string(data[iNdEx:postStringIndexmapvalue])
-			iNdEx = postStringIndexmapvalue
 			if m.Labels == nil {
 				m.Labels = make(map[string]string)
 			}
-			m.Labels[mapkey] = mapvalue
+			if iNdEx < postIndex {
+				var valuekey uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowControl
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					valuekey |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				var stringLenmapvalue uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowControl
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLenmapvalue := int(stringLenmapvalue)
+				if intStringLenmapvalue < 0 {
+					return ErrInvalidLengthControl
+				}
+				postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+				if postStringIndexmapvalue > l {
+					return io.ErrUnexpectedEOF
+				}
+				mapvalue := string(data[iNdEx:postStringIndexmapvalue])
+				iNdEx = postStringIndexmapvalue
+				m.Labels[mapkey] = mapvalue
+			} else {
+				var mapvalue string
+				m.Labels[mapkey] = mapvalue
+			}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -10235,50 +10257,55 @@ func (m *ListClustersRequest_Filters) Unmarshal(data []byte) error {
 			}
 			mapkey := string(data[iNdEx:postStringIndexmapkey])
 			iNdEx = postStringIndexmapkey
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var stringLenmapvalue uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowControl
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLenmapvalue |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLenmapvalue := int(stringLenmapvalue)
-			if intStringLenmapvalue < 0 {
-				return ErrInvalidLengthControl
-			}
-			postStringIndexmapvalue := iNdEx + intStringLenmapvalue
-			if postStringIndexmapvalue > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := string(data[iNdEx:postStringIndexmapvalue])
-			iNdEx = postStringIndexmapvalue
 			if m.Labels == nil {
 				m.Labels = make(map[string]string)
 			}
-			m.Labels[mapkey] = mapvalue
+			if iNdEx < postIndex {
+				var valuekey uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowControl
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					valuekey |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				var stringLenmapvalue uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowControl
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLenmapvalue := int(stringLenmapvalue)
+				if intStringLenmapvalue < 0 {
+					return ErrInvalidLengthControl
+				}
+				postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+				if postStringIndexmapvalue > l {
+					return io.ErrUnexpectedEOF
+				}
+				mapvalue := string(data[iNdEx:postStringIndexmapvalue])
+				iNdEx = postStringIndexmapvalue
+				m.Labels[mapkey] = mapvalue
+			} else {
+				var mapvalue string
+				m.Labels[mapkey] = mapvalue
+			}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -10863,6 +10890,8 @@ var (
 	ErrInvalidLengthControl = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowControl   = fmt.Errorf("proto: integer overflow")
 )
+
+func init() { proto.RegisterFile("control.proto", fileDescriptorControl) }
 
 var fileDescriptorControl = []byte{
 	// 1521 bytes of a gzipped FileDescriptorProto

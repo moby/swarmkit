@@ -1,5 +1,7 @@
-// Copyright (c) 2013, Vastech SA (PTY) LTD. All rights reserved.
-// http://github.com/gogo/protobuf/gogoproto
+// Protocol Buffers for Go with Gadgets
+//
+// Copyright (c) 2013, The GoGo Authors. All rights reserved.
+// http://github.com/gogo/protobuf
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -31,9 +33,8 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
-	"strings"
-
 	"path"
+	"strings"
 
 	"github.com/gogo/protobuf/gogoproto"
 	"github.com/gogo/protobuf/proto"
@@ -211,25 +212,6 @@ func (g *Generator) GetOneOfFieldName(message *Descriptor, field *descriptor.Fie
 	return fieldname
 }
 
-func GetMap(file *descriptor.FileDescriptorProto, field *descriptor.FieldDescriptorProto) *descriptor.DescriptorProto {
-	if !field.IsMessage() {
-		return nil
-	}
-	typeName := strings.TrimPrefix(field.GetTypeName(), "."+file.GetPackage()+".")
-	if strings.Contains(typeName, "Map") && !strings.HasSuffix(typeName, "Entry") {
-		typeName += "." + CamelCase(field.GetName()) + "Entry"
-	}
-	return file.GetMessage(typeName)
-}
-
-func IsMap(file *descriptor.FileDescriptorProto, field *descriptor.FieldDescriptorProto) bool {
-	msg := GetMap(file, field)
-	if msg == nil {
-		return false
-	}
-	return msg.GetOptions().GetMapEntry()
-}
-
 func (g *Generator) IsMap(field *descriptor.FieldDescriptorProto) bool {
 	if !field.IsMessage() {
 		return false
@@ -314,6 +296,7 @@ func EmbedFieldName(goTyp string) string {
 }
 
 func (g *Generator) GeneratePlugin(p Plugin) {
+	plugins = []Plugin{p}
 	p.Init(g)
 	// Generate the output. The generator runs for every file, even the files
 	// that we don't generate output for, so that we can collate the full list
@@ -322,7 +305,6 @@ func (g *Generator) GeneratePlugin(p Plugin) {
 	for _, file := range g.genFiles {
 		genFileMap[file] = true
 	}
-	i := 0
 	for _, file := range g.allFiles {
 		g.Reset()
 		g.writeOutput = genFileMap[file]
@@ -330,10 +312,10 @@ func (g *Generator) GeneratePlugin(p Plugin) {
 		if !g.writeOutput {
 			continue
 		}
-		g.Response.File[i] = new(plugin.CodeGeneratorResponse_File)
-		g.Response.File[i].Name = proto.String(goFileName(*file.Name))
-		g.Response.File[i].Content = proto.String(g.String())
-		i++
+		g.Response.File = append(g.Response.File, &plugin.CodeGeneratorResponse_File{
+			Name:    proto.String(file.goFileName()),
+			Content: proto.String(g.String()),
+		})
 	}
 }
 
