@@ -134,6 +134,133 @@ func TestValidateTask(t *testing.T) {
 	}
 }
 
+func TestValidateContainerSpec(t *testing.T) {
+	type BadContainerSpec struct {
+		spec *api.ContainerSpec
+		c    codes.Code
+	}
+
+	bads := []BadContainerSpec{
+		{
+			spec: &api.ContainerSpec{
+				Image: "",
+			},
+			c: codes.InvalidArgument,
+		},
+		{
+			spec: &api.ContainerSpec{},
+			c:    codes.InvalidArgument,
+		},
+		{
+			spec: &api.ContainerSpec{
+				Image: "nginx",
+				Mounts: []api.Mount{
+					// No matter what MountType, target must be an absolute path
+					api.Mount{
+						Type:   api.MountTypeBind,
+						Source: "/data_src",
+						Target: "../a/b",
+					},
+				},
+			},
+			c: codes.InvalidArgument,
+		},
+		{
+			spec: &api.ContainerSpec{
+				Image: "nginx",
+				Mounts: []api.Mount{
+					// when MountTypeBind, source must be an absolute path
+					api.Mount{
+						Type:   api.MountTypeBind,
+						Source: "../data_src",
+						Target: "/data",
+					},
+				},
+			},
+			c: codes.InvalidArgument,
+		},
+		{
+			spec: &api.ContainerSpec{
+				Image: "nginx",
+				Mounts: []api.Mount{
+					// when MountTypeVolume, source must not be an absolute path
+					api.Mount{
+						Type:   api.MountTypeVolume,
+						Source: "/data_src",
+						Target: "/data",
+					},
+				},
+			},
+			c: codes.InvalidArgument,
+		},
+		{
+			spec: &api.ContainerSpec{
+				Image: "nginx",
+				Mounts: []api.Mount{
+					// when MountTypeTmpfs, source must be empty
+					api.Mount{
+						Type:   api.MountTypeTmpfs,
+						Source: "/data_src",
+						Target: "/data",
+					},
+				},
+			},
+			c: codes.InvalidArgument,
+		},
+	}
+
+	for bad := range bad {
+		err := validateContainerSpec(bad.s)
+		assert.Error(t, err)
+		assert.Equal(t, bad.c, grpc.Code(err))
+	}
+
+	for _, good := range []*api.ContainerSpec{
+		Image: "nginx",
+		Mounts: []api.Mount{
+			api.Mount{
+				Type:   api.MountTypeBind,
+				Source: "/data_src",
+				Target: "/a/b",
+			},
+		},
+	} {
+		err := validateContainerSpec(good)
+		assert.NoError(t, err)
+	}
+}
+
+func TestValidateMount(t *testing.T) {
+	bads := []api.Mount{
+		api.Mount{
+			Type:   api.MountTypeBind,
+			Source: "/data_src",
+			Target: "../a/b",
+		},
+		api.Mount{
+			Type:   api.MountTypeBind,
+			Source: "../data_src",
+			Target: "/data",
+		},
+		api.Mount{
+			Type:   api.MountTypeVolume,
+			Source: "/data_src",
+			Target: "/data",
+		},
+		api.Mount{
+			Type:   api.MountTypeTmpfs,
+			Source: "/data_src",
+			Target: "/data",
+		},
+	}
+
+	for _, bad := range bads {
+		err := validateContainerSpec(bad)
+		assert.Error(t, err)
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	}
+}
+
 func TestValidateServiceSpec(t *testing.T) {
 	type BadServiceSpec struct {
 		spec *api.ServiceSpec
