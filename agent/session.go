@@ -2,6 +2,7 @@ package agent
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -41,6 +42,7 @@ type session struct {
 
 	registered chan struct{} // closed registration
 	closed     chan struct{}
+	closeOnce  sync.Once
 }
 
 func newSession(ctx context.Context, agent *Agent, delay time.Duration, sessionID string, description *api.NodeDescription) *session {
@@ -338,15 +340,14 @@ func (s *session) sendTaskStatuses(ctx context.Context, updates ...*api.UpdateTa
 }
 
 func (s *session) close() error {
-	select {
-	case <-s.closed:
-		return errSessionClosed
-	default:
+	s.closeOnce.Do(func() {
 		if s.conn != nil {
 			s.agent.config.Managers.ObserveIfExists(api.Peer{Addr: s.addr}, -remotes.DefaultObservationWeight)
 			s.conn.Close()
 		}
+
 		close(s.closed)
-		return nil
-	}
+	})
+
+	return nil
 }
