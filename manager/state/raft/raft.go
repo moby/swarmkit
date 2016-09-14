@@ -363,6 +363,29 @@ func (n *Node) Run(ctx context.Context) error {
 				n.confState = rd.Snapshot.Metadata.ConfState
 			}
 
+			// If we cease to be the leader, we must cancel any
+			// proposals that are currently waiting for a quorum to
+			// acknowledge them. It is still possible for these to
+			// become committed, but if that happens we will apply
+			// them as any follower would.
+
+			// It is important that we cancel these proposals before
+			// calling processCommitted, so processCommitted does
+			// not deadlock.
+
+			if rd.SoftState != nil {
+				if wasLeader && rd.SoftState.RaftState != raft.StateLeader {
+					wasLeader = false
+					n.wait.cancelAll()
+					if atomic.LoadUint32(&n.signalledLeadership) == 1 {
+						atomic.StoreUint32(&n.signalledLeadership, 0)
+						n.leadershipBroadcast.Write(IsFollower)
+					}
+				} else if !wasLeader && rd.SoftState.RaftState == raft.StateLeader {
+					wasLeader = true
+				}
+			}
+
 			// Process committed entries
 			for _, entry := range rd.CommittedEntries {
 				if err := n.processCommitted(entry); err != nil {
@@ -375,25 +398,6 @@ func (n *Node) Run(ctx context.Context) error {
 				raftConfig.SnapshotInterval > 0 &&
 				n.appliedIndex-n.snapshotIndex >= raftConfig.SnapshotInterval {
 				n.doSnapshot(&raftConfig)
-			}
-
-			// If we cease to be the leader, we must cancel
-			// any proposals that are currently waiting for
-			// a quorum to acknowledge them. It is still
-			// possible for these to become committed, but
-			// if that happens we will apply them as any
-			// follower would.
-			if rd.SoftState != nil {
-				if wasLeader && rd.SoftState.RaftState != raft.StateLeader {
-					wasLeader = false
-					n.wait.cancelAll()
-					if atomic.LoadUint32(&n.signalledLeadership) == 1 {
-						atomic.StoreUint32(&n.signalledLeadership, 0)
-						n.leadershipBroadcast.Write(IsFollower)
-					}
-				} else if !wasLeader && rd.SoftState.RaftState == raft.StateLeader {
-					wasLeader = true
-				}
 			}
 
 			if wasLeader && atomic.LoadUint32(&n.signalledLeadership) != 1 {
