@@ -396,26 +396,16 @@ func (n *Node) Run(ctx context.Context) error {
 				n.confState = rd.Snapshot.Metadata.ConfState
 			}
 
-			// Process committed entries
-			for _, entry := range rd.CommittedEntries {
-				if err := n.processCommitted(entry); err != nil {
-					n.Config.Logger.Error(err)
-				}
-			}
+			// If we cease to be the leader, we must cancel any
+			// proposals that are currently waiting for a quorum to
+			// acknowledge them. It is still possible for these to
+			// become committed, but if that happens we will apply
+			// them as any follower would.
 
-			// Trigger a snapshot every once in awhile
-			if n.snapshotInProgress == nil &&
-				raftConfig.SnapshotInterval > 0 &&
-				n.appliedIndex-n.snapshotIndex >= raftConfig.SnapshotInterval {
-				n.doSnapshot(&raftConfig)
-			}
+			// It is important that we cancel these proposals before
+			// calling processCommitted, so processCommitted does
+			// not deadlock.
 
-			// If we cease to be the leader, we must cancel
-			// any proposals that are currently waiting for
-			// a quorum to acknowledge them. It is still
-			// possible for these to become committed, but
-			// if that happens we will apply them as any
-			// follower would.
 			if rd.SoftState != nil {
 				if wasLeader && rd.SoftState.RaftState != raft.StateLeader {
 					wasLeader = false
@@ -439,6 +429,20 @@ func (n *Node) Run(ctx context.Context) error {
 				} else if !wasLeader && rd.SoftState.RaftState == raft.StateLeader {
 					wasLeader = true
 				}
+			}
+
+			// Process committed entries
+			for _, entry := range rd.CommittedEntries {
+				if err := n.processCommitted(entry); err != nil {
+					n.Config.Logger.Error(err)
+				}
+			}
+
+			// Trigger a snapshot every once in awhile
+			if n.snapshotInProgress == nil &&
+				raftConfig.SnapshotInterval > 0 &&
+				n.appliedIndex-n.snapshotIndex >= raftConfig.SnapshotInterval {
+				n.doSnapshot(&raftConfig)
 			}
 
 			if wasLeader && atomic.LoadUint32(&n.signalledLeadership) != 1 {
