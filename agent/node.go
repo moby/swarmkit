@@ -693,17 +693,18 @@ func newPersistentRemotes(f string, peers ...api.Peer) *persistentRemotes {
 
 func (s *persistentRemotes) Observe(peer api.Peer, weight int) {
 	s.Lock()
+	defer s.Unlock()
 	s.Remotes.Observe(peer, weight)
 	s.c.Broadcast()
 	if err := s.save(); err != nil {
 		logrus.Errorf("error writing cluster state file: %v", err)
-		s.Unlock()
 		return
 	}
-	s.Unlock()
 	return
 }
 func (s *persistentRemotes) Remove(peers ...api.Peer) {
+	s.Lock()
+	defer s.Unlock()
 	s.Remotes.Remove(peers...)
 	if err := s.save(); err != nil {
 		logrus.Errorf("error writing cluster state file: %v", err)
