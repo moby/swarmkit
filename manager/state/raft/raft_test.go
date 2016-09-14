@@ -8,7 +8,6 @@ import (
 	"os"
 	"reflect"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -684,8 +683,8 @@ func TestStress(t *testing.T) {
 					// update leader
 					leader = i
 					break
-				} else if strings.Contains(err.Error(), "context deadline exceeded") {
-					// though it's timing out, we still record this value
+				} else {
+					// though ProposeValue returned an error, we still record this value,
 					// for it may be proposed successfully and stored in Raft some time later
 					pIDs = append(pIDs, id)
 				}
