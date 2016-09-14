@@ -94,9 +94,10 @@ bin/%: cmd/% FORCE
 binaries: $(BINARIES) ## build binaries
 	@echo "🐳 $@"
 
-clean: ## clean up binaries
+clean: ## clean up binaries and coverage files
 	@echo "🐳 $@"
 	@rm -f $(BINARIES)
+	@find . -name coverage.txt -delete
 
 install: $(BINARIES) ## install binaries
 	@echo "🐳 $@"
@@ -107,12 +108,9 @@ uninstall:
 	@echo "🐳 $@"
 	@rm -f $(addprefix $(DESTDIR)/bin/,$(notdir $(BINARIES)))
 
-coverage: ## generate coverprofiles from the tests
+coverage: ## generate coverprofiles from the tests for only those packages that have tests
 	@echo "🐳 $@"
-	@( for pkg in ${PACKAGES}; do \
-		go test -i -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
-		go test -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
-	done )
+	@(python -u covertest.py --testopts="-race")
 
 help: ## this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort

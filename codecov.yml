@@ -8,3 +8,7 @@ coverage:
         enabled: yes
         target: 0
     changes: false
+  ignore:  # ignore all protobuf-generated code
+    - "*.pb.go"
+    - "vendor/*"
+    - "*/testutils/*"
