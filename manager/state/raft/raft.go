@@ -376,11 +376,23 @@ func (n *Node) Run(ctx context.Context) error {
 			if rd.SoftState != nil {
 				if wasLeader && rd.SoftState.RaftState != raft.StateLeader {
 					wasLeader = false
-					n.wait.cancelAll()
 					if atomic.LoadUint32(&n.signalledLeadership) == 1 {
 						atomic.StoreUint32(&n.signalledLeadership, 0)
 						n.leadershipBroadcast.Write(IsFollower)
 					}
+
+					// It is important that we set n.signalledLeadership to 0
+					// before calling n.wait.cancelAll. When a new raft
+					// request is registered, it checks n.signalledLeadership
+					// afterwards, and cancels the registration if it is 0.
+					// If cancelAll was called first, this call might run
+					// before the new request registers, but
+					// signalledLeadership would be set after the check.
+					// Setting signalledLeadership before calling cancelAll
+					// ensures that if a new request is registered during
+					// this transition, it will either be cancelled by
+					// cancelAll, or by its own check of signalledLeadership.
+					n.wait.cancelAll()
 				} else if !wasLeader && rd.SoftState.RaftState == raft.StateLeader {
 					wasLeader = true
 				}
@@ -1241,6 +1253,11 @@ func (n *Node) processEntry(entry raftpb.Entry) error {
 		// wrote this to raft, or we wrote it before losing the leader
 		// position and cancelling the transaction. Create a new
 		// transaction to commit the data.
+
+		// It should not be possible for processInternalRaftRequest
+		// to be running in this situation, but out of caution we
+		// cancel any current invocations to avoid a deadlock.
+		n.wait.cancelAll()
 
 		err := n.memoryStore.ApplyStoreActions(r.Action)
 		if err != nil {
