@@ -664,12 +664,6 @@ message SecretsConfig {
 	// MaxSecrets specifies how many user-specified secrets there can be.  A value
 	// of 0 will be interpreted as the default maximum value.
 	uint32 max_secrets = 1;
-
-	// MaxSecretRevisions specifies how many revisions of a secret there can be.  A
-	// value of 0 will be interpreted as the default maximum value.
-	// If this value is decreased, there will be no change to existing secrets
-	// until the next update, after which extra revisions will be culled.
-	uint32 max_secret_revisions = 2;
 }
 
 // Placement specifies task distribution constraints.
@@ -767,10 +761,10 @@ message SecretReference {
 	// Name is the name of the secret that this references.
 	string name = 1;
 
-	// SecretValueID represents the ID of the specific Secret version that we're
+	// SecretID represents the ID of the specific Secret that we're
 	// referencing. This identifier exists so that SecretReferences don't leak
 	// any information about the secret contents.
-	string secret_value_id = 2 [(gogoproto.customname) = "SecretValueID"];
+	string secret_id = 2 [(gogoproto.customname) = "SecretID"];
 
 	// Mode specifies how this secret should be exposed to the task.
 	enum Mode {

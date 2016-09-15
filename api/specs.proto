@@ -281,8 +281,8 @@ message ClusterSpec {
 	SecretsConfig secrets = 8 [(gogoproto.nullable) = false];
 }
 
-// SecretValueSpec specifies a user-provided secret.
-message SecretValueSpec {
+// SecretSpec specifies a user-provided secret.
+message SecretSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
 	// Secret payload.
