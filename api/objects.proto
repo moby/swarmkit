@@ -225,43 +225,27 @@ message Cluster {
 	// and agents to unambiguously identify the older key to be deleted when
 	// a new key is allocated on key rotation.
 	uint64 encryption_key_lamport_clock = 6;
+
+	// Logical clock used to timestamp every secret.  It allows other managers
+	// and agents to unambiguously identify the newest secret to be used when
+	// requesting the latest version of a secret.
+	uint64 secret_lamport_clock = 7;
 }
 
-// Secret represents a conceptual secret that should be passed to either a
-// container a node. It can contain many versions of secret data, since
-// conceptually secret credentials can be rotated.
+// Secret represents a secret that should be passed to a container or a node,
+// and is immutable. It wraps the `spec` provided by the user with useful
+// information that is generated from the secret data in the `spec`, such as
+// the digest and size of the secret data.
 message Secret {
 	string id = 1 [(gogoproto.customname) = "ID"];
 
 	Meta meta = 2 [(gogoproto.nullable) = false];
 
-	// A secret has multiple versions, and each version is represented by a
-	// `SecretValue` object and referenced by the `SecretValue`'s ID.  This
-	// list is kept sorted by version creation date.
-	repeated SecretValue secret_values = 3;
-
-	// Name of the secret, so that we can use it easily for lookups.  This is
-	// just a copy of the data in `SecretValue.Spec.Annotations.Name`.
-	string name = 4;
-
-	// Whether the secret is an internal secret (not set by a user) or not.
-	bool internal = 5;
-}
-
-// SecretValue is represents a specific version of a secret, and is immutable;
-// it wraps the `spec` provided by the user with useful information that is
-// generated from the secret data in the `spec`, such as the digest and size
-// of the secret data.
-message SecretValue {
-	string id = 1 [(gogoproto.customname) = "ID"];
-
-	Timestamp created_at = 2 [(gogoproto.nullable) = false];
-
 	// Spec contains the actual secret data, as well as any context around the
 	// secret data that the user provides.  The name on the annotation of the
-	// spec must match the name of the `Secret` object this `SecretValue` belongs
+	// spec must match the name of the `Secret` object this `SecretSpec` belongs
 	// to.
-	SecretValueSpec spec = 3  [(gogoproto.nullable) = false];
+	SecretSpec spec = 3  [(gogoproto.nullable) = false];
 
 	// Digest represents the cryptographic digest of the secret data, and follows
 	// the form "<algorithm>:<digest>": for example "sha256:DEADBEEF...".  It
@@ -271,4 +255,10 @@ message SecretValue {
 	// Size represents the size (number of bytes) of the secret data, and is
 	// calculated from the data contained in `SecretValue.Spec.data`..
 	uint32 size = 5 [(gogoproto.customname) = "SecretSize"];
+
+	// Whether the secret is an internal secret (not set by a user) or not.
+	bool internal = 6;
+
+	// Timestamp from the lamport clock to identify the relative age of the secret.
+	uint64 lamport_time = 7;
 }

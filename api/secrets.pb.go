@@ -55,7 +55,7 @@ func (m *GetSecretResponse) Reset()                    { *m = GetSecretResponse{
 func (*GetSecretResponse) ProtoMessage()               {}
 func (*GetSecretResponse) Descriptor() ([]byte, []int) { return fileDescriptorSecrets, []int{1} }
 
-// ListSecretRequest is the request to list all secrets in the secret store,
+// ListSecretRequest is the request to list all non-internal secrets in the secret store,
 // or all secrets filtered by (id or id prefix or name or name prefix).
 type ListSecretsRequest struct {
 	Filters *ListSecretsRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
@@ -66,7 +66,7 @@ func (*ListSecretsRequest) ProtoMessage()               {}
 func (*ListSecretsRequest) Descriptor() ([]byte, []int) { return fileDescriptorSecrets, []int{2} }
 
 type ListSecretsRequest_Filters struct {
-	SecretIDs    []string `protobuf:"bytes,1,rep,name=secret_ids,json=secretIds" json:"secret_ids,omitempty"`
+	Ids          []string `protobuf:"bytes,1,rep,name=ids" json:"ids,omitempty"`
 	IDPrefixes   []string `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
 	Names        []string `protobuf:"bytes,3,rep,name=names" json:"names,omitempty"`
 	NamePrefixes []string `protobuf:"bytes,4,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
@@ -93,7 +93,7 @@ func (*ListSecretsResponse) Descriptor() ([]byte, []int) { return fileDescriptor
 // CreateSecretRequest specifies a new secret (it will not update an existing
 // secret) to create.
 type CreateSecretRequest struct {
-	Spec *SecretValueSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	Spec *SecretSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
 func (m *CreateSecretRequest) Reset()                    { *m = CreateSecretRequest{} }
@@ -113,29 +113,6 @@ func (m *CreateSecretResponse) Reset()                    { *m = CreateSecretRes
 func (*CreateSecretResponse) ProtoMessage()               {}
 func (*CreateSecretResponse) Descriptor() ([]byte, []int) { return fileDescriptorSecrets, []int{5} }
 
-// UpdateSecretRequest specifies a new secret version to add to an existing secret
-// of the same name.
-type UpdateSecretRequest struct {
-	Spec *SecretValueSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
-}
-
-func (m *UpdateSecretRequest) Reset()                    { *m = UpdateSecretRequest{} }
-func (*UpdateSecretRequest) ProtoMessage()               {}
-func (*UpdateSecretRequest) Descriptor() ([]byte, []int) { return fileDescriptorSecrets, []int{6} }
-
-// UpdateSecretResponse contains the Secret corresponding to the name and type of
-// the spec provided in `UpdateSecretRequest`, and it should be updated with an
-// additional `SecretValue` object containing said spec.  The
-// `SecretValue.Spec.Data` field in each `SecretValue` object in the `Secret`
-// object should be nil instead of actually containing the secret bytes.
-type UpdateSecretResponse struct {
-	Secret *Secret `protobuf:"bytes,1,opt,name=secret" json:"secret,omitempty"`
-}
-
-func (m *UpdateSecretResponse) Reset()                    { *m = UpdateSecretResponse{} }
-func (*UpdateSecretResponse) ProtoMessage()               {}
-func (*UpdateSecretResponse) Descriptor() ([]byte, []int) { return fileDescriptorSecrets, []int{7} }
-
 // RemoveSecretRequest contains the ID of the secret that should be removed.  This
 // removes all versions of the secret.
 type RemoveSecretRequest struct {
@@ -144,7 +121,7 @@ type RemoveSecretRequest struct {
 
 func (m *RemoveSecretRequest) Reset()                    { *m = RemoveSecretRequest{} }
 func (*RemoveSecretRequest) ProtoMessage()               {}
-func (*RemoveSecretRequest) Descriptor() ([]byte, []int) { return fileDescriptorSecrets, []int{8} }
+func (*RemoveSecretRequest) Descriptor() ([]byte, []int) { return fileDescriptorSecrets, []int{6} }
 
 // RemoveSecretResponse is an empty object indicating the successful removal of
 // a secret.
@@ -153,7 +130,7 @@ type RemoveSecretResponse struct {
 
 func (m *RemoveSecretResponse) Reset()                    { *m = RemoveSecretResponse{} }
 func (*RemoveSecretResponse) ProtoMessage()               {}
-func (*RemoveSecretResponse) Descriptor() ([]byte, []int) { return fileDescriptorSecrets, []int{9} }
+func (*RemoveSecretResponse) Descriptor() ([]byte, []int) { return fileDescriptorSecrets, []int{7} }
 
 func init() {
 	proto.RegisterType((*GetSecretRequest)(nil), "docker.swarmkit.v1.GetSecretRequest")
@@ -163,8 +140,6 @@ func init() {
 	proto.RegisterType((*ListSecretsResponse)(nil), "docker.swarmkit.v1.ListSecretsResponse")
 	proto.RegisterType((*CreateSecretRequest)(nil), "docker.swarmkit.v1.CreateSecretRequest")
 	proto.RegisterType((*CreateSecretResponse)(nil), "docker.swarmkit.v1.CreateSecretResponse")
-	proto.RegisterType((*UpdateSecretRequest)(nil), "docker.swarmkit.v1.UpdateSecretRequest")
-	proto.RegisterType((*UpdateSecretResponse)(nil), "docker.swarmkit.v1.UpdateSecretResponse")
 	proto.RegisterType((*RemoveSecretRequest)(nil), "docker.swarmkit.v1.RemoveSecretRequest")
 	proto.RegisterType((*RemoveSecretResponse)(nil), "docker.swarmkit.v1.RemoveSecretResponse")
 }
@@ -203,14 +178,6 @@ func (p *authenticatedWrapperSecretsServer) CreateSecret(ctx context.Context, r 
 		return nil, err
 	}
 	return p.local.CreateSecret(ctx, r)
-}
-
-func (p *authenticatedWrapperSecretsServer) UpdateSecret(ctx context.Context, r *UpdateSecretRequest) (*UpdateSecretResponse, error) {
-
-	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
-		return nil, err
-	}
-	return p.local.UpdateSecret(ctx, r)
 }
 
 func (p *authenticatedWrapperSecretsServer) RemoveSecret(ctx context.Context, r *RemoveSecretRequest) (*RemoveSecretResponse, error) {
@@ -264,10 +231,10 @@ func (m *ListSecretsRequest_Filters) Copy() *ListSecretsRequest_Filters {
 
 	o := &ListSecretsRequest_Filters{}
 
-	if m.SecretIDs != nil {
-		o.SecretIDs = make([]string, 0, len(m.SecretIDs))
-		for _, v := range m.SecretIDs {
-			o.SecretIDs = append(o.SecretIDs, v)
+	if m.Ids != nil {
+		o.Ids = make([]string, 0, len(m.Ids))
+		for _, v := range m.Ids {
+			o.Ids = append(o.Ids, v)
 		}
 	}
 
@@ -336,30 +303,6 @@ func (m *CreateSecretResponse) Copy() *CreateSecretResponse {
 	return o
 }
 
-func (m *UpdateSecretRequest) Copy() *UpdateSecretRequest {
-	if m == nil {
-		return nil
-	}
-
-	o := &UpdateSecretRequest{
-		Spec: m.Spec.Copy(),
-	}
-
-	return o
-}
-
-func (m *UpdateSecretResponse) Copy() *UpdateSecretResponse {
-	if m == nil {
-		return nil
-	}
-
-	o := &UpdateSecretResponse{
-		Secret: m.Secret.Copy(),
-	}
-
-	return o
-}
-
 func (m *RemoveSecretRequest) Copy() *RemoveSecretRequest {
 	if m == nil {
 		return nil
@@ -422,7 +365,7 @@ func (this *ListSecretsRequest_Filters) GoString() string {
 	}
 	s := make([]string, 0, 8)
 	s = append(s, "&api.ListSecretsRequest_Filters{")
-	s = append(s, "SecretIDs: "+fmt.Sprintf("%#v", this.SecretIDs)+",\n")
+	s = append(s, "Ids: "+fmt.Sprintf("%#v", this.Ids)+",\n")
 	s = append(s, "IDPrefixes: "+fmt.Sprintf("%#v", this.IDPrefixes)+",\n")
 	s = append(s, "Names: "+fmt.Sprintf("%#v", this.Names)+",\n")
 	s = append(s, "NamePrefixes: "+fmt.Sprintf("%#v", this.NamePrefixes)+",\n")
@@ -459,30 +402,6 @@ func (this *CreateSecretResponse) GoString() string {
 	}
 	s := make([]string, 0, 5)
 	s = append(s, "&api.CreateSecretResponse{")
-	if this.Secret != nil {
-		s = append(s, "Secret: "+fmt.Sprintf("%#v", this.Secret)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *UpdateSecretRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.UpdateSecretRequest{")
-	if this.Spec != nil {
-		s = append(s, "Spec: "+fmt.Sprintf("%#v", this.Spec)+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *UpdateSecretResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.UpdateSecretResponse{")
 	if this.Secret != nil {
 		s = append(s, "Secret: "+fmt.Sprintf("%#v", this.Secret)+",\n")
 	}
@@ -559,26 +478,14 @@ type SecretsClient interface {
 	// - Returns an error if listing fails.
 	ListSecrets(ctx context.Context, in *ListSecretsRequest, opts ...grpc.CallOption) (*ListSecretsResponse, error)
 	// CreateSecret creates and return a `CreateSecretResponse` with a `Secret` based
-	// on the provided `CreateSecretRequest.SecretValueSpec`.
-	// - Returns `InvalidArgument` if the `CreateSecretRequest.SecretValueSpec` is malformed,
+	// on the provided `CreateSecretRequest.SecretSpec`.
+	// - Returns `InvalidArgument` if the `CreateSecretRequest.SecretSpec` is malformed,
 	//   or if the secret data is too long or contains invalid characters.
-	// - Returns `AlreadyExists` if the `CreateSecretRequest.SecretValueSpec.Annotation.Name`
-	//   conflicts with an existing secret's name.
 	// - Returns `ResourceExhausted` if there are already the maximum number of allowed
 	//   secrets in the system.
 	// - Returns an error if the creation fails.
 	CreateSecret(ctx context.Context, in *CreateSecretRequest, opts ...grpc.CallOption) (*CreateSecretResponse, error)
-	// UpdateSecret adds the `UpdateSecretRequest.SecretValueSpec` to a `Secret`
-	// as the latest version, and returns the updated `Secret` in the `UpdateSecretResponse`.
-	// If there are already the maximum number of allowed secret versions in the `Secret`
-	// already, `UpdateSecret` will add the latest version but also remove the oldest version.
-	// - Returns `NotFound` if no secret with name
-	//   `UpdateSecretRequest.SecretValueSpec.Annotations.Name` is found.
-	// - Returns `InvalidArgument` if the `UpdateSecretRequest.SecretValueSpec` is malformed,
-	//   if the secret data is too long or contains invalid characters.
-	// - Returns an error if the update fails.
-	UpdateSecret(ctx context.Context, in *UpdateSecretRequest, opts ...grpc.CallOption) (*UpdateSecretResponse, error)
-	// RemoveSecret removes all versions referenced by `RemoveSecretRequest.ID`.
+	// RemoveSecret remove the secret referenced by `RemoveSecretRequest.ID`.
 	// - Returns `InvalidArgument` if `RemoveSecretRequest.ID` is empty.
 	// - Returns `NotFound` if the a secret named `RemoveSecretRequest.ID` is not found.
 	// - Returns an error if the deletion fails.
@@ -620,15 +527,6 @@ func (c *secretsClient) CreateSecret(ctx context.Context, in *CreateSecretReques
 	return out, nil
 }
 
-func (c *secretsClient) UpdateSecret(ctx context.Context, in *UpdateSecretRequest, opts ...grpc.CallOption) (*UpdateSecretResponse, error) {
-	out := new(UpdateSecretResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Secrets/UpdateSecret", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *secretsClient) RemoveSecret(ctx context.Context, in *RemoveSecretRequest, opts ...grpc.CallOption) (*RemoveSecretResponse, error) {
 	out := new(RemoveSecretResponse)
 	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Secrets/RemoveSecret", in, out, c.cc, opts...)
@@ -654,26 +552,14 @@ type SecretsServer interface {
 	// - Returns an error if listing fails.
 	ListSecrets(context.Context, *ListSecretsRequest) (*ListSecretsResponse, error)
 	// CreateSecret creates and return a `CreateSecretResponse` with a `Secret` based
-	// on the provided `CreateSecretRequest.SecretValueSpec`.
-	// - Returns `InvalidArgument` if the `CreateSecretRequest.SecretValueSpec` is malformed,
+	// on the provided `CreateSecretRequest.SecretSpec`.
+	// - Returns `InvalidArgument` if the `CreateSecretRequest.SecretSpec` is malformed,
 	//   or if the secret data is too long or contains invalid characters.
-	// - Returns `AlreadyExists` if the `CreateSecretRequest.SecretValueSpec.Annotation.Name`
-	//   conflicts with an existing secret's name.
 	// - Returns `ResourceExhausted` if there are already the maximum number of allowed
 	//   secrets in the system.
 	// - Returns an error if the creation fails.
 	CreateSecret(context.Context, *CreateSecretRequest) (*CreateSecretResponse, error)
-	// UpdateSecret adds the `UpdateSecretRequest.SecretValueSpec` to a `Secret`
-	// as the latest version, and returns the updated `Secret` in the `UpdateSecretResponse`.
-	// If there are already the maximum number of allowed secret versions in the `Secret`
-	// already, `UpdateSecret` will add the latest version but also remove the oldest version.
-	// - Returns `NotFound` if no secret with name
-	//   `UpdateSecretRequest.SecretValueSpec.Annotations.Name` is found.
-	// - Returns `InvalidArgument` if the `UpdateSecretRequest.SecretValueSpec` is malformed,
-	//   if the secret data is too long or contains invalid characters.
-	// - Returns an error if the update fails.
-	UpdateSecret(context.Context, *UpdateSecretRequest) (*UpdateSecretResponse, error)
-	// RemoveSecret removes all versions referenced by `RemoveSecretRequest.ID`.
+	// RemoveSecret remove the secret referenced by `RemoveSecretRequest.ID`.
 	// - Returns `InvalidArgument` if `RemoveSecretRequest.ID` is empty.
 	// - Returns `NotFound` if the a secret named `RemoveSecretRequest.ID` is not found.
 	// - Returns an error if the deletion fails.
@@ -738,24 +624,6 @@ func _Secrets_CreateSecret_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Secrets_UpdateSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateSecretRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SecretsServer).UpdateSecret(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/docker.swarmkit.v1.Secrets/UpdateSecret",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SecretsServer).UpdateSecret(ctx, req.(*UpdateSecretRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Secrets_RemoveSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RemoveSecretRequest)
 	if err := dec(in); err != nil {
@@ -789,10 +657,6 @@ var _Secrets_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateSecret",
 			Handler:    _Secrets_CreateSecret_Handler,
-		},
-		{
-			MethodName: "UpdateSecret",
-			Handler:    _Secrets_UpdateSecret_Handler,
 		},
 		{
 			MethodName: "RemoveSecret",
@@ -898,8 +762,8 @@ func (m *ListSecretsRequest_Filters) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.SecretIDs) > 0 {
-		for _, s := range m.SecretIDs {
+	if len(m.Ids) > 0 {
+		for _, s := range m.Ids {
 			data[i] = 0xa
 			i++
 			l = len(s)
@@ -1043,62 +907,6 @@ func (m *CreateSecretResponse) MarshalTo(data []byte) (int, error) {
 			return 0, err
 		}
 		i += n4
-	}
-	return i, nil
-}
-
-func (m *UpdateSecretRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *UpdateSecretRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Spec != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintSecrets(data, i, uint64(m.Spec.Size()))
-		n5, err := m.Spec.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n5
-	}
-	return i, nil
-}
-
-func (m *UpdateSecretResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *UpdateSecretResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Secret != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintSecrets(data, i, uint64(m.Secret.Size()))
-		n6, err := m.Secret.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n6
 	}
 	return i, nil
 }
@@ -1332,37 +1140,6 @@ func (p *raftProxySecretsServer) CreateSecret(ctx context.Context, r *CreateSecr
 	return resp, err
 }
 
-func (p *raftProxySecretsServer) UpdateSecret(ctx context.Context, r *UpdateSecretRequest) (*UpdateSecretResponse, error) {
-
-	conn, err := p.connSelector.LeaderConn(ctx)
-	if err != nil {
-		if err == raftselector.ErrIsLeader {
-			return p.local.UpdateSecret(ctx, r)
-		}
-		return nil, err
-	}
-	modCtx, err := p.runCtxMods(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := NewSecretsClient(conn).UpdateSecret(modCtx, r)
-	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
-			return resp, err
-		}
-		conn, err := p.pollNewLeaderConn(ctx)
-		if err != nil {
-			if err == raftselector.ErrIsLeader {
-				return p.local.UpdateSecret(ctx, r)
-			}
-			return nil, err
-		}
-		return NewSecretsClient(conn).UpdateSecret(modCtx, r)
-	}
-	return resp, err
-}
-
 func (p *raftProxySecretsServer) RemoveSecret(ctx context.Context, r *RemoveSecretRequest) (*RemoveSecretResponse, error) {
 
 	conn, err := p.connSelector.LeaderConn(ctx)
@@ -1427,8 +1204,8 @@ func (m *ListSecretsRequest) Size() (n int) {
 func (m *ListSecretsRequest_Filters) Size() (n int) {
 	var l int
 	_ = l
-	if len(m.SecretIDs) > 0 {
-		for _, s := range m.SecretIDs {
+	if len(m.Ids) > 0 {
+		for _, s := range m.Ids {
 			l = len(s)
 			n += 1 + l + sovSecrets(uint64(l))
 		}
@@ -1477,26 +1254,6 @@ func (m *CreateSecretRequest) Size() (n int) {
 }
 
 func (m *CreateSecretResponse) Size() (n int) {
-	var l int
-	_ = l
-	if m.Secret != nil {
-		l = m.Secret.Size()
-		n += 1 + l + sovSecrets(uint64(l))
-	}
-	return n
-}
-
-func (m *UpdateSecretRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Spec != nil {
-		l = m.Spec.Size()
-		n += 1 + l + sovSecrets(uint64(l))
-	}
-	return n
-}
-
-func (m *UpdateSecretResponse) Size() (n int) {
 	var l int
 	_ = l
 	if m.Secret != nil {
@@ -1570,7 +1327,7 @@ func (this *ListSecretsRequest_Filters) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ListSecretsRequest_Filters{`,
-		`SecretIDs:` + fmt.Sprintf("%v", this.SecretIDs) + `,`,
+		`Ids:` + fmt.Sprintf("%v", this.Ids) + `,`,
 		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
 		`Names:` + fmt.Sprintf("%v", this.Names) + `,`,
 		`NamePrefixes:` + fmt.Sprintf("%v", this.NamePrefixes) + `,`,
@@ -1593,7 +1350,7 @@ func (this *CreateSecretRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&CreateSecretRequest{`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "SecretValueSpec", "SecretValueSpec", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "SecretSpec", "SecretSpec", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1603,26 +1360,6 @@ func (this *CreateSecretResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&CreateSecretResponse{`,
-		`Secret:` + strings.Replace(fmt.Sprintf("%v", this.Secret), "Secret", "Secret", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *UpdateSecretRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&UpdateSecretRequest{`,
-		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "SecretValueSpec", "SecretValueSpec", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *UpdateSecretResponse) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&UpdateSecretResponse{`,
 		`Secret:` + strings.Replace(fmt.Sprintf("%v", this.Secret), "Secret", "Secret", 1) + `,`,
 		`}`,
 	}, "")
@@ -1931,7 +1668,7 @@ func (m *ListSecretsRequest_Filters) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SecretIDs", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Ids", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1956,7 +1693,7 @@ func (m *ListSecretsRequest_Filters) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SecretIDs = append(m.SecretIDs, string(data[iNdEx:postIndex]))
+			m.Ids = append(m.Ids, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -2203,7 +1940,7 @@ func (m *CreateSecretRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Spec == nil {
-				m.Spec = &SecretValueSpec{}
+				m.Spec = &SecretSpec{}
 			}
 			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -2257,172 +1994,6 @@ func (m *CreateSecretResponse) Unmarshal(data []byte) error {
 		}
 		if fieldNum <= 0 {
 			return fmt.Errorf("proto: CreateSecretResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Secret", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSecrets
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSecrets
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Secret == nil {
-				m.Secret = &Secret{}
-			}
-			if err := m.Secret.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipSecrets(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthSecrets
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *UpdateSecretRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowSecrets
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: UpdateSecretRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: UpdateSecretRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSecrets
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthSecrets
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Spec == nil {
-				m.Spec = &SecretValueSpec{}
-			}
-			if err := m.Spec.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipSecrets(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthSecrets
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *UpdateSecretResponse) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowSecrets
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: UpdateSecretResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: UpdateSecretResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2716,40 +2287,37 @@ var (
 func init() { proto.RegisterFile("secrets.proto", fileDescriptorSecrets) }
 
 var fileDescriptorSecrets = []byte{
-	// 552 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xac, 0x54, 0xcd, 0x6e, 0xd3, 0x40,
-	0x10, 0xae, 0xd3, 0xd0, 0xd4, 0x93, 0x84, 0x9f, 0x75, 0x40, 0x91, 0x85, 0x1c, 0xe4, 0xf2, 0x13,
-	0x24, 0x70, 0x44, 0x40, 0xe2, 0x84, 0x84, 0x42, 0x45, 0x09, 0xa0, 0x0a, 0xb9, 0x82, 0x6b, 0xe5,
-	0xda, 0xd3, 0xc8, 0x34, 0x89, 0x8d, 0xd7, 0x29, 0x3d, 0x72, 0xe0, 0x21, 0xb8, 0x73, 0xe7, 0x39,
-	0x2a, 0x4e, 0x1c, 0x39, 0x05, 0xe2, 0x07, 0x40, 0x3c, 0x02, 0xf2, 0xee, 0xba, 0xd8, 0x74, 0x9b,
-	0x20, 0xca, 0x29, 0x9b, 0xd9, 0xef, 0x67, 0x76, 0xf7, 0x1b, 0x43, 0x9d, 0xa2, 0x1b, 0x61, 0x4c,
-	0xad, 0x30, 0x0a, 0xe2, 0x80, 0x10, 0x2f, 0x70, 0xf7, 0x30, 0xb2, 0xe8, 0x5b, 0x27, 0x1a, 0xed,
-	0xf9, 0xb1, 0xb5, 0x7f, 0x47, 0xaf, 0xd2, 0x10, 0x5d, 0x01, 0xd0, 0xeb, 0xc1, 0xce, 0x6b, 0x74,
-	0x33, 0xbc, 0xae, 0x85, 0xc3, 0xc9, 0xc0, 0x1f, 0x77, 0xf8, 0x8f, 0x28, 0x36, 0x06, 0xc1, 0x20,
-	0x60, 0xcb, 0x4e, 0xba, 0xe2, 0x55, 0xf3, 0x01, 0x9c, 0xdf, 0xc0, 0x78, 0x8b, 0xd9, 0xd9, 0xf8,
-	0x66, 0x82, 0x34, 0x26, 0x37, 0x41, 0xe5, 0xfe, 0xdb, 0xbe, 0xd7, 0x54, 0xae, 0x28, 0x6d, 0xb5,
-	0x57, 0x4b, 0xa6, 0xad, 0x55, 0x8e, 0xea, 0xaf, 0xdb, 0xab, 0x7c, 0xbb, 0xef, 0x99, 0x1b, 0x70,
-	0x21, 0x47, 0xa7, 0x61, 0x30, 0xa6, 0x48, 0xba, 0xb0, 0xc2, 0x01, 0x8c, 0x5c, 0xed, 0xea, 0xd6,
-	0xf1, 0xfe, 0x2d, 0xc1, 0x11, 0x48, 0xf3, 0x7d, 0x09, 0xc8, 0x73, 0x9f, 0x0a, 0x29, 0x9a, 0xb5,
-	0xf2, 0x04, 0x2a, 0xbb, 0xfe, 0x30, 0xc6, 0x88, 0x0a, 0x2d, 0x4b, 0xa6, 0x75, 0x9c, 0x68, 0x3d,
-	0xe6, 0x2c, 0x3b, 0xa3, 0xeb, 0x1f, 0x15, 0xa8, 0x88, 0x22, 0xb9, 0x05, 0x70, 0x74, 0xc0, 0x54,
-	0x78, 0xb9, 0xad, 0xf6, 0xea, 0xc9, 0xb4, 0xa5, 0x66, 0x27, 0xa4, 0xb6, 0x9a, 0x1d, 0x91, 0x92,
-	0x0e, 0x54, 0x7d, 0x6f, 0x3b, 0x8c, 0x70, 0xd7, 0x3f, 0x40, 0xda, 0x2c, 0x31, 0xf8, 0xd9, 0x64,
-	0xda, 0x82, 0xfe, 0xfa, 0x0b, 0x51, 0xb5, 0xc1, 0xf7, 0xb2, 0x35, 0x69, 0xc0, 0x99, 0xb1, 0x33,
-	0x42, 0xda, 0x5c, 0x4e, 0xa1, 0x36, 0xff, 0x43, 0xd6, 0xa0, 0x9e, 0x2e, 0x7e, 0x0b, 0x95, 0xd9,
-	0x6e, 0x2d, 0x2d, 0x66, 0x54, 0xf3, 0x19, 0x68, 0x85, 0xc3, 0x88, 0x1b, 0xbd, 0x07, 0x15, 0x91,
-	0x08, 0xd6, 0xed, 0xfc, 0x2b, 0xcd, 0xa0, 0xe6, 0x26, 0x68, 0x8f, 0x22, 0x74, 0x62, 0x2c, 0x3e,
-	0xef, 0x7d, 0x28, 0xa7, 0xd9, 0x11, 0x17, 0xba, 0x76, 0xb2, 0xd2, 0x2b, 0x67, 0x38, 0xc1, 0xad,
-	0x10, 0x5d, 0x9b, 0x11, 0xcc, 0xa7, 0xd0, 0x28, 0xea, 0x9d, 0xe2, 0xbd, 0x37, 0x41, 0x7b, 0x19,
-	0x7a, 0xff, 0xb5, 0xb7, 0xa2, 0xde, 0x29, 0x7a, 0x7b, 0x08, 0x9a, 0x8d, 0xa3, 0x60, 0x1f, 0xff,
-	0x79, 0x2c, 0x2e, 0x41, 0xa3, 0xa8, 0xc0, 0xbb, 0xe9, 0x7e, 0x2b, 0x43, 0x45, 0xbc, 0x2d, 0x09,
-	0x40, 0x3d, 0x1a, 0x1d, 0x72, 0x55, 0xd6, 0xd6, 0x9f, 0x83, 0xa9, 0x5f, 0x5b, 0x80, 0xe2, 0x2e,
-	0xe6, 0xc5, 0xcf, 0x9f, 0x7e, 0x7c, 0x28, 0x9d, 0x83, 0x3a, 0x83, 0xdd, 0x1e, 0x39, 0x63, 0x67,
-	0x80, 0x11, 0x99, 0x40, 0x35, 0x97, 0x2d, 0x72, 0xfd, 0xef, 0x26, 0x49, 0xbf, 0xb1, 0x10, 0x37,
-	0xdf, 0xf6, 0x00, 0x6a, 0xf9, 0xd4, 0x10, 0xa9, 0x9e, 0x24, 0xa7, 0x7a, 0x7b, 0x31, 0x70, 0xa1,
-	0x73, 0x3e, 0x13, 0x72, 0x67, 0x49, 0x0a, 0xe5, 0xce, 0xb2, 0x78, 0xcd, 0x71, 0xce, 0xbf, 0xbf,
-	0xdc, 0x59, 0x92, 0x31, 0xb9, 0xb3, 0x2c, 0x4a, 0x27, 0x38, 0xf7, 0x2e, 0x1f, 0xce, 0x8c, 0xa5,
-	0xaf, 0x33, 0x63, 0xe9, 0xe7, 0xcc, 0x50, 0xde, 0x25, 0x86, 0x72, 0x98, 0x18, 0xca, 0x97, 0xc4,
-	0x50, 0xbe, 0x27, 0x86, 0xb2, 0xb3, 0xc2, 0x3e, 0xfa, 0x77, 0x7f, 0x05, 0x00, 0x00, 0xff, 0xff,
-	0x41, 0x45, 0x54, 0xea, 0x60, 0x06, 0x00, 0x00,
+	// 508 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xa4, 0x54, 0xcd, 0x6e, 0xd3, 0x40,
+	0x10, 0xee, 0x36, 0xa5, 0x69, 0x26, 0x09, 0x94, 0x4d, 0x40, 0x91, 0x85, 0x5c, 0x64, 0xfe, 0xc2,
+	0x01, 0x47, 0x04, 0xae, 0x48, 0x28, 0x54, 0x94, 0x00, 0x07, 0xe4, 0x3e, 0x40, 0xe5, 0xda, 0xd3,
+	0x68, 0x69, 0x93, 0x35, 0xbb, 0x4e, 0xe9, 0x91, 0x1b, 0xaf, 0xc0, 0x53, 0xf0, 0x1c, 0x15, 0x27,
+	0x8e, 0x9c, 0x2a, 0x62, 0x09, 0x89, 0x13, 0xe2, 0x11, 0x90, 0x77, 0xd7, 0x90, 0xd0, 0x6d, 0x82,
+	0xe8, 0x29, 0x93, 0xd9, 0xef, 0x67, 0x34, 0xdf, 0xc8, 0x50, 0x97, 0x18, 0x09, 0x4c, 0xa5, 0x9f,
+	0x08, 0x9e, 0x72, 0x4a, 0x63, 0x1e, 0xed, 0xa3, 0xf0, 0xe5, 0xdb, 0x50, 0x0c, 0xf7, 0x59, 0xea,
+	0x1f, 0xde, 0x77, 0xaa, 0x32, 0xc1, 0xc8, 0x00, 0x9c, 0x3a, 0xdf, 0x7d, 0x8d, 0x51, 0x81, 0x77,
+	0x1a, 0xc9, 0xc1, 0x78, 0xc0, 0x46, 0x1d, 0xfd, 0x63, 0x9a, 0xcd, 0x01, 0x1f, 0x70, 0x55, 0x76,
+	0xf2, 0x4a, 0x77, 0xbd, 0x47, 0xb0, 0xbe, 0x85, 0xe9, 0xb6, 0xb2, 0x0b, 0xf0, 0xcd, 0x18, 0x65,
+	0x4a, 0xef, 0x42, 0x45, 0xfb, 0xef, 0xb0, 0xb8, 0x45, 0xae, 0x93, 0x76, 0xa5, 0x57, 0xcb, 0x4e,
+	0x36, 0xd6, 0x34, 0xaa, 0xbf, 0x19, 0xac, 0xe9, 0xe7, 0x7e, 0xec, 0x6d, 0xc1, 0xe5, 0x29, 0xba,
+	0x4c, 0xf8, 0x48, 0x22, 0xed, 0xc2, 0xaa, 0x06, 0x28, 0x72, 0xb5, 0xeb, 0xf8, 0xa7, 0xe7, 0xf7,
+	0x0d, 0xc7, 0x20, 0xbd, 0xef, 0x04, 0xe8, 0x4b, 0x26, 0x8d, 0x94, 0x2c, 0x46, 0x79, 0x06, 0xe5,
+	0x3d, 0x76, 0x90, 0xa2, 0x90, 0x46, 0xcb, 0xb7, 0x69, 0x9d, 0x26, 0xfa, 0x4f, 0x35, 0x2b, 0x28,
+	0xe8, 0xce, 0x7b, 0x02, 0x65, 0xd3, 0xa4, 0xeb, 0x50, 0x62, 0x71, 0xae, 0x58, 0x6a, 0x57, 0x82,
+	0xbc, 0xa4, 0x1d, 0xa8, 0xb2, 0x78, 0x27, 0x11, 0xb8, 0xc7, 0x8e, 0x50, 0xb6, 0x96, 0xf3, 0x97,
+	0xde, 0xc5, 0xec, 0x64, 0x03, 0xfa, 0x9b, 0xaf, 0x4c, 0x37, 0x00, 0x16, 0x17, 0x35, 0x6d, 0xc2,
+	0x85, 0x51, 0x38, 0x44, 0xd9, 0x2a, 0x29, 0x11, 0xfd, 0x87, 0xde, 0x80, 0x7a, 0x5e, 0xfc, 0x11,
+	0x5a, 0x51, 0xaf, 0xb5, 0xbc, 0x59, 0x50, 0xbd, 0x17, 0xd0, 0x98, 0x19, 0xd8, 0x6c, 0xed, 0x21,
+	0x94, 0x4d, 0xea, 0x6a, 0xb0, 0xf9, 0x6b, 0x2b, 0xa0, 0x5e, 0x1f, 0x1a, 0x4f, 0x04, 0x86, 0x29,
+	0xce, 0x46, 0xd8, 0x85, 0x95, 0xfc, 0x3e, 0xcc, 0xd2, 0xdc, 0xb3, 0x95, 0xb6, 0x13, 0x8c, 0x02,
+	0x85, 0xf5, 0x9e, 0x43, 0x73, 0x56, 0xea, 0x1c, 0x71, 0x3e, 0x86, 0x46, 0x80, 0x43, 0x7e, 0x88,
+	0xff, 0x7d, 0x59, 0x57, 0xa1, 0x39, 0xab, 0xa0, 0xa7, 0xe9, 0x7e, 0x2b, 0x41, 0xd9, 0xac, 0x8e,
+	0x72, 0xa8, 0xfc, 0xbe, 0x3e, 0x7a, 0xd3, 0x36, 0xd6, 0xdf, 0xb7, 0xed, 0xdc, 0x5a, 0x80, 0xd2,
+	0x2e, 0xde, 0x95, 0x4f, 0x1f, 0x7f, 0x7c, 0x58, 0xbe, 0x04, 0x75, 0x05, 0xbb, 0x37, 0x0c, 0x47,
+	0xe1, 0x00, 0x05, 0x1d, 0x43, 0x75, 0x2a, 0x3a, 0x7a, 0xfb, 0xdf, 0x8e, 0xd1, 0xb9, 0xb3, 0x10,
+	0x37, 0xdf, 0xf6, 0x08, 0x6a, 0xd3, 0xc9, 0x50, 0xab, 0x9e, 0xe5, 0x0c, 0x9c, 0xf6, 0x62, 0xe0,
+	0x42, 0xe7, 0xe9, 0x14, 0xec, 0xce, 0x96, 0xa4, 0xed, 0xce, 0xb6, 0x40, 0xcf, 0x70, 0xee, 0x5d,
+	0x3b, 0x9e, 0xb8, 0x4b, 0x5f, 0x26, 0xee, 0xd2, 0xcf, 0x89, 0x4b, 0xde, 0x65, 0x2e, 0x39, 0xce,
+	0x5c, 0xf2, 0x39, 0x73, 0xc9, 0xd7, 0xcc, 0x25, 0xbb, 0xab, 0xea, 0xeb, 0xf5, 0xe0, 0x57, 0x00,
+	0x00, 0x00, 0xff, 0xff, 0xc1, 0x67, 0x9d, 0x75, 0x29, 0x05, 0x00, 0x00,
 }
