@@ -18,12 +18,6 @@ const (
 	nodeUpdatePeriod             = 20 * time.Second
 )
 
-// Secrets is a map that keeps all the currenty available secrets to the agent
-type Secrets struct {
-	sync.RWMutex
-	m map[string]*api.Secret
-}
-
 // Agent implements the primary node functionality for a member of a swarm
 // cluster. The primary functionality is to run and report on the status of
 // tasks assigned to the node.
@@ -54,11 +48,9 @@ func New(config *Config) (*Agent, error) {
 		return nil, err
 	}
 
-	secrets := &Secrets{m: make(map[string]*api.Secret)}
-
 	a := &Agent{
 		config:   config,
-		worker:   newWorker(config.DB, config.Executor, secrets),
+		worker:   newWorker(config.DB, config.Executor),
 		sessionq: make(chan sessionOperation),
 		started:  make(chan struct{}),
 		stopped:  make(chan struct{}),

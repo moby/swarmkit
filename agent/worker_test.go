@@ -18,8 +18,7 @@ func TestWorker(t *testing.T) {
 
 	ctx := context.Background()
 	executor := &mockExecutor{t: t}
-	secrets := &Secrets{m: make(map[string]*api.Secret)}
-	worker := newWorker(db, executor, secrets)
+	worker := newWorker(db, executor)
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
 		return nil

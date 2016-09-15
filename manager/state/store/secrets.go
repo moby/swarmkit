@@ -23,7 +23,6 @@ func init() {
 				},
 				indexName: {
 					Name:    indexName,
-					Unique:  true,
 					Indexer: secretIndexerByName{},
 				},
 			},

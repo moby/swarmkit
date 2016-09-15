@@ -50,19 +50,19 @@ type worker struct {
 	db        *bolt.DB
 	executor  exec.Executor
 	listeners map[*statusReporterKey]struct{}
-	secrets   *Secrets
+	secrets   secrets
 
 	taskManagers map[string]*taskManager
 	mu           sync.RWMutex
 }
 
-func newWorker(db *bolt.DB, executor exec.Executor, secrets *Secrets) *worker {
+func newWorker(db *bolt.DB, executor exec.Executor) *worker {
 	return &worker{
 		db:           db,
 		executor:     executor,
 		listeners:    make(map[*statusReporterKey]struct{}),
 		taskManagers: make(map[string]*taskManager),
-		secrets:      secrets,
+		secrets:      newSecrets(),
 	}
 }
 
@@ -259,23 +259,12 @@ func (w *worker) UpdateSecrets(ctx context.Context, added []*api.Secret, removed
 
 func reconcileSecrets(ctx context.Context, w *worker, added []*api.Secret, removed []string, fullSnapshot bool) error {
 	// If this was a complete set of secrets, we're going to clear the secrets map and add all of them
-	w.secrets.RLock()
-	defer w.secrets.RUnlock()
 	if fullSnapshot {
-		w.secrets.m = make(map[string]*api.Secret)
-		for _, secret := range added {
-			w.secrets.m[secret.Spec.Annotations.Name] = secret
-		}
+		w.secrets.Reset()
 	} else {
-		// If this was an incremental set of secrets, we're going to remove only the tasks
-		// in the removed set
-		for _, name := range removed {
-			delete(w.secrets.m, name)
-		}
-		for _, secret := range added {
-			w.secrets.m[secret.Spec.Annotations.Name] = secret
-		}
+		w.secrets.RemoveSecret(removed...)
 	}
+	w.secrets.AddSecret(added...)
 
 	return nil
 }
