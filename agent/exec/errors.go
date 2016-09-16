@@ -29,6 +29,9 @@ var (
 	// ErrTaskNoop returns when the a subsequent call to Do will not result in
 	// advancing the task. Callers should avoid calling Do until the task has been updated.
 	ErrTaskNoop = errors.New("exec: task noop")
+
+	// ErrImageRequired returned if a task is missing the image definition.
+	ErrImageRequired = errors.New("dockerexec: image required")
 )
 
 // ExitCoder is implemented by errors that have an exit code.

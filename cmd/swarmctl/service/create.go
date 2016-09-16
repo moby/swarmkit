@@ -64,4 +64,5 @@ func init() {
 	flagparser.AddServiceFlags(flags)
 	flags.String("mode", "replicated", "one of replicated, global")
 	flags.StringSlice("secret", nil, "add a secret from swarm")
+	flags.String("runtime", "container", "one of container, plugin")
 }

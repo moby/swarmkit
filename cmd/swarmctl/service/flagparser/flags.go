@@ -42,6 +42,8 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 
 	flags.StringSlice("constraint", nil, "Placement constraint (e.g. node.labels.key==value)")
 
+	flags.Bool("plugin-disabled", false, "do not enable plugin on install")
+
 	// TODO(stevvooe): Replace these with a more interesting mount flag.
 	flags.StringSlice("bind", nil, "define a bind mount")
 	flags.StringSlice("volume", nil, "define a volume mount")
@@ -92,7 +94,7 @@ func Merge(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClient) error
 		return err
 	}
 
-	if err := parseContainer(flags, spec); err != nil {
+	if err := parseRuntime(flags, spec); err != nil {
 		return err
 	}
 
@@ -117,18 +119,6 @@ func Merge(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClient) error
 	}
 
 	if err := parsePlacement(flags, spec); err != nil {
-		return err
-	}
-
-	if err := parseBind(flags, spec); err != nil {
-		return err
-	}
-
-	if err := parseVolume(flags, spec); err != nil {
-		return err
-	}
-
-	if err := parseTmpfs(flags, spec); err != nil {
 		return err
 	}
 

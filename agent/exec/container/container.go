@@ -47,7 +47,7 @@ func (c *containerConfig) setTask(t *api.Task) error {
 	}
 
 	if container.Image == "" {
-		return ErrImageRequired
+		return exec.ErrImageRequired
 	}
 
 	// index the networks by name
