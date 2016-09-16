@@ -350,6 +350,7 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 			return errModeChangeNotAllowed
 		}
 		service.Meta.Version = *request.ServiceVersion
+		service.PreviousSpec = service.Spec.Copy()
 		service.Spec = *request.Spec.Copy()
 
 		// Reset update status
