@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sort"
 
-	"github.com/wangjohn/quickselect"
+	"github.com/aaronlehmann/quickselect"
 )
 
 var errNodeNotFound = errors.New("node not found in scheduler dataset")
