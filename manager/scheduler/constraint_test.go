@@ -15,7 +15,8 @@ var (
 
 func setupEnv() {
 	task1 = &api.Task{
-		ID: "id1",
+		ID:           "id1",
+		DesiredState: api.TaskStateRunning,
 		ServiceAnnotations: api.Annotations{
 			Name: "name1",
 		},
@@ -50,6 +51,7 @@ func setupEnv() {
 			},
 		},
 		Tasks: make(map[string]*api.Task),
+		DesiredRunningTasksCountByService: make(map[string]int),
 	}
 }
 

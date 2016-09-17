@@ -1,8 +1,10 @@
 package scheduler
 
 import (
+	"fmt"
 	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -55,7 +57,8 @@ func TestScheduler(t *testing.T) {
 
 	initialTaskSet := []*api.Task{
 		{
-			ID: "id1",
+			ID:           "id1",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name1",
 			},
@@ -66,7 +69,8 @@ func TestScheduler(t *testing.T) {
 			NodeID: initialNodeSet[0].ID,
 		},
 		{
-			ID: "id2",
+			ID:           "id2",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
@@ -75,7 +79,8 @@ func TestScheduler(t *testing.T) {
 			},
 		},
 		{
-			ID: "id3",
+			ID:           "id3",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
@@ -142,7 +147,8 @@ func TestScheduler(t *testing.T) {
 
 		// Create a new task. It should get assigned to id1.
 		t4 := &api.Task{
-			ID: "id4",
+			ID:           "id4",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name4",
 			},
@@ -164,7 +170,8 @@ func TestScheduler(t *testing.T) {
 		// Remove assignment from task id4. It should get assigned
 		// to node id1.
 		t4 := &api.Task{
-			ID: "id4",
+			ID:           "id4",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name4",
 			},
@@ -199,7 +206,8 @@ func TestScheduler(t *testing.T) {
 
 		// Create an unassigned task.
 		task := &api.Task{
-			ID: "removednode",
+			ID:           "removednode",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "removednode",
 			},
@@ -233,7 +241,8 @@ func TestScheduler(t *testing.T) {
 
 		// Create an unassigned task.
 		t5 := &api.Task{
-			ID: "id5",
+			ID:           "id5",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name5",
 			},
@@ -267,7 +276,8 @@ func TestScheduler(t *testing.T) {
 
 		// Create an unassigned task.
 		t6 := &api.Task{
-			ID: "id6",
+			ID:           "id6",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name6",
 			},
@@ -301,7 +311,8 @@ func TestScheduler(t *testing.T) {
 		// Create an unassigned task. Should be assigned to the
 		// now-ready node.
 		t7 := &api.Task{
-			ID: "id7",
+			ID:           "id7",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name7",
 			},
@@ -337,7 +348,8 @@ func TestScheduler(t *testing.T) {
 
 		// Create an unassigned task.
 		t8 := &api.Task{
-			ID: "id8",
+			ID:           "id8",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name8",
 			},
@@ -354,10 +366,285 @@ func TestScheduler(t *testing.T) {
 	assert.NotEqual(t, "id6", assignment8.NodeID)
 }
 
+func TestHA(t *testing.T) {
+	ctx := context.Background()
+	initialNodeSet := []*api.Node{
+		{
+			ID: "id1",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+		},
+		{
+			ID: "id2",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+		},
+		{
+			ID: "id3",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+		},
+		{
+			ID: "id4",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+		},
+		{
+			ID: "id5",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+		},
+	}
+
+	taskTemplate1 := &api.Task{
+		DesiredState: api.TaskStateRunning,
+		ServiceID:    "service1",
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Image: "v:1",
+				},
+			},
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStateAllocated,
+		},
+	}
+
+	taskTemplate2 := &api.Task{
+		DesiredState: api.TaskStateRunning,
+		ServiceID:    "service2",
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Image: "v:2",
+				},
+			},
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStateAllocated,
+		},
+	}
+
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	t1Instances := 18
+
+	err := s.Update(func(tx store.Tx) error {
+		// Prepoulate nodes
+		for _, n := range initialNodeSet {
+			assert.NoError(t, store.CreateNode(tx, n))
+		}
+
+		// Prepopulate tasks from template 1
+		for i := 0; i != t1Instances; i++ {
+			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
+			assert.NoError(t, store.CreateTask(tx, taskTemplate1))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(s)
+
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+	defer scheduler.Stop()
+
+	t1Assignments := make(map[string]int)
+	for i := 0; i != t1Instances; i++ {
+		assignment := watchAssignment(t, watch)
+		if !strings.HasPrefix(assignment.ID, "t1") {
+			t.Fatal("got assignment for different kind of task")
+		}
+		t1Assignments[assignment.NodeID]++
+	}
+
+	assert.Len(t, t1Assignments, 5)
+
+	nodesWith3T1Tasks := 0
+	nodesWith4T1Tasks := 0
+	for nodeID, taskCount := range t1Assignments {
+		if taskCount == 3 {
+			nodesWith3T1Tasks++
+		} else if taskCount == 4 {
+			nodesWith4T1Tasks++
+		} else {
+			t.Fatalf("unexpected number of tasks %d on node %s", taskCount, nodeID)
+		}
+	}
+
+	assert.Equal(t, 3, nodesWith4T1Tasks)
+	assert.Equal(t, 2, nodesWith3T1Tasks)
+
+	t2Instances := 2
+
+	// Add a new service with two instances. They should fill the nodes
+	// that only have two tasks.
+	err = s.Update(func(tx store.Tx) error {
+		for i := 0; i != t2Instances; i++ {
+			taskTemplate2.ID = fmt.Sprintf("t2id%d", i)
+			assert.NoError(t, store.CreateTask(tx, taskTemplate2))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	t2Assignments := make(map[string]int)
+	for i := 0; i != t2Instances; i++ {
+		assignment := watchAssignment(t, watch)
+		if !strings.HasPrefix(assignment.ID, "t2") {
+			t.Fatal("got assignment for different kind of task")
+		}
+		t2Assignments[assignment.NodeID]++
+	}
+
+	assert.Len(t, t2Assignments, 2)
+
+	for nodeID := range t2Assignments {
+		assert.Equal(t, 3, t1Assignments[nodeID])
+	}
+
+	// Scale up service 1 to 21 tasks. It should cover the two nodes that
+	// service 2 was assigned to, and also one other node.
+	err = s.Update(func(tx store.Tx) error {
+		for i := t1Instances; i != t1Instances+3; i++ {
+			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
+			assert.NoError(t, store.CreateTask(tx, taskTemplate1))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	var sharedNodes [2]string
+
+	for i := 0; i != 3; i++ {
+		assignment := watchAssignment(t, watch)
+		if !strings.HasPrefix(assignment.ID, "t1") {
+			t.Fatal("got assignment for different kind of task")
+		}
+		if t1Assignments[assignment.NodeID] == 5 {
+			t.Fatal("more than one new task assigned to the same node")
+		}
+		t1Assignments[assignment.NodeID]++
+
+		if t2Assignments[assignment.NodeID] != 0 {
+			if sharedNodes[0] == "" {
+				sharedNodes[0] = assignment.NodeID
+			} else if sharedNodes[1] == "" {
+				sharedNodes[1] = assignment.NodeID
+			} else {
+				t.Fatal("all three assignments went to nodes with service2 tasks")
+			}
+		}
+	}
+
+	assert.NotEmpty(t, sharedNodes[0])
+	assert.NotEmpty(t, sharedNodes[1])
+	assert.NotEqual(t, sharedNodes[0], sharedNodes[1])
+
+	nodesWith4T1Tasks = 0
+	nodesWith5T1Tasks := 0
+	for nodeID, taskCount := range t1Assignments {
+		if taskCount == 4 {
+			nodesWith4T1Tasks++
+		} else if taskCount == 5 {
+			nodesWith5T1Tasks++
+		} else {
+			t.Fatalf("unexpected number of tasks %d on node %s", taskCount, nodeID)
+		}
+	}
+
+	assert.Equal(t, 4, nodesWith4T1Tasks)
+	assert.Equal(t, 1, nodesWith5T1Tasks)
+
+	// Add another task from service2. It must not land on the node that
+	// has 5 service1 tasks.
+	err = s.Update(func(tx store.Tx) error {
+		taskTemplate2.ID = "t2id4"
+		assert.NoError(t, store.CreateTask(tx, taskTemplate2))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	assignment := watchAssignment(t, watch)
+	if assignment.ID != "t2id4" {
+		t.Fatal("got assignment for different task")
+	}
+
+	if t2Assignments[assignment.NodeID] != 0 {
+		t.Fatal("was scheduled on a node that already has a service2 task")
+	}
+	if t1Assignments[assignment.NodeID] == 5 {
+		t.Fatal("was scheduled on the node that has the most service1 tasks")
+	}
+	t2Assignments[assignment.NodeID]++
+
+	// Remove all tasks on node id1.
+	err = s.Update(func(tx store.Tx) error {
+		tasks, err := store.FindTasks(tx, store.ByNodeID("id1"))
+		assert.NoError(t, err)
+		for _, task := range tasks {
+			assert.NoError(t, store.DeleteTask(tx, task.ID))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	t1Assignments["id1"] = 0
+	t2Assignments["id1"] = 0
+
+	// Add four instances of service1 and two instances of service2.
+	// All instances of service1 should land on node "id1", and one
+	// of the two service2 instances should as well.
+	// Put these in a map to randomize the order in which they are
+	// created.
+	err = s.Update(func(tx store.Tx) error {
+		tasksMap := make(map[string]*api.Task)
+		for i := 22; i <= 25; i++ {
+			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
+			tasksMap[taskTemplate1.ID] = taskTemplate1.Copy()
+		}
+		for i := 5; i <= 6; i++ {
+			taskTemplate2.ID = fmt.Sprintf("t2id%d", i)
+			tasksMap[taskTemplate2.ID] = taskTemplate2.Copy()
+		}
+		for _, task := range tasksMap {
+			assert.NoError(t, store.CreateTask(tx, task))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	for i := 0; i != 4+2; i++ {
+		assignment := watchAssignment(t, watch)
+		if strings.HasPrefix(assignment.ID, "t1") {
+			t1Assignments[assignment.NodeID]++
+		} else if strings.HasPrefix(assignment.ID, "t2") {
+			t2Assignments[assignment.NodeID]++
+		}
+	}
+
+	assert.Equal(t, 4, t1Assignments["id1"])
+	assert.Equal(t, 1, t2Assignments["id1"])
+}
+
 func TestSchedulerNoReadyNodes(t *testing.T) {
 	ctx := context.Background()
 	initialTask := &api.Task{
-		ID: "id1",
+		ID:           "id1",
+		DesiredState: api.TaskStateRunning,
 		ServiceAnnotations: api.Annotations{
 			Name: "name1",
 		},
@@ -432,7 +719,8 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 	}
 
 	initialTask := &api.Task{
-		ID: "id1",
+		ID:           "id1",
+		DesiredState: api.TaskStateRunning,
 		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
@@ -524,7 +812,8 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	}
 
 	bigTask1 := &api.Task{
-		ID: "id1",
+		DesiredState: api.TaskStateRunning,
+		ID:           "id1",
 		Spec: api.TaskSpec{
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
@@ -621,8 +910,9 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 	}
 
 	deadTask := &api.Task{
-		ID:     "id1",
-		NodeID: "id1",
+		DesiredState: api.TaskStateRunning,
+		ID:           "id1",
+		NodeID:       "id1",
 		Spec: api.TaskSpec{
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
@@ -705,7 +995,8 @@ func TestPreassignedTasks(t *testing.T) {
 
 	initialTaskSet := []*api.Task{
 		{
-			ID: "task1",
+			ID:           "task1",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name1",
 			},
@@ -715,7 +1006,8 @@ func TestPreassignedTasks(t *testing.T) {
 			},
 		},
 		{
-			ID: "task2",
+			ID:           "task2",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
@@ -725,7 +1017,8 @@ func TestPreassignedTasks(t *testing.T) {
 			NodeID: initialNodeSet[0].ID,
 		},
 		{
-			ID: "task3",
+			ID:           "task3",
+			DesiredState: api.TaskStateRunning,
 			ServiceAnnotations: api.Annotations{
 				Name: "name2",
 			},
@@ -888,7 +1181,8 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 
 	// Task1: vol plugin1
 	t1 := &api.Task{
-		ID: "task1_ID",
+		ID:           "task1_ID",
+		DesiredState: api.TaskStateRunning,
 		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
@@ -913,7 +1207,8 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 
 	// Task2: vol plugin1, vol plugin2
 	t2 := &api.Task{
-		ID: "task2_ID",
+		ID:           "task2_ID",
+		DesiredState: api.TaskStateRunning,
 		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
@@ -944,7 +1239,8 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 
 	// Task3: vol plugin1, network plugin1
 	t3 := &api.Task{
-		ID: "task3_ID",
+		ID:           "task3_ID",
+		DesiredState: api.TaskStateRunning,
 		Networks: []*api.NetworkAttachment{
 			{
 				Network: &api.Network{
@@ -1066,69 +1362,48 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 }
 
 func BenchmarkScheduler1kNodes1kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e3, false, false)
+	benchScheduler(b, 1e3, 1e3, false)
 }
 
 func BenchmarkScheduler1kNodes10kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e4, false, false)
+	benchScheduler(b, 1e3, 1e4, false)
 }
 
 func BenchmarkScheduler1kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e5, false, false)
+	benchScheduler(b, 1e3, 1e5, false)
 }
 
 func BenchmarkScheduler100kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e5, 1e5, false, false)
+	benchScheduler(b, 1e5, 1e5, false)
 }
 
 func BenchmarkScheduler100kNodes1MTasks(b *testing.B) {
-	benchScheduler(b, 1e5, 1e6, false, false)
+	benchScheduler(b, 1e5, 1e6, false)
 }
 
 func BenchmarkSchedulerConstraints1kNodes1kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e3, true, false)
+	benchScheduler(b, 1e3, 1e3, true)
 }
 
 func BenchmarkSchedulerConstraints1kNodes10kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e4, true, false)
+	benchScheduler(b, 1e3, 1e4, true)
 }
 
 func BenchmarkSchedulerConstraints1kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e5, true, false)
+	benchScheduler(b, 1e3, 1e5, true)
 }
 
 func BenchmarkSchedulerConstraints5kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 5e3, 1e5, true, false)
+	benchScheduler(b, 5e3, 1e5, true)
 }
 
-func BenchmarkSchedulerWorstCase1kNodes1kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e3, false, true)
-}
-
-func BenchmarkSchedulerWorstCase1kNodes10kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e4, false, true)
-}
-
-func BenchmarkSchedulerWorstCase1kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e3, 1e5, false, true)
-}
-
-func BenchmarkSchedulerWorstCase100kNodes100kTasks(b *testing.B) {
-	benchScheduler(b, 1e5, 1e5, false, true)
-}
-
-func BenchmarkSchedulerWorstCase100kNodes1MTasks(b *testing.B) {
-	benchScheduler(b, 1e5, 1e6, false, true)
-}
-
-func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints, worstCase bool) {
+func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 	ctx := context.Background()
 
 	for iters := 0; iters < b.N; iters++ {
 		b.StopTimer()
 		s := store.NewMemoryStore(nil)
 		scheduler := New(s)
-		scheduler.scanAllNodes = worstCase
 
 		watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 
@@ -1175,7 +1450,8 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints, worstCas
 			for i := 0; i < tasks; i++ {
 				id := "task" + strconv.Itoa(i)
 				t := &api.Task{
-					ID: id,
+					ID:           id,
+					DesiredState: api.TaskStateRunning,
 					ServiceAnnotations: api.Annotations{
 						Name: id,
 					},
