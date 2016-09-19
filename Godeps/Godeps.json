@@ -625,10 +625,6 @@
 			"Rev": "9f9027faeb0dad515336ed2f28317f9f8f527ab4"
 		},
 		{
-			"ImportPath": "github.com/aaronlehmann/quickselect",
-			"Rev": "f026486fa703e875731746d9a799b467398271b7"
-		},
-		{
 			"ImportPath": "golang.org/x/crypto/pkcs12",
 			"Rev": "3fbbcd23f1cb824e69491a5930cfeff09b12f4d2"
 		},
