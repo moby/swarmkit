@@ -1377,6 +1377,10 @@ func BenchmarkScheduler100kNodes100kTasks(b *testing.B) {
 	benchScheduler(b, 1e5, 1e5, false)
 }
 
+func BenchmarkScheduler100kNodes1kTasks(b *testing.B) {
+	benchScheduler(b, 1e5, 1e3, false)
+}
+
 func BenchmarkScheduler100kNodes1MTasks(b *testing.B) {
 	benchScheduler(b, 1e5, 1e6, false)
 }
