@@ -242,7 +242,7 @@ func (g *raftProxyGen) genSimpleMethod(s *descriptor.ServiceDescriptorProto, m *
 	g.gen.P(`
 	resp, err := New` + s.GetName() + `Client(conn).` + m.GetName() + `(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
