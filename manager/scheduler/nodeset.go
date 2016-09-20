@@ -1,10 +1,8 @@
 package scheduler
 
 import (
+	"container/heap"
 	"errors"
-	"sort"
-
-	"github.com/aaronlehmann/quickselect"
 )
 
 var errNodeNotFound = errors.New("node not found in scheduler dataset")
@@ -45,42 +43,73 @@ func (ns *nodeSet) remove(nodeID string) {
 	delete(ns.nodes, nodeID)
 }
 
-type nodeSorter struct {
+type nodeMaxHeap struct {
 	nodes    []NodeInfo
 	lessFunc func(*NodeInfo, *NodeInfo) bool
+	length   int
 }
 
-func (s nodeSorter) Len() int {
-	return len(s.nodes)
+func (h nodeMaxHeap) Len() int {
+	return h.length
 }
 
-func (s nodeSorter) Swap(i, j int) {
-	s.nodes[i], s.nodes[j] = s.nodes[j], s.nodes[i]
+func (h nodeMaxHeap) Swap(i, j int) {
+	h.nodes[i], h.nodes[j] = h.nodes[j], h.nodes[i]
 }
 
-func (s nodeSorter) Less(i, j int) bool {
-	return s.lessFunc(&s.nodes[i], &s.nodes[j])
+func (h nodeMaxHeap) Less(i, j int) bool {
+	// reversed to make a max-heap
+	return h.lessFunc(&h.nodes[j], &h.nodes[i])
+}
+
+func (h *nodeMaxHeap) Push(x interface{}) {
+	h.nodes = append(h.nodes, x.(NodeInfo))
+	h.length++
+}
+
+func (h *nodeMaxHeap) Pop() interface{} {
+	h.length--
+	// return value is never used
+	return nil
 }
 
 // findBestNodes returns n nodes (or < n if fewer nodes are available) that
 // rank best (lowest) according to the sorting function.
 func (ns *nodeSet) findBestNodes(n int, meetsConstraints func(*NodeInfo) bool, nodeLess func(*NodeInfo, *NodeInfo) bool) []NodeInfo {
-	var nodes []NodeInfo
+	if n == 0 {
+		return []NodeInfo{}
+	}
+
+	nodeHeap := nodeMaxHeap{lessFunc: nodeLess}
+
 	// TODO(aaronl): Is is possible to avoid checking constraints on every
-	// node? Perhaps we should quickselect n*2 nodes that weren't
-	// prescreened, and repeat the quickselect if there weren't enough
-	// nodes meeting the constraints.
+	// node? Perhaps we should try to schedule with n*2 nodes that weren't
+	// prescreened, and repeat the selection if there weren't enough nodes
+	// meeting the constraints.
 	for _, node := range ns.nodes {
-		if meetsConstraints(&node) {
-			nodes = append(nodes, node)
+		// If there are fewer then n nodes in the heap, we add this
+		// node if it meets the constraints. Otherwise, the heap has
+		// n nodes, and if this node is better than the worst node in
+		// the heap, we replace the worst node and then fix the heap.
+		if nodeHeap.Len() < n {
+			if meetsConstraints(&node) {
+				heap.Push(&nodeHeap, node)
+			}
+		} else if nodeLess(&node, &nodeHeap.nodes[0]) {
+			if meetsConstraints(&node) {
+				nodeHeap.nodes[0] = node
+				heap.Fix(&nodeHeap, 0)
+			}
 		}
 	}
 
-	if len(nodes) > n {
-		quickselect.QuickSelect(nodeSorter{nodes: nodes, lessFunc: nodeLess}, n)
-		nodes = nodes[:n]
+	// Popping every element orders the nodes from best to worst. The
+	// first pop gets the worst node (since this a max-heap), and puts it
+	// at position n-1. Then the next pop puts the next-worst at n-2, and
+	// so on.
+	for nodeHeap.Len() > 0 {
+		heap.Pop(&nodeHeap)
 	}
 
-	sort.Sort(nodeSorter{nodes: nodes, lessFunc: nodeLess})
-	return nodes
+	return nodeHeap.nodes
 }
