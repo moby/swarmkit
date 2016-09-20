@@ -44,22 +44,44 @@ func TestControllerFlowIntegration(t *testing.T) {
 		ID:        "dockerexec-integration-task-id",
 		ServiceID: "dockerexec-integration-service-id",
 		NodeID:    "dockerexec-integration-node-id",
+		ServiceAnnotations: api.Annotations{
+			Name: "dockerexec-integration",
+		},
 		Spec: api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
-					Command: []string{"sh", "-c", "sleep 5"},
+					Command: []string{"sh", "-c", "sleep 5; echo hello; echo stderr >&2"},
 					Image:   "alpine",
 				},
 			},
 		},
 	}
 
+	var receivedLogs bool
+	publisher := logPublisherFn(func(ctx context.Context, message api.LogMessage) error {
+		receivedLogs = true
+
+		switch message.Stream {
+		case api.LogStreamStdout:
+			assert.Equal(t, "hello\n", string(message.Data))
+		case api.LogStreamStderr:
+			assert.Equal(t, "stderr\n", string(message.Data))
+		}
+
+		t.Log(message)
+		return nil
+	})
+
 	ctlr, err := newController(client, task)
 	assert.NoError(t, err)
 	assert.NotNil(t, ctlr)
 	assert.NoError(t, ctlr.Prepare(ctx))
 	assert.NoError(t, ctlr.Start(ctx))
+	assert.NoError(t, ctlr.(exec.ControllerLogs).Logs(ctx, publisher, api.LogSubscriptionOptions{
+		Follow: true,
+	}))
 	assert.NoError(t, ctlr.Wait(ctx))
+	assert.True(t, receivedLogs)
 	assert.NoError(t, ctlr.Shutdown(ctx))
 	assert.NoError(t, ctlr.Remove(ctx))
 	assert.NoError(t, ctlr.Close())
@@ -68,4 +90,10 @@ func TestControllerFlowIntegration(t *testing.T) {
 	if err := ctlr.Close(); err != exec.ErrControllerClosed {
 		t.Fatalf("expected controller to be closed: %v", err)
 	}
+}
+
+type logPublisherFn func(ctx context.Context, message api.LogMessage) error
+
+func (fn logPublisherFn) Publish(ctx context.Context, message api.LogMessage) error {
+	return fn(ctx, message)
 }
