@@ -302,7 +302,6 @@ func (m *Manager) Run(parent context.Context) error {
 
 	// Set the raft server as serving for the health server
 	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
-	localHealthServer.SetServingStatus("ControlAPI", api.HealthCheckResponse_SERVING)
 
 	defer func() {
 		m.server.Stop()
@@ -312,6 +311,8 @@ func (m *Manager) Run(parent context.Context) error {
 	if err := m.RaftNode.JoinAndStart(); err != nil {
 		return fmt.Errorf("can't initialize raft node: %v", err)
 	}
+
+	localHealthServer.SetServingStatus("ControlAPI", api.HealthCheckResponse_SERVING)
 
 	close(m.started)
 
