@@ -17,6 +17,15 @@ import (
 // Dial establishes a connection and creates a client.
 // It infers connection parameters from CLI options.
 func Dial(cmd *cobra.Command) (api.ControlClient, error) {
+	conn, err := DialConn(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	return api.NewControlClient(conn), nil
+}
+
+func DialConn(cmd *cobra.Command) (*grpc.ClientConn, error) {
 	addr, err := cmd.Flags().GetString("socket")
 	if err != nil {
 		return nil, err
@@ -34,8 +43,7 @@ func Dial(cmd *cobra.Command) (api.ControlClient, error) {
 		return nil, err
 	}
 
-	client := api.NewControlClient(conn)
-	return client, nil
+	return conn, nil
 }
 
 // Context returns a request context based on CLI arguments.
