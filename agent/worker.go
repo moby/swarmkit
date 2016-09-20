@@ -41,16 +41,18 @@ type statusReporterKey struct {
 type worker struct {
 	db        *bolt.DB
 	executor  exec.Executor
+	publisher exec.LogPublisher
 	listeners map[*statusReporterKey]struct{}
 
 	taskManagers map[string]*taskManager
 	mu           sync.RWMutex
 }
 
-func newWorker(db *bolt.DB, executor exec.Executor) *worker {
+func newWorker(db *bolt.DB, executor exec.Executor, publisher exec.LogPublisher) *worker {
 	return &worker{
 		db:           db,
 		executor:     executor,
+		publisher:    publisher,
 		listeners:    make(map[*statusReporterKey]struct{}),
 		taskManagers: make(map[string]*taskManager),
 	}
@@ -362,7 +364,7 @@ func (w *worker) newTaskManager(ctx context.Context, tx *bolt.Tx, task *api.Task
 		return w.db.Update(func(tx *bolt.Tx) error {
 			return w.updateTaskStatus(ctx, tx, taskID, status)
 		})
-	})), nil
+	}), w.publisher), nil
 }
 
 // updateTaskStatus reports statuses to listeners, read lock must be held.

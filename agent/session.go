@@ -55,6 +55,10 @@ func newSession(ctx context.Context, agent *Agent, delay time.Duration, sessionI
 		registered:  make(chan struct{}),
 		closed:      make(chan struct{}),
 	}
+
+	// TODO(stevvooe): Need to move connection management up a level or create
+	// independent connection for log broker client.
+
 	peer, err := agent.config.Managers.Select()
 	if err != nil {
 		s.errs <- err

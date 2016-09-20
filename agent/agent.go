@@ -52,7 +52,6 @@ func New(config *Config) (*Agent, error) {
 
 	a := &Agent{
 		config:   config,
-		worker:   worker,
 		sessionq: make(chan sessionOperation),
 		started:  make(chan struct{}),
 		stopped:  make(chan struct{}),
@@ -60,6 +59,7 @@ func New(config *Config) (*Agent, error) {
 		ready:    make(chan struct{}),
 	}
 
+	a.worker = newWorker(config.DB, config.Executor, a)
 	return a, nil
 }
 
@@ -385,6 +385,19 @@ func (a *Agent) UpdateTaskStatus(ctx context.Context, taskID string, status *api
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+func (a *Agent) Publish(ctx context.Context, message api.LogMessage) error {
+	// TODO(stevvooe): The level of coordination here is WAY too much for logs.
+	// These should only be best effort and really just buffer until a session is
+	// ready. Ideally, they would use a separate connection completely.
+	return a.withSession(ctx, func(session *session) error {
+		_, err := api.NewLogBrokerClient(session.conn).PublishLogs(ctx,
+			&api.PublishLogsRequest{
+				Messages: []api.LogMessage{message},
+			})
+		return err
+	})
 }
 
 // nodeDescriptionWithHostname retrieves node description, and overrides hostname if available
