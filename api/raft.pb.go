@@ -1522,7 +1522,7 @@ func (p *raftProxyRaftServer) ProcessRaftMessage(ctx context.Context, r *Process
 
 	resp, err := NewRaftClient(conn).ProcessRaftMessage(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -1553,7 +1553,7 @@ func (p *raftProxyRaftServer) ResolveAddress(ctx context.Context, r *ResolveAddr
 
 	resp, err := NewRaftClient(conn).ResolveAddress(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -1650,7 +1650,7 @@ func (p *raftProxyRaftMembershipServer) Join(ctx context.Context, r *JoinRequest
 
 	resp, err := NewRaftMembershipClient(conn).Join(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -1681,7 +1681,7 @@ func (p *raftProxyRaftMembershipServer) Leave(ctx context.Context, r *LeaveReque
 
 	resp, err := NewRaftMembershipClient(conn).Leave(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
