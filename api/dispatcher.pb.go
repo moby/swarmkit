@@ -1494,7 +1494,7 @@ func (p *raftProxyDispatcherServer) Heartbeat(ctx context.Context, r *HeartbeatR
 
 	resp, err := NewDispatcherClient(conn).Heartbeat(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -1525,7 +1525,7 @@ func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *Upd
 
 	resp, err := NewDispatcherClient(conn).UpdateTaskStatus(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)

@@ -4322,7 +4322,7 @@ func (p *raftProxyControlServer) GetNode(ctx context.Context, r *GetNodeRequest)
 
 	resp, err := NewControlClient(conn).GetNode(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4353,7 +4353,7 @@ func (p *raftProxyControlServer) ListNodes(ctx context.Context, r *ListNodesRequ
 
 	resp, err := NewControlClient(conn).ListNodes(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4384,7 +4384,7 @@ func (p *raftProxyControlServer) UpdateNode(ctx context.Context, r *UpdateNodeRe
 
 	resp, err := NewControlClient(conn).UpdateNode(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4415,7 +4415,7 @@ func (p *raftProxyControlServer) RemoveNode(ctx context.Context, r *RemoveNodeRe
 
 	resp, err := NewControlClient(conn).RemoveNode(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4446,7 +4446,7 @@ func (p *raftProxyControlServer) GetTask(ctx context.Context, r *GetTaskRequest)
 
 	resp, err := NewControlClient(conn).GetTask(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4477,7 +4477,7 @@ func (p *raftProxyControlServer) ListTasks(ctx context.Context, r *ListTasksRequ
 
 	resp, err := NewControlClient(conn).ListTasks(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4508,7 +4508,7 @@ func (p *raftProxyControlServer) RemoveTask(ctx context.Context, r *RemoveTaskRe
 
 	resp, err := NewControlClient(conn).RemoveTask(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4539,7 +4539,7 @@ func (p *raftProxyControlServer) GetService(ctx context.Context, r *GetServiceRe
 
 	resp, err := NewControlClient(conn).GetService(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4570,7 +4570,7 @@ func (p *raftProxyControlServer) ListServices(ctx context.Context, r *ListServic
 
 	resp, err := NewControlClient(conn).ListServices(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4601,7 +4601,7 @@ func (p *raftProxyControlServer) CreateService(ctx context.Context, r *CreateSer
 
 	resp, err := NewControlClient(conn).CreateService(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4632,7 +4632,7 @@ func (p *raftProxyControlServer) UpdateService(ctx context.Context, r *UpdateSer
 
 	resp, err := NewControlClient(conn).UpdateService(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4663,7 +4663,7 @@ func (p *raftProxyControlServer) RemoveService(ctx context.Context, r *RemoveSer
 
 	resp, err := NewControlClient(conn).RemoveService(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4694,7 +4694,7 @@ func (p *raftProxyControlServer) GetNetwork(ctx context.Context, r *GetNetworkRe
 
 	resp, err := NewControlClient(conn).GetNetwork(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4725,7 +4725,7 @@ func (p *raftProxyControlServer) ListNetworks(ctx context.Context, r *ListNetwor
 
 	resp, err := NewControlClient(conn).ListNetworks(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4756,7 +4756,7 @@ func (p *raftProxyControlServer) CreateNetwork(ctx context.Context, r *CreateNet
 
 	resp, err := NewControlClient(conn).CreateNetwork(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4787,7 +4787,7 @@ func (p *raftProxyControlServer) RemoveNetwork(ctx context.Context, r *RemoveNet
 
 	resp, err := NewControlClient(conn).RemoveNetwork(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4818,7 +4818,7 @@ func (p *raftProxyControlServer) GetCluster(ctx context.Context, r *GetClusterRe
 
 	resp, err := NewControlClient(conn).GetCluster(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4849,7 +4849,7 @@ func (p *raftProxyControlServer) ListClusters(ctx context.Context, r *ListCluste
 
 	resp, err := NewControlClient(conn).ListClusters(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -4880,7 +4880,7 @@ func (p *raftProxyControlServer) UpdateCluster(ctx context.Context, r *UpdateClu
 
 	resp, err := NewControlClient(conn).UpdateCluster(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)

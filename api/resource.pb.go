@@ -532,7 +532,7 @@ func (p *raftProxyResourceAllocatorServer) AttachNetwork(ctx context.Context, r 
 
 	resp, err := NewResourceAllocatorClient(conn).AttachNetwork(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
@@ -563,7 +563,7 @@ func (p *raftProxyResourceAllocatorServer) DetachNetwork(ctx context.Context, r 
 
 	resp, err := NewResourceAllocatorClient(conn).DetachNetwork(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
