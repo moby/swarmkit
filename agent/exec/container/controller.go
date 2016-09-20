@@ -1,9 +1,14 @@
 package container
 
 import (
+	"bufio"
+	"bytes"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
@@ -12,8 +17,10 @@ import (
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
+	"golang.org/x/time/rate"
 )
 
 // controller implements agent.Controller against docker's API.
@@ -402,6 +409,111 @@ func (r *controller) Remove(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, options api.LogSubscriptionOptions) error {
+	apiOptions := types.ContainerLogsOptions{
+		Follow: options.Follow,
+
+		// TODO(stevvooe): Parse timestamp out of message. This
+		// absolutely needs to be done before going to production with
+		// this, at it is completely redundant.
+		Timestamps: true,
+		Details:    false, // no clue what to do with this, let's just deprecate it.
+	}
+
+	if options.Since != nil {
+		since, err := ptypes.Timestamp(options.Since)
+		if err != nil {
+			return err
+		}
+		apiOptions.Since = since.Format(time.RFC3339Nano)
+	}
+
+	if options.Tail < 0 {
+		// See protobuf documentation for details of how this works.
+		apiOptions.Tail = fmt.Sprint(-options.Tail - 1)
+	} else if options.Tail > 0 {
+		return fmt.Errorf("tail relative to start of logs not supported via docker API")
+	}
+
+	if len(options.Streams) == 0 {
+		// empty == all
+		apiOptions.ShowStdout, apiOptions.ShowStderr = true, true
+	} else {
+		for _, stream := range options.Streams {
+			switch stream {
+			case api.LogStreamStdout:
+				apiOptions.ShowStdout = true
+			case api.LogStreamStderr:
+				apiOptions.ShowStderr = true
+			}
+		}
+	}
+
+	rc, err := r.adapter.client.ContainerLogs(ctx, r.adapter.container.name(), apiOptions)
+	if err != nil {
+		return errors.Wrap(err, "failed getting container logs")
+	}
+	defer rc.Close()
+
+	var (
+		// use a rate limiter to keep things under control but also provides some
+		// ability coalesce messages.
+		limiter = rate.NewLimiter(rate.Every(time.Second), 10<<20) // 10 MB/s
+		msgctx  = api.LogContext{
+			NodeID:    r.task.NodeID,
+			ServiceID: r.task.ServiceID,
+			TaskID:    r.task.ID,
+		}
+	)
+
+	brd := bufio.NewReader(rc)
+	for {
+		// so, message header is 8 bytes, treat as uint64, pull stream off MSB
+		var header uint64
+		if err := binary.Read(brd, binary.BigEndian, &header); err != nil {
+			if err == io.EOF {
+				return nil
+			}
+
+			return errors.Wrap(err, "failed reading log header")
+		}
+
+		stream, size := (header>>(7<<3))&0xFF, header & ^(uint64(0xFF)<<(7<<3))
+
+		// limit here to decrease allocation back pressure.
+		if err := limiter.WaitN(ctx, int(size)); err != nil {
+			return errors.Wrap(err, "failed rate limiter")
+		}
+
+		buf := make([]byte, size)
+		_, err := io.ReadFull(brd, buf)
+		if err != nil {
+			return errors.Wrap(err, "failed reading buffer")
+		}
+
+		// Timestamp is RFC3339Nano with 1 space after. Lop, parse, publish
+		parts := bytes.SplitN(buf, []byte(" "), 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid timestamp in log message: %v", buf)
+		}
+
+		ts, err := time.Parse(time.RFC3339Nano, string(parts[0]))
+		if err != nil {
+			return errors.Wrap(err, "failed to parse timestamp")
+		}
+
+		if err := publisher.Publish(ctx, api.LogMessage{
+			Context:   msgctx,
+			Timestamp: ptypes.MustTimestampProto(ts),
+			Stream:    api.LogStream(stream),
+
+			Data: parts[1],
+		}); err != nil {
+			return errors.Wrap(err, "failed publisher log message")
+		}
+	}
 }
 
 // Close the controller and clean up any ephemeral resources.
