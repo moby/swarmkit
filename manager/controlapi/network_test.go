@@ -1,6 +1,7 @@
 package controlapi
 
 import (
+	"fmt"
 	"testing"
 
 	"golang.org/x/net/context"
@@ -240,7 +241,9 @@ func TestRemoveNetworkWithAttachedService(t *testing.T) {
 func TestRemoveInternalNetwork(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
-	spec := createNetworkSpec("testnet3")
+
+	name := "testnet3"
+	spec := createNetworkSpec(name)
 	// add label denoting internal network
 	spec.Annotations.Labels = map[string]string{"com.docker.swarm.internal": "true"}
 	nr, err := ts.Server.createInternalNetwork(context.Background(), &api.CreateNetworkRequest{
@@ -254,6 +257,7 @@ func TestRemoveInternalNetwork(t *testing.T) {
 	// this SHOULD fail, because the internal network cannot be removed
 	assert.Error(t, err)
 	assert.Equal(t, grpc.Code(err), codes.PermissionDenied)
+	assert.Contains(t, err.Error(), fmt.Sprintf("%s (%s) is a pre-defined network and cannot be removed", name, nr.Network.ID))
 
 	// then, check to make sure network is still there
 	ng, err := ts.Client.GetNetwork(context.Background(), &api.GetNetworkRequest{NetworkID: nr.Network.ID})
