@@ -180,7 +180,7 @@ func (u *Updater) Run(ctx context.Context, slots []slot) {
 
 	if service.Spec.Update != nil {
 		failureAction = service.Spec.Update.FailureAction
-		allowedFailureFraction = service.Spec.Update.AllowedFailureFraction
+		allowedFailureFraction = service.Spec.Update.MaxFailureRatio
 
 		if service.Spec.Update.Monitor != nil {
 			var err error
