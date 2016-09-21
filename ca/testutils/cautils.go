@@ -3,7 +3,6 @@ package testutils
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
@@ -24,6 +23,7 @@ import (
 	"github.com/docker/swarmkit/ioutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/remotes"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -375,7 +375,7 @@ func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duratio
 	// Create a Pool with our Root CA Certificate
 	pool := x509.NewCertPool()
 	if !pool.AppendCertsFromPEM(cert) {
-		return ca.RootCA{}, fmt.Errorf("failed to append certificate to cert pool")
+		return ca.RootCA{}, errors.New("failed to append certificate to cert pool")
 	}
 
 	return ca.RootCA{

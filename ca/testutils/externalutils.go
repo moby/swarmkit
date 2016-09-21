@@ -12,9 +12,10 @@ import (
 	"sync/atomic"
 
 	"github.com/cloudflare/cfssl/api"
-	"github.com/cloudflare/cfssl/errors"
+	cfsslerrors "github.com/cloudflare/cfssl/errors"
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/docker/swarmkit/ca"
+	"github.com/pkg/errors"
 )
 
 // NewExternalSigningServer creates and runs a new ExternalSigningServer which
@@ -35,7 +36,7 @@ func NewExternalSigningServer(rootCA ca.RootCA, basedir string) (*ExternalSignin
 	}
 	serverCert, err := ca.GenerateAndSignNewTLSCert(rootCA, serverCN, serverOU, "", serverPaths)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get TLS server certificate: %s", err)
+		return nil, errors.Wrap(err, "unable to get TLS server certificate")
 	}
 
 	serverTLSConfig := &tls.Config{
@@ -46,7 +47,7 @@ func NewExternalSigningServer(rootCA ca.RootCA, basedir string) (*ExternalSignin
 
 	tlsListener, err := tls.Listen("tcp", "localhost:0", serverTLSConfig)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create TLS connection listener: %s", err)
+		return nil, errors.Wrap(err, "unable to create TLS connection listener")
 	}
 
 	assignedPort := tlsListener.Addr().(*net.TCPAddr).Port
@@ -99,7 +100,7 @@ type signHandler struct {
 func (h *signHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Check client authentication via mutual TLS.
 	if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
-		cfsslErr := errors.New(errors.APIClientError, errors.AuthenticationFailure)
+		cfsslErr := cfsslerrors.New(cfsslerrors.APIClientError, cfsslerrors.AuthenticationFailure)
 		errResponse := api.NewErrorResponse("must authenticate sign request with mutual TLS", cfsslErr.ErrorCode)
 		json.NewEncoder(w).Encode(errResponse)
 		return
@@ -109,7 +110,7 @@ func (h *signHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// The client certificate OU should be for a swarm manager.
 	if len(clientSub.OrganizationalUnit) == 0 || clientSub.OrganizationalUnit[0] != ca.ManagerRole {
-		cfsslErr := errors.New(errors.APIClientError, errors.AuthenticationFailure)
+		cfsslErr := cfsslerrors.New(cfsslerrors.APIClientError, cfsslerrors.AuthenticationFailure)
 		errResponse := api.NewErrorResponse(fmt.Sprintf("client certificate OU must be %q", ca.ManagerRole), cfsslErr.ErrorCode)
 		json.NewEncoder(w).Encode(errResponse)
 		return
@@ -117,7 +118,7 @@ func (h *signHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// The client certificate must have an Org.
 	if len(clientSub.Organization) == 0 {
-		cfsslErr := errors.New(errors.APIClientError, errors.AuthenticationFailure)
+		cfsslErr := cfsslerrors.New(cfsslerrors.APIClientError, cfsslerrors.AuthenticationFailure)
 		errResponse := api.NewErrorResponse("client certificate must have an Organization", cfsslErr.ErrorCode)
 		json.NewEncoder(w).Encode(errResponse)
 		return
@@ -127,7 +128,7 @@ func (h *signHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Decode the certificate signing request.
 	var signReq signer.SignRequest
 	if err := json.NewDecoder(r.Body).Decode(&signReq); err != nil {
-		cfsslErr := errors.New(errors.APIClientError, errors.JSONError)
+		cfsslErr := cfsslerrors.New(cfsslerrors.APIClientError, cfsslerrors.JSONError)
 		errResponse := api.NewErrorResponse(fmt.Sprintf("unable to decode sign request: %s", err), cfsslErr.ErrorCode)
 		json.NewEncoder(w).Encode(errResponse)
 		return
@@ -136,7 +137,7 @@ func (h *signHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// The signReq should have additional subject info.
 	reqSub := signReq.Subject
 	if reqSub == nil {
-		cfsslErr := errors.New(errors.CSRError, errors.BadRequest)
+		cfsslErr := cfsslerrors.New(cfsslerrors.CSRError, cfsslerrors.BadRequest)
 		errResponse := api.NewErrorResponse("sign request must contain a subject field", cfsslErr.ErrorCode)
 		json.NewEncoder(w).Encode(errResponse)
 		return
@@ -144,7 +145,7 @@ func (h *signHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// The client's Org should match the Org in the sign request subject.
 	if len(reqSub.Name().Organization) == 0 || reqSub.Name().Organization[0] != clientOrg {
-		cfsslErr := errors.New(errors.CSRError, errors.BadRequest)
+		cfsslErr := cfsslerrors.New(cfsslerrors.CSRError, cfsslerrors.BadRequest)
 		errResponse := api.NewErrorResponse("sign request subject org does not match client certificate org", cfsslErr.ErrorCode)
 		json.NewEncoder(w).Encode(errResponse)
 		return
@@ -153,7 +154,7 @@ func (h *signHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Finally, sign the requested certificate.
 	certPEM, err := h.rootCA.Signer.Sign(signReq)
 	if err != nil {
-		cfsslErr := errors.New(errors.APIClientError, errors.ServerRequestFailed)
+		cfsslErr := cfsslerrors.New(cfsslerrors.APIClientError, cfsslerrors.ServerRequestFailed)
 		errResponse := api.NewErrorResponse(fmt.Sprintf("unable to sign requested certificate: %s", err), cfsslErr.ErrorCode)
 		json.NewEncoder(w).Encode(errResponse)
 		return
