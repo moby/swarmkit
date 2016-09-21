@@ -26,6 +26,7 @@ import (
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -142,18 +143,18 @@ func New(config *Config) (*Manager, error) {
 
 	err := os.MkdirAll(filepath.Dir(config.ProtoAddr["unix"]), 0700)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create socket directory: %v", err)
+		return nil, errors.Wrap(err, "failed to create socket directory")
 	}
 
 	err = os.MkdirAll(config.StateDir, 0700)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create state directory: %v", err)
+		return nil, errors.Wrap(err, "failed to create state directory")
 	}
 
 	raftStateDir := filepath.Join(config.StateDir, "raft")
 	err = os.MkdirAll(raftStateDir, 0700)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create raft state directory: %v", err)
+		return nil, errors.Wrap(err, "failed to create raft state directory")
 	}
 
 	var listeners map[string]net.Listener
@@ -309,7 +310,7 @@ func (m *Manager) Run(parent context.Context) error {
 	}()
 
 	if err := m.RaftNode.JoinAndStart(); err != nil {
-		return fmt.Errorf("can't initialize raft node: %v", err)
+		return errors.Wrap(err, "can't initialize raft node")
 	}
 
 	localHealthServer.SetServingStatus("ControlAPI", api.HealthCheckResponse_SERVING)
