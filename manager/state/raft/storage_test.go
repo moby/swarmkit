@@ -3,6 +3,7 @@ package raft_test
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -36,7 +38,7 @@ func TestRaftSnapshot(t *testing.T) {
 
 	// None of the nodes should have snapshot files yet
 	for _, node := range nodes {
-		dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap"))
+		dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3"))
 		assert.NoError(t, err)
 		assert.Len(t, dirents, 0)
 	}
@@ -55,7 +57,7 @@ func TestRaftSnapshot(t *testing.T) {
 	// All nodes should now have a snapshot file
 	for nodeID, node := range nodes {
 		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap"))
+			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3"))
 			if err != nil {
 				return err
 			}
@@ -72,7 +74,7 @@ func TestRaftSnapshot(t *testing.T) {
 
 	// It should get a copy of the snapshot
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-		dirents, err := ioutil.ReadDir(filepath.Join(nodes[4].StateDir, "snap"))
+		dirents, err := ioutil.ReadDir(filepath.Join(nodes[4].StateDir, "snap-v3"))
 		if err != nil {
 			return err
 		}
@@ -108,7 +110,7 @@ func TestRaftSnapshot(t *testing.T) {
 	// All nodes should have a snapshot under a *different* name
 	for nodeID, node := range nodes {
 		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap"))
+			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3"))
 			if err != nil {
 				return err
 			}
@@ -153,7 +155,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Remaining nodes shouldn't have snapshot files yet
 	for _, node := range []*raftutils.TestNode{nodes[1], nodes[2]} {
-		dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap"))
+		dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3"))
 		assert.NoError(t, err)
 		assert.Len(t, dirents, 0)
 	}
@@ -166,7 +168,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	// Remaining nodes should now have a snapshot file
 	for nodeIdx, node := range []*raftutils.TestNode{nodes[1], nodes[2]} {
 		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap"))
+			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3"))
 			if err != nil {
 				return err
 			}
@@ -188,7 +190,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// New node should get a copy of the snapshot
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-		dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].StateDir, "snap"))
+		dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].StateDir, "snap-v3"))
 		if err != nil {
 			return err
 		}
@@ -198,7 +200,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 		return nil
 	}))
 
-	dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].StateDir, "snap"))
+	dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].StateDir, "snap-v3"))
 	assert.NoError(t, err)
 	assert.Len(t, dirents, 1)
 	raftutils.CheckValuesOnNodes(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:5], values[:5])
@@ -269,7 +271,7 @@ func TestGCWAL(t *testing.T) {
 	// Snapshot should have been triggered just as the WAL rotated, so
 	// both WAL files should be preserved
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-		dirents, err := ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "snap"))
+		dirents, err := ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "snap-v3"))
 		if err != nil {
 			return err
 		}
@@ -277,7 +279,7 @@ func TestGCWAL(t *testing.T) {
 			return fmt.Errorf("expected 1 snapshot, found %d", len(dirents))
 		}
 
-		dirents, err = ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "wal"))
+		dirents, err = ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "wal-v3"))
 		if err != nil {
 			return err
 		}
@@ -309,7 +311,7 @@ func TestGCWAL(t *testing.T) {
 
 	// This time only one WAL file should be saved.
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-		dirents, err := ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "snap"))
+		dirents, err := ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "snap-v3"))
 		if err != nil {
 			return err
 		}
@@ -318,7 +320,7 @@ func TestGCWAL(t *testing.T) {
 			return fmt.Errorf("expected 1 snapshot, found %d", len(dirents))
 		}
 
-		dirents, err = ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "wal"))
+		dirents, err = ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "wal-v3"))
 		if err != nil {
 			return err
 		}
@@ -433,4 +435,25 @@ func proposeLargeValue(t *testing.T, raftNode *raftutils.TestNode, time time.Dur
 	}
 
 	return node, nil
+}
+
+func TestMigrateWAL(t *testing.T) {
+	nodes := make(map[uint64]*raftutils.TestNode)
+	var clockSource *fakeclock.FakeClock
+
+	nodes[1], clockSource = raftutils.NewInitNode(t, tc, nil)
+	defer raftutils.TeardownCluster(t, nodes)
+
+	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, "id1")
+	assert.NoError(t, err, "failed to propose value")
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, []string{"id1"}, []*api.Node{value})
+
+	nodes[1].Server.Stop()
+	nodes[1].Shutdown()
+
+	// Move WAL directory so it looks like it was created by an old version
+	require.NoError(t, os.Rename(filepath.Join(nodes[1].StateDir, "wal-v3"), filepath.Join(nodes[1].StateDir, "wal")))
+
+	nodes[1] = raftutils.RestartNode(t, clockSource, nodes[1], false)
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, []string{"id1"}, []*api.Node{value})
 }
