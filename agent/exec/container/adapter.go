@@ -14,6 +14,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/protobuf/ptypes"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"golang.org/x/time/rate"
 )
@@ -100,7 +101,7 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 	}
 	// if the final stream object contained an error, return it
 	if errMsg, ok := m["error"]; ok {
-		return fmt.Errorf("%v", errMsg)
+		return errors.Errorf("%v", errMsg)
 	}
 	return nil
 }
