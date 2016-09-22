@@ -500,11 +500,11 @@ func TestUpdaterRollback(t *testing.T) {
 					},
 				},
 				Update: &api.UpdateConfig{
-					FailureAction:          api.UpdateConfig_ROLLBACK,
-					Parallelism:            1,
-					Delay:                  *ptypes.DurationProto(10 * time.Millisecond),
-					Monitor:                ptypes.DurationProto(500 * time.Millisecond),
-					AllowedFailureFraction: 0.4,
+					FailureAction:   api.UpdateConfig_ROLLBACK,
+					Parallelism:     1,
+					Delay:           *ptypes.DurationProto(10 * time.Millisecond),
+					Monitor:         ptypes.DurationProto(500 * time.Millisecond),
+					MaxFailureRatio: 0.4,
 				},
 			},
 		}
