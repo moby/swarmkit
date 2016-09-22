@@ -6,62 +6,64 @@ import (
 	"time"
 
 	enginecontainer "github.com/docker/docker/api/types/container"
+	enginemount "github.com/docker/docker/api/types/mount"
 	"github.com/docker/swarmkit/api"
 	gogotypes "github.com/gogo/protobuf/types"
 )
 
 func TestVolumesAndBinds(t *testing.T) {
-	c := containerConfig{
-		task: &api.Task{
-			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
-				Container: &api.ContainerSpec{
-					Mounts: []api.Mount{
-						{Type: api.MountTypeBind, Source: "/banana", Target: "/kerfluffle"},
-						{Type: api.MountTypeBind, Source: "/banana", Target: "/kerfluffle", BindOptions: &api.Mount_BindOptions{Propagation: api.MountPropagationRPrivate}},
-						{Type: api.MountTypeVolume, Source: "banana", Target: "/kerfluffle"},
-						{Type: api.MountTypeVolume, Source: "banana", Target: "/kerfluffle", VolumeOptions: &api.Mount_VolumeOptions{NoCopy: true}},
-						{Type: api.MountTypeVolume, Target: "/kerfluffle"},
+	type testCase struct {
+		explain string
+		config  api.Mount
+		x       enginemount.Mount
+	}
+
+	cases := []testCase{
+		{"Simple bind mount", api.Mount{Type: api.MountTypeBind, Source: "/banana", Target: "/kerfluffle"},
+			enginemount.Mount{Type: enginemount.TypeBind, Source: "/banana", Target: "/kerfluffle"}},
+		{"Bind mound with propagation", api.Mount{Type: api.MountTypeBind, Source: "/banana", Target: "/kerfluffle", BindOptions: &api.Mount_BindOptions{Propagation: api.MountPropagationRPrivate}},
+			enginemount.Mount{Type: enginemount.TypeBind, Source: "/banana", Target: "/kerfluffle", BindOptions: &enginemount.BindOptions{Propagation: enginemount.PropagationRPrivate}}},
+		{"Simple volume with source", api.Mount{Type: api.MountTypeVolume, Source: "banana", Target: "/kerfluffle"},
+			enginemount.Mount{Type: enginemount.TypeVolume, Source: "banana", Target: "/kerfluffle"}},
+		{"Volume with options", api.Mount{Type: api.MountTypeVolume, Source: "banana", Target: "/kerfluffle", VolumeOptions: &api.Mount_VolumeOptions{NoCopy: true}},
+			enginemount.Mount{Type: enginemount.TypeVolume, Source: "banana", Target: "/kerfluffle", VolumeOptions: &enginemount.VolumeOptions{NoCopy: true}}},
+		{"Volume with no source", api.Mount{Type: api.MountTypeVolume, Target: "/kerfluffle"},
+			enginemount.Mount{Type: enginemount.TypeVolume, Target: "/kerfluffle"}},
+	}
+
+	for _, c := range cases {
+		cfg := containerConfig{
+			task: &api.Task{
+				Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{
+						Mounts: []api.Mount{c.config},
 					},
-				},
-			}},
-		},
-	}
+				}},
+			},
+		}
 
-	config := c.config()
-	if len(config.Volumes) != 1 {
-		t.Fatalf("expected only 1 anonymous volume: %v", config.Volumes)
-	}
-	if _, exists := config.Volumes["/kerfluffle"]; !exists {
-		t.Fatal("missing anonymous volume entry for target `/kerfluffle`")
-	}
+		if vols := cfg.config().Volumes; len(vols) != 0 {
+			t.Fatalf("expected no anonymous volumes: %v", vols)
+		}
+		mounts := cfg.hostConfig().Mounts
+		if len(mounts) != 1 {
+			t.Fatalf("expected 1 mount: %v", mounts)
+		}
 
-	hostConfig := c.hostConfig()
-	if len(hostConfig.Binds) != 4 {
-		t.Fatalf("expected 4 binds: %v", hostConfig.Binds)
-	}
-
-	expected := "/banana:/kerfluffle"
-	actual := hostConfig.Binds[0]
-	if actual != expected {
-		t.Fatalf("expected %s, got %s", expected, actual)
-	}
-
-	expected = "/banana:/kerfluffle:rprivate"
-	actual = hostConfig.Binds[1]
-	if actual != expected {
-		t.Fatalf("expected %s, got %s", expected, actual)
-	}
-
-	expected = "banana:/kerfluffle"
-	actual = hostConfig.Binds[2]
-	if actual != expected {
-		t.Fatalf("expected %s, got %s", expected, actual)
-	}
-
-	expected = "banana:/kerfluffle:nocopy"
-	actual = hostConfig.Binds[3]
-	if actual != expected {
-		t.Fatalf("expected %s, got %s", expected, actual)
+		if !reflect.DeepEqual(mounts[0], c.x) {
+			t.Log(c.explain)
+			t.Logf("expected: %+v, got: %+v", c.x, mounts[0])
+			switch c.x.Type {
+			case enginemount.TypeVolume:
+				t.Logf("expected volume opts: %+v, got: %+v", c.x.VolumeOptions, mounts[0].VolumeOptions)
+				if c.x.VolumeOptions.DriverConfig != nil {
+					t.Logf("expected volume driver config: %+v, got: %+v", c.x.VolumeOptions.DriverConfig, mounts[0].VolumeOptions.DriverConfig)
+				}
+			case enginemount.TypeBind:
+				t.Logf("expected bind opts: %+v, got: %+v", c.x.BindOptions, mounts[0].BindOptions)
+			}
+			t.Fail()
+		}
 	}
 }
 
