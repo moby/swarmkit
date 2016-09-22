@@ -296,18 +296,21 @@ func (m *Manager) Run(parent context.Context) error {
 	api.RegisterControlServer(m.localserver, localProxyControlAPI)
 	api.RegisterHealthServer(m.localserver, localHealthServer)
 
+	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_NOT_SERVING)
+	localHealthServer.SetServingStatus("ControlAPI", api.HealthCheckResponse_NOT_SERVING)
+
 	errServe := make(chan error, len(m.listeners))
 	for proto, l := range m.listeners {
 		go m.serveListener(ctx, errServe, proto, l)
 	}
 
-	// Set the raft server as serving for the health server
-	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
-
 	defer func() {
 		m.server.Stop()
 		m.localserver.Stop()
 	}()
+
+	// Set the raft server as serving for the health server
+	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
 
 	if err := m.RaftNode.JoinAndStart(); err != nil {
 		return errors.Wrap(err, "can't initialize raft node")
