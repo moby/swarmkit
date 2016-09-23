@@ -274,16 +274,12 @@ message ClusterSpec {
 
 	// TaskDefaults specifies the default values to use for task creation.
 	TaskDefaults task_defaults = 7 [(gogoproto.nullable) = false];
-
-	// SecretConfig specifies cluster-level secret configuration settings, such as
-	// maximum number of secrets.
-	SecretsConfig secrets = 8 [(gogoproto.nullable) = false];
 }
 
 // SecretSpec specifies a user-provided secret.
 message SecretSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
-	// Secret payload.
+	// Data is the secret payload - the maximum size is 500KB (that is, 500*1024 bytes)
 	bytes data = 2;
 }
