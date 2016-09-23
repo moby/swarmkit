@@ -48,6 +48,9 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 
 	flags.String("log-driver", "", "specify a log driver")
 	flags.StringSlice("log-opt", nil, "log driver options, as key value pairs")
+
+	flags.StringSlice("cap-add", nil, "Add Linux capabilities")
+	flags.StringSlice("cap-drop", nil, "Drop Linux capabilities")
 }
 
 // Merge merges a flagset into a service spec.

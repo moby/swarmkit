@@ -38,5 +38,21 @@ func parseContainer(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		spec.Task.GetContainer().Env = env
 	}
 
+	if flags.Changed("cap-add") {
+		caps, err := flags.GetStringSlice("cap-add")
+		if err != nil {
+			return err
+		}
+		spec.Task.GetContainer().CapAdd = caps
+	}
+
+	if flags.Changed("cap-drop") {
+		caps, err := flags.GetStringSlice("cap-drop")
+		if err != nil {
+			return err
+		}
+		spec.Task.GetContainer().CapDrop = caps
+	}
+
 	return nil
 }
