@@ -658,14 +658,6 @@ message RaftConfig {
 	uint32 election_tick = 5;
 }
 
-
-// SecretsConfig specifies cluster-level secrets settings.
-message SecretsConfig {
-	// MaxSecrets specifies how many user-specified secrets there can be.  A value
-	// of 0 will be interpreted as the default maximum value.
-	uint32 max_secrets = 1;
-}
-
 // Placement specifies task distribution constraints.
 message Placement {
 	// constraints specifies a set of requirements a node should meet for a task.
@@ -780,7 +772,7 @@ message SecretReference {
 	// Target is the name by which the image accesses the secret.
 	string target = 3;
 
-	// Name is the name of the secret that this references, but this is just provided for
+	// SecretName is the name of the secret that this references, but this is just provided for
 	// lookup/display purposes.  The secret in the reference will be identified by its ID.
-	string name = 4;
+	string secret_name = 4;
 }
