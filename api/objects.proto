@@ -225,11 +225,6 @@ message Cluster {
 	// and agents to unambiguously identify the older key to be deleted when
 	// a new key is allocated on key rotation.
 	uint64 encryption_key_lamport_clock = 6;
-
-	// Logical clock used to timestamp every secret.  It allows other managers
-	// and agents to unambiguously identify the newest secret to be used when
-	// requesting the latest version of a secret.
-	uint64 secret_lamport_clock = 7;
 }
 
 // Secret represents a secret that should be passed to a container or a node,
@@ -242,23 +237,18 @@ message Secret {
 	Meta meta = 2 [(gogoproto.nullable) = false];
 
 	// Spec contains the actual secret data, as well as any context around the
-	// secret data that the user provides.  The name on the annotation of the
-	// spec must match the name of the `Secret` object this `SecretSpec` belongs
-	// to.
+	// secret data that the user provides.
 	SecretSpec spec = 3  [(gogoproto.nullable) = false];
 
 	// Digest represents the cryptographic digest of the secret data, and follows
 	// the form "<algorithm>:<digest>": for example "sha256:DEADBEEF...".  It
-	// is calculated from the data contained in `SecretValue.Spec.data`.
+	// is calculated from the data contained in `Secret.Spec.data`.
 	string digest = 4;
 
 	// Size represents the size (number of bytes) of the secret data, and is
-	// calculated from the data contained in `SecretValue.Spec.data`..
+	// calculated from the data contained in `Secret.Spec.data`..
 	uint32 size = 5 [(gogoproto.customname) = "SecretSize"];
 
 	// Whether the secret is an internal secret (not set by a user) or not.
 	bool internal = 6;
-
-	// Timestamp from the lamport clock to identify the relative age of the secret.
-	uint64 lamport_time = 7;
 }

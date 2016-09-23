@@ -5,7 +5,6 @@ package docker.swarmkit.v1;
 import "types.proto";
 import "gogoproto/gogo.proto";
 import "duration/duration.proto"; // TODO(stevvooe): use our own until we fix gogoproto/deepcopy
-import "timestamp/timestamp.proto"; // TODO(stevvooe): use our own until we fix gogoproto/deepcopy
 
 // Specs are container objects for user provided input. All creations and
 // updates are done through spec types. As a convention, user input from a spec
@@ -287,7 +286,4 @@ message SecretSpec {
 
 	// Secret payload.
 	bytes data = 2;
-
-	// When this secret-spec should expire and no longer be available
-	Timestamp expiry = 3;
 }

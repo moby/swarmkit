@@ -758,13 +758,10 @@ message ManagerStatus {
 
 // SecretReference is the linkage between a service and a secret that it uses.
 message SecretReference {
-	// Name is the name of the secret that this references.
-	string name = 1;
-
 	// SecretID represents the ID of the specific Secret that we're
 	// referencing. This identifier exists so that SecretReferences don't leak
 	// any information about the secret contents.
-	string secret_id = 2 [(gogoproto.customname) = "SecretID"];
+	string secret_id = 1 [(gogoproto.customname) = "SecretID"];
 
 	// Mode specifies how this secret should be exposed to the task.
 	enum Mode {
@@ -778,8 +775,12 @@ message SecretReference {
 	}
 
 	// Mode is the way the secret should be presented.
-	Mode mode = 3;
+	Mode mode = 2;
 
 	// Target is the name by which the image accesses the secret.
-	string target = 4;
+	string target = 3;
+
+	// Name is the name of the secret that this references, but this is just provided for
+	// lookup/display purposes.  The secret in the reference will be identified by its ID.
+	string name = 4;
 }
