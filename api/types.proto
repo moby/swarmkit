@@ -747,3 +747,32 @@ message ManagerStatus {
 	// Reachability specifies whether this node is reachable.
 	RaftMemberStatus.Reachability reachability = 4;
 }
+
+// SecretReference is the linkage between a service and a secret that it uses.
+message SecretReference {
+	// SecretID represents the ID of the specific Secret that we're
+	// referencing. This identifier exists so that SecretReferences don't leak
+	// any information about the secret contents.
+	string secret_id = 1 [(gogoproto.customname) = "SecretID"];
+
+	// Mode specifies how this secret should be exposed to the task.
+	enum Mode {
+		// SYSTEM means that it is not exposed inside to a task at all, but
+		// only available via direct access, usually at the agent-level
+		SYSTEM = 0;
+		// FILE means that it will be exposed to the task as a file
+		FILE = 1;
+		// ENV means that it will be exposed to the task as an environment variable
+		ENV = 2;
+	}
+
+	// Mode is the way the secret should be presented.
+	Mode mode = 2;
+
+	// Target is the name by which the image accesses the secret.
+	string target = 3;
+
+	// SecretName is the name of the secret that this references, but this is just provided for
+	// lookup/display purposes.  The secret in the reference will be identified by its ID.
+	string secret_name = 4;
+}
