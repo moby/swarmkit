@@ -1,14 +1,14 @@
-package secrets
+package secret
 
 import (
 	"errors"
 	"fmt"
 	"os"
 	"text/tabwriter"
-	"time"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/spf13/cobra"
 )
 
@@ -27,8 +27,7 @@ func printSecretSummary(secret *api.Secret) {
 	common.FprintfIfNotEmpty(w, "Digest\t: %s\n", secret.Digest)
 	common.FprintfIfNotEmpty(w, "Size\t: %d\n", secret.SecretSize)
 
-	created := time.Unix(int64(secret.Meta.CreatedAt.Seconds), int64(secret.Meta.CreatedAt.Nanos))
-	common.FprintfIfNotEmpty(w, "Created\t: %s\n", created.Format(time.RFC822))
+	common.FprintfIfNotEmpty(w, "Created\t: %s\n", ptypes.TimestampString(secret.Meta.CreatedAt))
 }
 
 var (

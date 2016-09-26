@@ -17,14 +17,14 @@ import (
 // MaxSecretSize is the maximum byte length of the `Secret.Spec.Data` field.
 const MaxSecretSize = 500 * 1024 // 500KB
 
-var isValidSecretName = regexp.MustCompile(`^[a-zA-Z0-9](?:[a-zA-Z0-9-_.]{0,62}[a-zA-Z0-9])*$`)
+var validSecretNameRegexp = regexp.MustCompile(`^[a-zA-Z0-9]+(?:[a-zA-Z0-9-_.]*[a-zA-Z0-9])?$`)
 
 // assumes spec is not nil
 func secretFromSecretSpec(spec *api.SecretSpec) *api.Secret {
 	return &api.Secret{
 		ID:         identity.NewID(),
 		Spec:       *spec,
-		SecretSize: uint32(len(spec.Data)),
+		SecretSize: int64(len(spec.Data)),
 		Digest:     digest.FromBytes(spec.Data).String(),
 	}
 }
@@ -40,7 +40,6 @@ func (s *Server) GetSecret(ctx context.Context, request *api.GetSecretRequest) (
 	}
 
 	var secret *api.Secret
-
 	s.store.View(func(tx store.ReadTx) {
 		secret = store.GetSecret(tx, request.SecretID)
 	})
@@ -49,7 +48,7 @@ func (s *Server) GetSecret(ctx context.Context, request *api.GetSecretRequest) (
 		return nil, grpc.Errorf(codes.NotFound, "secret %s not found", request.SecretID)
 	}
 
-	secret.Spec.Data = nil
+	secret.Spec.Data = nil // clean the actual secret data so it's never returned
 	return &api.GetSecretResponse{Secret: secret}, nil
 }
 
@@ -94,7 +93,6 @@ func (s *Server) ListSecrets(ctx context.Context, request *api.ListSecretsReques
 	s.store.View(func(tx store.ReadTx) {
 		secrets, err = store.FindSecrets(tx, by)
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +102,7 @@ func (s *Server) ListSecrets(ctx context.Context, request *api.ListSecretsReques
 		if secret.Internal || !filterMatchLabels(secret.Spec.Annotations.Labels, labels) {
 			continue
 		}
-		secret.Spec.Data = nil
+		secret.Spec.Data = nil // clean the actual secret data so it's never returned
 		respSecrets = append(respSecrets, secret)
 	}
 
@@ -130,7 +128,7 @@ func (s *Server) CreateSecret(ctx context.Context, request *api.CreateSecretRequ
 	case store.ErrNameConflict:
 		return nil, grpc.Errorf(codes.AlreadyExists, "secret %s already exists", request.Spec.Annotations.Name)
 	case nil:
-		secret.Spec.Data = nil
+		secret.Spec.Data = nil // clean the actual secret data so it's never returned
 		return &api.CreateSecretResponse{Secret: secret}, nil
 	default:
 		return nil, err
@@ -149,7 +147,6 @@ func (s *Server) RemoveSecret(ctx context.Context, request *api.RemoveSecretRequ
 	err := s.store.Update(func(tx store.Tx) error {
 		return store.DeleteSecret(tx, request.SecretID)
 	})
-
 	switch err {
 	case store.ErrNotExist:
 		return nil, grpc.Errorf(codes.NotFound, "secret %s not found", request.SecretID)
@@ -168,8 +165,8 @@ func validateSecretSpec(spec *api.SecretSpec) error {
 		return err
 	}
 
-	if len(spec.Data) > MaxSecretSize || len(spec.Data) == 0 {
-		return grpc.Errorf(codes.InvalidArgument, "secret data must be between 1 and %d bytes inclusive", MaxSecretSize)
+	if len(spec.Data) >= MaxSecretSize || len(spec.Data) < 1 {
+		return grpc.Errorf(codes.InvalidArgument, "secret data must be larger than 0 and less than %d bytes", MaxSecretSize)
 	}
 	return nil
 }
@@ -177,7 +174,7 @@ func validateSecretSpec(spec *api.SecretSpec) error {
 func validateSecretAnnotations(m api.Annotations) error {
 	if m.Name == "" {
 		return grpc.Errorf(codes.InvalidArgument, "name must be provided")
-	} else if !isValidSecretName.MatchString(m.Name) {
+	} else if len(m.Name) > 64 || !validSecretNameRegexp.MatchString(m.Name) {
 		// if the name doesn't match the regex
 		return grpc.Errorf(codes.InvalidArgument,
 			"invalid name, only 64 [a-zA-Z0-9-_.] characters allowed, and the start and end character must be [a-zA-Z0-9]")

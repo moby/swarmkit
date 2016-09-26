@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/docker/swarmkit/api"
@@ -57,7 +58,7 @@ func TestValidateSecretSpec(t *testing.T) {
 		"with:colon",
 		"with;semicolon",
 		"snowman☃",
-		"o_______________________________________________________________o", // exactly 65 characters
+		strings.Repeat("a", 65),
 	} {
 		err := validateSecretSpec(createSecretSpec(badName, []byte("valid secret"), nil))
 		assert.Error(t, err)
@@ -77,12 +78,12 @@ func TestValidateSecretSpec(t *testing.T) {
 		"0",
 		"a",
 		"A",
-		"name-with-dashes",
-		"name.with.dots",
-		"name_with_underscores",
+		"name-with--dashes",
+		"name.with..dots",
+		"name_with__underscores",
 		"name.with-all_special",
 		"02624name035with1699numbers015125",
-		"o______________________________________________________________o", // exactly 64 characters
+		strings.Repeat("a", 64),
 	} {
 		err := validateSecretSpec(createSecretSpec(goodName, []byte("valid secret"), nil))
 		assert.NoError(t, err)

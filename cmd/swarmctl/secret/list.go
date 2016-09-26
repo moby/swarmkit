@@ -1,4 +1,4 @@
-package secrets
+package secret
 
 import (
 	"errors"
@@ -6,10 +6,10 @@ import (
 	"os"
 	"sort"
 	"text/tabwriter"
-	"time"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
@@ -19,8 +19,14 @@ type secretSorter []*api.Secret
 func (k secretSorter) Len() int      { return len(k) }
 func (k secretSorter) Swap(i, j int) { k[i], k[j] = k[j], k[i] }
 func (k secretSorter) Less(i, j int) bool {
-	iTime := time.Unix(k[i].Meta.CreatedAt.Seconds, int64(k[i].Meta.CreatedAt.Nanos))
-	jTime := time.Unix(k[j].Meta.CreatedAt.Seconds, int64(k[j].Meta.CreatedAt.Nanos))
+	iTime, err := ptypes.Timestamp(k[i].Meta.CreatedAt)
+	if err != nil {
+		panic(err)
+	}
+	jTime, err := ptypes.Timestamp(k[j].Meta.CreatedAt)
+	if err != nil {
+		panic(err)
+	}
 	return jTime.Before(iTime)
 }
 
@@ -59,7 +65,10 @@ var (
 				}()
 				common.PrintHeader(w, "ID", "Name", "Created", "Digest", "Size")
 				output = func(s *api.Secret) {
-					created := time.Unix(int64(s.Meta.CreatedAt.Seconds), int64(s.Meta.CreatedAt.Nanos))
+					created, err := ptypes.Timestamp(s.Meta.CreatedAt)
+					if err != nil {
+						panic(err)
+					}
 					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\n",
 						s.ID,
 						s.Spec.Annotations.Name,
