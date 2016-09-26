@@ -38,6 +38,25 @@ func createSpec(name, image string, instances uint64) *api.ServiceSpec {
 	}
 }
 
+func createSpecWithDuplicateMounts(name string) *api.ServiceSpec {
+
+	service := createSpec("", "image", 1)
+	mounts := []api.Mount{
+		{
+			Target: "/foo",
+			Source: "/mnt/mount1",
+		},
+		{
+			Target: "/foo",
+			Source: "/mnt/mount2",
+		},
+	}
+
+	service.Task.GetContainer().Mounts = mounts
+
+	return service
+}
+
 func createService(t *testing.T, ts *testServer, name, image string, instances uint64) *api.Service {
 	spec := createSpec(name, image, instances)
 	r, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
@@ -118,6 +137,10 @@ func TestValidateTask(t *testing.T) {
 		},
 		{
 			s: createSpec("", "busybox###", 0).Task,
+			c: codes.InvalidArgument,
+		},
+		{
+			s: createSpecWithDuplicateMounts("test").Task,
 			c: codes.InvalidArgument,
 		},
 	} {
