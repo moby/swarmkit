@@ -1,11 +1,11 @@
 package flagparser
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 )
 
@@ -44,7 +44,7 @@ func parsePortConfig(portConfig string) (string, api.PortConfig_Protocol, uint32
 	protocol := api.ProtocolTCP
 	parts := strings.Split(portConfig, ":")
 	if len(parts) < 2 {
-		return "", protocol, 0, 0, fmt.Errorf("insufficient parameters in port configuration")
+		return "", protocol, 0, 0, errors.New("insufficient parameters in port configuration")
 	}
 
 	name := parts[0]
@@ -52,7 +52,7 @@ func parsePortConfig(portConfig string) (string, api.PortConfig_Protocol, uint32
 	portSpec := parts[1]
 	protocol, port, err := parsePortSpec(portSpec)
 	if err != nil {
-		return "", protocol, 0, 0, fmt.Errorf("failed to parse port: %v", err)
+		return "", protocol, 0, 0, errors.Wrap(err, "failed to parse port")
 	}
 
 	if len(parts) > 2 {
@@ -61,11 +61,11 @@ func parsePortConfig(portConfig string) (string, api.PortConfig_Protocol, uint32
 		portSpec := parts[2]
 		nodeProtocol, swarmPort, err := parsePortSpec(portSpec)
 		if err != nil {
-			return "", protocol, 0, 0, fmt.Errorf("failed to parse node port: %v", err)
+			return "", protocol, 0, 0, errors.Wrap(err, "failed to parse node port")
 		}
 
 		if nodeProtocol != protocol {
-			return "", protocol, 0, 0, fmt.Errorf("protocol mismatch")
+			return "", protocol, 0, 0, errors.New("protocol mismatch")
 		}
 
 		return name, protocol, port, swarmPort, nil
@@ -86,7 +86,7 @@ func parsePortSpec(portSpec string) (api.PortConfig_Protocol, uint32, error) {
 		proto := parts[1]
 		protocol, ok := api.PortConfig_Protocol_value[strings.ToUpper(proto)]
 		if !ok {
-			return 0, 0, fmt.Errorf("invalid protocol string: %s", proto)
+			return 0, 0, errors.Errorf("invalid protocol string: %s", proto)
 		}
 
 		return api.PortConfig_Protocol(protocol), uint32(port), nil
