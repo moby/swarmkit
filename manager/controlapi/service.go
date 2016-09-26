@@ -8,7 +8,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/scheduler"
+	"github.com/docker/swarmkit/manager/constraint"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 	"golang.org/x/net/context"
@@ -81,7 +81,7 @@ func validatePlacement(placement *api.Placement) error {
 	if placement == nil {
 		return nil
 	}
-	_, err := scheduler.ParseExprs(placement.Constraints)
+	_, err := constraint.Parse(placement.Constraints)
 	return err
 }
 
