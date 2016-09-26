@@ -72,8 +72,28 @@ build:
 	?       github.com/docker/swarmkit/version      [no test files]
 
 The above provides a repeatable build using the contents of the vendored
-Godeps directory. This includes formatting, vetting, linting, building,
+`./vendor` directory. This includes formatting, vetting, linting, building,
 and testing. The binaries created will be available in `./bin`.
 
 Several `make` targets are provided for common tasks. Please see the `Makefile`
 for details.
+
+### Update vendored dependencies
+
+To update dependency you need just change `vendor.conf` file and run `vndr` tool:
+```
+go get github.com/LK4D4/vndr
+vndr
+```
+
+It's possible to update only one dependency:
+```
+vndr github.com/coreos/etcd v3.0.9
+```
+
+but it should be in sync with `vendor.conf`.
+
+Also, you can update dependency from fork for testing:
+```
+vndr github.com/coreos/etcd <revision> https://github.com/LK4D4/etcd.git
+```
