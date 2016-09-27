@@ -15,7 +15,7 @@ import (
 )
 
 func getRunnableSlotSlice(t *testing.T, s *store.MemoryStore, service *api.Service) []slot {
-	runnable, err := getRunnableSlots(s, service.ID)
+	runnable, _, err := getRunnableAndDeadSlots(s, service.ID)
 	require.NoError(t, err)
 
 	var runnableSlice []slot
