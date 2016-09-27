@@ -78,9 +78,12 @@ build: ## build the go packages
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -v ${GO_LDFLAGS} ${GO_GCFLAGS} ${PACKAGES}
 
-test: ## run test
+## run tests - first filter out packages that don't have tests because `go test` compiles and runs a test binary
+# for each package, even if it has no tests (in order to make sure it compiles), which takes extra time. This skips
+# the extra compilation check for untested packages, though, so this runs the build make target too.
+test: build
 	@echo "🐳 $@"
-	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" ${PACKAGES}
+	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" $(shell go list -f '{{ if .TestGoFiles }}{{ .ImportPath }}{{ end }}' ${PACKAGES})
 
 FORCE:
 
@@ -97,6 +100,7 @@ binaries: $(BINARIES) ## build binaries
 clean: ## clean up binaries
 	@echo "🐳 $@"
 	@rm -f $(BINARIES)
+	@find . -name coverage.txt -delete
 
 install: $(BINARIES) ## install binaries
 	@echo "🐳 $@"
@@ -107,9 +111,13 @@ uninstall:
 	@echo "🐳 $@"
 	@rm -f $(addprefix $(DESTDIR)/bin/,$(notdir $(BINARIES)))
 
-coverage: ## generate coverprofiles from the tests
+## generate coverprofiles from the tests - first filter out packages that don't have tests because `go test` compiles
+# and runs a test binary for each package, even if it has no tests (in order to make sure it compiles),
+# which takes extra time. Particularly here, where we're compiling with coverage instrumentation.
+# Filtering out no-test packages skips the extra compilation check, though, so this runs the build make target too.
+coverage: build
 	@echo "🐳 $@"
-	@( for pkg in ${PACKAGES}; do \
+	@( for pkg in $(shell go list -f '{{ if .TestGoFiles }}{{ .ImportPath }}{{ end }}' ${PACKAGES}); do \
 		go test -i -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
 		go test -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
 	done )
