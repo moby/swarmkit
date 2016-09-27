@@ -108,16 +108,11 @@ func NewNode(c *NodeConfig) (*Node, error) {
 	}
 	stateFile := filepath.Join(c.StateDir, stateFilename)
 	dt, err := ioutil.ReadFile(stateFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			err = errors.Wrap(err, "local state file does not exist")
-		}
+	var p []api.Peer
+	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
-
-	var p []api.Peer
-
-	if len(dt) > 0 {
+	if err == nil {
 		if err := json.Unmarshal(dt, &p); err != nil {
 			return nil, err
 		}
