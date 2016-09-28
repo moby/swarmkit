@@ -19,11 +19,11 @@ GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 .PHONY: clean all AUTHORS fmt vet lint build binaries test setup generate checkprotos coverage ci check help install uninstall
 .DEFAULT: default
 
-all: check build binaries test ## run fmt, vet, lint, build the binaries and run the tests
+all: check binaries test ## run fmt, vet, lint, build the binaries and run the tests
 
 check: fmt vet lint ## run fmt, vet, lint
 
-ci: check build binaries checkprotos coverage ## to be used by the CI
+ci: check binaries checkprotos coverage ## to be used by the CI
 
 AUTHORS: .mailmap .git/HEAD
 	git log --format='%aN <%aE>' | sort -fu > $@
