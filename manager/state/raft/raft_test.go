@@ -591,7 +591,7 @@ func TestRaftUnreachableNode(t *testing.T) {
 
 	ctx := context.Background()
 	// Add a new node
-	nodes[2] = raftutils.NewNode(t, clockSource, tc, raft.NewNodeOptions{JoinAddr: nodes[1].Address})
+	nodes[2] = raftutils.NewNode(t, clockSource, tc, raft.NodeOptions{JoinAddr: nodes[1].Address})
 
 	err := nodes[2].JoinAndStart()
 	require.NoError(t, err, "can't join cluster")
@@ -639,7 +639,7 @@ func TestRaftJoinWithIncorrectAddress(t *testing.T) {
 	defer raftutils.ShutdownNode(nodes[1])
 
 	// Try joining a new node with an incorrect address
-	n := raftutils.NewNode(t, clockSource, tc, raft.NewNodeOptions{JoinAddr: nodes[1].Address, Addr: "1.2.3.4:1234"})
+	n := raftutils.NewNode(t, clockSource, tc, raft.NodeOptions{JoinAddr: nodes[1].Address, Addr: "1.2.3.4:1234"})
 	defer raftutils.CleanupNonRunningNode(n)
 
 	err := n.JoinAndStart()
