@@ -6,6 +6,7 @@ import (
 	"github.com/docker/swarmkit/cmd/swarmctl/cluster"
 	"github.com/docker/swarmkit/cmd/swarmctl/network"
 	"github.com/docker/swarmkit/cmd/swarmctl/node"
+	"github.com/docker/swarmkit/cmd/swarmctl/secret"
 	"github.com/docker/swarmkit/cmd/swarmctl/service"
 	"github.com/docker/swarmkit/cmd/swarmctl/task"
 	"github.com/docker/swarmkit/version"
@@ -54,5 +55,6 @@ func init() {
 		version.Cmd,
 		network.Cmd,
 		cluster.Cmd,
+		secret.Cmd,
 	)
 }
