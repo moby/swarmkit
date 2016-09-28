@@ -81,18 +81,14 @@ type Node struct {
 	raft.Node
 	cluster *membership.Cluster
 
-	Server         *grpc.Server
-	Ctx            context.Context
-	cancel         func()
-	tlsCredentials credentials.TransportCredentials
-
-	Address  string
-	StateDir string
+	Server *grpc.Server
+	Ctx    context.Context
+	cancel func()
 
 	raftStore           *raft.MemoryStorage
 	memoryStore         *store.MemoryStore
 	Config              *raft.Config
-	opts                NewNodeOptions
+	opts                NodeOptions
 	reqIDGen            *idutil.Generator
 	wait                *wait
 	wal                 *wal.WAL
@@ -100,7 +96,6 @@ type Node struct {
 	restored            bool
 	signalledLeadership uint32
 	isMember            uint32
-	joinAddr            string
 
 	// waitProp waits for all the proposals to be terminated before
 	// shutting down the node.
@@ -110,10 +105,9 @@ type Node struct {
 	appliedIndex  uint64
 	snapshotIndex uint64
 
-	ticker      clock.Ticker
-	sendTimeout time.Duration
-	stopCh      chan struct{}
-	doneCh      chan struct{}
+	ticker clock.Ticker
+	stopCh chan struct{}
+	doneCh chan struct{}
 	// removeRaftCh notifies about node deletion from raft cluster
 	removeRaftCh        chan struct{}
 	removeRaftFunc      func()
@@ -129,8 +123,8 @@ type Node struct {
 	asyncTasks         sync.WaitGroup
 }
 
-// NewNodeOptions provides arguments for NewNode
-type NewNodeOptions struct {
+// NodeOptions provides node-level options.
+type NodeOptions struct {
 	// ID is the node's ID, from its certificate's CN field.
 	ID string
 	// Addr is the address of this node's listener
@@ -161,8 +155,8 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-// NewNode generates a new Raft node
-func NewNode(ctx context.Context, opts NewNodeOptions) *Node {
+// NewNode generates a new Raft node.
+func NewNode(ctx context.Context, opts NodeOptions) *Node {
 	cfg := opts.Config
 	if cfg == nil {
 		cfg = DefaultNodeConfig()
@@ -170,19 +164,20 @@ func NewNode(ctx context.Context, opts NewNodeOptions) *Node {
 	if opts.TickInterval == 0 {
 		opts.TickInterval = time.Second
 	}
+	if opts.SendTimeout == 0 {
+		opts.SendTimeout = 2 * time.Second
+	}
 
 	raftStore := raft.NewMemoryStorage()
 
 	ctx, cancel := context.WithCancel(ctx)
 
 	n := &Node{
-		Ctx:            ctx,
-		cancel:         cancel,
-		cluster:        membership.NewCluster(2 * cfg.ElectionTick),
-		tlsCredentials: opts.TLSCredentials,
-		raftStore:      raftStore,
-		Address:        opts.Addr,
-		opts:           opts,
+		Ctx:       ctx,
+		cancel:    cancel,
+		cluster:   membership.NewCluster(2 * cfg.ElectionTick),
+		raftStore: raftStore,
+		opts:      opts,
 		Config: &raft.Config{
 			ElectionTick:    cfg.ElectionTick,
 			HeartbeatTick:   cfg.HeartbeatTick,
@@ -194,9 +189,6 @@ func NewNode(ctx context.Context, opts NewNodeOptions) *Node {
 		stopCh:              make(chan struct{}),
 		doneCh:              make(chan struct{}),
 		removeRaftCh:        make(chan struct{}),
-		StateDir:            opts.StateDir,
-		joinAddr:            opts.JoinAddr,
-		sendTimeout:         2 * time.Second,
 		leadershipBroadcast: watch.NewQueue(),
 	}
 	n.memoryStore = store.NewMemoryStore(n)
@@ -205,9 +197,6 @@ func NewNode(ctx context.Context, opts NewNodeOptions) *Node {
 		n.ticker = clock.NewClock().NewTicker(opts.TickInterval)
 	} else {
 		n.ticker = opts.ClockSource.NewTicker(opts.TickInterval)
-	}
-	if opts.SendTimeout != 0 {
-		n.sendTimeout = opts.SendTimeout
 	}
 
 	n.reqIDGen = idutil.NewGenerator(uint16(n.Config.ID), time.Now())
@@ -249,8 +238,8 @@ func (n *Node) JoinAndStart() (err error) {
 	n.snapshotIndex = snapshot.Metadata.Index
 
 	if loadAndStartErr == errNoWAL {
-		if n.joinAddr != "" {
-			c, err := n.ConnectToMember(n.joinAddr, 10*time.Second)
+		if n.opts.JoinAddr != "" {
+			c, err := n.ConnectToMember(n.opts.JoinAddr, 10*time.Second)
 			if err != nil {
 				return err
 			}
@@ -262,7 +251,7 @@ func (n *Node) JoinAndStart() (err error) {
 			ctx, cancel := context.WithTimeout(n.Ctx, 10*time.Second)
 			defer cancel()
 			resp, err := client.Join(ctx, &api.JoinRequest{
-				Addr: n.Address,
+				Addr: n.opts.Addr,
 			})
 			if err != nil {
 				return err
@@ -301,7 +290,7 @@ func (n *Node) JoinAndStart() (err error) {
 		return nil
 	}
 
-	if n.joinAddr != "" {
+	if n.opts.JoinAddr != "" {
 		n.Config.Logger.Warning("ignoring request to join cluster, because raft state already exists")
 	}
 	n.Node = raft.RestartNode(n.Config)
@@ -1160,7 +1149,7 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(n.Ctx, n.sendTimeout)
+	ctx, cancel := context.WithTimeout(n.Ctx, n.opts.SendTimeout)
 	defer cancel()
 
 	var (
@@ -1195,7 +1184,7 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 			n.Config.Logger.Errorf("could not resolve address of member ID %x: %v", m.To, err)
 			return
 		}
-		conn, err = n.ConnectToMember(resp.Addr, n.sendTimeout)
+		conn, err = n.ConnectToMember(resp.Addr, n.opts.SendTimeout)
 		if err != nil {
 			n.Config.Logger.Errorf("could connect to member ID %x at %s: %v", m.To, resp.Addr, err)
 			return
@@ -1548,7 +1537,7 @@ func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
 // ConnectToMember returns a member object with an initialized
 // connection to communicate with other raft members
 func (n *Node) ConnectToMember(addr string, timeout time.Duration) (*membership.Member, error) {
-	conn, err := dial(addr, "tcp", n.tlsCredentials, timeout)
+	conn, err := dial(addr, "tcp", n.opts.TLSCredentials, timeout)
 	if err != nil {
 		return nil, err
 	}
