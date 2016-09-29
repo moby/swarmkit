@@ -27,14 +27,21 @@ func TestWorker(t *testing.T) {
 	worker.Listen(ctx, reporter)
 
 	for _, testcase := range []struct {
-		taskSet          []*api.Task
+		taskSet          []*api.AssignmentChange
 		expectedTasks    []*api.Task
 		expectedAssigned []*api.Task
 	}{
 		{}, // handle nil case.
 		{
-			taskSet: []*api.Task{
-				{ID: "task-1"},
+			taskSet: []*api.AssignmentChange{
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Task{
+							Task: &api.Task{ID: "task-1"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionUpdate,
+				},
 			},
 			expectedTasks: []*api.Task{
 				{ID: "task-1"},
@@ -53,7 +60,7 @@ func TestWorker(t *testing.T) {
 		// TODO(stevvooe): There are a few more states here we need to get
 		// covered to ensure correct during code changes.
 	} {
-		assert.NoError(t, worker.AssignTasks(ctx, testcase.taskSet))
+		assert.NoError(t, worker.Assign(ctx, testcase.taskSet))
 
 		var (
 			tasks    []*api.Task

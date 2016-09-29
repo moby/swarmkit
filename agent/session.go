@@ -253,11 +253,24 @@ func (s *session) watch(ctx context.Context) error {
 		}
 		if tasksWatch != nil {
 			var taskResp *api.TasksMessage
+			var assignmentChanges []*api.AssignmentChange
 			taskResp, err = tasksWatch.Recv()
 			if err != nil {
 				return err
 			}
-			resp = &api.AssignmentsMessage{Type: api.AssignmentsMessage_COMPLETE, UpdateTasks: taskResp.Tasks}
+			for _, t := range taskResp.Tasks {
+				taskChange := &api.AssignmentChange{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Task{
+							Task: t,
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionUpdate,
+				}
+
+				assignmentChanges = append(assignmentChanges, taskChange)
+			}
+			resp = &api.AssignmentsMessage{Type: api.AssignmentsMessage_COMPLETE, Changes: assignmentChanges}
 		}
 
 		// If there seems to be a gap in the stream, let's break out of the inner for and

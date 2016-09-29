@@ -659,13 +659,6 @@ message RaftConfig {
 }
 
 
-// SecretsConfig specifies cluster-level secrets settings.
-message SecretsConfig {
-	// MaxSecrets specifies how many user-specified secrets there can be.  A value
-	// of 0 will be interpreted as the default maximum value.
-	uint32 max_secrets = 1;
-}
-
 // Placement specifies task distribution constraints.
 message Placement {
 	// constraints specifies a set of requirements a node should meet for a task.

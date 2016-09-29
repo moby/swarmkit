@@ -17,21 +17,13 @@ type Worker interface {
 	// Init prepares the worker for task assignment.
 	Init(ctx context.Context) error
 
-	// AssignTasks assigns a complete set of tasks to a worker. Any task not included in
+	// Assign assigns a complete set of tasks and secrets to a worker. Any task or secrets not included in
 	// this set will be removed.
-	AssignTasks(ctx context.Context, tasks []*api.Task) error
+	Assign(ctx context.Context, assignments []*api.AssignmentChange) error
 
-	// UpdateTasks updates an incremental set of tasks to the worker. Any task not included
+	// Updates updates an incremental set of tasks or secrets of the worker. Any task/secret not included
 	// either in added or removed will remain untouched.
-	UpdateTasks(ctx context.Context, added []*api.Task, removed []string) error
-
-	// AssignSecrets assigns a complete set of secrets to a worker. Any secret not included in
-	// this set will be removed.
-	AssignSecrets(ctx context.Context, secrets []*api.Secret) error
-
-	// UpdateSecrets updates an incremental set of secrets to the worker. Any secret not included
-	// either in added or removed will remain untouched.
-	UpdateSecrets(ctx context.Context, added []*api.Secret, removed []string) error
+	Update(ctx context.Context, assignments []*api.AssignmentChange) error
 
 	// Listen to updates about tasks controlled by the worker. When first
 	// called, the reporter will receive all updates for all tasks controlled
@@ -100,37 +92,67 @@ func (w *worker) Init(ctx context.Context) error {
 	})
 }
 
-// AssignTasks assigns  the set of tasks to the worker. Any tasks not previously known will
-// be started. Any tasks that are in the task set and already running will be
-// updated, if possible. Any tasks currently running on the
-// worker outside the task set will be terminated.
-func (w *worker) AssignTasks(ctx context.Context, tasks []*api.Task) error {
+// Assign assigns a full set of tasks and secrets to the worker.
+// Any tasks not previously known will be started. Any tasks that are in the task set
+// and already running will be updated, if possible. Any tasks currently running on
+// the worker outside the task set will be terminated.
+// Any secrets not in the set of assignments will be removed.
+func (w *worker) Assign(ctx context.Context, assignments []*api.AssignmentChange) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	log.G(ctx).WithFields(logrus.Fields{
-		"len(tasks)": len(tasks),
-	}).Debug("(*worker).AssignTasks")
+		"len(assignments)": len(assignments),
+	}).Debug("(*worker).Assign")
 
-	return reconcileTaskState(ctx, w, tasks, nil, true)
+	// Need to update secrets before tasks, because tasks might depend on new secrets
+	err := reconcileSecrets(ctx, w, assignments, true)
+	if err != nil {
+		return err
+	}
+
+	return reconcileTaskState(ctx, w, assignments, true)
 }
 
-// UpdateTasks the set of tasks to the worker.
+// Update updates the set of tasks and secret for the worker.
 // Tasks in the added set will be added to the worker, and tasks in the removed set
 // will be removed from the worker
-func (w *worker) UpdateTasks(ctx context.Context, added []*api.Task, removed []string) error {
+// Serets in the added set will be added to the worker, and secrets in the removed set
+// will be removed from the worker.
+func (w *worker) Update(ctx context.Context, assignments []*api.AssignmentChange) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	log.G(ctx).WithFields(logrus.Fields{
-		"len(added)":   len(added),
-		"len(removed)": len(removed),
-	}).Debug("(*worker).UpdateTasks")
+		"len(assignments)": len(assignments),
+	}).Debug("(*worker).Update")
 
-	return reconcileTaskState(ctx, w, added, removed, false)
+	err := reconcileSecrets(ctx, w, assignments, false)
+	if err != nil {
+		return err
+	}
+
+	return reconcileTaskState(ctx, w, assignments, false)
 }
 
-func reconcileTaskState(ctx context.Context, w *worker, added []*api.Task, removed []string, fullSnapshot bool) error {
+func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.AssignmentChange, fullSnapshot bool) error {
+	var (
+		updatedTasks []*api.Task
+		removedTasks []*api.Task
+	)
+	for _, a := range assignments {
+		if t, ok := a.Assignment.GetItem().(*api.Assignment_Task); ok {
+			switch a.Action {
+			case api.AssignmentChange_AssignmentActionUpdate:
+				updatedTasks = append(updatedTasks, t.Task)
+			case api.AssignmentChange_AssignmentActionRemove:
+				removedTasks = append(removedTasks, t.Task)
+			}
+
+		}
+
+	}
+
 	tx, err := w.db.Begin(true)
 	if err != nil {
 		log.G(ctx).WithError(err).Error("failed starting transaction against task database")
@@ -140,7 +162,7 @@ func reconcileTaskState(ctx context.Context, w *worker, added []*api.Task, remov
 
 	assigned := map[string]struct{}{}
 
-	for _, task := range added {
+	for _, task := range updatedTasks {
 		log.G(ctx).WithFields(
 			logrus.Fields{
 				"task.id":           task.ID,
@@ -212,15 +234,15 @@ func reconcileTaskState(ctx context.Context, w *worker, added []*api.Task, remov
 	} else {
 		// If this was an incremental set of assignments, we're going to remove only the tasks
 		// in the removed set
-		for _, taskID := range removed {
-			err := removeTaskAssignment(taskID)
+		for _, task := range removedTasks {
+			err := removeTaskAssignment(task.ID)
 			if err != nil {
 				continue
 			}
 
-			tm, ok := w.taskManagers[taskID]
+			tm, ok := w.taskManagers[task.ID]
 			if ok {
-				delete(w.taskManagers, taskID)
+				delete(w.taskManagers, task.ID)
 				go closeManager(tm)
 			}
 		}
@@ -229,42 +251,30 @@ func reconcileTaskState(ctx context.Context, w *worker, added []*api.Task, remov
 	return tx.Commit()
 }
 
-// AssignSecrets assigns the set of secrets to the worker. Any secrets not in this set
-// will be removed.
-func (w *worker) AssignSecrets(ctx context.Context, secrets []*api.Secret) error {
-	w.mu.Lock()
-	defer w.mu.Unlock()
+func reconcileSecrets(ctx context.Context, w *worker, assignments []*api.AssignmentChange, fullSnapshot bool) error {
+	var (
+		updatedSecrets []*api.Secret
+		removedSecrets []*api.Secret
+	)
+	for _, a := range assignments {
+		if s, ok := a.Assignment.GetItem().(*api.Assignment_Secret); ok {
+			switch a.Action {
+			case api.AssignmentChange_AssignmentActionUpdate:
+				updatedSecrets = append(updatedSecrets, s.Secret)
+			case api.AssignmentChange_AssignmentActionRemove:
+				removedSecrets = append(removedSecrets, s.Secret)
+			}
 
-	log.G(ctx).WithFields(logrus.Fields{
-		"len(secrets)": len(secrets),
-	}).Debug("(*worker).AssignSecrets")
+		}
+	}
 
-	return reconcileSecrets(ctx, w, secrets, nil, true)
-}
-
-// UpdateSecrets updates the set of secrets assigned to the worker.
-// Serets in the added set will be added to the worker, and secrets in the removed set
-// will be removed from the worker.
-func (w *worker) UpdateSecrets(ctx context.Context, added []*api.Secret, removed []string) error {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	log.G(ctx).WithFields(logrus.Fields{
-		"len(added)":   len(added),
-		"len(removed)": len(removed),
-	}).Debug("(*worker).UpdateSecrets")
-
-	return reconcileSecrets(ctx, w, added, removed, false)
-}
-
-func reconcileSecrets(ctx context.Context, w *worker, added []*api.Secret, removed []string, fullSnapshot bool) error {
 	// If this was a complete set of secrets, we're going to clear the secrets map and add all of them
 	if fullSnapshot {
 		w.secrets.Reset()
 	} else {
-		w.secrets.RemoveSecret(removed...)
+		w.secrets.RemoveSecret(removedSecrets)
 	}
-	w.secrets.AddSecret(added...)
+	w.secrets.AddSecret(updatedSecrets...)
 
 	return nil
 }

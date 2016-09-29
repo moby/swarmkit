@@ -785,7 +785,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 			secretID := secretRef.SecretID
 			log := log.WithFields(logrus.Fields{
 				"secret.id":   secretID,
-				"secret.name": secretRef.Name,
+				"secret.name": secretRef.SecretName,
 			})
 
 			if tasksUsingSecret[secretID] == nil {
@@ -834,11 +834,30 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 				}
 
 				tasksMap[t.ID] = t
-				initial.UpdateTasks = append(initial.UpdateTasks, t)
+				taskChange := &api.AssignmentChange{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Task{
+							Task: t,
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionUpdate,
+				}
+				initial.Changes = append(initial.Changes, taskChange)
 				// Only send secrets down if these tasks are in < RUNNING
 				if t.Status.State <= api.TaskStateRunning {
 					newSecrets := addSecretsForTask(readTx, t)
-					initial.UpdateSecrets = append(initial.UpdateSecrets, newSecrets...)
+					for _, secret := range newSecrets {
+						secretChange := &api.AssignmentChange{
+							Assignment: &api.Assignment{
+								Item: &api.Assignment_Secret{
+									Secret: secret,
+								},
+							},
+							Action: api.AssignmentChange_AssignmentActionUpdate,
+						}
+
+						initial.Changes = append(initial.Changes, secretChange)
+					}
 				}
 			}
 			return nil
@@ -1022,19 +1041,55 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 		if modificationCnt > 0 {
 			for id, task := range updateTasks {
 				if _, ok := removeTasks[id]; !ok {
-					update.UpdateTasks = append(update.UpdateTasks, task)
+					taskChange := &api.AssignmentChange{
+						Assignment: &api.Assignment{
+							Item: &api.Assignment_Task{
+								Task: task,
+							},
+						},
+						Action: api.AssignmentChange_AssignmentActionUpdate,
+					}
+
+					update.Changes = append(update.Changes, taskChange)
 				}
 			}
 			for id, secret := range updateSecrets {
 				if _, ok := removeSecrets[id]; !ok {
-					update.UpdateSecrets = append(update.UpdateSecrets, secret)
+					secretChange := &api.AssignmentChange{
+						Assignment: &api.Assignment{
+							Item: &api.Assignment_Secret{
+								Secret: secret,
+							},
+						},
+						Action: api.AssignmentChange_AssignmentActionUpdate,
+					}
+
+					update.Changes = append(update.Changes, secretChange)
 				}
 			}
 			for id := range removeTasks {
-				update.RemoveTasks = append(update.RemoveTasks, id)
+				taskChange := &api.AssignmentChange{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Task{
+							Task: &api.Task{ID: id},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionRemove,
+				}
+
+				update.Changes = append(update.Changes, taskChange)
 			}
 			for id := range removeSecrets {
-				update.RemoveSecrets = append(update.RemoveSecrets, id)
+				secretChange := &api.AssignmentChange{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Secret{
+							Secret: &api.Secret{ID: id},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionRemove,
+				}
+
+				update.Changes = append(update.Changes, secretChange)
 			}
 
 			if err := sendMessage(update, api.AssignmentsMessage_INCREMENTAL); err != nil {

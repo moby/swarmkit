@@ -172,18 +172,11 @@ func (a *Agent) run(ctx context.Context) {
 			switch msg.Type {
 			case api.AssignmentsMessage_COMPLETE:
 				// Need to assign secrets before tasks, because tasks might depend on new secrets
-				if err := a.worker.AssignSecrets(ctx, msg.UpdateSecrets); err != nil {
-					log.G(ctx).WithError(err).Error("failed to synchronize worker secrets")
-				}
-				if err := a.worker.AssignTasks(ctx, msg.UpdateTasks); err != nil {
+				if err := a.worker.Assign(ctx, msg.Changes); err != nil {
 					log.G(ctx).WithError(err).Error("failed to synchronize worker assignments")
 				}
 			case api.AssignmentsMessage_INCREMENTAL:
-				// Need to update secrets before tasks, because tasks might depend on new secrets
-				if err := a.worker.UpdateSecrets(ctx, msg.UpdateSecrets, msg.RemoveSecrets); err != nil {
-					log.G(ctx).WithError(err).Error("failed to update worker secrets")
-				}
-				if err := a.worker.UpdateTasks(ctx, msg.UpdateTasks, msg.RemoveTasks); err != nil {
+				if err := a.worker.Update(ctx, msg.Changes); err != nil {
 					log.G(ctx).WithError(err).Error("failed to update worker assignments")
 				}
 			}
