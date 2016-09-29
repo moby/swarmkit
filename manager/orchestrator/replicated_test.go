@@ -153,11 +153,11 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	observedDeletion1 := watchShutdownTask(t, watch)
+	observedDeletion1 := watchTaskDelete(t, watch)
 	assert.Equal(t, observedDeletion1.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedDeletion1.ServiceAnnotations.Name, "name2")
 
-	observedDeletion2 := watchShutdownTask(t, watch)
+	observedDeletion2 := watchTaskDelete(t, watch)
 	assert.Equal(t, observedDeletion2.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedDeletion2.ServiceAnnotations.Name, "name2")
 
@@ -208,7 +208,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{}, state.EventDeleteTask{})
 	defer cancel()
 
 	s1 := &api.Service{
@@ -384,7 +384,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 	// be the one the orchestrator chose to shut down because it was not
 	// assigned yet.
 
-	observedShutdown := watchShutdownTask(t, watch)
+	observedShutdown := watchTaskDelete(t, watch)
 	assert.Equal(t, "task7", observedShutdown.ID)
 
 	// Now scale down to 2 instances.
@@ -405,7 +405,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 
 	shutdowns := make(map[string]int)
 	for i := 0; i != 4; i++ {
-		observedShutdown := watchShutdownTask(t, watch)
+		observedShutdown := watchTaskDelete(t, watch)
 		shutdowns[observedShutdown.NodeID]++
 	}
 

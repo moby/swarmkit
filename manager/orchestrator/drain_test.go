@@ -100,7 +100,9 @@ func TestDrain(t *testing.T) {
 	initialTaskSet := []*api.Task{
 		// Task not assigned to any node
 		{
-			ID: "id0",
+			ID:           "id0",
+			DesiredState: api.TaskStateRunning,
+			Spec:         initialService.Spec.Task,
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
@@ -112,7 +114,9 @@ func TestDrain(t *testing.T) {
 		},
 		// Tasks assigned to the nodes defined above
 		{
-			ID: "id1",
+			ID:           "id1",
+			DesiredState: api.TaskStateRunning,
+			Spec:         initialService.Spec.Task,
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
@@ -124,7 +128,9 @@ func TestDrain(t *testing.T) {
 			NodeID:    "id1",
 		},
 		{
-			ID: "id2",
+			ID:           "id2",
+			DesiredState: api.TaskStateRunning,
+			Spec:         initialService.Spec.Task,
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
@@ -136,7 +142,9 @@ func TestDrain(t *testing.T) {
 			NodeID:    "id2",
 		},
 		{
-			ID: "id3",
+			ID:           "id3",
+			DesiredState: api.TaskStateRunning,
+			Spec:         initialService.Spec.Task,
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
@@ -148,7 +156,9 @@ func TestDrain(t *testing.T) {
 			NodeID:    "id3",
 		},
 		{
-			ID: "id4",
+			ID:           "id4",
+			DesiredState: api.TaskStateRunning,
+			Spec:         initialService.Spec.Task,
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
@@ -160,7 +170,9 @@ func TestDrain(t *testing.T) {
 			NodeID:    "id4",
 		},
 		{
-			ID: "id5",
+			ID:           "id5",
+			DesiredState: api.TaskStateRunning,
+			Spec:         initialService.Spec.Task,
 			Status: api.TaskStatus{
 				State: api.TaskStateNew,
 			},
