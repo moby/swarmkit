@@ -96,7 +96,7 @@ type Node struct {
 	wait                *wait
 	wal                 *wal.WAL
 	snapshotter         *snap.Snapshotter
-	restored            bool
+	campaignWhenAble    bool
 	signalledLeadership uint32
 	isMember            uint32
 	joinAddr            string
@@ -289,12 +289,7 @@ func (n *Node) JoinAndStart() (err error) {
 				return err
 			}
 			n.Node = raft.StartNode(n.Config, []raft.Peer{peer})
-			if err := n.Campaign(n.Ctx); err != nil {
-				if walErr := n.wal.Close(); err != nil {
-					n.Config.Logger.Errorf("raft: error closing WAL: %v", walErr)
-				}
-				return err
-			}
+			n.campaignWhenAble = true
 		}
 		atomic.StoreUint32(&n.isMember, 1)
 		return nil
@@ -303,6 +298,7 @@ func (n *Node) JoinAndStart() (err error) {
 	if n.joinAddr != "" {
 		n.Config.Logger.Warning("ignoring request to join cluster, because raft state already exists")
 	}
+	n.campaignWhenAble = true
 	n.Node = raft.RestartNode(n.Config)
 	atomic.StoreUint32(&n.isMember, 1)
 	return nil
@@ -458,17 +454,19 @@ func (n *Node) Run(ctx context.Context) error {
 			// Advance the state machine
 			n.Advance()
 
-			// If we are the only registered member after
-			// restoring from the state, campaign to be the
-			// leader.
-			if !n.restored {
-				// Node ID should be in the progress list to Campaign
-				if len(n.cluster.Members()) <= 1 {
+			// On the first startup, or if we are the only
+			// registered member after restoring from the state,
+			// campaign to be the leader.
+			if n.campaignWhenAble {
+				members := n.cluster.Members()
+				if len(members) >= 1 {
+					n.campaignWhenAble = false
+				}
+				if len(members) == 1 && members[n.Config.ID] != nil {
 					if err := n.Campaign(n.Ctx); err != nil {
 						panic("raft: cannot campaign to be the leader on node restore")
 					}
 				}
-				n.restored = true
 			}
 
 		case snapshotIndex := <-n.snapshotInProgress:
@@ -947,6 +945,7 @@ func (n *Node) registerNode(node *api.RaftMember) error {
 		}
 		return err
 	}
+
 	return nil
 }
 
