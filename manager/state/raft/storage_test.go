@@ -147,7 +147,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Take down node 3
 	nodes[3].Server.Stop()
-	nodes[3].Shutdown()
+	nodes[3].ShutdownRaft()
 
 	// Propose a 4th value before the snapshot
 	values[3], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[3])
@@ -236,7 +236,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Restart node 3 again. It should load the snapshot.
 	nodes[3].Server.Stop()
-	nodes[3].Shutdown()
+	nodes[3].ShutdownRaft()
 	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
@@ -339,7 +339,7 @@ func TestGCWAL(t *testing.T) {
 	// Restart the whole cluster
 	for _, node := range nodes {
 		node.Server.Stop()
-		node.Shutdown()
+		node.ShutdownRaft()
 	}
 
 	raftutils.AdvanceTicks(clockSource, 5)
@@ -449,7 +449,7 @@ func TestMigrateWAL(t *testing.T) {
 	raftutils.CheckValuesOnNodes(t, clockSource, nodes, []string{"id1"}, []*api.Node{value})
 
 	nodes[1].Server.Stop()
-	nodes[1].Shutdown()
+	nodes[1].ShutdownRaft()
 
 	// Move WAL directory so it looks like it was created by an old version
 	require.NoError(t, os.Rename(filepath.Join(nodes[1].StateDir, "wal-v3"), filepath.Join(nodes[1].StateDir, "wal")))
