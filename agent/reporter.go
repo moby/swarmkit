@@ -3,11 +3,14 @@ package agent
 import (
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"golang.org/x/net/context"
 )
+
+const updateDelay = 4 * time.Second
 
 // StatusReporter receives updates to task status. Method may be called
 // concurrently, so implementations should be goroutine-safe.
@@ -92,9 +95,25 @@ func (sr *statusReporter) run(ctx context.Context) {
 	}()
 
 	for {
-		if len(sr.statuses) == 0 {
-			sr.cond.Wait()
+		exitCh := make(chan struct{})
+
+		if len(sr.statuses) != 0 {
+			// if it's retry, then wait some time if there is no new updates reported
+			// it helps to keep retry loop less tight on update failures
+			go func() {
+				after := time.NewTimer(updateDelay)
+				defer after.Stop()
+				select {
+				case <-after.C:
+					sr.cond.Signal()
+				case <-exitCh:
+				}
+			}()
 		}
+
+		sr.cond.Wait()
+		// exit timer goroutine if there was one
+		close(exitCh)
 
 		if sr.closed {
 			// TODO(stevvooe): Add support here for waiting until all
@@ -123,6 +142,9 @@ func (sr *statusReporter) run(ctx context.Context) {
 				if _, ok := sr.statuses[taskID]; !ok {
 					sr.statuses[taskID] = status
 				}
+				// if task update failed - it's better to give some time to agent
+				// to recover from possible error before try to update other tasks
+				break
 			}
 		}
 	}
