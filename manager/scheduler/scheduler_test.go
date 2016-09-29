@@ -674,6 +674,9 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 	}()
 	defer scheduler.Stop()
 
+	failure := watchAssignmentFailure(t, watch)
+	assert.Equal(t, "no suitable node", failure.Status.Message)
+
 	err = s.Update(func(tx store.Tx) error {
 		// Create a ready node. The task should get assigned to this
 		// node.
@@ -718,6 +721,42 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 		},
 	}
 
+	// Non-ready nodes that satisfy the constraints but shouldn't be used
+	nonready1 := &api.Node{
+		ID: "nonready1",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "nonready1",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_UNKNOWN,
+		},
+		Description: &api.NodeDescription{
+			Resources: &api.Resources{
+				NanoCPUs:    2e9,
+				MemoryBytes: 2e9,
+			},
+		},
+	}
+	nonready2 := &api.Node{
+		ID: "nonready2",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "nonready2",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_UNKNOWN,
+		},
+		Description: &api.NodeDescription{
+			Resources: &api.Resources{
+				NanoCPUs:    2e9,
+				MemoryBytes: 2e9,
+			},
+		},
+	}
+
 	initialTask := &api.Task{
 		ID:           "id1",
 		DesiredState: api.TaskStateRunning,
@@ -747,6 +786,8 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 		// Add initial node and task
 		assert.NoError(t, store.CreateTask(tx, initialTask))
 		assert.NoError(t, store.CreateNode(tx, underprovisionedNode))
+		assert.NoError(t, store.CreateNode(tx, nonready1))
+		assert.NoError(t, store.CreateNode(tx, nonready2))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -760,6 +801,9 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 		assert.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
+
+	failure := watchAssignmentFailure(t, watch)
+	assert.Equal(t, "no suitable node (2 nodes not available for new tasks; insufficient resources on 1 node)", failure.Status.Message)
 
 	err = s.Update(func(tx store.Tx) error {
 		// Create a node with enough memory. The task should get
@@ -1208,12 +1252,29 @@ func TestPreassignedTasks(t *testing.T) {
 	assert.Equal(t, assignment3.NodeID, "node2")
 }
 
+func watchAssignmentFailure(t *testing.T, watch chan events.Event) *api.Task {
+	for {
+		select {
+		case event := <-watch:
+			if task, ok := event.(state.EventUpdateTask); ok {
+				if task.Task.Status.State < api.TaskStateAssigned {
+					return task.Task
+				}
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("no task assignment failure")
+		}
+	}
+}
+
 func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
 		case event := <-watch:
 			if task, ok := event.(state.EventUpdateTask); ok {
-				if task.Task.Status.State <= api.TaskStateRunning && task.Task.NodeID != "" {
+				if task.Task.Status.State >= api.TaskStateAssigned &&
+					task.Task.Status.State <= api.TaskStateRunning &&
+					task.Task.NodeID != "" {
 					return task.Task
 				}
 			}
