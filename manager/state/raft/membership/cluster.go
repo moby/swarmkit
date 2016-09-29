@@ -2,7 +2,9 @@ package membership
 
 import (
 	"errors"
+	"fmt"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 
@@ -44,9 +46,10 @@ type Member struct {
 	*api.RaftMember
 
 	api.RaftClient
-	Conn   *grpc.ClientConn
-	tick   int
-	active bool
+	Conn       *grpc.ClientConn
+	tick       int
+	active     bool
+	lastActive time.Time
 }
 
 // NewCluster creates a new Cluster neighbors list for a raft Member.
@@ -131,6 +134,7 @@ func (c *Cluster) AddMember(member *Member) error {
 	}
 	member.active = true
 	member.tick = 0
+	member.lastActive = time.Now()
 
 	c.members[member.RaftID] = member
 
@@ -225,6 +229,9 @@ func (c *Cluster) ReportActive(id uint64) {
 	if !ok {
 		return
 	}
+	if !m.active {
+		m.lastActive = time.Now()
+	}
 	m.tick = 0
 	m.active = true
 }
@@ -301,4 +308,26 @@ func (c *Cluster) CanRemoveMember(from uint64, id uint64) bool {
 	}
 
 	return true
+}
+
+// LongestActive returns member id which was active longer than all other.
+func (c *Cluster) LongestActive() (uint64, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	var longest uint64
+	var oldest time.Time
+	for id, m := range c.members {
+		// do not return inactive and self
+		if !m.active || m.Conn == nil {
+			continue
+		}
+		if oldest.IsZero() || m.lastActive.Before(oldest) {
+			longest = id
+			oldest = m.lastActive
+		}
+	}
+	if longest == 0 {
+		return 0, fmt.Errorf("there is no active members")
+	}
+	return longest, nil
 }

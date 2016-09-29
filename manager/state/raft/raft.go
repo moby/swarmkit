@@ -74,6 +74,8 @@ const (
 	IsFollower
 )
 
+const transferLeadershipTimeout = 5 * time.Second
+
 // Node represents the Raft Node useful
 // configuration.
 type Node struct {
@@ -512,6 +514,15 @@ func (n *Node) stop() {
 	n.stopMu.Lock()
 	defer n.stopMu.Unlock()
 
+	if n.isLeader() && len(n.cluster.Members()) > 1 {
+		ctx, cancel := context.WithTimeout(context.Background(), transferLeadershipTimeout)
+		err := n.transferLeadership(ctx)
+		cancel()
+		if err != nil {
+			logrus.WithError(err).Error("transfer leadership")
+		}
+	}
+
 	n.cancel()
 	n.waitProp.Wait()
 	n.asyncTasks.Wait()
@@ -763,6 +774,28 @@ func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResp
 // the context of the current node.
 func (n *Node) CanRemoveMember(id uint64) bool {
 	return n.cluster.CanRemoveMember(n.Config.ID, id)
+}
+
+func (n *Node) transferLeadership(ctx context.Context) error {
+	transferee, err := n.cluster.LongestActive()
+	if err != nil {
+		return errors.Wrap(err, "get longest active member")
+	}
+	start := time.Now()
+	logrus.Infof("raft: transfer leadership %x -> %x", n.Config.ID, transferee)
+	n.TransferLeadership(ctx, n.Config.ID, transferee)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for n.leader() != transferee {
+		select {
+		case <-ctx.Done():
+			return errors.Wrap(err, "wait for leadership change")
+		case <-ticker.C:
+			continue
+		}
+	}
+	logrus.Infof("raft: transfer leadership %x -> %x finished in %v", n.Config.ID, transferee, time.Since(start))
+	return nil
 }
 
 // RemoveMember submits a configuration change to remove a member from the raft cluster
@@ -1392,34 +1425,38 @@ func (n *Node) applyAddNode(cc raftpb.ConfChange) error {
 // from a member in the raft cluster, this removes a node
 // from the existing raft cluster
 func (n *Node) applyRemoveNode(cc raftpb.ConfChange) (err error) {
-	// If the node from where the remove is issued is
-	// a follower and the leader steps down, Campaign
-	// to be the leader.
-
-	if cc.NodeID == n.leader() && !n.isLeader() {
-		if err = n.Campaign(n.Ctx); err != nil {
-			return err
-		}
-	}
-
 	if cc.NodeID == n.Config.ID {
 		n.removeRaftFunc()
 
 		// wait the commit ack to be sent before closing connection
 		n.asyncTasks.Wait()
-
-		// if there are only 2 nodes in the cluster, and leader is leaving
-		// before closing the connection, leader has to ensure that follower gets
-		// noticed about this raft conf change commit. Otherwise, follower would
-		// assume there are still 2 nodes in the cluster and won't get elected
-		// into the leader by acquiring the majority (2 nodes)
-
-		// while n.asyncTasks.Wait() could be helpful in this case
-		// it's the best-effort strategy, because this send could be fail due to some errors (such as time limit exceeds)
-		// TODO(Runshen Zhu): use leadership transfer to solve this case, after vendoring raft 3.0+
 	}
-
-	return n.cluster.RemoveMember(cc.NodeID)
+	go func() {
+		l, err := n.Leader()
+		// if we're removing a leader - wait for leader change
+		if err == nil && l == cc.NodeID {
+			ticker := time.NewTicker(transferLeadershipTimeout)
+			ctx, cancel := context.WithTimeout(n.Ctx, transferLeadershipTimeout)
+			defer cancel()
+		loop:
+			for {
+				l, err := n.Leader()
+				if err == nil && l != cc.NodeID {
+					break
+				}
+				select {
+				case <-ticker.C:
+				case <-ctx.Done():
+					logrus.Warnf("leadership transfer not finished in time, closing connection to old leader %x", cc.NodeID)
+					break loop
+				}
+			}
+		}
+		if err := n.cluster.RemoveMember(cc.NodeID); err != nil {
+			logrus.WithError(err).Warnf("failed to remove cluster member %x", cc.NodeID)
+		}
+	}()
+	return nil
 }
 
 // ConnectToMember returns a member object with an initialized
