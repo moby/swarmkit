@@ -37,11 +37,11 @@ func (s *secrets) AddSecret(secrets ...*api.Secret) {
 
 // RemoveSecret removes one or more secrets by ID from the secret map.  Succeeds
 // whether or not the given IDs are in the map.
-func (s *secrets) RemoveSecret(secretIDs ...string) {
+func (s *secrets) RemoveSecret(secrets []*api.Secret) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for _, secretID := range secretIDs {
-		delete(s.m, secretID)
+	for _, secret := range secrets {
+		delete(s.m, secret.ID)
 	}
 }
 

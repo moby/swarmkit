@@ -372,9 +372,9 @@ func TestAssignments(t *testing.T) {
 				Container: &api.ContainerSpec{
 					Secrets: []*api.SecretReference{
 						{
-							Name:     secret1.Spec.Annotations.Name,
-							SecretID: secret1.ID,
-							Mode:     api.SecretReference_FILE,
+							SecretName: secret1.Spec.Annotations.Name,
+							SecretID:   secret1.ID,
+							Mode:       api.SecretReference_FILE,
 						},
 					},
 				},
@@ -408,7 +408,7 @@ func TestAssignments(t *testing.T) {
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
 	// initially no tasks
-	assert.Equal(t, 0, len(resp.UpdateTasks))
+	assert.Equal(t, 0, len(resp.Changes))
 
 	// Create the secret
 	err = gd.Store.Update(func(tx store.Tx) error {
@@ -435,14 +435,18 @@ func TestAssignments(t *testing.T) {
 
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, len(resp.UpdateTasks), 2)
-	assert.True(t, resp.UpdateTasks[0].ID == "testTask1" && resp.UpdateTasks[1].ID == "testTask2" || resp.UpdateTasks[0].ID == "testTask2" && resp.UpdateTasks[1].ID == "testTask1")
-	assert.Len(t, resp.RemoveTasks, 0)
-	assert.Len(t, resp.UpdateSecrets, 1)
-	secret := resp.UpdateSecrets[0]
-	assert.True(t, secret.ID == "IDsecret1" && secret.Digest == "abc" && secret.Spec.Annotations.Name == "secret1")
-	assert.Len(t, resp.RemoveSecrets, 0)
+	assert.Equal(t, len(resp.Changes), 3)
 
+	tasks, secrets := collectTasksAndSecrets(resp.Changes)
+	// Assert that we got exactly 2 task changes and 1 secret change
+	assert.Len(t, tasks, 2)
+	assert.Len(t, secrets, 1)
+
+	// Verify if the contents of the tasks and secret are correct
+	assert.True(t, tasks[0].ID == "testTask1" && tasks[1].ID == "testTask2" || tasks[0].ID == "testTask2" && tasks[1].ID == "testTask1")
+	assert.True(t, secrets[0].ID == "IDsecret1" && secrets[0].Digest == "abc" && secrets[0].Spec.Annotations.Name == "secret1")
+
+	// Verify if tasks are in their correct state
 	testTask1.DesiredState = api.TaskStateRunning
 	err = gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, testTask1))
@@ -452,14 +456,12 @@ func TestAssignments(t *testing.T) {
 
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(resp.UpdateTasks))
-	for _, task := range resp.UpdateTasks {
-		if task.ID == "testTask1" {
-			assert.Equal(t, task.DesiredState, api.TaskStateRunning)
-		}
-	}
-	assert.Equal(t, 0, len(resp.UpdateSecrets))
-	assert.Equal(t, 0, len(resp.RemoveSecrets))
+	// Only one change should come down, a task change
+	assert.Equal(t, 1, len(resp.Changes))
+	task := resp.Changes[0].Assignment.GetTask()
+	assert.NotNil(t, task)
+	assert.Equal(t, "testTask1", task.ID)
+	assert.Equal(t, task.DesiredState, api.TaskStateRunning)
 
 	err = gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.DeleteTask(tx, testTask1.ID))
@@ -470,9 +472,15 @@ func TestAssignments(t *testing.T) {
 
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, len(resp.UpdateTasks), 0)
-	assert.Equal(t, 0, len(resp.UpdateSecrets))
-	assert.Equal(t, 1, len(resp.RemoveSecrets))
+	tasks, secrets = collectTasksAndSecrets(resp.Changes)
+	assert.Len(t, resp.Changes, 3)
+	// Assert that we got exactly 2 task changes and 1 secret change
+	assert.Len(t, tasks, 2)
+	assert.Len(t, secrets, 1)
+	// Verify if these are all removal Changes
+	for _, change := range resp.Changes {
+		assert.Equal(t, api.AssignmentChange_AssignmentActionRemove, change.Action)
+	}
 }
 
 func TestTasksStatusChange(t *testing.T) {
@@ -527,7 +535,7 @@ func TestTasksStatusChange(t *testing.T) {
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
 	// initially no tasks
-	assert.Equal(t, 0, len(resp.UpdateTasks))
+	assert.Equal(t, 0, len(resp.Changes))
 
 	// Creating the tasks will not create an event for assignments
 	err = gd.Store.Update(func(tx store.Tx) error {
@@ -545,8 +553,11 @@ func TestTasksStatusChange(t *testing.T) {
 
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, len(resp.UpdateTasks), 2)
-	assert.True(t, resp.UpdateTasks[0].ID == "testTask1" && resp.UpdateTasks[1].ID == "testTask2" || resp.UpdateTasks[0].ID == "testTask2" && resp.UpdateTasks[1].ID == "testTask1")
+	assert.Equal(t, len(resp.Changes), 2)
+	tasks, secrets := collectTasksAndSecrets(resp.Changes)
+	assert.Len(t, tasks, 2)
+	assert.Len(t, secrets, 0)
+	assert.True(t, tasks[0].ID == "testTask1" && tasks[1].ID == "testTask2" || tasks[0].ID == "testTask2" && tasks[1].ID == "testTask1")
 
 	err = gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, &api.Task{
@@ -609,7 +620,7 @@ func TestTasksBatch(t *testing.T) {
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
 	// initially no tasks
-	assert.Equal(t, 0, len(resp.UpdateTasks))
+	assert.Equal(t, 0, len(resp.Changes))
 
 	// Create, Update and Delete tasks.
 	err = gd.Store.Update(func(tx store.Tx) error {
@@ -635,8 +646,12 @@ func TestTasksBatch(t *testing.T) {
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
 	// all tasks have been deleted
-	assert.Equal(t, len(resp.UpdateTasks), 0)
-	assert.Equal(t, len(resp.RemoveTasks), 2)
+
+	tasks, secrets := collectTasksAndSecrets(resp.Changes)
+	assert.Len(t, tasks, 2)
+	assert.Len(t, secrets, 0)
+	assert.Equal(t, api.AssignmentChange_AssignmentActionRemove, resp.Changes[0].Action)
+	assert.Equal(t, api.AssignmentChange_AssignmentActionRemove, resp.Changes[1].Action)
 }
 
 func TestTasksNoCert(t *testing.T) {
@@ -858,4 +873,21 @@ func TestNodesCount(t *testing.T) {
 	assert.Equal(t, 6, gd.dispatcherServer.NodeCount())
 	time.Sleep(700 * time.Millisecond)
 	assert.Equal(t, 0, gd.dispatcherServer.NodeCount())
+}
+
+func collectTasksAndSecrets(changes []*api.AssignmentChange) ([]*api.Task, []*api.Secret) {
+	var tasks []*api.Task
+	var secrets []*api.Secret
+	for _, change := range changes {
+		task := change.Assignment.GetTask()
+		if task != nil {
+			tasks = append(tasks, task)
+		}
+		secret := change.Assignment.GetSecret()
+		if secret != nil {
+			secrets = append(secrets, secret)
+		}
+	}
+
+	return tasks, secrets
 }
