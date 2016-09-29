@@ -256,9 +256,9 @@ func TestCanRemoveMember(t *testing.T) {
 
 	// Stop node 2 and node 3 (2 nodes out of 3)
 	nodes[2].Server.Stop()
-	nodes[2].Shutdown()
+	nodes[2].ShutdownRaft()
 	nodes[3].Server.Stop()
-	nodes[3].Shutdown()
+	nodes[3].ShutdownRaft()
 
 	// Node 2 and Node 3 should be listed as Unreachable
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
@@ -307,7 +307,7 @@ func TestCanRemoveMember(t *testing.T) {
 
 	// Stop Node 3 (1 node out of 3)
 	nodes[3].Server.Stop()
-	nodes[3].Shutdown()
+	nodes[3].ShutdownRaft()
 
 	// Node 3 should be listed as Unreachable
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {

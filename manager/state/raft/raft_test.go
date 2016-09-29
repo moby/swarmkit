@@ -82,7 +82,7 @@ func TestRaftLeaderDown(t *testing.T) {
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop node 1
-	nodes[1].Shutdown()
+	nodes[1].ShutdownRaft()
 
 	newCluster := map[uint64]*raftutils.TestNode{
 		2: nodes[2],
@@ -135,7 +135,7 @@ func TestRaftFollowerDown(t *testing.T) {
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop node 3
-	nodes[3].Shutdown()
+	nodes[3].ShutdownRaft()
 
 	// Leader should still be 1
 	assert.True(t, nodes[1].IsLeader(), "node 1 is not a leader anymore")
@@ -175,7 +175,7 @@ func TestRaftLogReplicationWithoutLeader(t *testing.T) {
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop the leader
-	nodes[1].Shutdown()
+	nodes[1].ShutdownRaft()
 
 	// Propose a value
 	_, err := raftutils.ProposeValue(t, nodes[2], DefaultProposalTime)
@@ -198,7 +198,7 @@ func TestRaftQuorumFailure(t *testing.T) {
 	// Lose a majority
 	for i := uint64(3); i <= 5; i++ {
 		nodes[i].Server.Stop()
-		nodes[i].Shutdown()
+		nodes[i].ShutdownRaft()
 	}
 
 	// Propose a value
@@ -222,7 +222,7 @@ func TestRaftQuorumRecovery(t *testing.T) {
 	// Lose a majority
 	for i := uint64(1); i <= 3; i++ {
 		nodes[i].Server.Stop()
-		nodes[i].Shutdown()
+		nodes[i].ShutdownRaft()
 	}
 
 	raftutils.AdvanceTicks(clockSource, 5)
@@ -399,7 +399,7 @@ func TestRaftRejoin(t *testing.T) {
 
 	// Stop node 3
 	nodes[3].Server.Stop()
-	nodes[3].Shutdown()
+	nodes[3].ShutdownRaft()
 
 	// Propose another value
 	values[1], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, ids[1])
@@ -429,7 +429,7 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 	// Stop all nodes
 	for _, node := range nodes {
 		node.Server.Stop()
-		node.Shutdown()
+		node.ShutdownRaft()
 	}
 
 	raftutils.AdvanceTicks(clockSource, 5)
@@ -512,7 +512,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 	// Stop all nodes
 	for _, node := range nodes {
 		node.Server.Stop()
-		node.Shutdown()
+		node.ShutdownRaft()
 	}
 
 	raftutils.AdvanceTicks(clockSource, 5)
@@ -589,11 +589,12 @@ func TestRaftUnreachableNode(t *testing.T) {
 	var clockSource *fakeclock.FakeClock
 	nodes[1], clockSource = raftutils.NewInitNode(t, tc, nil)
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	// Add a new node
 	nodes[2] = raftutils.NewNode(t, clockSource, tc, raft.NodeOptions{JoinAddr: nodes[1].Address})
 
-	err := nodes[2].JoinAndStart()
+	err := nodes[2].JoinAndStart(ctx)
 	require.NoError(t, err, "can't join cluster")
 
 	go nodes[2].Run(ctx)
@@ -642,7 +643,7 @@ func TestRaftJoinWithIncorrectAddress(t *testing.T) {
 	n := raftutils.NewNode(t, clockSource, tc, raft.NodeOptions{JoinAddr: nodes[1].Address, Addr: "1.2.3.4:1234"})
 	defer raftutils.CleanupNonRunningNode(n)
 
-	err := n.JoinAndStart()
+	err := n.JoinAndStart(context.Background())
 	assert.NotNil(t, err)
 	assert.Contains(t, grpc.ErrorDesc(err), "could not connect to prospective new cluster member using its advertised address")
 
@@ -706,7 +707,7 @@ func TestStress(t *testing.T) {
 			if _, ok := idleNodes[s]; !ok {
 				id := uint64(s)
 				nodes[id].Server.Stop()
-				nodes[id].Shutdown()
+				nodes[id].ShutdownRaft()
 				idleNodes[s] = struct{}{}
 				nup -= 1
 				if s == leader {
