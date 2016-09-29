@@ -317,6 +317,7 @@ func DefaultNodeConfig() *raft.Config {
 		MaxSizePerMsg:   math.MaxUint16,
 		MaxInflightMsgs: 256,
 		Logger:          log.L,
+		CheckQuorum:     true,
 	}
 }
 
