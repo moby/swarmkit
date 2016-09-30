@@ -4,15 +4,11 @@
 
 // +build go1.5
 
-package cancellable
+package ctxhttp
 
-import (
-	"net/http"
+import "net/http"
 
-	"github.com/docker/docker/client/transport"
-)
-
-func canceler(client transport.Sender, req *http.Request) func() {
+func canceler(client *http.Client, req *http.Request) func() {
 	// TODO(djd): Respect any existing value of req.Cancel.
 	ch := make(chan struct{})
 	req.Cancel = ch
