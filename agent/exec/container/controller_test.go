@@ -2,9 +2,7 @@ package container
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"runtime"
 	"testing"
@@ -115,6 +113,7 @@ func TestControllerWait(t *testing.T) {
 	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
 	defer finish(t)
 
+	evs, errs := makeEvents(t, config, "create", "die")
 	gomock.InOrder(
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
@@ -127,7 +126,7 @@ func TestControllerWait(t *testing.T) {
 		client.EXPECT().Events(gomock.Any(), types.EventsOptions{
 			Since:   "0",
 			Filters: config.eventFilter(),
-		}).Return(makeEvents(t, config, "create", "die"), nil),
+		}).Return(evs, errs),
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
 				ContainerJSONBase: &types.ContainerJSONBase{
@@ -145,7 +144,7 @@ func TestControllerWaitUnhealthy(t *testing.T) {
 	task := genTask(t)
 	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
 	defer finish(t)
-
+	evs, errs := makeEvents(t, config, "create", "health_status: unhealthy")
 	gomock.InOrder(
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
@@ -158,7 +157,7 @@ func TestControllerWaitUnhealthy(t *testing.T) {
 		client.EXPECT().Events(gomock.Any(), types.EventsOptions{
 			Since:   "0",
 			Filters: config.eventFilter(),
-		}).Return(makeEvents(t, config, "create", "health_status: unhealthy"), nil),
+		}).Return(evs, errs),
 		client.EXPECT().ContainerStop(gomock.Any(), config.name(), &tenSecond),
 	)
 
@@ -169,7 +168,7 @@ func TestControllerWaitExitError(t *testing.T) {
 	task := genTask(t)
 	ctx, client, ctlr, config, finish := genTestControllerEnv(t, task)
 	defer finish(t)
-
+	evs, errs := makeEvents(t, config, "create", "die")
 	gomock.InOrder(
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
@@ -182,7 +181,7 @@ func TestControllerWaitExitError(t *testing.T) {
 		client.EXPECT().Events(gomock.Any(), types.EventsOptions{
 			Since:   "0",
 			Filters: config.eventFilter(),
-		}).Return(makeEvents(t, config, "create", "die"), nil),
+		}).Return(evs, errs),
 		client.EXPECT().ContainerInspect(gomock.Any(), config.name()).
 			Return(types.ContainerJSON{
 				ContainerJSONBase: &types.ContainerJSONBase{
@@ -338,12 +337,10 @@ func genTask(t *testing.T) *api.Task {
 	}
 }
 
-func makeEvents(t *testing.T, container *containerConfig, actions ...string) io.ReadCloser {
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-
+func makeEvents(t *testing.T, container *containerConfig, actions ...string) (<-chan events.Message, <-chan error) {
+	evs := make(chan events.Message, len(actions))
 	for _, action := range actions {
-		event := events.Message{
+		evs <- events.Message{
 			Type:   events.ContainerEventType,
 			Action: action,
 			Actor: events.Actor{
@@ -353,11 +350,8 @@ func makeEvents(t *testing.T, container *containerConfig, actions ...string) io.
 				},
 			},
 		}
-
-		if err := enc.Encode(event); err != nil {
-			t.Fatalf("error preparing events: %v (encoding %v)", err, event)
-		}
 	}
+	close(evs)
 
-	return ioutil.NopCloser(&buf)
+	return evs, nil
 }

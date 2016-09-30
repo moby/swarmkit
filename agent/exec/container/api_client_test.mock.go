@@ -6,6 +6,7 @@ package container
 import (
 	types "github.com/docker/docker/api/types"
 	container "github.com/docker/docker/api/types/container"
+	events "github.com/docker/docker/api/types/events"
 	filters "github.com/docker/docker/api/types/filters"
 	network "github.com/docker/docker/api/types/network"
 	registry "github.com/docker/docker/api/types/registry"
@@ -281,9 +282,9 @@ func (_mr *_MockAPIClientRecorder) ContainerStatPath(arg0, arg1, arg2 interface{
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerStatPath", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ContainerStats(_param0 context.Context, _param1 string, _param2 bool) (io.ReadCloser, error) {
+func (_m *MockAPIClient) ContainerStats(_param0 context.Context, _param1 string, _param2 bool) (types.ContainerStats, error) {
 	ret := _m.ctrl.Call(_m, "ContainerStats", _param0, _param1, _param2)
-	ret0, _ := ret[0].(io.ReadCloser)
+	ret0, _ := ret[0].(types.ContainerStats)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -367,10 +368,10 @@ func (_mr *_MockAPIClientRecorder) CopyToContainer(arg0, arg1, arg2, arg3, arg4 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "CopyToContainer", arg0, arg1, arg2, arg3, arg4)
 }
 
-func (_m *MockAPIClient) Events(_param0 context.Context, _param1 types.EventsOptions) (io.ReadCloser, error) {
+func (_m *MockAPIClient) Events(_param0 context.Context, _param1 types.EventsOptions) (<-chan events.Message, <-chan error) {
 	ret := _m.ctrl.Call(_m, "Events", _param0, _param1)
-	ret0, _ := ret[0].(io.ReadCloser)
-	ret1, _ := ret[1].(error)
+	ret0, _ := ret[0].(<-chan events.Message)
+	ret1, _ := ret[1].(<-chan error)
 	return ret0, ret1
 }
 
