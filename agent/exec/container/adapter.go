@@ -177,49 +177,31 @@ func (c *containerAdapter) events(ctx context.Context) (<-chan events.Message, <
 	log.G(ctx).Debugf("waiting on events")
 	// TODO(stevvooe): For long running tasks, it is likely that we will have
 	// to restart this under failure.
-	rc, err := c.client.Events(ctx, types.EventsOptions{
+	eventCh, errCh := c.client.Events(ctx, types.EventsOptions{
 		Since:   "0",
 		Filters: c.container.eventFilter(),
 	})
-	if err != nil {
-		return nil, nil, err
-	}
 
-	go func(rc io.ReadCloser) {
-		defer rc.Close()
+	go func() {
 		defer close(closed)
 
-		select {
-		case <-ctx.Done():
-			// exit
-			return
-		default:
-		}
-
-		dec := json.NewDecoder(rc)
-
 		for {
-			var event events.Message
-			if err := dec.Decode(&event); err != nil {
-				// TODO(stevvooe): This error handling isn't quite right. We
-				// can refactor this to use
-				// https://github.com/docker/docker/pull/25853 and this will a
-				// lot more simplified.
-				if err == io.EOF || strings.Contains(err.Error(), "request canceled") {
+			select {
+			case msg := <-eventCh:
+				select {
+				case eventsq <- msg:
+				case <-ctx.Done():
 					return
 				}
-
-				log.G(ctx).WithError(err).Errorf("error decoding event")
+			case err := <-errCh:
+				log.G(ctx).WithError(err).Error("error from events stream")
 				return
-			}
-
-			select {
-			case eventsq <- event:
 			case <-ctx.Done():
+				// exit
 				return
 			}
 		}
-	}(rc)
+	}()
 
 	return eventsq, closed, nil
 }
