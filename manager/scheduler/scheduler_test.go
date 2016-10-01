@@ -790,6 +790,139 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 	assert.Equal(t, "bignode", assignment.NodeID)
 }
 
+func TestSchedulerResourceConstraintHA(t *testing.T) {
+	// node 1 starts with 1 task, node 2 starts with 3 tasks.
+	// however, node 1 only has enough memory to schedule one more task.
+
+	ctx := context.Background()
+	node1 := &api.Node{
+		ID: "id1",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "id1",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+		Description: &api.NodeDescription{
+			Resources: &api.Resources{
+				MemoryBytes: 1e9,
+			},
+		},
+	}
+	node2 := &api.Node{
+		ID: "id2",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "id2",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+		Description: &api.NodeDescription{
+			Resources: &api.Resources{
+				MemoryBytes: 1e11,
+			},
+		},
+	}
+
+	taskTemplate := &api.Task{
+		DesiredState: api.TaskStateRunning,
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{},
+			},
+			Resources: &api.ResourceRequirements{
+				Reservations: &api.Resources{
+					MemoryBytes: 5e8,
+				},
+			},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "name1",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStateAllocated,
+		},
+	}
+
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	err := s.Update(func(tx store.Tx) error {
+		// Add initial node and task
+		assert.NoError(t, store.CreateNode(tx, node1))
+		assert.NoError(t, store.CreateNode(tx, node2))
+
+		// preassigned tasks
+		task1 := taskTemplate.Copy()
+		task1.ID = "id1"
+		task1.NodeID = "id1"
+		task1.Status.State = api.TaskStateRunning
+		assert.NoError(t, store.CreateTask(tx, task1))
+
+		task2 := taskTemplate.Copy()
+		task2.ID = "id2"
+		task2.NodeID = "id2"
+		task2.Status.State = api.TaskStateRunning
+		assert.NoError(t, store.CreateTask(tx, task2))
+
+		task3 := taskTemplate.Copy()
+		task3.ID = "id3"
+		task3.NodeID = "id2"
+		task3.Status.State = api.TaskStateRunning
+		assert.NoError(t, store.CreateTask(tx, task3))
+
+		task4 := taskTemplate.Copy()
+		task4.ID = "id4"
+		task4.NodeID = "id2"
+		task4.Status.State = api.TaskStateRunning
+		assert.NoError(t, store.CreateTask(tx, task4))
+
+		// tasks to assign
+		task5 := taskTemplate.Copy()
+		task5.ID = "id5"
+		assert.NoError(t, store.CreateTask(tx, task5))
+
+		task6 := taskTemplate.Copy()
+		task6.ID = "id6"
+		assert.NoError(t, store.CreateTask(tx, task6))
+
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(s)
+
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+	defer scheduler.Stop()
+
+	assignment1 := watchAssignment(t, watch)
+	if assignment1.ID != "id5" && assignment1.ID != "id6" {
+		t.Fatal("assignment for unexpected task")
+	}
+	assignment2 := watchAssignment(t, watch)
+	if assignment1.ID == "id5" {
+		assert.Equal(t, "id6", assignment2.ID)
+	} else {
+		assert.Equal(t, "id5", assignment2.ID)
+	}
+
+	if assignment1.NodeID == "id1" {
+		assert.Equal(t, "id2", assignment2.NodeID)
+	} else {
+		assert.Equal(t, "id1", assignment2.NodeID)
+	}
+}
+
 func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	ctx := context.Background()
 	// Create a ready node without enough memory to run the task.
