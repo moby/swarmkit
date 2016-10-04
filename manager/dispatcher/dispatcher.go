@@ -146,6 +146,9 @@ func getWeightedPeers(cluster Cluster) []*api.WeightedPeer {
 	members := cluster.GetMemberlist()
 	var mgrs []*api.WeightedPeer
 	for _, m := range members {
+		if m.Status.Reachability != api.RaftMemberStatus_REACHABLE {
+			continue
+		}
 		mgrs = append(mgrs, &api.WeightedPeer{
 			Peer: &api.Peer{
 				NodeID: m.NodeID,

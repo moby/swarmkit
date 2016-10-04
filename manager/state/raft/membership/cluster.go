@@ -83,17 +83,22 @@ func NewCluster(heartbeatTicks int) *Cluster {
 func (c *Cluster) Tick() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	var needBroadcast bool
 	for _, m := range c.members {
 		if !m.active {
 			continue
 		}
 		m.tick++
 		if m.tick > c.heartbeatTicks {
+			needBroadcast = true
 			m.active = false
 			if m.Conn != nil {
 				m.Conn.Close()
 			}
 		}
+	}
+	if needBroadcast {
+		c.broadcastUpdate()
 	}
 }
 
@@ -129,6 +134,9 @@ func (c *Cluster) GetMember(id uint64) *Member {
 func (c *Cluster) broadcastUpdate() {
 	peers := make([]*api.Peer, 0, len(c.members))
 	for _, m := range c.members {
+		if !m.active {
+			continue
+		}
 		peers = append(peers, &api.Peer{
 			NodeID: m.NodeID,
 			Addr:   m.Addr,
@@ -250,6 +258,7 @@ func (c *Cluster) ReportActive(id uint64, sourceHost string) {
 	if sourceHost != "" {
 		m.lastSeenHost = sourceHost
 	}
+	c.broadcastUpdate()
 }
 
 // Active returns true if node is active.
