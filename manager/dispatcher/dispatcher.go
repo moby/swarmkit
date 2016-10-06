@@ -917,11 +917,6 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 
 			for _, secretRef := range container.Secrets {
 				secretID := secretRef.SecretID
-				if tasksUsingSecret[secretID] == nil {
-					removeSecrets[secretID] = struct{}{}
-					modified = true
-					continue
-				}
 				delete(tasksUsingSecret[secretID], t.ID)
 				if len(tasksUsingSecret[secretID]) == 0 {
 					// No tasks are using the secret anymore
