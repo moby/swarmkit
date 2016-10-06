@@ -1063,3 +1063,265 @@ var taskStatesInOrder = []api.TaskState{
 	api.TaskStateFailed,
 	api.TaskStateRejected,
 }
+
+// Ensure we test the old Tasks() API for backwards compat
+
+func TestOldTasks(t *testing.T) {
+	t.Parallel()
+
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	var expectedSessionID string
+	var nodeID string
+	{
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+		assert.NoError(t, err)
+		defer stream.CloseSend()
+		resp, err := stream.Recv()
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp.SessionID)
+		expectedSessionID = resp.SessionID
+		nodeID = resp.Node.ID
+	}
+
+	testTask1 := &api.Task{
+		NodeID:       nodeID,
+		ID:           "testTask1",
+		Status:       api.TaskStatus{State: api.TaskStateAssigned},
+		DesiredState: api.TaskStateReady,
+	}
+	testTask2 := &api.Task{
+		NodeID:       nodeID,
+		ID:           "testTask2",
+		Status:       api.TaskStatus{State: api.TaskStateAssigned},
+		DesiredState: api.TaskStateReady,
+	}
+
+	{
+		// without correct SessionID should fail
+		stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{})
+		assert.NoError(t, err)
+		assert.NotNil(t, stream)
+		resp, err := stream.Recv()
+		assert.Nil(t, resp)
+		assert.Error(t, err)
+		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
+	}
+
+	stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{SessionID: expectedSessionID})
+	assert.NoError(t, err)
+
+	time.Sleep(100 * time.Millisecond)
+
+	resp, err := stream.Recv()
+	assert.NoError(t, err)
+	// initially no tasks
+	assert.Equal(t, 0, len(resp.Tasks))
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, testTask1))
+		assert.NoError(t, store.CreateTask(tx, testTask2))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+	assert.Equal(t, len(resp.Tasks), 2)
+	assert.True(t, resp.Tasks[0].ID == "testTask1" && resp.Tasks[1].ID == "testTask2" || resp.Tasks[0].ID == "testTask2" && resp.Tasks[1].ID == "testTask1")
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, &api.Task{
+			ID:           testTask1.ID,
+			NodeID:       nodeID,
+			Status:       api.TaskStatus{State: api.TaskStateAssigned},
+			DesiredState: api.TaskStateRunning,
+		}))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+	assert.Equal(t, len(resp.Tasks), 2)
+	for _, task := range resp.Tasks {
+		if task.ID == "testTask1" {
+			assert.Equal(t, task.DesiredState, api.TaskStateRunning)
+		}
+	}
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteTask(tx, testTask1.ID))
+		assert.NoError(t, store.DeleteTask(tx, testTask2.ID))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+	assert.Equal(t, len(resp.Tasks), 0)
+}
+
+func TestOldTasksStatusChange(t *testing.T) {
+	t.Parallel()
+
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	var expectedSessionID string
+	var nodeID string
+	{
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+		assert.NoError(t, err)
+		defer stream.CloseSend()
+		resp, err := stream.Recv()
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp.SessionID)
+		expectedSessionID = resp.SessionID
+		nodeID = resp.Node.ID
+	}
+
+	testTask1 := &api.Task{
+		NodeID:       nodeID,
+		ID:           "testTask1",
+		Status:       api.TaskStatus{State: api.TaskStateAssigned},
+		DesiredState: api.TaskStateReady,
+	}
+	testTask2 := &api.Task{
+		NodeID:       nodeID,
+		ID:           "testTask2",
+		Status:       api.TaskStatus{State: api.TaskStateAssigned},
+		DesiredState: api.TaskStateReady,
+	}
+
+	{
+		// without correct SessionID should fail
+		stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{})
+		assert.NoError(t, err)
+		assert.NotNil(t, stream)
+		resp, err := stream.Recv()
+		assert.Nil(t, resp)
+		assert.Error(t, err)
+		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
+	}
+
+	stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{SessionID: expectedSessionID})
+	assert.NoError(t, err)
+
+	time.Sleep(100 * time.Millisecond)
+
+	resp, err := stream.Recv()
+	assert.NoError(t, err)
+	// initially no tasks
+	assert.Equal(t, 0, len(resp.Tasks))
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, testTask1))
+		assert.NoError(t, store.CreateTask(tx, testTask2))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+	assert.Equal(t, len(resp.Tasks), 2)
+	assert.True(t, resp.Tasks[0].ID == "testTask1" && resp.Tasks[1].ID == "testTask2" || resp.Tasks[0].ID == "testTask2" && resp.Tasks[1].ID == "testTask1")
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, &api.Task{
+			ID:     testTask1.ID,
+			NodeID: nodeID,
+			// only Status is changed for task1
+			Status:       api.TaskStatus{State: api.TaskStateFailed, Err: "1234"},
+			DesiredState: api.TaskStateReady,
+		}))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// dispatcher shouldn't send snapshot for this update
+	recvChan := make(chan struct{})
+	go func() {
+		_, _ = stream.Recv()
+		recvChan <- struct{}{}
+	}()
+
+	select {
+	case <-recvChan:
+		assert.Fail(t, "task.Status update should not trigger dispatcher update")
+	case <-time.After(250 * time.Millisecond):
+	}
+}
+
+func TestOldTasksBatch(t *testing.T) {
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	var expectedSessionID string
+	var nodeID string
+	{
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+		assert.NoError(t, err)
+		defer stream.CloseSend()
+		resp, err := stream.Recv()
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp.SessionID)
+		expectedSessionID = resp.SessionID
+		nodeID = resp.Node.ID
+	}
+
+	testTask1 := &api.Task{
+		NodeID: nodeID,
+		ID:     "testTask1",
+		Status: api.TaskStatus{State: api.TaskStateAssigned},
+	}
+	testTask2 := &api.Task{
+		NodeID: nodeID,
+		ID:     "testTask2",
+		Status: api.TaskStatus{State: api.TaskStateAssigned},
+	}
+
+	stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{SessionID: expectedSessionID})
+	assert.NoError(t, err)
+
+	resp, err := stream.Recv()
+	assert.NoError(t, err)
+	// initially no tasks
+	assert.Equal(t, 0, len(resp.Tasks))
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, testTask1))
+		assert.NoError(t, store.CreateTask(tx, testTask2))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteTask(tx, testTask1.ID))
+		assert.NoError(t, store.DeleteTask(tx, testTask2.ID))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+	// all tasks have been deleted
+	assert.Equal(t, len(resp.Tasks), 0)
+}
+
+func TestOldTasksNoCert(t *testing.T) {
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	stream, err := gd.Clients[2].Tasks(context.Background(), &api.TasksRequest{})
+	assert.NoError(t, err)
+	assert.NotNil(t, stream)
+	resp, err := stream.Recv()
+	assert.Nil(t, resp)
+	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
+}
