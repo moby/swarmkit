@@ -137,20 +137,18 @@ func (w *worker) Update(ctx context.Context, assignments []*api.AssignmentChange
 
 func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.AssignmentChange, fullSnapshot bool) error {
 	var (
-		updatedTasks []*api.Task
-		removedTasks []*api.Task
+		updatedTasks []api.Task
+		removedTasks []api.Task
 	)
 	for _, a := range assignments {
-		if t, ok := a.Assignment.GetItem().(*api.Assignment_Task); ok {
+		if t := a.Assignment.GetTask(); t != nil {
 			switch a.Action {
 			case api.AssignmentChange_AssignmentActionUpdate:
-				updatedTasks = append(updatedTasks, t.Task)
+				updatedTasks = append(updatedTasks, *t)
 			case api.AssignmentChange_AssignmentActionRemove:
-				removedTasks = append(removedTasks, t.Task)
+				removedTasks = append(removedTasks, *t)
 			}
-
 		}
-
 	}
 
 	log.G(ctx).WithFields(logrus.Fields{
@@ -172,7 +170,7 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 			logrus.Fields{
 				"task.id":           task.ID,
 				"task.desiredstate": task.DesiredState}).Debug("assigned")
-		if err := PutTask(tx, task); err != nil {
+		if err := PutTask(tx, &task); err != nil {
 			return err
 		}
 
@@ -181,7 +179,7 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 		}
 
 		if mgr, ok := w.taskManagers[task.ID]; ok {
-			if err := mgr.Update(ctx, task); err != nil && err != ErrClosed {
+			if err := mgr.Update(ctx, &task); err != nil && err != ErrClosed {
 				log.G(ctx).WithError(err).Error("failed updating assigned task")
 			}
 		} else {
@@ -200,7 +198,7 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 			} else {
 				task.Status = *status
 			}
-			w.startTask(ctx, tx, task)
+			w.startTask(ctx, tx, &task)
 		}
 
 		assigned[task.ID] = struct{}{}
@@ -262,12 +260,12 @@ func reconcileSecrets(ctx context.Context, w *worker, assignments []*api.Assignm
 		removedSecrets []string
 	)
 	for _, a := range assignments {
-		if s, ok := a.Assignment.GetItem().(*api.Assignment_Secret); ok {
+		if s := a.Assignment.GetSecret(); s != nil {
 			switch a.Action {
 			case api.AssignmentChange_AssignmentActionUpdate:
-				updatedSecrets = append(updatedSecrets, *s.Secret)
+				updatedSecrets = append(updatedSecrets, *s)
 			case api.AssignmentChange_AssignmentActionRemove:
-				removedSecrets = append(removedSecrets, s.Secret.ID)
+				removedSecrets = append(removedSecrets, s.ID)
 			}
 
 		}
