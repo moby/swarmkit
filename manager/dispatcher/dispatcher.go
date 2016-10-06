@@ -957,7 +957,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 						if equality.TasksEqualStable(oldTask, v.Task) && v.Task.Status.State > api.TaskStateAssigned {
 							// this update should not trigger a task change for the agent
 							tasksMap[v.Task.ID] = v.Task
-							// If this task go updated to a final state, lets release
+							// If this task got updated to a final state, let's release
 							// the secrets that are being used by the task
 							if v.Task.Status.State > api.TaskStateRunning {
 								// If releasing the secrets caused a secret to be
@@ -968,9 +968,11 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 							}
 							continue
 						}
-					} else {
-						// If this task wasn't part of the assignment set before,
-						// add the secrets it references to the secrets assignment
+					} else if v.Task.Status.State <= api.TaskStateRunning {
+						// If this task wasn't part of the assignment set before, and it's <= RUNNING
+						// add the secrets it references to the secrets assignment.
+						// Task states > RUNNING are worker reported only, are never created in
+						// a > RUNNING state.
 						var newSecrets []*api.Secret
 						d.store.View(func(readTx store.ReadTx) {
 							newSecrets = addSecretsForTask(readTx, v.Task)
@@ -1002,23 +1004,18 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 				// TODO(aaronl): For node secrets, we'll need to handle
 				// EventCreateSecret.
 				case state.EventUpdateSecret:
-					if _, exists := tasksUsingSecret[v.Secret.Spec.Annotations.Name]; !exists {
+					if _, exists := tasksUsingSecret[v.Secret.ID]; !exists {
 						continue
 					}
+					log.Debugf("Secret %s (ID: %d) was updated though it was still referenced by one or more tasks",
+						v.Secret.Spec.Annotations.Name, v.Secret.ID)
 
-					updateSecrets[v.Secret.ID] = v.Secret
-
-					oneModification()
 				case state.EventDeleteSecret:
-					if _, exists := tasksUsingSecret[v.Secret.Spec.Annotations.Name]; !exists {
+					if _, exists := tasksUsingSecret[v.Secret.ID]; !exists {
 						continue
 					}
-
-					delete(tasksUsingSecret, v.Secret.Spec.Annotations.Name)
-
-					removeSecrets[v.Secret.ID] = struct{}{}
-
-					oneModification()
+					log.Debugf("Secret %s (ID: %d) was deleted though it was still referenced by one or more tasks",
+						v.Secret.Spec.Annotations.Name, v.Secret.ID)
 				}
 			case <-batchingTimeout:
 				break batchingLoop
