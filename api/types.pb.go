@@ -133,6 +133,8 @@
 		TasksRequest
 		TasksMessage
 		AssignmentsRequest
+		Assignment
+		AssignmentChange
 		AssignmentsMessage
 		NodeCertificateStatusRequest
 		NodeCertificateStatusResponse

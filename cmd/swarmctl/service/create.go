@@ -45,6 +45,10 @@ var (
 				return err
 			}
 
+			if err := flagparser.ParseAddSecret(cmd, spec, "secret"); err != nil {
+				return err
+			}
+
 			r, err := c.CreateService(common.Context(cmd), &api.CreateServiceRequest{Spec: spec})
 			if err != nil {
 				return err
@@ -59,4 +63,5 @@ func init() {
 	flags := createCmd.Flags()
 	flagparser.AddServiceFlags(flags)
 	flags.String("mode", "replicated", "one of replicated, global")
+	flags.StringSlice("secret", nil, "add a secret from swarm")
 }
