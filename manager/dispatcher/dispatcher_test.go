@@ -331,109 +331,290 @@ func TestHeartbeatUnregistered(t *testing.T) {
 	assert.Equal(t, ErrSessionInvalid.Error(), grpc.ErrorDesc(err))
 }
 
-func TestTasks(t *testing.T) {
+// If the session ID is not sent as part of the Assignments request, an error is returned to the stream
+func TestAssignmentsErrorsIfNoSessionID(t *testing.T) {
 	t.Parallel()
 
 	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
 
-	var expectedSessionID string
-	var nodeID string
-	{
-		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
-		assert.NoError(t, err)
-		defer stream.CloseSend()
-		resp, err := stream.Recv()
-		assert.NoError(t, err)
-		assert.NotEmpty(t, resp.SessionID)
-		expectedSessionID = resp.SessionID
-		nodeID = resp.Node.ID
-	}
+	// without correct SessionID should fail
+	stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{})
+	assert.NoError(t, err)
+	assert.NotNil(t, stream)
+	defer stream.CloseSend()
 
-	testTask1 := &api.Task{
-		NodeID:       nodeID,
-		ID:           "testTask1",
-		Status:       api.TaskStatus{State: api.TaskStateAssigned},
-		DesiredState: api.TaskStateReady,
-	}
-	testTask2 := &api.Task{
-		NodeID:       nodeID,
-		ID:           "testTask2",
-		Status:       api.TaskStatus{State: api.TaskStateAssigned},
-		DesiredState: api.TaskStateReady,
-	}
+	resp, err := stream.Recv()
+	assert.Nil(t, resp)
+	assert.Error(t, err)
+	assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
+}
 
-	{
-		// without correct SessionID should fail
-		stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{})
-		assert.NoError(t, err)
-		assert.NotNil(t, stream)
-		resp, err := stream.Recv()
-		assert.Nil(t, resp)
-		assert.Error(t, err)
-		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
-	}
+// Assignments will send down any existing node tasks > ASSIGNED, and any secrets
+// for said tasks that are <= RUNNING (if the secrets exist)
+func TestAssignmentsInitialNodeTasks(t *testing.T) {
+	t.Parallel()
+
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
+
+	// create the relevant secrets and tasks
+	secrets, tasks := makeTasksAndSecrets(t, nodeID)
+	err = gd.Store.Update(func(tx store.Tx) error {
+		for _, secret := range secrets[:len(secrets)-1] {
+			assert.NoError(t, store.CreateSecret(tx, secret))
+		}
+		for _, task := range tasks {
+			assert.NoError(t, store.CreateTask(tx, task))
+		}
+		return nil
+	})
 
 	stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{SessionID: expectedSessionID})
 	assert.NoError(t, err)
+	defer stream.CloseSend()
 
 	time.Sleep(100 * time.Millisecond)
 
+	// check the initial task and secret stream
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
-	// initially no tasks
-	assert.Equal(t, 0, len(resp.UpdateTasks))
 
-	// Creating the tasks will not create an event for assignments
-	err = gd.Store.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, testTask1))
-		assert.NoError(t, store.CreateTask(tx, testTask2))
-		return nil
-	})
-	assert.NoError(t, err)
-	err = gd.Store.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateTask(tx, testTask1))
-		assert.NoError(t, store.UpdateTask(tx, testTask2))
-		return nil
-	})
-	assert.NoError(t, err)
-
-	resp, err = stream.Recv()
-	assert.NoError(t, err)
-	assert.Equal(t, len(resp.UpdateTasks), 2)
-	assert.True(t, resp.UpdateTasks[0].ID == "testTask1" && resp.UpdateTasks[1].ID == "testTask2" || resp.UpdateTasks[0].ID == "testTask2" && resp.UpdateTasks[1].ID == "testTask1")
-
-	err = gd.Store.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateTask(tx, &api.Task{
-			ID:           testTask1.ID,
-			NodeID:       nodeID,
-			Status:       api.TaskStatus{State: api.TaskStateAssigned},
-			DesiredState: api.TaskStateRunning,
-		}))
-		return nil
-	})
-	assert.NoError(t, err)
-
-	resp, err = stream.Recv()
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(resp.UpdateTasks))
-	for _, task := range resp.UpdateTasks {
-		if task.ID == "testTask1" {
-			assert.Equal(t, task.DesiredState, api.TaskStateRunning)
-		}
+	assert.Equal(t, 16, len(resp.Changes))
+	taskChanges, secretChanges := collectTasksAndSecrets(resp.Changes)
+	assert.Len(t, taskChanges, 10) // 10 types of task states >= assigned, 3 types < assigned
+	for _, task := range tasks[3:] {
+		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
+	}
+	assert.Len(t, secretChanges, 6) // 6 types of task states between assigned and running inclusive
+	for _, secret := range secrets[3:9] {
+		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
 	}
 
+	// updating all the tasks will attempt to remove all the secrets for the tasks that are in state > running
 	err = gd.Store.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteTask(tx, testTask1.ID))
-		assert.NoError(t, store.DeleteTask(tx, testTask2.ID))
+		for _, task := range tasks {
+			assert.NoError(t, store.UpdateTask(tx, task))
+		}
 		return nil
+
+	})
+	assert.NoError(t, err)
+
+	// updates for all the tasks, remove secret sent for the 4 types of states > running
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+
+	assert.Equal(t, 5, len(resp.Changes))
+	taskChanges, secretChanges = collectTasksAndSecrets(resp.Changes)
+	assert.Len(t, taskChanges, 1)
+	assert.NotNil(t, taskChanges[idAndAction{id: tasks[3].ID, action: api.AssignmentChange_AssignmentActionUpdate}]) // this is the task in ASSIGNED
+
+	assert.Len(t, secretChanges, 4) // these are the secrets for states > running
+	for _, secret := range secrets[9 : len(secrets)-1] {
+		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionRemove}])
+	}
+
+	// deleting the tasks removes all the secrets for every single task, no matter
+	// what state it's in
+	err = gd.Store.Update(func(tx store.Tx) error {
+		for _, task := range tasks {
+			assert.NoError(t, store.DeleteTask(tx, task.ID))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// updates for all the tasks >= ASSIGNMENT, and remove secrets for all of them, even ones that don't exist
+	// (there will be 3 tasks changes that won't be sent down)
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+
+	assert.Equal(t, len(tasks)-3+len(secrets)-3, len(resp.Changes))
+	taskChanges, secretChanges = collectTasksAndSecrets(resp.Changes)
+	assert.Len(t, taskChanges, len(tasks)-3)
+	for _, task := range tasks[3:] {
+		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionRemove}])
+	}
+
+	assert.Len(t, secretChanges, len(secrets)-3)
+	for _, secret := range secrets[3:] {
+		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionRemove}])
+	}
+}
+
+// As tasks are added, assignments will send down tasks > ASSIGNED, and any secrets
+// for said tasks that are <= RUNNING (if the secrets exist)
+func TestAssignmentsAddingTasks(t *testing.T) {
+	t.Parallel()
+
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
+
+	stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{SessionID: expectedSessionID})
+	assert.NoError(t, err)
+	defer stream.CloseSend()
+
+	time.Sleep(100 * time.Millisecond)
+
+	// There are no initial tasks or secrets
+	resp, err := stream.Recv()
+	assert.NoError(t, err)
+	assert.Empty(t, resp.Changes)
+
+	// create the relevant secrets and tasks and update the tasks
+	secrets, tasks := makeTasksAndSecrets(t, nodeID)
+	err = gd.Store.Update(func(tx store.Tx) error {
+		for _, secret := range secrets[:len(secrets)-1] {
+			assert.NoError(t, store.CreateSecret(tx, secret))
+		}
+		for _, task := range tasks {
+			assert.NoError(t, store.CreateTask(tx, task))
+		}
+		return nil
+	})
+
+	// Nothing happens until we update.  Updating all the tasks will send updates for all the tasks >= ASSIGNED (10),
+	// and secrets for all the tasks >= ASSIGNED and <= RUNNING (6).
+	err = gd.Store.Update(func(tx store.Tx) error {
+		for _, task := range tasks {
+			assert.NoError(t, store.UpdateTask(tx, task))
+		}
+		return nil
+
 	})
 	assert.NoError(t, err)
 
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, len(resp.UpdateTasks), 0)
+
+	assert.Equal(t, 10+6, len(resp.Changes))
+	taskChanges, secretChanges := collectTasksAndSecrets(resp.Changes)
+	assert.Len(t, taskChanges, 10)
+	for _, task := range tasks[3:] {
+		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
+	}
+
+	assert.Len(t, secretChanges, 6)
+	// all the secrets for tasks >= ASSIGNED and <= RUNNING
+	for _, secret := range secrets[3:9] {
+		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
+	}
+
+	// deleting the tasks removes all the secrets for every single task, no matter
+	// what state it's in
+	err = gd.Store.Update(func(tx store.Tx) error {
+		for _, task := range tasks {
+			assert.NoError(t, store.DeleteTask(tx, task.ID))
+		}
+		return nil
+
+	})
+	assert.NoError(t, err)
+
+	// updates for all the tasks >= ASSIGNMENT, and remove secrets for all of them, even ones that don't exist
+	// (there will be 3 tasks changes that won't be sent down)
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+
+	assert.Equal(t, len(tasks)-3+len(secrets)-3, len(resp.Changes))
+	taskChanges, secretChanges = collectTasksAndSecrets(resp.Changes)
+	assert.Len(t, taskChanges, len(tasks)-3)
+	for _, task := range tasks[3:] {
+		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionRemove}])
+	}
+
+	assert.Len(t, secretChanges, len(secrets)-3)
+	for _, secret := range secrets[3:] {
+		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionRemove}])
+	}
+}
+
+// If a secret is updated or deleted, even if it's for an existing task, no changes will be sent down
+func TestAssignmentsSecretUpdateAndDeletion(t *testing.T) {
+	t.Parallel()
+
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
+
+	// create the relevant secrets and tasks
+	secrets, tasks := makeTasksAndSecrets(t, nodeID)
+	err = gd.Store.Update(func(tx store.Tx) error {
+		for _, secret := range secrets[:len(secrets)-1] {
+			assert.NoError(t, store.CreateSecret(tx, secret))
+		}
+		for _, task := range tasks {
+			assert.NoError(t, store.CreateTask(tx, task))
+		}
+		return nil
+	})
+	stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{SessionID: expectedSessionID})
+	assert.NoError(t, err)
+	defer stream.CloseSend()
+
+	time.Sleep(100 * time.Millisecond)
+
+	// check the initial task and secret stream
+	resp, err := stream.Recv()
+	assert.NoError(t, err)
+
+	assert.Equal(t, 16, len(resp.Changes))
+	taskChanges, secretChanges := collectTasksAndSecrets(resp.Changes)
+	assert.Len(t, taskChanges, 10) // 10 types of task states >= assigned, 3 types < assigned
+	for _, task := range tasks[3:] {
+		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
+	}
+	assert.Len(t, secretChanges, 6) // 6 types of task states between assigned and running inclusive
+	for _, secret := range secrets[3:9] {
+		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
+	}
+
+	// updating secrets, used by tasks or not, do not cause any changes
+	err = gd.Store.Update(func(tx store.Tx) error {
+		for _, secret := range secrets[:len(secrets)-2] {
+			secret.Spec.Data = []byte("new secret data")
+			assert.NoError(t, store.UpdateSecret(tx, secret))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	recvChan := make(chan struct{})
+	go func() {
+		_, _ = stream.Recv()
+		recvChan <- struct{}{}
+	}()
+
+	select {
+	case <-recvChan:
+		assert.Fail(t, "secret update should not trigger dispatcher update")
+	case <-time.After(250 * time.Millisecond):
+	}
+
+	// deleting secrets, used by tasks or not, do not cause any changes
+	err = gd.Store.Update(func(tx store.Tx) error {
+		for _, secret := range secrets[:len(secrets)-2] {
+			assert.NoError(t, store.DeleteSecret(tx, secret.ID))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	select {
+	case <-recvChan:
+		assert.Fail(t, "secret delete should not trigger dispatcher update")
+	case <-time.After(250 * time.Millisecond):
+	}
 }
 
 func TestTasksStatusChange(t *testing.T) {
@@ -469,17 +650,6 @@ func TestTasksStatusChange(t *testing.T) {
 		DesiredState: api.TaskStateReady,
 	}
 
-	{
-		// without correct SessionID should fail
-		stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{})
-		assert.NoError(t, err)
-		assert.NotNil(t, stream)
-		resp, err := stream.Recv()
-		assert.Nil(t, resp)
-		assert.Error(t, err)
-		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
-	}
-
 	stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{SessionID: expectedSessionID})
 	assert.NoError(t, err)
 
@@ -488,7 +658,7 @@ func TestTasksStatusChange(t *testing.T) {
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
 	// initially no tasks
-	assert.Equal(t, 0, len(resp.UpdateTasks))
+	assert.Equal(t, 0, len(resp.Changes))
 
 	// Creating the tasks will not create an event for assignments
 	err = gd.Store.Update(func(tx store.Tx) error {
@@ -506,8 +676,12 @@ func TestTasksStatusChange(t *testing.T) {
 
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, len(resp.UpdateTasks), 2)
-	assert.True(t, resp.UpdateTasks[0].ID == "testTask1" && resp.UpdateTasks[1].ID == "testTask2" || resp.UpdateTasks[0].ID == "testTask2" && resp.UpdateTasks[1].ID == "testTask1")
+	assert.Equal(t, len(resp.Changes), 2)
+	tasks, secrets := collectTasksAndSecrets(resp.Changes)
+	assert.Len(t, tasks, 2)
+	assert.Len(t, secrets, 0)
+	assert.NotNil(t, tasks[idAndAction{id: "testTask1", action: api.AssignmentChange_AssignmentActionUpdate}])
+	assert.NotNil(t, tasks[idAndAction{id: "testTask2", action: api.AssignmentChange_AssignmentActionUpdate}])
 
 	err = gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, &api.Task{
@@ -570,7 +744,7 @@ func TestTasksBatch(t *testing.T) {
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
 	// initially no tasks
-	assert.Equal(t, 0, len(resp.UpdateTasks))
+	assert.Equal(t, 0, len(resp.Changes))
 
 	// Create, Update and Delete tasks.
 	err = gd.Store.Update(func(tx store.Tx) error {
@@ -596,8 +770,12 @@ func TestTasksBatch(t *testing.T) {
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
 	// all tasks have been deleted
-	assert.Equal(t, len(resp.UpdateTasks), 0)
-	assert.Equal(t, len(resp.RemoveTasks), 2)
+
+	tasks, secrets := collectTasksAndSecrets(resp.Changes)
+	assert.Len(t, tasks, 2)
+	assert.Len(t, secrets, 0)
+	assert.Equal(t, api.AssignmentChange_AssignmentActionRemove, resp.Changes[0].Action)
+	assert.Equal(t, api.AssignmentChange_AssignmentActionRemove, resp.Changes[1].Action)
 }
 
 func TestTasksNoCert(t *testing.T) {
@@ -819,4 +997,359 @@ func TestNodesCount(t *testing.T) {
 	assert.Equal(t, 6, gd.dispatcherServer.NodeCount())
 	time.Sleep(700 * time.Millisecond)
 	assert.Equal(t, 0, gd.dispatcherServer.NodeCount())
+}
+
+func getSessionAndNodeID(t *testing.T, c api.DispatcherClient) (string, string) {
+	stream, err := c.Session(context.Background(), &api.SessionRequest{})
+	assert.NoError(t, err)
+	defer stream.CloseSend()
+	resp, err := stream.Recv()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, resp.SessionID)
+	return resp.SessionID, resp.Node.ID
+}
+
+type idAndAction struct {
+	id     string
+	action api.AssignmentChange_AssignmentAction
+}
+
+func collectTasksAndSecrets(changes []*api.AssignmentChange) (map[idAndAction]*api.Task, map[idAndAction]*api.Secret) {
+	tasks := make(map[idAndAction]*api.Task)
+	secrets := make(map[idAndAction]*api.Secret)
+	for _, change := range changes {
+		task := change.Assignment.GetTask()
+		if task != nil {
+			tasks[idAndAction{id: task.ID, action: change.Action}] = task
+		}
+		secret := change.Assignment.GetSecret()
+		if secret != nil {
+			secrets[idAndAction{id: secret.ID, action: change.Action}] = secret
+		}
+	}
+
+	return tasks, secrets
+}
+
+func makeTasksAndSecrets(t *testing.T, nodeID string) ([]*api.Secret, []*api.Task) {
+	var secrets []*api.Secret
+	var tasks []*api.Task
+	for i := 0; i <= len(taskStatesInOrder); i++ {
+		secrets = append(secrets, &api.Secret{
+			ID:     fmt.Sprintf("IDsecret%d", i),
+			Digest: fmt.Sprintf("abc%d", i),
+			Spec: api.SecretSpec{
+				Annotations: api.Annotations{
+					Name: fmt.Sprintf("secret%d", i),
+				},
+				Data: []byte(fmt.Sprintf("secret%d", i)),
+			},
+		})
+	}
+	for i, taskState := range taskStatesInOrder {
+		tasks = append(tasks, &api.Task{
+			NodeID:       nodeID,
+			ID:           fmt.Sprintf("testTask%d", i),
+			Status:       api.TaskStatus{State: taskState},
+			DesiredState: api.TaskStateReady,
+			Spec:         taskSpecFromSecrets(secrets[i], secrets[len(secrets)-1]),
+		})
+	}
+	return secrets, tasks
+}
+
+func taskSpecFromSecrets(secrets ...*api.Secret) api.TaskSpec {
+	var secretRefs []*api.SecretReference
+	for _, s := range secrets {
+		secretRefs = append(secretRefs, &api.SecretReference{
+			SecretName: s.Spec.Annotations.Name,
+			SecretID:   s.ID,
+			Mode:       api.SecretReference_FILE,
+		})
+	}
+	return api.TaskSpec{
+		Runtime: &api.TaskSpec_Container{
+			Container: &api.ContainerSpec{
+				Secrets: secretRefs,
+			},
+		},
+	}
+}
+
+var taskStatesInOrder = []api.TaskState{
+	api.TaskStateNew,
+	api.TaskStateAllocated,
+	api.TaskStatePending,
+	api.TaskStateAssigned,
+	api.TaskStateAccepted,
+	api.TaskStatePreparing,
+	api.TaskStateReady,
+	api.TaskStateStarting,
+	api.TaskStateRunning,
+	api.TaskStateCompleted,
+	api.TaskStateShutdown,
+	api.TaskStateFailed,
+	api.TaskStateRejected,
+}
+
+// Ensure we test the old Tasks() API for backwards compat
+
+func TestOldTasks(t *testing.T) {
+	t.Parallel()
+
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	var expectedSessionID string
+	var nodeID string
+	{
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+		assert.NoError(t, err)
+		defer stream.CloseSend()
+		resp, err := stream.Recv()
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp.SessionID)
+		expectedSessionID = resp.SessionID
+		nodeID = resp.Node.ID
+	}
+
+	testTask1 := &api.Task{
+		NodeID:       nodeID,
+		ID:           "testTask1",
+		Status:       api.TaskStatus{State: api.TaskStateAssigned},
+		DesiredState: api.TaskStateReady,
+	}
+	testTask2 := &api.Task{
+		NodeID:       nodeID,
+		ID:           "testTask2",
+		Status:       api.TaskStatus{State: api.TaskStateAssigned},
+		DesiredState: api.TaskStateReady,
+	}
+
+	{
+		// without correct SessionID should fail
+		stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{})
+		assert.NoError(t, err)
+		assert.NotNil(t, stream)
+		resp, err := stream.Recv()
+		assert.Nil(t, resp)
+		assert.Error(t, err)
+		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
+	}
+
+	stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{SessionID: expectedSessionID})
+	assert.NoError(t, err)
+
+	time.Sleep(100 * time.Millisecond)
+
+	resp, err := stream.Recv()
+	assert.NoError(t, err)
+	// initially no tasks
+	assert.Equal(t, 0, len(resp.Tasks))
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, testTask1))
+		assert.NoError(t, store.CreateTask(tx, testTask2))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+	assert.Equal(t, len(resp.Tasks), 2)
+	assert.True(t, resp.Tasks[0].ID == "testTask1" && resp.Tasks[1].ID == "testTask2" || resp.Tasks[0].ID == "testTask2" && resp.Tasks[1].ID == "testTask1")
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, &api.Task{
+			ID:           testTask1.ID,
+			NodeID:       nodeID,
+			Status:       api.TaskStatus{State: api.TaskStateAssigned},
+			DesiredState: api.TaskStateRunning,
+		}))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+	assert.Equal(t, len(resp.Tasks), 2)
+	for _, task := range resp.Tasks {
+		if task.ID == "testTask1" {
+			assert.Equal(t, task.DesiredState, api.TaskStateRunning)
+		}
+	}
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteTask(tx, testTask1.ID))
+		assert.NoError(t, store.DeleteTask(tx, testTask2.ID))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+	assert.Equal(t, len(resp.Tasks), 0)
+}
+
+func TestOldTasksStatusChange(t *testing.T) {
+	t.Parallel()
+
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	var expectedSessionID string
+	var nodeID string
+	{
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+		assert.NoError(t, err)
+		defer stream.CloseSend()
+		resp, err := stream.Recv()
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp.SessionID)
+		expectedSessionID = resp.SessionID
+		nodeID = resp.Node.ID
+	}
+
+	testTask1 := &api.Task{
+		NodeID:       nodeID,
+		ID:           "testTask1",
+		Status:       api.TaskStatus{State: api.TaskStateAssigned},
+		DesiredState: api.TaskStateReady,
+	}
+	testTask2 := &api.Task{
+		NodeID:       nodeID,
+		ID:           "testTask2",
+		Status:       api.TaskStatus{State: api.TaskStateAssigned},
+		DesiredState: api.TaskStateReady,
+	}
+
+	{
+		// without correct SessionID should fail
+		stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{})
+		assert.NoError(t, err)
+		assert.NotNil(t, stream)
+		resp, err := stream.Recv()
+		assert.Nil(t, resp)
+		assert.Error(t, err)
+		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
+	}
+
+	stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{SessionID: expectedSessionID})
+	assert.NoError(t, err)
+
+	time.Sleep(100 * time.Millisecond)
+
+	resp, err := stream.Recv()
+	assert.NoError(t, err)
+	// initially no tasks
+	assert.Equal(t, 0, len(resp.Tasks))
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, testTask1))
+		assert.NoError(t, store.CreateTask(tx, testTask2))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+	assert.Equal(t, len(resp.Tasks), 2)
+	assert.True(t, resp.Tasks[0].ID == "testTask1" && resp.Tasks[1].ID == "testTask2" || resp.Tasks[0].ID == "testTask2" && resp.Tasks[1].ID == "testTask1")
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.UpdateTask(tx, &api.Task{
+			ID:     testTask1.ID,
+			NodeID: nodeID,
+			// only Status is changed for task1
+			Status:       api.TaskStatus{State: api.TaskStateFailed, Err: "1234"},
+			DesiredState: api.TaskStateReady,
+		}))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// dispatcher shouldn't send snapshot for this update
+	recvChan := make(chan struct{})
+	go func() {
+		_, _ = stream.Recv()
+		recvChan <- struct{}{}
+	}()
+
+	select {
+	case <-recvChan:
+		assert.Fail(t, "task.Status update should not trigger dispatcher update")
+	case <-time.After(250 * time.Millisecond):
+	}
+}
+
+func TestOldTasksBatch(t *testing.T) {
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	var expectedSessionID string
+	var nodeID string
+	{
+		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+		assert.NoError(t, err)
+		defer stream.CloseSend()
+		resp, err := stream.Recv()
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp.SessionID)
+		expectedSessionID = resp.SessionID
+		nodeID = resp.Node.ID
+	}
+
+	testTask1 := &api.Task{
+		NodeID: nodeID,
+		ID:     "testTask1",
+		Status: api.TaskStatus{State: api.TaskStateAssigned},
+	}
+	testTask2 := &api.Task{
+		NodeID: nodeID,
+		ID:     "testTask2",
+		Status: api.TaskStatus{State: api.TaskStateAssigned},
+	}
+
+	stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{SessionID: expectedSessionID})
+	assert.NoError(t, err)
+
+	resp, err := stream.Recv()
+	assert.NoError(t, err)
+	// initially no tasks
+	assert.Equal(t, 0, len(resp.Tasks))
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, testTask1))
+		assert.NoError(t, store.CreateTask(tx, testTask2))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteTask(tx, testTask1.ID))
+		assert.NoError(t, store.DeleteTask(tx, testTask2.ID))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+	// all tasks have been deleted
+	assert.Equal(t, len(resp.Tasks), 0)
+}
+
+func TestOldTasksNoCert(t *testing.T) {
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	defer gd.Close()
+
+	stream, err := gd.Clients[2].Tasks(context.Background(), &api.TasksRequest{})
+	assert.NoError(t, err)
+	assert.NotNil(t, stream)
+	resp, err := stream.Recv()
+	assert.Nil(t, resp)
+	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
 }

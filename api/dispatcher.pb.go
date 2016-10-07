@@ -35,6 +35,29 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+type AssignmentChange_AssignmentAction int32
+
+const (
+	AssignmentChange_AssignmentActionUpdate AssignmentChange_AssignmentAction = 0
+	AssignmentChange_AssignmentActionRemove AssignmentChange_AssignmentAction = 1
+)
+
+var AssignmentChange_AssignmentAction_name = map[int32]string{
+	0: "UPDATE",
+	1: "REMOVE",
+}
+var AssignmentChange_AssignmentAction_value = map[string]int32{
+	"UPDATE": 0,
+	"REMOVE": 1,
+}
+
+func (x AssignmentChange_AssignmentAction) String() string {
+	return proto.EnumName(AssignmentChange_AssignmentAction_name, int32(x))
+}
+func (AssignmentChange_AssignmentAction) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptorDispatcher, []int{10, 0}
+}
+
 // AssignmentType specifies whether this assignment message carries
 // the full state, or is an update to an existing state.
 type AssignmentsMessage_Type int32
@@ -57,7 +80,7 @@ func (x AssignmentsMessage_Type) String() string {
 	return proto.EnumName(AssignmentsMessage_Type_name, int32(x))
 }
 func (AssignmentsMessage_Type) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptorDispatcher, []int{9, 0}
+	return fileDescriptorDispatcher, []int{11, 0}
 }
 
 // SessionRequest starts a session.
@@ -214,6 +237,137 @@ func (m *AssignmentsRequest) Reset()                    { *m = AssignmentsReques
 func (*AssignmentsRequest) ProtoMessage()               {}
 func (*AssignmentsRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{8} }
 
+type Assignment struct {
+	// Types that are valid to be assigned to Item:
+	//	*Assignment_Task
+	//	*Assignment_Secret
+	Item isAssignment_Item `protobuf_oneof:"item"`
+}
+
+func (m *Assignment) Reset()                    { *m = Assignment{} }
+func (*Assignment) ProtoMessage()               {}
+func (*Assignment) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{9} }
+
+type isAssignment_Item interface {
+	isAssignment_Item()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type Assignment_Task struct {
+	Task *Task `protobuf:"bytes,2,opt,name=task,oneof"`
+}
+type Assignment_Secret struct {
+	Secret *Secret `protobuf:"bytes,3,opt,name=secret,oneof"`
+}
+
+func (*Assignment_Task) isAssignment_Item()   {}
+func (*Assignment_Secret) isAssignment_Item() {}
+
+func (m *Assignment) GetItem() isAssignment_Item {
+	if m != nil {
+		return m.Item
+	}
+	return nil
+}
+
+func (m *Assignment) GetTask() *Task {
+	if x, ok := m.GetItem().(*Assignment_Task); ok {
+		return x.Task
+	}
+	return nil
+}
+
+func (m *Assignment) GetSecret() *Secret {
+	if x, ok := m.GetItem().(*Assignment_Secret); ok {
+		return x.Secret
+	}
+	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*Assignment) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _Assignment_OneofMarshaler, _Assignment_OneofUnmarshaler, _Assignment_OneofSizer, []interface{}{
+		(*Assignment_Task)(nil),
+		(*Assignment_Secret)(nil),
+	}
+}
+
+func _Assignment_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*Assignment)
+	// item
+	switch x := m.Item.(type) {
+	case *Assignment_Task:
+		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Task); err != nil {
+			return err
+		}
+	case *Assignment_Secret:
+		_ = b.EncodeVarint(3<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Secret); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("Assignment.Item has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _Assignment_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*Assignment)
+	switch tag {
+	case 2: // item.task
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Task)
+		err := b.DecodeMessage(msg)
+		m.Item = &Assignment_Task{msg}
+		return true, err
+	case 3: // item.secret
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Secret)
+		err := b.DecodeMessage(msg)
+		m.Item = &Assignment_Secret{msg}
+		return true, err
+	default:
+		return false, nil
+	}
+}
+
+func _Assignment_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*Assignment)
+	// item
+	switch x := m.Item.(type) {
+	case *Assignment_Task:
+		s := proto.Size(x.Task)
+		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *Assignment_Secret:
+		s := proto.Size(x.Secret)
+		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
+type AssignmentChange struct {
+	Assignment *Assignment                       `protobuf:"bytes,1,opt,name=assignment" json:"assignment,omitempty"`
+	Action     AssignmentChange_AssignmentAction `protobuf:"varint,2,opt,name=action,proto3,enum=docker.swarmkit.v1.AssignmentChange_AssignmentAction" json:"action,omitempty"`
+}
+
+func (m *AssignmentChange) Reset()                    { *m = AssignmentChange{} }
+func (*AssignmentChange) ProtoMessage()               {}
+func (*AssignmentChange) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{10} }
+
 type AssignmentsMessage struct {
 	Type AssignmentsMessage_Type `protobuf:"varint,1,opt,name=type,proto3,enum=docker.swarmkit.v1.AssignmentsMessage_Type" json:"type,omitempty"`
 	// AppliesTo references the previous ResultsIn value, to chain
@@ -226,28 +380,13 @@ type AssignmentsMessage struct {
 	// match against the next message's AppliesTo value and protect
 	// against missed messages.
 	ResultsIn string `protobuf:"bytes,3,opt,name=results_in,json=resultsIn,proto3" json:"results_in,omitempty"`
-	// UpdateTasks is a set of new or updated tasks to run on this node.
-	// In the first assignments message, it contains all of the tasks
-	// to run on this node. Tasks outside of this set running on the node
-	// should be terminated.
-	UpdateTasks []*Task `protobuf:"bytes,4,rep,name=update_tasks,json=updateTasks" json:"update_tasks,omitempty"`
-	// RemoveTasks is a set of previously-assigned task IDs to remove from the
-	// assignment set. It is not used in the first assignments message of
-	// a stream.
-	RemoveTasks []string `protobuf:"bytes,5,rep,name=remove_tasks,json=removeTasks" json:"remove_tasks,omitempty"`
-	// UpdateSecrets is a set of new or updated secrets for this node.
-	// In the first assignments message, it contains all of the secrets
-	// the node needs for itself and its assigned tasks.
-	UpdateSecrets []*Secret `protobuf:"bytes,6,rep,name=update_secrets,json=updateSecrets" json:"update_secrets,omitempty"`
-	// RemoveSecrets is a set of previously-assigned secret names to remove
-	// from memory. It is not used in the first assignments message of
-	// a stream.
-	RemoveSecrets []string `protobuf:"bytes,7,rep,name=remove_secrets,json=removeSecrets" json:"remove_secrets,omitempty"`
+	// AssignmentChange is a set of changes to apply on this node.
+	Changes []*AssignmentChange `protobuf:"bytes,4,rep,name=changes" json:"changes,omitempty"`
 }
 
 func (m *AssignmentsMessage) Reset()                    { *m = AssignmentsMessage{} }
 func (*AssignmentsMessage) ProtoMessage()               {}
-func (*AssignmentsMessage) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{9} }
+func (*AssignmentsMessage) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{11} }
 
 func init() {
 	proto.RegisterType((*SessionRequest)(nil), "docker.swarmkit.v1.SessionRequest")
@@ -260,7 +399,10 @@ func init() {
 	proto.RegisterType((*TasksRequest)(nil), "docker.swarmkit.v1.TasksRequest")
 	proto.RegisterType((*TasksMessage)(nil), "docker.swarmkit.v1.TasksMessage")
 	proto.RegisterType((*AssignmentsRequest)(nil), "docker.swarmkit.v1.AssignmentsRequest")
+	proto.RegisterType((*Assignment)(nil), "docker.swarmkit.v1.Assignment")
+	proto.RegisterType((*AssignmentChange)(nil), "docker.swarmkit.v1.AssignmentChange")
 	proto.RegisterType((*AssignmentsMessage)(nil), "docker.swarmkit.v1.AssignmentsMessage")
+	proto.RegisterEnum("docker.swarmkit.v1.AssignmentChange_AssignmentAction", AssignmentChange_AssignmentAction_name, AssignmentChange_AssignmentAction_value)
 	proto.RegisterEnum("docker.swarmkit.v1.AssignmentsMessage_Type", AssignmentsMessage_Type_name, AssignmentsMessage_Type_value)
 }
 
@@ -463,6 +605,44 @@ func (m *AssignmentsRequest) Copy() *AssignmentsRequest {
 	return o
 }
 
+func (m *Assignment) Copy() *Assignment {
+	if m == nil {
+		return nil
+	}
+
+	o := &Assignment{}
+
+	switch m.Item.(type) {
+	case *Assignment_Task:
+		i := &Assignment_Task{
+			Task: m.GetTask().Copy(),
+		}
+
+		o.Item = i
+	case *Assignment_Secret:
+		i := &Assignment_Secret{
+			Secret: m.GetSecret().Copy(),
+		}
+
+		o.Item = i
+	}
+
+	return o
+}
+
+func (m *AssignmentChange) Copy() *AssignmentChange {
+	if m == nil {
+		return nil
+	}
+
+	o := &AssignmentChange{
+		Assignment: m.Assignment.Copy(),
+		Action:     m.Action,
+	}
+
+	return o
+}
+
 func (m *AssignmentsMessage) Copy() *AssignmentsMessage {
 	if m == nil {
 		return nil
@@ -474,31 +654,10 @@ func (m *AssignmentsMessage) Copy() *AssignmentsMessage {
 		ResultsIn: m.ResultsIn,
 	}
 
-	if m.UpdateTasks != nil {
-		o.UpdateTasks = make([]*Task, 0, len(m.UpdateTasks))
-		for _, v := range m.UpdateTasks {
-			o.UpdateTasks = append(o.UpdateTasks, v.Copy())
-		}
-	}
-
-	if m.RemoveTasks != nil {
-		o.RemoveTasks = make([]string, 0, len(m.RemoveTasks))
-		for _, v := range m.RemoveTasks {
-			o.RemoveTasks = append(o.RemoveTasks, v)
-		}
-	}
-
-	if m.UpdateSecrets != nil {
-		o.UpdateSecrets = make([]*Secret, 0, len(m.UpdateSecrets))
-		for _, v := range m.UpdateSecrets {
-			o.UpdateSecrets = append(o.UpdateSecrets, v.Copy())
-		}
-	}
-
-	if m.RemoveSecrets != nil {
-		o.RemoveSecrets = make([]string, 0, len(m.RemoveSecrets))
-		for _, v := range m.RemoveSecrets {
-			o.RemoveSecrets = append(o.RemoveSecrets, v)
+	if m.Changes != nil {
+		o.Changes = make([]*AssignmentChange, 0, len(m.Changes))
+		for _, v := range m.Changes {
+			o.Changes = append(o.Changes, v.Copy())
 		}
 	}
 
@@ -624,23 +783,59 @@ func (this *AssignmentsRequest) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
+func (this *Assignment) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.Assignment{")
+	if this.Item != nil {
+		s = append(s, "Item: "+fmt.Sprintf("%#v", this.Item)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Assignment_Task) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.Assignment_Task{` +
+		`Task:` + fmt.Sprintf("%#v", this.Task) + `}`}, ", ")
+	return s
+}
+func (this *Assignment_Secret) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&api.Assignment_Secret{` +
+		`Secret:` + fmt.Sprintf("%#v", this.Secret) + `}`}, ", ")
+	return s
+}
+func (this *AssignmentChange) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&api.AssignmentChange{")
+	if this.Assignment != nil {
+		s = append(s, "Assignment: "+fmt.Sprintf("%#v", this.Assignment)+",\n")
+	}
+	s = append(s, "Action: "+fmt.Sprintf("%#v", this.Action)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func (this *AssignmentsMessage) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 11)
+	s := make([]string, 0, 8)
 	s = append(s, "&api.AssignmentsMessage{")
 	s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
 	s = append(s, "AppliesTo: "+fmt.Sprintf("%#v", this.AppliesTo)+",\n")
 	s = append(s, "ResultsIn: "+fmt.Sprintf("%#v", this.ResultsIn)+",\n")
-	if this.UpdateTasks != nil {
-		s = append(s, "UpdateTasks: "+fmt.Sprintf("%#v", this.UpdateTasks)+",\n")
+	if this.Changes != nil {
+		s = append(s, "Changes: "+fmt.Sprintf("%#v", this.Changes)+",\n")
 	}
-	s = append(s, "RemoveTasks: "+fmt.Sprintf("%#v", this.RemoveTasks)+",\n")
-	if this.UpdateSecrets != nil {
-		s = append(s, "UpdateSecrets: "+fmt.Sprintf("%#v", this.UpdateSecrets)+",\n")
-	}
-	s = append(s, "RemoveSecrets: "+fmt.Sprintf("%#v", this.RemoveSecrets)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1313,6 +1508,92 @@ func (m *AssignmentsRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *Assignment) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Assignment) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Item != nil {
+		nn5, err := m.Item.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += nn5
+	}
+	return i, nil
+}
+
+func (m *Assignment_Task) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Task != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintDispatcher(data, i, uint64(m.Task.Size()))
+		n6, err := m.Task.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n6
+	}
+	return i, nil
+}
+func (m *Assignment_Secret) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Secret != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintDispatcher(data, i, uint64(m.Secret.Size()))
+		n7, err := m.Secret.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n7
+	}
+	return i, nil
+}
+func (m *AssignmentChange) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *AssignmentChange) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Assignment != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintDispatcher(data, i, uint64(m.Assignment.Size()))
+		n8, err := m.Assignment.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n8
+	}
+	if m.Action != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintDispatcher(data, i, uint64(m.Action))
+	}
+	return i, nil
+}
+
 func (m *AssignmentsMessage) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -1345,8 +1626,8 @@ func (m *AssignmentsMessage) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintDispatcher(data, i, uint64(len(m.ResultsIn)))
 		i += copy(data[i:], m.ResultsIn)
 	}
-	if len(m.UpdateTasks) > 0 {
-		for _, msg := range m.UpdateTasks {
+	if len(m.Changes) > 0 {
+		for _, msg := range m.Changes {
 			data[i] = 0x22
 			i++
 			i = encodeVarintDispatcher(data, i, uint64(msg.Size()))
@@ -1355,48 +1636,6 @@ func (m *AssignmentsMessage) MarshalTo(data []byte) (int, error) {
 				return 0, err
 			}
 			i += n
-		}
-	}
-	if len(m.RemoveTasks) > 0 {
-		for _, s := range m.RemoveTasks {
-			data[i] = 0x2a
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
-	}
-	if len(m.UpdateSecrets) > 0 {
-		for _, msg := range m.UpdateSecrets {
-			data[i] = 0x32
-			i++
-			i = encodeVarintDispatcher(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	if len(m.RemoveSecrets) > 0 {
-		for _, s := range m.RemoveSecrets {
-			data[i] = 0x3a
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
 		}
 	}
 	return i, nil
@@ -1789,6 +2028,46 @@ func (m *AssignmentsRequest) Size() (n int) {
 	return n
 }
 
+func (m *Assignment) Size() (n int) {
+	var l int
+	_ = l
+	if m.Item != nil {
+		n += m.Item.Size()
+	}
+	return n
+}
+
+func (m *Assignment_Task) Size() (n int) {
+	var l int
+	_ = l
+	if m.Task != nil {
+		l = m.Task.Size()
+		n += 1 + l + sovDispatcher(uint64(l))
+	}
+	return n
+}
+func (m *Assignment_Secret) Size() (n int) {
+	var l int
+	_ = l
+	if m.Secret != nil {
+		l = m.Secret.Size()
+		n += 1 + l + sovDispatcher(uint64(l))
+	}
+	return n
+}
+func (m *AssignmentChange) Size() (n int) {
+	var l int
+	_ = l
+	if m.Assignment != nil {
+		l = m.Assignment.Size()
+		n += 1 + l + sovDispatcher(uint64(l))
+	}
+	if m.Action != 0 {
+		n += 1 + sovDispatcher(uint64(m.Action))
+	}
+	return n
+}
+
 func (m *AssignmentsMessage) Size() (n int) {
 	var l int
 	_ = l
@@ -1803,27 +2082,9 @@ func (m *AssignmentsMessage) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovDispatcher(uint64(l))
 	}
-	if len(m.UpdateTasks) > 0 {
-		for _, e := range m.UpdateTasks {
+	if len(m.Changes) > 0 {
+		for _, e := range m.Changes {
 			l = e.Size()
-			n += 1 + l + sovDispatcher(uint64(l))
-		}
-	}
-	if len(m.RemoveTasks) > 0 {
-		for _, s := range m.RemoveTasks {
-			l = len(s)
-			n += 1 + l + sovDispatcher(uint64(l))
-		}
-	}
-	if len(m.UpdateSecrets) > 0 {
-		for _, e := range m.UpdateSecrets {
-			l = e.Size()
-			n += 1 + l + sovDispatcher(uint64(l))
-		}
-	}
-	if len(m.RemoveSecrets) > 0 {
-		for _, s := range m.RemoveSecrets {
-			l = len(s)
 			n += 1 + l + sovDispatcher(uint64(l))
 		}
 	}
@@ -1948,6 +2209,47 @@ func (this *AssignmentsRequest) String() string {
 	}, "")
 	return s
 }
+func (this *Assignment) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Assignment{`,
+		`Item:` + fmt.Sprintf("%v", this.Item) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Assignment_Task) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Assignment_Task{`,
+		`Task:` + strings.Replace(fmt.Sprintf("%v", this.Task), "Task", "Task", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Assignment_Secret) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Assignment_Secret{`,
+		`Secret:` + strings.Replace(fmt.Sprintf("%v", this.Secret), "Secret", "Secret", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *AssignmentChange) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&AssignmentChange{`,
+		`Assignment:` + strings.Replace(fmt.Sprintf("%v", this.Assignment), "Assignment", "Assignment", 1) + `,`,
+		`Action:` + fmt.Sprintf("%v", this.Action) + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *AssignmentsMessage) String() string {
 	if this == nil {
 		return "nil"
@@ -1956,10 +2258,7 @@ func (this *AssignmentsMessage) String() string {
 		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
 		`AppliesTo:` + fmt.Sprintf("%v", this.AppliesTo) + `,`,
 		`ResultsIn:` + fmt.Sprintf("%v", this.ResultsIn) + `,`,
-		`UpdateTasks:` + strings.Replace(fmt.Sprintf("%v", this.UpdateTasks), "Task", "Task", 1) + `,`,
-		`RemoveTasks:` + fmt.Sprintf("%v", this.RemoveTasks) + `,`,
-		`UpdateSecrets:` + strings.Replace(fmt.Sprintf("%v", this.UpdateSecrets), "Secret", "Secret", 1) + `,`,
-		`RemoveSecrets:` + fmt.Sprintf("%v", this.RemoveSecrets) + `,`,
+		`Changes:` + strings.Replace(fmt.Sprintf("%v", this.Changes), "AssignmentChange", "AssignmentChange", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2928,6 +3227,222 @@ func (m *AssignmentsRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
+func (m *Assignment) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDispatcher
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Assignment: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Assignment: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Task", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDispatcher
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthDispatcher
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Task{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Item = &Assignment_Task{v}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Secret", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDispatcher
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthDispatcher
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Secret{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Item = &Assignment_Secret{v}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDispatcher(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthDispatcher
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *AssignmentChange) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDispatcher
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AssignmentChange: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AssignmentChange: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Assignment", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDispatcher
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthDispatcher
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Assignment == nil {
+				m.Assignment = &Assignment{}
+			}
+			if err := m.Assignment.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Action", wireType)
+			}
+			m.Action = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDispatcher
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Action |= (AssignmentChange_AssignmentAction(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDispatcher(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthDispatcher
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *AssignmentsMessage) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
@@ -3036,7 +3551,7 @@ func (m *AssignmentsMessage) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field UpdateTasks", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Changes", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3060,99 +3575,10 @@ func (m *AssignmentsMessage) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.UpdateTasks = append(m.UpdateTasks, &Task{})
-			if err := m.UpdateTasks[len(m.UpdateTasks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			m.Changes = append(m.Changes, &AssignmentChange{})
+			if err := m.Changes[len(m.Changes)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RemoveTasks", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDispatcher
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthDispatcher
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.RemoveTasks = append(m.RemoveTasks, string(data[iNdEx:postIndex]))
-			iNdEx = postIndex
-		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field UpdateSecrets", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDispatcher
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthDispatcher
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.UpdateSecrets = append(m.UpdateSecrets, &Secret{})
-			if err := m.UpdateSecrets[len(m.UpdateSecrets)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RemoveSecrets", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDispatcher
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthDispatcher
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.RemoveSecrets = append(m.RemoveSecrets, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3283,59 +3709,64 @@ var (
 func init() { proto.RegisterFile("dispatcher.proto", fileDescriptorDispatcher) }
 
 var fileDescriptorDispatcher = []byte{
-	// 858 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x9c, 0x56, 0x41, 0x6f, 0x1b, 0x45,
-	0x14, 0xce, 0xd8, 0x8e, 0x53, 0xbf, 0xb5, 0x83, 0x19, 0x2a, 0xba, 0xb2, 0x5a, 0xc7, 0xdd, 0x90,
-	0x28, 0x52, 0x83, 0x53, 0x8c, 0xc4, 0x01, 0x22, 0x20, 0xae, 0x2d, 0x61, 0xb5, 0x49, 0xab, 0x8d,
-	0xa1, 0x47, 0x6b, 0xe3, 0x7d, 0x72, 0x17, 0x27, 0x3b, 0xcb, 0xcc, 0x6c, 0x8b, 0x0f, 0x48, 0x48,
-	0x14, 0x89, 0x23, 0xe2, 0xd4, 0x5f, 0xc1, 0xef, 0x88, 0x38, 0x71, 0xe4, 0x14, 0x11, 0xff, 0x00,
-	0xc4, 0x4f, 0x40, 0xbb, 0x33, 0xeb, 0x18, 0x67, 0xdd, 0x38, 0x39, 0x65, 0xe7, 0xcd, 0xf7, 0x7d,
-	0xef, 0xd3, 0x7b, 0xf3, 0x5e, 0x0c, 0x65, 0xd7, 0x13, 0x81, 0x23, 0xfb, 0x2f, 0x90, 0xd7, 0x03,
-	0xce, 0x24, 0xa3, 0xd4, 0x65, 0xfd, 0x21, 0xf2, 0xba, 0x78, 0xe5, 0xf0, 0x93, 0xa1, 0x27, 0xeb,
-	0x2f, 0x3f, 0xaa, 0x18, 0x72, 0x14, 0xa0, 0x50, 0x80, 0x4a, 0x89, 0x1d, 0x7d, 0x8b, 0x7d, 0x99,
-	0x1c, 0x6f, 0x0f, 0xd8, 0x80, 0xc5, 0x9f, 0x3b, 0xd1, 0x97, 0x8e, 0xbe, 0x17, 0x1c, 0x87, 0x03,
-	0xcf, 0xdf, 0x51, 0x7f, 0x74, 0xf0, 0x8e, 0x1b, 0x72, 0x47, 0x7a, 0xcc, 0xdf, 0x49, 0x3e, 0xd4,
-	0x85, 0xf5, 0x33, 0x81, 0xd5, 0x43, 0x14, 0xc2, 0x63, 0xbe, 0x8d, 0xdf, 0x85, 0x28, 0x24, 0x6d,
-	0x83, 0xe1, 0xa2, 0xe8, 0x73, 0x2f, 0x88, 0x70, 0x26, 0xa9, 0x91, 0x2d, 0xa3, 0xb1, 0x5e, 0xbf,
-	0x6c, 0xae, 0x7e, 0xc0, 0x5c, 0x6c, 0x5d, 0x40, 0xed, 0x69, 0x1e, 0xdd, 0x06, 0x10, 0x4a, 0xb8,
-	0xe7, 0xb9, 0x66, 0xa6, 0x46, 0xb6, 0x0a, 0xcd, 0xd2, 0xf8, 0x6c, 0xad, 0xa0, 0xd3, 0x75, 0x5a,
-	0x76, 0x41, 0x03, 0x3a, 0xae, 0xf5, 0x53, 0x66, 0xe2, 0x63, 0x1f, 0x85, 0x70, 0x06, 0x38, 0x23,
-	0x40, 0xde, 0x2e, 0x40, 0xb7, 0x21, 0xe7, 0x33, 0x17, 0xe3, 0x44, 0x46, 0xc3, 0x9c, 0x67, 0xd7,
-	0x8e, 0x51, 0x74, 0x17, 0x6e, 0x9d, 0x38, 0xbe, 0x33, 0x40, 0x2e, 0xcc, 0x6c, 0x2d, 0xbb, 0x65,
-	0x34, 0x6a, 0x69, 0x8c, 0xe7, 0xe8, 0x0d, 0x5e, 0x48, 0x74, 0x9f, 0x21, 0x72, 0x7b, 0xc2, 0xa0,
-	0xcf, 0xe1, 0x7d, 0x1f, 0xe5, 0x2b, 0xc6, 0x87, 0xbd, 0x23, 0xc6, 0xa4, 0x90, 0xdc, 0x09, 0x7a,
-	0x43, 0x1c, 0x09, 0x33, 0x17, 0x6b, 0xdd, 0x4f, 0xd3, 0x6a, 0xfb, 0x7d, 0x3e, 0x8a, 0x4b, 0xf3,
-	0x18, 0x47, 0xf6, 0x6d, 0x2d, 0xd0, 0x4c, 0xf8, 0x8f, 0x71, 0x24, 0xac, 0x2f, 0xa1, 0xfc, 0x15,
-	0x3a, 0x5c, 0x1e, 0xa1, 0x23, 0x93, 0x76, 0x5c, 0xab, 0x0c, 0xd6, 0x53, 0x78, 0x77, 0x4a, 0x41,
-	0x04, 0xcc, 0x17, 0x48, 0x3f, 0x85, 0x7c, 0x80, 0xdc, 0x63, 0xae, 0x6e, 0xe6, 0xdd, 0x34, 0x7f,
-	0x2d, 0xfd, 0x30, 0x9a, 0xb9, 0xd3, 0xb3, 0xb5, 0x25, 0x5b, 0x33, 0xac, 0x5f, 0x33, 0x70, 0xe7,
-	0xeb, 0xc0, 0x75, 0x24, 0x76, 0x1d, 0x31, 0x3c, 0x94, 0x8e, 0x0c, 0xc5, 0x8d, 0xac, 0xd1, 0x6f,
-	0x60, 0x25, 0x8c, 0x85, 0x92, 0x92, 0xef, 0xa6, 0xd9, 0x98, 0x93, 0xab, 0x7e, 0x11, 0x51, 0x08,
-	0x3b, 0x11, 0xab, 0x30, 0x28, 0xcf, 0x5e, 0xd2, 0x75, 0x58, 0x91, 0x8e, 0x18, 0x5e, 0xd8, 0x82,
-	0xf1, 0xd9, 0x5a, 0x3e, 0x82, 0x75, 0x5a, 0x76, 0x3e, 0xba, 0xea, 0xb8, 0xf4, 0x13, 0xc8, 0x8b,
-	0x98, 0xa4, 0x1f, 0x4d, 0x35, 0xcd, 0xcf, 0x94, 0x13, 0x8d, 0xb6, 0x2a, 0x60, 0x5e, 0x76, 0xa9,
-	0x4a, 0x6d, 0xed, 0x42, 0x31, 0x8a, 0xde, 0xac, 0x44, 0xd6, 0xe7, 0x9a, 0x9d, 0x8c, 0x40, 0x1d,
-	0x96, 0x23, 0xaf, 0xc2, 0x24, 0x71, 0xc1, 0xcc, 0x79, 0x06, 0x6d, 0x05, 0xb3, 0x9a, 0x40, 0xf7,
-	0x84, 0xf0, 0x06, 0xfe, 0x09, 0xfa, 0xf2, 0x86, 0x1e, 0x5e, 0x67, 0xff, 0x27, 0x92, 0x58, 0xf9,
-	0x02, 0x72, 0xd1, 0x2a, 0x8a, 0xe9, 0xab, 0x8d, 0x07, 0x69, 0x4e, 0x2e, 0xb3, 0xea, 0xdd, 0x51,
-	0x80, 0x76, 0x4c, 0xa4, 0xf7, 0x00, 0x9c, 0x20, 0x38, 0xf6, 0x50, 0xf4, 0x24, 0x53, 0xfb, 0xc0,
-	0x2e, 0xe8, 0x48, 0x97, 0x45, 0xd7, 0x1c, 0x45, 0x78, 0x2c, 0x45, 0xcf, 0xf3, 0xcd, 0xac, 0xba,
-	0xd6, 0x91, 0x8e, 0x4f, 0x3f, 0x83, 0xa2, 0xea, 0x77, 0x4f, 0x15, 0x24, 0x77, 0x45, 0x41, 0x8c,
-	0x70, 0xd2, 0x21, 0x41, 0xef, 0x43, 0x91, 0xe3, 0x09, 0x7b, 0x99, 0x90, 0x97, 0x6b, 0xd9, 0xad,
-	0x82, 0x6d, 0xa8, 0x98, 0x82, 0xec, 0xc1, 0xaa, 0xd6, 0x17, 0xd8, 0xe7, 0x28, 0x85, 0x99, 0x8f,
-	0x33, 0x54, 0xd2, 0x32, 0x1c, 0xc6, 0x10, 0xbb, 0xa4, 0x18, 0xea, 0x24, 0xe8, 0x06, 0xac, 0xea,
-	0x2c, 0x89, 0xc4, 0x4a, 0x9c, 0xa7, 0xa4, 0xa2, 0x1a, 0x66, 0x6d, 0x40, 0x2e, 0xaa, 0x0a, 0x2d,
-	0xc2, 0xad, 0x47, 0x4f, 0xf7, 0x9f, 0x3d, 0x69, 0x77, 0xdb, 0xe5, 0x25, 0xfa, 0x0e, 0x18, 0x9d,
-	0x83, 0x47, 0x76, 0x7b, 0xbf, 0x7d, 0xd0, 0xdd, 0x7b, 0x52, 0x26, 0x8d, 0x37, 0xcb, 0x00, 0xad,
-	0xc9, 0x7f, 0x08, 0xfa, 0x3d, 0xac, 0xe8, 0x6e, 0x51, 0x2b, 0xdd, 0xd2, 0xf4, 0x0e, 0xaf, 0xbc,
-	0x0d, 0xa3, 0x7b, 0x63, 0xad, 0xff, 0xf1, 0xfb, 0x3f, 0x6f, 0x32, 0xf7, 0xa0, 0x18, 0x63, 0x3e,
-	0x8c, 0xb6, 0x11, 0x72, 0x28, 0xa9, 0x93, 0xde, 0x75, 0x0f, 0x09, 0xfd, 0x01, 0x0a, 0x93, 0x8d,
-	0x42, 0x3f, 0x48, 0xd3, 0x9d, 0x5d, 0x59, 0x95, 0x8d, 0x2b, 0x50, 0x7a, 0x56, 0x16, 0x31, 0x40,
-	0x7f, 0x23, 0x50, 0x9e, 0x9d, 0x36, 0xfa, 0xe0, 0x1a, 0x9b, 0xa3, 0xb2, 0xbd, 0x18, 0xf8, 0x3a,
-	0xa6, 0x42, 0x58, 0x56, 0xcf, 0xa6, 0x36, 0xef, 0x01, 0x4e, 0xb2, 0xcf, 0x47, 0x24, 0x7d, 0xd8,
-	0x5c, 0x20, 0xe3, 0x2f, 0x19, 0xf2, 0x90, 0xd0, 0xd7, 0x04, 0x8c, 0xa9, 0x21, 0xa3, 0x9b, 0x57,
-	0x4c, 0x61, 0xe2, 0x61, 0x73, 0xb1, 0x69, 0x5d, 0xf0, 0x45, 0x34, 0xef, 0x9e, 0x9e, 0x57, 0x97,
-	0xfe, 0x3a, 0xaf, 0x2e, 0xfd, 0x7b, 0x5e, 0x25, 0x3f, 0x8e, 0xab, 0xe4, 0x74, 0x5c, 0x25, 0x7f,
-	0x8e, 0xab, 0xe4, 0xef, 0x71, 0x95, 0x1c, 0xe5, 0xe3, 0x1f, 0x16, 0x1f, 0xff, 0x17, 0x00, 0x00,
-	0xff, 0xff, 0xf5, 0xa0, 0x46, 0x49, 0xe0, 0x08, 0x00, 0x00,
+	// 943 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x9c, 0x56, 0x4f, 0x6f, 0xdb, 0xc6,
+	0x13, 0xd5, 0xca, 0x32, 0x1d, 0x8d, 0x6c, 0xff, 0xf4, 0xdb, 0x06, 0x89, 0x40, 0x24, 0xb2, 0x4a,
+	0x37, 0x82, 0x81, 0xb8, 0x74, 0xaa, 0xfe, 0x39, 0x14, 0x86, 0x5b, 0xcb, 0x12, 0x60, 0x21, 0x91,
+	0x6d, 0xac, 0x95, 0xe4, 0x28, 0x50, 0xe2, 0x42, 0x66, 0x65, 0x71, 0x59, 0xee, 0x2a, 0xa9, 0x0a,
+	0x14, 0x28, 0xd0, 0x06, 0x28, 0x7a, 0x2a, 0x7a, 0xca, 0xa5, 0x5f, 0xa1, 0x9f, 0xc3, 0xe8, 0xa9,
+	0xc7, 0x9e, 0x8c, 0x5a, 0x1f, 0xa0, 0xe8, 0xb9, 0xa7, 0x82, 0xcb, 0xa5, 0xa4, 0x2a, 0x94, 0x22,
+	0xfb, 0x24, 0x72, 0xf6, 0xbd, 0x99, 0xc7, 0x99, 0xe1, 0xa3, 0x20, 0x6b, 0x3b, 0xdc, 0xb3, 0x44,
+	0xfb, 0x8c, 0xfa, 0xa6, 0xe7, 0x33, 0xc1, 0x30, 0xb6, 0x59, 0xbb, 0x4b, 0x7d, 0x93, 0xbf, 0xb4,
+	0xfc, 0x5e, 0xd7, 0x11, 0xe6, 0x8b, 0x0f, 0xf4, 0x8c, 0x18, 0x78, 0x94, 0x87, 0x00, 0x7d, 0x8d,
+	0xb5, 0xbe, 0xa0, 0x6d, 0x11, 0xdd, 0xde, 0xee, 0xb0, 0x0e, 0x93, 0x97, 0x3b, 0xc1, 0x95, 0x8a,
+	0xbe, 0xe3, 0x9d, 0xf7, 0x3b, 0x8e, 0xbb, 0x13, 0xfe, 0xa8, 0xe0, 0x5d, 0xbb, 0xef, 0x5b, 0xc2,
+	0x61, 0xee, 0x4e, 0x74, 0x11, 0x1e, 0x18, 0xaf, 0x10, 0xac, 0x9f, 0x52, 0xce, 0x1d, 0xe6, 0x12,
+	0xfa, 0x65, 0x9f, 0x72, 0x81, 0xab, 0x90, 0xb1, 0x29, 0x6f, 0xfb, 0x8e, 0x17, 0xe0, 0x72, 0xa8,
+	0x80, 0xb6, 0x32, 0xa5, 0x4d, 0xf3, 0x4d, 0x71, 0xe6, 0x11, 0xb3, 0x69, 0x65, 0x0c, 0x25, 0x93,
+	0x3c, 0xbc, 0x0d, 0xc0, 0xc3, 0xc4, 0x4d, 0xc7, 0xce, 0x25, 0x0b, 0x68, 0x2b, 0x5d, 0x5e, 0x1b,
+	0x5e, 0x6e, 0xa4, 0x55, 0xb9, 0x5a, 0x85, 0xa4, 0x15, 0xa0, 0x66, 0x1b, 0xdf, 0x25, 0x47, 0x3a,
+	0xea, 0x94, 0x73, 0xab, 0x43, 0xa7, 0x12, 0xa0, 0xf9, 0x09, 0xf0, 0x36, 0xa4, 0x5c, 0x66, 0x53,
+	0x59, 0x28, 0x53, 0xca, 0xcd, 0x92, 0x4b, 0x24, 0x0a, 0xef, 0xc2, 0xad, 0x9e, 0xe5, 0x5a, 0x1d,
+	0xea, 0xf3, 0xdc, 0x52, 0x61, 0x69, 0x2b, 0x53, 0x2a, 0xc4, 0x31, 0x9e, 0x53, 0xa7, 0x73, 0x26,
+	0xa8, 0x7d, 0x42, 0xa9, 0x4f, 0x46, 0x0c, 0xfc, 0x1c, 0xee, 0xb8, 0x54, 0xbc, 0x64, 0x7e, 0xb7,
+	0xd9, 0x62, 0x4c, 0x70, 0xe1, 0x5b, 0x5e, 0xb3, 0x4b, 0x07, 0x3c, 0x97, 0x92, 0xb9, 0xde, 0x8d,
+	0xcb, 0x55, 0x75, 0xdb, 0xfe, 0x40, 0xb6, 0xe6, 0x31, 0x1d, 0x90, 0xdb, 0x2a, 0x41, 0x39, 0xe2,
+	0x3f, 0xa6, 0x03, 0x6e, 0x7c, 0x0e, 0xd9, 0x43, 0x6a, 0xf9, 0xa2, 0x45, 0x2d, 0x11, 0x8d, 0xe3,
+	0x5a, 0x6d, 0x30, 0x8e, 0xe1, 0xff, 0x13, 0x19, 0xb8, 0xc7, 0x5c, 0x4e, 0xf1, 0xa7, 0xa0, 0x79,
+	0xd4, 0x77, 0x98, 0xad, 0x86, 0x79, 0x2f, 0x4e, 0x5f, 0x45, 0x2d, 0x46, 0x39, 0x75, 0x71, 0xb9,
+	0x91, 0x20, 0x8a, 0x61, 0xfc, 0x94, 0x84, 0xbb, 0x4f, 0x3d, 0xdb, 0x12, 0xb4, 0x61, 0xf1, 0xee,
+	0xa9, 0xb0, 0x44, 0x9f, 0xdf, 0x48, 0x1a, 0x7e, 0x06, 0x2b, 0x7d, 0x99, 0x28, 0x6a, 0xf9, 0x6e,
+	0x9c, 0x8c, 0x19, 0xb5, 0xcc, 0x71, 0x24, 0x44, 0x90, 0x28, 0x99, 0xce, 0x20, 0x3b, 0x7d, 0x88,
+	0x37, 0x61, 0x45, 0x58, 0xbc, 0x3b, 0x96, 0x05, 0xc3, 0xcb, 0x0d, 0x2d, 0x80, 0xd5, 0x2a, 0x44,
+	0x0b, 0x8e, 0x6a, 0x36, 0xfe, 0x04, 0x34, 0x2e, 0x49, 0x6a, 0x69, 0xf2, 0x71, 0x7a, 0x26, 0x94,
+	0x28, 0xb4, 0xa1, 0x43, 0xee, 0x4d, 0x95, 0x61, 0xab, 0x8d, 0x5d, 0x58, 0x0d, 0xa2, 0x37, 0x6b,
+	0x91, 0xb1, 0xa7, 0xd8, 0xd1, 0x2b, 0x60, 0xc2, 0x72, 0xa0, 0x95, 0xe7, 0x90, 0x6c, 0x58, 0x6e,
+	0x96, 0x40, 0x12, 0xc2, 0x8c, 0x32, 0xe0, 0x7d, 0xce, 0x9d, 0x8e, 0xdb, 0xa3, 0xae, 0xb8, 0xa1,
+	0x86, 0xaf, 0x01, 0xc6, 0x39, 0xb0, 0x09, 0xa9, 0x20, 0xf5, 0xbc, 0xd7, 0x2a, 0x10, 0x70, 0x98,
+	0x20, 0x12, 0x87, 0x3f, 0x02, 0x8d, 0xd3, 0xb6, 0x4f, 0x45, 0x6e, 0x49, 0x32, 0xf4, 0x38, 0xc6,
+	0xa9, 0x44, 0x1c, 0x26, 0x88, 0xc2, 0x96, 0x35, 0x48, 0x39, 0x82, 0xf6, 0x8c, 0x57, 0x49, 0xc8,
+	0x8e, 0x8b, 0x1f, 0x9c, 0x59, 0x6e, 0x87, 0xe2, 0x3d, 0x00, 0x6b, 0x14, 0x53, 0x1b, 0x1c, 0x3b,
+	0xaa, 0x31, 0x93, 0x4c, 0x30, 0x70, 0x1d, 0x34, 0xab, 0x2d, 0xad, 0x2c, 0x78, 0x88, 0xf5, 0xd2,
+	0xc7, 0xf3, 0xb9, 0x61, 0xd5, 0x89, 0xc0, 0xbe, 0x24, 0x13, 0x95, 0xc4, 0x68, 0x4d, 0x4a, 0x0c,
+	0xcf, 0x70, 0x11, 0xb4, 0xa7, 0x27, 0x95, 0xfd, 0x46, 0x35, 0x9b, 0xd0, 0xf5, 0x1f, 0x7f, 0x29,
+	0xdc, 0x99, 0x46, 0xa8, 0xb5, 0x2c, 0x82, 0x46, 0xaa, 0xf5, 0xe3, 0x67, 0xd5, 0x2c, 0x8a, 0xc7,
+	0x11, 0xda, 0x63, 0x2f, 0xa8, 0xf1, 0x0f, 0xfa, 0xcf, 0x20, 0xa3, 0x75, 0xf8, 0x0c, 0x52, 0xc1,
+	0xe7, 0x40, 0xf6, 0x60, 0xbd, 0xf4, 0x70, 0xfe, 0x73, 0x44, 0x2c, 0xb3, 0x31, 0xf0, 0x28, 0x91,
+	0x44, 0x7c, 0x1f, 0xc0, 0xf2, 0xbc, 0x73, 0x87, 0xf2, 0xa6, 0x60, 0xa1, 0x27, 0x93, 0xb4, 0x8a,
+	0x34, 0x58, 0x70, 0xec, 0x53, 0xde, 0x3f, 0x17, 0xbc, 0xe9, 0xb8, 0x72, 0x80, 0x69, 0x92, 0x56,
+	0x91, 0x9a, 0x8b, 0xf7, 0x60, 0xa5, 0x2d, 0x9b, 0x13, 0xf9, 0xdc, 0x7b, 0x8b, 0x74, 0x92, 0x44,
+	0x24, 0xe3, 0x01, 0xa4, 0x02, 0x2d, 0x78, 0x15, 0x6e, 0x1d, 0x1c, 0xd7, 0x4f, 0x9e, 0x54, 0x83,
+	0x7e, 0xe1, 0xff, 0x41, 0xa6, 0x76, 0x74, 0x40, 0xaa, 0xf5, 0xea, 0x51, 0x63, 0xff, 0x49, 0x16,
+	0x95, 0x5e, 0x2f, 0x03, 0x54, 0x46, 0xdf, 0x46, 0xfc, 0x15, 0xac, 0xa8, 0x3d, 0xc5, 0x46, 0xfc,
+	0x32, 0x4d, 0x7e, 0xbd, 0xf4, 0x79, 0x18, 0xd5, 0x11, 0x63, 0xf3, 0xb7, 0x5f, 0xff, 0x7a, 0x9d,
+	0xbc, 0x0f, 0xab, 0x12, 0xf3, 0x7e, 0xe0, 0xc3, 0xd4, 0x87, 0xb5, 0xf0, 0x4e, 0xb9, 0xfc, 0x23,
+	0x84, 0xbf, 0x81, 0xf4, 0xc8, 0x4b, 0x71, 0xec, 0xb3, 0x4e, 0x9b, 0xb5, 0xfe, 0xe0, 0x2d, 0x28,
+	0xe5, 0x12, 0x8b, 0x08, 0xc0, 0x3f, 0x23, 0xc8, 0x4e, 0xfb, 0x0c, 0x7e, 0x78, 0x0d, 0xcf, 0xd4,
+	0xb7, 0x17, 0x03, 0x5f, 0x47, 0x54, 0x1f, 0x96, 0xa5, 0x43, 0xe1, 0xc2, 0x2c, 0x2b, 0x18, 0x55,
+	0x9f, 0x8d, 0x88, 0xe6, 0x50, 0x5c, 0xa0, 0xe2, 0x0f, 0x49, 0xf4, 0x08, 0xe1, 0xef, 0x11, 0x64,
+	0x26, 0x56, 0x1b, 0x17, 0xdf, 0xb2, 0xfb, 0x91, 0x86, 0xe2, 0x62, 0xef, 0xc8, 0x82, 0x1b, 0x51,
+	0xbe, 0x77, 0x71, 0x95, 0x4f, 0xfc, 0x71, 0x95, 0x4f, 0xfc, 0x7d, 0x95, 0x47, 0xdf, 0x0e, 0xf3,
+	0xe8, 0x62, 0x98, 0x47, 0xbf, 0x0f, 0xf3, 0xe8, 0xcf, 0x61, 0x1e, 0xb5, 0x34, 0xf9, 0x97, 0xea,
+	0xc3, 0x7f, 0x03, 0x00, 0x00, 0xff, 0xff, 0xee, 0xf5, 0xd1, 0x00, 0xda, 0x09, 0x00, 0x00,
 }
