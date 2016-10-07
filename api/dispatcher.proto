@@ -172,8 +172,8 @@ message AssignmentsRequest {
 
 message Assignment {
 	oneof item {
-		Task task = 2;
-		Secret secret = 3;
+		Task task = 1;
+		Secret secret = 2;
 	}
 }
 
