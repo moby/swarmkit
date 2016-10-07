@@ -355,8 +355,8 @@ func TestListManagerNodes(t *testing.T) {
 	ts.Server.raft = nodes[2].Node
 
 	// Stop node 1 (leader)
-	nodes[1].Stop()
 	nodes[1].Server.Stop()
+	nodes[1].Shutdown()
 
 	newCluster := map[uint64]*raftutils.TestNode{
 		2: nodes[2],
