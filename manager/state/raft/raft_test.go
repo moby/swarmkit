@@ -82,7 +82,7 @@ func TestRaftLeaderDown(t *testing.T) {
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop node 1
-	nodes[1].Stop()
+	nodes[1].Shutdown()
 
 	newCluster := map[uint64]*raftutils.TestNode{
 		2: nodes[2],
@@ -135,7 +135,7 @@ func TestRaftFollowerDown(t *testing.T) {
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop node 3
-	nodes[3].Stop()
+	nodes[3].Shutdown()
 
 	// Leader should still be 1
 	assert.True(t, nodes[1].IsLeader(), "node 1 is not a leader anymore")
@@ -175,7 +175,7 @@ func TestRaftLogReplicationWithoutLeader(t *testing.T) {
 	defer raftutils.TeardownCluster(t, nodes)
 
 	// Stop the leader
-	nodes[1].Stop()
+	nodes[1].Shutdown()
 
 	// Propose a value
 	_, err := raftutils.ProposeValue(t, nodes[2], DefaultProposalTime)
@@ -198,7 +198,7 @@ func TestRaftQuorumFailure(t *testing.T) {
 	// Lose a majority
 	for i := uint64(3); i <= 5; i++ {
 		nodes[i].Server.Stop()
-		nodes[i].Stop()
+		nodes[i].Shutdown()
 	}
 
 	// Propose a value
