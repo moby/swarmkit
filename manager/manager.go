@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/go-events"
@@ -379,11 +380,12 @@ func (m *Manager) Run(parent context.Context) error {
 	}
 }
 
+const stopTimeout = 8 * time.Second
+
 // Stop stops the manager. It immediately closes all open connections and
 // active RPCs as well as stopping the scheduler.
 func (m *Manager) Stop(ctx context.Context) {
 	log.G(ctx).Info("Stopping manager")
-
 	// It's not safe to start shutting down while the manager is still
 	// starting up.
 	<-m.started
@@ -404,6 +406,16 @@ func (m *Manager) Stop(ctx context.Context) {
 	// Run that we've started stopping, when it gets the error from errServe
 	// it also prevents the loop from processing any more stuff.
 	close(m.stopped)
+
+	srvDone, localSrvDone := make(chan struct{}), make(chan struct{})
+	go func() {
+		m.server.GracefulStop()
+		close(srvDone)
+	}()
+	go func() {
+		m.localserver.GracefulStop()
+		close(localSrvDone)
+	}()
 
 	m.Dispatcher.Stop()
 	m.caserver.Stop()
@@ -428,9 +440,20 @@ func (m *Manager) Stop(ctx context.Context) {
 	}
 
 	m.RaftNode.Shutdown()
-	// some time after this point, Run will receive an error from one of these
-	m.server.Stop()
-	m.localserver.Stop()
+
+	timer := time.AfterFunc(stopTimeout, func() {
+		m.server.Stop()
+		m.localserver.Stop()
+	})
+	defer timer.Stop()
+	// TODO: we're not waiting on ctx because it very well could be passed from Run,
+	// which is already cancelled here. We need to refactor that.
+	select {
+	case <-srvDone:
+		<-localSrvDone
+	case <-localSrvDone:
+		<-srvDone
+	}
 
 	log.G(ctx).Info("Manager shut down")
 	// mutex is released and Run can return now
