@@ -137,16 +137,16 @@ func (w *worker) Update(ctx context.Context, assignments []*api.AssignmentChange
 
 func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.AssignmentChange, fullSnapshot bool) error {
 	var (
-		updatedTasks []api.Task
-		removedTasks []api.Task
+		updatedTasks []*api.Task
+		removedTasks []*api.Task
 	)
 	for _, a := range assignments {
 		if t := a.Assignment.GetTask(); t != nil {
 			switch a.Action {
 			case api.AssignmentChange_AssignmentActionUpdate:
-				updatedTasks = append(updatedTasks, *t)
+				updatedTasks = append(updatedTasks, t)
 			case api.AssignmentChange_AssignmentActionRemove:
-				removedTasks = append(removedTasks, *t)
+				removedTasks = append(removedTasks, t)
 			}
 		}
 	}
@@ -170,7 +170,7 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 			logrus.Fields{
 				"task.id":           task.ID,
 				"task.desiredstate": task.DesiredState}).Debug("assigned")
-		if err := PutTask(tx, &task); err != nil {
+		if err := PutTask(tx, task); err != nil {
 			return err
 		}
 
@@ -179,7 +179,7 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 		}
 
 		if mgr, ok := w.taskManagers[task.ID]; ok {
-			if err := mgr.Update(ctx, &task); err != nil && err != ErrClosed {
+			if err := mgr.Update(ctx, task); err != nil && err != ErrClosed {
 				log.G(ctx).WithError(err).Error("failed updating assigned task")
 			}
 		} else {
@@ -198,7 +198,7 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 			} else {
 				task.Status = *status
 			}
-			w.startTask(ctx, tx, &task)
+			w.startTask(ctx, tx, task)
 		}
 
 		assigned[task.ID] = struct{}{}
