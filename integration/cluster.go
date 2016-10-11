@@ -285,7 +285,22 @@ func (c *testCluster) SetNodeRole(id string, role api.NodeRole) error {
 			}
 			return err
 		}
-		return nil
+		if role == api.NodeRoleManager {
+			// wait to become manager
+			return raftutils.PollFuncWithTimeout(nil, func() error {
+				if !node.IsManager() {
+					return fmt.Errorf("node is still not a manager")
+				}
+				return nil
+			}, opsTimeout)
+		}
+		// wait to become worker
+		return raftutils.PollFuncWithTimeout(nil, func() error {
+			if node.IsManager() {
+				return fmt.Errorf("node is still not a worker")
+			}
+			return nil
+		}, opsTimeout)
 	}
 	return fmt.Errorf("set role %s for node %s, got sequence error 5 times", role, id)
 }
