@@ -85,6 +85,7 @@ type Manager struct {
 	replicatedOrchestrator *orchestrator.ReplicatedOrchestrator
 	globalOrchestrator     *orchestrator.GlobalOrchestrator
 	taskReaper             *orchestrator.TaskReaper
+	constraintEnforcer     *orchestrator.ConstraintEnforcer
 	scheduler              *scheduler.Scheduler
 	allocator              *allocator.Allocator
 	keyManager             *keymanager.KeyManager
@@ -427,6 +428,9 @@ func (m *Manager) Stop(ctx context.Context) {
 	if m.taskReaper != nil {
 		m.taskReaper.Stop()
 	}
+	if m.constraintEnforcer != nil {
+		m.constraintEnforcer.Stop()
+	}
 	if m.scheduler != nil {
 		m.scheduler.Stop()
 	}
@@ -631,6 +635,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	}
 
 	m.replicatedOrchestrator = orchestrator.NewReplicatedOrchestrator(s)
+	m.constraintEnforcer = orchestrator.NewConstraintEnforcer(s)
 	m.globalOrchestrator = orchestrator.NewGlobalOrchestrator(s)
 	m.taskReaper = orchestrator.NewTaskReaper(s)
 	m.scheduler = scheduler.New(s)
@@ -684,6 +689,10 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		}
 	}(m.scheduler)
 
+	go func(constraintEnforcer *orchestrator.ConstraintEnforcer) {
+		constraintEnforcer.Run()
+	}(m.constraintEnforcer)
+
 	go func(taskReaper *orchestrator.TaskReaper) {
 		taskReaper.Run()
 	}(m.taskReaper)
@@ -711,6 +720,9 @@ func (m *Manager) becomeFollower() {
 		m.allocator.Stop()
 		m.allocator = nil
 	}
+
+	m.constraintEnforcer.Stop()
+	m.constraintEnforcer = nil
 
 	m.replicatedOrchestrator.Stop()
 	m.replicatedOrchestrator = nil
