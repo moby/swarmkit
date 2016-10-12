@@ -267,7 +267,7 @@ func (n *Node) JoinAndStart() (err error) {
 
 			if err := n.registerNodes(resp.Members); err != nil {
 				if walErr := n.wal.Close(); err != nil {
-					n.Config.Logger.Errorf("raft: error closing WAL: %v", walErr)
+					log.G(n.Ctx).WithError(walErr).Error("raft: error closing WAL")
 				}
 				return err
 			}
@@ -286,7 +286,7 @@ func (n *Node) JoinAndStart() (err error) {
 	}
 
 	if n.opts.JoinAddr != "" {
-		n.Config.Logger.Warning("ignoring request to join cluster, because raft state already exists")
+		log.G(n.Ctx).Warning("ignoring request to join cluster, because raft state already exists")
 	}
 	n.campaignWhenAble = true
 	n.raftNode = raft.RestartNode(n.Config)
@@ -340,6 +340,7 @@ func (n *Node) done() {
 // Before running the main loop, it first starts the raft node based on saved
 // cluster state. If no saved state exists, it starts a single-node cluster.
 func (n *Node) Run(ctx context.Context) error {
+	ctx = log.WithLogger(ctx, logrus.WithField("raft_id", fmt.Sprintf("%x", n.Config.ID)))
 	defer n.done()
 
 	wasLeader := false
@@ -360,13 +361,13 @@ func (n *Node) Run(ctx context.Context) error {
 
 			// Save entries to storage
 			if err := n.saveToStorage(&raftConfig, rd.HardState, rd.Entries, rd.Snapshot); err != nil {
-				n.Config.Logger.Error(err)
+				log.G(ctx).WithError(err).Error("failed to save entries to storage")
 			}
 
 			if len(rd.Messages) != 0 {
 				// Send raft messages to peers
-				if err := n.send(rd.Messages); err != nil {
-					n.Config.Logger.Error(err)
+				if err := n.send(ctx, rd.Messages); err != nil {
+					log.G(ctx).WithError(err).Error("failed to send message to members")
 				}
 			}
 
@@ -376,7 +377,7 @@ func (n *Node) Run(ctx context.Context) error {
 			if !raft.IsEmptySnap(rd.Snapshot) {
 				// Load the snapshot data into the store
 				if err := n.restoreFromSnapshot(rd.Snapshot.Data, false); err != nil {
-					n.Config.Logger.Error(err)
+					log.G(ctx).WithError(err).Error("failed to restore from snapshot")
 				}
 				n.appliedIndex = rd.Snapshot.Metadata.Index
 				n.snapshotIndex = rd.Snapshot.Metadata.Index
@@ -420,8 +421,8 @@ func (n *Node) Run(ctx context.Context) error {
 
 			// Process committed entries
 			for _, entry := range rd.CommittedEntries {
-				if err := n.processCommitted(entry); err != nil {
-					n.Config.Logger.Error(err)
+				if err := n.processCommitted(ctx, entry); err != nil {
+					log.G(ctx).WithError(err).Error("failed to process committed entries")
 				}
 			}
 
@@ -468,17 +469,17 @@ func (n *Node) Run(ctx context.Context) error {
 			// If the node was removed from other members,
 			// send back an error to the caller to start
 			// the shutdown process.
-			n.stop()
+			n.stop(ctx)
 
 			// Move WAL and snapshot out of the way, since
 			// they are no longer usable.
 			if err := n.moveWALAndSnap(); err != nil {
-				n.Config.Logger.Error(err)
+				log.G(ctx).WithError(err).Error("failed to move WAL and snapshot")
 			}
 
 			return ErrMemberRemoved
 		case <-n.stopCh:
-			n.stop()
+			n.stop(ctx)
 			return nil
 		}
 	}
@@ -496,7 +497,7 @@ func (n *Node) Shutdown() {
 	}
 }
 
-func (n *Node) stop() {
+func (n *Node) stop(ctx context.Context) {
 	n.stopMu.Lock()
 	defer n.stopMu.Unlock()
 
@@ -507,7 +508,7 @@ func (n *Node) stop() {
 	n.raftNode.Stop()
 	n.ticker.Stop()
 	if err := n.wal.Close(); err != nil {
-		n.Config.Logger.Errorf("raft: error closing WAL: %v", err)
+		log.G(ctx).WithError(err).Error("raft: failed to close WAL")
 	}
 	atomic.StoreUint32(&n.isMember, 0)
 	// TODO(stevvooe): Handle ctx.Done()
@@ -581,11 +582,13 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 	fields := logrus.Fields{
 		"node.id": nodeInfo.NodeID,
 		"method":  "(*Node).Join",
+		"raft_id": fmt.Sprintf("%x", n.Config.ID),
 	}
 	if nodeInfo.ForwardedBy != nil {
 		fields["forwarder.id"] = nodeInfo.ForwardedBy.NodeID
 	}
 	log := log.G(ctx).WithFields(fields)
+	log.Debug("")
 
 	// can't stop the raft node while an async RPC is in progress
 	n.stopMu.RLock()
@@ -639,7 +642,7 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 
 	err = n.addMember(ctx, remoteAddr, raftID, nodeInfo.NodeID)
 	if err != nil {
-		log.WithError(err).Errorf("failed to add member")
+		log.WithError(err).Errorf("failed to add member %x", raftID)
 		return nil, err
 	}
 
@@ -738,11 +741,12 @@ func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResp
 	fields := logrus.Fields{
 		"node.id": nodeInfo.NodeID,
 		"method":  "(*Node).Leave",
+		"raft_id": fmt.Sprintf("%x", n.Config.ID),
 	}
 	if nodeInfo.ForwardedBy != nil {
 		fields["forwarder.id"] = nodeInfo.ForwardedBy.NodeID
 	}
-	log.G(ctx).WithFields(fields).Debugf("")
+	log.G(ctx).WithFields(fields).Debug("")
 
 	// can't stop the raft node while an async RPC is in progress
 	n.stopMu.RLock()
@@ -867,11 +871,12 @@ func (n *Node) ResolveAddress(ctx context.Context, msg *api.ResolveAddressReques
 	fields := logrus.Fields{
 		"node.id": nodeInfo.NodeID,
 		"method":  "(*Node).ResolveAddress",
+		"raft_id": fmt.Sprintf("%x", n.Config.ID),
 	}
 	if nodeInfo.ForwardedBy != nil {
 		fields["forwarder.id"] = nodeInfo.ForwardedBy.NodeID
 	}
-	log.G(ctx).WithFields(fields).Debugf("")
+	log.G(ctx).WithFields(fields).Debug("")
 
 	member := n.cluster.GetMember(msg.RaftID)
 	if member == nil {
@@ -1115,7 +1120,7 @@ func (n *Node) saveToStorage(raftConfig *api.RaftConfig, hardState raftpb.HardSt
 }
 
 // Sends a series of messages to members in the raft
-func (n *Node) send(messages []raftpb.Message) error {
+func (n *Node) send(ctx context.Context, messages []raftpb.Message) error {
 	members := n.cluster.Members()
 
 	n.stopMu.RLock()
@@ -1165,7 +1170,7 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 		// If we are being asked to send to a member that's not in
 		// our member list, that could indicate that the current leader
 		// was added while we were offline. Try to resolve its address.
-		n.Config.Logger.Warningf("sending message to an unrecognized member ID %x", m.To)
+		log.G(ctx).Warningf("sending message to an unrecognized member ID %x", m.To)
 
 		// Choose a random member
 		var (
@@ -1179,18 +1184,18 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 		}
 
 		if queryMember == nil || queryMember.RaftID == n.Config.ID {
-			n.Config.Logger.Error("could not find cluster member to query for leader address")
+			log.G(ctx).Error("could not find cluster member to query for leader address")
 			return
 		}
 
 		resp, err := queryMember.ResolveAddress(ctx, &api.ResolveAddressRequest{RaftID: m.To})
 		if err != nil {
-			n.Config.Logger.Errorf("could not resolve address of member ID %x: %v", m.To, err)
+			log.G(ctx).WithError(err).Errorf("could not resolve address of member ID %x", m.To)
 			return
 		}
 		conn, err = n.ConnectToMember(resp.Addr, n.opts.SendTimeout)
 		if err != nil {
-			n.Config.Logger.Errorf("could connect to member ID %x at %s: %v", m.To, resp.Addr, err)
+			log.G(ctx).WithError(err).Errorf("could connect to member ID %x at %s", m.To, resp.Addr)
 			return
 		}
 		// The temporary connection is only used for this message.
@@ -1230,7 +1235,7 @@ func (n *Node) sendToMember(members map[uint64]*membership.Member, m raftpb.Mess
 		// Bounce the connection
 		newConn, err := n.ConnectToMember(conn.Addr, 0)
 		if err != nil {
-			n.Config.Logger.Errorf("could connect to member ID %x at %s: %v", m.To, conn.Addr, err)
+			log.G(ctx).WithError(err).Errorf("could connect to member ID %x at %s", m.To, conn.Addr)
 			return
 		}
 		err = n.cluster.ReplaceMemberConnection(m.To, conn, newConn, conn.Addr, false)
@@ -1366,10 +1371,10 @@ func (n *Node) configure(ctx context.Context, cc raftpb.ConfChange) error {
 	}
 }
 
-func (n *Node) processCommitted(entry raftpb.Entry) error {
+func (n *Node) processCommitted(ctx context.Context, entry raftpb.Entry) error {
 	// Process a normal entry
 	if entry.Type == raftpb.EntryNormal && entry.Data != nil {
-		if err := n.processEntry(entry); err != nil {
+		if err := n.processEntry(ctx, entry); err != nil {
 			return err
 		}
 	}
@@ -1383,7 +1388,7 @@ func (n *Node) processCommitted(entry raftpb.Entry) error {
 	return nil
 }
 
-func (n *Node) processEntry(entry raftpb.Entry) error {
+func (n *Node) processEntry(ctx context.Context, entry raftpb.Entry) error {
 	r := &api.InternalRaftRequest{}
 	err := proto.Unmarshal(entry.Data, r)
 	if err != nil {
@@ -1409,7 +1414,7 @@ func (n *Node) processEntry(entry raftpb.Entry) error {
 
 		err := n.memoryStore.ApplyStoreActions(r.Action)
 		if err != nil {
-			log.G(context.Background()).Errorf("error applying actions from raft: %v", err)
+			log.G(ctx).WithError(err).Error("failed to apply actions from raft")
 		}
 	}
 	return nil
@@ -1579,7 +1584,7 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raf
 		}
 		data, err := cc.Marshal()
 		if err != nil {
-			log.G(context.Background()).Panicf("marshal configuration change should never fail: %v", err)
+			log.L.WithError(err).Panic("marshal configuration change should never fail")
 		}
 		e := raftpb.Entry{
 			Type:  raftpb.EntryConfChange,
@@ -1594,7 +1599,7 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raf
 		node := &api.RaftMember{RaftID: self}
 		meta, err := node.Marshal()
 		if err != nil {
-			log.G(context.Background()).Panicf("marshal member should never fail: %v", err)
+			log.L.WithError(err).Panic("marshal member should never fail")
 		}
 		cc := &raftpb.ConfChange{
 			Type:    raftpb.ConfChangeAddNode,
@@ -1603,7 +1608,7 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raf
 		}
 		data, err := cc.Marshal()
 		if err != nil {
-			log.G(context.Background()).Panicf("marshal configuration change should never fail: %v", err)
+			log.L.WithError(err).Panic("marshal configuration change should never fail")
 		}
 		e := raftpb.Entry{
 			Type:  raftpb.EntryConfChange,
@@ -1637,7 +1642,7 @@ func getIDs(snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 		}
 		var cc raftpb.ConfChange
 		if err := cc.Unmarshal(e.Data); err != nil {
-			log.G(context.Background()).Panicf("unmarshal configuration change should never fail: %v", err)
+			log.L.WithError(err).Panic("unmarshal configuration change should never fail")
 		}
 		switch cc.Type {
 		case raftpb.ConfChangeAddNode:
@@ -1647,7 +1652,7 @@ func getIDs(snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 		case raftpb.ConfChangeUpdateNode:
 			// do nothing
 		default:
-			log.G(context.Background()).Panic("ConfChange Type should be either ConfChangeAddNode or ConfChangeRemoveNode!")
+			log.L.Panic("ConfChange Type should be either ConfChangeAddNode or ConfChangeRemoveNode!")
 		}
 	}
 	var sids []uint64
