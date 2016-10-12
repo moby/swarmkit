@@ -972,33 +972,6 @@ func TestSessionNoCert(t *testing.T) {
 	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
 }
 
-func TestNodesCount(t *testing.T) {
-	t.Parallel()
-
-	cfg := DefaultConfig()
-	cfg.HeartbeatPeriod = 100 * time.Millisecond
-	cfg.HeartbeatEpsilon = 0
-	gd, err := startDispatcher(cfg)
-	assert.NoError(t, err)
-	defer gd.Close()
-
-	{
-		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
-		assert.NoError(t, err)
-		defer stream.CloseSend()
-		stream.Recv()
-	}
-	{
-		stream, err := gd.Clients[1].Session(context.Background(), &api.SessionRequest{})
-		assert.NoError(t, err)
-		defer stream.CloseSend()
-		stream.Recv()
-	}
-	assert.Equal(t, 6, gd.dispatcherServer.NodeCount())
-	time.Sleep(700 * time.Millisecond)
-	assert.Equal(t, 0, gd.dispatcherServer.NodeCount())
-}
-
 func getSessionAndNodeID(t *testing.T, c api.DispatcherClient) (string, string) {
 	stream, err := c.Session(context.Background(), &api.SessionRequest{})
 	assert.NoError(t, err)
