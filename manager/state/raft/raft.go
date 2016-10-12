@@ -81,7 +81,6 @@ type Node struct {
 	raftNode raft.Node
 	cluster  *membership.Cluster
 
-	Server *grpc.Server
 	Ctx    context.Context
 	cancel func()
 

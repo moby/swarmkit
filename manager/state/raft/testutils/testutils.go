@@ -29,6 +29,7 @@ import (
 // TestNode represents a raft test node
 type TestNode struct {
 	*raft.Node
+	Server         *grpc.Server
 	Listener       *WrappedListener
 	SecurityConfig *ca.SecurityConfig
 	Address        string
@@ -236,7 +237,6 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA,
 	}
 
 	n := raft.NewNode(context.Background(), newNodeOpts)
-	n.Server = s
 
 	healthServer := health.NewHealthServer()
 	api.RegisterHealthServer(s, healthServer)
@@ -255,6 +255,7 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA,
 		SecurityConfig: securityConfig,
 		Address:        newNodeOpts.Addr,
 		StateDir:       newNodeOpts.StateDir,
+		Server:         s,
 	}
 }
 
@@ -332,7 +333,6 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 
 	ctx := context.Background()
 	n := raft.NewNode(ctx, newNodeOpts)
-	n.Server = s
 
 	healthServer := health.NewHealthServer()
 	api.RegisterHealthServer(s, healthServer)
@@ -356,6 +356,7 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 		SecurityConfig: securityConfig,
 		Address:        newNodeOpts.Addr,
 		StateDir:       newNodeOpts.StateDir,
+		Server:         s,
 	}
 }
 
