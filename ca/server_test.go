@@ -60,6 +60,38 @@ func TestIssueNodeCertificate(t *testing.T) {
 	assert.Equal(t, api.NodeRoleWorker, statusResponse.Certificate.Role)
 }
 
+func TestIssueNodeCertificateBrokenCA(t *testing.T) {
+	if !testutils.External {
+		t.Skip("test only applicable for external CA configuration")
+	}
+
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+
+	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	assert.NoError(t, err)
+
+	tc.ExternalSigningServer.Flake()
+
+	go func() {
+		time.Sleep(250 * time.Millisecond)
+		tc.ExternalSigningServer.Deflake()
+	}()
+	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Token: tc.WorkerToken}
+	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
+	assert.NoError(t, err)
+	assert.NotNil(t, issueResponse.NodeID)
+	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
+
+	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
+	statusResponse, err := tc.NodeCAClients[0].NodeCertificateStatus(context.Background(), statusRequest)
+	require.NoError(t, err)
+	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
+	assert.NotNil(t, statusResponse.Certificate.Certificate)
+	assert.Equal(t, api.NodeRoleWorker, statusResponse.Certificate.Role)
+
+}
+
 func TestIssueNodeCertificateWithInvalidCSR(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
