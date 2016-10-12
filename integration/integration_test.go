@@ -143,7 +143,7 @@ func TestClusterCreate(t *testing.T) {
 }
 
 func TestServiceCreate(t *testing.T) {
-	numWorker, numManager := 15, 5
+	numWorker, numManager := 3, 3
 	cl := newCluster(t, numWorker, numManager)
 	defer func() {
 		require.NoError(t, cl.Stop())
