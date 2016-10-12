@@ -67,6 +67,7 @@ func NewExternalSigningServer(rootCA ca.RootCA, basedir string) (*ExternalSignin
 	handler := &signHandler{
 		numIssued: &ess.NumIssued,
 		rootCA:    rootCA,
+		flaky:     &ess.flaky,
 	}
 	mux.Handle(signURL.Path, handler)
 
@@ -85,6 +86,7 @@ type ExternalSigningServer struct {
 	listener  net.Listener
 	NumIssued uint64
 	URL       string
+	flaky     uint32
 }
 
 // Stop stops this signing server by closing the underlying TCP/TLS listener.
@@ -92,12 +94,27 @@ func (ess *ExternalSigningServer) Stop() error {
 	return ess.listener.Close()
 }
 
+// Flake makes the signing server return HTTP 500 errors.
+func (ess *ExternalSigningServer) Flake() {
+	atomic.StoreUint32(&ess.flaky, 1)
+}
+
+// Deflake restores normal operation after a call to Flake.
+func (ess *ExternalSigningServer) Deflake() {
+	atomic.StoreUint32(&ess.flaky, 0)
+}
+
 type signHandler struct {
 	numIssued *uint64
 	rootCA    ca.RootCA
+	flaky     *uint32
 }
 
 func (h *signHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if atomic.LoadUint32(h.flaky) == 1 {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
 	// Check client authentication via mutual TLS.
 	if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
 		cfsslErr := cfsslerrors.New(cfsslerrors.APIClientError, cfsslerrors.AuthenticationFailure)
