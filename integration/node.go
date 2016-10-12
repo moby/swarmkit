@@ -8,17 +8,17 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/docker/swarmkit/agent"
 	"github.com/docker/swarmkit/api"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
+	"github.com/docker/swarmkit/node"
 	"golang.org/x/net/context"
 )
 
 // TestNode is representation of *agent.Node. It stores listeners, connections,
 // config for later access from tests.
 type testNode struct {
-	config   *agent.NodeConfig
-	node     *agent.Node
+	config   *node.Config
+	node     *node.Node
 	stateDir string
 }
 
@@ -33,7 +33,7 @@ func newTestNode(joinAddr, joinToken string) (*testNode, error) {
 
 	rAddr := "127.0.0.1:0"
 	cAddr := filepath.Join(tmpDir, "control.sock")
-	cfg := &agent.NodeConfig{
+	cfg := &node.Config{
 		ListenRemoteAPI:  rAddr,
 		ListenControlAPI: cAddr,
 		JoinAddr:         joinAddr,
@@ -41,7 +41,7 @@ func newTestNode(joinAddr, joinToken string) (*testNode, error) {
 		Executor:         &TestExecutor{},
 		JoinToken:        joinToken,
 	}
-	node, err := agent.NewNode(cfg)
+	node, err := node.New(cfg)
 	if err != nil {
 		return nil, err
 	}
