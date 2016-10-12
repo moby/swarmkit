@@ -184,6 +184,10 @@ func TestValidateServiceSpec(t *testing.T) {
 			spec: createSpec("", "image", 1),
 			c:    codes.InvalidArgument,
 		},
+		{
+			spec: createSpec(strings.Repeat("longname", 8), "image", 1),
+			c:    codes.InvalidArgument,
+		},
 	} {
 		err := validateServiceSpec(bad.spec)
 		assert.Error(t, err)
