@@ -174,7 +174,7 @@ func (s *Server) validateNetworks(networks []*api.NetworkAttachmentConfig) error
 	for _, na := range networks {
 		var network *api.Network
 		s.store.View(func(tx store.ReadTx) {
-			network = store.FindNetwork(tx, na.Target)
+			network = store.GetNetwork(tx, na.Target)
 		})
 		if network == nil {
 			continue
