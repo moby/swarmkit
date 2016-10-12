@@ -11,10 +11,10 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	engineapi "github.com/docker/docker/client"
-	"github.com/docker/swarmkit/agent"
 	"github.com/docker/swarmkit/agent/exec/container"
 	"github.com/docker/swarmkit/cli"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/node"
 	"github.com/docker/swarmkit/version"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -137,7 +137,7 @@ var (
 				}()
 			}
 
-			n, err := agent.NewNode(&agent.NodeConfig{
+			n, err := node.New(&node.Config{
 				Hostname:         hostname,
 				ForceNewCluster:  forceNewCluster,
 				ListenControlAPI: unix,
