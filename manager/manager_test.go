@@ -1,4 +1,4 @@
-package testcluster
+package manager
 
 import (
 	"crypto/tls"
@@ -13,35 +13,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
-	"github.com/docker/swarmkit/manager"
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
-
-// NoopExecutor is a dummy executor that implements enough to get the agent started.
-type NoopExecutor struct {
-}
-
-func (e *NoopExecutor) Describe(ctx context.Context) (*api.NodeDescription, error) {
-	return &api.NodeDescription{}, nil
-}
-
-func (e *NoopExecutor) Configure(ctx context.Context, node *api.Node) error {
-	return nil
-}
-
-func (e *NoopExecutor) SetNetworkBootstrapKeys([]*api.EncryptionKey) error {
-	return nil
-}
-
-func (e *NoopExecutor) Controller(t *api.Task) (exec.Controller, error) {
-	return nil, exec.ErrRuntimeUnsupported
-}
 
 func TestManager(t *testing.T) {
 	ctx := context.TODO()
@@ -74,7 +52,7 @@ func TestManager(t *testing.T) {
 	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
 	assert.NoError(t, err)
 
-	m, err := manager.New(&manager.Config{
+	m, err := New(&Config{
 		ProtoListener:  map[string]net.Listener{"unix": lunix, "tcp": ltcp},
 		StateDir:       stateDir,
 		SecurityConfig: managerSecurityConfig,
