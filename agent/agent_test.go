@@ -10,6 +10,7 @@ import (
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/remotes"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
 
@@ -62,7 +63,7 @@ func TestAgentStartStop(t *testing.T) {
 	defer tc.Stop()
 
 	agentSecurityConfig, err := tc.NewNodeConfig(ca.WorkerRole)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	addr := "localhost:4949"
 	remotes := remotes.NewRemotes(api.Peer{Addr: addr})
@@ -76,7 +77,7 @@ func TestAgentStartStop(t *testing.T) {
 		Credentials: agentSecurityConfig.ClientTLSCreds,
 		DB:          db,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, agent)
 
 	ctx, _ := context.WithTimeout(context.Background(), 5000*time.Millisecond)
@@ -136,7 +137,7 @@ func agentTestEnv(t *testing.T) (*Agent, func()) {
 	cleanup = append(cleanup, func() { tc.Stop() })
 
 	agentSecurityConfig, err := tc.NewNodeConfig(ca.WorkerRole)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	addr := "localhost:4949"
 	remotes := remotes.NewRemotes(api.Peer{Addr: addr})
@@ -150,6 +151,7 @@ func agentTestEnv(t *testing.T) (*Agent, func()) {
 		Credentials: agentSecurityConfig.ClientTLSCreds,
 		DB:          db,
 	})
+	require.NoError(t, err)
 	return agent, func() {
 		for i := len(cleanup) - 1; i >= 0; i-- {
 			cleanup[i]()
