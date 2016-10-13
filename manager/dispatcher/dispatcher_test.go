@@ -373,6 +373,7 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 		}
 		return nil
 	})
+	assert.NoError(t, err)
 
 	stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{SessionID: expectedSessionID})
 	assert.NoError(t, err)
@@ -480,6 +481,7 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 		}
 		return nil
 	})
+	assert.NoError(t, err)
 
 	// Nothing happens until we update.  Updating all the tasks will send updates for all the tasks >= ASSIGNED (10),
 	// and secrets for all the tasks >= ASSIGNED and <= RUNNING (6).
@@ -558,6 +560,8 @@ func TestAssignmentsSecretUpdateAndDeletion(t *testing.T) {
 		}
 		return nil
 	})
+	assert.NoError(t, err)
+
 	stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{SessionID: expectedSessionID})
 	assert.NoError(t, err)
 	defer stream.CloseSend()
@@ -967,6 +971,7 @@ func TestSessionNoCert(t *testing.T) {
 	defer gd.Close()
 
 	stream, err := gd.Clients[2].Session(context.Background(), &api.SessionRequest{})
+	assert.NoError(t, err)
 	msg, err := stream.Recv()
 	assert.Nil(t, msg)
 	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")

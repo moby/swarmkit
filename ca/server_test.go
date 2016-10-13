@@ -147,11 +147,13 @@ func TestNodeCertificateRenewalsDoNotRequireToken(t *testing.T) {
 	role := api.NodeRoleManager
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	issueResponse, err := tc.NodeCAClients[2].IssueNodeCertificate(context.Background(), issueRequest)
+	assert.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
 	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
 	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
 	statusResponse, err := tc.NodeCAClients[2].NodeCertificateStatus(context.Background(), statusRequest)
+	assert.NoError(t, err)
 	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
 	assert.NotNil(t, statusResponse.Certificate.Certificate)
 	assert.Equal(t, role, statusResponse.Certificate.Role)
