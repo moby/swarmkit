@@ -156,13 +156,13 @@ func (d *deepCopyGen) genRepeatedWriter(m *generator.Descriptor, f *descriptor.F
 	repeatedFunc := func() {
 		d.gen.P("\tif m.", fName, " != nil {")
 		d.gen.P("\t\to.", fName, " = make(", typename, ", 0, len(m.", fName, "))")
-		d.gen.P("\t\tfor _, v := range m.", fName, " {")
 		if isMessage {
+			d.gen.P("\t\tfor _, v := range m.", fName, " {")
 			d.gen.P("\t\t\to.", fName, " = append(o.", fName, ", ", notNullablePrefix, "v.Copy())")
+			d.gen.P("\t\t}")
 		} else {
-			d.gen.P("\t\t\to.", fName, " = append(o.", fName, ", v)")
+			d.gen.P("\t\to.", fName, " = append(o.", fName, ", m.", fName, "...)")
 		}
-		d.gen.P("\t\t}")
 		d.gen.P("\t}")
 		d.gen.P()
 	}

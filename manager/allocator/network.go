@@ -445,19 +445,15 @@ func (a *Allocator) taskCreateNetworkAttachments(t *api.Task, s *api.Service) {
 
 		for _, na := range specNetworks {
 			n := store.GetNetwork(tx, na.Target)
-			if n != nil {
-				var aliases []string
-				var addresses []string
-
-				for _, a := range na.Aliases {
-					aliases = append(aliases, a)
-				}
-				for _, a := range na.Addresses {
-					addresses = append(addresses, a)
-				}
-
-				networks = append(networks, &api.NetworkAttachment{Network: n, Aliases: aliases, Addresses: addresses})
+			if n == nil {
+				continue
 			}
+
+			attachment := api.NetworkAttachment{Network: n}
+			attachment.Aliases = append(attachment.Aliases, na.Aliases...)
+			attachment.Addresses = append(attachment.Addresses, na.Addresses...)
+
+			networks = append(networks, &attachment)
 		}
 	})
 

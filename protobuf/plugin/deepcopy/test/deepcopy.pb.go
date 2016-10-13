@@ -205,107 +205,77 @@ func (m *RepeatedScalar) Copy() *RepeatedScalar {
 
 	if m.Field1 != nil {
 		o.Field1 = make([]float64, 0, len(m.Field1))
-		for _, v := range m.Field1 {
-			o.Field1 = append(o.Field1, v)
-		}
+		o.Field1 = append(o.Field1, m.Field1...)
 	}
 
 	if m.Field2 != nil {
 		o.Field2 = make([]float32, 0, len(m.Field2))
-		for _, v := range m.Field2 {
-			o.Field2 = append(o.Field2, v)
-		}
+		o.Field2 = append(o.Field2, m.Field2...)
 	}
 
 	if m.Field3 != nil {
 		o.Field3 = make([]int32, 0, len(m.Field3))
-		for _, v := range m.Field3 {
-			o.Field3 = append(o.Field3, v)
-		}
+		o.Field3 = append(o.Field3, m.Field3...)
 	}
 
 	if m.Field4 != nil {
 		o.Field4 = make([]int64, 0, len(m.Field4))
-		for _, v := range m.Field4 {
-			o.Field4 = append(o.Field4, v)
-		}
+		o.Field4 = append(o.Field4, m.Field4...)
 	}
 
 	if m.Field5 != nil {
 		o.Field5 = make([]uint32, 0, len(m.Field5))
-		for _, v := range m.Field5 {
-			o.Field5 = append(o.Field5, v)
-		}
+		o.Field5 = append(o.Field5, m.Field5...)
 	}
 
 	if m.Field6 != nil {
 		o.Field6 = make([]uint64, 0, len(m.Field6))
-		for _, v := range m.Field6 {
-			o.Field6 = append(o.Field6, v)
-		}
+		o.Field6 = append(o.Field6, m.Field6...)
 	}
 
 	if m.Field7 != nil {
 		o.Field7 = make([]int32, 0, len(m.Field7))
-		for _, v := range m.Field7 {
-			o.Field7 = append(o.Field7, v)
-		}
+		o.Field7 = append(o.Field7, m.Field7...)
 	}
 
 	if m.Field8 != nil {
 		o.Field8 = make([]int64, 0, len(m.Field8))
-		for _, v := range m.Field8 {
-			o.Field8 = append(o.Field8, v)
-		}
+		o.Field8 = append(o.Field8, m.Field8...)
 	}
 
 	if m.Field9 != nil {
 		o.Field9 = make([]uint32, 0, len(m.Field9))
-		for _, v := range m.Field9 {
-			o.Field9 = append(o.Field9, v)
-		}
+		o.Field9 = append(o.Field9, m.Field9...)
 	}
 
 	if m.Field10 != nil {
 		o.Field10 = make([]int32, 0, len(m.Field10))
-		for _, v := range m.Field10 {
-			o.Field10 = append(o.Field10, v)
-		}
+		o.Field10 = append(o.Field10, m.Field10...)
 	}
 
 	if m.Field11 != nil {
 		o.Field11 = make([]uint64, 0, len(m.Field11))
-		for _, v := range m.Field11 {
-			o.Field11 = append(o.Field11, v)
-		}
+		o.Field11 = append(o.Field11, m.Field11...)
 	}
 
 	if m.Field12 != nil {
 		o.Field12 = make([]int64, 0, len(m.Field12))
-		for _, v := range m.Field12 {
-			o.Field12 = append(o.Field12, v)
-		}
+		o.Field12 = append(o.Field12, m.Field12...)
 	}
 
 	if m.Field13 != nil {
 		o.Field13 = make([]bool, 0, len(m.Field13))
-		for _, v := range m.Field13 {
-			o.Field13 = append(o.Field13, v)
-		}
+		o.Field13 = append(o.Field13, m.Field13...)
 	}
 
 	if m.Field14 != nil {
 		o.Field14 = make([]string, 0, len(m.Field14))
-		for _, v := range m.Field14 {
-			o.Field14 = append(o.Field14, v)
-		}
+		o.Field14 = append(o.Field14, m.Field14...)
 	}
 
 	if m.Field15 != nil {
 		o.Field15 = make([][]byte, 0, len(m.Field15))
-		for _, v := range m.Field15 {
-			o.Field15 = append(o.Field15, v)
-		}
+		o.Field15 = append(o.Field15, m.Field15...)
 	}
 
 	return o
@@ -320,93 +290,67 @@ func (m *RepeatedScalarPacked) Copy() *RepeatedScalarPacked {
 
 	if m.Field1 != nil {
 		o.Field1 = make([]float64, 0, len(m.Field1))
-		for _, v := range m.Field1 {
-			o.Field1 = append(o.Field1, v)
-		}
+		o.Field1 = append(o.Field1, m.Field1...)
 	}
 
 	if m.Field2 != nil {
 		o.Field2 = make([]float32, 0, len(m.Field2))
-		for _, v := range m.Field2 {
-			o.Field2 = append(o.Field2, v)
-		}
+		o.Field2 = append(o.Field2, m.Field2...)
 	}
 
 	if m.Field3 != nil {
 		o.Field3 = make([]int32, 0, len(m.Field3))
-		for _, v := range m.Field3 {
-			o.Field3 = append(o.Field3, v)
-		}
+		o.Field3 = append(o.Field3, m.Field3...)
 	}
 
 	if m.Field4 != nil {
 		o.Field4 = make([]int64, 0, len(m.Field4))
-		for _, v := range m.Field4 {
-			o.Field4 = append(o.Field4, v)
-		}
+		o.Field4 = append(o.Field4, m.Field4...)
 	}
 
 	if m.Field5 != nil {
 		o.Field5 = make([]uint32, 0, len(m.Field5))
-		for _, v := range m.Field5 {
-			o.Field5 = append(o.Field5, v)
-		}
+		o.Field5 = append(o.Field5, m.Field5...)
 	}
 
 	if m.Field6 != nil {
 		o.Field6 = make([]uint64, 0, len(m.Field6))
-		for _, v := range m.Field6 {
-			o.Field6 = append(o.Field6, v)
-		}
+		o.Field6 = append(o.Field6, m.Field6...)
 	}
 
 	if m.Field7 != nil {
 		o.Field7 = make([]int32, 0, len(m.Field7))
-		for _, v := range m.Field7 {
-			o.Field7 = append(o.Field7, v)
-		}
+		o.Field7 = append(o.Field7, m.Field7...)
 	}
 
 	if m.Field8 != nil {
 		o.Field8 = make([]int64, 0, len(m.Field8))
-		for _, v := range m.Field8 {
-			o.Field8 = append(o.Field8, v)
-		}
+		o.Field8 = append(o.Field8, m.Field8...)
 	}
 
 	if m.Field9 != nil {
 		o.Field9 = make([]uint32, 0, len(m.Field9))
-		for _, v := range m.Field9 {
-			o.Field9 = append(o.Field9, v)
-		}
+		o.Field9 = append(o.Field9, m.Field9...)
 	}
 
 	if m.Field10 != nil {
 		o.Field10 = make([]int32, 0, len(m.Field10))
-		for _, v := range m.Field10 {
-			o.Field10 = append(o.Field10, v)
-		}
+		o.Field10 = append(o.Field10, m.Field10...)
 	}
 
 	if m.Field11 != nil {
 		o.Field11 = make([]uint64, 0, len(m.Field11))
-		for _, v := range m.Field11 {
-			o.Field11 = append(o.Field11, v)
-		}
+		o.Field11 = append(o.Field11, m.Field11...)
 	}
 
 	if m.Field12 != nil {
 		o.Field12 = make([]int64, 0, len(m.Field12))
-		for _, v := range m.Field12 {
-			o.Field12 = append(o.Field12, v)
-		}
+		o.Field12 = append(o.Field12, m.Field12...)
 	}
 
 	if m.Field13 != nil {
 		o.Field13 = make([]bool, 0, len(m.Field13))
-		for _, v := range m.Field13 {
-			o.Field13 = append(o.Field13, v)
-		}
+		o.Field13 = append(o.Field13, m.Field13...)
 	}
 
 	return o
