@@ -268,6 +268,22 @@ func TestCreateService(t *testing.T) {
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec4})
 	assert.NoError(t, err)
+
+	// ensure no port conflict when different protocols are used
+	spec = createSpec("name6", "image", 1)
+	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{PublishedPort: uint32(9100), TargetPort: uint32(9100), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+	}}
+	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.NoError(t, err)
+	assert.NotEmpty(t, r.Service.ID)
+
+	spec2 = createSpec("name7", "image", 1)
+	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{PublishedPort: uint32(9100), TargetPort: uint32(9100), Protocol: api.PortConfig_Protocol(api.ProtocolUDP)},
+	}}
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
+	assert.NoError(t, err)
 }
 
 func TestGetService(t *testing.T) {
