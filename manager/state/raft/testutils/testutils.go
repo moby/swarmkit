@@ -58,7 +58,8 @@ func PollFuncWithTimeout(clockSource *fakeclock.FakeClock, f func() error, timeo
 	if f() == nil {
 		return nil
 	}
-	timer := time.After(timeout)
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	for i := 0; ; i++ {
 		if i%5 == 0 && clockSource != nil {
 			clockSource.Increment(time.Second)
@@ -68,7 +69,7 @@ func PollFuncWithTimeout(clockSource *fakeclock.FakeClock, f func() error, timeo
 			return nil
 		}
 		select {
-		case <-timer:
+		case <-timer.C:
 			return errors.Wrap(err, "polling failed")
 		case <-time.After(50 * time.Millisecond):
 		}
