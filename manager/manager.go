@@ -491,7 +491,7 @@ func (m *Manager) rotateRootCAKEK(ctx context.Context, clusterID string) error {
 
 	// Try to get the private key from the cluster
 	privKeyPEM := cluster.RootCA.CAKey
-	if privKeyPEM == nil || len(privKeyPEM) == 0 {
+	if len(privKeyPEM) == 0 {
 		// We have no PEM root private key in this cluster.
 		log.G(ctx).Warnf("cluster %s does not have private key material", clusterID)
 		return nil
