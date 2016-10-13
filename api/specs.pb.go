@@ -732,30 +732,22 @@ func (m *ContainerSpec) Copy() *ContainerSpec {
 
 	if m.Command != nil {
 		o.Command = make([]string, 0, len(m.Command))
-		for _, v := range m.Command {
-			o.Command = append(o.Command, v)
-		}
+		o.Command = append(o.Command, m.Command...)
 	}
 
 	if m.Args != nil {
 		o.Args = make([]string, 0, len(m.Args))
-		for _, v := range m.Args {
-			o.Args = append(o.Args, v)
-		}
+		o.Args = append(o.Args, m.Args...)
 	}
 
 	if m.Env != nil {
 		o.Env = make([]string, 0, len(m.Env))
-		for _, v := range m.Env {
-			o.Env = append(o.Env, v)
-		}
+		o.Env = append(o.Env, m.Env...)
 	}
 
 	if m.Groups != nil {
 		o.Groups = make([]string, 0, len(m.Groups))
-		for _, v := range m.Groups {
-			o.Groups = append(o.Groups, v)
-		}
+		o.Groups = append(o.Groups, m.Groups...)
 	}
 
 	if m.Mounts != nil {

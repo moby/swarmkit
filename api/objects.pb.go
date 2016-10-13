@@ -401,16 +401,12 @@ func (m *NetworkAttachment) Copy() *NetworkAttachment {
 
 	if m.Addresses != nil {
 		o.Addresses = make([]string, 0, len(m.Addresses))
-		for _, v := range m.Addresses {
-			o.Addresses = append(o.Addresses, v)
-		}
+		o.Addresses = append(o.Addresses, m.Addresses...)
 	}
 
 	if m.Aliases != nil {
 		o.Aliases = make([]string, 0, len(m.Aliases))
-		for _, v := range m.Aliases {
-			o.Aliases = append(o.Aliases, v)
-		}
+		o.Aliases = append(o.Aliases, m.Aliases...)
 	}
 
 	return o
