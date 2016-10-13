@@ -21,7 +21,7 @@ GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
 all: check binaries test ## run fmt, vet, lint, build the binaries and run the tests
 
-check: fmt vet lint ## run fmt, vet, lint
+check: fmt vet lint ineffassign ## run fmt, vet, lint, ineffassign
 
 ci: check binaries checkprotos coverage ## to be used by the CI
 
@@ -38,6 +38,7 @@ setup: ## install dependencies
 	@go get -u github.com/golang/lint/golint
 	#@go get -u github.com/kisielk/errcheck
 	@go get -u github.com/golang/mock/mockgen
+	@go get -u github.com/gordonklaus/ineffassign
 
 generate: bin/protoc-gen-gogoswarm ## generate protobuf
 	@echo "🐳 $@"
@@ -69,6 +70,10 @@ fmt: ## run go fmt
 lint: ## run go lint
 	@echo "🐳 $@"
 	@test -z "$$(golint ./... | grep -v vendor/ | grep -v ".pb.go:" | grep -v ".mock.go" | tee /dev/stderr)"
+
+ineffassign: ## run ineffassign
+	@echo "🐳 $@"
+	@test -z "$$(ineffassign . | grep -v vendor/ | grep -v ".pb.go:" | grep -v ".mock.go" | tee /dev/stderr)"
 
 #errcheck: ## run go errcheck
 #	@echo "🐳 $@"
