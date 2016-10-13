@@ -106,7 +106,7 @@ func TestNodeHostname(t *testing.T) {
 	ni.Description.Hostname = "node-1"
 	assert.False(t, f.Check(ni))
 
-	// case insenstive
+	// case insensitive
 	ni.Node.Description.Hostname = "NODe-1"
 	assert.False(t, f.Check(ni))
 }

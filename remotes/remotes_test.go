@@ -244,7 +244,7 @@ func TestRemotesDownweight(t *testing.T) {
 	remotes.Observe(peers[0], -DefaultObservationWeight)
 
 	samples := 100000
-	choosen := 0
+	chosen := 0
 
 	for i := 0; i < samples; i++ {
 		p, err := remotes.Select()
@@ -252,13 +252,13 @@ func TestRemotesDownweight(t *testing.T) {
 			t.Fatalf("error selecting remote: %v", err)
 		}
 		if p == peers[0] {
-			choosen++
+			chosen++
 		}
 	}
-	ratio := float32(choosen) / float32(samples)
+	ratio := float32(chosen) / float32(samples)
 	t.Logf("ratio: %f", ratio)
 	if ratio > 0.001 {
-		t.Fatalf("downweighted peer is choosen too often, ratio: %f", ratio)
+		t.Fatalf("downweighted peer is chosen too often, ratio: %f", ratio)
 	}
 }
 
