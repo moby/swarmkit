@@ -26,7 +26,7 @@ all: check binaries test integration ## run fmt, vet, lint, build the binaries a
 
 check: fmt vet lint ## run fmt, vet, lint
 
-ci: check binaries checkprotos coverage ## to be used by the CI
+ci: check binaries checkprotos coverage coverage-integration ## to be used by the CI
 
 AUTHORS: .mailmap .git/HEAD
 	git log --format='%aN <%aE>' | sort -fu > $@
@@ -114,12 +114,16 @@ uninstall:
 	@echo "🐳 $@"
 	@rm -f $(addprefix $(DESTDIR)/bin/,$(notdir $(BINARIES)))
 
-coverage: ## generate coverprofiles from the tests
+coverage: ## generate coverprofiles from the unit tests
 	@echo "🐳 $@"
-	@( for pkg in ${PACKAGES}; do \
+	@( for pkg in $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES}); do \
 		go test -i -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
 		go test -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
 	done )
+
+coverage-integration: ## generate coverprofiles from the integration tests
+	@echo "🐳 $@"
+	go test -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../${INTEGRATION_PACKAGE}/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
 
 help: ## this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
