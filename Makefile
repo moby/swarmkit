@@ -7,8 +7,11 @@ DESTDIR=/usr/local
 # Used to populate version variable in main package.
 VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
 
+PROJECT_ROOT=github.com/docker/swarmkit
+
 # Project packages.
 PACKAGES=$(shell go list ./... | grep -v /vendor/)
+INTEGRATION_PACKAGE=${PROJECT_ROOT}/integration
 
 # Project binaries.
 COMMANDS=swarmd swarmctl swarm-bench protoc-gen-gogoswarm
@@ -16,10 +19,10 @@ BINARIES=$(addprefix bin/,$(COMMANDS))
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
-.PHONY: clean all AUTHORS fmt vet lint build binaries test setup generate checkprotos coverage ci check help install uninstall
+.PHONY: clean all AUTHORS fmt vet lint build binaries test integration setup generate checkprotos coverage ci check help install uninstall
 .DEFAULT: default
 
-all: check binaries test ## run fmt, vet, lint, build the binaries and run the tests
+all: check binaries test integration ## run fmt, vet, lint, build the binaries and run the tests
 
 check: fmt vet lint ## run fmt, vet, lint
 
@@ -78,16 +81,20 @@ build: ## build the go packages
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -v ${GO_LDFLAGS} ${GO_GCFLAGS} ${PACKAGES}
 
-test: ## run test
+test: ## run tests, except integration tests
 	@echo "🐳 $@"
-	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" ${PACKAGES}
+	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES})
+
+integration: ## run integration tests
+	@echo "🐳 $@"
+	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" ${INTEGRATION_PACKAGE}
 
 FORCE:
 
 # Build a binary from a cmd.
 bin/%: cmd/% FORCE
-	@test $$(go list) = "github.com/docker/swarmkit" || \
-		(echo "👹 Please correctly set up your Go build environment. This project must be located at <GOPATH>/src/github.com/docker/swarmkit" && false)
+	@test $$(go list) = "${PROJECT_ROOT}" || \
+		(echo "👹 Please correctly set up your Go build environment. This project must be located at <GOPATH>/src/${PROJECT_ROOT}" && false)
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./$<
 
