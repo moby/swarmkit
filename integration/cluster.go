@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"golang.org/x/net/context"
 )
@@ -97,9 +98,12 @@ func (c *testCluster) AddManager() error {
 		}
 		n = node
 	}
+
+	ctx := log.WithLogger(c.ctx, log.L.WithField("testnode", len(c.nodes)+1))
+
 	c.wg.Add(1)
 	go func() {
-		c.errs <- n.node.Start(c.ctx)
+		c.errs <- n.node.Start(ctx)
 		c.wg.Done()
 	}()
 
@@ -154,9 +158,12 @@ func (c *testCluster) AddAgent() error {
 		return err
 	}
 	n = node
+
+	ctx := log.WithLogger(c.ctx, log.L.WithField("testnode", len(c.nodes)+1))
+
 	c.wg.Add(1)
 	go func() {
-		c.errs <- n.node.Start(c.ctx)
+		c.errs <- n.node.Start(ctx)
 		c.wg.Done()
 	}()
 
