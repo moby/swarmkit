@@ -109,24 +109,6 @@ func (c *testCluster) AddManager() error {
 		return fmt.Errorf("node did not ready in time")
 	}
 
-	// change acceptance policy on cluster creation
-	if len(c.nodes) == 0 {
-		// we retry this, because sequence number can change
-		var ok bool
-		for retry := 0; retry < 5; retry++ {
-			if err := n.SetAcceptancePolicy(); err != nil {
-				if grpc.ErrorDesc(err) == "update out of sequence" {
-					continue
-				}
-				return fmt.Errorf("set acceptance policy: %v", err)
-			}
-			ok = true
-			break
-		}
-		if !ok {
-			return fmt.Errorf("set acceptance policy, got sequence error 5 times")
-		}
-	}
 	c.nodes[n.node.NodeID()] = n
 	return nil
 }
