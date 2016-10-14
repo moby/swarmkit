@@ -7,8 +7,11 @@ DESTDIR=/usr/local
 # Used to populate version variable in main package.
 VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
 
+PROJECT_ROOT=github.com/docker/swarmkit
+
 # Project packages.
 PACKAGES=$(shell go list ./... | grep -v /vendor/)
+INTEGRATION_PACKAGE=${PROJECT_ROOT}/integration
 
 # Project binaries.
 COMMANDS=swarmd swarmctl swarm-bench protoc-gen-gogoswarm
@@ -16,14 +19,14 @@ BINARIES=$(addprefix bin/,$(COMMANDS))
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
-.PHONY: clean all AUTHORS fmt vet lint build binaries test setup generate checkprotos coverage ci check help install uninstall
+.PHONY: clean all AUTHORS fmt vet lint build binaries test integration setup generate checkprotos coverage ci check help install uninstall
 .DEFAULT: default
 
-all: check binaries test ## run fmt, vet, lint, build the binaries and run the tests
+all: check binaries test integration ## run fmt, vet, lint, build the binaries and run the tests
 
 check: fmt vet lint ineffassign ## run fmt, vet, lint, ineffassign
 
-ci: check binaries checkprotos coverage ## to be used by the CI
+ci: check binaries checkprotos coverage coverage-integration ## to be used by the CI
 
 AUTHORS: .mailmap .git/HEAD
 	git log --format='%aN <%aE>' | sort -fu > $@
@@ -83,16 +86,20 @@ build: ## build the go packages
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -v ${GO_LDFLAGS} ${GO_GCFLAGS} ${PACKAGES}
 
-test: ## run test
+test: ## run tests, except integration tests
 	@echo "🐳 $@"
-	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" ${PACKAGES}
+	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES})
+
+integration: ## run integration tests
+	@echo "🐳 $@"
+	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" ${INTEGRATION_PACKAGE}
 
 FORCE:
 
 # Build a binary from a cmd.
 bin/%: cmd/% FORCE
-	@test $$(go list) = "github.com/docker/swarmkit" || \
-		(echo "👹 Please correctly set up your Go build environment. This project must be located at <GOPATH>/src/github.com/docker/swarmkit" && false)
+	@test $$(go list) = "${PROJECT_ROOT}" || \
+		(echo "👹 Please correctly set up your Go build environment. This project must be located at <GOPATH>/src/${PROJECT_ROOT}" && false)
 	@echo "🐳 $@"
 	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./$<
 
@@ -112,12 +119,16 @@ uninstall:
 	@echo "🐳 $@"
 	@rm -f $(addprefix $(DESTDIR)/bin/,$(notdir $(BINARIES)))
 
-coverage: ## generate coverprofiles from the tests
+coverage: ## generate coverprofiles from the unit tests
 	@echo "🐳 $@"
-	@( for pkg in ${PACKAGES}; do \
+	@( for pkg in $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES}); do \
 		go test -i -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
 		go test -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
 	done )
+
+coverage-integration: ## generate coverprofiles from the integration tests
+	@echo "🐳 $@"
+	go test -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../${INTEGRATION_PACKAGE}/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
 
 help: ## this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
