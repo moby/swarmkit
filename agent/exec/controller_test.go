@@ -62,7 +62,7 @@ func TestAcceptPrepare(t *testing.T) {
 	)
 
 	// Report acceptance.
-	status := checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateAccepted,
 		Message: "accepted",
 	})
@@ -70,14 +70,14 @@ func TestAcceptPrepare(t *testing.T) {
 	// Actually prepare the task.
 	task.Status = *status
 
-	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStatePreparing,
 		Message: "preparing",
 	})
 
 	task.Status = *status
 
-	checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateReady,
 		Message: "prepared",
 	})
@@ -94,7 +94,7 @@ func TestPrepareAlready(t *testing.T) {
 	)
 
 	// Report acceptance.
-	status := checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateAccepted,
 		Message: "accepted",
 	})
@@ -102,14 +102,14 @@ func TestPrepareAlready(t *testing.T) {
 	// Actually prepare the task.
 	task.Status = *status
 
-	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStatePreparing,
 		Message: "preparing",
 	})
 
 	task.Status = *status
 
-	checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateReady,
 		Message: "prepared",
 	})
@@ -126,7 +126,7 @@ func TestPrepareFailure(t *testing.T) {
 	)
 
 	// Report acceptance.
-	status := checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateAccepted,
 		Message: "accepted",
 	})
@@ -134,14 +134,14 @@ func TestPrepareFailure(t *testing.T) {
 	// Actually prepare the task.
 	task.Status = *status
 
-	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStatePreparing,
 		Message: "preparing",
 	})
 
 	task.Status = *status
 
-	checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateRejected,
 		Message: "preparing",
 		Err:     "test error",
@@ -169,7 +169,7 @@ func TestReadyRunning(t *testing.T) {
 	}
 
 	// Report starting
-	status := checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateStarting,
 		Message: "starting",
 	})
@@ -177,7 +177,7 @@ func TestReadyRunning(t *testing.T) {
 	task.Status = *status
 
 	// start the container
-	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateRunning,
 		Message: "started",
 	})
@@ -185,14 +185,14 @@ func TestReadyRunning(t *testing.T) {
 	task.Status = *status
 
 	// resume waiting
-	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateRunning,
 		Message: "started",
 	}, ErrTaskRetry)
 
 	task.Status = *status
 	// wait and cancel
-	checkDo(t, ctx, task, dctlr, &api.TaskStatus{
+	checkDo(ctx, t, task, dctlr, &api.TaskStatus{
 		State:   api.TaskStateCompleted,
 		Message: "finished",
 		RuntimeStatus: &api.TaskStatus_Container{
@@ -223,7 +223,7 @@ func TestReadyRunningExitFailure(t *testing.T) {
 	)
 
 	// Report starting
-	status := checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateStarting,
 		Message: "starting",
 	})
@@ -231,13 +231,13 @@ func TestReadyRunningExitFailure(t *testing.T) {
 	task.Status = *status
 
 	// start the container
-	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateRunning,
 		Message: "started",
 	})
 
 	task.Status = *status
-	checkDo(t, ctx, task, dctlr, &api.TaskStatus{
+	checkDo(ctx, t, task, dctlr, &api.TaskStatus{
 		State: api.TaskStateFailed,
 		RuntimeStatus: &api.TaskStatus_Container{
 			Container: &api.ContainerStatus{
@@ -270,7 +270,7 @@ func TestAlreadyStarted(t *testing.T) {
 	)
 
 	// Before we can move to running, we have to move to startin.
-	status := checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateStarting,
 		Message: "starting",
 	})
@@ -278,14 +278,14 @@ func TestAlreadyStarted(t *testing.T) {
 	task.Status = *status
 
 	// start the container
-	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateRunning,
 		Message: "started",
 	})
 
 	task.Status = *status
 
-	status = checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateRunning,
 		Message: "started",
 	}, ErrTaskRetry)
@@ -293,7 +293,7 @@ func TestAlreadyStarted(t *testing.T) {
 	task.Status = *status
 
 	// now take the real exit to test wait cancelling.
-	checkDo(t, ctx, task, dctlr, &api.TaskStatus{
+	checkDo(ctx, t, task, dctlr, &api.TaskStatus{
 		State: api.TaskStateFailed,
 		RuntimeStatus: &api.TaskStatus_Container{
 			Container: &api.ContainerStatus{
@@ -315,7 +315,7 @@ func TestShutdown(t *testing.T) {
 		ctlr.EXPECT().Shutdown(gomock.Any()),
 	)
 
-	checkDo(t, ctx, task, ctlr, &api.TaskStatus{
+	checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateShutdown,
 		Message: "shutdown",
 	})
@@ -344,7 +344,7 @@ func newExitError(code int) error { return &exitCoder{code} }
 func (ec *exitCoder) Error() string { return fmt.Sprintf("test error, exit code=%v", ec.code) }
 func (ec *exitCoder) ExitCode() int { return ec.code }
 
-func checkDo(t *testing.T, ctx context.Context, task *api.Task, ctlr Controller, expected *api.TaskStatus, expectedErr ...error) *api.TaskStatus {
+func checkDo(ctx context.Context, t *testing.T, task *api.Task, ctlr Controller, expected *api.TaskStatus, expectedErr ...error) *api.TaskStatus {
 	status, err := Do(ctx, task, ctlr)
 	if len(expectedErr) > 0 {
 		assert.Equal(t, expectedErr[0], err)
