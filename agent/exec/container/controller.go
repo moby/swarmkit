@@ -47,10 +47,6 @@ func newController(client engineapi.APIClient, task *api.Task, secrets exec.Secr
 	}, nil
 }
 
-func (r *controller) Task() (*api.Task, error) {
-	return r.task, nil
-}
-
 // ContainerStatus returns the container-specific status for the task.
 func (r *controller) ContainerStatus(ctx context.Context) (*api.ContainerStatus, error) {
 	ctnr, err := r.adapter.inspect(ctx)
