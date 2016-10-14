@@ -120,6 +120,8 @@ type Node struct {
 	// stopped chan is used for notifying grpc handlers that raft node going
 	// to stop.
 	stopped chan struct{}
+
+	lastSendToMember map[uint64]chan struct{}
 }
 
 // NodeOptions provides node-level options.
@@ -185,6 +187,7 @@ func NewNode(opts NodeOptions) *Node {
 		removeRaftCh:        make(chan struct{}),
 		stopped:             make(chan struct{}),
 		leadershipBroadcast: watch.NewQueue(),
+		lastSendToMember:    make(map[uint64]chan struct{}),
 	}
 	n.memoryStore = store.NewMemoryStore(n)
 
@@ -1162,23 +1165,36 @@ func (n *Node) send(ctx context.Context, messages []raftpb.Message) error {
 			continue
 		}
 
+		ch := make(chan struct{})
+
 		n.asyncTasks.Add(1)
-		go n.sendToMember(ctx, members, m)
+		go n.sendToMember(ctx, members, m, n.lastSendToMember[m.To], ch)
+
+		n.lastSendToMember[m.To] = ch
 	}
 
 	return nil
 }
 
-func (n *Node) sendToMember(ctx context.Context, members map[uint64]*membership.Member, m raftpb.Message) {
+func (n *Node) sendToMember(ctx context.Context, members map[uint64]*membership.Member, m raftpb.Message, lastSend <-chan struct{}, thisSend chan<- struct{}) {
 	defer n.asyncTasks.Done()
+	defer close(thisSend)
+
+	ctx, cancel := context.WithTimeout(ctx, n.opts.SendTimeout)
+	defer cancel()
+
+	if lastSend != nil {
+		select {
+		case <-lastSend:
+		case <-ctx.Done():
+			return
+		}
+	}
 
 	if n.cluster.IsIDRemoved(m.To) {
 		// Should not send to removed members
 		return
 	}
-
-	ctx, cancel := context.WithTimeout(ctx, n.opts.SendTimeout)
-	defer cancel()
 
 	var (
 		conn *membership.Member
