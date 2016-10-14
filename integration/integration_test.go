@@ -136,6 +136,8 @@ func newCluster(t *testing.T, numWorker, numManager int) *testCluster {
 }
 
 func TestClusterCreate(t *testing.T) {
+	t.Parallel()
+
 	numWorker, numManager := 0, 2
 	cl := newCluster(t, numWorker, numManager)
 	defer func() {
@@ -144,6 +146,8 @@ func TestClusterCreate(t *testing.T) {
 }
 
 func TestServiceCreate(t *testing.T) {
+	t.Parallel()
+
 	numWorker, numManager := 3, 3
 	cl := newCluster(t, numWorker, numManager)
 	defer func() {
@@ -156,6 +160,8 @@ func TestServiceCreate(t *testing.T) {
 }
 
 func TestNodeOps(t *testing.T) {
+	t.Parallel()
+
 	numWorker, numManager := 1, 3
 	cl := newCluster(t, numWorker, numManager)
 	defer func() {
@@ -194,6 +200,8 @@ func TestNodeOps(t *testing.T) {
 }
 
 func TestDemotePromote(t *testing.T) {
+	t.Parallel()
+
 	numWorker, numManager := 1, 3
 	cl := newCluster(t, numWorker, numManager)
 	defer func() {
@@ -224,6 +232,8 @@ func TestDemotePromote(t *testing.T) {
 }
 
 func TestPromoteDemote(t *testing.T) {
+	t.Parallel()
+
 	numWorker, numManager := 1, 3
 	cl := newCluster(t, numWorker, numManager)
 	defer func() {
@@ -252,6 +262,8 @@ func TestPromoteDemote(t *testing.T) {
 }
 
 func TestDemotePromoteLeader(t *testing.T) {
+	t.Parallel()
+
 	numWorker, numManager := 1, 3
 	cl := newCluster(t, numWorker, numManager)
 	defer func() {
@@ -276,6 +288,8 @@ func TestDemotePromoteLeader(t *testing.T) {
 
 // TODO: improve test to demote the leader in case of 2 remaining managers
 func TestDemoteToSingleManager(t *testing.T) {
+	t.Parallel()
+
 	numWorker, numManager := 1, 3
 	cl := newCluster(t, numWorker, numManager)
 	defer func() {
@@ -300,6 +314,8 @@ func TestDemoteToSingleManager(t *testing.T) {
 }
 
 func TestDemoteLeader(t *testing.T) {
+	t.Parallel()
+
 	numWorker, numManager := 1, 3
 	cl := newCluster(t, numWorker, numManager)
 	defer func() {
@@ -316,6 +332,8 @@ func TestDemoteLeader(t *testing.T) {
 }
 
 func TestDemoteDownedManager(t *testing.T) {
+	t.Parallel()
+
 	numWorker, numManager := 0, 3
 	cl := newCluster(t, numWorker, numManager)
 	defer func() {
@@ -374,6 +392,8 @@ func TestDemoteDownedManager(t *testing.T) {
 }
 
 func TestRestartLeader(t *testing.T) {
+	t.Parallel()
+
 	numWorker, numManager := 5, 3
 	cl := newCluster(t, numWorker, numManager)
 	defer func() {
