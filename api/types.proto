@@ -142,6 +142,7 @@ message Mount {
 		BIND = 0 [(gogoproto.enumvalue_customname) = "MountTypeBind"]; // Bind mount host dir
 		VOLUME = 1 [(gogoproto.enumvalue_customname) = "MountTypeVolume"];  // Remote storage volumes
 		TMPFS = 2 [(gogoproto.enumvalue_customname) = "MountTypeTmpfs"]; // Mount a tmpfs
+		INTROSPECTION = 3 [(gogoproto.enumvalue_customname) = "MountTypeIntrospection"]; // Mount a introspection
 	}
 
 	// Type defines the nature of the mount.
@@ -224,7 +225,9 @@ message Mount {
 		// uid/gid have implications in a clustered system.
 	}
 
-	// Depending on type, one of bind_options or volumes_options will be set.
+	// Depending on type, one of bind_options, volumes_options,
+	// or tmpfs_options will be set.
+	// There is no introspection_options at this moment.
 
 	// BindOptions configures properties of a bind mount type.
 	//
