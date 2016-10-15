@@ -88,46 +88,6 @@ func (n *testNode) ControlClient(ctx context.Context) (api.ControlClient, error)
 	return api.NewControlClient(controlConn), nil
 }
 
-// SetAcceptancePolicy sets cluster acceptance policy through ControlAPI.
-func (n *testNode) SetAcceptancePolicy() error {
-	ctx, cancel := context.WithTimeout(context.Background(), opsTimeout)
-	defer cancel()
-	cli, err := n.ControlClient(ctx)
-	if err != nil {
-		return err
-	}
-	resp, err := cli.ListClusters(ctx, &api.ListClustersRequest{})
-	if err != nil {
-		return err
-	}
-	if len(resp.Clusters) != 1 {
-		return fmt.Errorf("unexpected number of clusters %d, expected 1", len(resp.Clusters))
-	}
-	cl := resp.Clusters[0]
-	spec := cl.Spec
-	spec.AcceptancePolicy = api.AcceptancePolicy{
-		Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{
-			{
-				Role:       api.NodeRoleWorker,
-				Autoaccept: true,
-			},
-			{
-				Role:       api.NodeRoleManager,
-				Autoaccept: true,
-			},
-		},
-	}
-	updateReq := &api.UpdateClusterRequest{
-		ClusterID:      cl.ID,
-		ClusterVersion: &cl.Meta.Version,
-		Spec:           &spec,
-	}
-	if _, err := cli.UpdateCluster(ctx, updateReq); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (n *testNode) IsManager() bool {
 	_, err := n.node.RemoteAPIAddr()
 	return err == nil
