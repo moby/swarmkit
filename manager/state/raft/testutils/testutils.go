@@ -34,6 +34,7 @@ type TestNode struct {
 	SecurityConfig *ca.SecurityConfig
 	Address        string
 	StateDir       string
+	cancel         context.CancelFunc
 }
 
 // Leader is wrapper around real Leader method to suppress error.
@@ -237,7 +238,7 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA,
 		}
 	}
 
-	n := raft.NewNode(context.Background(), newNodeOpts)
+	n := raft.NewNode(newNodeOpts)
 
 	healthServer := health.NewHealthServer()
 	api.RegisterHealthServer(s, healthServer)
@@ -263,11 +264,12 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA,
 // NewInitNode creates a new raft node initiating the cluster
 // for other members to join
 func NewInitNode(t *testing.T, tc *cautils.TestCA, raftConfig *api.RaftConfig, opts ...raft.NodeOptions) (*TestNode, *fakeclock.FakeClock) {
-	ctx := context.Background()
 	clockSource := fakeclock.NewFakeClock(time.Now())
 	n := NewNode(t, clockSource, tc, opts...)
+	ctx, cancel := context.WithCancel(context.Background())
+	n.cancel = cancel
 
-	err := n.Node.JoinAndStart()
+	err := n.Node.JoinAndStart(ctx)
 	require.NoError(t, err, "can't join cluster")
 
 	leadershipCh, cancel := n.SubscribeLeadership()
@@ -304,10 +306,12 @@ func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, tc
 	derivedOpts.JoinAddr = join
 	n := NewNode(t, clockSource, tc, derivedOpts)
 
-	err := n.Node.JoinAndStart()
+	ctx, cancel := context.WithCancel(context.Background())
+	n.cancel = cancel
+	err := n.Node.JoinAndStart(ctx)
 	require.NoError(t, err, "can't join cluster")
 
-	go n.Run(context.Background())
+	go n.Run(ctx)
 
 	return n
 }
@@ -332,8 +336,8 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 		TLSCredentials:  securityConfig.ClientTLSCreds,
 	}
 
-	ctx := context.Background()
-	n := raft.NewNode(ctx, newNodeOpts)
+	ctx, cancel := context.WithCancel(context.Background())
+	n := raft.NewNode(newNodeOpts)
 
 	healthServer := health.NewHealthServer()
 	api.RegisterHealthServer(s, healthServer)
@@ -346,7 +350,7 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 
 	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
 
-	err := n.JoinAndStart()
+	err := n.JoinAndStart(ctx)
 	require.NoError(t, err, "can't join cluster")
 
 	go n.Run(ctx)
@@ -357,6 +361,7 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 		SecurityConfig: securityConfig,
 		Address:        newNodeOpts.Addr,
 		StateDir:       newNodeOpts.StateDir,
+		cancel:         cancel,
 		Server:         s,
 	}
 }
@@ -398,9 +403,20 @@ func TeardownCluster(t *testing.T, nodes map[uint64]*TestNode) {
 // of the state directory
 func ShutdownNode(node *TestNode) {
 	node.Server.Stop()
-	node.Shutdown()
+	if node.cancel != nil {
+		node.cancel()
+		<-node.Done()
+	}
 	os.RemoveAll(node.StateDir)
 	node.Listener.close()
+}
+
+// ShutdownRaft shutdowns only raft part of node.
+func (n *TestNode) ShutdownRaft() {
+	if n.cancel != nil {
+		n.cancel()
+		<-n.Done()
+	}
 }
 
 // CleanupNonRunningNode frees resources associated with a node which is not
