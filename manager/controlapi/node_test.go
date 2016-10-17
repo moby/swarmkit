@@ -302,9 +302,9 @@ func TestListManagerNodes(t *testing.T) {
 
 	// Stops 2 nodes
 	nodes[4].Server.Stop()
-	nodes[4].Shutdown()
+	nodes[4].ShutdownRaft()
 	nodes[5].Server.Stop()
-	nodes[5].Shutdown()
+	nodes[5].ShutdownRaft()
 
 	// Node 4 and Node 5 should be listed as Unreachable
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
@@ -356,7 +356,7 @@ func TestListManagerNodes(t *testing.T) {
 
 	// Stop node 1 (leader)
 	nodes[1].Server.Stop()
-	nodes[1].Shutdown()
+	nodes[1].ShutdownRaft()
 
 	newCluster := map[uint64]*raftutils.TestNode{
 		2: nodes[2],
@@ -389,7 +389,7 @@ func TestListManagerNodes(t *testing.T) {
 	}))
 
 	// Restart node 1
-	nodes[1].Shutdown()
+	nodes[1].ShutdownRaft()
 	nodes[1] = raftutils.RestartNode(t, clockSource, nodes[1], false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
@@ -544,7 +544,7 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 
 	// Stop Node 3 (1 node out of 3)
 	nodes[3].Server.Stop()
-	nodes[3].Shutdown()
+	nodes[3].ShutdownRaft()
 
 	// Node 3 should be listed as Unreachable
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {

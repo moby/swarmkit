@@ -211,7 +211,7 @@ func New(config *Config) (*Manager, error) {
 		ForceNewCluster: config.ForceNewCluster,
 		TLSCredentials:  config.SecurityConfig.ClientTLSCreds,
 	}
-	raftNode := raft.NewNode(context.TODO(), newNodeOpts)
+	raftNode := raft.NewNode(newNodeOpts)
 
 	opts := []grpc.ServerOption{
 		grpc.Creds(config.SecurityConfig.ServerTLSCreds)}
@@ -325,7 +325,7 @@ func (m *Manager) Run(parent context.Context) error {
 	// Set the raft server as serving for the health server
 	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
 
-	if err := m.raftNode.JoinAndStart(); err != nil {
+	if err := m.raftNode.JoinAndStart(ctx); err != nil {
 		return errors.Wrap(err, "can't initialize raft node")
 	}
 
@@ -402,11 +402,6 @@ func (m *Manager) Stop(ctx context.Context) {
 		// do nothing, we're stopping for the first time
 	}
 
-	// once we start stopping, send a signal that we're doing so. this tells
-	// Run that we've started stopping, when it gets the error from errServe
-	// it also prevents the loop from processing any more stuff.
-	close(m.stopped)
-
 	srvDone, localSrvDone := make(chan struct{}), make(chan struct{})
 	go func() {
 		m.server.GracefulStop()
@@ -439,7 +434,12 @@ func (m *Manager) Stop(ctx context.Context) {
 		m.keyManager.Stop()
 	}
 
-	m.raftNode.Shutdown()
+	// once we start stopping, send a signal that we're doing so. this tells
+	// Run that we've started stopping, when it gets the error from errServe
+	// it also prevents the loop from processing any more stuff.
+	close(m.stopped)
+
+	<-m.raftNode.Done()
 
 	timer := time.AfterFunc(stopTimeout, func() {
 		m.server.Stop()
