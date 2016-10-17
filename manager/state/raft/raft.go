@@ -971,7 +971,6 @@ func (n *Node) registerNode(node *api.RaftMember) error {
 		// address.
 		if existingMember.Addr != node.Addr {
 			member.RaftMember = node
-			member.RaftClient = existingMember.RaftClient
 			member.Conn = existingMember.Conn
 			n.cluster.AddMember(member)
 		}
@@ -1208,7 +1207,7 @@ func (n *Node) sendToMember(ctx context.Context, members map[uint64]*membership.
 			return
 		}
 
-		resp, err := queryMember.ResolveAddress(ctx, &api.ResolveAddressRequest{RaftID: m.To})
+		resp, err := api.NewRaftClient(queryMember.Conn).ResolveAddress(ctx, &api.ResolveAddressRequest{RaftID: m.To})
 		if err != nil {
 			log.G(ctx).WithError(err).Errorf("could not resolve address of member ID %x", m.To)
 			return
@@ -1224,7 +1223,7 @@ func (n *Node) sendToMember(ctx context.Context, members map[uint64]*membership.
 		defer conn.Conn.Close()
 	}
 
-	_, err := conn.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: &m})
+	_, err := api.NewRaftClient(conn.Conn).ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: &m})
 	if err != nil {
 		if grpc.ErrorDesc(err) == ErrMemberRemoved.Error() {
 			n.removeRaftFunc()
@@ -1570,8 +1569,7 @@ func (n *Node) ConnectToMember(addr string, timeout time.Duration) (*membership.
 	}
 
 	return &membership.Member{
-		RaftClient: api.NewRaftClient(conn),
-		Conn:       conn,
+		Conn: conn,
 	}, nil
 }
 
