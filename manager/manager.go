@@ -261,8 +261,25 @@ func (m *Manager) Run(parent context.Context) error {
 	go m.handleLeadershipEvents(ctx, leadershipCh)
 
 	authorize := func(ctx context.Context, roles []string) error {
+		var (
+			removedNodes []*api.RemovedNode
+			clusters     []*api.Cluster
+			err          error
+		)
+
+		m.raftNode.MemoryStore().View(func(readTx store.ReadTx) {
+			clusters, err = store.FindClusters(readTx, store.ByName("default"))
+
+		})
+
+		// Not having a cluster object yet means we can't check
+		// the blacklist.
+		if err == nil && len(clusters) == 1 {
+			removedNodes = clusters[0].RemovedNodes
+		}
+
 		// Authorize the remote roles, ensure they can only be forwarded by managers
-		_, err := ca.AuthorizeForwardedRoleAndOrg(ctx, roles, []string{ca.ManagerRole}, m.config.SecurityConfig.ClientTLSCreds.Organization())
+		_, err = ca.AuthorizeForwardedRoleAndOrg(ctx, roles, []string{ca.ManagerRole}, m.config.SecurityConfig.ClientTLSCreds.Organization(), removedNodes)
 		return err
 	}
 
