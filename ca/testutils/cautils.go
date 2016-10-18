@@ -161,6 +161,7 @@ func NewTestCA(t *testing.T) *TestCA {
 
 	createClusterObject(t, s, organization, workerToken, managerToken, externalCAs...)
 	caServer := ca.NewServer(s, managerConfig)
+	caServer.SetReconciliationRetryInterval(50 * time.Millisecond)
 	api.RegisterCAServer(grpcServer, caServer)
 	api.RegisterNodeCAServer(grpcServer, caServer)
 

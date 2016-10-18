@@ -69,13 +69,23 @@ const (
 	MinNodeCertExpiration = 1 * time.Hour
 )
 
+// A recoverableErr is an non-fatal error encountered signing a certificate,
+// which means that the certificate issuance may be retried at a later time.
+type recoverableErr struct {
+	err error
+}
+
+func (r recoverableErr) Error() string {
+	return r.err.Error()
+}
+
 // ErrNoLocalRootCA is an error type used to indicate that the local root CA
 // certificate file does not exist.
 var ErrNoLocalRootCA = errors.New("local root CA certificate does not exist")
 
 // ErrNoValidSigner is an error type used to indicate that our RootCA doesn't have the ability to
 // sign certificates.
-var ErrNoValidSigner = errors.New("no valid signer found")
+var ErrNoValidSigner = recoverableErr{err: errors.New("no valid signer found")}
 
 func init() {
 	cflog.Level = 5
