@@ -165,6 +165,12 @@ func validateEndpointSpec(epSpec *api.EndpointSpec) error {
 
 	portSet := make(map[portSpec]struct{})
 	for _, port := range epSpec.Ports {
+		// If published port is not specified, it does not conflict
+		// with any others.
+		if port.PublishedPort == 0 {
+			continue
+		}
+
 		portSpec := portSpec{publishedPort: port.PublishedPort, protocol: port.Protocol}
 		if _, ok := portSet[portSpec]; ok {
 			return grpc.Errorf(codes.InvalidArgument, "EndpointSpec: duplicate published ports provided")
