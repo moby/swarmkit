@@ -689,7 +689,7 @@ func readCertValidity(paths CertPaths) (time.Time, time.Time, error) {
 	}
 
 	// Create an x509 certificate out of the contents on disk
-	certBlock, _ := pem.Decode([]byte(cert))
+	certBlock, _ := pem.Decode(cert)
 	if certBlock == nil {
 		return zeroTime, zeroTime, errors.New("failed to decode certificate block")
 	}
