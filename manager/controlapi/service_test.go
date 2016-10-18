@@ -576,6 +576,47 @@ func TestValidateEndpointSpec(t *testing.T) {
 		},
 	}
 
+	// duplicated published port but different protocols, valid
+	endPointSpec4 := &api.EndpointSpec{
+		Mode: api.ResolutionModeVirtualIP,
+		Ports: []*api.PortConfig{
+			{
+				Name:          "dns",
+				TargetPort:    53,
+				PublishedPort: 8002,
+				Protocol:      api.ProtocolTCP,
+			},
+			{
+				Name:          "dns",
+				TargetPort:    53,
+				PublishedPort: 8002,
+				Protocol:      api.ProtocolUDP,
+			},
+		},
+	}
+
+	// multiple randomly assigned published ports
+	endPointSpec5 := &api.EndpointSpec{
+		Mode: api.ResolutionModeVirtualIP,
+		Ports: []*api.PortConfig{
+			{
+				Name:       "http",
+				TargetPort: 80,
+				Protocol:   api.ProtocolTCP,
+			},
+			{
+				Name:       "dns",
+				TargetPort: 53,
+				Protocol:   api.ProtocolUDP,
+			},
+			{
+				Name:       "dns",
+				TargetPort: 53,
+				Protocol:   api.ProtocolTCP,
+			},
+		},
+	}
+
 	err := validateEndpointSpec(endPointSpec1)
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
@@ -586,6 +627,12 @@ func TestValidateEndpointSpec(t *testing.T) {
 	err = validateEndpointSpec(endPointSpec3)
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	err = validateEndpointSpec(endPointSpec4)
+	assert.NoError(t, err)
+
+	err = validateEndpointSpec(endPointSpec5)
+	assert.NoError(t, err)
 }
 
 func TestServiceEndpointSpecUpdate(t *testing.T) {
