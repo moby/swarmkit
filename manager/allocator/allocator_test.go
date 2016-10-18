@@ -77,6 +77,16 @@ func TestAllocator(t *testing.T) {
 			},
 		}
 		assert.NoError(t, store.CreateTask(tx, t1))
+
+		t2 := &api.Task{
+			ID: "testTaskIDPreInit",
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
+			ServiceID:    "testServiceID1",
+			DesiredState: api.TaskStateRunning,
+		}
+		assert.NoError(t, store.CreateTask(tx, t2))
 		return nil
 	}))
 
@@ -94,7 +104,8 @@ func TestAllocator(t *testing.T) {
 
 	// Now verify if we get network and tasks updated properly
 	watchNetwork(t, netWatch, false, isValidNetwork)
-	watchTask(t, taskWatch, false, isValidTask)
+	watchTask(t, taskWatch, false, isValidTask) // t1
+	watchTask(t, taskWatch, false, isValidTask) // t2
 	watchService(t, serviceWatch, false, nil)
 
 	// Add new networks/tasks/services after allocator is started.
