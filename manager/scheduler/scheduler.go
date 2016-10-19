@@ -398,6 +398,20 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 						continue
 					}
 
+					if t.Status.State >= api.TaskStateAssigned {
+						nodeInfo, err := s.nodeSet.nodeInfo(decision.new.NodeID)
+						if err != nil {
+							failed = append(failed, decision)
+							continue
+						}
+						node := store.GetNode(tx, decision.new.NodeID)
+						if node == nil || node.Meta.Version != nodeInfo.Meta.Version {
+							// node is out of date
+							failed = append(failed, decision)
+							continue
+						}
+					}
+
 					if err := store.UpdateTask(tx, decision.new); err != nil {
 						log.G(ctx).Debugf("scheduler failed to update task %s; will retry", taskID)
 						failed = append(failed, decision)
