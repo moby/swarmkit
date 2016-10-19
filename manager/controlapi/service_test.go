@@ -57,6 +57,28 @@ func createSpecWithDuplicateMounts(name string) *api.ServiceSpec {
 	return service
 }
 
+func createSpecWithDuplicateSecretTargets(name string) *api.ServiceSpec {
+	service := createSpec(name, "image", 1)
+	secretRefs := []*api.SecretReference{
+		{
+			SecretName: "secret1",
+			SecretID:   "secretID1",
+			Target:     "target.txt",
+			Mode:       api.SecretReference_FILE,
+		},
+		{
+			SecretName: "secret2",
+			SecretID:   "secretID2",
+			Target:     "target.txt",
+			Mode:       api.SecretReference_FILE,
+		},
+	}
+
+	service.Task.GetContainer().Secrets = secretRefs
+
+	return service
+}
+
 func createService(t *testing.T, ts *testServer, name, image string, instances uint64) *api.Service {
 	spec := createSpec(name, image, instances)
 	r, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
@@ -312,6 +334,11 @@ func TestCreateService(t *testing.T) {
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
 	assert.NoError(t, err)
+
+	// test secret target conflicts
+	spec = createSpecWithDuplicateSecretTargets("name8")
+	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 }
 
 func TestGetService(t *testing.T) {
@@ -440,6 +467,21 @@ func TestUpdateService(t *testing.T) {
 		ServiceVersion: &rs.Service.Meta.Version,
 	})
 	assert.NoError(t, err)
+
+	// test secret target conflicts
+	spec4 := createSpecWithDuplicateSecretTargets("name8")
+	spec5 := spec4.Copy()
+	spec5.Task.GetContainer().Secrets = nil
+	rs, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec5})
+	assert.NoError(t, err)
+
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:      rs.Service.ID,
+		Spec:           spec4,
+		ServiceVersion: &rs.Service.Meta.Version,
+	})
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
 }
 
 // TODO(dongluochen): Network update is not supported yet and it's blocked
