@@ -16,12 +16,30 @@ var createCmd = &cobra.Command{
 	Short: "Create a secret",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
-			return errors.New("create command takes a unique secret name as an argument, and accepts secret data via stdin")
+			return errors.New(
+				"create command takes a unique secret name as an argument, and accepts secret data via stdin or via a file")
 		}
 
-		secretData, err := ioutil.ReadAll(os.Stdin)
-		if err != nil {
-			return fmt.Errorf("Error reading content from STDIN: %v", err)
+		flags := cmd.Flags()
+		var (
+			secretData []byte
+			err        error
+		)
+
+		if flags.Changed("file") {
+			filename, err := flags.GetString("file")
+			if err != nil {
+				return err
+			}
+			secretData, err = ioutil.ReadFile(filename)
+			if err != nil {
+				return fmt.Errorf("Error reading from file '%s': %s", filename, err.Error())
+			}
+		} else {
+			secretData, err = ioutil.ReadAll(os.Stdin)
+			if err != nil {
+				return fmt.Errorf("Error reading content from STDIN: %s", err.Error())
+			}
 		}
 
 		client, err := common.Dial(cmd)
@@ -41,4 +59,8 @@ var createCmd = &cobra.Command{
 		fmt.Println(resp.Secret.ID)
 		return nil
 	},
+}
+
+func init() {
+	createCmd.Flags().StringP("file", "f", "", "Rather than read the secret from STDIN, read from the given file")
 }
