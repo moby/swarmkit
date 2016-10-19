@@ -68,5 +68,6 @@ var (
 func init() {
 	updateCmd.Flags().StringSlice("add-secret", nil, "add a new secret from swarm")
 	updateCmd.Flags().StringSlice("rm-secret", nil, "removes a secret from the service")
+	updateCmd.Flags().Bool("force", false, "force tasks to restart even if nothing has changed")
 	flagparser.AddServiceFlags(updateCmd.Flags())
 }

@@ -54,6 +54,16 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 func Merge(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClient) error {
 	flags := cmd.Flags()
 
+	if flags.Changed("force") {
+		force, err := flags.GetBool("force")
+		if err != nil {
+			return err
+		}
+		if force {
+			spec.Task.ForceUpdate++
+		}
+	}
+
 	if flags.Changed("name") {
 		name, err := flags.GetString("name")
 		if err != nil {
