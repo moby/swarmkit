@@ -160,6 +160,10 @@ func TestGetSecret(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Secret)
+
+	// the data should be empty/omitted
+	assert.NotEqual(t, secret, resp.Secret)
+	secret.Spec.Data = nil
 	assert.Equal(t, secret, resp.Secret)
 }
 
