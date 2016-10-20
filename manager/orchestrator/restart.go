@@ -116,7 +116,7 @@ func (r *RestartSupervisor) Restart(ctx context.Context, tx store.Tx, cluster *a
 	// Restart? If so, we must avoid restarting it, because this will create
 	// an extra task. This should never happen unless there is a bug.
 	if t.DesiredState > api.TaskStateRunning {
-		return errors.New("Restart called on task that was already shut down")
+		return errors.New("restart called on task that was already shut down")
 	}
 
 	t.DesiredState = api.TaskStateShutdown
