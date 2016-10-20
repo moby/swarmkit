@@ -119,6 +119,8 @@
 		UpdateClusterResponse
 		GetSecretRequest
 		GetSecretResponse
+		UpdateSecretRequest
+		UpdateSecretResponse
 		ListSecretsRequest
 		ListSecretsResponse
 		CreateSecretRequest
