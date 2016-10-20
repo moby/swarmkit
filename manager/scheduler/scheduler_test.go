@@ -75,7 +75,7 @@ func TestScheduler(t *testing.T) {
 				Name: "name2",
 			},
 			Status: api.TaskStatus{
-				State: api.TaskStateAllocated,
+				State: api.TaskStatePending,
 			},
 		},
 		{
@@ -85,7 +85,7 @@ func TestScheduler(t *testing.T) {
 				Name: "name2",
 			},
 			Status: api.TaskStatus{
-				State: api.TaskStateAllocated,
+				State: api.TaskStatePending,
 			},
 		},
 	}
@@ -153,7 +153,7 @@ func TestScheduler(t *testing.T) {
 				Name: "name4",
 			},
 			Status: api.TaskStatus{
-				State: api.TaskStateAllocated,
+				State: api.TaskStatePending,
 			},
 		}
 		assert.NoError(t, store.CreateTask(tx, t4))
@@ -176,7 +176,7 @@ func TestScheduler(t *testing.T) {
 				Name: "name4",
 			},
 			Status: api.TaskStatus{
-				State: api.TaskStateAllocated,
+				State: api.TaskStatePending,
 			},
 		}
 		assert.NoError(t, store.UpdateTask(tx, t4))
@@ -212,7 +212,7 @@ func TestScheduler(t *testing.T) {
 				Name: "removednode",
 			},
 			Status: api.TaskStatus{
-				State: api.TaskStateAllocated,
+				State: api.TaskStatePending,
 			},
 		}
 		assert.NoError(t, store.CreateTask(tx, task))
@@ -247,7 +247,7 @@ func TestScheduler(t *testing.T) {
 				Name: "name5",
 			},
 			Status: api.TaskStatus{
-				State: api.TaskStateAllocated,
+				State: api.TaskStatePending,
 			},
 		}
 		assert.NoError(t, store.CreateTask(tx, t5))
@@ -282,7 +282,7 @@ func TestScheduler(t *testing.T) {
 				Name: "name6",
 			},
 			Status: api.TaskStatus{
-				State: api.TaskStateAllocated,
+				State: api.TaskStatePending,
 			},
 		}
 		assert.NoError(t, store.CreateTask(tx, t6))
@@ -317,7 +317,7 @@ func TestScheduler(t *testing.T) {
 				Name: "name7",
 			},
 			Status: api.TaskStatus{
-				State: api.TaskStateAllocated,
+				State: api.TaskStatePending,
 			},
 		}
 		assert.NoError(t, store.CreateTask(tx, t7))
@@ -354,7 +354,7 @@ func TestScheduler(t *testing.T) {
 				Name: "name8",
 			},
 			Status: api.TaskStatus{
-				State: api.TaskStateAllocated,
+				State: api.TaskStatePending,
 			},
 		}
 		assert.NoError(t, store.CreateTask(tx, t8))
@@ -412,7 +412,7 @@ func TestHA(t *testing.T) {
 			},
 		},
 		Status: api.TaskStatus{
-			State: api.TaskStateAllocated,
+			State: api.TaskStatePending,
 		},
 	}
 
@@ -427,7 +427,7 @@ func TestHA(t *testing.T) {
 			},
 		},
 		Status: api.TaskStatus{
-			State: api.TaskStateAllocated,
+			State: api.TaskStatePending,
 		},
 	}
 
@@ -649,7 +649,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 			Name: "name1",
 		},
 		Status: api.TaskStatus{
-			State: api.TaskStateAllocated,
+			State: api.TaskStatePending,
 		},
 	}
 
@@ -774,7 +774,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 			Name: "name1",
 		},
 		Status: api.TaskStatus{
-			State: api.TaskStateAllocated,
+			State: api.TaskStatePending,
 		},
 	}
 
@@ -888,7 +888,7 @@ func TestSchedulerResourceConstraintHA(t *testing.T) {
 			Name: "name1",
 		},
 		Status: api.TaskStatus{
-			State: api.TaskStateAllocated,
+			State: api.TaskStatePending,
 		},
 	}
 
@@ -1002,7 +1002,7 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 			Name: "big",
 		},
 		Status: api.TaskStatus{
-			State: api.TaskStateAllocated,
+			State: api.TaskStatePending,
 		},
 	}
 
@@ -1107,7 +1107,7 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 
 	bigTask2 := deadTask.Copy()
 	bigTask2.ID = "id2"
-	bigTask2.Status.State = api.TaskStateAllocated
+	bigTask2.Status.State = api.TaskStatePending
 
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -1179,7 +1179,7 @@ func TestPreassignedTasks(t *testing.T) {
 			},
 
 			Status: api.TaskStatus{
-				State: api.TaskStateAllocated,
+				State: api.TaskStatePending,
 			},
 		},
 		{
@@ -1189,7 +1189,7 @@ func TestPreassignedTasks(t *testing.T) {
 				Name: "name2",
 			},
 			Status: api.TaskStatus{
-				State: api.TaskStateAllocated,
+				State: api.TaskStatePending,
 			},
 			NodeID: initialNodeSet[0].ID,
 		},
@@ -1200,7 +1200,7 @@ func TestPreassignedTasks(t *testing.T) {
 				Name: "name2",
 			},
 			Status: api.TaskStatus{
-				State: api.TaskStateAllocated,
+				State: api.TaskStatePending,
 			},
 			NodeID: initialNodeSet[0].ID,
 		},
@@ -1395,7 +1395,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 			Name: "task1",
 		},
 		Status: api.TaskStatus{
-			State: api.TaskStateAllocated,
+			State: api.TaskStatePending,
 		},
 	}
 
@@ -1427,7 +1427,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 			Name: "task2",
 		},
 		Status: api.TaskStatus{
-			State: api.TaskStateAllocated,
+			State: api.TaskStatePending,
 		},
 	}
 
@@ -1468,7 +1468,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 			Name: "task2",
 		},
 		Status: api.TaskStatus{
-			State: api.TaskStateAllocated,
+			State: api.TaskStatePending,
 		},
 	}
 
@@ -1654,7 +1654,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 						Name: id,
 					},
 					Status: api.TaskStatus{
-						State: api.TaskStateAllocated,
+						State: api.TaskStatePending,
 					},
 				}
 				if networkConstraints {

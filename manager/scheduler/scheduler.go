@@ -54,9 +54,9 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 
 	tasksByNode := make(map[string]map[string]*api.Task)
 	for _, t := range tasks {
-		// Ignore all tasks that have not reached ALLOCATED
+		// Ignore all tasks that have not reached PENDING
 		// state and tasks that no longer consume resources.
-		if t.Status.State < api.TaskStateAllocated || t.Status.State > api.TaskStateRunning {
+		if t.Status.State < api.TaskStatePending || t.Status.State > api.TaskStateRunning {
 			continue
 		}
 
@@ -66,7 +66,7 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 			continue
 		}
 		// preassigned tasks need to validate resource requirement on corresponding node
-		if t.Status.State == api.TaskStateAllocated {
+		if t.Status.State == api.TaskStatePending {
 			s.preassignedTasks[t.ID] = t
 			continue
 		}
@@ -185,9 +185,9 @@ func (s *Scheduler) enqueue(t *api.Task) {
 }
 
 func (s *Scheduler) createTask(ctx context.Context, t *api.Task) int {
-	// Ignore all tasks that have not reached ALLOCATED
+	// Ignore all tasks that have not reached PENDING
 	// state, and tasks that no longer consume resources.
-	if t.Status.State < api.TaskStateAllocated || t.Status.State > api.TaskStateRunning {
+	if t.Status.State < api.TaskStatePending || t.Status.State > api.TaskStateRunning {
 		return 0
 	}
 
@@ -198,7 +198,7 @@ func (s *Scheduler) createTask(ctx context.Context, t *api.Task) int {
 		return 1
 	}
 
-	if t.Status.State == api.TaskStateAllocated {
+	if t.Status.State == api.TaskStatePending {
 		s.preassignedTasks[t.ID] = t
 		// preassigned tasks do not contribute to running tasks count
 		return 0
@@ -213,9 +213,9 @@ func (s *Scheduler) createTask(ctx context.Context, t *api.Task) int {
 }
 
 func (s *Scheduler) updateTask(ctx context.Context, t *api.Task) int {
-	// Ignore all tasks that have not reached ALLOCATED
+	// Ignore all tasks that have not reached PENDING
 	// state.
-	if t.Status.State < api.TaskStateAllocated {
+	if t.Status.State < api.TaskStatePending {
 		return 0
 	}
 
@@ -240,7 +240,7 @@ func (s *Scheduler) updateTask(ctx context.Context, t *api.Task) int {
 		return 1
 	}
 
-	if t.Status.State == api.TaskStateAllocated {
+	if t.Status.State == api.TaskStatePending {
 		if oldTask != nil {
 			s.deleteTask(ctx, oldTask)
 		}
