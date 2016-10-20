@@ -98,7 +98,7 @@ func TestConstraintEnforcer(t *testing.T) {
 				},
 			},
 			Status: api.TaskStatus{
-				State: api.TaskStateAllocated,
+				State: api.TaskStatePending,
 			},
 			NodeID: "id2",
 		},

@@ -371,8 +371,7 @@ enum TaskState {
 	option (gogoproto.goproto_enum_prefix) = false;
 	option (gogoproto.enum_customname) = "TaskState";
 	NEW = 0 [(gogoproto.enumvalue_customname)="TaskStateNew"];
-	ALLOCATED = 64 [(gogoproto.enumvalue_customname)="TaskStateAllocated"]; // successful allocation of resources that the task needs
-	PENDING = 128 [(gogoproto.enumvalue_customname) = "TaskStatePending"]; // observed by scheduler but unassigned.
+	PENDING = 64 [(gogoproto.enumvalue_customname)="TaskStatePending"]; // waiting for scheduling decision
 	ASSIGNED = 192 [(gogoproto.enumvalue_customname)="TaskStateAssigned"];
 	ACCEPTED = 256 [(gogoproto.enumvalue_customname)="TaskStateAccepted"]; // task has been accepted by an agent.
 	PREPARING = 320 [(gogoproto.enumvalue_customname)="TaskStatePreparing"];

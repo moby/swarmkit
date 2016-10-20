@@ -385,14 +385,15 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
 
+	// FIXME(aaronl): This is hard to maintain.
 	assert.Equal(t, 16, len(resp.Changes))
 	taskChanges, secretChanges := collectTasksAndSecrets(resp.Changes)
-	assert.Len(t, taskChanges, 10) // 10 types of task states >= assigned, 3 types < assigned
-	for _, task := range tasks[3:] {
+	assert.Len(t, taskChanges, 10) // 10 types of task states >= assigned, 2 types < assigned
+	for _, task := range tasks[2:] {
 		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
 	}
 	assert.Len(t, secretChanges, 6) // 6 types of task states between assigned and running inclusive
-	for _, secret := range secrets[3:9] {
+	for _, secret := range secrets[2:8] {
 		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
 	}
 
@@ -413,7 +414,7 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	assert.Equal(t, 5, len(resp.Changes))
 	taskChanges, secretChanges = collectTasksAndSecrets(resp.Changes)
 	assert.Len(t, taskChanges, 1)
-	assert.NotNil(t, taskChanges[idAndAction{id: tasks[3].ID, action: api.AssignmentChange_AssignmentActionUpdate}]) // this is the task in ASSIGNED
+	assert.NotNil(t, taskChanges[idAndAction{id: tasks[2].ID, action: api.AssignmentChange_AssignmentActionUpdate}]) // this is the task in ASSIGNED
 
 	assert.Len(t, secretChanges, 4) // these are the secrets for states > running
 	for _, secret := range secrets[9 : len(secrets)-1] {
@@ -431,19 +432,19 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// updates for all the tasks >= ASSIGNMENT, and remove secrets for all of them, even ones that don't exist
-	// (there will be 3 tasks changes that won't be sent down)
+	// (there will be 2 tasks changes that won't be sent down)
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
 
-	assert.Equal(t, len(tasks)-3+len(secrets)-3, len(resp.Changes))
+	assert.Equal(t, len(tasks)-2+len(secrets)-2, len(resp.Changes))
 	taskChanges, secretChanges = collectTasksAndSecrets(resp.Changes)
-	assert.Len(t, taskChanges, len(tasks)-3)
-	for _, task := range tasks[3:] {
+	assert.Len(t, taskChanges, len(tasks)-2)
+	for _, task := range tasks[2:] {
 		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionRemove}])
 	}
 
-	assert.Len(t, secretChanges, len(secrets)-3)
-	for _, secret := range secrets[3:] {
+	assert.Len(t, secretChanges, len(secrets)-2)
+	for _, secret := range secrets[2:] {
 		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionRemove}])
 	}
 }
@@ -497,16 +498,17 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
 
+	// FIXME(aaronl): This is hard to maintain.
 	assert.Equal(t, 10+6, len(resp.Changes))
 	taskChanges, secretChanges := collectTasksAndSecrets(resp.Changes)
 	assert.Len(t, taskChanges, 10)
-	for _, task := range tasks[3:] {
+	for _, task := range tasks[2:] {
 		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
 	}
 
 	assert.Len(t, secretChanges, 6)
 	// all the secrets for tasks >= ASSIGNED and <= RUNNING
-	for _, secret := range secrets[3:9] {
+	for _, secret := range secrets[2:8] {
 		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
 	}
 
@@ -522,19 +524,19 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// updates for all the tasks >= ASSIGNMENT, and remove secrets for all of them, even ones that don't exist
-	// (there will be 3 tasks changes that won't be sent down)
+	// (there will be 2 tasks changes that won't be sent down)
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
 
-	assert.Equal(t, len(tasks)-3+len(secrets)-3, len(resp.Changes))
+	assert.Equal(t, len(tasks)-2+len(secrets)-2, len(resp.Changes))
 	taskChanges, secretChanges = collectTasksAndSecrets(resp.Changes)
-	assert.Len(t, taskChanges, len(tasks)-3)
-	for _, task := range tasks[3:] {
+	assert.Len(t, taskChanges, len(tasks)-2)
+	for _, task := range tasks[2:] {
 		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionRemove}])
 	}
 
-	assert.Len(t, secretChanges, len(secrets)-3)
-	for _, secret := range secrets[3:] {
+	assert.Len(t, secretChanges, len(secrets)-2)
+	for _, secret := range secrets[2:] {
 		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionRemove}])
 	}
 }
@@ -572,14 +574,15 @@ func TestAssignmentsSecretUpdateAndDeletion(t *testing.T) {
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
 
+	// FIXME(aaronl): This is hard to maintain.
 	assert.Equal(t, 16, len(resp.Changes))
 	taskChanges, secretChanges := collectTasksAndSecrets(resp.Changes)
-	assert.Len(t, taskChanges, 10) // 10 types of task states >= assigned, 3 types < assigned
-	for _, task := range tasks[3:] {
+	assert.Len(t, taskChanges, 10) // 10 types of task states >= assigned, 2 types < assigned
+	for _, task := range tasks[2:] {
 		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
 	}
 	assert.Len(t, secretChanges, 6) // 6 types of task states between assigned and running inclusive
-	for _, secret := range secrets[3:9] {
+	for _, secret := range secrets[2:8] {
 		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
 	}
 
@@ -1056,7 +1059,6 @@ func taskSpecFromSecrets(secrets ...*api.Secret) api.TaskSpec {
 
 var taskStatesInOrder = []api.TaskState{
 	api.TaskStateNew,
-	api.TaskStateAllocated,
 	api.TaskStatePending,
 	api.TaskStateAssigned,
 	api.TaskStateAccepted,
