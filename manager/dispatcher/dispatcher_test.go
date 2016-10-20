@@ -100,7 +100,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	d := New(tc, c)
 
 	authorize := func(ctx context.Context, roles []string) error {
-		_, err := ca.AuthorizeForwardedRoleAndOrg(ctx, roles, []string{ca.ManagerRole}, tca.Organization)
+		_, err := ca.AuthorizeForwardedRoleAndOrg(ctx, roles, []string{ca.ManagerRole}, tca.Organization, nil)
 		return err
 	}
 	authenticatedDispatcherAPI := api.NewAuthenticatedWrapperDispatcherServer(d, authorize)
