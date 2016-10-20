@@ -22,9 +22,7 @@ import (
 )
 
 func TestManager(t *testing.T) {
-	ctx := context.TODO()
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
+	ctx := context.Background()
 
 	temp, err := ioutil.TempFile("", "test-socket")
 	assert.NoError(t, err)
@@ -79,8 +77,10 @@ func TestManager(t *testing.T) {
 
 	// We have to send a dummy request to verify if the connection is actually up.
 	client := api.NewDispatcherClient(conn)
-	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
+	_, err = client.Heartbeat(ctx, &api.HeartbeatRequest{})
 	assert.Equal(t, dispatcher.ErrNodeNotRegistered.Error(), grpc.ErrorDesc(err))
+	_, err = client.Session(ctx, &api.SessionRequest{})
+	assert.NoError(t, err)
 
 	// Try to have a client in a different org access this manager
 	opts = []grpc.DialOption{
@@ -94,7 +94,6 @@ func TestManager(t *testing.T) {
 		assert.NoError(t, conn2.Close())
 	}()
 
-	// We have to send a dummy request to verify if the connection is actually up.
 	client = api.NewDispatcherClient(conn2)
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
 	assert.Contains(t, grpc.ErrorDesc(err), "Permission denied: unauthorized peer role: rpc error: code = 7 desc = Permission denied: remote certificate not part of organization")
@@ -123,6 +122,43 @@ func TestManager(t *testing.T) {
 	raftClient := api.NewRaftMembershipClient(noCertConn)
 	_, err = raftClient.Join(context.Background(), &api.JoinRequest{})
 	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
+
+	opts = []grpc.DialOption{
+		grpc.WithTimeout(10 * time.Second),
+		grpc.WithTransportCredentials(managerSecurityConfig.ClientTLSCreds),
+	}
+
+	controlConn, err := grpc.Dial(ltcp.Addr().String(), opts...)
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, controlConn.Close())
+	}()
+
+	// Test removal of the agent node
+	agentID := agentSecurityConfig.ClientTLSCreds.NodeID()
+	assert.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
+		return store.CreateNode(tx,
+			&api.Node{
+				ID: agentID,
+				Certificate: api.Certificate{
+					Role: api.NodeRoleWorker,
+					CN:   agentID,
+				},
+			},
+		)
+	}))
+	controlClient = api.NewControlClient(controlConn)
+	_, err = controlClient.RemoveNode(context.Background(),
+		&api.RemoveNodeRequest{
+			NodeID: agentID,
+			Force:  true,
+		},
+	)
+	assert.NoError(t, err)
+
+	client = api.NewDispatcherClient(conn)
+	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
+	assert.Contains(t, grpc.ErrorDesc(err), "removed from swarm")
 
 	m.Stop(ctx)
 

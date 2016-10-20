@@ -9,9 +9,11 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarmkit/api"
 	cautils "github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/identity"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -144,6 +146,19 @@ func TestListNodes(t *testing.T) {
 func TestRemoveNodes(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
+
+	ts.Store.Update(func(tx store.Tx) error {
+		store.CreateCluster(tx, &api.Cluster{
+			ID: identity.NewID(),
+			Spec: api.ClusterSpec{
+				Annotations: api.Annotations{
+					Name: store.DefaultClusterName,
+				},
+			},
+		})
+		return nil
+	})
+
 	r, err := ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Empty(t, r.Nodes)
@@ -151,13 +166,13 @@ func TestRemoveNodes(t *testing.T) {
 	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Nodes))
+	assert.Len(t, r.Nodes, 1)
 
 	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipPending, api.NodeStatus_UNKNOWN)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(r.Nodes))
+	assert.Len(t, r.Nodes, 3)
 
 	// Attempt to remove a ready node without force
 	_, err = ts.Client.RemoveNode(context.Background(),
@@ -176,7 +191,7 @@ func TestRemoveNodes(t *testing.T) {
 		},
 	)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(r.Nodes))
+	assert.Len(t, r.Nodes, 3)
 
 	// Attempt to remove a ready node with force
 	_, err = ts.Client.RemoveNode(context.Background(),
@@ -195,7 +210,13 @@ func TestRemoveNodes(t *testing.T) {
 		},
 	)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(r.Nodes))
+	assert.Len(t, r.Nodes, 2)
+
+	clusterResp, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
+	assert.NoError(t, err)
+	require.Len(t, clusterResp.Clusters, 1)
+	require.Len(t, clusterResp.Clusters[0].RemovedNodes, 1)
+	assert.Equal(t, "id2", clusterResp.Clusters[0].RemovedNodes[0].ID)
 
 	// Attempt to remove a non-ready node without force
 	_, err = ts.Client.RemoveNode(context.Background(),
@@ -214,7 +235,7 @@ func TestRemoveNodes(t *testing.T) {
 		},
 	)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Nodes))
+	assert.Len(t, r.Nodes, 1)
 }
 
 func init() {
