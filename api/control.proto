@@ -141,6 +141,7 @@ message ListNodesResponse {
 message UpdateNodeRequest {
 	string node_id = 1 [(gogoproto.customname) = "NodeID"];
 	Version node_version = 2;
+	Version spec_version = 4;
 	NodeSpec spec = 3;
 }
 
@@ -210,6 +211,7 @@ message GetServiceResponse {
 message UpdateServiceRequest {
 	string service_id = 1 [(gogoproto.customname) = "ServiceID"];
 	Version service_version = 2;
+	Version spec_version = 4;
 	ServiceSpec spec = 3;
 }
 
@@ -318,6 +320,8 @@ message UpdateClusterRequest {
 
 	// ClusterVersion is the version of the cluster being updated.
 	Version cluster_version = 2;
+
+	Version spec_version = 5;
 
 	// Spec is the new spec to apply to the cluster.
 	ClusterSpec spec = 3;

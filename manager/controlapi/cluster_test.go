@@ -205,9 +205,9 @@ func TestUpdateCluster(t *testing.T) {
 
 	// Versioning.
 	assert.NoError(t, err)
-	version := &returnedCluster.Cluster.Meta.Version
+	version := returnedCluster.Cluster.Meta.Version.Copy()
 
-	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
+	returnedCluster, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
 		ClusterID:      cluster.ID,
 		Spec:           &r.Clusters[0].Spec,
 		ClusterVersion: version,
@@ -219,6 +219,22 @@ func TestUpdateCluster(t *testing.T) {
 		ClusterID:      cluster.ID,
 		Spec:           &r.Clusters[0].Spec,
 		ClusterVersion: version,
+	})
+	assert.Error(t, err)
+
+	// Perform an update using the spec version
+	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
+		ClusterID:   cluster.ID,
+		Spec:        &r.Clusters[0].Spec,
+		SpecVersion: returnedCluster.Cluster.Meta.SpecVersion.Copy(),
+	})
+	assert.NoError(t, err)
+
+	// Perform an update using the "old" spec version
+	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
+		ClusterID:   cluster.ID,
+		Spec:        &r.Clusters[0].Spec,
+		SpecVersion: returnedCluster.Cluster.Meta.SpecVersion.Copy(),
 	})
 	assert.Error(t, err)
 }
