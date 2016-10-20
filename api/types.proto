@@ -77,6 +77,8 @@ message NodeDescription {
 
 	// Information about the Docker Engine on the node.
 	EngineDescription engine = 4;
+
+	string addr = 5;
 }
 
 message RaftMemberStatus {

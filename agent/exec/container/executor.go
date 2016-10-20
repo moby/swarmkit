@@ -76,6 +76,7 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 			NanoCPUs:    int64(info.NCPU) * 1e9,
 			MemoryBytes: info.MemTotal,
 		},
+		Addr: info.Swarm.NodeAddr,
 	}
 
 	return description, nil
