@@ -22,6 +22,8 @@ const (
 
 	ingressNetworkName = "ingress"
 	ingressSubnet      = "10.255.0.0/16"
+
+	allocatedStatusMessage = "pending task scheduling"
 )
 
 func newIngressNetwork() *api.Network {
@@ -237,7 +239,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 			a.taskCreateNetworkAttachments(t, s)
 
 			if taskReadyForNetworkVote(t, s, nc) {
-				if t.Status.State >= api.TaskStateAllocated {
+				if t.Status.State >= api.TaskStatePending {
 					continue
 				}
 
@@ -252,7 +254,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 							return fmt.Errorf("task %s not found while trying to update state", t.ID)
 						}
 
-						updateTaskStatus(storeT, api.TaskStateAllocated, "allocated")
+						updateTaskStatus(storeT, api.TaskStatePending, allocatedStatusMessage)
 
 						if err := store.UpdateTask(tx, storeT); err != nil {
 							return errors.Wrapf(err, "failed updating state in store transaction for task %s", storeT.ID)
@@ -503,7 +505,7 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, ev events.Event) {
 
 	// If we are already in allocated state, there is
 	// absolutely nothing else to do.
-	if t.Status.State >= api.TaskStateAllocated {
+	if t.Status.State >= api.TaskStatePending {
 		delete(nc.unallocatedTasks, t.ID)
 		return
 	}
@@ -735,10 +737,10 @@ func (a *Allocator) allocateTask(ctx context.Context, tx store.Tx, t *api.Task) 
 	}
 
 	// Update the network allocations and moving to
-	// ALLOCATED state on top of the latest store state.
+	// PENDING state on top of the latest store state.
 	if a.taskAllocateVote(networkVoter, t.ID) {
-		if storeT.Status.State < api.TaskStateAllocated {
-			updateTaskStatus(storeT, api.TaskStateAllocated, "allocated")
+		if storeT.Status.State < api.TaskStatePending {
+			updateTaskStatus(storeT, api.TaskStatePending, allocatedStatusMessage)
 			taskUpdated = true
 		}
 	}
