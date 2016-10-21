@@ -711,7 +711,7 @@ func TestSchedulerFaultyNode(t *testing.T) {
 			Name: "name1",
 		},
 		Status: api.TaskStatus{
-			State: api.TaskStateAllocated,
+			State: api.TaskStatePending,
 		},
 	}
 
