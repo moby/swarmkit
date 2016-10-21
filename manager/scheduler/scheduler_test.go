@@ -14,6 +14,7 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
 
@@ -698,6 +699,107 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 
 	assignment := watchAssignment(t, watch)
 	assert.Equal(t, "newnode", assignment.NodeID)
+}
+
+func TestSchedulerFaultyNode(t *testing.T) {
+	ctx := context.Background()
+
+	taskTemplate := &api.Task{
+		ServiceID:    "service1",
+		DesiredState: api.TaskStateRunning,
+		ServiceAnnotations: api.Annotations{
+			Name: "name1",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStateAllocated,
+		},
+	}
+
+	node1 := &api.Node{
+		ID: "id1",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "id1",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+	}
+
+	node2 := &api.Node{
+		ID: "id2",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "id2",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+	}
+
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	err := s.Update(func(tx store.Tx) error {
+		// Add initial nodes, and one task assigned to node id1
+		assert.NoError(t, store.CreateNode(tx, node1))
+		assert.NoError(t, store.CreateNode(tx, node2))
+
+		task1 := taskTemplate.Copy()
+		task1.ID = "id1"
+		task1.NodeID = "id1"
+		task1.Status.State = api.TaskStateRunning
+		assert.NoError(t, store.CreateTask(tx, task1))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(s)
+
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+	defer scheduler.Stop()
+
+	for i := 0; i != 8; i++ {
+		// Simulate a task failure cycle
+		newTask := taskTemplate.Copy()
+		newTask.ID = identity.NewID()
+
+		err = s.Update(func(tx store.Tx) error {
+			assert.NoError(t, store.CreateTask(tx, newTask))
+			return nil
+		})
+		assert.NoError(t, err)
+
+		assignment := watchAssignment(t, watch)
+		assert.Equal(t, newTask.ID, assignment.ID)
+
+		if i < 5 {
+			// The first 5 attempts should be assigned to node id2 because
+			// it has no replicas of the service.
+			assert.Equal(t, "id2", assignment.NodeID)
+		} else {
+			// The next ones should be assigned to id1, since we'll
+			// flag id2 as potentially faulty.
+			assert.Equal(t, "id1", assignment.NodeID)
+		}
+
+		err = s.Update(func(tx store.Tx) error {
+			newTask := store.GetTask(tx, newTask.ID)
+			require.NotNil(t, newTask)
+			newTask.Status.State = api.TaskStateFailed
+			assert.NoError(t, store.UpdateTask(tx, newTask))
+			return nil
+		})
+		assert.NoError(t, err)
+	}
 }
 
 func TestSchedulerResourceConstraint(t *testing.T) {

@@ -12,6 +12,16 @@ import (
 	"golang.org/x/net/context"
 )
 
+const (
+	// monitorFailures is the lookback period for counting failures of
+	// a task to determine if a node is faulty for a particular service.
+	monitorFailures = 5 * time.Minute
+
+	// maxFailures is the number of failures within monitorFailures that
+	// triggers downweighting of a node in the sorting function.
+	maxFailures = 5
+)
+
 type schedulingDecision struct {
 	old *api.Task
 	new *api.Task
@@ -224,8 +234,17 @@ func (s *Scheduler) updateTask(ctx context.Context, t *api.Task) int {
 	// Ignore all tasks that have not reached ALLOCATED
 	// state, and tasks that no longer consume resources.
 	if t.Status.State > api.TaskStateRunning {
-		if oldTask != nil {
-			s.deleteTask(ctx, oldTask)
+		if oldTask == nil {
+			return 1
+		}
+		s.deleteTask(ctx, oldTask)
+		if t.Status.State != oldTask.Status.State &&
+			(t.Status.State == api.TaskStateFailed || t.Status.State == api.TaskStateRejected) {
+			nodeInfo, err := s.nodeSet.nodeInfo(t.NodeID)
+			if err == nil {
+				nodeInfo.taskFailed(ctx, t.ServiceID)
+				s.nodeSet.updateNode(nodeInfo)
+			}
 		}
 		return 1
 	}
@@ -481,7 +500,23 @@ func (s *Scheduler) scheduleTaskGroup(ctx context.Context, taskGroup map[string]
 
 	s.pipeline.SetTask(t)
 
+	now := time.Now()
+
 	nodeLess := func(a *NodeInfo, b *NodeInfo) bool {
+		// If either node has at least maxFailures recent failures,
+		// that's the deciding factor.
+		recentFailuresA := a.countRecentFailures(now, t.ServiceID)
+		recentFailuresB := b.countRecentFailures(now, t.ServiceID)
+
+		if recentFailuresA >= maxFailures || recentFailuresB >= maxFailures {
+			if recentFailuresA > recentFailuresB {
+				return false
+			}
+			if recentFailuresB > recentFailuresA {
+				return true
+			}
+		}
+
 		tasksByServiceA := a.DesiredRunningTasksCountByService[t.ServiceID]
 		tasksByServiceB := b.DesiredRunningTasksCountByService[t.ServiceID]
 
