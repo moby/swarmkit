@@ -350,3 +350,31 @@ func TestListClustersWithSecrets(t *testing.T) {
 		assert.NotNil(t, cluster.Spec.AcceptancePolicy.Policies[0].Secret.Data)
 	}
 }
+
+func TestExpireBlacklistedCerts(t *testing.T) {
+	now := time.Now()
+
+	longAgo := now.Add(-24 * time.Hour * 1000)
+	justBeforeGrace := now.Add(-expiredCertGrace - 5*time.Minute)
+	justAfterGrace := now.Add(-expiredCertGrace + 5*time.Minute)
+	future := now.Add(time.Hour)
+
+	cluster := &api.Cluster{
+		BlacklistedCertificates: map[string]*api.BlacklistedCertificate{
+			"longAgo":         {Expiry: ptypes.MustTimestampProto(longAgo)},
+			"justBeforeGrace": {Expiry: ptypes.MustTimestampProto(justBeforeGrace)},
+			"justAfterGrace":  {Expiry: ptypes.MustTimestampProto(justAfterGrace)},
+			"future":          {Expiry: ptypes.MustTimestampProto(future)},
+		},
+	}
+
+	expireBlacklistedCerts(cluster)
+
+	assert.Len(t, cluster.BlacklistedCertificates, 2)
+
+	_, hasJustAfterGrace := cluster.BlacklistedCertificates["justAfterGrace"]
+	assert.True(t, hasJustAfterGrace)
+
+	_, hasFuture := cluster.BlacklistedCertificates["future"]
+	assert.True(t, hasFuture)
+}
