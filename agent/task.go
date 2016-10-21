@@ -10,6 +10,13 @@ import (
 	"golang.org/x/net/context"
 )
 
+const (
+	// logsEnabled guards the service logs feature before we are ready to make
+	// this production code. This flag should be removed when logs are ready
+	// for use.
+	logsEnabled = false
+)
+
 // taskManager manages all aspects of task execution and reporting for an agent
 // through state management.
 type taskManager struct {
@@ -72,22 +79,24 @@ func (tm *taskManager) run(ctx context.Context) {
 
 	ctx = log.WithModule(ctx, "taskmanager")
 
-	go func() {
-		// TODO(stevvooe): Obviously, this needs to be moved elsewhere such
-		// that it is only activated by subscriptions.
+	if logsEnabled {
+		go func() {
+			// TODO(stevvooe): Obviously, this needs to be moved elsewhere such
+			// that it is only activated by subscriptions.
 
-		logCtlr, ok := tm.ctlr.(exec.ControllerLogs)
-		if !ok {
-			return // no logs available
-		}
-		for {
-			if err := logCtlr.Logs(ctx, tm.publisher, api.LogSubscriptionOptions{
-				Follow: true,
-			}); err != nil {
-				log.G(ctx).WithError(err).Errorf("logs call failed")
+			logCtlr, ok := tm.ctlr.(exec.ControllerLogs)
+			if !ok {
+				return // no logs available
 			}
-		}
-	}()
+			for {
+				if err := logCtlr.Logs(ctx, tm.publisher, api.LogSubscriptionOptions{
+					Follow: true,
+				}); err != nil {
+					log.G(ctx).WithError(err).Errorf("logs call failed")
+				}
+			}
+		}()
+	}
 
 	var (
 		opctx    context.Context
