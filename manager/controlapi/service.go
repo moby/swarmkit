@@ -279,6 +279,25 @@ func (s *Server) checkPortConflicts(spec *api.ServiceSpec, serviceID string) err
 	return nil
 }
 
+// checkSecretConflicts finds if the passed in spec has secrets with conflicting targets.
+func (s *Server) checkSecretConflicts(spec *api.ServiceSpec) error {
+	container := spec.Task.GetContainer()
+	if container == nil {
+		return nil
+	}
+
+	existingTargets := make(map[string]string)
+	for _, secretRef := range container.Secrets {
+		if prevSecretName, ok := existingTargets[secretRef.Target]; ok {
+			return grpc.Errorf(codes.InvalidArgument, "secret references '%s' and '%s' have a conflicting target: '%s'", prevSecretName, secretRef.SecretName, secretRef.Target)
+		}
+
+		existingTargets[secretRef.Target] = secretRef.SecretName
+	}
+
+	return nil
+}
+
 // CreateService creates and return a Service based on the provided ServiceSpec.
 // - Returns `InvalidArgument` if the ServiceSpec is malformed.
 // - Returns `Unimplemented` if the ServiceSpec references unimplemented features.
@@ -294,6 +313,10 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 	}
 
 	if err := s.checkPortConflicts(request.Spec, ""); err != nil {
+		return nil, err
+	}
+
+	if err := s.checkSecretConflicts(request.Spec); err != nil {
 		return nil, err
 	}
 
@@ -362,6 +385,10 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		if err := s.checkPortConflicts(request.Spec, request.ServiceID); err != nil {
 			return nil, err
 		}
+	}
+
+	if err := s.checkSecretConflicts(request.Spec); err != nil {
+		return nil, err
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {
