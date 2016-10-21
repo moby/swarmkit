@@ -506,6 +506,21 @@ message PortConfig {
 		UDP = 1 [(gogoproto.enumvalue_customname) = "ProtocolUDP"];
 	}
 
+	// PublishMode controls how ports are published on the swarm.
+	enum PublishMode {
+		option (gogoproto.enum_customname) = "PublishMode";
+		option (gogoproto.goproto_enum_prefix) = false;
+
+		// PublishModeIngress exposes the port across the cluster on all nodes.
+		INGRESS = 0 [(gogoproto.enumvalue_customname) = "PublishModeIngress"];
+
+		// PublishModeHost exposes the port on just the target host.  If the
+		// published port is undefined, an ephemeral port will be allocated. If
+		// the published port is defined, the node will attempt to allocate it,
+		// erroring the task if it fails.
+		HOST = 1 [(gogoproto.enumvalue_customname) = "PublishModeHost"];
+	}
+
 	// Name for the port. If provided the port information can
 	// be queried using the name as in a DNS SRV query.
 	string name = 1;
@@ -516,11 +531,13 @@ message PortConfig {
 	// The port which the application is exposing and is bound to.
 	uint32 target_port = 3;
 
-	// PublishedPort specifies the port on which the service is
-	// exposed. If specified, the port must be
-	// within the available range. If not specified, an available
-	// port is automatically assigned.
+	// PublishedPort specifies the port on which the service is exposed. If
+	// specified, the port must be within the available range. If not specified
+	// (value is zero), an available port is automatically assigned.
 	uint32 published_port = 4;
+
+	// PublishMode controls how the port is published.
+	PublishMode publish_mode = 5;
 }
 
 // Driver is a generic driver type to be used throughout the API. For now, a
