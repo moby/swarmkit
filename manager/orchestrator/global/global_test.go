@@ -3,6 +3,7 @@ package global
 import (
 	"testing"
 
+	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state"
@@ -60,7 +61,7 @@ var (
 	}
 )
 
-func SetupCluster(t *testing.T, store *store.MemoryStore) {
+func SetupCluster(t *testing.T, store *store.MemoryStore, watch chan events.Event) *api.Task {
 	ctx := context.Background()
 	// Start the global orchestrator.
 	global := NewGlobalOrchestrator(store)
@@ -69,7 +70,15 @@ func SetupCluster(t *testing.T, store *store.MemoryStore) {
 	}()
 
 	addService(t, store, service1)
+	testutils.Expect(t, watch, state.EventCreateService{})
+	testutils.Expect(t, watch, state.EventCommit{})
+
 	addNode(t, store, node1)
+	testutils.Expect(t, watch, state.EventCreateNode{})
+	testutils.Expect(t, watch, state.EventCommit{})
+
+	// return task creation from orchestrator
+	return testutils.WatchTaskCreate(t, watch)
 }
 
 func TestSetup(t *testing.T) {
@@ -80,9 +89,8 @@ func TestSetup(t *testing.T) {
 	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
 
-	SetupCluster(t, store)
+	observedTask1 := SetupCluster(t, store, watch)
 
-	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask1.NodeID, "id1")
@@ -93,12 +101,10 @@ func TestAddNode(t *testing.T) {
 	assert.NotNil(t, store)
 	defer store.Close()
 
-	SetupCluster(t, store)
-
 	watch, cancel := state.Watch(store.WatchQueue())
 	defer cancel()
 
-	testutils.SkipEvents(t, watch)
+	SetupCluster(t, store, watch)
 
 	addNode(t, store, node2)
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
@@ -112,12 +118,10 @@ func TestDeleteNode(t *testing.T) {
 	assert.NotNil(t, store)
 	defer store.Close()
 
-	SetupCluster(t, store)
-
 	watch, cancel := state.Watch(store.WatchQueue())
 	defer cancel()
 
-	testutils.SkipEvents(t, watch)
+	SetupCluster(t, store, watch)
 
 	deleteNode(t, store, node1)
 	// task should be set to dead
@@ -131,12 +135,10 @@ func TestNodeAvailability(t *testing.T) {
 	assert.NotNil(t, store)
 	defer store.Close()
 
-	SetupCluster(t, store)
-
 	watch, cancel := state.Watch(store.WatchQueue())
 	defer cancel()
 
-	testutils.SkipEvents(t, watch)
+	SetupCluster(t, store, watch)
 
 	node1.Status.State = api.NodeStatus_READY
 	node1.Spec.Availability = api.NodeAvailabilityActive
@@ -163,12 +165,10 @@ func TestAddService(t *testing.T) {
 	assert.NotNil(t, store)
 	defer store.Close()
 
-	SetupCluster(t, store)
-
 	watch, cancel := state.Watch(store.WatchQueue())
 	defer cancel()
 
-	testutils.SkipEvents(t, watch)
+	SetupCluster(t, store, watch)
 
 	addService(t, store, service2)
 	observedTask := testutils.WatchTaskCreate(t, watch)
@@ -182,12 +182,10 @@ func TestDeleteService(t *testing.T) {
 	assert.NotNil(t, store)
 	defer store.Close()
 
-	SetupCluster(t, store)
-
 	watch, cancel := state.Watch(store.WatchQueue())
 	defer cancel()
 
-	testutils.SkipEvents(t, watch)
+	SetupCluster(t, store, watch)
 
 	deleteService(t, store, service1)
 	// task should be deleted
@@ -204,10 +202,8 @@ func TestRemoveTask(t *testing.T) {
 	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
 	defer cancel()
 
-	SetupCluster(t, store)
+	observedTask1 := SetupCluster(t, store, watch)
 
-	// get the task
-	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask1.NodeID, "id1")
