@@ -21,7 +21,10 @@ import (
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/health"
 	"github.com/docker/swarmkit/manager/keymanager"
-	"github.com/docker/swarmkit/manager/orchestrator"
+	"github.com/docker/swarmkit/manager/orchestrator/constraintenforcer"
+	"github.com/docker/swarmkit/manager/orchestrator/global"
+	"github.com/docker/swarmkit/manager/orchestrator/replicated"
+	"github.com/docker/swarmkit/manager/orchestrator/taskreaper"
 	"github.com/docker/swarmkit/manager/resourceapi"
 	"github.com/docker/swarmkit/manager/scheduler"
 	"github.com/docker/swarmkit/manager/state/raft"
@@ -82,10 +85,10 @@ type Manager struct {
 
 	caserver               *ca.Server
 	dispatcher             *dispatcher.Dispatcher
-	replicatedOrchestrator *orchestrator.ReplicatedOrchestrator
-	globalOrchestrator     *orchestrator.GlobalOrchestrator
-	taskReaper             *orchestrator.TaskReaper
-	constraintEnforcer     *orchestrator.ConstraintEnforcer
+	replicatedOrchestrator *replicated.Orchestrator
+	globalOrchestrator     *global.Orchestrator
+	taskReaper             *taskreaper.TaskReaper
+	constraintEnforcer     *constraintenforcer.ConstraintEnforcer
 	scheduler              *scheduler.Scheduler
 	allocator              *allocator.Allocator
 	keyManager             *keymanager.KeyManager
@@ -651,10 +654,10 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		log.G(ctx).WithError(err).Error("root key-encrypting-key rotation failed")
 	}
 
-	m.replicatedOrchestrator = orchestrator.NewReplicatedOrchestrator(s)
-	m.constraintEnforcer = orchestrator.NewConstraintEnforcer(s)
-	m.globalOrchestrator = orchestrator.NewGlobalOrchestrator(s)
-	m.taskReaper = orchestrator.NewTaskReaper(s)
+	m.replicatedOrchestrator = replicated.NewReplicatedOrchestrator(s)
+	m.constraintEnforcer = constraintenforcer.New(s)
+	m.globalOrchestrator = global.NewGlobalOrchestrator(s)
+	m.taskReaper = taskreaper.New(s)
 	m.scheduler = scheduler.New(s)
 	m.keyManager = keymanager.New(s, keymanager.DefaultConfig())
 
@@ -706,21 +709,21 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		}
 	}(m.scheduler)
 
-	go func(constraintEnforcer *orchestrator.ConstraintEnforcer) {
+	go func(constraintEnforcer *constraintenforcer.ConstraintEnforcer) {
 		constraintEnforcer.Run()
 	}(m.constraintEnforcer)
 
-	go func(taskReaper *orchestrator.TaskReaper) {
+	go func(taskReaper *taskreaper.TaskReaper) {
 		taskReaper.Run()
 	}(m.taskReaper)
 
-	go func(orchestrator *orchestrator.ReplicatedOrchestrator) {
+	go func(orchestrator *replicated.Orchestrator) {
 		if err := orchestrator.Run(ctx); err != nil {
 			log.G(ctx).WithError(err).Error("replicated orchestrator exited with an error")
 		}
 	}(m.replicatedOrchestrator)
 
-	go func(globalOrchestrator *orchestrator.GlobalOrchestrator) {
+	go func(globalOrchestrator *global.Orchestrator) {
 		if err := globalOrchestrator.Run(ctx); err != nil {
 			log.G(ctx).WithError(err).Error("global orchestrator exited with an error")
 		}

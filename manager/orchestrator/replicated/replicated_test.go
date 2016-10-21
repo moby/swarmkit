@@ -1,12 +1,10 @@
-package orchestrator
+package replicated
 
 import (
-	"fmt"
 	"testing"
-	"time"
 
-	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
@@ -58,11 +56,11 @@ func TestReplicatedOrchestrator(t *testing.T) {
 		assert.NoError(t, orchestrator.Run(ctx))
 	}()
 
-	observedTask1 := watchTaskCreate(t, watch)
+	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 
-	observedTask2 := watchTaskCreate(t, watch)
+	observedTask2 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
@@ -91,7 +89,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	observedTask3 := watchTaskCreate(t, watch)
+	observedTask3 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name2")
 
@@ -120,11 +118,11 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	observedTask4 := watchTaskCreate(t, watch)
+	observedTask4 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name2")
 
-	observedTask5 := watchTaskCreate(t, watch)
+	observedTask5 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask5.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask5.ServiceAnnotations.Name, "name2")
 
@@ -153,11 +151,11 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	observedDeletion1 := watchTaskDelete(t, watch)
+	observedDeletion1 := testutils.WatchTaskDelete(t, watch)
 	assert.Equal(t, observedDeletion1.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedDeletion1.ServiceAnnotations.Name, "name2")
 
-	observedDeletion2 := watchTaskDelete(t, watch)
+	observedDeletion2 := testutils.WatchTaskDelete(t, watch)
 	assert.Equal(t, observedDeletion2.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedDeletion2.ServiceAnnotations.Name, "name2")
 
@@ -183,7 +181,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	observedTask6 := watchTaskCreate(t, watch)
+	observedTask6 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask6.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask6.ServiceAnnotations.Name, "name2")
 
@@ -194,7 +192,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	deletedTask := watchTaskDelete(t, watch)
+	deletedTask := testutils.WatchTaskDelete(t, watch)
 	assert.Equal(t, deletedTask.Status.State, api.TaskStateNew)
 	assert.Equal(t, deletedTask.ServiceAnnotations.Name, "name2")
 }
@@ -384,7 +382,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 	// be the one the orchestrator chose to shut down because it was not
 	// assigned yet.
 
-	observedShutdown := watchTaskDelete(t, watch)
+	observedShutdown := testutils.WatchTaskDelete(t, watch)
 	assert.Equal(t, "task7", observedShutdown.ID)
 
 	// Now scale down to 2 instances.
@@ -405,7 +403,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 
 	shutdowns := make(map[string]int)
 	for i := 0; i != 4; i++ {
-		observedShutdown := watchTaskDelete(t, watch)
+		observedShutdown := testutils.WatchTaskDelete(t, watch)
 		shutdowns[observedShutdown.NodeID]++
 	}
 
@@ -425,118 +423,4 @@ func TestReplicatedScaleDown(t *testing.T) {
 			assert.Equal(t, "node2", tasks[1].NodeID)
 		}
 	})
-}
-
-func watchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
-	for {
-		select {
-		case event := <-watch:
-			if task, ok := event.(state.EventCreateTask); ok {
-				return task.Task
-			}
-			if _, ok := event.(state.EventUpdateTask); ok {
-				assert.FailNow(t, "got EventUpdateTask when expecting EventCreateTask", fmt.Sprint(event))
-			}
-		case <-time.After(time.Second):
-			assert.FailNow(t, "no task creation")
-		}
-	}
-}
-
-func watchTaskUpdate(t *testing.T, watch chan events.Event) *api.Task {
-	for {
-		select {
-		case event := <-watch:
-			if task, ok := event.(state.EventUpdateTask); ok {
-				return task.Task
-			}
-			if _, ok := event.(state.EventCreateTask); ok {
-				assert.FailNow(t, "got EventCreateTask when expecting EventUpdateTask", fmt.Sprint(event))
-			}
-		case <-time.After(time.Second):
-			assert.FailNow(t, "no task update")
-		}
-	}
-}
-
-func watchTaskDelete(t *testing.T, watch chan events.Event) *api.Task {
-	for {
-		select {
-		case event := <-watch:
-			if task, ok := event.(state.EventDeleteTask); ok {
-				return task.Task
-			}
-		case <-time.After(time.Second):
-			assert.FailNow(t, "no task deletion")
-		}
-	}
-}
-
-func expectTaskUpdate(t *testing.T, watch chan events.Event) {
-	for {
-		select {
-		case event := <-watch:
-			if _, ok := event.(state.EventUpdateTask); !ok {
-				assert.FailNow(t, "expected task update event, got", fmt.Sprint(event))
-			}
-			return
-		case <-time.After(time.Second):
-			assert.FailNow(t, "no task update event")
-		}
-	}
-}
-
-func expectDeleteService(t *testing.T, watch chan events.Event) {
-	for {
-		select {
-		case event := <-watch:
-			if _, ok := event.(state.EventDeleteService); !ok {
-				assert.FailNow(t, "expected service delete event, got", fmt.Sprint(event))
-			}
-			return
-		case <-time.After(time.Second):
-			assert.FailNow(t, "no service delete event")
-		}
-	}
-}
-
-func expectCommit(t *testing.T, watch chan events.Event) {
-	for {
-		select {
-		case event := <-watch:
-			if _, ok := event.(state.EventCommit); !ok {
-				assert.FailNow(t, "expected commit event, got", fmt.Sprint(event))
-			}
-			return
-		case <-time.After(time.Second):
-			assert.FailNow(t, "no commit event")
-		}
-	}
-
-}
-
-func watchShutdownTask(t *testing.T, watch chan events.Event) *api.Task {
-	for {
-		select {
-		case event := <-watch:
-			if task, ok := event.(state.EventUpdateTask); ok && task.Task.DesiredState == api.TaskStateShutdown {
-				return task.Task
-			}
-			if _, ok := event.(state.EventCreateTask); ok {
-				assert.FailNow(t, "got EventCreateTask when expecting EventUpdateTask", fmt.Sprint(event))
-			}
-		case <-time.After(time.Second):
-			assert.FailNow(t, "no task deletion")
-		}
-	}
-}
-
-func skipEvents(t *testing.T, watch chan events.Event) {
-	for {
-		select {
-		case <-watch:
-		case <-time.After(200 * time.Millisecond):
-			return
-		}
-	}
 }

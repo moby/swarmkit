@@ -1,9 +1,10 @@
-package orchestrator
+package replicated
 
 import (
 	"testing"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
@@ -216,8 +217,8 @@ func TestDrain(t *testing.T) {
 	}()
 
 	// id2 and id5 should be killed immediately
-	deletion1 := watchShutdownTask(t, watch)
-	deletion2 := watchShutdownTask(t, watch)
+	deletion1 := testutils.WatchShutdownTask(t, watch)
+	deletion2 := testutils.WatchShutdownTask(t, watch)
 
 	assert.Regexp(t, "id(2|5)", deletion1.ID)
 	assert.Regexp(t, "id(2|5)", deletion1.NodeID)
@@ -234,7 +235,7 @@ func TestDrain(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	deletion3 := watchShutdownTask(t, watch)
+	deletion3 := testutils.WatchShutdownTask(t, watch)
 	assert.Equal(t, "newtask", deletion3.ID)
 	assert.Equal(t, "id2", deletion3.NodeID)
 
@@ -247,7 +248,7 @@ func TestDrain(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	deletion4 := watchShutdownTask(t, watch)
+	deletion4 := testutils.WatchShutdownTask(t, watch)
 	assert.Equal(t, "id4", deletion4.ID)
 	assert.Equal(t, "id4", deletion4.NodeID)
 
@@ -258,7 +259,7 @@ func TestDrain(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	deletion5 := watchShutdownTask(t, watch)
+	deletion5 := testutils.WatchShutdownTask(t, watch)
 	assert.Equal(t, "id1", deletion5.ID)
 	assert.Equal(t, "id1", deletion5.NodeID)
 }
