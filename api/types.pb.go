@@ -16,6 +16,7 @@
 		raft.proto
 		health.proto
 		resource.proto
+		logbroker.proto
 
 	It has these top-level messages:
 		Version
@@ -165,6 +166,16 @@
 		AttachNetworkResponse
 		DetachNetworkRequest
 		DetachNetworkResponse
+		LogSubscriptionOptions
+		LogSelector
+		LogContext
+		LogMessage
+		SubscribeLogsRequest
+		SubscribeLogsMessage
+		ListenSubscriptionsRequest
+		SubscriptionMessage
+		PublishLogsRequest
+		PublishLogsResponse
 */
 package api
 

@@ -21,6 +21,7 @@ import (
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/health"
 	"github.com/docker/swarmkit/manager/keymanager"
+	"github.com/docker/swarmkit/manager/logbroker"
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/resourceapi"
 	"github.com/docker/swarmkit/manager/scheduler"
@@ -35,6 +36,12 @@ import (
 const (
 	// defaultTaskHistoryRetentionLimit is the number of tasks to keep.
 	defaultTaskHistoryRetentionLimit = 5
+
+	// logsEnabled guards the registration of the log services in the manager.
+	// We are holding this feature flag until logs is ready for production.
+	// Once we have a full implementation, this flag will be removed and logs
+	// will be on by default.
+	logsEnabled = false
 )
 
 // Config is used to tune the Manager.
@@ -286,11 +293,13 @@ func (m *Manager) Run(parent context.Context) error {
 
 	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode, m.config.SecurityConfig.RootCA())
 	baseResourceAPI := resourceapi.New(m.raftNode.MemoryStore())
+
 	healthServer := health.NewHealthServer()
 	localHealthServer := health.NewHealthServer()
 
 	authenticatedControlAPI := api.NewAuthenticatedWrapperControlServer(baseControlAPI, authorize)
 	authenticatedResourceAPI := api.NewAuthenticatedWrapperResourceAllocatorServer(baseResourceAPI, authorize)
+
 	authenticatedDispatcherAPI := api.NewAuthenticatedWrapperDispatcherServer(m.dispatcher, authorize)
 	authenticatedCAAPI := api.NewAuthenticatedWrapperCAServer(m.caserver, authorize)
 	authenticatedNodeCAAPI := api.NewAuthenticatedWrapperNodeCAServer(m.caserver, authorize)
@@ -326,6 +335,16 @@ func (m *Manager) Run(parent context.Context) error {
 
 	api.RegisterControlServer(m.localserver, localProxyControlAPI)
 	api.RegisterHealthServer(m.localserver, localHealthServer)
+
+	if logsEnabled {
+		baseLogBrokerAPI := logbroker.NewLogBroker()
+		authenticatedLogBrokerAPI := api.NewAuthenticatedWrapperLogBrokerServer(baseLogBrokerAPI, authorize)
+		proxyLogBrokerAPI := api.NewRaftProxyLogBrokerServer(authenticatedLogBrokerAPI, m.raftNode, ca.WithMetadataForwardTLSInfo)
+		localProxyLogsAPI := api.NewRaftProxyLogsServer(baseLogBrokerAPI, m.raftNode, forwardAsOwnRequest)
+
+		api.RegisterLogsServer(m.localserver, localProxyLogsAPI)
+		api.RegisterLogBrokerServer(m.server, proxyLogBrokerAPI)
+	}
 
 	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_NOT_SERVING)
 	localHealthServer.SetServingStatus("ControlAPI", api.HealthCheckResponse_NOT_SERVING)
