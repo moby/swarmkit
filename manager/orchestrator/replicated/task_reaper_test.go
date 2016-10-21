@@ -98,17 +98,17 @@ func TestTaskHistory(t *testing.T) {
 		return nil
 	})
 
-	testutils.ExpectCommit(t, watch)
-	testutils.ExpectTaskUpdate(t, watch)
-	testutils.ExpectTaskUpdate(t, watch)
-	testutils.ExpectCommit(t, watch)
+	testutils.Expect(t, watch, state.EventCommit{})
+	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, state.EventCommit{})
 
-	testutils.ExpectTaskUpdate(t, watch)
+	testutils.Expect(t, watch, state.EventUpdateTask{})
 	observedTask3 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
 
-	testutils.ExpectTaskUpdate(t, watch)
+	testutils.Expect(t, watch, state.EventUpdateTask{})
 	observedTask4 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name1")
