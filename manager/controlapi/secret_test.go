@@ -167,6 +167,50 @@ func TestGetSecret(t *testing.T) {
 	assert.Equal(t, secret, resp.Secret)
 }
 
+func TestUpdateSecret(t *testing.T) {
+	s := newTestServer(t)
+	// Add a secret to the store to update
+	secret := secretFromSecretSpec(createSecretSpec("name", []byte("data"), map[string]string{"mod2": "0", "mod4": "0"}))
+	err := s.Store.Update(func(tx store.Tx) error {
+		return store.CreateSecret(tx, secret)
+	})
+	assert.NoError(t, err)
+
+	// ---- updating a secret without providing an ID results in an InvalidArgument ----
+	_, err = s.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+
+	// ---- getting a non-existent secret fails with NotFound ----
+	_, err = s.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{SecretID: "1234adsaa", SecretVersion: &api.Version{Index: 1}})
+	assert.Error(t, err)
+	assert.Equal(t, codes.NotFound, grpc.Code(err), grpc.ErrorDesc(err))
+
+	// ---- updating an existing secret's labels returns the secret with all the private data cleaned ----
+	newLabels := map[string]string{"mod2": "0", "mod4": "0", "mod6": "0"}
+	secret.Spec.Annotations.Labels = newLabels
+	secret.Spec.Data = nil
+	resp, err := s.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
+		SecretID:      secret.ID,
+		Spec:          &secret.Spec,
+		SecretVersion: &secret.Meta.Version,
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.NotNil(t, resp.Secret)
+	assert.Nil(t, resp.Secret.Spec.Data)
+	assert.Equal(t, resp.Secret.Spec.Annotations.Labels, newLabels)
+
+	// ---- updating an existing secret's data returns an error ----
+	secret.Spec.Data = []byte{1}
+	resp, err = s.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
+		SecretID:      secret.ID,
+		Spec:          &secret.Spec,
+		SecretVersion: &secret.Meta.Version,
+	})
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+}
+
 func TestRemoveSecret(t *testing.T) {
 	s := newTestServer(t)
 
