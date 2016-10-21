@@ -415,7 +415,7 @@ func isValidNetwork(t assert.TestingT, n *api.Network) bool {
 func isValidTask(t assert.TestingT, s *store.MemoryStore, task *api.Task) bool {
 	return isValidNetworkAttachment(t, task) &&
 		isValidEndpoint(t, s, task) &&
-		assert.Equal(t, task.Status.State, api.TaskStateAllocated)
+		assert.Equal(t, task.Status.State, api.TaskStatePending)
 }
 
 func isValidNetworkAttachment(t assert.TestingT, task *api.Task) bool {
