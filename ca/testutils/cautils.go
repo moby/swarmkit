@@ -46,6 +46,7 @@ type TestCA struct {
 	WorkerToken           string
 	ManagerToken          string
 	Remotes               remotes.Remotes
+	KeyReadWriter         *ca.KeyReadWriter
 }
 
 // Stop cleansup after TestCA
@@ -65,27 +66,27 @@ func (tc *TestCA) Stop() {
 // NewNodeConfig returns security config for a new node, given a role
 func (tc *TestCA) NewNodeConfig(role string) (*ca.SecurityConfig, error) {
 	withNonSigningRoot := tc.ExternalSigningServer != nil
-	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, tc.Organization, tc.TempDir, withNonSigningRoot)
+	return genSecurityConfig(tc.MemoryStore, tc.RootCA, tc.KeyReadWriter, role, tc.Organization, tc.TempDir, withNonSigningRoot)
 }
 
 // WriteNewNodeConfig returns security config for a new node, given a role
 // saving the generated key and certificates to disk
 func (tc *TestCA) WriteNewNodeConfig(role string) (*ca.SecurityConfig, error) {
 	withNonSigningRoot := tc.ExternalSigningServer != nil
-	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, tc.Organization, tc.TempDir, withNonSigningRoot)
+	return genSecurityConfig(tc.MemoryStore, tc.RootCA, tc.KeyReadWriter, role, tc.Organization, tc.TempDir, withNonSigningRoot)
 }
 
 // NewNodeConfigOrg returns security config for a new node, given a role and an org
 func (tc *TestCA) NewNodeConfigOrg(role, org string) (*ca.SecurityConfig, error) {
 	withNonSigningRoot := tc.ExternalSigningServer != nil
-	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, org, tc.TempDir, withNonSigningRoot)
+	return genSecurityConfig(tc.MemoryStore, tc.RootCA, tc.KeyReadWriter, role, org, tc.TempDir, withNonSigningRoot)
 }
 
 // WriteNewNodeConfigOrg returns security config for a new node, given a role and an org
 // saving the generated key and certificates to disk
 func (tc *TestCA) WriteNewNodeConfigOrg(role, org string) (*ca.SecurityConfig, error) {
 	withNonSigningRoot := tc.ExternalSigningServer != nil
-	return genSecurityConfig(tc.MemoryStore, tc.RootCA, role, org, tc.TempDir, withNonSigningRoot)
+	return genSecurityConfig(tc.MemoryStore, tc.RootCA, tc.KeyReadWriter, role, org, tc.TempDir, withNonSigningRoot)
 }
 
 // External controls whether or not NewTestCA() will create a TestCA server
@@ -123,13 +124,15 @@ func NewTestCA(t *testing.T) *TestCA {
 		}
 	}
 
-	managerConfig, err := genSecurityConfig(s, rootCA, ca.ManagerRole, organization, "", External)
+	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
+
+	managerConfig, err := genSecurityConfig(s, rootCA, krw, ca.ManagerRole, organization, "", External)
 	assert.NoError(t, err)
 
-	managerDiffOrgConfig, err := genSecurityConfig(s, rootCA, ca.ManagerRole, "swarm-test-org-2", "", External)
+	managerDiffOrgConfig, err := genSecurityConfig(s, rootCA, krw, ca.ManagerRole, "swarm-test-org-2", "", External)
 	assert.NoError(t, err)
 
-	workerConfig, err := genSecurityConfig(s, rootCA, ca.WorkerRole, organization, "", External)
+	workerConfig, err := genSecurityConfig(s, rootCA, krw, ca.WorkerRole, organization, "", External)
 	assert.NoError(t, err)
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -194,6 +197,7 @@ func NewTestCA(t *testing.T) *TestCA {
 		WorkerToken:           workerToken,
 		ManagerToken:          managerToken,
 		Remotes:               remotes,
+		KeyReadWriter:         krw,
 	}
 }
 
@@ -224,7 +228,7 @@ func createNode(s *store.MemoryStore, nodeID, role string, csr, cert []byte) err
 	return err
 }
 
-func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, role, org, tmpDir string, nonSigningRoot bool) (*ca.SecurityConfig, error) {
+func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWriter, role, org, tmpDir string, nonSigningRoot bool) (*ca.SecurityConfig, error) {
 	req := &cfcsr.CertificateRequest{
 		KeyRequest: cfcsr.NewBasicKeyRequest(),
 	}
@@ -297,7 +301,7 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, role, org, tmpDir
 		}
 	}
 
-	return ca.NewSecurityConfig(&rootCA, nodeClientTLSCreds, nodeServerTLSCreds), nil
+	return ca.NewSecurityConfig(&rootCA, krw, nodeClientTLSCreds, nodeServerTLSCreds), nil
 }
 
 func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID, workerToken, managerToken string, externalCAs ...*api.ExternalCA) {
@@ -323,9 +327,8 @@ func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID, workerTo
 	}))
 }
 
-// createAndWriteRootCA creates a Certificate authority for a new Swarm Cluster.
-// We're copying ca.CreateAndWriteRootCA, so we can have smaller key-sizes for tests
-func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duration) (ca.RootCA, error) {
+// CreateRootCertAndKey returns a generated certificate and key for a root CA
+func CreateRootCertAndKey(rootCN string) ([]byte, []byte, error) {
 	// Create a simple CSR for the CA using the default CA validator and policy
 	req := cfcsr.CertificateRequest{
 		CN:         rootCN,
@@ -335,6 +338,13 @@ func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duratio
 
 	// Generate the CA and get the certificate and private key
 	cert, _, key, err := initca.New(&req)
+	return cert, key, err
+}
+
+// createAndWriteRootCA creates a Certificate authority for a new Swarm Cluster.
+// We're copying ca.CreateRootCA, so we can have smaller key-sizes for tests
+func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duration) (ca.RootCA, error) {
+	cert, key, err := CreateRootCertAndKey(rootCN)
 	if err != nil {
 		return ca.RootCA{}, err
 	}
