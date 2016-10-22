@@ -1,10 +1,12 @@
-package orchestrator
+package replicated
 
 import (
 	"testing"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
+	"github.com/docker/swarmkit/manager/orchestrator/taskreaper"
+	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
@@ -33,7 +35,7 @@ func TestTaskHistory(t *testing.T) {
 		return nil
 	}))
 
-	taskReaper := NewTaskReaper(s)
+	taskReaper := taskreaper.New(s)
 	defer taskReaper.Stop()
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
@@ -75,11 +77,11 @@ func TestTaskHistory(t *testing.T) {
 	}()
 	go taskReaper.Run()
 
-	observedTask1 := watchTaskCreate(t, watch)
+	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 
-	observedTask2 := watchTaskCreate(t, watch)
+	observedTask2 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
@@ -96,18 +98,18 @@ func TestTaskHistory(t *testing.T) {
 		return nil
 	})
 
-	expectCommit(t, watch)
-	expectTaskUpdate(t, watch)
-	expectTaskUpdate(t, watch)
-	expectCommit(t, watch)
+	testutils.ExpectCommit(t, watch)
+	testutils.ExpectTaskUpdate(t, watch)
+	testutils.ExpectTaskUpdate(t, watch)
+	testutils.ExpectCommit(t, watch)
 
-	expectTaskUpdate(t, watch)
-	observedTask3 := watchTaskCreate(t, watch)
+	testutils.ExpectTaskUpdate(t, watch)
+	observedTask3 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
 
-	expectTaskUpdate(t, watch)
-	observedTask4 := watchTaskCreate(t, watch)
+	testutils.ExpectTaskUpdate(t, watch)
+	observedTask4 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name1")
 
@@ -123,8 +125,8 @@ func TestTaskHistory(t *testing.T) {
 		return nil
 	})
 
-	deletedTask1 := watchTaskDelete(t, watch)
-	deletedTask2 := watchTaskDelete(t, watch)
+	deletedTask1 := testutils.WatchTaskDelete(t, watch)
+	deletedTask2 := testutils.WatchTaskDelete(t, watch)
 
 	assert.Equal(t, api.TaskStateFailed, deletedTask1.Status.State)
 	assert.Equal(t, "original", deletedTask1.ServiceAnnotations.Name)
