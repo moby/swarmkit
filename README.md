@@ -56,6 +56,8 @@ Some of *SwarmKit*'s main features are:
         | node.id | node's ID | `node.id == 2ivku8v2gvtg4`|
         | node.hostname | node's hostname | `node.hostname != node-2`|
         | node.role |  node's manager or worker role | `node.role == manager`|
+        | node.platform.os |  node's operating system | `node.platform.os == linux`|
+        | node.platform.arch |  node's architecture | `node.platform.arch == x86_64`|
         | node.labels | node's labels added by cluster admins | `node.labels.security == high`|
         | engine.labels | Docker Engine's labels | `engine.labels.operatingsystem == ubuntu 14.04`|
 
