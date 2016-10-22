@@ -280,9 +280,7 @@ func (m *LogSubscriptionOptions) Copy() *LogSubscriptionOptions {
 
 	if m.Streams != nil {
 		o.Streams = make([]LogStream, 0, len(m.Streams))
-		for _, v := range m.Streams {
-			o.Streams = append(o.Streams, v)
-		}
+		o.Streams = append(o.Streams, m.Streams...)
 	}
 
 	return o
@@ -297,23 +295,17 @@ func (m *LogSelector) Copy() *LogSelector {
 
 	if m.ServiceIDs != nil {
 		o.ServiceIDs = make([]string, 0, len(m.ServiceIDs))
-		for _, v := range m.ServiceIDs {
-			o.ServiceIDs = append(o.ServiceIDs, v)
-		}
+		o.ServiceIDs = append(o.ServiceIDs, m.ServiceIDs...)
 	}
 
 	if m.NodeIDs != nil {
 		o.NodeIDs = make([]string, 0, len(m.NodeIDs))
-		for _, v := range m.NodeIDs {
-			o.NodeIDs = append(o.NodeIDs, v)
-		}
+		o.NodeIDs = append(o.NodeIDs, m.NodeIDs...)
 	}
 
 	if m.TaskIDs != nil {
 		o.TaskIDs = make([]string, 0, len(m.TaskIDs))
-		for _, v := range m.TaskIDs {
-			o.TaskIDs = append(o.TaskIDs, v)
-		}
+		o.TaskIDs = append(o.TaskIDs, m.TaskIDs...)
 	}
 
 	return o
@@ -601,7 +593,7 @@ const _ = grpc.SupportPackageIsVersion3
 // Client API for Logs service
 
 type LogsClient interface {
-	// Subscribe starts a subscription with the specified selector and options.
+	// SubscribeLogs starts a subscription with the specified selector and options.
 	//
 	// The subscription will be distributed to relevant nodes and messages will
 	// be collected and sent via the returned stream.
@@ -653,7 +645,7 @@ func (x *logsSubscribeLogsClient) Recv() (*SubscribeLogsMessage, error) {
 // Server API for Logs service
 
 type LogsServer interface {
-	// Subscribe starts a subscription with the specified selector and options.
+	// SubscribeLogs starts a subscription with the specified selector and options.
 	//
 	// The subscription will be distributed to relevant nodes and messages will
 	// be collected and sent via the returned stream.
@@ -1486,7 +1478,7 @@ func (p *raftProxyLogBrokerServer) PublishLogs(ctx context.Context, r *PublishLo
 
 	resp, err := NewLogBrokerClient(conn).PublishLogs(modCtx, r)
 	if err != nil {
-		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
 			return resp, err
 		}
 		conn, err := p.pollNewLeaderConn(ctx)

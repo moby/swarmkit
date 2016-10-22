@@ -257,13 +257,10 @@ func (r *controller) Start(ctx context.Context) error {
 }
 
 // Wait on the container to exit.
-func (r *controller) Wait(pctx context.Context) error {
+func (r *controller) Wait(ctx context.Context) error {
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
-
-	ctx, cancel := context.WithCancel(pctx)
-	defer cancel()
 
 	// check the initial state and report that.
 	ctnr, err := r.adapter.inspect(ctx)
@@ -411,47 +408,68 @@ func (r *controller) Remove(ctx context.Context) error {
 	return nil
 }
 
-func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, options api.LogSubscriptionOptions) error {
-	apiOptions := types.ContainerLogsOptions{
-		Follow: options.Follow,
-
-		// TODO(stevvooe): Parse timestamp out of message. This
-		// absolutely needs to be done before going to production with
-		// this, at it is completely redundant.
-		Timestamps: true,
-		Details:    false, // no clue what to do with this, let's just deprecate it.
+// waitReady waits for a container to be "ready".
+// Ready means it's past the started state.
+func (r *controller) waitReady(pctx context.Context) error {
+	if err := r.checkClosed(); err != nil {
+		return err
 	}
 
-	if options.Since != nil {
-		since, err := ptypes.Timestamp(options.Since)
-		if err != nil {
-			return err
+	ctx, cancel := context.WithCancel(pctx)
+	defer cancel()
+
+	eventq, closed, err := r.adapter.events(ctx)
+	if err != nil {
+		return err
+	}
+
+	ctnr, err := r.adapter.inspect(ctx)
+	if err != nil {
+		if !isUnknownContainer(err) {
+			return errors.Wrap(err, "inspect container failed")
 		}
-		apiOptions.Since = since.Format(time.RFC3339Nano)
-	}
-
-	if options.Tail < 0 {
-		// See protobuf documentation for details of how this works.
-		apiOptions.Tail = fmt.Sprint(-options.Tail - 1)
-	} else if options.Tail > 0 {
-		return fmt.Errorf("tail relative to start of logs not supported via docker API")
-	}
-
-	if len(options.Streams) == 0 {
-		// empty == all
-		apiOptions.ShowStdout, apiOptions.ShowStderr = true, true
 	} else {
-		for _, stream := range options.Streams {
-			switch stream {
-			case api.LogStreamStdout:
-				apiOptions.ShowStdout = true
-			case api.LogStreamStderr:
-				apiOptions.ShowStderr = true
-			}
+		switch ctnr.State.Status {
+		case "running", "exited", "dead":
+			return nil
 		}
 	}
 
-	rc, err := r.adapter.client.ContainerLogs(ctx, r.adapter.container.name(), apiOptions)
+	for {
+		select {
+		case event := <-eventq:
+			if !r.matchevent(event) {
+				continue
+			}
+
+			switch event.Action {
+			case "start":
+				return nil
+			}
+		case <-closed:
+			// restart!
+			eventq, closed, err = r.adapter.events(ctx)
+			if err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-r.closed:
+			return r.err
+		}
+	}
+}
+
+func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, options api.LogSubscriptionOptions) error {
+	if err := r.checkClosed(); err != nil {
+		return err
+	}
+
+	if err := r.waitReady(ctx); err != nil {
+		return errors.Wrap(err, "container not ready for logs")
+	}
+
+	rc, err := r.adapter.logs(ctx, options)
 	if err != nil {
 		return errors.Wrap(err, "failed getting container logs")
 	}
@@ -504,14 +522,19 @@ func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, opti
 			return errors.Wrap(err, "failed to parse timestamp")
 		}
 
+		tsp, err := ptypes.TimestampProto(ts)
+		if err != nil {
+			return errors.Wrap(err, "failed to convert timestamp")
+		}
+
 		if err := publisher.Publish(ctx, api.LogMessage{
 			Context:   msgctx,
-			Timestamp: ptypes.MustTimestampProto(ts),
+			Timestamp: tsp,
 			Stream:    api.LogStream(stream),
 
 			Data: parts[1],
 		}); err != nil {
-			return errors.Wrap(err, "failed publisher log message")
+			return errors.Wrap(err, "failed to publish log message")
 		}
 	}
 }

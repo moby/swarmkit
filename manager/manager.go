@@ -14,7 +14,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/go-events"
-	"github.com/docker/swarm/scheduler"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/log"
@@ -29,6 +28,7 @@ import (
 	"github.com/docker/swarmkit/manager/orchestrator/replicated"
 	"github.com/docker/swarmkit/manager/orchestrator/taskreaper"
 	"github.com/docker/swarmkit/manager/resourceapi"
+	"github.com/docker/swarmkit/manager/scheduler"
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
@@ -97,6 +97,7 @@ type Manager struct {
 
 	caserver               *ca.Server
 	dispatcher             *dispatcher.Dispatcher
+	logbroker              *logbroker.LogBroker
 	replicatedOrchestrator *replicated.Orchestrator
 	globalOrchestrator     *global.Orchestrator
 	taskReaper             *taskreaper.TaskReaper
@@ -235,6 +236,7 @@ func New(config *Config) (*Manager, error) {
 		listeners:   listeners,
 		caserver:    ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig),
 		dispatcher:  dispatcher.New(raftNode, dispatcherConfig),
+		logbroker:   logbroker.New(),
 		server:      grpc.NewServer(opts...),
 		localserver: grpc.NewServer(opts...),
 		raftNode:    raftNode,
@@ -288,13 +290,12 @@ func (m *Manager) Run(parent context.Context) error {
 
 	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode, m.config.SecurityConfig.RootCA())
 	baseResourceAPI := resourceapi.New(m.raftNode.MemoryStore())
-	baseLogBrokerAPI := logbroker.NewLogBroker()
 	healthServer := health.NewHealthServer()
 	localHealthServer := health.NewHealthServer()
 
 	authenticatedControlAPI := api.NewAuthenticatedWrapperControlServer(baseControlAPI, authorize)
 	authenticatedResourceAPI := api.NewAuthenticatedWrapperResourceAllocatorServer(baseResourceAPI, authorize)
-	authenticatedLogBrokerAPI := api.NewAuthenticatedWrapperLogBrokerServer(baseLogBrokerAPI, authorize)
+	authenticatedLogBrokerAPI := api.NewAuthenticatedWrapperLogBrokerServer(m.logbroker, authorize)
 	authenticatedDispatcherAPI := api.NewAuthenticatedWrapperDispatcherServer(m.dispatcher, authorize)
 	authenticatedCAAPI := api.NewAuthenticatedWrapperCAServer(m.caserver, authorize)
 	authenticatedNodeCAAPI := api.NewAuthenticatedWrapperNodeCAServer(m.caserver, authorize)
@@ -317,7 +318,7 @@ func (m *Manager) Run(parent context.Context) error {
 	// information to put in the metadata map).
 	forwardAsOwnRequest := func(ctx context.Context) (context.Context, error) { return ctx, nil }
 	localProxyControlAPI := api.NewRaftProxyControlServer(baseControlAPI, m.raftNode, forwardAsOwnRequest)
-	localProxyLogsAPI := api.NewRaftProxyLogsServer(baseLogBrokerAPI, m.raftNode, forwardAsOwnRequest)
+	localProxyLogsAPI := api.NewRaftProxyLogsServer(m.logbroker, m.raftNode, forwardAsOwnRequest)
 
 	// Everything registered on m.server should be an authenticated
 	// wrapper, or a proxy wrapping an authenticated wrapper!
@@ -327,12 +328,12 @@ func (m *Manager) Run(parent context.Context) error {
 	api.RegisterHealthServer(m.server, authenticatedHealthAPI)
 	api.RegisterRaftMembershipServer(m.server, proxyRaftMembershipAPI)
 	api.RegisterControlServer(m.server, authenticatedControlAPI)
-	api.RegisterLogsServer(m.localserver, localProxyLogsAPI)
 	api.RegisterLogBrokerServer(m.server, proxyLogBrokerAPI)
 	api.RegisterResourceAllocatorServer(m.server, proxyResourceAPI)
 	api.RegisterDispatcherServer(m.server, proxyDispatcherAPI)
 
 	api.RegisterControlServer(m.localserver, localProxyControlAPI)
+	api.RegisterLogsServer(m.localserver, localProxyLogsAPI)
 	api.RegisterHealthServer(m.localserver, localHealthServer)
 
 	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_NOT_SERVING)
@@ -426,6 +427,7 @@ func (m *Manager) Stop(ctx context.Context) {
 	}()
 
 	m.dispatcher.Stop()
+	m.logbroker.Stop()
 	m.caserver.Stop()
 
 	if m.allocator != nil {

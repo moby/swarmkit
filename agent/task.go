@@ -13,10 +13,9 @@ import (
 // taskManager manages all aspects of task execution and reporting for an agent
 // through state management.
 type taskManager struct {
-	task      *api.Task
-	ctlr      exec.Controller
-	reporter  StatusReporter
-	publisher exec.LogPublisher
+	task     *api.Task
+	ctlr     exec.Controller
+	reporter StatusReporter
 
 	updateq chan *api.Task
 
@@ -24,15 +23,14 @@ type taskManager struct {
 	closed   chan struct{}
 }
 
-func newTaskManager(ctx context.Context, task *api.Task, ctlr exec.Controller, reporter StatusReporter, publisher exec.LogPublisher) *taskManager {
+func newTaskManager(ctx context.Context, task *api.Task, ctlr exec.Controller, reporter StatusReporter) *taskManager {
 	t := &taskManager{
-		task:      task.Copy(),
-		ctlr:      ctlr,
-		reporter:  reporter,
-		publisher: publisher,
-		updateq:   make(chan *api.Task),
-		shutdown:  make(chan struct{}),
-		closed:    make(chan struct{}),
+		task:     task.Copy(),
+		ctlr:     ctlr,
+		reporter: reporter,
+		updateq:  make(chan *api.Task),
+		shutdown: make(chan struct{}),
+		closed:   make(chan struct{}),
 	}
 	go t.run(ctx)
 	return t
@@ -66,28 +64,23 @@ func (tm *taskManager) Close() error {
 	}
 }
 
+func (tm *taskManager) Logs(ctx context.Context, options api.LogSubscriptionOptions, publisher exec.LogPublisher) {
+	ctx = log.WithModule(ctx, "taskmanager")
+
+	logCtlr, ok := tm.ctlr.(exec.ControllerLogs)
+	if !ok {
+		return // no logs available
+	}
+	if err := logCtlr.Logs(ctx, publisher, options); err != nil {
+		log.G(ctx).WithError(err).Errorf("logs call failed")
+	}
+}
+
 func (tm *taskManager) run(ctx context.Context) {
 	ctx, cancelAll := context.WithCancel(ctx)
 	defer cancelAll() // cancel all child operations on exit.
 
 	ctx = log.WithModule(ctx, "taskmanager")
-
-	go func() {
-		// TODO(stevvooe): Obviously, this needs to be moved elsewhere such
-		// that it is only activated by subscriptions.
-
-		logCtlr, ok := tm.ctlr.(exec.ControllerLogs)
-		if !ok {
-			return // no logs available
-		}
-		for {
-			if err := logCtlr.Logs(ctx, tm.publisher, api.LogSubscriptionOptions{
-				Follow: true,
-			}); err != nil {
-				log.G(ctx).WithError(err).Errorf("logs call failed")
-			}
-		}
-	}()
 
 	var (
 		opctx    context.Context
