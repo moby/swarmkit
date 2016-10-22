@@ -14,6 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var _ api.CAServer = &ca.Server{}
+var _ api.NodeCAServer = &ca.Server{}
+
 func TestGetRootCACertificate(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
@@ -43,7 +46,7 @@ func TestIssueNodeCertificate(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Token: tc.WorkerToken}
@@ -65,7 +68,7 @@ func TestForceRotationIsNoop(t *testing.T) {
 	defer tc.Stop()
 
 	// Get a new Certificate issued
-	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Token: tc.WorkerToken}
@@ -111,7 +114,7 @@ func TestIssueNodeCertificateBrokenCA(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
 	tc.ExternalSigningServer.Flake()
@@ -157,7 +160,7 @@ func TestIssueNodeCertificateWorkerRenewal(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
 	role := api.NodeRoleWorker
@@ -179,7 +182,7 @@ func TestIssueNodeCertificateManagerRenewal(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 	assert.NotNil(t, csr)
 
@@ -202,7 +205,7 @@ func TestIssueNodeCertificateWorkerFromDifferentOrgRenewal(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
 	// Since we're using a client that has a different Organization, this request will be treated
@@ -216,7 +219,7 @@ func TestNodeCertificateRenewalsDoNotRequireToken(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
 	role := api.NodeRoleManager
@@ -254,7 +257,7 @@ func TestNewNodeCertificateRequiresToken(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
 	// Issuance fails if no secret is provided
@@ -333,7 +336,7 @@ func TestNewNodeCertificateBadToken(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
 	// Issuance fails if wrong secret is provided
