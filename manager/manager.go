@@ -86,6 +86,17 @@ type Config struct {
 	// HeartbeatTick defines the amount of ticks between each
 	// heartbeat sent to other members for health-check purposes
 	HeartbeatTick uint32
+
+	// AutoLockManagers determines whether or not managers require an unlock key
+	// when starting from a stopped state.  This configuration parameter is only
+	// applicable when bootstrapping a new cluster for the first time.
+	AutoLockManagers bool
+
+	// UnlockKey is the key to unlock a node - used for decrypting manager TLS keys
+	// as well as the raft data encryption key (DEK).  It is applicable when
+	// bootstrapping a cluster for the first time (it's a cluster-wide setting),
+	// and also when loading up any raft data on disk (as a KEK for the raft DEK).
+	UnlockKey []byte
 }
 
 // Manager is the cluster manager for Swarm.
@@ -320,6 +331,7 @@ func (m *Manager) Run(parent context.Context) error {
 	forwardAsOwnRequest := func(ctx context.Context) (context.Context, error) { return ctx, nil }
 	localProxyControlAPI := api.NewRaftProxyControlServer(baseControlAPI, m.raftNode, forwardAsOwnRequest)
 	localProxyLogsAPI := api.NewRaftProxyLogsServer(m.logbroker, m.raftNode, forwardAsOwnRequest)
+	localCAAPI := api.NewRaftProxyCAServer(m.caserver, m.raftNode, forwardAsOwnRequest)
 
 	// Everything registered on m.server should be an authenticated
 	// wrapper, or a proxy wrapping an authenticated wrapper!
@@ -337,6 +349,7 @@ func (m *Manager) Run(parent context.Context) error {
 	api.RegisterControlServer(m.localserver, localProxyControlAPI)
 	api.RegisterLogsServer(m.localserver, localProxyLogsAPI)
 	api.RegisterHealthServer(m.localserver, localHealthServer)
+	api.RegisterCAServer(m.localserver, localCAAPI)
 
 	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_NOT_SERVING)
 	localHealthServer.SetServingStatus("ControlAPI", api.HealthCheckResponse_NOT_SERVING)
@@ -625,12 +638,26 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	initialCAConfig := ca.DefaultCAConfig()
 	initialCAConfig.ExternalCAs = m.config.ExternalCAs
 
+	var unlockKeys []*api.EncryptionKey
+	if m.config.AutoLockManagers && m.config.UnlockKey != nil {
+		unlockKeys = []*api.EncryptionKey{{
+			Subsystem: ca.ManagerRole,
+			Key:       m.config.UnlockKey,
+		}}
+	}
+
 	s.Update(func(tx store.Tx) error {
 		// Add a default cluster object to the
 		// store. Don't check the error because
 		// we expect this to fail unless this
 		// is a brand new cluster.
-		store.CreateCluster(tx, defaultClusterObject(clusterID, initialCAConfig, raftCfg, rootCA))
+		store.CreateCluster(tx, defaultClusterObject(
+			clusterID,
+			initialCAConfig,
+			raftCfg,
+			api.EncryptionConfig{AutoLockManagers: m.config.AutoLockManagers},
+			unlockKeys,
+			rootCA))
 		// Add Node entry for ourself, if one
 		// doesn't exist already.
 		store.CreateNode(tx, managerNode(nodeID))
@@ -759,7 +786,14 @@ func (m *Manager) becomeFollower() {
 }
 
 // defaultClusterObject creates a default cluster.
-func defaultClusterObject(clusterID string, initialCAConfig api.CAConfig, raftCfg api.RaftConfig, rootCA *ca.RootCA) *api.Cluster {
+func defaultClusterObject(
+	clusterID string,
+	initialCAConfig api.CAConfig,
+	raftCfg api.RaftConfig,
+	encryptionConfig api.EncryptionConfig,
+	initialUnlockKeys []*api.EncryptionKey,
+	rootCA *ca.RootCA,
+) *api.Cluster {
 	return &api.Cluster{
 		ID: clusterID,
 		Spec: api.ClusterSpec{
@@ -772,8 +806,9 @@ func defaultClusterObject(clusterID string, initialCAConfig api.CAConfig, raftCf
 			Dispatcher: api.DispatcherConfig{
 				HeartbeatPeriod: ptypes.DurationProto(dispatcher.DefaultHeartBeatPeriod),
 			},
-			Raft:     raftCfg,
-			CAConfig: initialCAConfig,
+			Raft:             raftCfg,
+			CAConfig:         initialCAConfig,
+			EncryptionConfig: encryptionConfig,
 		},
 		RootCA: api.RootCA{
 			CAKey:      rootCA.Key,
@@ -784,6 +819,7 @@ func defaultClusterObject(clusterID string, initialCAConfig api.CAConfig, raftCf
 				Manager: ca.GenerateJoinToken(rootCA),
 			},
 		},
+		UnlockKeys: initialUnlockKeys,
 	}
 }
 

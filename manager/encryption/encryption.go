@@ -115,7 +115,7 @@ func GenerateSecretKey() []byte {
 // HumanReadableKey displays a secret key in a human readable way
 func HumanReadableKey(key []byte) string {
 	// base64-encode the key
-	return humanReadablePrefix + base64.StdEncoding.EncodeToString(key)
+	return humanReadablePrefix + base64.RawStdEncoding.EncodeToString(key)
 }
 
 // ParseHumanReadableKey returns a key as bytes from recognized serializations of
@@ -124,7 +124,7 @@ func ParseHumanReadableKey(key string) ([]byte, error) {
 	if !strings.HasPrefix(key, humanReadablePrefix) {
 		return nil, fmt.Errorf("invalid key string")
 	}
-	keyBytes, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(key, humanReadablePrefix))
+	keyBytes, err := base64.RawStdEncoding.DecodeString(strings.TrimPrefix(key, humanReadablePrefix))
 	if err != nil {
 		return nil, fmt.Errorf("invalid key string")
 	}

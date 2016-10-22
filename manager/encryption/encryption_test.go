@@ -62,7 +62,7 @@ func TestHumanReadable(t *testing.T) {
 	require.Error(t, err)
 
 	// With the right prefix, we can't parse if the key isn't base64 encoded
-	_, err = ParseHumanReadableKey(humanReadablePrefix + "aaaaa/")
+	_, err = ParseHumanReadableKey(humanReadablePrefix + "aaa*aa/")
 	require.Error(t, err)
 
 	// Extra padding also fails

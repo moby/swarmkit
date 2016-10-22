@@ -18,6 +18,7 @@ import (
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestManager(t *testing.T) {
@@ -45,10 +46,12 @@ func TestManager(t *testing.T) {
 	assert.NoError(t, err)
 
 	m, err := New(&Config{
-		RemoteAPI:      RemoteAddrs{ListenAddr: "127.0.0.1:0"},
-		ControlAPI:     temp.Name(),
-		StateDir:       stateDir,
-		SecurityConfig: managerSecurityConfig,
+		RemoteAPI:        RemoteAddrs{ListenAddr: "127.0.0.1:0"},
+		ControlAPI:       temp.Name(),
+		StateDir:         stateDir,
+		SecurityConfig:   managerSecurityConfig,
+		UnlockKey:        []byte("kek"),
+		AutoLockManagers: true,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, m)
@@ -130,6 +133,21 @@ func TestManager(t *testing.T) {
 	defer func() {
 		assert.NoError(t, controlConn.Close())
 	}()
+
+	// check that the kek is added to the config
+	var cluster api.Cluster
+	m.raftNode.MemoryStore().View(func(tx store.ReadTx) {
+		clusters, err := store.FindClusters(tx, store.All)
+		require.NoError(t, err)
+		require.Len(t, clusters, 1)
+		cluster = *clusters[0]
+	})
+	require.NotNil(t, cluster)
+	require.Len(t, cluster.UnlockKeys, 1)
+	require.Equal(t, &api.EncryptionKey{
+		Subsystem: ca.ManagerRole,
+		Key:       []byte("kek"),
+	}, cluster.UnlockKeys[0])
 
 	// Test removal of the agent node
 	agentID := agentSecurityConfig.ClientTLSCreds.NodeID()
