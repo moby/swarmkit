@@ -1,6 +1,8 @@
 package ca_test
 
 import (
+	"bytes"
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
+	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -349,4 +352,52 @@ func TestNewNodeCertificateBadToken(t *testing.T) {
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
 	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid join token is necessary to join this cluster")
+}
+
+func TestGetUnlockKey(t *testing.T) {
+	t.Parallel()
+
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+
+	var cluster *api.Cluster
+	tc.MemoryStore.View(func(tx store.ReadTx) {
+		clusters, err := store.FindClusters(tx, store.ByName(store.DefaultClusterName))
+		require.NoError(t, err)
+		cluster = clusters[0]
+	})
+
+	resp, err := tc.CAClients[0].GetUnlockKey(context.Background(), &api.GetUnlockKeyRequest{})
+	require.NoError(t, err)
+	require.Nil(t, resp.UnlockKey)
+	require.Equal(t, cluster.Meta.Version, resp.Version)
+
+	// Update the unlock key
+	require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
+		cluster = store.GetCluster(tx, cluster.ID)
+		cluster.Spec.EncryptionConfig.AutoLockManagers = true
+		cluster.UnlockKeys = []*api.EncryptionKey{{
+			Subsystem: ca.ManagerRole,
+			Key:       []byte("secret"),
+		}}
+		return store.UpdateCluster(tx, cluster)
+	}))
+
+	tc.MemoryStore.View(func(tx store.ReadTx) {
+		cluster = store.GetCluster(tx, cluster.ID)
+	})
+
+	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+		resp, err = tc.CAClients[0].GetUnlockKey(context.Background(), &api.GetUnlockKeyRequest{})
+		if err != nil {
+			return fmt.Errorf("get unlock key: %v", err)
+		}
+		if !bytes.Equal(resp.UnlockKey, []byte("secret")) {
+			return fmt.Errorf("secret hasn't rotated yet")
+		}
+		if cluster.Meta.Version.Index > resp.Version.Index {
+			return fmt.Errorf("hasn't updated to the right version yet")
+		}
+		return nil
+	}, 250*time.Millisecond))
 }

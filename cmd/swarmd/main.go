@@ -14,6 +14,7 @@ import (
 	"github.com/docker/swarmkit/agent/exec/container"
 	"github.com/docker/swarmkit/cli"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/docker/swarmkit/node"
 	"github.com/docker/swarmkit/version"
 	"github.com/spf13/cobra"
@@ -117,6 +118,23 @@ var (
 				return err
 			}
 
+			autolockManagers, err := cmd.Flags().GetBool("autolock")
+			if err != nil {
+				return err
+			}
+
+			var unlockKey []byte
+			if cmd.Flags().Changed("unlock-key") {
+				unlockKeyString, err := cmd.Flags().GetString("unlock-key")
+				if err != nil {
+					return err
+				}
+				unlockKey, err = encryption.ParseHumanReadableKey(unlockKeyString)
+				if err != nil {
+					return err
+				}
+			}
+
 			// Create a cancellable context for our GRPC call
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
@@ -149,6 +167,8 @@ var (
 				Executor:         executor,
 				HeartbeatTick:    hb,
 				ElectionTick:     election,
+				AutoLockManagers: autolockManagers,
+				UnlockKey:        unlockKey,
 			})
 			if err != nil {
 				return err
@@ -195,4 +215,6 @@ func init() {
 	mainCmd.Flags().Uint32("heartbeat-tick", 1, "Defines the heartbeat interval (in seconds) for raft member health-check")
 	mainCmd.Flags().Uint32("election-tick", 3, "Defines the amount of ticks (in seconds) needed without a Leader to trigger a new election")
 	mainCmd.Flags().Var(&externalCAOpt, "external-ca", "Specifications of one or more certificate signing endpoints")
+	mainCmd.Flags().Bool("autolock", false, "Require an unlock key in order to start a manager once it's been stopped")
+	mainCmd.Flags().String("unlock-key", "", "Unlock this manager using this key")
 }

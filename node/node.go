@@ -664,13 +664,15 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 				ListenAddr:    n.config.ListenRemoteAPI,
 				AdvertiseAddr: n.config.AdvertiseRemoteAPI,
 			},
-			ControlAPI:     n.config.ListenControlAPI,
-			SecurityConfig: securityConfig,
-			ExternalCAs:    n.config.ExternalCAs,
-			JoinRaft:       remoteAddr.Addr,
-			StateDir:       n.config.StateDir,
-			HeartbeatTick:  n.config.HeartbeatTick,
-			ElectionTick:   n.config.ElectionTick,
+			ControlAPI:       n.config.ListenControlAPI,
+			SecurityConfig:   securityConfig,
+			ExternalCAs:      n.config.ExternalCAs,
+			JoinRaft:         remoteAddr.Addr,
+			StateDir:         n.config.StateDir,
+			HeartbeatTick:    n.config.HeartbeatTick,
+			ElectionTick:     n.config.ElectionTick,
+			AutoLockManagers: n.config.AutoLockManagers,
+			UnlockKey:        n.unlockKey,
 		})
 		if err != nil {
 			return err
