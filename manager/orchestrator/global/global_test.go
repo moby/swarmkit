@@ -1,9 +1,10 @@
-package orchestrator
+package global
 
 import (
 	"testing"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
@@ -81,7 +82,7 @@ func TestSetup(t *testing.T) {
 
 	SetupCluster(t, store)
 
-	observedTask1 := watchTaskCreate(t, watch)
+	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask1.NodeID, "id1")
@@ -97,10 +98,10 @@ func TestAddNode(t *testing.T) {
 	watch, cancel := state.Watch(store.WatchQueue())
 	defer cancel()
 
-	skipEvents(t, watch)
+	testutils.SkipEvents(t, watch)
 
 	addNode(t, store, node2)
-	observedTask2 := watchTaskCreate(t, watch)
+	observedTask2 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask2.NodeID, "id2")
@@ -116,11 +117,11 @@ func TestDeleteNode(t *testing.T) {
 	watch, cancel := state.Watch(store.WatchQueue())
 	defer cancel()
 
-	skipEvents(t, watch)
+	testutils.SkipEvents(t, watch)
 
 	deleteNode(t, store, node1)
 	// task should be set to dead
-	observedTask := watchShutdownTask(t, watch)
+	observedTask := testutils.WatchShutdownTask(t, watch)
 	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask.NodeID, "id1")
 }
@@ -135,7 +136,7 @@ func TestNodeAvailability(t *testing.T) {
 	watch, cancel := state.Watch(store.WatchQueue())
 	defer cancel()
 
-	skipEvents(t, watch)
+	testutils.SkipEvents(t, watch)
 
 	node1.Status.State = api.NodeStatus_READY
 	node1.Spec.Availability = api.NodeAvailabilityActive
@@ -144,14 +145,14 @@ func TestNodeAvailability(t *testing.T) {
 	updateNodeAvailability(t, store, node1, api.NodeAvailabilityDrain)
 
 	// task should be set to dead
-	observedTask1 := watchShutdownTask(t, watch)
+	observedTask1 := testutils.WatchShutdownTask(t, watch)
 	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask1.NodeID, "id1")
 
 	// set node1 to active
 	updateNodeAvailability(t, store, node1, api.NodeAvailabilityActive)
 	// task should be added back
-	observedTask2 := watchTaskCreate(t, watch)
+	observedTask2 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask2.NodeID, "id1")
@@ -167,10 +168,10 @@ func TestAddService(t *testing.T) {
 	watch, cancel := state.Watch(store.WatchQueue())
 	defer cancel()
 
-	skipEvents(t, watch)
+	testutils.SkipEvents(t, watch)
 
 	addService(t, store, service2)
-	observedTask := watchTaskCreate(t, watch)
+	observedTask := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name2")
 	assert.True(t, observedTask.NodeID == "id1")
@@ -186,11 +187,11 @@ func TestDeleteService(t *testing.T) {
 	watch, cancel := state.Watch(store.WatchQueue())
 	defer cancel()
 
-	skipEvents(t, watch)
+	testutils.SkipEvents(t, watch)
 
 	deleteService(t, store, service1)
 	// task should be deleted
-	observedTask := watchTaskDelete(t, watch)
+	observedTask := testutils.WatchTaskDelete(t, watch)
 	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask.NodeID, "id1")
 }
@@ -206,7 +207,7 @@ func TestRemoveTask(t *testing.T) {
 	SetupCluster(t, store)
 
 	// get the task
-	observedTask1 := watchTaskCreate(t, watch)
+	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask1.NodeID, "id1")
@@ -215,7 +216,7 @@ func TestRemoveTask(t *testing.T) {
 	deleteTask(t, store, observedTask1)
 
 	// the task should be recreated
-	observedTask2 := watchTaskCreate(t, watch)
+	observedTask2 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask2.NodeID, "id1")

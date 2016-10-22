@@ -1,9 +1,10 @@
-package orchestrator
+package constraintenforcer
 
 import (
 	"testing"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
@@ -125,13 +126,13 @@ func TestConstraintEnforcer(t *testing.T) {
 	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
 	defer cancel()
 
-	constraintEnforcer := NewConstraintEnforcer(s)
+	constraintEnforcer := New(s)
 	defer constraintEnforcer.Stop()
 
 	go constraintEnforcer.Run()
 
 	// id0 should be killed immediately
-	shutdown1 := watchShutdownTask(t, watch)
+	shutdown1 := testutils.WatchShutdownTask(t, watch)
 	assert.Equal(t, "id0", shutdown1.ID)
 
 	// Change node id1 to a manager
@@ -146,7 +147,7 @@ func TestConstraintEnforcer(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	shutdown2 := watchShutdownTask(t, watch)
+	shutdown2 := testutils.WatchShutdownTask(t, watch)
 	assert.Equal(t, "id2", shutdown2.ID)
 
 	// Change resources on node id2
@@ -161,6 +162,6 @@ func TestConstraintEnforcer(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	shutdown3 := watchShutdownTask(t, watch)
+	shutdown3 := testutils.WatchShutdownTask(t, watch)
 	assert.Equal(t, "id4", shutdown3.ID)
 }
