@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"golang.org/x/net/context"
@@ -47,8 +48,6 @@ func New(config *Config) (*Agent, error) {
 	if err := config.validate(); err != nil {
 		return nil, err
 	}
-
-	worker := newWorker(config.DB, config.Executor)
 
 	a := &Agent{
 		config:   config,
@@ -147,11 +146,12 @@ func (a *Agent) run(ctx context.Context) {
 	defer nodeUpdateTicker.Stop()
 
 	var (
-		backoff    time.Duration
-		session    = newSession(ctx, a, backoff, "", nodeDescription) // start the initial session
-		registered = session.registered
-		ready      = a.ready // first session ready
-		sessionq   chan sessionOperation
+		backoff       time.Duration
+		session       = newSession(ctx, a, backoff, "", nodeDescription) // start the initial session
+		registered    = session.registered
+		ready         = a.ready // first session ready
+		sessionq      chan sessionOperation
+		subscriptions = map[string]context.CancelFunc{}
 	)
 
 	if err := a.worker.Init(ctx); err != nil {
@@ -186,6 +186,23 @@ func (a *Agent) run(ctx context.Context) {
 			if err := a.handleSessionMessage(ctx, msg); err != nil {
 				log.G(ctx).WithError(err).Error("session message handler failed")
 			}
+		case sub := <-session.subscriptions:
+			if sub.Close {
+				if cancel, ok := subscriptions[sub.ID]; ok {
+					cancel()
+				}
+				delete(subscriptions, sub.ID)
+				continue
+			}
+
+			if _, ok := subscriptions[sub.ID]; ok {
+				// Duplicate subscription
+				continue
+			}
+
+			subCtx, subCancel := context.WithCancel(ctx)
+			subscriptions[sub.ID] = subCancel
+			go a.worker.Subscribe(subCtx, sub)
 		case <-registered:
 			log.G(ctx).Debugln("agent: registered")
 			if ready != nil {
@@ -387,16 +404,31 @@ func (a *Agent) UpdateTaskStatus(ctx context.Context, taskID string, status *api
 	}
 }
 
-func (a *Agent) Publish(ctx context.Context, message api.LogMessage) error {
-	// TODO(stevvooe): The level of coordination here is WAY too much for logs.
-	// These should only be best effort and really just buffer until a session is
-	// ready. Ideally, they would use a separate connection completely.
-	return a.withSession(ctx, func(session *session) error {
-		_, err := api.NewLogBrokerClient(session.conn).PublishLogs(ctx,
-			&api.PublishLogsRequest{
-				Messages: []api.LogMessage{message},
-			})
-		return err
+// Publisher returns a LogPublisher for the given subscription
+func (a *Agent) Publisher(ctx context.Context, subscriptionID string) exec.LogPublisher {
+	return exec.LogPublisherFunc(func(ctx context.Context, message api.LogMessage) error {
+		// TODO(stevvooe): The level of coordination here is WAY too much for logs.
+		// These should only be best effort and really just buffer until a session is
+		// ready. Ideally, they would use a separate connection completely.
+
+		// If the context got cancelled, send a close.
+
+		close := false
+		select {
+		case <-ctx.Done():
+			close = true
+		default:
+		}
+
+		return a.withSession(ctx, func(session *session) error {
+			_, err := api.NewLogBrokerClient(session.conn).PublishLogs(ctx,
+				&api.PublishLogsRequest{
+					SubscriptionID: subscriptionID,
+					Messages:       []api.LogMessage{message},
+					Close:          close,
+				})
+			return err
+		})
 	})
 }
 

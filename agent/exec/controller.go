@@ -59,6 +59,19 @@ type LogPublisher interface {
 	Publish(ctx context.Context, message api.LogMessage) error
 }
 
+// LogPublisherFunc implements publisher with just a function.
+type LogPublisherFunc func(ctx context.Context, message api.LogMessage) error
+
+// Publish calls the wrapped function.
+func (fn LogPublisherFunc) Publish(ctx context.Context, message api.LogMessage) error {
+	return fn(ctx, message)
+}
+
+// LogPublisherProvider defines the protocol for receiving a log publisher
+type LogPublisherProvider interface {
+	Publisher(ctx context.Context, subscriptionID string) LogPublisher
+}
+
 // ContainerStatuser reports status of a container.
 //
 // This can be implemented by controllers or error types.

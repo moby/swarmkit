@@ -5,6 +5,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/boltdb/bolt"
+	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
@@ -31,6 +32,8 @@ type Worker interface {
 	//
 	// The listener will be removed if the context is cancelled.
 	Listen(ctx context.Context, reporter StatusReporter)
+
+	Subscribe(ctx context.Context, subscription *api.SubscriptionMessage) error
 }
 
 // statusReporterKey protects removal map from panic.
@@ -39,22 +42,25 @@ type statusReporterKey struct {
 }
 
 type worker struct {
-	db        *bolt.DB
-	executor  exec.Executor
-	publisher exec.LogPublisher
-	listeners map[*statusReporterKey]struct{}
+	db                *bolt.DB
+	executor          exec.Executor
+	publisher         exec.LogPublisher
+	listeners         map[*statusReporterKey]struct{}
+	taskevents        *events.Broadcaster
+	publisherProvider exec.LogPublisherProvider
 
 	taskManagers map[string]*taskManager
 	mu           sync.RWMutex
 }
 
-func newWorker(db *bolt.DB, executor exec.Executor, publisher exec.LogPublisher) *worker {
+func newWorker(db *bolt.DB, executor exec.Executor, publisherProvider exec.LogPublisherProvider) *worker {
 	return &worker{
-		db:           db,
-		executor:     executor,
-		publisher:    publisher,
-		listeners:    make(map[*statusReporterKey]struct{}),
-		taskManagers: make(map[string]*taskManager),
+		db:                db,
+		executor:          executor,
+		publisherProvider: publisherProvider,
+		taskevents:        events.NewBroadcaster(),
+		listeners:         make(map[*statusReporterKey]struct{}),
+		taskManagers:      make(map[string]*taskManager),
 	}
 }
 
@@ -321,6 +327,7 @@ func (w *worker) Listen(ctx context.Context, reporter StatusReporter) {
 }
 
 func (w *worker) startTask(ctx context.Context, tx *bolt.Tx, task *api.Task) error {
+	w.taskevents.Write(task.Copy())
 	_, err := w.taskManager(ctx, tx, task) // side-effect taskManager creation.
 
 	if err != nil {
@@ -364,7 +371,7 @@ func (w *worker) newTaskManager(ctx context.Context, tx *bolt.Tx, task *api.Task
 		return w.db.Update(func(tx *bolt.Tx) error {
 			return w.updateTaskStatus(ctx, tx, taskID, status)
 		})
-	}), w.publisher), nil
+	})), nil
 }
 
 // updateTaskStatus reports statuses to listeners, read lock must be held.
@@ -382,4 +389,66 @@ func (w *worker) updateTaskStatus(ctx context.Context, tx *bolt.Tx, taskID strin
 	}
 
 	return nil
+}
+
+func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMessage) error {
+	log.G(ctx).Debugf("Received subscription %s (selector: %v)", subscription.ID, subscription.Selector)
+
+	publisher := w.publisherProvider.Publisher(ctx, subscription.ID)
+	// Send a close once we're done
+	defer publisher.Publish(ctx, api.LogMessage{})
+
+	match := func(t *api.Task) bool {
+		// TODO(aluzzardi): Consider using maps to limit the iterations.
+		for _, tid := range subscription.Selector.TaskIDs {
+			if t.ID == tid {
+				return true
+			}
+		}
+
+		for _, sid := range subscription.Selector.ServiceIDs {
+			if t.ServiceID == sid {
+				return true
+			}
+		}
+
+		for _, nid := range subscription.Selector.NodeIDs {
+			if t.NodeID == nid {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	ch := events.NewChannel(1000)
+	q := events.NewQueue(ch)
+	w.taskevents.Add(q)
+	defer func() {
+		w.taskevents.Remove(q)
+		q.Close()
+		ch.Close()
+	}()
+
+	w.mu.Lock()
+	for _, tm := range w.taskManagers {
+		if match(tm.task) {
+			go tm.Logs(ctx, *subscription.Options, publisher)
+		}
+	}
+	w.mu.Unlock()
+
+	for {
+		select {
+		case v := <-ch.C:
+			w.mu.Lock()
+			task := v.(*api.Task)
+			if match(task) {
+				go w.taskManagers[task.ID].Logs(ctx, *subscription.Options, publisher)
+			}
+			w.mu.Unlock()
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }

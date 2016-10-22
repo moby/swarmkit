@@ -25,6 +25,7 @@ func Dial(cmd *cobra.Command) (api.ControlClient, error) {
 	return api.NewControlClient(conn), nil
 }
 
+// DialConn establishes a connection to SwarmKit.
 func DialConn(cmd *cobra.Command) (*grpc.ClientConn, error) {
 	addr, err := cmd.Flags().GetString("socket")
 	if err != nil {

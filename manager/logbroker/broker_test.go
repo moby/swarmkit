@@ -1,16 +1,18 @@
 package logbroker
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"sync"
 	"testing"
 	"time"
 
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 )
 
@@ -23,6 +25,26 @@ func TestLogBroker(t *testing.T) {
 		hold             = make(chan struct{}) // coordinates pubsub start
 		messagesExpected int
 	)
+
+	subStream, err := brokerClient.ListenSubscriptions(ctx, &api.ListenSubscriptionsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stream, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
+		// Dummy selector - they are ignored in the broker for the time being.
+		Selector: &api.LogSelector{
+			NodeIDs: []string{"node-1"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("error subscribing: %v", err)
+	}
+
+	subscription, err := subStream.Recv()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// spread some services across nodes with a bunch of tasks.
 	const (
@@ -62,18 +84,14 @@ func TestLogBroker(t *testing.T) {
 					}
 
 					if _, err := brokerClient.PublishLogs(ctx, &api.PublishLogsRequest{
-						Messages: messages,
+						SubscriptionID: subscription.ID,
+						Messages:       messages,
 					}); err != nil {
-						t.Fatalf("error publishing log message: %v")
+						t.Fatalf("error publishing log message: %v", err)
 					}
 				}(nodeID, serviceID, taskID)
 			}
 		}
-	}
-
-	stream, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{})
-	if err != nil {
-		t.Fatalf("error subscribing: %v", err)
 	}
 
 	t.Logf("expected %v messages", messagesExpected)
@@ -102,36 +120,92 @@ func TestLogBroker(t *testing.T) {
 
 func testLogBrokerEnv(t *testing.T) (context.Context, *LogBroker, api.LogsClient, api.LogBrokerClient, func()) {
 	ctx, cancel := context.WithCancel(context.Background())
-	broker := NewLogBroker()
-	server := grpc.NewServer()
-	api.RegisterLogBrokerServer(server, broker)
-	api.RegisterLogsServer(server, broker)
+	broker := New()
 
-	listener, err := net.Listen("tcp", "localhost:0")
+	tca := testutils.NewTestCA(nil)
+	agentSecurityConfig, err := tca.NewNodeConfig(ca.WorkerRole)
+	if err != nil {
+		t.Fatal(err)
+	}
+	managerSecurityConfig, err := tca.NewNodeConfig(ca.ManagerRole)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Log Server
+	logListener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		t.Fatalf("error setting up listener: %v", err)
 	}
+	logServer := grpc.NewServer()
+	api.RegisterLogsServer(logServer, broker)
 
 	go func() {
-		if err := server.Serve(listener); err != nil {
+		if err := logServer.Serve(logListener); err != nil {
 			// SIGH(stevvooe): GRPC won't really shutdown gracefully.
 			// This should be fatal.
 			t.Logf("error serving grpc service: %v", err)
 		}
 	}()
 
-	cc, err := grpc.Dial(listener.Addr().String(), grpc.WithInsecure())
+	// Log Broker
+	brokerListener, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("error setting up listener: %v", err)
+	}
+
+	serverOpts := []grpc.ServerOption{grpc.Creds(managerSecurityConfig.ServerTLSCreds)}
+
+	brokerServer := grpc.NewServer(serverOpts...)
+
+	authorize := func(ctx context.Context, roles []string) error {
+		_, err := ca.AuthorizeForwardedRoleAndOrg(ctx, roles, []string{ca.ManagerRole}, tca.Organization, nil)
+		return err
+	}
+	authenticatedLogBrokerAPI := api.NewAuthenticatedWrapperLogBrokerServer(broker, authorize)
+
+	api.RegisterLogBrokerServer(brokerServer, authenticatedLogBrokerAPI)
+	go func() {
+		if err := brokerServer.Serve(brokerListener); err != nil {
+			// SIGH(stevvooe): GRPC won't really shutdown gracefully.
+			// This should be fatal.
+			t.Logf("error serving grpc service: %v", err)
+		}
+	}()
+
+	// Log client
+	logCc, err := grpc.Dial(logListener.Addr().String(), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("error dialing local server: %v", err)
 	}
+	logClient := api.NewLogsClient(logCc)
 
-	brokerClient := api.NewLogBrokerClient(cc)
-	client := api.NewLogsClient(cc)
+	// Broker client
+	fmt.Printf("broker client: %s\n", brokerListener.Addr())
+	clientOpts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second), grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds)}
+	brokerCc, err := grpc.Dial(brokerListener.Addr().String(), clientOpts...)
+	if err != nil {
+		t.Fatalf("error dialing local server: %v", err)
+	}
+	brokerClient := api.NewLogBrokerClient(brokerCc)
 
-	return ctx, broker, client, brokerClient, func() {
-		cc.Close()
-		server.Stop()
-		listener.Close()
+	// The above setup is slightly race-y. If the logs server is ready before
+	// the broker then the agent won't have enough time to register and will
+	// miss the subscription.
+	// TODO(aluzzardi): This won't be required as soon as the broker can
+	// query for subscription at node registration time.
+	time.Sleep(1 * time.Second)
+
+	return ctx, broker, logClient, brokerClient, func() {
+		logCc.Close()
+		brokerCc.Close()
+
+		logServer.Stop()
+		brokerServer.Stop()
+
+		logListener.Close()
+		brokerListener.Close()
+
 		cancel()
 	}
 }

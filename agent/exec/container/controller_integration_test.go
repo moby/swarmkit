@@ -58,7 +58,7 @@ func TestControllerFlowIntegration(t *testing.T) {
 	}
 
 	var receivedLogs bool
-	publisher := logPublisherFn(func(ctx context.Context, message api.LogMessage) error {
+	publisher := exec.LogPublisherFunc(func(ctx context.Context, message api.LogMessage) error {
 		receivedLogs = true
 
 		switch message.Stream {
@@ -90,10 +90,4 @@ func TestControllerFlowIntegration(t *testing.T) {
 	if err := ctlr.Close(); err != exec.ErrControllerClosed {
 		t.Fatalf("expected controller to be closed: %v", err)
 	}
-}
-
-type logPublisherFn func(ctx context.Context, message api.LogMessage) error
-
-func (fn logPublisherFn) Publish(ctx context.Context, message api.LogMessage) error {
-	return fn(ctx, message)
 }
