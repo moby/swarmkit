@@ -158,6 +158,41 @@ func TestNodeRole(t *testing.T) {
 	assert.False(t, f.Check(ni))
 }
 
+func TestNodePlatform(t *testing.T) {
+	setupEnv()
+	f := ConstraintFilter{}
+	task1.Spec.Placement = &api.Placement{
+		Constraints: []string{"node.platform.os == linux"},
+	}
+	require.True(t, f.SetTask(task1))
+	//node info doesn't have platform yet
+	assert.False(t, f.Check(ni))
+
+	ni.Node.Description.Platform = &api.Platform{
+		Architecture: "x86_64",
+		OS:           "linux",
+	}
+	assert.True(t, f.Check(ni))
+
+	ni.Node.Description.Platform = &api.Platform{
+		Architecture: "x86_64",
+		OS:           "windows",
+	}
+	assert.False(t, f.Check(ni))
+
+	task1.Spec.Placement = &api.Placement{
+		Constraints: []string{"node.platform.arch == amd64"},
+	}
+	require.True(t, f.SetTask(task1))
+	assert.False(t, f.Check(ni))
+
+	task1.Spec.Placement = &api.Placement{
+		Constraints: []string{"node.platform.arch != amd64"},
+	}
+	require.True(t, f.SetTask(task1))
+	assert.True(t, f.Check(ni))
+}
+
 func TestNodeLabel(t *testing.T) {
 	setupEnv()
 	f := ConstraintFilter{}
