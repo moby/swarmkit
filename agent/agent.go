@@ -494,8 +494,8 @@ func (a *Agent) Publisher(ctx context.Context, subscriptionID string) (exec.LogP
 func (a *Agent) nodeDescriptionWithHostname(ctx context.Context) (*api.NodeDescription, error) {
 	desc, err := a.config.Executor.Describe(ctx)
 
-	// Override hostname
-	if a.config.Hostname != "" && desc != nil {
+	// Only override hostname if it is not received from the call to Describe
+	if desc != nil && desc.Hostname == "" {
 		desc.Hostname = a.config.Hostname
 	}
 	return desc, err
