@@ -46,6 +46,7 @@ func printNodeSummary(node *api.Node) {
 	common.FprintfIfNotEmpty(w, "  State\t: %s\n", node.Status.State.String())
 	common.FprintfIfNotEmpty(w, "  Message\t: %s\n", node.Status.Message)
 	common.FprintfIfNotEmpty(w, "  Availability\t: %s\n", spec.Availability.String())
+	common.FprintfIfNotEmpty(w, "  Address:\t: %s\n", node.Status.Addr)
 
 	if node.ManagerStatus != nil {
 		fmt.Fprintln(w, "Manager status:\t")
