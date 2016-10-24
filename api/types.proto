@@ -840,3 +840,14 @@ message HealthConfig {
 	// container as unhealthy. Zero means inherit.
 	int32 retries = 4;
 }
+
+message MaybeEncryptedRecord {
+	enum Algorithm {
+		NONE = 0 [(gogoproto.enumvalue_customname) = "NotEncrypted"];
+		SECRETBOX_SALSA20_POLY1305 = 1 [(gogoproto.enumvalue_customname) = "NACLSecretboxSalsa20Poly1305"];
+	}
+
+	Algorithm algorithm = 1;
+	bytes data = 2;
+	bytes nonce = 3;
+}
