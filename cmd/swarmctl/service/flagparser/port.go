@@ -30,6 +30,9 @@ func parsePorts(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			Protocol:      protocol,
 			TargetPort:    port,
 			PublishedPort: swarmPort,
+			// In swarmctl all ports are by default
+			// PublishModeHost
+			PublishMode: api.PublishModeHost,
 		})
 	}
 
