@@ -86,19 +86,6 @@ type ImageDelete struct {
 	Deleted  string `json:",omitempty"`
 }
 
-// Image contains response of Remote API:
-// GET "/images/json"
-type Image struct {
-	ID          string `json:"Id"`
-	ParentID    string `json:"ParentId"`
-	RepoTags    []string
-	RepoDigests []string
-	Created     int64
-	Size        int64
-	VirtualSize int64
-	Labels      map[string]string
-}
-
 // GraphDriverData returns Image's graph driver config info
 // when calling inspect command
 type GraphDriverData struct {
@@ -129,19 +116,11 @@ type ImageInspect struct {
 	Config          *container.Config
 	Architecture    string
 	Os              string
+	OsVersion       string `json:",omitempty"`
 	Size            int64
 	VirtualSize     int64
 	GraphDriver     GraphDriverData
 	RootFS          RootFS
-}
-
-// Port stores open ports info of container
-// e.g. {"PrivatePort": 8080, "PublicPort": 80, "Type": "tcp"}
-type Port struct {
-	IP          string `json:",omitempty"`
-	PrivatePort int
-	PublicPort  int `json:",omitempty"`
-	Type        string
 }
 
 // Container contains response of Remote API:
@@ -183,7 +162,7 @@ type ContainerPathStat struct {
 	LinkTarget string      `json:"linkTarget"`
 }
 
-// ContainerStats contains resonse of Remote API:
+// ContainerStats contains response of Remote API:
 // GET "/stats"
 type ContainerStats struct {
 	Body   io.ReadCloser `json:"body"`
@@ -268,6 +247,7 @@ type Info struct {
 	// running when the daemon is shutdown or upon daemon start if
 	// running containers are detected
 	LiveRestoreEnabled bool
+	Isolation          container.Isolation
 }
 
 // PluginsInfo is a temp struct holding Plugins name
@@ -429,16 +409,6 @@ type MountPoint struct {
 	Propagation mount.Propagation
 }
 
-// Volume represents the configuration of a volume for the remote API
-type Volume struct {
-	Name       string                 // Name is the name of the volume
-	Driver     string                 // Driver is the Driver name used to create the volume
-	Mountpoint string                 // Mountpoint is the location on disk of the volume
-	Status     map[string]interface{} `json:",omitempty"` // Status provides low-level status information about the volume
-	Labels     map[string]string      // Labels is metadata specific to the volume
-	Scope      string                 // Scope describes the level at which the volume exists (e.g. `global` for cluster-wide or `local` for machine level)
-}
-
 // VolumesListResponse contains the response for the remote API:
 // GET "/volumes"
 type VolumesListResponse struct {
@@ -446,7 +416,7 @@ type VolumesListResponse struct {
 	Warnings []string  // Warnings is a list of warnings that occurred when getting the list from the volume drivers
 }
 
-// VolumeCreateRequest contains the response for the remote API:
+// VolumeCreateRequest contains the request for the remote API:
 // POST "/volumes/create"
 type VolumeCreateRequest struct {
 	Name       string            // Name is the requested name of the volume
@@ -459,6 +429,7 @@ type VolumeCreateRequest struct {
 type NetworkResource struct {
 	Name       string                      // Name is the requested name of the network
 	ID         string                      `json:"Id"` // ID uniquely identifies a network on a single machine
+	Created    time.Time                   // Created is the time the network created
 	Scope      string                      // Scope describes the level at which the network exists (e.g. `global` for cluster-wide or `local` for machine level)
 	Driver     string                      // Driver is the Driver name used to create the network (e.g. `bridge`, `overlay`)
 	EnableIPv6 bool                        // EnableIPv6 represents whether to enable IPv6
@@ -524,4 +495,50 @@ type Checkpoint struct {
 type Runtime struct {
 	Path string   `json:"path"`
 	Args []string `json:"runtimeArgs,omitempty"`
+}
+
+// DiskUsage contains response of Remote API:
+// GET "/system/df"
+type DiskUsage struct {
+	LayersSize int64
+	Images     []*ImageSummary
+	Containers []*Container
+	Volumes    []*Volume
+}
+
+// ImagesPruneConfig contains the configuration for Remote API:
+// POST "/images/prune"
+type ImagesPruneConfig struct {
+	DanglingOnly bool
+}
+
+// ContainersPruneConfig contains the configuration for Remote API:
+// POST "/images/prune"
+type ContainersPruneConfig struct {
+}
+
+// VolumesPruneConfig contains the configuration for Remote API:
+// POST "/images/prune"
+type VolumesPruneConfig struct {
+}
+
+// ContainersPruneReport contains the response for Remote API:
+// POST "/containers/prune"
+type ContainersPruneReport struct {
+	ContainersDeleted []string
+	SpaceReclaimed    uint64
+}
+
+// VolumesPruneReport contains the response for Remote API:
+// POST "/volumes/prune"
+type VolumesPruneReport struct {
+	VolumesDeleted []string
+	SpaceReclaimed uint64
+}
+
+// ImagesPruneReport contains the response for Remote API:
+// POST "/images/prune"
+type ImagesPruneReport struct {
+	ImagesDeleted  []ImageDelete
+	SpaceReclaimed uint64
 }
