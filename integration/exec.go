@@ -11,8 +11,8 @@ type TestExecutor struct {
 }
 
 // Describe just returns empty NodeDescription.
-func (e *TestExecutor) Describe(ctx context.Context) (*api.NodeDescription, error) {
-	return &api.NodeDescription{}, nil
+func (e *TestExecutor) Describe(ctx context.Context) (*api.NodeDescription, *api.GossipStatus, error) {
+	return &api.NodeDescription{}, &api.GossipStatus{}, nil
 }
 
 // Configure does nothing.

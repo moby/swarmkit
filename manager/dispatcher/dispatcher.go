@@ -503,6 +503,58 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 	return nil, nil
 }
 
+// UpdateGossipStatus updates the gossip cluster status as seen by the node sending the
+// update. Nodes are expected to send the update periodically when there is a change in
+// the gossip status.
+func (d *Dispatcher) UpdateGossipStatus(ctx context.Context, g *api.GossipStatusRequest) (*api.GossipStatusResponse, error) {
+	var (
+		nodes []*api.Node
+		err   error
+	)
+	nodeInfo, err := ca.RemoteNode(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	nodeID := nodeInfo.NodeID
+	fields := logrus.Fields{
+		"node.id":      nodeID,
+		"node.session": g.SessionID,
+		"method":       "(*Dispatcher).UpdateGossipStatus",
+	}
+	log := log.G(ctx).WithFields(fields)
+
+	if _, err := d.nodes.GetWithSession(nodeID, g.SessionID); err != nil {
+		log.Error("gossip update with invalid session ID")
+		return nil, err
+	}
+
+	d.store.View(func(tx store.ReadTx) {
+		nodes, err = store.FindNodes(tx, store.ByIDPrefix(nodeID))
+	})
+
+	if err != nil {
+		log.Errorf("store read failed for node object, %v", err)
+		return nil, err
+	}
+	node := nodes[0]
+
+	d.store.Update(func(tx store.Tx) error {
+		if node.GossipStatus == nil {
+			node.GossipStatus = &api.GossipStatus{}
+		}
+		node.GossipStatus.MemberCount = g.GossipStatus.MemberCount
+
+		return store.UpdateNode(tx, node)
+	})
+	if err != nil {
+		log.Errorf("store read failed for node object, %v", err)
+		return nil, err
+	}
+	log.Debug("store updated with member count ", g.GossipStatus.MemberCount)
+	return nil, nil
+}
+
 func (d *Dispatcher) processUpdates() {
 	var (
 		taskUpdates map[string]*api.TaskStatus

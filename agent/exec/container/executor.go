@@ -22,10 +22,10 @@ func NewExecutor(client engineapi.APIClient) exec.Executor {
 }
 
 // Describe returns the underlying node description from the docker client.
-func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
+func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, *api.GossipStatus, error) {
 	info, err := e.client.Info(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	plugins := map[api.PluginDescription]struct{}{}
@@ -78,7 +78,11 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 		},
 	}
 
-	return description, nil
+	gossip := &api.GossipStatus{
+		MemberCount: 0,
+	}
+
+	return description, gossip, nil
 }
 
 func (e *executor) Configure(ctx context.Context, node *api.Node) error {

@@ -18,8 +18,8 @@ import (
 type NoopExecutor struct {
 }
 
-func (e *NoopExecutor) Describe(ctx context.Context) (*api.NodeDescription, error) {
-	return &api.NodeDescription{}, nil
+func (e *NoopExecutor) Describe(ctx context.Context) (*api.NodeDescription, *api.GossipStatus, error) {
+	return &api.NodeDescription{}, &api.GossipStatus{}, nil
 }
 
 func (e *NoopExecutor) Configure(ctx context.Context, node *api.Node) error {

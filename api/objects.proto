@@ -48,6 +48,9 @@ message Node {
 
 	// Certificate is the TLS certificate issued for the node, if any.
 	Certificate certificate = 8 [(gogoproto.nullable) = false];
+
+	// GossipStatus is the status of gossip cluster as seen by a node
+	GossipStatus gossip_status = 9 [(gogoproto.customname) = "GossipStatus"];
 }
 
 message Service {
