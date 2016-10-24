@@ -346,6 +346,17 @@ func (_mr *_MockAPIClientRecorder) ContainerWait(arg0, arg1 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerWait", arg0, arg1)
 }
 
+func (_m *MockAPIClient) ContainersPrune(_param0 context.Context, _param1 types.ContainersPruneConfig) (types.ContainersPruneReport, error) {
+	ret := _m.ctrl.Call(_m, "ContainersPrune", _param0, _param1)
+	ret0, _ := ret[0].(types.ContainersPruneReport)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockAPIClientRecorder) ContainersPrune(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainersPrune", arg0, arg1)
+}
+
 func (_m *MockAPIClient) CopyFromContainer(_param0 context.Context, _param1 string, _param2 string) (io.ReadCloser, types.ContainerPathStat, error) {
 	ret := _m.ctrl.Call(_m, "CopyFromContainer", _param0, _param1, _param2)
 	ret0, _ := ret[0].(io.ReadCloser)
@@ -366,6 +377,17 @@ func (_m *MockAPIClient) CopyToContainer(_param0 context.Context, _param1 string
 
 func (_mr *_MockAPIClientRecorder) CopyToContainer(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "CopyToContainer", arg0, arg1, arg2, arg3, arg4)
+}
+
+func (_m *MockAPIClient) DiskUsage(_param0 context.Context) (types.DiskUsage, error) {
+	ret := _m.ctrl.Call(_m, "DiskUsage", _param0)
+	ret0, _ := ret[0].(types.DiskUsage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockAPIClientRecorder) DiskUsage(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "DiskUsage", arg0)
 }
 
 func (_m *MockAPIClient) Events(_param0 context.Context, _param1 types.EventsOptions) (<-chan events.Message, <-chan error) {
@@ -435,9 +457,9 @@ func (_mr *_MockAPIClientRecorder) ImageInspectWithRaw(arg0, arg1 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageInspectWithRaw", arg0, arg1)
 }
 
-func (_m *MockAPIClient) ImageList(_param0 context.Context, _param1 types.ImageListOptions) ([]types.Image, error) {
+func (_m *MockAPIClient) ImageList(_param0 context.Context, _param1 types.ImageListOptions) ([]types.ImageSummary, error) {
 	ret := _m.ctrl.Call(_m, "ImageList", _param0, _param1)
-	ret0, _ := ret[0].([]types.Image)
+	ret0, _ := ret[0].([]types.ImageSummary)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -520,6 +542,17 @@ func (_m *MockAPIClient) ImageTag(_param0 context.Context, _param1 string, _para
 
 func (_mr *_MockAPIClientRecorder) ImageTag(arg0, arg1, arg2 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageTag", arg0, arg1, arg2)
+}
+
+func (_m *MockAPIClient) ImagesPrune(_param0 context.Context, _param1 types.ImagesPruneConfig) (types.ImagesPruneReport, error) {
+	ret := _m.ctrl.Call(_m, "ImagesPrune", _param0, _param1)
+	ret0, _ := ret[0].(types.ImagesPruneReport)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockAPIClientRecorder) ImagesPrune(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImagesPrune", arg0, arg1)
 }
 
 func (_m *MockAPIClient) Info(_param0 context.Context) (types.Info, error) {
@@ -863,4 +896,15 @@ func (_m *MockAPIClient) VolumeRemove(_param0 context.Context, _param1 string, _
 
 func (_mr *_MockAPIClientRecorder) VolumeRemove(arg0, arg1, arg2 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "VolumeRemove", arg0, arg1, arg2)
+}
+
+func (_m *MockAPIClient) VolumesPrune(_param0 context.Context, _param1 types.VolumesPruneConfig) (types.VolumesPruneReport, error) {
+	ret := _m.ctrl.Call(_m, "VolumesPrune", _param0, _param1)
+	ret0, _ := ret[0].(types.VolumesPruneReport)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockAPIClientRecorder) VolumesPrune(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "VolumesPrune", arg0, arg1)
 }
