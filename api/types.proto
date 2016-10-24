@@ -408,6 +408,12 @@ message ContainerStatus {
 	int32 exit_code = 3;
 }
 
+// PortStatus specifies the actual allocated runtime state of a list
+// of port configs.
+message PortStatus {
+	repeated PortConfig ports = 1;
+}
+
 message TaskStatus {
 	Timestamp timestamp = 1;
 
@@ -438,6 +444,10 @@ message TaskStatus {
 	oneof runtime_status {
 		ContainerStatus container = 5;
 	}
+
+	// HostPorts provides a list of ports allocated at the host
+	// level.
+	PortStatus port_status = 6;
 }
 
 // NetworkAttachmentConfig specifies how a service should be attached to a particular network.
