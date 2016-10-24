@@ -18,6 +18,7 @@ import (
 
 var (
 	errNetworkUpdateNotSupported = errors.New("changing network in service is not supported")
+	errRenameNotSupported        = errors.New("renaming services is not supported")
 	errModeChangeNotAllowed      = errors.New("service mode change is not allowed")
 )
 
@@ -417,6 +418,11 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		if reflect.TypeOf(service.Spec.Mode) != reflect.TypeOf(request.Spec.Mode) {
 			return errModeChangeNotAllowed
 		}
+
+		if service.Spec.Annotations.Name != request.Spec.Annotations.Name {
+			return errRenameNotSupported
+		}
+
 		service.Meta.Version = *request.ServiceVersion
 		service.PreviousSpec = service.Spec.Copy()
 		service.Spec = *request.Spec.Copy()
