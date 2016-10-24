@@ -159,6 +159,10 @@ message ContainerSpec {
 	// If Command and Args are provided, Args will be appended to Command.
 	repeated string args = 4;
 
+	// Hostname specifies the hostname that will be set on containers created by docker swarm.
+	// All containers for a given service will have the same hostname
+	string hostname = 13;
+
 	// Env specifies the environment variables for the container in NAME=VALUE
 	// format. These must be compliant with  [IEEE Std
 	// 1003.1-2001](http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html).
