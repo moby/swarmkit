@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/docker/docker/api/types"
@@ -99,13 +100,8 @@ func (cli *Client) sendClientRequest(ctx context.Context, method, path string, q
 		req.Host = "docker"
 	}
 
-	scheme, err := resolveScheme(cli.client.Transport)
-	if err != nil {
-		return serverResp, err
-	}
-
 	req.URL.Host = cli.addr
-	req.URL.Scheme = scheme
+	req.URL.Scheme = cli.scheme
 
 	if expectedPayload && req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", "text/plain")
@@ -113,12 +109,11 @@ func (cli *Client) sendClientRequest(ctx context.Context, method, path string, q
 
 	resp, err := ctxhttp.Do(ctx, cli.client, req)
 	if err != nil {
-
-		if scheme == "https" && strings.Contains(err.Error(), "malformed HTTP response") {
+		if cli.scheme != "https" && strings.Contains(err.Error(), "malformed HTTP response") {
 			return serverResp, fmt.Errorf("%v.\n* Are you trying to connect to a TLS-enabled daemon without TLS?", err)
 		}
 
-		if scheme == "https" && strings.Contains(err.Error(), "bad certificate") {
+		if cli.scheme == "https" && strings.Contains(err.Error(), "bad certificate") {
 			return serverResp, fmt.Errorf("The server probably has client authentication (--tlsverify) enabled. Please check your TLS client certification settings: %v", err)
 		}
 
@@ -127,6 +122,14 @@ func (cli *Client) sendClientRequest(ctx context.Context, method, path string, q
 		switch err {
 		case context.Canceled, context.DeadlineExceeded:
 			return serverResp, err
+		}
+
+		if nErr, ok := err.(*url.Error); ok {
+			if nErr, ok := nErr.Err.(*net.OpError); ok {
+				if os.IsPermission(nErr.Err) {
+					return serverResp, errors.Wrapf(err, "Got permission denied while trying to connect to the Docker daemon socket at %v", cli.host)
+				}
+			}
 		}
 
 		if err, ok := err.(net.Error); ok {

@@ -41,6 +41,7 @@ type ContainerExecInspect struct {
 	ContainerID string
 	Running     bool
 	ExitCode    int
+	Pid         int
 }
 
 // ContainerListOptions holds parameters to list containers with.
@@ -84,7 +85,7 @@ type CopyToContainerOptions struct {
 	AllowOverwriteDirWithFile bool
 }
 
-// EventsOptions hold parameters to filter events with.
+// EventsOptions holds parameters to filter events with.
 type EventsOptions struct {
 	Since   string
 	Until   string
@@ -153,7 +154,8 @@ type ImageBuildOptions struct {
 	Squash bool
 	// CacheFrom specifies images that are used for matching cache. Images
 	// specified here do not need to have a valid parent chain to match cache.
-	CacheFrom []string
+	CacheFrom   []string
+	SecurityOpt []string
 }
 
 // ImageBuildResponse holds information
@@ -274,6 +276,12 @@ type ServiceCreateResponse struct {
 	ID string
 }
 
+// Values for RegistryAuthFrom in ServiceUpdateOptions
+const (
+	RegistryAuthFromSpec         = "spec"
+	RegistryAuthFromPreviousSpec = "previous-spec"
+)
+
 // ServiceUpdateOptions contains the options to be used for updating services.
 type ServiceUpdateOptions struct {
 	// EncodedRegistryAuth is the encoded registry authorization credentials to
@@ -285,6 +293,11 @@ type ServiceUpdateOptions struct {
 	// TODO(stevvooe): Consider moving the version parameter of ServiceUpdate
 	// into this field. While it does open API users up to racy writes, most
 	// users may not need that level of consistency in practice.
+
+	// RegistryAuthFrom specifies where to find the registry authorization
+	// credentials if they are not given in EncodedRegistryAuth. Valid
+	// values are "spec" and "previous-spec".
+	RegistryAuthFrom string
 }
 
 // ServiceListOptions holds parameters to list  services with.
@@ -300,4 +313,13 @@ type TaskListOptions struct {
 // PluginRemoveOptions holds parameters to remove plugins.
 type PluginRemoveOptions struct {
 	Force bool
+}
+
+// PluginInstallOptions holds parameters to install a plugin.
+type PluginInstallOptions struct {
+	Disabled              bool
+	AcceptAllPermissions  bool
+	RegistryAuth          string // RegistryAuth is the base64 encoded credentials for the registry
+	PrivilegeFunc         RequestPrivilegeFunc
+	AcceptPermissionsFunc func(PluginPrivileges) (bool, error)
 }

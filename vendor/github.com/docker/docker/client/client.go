@@ -1,3 +1,48 @@
+/*
+Package client is a Go client for the Docker Remote API.
+
+The "docker" command uses this package to communicate with the daemon. It can also
+be used by your own Go applications to do anything the command-line interface does
+– running containers, pulling images, managing swarms, etc.
+
+For more information about the Remote API, see the documentation:
+https://docs.docker.com/engine/reference/api/docker_remote_api/
+
+Usage
+
+You use the library by creating a client object and calling methods on it. The
+client can be created either from environment variables with NewEnvClient, or
+configured manually with NewClient.
+
+For example, to list running containers (the equivalent of "docker ps"):
+
+	package main
+
+	import (
+		"context"
+		"fmt"
+
+		"github.com/docker/docker/api/types"
+		"github.com/docker/docker/client"
+	)
+
+	func main() {
+		cli, err := client.NewEnvClient()
+		if err != nil {
+			panic(err)
+		}
+
+		containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{})
+		if err != nil {
+			panic(err)
+		}
+
+		for _, container := range containers {
+			fmt.Printf("%s %s\n", container.ID[:10], container.Image)
+		}
+	}
+
+*/
 package client
 
 import (
@@ -18,6 +63,8 @@ const DefaultVersion string = "1.23"
 // Client is the API client that performs all operations
 // against a docker server.
 type Client struct {
+	// scheme sets the scheme for the client
+	scheme string
 	// host holds the server address to connect to
 	host string
 	// proto holds the client protocol i.e. unix.
@@ -86,18 +133,31 @@ func NewClient(host string, version string, client *http.Client, httpHeaders map
 		return nil, err
 	}
 
-	if client == nil {
-		client = &http.Client{}
-	}
-
-	if client.Transport == nil {
-		// setup the transport, if not already present
+	if client != nil {
+		if _, ok := client.Transport.(*http.Transport); !ok {
+			return nil, fmt.Errorf("unable to verify TLS configuration, invalid transport %v", client.Transport)
+		}
+	} else {
 		transport := new(http.Transport)
 		sockets.ConfigureTransport(transport, proto, addr)
-		client.Transport = transport
+		client = &http.Client{
+			Transport: transport,
+		}
+	}
+
+	scheme := "http"
+	tlsConfig := resolveTLSConfig(client.Transport)
+	if tlsConfig != nil {
+		// TODO(stevvooe): This isn't really the right way to write clients in Go.
+		// `NewClient` should probably only take an `*http.Client` and work from there.
+		// Unfortunately, the model of having a host-ish/url-thingy as the connection
+		// string has us confusing protocol and transport layers. We continue doing
+		// this to avoid breaking existing clients but this should be addressed.
+		scheme = "https"
 	}
 
 	return &Client{
+		scheme:            scheme,
 		host:              host,
 		proto:             proto,
 		addr:              addr,
