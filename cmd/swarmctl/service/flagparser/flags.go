@@ -21,6 +21,7 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.StringSlice("command", nil, "override entrypoint")
 	flags.StringSlice("args", nil, "container args")
 	flags.StringSlice("env", nil, "container env")
+	flags.Bool("tty", false, "open a tty on standard streams")
 
 	flags.StringSlice("ports", nil, "ports")
 	flags.String("network", "", "network name")

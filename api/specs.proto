@@ -177,6 +177,10 @@ message ContainerSpec {
 	// Groups specifies supplementary groups available to the user.
 	repeated string groups = 11;
 
+	// TTY declares that a TTY should be attached to the standard streams,
+	// including stdin if it is still open.
+	bool tty = 13 [(gogoproto.customname) = "TTY"];
+
 	repeated Mount mounts = 8 [(gogoproto.nullable) = false];
 
 	// StopGracePeriod the grace period for stopping the container before

@@ -38,5 +38,14 @@ func parseContainer(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		spec.Task.GetContainer().Env = env
 	}
 
+	if flags.Changed("tty") {
+		tty, err := flags.GetBool("tty")
+		if err != nil {
+			return err
+		}
+
+		spec.Task.GetContainer().TTY = tty
+	}
+
 	return nil
 }
