@@ -93,6 +93,7 @@ message TaskSpec {
 	oneof runtime {
 		NetworkAttachmentSpec attachment = 8;
 		ContainerSpec container = 1;
+		ProcessSpec process = 10;
 	}
 
 	// Resource requirements for the container.
@@ -231,6 +232,12 @@ message ContainerSpec {
 	// task will exit and a new task will be rescheduled elsewhere. A container
 	// is considered unhealthy after `Retries` number of consecutive failures.
 	HealthConfig healthcheck = 16;
+}
+
+message ProcessSpec {
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
+
+	repeated string argv = 2;
 }
 
 // EndpointSpec defines the properties that can be configured to

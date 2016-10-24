@@ -69,6 +69,7 @@
 		TaskSpec
 		NetworkAttachmentSpec
 		ContainerSpec
+		ProcessSpec
 		EndpointSpec
 		NetworkSpec
 		ClusterSpec
