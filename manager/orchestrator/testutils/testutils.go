@@ -59,52 +59,6 @@ func WatchTaskDelete(t *testing.T, watch chan events.Event) *api.Task {
 	}
 }
 
-// ExpectTaskUpdate fails the test if the next event is not a task update event.
-func ExpectTaskUpdate(t *testing.T, watch chan events.Event) {
-	for {
-		select {
-		case event := <-watch:
-			if _, ok := event.(state.EventUpdateTask); !ok {
-				assert.FailNow(t, "expected task update event, got", fmt.Sprint(event))
-			}
-			return
-		case <-time.After(time.Second):
-			assert.FailNow(t, "no task update event")
-		}
-	}
-}
-
-// ExpectDeleteService fails the test if the next event is not a task delete event.
-func ExpectDeleteService(t *testing.T, watch chan events.Event) {
-	for {
-		select {
-		case event := <-watch:
-			if _, ok := event.(state.EventDeleteService); !ok {
-				assert.FailNow(t, "expected service delete event, got", fmt.Sprint(event))
-			}
-			return
-		case <-time.After(time.Second):
-			assert.FailNow(t, "no service delete event")
-		}
-	}
-}
-
-// ExpectCommit fails the test if the next event is not a commit event.
-func ExpectCommit(t *testing.T, watch chan events.Event) {
-	for {
-		select {
-		case event := <-watch:
-			if _, ok := event.(state.EventCommit); !ok {
-				assert.FailNow(t, "expected commit event, got", fmt.Sprint(event))
-			}
-			return
-		case <-time.After(time.Second):
-			assert.FailNow(t, "no commit event")
-		}
-	}
-
-}
-
 // WatchShutdownTask fails the test if the next event is not a task having its
 // desired state changed to Shutdown.
 func WatchShutdownTask(t *testing.T, watch chan events.Event) *api.Task {
@@ -123,14 +77,18 @@ func WatchShutdownTask(t *testing.T, watch chan events.Event) *api.Task {
 	}
 }
 
-// SkipEvents skips events for 200 ms.
-// FIXME(aaronl): Is this really necessary?
-func SkipEvents(t *testing.T, watch chan events.Event) {
+// Expect fails the test if the next event is not one of the specified events.
+func Expect(t *testing.T, watch chan events.Event, specifiers ...state.Event) {
+	matcher := state.Matcher(specifiers...)
 	for {
 		select {
-		case <-watch:
-		case <-time.After(200 * time.Millisecond):
+		case event := <-watch:
+			if !matcher.Match(event) {
+				assert.FailNow(t, fmt.Sprintf("unexpected event: %T", event))
+			}
 			return
+		case <-time.After(time.Second):
+			assert.FailNow(t, "no commit event")
 		}
 	}
 }
