@@ -565,7 +565,9 @@ func (*ContainerSpec_DNSConfig) Descriptor() ([]byte, []int) { return fileDescri
 
 type ProcessSpec struct {
 	Annotations Annotations `protobuf:"bytes,1,opt,name=annotations" json:"annotations"`
-	Argv        []string    `protobuf:"bytes,2,rep,name=argv" json:"argv,omitempty"`
+	// argv[1:N], does not contain argv[0] which is controlled by the
+	// Executor.
+	Argv []string `protobuf:"bytes,2,rep,name=argv" json:"argv,omitempty"`
 }
 
 func (m *ProcessSpec) Reset()                    { *m = ProcessSpec{} }

@@ -552,6 +552,21 @@ func (s *Server) RemoveService(ctx context.Context, request *api.RemoveServiceRe
 	return &api.RemoveServiceResponse{}, nil
 }
 
+func (s *Server) CreateTask(ctx context.Context, request *api.CreateTaskRequest) (*api.CreateTaskResponse, error) {
+	t := &api.Task{
+		ID:           request.ID,
+		Spec:         *request.Spec,
+		DesiredState: api.TaskStateCompleted,
+	}
+	if err := s.store.Update(func(tx store.Tx) error {
+		return store.CreateTask(tx, t)
+	}); err != nil {
+		return nil, err
+	}
+
+	return &api.CreateTaskResponse{TaskID: t.ID}, nil
+}
+
 func filterServices(candidates []*api.Service, filters ...func(*api.Service) bool) []*api.Service {
 	result := []*api.Service{}
 

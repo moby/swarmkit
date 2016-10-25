@@ -237,6 +237,8 @@ message ContainerSpec {
 message ProcessSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
+	// argv[1:N], does not contain argv[0] which is controlled by the
+	// Executor.
 	repeated string argv = 2;
 }
 

@@ -43,6 +43,8 @@ const (
 
 	// A node which is allowed to access the ListNodes control API interface
 	PermControlListNodes = "swarm-control-listnodes"
+	// A node which is allowed to access the CreateTask control API interface
+	PermControlCreateTask = "swarm-control-createtask"
 
 	generatedSecretEntropyBytes = 16
 	joinTokenBase               = 36

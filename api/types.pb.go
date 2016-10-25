@@ -99,6 +99,8 @@
 		ListTasksResponse
 		CreateServiceRequest
 		CreateServiceResponse
+		CreateTaskRequest
+		CreateTaskResponse
 		GetServiceRequest
 		GetServiceResponse
 		UpdateServiceRequest

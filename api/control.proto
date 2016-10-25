@@ -49,6 +49,10 @@ service Control {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	};
 
+	rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" roles: "swarm-control-createtask" };
+	};
+	
 	rpc GetNetwork(GetNetworkRequest) returns (GetNetworkResponse) {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	};
@@ -206,6 +210,15 @@ message CreateServiceRequest {
 
 message CreateServiceResponse {
 	Service service = 1;
+}
+
+message CreateTaskRequest {
+	string id = 1 [(gogoproto.customname) = "ID"];
+	TaskSpec spec = 2;
+}
+
+message CreateTaskResponse {
+	string task_id = 1 [(gogoproto.customname) = "TaskID"]; // TODO: maybe add a message Task to objects.proto
 }
 
 message GetServiceRequest {
