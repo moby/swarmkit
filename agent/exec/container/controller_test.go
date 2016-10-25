@@ -292,7 +292,7 @@ func TestControllerRemove(t *testing.T) {
 func genTestControllerEnv(t *testing.T, task *api.Task) (context.Context, *MockAPIClient, exec.Controller, *containerConfig, func(t *testing.T)) {
 	mocks := gomock.NewController(t)
 	client := NewMockAPIClient(mocks)
-	ctlr, err := newController(client, task)
+	ctlr, err := newController(client, task, nil)
 	assert.NoError(t, err)
 
 	config, err := newContainerConfig(task)

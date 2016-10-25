@@ -378,6 +378,6 @@ type mockExecutor struct {
 	exec.Executor
 }
 
-func (m *mockExecutor) Controller(task *api.Task) (exec.Controller, error) {
+func (m *mockExecutor) Controller(task *api.Task, secrets exec.SecretProvider) (exec.Controller, error) {
 	return &mockTaskController{t: m.t, task: task}, nil
 }
