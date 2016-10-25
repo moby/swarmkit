@@ -278,11 +278,11 @@ func reconcileSecrets(ctx context.Context, w *worker, assignments []*api.Assignm
 
 	// If this was a complete set of secrets, we're going to clear the secrets map and add all of them
 	if fullSnapshot {
-		w.secrets.Reset()
+		w.secrets.reset()
 	} else {
-		w.secrets.Remove(removedSecrets)
+		w.secrets.remove(removedSecrets)
 	}
-	w.secrets.Add(updatedSecrets...)
+	w.secrets.add(updatedSecrets...)
 
 	return nil
 }
@@ -337,8 +337,9 @@ func (w *worker) taskManager(ctx context.Context, tx *bolt.Tx, task *api.Task) (
 
 func (w *worker) newTaskManager(ctx context.Context, tx *bolt.Tx, task *api.Task) (*taskManager, error) {
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("task.id", task.ID))
+	secrets := w.secrets.getStoreForTask(task)
 
-	ctlr, status, err := exec.Resolve(ctx, task, w.executor)
+	ctlr, status, err := exec.Resolve(ctx, task, secrets, w.executor)
 	if err := w.updateTaskStatus(ctx, tx, task.ID, status); err != nil {
 		log.G(ctx).WithError(err).Error("error updating task status after controller resolution")
 	}
