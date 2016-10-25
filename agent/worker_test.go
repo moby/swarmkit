@@ -6,6 +6,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/boltdb/bolt"
 	"github.com/docker/swarmkit/agent/exec"
+	"github.com/docker/swarmkit/agent/secrets"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ func TestWorkerAssign(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	executor := &mockExecutor{t: t}
+	executor := &mockExecutor{t: t, secrets: secrets.NewManager()}
 	worker := newWorker(db, executor)
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
@@ -138,9 +139,8 @@ func TestWorkerAssign(t *testing.T) {
 
 		assert.Equal(t, testcase.expectedTasks, tasks)
 		assert.Equal(t, testcase.expectedAssigned, assigned)
-		assert.Len(t, worker.secrets.m, len(testcase.expectedSecrets))
 		for _, secret := range testcase.expectedSecrets {
-			assert.NotNil(t, worker.secrets.Get(secret.ID))
+			assert.NotNil(t, executor.secrets.Get(secret.ID))
 		}
 	}
 }
@@ -150,7 +150,7 @@ func TestWorkerUpdate(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	executor := &mockExecutor{t: t}
+	executor := &mockExecutor{t: t, secrets: secrets.NewManager()}
 	worker := newWorker(db, executor)
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
@@ -350,9 +350,8 @@ func TestWorkerUpdate(t *testing.T) {
 
 		assert.Equal(t, testcase.expectedTasks, tasks)
 		assert.Equal(t, testcase.expectedAssigned, assigned)
-		assert.Len(t, worker.secrets.m, len(testcase.expectedSecrets))
 		for _, secret := range testcase.expectedSecrets {
-			assert.NotNil(t, worker.secrets.Get(secret.ID))
+			assert.NotNil(t, executor.secrets.Get(secret.ID))
 		}
 	}
 }
@@ -376,8 +375,13 @@ func (mtc *mockTaskController) Close() error {
 type mockExecutor struct {
 	t *testing.T
 	exec.Executor
+	secrets exec.SecretsManager
 }
 
-func (m *mockExecutor) Controller(task *api.Task, secrets exec.SecretProvider) (exec.Controller, error) {
+func (m *mockExecutor) Controller(task *api.Task) (exec.Controller, error) {
 	return &mockTaskController{t: m.t, task: task}, nil
+}
+
+func (m *mockExecutor) Secrets() exec.SecretsManager {
+	return m.secrets
 }
