@@ -10,7 +10,7 @@ import (
 )
 
 // expects secrets in the format SECRET_NAME:TARGET_NAME
-func parseSecretString(secretString string) (secretName, versionID, presentName string, err error) {
+func parseSecretString(secretString string) (secretName, presentName string, err error) {
 	tokens := strings.Split(secretString, ":")
 
 	secretName = strings.TrimSpace(tokens[0])
@@ -53,14 +53,13 @@ func ParseAddSecret(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) 
 		needSecrets := make(map[string]*api.SecretReference)
 
 		for _, secret := range secrets {
-			n, v, p, err := parseSecretString(secret)
+			n, p, err := parseSecretString(secret)
 			if err != nil {
 				return err
 			}
 
 			secretRef := &api.SecretReference{
 				SecretName: n,
-				SecretID:   v,
 				Mode:       api.SecretReference_FILE,
 				Target:     p,
 			}
@@ -86,11 +85,12 @@ func ParseAddSecret(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) 
 		}
 
 		for secretName, secretRef := range needSecrets {
-			_, ok := foundSecrets[secretName]
+			secret, ok := foundSecrets[secretName]
 			if !ok {
 				return fmt.Errorf("secret not found: %s", secretName)
 			}
 
+			secretRef.SecretID = secret.ID
 			container.Secrets = append(container.Secrets, secretRef)
 		}
 	}
@@ -113,24 +113,22 @@ func ParseRemoveSecret(cmd *cobra.Command, spec *api.ServiceSpec, flagName strin
 			return nil
 		}
 
-		wantToDelete := make(map[string]string)
+		wantToDelete := make(map[string]struct{})
 
 		for _, secret := range secrets {
-			n, v, _, err := parseSecretString(secret)
+			n, _, err := parseSecretString(secret)
 			if err != nil {
 				return err
 			}
 
-			wantToDelete[n] = v
+			wantToDelete[n] = struct{}{}
 		}
 
 		secretRefs := []*api.SecretReference{}
 
 		for _, secretRef := range container.Secrets {
-			if version, ok := wantToDelete[secretRef.SecretName]; ok {
-				if version == secretRef.SecretID || version == "" {
-					continue
-				}
+			if _, ok := wantToDelete[secretRef.SecretName]; ok {
+				continue
 			}
 			secretRefs = append(secretRefs, secretRef)
 		}
