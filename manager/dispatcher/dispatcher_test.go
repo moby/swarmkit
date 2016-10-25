@@ -365,7 +365,7 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	// create the relevant secrets and tasks
 	secrets, tasks := makeTasksAndSecrets(t, nodeID)
 	err = gd.Store.Update(func(tx store.Tx) error {
-		for _, secret := range secrets[:len(secrets)-1] {
+		for _, secret := range secrets[:] {
 			assert.NoError(t, store.CreateSecret(tx, secret))
 		}
 		for _, task := range tasks {
@@ -386,13 +386,14 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// FIXME(aaronl): This is hard to maintain.
-	assert.Equal(t, 16, len(resp.Changes))
+	assert.Equal(t, 17, len(resp.Changes))
+
 	taskChanges, secretChanges := collectTasksAndSecrets(resp.Changes)
 	assert.Len(t, taskChanges, 10) // 10 types of task states >= assigned, 2 types < assigned
 	for _, task := range tasks[2:] {
 		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
 	}
-	assert.Len(t, secretChanges, 6) // 6 types of task states between assigned and running inclusive
+	assert.Len(t, secretChanges, 7) // 6 different secrets for states between assigned and running inclusive plus secret12
 	for _, secret := range secrets[2:8] {
 		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
 	}
@@ -431,11 +432,10 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// updates for all the tasks >= ASSIGNMENT, and remove secrets for all of them, even ones that don't exist
+	// updates for all the tasks >= ASSIGNMENT, and remove secrets for all of them,
 	// (there will be 2 tasks changes that won't be sent down)
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-
 	assert.Equal(t, len(tasks)-2+len(secrets)-2, len(resp.Changes))
 	taskChanges, secretChanges = collectTasksAndSecrets(resp.Changes)
 	assert.Len(t, taskChanges, len(tasks)-2)
