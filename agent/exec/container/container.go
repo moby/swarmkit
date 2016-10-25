@@ -14,6 +14,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/naming"
 )
 
 const (
@@ -69,13 +70,7 @@ func (c *containerConfig) spec() *api.ContainerSpec {
 }
 
 func (c *containerConfig) name() string {
-	if c.task.Annotations.Name != "" {
-		// if set, use the container Annotations.Name field, set in the orchestrator.
-		return c.task.Annotations.Name
-	}
-
-	// fallback to service.instance.id.
-	return strings.Join([]string{c.task.ServiceAnnotations.Name, fmt.Sprint(c.task.Slot), c.task.ID}, ".")
+	return naming.Task(c.task)
 }
 
 func (c *containerConfig) image() string {
@@ -132,7 +127,7 @@ func (c *containerConfig) labels() map[string]string {
 		system = map[string]string{
 			"task":         "", // mark as cluster task
 			"task.id":      c.task.ID,
-			"task.name":    fmt.Sprintf("%v.%v", c.task.ServiceAnnotations.Name, c.task.Slot),
+			"task.name":    naming.Task(c.task),
 			"node.id":      c.task.NodeID,
 			"service.id":   c.task.ServiceID,
 			"service.name": c.task.ServiceAnnotations.Name,
