@@ -3,6 +3,7 @@ package controlapi
 import (
 	"errors"
 	"reflect"
+	"regexp"
 	"strconv"
 
 	"github.com/docker/distribution/reference"
@@ -21,6 +22,9 @@ var (
 	errRenameNotSupported        = errors.New("renaming services is not supported")
 	errModeChangeNotAllowed      = errors.New("service mode change is not allowed")
 )
+
+// Regexp pattern for hostname to conform RFC 1123
+var hostnamePattern = regexp.MustCompile("^(([[:alnum:]]|[[:alnum:]][[:alnum:]\\-]*[[:alnum:]])\\.)*([[:alnum:]]|[[:alnum:]][[:alnum:]\\-]*[[:alnum:]])$")
 
 func validateResources(r *api.Resources) error {
 	if r == nil {
@@ -103,6 +107,43 @@ func validateUpdate(uc *api.UpdateConfig) error {
 	return nil
 }
 
+func validateContainerSpec(container *api.ContainerSpec) error {
+	if container == nil {
+		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: missing in service spec")
+	}
+
+	if err := validateHostname(container.Hostname); err != nil {
+		return err
+	}
+
+	if container.Image == "" {
+		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: image reference must be provided")
+	}
+
+	if _, err := reference.ParseNamed(container.Image); err != nil {
+		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: %q is not a valid repository/tag", container.Image)
+	}
+
+	mountMap := make(map[string]bool)
+	for _, mount := range container.Mounts {
+		if _, exists := mountMap[mount.Target]; exists {
+			return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: duplicate mount point: %s", mount.Target)
+		}
+		mountMap[mount.Target] = true
+	}
+
+	return nil
+}
+
+func validateHostname(hostname string) error {
+	if hostname != "" {
+		if len(hostname) > 63 || !hostnamePattern.MatchString(hostname) {
+			return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: %s is not valid hostname", hostname)
+		}
+	}
+	return nil
+}
+
 func validateTask(taskSpec api.TaskSpec) error {
 	if err := validateResourceRequirements(taskSpec.Resources); err != nil {
 		return err
@@ -125,25 +166,8 @@ func validateTask(taskSpec api.TaskSpec) error {
 		return grpc.Errorf(codes.Unimplemented, "RuntimeSpec: unimplemented runtime in service spec")
 	}
 
-	container := taskSpec.GetContainer()
-	if container == nil {
-		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: missing in service spec")
-	}
-
-	if container.Image == "" {
-		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: image reference must be provided")
-	}
-
-	if _, err := reference.ParseNamed(container.Image); err != nil {
-		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: %q is not a valid repository/tag", container.Image)
-	}
-
-	mountMap := make(map[string]bool)
-	for _, mount := range container.Mounts {
-		if _, exists := mountMap[mount.Target]; exists {
-			return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: duplicate mount point: %s", mount.Target)
-		}
-		mountMap[mount.Target] = true
+	if err := validateContainerSpec(taskSpec.GetContainer()); err != nil {
+		return err
 	}
 
 	return nil
