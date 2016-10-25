@@ -26,7 +26,7 @@ func (e *NoopExecutor) Configure(ctx context.Context, node *api.Node) error {
 	return nil
 }
 
-func (e *NoopExecutor) Controller(t *api.Task, secrets map[string]*api.Secret) (exec.Controller, error) {
+func (e *NoopExecutor) Controller(t *api.Task, secrets exec.SecretProvider) (exec.Controller, error) {
 	return nil, exec.ErrRuntimeUnsupported
 }
 
