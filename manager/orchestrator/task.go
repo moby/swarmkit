@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/naming"
 	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 )
 
@@ -50,7 +50,7 @@ func NewTask(cluster *api.Cluster, service *api.Service, slot uint64, nodeID str
 	}
 
 	// Assign name based on task name schema
-	name := store.TaskName(&task)
+	name := naming.Task(&task)
 	task.Annotations = api.Annotations{Name: name}
 
 	return &task
