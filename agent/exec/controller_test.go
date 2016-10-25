@@ -23,21 +23,21 @@ func TestResolve(t *testing.T) {
 		task     = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
 	)
 
-	_, status, err := Resolve(ctx, task, nil, executor)
+	_, status, err := Resolve(ctx, task, executor)
 	assert.NoError(t, err)
 	assert.Equal(t, api.TaskStateAccepted, status.State)
 	assert.Equal(t, "accepted", status.Message)
 
 	task.Status = *status
 	// now, we get no status update.
-	_, status, err = Resolve(ctx, task, nil, executor)
+	_, status, err = Resolve(ctx, task, executor)
 	assert.NoError(t, err)
 	assert.Equal(t, task.Status, *status)
 
 	// now test an error causing rejection
 	executor.err = errors.New("some error")
 	task = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
-	_, status, err = Resolve(ctx, task, nil, executor)
+	_, status, err = Resolve(ctx, task, executor)
 	assert.Equal(t, executor.err, err)
 	assert.Equal(t, api.TaskStateRejected, status.State)
 
@@ -46,7 +46,7 @@ func TestResolve(t *testing.T) {
 	// touched.
 	task.Status = *status
 	executor.err = nil
-	_, status, err = Resolve(ctx, task, nil, executor)
+	_, status, err = Resolve(ctx, task, executor)
 	assert.NoError(t, err)
 	assert.Equal(t, task.Status, *status)
 }
@@ -411,6 +411,6 @@ type mockExecutor struct {
 	err error
 }
 
-func (m *mockExecutor) Controller(t *api.Task, secrets SecretProvider) (Controller, error) {
+func (m *mockExecutor) Controller(t *api.Task) (Controller, error) {
 	return nil, m.err
 }

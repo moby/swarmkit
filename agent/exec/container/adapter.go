@@ -26,10 +26,10 @@ import (
 type containerAdapter struct {
 	client    engineapi.APIClient
 	container *containerConfig
-	secrets   exec.SecretProvider
+	secrets   exec.SecretGetter
 }
 
-func newContainerAdapter(client engineapi.APIClient, task *api.Task, secrets exec.SecretProvider) (*containerAdapter, error) {
+func newContainerAdapter(client engineapi.APIClient, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
 	ctnr, err := newContainerConfig(task)
 	if err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
-package agent
+package secrets
 
 import (
 	"sync"
@@ -14,7 +14,8 @@ type secrets struct {
 	m  map[string]*api.Secret
 }
 
-func newSecrets() *secrets {
+// NewManager returns a place to store secrets.
+func NewManager() exec.SecretsManager {
 	return &secrets{
 		m: make(map[string]*api.Secret),
 	}
@@ -31,7 +32,7 @@ func (s *secrets) Get(secretID string) *api.Secret {
 }
 
 // add adds one or more secrets to the secret map
-func (s *secrets) add(secrets ...api.Secret) {
+func (s *secrets) Add(secrets ...api.Secret) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, secret := range secrets {
@@ -41,7 +42,7 @@ func (s *secrets) add(secrets ...api.Secret) {
 
 // remove removes one or more secrets by ID from the secret map.  Succeeds
 // whether or not the given IDs are in the map.
-func (s *secrets) remove(secrets []string) {
+func (s *secrets) Remove(secrets []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, secret := range secrets {
@@ -50,46 +51,37 @@ func (s *secrets) remove(secrets []string) {
 }
 
 // reset removes all the secrets
-func (s *secrets) reset() {
+func (s *secrets) Reset() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.m = make(map[string]*api.Secret)
 }
 
-func (s *secrets) filter(secretIDs []string) map[string]*api.Secret {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	filteredSecrets := make(map[string]*api.Secret)
-
-	for _, secretID := range secretIDs {
-		if s, ok := s.m[secretID]; ok {
-			filteredSecrets[secretID] = s.Copy()
-		}
-	}
-
-	return filteredSecrets
+// taskRestrictedSecretsProvider restricts the ids to the task.
+type taskRestrictedSecretsProvider struct {
+	secrets   exec.SecretGetter
+	secretIDs map[string]struct{} // allow list of secret ids
 }
 
-// getStore returns ta Store with only the secrets corresponding to the IDs
-// that are passed in.
-func (s *secrets) getStore(secretIDs []string) exec.SecretProvider {
-	return &secrets{
-		m: s.filter(secretIDs),
+func (sp *taskRestrictedSecretsProvider) Get(secretID string) *api.Secret {
+	if _, ok := sp.secretIDs[secretID]; !ok {
+		return nil
 	}
+
+	return sp.secrets.Get(secretID)
 }
 
-// getStoreForTask returns only the secrets needed by a specific Task
-func (s *secrets) getStoreForTask(task *api.Task) exec.SecretProvider {
-	var secretIDs []string
+// Restrict provides a getter that only allows access to the secrets
+// referenced by the task.
+func Restrict(secrets exec.SecretGetter, t *api.Task) exec.SecretGetter {
+	sids := map[string]struct{}{}
 
-	container := task.Spec.GetContainer()
+	container := t.Spec.GetContainer()
 	if container != nil {
-		for _, secretRef := range container.Secrets {
-			secretIDs = append(secretIDs, secretRef.SecretID)
+		for _, ref := range container.Secrets {
+			sids[ref.SecretID] = struct{}{}
 		}
 	}
 
-	return &secrets{
-		m: s.filter(secretIDs),
-	}
+	return &taskRestrictedSecretsProvider{secrets: secrets, secretIDs: sids}
 }

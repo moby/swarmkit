@@ -6,18 +6,21 @@ import (
 
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/swarmkit/agent/exec"
+	"github.com/docker/swarmkit/agent/secrets"
 	"github.com/docker/swarmkit/api"
 	"golang.org/x/net/context"
 )
 
 type executor struct {
-	client engineapi.APIClient
+	client  engineapi.APIClient
+	secrets exec.SecretsManager
 }
 
 // NewExecutor returns an executor from the docker client.
 func NewExecutor(client engineapi.APIClient) exec.Executor {
 	return &executor{
-		client: client,
+		client:  client,
+		secrets: secrets.NewManager(),
 	}
 }
 
@@ -86,8 +89,8 @@ func (e *executor) Configure(ctx context.Context, node *api.Node) error {
 }
 
 // Controller returns a docker container controller.
-func (e *executor) Controller(t *api.Task, secrets exec.SecretProvider) (exec.Controller, error) {
-	ctlr, err := newController(e.client, t, secrets)
+func (e *executor) Controller(t *api.Task) (exec.Controller, error) {
+	ctlr, err := newController(e.client, t, secrets.Restrict(e.secrets, t))
 	if err != nil {
 		return nil, err
 	}
@@ -97,6 +100,10 @@ func (e *executor) Controller(t *api.Task, secrets exec.SecretProvider) (exec.Co
 
 func (e *executor) SetNetworkBootstrapKeys([]*api.EncryptionKey) error {
 	return nil
+}
+
+func (e *executor) Secrets() exec.SecretsManager {
+	return e.secrets
 }
 
 type sortedPlugins []api.PluginDescription
