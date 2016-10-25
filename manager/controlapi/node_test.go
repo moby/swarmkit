@@ -215,8 +215,9 @@ func TestRemoveNodes(t *testing.T) {
 	clusterResp, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
 	assert.NoError(t, err)
 	require.Len(t, clusterResp.Clusters, 1)
-	require.Len(t, clusterResp.Clusters[0].RemovedNodes, 1)
-	assert.Equal(t, "id2", clusterResp.Clusters[0].RemovedNodes[0].ID)
+	require.Len(t, clusterResp.Clusters[0].BlacklistedCertificates, 1)
+	_, ok := clusterResp.Clusters[0].BlacklistedCertificates["id2"]
+	assert.True(t, ok)
 
 	// Attempt to remove a non-ready node without force
 	_, err = ts.Client.RemoveNode(context.Background(),

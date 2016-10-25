@@ -266,9 +266,9 @@ func (m *Manager) Run(parent context.Context) error {
 
 	authorize := func(ctx context.Context, roles []string) error {
 		var (
-			removedNodes []*api.RemovedNode
-			clusters     []*api.Cluster
-			err          error
+			blacklistedCerts map[string]*api.BlacklistedCertificate
+			clusters         []*api.Cluster
+			err              error
 		)
 
 		m.raftNode.MemoryStore().View(func(readTx store.ReadTx) {
@@ -279,11 +279,11 @@ func (m *Manager) Run(parent context.Context) error {
 		// Not having a cluster object yet means we can't check
 		// the blacklist.
 		if err == nil && len(clusters) == 1 {
-			removedNodes = clusters[0].RemovedNodes
+			blacklistedCerts = clusters[0].BlacklistedCertificates
 		}
 
 		// Authorize the remote roles, ensure they can only be forwarded by managers
-		_, err = ca.AuthorizeForwardedRoleAndOrg(ctx, roles, []string{ca.ManagerRole}, m.config.SecurityConfig.ClientTLSCreds.Organization(), removedNodes)
+		_, err = ca.AuthorizeForwardedRoleAndOrg(ctx, roles, []string{ca.ManagerRole}, m.config.SecurityConfig.ClientTLSCreds.Organization(), blacklistedCerts)
 		return err
 	}
 

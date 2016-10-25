@@ -168,9 +168,9 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 	defer s.doneTask()
 
 	var (
-		removedNodes []*api.RemovedNode
-		clusters     []*api.Cluster
-		err          error
+		blacklistedCerts map[string]*api.BlacklistedCertificate
+		clusters         []*api.Cluster
+		err              error
 	)
 
 	s.store.View(func(readTx store.ReadTx) {
@@ -181,19 +181,19 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 	// Not having a cluster object yet means we can't check
 	// the blacklist.
 	if err == nil && len(clusters) == 1 {
-		removedNodes = clusters[0].RemovedNodes
+		blacklistedCerts = clusters[0].BlacklistedCertificates
 	}
 
 	// If the remote node is a worker (either forwarded by a manager, or calling directly),
 	// issue a renew worker certificate entry with the correct ID
-	nodeID, err := AuthorizeForwardedRoleAndOrg(ctx, []string{WorkerRole}, []string{ManagerRole}, s.securityConfig.ClientTLSCreds.Organization(), removedNodes)
+	nodeID, err := AuthorizeForwardedRoleAndOrg(ctx, []string{WorkerRole}, []string{ManagerRole}, s.securityConfig.ClientTLSCreds.Organization(), blacklistedCerts)
 	if err == nil {
 		return s.issueRenewCertificate(ctx, nodeID, request.CSR)
 	}
 
 	// If the remote node is a manager (either forwarded by another manager, or calling directly),
 	// issue a renew certificate entry with the correct ID
-	nodeID, err = AuthorizeForwardedRoleAndOrg(ctx, []string{ManagerRole}, []string{ManagerRole}, s.securityConfig.ClientTLSCreds.Organization(), removedNodes)
+	nodeID, err = AuthorizeForwardedRoleAndOrg(ctx, []string{ManagerRole}, []string{ManagerRole}, s.securityConfig.ClientTLSCreds.Organization(), blacklistedCerts)
 	if err == nil {
 		return s.issueRenewCertificate(ctx, nodeID, request.CSR)
 	}
