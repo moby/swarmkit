@@ -337,7 +337,7 @@ func (w *worker) taskManager(ctx context.Context, tx *bolt.Tx, task *api.Task) (
 
 func (w *worker) newTaskManager(ctx context.Context, tx *bolt.Tx, task *api.Task) (*taskManager, error) {
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("task.id", task.ID))
-	secrets := w.secrets.filterByTask(task)
+	secrets := w.secrets.getStoreForTask(task)
 
 	ctlr, status, err := exec.Resolve(ctx, task, secrets, w.executor)
 	if err := w.updateTaskStatus(ctx, tx, task.ID, status); err != nil {

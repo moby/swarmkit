@@ -3,6 +3,7 @@ package agent
 import (
 	"sync"
 
+	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 )
 
@@ -19,8 +20,8 @@ func newSecrets() *secrets {
 	}
 }
 
-// get returns a secret by ID.  If the secret doesn't exist, returns nil.
-func (s *secrets) get(secretID string) *api.Secret {
+// Get returns a secret by ID.  If the secret doesn't exist, returns nil.
+func (s *secrets) Get(secretID string) *api.Secret {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s, ok := s.m[secretID]; ok {
@@ -34,7 +35,7 @@ func (s *secrets) add(secrets ...api.Secret) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, secret := range secrets {
-		s.m[secret.ID] = &secret
+		s.m[secret.ID] = secret.Copy()
 	}
 }
 
@@ -69,8 +70,16 @@ func (s *secrets) filter(secretIDs []string) map[string]*api.Secret {
 	return filteredSecrets
 }
 
-// FilterByTask returns only the secrets needed by a specific Task
-func (s *secrets) filterByTask(task *api.Task) map[string]*api.Secret {
+// getStore returns ta Store with only the secrets corresponding to the IDs
+// that are passed in.
+func (s *secrets) getStore(secretIDs []string) exec.SecretProvider {
+	return &secrets{
+		m: s.filter(secretIDs),
+	}
+}
+
+// getStoreForTask returns only the secrets needed by a specific Task
+func (s *secrets) getStoreForTask(task *api.Task) exec.SecretProvider {
 	var secretIDs []string
 
 	container := task.Spec.GetContainer()
@@ -80,5 +89,7 @@ func (s *secrets) filterByTask(task *api.Task) map[string]*api.Secret {
 		}
 	}
 
-	return s.filter(secretIDs)
+	return &secrets{
+		m: s.filter(secretIDs),
+	}
 }

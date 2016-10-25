@@ -140,7 +140,7 @@ func TestWorkerAssign(t *testing.T) {
 		assert.Equal(t, testcase.expectedAssigned, assigned)
 		assert.Len(t, worker.secrets.m, len(testcase.expectedSecrets))
 		for _, secret := range testcase.expectedSecrets {
-			assert.NotNil(t, worker.secrets.get(secret.ID))
+			assert.NotNil(t, worker.secrets.Get(secret.ID))
 		}
 	}
 }
@@ -352,7 +352,7 @@ func TestWorkerUpdate(t *testing.T) {
 		assert.Equal(t, testcase.expectedAssigned, assigned)
 		assert.Len(t, worker.secrets.m, len(testcase.expectedSecrets))
 		for _, secret := range testcase.expectedSecrets {
-			assert.NotNil(t, worker.secrets.get(secret.ID))
+			assert.NotNil(t, worker.secrets.Get(secret.ID))
 		}
 	}
 }
@@ -378,6 +378,6 @@ type mockExecutor struct {
 	exec.Executor
 }
 
-func (m *mockExecutor) Controller(task *api.Task, secrets map[string]*api.Secret) (exec.Controller, error) {
+func (m *mockExecutor) Controller(task *api.Task, secrets exec.SecretProvider) (exec.Controller, error) {
 	return &mockTaskController{t: m.t, task: task}, nil
 }

@@ -86,7 +86,7 @@ func (e *executor) Configure(ctx context.Context, node *api.Node) error {
 }
 
 // Controller returns a docker container controller.
-func (e *executor) Controller(t *api.Task, secrets map[string]*api.Secret) (exec.Controller, error) {
+func (e *executor) Controller(t *api.Task, secrets exec.SecretProvider) (exec.Controller, error) {
 	ctlr, err := newController(e.client, t, secrets)
 	if err != nil {
 		return nil, err

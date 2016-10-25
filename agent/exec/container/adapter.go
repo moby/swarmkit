@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
 	engineapi "github.com/docker/docker/client"
+	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/protobuf/ptypes"
@@ -25,10 +26,10 @@ import (
 type containerAdapter struct {
 	client    engineapi.APIClient
 	container *containerConfig
-	secrets   map[string]*api.Secret
+	secrets   exec.SecretProvider
 }
 
-func newContainerAdapter(client engineapi.APIClient, task *api.Task, secrets map[string]*api.Secret) (*containerAdapter, error) {
+func newContainerAdapter(client engineapi.APIClient, task *api.Task, secrets exec.SecretProvider) (*containerAdapter, error) {
 	ctnr, err := newContainerConfig(task)
 	if err != nil {
 		return nil, err
