@@ -42,9 +42,6 @@ func newNodeInfo(n *api.Node, tasks map[string]*api.Task, availableResources api
 // addTask removes a task from nodeInfo if it's tracked there, and returns true
 // if nodeInfo was modified.
 func (nodeInfo *NodeInfo) removeTask(t *api.Task) bool {
-	if nodeInfo.Tasks == nil {
-		return false
-	}
 	oldTask, ok := nodeInfo.Tasks[t.ID]
 	if !ok {
 		return false
@@ -66,13 +63,6 @@ func (nodeInfo *NodeInfo) removeTask(t *api.Task) bool {
 // addTask adds or updates a task on nodeInfo, and returns true if nodeInfo was
 // modified.
 func (nodeInfo *NodeInfo) addTask(t *api.Task) bool {
-	if nodeInfo.Tasks == nil {
-		nodeInfo.Tasks = make(map[string]*api.Task)
-	}
-	if nodeInfo.DesiredRunningTasksCountByService == nil {
-		nodeInfo.DesiredRunningTasksCountByService = make(map[string]int)
-	}
-
 	oldTask, ok := nodeInfo.Tasks[t.ID]
 	if ok {
 		if t.DesiredState == api.TaskStateRunning && oldTask.DesiredState != api.TaskStateRunning {
