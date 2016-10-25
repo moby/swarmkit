@@ -64,6 +64,14 @@ message EngineDescription {
 	repeated PluginDescription plugins = 3 [(gogoproto.nullable) = false];
 }
 
+// GossipStatus represents state of the gossip cluster as seen by a node. In healthy
+// state GossipStatus should be consistent on all nodes in the cluster. It has only
+// the member count now. In future additional details can be added, for ex: IPs of
+// all the nodes.
+message GossipStatus {
+	uint32 MemberCount = 1;
+}
+
 message NodeDescription {
 	// Hostname of the node as reported by the agent.
 	// This is different from spec.meta.name which is user-defined.

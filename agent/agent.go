@@ -128,6 +128,7 @@ func (a *Agent) Ready() <-chan struct{} {
 }
 
 func (a *Agent) run(ctx context.Context) {
+	var memberCount uint32
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	defer close(a.closed) // full shutdown.
@@ -138,11 +139,16 @@ func (a *Agent) run(ctx context.Context) {
 	defer log.G(ctx).Debugf("(*Agent).run exited")
 
 	// get the node description
-	nodeDescription, err := a.nodeDescriptionWithHostname(ctx)
+	nodeDescription, gossip, err := a.nodeDescriptionWithHostname(ctx)
 	if err != nil {
 		log.G(ctx).WithError(err).WithField("agent", a.config.Executor).Errorf("agent: node description unavailable")
 	}
+	if gossip != nil {
+		memberCount = gossip.MemberCount
+	}
+
 	// nodeUpdateTicker is used to periodically check for updates to node description
+	// and gossip cluster status
 	nodeUpdateTicker := time.NewTicker(nodeUpdatePeriod)
 	defer nodeUpdateTicker.Stop()
 
@@ -229,9 +235,24 @@ func (a *Agent) run(ctx context.Context) {
 				continue
 			}
 			// get the current node description
-			newNodeDescription, err := a.nodeDescriptionWithHostname(ctx)
+			newNodeDescription, gossip, err := a.nodeDescriptionWithHostname(ctx)
 			if err != nil {
 				log.G(ctx).WithError(err).WithField("agent", a.config.Executor).Errorf("agent: updated node description unavailable")
+				continue
+			}
+
+			// if we have a valid gossip status update and it has changed since the last
+			// recording send an UpdateGossipStatus message to the manager
+			if gossip != nil && gossip.MemberCount != memberCount {
+				client := api.NewDispatcherClient(session.conn)
+				if _, err := client.UpdateGossipStatus(ctx, &api.GossipStatusRequest{
+					SessionID:    session.sessionID,
+					GossipStatus: gossip,
+				}); err != nil {
+					log.G(ctx).WithError(err).WithField("node.session", session.sessionID).Errorf("agent: gossip status update failed")
+				}
+				memberCount = gossip.MemberCount
+				log.G(ctx).WithField("node.session", session.sessionID).Debugf("agent: sent gossip status, %v members", memberCount)
 			}
 
 			// if newNodeDescription is nil, it will cause a panic when
@@ -388,14 +409,14 @@ func (a *Agent) UpdateTaskStatus(ctx context.Context, taskID string, status *api
 }
 
 // nodeDescriptionWithHostname retrieves node description, and overrides hostname if available
-func (a *Agent) nodeDescriptionWithHostname(ctx context.Context) (*api.NodeDescription, error) {
-	desc, err := a.config.Executor.Describe(ctx)
+func (a *Agent) nodeDescriptionWithHostname(ctx context.Context) (*api.NodeDescription, *api.GossipStatus, error) {
+	desc, gossip, err := a.config.Executor.Describe(ctx)
 
 	// Override hostname
 	if a.config.Hostname != "" && desc != nil {
 		desc.Hostname = a.config.Hostname
 	}
-	return desc, err
+	return desc, gossip, err
 }
 
 // nodesEqual returns true if the node states are functionaly equal, ignoring status,

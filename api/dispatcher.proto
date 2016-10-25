@@ -42,6 +42,16 @@ service Dispatcher { // maybe dispatch, al likes this
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-worker" roles: "swarm-manager" };
 	};
 
+	// UpdateGossipStatus updates the gossip cluster status as seen by a node. Agent
+	// polls the executor periodidically for gossip status and sends an update if the
+	// state has changed since the last update.
+	//
+	// When the gossip cluster is in a healthy state across all the nodes the member
+	// count should be consistent in the gossip status from every node.
+	rpc UpdateGossipStatus(GossipStatusRequest) returns (GossipStatusResponse) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-worker" roles: "swarm-manager" };
+	}
+
 	// Tasks is a stream of tasks state for node. Each message contains full list
 	// of tasks which should be run on node, if task is not present in that list,
 	// it should be terminated.
@@ -153,6 +163,15 @@ message UpdateTaskStatusRequest {
 }
 
 message  UpdateTaskStatusResponse{
+	// void
+}
+
+message GossipStatusRequest {
+	string session_id = 1 [(gogoproto.customname) = "SessionID"];
+	GossipStatus gossip_status = 2 [(gogoproto.customname) = "GossipStatus"];
+}
+
+message GossipStatusResponse {
 	// void
 }
 

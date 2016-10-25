@@ -8,7 +8,7 @@ import (
 // Executor provides controllers for tasks.
 type Executor interface {
 	// Describe returns the underlying node description.
-	Describe(ctx context.Context) (*api.NodeDescription, error)
+	Describe(ctx context.Context) (*api.NodeDescription, *api.GossipStatus, error)
 
 	// Configure uses the node object state to propagate node
 	// state to the underlying executor.
