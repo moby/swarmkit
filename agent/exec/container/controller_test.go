@@ -27,7 +27,7 @@ var tenSecond = 10 * time.Second
 // UPDATE(stevvooe): Gomock is still broken garbage. Sigh. This time, had to
 // generate, then manually "unvendor" imports. Further cements the
 // realization that mocks are a garbage way to build tests.
-//+go:generate mockgen -package container -destination api_client_test.mock.go github.com/docker/docker/client APIClient
+//+go:generate mockgen -package container -destination ../api_client_test.mock.go github.com/docker/docker/client APIClient
 
 func TestControllerPrepare(t *testing.T) {
 	task := genTask(t)
@@ -289,10 +289,10 @@ func TestControllerRemove(t *testing.T) {
 	assert.NoError(t, ctlr.Remove(ctx))
 }
 
-func genTestControllerEnv(t *testing.T, task *api.Task) (context.Context, *MockAPIClient, exec.Controller, *containerConfig, func(t *testing.T)) {
+func genTestControllerEnv(t *testing.T, task *api.Task) (context.Context, *exec.MockAPIClient, exec.Controller, *containerConfig, func(t *testing.T)) {
 	mocks := gomock.NewController(t)
-	client := NewMockAPIClient(mocks)
-	ctlr, err := newController(client, task)
+	client := exec.NewMockAPIClient(mocks)
+	ctlr, err := NewController(client, task)
 	assert.NoError(t, err)
 
 	config, err := newContainerConfig(task)

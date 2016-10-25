@@ -1,4 +1,4 @@
-package container
+package docker
 
 import (
 	"sort"
@@ -6,6 +6,8 @@ import (
 
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/swarmkit/agent/exec"
+	"github.com/docker/swarmkit/agent/exec/container"
+	"github.com/docker/swarmkit/agent/exec/plugin"
 	"github.com/docker/swarmkit/api"
 	"golang.org/x/net/context"
 )
@@ -85,9 +87,19 @@ func (e *executor) Configure(ctx context.Context, node *api.Node) error {
 	return nil
 }
 
-// Controller returns a docker container controller.
+// Controller returns a docker container or plugin controller.
 func (e *executor) Controller(t *api.Task) (exec.Controller, error) {
-	ctlr, err := newController(e.client, t)
+	var (
+		ctlr exec.Controller
+		err  error
+	)
+
+	if t.Spec.GetPlugin() != nil {
+		ctlr, err = plugin.NewController(e.client, t)
+	} else {
+		ctlr, err = container.NewController(e.client, t)
+	}
+
 	if err != nil {
 		return nil, err
 	}

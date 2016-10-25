@@ -73,7 +73,9 @@ var (
 					spec := s.Spec
 					var reference string
 
-					if spec.Task.GetContainer() != nil {
+					if spec.Task.GetPlugin() != nil {
+						reference = spec.Task.GetPlugin().Image
+					} else if spec.Task.GetContainer() != nil {
 						reference = spec.Task.GetContainer().Image
 					}
 

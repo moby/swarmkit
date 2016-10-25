@@ -1,8 +1,9 @@
-package container
+package plugin
 
 import (
 	"flag"
 	"testing"
+	"time"
 
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/swarmkit/agent/exec"
@@ -28,7 +29,7 @@ func init() {
 //
 // Run with something like this:
 //
-//	go test -run TestControllerFlowIntegration -test.docker.addr unix:///var/run/docker.sock
+//	go test -tags experimental -run TestControllerFlowIntegration -test.docker.addr unix:///var/run/docker.sock
 //
 func TestControllerFlowIntegration(t *testing.T) {
 	if dockerTestAddr == "" {
@@ -45,10 +46,9 @@ func TestControllerFlowIntegration(t *testing.T) {
 		ServiceID: "dockerexec-integration-service-id",
 		NodeID:    "dockerexec-integration-node-id",
 		Spec: api.TaskSpec{
-			Runtime: &api.TaskSpec_Container{
-				Container: &api.ContainerSpec{
-					Command: []string{"sh", "-c", "sleep 5"},
-					Image:   "alpine",
+			Runtime: &api.TaskSpec_Plugin{
+				Plugin: &api.PluginSpec{
+					Image: "vieux/sshfs:latest",
 				},
 			},
 		},
@@ -59,7 +59,7 @@ func TestControllerFlowIntegration(t *testing.T) {
 	assert.NotNil(t, ctlr)
 	assert.NoError(t, ctlr.Prepare(ctx))
 	assert.NoError(t, ctlr.Start(ctx))
-	assert.NoError(t, ctlr.Wait(ctx))
+	time.Sleep(5 * time.Second)
 	assert.NoError(t, ctlr.Shutdown(ctx))
 	assert.NoError(t, ctlr.Remove(ctx))
 	assert.NoError(t, ctlr.Close())

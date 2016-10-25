@@ -19,7 +19,10 @@ BINARIES=$(addprefix bin/,$(COMMANDS))
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
+DOCKER_BUILDTAGS+="experimental"
+
 .PHONY: clean all AUTHORS fmt vet lint build binaries test integration setup generate checkprotos coverage ci check help install uninstall
+
 .DEFAULT: default
 
 all: check binaries test integration ## run fmt, vet, lint, build the binaries and run the tests

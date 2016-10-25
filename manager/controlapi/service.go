@@ -161,13 +161,21 @@ func validateTask(taskSpec api.TaskSpec) error {
 		return grpc.Errorf(codes.InvalidArgument, "TaskSpec: missing runtime")
 	}
 
-	_, ok := taskSpec.GetRuntime().(*api.TaskSpec_Container)
-	if !ok {
-		return grpc.Errorf(codes.Unimplemented, "RuntimeSpec: unimplemented runtime in service spec")
-	}
+	if _, ok := taskSpec.GetRuntime().(*api.TaskSpec_Plugin); ok {
+		plugin := taskSpec.GetPlugin()
+		if plugin.Image == "" {
+			return grpc.Errorf(codes.InvalidArgument, "PluginSpec: image reference must be provided")
+		}
 
-	if err := validateContainerSpec(taskSpec.GetContainer()); err != nil {
-		return err
+		if _, err := reference.ParseNamed(plugin.Image); err != nil {
+			return grpc.Errorf(codes.InvalidArgument, "PluginSpec: %q is not a valid repository/tag", plugin.Image)
+		}
+	} else if _, ok := taskSpec.GetRuntime().(*api.TaskSpec_Container); ok {
+		if err := validateContainerSpec(taskSpec.GetContainer()); err != nil {
+			return err
+		}
+	} else {
+		return grpc.Errorf(codes.Unimplemented, "RuntimeSpec: unimplemented runtime in service spec")
 	}
 
 	return nil
