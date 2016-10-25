@@ -542,18 +542,20 @@ func (s *Server) updateCluster(ctx context.Context, cluster *api.Cluster) {
 func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) error {
 	// If the desired membership and actual state are in sync, there's
 	// nothing to do.
-	if node.Spec.Membership == api.NodeMembershipAccepted && node.Certificate.Status.State == api.IssuanceStateIssued {
+	certState := node.Certificate.Status.State
+	if node.Spec.Membership == api.NodeMembershipAccepted &&
+		(certState == api.IssuanceStateIssued || certState == api.IssuanceStateRotate) {
 		return nil
 	}
 
 	// If the certificate state is renew, then it is a server-sided accepted cert (cert renewals)
-	if node.Certificate.Status.State == api.IssuanceStateRenew {
+	if certState == api.IssuanceStateRenew {
 		return s.signNodeCert(ctx, node)
 	}
 
 	// Sign this certificate if a user explicitly changed it to Accepted, and
 	// the certificate is in pending state
-	if node.Spec.Membership == api.NodeMembershipAccepted && node.Certificate.Status.State == api.IssuanceStatePending {
+	if node.Spec.Membership == api.NodeMembershipAccepted && certState == api.IssuanceStatePending {
 		return s.signNodeCert(ctx, node)
 	}
 
@@ -688,7 +690,8 @@ func (s *Server) reconcileNodeCertificates(ctx context.Context, nodes []*api.Nod
 
 // A successfully issued certificate and a failed certificate are our current final states
 func isFinalState(status api.IssuanceStatus) bool {
-	if status.State == api.IssuanceStateIssued || status.State == api.IssuanceStateFailed {
+	if status.State == api.IssuanceStateIssued || status.State == api.IssuanceStateFailed ||
+		status.State == api.IssuanceStateRotate {
 		return true
 	}
 
