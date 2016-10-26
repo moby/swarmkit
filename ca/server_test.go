@@ -60,6 +60,49 @@ func TestIssueNodeCertificate(t *testing.T) {
 	assert.Equal(t, api.NodeRoleWorker, statusResponse.Certificate.Role)
 }
 
+func TestForceRotationIsNoop(t *testing.T) {
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+
+	// Get a new Certificate issued
+	csr, _, err := ca.GenerateAndWriteNewKey(tc.Paths.Node)
+	assert.NoError(t, err)
+
+	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Token: tc.WorkerToken}
+	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
+	assert.NoError(t, err)
+	assert.NotNil(t, issueResponse.NodeID)
+	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
+
+	// Check that the Certificate is successfully issued
+	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
+	statusResponse, err := tc.NodeCAClients[0].NodeCertificateStatus(context.Background(), statusRequest)
+	require.NoError(t, err)
+	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
+	assert.NotNil(t, statusResponse.Certificate.Certificate)
+	assert.Equal(t, api.NodeRoleWorker, statusResponse.Certificate.Role)
+
+	// Update the certificate status to IssuanceStateRotate which should be a server-side noop
+	err = tc.MemoryStore.Update(func(tx store.Tx) error {
+		// Attempt to retrieve the node with nodeID
+		node := store.GetNode(tx, issueResponse.NodeID)
+		assert.NotNil(t, node)
+
+		node.Certificate.Status.State = api.IssuanceStateRotate
+		return store.UpdateNode(tx, node)
+	})
+	assert.NoError(t, err)
+
+	// Wait a bit and check that the certificate hasn't changed/been reissued
+	time.Sleep(250 * time.Millisecond)
+
+	statusNewResponse, err := tc.NodeCAClients[0].NodeCertificateStatus(context.Background(), statusRequest)
+	require.NoError(t, err)
+	assert.Equal(t, statusResponse.Certificate.Certificate, statusNewResponse.Certificate.Certificate)
+	assert.Equal(t, api.IssuanceStateRotate, statusNewResponse.Certificate.Status.State)
+	assert.Equal(t, api.NodeRoleWorker, statusNewResponse.Certificate.Role)
+}
+
 func TestIssueNodeCertificateBrokenCA(t *testing.T) {
 	if !testutils.External {
 		t.Skip("test only applicable for external CA configuration")
