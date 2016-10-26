@@ -359,6 +359,11 @@ func TestAllocator(t *testing.T) {
 						TargetPort:    80,
 						PublishedPort: 8080,
 					},
+					{
+						PublishMode: api.PublishModeHost,
+						Name:        "http",
+						TargetPort:  80,
+					},
 				},
 			},
 		},
