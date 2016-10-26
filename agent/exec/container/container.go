@@ -17,6 +17,7 @@ import (
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/naming"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 )
 
 const (
@@ -137,6 +138,7 @@ func (c *containerConfig) config() *enginecontainer.Config {
 		Image:        c.image(),
 		Volumes:      c.volumes(),
 		ExposedPorts: c.exposedPorts(),
+		Healthcheck:  c.healthcheck(),
 	}
 
 	if len(c.spec().Command) > 0 {
@@ -152,6 +154,21 @@ func (c *containerConfig) config() *enginecontainer.Config {
 	}
 
 	return config
+}
+
+func (c *containerConfig) healthcheck() *enginecontainer.HealthConfig {
+	hcSpec := c.spec().Healthcheck
+	if hcSpec == nil {
+		return nil
+	}
+	interval, _ := ptypes.Duration(hcSpec.Interval)
+	timeout, _ := ptypes.Duration(hcSpec.Timeout)
+	return &enginecontainer.HealthConfig{
+		Test:     hcSpec.Test,
+		Interval: interval,
+		Timeout:  timeout,
+		Retries:  int(hcSpec.Retries),
+	}
 }
 
 func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {

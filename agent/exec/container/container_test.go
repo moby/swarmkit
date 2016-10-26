@@ -1,9 +1,13 @@
 package container
 
 import (
+	"reflect"
 	"testing"
+	"time"
 
+	enginecontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 )
 
 func TestVolumesAndBinds(t *testing.T) {
@@ -58,5 +62,32 @@ func TestVolumesAndBinds(t *testing.T) {
 	actual = hostConfig.Binds[3]
 	if actual != expected {
 		t.Fatalf("expected %s, got %s", expected, actual)
+	}
+}
+
+func TestHealthcheck(t *testing.T) {
+	c := containerConfig{
+		task: &api.Task{
+			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Healthcheck: &api.HealthConfig{
+						Test:     []string{"a", "b", "c"},
+						Interval: ptypes.DurationProto(time.Second),
+						Timeout:  ptypes.DurationProto(time.Minute),
+						Retries:  10,
+					},
+				},
+			}},
+		},
+	}
+	config := c.config()
+	expected := &enginecontainer.HealthConfig{
+		Test:     []string{"a", "b", "c"},
+		Interval: time.Second,
+		Timeout:  time.Minute,
+		Retries:  10,
+	}
+	if !reflect.DeepEqual(config.Healthcheck, expected) {
+		t.Fatalf("expected %#v, got %#v", expected, config.Healthcheck)
 	}
 }
