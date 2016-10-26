@@ -40,6 +40,16 @@ func printTaskStatus(w io.Writer, t *api.Task) {
 	if t.Status.State > api.TaskStateRunning {
 		fmt.Fprintf(w, "  ExitCode\t: %d\n", ctnr.ExitCode)
 	}
+
+	if t.Status.PortStatus != nil && len(t.Status.PortStatus.Ports) > 0 {
+		ports := []string{}
+		for _, port := range t.Status.PortStatus.Ports {
+			ports = append(ports, fmt.Sprintf("0.0.0.0:%d->%d/%s",
+				port.PublishedPort, port.TargetPort, strings.ToLower(port.Protocol.String())))
+		}
+
+		fmt.Fprintf(w, "Ports\t: %s\n", strings.Join(ports, ", "))
+	}
 }
 
 func printTaskSummary(task *api.Task, res *common.Resolver) {

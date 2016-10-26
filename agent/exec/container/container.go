@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/go-connections/nat"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/naming"
@@ -77,16 +79,64 @@ func (c *containerConfig) image() string {
 	return c.spec().Image
 }
 
+func portSpec(port uint32, protocol api.PortConfig_Protocol) nat.Port {
+	return nat.Port(fmt.Sprintf("%d/%s", port, strings.ToLower(protocol.String())))
+}
+
+func (c *containerConfig) portBindings() nat.PortMap {
+	portBindings := nat.PortMap{}
+	if c.task.Endpoint == nil {
+		return portBindings
+	}
+
+	for _, portConfig := range c.task.Endpoint.Ports {
+		if portConfig.PublishMode != api.PublishModeHost {
+			continue
+		}
+
+		port := portSpec(portConfig.TargetPort, portConfig.Protocol)
+		binding := []nat.PortBinding{
+			{},
+		}
+
+		if portConfig.PublishedPort != 0 {
+			binding[0].HostPort = strconv.Itoa(int(portConfig.PublishedPort))
+		}
+		portBindings[port] = binding
+	}
+
+	return portBindings
+}
+
+func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
+	exposedPorts := make(map[nat.Port]struct{})
+	if c.task.Endpoint == nil {
+		return exposedPorts
+	}
+
+	for _, portConfig := range c.task.Endpoint.Ports {
+		if portConfig.PublishMode != api.PublishModeHost {
+			continue
+		}
+
+		port := portSpec(portConfig.TargetPort, portConfig.Protocol)
+		exposedPorts[port] = struct{}{}
+	}
+
+	return exposedPorts
+}
+
 func (c *containerConfig) config() *enginecontainer.Config {
 	config := &enginecontainer.Config{
-		Labels:     c.labels(),
-		User:       c.spec().User,
-		Hostname:   c.spec().Hostname,
-		Env:        c.spec().Env,
-		WorkingDir: c.spec().Dir,
-		Tty:        c.spec().TTY,
-		Image:      c.image(),
-		Volumes:    c.volumes(),
+		Labels:       c.labels(),
+		User:         c.spec().User,
+		Hostname:     c.spec().Hostname,
+		Env:          c.spec().Env,
+		WorkingDir:   c.spec().Dir,
+		Tty:          c.spec().TTY,
+		Image:        c.image(),
+		Volumes:      c.volumes(),
+		ExposedPorts: c.exposedPorts(),
 	}
 
 	if len(c.spec().Command) > 0 {
@@ -106,10 +156,11 @@ func (c *containerConfig) config() *enginecontainer.Config {
 
 func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 	hc := &enginecontainer.HostConfig{
-		Resources: c.resources(),
-		Binds:     c.binds(),
-		Tmpfs:     c.tmpfs(),
-		GroupAdd:  c.spec().Groups,
+		Resources:    c.resources(),
+		Binds:        c.binds(),
+		Tmpfs:        c.tmpfs(),
+		GroupAdd:     c.spec().Groups,
+		PortBindings: c.portBindings(),
 	}
 
 	if c.task.LogDriver != nil {
