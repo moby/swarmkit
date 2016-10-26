@@ -42,7 +42,6 @@ type worker struct {
 	db        *bolt.DB
 	executor  exec.Executor
 	listeners map[*statusReporterKey]struct{}
-	secrets   *secrets
 
 	taskManagers map[string]*taskManager
 	mu           sync.RWMutex
@@ -54,7 +53,6 @@ func newWorker(db *bolt.DB, executor exec.Executor) *worker {
 		executor:     executor,
 		listeners:    make(map[*statusReporterKey]struct{}),
 		taskManagers: make(map[string]*taskManager),
-		secrets:      newSecrets(),
 	}
 }
 
@@ -255,6 +253,15 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 }
 
 func reconcileSecrets(ctx context.Context, w *worker, assignments []*api.AssignmentChange, fullSnapshot bool) error {
+	var secrets exec.SecretsManager
+	provider, ok := w.executor.(exec.SecretsProvider)
+	if !ok {
+		log.G(ctx).Warn("secrets update ignored; executor does not support secrets")
+		return nil
+	}
+
+	secrets = provider.Secrets()
+
 	var (
 		updatedSecrets []api.Secret
 		removedSecrets []string
@@ -278,11 +285,11 @@ func reconcileSecrets(ctx context.Context, w *worker, assignments []*api.Assignm
 
 	// If this was a complete set of secrets, we're going to clear the secrets map and add all of them
 	if fullSnapshot {
-		w.secrets.reset()
+		secrets.Reset()
 	} else {
-		w.secrets.remove(removedSecrets)
+		secrets.Remove(removedSecrets)
 	}
-	w.secrets.add(updatedSecrets...)
+	secrets.Add(updatedSecrets...)
 
 	return nil
 }
@@ -337,9 +344,8 @@ func (w *worker) taskManager(ctx context.Context, tx *bolt.Tx, task *api.Task) (
 
 func (w *worker) newTaskManager(ctx context.Context, tx *bolt.Tx, task *api.Task) (*taskManager, error) {
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("task.id", task.ID))
-	secrets := w.secrets.getStoreForTask(task)
 
-	ctlr, status, err := exec.Resolve(ctx, task, secrets, w.executor)
+	ctlr, status, err := exec.Resolve(ctx, task, w.executor)
 	if err := w.updateTaskStatus(ctx, tx, task.ID, status); err != nil {
 		log.G(ctx).WithError(err).Error("error updating task status after controller resolution")
 	}
