@@ -782,13 +782,18 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 		}
 		var newSecrets []*api.Secret
 		for _, secretRef := range container.Secrets {
+			// Empty ID prefix will return all secrets. Bail if there is no SecretID
+			if secretRef.SecretID == "" {
+				log.Debugf("invalid secret reference")
+				continue
+			}
 			secretID := secretRef.SecretID
 			log := log.WithFields(logrus.Fields{
 				"secret.id":   secretID,
 				"secret.name": secretRef.SecretName,
 			})
 
-			if tasksUsingSecret[secretID] == nil {
+			if len(tasksUsingSecret[secretID]) == 0 {
 				tasksUsingSecret[secretID] = make(map[string]struct{})
 
 				secrets, err := store.FindSecrets(readTx, store.ByIDPrefix(secretID))
@@ -1046,18 +1051,24 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 				}
 			}
 			for id, secret := range updateSecrets {
-				if _, ok := removeSecrets[id]; !ok {
-					secretChange := &api.AssignmentChange{
-						Assignment: &api.Assignment{
-							Item: &api.Assignment_Secret{
-								Secret: secret,
-							},
-						},
-						Action: api.AssignmentChange_AssignmentActionUpdate,
-					}
-
-					update.Changes = append(update.Changes, secretChange)
+				// If, due to multiple updates, this secret is no longer in use,
+				// don't send it down.
+				if len(tasksUsingSecret[id]) == 0 {
+					// delete this secret for the secrets to be updated
+					// so that deleteSecrets knows the current list
+					delete(updateSecrets, id)
+					continue
 				}
+				secretChange := &api.AssignmentChange{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Secret{
+							Secret: secret,
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionUpdate,
+				}
+
+				update.Changes = append(update.Changes, secretChange)
 			}
 			for id := range removeTasks {
 				taskChange := &api.AssignmentChange{
@@ -1072,6 +1083,12 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 				update.Changes = append(update.Changes, taskChange)
 			}
 			for id := range removeSecrets {
+				// If this secret is also being sent on the updated set
+				// don't also add it to the removed set
+				if _, ok := updateSecrets[id]; ok {
+					continue
+				}
+
 				secretChange := &api.AssignmentChange{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Secret{
