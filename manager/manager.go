@@ -107,10 +107,11 @@ type Manager struct {
 	localserver            *grpc.Server
 	raftNode               *raft.Node
 
-	mu sync.Mutex
+	cancelFunc context.CancelFunc
 
+	mu      sync.Mutex
 	started chan struct{}
-	stopped chan struct{}
+	stopped bool
 }
 
 type closeOnceListener struct {
@@ -237,7 +238,6 @@ func New(config *Config) (*Manager, error) {
 		localserver: grpc.NewServer(opts...),
 		raftNode:    raftNode,
 		started:     make(chan struct{}),
-		stopped:     make(chan struct{}),
 	}
 
 	return m, nil
@@ -255,14 +255,7 @@ func (m *Manager) Run(parent context.Context) error {
 	ctx, ctxCancel := context.WithCancel(parent)
 	defer ctxCancel()
 
-	// Harakiri.
-	go func() {
-		select {
-		case <-ctx.Done():
-		case <-m.stopped:
-			ctxCancel()
-		}
-	}()
+	m.cancelFunc = ctxCancel
 
 	leadershipCh, cancel := m.raftNode.SubscribeLeadership()
 	defer cancel()
@@ -386,24 +379,14 @@ func (m *Manager) Run(parent context.Context) error {
 
 	// wait for an error in serving.
 	err = <-errServe
-	select {
-	// check to see if stopped was posted to. if so, we're in the process of
-	// stopping, or done and that's why we got the error. if stopping is
-	// deliberate, stopped will ALWAYS be closed before the error is trigger,
-	// so this path will ALWAYS be taken if the stop was deliberate
-	case <-m.stopped:
-		// shutdown was requested, do not return an error
-		// but first, we wait to acquire a mutex to guarantee that stopping is
-		// finished. as long as we acquire the mutex BEFORE we return, we know
-		// that stopping is stopped.
-		m.mu.Lock()
+	m.mu.Lock()
+	if m.stopped {
 		m.mu.Unlock()
 		return nil
-	// otherwise, we'll get something from errServe, which indicates that an
-	// error in serving has actually occurred and this isn't a planned shutdown
-	default:
-		return err
 	}
+	m.mu.Unlock()
+	m.Stop(ctx)
+	return err
 }
 
 const stopTimeout = 8 * time.Second
@@ -420,13 +403,10 @@ func (m *Manager) Stop(ctx context.Context) {
 	// from returning before we've finished stopping.
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	select {
-	// check to see that we've already stopped
-	case <-m.stopped:
+	if m.stopped {
 		return
-	default:
-		// do nothing, we're stopping for the first time
 	}
+	m.stopped = true
 
 	srvDone, localSrvDone := make(chan struct{}), make(chan struct{})
 	go func() {
@@ -463,11 +443,7 @@ func (m *Manager) Stop(ctx context.Context) {
 		m.keyManager.Stop()
 	}
 
-	// once we start stopping, send a signal that we're doing so. this tells
-	// Run that we've started stopping, when it gets the error from errServe
-	// it also prevents the loop from processing any more stuff.
-	close(m.stopped)
-
+	m.cancelFunc()
 	<-m.raftNode.Done()
 
 	timer := time.AfterFunc(stopTimeout, func() {
@@ -585,11 +561,9 @@ func (m *Manager) handleLeadershipEvents(ctx context.Context, leadershipCh chan 
 		select {
 		case leadershipEvent := <-leadershipCh:
 			m.mu.Lock()
-			select {
-			case <-m.stopped:
+			if m.stopped {
 				m.mu.Unlock()
 				return
-			default:
 			}
 			newState := leadershipEvent.(raft.LeadershipState)
 
@@ -599,8 +573,6 @@ func (m *Manager) handleLeadershipEvents(ctx context.Context, leadershipCh chan 
 				m.becomeFollower()
 			}
 			m.mu.Unlock()
-		case <-m.stopped:
-			return
 		case <-ctx.Done():
 			return
 		}
