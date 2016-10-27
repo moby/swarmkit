@@ -14,10 +14,11 @@ import (
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/protobuf/ptypes"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLogBroker(t *testing.T) {
-	ctx, _, client, brokerClient, done := testLogBrokerEnv(t)
+	ctx, _, agentSecurity, client, brokerClient, done := testLogBrokerEnv(t)
 	defer done()
 
 	var (
@@ -75,7 +76,7 @@ func TestLogBroker(t *testing.T) {
 
 					var messages []api.LogMessage
 					msgctx := api.LogContext{
-						NodeID:    nodeID,
+						NodeID:    agentSecurity.ClientTLSCreds.NodeID(),
 						ServiceID: serviceID,
 						TaskID:    taskID,
 					}
@@ -118,7 +119,45 @@ func TestLogBroker(t *testing.T) {
 	wg.Wait()
 }
 
-func testLogBrokerEnv(t *testing.T) (context.Context, *LogBroker, api.LogsClient, api.LogBrokerClient, func()) {
+func TestLogBrokerRegistration(t *testing.T) {
+	ctx, _, _, client, brokerClient, done := testLogBrokerEnv(t)
+	defer done()
+
+	// Have an agent listen to subscriptions before anyone has subscribed.
+	subscriptions1, err := brokerClient.ListenSubscriptions(ctx, &api.ListenSubscriptionsRequest{})
+	assert.NoError(t, err)
+
+	// Subscribe
+	_, err = client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
+		// Dummy selector - they are ignored in the broker for the time being.
+		Selector: &api.LogSelector{
+			NodeIDs: []string{"node-1"},
+		},
+	})
+	assert.NoError(t, err)
+
+	// Make sure we received the subscription with our already-connected agent.
+	{
+		subscription, err := subscriptions1.Recv()
+		assert.NoError(t, err)
+		assert.NotNil(t, subscription)
+		assert.False(t, subscription.Close)
+	}
+
+	// Join a second agent.
+	subscriptions2, err := brokerClient.ListenSubscriptions(ctx, &api.ListenSubscriptionsRequest{})
+	assert.NoError(t, err)
+
+	// Make sure we receive past subscriptions.
+	{
+		subscription, err := subscriptions2.Recv()
+		assert.NoError(t, err)
+		assert.NotNil(t, subscription)
+		assert.False(t, subscription.Close)
+	}
+}
+
+func testLogBrokerEnv(t *testing.T) (context.Context, *LogBroker, *ca.SecurityConfig, api.LogsClient, api.LogBrokerClient, func()) {
 	ctx, cancel := context.WithCancel(context.Background())
 	broker := New()
 
@@ -189,14 +228,7 @@ func testLogBrokerEnv(t *testing.T) (context.Context, *LogBroker, api.LogsClient
 	}
 	brokerClient := api.NewLogBrokerClient(brokerCc)
 
-	// The above setup is slightly race-y. If the logs server is ready before
-	// the broker then the agent won't have enough time to register and will
-	// miss the subscription.
-	// TODO(aluzzardi): This won't be required as soon as the broker can
-	// query for subscription at node registration time.
-	time.Sleep(1 * time.Second)
-
-	return ctx, broker, logClient, brokerClient, func() {
+	return ctx, broker, agentSecurityConfig, logClient, brokerClient, func() {
 		logCc.Close()
 		brokerCc.Close()
 

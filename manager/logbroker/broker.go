@@ -1,6 +1,8 @@
 package logbroker
 
 import (
+	"sync"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -20,8 +22,11 @@ import (
 // Log subscriptions are pushed to the work nodes by creating log subscsription
 // tasks. As such, the LogBroker also acts as an orchestrator of these tasks.
 type LogBroker struct {
-	broadcaster   *watch.Queue
-	subscriptions *watch.Queue
+	mu                sync.RWMutex
+	logQueue          *watch.Queue
+	subscriptionQueue *watch.Queue
+
+	registeredSubscriptions map[string]*api.SubscriptionMessage
 
 	stopped chan struct{}
 }
@@ -29,17 +34,18 @@ type LogBroker struct {
 // New initializes and returns a new LogBroker
 func New() *LogBroker {
 	return &LogBroker{
-		broadcaster:   watch.NewQueue(),
-		subscriptions: watch.NewQueue(),
-		stopped:       make(chan struct{}),
+		logQueue:                watch.NewQueue(),
+		subscriptionQueue:       watch.NewQueue(),
+		registeredSubscriptions: make(map[string]*api.SubscriptionMessage),
+		stopped:                 make(chan struct{}),
 	}
 }
 
 // Stop stops the log broker
 func (lb *LogBroker) Stop() {
 	close(lb.stopped)
-	lb.broadcaster.Close()
-	lb.subscriptions.Close()
+	lb.logQueue.Close()
+	lb.subscriptionQueue.Close()
 }
 
 func validateSelector(selector *api.LogSelector) error {
@@ -52,6 +58,38 @@ func validateSelector(selector *api.LogSelector) error {
 	}
 
 	return nil
+}
+
+func (lb *LogBroker) registerSubscription(subscription *api.SubscriptionMessage) {
+	lb.mu.Lock()
+	defer lb.mu.Unlock()
+
+	lb.registeredSubscriptions[subscription.ID] = subscription
+	lb.subscriptionQueue.Publish(subscription)
+}
+
+func (lb *LogBroker) unregisterSubscription(subscription *api.SubscriptionMessage) {
+	subscription = subscription.Copy()
+	subscription.Close = true
+
+	lb.mu.Lock()
+	defer lb.mu.Unlock()
+
+	delete(lb.registeredSubscriptions, subscription.ID)
+	lb.subscriptionQueue.Publish(subscription)
+}
+
+func (lb *LogBroker) subscriptions() ([]*api.SubscriptionMessage, chan events.Event, func()) {
+	lb.mu.RLock()
+	defer lb.mu.RUnlock()
+
+	subs := make([]*api.SubscriptionMessage, 0, len(lb.registeredSubscriptions))
+	for _, sub := range lb.registeredSubscriptions {
+		subs = append(subs, sub)
+	}
+
+	ch, cancel := lb.subscriptionQueue.Watch()
+	return subs, ch, cancel
 }
 
 // SubscribeLogs creates a log subscription and streams back logs
@@ -75,19 +113,16 @@ func (lb *LogBroker) SubscribeLogs(request *api.SubscribeLogsRequest, stream api
 		},
 	)
 
-	publishCh, publishCancel := lb.broadcaster.CallbackWatch(events.MatcherFunc(func(event events.Event) bool {
+	log.Debug("subscribed")
+
+	publishCh, publishCancel := lb.logQueue.CallbackWatch(events.MatcherFunc(func(event events.Event) bool {
 		publish := event.(*api.PublishLogsRequest)
 		return publish.SubscriptionID == subscription.ID
 	}))
 	defer publishCancel()
 
-	lb.subscriptions.Publish(subscription)
-	defer func() {
-		log.Debug("closing subscription")
-		subscription = subscription.Copy()
-		subscription.Close = true
-		lb.subscriptions.Publish(subscription)
-	}()
+	lb.registerSubscription(subscription)
+	defer lb.unregisterSubscription(subscription)
 
 	for {
 		select {
@@ -127,10 +162,29 @@ func (lb *LogBroker) ListenSubscriptions(request *api.ListenSubscriptionsRequest
 			"node":   remote.NodeID,
 		},
 	)
-	subscriptionCh, subscriptionCancel := lb.subscriptions.Watch()
+	subscriptions, subscriptionCh, subscriptionCancel := lb.subscriptions()
 	defer subscriptionCancel()
 
 	log.Debug("node registered")
+
+	// Start by sending down all active subscriptions.
+	for _, subscription := range subscriptions {
+		select {
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		case <-lb.stopped:
+			return nil
+		default:
+		}
+
+		if err := stream.Send(subscription); err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
+	// Send down new subscriptions.
+	// TODO(aluzzardi): We should filter by relevant tasks for this node rather
 	for {
 		select {
 		case v := <-subscriptionCh:
@@ -149,9 +203,22 @@ func (lb *LogBroker) ListenSubscriptions(request *api.ListenSubscriptionsRequest
 
 // PublishLogs publishes log messages for a given subscription
 func (lb *LogBroker) PublishLogs(ctx context.Context, request *api.PublishLogsRequest) (*api.PublishLogsResponse, error) {
+	remote, err := ca.RemoteNode(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if request.SubscriptionID == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, "missing subscription ID")
 	}
-	lb.broadcaster.Publish(request)
+
+	// Make sure logs are emitted using the right Node ID to avoid impersonation.
+	for _, msg := range request.Messages {
+		if msg.Context.NodeID != remote.NodeID {
+			return nil, grpc.Errorf(codes.PermissionDenied, "invalid NodeID: expected=%s;received=%s", remote.NodeID, msg.Context.NodeID)
+		}
+	}
+
+	lb.logQueue.Publish(request)
 	return &api.PublishLogsResponse{}, nil
 }
