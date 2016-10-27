@@ -317,6 +317,10 @@ func (s *Server) checkSecretConflicts(spec *api.ServiceSpec) error {
 			return grpc.Errorf(codes.InvalidArgument, "secret references '%s' and '%s' have a conflicting target: '%s'", prevSecretName, secretRef.SecretName, secretRef.Target)
 		}
 
+		if secretRef.SecretID == "" || secretRef.SecretName == "" {
+			return grpc.Errorf(codes.InvalidArgument, "malformed secret reference")
+		}
+
 		existingTargets[secretRef.Target] = secretRef.SecretName
 	}
 
