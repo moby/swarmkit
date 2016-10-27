@@ -97,3 +97,19 @@ Also, you can update dependency from fork for testing:
 ```
 vndr github.com/coreos/etcd <revision> https://github.com/LK4D4/etcd.git
 ```
+
+### Regenerating protobuf bindings
+
+This requires that you have [Protobuf 3.x or
+higher](https://developers.google.com/protocol-buffers/docs/downloads). Once
+that is installed the bindings can be regenerated with:
+
+```
+make setup
+make generate
+```
+
+NB: As of version 3.0.0-7 the Debian `protobuf-compiler` package lacks
+a dependency on `libprotobuf-dev` which contains some standard proto
+definitions, be sure to install both packages. This is [Debian bug
+#842158](https://bugs.debian.org/842158).
