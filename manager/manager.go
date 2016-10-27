@@ -42,6 +42,16 @@ const (
 	defaultTaskHistoryRetentionLimit = 5
 )
 
+// RemoteAddrs provides an listening address and an optional advertise address
+// for serving the remote API.
+type RemoteAddrs struct {
+	// Address to bind
+	ListenAddr string
+
+	// Address to advertise to remote nodes (optional).
+	AdvertiseAddr string
+}
+
 // Config is used to tune the Manager.
 type Config struct {
 	SecurityConfig *ca.SecurityConfig
@@ -50,13 +60,12 @@ type Config struct {
 	// will make certificate signing requests for node certificates.
 	ExternalCAs []*api.ExternalCA
 
-	ProtoAddr map[string]string
-	// ProtoListener will be used for grpc serving if it's not nil,
-	// ProtoAddr fields will be used to create listeners otherwise.
-	ProtoListener map[string]net.Listener
+	// ControlAPI is an address for serving the control API.
+	ControlAPI string
 
-	// AdvertiseAddr is a map of addresses to advertise, by protocol.
-	AdvertiseAddr string
+	// RemoteAPI is a listening address for serving the remote API, and
+	// an optional advertise address.
+	RemoteAPI RemoteAddrs
 
 	// JoinRaft is an optional address of a node in an existing raft
 	// cluster to join.
@@ -83,7 +92,7 @@ type Config struct {
 // subsystems.
 type Manager struct {
 	config    *Config
-	listeners map[string]net.Listener
+	listeners []net.Listener
 
 	caserver               *ca.Server
 	dispatcher             *dispatcher.Dispatcher
@@ -121,41 +130,25 @@ func (l *closeOnceListener) Close() error {
 func New(config *Config) (*Manager, error) {
 	dispatcherConfig := dispatcher.DefaultConfig()
 
-	if config.ProtoAddr == nil {
-		config.ProtoAddr = make(map[string]string)
-	}
-
-	if config.ProtoListener != nil && config.ProtoListener["tcp"] != nil {
-		config.ProtoAddr["tcp"] = config.ProtoListener["tcp"].Addr().String()
-	}
-
 	// If an AdvertiseAddr was specified, we use that as our
 	// externally-reachable address.
-	tcpAddr := config.AdvertiseAddr
+	advertiseAddr := config.RemoteAPI.AdvertiseAddr
 
-	var tcpAddrPort string
-	if tcpAddr == "" {
+	var advertiseAddrPort string
+	if advertiseAddr == "" {
 		// Otherwise, we know we are joining an existing swarm. Use a
 		// wildcard address to trigger remote autodetection of our
 		// address.
 		var err error
-		_, tcpAddrPort, err = net.SplitHostPort(config.ProtoAddr["tcp"])
+		_, advertiseAddrPort, err = net.SplitHostPort(config.RemoteAPI.ListenAddr)
 		if err != nil {
-			return nil, fmt.Errorf("missing or invalid listen address %s", config.ProtoAddr["tcp"])
+			return nil, fmt.Errorf("missing or invalid listen address %s", config.RemoteAPI.ListenAddr)
 		}
 
 		// Even with an IPv6 listening address, it's okay to use
 		// 0.0.0.0 here. Any "unspecified" (wildcard) IP will
 		// be substituted with the actual source address.
-		tcpAddr = net.JoinHostPort("0.0.0.0", tcpAddrPort)
-	}
-
-	// don't create a socket directory if we're on windows. we used named pipe
-	if runtime.GOOS != "windows" {
-		err := os.MkdirAll(filepath.Dir(config.ProtoAddr["unix"]), 0700)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create socket directory")
-		}
+		advertiseAddr = net.JoinHostPort("0.0.0.0", advertiseAddrPort)
 	}
 
 	err := os.MkdirAll(config.StateDir, 0700)
@@ -169,46 +162,48 @@ func New(config *Config) (*Manager, error) {
 		return nil, errors.Wrap(err, "failed to create raft state directory")
 	}
 
-	var listeners map[string]net.Listener
-	if len(config.ProtoListener) > 0 {
-		listeners = config.ProtoListener
-	} else {
-		listeners = make(map[string]net.Listener)
+	var listeners []net.Listener
 
-		for proto, addr := range config.ProtoAddr {
-			var l net.Listener
-			var err error
-			if proto == "unix" {
-				l, err = xnet.ListenLocal(addr)
-			} else {
-				l, err = net.Listen(proto, addr)
-			}
-
-			// A unix socket may fail to bind if the file already
-			// exists. Try replacing the file.
-			unwrappedErr := err
-			if op, ok := unwrappedErr.(*net.OpError); ok {
-				unwrappedErr = op.Err
-			}
-			if sys, ok := unwrappedErr.(*os.SyscallError); ok {
-				unwrappedErr = sys.Err
-			}
-			if proto == "unix" && unwrappedErr == syscall.EADDRINUSE {
-				os.Remove(addr)
-				l, err = xnet.ListenLocal(addr)
-				if err != nil {
-					return nil, err
-				}
-			} else if err != nil {
-				return nil, err
-			}
-			if proto == "tcp" && tcpAddrPort == "0" {
-				// in case of 0 port
-				tcpAddr = l.Addr().String()
-			}
-			listeners[proto] = l
+	// don't create a socket directory if we're on windows. we used named pipe
+	if runtime.GOOS != "windows" {
+		err := os.MkdirAll(filepath.Dir(config.ControlAPI), 0700)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create socket directory")
 		}
 	}
+
+	l, err := xnet.ListenLocal(config.ControlAPI)
+
+	// A unix socket may fail to bind if the file already
+	// exists. Try replacing the file.
+	if runtime.GOOS != "windows" {
+		unwrappedErr := err
+		if op, ok := unwrappedErr.(*net.OpError); ok {
+			unwrappedErr = op.Err
+		}
+		if sys, ok := unwrappedErr.(*os.SyscallError); ok {
+			unwrappedErr = sys.Err
+		}
+		if unwrappedErr == syscall.EADDRINUSE {
+			os.Remove(config.ControlAPI)
+			l, err = xnet.ListenLocal(config.ControlAPI)
+		}
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to listen on control API address")
+	}
+
+	listeners = append(listeners, l)
+
+	l, err = net.Listen("tcp", config.RemoteAPI.ListenAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to listen on remote API address")
+	}
+	if advertiseAddrPort == "0" {
+		advertiseAddr = l.Addr().String()
+		config.RemoteAPI.ListenAddr = advertiseAddr
+	}
+	listeners = append(listeners, l)
 
 	raftCfg := raft.DefaultNodeConfig()
 
@@ -221,7 +216,7 @@ func New(config *Config) (*Manager, error) {
 
 	newNodeOpts := raft.NodeOptions{
 		ID:              config.SecurityConfig.ClientTLSCreds.NodeID(),
-		Addr:            tcpAddr,
+		Addr:            advertiseAddr,
 		JoinAddr:        config.JoinRaft,
 		Config:          raftCfg,
 		StateDir:        raftStateDir,
@@ -249,11 +244,8 @@ func New(config *Config) (*Manager, error) {
 }
 
 // Addr returns tcp address on which remote api listens.
-func (m *Manager) Addr() net.Addr {
-	if l, ok := m.listeners["tcp"]; ok {
-		return l.Addr()
-	}
-	return nil
+func (m *Manager) Addr() string {
+	return m.config.RemoteAPI.ListenAddr
 }
 
 // Run starts all manager sub-systems and the gRPC server at the configured
@@ -347,8 +339,8 @@ func (m *Manager) Run(parent context.Context) error {
 	localHealthServer.SetServingStatus("ControlAPI", api.HealthCheckResponse_NOT_SERVING)
 
 	errServe := make(chan error, len(m.listeners))
-	for proto, l := range m.listeners {
-		go m.serveListener(ctx, errServe, proto, l)
+	for _, lis := range m.listeners {
+		go m.serveListener(ctx, errServe, lis)
 	}
 
 	defer func() {
@@ -616,20 +608,21 @@ func (m *Manager) handleLeadershipEvents(ctx context.Context, leadershipCh chan 
 }
 
 // serveListener serves a listener for local and non local connections.
-func (m *Manager) serveListener(ctx context.Context, errServe chan error, proto string, lis net.Listener) {
+func (m *Manager) serveListener(ctx context.Context, errServe chan error, l net.Listener) {
 	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(
 		logrus.Fields{
-			"proto": lis.Addr().Network(),
-			"addr":  lis.Addr().String()}))
-	if proto == "unix" {
+			"proto": l.Addr().Network(),
+			"addr":  l.Addr().String(),
+		}))
+	if _, ok := l.(*net.TCPListener); !ok {
 		log.G(ctx).Info("Listening for local connections")
 		// we need to disallow double closes because UnixListener.Close
 		// can delete unix-socket file of newer listener. grpc calls
 		// Close twice indeed: in Serve and in Stop.
-		errServe <- m.localserver.Serve(&closeOnceListener{Listener: lis})
+		errServe <- m.localserver.Serve(&closeOnceListener{Listener: l})
 	} else {
 		log.G(ctx).Info("Listening for connections")
-		errServe <- m.server.Serve(lis)
+		errServe <- m.server.Serve(l)
 	}
 }
 
