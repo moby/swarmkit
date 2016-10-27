@@ -3,7 +3,6 @@ package manager
 import (
 	"crypto/tls"
 	"io/ioutil"
-	"net"
 	"os"
 	"testing"
 	"time"
@@ -31,11 +30,6 @@ func TestManager(t *testing.T) {
 
 	defer os.RemoveAll(temp.Name())
 
-	lunix, err := net.Listen("unix", temp.Name())
-	assert.NoError(t, err)
-	ltcp, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(t, err)
-
 	stateDir, err := ioutil.TempDir("", "test-raft")
 	assert.NoError(t, err)
 	defer os.RemoveAll(stateDir)
@@ -51,12 +45,15 @@ func TestManager(t *testing.T) {
 	assert.NoError(t, err)
 
 	m, err := New(&Config{
-		ProtoListener:  map[string]net.Listener{"unix": lunix, "tcp": ltcp},
+		RemoteAPI:      RemoteAddrs{ListenAddr: "127.0.0.1:0"},
+		ControlAPI:     temp.Name(),
 		StateDir:       stateDir,
 		SecurityConfig: managerSecurityConfig,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, m)
+
+	tcpAddr := m.Addr()
 
 	done := make(chan error)
 	defer close(done)
@@ -69,7 +66,7 @@ func TestManager(t *testing.T) {
 		grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds),
 	}
 
-	conn, err := grpc.Dial(ltcp.Addr().String(), opts...)
+	conn, err := grpc.Dial(tcpAddr, opts...)
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, conn.Close())
@@ -88,7 +85,7 @@ func TestManager(t *testing.T) {
 		grpc.WithTransportCredentials(agentDiffOrgSecurityConfig.ClientTLSCreds),
 	}
 
-	conn2, err := grpc.Dial(ltcp.Addr().String(), opts...)
+	conn2, err := grpc.Dial(tcpAddr, opts...)
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, conn2.Close())
@@ -105,7 +102,7 @@ func TestManager(t *testing.T) {
 		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})),
 	}
 
-	noCertConn, err := grpc.Dial(ltcp.Addr().String(), opts...)
+	noCertConn, err := grpc.Dial(tcpAddr, opts...)
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, noCertConn.Close())
@@ -128,7 +125,7 @@ func TestManager(t *testing.T) {
 		grpc.WithTransportCredentials(managerSecurityConfig.ClientTLSCreds),
 	}
 
-	controlConn, err := grpc.Dial(ltcp.Addr().String(), opts...)
+	controlConn, err := grpc.Dial(tcpAddr, opts...)
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, controlConn.Close())
