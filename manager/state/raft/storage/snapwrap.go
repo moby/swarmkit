@@ -6,8 +6,8 @@ import (
 	"github.com/docker/swarmkit/manager/encryption"
 )
 
-// This package wraps the github.com/coreos/etcd/snap package, and encodes
-// the bytes of whatever snapshot is passed to it, and decodes the bytes of
+// This package wraps the github.com/coreos/etcd/snap package, and encrypts
+// the bytes of whatever snapshot is passed to it, and decrypts the bytes of
 // whatever snapshot it reads.
 
 // Snapshotter is the interface presented by github.com/coreos/etcd/snap.Snapshotter that we depend upon
@@ -27,33 +27,33 @@ var _ Snapshotter = &snap.Snapshotter{}
 var _ SnapFactory = snapCryptor{}
 
 // wrappedSnap wraps a github.com/coreos/etcd/snap.Snapshotter, and handles
-// encoding/decoding.
+// encrypting/decrypting.
 type wrappedSnap struct {
 	*snap.Snapshotter
-	encoder encryption.Encoder
-	decoder encryption.Decoder
+	encrypter encryption.Encrypter
+	decrypter encryption.Decrypter
 }
 
-// SaveSnap encodes the snapshot data (if an encoder is exists) before passing it onto the
+// SaveSnap encrypts the snapshot data (if an encrypter is exists) before passing it onto the
 // wrapped snap.Snapshotter's SaveSnap function.
 func (s *wrappedSnap) SaveSnap(snapshot raftpb.Snapshot) error {
 	toWrite := snapshot
 	var err error
-	toWrite.Data, err = encryption.Encode(snapshot.Data, s.encoder)
+	toWrite.Data, err = encryption.Encrypt(snapshot.Data, s.encrypter)
 	if err != nil {
 		return err
 	}
 	return s.Snapshotter.SaveSnap(toWrite)
 }
 
-// Load decodes the snapshot data (if a decoder is exists) after reading it using the
+// Load decrypts the snapshot data (if a decrypter is exists) after reading it using the
 // wrapped snap.Snapshotter's Load function.
 func (s *wrappedSnap) Load() (*raftpb.Snapshot, error) {
 	snapshot, err := s.Snapshotter.Load()
 	if err != nil {
 		return nil, err
 	}
-	snapshot.Data, err = encryption.Decode(snapshot.Data, s.decoder)
+	snapshot.Data, err = encryption.Decrypt(snapshot.Data, s.decrypter)
 	if err != nil {
 		return nil, err
 	}
@@ -63,25 +63,25 @@ func (s *wrappedSnap) Load() (*raftpb.Snapshot, error) {
 // snapCryptor is an object that provides the same functions as `etcd/wal`
 // and `etcd/snap` that we need to open a WAL object or Snapshotter object
 type snapCryptor struct {
-	encoder encryption.Encoder
-	decoder encryption.Decoder
+	encrypter encryption.Encrypter
+	decrypter encryption.Decrypter
 }
 
 // NewSnapFactory returns a new object that can read from and write to encrypted
 // snapshots on disk
-func NewSnapFactory(encoder encryption.Encoder, decoder encryption.Decoder) SnapFactory {
+func NewSnapFactory(encrypter encryption.Encrypter, decrypter encryption.Decrypter) SnapFactory {
 	return snapCryptor{
-		encoder: encoder,
-		decoder: decoder,
+		encrypter: encrypter,
+		decrypter: decrypter,
 	}
 }
 
-// NewSnapshotter returns a new Snapshotter with the given encoders and decoders
+// NewSnapshotter returns a new Snapshotter with the given encrypters and decrypters
 func (sc snapCryptor) New(dirpath string) Snapshotter {
 	return &wrappedSnap{
 		Snapshotter: snap.New(dirpath),
-		encoder:     sc.encoder,
-		decoder:     sc.decoder,
+		encrypter:   sc.encrypter,
+		decrypter:   sc.decrypter,
 	}
 }
 

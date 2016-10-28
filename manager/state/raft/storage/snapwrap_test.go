@@ -50,12 +50,12 @@ func TestSnapshotterLoadNotEncryptedSnapshot(t *testing.T) {
 	data, err := r.Marshal()
 	require.NoError(t, err)
 
-	emptyEncodingFakeData := fakeSnapshotData
-	emptyEncodingFakeData.Data = data
+	emptyEncryptionFakeData := fakeSnapshotData
+	emptyEncryptionFakeData.Data = data
 
-	require.NoError(t, ogSnap.SaveSnap(emptyEncodingFakeData))
+	require.NoError(t, ogSnap.SaveSnap(emptyEncryptionFakeData))
 
-	c := NewSnapFactory(encryption.NoopCoder, encryption.NoopCoder)
+	c := NewSnapFactory(encryption.NoopCrypter, encryption.NoopCrypter)
 	wrapped := c.New(tempdir)
 
 	readSnap, err := wrapped.Load()
@@ -63,8 +63,8 @@ func TestSnapshotterLoadNotEncryptedSnapshot(t *testing.T) {
 	require.Equal(t, fakeSnapshotData, *readSnap)
 }
 
-// If there is no decoder for a snapshot, decoding fails
-func TestSnapshotterLoadNoDecoder(t *testing.T) {
+// If there is no decrypter for a snapshot, decrypting fails
+func TestSnapshotterLoadNoDecrypter(t *testing.T) {
 	tempdir, err := ioutil.TempDir("", "snapwrap")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
@@ -72,45 +72,45 @@ func TestSnapshotterLoadNoDecoder(t *testing.T) {
 	ogSnap := OriginalSnap.New(tempdir)
 	r := api.MaybeEncryptedRecord{
 		Data:      fakeSnapshotData.Data,
-		Algorithm: meowCoder{}.Algorithm(),
+		Algorithm: meowCrypter{}.Algorithm(),
 	}
 	data, err := r.Marshal()
 	require.NoError(t, err)
 
-	emptyEncodingFakeData := fakeSnapshotData
-	emptyEncodingFakeData.Data = data
+	emptyEncryptionFakeData := fakeSnapshotData
+	emptyEncryptionFakeData.Data = data
 
-	require.NoError(t, ogSnap.SaveSnap(emptyEncodingFakeData))
+	require.NoError(t, ogSnap.SaveSnap(emptyEncryptionFakeData))
 
-	c := NewSnapFactory(encryption.NoopCoder, encryption.NoopCoder)
+	c := NewSnapFactory(encryption.NoopCrypter, encryption.NoopCrypter)
 	wrapped := c.New(tempdir)
 
 	_, err = wrapped.Load()
 	require.Error(t, err)
 }
 
-// If decoding a snapshot fails, the error is propagated
-func TestSnapshotterLoadDecodingFail(t *testing.T) {
+// If decrypting a snapshot fails, the error is propagated
+func TestSnapshotterLoadDecryptingFail(t *testing.T) {
 	tempdir, err := ioutil.TempDir("", "snapwrap")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
-	coder := &meowCoder{}
+	crypter := &meowCrypter{}
 
 	ogSnap := OriginalSnap.New(tempdir)
 	r := api.MaybeEncryptedRecord{
 		Data:      fakeSnapshotData.Data,
-		Algorithm: coder.Algorithm(),
+		Algorithm: crypter.Algorithm(),
 	}
 	data, err := r.Marshal()
 	require.NoError(t, err)
 
-	emptyEncodingFakeData := fakeSnapshotData
-	emptyEncodingFakeData.Data = data
+	emptyEncryptionFakeData := fakeSnapshotData
+	emptyEncryptionFakeData.Data = data
 
-	require.NoError(t, ogSnap.SaveSnap(emptyEncodingFakeData))
+	require.NoError(t, ogSnap.SaveSnap(emptyEncryptionFakeData))
 
-	c := NewSnapFactory(encryption.NoopCoder, coder)
+	c := NewSnapFactory(encryption.NoopCrypter, crypter)
 	wrapped := c.New(tempdir)
 
 	_, err = wrapped.Load()
@@ -118,14 +118,14 @@ func TestSnapshotterLoadDecodingFail(t *testing.T) {
 	require.Contains(t, err.Error(), "not meowcoded")
 }
 
-// The snapshot data (but not metadata or anything else) is encoded before being
+// The snapshot data (but not metadata or anything else) is encryptd before being
 // passed to the wrapped Snapshotter.
-func TestSnapshotterSavesSnapshotWithEncoding(t *testing.T) {
+func TestSnapshotterSavesSnapshotWithEncryption(t *testing.T) {
 	tempdir, err := ioutil.TempDir("", "snapwrap")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
-	c := NewSnapFactory(meowCoder{}, encryption.NoopCoder)
+	c := NewSnapFactory(meowCrypter{}, encryption.NoopCrypter)
 	wrapped := c.New(tempdir)
 	require.NoError(t, wrapped.SaveSnap(fakeSnapshotData))
 
@@ -139,20 +139,20 @@ func TestSnapshotterSavesSnapshotWithEncoding(t *testing.T) {
 	require.Equal(t, fakeSnapshotData.Metadata, readSnap.Metadata)
 }
 
-// If an encoder is passed to Snapshotter, but encoding the data fails, the
+// If an encrypter is passed to Snapshotter, but encrypting the data fails, the
 // error is propagated up
-func TestSnapshotterSavesSnapshotEncodingFails(t *testing.T) {
+func TestSnapshotterSavesSnapshotEncryptionFails(t *testing.T) {
 	tempdir, err := ioutil.TempDir("", "snapwrap")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
-	c := NewSnapFactory(&meowCoder{encodeFailures: map[string]struct{}{
+	c := NewSnapFactory(&meowCrypter{encryptFailures: map[string]struct{}{
 		"snapshotdata": {},
-	}}, encryption.NoopCoder)
+	}}, encryption.NoopCrypter)
 	wrapped := c.New(tempdir)
 	err = wrapped.SaveSnap(fakeSnapshotData)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "refusing to encode")
+	require.Contains(t, err.Error(), "refusing to encrypt")
 
 	// nothing there to read
 	ogSnap := OriginalSnap.New(tempdir)
@@ -160,14 +160,14 @@ func TestSnapshotterSavesSnapshotEncodingFails(t *testing.T) {
 	require.Error(t, err)
 }
 
-// Snapshotter can read what it wrote so long as it has the same decoder
+// Snapshotter can read what it wrote so long as it has the same decrypter
 func TestSaveAndLoad(t *testing.T) {
-	coder := &meowCoder{}
+	crypter := &meowCrypter{}
 	tempdir, err := ioutil.TempDir("", "waltests")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
-	c := NewSnapFactory(coder, coder)
+	c := NewSnapFactory(crypter, crypter)
 	wrapped := c.New(tempdir)
 	require.NoError(t, wrapped.SaveSnap(fakeSnapshotData))
 	readSnap, err := wrapped.Load()

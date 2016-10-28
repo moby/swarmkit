@@ -6,47 +6,47 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEncodeDecode(t *testing.T) {
-	// not providing an encoder will fail
+func TestEncryptDecrypt(t *testing.T) {
+	// not providing an encrypter will fail
 	msg := []byte("hello again swarmkit")
-	_, err := Encode(msg, nil)
+	_, err := Encrypt(msg, nil)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "no encoder")
+	require.Contains(t, err.Error(), "no encrypter")
 
-	// noop encoder can encode
-	encoded, err := Encode(msg, NoopCoder)
+	// noop encrypter can encrypt
+	encrypted, err := Encrypt(msg, NoopCrypter)
 	require.NoError(t, err)
 
-	// not providing a decoder will fail
-	_, err = Decode(encoded, nil)
+	// not providing a decrypter will fail
+	_, err = Decrypt(encrypted, nil)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "no decoder")
+	require.Contains(t, err.Error(), "no decrypter")
 
-	// noop decoder can decode
-	decoded, err := Decode(encoded, NoopCoder)
+	// noop decrypter can decrypt
+	decrypted, err := Decrypt(encrypted, NoopCrypter)
 	require.NoError(t, err)
-	require.Equal(t, msg, decoded)
+	require.Equal(t, msg, decrypted)
 
-	// the default encoder can produce something the default decoder can read
-	encoder, decoder := Defaults([]byte("key"))
-	encoded, err = Encode(msg, encoder)
+	// the default encrypter can produce something the default decrypter can read
+	encrypter, decrypter := Defaults([]byte("key"))
+	encrypted, err = Encrypt(msg, encrypter)
 	require.NoError(t, err)
-	decoded, err = Decode(encoded, decoder)
+	decrypted, err = Decrypt(encrypted, decrypter)
 	require.NoError(t, err)
-	require.Equal(t, msg, decoded)
+	require.Equal(t, msg, decrypted)
 
-	// mismatched encoders and decoders can't read the content produced by each
-	encoded, err = Encode(msg, NoopCoder)
+	// mismatched encrypters and decrypters can't read the content produced by each
+	encrypted, err = Encrypt(msg, NoopCrypter)
 	require.NoError(t, err)
-	_, err = Decode(encoded, decoder)
+	_, err = Decrypt(encrypted, decrypter)
 	require.Error(t, err)
-	require.IsType(t, ErrCannotDecode{}, err)
+	require.IsType(t, ErrCannotDecrypt{}, err)
 
-	encoded, err = Encode(msg, encoder)
+	encrypted, err = Encrypt(msg, encrypter)
 	require.NoError(t, err)
-	_, err = Decode(encoded, NoopCoder)
+	_, err = Decrypt(encrypted, NoopCrypter)
 	require.Error(t, err)
-	require.IsType(t, ErrCannotDecode{}, err)
+	require.IsType(t, ErrCannotDecrypt{}, err)
 }
 
 func TestHumanReadable(t *testing.T) {
