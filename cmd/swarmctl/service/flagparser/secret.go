@@ -50,7 +50,7 @@ func ParseAddSecret(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) 
 		}
 
 		lookupSecretNames := []string{}
-		needSecrets := make(map[string]*api.SecretReference)
+		var needSecrets []*api.SecretReference
 
 		for _, secret := range secrets {
 			n, p, err := parseSecretString(secret)
@@ -58,14 +58,19 @@ func ParseAddSecret(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) 
 				return err
 			}
 
+			// TODO(diogo): defaults to File targets, but in the future will take different types
 			secretRef := &api.SecretReference{
 				SecretName: n,
-				Mode:       api.SecretReference_FILE,
-				Target:     p,
+				Target: &api.SecretReference_File{
+					File: &api.FileMetadata{
+						Name: p,
+						Mode: 0666,
+					},
+				},
 			}
 
 			lookupSecretNames = append(lookupSecretNames, n)
-			needSecrets[n] = secretRef
+			needSecrets = append(needSecrets, secretRef)
 		}
 
 		client, err := common.Dial(cmd)
@@ -84,10 +89,10 @@ func ParseAddSecret(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) 
 			foundSecrets[secret.Spec.Annotations.Name] = secret
 		}
 
-		for secretName, secretRef := range needSecrets {
-			secret, ok := foundSecrets[secretName]
+		for _, secretRef := range needSecrets {
+			secret, ok := foundSecrets[secretRef.SecretName]
 			if !ok {
-				return fmt.Errorf("secret not found: %s", secretName)
+				return fmt.Errorf("secret not found: %s", secretRef.SecretName)
 			}
 
 			secretRef.SecretID = secret.ID
