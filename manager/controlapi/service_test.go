@@ -339,6 +339,42 @@ func TestCreateService(t *testing.T) {
 	spec = createSpecWithDuplicateSecretTargets("name8")
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	// test secret target conflicts with same secret and two references
+	spec = createSpecWithDuplicateSecretTargets("name8")
+	spec.Task.GetContainer().Secrets = []*api.SecretReference{
+		{
+			SecretName: "secret1",
+			SecretID:   "secretID1",
+			Mode:       api.SecretReference_FILE,
+		},
+		{
+			SecretName: "secret2",
+			SecretID:   "secretID2",
+			Target:     "secret1",
+			Mode:       api.SecretReference_FILE,
+		},
+	}
+	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	// test two different secretReferences with using the same secret
+	spec = createSpecWithDuplicateSecretTargets("name8")
+	spec.Task.GetContainer().Secrets = []*api.SecretReference{
+		{
+			SecretName: "secret1",
+			SecretID:   "secretID1",
+			Mode:       api.SecretReference_FILE,
+		},
+		{
+			SecretName: "secret1",
+			SecretID:   "secretID1",
+			Target:     "different_target",
+			Mode:       api.SecretReference_FILE,
+		},
+	}
+	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.NoError(t, err)
 }
 
 func TestGetService(t *testing.T) {
