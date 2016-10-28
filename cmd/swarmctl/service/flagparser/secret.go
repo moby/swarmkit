@@ -51,9 +51,8 @@ func ParseAddSecret(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) 
 
 		lookupSecretNames := []string{}
 		needSecrets := make(map[string]*api.SecretReference)
-
 		for _, secret := range secrets {
-			n, p, err := parseSecretString(secret)
+			n, t, err := parseSecretString(secret)
 			if err != nil {
 				return err
 			}
@@ -61,11 +60,18 @@ func ParseAddSecret(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) 
 			secretRef := &api.SecretReference{
 				SecretName: n,
 				Mode:       api.SecretReference_FILE,
-				Target:     p,
+				Target:     t,
 			}
 
 			lookupSecretNames = append(lookupSecretNames, n)
-			needSecrets[n] = secretRef
+
+			// We should store a map of targets, since the same secret can
+			// be added multiple times, and only targets are unique
+			if t == "" {
+				t = n
+			}
+
+			needSecrets[t] = secretRef
 		}
 
 		client, err := common.Dial(cmd)
@@ -84,10 +90,10 @@ func ParseAddSecret(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) 
 			foundSecrets[secret.Spec.Annotations.Name] = secret
 		}
 
-		for secretName, secretRef := range needSecrets {
-			secret, ok := foundSecrets[secretName]
+		for _, secretRef := range needSecrets {
+			secret, ok := foundSecrets[secretRef.SecretName]
 			if !ok {
-				return fmt.Errorf("secret not found: %s", secretName)
+				return fmt.Errorf("secret not found: %s", secretRef.SecretName)
 			}
 
 			secretRef.SecretID = secret.ID
