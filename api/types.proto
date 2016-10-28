@@ -200,7 +200,7 @@ message Mount {
 		int64 size_bytes = 1;
 
 		// Mode of the tmpfs upon creation
-		int32 mode = 2 [(gogoproto.customtype) = "os.FileMode", (gogoproto.nullable) = false];
+		uint32 mode = 2 [(gogoproto.customtype) = "os.FileMode", (gogoproto.nullable) = false];
 
 		// TODO(stevvooe): There are several more tmpfs flags, specified in the
 		// daemon, that are accepted. Only the most basic are added for now.
