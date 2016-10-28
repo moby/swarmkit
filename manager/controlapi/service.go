@@ -2,6 +2,7 @@ package controlapi
 
 import (
 	"errors"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -327,17 +328,18 @@ func (s *Server) checkSecretValidity(spec *api.ServiceSpec) error {
 
 		// If this is a file target, we will ensure filename uniqueness
 		if secretRef.GetFile() != nil {
-			if secretRef.GetFile().Name == "" {
-				return grpc.Errorf(codes.InvalidArgument, "malformed file secret reference, no target name provided")
+			fileName := secretRef.GetFile().Name
+			// Validate the file name
+			if fileName == "" || fileName != filepath.Base(filepath.Clean(fileName)) {
+				return grpc.Errorf(codes.InvalidArgument, "malformed file secret reference, invalid target file name provided")
 			}
 
 			// If this target is already in use, we have conflicting targets
-			targetName := secretRef.GetFile().Name
-			if prevSecretName, ok := existingTargets[targetName]; ok {
-				return grpc.Errorf(codes.InvalidArgument, "secret references '%s' and '%s' have a conflicting target: '%s'", prevSecretName, secretRef.SecretName, targetName)
+			if prevSecretName, ok := existingTargets[fileName]; ok {
+				return grpc.Errorf(codes.InvalidArgument, "secret references '%s' and '%s' have a conflicting target: '%s'", prevSecretName, secretRef.SecretName, fileName)
 			}
 
-			existingTargets[targetName] = secretRef.SecretName
+			existingTargets[fileName] = secretRef.SecretName
 		}
 	}
 

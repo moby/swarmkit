@@ -1,6 +1,7 @@
 package controlapi
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -64,7 +65,7 @@ func createSpecWithDuplicateSecretTargets(name string) *api.ServiceSpec {
 			SecretName: "secret1",
 			SecretID:   "secretID1",
 			Target: &api.SecretReference_File{
-				File: &api.FileMetadata{
+				File: &api.SecretReference_FileTarget{
 					Name: "target.txt",
 					UID:  "0",
 					GID:  "0",
@@ -76,7 +77,7 @@ func createSpecWithDuplicateSecretTargets(name string) *api.ServiceSpec {
 			SecretName: "secret2",
 			SecretID:   "secretID2",
 			Target: &api.SecretReference_File{
-				File: &api.FileMetadata{
+				File: &api.SecretReference_FileTarget{
 					Name: "target.txt",
 					UID:  "0",
 					GID:  "0",
@@ -346,20 +347,25 @@ func TestCreateService(t *testing.T) {
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
 	assert.NoError(t, err)
+}
+
+func TestSecretValidation(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
 
 	// test secret target conflicts
-	spec = createSpecWithDuplicateSecretTargets("name8")
-	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	spec := createSpecWithDuplicateSecretTargets("name1")
+	_, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
 	// test secret target conflicts with same secret and two references
-	spec = createSpecWithDuplicateSecretTargets("name8")
+	spec = createSpecWithDuplicateSecretTargets("name2")
 	spec.Task.GetContainer().Secrets = []*api.SecretReference{
 		{
 			SecretName: "secret1",
 			SecretID:   "secretID1",
 			Target: &api.SecretReference_File{
-				File: &api.FileMetadata{
+				File: &api.SecretReference_FileTarget{
 					Name: "secret1.txt",
 					Mode: 0666,
 				},
@@ -369,24 +375,24 @@ func TestCreateService(t *testing.T) {
 			SecretName: "secret2",
 			SecretID:   "secretID2",
 			Target: &api.SecretReference_File{
-				File: &api.FileMetadata{
+				File: &api.SecretReference_FileTarget{
 					Name: "secret1.txt",
 					Mode: 0666,
 				},
 			},
 		},
 	}
-	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
 	// test two different secretReferences with using the same secret
-	spec = createSpecWithDuplicateSecretTargets("name8")
+	spec = createSpecWithDuplicateSecretTargets("name3")
 	spec.Task.GetContainer().Secrets = []*api.SecretReference{
 		{
 			SecretName: "secret1",
 			SecretID:   "secretID1",
 			Target: &api.SecretReference_File{
-				File: &api.FileMetadata{
+				File: &api.SecretReference_FileTarget{
 					Name: "secret1.txt",
 					Mode: 0666,
 				},
@@ -396,15 +402,69 @@ func TestCreateService(t *testing.T) {
 			SecretName: "secret1",
 			SecretID:   "secretID1",
 			Target: &api.SecretReference_File{
-				File: &api.FileMetadata{
+				File: &api.SecretReference_FileTarget{
 					Name: "different_target.txt",
 					Mode: 0666,
 				},
 			},
 		},
 	}
-	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.NoError(t, err)
+
+	// test secret References with invalid filenames
+	invalidFileNames := []string{"../secretfile.txt", "../../secretfile.txt", "file../.txt"}
+	for i, invalidName := range invalidFileNames {
+		spec = createSpecWithDuplicateSecretTargets(fmt.Sprintf("invalid%v", i))
+		spec.Task.GetContainer().Secrets = []*api.SecretReference{
+			{
+				SecretName: invalidName,
+				SecretID:   invalidName,
+				Target: &api.SecretReference_File{
+					File: &api.SecretReference_FileTarget{
+						Name: invalidName,
+						Mode: 0666,
+					},
+				},
+			},
+		}
+		_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	}
+
+	// Test secret References with valid filenames
+	validFileNames := []string{"file.txt", ".file.txt", "_file-txt_.txt"}
+	for i, validName := range validFileNames {
+		spec = createSpecWithDuplicateSecretTargets(fmt.Sprintf("valid%v", i))
+		spec.Task.GetContainer().Secrets = []*api.SecretReference{
+			{
+				SecretName: validName,
+				SecretID:   validName,
+				Target: &api.SecretReference_File{
+					File: &api.SecretReference_FileTarget{
+						Name: validName,
+						Mode: 0666,
+					},
+				},
+			},
+		}
+		_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+		assert.NoError(t, err)
+	}
+
+	// test secret target conflicts on update
+	spec1 := createSpecWithDuplicateSecretTargets("name4")
+	spec2 := spec1.Copy()
+	spec2.Task.GetContainer().Secrets = nil
+	rs, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
+	assert.NoError(t, err)
+
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:      rs.Service.ID,
+		Spec:           spec1,
+		ServiceVersion: &rs.Service.Meta.Version,
+	})
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 }
 
 func TestGetService(t *testing.T) {
@@ -533,20 +593,6 @@ func TestUpdateService(t *testing.T) {
 		ServiceVersion: &rs.Service.Meta.Version,
 	})
 	assert.NoError(t, err)
-
-	// test secret target conflicts
-	spec4 := createSpecWithDuplicateSecretTargets("name8")
-	spec5 := spec4.Copy()
-	spec5.Task.GetContainer().Secrets = nil
-	rs, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec5})
-	assert.NoError(t, err)
-
-	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
-		ServiceID:      rs.Service.ID,
-		Spec:           spec4,
-		ServiceVersion: &rs.Service.Meta.Version,
-	})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
 }
 
