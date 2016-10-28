@@ -48,7 +48,7 @@ func createWithWAL(t *testing.T, w WALFactory, metadata []byte, startSnap walpb.
 }
 
 // WAL can read entries are not wrapped, but not encrypted
-func TestReadAllWrappedNoEncoding(t *testing.T) {
+func TestReadAllWrappedNoEncryption(t *testing.T) {
 	metadata, entries, snapshot := makeWALData()
 	wrappedEntries := make([]raftpb.Entry, len(entries))
 	for i, entry := range entries {
@@ -62,7 +62,7 @@ func TestReadAllWrappedNoEncoding(t *testing.T) {
 	tempdir := createWithWAL(t, OriginalWAL, metadata, snapshot, wrappedEntries)
 	defer os.RemoveAll(tempdir)
 
-	c := NewWALFactory(encryption.NoopCoder, encryption.NoopCoder)
+	c := NewWALFactory(encryption.NoopCrypter, encryption.NoopCrypter)
 	wrapped, err := c.Open(tempdir, snapshot)
 	require.NoError(t, err)
 	defer wrapped.Close()
@@ -75,8 +75,8 @@ func TestReadAllWrappedNoEncoding(t *testing.T) {
 	require.Equal(t, entries, entsW)
 }
 
-// When reading WAL, if the decoder can't read the encoding type, errors
-func TestReadAllNoSupportedDecoder(t *testing.T) {
+// When reading WAL, if the decrypter can't read the encryption type, errors
+func TestReadAllNoSupportedDecrypter(t *testing.T) {
 	metadata, entries, snapshot := makeWALData()
 	for i, entry := range entries {
 		r := api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: api.MaybeEncryptedRecord_Algorithm(-3)}
@@ -88,7 +88,7 @@ func TestReadAllNoSupportedDecoder(t *testing.T) {
 	tempdir := createWithWAL(t, OriginalWAL, metadata, snapshot, entries)
 	defer os.RemoveAll(tempdir)
 
-	c := NewWALFactory(encryption.NoopCoder, encryption.NoopCoder)
+	c := NewWALFactory(encryption.NoopCrypter, encryption.NoopCrypter)
 	wrapped, err := c.Open(tempdir, snapshot)
 	require.NoError(t, err)
 	defer wrapped.Close()
@@ -98,15 +98,15 @@ func TestReadAllNoSupportedDecoder(t *testing.T) {
 	defer wrapped.Close()
 }
 
-// When reading WAL, if a decoder is available for the encoding type but any
-// entry is incorrectly encoded, an error is returned
-func TestReadAllEntryIncorrectlyEncoded(t *testing.T) {
-	coder := &meowCoder{}
+// When reading WAL, if a decrypter is available for the encryption type but any
+// entry is incorrectly encryptd, an error is returned
+func TestReadAllEntryIncorrectlyEncrypted(t *testing.T) {
+	crypter := &meowCrypter{}
 	metadata, entries, snapshot := makeWALData()
 
-	// metadata is correctly encoded, but entries are not meow-encoded
+	// metadata is correctly encryptd, but entries are not meow-encryptd
 	for i, entry := range entries {
-		r := api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: coder.Algorithm()}
+		r := api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: crypter.Algorithm()}
 		data, err := r.Marshal()
 		require.NoError(t, err)
 		entries[i].Data = data
@@ -115,7 +115,7 @@ func TestReadAllEntryIncorrectlyEncoded(t *testing.T) {
 	tempdir := createWithWAL(t, OriginalWAL, metadata, snapshot, entries)
 	defer os.RemoveAll(tempdir)
 
-	c := NewWALFactory(encryption.NoopCoder, coder)
+	c := NewWALFactory(encryption.NoopCrypter, crypter)
 	wrapped, err := c.Open(tempdir, snapshot)
 	require.NoError(t, err)
 
@@ -125,13 +125,13 @@ func TestReadAllEntryIncorrectlyEncoded(t *testing.T) {
 	require.NoError(t, wrapped.Close())
 }
 
-// The entry data and metadata are encoded with the given encoder, and a regular
+// The entry data and metadata are encryptd with the given encrypter, and a regular
 // WAL will see them as such.
 func TestSave(t *testing.T) {
 	metadata, entries, snapshot := makeWALData()
 
-	coder := &meowCoder{}
-	c := NewWALFactory(coder, encryption.NoopCoder)
+	crypter := &meowCrypter{}
+	c := NewWALFactory(crypter, encryption.NoopCrypter)
 	tempdir := createWithWAL(t, c, metadata, snapshot, entries)
 	defer os.RemoveAll(tempdir)
 
@@ -147,22 +147,21 @@ func TestSave(t *testing.T) {
 		var encrypted api.MaybeEncryptedRecord
 		require.NoError(t, encrypted.Unmarshal(ent.Data))
 
-		require.Equal(t, coder.Algorithm(), encrypted.Algorithm)
+		require.Equal(t, crypter.Algorithm(), encrypted.Algorithm)
 		require.True(t, bytes.HasSuffix(encrypted.Data, []byte("🐱")))
 	}
 }
 
-// If encoding fails, saving will fail
-func TestSaveEncodingFails(t *testing.T) {
+// If encryption fails, saving will fail
+func TestSaveEncryptionFails(t *testing.T) {
 	metadata, entries, snapshot := makeWALData()
 
 	tempdir, err := ioutil.TempDir("", "waltests")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
-	// the first encoding is the metadata, so that should succeed - fail on one
-	// of the entries, and not the first one
-	c := NewWALFactory(&meowCoder{encodeFailures: map[string]struct{}{
+	// fail encrypting one of the entries, but not the first one
+	c := NewWALFactory(&meowCrypter{encryptFailures: map[string]struct{}{
 		"Entry 7": {},
 	}}, nil)
 	wrapped, err := c.Create(tempdir, metadata)
@@ -171,7 +170,7 @@ func TestSaveEncodingFails(t *testing.T) {
 	require.NoError(t, wrapped.SaveSnapshot(snapshot))
 	err = wrapped.Save(raftpb.HardState{}, entries)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "refusing to encode")
+	require.Contains(t, err.Error(), "refusing to encrypt")
 	require.NoError(t, wrapped.Close())
 
 	// no entries are written at all
@@ -187,7 +186,7 @@ func TestSaveEncodingFails(t *testing.T) {
 // If the underlying WAL returns an error when opening or creating, the error
 // is propagated up.
 func TestCreateOpenInvalidDirFails(t *testing.T) {
-	c := NewWALFactory(encryption.NoopCoder, encryption.NoopCoder)
+	c := NewWALFactory(encryption.NoopCrypter, encryption.NoopCrypter)
 
 	_, err := c.Create("/not/existing/directory", []byte("metadata"))
 	require.Error(t, err)
@@ -196,12 +195,12 @@ func TestCreateOpenInvalidDirFails(t *testing.T) {
 	require.Error(t, err)
 }
 
-// A WAL can read what it wrote so long as it has a corresponding decoder
+// A WAL can read what it wrote so long as it has a corresponding decrypter
 func TestSaveAndRead(t *testing.T) {
-	coder := &meowCoder{}
+	crypter := &meowCrypter{}
 	metadata, entries, snapshot := makeWALData()
 
-	c := NewWALFactory(coder, coder)
+	c := NewWALFactory(crypter, crypter)
 	tempdir := createWithWAL(t, c, metadata, snapshot, entries)
 	defer os.RemoveAll(tempdir)
 

@@ -7,8 +7,8 @@ import (
 	"github.com/docker/swarmkit/manager/encryption"
 )
 
-// This package wraps the github.com/coreos/etcd/wal package, and encodes
-// the bytes of whatever entry is passed to it, and decodes the bytes of
+// This package wraps the github.com/coreos/etcd/wal package, and encrypts
+// the bytes of whatever entry is passed to it, and decrypts the bytes of
 // whatever entry it reads.
 
 // WAL is the interface presented by github.com/coreos/etcd/wal.WAL that we depend upon
@@ -31,22 +31,22 @@ var _ WAL = &wrappedWAL{}
 var _ WAL = &wal.WAL{}
 var _ WALFactory = walCryptor{}
 
-// wrappedWAL wraps a github.com/coreos/etcd/wal.WAL, and handles encoding/decoding
+// wrappedWAL wraps a github.com/coreos/etcd/wal.WAL, and handles encrypting/decrypting
 type wrappedWAL struct {
 	*wal.WAL
-	encoder encryption.Encoder
-	decoder encryption.Decoder
+	encrypter encryption.Encrypter
+	decrypter encryption.Decrypter
 }
 
 // ReadAll wraps the wal.WAL.ReadAll() function, but it first checks to see if the
-// metadata indicates that the entries are encoded, and if so, decodes them.
+// metadata indicates that the entries are encryptd, and if so, decrypts them.
 func (w *wrappedWAL) ReadAll() ([]byte, raftpb.HardState, []raftpb.Entry, error) {
 	metadata, state, ents, err := w.WAL.ReadAll()
 	if err != nil {
 		return metadata, state, ents, err
 	}
 	for i, ent := range ents {
-		ents[i].Data, err = encryption.Decode(ent.Data, w.decoder)
+		ents[i].Data, err = encryption.Decrypt(ent.Data, w.decrypter)
 		if err != nil {
 			return nil, raftpb.HardState{}, nil, err
 		}
@@ -55,12 +55,12 @@ func (w *wrappedWAL) ReadAll() ([]byte, raftpb.HardState, []raftpb.Entry, error)
 	return metadata, state, ents, nil
 }
 
-// Save encodes the entry data (if an encoder is exists) before passing it onto the
+// Save encrypts the entry data (if an encrypter is exists) before passing it onto the
 // wrapped wal.WAL's Save function.
 func (w *wrappedWAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 	var writeEnts []raftpb.Entry
 	for _, ent := range ents {
-		data, err := encryption.Encode(ent.Data, w.encoder)
+		data, err := encryption.Encrypt(ent.Data, w.encrypter)
 		if err != nil {
 			return err
 		}
@@ -78,42 +78,42 @@ func (w *wrappedWAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 // walCryptor is an object that provides the same functions as `etcd/wal`
 // and `etcd/snap` that we need to open a WAL object or Snapshotter object
 type walCryptor struct {
-	encoder encryption.Encoder
-	decoder encryption.Decoder
+	encrypter encryption.Encrypter
+	decrypter encryption.Decrypter
 }
 
 // NewWALFactory returns an object that can be used to produce objects that
 // will read from and write to encrypted WALs on disk.
-func NewWALFactory(encoder encryption.Encoder, decoder encryption.Decoder) WALFactory {
+func NewWALFactory(encrypter encryption.Encrypter, decrypter encryption.Decrypter) WALFactory {
 	return walCryptor{
-		encoder: encoder,
-		decoder: decoder,
+		encrypter: encrypter,
+		decrypter: decrypter,
 	}
 }
 
-// Create returns a new WAL object with the given encoders and decoders.
+// Create returns a new WAL object with the given encrypters and decrypters.
 func (wc walCryptor) Create(dirpath string, metadata []byte) (WAL, error) {
 	w, err := wal.Create(dirpath, metadata)
 	if err != nil {
 		return nil, err
 	}
 	return &wrappedWAL{
-		WAL:     w,
-		encoder: wc.encoder,
-		decoder: wc.decoder,
+		WAL:       w,
+		encrypter: wc.encrypter,
+		decrypter: wc.decrypter,
 	}, nil
 }
 
-// Open returns a new WAL object with the given encoders and decoders.
+// Open returns a new WAL object with the given encrypters and decrypters.
 func (wc walCryptor) Open(dirpath string, snap walpb.Snapshot) (WAL, error) {
 	w, err := wal.Open(dirpath, snap)
 	if err != nil {
 		return nil, err
 	}
 	return &wrappedWAL{
-		WAL:     w,
-		encoder: wc.encoder,
-		decoder: wc.decoder,
+		WAL:       w,
+		encrypter: wc.encrypter,
+		decrypter: wc.decrypter,
 	}, nil
 }
 

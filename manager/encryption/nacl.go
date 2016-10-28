@@ -13,16 +13,16 @@ import (
 const naclSecretboxKeySize = 32
 const naclSecretboxNonceSize = 24
 
-// This provides the default implementation of an encoder and decoder, as well
+// This provides the default implementation of an encrypter and decrypter, as well
 // as the default KDF function.
 
-// NACLSecretbox is an implementation of an encoder/decoder.  Encoding
+// NACLSecretbox is an implementation of an encrypter/decrypter.  Encrypting
 // generates random Nonces.
 type NACLSecretbox struct {
 	key [naclSecretboxKeySize]byte
 }
 
-// NewNACLSecretbox returns a new NACL secretbox encoder/decoder with the given key
+// NewNACLSecretbox returns a new NACL secretbox encrypter/decrypter with the given key
 func NewNACLSecretbox(key []byte) NACLSecretbox {
 	secretbox := NACLSecretbox{}
 	copy(secretbox.key[:], key)
@@ -34,8 +34,8 @@ func (n NACLSecretbox) Algorithm() api.MaybeEncryptedRecord_Algorithm {
 	return api.MaybeEncryptedRecord_NACLSecretboxSalsa20Poly1305
 }
 
-// Encode encrypts some bytes and returns an encrypted record
-func (n NACLSecretbox) Encode(data []byte) (*api.MaybeEncryptedRecord, error) {
+// Encrypt encrypts some bytes and returns an encrypted record
+func (n NACLSecretbox) Encrypt(data []byte) (*api.MaybeEncryptedRecord, error) {
 	var nonce [24]byte
 	if _, err := io.ReadFull(rand.Reader, nonce[:]); err != nil {
 		return nil, err
@@ -51,8 +51,8 @@ func (n NACLSecretbox) Encode(data []byte) (*api.MaybeEncryptedRecord, error) {
 	}, nil
 }
 
-// Decode decrypts a MaybeEncryptedRecord and returns some bytes
-func (n NACLSecretbox) Decode(record api.MaybeEncryptedRecord) ([]byte, error) {
+// Decrypt decrypts a MaybeEncryptedRecord and returns some bytes
+func (n NACLSecretbox) Decrypt(record api.MaybeEncryptedRecord) ([]byte, error) {
 	if record.Algorithm != n.Algorithm() {
 		return nil, fmt.Errorf("not a NACL secretbox record")
 	}

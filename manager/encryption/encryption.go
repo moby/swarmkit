@@ -16,75 +16,75 @@ import (
 
 const humanReadablePrefix = "SWMKEY-1-"
 
-// ErrCannotDecode is the type of error returned when some data cannot be decoded as plaintext
-type ErrCannotDecode struct {
+// ErrCannotDecrypt is the type of error returned when some data cannot be decryptd as plaintext
+type ErrCannotDecrypt struct {
 	msg string
 }
 
-func (e ErrCannotDecode) Error() string {
+func (e ErrCannotDecrypt) Error() string {
 	return e.msg
 }
 
-// A Decoder can decrypt an encrypted record
-type Decoder interface {
-	Decode(api.MaybeEncryptedRecord) ([]byte, error)
+// A Decrypter can decrypt an encrypted record
+type Decrypter interface {
+	Decrypt(api.MaybeEncryptedRecord) ([]byte, error)
 }
 
-// A Encoder can encrypt some bytes into an encrypted record
-type Encoder interface {
-	Encode(data []byte) (*api.MaybeEncryptedRecord, error)
+// A Encrypter can encrypt some bytes into an encrypted record
+type Encrypter interface {
+	Encrypt(data []byte) (*api.MaybeEncryptedRecord, error)
 }
 
-type noopCoder struct{}
+type noopCrypter struct{}
 
-func (n noopCoder) Decode(e api.MaybeEncryptedRecord) ([]byte, error) {
+func (n noopCrypter) Decrypt(e api.MaybeEncryptedRecord) ([]byte, error) {
 	if e.Algorithm != n.Algorithm() {
 		return nil, fmt.Errorf("record is encrypted")
 	}
 	return e.Data, nil
 }
 
-func (n noopCoder) Encode(data []byte) (*api.MaybeEncryptedRecord, error) {
+func (n noopCrypter) Encrypt(data []byte) (*api.MaybeEncryptedRecord, error) {
 	return &api.MaybeEncryptedRecord{
 		Algorithm: n.Algorithm(),
 		Data:      data,
 	}, nil
 }
 
-func (n noopCoder) Algorithm() api.MaybeEncryptedRecord_Algorithm {
+func (n noopCrypter) Algorithm() api.MaybeEncryptedRecord_Algorithm {
 	return api.MaybeEncryptedRecord_NotEncrypted
 }
 
-// NoopCoder is just a pass-through coder - it does not actually encode or
-// decode any data
-var NoopCoder = noopCoder{}
+// NoopCrypter is just a pass-through crypter - it does not actually encrypt or
+// decrypt any data
+var NoopCrypter = noopCrypter{}
 
-// Decode turns a slice of bytes serialized as an MaybeEncryptedRecord into a slice of plaintext bytes
-func Decode(encoded []byte, decoder Decoder) ([]byte, error) {
-	if decoder == nil {
-		return nil, ErrCannotDecode{msg: "no decoder specified"}
+// Decrypt turns a slice of bytes serialized as an MaybeEncryptedRecord into a slice of plaintext bytes
+func Decrypt(encryptd []byte, decrypter Decrypter) ([]byte, error) {
+	if decrypter == nil {
+		return nil, ErrCannotDecrypt{msg: "no decrypter specified"}
 	}
 	r := api.MaybeEncryptedRecord{}
-	if err := proto.Unmarshal(encoded, &r); err != nil {
+	if err := proto.Unmarshal(encryptd, &r); err != nil {
 		// nope, this wasn't marshalled as a MaybeEncryptedRecord
-		return nil, ErrCannotDecode{msg: "unable to unmarshal as MaybeEncryptedRecord"}
+		return nil, ErrCannotDecrypt{msg: "unable to unmarshal as MaybeEncryptedRecord"}
 	}
-	plaintext, err := decoder.Decode(r)
+	plaintext, err := decrypter.Decrypt(r)
 	if err != nil {
-		return nil, ErrCannotDecode{msg: err.Error()}
+		return nil, ErrCannotDecrypt{msg: err.Error()}
 	}
 	return plaintext, nil
 }
 
-// Encode turns a slice of bytes into a serialized MaybeEncryptedRecord slice of bytes
-func Encode(plaintext []byte, encoder Encoder) ([]byte, error) {
-	if encoder == nil {
-		return nil, fmt.Errorf("no encoder specified")
+// Encrypt turns a slice of bytes into a serialized MaybeEncryptedRecord slice of bytes
+func Encrypt(plaintext []byte, encrypter Encrypter) ([]byte, error) {
+	if encrypter == nil {
+		return nil, fmt.Errorf("no encrypter specified")
 	}
 
-	encryptedRecord, err := encoder.Encode(plaintext)
+	encryptedRecord, err := encrypter.Encrypt(plaintext)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to encode data")
+		return nil, errors.Wrap(err, "unable to encrypt data")
 	}
 
 	data, err := proto.Marshal(encryptedRecord)
@@ -95,8 +95,8 @@ func Encode(plaintext []byte, encoder Encoder) ([]byte, error) {
 	return data, nil
 }
 
-// Defaults returns a default encoder and decoder
-func Defaults(key []byte) (Encoder, Decoder) {
+// Defaults returns a default encrypter and decrypter
+func Defaults(key []byte) (Encrypter, Decrypter) {
 	n := NewNACLSecretbox(key)
 	return n, n
 }
