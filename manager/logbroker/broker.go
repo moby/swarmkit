@@ -1,6 +1,7 @@
 package logbroker
 
 import (
+	"errors"
 	"sync"
 
 	"google.golang.org/grpc"
@@ -16,6 +17,11 @@ import (
 	"golang.org/x/net/context"
 )
 
+var (
+	errAlreadyRunning = errors.New("broker is already running")
+	errNotRunning     = errors.New("broker is not running")
+)
+
 // LogBroker coordinates log subscriptions to services and tasks. Çlients can
 // publish and subscribe to logs channels.
 //
@@ -28,24 +34,51 @@ type LogBroker struct {
 
 	registeredSubscriptions map[string]*api.SubscriptionMessage
 
-	stopped chan struct{}
+	pctx      context.Context
+	cancelAll context.CancelFunc
 }
 
 // New initializes and returns a new LogBroker
 func New() *LogBroker {
-	return &LogBroker{
-		logQueue:                watch.NewQueue(),
-		subscriptionQueue:       watch.NewQueue(),
-		registeredSubscriptions: make(map[string]*api.SubscriptionMessage),
-		stopped:                 make(chan struct{}),
+	return &LogBroker{}
+}
+
+// Run the log broker
+func (lb *LogBroker) Run(ctx context.Context) error {
+	lb.mu.Lock()
+
+	if lb.cancelAll != nil {
+		lb.mu.Unlock()
+		return errAlreadyRunning
+	}
+
+	lb.pctx, lb.cancelAll = context.WithCancel(ctx)
+	lb.logQueue = watch.NewQueue()
+	lb.subscriptionQueue = watch.NewQueue()
+	lb.registeredSubscriptions = make(map[string]*api.SubscriptionMessage)
+	lb.mu.Unlock()
+
+	select {
+	case <-lb.pctx.Done():
+		return lb.pctx.Err()
 	}
 }
 
 // Stop stops the log broker
-func (lb *LogBroker) Stop() {
-	close(lb.stopped)
+func (lb *LogBroker) Stop() error {
+	lb.mu.Lock()
+	defer lb.mu.Unlock()
+
+	if lb.cancelAll == nil {
+		return errNotRunning
+	}
+	lb.cancelAll()
+	lb.cancelAll = nil
+
 	lb.logQueue.Close()
 	lb.subscriptionQueue.Close()
+
+	return nil
 }
 
 func validateSelector(selector *api.LogSelector) error {
@@ -79,7 +112,7 @@ func (lb *LogBroker) unregisterSubscription(subscription *api.SubscriptionMessag
 	lb.subscriptionQueue.Publish(subscription)
 }
 
-func (lb *LogBroker) subscriptions() ([]*api.SubscriptionMessage, chan events.Event, func()) {
+func (lb *LogBroker) watchSubscriptions() ([]*api.SubscriptionMessage, chan events.Event, func()) {
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()
 
@@ -90,6 +123,23 @@ func (lb *LogBroker) subscriptions() ([]*api.SubscriptionMessage, chan events.Ev
 
 	ch, cancel := lb.subscriptionQueue.Watch()
 	return subs, ch, cancel
+}
+
+func (lb *LogBroker) subscribe(id string) (chan events.Event, func()) {
+	lb.mu.RLock()
+	defer lb.mu.RUnlock()
+
+	return lb.logQueue.CallbackWatch(events.MatcherFunc(func(event events.Event) bool {
+		publish := event.(*api.PublishLogsRequest)
+		return publish.SubscriptionID == id
+	}))
+}
+
+func (lb *LogBroker) publish(log *api.PublishLogsRequest) {
+	lb.mu.RLock()
+	defer lb.mu.RUnlock()
+
+	lb.logQueue.Publish(log)
 }
 
 // SubscribeLogs creates a log subscription and streams back logs
@@ -115,10 +165,7 @@ func (lb *LogBroker) SubscribeLogs(request *api.SubscribeLogsRequest, stream api
 
 	log.Debug("subscribed")
 
-	publishCh, publishCancel := lb.logQueue.CallbackWatch(events.MatcherFunc(func(event events.Event) bool {
-		publish := event.(*api.PublishLogsRequest)
-		return publish.SubscriptionID == subscription.ID
-	}))
+	publishCh, publishCancel := lb.subscribe(subscription.ID)
 	defer publishCancel()
 
 	lb.registerSubscription(subscription)
@@ -143,7 +190,7 @@ func (lb *LogBroker) SubscribeLogs(request *api.SubscribeLogsRequest, stream api
 			}
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-lb.stopped:
+		case <-lb.pctx.Done():
 			return nil
 		}
 	}
@@ -162,7 +209,7 @@ func (lb *LogBroker) ListenSubscriptions(request *api.ListenSubscriptionsRequest
 			"node":   remote.NodeID,
 		},
 	)
-	subscriptions, subscriptionCh, subscriptionCancel := lb.subscriptions()
+	subscriptions, subscriptionCh, subscriptionCancel := lb.watchSubscriptions()
 	defer subscriptionCancel()
 
 	log.Debug("node registered")
@@ -172,7 +219,7 @@ func (lb *LogBroker) ListenSubscriptions(request *api.ListenSubscriptionsRequest
 		select {
 		case <-stream.Context().Done():
 			return stream.Context().Err()
-		case <-lb.stopped:
+		case <-lb.pctx.Done():
 			return nil
 		default:
 		}
@@ -195,7 +242,7 @@ func (lb *LogBroker) ListenSubscriptions(request *api.ListenSubscriptionsRequest
 			}
 		case <-stream.Context().Done():
 			return stream.Context().Err()
-		case <-lb.stopped:
+		case <-lb.pctx.Done():
 			return nil
 		}
 	}
