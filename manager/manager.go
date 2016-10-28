@@ -295,6 +295,7 @@ func (m *Manager) Run(parent context.Context) error {
 
 	authenticatedControlAPI := api.NewAuthenticatedWrapperControlServer(baseControlAPI, authorize)
 	authenticatedResourceAPI := api.NewAuthenticatedWrapperResourceAllocatorServer(baseResourceAPI, authorize)
+	authenticatedLogsServerAPI := api.NewAuthenticatedWrapperLogsServer(m.logbroker, authorize)
 	authenticatedLogBrokerAPI := api.NewAuthenticatedWrapperLogBrokerServer(m.logbroker, authorize)
 	authenticatedDispatcherAPI := api.NewAuthenticatedWrapperDispatcherServer(m.dispatcher, authorize)
 	authenticatedCAAPI := api.NewAuthenticatedWrapperCAServer(m.caserver, authorize)
@@ -328,6 +329,7 @@ func (m *Manager) Run(parent context.Context) error {
 	api.RegisterHealthServer(m.server, authenticatedHealthAPI)
 	api.RegisterRaftMembershipServer(m.server, proxyRaftMembershipAPI)
 	api.RegisterControlServer(m.server, authenticatedControlAPI)
+	api.RegisterLogsServer(m.server, authenticatedLogsServerAPI)
 	api.RegisterLogBrokerServer(m.server, proxyLogBrokerAPI)
 	api.RegisterResourceAllocatorServer(m.server, proxyResourceAPI)
 	api.RegisterDispatcherServer(m.server, proxyDispatcherAPI)
