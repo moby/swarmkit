@@ -63,14 +63,26 @@ func createSpecWithDuplicateSecretTargets(name string) *api.ServiceSpec {
 		{
 			SecretName: "secret1",
 			SecretID:   "secretID1",
-			Target:     "target.txt",
-			Mode:       api.SecretReference_FILE,
+			Target: &api.SecretReference_File{
+				File: &api.FileMetadata{
+					Name: "target.txt",
+					UID:  "0",
+					GID:  "0",
+					Mode: 0666,
+				},
+			},
 		},
 		{
 			SecretName: "secret2",
 			SecretID:   "secretID2",
-			Target:     "target.txt",
-			Mode:       api.SecretReference_FILE,
+			Target: &api.SecretReference_File{
+				File: &api.FileMetadata{
+					Name: "target.txt",
+					UID:  "0",
+					GID:  "0",
+					Mode: 0666,
+				},
+			},
 		},
 	}
 
@@ -346,13 +358,22 @@ func TestCreateService(t *testing.T) {
 		{
 			SecretName: "secret1",
 			SecretID:   "secretID1",
-			Mode:       api.SecretReference_FILE,
+			Target: &api.SecretReference_File{
+				File: &api.FileMetadata{
+					Name: "secret1.txt",
+					Mode: 0666,
+				},
+			},
 		},
 		{
 			SecretName: "secret2",
 			SecretID:   "secretID2",
-			Target:     "secret1",
-			Mode:       api.SecretReference_FILE,
+			Target: &api.SecretReference_File{
+				File: &api.FileMetadata{
+					Name: "secret1.txt",
+					Mode: 0666,
+				},
+			},
 		},
 	}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
@@ -364,13 +385,22 @@ func TestCreateService(t *testing.T) {
 		{
 			SecretName: "secret1",
 			SecretID:   "secretID1",
-			Mode:       api.SecretReference_FILE,
+			Target: &api.SecretReference_File{
+				File: &api.FileMetadata{
+					Name: "secret1.txt",
+					Mode: 0666,
+				},
+			},
 		},
 		{
 			SecretName: "secret1",
 			SecretID:   "secretID1",
-			Target:     "different_target",
-			Mode:       api.SecretReference_FILE,
+			Target: &api.SecretReference_File{
+				File: &api.FileMetadata{
+					Name: "different_target.txt",
+					Mode: 0666,
+				},
+			},
 		},
 	}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
