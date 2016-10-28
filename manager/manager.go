@@ -675,6 +675,12 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		}
 	}(m.dispatcher)
 
+	go func(lb *logbroker.LogBroker) {
+		if err := lb.Run(ctx); err != nil {
+			log.G(ctx).WithError(err).Error("LogBroker exited with an error")
+		}
+	}(m.logbroker)
+
 	go func(server *ca.Server) {
 		if err := server.Run(ctx); err != nil {
 			log.G(ctx).WithError(err).Error("CA signer exited with an error")
@@ -723,6 +729,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 // becomeFollower shuts down the subsystems that are only run by the leader.
 func (m *Manager) becomeFollower() {
 	m.dispatcher.Stop()
+	m.logbroker.Stop()
 	m.caserver.Stop()
 
 	if m.allocator != nil {

@@ -18,7 +18,7 @@ import (
 )
 
 func TestLogBroker(t *testing.T) {
-	ctx, _, agentSecurity, client, brokerClient, done := testLogBrokerEnv(t)
+	ctx, broker, agentSecurity, client, brokerClient, done := testLogBrokerEnv(t)
 	defer done()
 
 	var (
@@ -117,6 +117,13 @@ func TestLogBroker(t *testing.T) {
 	t.Logf("received %v messages", messages)
 
 	wg.Wait()
+
+	// Make sure double Run throws an error
+	assert.EqualError(t, broker.Run(ctx), errAlreadyRunning.Error())
+	// Stop should work
+	assert.NoError(t, broker.Stop())
+	// Double stopping should fail
+	assert.EqualError(t, broker.Stop(), errNotRunning.Error())
 }
 
 func TestLogBrokerRegistration(t *testing.T) {
@@ -228,7 +235,13 @@ func testLogBrokerEnv(t *testing.T) (context.Context, *LogBroker, *ca.SecurityCo
 	}
 	brokerClient := api.NewLogBrokerClient(brokerCc)
 
+	go func() {
+		broker.Run(ctx)
+	}()
+
 	return ctx, broker, agentSecurityConfig, logClient, brokerClient, func() {
+		broker.Stop()
+
 		logCc.Close()
 		brokerCc.Close()
 
