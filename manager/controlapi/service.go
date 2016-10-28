@@ -304,24 +304,35 @@ func (s *Server) checkPortConflicts(spec *api.ServiceSpec, serviceID string) err
 	return nil
 }
 
-// checkSecretConflicts finds if the passed in spec has secrets with conflicting targets.
+// checkSecretConflicts finds if the secrets passed in spec have any conflicting targets.
 func (s *Server) checkSecretConflicts(spec *api.ServiceSpec) error {
 	container := spec.Task.GetContainer()
 	if container == nil {
 		return nil
 	}
 
+	// Keep a map to track all the targets that will be exposed
+	// The string returned is only used for logging. It could as well be struct{}{}
 	existingTargets := make(map[string]string)
 	for _, secretRef := range container.Secrets {
-		if prevSecretName, ok := existingTargets[secretRef.Target]; ok {
-			return grpc.Errorf(codes.InvalidArgument, "secret references '%s' and '%s' have a conflicting target: '%s'", prevSecretName, secretRef.SecretName, secretRef.Target)
-		}
-
+		// SecretID and SecretName are mandatory, we have invalid references without them
 		if secretRef.SecretID == "" || secretRef.SecretName == "" {
 			return grpc.Errorf(codes.InvalidArgument, "malformed secret reference")
 		}
 
-		existingTargets[secretRef.Target] = secretRef.SecretName
+		// An empty target is ok, and in that case, we default to using the SecretName as
+		// the target.
+		targetToCheck := secretRef.SecretName
+		if secretRef.Target != "" {
+			targetToCheck = secretRef.Target
+		}
+
+		// If this target is already in use, we have conflicting targets
+		if prevSecretName, ok := existingTargets[targetToCheck]; ok {
+			return grpc.Errorf(codes.InvalidArgument, "secret references '%s' and '%s' have a conflicting target: '%s'", prevSecretName, secretRef.SecretName, targetToCheck)
+		}
+
+		existingTargets[targetToCheck] = secretRef.SecretName
 	}
 
 	return nil
