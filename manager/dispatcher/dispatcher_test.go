@@ -1045,7 +1045,14 @@ func taskSpecFromSecrets(secrets ...*api.Secret) api.TaskSpec {
 		secretRefs = append(secretRefs, &api.SecretReference{
 			SecretName: s.Spec.Annotations.Name,
 			SecretID:   s.ID,
-			Mode:       api.SecretReference_FILE,
+			Target: &api.SecretReference_File{
+				File: &api.SecretReference_FileTarget{
+					Name: "target.txt",
+					UID:  "0",
+					GID:  "0",
+					Mode: 0666,
+				},
+			},
 		})
 	}
 	return api.TaskSpec{

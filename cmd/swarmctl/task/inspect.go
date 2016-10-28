@@ -71,7 +71,12 @@ func printTaskSummary(task *api.Task, res *common.Resolver) {
 	if len(ctr.Secrets) > 0 {
 		fmt.Fprintln(w, "  Secrets:")
 		for _, sr := range ctr.Secrets {
-			fmt.Fprintf(w, "    [%s] %s@%s:%s\n", sr.Mode, sr.SecretName, sr.SecretID, sr.Target)
+			var targetName, mode string
+			if sr.GetFile() != nil {
+				targetName = sr.GetFile().Name
+				mode = "FILE"
+			}
+			fmt.Fprintf(w, "    [%s] %s:%s\n", mode, sr.SecretName, targetName)
 		}
 	}
 }

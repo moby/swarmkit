@@ -2,6 +2,7 @@ package controlapi
 
 import (
 	"errors"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -304,8 +305,8 @@ func (s *Server) checkPortConflicts(spec *api.ServiceSpec, serviceID string) err
 	return nil
 }
 
-// checkSecretConflicts finds if the secrets passed in spec have any conflicting targets.
-func (s *Server) checkSecretConflicts(spec *api.ServiceSpec) error {
+// checkSecretValidity finds if the secrets passed in spec have any conflicting targets.
+func (s *Server) checkSecretValidity(spec *api.ServiceSpec) error {
 	container := spec.Task.GetContainer()
 	if container == nil {
 		return nil
@@ -320,19 +321,26 @@ func (s *Server) checkSecretConflicts(spec *api.ServiceSpec) error {
 			return grpc.Errorf(codes.InvalidArgument, "malformed secret reference")
 		}
 
-		// An empty target is ok, and in that case, we default to using the SecretName as
-		// the target.
-		targetToCheck := secretRef.SecretName
-		if secretRef.Target != "" {
-			targetToCheck = secretRef.Target
+		// Every secret referece requires a Target
+		if secretRef.GetTarget() == nil {
+			return grpc.Errorf(codes.InvalidArgument, "malformed secret reference, no target provided")
 		}
 
-		// If this target is already in use, we have conflicting targets
-		if prevSecretName, ok := existingTargets[targetToCheck]; ok {
-			return grpc.Errorf(codes.InvalidArgument, "secret references '%s' and '%s' have a conflicting target: '%s'", prevSecretName, secretRef.SecretName, targetToCheck)
-		}
+		// If this is a file target, we will ensure filename uniqueness
+		if secretRef.GetFile() != nil {
+			fileName := secretRef.GetFile().Name
+			// Validate the file name
+			if fileName == "" || fileName != filepath.Base(filepath.Clean(fileName)) {
+				return grpc.Errorf(codes.InvalidArgument, "malformed file secret reference, invalid target file name provided")
+			}
 
-		existingTargets[targetToCheck] = secretRef.SecretName
+			// If this target is already in use, we have conflicting targets
+			if prevSecretName, ok := existingTargets[fileName]; ok {
+				return grpc.Errorf(codes.InvalidArgument, "secret references '%s' and '%s' have a conflicting target: '%s'", prevSecretName, secretRef.SecretName, fileName)
+			}
+
+			existingTargets[fileName] = secretRef.SecretName
+		}
 	}
 
 	return nil
@@ -356,7 +364,7 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 		return nil, err
 	}
 
-	if err := s.checkSecretConflicts(request.Spec); err != nil {
+	if err := s.checkSecretValidity(request.Spec); err != nil {
 		return nil, err
 	}
 
@@ -427,7 +435,7 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		}
 	}
 
-	if err := s.checkSecretConflicts(request.Spec); err != nil {
+	if err := s.checkSecretValidity(request.Spec); err != nil {
 		return nil, err
 	}
 
