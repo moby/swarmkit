@@ -117,6 +117,8 @@ message NodeStatus {
 
 	State state = 1;
 	string message = 2;
+	// Addr is the node's IP address as observed by the manager
+	string addr = 3;
 }
 
 message Image {
