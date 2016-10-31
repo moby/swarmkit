@@ -119,6 +119,58 @@ func TestReconcilePortConfigs(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: &api.Service{
+				Spec: api.ServiceSpec{
+					Endpoint: &api.EndpointSpec{
+						Ports: []*api.PortConfig{
+							{
+								Name:          "test1",
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    10000,
+								PublishedPort: 0,
+							},
+							{
+								Name:          "test2",
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    10001,
+								PublishedPort: 0,
+							},
+						},
+					},
+				},
+				Endpoint: &api.Endpoint{
+					Ports: []*api.PortConfig{
+						{
+							Name:          "test2",
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    10001,
+							PublishedPort: 10001,
+						},
+						{
+							Name:          "test1",
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    10000,
+							PublishedPort: 10000,
+						},
+					},
+				},
+			},
+			expect: []*api.PortConfig{
+				{
+					Name:          "test1",
+					Protocol:      api.ProtocolTCP,
+					TargetPort:    10000,
+					PublishedPort: 10000,
+				},
+				{
+					Name:          "test2",
+					Protocol:      api.ProtocolTCP,
+					TargetPort:    10001,
+					PublishedPort: 10001,
+				},
+			},
+		},
 	}
 
 	for _, singleTest := range portConfigsBinds {
@@ -433,6 +485,60 @@ func TestIsPortsAllocated(t *testing.T) {
 				},
 				Endpoint: &api.Endpoint{
 					Ports: []*api.PortConfig{
+						{
+							Name:          "test1",
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    10000,
+							PublishedPort: 10000,
+						},
+					},
+				},
+			},
+			expect: true,
+		},
+		{
+			// Endpoint and Spec.Endpoint are the same except the ports are in different order
+			input: &api.Service{
+				Spec: api.ServiceSpec{
+					Endpoint: &api.EndpointSpec{
+						Ports: []*api.PortConfig{
+							{
+								Name:          "test1",
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    10000,
+								PublishedPort: 0,
+							},
+							{
+								Name:          "test2",
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    10001,
+								PublishedPort: 0,
+							},
+							{
+								Name:          "test3",
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    10002,
+								PublishedPort: 0,
+								PublishMode:   api.PublishModeHost,
+							},
+						},
+					},
+				},
+				Endpoint: &api.Endpoint{
+					Ports: []*api.PortConfig{
+						{
+							Name:          "test2",
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    10001,
+							PublishedPort: 10001,
+						},
+						{
+							Name:          "test3",
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    10002,
+							PublishedPort: 0,
+							PublishMode:   api.PublishModeHost,
+						},
 						{
 							Name:          "test1",
 							Protocol:      api.ProtocolTCP,
