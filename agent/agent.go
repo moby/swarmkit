@@ -347,6 +347,13 @@ func (a *Agent) withSession(ctx context.Context, fn func(session *session) error
 	}
 }
 
+func (a *Agent) WithControlAPI(ctx context.Context, fn func(c api.ControlClient) error) error {
+	return a.withSession(ctx, func(s *session) error {
+		c := s.ControlAPI()
+		return fn(c)
+	})
+}
+
 // UpdateTaskStatus attempts to send a task status update over the current session,
 // blocking until the operation is completed.
 //

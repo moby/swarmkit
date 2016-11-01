@@ -102,6 +102,10 @@ func (s *session) run(ctx context.Context, delay time.Duration, description *api
 	close(s.registered)
 }
 
+func (s *session) ControlAPI() api.ControlClient {
+	return api.NewControlClient(s.conn)
+}
+
 // start begins the session and returns the first SessionMessage.
 func (s *session) start(ctx context.Context, description *api.NodeDescription) error {
 	log.G(ctx).Debugf("(*session).start")
