@@ -18,6 +18,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/naming"
 	"github.com/docker/swarmkit/protobuf/ptypes"
+	"github.com/docker/swarmkit/template"
 )
 
 const (
@@ -32,8 +33,7 @@ const (
 // containerConfig converts task properties into docker container compatible
 // components.
 type containerConfig struct {
-	task *api.Task
-
+	task                *api.Task
 	networksAttachments map[string]*api.NetworkAttachment
 }
 
@@ -61,6 +61,14 @@ func (c *containerConfig) setTask(t *api.Task) error {
 	}
 
 	c.task = t
+	preparedSpec, err := template.ExpandContainerSpec(t)
+	if err != nil {
+		return err
+	}
+	c.task.Spec.Runtime = &api.TaskSpec_Container{
+		Container: preparedSpec,
+	}
+
 	return nil
 }
 
