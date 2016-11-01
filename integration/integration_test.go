@@ -29,9 +29,9 @@ func printTrace() {
 		bufferLen *= 2
 	}
 	buf = buf[:stackSize]
-	logrus.Errorf("===========================STACK TRACE===========================")
+	logrus.Error("===========================STACK TRACE===========================")
 	fmt.Println(string(buf))
-	logrus.Errorf("===========================STACK TRACE END=======================")
+	logrus.Error("===========================STACK TRACE END=======================")
 }
 
 func TestMain(m *testing.M) {
