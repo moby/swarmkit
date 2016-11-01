@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/swarmkit/api"
@@ -305,7 +306,8 @@ func (s *Server) checkPortConflicts(spec *api.ServiceSpec, serviceID string) err
 	return nil
 }
 
-// checkSecretValidity finds if the secrets passed in spec have any conflicting targets.
+// checkSecretValidity finds if the secrets passed in spec are valid and have no
+// conflicting targets.
 func (s *Server) checkSecretValidity(spec *api.ServiceSpec) error {
 	container := spec.Task.GetContainer()
 	if container == nil {
@@ -346,6 +348,35 @@ func (s *Server) checkSecretValidity(spec *api.ServiceSpec) error {
 	return nil
 }
 
+// checkSecretExistence finds if the secret exists
+func (s *Server) checkSecretExistence(tx store.Tx, spec *api.ServiceSpec) error {
+	container := spec.Task.GetContainer()
+	if container == nil {
+		return nil
+	}
+
+	var failedSecrets []string
+	for _, secretRef := range container.Secrets {
+		secret := store.GetSecret(tx, secretRef.SecretID)
+		// Check to see if the secret exists and secretRef.SecretName matches the actual secretName
+		if secret == nil || secret.Spec.Annotations.Name != secretRef.SecretName {
+			failedSecrets = append(failedSecrets, secretRef.SecretName)
+		}
+	}
+
+	if len(failedSecrets) > 0 {
+		secretStr := "secrets"
+		if len(failedSecrets) == 1 {
+			secretStr = "secret"
+		}
+
+		return grpc.Errorf(codes.InvalidArgument, "%s not found: %v", secretStr, strings.Join(failedSecrets, ", "))
+
+	}
+
+	return nil
+}
+
 // CreateService creates and return a Service based on the provided ServiceSpec.
 // - Returns `InvalidArgument` if the ServiceSpec is malformed.
 // - Returns `Unimplemented` if the ServiceSpec references unimplemented features.
@@ -364,6 +395,7 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 		return nil, err
 	}
 
+	// Check to see if the Secrets portion of the spec is valid
 	if err := s.checkSecretValidity(request.Spec); err != nil {
 		return nil, err
 	}
@@ -376,6 +408,13 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {
+		// Check to see if all the secrets being added exist as objects
+		// in our datastore
+		err := s.checkSecretExistence(tx, request.Spec)
+		if err != nil {
+			return err
+		}
+
 		return store.CreateService(tx, service)
 	})
 	if err != nil {
@@ -457,6 +496,13 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 
 		if !reflect.DeepEqual(requestSpecNetworks, specNetworks) {
 			return errNetworkUpdateNotSupported
+		}
+
+		// Check to see if all the secrets being added exist as objects
+		// in our datastore
+		err := s.checkSecretExistence(tx, request.Spec)
+		if err != nil {
+			return err
 		}
 
 		// orchestrator is designed to be stateless, so it should not deal
