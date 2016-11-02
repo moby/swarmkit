@@ -152,11 +152,20 @@ func (s *Server) RemoveNetwork(ctx context.Context, request *api.RemoveNetworkRe
 	err := s.store.Update(func(tx store.Tx) error {
 		services, err := store.FindServices(tx, store.ByReferencedNetworkID(request.NetworkID))
 		if err != nil {
-			return grpc.Errorf(codes.Internal, "could not find services using network %s", request.NetworkID)
+			return grpc.Errorf(codes.Internal, "could not find services using network %s: %v", request.NetworkID, err)
 		}
 
 		if len(services) != 0 {
 			return grpc.Errorf(codes.FailedPrecondition, "network %s is in use by service %s", request.NetworkID, services[0].ID)
+		}
+
+		tasks, err := store.FindTasks(tx, store.ByReferencedNetworkID(request.NetworkID))
+		if err != nil {
+			return grpc.Errorf(codes.Internal, "could not find tasks using network %s: %v", request.NetworkID, err)
+		}
+
+		if len(tasks) != 0 {
+			return grpc.Errorf(codes.FailedPrecondition, "network %s is in use by task %s", request.NetworkID, tasks[0].ID)
 		}
 
 		nw := store.GetNetwork(tx, request.NetworkID)
