@@ -147,6 +147,7 @@ func (s *Server) GetNetwork(ctx context.Context, request *api.GetNetworkRequest)
 func (s *Server) RemoveNetwork(ctx context.Context, request *api.RemoveNetworkRequest) (*api.RemoveNetworkResponse, error) {
 	var (
 		services []*api.Service
+		tasks    []*api.Task
 		err      error
 	)
 
@@ -166,6 +167,23 @@ func (s *Server) RemoveNetwork(ctx context.Context, request *api.RemoveNetworkRe
 		if len(specNetworks) == 0 {
 			specNetworks = s.Spec.Networks
 		}
+
+		for _, na := range specNetworks {
+			if na.Target == request.NetworkID {
+				return nil, grpc.Errorf(codes.FailedPrecondition, "network %s is in use", request.NetworkID)
+			}
+		}
+	}
+
+	s.store.View(func(tx store.ReadTx) {
+		tasks, err = store.FindTasks(tx, store.All)
+	})
+	if err != nil {
+		return nil, grpc.Errorf(codes.Internal, "could not find tasks using network %s", request.NetworkID)
+	}
+
+	for _, t := range tasks {
+		specNetworks := t.Spec.Networks
 
 		for _, na := range specNetworks {
 			if na.Target == request.NetworkID {
