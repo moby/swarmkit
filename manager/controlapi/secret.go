@@ -200,7 +200,7 @@ func (s *Server) RemoveSecret(ctx context.Context, request *api.RemoveSecretRequ
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {
-		// Check inf the secret exists
+		// Check if the secret exists
 		secret := store.GetSecret(tx, request.SecretID)
 		if secret == nil {
 			return grpc.Errorf(codes.NotFound, "could not find secret %s", request.SecretID)

@@ -272,11 +272,17 @@ func TestRemoveUsedSecret(t *testing.T) {
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: service})
 	assert.NoError(t, err)
 
+	service2 := createSpec("service2", "image", 1)
+	service2.Task.GetContainer().Secrets = secretRefs
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: service2})
+	assert.NoError(t, err)
+
 	// removing a secret that exists but is in use fails
 	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: resp.Secret.ID})
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+	assert.Regexp(t, "service[1-2], service[1-2]", grpc.ErrorDesc(err))
 
-	// removing a secret that exists but is not in use with force succeeds
+	// removing a secret that exists but is not in use succeeds
 	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: resp2.Secret.ID})
 	assert.NoError(t, err)
 
