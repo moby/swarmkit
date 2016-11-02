@@ -395,7 +395,7 @@ func TestSecretValidation(t *testing.T) {
 	assert.NoError(t, err)
 
 	// test secret References with invalid filenames
-	invalidFileNames := []string{"../secretfile.txt", "../../secretfile.txt", "file../.txt"}
+	invalidFileNames := []string{"../secretfile.txt", "../../secretfile.txt", "file../.txt", "subdir/file.txt"}
 	for i, invalidName := range invalidFileNames {
 		secretRef := createSecret(t, ts, invalidName, invalidName)
 
