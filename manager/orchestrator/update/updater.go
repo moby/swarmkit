@@ -383,6 +383,10 @@ func (u *Updater) updateTask(ctx context.Context, slot orchestrator.Slot, update
 		}
 
 		err = batch.Update(func(tx store.Tx) error {
+			if store.GetService(tx, updated.ServiceID) == nil {
+				return errors.New("service was deleted")
+			}
+
 			if err := store.CreateTask(tx, updated); err != nil {
 				return err
 			}
