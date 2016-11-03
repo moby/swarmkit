@@ -41,6 +41,9 @@ const (
 	// CARole represents the CA node type, and is used for clients attempting to get new certificates issued
 	CARole = "swarm-ca"
 
+	// A node which is allowed to access the ListNodes control API interface
+	PermControlListNodes = "swarm-control-listnodes"
+
 	generatedSecretEntropyBytes = 16
 	joinTokenBase               = 36
 	// ceil(log(2^128-1, 36))

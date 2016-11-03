@@ -14,7 +14,7 @@ service Control {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	};
 	rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {
-		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" roles: "swarm-control-listnodes" };
 	};
 	rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse) {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
