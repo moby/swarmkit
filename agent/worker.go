@@ -406,7 +406,10 @@ func (w *worker) updateTaskStatus(ctx context.Context, tx *bolt.Tx, taskID strin
 func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMessage) error {
 	log.G(ctx).Debugf("Received subscription %s (selector: %v)", subscription.ID, subscription.Selector)
 
-	publisher := w.publisherProvider.Publisher(ctx, subscription.ID)
+	publisher, err := w.publisherProvider.Publisher(ctx, subscription.ID)
+	if err != nil {
+		return err
+	}
 	// Send a close once we're done
 	defer publisher.Publish(ctx, api.LogMessage{})
 

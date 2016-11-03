@@ -59,7 +59,7 @@ var (
 			}
 
 			for {
-				subscribeMsg, err := stream.Recv()
+				log, err := stream.Recv()
 				if err == io.EOF {
 					return nil
 				}
@@ -67,7 +67,7 @@ var (
 					return errors.Wrap(err, "failed receiving stream message")
 				}
 
-				for _, msg := range subscribeMsg.Messages {
+				for _, msg := range log.Messages {
 					out := os.Stdout
 					if msg.Stream == api.LogStreamStderr {
 						out = os.Stderr

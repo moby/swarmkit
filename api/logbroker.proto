@@ -65,7 +65,7 @@ message LogContext {
 	string task_id = 3 [(gogoproto.customname) = "TaskID"];
 }
 
-// LogMessage 
+// LogMessage
 message LogMessage {
 	// Context identifies the source of the log message.
 	LogContext context = 1 [(gogoproto.nullable) = false];
@@ -94,7 +94,7 @@ service Logs {
 }
 
 message SubscribeLogsRequest {
-	// LogSelector describes the logs to which the subscriber is 
+	// LogSelector describes the logs to which the subscriber is
 	LogSelector selector = 1;
 
 	LogSubscriptionOptions options = 2;
@@ -127,7 +127,7 @@ service LogBroker {
 
 	// PublishLogs receives sets of log messages destined for a single
 	// subscription identifier.
-	rpc PublishLogs(PublishLogsRequest) returns (PublishLogsResponse) {
+	rpc PublishLogs(stream PublishLogsMessage) returns (PublishLogsResponse) {
 		option (docker.protobuf.plugin.tls_authorization) = {
 			roles: "swarm-worker"
 			roles: "swarm-manager"
@@ -158,17 +158,13 @@ message SubscriptionMessage {
 	bool close = 4;
 }
 
-message PublishLogsRequest {
+message PublishLogsMessage {
 	// SubscriptionID identifies which subscription the set of messages should
 	// be sent to. We can think of this as a "mail box" for the subscription.
 	string subscription_id = 1 [(gogoproto.customname) = "SubscriptionID"];
 
-	// Messages is one or more log messages for publishing.
+	// Messages is the log message for publishing.
 	repeated LogMessage messages = 2 [(gogoproto.nullable) = false];
-
-	// Close indicates that the subscription should be closed after handling
-	// the contents of this message.
-	bool close = 3;
 }
 
 message PublishLogsResponse { }

@@ -72,23 +72,27 @@ func TestLogBroker(t *testing.T) {
 				wg.Add(1)
 				go func(nodeID, serviceID, taskID string) {
 					<-hold
-					defer wg.Done()
 
-					var messages []api.LogMessage
+					// Each goroutine gets its own publisher
+					publisher, err := brokerClient.PublishLogs(ctx)
+					assert.NoError(t, err)
+
+					defer func() {
+						_, err := publisher.CloseAndRecv()
+						assert.NoError(t, err)
+						wg.Done()
+					}()
+
 					msgctx := api.LogContext{
 						NodeID:    agentSecurity.ClientTLSCreds.NodeID(),
 						ServiceID: serviceID,
 						TaskID:    taskID,
 					}
 					for i := 0; i < nLogMessagesPerTask; i++ {
-						messages = append(messages, newLogMessage(msgctx, "log message number %d", i))
-					}
-
-					if _, err := brokerClient.PublishLogs(ctx, &api.PublishLogsRequest{
-						SubscriptionID: subscription.ID,
-						Messages:       messages,
-					}); err != nil {
-						t.Fatalf("error publishing log message: %v", err)
+						assert.NoError(t, publisher.Send(&api.PublishLogsMessage{
+							SubscriptionID: subscription.ID,
+							Messages:       []api.LogMessage{newLogMessage(msgctx, "log message number %d", i)},
+						}))
 					}
 				}(nodeID, serviceID, taskID)
 			}
@@ -100,15 +104,9 @@ func TestLogBroker(t *testing.T) {
 	var messages int
 	for messages < messagesExpected {
 		msgs, err := stream.Recv()
-		if err != nil {
-			t.Fatalf("error recv stream: %v", err)
-		}
-
+		assert.NoError(t, err)
 		for range msgs.Messages {
 			messages++
-			// ts, _ := ptypes.Timestamp(msg.Timestamp)
-			// fmt.Printf("%v %v %v %s\n", messages, msgs.Context, ts, string(msg.Data))
-
 			if messages%100 == 0 {
 				fmt.Println(messages, "received")
 			}
@@ -235,9 +233,7 @@ func testLogBrokerEnv(t *testing.T) (context.Context, *LogBroker, *ca.SecurityCo
 	}
 	brokerClient := api.NewLogBrokerClient(brokerCc)
 
-	go func() {
-		broker.Run(ctx)
-	}()
+	go broker.Run(ctx)
 
 	return ctx, broker, agentSecurityConfig, logClient, brokerClient, func() {
 		broker.Stop()

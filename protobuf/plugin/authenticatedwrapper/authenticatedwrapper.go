@@ -171,7 +171,7 @@ func (g *authenticatedWrapperGen) genSimpleMethod(s *descriptor.ServiceDescripto
 func (g *authenticatedWrapperGen) genAuthenticatedMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
 	g.gen.P()
 	switch {
-	case m.GetServerStreaming() && m.GetClientStreaming():
+	case m.GetClientStreaming():
 		g.genClientServerStreamingMethod(s, m)
 	case m.GetServerStreaming():
 		g.genServerStreamingMethod(s, m)
