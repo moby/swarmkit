@@ -13,7 +13,7 @@ import (
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/state/watch"
+	"github.com/docker/swarmkit/watch"
 	"golang.org/x/net/context"
 )
 
