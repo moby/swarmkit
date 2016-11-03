@@ -43,18 +43,18 @@ func LogTLSState(ctx context.Context, tlsState *tls.ConnectionState) {
 }
 
 // getCertificateSubject extracts the subject from a verified client certificate
-func getCertificateSubject(tlsState *tls.ConnectionState) (pkix.Name, error) {
+func getCertificateSubjectAndHosts(tlsState *tls.ConnectionState) (pkix.Name, []string, error) {
 	if tlsState == nil {
-		return pkix.Name{}, grpc.Errorf(codes.PermissionDenied, "request is not using TLS")
+		return pkix.Name{}, nil, grpc.Errorf(codes.PermissionDenied, "request is not using TLS")
 	}
 	if len(tlsState.PeerCertificates) == 0 {
-		return pkix.Name{}, grpc.Errorf(codes.PermissionDenied, "no client certificates in request")
+		return pkix.Name{}, nil, grpc.Errorf(codes.PermissionDenied, "no client certificates in request")
 	}
 	if len(tlsState.VerifiedChains) == 0 {
-		return pkix.Name{}, grpc.Errorf(codes.PermissionDenied, "no verified chains for remote certificate")
+		return pkix.Name{}, nil, grpc.Errorf(codes.PermissionDenied, "no verified chains for remote certificate")
 	}
 
-	return tlsState.VerifiedChains[0][0].Subject, nil
+	return tlsState.VerifiedChains[0][0].Subject, tlsState.VerifiedChains[0][0].DNSNames, nil
 }
 
 func tlsConnStateFromContext(ctx context.Context) (*tls.ConnectionState, error) {
@@ -70,24 +70,29 @@ func tlsConnStateFromContext(ctx context.Context) (*tls.ConnectionState, error) 
 }
 
 // certSubjectFromContext extracts pkix.Name from context.
-func certSubjectFromContext(ctx context.Context) (pkix.Name, error) {
+func certSubjectAndHostsFromContext(ctx context.Context) (pkix.Name, []string, error) {
 	connState, err := tlsConnStateFromContext(ctx)
 	if err != nil {
-		return pkix.Name{}, err
+		return pkix.Name{}, nil, err
 	}
-	return getCertificateSubject(connState)
+	return getCertificateSubjectAndHosts(connState)
 }
 
 // AuthorizeOrgAndRole takes in a context and a list of roles, and returns
 // the Node ID of the node.
 func AuthorizeOrgAndRole(ctx context.Context, org string, blacklistedCerts map[string]*api.BlacklistedCertificate, ou ...string) (string, error) {
-	certSubj, err := certSubjectFromContext(ctx)
+	certSubj, hosts, err := certSubjectAndHostsFromContext(ctx)
 	if err != nil {
 		return "", err
 	}
 	// Check if the current certificate has an OU that authorizes
 	// access to this method
 	if intersectArrays(certSubj.OrganizationalUnit, ou) {
+		return authorizeOrg(certSubj, org, blacklistedCerts)
+	}
+	// Check if the current certificate has an alternate DNS name which
+	// authorizes access to this method.
+	if intersectArrays(hosts, ou) {
 		return authorizeOrg(certSubj, org, blacklistedCerts)
 	}
 
@@ -189,7 +194,7 @@ type RemoteNodeInfo struct {
 // well as the forwarder's ID. This function does not do authorization checks -
 // it only looks up the node ID.
 func RemoteNode(ctx context.Context) (RemoteNodeInfo, error) {
-	certSubj, err := certSubjectFromContext(ctx)
+	certSubj, _, err := certSubjectAndHostsFromContext(ctx)
 	if err != nil {
 		return RemoteNodeInfo{}, err
 	}
