@@ -159,6 +159,7 @@ func (a *Agent) run(ctx context.Context) {
 		a.err = err
 		return // fatal?
 	}
+	defer a.worker.Close()
 
 	// setup a reliable reporter to call back to us.
 	reporter := newStatusReporter(ctx, a)
