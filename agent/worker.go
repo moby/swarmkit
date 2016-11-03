@@ -5,10 +5,10 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/boltdb/bolt"
-	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/watch"
 	"golang.org/x/net/context"
 )
 
@@ -17,6 +17,11 @@ import (
 type Worker interface {
 	// Init prepares the worker for task assignment.
 	Init(ctx context.Context) error
+
+	// Close performs worker cleanup when no longer needed.
+	//
+	// It is not safe to call any worker function after that.
+	Close()
 
 	// Assign assigns a complete set of tasks and secrets to a worker. Any task or secrets not included in
 	// this set will be removed.
@@ -33,6 +38,7 @@ type Worker interface {
 	// The listener will be removed if the context is cancelled.
 	Listen(ctx context.Context, reporter StatusReporter)
 
+	// Subscribe to log messages matching the subscription.
 	Subscribe(ctx context.Context, subscription *api.SubscriptionMessage) error
 }
 
@@ -46,7 +52,7 @@ type worker struct {
 	executor          exec.Executor
 	publisher         exec.LogPublisher
 	listeners         map[*statusReporterKey]struct{}
-	taskevents        *events.Broadcaster
+	taskevents        *watch.Queue
 	publisherProvider exec.LogPublisherProvider
 
 	taskManagers map[string]*taskManager
@@ -58,7 +64,7 @@ func newWorker(db *bolt.DB, executor exec.Executor, publisherProvider exec.LogPu
 		db:                db,
 		executor:          executor,
 		publisherProvider: publisherProvider,
-		taskevents:        events.NewBroadcaster(),
+		taskevents:        watch.NewQueue(),
 		listeners:         make(map[*statusReporterKey]struct{}),
 		taskManagers:      make(map[string]*taskManager),
 	}
@@ -96,6 +102,11 @@ func (w *worker) Init(ctx context.Context) error {
 			return w.startTask(ctx, tx, task)
 		})
 	})
+}
+
+// Close performs worker cleanup when no longer needed.
+func (w *worker) Close() {
+	w.taskevents.Close()
 }
 
 // Assign assigns a full set of tasks and secrets to the worker.
@@ -327,7 +338,7 @@ func (w *worker) Listen(ctx context.Context, reporter StatusReporter) {
 }
 
 func (w *worker) startTask(ctx context.Context, tx *bolt.Tx, task *api.Task) error {
-	w.taskevents.Write(task.Copy())
+	w.taskevents.Publish(task.Copy())
 	_, err := w.taskManager(ctx, tx, task) // side-effect taskManager creation.
 
 	if err != nil {
@@ -391,6 +402,7 @@ func (w *worker) updateTaskStatus(ctx context.Context, tx *bolt.Tx, taskID strin
 	return nil
 }
 
+// Subscribe to log messages matching the subscription.
 func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMessage) error {
 	log.G(ctx).Debugf("Received subscription %s (selector: %v)", subscription.ID, subscription.Selector)
 
@@ -421,14 +433,8 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 		return false
 	}
 
-	ch := events.NewChannel(1000)
-	q := events.NewQueue(ch)
-	w.taskevents.Add(q)
-	defer func() {
-		w.taskevents.Remove(q)
-		q.Close()
-		ch.Close()
-	}()
+	ch, cancel := w.taskevents.Watch()
+	defer cancel()
 
 	w.mu.Lock()
 	for _, tm := range w.taskManagers {
@@ -440,7 +446,7 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 
 	for {
 		select {
-		case v := <-ch.C:
+		case v := <-ch:
 			w.mu.Lock()
 			task := v.(*api.Task)
 			if match(task) {
