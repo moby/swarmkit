@@ -2,6 +2,7 @@ package logbroker
 
 import (
 	"errors"
+	"io"
 	"sync"
 
 	"google.golang.org/grpc"
@@ -130,12 +131,12 @@ func (lb *LogBroker) subscribe(id string) (chan events.Event, func()) {
 	defer lb.mu.RUnlock()
 
 	return lb.logQueue.CallbackWatch(events.MatcherFunc(func(event events.Event) bool {
-		publish := event.(*api.PublishLogsRequest)
+		publish := event.(*api.PublishLogsMessage)
 		return publish.SubscriptionID == id
 	}))
 }
 
-func (lb *LogBroker) publish(log *api.PublishLogsRequest) {
+func (lb *LogBroker) publish(log *api.PublishLogsMessage) {
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()
 
@@ -174,15 +175,7 @@ func (lb *LogBroker) SubscribeLogs(request *api.SubscribeLogsRequest, stream api
 	for {
 		select {
 		case event := <-publishCh:
-			publish := event.(*api.PublishLogsRequest)
-			if publish.Close {
-				// TODO(aluzzardi): This is broken - we shouldn't stop just because
-				// we received one Close - we should wait for all publishers to Close.
-				if request.Options != nil && !request.Options.Follow {
-					return nil
-				}
-				continue
-			}
+			publish := event.(*api.PublishLogsMessage)
 			if err := stream.Send(&api.SubscribeLogsMessage{
 				Messages: publish.Messages,
 			}); err != nil {
@@ -249,23 +242,32 @@ func (lb *LogBroker) ListenSubscriptions(request *api.ListenSubscriptionsRequest
 }
 
 // PublishLogs publishes log messages for a given subscription
-func (lb *LogBroker) PublishLogs(ctx context.Context, request *api.PublishLogsRequest) (*api.PublishLogsResponse, error) {
-	remote, err := ca.RemoteNode(ctx)
+func (lb *LogBroker) PublishLogs(stream api.LogBroker_PublishLogsServer) error {
+	remote, err := ca.RemoteNode(stream.Context())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if request.SubscriptionID == "" {
-		return nil, grpc.Errorf(codes.InvalidArgument, "missing subscription ID")
-	}
-
-	// Make sure logs are emitted using the right Node ID to avoid impersonation.
-	for _, msg := range request.Messages {
-		if msg.Context.NodeID != remote.NodeID {
-			return nil, grpc.Errorf(codes.PermissionDenied, "invalid NodeID: expected=%s;received=%s", remote.NodeID, msg.Context.NodeID)
+	for {
+		log, err := stream.Recv()
+		if err == io.EOF {
+			return stream.SendAndClose(&api.PublishLogsResponse{})
 		}
-	}
+		if err != nil {
+			return err
+		}
 
-	lb.logQueue.Publish(request)
-	return &api.PublishLogsResponse{}, nil
+		if log.SubscriptionID == "" {
+			return grpc.Errorf(codes.InvalidArgument, "missing subscription ID")
+		}
+
+		// Make sure logs are emitted using the right Node ID to avoid impersonation.
+		for _, msg := range log.Messages {
+			if msg.Context.NodeID != remote.NodeID {
+				return grpc.Errorf(codes.PermissionDenied, "invalid NodeID: expected=%s;received=%s", remote.NodeID, msg.Context.NodeID)
+			}
+		}
+
+		lb.publish(log)
+	}
 }

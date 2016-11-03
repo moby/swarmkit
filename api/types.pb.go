@@ -177,7 +177,7 @@
 		SubscribeLogsMessage
 		ListenSubscriptionsRequest
 		SubscriptionMessage
-		PublishLogsRequest
+		PublishLogsMessage
 		PublishLogsResponse
 */
 package api

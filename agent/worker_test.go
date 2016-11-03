@@ -16,7 +16,7 @@ import (
 type testPublisherProvider struct {
 }
 
-func (tpp *testPublisherProvider) Publisher(ctx context.Context, subscriptionID string) exec.LogPublisher {
+func (tpp *testPublisherProvider) Publisher(ctx context.Context, subscriptionID string) (exec.LogPublisher, error) {
 	return exec.LogPublisherFunc(func(ctx context.Context, message api.LogMessage) error {
 		log.G(ctx).WithFields(logrus.Fields{
 			"subscription": subscriptionID,
@@ -25,7 +25,7 @@ func (tpp *testPublisherProvider) Publisher(ctx context.Context, subscriptionID 
 			"service.id":   message.Context.ServiceID,
 		}).Info(message.Data)
 		return nil
-	})
+	}), nil
 }
 
 func TestWorkerAssign(t *testing.T) {
