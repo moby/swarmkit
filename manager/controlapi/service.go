@@ -209,6 +209,47 @@ func validateEndpointSpec(epSpec *api.EndpointSpec) error {
 	return nil
 }
 
+// validateSecretRefsSpec finds if the secrets passed in spec are valid and have no
+// conflicting targets.
+func validateSecretRefsSpec(spec *api.ServiceSpec) error {
+	container := spec.Task.GetContainer()
+	if container == nil {
+		return nil
+	}
+
+	// Keep a map to track all the targets that will be exposed
+	// The string returned is only used for logging. It could as well be struct{}{}
+	existingTargets := make(map[string]string)
+	for _, secretRef := range container.Secrets {
+		// SecretID and SecretName are mandatory, we have invalid references without them
+		if secretRef.SecretID == "" || secretRef.SecretName == "" {
+			return grpc.Errorf(codes.InvalidArgument, "malformed secret reference")
+		}
+
+		// Every secret referece requires a Target
+		if secretRef.GetTarget() == nil {
+			return grpc.Errorf(codes.InvalidArgument, "malformed secret reference, no target provided")
+		}
+
+		// If this is a file target, we will ensure filename uniqueness
+		if secretRef.GetFile() != nil {
+			fileName := secretRef.GetFile().Name
+			// Validate the file name
+			if fileName == "" || fileName != filepath.Base(filepath.Clean(fileName)) {
+				return grpc.Errorf(codes.InvalidArgument, "malformed file secret reference, invalid target file name provided")
+			}
+
+			// If this target is already in use, we have conflicting targets
+			if prevSecretName, ok := existingTargets[fileName]; ok {
+				return grpc.Errorf(codes.InvalidArgument, "secret references '%s' and '%s' have a conflicting target: '%s'", prevSecretName, secretRef.SecretName, fileName)
+			}
+
+			existingTargets[fileName] = secretRef.SecretName
+		}
+	}
+
+	return nil
+}
 func (s *Server) validateNetworks(networks []*api.NetworkAttachmentConfig) error {
 	for _, na := range networks {
 		var network *api.Network
@@ -243,6 +284,11 @@ func validateServiceSpec(spec *api.ServiceSpec) error {
 	if err := validateEndpointSpec(spec.Endpoint); err != nil {
 		return err
 	}
+	// Check to see if the Secret Reference portion of the spec is valid
+	if err := validateSecretRefsSpec(spec); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -306,48 +352,6 @@ func (s *Server) checkPortConflicts(spec *api.ServiceSpec, serviceID string) err
 	return nil
 }
 
-// checkSecretValidity finds if the secrets passed in spec are valid and have no
-// conflicting targets.
-func (s *Server) checkSecretValidity(spec *api.ServiceSpec) error {
-	container := spec.Task.GetContainer()
-	if container == nil {
-		return nil
-	}
-
-	// Keep a map to track all the targets that will be exposed
-	// The string returned is only used for logging. It could as well be struct{}{}
-	existingTargets := make(map[string]string)
-	for _, secretRef := range container.Secrets {
-		// SecretID and SecretName are mandatory, we have invalid references without them
-		if secretRef.SecretID == "" || secretRef.SecretName == "" {
-			return grpc.Errorf(codes.InvalidArgument, "malformed secret reference")
-		}
-
-		// Every secret referece requires a Target
-		if secretRef.GetTarget() == nil {
-			return grpc.Errorf(codes.InvalidArgument, "malformed secret reference, no target provided")
-		}
-
-		// If this is a file target, we will ensure filename uniqueness
-		if secretRef.GetFile() != nil {
-			fileName := secretRef.GetFile().Name
-			// Validate the file name
-			if fileName == "" || fileName != filepath.Base(filepath.Clean(fileName)) {
-				return grpc.Errorf(codes.InvalidArgument, "malformed file secret reference, invalid target file name provided")
-			}
-
-			// If this target is already in use, we have conflicting targets
-			if prevSecretName, ok := existingTargets[fileName]; ok {
-				return grpc.Errorf(codes.InvalidArgument, "secret references '%s' and '%s' have a conflicting target: '%s'", prevSecretName, secretRef.SecretName, fileName)
-			}
-
-			existingTargets[fileName] = secretRef.SecretName
-		}
-	}
-
-	return nil
-}
-
 // checkSecretExistence finds if the secret exists
 func (s *Server) checkSecretExistence(tx store.Tx, spec *api.ServiceSpec) error {
 	container := spec.Task.GetContainer()
@@ -392,11 +396,6 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 	}
 
 	if err := s.checkPortConflicts(request.Spec, ""); err != nil {
-		return nil, err
-	}
-
-	// Check to see if the Secrets portion of the spec is valid
-	if err := s.checkSecretValidity(request.Spec); err != nil {
 		return nil, err
 	}
 
@@ -472,10 +471,6 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		if err := s.checkPortConflicts(request.Spec, request.ServiceID); err != nil {
 			return nil, err
 		}
-	}
-
-	if err := s.checkSecretValidity(request.Spec); err != nil {
-		return nil, err
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {
