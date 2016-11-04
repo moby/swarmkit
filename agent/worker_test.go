@@ -13,13 +13,28 @@ import (
 	"golang.org/x/net/context"
 )
 
+type testPublisherProvider struct {
+}
+
+func (tpp *testPublisherProvider) Publisher(ctx context.Context, subscriptionID string) (exec.LogPublisher, error) {
+	return exec.LogPublisherFunc(func(ctx context.Context, message api.LogMessage) error {
+		log.G(ctx).WithFields(logrus.Fields{
+			"subscription": subscriptionID,
+			"task.id":      message.Context.TaskID,
+			"node.id":      message.Context.NodeID,
+			"service.id":   message.Context.ServiceID,
+		}).Info(message.Data)
+		return nil
+	}), nil
+}
+
 func TestWorkerAssign(t *testing.T) {
 	db, cleanup := storageTestEnv(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	executor := &mockExecutor{t: t, secrets: secrets.NewManager()}
-	worker := newWorker(db, executor)
+	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
 		return nil
@@ -151,7 +166,7 @@ func TestWorkerUpdate(t *testing.T) {
 
 	ctx := context.Background()
 	executor := &mockExecutor{t: t, secrets: secrets.NewManager()}
-	worker := newWorker(db, executor)
+	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
 		return nil
