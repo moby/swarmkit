@@ -1,6 +1,8 @@
 package common
 
 import (
+	"fmt"
+
 	"github.com/docker/swarmkit/api"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -44,6 +46,13 @@ func (r *Resolver) get(t interface{}, id string) string {
 			return id
 		}
 		return res.Service.Spec.Annotations.Name
+	case api.Task:
+		res, err := r.c.GetTask(r.ctx, &api.GetTaskRequest{TaskID: id})
+		if err != nil {
+			return id
+		}
+		svc := r.get(api.Service{}, res.Task.ServiceID)
+		return fmt.Sprintf("%s.%d", svc, res.Task.Slot)
 	default:
 		return id
 	}

@@ -258,6 +258,45 @@ func (c *containerAdapter) createVolumes(ctx context.Context) error {
 	return nil
 }
 
+func (c *containerAdapter) logs(ctx context.Context, options api.LogSubscriptionOptions) (io.ReadCloser, error) {
+	apiOptions := types.ContainerLogsOptions{
+		Follow:     options.Follow,
+		Timestamps: true,
+		Details:    false,
+	}
+
+	if options.Since != nil {
+		since, err := ptypes.Timestamp(options.Since)
+		if err != nil {
+			return nil, err
+		}
+		apiOptions.Since = since.Format(time.RFC3339Nano)
+	}
+
+	if options.Tail < 0 {
+		// See protobuf documentation for details of how this works.
+		apiOptions.Tail = fmt.Sprint(-options.Tail - 1)
+	} else if options.Tail > 0 {
+		return nil, fmt.Errorf("tail relative to start of logs not supported via docker API")
+	}
+
+	if len(options.Streams) == 0 {
+		// empty == all
+		apiOptions.ShowStdout, apiOptions.ShowStderr = true, true
+	} else {
+		for _, stream := range options.Streams {
+			switch stream {
+			case api.LogStreamStdout:
+				apiOptions.ShowStdout = true
+			case api.LogStreamStderr:
+				apiOptions.ShowStderr = true
+			}
+		}
+	}
+
+	return c.client.ContainerLogs(ctx, c.container.name(), apiOptions)
+}
+
 // TODO(mrjana/stevvooe): There is no proper error code for network not found
 // error in engine-api. Resort to string matching until engine-api is fixed.
 
