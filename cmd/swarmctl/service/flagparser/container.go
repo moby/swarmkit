@@ -14,6 +14,14 @@ func parseContainer(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		spec.Task.GetContainer().Image = image
 	}
 
+	if flags.Changed("hostname") {
+		hostname, err := flags.GetString("hostname")
+		if err != nil {
+			return err
+		}
+		spec.Task.GetContainer().Hostname = hostname
+	}
+
 	if flags.Changed("command") {
 		command, err := flags.GetStringSlice("command")
 		if err != nil {
