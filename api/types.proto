@@ -708,6 +708,11 @@ message JoinTokens {
 	string manager = 2;
 }
 
+// This is needed below because map<string, repeated string> is not valid
+message RoleAuthorizations {
+	repeated string authorizations = 1;
+}
+
 message RootCA {
 	// CAKey is the root CA private key.
 	bytes ca_key = 1 [(gogoproto.customname) = "CAKey"];
@@ -720,6 +725,8 @@ message RootCA {
 
 	// JoinTokens contains the join tokens for workers and managers.
 	JoinTokens join_tokens = 4 [(gogoproto.nullable) = false];
+
+	map<string, RoleAuthorizations> role_authorizations = 5 [(gogoproto.nullable) = false];
 }
 
 

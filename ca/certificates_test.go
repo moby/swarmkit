@@ -49,7 +49,7 @@ func TestCreateAndWriteRootCA(t *testing.T) {
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 
-	_, err = ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
+	_, err = ca.CreateAndWriteRootCA("rootCN", paths.RootCA, nil)
 	assert.NoError(t, err)
 
 	perms, err := permbits.Stat(paths.RootCA.Cert)
@@ -69,7 +69,7 @@ func TestCreateAndWriteRootCAExpiry(t *testing.T) {
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 
-	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA, nil)
 	assert.NoError(t, err)
 
 	// Convert the certificate into an object to create a RootCA
@@ -89,15 +89,15 @@ func TestGetLocalRootCA(t *testing.T) {
 	paths := ca.NewConfigPaths(tempBaseDir)
 
 	// First, try to load the local Root CA with the certificate missing.
-	_, err = ca.GetLocalRootCA(tempBaseDir)
+	_, err = ca.GetLocalRootCA(tempBaseDir, nil)
 	assert.Equal(t, ca.ErrNoLocalRootCA, err)
 
 	// Create the local Root CA to ensure that we can reload it correctly.
-	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA, nil)
 	assert.True(t, rootCA.CanSign())
 	assert.NoError(t, err)
 
-	rootCA2, err := ca.GetLocalRootCA(tempBaseDir)
+	rootCA2, err := ca.GetLocalRootCA(tempBaseDir, nil)
 	assert.NoError(t, err)
 	assert.True(t, rootCA2.CanSign())
 	assert.Equal(t, rootCA, rootCA2)
@@ -105,7 +105,7 @@ func TestGetLocalRootCA(t *testing.T) {
 	// Try again, this time without a private key.
 	assert.NoError(t, os.Remove(paths.RootCA.Key))
 
-	rootCA3, err := ca.GetLocalRootCA(tempBaseDir)
+	rootCA3, err := ca.GetLocalRootCA(tempBaseDir, nil)
 	assert.NoError(t, err)
 	assert.False(t, rootCA3.CanSign())
 	assert.Equal(t, rootCA.Cert, rootCA3.Cert)
@@ -121,7 +121,7 @@ func TestGetLocalRootCA(t *testing.T) {
 	})
 	assert.NoError(t, ioutil.WriteFile(paths.RootCA.Key, privKeyPem, os.FileMode(0600)))
 
-	_, err = ca.GetLocalRootCA(tempBaseDir)
+	_, err = ca.GetLocalRootCA(tempBaseDir, nil)
 	assert.EqualError(t, err, "certificate key mismatch")
 }
 
@@ -132,7 +132,7 @@ func TestGenerateAndSignNewTLSCert(t *testing.T) {
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 
-	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA, nil)
 	assert.NoError(t, err)
 
 	_, err = ca.GenerateAndSignNewTLSCert(rootCA, "CN", "OU", "ORG", paths.Node)
@@ -204,7 +204,7 @@ func TestParseValidateAndSignCSR(t *testing.T) {
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 
-	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA, nil)
 	assert.NoError(t, err)
 
 	csr, _, err := ca.GenerateAndWriteNewKey(paths.Node)
@@ -232,7 +232,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 
-	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA, nil)
 	assert.NoError(t, err)
 
 	req := &cfcsr.CertificateRequest{
@@ -455,7 +455,7 @@ func TestBootstrapCluster(t *testing.T) {
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 
-	err = ca.BootstrapCluster(tempBaseDir)
+	err = ca.BootstrapCluster(tempBaseDir, nil)
 	assert.NoError(t, err)
 
 	perms, err := permbits.Stat(paths.RootCA.Cert)
@@ -484,10 +484,10 @@ func TestNewRootCA(t *testing.T) {
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 
-	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA, nil)
 	assert.NoError(t, err)
 
-	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Key, ca.DefaultNodeCertExpiration)
+	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, rootCA, newRootCA)
 }
@@ -500,11 +500,11 @@ func TestNewRootCABundle(t *testing.T) {
 	paths := ca.NewConfigPaths(tempBaseDir)
 
 	// Write one root CA to disk, keep the bytes
-	secondRootCA, err := ca.CreateAndWriteRootCA("rootCN2", paths.RootCA)
+	secondRootCA, err := ca.CreateAndWriteRootCA("rootCN2", paths.RootCA, nil)
 	assert.NoError(t, err)
 
 	// Overwrite the first root CA on disk
-	firstRootCA, err := ca.CreateAndWriteRootCA("rootCN1", paths.RootCA)
+	firstRootCA, err := ca.CreateAndWriteRootCA("rootCN1", paths.RootCA, nil)
 	assert.NoError(t, err)
 
 	// Overwrite the bytes of the second Root CA with the bundle, creating a valid 2 cert bundle
@@ -512,13 +512,13 @@ func TestNewRootCABundle(t *testing.T) {
 	err = ioutil.WriteFile(paths.RootCA.Cert, bundle, 0644)
 	assert.NoError(t, err)
 
-	newRootCA, err := ca.NewRootCA(bundle, firstRootCA.Key, ca.DefaultNodeCertExpiration)
+	newRootCA, err := ca.NewRootCA(bundle, firstRootCA.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, bundle, newRootCA.Cert)
 	assert.Equal(t, 2, len(newRootCA.Pool.Subjects()))
 
 	// Now load the bundle from disk
-	diskRootCA, err := ca.GetLocalRootCA(tempBaseDir)
+	diskRootCA, err := ca.GetLocalRootCA(tempBaseDir, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, bundle, diskRootCA.Cert)
 	assert.Equal(t, 2, len(diskRootCA.Pool.Subjects()))
@@ -546,10 +546,10 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 
-	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA, nil)
 	assert.NoError(t, err)
 
-	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Key, 1*time.Hour)
+	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Key, 1*time.Hour, nil)
 	assert.NoError(t, err)
 
 	// Create and sign a new CSR
@@ -566,7 +566,7 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 
 	// Sign the same CSR again, this time with a 59 Minute expiration RootCA (under the 60 minute minimum).
 	// This should use the default of 3 months
-	newRootCA, err = ca.NewRootCA(rootCA.Cert, rootCA.Key, 59*time.Minute)
+	newRootCA, err = ca.NewRootCA(rootCA.Cert, rootCA.Key, 59*time.Minute, nil)
 	assert.NoError(t, err)
 
 	cert, err = newRootCA.ParseValidateAndSignCSR(csr, "CN", ca.ManagerRole, "ORG")
@@ -588,13 +588,13 @@ func TestNewRootCAWithPassphrase(t *testing.T) {
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 
-	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA)
+	rootCA, err := ca.CreateAndWriteRootCA("rootCN", paths.RootCA, nil)
 	assert.NoError(t, err)
 
 	// Ensure that we're encrypting the Key bytes out of NewRoot if there
 	// is a passphrase set as an env Var
 	os.Setenv(ca.PassphraseENVVar, "password1")
-	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Key, ca.DefaultNodeCertExpiration)
+	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
 	assert.NotEqual(t, rootCA.Key, newRootCA.Key)
 	assert.Equal(t, rootCA.Cert, newRootCA.Cert)
@@ -603,7 +603,7 @@ func TestNewRootCAWithPassphrase(t *testing.T) {
 
 	// Ensure that we're decrypting the Key bytes out of NewRoot if there
 	// is a passphrase set as an env Var
-	anotherNewRootCA, err := ca.NewRootCA(newRootCA.Cert, newRootCA.Key, ca.DefaultNodeCertExpiration)
+	anotherNewRootCA, err := ca.NewRootCA(newRootCA.Cert, newRootCA.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, newRootCA, anotherNewRootCA)
 	assert.NotContains(t, string(rootCA.Key), string(anotherNewRootCA.Key))
@@ -612,19 +612,19 @@ func TestNewRootCAWithPassphrase(t *testing.T) {
 	// Ensure that we cant decrypt the Key bytes out of NewRoot if there
 	// is a wrong passphrase set as an env Var
 	os.Setenv(ca.PassphraseENVVar, "password2")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key, ca.DefaultNodeCertExpiration)
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.Error(t, err)
 
 	// Ensure that we cant decrypt the Key bytes out of NewRoot if there
 	// is a wrong passphrase set as an env Var
 	os.Setenv(ca.PassphraseENVVarPrev, "password2")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key, ca.DefaultNodeCertExpiration)
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.Error(t, err)
 
 	// Ensure that we can decrypt the Key bytes out of NewRoot if there
 	// is a wrong passphrase set as an env Var, but a valid as Prev
 	os.Setenv(ca.PassphraseENVVarPrev, "password1")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key, ca.DefaultNodeCertExpiration)
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, newRootCA, anotherNewRootCA)
 	assert.NotContains(t, string(rootCA.Key), string(anotherNewRootCA.Key))

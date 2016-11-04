@@ -765,6 +765,7 @@ func defaultClusterObject(clusterID string, initialCAConfig api.CAConfig, raftCf
 				Worker:  ca.GenerateJoinToken(rootCA),
 				Manager: ca.GenerateJoinToken(rootCA),
 			},
+			RoleAuthorizations: rootCA.RoleAuthorizations,
 		},
 	}
 }
