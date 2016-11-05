@@ -50,6 +50,15 @@ message NodeSpec {
 	// Availability allows a user to control the current scheduling status of a
 	// node.
 	Availability availability = 4;
+
+	message SecurityConfig {
+		// AllowedProfiles specifies one or more profiles that may run on this
+		// node. If a task requires a profiles that are not a subset of the
+		// profiles listed here, the task will not run on this node.
+		repeated string allowed_profiles = 1;
+	}
+
+	SecurityConfig security = 5;
 }
 
 // ServiceSpec defines the properties of a service.
@@ -231,6 +240,25 @@ message ContainerSpec {
 	// task will exit and a new task will be rescheduled elsewhere. A container
 	// is considered unhealthy after `Retries` number of consecutive failures.
 	HealthConfig healthcheck = 16;
+
+	// SecurityConfig allows configuration of a containers security-oriented
+	// isolation measures.
+	message SecurityConfig {
+		// profile specifies the security profile to use when running the container.
+		//
+		// Profiles are selected by name. The two current profiles available are
+		// 'default' and 'privileged', which map to running containers today with
+		// or without the `--privileged` flag.
+		//
+		// Multiple security profiles may be selected. The resulting security
+		// context is union of isolation features in the two profiles. If features
+		// conflict in the two profiles, the earlier item in this list is applied.
+		repeated string profiles = 1;
+	}
+
+	// Security allows one to define further isolation of a container runtime,
+	// via profiles or other extension in the SecurityConfig.
+	SecurityConfig security = 17;
 }
 
 // EndpointSpec defines the properties that can be configured to
