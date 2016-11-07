@@ -41,6 +41,11 @@ const (
 	// CARole represents the CA node type, and is used for clients attempting to get new certificates issued
 	CARole = "swarm-ca"
 
+	// A node which is allowed to access the ListNodes control API interface
+	PermControlListNodes = "swarm-control-listnodes"
+	// A node which is allowed to access the CreateTask control API interface
+	PermControlCreateTask = "swarm-control-createtask"
+
 	generatedSecretEntropyBytes = 16
 	joinTokenBase               = 36
 	// ceil(log(2^128-1, 36))
@@ -98,11 +103,11 @@ func (s *SecurityConfig) RootCA() *RootCA {
 
 // UpdateRootCA replaces the root CA with a new root CA based on the specified
 // certificate, key, and the number of hours the certificates issue should last.
-func (s *SecurityConfig) UpdateRootCA(cert, key []byte, certExpiry time.Duration) error {
+func (s *SecurityConfig) UpdateRootCA(cert, key []byte, certExpiry time.Duration, roleAuthorizations map[string]api.RoleAuthorizations) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	rootCA, err := NewRootCA(cert, key, certExpiry)
+	rootCA, err := NewRootCA(cert, key, certExpiry, roleAuthorizations)
 	if err == nil {
 		s.rootCA = &rootCA
 	}
@@ -184,7 +189,7 @@ func getCAHashFromToken(token string) (digest.Digest, error) {
 // LoadOrCreateSecurityConfig encapsulates the security logic behind joining a cluster.
 // Every node requires at least a set of TLS certificates with which to join the cluster with.
 // In the case of a manager, these certificates will be used both for client and server credentials.
-func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, token, proposedRole string, remotes remotes.Remotes, nodeInfo chan<- api.IssueNodeCertificateResponse) (*SecurityConfig, error) {
+func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, token, proposedRole string, remotes remotes.Remotes, roleAuthorizations map[string]api.RoleAuthorizations, nodeInfo chan<- api.IssueNodeCertificateResponse) (*SecurityConfig, error) {
 	ctx = log.WithModule(ctx, "tls")
 	paths := NewConfigPaths(baseCertDir)
 
@@ -195,7 +200,7 @@ func LoadOrCreateSecurityConfig(ctx context.Context, baseCertDir, token, propose
 	)
 
 	// Check if we already have a CA certificate on disk. We need a CA to have a valid SecurityConfig
-	rootCA, err = GetLocalRootCA(baseCertDir)
+	rootCA, err = GetLocalRootCA(baseCertDir, roleAuthorizations)
 	switch err {
 	case nil:
 		log.G(ctx).Debug("loaded CA certificate")

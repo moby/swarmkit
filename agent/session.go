@@ -109,6 +109,28 @@ func (s *session) run(ctx context.Context, delay time.Duration, description *api
 	close(s.registered)
 }
 
+func (s *session) ControlAPI() api.ControlClient {
+	return api.NewControlClient(s.conn)
+}
+
+func (s *session) listNodes(ctx context.Context) {
+	client := api.NewControlClient(s.conn)
+	nl, err := client.ListNodes(ctx, &api.ListNodesRequest{})
+	if err != nil {
+		logrus.Errorf("ListNodes error: %s", err)
+		return
+	}
+	for _, n := range nl.Nodes {
+		spec := &n.Spec
+		name := spec.Annotations.Name
+		if name == "" && n.Description != nil {
+			name = n.Description.Hostname
+		}
+
+		logrus.Infof("Node %s -- %s", n.ID, name)
+	}
+}
+
 // start begins the session and returns the first SessionMessage.
 func (s *session) start(ctx context.Context, description *api.NodeDescription) error {
 	log.G(ctx).Debugf("(*session).start")
@@ -154,6 +176,8 @@ func (s *session) start(ctx context.Context, description *api.NodeDescription) e
 
 	s.sessionID = msg.SessionID
 	s.session = stream
+
+	go s.listNodes(ctx)
 
 	return s.handleSessionMessage(ctx, msg)
 }

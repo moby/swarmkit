@@ -109,6 +109,10 @@ type RootCA struct {
 	Digest digest.Digest
 	// This signer will be nil if the node doesn't have the appropriate key material
 	Signer cfsigner.Signer
+	// Mapping from Role name to additional authorizations such
+	// nodes should recieve (over and above what is implied by the
+	// role itself.
+	RoleAuthorizations map[string]api.RoleAuthorizations
 }
 
 // CanSign ensures that the signer has all three necessary elements needed to operate
@@ -230,12 +234,15 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, paths Cert
 
 // PrepareCSR creates a CFSSL Sign Request based on the given raw CSR and
 // overrides the Subject and Hosts with the given extra args.
-func PrepareCSR(csrBytes []byte, cn, ou, org string) cfsigner.SignRequest {
+func PrepareCSR(csrBytes []byte, cn, ou, org string, roleAuthorizations map[string]api.RoleAuthorizations) cfsigner.SignRequest {
 	// All managers get added the subject-alt-name of CA, so they can be
 	// used for cert issuance.
 	hosts := []string{ou, cn}
 	if ou == ManagerRole {
 		hosts = append(hosts, CARole)
+	}
+	if auths, ok := roleAuthorizations[ou]; ok {
+		hosts = append(hosts, auths.Authorizations...)
 	}
 
 	return cfsigner.SignRequest{
@@ -254,7 +261,7 @@ func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, ou, org string) 
 		return nil, ErrNoValidSigner
 	}
 
-	signRequest := PrepareCSR(csrBytes, cn, ou, org)
+	signRequest := PrepareCSR(csrBytes, cn, ou, org, rca.RoleAuthorizations)
 
 	cert, err := rca.Signer.Sign(signRequest)
 	if err != nil {
@@ -291,7 +298,7 @@ func (rca *RootCA) AppendFirstRootPEM(cert []byte) ([]byte, error) {
 // NewRootCA creates a new RootCA object from unparsed PEM cert bundle and key byte
 // slices. key may be nil, and in this case NewRootCA will return a RootCA
 // without a signer.
-func NewRootCA(certBytes, keyBytes []byte, certExpiry time.Duration) (RootCA, error) {
+func NewRootCA(certBytes, keyBytes []byte, certExpiry time.Duration, roleAuthorizations map[string]api.RoleAuthorizations) (RootCA, error) {
 	// Parse all the certificates in the cert bundle
 	parsedCerts, err := helpers.ParseCertificatesPEM(certBytes)
 	if err != nil {
@@ -317,7 +324,7 @@ func NewRootCA(certBytes, keyBytes []byte, certExpiry time.Duration) (RootCA, er
 
 	if len(keyBytes) == 0 {
 		// This RootCA does not have a valid signer.
-		return RootCA{Cert: certBytes, Digest: digest, Pool: pool}, nil
+		return RootCA{Cert: certBytes, Digest: digest, Pool: pool, RoleAuthorizations: roleAuthorizations}, nil
 	}
 
 	var (
@@ -359,7 +366,7 @@ func NewRootCA(certBytes, keyBytes []byte, certExpiry time.Duration) (RootCA, er
 	keyBlock, _ := pem.Decode(keyBytes)
 	if keyBlock == nil {
 		// This RootCA does not have a valid signer.
-		return RootCA{Cert: certBytes, Digest: digest, Pool: pool}, nil
+		return RootCA{Cert: certBytes, Digest: digest, Pool: pool, RoleAuthorizations: roleAuthorizations}, nil
 	}
 	if passphraseStr != "" && !x509.IsEncryptedPEMBlock(keyBlock) {
 		keyBytes, err = EncryptECPrivateKey(keyBytes, passphraseStr)
@@ -368,7 +375,7 @@ func NewRootCA(certBytes, keyBytes []byte, certExpiry time.Duration) (RootCA, er
 		}
 	}
 
-	return RootCA{Signer: signer, Key: keyBytes, Digest: digest, Cert: certBytes, Pool: pool}, nil
+	return RootCA{Signer: signer, Key: keyBytes, Digest: digest, Cert: certBytes, Pool: pool, RoleAuthorizations: roleAuthorizations}, nil
 }
 
 func ensureCertKeyMatch(cert *x509.Certificate, key crypto.PublicKey) error {
@@ -388,7 +395,7 @@ func ensureCertKeyMatch(cert *x509.Certificate, key crypto.PublicKey) error {
 
 // GetLocalRootCA validates if the contents of the file are a valid self-signed
 // CA certificate, and returns the PEM-encoded Certificate if so
-func GetLocalRootCA(baseDir string) (RootCA, error) {
+func GetLocalRootCA(baseDir string, roleAuthorizations map[string]api.RoleAuthorizations) (RootCA, error) {
 	paths := NewConfigPaths(baseDir)
 
 	// Check if we have a Certificate file
@@ -411,7 +418,7 @@ func GetLocalRootCA(baseDir string) (RootCA, error) {
 		key = nil
 	}
 
-	return NewRootCA(cert, key, DefaultNodeCertExpiration)
+	return NewRootCA(cert, key, DefaultNodeCertExpiration, roleAuthorizations)
 }
 
 // GetRemoteCA returns the remote endpoint's CA certificate
@@ -483,7 +490,7 @@ func GetRemoteCA(ctx context.Context, d digest.Digest, r remotes.Remotes) (RootC
 
 // CreateAndWriteRootCA creates a Certificate authority for a new Swarm Cluster, potentially
 // overwriting any existing CAs.
-func CreateAndWriteRootCA(rootCN string, paths CertPaths) (RootCA, error) {
+func CreateAndWriteRootCA(rootCN string, paths CertPaths, roleAuthorizations map[string]api.RoleAuthorizations) (RootCA, error) {
 	// Create a simple CSR for the CA using the default CA validator and policy
 	req := cfcsr.CertificateRequest{
 		CN:         rootCN,
@@ -511,15 +518,15 @@ func CreateAndWriteRootCA(rootCN string, paths CertPaths) (RootCA, error) {
 		return RootCA{}, err
 	}
 
-	return NewRootCA(cert, key, DefaultNodeCertExpiration)
+	return NewRootCA(cert, key, DefaultNodeCertExpiration, roleAuthorizations)
 }
 
 // BootstrapCluster receives a directory and creates both new Root CA key material
 // and a ManagerRole key/certificate pair to be used by the initial cluster manager
-func BootstrapCluster(baseCertDir string) error {
+func BootstrapCluster(baseCertDir string, roleAuthorizations map[string]api.RoleAuthorizations) error {
 	paths := NewConfigPaths(baseCertDir)
 
-	rootCA, err := CreateAndWriteRootCA(rootCN, paths.RootCA)
+	rootCA, err := CreateAndWriteRootCA(rootCN, paths.RootCA, roleAuthorizations)
 	if err != nil {
 		return err
 	}

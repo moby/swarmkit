@@ -81,6 +81,11 @@ type Config struct {
 	// HeartbeatTick defines the amount of ticks between each
 	// heartbeat sent to other members for health-check purposes
 	HeartbeatTick uint32
+
+	// Mapping from Role name to additional authorizations such
+	// nodes should recieve (over and above what is implied by the
+	// role itself.
+	RoleAuthorizations map[string]api.RoleAuthorizations
 }
 
 // Node implements the primary node functionality for a member of a swarm
@@ -228,7 +233,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 	}()
 
 	certDir := filepath.Join(n.config.StateDir, "certificates")
-	securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, n.config.JoinToken, ca.ManagerRole, n.remotes, issueResponseChan)
+	securityConfig, err := ca.LoadOrCreateSecurityConfig(ctx, certDir, n.config.JoinToken, ca.ManagerRole, n.remotes, n.config.RoleAuthorizations, issueResponseChan)
 	if err != nil {
 		return err
 	}
@@ -517,7 +522,7 @@ func (n *Node) Remotes() []api.Peer {
 
 func (n *Node) loadCertificates() error {
 	certDir := filepath.Join(n.config.StateDir, "certificates")
-	rootCA, err := ca.GetLocalRootCA(certDir)
+	rootCA, err := ca.GetLocalRootCA(certDir, n.config.RoleAuthorizations)
 	if err != nil {
 		if err == ca.ErrNoLocalRootCA {
 			return nil
@@ -545,7 +550,9 @@ func (n *Node) loadCertificates() error {
 }
 
 func (n *Node) bootstrapCA() error {
-	if err := ca.BootstrapCluster(filepath.Join(n.config.StateDir, "certificates")); err != nil {
+	roleAuthorizations := n.config.RoleAuthorizations
+
+	if err := ca.BootstrapCluster(filepath.Join(n.config.StateDir, "certificates"), roleAuthorizations); err != nil {
 		return err
 	}
 	return n.loadCertificates()

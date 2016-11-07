@@ -51,7 +51,7 @@ func WithMetadataForwardTLSInfo(ctx context.Context) (context.Context, error) {
 	org := ""
 	cn := ""
 
-	certSubj, err := certSubjectFromContext(ctx)
+	certSubj, _, err := certSubjectAndHostsFromContext(ctx)
 	if err == nil {
 		cn = certSubj.CommonName
 		ous = certSubj.OrganizationalUnit

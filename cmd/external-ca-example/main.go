@@ -21,7 +21,7 @@ func main() {
 	}
 
 	// Initialize the Root CA.
-	rootCA, err := ca.CreateAndWriteRootCA("external-ca-example", rootPaths)
+	rootCA, err := ca.CreateAndWriteRootCA("external-ca-example", rootPaths, nil)
 	if err != nil {
 		logrus.Fatalf("unable to initialize Root CA: %s", err)
 	}

@@ -508,7 +508,7 @@ func (s *Server) updateCluster(ctx context.Context, cluster *api.Cluster) {
 
 		}
 		// Attempt to update our local RootCA with the new parameters
-		err = s.securityConfig.UpdateRootCA(rCA.CACert, rCA.CAKey, expiry)
+		err = s.securityConfig.UpdateRootCA(rCA.CACert, rCA.CAKey, expiry, rCA.RoleAuthorizations)
 		if err != nil {
 			log.G(ctx).WithFields(logrus.Fields{
 				"cluster.id": cluster.ID,
@@ -590,7 +590,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 	)
 
 	// Try using the external CA first.
-	cert, err := externalCA.Sign(PrepareCSR(rawCSR, cn, ou, org))
+	cert, err := externalCA.Sign(PrepareCSR(rawCSR, cn, ou, org, rootCA.RoleAuthorizations))
 	if err == ErrNoExternalCAURLs {
 		// No external CA servers configured. Try using the local CA.
 		cert, err = rootCA.ParseValidateAndSignCSR(rawCSR, cn, ou, org)
