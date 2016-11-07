@@ -188,6 +188,13 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 		PortBindings: c.portBindings(),
 	}
 
+	for _, entry := range c.spec().Hosts {
+		index := strings.IndexAny(entry, ":= ")
+		if 0 < index && (index+1) < len(entry) {
+			hc.ExtraHosts = append(hc.ExtraHosts, fmt.Sprintf("%s:%s", entry[:index], entry[index+1:]))
+		}
+	}
+
 	if c.task.LogDriver != nil {
 		hc.LogConfig = enginecontainer.LogConfig{
 			Type:   c.task.LogDriver.Name,

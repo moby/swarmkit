@@ -91,3 +91,42 @@ func TestHealthcheck(t *testing.T) {
 		t.Fatalf("expected %#v, got %#v", expected, config.Healthcheck)
 	}
 }
+
+func TestExtraHosts(t *testing.T) {
+	c := containerConfig{
+		task: &api.Task{
+			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Hosts: []string{
+						"example.com:1.2.3.4",
+						"example.org=5.6.7.8",
+						"mylocal 127.0.0.1",
+					},
+				},
+			}},
+		},
+	}
+
+	hostConfig := c.hostConfig()
+	if len(hostConfig.ExtraHosts) != 3 {
+		t.Fatalf("exepcted 3 extra hosts: %v", hostConfig.ExtraHosts)
+	}
+
+	expected := "example.com:1.2.3.4"
+	actual := hostConfig.ExtraHosts[0]
+	if actual != expected {
+		t.Fatalf("expected %s, got %s", expected, actual)
+	}
+
+	expected = "example.org:5.6.7.8"
+	actual = hostConfig.ExtraHosts[1]
+	if actual != expected {
+		t.Fatalf("expected %s, got %s", expected, actual)
+	}
+
+	expected = "mylocal:127.0.0.1"
+	actual = hostConfig.ExtraHosts[2]
+	if actual != expected {
+		t.Fatalf("expected %s, got %s", expected, actual)
+	}
+}
