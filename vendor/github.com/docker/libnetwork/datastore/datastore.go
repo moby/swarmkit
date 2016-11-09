@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/docker/libkv"
 	"github.com/docker/libkv/store"
@@ -134,7 +135,8 @@ func makeDefaultScopes() map[string]*ScopeCfg {
 			Provider: string(store.BOLTDB),
 			Address:  defaultPrefix + "/local-kv.db",
 			Config: &store.Config{
-				Bucket: "libnetwork",
+				Bucket:            "libnetwork",
+				ConnectionTimeout: time.Minute,
 			},
 		},
 	}
@@ -145,7 +147,7 @@ func makeDefaultScopes() map[string]*ScopeCfg {
 var defaultRootChain = []string{"docker", "network", "v1.0"}
 var rootChain = defaultRootChain
 
-// DefaultScopes returns a map of default scopes and it's config for clients to use.
+// DefaultScopes returns a map of default scopes and its config for clients to use.
 func DefaultScopes(dataDir string) map[string]*ScopeCfg {
 	if dataDir != "" {
 		defaultScopes[LocalScope].Client.Address = dataDir + "/network/files/local-kv.db"
