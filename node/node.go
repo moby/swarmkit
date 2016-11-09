@@ -496,7 +496,7 @@ func (n *Node) loadSecurityConfig(ctx context.Context) (*ca.SecurityConfig, erro
 	paths := ca.NewConfigPaths(filepath.Join(n.config.StateDir, certDirectory))
 	var securityConfig *ca.SecurityConfig
 
-	krw := ca.NewKeyReadWriter(paths.Node, n.unlockKey, nil)
+	krw := ca.NewKeyReadWriter(paths.Node, n.unlockKey, &manager.RaftDEKData{})
 	if err := krw.Migrate(); err != nil {
 		return nil, err
 	}
@@ -523,20 +523,19 @@ func (n *Node) loadSecurityConfig(ctx context.Context) (*ca.SecurityConfig, erro
 	}
 
 	if securityConfig == nil {
-		switch {
-		case n.config.JoinAddr == "":
+		if n.config.JoinAddr == "" {
 			// if we're not joining a cluster, bootstrap a new one - and we have to set the unlock key
 			n.unlockKey = nil
 			if n.config.AutoLockManagers {
 				n.unlockKey = encryption.GenerateSecretKey()
 			}
-			krw = ca.NewKeyReadWriter(paths.Node, n.unlockKey, nil)
+			krw = ca.NewKeyReadWriter(paths.Node, n.unlockKey, &manager.RaftDEKData{})
 			rootCA, err = ca.CreateRootCA(ca.DefaultRootCN, paths.RootCA)
 			if err != nil {
 				return nil, err
 			}
 			log.G(ctx).Debug("generated CA key and certificate")
-		case err == ca.ErrNoLocalRootCA:
+		} else if err == ca.ErrNoLocalRootCA { // from previous error loading the root CA from disk
 			rootCA, err = ca.DownloadRootCA(ctx, paths.RootCA, n.config.JoinToken, n.remotes)
 			if err != nil {
 				return nil, err

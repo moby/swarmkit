@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"testing"
@@ -316,6 +317,13 @@ func TestRaftLeaderLeave(t *testing.T) {
 	}
 	// Wait for election tick
 	raftutils.WaitForCluster(t, clockSource, newCluster)
+
+	// Node1's state should be cleared
+	_, err = os.Stat(filepath.Join(nodes[1].StateDir, "snap-v3-encrypted"))
+	require.True(t, os.IsNotExist(err))
+	_, err = os.Stat(filepath.Join(nodes[1].StateDir, "wal-v3-encrypted"))
+	require.True(t, os.IsNotExist(err))
+	require.Equal(t, raft.EncryptionKeys{}, nodes[1].KeyRotator.GetKeys())
 
 	// Leader should not be 1
 	assert.NotEqual(t, nodes[2].Leader(), nodes[1].Config.ID)

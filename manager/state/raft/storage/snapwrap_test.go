@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -173,4 +174,60 @@ func TestSaveAndLoad(t *testing.T) {
 	readSnap, err := wrapped.Load()
 	require.NoError(t, err)
 	require.Equal(t, fakeSnapshotData, *readSnap)
+}
+
+func TestMigrateSnapshot(t *testing.T) {
+	crypter := &meowCrypter{}
+	c := NewSnapFactory(crypter, crypter)
+	var (
+		err  error
+		dirs = make([]string, 3)
+	)
+
+	tempDir, err := ioutil.TempDir("", "test-migrate")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	for i := range dirs {
+		dirs[i] = filepath.Join(tempDir, fmt.Sprintf("snapDir%d", i))
+	}
+	require.NoError(t, os.Mkdir(dirs[0], 0755))
+	require.NoError(t, OriginalSnap.New(dirs[0]).SaveSnap(fakeSnapshotData))
+
+	// original to new
+	oldDir := dirs[0]
+	newDir := dirs[1]
+
+	err = MigrateSnapshot(oldDir, newDir, OriginalSnap, c)
+	require.NoError(t, err)
+
+	readSnap, err := c.New(newDir).Load()
+	require.NoError(t, err)
+	require.Equal(t, fakeSnapshotData, *readSnap)
+
+	// new to original
+	oldDir = dirs[1]
+	newDir = dirs[2]
+
+	err = MigrateSnapshot(oldDir, newDir, c, OriginalSnap)
+	require.NoError(t, err)
+
+	readSnap, err = OriginalSnap.New(newDir).Load()
+	require.NoError(t, err)
+	require.Equal(t, fakeSnapshotData, *readSnap)
+
+	// We can migrate from empty directory without error
+	for _, dir := range dirs {
+		require.NoError(t, os.RemoveAll(dir))
+	}
+	require.NoError(t, os.Mkdir(dirs[0], 0755))
+	oldDir = dirs[0]
+	newDir = dirs[1]
+
+	err = MigrateSnapshot(oldDir, newDir, OriginalSnap, c)
+	require.NoError(t, err)
+
+	subdirs, err := ioutil.ReadDir(tempDir)
+	require.NoError(t, err)
+	require.Len(t, subdirs, 1)
 }

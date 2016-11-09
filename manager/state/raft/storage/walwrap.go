@@ -1,10 +1,21 @@
 package storage
 
 import (
+	"context"
+	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
+	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/encryption"
+	"github.com/pkg/errors"
 )
 
 // This package wraps the github.com/coreos/etcd/wal package, and encrypts
@@ -128,3 +139,115 @@ func (o originalWAL) Open(dirpath string, walsnap walpb.Snapshot) (WAL, error) {
 
 // OriginalWAL is the original `wal` package as an implemntation of the WALFactory interface
 var OriginalWAL WALFactory = originalWAL{}
+
+// WALData contains all the data returned by a WAL's ReadAll() function
+// (metadata, hardwate, and entries)
+type WALData struct {
+	Metadata  []byte
+	HardState raftpb.HardState
+	Entries   []raftpb.Entry
+}
+
+// ReadRepairWAL opens a WAL for reading, and attempts to read it.  If we can't read it, attempts to repair
+// and read again.
+func ReadRepairWAL(
+	ctx context.Context,
+	walDir string,
+	walsnap walpb.Snapshot,
+	factory WALFactory,
+) (WAL, WALData, error) {
+	var (
+		reader   WAL
+		metadata []byte
+		st       raftpb.HardState
+		ents     []raftpb.Entry
+		err      error
+	)
+	repaired := false
+	for {
+		if reader, err = factory.Open(walDir, walsnap); err != nil {
+			return nil, WALData{}, errors.Wrap(err, "failed to open WAL")
+		}
+		if metadata, st, ents, err = reader.ReadAll(); err != nil {
+			if closeErr := reader.Close(); closeErr != nil {
+				return nil, WALData{}, closeErr
+			}
+			if _, ok := err.(encryption.ErrCannotDecrypt); ok {
+				return nil, WALData{}, errors.Wrap(err, "failed to decrypt WAL")
+			}
+			// we can only repair ErrUnexpectedEOF and we never repair twice.
+			if repaired || err != io.ErrUnexpectedEOF {
+				return nil, WALData{}, errors.Wrap(err, "irreparable WAL error")
+			}
+			if !wal.Repair(walDir) {
+				return nil, WALData{}, errors.Wrap(err, "WAL error cannot be repaired")
+			}
+			log.G(ctx).WithError(err).Info("repaired WAL error")
+			repaired = true
+			continue
+		}
+		break
+	}
+	return reader, WALData{
+		Metadata:  metadata,
+		HardState: st,
+		Entries:   ents,
+	}, nil
+}
+
+// MigrateWALs reads existing WALs (from a particular snapshot and beyond) from one directory, encoded one way,
+// and writes them to a new directory, encoded a different way
+func MigrateWALs(ctx context.Context, oldDir, newDir string, oldFactory, newFactory WALFactory, snapshot walpb.Snapshot) error {
+	oldReader, waldata, err := ReadRepairWAL(ctx, oldDir, snapshot, oldFactory)
+	if err != nil {
+		return err
+	}
+	oldReader.Close()
+
+	// keep temporary wal directory so WAL initialization appears atomic
+	tmpdirpath := filepath.Clean(newDir) + ".tmp"
+	if fileutil.Exist(tmpdirpath) {
+		if err := os.RemoveAll(tmpdirpath); err != nil {
+			return errors.Wrap(err, "could not remove temporary WAL directory")
+		}
+	}
+	if err := fileutil.CreateDirAll(tmpdirpath); err != nil {
+		return errors.Wrap(err, "could not create temporary WAL directory")
+	}
+
+	tmpWAL, err := newFactory.Create(tmpdirpath, waldata.Metadata)
+	if err != nil {
+		return errors.Wrap(err, "could not create new WAL in temporary WAL directory")
+	}
+	defer tmpWAL.Close()
+
+	if err := tmpWAL.SaveSnapshot(snapshot); err != nil {
+		return errors.Wrap(err, "could not write WAL snapshot in temporary directory")
+	}
+
+	if err := tmpWAL.Save(waldata.HardState, waldata.Entries); err != nil {
+		return errors.Wrap(err, "could not migrate WALs to temporary directory")
+	}
+
+	return os.Rename(tmpdirpath, newDir)
+}
+
+// ListWALs lists all the wals in a directory and returns the list in lexical
+// order (oldest first)
+func ListWALs(dirpath string) ([]string, error) {
+	dirents, err := ioutil.ReadDir(dirpath)
+	if err != nil {
+		return nil, err
+	}
+
+	var wals []string
+	for _, dirent := range dirents {
+		if strings.HasSuffix(dirent.Name(), ".wal") {
+			wals = append(wals, dirent.Name())
+		}
+	}
+
+	// Sort WAL filenames in lexical order
+	sort.Sort(sort.StringSlice(wals))
+	return wals, nil
+}
