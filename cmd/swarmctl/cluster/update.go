@@ -3,6 +3,7 @@ package cluster
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/docker/swarmkit/api"
@@ -39,7 +40,7 @@ var (
 
 			flags := cmd.Flags()
 			spec := &cluster.Spec
-			var rotation api.JoinTokenRotation
+			var rotation api.KeyRotation
 
 			if flags.Changed("certexpiry") {
 				cePeriod, err := flags.GetDuration("certexpiry")
@@ -71,16 +72,28 @@ var (
 				if err != nil {
 					return err
 				}
+				rotateJoinToken = strings.ToLower(rotateJoinToken)
 
 				switch rotateJoinToken {
 				case "worker":
-					rotation.RotateWorkerToken = true
+					rotation.WorkerJoinToken = true
 				case "manager":
-					rotation.RotateManagerToken = true
+					rotation.ManagerJoinToken = true
 				default:
-					return errors.New("--rotate-join-token flag must be followed by worker or manager")
+					return errors.New("--rotate-join-token flag must be followed by 'worker' or 'manager'")
 				}
 			}
+			if flags.Changed("autolock") {
+				spec.EncryptionConfig.AutoLockManagers, err = flags.GetBool("autolock")
+				if err != nil {
+					return err
+				}
+			}
+			rotateUnlockKey, err := flags.GetBool("rotate-unlock-key")
+			if err != nil {
+				return err
+			}
+			rotation.ManagerUnlockKey = rotateUnlockKey
 
 			driver, err := common.ParseLogDriverFlags(flags)
 			if err != nil {
@@ -98,6 +111,10 @@ var (
 				return err
 			}
 			fmt.Println(r.Cluster.ID)
+
+			if rotation.ManagerUnlockKey {
+				return displayUnlockKey(cmd)
+			}
 			return nil
 		},
 	}
@@ -112,4 +129,6 @@ func init() {
 	updateCmd.Flags().String("log-driver", "", "Set default log driver for cluster")
 	updateCmd.Flags().StringSlice("log-opt", nil, "Set options for default log driver")
 	updateCmd.Flags().String("rotate-join-token", "", "Rotate join token for worker or manager")
+	updateCmd.Flags().Bool("rotate-unlock-key", false, "Rotate manager unlock key")
+	updateCmd.Flags().Bool("autolock", false, "Enable or disable manager autolocking (requiring an unlock key to start a stopped manager)")
 }

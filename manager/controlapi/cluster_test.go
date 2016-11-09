@@ -1,6 +1,7 @@
 package controlapi
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -25,11 +27,11 @@ func createClusterSpec(name string) *api.ClusterSpec {
 	}
 }
 
-func createCluster(t *testing.T, ts *testServer, id, name string, policy api.AcceptancePolicy, rootCA *ca.RootCA) *api.Cluster {
+func createClusterObj(id, name string, policy api.AcceptancePolicy, rootCA *ca.RootCA) *api.Cluster {
 	spec := createClusterSpec(name)
 	spec.AcceptancePolicy = policy
 
-	cluster := &api.Cluster{
+	return &api.Cluster{
 		ID:   id,
 		Spec: *spec,
 		RootCA: api.RootCA{
@@ -42,6 +44,10 @@ func createCluster(t *testing.T, ts *testServer, id, name string, policy api.Acc
 			},
 		},
 	}
+}
+
+func createCluster(t *testing.T, ts *testServer, id, name string, policy api.AcceptancePolicy, rootCA *ca.RootCA) *api.Cluster {
+	cluster := createClusterObj(id, name, policy, rootCA)
 	assert.NoError(t, ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateCluster(tx, cluster)
 	}))
@@ -244,8 +250,8 @@ func TestUpdateClusterRotateToken(t *testing.T) {
 		ClusterID:      cluster.ID,
 		Spec:           &cluster.Spec,
 		ClusterVersion: &cluster.Meta.Version,
-		Rotation: api.JoinTokenRotation{
-			RotateWorkerToken: true,
+		Rotation: api.KeyRotation{
+			WorkerJoinToken: true,
 		},
 	})
 	assert.NoError(t, err)
@@ -266,8 +272,8 @@ func TestUpdateClusterRotateToken(t *testing.T) {
 		ClusterID:      cluster.ID,
 		Spec:           &cluster.Spec,
 		ClusterVersion: &r.Clusters[0].Meta.Version,
-		Rotation: api.JoinTokenRotation{
-			RotateManagerToken: true,
+		Rotation: api.KeyRotation{
+			ManagerJoinToken: true,
 		},
 	})
 	assert.NoError(t, err)
@@ -288,9 +294,9 @@ func TestUpdateClusterRotateToken(t *testing.T) {
 		ClusterID:      cluster.ID,
 		Spec:           &cluster.Spec,
 		ClusterVersion: &r.Clusters[0].Meta.Version,
-		Rotation: api.JoinTokenRotation{
-			RotateWorkerToken:  true,
-			RotateManagerToken: true,
+		Rotation: api.KeyRotation{
+			WorkerJoinToken:  true,
+			ManagerJoinToken: true,
 		},
 	})
 	assert.NoError(t, err)
@@ -304,6 +310,126 @@ func TestUpdateClusterRotateToken(t *testing.T) {
 	assert.Len(t, r.Clusters, 1)
 	assert.NotEqual(t, workerToken, r.Clusters[0].RootCA.JoinTokens.Worker)
 	assert.NotEqual(t, managerToken, r.Clusters[0].RootCA.JoinTokens.Manager)
+}
+
+func TestUpdateClusterRotateUnlockKey(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+	// create a cluster with extra encryption keys, to make sure they exist
+	cluster := createClusterObj("id", "name", api.AcceptancePolicy{}, ts.Server.rootCA)
+	expected := make(map[string]*api.EncryptionKey)
+	for i := 1; i <= 2; i++ {
+		value := fmt.Sprintf("fake%d", i)
+		expected[value] = &api.EncryptionKey{Subsystem: value, Key: []byte(value)}
+		cluster.UnlockKeys = append(cluster.UnlockKeys, expected[value])
+	}
+	require.NoError(t, ts.Store.Update(func(tx store.Tx) error {
+		return store.CreateCluster(tx, cluster)
+	}))
+
+	// we have to get the key from the memory store, since the cluster returned by the API is redacted
+	getManagerKey := func() (managerKey *api.EncryptionKey) {
+		ts.Store.View(func(tx store.ReadTx) {
+			viewCluster := store.GetCluster(tx, cluster.ID)
+			// no matter whether there's a manager key or not, the other keys should not have been affected
+			foundKeys := make(map[string]*api.EncryptionKey)
+			for _, eKey := range viewCluster.UnlockKeys {
+				foundKeys[eKey.Subsystem] = eKey
+			}
+			for v, key := range expected {
+				foundKey, ok := foundKeys[v]
+				require.True(t, ok)
+				require.Equal(t, key, foundKey)
+			}
+			managerKey = foundKeys[ca.ManagerRole]
+		})
+		return
+	}
+
+	validateListResult := func(expectedLocked bool) api.Version {
+		r, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{
+			Filters: &api.ListClustersRequest_Filters{
+				NamePrefixes: []string{"name"},
+			},
+		})
+
+		require.NoError(t, err)
+		require.Len(t, r.Clusters, 1)
+		require.Equal(t, expectedLocked, r.Clusters[0].Spec.EncryptionConfig.AutoLockManagers)
+		require.Nil(t, r.Clusters[0].UnlockKeys) // redacted
+
+		return r.Clusters[0].Meta.Version
+	}
+
+	// we start off with manager autolocking turned off
+	version := validateListResult(false)
+	require.Nil(t, getManagerKey())
+
+	// Rotate unlock key without turning auto-lock on - key should still be nil
+	_, err := ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
+		ClusterID:      cluster.ID,
+		Spec:           &cluster.Spec,
+		ClusterVersion: &version,
+		Rotation: api.KeyRotation{
+			ManagerUnlockKey: true,
+		},
+	})
+	require.NoError(t, err)
+	version = validateListResult(false)
+	require.Nil(t, getManagerKey())
+
+	// Enable auto-lock only, no rotation boolean
+	spec := cluster.Spec.Copy()
+	spec.EncryptionConfig.AutoLockManagers = true
+	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
+		ClusterID:      cluster.ID,
+		Spec:           spec,
+		ClusterVersion: &version,
+	})
+	require.NoError(t, err)
+	version = validateListResult(true)
+	managerKey := getManagerKey()
+	require.NotNil(t, managerKey)
+
+	// Rotate the manager key
+	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
+		ClusterID:      cluster.ID,
+		Spec:           spec,
+		ClusterVersion: &version,
+		Rotation: api.KeyRotation{
+			ManagerUnlockKey: true,
+		},
+	})
+	require.NoError(t, err)
+	version = validateListResult(true)
+	newManagerKey := getManagerKey()
+	require.NotNil(t, managerKey)
+	require.NotEqual(t, managerKey, newManagerKey)
+	managerKey = newManagerKey
+
+	// Just update the cluster without modifying unlock keys
+	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
+		ClusterID:      cluster.ID,
+		Spec:           spec,
+		ClusterVersion: &version,
+	})
+	require.NoError(t, err)
+	version = validateListResult(true)
+	newManagerKey = getManagerKey()
+	require.Equal(t, managerKey, newManagerKey)
+
+	// Disable auto lock
+	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
+		ClusterID:      cluster.ID,
+		Spec:           &cluster.Spec, // set back to original spec
+		ClusterVersion: &version,
+		Rotation: api.KeyRotation{
+			ManagerUnlockKey: true, // this will be ignored because we disable the auto-lock
+		},
+	})
+	require.NoError(t, err)
+	validateListResult(false)
+	require.Nil(t, getManagerKey())
 }
 
 func TestListClusters(t *testing.T) {
