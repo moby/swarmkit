@@ -55,5 +55,14 @@ func parseContainer(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		spec.Task.GetContainer().TTY = tty
 	}
 
+	if flags.Changed("open-stdin") {
+		openStdin, err := flags.GetBool("open-stdin")
+		if err != nil {
+			return err
+		}
+
+		spec.Task.GetContainer().OpenStdin = openStdin
+	}
+
 	return nil
 }
