@@ -186,6 +186,9 @@ message ContainerSpec {
 	// including stdin if it is still open.
 	bool tty = 13 [(gogoproto.customname) = "TTY"];
 
+	// OpenStdin declares that the standard input (stdin) should be open.
+	bool open_stdin = 18;
+
 	repeated Mount mounts = 8 [(gogoproto.nullable) = false];
 
 	// StopGracePeriod the grace period for stopping the container before
