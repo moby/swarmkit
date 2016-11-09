@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -35,6 +36,7 @@ type TestNode struct {
 	Address        string
 	StateDir       string
 	cancel         context.CancelFunc
+	KeyRotator     *SimpleKeyRotator
 }
 
 // Leader is wrapper around real Leader method to suppress error.
@@ -201,6 +203,79 @@ func RecycleWrappedListener(old *WrappedListener) *WrappedListener {
 	}
 }
 
+// SimpleKeyRotator does some DEK rotation
+type SimpleKeyRotator struct {
+	mu                 sync.Mutex
+	rotateCh           chan struct{}
+	updateFunc         func() error
+	overrideNeedRotate *bool
+	raft.EncryptionKeys
+}
+
+// GetKeys returns the current set of keys
+func (s *SimpleKeyRotator) GetKeys() raft.EncryptionKeys {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.EncryptionKeys
+}
+
+// NeedsRotation returns whether we need to rotate
+func (s *SimpleKeyRotator) NeedsRotation() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.overrideNeedRotate != nil {
+		return *s.overrideNeedRotate
+	}
+	return s.EncryptionKeys.PendingDEK != nil
+}
+
+// UpdateKeys updates the current encryption keys
+func (s *SimpleKeyRotator) UpdateKeys(newKeys raft.EncryptionKeys) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.updateFunc != nil {
+		return s.updateFunc()
+	}
+	s.EncryptionKeys = newKeys
+	return nil
+}
+
+// RotationNotify returns the rotation notification channel
+func (s *SimpleKeyRotator) RotationNotify() chan struct{} {
+	return s.rotateCh
+}
+
+// QueuePendingKey lets us rotate the key
+func (s *SimpleKeyRotator) QueuePendingKey(key []byte) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.EncryptionKeys.PendingDEK = key
+}
+
+// SetUpdateFunc enables you to inject an error when updating keys
+func (s *SimpleKeyRotator) SetUpdateFunc(updateFunc func() error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.updateFunc = updateFunc
+}
+
+// SetNeedsRotation enables you to inject a value for NeedsRotation
+func (s *SimpleKeyRotator) SetNeedsRotation(override *bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.overrideNeedRotate = override
+}
+
+// NewSimpleKeyRotator returns a basic EncryptionKeyRotator
+func NewSimpleKeyRotator(keys raft.EncryptionKeys) *SimpleKeyRotator {
+	return &SimpleKeyRotator{
+		rotateCh:       make(chan struct{}),
+		EncryptionKeys: keys,
+	}
+}
+
+var _ raft.EncryptionKeyRotator = NewSimpleKeyRotator(raft.EncryptionKeys{})
+
 // NewNode creates a new raft node to use for tests
 func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA, opts ...raft.NodeOptions) *TestNode {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -218,6 +293,7 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA,
 	stateDir, err := ioutil.TempDir("", "test-raft")
 	require.NoError(t, err, "can't create temporary state directory")
 
+	keyRotator := NewSimpleKeyRotator(raft.EncryptionKeys{CurrentDEK: []byte("current")})
 	newNodeOpts := raft.NodeOptions{
 		ID:             securityConfig.ClientTLSCreds.NodeID(),
 		Addr:           l.Addr().String(),
@@ -226,6 +302,7 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA,
 		ClockSource:    clockSource,
 		SendTimeout:    10 * time.Second,
 		TLSCredentials: securityConfig.ClientTLSCreds,
+		KeyRotator:     keyRotator,
 	}
 
 	if len(opts) > 1 {
@@ -258,6 +335,7 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA,
 		Address:        newNodeOpts.Addr,
 		StateDir:       newNodeOpts.StateDir,
 		Server:         s,
+		KeyRotator:     keyRotator,
 	}
 }
 
@@ -316,14 +394,18 @@ func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, tc
 	return n
 }
 
-// RestartNode restarts a raft test node
-func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNode, forceNewCluster bool) *TestNode {
+// CopyNode returns a copy of a node
+func CopyNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNode, forceNewCluster bool, kr *SimpleKeyRotator) (*TestNode, context.Context) {
 	wrappedListener := RecycleWrappedListener(oldNode.Listener)
 	securityConfig := oldNode.SecurityConfig
 	serverOpts := []grpc.ServerOption{grpc.Creds(securityConfig.ServerTLSCreds)}
 	s := grpc.NewServer(serverOpts...)
 
 	cfg := raft.DefaultNodeConfig()
+
+	if kr == nil {
+		kr = oldNode.KeyRotator
+	}
 
 	newNodeOpts := raft.NodeOptions{
 		ID:              securityConfig.ClientTLSCreds.NodeID(),
@@ -334,6 +416,7 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 		ClockSource:     clockSource,
 		SendTimeout:     10 * time.Second,
 		TLSCredentials:  securityConfig.ClientTLSCreds,
+		KeyRotator:      kr,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -345,15 +428,10 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 
 	go func() {
 		// After stopping, we should receive an error from Serve
-		assert.Error(t, s.Serve(wrappedListener))
+		require.Error(t, s.Serve(wrappedListener))
 	}()
 
 	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
-
-	err := n.JoinAndStart(ctx)
-	require.NoError(t, err, "can't join cluster")
-
-	go n.Run(ctx)
 
 	return &TestNode{
 		Node:           n,
@@ -363,7 +441,20 @@ func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNo
 		StateDir:       newNodeOpts.StateDir,
 		cancel:         cancel,
 		Server:         s,
-	}
+		KeyRotator:     kr,
+	}, ctx
+}
+
+// RestartNode restarts a raft test node
+func RestartNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNode, forceNewCluster bool) *TestNode {
+	n, ctx := CopyNode(t, clockSource, oldNode, forceNewCluster, nil)
+
+	err := n.Node.JoinAndStart(ctx)
+	require.NoError(t, err, "can't join cluster")
+
+	go n.Node.Run(ctx)
+
+	return n
 }
 
 // NewRaftCluster creates a new raft cluster with 3 nodes for testing

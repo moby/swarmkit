@@ -9,9 +9,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/identity"
+	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
@@ -179,6 +181,10 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 	_, err = node.loadSecurityConfig(context.Background())
 	require.NoError(t, err)
 
+	// the TLS key and cert were written to disk unencrypted
+	_, _, err = ca.NewKeyReadWriter(paths.Node, nil, nil).Read()
+	require.NoError(t, err)
+
 	// remove the TLS cert and key, and mark the root CA cert so that we will
 	// know if it gets replaced
 	require.NoError(t, os.Remove(paths.Node.Cert))
@@ -191,6 +197,25 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 	certBytes = pem.EncodeToMemory(pemBlock)
 	require.NoError(t, ioutil.WriteFile(paths.RootCA.Cert, certBytes, 0644))
 
+	// also make sure the new set gets downloaded and written to disk with a passphrase
+	// by updating the memory store with manager autolock on and an unlock key
+	require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
+		clusters, err := store.FindClusters(tx, store.All)
+		require.NoError(t, err)
+		require.Len(t, clusters, 1)
+
+		newCluster := clusters[0].Copy()
+		newCluster.Spec.EncryptionConfig.AutoLockManagers = true
+		newCluster.UnlockKeys = []*api.EncryptionKey{{
+			Subsystem: ca.ManagerRole,
+			Key:       []byte("passphrase"),
+		}}
+		return store.UpdateCluster(tx, newCluster)
+	}))
+
+	// Join with without any passphrase - this should be fine, because the TLS
+	// key is downloaded and then loaded just fine.  However, it *is* written
+	// to disk encrypted.
 	node, err = New(&Config{
 		StateDir:  tempdir,
 		JoinAddr:  peer.Addr,
@@ -204,4 +229,10 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 	readCertBytes, err := ioutil.ReadFile(paths.RootCA.Cert)
 	require.NoError(t, err)
 	require.Equal(t, certBytes, readCertBytes)
+
+	// the TLS node cert and key were saved to disk encrypted, though
+	_, _, err = ca.NewKeyReadWriter(paths.Node, nil, nil).Read()
+	require.Error(t, err)
+	_, _, err = ca.NewKeyReadWriter(paths.Node, []byte("passphrase"), nil).Read()
+	require.NoError(t, err)
 }
