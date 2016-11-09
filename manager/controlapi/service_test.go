@@ -41,7 +41,6 @@ func createSpec(name, image string, instances uint64) *api.ServiceSpec {
 }
 
 func createSpecWithDuplicateMounts(name string) *api.ServiceSpec {
-
 	service := createSpec("", "image", 1)
 	mounts := []api.Mount{
 		{
@@ -56,6 +55,12 @@ func createSpecWithDuplicateMounts(name string) *api.ServiceSpec {
 
 	service.Task.GetContainer().Mounts = mounts
 
+	return service
+}
+
+func createSpecWithHostnameTemplate(serviceName, hostnameTmpl string) *api.ServiceSpec {
+	service := createSpec(serviceName, "image", 1)
+	service.Task.GetContainer().Hostname = hostnameTmpl
 	return service
 }
 
@@ -150,7 +155,7 @@ func TestValidateTask(t *testing.T) {
 		{
 			s: api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
-					Container: nil,
+					Container: &api.ContainerSpec{},
 				},
 			},
 			c: codes.InvalidArgument,
@@ -177,6 +182,10 @@ func TestValidateTask(t *testing.T) {
 			s: createSpecWithDuplicateMounts("test").Task,
 			c: codes.InvalidArgument,
 		},
+		{
+			s: createSpecWithHostnameTemplate("", "{{.Nothing.here}}").Task,
+			c: codes.InvalidArgument,
+		},
 	} {
 		err := validateTask(bad.s)
 		assert.Error(t, err)
@@ -185,6 +194,7 @@ func TestValidateTask(t *testing.T) {
 
 	for _, good := range []api.TaskSpec{
 		createSpec("", "image", 0).Task,
+		createSpecWithHostnameTemplate("service", "{{.Service.Name}}-{{.Task.Slot}}").Task,
 	} {
 		err := validateTask(good)
 		assert.NoError(t, err)
