@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/state/raft"
+	"github.com/docker/swarmkit/manager/state/raft/storage"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/pivotal-golang/clock/fakeclock"
@@ -38,7 +40,7 @@ func TestRaftSnapshot(t *testing.T) {
 
 	// None of the nodes should have snapshot files yet
 	for _, node := range nodes {
-		dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3"))
+		dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
 		assert.NoError(t, err)
 		assert.Len(t, dirents, 0)
 	}
@@ -57,7 +59,7 @@ func TestRaftSnapshot(t *testing.T) {
 	// All nodes should now have a snapshot file
 	for nodeID, node := range nodes {
 		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3"))
+			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
 			if err != nil {
 				return err
 			}
@@ -74,7 +76,7 @@ func TestRaftSnapshot(t *testing.T) {
 
 	// It should get a copy of the snapshot
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-		dirents, err := ioutil.ReadDir(filepath.Join(nodes[4].StateDir, "snap-v3"))
+		dirents, err := ioutil.ReadDir(filepath.Join(nodes[4].StateDir, "snap-v3-encrypted"))
 		if err != nil {
 			return err
 		}
@@ -110,7 +112,7 @@ func TestRaftSnapshot(t *testing.T) {
 	// All nodes should have a snapshot under a *different* name
 	for nodeID, node := range nodes {
 		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3"))
+			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
 			if err != nil {
 				return err
 			}
@@ -118,7 +120,7 @@ func TestRaftSnapshot(t *testing.T) {
 				return fmt.Errorf("expected 1 snapshot, found %d on node %d", len(dirents), nodeID)
 			}
 			if dirents[0].Name() == snapshotFilenames[nodeID] {
-				return fmt.Errorf("snapshot %s did not get replaced", snapshotFilenames[nodeID])
+				return fmt.Errorf("snapshot %s did not get replaced on node %d", snapshotFilenames[nodeID], nodeID)
 			}
 			return nil
 		}))
@@ -155,7 +157,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Remaining nodes shouldn't have snapshot files yet
 	for _, node := range []*raftutils.TestNode{nodes[1], nodes[2]} {
-		dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3"))
+		dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
 		assert.NoError(t, err)
 		assert.Len(t, dirents, 0)
 	}
@@ -168,7 +170,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	// Remaining nodes should now have a snapshot file
 	for nodeIdx, node := range []*raftutils.TestNode{nodes[1], nodes[2]} {
 		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3"))
+			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
 			if err != nil {
 				return err
 			}
@@ -190,7 +192,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// New node should get a copy of the snapshot
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-		dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].StateDir, "snap-v3"))
+		dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].StateDir, "snap-v3-encrypted"))
 		if err != nil {
 			return err
 		}
@@ -200,7 +202,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 		return nil
 	}))
 
-	dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].StateDir, "snap-v3"))
+	dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].StateDir, "snap-v3-encrypted"))
 	assert.NoError(t, err)
 	assert.Len(t, dirents, 1)
 	raftutils.CheckValuesOnNodes(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:5], values[:5])
@@ -271,7 +273,7 @@ func TestGCWAL(t *testing.T) {
 	// Snapshot should have been triggered just as the WAL rotated, so
 	// both WAL files should be preserved
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-		dirents, err := ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "snap-v3"))
+		dirents, err := ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "snap-v3-encrypted"))
 		if err != nil {
 			return err
 		}
@@ -279,7 +281,7 @@ func TestGCWAL(t *testing.T) {
 			return fmt.Errorf("expected 1 snapshot, found %d", len(dirents))
 		}
 
-		dirents, err = ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "wal-v3"))
+		dirents, err = ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "wal-v3-encrypted"))
 		if err != nil {
 			return err
 		}
@@ -311,7 +313,7 @@ func TestGCWAL(t *testing.T) {
 
 	// This time only one WAL file should be saved.
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
-		dirents, err := ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "snap-v3"))
+		dirents, err := ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "snap-v3-encrypted"))
 		if err != nil {
 			return err
 		}
@@ -320,7 +322,7 @@ func TestGCWAL(t *testing.T) {
 			return fmt.Errorf("expected 1 snapshot, found %d", len(dirents))
 		}
 
-		dirents, err = ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "wal-v3"))
+		dirents, err = ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "wal-v3-encrypted"))
 		if err != nil {
 			return err
 		}
@@ -437,23 +439,229 @@ func proposeLargeValue(t *testing.T, raftNode *raftutils.TestNode, time time.Dur
 	return node, nil
 }
 
-func TestMigrateWAL(t *testing.T) {
+func TestRaftEncryptionKeyRotation(t *testing.T) {
+	t.Parallel()
 	nodes := make(map[uint64]*raftutils.TestNode)
 	var clockSource *fakeclock.FakeClock
 
-	nodes[1], clockSource = raftutils.NewInitNode(t, tc, nil)
+	raftConfig := raft.DefaultRaftConfig()
+	nodes[1], clockSource = raftutils.NewInitNode(t, tc, &raftConfig)
 	defer raftutils.TeardownCluster(t, nodes)
 
-	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, "id1")
-	assert.NoError(t, err, "failed to propose value")
-	raftutils.CheckValuesOnNodes(t, clockSource, nodes, []string{"id1"}, []*api.Node{value})
+	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7"}
+	values := make([]*api.Node, len(nodeIDs))
+
+	// Propose 3 values
+	var err error
+	for i, nodeID := range nodeIDs[:3] {
+		values[i], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeID)
+		require.NoError(t, err, "failed to propose value")
+	}
+
+	snapDir := filepath.Join(nodes[1].StateDir, "snap-v3-encrypted")
+
+	startingKeys := nodes[1].KeyRotator.GetKeys()
+
+	// rotate the encryption key
+	nodes[1].KeyRotator.QueuePendingKey([]byte("key2"))
+	nodes[1].KeyRotator.RotationNotify() <- struct{}{}
+
+	// the rotation should trigger a snapshot, which should notify the rotator when it's done
+	require.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		snapshots, err := storage.ListSnapshots(snapDir)
+		if err != nil {
+			return err
+		}
+		if len(snapshots) != 1 {
+			return fmt.Errorf("expected 1 snapshot, found %d on new node", len(snapshots))
+		}
+		if nodes[1].KeyRotator.NeedsRotation() {
+			return fmt.Errorf("rotation never finished")
+		}
+		return nil
+	}))
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:3], values[:3])
+
+	// Propose a 4th value
+	values[3], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[3])
+	require.NoError(t, err, "failed to propose value")
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:4], values[:4])
 
 	nodes[1].Server.Stop()
 	nodes[1].ShutdownRaft()
 
-	// Move WAL directory so it looks like it was created by an old version
-	require.NoError(t, os.Rename(filepath.Join(nodes[1].StateDir, "wal-v3"), filepath.Join(nodes[1].StateDir, "wal")))
+	// Try to restart node 1. Without the new unlock key, it can't actually start
+	n, ctx := raftutils.CopyNode(t, clockSource, nodes[1], false, raftutils.NewSimpleKeyRotator(startingKeys))
+	require.Error(t, n.Node.JoinAndStart(ctx),
+		"should not have been able to restart since we can't read snapshots")
 
+	// with the right key, it can start, even if the right key is only the pending key
+	newKeys := startingKeys
+	newKeys.PendingDEK = []byte("key2")
+	nodes[1].KeyRotator = raftutils.NewSimpleKeyRotator(newKeys)
 	nodes[1] = raftutils.RestartNode(t, clockSource, nodes[1], false)
-	raftutils.CheckValuesOnNodes(t, clockSource, nodes, []string{"id1"}, []*api.Node{value})
+
+	raftutils.WaitForCluster(t, clockSource, nodes)
+
+	// as soon as we joined, it should have finished rotating the key
+	require.False(t, nodes[1].KeyRotator.NeedsRotation())
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:4], values[:4])
+
+	// break snapshotting, and ensure that key rotation never finishes
+	tempSnapDir := filepath.Join(nodes[1].StateDir, "snap-backup")
+	require.NoError(t, os.Rename(snapDir, tempSnapDir))
+	require.NoError(t, ioutil.WriteFile(snapDir, []byte("this is no longer a directory"), 0644))
+
+	nodes[1].KeyRotator.QueuePendingKey([]byte("key3"))
+	nodes[1].KeyRotator.RotationNotify() <- struct{}{}
+
+	time.Sleep(250 * time.Millisecond)
+
+	// rotation has not been finished, because we cannot take a snapshot
+	require.True(t, nodes[1].KeyRotator.NeedsRotation())
+
+	// Propose a 5th value, so we have WALs written with the new key
+	values[4], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[4])
+	require.NoError(t, err, "failed to propose value")
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:5], values[:5])
+
+	nodes[1].Server.Stop()
+	nodes[1].ShutdownRaft()
+
+	// restore the snapshot dir
+	require.NoError(t, os.RemoveAll(snapDir))
+	require.NoError(t, os.Rename(tempSnapDir, snapDir))
+
+	// Now the wals are a mix of key2 and key3 - we can't actually start with either key
+	singleKey := raft.EncryptionKeys{CurrentDEK: []byte("key2")}
+	n, ctx = raftutils.CopyNode(t, clockSource, nodes[1], false, raftutils.NewSimpleKeyRotator(singleKey))
+	require.Error(t, n.Node.JoinAndStart(ctx),
+		"should not have been able to restart since we can't read all the WALs, even if we can read the snapshot")
+	singleKey = raft.EncryptionKeys{CurrentDEK: []byte("key3")}
+	n, ctx = raftutils.CopyNode(t, clockSource, nodes[1], false, raftutils.NewSimpleKeyRotator(singleKey))
+	require.Error(t, n.Node.JoinAndStart(ctx),
+		"should not have been able to restart since we can't read all the WALs, and also not the snapshot")
+
+	nodes[1], ctx = raftutils.CopyNode(t, clockSource, nodes[1], false,
+		raftutils.NewSimpleKeyRotator(raft.EncryptionKeys{
+			CurrentDEK: []byte("key2"),
+			PendingDEK: []byte("key3"),
+		}))
+	require.NoError(t, nodes[1].Node.JoinAndStart(ctx))
+
+	// we can load, but we still need a snapshot because rotation hasn't finished
+	snapshots, err := storage.ListSnapshots(snapDir)
+	require.NoError(t, err)
+	require.Len(t, snapshots, 1, "expected 1 snapshot")
+	require.True(t, nodes[1].KeyRotator.NeedsRotation())
+	currSnapshot := snapshots[0]
+
+	// start the node - everything should fix itself
+	go nodes[1].Node.Run(ctx)
+	raftutils.WaitForCluster(t, clockSource, nodes)
+
+	require.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		snapshots, err := storage.ListSnapshots(snapDir)
+		if err != nil {
+			return err
+		}
+		if len(snapshots) != 1 {
+			return fmt.Errorf("expected 1 snapshots, found %d on new node", len(snapshots))
+		}
+		if snapshots[0] == currSnapshot {
+			return fmt.Errorf("new snapshot not done yet")
+		}
+		if nodes[1].KeyRotator.NeedsRotation() {
+			return fmt.Errorf("rotation never finished")
+		}
+		currSnapshot = snapshots[0]
+		return nil
+	}))
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:5], values[:5])
+
+	// If we can't update the keys, we wait for the next snapshot to do so
+	nodes[1].KeyRotator.SetUpdateFunc(func() error { return fmt.Errorf("nope!") })
+	nodes[1].KeyRotator.QueuePendingKey([]byte("key4"))
+	nodes[1].KeyRotator.RotationNotify() <- struct{}{}
+
+	require.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		snapshots, err := storage.ListSnapshots(snapDir)
+		if err != nil {
+			return err
+		}
+		if len(snapshots) != 1 {
+			return fmt.Errorf("expected 1 snapshots, found %d on new node", len(snapshots))
+		}
+		if snapshots[0] == currSnapshot {
+			return fmt.Errorf("new snapshot not done yet")
+		}
+		currSnapshot = snapshots[0]
+		return nil
+	}))
+	require.True(t, nodes[1].KeyRotator.NeedsRotation())
+
+	// Fix updating the key rotator, and propose a 6th value, so another snapshot is
+	// triggered.
+	nodes[1].KeyRotator.SetUpdateFunc(nil)
+	values[5], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[5])
+	require.NoError(t, err, "failed to propose value")
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:6], values[:6])
+	raftutils.AdvanceTicks(clockSource, 5)
+
+	require.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		snapshots, err := storage.ListSnapshots(snapDir)
+		if err != nil {
+			return err
+		}
+		if len(snapshots) != 1 {
+			return fmt.Errorf("expected 1 snapshots, found %d on new node", len(snapshots))
+		}
+		if snapshots[0] == currSnapshot {
+			return fmt.Errorf("new snapshot not done yet")
+		}
+		if nodes[1].KeyRotator.NeedsRotation() {
+			return fmt.Errorf("rotation never finished")
+		}
+		currSnapshot = snapshots[0]
+		return nil
+	}))
+	require.False(t, nodes[1].KeyRotator.NeedsRotation())
+
+	// Even if something goes wrong with getting keys, and needs rotation returns a false positive,
+	// if there's no PendingDEK nothing happens.  A snapshot is spuriously triggered, but it writes
+	// with the current DEK.
+
+	// propose another value, so snapshotting doesn't fail
+	values[6], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[6])
+	require.NoError(t, err, "failed to propose value")
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:7], values[:7])
+
+	fakeTrue := true
+	nodes[1].KeyRotator.SetNeedsRotation(&fakeTrue)
+	nodes[1].KeyRotator.RotationNotify() <- struct{}{}
+
+	require.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		snapshots, err := storage.ListSnapshots(snapDir)
+		if err != nil {
+			return err
+		}
+		if len(snapshots) != 1 {
+			return fmt.Errorf("expected 1 snapshots, found %d on new node", len(snapshots))
+		}
+		if snapshots[0] == currSnapshot {
+			return fmt.Errorf("new snapshot not done yet")
+		}
+		return nil
+	}))
+
+	nodes[1].Server.Stop()
+	nodes[1].ShutdownRaft()
+
+	// We can decrypt with key4 - no key5
+	nodes[1].KeyRotator = raftutils.NewSimpleKeyRotator(raft.EncryptionKeys{
+		CurrentDEK: []byte("key4"),
+	})
+	nodes[1] = raftutils.RestartNode(t, clockSource, nodes[1], false)
+	raftutils.WaitForCluster(t, clockSource, nodes)
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:7], values[:7])
 }

@@ -15,5 +15,6 @@ func init() {
 		inspectCmd,
 		listCmd,
 		updateCmd,
+		unlockKeyCmd,
 	)
 }
