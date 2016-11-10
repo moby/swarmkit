@@ -98,9 +98,9 @@ func TestExtraHosts(t *testing.T) {
 			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Hosts: []string{
-						"example.com:1.2.3.4",
-						"example.org=5.6.7.8",
-						"mylocal 127.0.0.1",
+						"1.2.3.4 example.com",
+						"5.6.7.8 example.org",
+						"127.0.0.1 mylocal",
 					},
 				},
 			}},

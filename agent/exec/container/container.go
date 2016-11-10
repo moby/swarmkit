@@ -188,10 +188,17 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 		PortBindings: c.portBindings(),
 	}
 
+	// The format of extra hosts on swarmkit is specified in:
+	// http://man7.org/linux/man-pages/man5/hosts.5.html
+	//    IP_address canonical_hostname [aliases...]
+	// However, the format of ExtraHosts in HostConfig is
+	//    <host>:<ip>
+	// We need to do the conversion here
+	// (Alias is ignored for now)
 	for _, entry := range c.spec().Hosts {
-		index := strings.IndexAny(entry, ":= ")
-		if 0 < index && (index+1) < len(entry) {
-			hc.ExtraHosts = append(hc.ExtraHosts, fmt.Sprintf("%s:%s", entry[:index], entry[index+1:]))
+		parts := strings.Fields(entry)
+		if len(parts) > 1 {
+			hc.ExtraHosts = append(hc.ExtraHosts, fmt.Sprintf("%s:%s", parts[1], parts[0]))
 		}
 	}
 
