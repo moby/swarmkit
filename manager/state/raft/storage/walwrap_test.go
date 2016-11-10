@@ -40,6 +40,7 @@ func makeWALData(index uint64, term uint64) ([]byte, []raftpb.Entry, walpb.Snaps
 func createWithWAL(t *testing.T, w WALFactory, metadata []byte, startSnap walpb.Snapshot, entries []raftpb.Entry) string {
 	walDir, err := ioutil.TempDir("", "waltests")
 	require.NoError(t, err)
+	require.NoError(t, os.RemoveAll(walDir))
 
 	walWriter, err := w.Create(walDir, metadata)
 	require.NoError(t, err)
@@ -162,6 +163,7 @@ func TestSaveEncryptionFails(t *testing.T) {
 
 	tempdir, err := ioutil.TempDir("", "waltests")
 	require.NoError(t, err)
+	os.RemoveAll(tempdir)
 	defer os.RemoveAll(tempdir)
 
 	// fail encrypting one of the entries, but not the first one
@@ -195,7 +197,11 @@ func TestCreateOpenInvalidDirFails(t *testing.T) {
 	_, err := c.Create("/not/existing/directory", []byte("metadata"))
 	require.Error(t, err)
 
-	_, err = c.Open("/not/existing/directory", walpb.Snapshot{})
+	tempDir, err := ioutil.TempDir("", "test-migrate")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	_, err = c.Open(tempDir, walpb.Snapshot{}) // invalid because no WAL file
 	require.Error(t, err)
 }
 
