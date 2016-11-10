@@ -151,9 +151,7 @@ func TestMigrateToV3EncryptedForm(t *testing.T) {
 	writeDataTo := func(suffix string, snapshot raftpb.Snapshot, walFactory WALFactory, snapFactory SnapFactory) []raftpb.Entry {
 		snapDir := filepath.Join(tempdir, "snap"+suffix)
 		walDir := filepath.Join(tempdir, "wal"+suffix)
-		for _, dirpath := range []string{snapDir, walDir} {
-			require.NoError(t, os.MkdirAll(dirpath, 0755))
-		}
+		require.NoError(t, os.MkdirAll(snapDir, 0755))
 		require.NoError(t, snapFactory.New(snapDir).SaveSnap(snapshot))
 
 		_, entries, _ := makeWALData(snapshot.Metadata.Index, snapshot.Metadata.Term)
