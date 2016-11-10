@@ -491,10 +491,12 @@ type ContainerSpec struct {
 	// that associates IP addresses with hostnames.
 	// Detailed documentation is available in:
 	// http://man7.org/linux/man-pages/man5/hosts.5.html
-	// The format of the Hosts here could be:
-	// <hostname>:<ip> (separated by `:`)
-	// <hostname>=<ip> (separated by `=`)
-	// <hostname> <ip> (separated by ` `)
+	//   IP_address canonical_hostname [aliases...]
+	//
+	// The format of the Hosts in swarmkit follows the same as
+	// above.
+	// This is different from `docker run --add-host <hostname>:<ip>`
+	// where format is `<hostname>:<ip>`
 	Hosts []string `protobuf:"bytes,17,rep,name=hosts" json:"hosts,omitempty"`
 	// DNSConfig allows one to specify DNS related configuration in resolv.conf
 	DNSConfig *ContainerSpec_DNSConfig `protobuf:"bytes,15,opt,name=dns_config,json=dnsConfig" json:"dns_config,omitempty"`
