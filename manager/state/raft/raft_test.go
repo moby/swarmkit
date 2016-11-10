@@ -18,6 +18,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/wal"
 	"github.com/docker/swarmkit/api"
 	cautils "github.com/docker/swarmkit/ca/testutils"
@@ -319,10 +320,8 @@ func TestRaftLeaderLeave(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, newCluster)
 
 	// Node1's state should be cleared
-	_, err = os.Stat(filepath.Join(nodes[1].StateDir, "snap-v3-encrypted"))
-	require.True(t, os.IsNotExist(err))
-	_, err = os.Stat(filepath.Join(nodes[1].StateDir, "wal-v3-encrypted"))
-	require.True(t, os.IsNotExist(err))
+	require.False(t, fileutil.Exist(filepath.Join(nodes[1].StateDir, "snap-v3-encrypted")))
+	require.False(t, fileutil.Exist(filepath.Join(nodes[1].StateDir, "wal-v3-encrypted")))
 	require.Equal(t, raft.EncryptionKeys{}, nodes[1].KeyRotator.GetKeys())
 
 	// Leader should not be 1
