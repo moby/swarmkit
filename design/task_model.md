@@ -169,6 +169,14 @@ satisfied by at least one running task, not the detailed makeup of those slots.
 The updater takes care of making sure that each slot converges to having a
 single running task.
 
+Also, for application availability, multiple tasks can share the single slot
+number when a network partition occurs between nodes. If a node is split from
+manager nodes, the tasks that were running on the node will be recreated on
+another node.  However, the tasks on the split node can still continue
+running. So the old tasks and the new ones can share identical slot
+numbers. These tasks may be considered "orphaned" by the manager, after some
+time. Upon recovering the split, these tasks will be killed.
+
 Global tasks do not have slot numbers, but the concept is similar. Each node in
 the system should have a single running task associated with it. If this is not
 the case, the orchestrator and updater work together to create or destroy tasks
