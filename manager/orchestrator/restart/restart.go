@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/defaults"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/state"
@@ -159,10 +160,10 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 			restartDelay, err = gogotypes.DurationFromProto(t.Spec.Restart.Delay)
 			if err != nil {
 				log.G(ctx).WithError(err).Error("invalid restart delay; using default")
-				restartDelay = orchestrator.DefaultRestartDelay
+				restartDelay, _ = gogotypes.DurationFromProto(defaults.Service.Task.Restart.Delay)
 			}
 		} else {
-			restartDelay = orchestrator.DefaultRestartDelay
+			restartDelay, _ = gogotypes.DurationFromProto(defaults.Service.Task.Restart.Delay)
 		}
 	}
 
