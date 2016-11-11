@@ -143,6 +143,7 @@ func (c *containerConfig) config() *enginecontainer.Config {
 		Env:          c.spec().Env,
 		WorkingDir:   c.spec().Dir,
 		Tty:          c.spec().TTY,
+		OpenStdin:    c.spec().OpenStdin,
 		Image:        c.image(),
 		Volumes:      c.volumes(),
 		ExposedPorts: c.exposedPorts(),
