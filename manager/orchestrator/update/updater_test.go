@@ -78,8 +78,6 @@ func TestUpdater(t *testing.T) {
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Image: "v:1",
-						// This won't apply in this test because we set the old tasks to DEAD.
-						StopGracePeriod: ptypes.DurationProto(time.Hour),
 					},
 				},
 			},
@@ -213,8 +211,6 @@ func TestUpdaterFailureAction(t *testing.T) {
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Image: "v:1",
-						// This won't apply in this test because we set the old tasks to DEAD.
-						StopGracePeriod: ptypes.DurationProto(time.Hour),
 					},
 				},
 			},
@@ -316,7 +312,7 @@ func TestUpdaterFailureAction(t *testing.T) {
 
 }
 
-func TestUpdaterStopGracePeriod(t *testing.T) {
+func TestUpdaterTaskTimeout(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -333,7 +329,7 @@ func TestUpdaterStopGracePeriod(t *testing.T) {
 				err := s.Update(func(tx store.Tx) error {
 					task = store.GetTask(tx, task.ID)
 					// Explicitly do not set task state to
-					// DEAD to trigger StopGracePeriod
+					// DEAD to trigger TaskTimeout
 					if task.DesiredState == api.TaskStateRunning && task.Status.State != api.TaskStateRunning {
 						task.Status.State = api.TaskStateRunning
 						return store.UpdateTask(tx, task)
@@ -355,8 +351,7 @@ func TestUpdaterStopGracePeriod(t *testing.T) {
 			Task: api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
-						Image:           "v:1",
-						StopGracePeriod: ptypes.DurationProto(100 * time.Millisecond),
+						Image: "v:1",
 					},
 				},
 			},
