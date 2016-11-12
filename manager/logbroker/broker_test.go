@@ -13,13 +13,19 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestLogBroker(t *testing.T) {
-	ctx, broker, agentSecurity, client, brokerClient, done := testLogBrokerEnv(t)
+func TestLogBrokerLogs(t *testing.T) {
+	ctx, ca, broker, serverAddr, brokerAddr, done := testLogBrokerEnv(t)
 	defer done()
+
+	client, clientDone := testLogClient(t, serverAddr)
+	defer clientDone()
+	brokerClient, agentSecurity, brokerClientDone := testBrokerClient(t, ca, brokerAddr)
+	defer brokerClientDone()
 
 	var (
 		wg               sync.WaitGroup
@@ -35,7 +41,7 @@ func TestLogBroker(t *testing.T) {
 	stream, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
 		// Dummy selector - they are ignored in the broker for the time being.
 		Selector: &api.LogSelector{
-			NodeIDs: []string{"node-1"},
+			NodeIDs: []string{agentSecurity.ServerTLSCreds.NodeID()},
 		},
 	})
 	if err != nil {
@@ -75,11 +81,11 @@ func TestLogBroker(t *testing.T) {
 
 					// Each goroutine gets its own publisher
 					publisher, err := brokerClient.PublishLogs(ctx)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 
 					defer func() {
 						_, err := publisher.CloseAndRecv()
-						assert.NoError(t, err)
+						require.NoError(t, err)
 						wg.Done()
 					}()
 
@@ -89,7 +95,7 @@ func TestLogBroker(t *testing.T) {
 						TaskID:    taskID,
 					}
 					for i := 0; i < nLogMessagesPerTask; i++ {
-						assert.NoError(t, publisher.Send(&api.PublishLogsMessage{
+						require.NoError(t, publisher.Send(&api.PublishLogsMessage{
 							SubscriptionID: subscription.ID,
 							Messages:       []api.LogMessage{newLogMessage(msgctx, "log message number %d", i)},
 						}))
@@ -104,7 +110,7 @@ func TestLogBroker(t *testing.T) {
 	var messages int
 	for messages < messagesExpected {
 		msgs, err := stream.Recv()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		for range msgs.Messages {
 			messages++
 			if messages%100 == 0 {
@@ -117,64 +123,241 @@ func TestLogBroker(t *testing.T) {
 	wg.Wait()
 
 	// Make sure double Run throws an error
-	assert.EqualError(t, broker.Run(ctx), errAlreadyRunning.Error())
+	require.EqualError(t, broker.Run(ctx), errAlreadyRunning.Error())
 	// Stop should work
-	assert.NoError(t, broker.Stop())
+	require.NoError(t, broker.Stop())
 	// Double stopping should fail
-	assert.EqualError(t, broker.Stop(), errNotRunning.Error())
+	require.EqualError(t, broker.Stop(), errNotRunning.Error())
 }
 
-func TestLogBrokerRegistration(t *testing.T) {
-	ctx, _, _, client, brokerClient, done := testLogBrokerEnv(t)
+func listenSubscriptions(ctx context.Context, t *testing.T, client api.LogBrokerClient) <-chan *api.SubscriptionMessage {
+	subscriptions, err := client.ListenSubscriptions(ctx, &api.ListenSubscriptionsRequest{})
+	require.NoError(t, err)
+
+	ch := make(chan *api.SubscriptionMessage)
+	go func() {
+		defer close(ch)
+
+		for {
+			sub, err := subscriptions.Recv()
+			if err != nil {
+				t.Log(err)
+				return
+			}
+			select {
+			case <-ctx.Done():
+				t.Log(ctx.Err())
+				return
+			case ch <- sub:
+			default:
+				t.Log("ch closed")
+				return
+			}
+		}
+	}()
+	return ch
+}
+
+func ensureNoSubscription(t *testing.T, subscriptions <-chan *api.SubscriptionMessage) {
+	select {
+	case s := <-subscriptions:
+		t.Fatal(s)
+	case <-time.After(10 * time.Millisecond):
+		return
+	}
+}
+
+func TestLogBrokerSubscriptions(t *testing.T) {
+	ctx, ca, _, serverAddr, brokerAddr, done := testLogBrokerEnv(t)
 	defer done()
 
-	// Have an agent listen to subscriptions before anyone has subscribed.
-	subscriptions1, err := brokerClient.ListenSubscriptions(ctx, &api.ListenSubscriptionsRequest{})
-	assert.NoError(t, err)
+	client, clientDone := testLogClient(t, serverAddr)
+	defer clientDone()
 
-	// Subscribe
-	_, err = client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
-		// Dummy selector - they are ignored in the broker for the time being.
+	agent1, agent1Security, agent1Done := testBrokerClient(t, ca, brokerAddr)
+	defer agent1Done()
+
+	agent2, agent2Security, agent2Done := testBrokerClient(t, ca, brokerAddr)
+	defer agent2Done()
+
+	// Have an agent listen to subscriptions before anyone has subscribed.
+	subscriptions1 := listenSubscriptions(ctx, t, agent1)
+
+	// Send two subscriptions - one will match both agent1 and agent2 while
+	// the other only agent1
+	_, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
 		Selector: &api.LogSelector{
-			NodeIDs: []string{"node-1"},
+			NodeIDs: []string{
+				agent1Security.ServerTLSCreds.NodeID(),
+			},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	_, err = client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
+		Selector: &api.LogSelector{
+			NodeIDs: []string{
+				agent1Security.ServerTLSCreds.NodeID(),
+				agent2Security.ServerTLSCreds.NodeID(),
+			},
+		},
+	})
+	require.NoError(t, err)
 
-	// Make sure we received the subscription with our already-connected agent.
+	// Make sure we received two subscriptions on agent 1 (already joined).
 	{
-		subscription, err := subscriptions1.Recv()
-		assert.NoError(t, err)
-		assert.NotNil(t, subscription)
-		assert.False(t, subscription.Close)
+		s1 := <-subscriptions1
+		require.NoError(t, err)
+		require.NotNil(t, s1)
+		require.False(t, s1.Close)
+		require.Contains(t, s1.Selector.NodeIDs, agent1Security.ServerTLSCreds.NodeID())
+
+		s2 := <-subscriptions1
+		require.NoError(t, err)
+		require.NotNil(t, s2)
+		require.False(t, s2.Close)
+		require.Contains(t, s2.Selector.NodeIDs, agent1Security.ServerTLSCreds.NodeID())
+
+		// Ensure we received two different subscriptions.
+		require.NotEqual(t, s1.ID, s2.ID)
 	}
 
 	// Join a second agent.
-	subscriptions2, err := brokerClient.ListenSubscriptions(ctx, &api.ListenSubscriptionsRequest{})
-	assert.NoError(t, err)
+	subscriptions2 := listenSubscriptions(ctx, t, agent2)
 
 	// Make sure we receive past subscriptions.
+	// Make sure we receive *only* the right one.
 	{
-		subscription, err := subscriptions2.Recv()
-		assert.NoError(t, err)
-		assert.NotNil(t, subscription)
-		assert.False(t, subscription.Close)
+		s := <-subscriptions2
+		require.NoError(t, err)
+		require.NotNil(t, s)
+		require.False(t, s.Close)
+		require.Equal(t, []string{agent1Security.ServerTLSCreds.NodeID(), agent2Security.ServerTLSCreds.NodeID()}, s.Selector.NodeIDs)
+
+		ensureNoSubscription(t, subscriptions2)
 	}
 }
 
-func testLogBrokerEnv(t *testing.T) (context.Context, *LogBroker, *ca.SecurityConfig, api.LogsClient, api.LogBrokerClient, func()) {
+func TestLogBrokerSelector(t *testing.T) {
+	ctx, ca, _, serverAddr, brokerAddr, done := testLogBrokerEnv(t)
+	defer done()
+
+	client, clientDone := testLogClient(t, serverAddr)
+	defer clientDone()
+
+	agent1, agent1Security, agent1Done := testBrokerClient(t, ca, brokerAddr)
+	defer agent1Done()
+	agent1subscriptions := listenSubscriptions(ctx, t, agent1)
+
+	agent2, agent2Security, agent2Done := testBrokerClient(t, ca, brokerAddr)
+	defer agent2Done()
+	agent2subscriptions := listenSubscriptions(ctx, t, agent2)
+
+	// Subscribe to a task.
+	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
+		return store.CreateTask(tx, &api.Task{
+			ID: "task",
+		})
+	}))
+	_, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
+		Selector: &api.LogSelector{
+			TaskIDs: []string{"task"},
+		},
+	})
+	require.NoError(t, err)
+
+	// Since it's not assigned to any agent, nobody should receive it.
+	ensureNoSubscription(t, agent1subscriptions)
+	ensureNoSubscription(t, agent2subscriptions)
+
+	// Assign the task to agent-1. Make sure it's received by agent-1 but *not*
+	// agent-2.
+	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
+		task := store.GetTask(tx, "task")
+		require.NotNil(t, task)
+		task.NodeID = agent1Security.ServerTLSCreds.NodeID()
+		return store.UpdateTask(tx, task)
+	}))
+
+	require.NotNil(t, <-agent1subscriptions)
+	ensureNoSubscription(t, agent2subscriptions)
+
+	// Subscribe to a service.
+	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
+		return store.CreateService(tx, &api.Service{
+			ID: "service",
+		})
+	}))
+	_, err = client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
+		Selector: &api.LogSelector{
+			ServiceIDs: []string{"service"},
+		},
+	})
+	require.NoError(t, err)
+
+	// Since there are no corresponding tasks, nobody should receive it.
+	ensureNoSubscription(t, agent1subscriptions)
+	ensureNoSubscription(t, agent2subscriptions)
+
+	// Create a task that does *NOT* belong to our service and assign it to node-1.
+	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
+		return store.CreateTask(tx, &api.Task{
+			ID:        "wrong-task",
+			ServiceID: "wrong-service",
+			NodeID:    agent1Security.ServerTLSCreds.NodeID(),
+		})
+	}))
+
+	// Ensure agent-1 doesn't receive it.
+	ensureNoSubscription(t, agent1subscriptions)
+
+	// Now create another task that does belong to our service and assign it to node-1.
+	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
+		return store.CreateTask(tx, &api.Task{
+			ID:        "service-task-1",
+			ServiceID: "service",
+			NodeID:    agent1Security.ServerTLSCreds.NodeID(),
+		})
+	}))
+
+	// Make sure agent-1 receives it...
+	require.NotNil(t, <-agent1subscriptions)
+	// ...and agent-2 does not.
+	ensureNoSubscription(t, agent2subscriptions)
+
+	// Create another task, same as above.
+	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
+		return store.CreateTask(tx, &api.Task{
+			ID:        "service-task-2",
+			ServiceID: "service",
+			NodeID:    agent1Security.ServerTLSCreds.NodeID(),
+		})
+	}))
+
+	// agent-1 should *not* receive it anymore since the subscription was already delivered.
+	// agent-2 should still not get it.
+	ensureNoSubscription(t, agent1subscriptions)
+	ensureNoSubscription(t, agent2subscriptions)
+
+	// Now, create another one and assign it to agent-2.
+	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
+		return store.CreateTask(tx, &api.Task{
+			ID:        "service-task-3",
+			ServiceID: "service",
+			NodeID:    agent2Security.ServerTLSCreds.NodeID(),
+		})
+	}))
+
+	// Make sure it's delivered to agent-2.
+	require.NotNil(t, <-agent2subscriptions)
+	// it shouldn't do anything for agent-1.
+	ensureNoSubscription(t, agent1subscriptions)
+}
+
+func testLogBrokerEnv(t *testing.T) (context.Context, *testutils.TestCA, *LogBroker, string, string, func()) {
 	ctx, cancel := context.WithCancel(context.Background())
-	broker := New()
 
 	tca := testutils.NewTestCA(nil)
-	agentSecurityConfig, err := tca.NewNodeConfig(ca.WorkerRole)
-	if err != nil {
-		t.Fatal(err)
-	}
-	managerSecurityConfig, err := tca.NewNodeConfig(ca.ManagerRole)
-	if err != nil {
-		t.Fatal(err)
-	}
+	broker := New(tca.MemoryStore)
 
 	// Log Server
 	logListener, err := net.Listen("tcp", "localhost:0")
@@ -198,8 +381,11 @@ func testLogBrokerEnv(t *testing.T) (context.Context, *LogBroker, *ca.SecurityCo
 		t.Fatalf("error setting up listener: %v", err)
 	}
 
-	serverOpts := []grpc.ServerOption{grpc.Creds(managerSecurityConfig.ServerTLSCreds)}
-
+	securityConfig, err := tca.NewNodeConfig(ca.ManagerRole)
+	if err != nil {
+		t.Fatal(err)
+	}
+	serverOpts := []grpc.ServerOption{grpc.Creds(securityConfig.ServerTLSCreds)}
 	brokerServer := grpc.NewServer(serverOpts...)
 
 	authorize := func(ctx context.Context, roles []string) error {
@@ -217,29 +403,10 @@ func testLogBrokerEnv(t *testing.T) (context.Context, *LogBroker, *ca.SecurityCo
 		}
 	}()
 
-	// Log client
-	logCc, err := grpc.Dial(logListener.Addr().String(), grpc.WithInsecure())
-	if err != nil {
-		t.Fatalf("error dialing local server: %v", err)
-	}
-	logClient := api.NewLogsClient(logCc)
-
-	// Broker client
-	fmt.Printf("broker client: %s\n", brokerListener.Addr())
-	clientOpts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second), grpc.WithTransportCredentials(agentSecurityConfig.ClientTLSCreds)}
-	brokerCc, err := grpc.Dial(brokerListener.Addr().String(), clientOpts...)
-	if err != nil {
-		t.Fatalf("error dialing local server: %v", err)
-	}
-	brokerClient := api.NewLogBrokerClient(brokerCc)
-
 	go broker.Run(ctx)
 
-	return ctx, broker, agentSecurityConfig, logClient, brokerClient, func() {
+	return ctx, tca, broker, logListener.Addr().String(), brokerListener.Addr().String(), func() {
 		broker.Stop()
-
-		logCc.Close()
-		brokerCc.Close()
 
 		logServer.Stop()
 		brokerServer.Stop()
@@ -248,6 +415,34 @@ func testLogBrokerEnv(t *testing.T) (context.Context, *LogBroker, *ca.SecurityCo
 		brokerListener.Close()
 
 		cancel()
+	}
+}
+
+func testLogClient(t *testing.T, addr string) (api.LogsClient, func()) {
+	// Log client
+	logCc, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("error dialing local server: %v", err)
+	}
+	return api.NewLogsClient(logCc), func() {
+		logCc.Close()
+	}
+}
+
+func testBrokerClient(t *testing.T, tca *testutils.TestCA, addr string) (api.LogBrokerClient, *ca.SecurityConfig, func()) {
+	securityConfig, err := tca.NewNodeConfig(ca.WorkerRole)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second), grpc.WithTransportCredentials(securityConfig.ClientTLSCreds)}
+	cc, err := grpc.Dial(addr, opts...)
+	if err != nil {
+		t.Fatalf("error dialing local server: %v", err)
+	}
+
+	return api.NewLogBrokerClient(cc), securityConfig, func() {
+		cc.Close()
 	}
 }
 
