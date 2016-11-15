@@ -79,7 +79,13 @@ func TestLoadOrCreateSecurityConfigEmptyDir(t *testing.T) {
 	// Remove all the contents from the temp dir and try again with a new node
 	os.RemoveAll(tc.TempDir)
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.RootCA, tc.WorkerToken, ca.WorkerRole, tc.Remotes, info, krw)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, &ca.NodeSecurityConfig{
+		RootCA:        tc.RootCA,
+		Token:         tc.WorkerToken,
+		ProposedRole:  ca.WorkerRole,
+		Remotes:       tc.Remotes,
+		KeyReadWriter: krw,
+	}, info)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -96,7 +102,13 @@ func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
 	// new certificates that are locally signed
 	os.RemoveAll(tc.Paths.Node.Cert)
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.RootCA, tc.WorkerToken, ca.WorkerRole, tc.Remotes, nil, krw)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, &ca.NodeSecurityConfig{
+		RootCA:        tc.RootCA,
+		Token:         tc.WorkerToken,
+		ProposedRole:  ca.WorkerRole,
+		Remotes:       tc.Remotes,
+		KeyReadWriter: krw,
+	}, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -109,7 +121,13 @@ func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
 	os.RemoveAll(tc.Paths.Node.Cert)
 	rootCA, err := ca.GetLocalRootCA(tc.Paths.RootCA)
 	assert.NoError(t, err)
-	nodeConfig, err = ca.LoadOrCreateSecurityConfig(tc.Context, rootCA, tc.WorkerToken, ca.WorkerRole, tc.Remotes, info, krw)
+	nodeConfig, err = ca.LoadOrCreateSecurityConfig(tc.Context, &ca.NodeSecurityConfig{
+		RootCA:        rootCA,
+		Token:         tc.WorkerToken,
+		ProposedRole:  ca.WorkerRole,
+		Remotes:       tc.Remotes,
+		KeyReadWriter: krw,
+	}, info)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -128,7 +146,13 @@ some random garbage\n
 -----END CERTIFICATE-----`), 0644)
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.RootCA, "", ca.WorkerRole, tc.Remotes, nil, krw)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, &ca.NodeSecurityConfig{
+		RootCA:        tc.RootCA,
+		Token:         "",
+		ProposedRole:  ca.WorkerRole,
+		Remotes:       tc.Remotes,
+		KeyReadWriter: krw,
+	}, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -146,7 +170,13 @@ some random garbage\n
 -----END EC PRIVATE KEY-----`), 0644)
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.RootCA, "", ca.WorkerRole, tc.Remotes, nil, krw)
+	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, &ca.NodeSecurityConfig{
+		RootCA:        tc.RootCA,
+		Token:         "",
+		ProposedRole:  ca.WorkerRole,
+		Remotes:       tc.Remotes,
+		KeyReadWriter: krw,
+	}, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -163,8 +193,13 @@ func TestLoadOrCreateSecurityIncorrectPassphrase(t *testing.T) {
 		"nodeID", ca.WorkerRole, tc.Organization)
 	require.NoError(t, err)
 
-	_, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.RootCA, tc.WorkerToken, ca.WorkerRole, tc.Remotes, nil,
-		ca.NewKeyReadWriter(paths.Node, nil, nil))
+	_, err = ca.LoadOrCreateSecurityConfig(tc.Context, &ca.NodeSecurityConfig{
+		RootCA:        tc.RootCA,
+		Token:         tc.WorkerToken,
+		ProposedRole:  ca.WorkerRole,
+		Remotes:       tc.Remotes,
+		KeyReadWriter: ca.NewKeyReadWriter(paths.Node, nil, nil),
+	}, nil)
 	require.IsType(t, ca.ErrInvalidKEK{}, err)
 }
 

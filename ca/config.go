@@ -49,6 +49,21 @@ const (
 	base36DigestLen = 50
 )
 
+// NodeSecurityConfig is used to pass the configurations to
+// LoadOrCreateSecurityConfig
+type NodeSecurityConfig struct {
+	// RootCA is the root CA of the keys
+	RootCA RootCA
+	// Token is the join token of the cluster
+	Token string
+	// ProposedRole could be either worker or manager
+	ProposedRole string
+	// Remotes keeps remote addresses of the instances
+	Remotes remotes.Remotes
+	// KeyReadWriter is for reading and writing TLS keys and certs to disk
+	KeyReadWriter *KeyReadWriter
+}
+
 // SecurityConfig is used to represent a node's security configuration. It includes information about
 // the RootCA and ServerTLSCreds/ClientTLSCreds transport authenticators to be used for MTLS
 type SecurityConfig struct {
@@ -237,26 +252,26 @@ func DownloadRootCA(ctx context.Context, paths CertPaths, token string, r remote
 // LoadOrCreateSecurityConfig encapsulates the security logic behind joining a cluster.
 // Every node requires at least a set of TLS certificates with which to join the cluster with.
 // In the case of a manager, these certificates will be used both for client and server credentials.
-func LoadOrCreateSecurityConfig(ctx context.Context, rootCA RootCA, token, proposedRole string, remotes remotes.Remotes, nodeInfo chan<- api.IssueNodeCertificateResponse, krw *KeyReadWriter) (*SecurityConfig, error) {
+func LoadOrCreateSecurityConfig(ctx context.Context, config *NodeSecurityConfig, nodeInfo chan<- api.IssueNodeCertificateResponse) (*SecurityConfig, error) {
 	ctx = log.WithModule(ctx, "tls")
 
 	// At this point we've successfully loaded the CA details from disk, or
 	// successfully downloaded them remotely. The next step is to try to
 	// load our certificates.
-	clientTLSCreds, serverTLSCreds, err := LoadTLSCreds(rootCA, krw)
+	clientTLSCreds, serverTLSCreds, err := LoadTLSCreds(config.RootCA, config.KeyReadWriter)
 	if err != nil {
 		if _, ok := errors.Cause(err).(ErrInvalidKEK); ok {
 			return nil, err
 		}
 
-		log.G(ctx).WithError(err).Debugf("no node credentials found in: %s", krw.Target())
+		log.G(ctx).WithError(err).Debugf("no node credentials found in: %s", config.KeyReadWriter.Target())
 
 		var (
 			tlsKeyPair *tls.Certificate
 			err        error
 		)
 
-		if rootCA.CanSign() {
+		if config.RootCA.CanSign() {
 			// Create a new random ID for this certificate
 			cn := identity.NewID()
 			org := identity.NewID()
@@ -267,44 +282,44 @@ func LoadOrCreateSecurityConfig(ctx context.Context, rootCA RootCA, token, propo
 					NodeMembership: api.NodeMembershipAccepted,
 				}
 			}
-			tlsKeyPair, err = rootCA.IssueAndSaveNewCertificates(krw, cn, proposedRole, org)
+			tlsKeyPair, err = config.RootCA.IssueAndSaveNewCertificates(config.KeyReadWriter, cn, config.ProposedRole, org)
 			if err != nil {
 				log.G(ctx).WithFields(logrus.Fields{
 					"node.id":   cn,
-					"node.role": proposedRole,
+					"node.role": config.ProposedRole,
 				}).WithError(err).Errorf("failed to issue and save new certificate")
 				return nil, err
 			}
 
 			log.G(ctx).WithFields(logrus.Fields{
 				"node.id":   cn,
-				"node.role": proposedRole,
+				"node.role": config.ProposedRole,
 			}).Debug("issued new TLS certificate")
 		} else {
 			// There was an error loading our Credentials, let's get a new certificate issued
 			// Last argument is nil because at this point we don't have any valid TLS creds
-			tlsKeyPair, err = rootCA.RequestAndSaveNewCertificates(ctx, krw, token, remotes, nil, nodeInfo)
+			tlsKeyPair, err = config.RootCA.RequestAndSaveNewCertificates(ctx, config.KeyReadWriter, config.Token, config.Remotes, nil, nodeInfo)
 			if err != nil {
 				log.G(ctx).WithError(err).Error("failed to request save new certificate")
 				return nil, err
 			}
 		}
 		// Create the Server TLS Credentials for this node. These will not be used by workers.
-		serverTLSCreds, err = rootCA.NewServerTLSCredentials(tlsKeyPair)
+		serverTLSCreds, err = config.RootCA.NewServerTLSCredentials(tlsKeyPair)
 		if err != nil {
 			return nil, err
 		}
 
 		// Create a TLSConfig to be used when this node connects as a client to another remote node.
 		// We're using ManagerRole as remote serverName for TLS host verification
-		clientTLSCreds, err = rootCA.NewClientTLSCredentials(tlsKeyPair, ManagerRole)
+		clientTLSCreds, err = config.RootCA.NewClientTLSCredentials(tlsKeyPair, ManagerRole)
 		if err != nil {
 			return nil, err
 		}
 		log.G(ctx).WithFields(logrus.Fields{
 			"node.id":   clientTLSCreds.NodeID(),
 			"node.role": clientTLSCreds.Role(),
-		}).Debugf("new node credentials generated: %s", krw.Target())
+		}).Debugf("new node credentials generated: %s", config.KeyReadWriter.Target())
 	} else {
 		if nodeInfo != nil {
 			nodeInfo <- api.IssueNodeCertificateResponse{
@@ -318,7 +333,7 @@ func LoadOrCreateSecurityConfig(ctx context.Context, rootCA RootCA, token, propo
 		}).Debug("loaded node credentials")
 	}
 
-	return NewSecurityConfig(&rootCA, krw, clientTLSCreds, serverTLSCreds), nil
+	return NewSecurityConfig(&config.RootCA, config.KeyReadWriter, clientTLSCreds, serverTLSCreds), nil
 }
 
 // RenewTLSConfigNow gets a new TLS cert and key, and updates the security config if provided.  This is similar to
