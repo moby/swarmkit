@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
@@ -38,7 +39,7 @@ func TestControllerPrepare(t *testing.T) {
 		client.EXPECT().ImagePull(gomock.Any(), config.image(), gomock.Any()).
 			Return(ioutil.NopCloser(bytes.NewBuffer([]byte{})), nil),
 		client.EXPECT().ContainerCreate(gomock.Any(), config.config(), config.hostConfig(), config.networkingConfig(), config.name()).
-			Return(types.ContainerCreateResponse{ID: "contianer-id-" + task.ID}, nil),
+			Return(containertypes.ContainerCreateCreatedBody{ID: "contianer-id-" + task.ID}, nil),
 	)
 
 	assert.NoError(t, ctlr.Prepare(ctx))
@@ -54,7 +55,7 @@ func TestControllerPrepareAlreadyPrepared(t *testing.T) {
 			Return(ioutil.NopCloser(bytes.NewBuffer([]byte{})), nil),
 		client.EXPECT().ContainerCreate(
 			ctx, config.config(), config.hostConfig(), config.networkingConfig(), config.name()).
-			Return(types.ContainerCreateResponse{}, fmt.Errorf("Conflict. The name")),
+			Return(containertypes.ContainerCreateCreatedBody{}, fmt.Errorf("Conflict. The name")),
 		client.EXPECT().ContainerInspect(ctx, config.name()).
 			Return(types.ContainerJSON{}, nil),
 	)
