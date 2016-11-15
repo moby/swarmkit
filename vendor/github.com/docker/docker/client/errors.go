@@ -3,6 +3,8 @@ package client
 import (
 	"errors"
 	"fmt"
+
+	"github.com/docker/docker/api/types/versions"
 )
 
 // ErrConnectionFailed is an error raised when the connection between the client and the server failed.
@@ -204,5 +206,36 @@ func (e pluginPermissionDenied) Error() string {
 // when a user denies a plugin's permissions
 func IsErrPluginPermissionDenied(err error) bool {
 	_, ok := err.(pluginPermissionDenied)
+	return ok
+}
+
+// NewVersionError returns an error if the APIVersion required
+// if less than the current supported version
+func (cli *Client) NewVersionError(APIrequired, feature string) error {
+	if versions.LessThan(cli.version, APIrequired) {
+		return fmt.Errorf("%q requires API version %s, but the Docker server is version %s", feature, APIrequired, cli.version)
+	}
+	return nil
+}
+
+// secretNotFoundError implements an error returned when a secret is not found.
+type secretNotFoundError struct {
+	name string
+}
+
+// Error returns a string representation of a secretNotFoundError
+func (e secretNotFoundError) Error() string {
+	return fmt.Sprintf("Error: no such secret: %s", e.name)
+}
+
+// NoFound indicates that this error type is of NotFound
+func (e secretNotFoundError) NotFound() bool {
+	return true
+}
+
+// IsErrSecretNotFound returns true if the error is caused
+// when a secret is not found.
+func IsErrSecretNotFound(err error) bool {
+	_, ok := err.(secretNotFoundError)
 	return ok
 }
