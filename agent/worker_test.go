@@ -16,16 +16,17 @@ import (
 type testPublisherProvider struct {
 }
 
-func (tpp *testPublisherProvider) Publisher(ctx context.Context, subscriptionID string) (exec.LogPublisher, error) {
+func (tpp *testPublisherProvider) Publisher(ctx context.Context, subscriptionID string) (exec.LogPublisher, func(), error) {
 	return exec.LogPublisherFunc(func(ctx context.Context, message api.LogMessage) error {
-		log.G(ctx).WithFields(logrus.Fields{
-			"subscription": subscriptionID,
-			"task.id":      message.Context.TaskID,
-			"node.id":      message.Context.NodeID,
-			"service.id":   message.Context.ServiceID,
-		}).Info(message.Data)
-		return nil
-	}), nil
+			log.G(ctx).WithFields(logrus.Fields{
+				"subscription": subscriptionID,
+				"task.id":      message.Context.TaskID,
+				"node.id":      message.Context.NodeID,
+				"service.id":   message.Context.ServiceID,
+			}).Info(message.Data)
+			return nil
+		}), func() {
+		}, nil
 }
 
 func TestWorkerAssign(t *testing.T) {
