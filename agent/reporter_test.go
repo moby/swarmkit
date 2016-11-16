@@ -74,7 +74,7 @@ func TestReporter(t *testing.T) {
 			// simulate pounding this with a bunch of goroutines
 			go func() {
 				if err := reporter.UpdateTaskStatus(ctx, taskID, status); err != nil {
-					t.Fatalf("sending should not fail: %v", err)
+					assert.NoError(t, err, "sending should not fail")
 				}
 			}()
 
