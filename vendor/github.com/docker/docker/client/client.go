@@ -58,7 +58,7 @@ import (
 )
 
 // DefaultVersion is the version of the current stable API
-const DefaultVersion string = "1.23"
+const DefaultVersion string = "1.25"
 
 // Client is the API client that performs all operations
 // against a docker server.
@@ -79,6 +79,8 @@ type Client struct {
 	version string
 	// custom http headers configured by users.
 	customHTTPHeaders map[string]string
+	// manualOverride is set to true when the version was set by users.
+	manualOverride bool
 }
 
 // NewEnvClient initializes a new API client based on environment variables.
@@ -111,13 +113,19 @@ func NewEnvClient() (*Client, error) {
 	if host == "" {
 		host = DefaultDockerHost
 	}
-
 	version := os.Getenv("DOCKER_API_VERSION")
 	if version == "" {
 		version = DefaultVersion
 	}
 
-	return NewClient(host, version, client, nil)
+	cli, err := NewClient(host, version, client, nil)
+	if err != nil {
+		return cli, err
+	}
+	if version != "" {
+		cli.manualOverride = true
+	}
+	return cli, nil
 }
 
 // NewClient initializes a new API client for the given host and API version.
@@ -168,6 +176,19 @@ func NewClient(host string, version string, client *http.Client, httpHeaders map
 	}, nil
 }
 
+// Close ensures that transport.Client is closed
+// especially needed while using NewClient with *http.Client = nil
+// for example
+// client.NewClient("unix:///var/run/docker.sock", nil, "v1.18", map[string]string{"User-Agent": "engine-api-cli-1.0"})
+func (cli *Client) Close() error {
+
+	if t, ok := cli.client.Transport.(*http.Transport); ok {
+		t.CloseIdleConnections()
+	}
+
+	return nil
+}
+
 // getAPIPath returns the versioned request path to call the api.
 // It appends the query parameters to the path if they are not empty.
 func (cli *Client) getAPIPath(p string, query url.Values) string {
@@ -198,7 +219,10 @@ func (cli *Client) ClientVersion() string {
 // UpdateClientVersion updates the version string associated with this
 // instance of the Client.
 func (cli *Client) UpdateClientVersion(v string) {
-	cli.version = v
+	if !cli.manualOverride {
+		cli.version = v
+	}
+
 }
 
 // ParseHost verifies that the given host strings is valid.
