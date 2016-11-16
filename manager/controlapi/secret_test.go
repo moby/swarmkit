@@ -180,21 +180,40 @@ func TestUpdateSecret(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// ---- updating a secret without providing an ID results in an InvalidArgument ----
+	// updating a secret without providing an ID results in an InvalidArgument
 	_, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
 
-	// ---- getting a non-existent secret fails with NotFound ----
+	// getting a non-existent secret fails with NotFound
 	_, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{SecretID: "1234adsaa", SecretVersion: &api.Version{Index: 1}})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpc.Code(err), grpc.ErrorDesc(err))
 
-	// ---- updating an existing secret's labels returns the secret with all the private data cleaned ----
-	newLabels := map[string]string{"mod2": "0", "mod4": "0", "mod6": "0"}
-	secret.Spec.Annotations.Labels = newLabels
-	secret.Spec.Data = nil
+	// updating an existing secret's data returns an error
+	secret.Spec.Data = []byte{1}
 	resp, err := ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
+		SecretID:      secret.ID,
+		Spec:          &secret.Spec,
+		SecretVersion: &secret.Meta.Version,
+	})
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+
+	// updating an existing secret's Name returns an error
+	secret.Spec.Data = nil
+	secret.Spec.Annotations.Name = "AnotherName"
+	resp, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
+		SecretID:      secret.ID,
+		Spec:          &secret.Spec,
+		SecretVersion: &secret.Meta.Version,
+	})
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+
+	// updating the secret with the original spec succeeds
+	secret.Spec.Data = []byte("data")
+	secret.Spec.Annotations.Name = "name"
+	assert.NotNil(t, secret.Spec.Data)
+	resp, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
 		SecretID:      secret.ID,
 		Spec:          &secret.Spec,
 		SecretVersion: &secret.Meta.Version,
@@ -202,17 +221,35 @@ func TestUpdateSecret(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Secret)
-	assert.Nil(t, resp.Secret.Spec.Data)
-	assert.Equal(t, resp.Secret.Spec.Annotations.Labels, newLabels)
 
-	// ---- updating an existing secret's data returns an error ----
-	secret.Spec.Data = []byte{1}
+	// updating an existing secret's labels returns the secret with all the private data cleaned
+	newLabels := map[string]string{"mod2": "0", "mod4": "0", "mod6": "0"}
+	secret.Spec.Annotations.Labels = newLabels
+	secret.Spec.Data = nil
 	resp, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
 		SecretID:      secret.ID,
 		Spec:          &secret.Spec,
-		SecretVersion: &secret.Meta.Version,
+		SecretVersion: &resp.Secret.Meta.Version,
 	})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.NotNil(t, resp.Secret)
+	assert.Nil(t, resp.Secret.Spec.Data)
+	assert.Equal(t, resp.Secret.Spec.Annotations.Labels, newLabels)
+
+	// updating a secret with nil data and correct name succeeds again
+	secret.Spec.Data = nil
+	secret.Spec.Annotations.Name = "name"
+	resp, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
+		SecretID:      secret.ID,
+		Spec:          &secret.Spec,
+		SecretVersion: &resp.Secret.Meta.Version,
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.NotNil(t, resp.Secret)
+	assert.Nil(t, resp.Secret.Spec.Data)
+	assert.Equal(t, resp.Secret.Spec.Annotations.Labels, newLabels)
 }
 
 func TestRemoveUnusedSecret(t *testing.T) {
