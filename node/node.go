@@ -568,8 +568,13 @@ func (n *Node) loadSecurityConfig(ctx context.Context) (*ca.SecurityConfig, erro
 
 		// LoadOrCreateSecurityConfig is the point at which a new node joining a cluster will retrieve TLS
 		// certificates and write them to disk
-		securityConfig, err = ca.LoadOrCreateSecurityConfig(
-			ctx, rootCA, n.config.JoinToken, ca.ManagerRole, n.remotes, issueResponseChan, krw)
+		securityConfig, err = ca.LoadOrCreateSecurityConfig(ctx, &ca.NodeSecurityConfig{
+			RootCA:        rootCA,
+			Token:         n.config.JoinToken,
+			ProposedRole:  ca.ManagerRole,
+			Remotes:       n.remotes,
+			KeyReadWriter: krw,
+		}, issueResponseChan)
 		if err != nil {
 			if _, ok := errors.Cause(err).(ca.ErrInvalidKEK); ok {
 				return nil, ErrInvalidUnlockKey
