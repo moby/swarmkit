@@ -284,17 +284,19 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	info := make(chan api.IssueNodeCertificateResponse, 1)
 	// Copy the current RootCA without the signer
 	rca := ca.RootCA{Cert: tc.RootCA.Cert, Pool: tc.RootCA.Pool}
-	cert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter, tc.ManagerToken, tc.Remotes, nil, info)
+	cert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+		ca.CertificateRequestConfig{
+			Token:   tc.ManagerToken,
+			Remotes: tc.Remotes,
+		})
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 	perms, err := permbits.Stat(tc.Paths.Node.Cert)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
-	assert.NotEmpty(t, <-info)
 
 	// there was no encryption config in the remote, so the key should be unencrypted
 	unencryptedKeyReader := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
@@ -302,10 +304,13 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	require.NoError(t, err)
 
 	// the worker token is also unencrypted
-	cert, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter, tc.WorkerToken, tc.Remotes, nil, info)
+	cert, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+		ca.CertificateRequestConfig{
+			Token:   tc.WorkerToken,
+			Remotes: tc.Remotes,
+		})
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
-	assert.NotEmpty(t, <-info)
 	_, _, err = unencryptedKeyReader.Read()
 	require.NoError(t, err)
 
@@ -323,9 +328,12 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	assert.NoError(t, os.RemoveAll(tc.Paths.Node.Cert))
 	assert.NoError(t, os.RemoveAll(tc.Paths.Node.Key))
 
-	_, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter, tc.ManagerToken, tc.Remotes, nil, info)
+	_, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+		ca.CertificateRequestConfig{
+			Token:   tc.ManagerToken,
+			Remotes: tc.Remotes,
+		})
 	assert.NoError(t, err)
-	assert.NotEmpty(t, <-info)
 
 	// key can no longer be read without a kek
 	_, _, err = unencryptedKeyReader.Read()
@@ -335,9 +343,12 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	require.NoError(t, err)
 
 	// if it's a worker though, the key is always unencrypted, even though the manager key is encrypted
-	_, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter, tc.WorkerToken, tc.Remotes, nil, info)
+	_, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+		ca.CertificateRequestConfig{
+			Token:   tc.WorkerToken,
+			Remotes: tc.Remotes,
+		})
 	assert.NoError(t, err)
-	assert.NotEmpty(t, <-info)
 	_, _, err = unencryptedKeyReader.Read()
 	require.NoError(t, err)
 }
@@ -399,7 +410,11 @@ func TestGetRemoteSignedCertificate(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
-	certs, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.ManagerToken, tc.RootCA.Pool, tc.Remotes, nil, nil)
+	certs, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.RootCA.Pool,
+		ca.CertificateRequestConfig{
+			Token:   tc.ManagerToken,
+			Remotes: tc.Remotes,
+		})
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 
@@ -412,7 +427,11 @@ func TestGetRemoteSignedCertificate(t *testing.T) {
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.ManagerRole)
 
 	// Test the expiration for an worker certificate
-	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, tc.WorkerToken, tc.RootCA.Pool, tc.Remotes, nil, nil)
+	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, tc.RootCA.Pool,
+		ca.CertificateRequestConfig{
+			Token:   tc.WorkerToken,
+			Remotes: tc.Remotes,
+		})
 	assert.NoError(t, err)
 	assert.NotNil(t, certs)
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
@@ -431,11 +450,13 @@ func TestGetRemoteSignedCertificateNodeInfo(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
-	info := make(chan api.IssueNodeCertificateResponse, 1)
-	cert, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.WorkerToken, tc.RootCA.Pool, tc.Remotes, nil, info)
+	cert, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.RootCA.Pool,
+		ca.CertificateRequestConfig{
+			Token:   tc.WorkerToken,
+			Remotes: tc.Remotes,
+		})
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
-	assert.NotEmpty(t, <-info)
 }
 
 func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
@@ -453,7 +474,11 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 
 	completed := make(chan error)
 	go func() {
-		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.WorkerToken, tc.RootCA.Pool, tc.Remotes, nil, nil)
+		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.RootCA.Pool,
+			ca.CertificateRequestConfig{
+				Token:   tc.WorkerToken,
+				Remotes: tc.Remotes,
+			})
 		completed <- err
 	}()
 
