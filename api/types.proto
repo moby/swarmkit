@@ -14,11 +14,20 @@ message Version {
 	uint64 index = 1;
 }
 
+message IndexEntry {
+	string key = 1;
+	string val = 2;
+}
+
 // Annotations provide useful information to identify API objects. They are
 // common to all API specs.
 message Annotations {
 	string name = 1;
 	map<string, string> labels = 2;
+
+	// Indices provides keys and values for indexing this object.
+	// A single key may have multiple values.
+	repeated IndexEntry indices = 4 [(gogoproto.nullable) = false];
 }
 
 message Resources {

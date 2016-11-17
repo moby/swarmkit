@@ -455,7 +455,7 @@ func (e EventDeleteCluster) matches(watchEvent events.Event) bool {
 // api.Secret structures.
 type SecretCheckFunc func(v1, v2 *api.Secret) bool
 
-// SecretCheckID is a SecretCheckFunc for matching volume IDs.
+// SecretCheckID is a SecretCheckFunc for matching secret IDs.
 func SecretCheckID(v1, v2 *api.Secret) bool {
 	return v1.ID == v2.ID
 }
@@ -526,6 +526,178 @@ func (e EventDeleteSecret) matches(watchEvent events.Event) bool {
 
 	for _, check := range e.Checks {
 		if !check(e.Secret, typedEvent.Secret) {
+			return false
+		}
+	}
+	return true
+}
+
+// ResourceCheckFunc is the type of function used to perform filtering checks on
+// api.Resource structures.
+type ResourceCheckFunc func(v1, v2 *api.Resource) bool
+
+// ResourceCheckID is a ResourceCheckFunc for matching resource IDs.
+func ResourceCheckID(v1, v2 *api.Resource) bool {
+	return v1.ID == v2.ID
+}
+
+// ResourceCheckKind is a ResourceCheckFunc for matching resource kinds.
+func ResourceCheckKind(v1, v2 *api.Resource) bool {
+	return v1.Kind == v2.Kind
+}
+
+// EventCreateResource is the type used to put CreateResource events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventCreateResource struct {
+	Resource *api.Resource
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []ResourceCheckFunc
+}
+
+func (e EventCreateResource) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventCreateResource)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Resource, typedEvent.Resource) {
+			return false
+		}
+	}
+	return true
+}
+
+// EventUpdateResource is the type used to put UpdateResource events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventUpdateResource struct {
+	Resource *api.Resource
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []ResourceCheckFunc
+}
+
+func (e EventUpdateResource) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventUpdateResource)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Resource, typedEvent.Resource) {
+			return false
+		}
+	}
+	return true
+}
+
+// EventDeleteResource is the type used to put DeleteResource events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventDeleteResource struct {
+	Resource *api.Resource
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []ResourceCheckFunc
+}
+
+func (e EventDeleteResource) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventDeleteResource)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Resource, typedEvent.Resource) {
+			return false
+		}
+	}
+	return true
+}
+
+// ExtensionCheckFunc is the type of function used to perform filtering checks
+// on api.Extension structures.
+type ExtensionCheckFunc func(v1, v2 *api.Extension) bool
+
+// ExtensionCheckID is a ExtensionCheckFunc for matching extension IDs.
+func ExtensionCheckID(v1, v2 *api.Extension) bool {
+	return v1.ID == v2.ID
+}
+
+// ExtensionCheckName is a ExtensionCheckFunc for matching extension names names.
+func ExtensionCheckName(v1, v2 *api.Extension) bool {
+	return v1.Annotations.Name == v2.Annotations.Name
+}
+
+// EventCreateExtension is the type used to put CreateExtension events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventCreateExtension struct {
+	Extension *api.Extension
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []ExtensionCheckFunc
+}
+
+func (e EventCreateExtension) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventCreateExtension)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Extension, typedEvent.Extension) {
+			return false
+		}
+	}
+	return true
+}
+
+// EventUpdateExtension is the type used to put UpdateExtension events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventUpdateExtension struct {
+	Extension *api.Extension
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []ExtensionCheckFunc
+}
+
+func (e EventUpdateExtension) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventUpdateExtension)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Extension, typedEvent.Extension) {
+			return false
+		}
+	}
+	return true
+}
+
+// EventDeleteExtension is the type used to put DeleteExtension events on the
+// publish/subscribe queue and filter these events in calls to Watch.
+type EventDeleteExtension struct {
+	Extension *api.Extension
+	// Checks is a list of functions to call to filter events for a watch
+	// stream. They are applied with AND logic. They are only applicable for
+	// calls to Watch.
+	Checks []ExtensionCheckFunc
+}
+
+func (e EventDeleteExtension) matches(watchEvent events.Event) bool {
+	typedEvent, ok := watchEvent.(EventDeleteExtension)
+	if !ok {
+		return false
+	}
+
+	for _, check := range e.Checks {
+		if !check(e.Extension, typedEvent.Extension) {
 			return false
 		}
 	}

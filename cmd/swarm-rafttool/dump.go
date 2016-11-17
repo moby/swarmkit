@@ -314,6 +314,38 @@ func dumpObject(swarmdir, unlockKey, objType string, selector objSelector) error
 			for _, o := range results {
 				objects = append(objects, o)
 			}
+		case "resource":
+			if selector.id != "" {
+				object := store.GetResource(tx, selector.id)
+				if object != nil {
+					objects = append(objects, object)
+				}
+			}
+
+			var results []*api.Resource
+			results, err = store.FindResources(tx, bySelection(selector))
+			if err != nil {
+				return
+			}
+			for _, o := range results {
+				objects = append(objects, o)
+			}
+		case "extension":
+			if selector.id != "" {
+				object := store.GetExtension(tx, selector.id)
+				if object != nil {
+					objects = append(objects, object)
+				}
+			}
+
+			var results []*api.Extension
+			results, err = store.FindExtensions(tx, bySelection(selector))
+			if err != nil {
+				return
+			}
+			for _, o := range results {
+				objects = append(objects, o)
+			}
 		default:
 			err = fmt.Errorf("unrecognized object type %s", objType)
 		}
