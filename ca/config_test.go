@@ -10,7 +10,6 @@ import (
 	"golang.org/x/net/context"
 
 	cfconfig "github.com/cloudflare/cfssl/config"
-	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/ioutils"
@@ -71,24 +70,26 @@ func TestDownloadRootCAWrongCAHash(t *testing.T) {
 	require.Contains(t, err.Error(), "remote CA does not match fingerprint.")
 }
 
-func TestLoadOrCreateSecurityConfigEmptyDir(t *testing.T) {
+func TestCreateSecurityConfigEmptyDir(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	info := make(chan api.IssueNodeCertificateResponse, 1)
 	// Remove all the contents from the temp dir and try again with a new node
 	os.RemoveAll(tc.TempDir)
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.RootCA, tc.WorkerToken, ca.WorkerRole, tc.Remotes, info, krw)
+	nodeConfig, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
+		ca.CertificateRequestConfig{
+			Token:   tc.WorkerToken,
+			Remotes: tc.Remotes,
+		})
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
 	assert.NotNil(t, nodeConfig.ServerTLSCreds)
 	assert.Equal(t, tc.RootCA, *nodeConfig.RootCA())
-	assert.NotEmpty(t, <-info)
 }
 
-func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
+func TestCreateSecurityConfigNoCerts(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
@@ -96,29 +97,35 @@ func TestLoadOrCreateSecurityConfigNoCerts(t *testing.T) {
 	// new certificates that are locally signed
 	os.RemoveAll(tc.Paths.Node.Cert)
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.RootCA, tc.WorkerToken, ca.WorkerRole, tc.Remotes, nil, krw)
+	nodeConfig, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
+		ca.CertificateRequestConfig{
+			Token:   tc.WorkerToken,
+			Remotes: tc.Remotes,
+		})
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
 	assert.NotNil(t, nodeConfig.ServerTLSCreds)
 	assert.Equal(t, tc.RootCA, *nodeConfig.RootCA())
 
-	info := make(chan api.IssueNodeCertificateResponse, 1)
 	// Remove only the node certificates form the directory, get a new rootCA, and attest that we get
 	// new certificates that are issued by the remote CA
 	os.RemoveAll(tc.Paths.Node.Cert)
 	rootCA, err := ca.GetLocalRootCA(tc.Paths.RootCA)
 	assert.NoError(t, err)
-	nodeConfig, err = ca.LoadOrCreateSecurityConfig(tc.Context, rootCA, tc.WorkerToken, ca.WorkerRole, tc.Remotes, info, krw)
+	nodeConfig, err = rootCA.CreateSecurityConfig(tc.Context, krw,
+		ca.CertificateRequestConfig{
+			Token:   tc.WorkerToken,
+			Remotes: tc.Remotes,
+		})
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
 	assert.NotNil(t, nodeConfig.ServerTLSCreds)
 	assert.Equal(t, rootCA, *nodeConfig.RootCA())
-	assert.NotEmpty(t, <-info)
 }
 
-func TestLoadOrCreateSecurityConfigInvalidCert(t *testing.T) {
+func TestLoadSecurityConfigInvalidCert(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
@@ -128,7 +135,15 @@ some random garbage\n
 -----END CERTIFICATE-----`), 0644)
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.RootCA, "", ca.WorkerRole, tc.Remotes, nil, krw)
+
+	_, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw)
+	assert.Error(t, err)
+
+	nodeConfig, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
+		ca.CertificateRequestConfig{
+			Remotes: tc.Remotes,
+		})
+
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -136,7 +151,7 @@ some random garbage\n
 	assert.Equal(t, tc.RootCA, *nodeConfig.RootCA())
 }
 
-func TestLoadOrCreateSecurityConfigInvalidKey(t *testing.T) {
+func TestLoadSecurityConfigInvalidKey(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
@@ -146,7 +161,14 @@ some random garbage\n
 -----END EC PRIVATE KEY-----`), 0644)
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
-	nodeConfig, err := ca.LoadOrCreateSecurityConfig(tc.Context, tc.RootCA, "", ca.WorkerRole, tc.Remotes, nil, krw)
+
+	_, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw)
+	assert.Error(t, err)
+
+	nodeConfig, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
+		ca.CertificateRequestConfig{
+			Remotes: tc.Remotes,
+		})
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
@@ -154,7 +176,7 @@ some random garbage\n
 	assert.Equal(t, tc.RootCA, *nodeConfig.RootCA())
 }
 
-func TestLoadOrCreateSecurityIncorrectPassphrase(t *testing.T) {
+func TestLoadSecurityConfigIncorrectPassphrase(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
@@ -163,8 +185,7 @@ func TestLoadOrCreateSecurityIncorrectPassphrase(t *testing.T) {
 		"nodeID", ca.WorkerRole, tc.Organization)
 	require.NoError(t, err)
 
-	_, err = ca.LoadOrCreateSecurityConfig(tc.Context, tc.RootCA, tc.WorkerToken, ca.WorkerRole, tc.Remotes, nil,
-		ca.NewKeyReadWriter(paths.Node, nil, nil))
+	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, ca.NewKeyReadWriter(paths.Node, nil, nil))
 	require.IsType(t, ca.ErrInvalidKEK{}, err)
 }
 
