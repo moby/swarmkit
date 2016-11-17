@@ -32,6 +32,11 @@ func init() {
 					Unique:  true,
 					Indexer: clusterIndexerByName{},
 				},
+				indexCustom: {
+					Name:         indexCustom,
+					Indexer:      clusterCustomIndexer{},
+					AllowMissing: true,
+				},
 			},
 		},
 		Save: func(tx ReadTx, snapshot *api.StoreSnapshot) error {
@@ -173,7 +178,7 @@ func GetCluster(tx ReadTx, id string) *api.Cluster {
 func FindClusters(tx ReadTx, by By) ([]*api.Cluster, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byNamePrefix, byIDPrefix:
+		case byName, byNamePrefix, byIDPrefix, byCustom, byCustomPrefix:
 			return nil
 		default:
 			return ErrInvalidFindBy
@@ -227,5 +232,24 @@ func (ci clusterIndexerByName) FromObject(obj interface{}) (bool, []byte, error)
 }
 
 func (ci clusterIndexerByName) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
+}
+
+type clusterCustomIndexer struct{}
+
+func (ci clusterCustomIndexer) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (ci clusterCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {
+	c, ok := obj.(clusterEntry)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	return customIndexer("", &c.Spec.Annotations)
+}
+
+func (ci clusterCustomIndexer) PrefixFromArgs(args ...interface{}) ([]byte, error) {
 	return prefixFromArgs(args...)
 }
