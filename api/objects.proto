@@ -6,6 +6,7 @@ import "types.proto";
 import "specs.proto";
 import "google/protobuf/timestamp.proto";
 import "gogoproto/gogo.proto";
+import "google/protobuf/any.proto";
 
 // This file contains definitions for all first-class objects in the cluster
 // API. Such types typically have a corresponding specification, with the
@@ -266,4 +267,51 @@ message Secret {
 
 	// Whether the secret is an internal secret (not set by a user) or not.
 	bool internal = 4;
+}
+
+// Resource is a top-level object with externally defined content and indexing.
+// SwarmKit can serve as a store for these objects without understanding their
+// meanings.
+message Resource {
+	string id = 1 [(gogoproto.customname) = "ID"];
+
+	Meta meta = 2 [(gogoproto.nullable) = false];
+
+	Annotations annotations = 3 [(gogoproto.nullable) = false];
+
+	// Kind identifies this class of object. It is essentially a namespace
+	// to keep IDs or indices from colliding between unrelated Resource
+	// objects. This must correspond to the name of an Extension.
+	string kind = 4;
+
+	// Payload bytes. This data is not interpreted in any way by SwarmKit.
+	// By convention, it should be a marshalled protocol buffers message.
+	google.protobuf.Any payload = 5;
+}
+
+// Extension declares a type of "resource" object. This message provides some
+// metadata about the objects.
+message Extension {
+	string id = 1 [(gogoproto.customname) = "ID"];
+
+	Meta meta = 2 [(gogoproto.nullable) = false];
+
+	Annotations annotations = 3 [(gogoproto.nullable) = false];
+
+	string description = 4;
+
+	// TODO(aaronl): Add optional indexing capabilities. It would be
+	// extremely useful be able to automatically introspect protobuf, json,
+	// etc. objects and automatically index them based on a schema and field
+	// paths defined here.
+	//
+	//oneof Schema {
+	//	google.protobuf.Descriptor protobuf = 1;
+	//	bytes json = 2;
+	//}
+	//
+	//Schema schema = 5;
+	//
+	// // Indices, with values expressed as Go templates.
+	//repeated IndexEntry index_templates = 6;
 }
