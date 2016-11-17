@@ -31,6 +31,8 @@ const (
 	indexMembership   = "membership"
 	indexNetwork      = "network"
 	indexSecret       = "secret"
+	indexKind         = "kind"
+	indexCustom       = "custom"
 
 	prefix = "_prefix"
 
@@ -638,6 +640,36 @@ func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([
 			return nil, err
 		}
 		return []memdb.ResultIterator{it}, nil
+	case byKind:
+		it, err := tx.memDBTx.Get(table, indexKind, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byCustom:
+		var key string
+		if v.objType != "" {
+			key = v.objType + "|" + v.index + "|" + v.value
+		} else {
+			key = v.index + "|" + v.value
+		}
+		it, err := tx.memDBTx.Get(table, indexCustom, key)
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byCustomPrefix:
+		var key string
+		if v.objType != "" {
+			key = v.objType + "|" + v.index + "|" + v.value
+		} else {
+			key = v.index + "|" + v.value
+		}
+		it, err := tx.memDBTx.Get(table, indexCustom+prefix, key)
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
 	default:
 		return nil, ErrInvalidFindBy
 	}
@@ -752,4 +784,24 @@ func touchMeta(meta *api.Meta, version *api.Version) error {
 	meta.UpdatedAt = now
 
 	return nil
+}
+
+func customIndexer(kind string, annotations *api.Annotations) (bool, [][]byte, error) {
+	var converted [][]byte
+
+	for _, entry := range annotations.Indices {
+		index := make([]byte, 0, len(kind)+1+len(entry.Key)+1+len(entry.Val)+1)
+		if kind != "" {
+			index = append(index, []byte(kind)...)
+			index = append(index, '|')
+		}
+		index = append(index, []byte(entry.Key)...)
+		index = append(index, '|')
+		index = append(index, []byte(entry.Val)...)
+		index = append(index, '\x00')
+		converted = append(converted, index)
+	}
+
+	// Add the null character as a terminator
+	return len(converted) != 0, converted, nil
 }
