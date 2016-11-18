@@ -2,6 +2,7 @@ package logbroker
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 	"testing"
@@ -39,7 +40,9 @@ func TestLogBrokerLogs(t *testing.T) {
 	}
 
 	stream, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
-		// Dummy selector - they are ignored in the broker for the time being.
+		Options: &api.LogSubscriptionOptions{
+			Follow: true,
+		},
 		Selector: &api.LogSelector{
 			NodeIDs: []string{agentSecurity.ServerTLSCreds.NodeID()},
 		},
@@ -135,33 +138,44 @@ func listenSubscriptions(ctx context.Context, t *testing.T, client api.LogBroker
 	require.NoError(t, err)
 
 	ch := make(chan *api.SubscriptionMessage)
+	ready := make(chan struct{})
 	go func() {
 		defer close(ch)
 
+		close(ready)
 		for {
-			sub, err := subscriptions.Recv()
-			if err != nil {
-				t.Log(err)
-				return
-			}
 			select {
 			case <-ctx.Done():
-				t.Log(ctx.Err())
 				return
-			case ch <- sub:
 			default:
-				t.Log("ch closed")
+			}
+			sub, err := subscriptions.Recv()
+			if err != nil {
 				return
 			}
+			ch <- sub
 		}
 	}()
+
+	<-ready
 	return ch
+}
+
+func ensureSubscription(t *testing.T, subscriptions <-chan *api.SubscriptionMessage) *api.SubscriptionMessage {
+	select {
+	case s := <-subscriptions:
+		require.NotNil(t, s)
+		return s
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "subscription expected")
+	}
+	return nil
 }
 
 func ensureNoSubscription(t *testing.T, subscriptions <-chan *api.SubscriptionMessage) {
 	select {
 	case s := <-subscriptions:
-		t.Fatal(s)
+		require.FailNow(t, fmt.Sprintf("unexpected subscription: %v", s))
 	case <-time.After(10 * time.Millisecond):
 		return
 	}
@@ -186,6 +200,9 @@ func TestLogBrokerSubscriptions(t *testing.T) {
 	// Send two subscriptions - one will match both agent1 and agent2 while
 	// the other only agent1
 	_, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
+		Options: &api.LogSubscriptionOptions{
+			Follow: true,
+		},
 		Selector: &api.LogSelector{
 			NodeIDs: []string{
 				agent1Security.ServerTLSCreds.NodeID(),
@@ -194,6 +211,9 @@ func TestLogBrokerSubscriptions(t *testing.T) {
 	})
 	require.NoError(t, err)
 	_, err = client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
+		Options: &api.LogSubscriptionOptions{
+			Follow: true,
+		},
 		Selector: &api.LogSelector{
 			NodeIDs: []string{
 				agent1Security.ServerTLSCreds.NodeID(),
@@ -205,15 +225,11 @@ func TestLogBrokerSubscriptions(t *testing.T) {
 
 	// Make sure we received two subscriptions on agent 1 (already joined).
 	{
-		s1 := <-subscriptions1
-		require.NoError(t, err)
-		require.NotNil(t, s1)
+		s1 := ensureSubscription(t, subscriptions1)
 		require.False(t, s1.Close)
 		require.Contains(t, s1.Selector.NodeIDs, agent1Security.ServerTLSCreds.NodeID())
 
-		s2 := <-subscriptions1
-		require.NoError(t, err)
-		require.NotNil(t, s2)
+		s2 := ensureSubscription(t, subscriptions1)
 		require.False(t, s2.Close)
 		require.Contains(t, s2.Selector.NodeIDs, agent1Security.ServerTLSCreds.NodeID())
 
@@ -227,9 +243,7 @@ func TestLogBrokerSubscriptions(t *testing.T) {
 	// Make sure we receive past subscriptions.
 	// Make sure we receive *only* the right one.
 	{
-		s := <-subscriptions2
-		require.NoError(t, err)
-		require.NotNil(t, s)
+		s := ensureSubscription(t, subscriptions2)
 		require.False(t, s.Close)
 		require.Equal(t, []string{agent1Security.ServerTLSCreds.NodeID(), agent2Security.ServerTLSCreds.NodeID()}, s.Selector.NodeIDs)
 
@@ -250,6 +264,7 @@ func TestLogBrokerSelector(t *testing.T) {
 
 	agent2, agent2Security, agent2Done := testBrokerClient(t, ca, brokerAddr)
 	defer agent2Done()
+
 	agent2subscriptions := listenSubscriptions(ctx, t, agent2)
 
 	// Subscribe to a task.
@@ -259,6 +274,9 @@ func TestLogBrokerSelector(t *testing.T) {
 		})
 	}))
 	_, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
+		Options: &api.LogSubscriptionOptions{
+			Follow: true,
+		},
 		Selector: &api.LogSelector{
 			TaskIDs: []string{"task"},
 		},
@@ -278,7 +296,7 @@ func TestLogBrokerSelector(t *testing.T) {
 		return store.UpdateTask(tx, task)
 	}))
 
-	require.NotNil(t, <-agent1subscriptions)
+	ensureSubscription(t, agent1subscriptions)
 	ensureNoSubscription(t, agent2subscriptions)
 
 	// Subscribe to a service.
@@ -288,6 +306,9 @@ func TestLogBrokerSelector(t *testing.T) {
 		})
 	}))
 	_, err = client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
+		Options: &api.LogSubscriptionOptions{
+			Follow: true,
+		},
 		Selector: &api.LogSelector{
 			ServiceIDs: []string{"service"},
 		},
@@ -320,7 +341,7 @@ func TestLogBrokerSelector(t *testing.T) {
 	}))
 
 	// Make sure agent-1 receives it...
-	require.NotNil(t, <-agent1subscriptions)
+	ensureSubscription(t, agent1subscriptions)
 	// ...and agent-2 does not.
 	ensureNoSubscription(t, agent2subscriptions)
 
@@ -348,9 +369,310 @@ func TestLogBrokerSelector(t *testing.T) {
 	}))
 
 	// Make sure it's delivered to agent-2.
-	require.NotNil(t, <-agent2subscriptions)
+	ensureSubscription(t, agent2subscriptions)
 	// it shouldn't do anything for agent-1.
 	ensureNoSubscription(t, agent1subscriptions)
+}
+
+func TestLogBrokerNoFollow(t *testing.T) {
+	ctx, ca, _, serverAddr, brokerAddr, done := testLogBrokerEnv(t)
+	defer done()
+
+	client, clientDone := testLogClient(t, serverAddr)
+	defer clientDone()
+
+	agent1, agent1Security, agent1Done := testBrokerClient(t, ca, brokerAddr)
+	defer agent1Done()
+	agent1subscriptions := listenSubscriptions(ctx, t, agent1)
+
+	agent2, agent2Security, agent2Done := testBrokerClient(t, ca, brokerAddr)
+	defer agent2Done()
+	agent2subscriptions := listenSubscriptions(ctx, t, agent2)
+
+	// Create fake environment.
+	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
+		if err := store.CreateTask(tx, &api.Task{
+			ID:        "task1",
+			ServiceID: "service",
+			NodeID:    agent1Security.ServerTLSCreds.NodeID(),
+		}); err != nil {
+			return err
+		}
+
+		if err := store.CreateTask(tx, &api.Task{
+			ID:        "task2",
+			ServiceID: "service",
+			NodeID:    agent2Security.ServerTLSCreds.NodeID(),
+		}); err != nil {
+			return err
+		}
+
+		return nil
+	}))
+
+	// Subscribe to logs in no follow mode
+	logs, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
+		Options: &api.LogSubscriptionOptions{
+			Follow: false,
+		},
+		Selector: &api.LogSelector{
+			ServiceIDs: []string{"service"},
+		},
+	})
+	require.NoError(t, err)
+
+	// Get the subscriptions from the agents.
+	subscription1 := ensureSubscription(t, agent1subscriptions)
+	require.Equal(t, subscription1.Selector.ServiceIDs[0], "service")
+	subscription2 := ensureSubscription(t, agent2subscriptions)
+	require.Equal(t, subscription2.Selector.ServiceIDs[0], "service")
+
+	require.Equal(t, subscription1.ID, subscription2.ID)
+
+	// Publish a log message from agent-1 and close the publisher
+	publisher, err := agent1.PublishLogs(ctx)
+	require.NoError(t, err)
+	require.NoError(t,
+		publisher.Send(&api.PublishLogsMessage{
+			SubscriptionID: subscription1.ID,
+			Messages: []api.LogMessage{
+				newLogMessage(api.LogContext{
+					NodeID:    agent1Security.ServerTLSCreds.NodeID(),
+					ServiceID: "service",
+					TaskID:    "task1",
+				}, "log message"),
+			},
+		}))
+	_, err = publisher.CloseAndRecv()
+	require.NoError(t, err)
+
+	// Ensure we get it from the other end
+	log, err := logs.Recv()
+	require.NoError(t, err)
+	require.Len(t, log.Messages, 1)
+	require.Equal(t, log.Messages[0].Context.NodeID, agent1Security.ServerTLSCreds.NodeID())
+
+	// Now publish a message from the other agent and close the subscription
+	publisher, err = agent2.PublishLogs(ctx)
+	require.NoError(t, err)
+	require.NoError(t,
+		publisher.Send(&api.PublishLogsMessage{
+			SubscriptionID: subscription2.ID,
+			Messages: []api.LogMessage{
+				newLogMessage(api.LogContext{
+					NodeID:    agent2Security.ServerTLSCreds.NodeID(),
+					ServiceID: "service",
+					TaskID:    "task2",
+				}, "log message"),
+			},
+		}))
+	_, err = publisher.CloseAndRecv()
+	require.NoError(t, err)
+
+	// Ensure we get it from the other end
+	log, err = logs.Recv()
+	require.NoError(t, err)
+	require.Len(t, log.Messages, 1)
+	require.Equal(t, log.Messages[0].Context.NodeID, agent2Security.ServerTLSCreds.NodeID())
+
+	// Since we receive both messages the log stream should end
+	_, err = logs.Recv()
+	require.Equal(t, err, io.EOF)
+}
+
+func TestLogBrokerNoFollowMissingNode(t *testing.T) {
+	ctx, ca, _, serverAddr, brokerAddr, done := testLogBrokerEnv(t)
+	defer done()
+
+	client, clientDone := testLogClient(t, serverAddr)
+	defer clientDone()
+
+	agent, agentSecurity, agentDone := testBrokerClient(t, ca, brokerAddr)
+	defer agentDone()
+	agentSubscriptions := listenSubscriptions(ctx, t, agent)
+
+	// Create fake environment.
+	// A service with one instance on a genuine node and another instance
+	// and a node that didn't connect to the broker.
+	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
+		if err := store.CreateTask(tx, &api.Task{
+			ID:        "task1",
+			ServiceID: "service",
+			NodeID:    agentSecurity.ServerTLSCreds.NodeID(),
+		}); err != nil {
+			return err
+		}
+
+		if err := store.CreateTask(tx, &api.Task{
+			ID:        "task2",
+			ServiceID: "service",
+			NodeID:    "node-2",
+		}); err != nil {
+			return err
+		}
+
+		return nil
+	}))
+
+	// Subscribe to logs in no follow mode
+	logs, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
+		Options: &api.LogSubscriptionOptions{
+			Follow: false,
+		},
+		Selector: &api.LogSelector{
+			ServiceIDs: []string{"service"},
+		},
+	})
+	require.NoError(t, err)
+
+	// Grab the subscription and publish a log message from the connected agent.
+	subscription := ensureSubscription(t, agentSubscriptions)
+	require.Equal(t, subscription.Selector.ServiceIDs[0], "service")
+	publisher, err := agent.PublishLogs(ctx)
+	require.NoError(t, err)
+	require.NoError(t,
+		publisher.Send(&api.PublishLogsMessage{
+			SubscriptionID: subscription.ID,
+			Messages: []api.LogMessage{
+				newLogMessage(api.LogContext{
+					NodeID:    agentSecurity.ServerTLSCreds.NodeID(),
+					ServiceID: "service",
+					TaskID:    "task1",
+				}, "log message"),
+			},
+		}))
+	_, err = publisher.CloseAndRecv()
+	require.NoError(t, err)
+
+	// Ensure we receive the message that we could grab
+	log, err := logs.Recv()
+	require.NoError(t, err)
+	require.Len(t, log.Messages, 1)
+	require.Equal(t, log.Messages[0].Context.NodeID, agentSecurity.ServerTLSCreds.NodeID())
+
+	// Ensure the log stream ends with an error complaining about the missing node
+	_, err = logs.Recv()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "node-2 is not available")
+}
+
+func TestLogBrokerNoFollowUnscheduledTask(t *testing.T) {
+	ctx, ca, _, serverAddr, _, done := testLogBrokerEnv(t)
+	defer done()
+
+	client, clientDone := testLogClient(t, serverAddr)
+	defer clientDone()
+
+	// Create fake environment.
+	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
+		return store.CreateTask(tx, &api.Task{
+			ID:        "task1",
+			ServiceID: "service",
+		})
+	}))
+
+	// Subscribe to logs in no follow mode
+	logs, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
+		Options: &api.LogSubscriptionOptions{
+			Follow: false,
+		},
+		Selector: &api.LogSelector{
+			ServiceIDs: []string{"service"},
+		},
+	})
+	require.NoError(t, err)
+
+	// Ensure we receive the message that we could grab
+	_, err = logs.Recv()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "task1 has not been scheduled")
+}
+
+func TestLogBrokerNoFollowDisconnect(t *testing.T) {
+	ctx, ca, _, serverAddr, brokerAddr, done := testLogBrokerEnv(t)
+	defer done()
+
+	client, clientDone := testLogClient(t, serverAddr)
+	defer clientDone()
+
+	agent1, agent1Security, agent1Done := testBrokerClient(t, ca, brokerAddr)
+	defer agent1Done()
+	agent1subscriptions := listenSubscriptions(ctx, t, agent1)
+
+	agent2, agent2Security, agent2Done := testBrokerClient(t, ca, brokerAddr)
+	defer agent2Done()
+	agent2subscriptions := listenSubscriptions(ctx, t, agent2)
+
+	// Create fake environment.
+	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
+		if err := store.CreateTask(tx, &api.Task{
+			ID:        "task1",
+			ServiceID: "service",
+			NodeID:    agent1Security.ServerTLSCreds.NodeID(),
+		}); err != nil {
+			return err
+		}
+
+		if err := store.CreateTask(tx, &api.Task{
+			ID:        "task2",
+			ServiceID: "service",
+			NodeID:    agent2Security.ServerTLSCreds.NodeID(),
+		}); err != nil {
+			return err
+		}
+
+		return nil
+	}))
+
+	// Subscribe to logs in no follow mode
+	logs, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
+		Options: &api.LogSubscriptionOptions{
+			Follow: false,
+		},
+		Selector: &api.LogSelector{
+			ServiceIDs: []string{"service"},
+		},
+	})
+	require.NoError(t, err)
+
+	// Get the subscriptions from the agents.
+	subscription1 := ensureSubscription(t, agent1subscriptions)
+	require.Equal(t, subscription1.Selector.ServiceIDs[0], "service")
+	subscription2 := ensureSubscription(t, agent2subscriptions)
+	require.Equal(t, subscription2.Selector.ServiceIDs[0], "service")
+
+	require.Equal(t, subscription1.ID, subscription2.ID)
+
+	// Publish a log message from agent-1 and close the publisher
+	publisher, err := agent1.PublishLogs(ctx)
+	require.NoError(t, err)
+	require.NoError(t,
+		publisher.Send(&api.PublishLogsMessage{
+			SubscriptionID: subscription1.ID,
+			Messages: []api.LogMessage{
+				newLogMessage(api.LogContext{
+					NodeID:    agent1Security.ServerTLSCreds.NodeID(),
+					ServiceID: "service",
+					TaskID:    "task1",
+				}, "log message"),
+			},
+		}))
+	_, err = publisher.CloseAndRecv()
+	require.NoError(t, err)
+
+	// Now suddenly disconnect agent2...
+	agent2Done()
+
+	// Ensure we get the first message
+	log, err := logs.Recv()
+	require.NoError(t, err)
+	require.Len(t, log.Messages, 1)
+	require.Equal(t, log.Messages[0].Context.NodeID, agent1Security.ServerTLSCreds.NodeID())
+
+	// ...and then an error
+	_, err = logs.Recv()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "disconnected unexpectedly")
 }
 
 func testLogBrokerEnv(t *testing.T) (context.Context, *testutils.TestCA, *LogBroker, string, string, func()) {
