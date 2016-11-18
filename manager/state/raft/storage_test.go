@@ -449,7 +449,7 @@ func TestRaftEncryptionKeyRotationWait(t *testing.T) {
 	nodes[1], clockSource = raftutils.NewInitNode(t, tc, &raftConfig)
 	defer raftutils.TeardownCluster(t, nodes)
 
-	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7"}
+	nodeIDs := []string{"id1", "id2", "id3"}
 	values := make([]*api.Node, len(nodeIDs))
 
 	// Propose 3 values
@@ -481,12 +481,14 @@ func TestRaftEncryptionKeyRotationWait(t *testing.T) {
 		}
 		return nil
 	}))
-	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:3], values[:3])
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 
 	// Propose a 4th value
-	values[3], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[3])
+	nodeIDs = append(nodeIDs, "id4")
+	v, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, "id4")
 	require.NoError(t, err, "failed to propose value")
-	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:4], values[:4])
+	values = append(values, v)
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 
 	nodes[1].Server.Stop()
 	nodes[1].ShutdownRaft()
@@ -506,7 +508,7 @@ func TestRaftEncryptionKeyRotationWait(t *testing.T) {
 
 	// as soon as we joined, it should have finished rotating the key
 	require.False(t, nodes[1].KeyRotator.NeedsRotation())
-	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:4], values[:4])
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 
 	// break snapshotting, and ensure that key rotation never finishes
 	tempSnapDir := filepath.Join(nodes[1].StateDir, "snap-backup")
@@ -522,9 +524,11 @@ func TestRaftEncryptionKeyRotationWait(t *testing.T) {
 	require.True(t, nodes[1].KeyRotator.NeedsRotation())
 
 	// Propose a 5th value, so we have WALs written with the new key
-	values[4], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[4])
+	nodeIDs = append(nodeIDs, "id5")
+	v, err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, "id5")
 	require.NoError(t, err, "failed to propose value")
-	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:5], values[:5])
+	values = append(values, v)
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 
 	nodes[1].Server.Stop()
 	nodes[1].ShutdownRaft()
@@ -578,7 +582,7 @@ func TestRaftEncryptionKeyRotationWait(t *testing.T) {
 		currSnapshot = snapshots[0]
 		return nil
 	}))
-	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:5], values[:5])
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 
 	// If we can't update the keys, we wait for the next snapshot to do so
 	nodes[1].KeyRotator.SetUpdateFunc(func() error { return fmt.Errorf("nope!") })
@@ -601,70 +605,59 @@ func TestRaftEncryptionKeyRotationWait(t *testing.T) {
 	}))
 	require.True(t, nodes[1].KeyRotator.NeedsRotation())
 
-	// Fix updating the key rotator, and propose a 6th value, so another snapshot is
-	// triggered.
+	// Fix updating the key rotator, and propose a 6th value - this should trigger the key
+	// rotation to finish
 	nodes[1].KeyRotator.SetUpdateFunc(nil)
-	values[5], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[5])
+	nodeIDs = append(nodeIDs, "id6")
+	v, err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, "id6")
 	require.NoError(t, err, "failed to propose value")
-	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:6], values[:6])
-	raftutils.AdvanceTicks(clockSource, 5)
+	values = append(values, v)
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 
 	require.NoError(t, raftutils.PollFunc(clockSource, func() error {
-		snapshots, err := storage.ListSnapshots(snapDir)
-		if err != nil {
-			return err
-		}
-		if len(snapshots) != 1 {
-			return fmt.Errorf("expected 1 snapshots, found %d on new node", len(snapshots))
-		}
-		if snapshots[0] == currSnapshot {
-			return fmt.Errorf("new snapshot not done yet")
-		}
 		if nodes[1].KeyRotator.NeedsRotation() {
 			return fmt.Errorf("rotation never finished")
 		}
-		currSnapshot = snapshots[0]
 		return nil
 	}))
-	require.False(t, nodes[1].KeyRotator.NeedsRotation())
+
+	// no new snapshot
+	snapshots, err = storage.ListSnapshots(snapDir)
+	require.NoError(t, err)
+	require.Len(t, snapshots, 1)
+	require.Equal(t, currSnapshot, snapshots[0])
 
 	// Even if something goes wrong with getting keys, and needs rotation returns a false positive,
-	// if there's no PendingDEK nothing happens.  A snapshot is spuriously triggered, but it writes
-	// with the current DEK.
-
-	// propose another value, so snapshotting doesn't fail
-	values[6], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[6])
-	require.NoError(t, err, "failed to propose value")
-	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:7], values[:7])
+	// if there's no PendingDEK nothing happens.
 
 	fakeTrue := true
 	nodes[1].KeyRotator.SetNeedsRotation(&fakeTrue)
 	nodes[1].KeyRotator.RotationNotify() <- struct{}{}
 
-	require.NoError(t, raftutils.PollFunc(clockSource, func() error {
-		snapshots, err := storage.ListSnapshots(snapDir)
-		if err != nil {
-			return err
-		}
-		if len(snapshots) != 1 {
-			return fmt.Errorf("expected 1 snapshots, found %d on new node", len(snapshots))
-		}
-		if snapshots[0] == currSnapshot {
-			return fmt.Errorf("new snapshot not done yet")
-		}
-		return nil
-	}))
+	// propose another value
+	nodeIDs = append(nodeIDs, "id7")
+	v, err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, "id7")
+	require.NoError(t, err, "failed to propose value")
+	values = append(values, v)
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 
+	// no new snapshot
+	snapshots, err = storage.ListSnapshots(snapDir)
+	require.NoError(t, err)
+	require.Len(t, snapshots, 1)
+	require.Equal(t, currSnapshot, snapshots[0])
+
+	// and when we restart, we can restart with the original key (the WAL written for the new proposed value)
+	// is written with the old key
 	nodes[1].Server.Stop()
 	nodes[1].ShutdownRaft()
 
-	// We can decrypt with key4 - no key5
 	nodes[1].KeyRotator = raftutils.NewSimpleKeyRotator(raft.EncryptionKeys{
 		CurrentDEK: []byte("key4"),
 	})
 	nodes[1] = raftutils.RestartNode(t, clockSource, nodes[1], false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
-	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:7], values[:7])
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 }
 
 // This test rotates the encryption key and restarts the node - the intent is try to trigger
@@ -699,15 +692,16 @@ func TestRaftEncryptionKeyRotationStress(t *testing.T) {
 		third.KeyRotator.QueuePendingKey([]byte(fmt.Sprintf("newKey%d", i)))
 		third.KeyRotator.RotationNotify() <- struct{}{}
 
-		for {
+		require.NoError(t, raftutils.PollFunc(clockSource, func() error {
 			if third.KeyRotator.GetKeys().PendingDEK == nil {
 				third.Server.Stop()
 				third.ShutdownRaft()
 				third = raftutils.RestartNode(t, clockSource, third, false)
 				raftutils.AdvanceTicks(clockSource, 1)
-				break
+				return nil
 			}
-		}
+			return fmt.Errorf("not done rotating yet")
+		}))
 	}
 
 	close(stop)
