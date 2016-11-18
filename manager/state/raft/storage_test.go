@@ -439,7 +439,8 @@ func proposeLargeValue(t *testing.T, raftNode *raftutils.TestNode, time time.Dur
 	return node, nil
 }
 
-func TestRaftEncryptionKeyRotation(t *testing.T) {
+// This test rotates the encryption key and waits for the expected thing to happen
+func TestRaftEncryptionKeyRotationWait(t *testing.T) {
 	t.Parallel()
 	nodes := make(map[uint64]*raftutils.TestNode)
 	var clockSource *fakeclock.FakeClock
@@ -664,4 +665,51 @@ func TestRaftEncryptionKeyRotation(t *testing.T) {
 	nodes[1] = raftutils.RestartNode(t, clockSource, nodes[1], false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs[:7], values[:7])
+}
+
+// This test rotates the encryption key and restarts the node - the intent is try to trigger
+// race conditions if there is more than one node and hence consensus may take longer.
+func TestRaftEncryptionKeyRotationStress(t *testing.T) {
+	t.Parallel()
+
+	// Bring up a 3 nodes cluster
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
+	defer raftutils.TeardownCluster(t, nodes)
+	leader := nodes[1]
+	third := nodes[3]
+
+	// constantly propose values
+	done, stop := make(chan struct{}), make(chan struct{})
+	go func() {
+		counter := len(nodes)
+		for {
+			select {
+			case <-stop:
+				close(done)
+				return
+			default:
+				counter += 1
+				raftutils.ProposeValue(t, leader, DefaultProposalTime, fmt.Sprintf("id%d", counter))
+			}
+		}
+	}()
+
+	for i := 0; i < 30; i++ {
+		// rotate the encryption key
+		third.KeyRotator.QueuePendingKey([]byte(fmt.Sprintf("newKey%d", i)))
+		third.KeyRotator.RotationNotify() <- struct{}{}
+
+		for {
+			if third.KeyRotator.GetKeys().PendingDEK == nil {
+				third.Server.Stop()
+				third.ShutdownRaft()
+				third = raftutils.RestartNode(t, clockSource, third, false)
+				raftutils.AdvanceTicks(clockSource, 1)
+				break
+			}
+		}
+	}
+
+	close(stop)
+	<-done
 }
