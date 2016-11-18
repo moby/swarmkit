@@ -65,19 +65,19 @@ func (*BasicScalar) ProtoMessage()               {}
 func (*BasicScalar) Descriptor() ([]byte, []int) { return fileDescriptorDeepcopy, []int{0} }
 
 type RepeatedScalar struct {
-	Field1  []float64 `protobuf:"fixed64,1,rep,name=Field1,json=field1" json:"Field1,omitempty"`
-	Field2  []float32 `protobuf:"fixed32,2,rep,name=Field2,json=field2" json:"Field2,omitempty"`
-	Field3  []int32   `protobuf:"varint,3,rep,name=Field3,json=field3" json:"Field3,omitempty"`
-	Field4  []int64   `protobuf:"varint,4,rep,name=Field4,json=field4" json:"Field4,omitempty"`
-	Field5  []uint32  `protobuf:"varint,5,rep,name=Field5,json=field5" json:"Field5,omitempty"`
-	Field6  []uint64  `protobuf:"varint,6,rep,name=Field6,json=field6" json:"Field6,omitempty"`
-	Field7  []int32   `protobuf:"zigzag32,7,rep,name=Field7,json=field7" json:"Field7,omitempty"`
-	Field8  []int64   `protobuf:"zigzag64,8,rep,name=Field8,json=field8" json:"Field8,omitempty"`
-	Field9  []uint32  `protobuf:"fixed32,9,rep,name=Field9,json=field9" json:"Field9,omitempty"`
-	Field10 []int32   `protobuf:"fixed32,10,rep,name=Field10,json=field10" json:"Field10,omitempty"`
-	Field11 []uint64  `protobuf:"fixed64,11,rep,name=Field11,json=field11" json:"Field11,omitempty"`
-	Field12 []int64   `protobuf:"fixed64,12,rep,name=Field12,json=field12" json:"Field12,omitempty"`
-	Field13 []bool    `protobuf:"varint,13,rep,name=Field13,json=field13" json:"Field13,omitempty"`
+	Field1  []float64 `protobuf:"fixed64,1,rep,packed,name=Field1,json=field1" json:"Field1,omitempty"`
+	Field2  []float32 `protobuf:"fixed32,2,rep,packed,name=Field2,json=field2" json:"Field2,omitempty"`
+	Field3  []int32   `protobuf:"varint,3,rep,packed,name=Field3,json=field3" json:"Field3,omitempty"`
+	Field4  []int64   `protobuf:"varint,4,rep,packed,name=Field4,json=field4" json:"Field4,omitempty"`
+	Field5  []uint32  `protobuf:"varint,5,rep,packed,name=Field5,json=field5" json:"Field5,omitempty"`
+	Field6  []uint64  `protobuf:"varint,6,rep,packed,name=Field6,json=field6" json:"Field6,omitempty"`
+	Field7  []int32   `protobuf:"zigzag32,7,rep,packed,name=Field7,json=field7" json:"Field7,omitempty"`
+	Field8  []int64   `protobuf:"zigzag64,8,rep,packed,name=Field8,json=field8" json:"Field8,omitempty"`
+	Field9  []uint32  `protobuf:"fixed32,9,rep,packed,name=Field9,json=field9" json:"Field9,omitempty"`
+	Field10 []int32   `protobuf:"fixed32,10,rep,packed,name=Field10,json=field10" json:"Field10,omitempty"`
+	Field11 []uint64  `protobuf:"fixed64,11,rep,packed,name=Field11,json=field11" json:"Field11,omitempty"`
+	Field12 []int64   `protobuf:"fixed64,12,rep,packed,name=Field12,json=field12" json:"Field12,omitempty"`
+	Field13 []bool    `protobuf:"varint,13,rep,packed,name=Field13,json=field13" json:"Field13,omitempty"`
 	Field14 []string  `protobuf:"bytes,14,rep,name=Field14,json=field14" json:"Field14,omitempty"`
 	Field15 [][]byte  `protobuf:"bytes,15,rep,name=Field15,json=field15" json:"Field15,omitempty"`
 }
@@ -1078,7 +1078,7 @@ func NewPopulatedBasicScalar(r randyDeepcopy, easy bool) *BasicScalar {
 		this.Field12 *= -1
 	}
 	this.Field13 = bool(bool(r.Intn(2) == 0))
-	this.Field14 = randStringDeepcopy(r)
+	this.Field14 = string(randStringDeepcopy(r))
 	v1 := r.Intn(100)
 	this.Field15 = make([]byte, v1)
 	for i := 0; i < v1; i++ {
@@ -1183,7 +1183,7 @@ func NewPopulatedRepeatedScalar(r randyDeepcopy, easy bool) *RepeatedScalar {
 	v15 := r.Intn(10)
 	this.Field14 = make([]string, v15)
 	for i := 0; i < v15; i++ {
-		this.Field14[i] = randStringDeepcopy(r)
+		this.Field14[i] = string(randStringDeepcopy(r))
 	}
 	v16 := r.Intn(10)
 	this.Field15 = make([][]byte, v16)
@@ -1430,7 +1430,7 @@ func randStringDeepcopy(r randyDeepcopy) string {
 	}
 	return string(tmps)
 }
-func randUnrecognizedDeepcopy(r randyDeepcopy, maxFieldNumber int) (data []byte) {
+func randUnrecognizedDeepcopy(r randyDeepcopy, maxFieldNumber int) (dAtA []byte) {
 	l := r.Intn(5)
 	for i := 0; i < l; i++ {
 		wire := r.Intn(4)
@@ -1438,43 +1438,43 @@ func randUnrecognizedDeepcopy(r randyDeepcopy, maxFieldNumber int) (data []byte)
 			wire = 5
 		}
 		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldDeepcopy(data, r, fieldNumber, wire)
+		dAtA = randFieldDeepcopy(dAtA, r, fieldNumber, wire)
 	}
-	return data
+	return dAtA
 }
-func randFieldDeepcopy(data []byte, r randyDeepcopy, fieldNumber int, wire int) []byte {
+func randFieldDeepcopy(dAtA []byte, r randyDeepcopy, fieldNumber int, wire int) []byte {
 	key := uint32(fieldNumber)<<3 | uint32(wire)
 	switch wire {
 	case 0:
-		data = encodeVarintPopulateDeepcopy(data, uint64(key))
+		dAtA = encodeVarintPopulateDeepcopy(dAtA, uint64(key))
 		v46 := r.Int63()
 		if r.Intn(2) == 0 {
 			v46 *= -1
 		}
-		data = encodeVarintPopulateDeepcopy(data, uint64(v46))
+		dAtA = encodeVarintPopulateDeepcopy(dAtA, uint64(v46))
 	case 1:
-		data = encodeVarintPopulateDeepcopy(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+		dAtA = encodeVarintPopulateDeepcopy(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
 	case 2:
-		data = encodeVarintPopulateDeepcopy(data, uint64(key))
+		dAtA = encodeVarintPopulateDeepcopy(dAtA, uint64(key))
 		ll := r.Intn(100)
-		data = encodeVarintPopulateDeepcopy(data, uint64(ll))
+		dAtA = encodeVarintPopulateDeepcopy(dAtA, uint64(ll))
 		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
+			dAtA = append(dAtA, byte(r.Intn(256)))
 		}
 	default:
-		data = encodeVarintPopulateDeepcopy(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+		dAtA = encodeVarintPopulateDeepcopy(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
 	}
-	return data
+	return dAtA
 }
-func encodeVarintPopulateDeepcopy(data []byte, v uint64) []byte {
+func encodeVarintPopulateDeepcopy(dAtA []byte, v uint64) []byte {
 	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		dAtA = append(dAtA, uint8(uint64(v)&0x7f|0x80))
 		v >>= 7
 	}
-	data = append(data, uint8(v))
-	return data
+	dAtA = append(dAtA, uint8(v))
+	return dAtA
 }
 func (this *BasicScalar) String() string {
 	if this == nil {

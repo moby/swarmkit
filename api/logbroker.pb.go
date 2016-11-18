@@ -63,7 +63,7 @@ func (LogStream) EnumDescriptor() ([]byte, []int) { return fileDescriptorLogbrok
 type LogSubscriptionOptions struct {
 	// Streams defines which log streams should be sent from the task source.
 	// Empty means send all the messages.
-	Streams []LogStream `protobuf:"varint,1,rep,name=streams,enum=docker.swarmkit.v1.LogStream" json:"streams,omitempty"`
+	Streams []LogStream `protobuf:"varint,1,rep,packed,name=streams,enum=docker.swarmkit.v1.LogStream" json:"streams,omitempty"`
 	// Follow instructs the publisher to continue sending log messages as they
 	// are produced, after satisfying the initial query.
 	Follow bool `protobuf:"varint,2,opt,name=follow,proto3" json:"follow,omitempty"`
@@ -583,7 +583,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion3
+const _ = grpc.SupportPackageIsVersion4
 
 // Client API for Logs service
 
@@ -685,7 +685,7 @@ var _Logs_serviceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: fileDescriptorLogbroker,
+	Metadata: "logbroker.proto",
 }
 
 // Client API for LogBroker service
@@ -857,372 +857,274 @@ var _LogBroker_serviceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: fileDescriptorLogbroker,
+	Metadata: "logbroker.proto",
 }
 
-func (m *LogSubscriptionOptions) Marshal() (data []byte, err error) {
+func (m *LogSubscriptionOptions) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *LogSubscriptionOptions) MarshalTo(data []byte) (int, error) {
+func (m *LogSubscriptionOptions) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.Streams) > 0 {
+		dAtA2 := make([]byte, len(m.Streams)*10)
+		var j1 int
 		for _, num := range m.Streams {
-			data[i] = 0x8
-			i++
-			i = encodeVarintLogbroker(data, i, uint64(num))
+			for num >= 1<<7 {
+				dAtA2[j1] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j1++
+			}
+			dAtA2[j1] = uint8(num)
+			j1++
 		}
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintLogbroker(dAtA, i, uint64(j1))
+		i += copy(dAtA[i:], dAtA2[:j1])
 	}
 	if m.Follow {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
 		if m.Follow {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	if m.Tail != 0 {
-		data[i] = 0x18
+		dAtA[i] = 0x18
 		i++
-		i = encodeVarintLogbroker(data, i, uint64(m.Tail))
+		i = encodeVarintLogbroker(dAtA, i, uint64(m.Tail))
 	}
 	if m.Since != nil {
-		data[i] = 0x22
+		dAtA[i] = 0x22
 		i++
-		i = encodeVarintLogbroker(data, i, uint64(m.Since.Size()))
-		n1, err := m.Since.MarshalTo(data[i:])
+		i = encodeVarintLogbroker(dAtA, i, uint64(m.Since.Size()))
+		n3, err := m.Since.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n1
+		i += n3
 	}
 	return i, nil
 }
 
-func (m *LogSelector) Marshal() (data []byte, err error) {
+func (m *LogSelector) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *LogSelector) MarshalTo(data []byte) (int, error) {
+func (m *LogSelector) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.ServiceIDs) > 0 {
 		for _, s := range m.ServiceIDs {
-			data[i] = 0xa
+			dAtA[i] = 0xa
 			i++
 			l = len(s)
 			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
 				l >>= 7
 				i++
 			}
-			data[i] = uint8(l)
+			dAtA[i] = uint8(l)
 			i++
-			i += copy(data[i:], s)
+			i += copy(dAtA[i:], s)
 		}
 	}
 	if len(m.NodeIDs) > 0 {
 		for _, s := range m.NodeIDs {
-			data[i] = 0x12
+			dAtA[i] = 0x12
 			i++
 			l = len(s)
 			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
 				l >>= 7
 				i++
 			}
-			data[i] = uint8(l)
+			dAtA[i] = uint8(l)
 			i++
-			i += copy(data[i:], s)
+			i += copy(dAtA[i:], s)
 		}
 	}
 	if len(m.TaskIDs) > 0 {
 		for _, s := range m.TaskIDs {
-			data[i] = 0x1a
+			dAtA[i] = 0x1a
 			i++
 			l = len(s)
 			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
 				l >>= 7
 				i++
 			}
-			data[i] = uint8(l)
+			dAtA[i] = uint8(l)
 			i++
-			i += copy(data[i:], s)
+			i += copy(dAtA[i:], s)
 		}
 	}
 	return i, nil
 }
 
-func (m *LogContext) Marshal() (data []byte, err error) {
+func (m *LogContext) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *LogContext) MarshalTo(data []byte) (int, error) {
+func (m *LogContext) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.ServiceID) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintLogbroker(data, i, uint64(len(m.ServiceID)))
-		i += copy(data[i:], m.ServiceID)
+		i = encodeVarintLogbroker(dAtA, i, uint64(len(m.ServiceID)))
+		i += copy(dAtA[i:], m.ServiceID)
 	}
 	if len(m.NodeID) > 0 {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintLogbroker(data, i, uint64(len(m.NodeID)))
-		i += copy(data[i:], m.NodeID)
+		i = encodeVarintLogbroker(dAtA, i, uint64(len(m.NodeID)))
+		i += copy(dAtA[i:], m.NodeID)
 	}
 	if len(m.TaskID) > 0 {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintLogbroker(data, i, uint64(len(m.TaskID)))
-		i += copy(data[i:], m.TaskID)
+		i = encodeVarintLogbroker(dAtA, i, uint64(len(m.TaskID)))
+		i += copy(dAtA[i:], m.TaskID)
 	}
 	return i, nil
 }
 
-func (m *LogMessage) Marshal() (data []byte, err error) {
+func (m *LogMessage) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *LogMessage) MarshalTo(data []byte) (int, error) {
+func (m *LogMessage) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	data[i] = 0xa
+	dAtA[i] = 0xa
 	i++
-	i = encodeVarintLogbroker(data, i, uint64(m.Context.Size()))
-	n2, err := m.Context.MarshalTo(data[i:])
+	i = encodeVarintLogbroker(dAtA, i, uint64(m.Context.Size()))
+	n4, err := m.Context.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n2
+	i += n4
 	if m.Timestamp != nil {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintLogbroker(data, i, uint64(m.Timestamp.Size()))
-		n3, err := m.Timestamp.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n3
-	}
-	if m.Stream != 0 {
-		data[i] = 0x18
-		i++
-		i = encodeVarintLogbroker(data, i, uint64(m.Stream))
-	}
-	if len(m.Data) > 0 {
-		data[i] = 0x22
-		i++
-		i = encodeVarintLogbroker(data, i, uint64(len(m.Data)))
-		i += copy(data[i:], m.Data)
-	}
-	return i, nil
-}
-
-func (m *SubscribeLogsRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *SubscribeLogsRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Selector != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintLogbroker(data, i, uint64(m.Selector.Size()))
-		n4, err := m.Selector.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n4
-	}
-	if m.Options != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintLogbroker(data, i, uint64(m.Options.Size()))
-		n5, err := m.Options.MarshalTo(data[i:])
+		i = encodeVarintLogbroker(dAtA, i, uint64(m.Timestamp.Size()))
+		n5, err := m.Timestamp.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n5
 	}
-	return i, nil
-}
-
-func (m *SubscribeLogsMessage) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *SubscribeLogsMessage) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Messages) > 0 {
-		for _, msg := range m.Messages {
-			data[i] = 0xa
-			i++
-			i = encodeVarintLogbroker(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	return i, nil
-}
-
-func (m *ListenSubscriptionsRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *ListenSubscriptionsRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func (m *SubscriptionMessage) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *SubscriptionMessage) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.ID) > 0 {
-		data[i] = 0xa
+	if m.Stream != 0 {
+		dAtA[i] = 0x18
 		i++
-		i = encodeVarintLogbroker(data, i, uint64(len(m.ID)))
-		i += copy(data[i:], m.ID)
+		i = encodeVarintLogbroker(dAtA, i, uint64(m.Stream))
 	}
+	if len(m.Data) > 0 {
+		dAtA[i] = 0x22
+		i++
+		i = encodeVarintLogbroker(dAtA, i, uint64(len(m.Data)))
+		i += copy(dAtA[i:], m.Data)
+	}
+	return i, nil
+}
+
+func (m *SubscribeLogsRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SubscribeLogsRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
 	if m.Selector != nil {
-		data[i] = 0x12
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintLogbroker(data, i, uint64(m.Selector.Size()))
-		n6, err := m.Selector.MarshalTo(data[i:])
+		i = encodeVarintLogbroker(dAtA, i, uint64(m.Selector.Size()))
+		n6, err := m.Selector.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n6
 	}
 	if m.Options != nil {
-		data[i] = 0x1a
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintLogbroker(data, i, uint64(m.Options.Size()))
-		n7, err := m.Options.MarshalTo(data[i:])
+		i = encodeVarintLogbroker(dAtA, i, uint64(m.Options.Size()))
+		n7, err := m.Options.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n7
 	}
-	if m.Close {
-		data[i] = 0x20
-		i++
-		if m.Close {
-			data[i] = 1
-		} else {
-			data[i] = 0
-		}
-		i++
-	}
 	return i, nil
 }
 
-func (m *PublishLogsMessage) Marshal() (data []byte, err error) {
+func (m *SubscribeLogsMessage) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *PublishLogsMessage) MarshalTo(data []byte) (int, error) {
+func (m *SubscribeLogsMessage) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.SubscriptionID) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintLogbroker(data, i, uint64(len(m.SubscriptionID)))
-		i += copy(data[i:], m.SubscriptionID)
-	}
 	if len(m.Messages) > 0 {
 		for _, msg := range m.Messages {
-			data[i] = 0x12
+			dAtA[i] = 0xa
 			i++
-			i = encodeVarintLogbroker(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintLogbroker(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -1232,17 +1134,17 @@ func (m *PublishLogsMessage) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *PublishLogsResponse) Marshal() (data []byte, err error) {
+func (m *ListenSubscriptionsRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *PublishLogsResponse) MarshalTo(data []byte) (int, error) {
+func (m *ListenSubscriptionsRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1250,31 +1152,139 @@ func (m *PublishLogsResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func encodeFixed64Logbroker(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
+func (m *SubscriptionMessage) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SubscriptionMessage) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.ID) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintLogbroker(dAtA, i, uint64(len(m.ID)))
+		i += copy(dAtA[i:], m.ID)
+	}
+	if m.Selector != nil {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintLogbroker(dAtA, i, uint64(m.Selector.Size()))
+		n8, err := m.Selector.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n8
+	}
+	if m.Options != nil {
+		dAtA[i] = 0x1a
+		i++
+		i = encodeVarintLogbroker(dAtA, i, uint64(m.Options.Size()))
+		n9, err := m.Options.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n9
+	}
+	if m.Close {
+		dAtA[i] = 0x20
+		i++
+		if m.Close {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i++
+	}
+	return i, nil
+}
+
+func (m *PublishLogsMessage) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *PublishLogsMessage) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.SubscriptionID) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintLogbroker(dAtA, i, uint64(len(m.SubscriptionID)))
+		i += copy(dAtA[i:], m.SubscriptionID)
+	}
+	if len(m.Messages) > 0 {
+		for _, msg := range m.Messages {
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintLogbroker(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func (m *PublishLogsResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *PublishLogsResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func encodeFixed64Logbroker(dAtA []byte, offset int, v uint64) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
+	dAtA[offset+4] = uint8(v >> 32)
+	dAtA[offset+5] = uint8(v >> 40)
+	dAtA[offset+6] = uint8(v >> 48)
+	dAtA[offset+7] = uint8(v >> 56)
 	return offset + 8
 }
-func encodeFixed32Logbroker(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
+func encodeFixed32Logbroker(dAtA []byte, offset int, v uint32) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
 	return offset + 4
 }
-func encodeVarintLogbroker(data []byte, offset int, v uint64) int {
+func encodeVarintLogbroker(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
+		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
-	data[offset] = uint8(v)
+	dAtA[offset] = uint8(v)
 	return offset + 1
 }
 
@@ -1585,9 +1595,11 @@ func (m *LogSubscriptionOptions) Size() (n int) {
 	var l int
 	_ = l
 	if len(m.Streams) > 0 {
+		l = 0
 		for _, e := range m.Streams {
-			n += 1 + sovLogbroker(uint64(e))
+			l += sovLogbroker(uint64(e))
 		}
+		n += 1 + sovLogbroker(uint64(l)) + l
 	}
 	if m.Follow {
 		n += 2
@@ -1872,8 +1884,8 @@ func valueToStringLogbroker(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *LogSubscriptionOptions) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *LogSubscriptionOptions) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -1885,7 +1897,7 @@ func (m *LogSubscriptionOptions) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1902,25 +1914,67 @@ func (m *LogSubscriptionOptions) Unmarshal(data []byte) error {
 		}
 		switch fieldNum {
 		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Streams", wireType)
-			}
-			var v LogStream
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowLogbroker
+			if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowLogbroker
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= (int(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
 				}
-				if iNdEx >= l {
+				if packedLen < 0 {
+					return ErrInvalidLengthLogbroker
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex > l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (LogStream(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
+				for iNdEx < postIndex {
+					var v LogStream
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowLogbroker
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= (LogStream(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.Streams = append(m.Streams, v)
 				}
+			} else if wireType == 0 {
+				var v LogStream
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowLogbroker
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= (LogStream(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.Streams = append(m.Streams, v)
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field Streams", wireType)
 			}
-			m.Streams = append(m.Streams, v)
 		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Follow", wireType)
@@ -1933,7 +1987,7 @@ func (m *LogSubscriptionOptions) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1953,7 +2007,7 @@ func (m *LogSubscriptionOptions) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Tail |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1972,7 +2026,7 @@ func (m *LogSubscriptionOptions) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1989,13 +2043,13 @@ func (m *LogSubscriptionOptions) Unmarshal(data []byte) error {
 			if m.Since == nil {
 				m.Since = &docker_swarmkit_v1.Timestamp{}
 			}
-			if err := m.Since.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Since.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipLogbroker(data[iNdEx:])
+			skippy, err := skipLogbroker(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2014,8 +2068,8 @@ func (m *LogSubscriptionOptions) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LogSelector) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *LogSelector) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2027,7 +2081,7 @@ func (m *LogSelector) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2055,7 +2109,7 @@ func (m *LogSelector) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2070,7 +2124,7 @@ func (m *LogSelector) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ServiceIDs = append(m.ServiceIDs, string(data[iNdEx:postIndex]))
+			m.ServiceIDs = append(m.ServiceIDs, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -2084,7 +2138,7 @@ func (m *LogSelector) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2099,7 +2153,7 @@ func (m *LogSelector) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.NodeIDs = append(m.NodeIDs, string(data[iNdEx:postIndex]))
+			m.NodeIDs = append(m.NodeIDs, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -2113,7 +2167,7 @@ func (m *LogSelector) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2128,11 +2182,11 @@ func (m *LogSelector) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.TaskIDs = append(m.TaskIDs, string(data[iNdEx:postIndex]))
+			m.TaskIDs = append(m.TaskIDs, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipLogbroker(data[iNdEx:])
+			skippy, err := skipLogbroker(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2151,8 +2205,8 @@ func (m *LogSelector) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LogContext) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *LogContext) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2164,7 +2218,7 @@ func (m *LogContext) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2192,7 +2246,7 @@ func (m *LogContext) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2207,7 +2261,7 @@ func (m *LogContext) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ServiceID = string(data[iNdEx:postIndex])
+			m.ServiceID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -2221,7 +2275,7 @@ func (m *LogContext) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2236,7 +2290,7 @@ func (m *LogContext) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.NodeID = string(data[iNdEx:postIndex])
+			m.NodeID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -2250,7 +2304,7 @@ func (m *LogContext) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2265,11 +2319,11 @@ func (m *LogContext) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.TaskID = string(data[iNdEx:postIndex])
+			m.TaskID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipLogbroker(data[iNdEx:])
+			skippy, err := skipLogbroker(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2288,8 +2342,8 @@ func (m *LogContext) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LogMessage) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *LogMessage) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2301,7 +2355,7 @@ func (m *LogMessage) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2329,7 +2383,7 @@ func (m *LogMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2343,7 +2397,7 @@ func (m *LogMessage) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.Context.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Context.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2359,7 +2413,7 @@ func (m *LogMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2376,7 +2430,7 @@ func (m *LogMessage) Unmarshal(data []byte) error {
 			if m.Timestamp == nil {
 				m.Timestamp = &docker_swarmkit_v1.Timestamp{}
 			}
-			if err := m.Timestamp.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Timestamp.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2392,7 +2446,7 @@ func (m *LogMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Stream |= (LogStream(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2411,7 +2465,7 @@ func (m *LogMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2425,14 +2479,14 @@ func (m *LogMessage) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Data = append(m.Data[:0], data[iNdEx:postIndex]...)
+			m.Data = append(m.Data[:0], dAtA[iNdEx:postIndex]...)
 			if m.Data == nil {
 				m.Data = []byte{}
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipLogbroker(data[iNdEx:])
+			skippy, err := skipLogbroker(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2451,8 +2505,8 @@ func (m *LogMessage) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *SubscribeLogsRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *SubscribeLogsRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2464,7 +2518,7 @@ func (m *SubscribeLogsRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2492,7 +2546,7 @@ func (m *SubscribeLogsRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2509,7 +2563,7 @@ func (m *SubscribeLogsRequest) Unmarshal(data []byte) error {
 			if m.Selector == nil {
 				m.Selector = &LogSelector{}
 			}
-			if err := m.Selector.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Selector.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2525,7 +2579,7 @@ func (m *SubscribeLogsRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2542,13 +2596,13 @@ func (m *SubscribeLogsRequest) Unmarshal(data []byte) error {
 			if m.Options == nil {
 				m.Options = &LogSubscriptionOptions{}
 			}
-			if err := m.Options.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Options.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipLogbroker(data[iNdEx:])
+			skippy, err := skipLogbroker(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2567,8 +2621,8 @@ func (m *SubscribeLogsRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *SubscribeLogsMessage) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *SubscribeLogsMessage) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2580,7 +2634,7 @@ func (m *SubscribeLogsMessage) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2608,7 +2662,7 @@ func (m *SubscribeLogsMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2623,13 +2677,13 @@ func (m *SubscribeLogsMessage) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Messages = append(m.Messages, LogMessage{})
-			if err := m.Messages[len(m.Messages)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Messages[len(m.Messages)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipLogbroker(data[iNdEx:])
+			skippy, err := skipLogbroker(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2648,8 +2702,8 @@ func (m *SubscribeLogsMessage) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *ListenSubscriptionsRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *ListenSubscriptionsRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2661,7 +2715,7 @@ func (m *ListenSubscriptionsRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2679,7 +2733,7 @@ func (m *ListenSubscriptionsRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		default:
 			iNdEx = preIndex
-			skippy, err := skipLogbroker(data[iNdEx:])
+			skippy, err := skipLogbroker(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2698,8 +2752,8 @@ func (m *ListenSubscriptionsRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *SubscriptionMessage) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *SubscriptionMessage) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2711,7 +2765,7 @@ func (m *SubscriptionMessage) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2739,7 +2793,7 @@ func (m *SubscriptionMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2754,7 +2808,7 @@ func (m *SubscriptionMessage) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ID = string(data[iNdEx:postIndex])
+			m.ID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -2768,7 +2822,7 @@ func (m *SubscriptionMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2785,7 +2839,7 @@ func (m *SubscriptionMessage) Unmarshal(data []byte) error {
 			if m.Selector == nil {
 				m.Selector = &LogSelector{}
 			}
-			if err := m.Selector.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Selector.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2801,7 +2855,7 @@ func (m *SubscriptionMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2818,7 +2872,7 @@ func (m *SubscriptionMessage) Unmarshal(data []byte) error {
 			if m.Options == nil {
 				m.Options = &LogSubscriptionOptions{}
 			}
-			if err := m.Options.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Options.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2834,7 +2888,7 @@ func (m *SubscriptionMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2844,7 +2898,7 @@ func (m *SubscriptionMessage) Unmarshal(data []byte) error {
 			m.Close = bool(v != 0)
 		default:
 			iNdEx = preIndex
-			skippy, err := skipLogbroker(data[iNdEx:])
+			skippy, err := skipLogbroker(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2863,8 +2917,8 @@ func (m *SubscriptionMessage) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *PublishLogsMessage) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *PublishLogsMessage) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2876,7 +2930,7 @@ func (m *PublishLogsMessage) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2904,7 +2958,7 @@ func (m *PublishLogsMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2919,7 +2973,7 @@ func (m *PublishLogsMessage) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SubscriptionID = string(data[iNdEx:postIndex])
+			m.SubscriptionID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -2933,7 +2987,7 @@ func (m *PublishLogsMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2948,13 +3002,13 @@ func (m *PublishLogsMessage) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Messages = append(m.Messages, LogMessage{})
-			if err := m.Messages[len(m.Messages)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Messages[len(m.Messages)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipLogbroker(data[iNdEx:])
+			skippy, err := skipLogbroker(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2973,8 +3027,8 @@ func (m *PublishLogsMessage) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *PublishLogsResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *PublishLogsResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2986,7 +3040,7 @@ func (m *PublishLogsResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -3004,7 +3058,7 @@ func (m *PublishLogsResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		default:
 			iNdEx = preIndex
-			skippy, err := skipLogbroker(data[iNdEx:])
+			skippy, err := skipLogbroker(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -3023,8 +3077,8 @@ func (m *PublishLogsResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func skipLogbroker(data []byte) (n int, err error) {
-	l := len(data)
+func skipLogbroker(dAtA []byte) (n int, err error) {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		var wire uint64
@@ -3035,7 +3089,7 @@ func skipLogbroker(data []byte) (n int, err error) {
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -3053,7 +3107,7 @@ func skipLogbroker(data []byte) (n int, err error) {
 					return 0, io.ErrUnexpectedEOF
 				}
 				iNdEx++
-				if data[iNdEx-1] < 0x80 {
+				if dAtA[iNdEx-1] < 0x80 {
 					break
 				}
 			}
@@ -3070,7 +3124,7 @@ func skipLogbroker(data []byte) (n int, err error) {
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				length |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3093,7 +3147,7 @@ func skipLogbroker(data []byte) (n int, err error) {
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
-					b := data[iNdEx]
+					b := dAtA[iNdEx]
 					iNdEx++
 					innerWire |= (uint64(b) & 0x7F) << shift
 					if b < 0x80 {
@@ -3104,7 +3158,7 @@ func skipLogbroker(data []byte) (n int, err error) {
 				if innerWireType == 4 {
 					break
 				}
-				next, err := skipLogbroker(data[start:])
+				next, err := skipLogbroker(dAtA[start:])
 				if err != nil {
 					return 0, err
 				}
