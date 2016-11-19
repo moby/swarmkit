@@ -109,7 +109,7 @@ type RootCA struct {
 	Digest digest.Digest
 	// This signer will be nil if the node doesn't have the appropriate key material
 	Signer cfsigner.Signer
-	// Stores the location on disk where the RootCA lives
+	// Path stores the location on disk where the RootCA lives
 	Path CertPaths
 }
 
@@ -165,9 +165,9 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 	// Get the remote manager to issue a CA signed certificate for this node
 	// Retry up to 5 times in case the manager we first try to contact isn't
 	// responding properly (for example, it may have just been demoted).
-	var signedCert, rootCABundle []byte
+	var response *api.NodeCertificateStatusResponse
 	for i := 0; i != 5; i++ {
-		signedCert, rootCABundle, err = GetRemoteSignedCertificate(ctx, csr, rca.Pool, config)
+		response, err = GetRemoteSignedCertificate(ctx, csr, rca.Pool, config)
 		if err == nil {
 			break
 		}
@@ -179,7 +179,7 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 	// Доверяй, но проверяй.
 	// Before we overwrite our local key + certificate, let's make sure the server gave us one that is valid
 	// Create an X509Cert so we can .Verify()
-	certBlock, _ := pem.Decode(signedCert)
+	certBlock, _ := pem.Decode(response.Certificate.Certificate)
 	if certBlock == nil {
 		return nil, errors.New("failed to parse certificate PEM")
 	}
@@ -189,12 +189,18 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 	}
 	// We retrieve the certificate with the current root pool, so we know this was issued by a legitimate manager.
 	// However, there might have been a server-side root rotation, so we verify this cert with a new pool.
-	// If we got a valid rootCABundle, turn it into a Pool, and verify the newly minted certificate using it.
+	// If we got a valid response.RootCABundle, turn it into a Pool, and verify the newly minted certificate using it.
+	var (
+		newRootErr error
+		newRootCA  RootCA
+	)
 	rootCAPool := rca.Pool
-	newRootCA, newRootErr := NewRootCA(rootCABundle, nil, rca.Path, time.Minute)
-	if newRootErr == nil {
-		// The rootCABundle we got from the remote server seems to be good, use it
-		rootCAPool = newRootCA.Pool
+	if response.RootCABundle != nil {
+		newRootCA, newRootErr = NewRootCA(response.RootCABundle, nil, rca.Path, time.Minute)
+		if newRootErr == nil {
+			// The response.RootCABundle we got from the remote server seems to be good, use it
+			rootCAPool = newRootCA.Pool
+		}
 	}
 
 	// Create VerifyOptions with either the new certificate bundle, or the old pool
@@ -208,7 +214,7 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 	}
 
 	// Create a valid TLSKeyPair out of the PEM encoded private key and certificate
-	tlsKeyPair, err := tls.X509KeyPair(signedCert, key)
+	tlsKeyPair, err := tls.X509KeyPair(response.Certificate.Certificate, key)
 	if err != nil {
 		return nil, err
 	}
@@ -224,16 +230,16 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 		return nil, err
 	}
 
-	// If a CA certificate bundle exists, it has been validated before, so let's write it to disk.
+	// If a CA certificate bundle exists it has been validated before. If it's different, let's write it to disk.
 	// Root rotation should always happen by appending a new CA cert, and later removing the old one,
-	// so it's safer to do it in this order of operations
-	if newRootErr == nil {
+	// so it's safer to do it in this order of operations (write root, write certificate)
+	if newRootErr == nil && !bytes.Equal(rca.Cert, response.RootCABundle) {
 		if err := newRootCA.saveCertificate(); err != nil {
 			return nil, err
 		}
 	}
 
-	if err := kw.Write(signedCert, key, kekUpdate); err != nil {
+	if err := kw.Write(response.Certificate.Certificate, key, kekUpdate); err != nil {
 		return nil, err
 	}
 
@@ -574,9 +580,9 @@ func CreateRootCA(rootCN string, paths CertPaths) (RootCA, error) {
 
 // GetRemoteSignedCertificate submits a CSR to a remote CA server address,
 // and that is part of a CA identified by a specific certificate pool.
-func GetRemoteSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.CertPool, config CertificateRequestConfig) ([]byte, []byte, error) {
+func GetRemoteSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x509.CertPool, config CertificateRequestConfig) (*api.NodeCertificateStatusResponse, error) {
 	if rootCAPool == nil {
-		return nil, nil, errors.New("valid root CA pool required")
+		return nil, errors.New("valid root CA pool required")
 	}
 
 	creds := config.Credentials
@@ -589,7 +595,7 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x50
 
 	conn, peer, err := getGRPCConnection(creds, config.Remotes)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer conn.Close()
 
@@ -601,7 +607,7 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x50
 	issueResponse, err := caClient.IssueNodeCertificate(ctx, issueRequest)
 	if err != nil {
 		config.Remotes.Observe(peer, -remotes.DefaultObservationWeight)
-		return nil, nil, err
+		return nil, err
 	}
 
 	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
@@ -619,13 +625,13 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x50
 		statusResponse, err := caClient.NodeCertificateStatus(ctx, statusRequest)
 		if err != nil {
 			config.Remotes.Observe(peer, -remotes.DefaultObservationWeight)
-			return nil, nil, err
+			return nil, err
 		}
 
 		// If the certificate was issued, return
 		if statusResponse.Status.State == api.IssuanceStateIssued {
 			if statusResponse.Certificate == nil {
-				return nil, nil, errors.New("no certificate in CertificateStatus response")
+				return nil, errors.New("no certificate in CertificateStatus response")
 			}
 
 			// The certificate in the response must match the CSR
@@ -635,7 +641,7 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x50
 			// current request.
 			if bytes.Equal(statusResponse.Certificate.CSR, csr) {
 				config.Remotes.Observe(peer, remotes.DefaultObservationWeight)
-				return statusResponse.Certificate.Certificate, statusResponse.RootCABundle, nil
+				return statusResponse, nil
 			}
 		}
 

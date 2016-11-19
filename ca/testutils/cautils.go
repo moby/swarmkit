@@ -301,6 +301,7 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 			Cert:   rootCA.Cert,
 			Digest: rootCA.Digest,
 			Pool:   rootCA.Pool,
+			Path:   rootCA.Path,
 		}
 	}
 
@@ -398,5 +399,6 @@ func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duratio
 		Cert:   cert,
 		Pool:   pool,
 		Digest: digest.FromBytes(cert),
+		Path:   paths,
 	}, nil
 }
