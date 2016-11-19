@@ -128,7 +128,7 @@ func (s *SecurityConfig) UpdateRootCA(cert, key []byte, certExpiry time.Duration
 	// Attempt to write the new certificate to disk
 	err = rootCA.saveCertificate()
 	if err == nil {
-		// No errors, swam the current rootCA
+		// No errors, save the current rootCA
 		s.rootCA = &rootCA
 	}
 
