@@ -41,12 +41,8 @@ var (
 	ErrConfChangeRefused = errors.New("raft: propose configuration change refused")
 	// ErrApplyNotSpecified is returned during the creation of a raft node when no apply method was provided
 	ErrApplyNotSpecified = errors.New("raft: apply method was not specified")
-	// ErrAppendEntry is thrown when the node fail to append an entry to the logs
-	ErrAppendEntry = errors.New("raft: failed to append entry to logs")
 	// ErrSetHardState is returned when the node fails to set the hard state
 	ErrSetHardState = errors.New("raft: failed to set the hard state for log append entry")
-	// ErrApplySnapshot is returned when the node fails to apply a snapshot
-	ErrApplySnapshot = errors.New("raft: failed to apply snapshot on raft node")
 	// ErrStopped is returned when an operation was submitted but the node was stopped in the meantime
 	ErrStopped = errors.New("raft: failed to process the request: node is stopped")
 	// ErrLostLeadership is returned when an operation was submitted but the node lost leader status before it became committed
@@ -1174,24 +1170,24 @@ func (n *Node) saveToStorage(
 
 	if !raft.IsEmptySnap(snapshot) {
 		if err := n.raftLogger.SaveSnapshot(snapshot); err != nil {
-			return ErrApplySnapshot
+			return errors.Wrap(err, "failed to save snapshot")
 		}
 		if err := n.raftLogger.GC(snapshot.Metadata.Index, snapshot.Metadata.Term, raftConfig.KeepOldSnapshots); err != nil {
 			log.G(ctx).WithError(err).Error("unable to clean old snapshots and WALs")
 		}
 		if err = n.raftStore.ApplySnapshot(snapshot); err != nil {
-			return ErrApplySnapshot
+			return errors.Wrap(err, "failed to apply snapshot on raft node")
 		}
 	}
 
 	if err := n.raftLogger.SaveEntries(hardState, entries); err != nil {
 		// TODO(aaronl): These error types should really wrap more
 		// detailed errors.
-		return ErrApplySnapshot
+		return errors.Wrap(err, "failed to save raft log entries")
 	}
 
 	if err = n.raftStore.Append(entries); err != nil {
-		return ErrAppendEntry
+		return errors.Wrap(err, "failed to append raft log entries")
 	}
 
 	return nil
