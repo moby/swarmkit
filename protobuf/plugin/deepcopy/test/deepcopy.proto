@@ -103,3 +103,23 @@ message MapStruct {
 	map <string, BasicScalar> nullable_map = 1;
 	map <string, BasicScalar> nonnullable_map = 2 [(gogoproto.nullable) = false];
 }
+
+message OneOf {
+	oneof fields {
+		double Field1 = 1;
+		float Field2 = 2;
+		int32 Field3 = 3;
+		int64 Field4 = 4;
+		uint32 Field5 = 5;
+		string Field6 = 6;
+		bytes Field7 = 7;
+		MapStruct Field8 = 8;
+		RepeatedNonNullableExternalStruct Field9 = 9;
+	}
+
+	oneof fieldsTwo {
+		NonNullableExternalStruct Field10 = 10;
+		RepeatedExternalStruct Field11 = 11;
+	}
+}
+
