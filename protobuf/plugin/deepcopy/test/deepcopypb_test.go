@@ -17,6 +17,7 @@ It has these top-level messages:
 	NonNullableExternalStruct
 	RepeatedNonNullableExternalStruct
 	MapStruct
+	OneOf
 */
 package test
 
@@ -283,6 +284,37 @@ func TestMapStructProto(t *testing.T) {
 	}
 }
 
+func TestOneOfProto(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedOneOf(popr, false)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &OneOf{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
+	}
+}
+
 func TestBasicScalarJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
@@ -419,6 +451,24 @@ func TestMapStructJSON(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &MapStruct{}
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Json Equal %#v", seed, msg, p)
+	}
+}
+func TestOneOfJSON(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedOneOf(popr, true)
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
+	jsondata, err := marshaler.MarshalToString(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &OneOf{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
@@ -643,6 +693,34 @@ func TestMapStructProtoCompactText(t *testing.T) {
 	p := NewPopulatedMapStruct(popr, true)
 	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &MapStruct{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestOneOfProtoText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedOneOf(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	msg := &OneOf{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestOneOfProtoCompactText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedOneOf(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
+	msg := &OneOf{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -886,6 +964,47 @@ func TestMapStructCopy(t *testing.T) {
 		t.Fatalf("NonnullableMap: %#v == %#v", &in.NonnullableMap, &out.NonnullableMap)
 	}
 }
+func TestOneOfCopy(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	in := NewPopulatedOneOf(popr, true)
+	out := in.Copy()
+	if !in.Equal(out) {
+		t.Fatalf("%#v != %#v", in, out)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.FieldsTwo == &out.FieldsTwo {
+		t.Fatalf("FieldsTwo: %#v == %#v", &in.FieldsTwo, &out.FieldsTwo)
+	}
+	if &in.FieldsTwo == &out.FieldsTwo {
+		t.Fatalf("FieldsTwo: %#v == %#v", &in.FieldsTwo, &out.FieldsTwo)
+	}
+}
 func TestBasicScalarStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedBasicScalar(popr, false)
@@ -952,6 +1071,15 @@ func TestRepeatedNonNullableExternalStructStringer(t *testing.T) {
 func TestMapStructStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedMapStruct(popr, false)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
+	if s1 != s2 {
+		t.Fatalf("String want %v got %v", s1, s2)
+	}
+}
+func TestOneOfStringer(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedOneOf(popr, false)
 	s1 := p.String()
 	s2 := fmt.Sprintf("%v", p)
 	if s1 != s2 {

@@ -32,6 +32,7 @@ func (p *test) Generate(imports generator.PluginImports, file *generator.FileDes
 
 		used = true
 		ccTypeName := generator.CamelCaseSlice(message.TypeName())
+		p.P()
 		p.P(`func Test`, ccTypeName, `Copy(t *`, testingPkg.Use(), `.T) {`)
 		p.In()
 		p.P(`popr := `, randPkg.Use(), `.New(`, randPkg.Use(), `.NewSource(`, timePkg.Use(), `.Now().UnixNano()))`)
@@ -60,6 +61,16 @@ func (p *test) Generate(imports generator.PluginImports, file *generator.FileDes
 			p.Out()
 			p.P(`}`)
 		}
+
+		// copying from nil should result in nil
+		p.P()
+		p.P(`in = nil`)
+		p.P(`out = in.Copy()`)
+		p.P(`if out != nil {`)
+		p.In()
+		p.P(`t.Fatalf("copying nil should return nil, returned: %#v", out)`)
+		p.Out()
+		p.P(`}`)
 
 		p.Out()
 		p.P(`}`)
