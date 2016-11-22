@@ -1,8 +1,6 @@
 package controlapi
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"strings"
 	"testing"
@@ -20,12 +18,6 @@ func createSecretSpec(name string, data []byte, labels map[string]string) *api.S
 		Annotations: api.Annotations{Name: name, Labels: labels},
 		Data:        data,
 	}
-}
-
-func validateChecksum(t *testing.T, secret *api.Secret, data []byte) {
-	checksumBytes := sha256.Sum256(data)
-	assert.Equal(t, "sha256:"+hex.EncodeToString(checksumBytes[:]), secret.Digest)
-	assert.EqualValues(t, len(data), secret.SecretSize)
 }
 
 func TestValidateSecretSpec(t *testing.T) {
@@ -118,7 +110,6 @@ func TestCreateSecret(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Secret)
-	validateChecksum(t, resp.Secret, data)
 
 	// the data should be empty/omitted
 	assert.Equal(t, *createSecretSpec("name", nil, nil), resp.Secret.Spec)
