@@ -10,6 +10,8 @@ import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
@@ -105,48 +107,61 @@ func (m *AttachNetworkRequest) Copy() *AttachNetworkRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &AttachNetworkRequest{
-		Config:      m.Config.Copy(),
-		ContainerID: m.ContainerID,
-	}
-
+	o := &AttachNetworkRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *AttachNetworkRequest) CopyFrom(src interface{}) {
+
+	o := src.(*AttachNetworkRequest)
+	if o.Config != nil {
+		m.Config = &NetworkAttachmentConfig{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Config, o.Config)
+	}
+	m.ContainerID = o.ContainerID
 }
 
 func (m *AttachNetworkResponse) Copy() *AttachNetworkResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &AttachNetworkResponse{
-		AttachmentID: m.AttachmentID,
-	}
-
+	o := &AttachNetworkResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *AttachNetworkResponse) CopyFrom(src interface{}) {
+
+	o := src.(*AttachNetworkResponse)
+	m.AttachmentID = o.AttachmentID
 }
 
 func (m *DetachNetworkRequest) Copy() *DetachNetworkRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &DetachNetworkRequest{
-		AttachmentID: m.AttachmentID,
-	}
-
+	o := &DetachNetworkRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *DetachNetworkRequest) CopyFrom(src interface{}) {
+
+	o := src.(*DetachNetworkRequest)
+	m.AttachmentID = o.AttachmentID
 }
 
 func (m *DetachNetworkResponse) Copy() *DetachNetworkResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &DetachNetworkResponse{}
-
+	o.CopyFrom(m)
 	return o
 }
+
+func (m *DetachNetworkResponse) CopyFrom(src interface{}) {}
 
 func (this *AttachNetworkRequest) GoString() string {
 	if this == nil {

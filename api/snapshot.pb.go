@@ -10,6 +10,8 @@ import math "math"
 
 // skipping weak import gogoproto "github.com/gogo/protobuf/gogoproto"
 
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
@@ -87,88 +89,106 @@ func (m *StoreSnapshot) Copy() *StoreSnapshot {
 	if m == nil {
 		return nil
 	}
-
 	o := &StoreSnapshot{}
-
-	if m.Nodes != nil {
-		o.Nodes = make([]*Node, 0, len(m.Nodes))
-		for _, v := range m.Nodes {
-			o.Nodes = append(o.Nodes, v.Copy())
-		}
-	}
-
-	if m.Services != nil {
-		o.Services = make([]*Service, 0, len(m.Services))
-		for _, v := range m.Services {
-			o.Services = append(o.Services, v.Copy())
-		}
-	}
-
-	if m.Networks != nil {
-		o.Networks = make([]*Network, 0, len(m.Networks))
-		for _, v := range m.Networks {
-			o.Networks = append(o.Networks, v.Copy())
-		}
-	}
-
-	if m.Tasks != nil {
-		o.Tasks = make([]*Task, 0, len(m.Tasks))
-		for _, v := range m.Tasks {
-			o.Tasks = append(o.Tasks, v.Copy())
-		}
-	}
-
-	if m.Clusters != nil {
-		o.Clusters = make([]*Cluster, 0, len(m.Clusters))
-		for _, v := range m.Clusters {
-			o.Clusters = append(o.Clusters, v.Copy())
-		}
-	}
-
-	if m.Secrets != nil {
-		o.Secrets = make([]*Secret, 0, len(m.Secrets))
-		for _, v := range m.Secrets {
-			o.Secrets = append(o.Secrets, v.Copy())
-		}
-	}
-
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *StoreSnapshot) CopyFrom(src interface{}) {
+
+	o := src.(*StoreSnapshot)
+	if o.Nodes != nil {
+		m.Nodes = make([]*Node, len(o.Nodes))
+		for i := range m.Nodes {
+			m.Nodes[i] = &Node{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Nodes[i], o.Nodes[i])
+		}
+	}
+
+	if o.Services != nil {
+		m.Services = make([]*Service, len(o.Services))
+		for i := range m.Services {
+			m.Services[i] = &Service{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Services[i], o.Services[i])
+		}
+	}
+
+	if o.Networks != nil {
+		m.Networks = make([]*Network, len(o.Networks))
+		for i := range m.Networks {
+			m.Networks[i] = &Network{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Networks[i], o.Networks[i])
+		}
+	}
+
+	if o.Tasks != nil {
+		m.Tasks = make([]*Task, len(o.Tasks))
+		for i := range m.Tasks {
+			m.Tasks[i] = &Task{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Tasks[i], o.Tasks[i])
+		}
+	}
+
+	if o.Clusters != nil {
+		m.Clusters = make([]*Cluster, len(o.Clusters))
+		for i := range m.Clusters {
+			m.Clusters[i] = &Cluster{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Clusters[i], o.Clusters[i])
+		}
+	}
+
+	if o.Secrets != nil {
+		m.Secrets = make([]*Secret, len(o.Secrets))
+		for i := range m.Secrets {
+			m.Secrets[i] = &Secret{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Secrets[i], o.Secrets[i])
+		}
+	}
+
 }
 
 func (m *ClusterSnapshot) Copy() *ClusterSnapshot {
 	if m == nil {
 		return nil
 	}
-
 	o := &ClusterSnapshot{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Members != nil {
-		o.Members = make([]*RaftMember, 0, len(m.Members))
-		for _, v := range m.Members {
-			o.Members = append(o.Members, v.Copy())
+func (m *ClusterSnapshot) CopyFrom(src interface{}) {
+
+	o := src.(*ClusterSnapshot)
+	if o.Members != nil {
+		m.Members = make([]*RaftMember, len(o.Members))
+		for i := range m.Members {
+			m.Members[i] = &RaftMember{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Members[i], o.Members[i])
 		}
 	}
 
-	if m.Removed != nil {
-		o.Removed = make([]uint64, 0, len(m.Removed))
-		o.Removed = append(o.Removed, m.Removed...)
+	if o.Removed != nil {
+		m.Removed = make([]uint64, len(o.Removed))
+		copy(m.Removed, o.Removed)
 	}
 
-	return o
 }
 
 func (m *Snapshot) Copy() *Snapshot {
 	if m == nil {
 		return nil
 	}
-
-	o := &Snapshot{
-		Version:    m.Version,
-		Membership: *m.Membership.Copy(),
-		Store:      *m.Store.Copy(),
-	}
-
+	o := &Snapshot{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *Snapshot) CopyFrom(src interface{}) {
+
+	o := src.(*Snapshot)
+	m.Version = o.Version
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Membership, &o.Membership)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Store, &o.Store)
 }
 
 func (this *StoreSnapshot) GoString() string {

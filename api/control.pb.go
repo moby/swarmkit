@@ -10,6 +10,8 @@ import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
@@ -825,840 +827,1099 @@ func (m *GetNodeRequest) Copy() *GetNodeRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetNodeRequest{
-		NodeID: m.NodeID,
-	}
-
+	o := &GetNodeRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetNodeRequest) CopyFrom(src interface{}) {
+
+	o := src.(*GetNodeRequest)
+	m.NodeID = o.NodeID
 }
 
 func (m *GetNodeResponse) Copy() *GetNodeResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetNodeResponse{
-		Node: m.Node.Copy(),
-	}
-
+	o := &GetNodeResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetNodeResponse) CopyFrom(src interface{}) {
+
+	o := src.(*GetNodeResponse)
+	if o.Node != nil {
+		m.Node = &Node{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
+	}
 }
 
 func (m *ListNodesRequest) Copy() *ListNodesRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &ListNodesRequest{
-		Filters: m.Filters.Copy(),
-	}
-
+	o := &ListNodesRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *ListNodesRequest) CopyFrom(src interface{}) {
+
+	o := src.(*ListNodesRequest)
+	if o.Filters != nil {
+		m.Filters = &ListNodesRequest_Filters{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
+	}
 }
 
 func (m *ListNodesRequest_Filters) Copy() *ListNodesRequest_Filters {
 	if m == nil {
 		return nil
 	}
-
 	o := &ListNodesRequest_Filters{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Names != nil {
-		o.Names = make([]string, 0, len(m.Names))
-		o.Names = append(o.Names, m.Names...)
+func (m *ListNodesRequest_Filters) CopyFrom(src interface{}) {
+
+	o := src.(*ListNodesRequest_Filters)
+	if o.Names != nil {
+		m.Names = make([]string, len(o.Names))
+		copy(m.Names, o.Names)
 	}
 
-	if m.IDPrefixes != nil {
-		o.IDPrefixes = make([]string, 0, len(m.IDPrefixes))
-		o.IDPrefixes = append(o.IDPrefixes, m.IDPrefixes...)
+	if o.IDPrefixes != nil {
+		m.IDPrefixes = make([]string, len(o.IDPrefixes))
+		copy(m.IDPrefixes, o.IDPrefixes)
 	}
 
-	if m.Labels != nil {
-		o.Labels = make(map[string]string)
-		for k, v := range m.Labels {
-			o.Labels[k] = v
+	if o.Labels != nil {
+		m.Labels = make(map[string]string, len(o.Labels))
+		for k, v := range o.Labels {
+			m.Labels[k] = v
 		}
 	}
 
-	if m.Memberships != nil {
-		o.Memberships = make([]NodeSpec_Membership, 0, len(m.Memberships))
-		o.Memberships = append(o.Memberships, m.Memberships...)
+	if o.Memberships != nil {
+		m.Memberships = make([]NodeSpec_Membership, len(o.Memberships))
+		copy(m.Memberships, o.Memberships)
 	}
 
-	if m.Roles != nil {
-		o.Roles = make([]NodeRole, 0, len(m.Roles))
-		o.Roles = append(o.Roles, m.Roles...)
+	if o.Roles != nil {
+		m.Roles = make([]NodeRole, len(o.Roles))
+		copy(m.Roles, o.Roles)
 	}
 
-	if m.NamePrefixes != nil {
-		o.NamePrefixes = make([]string, 0, len(m.NamePrefixes))
-		o.NamePrefixes = append(o.NamePrefixes, m.NamePrefixes...)
+	if o.NamePrefixes != nil {
+		m.NamePrefixes = make([]string, len(o.NamePrefixes))
+		copy(m.NamePrefixes, o.NamePrefixes)
 	}
 
-	return o
 }
 
 func (m *ListNodesResponse) Copy() *ListNodesResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &ListNodesResponse{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Nodes != nil {
-		o.Nodes = make([]*Node, 0, len(m.Nodes))
-		for _, v := range m.Nodes {
-			o.Nodes = append(o.Nodes, v.Copy())
+func (m *ListNodesResponse) CopyFrom(src interface{}) {
+
+	o := src.(*ListNodesResponse)
+	if o.Nodes != nil {
+		m.Nodes = make([]*Node, len(o.Nodes))
+		for i := range m.Nodes {
+			m.Nodes[i] = &Node{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Nodes[i], o.Nodes[i])
 		}
 	}
 
-	return o
 }
 
 func (m *UpdateNodeRequest) Copy() *UpdateNodeRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &UpdateNodeRequest{
-		NodeID:      m.NodeID,
-		NodeVersion: m.NodeVersion.Copy(),
-		Spec:        m.Spec.Copy(),
-	}
-
+	o := &UpdateNodeRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *UpdateNodeRequest) CopyFrom(src interface{}) {
+
+	o := src.(*UpdateNodeRequest)
+	m.NodeID = o.NodeID
+	if o.NodeVersion != nil {
+		m.NodeVersion = &Version{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.NodeVersion, o.NodeVersion)
+	}
+	if o.Spec != nil {
+		m.Spec = &NodeSpec{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+	}
 }
 
 func (m *UpdateNodeResponse) Copy() *UpdateNodeResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &UpdateNodeResponse{
-		Node: m.Node.Copy(),
-	}
-
+	o := &UpdateNodeResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *UpdateNodeResponse) CopyFrom(src interface{}) {
+
+	o := src.(*UpdateNodeResponse)
+	if o.Node != nil {
+		m.Node = &Node{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
+	}
 }
 
 func (m *RemoveNodeRequest) Copy() *RemoveNodeRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &RemoveNodeRequest{
-		NodeID: m.NodeID,
-		Force:  m.Force,
-	}
-
+	o := &RemoveNodeRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *RemoveNodeRequest) CopyFrom(src interface{}) {
+
+	o := src.(*RemoveNodeRequest)
+	m.NodeID = o.NodeID
+	m.Force = o.Force
 }
 
 func (m *RemoveNodeResponse) Copy() *RemoveNodeResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &RemoveNodeResponse{}
-
+	o.CopyFrom(m)
 	return o
 }
 
+func (m *RemoveNodeResponse) CopyFrom(src interface{}) {}
 func (m *GetTaskRequest) Copy() *GetTaskRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetTaskRequest{
-		TaskID: m.TaskID,
-	}
-
+	o := &GetTaskRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetTaskRequest) CopyFrom(src interface{}) {
+
+	o := src.(*GetTaskRequest)
+	m.TaskID = o.TaskID
 }
 
 func (m *GetTaskResponse) Copy() *GetTaskResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetTaskResponse{
-		Task: m.Task.Copy(),
-	}
-
+	o := &GetTaskResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetTaskResponse) CopyFrom(src interface{}) {
+
+	o := src.(*GetTaskResponse)
+	if o.Task != nil {
+		m.Task = &Task{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Task, o.Task)
+	}
 }
 
 func (m *RemoveTaskRequest) Copy() *RemoveTaskRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &RemoveTaskRequest{
-		TaskID: m.TaskID,
-	}
-
+	o := &RemoveTaskRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *RemoveTaskRequest) CopyFrom(src interface{}) {
+
+	o := src.(*RemoveTaskRequest)
+	m.TaskID = o.TaskID
 }
 
 func (m *RemoveTaskResponse) Copy() *RemoveTaskResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &RemoveTaskResponse{}
-
+	o.CopyFrom(m)
 	return o
 }
 
+func (m *RemoveTaskResponse) CopyFrom(src interface{}) {}
 func (m *ListTasksRequest) Copy() *ListTasksRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &ListTasksRequest{
-		Filters: m.Filters.Copy(),
-	}
-
+	o := &ListTasksRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *ListTasksRequest) CopyFrom(src interface{}) {
+
+	o := src.(*ListTasksRequest)
+	if o.Filters != nil {
+		m.Filters = &ListTasksRequest_Filters{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
+	}
 }
 
 func (m *ListTasksRequest_Filters) Copy() *ListTasksRequest_Filters {
 	if m == nil {
 		return nil
 	}
-
 	o := &ListTasksRequest_Filters{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Names != nil {
-		o.Names = make([]string, 0, len(m.Names))
-		o.Names = append(o.Names, m.Names...)
+func (m *ListTasksRequest_Filters) CopyFrom(src interface{}) {
+
+	o := src.(*ListTasksRequest_Filters)
+	if o.Names != nil {
+		m.Names = make([]string, len(o.Names))
+		copy(m.Names, o.Names)
 	}
 
-	if m.IDPrefixes != nil {
-		o.IDPrefixes = make([]string, 0, len(m.IDPrefixes))
-		o.IDPrefixes = append(o.IDPrefixes, m.IDPrefixes...)
+	if o.IDPrefixes != nil {
+		m.IDPrefixes = make([]string, len(o.IDPrefixes))
+		copy(m.IDPrefixes, o.IDPrefixes)
 	}
 
-	if m.Labels != nil {
-		o.Labels = make(map[string]string)
-		for k, v := range m.Labels {
-			o.Labels[k] = v
+	if o.Labels != nil {
+		m.Labels = make(map[string]string, len(o.Labels))
+		for k, v := range o.Labels {
+			m.Labels[k] = v
 		}
 	}
 
-	if m.ServiceIDs != nil {
-		o.ServiceIDs = make([]string, 0, len(m.ServiceIDs))
-		o.ServiceIDs = append(o.ServiceIDs, m.ServiceIDs...)
+	if o.ServiceIDs != nil {
+		m.ServiceIDs = make([]string, len(o.ServiceIDs))
+		copy(m.ServiceIDs, o.ServiceIDs)
 	}
 
-	if m.NodeIDs != nil {
-		o.NodeIDs = make([]string, 0, len(m.NodeIDs))
-		o.NodeIDs = append(o.NodeIDs, m.NodeIDs...)
+	if o.NodeIDs != nil {
+		m.NodeIDs = make([]string, len(o.NodeIDs))
+		copy(m.NodeIDs, o.NodeIDs)
 	}
 
-	if m.DesiredStates != nil {
-		o.DesiredStates = make([]TaskState, 0, len(m.DesiredStates))
-		o.DesiredStates = append(o.DesiredStates, m.DesiredStates...)
+	if o.DesiredStates != nil {
+		m.DesiredStates = make([]TaskState, len(o.DesiredStates))
+		copy(m.DesiredStates, o.DesiredStates)
 	}
 
-	if m.NamePrefixes != nil {
-		o.NamePrefixes = make([]string, 0, len(m.NamePrefixes))
-		o.NamePrefixes = append(o.NamePrefixes, m.NamePrefixes...)
+	if o.NamePrefixes != nil {
+		m.NamePrefixes = make([]string, len(o.NamePrefixes))
+		copy(m.NamePrefixes, o.NamePrefixes)
 	}
 
-	return o
 }
 
 func (m *ListTasksResponse) Copy() *ListTasksResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &ListTasksResponse{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Tasks != nil {
-		o.Tasks = make([]*Task, 0, len(m.Tasks))
-		for _, v := range m.Tasks {
-			o.Tasks = append(o.Tasks, v.Copy())
+func (m *ListTasksResponse) CopyFrom(src interface{}) {
+
+	o := src.(*ListTasksResponse)
+	if o.Tasks != nil {
+		m.Tasks = make([]*Task, len(o.Tasks))
+		for i := range m.Tasks {
+			m.Tasks[i] = &Task{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Tasks[i], o.Tasks[i])
 		}
 	}
 
-	return o
 }
 
 func (m *CreateServiceRequest) Copy() *CreateServiceRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &CreateServiceRequest{
-		Spec: m.Spec.Copy(),
-	}
-
+	o := &CreateServiceRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *CreateServiceRequest) CopyFrom(src interface{}) {
+
+	o := src.(*CreateServiceRequest)
+	if o.Spec != nil {
+		m.Spec = &ServiceSpec{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+	}
 }
 
 func (m *CreateServiceResponse) Copy() *CreateServiceResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &CreateServiceResponse{
-		Service: m.Service.Copy(),
-	}
-
+	o := &CreateServiceResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *CreateServiceResponse) CopyFrom(src interface{}) {
+
+	o := src.(*CreateServiceResponse)
+	if o.Service != nil {
+		m.Service = &Service{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Service, o.Service)
+	}
 }
 
 func (m *GetServiceRequest) Copy() *GetServiceRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetServiceRequest{
-		ServiceID: m.ServiceID,
-	}
-
+	o := &GetServiceRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetServiceRequest) CopyFrom(src interface{}) {
+
+	o := src.(*GetServiceRequest)
+	m.ServiceID = o.ServiceID
 }
 
 func (m *GetServiceResponse) Copy() *GetServiceResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetServiceResponse{
-		Service: m.Service.Copy(),
-	}
-
+	o := &GetServiceResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetServiceResponse) CopyFrom(src interface{}) {
+
+	o := src.(*GetServiceResponse)
+	if o.Service != nil {
+		m.Service = &Service{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Service, o.Service)
+	}
 }
 
 func (m *UpdateServiceRequest) Copy() *UpdateServiceRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &UpdateServiceRequest{
-		ServiceID:      m.ServiceID,
-		ServiceVersion: m.ServiceVersion.Copy(),
-		Spec:           m.Spec.Copy(),
-	}
-
+	o := &UpdateServiceRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *UpdateServiceRequest) CopyFrom(src interface{}) {
+
+	o := src.(*UpdateServiceRequest)
+	m.ServiceID = o.ServiceID
+	if o.ServiceVersion != nil {
+		m.ServiceVersion = &Version{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.ServiceVersion, o.ServiceVersion)
+	}
+	if o.Spec != nil {
+		m.Spec = &ServiceSpec{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+	}
 }
 
 func (m *UpdateServiceResponse) Copy() *UpdateServiceResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &UpdateServiceResponse{
-		Service: m.Service.Copy(),
-	}
-
+	o := &UpdateServiceResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *UpdateServiceResponse) CopyFrom(src interface{}) {
+
+	o := src.(*UpdateServiceResponse)
+	if o.Service != nil {
+		m.Service = &Service{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Service, o.Service)
+	}
 }
 
 func (m *RemoveServiceRequest) Copy() *RemoveServiceRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &RemoveServiceRequest{
-		ServiceID: m.ServiceID,
-	}
-
+	o := &RemoveServiceRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *RemoveServiceRequest) CopyFrom(src interface{}) {
+
+	o := src.(*RemoveServiceRequest)
+	m.ServiceID = o.ServiceID
 }
 
 func (m *RemoveServiceResponse) Copy() *RemoveServiceResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &RemoveServiceResponse{}
-
+	o.CopyFrom(m)
 	return o
 }
 
+func (m *RemoveServiceResponse) CopyFrom(src interface{}) {}
 func (m *ListServicesRequest) Copy() *ListServicesRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &ListServicesRequest{
-		Filters: m.Filters.Copy(),
-	}
-
+	o := &ListServicesRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *ListServicesRequest) CopyFrom(src interface{}) {
+
+	o := src.(*ListServicesRequest)
+	if o.Filters != nil {
+		m.Filters = &ListServicesRequest_Filters{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
+	}
 }
 
 func (m *ListServicesRequest_Filters) Copy() *ListServicesRequest_Filters {
 	if m == nil {
 		return nil
 	}
-
 	o := &ListServicesRequest_Filters{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Names != nil {
-		o.Names = make([]string, 0, len(m.Names))
-		o.Names = append(o.Names, m.Names...)
+func (m *ListServicesRequest_Filters) CopyFrom(src interface{}) {
+
+	o := src.(*ListServicesRequest_Filters)
+	if o.Names != nil {
+		m.Names = make([]string, len(o.Names))
+		copy(m.Names, o.Names)
 	}
 
-	if m.IDPrefixes != nil {
-		o.IDPrefixes = make([]string, 0, len(m.IDPrefixes))
-		o.IDPrefixes = append(o.IDPrefixes, m.IDPrefixes...)
+	if o.IDPrefixes != nil {
+		m.IDPrefixes = make([]string, len(o.IDPrefixes))
+		copy(m.IDPrefixes, o.IDPrefixes)
 	}
 
-	if m.Labels != nil {
-		o.Labels = make(map[string]string)
-		for k, v := range m.Labels {
-			o.Labels[k] = v
+	if o.Labels != nil {
+		m.Labels = make(map[string]string, len(o.Labels))
+		for k, v := range o.Labels {
+			m.Labels[k] = v
 		}
 	}
 
-	if m.NamePrefixes != nil {
-		o.NamePrefixes = make([]string, 0, len(m.NamePrefixes))
-		o.NamePrefixes = append(o.NamePrefixes, m.NamePrefixes...)
+	if o.NamePrefixes != nil {
+		m.NamePrefixes = make([]string, len(o.NamePrefixes))
+		copy(m.NamePrefixes, o.NamePrefixes)
 	}
 
-	return o
 }
 
 func (m *ListServicesResponse) Copy() *ListServicesResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &ListServicesResponse{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Services != nil {
-		o.Services = make([]*Service, 0, len(m.Services))
-		for _, v := range m.Services {
-			o.Services = append(o.Services, v.Copy())
+func (m *ListServicesResponse) CopyFrom(src interface{}) {
+
+	o := src.(*ListServicesResponse)
+	if o.Services != nil {
+		m.Services = make([]*Service, len(o.Services))
+		for i := range m.Services {
+			m.Services[i] = &Service{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Services[i], o.Services[i])
 		}
 	}
 
-	return o
 }
 
 func (m *CreateNetworkRequest) Copy() *CreateNetworkRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &CreateNetworkRequest{
-		Spec: m.Spec.Copy(),
-	}
-
+	o := &CreateNetworkRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *CreateNetworkRequest) CopyFrom(src interface{}) {
+
+	o := src.(*CreateNetworkRequest)
+	if o.Spec != nil {
+		m.Spec = &NetworkSpec{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+	}
 }
 
 func (m *CreateNetworkResponse) Copy() *CreateNetworkResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &CreateNetworkResponse{
-		Network: m.Network.Copy(),
-	}
-
+	o := &CreateNetworkResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *CreateNetworkResponse) CopyFrom(src interface{}) {
+
+	o := src.(*CreateNetworkResponse)
+	if o.Network != nil {
+		m.Network = &Network{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Network, o.Network)
+	}
 }
 
 func (m *GetNetworkRequest) Copy() *GetNetworkRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetNetworkRequest{
-		Name:      m.Name,
-		NetworkID: m.NetworkID,
-	}
-
+	o := &GetNetworkRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetNetworkRequest) CopyFrom(src interface{}) {
+
+	o := src.(*GetNetworkRequest)
+	m.Name = o.Name
+	m.NetworkID = o.NetworkID
 }
 
 func (m *GetNetworkResponse) Copy() *GetNetworkResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetNetworkResponse{
-		Network: m.Network.Copy(),
-	}
-
+	o := &GetNetworkResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetNetworkResponse) CopyFrom(src interface{}) {
+
+	o := src.(*GetNetworkResponse)
+	if o.Network != nil {
+		m.Network = &Network{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Network, o.Network)
+	}
 }
 
 func (m *RemoveNetworkRequest) Copy() *RemoveNetworkRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &RemoveNetworkRequest{
-		Name:      m.Name,
-		NetworkID: m.NetworkID,
-	}
-
+	o := &RemoveNetworkRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *RemoveNetworkRequest) CopyFrom(src interface{}) {
+
+	o := src.(*RemoveNetworkRequest)
+	m.Name = o.Name
+	m.NetworkID = o.NetworkID
 }
 
 func (m *RemoveNetworkResponse) Copy() *RemoveNetworkResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &RemoveNetworkResponse{}
-
+	o.CopyFrom(m)
 	return o
 }
 
+func (m *RemoveNetworkResponse) CopyFrom(src interface{}) {}
 func (m *ListNetworksRequest) Copy() *ListNetworksRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &ListNetworksRequest{
-		Filters: m.Filters.Copy(),
-	}
-
+	o := &ListNetworksRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *ListNetworksRequest) CopyFrom(src interface{}) {
+
+	o := src.(*ListNetworksRequest)
+	if o.Filters != nil {
+		m.Filters = &ListNetworksRequest_Filters{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
+	}
 }
 
 func (m *ListNetworksRequest_Filters) Copy() *ListNetworksRequest_Filters {
 	if m == nil {
 		return nil
 	}
-
 	o := &ListNetworksRequest_Filters{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Names != nil {
-		o.Names = make([]string, 0, len(m.Names))
-		o.Names = append(o.Names, m.Names...)
+func (m *ListNetworksRequest_Filters) CopyFrom(src interface{}) {
+
+	o := src.(*ListNetworksRequest_Filters)
+	if o.Names != nil {
+		m.Names = make([]string, len(o.Names))
+		copy(m.Names, o.Names)
 	}
 
-	if m.IDPrefixes != nil {
-		o.IDPrefixes = make([]string, 0, len(m.IDPrefixes))
-		o.IDPrefixes = append(o.IDPrefixes, m.IDPrefixes...)
+	if o.IDPrefixes != nil {
+		m.IDPrefixes = make([]string, len(o.IDPrefixes))
+		copy(m.IDPrefixes, o.IDPrefixes)
 	}
 
-	if m.Labels != nil {
-		o.Labels = make(map[string]string)
-		for k, v := range m.Labels {
-			o.Labels[k] = v
+	if o.Labels != nil {
+		m.Labels = make(map[string]string, len(o.Labels))
+		for k, v := range o.Labels {
+			m.Labels[k] = v
 		}
 	}
 
-	if m.NamePrefixes != nil {
-		o.NamePrefixes = make([]string, 0, len(m.NamePrefixes))
-		o.NamePrefixes = append(o.NamePrefixes, m.NamePrefixes...)
+	if o.NamePrefixes != nil {
+		m.NamePrefixes = make([]string, len(o.NamePrefixes))
+		copy(m.NamePrefixes, o.NamePrefixes)
 	}
 
-	return o
 }
 
 func (m *ListNetworksResponse) Copy() *ListNetworksResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &ListNetworksResponse{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Networks != nil {
-		o.Networks = make([]*Network, 0, len(m.Networks))
-		for _, v := range m.Networks {
-			o.Networks = append(o.Networks, v.Copy())
+func (m *ListNetworksResponse) CopyFrom(src interface{}) {
+
+	o := src.(*ListNetworksResponse)
+	if o.Networks != nil {
+		m.Networks = make([]*Network, len(o.Networks))
+		for i := range m.Networks {
+			m.Networks[i] = &Network{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Networks[i], o.Networks[i])
 		}
 	}
 
-	return o
 }
 
 func (m *GetClusterRequest) Copy() *GetClusterRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetClusterRequest{
-		ClusterID: m.ClusterID,
-	}
-
+	o := &GetClusterRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetClusterRequest) CopyFrom(src interface{}) {
+
+	o := src.(*GetClusterRequest)
+	m.ClusterID = o.ClusterID
 }
 
 func (m *GetClusterResponse) Copy() *GetClusterResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetClusterResponse{
-		Cluster: m.Cluster.Copy(),
-	}
-
+	o := &GetClusterResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetClusterResponse) CopyFrom(src interface{}) {
+
+	o := src.(*GetClusterResponse)
+	if o.Cluster != nil {
+		m.Cluster = &Cluster{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Cluster, o.Cluster)
+	}
 }
 
 func (m *ListClustersRequest) Copy() *ListClustersRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &ListClustersRequest{
-		Filters: m.Filters.Copy(),
-	}
-
+	o := &ListClustersRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *ListClustersRequest) CopyFrom(src interface{}) {
+
+	o := src.(*ListClustersRequest)
+	if o.Filters != nil {
+		m.Filters = &ListClustersRequest_Filters{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
+	}
 }
 
 func (m *ListClustersRequest_Filters) Copy() *ListClustersRequest_Filters {
 	if m == nil {
 		return nil
 	}
-
 	o := &ListClustersRequest_Filters{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Names != nil {
-		o.Names = make([]string, 0, len(m.Names))
-		o.Names = append(o.Names, m.Names...)
+func (m *ListClustersRequest_Filters) CopyFrom(src interface{}) {
+
+	o := src.(*ListClustersRequest_Filters)
+	if o.Names != nil {
+		m.Names = make([]string, len(o.Names))
+		copy(m.Names, o.Names)
 	}
 
-	if m.IDPrefixes != nil {
-		o.IDPrefixes = make([]string, 0, len(m.IDPrefixes))
-		o.IDPrefixes = append(o.IDPrefixes, m.IDPrefixes...)
+	if o.IDPrefixes != nil {
+		m.IDPrefixes = make([]string, len(o.IDPrefixes))
+		copy(m.IDPrefixes, o.IDPrefixes)
 	}
 
-	if m.Labels != nil {
-		o.Labels = make(map[string]string)
-		for k, v := range m.Labels {
-			o.Labels[k] = v
+	if o.Labels != nil {
+		m.Labels = make(map[string]string, len(o.Labels))
+		for k, v := range o.Labels {
+			m.Labels[k] = v
 		}
 	}
 
-	if m.NamePrefixes != nil {
-		o.NamePrefixes = make([]string, 0, len(m.NamePrefixes))
-		o.NamePrefixes = append(o.NamePrefixes, m.NamePrefixes...)
+	if o.NamePrefixes != nil {
+		m.NamePrefixes = make([]string, len(o.NamePrefixes))
+		copy(m.NamePrefixes, o.NamePrefixes)
 	}
 
-	return o
 }
 
 func (m *ListClustersResponse) Copy() *ListClustersResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &ListClustersResponse{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Clusters != nil {
-		o.Clusters = make([]*Cluster, 0, len(m.Clusters))
-		for _, v := range m.Clusters {
-			o.Clusters = append(o.Clusters, v.Copy())
+func (m *ListClustersResponse) CopyFrom(src interface{}) {
+
+	o := src.(*ListClustersResponse)
+	if o.Clusters != nil {
+		m.Clusters = make([]*Cluster, len(o.Clusters))
+		for i := range m.Clusters {
+			m.Clusters[i] = &Cluster{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Clusters[i], o.Clusters[i])
 		}
 	}
 
-	return o
 }
 
 func (m *KeyRotation) Copy() *KeyRotation {
 	if m == nil {
 		return nil
 	}
-
-	o := &KeyRotation{
-		WorkerJoinToken:  m.WorkerJoinToken,
-		ManagerJoinToken: m.ManagerJoinToken,
-		ManagerUnlockKey: m.ManagerUnlockKey,
-	}
-
+	o := &KeyRotation{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *KeyRotation) CopyFrom(src interface{}) {
+
+	o := src.(*KeyRotation)
+	m.WorkerJoinToken = o.WorkerJoinToken
+	m.ManagerJoinToken = o.ManagerJoinToken
+	m.ManagerUnlockKey = o.ManagerUnlockKey
 }
 
 func (m *UpdateClusterRequest) Copy() *UpdateClusterRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &UpdateClusterRequest{
-		ClusterID:      m.ClusterID,
-		ClusterVersion: m.ClusterVersion.Copy(),
-		Spec:           m.Spec.Copy(),
-		Rotation:       *m.Rotation.Copy(),
-	}
-
+	o := &UpdateClusterRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *UpdateClusterRequest) CopyFrom(src interface{}) {
+
+	o := src.(*UpdateClusterRequest)
+	m.ClusterID = o.ClusterID
+	if o.ClusterVersion != nil {
+		m.ClusterVersion = &Version{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.ClusterVersion, o.ClusterVersion)
+	}
+	if o.Spec != nil {
+		m.Spec = &ClusterSpec{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+	}
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Rotation, &o.Rotation)
 }
 
 func (m *UpdateClusterResponse) Copy() *UpdateClusterResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &UpdateClusterResponse{
-		Cluster: m.Cluster.Copy(),
-	}
-
+	o := &UpdateClusterResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *UpdateClusterResponse) CopyFrom(src interface{}) {
+
+	o := src.(*UpdateClusterResponse)
+	if o.Cluster != nil {
+		m.Cluster = &Cluster{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Cluster, o.Cluster)
+	}
 }
 
 func (m *GetSecretRequest) Copy() *GetSecretRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetSecretRequest{
-		SecretID: m.SecretID,
-	}
-
+	o := &GetSecretRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetSecretRequest) CopyFrom(src interface{}) {
+
+	o := src.(*GetSecretRequest)
+	m.SecretID = o.SecretID
 }
 
 func (m *GetSecretResponse) Copy() *GetSecretResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetSecretResponse{
-		Secret: m.Secret.Copy(),
-	}
-
+	o := &GetSecretResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetSecretResponse) CopyFrom(src interface{}) {
+
+	o := src.(*GetSecretResponse)
+	if o.Secret != nil {
+		m.Secret = &Secret{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Secret, o.Secret)
+	}
 }
 
 func (m *UpdateSecretRequest) Copy() *UpdateSecretRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &UpdateSecretRequest{
-		SecretID:      m.SecretID,
-		SecretVersion: m.SecretVersion.Copy(),
-		Spec:          m.Spec.Copy(),
-	}
-
+	o := &UpdateSecretRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *UpdateSecretRequest) CopyFrom(src interface{}) {
+
+	o := src.(*UpdateSecretRequest)
+	m.SecretID = o.SecretID
+	if o.SecretVersion != nil {
+		m.SecretVersion = &Version{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.SecretVersion, o.SecretVersion)
+	}
+	if o.Spec != nil {
+		m.Spec = &SecretSpec{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+	}
 }
 
 func (m *UpdateSecretResponse) Copy() *UpdateSecretResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &UpdateSecretResponse{
-		Secret: m.Secret.Copy(),
-	}
-
+	o := &UpdateSecretResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *UpdateSecretResponse) CopyFrom(src interface{}) {
+
+	o := src.(*UpdateSecretResponse)
+	if o.Secret != nil {
+		m.Secret = &Secret{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Secret, o.Secret)
+	}
 }
 
 func (m *ListSecretsRequest) Copy() *ListSecretsRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &ListSecretsRequest{
-		Filters: m.Filters.Copy(),
-	}
-
+	o := &ListSecretsRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *ListSecretsRequest) CopyFrom(src interface{}) {
+
+	o := src.(*ListSecretsRequest)
+	if o.Filters != nil {
+		m.Filters = &ListSecretsRequest_Filters{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
+	}
 }
 
 func (m *ListSecretsRequest_Filters) Copy() *ListSecretsRequest_Filters {
 	if m == nil {
 		return nil
 	}
-
 	o := &ListSecretsRequest_Filters{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Names != nil {
-		o.Names = make([]string, 0, len(m.Names))
-		o.Names = append(o.Names, m.Names...)
+func (m *ListSecretsRequest_Filters) CopyFrom(src interface{}) {
+
+	o := src.(*ListSecretsRequest_Filters)
+	if o.Names != nil {
+		m.Names = make([]string, len(o.Names))
+		copy(m.Names, o.Names)
 	}
 
-	if m.IDPrefixes != nil {
-		o.IDPrefixes = make([]string, 0, len(m.IDPrefixes))
-		o.IDPrefixes = append(o.IDPrefixes, m.IDPrefixes...)
+	if o.IDPrefixes != nil {
+		m.IDPrefixes = make([]string, len(o.IDPrefixes))
+		copy(m.IDPrefixes, o.IDPrefixes)
 	}
 
-	if m.Labels != nil {
-		o.Labels = make(map[string]string)
-		for k, v := range m.Labels {
-			o.Labels[k] = v
+	if o.Labels != nil {
+		m.Labels = make(map[string]string, len(o.Labels))
+		for k, v := range o.Labels {
+			m.Labels[k] = v
 		}
 	}
 
-	if m.NamePrefixes != nil {
-		o.NamePrefixes = make([]string, 0, len(m.NamePrefixes))
-		o.NamePrefixes = append(o.NamePrefixes, m.NamePrefixes...)
+	if o.NamePrefixes != nil {
+		m.NamePrefixes = make([]string, len(o.NamePrefixes))
+		copy(m.NamePrefixes, o.NamePrefixes)
 	}
 
-	return o
 }
 
 func (m *ListSecretsResponse) Copy() *ListSecretsResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &ListSecretsResponse{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Secrets != nil {
-		o.Secrets = make([]*Secret, 0, len(m.Secrets))
-		for _, v := range m.Secrets {
-			o.Secrets = append(o.Secrets, v.Copy())
+func (m *ListSecretsResponse) CopyFrom(src interface{}) {
+
+	o := src.(*ListSecretsResponse)
+	if o.Secrets != nil {
+		m.Secrets = make([]*Secret, len(o.Secrets))
+		for i := range m.Secrets {
+			m.Secrets[i] = &Secret{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Secrets[i], o.Secrets[i])
 		}
 	}
 
-	return o
 }
 
 func (m *CreateSecretRequest) Copy() *CreateSecretRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &CreateSecretRequest{
-		Spec: m.Spec.Copy(),
-	}
-
+	o := &CreateSecretRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *CreateSecretRequest) CopyFrom(src interface{}) {
+
+	o := src.(*CreateSecretRequest)
+	if o.Spec != nil {
+		m.Spec = &SecretSpec{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+	}
 }
 
 func (m *CreateSecretResponse) Copy() *CreateSecretResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &CreateSecretResponse{
-		Secret: m.Secret.Copy(),
-	}
-
+	o := &CreateSecretResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *CreateSecretResponse) CopyFrom(src interface{}) {
+
+	o := src.(*CreateSecretResponse)
+	if o.Secret != nil {
+		m.Secret = &Secret{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Secret, o.Secret)
+	}
 }
 
 func (m *RemoveSecretRequest) Copy() *RemoveSecretRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &RemoveSecretRequest{
-		SecretID: m.SecretID,
-	}
-
+	o := &RemoveSecretRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *RemoveSecretRequest) CopyFrom(src interface{}) {
+
+	o := src.(*RemoveSecretRequest)
+	m.SecretID = o.SecretID
 }
 
 func (m *RemoveSecretResponse) Copy() *RemoveSecretResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &RemoveSecretResponse{}
-
+	o.CopyFrom(m)
 	return o
 }
+
+func (m *RemoveSecretResponse) CopyFrom(src interface{}) {}
 
 func (this *GetNodeRequest) GoString() string {
 	if this == nil {

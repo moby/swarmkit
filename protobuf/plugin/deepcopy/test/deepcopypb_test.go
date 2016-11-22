@@ -781,7 +781,14 @@ func TestBasicScalarCopy(t *testing.T) {
 	if &in.Field15 == &out.Field15 {
 		t.Fatalf("Field15: %#v == %#v", &in.Field15, &out.Field15)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestRepeatedScalarCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedRepeatedScalar(popr, true)
@@ -834,7 +841,14 @@ func TestRepeatedScalarCopy(t *testing.T) {
 	if &in.Field15 == &out.Field15 {
 		t.Fatalf("Field15: %#v == %#v", &in.Field15, &out.Field15)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestRepeatedScalarPackedCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedRepeatedScalarPacked(popr, true)
@@ -881,7 +895,14 @@ func TestRepeatedScalarPackedCopy(t *testing.T) {
 	if &in.Field13 == &out.Field13 {
 		t.Fatalf("Field13: %#v == %#v", &in.Field13, &out.Field13)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestExternalStructCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedExternalStruct(popr, true)
@@ -898,7 +919,14 @@ func TestExternalStructCopy(t *testing.T) {
 	if &in.Field3 == &out.Field3 {
 		t.Fatalf("Field3: %#v == %#v", &in.Field3, &out.Field3)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestRepeatedExternalStructCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedRepeatedExternalStruct(popr, true)
@@ -915,7 +943,14 @@ func TestRepeatedExternalStructCopy(t *testing.T) {
 	if &in.Field3 == &out.Field3 {
 		t.Fatalf("Field3: %#v == %#v", &in.Field3, &out.Field3)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestNonNullableExternalStructCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedNonNullableExternalStruct(popr, true)
@@ -932,7 +967,14 @@ func TestNonNullableExternalStructCopy(t *testing.T) {
 	if &in.Field3 == &out.Field3 {
 		t.Fatalf("Field3: %#v == %#v", &in.Field3, &out.Field3)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestRepeatedNonNullableExternalStructCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedRepeatedNonNullableExternalStruct(popr, true)
@@ -949,7 +991,14 @@ func TestRepeatedNonNullableExternalStructCopy(t *testing.T) {
 	if &in.Field3 == &out.Field3 {
 		t.Fatalf("Field3: %#v == %#v", &in.Field3, &out.Field3)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestMapStructCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedMapStruct(popr, true)
@@ -963,7 +1012,14 @@ func TestMapStructCopy(t *testing.T) {
 	if &in.NonnullableMap == &out.NonnullableMap {
 		t.Fatalf("NonnullableMap: %#v == %#v", &in.NonnullableMap, &out.NonnullableMap)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestOneOfCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedOneOf(popr, true)
@@ -1003,6 +1059,12 @@ func TestOneOfCopy(t *testing.T) {
 	}
 	if &in.FieldsTwo == &out.FieldsTwo {
 		t.Fatalf("FieldsTwo: %#v == %#v", &in.FieldsTwo, &out.FieldsTwo)
+	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
 	}
 }
 func TestBasicScalarStringer(t *testing.T) {

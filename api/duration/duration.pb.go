@@ -102,13 +102,16 @@ func (m *Duration) Copy() *Duration {
 	if m == nil {
 		return nil
 	}
-
-	o := &Duration{
-		Seconds: m.Seconds,
-		Nanos:   m.Nanos,
-	}
-
+	o := &Duration{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *Duration) CopyFrom(src interface{}) {
+
+	o := src.(*Duration)
+	m.Seconds = o.Seconds
+	m.Nanos = o.Nanos
 }
 
 func (this *Duration) GoString() string {

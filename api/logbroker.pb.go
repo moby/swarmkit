@@ -11,6 +11,8 @@ import _ "github.com/gogo/protobuf/gogoproto"
 import docker_swarmkit_v1 "github.com/docker/swarmkit/api/timestamp"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
@@ -268,158 +270,203 @@ func (m *LogSubscriptionOptions) Copy() *LogSubscriptionOptions {
 	if m == nil {
 		return nil
 	}
-
-	o := &LogSubscriptionOptions{
-		Follow: m.Follow,
-		Tail:   m.Tail,
-		Since:  m.Since.Copy(),
-	}
-
-	if m.Streams != nil {
-		o.Streams = make([]LogStream, 0, len(m.Streams))
-		o.Streams = append(o.Streams, m.Streams...)
-	}
-
+	o := &LogSubscriptionOptions{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *LogSubscriptionOptions) CopyFrom(src interface{}) {
+
+	o := src.(*LogSubscriptionOptions)
+	if o.Streams != nil {
+		m.Streams = make([]LogStream, len(o.Streams))
+		copy(m.Streams, o.Streams)
+	}
+
+	m.Follow = o.Follow
+	m.Tail = o.Tail
+	if o.Since != nil {
+		m.Since = &docker_swarmkit_v1.Timestamp{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Since, o.Since)
+	}
 }
 
 func (m *LogSelector) Copy() *LogSelector {
 	if m == nil {
 		return nil
 	}
-
 	o := &LogSelector{}
-
-	if m.ServiceIDs != nil {
-		o.ServiceIDs = make([]string, 0, len(m.ServiceIDs))
-		o.ServiceIDs = append(o.ServiceIDs, m.ServiceIDs...)
-	}
-
-	if m.NodeIDs != nil {
-		o.NodeIDs = make([]string, 0, len(m.NodeIDs))
-		o.NodeIDs = append(o.NodeIDs, m.NodeIDs...)
-	}
-
-	if m.TaskIDs != nil {
-		o.TaskIDs = make([]string, 0, len(m.TaskIDs))
-		o.TaskIDs = append(o.TaskIDs, m.TaskIDs...)
-	}
-
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *LogSelector) CopyFrom(src interface{}) {
+
+	o := src.(*LogSelector)
+	if o.ServiceIDs != nil {
+		m.ServiceIDs = make([]string, len(o.ServiceIDs))
+		copy(m.ServiceIDs, o.ServiceIDs)
+	}
+
+	if o.NodeIDs != nil {
+		m.NodeIDs = make([]string, len(o.NodeIDs))
+		copy(m.NodeIDs, o.NodeIDs)
+	}
+
+	if o.TaskIDs != nil {
+		m.TaskIDs = make([]string, len(o.TaskIDs))
+		copy(m.TaskIDs, o.TaskIDs)
+	}
+
 }
 
 func (m *LogContext) Copy() *LogContext {
 	if m == nil {
 		return nil
 	}
-
-	o := &LogContext{
-		ServiceID: m.ServiceID,
-		NodeID:    m.NodeID,
-		TaskID:    m.TaskID,
-	}
-
+	o := &LogContext{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *LogContext) CopyFrom(src interface{}) {
+
+	o := src.(*LogContext)
+	m.ServiceID = o.ServiceID
+	m.NodeID = o.NodeID
+	m.TaskID = o.TaskID
 }
 
 func (m *LogMessage) Copy() *LogMessage {
 	if m == nil {
 		return nil
 	}
-
-	o := &LogMessage{
-		Context:   *m.Context.Copy(),
-		Timestamp: m.Timestamp.Copy(),
-		Stream:    m.Stream,
-		Data:      m.Data,
-	}
-
+	o := &LogMessage{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *LogMessage) CopyFrom(src interface{}) {
+
+	o := src.(*LogMessage)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Context, &o.Context)
+	if o.Timestamp != nil {
+		m.Timestamp = &docker_swarmkit_v1.Timestamp{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Timestamp, o.Timestamp)
+	}
+	m.Stream = o.Stream
+	m.Data = o.Data
 }
 
 func (m *SubscribeLogsRequest) Copy() *SubscribeLogsRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &SubscribeLogsRequest{
-		Selector: m.Selector.Copy(),
-		Options:  m.Options.Copy(),
-	}
-
+	o := &SubscribeLogsRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *SubscribeLogsRequest) CopyFrom(src interface{}) {
+
+	o := src.(*SubscribeLogsRequest)
+	if o.Selector != nil {
+		m.Selector = &LogSelector{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Selector, o.Selector)
+	}
+	if o.Options != nil {
+		m.Options = &LogSubscriptionOptions{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Options, o.Options)
+	}
 }
 
 func (m *SubscribeLogsMessage) Copy() *SubscribeLogsMessage {
 	if m == nil {
 		return nil
 	}
-
 	o := &SubscribeLogsMessage{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Messages != nil {
-		o.Messages = make([]LogMessage, 0, len(m.Messages))
-		for _, v := range m.Messages {
-			o.Messages = append(o.Messages, *v.Copy())
+func (m *SubscribeLogsMessage) CopyFrom(src interface{}) {
+
+	o := src.(*SubscribeLogsMessage)
+	if o.Messages != nil {
+		m.Messages = make([]LogMessage, len(o.Messages))
+		for i := range m.Messages {
+			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Messages[i], &o.Messages[i])
 		}
 	}
 
-	return o
 }
 
 func (m *ListenSubscriptionsRequest) Copy() *ListenSubscriptionsRequest {
 	if m == nil {
 		return nil
 	}
-
 	o := &ListenSubscriptionsRequest{}
-
+	o.CopyFrom(m)
 	return o
 }
 
+func (m *ListenSubscriptionsRequest) CopyFrom(src interface{}) {}
 func (m *SubscriptionMessage) Copy() *SubscriptionMessage {
 	if m == nil {
 		return nil
 	}
-
-	o := &SubscriptionMessage{
-		ID:       m.ID,
-		Selector: m.Selector.Copy(),
-		Options:  m.Options.Copy(),
-		Close:    m.Close,
-	}
-
+	o := &SubscriptionMessage{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *SubscriptionMessage) CopyFrom(src interface{}) {
+
+	o := src.(*SubscriptionMessage)
+	m.ID = o.ID
+	if o.Selector != nil {
+		m.Selector = &LogSelector{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Selector, o.Selector)
+	}
+	if o.Options != nil {
+		m.Options = &LogSubscriptionOptions{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Options, o.Options)
+	}
+	m.Close = o.Close
 }
 
 func (m *PublishLogsMessage) Copy() *PublishLogsMessage {
 	if m == nil {
 		return nil
 	}
+	o := &PublishLogsMessage{}
+	o.CopyFrom(m)
+	return o
+}
 
-	o := &PublishLogsMessage{
-		SubscriptionID: m.SubscriptionID,
-	}
+func (m *PublishLogsMessage) CopyFrom(src interface{}) {
 
-	if m.Messages != nil {
-		o.Messages = make([]LogMessage, 0, len(m.Messages))
-		for _, v := range m.Messages {
-			o.Messages = append(o.Messages, *v.Copy())
+	o := src.(*PublishLogsMessage)
+	m.SubscriptionID = o.SubscriptionID
+	if o.Messages != nil {
+		m.Messages = make([]LogMessage, len(o.Messages))
+		for i := range m.Messages {
+			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Messages[i], &o.Messages[i])
 		}
 	}
 
-	return o
 }
 
 func (m *PublishLogsResponse) Copy() *PublishLogsResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &PublishLogsResponse{}
-
+	o.CopyFrom(m)
 	return o
 }
+
+func (m *PublishLogsResponse) CopyFrom(src interface{}) {}
 
 func (this *LogSubscriptionOptions) GoString() string {
 	if this == nil {

@@ -11,6 +11,8 @@ import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 import docker_swarmkit_v11 "github.com/docker/swarmkit/api/duration"
 
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
@@ -462,206 +464,263 @@ func (m *SessionRequest) Copy() *SessionRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &SessionRequest{
-		Description: m.Description.Copy(),
-		SessionID:   m.SessionID,
-	}
-
+	o := &SessionRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *SessionRequest) CopyFrom(src interface{}) {
+
+	o := src.(*SessionRequest)
+	if o.Description != nil {
+		m.Description = &NodeDescription{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Description, o.Description)
+	}
+	m.SessionID = o.SessionID
 }
 
 func (m *SessionMessage) Copy() *SessionMessage {
 	if m == nil {
 		return nil
 	}
-
-	o := &SessionMessage{
-		SessionID: m.SessionID,
-		Node:      m.Node.Copy(),
-	}
-
-	if m.Managers != nil {
-		o.Managers = make([]*WeightedPeer, 0, len(m.Managers))
-		for _, v := range m.Managers {
-			o.Managers = append(o.Managers, v.Copy())
-		}
-	}
-
-	if m.NetworkBootstrapKeys != nil {
-		o.NetworkBootstrapKeys = make([]*EncryptionKey, 0, len(m.NetworkBootstrapKeys))
-		for _, v := range m.NetworkBootstrapKeys {
-			o.NetworkBootstrapKeys = append(o.NetworkBootstrapKeys, v.Copy())
-		}
-	}
-
+	o := &SessionMessage{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *SessionMessage) CopyFrom(src interface{}) {
+
+	o := src.(*SessionMessage)
+	m.SessionID = o.SessionID
+	if o.Node != nil {
+		m.Node = &Node{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
+	}
+	if o.Managers != nil {
+		m.Managers = make([]*WeightedPeer, len(o.Managers))
+		for i := range m.Managers {
+			m.Managers[i] = &WeightedPeer{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Managers[i], o.Managers[i])
+		}
+	}
+
+	if o.NetworkBootstrapKeys != nil {
+		m.NetworkBootstrapKeys = make([]*EncryptionKey, len(o.NetworkBootstrapKeys))
+		for i := range m.NetworkBootstrapKeys {
+			m.NetworkBootstrapKeys[i] = &EncryptionKey{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.NetworkBootstrapKeys[i], o.NetworkBootstrapKeys[i])
+		}
+	}
+
 }
 
 func (m *HeartbeatRequest) Copy() *HeartbeatRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &HeartbeatRequest{
-		SessionID: m.SessionID,
-	}
-
+	o := &HeartbeatRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *HeartbeatRequest) CopyFrom(src interface{}) {
+
+	o := src.(*HeartbeatRequest)
+	m.SessionID = o.SessionID
 }
 
 func (m *HeartbeatResponse) Copy() *HeartbeatResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &HeartbeatResponse{
-		Period: *m.Period.Copy(),
-	}
-
+	o := &HeartbeatResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *HeartbeatResponse) CopyFrom(src interface{}) {
+
+	o := src.(*HeartbeatResponse)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Period, &o.Period)
 }
 
 func (m *UpdateTaskStatusRequest) Copy() *UpdateTaskStatusRequest {
 	if m == nil {
 		return nil
 	}
+	o := &UpdateTaskStatusRequest{}
+	o.CopyFrom(m)
+	return o
+}
 
-	o := &UpdateTaskStatusRequest{
-		SessionID: m.SessionID,
-	}
+func (m *UpdateTaskStatusRequest) CopyFrom(src interface{}) {
 
-	if m.Updates != nil {
-		o.Updates = make([]*UpdateTaskStatusRequest_TaskStatusUpdate, 0, len(m.Updates))
-		for _, v := range m.Updates {
-			o.Updates = append(o.Updates, v.Copy())
+	o := src.(*UpdateTaskStatusRequest)
+	m.SessionID = o.SessionID
+	if o.Updates != nil {
+		m.Updates = make([]*UpdateTaskStatusRequest_TaskStatusUpdate, len(o.Updates))
+		for i := range m.Updates {
+			m.Updates[i] = &UpdateTaskStatusRequest_TaskStatusUpdate{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Updates[i], o.Updates[i])
 		}
 	}
 
-	return o
 }
 
 func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Copy() *UpdateTaskStatusRequest_TaskStatusUpdate {
 	if m == nil {
 		return nil
 	}
-
-	o := &UpdateTaskStatusRequest_TaskStatusUpdate{
-		TaskID: m.TaskID,
-		Status: m.Status.Copy(),
-	}
-
+	o := &UpdateTaskStatusRequest_TaskStatusUpdate{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) CopyFrom(src interface{}) {
+
+	o := src.(*UpdateTaskStatusRequest_TaskStatusUpdate)
+	m.TaskID = o.TaskID
+	if o.Status != nil {
+		m.Status = &TaskStatus{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Status, o.Status)
+	}
 }
 
 func (m *UpdateTaskStatusResponse) Copy() *UpdateTaskStatusResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &UpdateTaskStatusResponse{}
-
+	o.CopyFrom(m)
 	return o
 }
 
+func (m *UpdateTaskStatusResponse) CopyFrom(src interface{}) {}
 func (m *TasksRequest) Copy() *TasksRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &TasksRequest{
-		SessionID: m.SessionID,
-	}
-
+	o := &TasksRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *TasksRequest) CopyFrom(src interface{}) {
+
+	o := src.(*TasksRequest)
+	m.SessionID = o.SessionID
 }
 
 func (m *TasksMessage) Copy() *TasksMessage {
 	if m == nil {
 		return nil
 	}
-
 	o := &TasksMessage{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Tasks != nil {
-		o.Tasks = make([]*Task, 0, len(m.Tasks))
-		for _, v := range m.Tasks {
-			o.Tasks = append(o.Tasks, v.Copy())
+func (m *TasksMessage) CopyFrom(src interface{}) {
+
+	o := src.(*TasksMessage)
+	if o.Tasks != nil {
+		m.Tasks = make([]*Task, len(o.Tasks))
+		for i := range m.Tasks {
+			m.Tasks[i] = &Task{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Tasks[i], o.Tasks[i])
 		}
 	}
 
-	return o
 }
 
 func (m *AssignmentsRequest) Copy() *AssignmentsRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &AssignmentsRequest{
-		SessionID: m.SessionID,
-	}
-
+	o := &AssignmentsRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *AssignmentsRequest) CopyFrom(src interface{}) {
+
+	o := src.(*AssignmentsRequest)
+	m.SessionID = o.SessionID
 }
 
 func (m *Assignment) Copy() *Assignment {
 	if m == nil {
 		return nil
 	}
-
 	o := &Assignment{}
+	o.CopyFrom(m)
+	return o
+}
 
-	switch m.Item.(type) {
-	case *Assignment_Task:
-		i := &Assignment_Task{
-			Task: m.GetTask().Copy(),
+func (m *Assignment) CopyFrom(src interface{}) {
+
+	o := src.(*Assignment)
+	if o.Item != nil {
+		switch o.Item.(type) {
+		case *Assignment_Task:
+			v := Assignment_Task{
+				Task: &Task{},
+			}
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Task, o.GetTask())
+			m.Item = &v
+		case *Assignment_Secret:
+			v := Assignment_Secret{
+				Secret: &Secret{},
+			}
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Secret, o.GetSecret())
+			m.Item = &v
 		}
-
-		o.Item = i
-	case *Assignment_Secret:
-		i := &Assignment_Secret{
-			Secret: m.GetSecret().Copy(),
-		}
-
-		o.Item = i
 	}
 
-	return o
 }
 
 func (m *AssignmentChange) Copy() *AssignmentChange {
 	if m == nil {
 		return nil
 	}
-
-	o := &AssignmentChange{
-		Assignment: m.Assignment.Copy(),
-		Action:     m.Action,
-	}
-
+	o := &AssignmentChange{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *AssignmentChange) CopyFrom(src interface{}) {
+
+	o := src.(*AssignmentChange)
+	if o.Assignment != nil {
+		m.Assignment = &Assignment{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Assignment, o.Assignment)
+	}
+	m.Action = o.Action
 }
 
 func (m *AssignmentsMessage) Copy() *AssignmentsMessage {
 	if m == nil {
 		return nil
 	}
+	o := &AssignmentsMessage{}
+	o.CopyFrom(m)
+	return o
+}
 
-	o := &AssignmentsMessage{
-		Type:      m.Type,
-		AppliesTo: m.AppliesTo,
-		ResultsIn: m.ResultsIn,
-	}
+func (m *AssignmentsMessage) CopyFrom(src interface{}) {
 
-	if m.Changes != nil {
-		o.Changes = make([]*AssignmentChange, 0, len(m.Changes))
-		for _, v := range m.Changes {
-			o.Changes = append(o.Changes, v.Copy())
+	o := src.(*AssignmentsMessage)
+	m.Type = o.Type
+	m.AppliesTo = o.AppliesTo
+	m.ResultsIn = o.ResultsIn
+	if o.Changes != nil {
+		m.Changes = make([]*AssignmentChange, len(o.Changes))
+		for i := range m.Changes {
+			m.Changes[i] = &AssignmentChange{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Changes[i], o.Changes[i])
 		}
 	}
 
-	return o
 }
 
 func (this *SessionRequest) GoString() string {
