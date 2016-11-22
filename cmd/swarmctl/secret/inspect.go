@@ -24,8 +24,6 @@ func printSecretSummary(secret *api.Secret) {
 			fmt.Fprintf(w, "  %s\t: %s\n", k, v)
 		}
 	}
-	common.FprintfIfNotEmpty(w, "Digest\t: %s\n", secret.Digest)
-	common.FprintfIfNotEmpty(w, "Size\t: %d\n", secret.SecretSize)
 
 	common.FprintfIfNotEmpty(w, "Created\t: %s\n", ptypes.TimestampString(secret.Meta.CreatedAt))
 }

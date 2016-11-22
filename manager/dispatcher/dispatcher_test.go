@@ -1017,8 +1017,7 @@ func makeTasksAndSecrets(t *testing.T, nodeID string) ([]*api.Secret, []*api.Tas
 	var tasks []*api.Task
 	for i := 0; i <= len(taskStatesInOrder); i++ {
 		secrets = append(secrets, &api.Secret{
-			ID:     fmt.Sprintf("IDsecret%d", i),
-			Digest: fmt.Sprintf("abc%d", i),
+			ID: fmt.Sprintf("IDsecret%d", i),
 			Spec: api.SecretSpec{
 				Annotations: api.Annotations{
 					Name: fmt.Sprintf("secret%d", i),

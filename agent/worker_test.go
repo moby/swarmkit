@@ -289,7 +289,7 @@ func TestWorkerUpdate(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Secret{
-							Secret: &api.Secret{ID: "secret-2", Digest: "abc"},
+							Secret: &api.Secret{ID: "secret-2"},
 						},
 					},
 					Action: api.AssignmentChange_AssignmentActionUpdate,
@@ -300,7 +300,7 @@ func TestWorkerUpdate(t *testing.T) {
 				{ID: "task-2"},
 			},
 			expectedSecrets: []*api.Secret{
-				{ID: "secret-2", Digest: "abc"},
+				{ID: "secret-2"},
 			},
 			expectedAssigned: []*api.Task{
 				{ID: "task-2"},

@@ -63,18 +63,16 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				common.PrintHeader(w, "ID", "Name", "Created", "Digest", "Size")
+				common.PrintHeader(w, "ID", "Name", "Created")
 				output = func(s *api.Secret) {
 					created, err := ptypes.Timestamp(s.Meta.CreatedAt)
 					if err != nil {
 						panic(err)
 					}
-					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\n",
+					fmt.Fprintf(w, "%s\t%s\t%s\n",
 						s.ID,
 						s.Spec.Annotations.Name,
 						humanize.Time(created),
-						s.Digest,
-						s.SecretSize,
 					)
 				}
 
