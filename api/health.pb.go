@@ -106,24 +106,30 @@ func (m *HealthCheckRequest) Copy() *HealthCheckRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &HealthCheckRequest{
-		Service: m.Service,
-	}
-
+	o := &HealthCheckRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *HealthCheckRequest) CopyFrom(src interface{}) {
+
+	o := src.(*HealthCheckRequest)
+	m.Service = o.Service
 }
 
 func (m *HealthCheckResponse) Copy() *HealthCheckResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &HealthCheckResponse{
-		Status: m.Status,
-	}
-
+	o := &HealthCheckResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *HealthCheckResponse) CopyFrom(src interface{}) {
+
+	o := src.(*HealthCheckResponse)
+	m.Status = o.Status
 }
 
 func (this *HealthCheckRequest) GoString() string {

@@ -10,6 +10,8 @@ import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
@@ -169,98 +171,122 @@ func (m *NodeCertificateStatusRequest) Copy() *NodeCertificateStatusRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &NodeCertificateStatusRequest{
-		NodeID: m.NodeID,
-	}
-
+	o := &NodeCertificateStatusRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *NodeCertificateStatusRequest) CopyFrom(src interface{}) {
+
+	o := src.(*NodeCertificateStatusRequest)
+	m.NodeID = o.NodeID
 }
 
 func (m *NodeCertificateStatusResponse) Copy() *NodeCertificateStatusResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &NodeCertificateStatusResponse{
-		Status:      m.Status.Copy(),
-		Certificate: m.Certificate.Copy(),
-	}
-
+	o := &NodeCertificateStatusResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *NodeCertificateStatusResponse) CopyFrom(src interface{}) {
+
+	o := src.(*NodeCertificateStatusResponse)
+	if o.Status != nil {
+		m.Status = &IssuanceStatus{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Status, o.Status)
+	}
+	if o.Certificate != nil {
+		m.Certificate = &Certificate{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Certificate, o.Certificate)
+	}
 }
 
 func (m *IssueNodeCertificateRequest) Copy() *IssueNodeCertificateRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &IssueNodeCertificateRequest{
-		Role:         m.Role,
-		CSR:          m.CSR,
-		Token:        m.Token,
-		Availability: m.Availability,
-	}
-
+	o := &IssueNodeCertificateRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *IssueNodeCertificateRequest) CopyFrom(src interface{}) {
+
+	o := src.(*IssueNodeCertificateRequest)
+	m.Role = o.Role
+	m.CSR = o.CSR
+	m.Token = o.Token
+	m.Availability = o.Availability
 }
 
 func (m *IssueNodeCertificateResponse) Copy() *IssueNodeCertificateResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &IssueNodeCertificateResponse{
-		NodeID:         m.NodeID,
-		NodeMembership: m.NodeMembership,
-	}
-
+	o := &IssueNodeCertificateResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *IssueNodeCertificateResponse) CopyFrom(src interface{}) {
+
+	o := src.(*IssueNodeCertificateResponse)
+	m.NodeID = o.NodeID
+	m.NodeMembership = o.NodeMembership
 }
 
 func (m *GetRootCACertificateRequest) Copy() *GetRootCACertificateRequest {
 	if m == nil {
 		return nil
 	}
-
 	o := &GetRootCACertificateRequest{}
-
+	o.CopyFrom(m)
 	return o
 }
 
+func (m *GetRootCACertificateRequest) CopyFrom(src interface{}) {}
 func (m *GetRootCACertificateResponse) Copy() *GetRootCACertificateResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetRootCACertificateResponse{
-		Certificate: m.Certificate,
-	}
-
+	o := &GetRootCACertificateResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetRootCACertificateResponse) CopyFrom(src interface{}) {
+
+	o := src.(*GetRootCACertificateResponse)
+	m.Certificate = o.Certificate
 }
 
 func (m *GetUnlockKeyRequest) Copy() *GetUnlockKeyRequest {
 	if m == nil {
 		return nil
 	}
-
 	o := &GetUnlockKeyRequest{}
-
+	o.CopyFrom(m)
 	return o
 }
 
+func (m *GetUnlockKeyRequest) CopyFrom(src interface{}) {}
 func (m *GetUnlockKeyResponse) Copy() *GetUnlockKeyResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetUnlockKeyResponse{
-		UnlockKey: m.UnlockKey,
-		Version:   *m.Version.Copy(),
-	}
-
+	o := &GetUnlockKeyResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetUnlockKeyResponse) CopyFrom(src interface{}) {
+
+	o := src.(*GetUnlockKeyResponse)
+	m.UnlockKey = o.UnlockKey
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Version, &o.Version)
 }
 
 func (this *NodeCertificateStatusRequest) GoString() string {

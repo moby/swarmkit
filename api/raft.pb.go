@@ -12,6 +12,8 @@ import raftpb "github.com/coreos/etcd/raft/raftpb"
 // skipping weak import gogoproto "github.com/gogo/protobuf/gogoproto"
 // skipping weak import docker_protobuf_plugin "github.com/docker/swarmkit/protobuf/plugin"
 
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
@@ -487,177 +489,208 @@ func (m *RaftMember) Copy() *RaftMember {
 	if m == nil {
 		return nil
 	}
-
-	o := &RaftMember{
-		RaftID: m.RaftID,
-		NodeID: m.NodeID,
-		Addr:   m.Addr,
-		Status: *m.Status.Copy(),
-	}
-
+	o := &RaftMember{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *RaftMember) CopyFrom(src interface{}) {
+
+	o := src.(*RaftMember)
+	m.RaftID = o.RaftID
+	m.NodeID = o.NodeID
+	m.Addr = o.Addr
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Status, &o.Status)
 }
 
 func (m *JoinRequest) Copy() *JoinRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &JoinRequest{
-		Addr: m.Addr,
-	}
-
+	o := &JoinRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *JoinRequest) CopyFrom(src interface{}) {
+
+	o := src.(*JoinRequest)
+	m.Addr = o.Addr
 }
 
 func (m *JoinResponse) Copy() *JoinResponse {
 	if m == nil {
 		return nil
 	}
+	o := &JoinResponse{}
+	o.CopyFrom(m)
+	return o
+}
 
-	o := &JoinResponse{
-		RaftID: m.RaftID,
-	}
+func (m *JoinResponse) CopyFrom(src interface{}) {
 
-	if m.Members != nil {
-		o.Members = make([]*RaftMember, 0, len(m.Members))
-		for _, v := range m.Members {
-			o.Members = append(o.Members, v.Copy())
+	o := src.(*JoinResponse)
+	m.RaftID = o.RaftID
+	if o.Members != nil {
+		m.Members = make([]*RaftMember, len(o.Members))
+		for i := range m.Members {
+			m.Members[i] = &RaftMember{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Members[i], o.Members[i])
 		}
 	}
 
-	if m.RemovedMembers != nil {
-		o.RemovedMembers = make([]uint64, 0, len(m.RemovedMembers))
-		o.RemovedMembers = append(o.RemovedMembers, m.RemovedMembers...)
+	if o.RemovedMembers != nil {
+		m.RemovedMembers = make([]uint64, len(o.RemovedMembers))
+		copy(m.RemovedMembers, o.RemovedMembers)
 	}
 
-	return o
 }
 
 func (m *LeaveRequest) Copy() *LeaveRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &LeaveRequest{
-		Node: m.Node.Copy(),
-	}
-
+	o := &LeaveRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *LeaveRequest) CopyFrom(src interface{}) {
+
+	o := src.(*LeaveRequest)
+	if o.Node != nil {
+		m.Node = &RaftMember{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
+	}
 }
 
 func (m *LeaveResponse) Copy() *LeaveResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &LeaveResponse{}
-
+	o.CopyFrom(m)
 	return o
 }
 
+func (m *LeaveResponse) CopyFrom(src interface{}) {}
 func (m *ProcessRaftMessageResponse) Copy() *ProcessRaftMessageResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &ProcessRaftMessageResponse{}
-
+	o.CopyFrom(m)
 	return o
 }
 
+func (m *ProcessRaftMessageResponse) CopyFrom(src interface{}) {}
 func (m *ResolveAddressRequest) Copy() *ResolveAddressRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &ResolveAddressRequest{
-		RaftID: m.RaftID,
-	}
-
+	o := &ResolveAddressRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *ResolveAddressRequest) CopyFrom(src interface{}) {
+
+	o := src.(*ResolveAddressRequest)
+	m.RaftID = o.RaftID
 }
 
 func (m *ResolveAddressResponse) Copy() *ResolveAddressResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &ResolveAddressResponse{
-		Addr: m.Addr,
-	}
-
+	o := &ResolveAddressResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *ResolveAddressResponse) CopyFrom(src interface{}) {
+
+	o := src.(*ResolveAddressResponse)
+	m.Addr = o.Addr
 }
 
 func (m *InternalRaftRequest) Copy() *InternalRaftRequest {
 	if m == nil {
 		return nil
 	}
+	o := &InternalRaftRequest{}
+	o.CopyFrom(m)
+	return o
+}
 
-	o := &InternalRaftRequest{
-		ID: m.ID,
-	}
+func (m *InternalRaftRequest) CopyFrom(src interface{}) {
 
-	if m.Action != nil {
-		o.Action = make([]*StoreAction, 0, len(m.Action))
-		for _, v := range m.Action {
-			o.Action = append(o.Action, v.Copy())
+	o := src.(*InternalRaftRequest)
+	m.ID = o.ID
+	if o.Action != nil {
+		m.Action = make([]*StoreAction, len(o.Action))
+		for i := range m.Action {
+			m.Action[i] = &StoreAction{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Action[i], o.Action[i])
 		}
 	}
 
-	return o
 }
 
 func (m *StoreAction) Copy() *StoreAction {
 	if m == nil {
 		return nil
 	}
-
-	o := &StoreAction{
-		Action: m.Action,
-	}
-
-	switch m.Target.(type) {
-	case *StoreAction_Node:
-		i := &StoreAction_Node{
-			Node: m.GetNode().Copy(),
-		}
-
-		o.Target = i
-	case *StoreAction_Service:
-		i := &StoreAction_Service{
-			Service: m.GetService().Copy(),
-		}
-
-		o.Target = i
-	case *StoreAction_Task:
-		i := &StoreAction_Task{
-			Task: m.GetTask().Copy(),
-		}
-
-		o.Target = i
-	case *StoreAction_Network:
-		i := &StoreAction_Network{
-			Network: m.GetNetwork().Copy(),
-		}
-
-		o.Target = i
-	case *StoreAction_Cluster:
-		i := &StoreAction_Cluster{
-			Cluster: m.GetCluster().Copy(),
-		}
-
-		o.Target = i
-	case *StoreAction_Secret:
-		i := &StoreAction_Secret{
-			Secret: m.GetSecret().Copy(),
-		}
-
-		o.Target = i
-	}
-
+	o := &StoreAction{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *StoreAction) CopyFrom(src interface{}) {
+
+	o := src.(*StoreAction)
+	m.Action = o.Action
+	if o.Target != nil {
+		switch o.Target.(type) {
+		case *StoreAction_Node:
+			v := StoreAction_Node{
+				Node: &Node{},
+			}
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Node, o.GetNode())
+			m.Target = &v
+		case *StoreAction_Service:
+			v := StoreAction_Service{
+				Service: &Service{},
+			}
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Service, o.GetService())
+			m.Target = &v
+		case *StoreAction_Task:
+			v := StoreAction_Task{
+				Task: &Task{},
+			}
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Task, o.GetTask())
+			m.Target = &v
+		case *StoreAction_Network:
+			v := StoreAction_Network{
+				Network: &Network{},
+			}
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Network, o.GetNetwork())
+			m.Target = &v
+		case *StoreAction_Cluster:
+			v := StoreAction_Cluster{
+				Cluster: &Cluster{},
+			}
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Cluster, o.GetCluster())
+			m.Target = &v
+		case *StoreAction_Secret:
+			v := StoreAction_Secret{
+				Secret: &Secret{},
+			}
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Secret, o.GetSecret())
+			m.Target = &v
+		}
+	}
+
 }
 
 func (this *RaftMember) GoString() string {

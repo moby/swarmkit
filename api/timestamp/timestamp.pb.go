@@ -115,13 +115,16 @@ func (m *Timestamp) Copy() *Timestamp {
 	if m == nil {
 		return nil
 	}
-
-	o := &Timestamp{
-		Seconds: m.Seconds,
-		Nanos:   m.Nanos,
-	}
-
+	o := &Timestamp{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *Timestamp) CopyFrom(src interface{}) {
+
+	o := src.(*Timestamp)
+	m.Seconds = o.Seconds
+	m.Nanos = o.Nanos
 }
 
 func (this *Timestamp) GoString() string {

@@ -566,20 +566,17 @@ func init() {
 }
 
 func (m *BasicScalar) Copy() *BasicScalar {
+	if m == nil {
+		return nil
+	}
 	o := &BasicScalar{}
 	o.CopyFrom(m)
 	return o
 }
 
 func (m *BasicScalar) CopyFrom(src interface{}) {
-	if m == nil && src == nil {
-		return
-	}
 
 	o := src.(*BasicScalar)
-	if o == nil {
-		return
-	}
 	m.Field1 = o.Field1
 	m.Field2 = o.Field2
 	m.Field3 = o.Field3
@@ -598,20 +595,17 @@ func (m *BasicScalar) CopyFrom(src interface{}) {
 }
 
 func (m *RepeatedScalar) Copy() *RepeatedScalar {
+	if m == nil {
+		return nil
+	}
 	o := &RepeatedScalar{}
 	o.CopyFrom(m)
 	return o
 }
 
 func (m *RepeatedScalar) CopyFrom(src interface{}) {
-	if m == nil && src == nil {
-		return
-	}
 
 	o := src.(*RepeatedScalar)
-	if o == nil {
-		return
-	}
 	if o.Field1 != nil {
 		m.Field1 = make([]float64, len(o.Field1))
 		copy(m.Field1, o.Field1)
@@ -690,20 +684,17 @@ func (m *RepeatedScalar) CopyFrom(src interface{}) {
 }
 
 func (m *RepeatedScalarPacked) Copy() *RepeatedScalarPacked {
+	if m == nil {
+		return nil
+	}
 	o := &RepeatedScalarPacked{}
 	o.CopyFrom(m)
 	return o
 }
 
 func (m *RepeatedScalarPacked) CopyFrom(src interface{}) {
-	if m == nil && src == nil {
-		return
-	}
 
 	o := src.(*RepeatedScalarPacked)
-	if o == nil {
-		return
-	}
 	if o.Field1 != nil {
 		m.Field1 = make([]float64, len(o.Field1))
 		copy(m.Field1, o.Field1)
@@ -772,20 +763,17 @@ func (m *RepeatedScalarPacked) CopyFrom(src interface{}) {
 }
 
 func (m *ExternalStruct) Copy() *ExternalStruct {
+	if m == nil {
+		return nil
+	}
 	o := &ExternalStruct{}
 	o.CopyFrom(m)
 	return o
 }
 
 func (m *ExternalStruct) CopyFrom(src interface{}) {
-	if m == nil && src == nil {
-		return
-	}
 
 	o := src.(*ExternalStruct)
-	if o == nil {
-		return
-	}
 	if o.Field1 != nil {
 		m.Field1 = &BasicScalar{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Field1, o.Field1)
@@ -801,20 +789,17 @@ func (m *ExternalStruct) CopyFrom(src interface{}) {
 }
 
 func (m *RepeatedExternalStruct) Copy() *RepeatedExternalStruct {
+	if m == nil {
+		return nil
+	}
 	o := &RepeatedExternalStruct{}
 	o.CopyFrom(m)
 	return o
 }
 
 func (m *RepeatedExternalStruct) CopyFrom(src interface{}) {
-	if m == nil && src == nil {
-		return
-	}
 
 	o := src.(*RepeatedExternalStruct)
-	if o == nil {
-		return
-	}
 	if o.Field1 != nil {
 		m.Field1 = make([]*BasicScalar, len(o.Field1))
 		for i := range m.Field1 {
@@ -842,40 +827,34 @@ func (m *RepeatedExternalStruct) CopyFrom(src interface{}) {
 }
 
 func (m *NonNullableExternalStruct) Copy() *NonNullableExternalStruct {
+	if m == nil {
+		return nil
+	}
 	o := &NonNullableExternalStruct{}
 	o.CopyFrom(m)
 	return o
 }
 
 func (m *NonNullableExternalStruct) CopyFrom(src interface{}) {
-	if m == nil && src == nil {
-		return
-	}
 
 	o := src.(*NonNullableExternalStruct)
-	if o == nil {
-		return
-	}
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field1, &o.Field1)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field2, &o.Field2)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field3, &o.Field3)
 }
 
 func (m *RepeatedNonNullableExternalStruct) Copy() *RepeatedNonNullableExternalStruct {
+	if m == nil {
+		return nil
+	}
 	o := &RepeatedNonNullableExternalStruct{}
 	o.CopyFrom(m)
 	return o
 }
 
 func (m *RepeatedNonNullableExternalStruct) CopyFrom(src interface{}) {
-	if m == nil && src == nil {
-		return
-	}
 
 	o := src.(*RepeatedNonNullableExternalStruct)
-	if o == nil {
-		return
-	}
 	if o.Field1 != nil {
 		m.Field1 = make([]BasicScalar, len(o.Field1))
 		for i := range m.Field1 {
@@ -900,20 +879,17 @@ func (m *RepeatedNonNullableExternalStruct) CopyFrom(src interface{}) {
 }
 
 func (m *MapStruct) Copy() *MapStruct {
+	if m == nil {
+		return nil
+	}
 	o := &MapStruct{}
 	o.CopyFrom(m)
 	return o
 }
 
 func (m *MapStruct) CopyFrom(src interface{}) {
-	if m == nil && src == nil {
-		return
-	}
 
 	o := src.(*MapStruct)
-	if o == nil {
-		return
-	}
 	if o.NullableMap != nil {
 		m.NullableMap = make(map[string]*BasicScalar, len(o.NullableMap))
 		for k, v := range o.NullableMap {
@@ -934,20 +910,17 @@ func (m *MapStruct) CopyFrom(src interface{}) {
 }
 
 func (m *OneOf) Copy() *OneOf {
+	if m == nil {
+		return nil
+	}
 	o := &OneOf{}
 	o.CopyFrom(m)
 	return o
 }
 
 func (m *OneOf) CopyFrom(src interface{}) {
-	if m == nil && src == nil {
-		return
-	}
 
 	o := src.(*OneOf)
-	if o == nil {
-		return
-	}
 	if o.Fields != nil {
 		switch o.Fields.(type) {
 		case *OneOf_Field1:
