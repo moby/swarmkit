@@ -629,7 +629,7 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x50
 		}
 
 		// If the certificate was issued, return
-		if statusResponse.Status.State == api.IssuanceStateIssued {
+		if statusResponse.Status != nil && statusResponse.Status.State == api.IssuanceStateIssued {
 			if statusResponse.Certificate == nil {
 				return nil, errors.New("no certificate in CertificateStatus response")
 			}

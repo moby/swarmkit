@@ -5,9 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"io/ioutil"
+	"net"
 	"os"
 	"testing"
 	"time"
+
+	"google.golang.org/grpc"
 
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
@@ -17,6 +20,7 @@ import (
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/remotes"
 	"github.com/phayes/permbits"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -457,6 +461,53 @@ func TestGetRemoteSignedCertificateWithNewRootCA(t *testing.T) {
 	assert.NotNil(t, response.Certificate.Certificate)
 	assert.NotNil(t, response.RootCABundle)
 	assert.Equal(t, response.RootCABundle, CABundle)
+}
+
+func TestGetRemoteSignedCertificateWithNilCABundle(t *testing.T) {
+	tc := testutils.NewTestCA(t)
+	managerConfig, err := tc.NewNodeConfig("swarm-manager")
+	assert.NoError(t, err)
+	tc.Stop()
+
+	serverOpts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
+	grpcServer := grpc.NewServer(serverOpts...)
+
+	// Create a new CSR to be signed
+	csr, _, err := ca.GenerateNewCSR()
+	assert.NoError(t, err)
+
+	caServer := &testutils.MockNodeCA{
+		NodeID:         "NodeID",
+		NodeMembership: api.NodeMembershipAccepted,
+		Status:         &api.IssuanceStatus{State: api.IssuanceStateIssued},
+		Certificate: &api.Certificate{
+			CSR:  csr,
+			CN:   "NodeID",
+			Role: api.NodeRoleWorker,
+			Status: api.IssuanceStatus{
+				State: api.IssuanceStateIssued,
+			},
+			Certificate: []byte("CERTIFICATE"),
+		},
+	}
+
+	api.RegisterNodeCAServer(grpcServer, caServer)
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+	remotes := remotes.NewRemotes(api.Peer{Addr: l.Addr().String()})
+
+	go grpcServer.Serve(l)
+	defer grpcServer.Stop()
+	defer l.Close()
+
+	response, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.RootCA.Pool,
+		ca.CertificateRequestConfig{
+			Token:   tc.WorkerToken,
+			Remotes: remotes,
+		})
+	assert.NoError(t, err)
+	assert.NotNil(t, response.Certificate.Certificate)
+	assert.Nil(t, response.RootCABundle)
 }
 
 func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
