@@ -402,3 +402,29 @@ func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duratio
 		Path:   paths,
 	}, nil
 }
+
+// MockNodeCA represents a CA that returns the data we feed directly without processing
+type MockNodeCA struct {
+	NodeID         string
+	NodeMembership api.NodeSpec_Membership
+	Status         *api.IssuanceStatus
+	Certificate    *api.Certificate
+	RootCABundle   []byte
+}
+
+// NodeCertificateStatus fakes the node status endpoint
+func (s *MockNodeCA) NodeCertificateStatus(ctx context.Context, request *api.NodeCertificateStatusRequest) (*api.NodeCertificateStatusResponse, error) {
+	return &api.NodeCertificateStatusResponse{
+		Status:       s.Status,
+		Certificate:  s.Certificate,
+		RootCABundle: s.RootCABundle,
+	}, nil
+}
+
+// IssueNodeCertificate fakes the node Certificate issuance endpoint
+func (s *MockNodeCA) IssueNodeCertificate(ctx context.Context, request *api.IssueNodeCertificateRequest) (*api.IssueNodeCertificateResponse, error) {
+	return &api.IssueNodeCertificateResponse{
+		NodeID:         s.NodeID,
+		NodeMembership: s.NodeMembership,
+	}, nil
+}
