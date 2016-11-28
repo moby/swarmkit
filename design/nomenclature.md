@@ -72,7 +72,7 @@ maintains a connection to the _dispatcher_, waiting for the current set of
 tasks assigned to the node. Assigned tasks are then dispatched to the Engine.
 The agent notifies the _dispatcher_ of the current state of assigned tasks.
 
-This is roughly analagous to a real life talent agent who ensures the worker
+This is roughly analogous to a real life talent agent who ensures the worker
 has the correct set of _tasks_ and lets others know what the worker is doing.
 
 While we refer to a cluster Engine as a "worker", the term _agent_ encompasses
