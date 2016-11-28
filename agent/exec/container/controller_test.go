@@ -39,7 +39,7 @@ func TestControllerPrepare(t *testing.T) {
 		client.EXPECT().ImagePull(gomock.Any(), config.image(), gomock.Any()).
 			Return(ioutil.NopCloser(bytes.NewBuffer([]byte{})), nil),
 		client.EXPECT().ContainerCreate(gomock.Any(), config.config(), config.hostConfig(), config.networkingConfig(), config.name()).
-			Return(containertypes.ContainerCreateCreatedBody{ID: "contianer-id-" + task.ID}, nil),
+			Return(containertypes.ContainerCreateCreatedBody{ID: "container-id-" + task.ID}, nil),
 	)
 
 	assert.NoError(t, ctlr.Prepare(ctx))

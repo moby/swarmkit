@@ -248,7 +248,7 @@ func TestMultipleConstraints(t *testing.T) {
 	ni.Node.Description.Engine.Labels["operatingsystem"] = "Ubuntu 14.04"
 	assert.False(t, f.Check(ni))
 
-	// case insensitve
+	// case insensitive
 	ni.Node.Description.Engine.Labels["operatingsystem"] = "ubuntu 14.04"
 	assert.False(t, f.Check(ni))
 
