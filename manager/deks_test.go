@@ -213,7 +213,7 @@ func TestRaftDEKManagerNeedsRotateGetKeys(t *testing.T) {
 
 	// if there no PendingDEK, and a NeedsRotation flag:  NeedsRotation=true and
 	// GetKeys attempts to create a pending key and write it to disk.  If successful,
-	// it retuns the new keys
+	// it returns the new keys
 	keys = raft.EncryptionKeys{CurrentDEK: []byte("hello")}
 	krw = ca.NewKeyReadWriter(paths.Node, nil, RaftDEKData{
 		EncryptionKeys: keys,

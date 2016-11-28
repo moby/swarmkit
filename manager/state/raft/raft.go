@@ -549,7 +549,7 @@ func (n *Node) needsSnapshot() bool {
 		keys := n.keyRotator.GetKeys()
 		if keys.PendingDEK != nil {
 			n.raftLogger.RotateEncryptionKey(keys.PendingDEK)
-			// we want to wait for the last index written with the old DEK to be commited, else a snapshot taken
+			// we want to wait for the last index written with the old DEK to be committed, else a snapshot taken
 			// may have an index less than the index of a WAL written with an old DEK.  We want the next snapshot
 			// written with the new key to supercede any WAL written with an old DEK.
 			n.waitForAppliedIndex = n.writtenIndex
