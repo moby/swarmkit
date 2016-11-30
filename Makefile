@@ -35,7 +35,12 @@ version/version.go:
 setup: ## install dependencies
 	@echo "🐳 $@"
 	# TODO(stevvooe): Install these from the vendor directory
-	@go get -u github.com/golang/lint/golint
+	# Use a specific version of golint that tolerates having a context
+	# outside the first argument of a function, as is sometimes done on
+	# this legacy branch.
+	@go get -d github.com/golang/lint/golint
+	@(cd ${GOPATH}/src/github.com/golang/lint/golint && git checkout 55ae771cfa82f3846897c972e262ed5d54d47d48)
+	@go install github.com/golang/lint/golint
 	#@go get -u github.com/kisielk/errcheck
 	@go get -u github.com/golang/mock/mockgen
 
