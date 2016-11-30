@@ -49,6 +49,9 @@ func (tm *taskManager) Update(ctx context.Context, task *api.Task) error {
 }
 
 // Close shuts down the task manager, blocking until it is stopped.
+//
+// Calling this method will result in a complete removal of the controller's
+// resources, blocking until complete.
 func (tm *taskManager) Close() error {
 	select {
 	case <-tm.closed:

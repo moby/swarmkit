@@ -57,6 +57,9 @@ type worker struct {
 
 	taskManagers map[string]*taskManager
 	mu           sync.RWMutex
+
+	closed  bool
+	closers sync.WaitGroup // keeps track of active closers
 }
 
 func newWorker(db *bolt.DB, executor exec.Executor, publisherProvider exec.LogPublisherProvider) *worker {
@@ -105,18 +108,30 @@ func (w *worker) Init(ctx context.Context) error {
 }
 
 // Close performs worker cleanup when no longer needed.
+//
+// Close will block until all outstanding closes have exited.
 func (w *worker) Close() {
+	w.mu.Lock()
+	w.closed = true
+	w.mu.Unlock()
+
+	w.closers.Wait()
 	w.taskevents.Close()
 }
 
 // Assign assigns a full set of tasks and secrets to the worker.
 // Any tasks not previously known will be started. Any tasks that are in the task set
 // and already running will be updated, if possible. Any tasks currently running on
-// the worker outside the task set will be terminated.
+// the worker outside the task set will be terminated. Assign will block until
+// tasks for removal have exited.
 // Any secrets not in the set of assignments will be removed.
 func (w *worker) Assign(ctx context.Context, assignments []*api.AssignmentChange) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+
+	if w.closed {
+		return ErrClosed
+	}
 
 	log.G(ctx).WithFields(logrus.Fields{
 		"len(assignments)": len(assignments),
@@ -139,6 +154,10 @@ func (w *worker) Assign(ctx context.Context, assignments []*api.AssignmentChange
 func (w *worker) Update(ctx context.Context, assignments []*api.AssignmentChange) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+
+	if w.closed {
+		return ErrClosed
+	}
 
 	log.G(ctx).WithFields(logrus.Fields{
 		"len(assignments)": len(assignments),
@@ -222,11 +241,15 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 	}
 
 	closeManager := func(tm *taskManager) {
-		// when a task is no longer assigned, we shutdown the task manager for
-		// it and leave cleanup to the sweeper.
-		if err := tm.Close(); err != nil {
-			log.G(ctx).WithError(err).Error("error closing task manager")
-		}
+		w.closers.Add(1)
+		go func(tm *taskManager) {
+			defer w.closers.Done()
+			// when a task is no longer assigned, we shutdown the task manager for
+			// it and leave cleanup to the sweeper.
+			if err := tm.Close(); err != nil {
+				log.G(ctx).WithError(err).Error("error closing task manager")
+			}
+		}(tm)
 	}
 
 	removeTaskAssignment := func(taskID string) error {
@@ -248,7 +271,7 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 			err := removeTaskAssignment(id)
 			if err == nil {
 				delete(w.taskManagers, id)
-				go closeManager(tm)
+				closeManager(tm)
 			}
 		}
 	} else {
@@ -263,7 +286,7 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 			tm, ok := w.taskManagers[task.ID]
 			if ok {
 				delete(w.taskManagers, task.ID)
-				go closeManager(tm)
+				closeManager(tm)
 			}
 		}
 	}
