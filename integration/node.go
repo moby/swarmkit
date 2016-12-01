@@ -52,8 +52,33 @@ func newTestNode(joinAddr, joinToken string) (*testNode, error) {
 	}, nil
 }
 
-// Stop stops the node and removes its state directory.
-func (n *testNode) Stop() error {
+// Pause stops the node, and creates a new swarm node while keeping all the state
+func (n *testNode) Pause() error {
+	rAddr, err := n.node.RemoteAPIAddr()
+	if err != nil {
+		rAddr = "127.0.0.1:0"
+	}
+
+	if err := n.stop(); err != nil {
+		return err
+	}
+
+	cfg := n.config
+	cfg.ListenRemoteAPI = rAddr
+	// If JoinAddr is set, the node will connect to the join addr and ignore any
+	// other remotes that are stored in the raft directory.
+	cfg.JoinAddr = ""
+	cfg.JoinToken = ""
+
+	node, err := node.New(cfg)
+	if err != nil {
+		return err
+	}
+	n.node = node
+	return nil
+}
+
+func (n *testNode) stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), opsTimeout)
 	defer cancel()
 	isManager := n.IsManager()
@@ -62,6 +87,14 @@ func (n *testNode) Stop() error {
 			return fmt.Errorf("error stop manager %s: %v", n.node.NodeID(), err)
 		}
 		return fmt.Errorf("error stop worker %s: %v", n.node.NodeID(), err)
+	}
+	return nil
+}
+
+// Stop stops the node and removes its state directory.
+func (n *testNode) Stop() error {
+	if err := n.stop(); err != nil {
+		return err
 	}
 	return os.RemoveAll(n.stateDir)
 }
