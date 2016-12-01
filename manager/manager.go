@@ -388,18 +388,23 @@ func (m *Manager) Run(parent context.Context) error {
 
 	close(m.started)
 
-	var runErr error
+	errCh := make(chan error, 1)
 	go func() {
-		runErr = m.raftNode.Run(ctx)
-		if runErr != nil {
-			log.G(ctx).WithError(runErr).Error("raft node stopped")
+		err := m.raftNode.Run(ctx)
+		if err != nil {
+			errCh <- err
+			log.G(ctx).WithError(err).Error("raft node stopped")
 			m.Stop(ctx)
 		}
 	}()
 
 	returnErr := func(err error) error {
-		if err == context.Canceled && runErr != nil {
-			return runErr
+		select {
+		case runErr := <-errCh:
+			if runErr == raft.ErrMemberRemoved {
+				return runErr
+			}
+		default:
 		}
 		return err
 	}

@@ -313,3 +313,61 @@ func TestDemoteLeader(t *testing.T) {
 	numManager--
 	pollClusterReady(t, cl, numWorker, numManager)
 }
+
+func TestDemoteDownedManager(t *testing.T) {
+	numWorker, numManager := 0, 3
+	cl := newCluster(t, numWorker, numManager)
+	defer func() {
+		require.NoError(t, cl.Stop())
+	}()
+
+	leader, err := cl.Leader()
+	require.NoError(t, err)
+
+	// add a new manager so we have 3, then find one (not the leader) to demote
+	var demotee *testNode
+	for _, n := range cl.nodes {
+		if n.IsManager() && n.node.NodeID() != leader.node.NodeID() {
+			demotee = n
+			break
+		}
+	}
+
+	nodeID := demotee.node.NodeID()
+
+	resp, err := cl.api.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodeID})
+	require.NoError(t, err)
+	spec := resp.Node.Spec.Copy()
+	spec.Role = api.NodeRoleWorker
+
+	// stop the node, then demote it, and start it back up again so when it comes back up it has to realize
+	// it's not running anymore
+	require.NoError(t, demotee.Pause())
+
+	// demote node, but don't use SetNodeRole, which waits until it successfully becomes a worker, since
+	// the node is currently down
+	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+		_, err := cl.api.UpdateNode(context.Background(), &api.UpdateNodeRequest{
+			NodeID:      nodeID,
+			Spec:        spec,
+			NodeVersion: &resp.Node.Meta.Version,
+		})
+		return err
+	}, opsTimeout))
+
+	// start it back up again
+	require.NoError(t, cl.StartNode(nodeID))
+
+	// wait to become worker
+	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+		if demotee.IsManager() {
+			return fmt.Errorf("node is still not a worker")
+		}
+		return nil
+	}, opsTimeout))
+
+	// agents 1, managers 2
+	numWorker++
+	numManager--
+	pollClusterReady(t, cl, numWorker, numManager)
+}

@@ -18,12 +18,14 @@ const opsTimeout = 64 * time.Second
 
 // Cluster is representation of cluster - connected nodes.
 type testCluster struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	api    *dummyAPI
-	nodes  map[string]*testNode
-	errs   chan error
-	wg     sync.WaitGroup
+	ctx        context.Context
+	cancel     context.CancelFunc
+	api        *dummyAPI
+	nodes      map[string]*testNode
+	nodesOrder map[string]int
+	errs       chan error
+	wg         sync.WaitGroup
+	counter    int
 }
 
 // NewCluster creates new cluster to which nodes can be added.
@@ -31,10 +33,11 @@ type testCluster struct {
 func newTestCluster() *testCluster {
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &testCluster{
-		ctx:    ctx,
-		cancel: cancel,
-		nodes:  make(map[string]*testNode),
-		errs:   make(chan error, 1024),
+		ctx:        ctx,
+		cancel:     cancel,
+		nodes:      make(map[string]*testNode),
+		nodesOrder: make(map[string]int),
+		errs:       make(chan error, 1024),
 	}
 	c.api = &dummyAPI{c: c}
 	return c
@@ -99,7 +102,8 @@ func (c *testCluster) AddManager() error {
 		n = node
 	}
 
-	ctx := log.WithLogger(c.ctx, log.L.WithField("testnode", len(c.nodes)+1))
+	c.counter++
+	ctx := log.WithLogger(c.ctx, log.L.WithField("testnode", c.counter))
 
 	c.wg.Add(1)
 	go func() {
@@ -114,6 +118,7 @@ func (c *testCluster) AddManager() error {
 	}
 
 	c.nodes[n.node.NodeID()] = n
+	c.nodesOrder[n.node.NodeID()] = c.counter
 	return nil
 }
 
@@ -141,7 +146,8 @@ func (c *testCluster) AddAgent() error {
 	}
 	n = node
 
-	ctx := log.WithLogger(c.ctx, log.L.WithField("testnode", len(c.nodes)+1))
+	c.counter++
+	ctx := log.WithLogger(c.ctx, log.L.WithField("testnode", c.counter))
 
 	c.wg.Add(1)
 	go func() {
@@ -155,6 +161,7 @@ func (c *testCluster) AddAgent() error {
 		return fmt.Errorf("node is not ready in time")
 	}
 	c.nodes[n.node.NodeID()] = n
+	c.nodesOrder[n.node.NodeID()] = c.counter
 	return nil
 }
 
@@ -292,4 +299,30 @@ func (c *testCluster) SetNodeRole(id string, role api.NodeRole) error {
 		}, opsTimeout)
 	}
 	return fmt.Errorf("set role %s for node %s, got sequence error 5 times", role, id)
+}
+
+// Starts a node from a stopped state
+func (c *testCluster) StartNode(id string) error {
+	n, ok := c.nodes[id]
+	if !ok {
+		return fmt.Errorf("set node role: node %s not found", id)
+	}
+
+	ctx := log.WithLogger(c.ctx, log.L.WithField("testnode", c.nodesOrder[id]))
+
+	c.wg.Add(1)
+	go func() {
+		c.errs <- n.node.Start(ctx)
+		c.wg.Done()
+	}()
+
+	select {
+	case <-n.node.Ready():
+	case <-time.After(opsTimeout):
+		return fmt.Errorf("node did not ready in time")
+	}
+	if n.node.NodeID() != id {
+		return fmt.Errorf("restarted node does not have have the same ID")
+	}
+	return nil
 }
