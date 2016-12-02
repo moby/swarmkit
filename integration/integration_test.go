@@ -178,7 +178,7 @@ func TestNodeOps(t *testing.T) {
 			break
 		}
 	}
-	require.NoError(t, cl.RemoveNode(worker.node.NodeID()))
+	require.NoError(t, cl.RemoveNode(worker.node.NodeID(), false))
 	// agents 1, managers 2
 	numWorker--
 	// long wait for heartbeat expiration
