@@ -901,8 +901,11 @@ func (n *Node) RemoveMember(ctx context.Context, id uint64) error {
 // formatting strings and allocating a logger when it won't be used.
 func (n *Node) processRaftMessageLogger(ctx context.Context, msg *api.ProcessRaftMessageRequest) *logrus.Entry {
 	fields := logrus.Fields{
-		"method":  "(*Node).ProcessRaftMessage",
-		"raft_id": fmt.Sprintf("%x", n.Config.ID),
+		"method": "(*Node).ProcessRaftMessage",
+	}
+
+	if n.IsMember() {
+		fields["raft_id"] = fmt.Sprintf("%x", n.Config.ID)
 	}
 
 	if msg != nil && msg.Message != nil {
