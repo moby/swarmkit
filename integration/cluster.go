@@ -204,7 +204,7 @@ func (c *testCluster) Leader() (*testNode, error) {
 }
 
 // RemoveNode removes node entirely. It tries to demote managers.
-func (c *testCluster) RemoveNode(id string) error {
+func (c *testCluster) RemoveNode(id string, graceful bool) error {
 	node, ok := c.nodes[id]
 	if !ok {
 		return fmt.Errorf("remove node: node %s not found", id)
@@ -220,19 +220,21 @@ func (c *testCluster) RemoveNode(id string) error {
 		return err
 	}
 	delete(c.nodes, id)
-	if err := raftutils.PollFuncWithTimeout(nil, func() error {
-		resp, err := c.api.GetNode(context.Background(), &api.GetNodeRequest{NodeID: id})
-		if err != nil {
-			return fmt.Errorf("get node: %v", err)
+	if graceful {
+		if err := raftutils.PollFuncWithTimeout(nil, func() error {
+			resp, err := c.api.GetNode(context.Background(), &api.GetNodeRequest{NodeID: id})
+			if err != nil {
+				return fmt.Errorf("get node: %v", err)
+			}
+			if resp.Node.Status.State != api.NodeStatus_DOWN {
+				return fmt.Errorf("node %s is still not down", id)
+			}
+			return nil
+		}, opsTimeout); err != nil {
+			return err
 		}
-		if resp.Node.Status.State != api.NodeStatus_DOWN {
-			return fmt.Errorf("node %s is still not down", id)
-		}
-		return nil
-	}, opsTimeout); err != nil {
-		return err
 	}
-	if _, err := c.api.RemoveNode(context.Background(), &api.RemoveNodeRequest{NodeID: id}); err != nil {
+	if _, err := c.api.RemoveNode(context.Background(), &api.RemoveNodeRequest{NodeID: id, Force: !graceful}); err != nil {
 		return fmt.Errorf("remove node: %v", err)
 	}
 	return nil
