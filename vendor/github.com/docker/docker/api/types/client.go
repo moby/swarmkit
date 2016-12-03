@@ -285,10 +285,12 @@ type ServiceCreateOptions struct {
 }
 
 // ServiceCreateResponse contains the information returned to a client
-// on the  creation of a new service.
+// on the creation of a new service.
 type ServiceCreateResponse struct {
 	// ID is the ID of the created service.
 	ID string
+	// Warnings is a set of non-fatal warning messages to pass on to the user.
+	Warnings []string `json:",omitempty"`
 }
 
 // Values for RegistryAuthFrom in ServiceUpdateOptions
@@ -330,6 +332,11 @@ type PluginRemoveOptions struct {
 	Force bool
 }
 
+// PluginEnableOptions holds parameters to enable plugins.
+type PluginEnableOptions struct {
+	Timeout int
+}
+
 // PluginInstallOptions holds parameters to install a plugin.
 type PluginInstallOptions struct {
 	Disabled              bool
@@ -349,7 +356,7 @@ type SecretRequestOption struct {
 	Mode   os.FileMode
 }
 
-// SwarmUnlockKeyResponse contains the response for Remote API:
+// SwarmUnlockKeyResponse contains the response for Engine API:
 // GET /swarm/unlockkey
 type SwarmUnlockKeyResponse struct {
 	// UnlockKey is the unlock key in ASCII-armored format.
