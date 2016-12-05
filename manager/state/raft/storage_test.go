@@ -669,10 +669,9 @@ func TestRaftEncryptionKeyRotationStress(t *testing.T) {
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 	leader := nodes[1]
-	third := nodes[3]
 
 	// constantly propose values
-	done, stop := make(chan struct{}), make(chan struct{})
+	done, stop, restart, clusterReady := make(chan struct{}), make(chan struct{}), make(chan struct{}), make(chan struct{})
 	go func() {
 		counter := len(nodes)
 		for {
@@ -680,6 +679,11 @@ func TestRaftEncryptionKeyRotationStress(t *testing.T) {
 			case <-stop:
 				close(done)
 				return
+			case <-restart:
+				// the node restarts may trigger a leadership change, so wait until the cluster has 3
+				// nodes again and a leader is selected before proposing more values
+				<-clusterReady
+				leader = raftutils.Leader(nodes)
 			default:
 				counter += 1
 				raftutils.ProposeValue(t, leader, DefaultProposalTime, fmt.Sprintf("id%d", counter))
@@ -689,19 +693,25 @@ func TestRaftEncryptionKeyRotationStress(t *testing.T) {
 
 	for i := 0; i < 30; i++ {
 		// rotate the encryption key
-		third.KeyRotator.QueuePendingKey([]byte(fmt.Sprintf("newKey%d", i)))
-		third.KeyRotator.RotationNotify() <- struct{}{}
+		nodes[3].KeyRotator.QueuePendingKey([]byte(fmt.Sprintf("newKey%d", i)))
+		nodes[3].KeyRotator.RotationNotify() <- struct{}{}
 
 		require.NoError(t, raftutils.PollFunc(clockSource, func() error {
-			if third.KeyRotator.GetKeys().PendingDEK == nil {
-				third.Server.Stop()
-				third.ShutdownRaft()
-				third = raftutils.RestartNode(t, clockSource, third, false)
-				raftutils.AdvanceTicks(clockSource, 1)
+			if nodes[3].KeyRotator.GetKeys().PendingDEK == nil {
 				return nil
 			}
 			return fmt.Errorf("not done rotating yet")
 		}))
+
+		// restart the node and wait for everything to settle and a leader to be elected
+		nodes[3].Server.Stop()
+		nodes[3].ShutdownRaft()
+		restart <- struct{}{}
+		nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
+		raftutils.AdvanceTicks(clockSource, 1)
+
+		raftutils.WaitForCluster(t, clockSource, nodes)
+		clusterReady <- struct{}{}
 	}
 
 	close(stop)
