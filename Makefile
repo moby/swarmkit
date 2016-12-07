@@ -9,6 +9,9 @@ VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
 
 PROJECT_ROOT=github.com/docker/swarmkit
 
+# Race detector is only supported on amd64.
+RACE := $(shell test $$(go env GOARCH) != "amd64" || (echo "-race"))
+
 # Project packages.
 PACKAGES=$(shell go list ./... | grep -v /vendor/)
 INTEGRATION_PACKAGE=${PROJECT_ROOT}/integration
@@ -88,11 +91,11 @@ build: ## build the go packages
 
 test: ## run tests, except integration tests
 	@echo "🐳 $@"
-	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES})
+	@go test -parallel 8 ${RACE} -tags "${DOCKER_BUILDTAGS}" $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES})
 
 integration: ## run integration tests
 	@echo "🐳 $@"
-	@go test -parallel 8 -race -tags "${DOCKER_BUILDTAGS}" ${INTEGRATION_PACKAGE}
+	@go test -parallel 8 ${RACE} -tags "${DOCKER_BUILDTAGS}" ${INTEGRATION_PACKAGE}
 
 FORCE:
 
@@ -122,13 +125,13 @@ uninstall:
 coverage: ## generate coverprofiles from the unit tests
 	@echo "🐳 $@"
 	@( for pkg in $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES}); do \
-		go test -i -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
-		go test -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
+		go test -i ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
+		go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
 	done )
 
 coverage-integration: ## generate coverprofiles from the integration tests
 	@echo "🐳 $@"
-	go test -race -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../${INTEGRATION_PACKAGE}/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
+	go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../${INTEGRATION_PACKAGE}/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
 
 help: ## this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
