@@ -962,13 +962,13 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 		defer cancel()
 
 		if err := member.HealthCheck(healthCtx); err != nil {
-			n.processRaftMessageLogger(ctx, msg).Debug("member which sent vote request failed health check")
+			n.processRaftMessageLogger(ctx, msg).WithError(err).Debug("member which sent vote request failed health check")
 			return &api.ProcessRaftMessageResponse{}, nil
 		}
 	}
 
 	if msg.Message.Type == raftpb.MsgProp {
-		// We don't accepted forwarded proposals. Our
+		// We don't accept forwarded proposals. Our
 		// current architecture depends on only the leader
 		// making proposals, so in-flight proposals can be
 		// guaranteed not to conflict.
@@ -1308,25 +1308,32 @@ func (n *Node) sendToMember(ctx context.Context, members map[uint64]*membership.
 	defer n.asyncTasks.Done()
 	defer close(thisSend)
 
-	ctx, cancel := context.WithTimeout(ctx, n.opts.SendTimeout)
-	defer cancel()
-
 	if lastSend != nil {
+		waitCtx, waitCancel := context.WithTimeout(ctx, n.opts.SendTimeout)
+		defer waitCancel()
+
 		select {
 		case <-lastSend:
-		case <-ctx.Done():
+		case <-waitCtx.Done():
 			return
 		}
+
+		select {
+		case <-waitCtx.Done():
+			return
+		default:
+		}
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, n.opts.SendTimeout)
+	defer cancel()
 
 	if n.cluster.IsIDRemoved(m.To) {
 		// Should not send to removed members
 		return
 	}
 
-	var (
-		conn *membership.Member
-	)
+	var conn *membership.Member
 	if toMember, ok := members[m.To]; ok {
 		conn = toMember
 	} else {
