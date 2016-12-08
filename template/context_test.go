@@ -80,7 +80,7 @@ func TestTemplateContext(t *testing.T) {
 					"SERVICE_ID=serviceID",
 					"SERVICE_NAME=serviceName",
 					"TASK_ID=taskID",
-					"TASK_NAME=serviceName.10.taskID",
+					"TASK_NAME=serviceName.10",
 					"NODE_ID=nodeID",
 					"SERVICE_LABELS=ServiceLabelOneKey=service-label-one-value,ServiceLabelTwoKey=service-label-two-value,com.example.ServiceLabelThreeKey=service-label-three-value,",
 				},
@@ -109,7 +109,7 @@ func TestTemplateContext(t *testing.T) {
 			Expected: &api.ContainerSpec{
 				Mounts: []api.Mount{
 					{
-						Source: "bar-nodeID-serviceName.10.taskID",
+						Source: "bar-nodeID-serviceName.10",
 						Target: "foo-serviceID-serviceName",
 					},
 					{

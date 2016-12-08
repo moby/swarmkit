@@ -23,7 +23,7 @@ func TestTaskNaming(t *testing.T) {
 					Name: "theservice",
 				},
 			},
-			Expected: "theservice.10.taskID",
+			Expected: "theservice.10",
 		},
 		{
 			Name: "Annotations",
@@ -48,7 +48,7 @@ func TestTaskNaming(t *testing.T) {
 					Name: "theservice",
 				},
 			},
-			Expected: "theservice.thenodeID.taskID",
+			Expected: "theservice.thenodeID",
 		},
 	} {
 		t.Run(testcase.Name, func(t *testing.T) {
