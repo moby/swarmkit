@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"sync"
 	"time"
 
 	"github.com/docker/swarmkit/agent/exec"
@@ -19,8 +20,9 @@ type taskManager struct {
 
 	updateq chan *api.Task
 
-	shutdown chan struct{}
-	closed   chan struct{}
+	shutdown     chan struct{}
+	shutdownOnce sync.Once
+	closed       chan struct{}
 }
 
 func newTaskManager(ctx context.Context, task *api.Task, ctlr exec.Controller, reporter StatusReporter) *taskManager {
@@ -53,18 +55,13 @@ func (tm *taskManager) Update(ctx context.Context, task *api.Task) error {
 // Calling this method will result in a complete removal of the controller's
 // resources, blocking until complete.
 func (tm *taskManager) Close() error {
-	select {
-	case <-tm.closed:
-		return nil
-	case <-tm.shutdown:
-	default:
+	tm.shutdownOnce.Do(func() {
 		close(tm.shutdown)
-	}
+	})
 
-	select {
-	case <-tm.closed:
-		return nil
-	}
+	<-tm.closed
+
+	return nil
 }
 
 func (tm *taskManager) Logs(ctx context.Context, options api.LogSubscriptionOptions, publisher exec.LogPublisher) {
@@ -109,7 +106,8 @@ func (tm *taskManager) run(ctx context.Context) {
 			// always check for shutdown before running.
 			select {
 			case <-tm.shutdown:
-				continue // ignore run request and handle shutdown
+				shutdown = tm.shutdown // a little questionable
+				continue               // ignore run request and handle shutdown
 			case <-tm.closed:
 				continue
 			default:
@@ -233,18 +231,6 @@ func (tm *taskManager) run(ctx context.Context) {
 				continue       // wait until operation actually exits.
 			}
 
-			// TODO(stevvooe): This should be left for the repear.
-
-			// make an attempt at removing. this is best effort. any errors will be
-			// retried by the reaper later.
-			if err := tm.ctlr.Remove(ctx); err != nil {
-				log.G(ctx).WithError(err).WithField("task.id", tm.task.ID).Error("remove task failed")
-			}
-
-			if err := tm.ctlr.Close(); err != nil {
-				log.G(ctx).WithError(err).Error("error closing controller")
-			}
-			// disable everything, and prepare for closing.
 			statusq = nil
 			errs = nil
 			shutdown = nil
