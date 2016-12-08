@@ -107,7 +107,7 @@ type Node struct {
 
 	confState       raftpb.ConfState
 	appliedIndex    uint64
-	snapshotIndex   uint64
+	snapshotMeta    raftpb.SnapshotMetadata
 	writtenWALIndex uint64
 
 	ticker clock.Ticker
@@ -123,7 +123,7 @@ type Node struct {
 	// used for membership management checks
 	membershipLock sync.Mutex
 
-	snapshotInProgress chan uint64
+	snapshotInProgress chan raftpb.SnapshotMetadata
 	asyncTasks         sync.WaitGroup
 
 	// stopped chan is used for notifying grpc handlers that raft node going
@@ -266,7 +266,7 @@ func (n *Node) JoinAndStart(ctx context.Context) (err error) {
 
 	n.confState = snapshot.Metadata.ConfState
 	n.appliedIndex = snapshot.Metadata.Index
-	n.snapshotIndex = snapshot.Metadata.Index
+	n.snapshotMeta = snapshot.Metadata
 	n.writtenWALIndex, _ = n.raftStore.LastIndex() // lastIndex always returns nil as an error
 
 	if loadAndStartErr == storage.ErrNoWAL {
@@ -424,7 +424,7 @@ func (n *Node) Run(ctx context.Context) error {
 					log.G(ctx).WithError(err).Error("failed to restore from snapshot")
 				}
 				n.appliedIndex = rd.Snapshot.Metadata.Index
-				n.snapshotIndex = rd.Snapshot.Metadata.Index
+				n.snapshotMeta = rd.Snapshot.Metadata
 				n.confState = rd.Snapshot.Metadata.ConfState
 			}
 
@@ -476,7 +476,7 @@ func (n *Node) Run(ctx context.Context) error {
 			// Trigger a snapshot every once in awhile
 			if n.snapshotInProgress == nil &&
 				(n.needsSnapshot(ctx) || raftConfig.SnapshotInterval > 0 &&
-					n.appliedIndex-n.snapshotIndex >= raftConfig.SnapshotInterval) {
+					n.appliedIndex-n.snapshotMeta.Index >= raftConfig.SnapshotInterval) {
 				n.doSnapshot(ctx, raftConfig)
 			}
 
@@ -507,9 +507,13 @@ func (n *Node) Run(ctx context.Context) error {
 				}
 			}
 
-		case snapshotIndex := <-n.snapshotInProgress:
-			if snapshotIndex > n.snapshotIndex {
-				n.snapshotIndex = snapshotIndex
+		case snapshotMeta := <-n.snapshotInProgress:
+			raftConfig := n.getCurrentRaftConfig()
+			if snapshotMeta.Index > n.snapshotMeta.Index {
+				n.snapshotMeta = snapshotMeta
+				if err := n.raftLogger.GC(snapshotMeta.Index, snapshotMeta.Term, raftConfig.KeepOldSnapshots); err != nil {
+					log.G(ctx).WithError(err).Error("failed to clean up old snapshots and WALs")
+				}
 			}
 			n.snapshotInProgress = nil
 			n.maybeMarkRotationFinished(ctx)
@@ -517,7 +521,7 @@ func (n *Node) Run(ctx context.Context) error {
 				// there was a key rotation that took place before while the snapshot
 				// was in progress - we have to take another snapshot and encrypt with the new key
 				n.rotationQueued = false
-				n.doSnapshot(ctx, n.getCurrentRaftConfig())
+				n.doSnapshot(ctx, raftConfig)
 			}
 		case <-n.keyRotator.RotationNotify():
 			// There are 2 separate checks:  rotationQueued, and n.needsSnapshot().
@@ -555,11 +559,11 @@ func (n *Node) needsSnapshot(ctx context.Context) bool {
 			n.waitForAppliedIndex = n.writtenWALIndex
 			// if there is already a snapshot at this index or higher, bump the wait index up to 1 higher than the current
 			// snapshot index, because the rotation cannot be completed until the next snapshot
-			if n.waitForAppliedIndex <= n.snapshotIndex {
-				n.waitForAppliedIndex = n.snapshotIndex + 1
+			if n.waitForAppliedIndex <= n.snapshotMeta.Index {
+				n.waitForAppliedIndex = n.snapshotMeta.Index + 1
 			}
 			log.G(ctx).Debugf(
-				"beginning raft DEK rotation - last indices written with the old key are (snapshot: %d, WAL: %d) - waiting for snapshot of index %d to be written before rotation can be completed", n.snapshotIndex, n.writtenWALIndex, n.waitForAppliedIndex)
+				"beginning raft DEK rotation - last indices written with the old key are (snapshot: %d, WAL: %d) - waiting for snapshot of index %d to be written before rotation can be completed", n.snapshotMeta.Index, n.writtenWALIndex, n.waitForAppliedIndex)
 		}
 	}
 
@@ -573,14 +577,19 @@ func (n *Node) needsSnapshot(ctx context.Context) bool {
 }
 
 func (n *Node) maybeMarkRotationFinished(ctx context.Context) {
-	if n.waitForAppliedIndex > 0 && n.waitForAppliedIndex <= n.snapshotIndex {
+	if n.waitForAppliedIndex > 0 && n.waitForAppliedIndex <= n.snapshotMeta.Index {
 		// this means we tried to rotate - so finish the rotation
 		if err := n.keyRotator.UpdateKeys(EncryptionKeys{CurrentDEK: n.raftLogger.EncryptionKey}); err != nil {
 			log.G(ctx).WithError(err).Error("failed to update encryption keys after a successful rotation")
 		} else {
-			log.G(ctx).Debugf("a snapshot with index %d is available, which completes the DEK rotation requiring a snapshot of at least index %d",
-				n.snapshotIndex, n.waitForAppliedIndex)
+			log.G(ctx).Debugf(
+				"a snapshot with index %d is available, which completes the DEK rotation requiring a snapshot of at least index %d - throwing away DEK and older snapshots encrypted with the old key",
+				n.snapshotMeta.Index, n.waitForAppliedIndex)
 			n.waitForAppliedIndex = 0
+
+			if err := n.raftLogger.GC(n.snapshotMeta.Index, n.snapshotMeta.Term, 0); err != nil {
+				log.G(ctx).WithError(err).Error("failed to remove old snapshots and WALs that were written with the previous raft DEK")
+			}
 		}
 	}
 }
