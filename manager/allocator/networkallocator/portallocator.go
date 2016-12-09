@@ -285,6 +285,10 @@ func (pa *portAllocator) portsAllocatedInHostPublishMode(s *api.Service) bool {
 }
 
 func (pa *portAllocator) isPortsAllocated(s *api.Service) bool {
+	return pa.isPortsAllocatedOnInit(s, false)
+}
+
+func (pa *portAllocator) isPortsAllocatedOnInit(s *api.Service, onInit bool) bool {
 	// If service has no user-defined endpoint and allocated endpoint,
 	// we assume it is allocated and return true.
 	if s.Endpoint == nil && s.Spec.Endpoint == nil {
@@ -340,6 +344,13 @@ func (pa *portAllocator) isPortsAllocated(s *api.Service) bool {
 		// is not initialized with a valid SwarmPort value then
 		// we are not allocated.
 		if portConfig.PublishedPort == 0 && portState.PublishedPort == 0 {
+			return false
+		}
+
+		// If SwarmPort was not defined by user and the func
+		// is called during allocator initialization state then
+		// we are not allocated.
+		if portConfig.PublishedPort == 0 && onInit {
 			return false
 		}
 	}
