@@ -246,13 +246,14 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 
 	// Copy the current RootCA without the signer
 	rca := ca.RootCA{Cert: tc.RootCA.Cert, Pool: tc.RootCA.Pool, Path: tc.RootCA.Path}
-	cert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+	cert, newRootCA, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
 		ca.CertificateRequestConfig{
 			Token:   tc.ManagerToken,
 			Remotes: tc.Remotes,
 		})
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
+	assert.Nil(t, newRootCA)
 	perms, err := permbits.Stat(tc.Paths.Node.Cert)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
@@ -264,13 +265,14 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	require.NoError(t, err)
 
 	// the worker token is also unencrypted
-	cert, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+	cert, newRootCA, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
 		ca.CertificateRequestConfig{
 			Token:   tc.WorkerToken,
 			Remotes: tc.Remotes,
 		})
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
+	assert.Nil(t, newRootCA)
 	_, _, err = unencryptedKeyReader.Read()
 	require.NoError(t, err)
 
@@ -288,7 +290,7 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	assert.NoError(t, os.RemoveAll(tc.Paths.Node.Cert))
 	assert.NoError(t, os.RemoveAll(tc.Paths.Node.Key))
 
-	_, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+	_, _, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
 		ca.CertificateRequestConfig{
 			Token:   tc.ManagerToken,
 			Remotes: tc.Remotes,
@@ -302,7 +304,7 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	_, _, err = ca.NewKeyReadWriter(tc.Paths.Node, []byte("kek!"), nil).Read()
 	require.NoError(t, err)
 
-	_, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+	_, _, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
 		ca.CertificateRequestConfig{
 			Token:   tc.WorkerToken,
 			Remotes: tc.Remotes,

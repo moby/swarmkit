@@ -135,6 +135,13 @@ func (s *SecurityConfig) UpdateRootCA(cert, key []byte, certExpiry time.Duration
 	return err
 }
 
+// loadNewRootCA replaces the root CA with a new root CA
+func (s *SecurityConfig) loadNewRootCA(rootCA *RootCA) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rootCA = rootCA
+}
+
 // SigningPolicy creates a policy used by the signer to ensure that the only fields
 // from the remote CSRs we trust are: PublicKey, PublicKeyAlgorithm and SignatureAlgorithm.
 // It receives the duration a certificate will be valid for
@@ -358,12 +365,16 @@ func (rootCA RootCA) CreateSecurityConfig(ctx context.Context, krw *KeyReadWrite
 			"node.role": proposedRole,
 		}).Debug("issued new TLS certificate")
 	} else {
+		var newRootCA *RootCA
 		// Request certificate issuance from a remote CA.
 		// Last argument is nil because at this point we don't have any valid TLS creds
-		tlsKeyPair, err = rootCA.RequestAndSaveNewCertificates(ctx, krw, config)
+		tlsKeyPair, newRootCA, err = rootCA.RequestAndSaveNewCertificates(ctx, krw, config)
 		if err != nil {
 			log.G(ctx).WithError(err).Error("failed to request save new certificate")
 			return nil, err
+		}
+		if newRootCA != nil {
+			rootCA = *newRootCA
 		}
 	}
 	// Create the Server TLS Credentials for this node. These will not be used by workers.
@@ -400,7 +411,7 @@ func RenewTLSConfigNow(ctx context.Context, s *SecurityConfig, r remotes.Remotes
 
 	// Let's request new certs. Renewals don't require a token.
 	rootCA := s.RootCA()
-	tlsKeyPair, err := rootCA.RequestAndSaveNewCertificates(ctx,
+	tlsKeyPair, newRootCA, err := rootCA.RequestAndSaveNewCertificates(ctx,
 		s.KeyWriter(),
 		CertificateRequestConfig{
 			Remotes:     r,
@@ -409,6 +420,10 @@ func RenewTLSConfigNow(ctx context.Context, s *SecurityConfig, r remotes.Remotes
 	if err != nil {
 		log.WithError(err).Errorf("failed to renew the certificate")
 		return err
+	}
+	if newRootCA != nil {
+		s.loadNewRootCA(newRootCA)
+		rootCA = s.RootCA()
 	}
 
 	clientTLSConfig, err := NewClientTLSConfig(tlsKeyPair, rootCA.Pool, CARole)

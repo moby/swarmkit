@@ -154,12 +154,13 @@ func (rca *RootCA) IssueAndSaveNewCertificates(kw KeyWriter, cn, ou, org string)
 }
 
 // RequestAndSaveNewCertificates gets new certificates issued, either by signing them locally if a signer is
-// available, or by requesting them from the remote server at remoteAddr.
-func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWriter, config CertificateRequestConfig) (*tls.Certificate, error) {
+// available, or by requesting them from the remote server at remoteAddr.  The RootCA is always returned because
+// the request could have provided a new certificate bundle
+func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWriter, config CertificateRequestConfig) (*tls.Certificate, *RootCA, error) {
 	// Create a new key/pair and CSR
 	csr, key, err := GenerateNewCSR()
 	if err != nil {
-		return nil, errors.Wrap(err, "error when generating new node certs")
+		return nil, nil, errors.Wrap(err, "error when generating new node certs")
 	}
 
 	// Get the remote manager to issue a CA signed certificate for this node
@@ -173,7 +174,7 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 		}
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Доверяй, но проверяй.
@@ -181,11 +182,11 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 	// Create an X509Cert so we can .Verify()
 	certBlock, _ := pem.Decode(response.Certificate.Certificate)
 	if certBlock == nil {
-		return nil, errors.New("failed to parse certificate PEM")
+		return nil, nil, errors.New("failed to parse certificate PEM")
 	}
 	X509Cert, err := x509.ParseCertificate(certBlock.Bytes)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// We retrieve the certificate with the current root pool, so we know this was issued by a legitimate manager.
 	// However, there might have been a server-side root rotation, so we verify this cert with a new pool.
@@ -210,13 +211,13 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 
 	// Check to see if this certificate was signed by one of the CAs, and isn't expired
 	if _, err := X509Cert.Verify(opts); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Create a valid TLSKeyPair out of the PEM encoded private key and certificate
 	tlsKeyPair, err := tls.X509KeyPair(response.Certificate.Certificate, key)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var kekUpdate *KEKData
@@ -227,23 +228,25 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 		}
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// If a CA certificate bundle exists it has been validated before. If it's different, let's write it to disk.
 	// Root rotation should always happen by appending a new CA cert, and later removing the old one,
 	// so it's safer to do it in this order of operations (write root, write certificate)
+	var returnRootCA *RootCA
 	if newRootErr == nil && !bytes.Equal(rca.Cert, response.RootCABundle) {
 		if err := newRootCA.saveCertificate(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+		returnRootCA = &newRootCA
 	}
 
 	if err := kw.Write(response.Certificate.Certificate, key, kekUpdate); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &tlsKeyPair, nil
+	return &tlsKeyPair, returnRootCA, nil
 }
 
 func (rca *RootCA) getKEKUpdate(ctx context.Context, cert *x509.Certificate, keypair tls.Certificate, r remotes.Remotes) (*KEKData, error) {
