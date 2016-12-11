@@ -23,6 +23,7 @@ type taskManager struct {
 	shutdown     chan struct{}
 	shutdownOnce sync.Once
 	closed       chan struct{}
+	closeOnce    sync.Once
 }
 
 func newTaskManager(ctx context.Context, task *api.Task, ctlr exec.Controller, reporter StatusReporter) *taskManager {
@@ -50,10 +51,7 @@ func (tm *taskManager) Update(ctx context.Context, task *api.Task) error {
 	}
 }
 
-// Close shuts down the task manager, blocking until it is stopped.
-//
-// Calling this method will result in a complete removal of the controller's
-// resources, blocking until complete.
+// Close shuts down the task manager, blocking until it is closed.
 func (tm *taskManager) Close() error {
 	tm.shutdownOnce.Do(func() {
 		close(tm.shutdown)
@@ -231,13 +229,19 @@ func (tm *taskManager) run(ctx context.Context) {
 				continue       // wait until operation actually exits.
 			}
 
+			// disable everything, and prepare for closing.
 			statusq = nil
 			errs = nil
 			shutdown = nil
-			close(tm.closed)
+			tm.closeOnce.Do(func() {
+				close(tm.closed)
+			})
 		case <-tm.closed:
 			return
 		case <-ctx.Done():
+			tm.closeOnce.Do(func() {
+				close(tm.closed)
+			})
 			return
 		}
 	}
