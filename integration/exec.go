@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"sync"
+
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"golang.org/x/net/context"
@@ -34,7 +36,8 @@ func (e *TestExecutor) Controller(t *api.Task) (exec.Controller, error) {
 
 // TestController is dummy channel based controller for tests.
 type TestController struct {
-	ch chan struct{}
+	ch        chan struct{}
+	closeOnce sync.Once
 }
 
 // Update does nothing.
@@ -63,17 +66,17 @@ func (t *TestController) Wait(ctx context.Context) error {
 
 // Shutdown closes internal channel
 func (t *TestController) Shutdown(ctx context.Context) error {
-	close(t.ch)
+	t.closeOnce.Do(func() {
+		close(t.ch)
+	})
 	return nil
 }
 
 // Terminate closes internal channel if it wasn't closed before.
 func (t *TestController) Terminate(ctx context.Context) error {
-	select {
-	case <-t.ch:
-	default:
+	t.closeOnce.Do(func() {
 		close(t.ch)
-	}
+	})
 	return nil
 }
 
@@ -84,5 +87,8 @@ func (t *TestController) Remove(ctx context.Context) error {
 
 // Close does nothing.
 func (t *TestController) Close() error {
+	t.closeOnce.Do(func() {
+		close(t.ch)
+	})
 	return nil
 }
