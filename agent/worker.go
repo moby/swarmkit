@@ -40,6 +40,9 @@ type Worker interface {
 
 	// Subscribe to log messages matching the subscription.
 	Subscribe(ctx context.Context, subscription *api.SubscriptionMessage) error
+
+	// Wait blocks until all task managers have closed
+	Wait(ctx context.Context) error
 }
 
 // statusReporterKey protects removal map from panic.
@@ -108,22 +111,18 @@ func (w *worker) Init(ctx context.Context) error {
 }
 
 // Close performs worker cleanup when no longer needed.
-//
-// Close will block until all outstanding closes have exited.
 func (w *worker) Close() {
 	w.mu.Lock()
 	w.closed = true
 	w.mu.Unlock()
 
-	w.closers.Wait()
 	w.taskevents.Close()
 }
 
 // Assign assigns a full set of tasks and secrets to the worker.
 // Any tasks not previously known will be started. Any tasks that are in the task set
 // and already running will be updated, if possible. Any tasks currently running on
-// the worker outside the task set will be terminated. Assign will block until
-// tasks for removal have exited.
+// the worker outside the task set will be terminated.
 // Any secrets not in the set of assignments will be removed.
 func (w *worker) Assign(ctx context.Context, assignments []*api.AssignmentChange) error {
 	w.mu.Lock()
@@ -241,15 +240,23 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 	}
 
 	closeManager := func(tm *taskManager) {
-		w.closers.Add(1)
 		go func(tm *taskManager) {
 			defer w.closers.Done()
-			// when a task is no longer assigned, we shutdown the task manager for
-			// it and leave cleanup to the sweeper.
+			// when a task is no longer assigned, we shutdown the task manager
 			if err := tm.Close(); err != nil {
 				log.G(ctx).WithError(err).Error("error closing task manager")
 			}
 		}(tm)
+
+		// make an attempt at removing. this is best effort. any errors will be
+		// retried by the reaper later.
+		if err := tm.ctlr.Remove(ctx); err != nil {
+			log.G(ctx).WithError(err).WithField("task.id", tm.task.ID).Error("remove task failed")
+		}
+
+		if err := tm.ctlr.Close(); err != nil {
+			log.G(ctx).WithError(err).Error("error closing controller")
+		}
 	}
 
 	removeTaskAssignment := func(taskID string) error {
@@ -271,7 +278,7 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 			err := removeTaskAssignment(id)
 			if err == nil {
 				delete(w.taskManagers, id)
-				closeManager(tm)
+				go closeManager(tm)
 			}
 		}
 	} else {
@@ -286,7 +293,7 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 			tm, ok := w.taskManagers[task.ID]
 			if ok {
 				delete(w.taskManagers, task.ID)
-				closeManager(tm)
+				go closeManager(tm)
 			}
 		}
 	}
@@ -382,6 +389,8 @@ func (w *worker) taskManager(ctx context.Context, tx *bolt.Tx, task *api.Task) (
 		return nil, err
 	}
 	w.taskManagers[task.ID] = tm
+	// keep track of active tasks
+	w.closers.Add(1)
 	return tm, nil
 }
 
@@ -505,5 +514,20 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 		case <-ctx.Done():
 			return ctx.Err()
 		}
+	}
+}
+
+func (w *worker) Wait(ctx context.Context) error {
+	ch := make(chan struct{})
+	go func() {
+		w.closers.Wait()
+		close(ch)
+	}()
+
+	select {
+	case <-ch:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }

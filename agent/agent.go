@@ -83,9 +83,8 @@ func (a *Agent) Start(ctx context.Context) error {
 
 // Leave instructs the agent to leave the cluster. This method will shutdown
 // assignment processing and remove all assignments from the node.
-//
-// Tasks are removed asynchronously. After calling Leave, Close can be used to
-// wait until any outstanding task removals are complete.
+// Leave blocks until worker has finished closing all task managers or agent
+// is closed.
 func (a *Agent) Leave(ctx context.Context) error {
 	select {
 	case <-a.started:
@@ -97,7 +96,20 @@ func (a *Agent) Leave(ctx context.Context) error {
 		close(a.leaving)
 	})
 
-	return nil
+	// agent could be closed while Leave is in progress
+	var err error
+	ch := make(chan struct{})
+	go func() {
+		err = a.worker.Wait(ctx)
+		close(ch)
+	}()
+
+	select {
+	case <-ch:
+		return err
+	case <-a.closed:
+		return ErrClosed
+	}
 }
 
 // Stop shuts down the agent, blocking until full shutdown. If the agent is not
@@ -205,7 +217,7 @@ func (a *Agent) run(ctx context.Context) {
 			}
 		case msg := <-session.assignments:
 			// if we have left, accept no more assignments
-			if leaving == nil { // leaving when we have left
+			if leaving == nil {
 				continue
 			}
 
