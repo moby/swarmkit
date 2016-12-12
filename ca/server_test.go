@@ -310,12 +310,19 @@ func TestNewNodeCertificateRequiresToken(t *testing.T) {
 		return store.UpdateCluster(tx, clusters[0])
 	}))
 
-	time.Sleep(500 * time.Millisecond)
+	// updating the join token may take a little bit in order to register on the CA server, so poll
+	assert.NoError(t, raftutils.PollFunc(nil, func() error {
+		// Old token should fail
+		role = api.NodeRoleManager
+		issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: tc.ManagerToken}
+		_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
+		if err == nil {
+			return fmt.Errorf("join token not updated yet")
+		}
+		return nil
+	}))
 
 	// Old token should fail
-	role = api.NodeRoleManager
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: tc.ManagerToken}
-	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
 	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid join token is necessary to join this cluster")
 
 	role = api.NodeRoleWorker
