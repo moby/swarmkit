@@ -1,9 +1,12 @@
 package networkallocator
 
 import (
+	"fmt"
 	"net"
 	"testing"
 
+	"github.com/docker/libnetwork/discoverapi"
+	"github.com/docker/libnetwork/types"
 	"github.com/docker/swarmkit/api"
 	"github.com/stretchr/testify/assert"
 )
@@ -713,4 +716,76 @@ func TestServiceUpdate(t *testing.T) {
 	assert.Equal(t, 2, len(s.Endpoint.Ports))
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 	assert.Equal(t, uint32(1235), s.Endpoint.Ports[1].PublishedPort)
+}
+
+type mockIpam struct {
+	actualIpamOptions map[string]string
+}
+
+func (a *mockIpam) GetDefaultAddressSpaces() (string, string, error) {
+	return "defaultAS", "defaultAS", nil
+}
+
+func (a *mockIpam) RequestPool(addressSpace, pool, subPool string, options map[string]string, v6 bool) (string, *net.IPNet, map[string]string, error) {
+	a.actualIpamOptions = options
+
+	poolCidr, _ := types.ParseCIDR(pool)
+	return fmt.Sprintf("%s/%s", "defaultAS", pool), poolCidr, nil, nil
+}
+
+func (a *mockIpam) ReleasePool(poolID string) error {
+	return nil
+}
+
+func (a *mockIpam) RequestAddress(poolID string, ip net.IP, opts map[string]string) (*net.IPNet, map[string]string, error) {
+	return nil, nil, nil
+}
+
+func (a *mockIpam) ReleaseAddress(poolID string, ip net.IP) error {
+	return nil
+}
+
+func (a *mockIpam) DiscoverNew(dType discoverapi.DiscoveryType, data interface{}) error {
+	return nil
+}
+
+func (a *mockIpam) DiscoverDelete(dType discoverapi.DiscoveryType, data interface{}) error {
+	return nil
+}
+
+func TestCorrectlyPassIPAMOptions(t *testing.T) {
+	var err error
+	expectedIpamOptions := map[string]string{"network-name": "freddie"}
+
+	na := newNetworkAllocator(t)
+	ipamDriver := &mockIpam{}
+
+	err = na.drvRegistry.RegisterIpamDriver("mockipam", ipamDriver)
+	assert.NoError(t, err)
+
+	n := &api.Network{
+		ID: "testID",
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "test",
+			},
+			DriverConfig: &api.Driver{},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{
+					Name:    "mockipam",
+					Options: expectedIpamOptions,
+				},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "192.168.1.0/24",
+						Gateway: "192.168.1.1",
+					},
+				},
+			},
+		},
+	}
+	err = na.Allocate(n)
+
+	assert.Equal(t, expectedIpamOptions, ipamDriver.actualIpamOptions)
+	assert.NoError(t, err)
 }
