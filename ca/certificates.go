@@ -156,7 +156,7 @@ func (rca *RootCA) IssueAndSaveNewCertificates(kw KeyWriter, cn, ou, org string)
 // RequestAndSaveNewCertificates gets new certificates issued, either by signing them locally if a signer is
 // available, or by requesting them from the remote server at remoteAddr.  The RootCA is always returned because
 // the request could have provided a new certificate bundle
-func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWriter, config CertificateRequestConfig) (*tls.Certificate, *RootCA, error) {
+func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWriter, config CertificateRequestConfig) (*tls.Certificate, []byte, error) {
 	// Create a new key/pair and CSR
 	csr, key, err := GenerateNewCSR()
 	if err != nil {
@@ -191,27 +191,29 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 	// We retrieve the certificate with the current root pool, so we know this was issued by a legitimate manager.
 	// However, there might have been a server-side root rotation, so we verify this cert with a new pool.
 	// If we got a valid response.RootCABundle, turn it into a Pool, and verify the newly minted certificate using it.
+	// Root rotation should always happen by appending a new CA cert, and later removing the old one, or by
+	// using cross-signed certs.  Either way, the new TLS certificate should be verifiable using both the old
+	// root pool and the new root pool.
 	var (
-		newRootErr error
-		newRootCA  RootCA
+		newRootErr   error
+		newRootCA    RootCA
+		returnRootCA []byte
 	)
-	rootCAPool := rca.Pool
-	if response.RootCABundle != nil {
+	if response.RootCABundle != nil && !bytes.Equal(rca.Cert, response.RootCABundle) {
 		newRootCA, newRootErr = NewRootCA(response.RootCABundle, nil, rca.Path, time.Minute)
 		if newRootErr == nil {
-			// The response.RootCABundle we got from the remote server seems to be good, use it
-			rootCAPool = newRootCA.Pool
+			// The response.RootCABundle we got from the remote server seems to be good -
+			// check to see if the TLS certificate was signed by one of the CAs in this bundle
+			if _, err := X509Cert.Verify(x509.VerifyOptions{Roots: newRootCA.Pool}); err != nil {
+				return nil, nil, errors.Wrap(err, "a new root bundle is available, but the renewed TLS cert does not validate against it")
+			}
+			returnRootCA = response.RootCABundle
 		}
 	}
 
-	// Create VerifyOptions with either the new certificate bundle, or the old pool
-	opts := x509.VerifyOptions{
-		Roots: rootCAPool,
-	}
-
-	// Check to see if this certificate was signed by one of the CAs, and isn't expired
-	if _, err := X509Cert.Verify(opts); err != nil {
-		return nil, nil, err
+	// Verify the TLS bundle against the old root certs as well
+	if _, err := X509Cert.Verify(x509.VerifyOptions{Roots: rca.Pool}); err != nil {
+		return nil, nil, errors.Wrap(err, "the renewed TLS cert does not validate against the root CA cert")
 	}
 
 	// Create a valid TLSKeyPair out of the PEM encoded private key and certificate
@@ -229,17 +231,6 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 	}
 	if err != nil {
 		return nil, nil, err
-	}
-
-	// If a CA certificate bundle exists it has been validated before. If it's different, let's write it to disk.
-	// Root rotation should always happen by appending a new CA cert, and later removing the old one,
-	// so it's safer to do it in this order of operations (write root, write certificate)
-	var returnRootCA *RootCA
-	if newRootErr == nil && !bytes.Equal(rca.Cert, response.RootCABundle) {
-		if err := newRootCA.saveCertificate(); err != nil {
-			return nil, nil, err
-		}
-		returnRootCA = &newRootCA
 	}
 
 	if err := kw.Write(response.Certificate.Certificate, key, kekUpdate); err != nil {

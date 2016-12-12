@@ -2,6 +2,7 @@ package ca_test
 
 import (
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
 	"io/ioutil"
@@ -22,6 +23,7 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/remotes"
 	"github.com/phayes/permbits"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -246,14 +248,14 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 
 	// Copy the current RootCA without the signer
 	rca := ca.RootCA{Cert: tc.RootCA.Cert, Pool: tc.RootCA.Pool, Path: tc.RootCA.Path}
-	cert, newRootCA, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+	cert, newRoot, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
 		ca.CertificateRequestConfig{
 			Token:   tc.ManagerToken,
 			Remotes: tc.Remotes,
 		})
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
-	assert.Nil(t, newRootCA)
+	assert.Nil(t, newRoot)
 	perms, err := permbits.Stat(tc.Paths.Node.Cert)
 	assert.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
@@ -265,14 +267,14 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	require.NoError(t, err)
 
 	// the worker token is also unencrypted
-	cert, newRootCA, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+	cert, newRoot, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
 		ca.CertificateRequestConfig{
 			Token:   tc.WorkerToken,
 			Remotes: tc.Remotes,
 		})
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
-	assert.Nil(t, newRootCA)
+	assert.Nil(t, newRoot)
 	_, _, err = unencryptedKeyReader.Read()
 	require.NoError(t, err)
 
@@ -290,12 +292,13 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	assert.NoError(t, os.RemoveAll(tc.Paths.Node.Cert))
 	assert.NoError(t, os.RemoveAll(tc.Paths.Node.Key))
 
-	_, _, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+	_, newRoot, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
 		ca.CertificateRequestConfig{
 			Token:   tc.ManagerToken,
 			Remotes: tc.Remotes,
 		})
 	assert.NoError(t, err)
+	assert.Nil(t, newRoot) // because the root hasn't changed
 
 	// key can no longer be read without a kek
 	_, _, err = unencryptedKeyReader.Read()
@@ -304,14 +307,136 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	_, _, err = ca.NewKeyReadWriter(tc.Paths.Node, []byte("kek!"), nil).Read()
 	require.NoError(t, err)
 
-	_, _, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+	_, newRoot, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
 		ca.CertificateRequestConfig{
 			Token:   tc.WorkerToken,
 			Remotes: tc.Remotes,
 		})
 	assert.NoError(t, err)
+	require.Nil(t, newRoot)
 	_, _, err = unencryptedKeyReader.Read()
 	require.NoError(t, err)
+}
+
+type injectedRootCA struct {
+	*ca.Server
+	injectedRoot []byte
+}
+
+func (i injectedRootCA) NodeCertificateStatus(ctx context.Context, r *api.NodeCertificateStatusRequest) (*api.NodeCertificateStatusResponse, error) {
+	resp, err := i.Server.NodeCertificateStatus(ctx, r)
+	if err != nil {
+		return resp, err
+	}
+	return &api.NodeCertificateStatusResponse{
+		Status:       resp.Status,
+		Certificate:  resp.Certificate,
+		RootCABundle: i.injectedRoot,
+	}, nil
+}
+
+func TestRequestAndSaveNewCertificatesRootCA(t *testing.T) {
+	if testutils.External {
+		t.Skip("skip simulating root rotation with the external signer")
+	}
+
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+
+	tmpDir, err := ioutil.TempDir("", "")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+	paths := ca.NewConfigPaths(tmpDir)
+	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
+	// Copy the current RootCA without the signer
+	rca := ca.RootCA{Cert: tc.RootCA.Cert, Pool: tc.RootCA.Pool, Path: paths.Node}
+
+	cert, key, err := testutils.CreateRootCertAndKey("rootCNnew")
+	require.NoError(t, err)
+
+	// If the new root CA is not the same as the old root CA, and the TLS certificates downloaded
+	// match the new root CA only, the tls certs are rejected and not saved.
+	require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
+		clusters, err := store.FindClusters(tx, store.ByIDPrefix(tc.Organization))
+		require.NoError(t, err)
+		clusters[0].RootCA.CACert = append(cert, tc.RootCA.Cert...)
+		clusters[0].RootCA.CAKey = key
+		return store.UpdateCluster(tx, clusters[0])
+	}))
+	_, _, err = rca.RequestAndSaveNewCertificates(tc.Context, krw,
+		ca.CertificateRequestConfig{
+			Token:   tc.ManagerToken,
+			Remotes: tc.Remotes,
+		})
+	require.Error(t, err)
+	require.IsType(t, x509.UnknownAuthorityError{}, errors.Cause(err))
+	_, _, err = krw.Read()
+	require.True(t, os.IsNotExist(err))
+
+	// If the new root CA is not the same as the old root CA, and the TLS certificates downloaded
+	// match both, the certs are saved and the new root CA returned
+	CABundle := append(tc.RootCA.Cert, cert...) // the first cert is the one used to sign
+	require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
+		clusters, err := store.FindClusters(tx, store.ByIDPrefix(tc.Organization))
+		require.NoError(t, err)
+		clusters[0].RootCA.CACert = CABundle
+		clusters[0].RootCA.CAKey = tc.RootCA.Key
+		return store.UpdateCluster(tx, clusters[0])
+	}))
+	_, newRoot, err := rca.RequestAndSaveNewCertificates(tc.Context, krw,
+		ca.CertificateRequestConfig{
+			Token:   tc.ManagerToken,
+			Remotes: tc.Remotes,
+		})
+	require.NoError(t, err)
+	require.Equal(t, CABundle, newRoot)
+	_, _, err = krw.Read()
+	require.NoError(t, err)
+
+	// If the new root CA is not the same as the old root CA, and the TLS certificates downloaded
+	// match the old root CA only, the tls certs are rejected and not saved.  This could happen
+	// if the node happens to request a new certificate, but before it manages to query the status
+	// and get a response, the root certificate was rotated.
+	managerConfig, err := tc.NewNodeConfig("swarm-manager")
+	require.NoError(t, err)
+	tc.CAServer.Stop()
+	tc.Server.Stop()
+
+	serverOpts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
+	grpcServer := grpc.NewServer(serverOpts...)
+
+	caServer := injectedRootCA{
+		Server:       ca.NewServer(tc.MemoryStore, managerConfig),
+		injectedRoot: cert,
+	}
+	caServer.SetReconciliationRetryInterval(50 * time.Millisecond)
+	api.RegisterCAServer(grpcServer, caServer)
+	api.RegisterNodeCAServer(grpcServer, caServer)
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+
+	ctx := context.Background()
+	go grpcServer.Serve(l)
+	go caServer.Run(ctx)
+	defer caServer.Stop()
+	defer grpcServer.Stop()
+	defer l.Close()
+
+	<-caServer.Ready()
+
+	require.NoError(t, os.Remove(paths.Node.Cert))
+	require.NoError(t, os.Remove(paths.Node.Key))
+
+	_, _, err = rca.RequestAndSaveNewCertificates(ctx, krw,
+		ca.CertificateRequestConfig{
+			Token:   tc.ManagerToken,
+			Remotes: remotes.NewRemotes(api.Peer{Addr: l.Addr().String()}),
+		})
+	require.Error(t, err)
+	require.IsType(t, x509.UnknownAuthorityError{}, errors.Cause(err))
+	_, _, err = krw.Read()
+	require.True(t, os.IsNotExist(err))
 }
 
 func TestIssueAndSaveNewCertificates(t *testing.T) {

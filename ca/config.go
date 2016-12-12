@@ -135,13 +135,6 @@ func (s *SecurityConfig) UpdateRootCA(cert, key []byte, certExpiry time.Duration
 	return err
 }
 
-// loadNewRootCA replaces the root CA with a new root CA
-func (s *SecurityConfig) loadNewRootCA(rootCA *RootCA) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.rootCA = rootCA
-}
-
 // SigningPolicy creates a policy used by the signer to ensure that the only fields
 // from the remote CSRs we trust are: PublicKey, PublicKeyAlgorithm and SignatureAlgorithm.
 // It receives the duration a certificate will be valid for
@@ -341,8 +334,9 @@ func (rootCA RootCA) CreateSecurityConfig(ctx context.Context, krw *KeyReadWrite
 	ctx = log.WithModule(ctx, "tls")
 
 	var (
-		tlsKeyPair *tls.Certificate
-		err        error
+		tlsKeyPair  *tls.Certificate
+		newRootCert []byte
+		err         error
 	)
 
 	if rootCA.CanSign() {
@@ -365,16 +359,21 @@ func (rootCA RootCA) CreateSecurityConfig(ctx context.Context, krw *KeyReadWrite
 			"node.role": proposedRole,
 		}).Debug("issued new TLS certificate")
 	} else {
-		var newRootCA *RootCA
 		// Request certificate issuance from a remote CA.
 		// Last argument is nil because at this point we don't have any valid TLS creds
-		tlsKeyPair, newRootCA, err = rootCA.RequestAndSaveNewCertificates(ctx, krw, config)
+		tlsKeyPair, newRootCert, err = rootCA.RequestAndSaveNewCertificates(ctx, krw, config)
 		if err != nil {
 			log.G(ctx).WithError(err).Error("failed to request save new certificate")
 			return nil, err
 		}
-		if newRootCA != nil {
-			rootCA = *newRootCA
+		if newRootCert != nil {
+			rootCA, err = NewRootCA(newRootCert, nil, rootCA.Path, DefaultNodeCertExpiration)
+			if err != nil {
+				return nil, err
+			}
+			if err := rootCA.saveCertificate(); err != nil {
+				return nil, err
+			}
 		}
 	}
 	// Create the Server TLS Credentials for this node. These will not be used by workers.
@@ -411,7 +410,7 @@ func RenewTLSConfigNow(ctx context.Context, s *SecurityConfig, r remotes.Remotes
 
 	// Let's request new certs. Renewals don't require a token.
 	rootCA := s.RootCA()
-	tlsKeyPair, newRootCA, err := rootCA.RequestAndSaveNewCertificates(ctx,
+	tlsKeyPair, newRootCert, err := rootCA.RequestAndSaveNewCertificates(ctx,
 		s.KeyWriter(),
 		CertificateRequestConfig{
 			Remotes:     r,
@@ -421,17 +420,23 @@ func RenewTLSConfigNow(ctx context.Context, s *SecurityConfig, r remotes.Remotes
 		log.WithError(err).Errorf("failed to renew the certificate")
 		return err
 	}
-	if newRootCA != nil {
-		s.loadNewRootCA(newRootCA)
-		rootCA = s.RootCA()
+	pool := rootCA.Pool
+	if newRootCert != nil {
+		// if we have a new root, ALWAYS use it in the server and client TLS configs, no matter what the role
+		// of the node is
+		newRootCA, err := NewRootCA(newRootCert, nil, rootCA.Path, DefaultNodeCertExpiration)
+		if err != nil {
+			return err
+		}
+		pool = newRootCA.Pool
 	}
 
-	clientTLSConfig, err := NewClientTLSConfig(tlsKeyPair, rootCA.Pool, CARole)
+	clientTLSConfig, err := NewClientTLSConfig(tlsKeyPair, pool, CARole)
 	if err != nil {
 		log.WithError(err).Errorf("failed to create a new client config")
 		return err
 	}
-	serverTLSConfig, err := NewServerTLSConfig(tlsKeyPair, rootCA.Pool)
+	serverTLSConfig, err := NewServerTLSConfig(tlsKeyPair, pool)
 	if err != nil {
 		log.WithError(err).Errorf("failed to create a new server config")
 		return err
@@ -440,6 +445,15 @@ func RenewTLSConfigNow(ctx context.Context, s *SecurityConfig, r remotes.Remotes
 	if err = s.ClientTLSCreds.LoadNewTLSConfig(clientTLSConfig); err != nil {
 		log.WithError(err).Errorf("failed to update the client credentials")
 		return err
+	}
+
+	// Don't actually set the new root on the SecurityConfig's `RootCA` object unless the node is a worker.
+	// Managers can get root cert updates via raft, because 1 specific manager (the leader) needs the key
+	// as well as the cert, and here we just have the cert.
+	if newRootCert != nil && s.ClientTLSCreds.Role() == WorkerRole {
+		if err := s.UpdateRootCA(newRootCert, nil, DefaultNodeCertExpiration); err != nil {
+			return err
+		}
 	}
 
 	// Update the external CA to use the new client TLS
