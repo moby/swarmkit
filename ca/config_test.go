@@ -382,11 +382,17 @@ func TestRenewTLSConfigNewRootCA(t *testing.T) {
 		err = ca.RenewTLSConfigNow(ctx, nodeConfig, tc.Remotes)
 		require.NoError(t, err)
 
+		rootCA := nodeConfig.RootCA()
+
 		if role == ca.WorkerRole {
-			require.Equal(t, CABundle, nodeConfig.RootCA().Cert)
+			require.Equal(t, CABundle, rootCA.Cert)
 		} else {
-			require.NotEqual(t, CABundle, nodeConfig.RootCA().Cert)
+			require.NotEqual(t, CABundle, rootCA.Cert)
 		}
+		// and check that whatever's been persisted to disk is what's set on the RootCA object
+		certBytes, err := ioutil.ReadFile(rootCA.Path.Cert)
+		require.NoError(t, err)
+		require.Equal(t, rootCA.Cert, certBytes)
 
 		// use this to generate a new cert and key, so it can be verified using the client
 		// and server TLS bundle

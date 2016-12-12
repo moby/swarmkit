@@ -25,6 +25,7 @@ import (
 	"github.com/docker/swarmkit/manager/state/raft/storage"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/remotes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -399,4 +400,127 @@ func TestManagerLockUnlock(t *testing.T) {
 	// all this happened before WaitForLeader completed, so don't check the
 	// error.
 	<-done
+}
+
+// Tests the root CA being updated in managers as they are changed in raft.  This test must exist here instead of in the
+// integration tests, because there is no way to update the root cert material via API and so it must be updated via
+// updating the memory store directly.
+func TestManagerRootCAChangePropagation(t *testing.T) {
+	var (
+		peers      []api.Peer
+		joinTokens api.JoinTokens
+		managers   []*Manager
+	)
+	for i := 0; i < 2; i++ {
+		stateDir, err := ioutil.TempDir("", "test-raft")
+		require.NoError(t, err)
+		defer os.RemoveAll(stateDir)
+
+		// we want each one in a different directory because we want to check that each one has written
+		// their own rootCA certs
+		paths := ca.NewConfigPaths(filepath.Join(stateDir, "certificates"))
+		var rootCA ca.RootCA
+		if len(managers) == 0 {
+			rootCA, err = ca.CreateRootCA("rootCN", paths.RootCA)
+		} else {
+			rootCA, err = ca.NewRootCA(managers[0].config.SecurityConfig.RootCA().Cert, nil, paths.RootCA, ca.DefaultNodeCertExpiration)
+		}
+		require.NoError(t, err)
+		managerSecurityConfig, err := rootCA.CreateSecurityConfig(context.Background(), ca.NewKeyReadWriter(paths.Node, nil, nil),
+			ca.CertificateRequestConfig{
+				Token:   joinTokens.Manager,
+				Remotes: remotes.NewRemotes(peers...),
+			})
+		require.NoError(t, err)
+
+		config := &Config{
+			RemoteAPI:      RemoteAddrs{ListenAddr: "127.0.0.1:0"},
+			ControlAPI:     filepath.Join(stateDir, "manager_socket"),
+			StateDir:       stateDir,
+			SecurityConfig: managerSecurityConfig,
+			ElectionTick:   2,
+		}
+		if len(managers) > 0 {
+			config.JoinRaft = managers[0].Addr()
+		}
+		m, err := New(config)
+		require.NoError(t, err)
+		require.NotNil(t, m)
+
+		go func() {
+			m.Run(context.Background())
+		}()
+		managers = append(managers, m)
+		peers = append(peers, api.Peer{Addr: m.Addr()})
+
+		if len(managers) > 0 {
+			raftutils.PollFunc(nil, func() error {
+				var clusters []*api.Cluster
+				managers[0].raftNode.MemoryStore().View(func(tx store.ReadTx) {
+					clusters, _ = store.FindClusters(tx, store.ByName("default"))
+				})
+				if len(clusters) == 0 {
+					return fmt.Errorf("no cluster object yet")
+				}
+				joinTokens = clusters[0].RootCA.JoinTokens
+				return nil
+			})
+		}
+
+		defer func() {
+			go m.Stop(context.Background())
+		}()
+	}
+
+	tempDir, err := ioutil.TempDir("", "test-raft")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	paths := ca.NewConfigPaths(tempDir)
+	rootCA, err := ca.NewRootCA(managers[0].config.SecurityConfig.RootCA().Cert, nil, paths.RootCA, ca.DefaultNodeCertExpiration)
+	require.NoError(t, err)
+
+	// update the root cert material
+	newRootCert, _, err := testutils.CreateRootCertAndKey("newRootCN")
+	require.NoError(t, err)
+	var rootCABundle []byte
+
+	// manipulate the leader's memory store, because there is no API to rotate root CA material yet
+	require.NoError(t, managers[0].raftNode.MemoryStore().Update(func(tx store.Tx) error {
+		clusters, err := store.FindClusters(tx, store.ByName("default"))
+		require.NoError(t, err)
+		require.Len(t, clusters, 1)
+		rootCABundle = append(clusters[0].RootCA.CACert, newRootCert...)
+		clusters[0].RootCA.CACert = rootCABundle
+		return store.UpdateCluster(tx, clusters[0])
+	}))
+
+	// ensure that all the nodes RootCAs have been updated
+	require.NoError(t, raftutils.PollFunc(nil, func() error {
+		for _, manager := range managers {
+			managerRootCA := manager.config.SecurityConfig.RootCA()
+
+			certBytes, err := ioutil.ReadFile(managerRootCA.Path.Cert)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(rootCABundle, certBytes) {
+				return fmt.Errorf("new rootCA material hasn't been written to disk yet")
+			}
+			if !bytes.Equal(rootCABundle, managerRootCA.Cert) {
+				return fmt.Errorf("rootcA material on disk does not match what's in the security config")
+			}
+		}
+		return nil
+	}))
+
+	// check that the leader can still sign
+	nodeCert, newRoot, err := rootCA.RequestAndSaveNewCertificates(context.Background(), ca.NewKeyReadWriter(paths.Node, nil, nil),
+		ca.CertificateRequestConfig{
+			Token:   joinTokens.Worker,
+			Remotes: remotes.NewRemotes(peers...),
+		})
+	require.NoError(t, err)
+	require.Equal(t, rootCABundle, newRoot) // new root cert
+	require.NotNil(t, nodeCert)
 }
