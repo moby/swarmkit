@@ -148,7 +148,7 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 }
 
 // If there is no CA, and a join addr is provided, one is downloaded from the
-// join server. If there is a CA, it is just loaded from disk. The TLS key and
+// join server. If there is a CA, it is just loaded from disk.  The TLS key and
 // cert are also downloaded.
 func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 	tempdir, err := ioutil.TempDir("", "test-join-node")
@@ -224,6 +224,11 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 	require.NoError(t, err)
 	_, err = node.loadSecurityConfig(context.Background())
 	require.NoError(t, err)
+
+	// make sure the CA cert has not been replaced
+	readCertBytes, err := ioutil.ReadFile(paths.RootCA.Cert)
+	require.NoError(t, err)
+	require.Equal(t, certBytes, readCertBytes)
 
 	// the TLS node cert and key were saved to disk encrypted, though
 	_, _, err = ca.NewKeyReadWriter(paths.Node, nil, nil).Read()
