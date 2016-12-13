@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"bytes"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -419,7 +420,7 @@ func (m *Manager) Run(parent context.Context) error {
 	}
 	raftConfig := c.Spec.Raft
 
-	if err := m.watchForKEKChanges(ctx); err != nil {
+	if err := m.watchForClusterChanges(ctx); err != nil {
 		return returnErr(err)
 	}
 
@@ -557,7 +558,29 @@ func (m *Manager) updateKEK(ctx context.Context, cluster *api.Cluster) error {
 	return nil
 }
 
-func (m *Manager) watchForKEKChanges(ctx context.Context) error {
+// updateRootCA updates the security config's root CA object, only if the CA server is not running
+func (m *Manager) updateRootCA(ctx context.Context, cluster *api.Cluster) {
+	currRootCA := m.config.SecurityConfig.RootCA()
+	// only update if the root cert has changed
+	if bytes.Equal(cluster.RootCA.CACert, currRootCA.Cert) || len(currRootCA.Cert) == 0 {
+		return
+	}
+
+	// Don't update unless we're a follower - if we're the leader, the CA server will update the
+	// root CA object.  It doesn't actually matter if we update twice, because we'll be updating
+	// to the same data, so this is more of an attempt to not to duplicate effort.  This actually
+	// sets the key on the RootCA object as well, making it capable of signing - however, since
+	// renewals always go through the CA server, this update would not allow this node to sign its
+	// own TLS certificates unless it becomes the cluster leader.
+	if !m.raftNode.IsLeader() {
+		ca.UpdateRootCA(log.WithLogger(ctx, log.G(ctx).WithFields(logrus.Fields{
+			"node.id": m.config.SecurityConfig.ClientTLSCreds.NodeID(),
+			"method":  "(*Manager).updateRootCA",
+		})), m.config.SecurityConfig, cluster)
+	}
+}
+
+func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 	clusterID := m.config.SecurityConfig.ClientTLSCreds.Organization()
 	clusterWatch, clusterWatchCancel, err := store.ViewAndWatch(m.raftNode.MemoryStore(),
 		func(tx store.ReadTx) error {
@@ -565,6 +588,7 @@ func (m *Manager) watchForKEKChanges(ctx context.Context) error {
 			if cluster == nil {
 				return fmt.Errorf("unable to get current cluster")
 			}
+			m.updateRootCA(ctx, cluster)
 			return m.updateKEK(ctx, cluster)
 		},
 		state.EventUpdateCluster{
@@ -580,6 +604,7 @@ func (m *Manager) watchForKEKChanges(ctx context.Context) error {
 			select {
 			case event := <-clusterWatch:
 				clusterEvent := event.(state.EventUpdateCluster)
+				m.updateRootCA(ctx, clusterEvent.Cluster)
 				m.updateKEK(ctx, clusterEvent.Cluster)
 			case <-ctx.Done():
 				clusterWatchCancel()

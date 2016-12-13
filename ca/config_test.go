@@ -1,6 +1,8 @@
 package ca_test
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -123,6 +125,53 @@ func TestCreateSecurityConfigNoCerts(t *testing.T) {
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
 	assert.NotNil(t, nodeConfig.ServerTLSCreds)
 	assert.Equal(t, rootCA, *nodeConfig.RootCA())
+}
+
+func TestCreateSecurityConfigNewRootCA(t *testing.T) {
+	t.Parallel()
+
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+
+	tempDir, err := ioutil.TempDir("", "test-create-security-config")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+	paths := ca.NewConfigPaths(tempDir)
+
+	// Create new root CA material on the server
+	cert, _, err := testutils.CreateRootCertAndKey("rootCNnew")
+	require.NoError(t, err)
+	CABundle := append(cert, tc.RootCA.Cert...)
+
+	rootCA, err := ca.NewRootCA(CABundle, nil, paths.Node, ca.DefaultNodeCertExpiration)
+	require.NoError(t, err)
+
+	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
+
+	securityConfig, err := rootCA.CreateSecurityConfig(
+		tc.Context, krw,
+		ca.CertificateRequestConfig{
+			Token:   tc.WorkerToken,
+			Remotes: tc.Remotes,
+		})
+	require.NoError(t, err)
+
+	_, err = tc.WriteNewNodeConfig(ca.ManagerRole)
+	require.NoError(t, err)
+	tcCert, err := ioutil.ReadFile(tc.Paths.Node.Cert)
+	require.NoError(t, err)
+	certBlock, _ := pem.Decode(tcCert)
+	require.NotNil(t, certBlock)
+	x509Cert, err := x509.ParseCertificate(certBlock.Bytes)
+	require.NoError(t, err)
+
+	for _, pool := range []*x509.CertPool{
+		securityConfig.ClientTLSCreds.Config().RootCAs,
+		securityConfig.ServerTLSCreds.Config().RootCAs,
+	} {
+		_, err := x509Cert.Verify(x509.VerifyOptions{Roots: pool})
+		require.NoError(t, err)
+	}
 }
 
 func TestLoadSecurityConfigInvalidCert(t *testing.T) {
@@ -296,6 +345,77 @@ func TestRenewTLSConfigManager(t *testing.T) {
 		assert.NoError(t, certUpdate.Err)
 		assert.NotNil(t, certUpdate)
 		assert.Equal(t, ca.ManagerRole, certUpdate.Role)
+	}
+}
+
+func TestRenewTLSConfigNewRootCA(t *testing.T) {
+	t.Parallel()
+
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Create new root CA material on the server
+	cert, key, err := testutils.CreateRootCertAndKey("rootCNnew")
+	require.NoError(t, err)
+	// Append to a bundle
+	CABundle := append(tc.RootCA.Cert, cert...)
+
+	// for workers, the RootCA on the SecurityConfig is updated.  For managers, it is
+	// not updated, because we're counting on the managers to update themselves via raft
+	for _, role := range []string{ca.WorkerRole, ca.ManagerRole} {
+		nodeConfig, err := tc.WriteNewNodeConfig(role)
+		require.NoError(t, err)
+
+		assert.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
+			clusters, err := store.FindClusters(tx, store.ByIDPrefix(tc.Organization))
+			assert.NoError(t, err)
+			clusters[0].RootCA.CACert = CABundle
+			clusters[0].RootCA.CAKey = tc.RootCA.Key
+			return store.UpdateCluster(tx, clusters[0])
+		}))
+
+		// Ensure that we can update, and that the root CA in the security config
+		// is updated and that the new TLS creds have a rootCA that includes the bundle
+		err = ca.RenewTLSConfigNow(ctx, nodeConfig, tc.Remotes)
+		require.NoError(t, err)
+
+		rootCA := nodeConfig.RootCA()
+
+		if role == ca.WorkerRole {
+			require.Equal(t, CABundle, rootCA.Cert)
+		} else {
+			require.NotEqual(t, CABundle, rootCA.Cert)
+		}
+		// and check that whatever's been persisted to disk is what's set on the RootCA object
+		certBytes, err := ioutil.ReadFile(rootCA.Path.Cert)
+		require.NoError(t, err)
+		require.Equal(t, rootCA.Cert, certBytes)
+
+		// use this to generate a new cert and key, so it can be verified using the client
+		// and server TLS bundle
+		newRootCA, err := ca.NewRootCA(cert, key, tc.RootCA.Path, ca.DefaultNodeCertExpiration)
+		require.NoError(t, err)
+
+		csr, _, err := ca.GenerateNewCSR()
+		require.NoError(t, err)
+		certChain, err := newRootCA.ParseValidateAndSignCSR(csr, "cn", "ou", "org")
+		require.NoError(t, err)
+
+		certBlock, _ := pem.Decode(certChain)
+		require.NotNil(t, certBlock)
+		x509Cert, err := x509.ParseCertificate(certBlock.Bytes)
+		require.NoError(t, err)
+
+		for _, pool := range []*x509.CertPool{
+			nodeConfig.ClientTLSCreds.Config().RootCAs,
+			nodeConfig.ServerTLSCreds.Config().RootCAs,
+		} {
+			_, err := x509Cert.Verify(x509.VerifyOptions{Roots: pool})
+			require.NoError(t, err)
+		}
 	}
 }
 
