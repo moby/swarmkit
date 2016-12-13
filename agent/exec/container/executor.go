@@ -8,6 +8,7 @@ import (
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/agent/secrets"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
 	"golang.org/x/net/context"
 )
 
@@ -51,23 +52,23 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 	// retrieve v2 plugins
 	v2plugins, err := e.client.PluginList(ctx)
 	if err != nil {
-		return nil, err
-	}
-
-	// add v2 plugins to 'plugins'
-	for _, plgn := range v2plugins {
-		for _, typ := range plgn.Config.Interface.Types {
-			if typ.Prefix == "docker" && plgn.Enabled {
-				plgnTyp := typ.Capability
-				if typ.Capability == "volumedriver" {
-					plgnTyp = "Volume"
-				} else if typ.Capability == "networkdriver" {
-					plgnTyp = "Network"
+		log.L.WithError(err).Warning("PluginList operation failed")
+	} else {
+		// add v2 plugins to 'plugins'
+		for _, plgn := range v2plugins {
+			for _, typ := range plgn.Config.Interface.Types {
+				if typ.Prefix == "docker" && plgn.Enabled {
+					plgnTyp := typ.Capability
+					if typ.Capability == "volumedriver" {
+						plgnTyp = "Volume"
+					} else if typ.Capability == "networkdriver" {
+						plgnTyp = "Network"
+					}
+					plugins[api.PluginDescription{
+						Type: plgnTyp,
+						Name: plgn.Name,
+					}] = struct{}{}
 				}
-				plugins[api.PluginDescription{
-					Type: plgnTyp,
-					Name: plgn.Name,
-				}] = struct{}{}
 			}
 		}
 	}
