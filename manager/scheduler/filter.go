@@ -93,6 +93,15 @@ type PluginFilter struct {
 	t *api.Task
 }
 
+func referencesVolumePlugin(mount api.Mount) bool {
+	return mount.Type == api.MountTypeVolume &&
+		mount.VolumeOptions != nil &&
+		mount.VolumeOptions.DriverConfig != nil &&
+		mount.VolumeOptions.DriverConfig.Name != "" &&
+		mount.VolumeOptions.DriverConfig.Name != "local"
+
+}
+
 // SetTask returns true when the filter is enabled for a given task.
 func (f *PluginFilter) SetTask(t *api.Task) bool {
 	c := t.Spec.GetContainer()
@@ -100,12 +109,9 @@ func (f *PluginFilter) SetTask(t *api.Task) bool {
 	var volumeTemplates bool
 	if c != nil {
 		for _, mount := range c.Mounts {
-			if mount.Type == api.MountTypeVolume &&
-				mount.VolumeOptions != nil &&
-				mount.VolumeOptions.DriverConfig != nil &&
-				mount.VolumeOptions.DriverConfig.Name != "" &&
-				mount.VolumeOptions.DriverConfig.Name != "local" {
+			if referencesVolumePlugin(mount) {
 				volumeTemplates = true
+				break
 			}
 		}
 	}
@@ -128,7 +134,7 @@ func (f *PluginFilter) Check(n *NodeInfo) bool {
 	container := f.t.Spec.GetContainer()
 	if container != nil {
 		for _, mount := range container.Mounts {
-			if mount.VolumeOptions != nil && mount.VolumeOptions.DriverConfig != nil {
+			if referencesVolumePlugin(mount) {
 				if !f.pluginExistsOnNode("Volume", mount.VolumeOptions.DriverConfig.Name, nodePlugins) {
 					return false
 				}
@@ -138,8 +144,10 @@ func (f *PluginFilter) Check(n *NodeInfo) bool {
 
 	// Check if all network plugins required by task are installed on node
 	for _, tn := range f.t.Networks {
-		if !f.pluginExistsOnNode("Network", tn.Network.DriverState.Name, nodePlugins) {
-			return false
+		if tn.Network != nil && tn.Network.DriverState != nil && tn.Network.DriverState.Name != "" {
+			if !f.pluginExistsOnNode("Network", tn.Network.DriverState.Name, nodePlugins) {
+				return false
+			}
 		}
 	}
 	return true
