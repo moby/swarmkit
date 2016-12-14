@@ -1387,7 +1387,6 @@ func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
 }
 
 func TestSchedulerPluginConstraint(t *testing.T) {
-	t.Skip("plugin filtering disabled since plugins on the engine are lazy loaded")
 	ctx := context.Background()
 
 	// Node1: vol plugin1
