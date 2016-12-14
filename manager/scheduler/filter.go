@@ -145,6 +145,7 @@ func (f *PluginFilter) Check(n *NodeInfo) bool {
 	return true
 }
 
+// pluginExistsOnNode returns true if the (pluginName, pluginType) pair is present in nodePlugins
 func (f *PluginFilter) pluginExistsOnNode(pluginType string, pluginName string, nodePlugins []api.PluginDescription) bool {
 	for _, np := range nodePlugins {
 		if pluginType == np.Type && pluginName == np.Name {
