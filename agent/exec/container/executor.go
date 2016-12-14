@@ -8,6 +8,7 @@ import (
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/agent/secrets"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
 	"golang.org/x/net/context"
 )
 
@@ -41,11 +42,40 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 		}
 	}
 
+	// add v1 plugins to 'plugins'
 	addPlugins("Volume", info.Plugins.Volume)
 	// Add builtin driver "overlay" (the only builtin multi-host driver) to
 	// the plugin list by default.
 	addPlugins("Network", append([]string{"overlay"}, info.Plugins.Network...))
 	addPlugins("Authorization", info.Plugins.Authorization)
+
+	// retrieve v2 plugins
+	v2plugins, err := e.client.PluginList(ctx)
+	if err != nil {
+		log.L.WithError(err).Warning("PluginList operation failed")
+	} else {
+		// add v2 plugins to 'plugins'
+		for _, plgn := range v2plugins {
+			for _, typ := range plgn.Config.Interface.Types {
+				if typ.Prefix == "docker" && plgn.Enabled {
+					plgnTyp := typ.Capability
+					if typ.Capability == "volumedriver" {
+						plgnTyp = "Volume"
+					} else if typ.Capability == "networkdriver" {
+						plgnTyp = "Network"
+					}
+					plgnName := plgn.Name
+					if plgn.Tag != "" {
+						plgnName += ":" + plgn.Tag
+					}
+					plugins[api.PluginDescription{
+						Type: plgnTyp,
+						Name: plgnName,
+					}] = struct{}{}
+				}
+			}
+		}
+	}
 
 	pluginFields := make([]api.PluginDescription, 0, len(plugins))
 	for k := range plugins {
