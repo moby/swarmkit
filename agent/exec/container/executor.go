@@ -64,9 +64,13 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 					} else if typ.Capability == "networkdriver" {
 						plgnTyp = "Network"
 					}
+					plgnName := plgn.Name
+					if plgn.Tag != "" {
+						plgnName += ":" + plgn.Tag
+					}
 					plugins[api.PluginDescription{
 						Type: plgnTyp,
-						Name: plgn.Name,
+						Name: plgnName,
 					}] = struct{}{}
 				}
 			}
