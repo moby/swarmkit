@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/constraint"
@@ -156,7 +157,18 @@ func (f *PluginFilter) Check(n *NodeInfo) bool {
 // pluginExistsOnNode returns true if the (pluginName, pluginType) pair is present in nodePlugins
 func (f *PluginFilter) pluginExistsOnNode(pluginType string, pluginName string, nodePlugins []api.PluginDescription) bool {
 	for _, np := range nodePlugins {
-		if pluginType == np.Type && pluginName == np.Name {
+		if pluginType != np.Type {
+			continue
+		}
+		if pluginName == np.Name {
+			return true
+		}
+		// This does not use the reference package to avoid the
+		// overhead of parsing references as part of the scheduling
+		// loop. This is okay only because plugin names are a very
+		// strict subset of the reference grammar that is always
+		// name:tag.
+		if strings.HasPrefix(np.Name, pluginName) && np.Name[len(pluginName):] == ":latest" {
 			return true
 		}
 	}
