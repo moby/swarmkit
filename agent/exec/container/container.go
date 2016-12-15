@@ -13,6 +13,7 @@ import (
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/go-connections/nat"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
@@ -366,7 +367,7 @@ func getMountMask(m *api.Mount) string {
 }
 
 // This handles the case of volumes that are defined inside a service Mount
-func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *types.VolumeCreateRequest {
+func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *volume.VolumesCreateBody {
 	var (
 		driverName string
 		driverOpts map[string]string
@@ -379,7 +380,7 @@ func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *types.VolumeCre
 		labels = mount.VolumeOptions.Labels
 	}
 
-	return &types.VolumeCreateRequest{
+	return &volume.VolumesCreateBody{
 		Name:       mount.Source,
 		Driver:     driverName,
 		DriverOpts: driverOpts,
