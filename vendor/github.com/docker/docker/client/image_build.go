@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strconv"
 
 	"golang.org/x/net/context"
@@ -15,13 +14,11 @@ import (
 	"github.com/docker/docker/api/types/container"
 )
 
-var headerRegexp = regexp.MustCompile(`\ADocker/.+\s\((.+)\)\z`)
-
 // ImageBuild sends request to the daemon to build images.
 // The Body in the response implement an io.ReadCloser and it's up to the caller to
 // close it.
 func (cli *Client) ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error) {
-	query, err := imageBuildOptionsToQuery(options)
+	query, err := cli.imageBuildOptionsToQuery(options)
 	if err != nil {
 		return types.ImageBuildResponse{}, err
 	}
@@ -39,7 +36,7 @@ func (cli *Client) ImageBuild(ctx context.Context, buildContext io.Reader, optio
 		return types.ImageBuildResponse{}, err
 	}
 
-	osType := GetDockerOS(serverResp.header.Get("Server"))
+	osType := getDockerOS(serverResp.header.Get("Server"))
 
 	return types.ImageBuildResponse{
 		Body:   serverResp.body,
@@ -47,7 +44,7 @@ func (cli *Client) ImageBuild(ctx context.Context, buildContext io.Reader, optio
 	}, nil
 }
 
-func imageBuildOptionsToQuery(options types.ImageBuildOptions) (url.Values, error) {
+func (cli *Client) imageBuildOptionsToQuery(options types.ImageBuildOptions) (url.Values, error) {
 	query := url.Values{
 		"t":           options.Tags,
 		"securityopt": options.SecurityOpt,
@@ -76,6 +73,9 @@ func imageBuildOptionsToQuery(options types.ImageBuildOptions) (url.Values, erro
 	}
 
 	if options.Squash {
+		if err := cli.NewVersionError("1.25", "squash"); err != nil {
+			return query, err
+		}
 		query.Set("squash", "1")
 	}
 
@@ -84,6 +84,7 @@ func imageBuildOptionsToQuery(options types.ImageBuildOptions) (url.Values, erro
 	}
 
 	query.Set("cpusetcpus", options.CPUSetCPUs)
+	query.Set("networkmode", options.NetworkMode)
 	query.Set("cpusetmems", options.CPUSetMems)
 	query.Set("cpushares", strconv.FormatInt(options.CPUShares, 10))
 	query.Set("cpuquota", strconv.FormatInt(options.CPUQuota, 10))
@@ -119,14 +120,4 @@ func imageBuildOptionsToQuery(options types.ImageBuildOptions) (url.Values, erro
 	query.Set("cachefrom", string(cacheFromJSON))
 
 	return query, nil
-}
-
-// GetDockerOS returns the operating system based on the server header from the daemon.
-func GetDockerOS(serverHeader string) string {
-	var osType string
-	matches := headerRegexp.FindStringSubmatch(serverHeader)
-	if len(matches) > 0 {
-		osType = matches[1]
-	}
-	return osType
 }
