@@ -161,6 +161,102 @@ func TestWorkerAssign(t *testing.T) {
 	}
 }
 
+func TestWorkerWait(t *testing.T) {
+	db, cleanup := storageTestEnv(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	executor := &mockExecutor{t: t, secrets: secrets.NewManager()}
+	worker := newWorker(db, executor, &testPublisherProvider{})
+	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
+		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
+		return nil
+	})
+
+	worker.Listen(ctx, reporter)
+
+	changeSet := []*api.AssignmentChange{
+		{
+			Assignment: &api.Assignment{
+				Item: &api.Assignment_Task{
+					Task: &api.Task{ID: "task-1"},
+				},
+			},
+			Action: api.AssignmentChange_AssignmentActionUpdate,
+		},
+		{
+			Assignment: &api.Assignment{
+				Item: &api.Assignment_Task{
+					Task: &api.Task{ID: "task-2"},
+				},
+			},
+			Action: api.AssignmentChange_AssignmentActionUpdate,
+		},
+		{
+			Assignment: &api.Assignment{
+				Item: &api.Assignment_Secret{
+					Secret: &api.Secret{ID: "secret-1"},
+				},
+			},
+			Action: api.AssignmentChange_AssignmentActionUpdate,
+		},
+	}
+
+	expectedTasks := []*api.Task{
+		{ID: "task-1"},
+		{ID: "task-2"},
+	}
+
+	expectedSecrets := []*api.Secret{
+		{ID: "secret-1"},
+	}
+
+	expectedAssigned := []*api.Task{
+		{ID: "task-1"},
+		{ID: "task-2"},
+	}
+
+	var (
+		tasks    []*api.Task
+		assigned []*api.Task
+	)
+	assert.NoError(t, worker.Assign(ctx, changeSet))
+
+	assert.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
+		return WalkTasks(tx, func(task *api.Task) error {
+			tasks = append(tasks, task)
+			if TaskAssigned(tx, task.ID) {
+				assigned = append(assigned, task)
+			}
+			return nil
+		})
+	}))
+
+	assert.Equal(t, expectedTasks, tasks)
+	assert.Equal(t, expectedAssigned, assigned)
+	for _, secret := range expectedSecrets {
+		assert.NotNil(t, executor.secrets.Get(secret.ID))
+	}
+
+	err := worker.Assign(ctx, nil)
+	assert.Nil(t, err)
+
+	err = worker.Wait(ctx)
+	assert.Nil(t, err)
+
+	assigned = assigned[:0]
+
+	assert.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
+		return WalkTasks(tx, func(task *api.Task) error {
+			if TaskAssigned(tx, task.ID) {
+				assigned = append(assigned, task)
+			}
+			return nil
+		})
+	}))
+	assert.Equal(t, len(assigned), 0)
+}
+
 func TestWorkerUpdate(t *testing.T) {
 	db, cleanup := storageTestEnv(t)
 	defer cleanup()
