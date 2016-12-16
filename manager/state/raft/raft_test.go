@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
 
 	"golang.org/x/net/context"
@@ -61,6 +62,26 @@ func TestRaftBootstrap(t *testing.T) {
 	assert.Equal(t, 3, len(nodes[1].GetMemberlist()))
 	assert.Equal(t, 3, len(nodes[2].GetMemberlist()))
 	assert.Equal(t, 3, len(nodes[3].GetMemberlist()))
+}
+
+func TestRaftJoinTwice(t *testing.T) {
+	t.Parallel()
+
+	nodes, _ := raftutils.NewRaftCluster(t, tc)
+	defer raftutils.TeardownCluster(t, nodes)
+
+	// Node 3 tries to join again
+	// Use gRPC instead of calling handler directly because of
+	// authorization check.
+	client, err := nodes[3].ConnectToMember(nodes[1].Address, 10*time.Second)
+	assert.NoError(t, err)
+	raftClient := api.NewRaftMembershipClient(client.Conn)
+	defer client.Conn.Close()
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	_, err = raftClient.Join(ctx, &api.JoinRequest{})
+	assert.Error(t, err, "expected error on duplicate Join")
+	assert.Equal(t, grpc.Code(err), codes.AlreadyExists)
+	assert.Equal(t, grpc.ErrorDesc(err), "a raft member with this node ID already exists")
 }
 
 func TestRaftLeader(t *testing.T) {
