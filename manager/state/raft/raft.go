@@ -710,11 +710,20 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 	defer n.membershipLock.Unlock()
 
 	if !n.IsMember() {
-		return nil, ErrNoRaftMember
+		return nil, grpc.Errorf(codes.FailedPrecondition, "%s", ErrNoRaftMember.Error())
 	}
 
 	if !n.isLeader() {
-		return nil, ErrLostLeadership
+		return nil, grpc.Errorf(codes.FailedPrecondition, "%s", ErrLostLeadership.Error())
+	}
+
+	// A single manager must not be able to join the raft cluster twice. If
+	// it did, that would cause the quorum to be computed incorrectly. This
+	// could happen if the WAL was deleted from an active manager.
+	for _, m := range n.cluster.Members() {
+		if m.NodeID == nodeInfo.NodeID {
+			return nil, grpc.Errorf(codes.AlreadyExists, "%s", "a raft member with this node ID already exists")
+		}
 	}
 
 	// Find a unique ID for the joining member.
@@ -734,7 +743,7 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 
 	requestHost, requestPort, err := net.SplitHostPort(remoteAddr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid address %s in raft join request", remoteAddr)
+		return nil, grpc.Errorf(codes.InvalidArgument, "invalid address %s in raft join request", remoteAddr)
 	}
 
 	requestIP := net.ParseIP(requestHost)
