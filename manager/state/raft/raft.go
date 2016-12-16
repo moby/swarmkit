@@ -1003,6 +1003,11 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 	defer n.stopMu.RUnlock()
 
 	if n.IsMember() {
+		if msg.Message.To != n.Config.ID {
+			n.processRaftMessageLogger(ctx, msg).Errorf("received message intended for raft_id %x", msg.Message.To)
+			return &api.ProcessRaftMessageResponse{}, nil
+		}
+
 		if err := n.raftNode.Step(ctx, *msg.Message); err != nil {
 			n.processRaftMessageLogger(ctx, msg).WithError(err).Debug("raft Step failed")
 		}
