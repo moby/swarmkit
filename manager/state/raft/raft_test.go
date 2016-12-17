@@ -1,6 +1,7 @@
 package raft_test
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
 
 	"golang.org/x/net/context"
@@ -61,6 +63,26 @@ func TestRaftBootstrap(t *testing.T) {
 	assert.Equal(t, 3, len(nodes[1].GetMemberlist()))
 	assert.Equal(t, 3, len(nodes[2].GetMemberlist()))
 	assert.Equal(t, 3, len(nodes[3].GetMemberlist()))
+}
+
+func TestRaftJoinTwice(t *testing.T) {
+	t.Parallel()
+
+	nodes, _ := raftutils.NewRaftCluster(t, tc)
+	defer raftutils.TeardownCluster(t, nodes)
+
+	// Node 3 tries to join again
+	// Use gRPC instead of calling handler directly because of
+	// authorization check.
+	client, err := nodes[3].ConnectToMember(nodes[1].Address, 10*time.Second)
+	assert.NoError(t, err)
+	raftClient := api.NewRaftMembershipClient(client.Conn)
+	defer client.Conn.Close()
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	_, err = raftClient.Join(ctx, &api.JoinRequest{})
+	assert.Error(t, err, "expected error on duplicate Join")
+	assert.Equal(t, grpc.Code(err), codes.AlreadyExists)
+	assert.Equal(t, grpc.ErrorDesc(err), "a raft member with this node ID already exists")
 }
 
 func TestRaftLeader(t *testing.T) {
@@ -497,6 +519,28 @@ func TestRaftRestartClusterStaggered(t *testing.T) {
 	// Establish a cluster, stop all nodes (simulating a total outage), and
 	// restart them one at a time.
 	testRaftRestartCluster(t, true)
+}
+
+func TestRaftWipedState(t *testing.T) {
+	t.Parallel()
+
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
+	defer raftutils.TeardownCluster(t, nodes)
+
+	// Stop node 3
+	nodes[3].Server.Stop()
+	nodes[3].ShutdownRaft()
+
+	// Remove its state
+	os.RemoveAll(nodes[3].StateDir)
+
+	raftutils.AdvanceTicks(clockSource, 5)
+
+	// Restart node 3
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
+
+	// Make sure this doesn't panic.
+	raftutils.PollFuncWithTimeout(clockSource, func() error { return errors.New("keep the poll going") }, time.Second)
 }
 
 func TestRaftForceNewCluster(t *testing.T) {
