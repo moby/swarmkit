@@ -405,7 +405,7 @@ func (n *Node) Run(ctx context.Context) error {
 
 			// Save entries to storage
 			if err := n.saveToStorage(ctx, &raftConfig, rd.HardState, rd.Entries, rd.Snapshot); err != nil {
-				log.G(ctx).WithError(err).Error("failed to save entries to storage")
+				return errors.Wrap(err, "failed to save entries to storage")
 			}
 
 			if len(rd.Messages) != 0 {
