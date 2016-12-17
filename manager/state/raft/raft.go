@@ -380,8 +380,8 @@ func (n *Node) Run(ctx context.Context) error {
 		cancel()
 		n.stop(ctx)
 		if nodeRemoved {
-			// Move WAL and snapshot out of the way, since
-			// they are no longer usable.
+			// Delete WAL and snapshots, since they are no longer
+			// usable.
 			if err := n.raftLogger.Clear(ctx); err != nil {
 				log.G(ctx).WithError(err).Error("failed to move wal after node removal")
 			}
