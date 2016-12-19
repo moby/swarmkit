@@ -48,7 +48,7 @@ func main() {
 
 	defer server.Stop()
 
-	logrus.Infof("Now run: swarmd --manager -d . --listen-control-api ./swarmd.sock --external-ca-url %s", server.URL)
+	logrus.Infof("Now run: swarmd -d . --listen-control-api ./swarmd.sock --external-ca protocol=cfssl,url=%s", server.URL)
 
 	sigC := make(chan os.Signal, 1)
 	signal.Notify(sigC, syscall.SIGTERM, syscall.SIGINT)
