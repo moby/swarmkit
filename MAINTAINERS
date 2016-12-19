@@ -13,6 +13,7 @@
 			"cyli",
 			"diogomonica",
 			"dongluochen",
+			"dperny",
 			"lk4d4",
 			"mrjana",
 			"nishanttotla",
@@ -81,6 +82,11 @@
 	Name = "Dongluo Chen"
 	Email = "dong@docker.com"
 	GitHub = "dongluochen"
+
+	[people.dperny]
+	Name = "Drew Erny"
+	Email = "drew.erny@docker.com"
+	GitHub = "dperny"
 
 	[people.lk4d4]
 	Name = "Alexander Morozov"
