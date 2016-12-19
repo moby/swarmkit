@@ -138,11 +138,9 @@ func listenSubscriptions(ctx context.Context, t *testing.T, client api.LogBroker
 	require.NoError(t, err)
 
 	ch := make(chan *api.SubscriptionMessage)
-	ready := make(chan struct{})
 	go func() {
 		defer close(ch)
 
-		close(ready)
 		for {
 			select {
 			case <-ctx.Done():
@@ -157,7 +155,6 @@ func listenSubscriptions(ctx context.Context, t *testing.T, client api.LogBroker
 		}
 	}()
 
-	<-ready
 	return ch
 }
 
@@ -409,6 +406,16 @@ func TestLogBrokerNoFollow(t *testing.T) {
 
 		return nil
 	}))
+
+	// We need to sleep here to give ListenSubscriptions time to call
+	// registerSubscription before SubscribeLogs concludes that one or both
+	// of the agents are not connected, and prematurely calls Done for one
+	// or both nodes. Think of these stream RPC calls as goroutines which
+	// don't have synchronization around anything that happens in the RPC
+	// handler before a send or receive. It would be nice if we had a way
+	// of confirming that a node was listening for subscriptions before
+	// calling SubscribeLogs, but the current API doesn't provide this.
+	time.Sleep(time.Second)
 
 	// Subscribe to logs in no follow mode
 	logs, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
