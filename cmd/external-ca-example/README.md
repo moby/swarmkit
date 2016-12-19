@@ -10,7 +10,7 @@ Now, run `external-ca-example`:
 
 ```
 $ external-ca-example
-INFO[0000] Now run: swarmd --manager -d . --listen-control-api ./swarmd.sock --external-ca-url https://localhost:58631/sign
+INFO[0000] Now run: swarmd -d . --listen-control-api ./swarmd.sock --external-ca protocol=cfssl,url=https://localhost:58631/sign
 ```
 
 This command initializes a new root CA along with the node certificate for the
@@ -26,10 +26,8 @@ Try joining new nodes to your cluster. Change into a new, empty directory and
 run `swarmd` again with an argument to join the previous manager node:
 
 ```
-$ swarmd -d . --listen-control-api ./swarmd.sock --listen-remote-api 0.0.0.0:4343 --join-addr localhost:4242
+$ swarmd -d . --listen-control-api ./swarmd.sock --listen-remote-api 0.0.0.0:4343 --join-addr localhost:4242 --join-token ...
 Warning: Specifying a valid address with --listen-remote-api may be necessary for other managers to reach this one.
-INFO[0000] Waiting for TLS certificate to be issued...  
-INFO[0000] Downloaded new TLS credentials with role: swarm-worker.
 ```
 
 If this new node does not block indefinitely waiting for a TLS certificate to
