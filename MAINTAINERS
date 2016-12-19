@@ -19,7 +19,8 @@
 			"nishanttotla",
 			"stevvooe",
 			"tonistiigi",
-			"vieux"
+			"vieux",
+			"yongtang"
 		]
 
 	[Org."Docs maintainers"]
@@ -122,3 +123,8 @@
 	Name = "Victor Vieux"
 	Email = "vieux@docker.com"
 	GitHub = "vieux"
+
+	[people.yongtang]
+	Name = "Yong Tang"
+	Email = "yong.tang.github@outlook.com"
+	GitHub = "yongtang"
