@@ -142,7 +142,7 @@ func (tm *taskManager) run(ctx context.Context) {
 					}
 
 					if err := tm.reporter.UpdateTaskStatus(ctx, running.ID, status); err != nil {
-						log.G(ctx).WithError(err).Error("failed reporting status to agent")
+						log.G(ctx).WithError(err).Error("task manager failed to report status to agent")
 					}
 				}
 
