@@ -24,22 +24,24 @@ type testNode struct {
 
 // newNode creates new node with specific role(manager or agent) and joins to
 // existing cluster. if joinAddr is empty string, then new cluster will be initialized.
-// It uses TestExecutor as executor.
-func newTestNode(joinAddr, joinToken string) (*testNode, error) {
+// It uses TestExecutor as executor. If lateBind is set, the remote API port is not
+// bound.
+func newTestNode(joinAddr, joinToken string, lateBind bool) (*testNode, error) {
 	tmpDir, err := ioutil.TempDir("", "swarmkit-integration-")
 	if err != nil {
 		return nil, err
 	}
 
-	rAddr := "127.0.0.1:0"
 	cAddr := filepath.Join(tmpDir, "control.sock")
 	cfg := &node.Config{
-		ListenRemoteAPI:  rAddr,
 		ListenControlAPI: cAddr,
 		JoinAddr:         joinAddr,
 		StateDir:         tmpDir,
 		Executor:         &TestExecutor{},
 		JoinToken:        joinToken,
+	}
+	if !lateBind {
+		cfg.ListenRemoteAPI = "127.0.0.1:0"
 	}
 	node, err := node.New(cfg)
 	if err != nil {
@@ -122,6 +124,5 @@ func (n *testNode) ControlClient(ctx context.Context) (api.ControlClient, error)
 }
 
 func (n *testNode) IsManager() bool {
-	_, err := n.node.RemoteAPIAddr()
-	return err == nil
+	return n.node.Manager() != nil
 }
