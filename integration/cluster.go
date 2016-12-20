@@ -73,17 +73,20 @@ func (c *testCluster) RandomManager() *testNode {
 	return managers[idx]
 }
 
-// AddManager adds node with Manager role(both agent and manager).
-func (c *testCluster) AddManager() error {
+// AddManager adds a node with the Manager role. The node will function as both
+// an agent and a manager. If lateBind is set, the manager is started before a
+// remote API port is bound. This setting only applies to the first manager.
+func (c *testCluster) AddManager(lateBind bool) error {
 	// first node
 	var n *testNode
 	if len(c.nodes) == 0 {
-		node, err := newTestNode("", "")
+		node, err := newTestNode("", "", lateBind)
 		if err != nil {
 			return err
 		}
 		n = node
 	} else {
+		lateBind = false
 		joinAddr, err := c.RandomManager().node.RemoteAPIAddr()
 		if err != nil {
 			return err
@@ -95,7 +98,7 @@ func (c *testCluster) AddManager() error {
 		if len(clusterInfo.Clusters) == 0 {
 			return fmt.Errorf("joining manager: there is no cluster created in storage")
 		}
-		node, err := newTestNode(joinAddr, clusterInfo.Clusters[0].RootCA.JoinTokens.Manager)
+		node, err := newTestNode(joinAddr, clusterInfo.Clusters[0].RootCA.JoinTokens.Manager, false)
 		if err != nil {
 			return err
 		}
@@ -119,6 +122,20 @@ func (c *testCluster) AddManager() error {
 
 	c.nodes[n.node.NodeID()] = n
 	c.nodesOrder[n.node.NodeID()] = c.counter
+
+	if lateBind {
+		// Verify that the control API works
+		clusterInfo, err := c.api.ListClusters(context.Background(), &api.ListClustersRequest{})
+		if err != nil {
+			return err
+		}
+		if len(clusterInfo.Clusters) == 0 {
+			return fmt.Errorf("joining manager: there is no cluster created in storage")
+		}
+
+		return n.node.BindRemote(context.Background(), "127.0.0.1:0", "")
+	}
+
 	return nil
 }
 
@@ -140,7 +157,7 @@ func (c *testCluster) AddAgent() error {
 	if len(clusterInfo.Clusters) == 0 {
 		return fmt.Errorf("joining agent: there is no cluster created in storage")
 	}
-	node, err := newTestNode(joinAddr, clusterInfo.Clusters[0].RootCA.JoinTokens.Worker)
+	node, err := newTestNode(joinAddr, clusterInfo.Clusters[0].RootCA.JoinTokens.Worker, false)
 	if err != nil {
 		return err
 	}
