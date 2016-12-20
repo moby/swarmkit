@@ -56,7 +56,7 @@ func TestManager(t *testing.T) {
 	assert.NoError(t, err)
 
 	m, err := New(&Config{
-		RemoteAPI:        RemoteAddrs{ListenAddr: "127.0.0.1:0"},
+		RemoteAPI:        &RemoteAddrs{ListenAddr: "127.0.0.1:0"},
 		ControlAPI:       temp.Name(),
 		StateDir:         stateDir,
 		SecurityConfig:   managerSecurityConfig,
@@ -218,7 +218,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	require.NoError(t, err)
 
 	m, err := New(&Config{
-		RemoteAPI:      RemoteAddrs{ListenAddr: "127.0.0.1:0"},
+		RemoteAPI:      &RemoteAddrs{ListenAddr: "127.0.0.1:0"},
 		ControlAPI:     temp.Name(),
 		StateDir:       stateDir,
 		SecurityConfig: managerSecurityConfig,
