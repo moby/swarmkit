@@ -8,6 +8,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/connectionbroker"
 	"github.com/docker/swarmkit/remotes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -73,7 +74,7 @@ func TestAgentStartStop(t *testing.T) {
 
 	agent, err := New(&Config{
 		Executor:    &NoopExecutor{},
-		Managers:    remotes,
+		ConnBroker:  connectionbroker.New(remotes),
 		Credentials: agentSecurityConfig.ClientTLSCreds,
 		DB:          db,
 	})
@@ -147,7 +148,7 @@ func agentTestEnv(t *testing.T) (*Agent, func()) {
 
 	agent, err := New(&Config{
 		Executor:    &NoopExecutor{},
-		Managers:    remotes,
+		ConnBroker:  connectionbroker.New(remotes),
 		Credentials: agentSecurityConfig.ClientTLSCreds,
 		DB:          db,
 	})
