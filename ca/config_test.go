@@ -25,7 +25,7 @@ func TestDownloadRootCASuccess(t *testing.T) {
 	// Remove the CA cert
 	os.RemoveAll(tc.Paths.RootCA.Cert)
 
-	rootCA, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, tc.WorkerToken, tc.Remotes)
+	rootCA, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, tc.WorkerToken, tc.ConnBroker)
 	require.NoError(t, err)
 	require.NotNil(t, rootCA.Pool)
 	require.NotNil(t, rootCA.Cert)
@@ -37,7 +37,7 @@ func TestDownloadRootCASuccess(t *testing.T) {
 	os.RemoveAll(tc.Paths.RootCA.Cert)
 
 	// downloading without a join token also succeeds
-	rootCA, err = ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, "", tc.Remotes)
+	rootCA, err = ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, "", tc.ConnBroker)
 	require.NoError(t, err)
 	require.NotNil(t, rootCA.Pool)
 	require.NotNil(t, rootCA.Cert)
@@ -54,7 +54,7 @@ func TestDownloadRootCAWrongCAHash(t *testing.T) {
 	os.RemoveAll(tc.Paths.RootCA.Cert)
 
 	// invalid token
-	_, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, "invalidtoken", tc.Remotes)
+	_, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, "invalidtoken", tc.ConnBroker)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid join token")
 
@@ -65,7 +65,7 @@ func TestDownloadRootCAWrongCAHash(t *testing.T) {
 
 	os.RemoveAll(tc.Paths.RootCA.Cert)
 
-	_, err = ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, replacementToken, tc.Remotes)
+	_, err = ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, replacementToken, tc.ConnBroker)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "remote CA does not match fingerprint.")
 }
@@ -79,8 +79,8 @@ func TestCreateSecurityConfigEmptyDir(t *testing.T) {
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 	nodeConfig, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
 		ca.CertificateRequestConfig{
-			Token:   tc.WorkerToken,
-			Remotes: tc.Remotes,
+			Token:      tc.WorkerToken,
+			ConnBroker: tc.ConnBroker,
 		})
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
@@ -99,8 +99,8 @@ func TestCreateSecurityConfigNoCerts(t *testing.T) {
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 	nodeConfig, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
 		ca.CertificateRequestConfig{
-			Token:   tc.WorkerToken,
-			Remotes: tc.Remotes,
+			Token:      tc.WorkerToken,
+			ConnBroker: tc.ConnBroker,
 		})
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
@@ -115,8 +115,8 @@ func TestCreateSecurityConfigNoCerts(t *testing.T) {
 	assert.NoError(t, err)
 	nodeConfig, err = rootCA.CreateSecurityConfig(tc.Context, krw,
 		ca.CertificateRequestConfig{
-			Token:   tc.WorkerToken,
-			Remotes: tc.Remotes,
+			Token:      tc.WorkerToken,
+			ConnBroker: tc.ConnBroker,
 		})
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
@@ -141,7 +141,7 @@ some random garbage\n
 
 	nodeConfig, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
 		ca.CertificateRequestConfig{
-			Remotes: tc.Remotes,
+			ConnBroker: tc.ConnBroker,
 		})
 
 	assert.NoError(t, err)
@@ -167,7 +167,7 @@ some random garbage\n
 
 	nodeConfig, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
 		ca.CertificateRequestConfig{
-			Remotes: tc.Remotes,
+			ConnBroker: tc.ConnBroker,
 		})
 	assert.NoError(t, err)
 	assert.NotNil(t, nodeConfig)
@@ -232,7 +232,7 @@ func TestRenewTLSConfigWorker(t *testing.T) {
 	assert.NoError(t, err)
 
 	renew := make(chan struct{})
-	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.Remotes, renew)
+	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.ConnBroker, renew)
 	select {
 	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
@@ -288,7 +288,7 @@ func TestRenewTLSConfigManager(t *testing.T) {
 	// Get a new nodeConfig with a TLS cert that has 1 minute to live
 	renew := make(chan struct{})
 
-	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.Remotes, renew)
+	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.ConnBroker, renew)
 	select {
 	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
@@ -350,7 +350,7 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 	assert.NoError(t, err)
 
 	renew := make(chan struct{})
-	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.Remotes, renew)
+	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.ConnBroker, renew)
 	select {
 	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
@@ -374,7 +374,7 @@ func TestForceRenewTLSConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	renew := make(chan struct{}, 1)
-	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.Remotes, renew)
+	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.ConnBroker, renew)
 	renew <- struct{}{}
 	select {
 	case <-time.After(10 * time.Second):
