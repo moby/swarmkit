@@ -906,12 +906,12 @@ func encodeVarintService(data []byte, offset int, v uint64) int {
 }
 
 type raftProxyRouteGuideServer struct {
-	local        RouteGuideServer
-	connSelector raftselector.ConnProvider
-	ctxMods      []func(context.Context) (context.Context, error)
+	local                       RouteGuideServer
+	connSelector                raftselector.ConnProvider
+	localCtxMods, remoteCtxMods []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyRouteGuideServer(local RouteGuideServer, connSelector raftselector.ConnProvider, ctxMod func(context.Context) (context.Context, error)) RouteGuideServer {
+func NewRaftProxyRouteGuideServer(local RouteGuideServer, connSelector raftselector.ConnProvider, localCtxMod, remoteCtxMod func(context.Context) (context.Context, error)) RouteGuideServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
@@ -928,18 +928,24 @@ func NewRaftProxyRouteGuideServer(local RouteGuideServer, connSelector raftselec
 		md["redirect"] = append(md["redirect"], addr)
 		return metadata.NewContext(ctx, md), nil
 	}
-	mods := []func(context.Context) (context.Context, error){redirectChecker}
-	mods = append(mods, ctxMod)
+	remoteMods := []func(context.Context) (context.Context, error){redirectChecker}
+	remoteMods = append(remoteMods, remoteCtxMod)
+
+	var localMods []func(context.Context) (context.Context, error)
+	if localCtxMod != nil {
+		localMods = []func(context.Context) (context.Context, error){localCtxMod}
+	}
 
 	return &raftProxyRouteGuideServer{
-		local:        local,
-		connSelector: connSelector,
-		ctxMods:      mods,
+		local:         local,
+		connSelector:  connSelector,
+		localCtxMods:  localMods,
+		remoteCtxMods: remoteMods,
 	}
 }
-func (p *raftProxyRouteGuideServer) runCtxMods(ctx context.Context) (context.Context, error) {
+func (p *raftProxyRouteGuideServer) runCtxMods(ctx context.Context, ctxMods []func(context.Context) (context.Context, error)) (context.Context, error) {
 	var err error
-	for _, mod := range p.ctxMods {
+	for _, mod := range ctxMods {
 		ctx, err = mod(ctx)
 		if err != nil {
 			return ctx, err
@@ -976,11 +982,15 @@ func (p *raftProxyRouteGuideServer) GetFeature(ctx context.Context, r *Point) (*
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
 		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
 			return p.local.GetFeature(ctx, r)
 		}
 		return nil, err
 	}
-	modCtx, err := p.runCtxMods(ctx)
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
 	if err != nil {
 		return nil, err
 	}
@@ -1002,17 +1012,33 @@ func (p *raftProxyRouteGuideServer) GetFeature(ctx context.Context, r *Point) (*
 	return resp, err
 }
 
-func (p *raftProxyRouteGuideServer) ListFeatures(r *Rectangle, stream RouteGuide_ListFeaturesServer) error {
+type RouteGuide_ListFeaturesServerWrapper struct {
+	RouteGuide_ListFeaturesServer
+	ctx context.Context
+}
 
+func (s RouteGuide_ListFeaturesServerWrapper) Context() context.Context {
+	return s.ctx
+}
+
+func (p *raftProxyRouteGuideServer) ListFeatures(r *Rectangle, stream RouteGuide_ListFeaturesServer) error {
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
 		if err == raftselector.ErrIsLeader {
-			return p.local.ListFeatures(r, stream)
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return err
+			}
+			streamWrapper := RouteGuide_ListFeaturesServerWrapper{
+				RouteGuide_ListFeaturesServer: stream,
+				ctx: ctx,
+			}
+			return p.local.ListFeatures(r, streamWrapper)
 		}
 		return err
 	}
-	ctx, err = p.runCtxMods(ctx)
+	ctx, err = p.runCtxMods(ctx, p.remoteCtxMods)
 	if err != nil {
 		return err
 	}
@@ -1037,17 +1063,33 @@ func (p *raftProxyRouteGuideServer) ListFeatures(r *Rectangle, stream RouteGuide
 	return nil
 }
 
-func (p *raftProxyRouteGuideServer) RecordRoute(stream RouteGuide_RecordRouteServer) error {
+type RouteGuide_RecordRouteServerWrapper struct {
+	RouteGuide_RecordRouteServer
+	ctx context.Context
+}
 
+func (s RouteGuide_RecordRouteServerWrapper) Context() context.Context {
+	return s.ctx
+}
+
+func (p *raftProxyRouteGuideServer) RecordRoute(stream RouteGuide_RecordRouteServer) error {
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
 		if err == raftselector.ErrIsLeader {
-			return p.local.RecordRoute(stream)
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return err
+			}
+			streamWrapper := RouteGuide_RecordRouteServerWrapper{
+				RouteGuide_RecordRouteServer: stream,
+				ctx: ctx,
+			}
+			return p.local.RecordRoute(streamWrapper)
 		}
 		return err
 	}
-	ctx, err = p.runCtxMods(ctx)
+	ctx, err = p.runCtxMods(ctx, p.remoteCtxMods)
 	if err != nil {
 		return err
 	}
@@ -1078,17 +1120,33 @@ func (p *raftProxyRouteGuideServer) RecordRoute(stream RouteGuide_RecordRouteSer
 	return stream.SendAndClose(reply)
 }
 
-func (p *raftProxyRouteGuideServer) RouteChat(stream RouteGuide_RouteChatServer) error {
+type RouteGuide_RouteChatServerWrapper struct {
+	RouteGuide_RouteChatServer
+	ctx context.Context
+}
 
+func (s RouteGuide_RouteChatServerWrapper) Context() context.Context {
+	return s.ctx
+}
+
+func (p *raftProxyRouteGuideServer) RouteChat(stream RouteGuide_RouteChatServer) error {
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
 		if err == raftselector.ErrIsLeader {
-			return p.local.RouteChat(stream)
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return err
+			}
+			streamWrapper := RouteGuide_RouteChatServerWrapper{
+				RouteGuide_RouteChatServer: stream,
+				ctx: ctx,
+			}
+			return p.local.RouteChat(streamWrapper)
 		}
 		return err
 	}
-	ctx, err = p.runCtxMods(ctx)
+	ctx, err = p.runCtxMods(ctx, p.remoteCtxMods)
 	if err != nil {
 		return err
 	}
@@ -1131,12 +1189,12 @@ func (p *raftProxyRouteGuideServer) RouteChat(stream RouteGuide_RouteChatServer)
 }
 
 type raftProxyHealthServer struct {
-	local        HealthServer
-	connSelector raftselector.ConnProvider
-	ctxMods      []func(context.Context) (context.Context, error)
+	local                       HealthServer
+	connSelector                raftselector.ConnProvider
+	localCtxMods, remoteCtxMods []func(context.Context) (context.Context, error)
 }
 
-func NewRaftProxyHealthServer(local HealthServer, connSelector raftselector.ConnProvider, ctxMod func(context.Context) (context.Context, error)) HealthServer {
+func NewRaftProxyHealthServer(local HealthServer, connSelector raftselector.ConnProvider, localCtxMod, remoteCtxMod func(context.Context) (context.Context, error)) HealthServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
@@ -1153,18 +1211,24 @@ func NewRaftProxyHealthServer(local HealthServer, connSelector raftselector.Conn
 		md["redirect"] = append(md["redirect"], addr)
 		return metadata.NewContext(ctx, md), nil
 	}
-	mods := []func(context.Context) (context.Context, error){redirectChecker}
-	mods = append(mods, ctxMod)
+	remoteMods := []func(context.Context) (context.Context, error){redirectChecker}
+	remoteMods = append(remoteMods, remoteCtxMod)
+
+	var localMods []func(context.Context) (context.Context, error)
+	if localCtxMod != nil {
+		localMods = []func(context.Context) (context.Context, error){localCtxMod}
+	}
 
 	return &raftProxyHealthServer{
-		local:        local,
-		connSelector: connSelector,
-		ctxMods:      mods,
+		local:         local,
+		connSelector:  connSelector,
+		localCtxMods:  localMods,
+		remoteCtxMods: remoteMods,
 	}
 }
-func (p *raftProxyHealthServer) runCtxMods(ctx context.Context) (context.Context, error) {
+func (p *raftProxyHealthServer) runCtxMods(ctx context.Context, ctxMods []func(context.Context) (context.Context, error)) (context.Context, error) {
 	var err error
-	for _, mod := range p.ctxMods {
+	for _, mod := range ctxMods {
 		ctx, err = mod(ctx)
 		if err != nil {
 			return ctx, err
@@ -1201,11 +1265,15 @@ func (p *raftProxyHealthServer) Check(ctx context.Context, r *HealthCheckRequest
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
 		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
 			return p.local.Check(ctx, r)
 		}
 		return nil, err
 	}
-	modCtx, err := p.runCtxMods(ctx)
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
 	if err != nil {
 		return nil, err
 	}
