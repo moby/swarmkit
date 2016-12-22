@@ -20,7 +20,6 @@ type roleManager struct {
 
 	store    *store.MemoryStore
 	raft     *raft.Node
-	stopChan chan struct{}
 	doneChan chan struct{}
 
 	// pending contains changed nodes that have not yet been reconciled in
@@ -36,7 +35,6 @@ func newRoleManager(store *store.MemoryStore, raftNode *raft.Node) *roleManager 
 		cancel:   cancel,
 		store:    store,
 		raft:     raftNode,
-		stopChan: make(chan struct{}),
 		doneChan: make(chan struct{}),
 		pending:  make(map[string]*api.Node),
 	}
@@ -135,7 +133,10 @@ func (rm *roleManager) reconcileRole(node *api.Node) {
 				return
 			}
 
-			if err := rm.raft.RemoveMember(rm.ctx, member.RaftID); err != nil {
+			rmCtx, rmCancel := context.WithTimeout(rm.ctx, 5*time.Second)
+			defer rmCancel()
+
+			if err := rm.raft.RemoveMember(rmCtx, member.RaftID); err != nil {
 				// TODO(aaronl): Retry later
 				log.L.WithError(err).Debugf("can't demote node %s at this time", node.ID)
 				return

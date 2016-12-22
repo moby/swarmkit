@@ -271,6 +271,12 @@ func New(config *Config) (*Manager, error) {
 	return m, nil
 }
 
+// RemovedFromRaft returns a channel that's closed if the manager is removed
+// from the raft cluster. This should be used to trigger a manager shutdown.
+func (m *Manager) RemovedFromRaft() <-chan struct{} {
+	return m.raftNode.RemovedFromRaft
+}
+
 // Addr returns tcp address on which remote api listens.
 func (m *Manager) Addr() string {
 	return m.config.RemoteAPI.ListenAddr
@@ -389,39 +395,26 @@ func (m *Manager) Run(parent context.Context) error {
 
 	close(m.started)
 
-	errCh := make(chan error, 1)
 	go func() {
 		err := m.raftNode.Run(ctx)
 		if err != nil {
-			errCh <- err
 			log.G(ctx).WithError(err).Error("raft node stopped")
-			m.Stop(ctx)
+			m.Stop(ctx, false)
 		}
 	}()
 
-	returnErr := func(err error) error {
-		select {
-		case runErr := <-errCh:
-			if runErr == raft.ErrMemberRemoved {
-				return runErr
-			}
-		default:
-		}
-		return err
-	}
-
 	if err := raft.WaitForLeader(ctx, m.raftNode); err != nil {
-		return returnErr(err)
+		return err
 	}
 
 	c, err := raft.WaitForCluster(ctx, m.raftNode)
 	if err != nil {
-		return returnErr(err)
+		return err
 	}
 	raftConfig := c.Spec.Raft
 
 	if err := m.watchForKEKChanges(ctx); err != nil {
-		return returnErr(err)
+		return err
 	}
 
 	if int(raftConfig.ElectionTick) != m.raftNode.Config.ElectionTick {
@@ -439,16 +432,17 @@ func (m *Manager) Run(parent context.Context) error {
 		return nil
 	}
 	m.mu.Unlock()
-	m.Stop(ctx)
+	m.Stop(ctx, false)
 
-	return returnErr(err)
+	return err
 }
 
 const stopTimeout = 8 * time.Second
 
 // Stop stops the manager. It immediately closes all open connections and
-// active RPCs as well as stopping the scheduler.
-func (m *Manager) Stop(ctx context.Context) {
+// active RPCs as well as stopping the scheduler. If clearData is set, the
+// raft logs, snapshots, and keys will be erased.
+func (m *Manager) Stop(ctx context.Context, clearData bool) {
 	log.G(ctx).Info("Stopping manager")
 	// It's not safe to start shutting down while the manager is still
 	// starting up.
@@ -502,6 +496,9 @@ func (m *Manager) Stop(ctx context.Context) {
 		m.keyManager.Stop()
 	}
 
+	if clearData {
+		m.raftNode.ClearData()
+	}
 	m.cancelFunc()
 	<-m.raftNode.Done()
 
