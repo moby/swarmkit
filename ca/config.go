@@ -482,7 +482,7 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, remotes remotes.Remo
 			case <-renew:
 				log.Infof("forced certificate renewal")
 			case <-ctx.Done():
-				log.Infof("shuting down certificate renewal routine")
+				log.Infof("shutting down certificate renewal routine")
 				return
 			}
 
