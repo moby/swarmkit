@@ -769,6 +769,63 @@ func TestIsPortsAllocated(t *testing.T) {
 			},
 			expect: true,
 		},
+		{
+			// Endpoint and Spec.Endpoint have multiple PublishedPort
+			// See docker/docker#29730
+			input: &api.Service{
+				Spec: api.ServiceSpec{
+					Endpoint: &api.EndpointSpec{
+						Ports: []*api.PortConfig{
+							{
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    80,
+								PublishedPort: 5000,
+							},
+							{
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    80,
+								PublishedPort: 5001,
+							},
+							{
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    80,
+								PublishedPort: 0,
+							},
+							{
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    80,
+								PublishedPort: 0,
+							},
+						},
+					},
+				},
+				Endpoint: &api.Endpoint{
+					Ports: []*api.PortConfig{
+						{
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    80,
+							PublishedPort: 5000,
+						},
+						{
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    80,
+							PublishedPort: 5001,
+						},
+						{
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    80,
+							PublishedPort: 30000,
+						},
+						{
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    80,
+							PublishedPort: 30001,
+						},
+					},
+				},
+			},
+			expect: true,
+		},
 	}
 
 	for _, singleTest := range testCases {
