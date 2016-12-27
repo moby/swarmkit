@@ -31,6 +31,7 @@ const (
 	indexMembership   = "membership"
 	indexNetwork      = "network"
 	indexSecret       = "secret"
+	indexPortAndProto = "portandproto"
 
 	prefix = "_prefix"
 
@@ -592,6 +593,12 @@ func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([
 		return []memdb.ResultIterator{it}, nil
 	case byService:
 		it, err := tx.memDBTx.Get(table, indexServiceID, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byPortAndProto:
+		it, err := tx.memDBTx.Get(table, indexPortAndProto, strconv.FormatUint(uint64(v.port), 10)+"\x00"+v.proto.String())
 		if err != nil {
 			return nil, err
 		}

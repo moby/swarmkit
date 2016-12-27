@@ -143,3 +143,17 @@ func (b byReferencedSecretID) isBy() {
 func ByReferencedSecretID(secretID string) By {
 	return byReferencedSecretID(secretID)
 }
+
+type byPortAndProto struct {
+	port  uint32
+	proto api.PortConfig_Protocol
+}
+
+func (b byPortAndProto) isBy() {
+}
+
+// ByPortAndProto creates an object to pass to Find to search for a
+// service that references a service which has taken the given port and protocol.
+func ByPortAndProto(port uint32, proto api.PortConfig_Protocol) By {
+	return byPortAndProto{port: port, proto: proto}
+}

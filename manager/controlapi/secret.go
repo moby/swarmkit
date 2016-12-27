@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-// Currently this is contains the unimplemented secret functions in order to satisfy the interface
+// Currently this contains the unimplemented secret functions in order to satisfy the interface
 
 // MaxSecretSize is the maximum byte length of the `Secret.Spec.Data` field.
 const MaxSecretSize = 500 * 1024 // 500KB

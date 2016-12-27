@@ -1,6 +1,7 @@
 package store
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/docker/swarmkit/api"
@@ -35,6 +36,11 @@ func init() {
 					Name:         indexSecret,
 					AllowMissing: true,
 					Indexer:      serviceIndexerBySecret{},
+				},
+				indexPortAndProto: {
+					Name:         indexPortAndProto,
+					AllowMissing: true,
+					Indexer:      serviceIndexerByPortAndProto{},
 				},
 			},
 		},
@@ -177,7 +183,7 @@ func GetService(tx ReadTx, id string) *api.Service {
 func FindServices(tx ReadTx, by By) ([]*api.Service, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byNamePrefix, byIDPrefix, byReferencedNetworkID, byReferencedSecretID:
+		case byName, byNamePrefix, byIDPrefix, byReferencedNetworkID, byReferencedSecretID, byPortAndProto:
 			return nil
 		default:
 			return ErrInvalidFindBy
@@ -287,4 +293,32 @@ func (si serviceIndexerBySecret) FromObject(obj interface{}) (bool, [][]byte, er
 	}
 
 	return len(secretIDs) != 0, secretIDs, nil
+}
+
+type serviceIndexerByPortAndProto struct{}
+
+func (si serviceIndexerByPortAndProto) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (si serviceIndexerByPortAndProto) FromObject(obj interface{}) (bool, [][]byte, error) {
+	s, ok := obj.(serviceEntry)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	var portAndProtos [][]byte
+
+	specPorts := s.Endpoint.Ports
+
+	if len(specPorts) == 0 {
+		specPorts = s.Spec.Endpoint.Ports
+	}
+
+	for _, na := range specPorts {
+		// Add the null character as a terminator
+		portAndProtos = append(portAndProtos, []byte(strconv.FormatUint(uint64(na.TargetPort), 10)+"\x00"+na.Protocol.String()+"\x00"))
+	}
+
+	return len(portAndProtos) != 0, portAndProtos, nil
 }

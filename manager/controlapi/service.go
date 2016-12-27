@@ -4,7 +4,6 @@ import (
 	"errors"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -361,28 +360,21 @@ func (s *Server) checkPortConflicts(spec *api.ServiceSpec, serviceID string) err
 		return nil
 	}
 
-	pcToString := func(pc *api.PortConfig) string {
-		port := strconv.FormatUint(uint64(pc.PublishedPort), 10)
-		return port + "/" + pc.Protocol.String()
-	}
-
-	reqPorts := make(map[string]bool)
-	for _, pc := range spec.Endpoint.Ports {
-		if pc.PublishedPort > 0 {
-			reqPorts[pcToString(pc)] = true
-		}
-	}
-	if len(reqPorts) == 0 {
-		return nil
-	}
-
 	var (
-		services []*api.Service
-		err      error
+		services  []*api.Service
+		indexKeys []store.By
+		err       error
 	)
 
+	for _, pc := range spec.Endpoint.Ports {
+		if pc.PublishedPort > 0 {
+			indexKeys = append(indexKeys, store.ByPortAndProto(pc.PublishedPort, pc.Protocol))
+		}
+	}
+
 	s.store.View(func(tx store.ReadTx) {
-		services, err = store.FindServices(tx, store.All)
+		// find the services which has taken ports in spec
+		services, err = store.FindServices(tx, store.Or(indexKeys...))
 	})
 	if err != nil {
 		return err
@@ -395,15 +387,21 @@ func (s *Server) checkPortConflicts(spec *api.ServiceSpec, serviceID string) err
 		}
 		if service.Spec.Endpoint != nil {
 			for _, pc := range service.Spec.Endpoint.Ports {
-				if reqPorts[pcToString(pc)] {
-					return grpc.Errorf(codes.InvalidArgument, "port '%d' is already in use by service '%s' (%s)", pc.PublishedPort, service.Spec.Annotations.Name, service.ID)
+				// TODO: is it better to use hash instead of traversing the array?
+				for _, value := range indexKeys {
+					if value == store.ByPortAndProto(pc.PublishedPort, pc.Protocol) {
+						grpc.Errorf(codes.InvalidArgument, "port '%d' with protocol '%s' is already in use by service '%s' (%s)", pc.PublishedPort, pc.Protocol.String(), service.Spec.Annotations.Name, service.ID)
+					}
 				}
 			}
 		}
 		if service.Endpoint != nil {
 			for _, pc := range service.Endpoint.Ports {
-				if reqPorts[pcToString(pc)] {
-					return grpc.Errorf(codes.InvalidArgument, "port '%d' is already in use by service '%s' (%s)", pc.PublishedPort, service.Spec.Annotations.Name, service.ID)
+				// TODO: is it better to use hash instead of traversing the array?
+				for _, value := range indexKeys {
+					if value == store.ByPortAndProto(pc.PublishedPort, pc.Protocol) {
+						grpc.Errorf(codes.InvalidArgument, "port '%d' with protocol '%s' is already in use by service '%s' (%s)", pc.PublishedPort, pc.Protocol.String(), service.Spec.Annotations.Name, service.ID)
+					}
 				}
 			}
 		}
