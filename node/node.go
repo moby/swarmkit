@@ -249,17 +249,12 @@ func (n *Node) run(ctx context.Context) (err error) {
 				// If we got a role change, renew
 				lastRole := n.role
 				role := ca.WorkerRole
-				if node.Spec.Role == api.NodeRoleManager {
+				if node.Role == api.NodeRoleManager {
 					role = ca.ManagerRole
 				}
 				if lastRole == role {
 					n.Unlock()
 					continue
-				}
-				// switch role to agent immediately to shutdown manager early
-				if role == ca.WorkerRole {
-					n.role = role
-					n.roleCond.Broadcast()
 				}
 				n.Unlock()
 				renewCert()

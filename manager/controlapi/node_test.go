@@ -610,6 +610,9 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 		return nil
 	}))
 
+	raftMember := ts.Server.raft.GetMemberByNodeID(nodes[3].SecurityConfig.ClientTLSCreds.NodeID())
+	assert.NotNil(t, raftMember)
+
 	// Try to demote Node 3, this should succeed
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[3].SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
@@ -627,6 +630,8 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 		1: nodes[1],
 		2: nodes[2],
 	}
+
+	ts.Server.raft.RemoveMember(context.Background(), raftMember.RaftID)
 
 	raftutils.WaitForCluster(t, clockSource, newCluster)
 
@@ -648,6 +653,9 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 		lastNode = nodes[1]
 	}
 
+	raftMember = ts.Server.raft.GetMemberByNodeID(demoteNode.SecurityConfig.ClientTLSCreds.NodeID())
+	assert.NotNil(t, raftMember)
+
 	// Try to demote a Node and scale down to 1
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: demoteNode.SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
@@ -660,6 +668,8 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 		NodeVersion: version,
 	})
 	assert.NoError(t, err)
+
+	ts.Server.raft.RemoveMember(context.Background(), raftMember.RaftID)
 
 	// Update the server
 	ts.Server.raft = lastNode.Node
@@ -710,7 +720,6 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	assert.Equal(t, r.Node.Spec.Availability, api.NodeAvailabilityDrain)
-
 }
 
 func TestUpdateNodeDemote(t *testing.T) {
