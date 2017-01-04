@@ -71,7 +71,7 @@ func pollClusterReady(t *testing.T, c *testCluster, numWorker, numManager int) {
 			if n.Certificate.Status.State != api.IssuanceStateIssued {
 				return fmt.Errorf("node %s with role %s has no issued certificate, issuance state %s", n.ID, n.Spec.Role, n.Certificate.Status.State)
 			}
-			if n.Spec.Role == api.NodeRoleManager {
+			if n.Role == api.NodeRoleManager {
 				if n.ManagerStatus == nil {
 					return fmt.Errorf("manager node %s has no ManagerStatus field", n.ID)
 				}

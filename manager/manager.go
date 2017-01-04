@@ -125,6 +125,7 @@ type Manager struct {
 	localserver            *grpc.Server
 	raftNode               *raft.Node
 	dekRotator             *RaftDEKManager
+	roleManager            *roleManager
 
 	cancelFunc context.CancelFunc
 
@@ -494,6 +495,9 @@ func (m *Manager) Stop(ctx context.Context) {
 	if m.scheduler != nil {
 		m.scheduler.Stop()
 	}
+	if m.roleManager != nil {
+		m.roleManager.Stop()
+	}
 	if m.keyManager != nil {
 		m.keyManager.Stop()
 	}
@@ -778,6 +782,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	m.taskReaper = taskreaper.New(s)
 	m.scheduler = scheduler.New(s)
 	m.keyManager = keymanager.New(s, keymanager.DefaultConfig())
+	m.roleManager = newRoleManager(s, m.raftNode)
 
 	// TODO(stevvooe): Allocate a context that can be used to
 	// shutdown underlying manager processes when leadership is
@@ -853,6 +858,9 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		}
 	}(m.globalOrchestrator)
 
+	go func(roleManager *roleManager) {
+		roleManager.Run()
+	}(m.roleManager)
 }
 
 // becomeFollower shuts down the subsystems that are only run by the leader.
@@ -880,6 +888,9 @@ func (m *Manager) becomeFollower() {
 
 	m.scheduler.Stop()
 	m.scheduler = nil
+
+	m.roleManager.Stop()
+	m.roleManager = nil
 
 	if m.keyManager != nil {
 		m.keyManager.Stop()

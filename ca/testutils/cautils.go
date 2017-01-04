@@ -223,6 +223,7 @@ func createNode(s *store.MemoryStore, nodeID, role string, csr, cert []byte) err
 				Role:       apiRole,
 				Membership: api.NodeMembershipAccepted,
 			},
+			Role: apiRole,
 		}
 
 		return store.CreateNode(tx, node)
