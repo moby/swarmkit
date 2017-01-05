@@ -467,6 +467,8 @@ func (m *Manager) Stop(ctx context.Context, clearData bool) {
 		close(localSrvDone)
 	}()
 
+	m.raftNode.Cancel()
+
 	m.dispatcher.Stop()
 	m.logbroker.Stop()
 	m.caserver.Stop()

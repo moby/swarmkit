@@ -115,6 +115,7 @@ type Node struct {
 	// RemovedFromRaft notifies about node deletion from raft cluster
 	RemovedFromRaft     chan struct{}
 	removeRaftFunc      func()
+	cancelFunc          func()
 	leadershipBroadcast *watch.Queue
 
 	// used to coordinate shutdown
@@ -223,6 +224,15 @@ func NewNode(opts NodeOptions) *Node {
 			removeRaftOnce.Do(func() {
 				atomic.StoreUint32(&n.isMember, 0)
 				close(n.RemovedFromRaft)
+			})
+		}
+	}(n)
+
+	n.cancelFunc = func(n *Node) func() {
+		var cancelOnce sync.Once
+		return func() {
+			cancelOnce.Do(func() {
+				close(n.stopped)
 			})
 		}
 	}(n)
@@ -602,6 +612,15 @@ func (n *Node) getCurrentRaftConfig() api.RaftConfig {
 	return raftConfig
 }
 
+// Cancel interrupts all ongoing proposals, and prevents new ones from
+// starting. This is useful for the shutdown sequence because it allows
+// the manager to shut down raft-dependent services that might otherwise
+// block on shutdown if quorum isn't met. Then the raft node can be completely
+// shut down once no more code is using it.
+func (n *Node) Cancel() {
+	n.cancelFunc()
+}
+
 // Done returns channel which is closed when raft node is fully stopped.
 func (n *Node) Done() <-chan struct{} {
 	return n.doneCh
@@ -611,8 +630,7 @@ func (n *Node) stop(ctx context.Context) {
 	n.stopMu.Lock()
 	defer n.stopMu.Unlock()
 
-	close(n.stopped)
-
+	n.Cancel()
 	n.waitProp.Wait()
 	n.asyncTasks.Wait()
 
