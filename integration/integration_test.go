@@ -12,6 +12,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarmkit/api"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -369,5 +370,53 @@ func TestDemoteDownedManager(t *testing.T) {
 	// agents 1, managers 2
 	numWorker++
 	numManager--
+	pollClusterReady(t, cl, numWorker, numManager)
+}
+
+func TestRestartLeader(t *testing.T) {
+	numWorker, numManager := 10, 5
+	cl := newCluster(t, numWorker, numManager)
+	defer func() {
+		require.NoError(t, cl.Stop())
+	}()
+	leader, err := cl.Leader()
+	require.NoError(t, err)
+
+	origLeaderID := leader.node.NodeID()
+
+	require.NoError(t, leader.Pause())
+
+	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+		resp, err := cl.api.GetNode(context.Background(), &api.GetNodeRequest{
+			NodeID: origLeaderID,
+		})
+		if err != nil {
+			return err
+		}
+		if resp.Node.Status.State != api.NodeStatus_DOWN {
+			return errors.Errorf("node %s is still not down", origLeaderID)
+		}
+		return nil
+	}, opsTimeout))
+
+	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+		resp, err := cl.api.ListNodes(context.Background(), &api.ListNodesRequest{})
+		if err != nil {
+			return err
+		}
+		for _, node := range resp.Nodes {
+			if node.ID == origLeaderID {
+				continue
+			}
+			require.False(t, node.Status.State == api.NodeStatus_DOWN, "nodes shouldn't go to down")
+			if node.Status.State != api.NodeStatus_READY {
+				return errors.Errorf("node %s is still not ready", node.ID)
+			}
+		}
+		return nil
+	}, opsTimeout))
+
+	require.NoError(t, cl.StartNode(origLeaderID))
+
 	pollClusterReady(t, cl, numWorker, numManager)
 }
