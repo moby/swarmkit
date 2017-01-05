@@ -60,8 +60,12 @@ type Node struct {
 	// Role is the *observed* role for this node. It differs from the
 	// desired role set in Node.Spec.Role because the role here is only
 	// updated after the Raft member list has been reconciled with the
-	// desired role from the spec. Note that this doesn't show whether the
-	// node has obtained a certificate that reflects its current role.
+	// desired role from the spec.
+	//
+	// This field represents the current reconciled state. If an action is
+	// to be performed, first verify the role in the cert. This field only
+	// shows the privilege level that the CA would currently grant when
+	// issuing or renewing the node's certificate.
 	Role NodeRole `protobuf:"varint,9,opt,name=role,proto3,enum=docker.swarmkit.v1.NodeRole" json:"role,omitempty"`
 }
 
