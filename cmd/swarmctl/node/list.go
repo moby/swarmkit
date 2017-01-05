@@ -61,7 +61,7 @@ var (
 							reachability = reachability + " *"
 						}
 					}
-					if reachability == "" && spec.Role == api.NodeRoleManager {
+					if reachability == "" && spec.DesiredRole == api.NodeRoleManager {
 						reachability = "UNKNOWN"
 					}
 

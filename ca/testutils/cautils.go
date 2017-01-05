@@ -220,8 +220,8 @@ func createNode(s *store.MemoryStore, nodeID, role string, csr, cert []byte) err
 				Certificate: cert,
 			},
 			Spec: api.NodeSpec{
-				Role:       apiRole,
-				Membership: api.NodeMembershipAccepted,
+				DesiredRole: apiRole,
+				Membership:  api.NodeMembershipAccepted,
 			},
 			Role: apiRole,
 		}

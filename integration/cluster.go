@@ -270,7 +270,7 @@ func (c *testCluster) SetNodeRole(id string, role api.NodeRole) error {
 			return err
 		}
 		spec := resp.Node.Spec.Copy()
-		spec.Role = role
+		spec.DesiredRole = role
 		if _, err := c.api.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 			NodeID:      id,
 			Spec:        spec,
