@@ -947,7 +947,7 @@ func managerNode(nodeID string, availability api.NodeSpec_Availability) *api.Nod
 			},
 		},
 		Spec: api.NodeSpec{
-			Role:         api.NodeRoleManager,
+			DesiredRole:  api.NodeRoleManager,
 			Membership:   api.NodeMembershipAccepted,
 			Availability: availability,
 		},

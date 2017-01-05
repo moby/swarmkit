@@ -101,17 +101,17 @@ func (rm *roleManager) Run() {
 }
 
 func (rm *roleManager) reconcileRole(node *api.Node) {
-	if node.Role == node.Spec.Role {
+	if node.Role == node.Spec.DesiredRole {
 		// Nothing to do.
 		delete(rm.pending, node.ID)
 		return
 	}
 
 	// Promotion can proceed right away.
-	if node.Spec.Role == api.NodeRoleManager && node.Role == api.NodeRoleWorker {
+	if node.Spec.DesiredRole == api.NodeRoleManager && node.Role == api.NodeRoleWorker {
 		err := rm.store.Update(func(tx store.Tx) error {
 			updatedNode := store.GetNode(tx, node.ID)
-			if updatedNode == nil || updatedNode.Spec.Role != node.Spec.Role || updatedNode.Role != node.Role {
+			if updatedNode == nil || updatedNode.Spec.DesiredRole != node.Spec.DesiredRole || updatedNode.Role != node.Role {
 				return nil
 			}
 			updatedNode.Role = api.NodeRoleManager
@@ -122,7 +122,7 @@ func (rm *roleManager) reconcileRole(node *api.Node) {
 		} else {
 			delete(rm.pending, node.ID)
 		}
-	} else if node.Spec.Role == api.NodeRoleWorker && node.Role == api.NodeRoleManager {
+	} else if node.Spec.DesiredRole == api.NodeRoleWorker && node.Role == api.NodeRoleManager {
 		// Check for node in memberlist
 		member := rm.raft.GetMemberByNodeID(node.ID)
 		if member != nil {
@@ -145,7 +145,7 @@ func (rm *roleManager) reconcileRole(node *api.Node) {
 
 		err := rm.store.Update(func(tx store.Tx) error {
 			updatedNode := store.GetNode(tx, node.ID)
-			if updatedNode == nil || updatedNode.Spec.Role != node.Spec.Role || updatedNode.Role != node.Role {
+			if updatedNode == nil || updatedNode.Spec.DesiredRole != node.Spec.DesiredRole || updatedNode.Role != node.Role {
 				return nil
 			}
 			updatedNode.Role = api.NodeRoleWorker

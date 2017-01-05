@@ -42,7 +42,7 @@ func setupEnv() {
 				Annotations: api.Annotations{
 					Labels: make(map[string]string),
 				},
-				Role: api.NodeRoleWorker,
+				DesiredRole: api.NodeRoleWorker,
 			},
 			Description: &api.NodeDescription{
 				Engine: &api.EngineDescription{

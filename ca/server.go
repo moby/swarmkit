@@ -261,7 +261,7 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 					},
 				},
 				Spec: api.NodeSpec{
-					Role:         role,
+					DesiredRole:  role,
 					Membership:   api.NodeMembershipAccepted,
 					Availability: request.Availability,
 				},

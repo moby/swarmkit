@@ -146,7 +146,7 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 					return true
 				}
 				for _, c := range request.Filters.Roles {
-					if c == e.Spec.Role {
+					if c == e.Role {
 						return true
 					}
 				}
@@ -214,7 +214,7 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 		}
 
 		// Demotion sanity checks.
-		if node.Spec.Role == api.NodeRoleManager && request.Spec.Role == api.NodeRoleWorker {
+		if node.Spec.DesiredRole == api.NodeRoleManager && request.Spec.DesiredRole == api.NodeRoleWorker {
 			// Check for manager entries in Store.
 			managers, err := store.FindNodes(tx, store.ByRole(api.NodeRoleManager))
 			if err != nil {
@@ -263,7 +263,7 @@ func (s *Server) RemoveNode(ctx context.Context, request *api.RemoveNodeRequest)
 		if node == nil {
 			return grpc.Errorf(codes.NotFound, "node %s not found", request.NodeID)
 		}
-		if node.Spec.Role == api.NodeRoleManager {
+		if node.Spec.DesiredRole == api.NodeRoleManager {
 			if s.raft == nil {
 				return grpc.Errorf(codes.FailedPrecondition, "node %s is a manager but cannot access node information from the raft memberlist", request.NodeID)
 			}

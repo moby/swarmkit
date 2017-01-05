@@ -113,11 +113,11 @@ func changeNodeRole(cmd *cobra.Command, args []string, role api.NodeRole) error 
 	}
 	spec := &node.Spec
 
-	if spec.Role == role {
+	if spec.DesiredRole == role {
 		return errNoChange
 	}
 
-	spec.Role = role
+	spec.DesiredRole = role
 
 	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
 		NodeID:      node.ID,
