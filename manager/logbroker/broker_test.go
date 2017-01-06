@@ -372,6 +372,8 @@ func TestLogBrokerSelector(t *testing.T) {
 }
 
 func TestLogBrokerNoFollow(t *testing.T) {
+	t.Parallel()
+
 	ctx, ca, _, serverAddr, brokerAddr, done := testLogBrokerEnv(t)
 	defer done()
 
@@ -488,6 +490,8 @@ func TestLogBrokerNoFollow(t *testing.T) {
 }
 
 func TestLogBrokerNoFollowMissingNode(t *testing.T) {
+	t.Parallel()
+
 	ctx, ca, _, serverAddr, brokerAddr, done := testLogBrokerEnv(t)
 	defer done()
 
@@ -520,6 +524,16 @@ func TestLogBrokerNoFollowMissingNode(t *testing.T) {
 
 		return nil
 	}))
+
+	// We need to sleep here to give ListenSubscriptions time to call
+	// registerSubscription before SubscribeLogs concludes that the actual
+	// agent is not connected, and prematurely calls Done for it. Think of
+	// these stream RPC calls as goroutines which don't have synchronization
+	// around anything that happens in the RPC handler before a send or
+	// receive. It would be nice if we had a way of confirming that a node
+	// was listening for subscriptions before calling SubscribeLogs, but
+	// the current API doesn't provide this.
+	time.Sleep(time.Second)
 
 	// Subscribe to logs in no follow mode
 	logs, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
@@ -596,6 +610,8 @@ func TestLogBrokerNoFollowUnscheduledTask(t *testing.T) {
 }
 
 func TestLogBrokerNoFollowDisconnect(t *testing.T) {
+	t.Parallel()
+
 	ctx, ca, _, serverAddr, brokerAddr, done := testLogBrokerEnv(t)
 	defer done()
 
@@ -630,6 +646,16 @@ func TestLogBrokerNoFollowDisconnect(t *testing.T) {
 
 		return nil
 	}))
+
+	// We need to sleep here to give ListenSubscriptions time to call
+	// registerSubscription before SubscribeLogs concludes that one or both
+	// of the agents are not connected, and prematurely calls Done for one
+	// or both nodes. Think of these stream RPC calls as goroutines which
+	// don't have synchronization around anything that happens in the RPC
+	// handler before a send or receive. It would be nice if we had a way
+	// of confirming that a node was listening for subscriptions before
+	// calling SubscribeLogs, but the current API doesn't provide this.
+	time.Sleep(time.Second)
 
 	// Subscribe to logs in no follow mode
 	logs, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
