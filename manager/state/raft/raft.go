@@ -1467,11 +1467,6 @@ func (n *Node) handleAddressChange(ctx context.Context, member *membership.Membe
 	return nil
 }
 
-type applyResult struct {
-	resp proto.Message
-	err  error
-}
-
 // processInternalRaftRequest sends a message to nodes participating
 // in the raft to apply a log entry and then waits for it to be applied
 // on the server. It will block until the update is performed, there is
@@ -1520,13 +1515,18 @@ func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRa
 
 	select {
 	case x := <-ch:
-		res := x.(*applyResult)
-		return res.resp, res.err
+		return x.(proto.Message), nil
 	case <-waitCtx.Done():
-		n.wait.cancel(r.ID)
+		if !n.wait.cancel(r.ID) {
+			// wait already triggered
+			return (<-ch).(proto.Message), nil
+		}
 		return nil, ErrLostLeadership
 	case <-ctx.Done():
-		n.wait.cancel(r.ID)
+		if !n.wait.cancel(r.ID) {
+			// wait already triggered
+			return (<-ch).(proto.Message), nil
+		}
 		return nil, ctx.Err()
 	}
 }
@@ -1588,7 +1588,7 @@ func (n *Node) processEntry(ctx context.Context, entry raftpb.Entry) error {
 		return nil
 	}
 
-	if !n.wait.trigger(r.ID, &applyResult{resp: r, err: nil}) {
+	if !n.wait.trigger(r.ID, r) {
 		// There was no wait on this ID, meaning we don't have a
 		// transaction in progress that would be committed to the
 		// memory store by the "trigger" call. Either a different node
