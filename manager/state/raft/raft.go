@@ -1514,20 +1514,27 @@ func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRa
 	}
 
 	select {
-	case x := <-ch:
+	case x, ok := <-ch:
+		if !ok {
+			return nil, ErrLostLeadership
+		}
 		return x.(proto.Message), nil
 	case <-waitCtx.Done():
-		if !n.wait.cancel(r.ID) {
-			// wait already triggered
-			return (<-ch).(proto.Message), nil
+		n.wait.cancel(r.ID)
+		// if channel is closed, wait item was canceled, otherwise it was triggered
+		x, ok := <-ch
+		if !ok {
+			return nil, ErrLostLeadership
 		}
-		return nil, ErrLostLeadership
+		return x.(proto.Message), nil
 	case <-ctx.Done():
-		if !n.wait.cancel(r.ID) {
-			// wait already triggered
-			return (<-ch).(proto.Message), nil
+		n.wait.cancel(r.ID)
+		// if channel is closed, wait item was canceled, otherwise it was triggered
+		x, ok := <-ch
+		if !ok {
+			return nil, ctx.Err()
 		}
-		return nil, ctx.Err()
+		return x.(proto.Message), nil
 	}
 }
 
