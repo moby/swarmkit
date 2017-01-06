@@ -50,7 +50,7 @@ func (w *wait) trigger(id uint64, x interface{}) bool {
 	return false
 }
 
-func (w *wait) cancel(id uint64) {
+func (w *wait) cancel(id uint64) bool {
 	w.l.Lock()
 	waitItem, ok := w.m[id]
 	delete(w.m, id)
@@ -58,6 +58,7 @@ func (w *wait) cancel(id uint64) {
 	if ok && waitItem.cancel != nil {
 		waitItem.cancel()
 	}
+	return ok
 }
 
 func (w *wait) cancelAll() {
