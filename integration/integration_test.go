@@ -60,18 +60,18 @@ func pollClusterReady(t *testing.T, c *testCluster, numWorker, numManager int) {
 		var leaderFound bool
 		for _, n := range res.Nodes {
 			if n.Status.State != api.NodeStatus_READY {
-				return fmt.Errorf("node %s with role %s isn't ready, status %s, message %s", n.ID, n.Spec.Role, n.Status.State, n.Status.Message)
+				return fmt.Errorf("node %s with desired role %s isn't ready, status %s, message %s", n.ID, n.Spec.DesiredRole, n.Status.State, n.Status.Message)
 			}
 			if n.Spec.Membership != api.NodeMembershipAccepted {
-				return fmt.Errorf("node %s with role %s isn't accepted to cluster, membership %s", n.ID, n.Spec.Role, n.Spec.Membership)
+				return fmt.Errorf("node %s with desired role %s isn't accepted to cluster, membership %s", n.ID, n.Spec.DesiredRole, n.Spec.Membership)
 			}
-			if n.Certificate.Role != n.Spec.Role {
-				return fmt.Errorf("node %s had different roles in spec and certificate, %s and %s respectively", n.ID, n.Spec.Role, n.Certificate.Role)
+			if n.Certificate.Role != n.Spec.DesiredRole {
+				return fmt.Errorf("node %s had different roles in spec and certificate, %s and %s respectively", n.ID, n.Spec.DesiredRole, n.Certificate.Role)
 			}
 			if n.Certificate.Status.State != api.IssuanceStateIssued {
-				return fmt.Errorf("node %s with role %s has no issued certificate, issuance state %s", n.ID, n.Spec.Role, n.Certificate.Status.State)
+				return fmt.Errorf("node %s with desired role %s has no issued certificate, issuance state %s", n.ID, n.Spec.DesiredRole, n.Certificate.Status.State)
 			}
-			if n.Spec.Role == api.NodeRoleManager {
+			if n.Role == api.NodeRoleManager {
 				if n.ManagerStatus == nil {
 					return fmt.Errorf("manager node %s has no ManagerStatus field", n.ID)
 				}
@@ -339,7 +339,7 @@ func TestDemoteDownedManager(t *testing.T) {
 	resp, err := cl.api.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodeID})
 	require.NoError(t, err)
 	spec := resp.Node.Spec.Copy()
-	spec.Role = api.NodeRoleWorker
+	spec.DesiredRole = api.NodeRoleWorker
 
 	// stop the node, then demote it, and start it back up again so when it comes back up it has to realize
 	// it's not running anymore

@@ -19,33 +19,33 @@ var (
 		{
 			ID: "id1",
 			Spec: api.NodeSpec{
-				Role:       api.NodeRoleManager,
 				Membership: api.NodeMembershipPending,
 			},
 			Description: &api.NodeDescription{
 				Hostname: "name1",
 			},
+			Role: api.NodeRoleManager,
 		},
 		{
 			ID: "id2",
 			Spec: api.NodeSpec{
-				Role:       api.NodeRoleWorker,
 				Membership: api.NodeMembershipAccepted,
 			},
 			Description: &api.NodeDescription{
 				Hostname: "name2",
 			},
+			Role: api.NodeRoleWorker,
 		},
 		{
 			ID: "id3",
 			Spec: api.NodeSpec{
-				Role:       api.NodeRoleWorker,
 				Membership: api.NodeMembershipAccepted,
 			},
 			Description: &api.NodeDescription{
 				// intentionally conflicting hostname
 				Hostname: "name2",
 			},
+			Role: api.NodeRoleWorker,
 		},
 	}
 

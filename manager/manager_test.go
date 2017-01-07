@@ -185,7 +185,7 @@ func TestManager(t *testing.T) {
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
 	assert.Contains(t, grpc.ErrorDesc(err), "removed from swarm")
 
-	m.Stop(ctx)
+	m.Stop(ctx, false)
 
 	// After stopping we should MAY receive an error from ListenAndServe if
 	// all this happened before WaitForLeader completed, so don't check the
@@ -393,7 +393,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	require.NotNil(t, unencryptedDEK)
 	require.Equal(t, currentDEK, unencryptedDEK)
 
-	m.Stop(ctx)
+	m.Stop(ctx, false)
 
 	// After stopping we should MAY receive an error from ListenAndServe if
 	// all this happened before WaitForLeader completed, so don't check the
