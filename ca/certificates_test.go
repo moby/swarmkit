@@ -15,12 +15,12 @@ import (
 
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
-	"github.com/docker/distribution/digest"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/opencontainers/go-digest"
 	"github.com/phayes/permbits"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -255,7 +255,7 @@ func TestGetRemoteCA(t *testing.T) {
 	md := shaHash.Sum(nil)
 	mdStr := hex.EncodeToString(md)
 
-	d, err := digest.ParseDigest("sha256:" + mdStr)
+	d, err := digest.Parse("sha256:" + mdStr)
 	assert.NoError(t, err)
 
 	cert, err := ca.GetRemoteCA(tc.Context, d, tc.Remotes)
