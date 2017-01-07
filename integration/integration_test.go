@@ -374,7 +374,7 @@ func TestDemoteDownedManager(t *testing.T) {
 }
 
 func TestRestartLeader(t *testing.T) {
-	numWorker, numManager := 10, 5
+	numWorker, numManager := 5, 3
 	cl := newCluster(t, numWorker, numManager)
 	defer func() {
 		require.NoError(t, cl.Stop())
@@ -385,19 +385,6 @@ func TestRestartLeader(t *testing.T) {
 	origLeaderID := leader.node.NodeID()
 
 	require.NoError(t, leader.Pause())
-
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
-		resp, err := cl.api.GetNode(context.Background(), &api.GetNodeRequest{
-			NodeID: origLeaderID,
-		})
-		if err != nil {
-			return err
-		}
-		if resp.Node.Status.State != api.NodeStatus_DOWN {
-			return errors.Errorf("node %s is still not down", origLeaderID)
-		}
-		return nil
-	}, opsTimeout))
 
 	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
 		resp, err := cl.api.ListNodes(context.Background(), &api.ListNodesRequest{})
