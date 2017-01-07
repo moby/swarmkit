@@ -24,12 +24,12 @@ func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, memb
 	node := &api.Node{
 		ID: id,
 		Spec: api.NodeSpec{
-			Role:       role,
 			Membership: membership,
 		},
 		Status: api.NodeStatus{
 			State: state,
 		},
+		Role: role,
 	}
 	err := ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateNode(tx, node)
@@ -465,9 +465,9 @@ func TestUpdateNode(t *testing.T) {
 		assert.NoError(t, store.CreateNode(tx, &api.Node{
 			ID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID(),
 			Spec: api.NodeSpec{
-				Role:       api.NodeRoleManager,
 				Membership: api.NodeMembershipAccepted,
 			},
+			Role: api.NodeRoleManager,
 		}))
 		return nil
 	}))
@@ -543,23 +543,26 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 		assert.NoError(t, store.CreateNode(tx, &api.Node{
 			ID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID(),
 			Spec: api.NodeSpec{
-				Role:       api.NodeRoleManager,
-				Membership: api.NodeMembershipAccepted,
+				DesiredRole: api.NodeRoleManager,
+				Membership:  api.NodeMembershipAccepted,
 			},
+			Role: api.NodeRoleManager,
 		}))
 		assert.NoError(t, store.CreateNode(tx, &api.Node{
 			ID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID(),
 			Spec: api.NodeSpec{
-				Role:       api.NodeRoleManager,
-				Membership: api.NodeMembershipAccepted,
+				DesiredRole: api.NodeRoleManager,
+				Membership:  api.NodeMembershipAccepted,
 			},
+			Role: api.NodeRoleManager,
 		}))
 		assert.NoError(t, store.CreateNode(tx, &api.Node{
 			ID: nodes[3].SecurityConfig.ClientTLSCreds.NodeID(),
 			Spec: api.NodeSpec{
-				Role:       api.NodeRoleManager,
-				Membership: api.NodeMembershipAccepted,
+				DesiredRole: api.NodeRoleManager,
+				Membership:  api.NodeMembershipAccepted,
 			},
+			Role: api.NodeRoleManager,
 		}))
 		return nil
 	}))
@@ -584,7 +587,7 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec := r.Node.Spec.Copy()
-	spec.Role = api.NodeRoleWorker
+	spec.DesiredRole = api.NodeRoleWorker
 	version := &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      nodes[2].SecurityConfig.ClientTLSCreds.NodeID(),
@@ -610,11 +613,14 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 		return nil
 	}))
 
+	raftMember := ts.Server.raft.GetMemberByNodeID(nodes[3].SecurityConfig.ClientTLSCreds.NodeID())
+	assert.NotNil(t, raftMember)
+
 	// Try to demote Node 3, this should succeed
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[3].SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
-	spec.Role = api.NodeRoleWorker
+	spec.DesiredRole = api.NodeRoleWorker
 	version = &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      nodes[3].SecurityConfig.ClientTLSCreds.NodeID(),
@@ -627,6 +633,8 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 		1: nodes[1],
 		2: nodes[2],
 	}
+
+	ts.Server.raft.RemoveMember(context.Background(), raftMember.RaftID)
 
 	raftutils.WaitForCluster(t, clockSource, newCluster)
 
@@ -648,11 +656,14 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 		lastNode = nodes[1]
 	}
 
+	raftMember = ts.Server.raft.GetMemberByNodeID(demoteNode.SecurityConfig.ClientTLSCreds.NodeID())
+	assert.NotNil(t, raftMember)
+
 	// Try to demote a Node and scale down to 1
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: demoteNode.SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
-	spec.Role = api.NodeRoleWorker
+	spec.DesiredRole = api.NodeRoleWorker
 	version = &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      demoteNode.SecurityConfig.ClientTLSCreds.NodeID(),
@@ -660,6 +671,8 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 		NodeVersion: version,
 	})
 	assert.NoError(t, err)
+
+	ts.Server.raft.RemoveMember(context.Background(), raftMember.RaftID)
 
 	// Update the server
 	ts.Server.raft = lastNode.Node
@@ -683,7 +696,7 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
-	spec.Role = api.NodeRoleWorker
+	spec.DesiredRole = api.NodeRoleWorker
 	version = &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      lastNode.SecurityConfig.ClientTLSCreds.NodeID(),
@@ -710,7 +723,6 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	assert.Equal(t, r.Node.Spec.Availability, api.NodeAvailabilityDrain)
-
 }
 
 func TestUpdateNodeDemote(t *testing.T) {

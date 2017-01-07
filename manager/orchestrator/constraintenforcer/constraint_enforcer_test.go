@@ -18,12 +18,12 @@ func TestConstraintEnforcer(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "name1",
 				},
-				Role:         api.NodeRoleWorker,
 				Availability: api.NodeAvailabilityActive,
 			},
 			Status: api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
+			Role: api.NodeRoleWorker,
 		},
 		{
 			ID: "id2",
@@ -141,7 +141,7 @@ func TestConstraintEnforcer(t *testing.T) {
 		if node == nil {
 			t.Fatal("could not get node id1")
 		}
-		node.Spec.Role = api.NodeRoleManager
+		node.Role = api.NodeRoleManager
 		assert.NoError(t, store.UpdateNode(tx, node))
 		return nil
 	})
