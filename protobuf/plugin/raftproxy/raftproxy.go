@@ -27,12 +27,12 @@ func (g *raftProxyGen) genProxyStruct(s *descriptor.ServiceDescriptorProto) {
 	g.gen.P("type " + serviceTypeName(s) + " struct {")
 	g.gen.P("\tlocal " + s.GetName() + "Server")
 	g.gen.P("\tconnSelector raftselector.ConnProvider")
-	g.gen.P("\tctxMods []func(context.Context)(context.Context, error)")
+	g.gen.P("\tlocalCtxMods, remoteCtxMods []func(context.Context)(context.Context, error)")
 	g.gen.P("}")
 }
 
 func (g *raftProxyGen) genProxyConstructor(s *descriptor.ServiceDescriptorProto) {
-	g.gen.P("func NewRaftProxy" + s.GetName() + "Server(local " + s.GetName() + "Server, connSelector raftselector.ConnProvider, ctxMod func(context.Context)(context.Context, error)) " + s.GetName() + "Server {")
+	g.gen.P("func NewRaftProxy" + s.GetName() + "Server(local " + s.GetName() + "Server, connSelector raftselector.ConnProvider, localCtxMod, remoteCtxMod func(context.Context)(context.Context, error)) " + s.GetName() + "Server {")
 	g.gen.P(`redirectChecker := func(ctx context.Context)(context.Context, error) {
 		s, ok := transport.StreamFromContext(ctx)
 		if !ok {
@@ -49,21 +49,27 @@ func (g *raftProxyGen) genProxyConstructor(s *descriptor.ServiceDescriptorProto)
 		md["redirect"] = append(md["redirect"], addr)
 		return metadata.NewContext(ctx, md), nil
 	}
-	mods := []func(context.Context)(context.Context, error){redirectChecker}
-	mods = append(mods, ctxMod)
+	remoteMods := []func(context.Context)(context.Context, error){redirectChecker}
+	remoteMods = append(remoteMods, remoteCtxMod)
+
+	var localMods []func(context.Context)(context.Context, error)
+	if localCtxMod != nil {
+		localMods = []func(context.Context)(context.Context, error){localCtxMod}
+	}
 	`)
 	g.gen.P("return &" + serviceTypeName(s) + `{
 		local: local,
 		connSelector: connSelector,
-		ctxMods: mods,
+		localCtxMods: localMods,
+		remoteCtxMods: remoteMods,
 	}`)
 	g.gen.P("}")
 }
 
 func (g *raftProxyGen) genRunCtxMods(s *descriptor.ServiceDescriptorProto) {
-	g.gen.P("func (p *" + serviceTypeName(s) + `) runCtxMods(ctx context.Context) (context.Context, error) {
+	g.gen.P("func (p *" + serviceTypeName(s) + `) runCtxMods(ctx context.Context, ctxMods []func(context.Context)(context.Context, error)) (context.Context, error) {
 	var err error
-	for _, mod := range p.ctxMods {
+	for _, mod := range ctxMods {
 		ctx, err = mod(ctx)
 		if err != nil {
 			return ctx, err
@@ -91,18 +97,43 @@ func sigPrefix(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescrip
 	return "func (p *" + serviceTypeName(s) + ") " + m.GetName() + "("
 }
 
+func (g *raftProxyGen) genStreamWrapper(streamType string) {
+	// Generate stream wrapper that returns a modified context
+	g.gen.P(`type ` + streamType + `Wrapper struct {
+	` + streamType + `
+	ctx context.Context
+}
+`)
+	g.gen.P(`func (s ` + streamType + `Wrapper) Context() context.Context {
+	return s.ctx
+}
+`)
+}
+
 func (g *raftProxyGen) genClientStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
-	g.gen.P(sigPrefix(s, m) + "stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
-	g.gen.P(`
+	streamType := s.GetName() + "_" + m.GetName() + "Server"
+
+	// Generate stream wrapper that returns a modified context
+	g.genStreamWrapper(streamType)
+
+	g.gen.P(sigPrefix(s, m) + "stream " + streamType + `) error {
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
 		if err == raftselector.ErrIsLeader {
-			return p.local.` + m.GetName() + `(stream)
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return err
+			}
+			streamWrapper := ` + streamType + `Wrapper{
+				` + streamType + `: stream,
+				ctx: ctx,
+			}
+			return p.local.` + m.GetName() + `(streamWrapper)
 		}
 		return err
 	}
-	ctx, err = p.runCtxMods(ctx)
+	ctx, err = p.runCtxMods(ctx, p.remoteCtxMods)
 	if err != nil {
 		return err
 	}`)
@@ -135,17 +166,28 @@ func (g *raftProxyGen) genClientStreamingMethod(s *descriptor.ServiceDescriptorP
 }
 
 func (g *raftProxyGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
-	g.gen.P(sigPrefix(s, m) + "r *" + getInputTypeName(m) + ", stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
-	g.gen.P(`
+	streamType := s.GetName() + "_" + m.GetName() + "Server"
+
+	g.genStreamWrapper(streamType)
+
+	g.gen.P(sigPrefix(s, m) + "r *" + getInputTypeName(m) + ", stream " + streamType + `) error {
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
 		if err == raftselector.ErrIsLeader {
-			return p.local.` + m.GetName() + `(r, stream)
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return err
+			}
+			streamWrapper := ` + streamType + `Wrapper{
+				` + streamType + `: stream,
+				ctx: ctx,
+			}
+			return p.local.` + m.GetName() + `(r, streamWrapper)
 		}
 		return err
 	}
-	ctx, err = p.runCtxMods(ctx)
+	ctx, err = p.runCtxMods(ctx, p.remoteCtxMods)
 	if err != nil {
 		return err
 	}`)
@@ -172,17 +214,28 @@ func (g *raftProxyGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorP
 }
 
 func (g *raftProxyGen) genClientServerStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {
-	g.gen.P(sigPrefix(s, m) + "stream " + s.GetName() + "_" + m.GetName() + "Server) error {")
-	g.gen.P(`
+	streamType := s.GetName() + "_" + m.GetName() + "Server"
+
+	g.genStreamWrapper(streamType)
+
+	g.gen.P(sigPrefix(s, m) + "stream " + streamType + `) error {
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
 		if err == raftselector.ErrIsLeader {
-			return p.local.` + m.GetName() + `(stream)
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return err
+			}
+			streamWrapper := ` + streamType + `Wrapper{
+				` + streamType + `: stream,
+				ctx: ctx,
+			}
+			return p.local.` + m.GetName() + `(streamWrapper)
 		}
 		return err
 	}
-	ctx, err = p.runCtxMods(ctx)
+	ctx, err = p.runCtxMods(ctx, p.remoteCtxMods)
 	if err != nil {
 		return err
 	}`)
@@ -231,11 +284,15 @@ func (g *raftProxyGen) genSimpleMethod(s *descriptor.ServiceDescriptorProto, m *
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
 		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
 			return p.local.` + m.GetName() + `(ctx, r)
 		}
 		return nil, err
 	}
-	modCtx, err := p.runCtxMods(ctx)
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
 	if err != nil {
 		return nil, err
 	}`)

@@ -51,7 +51,7 @@ func TestSimpleRedirect(t *testing.T) {
 	cluster := &mockCluster{conn: conn}
 
 	forwardAsOwnRequest := func(ctx context.Context) (context.Context, error) { return ctx, nil }
-	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cluster, forwardAsOwnRequest)
+	api := NewRaftProxyRouteGuideServer(testRouteGuide{}, cluster, nil, forwardAsOwnRequest)
 	srv := grpc.NewServer()
 	RegisterRouteGuideServer(srv, api)
 	go srv.Serve(l)

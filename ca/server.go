@@ -211,6 +211,15 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 		blacklistedCerts = clusters[0].BlacklistedCertificates
 	}
 
+	// Renewing the cert with a local (unix socket) is always valid.
+	localNodeInfo := ctx.Value(LocalRequestKey)
+	if localNodeInfo != nil {
+		nodeInfo, ok := localNodeInfo.(RemoteNodeInfo)
+		if ok && nodeInfo.NodeID != "" {
+			return s.issueRenewCertificate(ctx, nodeInfo.NodeID, request.CSR)
+		}
+	}
+
 	// If the remote node is a worker (either forwarded by a manager, or calling directly),
 	// issue a renew worker certificate entry with the correct ID
 	nodeID, err := AuthorizeForwardedRoleAndOrg(ctx, []string{WorkerRole}, []string{ManagerRole}, s.securityConfig.ClientTLSCreds.Organization(), blacklistedCerts)
