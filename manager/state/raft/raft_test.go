@@ -60,9 +60,9 @@ func TestRaftBootstrap(t *testing.T) {
 	nodes, _ := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(t, nodes)
 
-	assert.Equal(t, 3, len(nodes[1].GetMemberlist()))
-	assert.Equal(t, 3, len(nodes[2].GetMemberlist()))
-	assert.Equal(t, 3, len(nodes[3].GetMemberlist()))
+	assert.Len(t, nodes[1].GetMemberlist(), 3)
+	assert.Len(t, nodes[2].GetMemberlist(), 3)
+	assert.Len(t, nodes[3].GetMemberlist(), 3)
 }
 
 func TestRaftJoinTwice(t *testing.T) {
@@ -146,10 +146,10 @@ func TestRaftLeaderDown(t *testing.T) {
 
 	// The value should be replicated on all remaining nodes
 	raftutils.CheckValue(t, clockSource, leaderNode, value)
-	assert.Equal(t, len(leaderNode.GetMemberlist()), 3)
+	assert.Len(t, leaderNode.GetMemberlist(), 3)
 
 	raftutils.CheckValue(t, clockSource, followerNode, value)
-	assert.Equal(t, len(followerNode.GetMemberlist()), 3)
+	assert.Len(t, followerNode.GetMemberlist(), 3)
 }
 
 func TestRaftFollowerDown(t *testing.T) {
@@ -171,10 +171,10 @@ func TestRaftFollowerDown(t *testing.T) {
 
 	// The value should be replicated on all remaining nodes
 	raftutils.CheckValue(t, clockSource, nodes[1], value)
-	assert.Equal(t, len(nodes[1].GetMemberlist()), 3)
+	assert.Len(t, nodes[1].GetMemberlist(), 3)
 
 	raftutils.CheckValue(t, clockSource, nodes[2], value)
-	assert.Equal(t, len(nodes[2].GetMemberlist()), 3)
+	assert.Len(t, nodes[2].GetMemberlist(), 3)
 }
 
 func TestRaftLogReplication(t *testing.T) {
@@ -301,16 +301,16 @@ func TestRaftFollowerLeave(t *testing.T) {
 
 	// Value should be replicated on every node
 	raftutils.CheckValue(t, clockSource, nodes[1], value)
-	assert.Equal(t, len(nodes[1].GetMemberlist()), 4)
+	assert.Len(t, nodes[1].GetMemberlist(), 4)
 
 	raftutils.CheckValue(t, clockSource, nodes[2], value)
-	assert.Equal(t, len(nodes[2].GetMemberlist()), 4)
+	assert.Len(t, nodes[2].GetMemberlist(), 4)
 
 	raftutils.CheckValue(t, clockSource, nodes[3], value)
-	assert.Equal(t, len(nodes[3].GetMemberlist()), 4)
+	assert.Len(t, nodes[3].GetMemberlist(), 4)
 
 	raftutils.CheckValue(t, clockSource, nodes[4], value)
-	assert.Equal(t, len(nodes[4].GetMemberlist()), 4)
+	assert.Len(t, nodes[4].GetMemberlist(), 4)
 }
 
 func TestRaftLeaderLeave(t *testing.T) {
@@ -377,10 +377,10 @@ func TestRaftLeaderLeave(t *testing.T) {
 
 	// The value should be replicated on all remaining nodes
 	raftutils.CheckValue(t, clockSource, leaderNode, value)
-	assert.Equal(t, len(leaderNode.GetMemberlist()), 2)
+	assert.Len(t, leaderNode.GetMemberlist(), 2)
 
 	raftutils.CheckValue(t, clockSource, followerNode, value)
-	assert.Equal(t, len(followerNode.GetMemberlist()), 2)
+	assert.Len(t, followerNode.GetMemberlist(), 2)
 
 	raftutils.TeardownCluster(t, newCluster)
 }
@@ -404,7 +404,7 @@ func TestRaftNewNodeGetsData(t *testing.T) {
 	// Value should be replicated on every node
 	for _, node := range nodes {
 		raftutils.CheckValue(t, clockSource, node, value)
-		assert.Equal(t, len(node.GetMemberlist()), 4)
+		assert.Len(t, node.GetMemberlist(), 4)
 	}
 }
 
@@ -424,7 +424,7 @@ func TestRaftRejoin(t *testing.T) {
 
 	// The value should be replicated on node 3
 	raftutils.CheckValue(t, clockSource, nodes[3], values[0])
-	assert.Equal(t, len(nodes[3].GetMemberlist()), 3)
+	assert.Len(t, nodes[3].GetMemberlist(), 3)
 
 	// Stop node 3
 	nodes[3].Server.Stop()
@@ -557,7 +557,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 
 	// The memberlist should contain 3 members on each node
 	for i := 1; i <= 3; i++ {
-		assert.Equal(t, len(nodes[uint64(i)].GetMemberlist()), 3)
+		assert.Len(t, nodes[uint64(i)].GetMemberlist(), 3)
 	}
 
 	// Stop all nodes
@@ -581,7 +581,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// The memberlist should contain only one node (self)
-	assert.Equal(t, len(nodes[1].GetMemberlist()), 1)
+	assert.Len(t, nodes[1].GetMemberlist(), 1)
 
 	// Add 2 more members
 	nodes[2] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, tc)
@@ -599,7 +599,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 
 	// The memberlist should contain 3 members on each node
 	for i := 1; i <= 3; i++ {
-		assert.Equal(t, len(nodes[uint64(i)].GetMemberlist()), 3)
+		assert.Len(t, nodes[uint64(i)].GetMemberlist(), 3)
 	}
 
 	// Propose another value
@@ -699,7 +699,7 @@ func TestRaftJoinWithIncorrectAddress(t *testing.T) {
 	assert.Contains(t, grpc.ErrorDesc(err), "could not connect to prospective new cluster member using its advertised address")
 
 	// Check if first node still has only itself registered in the memberlist
-	assert.Equal(t, len(nodes[1].GetMemberlist()), 1)
+	assert.Len(t, nodes[1].GetMemberlist(), 1)
 }
 
 func TestStress(t *testing.T) {

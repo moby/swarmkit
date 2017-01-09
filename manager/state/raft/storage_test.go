@@ -252,6 +252,83 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 }
 
+func TestRaftSnapshotForceNewCluster(t *testing.T) {
+	t.Parallel()
+
+	// Bring up a 3 node cluster
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc, &api.RaftConfig{SnapshotInterval: 10, LogEntriesForSlowFollowers: 0})
+	defer raftutils.TeardownCluster(t, nodes)
+
+	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5"}
+
+	// Propose 3 values.
+	for _, nodeID := range nodeIDs[:3] {
+		_, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeID)
+		assert.NoError(t, err, "failed to propose value")
+	}
+
+	// Remove one of the original nodes
+
+	// Use gRPC instead of calling handler directly because of
+	// authorization check.
+	client, err := nodes[1].ConnectToMember(nodes[1].Address, 10*time.Second)
+	assert.NoError(t, err)
+	raftClient := api.NewRaftMembershipClient(client.Conn)
+	defer client.Conn.Close()
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[2].Config.ID}})
+	assert.NoError(t, err, "error sending message to leave the raft")
+	assert.NotNil(t, resp, "leave response message is nil")
+
+	raftutils.ShutdownNode(nodes[2])
+	delete(nodes, 2)
+
+	// Nodes shouldn't have snapshot files yet
+	for _, node := range nodes {
+		dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
+		assert.NoError(t, err)
+		assert.Len(t, dirents, 0)
+	}
+
+	// Trigger a snapshot, with a 4th proposal
+	_, err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[3])
+	assert.NoError(t, err, "failed to propose value")
+
+	// Nodes should now have a snapshot file
+	for nodeIdx, node := range nodes {
+		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
+			if err != nil {
+				return err
+			}
+			if len(dirents) != 1 {
+				return fmt.Errorf("expected 1 snapshot, found %d on node %d", len(dirents), nodeIdx+1)
+			}
+			return nil
+		}))
+	}
+
+	// Join another node
+	nodes[4] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, tc)
+	raftutils.WaitForCluster(t, clockSource, nodes)
+
+	// Only restart the first node with force-new-cluster option
+	nodes[1].Server.Stop()
+	nodes[1].ShutdownRaft()
+	nodes[1] = raftutils.RestartNode(t, clockSource, nodes[1], true)
+	delete(nodes, 3)
+	delete(nodes, 4)
+	raftutils.WaitForCluster(t, clockSource, nodes)
+
+	// The memberlist should contain exactly one node (self)
+	memberlist := nodes[1].GetMemberlist()
+	require.Len(t, memberlist, 1)
+
+	// Propose a 5th value
+	_, err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[4])
+	require.NoError(t, err)
+}
+
 func TestGCWAL(t *testing.T) {
 	t.Parallel()
 
