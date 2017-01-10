@@ -28,7 +28,6 @@ const (
 // breaking it apart doesn't seem worth it.
 type Server struct {
 	mu                          sync.Mutex
-	wg                          sync.WaitGroup
 	ctx                         context.Context
 	cancel                      func()
 	store                       *store.MemoryStore
@@ -40,7 +39,7 @@ type Server struct {
 	// renewal. They are indexed by node ID.
 	pending map[string]*api.Node
 
-	// started is a channel which gets closed once the server is running
+	// Started is a channel which gets closed once the server is running
 	// and able to service RPCs.
 	started chan struct{}
 }
@@ -372,10 +371,8 @@ func (s *Server) Run(ctx context.Context) error {
 		s.mu.Unlock()
 		return errors.New("CA signer is already running")
 	}
-	s.wg.Add(1)
 	s.mu.Unlock()
 
-	defer s.wg.Done()
 	ctx = log.WithModule(ctx, "ca")
 
 	// Retrieve the channels to keep track of changes in the cluster
@@ -467,12 +464,7 @@ func (s *Server) Run(ctx context.Context) error {
 // Stop stops the CA and closes all grpc streams.
 func (s *Server) Stop() error {
 	s.mu.Lock()
-
-	// Wait for Run to complete before returning
-	defer s.wg.Wait()
-
 	defer s.mu.Unlock()
-
 	if !s.isRunning() {
 		return errors.New("CA signer is already stopped")
 	}
