@@ -18,6 +18,7 @@ import (
 	"github.com/cloudflare/cfssl/signer/local"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/connectionbroker"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/ioutils"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -45,7 +46,7 @@ type TestCA struct {
 	Conns                 []*grpc.ClientConn
 	WorkerToken           string
 	ManagerToken          string
-	Remotes               remotes.Remotes
+	ConnBroker            *connectionbroker.Broker
 	KeyReadWriter         *ca.KeyReadWriter
 }
 
@@ -199,7 +200,7 @@ func NewTestCA(t *testing.T, krwGenerators ...func(ca.CertPaths) *ca.KeyReadWrit
 		CAServer:              caServer,
 		WorkerToken:           workerToken,
 		ManagerToken:          managerToken,
-		Remotes:               remotes,
+		ConnBroker:            connectionbroker.New(remotes),
 		KeyReadWriter:         krw,
 	}
 }
