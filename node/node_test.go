@@ -101,7 +101,7 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 
 	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
-	peer, err := tc.Remotes.Select()
+	peer, err := tc.ConnBroker.Remotes().Select()
 	require.NoError(t, err)
 
 	// Load successfully with valid passphrase
@@ -169,7 +169,7 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
-	peer, err := tc.Remotes.Select()
+	peer, err := tc.ConnBroker.Remotes().Select()
 	require.NoError(t, err)
 
 	node, err = New(&Config{
