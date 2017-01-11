@@ -102,7 +102,8 @@ func (s *Server) NodeCertificateStatus(ctx context.Context, request *api.NodeCer
 		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
-	if err := s.isRunningLocked(); err != nil {
+	serverCtx, err := s.isRunningLocked()
+	if err != nil {
 		return nil, err
 	}
 
@@ -170,7 +171,7 @@ func (s *Server) NodeCertificateStatus(ctx context.Context, request *api.NodeCer
 			}
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-s.ctx.Done():
+		case <-serverCtx.Done():
 			return nil, s.ctx.Err()
 		}
 	}
@@ -188,7 +189,7 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
-	if err := s.isRunningLocked(); err != nil {
+	if _, err := s.isRunningLocked(); err != nil {
 		return nil, err
 	}
 
@@ -405,6 +406,7 @@ func (s *Server) Run(ctx context.Context) error {
 	// returns true without joinTokens being set correctly.
 	s.mu.Lock()
 	s.ctx, s.cancel = context.WithCancel(ctx)
+	ctx = s.ctx
 	close(s.started)
 	s.mu.Unlock()
 
@@ -457,8 +459,6 @@ func (s *Server) Run(ctx context.Context) error {
 				}
 			}
 		case <-ctx.Done():
-			return ctx.Err()
-		case <-s.ctx.Done():
 			return nil
 		}
 	}
@@ -468,16 +468,17 @@ func (s *Server) Run(ctx context.Context) error {
 func (s *Server) Stop() error {
 	s.mu.Lock()
 
-	// Wait for Run to complete before returning
-	defer s.wg.Wait()
-
-	defer s.mu.Unlock()
-
 	if !s.isRunning() {
+		s.mu.Unlock()
 		return errors.New("CA signer is already stopped")
 	}
 	s.cancel()
 	s.started = make(chan struct{})
+	s.mu.Unlock()
+
+	// Wait for Run to complete
+	s.wg.Wait()
+
 	return nil
 }
 
@@ -488,14 +489,15 @@ func (s *Server) Ready() <-chan struct{} {
 	return s.started
 }
 
-func (s *Server) isRunningLocked() error {
+func (s *Server) isRunningLocked() (context.Context, error) {
 	s.mu.Lock()
 	if !s.isRunning() {
 		s.mu.Unlock()
-		return grpc.Errorf(codes.Aborted, "CA signer is stopped")
+		return nil, grpc.Errorf(codes.Aborted, "CA signer is stopped")
 	}
+	ctx := s.ctx
 	s.mu.Unlock()
-	return nil
+	return ctx, nil
 }
 
 func (s *Server) isRunning() bool {

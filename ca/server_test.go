@@ -15,6 +15,8 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 var _ api.CAServer = &ca.Server{}
@@ -33,16 +35,18 @@ func TestRestartRootCA(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	resp1, err := tc.CAClients[0].GetRootCACertificate(context.Background(), &api.GetRootCACertificateRequest{})
-	assert.NoError(t, err)
-	assert.NotEmpty(t, resp1.Certificate)
+	_, err := tc.NodeCAClients[0].NodeCertificateStatus(context.Background(), &api.NodeCertificateStatusRequest{NodeID: "foo"})
+	assert.Error(t, err)
+	assert.Equal(t, codes.NotFound, grpc.Code(err))
 
 	tc.CAServer.Stop()
 	go tc.CAServer.Run(context.Background())
 
-	resp2, err := tc.CAClients[0].GetRootCACertificate(context.Background(), &api.GetRootCACertificateRequest{})
-	assert.NoError(t, err)
-	assert.Equal(t, resp1.Certificate, resp2.Certificate)
+	<-tc.CAServer.Ready()
+
+	_, err = tc.NodeCAClients[0].NodeCertificateStatus(context.Background(), &api.NodeCertificateStatusRequest{NodeID: "foo"})
+	assert.Error(t, err)
+	assert.Equal(t, codes.NotFound, grpc.Code(err))
 }
 
 func TestIssueNodeCertificate(t *testing.T) {
