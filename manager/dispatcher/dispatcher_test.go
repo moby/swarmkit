@@ -899,7 +899,7 @@ func TestTaskUpdate(t *testing.T) {
 		assert.Equal(t, grpc.Code(err), codes.PermissionDenied)
 	}
 
-	gd.dispatcherServer.processUpdates()
+	gd.dispatcherServer.processUpdates(context.Background())
 
 	gd.Store.View(func(readTx store.ReadTx) {
 		storeTask1 := store.GetTask(readTx, testTask1.ID)
