@@ -271,10 +271,10 @@ func TestRaftSnapshotForceNewCluster(t *testing.T) {
 
 	// Use gRPC instead of calling handler directly because of
 	// authorization check.
-	client, err := nodes[1].ConnectToMember(nodes[1].Address, 10*time.Second)
+	cc, err := dial(nodes[1], nodes[1].Address)
 	assert.NoError(t, err)
-	raftClient := api.NewRaftMembershipClient(client.Conn)
-	defer client.Conn.Close()
+	raftClient := api.NewRaftMembershipClient(cc)
+	defer cc.Close()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[2].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")

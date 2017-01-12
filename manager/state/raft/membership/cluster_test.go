@@ -42,7 +42,7 @@ func newTestMember(id uint64) *membership.Member {
 }
 
 func newTestCluster(members []*membership.Member, removed []*membership.Member) *membership.Cluster {
-	c := membership.NewCluster(3)
+	c := membership.NewCluster()
 	for _, m := range members {
 		c.AddMember(m)
 	}
@@ -79,7 +79,7 @@ func TestClusterMember(t *testing.T) {
 }
 
 func TestMembers(t *testing.T) {
-	cls := membership.NewCluster(1)
+	cls := membership.NewCluster()
 	defer cls.Clear()
 	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 1}})
 	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 5}})
