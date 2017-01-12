@@ -478,7 +478,7 @@ func (m *Manager) Stop(ctx context.Context, clearData bool) {
 	// starting up.
 	<-m.started
 
-	// the mutex stops us from trying to stop while we're alrady stopping, or
+	// the mutex stops us from trying to stop while we're already stopping, or
 	// from returning before we've finished stopping.
 	m.mu.Lock()
 	defer m.mu.Unlock()
