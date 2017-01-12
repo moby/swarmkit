@@ -63,6 +63,22 @@ func TestRaftBootstrap(t *testing.T) {
 	assert.Len(t, nodes[3].GetMemberlist(), 3)
 }
 
+func dial(n *raftutils.TestNode, addr string) (*grpc.ClientConn, error) {
+	grpcOptions := []grpc.DialOption{
+		grpc.WithBackoffMaxDelay(2 * time.Second),
+		grpc.WithBlock(),
+	}
+	grpcOptions = append(grpcOptions, grpc.WithTransportCredentials(n.SecurityConfig.ClientTLSCreds))
+
+	grpcOptions = append(grpcOptions, grpc.WithTimeout(10*time.Second))
+
+	cc, err := grpc.Dial(addr, grpcOptions...)
+	if err != nil {
+		return nil, err
+	}
+	return cc, nil
+}
+
 func TestRaftJoinTwice(t *testing.T) {
 	t.Parallel()
 
@@ -72,10 +88,10 @@ func TestRaftJoinTwice(t *testing.T) {
 	// Node 3 tries to join again
 	// Use gRPC instead of calling handler directly because of
 	// authorization check.
-	client, err := nodes[3].ConnectToMember(nodes[1].Address, 10*time.Second)
+	cc, err := dial(nodes[3], nodes[1].Address)
 	assert.NoError(t, err)
-	raftClient := api.NewRaftMembershipClient(client.Conn)
-	defer client.Conn.Close()
+	raftClient := api.NewRaftMembershipClient(cc)
+	defer cc.Close()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	_, err = raftClient.Join(ctx, &api.JoinRequest{})
 	assert.Error(t, err, "expected error on duplicate Join")
@@ -279,10 +295,10 @@ func TestRaftFollowerLeave(t *testing.T) {
 	// Node 5 leaves the cluster
 	// Use gRPC instead of calling handler directly because of
 	// authorization check.
-	client, err := nodes[1].ConnectToMember(nodes[1].Address, 10*time.Second)
+	cc, err := dial(nodes[1], nodes[1].Address)
 	assert.NoError(t, err)
-	raftClient := api.NewRaftMembershipClient(client.Conn)
-	defer client.Conn.Close()
+	raftClient := api.NewRaftMembershipClient(cc)
+	defer cc.Close()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[5].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
@@ -323,11 +339,12 @@ func TestRaftLeaderLeave(t *testing.T) {
 	// Try to leave the raft
 	// Use gRPC instead of calling handler directly because of
 	// authorization check.
-	client, err := nodes[1].ConnectToMember(nodes[1].Address, 10*time.Second)
+	cc, err := dial(nodes[1], nodes[1].Address)
 	assert.NoError(t, err)
-	defer client.Conn.Close()
-	raftClient := api.NewRaftMembershipClient(client.Conn)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	raftClient := api.NewRaftMembershipClient(cc)
+	defer cc.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[1].Config.ID}})
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")

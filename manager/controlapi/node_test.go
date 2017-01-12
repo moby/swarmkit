@@ -373,9 +373,6 @@ func TestListManagerNodes(t *testing.T) {
 		return nil
 	}))
 
-	// Switch the raft node used by the server
-	ts.Server.raft = nodes[2].Node
-
 	// Stop node 1 (leader)
 	nodes[1].Server.Stop()
 	nodes[1].ShutdownRaft()
@@ -389,6 +386,16 @@ func TestListManagerNodes(t *testing.T) {
 
 	// Wait for the re-election to occur
 	raftutils.WaitForCluster(t, clockSource, newCluster)
+
+	var leaderNode *raftutils.TestNode
+	for _, node := range newCluster {
+		if node.IsLeader() {
+			leaderNode = node
+		}
+	}
+
+	// Switch the raft node used by the server
+	ts.Server.raft = leaderNode.Node
 
 	// Node 1 should not be the leader anymore
 	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
