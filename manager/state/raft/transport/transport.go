@@ -86,6 +86,7 @@ func (t *Transport) run(ctx context.Context) {
 		t.stopped = true
 		for _, p := range t.peers {
 			p.stop()
+			p.cc.Close()
 		}
 		for cc, timer := range t.deferredConns {
 			timer.Stop()
