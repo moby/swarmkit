@@ -279,7 +279,7 @@ func (p *peer) run(ctx context.Context) {
 			// or timed out for correct raft work.
 			err := p.sendProcessMessage(context.Background(), m)
 			if err != nil {
-				log.G(ctx).WithError(err).Errorf("failed to send message %s", m.Type)
+				log.G(ctx).WithError(err).Debugf("failed to send message %s", m.Type)
 				p.setInactive()
 				if err := p.handleAddressChange(ctx); err != nil {
 					log.G(ctx).WithError(err).Error("failed to change address after failure")
