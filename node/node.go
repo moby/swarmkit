@@ -14,6 +14,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/boltdb/bolt"
+	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/swarmkit/agent"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
@@ -95,6 +96,9 @@ type Config struct {
 	// UnlockKey is the key to unlock a node - used for decrypting at rest.  This
 	// only applies to nodes that have already joined a cluster.
 	UnlockKey []byte
+
+	// PluginGetter provides access to docker's plugin inventory.
+	PluginGetter plugingetter.PluginGetter
 }
 
 // Node implements the primary node functionality for a member of a swarm
