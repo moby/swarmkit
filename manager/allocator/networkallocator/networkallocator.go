@@ -49,7 +49,7 @@ type NetworkAllocator struct {
 	nodes map[string]struct{}
 }
 
-// Local in-memory state related to netwok that need to be tracked by NetworkAllocator
+// Local in-memory state related to network that need to be tracked by NetworkAllocator
 type network struct {
 	// A local cache of the store object.
 	nw *api.Network
@@ -133,7 +133,7 @@ func (na *NetworkAllocator) getNetwork(id string) *network {
 }
 
 // Deallocate frees all the general and driver specific resources
-// whichs were assigned to the passed network.
+// which were assigned to the passed network.
 func (na *NetworkAllocator) Deallocate(n *api.Network) error {
 	localNet := na.getNetwork(n.ID)
 	if localNet == nil {
