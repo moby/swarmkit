@@ -1634,6 +1634,9 @@ func (n *Node) applyUpdateNode(ctx context.Context, cc raftpb.ConfChange) error 
 	if newMember.RaftID == n.Config.ID {
 		return nil
 	}
+	if err := n.transport.UpdatePeer(newMember.RaftID, newMember.Addr); err != nil {
+		return err
+	}
 	return n.cluster.UpdateMember(newMember.RaftID, newMember)
 }
 
