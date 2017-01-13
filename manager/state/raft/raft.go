@@ -295,6 +295,8 @@ func (n *Node) JoinAndStart(ctx context.Context) (err error) {
 			close(n.stopped)
 			n.stopMu.Unlock()
 			n.done()
+		} else {
+			atomic.StoreUint32(&n.isMember, 1)
 		}
 	}()
 
@@ -314,56 +316,59 @@ func (n *Node) JoinAndStart(ctx context.Context) (err error) {
 	n.snapshotMeta = snapshot.Metadata
 	n.writtenWALIndex, _ = n.raftStore.LastIndex() // lastIndex always returns nil as an error
 
-	if loadAndStartErr == storage.ErrNoWAL {
+	// restore from snapshot
+	if loadAndStartErr == nil {
 		if n.opts.JoinAddr != "" {
-			conn, err := dial(n.opts.JoinAddr, "tcp", n.opts.TLSCredentials, 10*time.Second)
-			if err != nil {
-				return err
-			}
-			defer conn.Close()
-			client := api.NewRaftMembershipClient(conn)
-
-			joinCtx, joinCancel := context.WithTimeout(ctx, 10*time.Second)
-			defer joinCancel()
-			resp, err := client.Join(joinCtx, &api.JoinRequest{
-				Addr: n.opts.Addr,
-			})
-			if err != nil {
-				return err
-			}
-
-			n.Config.ID = resp.RaftID
-
-			if _, err := n.newRaftLogs(n.opts.ID); err != nil {
-				return err
-			}
-
-			n.initTransport()
-			n.raftNode = raft.StartNode(n.Config, []raft.Peer{})
-
-			n.bootstrapMembers = resp.Members
-		} else {
-			// First member in the cluster, self-assign ID
-			n.Config.ID = uint64(rand.Int63()) + 1
-			peer, err := n.newRaftLogs(n.opts.ID)
-			if err != nil {
-				return err
-			}
-			n.initTransport()
-			n.raftNode = raft.StartNode(n.Config, []raft.Peer{peer})
-			n.campaignWhenAble = true
+			log.G(ctx).Warning("ignoring request to join cluster, because raft state already exists")
 		}
-		atomic.StoreUint32(&n.isMember, 1)
+		n.campaignWhenAble = true
+		n.initTransport()
+		n.raftNode = raft.RestartNode(n.Config)
 		return nil
 	}
 
-	if n.opts.JoinAddr != "" {
-		log.G(ctx).Warning("ignoring request to join cluster, because raft state already exists")
+	// first member of cluster
+	if n.opts.JoinAddr == "" {
+		// First member in the cluster, self-assign ID
+		n.Config.ID = uint64(rand.Int63()) + 1
+		peer, err := n.newRaftLogs(n.opts.ID)
+		if err != nil {
+			return err
+		}
+		n.campaignWhenAble = true
+		n.initTransport()
+		n.raftNode = raft.StartNode(n.Config, []raft.Peer{peer})
+		return nil
 	}
-	n.campaignWhenAble = true
+
+	// join to existing cluster
+
+	conn, err := dial(n.opts.JoinAddr, "tcp", n.opts.TLSCredentials, 10*time.Second)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	client := api.NewRaftMembershipClient(conn)
+
+	joinCtx, joinCancel := context.WithTimeout(ctx, 10*time.Second)
+	defer joinCancel()
+	resp, err := client.Join(joinCtx, &api.JoinRequest{
+		Addr: n.opts.Addr,
+	})
+	if err != nil {
+		return err
+	}
+
+	n.Config.ID = resp.RaftID
+
+	if _, err := n.newRaftLogs(n.opts.ID); err != nil {
+		return err
+	}
+	n.bootstrapMembers = resp.Members
+
 	n.initTransport()
-	n.raftNode = raft.RestartNode(n.Config)
-	atomic.StoreUint32(&n.isMember, 1)
+	n.raftNode = raft.StartNode(n.Config, nil)
+
 	return nil
 }
 
