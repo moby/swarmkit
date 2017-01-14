@@ -96,7 +96,7 @@ func TestScheduler(t *testing.T) {
 	defer s.Close()
 
 	err := s.Update(func(tx store.Tx) error {
-		// Prepoulate nodes
+		// Prepopulate nodes
 		for _, n := range initialNodeSet {
 			assert.NoError(t, store.CreateNode(tx, n))
 		}
@@ -439,7 +439,7 @@ func TestHA(t *testing.T) {
 	t1Instances := 18
 
 	err := s.Update(func(tx store.Tx) error {
-		// Prepoulate nodes
+		// Prepopulate nodes
 		for _, n := range initialNodeSet {
 			assert.NoError(t, store.CreateNode(tx, n))
 		}
@@ -1313,7 +1313,7 @@ func TestPreassignedTasks(t *testing.T) {
 	defer s.Close()
 
 	err := s.Update(func(tx store.Tx) error {
-		// Prepoulate nodes
+		// Prepopulate nodes
 		for _, n := range initialNodeSet {
 			assert.NoError(t, store.CreateNode(tx, n))
 		}
