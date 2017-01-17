@@ -136,11 +136,11 @@ func getNode(ctx context.Context, c api.ControlClient, input string) (*api.Node,
 	// GetNode to match via full ID.
 	rg, err := c.GetNode(ctx, &api.GetNodeRequest{NodeID: input})
 	if err != nil {
-		// If any error (including NotFound), ListServices to match via ID prefix and full name.
+		// If any error (including NotFound), ListServices to match via full name.
 		rl, err := c.ListNodes(ctx,
 			&api.ListNodesRequest{
 				Filters: &api.ListNodesRequest_Filters{
-					NamePrefixes: []string{input},
+					Names: []string{input},
 				},
 			},
 		)
