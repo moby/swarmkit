@@ -6,12 +6,14 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/constraint"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/docker/swarmkit/template"
 	gogotypes "github.com/gogo/protobuf/types"
 	"golang.org/x/net/context"
@@ -537,11 +539,28 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		}
 
 		service.Meta.Version = *request.ServiceVersion
-		service.PreviousSpec = service.Spec.Copy()
-		service.Spec = *request.Spec.Copy()
 
-		// Reset update status
-		service.UpdateStatus = nil
+		if request.Rollback == api.UpdateServiceRequest_PREVIOUS {
+			if service.PreviousSpec == nil {
+				return grpc.Errorf(codes.FailedPrecondition, "service %s does not have a previous spec", request.ServiceID)
+			}
+
+			curSpec := service.Spec.Copy()
+			service.Spec = *service.PreviousSpec.Copy()
+			service.PreviousSpec = curSpec
+
+			service.UpdateStatus = &api.UpdateStatus{
+				State:     api.UpdateStatus_ROLLBACK_STARTED,
+				Message:   "manually requested rollback",
+				StartedAt: ptypes.MustTimestampProto(time.Now()),
+			}
+		} else {
+			service.PreviousSpec = service.Spec.Copy()
+			service.Spec = *request.Spec.Copy()
+
+			// Reset update status
+			service.UpdateStatus = nil
+		}
 
 		return store.UpdateService(tx, service)
 	})
