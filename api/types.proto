@@ -86,6 +86,18 @@ message NodeDescription {
 
 	// Information about the Docker Engine on the node.
 	EngineDescription engine = 4;
+
+	// Information on the node's TLS setup
+	NodeTLSInfo tls_info = 5 [(gogoproto.customname) = "TLSInfo"];
+}
+
+message NodeTLSInfo {
+	// Information about which root certs the node trusts
+	bytes trust_root = 1;
+
+	// Information about the node's current TLS certificate
+	bytes cert_issuer_subject = 2;
+	bytes cert_issuer_public_key = 3;
 }
 
 message RaftMemberStatus {
