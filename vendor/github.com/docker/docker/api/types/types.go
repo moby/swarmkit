@@ -154,11 +154,11 @@ type Version struct {
 	BuildTime     string `json:",omitempty"`
 }
 
-// Commit records a external tool actual commit id version along the
-// one expect by dockerd as set at build time
+// Commit holds the Git-commit (SHA1) that a binary was built from, as reported
+// in the version-string of external tools, such as containerd, or runC.
 type Commit struct {
-	ID       string
-	Expected string
+	ID       string // ID is the actual commit ID of external tool.
+	Expected string // Expected is the commit ID of external tool expected by dockerd as set at build time.
 }
 
 // Info contains response of Engine API:
@@ -509,27 +509,6 @@ type DiskUsage struct {
 	Volumes    []*Volume
 }
 
-// ImagesPruneConfig contains the configuration for Engine API:
-// POST "/images/prune"
-type ImagesPruneConfig struct {
-	DanglingOnly bool
-}
-
-// ContainersPruneConfig contains the configuration for Engine API:
-// POST "/images/prune"
-type ContainersPruneConfig struct {
-}
-
-// VolumesPruneConfig contains the configuration for Engine API:
-// POST "/images/prune"
-type VolumesPruneConfig struct {
-}
-
-// NetworksPruneConfig contains the configuration for Engine API:
-// POST "/networks/prune"
-type NetworksPruneConfig struct {
-}
-
 // ContainersPruneReport contains the response for Engine API:
 // POST "/containers/prune"
 type ContainersPruneReport struct {
@@ -567,4 +546,13 @@ type SecretCreateResponse struct {
 // SecretListOptions holds parameters to list secrets
 type SecretListOptions struct {
 	Filters filters.Args
+}
+
+// PushResult contains the tag, manifest digest, and manifest size from the
+// push. It's used to signal this information to the trust code in the client
+// so it can sign the manifest if necessary.
+type PushResult struct {
+	Tag    string
+	Digest string
+	Size   int
 }
