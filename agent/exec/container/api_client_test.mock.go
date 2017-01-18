@@ -379,7 +379,7 @@ func (_mr *_MockAPIClientRecorder) ContainerWait(arg0, arg1 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerWait", arg0, arg1)
 }
 
-func (_m *MockAPIClient) ContainersPrune(_param0 context.Context, _param1 types.ContainersPruneConfig) (types.ContainersPruneReport, error) {
+func (_m *MockAPIClient) ContainersPrune(_param0 context.Context, _param1 filters.Args) (types.ContainersPruneReport, error) {
 	ret := _m.ctrl.Call(_m, "ContainersPrune", _param0, _param1)
 	ret0, _ := ret[0].(types.ContainersPruneReport)
 	ret1, _ := ret[1].(error)
@@ -577,7 +577,7 @@ func (_mr *_MockAPIClientRecorder) ImageTag(arg0, arg1, arg2 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageTag", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ImagesPrune(_param0 context.Context, _param1 types.ImagesPruneConfig) (types.ImagesPruneReport, error) {
+func (_m *MockAPIClient) ImagesPrune(_param0 context.Context, _param1 filters.Args) (types.ImagesPruneReport, error) {
 	ret := _m.ctrl.Call(_m, "ImagesPrune", _param0, _param1)
 	ret0, _ := ret[0].(types.ImagesPruneReport)
 	ret1, _ := ret[1].(error)
@@ -674,7 +674,7 @@ func (_mr *_MockAPIClientRecorder) NetworkRemove(arg0, arg1 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "NetworkRemove", arg0, arg1)
 }
 
-func (_m *MockAPIClient) NetworksPrune(_param0 context.Context, _param1 types.NetworksPruneConfig) (types.NetworksPruneReport, error) {
+func (_m *MockAPIClient) NetworksPrune(_param0 context.Context, _param1 filters.Args) (types.NetworksPruneReport, error) {
 	ret := _m.ctrl.Call(_m, "NetworksPrune", _param0, _param1)
 	ret0, _ := ret[0].(types.NetworksPruneReport)
 	ret1, _ := ret[1].(error)
@@ -749,14 +749,14 @@ func (_mr *_MockAPIClientRecorder) PluginCreate(arg0, arg1, arg2 interface{}) *g
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PluginCreate", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) PluginDisable(_param0 context.Context, _param1 string) error {
-	ret := _m.ctrl.Call(_m, "PluginDisable", _param0, _param1)
+func (_m *MockAPIClient) PluginDisable(_param0 context.Context, _param1 string, _param2 types.PluginDisableOptions) error {
+	ret := _m.ctrl.Call(_m, "PluginDisable", _param0, _param1, _param2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockAPIClientRecorder) PluginDisable(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "PluginDisable", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) PluginDisable(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "PluginDisable", arg0, arg1, arg2)
 }
 
 func (_m *MockAPIClient) PluginEnable(_param0 context.Context, _param1 string, _param2 types.PluginEnableOptions) error {
@@ -781,10 +781,11 @@ func (_mr *_MockAPIClientRecorder) PluginInspectWithRaw(arg0, arg1 interface{}) 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PluginInspectWithRaw", arg0, arg1)
 }
 
-func (_m *MockAPIClient) PluginInstall(_param0 context.Context, _param1 string, _param2 types.PluginInstallOptions) error {
+func (_m *MockAPIClient) PluginInstall(_param0 context.Context, _param1 string, _param2 types.PluginInstallOptions) (io.ReadCloser, error) {
 	ret := _m.ctrl.Call(_m, "PluginInstall", _param0, _param1, _param2)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(io.ReadCloser)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 func (_mr *_MockAPIClientRecorder) PluginInstall(arg0, arg1, arg2 interface{}) *gomock.Call {
@@ -802,10 +803,11 @@ func (_mr *_MockAPIClientRecorder) PluginList(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PluginList", arg0)
 }
 
-func (_m *MockAPIClient) PluginPush(_param0 context.Context, _param1 string, _param2 string) error {
+func (_m *MockAPIClient) PluginPush(_param0 context.Context, _param1 string, _param2 string) (io.ReadCloser, error) {
 	ret := _m.ctrl.Call(_m, "PluginPush", _param0, _param1, _param2)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(io.ReadCloser)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 func (_mr *_MockAPIClientRecorder) PluginPush(arg0, arg1, arg2 interface{}) *gomock.Call {
@@ -1123,7 +1125,7 @@ func (_mr *_MockAPIClientRecorder) VolumeRemove(arg0, arg1, arg2 interface{}) *g
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "VolumeRemove", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) VolumesPrune(_param0 context.Context, _param1 types.VolumesPruneConfig) (types.VolumesPruneReport, error) {
+func (_m *MockAPIClient) VolumesPrune(_param0 context.Context, _param1 filters.Args) (types.VolumesPruneReport, error) {
 	ret := _m.ctrl.Call(_m, "VolumesPrune", _param0, _param1)
 	ret0, _ := ret[0].(types.VolumesPruneReport)
 	ret1, _ := ret[1].(error)
