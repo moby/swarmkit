@@ -21,7 +21,7 @@ func TestAllocator(t *testing.T) {
 	assert.NotNil(t, s)
 	defer s.Close()
 
-	a, err := New(s)
+	a, err := New(s, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, a)
 

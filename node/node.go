@@ -687,6 +687,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 		AutoLockManagers: n.config.AutoLockManagers,
 		UnlockKey:        n.unlockKey,
 		Availability:     n.config.Availability,
+		PluginGetter:     n.config.PluginGetter,
 	})
 	if err != nil {
 		return err
