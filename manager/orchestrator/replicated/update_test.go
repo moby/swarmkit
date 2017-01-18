@@ -15,7 +15,15 @@ import (
 	"golang.org/x/net/context"
 )
 
-func TestUpdaterRollback(t *testing.T) {
+func TestUpdaterRollbackAndPause(t *testing.T) {
+	testUpdaterRollback(t, api.UpdateConfig_PAUSE)
+}
+
+func TestUpdaterRollbackAndContinue(t *testing.T) {
+	testUpdaterRollback(t, api.UpdateConfig_CONTINUE)
+}
+
+func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_FailureAction) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -104,6 +112,13 @@ func TestUpdaterRollback(t *testing.T) {
 				},
 				Update: &api.UpdateConfig{
 					FailureAction:   api.UpdateConfig_ROLLBACK,
+					Parallelism:     1,
+					Delay:           10 * time.Millisecond,
+					Monitor:         gogotypes.DurationProto(500 * time.Millisecond),
+					MaxFailureRatio: 0.4,
+				},
+				Rollback: &api.UpdateConfig{
+					FailureAction:   rollbackFailureAction,
 					Parallelism:     1,
 					Delay:           10 * time.Millisecond,
 					Monitor:         gogotypes.DurationProto(500 * time.Millisecond),
@@ -200,7 +215,7 @@ func TestUpdaterRollback(t *testing.T) {
 	atomic.StoreUint32(&failImage1, 1)
 
 	// Repeat the rolling update but this time fail the tasks that the
-	// rollback creates. It should end up in ROLLBACK_PAUSED.
+	// rollback creates.
 	err = s.Update(func(tx store.Tx) error {
 		s1 := store.GetService(tx, "id1")
 		require.NotNil(t, s1)
@@ -249,11 +264,22 @@ func TestUpdaterRollback(t *testing.T) {
 	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image1")
 
-	// Should end up in ROLLBACK_PAUSED state
-	for {
-		e := <-watchServiceUpdate
-		if e.(state.EventUpdateService).Service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_PAUSED {
-			break
+	switch rollbackFailureAction {
+	case api.UpdateConfig_PAUSE:
+		// Should end up in ROLLBACK_PAUSED state
+		for {
+			e := <-watchServiceUpdate
+			if e.(state.EventUpdateService).Service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_PAUSED {
+				return
+			}
+		}
+	case api.UpdateConfig_CONTINUE:
+		// Should end up in ROLLBACK_COMPLETE state
+		for {
+			e := <-watchServiceUpdate
+			if e.(state.EventUpdateService).Service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_COMPLETED {
+				return
+			}
 		}
 	}
 }
