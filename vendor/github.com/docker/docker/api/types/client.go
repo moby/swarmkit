@@ -160,10 +160,13 @@ type ImageBuildOptions struct {
 	ShmSize        int64
 	Dockerfile     string
 	Ulimits        []*units.Ulimit
-	BuildArgs      map[string]string
-	AuthConfigs    map[string]AuthConfig
-	Context        io.Reader
-	Labels         map[string]string
+	// See the parsing of buildArgs in api/server/router/build/build_routes.go
+	// for an explaination of why BuildArgs needs to use *string instead of
+	// just a string
+	BuildArgs   map[string]*string
+	AuthConfigs map[string]AuthConfig
+	Context     io.Reader
+	Labels      map[string]string
 	// squash the resulting image's layers to the parent
 	// preserves the original image and creates a new one from the parent with all
 	// the changes applied to a single layer
@@ -337,11 +340,17 @@ type PluginEnableOptions struct {
 	Timeout int
 }
 
+// PluginDisableOptions holds parameters to disable plugins.
+type PluginDisableOptions struct {
+	Force bool
+}
+
 // PluginInstallOptions holds parameters to install a plugin.
 type PluginInstallOptions struct {
 	Disabled              bool
 	AcceptAllPermissions  bool
 	RegistryAuth          string // RegistryAuth is the base64 encoded credentials for the registry
+	RemoteRef             string // RemoteRef is the plugin name on the registry
 	PrivilegeFunc         RequestPrivilegeFunc
 	AcceptPermissionsFunc func(PluginPrivileges) (bool, error)
 	Args                  []string
