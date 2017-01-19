@@ -115,7 +115,7 @@ func validateContainerSpec(container *api.ContainerSpec) error {
 		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: image reference must be provided")
 	}
 
-	if _, err := reference.ParseNamed(container.Image); err != nil {
+	if _, err := reference.ParseNormalizedNamed(container.Image); err != nil {
 		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: %q is not a valid repository/tag", container.Image)
 	}
 
