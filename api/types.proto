@@ -468,6 +468,9 @@ message NetworkAttachmentConfig {
 	// preferred. If these addresses are not available then the
 	// attachment might fail.
 	repeated string addresses = 3;
+	// Name specifies the network name specified by the user. This value is for information
+	// only and will be resolved to network ID and assigned to Target.
+	string name = 4;
 }
 
 // IPAMConfig specifies parameters for IP Address Management.
