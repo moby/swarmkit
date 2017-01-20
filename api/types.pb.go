@@ -1704,7 +1704,7 @@ func (m *Version) Copy() *Version {
 func (m *Version) CopyFrom(src interface{}) {
 
 	o := src.(*Version)
-	m.Index = o.Index
+	*m = *o
 }
 
 func (m *Annotations) Copy() *Annotations {
@@ -1719,7 +1719,7 @@ func (m *Annotations) Copy() *Annotations {
 func (m *Annotations) CopyFrom(src interface{}) {
 
 	o := src.(*Annotations)
-	m.Name = o.Name
+	*m = *o
 	if o.Labels != nil {
 		m.Labels = make(map[string]string, len(o.Labels))
 		for k, v := range o.Labels {
@@ -1741,8 +1741,7 @@ func (m *Resources) Copy() *Resources {
 func (m *Resources) CopyFrom(src interface{}) {
 
 	o := src.(*Resources)
-	m.NanoCPUs = o.NanoCPUs
-	m.MemoryBytes = o.MemoryBytes
+	*m = *o
 }
 
 func (m *ResourceRequirements) Copy() *ResourceRequirements {
@@ -1757,6 +1756,7 @@ func (m *ResourceRequirements) Copy() *ResourceRequirements {
 func (m *ResourceRequirements) CopyFrom(src interface{}) {
 
 	o := src.(*ResourceRequirements)
+	*m = *o
 	if o.Limits != nil {
 		m.Limits = &Resources{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Limits, o.Limits)
@@ -1779,8 +1779,7 @@ func (m *Platform) Copy() *Platform {
 func (m *Platform) CopyFrom(src interface{}) {
 
 	o := src.(*Platform)
-	m.Architecture = o.Architecture
-	m.OS = o.OS
+	*m = *o
 }
 
 func (m *PluginDescription) Copy() *PluginDescription {
@@ -1795,8 +1794,7 @@ func (m *PluginDescription) Copy() *PluginDescription {
 func (m *PluginDescription) CopyFrom(src interface{}) {
 
 	o := src.(*PluginDescription)
-	m.Type = o.Type
-	m.Name = o.Name
+	*m = *o
 }
 
 func (m *EngineDescription) Copy() *EngineDescription {
@@ -1811,7 +1809,7 @@ func (m *EngineDescription) Copy() *EngineDescription {
 func (m *EngineDescription) CopyFrom(src interface{}) {
 
 	o := src.(*EngineDescription)
-	m.EngineVersion = o.EngineVersion
+	*m = *o
 	if o.Labels != nil {
 		m.Labels = make(map[string]string, len(o.Labels))
 		for k, v := range o.Labels {
@@ -1840,7 +1838,7 @@ func (m *NodeDescription) Copy() *NodeDescription {
 func (m *NodeDescription) CopyFrom(src interface{}) {
 
 	o := src.(*NodeDescription)
-	m.Hostname = o.Hostname
+	*m = *o
 	if o.Platform != nil {
 		m.Platform = &Platform{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Platform, o.Platform)
@@ -1867,9 +1865,7 @@ func (m *RaftMemberStatus) Copy() *RaftMemberStatus {
 func (m *RaftMemberStatus) CopyFrom(src interface{}) {
 
 	o := src.(*RaftMemberStatus)
-	m.Leader = o.Leader
-	m.Reachability = o.Reachability
-	m.Message = o.Message
+	*m = *o
 }
 
 func (m *NodeStatus) Copy() *NodeStatus {
@@ -1884,9 +1880,7 @@ func (m *NodeStatus) Copy() *NodeStatus {
 func (m *NodeStatus) CopyFrom(src interface{}) {
 
 	o := src.(*NodeStatus)
-	m.State = o.State
-	m.Message = o.Message
-	m.Addr = o.Addr
+	*m = *o
 }
 
 func (m *Image) Copy() *Image {
@@ -1901,7 +1895,7 @@ func (m *Image) Copy() *Image {
 func (m *Image) CopyFrom(src interface{}) {
 
 	o := src.(*Image)
-	m.Reference = o.Reference
+	*m = *o
 }
 
 func (m *Mount) Copy() *Mount {
@@ -1916,10 +1910,7 @@ func (m *Mount) Copy() *Mount {
 func (m *Mount) CopyFrom(src interface{}) {
 
 	o := src.(*Mount)
-	m.Type = o.Type
-	m.Source = o.Source
-	m.Target = o.Target
-	m.ReadOnly = o.ReadOnly
+	*m = *o
 	if o.BindOptions != nil {
 		m.BindOptions = &Mount_BindOptions{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.BindOptions, o.BindOptions)
@@ -1946,7 +1937,7 @@ func (m *Mount_BindOptions) Copy() *Mount_BindOptions {
 func (m *Mount_BindOptions) CopyFrom(src interface{}) {
 
 	o := src.(*Mount_BindOptions)
-	m.Propagation = o.Propagation
+	*m = *o
 }
 
 func (m *Mount_VolumeOptions) Copy() *Mount_VolumeOptions {
@@ -1961,7 +1952,7 @@ func (m *Mount_VolumeOptions) Copy() *Mount_VolumeOptions {
 func (m *Mount_VolumeOptions) CopyFrom(src interface{}) {
 
 	o := src.(*Mount_VolumeOptions)
-	m.NoCopy = o.NoCopy
+	*m = *o
 	if o.Labels != nil {
 		m.Labels = make(map[string]string, len(o.Labels))
 		for k, v := range o.Labels {
@@ -1987,8 +1978,7 @@ func (m *Mount_TmpfsOptions) Copy() *Mount_TmpfsOptions {
 func (m *Mount_TmpfsOptions) CopyFrom(src interface{}) {
 
 	o := src.(*Mount_TmpfsOptions)
-	m.SizeBytes = o.SizeBytes
-	m.Mode = o.Mode
+	*m = *o
 }
 
 func (m *RestartPolicy) Copy() *RestartPolicy {
@@ -2003,12 +1993,11 @@ func (m *RestartPolicy) Copy() *RestartPolicy {
 func (m *RestartPolicy) CopyFrom(src interface{}) {
 
 	o := src.(*RestartPolicy)
-	m.Condition = o.Condition
+	*m = *o
 	if o.Delay != nil {
 		m.Delay = &docker_swarmkit_v11.Duration{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Delay, o.Delay)
 	}
-	m.MaxAttempts = o.MaxAttempts
 	if o.Window != nil {
 		m.Window = &docker_swarmkit_v11.Duration{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Window, o.Window)
@@ -2027,14 +2016,12 @@ func (m *UpdateConfig) Copy() *UpdateConfig {
 func (m *UpdateConfig) CopyFrom(src interface{}) {
 
 	o := src.(*UpdateConfig)
-	m.Parallelism = o.Parallelism
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Delay, &o.Delay)
-	m.FailureAction = o.FailureAction
 	if o.Monitor != nil {
 		m.Monitor = &docker_swarmkit_v11.Duration{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Monitor, o.Monitor)
 	}
-	m.MaxFailureRatio = o.MaxFailureRatio
 }
 
 func (m *UpdateStatus) Copy() *UpdateStatus {
@@ -2049,7 +2036,7 @@ func (m *UpdateStatus) Copy() *UpdateStatus {
 func (m *UpdateStatus) CopyFrom(src interface{}) {
 
 	o := src.(*UpdateStatus)
-	m.State = o.State
+	*m = *o
 	if o.StartedAt != nil {
 		m.StartedAt = &docker_swarmkit_v1.Timestamp{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.StartedAt, o.StartedAt)
@@ -2058,7 +2045,6 @@ func (m *UpdateStatus) CopyFrom(src interface{}) {
 		m.CompletedAt = &docker_swarmkit_v1.Timestamp{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.CompletedAt, o.CompletedAt)
 	}
-	m.Message = o.Message
 }
 
 func (m *ContainerStatus) Copy() *ContainerStatus {
@@ -2073,9 +2059,7 @@ func (m *ContainerStatus) Copy() *ContainerStatus {
 func (m *ContainerStatus) CopyFrom(src interface{}) {
 
 	o := src.(*ContainerStatus)
-	m.ContainerID = o.ContainerID
-	m.PID = o.PID
-	m.ExitCode = o.ExitCode
+	*m = *o
 }
 
 func (m *PortStatus) Copy() *PortStatus {
@@ -2090,6 +2074,7 @@ func (m *PortStatus) Copy() *PortStatus {
 func (m *PortStatus) CopyFrom(src interface{}) {
 
 	o := src.(*PortStatus)
+	*m = *o
 	if o.Ports != nil {
 		m.Ports = make([]*PortConfig, len(o.Ports))
 		for i := range m.Ports {
@@ -2112,13 +2097,11 @@ func (m *TaskStatus) Copy() *TaskStatus {
 func (m *TaskStatus) CopyFrom(src interface{}) {
 
 	o := src.(*TaskStatus)
+	*m = *o
 	if o.Timestamp != nil {
 		m.Timestamp = &docker_swarmkit_v1.Timestamp{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Timestamp, o.Timestamp)
 	}
-	m.State = o.State
-	m.Message = o.Message
-	m.Err = o.Err
 	if o.PortStatus != nil {
 		m.PortStatus = &PortStatus{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.PortStatus, o.PortStatus)
@@ -2148,7 +2131,7 @@ func (m *NetworkAttachmentConfig) Copy() *NetworkAttachmentConfig {
 func (m *NetworkAttachmentConfig) CopyFrom(src interface{}) {
 
 	o := src.(*NetworkAttachmentConfig)
-	m.Target = o.Target
+	*m = *o
 	if o.Aliases != nil {
 		m.Aliases = make([]string, len(o.Aliases))
 		copy(m.Aliases, o.Aliases)
@@ -2173,10 +2156,7 @@ func (m *IPAMConfig) Copy() *IPAMConfig {
 func (m *IPAMConfig) CopyFrom(src interface{}) {
 
 	o := src.(*IPAMConfig)
-	m.Family = o.Family
-	m.Subnet = o.Subnet
-	m.Range = o.Range
-	m.Gateway = o.Gateway
+	*m = *o
 	if o.Reserved != nil {
 		m.Reserved = make(map[string]string, len(o.Reserved))
 		for k, v := range o.Reserved {
@@ -2198,11 +2178,7 @@ func (m *PortConfig) Copy() *PortConfig {
 func (m *PortConfig) CopyFrom(src interface{}) {
 
 	o := src.(*PortConfig)
-	m.Name = o.Name
-	m.Protocol = o.Protocol
-	m.TargetPort = o.TargetPort
-	m.PublishedPort = o.PublishedPort
-	m.PublishMode = o.PublishMode
+	*m = *o
 }
 
 func (m *Driver) Copy() *Driver {
@@ -2217,7 +2193,7 @@ func (m *Driver) Copy() *Driver {
 func (m *Driver) CopyFrom(src interface{}) {
 
 	o := src.(*Driver)
-	m.Name = o.Name
+	*m = *o
 	if o.Options != nil {
 		m.Options = make(map[string]string, len(o.Options))
 		for k, v := range o.Options {
@@ -2239,6 +2215,7 @@ func (m *IPAMOptions) Copy() *IPAMOptions {
 func (m *IPAMOptions) CopyFrom(src interface{}) {
 
 	o := src.(*IPAMOptions)
+	*m = *o
 	if o.Driver != nil {
 		m.Driver = &Driver{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Driver, o.Driver)
@@ -2265,8 +2242,7 @@ func (m *Peer) Copy() *Peer {
 func (m *Peer) CopyFrom(src interface{}) {
 
 	o := src.(*Peer)
-	m.NodeID = o.NodeID
-	m.Addr = o.Addr
+	*m = *o
 }
 
 func (m *WeightedPeer) Copy() *WeightedPeer {
@@ -2281,11 +2257,11 @@ func (m *WeightedPeer) Copy() *WeightedPeer {
 func (m *WeightedPeer) CopyFrom(src interface{}) {
 
 	o := src.(*WeightedPeer)
+	*m = *o
 	if o.Peer != nil {
 		m.Peer = &Peer{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Peer, o.Peer)
 	}
-	m.Weight = o.Weight
 }
 
 func (m *IssuanceStatus) Copy() *IssuanceStatus {
@@ -2300,8 +2276,7 @@ func (m *IssuanceStatus) Copy() *IssuanceStatus {
 func (m *IssuanceStatus) CopyFrom(src interface{}) {
 
 	o := src.(*IssuanceStatus)
-	m.State = o.State
-	m.Err = o.Err
+	*m = *o
 }
 
 func (m *AcceptancePolicy) Copy() *AcceptancePolicy {
@@ -2316,6 +2291,7 @@ func (m *AcceptancePolicy) Copy() *AcceptancePolicy {
 func (m *AcceptancePolicy) CopyFrom(src interface{}) {
 
 	o := src.(*AcceptancePolicy)
+	*m = *o
 	if o.Policies != nil {
 		m.Policies = make([]*AcceptancePolicy_RoleAdmissionPolicy, len(o.Policies))
 		for i := range m.Policies {
@@ -2338,8 +2314,7 @@ func (m *AcceptancePolicy_RoleAdmissionPolicy) Copy() *AcceptancePolicy_RoleAdmi
 func (m *AcceptancePolicy_RoleAdmissionPolicy) CopyFrom(src interface{}) {
 
 	o := src.(*AcceptancePolicy_RoleAdmissionPolicy)
-	m.Role = o.Role
-	m.Autoaccept = o.Autoaccept
+	*m = *o
 	if o.Secret != nil {
 		m.Secret = &AcceptancePolicy_RoleAdmissionPolicy_Secret{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Secret, o.Secret)
@@ -2358,8 +2333,7 @@ func (m *AcceptancePolicy_RoleAdmissionPolicy_Secret) Copy() *AcceptancePolicy_R
 func (m *AcceptancePolicy_RoleAdmissionPolicy_Secret) CopyFrom(src interface{}) {
 
 	o := src.(*AcceptancePolicy_RoleAdmissionPolicy_Secret)
-	m.Data = o.Data
-	m.Alg = o.Alg
+	*m = *o
 }
 
 func (m *ExternalCA) Copy() *ExternalCA {
@@ -2374,8 +2348,7 @@ func (m *ExternalCA) Copy() *ExternalCA {
 func (m *ExternalCA) CopyFrom(src interface{}) {
 
 	o := src.(*ExternalCA)
-	m.Protocol = o.Protocol
-	m.URL = o.URL
+	*m = *o
 	if o.Options != nil {
 		m.Options = make(map[string]string, len(o.Options))
 		for k, v := range o.Options {
@@ -2397,6 +2370,7 @@ func (m *CAConfig) Copy() *CAConfig {
 func (m *CAConfig) CopyFrom(src interface{}) {
 
 	o := src.(*CAConfig)
+	*m = *o
 	if o.NodeCertExpiry != nil {
 		m.NodeCertExpiry = &docker_swarmkit_v11.Duration{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.NodeCertExpiry, o.NodeCertExpiry)
@@ -2423,7 +2397,7 @@ func (m *OrchestrationConfig) Copy() *OrchestrationConfig {
 func (m *OrchestrationConfig) CopyFrom(src interface{}) {
 
 	o := src.(*OrchestrationConfig)
-	m.TaskHistoryRetentionLimit = o.TaskHistoryRetentionLimit
+	*m = *o
 }
 
 func (m *TaskDefaults) Copy() *TaskDefaults {
@@ -2438,6 +2412,7 @@ func (m *TaskDefaults) Copy() *TaskDefaults {
 func (m *TaskDefaults) CopyFrom(src interface{}) {
 
 	o := src.(*TaskDefaults)
+	*m = *o
 	if o.LogDriver != nil {
 		m.LogDriver = &Driver{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.LogDriver, o.LogDriver)
@@ -2456,6 +2431,7 @@ func (m *DispatcherConfig) Copy() *DispatcherConfig {
 func (m *DispatcherConfig) CopyFrom(src interface{}) {
 
 	o := src.(*DispatcherConfig)
+	*m = *o
 	if o.HeartbeatPeriod != nil {
 		m.HeartbeatPeriod = &docker_swarmkit_v11.Duration{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.HeartbeatPeriod, o.HeartbeatPeriod)
@@ -2474,11 +2450,7 @@ func (m *RaftConfig) Copy() *RaftConfig {
 func (m *RaftConfig) CopyFrom(src interface{}) {
 
 	o := src.(*RaftConfig)
-	m.SnapshotInterval = o.SnapshotInterval
-	m.KeepOldSnapshots = o.KeepOldSnapshots
-	m.LogEntriesForSlowFollowers = o.LogEntriesForSlowFollowers
-	m.HeartbeatTick = o.HeartbeatTick
-	m.ElectionTick = o.ElectionTick
+	*m = *o
 }
 
 func (m *EncryptionConfig) Copy() *EncryptionConfig {
@@ -2493,7 +2465,7 @@ func (m *EncryptionConfig) Copy() *EncryptionConfig {
 func (m *EncryptionConfig) CopyFrom(src interface{}) {
 
 	o := src.(*EncryptionConfig)
-	m.AutoLockManagers = o.AutoLockManagers
+	*m = *o
 }
 
 func (m *Placement) Copy() *Placement {
@@ -2508,6 +2480,7 @@ func (m *Placement) Copy() *Placement {
 func (m *Placement) CopyFrom(src interface{}) {
 
 	o := src.(*Placement)
+	*m = *o
 	if o.Constraints != nil {
 		m.Constraints = make([]string, len(o.Constraints))
 		copy(m.Constraints, o.Constraints)
@@ -2527,8 +2500,7 @@ func (m *JoinTokens) Copy() *JoinTokens {
 func (m *JoinTokens) CopyFrom(src interface{}) {
 
 	o := src.(*JoinTokens)
-	m.Worker = o.Worker
-	m.Manager = o.Manager
+	*m = *o
 }
 
 func (m *RootCA) Copy() *RootCA {
@@ -2543,9 +2515,7 @@ func (m *RootCA) Copy() *RootCA {
 func (m *RootCA) CopyFrom(src interface{}) {
 
 	o := src.(*RootCA)
-	m.CAKey = o.CAKey
-	m.CACert = o.CACert
-	m.CACertHash = o.CACertHash
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.JoinTokens, &o.JoinTokens)
 }
 
@@ -2561,11 +2531,8 @@ func (m *Certificate) Copy() *Certificate {
 func (m *Certificate) CopyFrom(src interface{}) {
 
 	o := src.(*Certificate)
-	m.Role = o.Role
-	m.CSR = o.CSR
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Status, &o.Status)
-	m.Certificate = o.Certificate
-	m.CN = o.CN
 }
 
 func (m *EncryptionKey) Copy() *EncryptionKey {
@@ -2580,10 +2547,7 @@ func (m *EncryptionKey) Copy() *EncryptionKey {
 func (m *EncryptionKey) CopyFrom(src interface{}) {
 
 	o := src.(*EncryptionKey)
-	m.Subsystem = o.Subsystem
-	m.Algorithm = o.Algorithm
-	m.Key = o.Key
-	m.LamportTime = o.LamportTime
+	*m = *o
 }
 
 func (m *ManagerStatus) Copy() *ManagerStatus {
@@ -2598,10 +2562,7 @@ func (m *ManagerStatus) Copy() *ManagerStatus {
 func (m *ManagerStatus) CopyFrom(src interface{}) {
 
 	o := src.(*ManagerStatus)
-	m.RaftID = o.RaftID
-	m.Addr = o.Addr
-	m.Leader = o.Leader
-	m.Reachability = o.Reachability
+	*m = *o
 }
 
 func (m *SecretReference) Copy() *SecretReference {
@@ -2616,8 +2577,7 @@ func (m *SecretReference) Copy() *SecretReference {
 func (m *SecretReference) CopyFrom(src interface{}) {
 
 	o := src.(*SecretReference)
-	m.SecretID = o.SecretID
-	m.SecretName = o.SecretName
+	*m = *o
 	if o.Target != nil {
 		switch o.Target.(type) {
 		case *SecretReference_File:
@@ -2643,10 +2603,7 @@ func (m *SecretReference_FileTarget) Copy() *SecretReference_FileTarget {
 func (m *SecretReference_FileTarget) CopyFrom(src interface{}) {
 
 	o := src.(*SecretReference_FileTarget)
-	m.Name = o.Name
-	m.UID = o.UID
-	m.GID = o.GID
-	m.Mode = o.Mode
+	*m = *o
 }
 
 func (m *BlacklistedCertificate) Copy() *BlacklistedCertificate {
@@ -2661,6 +2618,7 @@ func (m *BlacklistedCertificate) Copy() *BlacklistedCertificate {
 func (m *BlacklistedCertificate) CopyFrom(src interface{}) {
 
 	o := src.(*BlacklistedCertificate)
+	*m = *o
 	if o.Expiry != nil {
 		m.Expiry = &docker_swarmkit_v1.Timestamp{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Expiry, o.Expiry)
@@ -2679,6 +2637,7 @@ func (m *HealthConfig) Copy() *HealthConfig {
 func (m *HealthConfig) CopyFrom(src interface{}) {
 
 	o := src.(*HealthConfig)
+	*m = *o
 	if o.Test != nil {
 		m.Test = make([]string, len(o.Test))
 		copy(m.Test, o.Test)
@@ -2692,7 +2651,6 @@ func (m *HealthConfig) CopyFrom(src interface{}) {
 		m.Timeout = &docker_swarmkit_v11.Duration{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Timeout, o.Timeout)
 	}
-	m.Retries = o.Retries
 }
 
 func (m *MaybeEncryptedRecord) Copy() *MaybeEncryptedRecord {
@@ -2707,9 +2665,7 @@ func (m *MaybeEncryptedRecord) Copy() *MaybeEncryptedRecord {
 func (m *MaybeEncryptedRecord) CopyFrom(src interface{}) {
 
 	o := src.(*MaybeEncryptedRecord)
-	m.Algorithm = o.Algorithm
-	m.Data = o.Data
-	m.Nonce = o.Nonce
+	*m = *o
 }
 
 func (this *Version) GoString() string {

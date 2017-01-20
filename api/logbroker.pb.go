@@ -278,13 +278,12 @@ func (m *LogSubscriptionOptions) Copy() *LogSubscriptionOptions {
 func (m *LogSubscriptionOptions) CopyFrom(src interface{}) {
 
 	o := src.(*LogSubscriptionOptions)
+	*m = *o
 	if o.Streams != nil {
 		m.Streams = make([]LogStream, len(o.Streams))
 		copy(m.Streams, o.Streams)
 	}
 
-	m.Follow = o.Follow
-	m.Tail = o.Tail
 	if o.Since != nil {
 		m.Since = &docker_swarmkit_v1.Timestamp{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Since, o.Since)
@@ -303,6 +302,7 @@ func (m *LogSelector) Copy() *LogSelector {
 func (m *LogSelector) CopyFrom(src interface{}) {
 
 	o := src.(*LogSelector)
+	*m = *o
 	if o.ServiceIDs != nil {
 		m.ServiceIDs = make([]string, len(o.ServiceIDs))
 		copy(m.ServiceIDs, o.ServiceIDs)
@@ -332,9 +332,7 @@ func (m *LogContext) Copy() *LogContext {
 func (m *LogContext) CopyFrom(src interface{}) {
 
 	o := src.(*LogContext)
-	m.ServiceID = o.ServiceID
-	m.NodeID = o.NodeID
-	m.TaskID = o.TaskID
+	*m = *o
 }
 
 func (m *LogMessage) Copy() *LogMessage {
@@ -349,13 +347,12 @@ func (m *LogMessage) Copy() *LogMessage {
 func (m *LogMessage) CopyFrom(src interface{}) {
 
 	o := src.(*LogMessage)
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Context, &o.Context)
 	if o.Timestamp != nil {
 		m.Timestamp = &docker_swarmkit_v1.Timestamp{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Timestamp, o.Timestamp)
 	}
-	m.Stream = o.Stream
-	m.Data = o.Data
 }
 
 func (m *SubscribeLogsRequest) Copy() *SubscribeLogsRequest {
@@ -370,6 +367,7 @@ func (m *SubscribeLogsRequest) Copy() *SubscribeLogsRequest {
 func (m *SubscribeLogsRequest) CopyFrom(src interface{}) {
 
 	o := src.(*SubscribeLogsRequest)
+	*m = *o
 	if o.Selector != nil {
 		m.Selector = &LogSelector{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Selector, o.Selector)
@@ -392,6 +390,7 @@ func (m *SubscribeLogsMessage) Copy() *SubscribeLogsMessage {
 func (m *SubscribeLogsMessage) CopyFrom(src interface{}) {
 
 	o := src.(*SubscribeLogsMessage)
+	*m = *o
 	if o.Messages != nil {
 		m.Messages = make([]LogMessage, len(o.Messages))
 		for i := range m.Messages {
@@ -423,7 +422,7 @@ func (m *SubscriptionMessage) Copy() *SubscriptionMessage {
 func (m *SubscriptionMessage) CopyFrom(src interface{}) {
 
 	o := src.(*SubscriptionMessage)
-	m.ID = o.ID
+	*m = *o
 	if o.Selector != nil {
 		m.Selector = &LogSelector{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Selector, o.Selector)
@@ -432,7 +431,6 @@ func (m *SubscriptionMessage) CopyFrom(src interface{}) {
 		m.Options = &LogSubscriptionOptions{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Options, o.Options)
 	}
-	m.Close = o.Close
 }
 
 func (m *PublishLogsMessage) Copy() *PublishLogsMessage {
@@ -447,7 +445,7 @@ func (m *PublishLogsMessage) Copy() *PublishLogsMessage {
 func (m *PublishLogsMessage) CopyFrom(src interface{}) {
 
 	o := src.(*PublishLogsMessage)
-	m.SubscriptionID = o.SubscriptionID
+	*m = *o
 	if o.Messages != nil {
 		m.Messages = make([]LogMessage, len(o.Messages))
 		for i := range m.Messages {

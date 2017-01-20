@@ -97,6 +97,7 @@ func (m *StoreSnapshot) Copy() *StoreSnapshot {
 func (m *StoreSnapshot) CopyFrom(src interface{}) {
 
 	o := src.(*StoreSnapshot)
+	*m = *o
 	if o.Nodes != nil {
 		m.Nodes = make([]*Node, len(o.Nodes))
 		for i := range m.Nodes {
@@ -159,6 +160,7 @@ func (m *ClusterSnapshot) Copy() *ClusterSnapshot {
 func (m *ClusterSnapshot) CopyFrom(src interface{}) {
 
 	o := src.(*ClusterSnapshot)
+	*m = *o
 	if o.Members != nil {
 		m.Members = make([]*RaftMember, len(o.Members))
 		for i := range m.Members {
@@ -186,7 +188,7 @@ func (m *Snapshot) Copy() *Snapshot {
 func (m *Snapshot) CopyFrom(src interface{}) {
 
 	o := src.(*Snapshot)
-	m.Version = o.Version
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Membership, &o.Membership)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Store, &o.Store)
 }

@@ -497,9 +497,7 @@ func (m *RaftMember) Copy() *RaftMember {
 func (m *RaftMember) CopyFrom(src interface{}) {
 
 	o := src.(*RaftMember)
-	m.RaftID = o.RaftID
-	m.NodeID = o.NodeID
-	m.Addr = o.Addr
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Status, &o.Status)
 }
 
@@ -515,7 +513,7 @@ func (m *JoinRequest) Copy() *JoinRequest {
 func (m *JoinRequest) CopyFrom(src interface{}) {
 
 	o := src.(*JoinRequest)
-	m.Addr = o.Addr
+	*m = *o
 }
 
 func (m *JoinResponse) Copy() *JoinResponse {
@@ -530,7 +528,7 @@ func (m *JoinResponse) Copy() *JoinResponse {
 func (m *JoinResponse) CopyFrom(src interface{}) {
 
 	o := src.(*JoinResponse)
-	m.RaftID = o.RaftID
+	*m = *o
 	if o.Members != nil {
 		m.Members = make([]*RaftMember, len(o.Members))
 		for i := range m.Members {
@@ -558,6 +556,7 @@ func (m *LeaveRequest) Copy() *LeaveRequest {
 func (m *LeaveRequest) CopyFrom(src interface{}) {
 
 	o := src.(*LeaveRequest)
+	*m = *o
 	if o.Node != nil {
 		m.Node = &RaftMember{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
@@ -596,7 +595,7 @@ func (m *ResolveAddressRequest) Copy() *ResolveAddressRequest {
 func (m *ResolveAddressRequest) CopyFrom(src interface{}) {
 
 	o := src.(*ResolveAddressRequest)
-	m.RaftID = o.RaftID
+	*m = *o
 }
 
 func (m *ResolveAddressResponse) Copy() *ResolveAddressResponse {
@@ -611,7 +610,7 @@ func (m *ResolveAddressResponse) Copy() *ResolveAddressResponse {
 func (m *ResolveAddressResponse) CopyFrom(src interface{}) {
 
 	o := src.(*ResolveAddressResponse)
-	m.Addr = o.Addr
+	*m = *o
 }
 
 func (m *InternalRaftRequest) Copy() *InternalRaftRequest {
@@ -626,7 +625,7 @@ func (m *InternalRaftRequest) Copy() *InternalRaftRequest {
 func (m *InternalRaftRequest) CopyFrom(src interface{}) {
 
 	o := src.(*InternalRaftRequest)
-	m.ID = o.ID
+	*m = *o
 	if o.Action != nil {
 		m.Action = make([]*StoreAction, len(o.Action))
 		for i := range m.Action {
@@ -649,7 +648,7 @@ func (m *StoreAction) Copy() *StoreAction {
 func (m *StoreAction) CopyFrom(src interface{}) {
 
 	o := src.(*StoreAction)
-	m.Action = o.Action
+	*m = *o
 	if o.Target != nil {
 		switch o.Target.(type) {
 		case *StoreAction_Node:

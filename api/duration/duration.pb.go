@@ -110,8 +110,7 @@ func (m *Duration) Copy() *Duration {
 func (m *Duration) CopyFrom(src interface{}) {
 
 	o := src.(*Duration)
-	m.Seconds = o.Seconds
-	m.Nanos = o.Nanos
+	*m = *o
 }
 
 func (this *Duration) GoString() string {
